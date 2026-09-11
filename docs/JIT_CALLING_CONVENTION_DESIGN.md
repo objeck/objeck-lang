@@ -1,6 +1,6 @@
 # JIT: what a compiled call costs, and the convention that removes it (F7)
 
-**Status:** complete on AMD64 (sections 6 to 11: the bridge, the callee's entry and exit, the direct native call, inline caches for `virtual` and func-ref calls, the register-argument entry). ARM64: phase 1 (the bridge) and phase 2 (the callee's entry and exit, section 12) done on 2026-09-10; phase 3 and the native entry are open, and section 12 says where to start. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
+**Status:** complete on AMD64 (sections 6 to 11: the bridge, the callee's entry and exit, the direct native call, inline caches for `virtual` and func-ref calls, the register-argument entry). ARM64: phase 1 (the bridge), phase 2 (the callee's entry and exit, section 12) and phase 3 with the native entry (section 13) done on 2026-09-10. F7 of `JIT_CODEGEN_ASSESSMENT_2026_09.md`
 ("every method entry/exit rebuilds the VM operand-stack view, and JIT-to-JIT calls still marshal
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
@@ -648,3 +648,87 @@ to the interpreter whole -- the entry-shapes test's sums are four-term statement
 reason, and `Arith:Mix` (chained calls) is the fixture's standing fallback. `X12`-`X15` into the
 pool (F4 on ARM64) is a small change with the shape of #733 and the Linux x64 pool. Then phase
 3: the native entry and call site, section 4d step 2 of the handoff.
+
+**Done the same night** ([#770](https://github.com/objeck/objeck-lang/pull/770)): `X12`-`X15` joined the pool, handed out after `X0`-`X7`, so
+nothing changes for a method that fits in eight and a ninth to twelfth temporary no longer
+sends the method to the interpreter. The entry-shapes test's sums are eleven-term statements,
+which compile here and exceed AMD64's eight (ten on Windows); master's VM reports `Wide`
+falling back on them. Ten terms fit Windows x64's ten exactly and crashed there with every
+method compiled, the reproducer of [#773](https://github.com/objeck/objeck-lang/issues/773). The call probe is
+unchanged; the six loop kernels of `jit_probe.obs` and the call probe are unchanged within noise. `Arith:Mix`, the fixture's one standing fallback, was a float
+live across a libc call, which the libc helper refused; [#771](https://github.com/objeck/objeck-lang/pull/771) parks such a float in a free
+callee-saved `D8`-`D15` register for the call, and the fixture reports no fallback on ARM64 at all.
+
+## 13. Phase 3 on ARM64: the native entry and the call site (2026-09-10)
+
+Section 11's shape, built directly as the Mac handoff's section 4d step 2 asked, in
+`core/vm/arch/jit/arm64/jit_arm_a64.{h,cpp}` ([#776](https://github.com/objeck/objeck-lang/pull/776)).
+
+**The frame.** Two blocks go above the locals: the frame record block (`rec_base`, 80 bytes: a
+`StackFrame`, its two `mem` words, the entry-kind word) and the outgoing area for the method's
+call sites, sized by a pre-scan for the widest call's arguments, receiver and func-ref word. The
+record starts at `local_space + 32`, past the last word the entry zeroing reaches, so neither
+block is zeroed or walked by the collector; the old 256 bytes stay above them, with `X19`'s save
+slot the frame's top word. `frame_size` replaces `local_space + RED_ZONE` in both prologues and
+every epilogue, and a frame past 32,000 bytes (every slot is a scaled 12-bit offset from `SP`)
+is not compiled.
+
+**Two prologues over one body.** The bridge entry at offset 0 is today's prologue plus the
+entry-kind word (0) and `top` computed from the operand stack, then a branch to the join. The
+native entry receives self in `X0`, the caller's stack pointer in `X1` and the end of the
+caller's outgoing area in `X2`. AMD64 finds the arguments at a fixed offset from its frame
+pointer; ARM64 frames are `SP`-relative, so the end travels in a register. The native prologue
+stores the constant pool's address first, since `move_imm_reg` reaches the pool through that
+slot, so the prologue materializes it with `movz`/`movk`. Then come self, the caller's four stack
+pointers, the method's ids and class memory, and the record (method, `mem = &mem[0]`,
+`ip = -1`, zeros, `mem = (self, 0)`, kind 1). It pushes the record with a plain store of the slot
+and a store-release of the position, `PushFrame`'s fence, and points `JIT_MEM` and `JIT_OFFSET`
+into the record. `RegisterRoot` and the self reload after a callback or a safepoint park already
+look there, through the same `offsetof` arithmetic. Last, it hands the arguments' end to the
+join in `top`. Windows ARM64's `long` is four bytes, so `ip`, `jit_offset` and the call-stack
+position are stored by their size (`load_long`, `store_long`).
+
+**Two exits.** `RTRN` moves an `Int` or `Float` result into `D0` while the working stack holds
+it, then tests the entry kind. The native exit pops the record and returns. It first pops a value
+a callback left on the operand stack into `D0`, the AMD64 lesson. The bridge exit is today's
+`ProcessReturn`. `X0` carries the status either way, so the guard stubs are unchanged.
+
+**The call site** (`EmitNativeCallSite`). `MarshalOutArgs` writes the values into the outgoing
+area and pops them. The entry comes from the callee's word with `ldar`, the acquire a plain x86
+load gives for free, or from the site's inline cache: the shared `JitVirtualSite` records, keyed
+by the receiver's class word (after a `Nil` and object-header check) or the func-ref word, and
+filled by the shared resolvers on a miss. Then the depth check against `CALL_STACK_SIZE`, `X0`-`X2`,
+`blr` with `LR` kept by `call_reg`, and `tbnz x0, #63` to a block that calls
+`JitNativeCallError` with the callee and the caller's ids. The slow path copies the area onto
+the operand stack, runs the bridge sequence and pops the result into `D0`, so both paths join
+with the value in one place, and the result moves to a pool register before the spilled values
+come back (`D0` is in the pool). It serves a callee not compiled yet, a full call stack, a `Nil`
+receiver and a miss the resolver cannot fill. `x17` carries the entry and `x16` is a temporary for a wide `SP` offset;
+neither is in the pool or used anywhere else. The record for a virtual site's error report waits
+in `[SP, #0]`, which only a callback's arguments use.
+
+**Found on the way.** `DYN_MTHD_CALL_JIT`, the opcode `PatchCallSites` rewrites a func-ref site
+into, passed the ARM64 pre-scan but had no case in the instruction switch, whose default ends the
+process ("Unknown instruction"). It has the same case as `DYN_MTHD_CALL` now, as on AMD64.
+
+`jit_call_probe.obs` on the M4 Max, alternated with master at `3366d92c4a`, medians of three:
+
+| kernel | master | native entry |
+|---|---|---|
+| `RealCall` (20M bound calls) | 0.287 s | **0.160 s** |
+| `VirtualCall` (2M, monomorphic) | 0.0345 s | **0.0160 s** |
+| `Fib(32)` (7M recursive calls) | 0.107 s | **0.050 s** |
+| compiled call, per call | 13.8 ns | **7.4 ns** |
+
+A compiled call on ARM64 cost 17.7 ns when the Mac first measured it (section 12) and 7.4 ns now;
+AMD64's is 5.5 ns. What is left is the callee's native prologue -- about fifty instructions,
+most of them stores into its own frame (the record's fields, the stack pointers copied from
+the caller) -- and about twenty at the call site.
+
+**Verification.** The flag tests 22/22 with `vm_jit_equiv.obs` byte-identical across the three
+modes (its `Calls` probes cover bound, virtual, func-ref, deep, allocating, `Float`, wide, `Nil`,
+callback-result and inlined-reference calls) and `OBJECK_JIT_REPORT=1` silent on it;
+`jit_native_call_error` and `jit_native_call_depth` report as before, now through the native
+path's error block and its depth check; `jit_entry_shapes.obs` byte-identical across the modes;
+the targeted JIT tests compiled; both regression passes, 230 passed, 3 skipped, 0 failed each; `core_thread_gc_stress` with every method compiled, a
+1 MB GC threshold and four instances at a time, 48 runs with 0 corruptions.

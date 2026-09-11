@@ -1,0 +1,70 @@
+#~
+# A runtime property set twice reads back the second value.
+#
+# StackProgram::SetProperty stored with std::map::insert, which never replaces
+# a key that is already there, so every runtime property could be set once per
+# process and each later Runtime->SetProperty on it was silently dropped:
+# "probe" set to "first" and then to "second" read back "first". The library
+# depends on overwriting. String->SetIntFormat, SetFloatFormat and
+# SetFloatPrecision store the format in "int:string:format",
+# "float:string:format" and "float:string:precision", which Int->ToString and
+# Float->ToString read in the interpreter and under the JIT alike, so a number
+# format could be changed once and never changed back: hex and then dec printed
+# 255 as "ff" both times. SetProperty assigns now.
+#
+# Every check after a property's first setting fails on the old VM, in both
+# regression passes and with --jit=off; the checks of a first setting pass
+# there, which is what shows the property was read at all.
+~#
+
+class SetPropertyOverwrite {
+	@@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@@failures := 0;
+
+		# an arbitrary property, set twice and read back
+		Runtime->SetProperty("probe", "first");
+		Check("probe, set once", Runtime->GetProperty("probe"), "first");
+		Runtime->SetProperty("probe", "second");
+		Check("probe, set twice", Runtime->GetProperty("probe"), "second");
+
+		# the property the library sets for Int->ToString: hex, then dec
+		value := 255;
+		Runtime->SetProperty("int:string:format", "hex");
+		Check("int:string:format hex", value->ToString(), "ff");
+		Runtime->SetProperty("int:string:format", "dec");
+		Check("int:string:format dec after hex", value->ToString(), "255");
+
+		# the same switches through the library
+		String->SetIntFormat(Number->Format->OCT);
+		Check("SetIntFormat OCT after dec", value->ToString(), "377");
+		String->SetIntFormat(Number->Format->DEC);
+		Check("SetIntFormat DEC after OCT", value->ToString(), "255");
+
+		# the float precision, changed after it was first set
+		pi := 3.14159;
+		String->SetFloatFormat(Number->Format->FIXED);
+		String->SetFloatPrecision(2);
+		Check("FIXED, precision 2", pi->ToString(), "3.14");
+		String->SetFloatPrecision(4);
+		Check("FIXED, precision 4 after 2", pi->ToString(), "3.1416");
+
+		if(@@failures = 0) {
+			"PASS: a runtime property set twice reads back the second value"->PrintLine();
+		}
+		else {
+			"FAIL: a runtime property set twice kept its first value"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(name : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			return;
+		};
+		@@failures += 1;
+		line := "  " + name + ": got [" + got + "] want [" + want + "]";
+		line->PrintLine();
+	}
+}
