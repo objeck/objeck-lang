@@ -24,6 +24,25 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     native library, the next ran the deployed obr from another cwd -- but
     Windows resolves the ..\lib\native fallback against obr.exe's OWN
     directory first, so the deployed binary finds its libraries from anywhere.
+ 5. An unsupported locale does not stop the program. Python 3 puts
+    LC_CTYPE=C.UTF-8 in every child's environment when LANG is unset (PEP 538),
+    so this script hands obr exactly that from any shell with no LANG; macOS's C
+    library reports it as the composite "C/C.UTF-8/C/C/C/C", which libc++ cannot
+    turn into a std::locale, and obr used to exit with a collate_byname message
+    before the program ran -- seven failures above that were not the VM's. A
+    locale the system does not have (LANG=xx_YY.bogus) is the other shape. Both
+    must run the program, print what the default run printed, and still write
+    wide characters as UTF-8 (the byte check is POSIX-only: the Windows console
+    path reads no locale variable).
+ 6. A locale the program asks for and the system lacks does not stop the
+    program. Runtime->SetLocale("xx_YY.bogus") made the VM build a std::locale
+    from the NULL that setlocale returned, and the constructor's exception
+    ended the program. With the JIT on, the old VM aborted, which the
+    regression runner sees; interpreted, it printed ">>> virtual machine:
+    internal error: locale constructed with null <<<" and POSIX obr still
+    exited 0, and the runner never runs a program with --jit=off. The VM
+    refuses the name now; vm_set_locale_refused.obs must reach its last line
+    with no internal error on stderr, interpreted and with every method compiled.
  7. A program that dies inside the VM exits non-zero. Execute prints
     ">>> virtual machine: internal error: ... <<<" and returns -1 when an
     exception escapes the interpreter, and the POSIX entry point returned 0
@@ -162,6 +181,37 @@ def main():
                   f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
+
+    # ---- 5. an unsupported locale does not stop the program ---------------------
+    wide_src = os.path.join(SCRIPT_DIR, "vm_locale_wide.obs")
+    wide_obe = os.path.join(SCRIPT_DIR, "vm_locale_wide.obe")
+    rc, out, err = run([obc, "-src", wide_src, "-dest", wide_obe], env=env, cwd=bin_dir)
+    check("wide-output fixture compiles", rc == 0 and os.path.exists(wide_obe), err.decode(errors="replace")[-300:])
+    wide = "wide: héllo wörld 世界".encode("utf-8")
+    for label, overrides in (("LC_CTYPE=C.UTF-8 with no LANG", {"LC_CTYPE": "C.UTF-8"}),
+                             ("LANG=xx_YY.bogus", {"LANG": "xx_YY.bogus"})):
+        loc_env = {k: v for k, v in env.items() if k != "LANG" and not k.startswith("LC_")}
+        loc_env.update(overrides)
+        rc, out, err = run([obr, obe], env=loc_env, cwd=bin_dir)
+        check(f"program runs under {label} and prints what the default run printed",
+              rc == 0 and out == base, f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
+        if os.name != "nt" and os.path.exists(wide_obe):
+            rc, out, err = run([obr, wide_obe], env=loc_env, cwd=bin_dir)
+            check(f"wide characters are written as UTF-8 under {label}",
+                  rc == 0 and wide in out,
+                  f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+
+    # ---- 6. a locale the program asks for and the system lacks is refused ----------
+    loc_src = os.path.join(SCRIPT_DIR, "vm_set_locale_refused.obs")
+    loc_obe = os.path.join(SCRIPT_DIR, "vm_set_locale_refused.obe")
+    rc, out, err = run([obc, "-src", loc_src, "-dest", loc_obe], env=env, cwd=bin_dir)
+    check("set-locale fixture compiles", rc == 0 and os.path.exists(loc_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr] + flags + [loc_obe], env=env, cwd=bin_dir)
+            check(f"SetLocale with a name the system lacks is refused and the program finishes ({label})",
+                  rc == 0 and out.rstrip().endswith(b"set-locale: done") and b"internal error" not in err,
+                  f"rc={rc} out={out[-160:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
 
     # ---- 7. a program that dies inside the VM exits non-zero ------------------------
     # Execute's catch prints the line and returns -1; the POSIX entry point used

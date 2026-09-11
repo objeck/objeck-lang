@@ -4271,6 +4271,59 @@ bool TrapProcessor::GetSysProp(StackProgram* program, size_t* inst, size_t* &op_
   return true;
 }
 
+// Runtime->SetLocale: switches the C library's locale and, outside Windows,
+// the one std::wcout converts through, or neither. A name the system lacks
+// makes setlocale return NULL, and macOS's setlocale accepts a per-category
+// composite ("C/C.UTF-8/C/C/C/C") that libc++ still cannot build into a
+// std::locale; the constructor used to run unguarded on either, and its
+// exception ended the program with ">>> virtual machine: internal error:
+// locale constructed with null <<<". Such a name is refused and everything is
+// left as it was. The program asked for this name itself, so it gets the
+// refusal rather than a fallback locale it did not ask for.
+static bool SetProgramLocale(const std::string& name)
+{
+#if defined(_WIN32) || !(defined(_X64) || defined(_ARM64))
+  // Windows sets the C library's locale and leaves std::wcout alone, as the
+  // x64 build always did. obr puts stdout in a Unicode or binary CRT mode
+  // (_O_U8TEXT by default, or per --objeck-stdio) and writes wide characters
+  // through wcout as the CRT expects; a locale imbued here makes wcout hand
+  // narrow bytes to that stream instead, which the C runtime treats as an
+  // invalid parameter. The ARM64 build, which imbued one, was stopped
+  // (0xC0000409, a fast fail) once a program set a valid name, and its output
+  // was lost.
+  return setlocale(LC_ALL, name.c_str()) != nullptr;
+#else
+  const char* current = setlocale(LC_ALL, nullptr);
+  const std::string previous(current ? current : "");
+
+  const char* accepted = setlocale(LC_ALL, name.c_str());
+  if(!accepted) {
+    // a failed setlocale changes nothing
+    return false;
+  }
+
+  // copied because the next setlocale call reuses the buffer
+  const std::string chosen(accepted);
+  try {
+    std::locale lollocale(chosen.c_str());
+    setlocale(LC_ALL, chosen.c_str());
+    std::wcout.imbue(lollocale);
+  }
+  catch(const std::runtime_error&) {
+    // the C library took the name and the C++ library cannot build it
+    if(!previous.empty()) {
+      setlocale(LC_ALL, previous.c_str());
+    }
+    return false;
+  }
+#if defined(_ARM64)
+  setlocale(LC_ALL, "en_US.utf8");
+#endif
+
+  return true;
+#endif
+}
+
 bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* value_array = (size_t*)PopInt(op_stack, stack_pos);
@@ -4283,22 +4336,9 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     const wchar_t* key = (wchar_t*)(key_array + 3);
     const wchar_t* value = (wchar_t*)(value_array + 3);
 
-    if(!wcscmp(key, L"locale")) {
-      const std::string locale_value = UnicodeToBytes(value);
-#if defined(_X64)
-      char* locale = setlocale(LC_ALL, locale_value.c_str());
-      std::locale lollocale(locale);
-      setlocale(LC_ALL, locale);
-      std::wcout.imbue(lollocale);
-#elif defined(_ARM64)
-      char* locale = setlocale(LC_ALL, locale_value.c_str());
-      std::locale lollocale(locale);
-      setlocale(LC_ALL, locale);
-      std::wcout.imbue(lollocale);
-      setlocale(LC_ALL, "en_US.utf8");
-#else    
-      setlocale(LC_ALL, locale_value.c_str());
-#endif
+    // a name the system cannot supply is refused, and the property not stored
+    if(!wcscmp(key, L"locale") && !SetProgramLocale(UnicodeToBytes(value))) {
+      return true;
     }
 
     program->SetProperty(key, value);
