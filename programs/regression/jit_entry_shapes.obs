@@ -10,19 +10,22 @@
 # block is patched; a Float result popped after a call; a func-ref
 # parameter followed by an Int one. Every value is
 # checked against a closed form; exits 1 on a mismatch. The sums are
-# ten-term statements: the bytecode pushes every term of a chain before the
-# first add and the ARM64 backend does not spill, so with its pool at twelve
-# registers (X0-X7, X12-X15) a ten-term chain compiles where eight was the
-# limit before -- run with OBJECK_JIT_REPORT=1, no method here may fall back.
+# eleven-term statements: the bytecode pushes every term of a chain before
+# its first add and no backend spills, so a chain needs a register per
+# term. ARM64's twelve (X0-X7, X12-X15) compile these, one spare for a
+# multiply's temporary; with OBJECK_JIT_REPORT=1 no method here may fall
+# back on ARM64. AMD64 has eight (ten on Windows, with RSI and RDI), so it
+# runs them interpreted. Ten terms fit Windows' ten exactly and crash there
+# with every method compiled (#773); that shape is the issue's reproducer.
 ~#
 class EntryShapes {
   # 37 words of Int arguments: the sum of a_i * (i + 1) with a_i = i + 1 is
   # the sum of the squares 1..37, 17575
   function : Wide(a0 : Int, a1 : Int, a2 : Int, a3 : Int, a4 : Int, a5 : Int, a6 : Int, a7 : Int, a8 : Int, a9 : Int, a10 : Int, a11 : Int, a12 : Int, a13 : Int, a14 : Int, a15 : Int, a16 : Int, a17 : Int, a18 : Int, a19 : Int, a20 : Int, a21 : Int, a22 : Int, a23 : Int, a24 : Int, a25 : Int, a26 : Int, a27 : Int, a28 : Int, a29 : Int, a30 : Int, a31 : Int, a32 : Int, a33 : Int, a34 : Int, a35 : Int, a36 : Int) ~ Int {
-    t := a0 * 1 + a1 * 2 + a2 * 3 + a3 * 4 + a4 * 5 + a5 * 6 + a6 * 7 + a7 * 8 + a8 * 9 + a9 * 10;
-    t += a10 * 11 + a11 * 12 + a12 * 13 + a13 * 14 + a14 * 15 + a15 * 16 + a16 * 17 + a17 * 18 + a18 * 19 + a19 * 20;
-    t += a20 * 21 + a21 * 22 + a22 * 23 + a23 * 24 + a24 * 25 + a25 * 26 + a26 * 27 + a27 * 28 + a28 * 29 + a29 * 30;
-    t += a30 * 31 + a31 * 32 + a32 * 33 + a33 * 34 + a34 * 35 + a35 * 36 + a36 * 37;
+    t := a0 * 1 + a1 * 2 + a2 * 3 + a3 * 4 + a4 * 5 + a5 * 6 + a6 * 7 + a7 * 8 + a8 * 9 + a9 * 10 + a10 * 11;
+    t += a11 * 12 + a12 * 13 + a13 * 14 + a14 * 15 + a15 * 16 + a16 * 17 + a17 * 18 + a18 * 19 + a19 * 20 + a20 * 21 + a21 * 22;
+    t += a22 * 23 + a23 * 24 + a24 * 25 + a25 * 26 + a26 * 27 + a27 * 28 + a28 * 29 + a29 * 30 + a30 * 31 + a31 * 32 + a32 * 33;
+    t += a33 * 34 + a34 * 35 + a35 * 36 + a36 * 37;
     return t;
   }
 
@@ -107,10 +110,10 @@ class EntryShapes {
     l35 := n + 35;
     t := 0;
     for(i := 0; i < 2; i += 1;) {
-      t += l0 + l1 + l2 + l3 + l4 + l5 + l6 + l7 + l8 + l9;
-      t += l10 + l11 + l12 + l13 + l14 + l15 + l16 + l17 + l18 + l19;
-      t += l20 + l21 + l22 + l23 + l24 + l25 + l26 + l27 + l28 + l29;
-      t += l30 + l31 + l32 + l33 + l34 + l35;
+      t += l0 + l1 + l2 + l3 + l4 + l5 + l6 + l7 + l8 + l9 + l10;
+      t += l11 + l12 + l13 + l14 + l15 + l16 + l17 + l18 + l19 + l20 + l21;
+      t += l22 + l23 + l24 + l25 + l26 + l27 + l28 + l29 + l30 + l31 + l32;
+      t += l33 + l34 + l35;
     };
     return t;
   }
