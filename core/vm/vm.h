@@ -39,6 +39,7 @@
 #include "loader.h"
 #include "interpreter.h"
 #include <clocale>
+#include <locale>
 
 extern "C"
 {
@@ -52,3 +53,9 @@ extern "C"
 wchar_t** ProcessCommandLine(int &argc, const char* argv[]);
 void CleanUpCommandLine(const int argc, wchar_t** wide_args);
 void SetEnv();
+#ifndef _WIN32
+// The locale std::wcout converts wide characters through, built from what
+// setlocale(LC_ALL, "") returned (NULL included). Never throws: a name the C++
+// library cannot construct falls back to one it can (see vm.cpp).
+std::locale ConsoleLocale(const char* name);
+#endif

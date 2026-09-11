@@ -1,0 +1,47 @@
+# Runtime->SetLocale with a name the system cannot supply. The VM switched the
+# C library's locale and then built a std::locale from whatever setlocale
+# returned, unguarded: for a name the system lacks setlocale returns NULL, and
+# on macOS it accepts the per-category composite "C/C.UTF-8/C/C/C/C", which
+# libc++ still cannot build. Either way the constructor threw and the program
+# stopped with ">>> virtual machine: internal error: locale constructed with
+# null <<<" (or the collate_byname message for the composite). The VM now
+# refuses such a name: the C library's locale, the console's and the "locale"
+# property stay as they were. A name every C library has ("C") is still
+# accepted.
+#
+# With the JIT on, the old ARM64 VM did not even print that: the exception
+# unwound through compiled code and the process aborted (exit 134), which both
+# regression passes see. Interpreted (--jit=off), it printed the internal error
+# and POSIX obr still exited 0, which no exit status shows; run_vm_flag_tests.py
+# runs this file that way too and requires its last line.
+class SetLocaleRefused {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		before := Runtime->GetProperty("locale");
+
+		names := ["xx_YY.bogus", "C/C.UTF-8/C/C/C/C"];
+		each(i : names) {
+			name := names[i];
+			Runtime->SetLocale(name);
+			kept := Runtime->GetProperty("locale");
+			if(<>kept->Equals(before)) {
+				"FAIL: SetLocale('{$name}') was not refused: the property reads '{$kept}'"->PrintLine();
+				failures += 1;
+			};
+			"returned from SetLocale: {$name}"->PrintLine();
+		};
+
+		# the refusals left the locale machinery working
+		Runtime->SetLocale("C");
+		accepted := Runtime->GetProperty("locale");
+		if(<>accepted->Equals("C")) {
+			"FAIL: SetLocale('C') was not accepted: the property reads '{$accepted}'"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			Runtime->Exit(1);
+		};
+		"set-locale: done"->PrintLine();
+	}
+}

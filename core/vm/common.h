@@ -542,20 +542,21 @@ class NativeCode {
 
   long size;
   FLOAT_VALUE* floats;
-  std::vector<JitVirtualSite*> virtual_sites;   // the method's inline caches (AMD64)
-  // The register-argument entry a compiled caller calls (AMD64, see
-  // JitAmd64::EmitNativePrologue); `code` is the bridge entry the
-  // interpreter calls through JitRuntime::Execute. Null when the method has
-  // the bridge entry only (a func-ref result, or the ARM64 backend).
+  std::vector<JitVirtualSite*> virtual_sites;   // the method's inline caches
+  // The register-argument entry a compiled caller calls (see
+  // JitAmd64::EmitNativePrologue and JitArm64::EmitNativePrologue); `code`
+  // is the bridge entry the interpreter calls through JitRuntime::Execute.
+  // Null when the method has the bridge entry only (a func-ref result).
   void* native_entry;
  public:
 #if defined(_ARM64) || defined(_M_ARM64)
-   NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f) {
+   NativeCode(uint32_t* c, long s, int64_t* i, FLOAT_VALUE* f, long native_entry_offset = -1) {
     code = c;
     size = s;
     ints = i;
     floats = f;
-    native_entry = nullptr;
+    // the offset counts 32-bit instructions, as `code` does
+    native_entry = (native_entry_offset > 0) ? (void*)(c + native_entry_offset) : nullptr;
   }
 #else
   NativeCode(unsigned char* c, long s, FLOAT_VALUE* f, long native_entry_offset = -1) {
@@ -1348,7 +1349,9 @@ class StackProgram {
       InitializeProprieties();
     }
 
-    properties_map.insert(std::pair<std::wstring, std::wstring>(key, value));
+    // assigned, not inserted: std::map::insert keeps an existing key's value,
+    // which left every property settable only once per process
+    properties_map[key] = value;
     LeaveCriticalSection(&prop_cs);
   }
 
@@ -1387,7 +1390,16 @@ class StackProgram {
 
   static void SetProperty(const std::wstring& key, const std::wstring& value) {
     pthread_mutex_lock(&prop_mutex);
-    properties_map.insert(std::pair<std::wstring, std::wstring>(key, value));
+
+    // filled before the first store: once a key is in, the map is never empty
+    // again, and the directories and config.prop would never be loaded
+    if(properties_map.size() == 0) {
+      InitializeProprieties();
+    }
+
+    // assigned, not inserted: std::map::insert keeps an existing key's value,
+    // which left every property settable only once per process
+    properties_map[key] = value;
     pthread_mutex_unlock(&prop_mutex);
   }
 #endif

@@ -58,6 +58,13 @@ static int objeck_main(const int argc, const char* argv[])
       wcerr << opts.error << L"\n\n" << Runtime::VmUsage() << endl;
       return 1;
     }
+    // Every argument was a flag, so there is no program to run. Execute
+    // returns USAGE_ERROR for that without printing a word; say what a bare
+    // "obr" says instead, and exit the way it does.
+    if(argc - opts.consumed < 2) {
+      wcerr << Runtime::VmUsage() << endl;
+      return 1;
+    }
     Runtime::ApplyVmOptions(opts);
 
     // enable UTF-8 environment
@@ -80,7 +87,12 @@ static int objeck_main(const int argc, const char* argv[])
         if(utf8) { locale = utf8; }
       }
     }
-    std::locale lollocale(locale);
+    // Built by ConsoleLocale (vm.cpp), which never throws: libc++ on macOS
+    // refuses the per-category composite the C library returns when only
+    // LC_CTYPE is set ("C/C.UTF-8/C/C/C/C", what Python 3 hands every child
+    // when LANG is unset), and std::locale's constructor threw out of here
+    // with obr exiting before the program ran.
+    std::locale lollocale = ConsoleLocale(locale);
     setlocale(LC_ALL, locale);
     wcout.imbue(lollocale);
 #else
@@ -92,18 +104,23 @@ static int objeck_main(const int argc, const char* argv[])
     //
 #ifdef _WIN32
     return Execute(argc - opts.consumed, argv + opts.consumed, false, opts.gc_threshold);
-#else    
-    Execute(argc - opts.consumed, argv + opts.consumed, opts.gc_threshold);
-#endif    
-
-    // The POSIX branch above deliberately discards Execute's result, so this
-    // path used to fall off the end of main -- legal there (implicit return 0)
-    // but undefined behaviour now that the body lives in an ordinary function.
-    // At -O3 no return instruction is emitted and control runs into garbage,
-    // which segfaulted obr on every POSIX target while Windows was unaffected
-    // because it takes the returning branch above. Returning 0 preserves the
-    // original exit status exactly.
-    return 0;
+#else
+    // Execute returns SUCCESS (0) when the program ran to the end and
+    // USAGE_ERROR (-1) after it has printed its own message: the program could
+    // not be loaded (">>> load error: ... <<<"), or an exception escaped the
+    // interpreter (">>> virtual machine: internal error: ... <<<", or
+    // ">>> ... out of memory <<<"). This branch used to discard that result
+    // and return 0, so on Linux and macOS a program that died inside the VM
+    // reported success to whatever ran it; only a reader of stderr knew.
+    // Windows returns Execute's -1 as it is, which a POSIX shell would show as
+    // 255; here it becomes 1, the status every other failure of obr on POSIX
+    // already uses (a runtime trap's exit(1), a bad flag above, the backstop
+    // in main below). A program's own Runtime->Exit(n) never comes back
+    // through here -- the trap calls exit(n) directly -- so its status is
+    // untouched, and a program that runs to the end still exits 0.
+    const int status = Execute(argc - opts.consumed, argv + opts.consumed, opts.gc_threshold);
+    return status < 0 ? 1 : status;
+#endif
   }
   else {
     wcerr << Runtime::VmUsage() << endl;
