@@ -1352,7 +1352,6 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
       if(reg_it != local_reg_cache.end()) {
         RegisterHolder* cached = reg_it->second;
         local_reg_cache.erase(reg_it);
-        used_regs.push_back(cached);
         working_stack.push_front(new RegInstr(cached));
       }
       // check local register cache for float locals
@@ -1361,7 +1360,6 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
         if(xreg_it != local_xreg_cache.end()) {
           RegisterHolder* cached = xreg_it->second;
           local_xreg_cache.erase(xreg_it);
-          used_xregs.push_back(cached);
           working_stack.push_front(new RegInstr(cached));
         }
         else {
@@ -8180,31 +8178,31 @@ bool JitAmd64::Compile(StackMethod* cm)
     local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
     float_consts[floats_index++] = 0.0;
 
-    rax_reg = new RegisterHolder(RAX);
+    rax_reg = NewRegisterHolder(RAX);
 #ifdef _WIN64
     // general use registers. R8-R11 are caller-saved, need no prologue save,
     // and every path that calls out (the interpreter callback, native calls,
     // the write barrier) spills or pushes them like RCX/RDX. Four registers
     // meant any expression with five live values spilled -- or the method
     // fell back to the interpreter. POSIX gets the same registers via aux_regs.
-    aval_regs.push_back(new RegisterHolder(R11));
-    aval_regs.push_back(new RegisterHolder(R10));
-    aval_regs.push_back(new RegisterHolder(R9));
-    aval_regs.push_back(new RegisterHolder(R8));
-    aval_regs.push_back(new RegisterHolder(RDX));
-    aval_regs.push_back(new RegisterHolder(RCX));
-    aval_regs.push_back(new RegisterHolder(RBX));
+    aval_regs.push_back(NewRegisterHolder(R11));
+    aval_regs.push_back(NewRegisterHolder(R10));
+    aval_regs.push_back(NewRegisterHolder(R9));
+    aval_regs.push_back(NewRegisterHolder(R8));
+    aval_regs.push_back(NewRegisterHolder(RDX));
+    aval_regs.push_back(NewRegisterHolder(RCX));
+    aval_regs.push_back(NewRegisterHolder(RBX));
     aval_regs.push_back(rax_reg);
     // aux general use registers
-    aux_regs.push(new RegisterHolder(RSI));
-    aux_regs.push(new RegisterHolder(RDI));
+    aux_regs.push(NewRegisterHolder(RSI));
+    aux_regs.push(NewRegisterHolder(RDI));
     // floating point registers
-    aval_xregs.push_back(new RegisterHolder(XMM15));
-    aval_xregs.push_back(new RegisterHolder(XMM14));
-    aval_xregs.push_back(new RegisterHolder(XMM13));
-    aval_xregs.push_back(new RegisterHolder(XMM12));
-    aval_xregs.push_back(new RegisterHolder(XMM11));
-    aval_xregs.push_back(new RegisterHolder(XMM10));
+    aval_xregs.push_back(NewRegisterHolder(XMM15));
+    aval_xregs.push_back(NewRegisterHolder(XMM14));
+    aval_xregs.push_back(NewRegisterHolder(XMM13));
+    aval_xregs.push_back(NewRegisterHolder(XMM12));
+    aval_xregs.push_back(NewRegisterHolder(XMM11));
+    aval_xregs.push_back(NewRegisterHolder(XMM10));
 #ifdef _DEBUG_JIT
     std::wcout << L"Compiling code for Windows AMD64 architecture..." << std::endl;
 #endif
@@ -8215,24 +8213,24 @@ bool JitAmd64::Compile(StackMethod* cm)
     // write barrier, call_xfunc). Four pool registers and three aux ones
     // left an expression with five live values, or a method with a dozen
     // locals, to the interpreter on Linux while Windows compiled it.
-    aval_regs.push_back(new RegisterHolder(R11));
-    aval_regs.push_back(new RegisterHolder(R10));
-    aval_regs.push_back(new RegisterHolder(R9));
-    aval_regs.push_back(new RegisterHolder(R8));
-    aval_regs.push_back(new RegisterHolder(RDX));
-    aval_regs.push_back(new RegisterHolder(RCX));
-    aval_regs.push_back(new RegisterHolder(RBX));
+    aval_regs.push_back(NewRegisterHolder(R11));
+    aval_regs.push_back(NewRegisterHolder(R10));
+    aval_regs.push_back(NewRegisterHolder(R9));
+    aval_regs.push_back(NewRegisterHolder(R8));
+    aval_regs.push_back(NewRegisterHolder(RDX));
+    aval_regs.push_back(NewRegisterHolder(RCX));
+    aval_regs.push_back(NewRegisterHolder(RBX));
     aval_regs.push_back(rax_reg);
     // no aux registers: RDI and RSI are set as arguments by every call-out
     // sequence without a spill, and R12-R15 are the safepoint pointer and
     // the pinned loop locals (F3)
     // floating point registers
-    aval_xregs.push_back(new RegisterHolder(XMM15));
-    aval_xregs.push_back(new RegisterHolder(XMM14));
-    aval_xregs.push_back(new RegisterHolder(XMM13));
-    aval_xregs.push_back(new RegisterHolder(XMM12));
-    aval_xregs.push_back(new RegisterHolder(XMM11));
-    aval_xregs.push_back(new RegisterHolder(XMM10));
+    aval_xregs.push_back(NewRegisterHolder(XMM15));
+    aval_xregs.push_back(NewRegisterHolder(XMM14));
+    aval_xregs.push_back(NewRegisterHolder(XMM13));
+    aval_xregs.push_back(NewRegisterHolder(XMM12));
+    aval_xregs.push_back(NewRegisterHolder(XMM11));
+    aval_xregs.push_back(NewRegisterHolder(XMM10));
 #ifdef _DEBUG_JIT
     std::wcout << L"Compiling code for Posix AMD64 architecture..." << std::endl;
 #endif
@@ -8344,18 +8342,14 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
       virtual_sites.clear();
 
-      // On mid-compilation failure, register holders may be shared across
-      // multiple lists (aval_regs, used_regs, aux_regs, working_stack).
-      // Deleting from one list risks double-free when the destructor
-      // iterates another. Clear all lists without deleting holders
-      // (small leak of ~48 bytes per failed method is acceptable).
+      // The register holders belong to all_regs, which the destructor
+      // deletes once; the lists that borrow them are only emptied here.
+      // Entries still on the working stack are dropped, not deleted.
       working_stack.clear();
       local_reg_cache.clear();
       local_xreg_cache.clear();
       aval_regs.clear();
-      used_regs.clear();
       aval_xregs.clear();
-      used_xregs.clear();
       while(!aux_regs.empty()) {
         aux_regs.pop();
       }

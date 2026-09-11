@@ -12,6 +12,8 @@ AMD64 opts each opcode *in* via `CanJitInstruction()` (`jit_amd_lp64.cpp`). An o
 ### Register & stack model
 Accumulator model — intermediate values flow through a small register set; method locals live in stack slots addressed off `RBP`. Frame layout constants (`CLS_ID`, `MTHD_ID`, `OP_STACK`, `STACK_POS`, `JIT_MEM`, `INSTANCE_MEM`, `FRAME_MEM`, temp `TMP_REG_*` / `TMP_XMM_*` slots) are defined at the top of `jit_amd_lp64.h`.
 
+Each compile creates its register holders once, through `NewRegisterHolder`, and `all_regs` owns them: the free pools (`aval_regs`, `aval_xregs`, and on Windows `aux_regs`, whose `RSI` and `RDI` are handed out only when the eight pool registers are all live), the working stack and the local caches borrow them, and the destructor deletes each holder once. It used to delete from the lists instead, and an auxiliary register that had been through the local cache sat in two of them and was freed twice ([#773](https://github.com/objeck/objeck-lang/issues/773)).
+
 ### AMD64-specific optimizations
 | Optimization | Notes |
 |---|---|
