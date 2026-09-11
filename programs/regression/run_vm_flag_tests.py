@@ -52,6 +52,17 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     command line that is all flags ("obr --jit=off") names no program: that
     is the usage and a non-zero exit, not a silent one (it was a silent exit
     0 on POSIX).
+ 8. An exception in a call the JIT's bridge made ends the program, not the
+    process. Neither backend registers unwind information for the code it
+    emits, so a C++ exception thrown under compiled code used to terminate
+    obr (SIGABRT) before Execute's catch printed anything; the bridge catches
+    it now and reports it as Execute would: the internal-error line, the
+    stack, exit status 1. jit_bridge_exception.obs reaches it with
+    "1e999"->ToFloat() from a native method (compiled in every mode), by
+    default through the interpreter the bridge nests and under --jit=1
+    through the bridge's own S2F case. The regression runner cannot tell the
+    abort from the error (an expected runtime error is any non-zero exit with
+    output), so the status is named here.
 """
 import os
 import shutil
@@ -238,6 +249,27 @@ def main():
     check("--jit=off with no program prints the usage and exits non-zero",
           rc != 0 and b"Usage: obr" in (out + err),
           f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+
+    # ---- 8. an exception in a bridge call ends the program, not the process ----
+    # The fixture's Parse is native, so both runs reach the bridge: by default
+    # String->ToFloat, a library method called once, runs in the interpreter the
+    # bridge nests; under --jit=1 it is compiled and the bridge's own S2F case
+    # throws. On the old VM both aborted (a signal, no line of the VM's), and
+    # the regression runner counted the abort as the expected error.
+    ex_src = os.path.join(SCRIPT_DIR, "jit_bridge_exception.obs")
+    ex_obe = os.path.join(SCRIPT_DIR, "jit_bridge_exception.obe")
+    rc, out, err = run([obc, "-src", ex_src, "-dest", ex_obe], env=env, cwd=bin_dir)
+    check("bridge-exception fixture compiles", rc == 0 and os.path.exists(ex_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        for label, flags in (("default", []), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr] + flags + [ex_obe], env=env, cwd=bin_dir)
+            detail = f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-300:]!r}"
+            check(f"under {label} the exception is reported as an internal error, with the stack",
+                  b"before" in out and b"after" not in out
+                  and b">>> virtual machine: internal error:" in err and b"Unwinding local stack" in err
+                  and b"terminating" not in err,
+                  detail)
+            check(f"under {label} obr exits 1, not by a signal", rc == 1, detail)
 
     return finish()
 

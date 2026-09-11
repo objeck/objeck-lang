@@ -259,6 +259,8 @@ class VmJitEquiv {
     # F7 section 11: the register-argument entry, every value shape and both
     # entries (each interpolation costs Main a slot it no longer has)
     Calls->PrintNative();
+    # the bridge's S2F and S2I answer as the interpreter's Str2Float and Str2Int
+    Parsing->Print();
 
     "done"->PrintLine();
   }
@@ -910,6 +912,38 @@ class Calls {
   }
 }
 
+
+# String->ToFloat and ->ToInt on text that is not a number, and on an integer
+# that does not fit. Twelve rounds: by default a library method is compiled on
+# its tenth call, so the first nine run the interpreter's Str2Float and Str2Int
+# and the last three the bridge's S2F and S2I, and the digest must not change
+# where the switch happens (--jit=off never switches, --jit=1 starts there).
+# The bridge's S2F ran std::stod bare, so the tenth "abc" ended the process
+# with an uncaught std::invalid_argument; its S2I caught that but let
+# std::out_of_range through the same way. Both answer 0 now, as the
+# interpreter does.
+class Parsing {
+  function : Print() ~ Nil {
+    "parse={$BadText(12)}"->PrintLine();
+  }
+
+  function : BadText(n : Int) ~ Int {
+    digest := 0;
+    for(i := 0; i < n; i += 1;) {
+      f := "abc"->ToFloat();                   # not a number: 0.0
+      g := "12abc"->ToFloat();                 # a numeric prefix parses: 12.0
+      a := "x"->ToInt();                       # not a number: 0
+      b := "99999999999999999999"->ToInt();    # does not fit an Int: 0
+      c := "0x1F"->ToInt();                    # 31
+      d := "-42"->ToInt();                     # -42
+      if(f <> 0.0) {
+        digest += 1000;
+      };
+      digest += g->As(Int) + a + b + c + d + i;
+    };
+    return digest;
+  }
+}
 
 class Tri from Shape {
   @b : Int;
