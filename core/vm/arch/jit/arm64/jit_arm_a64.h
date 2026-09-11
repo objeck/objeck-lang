@@ -639,6 +639,22 @@ namespace Runtime {
       return holder;
     }
 
+    // A free callee-saved float register (D8-D15) for a value that must
+    // survive a call, or nullptr when none is free. The prologue's save of
+    // those registers then stays for the method (fp_callee_saved_used).
+    inline RegisterHolder* GetCalleeSavedFpRegister() {
+      for(auto it = aval_fregs.begin(); it != aval_fregs.end(); ++it) {
+        if((*it)->GetRegister() >= D8) {
+          RegisterHolder* holder = *it;
+          aval_fregs.erase(it);
+          used_fregs.push_back(holder);
+          fp_callee_saved_used = true;
+          return holder;
+        }
+      }
+      return nullptr;
+    }
+
     // Returns a register to the pool
     inline void ReleaseFpRegister(RegisterHolder* h) {
 #ifdef _DEBUG_JIT_JIT
@@ -725,6 +741,7 @@ namespace Runtime {
     void move_mem_freg(long offset, Register src, Register dest);
     void move_freg_mem(Register src, long offset, Register dest);
     void move_freg_freg(Register src, Register dest);
+    void fmov_freg_freg(Register src, Register dest);   // fmov Dd, Dn, the register itself (move_freg_freg bridges through a GP register)
 
     // math instructions
     void math_imm_reg(int64_t imm, Register reg, InstructionType type);

@@ -4261,6 +4261,17 @@ void JitArm64::math_mem_reg(long offset, Register reg, InstructionType type) {
   }
 }
 
+// fmov Dd, Dn: the FP register itself. move_freg_freg bridges through a GP
+// register and drops a value that lives only in the FP register.
+void JitArm64::fmov_freg_freg(Register src, Register dest) {
+  if(src != dest) {
+#ifdef _DEBUG_JIT_JIT
+    std::wcout << L"  " << (++instr_count) << L": [fmov " << GetRegisterName(dest) << L", " << GetRegisterName(src) << L"]" << std::endl;
+#endif
+    AddMachineCode(0x1E604000 | ((uint32_t)(src & 0x1F) << 5) | (uint32_t)(dest & 0x1F));
+  }
+}
+
 void JitArm64::move_freg_freg(Register src, Register dest) {
   if(src != dest) {
 #ifdef _DEBUG_JIT_JIT
@@ -4585,6 +4596,12 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   // fall back to the interpreter for cases that do not fit.
   vector<pair<Register, long> > spilled_ws;
   long ws_off = TMP_X1;
+  // A pending caller-saved float (D0-D7) is parked in a free callee-saved
+  // register for the call's duration, two fmovs and no memory; the call
+  // preserves D8-D15. Only when none is free does the method fall back, as
+  // every such method did before (the fixture's Arith:Mix, a Sin result
+  // pending across the Cos call).
+  vector<pair<Register, RegisterHolder*> > parked_fp;
   for(RegInstr* pending : working_stack) {
     if(pending->GetType() == REG_INT) {
       if(ws_off > TMP_X5) { compile_success = false; break; }
@@ -4594,7 +4611,11 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
       ws_off += sizeof(size_t);
     }
     else if(pending->GetType() == REG_FLOAT && pending->GetRegister()->GetRegister() <= D7) {
-      compile_success = false;
+      RegisterHolder* park = GetCalleeSavedFpRegister();
+      if(!park) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      fmov_freg_freg(r, park->GetRegister());
+      parked_fp.push_back(make_pair(r, park));
     }
   }
 
@@ -4613,7 +4634,7 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
       // load garbage for a value that lives only in the FP register (the common
       // case when the argument isn't already in D0, e.g. Exp(x*-1.0) inside
       // 1.0/(1.0+Exp(..))), giving exp the wrong argument.
-      AddMachineCode(0x1E604000 | ((uint32_t)src << 5));  // fmov D0, D{src}
+      fmov_freg_freg(src, D0);
     }
     ReleaseFpRegister(left->GetRegister());
   }
@@ -4718,13 +4739,17 @@ void JitArm64::ProcessFloatOperation(StackInstr* instruction)
   // the FP register (which a libc call result does), so it can't be used here.
   RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    AddMachineCode(0x1E604000 | ((uint32_t)D0 << 5) | (uint32_t)holder->GetRegister());  // fmov D{holder}, D0
+    fmov_freg_freg(D0, holder->GetRegister());
     move_mem_freg(TMP_D0, SP, D0);
   }
 
   // restore the working-stack registers the call clobbered
   for(size_t s = 0; s < spilled_ws.size(); ++s) {
     move_mem_reg(spilled_ws[s].second, SP, spilled_ws[s].first);
+  }
+  for(size_t p = 0; p < parked_fp.size(); ++p) {
+    fmov_freg_freg(parked_fp[p].second->GetRegister(), parked_fp[p].first);
+    ReleaseFpRegister(parked_fp[p].second);
   }
 
   working_stack.push_front(new RegInstr(holder));
@@ -4828,6 +4853,12 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   // more int temps than scratch slots).
   vector<pair<Register, long> > spilled_ws;
   long ws_off = TMP_X1;
+  // A pending caller-saved float (D0-D7) is parked in a free callee-saved
+  // register for the call's duration, two fmovs and no memory; the call
+  // preserves D8-D15. Only when none is free does the method fall back, as
+  // every such method did before (the fixture's Arith:Mix, a Sin result
+  // pending across the Cos call).
+  vector<pair<Register, RegisterHolder*> > parked_fp;
   for(RegInstr* pending : working_stack) {
     if(pending->GetType() == REG_INT) {
       if(ws_off > TMP_X5) { compile_success = false; break; }
@@ -4837,7 +4868,11 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
       ws_off += sizeof(size_t);
     }
     else if(pending->GetType() == REG_FLOAT && pending->GetRegister()->GetRegister() <= D7) {
-      compile_success = false;
+      RegisterHolder* park = GetCalleeSavedFpRegister();
+      if(!park) { compile_success = false; break; }
+      const Register r = pending->GetRegister()->GetRegister();
+      fmov_freg_freg(r, park->GetRegister());
+      parked_fp.push_back(make_pair(r, park));
     }
   }
 
@@ -4901,7 +4936,7 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   // the libc result, which lives only in the FP register).
   RegisterHolder* holder = GetFpRegister();
   if(holder->GetRegister() != D0) {
-    AddMachineCode(0x1E604000 | ((uint32_t)D0 << 5) | (uint32_t)holder->GetRegister());  // fmov D{holder}, D0
+    fmov_freg_freg(D0, holder->GetRegister());
     move_mem_freg(TMP_D0, SP, D0);
   }
   if(holder->GetRegister() != D1) {
@@ -4911,6 +4946,10 @@ void JitArm64::ProcessFloatOperation2(StackInstr* instruction)
   // restore the working-stack registers the call clobbered
   for(size_t s = 0; s < spilled_ws.size(); ++s) {
     move_mem_reg(spilled_ws[s].second, SP, spilled_ws[s].first);
+  }
+  for(size_t p = 0; p < parked_fp.size(); ++p) {
+    fmov_freg_freg(parked_fp[p].second->GetRegister(), parked_fp[p].first);
+    ReleaseFpRegister(parked_fp[p].second);
   }
 
   working_stack.push_front(new RegInstr(holder));
