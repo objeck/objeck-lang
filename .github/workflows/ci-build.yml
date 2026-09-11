@@ -756,23 +756,28 @@ jobs:
     # called a few times never runs compiled here. The frame-layout bug of
     # #761 (a declared-but-unreferenced local shifted every lower slot under
     # the collector) crashed mcp_debug_test only in this mode, and only this
-    # mode had never run in CI. One x64 leg per OS: the bug class is
-    # platform-independent, and the pass doubles a leg's regression time.
-    - name: Run regression tests with every method compiled (Linux x64)
-      if: runner.os == 'Linux' && matrix.arch == 'x64'
+    # mode had never run in CI. Every leg runs it. It used to be one x64 leg
+    # per OS, on the grounds that the bug class is platform-independent, but
+    # AMD64 and ARM64 are separate backends and Windows and POSIX take
+    # different branches inside each: #781's constant-character store wrote
+    # 8 bytes on ARM64 and on Linux x64 through two different helpers, and
+    # the ARM64 legs had never run this mode. The suite takes about three
+    # minutes a leg, so the pass costs minutes.
+    - name: Run regression tests with every method compiled (POSIX)
+      if: runner.os != 'Windows'
       working-directory: ./programs/regression
       env:
         OBJECK_JIT_THRESHOLD: "1"
         OBJECK_GL_REQUIRED: "1"
-      run: ./run_regression.sh x64
+      run: ./run_regression.sh ${{ matrix.arch }}
 
-    - name: Run regression tests with every method compiled (Windows x64)
-      if: runner.os == 'Windows' && matrix.arch == 'x64'
+    - name: Run regression tests with every method compiled (Windows)
+      if: runner.os == 'Windows'
       working-directory: ./programs/regression
       shell: cmd
       env:
         OBJECK_JIT_THRESHOLD: "1"
-      run: run_regression.cmd x64
+      run: run_regression.cmd ${{ matrix.arch }}
 
     - name: Run debugger tests (POSIX)
       if: runner.os != 'Windows'
