@@ -1,0 +1,58 @@
+#~
+# A program whose first property access is a set still gets the runtime's own
+# properties.
+#
+# The runtime fills its property map -- install_dir, lib_dir, user_dir,
+# tmp_dir, and config.prop from the working directory -- the first time the map
+# is used while it is still empty. GetProperty did that on every platform and
+# SetProperty did it on Windows, but POSIX SetProperty stored its key into the
+# empty map without it: the map was never empty again, so it was never filled.
+# A program that set a number format or a locale before reading any property
+# got "" from Runtime->GetTempDir, GetUserDir, GetInstallDir and GetLibraryDir
+# for the rest of the run. POSIX SetProperty fills the map first now, as
+# Windows always did.
+#
+# The first property access in this program must stay a set: nothing ahead of
+# the SetIntFormat call may read a property, and turning a number into a string
+# reads one.
+#
+# Fails on the old macOS VM in both regression passes and with --jit=off (Linux
+# runs the same POSIX code); Windows never had the bug.
+~#
+
+class SetPropertyFirst {
+	function : Main(args : String[]) ~ Nil {
+		# the program's first property access, a set through the library
+		String->SetIntFormat(Number->Format->DEC);
+
+		failures := 0;
+
+		tmp_dir := Runtime->GetTempDir();
+		if(tmp_dir->IsEmpty()) {
+			"  GetTempDir() is empty after a first set"->PrintLine();
+			failures += 1;
+		};
+
+		install_dir := Runtime->GetInstallDir();
+		if(install_dir->IsEmpty()) {
+			"  GetInstallDir() is empty after a first set"->PrintLine();
+			failures += 1;
+		};
+
+		# filling the map did not undo the set that triggered it
+		int_format := Runtime->GetProperty("int:string:format");
+		if(<>int_format->Equals("dec")) {
+			line := "  int:string:format reads [" + int_format + "] want [dec]";
+			line->PrintLine();
+			failures += 1;
+		};
+
+		if(failures = 0) {
+			"PASS: a first set leaves the runtime's own properties in place"->PrintLine();
+		}
+		else {
+			"FAIL: a first set left the runtime's own properties unloaded"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

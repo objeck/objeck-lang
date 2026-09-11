@@ -1349,7 +1349,9 @@ class StackProgram {
       InitializeProprieties();
     }
 
-    properties_map.insert(std::pair<std::wstring, std::wstring>(key, value));
+    // assigned, not inserted: std::map::insert keeps an existing key's value,
+    // which left every property settable only once per process
+    properties_map[key] = value;
     LeaveCriticalSection(&prop_cs);
   }
 
@@ -1388,7 +1390,16 @@ class StackProgram {
 
   static void SetProperty(const std::wstring& key, const std::wstring& value) {
     pthread_mutex_lock(&prop_mutex);
-    properties_map.insert(std::pair<std::wstring, std::wstring>(key, value));
+
+    // filled before the first store: once a key is in, the map is never empty
+    // again, and the directories and config.prop would never be loaded
+    if(properties_map.size() == 0) {
+      InitializeProprieties();
+    }
+
+    // assigned, not inserted: std::map::insert keeps an existing key's value,
+    // which left every property settable only once per process
+    properties_map[key] = value;
     pthread_mutex_unlock(&prop_mutex);
   }
 #endif
