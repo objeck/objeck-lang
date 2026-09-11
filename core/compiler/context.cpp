@@ -5783,57 +5783,14 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
   Expression* right = expression->GetRight();
 
   if(left && right) {
-    switch(left->GetExpressionType()) {
-    case AND_EXPR:
-    case OR_EXPR:
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case MOD_EXPR:
-    case SHL_EXPR:
-    case SHR_EXPR:
-    case BIT_AND_EXPR:
-    case BIT_OR_EXPR:
-    case BIT_XOR_EXPR:
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(left), depth + 1);
-      break;
-
-    default:
-      break;
-    }
-
-    switch(right->GetExpressionType()) {
-    case AND_EXPR:
-    case OR_EXPR:
-    case EQL_EXPR:
-    case NEQL_EXPR:
-    case LES_EXPR:
-    case GTR_EXPR:
-    case LES_EQL_EXPR:
-    case GTR_EQL_EXPR:
-    case ADD_EXPR:
-    case SUB_EXPR:
-    case MUL_EXPR:
-    case DIV_EXPR:
-    case MOD_EXPR:
-    case SHL_EXPR:
-    case SHR_EXPR:
-    case BIT_AND_EXPR:
-    case BIT_OR_EXPR:
-    case BIT_XOR_EXPR:
-      AnalyzeCalculation(static_cast<CalculatedExpression*>(right), depth + 1);
-      break;
-
-    default:
-      break;
-    }
+    // Each operand is analyzed once, here: AnalyzeExpression dispatches a
+    // calculated operand back into AnalyzeCalculation. This used to recurse
+    // into a calculated operand directly first and then analyze it again
+    // through AnalyzeExpression, so every level of a nested expression was
+    // analyzed twice and a left-nested chain took time exponential in its
+    // length: twenty terms compiled in three seconds, twenty-four in over a
+    // minute, and a thirty-term sum never finished (nine gigabytes and
+    // counting).
     AnalyzeExpression(left, depth + 1);
     AnalyzeExpression(right, depth + 1);
 
