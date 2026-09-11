@@ -34,6 +34,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     must run the program, print what the default run printed, and still write
     wide characters as UTF-8 (the byte check is POSIX-only: the Windows console
     path reads no locale variable).
+ 6. A locale the program asks for and the system lacks does not stop the
+    program. Runtime->SetLocale("xx_YY.bogus") made the VM build a std::locale
+    from the NULL that setlocale returned, and the constructor's exception
+    ended the program. With the JIT on, the old VM aborted, which the
+    regression runner sees; interpreted, it printed ">>> virtual machine:
+    internal error: locale constructed with null <<<" and POSIX obr still
+    exited 0, and the runner never runs a program with --jit=off. The VM
+    refuses the name now; vm_set_locale_refused.obs must reach its last line
+    with no internal error on stderr, interpreted and with every method compiled.
 """
 import os
 import shutil
@@ -182,6 +191,18 @@ def main():
             check(f"wide characters are written as UTF-8 under {label}",
                   rc == 0 and wide in out,
                   f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+
+    # ---- 6. a locale the program asks for and the system lacks is refused ----------
+    loc_src = os.path.join(SCRIPT_DIR, "vm_set_locale_refused.obs")
+    loc_obe = os.path.join(SCRIPT_DIR, "vm_set_locale_refused.obe")
+    rc, out, err = run([obc, "-src", loc_src, "-dest", loc_obe], env=env, cwd=bin_dir)
+    check("set-locale fixture compiles", rc == 0 and os.path.exists(loc_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr] + flags + [loc_obe], env=env, cwd=bin_dir)
+            check(f"SetLocale with a name the system lacks is refused and the program finishes ({label})",
+                  rc == 0 and out.rstrip().endswith(b"set-locale: done") and b"internal error" not in err,
+                  f"rc={rc} out={out[-160:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
 
     return finish()
 
