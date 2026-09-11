@@ -15,13 +15,13 @@ full record.
 
 | item | now |
 |---|---|
-| `master` | `94fed85ae5` (#767) when the Mac started; [#768](https://github.com/objeck/objeck-lang/pull/768) (`perf/arm64-callee-entry`) on top of it carries phase 2 on ARM64 (design section 12), the func-ref slot fix, the frame-immediate fix and `jit_entry_shapes.obs` -- merge on the maintainer's word |
+| `master` | `883f4369b4`: [#768](https://github.com/objeck/objeck-lang/pull/768) merged (phase 2 on ARM64, design section 12, the func-ref slot fix, the frame-immediate fix and `jit_entry_shapes.obs`) and [#769](https://github.com/objeck/objeck-lang/pull/769) merged (the compiler's exponential expression analysis); every CI leg green on both |
 | the Mac loop on master | run: deploy from `94fed85ae5`, both passes 228/3/0, flag tests 22/22 |
 | the ARM64 call baseline | measured (design section 12): a compiled call 17.7 ns, an interpreted one 29 ns; `Fib(32)` 0.135 s compiled, 0.223 s interpreted |
 | 4d step 1 | done: a compiled call 17.1 ns to 13.4 ns, `RealCall` 0.363 s to 0.279 s, `Fib(32)` 0.135 s to 0.103 s; the frame-size immediate (the "before step 2" item below) fixed with it |
 | two ARM64 bugs the new test found | fixed on the same branch: the entry zeroing wiped the `D8`-`D15` save slots (every compiled method returned zeros in its caller's callee-saved floats), and a func-ref local's pair was written above a slot reserved below it (the next local clobbered, the collector one word low) |
-| `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed in [#769](https://github.com/objeck/objeck-lang/pull/769), its own PR |
-| the deploy tree on the Mac | holds the branch's `obr` with master's `obc`; `deploy_macos_arm64.sh` from master before trusting anything else |
+| `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed in [#769](https://github.com/objeck/objeck-lang/pull/769), merged |
+| the deploy tree on the Mac | holds #768's `obr` with the pre-#769 `obc`; `deploy_macos_arm64.sh` from master (`883f4369b4`) before trusting anything else |
 
 **Corrections to what is written below.** The pool is eight general registers, `X0`-`X7`, not
 fifteen: `X9`-`X15` are commented out in `Compile()`, and `X9`-`X11` are scratch. The float
