@@ -58,6 +58,13 @@ static int objeck_main(const int argc, const char* argv[])
       wcerr << opts.error << L"\n\n" << Runtime::VmUsage() << endl;
       return 1;
     }
+    // Every argument was a flag, so there is no program to run. Execute
+    // returns USAGE_ERROR for that without printing a word; say what a bare
+    // "obr" says instead, and exit the way it does.
+    if(argc - opts.consumed < 2) {
+      wcerr << Runtime::VmUsage() << endl;
+      return 1;
+    }
     Runtime::ApplyVmOptions(opts);
 
     // enable UTF-8 environment
