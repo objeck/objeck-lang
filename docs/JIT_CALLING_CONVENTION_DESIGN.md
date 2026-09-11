@@ -653,5 +653,6 @@ pool (F4 on ARM64) is a small change with the shape of #733 and the Linux x64 po
 nothing changes for a method that fits in eight and a ninth to twelfth temporary no longer
 sends the method to the interpreter. The entry-shapes test's sums are ten-term statements
 again and compile; master's VM reports `Wide` falling back on them. The call probe is
-unchanged; the six loop kernels of `jit_probe.obs` and the call probe are unchanged within noise. `Arith:Mix` still falls back: its cause is a float
-live across a libc call, which the libc helper refuses, not the integer pool.
+unchanged; the six loop kernels of `jit_probe.obs` and the call probe are unchanged within noise. `Arith:Mix`, the fixture's one standing fallback, was a float
+live across a libc call, which the libc helper refused; [#771](https://github.com/objeck/objeck-lang/pull/771) parks such a float in a free
+callee-saved `D8`-`D15` register for the call, and the fixture reports no fallback on ARM64 at all.

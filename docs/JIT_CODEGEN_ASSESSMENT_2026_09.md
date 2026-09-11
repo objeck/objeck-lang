@@ -302,6 +302,6 @@ func-ref local's two words were written upward from a slot reserved below them, 
 parameter followed by any other local clobbered it and the collector read the pair one word
 low (`jit_entry_shapes.obs`). Also learned: the ARM64 pool is eight registers (`X0`-`X7`) and
 the backend has no spilling, so an expression with more than eight live temporaries falls back
-whole -- F4 on ARM64 followed the same night ([#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, twelve registers); and `obc` took time exponential in the depth of a
+whole -- F4 on ARM64 followed the same night ([#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, twelve registers), and the libc helpers stopped refusing a pending float ([#771](https://github.com/objeck/objeck-lang/pull/771): parked in `D8`-`D15` for the call), so the fixture reports no fallback on ARM64; and `obc` took time exponential in the depth of a
 nested expression (`AnalyzeCalculation` analyzed every operand twice), fixed on its own branch.
 Open on ARM64: phase 3 and the entry (the handoff's 4d step 2), F3 and the `D8`-`D15` pins.
