@@ -24,6 +24,15 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     native library, the next ran the deployed obr from another cwd -- but
     Windows resolves the ..\lib\native fallback against obr.exe's OWN
     directory first, so the deployed binary finds its libraries from anywhere.
+ 6. A program that dies inside the VM exits non-zero. Execute prints
+    ">>> virtual machine: internal error: ... <<<" and returns -1 when an
+    exception escapes the interpreter, and the POSIX entry point returned 0
+    regardless, so on Linux and macOS such a program reported success to
+    whatever ran it. vm_error_exit.obs reaches that catch with
+    "1e999"->ToFloat(); it must print the line and leave obr non-zero. And a
+    command line that is all flags ("obr --jit=off") names no program: that
+    is the usage and a non-zero exit, not a silent one (it was a silent exit
+    0 on POSIX).
 """
 import os
 import shutil
@@ -153,6 +162,32 @@ def main():
                   f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
+
+    # ---- 6. a program that dies inside the VM exits non-zero ------------------------
+    # Execute's catch prints the line and returns -1; the POSIX entry point used
+    # to return 0 regardless. The regression runner proves the same thing more
+    # coarsely (the fixture is # EXPECT_RUNTIME_ERROR); this names the message
+    # and the status. Default VM mode on purpose: Main runs once and is
+    # interpreted. With every method compiled (--jit=1) the exception cannot
+    # unwind through the JIT'd frame and the process aborts before Execute's
+    # catch -- a separate defect, described in the fixture.
+    err_src = os.path.join(SCRIPT_DIR, "vm_error_exit.obs")
+    err_obe = os.path.join(SCRIPT_DIR, "vm_error_exit.obe")
+    rc, out, err = run([obc, "-src", err_src, "-dest", err_obe], env=env, cwd=bin_dir)
+    check("VM-error fixture compiles", rc == 0 and os.path.exists(err_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        rc, out, err = run([obr, err_obe], env=env, cwd=bin_dir)
+        check('"1e999"->ToFloat() (std::stod out of range) stops the program with an internal error',
+              b"before" in out and b"after" not in out and b">>> virtual machine: internal error:" in err,
+              f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+        check("obr exits non-zero after that internal error (was 0 on POSIX)", rc != 0, f"rc={rc}")
+
+    # Every argument a flag, no program: Execute returns -1 for that without a
+    # word, and the POSIX entry point turned it into a silent exit 0.
+    rc, out, err = run([obr, "--jit=off"], env=env, cwd=bin_dir)
+    check("--jit=off with no program prints the usage and exits non-zero",
+          rc != 0 and b"Usage: obr" in (out + err),
+          f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
 
     return finish()
 
