@@ -169,6 +169,7 @@ unzip docs/api.zip -d core/release/deploy/doc
 mkdir core/release/deploy/examples
 mkdir core/release/deploy/examples/media
 cp programs/deploy/*.obs core/release/deploy/examples
+cp programs/deploy/README.md core/release/deploy/examples
 # The OpenGL examples live in programs/examples, which nothing copied, so no
 # distribution ever carried them.
 mkdir -p core/release/deploy/examples/opengl
