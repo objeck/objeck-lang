@@ -1,0 +1,112 @@
+#~
+# F7 guard: a call from compiled code into compiled code must stay cheap.
+#
+# The calling convention (docs/JIT_CALLING_CONVENTION_DESIGN.md) took a bound
+# call from 26.5 ns to 5.5 ns by having the caller build the callee's frame on
+# its own stack and enter its native entry directly. Nothing in the suite would
+# notice if that path were lost and every call fell back to the C++ bridge:
+# vm_jit_equiv.obs proves the answer is right, never that it was cheap.
+#
+# The measure is a RATIO, not a time:
+#
+#   (RealCall - NoCall) / NoCall
+#
+# NoCall is RealCall's body written inline, so the subtraction is the call
+# overhead and the division by NoCall cancels both the iteration count and the
+# machine's speed. A slow runner moves both halves together, which is what
+# keeps this from flaking on CI hardware nobody here can predict.
+#
+# Reference points, all on the same fixture:
+#
+#   ~9x    compiled, direct entry (what this release ships)
+#   ~47x   compiled, through the C++ bridge (the regression being guarded)
+#   ~2.5x  interpreted -- the baseline is slow too, so the ratio FALLS
+#
+# The interpreted case reading low is deliberate: a platform whose JIT is off
+# or unavailable passes rather than failing for the wrong reason. The threshold
+# sits at 25, between the ~9x this ships and the ~47x of a full regression.
+#
+# Best of three rounds, so one descheduled round cannot fail the run. Add
+# touches an instance field, which the inliner refuses, so every iteration is a
+# real compiled-to-compiled call. Do NOT declare these `native` (see
+# programs/tests/jit_probe.obs). The two kernels run the same recurrence from a
+# fresh accumulator each round, so their results must agree -- a wrong answer
+# fails here before any timing is considered. Exits 1 on a regression.
+~#
+
+use System.Time;
+
+class Acc {
+  @v : Int;
+  New() { @v := 0; }
+  method : public : Add(x : Int) ~ Int { @v := (@v + x) and 0xFFFFF; return @v; }
+}
+
+class CallOverhead {
+  function : RealCall(n : Int, a : Acc) ~ Int {
+    r := 0;
+    for(i := 0; i < n; i += 1;) {
+      r := a->Add(i);
+    };
+    return r;
+  }
+
+  # RealCall's body written inline: the same arithmetic with no call
+  function : NoCall(n : Int) ~ Int {
+    r := 0;
+    for(i := 0; i < n; i += 1;) {
+      r := (r + i) and 0xFFFFF;
+    };
+    return r;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    n := 40000000;
+    best := -1.0;
+
+    for(round := 0; round < 3; round += 1;) {
+      # a fresh accumulator each round, so the two kernels run the same
+      # recurrence from the same start and their results must agree
+      a := Acc->New();
+
+      t := Timer->New(true);
+      r1 := RealCall(n, a);
+      t->End();
+      real := t->GetElapsedTime();
+
+      t := Timer->New(true);
+      r2 := NoCall(n);
+      t->End();
+      base := t->GetElapsedTime();
+
+      if(r1 <> r2) {
+        "FAIL: the called and inline kernels disagree ({$r1} vs {$r2})"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      if(base > 0.0 & real > base) {
+        ratio := (real - base) / base;
+        if(best < 0.0) {
+          best := ratio;
+        } else if(ratio < best) {
+          best := ratio;
+        };
+      };
+    };
+
+    if(best < 0.0) {
+      # every round was below the timer's resolution; prove nothing rather
+      # than fail for a reason that has nothing to do with the call path
+      "SKIP: call timing below timer resolution"->PrintLine();
+      return;
+    };
+
+    if(best > 25.0) {
+      "FAIL: call overhead {$best}x the inline body (limit 25x)"->PrintLine();
+      "  a compiled call is going through the bridge, not the native entry"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: compiled call overhead {$best}x the inline body"->PrintLine();
+  }
+}
