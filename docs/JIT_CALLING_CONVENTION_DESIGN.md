@@ -5,6 +5,46 @@
 arguments through the VM stack"), measured here for the first time, on Windows x64 at master
 `26784fe1ab`. The fixture is `programs/tests/jit_call_probe.obs`.
 
+## 0. The shape of it
+
+Before and after, for `r := a->Add(i)` between two compiled methods:
+
+```mermaid
+flowchart LR
+    subgraph Before["before F7 — 26.5 ns"]
+        direction TB
+        A1["caller"] --> A2["flush cache, spill temps,<br/>copy args to the operand stack"]
+        A2 --> A3["JitStackCallback<br/>(eleven arguments)"]
+        A3 --> A4["CallCompiled: frame from the<br/>per-thread pool, opcode switch,<br/>virtual lookup"]
+        A4 --> A5["callee's single entry"]
+        A5 --> A6["result pushed on<br/>the operand stack"]
+    end
+    subgraph After["after F7 — 5.5 ns"]
+        direction TB
+        B1["caller"] --> B2["args into the outgoing area"]
+        B2 --> B3["entry from the method word,<br/>or the site's inline cache"]
+        B3 --> B4["call the callee's native entry<br/>frame record in the callee's frame"]
+        B4 --> B5["result in XMM0, status in RAX"]
+    end
+```
+
+The C++ bridge is still there — it is the slow path for a callee with no native
+code yet, a full call stack, a `Nil` receiver, or a megamorphic site — but the
+common case no longer touches it.
+
+**Cost, per step of the design** (AMD64, medians of three on the same box):
+
+| | bound call | `virtual` call | `Fib(32)` |
+|---|---:|---:|---:|
+| master, before | 26.5 ns | 125 ns | 0.208 s |
+| phase 1 — bridge takes a `StackMethod*`, pooled frames | 16 ns | — | 0.126 s |
+| phase 3 — direct native call | 7.0 ns | 7.5 ns | 0.071 s |
+| §11 — register-argument entry | **5.5 ns** | **6.0 ns** | **0.043 s** |
+
+End to end on the benchmark suite (`docs/performance.md`, 2026-09-12): spectralnorm
+**16.4x**, binarytrees **3.9x**, nbody **2.3x**. `fannkuchredux` did not move — it is
+call-bound but dominated by its permutation/flip inner loop.
+
 ## 1. The measurement
 
 Five kernels, 20M iterations (`VirtualCall` 2M, `Fib(32)` is about 7M calls), medians of three,

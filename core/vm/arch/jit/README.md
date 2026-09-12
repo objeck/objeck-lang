@@ -84,6 +84,55 @@ The reload of `INSTANCE_MEM` after the callback is essential: a callback can tri
 
 The loop-header safepoint poll's slow path (`EmitJitSafePoint`, both backends) performs the same reload after `SafePoint()` returns. A park there lets *another* thread's collection move `self` just as a callback does, and the first version of the poll did not refresh it: every instance-variable access for the rest of the loop went through the old nursery address ([#746](https://github.com/objeck/objeck-lang/issues/746)). The rule: any path on which compiled code can park must re-read `INSTANCE_MEM` from `frame->mem[0]` before the next instruction runs.
 
+### A call from compiled code to compiled code (F7)
+
+Since v2026.9.1 a compiled caller does **not** cross the C++ bridge to reach a
+compiled callee. The bridge remains the slow path and the only path for the
+operations above (allocation, traps, conversions, threading).
+
+```mermaid
+flowchart TD
+    CS["Compiled caller<br/>EmitNativeCallSite"] --> M["marshal args into<br/>the outgoing area"]
+    M --> K{"callee bound<br/>at compile time?"}
+    K -->|"yes"| E["read entry from<br/>StackMethod::native_entry"]
+    K -->|"virtual / func-ref"| IC{"inline cache hit?<br/>JitVirtualSite"}
+    IC -->|"hit (≤4 records)"| E
+    IC -->|"miss"| R["JitResolveVirtualSite /<br/>JitResolveFuncRefSite"]
+    R --> E
+    IC -->|"megamorphic (>4 keys)"| B
+    E --> D{"depth ok and<br/>native code present?"}
+    D -->|"yes"| N["call the native entry<br/>frame record built in<br/>the callee's own frame"]
+    D -->|"no"| B["bridge: copy area to the<br/>operand stack, JitStackCallback<br/>→ CallCompiled → trampoline"]
+    N --> RT["RTRN: result in XMM0 / D0<br/>status in RAX"]
+    B --> P["pop result into XMM0"]
+    P --> RT
+    RT --> ER{"error?"}
+    ER -->|"yes"| ERR["JitNativeCallError<br/>names caller and callee"]
+    ER -->|"no"| C["caller continues"]
+```
+
+A compiled method therefore has **two prologues over one body**:
+
+```mermaid
+flowchart LR
+    subgraph Callee["one compiled method"]
+        BE["bridge entry @ offset 0<br/>eleven jit_fun_ptr values,<br/>args on the operand stack,<br/>frame record from the interpreter"]
+        NE["native entry<br/>(EmitNativePrologue)<br/>self + caller frame ptr in<br/>arg registers, args in the<br/>caller's outgoing area"]
+        BE --> RR["RegisterRoot<br/>ProcessParameters<br/>(one sequence, reading<br/>below a top register)"]
+        NE --> RR
+        RR --> BODY["method body"]
+        BODY --> X{"which entry?"}
+        X -->|"native"| NX["pop the frame record"]
+        X -->|"bridge"| BX["push the value on<br/>the operand stack"]
+    end
+```
+
+`JitRuntime::Execute` calls the bridge entry; a compiled caller calls the native
+entry. A method whose result is a func-ref (two words) has the bridge entry only.
+ARM64 has both entries too since [#776](https://github.com/objeck/objeck-lang/pull/776),
+taking self, the caller's stack pointer and the end of its outgoing area in
+`X0`-`X2` and returning in `D0`.
+
 **Two entries, one path.** A `MTHD_CALL` whose callee is bound at compile time (anything but a `virtual` declaration) calls `JitCompiler::JitDirectCall` with the `StackMethod*` in place of the opcode; every other callback goes through `JitStackCallback`'s opcode switch. Both reach `CallCompiled`: a `virtual` declaration is first resolved through the receiver's class (`StackInterpreter::ResolveVirtualTarget`, shared with the interpreter's cold path -- before this the lookup stopped at the declaration and every virtual call from compiled code re-entered the interpreter), a callee with native code runs directly on a frame from the per-thread pool, and one without falls back to the interpreter trampoline, which is where the auto-JIT counts its calls. **A compiled method has two entries** (AMD64). The bridge entry at offset 0 is what `JitRuntime::Execute` calls: the eleven values of `jit_fun_ptr`, the arguments on the operand stack, a frame record the interpreter made. The register-argument entry (`EmitNativePrologue`, published as `StackMethod::native_entry`) is what a compiled caller calls: `self` and the caller's frame pointer in the first two argument registers, the arguments in the caller's outgoing area at a fixed offset from the callee's frame pointer (`NATIVE_ARGS`), the method's ids and class memory as its own constants, the stack pointers copied from the caller's frame, and the frame record built in the callee's frame (`rec_base`) and pushed on the call stack. Both prologues meet at `RegisterRoot`; `ProcessParameters` is one sequence reading below a `top` register each entry sets. `RTRN` leaves an `Int` or `Float` result in `XMM0` and tests the entry kind: the native exit pops the record, the bridge exit pushes the value on the operand stack; `RAX` carries the status either way. **A call site** (`EmitNativeCallSite`) marshals the values into the outgoing area, reads the entry from the method's word or from the site's inline cache (`JitVirtualSite`, owned by the caller's `NativeCode`: the receiver's class word or the func-ref's packed word against the site's current record; `JitResolveVirtualSite` or `JitResolveFuncRefSite` on a miss; the bridge once a site has seen more keys than its four records), checks the depth, calls, and tests the status (`JitNativeCallError` reports a callee's error naming both methods). The slow path copies the area onto the operand stack and runs the bridge sequence -- a callee not compiled yet (the trampoline counts and compiles it), a full call stack, a `Nil` receiver -- and pops the result into `XMM0` so both paths join. A method whose result is a func-ref, two words, has the bridge entry only. What a call costs, and how it got there: `docs/JIT_CALLING_CONVENTION_DESIGN.md`. Both AMD64 ABIs allocate the same eight general registers (`RAX`, `RBX`, `RCX`, `RDX`, `R8`-`R11`); Windows adds `RSI`/`RDI` as auxiliaries, while on POSIX those are set as call arguments without a spill and stay out of the pool. `R12` caches the safepoint flag's address and `R13`-`R15` hold pinned loop locals on both. On ARM64 the callee's entry and exit have the same shape as AMD64's phase 2 (one `top` for the arguments, straight-store zeroing, `D8`-`D15` saved only when the pool reaches them, the frame size computed by `EmitFrameAdjust`), and since [#776](https://github.com/objeck/objeck-lang/pull/776) it has AMD64's two entries and native call site too: the native entry takes self, the caller's stack pointer and the end of its outgoing area in `X0`-`X2`, builds its frame record above its locals, and returns the value in `D0`. Its pool is `X0`-`X7` and `X12`-`X15` (twelve; `X9`-`X11` are scratch and `X19` holds the safepoint flag's address), and it does not spill, so an expression with more than twelve live temporaries falls back whole; its libc helpers park a pending caller-saved float in a free `D8`-`D15` register across the call. A func-ref local's two words sit at its slot and the word above it on both backends, the slot being the pair's lowest word, and the collector walks them the same way.
 
 **Encoding (AMD64).** A memory operand takes a one-byte displacement when it fits and four otherwise (`EmitModRMDisp`, which every memory encoder goes through); `add`, `sub` and `cmp` against memory take a sign-extended byte immediate when it fits (`0x83`); a boolean result is `setcc` and `movzx`; the prologue zeroes the frame sixteen bytes at a time. Bases of `RSP` and `R12` need a SIB byte no encoder emits, so the outgoing area and the callback bridge address the stack through a copy in `R11`. Conditional and unconditional jumps are `rel32` throughout, since forward targets are patched after emission.
