@@ -4,6 +4,23 @@
 
 ---
 
+> ### ⚠️ The benchmark tables predate the current JIT
+>
+> Every measured table on this page is the **2026-06-21** unified Docker run against
+> **v2026.6.2**. Four releases of JIT work have landed since, and the largest of them
+> changed how compiled code calls compiled code: a bound call went from 26.5 ns to
+> 5.5 ns and a `virtual` call from 125 ns to 6.0 ns (v2026.9.1, see Optimization
+> History). **Call-dominated rows below are therefore stale by a wide margin, and
+> stale in the pessimistic direction.**
+>
+> The prose is updated through v2026.9.1; the numbers are not. They are kept rather
+> than deleted because they remain internally consistent — a single run on one host,
+> so the languages stay comparable to each other — and re-running them requires the
+> same AMD Ryzen 9 7950X3D host, not a different box. **Do not quote a number from
+> this page as current.**
+>
+> Re-running is tracked as P3 below.
+
 ## Benchmark Results
 
 ### Test Environment
@@ -16,6 +33,7 @@
 | **Compiler** | Objeck v2026.6.2 + P2 JIT work (`DYN_MTHD_CALL` auto-JIT, interpreter float fast-path, TCO/float/shutdown correctness fixes), built from source, `-opt s3` |
 | **Methodology** | 3 runs per benchmark, median reported |
 | **Date** | 2026-06-21 (unified Docker run) |
+| **Current release** | **v2026.9.1** — these tables are four releases behind; see the banner above |
 
 > All tables below come from a **single unified Docker run** (`perf-results/docker/Dockerfile`) on the box above, so the single-language and cross-language numbers are directly comparable. Note Docker's virtualized backend runs Objeck's **interpreter**-bound benchmarks ~30–50% slower than a native (bare-metal/WSL2) build, while JIT/`native` code is nearly unaffected — so the interpreter rows here are conservative.
 
@@ -135,6 +153,10 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | v2026.5.3 | May 2026 | Jump table dispatch for dense integer `select` (O(1) vs O(log n) BST) | select-heavy programs; no regression on existing benchmarks |
 | v2026.6.0 | May 2026 | Auto-JIT for MTHD_CALL, 15 new interpreter fast-path opcodes, TCO, LICM | **matrix_multiply −14%, dead_code −15%, array_intensive −12%, binarytrees −7%, mandelbrot −6%** |
 | v2026.6.2+ | Jun 2026 | ARM64 forced-JIT correctness hardening (PR #548, #551) | Correctness, not speed — clears every ARM64 JIT miscompile that forced JIT exposes, **unblocking a lower auto-JIT threshold** (the auto-JIT trigger is still 10 calls; these fixes let it drop without miscompiling cold helpers). Full ARM64 suite green at `OBJECK_JIT_THRESHOLD=1`. |
+| v2026.8.2 | Aug 2026 | Indexed call results (`GetItems()[0]->Name()`); `obu` updater packaged | Language/tooling, not throughput |
+| v2026.8.4 | Aug 2026 | Multithreaded GC fixes; UTF-8 locale correctness | Correctness |
+| v2026.9.0 | Sep 2026 | Loopback teardown (`CloseGracefully`), per-thread LSP analysis | Correctness/concurrency, not throughput |
+| **v2026.9.1** | **Sep 2026** | **F7 calling convention — a compiled caller builds the callee's frame and enters its native entry directly, with inline caches for `virtual` and func-ref sites; dense `select` → jump table on both backends; `a->Size()` inlined, constant division by multiply, one-instruction array addressing, eight allocatable registers on AMD64** | **bound call 26.5 ns → 5.5 ns; `virtual` call 125 ns → 6.0 ns; `Fib(32)` 0.208 s → 0.043 s (AMD64). M4 Max: call 17.1 ns → 7.4 ns, `Fib(32)` 0.135 s → 0.050 s. Loops 2–8x (array-summing loop 8x, constant division 2.5x)** |
 
 ### v2026.3.0 Detail
 
@@ -176,6 +198,32 @@ bash perf-results/run_benchmarks.sh <deploy_dir> <output_dir> [num_runs]
 | `imm19` not masked in error-handler branch backpatch (PR #551) | JIT (ARM64) | A backward (negative) div-by-zero / bounds / null-deref branch sign-extended over the `b.cond` opcode → illegal instruction (`ml_gbt` SIGILL). Now masked to `& 0x7FFFF`. |
 | Deferred local load stale after an overwriting store (PR #551) | JIT (ARM64) | A TCO'd `return Gcd(b, a%b)` stored `b:=a%b` before the deferred `LOAD b` was consumed, so `a:=a%b` (GCD→0). `ProcessStore` now materializes pending refs to the slot first. |
 | `Int->MinSize()` returned `INT64_MAX` (PR #551) | Library | `2->Pow(63)` computes `+2^63` in float and saturates on F2I; fixed to `1 << 63`. (Not a JIT bug — failed interpreted too; was masked by exit-code-based tests that printed `FAIL` without `Runtime->Exit(1)`.) |
+
+### v2026.9.1 Detail (the calling convention)
+
+**Headline: a call between compiled methods no longer crosses the C++ bridge.**
+Before this, a JIT'd method calling another JIT'd method went out through an
+eleven-argument bridge entry, took a pooled frame and released it. The caller now
+builds the callee's frame on its own stack and jumps straight to its native entry.
+
+| Measurement | Before | After |
+|---|---|---|
+| bound call (AMD64) | 26.5 ns | **5.5 ns** |
+| `virtual` call (AMD64) | 125 ns | **6.0 ns** |
+| `Fib(32)` (AMD64) | 0.208 s | **0.043 s** |
+| call (Apple M4 Max) | 17.1 ns | **7.4 ns** |
+| `Fib(32)` (Apple M4 Max) | 0.135 s | **0.050 s** |
+
+`virtual` and func-ref sites carry inline caches keyed on the receiver's class word
+(or the func-ref word); a miss falls back to the resolver, and the slow path also
+serves a callee not yet compiled, a full call stack and a `Nil` receiver. A dense
+integer `select` compiles to a jump table on both backends.
+
+**What this means for the tables above.** Every call-dominated row was measured
+against the old bridge. `binarytrees` (allocation *and* call bound) and
+`fannkuchredux` are the most affected; `spectralnorm`'s "JIT warmup dominates"
+narrative in particular was written when a closure call cost 125 ns, and needs
+re-measuring before it is repeated.
 
 ---
 
@@ -231,9 +279,9 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 | Opportunity | Category | Expected Impact |
 |-------------|----------|----------------|
-| **DYN_MTHD_CALL auto-JIT** — closure / function-ref calls | JIT | **HIGH** — spectralnorm goes 43s (interpreter) → 0.37s (`native`, input 2000); this gap keeps float-method code in the interpreter. prgm70/71 segfault patterns need root-cause first |
+| ~~**DYN_MTHD_CALL auto-JIT** — closure / function-ref calls~~ | JIT | **DONE** (v2026.6.2). Superseded by v2026.9.1's calling convention, which gives func-ref sites an inline cache and a direct native entry |
 | **Float JIT codegen + float fast-path opcodes** (`LOAD_FLOAT_LIT`, `ADD/SUB/MUL_FLOAT`) | JIT/VM | **HIGH** — Java and LuaJIT lead specifically on float loops (nbody, spectralnorm); the inline switch is integer-only today |
-| **ProcessInlineMethod for MTHD_CALL** — getter/ctor inlining inside JIT'd methods | JIT | MED — eliminates the `ProcessStackCallback` trampoline. Blocked by INSTANCE_MEM offset corruption in constructors; needs frame-layout work |
+| **ProcessInlineMethod for MTHD_CALL** — getter/ctor inlining inside JIT'd methods | JIT | **LOW now** — the trampoline it existed to remove is gone (v2026.9.1); a direct native-entry call is 5.5 ns, so inlining buys far less than when this was written. Still blocked by INSTANCE_MEM offset corruption in constructors |
 | **Per-call-site monomorphic virtual dispatch cache** | VM | LOW — store the last (class→method) pointer in the instruction to skip the hash lookup in the common case |
 | **Lower the auto-JIT threshold** (currently 10 calls) | VM | MED — now *unblocked* on ARM64: the forced-JIT (`THRESHOLD=1`) correctness fixes above mean cold helpers JIT correctly, so the trigger can drop to compile warm code sooner. Measure the compile-time-vs-runtime trade-off before changing the default; re-validate x64 at the lower threshold first |
 
@@ -241,9 +289,15 @@ interpreters ~2x). The young-gen bump allocator helped, but per-object allocatio
 
 | Opportunity | Impact |
 |-------------|--------|
+| **Re-run every table on v2026.9.1** — the page's measured numbers are v2026.6.2, from before the calling-convention work | **highest priority on this page.** Must be the same AMD Ryzen 9 7950X3D host as the 2026-06-21 run, or the cross-language rows stop being comparable to their own history. Rebuild, then `perf-results/docker/Dockerfile` for the unified run |
 | Stand up a **native (non-Docker) cross-language harness** so peer comparisons aren't muddied by the ~30–50% Docker interpreter overhead documented above | gives bare-metal interpreter numbers; the current page is entirely Docker |
 | Add **Java + LuaJIT to the gating perf CI** so regressions like the safepoint one are caught automatically | the fannkuch regression shipped unnoticed because nothing compared releases head-to-head |
+| Record the **Objeck version beside every table**, not only in the footer | this page went four releases without its numbers being re-measured, and nothing in the tables themselves said so |
 
 ---
 
-*Last updated: June 18, 2026 -- benchmark tables are the unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539, Objeck v2026.6.2): fannkuchredux dropped 59.4s → 30.7s. Numbers are Docker (interpreter-bound rows ~30–50% slower than a native build); a native re-run is future work. P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon). Jun 18: a chain of ARM64 forced-JIT correctness fixes merged (PR #548, #551) — the full ARM64 suite is now green at `OBJECK_JIT_THRESHOLD=1`, unblocking a future auto-JIT threshold reduction (see Optimization History).*
+*Prose last updated: September 12, 2026 (Objeck v2026.9.1). **Measured tables last updated: June 21, 2026 (v2026.6.2)** — they are the unified Docker run on an AMD Ryzen 9 7950X3D (32 vCPU / 62 GB) with the JIT GC-safepoint fixes merged (PR #539): fannkuchredux dropped 59.4s → 30.7s. Numbers are Docker (interpreter-bound rows ~30–50% slower than a native build).*
+
+*What changed since those tables were measured, and why they now understate current performance: v2026.9.1's calling convention (a compiled caller enters the callee's native entry directly, inline caches for `virtual` and func-ref sites, jump tables for a dense `select`) took a bound call from 26.5 ns to 5.5 ns, a `virtual` call from 125 ns to 6.0 ns, and `Fib(32)` from 0.208 s to 0.043 s on AMD64; plus loop work worth 2–8x. Call-dominated rows are the most affected. A re-run on the same host is P3's top item.*
+
+*P0 safepoint roadmap: complete on both arches — AMD64 (all three steps) and ARM64 (back-edge + X19 register-cache, validated on Apple Silicon). The ARM64 forced-JIT correctness chain (PR #548, #551) is merged and the full ARM64 suite is green at `OBJECK_JIT_THRESHOLD=1`; as of v2026.9.1 every CI leg runs that pass, ARM64 included.*
