@@ -175,6 +175,12 @@ mkdir -p core/release/deploy/examples/opengl
 cp programs/examples/gl_*.obs core/release/deploy/examples/opengl
 cp programs/examples/cube_gl.obs core/release/deploy/examples/opengl
 cp programs/examples/gl_crystal.obj core/release/deploy/examples/opengl
+# The data files two examples read. Windows has copied these since forever
+# (deploy_windows.cmd), but neither POSIX script did, so json_stream_23.obs
+# ("data/weather.json") and neural_21.obs ("data/gender.csv") failed with a
+# file-not-found on every Linux and macOS distribution.
+mkdir -p core/release/deploy/examples/data
+cp programs/deploy/data/* core/release/deploy/examples/data
 cp programs/deploy/media/*.png core/release/deploy/examples/media
 cp programs/deploy/media/*.wav core/release/deploy/examples/media
 

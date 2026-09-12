@@ -164,3 +164,6 @@ cov-int/
 objeck-int.tgz
 cov_token.dat
 coverity_config.xml
+
+# build-sandbox.sh stages obc/obr/*.obl here inside the work tree on the VPS
+programs/web-playground/docker/sandbox-deploy/

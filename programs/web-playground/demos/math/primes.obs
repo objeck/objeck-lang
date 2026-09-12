@@ -21,10 +21,6 @@ class AksTest {
   }
 
   function : native : Coef(n : Int) ~ Nil {
-    if(n < 0 | n > 63) {
-      Runtime->Exit(0);
-    };
-
     i := 0;
     for(@c[0] := 1; i < n; i++;) {
       j := i;

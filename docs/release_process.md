@@ -85,7 +85,7 @@ Before tagging, ensure the following are updated:
 1. **Version string** in `core/shared/version.h` (`VER_NUM` and `VERSION_STRING`)
 2. **Release notes** in `README.md`, `docs/readme.txt`, and `docs/readme.html`
 3. **Download URLs** in `README.md` Quick Start section
-4. **Web playground** version tag in `programs/web-playground/frontend/index.html`
+4. **Web playground** version in `programs/web-playground/backend/app/config.py` (`objeck_version`). NOT `frontend/index.html` -- its version tag is an empty span filled at runtime from `/api/health`, so editing it does nothing
 5. **LSP repo** (`objeck-lsp`) — update formatter for any new keywords, regenerate `objk_apis.json`
 6. **Clean working tree** — no uncommitted changes, `.gitignore` up to date
 
@@ -356,7 +356,7 @@ Use this checklist for each release:
 - [ ] Version number updated in `core/shared/version.h`
 - [ ] Release notes updated in `README.md`, `docs/readme.txt`, `docs/readme.html`
 - [ ] Download URLs in `README.md` point to new version
-- [ ] Web playground version tag updated
+- [ ] Web playground version updated (`backend/app/config.py`, `objeck_version`)
 - [ ] LSP repo updated (new keywords, regenerated API JSON)
 - [ ] Git tag created and pushed (`git tag vX.Y.Z && git push origin vX.Y.Z`)
 - [ ] Release build workflow completed successfully

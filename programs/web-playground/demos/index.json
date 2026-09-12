@@ -62,7 +62,7 @@
         { "id": "json", "file": "json_parsing.obs", "title": "JSON Parsing", "description": "Parse and build JSON data", "libs": ["json", "collect"] },
         { "id": "xml", "file": "xml_parsing.obs", "title": "XML Parsing", "description": "Parse XML with XPath-like queries", "libs": ["xml", "collect"] },
         { "id": "regex", "file": "regex_matching.obs", "title": "Regex Matching", "description": "Pattern matching with regular expressions", "libs": ["regex"] },
-        { "id": "encryption", "file": "encryption.obs", "title": "Encryption", "description": "SHA256, MD5, AES256 encryption", "libs": ["cipher"] }
+        { "id": "encryption", "file": "encryption.obs", "title": "Encryption", "description": "SHA256, MD5, RIPEMD-160 and AES256 encryption", "libs": ["cipher"] }
       ]
     },
     {

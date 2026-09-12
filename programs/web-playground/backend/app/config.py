@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     tmpfs_size: str = "10m"
     host_tmp_dir: str = "/tmp/playground"
 
+    # obc used to run unbounded inside the container; only obr was wrapped in
+    # `timeout`. A source that made the compiler spin ran past container.wait().
+    compile_timeout: int = 15
+
+    # Total containers in flight across all callers. The rate limit is per-IP and
+    # per-process, so it does not bound this.
+    max_concurrent_runs: int = 4
+
     # Version (displayed in frontend header)
     objeck_version: str = "v2026.9.1"
 

@@ -143,7 +143,7 @@ Before tagging:
 - [ ] Version updated in `core/shared/version.h`
 - [ ] Release notes in `README.md`, `docs/readme.txt`, `docs/readme.html`
 - [ ] Download URLs in `README.md` Quick Start section
-- [ ] Web playground version in `programs/web-playground/frontend/index.html`
+- [ ] Web playground version in `programs/web-playground/backend/app/config.py` (`objeck_version`)
 - [ ] LSP repo updated (`objeck-lsp`) if keywords changed
 - [ ] All CI tests passing on master
 
