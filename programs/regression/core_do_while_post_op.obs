@@ -1,0 +1,69 @@
+#~
+# A post-operation in a `do`/`while` condition must run once per iteration.
+#
+# EmitDoWhile chose between EmitBranch's fused test-and-jump and a non-branching
+# form, on `post_statements.empty()`. That queue is filled while the CONDITION is
+# emitted, so at the point of the test it was always empty and the fused path was
+# always taken. The post statement was then queued and emitted by the enclosing
+# scope AFTER the loop's break label -- outside the loop. The bytecode read:
+#
+#     10  GTR_INT
+#     11  JMP index=4, conditional=true     <- back-edge
+#     12  LBL                               <- break label
+#     13..16  n = n - 1                     <- the decrement, OUTSIDE the loop
+#
+# So `n` never changed between iterations and `do { } while(n-- > 0)` never
+# terminated. It shipped in v2026.9.1; v2026.9.0 is correct. Found through
+# programs/web-playground/demos/math/primes.obs, whose Show() uses this shape
+# and which produced 29 MB of one repeated line before it was noticed.
+#
+# Every loop here is bounded by an iteration cap, because the failure mode is a
+# HANG -- an unbounded fixture would take the suite down with it rather than
+# reporting. Exits 1 on a mismatch.
+~#
+
+class DoWhilePostOp {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+
+    # post-decrement with '>'
+    a := 3; i := 0;
+    do { i += 1; if(i > 20) { break; }; } while(a-- > 0);
+    if(a <> -1 | i <> 4) {
+      "FAIL: do/while(a-- > 0) left a={$a} after {$i} iteration(s), expected a=-1 after 4"->PrintLine();
+      bad += 1;
+    };
+
+    # post-decrement with '<>' -- the shape primes.obs uses
+    b := 2; j := 0;
+    do { j += 1; if(j > 20) { break; }; } while(b-- <> 0);
+    if(b <> -1 | j <> 3) {
+      "FAIL: do/while(b-- <> 0) left b={$b} after {$j} iteration(s), expected b=-1 after 3"->PrintLine();
+      bad += 1;
+    };
+
+    # post-increment, the same path
+    c := 0; k := 0;
+    do { k += 1; if(k > 20) { break; }; } while(c++ < 3);
+    if(c <> 4 | k <> 4) {
+      "FAIL: do/while(c++ < 3) left c={$c} after {$k} iteration(s), expected c=4 after 4"->PrintLine();
+      bad += 1;
+    };
+
+    # a plain `while` drains the queue after the body and was never affected;
+    # pinned here so a future change to EmitWhile cannot pass unnoticed
+    d := 3; m := 0;
+    while(d-- > 0) { m += 1; if(m > 20) { break; }; };
+    if(m <> 3) {
+      "FAIL: while(d-- > 0) ran {$m} iteration(s), expected 3"->PrintLine();
+      bad += 1;
+    };
+
+    if(bad > 0) {
+      "FAIL: {$bad} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: post-operations in do/while conditions run once per iteration"->PrintLine();
+  }
+}
