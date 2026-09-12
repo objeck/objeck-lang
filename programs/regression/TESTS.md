@@ -13,14 +13,14 @@ python gen_manifest.py
 ```
 
 
-**Total runtime tests: 241** (plus 14 debugger tests, see below).
+**Total runtime tests: 242** (plus 14 debugger tests, see below).
 
 
 ## Tests by Category
 
 | Category | Count |
 |----------|-------|
-| Other | 44 |
+| Other | 45 |
 | Core Language | 39 |
 | AMD64/JIT | 30 |
 | Negative | 21 |
@@ -292,11 +292,12 @@ python gen_manifest.py
 | 234 | `vm_set_locale_refused.obs` | Other | Runtime->SetLocale with a name the system cannot supply. The VM switched the C library's locale a... | ✅ |
 | 235 | `vm_set_property_first.obs` | Other | A program whose first property access is a set still gets the runtime's own properties. The runti... | ✅ |
 | 236 | `vm_set_property_overwrite.obs` | Other | A runtime property set twice reads back the second value. StackProgram::SetProperty stored with s... | ✅ |
-| 237 | `web_server_test.obs` | Other | Web.Server end-to-end coverage. Every method on Web.Server.Request and Response used to call a na... | ✅ |
-| 238 | `websocket_test.obs` | Networking | websocket test | ✅ |
-| 239 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
-| 240 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
-| 241 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
+| 237 | `vm_write_char_buffer.obs` | Other | Console->WriteBuffer(Char[]) wrote the buffer twice-encoded, and ignored num. The trap (STD_OUT_C... | ✅ |
+| 238 | `web_server_test.obs` | Other | Web.Server end-to-end coverage. Every method on Web.Server.Request and Response used to call a na... | ✅ |
+| 239 | `websocket_test.obs` | Networking | websocket test | ✅ |
+| 240 | `xml_build_ops.obs` | XML | xml build ops | ✅ |
+| 241 | `xml_encoding_ops.obs` | XML | Unit tests for the 2026-06 Data.XML improvements: truncated/garbage input is rejected (previously... | ✅ |
+| 242 | `xml_parse_ops.obs` | XML | xml parse ops | ✅ |
 
 ## Debugger Tests (`run_debugger_tests.sh`)
 

@@ -53,10 +53,10 @@ bundle Default {
 			IUB[14] := Frequency->New('Y', 0.02);
 
 			HomoSapiens := Frequency->New[4];
-			HomoSapiens[0] := Frequency->New('a', 0.3029549426680d);
-			HomoSapiens[1] := Frequency->New('c', 0.1979883004921d);
-			HomoSapiens[2] := Frequency->New('g', 0.1975473066391d);
-			HomoSapiens[3] := Frequency->New('t', 0.3015094502008d);
+			HomoSapiens[0] := Frequency->New('a', 0.3029549426680);
+			HomoSapiens[1] := Frequency->New('c', 0.1979883004921);
+			HomoSapiens[2] := Frequency->New('g', 0.1975473066391);
+			HomoSapiens[3] := Frequency->New('t', 0.3015094502008);
 
 			BUFFER_SIZE := 32768;
 			index := 0;

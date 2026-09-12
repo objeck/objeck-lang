@@ -3529,12 +3529,21 @@ bool TrapProcessor::StdOutCharAryLen(StackProgram* program, size_t* inst, size_t
 #endif
 
   if(array && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+    const wchar_t* chars = (wchar_t*)(array + 3) + offset;
 #ifdef _MODULE_STDIO
-    std::wstring wide_buffer((wchar_t*)(array + 3) + offset);
-    program->output_buffer.write(wide_buffer.c_str(), wide_buffer.size());
+    program->output_buffer.write(chars, num);
+    PushInt(num, op_stack, stack_pos);
 #else
-    std::string buffer = UnicodeToBytes((wchar_t*)(array + 3) + offset);
-    PushInt(fwrite(buffer.c_str(), 1, buffer.size(), stdout), op_stack, stack_pos);
+    // stdout is in a wide CRT mode -- _O_U8TEXT by default, or whatever
+    // --objeck-stdio selected -- so the CRT performs the UTF-8 conversion. This
+    // encoded to UTF-8 here as well and wrote the resulting BYTES, which that
+    // stream reads back a pair at a time as one wchar_t: 'A','B' arrived as
+    // U+4241, and the invalid sequence left the stream unusable for every later
+    // write, so one call corrupted the rest of the program's output. It also
+    // ignored num and stopped at a NUL instead. Hand wcout the wide characters
+    // and let the stream's own mode decide the encoding, as the rest of the VM does.
+    std::wcout.write(chars, num);
+    PushInt(std::wcout.good() ? num : -1, op_stack, stack_pos);
 #endif
   }
   else {

@@ -1,0 +1,57 @@
+#~
+# Console->WriteBuffer(Char[]) wrote the buffer twice-encoded, and ignored num.
+#
+# The trap (STD_OUT_CHAR_ARY_LEN) converted the wide characters to UTF-8 itself
+# and fwrite'd the resulting BYTES. But obr puts stdout in a wide CRT mode
+# (_O_U8TEXT by default on Windows, or whatever --objeck-stdio selected), so the
+# CRT performs that conversion -- it reads the bytes back a pair at a time as one
+# wchar_t. 'A','B' arrived as U+4241, and the invalid sequence left the stream
+# unusable, so a single call corrupted the rest of the program's output. The trap
+# also ignored num and stopped at a NUL instead.
+#
+# Output correctness cannot be asserted from inside the program, but the return
+# value distinguishes both faults:
+#
+#   num honoured   -- asking for 4 of 8 characters returns 4, not 8
+#   no re-encoding -- 3 non-ASCII characters return 3 (the character count), not
+#                     6 (their UTF-8 byte count, which is what the old path
+#                     returned because it counted the bytes it had built)
+#
+# Both read the same for plain ASCII written in full, which is why this uses a
+# partial write and characters above U+007F. Exits 1 on a mismatch.
+~#
+
+class WriteCharBuffer {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+
+    # a partial write: 8 characters in the buffer, 4 requested
+    a := Char->New[8];
+    for(i := 0; i < 8; i += 1;) {
+      a[i] := 'x';
+    };
+    n := Console->WriteBuffer(0, 4, a);
+    ""->PrintLine();
+    if(n <> 4) {
+      "FAIL: partial write returned {$n}, expected 4"->PrintLine();
+      bad += 1;
+    };
+
+    # non-ASCII: the character count and the UTF-8 byte count differ
+    b := Char->New[3];
+    b[0] := 'é'; b[1] := 'ü'; b[2] := 'ñ';
+    m := Console->WriteBuffer(0, 3, b);
+    ""->PrintLine();
+    if(m <> 3) {
+      "FAIL: non-ASCII write returned {$m}, expected 3 (characters, not UTF-8 bytes)"->PrintLine();
+      bad += 1;
+    };
+
+    if(bad > 0) {
+      "FAIL: {$bad} check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: Console->WriteBuffer(Char[]) honours num and does not re-encode"->PrintLine();
+  }
+}
