@@ -5,6 +5,12 @@
 playground.objeck.org {
     # API routes go to FastAPI backend
     handle /api/* {
+        # Starlette buffers the whole body before Pydantic's max_length=65536
+        # can reject it, so a 1 GB POST to /api/run was read into memory first.
+        # 256 KB leaves generous room over the 64 KB source limit.
+        request_body {
+            max_size 256KB
+        }
         reverse_proxy localhost:8000
     }
 
@@ -18,7 +24,7 @@ playground.objeck.org {
         X-Content-Type-Options nosniff
         X-Frame-Options SAMEORIGIN
         Referrer-Policy strict-origin-when-cross-origin
-        Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; worker-src blob:; connect-src 'self' https://cdn.jsdelivr.net"
+        Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net; worker-src blob:; connect-src 'self' https://cdn.jsdelivr.net; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
     }
 
     log {

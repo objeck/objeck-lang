@@ -535,7 +535,7 @@ jobs:
               -o StrictHostKeyChecking=accept-new \
               -o ConnectTimeout=30 \
               "root@${{ secrets.PLAYGROUND_HOST }}" \
-              'bash /opt/playground/repo/programs/web-playground/deploy/update.sh'
+              "bash /opt/playground/repo/programs/web-playground/deploy/update.sh ${{ needs.prepare.outputs.version }}"
 
       - name: Health check
         if: env.PLAYGROUND_SSH_KEY != '' && env.PLAYGROUND_HOST != ''
@@ -573,6 +573,27 @@ jobs:
           if [ "$REPORTED" != "v$VERSION" ]; then
             echo "❌ playground reports $REPORTED, expected v$VERSION"
             echo "   the deploy did not pick up this release"
+            exit 1
+          fi
+
+          # /api/health is a tracked CONSTANT, so the check above proves the
+          # label moved, not that the engine did -- exactly the failure that let
+          # v2026.9.0 report success over a three-month-old engine. Ask the
+          # sandbox itself: System.Runtime->GetVersion() returns VERSION_STRING
+          # from the obr that actually ran. update.sh makes the same assertion
+          # and its exit code fails this job first, but only while that ssh stays
+          # unpiped; this makes the check stand on its own.
+          RUN_API="https://playground.objeck.org/api/run"
+          PROBE='{"code":"class V { function : Main(args : String[]) ~ Nil { System.Runtime->GetVersion()->PrintLine(); } }"}'
+          ENGINE=$(curl -fsS --max-time 60 -X POST "$RUN_API"                      -H 'Content-Type: application/json' -d "$PROBE" 2>/dev/null || true)
+          echo "engine probe: $ENGINE"
+
+          # Anchored: an unanchored 2026.9.1 also matches 2026.9.10.
+          if printf '%s' "$ENGINE" | grep -qE "(^|[^0-9.])${VERSION//./\.}([^0-9.]|$)"; then
+            echo "✅ engine reports $VERSION"
+          else
+            echo "❌ the sandbox engine is NOT running $VERSION"
+            echo "   /api/health said v$VERSION, but the running obr disagrees"
             exit 1
           fi
 

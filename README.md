@@ -31,7 +31,7 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ## Try It Online
 
-👉🏽 [Playground](https://playground.objeck.org) — 33 demos across 7 categories, Monaco editor, no install required.
+👉🏽 [Playground](https://playground.objeck.org) — 34 demos across 7 categories, Monaco editor, no install required.
 
 ## Quick Start
 

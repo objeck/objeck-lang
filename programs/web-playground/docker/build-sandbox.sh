@@ -28,15 +28,30 @@ cp "$DEPLOY_DIR/bin/obr" "$SANDBOX_DEPLOY/bin/"
 
 # Copy only allowed libraries (no network, no SDL, no ODBC, no AI APIs)
 ALLOWED_LIBS="lang gen_collect json xml regex cipher csv query ml nlp misc diags"
+MISSING_LIBS=""
 echo "Copying allowed libraries: $ALLOWED_LIBS"
 for lib in $ALLOWED_LIBS; do
     if [ -f "$DEPLOY_DIR/lib/${lib}.obl" ]; then
         cp "$DEPLOY_DIR/lib/${lib}.obl" "$SANDBOX_DEPLOY/lib/"
         echo "  + ${lib}.obl"
     else
-        echo "  ! WARNING: ${lib}.obl not found"
+        # Fatal, not a warning. set -e cannot catch an echo, so a dropped library
+        # used to build a good-looking image: the engine probe in update.sh uses
+        # no -lib and passes, the deploy reports success, and users selecting that
+        # library get an obscure compile error while the UI still offers it. That
+        # is the same "the check measures the wrong thing" shape as the stale
+        # engine incident, one layer down.
+        echo "  ! ERROR: ${lib}.obl not found in $DEPLOY_DIR/lib" >&2
+        MISSING_LIBS="$MISSING_LIBS $lib"
     fi
 done
+
+if [ -n "$MISSING_LIBS" ]; then
+    echo "" >&2
+    echo "ERROR: the deploy tree is missing:$MISSING_LIBS" >&2
+    echo "Refusing to build a sandbox image that advertises libraries it lacks." >&2
+    exit 1
+fi
 
 # Copy SSL certificates (needed for cipher lib)
 if [ -f "$DEPLOY_DIR/lib/cacert.pem" ]; then

@@ -1,4 +1,5 @@
 import json
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -18,7 +19,11 @@ def load_demos() -> dict:
 
     index_path = DEMOS_DIR / "index.json"
     if not index_path.exists():
-        _demos_cache = {"categories": [], "demos": {}}
+        # Shape must match the success path below: list_demos returns
+        # data["index"], so the old {"categories", "demos"} fallback made
+        # every /api/demos call raise KeyError -- permanently, since the
+        # bad value was cached.
+        _demos_cache = {"index": {"categories": []}, "demos": {}}
         return _demos_cache
 
     with open(index_path) as f:
@@ -31,6 +36,12 @@ def load_demos() -> dict:
             code = ""
             if demo_path.exists():
                 code = demo_path.read_text(encoding="utf-8")
+            else:
+                # A renamed or deleted demo used to load an empty editor with no
+                # error anywhere. Still serve the index, but say so in the log.
+                logging.getLogger(__name__).warning(
+                    "demo %s: missing file %s", demo["id"], demo_path
+                )
             demos[demo["id"]] = {
                 **demo,
                 "category": category["name"],

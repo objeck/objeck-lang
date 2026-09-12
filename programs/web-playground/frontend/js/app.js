@@ -21,6 +21,8 @@
         { id: 'query', name: 'Query', desc: 'Data query support' },
         { id: 'ml', name: 'ML', desc: 'Machine learning and matrix math' },
         { id: 'misc', name: 'Misc', desc: 'Miscellaneous utilities' },
+        { id: 'nlp', name: 'NLP', desc: 'Natural language processing' },
+        { id: 'diags', name: 'Diagnostics', desc: 'Code analysis and diagnostics' },
     ];
 
     const DEFAULT_CODE = `#~
@@ -110,6 +112,7 @@ class Hello {
                 'for', 'each', 'in', 'reverse',
                 'label', 'return', 'leaving',
                 'from', 'critical',
+                'record', 'readonly',
             ],
             typeKeywords: ['Byte', 'Int', 'Float', 'Char', 'Bool', 'Nil', 'String'],
             builtinKeywords: ['New', 'As', 'TypeOf', 'Parent', 'Try', 'Otherwise', 'true', 'false'],

@@ -187,7 +187,10 @@ PROBE='{"code":"class V { function : Main(args : String[]) ~ Nil { System.Runtim
 ENGINE_OUT=$(curl -sf --max-time 60 -X POST http://localhost:8000/api/run \
     -H 'Content-Type: application/json' -d "$PROBE" || true)
 
-if echo "$ENGINE_OUT" | grep -q "$WANT_VERSION"; then
+# Anchored: an unanchored "2026.9.1" also matches an engine reporting
+# 2026.9.10. The probe prints the version alone, so require a whole match
+# with only JSON punctuation or whitespace around it.
+if echo "$ENGINE_OUT" | grep -qE "(^|[^0-9.])${WANT_VERSION//./\.}([^0-9.]|$)"; then
     echo "Engine reports $WANT_VERSION"
 else
     echo "ERROR: sandbox is NOT running $WANT_VERSION"
