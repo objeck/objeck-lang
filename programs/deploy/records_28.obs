@@ -1,0 +1,95 @@
+#~
+# compile: obc -src records_28.obs -lib gen_collect
+# run:     obr records_28.obe
+#
+# Records. A `record` declares its fields and the compiler writes the
+# constructor, the accessors and the mutators for you -- so the two-line
+# declaration below is the whole of a Point type. Marking one `readonly` drops
+# the mutators and makes the compiler reject any assignment to a field, which
+# turns "this value does not change after construction" into something checked
+# rather than merely intended.
+#
+# Anything a class can do, a record can: its own constructor, its own methods,
+# generics, and inheritance. Where you write a member yourself, yours wins over
+# the generated one.
+~#
+
+use Collection;
+
+# the whole of a Point: two fields in, constructor and accessors out
+record Point {
+  @x : Int;
+  @y : Int;
+}
+
+# readonly: no mutators are generated, and `@x := ...` would not compile
+record : readonly : Frozen {
+  @label : String;
+  @value : Int;
+}
+
+# a record with its own constructor -- normalises on the way in
+record Angle {
+  @deg : Int;
+
+  New(deg : Int) {
+    @deg := deg % 360;
+    if(@deg < 0) {
+      @deg += 360;
+    };
+  }
+}
+
+# a record with its own method, and a generic one
+record Segment {
+  @from : Point;
+  @to : Point;
+
+  method : public : Length() ~ Float {
+    dx := (@to->GetX() - @from->GetX())->As(Float);
+    dy := (@to->GetY() - @from->GetY())->As(Float);
+    return Float->Sqrt(dx * dx + dy * dy);
+  }
+}
+
+record Box<T> {
+  @value : T;
+}
+
+class Records {
+  function : Main(args : String[]) ~ Nil {
+    # generated constructor and accessors
+    a := Point->New(3, 4);
+    "Point({$a->GetX()}, {$a->GetY()})"->PrintLine();
+
+    # generated mutator, on a record that is not readonly
+    a->SetX(30);
+    "moved to ({$a->GetX()}, {$a->GetY()})"->PrintLine();
+
+    # readonly: accessors only. Uncommenting the SetValue line below is a
+    # compile error, which is the point of declaring it this way.
+    f := Frozen->New("answer", 42);
+    "{$f->GetLabel()} = {$f->GetValue()}"->PrintLine();
+    # f->SetValue(43);
+
+    # a constructor of your own runs instead of the generated one
+    degrees := [370, -90, 45];
+    each(d in degrees) {
+      norm := Angle->New(d)->GetDeg();
+      "{$d} degrees normalises to {$norm}"->PrintLine();
+    };
+
+    # a method of your own, over records holding records
+    s := Segment->New(Point->New(0, 0), Point->New(3, 4));
+    "segment length {$s->Length()}"->PrintLine();
+
+    # generic, and records work in collections like any other type
+    points := Vector->New()<Point>;
+    points->AddBack(Point->New(1, 1));
+    points->AddBack(Point->New(2, 8));
+    points->Each(\^(p) => "in vector: ({$p->GetX()}, {$p->GetY()})"->PrintLine());
+
+    boxed := Box->New("wrapped")<String>;
+    "box holds '{$boxed->GetValue()}'"->PrintLine();
+  }
+}

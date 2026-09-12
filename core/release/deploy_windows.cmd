@@ -848,6 +848,7 @@ mkdir %TARGET%\examples\
 mkdir %TARGET%\examples\media\
 del  /s /q ..\..\programs\*.obe
 xcopy /e ..\..\programs\deploy\*.obs %TARGET%\examples\
+copy ..\..\programs\deploy\README.md %TARGET%\examples\
 REM The OpenGL examples live in programs\examples rather than programs\deploy,
 REM so no distribution ever carried them. They find the bundled font relative to
 REM either bin or here, so they run from where they land.

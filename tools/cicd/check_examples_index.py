@@ -48,6 +48,23 @@ def array_literal(source, name):
     return re.findall(r'"([^"]*)"', match.group(1))
 
 
+def check_readme():
+    """programs/deploy/README.md is generated from welcome.obs.
+
+    Checking it here means the two cannot drift: a new example that reaches
+    welcome.obs but not the README fails the same gate that already keeps
+    welcome.obs honest.
+    """
+    import subprocess
+    tool = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "gen_examples_readme.py")
+    result = subprocess.run([sys.executable, tool, "--check"],
+                            capture_output=True, text=True)
+    sys.stdout.write(result.stdout)
+    sys.stderr.write(result.stderr)
+    return result.returncode
+
+
 def main():
     root = repo_root()
     index_path = os.path.join(root, INDEX)
@@ -108,7 +125,7 @@ def main():
 
     print("%d shipped example(s), every one indexed with a library list and a description."
           % len(files))
-    return 0
+    return check_readme()
 
 
 if __name__ == "__main__":
