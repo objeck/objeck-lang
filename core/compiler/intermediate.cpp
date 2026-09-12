@@ -3527,17 +3527,30 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, LBL, unconditional_continue));
   
   // conditional
-  // A post statement runs between the test and the jump, so the value has to
-  // wait on the stack; without one the condition branches directly.
-  if(post_statements.empty()) {
-    EmitBranch(do_while_stmt->GetExpression(), conditional, true);
-  }
-  else {
-    EmitExpression(do_while_stmt->GetExpression());
+  //
+  // A post statement (`n--` inside the condition) runs between the test and the
+  // jump, so the tested value has to wait on the stack while the post statement
+  // executes -- which is what this non-branching form does.
+  //
+  // This used to take EmitBranch's fused test-and-jump when `post_statements`
+  // was empty. The queue is filled while the CONDITION is emitted, though, so at
+  // this point it is always empty and the fast path was always taken: the post
+  // statement was then queued by EmitBranch and emitted by the enclosing scope
+  // AFTER the loop's break label, outside the loop. `do { } while(n-- > 0)`
+  // decremented once, on the way out, so `n` never changed between iterations
+  // and the loop never terminated. Emitting the condition first and testing
+  // afterwards would not help: EmitBranch fuses the compare and the jump, and a
+  // post statement has to run on BOTH the taken and the untaken path, which that
+  // shape cannot express.
+  //
+  // EmitWhile is unaffected -- it drains the queue after the body, once the
+  // condition has already been emitted.
+  EmitExpression(do_while_stmt->GetExpression());
+  if(!post_statements.empty()) {
     EmitAssignment(post_statements.front());
     post_statements.pop();
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
   }
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, JMP, conditional, true));
   
   std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
