@@ -1,3 +1,18 @@
+#~
+# compile: obc -src neural_21.obs -lib gen_collect,ml,csv
+# run:     obr neural_21.obe            (train, then store the model)
+#          obr neural_21.obe brun       (load the stored model and test it)
+#
+# System.ML end to end. MatrixReader->LoadSplitMatrices reads data/gender.csv
+# and splits it 80/20 into training and test sets. With no argument the example
+# trains a NeuralNetwork (2 inputs, 8 hidden, 1 output) and writes the weights
+# to data/gender.dat; run it again with "brun" and it loads that model, queries
+# every test row, and reports the percentage it got right.
+#
+# data/gender.csv ships with the examples. data/gender.dat does not -- it is
+# this program's OUTPUT, so train once before running with "brun".
+~#
+
 use Collection;
 use System.ML;
 

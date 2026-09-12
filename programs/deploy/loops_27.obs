@@ -1,3 +1,14 @@
+#~
+# compile: obc -src loops_27.obs
+# run:     obr loops_27.obe
+#
+# Every way Objeck iterates, in one file. A generic Vector and Map walked with
+# Each and a lambda (\^(s) => ...); `each(i : nums)` over a Float[] giving the
+# INDEX; `each(num in nums)` giving the ELEMENT itself; and `reverse(...)` to
+# walk a collection backwards. The last block nests a character walk inside a
+# reverse walk, since a String is iterable too.
+~#
+
 class Test {
 	function : Main(args : String[]) ~ Nil {
 		strings := Collection.Vector->New()<String>;
