@@ -366,6 +366,17 @@ graph TB
     style H fill:#e1ffe1
 ```
 
+**Calls between compiled methods.** Since v2026.9.1 a compiled caller enters a
+compiled callee's *native entry* directly — arguments in the caller's outgoing
+area, the frame record built in the callee's own frame, the result in `XMM0`
+(`D0` on ARM64) — with an inline cache at `virtual` and func-ref sites. The C++
+callback bridge remains the slow path (a callee not yet compiled, a full call
+stack, a `Nil` receiver, a megamorphic site) and the only path for allocation,
+traps and conversions. A bound call costs 5.5 ns rather than 26.5 ns as a result.
+The call path is drawn in `core/vm/arch/jit/README.md`; the design and its
+measurements are in `docs/JIT_CALLING_CONVENTION_DESIGN.md`.
+
+
 ### JIT Frame Structure
 
 ```mermaid
