@@ -43,6 +43,7 @@ install): two of them read files from `data/`, which ships alongside.
 | [`3d_gl_24.obs`](3d_gl_24.obs) | `-lib sdl2,sdl_gl` | a lit, shadowed, spinning scene in OpenGL |
 | [`ai_search_25.obs`](ai_search_25.obs) | `-lib ai` | shortest-path search across a small map |
 | [`ml_regression_26.obs`](ml_regression_26.obs) | `-lib ml,csv` | linear regression over a CSV dataset |
+| [`records_28.obs`](records_28.obs) | `-lib gen_collect` | records: generated constructors and accessors, and readonly |
 
 ## Building one
 

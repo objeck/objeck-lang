@@ -25,7 +25,7 @@ class Welcome {
 			"lambda_17.obs", "first_class_18.obs", "closure_19.obs",
 			"loops_27.obs", "visitor_20.obs", "neural_21.obs", "gemini_22.obs",
 			"json_stream_23.obs", "3d_gl_24.obs", "ai_search_25.obs",
-			"ml_regression_26.obs"];
+			"ml_regression_26.obs", "records_28.obs"];
 
 		libs := [
 			"", "gen_collect,net,json,cipher", "xml,gen_collect", "json,net,cipher",
@@ -36,7 +36,7 @@ class Welcome {
 			"gen_collect", "gen_collect", "gen_collect",
 			"", "", "gen_collect,ml,csv", "gemini,net,json,misc,cipher,net_server",
 			"json_stream", "sdl2,sdl_gl", "ai",
-			"ml,csv"];
+			"ml,csv", "gen_collect"];
 
 		about := [
 			"a class, Main, and one line of output",
@@ -66,7 +66,8 @@ class Welcome {
 			"reading large JSON as a stream",
 			"a lit, shadowed, spinning scene in OpenGL",
 			"shortest-path search across a small map",
-			"linear regression over a CSV dataset"];
+			"linear regression over a CSV dataset",
+			"records: generated constructors and accessors, and readonly"];
 
 		""->PrintLine();
 		"Objeck example programs"->PrintLine();
