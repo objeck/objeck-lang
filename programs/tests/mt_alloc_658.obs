@@ -1,0 +1,166 @@
+#~
+# Reproducer for issue #658 -- residual multithreaded GC segfault under heavy
+# allocation churn.
+#
+# The original lived only at C:/tmp/mt_alloc.obs on the maintainer's box and was
+# lost; the issue kept the recipe but not the program, so the one open lead on
+# #658 had no reproducer. This is that recipe rebuilt in the repo, where it
+# cannot be lost again.
+#
+# The recipe, from the issue: eight Thread subclasses, each looping { allocate a
+# Vector<Box>; 2500 Box allocations (an Int, an interpolated String, an 8-slot
+# Float[]); keep every third; sum a field }. Compile with -lib gen_collect,concurrent.
+# Loop the run 30-100x counting rc != 0. Run with `obr --gc-threshold=1m`.
+#
+# What it is looking for. Every kept Box must still read back exactly what it was
+# constructed with after an arbitrary number of moving collections on other
+# threads. The two remaining suspects on #658 are JIT-compiled frames' inline
+# locals during a moving minor GC, and young-generation relocation fixup coverage
+# for registers and temps -- both of which corrupt a surviving object's fields
+# rather than crashing outright, so this checks fields rather than trusting a
+# clean exit. It reports corruption on stdout AND exits non-zero, so a harness
+# that watches only one of the two still sees it.
+#
+# This is NOT a regression test and must not be added to the suite: it is a soak
+# probe that takes minutes and is expected to pass. #658 is deferred, measured at
+# under 0.3%, and has produced exactly one crash in ~500 runs.
+#
+# Usage:  obr --gc-threshold=1m mt_alloc_658.obe [threads] [rounds] [allocs]
+# Default 8 threads, 40 rounds, 2500 allocs -- the "heavier churn" configuration
+# that produced the single observed crash (1/30, rc=139).
+#
+# Compile:
+#   obc -src mt_alloc_658.obs -lib gen_collect,concurrent -dest mt_alloc_658.obe
+~#
+
+use Collection;
+use System.Concurrency;
+
+class Box {
+  @id : Int;
+  @tag : String;
+  @data : Float[];
+
+  New(id : Int) {
+    @id := id;
+    @tag := "box-{$id}";
+    @data := Float->New[8];
+    for(i := 0; i < 8; i += 1;) {
+      @data[i] := (id + i)->ToFloat();
+    };
+  }
+
+  method : public : Id() ~ Int { return @id; }
+
+  # Every field must read back exactly as constructed. A moving collection that
+  # relocates this object while a stale pointer survives in a JIT frame slot or a
+  # register shows up here as a wrong field, not as a crash.
+  method : public : Intact(id : Int, expect_tag : String) ~ Bool {
+    if(@id <> id) { return false; };
+    if(@tag = Nil) { return false; };
+    if(@tag->Equals(expect_tag) = false) { return false; };
+    if(@data = Nil) { return false; };
+    if(@data->Size() <> 8) { return false; };
+    for(i := 0; i < 8; i += 1;) {
+      if(@data[i] <> (id + i)->ToFloat()) { return false; };
+    };
+    return true;
+  }
+}
+
+class AllocWorker from Thread {
+  @id : Int;
+  @rounds : Int;
+  @allocs : Int;
+  @errors : Int;
+  @kept_total : Int;
+
+  New(id : Int, rounds : Int, allocs : Int) {
+    Parent("alloc-worker");
+    @id := id;
+    @rounds := rounds;
+    @allocs := allocs;
+    @errors := 0;
+    @kept_total := 0;
+  }
+
+  method : public : Errors() ~ Int { return @errors; }
+  method : public : KeptTotal() ~ Int { return @kept_total; }
+
+  # Every local is declared here at method scope and only ASSIGNED inside the
+  # loops below. Introducing a local with := inside a nested block whose
+  # initialiser reads an enclosing block's local is unreliable in Objeck -- it
+  # can compile clean and segfault at run time, which in a GC probe would be
+  # indistinguishable from the bug being hunted.
+  method : public : Run(param : System.Base) ~ Nil {
+    kept := Vector->New()<Box>;
+    tag := "box-{$@id}";
+    b := Box->New(@id);
+    kb := b;
+    sum := 0;
+    n := 0;
+
+    for(r := 0; r < @rounds; r += 1;) {
+      kept := Vector->New()<Box>;
+
+      # churn: most of these die immediately, every third survives the round
+      for(i := 0; i < @allocs; i += 1;) {
+        b := Box->New(@id);
+        if(i % 3 = 0) {
+          kept->AddBack(b);
+        };
+      };
+
+      # sum a field across the survivors; each must still be intact
+      sum := 0;
+      n := kept->Size();
+      for(k := 0; k < n; k += 1;) {
+        kb := kept->Get(k);
+        if(kb->Intact(@id, tag) = false) {
+          @errors += 1;
+        };
+        sum += kb->Id();
+      };
+
+      if(sum <> n * @id) {
+        @errors += 1;
+      };
+      @kept_total += n;
+    };
+  }
+}
+
+class MtAlloc658 {
+  function : Main(args : String[]) ~ Nil {
+    nthreads := 8;
+    rounds := 40;
+    allocs := 2500;
+
+    if(args->Size() > 0) { nthreads := args[0]->ToInt(); };
+    if(args->Size() > 1) { rounds := args[1]->ToInt(); };
+    if(args->Size() > 2) { allocs := args[2]->ToInt(); };
+
+    "#658 repro: {$nthreads} threads, {$rounds} rounds, {$allocs} allocs/round, keeping every 3rd"->PrintLine();
+
+    total_errors := 0;
+    total_kept := 0;
+
+    workers := AllocWorker->New[nthreads];
+    each(i : workers) { workers[i] := AllocWorker->New(i + 1, rounds, allocs); };
+    each(i : workers) { workers[i]->Execute(Nil); };
+    each(i : workers) { workers[i]->Join(); };
+    each(i : workers) {
+      total_errors += workers[i]->Errors();
+      total_kept += workers[i]->KeptTotal();
+    };
+
+    "checked {$total_kept} surviving objects"->PrintLine();
+
+    if(total_errors = 0) {
+      "PASS: mt alloc churn (#658)"->PrintLine();
+    } else {
+      "FAIL: mt alloc churn (#658) - {$total_errors} corruption(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
