@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.1-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.0-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.1/objeck-linux-x64_2026.9.1.tgz
-tar xzf objeck-linux-x64_2026.9.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.0/objeck-linux-x64_2026.9.0.tgz
+tar xzf objeck-linux-x64_2026.9.0.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -94,7 +94,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.9.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.0](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
