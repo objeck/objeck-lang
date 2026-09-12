@@ -2,7 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.9.1] - 2026-09-11
+## [v2026.9.1] - 2026-09-12
 
 Compiled code now calls compiled code directly -- a bound call 26.5 ns to 5.5 ns,
 a `virtual` call 125 ns to 6.0 ns, `Fib(32)` 0.208 s to 0.043 s -- and three ways

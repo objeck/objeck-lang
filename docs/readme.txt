@@ -1,4 +1,4 @@
-v2026.9.1 (September 11, 2026)
+v2026.9.1 (September 12, 2026)
 ===
 Compiled code now calls compiled code directly -- a bound call 26.5 ns to 5.5 ns, a virtual call 125 ns to 6.0 ns, Fib(32) 0.208 s to 0.043 s. Every string hash was wrong and is now right, three ways compiled code could corrupt memory are closed, the debugger sees threads and tells the truth about its commands, and Game.OpenGL gains a sky, rotations, normal maps and emissive materials.
 
