@@ -1,0 +1,98 @@
+name: Probe 816 (windows-arm64 invalid object in Map->Insert)
+
+# Throwaway probe for issue #816. Runs only on pushes to its own branch and
+# publishes nothing. It reuses master CI's windows-arm64 deploy tree (run
+# 34780420344, commit 2137cef643) so no build is needed.
+on:
+  push:
+    branches: [probe/816-arm64-map-cast]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: windows-11-arm
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            programs/regression
+
+      - name: Download master's windows-arm64 deploy tree
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-windows-arm64
+          run-id: 34780420344
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: Compile http_persistence_test
+        run: |
+          Get-ChildItem tree | Select-Object Name
+          $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
+          & tree\bin\obc.exe -src programs\regression\http_persistence_test.obs -lib cipher,collect,xml,json,net,net_server -dest t.obe
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path t.obe)) { throw "compile failed" }
+          & tree\bin\obr.exe --version
+
+      - name: Probe loops (P1, P2, P4)
+        run: |
+          $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
+          $obr = "$PWD\tree\bin\obr.exe"
+          New-Item -ItemType Directory -Force results | Out-Null
+
+          # One run under a hard 60 s cap. Returns exit code and combined output.
+          function RunOnce([string[]]$argv, [hashtable]$envs) {
+            foreach ($k in $envs.Keys) { Set-Item "env:$k" $envs[$k] }
+            $out = "$PWD\results\last.txt"
+            $p = Start-Process -FilePath $obr -ArgumentList $argv -NoNewWindow -PassThru `
+                   -RedirectStandardOutput "$out.o" -RedirectStandardError "$out.e"
+            if (-not $p.WaitForExit(60000)) { $p.Kill(); $code = 'timeout' } else { $code = $p.ExitCode }
+            foreach ($k in $envs.Keys) { Remove-Item "env:$k" -ErrorAction SilentlyContinue }
+            $text = (Get-Content "$out.o" -Raw) + (Get-Content "$out.e" -Raw)
+            return @{ code = $code; text = $text }
+          }
+
+          function Probe([string]$name, [int]$n, [string[]]$argv, [hashtable]$envs) {
+            $cast = 0; $other = 0; $firstCast = $null; $firstOther = $null
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            for ($i = 1; $i -le $n; $i++) {
+              $r = RunOnce $argv $envs
+              $failed = ($r.code -ne 0) -or ($r.text -match 'FAIL')
+              if ($r.text -match 'Invalid object cast') {
+                $cast++; if (-not $firstCast) { $firstCast = $r.text; Set-Content "results\$name-first-cast.txt" $r.text }
+              } elseif ($failed) {
+                $other++; if (-not $firstOther) { $firstOther = $r.text; Set-Content "results\$name-first-other.txt" $r.text }
+              }
+            }
+            $line = "| $name | $n | $cast | $other | $([int]$sw.Elapsed.TotalSeconds) s |"
+            Write-Output $line
+            Add-Content $env:GITHUB_STEP_SUMMARY $line
+            return $cast
+          }
+
+          Add-Content $env:GITHUB_STEP_SUMMARY "### Probe #816 on windows-11-arm (deploy tree of 2137cef643)"
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+          Add-Content $env:GITHUB_STEP_SUMMARY "| probe | runs | invalid-object casts | other failures | time |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "|---|---|---|---|---|"
+
+          $p1a = Probe "P1a-jit1" 200 @("t.obe") @{ OBJECK_JIT_THRESHOLD = "1" }
+          $p1b = Probe "P1b-jit-off" 200 @("--jit=off", "t.obe") @{}
+          $p2  = Probe "P2-jit1-gc64k" 200 @("--gc-threshold=64k", "t.obe") @{ OBJECK_JIT_THRESHOLD = "1" }
+          $p4  = Probe "P4-jit1-gc64k-trace" 200 @("--gc-threshold=64k", "t.obe") @{ OBJECK_JIT_THRESHOLD = "1"; OBJECK_GC_TRACE = "1" }
+
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+          Add-Content $env:GITHUB_STEP_SUMMARY "Other failures are listed separately: the test binds fixed port 18807, so rapid reruns can fail to bind without saying anything about #816."
+
+      - name: Keep first failures
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: probe-816-results
+          path: results/
+          retention-days: 7
