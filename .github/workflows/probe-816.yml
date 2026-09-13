@@ -36,7 +36,7 @@ jobs:
         run: |
           Get-ChildItem tree | Select-Object Name
           $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
-          & tree\bin\obc.exe -src programs\regression\http_persistence_test.obs -lib cipher,collect,xml,json,net,net_server -dest t.obe
+          & tree\bin\obc.exe -src programs\regression\http_persistence_test.obs -lib cipher,collect,xml,json,net,net_server -opt s3 -dest t.obe
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path t.obe)) { throw "compile failed" }
           & tree\bin\obr.exe --version
 
