@@ -15,13 +15,25 @@
 # Against the pre-fix net.obl this test fails: /boom returns an empty body and
 # no content-type, and the unreachable POST reports 500 rather than 0.
 #
-# On the retries below: an in-process Objeck client talking to an in-process
-# Objeck server intermittently receives nothing at all (code 0) on Windows.
-# That defect is real and tracked separately -- it is what makes core_http_server
-# print FAIL on most runs. It is NOT what this test is about, so the request is
-# repeated until the transport delivers something and the assertions then run
-# against a response that actually arrived. The unreachable cases are deliberately
-# not retried: there, no response IS the expected result.
+# On transport: this test's server used to write each response and call Close()
+# straight away. On Windows loopback that is the #669 shape -- the sender's
+# teardown can reset the connection before the client has read, and the client
+# sees code 0 with nothing at all. Eight retries hid it on x64 and did not on
+# native Windows ARM64, where the test failed 4 runs in 6. The server now calls
+# CloseGracefully(), the remedy #669 shipped, so the client owns the teardown and
+# there is nothing to race.
+#
+# Three things keep it deterministic beyond that:
+#   - a random port per run, rebinding if Listen fails. A fixed port is not safe
+#     back to back: Windows SO_REUSEADDR lets a second server bind a port that
+#     still has a live listener (see thread_accept_exit_test).
+#   - no fixed sleep: requests start only once the server thread reports that
+#     Listen succeeded, and a server that never listens fails the test.
+#   - a small, logged transport retry. It fires only when no status line arrived
+#     at all, and says so in the output; a response that arrives and is wrong
+#     (a 500 with no body, a missing content-type) fails on the first attempt.
+#     With CloseGracefully() in place it should never fire, so a "note:
+#     transport retry" line in the results is itself worth looking at.
 # EXTRA_LIBS: net
 ~#
 
@@ -29,15 +41,40 @@ use Collection, System.Concurrency, System.IO.Net, Web.HTTP;
 
 class ErrorBodyServer from Thread {
 	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
 
 	New(port : Int) {
 		Parent("error-body-server");
 		@port := port;
+		@listening := false;
+		@finished := false;
+	}
+
+	method : public : GetPort() ~ Int {
+		return @port;
+	}
+
+	#~
+	# True once Listen has succeeded: from here a connect is queued even before
+	# Accept runs, so the client can start.
+	~#
+	method : public : IsListening() ~ Bool {
+		return @listening;
+	}
+
+	#~
+	# True once Run has returned, whether the server stopped or never listened.
+	~#
+	method : public : IsFinished() ~ Bool {
+		return @finished;
 	}
 
 	method : public : Run(param : Base) ~ Nil {
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(8)) {
+			@listening := true;
+
 			done := false;
 			while(<>done) {
 				client := server->Accept();
@@ -72,28 +109,43 @@ class ErrorBodyServer from Thread {
 						client->WriteString("HTTP/1.1 200 OK\r\nContent-Length: {$size}\r\nConnection: close\r\n\r\n{$body}");
 					};
 
-					client->Close();
+					# Not Close(): let the client read the response and hang up first (#669)
+					client->CloseGracefully();
 				};
 			};
 			server->Close();
 		};
+
+		@finished := true;
 	}
 }
 
 class HttpErrorBodyTest {
-	#~
-	# Repeats a GET until the transport actually delivers a status line. Returns
-	# the last response either way, so a genuine failure still surfaces.
-	~#
-	function : GetDelivered(client : HttpClient, url : String) ~ Web.HTTP.Response {
-		resp : Web.HTTP.Response;
-		attempt := 0;
+	@retries : Int;
 
-		while(attempt < 8) {
+	New() {
+		@retries := 0;
+	}
+
+	#~
+	# Repeats a GET only while no status line arrives -- a Nil response or code 0,
+	# the transport failing rather than the server answering wrongly. Bounded, and
+	# every retry is printed. Returns the last response either way, so a request
+	# that never gets through still fails its assertions.
+	~#
+	method : GetDelivered(client : HttpClient, url : String) ~ Web.HTTP.Response {
+		resp : Web.HTTP.Response;
+		attempt := 1;
+		max_attempts := 4;
+
+		while(attempt <= max_attempts) {
 			resp := client->Get(Url->New(url));
 			if(resp <> Nil & resp->GetCode() <> 0) {
 				return resp;
 			};
+
+			"note: transport retry - attempt {$attempt} of {$max_attempts} for {$url} got no status line"->PrintLine();
+			@retries += 1;
 			attempt += 1;
 			Thread->Sleep(50);
 		};
@@ -101,13 +153,44 @@ class HttpErrorBodyTest {
 		return resp;
 	}
 
+	#~
+	# Starts the server on a random port and waits until it is listening. Tries a
+	# few ports, since Listen can fail on one that is taken. Nil if none listened.
+	~#
+	method : StartServer() ~ ErrorBodyServer {
+		candidate : ErrorBodyServer;
+		waited : Int;
+		tries := 0;
+
+		while(tries < 5) {
+			candidate := ErrorBodyServer->New(Int->Random(20000, 31998));
+			candidate->Execute(Nil);
+
+			waited := 0;
+			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 200) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+
+			if(candidate->IsListening()) {
+				return candidate;
+			};
+
+			tries += 1;
+		};
+
+		return Nil;
+	}
+
 	function : Main(args : String[]) ~ Nil {
+		HttpErrorBodyTest->New()->Run();
+	}
+
+	method : Run() ~ Nil {
 		"Testing HTTP error-response bodies..."->PrintLine();
 
 		passed := 0;
 		failed := 0;
-		port := 19881;
-		dead_port := 19882;
 
 		# Locals are hoisted: declaring them inside the nested blocks below
 		# compiles and then segfaults.
@@ -117,10 +200,17 @@ class HttpErrorBodyTest {
 		resp : Web.HTTP.Response;
 		client : HttpClient;
 		headers : Hash<String, String>;
+		retries : Int;
 
-		server := ErrorBodyServer->New(port);
-		server->Execute(Nil);
-		Thread->Sleep(500);
+		server := StartServer();
+		if(server = Nil) {
+			"FAIL: the test server never started listening"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		port := server->GetPort();
+		# One above the server, and never listened on by this run
+		dead_port := port + 1;
 
 		# --- a genuine 500 must deliver its body ---
 		client := HttpClient->New();
@@ -245,12 +335,13 @@ class HttpErrorBodyTest {
 		HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/stop"));
 		server->Join();
 
+		retries := @retries;
 		if(failed > 0) {
 			"---"->PrintLine();
-			"{$passed} passed, {$failed} failed"->PrintLine();
+			"{$passed} passed, {$failed} failed, {$retries} transport retries"->PrintLine();
 			Runtime->Exit(1);
 		};
 
-		"{$passed} passed, 0 failed"->PrintLine();
+		"{$passed} passed, 0 failed, {$retries} transport retries"->PrintLine();
 	}
 }
