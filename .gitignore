@@ -8,8 +8,9 @@
 
 # MSVC compiled objects
 *.obj
-# ...but this one is a Wavefront OBJ model that gl_model.obs loads
-!programs/examples/gl_crystal.obj
+# ...but in programs/examples a .obj is a Wavefront model an example loads
+# (gl_model.obs reads gl_crystal.obj), and no build writes object files there
+!programs/examples/*.obj
 
 # Linker artifacts
 *.exp
@@ -122,6 +123,9 @@ core/release/code_doc_output.txt
 
 # Downloaded models and data (large)
 data/
+# ...but not the files every deploy copies into a distribution's examples/data.
+# data/ matches at any depth, so a new one there would never reach git.
+!programs/deploy/data/
 programs/frameworks/opencv_onnx/data/models/
 programs/frameworks/opencv_onnx/data/media/visdrone/
 

@@ -133,8 +133,19 @@ unzip docs/api.zip -d core/release/deploy-msys2-clang/doc
 mkdir core/release/deploy-msys2-clang/examples
 mkdir core/release/deploy-msys2-clang/examples/media
 cp programs/deploy/*.obs core/release/deploy-msys2-clang/examples
+cp programs/deploy/README.md core/release/deploy-msys2-clang/examples
+# This script builds libobjk_sdl against opengl32 and ships its fonts, but copied
+# none of the examples that use them, nor the data two examples read. Ship the
+# same set as the Windows and POSIX deploys.
+mkdir -p core/release/deploy-msys2-clang/examples/opengl
+cp programs/examples/gl_*.obs core/release/deploy-msys2-clang/examples/opengl
+cp programs/examples/cube_gl.obs core/release/deploy-msys2-clang/examples/opengl
+cp programs/examples/gl_crystal.obj core/release/deploy-msys2-clang/examples/opengl
+mkdir -p core/release/deploy-msys2-clang/examples/data
+cp programs/deploy/data/* core/release/deploy-msys2-clang/examples/data
 cp programs/deploy/media/*.png core/release/deploy-msys2-clang/examples/media
 cp programs/deploy/media/*.wav core/release/deploy-msys2-clang/examples/media
+sh core/release/verify_example_assets.sh core/release/deploy-msys2-clang/examples || exit 1
 
 cd core/release
 

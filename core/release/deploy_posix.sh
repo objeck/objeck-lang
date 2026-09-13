@@ -184,6 +184,7 @@ mkdir -p core/release/deploy/examples/data
 cp programs/deploy/data/* core/release/deploy/examples/data
 cp programs/deploy/media/*.png core/release/deploy/examples/media
 cp programs/deploy/media/*.wav core/release/deploy/examples/media
+sh core/release/verify_example_assets.sh core/release/deploy/examples || exit 1
 
 cd core/release
 
