@@ -1,0 +1,98 @@
+name: probe-816-p3-linux
+
+# Issue #816 scoping: the P3 loop that failed 3/100 on windows-11-arm (run
+# 34783381667), on Linux arm64 with the same master deploy tree's linux-arm64
+# build. Linux does not reserve x18 the way Windows and macOS do, so a failure
+# here points at the ARM64 JIT's GC root reporting rather than a platform ABI.
+
+on:
+  push:
+    branches: [probe/816-p3-linux]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            programs/tests
+
+      - name: Download master's linux-arm64 deploy tree
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-linux-arm64
+          run-id: 34780420344
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: Runtime libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libmbedtls-dev
+          chmod +x tree/bin/*
+          if ldd tree/bin/obr | grep "not found"; then exit 1; fi
+          tree/bin/obc --version
+
+      - name: Compile fixtures
+        run: |
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          for f in map_insert_stress_816 map_insert_stress_816_mt; do
+            tree/bin/obc -src "programs/tests/$f.obs" -lib gen_collect -opt s3 -dest "$f.obe"
+            [ -f "$f.obe" ] || { echo "compile failed: $f"; exit 1; }
+          done
+
+      - name: Probe loops (P3b + frequent GC, P3b, P3a)
+        run: |
+          set +e
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          export OBJECK_JIT_THRESHOLD=1
+          OBR="$PWD/tree/bin/obr"
+          mkdir -p results
+
+          # Any run that does not end in PASS is evidence: an invalid-object cast,
+          # a key/value mismatch (FAIL: N mismatches) or another abnormal exit.
+          probe() {   # name runs command...
+            name=$1; n=$2; shift 2
+            cast=0; mismatch=0; other=0; start=$SECONDS
+            for i in $(seq 1 "$n"); do
+              timeout 120 "$@" > results/last.txt 2>&1
+              code=$?
+              if grep -q 'Invalid object cast' results/last.txt; then
+                cast=$((cast + 1)); [ $cast -eq 1 ] && cp results/last.txt "results/$name-first-cast.txt"
+              elif grep -q 'FAIL:' results/last.txt; then
+                mismatch=$((mismatch + 1)); [ $mismatch -eq 1 ] && cp results/last.txt "results/$name-first-mismatch.txt"
+              elif [ $code -ne 0 ] || ! grep -q PASS results/last.txt; then
+                other=$((other + 1))
+                [ $other -eq 1 ] && { echo "exit=$code"; cat results/last.txt; } > "results/$name-first-other.txt"
+              fi
+            done
+            line="| $name | $n | $cast | $mismatch | $other | $((SECONDS - start)) s |"
+            echo "$line"
+            echo "$line" >> "$GITHUB_STEP_SUMMARY"
+          }
+
+          {
+            echo "### Probe #816 P3 on ubuntu-24.04-arm (master deploy tree, run 34780420344)"
+            echo
+            echo "| probe | runs | invalid-object casts | mismatches | other | time |"
+            echo "|---|---|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          probe P3b-alloc-thread-jit1-gc64k 150 "$OBR" --gc-threshold=64k map_insert_stress_816_mt.obe 20000
+          probe P3b-alloc-thread-jit1 50 "$OBR" map_insert_stress_816_mt.obe 20000
+          probe P3a-single-thread-jit1 50 "$OBR" map_insert_stress_816.obe 20000
+          exit 0
+
+      - name: Keep first failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-816-p3-linux-results
+          path: results/
+          retention-days: 7
