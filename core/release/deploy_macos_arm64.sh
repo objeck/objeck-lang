@@ -377,9 +377,11 @@ bash tools/cicd/check_macos_tree_links.sh core/release/deploy || exit 1
 MINOS_BAD=$(find core/release/deploy/bin core/release/deploy/lib core/release/deploy/app -type f | while IFS= read -r f; do
 	file "$f" | grep -q "Mach-O" || continue
 	minos=$(otool -l "$f" | awk '$1 == "cmd" { b = ($2 == "LC_BUILD_VERSION") } b && $1 == "minos" { print $2; exit }')
+	# The leading parens are required: inside $(...), macOS's /bin/sh (bash 3.2)
+	# reads a bare "pattern)" as the substitution's closing paren.
 	case "$(basename "$f")" in
-		libonnxruntime.1.dylib) limit=14.0 ;;
-		*) limit=13.3 ;;
+		(libonnxruntime.1.dylib) limit=14.0 ;;
+		(*) limit=13.3 ;;
 	esac
 	if [ -z "$minos" ] || ! awk -v a="$minos" -v b="$limit" 'BEGIN { split(a, x, "."); split(b, y, "."); exit !(x[1] + 0 < y[1] + 0 || (x[1] + 0 == y[1] + 0 && x[2] + 0 <= y[2] + 0)) }'; then
 		echo "       $f: minos ${minos:-(none)}, limit $limit"

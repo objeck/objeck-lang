@@ -332,6 +332,27 @@ jobs:
 
     # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
     # from cache or build them with tools/deps/build_quic_deps.sh.
+    # macOS runs the build scripts with its own shells, and /bin/sh and /bin/bash
+    # there are bash 3.2, which rejects syntax bash 5 accepts: a bare case pattern
+    # inside $(...) parses as its closing paren. deploy_macos_arm64.sh once stopped
+    # parsing that way while bash -n passed everywhere else.
+    - name: Shell scripts parse under macOS bash 3.2
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        bad=0
+        for s in core/release/*.sh tools/cicd/*.sh tools/deps/*.sh; do
+          case "$(head -1 "$s")" in
+            '#!/bin/sh'*) interp=/bin/sh ;;
+            *) interp=/bin/bash ;;
+          esac
+          if ! out=$("$interp" -n "$s" 2>&1); then
+            echo "::error file=$s::$interp -n failed: $out"
+            bad=1
+          fi
+        done
+        exit $bad
+
     - name: QUIC dependencies
       if: runner.os != 'Windows'
       uses: ./.github/actions/quic-deps
