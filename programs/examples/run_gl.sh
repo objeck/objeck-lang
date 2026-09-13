@@ -73,10 +73,13 @@ OBR="$TREE/bin/obr"
 # version, so on a quarantined tree obc is killed, the version comes back empty,
 # and the script blames a stale build -- sending you off to rebuild something
 # that was never the problem. Diagnose "cannot execute anything" first.
+#
+# --sdl limits the Linux check to obc, obr and libobjk_sdl.so: a GL demo has no
+# use for OpenCV or ODBC, and a machine without them should still run it.
 DEPS="$REPO/tools/install_deps.sh"
 if [ -x "$DEPS" ]; then
-	if ! "$DEPS" --check --tree "$TREE" >/dev/null 2>&1; then
-		"$DEPS" --check --tree "$TREE"
+	if ! "$DEPS" --check --sdl --tree "$TREE" >/dev/null 2>&1; then
+		"$DEPS" --check --sdl --tree "$TREE"
 		echo ""
 		echo "Then re-run this script."
 		exit 1
@@ -114,7 +117,7 @@ if [ ! -f "$TREE/lib/native/$NATIVE" ]; then
 			echo "  ./build_linux.sh sdl && cp sdl.so \"$TREE/lib/native/$NATIVE\""
 			echo ""
 			echo "Building it needs the SDL2 and OpenGL headers:"
-			echo "  $REPO/tools/install_deps.sh --dev" ;;
+			echo "  $REPO/tools/install_deps.sh --dev --sdl" ;;
 	esac
 	exit 1
 fi
