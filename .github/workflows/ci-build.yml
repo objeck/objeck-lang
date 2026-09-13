@@ -1006,6 +1006,8 @@ jobs:
         ALLOW_EXTERNAL: libobjk_opencv.dylib libobjk_onnx.dylib libobjk_lame.dylib
       run: |
         cd core/release
+        # create_macos_pkg.sh copies the .pkg into OUTPUT_DIR but does not create it
+        mkdir -p "$RUNNER_TEMP/pkg"
         OUTPUT_DIR="$RUNNER_TEMP/pkg" ./create_macos_pkg.sh 0.0.0
         bash ../../tools/cicd/macos_install_test.sh "$RUNNER_TEMP/pkg/objeck-macos-arm64_0.0.0.pkg" "$GITHUB_WORKSPACE/programs/regression"
 
