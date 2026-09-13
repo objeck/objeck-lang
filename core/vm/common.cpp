@@ -7626,6 +7626,15 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
 
   // Drive QUIC handshake; h3_run_loop returns once nghttp3 session is ready
   if(!h3_run_loop(ctx)) {
+    // A rejected certificate and an unreachable host both end here; say which,
+    // so a security failure is not mistaken for a network problem. AWS-LC
+    // reports X509_V_ERR_INVALID_CALL when no certificate was ever verified
+    // (the host refused QUIC, or never answered), which is not a rejection.
+    const long verify_result = SSL_get_verify_result(ctx->ssl);
+    if(verify_peer && verify_result != X509_V_OK && verify_result != X509_V_ERR_INVALID_CALL) {
+      std::wcerr << L">>> HTTP/3 certificate verification failed for '" << BytesToUnicode(host)
+                 << L"': " << BytesToUnicode(X509_verify_cert_error_string(verify_result)) << L" <<<" << std::endl;
+    }
     delete ctx; instance[0] = 0; return true;
   }
 
