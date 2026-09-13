@@ -1,0 +1,134 @@
+name: probe-816-fix
+
+# Validates #820 on the two ARM64 CI platforms: the P3b map-insert loop with an
+# allocating thread and frequent collections, every method compiled, against
+# #820's own CI build artifacts. Before the fix it failed 3/100 on windows-11-arm
+# (run 34783381667) and 6/100 on macOS arm64. The source run id is read from
+# probe-816-run-id.txt so this file never needs editing. Throwaway branch.
+
+on:
+  push:
+    branches: [probe/816-fix]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  windows-arm64:
+    runs-on: windows-11-arm
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Source run
+        run: |
+          $id = (Get-Content probe-816-run-id.txt -Raw).Trim()
+          "RUN_ID=$id" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Output "artifacts from run $id"
+
+      - name: Download #820's windows-arm64 deploy tree
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-windows-arm64
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: Compile fixture
+        run: |
+          $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
+          & tree\bin\obc.exe -src "programs\tests\map_insert_stress_816_mt.obs" -lib collect -opt s3 -dest "mt.obe"
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path "mt.obe")) { throw "compile failed" }
+          & tree\bin\obc.exe --version
+
+      - name: P3b + frequent GC, 150 runs
+        run: |
+          $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
+          $env:OBJECK_JIT_THRESHOLD = "1"
+          New-Item -ItemType Directory -Force results | Out-Null
+          $fail = 0; $first = $true
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          for ($i = 1; $i -le 150; $i++) {
+            $p = Start-Process -FilePath "$PWD\tree\bin\obr.exe" -ArgumentList @("--gc-threshold=64k", "mt.obe", "20000") `
+                   -NoNewWindow -PassThru -RedirectStandardOutput "results\last.o" -RedirectStandardError "results\last.e"
+            if (-not $p.WaitForExit(120000)) { $p.Kill(); $code = 'timeout' } else { $code = $p.ExitCode }
+            $text = (Get-Content "results\last.o" -Raw) + (Get-Content "results\last.e" -Raw)
+            if ($code -ne 0 -or $text -notmatch 'PASS') {
+              $fail++
+              if ($first) { Set-Content "results\first-failure.txt" "run=$i exit=$code`n$text"; $first = $false }
+            }
+          }
+          $line = "| windows-arm64 #820 P3b-gc64k jit1 | 150 | $fail fail | $([int]$sw.Elapsed.TotalSeconds) s |"
+          Write-Output $line
+          Add-Content $env:GITHUB_STEP_SUMMARY $line
+
+      - name: Keep first failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-816-fix-windows-arm64
+          path: results/
+          retention-days: 7
+
+  linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Source run
+        run: |
+          id=$(tr -d '[:space:]' < probe-816-run-id.txt)
+          echo "RUN_ID=$id" >> "$GITHUB_ENV"
+          echo "artifacts from run $id"
+
+      - name: Download #820's linux-arm64 deploy tree
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-linux-arm64
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: Runtime libraries and fixture
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libmbedtls-dev
+          chmod +x tree/bin/*
+          if ldd tree/bin/obr | grep "not found"; then exit 1; fi
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          tree/bin/obc -src programs/tests/map_insert_stress_816_mt.obs -lib gen_collect -opt s3 -dest mt.obe
+          [ -f mt.obe ] || { echo "compile failed"; exit 1; }
+          tree/bin/obc --version
+
+      - name: P3b + frequent GC, 150 runs
+        run: |
+          set +e
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          export OBJECK_JIT_THRESHOLD=1
+          mkdir -p results
+          fail=0; start=$SECONDS
+          for i in $(seq 1 150); do
+            timeout 120 tree/bin/obr --gc-threshold=64k mt.obe 20000 > results/last.txt 2>&1
+            code=$?
+            if [ $code -ne 0 ] || ! grep -q PASS results/last.txt; then
+              fail=$((fail + 1))
+              [ $fail -eq 1 ] && { echo "run=$i exit=$code"; cat results/last.txt; } > results/first-failure.txt
+            fi
+          done
+          line="| linux-arm64 #820 P3b-gc64k jit1 | 150 | $fail fail | $((SECONDS - start)) s |"
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+
+      - name: Keep first failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-816-fix-linux-arm64
+          path: results/
+          retention-days: 7
