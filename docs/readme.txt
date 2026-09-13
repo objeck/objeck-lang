@@ -8,7 +8,8 @@ v2026.9.2
 - Linux ARM64 no longer ships an x86-64 ONNX Runtime -- only an x86-64 runtime is vendored, so ONNX is declared optional on ARM64 and the 16 MB x86-64 library is gone from the tarball
 - A deploy that cannot build a required native library now fails -- the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed 'native-library verification failure(s)' on three platforms and published anyway. A library a platform cannot build yet is declared optional and reported as a warning; CodeQL now builds and analyzes the OpenCV, ONNX and LAME bindings
 - gl_crystal.obj ships -- the model gl_model.obs loads had never been committed, because .gitignore's *.obj rule for MSVC object files matched it too. Every deploy copies it now, the MSYS2 builds gain the OpenGL examples, the examples README and the data files two examples read, and a deploy missing a file an example opens by name fails
-- Deploy scripts show live progress -- a banner, stage progress and quiet tool output with the full log kept for a failed stage, and a deploy with any failed stage exits non-zero
+- Image->Normalize() could write past its output array -- the OpenCV binding sized it as rows * cols * 3 in 32-bit int, which wraps above about 716 megapixels: a crash up to about 1.43 gigapixels, an out-of-bounds write on the VM heap beyond that. It is sized in size_t now (CodeQL #362)
+- Deploy scripts show live progress -- a banner, stage progress and quiet tool output with the full log kept for a failed stage, and -v streams everything instead
 - The Windows API-docs search-index check runs -- it existed only in the generated code_doc64.cmd, which every Windows deploy regenerates from code_doc64.in; it is in the template now, and CI checks the templates
 - Documentation -- the definitive v2026.9.1 benchmark run, with fasta measured for the first time, and what a tabular classification study needs from System.ML
 
