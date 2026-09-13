@@ -327,11 +327,11 @@
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(OBJECK_DEPS)/include",
-					../../lib/openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				"HEADER_SEARCH_PATHS[arch=*]" = (
 					"$(OBJECK_DEPS)/include",
-					../../lib/openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -340,9 +340,9 @@
 				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				OTHER_LDFLAGS = (
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-Wl,$(OBJECK_DEPS)/lib/libnghttp2.a",
 					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a",
 					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2.a",
@@ -386,11 +386,11 @@
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(OBJECK_DEPS)/include",
-					../../lib/openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				"HEADER_SEARCH_PATHS[arch=*]" = (
 					"$(OBJECK_DEPS)/include",
-					../../lib/openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -400,9 +400,9 @@
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-Wl,$(OBJECK_DEPS)/lib/libnghttp2.a",
 					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a",
 					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2.a",

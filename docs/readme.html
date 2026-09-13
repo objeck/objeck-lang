@@ -550,12 +550,9 @@
     guessing.
    </p>
    <p>
-    The OpenCV and ONNX bindings are the exception to "nothing to install" on macOS: they link
-    Homebrew's <code>opencv@4</code> and <code>onnxruntime</code>. Without them, OpenCV and ONNX
-    programs fail with "Library not loaded"; everything else works. Install both with
-    <pre class="cmd">brew install opencv@4 onnxruntime</pre>
-    Plain <code>opencv</code> is not enough, because that formula is now OpenCV 5.
-    <code>./install_deps.sh --check</code> warns when either is missing.
+    There are no exceptions to "nothing to install" on macOS: the package carries every library it
+    uses, including OpenCV, ONNX Runtime, mbedTLS, ODBC and LAME. It runs on macOS 13.3 and later;
+    the ONNX binding needs macOS 14.
    </p>
    <h3>
     Secure Web Server Support

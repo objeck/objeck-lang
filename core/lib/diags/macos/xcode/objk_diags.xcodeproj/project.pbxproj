@@ -196,6 +196,7 @@
 		ED97AE3C2597E75B00344432 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -247,13 +248,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 11.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "";
 				SDKROOT = macosx;
-				SYSTEM_HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				SYSTEM_HEADER_SEARCH_PATHS = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				USER_HEADER_SEARCH_PATHS = "";
 				"USER_HEADER_SEARCH_PATHS[arch=*]" = "";
 			};
@@ -262,6 +263,7 @@
 		ED97AE3D2597E75B00344432 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
@@ -308,12 +310,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 11.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = "";
 				SDKROOT = macosx;
-				SYSTEM_HEADER_SEARCH_PATHS = ../../../openssl/macos/include;
+				SYSTEM_HEADER_SEARCH_PATHS = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				USER_HEADER_SEARCH_PATHS = "";
 			};
 			name = Release;
@@ -321,6 +323,7 @@
 		ED97AE3F2597E75B00344432 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -335,9 +338,9 @@
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = (
-					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 					"-lreadline",
 				);
@@ -349,6 +352,7 @@
 		ED97AE402597E75B00344432 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -363,9 +367,9 @@
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = "";
 				"OTHER_LDFLAGS[arch=*]" = (
-					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 					"-lreadline",
 				);
