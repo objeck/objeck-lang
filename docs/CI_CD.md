@@ -137,7 +137,9 @@ Future enhancement: Could be fully automatic with approval gates.
 
 **Triggers:**
 - Git tag matching `v*.*.*` (automatic)
-- Manual workflow dispatch (for testing)
+- Manual workflow dispatch from a branch (a dry run: it builds and uploads
+  artifacts, but Release Publish skips it and it never pushes `docs/api.zip`
+  to master)
 
 **Jobs:**
 
@@ -180,7 +182,11 @@ Future enhancement: Could be fully automatic with approval gates.
 **Purpose:** Sign, rename, and distribute release
 
 **Triggers:**
-- Manual workflow dispatch only
+- Automatic when a Release Build of a `vYYYY.M.P` tag succeeds (builds of
+  branches, including master, and of pre-release tags such as `v2026.9.2-rc1`
+  are skipped)
+- Manual workflow dispatch (fallback, e.g. to publish a build the automatic
+  trigger skipped)
 
 **Required Inputs:**
 - `version`: Version number (e.g., 2026.2.1)
