@@ -309,20 +309,41 @@ check_homebrew_macos() {
 	[ "$count" -gt 5 ] && say "             ... and $((count - 5)) more"
 
 	if [ -n "$formulas" ]; then
-		say "           Install them with Homebrew:"
-		say "             brew install $formulas"
-		say "           If one of these is already installed at an older version, brew"
-		say "           upgrades it in place."
+		local have_brew=0 absent="" ver n first
+		command -v brew >/dev/null 2>&1 && have_brew=1
 		for f in $formulas; do
-			case "$f" in
-				*@*)
-					base="${f%@*}"
-					if command -v brew >/dev/null 2>&1 && brew list --versions "$base" >/dev/null 2>&1; then
-						say "           Homebrew's '$base' is installed, but these links need '$f',"
-						say "           a separate formula; '$base' does not provide them."
-					fi ;;
-			esac
+			ver=""
+			[ "$have_brew" -eq 1 ] && ver=$(brew list --versions "$f" 2>/dev/null)
+			if [ -z "$ver" ]; then
+				absent="$absent $f"
+				continue
+			fi
+			# Installed, yet a file under its prefix is missing: Homebrew has moved
+			# to a release with a different soname (opencv@4 4.14 -> 4.15 renames
+			# .414 to .415). "brew install" would only say it is already installed.
+			n=$(printf '%s\n' "$missing" | awk -v f="$f" '$1 == f' | wc -l | tr -d ' ')
+			first=$(printf '%s\n' "$missing" | awk -v f="$f" '$1 == f { print $2; exit }')
+			say "           $ver is installed, but it lacks $n file(s) the bindings"
+			say "           link, e.g. $(basename "$first"). They were built against a"
+			say "           different $f release: install the matching one, or rebuild the"
+			say "           bindings against $ver."
 		done
+		absent="${absent# }"
+		if [ -n "$absent" ]; then
+			say "           Install with Homebrew:"
+			say "             brew install $absent"
+			say "           brew can also upgrade formulas you already have as a side effect."
+			for f in $absent; do
+				case "$f" in
+					*@*)
+						base="${f%@*}"
+						if [ "$have_brew" -eq 1 ] && brew list --versions "$base" >/dev/null 2>&1; then
+							say "           Homebrew's '$base' is installed, but these links need '$f',"
+							say "           a separate formula; '$base' does not provide them."
+						fi ;;
+				esac
+			done
+		fi
 	fi
 	if printf '%s\n' "$missing" | awk '$1 == "-" { found = 1 } END { exit !found }'; then
 		say "           Paths outside a Homebrew keg have no formula to suggest; the"
@@ -823,8 +844,10 @@ case "$UNAME" in
 			done
 		fi
 		if [ -z "$TREE" ]; then
-			say "No built distribution found to verify."
-			say "Build one:  cd core/release && ./deploy_macos_arm64.sh"
+			say "No Objeck distribution found to verify (looked beside this script, in"
+			say "core/release/deploy and deploy-arm64, and in /usr/local/objeck-lang)."
+			say "For a downloaded release:  $0 --check --tree <unpacked objeck-lang directory>"
+			say "For a repo checkout, build one:  cd core/release && ./deploy_macos_arm64.sh"
 			exit 1
 		fi
 		say "verifying bundled SDL2 in $TREE"
