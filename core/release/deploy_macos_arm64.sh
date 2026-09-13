@@ -119,7 +119,11 @@ cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 # copy SDL2 into /usr/local/lib -- a sudo-level system install that also
 # collides with a Homebrew SDL2. Rewriting the install names to @rpath and
 # giving libobjk_sdl.dylib an rpath into the distro removes the step entirely.
-cp macos/arm64/lib/libSDL2*.dylib ../../release/deploy/lib/sdl
+# -P: the unversioned names (libSDL2.dylib, libSDL2_image.dylib, ...) are symlinks
+# in the repo. A plain cp dereferenced them into four duplicate files that got
+# their own install names, were loaded by nothing, and could not resolve their
+# own @rpath/libSDL2-2.0.0.dylib dependency.
+cp -P macos/arm64/lib/libSDL2*.dylib ../../release/deploy/lib/sdl
 
 SDL_DEPLOY="../../release/deploy/lib/sdl"
 OBJK_SDL="../../release/deploy/lib/native/libobjk_sdl.dylib"
