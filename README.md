@@ -58,7 +58,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.1 
+### v2026.9.1 ✅
   * **Compiled code now calls compiled code directly** &mdash; a call between JIT'd methods used to cross a C++ bridge: an eleven-argument entry, a pooled frame, a release. The caller now builds the callee's frame on its own stack and enters its native entry, with inline caches for `virtual` and func-ref sites. A bound call went from 26.5 ns to 5.5 ns, a `virtual` call from 125 ns to 6.0 ns, and `Fib(32)` from 0.208 s to 0.043 s on AMD64; on an M4 Max a call went from 17.1 ns to 7.4 ns and `Fib(32)` from 0.135 s to 0.050 s. A dense `select` compiles to a jump table on both backends
   * **Every hash of a string was wrong** &mdash; `Hash->SHA256("abc"->ToByteArray())` digested `"abc"` plus a zero byte — a `Byte[]` size-word convention the JIT and thirteen trap producers got wrong; fixed everywhere, with a test that hashes every producer against known digests
   * **JIT arithmetic matches the interpreter** &mdash; `IMUL` wrote to the wrong register, native-call temporaries were never spilled, 64-bit immediates were truncated; the equivalence fixture now runs on every platform
@@ -75,7 +75,7 @@ obc hello && obr hello
   * **`Console->WriteBuffer(Char[])` corrupted every write after it** &mdash; the VM encoded the buffer to UTF-8 itself and wrote the bytes into a stdout already in a wide CRT mode, so the data was encoded twice (`'A','B'` arrived as U+4241) and the invalid sequence left the stream unusable for the rest of the program. It also ignored the count it was given. Found through `fasta`, which had never compiled ([#793](https://github.com/objeck/objeck-lang/pull/793))
   * **The standard libraries are rebuilt by the compiler that ships with them** &mdash; the committed `.obl` predated four compiler correctness fixes, including the func-ref inliner that library code is compiled with (`-opt s3`). 30 of 32 libraries changed ([#792](https://github.com/objeck/objeck-lang/pull/792))
 
-### v2026.9.0 ✅
+### v2026.9.0
   * **A server that wrote a response and closed could lose all of it** &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. `TCPSocket` and `TCPSecureSocket` gain `CloseGracefully()`, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: `Close()` lost 21, `CloseGracefully()` lost none
   * **The language server serialized every request behind one lock** &mdash; concurrent analysis was correct only because of it, with `TreeFactory` and `TypeFactory` as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking
   * **Four publish steps reported success while doing nothing** &mdash; Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed
