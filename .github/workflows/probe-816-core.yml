@@ -1,0 +1,99 @@
+name: probe-816-core
+
+# Issue #816: capture and inspect a core on ubuntu-24.04-arm, where the P3b loop
+# fails about 1 run in 6. Loops until the first crash, keeps the core, and prints
+# registers, the stack words around sp and fp, the code around pc and lr, and the
+# eight words at every register that points into the heap. Fallback to the macOS
+# tripwire build. Uses master's linux-arm64 CI build. Throwaway branch.
+
+on:
+  push:
+    branches: [probe/816-core]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  core:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            programs/tests
+
+      - name: Download master's linux-arm64 deploy tree
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-linux-arm64
+          run-id: 34789417040
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: Runtime libraries, gdb, core pattern, fixture
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libmbedtls-dev gdb
+          chmod +x tree/bin/*
+          if ldd tree/bin/obr | grep "not found"; then exit 1; fi
+          sudo sysctl -w kernel.core_pattern="$PWD/cores/core.%p"
+          mkdir -p cores
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          tree/bin/obc -src programs/tests/map_insert_stress_816_mt.obs -lib gen_collect -opt s3 -dest mt.obe
+          [ -f mt.obe ] || { echo "compile failed"; exit 1; }
+          tree/bin/obc --version
+
+      - name: Loop until the first core (at most 60 runs)
+        run: |
+          set +e
+          ulimit -c unlimited
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          export OBJECK_JIT_THRESHOLD=1
+          for i in $(seq 1 60); do
+            timeout 120 tree/bin/obr --gc-threshold=64k mt.obe 20000 > last.txt 2>&1
+            code=$?
+            if [ $code -ne 0 ] || ! grep -q PASS last.txt; then
+              echo "run $i failed: exit=$code"
+              ls -la cores
+              break
+            fi
+          done
+          exit 0
+
+      - name: Inspect the core
+        run: |
+          core=$(ls cores/core.* 2>/dev/null | head -1)
+          [ -n "$core" ] || { echo "no core captured"; exit 0; }
+          cat > gdb.cmds <<'GDB'
+          set pagination off
+          set print pretty on
+          info registers
+          echo \n=== code around pc\n
+          x/24i $pc-64
+          echo \n=== code before lr (the caller's call site)\n
+          x/40i $lr-128
+          echo \n=== stack from sp, 160 words (both compiled frames)\n
+          x/160gx $sp
+          echo \n=== threads\n
+          info threads
+          thread apply all bt 12
+          GDB
+          gdb -batch -x gdb.cmds tree/bin/obr "$core" 2>&1 | tee gdb.out | head -400
+          # the eight words at each register value that looks like a heap or stack pointer
+          for r in x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 fp; do
+            echo "=== *$r"
+            gdb -batch -ex "x/8gx \$$r" tree/bin/obr "$core" 2>&1 | tail -2
+          done
+
+      - name: Keep the core and gdb output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-816-core
+          path: |
+            cores/
+            gdb.out
+            last.txt
+          retention-days: 7
