@@ -81,7 +81,7 @@ mkdir -p "$STAGE"
 # itself is fine as a tool.)
 export PKG_CONFIG_PATH= PKG_CONFIG_LIBDIR=/nonexistent
 CMAKE_COMMON=(-G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release
-	-DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_CXX_COMPILER=/usr/bin/clang++
+	-DCMAKE_C_COMPILER=/usr/bin/clang
 	-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET
 	-DCMAKE_IGNORE_PREFIX_PATH="/opt/homebrew;/usr/local")
 # $(xcrun -f clang) is the bare toolchain clang and cannot link without SDKROOT.
@@ -103,7 +103,7 @@ cmake_configure() {   # name cmake-args...
 	run "$name.configure" cmake "$@"
 	if grep -q "Manually-specified variables were not used" "$WORK/$name.configure.log"; then
 		echo "ERROR: $name: CMake ignored flags this script passes:"
-		sed -n '/Manually-specified variables were not used/,/^$/p' "$WORK/$name.configure.log"
+		grep -A6 "Manually-specified variables were not used" "$WORK/$name.configure.log"
 		exit 1
 	fi
 }
@@ -134,7 +134,10 @@ tar xzf "$tarball" -C "$WORK"
 OCV_SRC="$WORK/opencv-$OPENCV_VERSION"
 # WITH_ADE=OFF is required: with gapi outside BUILD_LIST the static install still
 # exports an ade target whose libade.a is never built, and find_package fails.
+# The C++ compiler is passed here only: mbedTLS is a C project, and CMake reports
+# a C++ compiler it never used as an ignored flag, which cmake_configure rejects.
 cmake_configure opencv -S "$OCV_SRC" -B "$WORK/build-ocv" "${CMAKE_COMMON[@]}" \
+	-DCMAKE_CXX_COMPILER=/usr/bin/clang++ \
 	-DCMAKE_INSTALL_PREFIX="$STAGE/opencv" -DBUILD_SHARED_LIBS=OFF \
 	-DBUILD_LIST=core,imgproc,imgcodecs,videoio,highgui,calib3d,dnn \
 	-DBUILD_ZLIB=ON -DBUILD_PNG=ON -DBUILD_JPEG=ON -DBUILD_TIFF=ON -DBUILD_WEBP=ON \

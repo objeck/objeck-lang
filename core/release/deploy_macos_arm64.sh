@@ -37,6 +37,20 @@ fi
 OBJECK_DEPS="$(cd "$OBJECK_DEPS" && pwd)"
 export OBJECK_DEPS
 
+# Every static archive the builds link must target the package's floor too. An
+# archive built for a later macOS links with only a warning and the binary still
+# reports 13.3, so the check on the finished tree below cannot see it:
+# build_quic_deps.sh run by hand without MACOSX_DEPLOYMENT_TARGET gave every
+# member minos 26.0.
+ARCHIVE_BAD=$(find "$OBJECK_DEPS/lib" "$OBJECK_DEPS/macos-bundle" -name "*.a" | while IFS= read -r a; do
+	otool -l "$a" | awk -v a="$a" '$1 == "cmd" { b = ($2 == "LC_BUILD_VERSION") } b && $1 == "minos" { split($2, x, "."); if (x[1] + 0 > 13 || (x[1] + 0 == 13 && x[2] + 0 > 3)) { print "       " a ": a member has minos " $2; exit } }'
+done)
+if [ -n "$ARCHIVE_BAD" ]; then
+	echo "ERROR: static archives built for a later macOS than 13.3; rebuild them with MACOSX_DEPLOYMENT_TARGET=13.3:"
+	echo "$ARCHIVE_BAD"
+	exit 1
+fi
+
 # The package runs on macOS 13.3 and later (the app's LSMinimumSystemVersion).
 # The Xcode projects set their own target; this covers what builds outside them:
 # obu's makefile and the CMake-built OpenCV and ONNX bindings.
