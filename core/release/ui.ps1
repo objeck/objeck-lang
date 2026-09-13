@@ -31,15 +31,19 @@ $deploy = if ($env:UI_DEPLOY_SCRIPT) { $env:UI_DEPLOY_SCRIPT } else { Join-Path 
 $live = -not [Console]::IsOutputRedirected
 
 function Glyph([int] $CodePoint) { [string][char]$CodePoint }
-$FILL = Glyph 0x2588
-$EMPTY = Glyph 0x2591
-if ($env:WT_SESSION) {
-  # Windows Terminal's fonts carry these; conhost's Consolas does not.
+if ($env:WT_SESSION -or $env:TERM_PROGRAM -eq 'vscode') {
+  # Windows Terminal's and VS Code's fonts carry these; conhost's Consolas does not.
   $OK = Glyph 0x2713; $BAD = Glyph 0x2717; $ELL = Glyph 0x2026
   $SPIN = @(0x280B, 0x2819, 0x2839, 0x2838, 0x283C, 0x2834, 0x2826, 0x2827, 0x2807, 0x280F) | ForEach-Object { Glyph $_ }
+  # The bar is one solid line for every cell, coloured by state. A full block
+  # plus a light shade (U+2588/U+2591) does not survive terminal fonts: VS Code
+  # draws the shade as a dither pattern, which read as solid in blue (6% looked
+  # full) and as nothing at all in gray.
+  $FILL = Glyph 0x2501; $EMPTY = Glyph 0x2501
 } else {
   $OK = Glyph 0x221A; $BAD = 'x'; $ELL = '...'
   $SPIN = @('|', '/', '-', '\')
+  $FILL = '#'; $EMPTY = '-'
 }
 
 $ART = @(
@@ -114,13 +118,15 @@ function Draw-Live {
   $done = [Math]::Max(0, $S.Step - 1)
   $cells = 20
   $f = [Math]::Min($cells, [int][Math]::Floor($done * $cells / $total))
-  $bar = ($FILL * $f) + ($EMPTY * ($cells - $f))
-  $pct = '{0,3}%' -f [int][Math]::Floor($done * 100 / $total)
+  # No percentage. The only progress this script can see is a stage boundary, so
+  # a number sat still through a long stage (the solution rebuild takes minutes)
+  # and then jumped. The bar counts finished stages, the counter names the
+  # running one, and the stage clock is what shows the build is alive.
   $n = if ($S.Total -gt 0) { '{0,2}/{1}' -f $S.Step, $S.Total } else { '' }
   $clock = '{0}:{1:00}' -f [int][Math]::Floor($t.TotalMinutes), $t.Seconds
 
-  # "  F BAR PCT  N  LABEL  CLOCK  ACTIVITY"
-  $fixed = 2 + 1 + 1 + $cells + 1 + $pct.Length + 2 + $n.Length + 2 + 2 + $clock.Length
+  # "  F BAR  N  LABEL  CLOCK  ACTIVITY"
+  $fixed = 2 + 1 + 1 + $cells + 2 + $n.Length + 2 + 2 + $clock.Length
   $label = $S.Label
   if ($label.Length -gt ($w - $fixed)) { $label = $label.Substring(0, [Math]::Max(0, $w - $fixed)) }
   $used = $fixed + $label.Length
@@ -133,7 +139,7 @@ function Draw-Live {
   }
 
   [Console]::Write("`r")
-  W '  '; W $frame 'Cyan'; W ' '; W $bar 'Blue'; W " $pct  "; W $n 'DarkGray'; W '  '
+  W '  '; W $frame 'Cyan'; W ' '; W ($FILL * $f) 'Blue'; W ($EMPTY * ($cells - $f)) 'DarkGray'; W '  '; W $n 'Gray'; W '  '
   W $label 'White'; W "  $clock" 'DarkGray'; W $act 'DarkGray'
   $len = $used + $act.Length
   if ($len -lt $w) { W (' ' * ($w - $len)) }
@@ -178,7 +184,15 @@ function Handle-Line([string] $Line) {
   }
 
   Remember $text
-  $S.Activity = $text -replace '\s+', ' '
+  # The live line says what is building. MSVC prefixes each line with its
+  # project number ("4>") and interleaves chatter that says nothing about
+  # progress; the log keeps all of it, and the error scan below reads $text.
+  $act = ($text -replace '^\d+>\s*', '') -replace '\s+', ' '
+  if ($act -match '^-+ (?:Rebuild All|Build) started: Project: ([^,]+)') { $act = 'building ' + $Matches[1] }
+  elseif ($act -match '^\S+\.vcxproj -> (.+)$') { $act = 'built ' + [IO.Path]::GetFileName($Matches[1]) }
+  if ($act -notmatch '^(Previous IPDB not found|Generating code|Finished generating code|All \d+ functions were compiled|\d+ of \d+ functions|Creating library |-+$)') {
+    $S.Activity = $act
+  }
 
   if ($text -cmatch '^ERROR:') { Note $BAD 'Red' $text }
   elseif ($text -cmatch '^Warning:') { Note '!' 'Yellow' $text.Substring(8).Trim() }
@@ -295,7 +309,7 @@ if ($interrupted) {
   Stage-Line $BAD 'Red' $S.Label 'interrupted' 'Red'
   NL; W "  stopped by Ctrl+C after $elapsed; the build was terminated" 'Red'; NL
 } elseif ($code -eq 0 -and $null -ne $S.Ok) {
-  W '  '; W ($FILL * 20) 'Green'; W ' 100%'; NL; NL
+  W '  '; W ($FILL * 20) 'Green'; W "  $($S.Done)/$total" 'Gray'; NL; NL
   W '  '; W "$OK $($S.Ok)" 'Green'; W "  $($S.Done) stages in $elapsed" 'DarkGray'; NL
   W "  tool output: $log" 'DarkGray'; NL
 } else {
