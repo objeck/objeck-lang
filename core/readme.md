@@ -480,7 +480,7 @@ The libraries go to `~/objeck-deps/<os>-<arch>`, where the Makefiles and the Xco
 # OpenCV is optional for most builds
 # If needed:
 sudo apt-get install libopencv-dev  # Linux
-brew install opencv                  # macOS
+brew install opencv@4                # macOS (the plain opencv formula is OpenCV 5)
 ```
 
 ### Runtime Errors

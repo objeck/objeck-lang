@@ -31,7 +31,7 @@
 #            where Windows looks first. Nothing to install.
 #   Linux    the toolchain and its native libraries are linked against SYSTEM
 #            libraries the distribution does not ship: obr, obd and obi need
-#            mbedTLS, obr also nghttp2/ngtcp2/nghttp3 (HTTP/2 and HTTP/3), obd
+#            mbedTLS (HTTP/2 and HTTP/3 are linked into obr), obd
 #            readline, and lib/native needs SDL2 + libGL, OpenCV, unixODBC and
 #            LAME. On a clean machine obr does not start at all. So Linux, and
 #            only Linux, needs packages -- and nothing in the tree said which.

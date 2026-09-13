@@ -123,13 +123,13 @@
             Run this first on Linux, before any Objeck program: on a clean machine <code>obr</code>
             does not start without it. It checks which system libraries the distribution's
             <code>bin</code> tools and <code>lib/native</code> libraries cannot load: mbedTLS,
-            nghttp2/ngtcp2/nghttp3, readline, SDL2 and OpenGL, OpenCV, unixODBC and LAME. It then
+            readline, SDL2 and OpenGL, OpenCV, unixODBC and LAME. It then
             installs them through your package manager (apt, dnf/yum, pacman, zypper). Use
             <code>--check</code> to see what is missing without installing anything,
             <code>--sdl</code> to limit it to what SDL2/OpenGL programs need, or <code>--dev</code>
             if you are building the SDL native library from source. Releases are built on
             Ubuntu 24.04, run as shipped there, and need glibc 2.38 or newer, so Debian 12
-            (glibc 2.36) is too old. Other distributions package different mbedTLS, ngtcp2 and
+            (glibc 2.36) is too old. Other distributions package different mbedTLS and
             OpenCV versions; the script names what it cannot install, and building from source
             is the supported route there.
         </p>
