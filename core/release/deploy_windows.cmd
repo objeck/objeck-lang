@@ -10,6 +10,13 @@ IF "%VCINSTALLDIR%"=="" (
 	goto end
 )
 
+REM Presentation -- banner, stage progress, quiet tool output -- lives in
+REM ui.cmd. UI_TOTAL must equal the ui_step calls on the path taken: one per
+REM stage below, plus the packaging stage when %2 is deploy.
+set UI_TOTAL=15
+if [%2] == [deploy] set UI_TOTAL=16
+call "%~dp0ui.cmd" :ui_init %1 %2 %3
+
 REM mbedTLS and nghttp2 come from vcpkg, for both x64 and ARM64.
 REM
 REM They used to be binaries committed under lib\openssl\win\<arch>, and this
@@ -71,37 +78,40 @@ if [%1] == [x64] (
 	set TARGET=deploy-x64
 )
 
+call "%~dp0ui.cmd" :ui_step "clean tree + version stamp"
 REM debug installer
 REM goto installer
 
-rmdir /s /q %TARGET%
-mkdir %TARGET%
-mkdir %TARGET%\app
-mkdir %TARGET%\lib
-mkdir %TARGET%\lib\sdl
-mkdir %TARGET%\lib\sdl\fonts
-mkdir %TARGET%\lib\native
-mkdir %TARGET%\lib\native\misc
-copy ..\lib\*.obl %TARGET%\lib
-copy ..\lib\*.ini %TARGET%\lib
+rmdir /s /q %TARGET% %UI_REDIR%
+mkdir %TARGET% %UI_REDIR%
+mkdir %TARGET%\app %UI_REDIR%
+mkdir %TARGET%\lib %UI_REDIR%
+mkdir %TARGET%\lib\sdl %UI_REDIR%
+mkdir %TARGET%\lib\sdl\fonts %UI_REDIR%
+mkdir %TARGET%\lib\native %UI_REDIR%
+mkdir %TARGET%\lib\native\misc %UI_REDIR%
+copy ..\lib\*.obl %TARGET%\lib %UI_REDIR%
+copy ..\lib\*.ini %TARGET%\lib %UI_REDIR%
 
 REM update version information
-powershell.exe -executionpolicy remotesigned -file  update_version.ps1
+powershell.exe -executionpolicy remotesigned -file  update_version.ps1 %UI_REDIR%
 if errorlevel 1 (
 	echo.
 	echo ============================================================
 	echo  ERROR: update_version.ps1 failed - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 
+call "%~dp0ui.cmd" :ui_step "compiler, vm, debugger, repl"
 REM compiler, runtime and debugger
 if [%1] == [arm64] (
-	devenv objeck.sln /rebuild "Release|ARM64"
+	devenv objeck.sln /rebuild "Release|ARM64" %UI_REDIR%
 )
 
 if [%1] == [x64] (
-	devenv objeck.sln /rebuild "Release|x64"
+	devenv objeck.sln /rebuild "Release|x64" %UI_REDIR%
 )
 
 if errorlevel 1 (
@@ -109,6 +119,7 @@ if errorlevel 1 (
 	echo ============================================================
 	echo  ERROR: objeck.sln build failed - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 REM Verify build output exists (catches Ctrl+C kills where devenv returns errorlevel 0)
@@ -118,6 +129,7 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: objeck.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 )
@@ -127,17 +139,18 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: objeck.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 )
 
-mkdir %TARGET%\bin
+mkdir %TARGET%\bin %UI_REDIR%
 if [%1] == [arm64] (
-	copy ARM64\Release\*.exe %TARGET%\bin
+	copy ARM64\Release\*.exe %TARGET%\bin %UI_REDIR%
 	REM Cross-compilation: use x64 host mt.exe (ARM64 mt.exe can't run on x64 host)
 	REM WindowsSdkVerBinPath has trailing backslash, e.g., "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\"
-	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
-	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1 %UI_REDIR%
+	"%WindowsSdkVerBinPath%x64\mt.exe" -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1 %UI_REDIR%
 	REM VCToolsRedistDir is EMPTY on the GitHub ARM64 runner, so this matched
 	REM nothing and copied NOTHING -- silently. Both native libraries then failed
 	REM to load with error 126: OpenCV and ONNX are C++ and import msvcp140.dll,
@@ -148,17 +161,17 @@ if [%1] == [arm64] (
 	REM has no delayed expansion, so a flag set inside these parentheses could not
 	REM be read back here. A second copy over the first is harmless.
 	for /d %%d in ("%VCToolsRedistDir%\arm64\Microsoft.VC*.CRT") do (
-		copy "%%d\vcruntime140.dll" %TARGET%\bin
-		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-		copy "%%d\msvcp140*.dll" %TARGET%\bin
-		copy "%%d\concrt140.dll" %TARGET%\bin
+		copy "%%d\vcruntime140.dll" %TARGET%\bin %UI_REDIR%
+		copy "%%d\vcruntime140_1.dll" %TARGET%\bin %UI_REDIR%
+		copy "%%d\msvcp140*.dll" %TARGET%\bin %UI_REDIR%
+		copy "%%d\concrt140.dll" %TARGET%\bin %UI_REDIR%
 	)
 	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
 		for /d %%d in ("%%v\arm64\Microsoft.VC*.CRT") do (
-			copy "%%d\vcruntime140.dll" %TARGET%\bin
-			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-			copy "%%d\msvcp140*.dll" %TARGET%\bin
-			copy "%%d\concrt140.dll" %TARGET%\bin
+			copy "%%d\vcruntime140.dll" %TARGET%\bin %UI_REDIR%
+			copy "%%d\vcruntime140_1.dll" %TARGET%\bin %UI_REDIR%
+			copy "%%d\msvcp140*.dll" %TARGET%\bin %UI_REDIR%
+			copy "%%d\concrt140.dll" %TARGET%\bin %UI_REDIR%
 		)
 	)
 )
@@ -167,17 +180,18 @@ if errorlevel 1 (
 	echo ============================================================
 	echo  ERROR: ARM64 binary copy/manifest step failed - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 
 if [%1] == [x64] (
-	copy ..\compiler\release\win64\*.exe %TARGET%\bin
-	copy ..\repl\release\win64\*.exe %TARGET%\bin
-	copy ..\vm\release\win64\*.exe %TARGET%\bin
-	copy ..\debugger\release\win64\*.exe %TARGET%\bin
+	copy ..\compiler\release\win64\*.exe %TARGET%\bin %UI_REDIR%
+	copy ..\repl\release\win64\*.exe %TARGET%\bin %UI_REDIR%
+	copy ..\vm\release\win64\*.exe %TARGET%\bin %UI_REDIR%
+	copy ..\debugger\release\win64\*.exe %TARGET%\bin %UI_REDIR%
 	REM Embed manifests AFTER copying binaries
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1
-	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obr.exe;1 %UI_REDIR%
+	mt.exe -manifest ..\vm\vs\manifest.xml -outputresource:%TARGET%\bin\obi.exe;1 %UI_REDIR%
 	REM VCToolsRedistDir is EMPTY on the GitHub ARM64 runner, so this matched
 	REM nothing and copied NOTHING -- silently. Both native libraries then failed
 	REM to load with error 126: OpenCV and ONNX are C++ and import msvcp140.dll,
@@ -188,17 +202,17 @@ if [%1] == [x64] (
 	REM has no delayed expansion, so a flag set inside these parentheses could not
 	REM be read back here. A second copy over the first is harmless.
 	for /d %%d in ("%VCToolsRedistDir%\x64\Microsoft.VC*.CRT") do (
-		copy "%%d\vcruntime140.dll" %TARGET%\bin
-		copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-		copy "%%d\msvcp140*.dll" %TARGET%\bin
-		copy "%%d\concrt140.dll" %TARGET%\bin
+		copy "%%d\vcruntime140.dll" %TARGET%\bin %UI_REDIR%
+		copy "%%d\vcruntime140_1.dll" %TARGET%\bin %UI_REDIR%
+		copy "%%d\msvcp140*.dll" %TARGET%\bin %UI_REDIR%
+		copy "%%d\concrt140.dll" %TARGET%\bin %UI_REDIR%
 	)
 	for /d %%v in ("%VCINSTALLDIR%Redist\MSVC\*") do (
 		for /d %%d in ("%%v\x64\Microsoft.VC*.CRT") do (
-			copy "%%d\vcruntime140.dll" %TARGET%\bin
-			copy "%%d\vcruntime140_1.dll" %TARGET%\bin
-			copy "%%d\msvcp140*.dll" %TARGET%\bin
-			copy "%%d\concrt140.dll" %TARGET%\bin
+			copy "%%d\vcruntime140.dll" %TARGET%\bin %UI_REDIR%
+			copy "%%d\vcruntime140_1.dll" %TARGET%\bin %UI_REDIR%
+			copy "%%d\msvcp140*.dll" %TARGET%\bin %UI_REDIR%
+			copy "%%d\concrt140.dll" %TARGET%\bin %UI_REDIR%
 		)
 	)
 )
@@ -207,6 +221,7 @@ if errorlevel 1 (
 	echo ============================================================
 	echo  ERROR: x64 binary copy/manifest step failed - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 
@@ -218,15 +233,17 @@ if not exist %TARGET%\bin\msvcp140.dll (
 	echo ============================================================
 	echo  ERROR: VC++ runtime not deployed to bin - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 
-copy ..\lib\lame\win\%1\*.dll %TARGET%\bin
+copy ..\lib\lame\win\%1\*.dll %TARGET%\bin %UI_REDIR%
 if errorlevel 1 (
 	echo.
 	echo ============================================================
 	echo  ERROR: lame runtime DLL copy failed - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 
@@ -234,24 +251,27 @@ REM nghttp2 runtime DLL (required by obr for HTTP/2 support).
 REM Taken from vcpkg so the shipped DLL matches the import library linked
 REM against. The committed copy it replaces was byte-identical to vcpkg's,
 REM having come from there in the first place.
-copy "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\nghttp2.dll" %TARGET%\bin
+copy "%VCPKG_DIR%\installed\%VCPKG_TRIPLET%\bin\nghttp2.dll" %TARGET%\bin %UI_REDIR%
 if errorlevel 1 (
 	echo.
 	echo ============================================================
 	echo  ERROR: nghttp2 runtime DLL copy failed - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 
+call "%~dp0ui.cmd" :ui_step "launchers + updater"
 REM native launcher
 if [%1] == [arm64] (
 	cd ..\utils\launcher
-	devenv native_launcher.sln /rebuild "Release|ARM64"
+	devenv native_launcher.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: native_launcher.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "ARM64\Release\obn.exe" (
@@ -259,21 +279,23 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: native_launcher.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy ARM64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
-	copy ARM64\Release\obb.exe ..\..\release\%TARGET%\bin
-	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
+	copy ARM64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc %UI_REDIR%
+	copy ARM64\Release\obb.exe ..\..\release\%TARGET%\bin %UI_REDIR%
+	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc %UI_REDIR%
 	REM build updater. There is no .sln for this single project, so drive msbuild
 	REM directly -- it is on PATH in a VS Developer Command Prompt and in CI via
 	REM setup-msbuild. obu.vcxproj selects $(DefaultPlatformToolset), so it needs
 	REM no toolset override on either VS2022 or VS2026.
-	msbuild ..\updater\vs\obu.vcxproj /p:Configuration=Release /p:Platform=ARM64 /t:Rebuild /v:minimal /nologo
+	msbuild ..\updater\vs\obu.vcxproj /p:Configuration=Release /p:Platform=ARM64 /t:Rebuild /v:minimal /nologo %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: obu.vcxproj build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "..\updater\vs\ARM64\Release\obu.exe" (
@@ -281,20 +303,22 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: obu.vcxproj build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy ..\updater\vs\ARM64\Release\obu.exe ..\..\release\%TARGET%\bin
+	copy ..\updater\vs\ARM64\Release\obu.exe ..\..\release\%TARGET%\bin %UI_REDIR%
 	cd ..\..\release
 )
 
 if [%1] == [x64] (
 	cd ..\utils\launcher
-	devenv native_launcher.sln /rebuild "Release|x64"
+	devenv native_launcher.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: native_launcher.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "x64\Release\obn.exe" (
@@ -302,18 +326,20 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: native_launcher.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy x64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc
-	copy x64\Release\obb.exe ..\..\release\%TARGET%\bin
-	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc
+	copy x64\Release\obn.exe ..\..\release\%TARGET%\lib\native\misc %UI_REDIR%
+	copy x64\Release\obb.exe ..\..\release\%TARGET%\bin %UI_REDIR%
+	copy ..\..\vm\misc\config.prop ..\..\release\%TARGET%\lib\native\misc %UI_REDIR%
 	REM build updater -- see the ARM64 branch above for why this uses msbuild.
-	msbuild ..\updater\vs\obu.vcxproj /p:Configuration=Release /p:Platform=x64 /t:Rebuild /v:minimal /nologo
+	msbuild ..\updater\vs\obu.vcxproj /p:Configuration=Release /p:Platform=x64 /t:Rebuild /v:minimal /nologo %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: obu.vcxproj build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "..\updater\vs\x64\Release\obu.exe" (
@@ -321,62 +347,68 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: obu.vcxproj build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy ..\updater\vs\x64\Release\obu.exe ..\..\release\%TARGET%\bin
+	copy ..\updater\vs\x64\Release\obu.exe ..\..\release\%TARGET%\bin %UI_REDIR%
 	cd ..\..\release
 )
 
 REM libraries
-del /q %TARGET%\bin\a.*
-copy ..\vm\misc\*.pem %TARGET%\lib
+del /q %TARGET%\bin\a.* %UI_REDIR%
+copy ..\vm\misc\*.pem %TARGET%\lib %UI_REDIR%
 
+call "%~dp0ui.cmd" :ui_step "library: crypto"
 REM crypto support (optional - requires mbedtls)
 cd ..\lib\crypto
 
 if [%1] == [arm64] (
-	devenv crypto.sln /rebuild "Release|ARM64"
+	devenv crypto.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: crypto.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if exist ARM64\Release\*.dll (
-		copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
+		copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 	) else (
 		echo Warning: Crypto library DLL not found - skipping (mbedtls may not be available)
 	)
 )
 
 if [%1] == [x64] (
-	devenv crypto.sln /rebuild "Release|x64"
+	devenv crypto.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: crypto.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if exist Release\win64\*.dll (
-		copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
+		copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 	) else (
 		echo Warning: Crypto library DLL not found - skipping (mbedtls may not be available)
 	)
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "library: lame"
 REM lame support
 cd ..\lib\lame
 
 if [%1] == [arm64] (
-	devenv lame.sln /rebuild "Release|ARM64"
+	devenv lame.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: lame.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "ARM64\Release\libobjk_lame.dll" (
@@ -384,18 +416,20 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: lame.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
+	copy ARM64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 
 if [%1] == [x64] (
-	devenv lame.sln /rebuild "Release|x64"
+	devenv lame.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: lame.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "x64\Release\libobjk_lame.dll" (
@@ -403,21 +437,24 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: lame.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native
+	copy x64\Release\libobjk_lame.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "app launcher"
 REM app
 cd ..\utils\WindowsApp
 if [%1] == [arm64] (
-	devenv AppLauncher.sln /rebuild "Release|ARM64"
+	devenv AppLauncher.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: AppLauncher.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "ARM64\Release\ObLauncher.exe" (
@@ -425,18 +462,20 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: AppLauncher.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy ARM64\Release\*.exe ..\..\release\%TARGET%\app
+	copy ARM64\Release\*.exe ..\..\release\%TARGET%\app %UI_REDIR%
 )
 
 if [%1] == [x64] (
-	devenv AppLauncher.sln /rebuild "Release|x64"
+	devenv AppLauncher.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: AppLauncher.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "x64\Release\ObLauncher.exe" (
@@ -444,21 +483,24 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: AppLauncher.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy x64\Release\*.exe ..\..\release\%TARGET%\app
+	copy x64\Release\*.exe ..\..\release\%TARGET%\app %UI_REDIR%
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "library: diags"
 REM diags
 cd ..\lib\diags
 if [%1] == [arm64] (
-	devenv diag.sln /rebuild "Release|ARM64"
+	devenv diag.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: diag.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "vs\Release\ARM64\libobjk_diags.dll" (
@@ -466,18 +508,20 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: diag.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy vs\Release\ARM64\*.dll* ..\..\release\%TARGET%\lib\native
+	copy vs\Release\ARM64\*.dll* ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 
 if [%1] == [x64] (
-	devenv diag.sln /rebuild "Release|x64"
+	devenv diag.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: diag.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "vs\Release\x64\libobjk_diags.dll" (
@@ -485,22 +529,25 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: diag.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy vs\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
+	copy vs\Release\x64\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 cd ..\..\release
 
 
+call "%~dp0ui.cmd" :ui_step "library: odbc"
 REM odbc support
 cd ..\lib\odbc
 if [%1] == [arm64] (
-	devenv odbc.sln /rebuild "Release|ARM64"
+	devenv odbc.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: odbc.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "ARM64\Release\libobjk_odbc.dll" (
@@ -508,18 +555,20 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: odbc.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native
+	copy ARM64\Release\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 
 if [%1] == [x64] (
-	devenv odbc.sln /rebuild "Release|x64"
+	devenv odbc.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: odbc.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "Release\win64\libobjk_odbc.dll" (
@@ -527,21 +576,24 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: odbc.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native
+	copy Release\win64\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "library: matrix"
 REM matrix support
 cd ..\lib\matrix
 if [%1] == [arm64] (
-	devenv matrix.sln /rebuild "Release|ARM64"
+	devenv matrix.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: matrix.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "Release\ARM64\libobjk_ml.dll" (
@@ -549,18 +601,20 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: matrix.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy Release\ARM64\*.dll ..\..\release\%TARGET%\lib\native
+	copy Release\ARM64\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 
 if [%1] == [x64] (
-	devenv matrix.sln /rebuild "Release|x64"
+	devenv matrix.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: matrix.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "Release\x64\libobjk_ml.dll" (
@@ -568,21 +622,24 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: matrix.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy Release\x64\*.dll ..\..\release\%TARGET%\lib\native
+	copy Release\x64\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "library: opencv"
 REM opencv support
 cd ..\lib\opencv
 if [%1] == [arm64] (
-	devenv opencv.sln /rebuild "Release|ARM64"
+	devenv opencv.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: opencv.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "arm64\Release\libobjk_opencv.dll" (
@@ -590,12 +647,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: opencv.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
+	copy arm64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 
 	for %%f in (win\arm64\bin\opencv_*4.dll) do (
-		copy /y %%f ..\..\release\%TARGET%\bin
+		copy /y %%f ..\..\release\%TARGET%\bin %UI_REDIR%
 	)
 
 	REM The modular OpenCV build externalises its codecs. Copy every known
@@ -608,12 +666,13 @@ if [%1] == [arm64] (
 )
 
 if [%1] == [x64] (
-	devenv opencv.sln /rebuild "Release|x64"
+	devenv opencv.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: opencv.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "x64\Release\libobjk_opencv.dll" (
@@ -621,21 +680,23 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: opencv.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy x64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native
+	copy x64\Release\libobjk_opencv.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 
 	if exist win\x64\bin\opencv_world4120.dll (
-		copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin
+		copy /y win\x64\bin\opencv_world4120.dll ..\..\release\%TARGET%\bin %UI_REDIR%
 	) else (
 		echo Warning: win\x64\bin\opencv_world4120.dll not found - OpenCV runtime unavailable
 	)
 	if exist win\x64\bin\opencv_videoio_ffmpeg4120_64.dll (
-		copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin
+		copy /y win\x64\bin\opencv_videoio_ffmpeg4120_64.dll ..\..\release\%TARGET%\bin %UI_REDIR%
 	)
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "library: onnx"
 REM onnx support
 cd ..\lib\onnx
 
@@ -659,6 +720,7 @@ if "%NUGET_EXE%"=="" (
 	echo  ERROR: nuget.exe not found and download failed - aborting deploy
 	echo  Install NuGet CLI: choco install nuget.commandline
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 REM Retry the restore: nuget.org intermittently returns transient errors
@@ -668,13 +730,14 @@ set NUGET_MAX_ATTEMPTS=5
 set NUGET_ATTEMPT=0
 :nuget_restore_retry
 set /a NUGET_ATTEMPT+=1
-"%NUGET_EXE%" restore onnx.sln
+"%NUGET_EXE%" restore onnx.sln %UI_REDIR%
 if not errorlevel 1 goto nuget_restore_ok
 if %NUGET_ATTEMPT% geq %NUGET_MAX_ATTEMPTS% (
 	echo.
 	echo ============================================================
 	echo  ERROR: NuGet restore failed after %NUGET_MAX_ATTEMPTS% attempts - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 echo NuGet restore attempt %NUGET_ATTEMPT% of %NUGET_MAX_ATTEMPTS% failed ^(transient nuget.org error?^) - retrying in 15s...
@@ -683,12 +746,13 @@ goto nuget_restore_retry
 :nuget_restore_ok
 
 if [%1] == [arm64] (
-	devenv onnx.sln /rebuild "Release-QNN|ARM64"
+	devenv onnx.sln /rebuild "Release-QNN|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: onnx.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "ARM64\Release-QNN\libobjk_onnx.dll" (
@@ -696,12 +760,13 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: onnx.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
+	copy ARM64\Release-QNN\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 
 	if exist eq\qnn\win\onnx\arm64\bin (
-		copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin
+		copy /y eq\qnn\win\onnx\arm64\bin\*.dll ..\..\release\%TARGET%\bin %UI_REDIR%
 		REM onnxruntime.dll ships COMPRESSED and nothing ever unpacked it, so the
 		REM copy above moved the Qnn and provider DLLs and left the core runtime
 		REM behind. libobjk_onnx.dll imports it, so loading failed with error 126
@@ -712,14 +777,16 @@ if [%1] == [arm64] (
 				echo ============================================================
 				echo  ERROR: 7-Zip not found, cannot unpack onnxruntime.7z - aborting deploy
 				echo ============================================================
+				call "%~dp0ui.cmd" :ui_fail
 				exit /b 1
 			)
-			"%ZIP_EXE%" x -y -o..\..\release\%TARGET%\bin eq\qnn\win\onnx\arm64\bin\onnxruntime.7z
+			"%ZIP_EXE%" x -y -o..\..\release\%TARGET%\bin eq\qnn\win\onnx\arm64\bin\onnxruntime.7z %UI_REDIR%
 			if errorlevel 1 (
 				echo.
 				echo ============================================================
 				echo  ERROR: onnxruntime.7z extraction failed - aborting deploy
 				echo ============================================================
+				call "%~dp0ui.cmd" :ui_fail
 				exit /b 1
 			)
 		)
@@ -732,6 +799,7 @@ if [%1] == [arm64] (
 			echo ============================================================
 			echo  ERROR: onnxruntime.dll missing from bin - aborting deploy
 			echo ============================================================
+			call "%~dp0ui.cmd" :ui_fail
 			exit /b 1
 		)
 	) else (
@@ -739,17 +807,19 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: ONNX QNN runtime tree not found for arm64 - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 )
 
 if [%1] == [x64] (
-	devenv onnx.sln /rebuild "Release-DML|x64"
+	devenv onnx.sln /rebuild "Release-DML|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: onnx.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "x64\Release-DML\libobjk_onnx.dll" (
@@ -757,12 +827,13 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: onnx.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native
+	copy x64\Release-DML\libobjk_onnx.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
 
 	if exist packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native (
-		copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin
+		copy /y packages\Microsoft.ML.OnnxRuntime.DirectML.1.22.1\runtimes\win-x64\native\*.dll ..\..\release\%TARGET%\bin %UI_REDIR%
 	) else (
 		echo Warning: OnnxRuntime.DirectML nuget packages not found - ONNX runtime unavailable
 	)
@@ -778,7 +849,7 @@ if [%1] == [x64] (
 	) else (
 		if exist packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll (
 			echo No OS DirectML.dll - shipping the vendored redistributable
-			copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin
+			copy /y packages\Microsoft.AI.DirectML.1.15.4\bin\x64-win\DirectML.dll ..\..\release\%TARGET%\bin %UI_REDIR%
 		) else (
 			echo Warning: no OS DirectML.dll and no vendored package - GPU inference unavailable
 		)
@@ -786,16 +857,18 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "library: sdl"
 REM sdl support
 cd ..\lib\sdl
 if [%1] == [arm64] (
 	REM sdl
-	devenv sdl\sdl.sln /rebuild "Release|ARM64"
+	devenv sdl\sdl.sln /rebuild "Release|ARM64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: sdl.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "sdl\Release\arm64\libobjk_sdl.dll" (
@@ -803,10 +876,11 @@ if [%1] == [arm64] (
 		echo ============================================================
 		echo  ERROR: sdl.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native
-	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
+	copy sdl\Release\arm64\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
+	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts %UI_REDIR%
 	REM SDL2's own runtime DLLs go to bin, NOT next to libobjk_sdl.dll.
 	REM Windows resolves a dynamically-loaded DLL's imports against the
 	REM EXECUTABLE's directory; the directory holding the DLL itself is never
@@ -815,17 +889,18 @@ if [%1] == [arm64] (
 	REM Left in lib\sdl they resolve only when something has put lib\sdl on
 	REM PATH, and nothing shipped to a user does: the MSI puts only bin on
 	REM PATH. lib\sdl\fonts stays where it is -- Overlay loads it by path.
-	copy lib\arm64\*.dll ..\..\release\%TARGET%\bin
+	copy lib\arm64\*.dll ..\..\release\%TARGET%\bin %UI_REDIR%
 )
 
 if [%1] == [x64] (
 	REM sdl
-	devenv sdl\sdl.sln /rebuild "Release|x64"
+	devenv sdl\sdl.sln /rebuild "Release|x64" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: sdl.sln build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 	if not exist "sdl\Release\x64\libobjk_sdl.dll" (
@@ -833,96 +908,105 @@ if [%1] == [x64] (
 		echo ============================================================
 		echo  ERROR: sdl.sln build incomplete - was the build interrupted?
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
-	copy sdl\Release\x64\*.dll ..\..\release\%TARGET%\lib\native
-	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts
+	copy sdl\Release\x64\*.dll ..\..\release\%TARGET%\lib\native %UI_REDIR%
+	copy lib\fonts\*.ttf ..\..\release\%TARGET%\lib\sdl\fonts %UI_REDIR%
 	REM bin, not lib\sdl -- see the note on the arm64 copy above.
-	copy lib\x64\*.dll ..\..\release\%TARGET%\bin
+	copy lib\x64\*.dll ..\..\release\%TARGET%\bin %UI_REDIR%
 )
 cd ..\..\release
 
+call "%~dp0ui.cmd" :ui_step "examples"
 REM copy examples
-mkdir %TARGET%\examples\
+mkdir %TARGET%\examples\ %UI_REDIR%
 
-mkdir %TARGET%\examples\media\
-del  /s /q ..\..\programs\*.obe
-xcopy /e ..\..\programs\deploy\*.obs %TARGET%\examples\
-copy ..\..\programs\deploy\README.md %TARGET%\examples\
+mkdir %TARGET%\examples\media\ %UI_REDIR%
+del  /s /q ..\..\programs\*.obe %UI_REDIR%
+xcopy /e ..\..\programs\deploy\*.obs %TARGET%\examples\ %UI_REDIR%
+copy ..\..\programs\deploy\README.md %TARGET%\examples\ %UI_REDIR%
 REM The OpenGL examples live in programs\examples rather than programs\deploy,
 REM so no distribution ever carried them. They find the bundled font relative to
 REM either bin or here, so they run from where they land.
-mkdir %TARGET%\examples\opengl
-copy ..\..\programs\examples\gl_*.obs %TARGET%\examples\opengl
-copy ..\..\programs\examples\cube_gl.obs %TARGET%\examples\opengl
-copy ..\..\programs\examples\gl_crystal.obj %TARGET%\examples\opengl
-xcopy /e ..\..\programs\deploy\media\*.png %TARGET%\examples\media\
-xcopy /e ..\..\programs\deploy\media\*.wav %TARGET%\examples\media\
-xcopy /e ..\..\programs\deploy\data\* %TARGET%\examples\data\
+mkdir %TARGET%\examples\opengl %UI_REDIR%
+copy ..\..\programs\examples\gl_*.obs %TARGET%\examples\opengl %UI_REDIR%
+copy ..\..\programs\examples\cube_gl.obs %TARGET%\examples\opengl %UI_REDIR%
+copy ..\..\programs\examples\gl_crystal.obj %TARGET%\examples\opengl %UI_REDIR%
+xcopy /e ..\..\programs\deploy\media\*.png %TARGET%\examples\media\ %UI_REDIR%
+xcopy /e ..\..\programs\deploy\media\*.wav %TARGET%\examples\media\ %UI_REDIR%
+xcopy /e ..\..\programs\deploy\data\* %TARGET%\examples\data\ %UI_REDIR%
 
 REM copy ONNX demo programs
-copy ..\..\programs\frameworks\opencv_onnx\demo_phi3*.obs %TARGET%\examples\
+copy ..\..\programs\frameworks\opencv_onnx\demo_phi3*.obs %TARGET%\examples\ %UI_REDIR%
 
 REM copy ONNX models (phi3 text and phi3v vision) if downloaded
 set MODELS_SRC=..\..\programs\frameworks\opencv_onnx\data\models
 if exist "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\model.onnx" (
-	mkdir %TARGET%\examples\data\models\phi3
-	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.onnx" %TARGET%\examples\data\models\phi3\
-	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.onnx.data" %TARGET%\examples\data\models\phi3\
-	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.json" %TARGET%\examples\data\models\phi3\
+	mkdir %TARGET%\examples\data\models\phi3 %UI_REDIR%
+	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.onnx" %TARGET%\examples\data\models\phi3\ %UI_REDIR%
+	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.onnx.data" %TARGET%\examples\data\models\phi3\ %UI_REDIR%
+	xcopy /y /q "%MODELS_SRC%\phi3\directml\directml-int4-awq-block-128\*.json" %TARGET%\examples\data\models\phi3\ %UI_REDIR%
 )
 if exist "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\model.onnx" (
-	mkdir %TARGET%\examples\data\models\phi3v
-	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.onnx" %TARGET%\examples\data\models\phi3v\
-	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.onnx.data" %TARGET%\examples\data\models\phi3v\
-	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.json" %TARGET%\examples\data\models\phi3v\
+	mkdir %TARGET%\examples\data\models\phi3v %UI_REDIR%
+	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.onnx" %TARGET%\examples\data\models\phi3v\ %UI_REDIR%
+	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.onnx.data" %TARGET%\examples\data\models\phi3v\ %UI_REDIR%
+	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.json" %TARGET%\examples\data\models\phi3v\ %UI_REDIR%
 )
 
+call "%~dp0ui.cmd" :ui_step "documentation"
 REM build and update docs
-mkdir %TARGET%\doc
-mkdir %TARGET%\doc\syntax
-xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax
+mkdir %TARGET%\doc %UI_REDIR%
+mkdir %TARGET%\doc\syntax %UI_REDIR%
+xcopy /e ..\..\docs\syntax\* %TARGET%\doc\syntax %UI_REDIR%
 
 REM update and process readme
-mkdir %TARGET%\style
-copy ..\..\docs\style\*.css %TARGET%\style
-copy ..\lib\code_doc\templates\resources\*.png %TARGET%\style
-copy ..\..\docs\readme.html %TARGET%
-copy ..\..\LICENSE %TARGET%
+mkdir %TARGET%\style %UI_REDIR%
+copy ..\..\docs\style\*.css %TARGET%\style %UI_REDIR%
+copy ..\lib\code_doc\templates\resources\*.png %TARGET%\style %UI_REDIR%
+copy ..\..\docs\readme.html %TARGET% %UI_REDIR%
+copy ..\..\LICENSE %TARGET% %UI_REDIR%
 
 REM copy docs (skip for ARM64 cross-compilation - can't run ARM64 binaries on x64 host)
 if [%1] == [x64] (
-	call "%~dp0code_doc64.cmd" %1 deploy
-	rmdir /s /q %1
+	call "%~dp0code_doc64.cmd" %1 deploy %UI_REDIR%
+	if errorlevel 1 call "%~dp0ui.cmd" :ui_warn "API docs step exited with an error - the deploy continues, as it always has"
+	rmdir /s /q %1 %UI_REDIR%
 ) else (
 	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
-	mkdir %TARGET%\doc\api
-	powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force"
+	mkdir %TARGET%\doc\api %UI_REDIR%
+	powershell -Command "Expand-Archive -Path '..\..\docs\api.zip' -DestinationPath '%TARGET%\doc' -Force" %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: API docs extraction failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 )
 
+call "%~dp0ui.cmd" :ui_step "verify native libraries"
 REM Verify the native-library closure before producing an artifact. x64 can use
 REM LoadLibrary directly. ARM64 is cross-compiled on an x64 runner, so the script
 REM uses dumpbin to walk imports and require every non-system dependency locally.
-powershell.exe -executionpolicy remotesigned -file verify_native_libs.ps1 -DeployDir %TARGET% -TargetArchitecture %1
+powershell.exe -executionpolicy remotesigned -file verify_native_libs.ps1 -DeployDir %TARGET% -TargetArchitecture %1 %UI_REDIR%
 if errorlevel 1 (
 	echo.
 	echo ============================================================
 	echo  ERROR: a native library in %TARGET% cannot load - aborting deploy
 	echo ============================================================
+	call "%~dp0ui.cmd" :ui_fail
 	exit /b 1
 )
 
 :installer
 
 REM finished
+if [%2] NEQ [deploy] call "%~dp0ui.cmd" :ui_ok "deploy complete"
 if [%2] NEQ [deploy] goto end
+	call "%~dp0ui.cmd" :ui_step "package: msi + zip"
 	if [%1] == [arm64] (
 		set INSTALL_TARGET=objeck-lang-arm64
 	)
@@ -931,28 +1015,28 @@ if [%2] NEQ [deploy] goto end
 		set INSTALL_TARGET=objeck-lang-x64
 	)
 
-	rmdir /q /s %TARGET%\examples\doc
+	rmdir /q /s %TARGET%\examples\doc %UI_REDIR%
 
 	REM Create directory structure for MSI build (files must be in release-x64 or release-arm64)
 	REM Use repo-relative path (..\..\Objeck-Build) to match MSI project expectations
 	if [%1] == [arm64] (
-		rmdir /q /s ..\..\Objeck-Build\release-arm64
-		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
-		xcopy /e %TARGET% ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%
-		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
-		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
-		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons
-		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc
+		rmdir /q /s ..\..\Objeck-Build\release-arm64 %UI_REDIR%
+		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET% %UI_REDIR%
+		xcopy /e %TARGET% ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET% %UI_REDIR%
+		mkdir ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons %UI_REDIR%
+		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons %UI_REDIR%
+		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc\icons %UI_REDIR%
+		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%\doc %UI_REDIR%
 	)
 
 	if [%1] == [x64] (
-		rmdir /q /s ..\..\Objeck-Build\release-x64
-		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
-		xcopy /e %TARGET% ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%
-		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
-		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
-		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons
-		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc
+		rmdir /q /s ..\..\Objeck-Build\release-x64 %UI_REDIR%
+		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET% %UI_REDIR%
+		xcopy /e %TARGET% ..\..\Objeck-Build\release-x64\%INSTALL_TARGET% %UI_REDIR%
+		mkdir ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons %UI_REDIR%
+		copy ..\..\docs\images\setup_icons\*.ico ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons %UI_REDIR%
+		copy ..\..\docs\images\setup_icons\*.jpg ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc\icons %UI_REDIR%
+		copy ..\..\docs\eula.rtf ..\..\Objeck-Build\release-x64\%INSTALL_TARGET%\doc %UI_REDIR%
 	)
 
 	REM Build MSI installer with WiX v5
@@ -975,12 +1059,13 @@ if [%2] NEQ [deploy] goto end
 		-d Platform=%WIX_ARCH% -d Version=0.0.0 ^
 		-d SourceDir=%WIX_SOURCEDIR% ^
 		-ext WixToolset.UI.wixext -ext WixToolset.Util.wixext ^
-		..\utils\setup\objeck.wxs
+		..\utils\setup\objeck.wxs %UI_REDIR%
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: WiX MSI build failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
 
@@ -994,16 +1079,18 @@ if [%2] NEQ [deploy] goto end
 
 	REM Create ZIP
 	if [%1] == [arm64] (
-		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip' -Force"
+		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-arm64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-arm64\objeck-windows-arm64_0.0.0.zip' -Force" %UI_REDIR%
 	)
 	if [%1] == [x64] (
-		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip' -Force"
+		powershell -Command "Compress-Archive -Path '..\..\Objeck-Build\release-x64\%INSTALL_TARGET%' -DestinationPath '..\..\Objeck-Build\release-x64\objeck-windows-x64_0.0.0.zip' -Force" %UI_REDIR%
 	)
 	if errorlevel 1 (
 		echo.
 		echo ============================================================
 		echo  ERROR: ZIP creation failed - aborting deploy
 		echo ============================================================
+		call "%~dp0ui.cmd" :ui_fail
 		exit /b 1
 	)
+call "%~dp0ui.cmd" :ui_ok "deploy complete, packaged"
 :end

@@ -5,6 +5,21 @@ if [ $# -eq 0 ]; then
 	exit 1
 fi
 
+# -v or --verbose after the target streams every build, as VERBOSE=1 does.
+for _a in "$@"; do
+	case "$_a" in -v|--verbose) VERBOSE=1 ;; esac
+done
+
+# Presentation -- banner, stage progress, quiet build output -- lives in
+# ui.sh. UI_TOTAL must equal the ui_step calls on the path taken: one per
+# stage below, plus the tarball stage when $2 is deploy. A build that fails
+# is reported by ui_fail and the deploy carries on, as it always has.
+. "$(dirname "$0")/ui.sh"
+if [ "$2" = "deploy" ]; then UI_TOTAL=19; else UI_TOTAL=18; fi
+_ver=$(grep VERSION_STRING ../shared/version.h 2>/dev/null | cut -d'"' -f2)
+ui_banner "linux-$1" "${_ver:-dev}"
+
+ui_step "directories"
 # setup directories
 rm -rf deploy
 mkdir deploy
@@ -16,6 +31,7 @@ mkdir deploy/lib/native
 mkdir deploy/lib/native/misc
 mkdir deploy/doc
 
+ui_step "compiler (obc)"
 # build compiler
 cd ../compiler
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
@@ -23,12 +39,13 @@ if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
 else
 	cp make/Makefile.amd64 Makefile
 fi
-make clean; make -j3 OBJECK_LIB_PATH=///".///"
+ui_q make clean; ui_q make -j3 OBJECK_LIB_PATH=///".///" || ui_fail
 cp obc ../release/deploy/bin
 cp ../lib/*.obl ../release/deploy/lib
 cp ../lib/*.ini ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
 
+ui_step "virtual machine (obr)"
 # build VM
 cd ../vm
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
@@ -36,9 +53,10 @@ if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
 else 
 	cp make/Makefile.amd64 Makefile
 fi
-make clean; make -j3
+ui_q make clean; ui_q make -j3 || ui_fail
 cp obr ../release/deploy/bin
 
+ui_step "debugger (obd)"
 # build debugger
 cd ../debugger
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
@@ -46,9 +64,10 @@ if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
 else
 	cp make/Makefile.amd64 Makefile
 fi
-make clean; make -j3
+ui_q make clean; ui_q make -j3 || ui_fail
 cp obd ../release/deploy/bin
 
+ui_step "repl (obi)"
 # build repl
 cd ../repl
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
@@ -56,30 +75,36 @@ if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
 else
 	cp make/Makefile.amd64 Makefile
 fi
-make clean; make -j3
+ui_q make clean; ui_q make -j3 || ui_fail
 cp obi ../release/deploy/bin
 
+ui_step "library: odbc"
 # build libraries
 cd ../lib/odbc
-./build_linux.sh odbc
+ui_q ./build_linux.sh odbc || ui_fail
 cp odbc.so ../../release/deploy/lib/native/libobjk_odbc.so
 
+ui_step "library: crypto"
 cd ../crypto
-./build_linux.sh crypto
+ui_q ./build_linux.sh crypto || ui_fail
 cp crypto.so ../../release/deploy/lib/native/libobjk_crypto.so
 
+ui_step "library: lame"
 cd ../lame
-./build_linux.sh lame
+ui_q ./build_linux.sh lame || ui_fail
 cp lame.so ../../release/deploy/lib/native/libobjk_lame.so
 
+ui_step "library: matrix (ml)"
 cd ../matrix
-./build_linux.sh matrix
+ui_q ./build_linux.sh matrix || ui_fail
 cp matrix.so ../../release/deploy/lib/native/libobjk_ml.so
 
+ui_step "library: opencv"
 cd ../opencv
-./build_linux.sh opencv
+ui_q ./build_linux.sh opencv || ui_fail
 cp opencv.so ../../release/deploy/lib/native/libobjk_opencv.so
 
+ui_step "library: onnx (cpu)"
 cd ../onnx/eq
 # The vendored libonnxruntime here is a CPU-ONLY build -- it reports only
 # CPUExecutionProvider despite living under eq/cuda/lib. Building with
@@ -87,7 +112,7 @@ cd ../onnx/eq
 # catch returned without setting the session handle it surfaced as a silently
 # null session rather than an error. Link a CUDA-enabled onnxruntime before
 # switching this back to cuda.
-./build.sh cpu
+ui_q ./build.sh cpu || ui_fail
 cp libobjk_onnx.so ../../../release/deploy/lib/native/libobjk_onnx.so
 
 # copy ONNX Runtime shared libraries
@@ -98,45 +123,50 @@ ln -sf libonnxruntime.so.1 libonnxruntime.so
 cd ../../../../lib/onnx/eq
 
 cp cuda/lib/x64/lib/libonnxruntime_providers_shared.so ../../../release/deploy/lib/native/libonnxruntime_providers_shared.so
+ui_step "library: sdl"
 cd ../../sdl
-./build_linux.sh sdl
+ui_q ./build_linux.sh sdl || ui_fail
 cp sdl.so ../../release/deploy/lib/native/libobjk_sdl.so
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
+ui_step "library: diags"
 cd ../diags
-./build_linux.sh diags
+ui_q ./build_linux.sh diags || ui_fail
 cp diags.so ../../release/deploy/lib/native/libobjk_diags.so
 
+ui_step "verify native libraries"
 # Every native library this script builds must be present (and, on Linux,
 # resolvable) before the tree is packaged. Without this a failed build was
 # dropped from the release with a green exit -- the obu incident, again.
 sh ../../release/verify_native_libs.sh ../../release/deploy/lib/native so crypto diags lame ml odbc onnx opencv sdl
 
+ui_step "launchers (obb, obn)"
 cd ../../utils/launcher
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
-	make -f make/Makefile.obb.arm64 clean; make -f make/Makefile.obb.arm64 -j3
+	ui_q make -f make/Makefile.obb.arm64 clean; ui_q make -f make/Makefile.obb.arm64 -j3 || ui_fail
 else
-	make -f make/Makefile.obb.amd64 clean; make -f make/Makefile.obb.amd64 -j3
+	ui_q make -f make/Makefile.obb.amd64 clean; ui_q make -f make/Makefile.obb.amd64 -j3 || ui_fail
 fi
 cp obb ../../release/deploy/bin
 
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
-	make -f make/Makefile.obn.arm64 clean; make -f make/Makefile.obn.arm64 -j3
+	ui_q make -f make/Makefile.obn.arm64 clean; ui_q make -f make/Makefile.obn.arm64 -j3 || ui_fail
 else
-	make -f make/Makefile.obn.amd64 clean; make -f make/Makefile.obn.amd64 -j3
+	ui_q make -f make/Makefile.obn.amd64 clean; ui_q make -f make/Makefile.obn.amd64 -j3 || ui_fail
 fi
 cp obn ../../release/deploy/lib/native/misc/
 
 cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
 
+ui_step "updater (obu)"
 # build updater
 # obu ships in bin/ like every other user-facing tool; without this the release
 # advertises 'obu check/update/rollback' and delivers no binary.
 cd ../updater
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
-	make -f make/Makefile.arm64 clean; make -f make/Makefile.arm64 -j3
+	ui_q make -f make/Makefile.arm64 clean; ui_q make -f make/Makefile.arm64 -j3 || ui_fail
 else
-	make -f make/Makefile.amd64 clean; make -f make/Makefile.amd64 -j3
+	ui_q make -f make/Makefile.amd64 clean; ui_q make -f make/Makefile.amd64 -j3 || ui_fail
 fi
 cp obu ../../release/deploy/bin
 # This script does not use 'set -e', so a failed make or cp would otherwise be
@@ -149,6 +179,7 @@ fi
 
 cd ../../release
 
+ui_step "documentation"
 # copy docs
 cd ../..
 cp -R docs/syntax core/release/deploy/doc/syntax
@@ -163,8 +194,9 @@ cp LICENSE core/release/deploy
 # and never cloned the repo.
 cp tools/install_deps.sh core/release/deploy
 chmod +x core/release/deploy/install_deps.sh
-unzip docs/api.zip -d core/release/deploy/doc
+unzip -q docs/api.zip -d core/release/deploy/doc
 
+ui_step "examples"
 # copy examples
 mkdir core/release/deploy/examples
 mkdir core/release/deploy/examples/media
@@ -189,6 +221,7 @@ cd core/release
 
 # deploy
 if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
+	ui_step "package tarball"
 	mkdir -p ~/Desktop
 	rm -rf ~/Desktop/objeck*
 	cp -rf deploy ~/Desktop/objeck-lang
@@ -204,3 +237,5 @@ if [ ! -z "$2" ] && [ "$2" = "deploy" ]; then
 		mv objeck.tar.gz objeck-linux-x64_0.0.0.tgz
 	fi
 fi
+
+ui_ok "deploy complete"
