@@ -37,12 +37,63 @@ class PersistenceHandler from HttpRequestHandler {
 class HttpPersistenceTest {
 	@port : static : Int;
 	@passed : static : Bool;
+	@serve_returned : static : Bool;
 
 	function : Port() ~ Int { return @port; }
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
 
 	function : Fail(message : String) ~ Nil {
 		"  FAIL: {$message}"->PrintLine();
 		@passed := false;
+	}
+
+	#~
+	# Starts the server on a random port and returns once a client can connect.
+	#
+	# Not a fixed port: on Windows SO_REUSEADDR lets a second server bind a port
+	# that still has a live listener, so a leftover listener from an earlier run
+	# could answer instead (see http_error_body and thread_accept_exit_test). Not a
+	# fixed sleep: it wastes time on a fast machine and loses the race on a slow
+	# runner. WebServer->Serve has no ready signal, so readiness is a real connect;
+	# Serve returning means Listen failed, and another port is tried.
+	~#
+	function : StartServer(host : String) ~ Bool {
+		server_thread : System.Concurrency.Thread;
+		probe : TCPSocket;
+		attempts : Int;
+		tries := 0;
+
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			@serve_returned := false;
+
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(PersistenceHandler->New()->GetClass(), HttpPersistenceTest->Port(), false);
+					HttpPersistenceTest->ServeReturned();
+				}
+			};
+			server_thread->Execute(Nil);
+
+			# A refused loopback connect takes about two seconds on Windows, but the
+			# server is normally listening before the first probe goes out.
+			attempts := 0;
+			while(<>@serve_returned & attempts < 20) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New(host, @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+
+			tries += 1;
+		};
+
+		return false;
 	}
 
 	function : ReadResponse(socket : TCPSocket) ~ Pair<String, Map<String, String>> {
@@ -118,18 +169,13 @@ class HttpPersistenceTest {
 
 	function : Main(args : String[]) ~ Nil {
 		@passed := true;
-		@port := 18807;
-
-		server_thread := System.Concurrency.Thread->New() {
-			New() { Parent(); }
-			method : public : Run(arg : System.Base) ~ Nil {
-				WebServer->Serve(PersistenceHandler->New()->GetClass(), HttpPersistenceTest->Port(), false);
-			}
-		};
-		server_thread->Execute(Nil);
-		System.Concurrency.Thread->Sleep(400);
-
 		host := "127.0.0.1";
+
+		if(StartServer(host) = false) {
+			Fail("test server never started listening");
+			Runtime->Exit(1);
+		};
+
 		socket := TCPSocket->New(host, @port);
 		if(socket->IsOpen() = false) {
 			Fail("could not connect to test server");

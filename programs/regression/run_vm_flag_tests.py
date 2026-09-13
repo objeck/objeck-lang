@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VM command-line flag tests for obr.
+r"""VM command-line flag tests for obr.
 
 Usage: python run_vm_flag_tests.py <bin_dir>
 
