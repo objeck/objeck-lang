@@ -1,3 +1,17 @@
+@REM Presentation lives in ui.cmd and ui.ps1. Run by hand, this script re-runs
+@REM itself under ui.ps1, which draws live progress while the build writes to a
+@REM log -- cmd cannot redraw anything while devenv is running. In CI, or with
+@REM -v, output streams as it always has. UI_TOTAL must equal the ui_step calls
+@REM on the path taken: one per stage below, plus packaging when %2 is deploy.
+@REM Every line added for the UI starts with @, so an echo-on log is unchanged.
+@set UI_TOTAL=15
+@if [%2] == [deploy] set UI_TOTAL=16
+@call "%~dp0ui.cmd" :ui_init %1 %2 %3
+@if not "%UI_RELAUNCH%"=="1" goto ui_ready
+@powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0ui.ps1" %*
+@exit /b %errorlevel%
+:ui_ready
+
 REM clean up
 
 if not [%1]==[x64] if not [%1]==[arm64] (
@@ -71,6 +85,7 @@ if [%1] == [x64] (
 	set TARGET=deploy-x64
 )
 
+@call "%~dp0ui.cmd" :ui_step "clean tree + version stamp"
 REM debug installer
 REM goto installer
 
@@ -95,6 +110,7 @@ if errorlevel 1 (
 	exit /b 1
 )
 
+@call "%~dp0ui.cmd" :ui_step "compiler, vm, debugger, repl"
 REM compiler, runtime and debugger
 if [%1] == [arm64] (
 	devenv objeck.sln /rebuild "Release|ARM64"
@@ -243,6 +259,7 @@ if errorlevel 1 (
 	exit /b 1
 )
 
+@call "%~dp0ui.cmd" :ui_step "launchers + updater"
 REM native launcher
 if [%1] == [arm64] (
 	cd ..\utils\launcher
@@ -331,6 +348,7 @@ REM libraries
 del /q %TARGET%\bin\a.*
 copy ..\vm\misc\*.pem %TARGET%\lib
 
+@call "%~dp0ui.cmd" :ui_step "library: crypto"
 REM crypto support (optional - requires mbedtls)
 cd ..\lib\crypto
 
@@ -367,6 +385,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "library: lame"
 REM lame support
 cd ..\lib\lame
 
@@ -409,6 +428,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "app launcher"
 REM app
 cd ..\utils\WindowsApp
 if [%1] == [arm64] (
@@ -450,6 +470,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "library: diags"
 REM diags
 cd ..\lib\diags
 if [%1] == [arm64] (
@@ -492,6 +513,7 @@ if [%1] == [x64] (
 cd ..\..\release
 
 
+@call "%~dp0ui.cmd" :ui_step "library: odbc"
 REM odbc support
 cd ..\lib\odbc
 if [%1] == [arm64] (
@@ -533,6 +555,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "library: matrix"
 REM matrix support
 cd ..\lib\matrix
 if [%1] == [arm64] (
@@ -574,6 +597,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "library: opencv"
 REM opencv support
 cd ..\lib\opencv
 if [%1] == [arm64] (
@@ -636,6 +660,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "library: onnx"
 REM onnx support
 cd ..\lib\onnx
 
@@ -786,6 +811,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "library: sdl"
 REM sdl support
 cd ..\lib\sdl
 if [%1] == [arm64] (
@@ -842,6 +868,7 @@ if [%1] == [x64] (
 )
 cd ..\..\release
 
+@call "%~dp0ui.cmd" :ui_step "examples"
 REM copy examples
 mkdir %TARGET%\examples\
 
@@ -891,6 +918,7 @@ if exist "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\model.onnx" (
 	xcopy /y /q "%MODELS_SRC%\phi3v\directml-int4-rtn-block-32\*.json" %TARGET%\examples\data\models\phi3v\
 )
 
+@call "%~dp0ui.cmd" :ui_step "documentation"
 REM build and update docs
 mkdir %TARGET%\doc
 mkdir %TARGET%\doc\syntax
@@ -906,6 +934,7 @@ copy ..\..\LICENSE %TARGET%
 REM copy docs (skip for ARM64 cross-compilation - can't run ARM64 binaries on x64 host)
 if [%1] == [x64] (
 	call "%~dp0code_doc64.cmd" %1 deploy
+	@if errorlevel 1 call "%~dp0ui.cmd" :ui_warn "API docs step exited with an error - the deploy continues, as it always has"
 	rmdir /s /q %1
 ) else (
 	echo Skipping code_doc for ARM64 cross-compilation - using pre-built API docs
@@ -920,6 +949,7 @@ if [%1] == [x64] (
 	)
 )
 
+@call "%~dp0ui.cmd" :ui_step "verify native libraries"
 REM Verify the native-library closure before producing an artifact. x64 can use
 REM LoadLibrary directly. ARM64 is cross-compiled on an x64 runner, so the script
 REM uses dumpbin to walk imports and require every non-system dependency locally.
@@ -935,7 +965,9 @@ if errorlevel 1 (
 :installer
 
 REM finished
+@if [%2] NEQ [deploy] call "%~dp0ui.cmd" :ui_ok "deploy complete"
 if [%2] NEQ [deploy] goto end
+	@call "%~dp0ui.cmd" :ui_step "package: msi + zip"
 	if [%1] == [arm64] (
 		set INSTALL_TARGET=objeck-lang-arm64
 	)
@@ -1019,4 +1051,5 @@ if [%2] NEQ [deploy] goto end
 		echo ============================================================
 		exit /b 1
 	)
+@call "%~dp0ui.cmd" :ui_ok "deploy complete, packaged"
 :end
