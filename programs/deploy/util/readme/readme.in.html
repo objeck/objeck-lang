@@ -149,6 +149,12 @@
             <code>./install_deps.sh</code>, which detects it and offers to clear it. The
             <code>.pkg</code> installer is not affected.
         </p>
+        <p>
+            The OpenCV and ONNX bindings link Homebrew's <code>opencv@4</code> and
+            <code>onnxruntime</code>; install them with <code>brew install opencv@4 onnxruntime</code>
+            if you use OpenCV or ONNX. Plain <code>opencv</code> is not enough, because that formula
+            is now OpenCV 5. <code>./install_deps.sh --check</code> warns when either is missing.
+        </p>
 
         <h3>Secure Web Server Support</h3>
         <p>

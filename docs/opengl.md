@@ -98,6 +98,13 @@ Run from an unpacked tarball or an installed copy it checks *that* tree, because
 it resolves the distribution it is sitting in before falling back to a repo
 checkout.
 
+On macOS it also checks the OpenCV and ONNX bindings. They link Homebrew's
+`opencv@4` and `onnxruntime` instead of shipping them. If either is missing it
+prints a warning with the missing paths and `brew install opencv@4 onnxruntime`,
+but still exits 0, because nothing else needs them. Plain `brew install opencv`
+does not help: that formula is now OpenCV 5, and the bindings need the `.414`
+libraries from `opencv@4`.
+
 ## Running the examples
 
 ```bash

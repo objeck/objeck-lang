@@ -549,6 +549,14 @@
     from the distribution root, which reports whether the binaries are notarized rather than
     guessing.
    </p>
+   <p>
+    The OpenCV and ONNX bindings are the exception to "nothing to install" on macOS: they link
+    Homebrew's <code>opencv@4</code> and <code>onnxruntime</code>. Without them, OpenCV and ONNX
+    programs fail with "Library not loaded"; everything else works. Install both with
+    <pre class="cmd">brew install opencv@4 onnxruntime</pre>
+    Plain <code>opencv</code> is not enough, because that formula is now OpenCV 5.
+    <code>./install_deps.sh --check</code> warns when either is missing.
+   </p>
    <h3>
     Secure Web Server Support
    </h3>

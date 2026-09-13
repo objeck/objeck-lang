@@ -388,6 +388,10 @@
       On macOS, install them with Homebrew:
      </p>
      <pre class="cmd">&gt; brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls</pre>
+     <p>
+      The macOS OpenCV and ONNX bindings also link Homebrew's <code>opencv@4</code> and <code>onnxruntime</code>. Plain <code>opencv</code> is not enough, because that formula is now OpenCV 5. <code>./install_deps.sh --check</code> warns when either is missing:
+     </p>
+     <pre class="cmd">&gt; brew install opencv@4 onnxruntime</pre>
      <h3 id="building_from_source">
       Building from Source
      </h3>
