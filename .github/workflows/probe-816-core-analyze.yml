@@ -1,0 +1,58 @@
+name: probe-816-core-analyze
+
+# Issue #816: analyze the core that probe-816-core captured (run 34790817733) with
+# gdb's Python API: read the nursery bounds from the collector's statics, walk the
+# Map's tree from Map:Find's frame, and report any node whose left/right is a small
+# integer and where each node lives. No reproduction; the exact core, the exact
+# binary (master's linux-arm64 build, run 34789417040). Throwaway branch.
+
+on:
+  push:
+    branches: [probe/816-core-analyze]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download the core
+        uses: actions/download-artifact@v4
+        with:
+          name: probe-816-core
+          run-id: 34790817733
+          github-token: ${{ github.token }}
+          path: probe
+
+      - name: Download master's linux-arm64 deploy tree (the binary that dumped it)
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-linux-arm64
+          run-id: 34789417040
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: gdb
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gdb libmbedtls-dev
+          chmod +x tree/bin/*
+          ls -la probe probe/cores
+
+      - name: Analyze
+        run: |
+          core=$(ls probe/cores/core.* | head -1)
+          gdb -batch -ex "set pagination off" -x core816.py tree/bin/obr "$core" 2>&1 | tee analysis.txt
+
+      - name: Keep the analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-816-core-analysis
+          path: analysis.txt
+          retention-days: 7
