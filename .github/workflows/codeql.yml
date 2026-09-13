@@ -87,12 +87,17 @@ jobs:
         # Skip apt-get upgrade — it pulls unrelated packages (e.g. the firefox
         # snap stub) that occasionally fail to install on the runner image and
         # break this job for reasons unrelated to our build.
+        #
+        # libopencv-dev and libmp3lame-dev: without them the opencv, onnx and
+        # lame native libraries never built here -- so CodeQL never saw that
+        # C++ -- and deploy_posix.sh now fails when a required library is missing.
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
           build-essential git libmbedtls-dev unixodbc-dev \
           libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
           libreadline-dev unzip libeigen3-dev libnghttp2-dev \
-          libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
+          libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev \
+          libopencv-dev libmp3lame-dev pkg-config
         cd core/release && ./deploy_posix.sh x64
 
     - name: Perform CodeQL Analysis

@@ -189,10 +189,10 @@ ui_warn() {
 
 # ui_fail -- used as "cmd || ui_fail". $? on entry is cmd's exit status.
 #
-# Reports and CONTINUES, because the script it wraps always continued. That is
-# load-bearing: on green CI the linux-arm64 onnx build fails (ld: cannot find
-# -lonnxruntime) and the leg still passes, so stopping here would turn a
-# tolerated failure into a red build. ui_ok names every failed stage instead.
+# Reports and CONTINUES, because the script it wraps never stopped on a failed
+# build: the native-library check after the builds decides whether the tree is
+# shippable, and exits 1 if it is not. Stopping here would change that
+# contract, not just its presentation. ui_ok names every failed stage instead.
 ui_fail() {
 	_rc=$?
 	UI_FAILED=$((UI_FAILED + 1))

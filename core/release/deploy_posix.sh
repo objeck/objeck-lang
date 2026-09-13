@@ -112,17 +112,32 @@ cd ../onnx/eq
 # catch returned without setting the session handle it surfaced as a silently
 # null session rather than an error. Link a CUDA-enabled onnxruntime before
 # switching this back to cuda.
-./build.sh cpu || ui_fail
-cp libobjk_onnx.so ../../../release/deploy/lib/native/libobjk_onnx.so
+#
+# Only an x86-64 runtime is vendored (cuda/lib/x64). Build and ship ONNX only
+# for an architecture that has one: on arm64 the link fails, and the copies
+# below put a 16 MB x86-64 libonnxruntime into the aarch64 tree -- which is what
+# the v2026.9.1 linux-arm64 tarball carries, with no libobjk_onnx beside it.
+# verify_native_libs.sh declares onnx optional on arm64 for as long as that holds.
+if [ "$1" = "arm64" ]; then
+	ORT_ARCH=arm64
+else
+	ORT_ARCH=x64
+fi
+if [ -d cuda/lib/$ORT_ARCH/lib ]; then
+	./build.sh cpu || ui_fail
+	cp libobjk_onnx.so ../../../release/deploy/lib/native/libobjk_onnx.so
 
-# copy ONNX Runtime shared libraries
-cp cuda/lib/x64/lib/libonnxruntime.so.1.19.0 ../../../release/deploy/lib/native/libonnxruntime.so.1.19.0
-cd ../../../release/deploy/lib/native
-ln -sf libonnxruntime.so.1.19.0 libonnxruntime.so.1
-ln -sf libonnxruntime.so.1 libonnxruntime.so
-cd ../../../../lib/onnx/eq
+	# copy ONNX Runtime shared libraries
+	cp cuda/lib/$ORT_ARCH/lib/libonnxruntime.so.1.19.0 ../../../release/deploy/lib/native/libonnxruntime.so.1.19.0
+	cd ../../../release/deploy/lib/native
+	ln -sf libonnxruntime.so.1.19.0 libonnxruntime.so.1
+	ln -sf libonnxruntime.so.1 libonnxruntime.so
+	cd ../../../../lib/onnx/eq
 
-cp cuda/lib/x64/lib/libonnxruntime_providers_shared.so ../../../release/deploy/lib/native/libonnxruntime_providers_shared.so
+	cp cuda/lib/$ORT_ARCH/lib/libonnxruntime_providers_shared.so ../../../release/deploy/lib/native/libonnxruntime_providers_shared.so
+else
+	echo "NOTE: no vendored ONNX Runtime for $ORT_ARCH (cuda/lib/$ORT_ARCH/lib) - libobjk_onnx is not built"
+fi
 ui_step "library: sdl"
 cd ../../sdl
 ./build_linux.sh sdl || ui_fail
@@ -137,8 +152,17 @@ cp diags.so ../../release/deploy/lib/native/libobjk_diags.so
 ui_step "verify native libraries"
 # Every native library this script builds must be present (and, on Linux,
 # resolvable) before the tree is packaged. Without this a failed build was
-# dropped from the release with a green exit -- the obu incident, again.
-sh ../../release/verify_native_libs.sh ../../release/deploy/lib/native so crypto diags lame ml odbc onnx opencv sdl || ui_fail
+# dropped from the release with a green exit -- the obu incident, again. The
+# result has to be acted on: this script has no 'set -e', and before the
+# '|| exit 1' below v2026.9.1 printed "native-library verification failure(s)"
+# on both Linux legs and shipped anyway. verify_native_libs.sh records which
+# libraries each platform requires, and why onnx is optional on arm64.
+if [ "$1" = "arm64" ]; then
+	NATIVE_LIBS="crypto diags lame ml odbc opencv sdl --optional onnx"
+else
+	NATIVE_LIBS="crypto diags lame ml odbc onnx opencv sdl"
+fi
+sh ../../release/verify_native_libs.sh ../../release/deploy/lib/native so $NATIVE_LIBS || exit 1
 
 ui_step "launchers (obb, obn)"
 cd ../../utils/launcher

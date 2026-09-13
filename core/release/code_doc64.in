@@ -41,6 +41,18 @@ if "%PAGES%"=="0" (
 )
 echo code_doc produced %PAGES% pages
 
+REM search_index.json is hand-built by doc_html.obs, and index.html fetches it
+REM behind a .catch that swallows a parse error -- so an invalid file makes search
+REM silently return nothing while the page still looks fine. One doc comment
+REM carrying the literal text '\uXXXX' did exactly that and shipped for seven
+REM releases. Parse it before packaging.
+python -c "import json,io; json.load(io.open(r'..\html\search_index.json',encoding='utf-8'))" 2>nul
+if errorlevel 1 (
+	echo ERROR: search_index.json is not valid JSON -- refusing to package api.zip
+	exit /b 1
+)
+echo search_index.json parses
+
 	rmdir /s /q ..\doc\api
 	mkdir ..\doc\api
 	xcopy /e ..\html\* ..\doc\api
