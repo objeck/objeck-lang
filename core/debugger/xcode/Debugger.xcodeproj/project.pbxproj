@@ -334,6 +334,7 @@
 		ED4798002599037700E103DA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_ENTITLEMENTS = obd.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -348,11 +349,11 @@
 					_DEBUG,
 					_DEBUG_GC,
 				);
-				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
+				HEADER_SEARCH_PATHS = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				OTHER_LDFLAGS = (
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 					"-lreadline",
 				);
@@ -363,6 +364,7 @@
 		ED4798012599037700E103DA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_ENTITLEMENTS = obd.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
@@ -375,11 +377,11 @@
 					_OSX,
 					_DEBUGGER,
 				);
-				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
+				HEADER_SEARCH_PATHS = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				OTHER_LDFLAGS = (
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 					"-lreadline",
 				);

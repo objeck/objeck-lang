@@ -243,7 +243,9 @@ cd programs/regression
 
 **Dependencies:**
 ```bash
-brew install lame opencv onnxruntime
+brew install cmake
+MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh
+bash tools/deps/build_macos_deps.sh
 ```
 
 **Build:**

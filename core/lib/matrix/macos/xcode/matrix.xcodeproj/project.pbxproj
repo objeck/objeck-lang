@@ -161,7 +161,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -216,7 +216,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -226,6 +226,7 @@
 		ED4135A82AEC6CB500D84878 /* Debug configuration for PBXNativeTarget "xcode" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CLANG_ENABLE_MODULES = NO;
 				CODE_SIGN_STYLE = Automatic;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -234,7 +235,7 @@
 				EXECUTABLE_PREFIX = lib;
 				HEADER_SEARCH_PATHS = (
 					"../../lib/eigen-3.4.0",
-					../../../openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_LDFLAGS = "";
@@ -246,6 +247,7 @@
 		ED4135A92AEC6CB500D84878 /* Release configuration for PBXNativeTarget "xcode" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CLANG_ENABLE_MODULES = NO;
 				CODE_SIGN_STYLE = Automatic;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -254,7 +256,7 @@
 				EXECUTABLE_PREFIX = lib;
 				HEADER_SEARCH_PATHS = (
 					"../../lib/eigen-3.4.0",
-					../../../openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				LIBRARY_SEARCH_PATHS = "";
 				ONLY_ACTIVE_ARCH = NO;

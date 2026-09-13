@@ -234,6 +234,7 @@ productbuild \
 # ============================================
 
 OUTPUT_DIR="${OUTPUT_DIR:-$(pwd)}"
+mkdir -p "$OUTPUT_DIR"
 
 if [ -n "$SIGN_IDENTITY" ]; then
   echo "Signing package with: $SIGN_IDENTITY"

@@ -20,6 +20,47 @@ if [ "${CI}" = "true" ]; then
 	fi
 fi
 
+# Every third-party library in the package comes from one prefix: the static
+# QUIC stack from tools/deps/build_quic_deps.sh, and OpenCV, ONNX Runtime,
+# mbedTLS, libiodbc and LAME from tools/deps/build_macos_deps.sh under
+# macos-bundle/. Every build is passed it explicitly rather than left to its
+# project's $HOME default, so none can quietly use another copy.
+OBJECK_DEPS="${OBJECK_DEPS:-$HOME/objeck-deps/darwin-arm64}"
+if [ ! -f "$OBJECK_DEPS/lib/libngtcp2.a" ]; then
+	echo "ERROR: QUIC libraries not found in $OBJECK_DEPS; run tools/deps/build_quic_deps.sh"
+	exit 1
+fi
+if [ ! -f "$OBJECK_DEPS/macos-bundle/.macos-deps-stamp" ]; then
+	echo "ERROR: bundled libraries not found in $OBJECK_DEPS/macos-bundle; run tools/deps/build_macos_deps.sh"
+	exit 1
+fi
+OBJECK_DEPS="$(cd "$OBJECK_DEPS" && pwd)"
+export OBJECK_DEPS
+
+# Every static archive the builds link must target the package's floor too. An
+# archive built for a later macOS links with only a warning and the binary still
+# reports 13.3, so the check on the finished tree below cannot see it:
+# build_quic_deps.sh run by hand without MACOSX_DEPLOYMENT_TARGET gave every
+# member minos 26.0. A member that records no build version fails too.
+ARCHIVE_BAD=$(find "$OBJECK_DEPS/lib" "$OBJECK_DEPS/macos-bundle" -name "*.a" | while IFS= read -r a; do
+	otool -l "$a" | awk -v a="$a" '
+		function check() { if (!m) return; if (v == "") { print "       " a ": a member has no LC_BUILD_VERSION"; bad = 1 } else { split(v, x, "."); if (x[1] + 0 > 13 || (x[1] + 0 == 13 && x[2] + 0 > 3)) { print "       " a ": a member has minos " v; bad = 1 } } }
+		/\(.+\):$/ { check(); if (bad) exit; m = 1; v = ""; b = 0; next }
+		$1 == "cmd" { b = ($2 == "LC_BUILD_VERSION") }
+		b && $1 == "minos" && v == "" { v = $2 }
+		END { if (!bad) check() }'
+done)
+if [ -n "$ARCHIVE_BAD" ]; then
+	echo "ERROR: static archives built for a later macOS than 13.3; rebuild them with MACOSX_DEPLOYMENT_TARGET=13.3:"
+	echo "$ARCHIVE_BAD"
+	exit 1
+fi
+
+# The package runs on macOS 13.3 and later (the app's LSMinimumSystemVersion).
+# The Xcode projects set their own target; this covers what builds outside them:
+# obu's makefile and the CMake-built OpenCV and ONNX bindings.
+export MACOSX_DEPLOYMENT_TARGET=13.3
+
 # setup directories
 rm -rf deploy
 mkdir deploy
@@ -42,13 +83,6 @@ cp ../vm/misc/*.pem ../release/deploy/lib
 
 # build VM
 cd ../vm
-# The static QUIC libraries from tools/deps/build_quic_deps.sh, passed explicitly
-# rather than left to the project's $HOME default.
-OBJECK_DEPS="${OBJECK_DEPS:-$HOME/objeck-deps/darwin-arm64}"
-if [ ! -f "$OBJECK_DEPS/lib/libngtcp2.a" ]; then
-	echo "ERROR: QUIC libraries not found in $OBJECK_DEPS; run tools/deps/build_quic_deps.sh"
-	exit 1
-fi
 xcodebuild -project xcode/VM.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp xcode/build/Release/obr ../release/deploy/bin
 # obr must start on a Mac with nothing installed. v2026.6.3 through v2026.9.2
@@ -62,16 +96,16 @@ fi
 
 # build debugger
 cd ../debugger
-xcodebuild -project xcode/Debugger.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project xcode/Debugger.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp xcode/build/Release/obd ../release/deploy/bin
 
 # build module library
 cd ../module
-xcodebuild -project xcode/module.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project xcode/module.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 
 # build repl
 cd ../repl
-xcodebuild -project xcode/repl.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project xcode/repl.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp xcode/build/Release/obi ../release/deploy/bin
 
 # build native launcher
@@ -101,11 +135,11 @@ cd ../launcher
 
 # build libraries
 cd ../../lib/crypto
-xcodebuild -project macos/xcode/objk_crypto.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project macos/xcode/objk_crypto.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp macos/xcode/build/Release/libobjk_crypto.dylib ../../release/deploy/lib/native/libobjk_crypto.dylib
 
 cd ../sdl
-xcodebuild -project macos/xcode/sdl.xcodeproj build $SIGN_FLAGS
+xcodebuild -project macos/xcode/sdl.xcodeproj build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_sdl.dylib
 cp lib/fonts/*.ttf ../../release/deploy/lib/sdl/fonts
 
@@ -196,28 +230,43 @@ fi
 echo "SDL2 bundled into lib/sdl with @rpath install names, all deps resolve in-tree"
 
 cd ../odbc
-xcodebuild -project macos/xcode/ODBC.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project macos/xcode/ODBC.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp macos/xcode/build/Release/libobjk_odbc.dylib ../../release/deploy/lib/native/libobjk_odbc.dylib
 
 cd ../lame
-xcodebuild -project macos/lame.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project macos/lame.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp macos/build/Release/libobjk_lame.dylib ../../release/deploy/lib/native/libobjk_lame.dylib
+# LAME is LGPL, so it ships as its own library beside the binding instead of
+# being linked into it; the binding finds it through its @loader_path rpath.
+cp "$OBJECK_DEPS/macos-bundle/lame/lib/libmp3lame.0.dylib" ../../release/deploy/lib/native/
 
+# The OpenCV and ONNX bindings build with CMake against the static OpenCV and the
+# prebuilt ONNX Runtime in macos-bundle. Until v2026.9.3 they linked Homebrew's
+# opencv@4 and onnxruntime and did not load on a Mac without those formulas. The
+# build directory is outside the repository, so it cannot leave the tree dirty.
 cd ../opencv
-xcodebuild -project macos/objk_opencv.xcodeproj -target objk_opencv clean build $SIGN_FLAGS
-cp macos/build/Release/libobjk_opencv.dylib ../../release/deploy/lib/native/libobjk_opencv.dylib
+CV_BUILD=$(mktemp -d "${TMPDIR:-/tmp}/objeck-opencv.XXXXXX")
+if ! cmake -S macos -B "$CV_BUILD" -DOBJECK_DEPS="$OBJECK_DEPS" -DCMAKE_BUILD_TYPE=Release \
+	|| ! cmake --build "$CV_BUILD" --parallel; then
+	echo "ERROR: the OpenCV and ONNX bindings did not build (core/lib/opencv/macos/CMakeLists.txt)"
+	exit 1
+fi
+cp "$CV_BUILD/libobjk_opencv.dylib" ../../release/deploy/lib/native/libobjk_opencv.dylib
+cp "$CV_BUILD/libobjk_onnx.dylib" ../../release/deploy/lib/native/libobjk_onnx.dylib
+rm -rf "$CV_BUILD"
 
 cd ../matrix
-xcodebuild -project macos/xcode/matrix.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project macos/xcode/matrix.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp macos/xcode/build/Release/libxcode.dylib ../../release/deploy/lib/native/libobjk_ml.dylib
 
 cd ../diags
-xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build $SIGN_FLAGS
+xcodebuild -project macos/xcode/objk_diags.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp macos/xcode/build/Release/libobjk_diags.dylib ../../release/deploy/lib/native/libobjk_diags.dylib
 
+# libobjk_onnx was built with the OpenCV binding above. Its ONNX Runtime ships
+# beside it and loads through its @loader_path rpath.
 cd ../onnx/eq
-./build.sh coreml
-cp libobjk_onnx.dylib ../../../release/deploy/lib/native/libobjk_onnx.dylib
+cp "$OBJECK_DEPS/macos-bundle/onnxruntime/lib/libonnxruntime.1.dylib" ../../../release/deploy/lib/native/
 
 # Every native library this script builds must be present (and, on Linux,
 # resolvable) before the tree is packaged. Without this a failed build was
@@ -265,7 +314,7 @@ cd ..
 
 # build macOS app launcher (.app bundle)
 cd ../../utils/MacApp
-swiftc -O -o AppLauncher AppLauncher.swift -framework AppKit
+swiftc -O -target arm64-apple-macos13.3 -o AppLauncher AppLauncher.swift -framework AppKit
 
 APP_BUNDLE=../../release/deploy/app/Objeck.app
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
@@ -281,6 +330,12 @@ cp -R docs/syntax core/release/deploy/doc/syntax
 cp docs/readme.html core/release/deploy
 cp docs/style/readme.css core/release/deploy/doc
 cp LICENSE core/release/deploy
+# The licenses of the third-party libraries the package carries: OpenCV, mbedTLS
+# and libiodbc are linked in statically; ONNX Runtime and LAME ship as libraries.
+for lib in opencv onnxruntime mbedtls iodbc lame; do
+	mkdir -p "core/release/deploy/doc/licenses/$lib"
+	cp "$OBJECK_DEPS/macos-bundle/$lib/licenses/"* "core/release/deploy/doc/licenses/$lib/" || exit 1
+done
 
 # Ship the dependency installer INSIDE the distribution. Linux links
 # libobjk_sdl.so against the system SDL2 and libGL and ships neither, so the
@@ -316,11 +371,33 @@ sh core/release/verify_example_assets.sh core/release/deploy/examples || exit 1
 # absolute links and the bindings' install names; this one follows LC_RPATH and
 # @rpath links, the way v2026.9.2's obr reached a library only its build machine
 # had. It runs once the tree is assembled and before anything signs or archives
-# it, so it sees what ships. The OpenCV, ONNX and LAME bindings link Homebrew
-# until they are bundled, and are allowed by name until then, as in the install
-# tests in ci-build.yml and release-build.yml.
-ALLOW_EXTERNAL="libobjk_opencv.dylib libobjk_onnx.dylib libobjk_lame.dylib" \
-	bash tools/cicd/check_macos_tree_links.sh core/release/deploy || exit 1
+# it, so it sees what ships. Nothing is allowed an outside link: OpenCV, ONNX
+# Runtime, mbedTLS, libiodbc and LAME ship inside the package.
+bash tools/cicd/check_macos_tree_links.sh core/release/deploy || exit 1
+
+# The package says it runs on macOS 13.3, and a Mach-O file built for a later
+# macOS does not load on an earlier one. Hold every file in the tree to that.
+# The one exception is Microsoft's ONNX Runtime, built for macOS 14; the docs
+# say the ONNX binding needs macOS 14.
+MINOS_BAD=$(find core/release/deploy/bin core/release/deploy/lib core/release/deploy/app -type f | while IFS= read -r f; do
+	file "$f" | grep -q "Mach-O" || continue
+	minos=$(otool -l "$f" | awk '$1 == "cmd" { b = ($2 == "LC_BUILD_VERSION") } b && $1 == "minos" { print $2; exit }')
+	# The leading parens are required: inside $(...), macOS's /bin/sh (bash 3.2)
+	# reads a bare "pattern)" as the substitution's closing paren.
+	case "$(basename "$f")" in
+		(libonnxruntime.1.dylib) limit=14.0 ;;
+		(*) limit=13.3 ;;
+	esac
+	if [ -z "$minos" ] || ! awk -v a="$minos" -v b="$limit" 'BEGIN { split(a, x, "."); split(b, y, "."); exit !(x[1] + 0 < y[1] + 0 || (x[1] + 0 == y[1] + 0 && x[2] + 0 <= y[2] + 0)) }'; then
+		echo "       $f: minos ${minos:-(none)}, limit $limit"
+	fi
+done)
+if [ -n "$MINOS_BAD" ]; then
+	echo "ERROR: Mach-O files built for a later macOS than the package supports:"
+	echo "$MINOS_BAD"
+	exit 1
+fi
+echo "Every Mach-O file in the tree loads on macOS 13.3 (ONNX Runtime: 14.0)"
 
 cd core/release
 
