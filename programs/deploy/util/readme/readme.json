@@ -19,8 +19,9 @@
 				"Linux ARM64: ONNX is not available yet, because only an x86-64 ONNX Runtime is vendored; it is declared optional there. The tarball no longer carries that 16 MB x86-64 runtime, which v2026.9.1 shipped without the library that would use it",
 				"Release: the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed 'native-library verification failure(s)' on three platforms and published anyway. A missing or unloadable required library now fails the build, and a library a platform cannot build yet is declared optional and reported as a warning. CodeQL now builds and analyzes the OpenCV, ONNX and LAME bindings it had been skipping",
 				"Examples: gl_crystal.obj, the model gl_model.obs loads, had never been committed -- .gitignore's *.obj rule for MSVC object files also matched the Wavefront file -- so every deploy printed 'cannot stat' and no distribution carried it. It now ships in examples/opengl on every platform; the MSYS2 distributions gain the OpenGL examples, the examples README and the data files two examples read; and a deploy missing a file an example opens by name fails",
+				"OpenCV: Image->Normalize() sized its output array as rows * cols * 3 in 32-bit int, which wraps above about 716 megapixels -- a crash up to about 1.43 gigapixels and an out-of-bounds write on the VM heap beyond that. It is sized in size_t now (CodeQL #362)",
 				"API docs: the Windows docs build's search_index.json check never ran. It had been added only to code_doc64.cmd, which every Windows deploy regenerates from code_doc64.in; it now lives in the template, and CI checks the templates",
-				"Deploy scripts: a banner, live stage progress and quiet tool output, with the full log kept for a failed stage -- and a deploy with any failed stage now exits non-zero",
+				"Deploy scripts: a banner, live stage progress and quiet tool output, with the full log kept for a failed stage; -v streams everything instead",
 				"Documentation: the definitive v2026.9.1 benchmark run, with fasta measured for the first time, and what a tabular classification study needs from System.ML"
 			]
 		},

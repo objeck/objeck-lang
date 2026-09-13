@@ -72,7 +72,8 @@
      <li><strong>Linux ARM64 no longer ships an x86-64 ONNX Runtime</strong> &mdash; only an x86-64 runtime is vendored, so ONNX is declared optional on ARM64 and the 16&nbsp;MB x86-64 library is gone from the tarball</li>
      <li><strong>A deploy that cannot build a required native library now fails</strong> &mdash; the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed verification failures on three platforms and published anyway; CodeQL now also builds the OpenCV, ONNX and LAME bindings</li>
      <li><strong><code>gl_crystal.obj</code> ships</strong> &mdash; the model <code>gl_model.obs</code> loads had never been committed, because <code>.gitignore</code>'s <code>*.obj</code> rule for MSVC object files matched it too. Every deploy copies it now, the MSYS2 builds gain the OpenGL examples, and a deploy missing a file an example opens by name fails</li>
-     <li><strong>Deploy scripts show live progress</strong> &mdash; a banner, stage progress and quiet tool output with the full log kept, and a deploy with any failed stage exits non-zero</li>
+     <li><strong><code>Image-&gt;Normalize()</code> could write past its output array</strong> &mdash; the OpenCV binding sized it as <code>rows * cols * 3</code> in 32-bit <code>int</code>, which wraps above about 716 megapixels: a crash up to about 1.43 gigapixels, an out-of-bounds write on the VM heap beyond that. It is sized in <code>size_t</code> now (CodeQL #362)</li>
+     <li><strong>Deploy scripts show live progress</strong> &mdash; a banner, stage progress and quiet tool output with the full log kept, and <code>-v</code> streams everything instead</li>
      <li><strong>The Windows API-docs search-index check runs</strong> &mdash; it existed only in the generated <code>code_doc64.cmd</code>, which every deploy regenerates from its template; it is in the template now, and CI checks the templates</li>
     </ul>
 
