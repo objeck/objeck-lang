@@ -1105,7 +1105,13 @@ jobs:
 
           echo "✅ API documentation packaged: $HTML_COUNT HTML files, stamped $STAMP"
 
+      # Only a build of a release tag may push. This step checks out and pushes
+      # master whatever ref the run started from, so a workflow_dispatch dry run
+      # from a branch used to commit its api.zip straight to master; the job-level
+      # '-' check was the only thing that skipped it. The api-docs artifact below
+      # is still uploaded for dry runs.
       - name: Commit api.zip to repo
+        if: github.ref_type == 'tag'
         run: |
           cp docs/api.zip /tmp/api.zip
           git config user.name "github-actions[bot]"

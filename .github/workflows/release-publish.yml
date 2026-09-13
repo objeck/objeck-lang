@@ -53,9 +53,18 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
             echo "🤖 Automatic trigger from Release Build workflow"
 
+            # Publish only a build of a release TAG. For a tag push, head_branch is
+            # the tag name (v2026.9.2); for a workflow_dispatch it is the ref the run
+            # was dispatched from. This used to accept "master" too -- a leftover of
+            # the original `branches: [master]` filter, kept when tag builds were
+            # allowed in 3987cf4ed3 -- so dispatching Release Build from master as a
+            # dry run PUBLISHED a release with version "master", plus the
+            # Sourceforge, playground and docs jobs. Anchored, so a pre-release tag
+            # (v2026.9.2-rc1) does not publish either. To publish a build this
+            # skips, dispatch this workflow with its version and run_id inputs.
             BRANCH="${{ github.event.workflow_run.head_branch }}"
-            if [ "$BRANCH" != "master" ] && ! echo "$BRANCH" | grep -qE '^v[0-9]'; then
-              echo "❌ Release Build was on branch '$BRANCH' - skipping publish"
+            if ! echo "$BRANCH" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "❌ Release Build ran on '$BRANCH', not a vYYYY.M.P release tag - skipping publish"
               echo "should_publish=false" >> $GITHUB_OUTPUT
               exit 0
             fi
