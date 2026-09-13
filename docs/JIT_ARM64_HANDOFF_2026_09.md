@@ -81,8 +81,7 @@ GCC_PREPROCESSOR_DEFINITIONS='$(inherited) _DEBUG_JIT_JIT' SYMROOT=<dir> OBJROOT
 leaves the deploy tree alone; its listing omits emitters that print under `_DEBUG_JIT` only
 (`add_shifted_reg_reg`) and prints per call at run time, so trace a small program. A master VM
 for alternated timings comes from a `git worktree` of master built the same way. `zsh` treats a
-bare `====` as a command; separate output with `printf`. `deploy_macos_arm64.sh` fails to copy
-`programs/examples/gl_crystal.obj`, which is not in the tree, and carries on.
+bare `====` as a command; separate output with `printf`.
 
 ## 1. Where the tree is
 

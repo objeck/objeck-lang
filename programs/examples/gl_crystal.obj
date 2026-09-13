@@ -1,0 +1,64 @@
+# gl_crystal.obj -- the model gl_model.obs loads by default.
+#
+# A doubly terminated quartz crystal: a hexagonal prism standing on the Y axis
+# with a six-sided point at each end. Written by hand, so every line is legible.
+#
+#   v   14 positions: the top point, two rings of six, the bottom point
+#   f   18 faces: 6 triangles, 6 quads, 6 triangles (the quads are fanned
+#       into two triangles each by the loader, 24 triangles in all)
+#
+# No vn lines, on purpose. Plenty of real files carry no normals, and without
+# them Mesh->FromObj computes a flat normal per face from its winding -- which
+# is why each facet shades as one flat plane. No vt lines either, so the whole
+# crystal samples a single texel of the demo's texture.
+#
+# Winding is counter-clockwise seen from outside, so it survives GL_CULL_FACE.
+# Indices are 1-based.
+
+o crystal
+
+# top point
+v  0.00  1.90  0.00
+
+# upper ring, y = 0.9, counter-clockwise from +X seen from below
+v  0.60  0.90  0.00
+v  0.30  0.90  0.52
+v -0.30  0.90  0.52
+v -0.60  0.90  0.00
+v -0.30  0.90 -0.52
+v  0.30  0.90 -0.52
+
+# lower ring, y = -0.9, directly beneath the upper one
+v  0.60 -0.90  0.00
+v  0.30 -0.90  0.52
+v -0.30 -0.90  0.52
+v -0.60 -0.90  0.00
+v -0.30 -0.90 -0.52
+v  0.30 -0.90 -0.52
+
+# bottom point
+v  0.00 -1.90  0.00
+
+# top termination
+f 1 3 2
+f 1 4 3
+f 1 5 4
+f 1 6 5
+f 1 7 6
+f 1 2 7
+
+# prism sides
+f 2 3 9 8
+f 3 4 10 9
+f 4 5 11 10
+f 5 6 12 11
+f 6 7 13 12
+f 7 2 8 13
+
+# bottom termination
+f 14 8 9
+f 14 9 10
+f 14 10 11
+f 14 11 12
+f 14 12 13
+f 14 13 8

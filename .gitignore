@@ -8,6 +8,8 @@
 
 # MSVC compiled objects
 *.obj
+# ...but this one is a Wavefront OBJ model that gl_model.obs loads
+!programs/examples/gl_crystal.obj
 
 # Linker artifacts
 *.exp
