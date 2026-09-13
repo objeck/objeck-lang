@@ -859,6 +859,19 @@ copy ..\..\programs\examples\gl_crystal.obj %TARGET%\examples\opengl
 xcopy /e ..\..\programs\deploy\media\*.png %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\media\*.wav %TARGET%\examples\media\
 xcopy /e ..\..\programs\deploy\data\* %TARGET%\examples\data\
+REM Nothing checks copy or xcopy, so a missing file printed "The system cannot
+REM find the file specified." and the deploy carried on -- how gl_crystal.obj,
+REM which .gitignore's *.obj kept out of git, never shipped. These are the files
+REM an example opens by name; verify_example_assets.sh holds the same list.
+for %%f in (README.md data\gender.csv data\weather.json opengl\cube_gl.obs opengl\gl_crystal.obj opengl\gl_model.obs) do (
+	if not exist "%TARGET%\examples\%%f" (
+		echo.
+		echo ============================================================
+		echo  ERROR: missing example asset %TARGET%\examples\%%f - aborting deploy
+		echo ============================================================
+		exit /b 1
+	)
+)
 
 REM copy ONNX demo programs
 copy ..\..\programs\frameworks\opencv_onnx\demo_phi3*.obs %TARGET%\examples\
