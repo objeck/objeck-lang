@@ -125,6 +125,11 @@ log cmake -S "$WORK/mbedtls-$MBEDTLS_VERSION" -B "$WORK/build-mbedtls" "${CMAKE_
 	-DMBEDTLS_CONFIG_FILE="$CONFIG_H"
 log cmake --build "$WORK/build-mbedtls" -j"$JOBS"
 log cmake --install "$WORK/build-mbedtls"
+# Installed headers must describe the archives. The build used the in-tree
+# config (THREADING_C adds mutexes to context structs), but install copies
+# mbedTLS's DEFAULT mbedtls_config.h; code compiled against that would disagree
+# with the library about struct layouts.
+cp "$CONFIG_H" "$OUT/mbedtls/include/mbedtls/mbedtls_config.h"
 
 # ---- LAME -------------------------------------------------------------------------
 step "LAME $LAME_VERSION (shared, LGPL)"
