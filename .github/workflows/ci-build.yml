@@ -1210,6 +1210,15 @@ jobs:
       - name: Shipped examples are all indexed
         run: python3 tools/cicd/check_examples_index.py
 
+      # Same class of guard. Every Windows deploy starts by regenerating tracked
+      # files from their .in templates (update_version.ps1), so an edit made to a
+      # generated file instead of its template is thrown away by every build that
+      # matters. The search_index.json check in code_doc64.cmd was exactly that:
+      # committed to the .cmd, absent from code_doc64.in, and never run by a
+      # Windows deploy (2026-09-13).
+      - name: Generated files match their .in templates
+        run: python3 tools/cicd/check_version_templates.py
+
       # Same reason, same cost: nothing built, fails in seconds. A native call
       # whose name is written as a literal at the call site allocates a String
       # on every call -- 1655ns against 130ns for the same call with the name
