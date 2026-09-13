@@ -153,9 +153,10 @@ obc --version
 
 ### 🍎 macOS (One Command)
 ```bash
-# Install Homebrew dependencies
-brew install lame opencv@4 onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer cmake
-MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh   # once: static HTTP/2 + HTTP/3 libraries for obr
+# Install Homebrew build tools, then the libraries the package carries (once)
+brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer cmake
+MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh   # static HTTP/2 + HTTP/3 libraries for obr
+bash tools/deps/build_macos_deps.sh                                # OpenCV, ONNX Runtime, mbedTLS, ODBC, LAME
 
 cd core/release && ./deploy_macos_arm64.sh
 export PATH=$PATH:$(pwd)/deploy/bin
@@ -264,9 +265,10 @@ xcode-select --install
 # 2. Install Homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# 3. Install dependencies
-brew install lame opencv@4 onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer cmake
-MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh   # once: static HTTP/2 + HTTP/3 libraries for obr
+# 3. Install build tools, then build the libraries the package carries (once)
+brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer cmake
+MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh   # static HTTP/2 + HTTP/3 libraries for obr
+bash tools/deps/build_macos_deps.sh                                # OpenCV, ONNX Runtime, mbedTLS, ODBC, LAME
 
 # 4. Build
 cd core/release
@@ -445,8 +447,8 @@ make clean && make DEBUG=1
 # Linux
 sudo apt-get install libmbedtls-dev
 
-# macOS
-brew install mbedtls
+# macOS: static mbedTLS 3.6.4, built with the in-tree mbedtls_config.h
+bash tools/deps/build_macos_deps.sh
 
 # Windows ARM64
 # Automatically downloads on first build
@@ -480,7 +482,7 @@ The libraries go to `~/objeck-deps/<os>-<arch>`, where the Makefiles and the Xco
 # OpenCV is optional for most builds
 # If needed:
 sudo apt-get install libopencv-dev  # Linux
-brew install opencv@4                # macOS (the plain opencv formula is OpenCV 5)
+bash tools/deps/build_macos_deps.sh # macOS: static OpenCV 4.12.0 for the bindings
 ```
 
 ### Runtime Errors

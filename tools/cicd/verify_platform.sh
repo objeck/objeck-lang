@@ -10,7 +10,7 @@
 #
 # Run from a CLEAN checkout of the commit to be released:
 #   1. build the deploy tree exactly as release-build.yml does
-#      (tools/deps/build_quic_deps.sh, then deploy_posix.sh / deploy_macos_arm64.sh)
+#      (tools/deps/build_quic_deps.sh, tools/deps/build_macos_deps.sh on macOS, then deploy_posix.sh / deploy_macos_arm64.sh)
 #   2. regression suite, default JIT
 #   3. regression suite, every method compiled (OBJECK_JIT_THRESHOLD=1)
 #   4. VM flag tests, debugger tests, DAP tests
@@ -137,6 +137,9 @@ else
 	[ "$PLATFORM" = macos-arm64 ] && export MACOSX_DEPLOYMENT_TARGET=13.3
 	if [ -f tools/deps/build_quic_deps.sh ]; then
 		run_step quic_deps "static QUIC dependencies" bash tools/deps/build_quic_deps.sh || { write_result; exit 1; }
+	fi
+	if [ "$PLATFORM" = macos-arm64 ]; then
+		run_step macos_deps "bundled macOS libraries" bash tools/deps/build_macos_deps.sh || { write_result; exit 1; }
 	fi
 	run_step build "deploy (${DEPLOY[*]})" bash -c "cd core/release && ${DEPLOY[*]}"
 	# A deploy that "succeeds" without the toolchain is how v2026.5.0 shipped with no obr.

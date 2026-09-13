@@ -137,7 +137,7 @@ The VM requires the following libraries at build time:
 
 | Library | Purpose | Linux | macOS | Windows VS | MSYS2 |
 |---------|---------|-------|-------|------------|-------|
-| mbedTLS | TLS, crypto (`TCPSecureSocket`) | `libmbedtls-dev` | `brew install mbedtls` | bundled | `mingw-w64-ucrt-x86_64-mbedtls` |
+| mbedTLS | TLS, crypto (`TCPSecureSocket`) | `libmbedtls-dev` | static 3.6.4, `tools/deps/build_macos_deps.sh` | bundled | `mingw-w64-ucrt-x86_64-mbedtls` |
 | nghttp2 | HTTP/2 (`net_h2`) | static, `tools/deps/build_quic_deps.sh` | static, `tools/deps/build_quic_deps.sh` | vcpkg `nghttp2:x64-windows` | `mingw-w64-ucrt-x86_64-nghttp2` |
 | ngtcp2 + nghttp3 | QUIC and HTTP/3 (`net_quic`) | static, `tools/deps/build_quic_deps.sh` | static, `tools/deps/build_quic_deps.sh` | WinHTTP (Windows 11+) | not built |
 | AWS-LC | TLS 1.3 for QUIC | static, `tools/deps/build_quic_deps.sh` | static, `tools/deps/build_quic_deps.sh` | not used | not used |
@@ -173,6 +173,7 @@ make -f make/Makefile.arm64
 ```bash
 brew install cmake
 MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh    # once
+bash tools/deps/build_macos_deps.sh    # once: static mbedTLS 3.6.4, which the VM links
 open core/vm/xcode/VM.xcodeproj
 # Build → Product → Build (⌘B)
 ```

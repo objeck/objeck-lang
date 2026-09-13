@@ -24,7 +24,7 @@ See [MODELS.md](MODELS.md) for download links, file layouts, and sizes.
 | Linux | CPU / CUDA | CPU or NVIDIA GPU |
 | macOS | CoreML | Apple Neural Engine / GPU |
 
-Build with `eq/build.sh <cpu|cuda|coreml>` on Linux/macOS.  
+Build with `eq/build.sh <cpu|cuda>` on Linux; on macOS the deploy builds it with `core/lib/opencv/macos/CMakeLists.txt`.  
 Windows uses the Visual Studio solution `onnx.sln` (DML) or `eq/dml/onnx_dml.sln`.
 
 ## Quick Start
@@ -82,12 +82,16 @@ obr demo_face.obe
 ### Windows (DirectML)
 Open `onnx.sln` or `eq/dml/onnx_dml.sln` in Visual Studio 2022 and build Release x64.
 
-### Linux / macOS
+### Linux
 ```sh
 cd eq
 ./build.sh cpu       # Linux CPU
 ./build.sh cuda      # Linux CUDA
-./build.sh coreml    # macOS CoreML
 ```
+
+### macOS
+`core/release/deploy_macos_arm64.sh` builds `libobjk_onnx.dylib` (CoreML) with
+`core/lib/opencv/macos/CMakeLists.txt`, against the static OpenCV and the prebuilt
+ONNX Runtime from `tools/deps/build_macos_deps.sh`.
 
 Requires `pkg-config`, `opencv4`, and `libonnxruntime` on the library path.

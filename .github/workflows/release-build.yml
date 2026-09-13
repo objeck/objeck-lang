@@ -234,7 +234,7 @@ jobs:
           # plain `brew install` aborts with "already installed" (red CI error
           # annotations) even though the build is fine. Skip present packages and
           # install the rest, so genuine install failures still surface.
-          for pkg in opencv@4 onnxruntime mbedtls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame; do
+          for pkg in cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen; do
             if brew list --versions "$pkg" >/dev/null 2>&1; then
               echo "✓ $pkg already installed — skipping"
             else
@@ -247,17 +247,6 @@ jobs:
           export PATH="/opt/homebrew/bin:$PATH"
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
 
-          # Homebrew's default `opencv` is now OpenCV 5.0, which moved functions
-          # out of cv:: (contourArea, boundingRect, getRotationMatrix2D,
-          # approxPolyDP, estimateAffinePartial2D, LMEDS), so the opencv and onnx
-          # native libraries do not compile against it. ci-build.yml was pinned to
-          # opencv@4 in 22cb90d0f7 and this workflow was not: v2026.9.1's macOS
-          # release shipped without libobjk_opencv and libobjk_onnx while CI on
-          # the same commit built both. opencv@4 is keg-only, so expose its
-          # pkg-config dir to the later steps (onnx/eq/build.sh resolves opencv4).
-          if [ -d /opt/homebrew/opt/opencv@4/lib/pkgconfig ]; then
-            echo "PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> $GITHUB_ENV
-          fi
 
       - name: Select Xcode 16.3+ (macOS)
         if: runner.os == 'macOS'
@@ -439,6 +428,13 @@ jobs:
       - name: QUIC dependencies
         if: runner.os != 'Windows'
         uses: ./.github/actions/quic-deps
+
+      # The macOS package carries static OpenCV, mbedTLS and libiodbc, the prebuilt
+      # ONNX Runtime and a shared LAME inside itself: restore them from cache or
+      # build them with tools/deps/build_macos_deps.sh.
+      - name: macOS bundled libraries
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/macos-bundle-deps
 
       - name: Build release
         working-directory: ./core/release
@@ -1146,10 +1142,6 @@ jobs:
 
       - name: Install and test the .pkg
         shell: bash
-        env:
-          # Not bundled yet: these bindings still link Homebrew OpenCV, ONNX Runtime
-          # and LAME. Remove each name when its library ships inside the package.
-          ALLOW_EXTERNAL: libobjk_opencv.dylib libobjk_onnx.dylib libobjk_lame.dylib
         run: |
           PKG=$(find macos-artifacts -name 'objeck-macos-arm64_*.pkg' -type f | head -n 1)
           if [ -z "$PKG" ]; then echo "No .pkg in release-macos-arm64"; exit 1; fi

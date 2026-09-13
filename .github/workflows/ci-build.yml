@@ -152,9 +152,6 @@ jobs:
         # annotations) even though the build is fine. Skip present packages and
         # install the rest, so genuine install failures still surface.
         for pkg in \
-          opencv@4 \
-          onnxruntime \
-          mbedtls \
           cmake \
           unixodbc \
           sdl2 \
@@ -163,7 +160,6 @@ jobs:
           sdl2_mixer \
           readline \
           eigen \
-          lame \
           ccache; do
           if brew list --versions "$pkg" >/dev/null 2>&1; then
             echo "✓ $pkg already installed — skipping"
@@ -177,16 +173,6 @@ jobs:
         export PATH="/opt/homebrew/bin:$PATH"
         echo "/opt/homebrew/bin" >> $GITHUB_PATH
 
-        # Homebrew's default `opencv` is now OpenCV 5.0, which moved several
-        # functions out of the cv:: namespace (contourArea, boundingRect,
-        # getRotationMatrix2D, approxPolyDP, estimateAffinePartial2D, LMEDS) and
-        # relocated headers -> the opencv/onnx native libs no longer compile.
-        # The other platforms stay on OpenCV 4.x, so pin macOS to opencv@4 too.
-        # opencv@4 is keg-only (not symlinked into /opt/homebrew), so expose its
-        # pkg-config dir to every later step (onnx build.sh detects opencv4).
-        if [ -d /opt/homebrew/opt/opencv@4/lib/pkgconfig ]; then
-          echo "PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig:${PKG_CONFIG_PATH}" >> $GITHUB_ENV
-        fi
 
     - name: Select Xcode 16.3+ (macOS)
       if: runner.os == 'macOS'
@@ -346,9 +332,37 @@ jobs:
 
     # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
     # from cache or build them with tools/deps/build_quic_deps.sh.
+    # macOS runs the build scripts with its own shells, and /bin/sh and /bin/bash
+    # there are bash 3.2, which rejects syntax bash 5 accepts: a bare case pattern
+    # inside $(...) parses as its closing paren. deploy_macos_arm64.sh once stopped
+    # parsing that way while bash -n passed everywhere else.
+    - name: Shell scripts parse under macOS bash 3.2
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        bad=0
+        for s in core/release/*.sh tools/cicd/*.sh tools/deps/*.sh; do
+          case "$(head -1 "$s")" in
+            '#!/bin/sh'*) interp=/bin/sh ;;
+            *) interp=/bin/bash ;;
+          esac
+          if ! out=$("$interp" -n "$s" 2>&1); then
+            echo "::error file=$s::$interp -n failed: $out"
+            bad=1
+          fi
+        done
+        exit $bad
+
     - name: QUIC dependencies
       if: runner.os != 'Windows'
       uses: ./.github/actions/quic-deps
+
+    # The macOS package carries static OpenCV, mbedTLS and libiodbc, the prebuilt
+    # ONNX Runtime and a shared LAME inside itself: restore them from cache or
+    # build them with tools/deps/build_macos_deps.sh.
+    - name: macOS bundled libraries
+      if: runner.os == 'macOS'
+      uses: ./.github/actions/macos-bundle-deps
 
     - name: Cache ccache
       if: runner.os != 'Windows'
@@ -1009,14 +1023,8 @@ jobs:
     - name: macOS package install test
       if: matrix.platform == 'macos-arm64'
       shell: bash
-      env:
-        # Not bundled yet: these bindings still link Homebrew OpenCV, ONNX Runtime
-        # and LAME. Remove each name when its library ships inside the package.
-        ALLOW_EXTERNAL: libobjk_opencv.dylib libobjk_onnx.dylib libobjk_lame.dylib
       run: |
         cd core/release
-        # create_macos_pkg.sh copies the .pkg into OUTPUT_DIR but does not create it
-        mkdir -p "$RUNNER_TEMP/pkg"
         OUTPUT_DIR="$RUNNER_TEMP/pkg" ./create_macos_pkg.sh 0.0.0
         bash ../../tools/cicd/macos_install_test.sh "$RUNNER_TEMP/pkg/objeck-macos-arm64_0.0.0.pkg" "$GITHUB_WORKSPACE/programs/regression"
 

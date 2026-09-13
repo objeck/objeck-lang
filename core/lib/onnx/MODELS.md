@@ -131,7 +131,7 @@ Large DLLs are compressed as `.7z` archives. Extract to the application director
 - Requires CUDA toolkit and cuDNN installed on the system.
 
 ### macOS (CoreML)
-- `libonnxruntime.dylib` — install via Homebrew: `brew install onnxruntime`
+- `libonnxruntime.1.dylib` (ONNX Runtime 1.30.0) ships inside the macOS package, beside `libobjk_onnx.dylib`; nothing to install. Needs macOS 14 or later.
 - CoreML EP accelerates on Apple Neural Engine / GPU; falls back to CPU automatically.
 
 ## Special Tokens (Phi-3 Family)
