@@ -291,7 +291,9 @@ bundle Database.ODBC {
 		}
 
 		#~
-		Gets the last error message from the connection.
+		Gets the last error message from the connection. For a connection that did
+		not open, this is why the connect failed, e.g. "[IM002] ... Data source name
+		not found".
 		@return error message string, or empty if no error
 		```
 		conn := Database.ODBC.Connection->New("mydsn", "user", "pass");
@@ -302,18 +304,18 @@ bundle Database.ODBC {
 		```
 		~#
 		method : public : GetLastError() ~ String {
-			if(@native_connection <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := Nil;
-				array_args[1] := IntRef->New(2);
-				array_args[2] := IntRef->New(@native_connection);
-				@lib_proxy := Proxy->GetDllProxy();
-				if(@fn_odbc_get_error = Nil) { @fn_odbc_get_error := "odbc_get_error"; };
-				@lib_proxy->CallFunction(@fn_odbc_get_error, array_args);
-				return array_args[0]->As(String);
+			array_args := Base->New[3];
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(2);
+			array_args[2] := IntRef->New(@native_connection);
+			@lib_proxy := Proxy->GetDllProxy();
+			if(@fn_odbc_get_error = Nil) { @fn_odbc_get_error := "odbc_get_error"; };
+			@lib_proxy->CallFunction(@fn_odbc_get_error, array_args);
+			error := array_args[0]->As(String);
+			if(error = Nil) {
+				return "";
 			};
-
-			return "";
+			return error;
 		}
 
 		#~

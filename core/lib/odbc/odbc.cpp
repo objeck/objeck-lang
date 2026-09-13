@@ -34,6 +34,30 @@
 extern "C" {
   SQLLEN sql_null;
 
+  // Why the last connect on this thread failed. A failed connect frees its
+  // handle, leaving odbc_get_error nothing to read, so Connection->GetLastError()
+  // returned "" for the one error a caller cannot diagnose any other way.
+  static thread_local std::string last_connect_error;
+
+  static void set_connect_error(SQLHDBC conn)
+  {
+    SQLCHAR sql_state[6] = {0};
+    SQLINTEGER native_error = 0;
+    SQLCHAR message[SQL_MAX_MESSAGE_LENGTH] = {0};
+    SQLSMALLINT text_len = 0;
+
+    const SQLRETURN result = SQLGetDiagRec(SQL_HANDLE_DBC, conn, 1, sql_state, &native_error,
+                                           message, sizeof(message), &text_len);
+    if(result == SQL_SUCCESS || result == SQL_SUCCESS_WITH_INFO) {
+      char error_msg[SQL_MAX_MESSAGE_LENGTH + 64];
+      snprintf(error_msg, sizeof(error_msg), "[%s] %s (%d)", (char*)sql_state, (char*)message, (int)native_error);
+      last_connect_error = error_msg;
+    }
+    else {
+      last_connect_error = "connection failed; the driver manager gave no diagnostic";
+    }
+  }
+
   //
   // initialize odbc environment
   //
@@ -87,6 +111,7 @@ extern "C" {
 
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
     if(SQL_FAIL) {
+      last_connect_error = "could not allocate an ODBC connection handle";
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       APITools_SetIntValue(context, 0, 0);
       return;
@@ -95,12 +120,14 @@ extern "C" {
     status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(),
                         SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);
     if(SQL_FAIL) {
+      set_connect_error(conn);
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       conn = NULL;
       APITools_SetIntValue(context, 0, 0);
       return;
     }
 
+    last_connect_error.clear();
     APITools_SetIntValue(context, 0, (size_t)conn);
   }
 
@@ -124,6 +151,7 @@ extern "C" {
 
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_DBC, env, &conn);
     if(SQL_FAIL) {
+      last_connect_error = "could not allocate an ODBC connection handle";
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       APITools_SetIntValue(context, 0, 0);
       return;
@@ -135,12 +163,14 @@ extern "C" {
                               out_conn_str, sizeof(out_conn_str), &out_conn_str_len,
                               SQL_DRIVER_NOPROMPT);
     if(SQL_FAIL) {
+      set_connect_error(conn);
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
       conn = NULL;
       APITools_SetIntValue(context, 0, 0);
       return;
     }
 
+    last_connect_error.clear();
     APITools_SetIntValue(context, 0, (size_t)conn);
   }
 
@@ -2296,7 +2326,8 @@ extern "C" {
     }
 
     if(!handle) {
-      APITools_SetStringValue(context, 0, L"");
+      // A connection that never opened has no handle: report why it failed.
+      APITools_SetStringValue(context, 0, handle_type_id == 2 ? BytesToUnicode(last_connect_error) : std::wstring());
       return;
     }
 
