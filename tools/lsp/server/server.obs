@@ -587,7 +587,7 @@ bundle LSP {
 			# Kept in step with core/shared/version.h by a gating test
 			# (run_lsp_tests.py), because the note that used to sit here asking
 			# for a manual bump was ignored through two releases.
-			serverInfo->Insert("version", "2026.9.1");
+			serverInfo->Insert("version", "2026.9.2");
 
 			capabilities := response->AddChild("capabilities");
 			completionProvider := capabilities->AddChild("completionProvider");

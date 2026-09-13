@@ -59,13 +59,24 @@
       AI, networking, and vision — built in. Every release moves the stack forward.
     </p>
     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 2rem;">
-      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.9.1</a>
+      <a class="btn btn-primary" href="https://github.com/objeck/objeck-lang/releases/latest">Download v2026.9.2</a>
       <a class="btn btn-secondary" href="getting_started.html">Quick Start</a>
       <a class="btn btn-secondary" href="https://github.com/objeck/objeck-lang">GitHub</a>
     </div>
 
     <!-- Changelog -->
-    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.1" style="color: inherit; text-decoration: none;">v2026.9.1</a></u></h3>
+    <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.2" style="color: inherit; text-decoration: none;">v2026.9.2</a></u></h3>
+    <ul>
+     <li><strong>macOS ships OpenCV and ONNX again</strong> &mdash; v2026.9.1's <code>.pkg</code>, <code>.zip</code> and <code>.tgz</code> carried neither <code>libobjk_opencv</code> nor <code>libobjk_onnx</code>. Homebrew's default <code>opencv</code> is now 5.0, which moved <code>contourArea</code>, <code>boundingRect</code>, <code>approxPolyDP</code> and the affine estimators out of <code>cv::</code>, and the release build installed it while CI stayed on <code>opencv@4</code>. The release build is pinned too</li>
+     <li><strong>Linux x64's ONNX loads without <code>LD_LIBRARY_PATH</code></strong> &mdash; <code>libobjk_onnx.so</code> had no <code>$ORIGIN</code> RUNPATH, so it found the ONNX Runtime shipped beside it only where CI's environment pointed there</li>
+     <li><strong>Linux ARM64 no longer ships an x86-64 ONNX Runtime</strong> &mdash; only an x86-64 runtime is vendored, so ONNX is declared optional on ARM64 and the 16&nbsp;MB x86-64 library is gone from the tarball</li>
+     <li><strong>A deploy that cannot build a required native library now fails</strong> &mdash; the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed verification failures on three platforms and published anyway; CodeQL now also builds the OpenCV, ONNX and LAME bindings</li>
+     <li><strong><code>gl_crystal.obj</code> ships</strong> &mdash; the model <code>gl_model.obs</code> loads had never been committed, because <code>.gitignore</code>'s <code>*.obj</code> rule for MSVC object files matched it too. Every deploy copies it now, the MSYS2 builds gain the OpenGL examples, and a deploy missing a file an example opens by name fails</li>
+     <li><strong>Deploy scripts show live progress</strong> &mdash; a banner, stage progress and quiet tool output with the full log kept, and a deploy with any failed stage exits non-zero</li>
+     <li><strong>The Windows API-docs search-index check runs</strong> &mdash; it existed only in the generated <code>code_doc64.cmd</code>, which every deploy regenerates from its template; it is in the template now, and CI checks the templates</li>
+    </ul>
+
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.1" style="color: inherit; text-decoration: none;">v2026.9.1</a></h3>
     <ul>
      <li><strong>Compiled code now calls compiled code directly</strong> &mdash; a call between JIT'd methods used to cross a C++ bridge: an eleven-argument entry, a pooled frame, a release. The caller now builds the callee's frame on its own stack and enters its native entry, with inline caches for <code>virtual</code> and func-ref sites. A bound call went from 26.5&nbsp;ns to 5.5&nbsp;ns, a <code>virtual</code> call from 125&nbsp;ns to 6.0&nbsp;ns, and <code>Fib(32)</code> from 0.208&nbsp;s to 0.043&nbsp;s on AMD64; on an M4 Max a call went from 17.1&nbsp;ns to 7.4&nbsp;ns and <code>Fib(32)</code> from 0.135&nbsp;s to 0.050&nbsp;s. A dense <code>select</code> compiles to a jump table on both backends</li>
      <li><strong>Every hash of a string was wrong</strong> &mdash; Hash->SHA256("abc"->ToByteArray()) digested "abc" plus a zero byte. A Byte[] carries its element count in the word native libraries read, and the JIT plus thirteen trap producers wrote count+1 for the NUL pad; the interpreter's Byte->New wrote the count. [0] is the element count everywhere now, and a test hashes arrays from every producer against known digests</li>

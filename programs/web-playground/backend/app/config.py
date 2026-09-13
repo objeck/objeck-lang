@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     max_concurrent_runs: int = 4
 
     # Version (displayed in frontend header)
-    objeck_version: str = "v2026.9.1"
+    objeck_version: str = "v2026.9.2"
 
     # Rate limiting
     rate_limit: str = "10/minute"

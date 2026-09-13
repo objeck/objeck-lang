@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.1-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.2-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.1/objeck-linux-x64_2026.9.1.tgz
-tar xzf objeck-linux-x64_2026.9.1.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.2/objeck-linux-x64_2026.9.2.tgz
+tar xzf objeck-linux-x64_2026.9.2.tgz
 export PATH=$PATH:./objeck-lang/bin
 export OBJECK_LIB_PATH=./objeck-lang/lib
 
@@ -58,7 +58,16 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.1 ✅
+### v2026.9.2 ✅
+  * **macOS ships OpenCV and ONNX again** &mdash; v2026.9.1's `.pkg`, `.zip` and `.tgz` carried neither `libobjk_opencv` nor `libobjk_onnx`. Homebrew's default `opencv` is now 5.0, which moved `contourArea`, `boundingRect`, `approxPolyDP` and the affine estimators out of `cv::`, and the release build installed it while CI stayed on `opencv@4`. The release build is pinned too ([#804](https://github.com/objeck/objeck-lang/pull/804))
+  * **Linux x64's ONNX loads without `LD_LIBRARY_PATH`** &mdash; `libobjk_onnx.so` had no `$ORIGIN` RUNPATH, so it found the ONNX Runtime shipped beside it only where CI's environment pointed there, and failed for anyone who untarred the release
+  * **Linux ARM64 no longer ships an x86-64 ONNX Runtime** &mdash; only an x86-64 runtime is vendored, so ONNX is declared optional on ARM64 and the 16 MB x86-64 library is gone from the tarball
+  * **A deploy that cannot build a required native library now fails** &mdash; the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed verification failures on three platforms and published anyway; CodeQL now also builds and analyzes the OpenCV, ONNX and LAME bindings
+  * **`gl_crystal.obj` ships** &mdash; the model `gl_model.obs` loads had never been committed, because `.gitignore`'s `*.obj` rule for MSVC object files matched it too. Every deploy copies it now, the MSYS2 builds gain the OpenGL examples, and a deploy missing a file an example opens by name fails ([#803](https://github.com/objeck/objeck-lang/pull/803), [#805](https://github.com/objeck/objeck-lang/pull/805))
+  * **Deploy scripts show live progress** &mdash; a banner, stage progress and quiet tool output with the full log kept, and a deploy with any failed stage exits non-zero ([#801](https://github.com/objeck/objeck-lang/pull/801))
+  * **The Windows API-docs search-index check runs** &mdash; it existed only in the generated `code_doc64.cmd`, which every deploy regenerates from its template; it is in the template now, and CI checks the templates ([#802](https://github.com/objeck/objeck-lang/pull/802))
+
+### v2026.9.1
   * **Compiled code now calls compiled code directly** &mdash; a call between JIT'd methods used to cross a C++ bridge: an eleven-argument entry, a pooled frame, a release. The caller now builds the callee's frame on its own stack and enters its native entry, with inline caches for `virtual` and func-ref sites. A bound call went from 26.5 ns to 5.5 ns, a `virtual` call from 125 ns to 6.0 ns, and `Fib(32)` from 0.208 s to 0.043 s on AMD64; on an M4 Max a call went from 17.1 ns to 7.4 ns and `Fib(32)` from 0.135 s to 0.050 s. A dense `select` compiles to a jump table on both backends
   * **Every hash of a string was wrong** &mdash; `Hash->SHA256("abc"->ToByteArray())` digested `"abc"` plus a zero byte — a `Byte[]` size-word convention the JIT and thirteen trap producers got wrong; fixed everywhere, with a test that hashes every producer against known digests
   * **JIT arithmetic matches the interpreter** &mdash; `IMUL` wrote to the wrong register, native-call temporaries were never spilled, 64-bit immediates were truncated; the equivalence fixture now runs on every platform
@@ -80,23 +89,9 @@ obc hello && obr hello
   * **The language server serialized every request behind one lock** &mdash; concurrent analysis was correct only because of it, with `TreeFactory` and `TypeFactory` as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking
   * **Four publish steps reported success while doing nothing** &mdash; Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed
 
-### v2026.8.4
-  * **`Game.OpenGL` — 3D graphics for Objeck** — OpenGL 3.3 core over SDL2 on Windows, Linux and macOS. 26 classes covering windowing and frame pacing, built-in shaders, meshes and OBJ loading, textures, cameras, materials, up to eight directional/point/spot lights with Blinn-Phong specular, shadow maps including omnidirectional cube shadows, render-to-texture, instancing through a one-call `PropBatch`, frustum culling, raycasting for hitscan and picking, gamepad input, a pixel-space text overlay, and a scene that answers collision. The examples got **shorter** as it grew — the minimal window demo went from 105 lines to 25, and per-frame allocations in both original draw loops went to zero. Verified by 453 checks that read pixels back rather than merely exiting cleanly, and two demos ship in the distribution
-  * **`Web.Server` could not be used by anyone** — it shipped in every release with 13 native entry points that existed in exactly one file: the binding itself. No `.cpp`, no build target, no library in any deploy tree, and `Request`/`Response` declared no constructor, so a program could not obtain an instance at all. Writing the missing native library was never an option — the design is a per-host bridge for Nginx, IIS and Apache, whose request structures differ entirely, so one generic library cannot exist. It is now implemented in pure Objeck over `Web.HTTP.Server`: same bundle, same class names, same signatures, no native library. Coverage went from 0 of 13 methods to 13 of 13
-  * **The JIT silently computed the wrong answer above 2³¹** — 64-bit immediates were truncated to 32 bits: on AMD64 for `and`, `or`, `xor`, `add` and `sub`, and on Windows ARM64 for every one of them, where `long` is 32 bits under LLP64. No crash and no diagnostic, just wrong arithmetic. A stored float compare also clobbered a callee-saved register on AMD64. Windows ARM64 had shipped untested since February, which is why its variant survived
-  * **A server that wrote and closed could lose the response** — on Windows loopback, roughly 47% of responses, because the sender tearing down first discards what the receiver has not read. HTTP now uses keep-alive, removing the exposure rather than hiding it. Alongside it: a short `send()` silently dropped the rest of the buffer on **both** platforms, a real HTTP 500 lost its body while a dead socket reported one, and one failed name lookup called `WSACleanup` and shut Winsock down for the **whole process** — every open socket on every thread
-  * **Three ways a live object could be collected** — an array returned by a VM trap held elements a minor collection could destroy (measured at 395 of 395 entries lost in one collection: arrays are born old, objects young, and the trap array was never dirtied through the write barrier); a value returned by a native library could be collected out of a reused argument buffer; and the JIT's `Int[]` copy dropped the write barrier entirely
-  * **Windows ARM64 installs shipped without their runtimes** — no C++ redistributable, because `VCToolsRedistDir` is empty on the ARM64 runner, and OpenCV without its image codecs. Nothing checked either, so both failed on the user's machine rather than in CI. Cross-architecture native dependencies are now verified during the build
-  * **A server that returns normally from `Main` no longer segfaults** — a thread blocked in a syscall never observes the halt request, so teardown freed the program image while that thread was still live, and `WSACleanup` on the way out then unblocked it into freed memory — losing all buffered output, so it looked as though the program had done nothing. Linux was always clean for one reason: it has no equivalent call
-  * **The debugger had the same defect, and there it was not Windows-only** — `obd` hosts the debuggee's VM in-process and freed the program image *and the whole GC heap* after every run, halting and waiting for nothing. Because `obd` goes back to its prompt rather than exiting, an ordinary client connecting to the port the parked thread sits on wakes it with no `WSACleanup` involved: 6 access violations in 6 runs on Windows, 2 in 2 on Linux
-  * **`obd` could not debug any multithreaded program** — compiled with `-debug`, it segfaulted on the first instruction a spawned thread executed. Those threads are built by a constructor that never initialized the debugger pointer, and the per-instruction hook called through it. Only `obd` compiles that hook in, so `obr` was never affected
-  * **Native calls got materially cheaper** — a string literal allocates on every evaluation, and the literal naming the native function turned out to be 92% of a call's cost: 1655ns down to 130ns. Resolved entry points are now cached too, on every platform, removing a `GetProcAddress`/`dlsym` lookup and a wide-to-narrow conversion from every single call. Both are guarded by CI so they cannot drift back
-  * **SDL2 loads on Windows without a hand-set `PATH`** — the DLLs shipped in `lib/sdl`, but Windows resolves a dynamically-loaded library's imports against the **executable's** directory, never the library's, so `libobjk_sdl.dll` failed to load for anyone who had not added it themselves. Every SDL program was affected, and the regression runner hid it by prepending the directory first
-  * **The API reference stopped omitting whole libraries** — five files hard-code the library list and had drifted apart, one short two libraries while still naming a deleted third, so the counts matched and nothing looked wrong. Underneath, the doc parser was reading prose as code: the word "bundle" in a comment re-filed every class after it
-
 ## Downloads
 
-**Latest Release:** [v2026.9.1](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.2](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

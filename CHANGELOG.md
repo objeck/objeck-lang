@@ -2,6 +2,31 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.9.2] - 2026-09-13
+
+A corrective release for v2026.9.1's native libraries: macOS ships OpenCV and ONNX
+again, Linux x64's ONNX loads without `LD_LIBRARY_PATH`, and Linux ARM64 no longer
+carries an x86-64 ONNX Runtime. Underneath all three, the deploys verified what they
+built and ignored the answer. They now stop instead of shipping incomplete -- on a
+missing native library, and on a missing file an example opens by name -- and the
+deploy scripts say what they are doing while they run.
+
+### Bug Fixes
+- **macOS: `libobjk_opencv` and `libobjk_onnx` missing from v2026.9.1** ([#804](https://github.com/objeck/objeck-lang/pull/804)): Homebrew's default `opencv` formula is now OpenCV 5.0, which moved `contourArea`, `boundingRect`, `getRotationMatrix2D`, `approxPolyDP`, `estimateAffinePartial2D` and `LMEDS` out of `cv::`. CI had been pinned to `opencv@4` and `release-build.yml` had not, so the release built neither binding and published without them. The release workflow now installs `opencv@4` as well
+- **Linux x64: `libobjk_onnx.so` loaded only with `LD_LIBRARY_PATH`** ([#804](https://github.com/objeck/objeck-lang/pull/804)): it was linked with no RUNPATH, so the `libonnxruntime.so.1` shipped beside it in `lib/native` was never found unless the environment pointed there -- which CI's does and an untarred release's does not. `core/lib/onnx/eq/build.sh` links with `-Wl,-rpath,'$ORIGIN'`
+- **Linux ARM64: an x86-64 ONNX Runtime in the tarball** ([#804](https://github.com/objeck/objeck-lang/pull/804)): only `cuda/lib/x64` is vendored, so the ARM64 link failed and `deploy_posix.sh` still copied the 16 MB x86-64 `libonnxruntime` into the aarch64 tree. ONNX is built only for an architecture with a vendored runtime, and is declared optional on ARM64
+- **`gl_crystal.obj` never shipped** ([#803](https://github.com/objeck/objeck-lang/pull/803), [#805](https://github.com/objeck/objeck-lang/pull/805)): `gl_model.obs` loads it by default and every deploy script copied it, but `.gitignore`'s `*.obj` (meant for MSVC object files) kept the Wavefront model out of git, and no deploy checked a copy. Committed as a hand-written quartz crystal, with `!programs/examples/*.obj` so the next model is not hidden the same way
+
+### Infrastructure
+- **Deploys act on native-library verification** ([#804](https://github.com/objeck/objeck-lang/pull/804)): `verify_native_libs.sh` ran on the POSIX deploys without `|| exit 1`, so v2026.9.1 logged "native-library verification failure(s)" on three platforms and the jobs stayed green. The result now fails the deploy; each platform declares its required libraries, and `--optional` names one a platform cannot build yet (reported as a warning and a GitHub annotation). CodeQL installs `libopencv-dev` and `libmp3lame-dev`, so the OpenCV, ONNX and LAME bindings are built and analyzed
+- **Deploys fail on a missing example asset** ([#805](https://github.com/objeck/objeck-lang/pull/805)): `core/release/verify_example_assets.sh` (POSIX) and a matching check in `deploy_windows.cmd` fail when `README.md`, `data/gender.csv`, `data/weather.json`, `opengl/cube_gl.obs`, `opengl/gl_crystal.obj` or `opengl/gl_model.obs` did not land. The MSYS2 UCRT and Clang deploys now copy the OpenGL examples, the examples README and `data/`. `.gitignore` re-includes `programs/deploy/data/`, which `data/` hid at any depth
+- **Deploy script presentation** ([#801](https://github.com/objeck/objeck-lang/pull/801)): `ui.sh`, `ui.cmd` and `ui.ps1` give `deploy_posix.sh` and `deploy_windows.cmd` a banner, live stage progress and quiet tool output, with the tail of the log shown for a failed stage and `-v`/`VERBOSE=1` to stream everything. A POSIX deploy with any failed stage exits non-zero
+- **Generated-template guard** ([#802](https://github.com/objeck/objeck-lang/pull/802)): the `search_index.json` validation had been added only to `core/release/code_doc64.cmd`, which `update_version.ps1` regenerates from `code_doc64.in` on every Windows deploy, so it never ran. It is ported into the template, and `tools/cicd/check_version_templates.py` fails CI when a generated file and its template disagree
+
+### Documentation
+- The definitive v2026.9.1 benchmark run, with `fasta` measured for the first time ([#800](https://github.com/objeck/objeck-lang/pull/800))
+- `docs/ML_TABULAR_GAPS.md`: what a tabular classification study needs from `System.ML` ([#798](https://github.com/objeck/objeck-lang/pull/798))
+
 ## [v2026.9.1] - 2026-09-12
 
 Compiled code now calls compiled code directly -- a bound call 26.5 ns to 5.5 ns,

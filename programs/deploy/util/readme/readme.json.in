@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Compiled code that calls compiled code directly -- a bound call 26.5 ns to 5.5 ns, a virtual call 125 ns to 6.0 ns, Fib(32) 0.208 s to 0.043 s -- every string hash corrected, three ways compiled code could corrupt memory closed, threads the debugger can see, a sky and normal maps for Game.OpenGL, and release repairs: a checksum manifest that no longer describes bytes nobody can download, a playground deploy that runs the fix it ships, and open issues that must be fixed or explained before a tag",
+	"title": "A corrective release for v2026.9.1's native libraries -- macOS ships OpenCV and ONNX again, Linux x64's ONNX loads without LD_LIBRARY_PATH, Linux ARM64 no longer carries an x86-64 ONNX Runtime -- and deploys that stop instead of shipping incomplete: a missing native library or example file now fails the build, and the deploy scripts show live progress while they run",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,19 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.2",
+			"items": [
+				"macOS: v2026.9.1 shipped without libobjk_opencv and libobjk_onnx. Homebrew's default opencv is now 5.0, which moved contourArea, boundingRect, getRotationMatrix2D, approxPolyDP, estimateAffinePartial2D and LMEDS out of cv::, and the release build installed it while CI had been pinned to opencv@4. The release build is now pinned too, so the .pkg, .zip and .tgz carry both libraries",
+				"Linux x64: libobjk_onnx.so now finds the ONNX Runtime shipped beside it. It had no $ORIGIN RUNPATH, so it loaded only with LD_LIBRARY_PATH pointing at lib/native -- which CI sets and a user who untarred the release does not -- and otherwise failed with 'libonnxruntime.so.1: cannot open shared object file', or a VERS_1.19.0 mismatch against an installed runtime",
+				"Linux ARM64: ONNX is not available yet, because only an x86-64 ONNX Runtime is vendored; it is declared optional there. The tarball no longer carries that 16 MB x86-64 runtime, which v2026.9.1 shipped without the library that would use it",
+				"Release: the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed 'native-library verification failure(s)' on three platforms and published anyway. A missing or unloadable required library now fails the build, and a library a platform cannot build yet is declared optional and reported as a warning. CodeQL now builds and analyzes the OpenCV, ONNX and LAME bindings it had been skipping",
+				"Examples: gl_crystal.obj, the model gl_model.obs loads, had never been committed -- .gitignore's *.obj rule for MSVC object files also matched the Wavefront file -- so every deploy printed 'cannot stat' and no distribution carried it. It now ships in examples/opengl on every platform; the MSYS2 distributions gain the OpenGL examples, the examples README and the data files two examples read; and a deploy missing a file an example opens by name fails",
+				"API docs: the Windows docs build's search_index.json check never ran. It had been added only to code_doc64.cmd, which every Windows deploy regenerates from code_doc64.in; it now lives in the template, and CI checks the templates",
+				"Deploy scripts: a banner, live stage progress and quiet tool output, with the full log kept for a failed stage -- and a deploy with any failed stage now exits non-zero",
+				"Documentation: the definitive v2026.9.1 benchmark run, with fasta measured for the first time, and what a tabular classification study needs from System.ML"
+			]
+		},
 		{
 			"version": "v2026.9.1",
 			"items": [

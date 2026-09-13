@@ -1,3 +1,17 @@
+v2026.9.2 (September 13, 2026)
+===
+A corrective release for v2026.9.1's native libraries -- macOS ships OpenCV and ONNX again, Linux x64's ONNX loads without LD_LIBRARY_PATH, and Linux ARM64 no longer carries an x86-64 ONNX Runtime. Deploys now stop instead of shipping incomplete, on a missing native library or a missing example file, and show live progress while they run.
+
+v2026.9.2
+- macOS ships OpenCV and ONNX again -- v2026.9.1's .pkg, .zip and .tgz carried neither libobjk_opencv nor libobjk_onnx. Homebrew's default opencv is now 5.0, which moved contourArea, boundingRect, getRotationMatrix2D, approxPolyDP, estimateAffinePartial2D and LMEDS out of cv::, and the release build installed it while CI stayed on opencv@4. The release build is pinned too
+- Linux x64's ONNX loads without LD_LIBRARY_PATH -- libobjk_onnx.so had no $ORIGIN RUNPATH, so it found the ONNX Runtime shipped beside it only where CI's environment pointed there, and otherwise failed with 'libonnxruntime.so.1: cannot open shared object file'
+- Linux ARM64 no longer ships an x86-64 ONNX Runtime -- only an x86-64 runtime is vendored, so ONNX is declared optional on ARM64 and the 16 MB x86-64 library is gone from the tarball
+- A deploy that cannot build a required native library now fails -- the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed 'native-library verification failure(s)' on three platforms and published anyway. A library a platform cannot build yet is declared optional and reported as a warning; CodeQL now builds and analyzes the OpenCV, ONNX and LAME bindings
+- gl_crystal.obj ships -- the model gl_model.obs loads had never been committed, because .gitignore's *.obj rule for MSVC object files matched it too. Every deploy copies it now, the MSYS2 builds gain the OpenGL examples, the examples README and the data files two examples read, and a deploy missing a file an example opens by name fails
+- Deploy scripts show live progress -- a banner, stage progress and quiet tool output with the full log kept for a failed stage, and a deploy with any failed stage exits non-zero
+- The Windows API-docs search-index check runs -- it existed only in the generated code_doc64.cmd, which every Windows deploy regenerates from code_doc64.in; it is in the template now, and CI checks the templates
+- Documentation -- the definitive v2026.9.1 benchmark run, with fasta measured for the first time, and what a tabular classification study needs from System.ML
+
 v2026.9.1 (September 12, 2026)
 ===
 Compiled code now calls compiled code directly -- a bound call 26.5 ns to 5.5 ns, a virtual call 125 ns to 6.0 ns, Fib(32) 0.208 s to 0.043 s. Every string hash was wrong and is now right, three ways compiled code could corrupt memory are closed, the debugger sees threads and tells the truth about its commands, and Game.OpenGL gains a sky, rotations, normal maps and emissive materials.
