@@ -12,7 +12,9 @@ use Game.OpenGL;
 
 **There is nothing to install on macOS or Windows.** Both ship SDL2 inside the
 distribution. Only Linux needs packages, because there `libobjk_sdl.so` links
-against the system SDL2 and OpenGL runtime.
+against the system SDL2 and OpenGL runtime. The rest of the toolchain does too,
+so on Linux this is the first setup step for any Objeck program, not just for
+graphics.
 
 | Platform | What you need to do |
 |---|---|
@@ -26,7 +28,7 @@ The script ships **inside the distribution**, at its root, so a downloaded
 release needs nothing else:
 
 ```bash
-tar xzf objeck-linux-x64_2026.8.4.tgz
+tar xzf objeck-linux-x64_2026.9.2.tgz
 cd objeck-lang
 ./install_deps.sh              # install what is missing (asks first)
 ./install_deps.sh --yes        # ...without the prompt
@@ -35,17 +37,51 @@ cd objeck-lang
 From a repo checkout it lives at `tools/install_deps.sh`; the two are the same
 script and take the same options.
 
-It detects the package manager (apt, dnf/yum, pacman, zypper, apk) and installs
-SDL2 (core, image, mixer, ttf) plus an OpenGL runtime. Useful variants:
+It covers every system library the distribution links against, not only SDL2.
+On a clean machine `obr` does not start without it:
+
+| Needed by | Libraries |
+|---|---|
+| `obr`, `obd`, `obi` | mbedTLS (TLS and crypto) |
+| `obr` | nghttp2, ngtcp2, nghttp3 (HTTP/2 and HTTP/3) |
+| `obd` | readline |
+| `libobjk_sdl.so` | SDL2 (core, image, mixer, ttf), OpenGL |
+| `libobjk_opencv.so`, `libobjk_onnx.so` | OpenCV 4.6 |
+| `libobjk_odbc.so` | unixODBC |
+| `libobjk_lame.so` | LAME |
+| `libobjk_crypto.so` | mbedTLS |
+
+The list is not hardcoded. The script runs `ldd` on the distribution's own
+`bin/*` and `lib/native/libobjk_*.so`, then asks the package manager (apt,
+dnf/yum, pacman, zypper) which package provides each library that does not
+resolve, so it picks the right name on each distribution (for example,
+`libmbedtls14t64` on Ubuntu 24.04 and `libmbedtls14` on Debian 12). Useful
+variants:
 
 ```bash
-./install_deps.sh --check   # report what is missing, install nothing
+./install_deps.sh --check   # report what is missing and what needs it, install nothing
 ./install_deps.sh --print   # just print the command it would run
-./install_deps.sh --dev     # also the headers, to BUILD libobjk_sdl.so
+./install_deps.sh --sdl     # only what SDL2/OpenGL programs need (obc, obr, libobjk_sdl.so)
+./install_deps.sh --dev     # also the SDL2/OpenGL headers, to BUILD libobjk_sdl.so
 ```
 
 Use `--dev` only when compiling the native library yourself; running a release
 build needs just the runtime packages.
+
+Linux releases are built on Ubuntu 24.04. They link against its library
+versions and need glibc 2.38 or newer, and they run as shipped on Ubuntu 24.04.
+Elsewhere the script tells you what is in the way:
+
+- **An older C library.** Debian 12 packages every library, but its glibc 2.36
+  is too old, so nothing would start. The script says so and installs nothing.
+- **Different library versions.** Fedora 44, for example, packages no mbedTLS
+  2.28, ngtcp2 0.12 or OpenCV 4.6. The script installs what it can, names the
+  rest and exits 1.
+- **musl or another architecture.** Alpine cannot run glibc binaries, and an
+  arm64 tree cannot run on x86-64. The script names the case and exits 1.
+
+In the first two cases, build Objeck from source on that system
+(`core/release/deploy_posix.sh`).
 
 ### Verifying the setup
 

@@ -498,14 +498,24 @@
     For Linux
    </h3>
    <p>
-    Run the installer that ships at the root of the distribution &mdash; it detects your package
-    manager (apt, dnf/yum, pacman, zypper, apk) and installs SDL2 and the OpenGL runtime:
+    Run the installer that ships at the root of the distribution first, before any Objeck
+    program. On a clean machine <code>obr</code> itself does not start without it:
     <pre class="cmd">./install_deps.sh</pre>
-    Use
+    It runs <code>ldd</code> on the distribution's <code>bin</code> tools and
+    <code>lib/native</code> libraries and installs every system library they cannot load:
+    mbedTLS (<code>obr</code>, <code>obd</code>, <code>obi</code>), nghttp2/ngtcp2/nghttp3
+    (<code>obr</code>), readline (<code>obd</code>), SDL2 and OpenGL, OpenCV, unixODBC and LAME.
+    It looks up each library's package with your package manager (apt, dnf/yum, pacman,
+    zypper), so the names are right for your distribution. Use
     <pre class="cmd">./install_deps.sh --check</pre>
-    to see what is missing without installing anything, or
+    to see what is missing, and what needs it, without installing anything;
+    <pre class="cmd">./install_deps.sh --sdl</pre>
+    to limit it to what SDL2/OpenGL programs need; or
     <pre class="cmd">./install_deps.sh --dev</pre>
-    if you are building the native libraries from source and need the headers too.
+    if you are building the SDL native library from source and need the headers too. Linux
+    releases are built on Ubuntu 24.04 and need glibc 2.38 or newer, so Debian 12 (glibc 2.36)
+    is too old. If a distribution packages different library versions or has an older C
+    library, the script says so. Build from source there.
    </p>
    <h3>
     For macOS

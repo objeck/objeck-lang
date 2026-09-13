@@ -377,9 +377,13 @@
 &gt; export OBJECK_LIB_PATH=/home/[account]/objeck-lang/lib</pre>
      <h4>Linux and macOS Runtime Dependencies</h4>
      <p>
-      The pre-built Linux and macOS binaries dynamically link mbedTLS (crypto and TLS) plus nghttp2, ngtcp2, and nghttp3 (HTTP/2 and HTTP/3 support). On Debian/Ubuntu, the versioned runtime package names change between releases, so the simplest option is the dev packages, which are stable names and pull in the runtime libraries:
+      The pre-built Linux binaries dynamically link system libraries the archive does not ship: mbedTLS (crypto and TLS), nghttp2, ngtcp2 and nghttp3 (HTTP/2 and HTTP/3), readline, SDL2 and OpenGL, OpenCV, unixODBC and LAME. On a clean machine <code>obr</code> does not start until they are installed. On Linux, run the script at the root of the distribution:
      </p>
-     <pre class="cmd">&gt; sudo apt-get install libmbedtls-dev libnghttp2-dev libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev</pre>
+     <pre class="cmd">&gt; cd objeck-lang
+&gt; ./install_deps.sh</pre>
+     <p>
+      It runs <code>ldd</code> on the tools in <code>bin</code> and the libraries in <code>lib/native</code>, looks up the package for each library that does not load with your package manager (apt, dnf/yum, pacman, zypper), and installs those packages. It asks first; <code>--yes</code> skips the prompt, and <code>--check</code> only reports. Package names differ between distributions (Ubuntu 24.04's <code>libmbedtls14t64</code> is <code>libmbedtls14</code> on Debian 12), which is why it looks them up rather than using a fixed list. Releases are built on Ubuntu 24.04 and need glibc 2.38 or newer, so Debian 12 (glibc 2.36) is too old. If your distribution packages different library versions or has an older C library, the script says so. Build from source there.
+     </p>
      <p>
       On macOS, install them with Homebrew:
      </p>
