@@ -106,6 +106,31 @@ class HtmlMaker {
 	}
 
 	#~
+	Escapes a doc comment for embedding in a hand-built JSON string.
+
+	The backslash goes first: it is the escape character, so replacing it after
+	anything else would also escape the backslashes this introduces. It was missing
+	entirely, and one doc comment containing the literal text '\uXXXX'
+	(json.obs's AppendHexEscape, whose own job is escaping) made the whole 816 KB
+	search_index.json invalid: JSON reads \u followed by four non-hex characters
+	and rejects the file. index.html swallows that in a .catch, so search silently
+	returned nothing and the page looked fine.
+	@param text raw description
+	@return text safe to place between two double quotes in JSON
+	~#
+	method : JsonEscape(text : String) ~ String {
+		if(text = Nil) {
+			return "";
+		};
+
+		return text->ReplaceAll("\\", "\\\\")
+			->ReplaceAll("\"", "&quot;")
+			->ReplaceAll("\t", " ")
+			->ReplaceAll("\n", " ")
+			->ReplaceAll("\r", "");
+	}
+
+	#~
 	Generates search_index.json for client-side full-text search
 	@param bundles parsed bundle map
 	~#
@@ -126,7 +151,7 @@ class HtmlMaker {
 					if(class_block->IsParsed()) {
 						class_url := GetClassLink(class_block);
 						class_name := class_block->GetShortName();
-						class_desc := class_block->GetDesc()->ReplaceAll("\"", "&quot;")->ReplaceAll("\n", " ")->ReplaceAll("\r", "");
+						class_desc := JsonEscape(class_block->GetDesc());
 
 						if(<>first) { json += ","; };
 						first := false;
@@ -146,7 +171,7 @@ class HtmlMaker {
 							if(<>funcs->IsEmpty()) {
 								func := funcs->Get(0);
 								func_link := class_name->ToLower() + '-' + func_name->ToLower();
-								func_desc := func->GetDesc()->ReplaceAll("\"", "&quot;")->ReplaceAll("\n", " ")->ReplaceAll("\r", "");
+								func_desc := JsonEscape(func->GetDesc());
 
 								json += ",{\"type\":\"method\",\"bundle\":\"";
 								json += bundle_name;
