@@ -17,7 +17,7 @@ class OdbcSqliteTest {
             err := conn->GetLastError();
             # IM002: no data source by that name. The checks need the SQLite ODBC
             # driver and an objeck_sqlite_test DSN, which ci-build.yml sets up on
-            # Linux x64; without them nothing can run, which is a skip. Any other
+            # Linux; without them nothing can run, which is a skip. Any other
             # connect failure is a failure. This used to print FAIL and exit 0,
             # which the runners count as a pass.
             if(err->Has("IM002")) {
