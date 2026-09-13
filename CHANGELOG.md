@@ -2,6 +2,11 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.9.3] - Unreleased
+
+### Infrastructure
+- **macOS bindings carry `@rpath` install names, and the deploy checks them** ([#811](https://github.com/objeck/objeck-lang/pull/811)): v2026.9.2's bindings shipped with whatever install name their builds set, two of them the CI runner's build directory and `libobjk_ml`'s an Xcode template's `/usr/local/lib/libxcode.dylib`; only `libobjk_sdl` had been corrected. All eight are rewritten to `@rpath/<name>` and re-signed, and the deploy fails if one is not. Loading was never affected, since the VM opens a binding by absolute path
+
 ## [v2026.9.2] - 2026-09-13
 
 A corrective release for v2026.9.1's native libraries: macOS ships OpenCV and ONNX

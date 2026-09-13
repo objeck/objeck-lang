@@ -208,6 +208,40 @@ cp libobjk_onnx.dylib ../../../release/deploy/lib/native/libobjk_onnx.dylib
 # (onnx, opencv) and shipped its .pkg, .zip and .tgz without them. All eight are
 # required on macOS; see verify_native_libs.sh.
 sh ../../../release/verify_native_libs.sh ../../../release/deploy/lib/native dylib crypto diags lame ml odbc onnx opencv sdl || exit 1
+
+# Every binding gets the same install name, @rpath/<its file name>, and the
+# deploy fails if one does not. Each came out of its build with whatever its
+# project happened to say: libobjk_opencv and libobjk_lame carried the CI
+# runner's build directory (/Users/runner/work/objeck-lang/...), libobjk_ml the
+# Xcode template's /usr/local/lib/libxcode.dylib, crypto, diags and odbc
+# /usr/local/lib/<name>, and onnx a bare name. v2026.9.2 shipped all of them:
+# only libobjk_sdl was ever corrected (above), and nothing checked the rest.
+# The VM dlopens a binding by absolute path, which ignores LC_ID_DYLIB, so
+# loading never broke; the release leaked build paths, and otool read as though
+# the tree depended on /usr/local/lib. Rewriting an install name invalidates the
+# signature, so each binding is re-signed ad-hoc and its signature verified, as
+# the SDL2 block does; the release build signs the whole tree afterwards.
+NATIVE_DEPLOY="../../../release/deploy/lib/native"
+BAD_NATIVE=""
+for name in crypto diags lame ml odbc onnx opencv sdl; do
+	base="libobjk_$name.dylib"
+	dylib="$NATIVE_DEPLOY/$base"
+	install_name_tool -id "@rpath/$base" "$dylib" 2>/dev/null
+	resign "$dylib"
+	id=$(otool -D "$dylib" 2>/dev/null | sed -n '2p')
+	if [ "$id" != "@rpath/$base" ]; then
+		BAD_NATIVE="$BAD_NATIVE
+       $base: install name ${id:-(none)}"
+	elif ! codesign --verify --strict "$dylib" 2>/dev/null; then
+		BAD_NATIVE="$BAD_NATIVE
+       $base: signature does not verify after the rewrite"
+	fi
+done
+if [ -n "$BAD_NATIVE" ]; then
+	echo "ERROR: native libraries not left at @rpath/<name> with a valid signature:$BAD_NATIVE"
+	exit 1
+fi
+echo "Native libraries carry @rpath install names and verify: crypto diags lame ml odbc onnx opencv sdl"
 cd ..
 
 # build macOS app launcher (.app bundle)
