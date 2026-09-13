@@ -326,29 +326,29 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				HEADER_SEARCH_PATHS = (
+					"$(OBJECK_DEPS)/include",
 					../../lib/openssl/macos/include,
-					/opt/homebrew/include,
 				);
 				"HEADER_SEARCH_PATHS[arch=*]" = (
+					"$(OBJECK_DEPS)/include",
 					../../lib/openssl/macos/include,
-					/opt/homebrew/include,
 				);
-				LD_RUNPATH_SEARCH_PATHS = "/opt/homebrew/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
-					/opt/homebrew/lib,
 				);
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				OTHER_LDFLAGS = (
 					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
-					"-lnghttp2",
-					"-lngtcp2",
-					"-lngtcp2_crypto_gnutls",
-					"-lnghttp3",
-					"-lgnutls",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp3.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libcrypto.a",
 					"-lz",
 				);
 				PRELINK_LIBS = "";
@@ -385,30 +385,30 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_FUNCTION = NO;
 				HEADER_SEARCH_PATHS = (
+					"$(OBJECK_DEPS)/include",
 					../../lib/openssl/macos/include,
-					/opt/homebrew/include,
 				);
 				"HEADER_SEARCH_PATHS[arch=*]" = (
+					"$(OBJECK_DEPS)/include",
 					../../lib/openssl/macos/include,
-					/opt/homebrew/include,
 				);
-				LD_RUNPATH_SEARCH_PATHS = "/opt/homebrew/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SDKROOT)/usr/lib/system",
-					/opt/homebrew/lib,
 				);
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
 					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
-					"-lnghttp2",
-					"-lngtcp2",
-					"-lngtcp2_crypto_gnutls",
-					"-lnghttp3",
-					"-lgnutls",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp3.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libcrypto.a",
 					"-lz",
 				);
 				PRELINK_LIBS = "";

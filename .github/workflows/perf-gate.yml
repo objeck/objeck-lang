@@ -47,10 +47,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential libmbedtls-dev libnghttp2-dev libngtcp2-dev \
-            libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev \
-            zlib1g-dev libreadline-dev ccache bc \
+            build-essential libmbedtls-dev zlib1g-dev libreadline-dev ccache bc \
             default-jdk-headless luajit
+
+      # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
+      # from cache or build them with tools/deps/build_quic_deps.sh.
+      - name: QUIC dependencies
+        uses: ./.github/actions/quic-deps
 
       - name: Cache ccache
         uses: actions/cache@v5

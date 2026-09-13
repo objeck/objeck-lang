@@ -8,45 +8,28 @@ Applies to Apple Silicon (ARM64) with Homebrew and Xcode 16.3+.
 git pull
 ```
 
-## 2. Install dependencies
+## 2. Build the HTTP/2 and HTTP/3 libraries
+
+obr links AWS-LC (TLS 1.3 for QUIC), ngtcp2, nghttp3 and nghttp2 statically, so
+nothing from Homebrew ends up in it and the binary runs on a Mac without
+Homebrew. Build them once; it takes a few minutes and needs `git` and `cmake`:
 
 ```bash
-brew install nghttp2 libngtcp2 libnghttp3 gnutls cmake mbedtls
+brew install cmake
+MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh
 ```
 
-Homebrew's `libngtcp2` ships only the OpenSSL crypto backend, but the VM
-uses GnuTLS.  Build the GnuTLS backend from source, pinned to the **same
-version** Homebrew installed (mixing versions causes a dyld symbol-not-found
-crash at runtime):
-
-```bash
-NGTCP2_VER=$(brew list --versions libngtcp2 | awk '{print $2}')
-echo "Building ngtcp2 v${NGTCP2_VER} to match Homebrew"
-
-cd /tmp
-git clone --depth 1 --branch "v${NGTCP2_VER}" https://github.com/ngtcp2/ngtcp2.git
-cd ngtcp2
-git submodule update --init --depth 1
-mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
-      -DENABLE_GNUTLS=ON -DENABLE_OPENSSL=OFF \
-      -DCMAKE_PREFIX_PATH="/opt/homebrew;/opt/homebrew/opt/gnutls" \
-      -DBUILD_TESTING=OFF ..
-make -j$(sysctl -n hw.ncpu)
-# Stage, then install with sudo (Homebrew files are root-owned):
-make install DESTDIR=/tmp/ngtcp2-install
-sudo cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2* /opt/homebrew/lib/
-sudo mkdir -p /opt/homebrew/include/ngtcp2
-sudo cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
-```
+They land in `~/objeck-deps/darwin-arm64`, which is where the Xcode project
+looks. For another prefix, pass it to the script and pass
+`OBJECK_DEPS=<prefix>` to `xcodebuild`. Keep the deployment target equal to the
+project's `MACOSX_DEPLOYMENT_TARGET`, or the link warns that the archives target
+a newer macOS than obr.
 
 Verify:
 
 ```bash
-ls /opt/homebrew/lib/libngtcp2_crypto_gnutls*
+ls ~/objeck-deps/darwin-arm64/lib/libngtcp2_crypto_boringssl.a
 ```
-
-If that file is missing, the VM will fail to link — open an issue.
 
 ## 3. Build the VM
 
@@ -84,12 +67,6 @@ export OBJECK_LIB_PATH=../lib
 ```
 
 ## 6. Run the tests
-
-Set the library path so the VM can find the ngtcp2 and GnuTLS dylibs at runtime:
-
-```bash
-export DYLD_LIBRARY_PATH="/opt/homebrew/lib:$DYLD_LIBRARY_PATH"
-```
 
 ### HTTP/2
 
@@ -137,6 +114,6 @@ Test 5: HTTP/3 QuickPost quic.nginx.org/... PASS (status=405)
 ## Notes
 
 - `SKIP (no network or ngtcp2 not built)` means the VM was not built with `OBJECK_HAS_NGTCP2`. Check that the Xcode project preprocessor defines include `OBJECK_HAS_NGTCP2` and `OBJECK_HAS_NGHTTP2`.
-- The ngtcp2 source build **must match** the version installed by Homebrew (`brew list --versions libngtcp2`). Building from `master` installs a newer `libngtcp2_crypto_gnutls` that references symbols absent in Homebrew's base `libngtcp2`, causing a dyld crash at runtime.
+- `otool -L obr` should list only `/usr/lib` and `/System` libraries. A path under `/opt/homebrew` means the build did not use the static libraries, and `deploy_macos_arm64.sh` fails on it: releases v2026.6.3 through v2026.9.2 shipped such an obr, and it could not start on a Mac without a hand-built ngtcp2 GnuTLS backend.
 - HTTP/3 test endpoint is `quic.nginx.org`. Cloudflare's QUIC implementation is incompatible with ngtcp2.
 - `OBJECK_LIB_PATH` must point at the `lib/` directory containing `cacert.pem` for TLS certificate verification.

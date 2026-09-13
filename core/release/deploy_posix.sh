@@ -47,6 +47,14 @@ cp ../vm/misc/*.pem ../release/deploy/lib
 
 ui_step "virtual machine (obr)"
 # build VM
+# obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically, from the prefix
+# tools/deps/build_quic_deps.sh builds. The Makefiles read OBJECK_DEPS.
+OBJECK_DEPS="${OBJECK_DEPS:-$HOME/objeck-deps/linux-$(uname -m)}"
+export OBJECK_DEPS
+if [ ! -f "$OBJECK_DEPS/lib/libngtcp2.a" ]; then
+	echo "ERROR: QUIC libraries not found in $OBJECK_DEPS; run tools/deps/build_quic_deps.sh"
+	exit 1
+fi
 cd ../vm
 if [ ! -z "$1" ] && [ "$1" = "arm64" ]; then
 	cp make/Makefile.arm64 Makefile
@@ -55,6 +63,13 @@ else
 fi
 make clean; make -j3 || ui_fail
 cp obr ../release/deploy/bin
+# A dynamic GnuTLS, ngtcp2 or nghttp link ties the archive to one distribution's
+# library versions; the static build must not regress to one.
+if readelf -d ../release/deploy/bin/obr | grep -qE 'NEEDED.*(gnutls|ngtcp2|nghttp)'; then
+	echo "ERROR: obr links a system GnuTLS, ngtcp2 or nghttp library"
+	readelf -d ../release/deploy/bin/obr | grep NEEDED
+	exit 1
+fi
 
 ui_step "debugger (obd)"
 # build debugger
