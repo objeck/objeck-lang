@@ -6,6 +6,7 @@ All notable changes to Objeck will be documented in this file.
 
 ### Infrastructure
 - **macOS bindings carry `@rpath` install names, and the deploy checks them** ([#811](https://github.com/objeck/objeck-lang/pull/811)): v2026.9.2's bindings shipped with whatever install name their builds set, two of them the CI runner's build directory and `libobjk_ml`'s an Xcode template's `/usr/local/lib/libxcode.dylib`; only `libobjk_sdl` had been corrected. All eight are rewritten to `@rpath/<name>` and re-signed, and the deploy fails if one is not. Loading was never affected, since the VM opens a binding by absolute path
+- **The macOS deploy checks where every library in the tree resolves**: v2026.9.2's `obr` found an ngtcp2 backend that Homebrew does not ship through its only `LC_RPATH`, `/opt/homebrew/lib`, and the deploy's checks since -- `obr`'s absolute links ([#812](https://github.com/objeck/objeck-lang/pull/812)) and the bindings' install names ([#811](https://github.com/objeck/objeck-lang/pull/811)) -- do not read rpaths. `tools/cicd/check_macos_tree_links.sh` follows every `LC_RPATH`, `@rpath`, `@loader_path`, `@executable_path` and absolute link of every Mach-O file in the finished tree, the app launcher included, and the deploy fails on one that resolves outside the tree or macOS. The OpenCV, ONNX and LAME bindings are allowed by name until they are bundled, as the install test allows them
 
 ## [v2026.9.2] - 2026-09-13
 
