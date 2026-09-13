@@ -41,9 +41,14 @@ export OBJECK_DEPS
 # archive built for a later macOS links with only a warning and the binary still
 # reports 13.3, so the check on the finished tree below cannot see it:
 # build_quic_deps.sh run by hand without MACOSX_DEPLOYMENT_TARGET gave every
-# member minos 26.0.
+# member minos 26.0. A member that records no build version fails too.
 ARCHIVE_BAD=$(find "$OBJECK_DEPS/lib" "$OBJECK_DEPS/macos-bundle" -name "*.a" | while IFS= read -r a; do
-	otool -l "$a" | awk -v a="$a" '$1 == "cmd" { b = ($2 == "LC_BUILD_VERSION") } b && $1 == "minos" { split($2, x, "."); if (x[1] + 0 > 13 || (x[1] + 0 == 13 && x[2] + 0 > 3)) { print "       " a ": a member has minos " $2; exit } }'
+	otool -l "$a" | awk -v a="$a" '
+		function check() { if (!m) return; if (v == "") { print "       " a ": a member has no LC_BUILD_VERSION"; bad = 1 } else { split(v, x, "."); if (x[1] + 0 > 13 || (x[1] + 0 == 13 && x[2] + 0 > 3)) { print "       " a ": a member has minos " v; bad = 1 } } }
+		/\(.+\):$/ { check(); if (bad) exit; m = 1; v = ""; b = 0; next }
+		$1 == "cmd" { b = ($2 == "LC_BUILD_VERSION") }
+		b && $1 == "minos" && v == "" { v = $2 }
+		END { if (!bad) check() }'
 done)
 if [ -n "$ARCHIVE_BAD" ]; then
 	echo "ERROR: static archives built for a later macOS than 13.3; rebuild them with MACOSX_DEPLOYMENT_TARGET=13.3:"
