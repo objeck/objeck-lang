@@ -552,6 +552,15 @@ jobs:
           exit 1
         fi
 
+    # The system libraries this tree links must be exactly the ones
+    # core/release/runtime_deps.json declares -- the list the docs gate holds
+    # every install instruction to. A new dependency fails here until it is
+    # declared (and so documented); a declared one nothing links fails too.
+    - name: Declared runtime dependencies match the build (POSIX)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: python3 tools/cicd/check_docs_deps.py --artifacts "core/release/${{ steps.deploy-dir.outputs.dir }}" --platform ${{ matrix.platform }}
+
     # ============================================
     # Test Suite
     # ============================================
@@ -1208,6 +1217,14 @@ jobs:
       - name: Generated files match their .in templates
         run: python3 tools/cicd/check_version_templates.py
 
+      # Install instructions drift from what the binaries link: v2026.9.2's notes
+      # told macOS users to install two formulas while obr needed four more, one
+      # of which Homebrew does not ship. Every package a doc names must be in
+      # core/release/runtime_deps.json, which the build legs check against the
+      # built trees.
+      - name: Docs name only the dependencies Objeck needs
+        run: python3 tools/cicd/check_docs_deps.py --docs
+
       # Same reason, same cost: nothing built, fails in seconds. A native call
       # whose name is written as a literal at the call site allocates a String
       # on every call -- 1655ns against 130ns for the same call with the name
@@ -1303,6 +1320,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build, tools]
     if: always()
+    permissions:
+      contents: read
+      actions: read
+      issues: write
     steps:
       - name: Report build status
         env:
@@ -1335,3 +1356,22 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
           exit 1
+
+      # A red master is a release blocker, so it is recorded where the maintainer
+      # sees it: one tracking issue per pipeline, plus a phone push when the
+      # NTFY_TOPIC secret exists. Pull requests report through their own checks.
+      - name: Checkout notification action
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/actions
+          path: notify-src
+
+      - name: Notify master failure
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: ./notify-src/.github/actions/notify-failure
+        with:
+          workflow: CI Build (master)
+          details: "build: ${{ needs.build.result }}, tools: ${{ needs.tools.result }}. The run summary names each failed job."
+          ntfy-topic: ${{ secrets.NTFY_TOPIC }}
+          github-token: ${{ github.token }}

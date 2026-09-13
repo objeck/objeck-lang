@@ -40,7 +40,7 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.2/objeck-linux-x64_2026.9.2.tgz
 tar xzf objeck-linux-x64_2026.9.2.tgz
 # Linux only: install the system libraries the toolchain links against
-# (mbedTLS, nghttp2/ngtcp2/nghttp3, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
+# (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
 ./objeck-lang/install_deps.sh
 export PATH=$PATH:./objeck-lang/bin

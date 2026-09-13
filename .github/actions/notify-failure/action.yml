@@ -1,0 +1,71 @@
+name: 'Notify pipeline failure'
+description: >
+  Records a failed master or release run where the maintainer will see it: one
+  open tracking issue per workflow (labelled pipeline-failure), with a comment per
+  failure linking the run, and an optional phone push through ntfy when an
+  ntfy topic is passed in. Adds nothing on success; call it with
+  `if: failure()` or an explicit needs.*.result check.
+
+inputs:
+  workflow:
+    description: 'Human name of the pipeline, e.g. "CI Build (master)" or "Release Build v2026.9.3"'
+    required: true
+  details:
+    description: 'One or two lines on what failed (job names, version)'
+    required: false
+    default: ''
+  ntfy-topic:
+    description: 'ntfy topic for a phone push; pass secrets.NTFY_TOPIC. Empty = no push.'
+    required: false
+    default: ''
+  github-token:
+    description: 'Token with issues: write'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Open or update the tracking issue
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        WORKFLOW: ${{ inputs.workflow }}
+        DETAILS: ${{ inputs.details }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -uo pipefail
+        LABEL=pipeline-failure
+        TITLE="Pipeline failing: $WORKFLOW"
+        gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --color B60205 \
+          --description "Opened by .github/actions/notify-failure" >/dev/null 2>&1 || true
+        BODY="**$WORKFLOW** failed on \`${GITHUB_REF_NAME}\` at \`${GITHUB_SHA:0:10}\`.
+
+        ${DETAILS}
+
+        Run: $RUN_URL
+
+        Close this issue once the pipeline is green again; the next failure reopens a new one."
+        EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
+          --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n 1)
+        if [ -n "$EXISTING" ]; then
+          gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+          echo "Commented on #$EXISTING"
+        else
+          gh issue create --repo "$GITHUB_REPOSITORY" --label "$LABEL" --title "$TITLE" --body "$BODY"
+        fi
+
+    - name: Phone push (ntfy)
+      if: inputs.ntfy-topic != ''
+      shell: bash
+      env:
+        NTFY_TOPIC: ${{ inputs.ntfy-topic }}
+        WORKFLOW: ${{ inputs.workflow }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        # Short, one line: what failed and where to look. Never fails the job.
+        curl -fsS --max-time 15 \
+          -H "Title: Objeck: $WORKFLOW failed" \
+          -H "Priority: high" \
+          -H "Click: $RUN_URL" \
+          -d "$WORKFLOW failed on ${GITHUB_REF_NAME} (${GITHUB_SHA:0:10})" \
+          "https://ntfy.sh/$NTFY_TOPIC" >/dev/null || echo "::warning::ntfy push failed"

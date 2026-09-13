@@ -1160,6 +1160,9 @@ jobs:
     needs: [prepare, build, build-lsp, build-docs, install-test-macos]
     runs-on: ubuntu-latest
     if: always()
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Generate build summary
@@ -1177,14 +1180,35 @@ jobs:
           echo "- macOS ARM64: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- LSP Package: ${{ needs.build-lsp.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- API Docs: ${{ needs.build-docs.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS install test: ${{ needs.install-test-macos.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.build.result }}" = "success" ] && \
              [ "${{ needs.build-lsp.result }}" = "success" ] && \
-             [ "${{ needs.build-docs.result }}" = "success" ]; then
+             [ "${{ needs.build-docs.result }}" = "success" ] && \
+             [ "${{ needs.install-test-macos.result }}" = "success" ]; then
             echo "✅ **All builds completed successfully!**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Next step: Run release-publish workflow to create GitHub Release" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Some builds failed. Please review logs.**" >> $GITHUB_STEP_SUMMARY
           fi
+
+      # A failed release build (a tag, or a dry run) is recorded where the
+      # maintainer sees it: one tracking issue per pipeline, plus a phone push
+      # when the NTFY_TOPIC secret exists.
+      - name: Checkout notification action
+        if: contains(needs.*.result, 'failure')
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/actions
+          path: notify-src
+
+      - name: Notify release build failure
+        if: contains(needs.*.result, 'failure')
+        uses: ./notify-src/.github/actions/notify-failure
+        with:
+          workflow: Release Build ${{ needs.prepare.outputs.version }}
+          details: "build: ${{ needs.build.result }}, lsp: ${{ needs.build-lsp.result }}, docs: ${{ needs.build-docs.result }}, macOS install test: ${{ needs.install-test-macos.result }}"
+          ntfy-topic: ${{ secrets.NTFY_TOPIC }}
+          github-token: ${{ github.token }}

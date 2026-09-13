@@ -173,3 +173,6 @@ coverity_config.xml
 
 # build-sandbox.sh stages obc/obr/*.obl here inside the work tree on the VPS
 programs/web-playground/docker/sandbox-deploy/
+
+# Release-candidate results written by tools/cicd/verify_platform.sh|.cmd
+rc-results/

@@ -503,8 +503,8 @@
     <pre class="cmd">./install_deps.sh</pre>
     It runs <code>ldd</code> on the distribution's <code>bin</code> tools and
     <code>lib/native</code> libraries and installs every system library they cannot load:
-    mbedTLS (<code>obr</code>, <code>obd</code>, <code>obi</code>), nghttp2/ngtcp2/nghttp3
-    (<code>obr</code>), readline (<code>obd</code>), SDL2 and OpenGL, OpenCV, unixODBC and LAME.
+    mbedTLS (<code>obr</code>, <code>obd</code>, <code>obi</code>),
+    readline (<code>obd</code>), SDL2 and OpenGL, OpenCV, unixODBC and LAME.
     It looks up each library's package with your package manager (apt, dnf/yum, pacman,
     zypper), so the names are right for your distribution. Use
     <pre class="cmd">./install_deps.sh --check</pre>

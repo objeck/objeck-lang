@@ -24,6 +24,58 @@ Either way, the release summary + changelog bullets are auto-derived from `git l
 
 **Never attempt mid-release CI fixes.** If a build failure is discovered after the tag is pushed, stop and tell the user. Two releases (v2026.5.0 and v2026.5.1) were broken by attempting on-the-fly CI patches. The correct recovery is: fix on master, delete the bad tag, re-tag.
 
+## The release train: gates before anything is tagged
+
+The steps below start at "resolve the version". Everything that decides whether a
+release is *good* happens before that, in this order. Do not advance a gate until
+its check passes; do not skip one because the next looks likely to pass. v2026.9.1
+shipped without its native libraries and v2026.9.2's macOS `obr` could not start on
+any user's Mac -- both passed every check that existed, so these gates check what a
+user gets, on clean machines, on every platform.
+
+**One controller.** A single session (the always-on desktop) merges, integrates and
+tags. Other sessions and machines report results to it; nothing else pushes to
+master or tags. The maintainer is contacted only for signing, the objeck.org upload,
+or a critical problem.
+
+1. **Land the open PRs together.** Merge every PR bound for the release onto a
+   throwaway integration branch in the intended order (`git merge-tree --write-tree`
+   finds conflicts without a checkout), open it as a draft PR so `ci-build.yml`
+   runs, and merge the real PRs in that order only when it is green. Then confirm
+   master's tree equals the tested tree (`git rev-parse origin/master^{tree}`).
+2. **Docs match the binaries.** `tools/cicd/check_docs_deps.py --docs` (CI's Tools
+   job) holds every install instruction to `core/release/runtime_deps.json`, and
+   each POSIX build leg checks the built tree against the same file
+   (`--artifacts`). A change to what the binaries link changes that file in the
+   same PR.
+3. **Clean-machine installs.** `ci-build.yml` builds and installs the macOS `.pkg`
+   with Homebrew moved aside (`tools/cicd/macos_install_test.sh`);
+   `release-build.yml`'s `install-test-macos` job does the same on the oldest and
+   newest macOS runners and fails the run, so `release-publish.yml` never publishes it.
+4. **Every target on real hardware, one script.** At the exact commit to be
+   tagged, each machine runs the same verification from a clean checkout and hands
+   the controller its result file:
+   ```bash
+   tools/cicd/verify_platform.sh <VERSION>        # Linux x64, Linux ARM64 (WSL2 too), macOS arm64
+   tools\cicd\verify_platform.cmd <VERSION> x64   # Windows x64 (arm64 on the ARM64 box)
+   ```
+   It builds the deploy tree the way the release does, runs the regression suite
+   twice (default and `OBJECK_JIT_THRESHOLD=1`), the VM flag, debugger and DAP
+   tests, restores the tracked files the deploy rewrites, and writes
+   `rc-results/<VERSION>/<platform>.txt` ending in `verdict=PASS|FAIL`. All five
+   targets need `verdict=PASS` at the same `commit=` before tagging.
+5. **Dry run the release build.** Since #808 a `release-build.yml` dispatch from
+   any non-tag branch is safe: it cannot publish and does not push `api.zip`.
+   Dispatch it with the real version (never `-rc`: the smoke tests compare the
+   full version string) and read every job, including `install-test-macos`.
+6. **Then** run the steps below: tag, watch, body, sign, post-release gates.
+
+On the tag push itself, confirm the two things #808 changed and nothing has exercised
+yet: `build-docs`' "Commit api.zip to repo" ran (not skipped), and Release Publish's
+check-trigger logged `Release Build succeeded on 'v<VERSION>'`. If either skipped:
+`gh workflow run release-publish.yml -f version=<VERSION> -f run_id=<build run>` and
+push `api.zip` by hand.
+
 ## Steps
 
 ### 1a. Resolve the target version

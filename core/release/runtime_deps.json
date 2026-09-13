@@ -1,0 +1,93 @@
+{
+  "_comment": [
+    "The single source of truth for what Objeck needs from the operating system.",
+    "tools/cicd/check_docs_deps.py enforces it in both directions:",
+    "  --artifacts: the libraries a built deploy tree actually links must match 'sonames'/'external'",
+    "  --docs:      every package a doc tells users to install must be listed here",
+    "Change this file in the same PR as any change to what the binaries link, and the",
+    "docs gate names every page that still says otherwise."
+  ],
+  "linux": {
+    "toolchain_sonames": [
+      "libc.so.6", "libm.so.6", "libdl.so.2", "libpthread.so.0", "librt.so.1",
+      "libgcc_s.so.1", "libstdc++.so.6", "ld-linux-x86-64.so.2", "ld-linux-aarch64.so.1"
+    ],
+    "sonames": {
+      "x64": [
+        "libmbedtls.so.14", "libmbedx509.so.1", "libmbedcrypto.so.7", "libz.so.1",
+        "libreadline.so.8", "libodbc.so.2", "libmp3lame.so.0",
+        "libSDL2-2.0.so.0", "libSDL2_image-2.0.so.0", "libSDL2_mixer-2.0.so.0", "libSDL2_ttf-2.0.so.0", "libGL.so.1",
+        "libopencv_core.so.406", "libopencv_imgproc.so.406", "libopencv_imgcodecs.so.406",
+        "libopencv_calib3d.so.406", "libopencv_dnn.so.406", "libopencv_highgui.so.406", "libopencv_videoio.so.406"
+      ],
+      "arm64": [
+        "libmbedtls.so.14", "libmbedx509.so.1", "libmbedcrypto.so.7", "libz.so.1",
+        "libreadline.so.8", "libodbc.so.2", "libmp3lame.so.0",
+        "libSDL2-2.0.so.0", "libSDL2_image-2.0.so.0", "libSDL2_mixer-2.0.so.0", "libSDL2_ttf-2.0.so.0", "libGL.so.1",
+        "libopencv_core.so.406", "libopencv_imgproc.so.406", "libopencv_imgcodecs.so.406",
+        "libopencv_dnn.so.406", "libopencv_highgui.so.406", "libopencv_videoio.so.406"
+      ]
+    }
+  },
+  "macos": {
+    "_comment": "Links a macOS package may make outside itself and /usr/lib, /System. The goal is none; each entry is a binding not yet bundled.",
+    "external_prefixes": [
+      "/opt/homebrew/opt/opencv@4/lib/",
+      "/opt/homebrew/opt/onnxruntime/lib/",
+      "/opt/homebrew/opt/lame/lib/"
+    ]
+  },
+  "retired": {
+    "nghttp2": "obr links HTTP/2 statically since v2026.9.3 (tools/deps/build_quic_deps.sh)",
+    "ngtcp2": "obr links QUIC statically since v2026.9.3 (tools/deps/build_quic_deps.sh)",
+    "nghttp3": "obr links HTTP/3 statically since v2026.9.3 (tools/deps/build_quic_deps.sh)",
+    "gnutls": "obr's HTTP/3 uses statically linked AWS-LC since v2026.9.3, not GnuTLS"
+  },
+  "packages": {
+    "msys2": {
+      "runtime": [],
+      "build": [
+        "mingw-w64-ucrt-x86_64-gcc", "mingw-w64-ucrt-x86_64-mbedtls", "mingw-w64-ucrt-x86_64-SDL2",
+        "mingw-w64-ucrt-x86_64-SDL2_ttf", "mingw-w64-ucrt-x86_64-SDL2_mixer", "mingw-w64-ucrt-x86_64-SDL2_image",
+        "mingw-w64-ucrt-x86_64-unixodbc", "mingw-w64-ucrt-x86_64-eigen3", "mingw-w64-ucrt-x86_64-nghttp2",
+        "make", "unzip"
+      ],
+      "test": []
+    },
+    "apt": {
+      "runtime": [
+        "libmbedtls14t64", "libmbedx509-1t64", "libmbedcrypto7t64", "zlib1g", "libreadline8t64",
+        "libodbc2", "libmp3lame0", "libgl1",
+        "libsdl2-2.0-0", "libsdl2-image-2.0-0", "libsdl2-mixer-2.0-0", "libsdl2-ttf-2.0-0",
+        "libopencv-core406t64", "libopencv-imgproc406t64", "libopencv-imgcodecs406t64",
+        "libopencv-calib3d406t64", "libopencv-dnn406t64", "libopencv-highgui406t64", "libopencv-videoio406t64"
+      ],
+      "build": [
+        "build-essential", "git", "cmake", "pkg-config", "unzip", "ccache",
+        "libmbedtls-dev", "zlib1g-dev", "libreadline-dev", "unixodbc-dev", "libmp3lame-dev", "libeigen3-dev",
+        "libopencv-dev", "libgl1-mesa-dev", "libegl1", "libegl-mesa0",
+        "libsdl2-dev", "libsdl2-image-dev", "libsdl2-ttf-dev", "libsdl2-mixer-dev"
+      ],
+      "test": ["libsqliteodbc", "python3"]
+    },
+    "brew": {
+      "runtime": ["opencv@4", "onnxruntime", "lame"],
+      "build": [
+        "cmake", "pkg-config", "ccache", "mbedtls", "unixodbc", "readline", "eigen", "lame",
+        "opencv@4", "onnxruntime", "sdl2", "sdl2_image", "sdl2_ttf", "sdl2_mixer"
+      ],
+      "test": [],
+      "tools": ["macvim"]
+    },
+    "dnf": {
+      "runtime": ["mbedtls", "zlib", "readline", "unixODBC", "lame-libs", "mesa-libGL", "SDL2", "SDL2_image", "SDL2_mixer", "SDL2_ttf", "opencv"],
+      "build": [],
+      "test": []
+    },
+    "pacman": {
+      "runtime": ["mbedtls2", "zlib", "readline", "unixodbc", "lame", "mesa", "sdl2", "sdl2-compat", "sdl2_image", "sdl2_mixer", "sdl2_ttf", "opencv"],
+      "build": [],
+      "test": []
+    }
+  }
+}

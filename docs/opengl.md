@@ -43,7 +43,6 @@ On a clean machine `obr` does not start without it:
 | Needed by | Libraries |
 |---|---|
 | `obr`, `obd`, `obi` | mbedTLS (TLS and crypto) |
-| `obr` | nghttp2, ngtcp2, nghttp3 (HTTP/2 and HTTP/3) |
 | `obd` | readline |
 | `libobjk_sdl.so` | SDL2 (core, image, mixer, ttf), OpenGL |
 | `libobjk_opencv.so`, `libobjk_onnx.so` | OpenCV 4.6 |
@@ -75,7 +74,7 @@ Elsewhere the script tells you what is in the way:
 - **An older C library.** Debian 12 packages every library, but its glibc 2.36
   is too old, so nothing would start. The script says so and installs nothing.
 - **Different library versions.** Fedora 44, for example, packages no mbedTLS
-  2.28, ngtcp2 0.12 or OpenCV 4.6. The script installs what it can, names the
+  2.28 or OpenCV 4.6. The script installs what it can, names the
   rest and exits 1.
 - **musl or another architecture.** Alpine cannot run glibc binaries, and an
   arm64 tree cannot run on x86-64. The script names the case and exits 1.
