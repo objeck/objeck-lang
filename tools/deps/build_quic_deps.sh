@@ -21,7 +21,7 @@
 # Each library's license files are installed under <prefix>/licenses/<name>;
 # the deploys ship them in doc/licenses, since obr carries the code.
 #
-# macOS: export MACOSX_DEPLOYMENT_TARGET to match the binaries that link these
+# macOS: MACOSX_DEPLOYMENT_TARGET defaults to 13.3; it must match the binaries that link these
 # (CMake reads it), or the link warns that objects target a newer macOS.
 #
 # Re-running with the same versions is a no-op (see the stamp file), so CI can
@@ -36,6 +36,12 @@ NGHTTP2_VERSION=v1.70.0
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
+# The package floor on macOS. Without it CMake targets the build machine's macOS:
+# a run by hand gave every archive member minos 26.0, which links with only a
+# warning into binaries that still report 13.3.
+if [ "$OS" = darwin ]; then
+	export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.3}"
+fi
 PREFIX="${1:-${OBJECK_DEPS:-$HOME/objeck-deps/$OS-$ARCH}}"
 STAMP="$PREFIX/.quic-deps-stamp"
 # layout 2: licenses/ is installed, and the prefix is no longer wiped.
