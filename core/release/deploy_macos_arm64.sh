@@ -311,6 +311,17 @@ cp programs/deploy/media/*.png core/release/deploy/examples/media
 cp programs/deploy/media/*.wav core/release/deploy/examples/media
 sh core/release/verify_example_assets.sh core/release/deploy/examples || exit 1
 
+# Every Mach-O file in the finished tree, the app launcher included, must load
+# its libraries from the tree or macOS alone. The checks above read obr's
+# absolute links and the bindings' install names; this one follows LC_RPATH and
+# @rpath links, the way v2026.9.2's obr reached a library only its build machine
+# had. It runs once the tree is assembled and before anything signs or archives
+# it, so it sees what ships. The OpenCV, ONNX and LAME bindings link Homebrew
+# until they are bundled, and are allowed by name until then, as in the install
+# tests in ci-build.yml and release-build.yml.
+ALLOW_EXTERNAL="libobjk_opencv.dylib libobjk_onnx.dylib libobjk_lame.dylib" \
+	bash tools/cicd/check_macos_tree_links.sh core/release/deploy || exit 1
+
 cd core/release
 
 # deploy
