@@ -128,9 +128,10 @@
             <code>--check</code> to see what is missing without installing anything,
             <code>--sdl</code> to limit it to what SDL2/OpenGL programs need, or <code>--dev</code>
             if you are building the SDL native library from source. Releases are built on
-            Ubuntu 24.04 and need glibc 2.38 or newer, so Debian 12 (glibc 2.36) is too old.
-            Elsewhere the script names any library your distribution does not package, or says
-            that the system's C library is too old.
+            Ubuntu 24.04, run as shipped there, and need glibc 2.38 or newer, so Debian 12
+            (glibc 2.36) is too old. Other distributions package different mbedTLS, ngtcp2 and
+            OpenCV versions; the script names what it cannot install, and building from source
+            is the supported route there.
         </p>
 
         <h4>For macOS</h4>

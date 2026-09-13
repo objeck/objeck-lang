@@ -457,9 +457,10 @@ tree_unusable_reason() {
 		say "This system's libraries are older than the ones the distribution was built"
 		say "against:"
 		printf '%s\n' "$out" | awk '{ printf "  %-22s has no %s\n", $1, $2 }'
-		say "Linux releases are built on Ubuntu 24.04 and need glibc 2.38 or newer."
-		say "Installing packages cannot upgrade a distribution's C library; use a newer"
-		say "distribution, or build Objeck from source here: core/release/deploy_posix.sh"
+		say "Linux releases are built on Ubuntu 24.04, run as shipped there, and need"
+		say "glibc 2.38 or newer. Installing packages cannot upgrade a distribution's C"
+		say "library. On this distribution, build Objeck from source:"
+		say "  core/release/deploy_posix.sh"
 		return 0
 	fi
 	return 1
