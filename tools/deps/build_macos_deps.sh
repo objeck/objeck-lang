@@ -235,9 +235,20 @@ cmp -s "$CONFIG_H" "$STAGE/mbedtls/include/mbedtls/mbedtls_config.h" \
 # What this script exists to replace are archives built for a newer macOS than the
 # package declares (vendored mbedTLS 15.0, libiodbc 26.0). Every archive member
 # must record exactly the deployment target.
+# A member that records no LC_BUILD_VERSION prints "(none)" rather than nothing, so
+# it cannot pass unseen. The filter is awk, not grep -v: under pipefail a grep that
+# selects nothing -- every member correct -- fails the assignment, and set -e ended
+# the script there, silently, exactly when the archives were right.
 minos_of() { otool -l "$1" | awk '/LC_BUILD_VERSION/{f=1} f&&/minos/{print $2; f=0}'; }
+member_minos() {
+	otool -l "$1" | awk '
+		/\(.+\):$/ { if (m) print (v == "" ? "(none)" : v); m = 1; v = ""; b = 0; next }
+		$1 == "cmd" { b = ($2 == "LC_BUILD_VERSION") }
+		b && $1 == "minos" && v == "" { v = $2 }
+		END { if (m) print (v == "" ? "(none)" : v) }'
+}
 while IFS= read -r archive; do
-	bad=$(minos_of "$archive" | grep -v -x "$MACOSX_DEPLOYMENT_TARGET" | sort -u | tr '\n' ' ')
+	bad=$(member_minos "$archive" | awk -v t="$MACOSX_DEPLOYMENT_TARGET" '$0 != t' | sort -u | tr '\n' ' ')
 	[ -z "$bad" ] || fail "${archive#$STAGE/}: members built for macOS $bad"
 done < <(find "$STAGE" -name '*.a' -type f)
 
@@ -251,9 +262,10 @@ done < <(find "$STAGE" -name '*.a' -type f)
 	|| fail "unexpected ONNX Runtime install name"
 
 for dylib in "$STAGE/lame/lib/libmp3lame.0.dylib" "$STAGE/onnxruntime/lib/libonnxruntime.1.dylib"; do
-	if otool -L "$dylib" | tail -n +2 | grep -qE '/opt/homebrew|/usr/local'; then
-		fail "${dylib#$STAGE/} links Homebrew"
-	fi
+	links=$(otool -L "$dylib" | tail -n +2)
+	case "$links" in
+		*/opt/homebrew*|*/usr/local*) fail "${dylib#$STAGE/} links Homebrew" ;;
+	esac
 done
 
 [ $FAILED -eq 0 ] || exit 1
