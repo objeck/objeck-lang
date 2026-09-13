@@ -1,0 +1,99 @@
+name: Probe 816 P3 (Map insert stress, windows-arm64)
+
+# Throwaway probe for issue #816, companion to probe-816.yml: does a compiled
+# Map<String,String> insert loop corrupt keys on windows-arm64 by itself (P3a),
+# only with a second allocating thread (P3b), or under frequent collections?
+# Runs only on pushes to its own branch and publishes nothing.
+on:
+  push:
+    branches: [probe/816-p3]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  probe:
+    runs-on: windows-11-arm
+    timeout-minutes: 100
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            programs/tests
+
+      - name: Download master's windows-arm64 deploy tree
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-windows-arm64
+          run-id: 34780420344
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: Compile fixtures
+        run: |
+          $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
+          foreach ($f in @("map_insert_stress_816", "map_insert_stress_816_mt")) {
+            & tree\bin\obc.exe -src "programs\tests\$f.obs" -lib collect -opt s3 -dest "$f.obe"
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path "$f.obe")) { throw "compile failed: $f" }
+          }
+          & tree\bin\obc.exe --version
+
+      - name: Probe loops (P3a, P3b, P3b + frequent GC)
+        run: |
+          $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
+          $obr = "$PWD\tree\bin\obr.exe"
+          New-Item -ItemType Directory -Force results | Out-Null
+
+          function RunOnce([string[]]$argv, [hashtable]$envs) {
+            foreach ($k in $envs.Keys) { Set-Item "env:$k" $envs[$k] }
+            $out = "$PWD\results\last.txt"
+            $p = Start-Process -FilePath $obr -ArgumentList $argv -NoNewWindow -PassThru `
+                   -RedirectStandardOutput "$out.o" -RedirectStandardError "$out.e"
+            if (-not $p.WaitForExit(120000)) { $p.Kill(); $code = 'timeout' } else { $code = $p.ExitCode }
+            foreach ($k in $envs.Keys) { Remove-Item "env:$k" -ErrorAction SilentlyContinue }
+            $text = (Get-Content "$out.o" -Raw) + (Get-Content "$out.e" -Raw)
+            return @{ code = $code; text = $text }
+          }
+
+          # Any run that does not end in PASS is evidence: an invalid-object cast,
+          # a key/value mismatch (FAIL: N mismatches) or another abnormal exit.
+          function Probe([string]$name, [int]$n, [string[]]$argv, [hashtable]$envs) {
+            $cast = 0; $mismatch = 0; $other = 0
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            for ($i = 1; $i -le $n; $i++) {
+              $r = RunOnce $argv $envs
+              if ($r.text -match 'Invalid object cast') {
+                $cast++; if ($cast -eq 1) { Set-Content "results\$name-first-cast.txt" $r.text }
+              } elseif ($r.text -match 'FAIL:') {
+                $mismatch++; if ($mismatch -eq 1) { Set-Content "results\$name-first-mismatch.txt" $r.text }
+              } elseif ($r.code -ne 0 -or $r.text -notmatch 'PASS') {
+                $other++; if ($other -eq 1) { Set-Content "results\$name-first-other.txt" "exit=$($r.code)`n$($r.text)" }
+              }
+            }
+            $line = "| $name | $n | $cast | $mismatch | $other | $([int]$sw.Elapsed.TotalSeconds) s |"
+            Write-Output $line
+            Add-Content $env:GITHUB_STEP_SUMMARY $line
+          }
+
+          Add-Content $env:GITHUB_STEP_SUMMARY "### Probe #816 P3 on windows-11-arm (deploy tree of 2137cef643)"
+          Add-Content $env:GITHUB_STEP_SUMMARY ""
+          Add-Content $env:GITHUB_STEP_SUMMARY "| probe | runs | invalid-object casts | mismatches | other | time |"
+          Add-Content $env:GITHUB_STEP_SUMMARY "|---|---|---|---|---|---|"
+
+          # 20000 rounds per run keeps 100 runs inside the job on a slower ARM runner.
+          Probe "P3a-single-thread-jit1" 100 @("map_insert_stress_816.obe", "20000") @{ OBJECK_JIT_THRESHOLD = "1" }
+          Probe "P3b-alloc-thread-jit1" 100 @("map_insert_stress_816_mt.obe", "20000") @{ OBJECK_JIT_THRESHOLD = "1" }
+          Probe "P3b-alloc-thread-jit1-gc64k" 100 @("--gc-threshold=64k", "map_insert_stress_816_mt.obe", "20000") @{ OBJECK_JIT_THRESHOLD = "1" }
+
+      - name: Keep first failures
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: probe-816-p3-results
+          path: results/
+          retention-days: 7
+          if-no-files-found: ignore

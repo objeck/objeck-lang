@@ -1,0 +1,166 @@
+#~
+# Issue #816 probe P3a: single-thread Map<String, String> insert stress.
+#
+# windows-arm64 CI failed http_persistence_test once, with every method compiled,
+# inside the compiled Collection.Map->Insert(key, value, node): an OBJ_INST_CAST
+# to System.Compare was handed a reference that was no longer a valid object
+# (the ">>> Invalid object cast: '>>> virtual machine: out of memory <<<" line is
+# the bridge failing to print that object's garbage class name).
+#
+# This keeps the shape that failed and removes the sockets and the second thread:
+# header lines are parsed exactly as HttpPersistenceTest->ReadResponse does
+# (SubString, ToLower, Trim, Find, merge, Insert) into a small map, and every line
+# costs an 8192-character array, the allocation TCPSocket->ReadLine makes. Arrays
+# go to the old generation, so that pressure drives collections while young key
+# and value strings are in flight through the compiled Insert.
+#
+# P3b (map_insert_stress_816_mt.obs) is the same loop with a second thread that
+# only allocates. A difference between the two says whether a collection started
+# by another thread is needed.
+#
+# Run with every method compiled:
+#   OBJECK_JIT_THRESHOLD=1 obr map_insert_stress_816.obe [rounds] [lines]
+# Exit 0 and a PASS line when every map reads back; exit 1 on any mismatch. The
+# defect itself usually ends the process with the invalid-cast line instead.
+~#
+
+use Collection;
+
+class MapInsertStress {
+	function : Main(args : String[]) ~ Nil {
+		rounds := 60000;
+		lines := 6;
+		if(args->Size() > 0) {
+			rounds := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			lines := args[1]->ToInt();
+		};
+
+		timer := System.Time.Timer->New(true);
+		failures := Stress(rounds, lines);
+		timer->End();
+		secs := timer->GetElapsedTime();
+
+		if(failures > 0) {
+			"FAIL: {$failures} mismatches in {$rounds} rounds of {$lines} header lines ({$secs}s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: {$rounds} rounds of {$lines} header lines, every map read back ({$secs}s)"->PrintLine();
+	}
+
+	#~
+	# One response's worth of header lines. A fresh String per line, as ReadLine
+	# returns, and a repeated name on the last line so the merge path runs too.
+	~#
+	function : MakeLines(round : Int, lines : Int) ~ String[] {
+		result := String->New[lines];
+		for(i := 0; i < lines; i += 1;) {
+			name := "X-Header-";
+			name->Append(i % (lines - 1));
+			line := name;
+			line->Append(": value-");
+			line->Append(round);
+			line->Append('-');
+			line->Append(i);
+			result[i] := line;
+		};
+		return result;
+	}
+
+	#~
+	# The loop from HttpPersistenceTest->ReadResponse, with the socket read
+	# replaced by an array walk plus ReadLine's buffer allocation.
+	~#
+	function : ParseHeaders(source : String[]) ~ Map<String, String> {
+		headers := Map->New()<String, String>;
+
+		index := 0;
+		buffer := Char->New[8192];
+		line := source[index];
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon);
+				value := line->SubString(colon + 1, line->Size() - colon - 1);
+				if(name <> Nil & value <> Nil) {
+					name := name->ToLower();
+					value := value->Trim();
+					existing := headers->Find(name);
+					if(existing <> Nil) { value := "{$existing},{$value}"; };
+					headers->Insert(name, value);
+				};
+			};
+
+			index += 1;
+			buffer := Char->New[8192];
+			if(index < source->Size()) {
+				line := source[index];
+			}
+			else {
+				line := Nil;
+			};
+		};
+
+		return headers;
+	}
+
+	#~
+	# Expected value for header i of a round, built independently of the parse.
+	~#
+	function : Expected(round : Int, lines : Int, slot : Int) ~ String {
+		expected := "";
+		for(i := 0; i < lines; i += 1;) {
+			if(i % (lines - 1) = slot) {
+				piece := "value-";
+				piece->Append(round);
+				piece->Append('-');
+				piece->Append(i);
+				if(expected->Size() > 0) {
+					expected->Append(',');
+				};
+				expected->Append(piece);
+			};
+		};
+		return expected;
+	}
+
+	function : Stress(rounds : Int, lines : Int) ~ Int {
+		failures := 0;
+		slots := lines - 1;
+
+		for(r := 0; r < rounds; r += 1;) {
+			headers := ParseHeaders(MakeLines(r, lines));
+
+			if(headers->Size() <> slots) {
+				size := headers->Size();
+				if(failures < 10) {
+					"  round {$r}: map size {$size}, expected {$slots}"->PrintLine();
+				};
+				failures += 1;
+			};
+
+			for(s := 0; s < slots; s += 1;) {
+				key := "x-header-";
+				key->Append(s);
+				found := headers->Find(key);
+				expected := Expected(r, lines, s);
+				if(found = Nil) {
+					if(failures < 10) {
+						"  round {$r}: '{$key}' missing"->PrintLine();
+					};
+					failures += 1;
+				}
+				else if(found->Equals(expected) = false) {
+					if(failures < 10) {
+						"  round {$r}: '{$key}' = '{$found}', expected '{$expected}'"->PrintLine();
+					};
+					failures += 1;
+				};
+			};
+		};
+
+		return failures;
+	}
+}
