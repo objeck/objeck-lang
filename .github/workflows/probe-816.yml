@@ -38,7 +38,7 @@ jobs:
           $env:OBJECK_LIB_PATH = "$PWD\tree\lib"
           & tree\bin\obc.exe -src programs\regression\http_persistence_test.obs -lib cipher,collect,xml,json,net,net_server -opt s3 -dest t.obe
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path t.obe)) { throw "compile failed" }
-          & tree\bin\obr.exe --version
+          & tree\bin\obc.exe --version
 
       - name: Probe loops (P1, P2, P4)
         run: |
