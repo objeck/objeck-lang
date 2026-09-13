@@ -178,7 +178,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 11.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -231,7 +231,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 11.1;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -241,6 +241,7 @@
 		ED9732862599F8CC0074EFE7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
@@ -253,14 +254,14 @@
 				GCC_ENABLE_CPP_RTTI = YES;
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				HEADER_SEARCH_PATHS = (
-					../include,
-					../../../openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/iodbc/include",
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				OTHER_LDFLAGS = (
-					"-Wl,../libiodbc.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/iodbc/lib/libiodbc.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = objk_odbc;
@@ -271,6 +272,7 @@
 		ED9732872599F8CC0074EFE7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 37JDXYTCG2;
@@ -283,14 +285,14 @@
 				GCC_ENABLE_CPP_RTTI = YES;
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				HEADER_SEARCH_PATHS = (
-					../include,
-					../../../openssl/macos/include,
+					"$(OBJECK_DEPS)/macos-bundle/iodbc/include",
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
 				);
 				OTHER_LDFLAGS = (
-					"-Wl,../libiodbc.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../../openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/iodbc/lib/libiodbc.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_NAME = objk_odbc;

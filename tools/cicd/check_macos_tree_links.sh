@@ -77,6 +77,9 @@ report() {   # file message
 while IFS= read -r f; do
 	rpaths_of "$f" > "$WORK/rp"
 	while IFS= read -r rp; do
+		# macOS's own directories: swiftc -target adds /usr/lib/swift, the OS's
+		# Swift runtime, to the app launcher.
+		case "$rp" in (/usr/lib/*|/System/*) continue ;; esac
 		in_tree "$rp" || report "$f" "LC_RPATH outside the tree: $rp"
 	done < "$WORK/rp"
 done < "$WORK/macho"

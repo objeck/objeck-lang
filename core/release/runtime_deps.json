@@ -30,12 +30,8 @@
     }
   },
   "macos": {
-    "_comment": "Links a macOS package may make outside itself and /usr/lib, /System. The goal is none; each entry is a binding not yet bundled.",
-    "external_prefixes": [
-      "/opt/homebrew/opt/opencv@4/lib/",
-      "/opt/homebrew/opt/onnxruntime/lib/",
-      "/opt/homebrew/opt/lame/lib/"
-    ]
+    "_comment": "Links a macOS package may make outside itself and /usr/lib, /System. None: since v2026.9.3 every third-party library ships inside the package (tools/deps/build_macos_deps.sh).",
+    "external_prefixes": []
   },
   "retired": {
     "nghttp2": "obr links HTTP/2 statically since v2026.9.3 (tools/deps/build_quic_deps.sh)",
@@ -71,10 +67,10 @@
       "test": ["libsqliteodbc", "python3"]
     },
     "brew": {
-      "runtime": ["opencv@4", "onnxruntime", "lame"],
+      "runtime": [],
       "build": [
-        "cmake", "pkg-config", "ccache", "mbedtls", "unixodbc", "readline", "eigen", "lame",
-        "opencv@4", "onnxruntime", "sdl2", "sdl2_image", "sdl2_ttf", "sdl2_mixer"
+        "cmake", "pkg-config", "ccache", "unixodbc", "readline", "eigen",
+        "sdl2", "sdl2_image", "sdl2_ttf", "sdl2_mixer"
       ],
       "test": [],
       "tools": ["macvim"]

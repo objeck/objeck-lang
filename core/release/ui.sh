@@ -86,12 +86,11 @@ ui_bar() {  # $1 = filled cells, $2 = width
 	printf '%s' "$_bar"
 }
 
-ui_banner() {  # $1 = target, $2 = version
-	if [ "$UI_MODE" = "plain" ]; then
-		echo "=== Objeck $2 deploy: $1, $UI_TOTAL stages ==="
-		return 0
-	fi
-	_art=$(cat <<'EOF'
+# The banner art. A function, not a heredoc inside $(...): bash 3.2 (macOS's
+# /bin/bash) counts the art's unbalanced parentheses and ends the substitution
+# early, so the file did not parse there.
+ui_art() {
+	cat <<'EOF'
   ___   _        _              _
  / _ \ | |__    (_)  ___   ___ | | __
 | | | || '_ \   | | / _ \ / __|| |/ /
@@ -99,8 +98,14 @@ ui_banner() {  # $1 = target, $2 = version
  \___/ |_.__/  _/ | \___| \___||_|\_\
               |__/
 EOF
-)
-	ui_out '\n%s%s%s\n\n' "$C_CYAN" "$_art" "$C_RESET"
+}
+
+ui_banner() {  # $1 = target, $2 = version
+	if [ "$UI_MODE" = "plain" ]; then
+		echo "=== Objeck $2 deploy: $1, $UI_TOTAL stages ==="
+		return 0
+	fi
+	ui_out '\n%s%s%s\n\n' "$C_CYAN" "$(ui_art)" "$C_RESET"
 	ui_out '  %sObjeck %s%s  %s%s, %d stages%s\n' "$C_BOLD" "$2" "$C_RESET" "$C_DIM" "$1" "$UI_TOTAL" "$C_RESET"
 	if [ "$UI_MODE" = "live" ]; then
 		ui_out '  %stool output: %s%s\n' "$C_DIM" "$UI_LOG" "$C_RESET"

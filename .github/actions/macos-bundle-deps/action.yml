@@ -1,0 +1,26 @@
+name: 'Objeck macOS bundled libraries'
+description: >
+  Builds (or restores from cache) the libraries the macOS package carries inside
+  itself -- static OpenCV, mbedTLS and libiodbc, Microsoft's prebuilt ONNX Runtime
+  and a shared LAME -- via tools/deps/build_macos_deps.sh, into the same prefix as
+  the QUIC dependencies. Run it after ./.github/actions/quic-deps, which exports
+  OBJECK_DEPS and MACOSX_DEPLOYMENT_TARGET.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check prefix
+      shell: bash
+      run: |
+        if [ "$(uname -s)" != "Darwin" ]; then echo "macOS only"; exit 1; fi
+        if [ -z "${OBJECK_DEPS:-}" ]; then echo "OBJECK_DEPS is not set; run ./.github/actions/quic-deps first"; exit 1; fi
+
+    - name: Cache macOS bundled libraries
+      uses: actions/cache@v5
+      with:
+        path: ${{ env.OBJECK_DEPS }}/macos-bundle
+        key: macos-bundle-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/deps/build_macos_deps.sh', 'core/lib/openssl/macos/mbedtls_config.h') }}
+
+    - name: Build macOS bundled libraries
+      shell: bash
+      run: bash tools/deps/build_macos_deps.sh "$OBJECK_DEPS"

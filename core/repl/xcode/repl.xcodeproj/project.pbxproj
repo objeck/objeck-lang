@@ -238,6 +238,7 @@
 		EDF114342A41DBE400E5C2C3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_STYLE = Automatic;
 				EXCLUDED_ARCHS = x86_64;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -245,13 +246,13 @@
 					_OBJECK_NATIVE_LIB_PATH,
 					_DEBUG,
 				);
-				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
+				HEADER_SEARCH_PATHS = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-Wl,../../module/xcode/build/Release/libmodule.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_MODULE_NAME = obi;
@@ -262,19 +263,20 @@
 		EDF114352A41DBE400E5C2C3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CODE_SIGN_STYLE = Automatic;
 				EXCLUDED_ARCHS = x86_64;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					_D_NO_HALT,
 					_OBJECK_NATIVE_LIB_PATH,
 				);
-				HEADER_SEARCH_PATHS = ../../lib/openssl/macos/include;
+				HEADER_SEARCH_PATHS = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-Wl,../../module/xcode/build/Release/libmodule.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedtls.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedx509.a",
-					"-Wl,../../lib/openssl/macos/arm64/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
+					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
 					"-lz",
 				);
 				PRODUCT_MODULE_NAME = obi;

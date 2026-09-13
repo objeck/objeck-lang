@@ -24,9 +24,8 @@
 #            told people to untar sdl2_arm64.tgz into /usr/local/lib, a
 #            sudo-level system install that collides with a Homebrew SDL2 and,
 #            on Apple Silicon, put the libraries somewhere Homebrew never looks.
-#            The one exception is optional: the OpenCV and ONNX bindings link
-#            Homebrew's opencv@4 and onnxruntime, so a missing keg gets a
-#            warning with the brew command, not a failure.
+#            Since v2026.9.3 there are no exceptions: OpenCV, ONNX Runtime,
+#            mbedTLS, ODBC and LAME ship inside the package too.
 #   Windows  the DLLs ship in bin, beside the binaries that load them, which is
 #            where Windows looks first. Nothing to install.
 #   Linux    the toolchain and its native libraries are linked against SYSTEM
@@ -217,139 +216,6 @@ check_quarantine() {
 	say "  Could not clear the quarantine flag; you may need to run this as the" >&2
 	say "  owner of $tree." >&2
 	return 1
-}
-
-# The OpenCV and ONNX bindings are the one part of a macOS distribution that is
-# not self-contained: libobjk_opencv.dylib and libobjk_onnx.dylib link Homebrew's
-# opencv@4 and onnxruntime kegs, e.g. /opt/homebrew/opt/opencv@4/lib/
-# libopencv_core.414.dylib. Nothing else needs them, so a missing keg is advice,
-# not a failure -- --check keeps exiting 0 for someone who never uses OpenCV or
-# ONNX. The trap worth naming: Homebrew's plain 'opencv' formula is now OpenCV 5,
-# whose libraries do not satisfy .414 links, so "opencv is installed" is not
-# enough, and the load fails with "Library not loaded" and nothing more.
-
-# The libraries a Mach-O file links, less otool's header lines (one per file,
-# or per slice in a universal binary), the file's own install name (which can
-# carry a CI build path) and system libraries, which live in the dyld shared
-# cache rather than on disk.
-macos_linked_libs() {
-	local file="$1" self dep
-	self=$(otool -D "$file" 2>/dev/null | sed -n '2p')
-	otool -L "$file" 2>/dev/null |
-		sed -n 's/^[[:space:]]\{1,\}\(.*\) (compatibility version.*/\1/p' |
-		while IFS= read -r dep; do
-			[ "$dep" = "$self" ] && continue
-			[ "$(basename "$dep")" = "$(basename "$file")" ] && continue
-			case "$dep" in /usr/lib/*|/System/*) continue ;; esac
-			printf '%s\n' "$dep"
-		done
-}
-
-macos_rpaths() {
-	otool -l "$1" 2>/dev/null |
-		awk '$1 == "cmd" && $2 == "LC_RPATH" { f = 1; next } f && $1 == "path" { print $2; f = 0 }'
-}
-
-# /opt/homebrew/opt/opencv@4/lib/... -> opencv@4 (also the Intel prefix and Cellar)
-brew_formula_of() {
-	printf '%s\n' "$1" | sed -n \
-		-e 's|^/opt/homebrew/opt/\([^/]*\)/.*|\1|p' \
-		-e 's|^/usr/local/opt/\([^/]*\)/.*|\1|p' \
-		-e 's|^/opt/homebrew/Cellar/\([^/]*\)/.*|\1|p' \
-		-e 's|^/usr/local/Cellar/\([^/]*\)/.*|\1|p' | head -1
-}
-
-# One line per linked library that is not on disk: "<formula or -> <path>".
-# @rpath links are followed through the library's own LC_RPATH entries, so this
-# keeps working once the bindings' install names move to @rpath.
-macos_missing_brew_libs() {
-	local tree="$1" lib dir rpaths dep base rp found formula
-	for lib in "$tree/lib/native/libobjk_opencv.dylib" "$tree/lib/native/libobjk_onnx.dylib"; do
-		[ -f "$lib" ] || continue
-		dir=$(dirname "$lib")
-		rpaths=$(macos_rpaths "$lib")
-		macos_linked_libs "$lib" | while IFS= read -r dep; do
-			found=0
-			formula=""
-			case "$dep" in
-				@loader_path/*)
-					[ -e "$dir/${dep#@loader_path/}" ] && found=1 ;;
-				@rpath/*)
-					base="${dep#@rpath/}"
-					for rp in $rpaths; do
-						rp="${rp/@loader_path/$dir}"
-						rp="${rp/@executable_path/$tree/bin}"
-						if [ -e "$rp/$base" ]; then found=1; break; fi
-						[ -z "$formula" ] && formula=$(brew_formula_of "$rp/")
-					done ;;
-				*)
-					[ -e "$dep" ] && found=1
-					formula=$(brew_formula_of "$dep") ;;
-			esac
-			[ "$found" -eq 1 ] || printf '%s %s\n' "${formula:--}" "$dep"
-		done
-	done | sort -u
-}
-
-# Advice only: always returns 0.
-check_homebrew_macos() {
-	local tree="$1" missing count formulas f base
-	missing=$(macos_missing_brew_libs "$tree")
-	[ -z "$missing" ] && return 0
-
-	count=$(printf '%s\n' "$missing" | wc -l | tr -d ' ')
-	formulas=$(printf '%s\n' "$missing" | awk '$1 != "-" { print $1 }' | sort -u | tr '\n' ' ')
-	formulas="${formulas% }"
-
-	say ""
-	say "  WARNING  the OpenCV and ONNX bindings link $count library file(s) that are not"
-	say "           installed. Everything else works; OpenCV and ONNX programs fail"
-	say "           with \"Library not loaded\" until they are:"
-	printf '%s\n' "$missing" | awk '{ print $2 }' | head -5 | sed 's/^/             /'
-	[ "$count" -gt 5 ] && say "             ... and $((count - 5)) more"
-
-	if [ -n "$formulas" ]; then
-		local have_brew=0 absent="" ver n first
-		command -v brew >/dev/null 2>&1 && have_brew=1
-		for f in $formulas; do
-			ver=""
-			[ "$have_brew" -eq 1 ] && ver=$(brew list --versions "$f" 2>/dev/null)
-			if [ -z "$ver" ]; then
-				absent="$absent $f"
-				continue
-			fi
-			# Installed, yet a file under its prefix is missing: Homebrew has moved
-			# to a release with a different soname (opencv@4 4.14 -> 4.15 renames
-			# .414 to .415). "brew install" would only say it is already installed.
-			n=$(printf '%s\n' "$missing" | awk -v f="$f" '$1 == f' | wc -l | tr -d ' ')
-			first=$(printf '%s\n' "$missing" | awk -v f="$f" '$1 == f { print $2; exit }')
-			say "           $ver is installed, but it lacks $n file(s) the bindings"
-			say "           link, e.g. $(basename "$first"). They were built against a"
-			say "           different $f release: install the matching one, or rebuild the"
-			say "           bindings against $ver."
-		done
-		absent="${absent# }"
-		if [ -n "$absent" ]; then
-			say "           Install with Homebrew:"
-			say "             brew install $absent"
-			say "           brew can also upgrade formulas you already have as a side effect."
-			for f in $absent; do
-				case "$f" in
-					*@*)
-						base="${f%@*}"
-						if [ "$have_brew" -eq 1 ] && brew list --versions "$base" >/dev/null 2>&1; then
-							say "           Homebrew's '$base' is installed, but these links need '$f',"
-							say "           a separate formula; '$base' does not provide them."
-						fi ;;
-				esac
-			done
-		fi
-	fi
-	if printf '%s\n' "$missing" | awk '$1 == "-" { found = 1 } END { exit !found }'; then
-		say "           Paths outside a Homebrew keg have no formula to suggest; the"
-		say "           distribution that built these bindings expects them there."
-	fi
-	return 0
 }
 
 # ------------------------------------------------------------------------ Linux
@@ -828,7 +694,7 @@ UNAME=$(uname -s)
 
 case "$UNAME" in
 	Darwin)
-		say "platform: macOS -- SDL2 is bundled, OpenGL is a system framework"
+		say "platform: macOS -- every library ships in the package, OpenGL is a system framework"
 		say ""
 		# find a deploy tree to validate; the repo layout first, then an install
 		TREE=""
@@ -853,8 +719,6 @@ case "$UNAME" in
 		say "verifying bundled SDL2 in $TREE"
 		check_bundled_macos "$TREE"; BUNDLE_STATUS=$?
 		check_quarantine "$TREE"; QUARANTINE_STATUS=$?
-		# advice, never part of the exit status; --sdl callers have no use for it
-		[ "$SDL_ONLY" -eq 1 ] || check_homebrew_macos "$TREE"
 		[ "$BUNDLE_STATUS" -eq 0 ] && [ "$QUARANTINE_STATUS" -eq 0 ]
 		exit $?
 		;;

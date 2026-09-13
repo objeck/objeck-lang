@@ -424,6 +424,7 @@
 		ED2B99032A413094000B6CD8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				EXCLUDED_ARCHS = x86_64;
@@ -434,7 +435,7 @@
 					_ARM64,
 					_DEBUG,
 				);
-				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				"HEADER_SEARCH_PATHS[arch=*]" = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -444,6 +445,7 @@
 		ED2B99042A413094000B6CD8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				OBJECK_DEPS = "$(HOME)/objeck-deps/darwin-arm64";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				CODE_SIGN_STYLE = Automatic;
 				EXCLUDED_ARCHS = x86_64;
@@ -454,7 +456,7 @@
 					_ARM64,
 					_OBJECK_NATIVE_LIB_PATH,
 				);
-				"HEADER_SEARCH_PATHS[arch=*]" = ../../lib/openssl/macos/include;
+				"HEADER_SEARCH_PATHS[arch=*]" = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
