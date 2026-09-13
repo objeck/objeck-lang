@@ -42,10 +42,10 @@ if [ ! -f "$OBJECK_DIR/bin/obr" ]; then
     exit 1
 fi
 
-# validate system runtime libraries -- obr dynamically links mbedTLS plus
-# nghttp2/ngtcp2/nghttp3 (+ GnuTLS crypto), and the native libs in lib/native
-# need the same mbedTLS runtime. A fresh OS install won't have these, so probe
-# the dynamic loader before deploying anything.
+# validate system runtime libraries -- on Linux obr dynamically links mbedTLS,
+# and the native libs in lib/native need the same runtime (HTTP/2 and HTTP/3
+# are linked into obr). A fresh OS install won't have it, so probe the dynamic
+# loader before deploying anything.
 LOADER_ERR=$("$OBJECK_DIR/bin/obr" 2>&1 >/dev/null | grep -E 'error while loading shared libraries|Library not loaded|image not found' || true)
 if [ -n "$LOADER_ERR" ]; then
     echo "ERROR: the Objeck runtime cannot start -- missing system libraries:"
@@ -53,14 +53,13 @@ if [ -n "$LOADER_ERR" ]; then
     echo "  $LOADER_ERR"
     if [ "$(uname)" = "Darwin" ]; then
         echo ""
-        echo "Install the runtime dependencies with Homebrew:"
-        echo "  brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls"
+        echo "This Objeck build links a library macOS does not provide."
+        echo "Install the latest release, whose obr needs no Homebrew libraries."
     else
         { command -v ldd >/dev/null 2>&1 && ldd "$OBJECK_DIR/bin/obr" 2>/dev/null | grep 'not found' | sed 's/^/  /'; } || true
         echo ""
-        echo "Install the runtime dependencies on Debian/Ubuntu with:"
-        echo "  sudo apt-get install libmbedtls-dev libnghttp2-dev libngtcp2-dev \\"
-        echo "      libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev"
+        echo "Install the runtime dependency on Debian/Ubuntu with:"
+        echo "  sudo apt-get install libmbedtls-dev"
     fi
     echo ""
     echo "then re-run this script."

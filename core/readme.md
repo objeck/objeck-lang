@@ -143,9 +143,8 @@ graph TB
 # Install dependencies and build
 sudo apt-get install -y build-essential git libmbedtls-dev unixodbc-dev \
   libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
-  libmp3lame-dev libreadline-dev libeigen3-dev libopencv-dev \
-  libnghttp2-dev libngtcp2-dev libngtcp2-crypto-gnutls-dev \
-  libnghttp3-dev libgnutls28-dev
+  libmp3lame-dev libreadline-dev libeigen3-dev libopencv-dev cmake
+bash tools/deps/build_quic_deps.sh   # once: static HTTP/2 + HTTP/3 libraries for obr
 
 cd core/release && ./deploy_posix.sh x64
 export PATH=$PATH:$(pwd)/deploy/bin
@@ -155,8 +154,8 @@ obc --version
 ### 🍎 macOS (One Command)
 ```bash
 # Install Homebrew dependencies
-brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer \
-  nghttp2 ngtcp2 nghttp3 gnutls
+brew install lame opencv@4 onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer cmake
+MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh   # once: static HTTP/2 + HTTP/3 libraries for obr
 
 cd core/release && ./deploy_macos_arm64.sh
 export PATH=$PATH:$(pwd)/deploy/bin
@@ -219,7 +218,7 @@ For Windows development using WSL for bootstrap:
 
 **Supported:** Ubuntu 22.04+, Debian 12+, Fedora 37+
 
-> The minimum versions are set by the QUIC / HTTP-3 packages (`libngtcp2-dev`, `libngtcp2-crypto-gnutls-dev`, `libnghttp3-dev`), which older releases don't ship. The default build always enables HTTP/3 (`-DOBJECK_HAS_NGTCP2`), so install the full dependency list below in one go — installing packages piecemeal will fail on `ngtcp2/ngtcp2.h: No such file or directory`. To build on an older distro without those packages, see [build without HTTP/3](#build-errors).
+> HTTP/2 and HTTP/3 are always built in, from static libraries rather than distribution packages: step 3 below runs `tools/deps/build_quic_deps.sh` once, which builds pinned AWS-LC, ngtcp2, nghttp3 and nghttp2 into `~/objeck-deps` (it needs `git` and `cmake`). `obr` links them in, so the binary does not depend on the distribution's QUIC or TLS packages.
 
 ```bash
 # 1. Clone repository
@@ -230,25 +229,23 @@ cd objeck-lang/core/release
 sudo apt-get update && sudo apt-get install -y \
   build-essential git libmbedtls-dev unixodbc-dev \
   libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
-  libmp3lame-dev libreadline-dev unzip libeigen3-dev libopencv-dev \
-  libnghttp2-dev libngtcp2-dev libngtcp2-crypto-gnutls-dev \
-  libnghttp3-dev libgnutls28-dev
+  libmp3lame-dev libreadline-dev unzip libeigen3-dev libopencv-dev cmake
 
-# 3. Build
+# 3. Build the static HTTP/2 + HTTP/3 libraries (once)
+bash ../../tools/deps/build_quic_deps.sh
+
+# 4. Build
 ./deploy_posix.sh x64    # For x64
 ./deploy_posix.sh rpi    # For ARM64/Raspberry Pi
 
-# 4. Output
+# 5. Output
 # Binaries: core/release/deploy/bin/{obc,obr,obd,obi}
 # Libraries: core/release/deploy/lib/*.obl
 ```
 
 **What each dependency does:**
 - `libmbedtls-dev` - Crypto operations (SHA, AES, TLS) — required for `TCPSecureSocket` / HTTPS
-- `libnghttp2-dev` - HTTP/2 framing and HPACK encoding — required for `Http2Client` / `-lib net_h2`
-- `libngtcp2-dev` + `libngtcp2-crypto-gnutls-dev` - QUIC transport — required for `Http3Client` / `-lib net_quic`
-- `libnghttp3-dev` - HTTP/3 framing over QUIC — required for `Http3Client`
-- `libgnutls28-dev` - TLS 1.3 for QUIC (ngtcp2 crypto backend) — required for HTTP/3
+- `cmake` - builds the static HTTP/2 and HTTP/3 libraries (`tools/deps/build_quic_deps.sh`: nghttp2, ngtcp2, nghttp3 and AWS-LC) — required for `Http2Client` / `-lib net_h2` and `Http3Client` / `-lib net_quic`
 - `libsdl2-*` - Game development, graphics, audio
 - `libopencv-dev` - Computer vision (optional but recommended)
 - `libeigen3-dev` - Linear algebra for ML
@@ -268,8 +265,8 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # 3. Install dependencies
-brew install lame opencv onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer \
-  nghttp2 ngtcp2 nghttp3 gnutls
+brew install lame opencv@4 onnxruntime mbedtls sdl2 sdl2_image sdl2_ttf sdl2_mixer cmake
+MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh   # once: static HTTP/2 + HTTP/3 libraries for obr
 
 # 4. Build
 cd core/release
@@ -310,7 +307,7 @@ cd core/release
 
 **Network library support on Windows:**
 - **HTTP/2** (`net_h2`): Requires nghttp2 — install via vcpkg: `vcpkg install nghttp2:x64-windows` and add to VS project
-- **HTTP/3** (`net_quic`): Not yet supported on Windows (ngtcp2/GnuTLS MSVC build not wired up)
+- **HTTP/3** (`net_quic`): uses WinHTTP's HTTP/3 support (Windows 11 and later); no extra libraries
 
 ---
 
@@ -329,8 +326,7 @@ pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc \
   mingw-w64-ucrt-x86_64-SDL2_ttf mingw-w64-ucrt-x86_64-SDL2_mixer \
   mingw-w64-ucrt-x86_64-SDL2_image mingw-w64-ucrt-x86_64-unixodbc \
   mingw-w64-ucrt-x86_64-eigen3 mingw-w64-ucrt-x86_64-nghttp2 \
-  mingw-w64-ucrt-x86_64-ngtcp2 mingw-w64-ucrt-x86_64-nghttp3 \
-  mingw-w64-ucrt-x86_64-gnutls make unzip
+  make unzip
 
 # 4. Build
 cd core/release
@@ -466,32 +462,18 @@ sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev
 brew install sdl2 sdl2_image sdl2_ttf sdl2_mixer
 ```
 
-**Problem:** `nghttp2.h not found` or `undefined reference to nghttp2_...`
+**Problem:** `nghttp2/nghttp2.h`, `ngtcp2/ngtcp2.h` or `openssl/ssl.h` not found, or `QUIC libraries not found in ...`
 ```bash
-# Linux
-sudo apt-get install libnghttp2-dev
+# Linux and macOS: build the static HTTP/2 + HTTP/3 libraries (needs git and cmake)
+bash tools/deps/build_quic_deps.sh
+# on macOS: MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh
 
-# macOS
-brew install nghttp2
-
-# MSYS2
+# MSYS2 (HTTP/2 only)
 pacman -S mingw-w64-ucrt-x86_64-nghttp2
 ```
+The libraries go to `~/objeck-deps/<os>-<arch>`, where the Makefiles and the Xcode project look. For another prefix, pass it to the script and set `OBJECK_DEPS` for the build.
 
-**Problem:** `ngtcp2/ngtcp2.h not found` or HTTP/3 not available at runtime
-```bash
-# Linux (Ubuntu 22.04+)
-sudo apt-get install libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
-
-# macOS
-brew install ngtcp2 nghttp3 gnutls
-
-# MSYS2
-pacman -S mingw-w64-ucrt-x86_64-ngtcp2 mingw-w64-ucrt-x86_64-nghttp3 mingw-w64-ucrt-x86_64-gnutls
-```
-Note: HTTP/3 requires rebuilding the VM with `-DOBJECK_HAS_NGTCP2` (already set in `Makefile.amd64` and `Makefile.arm64`). Because the flag is set unconditionally, the QUIC packages are **required** for a default build — install all of them, not one at a time.
-
-**To build *without* HTTP/3** (e.g. on a distro that doesn't package `ngtcp2`): in `core/vm/make/Makefile.amd64` (and `Makefile.arm64`), remove `-DOBJECK_HAS_NGTCP2` from `ARGS`, and drop `-lngtcp2 -lngtcp2_crypto_gnutls -lnghttp3 -lgnutls` from the link line. The VM then builds with HTTP/2 but `net_quic` / `Http3Client` is unavailable.
+**To build *without* HTTP/3**: remove `-DOBJECK_HAS_NGTCP2` from `ARGS` in `core/vm/make/Makefile.amd64` (and `Makefile.arm64`). The VM then builds with HTTP/2 only, and `net_quic` / `Http3Client` report HTTP/3 as unavailable.
 
 **Problem:** `undefined reference to opencv_...`
 ```bash

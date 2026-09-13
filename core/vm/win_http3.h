@@ -1,7 +1,7 @@
 /***************************************************************************
  * HTTP/3 backend for Windows, built on WinHTTP.
  *
- * The POSIX HTTP/3 implementation is ngtcp2 + nghttp3 + GnuTLS. None of that
+ * The POSIX HTTP/3 implementation is ngtcp2 + nghttp3 + AWS-LC. None of that
  * exists in the Windows toolchain (which uses mbedTLS), so Http3Client shipped
  * documented-and-dead here: the trap handlers compile unconditionally, so the
  * API was present and simply always failed.
