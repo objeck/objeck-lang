@@ -202,8 +202,12 @@ cp libobjk_onnx.dylib ../../../release/deploy/lib/native/libobjk_onnx.dylib
 
 # Every native library this script builds must be present (and, on Linux,
 # resolvable) before the tree is packaged. Without this a failed build was
-# dropped from the release with a green exit -- the obu incident, again.
-sh ../../../release/verify_native_libs.sh ../../../release/deploy/lib/native dylib crypto diags lame ml odbc onnx opencv sdl
+# dropped from the release with a green exit -- the obu incident, again. The
+# result has to be acted on: this script has no 'set -e', and before the
+# '|| exit 1' below v2026.9.1 printed "2 native-library verification failure(s)"
+# (onnx, opencv) and shipped its .pkg, .zip and .tgz without them. All eight are
+# required on macOS; see verify_native_libs.sh.
+sh ../../../release/verify_native_libs.sh ../../../release/deploy/lib/native dylib crypto diags lame ml odbc onnx opencv sdl || exit 1
 cd ..
 
 # build macOS app launcher (.app bundle)

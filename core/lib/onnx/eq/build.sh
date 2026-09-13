@@ -14,11 +14,32 @@ fi
 
 rm -f *.o *.so *.dll *.dylib 2>/dev/null
 
+# The vendored runtime is per architecture, under cuda/lib/<arch>/lib, and only
+# x64 is vendored. Linking that copy on aarch64 fails ("skipping incompatible
+# ... cannot find -lonnxruntime") but only after a minute compiling onnx.cpp --
+# which is how v2026.9.1's linux-arm64 release came to ship without
+# libobjk_onnx. Say so up front, and use an arm64 runtime once one is vendored.
+case "$(uname -m)" in
+	x86_64|amd64) ORT_ARCH=x64 ;;
+	aarch64|arm64) ORT_ARCH=arm64 ;;
+	*) ORT_ARCH=$(uname -m) ;;
+esac
+ORT_VENDORED="./cuda/lib/$ORT_ARCH/lib"
+
+require_vendored_ort() {
+	if [ ! -d "$ORT_VENDORED" ]; then
+		echo "ERROR: no vendored ONNX Runtime for $(uname -m): $ORT_VENDORED does not exist" >&2
+		echo "       (only cuda/lib/x64 is vendored, so libobjk_onnx cannot be built here)" >&2
+		exit 1
+	fi
+}
+
 case "$PROVIDER" in
 	cuda)
 		EP_DEFINE="-DONNX_EP_CUDA"
 		ORT_INCLUDE="-I./cuda/lib/include"
-		ORT_LIB="-L./cuda/lib/x64/lib -lonnxruntime"
+		require_vendored_ort
+		ORT_LIB="-L$ORT_VENDORED -lonnxruntime"
 		;;
 	coreml)
 		EP_DEFINE="-DONNX_EP_COREML"
@@ -38,7 +59,8 @@ case "$PROVIDER" in
 		# fails to link on a machine that has none -- even though a usable
 		# runtime is sitting in cuda/lib/x64/lib. That runtime is CPU-only, so
 		# it is exactly the right one for this mode.
-		ORT_LIB="-L./cuda/lib/x64/lib -lonnxruntime"
+		require_vendored_ort
+		ORT_LIB="-L$ORT_VENDORED -lonnxruntime"
 		;;
 	*)
 		echo "Unknown provider: $PROVIDER"
@@ -93,7 +115,7 @@ fi
 
 $CXX -O3 -std=c++17 -Wall -fPIC $EP_DEFINE $ORT_INCLUDE $EXTRA_INCLUDE \
 	-c `pkg-config --cflags $OPENCV_PC` onnx.cpp \
-	-Wno-unused-function -Wno-deprecated-declarations
+	-Wno-unused-function -Wno-deprecated-declarations || exit 1
 
 OS=$(uname -s)
 case "$OS" in
@@ -106,7 +128,16 @@ case "$OS" in
 			`pkg-config --libs $OPENCV_PC` $ORT_LIB
 		;;
 	*)
-		$CXX -O3 -shared -Wl,-soname,libobjk_onnx.so.1 -o libobjk_onnx.so *.o \
+		# RUNPATH $ORIGIN: deploy_posix.sh ships libonnxruntime.so.1 beside this
+		# library in lib/native, but the VM dlopens libobjk_onnx by absolute path,
+		# and that does not add lib/native to the search for its dependencies.
+		# Without this the shipped library loaded only under
+		# LD_LIBRARY_PATH=lib/native -- which CI and run_regression.sh set and a
+		# user who untarred the release does not: v2026.9.1 fails with
+		# "libonnxruntime.so.1: cannot open shared object file", or, on a machine
+		# with its own onnxruntime, "version `VERS_1.19.0' not found". RUNPATH is
+		# searched before ld.so.cache, so the bundled runtime wins over that one.
+		$CXX -O3 -shared -Wl,-soname,libobjk_onnx.so.1 -Wl,-rpath,'$ORIGIN' -o libobjk_onnx.so *.o \
 			`pkg-config --libs $OPENCV_PC` $ORT_LIB
 		;;
 esac
