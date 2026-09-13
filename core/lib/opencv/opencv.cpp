@@ -1315,8 +1315,10 @@ extern "C" {
       channels[1] = (channels[1] - (float)mean_g) / (float)std_g;
       channels[2] = (channels[2] - (float)mean_b) / (float)std_b;
 
-      // Flatten to CHW format
-      const size_t total = float_img.rows * float_img.cols * 3;
+      // Flatten to CHW format. rows and cols are int: multiplying them first
+      // overflows past ~716 megapixels, and the loop below would then write
+      // rows * cols * 3 values into an array sized from the wrapped result.
+      const size_t total = static_cast<size_t>(float_img.rows) * static_cast<size_t>(float_img.cols) * 3;
       size_t* float_array = APITools_MakeFloatArray(context, total);
       double* float_array_buffer = reinterpret_cast<double*>(float_array + 3);
 
