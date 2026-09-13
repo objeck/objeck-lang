@@ -93,6 +93,14 @@ if otool -L ../release/deploy/bin/obr | tail -n +2 | awk '{print $1}' | grep -qE
 	otool -L ../release/deploy/bin/obr | grep -E '/opt/homebrew|/usr/local'
 	exit 1
 fi
+# obr carries AWS-LC, ngtcp2, nghttp3 and nghttp2 inside itself, so their
+# licenses ship with it.
+if [ ! -d "$OBJECK_DEPS/licenses" ]; then
+	echo "ERROR: $OBJECK_DEPS/licenses not found; rerun tools/deps/build_quic_deps.sh"
+	exit 1
+fi
+mkdir -p ../release/deploy/doc/licenses
+cp -R "$OBJECK_DEPS/licenses/." ../release/deploy/doc/licenses/ || exit 1
 
 # build debugger
 cd ../debugger

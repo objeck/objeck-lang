@@ -18,7 +18,10 @@
 #   prefix defaults to $OBJECK_DEPS, then ~/objeck-deps/<os>-<arch>, which is
 #   where the Makefiles and the Xcode project look.
 #
-# macOS: export MACOSX_DEPLOYMENT_TARGET to match the binaries that link these
+# Each library's license files are installed under <prefix>/licenses/<name>;
+# the deploys ship them in doc/licenses, since obr carries the code.
+#
+# macOS: MACOSX_DEPLOYMENT_TARGET defaults to 13.3; it must match the binaries that link these
 # (CMake reads it), or the link warns that objects target a newer macOS.
 #
 # Re-running with the same versions is a no-op (see the stamp file), so CI can
@@ -33,9 +36,16 @@ NGHTTP2_VERSION=v1.70.0
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
+# The package floor on macOS. Without it CMake targets the build machine's macOS:
+# a run by hand gave every archive member minos 26.0, which links with only a
+# warning into binaries that still report 13.3.
+if [ "$OS" = darwin ]; then
+	export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-13.3}"
+fi
 PREFIX="${1:-${OBJECK_DEPS:-$HOME/objeck-deps/$OS-$ARCH}}"
 STAMP="$PREFIX/.quic-deps-stamp"
-WANT="aws-lc $AWSLC_VERSION ngtcp2 $NGTCP2_VERSION nghttp3 $NGHTTP3_VERSION nghttp2 $NGHTTP2_VERSION target ${MACOSX_DEPLOYMENT_TARGET:-default}"
+# layout 2: licenses/ is installed, and the prefix is no longer wiped.
+WANT="aws-lc $AWSLC_VERSION ngtcp2 $NGTCP2_VERSION nghttp3 $NGHTTP3_VERSION nghttp2 $NGHTTP2_VERSION target ${MACOSX_DEPLOYMENT_TARGET:-default} layout 2"
 
 if [ -f "$STAMP" ] && [ "$(cat "$STAMP")" = "$WANT" ]; then
 	echo "QUIC deps already built in $PREFIX ($WANT)"
@@ -52,7 +62,9 @@ trap 'rm -rf "$WORK"' EXIT
 
 echo "Building $WANT"
 echo "  into $PREFIX"
-rm -rf "$PREFIX"
+# Remove only what this script installs. The macOS package's bundled libraries
+# (tools/deps/build_macos_deps.sh) live in the same prefix, under macos-bundle/.
+rm -rf "$PREFIX/lib" "$PREFIX/include" "$PREFIX/licenses" "$PREFIX/bin" "$PREFIX/share" "$STAMP"
 mkdir -p "$PREFIX"
 
 COMMON=(-DCMAKE_BUILD_TYPE=Release
@@ -63,6 +75,15 @@ COMMON=(-DCMAKE_BUILD_TYPE=Release
 
 fetch() {   # dir url tag
 	git clone -q --depth 1 --branch "$3" --recurse-submodules --shallow-submodules "$2" "$WORK/$1"
+}
+
+licenses() {   # dir files...
+	local dir="$1" f; shift
+	mkdir -p "$PREFIX/licenses/$dir"
+	for f in "$@"; do
+		[ -f "$WORK/$dir/$f" ] || { echo "ERROR: license file $f missing from $dir" >&2; exit 1; }
+		cp "$WORK/$dir/$f" "$PREFIX/licenses/$dir/"
+	done
 }
 
 build() {   # dir cmake-args...
@@ -77,9 +98,11 @@ build() {   # dir cmake-args...
 
 fetch aws-lc https://github.com/aws/aws-lc "$AWSLC_VERSION"
 build aws-lc -DBUILD_SHARED_LIBS=OFF -DDISABLE_GO=ON -DDISABLE_PERL=ON -DBUILD_TOOL=OFF
+licenses aws-lc LICENSE NOTICE
 
 fetch nghttp3 https://github.com/ngtcp2/nghttp3 "$NGHTTP3_VERSION"
 build nghttp3 -DENABLE_LIB_ONLY=ON -DENABLE_STATIC_LIB=ON -DENABLE_SHARED_LIB=OFF
+licenses nghttp3 COPYING AUTHORS
 
 fetch ngtcp2 https://github.com/ngtcp2/ngtcp2 "$NGTCP2_VERSION"
 build ngtcp2 -DENABLE_LIB_ONLY=ON -DENABLE_STATIC_LIB=ON -DENABLE_SHARED_LIB=OFF \
@@ -87,9 +110,11 @@ build ngtcp2 -DENABLE_LIB_ONLY=ON -DENABLE_STATIC_LIB=ON -DENABLE_SHARED_LIB=OFF
 	-DBORINGSSL_INCLUDE_DIR="$PREFIX/include" \
 	-DBORINGSSL_LIBRARIES="$PREFIX/lib/libssl.a;$PREFIX/lib/libcrypto.a" \
 	-DCMAKE_PREFIX_PATH="$PREFIX"
+licenses ngtcp2 COPYING AUTHORS
 
 fetch nghttp2 https://github.com/nghttp2/nghttp2 "$NGHTTP2_VERSION"
 build nghttp2 -DENABLE_LIB_ONLY=ON -DBUILD_STATIC_LIBS=ON -DBUILD_SHARED_LIBS=OFF
+licenses nghttp2 COPYING LICENSE AUTHORS
 
 # Fail here, not at obr's link, if a library did not land.
 MISSING=""

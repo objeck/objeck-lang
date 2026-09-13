@@ -22,7 +22,13 @@ runs:
     - name: Cache QUIC deps
       uses: actions/cache@v5
       with:
-        path: ${{ steps.prefix.outputs.dir }}
+        # Only what build_quic_deps.sh installs: the macOS bundled libraries share
+        # the prefix (macos-bundle/) and have their own cache.
+        path: |
+          ${{ steps.prefix.outputs.dir }}/lib
+          ${{ steps.prefix.outputs.dir }}/include
+          ${{ steps.prefix.outputs.dir }}/licenses
+          ${{ steps.prefix.outputs.dir }}/.quic-deps-stamp
         key: quic-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/deps/build_quic_deps.sh') }}
 
     - name: Build QUIC deps
