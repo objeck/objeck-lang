@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 #
-# install_deps.sh [--check] [--print] [--dev] [--yes] [--tree <path>]
+# install_deps.sh [--check] [--print] [--dev] [--yes] [--sdl] [--tree <path>]
 #
-# Install the native libraries Objeck's SDL2 and OpenGL bindings need, using
+# Install the system libraries an Objeck distribution needs to run, using
 # whatever package manager this machine actually has.
+#
+#   (no option)    install what is missing (asks first)
+#   --yes, -y      ...without the prompt
+#   --check        report what is missing, install nothing
+#   --print        print the install command, run nothing
+#   --dev          also the SDL2/OpenGL headers, to BUILD libobjk_sdl.so
+#   --sdl          only what SDL2/OpenGL programs need (obc, obr, libobjk_sdl.so)
+#   --tree <path>  the distribution to check; default: the one this script is in
 #
 # WHY THIS EXISTS
 # ---------------
@@ -16,16 +24,29 @@
 #            told people to untar sdl2_arm64.tgz into /usr/local/lib, a
 #            sudo-level system install that collides with a Homebrew SDL2 and,
 #            on Apple Silicon, put the libraries somewhere Homebrew never looks.
+#            The one exception is optional: the OpenCV and ONNX bindings link
+#            Homebrew's opencv@4 and onnxruntime, so a missing keg gets a
+#            warning with the brew command, not a failure.
 #   Windows  the DLLs ship in bin, beside the binaries that load them, which is
 #            where Windows looks first. Nothing to install.
-#   Linux    libobjk_sdl.so is linked against the SYSTEM SDL2 and libGL
-#            (see core/lib/sdl/build_linux.sh: -lSDL2 ... -lGL), and
-#            deploy_posix.sh ships neither. So Linux, and only Linux, needs
-#            packages -- and nothing in the tree told the user which ones.
+#   Linux    the toolchain and its native libraries are linked against SYSTEM
+#            libraries the distribution does not ship: obr, obd and obi need
+#            mbedTLS, obr also nghttp2/ngtcp2/nghttp3 (HTTP/2 and HTTP/3), obd
+#            readline, and lib/native needs SDL2 + libGL, OpenCV, unixODBC and
+#            LAME. On a clean machine obr does not start at all. So Linux, and
+#            only Linux, needs packages -- and nothing in the tree said which.
 #
-# Bundling SDL2 on Linux the way macOS does is not a good trade: SDL2 there
-# pulls in X11/Wayland, ALSA/PulseAudio and glibc, so a bundled copy fights the
-# host instead of working with it. One package-manager command is the honest
+# On Linux the list is not hardcoded. The script asks ldd which libraries the
+# tree's own binaries (bin/*, lib/native/libobjk_*.so) cannot resolve, then asks
+# the package manager which package provides each one. Library versions and
+# package names differ per distribution -- Ubuntu 24.04 calls mbedTLS 2.28
+# libmbedtls14t64, Debian 12 libmbedtls14, and Fedora 44 ships no mbedTLS 2.x at
+# all -- so a fixed list is wrong somewhere; the loader and the package database
+# of the machine in front of us are not.
+#
+# Bundling these on Linux the way macOS bundles SDL2 is not a good trade: SDL2
+# there pulls in X11/Wayland, ALSA/PulseAudio and glibc, so a bundled copy fights
+# the host instead of working with it. One package-manager command is the honest
 # answer, and this is that command.
 #
 # Exit codes:
@@ -39,6 +60,7 @@ CHECK_ONLY=0
 PRINT_ONLY=0
 WANT_DEV=0
 ASSUME_YES=0
+SDL_ONLY=0
 TREE_ARG=""
 
 while [ $# -gt 0 ]; do
@@ -47,6 +69,7 @@ while [ $# -gt 0 ]; do
 		--print) PRINT_ONLY=1 ;;
 		--dev)   WANT_DEV=1 ;;
 		--yes|-y) ASSUME_YES=1 ;;
+		--sdl)   SDL_ONLY=1 ;;
 		--tree)  shift; TREE_ARG="${1:-}"; [ -n "$TREE_ARG" ] || { echo "--tree needs a path" >&2; exit 3; } ;;
 		-h|--help)
 			awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"
@@ -57,6 +80,9 @@ while [ $# -gt 0 ]; do
 done
 
 say() { printf '%s\n' "$*"; }
+
+SELF_DIR=$(cd "$(dirname "$0")" 2>/dev/null && pwd)
+REPO=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)
 
 # --------------------------------------------------------------- macOS / Windows
 # Both bundle their own SDL2, so "check" here means verifying the bundle is
@@ -193,9 +219,144 @@ check_quarantine() {
 	return 1
 }
 
+# The OpenCV and ONNX bindings are the one part of a macOS distribution that is
+# not self-contained: libobjk_opencv.dylib and libobjk_onnx.dylib link Homebrew's
+# opencv@4 and onnxruntime kegs, e.g. /opt/homebrew/opt/opencv@4/lib/
+# libopencv_core.414.dylib. Nothing else needs them, so a missing keg is advice,
+# not a failure -- --check keeps exiting 0 for someone who never uses OpenCV or
+# ONNX. The trap worth naming: Homebrew's plain 'opencv' formula is now OpenCV 5,
+# whose libraries do not satisfy .414 links, so "opencv is installed" is not
+# enough, and the load fails with "Library not loaded" and nothing more.
+
+# The libraries a Mach-O file links, less otool's header lines (one per file,
+# or per slice in a universal binary), the file's own install name (which can
+# carry a CI build path) and system libraries, which live in the dyld shared
+# cache rather than on disk.
+macos_linked_libs() {
+	local file="$1" self dep
+	self=$(otool -D "$file" 2>/dev/null | sed -n '2p')
+	otool -L "$file" 2>/dev/null |
+		sed -n 's/^[[:space:]]\{1,\}\(.*\) (compatibility version.*/\1/p' |
+		while IFS= read -r dep; do
+			[ "$dep" = "$self" ] && continue
+			[ "$(basename "$dep")" = "$(basename "$file")" ] && continue
+			case "$dep" in /usr/lib/*|/System/*) continue ;; esac
+			printf '%s\n' "$dep"
+		done
+}
+
+macos_rpaths() {
+	otool -l "$1" 2>/dev/null |
+		awk '$1 == "cmd" && $2 == "LC_RPATH" { f = 1; next } f && $1 == "path" { print $2; f = 0 }'
+}
+
+# /opt/homebrew/opt/opencv@4/lib/... -> opencv@4 (also the Intel prefix and Cellar)
+brew_formula_of() {
+	printf '%s\n' "$1" | sed -n \
+		-e 's|^/opt/homebrew/opt/\([^/]*\)/.*|\1|p' \
+		-e 's|^/usr/local/opt/\([^/]*\)/.*|\1|p' \
+		-e 's|^/opt/homebrew/Cellar/\([^/]*\)/.*|\1|p' \
+		-e 's|^/usr/local/Cellar/\([^/]*\)/.*|\1|p' | head -1
+}
+
+# One line per linked library that is not on disk: "<formula or -> <path>".
+# @rpath links are followed through the library's own LC_RPATH entries, so this
+# keeps working once the bindings' install names move to @rpath.
+macos_missing_brew_libs() {
+	local tree="$1" lib dir rpaths dep base rp found formula
+	for lib in "$tree/lib/native/libobjk_opencv.dylib" "$tree/lib/native/libobjk_onnx.dylib"; do
+		[ -f "$lib" ] || continue
+		dir=$(dirname "$lib")
+		rpaths=$(macos_rpaths "$lib")
+		macos_linked_libs "$lib" | while IFS= read -r dep; do
+			found=0
+			formula=""
+			case "$dep" in
+				@loader_path/*)
+					[ -e "$dir/${dep#@loader_path/}" ] && found=1 ;;
+				@rpath/*)
+					base="${dep#@rpath/}"
+					for rp in $rpaths; do
+						rp="${rp/@loader_path/$dir}"
+						rp="${rp/@executable_path/$tree/bin}"
+						if [ -e "$rp/$base" ]; then found=1; break; fi
+						[ -z "$formula" ] && formula=$(brew_formula_of "$rp/")
+					done ;;
+				*)
+					[ -e "$dep" ] && found=1
+					formula=$(brew_formula_of "$dep") ;;
+			esac
+			[ "$found" -eq 1 ] || printf '%s %s\n' "${formula:--}" "$dep"
+		done
+	done | sort -u
+}
+
+# Advice only: always returns 0.
+check_homebrew_macos() {
+	local tree="$1" missing count formulas f base
+	missing=$(macos_missing_brew_libs "$tree")
+	[ -z "$missing" ] && return 0
+
+	count=$(printf '%s\n' "$missing" | wc -l | tr -d ' ')
+	formulas=$(printf '%s\n' "$missing" | awk '$1 != "-" { print $1 }' | sort -u | tr '\n' ' ')
+	formulas="${formulas% }"
+
+	say ""
+	say "  WARNING  the OpenCV and ONNX bindings link $count library file(s) that are not"
+	say "           installed. Everything else works; OpenCV and ONNX programs fail"
+	say "           with \"Library not loaded\" until they are:"
+	printf '%s\n' "$missing" | awk '{ print $2 }' | head -5 | sed 's/^/             /'
+	[ "$count" -gt 5 ] && say "             ... and $((count - 5)) more"
+
+	if [ -n "$formulas" ]; then
+		local have_brew=0 absent="" ver n first
+		command -v brew >/dev/null 2>&1 && have_brew=1
+		for f in $formulas; do
+			ver=""
+			[ "$have_brew" -eq 1 ] && ver=$(brew list --versions "$f" 2>/dev/null)
+			if [ -z "$ver" ]; then
+				absent="$absent $f"
+				continue
+			fi
+			# Installed, yet a file under its prefix is missing: Homebrew has moved
+			# to a release with a different soname (opencv@4 4.14 -> 4.15 renames
+			# .414 to .415). "brew install" would only say it is already installed.
+			n=$(printf '%s\n' "$missing" | awk -v f="$f" '$1 == f' | wc -l | tr -d ' ')
+			first=$(printf '%s\n' "$missing" | awk -v f="$f" '$1 == f { print $2; exit }')
+			say "           $ver is installed, but it lacks $n file(s) the bindings"
+			say "           link, e.g. $(basename "$first"). They were built against a"
+			say "           different $f release: install the matching one, or rebuild the"
+			say "           bindings against $ver."
+		done
+		absent="${absent# }"
+		if [ -n "$absent" ]; then
+			say "           Install with Homebrew:"
+			say "             brew install $absent"
+			say "           brew can also upgrade formulas you already have as a side effect."
+			for f in $absent; do
+				case "$f" in
+					*@*)
+						base="${f%@*}"
+						if [ "$have_brew" -eq 1 ] && brew list --versions "$base" >/dev/null 2>&1; then
+							say "           Homebrew's '$base' is installed, but these links need '$f',"
+							say "           a separate formula; '$base' does not provide them."
+						fi ;;
+				esac
+			done
+		fi
+	fi
+	if printf '%s\n' "$missing" | awk '$1 == "-" { found = 1 } END { exit !found }'; then
+		say "           Paths outside a Homebrew keg have no formula to suggest; the"
+		say "           distribution that built these bindings expects them there."
+	fi
+	return 0
+}
+
 # ------------------------------------------------------------------------ Linux
-# Package names per distro family. Runtime is what you need to RUN a GL program
-# from a release build; --dev adds the headers needed to BUILD libobjk_sdl.so.
+# Package names per distro family for SDL2 and OpenGL. These are used for --dev
+# (headers to BUILD libobjk_sdl.so, which no tree can tell us about) and, for
+# runtime, only when there is no distribution to inspect -- a repo checkout that
+# has not been built. With a distribution in hand the list comes from ldd.
 linux_packages() {
 	case "$1" in
 		apt)
@@ -240,7 +401,10 @@ linux_install_cmd() {
 		apt)    echo "apt-get install -y $*" ;;
 		dnf)    echo "dnf install -y $*" ;;
 		yum)    echo "yum install -y $*" ;;
-		pacman) echo "pacman -S --needed --noconfirm $*" ;;
+		# -Syu, not -S: a fresh Arch install or container has no sync database,
+		# so -S finds no targets at all, and refreshing it with -Sy but no -u is
+		# the partial upgrade Arch does not support.
+		pacman) echo "pacman -Syu --needed --noconfirm $*" ;;
 		zypper) echo "zypper install -y $*" ;;
 		apk)    echo "apk add $*" ;;
 	esac
@@ -254,6 +418,10 @@ detect_pm() {
 		fi
 	done
 	return 1
+}
+
+as_root() {
+	if [ "$(id -u)" -eq 0 ]; then "$@"; else sudo "$@"; fi
 }
 
 # Ask the dynamic linker what is actually loadable, rather than the package
@@ -270,6 +438,391 @@ linux_missing_libs() {
 	printf '%s' "$missing"
 }
 
+# The files whose loader view decides whether a distribution works: every
+# binary in bin/ and every Objeck native library. The ONNX Runtime libraries
+# that ship beside libobjk_onnx.so are reached through its $ORIGIN RUNPATH, so
+# checking the library that loads them covers them too.
+tree_files() {
+	local tree="$1" f
+	if [ "$SDL_ONLY" -eq 1 ]; then
+		set -- "$tree/bin/obc" "$tree/bin/obr" "$tree/lib/native/libobjk_sdl.so"
+	else
+		set -- "$tree"/bin/* "$tree"/lib/native/libobjk_*.so
+	fi
+	for f in "$@"; do
+		[ -f "$f" ] && printf '%s\n' "$f"
+	done
+}
+
+# ldd prints "not a dynamic executable" for an ELF built for another
+# architecture, and musl's loader cannot run a glibc binary at all. In both
+# cases no package will help, so say so rather than listing phantom libraries.
+#
+# Output is captured before matching: ldd exits non-zero in exactly these cases,
+# and under pipefail "ldd | grep -q" would report ldd's failure, not grep's match.
+tree_unusable_reason() {
+	local obr="$1/bin/obr" out
+	out=$(ldd --version 2>&1)
+	if printf '%s' "$out" | grep -qi musl; then
+		say "This system uses musl libc (Alpine and similar); Objeck's Linux releases"
+		say "are built against glibc."
+		return 0
+	fi
+	out=$(ldd "$obr" 2>&1)
+	if printf '%s' "$out" | grep -q "not a dynamic executable"; then
+		say "bin/obr was built for a different architecture than this machine ($(uname -m))."
+		return 0
+	fi
+	out=$(tree_version_errors "$1")
+	if [ -n "$out" ]; then
+		say "This system's libraries are older than the ones the distribution was built"
+		say "against:"
+		printf '%s\n' "$out" | awk '{ printf "  %-22s has no %s\n", $1, $2 }'
+		say "Linux releases are built on Ubuntu 24.04, run as shipped there, and need"
+		say "glibc 2.38 or newer. Installing packages cannot upgrade a distribution's C"
+		say "library. On this distribution, build Objeck from source:"
+		say "  core/release/deploy_posix.sh"
+		return 0
+	fi
+	return 1
+}
+
+# A library that is present but older than the one the tree was linked against
+# shows up in ldd as "version `GLIBC_2.38' not found". This is Debian 12: every
+# soname resolves, so a soname check alone passes, yet nothing starts, because
+# its glibc 2.36 predates what the release needs. Prints "<library> <version>".
+tree_version_errors() {
+	local f
+	tree_files "$1" | while IFS= read -r f; do
+		ldd "$f" 2>&1 | awk '/: version .* not found/ {
+			lib = $2; sub(/:$/, "", lib); n = split(lib, part, "/")
+			v = $0; sub(/.*: version ./, "", v); sub(/. not found.*/, "", v)
+			print part[n], v }'
+	done | sort -u
+}
+
+# One line per unresolved dependency: "<soname> <file relative to the tree>".
+tree_missing() {
+	local tree="$1" f
+	tree_files "$tree" | while IFS= read -r f; do
+		ldd "$f" 2>/dev/null | awk -v file="${f#"$tree"/}" '/=> not found/ { print $1, file }'
+	done
+}
+
+report_missing() {
+	printf '%s\n' "$1" | awk 'NF { need[$1] = need[$1] " " $2 }
+		END { for (s in need) printf "  MISSING  %-30s needed by%s\n", s, need[s] }' | sort
+}
+
+# --- soname -> package, per package manager ----------------------------------
+#
+# apt: Debian names a shared-library package after the SONAME it carries (Debian
+# Policy 8.1): lowercase, '_' -> '-', the version appended, with a '-' between
+# when the name already ends in a digit. So
+#     libmbedtls.so.14       -> libmbedtls14
+#     libnghttp2.so.14       -> libnghttp2-14
+#     libSDL2-2.0.so.0       -> libsdl2-2.0-0
+#     libopencv_core.so.406  -> libopencv-core406
+# The 64-bit time_t transition then renamed many of them with a t64 suffix
+# (Ubuntu 24.04: libmbedtls14t64, libreadline8t64, libopencv-core406t64) and
+# left the old name behind as a virtual package, while Debian 12 still carries
+# the plain names. Derive both and let apt say which one really exists.
+apt_package_for() {
+	local so="$1" base ver name c cand
+	case "$so" in *.so.*) ;; *) return 1 ;; esac
+	base=$(printf '%s' "${so%%.so.*}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+	ver="${so#*.so.}"
+	case "$base" in
+		*[0-9]) name="$base-$ver" ;;
+		*)      name="$base$ver" ;;
+	esac
+	for c in "${name}t64" "$name"; do
+		cand=$(apt-cache policy "$c" 2>/dev/null | awk '/Candidate:/ { print $2 }')
+		if [ -n "$cand" ] && [ "$cand" != "(none)" ]; then
+			printf '%s\n' "$c"
+			return 0
+		fi
+	done
+	return 1
+}
+
+# RPM records every library a package carries as a capability, e.g.
+# "libmbedtls.so.14()(64bit)", so dnf, yum and zypper can be asked directly.
+rpm_capability() {
+	if [ "$(getconf LONG_BIT 2>/dev/null)" = "64" ]; then
+		printf '%s()(64bit)' "$1"
+	else
+		printf '%s' "$1"
+	fi
+}
+
+# name-[epoch:]version-release.arch -> name
+nevra_name() {
+	sed -e 's/\.[^.]*$//' -e 's/-[^-]*-[^-]*$//'
+}
+
+package_for() {
+	local so="$1" cap
+	case "$PM" in
+		apt)
+			apt_package_for "$so" ;;
+		dnf)
+			cap=$(rpm_capability "$so")
+			dnf -q repoquery --whatprovides "$cap" 2>/dev/null | grep -v '^$' | nevra_name | head -1 ;;
+		yum)
+			cap=$(rpm_capability "$so")
+			if command -v repoquery >/dev/null 2>&1; then
+				repoquery -q --whatprovides "$cap" 2>/dev/null | grep -v '^$' | nevra_name | head -1
+			else
+				yum -q provides "$cap" 2>/dev/null | awk '/ : / { print $1; exit }' | nevra_name
+			fi ;;
+		zypper)
+			cap=$(rpm_capability "$so")
+			zypper -n search --provides --match-exact "$cap" 2>/dev/null |
+				awk -F'|' '$4 ~ /package/ { gsub(/ /, "", $2); print $2; exit }' ;;
+		pacman)
+			# needs the files database (pacman -Fy), which pm_refresh fetches
+			pacman -Fq "usr/lib/$so" 2>/dev/null | head -1 | sed 's|^.*/||' ;;
+		apk)
+			# apk resolves "so:" provides itself; unreachable in practice, since
+			# a glibc release tree is refused on musl before this is asked
+			printf 'so:%s\n' "$so" ;;
+	esac
+}
+
+# Sets RESOLVED_PKGS and UNRESOLVED from a whitespace-separated soname list.
+resolve_packages() {
+	local so pkg
+	RESOLVED_PKGS=""
+	UNRESOLVED=""
+	for so in $1; do
+		pkg=$(package_for "$so")
+		if [ -n "$pkg" ]; then
+			case " $RESOLVED_PKGS " in
+				*" $pkg "*) ;;
+				*) RESOLVED_PKGS="$RESOLVED_PKGS $pkg" ;;
+			esac
+		else
+			UNRESOLVED="$UNRESOLVED $so"
+		fi
+	done
+	RESOLVED_PKGS="${RESOLVED_PKGS# }"
+	UNRESOLVED="${UNRESOLVED# }"
+}
+
+# Whether the package manager can answer soname questions without a refresh.
+pm_metadata_present() {
+	case "$PM" in
+		# the trailing * matters: with Acquire::GzipIndexes (set in the official
+		# Debian and Ubuntu container images) the lists are *_Packages.lz4
+		apt)    ls /var/lib/apt/lists/*_Packages* >/dev/null 2>&1 ;;
+		pacman) ls /var/lib/pacman/sync/*.files >/dev/null 2>&1 ;;
+		*)      return 0 ;;  # dnf, yum and zypper fetch metadata on demand
+	esac
+}
+
+pm_refresh() {
+	case "$PM" in
+		apt)    as_root apt-get update ;;
+		pacman) as_root pacman -Fy ;;
+		*)      return 0 ;;
+	esac
+}
+
+# A mirror caught mid-sync fails apt-get update with "Hash Sum mismatch" and a
+# non-zero exit, leaving whole indices unread (seen on noble/universe while
+# testing this). A lookup against that finds no package for most libraries and
+# the install goes ahead with a fraction of them. It clears within seconds, so
+# try once more before settling for what was fetched.
+pm_refresh_checked() {
+	case "$PM" in
+		apt|pacman) ;;
+		*) return 0 ;;
+	esac
+	say "Refreshing $PM package metadata."
+	pm_refresh && return 0
+	say "The refresh failed; retrying once."
+	sleep 5
+	pm_refresh && return 0
+	say "Package metadata could not be fully refreshed; some lookups may fail." >&2
+	return 1
+}
+
+explain_unresolved() {
+	local so
+	if ! pm_metadata_present; then
+		say "  Could not look up packages for:"
+		for so in $UNRESOLVED; do say "    $so"; done
+		case "$PM" in
+			apt)    say "  The package lists have not been downloaded; run 'apt-get update' first." ;;
+			pacman) say "  The files database has not been downloaded; run 'pacman -Fy' first." ;;
+		esac
+		return
+	fi
+	say "  No package in this system's $PM repositories provides:"
+	for so in $UNRESOLVED; do say "    $so"; done
+	say "  The distribution was linked against exactly these library versions, and"
+	say "  this system's repositories carry different ones (or none). Linux releases"
+	say "  are built on Ubuntu 24.04 and run as shipped there. On this distribution,"
+	say "  build Objeck from source: core/release/deploy_posix.sh"
+}
+
+# The whole Linux run against a distribution tree. Exits.
+run_linux_tree() {
+	local tree="$1" reason missing sonames cmd round pkgs scope
+
+	if reason=$(tree_unusable_reason "$tree"); then
+		say "Cannot run the distribution in $tree on this machine." >&2
+		printf '%s\n' "$reason" | sed 's/^/  /' >&2
+		exit 1
+	fi
+
+	scope="every binary in bin/ and lib/native/libobjk_*.so"
+	[ "$SDL_ONLY" -eq 1 ] && scope="obc, obr and libobjk_sdl.so"
+
+	missing=$(tree_missing "$tree")
+	sonames=$(printf '%s\n' "$missing" | awk 'NF { print $1 }' | sort -u | tr '\n' ' ')
+	sonames="${sonames% }"
+
+	local dev_pkgs=""
+	[ "$WANT_DEV" -eq 1 ] && dev_pkgs=$(linux_packages "$PM")
+
+	# --check reports on the runtime only, so --dev does not make it fail; --print
+	# and an install still act on the headers.
+	if [ -z "$sonames" ] && { [ -z "$dev_pkgs" ] || [ "$CHECK_ONLY" -eq 1 ]; }; then
+		if [ "$PRINT_ONLY" -eq 1 ]; then
+			say "# nothing to install: every library $tree needs already resolves" >&2
+		else
+			say "Every system library needed by $scope resolves. Nothing to do."
+			say "  (checked $tree)"
+		fi
+		exit 0
+	fi
+
+	if [ "$PRINT_ONLY" -eq 1 ]; then
+		resolve_packages "$sonames"
+		pkgs="$RESOLVED_PKGS${dev_pkgs:+ $dev_pkgs}"
+		pkgs="${pkgs# }"
+		if [ -n "$pkgs" ]; then
+			cmd=$(linux_install_cmd "$PM" "$pkgs")
+			[ "$(id -u)" -eq 0 ] || cmd="sudo $cmd"
+			say "$cmd"
+		fi
+		[ -n "$UNRESOLVED" ] && explain_unresolved >&2
+		exit 0
+	fi
+
+	if [ -n "$sonames" ]; then
+		say "Checked $scope in $tree:"
+		report_missing "$missing"
+		say ""
+	else
+		say "Installing development headers (--dev)."
+	fi
+
+	if [ "$CHECK_ONLY" -eq 1 ]; then
+		resolve_packages "$sonames"
+		if [ -n "$RESOLVED_PKGS" ]; then
+			cmd=$(linux_install_cmd "$PM" "$RESOLVED_PKGS")
+			[ "$(id -u)" -eq 0 ] || cmd="sudo $cmd"
+			say "Install them with:"
+			say "  $cmd"
+			say "or just run:  $0"
+			[ -n "$UNRESOLVED" ] && say ""
+		fi
+		[ -n "$UNRESOLVED" ] && explain_unresolved
+		exit 1
+	fi
+
+	# No prompt when there is no terminal to prompt on: a piped or CI run would
+	# otherwise read EOF and silently take the "no" branch. Decided before any
+	# sudo, so a non-interactive run without --yes changes nothing at all.
+	if [ "$ASSUME_YES" -eq 0 ] && [ ! -t 0 ]; then
+		say "Not a terminal, and --yes was not given. Re-run with --yes to install."
+		exit 1
+	fi
+
+	# Refresh once, before any lookup, so the names and the install itself both
+	# come from current metadata: apt resolves names from its lists, and pacman -F
+	# needs its files database.
+	pm_refresh_checked
+
+	# Installing a library can expose the next one: ldd cannot see the
+	# dependencies of a library it did not find. Package dependencies normally
+	# bring those along, so the second and third rounds are a safety net.
+	for round in 1 2 3; do
+		resolve_packages "$sonames"
+
+		pkgs="$RESOLVED_PKGS${dev_pkgs:+ $dev_pkgs}"
+		pkgs="${pkgs# }"
+		[ -z "$pkgs" ] && break
+
+		cmd=$(linux_install_cmd "$PM" "$pkgs")
+		[ "$(id -u)" -eq 0 ] || cmd="sudo $cmd"
+
+		say ""
+		say "About to run:"
+		say "  $cmd"
+		[ -n "$UNRESOLVED" ] && { say ""; explain_unresolved; }
+		say ""
+
+		if [ "$ASSUME_YES" -eq 0 ] && [ "$round" -eq 1 ]; then
+			printf 'Proceed? [y/N] '
+			read -r reply
+			case "$reply" in
+				y|Y|yes|YES) ;;
+				*) say "Aborted. Re-run with --yes to skip this prompt."; exit 1 ;;
+			esac
+		fi
+
+		# shellcheck disable=SC2086
+		eval "$cmd"
+		local status=$?
+		if [ "$status" -ne 0 ]; then
+			say ""
+			say "Package installation failed (exit $status)." >&2
+			exit 1
+		fi
+
+		dev_pkgs=""
+		missing=$(tree_missing "$tree")
+		local next
+		next=$(printf '%s\n' "$missing" | awk 'NF { print $1 }' | sort -u | tr '\n' ' ')
+		next="${next% }"
+		# stop once nothing is missing, or nothing changed since the last round
+		[ -z "$next" ] && break
+		[ "$next" = "$sonames" ] && break
+		sonames="$next"
+	done
+
+	missing=$(tree_missing "$tree")
+	if [ -n "$missing" ]; then
+		say ""
+		say "Still not resolvable by the loader:" >&2
+		report_missing "$missing" >&2
+		sonames=$(printf '%s\n' "$missing" | awk 'NF { print $1 }' | sort -u | tr '\n' ' ')
+		resolve_packages "$sonames"
+		if [ -n "$UNRESOLVED" ]; then
+			say "" >&2
+			explain_unresolved >&2
+		else
+			say "Their packages are installed; try 'sudo ldconfig'." >&2
+		fi
+		exit 1
+	fi
+
+	# a library the install just brought in can itself be older than the build
+	if reason=$(tree_unusable_reason "$tree"); then
+		say "" >&2
+		printf '%s\n' "$reason" >&2
+		exit 1
+	fi
+
+	say ""
+	say "Every system library needed by $scope is installed and visible to the loader."
+	exit 0
+}
+
 # ------------------------------------------------------------------------- main
 UNAME=$(uname -s)
 
@@ -278,8 +831,6 @@ case "$UNAME" in
 		say "platform: macOS -- SDL2 is bundled, OpenGL is a system framework"
 		say ""
 		# find a deploy tree to validate; the repo layout first, then an install
-		SELF_DIR=$(cd "$(dirname "$0")" 2>/dev/null && pwd)
-		REPO=$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)
 		TREE=""
 		if [ -n "$TREE_ARG" ]; then
 			TREE="$TREE_ARG"
@@ -293,13 +844,17 @@ case "$UNAME" in
 			done
 		fi
 		if [ -z "$TREE" ]; then
-			say "No built distribution found to verify."
-			say "Build one:  cd core/release && ./deploy_macos_arm64.sh"
+			say "No Objeck distribution found to verify (looked beside this script, in"
+			say "core/release/deploy and deploy-arm64, and in /usr/local/objeck-lang)."
+			say "For a downloaded release:  $0 --check --tree <unpacked objeck-lang directory>"
+			say "For a repo checkout, build one:  cd core/release && ./deploy_macos_arm64.sh"
 			exit 1
 		fi
 		say "verifying bundled SDL2 in $TREE"
 		check_bundled_macos "$TREE"; BUNDLE_STATUS=$?
 		check_quarantine "$TREE"; QUARANTINE_STATUS=$?
+		# advice, never part of the exit status; --sdl callers have no use for it
+		[ "$SDL_ONLY" -eq 1 ] || check_homebrew_macos "$TREE"
 		[ "$BUNDLE_STATUS" -eq 0 ] && [ "$QUARANTINE_STATUS" -eq 0 ]
 		exit $?
 		;;
@@ -320,9 +875,34 @@ esac
 PM=$(detect_pm)
 if [ -z "$PM" ]; then
 	say "No supported package manager found (looked for apt-get, dnf, yum, pacman, zypper, apk)." >&2
-	say "Install SDL2 (core, image, mixer, ttf) and an OpenGL runtime by hand." >&2
+	say "Install what 'ldd bin/obr' and 'ldd lib/native/libobjk_*.so' report as \"not found\" by hand." >&2
 	exit 2
 fi
+
+# The distribution to inspect: an explicit --tree, else the one this script sits
+# at the root of (that is where it ships), else a repo build or an install.
+TREE=""
+if [ -n "$TREE_ARG" ]; then
+	if [ ! -f "$TREE_ARG/bin/obr" ]; then
+		say "No Objeck distribution at $TREE_ARG (expected $TREE_ARG/bin/obr)." >&2
+		exit 1
+	fi
+	TREE=$(cd "$TREE_ARG" && pwd)
+else
+	for c in "$SELF_DIR" "$REPO/core/release/deploy" "/usr/local/objeck-lang"; do
+		[ -f "$c/bin/obr" ] && { TREE="$c"; break; }
+	done
+fi
+
+[ -n "$TREE" ] && run_linux_tree "$TREE"
+
+# No distribution to inspect -- a repo checkout that has not been built yet. The
+# toolchain's own libraries cannot be known without its binaries, so fall back
+# to the SDL2/OpenGL set, which is all --dev (building libobjk_sdl.so) needs.
+say "No Objeck distribution found (looked beside this script, in core/release/deploy"
+say "and /usr/local/objeck-lang); checking only the SDL2 and OpenGL libraries."
+say "Point --tree at a distribution to check everything it needs."
+say ""
 
 PKGS=$(linux_packages "$PM")
 CMD=$(linux_install_cmd "$PM" "$PKGS")
@@ -376,7 +956,7 @@ if [ "$ASSUME_YES" -eq 0 ]; then
 fi
 
 if [ "$PM" = "apt" ]; then
-	if [ "$(id -u)" -eq 0 ]; then apt-get update; else sudo apt-get update; fi
+	as_root apt-get update
 fi
 
 # shellcheck disable=SC2086
