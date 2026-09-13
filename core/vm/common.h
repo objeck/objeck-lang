@@ -85,10 +85,10 @@ typedef SSIZE_T ssize_t;
 #ifdef OBJECK_HAS_NGTCP2
 #include <ngtcp2/ngtcp2.h>
 #include <ngtcp2/ngtcp2_crypto.h>
-#include <ngtcp2/ngtcp2_crypto_gnutls.h>
+#include <openssl/ssl.h>
+#include <openssl/rand.h>
+#include <ngtcp2/ngtcp2_crypto_boringssl.h>
 #include <nghttp3/nghttp3.h>
-#include <gnutls/gnutls.h>
-#include <gnutls/crypto.h>
 #ifndef _WIN32
 #include <poll.h>
 #include <netdb.h>
@@ -291,8 +291,8 @@ struct Http3SessionCtx {
   ngtcp2_conn*                    conn;
   nghttp3_conn*                   h3conn;
   ngtcp2_crypto_conn_ref          conn_ref;
-  gnutls_session_t                tls_session;
-  gnutls_certificate_credentials_t cred;
+  SSL_CTX*                        ssl_ctx;
+  SSL*                            ssl;
   struct sockaddr_storage         local_addr;
   struct sockaddr_storage         remote_addr;
   socklen_t                       local_addrlen;
@@ -313,7 +313,7 @@ struct Http3SessionCtx {
 
   Http3SessionCtx() : conn(nullptr), h3conn(nullptr),
 #ifdef OBJECK_HAS_NGTCP2
-      tls_session(nullptr), cred(nullptr),
+      ssl_ctx(nullptr), ssl(nullptr),
       local_addrlen(0), remote_addrlen(0),
       handshake_complete(false), last_stream_id(-1),
 #endif
@@ -323,8 +323,8 @@ struct Http3SessionCtx {
 #ifdef OBJECK_HAS_NGTCP2
     if(h3conn) nghttp3_conn_del(h3conn);
     if(conn) ngtcp2_conn_del(conn);
-    if(tls_session) gnutls_deinit(tls_session);
-    if(cred) gnutls_certificate_free_credentials(cred);
+    if(ssl) SSL_free(ssl);
+    if(ssl_ctx) SSL_CTX_free(ssl_ctx);
 #endif
     if(udp_fd >= 0) {
 #ifdef _WIN32

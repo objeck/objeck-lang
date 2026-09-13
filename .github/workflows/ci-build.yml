@@ -107,11 +107,6 @@ jobs:
           build-essential \
           libopencv-dev \
           libmbedtls-dev \
-          libnghttp2-dev \
-          libngtcp2-dev \
-          libngtcp2-crypto-gnutls-dev \
-          libnghttp3-dev \
-          libgnutls28-dev \
           unixodbc-dev \
           libsqliteodbc \
           libsdl2-dev \
@@ -152,7 +147,7 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         # Install only formulae that aren't already present. The hosted runner
-        # preinstalls newer gnutls/libnghttp3/cmake than these formulae, so a
+        # preinstalls newer versions of some of these formulae (cmake), so a
         # plain `brew install` aborts with "already installed" (red CI error
         # annotations) even though the build is fine. Skip present packages and
         # install the rest, so genuine install failures still surface.
@@ -160,9 +155,6 @@ jobs:
           opencv@4 \
           onnxruntime \
           mbedtls \
-          nghttp2 \
-          libnghttp3 \
-          gnutls \
           cmake \
           unixodbc \
           sdl2 \
@@ -195,33 +187,6 @@ jobs:
         if [ -d /opt/homebrew/opt/opencv@4/lib/pkgconfig ]; then
           echo "PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig:${PKG_CONFIG_PATH}" >> $GITHUB_ENV
         fi
-
-    - name: Build ngtcp2 with GnuTLS backend (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        # Homebrew's libngtcp2 ships only the OpenSSL crypto backend.
-        # The VM requires the GnuTLS backend; build ngtcp2 from source at the
-        # exact version Homebrew installed so ABI is compatible at runtime.
-        NGTCP2_VER=$(brew list --versions libngtcp2 | awk '{print $2}')
-        echo "Building ngtcp2 v${NGTCP2_VER} to match Homebrew libngtcp2"
-        cd /tmp
-        git clone --depth 1 --branch "v${NGTCP2_VER}" https://github.com/ngtcp2/ngtcp2.git
-        cd ngtcp2
-        git submodule update --init --depth 1
-        mkdir build && cd build
-        cmake -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
-              -DENABLE_GNUTLS=ON -DENABLE_OPENSSL=OFF \
-              -DCMAKE_PREFIX_PATH="/opt/homebrew;/opt/homebrew/opt/gnutls" \
-              -DBUILD_TESTING=OFF ..
-        make -j$(sysctl -n hw.ncpu)
-        make install DESTDIR=/tmp/ngtcp2-install
-        # libnghttp3 pulls in libngtcp2 (OpenSSL build) as a dep; those files are
-        # root-owned, so only install the GnuTLS-specific files that aren't in brew.
-        sudo cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2_crypto_gnutls* /opt/homebrew/lib/
-        sudo mkdir -p /opt/homebrew/include/ngtcp2
-        sudo cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
-        echo "ngtcp2 GnuTLS backend installed:"
-        ls /opt/homebrew/lib/libngtcp2*
 
     - name: Select Xcode 16.3+ (macOS)
       if: runner.os == 'macOS'
@@ -378,6 +343,12 @@ jobs:
     # ============================================
     # ccache Setup
     # ============================================
+
+    # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
+    # from cache or build them with tools/deps/build_quic_deps.sh.
+    - name: QUIC dependencies
+      if: runner.os != 'Windows'
+      uses: ./.github/actions/quic-deps
 
     - name: Cache ccache
       if: runner.os != 'Windows'
@@ -1022,6 +993,22 @@ jobs:
     # macOS-only crash from a guess-and-push-to-CI loop into a single read.
     # onnx_runtime_test's teardown abort was diagnosed without one; the next
     # one should not have to be.
+    # Install the package this build produces on this runner, with Homebrew moved
+    # aside, the way a user's Mac gets it. v2026.6.3 through v2026.9.2 shipped an
+    # obr that could not start without Homebrew libraries and a hand-built ngtcp2
+    # backend, and no CI job ever installed the package.
+    - name: macOS package install test
+      if: matrix.platform == 'macos-arm64'
+      shell: bash
+      env:
+        # Not bundled yet: these bindings still link Homebrew OpenCV, ONNX Runtime
+        # and LAME. Remove each name when its library ships inside the package.
+        ALLOW_EXTERNAL: libobjk_opencv.dylib libobjk_onnx.dylib libobjk_lame.dylib
+      run: |
+        cd core/release
+        OUTPUT_DIR="$RUNNER_TEMP/pkg" ./create_macos_pkg.sh 0.0.0
+        bash ../../tools/cicd/macos_install_test.sh "$RUNNER_TEMP/pkg/objeck-macos-arm64_0.0.0.pkg" "$GITHUB_WORKSPACE/programs/regression"
+
     - name: Collect macOS crash reports (on failure)
       if: failure() && matrix.platform == 'macos-arm64'
       continue-on-error: true
@@ -1232,9 +1219,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential libmbedtls-dev libnghttp2-dev libngtcp2-dev \
-            libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev \
-            zlib1g-dev libreadline-dev ccache
+            build-essential libmbedtls-dev zlib1g-dev libreadline-dev ccache
+
+      # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
+      # from cache or build them with tools/deps/build_quic_deps.sh.
+      - name: QUIC dependencies
+        uses: ./.github/actions/quic-deps
 
       - name: Cache ccache
         uses: actions/cache@v5

@@ -7176,12 +7176,12 @@ static ngtcp2_conn* h3_get_conn(ngtcp2_crypto_conn_ref* ref) {
 }
 
 // Connection IDs and the stateless reset token are secrets that go out in
-// cleartext QUIC headers. gnutls_rnd leaves the buffer UNTOUCHED when it fails,
+// cleartext QUIC headers. A failed CSPRNG call can leave the buffer untouched,
 // so an unchecked call publishes whatever was on the stack -- a memory
-// disclosure and a predictable CID. GNUTLS_RND_KEY is the long-lived-secret
-// level. Every call site checks, and a failure fails the operation.
+// disclosure and a predictable CID. Every call site checks, and a failure
+// fails the operation.
 static bool h3_random_bytes(void* dest, size_t destlen) {
-  return gnutls_rnd(GNUTLS_RND_KEY, dest, destlen) == 0;
+  return RAND_bytes((uint8_t*)dest, destlen) == 1;
 }
 
 static void h3_rand_cb(uint8_t* dest, size_t destlen, const ngtcp2_rand_ctx*) {
@@ -7521,32 +7521,48 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   ctx->remote_addrlen = (socklen_t)res->ai_addrlen;
   freeaddrinfo(res);
 
-  // Set up GnuTLS session for QUIC (TLS 1.3 + ALPN "h3")
-  gnutls_certificate_allocate_credentials(&ctx->cred);
-  gnutls_certificate_set_x509_system_trust(ctx->cred);
-  if(gnutls_init(&ctx->tls_session, GNUTLS_CLIENT | GNUTLS_NONBLOCK) < 0) {
+  // TLS 1.3 client for QUIC, ALPN "h3". AWS-LC is linked statically, so obr
+  // needs no system TLS library: v2026.6.3 through v2026.9.2 linked GnuTLS and
+  // ngtcp2's GnuTLS backend, which Homebrew does not ship, and obr could not
+  // start on a user's Mac.
+  ctx->ssl_ctx = SSL_CTX_new(TLS_client_method());
+  if(!ctx->ssl_ctx || ngtcp2_crypto_boringssl_configure_client_context(ctx->ssl_ctx) != 0) {
     delete ctx; instance[0] = 0; return true;
   }
-  gnutls_credentials_set(ctx->tls_session, GNUTLS_CRD_CERTIFICATE, ctx->cred);
-  gnutls_server_name_set(ctx->tls_session, GNUTLS_NAME_DNS, host.c_str(), host.size());
-  // Verify the server certificate chain (against system trust set above) and
-  // that it matches the requested hostname. Without this GnuTLS performs no peer
-  // verification, so the QUIC handshake would complete against any certificate
-  // (MITM). On failure the handshake aborts with a verification error. Operators
-  // can skip this for testing via OBJECK_TLS_INSECURE_SKIP_VERIFY.
-  if(!IPSecureSocket::InsecureSkipVerify()) {
-    gnutls_session_set_verify_cert(ctx->tls_session, host.c_str(), 0);
-  }
-  gnutls_priority_set_direct(ctx->tls_session,
-      "NORMAL:-VERS-ALL:+VERS-TLS1.3", nullptr);
-  gnutls_datum_t alpn_h3 = { (unsigned char*)"h3", 2 };
-  gnutls_alpn_set_protocols(ctx->tls_session, &alpn_h3, 1, 0);
+  SSL_CTX_set_min_proto_version(ctx->ssl_ctx, TLS1_3_VERSION);
 
-  // Link GnuTLS session to ngtcp2 via conn_ref
+  // Verify the server certificate chain, against the same cacert.pem the HTTPS
+  // client trusts, and that it matches the requested hostname. Without this the
+  // QUIC handshake would complete against any certificate (MITM). On failure the
+  // handshake aborts with a verification error. Operators can skip this for
+  // testing via OBJECK_TLS_INSECURE_SKIP_VERIFY.
+  const bool verify_peer = !IPSecureSocket::InsecureSkipVerify();
+  if(verify_peer) {
+    const std::string cert_path = UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE;
+    if(SSL_CTX_load_verify_locations(ctx->ssl_ctx, cert_path.c_str(), nullptr) != 1) {
+      std::wcerr << L">>> Unable to load HTTP/3 CA certificates from '"
+                 << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
+      delete ctx; instance[0] = 0; return true;
+    }
+    SSL_CTX_set_verify(ctx->ssl_ctx, SSL_VERIFY_PEER, nullptr);
+  }
+
+  ctx->ssl = SSL_new(ctx->ssl_ctx);
+  if(!ctx->ssl) {
+    delete ctx; instance[0] = 0; return true;
+  }
+  SSL_set_connect_state(ctx->ssl);
+  static const uint8_t alpn_h3[] = { 2, 'h', '3' };
+  SSL_set_alpn_protos(ctx->ssl, alpn_h3, sizeof(alpn_h3));
+  SSL_set_tlsext_host_name(ctx->ssl, host.c_str());
+  if(verify_peer && SSL_set1_host(ctx->ssl, host.c_str()) != 1) {
+    delete ctx; instance[0] = 0; return true;
+  }
+
+  // Link the TLS session to ngtcp2 via conn_ref
   ctx->conn_ref.get_conn  = h3_get_conn;
   ctx->conn_ref.user_data = ctx;
-  gnutls_session_set_ptr(ctx->tls_session, &ctx->conn_ref);
-  ngtcp2_crypto_gnutls_configure_client_session(ctx->tls_session);
+  SSL_set_app_data(ctx->ssl, &ctx->conn_ref);
 
   // Generate random QUIC connection IDs
   // zero-initialised so a CSPRNG failure can never transmit stack contents
@@ -7606,7 +7622,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   if(conn_ret != 0) {
     delete ctx; instance[0] = 0; return true;
   }
-  ngtcp2_conn_set_tls_native_handle(ctx->conn, ctx->tls_session);
+  ngtcp2_conn_set_tls_native_handle(ctx->conn, ctx->ssl);
 
   // Drive QUIC handshake; h3_run_loop returns once nghttp3 session is ready
   if(!h3_run_loop(ctx)) {

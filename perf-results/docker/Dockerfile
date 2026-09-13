@@ -9,11 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     zlib1g-dev \
     libmbedtls-dev \
-    libnghttp2-dev \
-    libngtcp2-dev \
-    libngtcp2-crypto-gnutls-dev \
-    libnghttp3-dev \
-    libgnutls28-dev \
+    cmake \
+    git \
+    ca-certificates \
     libreadline-dev \
     python3 \
     ruby \
@@ -35,6 +33,9 @@ COPY core/shared/   core/shared/
 # VM source
 COPY core/vm/ core/vm/
 
+# Builds obr's static HTTP/2 + HTTP/3 libraries
+COPY tools/deps/ tools/deps/
+
 # Pre-built standard libraries (.obl files)
 COPY core/lib/*.obl core/lib/
 COPY core/lib/*.ini core/lib/
@@ -47,11 +48,17 @@ RUN cp make/Makefile.amd64 Makefile && \
     make clean && make -j$(nproc) OBJECK_LIB_PATH=///".///"
 
 # ============================================
+# HTTP/2 + HTTP/3 libraries, linked statically into obr
+# ============================================
+WORKDIR /build/objeck
+RUN bash tools/deps/build_quic_deps.sh /opt/objeck-deps
+
+# ============================================
 # Build VM runtime (obr)
 # ============================================
 WORKDIR /build/objeck/core/vm
 RUN cp make/Makefile.amd64 Makefile && \
-    make clean && make -j$(nproc)
+    make clean && make -j$(nproc) OBJECK_DEPS=/opt/objeck-deps
 
 # ============================================
 # Assemble minimal deploy

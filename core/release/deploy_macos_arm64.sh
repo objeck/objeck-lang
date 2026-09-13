@@ -42,8 +42,23 @@ cp ../vm/misc/*.pem ../release/deploy/lib
 
 # build VM
 cd ../vm
-xcodebuild -project xcode/VM.xcodeproj clean build $SIGN_FLAGS
+# The static QUIC libraries from tools/deps/build_quic_deps.sh, passed explicitly
+# rather than left to the project's $HOME default.
+OBJECK_DEPS="${OBJECK_DEPS:-$HOME/objeck-deps/darwin-arm64}"
+if [ ! -f "$OBJECK_DEPS/lib/libngtcp2.a" ]; then
+	echo "ERROR: QUIC libraries not found in $OBJECK_DEPS; run tools/deps/build_quic_deps.sh"
+	exit 1
+fi
+xcodebuild -project xcode/VM.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
 cp xcode/build/Release/obr ../release/deploy/bin
+# obr must start on a Mac with nothing installed. v2026.6.3 through v2026.9.2
+# linked Homebrew's GnuTLS, nghttp2, nghttp3 and ngtcp2 plus a hand-built ngtcp2
+# backend, and aborted at launch on every Mac but the one that built it.
+if otool -L ../release/deploy/bin/obr | tail -n +2 | awk '{print $1}' | grep -qE '^(/opt/homebrew|/usr/local)/'; then
+	echo "ERROR: obr links libraries a user's Mac does not have:"
+	otool -L ../release/deploy/bin/obr | grep -E '/opt/homebrew|/usr/local'
+	exit 1
+fi
 
 # build debugger
 cd ../debugger

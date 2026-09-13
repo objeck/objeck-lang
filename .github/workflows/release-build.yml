@@ -205,11 +205,6 @@ jobs:
             build-essential \
             libopencv-dev \
             libmbedtls-dev \
-            libnghttp2-dev \
-            libngtcp2-dev \
-            libngtcp2-crypto-gnutls-dev \
-            libnghttp3-dev \
-            libgnutls28-dev \
             unixodbc-dev \
             libsdl2-dev \
             libsdl2-image-dev \
@@ -235,11 +230,11 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           # Install only formulae that aren't already present. The hosted runner
-          # preinstalls newer gnutls/libnghttp3/cmake than these formulae, so a
+          # preinstalls newer versions of some of these formulae (cmake), so a
           # plain `brew install` aborts with "already installed" (red CI error
           # annotations) even though the build is fine. Skip present packages and
           # install the rest, so genuine install failures still surface.
-          for pkg in opencv@4 onnxruntime mbedtls nghttp2 libnghttp3 gnutls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame; do
+          for pkg in opencv@4 onnxruntime mbedtls cmake unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline eigen lame; do
             if brew list --versions "$pkg" >/dev/null 2>&1; then
               echo "✓ $pkg already installed — skipping"
             else
@@ -263,28 +258,6 @@ jobs:
           if [ -d /opt/homebrew/opt/opencv@4/lib/pkgconfig ]; then
             echo "PKG_CONFIG_PATH=/opt/homebrew/opt/opencv@4/lib/pkgconfig:${PKG_CONFIG_PATH:-}" >> $GITHUB_ENV
           fi
-
-      - name: Build ngtcp2 with GnuTLS backend (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          NGTCP2_VER=$(brew list --versions libngtcp2 | awk '{print $2}')
-          echo "Building ngtcp2 v${NGTCP2_VER} to match Homebrew libngtcp2"
-          cd /tmp
-          git clone --depth 1 --branch "v${NGTCP2_VER}" https://github.com/ngtcp2/ngtcp2.git
-          cd ngtcp2
-          git submodule update --init --depth 1
-          mkdir build && cd build
-          cmake -DCMAKE_INSTALL_PREFIX=/opt/homebrew \
-                -DENABLE_GNUTLS=ON -DENABLE_OPENSSL=OFF \
-                -DCMAKE_PREFIX_PATH="/opt/homebrew;/opt/homebrew/opt/gnutls" \
-                -DBUILD_TESTING=OFF ..
-          make -j$(sysctl -n hw.ncpu)
-          make install DESTDIR=/tmp/ngtcp2-install
-          sudo cp /tmp/ngtcp2-install/opt/homebrew/lib/libngtcp2_crypto_gnutls* /opt/homebrew/lib/
-          sudo mkdir -p /opt/homebrew/include/ngtcp2
-          sudo cp /tmp/ngtcp2-install/opt/homebrew/include/ngtcp2/* /opt/homebrew/include/ngtcp2/
-          echo "ngtcp2 GnuTLS backend installed:"
-          ls /opt/homebrew/lib/libngtcp2*
 
       - name: Select Xcode 16.3+ (macOS)
         if: runner.os == 'macOS'
@@ -460,6 +433,12 @@ jobs:
 
           echo "SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> $GITHUB_ENV
           echo "Certificates installed."
+
+      # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
+      # from cache or build them with tools/deps/build_quic_deps.sh.
+      - name: QUIC dependencies
+        if: runner.os != 'Windows'
+        uses: ./.github/actions/quic-deps
 
       - name: Build release
         working-directory: ./core/release
@@ -813,11 +792,6 @@ jobs:
             build-essential \
             libopencv-dev \
             libmbedtls-dev \
-            libnghttp2-dev \
-            libngtcp2-dev \
-            libngtcp2-crypto-gnutls-dev \
-            libnghttp3-dev \
-            libgnutls28-dev \
             unixodbc-dev \
             libsdl2-dev \
             libsdl2-image-dev \
@@ -827,6 +801,11 @@ jobs:
             libeigen3-dev \
             libmp3lame-dev
           sudo chown -R "$(id -u):$(id -g)" ~/apt-cache
+
+      # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
+      # from cache or build them with tools/deps/build_quic_deps.sh.
+      - name: QUIC dependencies
+        uses: ./.github/actions/quic-deps
 
       - name: Build Linux x64 toolchain
         working-directory: ./core/release
@@ -940,12 +919,12 @@ jobs:
             libsdl2-mixer-dev \
             libreadline-dev \
             libeigen3-dev \
-            libmp3lame-dev \
-            libnghttp2-dev \
-            libngtcp2-dev \
-            libngtcp2-crypto-gnutls-dev \
-            libnghttp3-dev \
-            libgnutls28-dev
+            libmp3lame-dev
+
+      # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
+      # from cache or build them with tools/deps/build_quic_deps.sh.
+      - name: QUIC dependencies
+        uses: ./.github/actions/quic-deps
 
       - name: Build compiler and runtime
         run: |
@@ -1129,9 +1108,50 @@ jobs:
   # Release Summary
   # ============================================
 
+  # ============================================
+  # macOS package install test
+  # ============================================
+  # Installs the .pkg this run built on clean runners, the oldest and newest
+  # macOS available, with Homebrew moved aside. A failure fails the run, so
+  # release-publish.yml does not publish it.
+  install-test-macos:
+    name: macOS install test (${{ matrix.os }})
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            tools/cicd
+            programs/regression
+
+      - name: Download macOS release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-macos-arm64
+          path: macos-artifacts
+
+      - name: Install and test the .pkg
+        shell: bash
+        env:
+          # Not bundled yet: these bindings still link Homebrew OpenCV, ONNX Runtime
+          # and LAME. Remove each name when its library ships inside the package.
+          ALLOW_EXTERNAL: libobjk_opencv.dylib libobjk_onnx.dylib libobjk_lame.dylib
+        run: |
+          PKG=$(find macos-artifacts -name 'objeck-macos-arm64_*.pkg' -type f | head -n 1)
+          if [ -z "$PKG" ]; then echo "No .pkg in release-macos-arm64"; exit 1; fi
+          bash tools/cicd/macos_install_test.sh "$PKG" "$GITHUB_WORKSPACE/programs/regression"
+
   summary:
     name: Build Summary
-    needs: [prepare, build, build-lsp, build-docs]
+    needs: [prepare, build, build-lsp, build-docs, install-test-macos]
     runs-on: ubuntu-latest
     if: always()
 

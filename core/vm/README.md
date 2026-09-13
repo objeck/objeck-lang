@@ -138,13 +138,11 @@ The VM requires the following libraries at build time:
 | Library | Purpose | Linux | macOS | Windows VS | MSYS2 |
 |---------|---------|-------|-------|------------|-------|
 | mbedTLS | TLS, crypto (`TCPSecureSocket`) | `libmbedtls-dev` | `brew install mbedtls` | bundled | `mingw-w64-ucrt-x86_64-mbedtls` |
-| nghttp2 | HTTP/2 (`net_h2`) | `libnghttp2-dev` | `brew install nghttp2` | vcpkg `nghttp2:x64-windows` | `mingw-w64-ucrt-x86_64-nghttp2` |
-| ngtcp2 | QUIC transport (`net_quic`) | `libngtcp2-dev` | `brew install ngtcp2` | not supported | `mingw-w64-ucrt-x86_64-ngtcp2` |
-| ngtcp2-crypto-gnutls | QUIC+TLS 1.3 | `libngtcp2-crypto-gnutls-dev` | (included) | not supported | `mingw-w64-ucrt-x86_64-ngtcp2` |
-| nghttp3 | HTTP/3 frames (`net_quic`) | `libnghttp3-dev` | `brew install nghttp3` | not supported | `mingw-w64-ucrt-x86_64-nghttp3` |
-| GnuTLS | TLS 1.3 for QUIC | `libgnutls28-dev` | `brew install gnutls` | not supported | `mingw-w64-ucrt-x86_64-gnutls` |
+| nghttp2 | HTTP/2 (`net_h2`) | static, `tools/deps/build_quic_deps.sh` | static, `tools/deps/build_quic_deps.sh` | vcpkg `nghttp2:x64-windows` | `mingw-w64-ucrt-x86_64-nghttp2` |
+| ngtcp2 + nghttp3 | QUIC and HTTP/3 (`net_quic`) | static, `tools/deps/build_quic_deps.sh` | static, `tools/deps/build_quic_deps.sh` | WinHTTP (Windows 11+) | not built |
+| AWS-LC | TLS 1.3 for QUIC | static, `tools/deps/build_quic_deps.sh` | static, `tools/deps/build_quic_deps.sh` | not used | not used |
 
-HTTP/3 (`OBJECK_HAS_NGTCP2`) requires Ubuntu 22.04+ or equivalent (ngtcp2 ≥ 0.12).
+On Linux and macOS, HTTP/2 and HTTP/3 (`OBJECK_HAS_NGHTTP2`, `OBJECK_HAS_NGTCP2`) link static libraries rather than distribution or Homebrew packages, so `obr` runs without them. `tools/deps/build_quic_deps.sh` builds pinned versions of AWS-LC, ngtcp2, nghttp3 and nghttp2 into `~/objeck-deps/<os>-<arch>`, which the Makefiles and the Xcode project read; set `OBJECK_DEPS` to use another prefix. It needs `git` and `cmake`, and runs once per version.
 
 ### Windows (Visual Studio)
 ```bash
@@ -155,8 +153,8 @@ msbuild vm.vcxproj /p:Configuration=Release /p:Platform=x64
 ### Linux x64 (Make)
 ```bash
 # Install dependencies first (see table above)
-sudo apt-get install -y libmbedtls-dev libnghttp2-dev \
-  libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
+sudo apt-get install -y libmbedtls-dev cmake git
+bash tools/deps/build_quic_deps.sh    # once: static HTTP/2 + HTTP/3 libraries
 
 cd core/vm
 make -f make/Makefile.amd64
@@ -164,8 +162,8 @@ make -f make/Makefile.amd64
 
 ### Linux ARM64 (Make)
 ```bash
-sudo apt-get install -y libmbedtls-dev libnghttp2-dev \
-  libngtcp2-dev libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
+sudo apt-get install -y libmbedtls-dev cmake git
+bash tools/deps/build_quic_deps.sh    # once: static HTTP/2 + HTTP/3 libraries
 
 cd core/vm
 make -f make/Makefile.arm64
@@ -173,7 +171,8 @@ make -f make/Makefile.arm64
 
 ### macOS (Xcode)
 ```bash
-brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls
+brew install cmake
+MACOSX_DEPLOYMENT_TARGET=13.3 bash tools/deps/build_quic_deps.sh    # once
 open core/vm/xcode/VM.xcodeproj
 # Build → Product → Build (⌘B)
 ```
@@ -183,7 +182,7 @@ open core/vm/xcode/VM.xcodeproj
 - **Language**: C++ with STL
 - **Code Generation**: Custom assembler for x64 and ARM64
 - **Line Count**: ~50,000 lines of C++ code
-- **External Dependencies**: mbedTLS (TLS/crypto), nghttp2 (HTTP/2), ngtcp2+nghttp3+GnuTLS (HTTP/3, Linux/macOS only)
+- **External Dependencies**: mbedTLS (TLS/crypto); on Linux and macOS, static nghttp2 (HTTP/2) and ngtcp2+nghttp3+AWS-LC (HTTP/3) from `tools/deps/build_quic_deps.sh`
 
 ## Debugging
 

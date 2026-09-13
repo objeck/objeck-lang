@@ -62,6 +62,11 @@ jobs:
           bc \
           python3
 
+    # obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically: restore them
+    # from cache or build them with tools/deps/build_quic_deps.sh.
+    - name: QUIC dependencies
+      uses: ./.github/actions/quic-deps
+
     - name: Cache ccache
       uses: actions/cache@v5
       with:

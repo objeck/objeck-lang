@@ -1,0 +1,32 @@
+name: 'Objeck QUIC dependencies'
+description: >
+  Builds (or restores from cache) the static AWS-LC, ngtcp2, nghttp3 and nghttp2
+  libraries obr links, via tools/deps/build_quic_deps.sh, and exports
+  OBJECK_DEPS for the Makefiles and the Xcode project.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve QUIC deps prefix
+      id: prefix
+      shell: bash
+      run: |
+        os=$(uname -s | tr '[:upper:]' '[:lower:]')
+        echo "dir=$HOME/objeck-deps/$os-$(uname -m)" >> "$GITHUB_OUTPUT"
+        # Must match MACOSX_DEPLOYMENT_TARGET in core/vm/xcode/VM.xcodeproj,
+        # or the static archives target a newer macOS than obr does.
+        if [ "$os" = darwin ]; then
+          echo "MACOSX_DEPLOYMENT_TARGET=13.3" >> "$GITHUB_ENV"
+        fi
+
+    - name: Cache QUIC deps
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.prefix.outputs.dir }}
+        key: quic-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/deps/build_quic_deps.sh') }}
+
+    - name: Build QUIC deps
+      shell: bash
+      run: |
+        bash tools/deps/build_quic_deps.sh "${{ steps.prefix.outputs.dir }}"
+        echo "OBJECK_DEPS=${{ steps.prefix.outputs.dir }}" >> "$GITHUB_ENV"

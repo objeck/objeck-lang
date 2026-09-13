@@ -6,11 +6,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libssl-dev \
     libmbedtls-dev \
-    libnghttp2-dev \
-    libngtcp2-dev \
-    libngtcp2-crypto-gnutls-dev \
-    libnghttp3-dev \
-    libgnutls28-dev \
+    cmake \
+    git \
     unixodbc-dev \
     libsdl2-dev \
     libsdl2-image-dev \

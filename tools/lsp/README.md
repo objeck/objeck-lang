@@ -17,14 +17,10 @@ The Objeck LSP server brings code intelligence to the [Objeck](https://github.co
 
 **1. Install Objeck** from [github.com/objeck/objeck-lang](https://github.com/objeck/objeck-lang/releases/latest)
 
-On **Linux and macOS**, the Objeck runtime dynamically links a few system libraries (mbedTLS for crypto/TLS; nghttp2, ngtcp2, and nghttp3 for HTTP/2 and HTTP/3). Install them first — the install script checks for them and stops with the same hint if they're missing (Windows releases bundle their DLLs):
+On **Linux**, the Objeck runtime dynamically links mbedTLS for crypto/TLS; HTTP/2 and HTTP/3 are linked into it. Install mbedTLS first — the install script checks for it and stops with the same hint if it's missing. macOS and Windows releases need nothing extra:
 ```sh
 # Debian / Ubuntu
-sudo apt-get install libmbedtls-dev libnghttp2-dev libngtcp2-dev \
-    libngtcp2-crypto-gnutls-dev libnghttp3-dev libgnutls28-dev
-
-# macOS
-brew install mbedtls nghttp2 ngtcp2 nghttp3 gnutls
+sudo apt-get install libmbedtls-dev
 ```
 
 **2. Run the install script** from the extracted release directory:
