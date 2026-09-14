@@ -23,7 +23,7 @@
 - 🤖 **AI-native**: OpenAI, Gemini, Ollama, ONNX, OpenCV — no third-party packages
 - 🌐 **Network-complete**: HTTP/1.1 · HTTP/2 · HTTP/3/QUIC · WebSocket · DTLS — all standard library
 - 💻 **Developer-friendly**: REPL shell, LSP plugins for VSCode/Sublime/Kate, DAP debugger
-- 🌍 **Cross-platform**: Linux, macOS, Windows (x64 + ARM64/RPI)
+- 🌍 **Cross-platform**: Linux, macOS, Windows (x64 + ARM64, including 64-bit Raspberry Pi)
 - 🔧 **Full-featured**: Threads, generics, closures, reflection, serialization
 
 **Perfect for:**

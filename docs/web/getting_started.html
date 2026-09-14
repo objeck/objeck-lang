@@ -350,7 +350,7 @@
       Installation
      </h2>
      <p>
-      Objeck can be installed using the Windows installer or compressed archives. Supported platforms are Windows (x64), macOS (ARM64) and Linux (x64 and AMD64).
+      Objeck can be installed using the Windows or macOS installers or compressed archives. Supported platforms are Windows (x64 and ARM64), macOS (Apple Silicon) and Linux (x64 and ARM64).
      </p>
      <p>
       In order to compile programs outside of the
@@ -395,8 +395,8 @@
      </p>
      <h4>Windows</h4>
      <ul>
-      <li>Visual Studio 2022 (C++ workload)</li>
-      <li><a href="https://github.com/Mbed-TLS/mbedtls">mbedTLS</a> (installed via vcpkg: <pre class="cmd">vcpkg install mbedtls:x64-windows</pre>)</li>
+      <li>Visual Studio 2022 or later (C++ workload)</li>
+      <li><a href="https://github.com/Mbed-TLS/mbedtls">mbedTLS</a> and nghttp2 (installed via vcpkg: <pre class="cmd">vcpkg install mbedtls:x64-windows nghttp2:x64-windows</pre>)</li>
       <li><a href="https://github.com/opencv/opencv/releases/tag/4.12.0">OpenCV 4.12.0</a> &mdash; download the Windows release and copy <pre class="cmd">opencv_world4120.dll</pre> and <pre class="cmd">opencv_videoio_ffmpeg4120_64.dll</pre> from <pre class="cmd">opencv\build\x64\vc16\bin\</pre> to <pre class="cmd">core\lib\opencv\win\x64\bin\</pre></li>
      </ul>
      <h4>Linux (Debian/Ubuntu)</h4>
@@ -447,27 +447,17 @@
         Video Tutorials
        </h3>
        <p>
-        To assist with getting starting with Objeck video tutorials are available. The videos cover a range of topics and are updated periodically.
+        Video overviews of the language and its internals are on the <a href="https://www.youtube.com/@objeck45" target="_blank">Objeck YouTube channel</a>:
        </p>
        <ul>
         <li>
-         <a href="https://www.youtube.com/watch?v=eiWdUs8txGc">
-          Getting Started
+         <a href="https://www.youtube.com/watch?v=DJRX3FqUnBo" target="_blank">
+          New AI-Native Features
          </a>
         </li>
         <li>
-         <a href="https://www.youtube.com/watch?v=6jumPoRLXHQ">
-          Data Types
-         </a>
-        </li>
-        <li>
-         <a href="https://www.youtube.com/watch?v=JUb80XoKX-4">
-          Parsing JSON
-         </a>
-        </li>
-        <li>
-         <a href="https://www.youtube.com/watch?v=VTbms3iV5p4">
-          Secure Web Server
+         <a href="https://www.youtube.com/watch?v=67txnk5fwrE" target="_blank">
+          Objeck Internals (v2026.9)
          </a>
         </li>
        </ul>
@@ -2976,7 +2966,7 @@ goodbye.</pre>
          </p>
          <h4>Setup</h4>
          <ol>
-          <li>Install the <strong>Objeck</strong> VS Code extension (<code>.vsix</code> from the <a href="https://github.com/objeck/objeck-lsp" target="_blank">objeck-lsp</a> repository)</li>
+          <li>Install the <strong>Objeck</strong> VS Code extension: <code>objeck-lsp.vsix</code> is inside the <code>objeck-lsp_&lt;version&gt;.zip</code> of each <a href="https://github.com/objeck/objeck-lang/releases/latest" target="_blank">release</a> (source in <a href="https://github.com/objeck/objeck-lang/tree/master/tools/lsp" target="_blank">tools/lsp</a>)</li>
           <li>In VS Code settings, set the Objeck install path:
            <ul>
             <li><strong>Windows:</strong> <code>objk.win.install.dir</code> &rarr; your Objeck install directory (e.g. <code>C:\Program Files\Objeck</code>)</li>
@@ -3096,7 +3086,7 @@ goodbye.</pre>
              library
             </a>
             ],
-            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/tests/rc/csv_data.obs">
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/csv_data.obs">
              CSV
             </a>
             [
@@ -3111,8 +3101,8 @@ goodbye.</pre>
              RSS Reader
             </a>
             ,
-            <a href="https://github.com/objeck/objeck-web-server/blob/master/ssl_server.obs">
-             HTTPS Server
+            <a href="https://github.com/objeck/objeck-lang/blob/master/programs/examples/url_shortener.obs">
+             Web Server
             </a>
            </li>
            <li>
