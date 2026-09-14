@@ -804,8 +804,10 @@ IntermediateBlock* ItermediateOptimizer::StrengthReduction(IntermediateBlock* in
       working_stack.push_front(instr);
       break;
 
+    // DIV_INT is not reduced: an arithmetic right shift rounds toward negative
+    // infinity and division truncates toward zero, so -7 / 2 would give -4. Both
+    // JITs already turn a constant divisor into a biased shift or a multiply.
     case MUL_INT:
-    case DIV_INT:
       CalculateReduction(instr, working_stack, outputs);
       break;
 
@@ -948,13 +950,8 @@ void ItermediateOptimizer::ApplyReduction(IntermediateInstruction* test, Interme
       rewrite_instrs.push_back(top_instr);
     }
     working_stack.pop_front();
-    // shift left or right
-    if(instr->GetType() == MUL_INT) {
-      rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHL_INT, (long)shift));
-    }
-    else {
-      rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHR_INT, (long)shift));
-    }
+    // only multiplication reaches here (see StrengthReduction)
+    rewrite_instrs.push_back(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, SHL_INT, (long)shift));
   }
 
   // add original instructions
@@ -1620,7 +1617,9 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
       break;
 
     case DIV_INT: {
-      if(right->GetOperand7() == 0) {
+      // INT64_MIN / -1 overflows, and folding it here faulted the compiler
+      // (0xC0000095 on x64); leave it to the runtime like a zero divisor
+      if(right->GetOperand7() == 0 || (right->GetOperand7() == -1 && left->GetOperand7() == (INT64_VALUE)(1ULL << 63))) {
         // the operation must survive to trap at runtime, and its operands must
         // land in the output BEFORE it -- emitting the instruction here and
         // leaving the literals on the working stack appended them after it,
@@ -1641,7 +1640,8 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
       break;
 
     case MOD_INT: {
-      if(right->GetOperand7() == 0) {
+      // see DIV_INT: INT64_MIN % -1 traps in C++ on x64
+      if(right->GetOperand7() == 0 || (right->GetOperand7() == -1 && left->GetOperand7() == (INT64_VALUE)(1ULL << 63))) {
         // the operation must survive to trap at runtime, and its operands must
         // land in the output BEFORE it -- emitting the instruction here and
         // leaving the literals on the working stack appended them after it,
@@ -2144,14 +2144,9 @@ IntermediateBlock* ItermediateOptimizer::PeepholeOptimize(IntermediateBlock* inp
       }
     }
 
-    // Pattern 5: LOAD_INT_LIT 1 + DIV_INT → remove both (x / 1 = x)
-    if(instr->GetType() == DIV_INT && i >= 1) {
-      IntermediateInstruction* prev = input_instrs[i - 1];
-      if(prev->GetType() == LOAD_INT_LIT && prev->GetOperand7() == 1) {
-        outputs->RemoveLastInstruction();
-        continue;
-      }
-    }
+    // There is no DIV_INT pattern. Division is not commutative, and the value
+    // pushed last is the left operand, so `LOAD_INT_LIT 1; DIV_INT` is `1 / x`,
+    // not `x / 1`. A pattern that removed both rewrote `1 / 5` to 5.
 
     outputs->AddInstruction(instr);
   }
