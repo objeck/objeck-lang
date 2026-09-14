@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.9.2",
+		"string": "2026.9.3",
 		"year": 2026
 	},
-	"title": "A corrective release for v2026.9.1's native libraries -- macOS ships OpenCV and ONNX again, Linux x64's ONNX loads without LD_LIBRARY_PATH, Linux ARM64 no longer carries an x86-64 ONNX Runtime -- and deploys that stop instead of shipping incomplete: a missing native library or example file now fails the build, and the deploy scripts show live progress while they run",
+	"title": "macOS installs need nothing else -- obr and the OpenCV, ONNX and LAME bindings no longer depend on Homebrew -- an ARM64 garbage-collection bug that corrupted objects under multithreaded load is fixed, Linux archives install their whole runtime, and every platform is verified before a release is tagged",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,18 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.3",
+			"items": [
+				"macOS: obr could not start on a Mac without the build machine's own libraries. Every macOS release since v2026.6.3 linked Homebrew's GnuTLS and ngtcp2 plus an ngtcp2 backend that Homebrew does not ship. HTTP/3's TLS now uses AWS-LC, and obr links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically on Linux and macOS",
+				"macOS: the package carries every library it uses -- OpenCV, ONNX Runtime, mbedTLS, ODBC and LAME -- so nothing needs installing with Homebrew. It runs on macOS 13.3 and later; the ONNX binding needs macOS 14",
+				"ARM64: a garbage collection could corrupt an object while compiled code ran on another thread, so programs that allocate on several threads could crash -- silently or with an invalid object cast on Windows arm64, with SIGSEGV on macOS and Linux arm64. The collector now marks only real object starts",
+				"ODBC: Connection->GetLastError() reports why a connection did not open, for example a missing data source, instead of an empty string",
+				"Linux: install_deps.sh installs the whole runtime the binaries link, not only SDL2, and --check reports what is missing",
+				"Licenses: the TLS and QUIC libraries inside obr, and the libraries the macOS package carries, ship their license files in doc/licenses",
+				"Release: one verification script per machine builds and tests every platform before a tag; install instructions are checked against the libraries the binaries actually link; a dispatched release build can no longer publish; and a test that did not run no longer counts as a pass"
+			]
+		},
 		{
 			"version": "v2026.9.2",
 			"items": [
