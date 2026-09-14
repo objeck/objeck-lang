@@ -68,6 +68,10 @@ or a critical problem.
    any non-tag branch is safe: it cannot publish and does not push `api.zip`.
    Dispatch it with the real version (never `-rc`: the smoke tests compare the
    full version string) and read every job, including `install-test-macos`.
+   A dry run also saves caches the tag build will then hit (a dispatch from master
+   saves them where a tag can read them), so a green dry run usually exercised only
+   the cache-miss path. It does not prove the cache-hit path: v2026.9.3's tag build
+   failed windows-arm64 on an OpenCV cache the dry run had saved hours earlier.
 6. **Then** run the steps below: tag, watch, body, sign, post-release gates.
 
 On the tag push itself, confirm the two things #808 changed and nothing has exercised
