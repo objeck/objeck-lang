@@ -298,6 +298,22 @@ jobs:
           Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
           Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
 
+          # The ARM64 OpenCV modules are a MODULAR build: opencv_core4 imports
+          # z.dll and opencv_imgcodecs4 imports jpeg62/libpng16/tiff/libwebp*.
+          # deploy_windows.cmd copies those codec DLLs out of vcpkg's bin, and the
+          # OpenCV cache below holds only opencv_*4.dll -- so on a cache hit the
+          # opencv4 vcpkg install is skipped and nothing else pulled these ports
+          # in. The v2026.9.3 tag build failed the closure check that way after a
+          # dry run had saved the cache. Install them here, unconditionally, as
+          # ci-build.yml does.
+          if ("${{ matrix.arch }}" -eq "ARM64") {
+            Install-VcpkgPackage "zlib:${{ matrix.arch }}-windows"
+            Install-VcpkgPackage "libjpeg-turbo:${{ matrix.arch }}-windows"
+            Install-VcpkgPackage "libpng:${{ matrix.arch }}-windows"
+            Install-VcpkgPackage "tiff:${{ matrix.arch }}-windows"
+            Install-VcpkgPackage "libwebp:${{ matrix.arch }}-windows"
+          }
+
           # PATH only, for the deploy script's nghttp2.dll copy. The compiler
           # and linker paths come from vcpkg.props, not the environment.
           $vcpkgRoot = "C:\vcpkg\installed\${{ matrix.arch }}-windows"
