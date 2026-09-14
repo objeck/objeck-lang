@@ -1,0 +1,195 @@
+#~
+# Issue #816 probe P3b: the P3a Map<String, String> insert stress
+# (map_insert_stress_816.obs) with a second thread that only allocates.
+#
+# http_persistence_test runs a WebServer thread beside the client, so a
+# collection can start on the other thread while the client sits inside the
+# compiled Collection.Map->Insert. Here the other thread does nothing but
+# allocate: young strings (nursery pressure, minor collections) and character
+# arrays (old-generation pressure, major collections). If P3b fails and P3a does
+# not, a collection started by another thread is part of the mechanism.
+#
+# Run with every method compiled:
+#   OBJECK_JIT_THRESHOLD=1 obr map_insert_stress_816_mt.obe [rounds] [lines]
+# Exit 0 and a PASS line when every map reads back; exit 1 on any mismatch.
+~#
+
+use Collection, System.Concurrency;
+
+class Allocator from Thread {
+	@stop : Bool;
+	@count : Int;
+
+	New() {
+		Parent("allocator");
+		@stop := false;
+		@count := 0;
+	}
+
+	method : public : Stop() ~ Nil {
+		@stop := true;
+	}
+
+	method : public : GetCount() ~ Int {
+		return @count;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(<>@stop) {
+			text := "alloc-";
+			text->Append(@count);
+			lower := text->ToLower();
+			buffer := Char->New[1024];
+			if(lower->Size() > buffer->Size()) {
+				@stop := true;
+			};
+			@count += 1;
+		};
+	}
+}
+
+class MapInsertStressMt {
+	function : Main(args : String[]) ~ Nil {
+		rounds := 60000;
+		lines := 6;
+		if(args->Size() > 0) {
+			rounds := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			lines := args[1]->ToInt();
+		};
+
+		allocator := Allocator->New();
+		allocator->Execute(Nil);
+
+		timer := System.Time.Timer->New(true);
+		failures := Stress(rounds, lines);
+		timer->End();
+		secs := timer->GetElapsedTime();
+
+		allocator->Stop();
+		allocator->Join();
+		allocations := allocator->GetCount();
+
+		if(failures > 0) {
+			"FAIL: {$failures} mismatches in {$rounds} rounds of {$lines} header lines, {$allocations} allocator rounds ({$secs}s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: {$rounds} rounds of {$lines} header lines, every map read back, {$allocations} allocator rounds ({$secs}s)"->PrintLine();
+	}
+
+	#~
+	# One response's worth of header lines. A fresh String per line, as ReadLine
+	# returns, and a repeated name on the last line so the merge path runs too.
+	~#
+	function : MakeLines(round : Int, lines : Int) ~ String[] {
+		result := String->New[lines];
+		for(i := 0; i < lines; i += 1;) {
+			name := "X-Header-";
+			name->Append(i % (lines - 1));
+			line := name;
+			line->Append(": value-");
+			line->Append(round);
+			line->Append('-');
+			line->Append(i);
+			result[i] := line;
+		};
+		return result;
+	}
+
+	#~
+	# The loop from HttpPersistenceTest->ReadResponse, with the socket read
+	# replaced by an array walk plus ReadLine's buffer allocation.
+	~#
+	function : ParseHeaders(source : String[]) ~ Map<String, String> {
+		headers := Map->New()<String, String>;
+
+		index := 0;
+		buffer := Char->New[8192];
+		line := source[index];
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon);
+				value := line->SubString(colon + 1, line->Size() - colon - 1);
+				if(name <> Nil & value <> Nil) {
+					name := name->ToLower();
+					value := value->Trim();
+					existing := headers->Find(name);
+					if(existing <> Nil) { value := "{$existing},{$value}"; };
+					headers->Insert(name, value);
+				};
+			};
+
+			index += 1;
+			buffer := Char->New[8192];
+			if(index < source->Size()) {
+				line := source[index];
+			}
+			else {
+				line := Nil;
+			};
+		};
+
+		return headers;
+	}
+
+	#~
+	# Expected value for header i of a round, built independently of the parse.
+	~#
+	function : Expected(round : Int, lines : Int, slot : Int) ~ String {
+		expected := "";
+		for(i := 0; i < lines; i += 1;) {
+			if(i % (lines - 1) = slot) {
+				piece := "value-";
+				piece->Append(round);
+				piece->Append('-');
+				piece->Append(i);
+				if(expected->Size() > 0) {
+					expected->Append(',');
+				};
+				expected->Append(piece);
+			};
+		};
+		return expected;
+	}
+
+	function : Stress(rounds : Int, lines : Int) ~ Int {
+		failures := 0;
+		slots := lines - 1;
+
+		for(r := 0; r < rounds; r += 1;) {
+			headers := ParseHeaders(MakeLines(r, lines));
+
+			if(headers->Size() <> slots) {
+				size := headers->Size();
+				if(failures < 10) {
+					"  round {$r}: map size {$size}, expected {$slots}"->PrintLine();
+				};
+				failures += 1;
+			};
+
+			for(s := 0; s < slots; s += 1;) {
+				key := "x-header-";
+				key->Append(s);
+				found := headers->Find(key);
+				expected := Expected(r, lines, s);
+				if(found = Nil) {
+					if(failures < 10) {
+						"  round {$r}: '{$key}' missing"->PrintLine();
+					};
+					failures += 1;
+				}
+				else if(found->Equals(expected) = false) {
+					if(failures < 10) {
+						"  round {$r}: '{$key}' = '{$found}', expected '{$expected}'"->PrintLine();
+					};
+					failures += 1;
+				};
+			};
+		};
+
+		return failures;
+	}
+}
