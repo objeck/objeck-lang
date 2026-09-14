@@ -1,6 +1,6 @@
 {
 	"version": {
-		"string": "2026.9.3",
+		"string": "2026.9.4",
 		"year": 2026
 	},
 	"title": "Integer division is right again at the default optimization level -- two optimizer rewrites gave wrong quotients with no error -- and a Nil element in a deserialized object array no longer corrupts the object that holds it",

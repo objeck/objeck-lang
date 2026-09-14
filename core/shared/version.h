@@ -37,5 +37,5 @@
 #define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
 #define MAGIC_NUM_LIB 0xffb6 // bitmask 'k'
 
-#define VER_NUM 202693
-#define VERSION_STRING L"2026.9.3"
+#define VER_NUM 202694
+#define VERSION_STRING L"2026.9.4"
