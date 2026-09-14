@@ -2,6 +2,18 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.9.4] - 2026-09-15
+
+A corrective release for the compiler: two optimizer rewrites computed some integer
+divisions wrong at the default optimization level, with no error. Programs compiled with
+v2026.9.3 or earlier at `-opt s2` or `-opt s3` (the default) should be recompiled.
+
+### Bug Fixes
+- **Integer division by a power of two rounded the wrong way at `-opt s2` and `-opt s3`**: strength reduction replaced `n / 2^k` on a local with an arithmetic right shift. A shift rounds toward negative infinity and integer division truncates toward zero, so a negative dividend that was not an exact multiple came out one too low: `-7 / 2` gave `-4`, `-1 / 1024` gave `-1`. Division is no longer rewritten; both JITs already compile a constant divisor to a biased shift or a multiply. Multiplication by a power of two is unaffected. The interpreter and both JITs agreed on the wrong value, so no mode comparison could see it; `opt_int_division.obs` checks hand-computed quotients at every level
+- **`1 / n` evaluated to `n` at `-opt s3`**: a peephole pattern meant for `x / 1` matched `LOAD_INT_LIT 1; DIV_INT`, but the value pushed last is the left operand, so it removed the division from `1 / n` instead. The pattern is gone
+- **The compiler crashed folding `INT64_MIN / -1`**: constant folding at `-opt s1` and above divided the two literals in C++, which faults on x64 (`0xC0000095`), so `obc` exited with no message and no output file. The fold is skipped and the division is left to run time, as for a zero divisor
+- **Deserializing an object array with a Nil element corrupted the enclosing object**: the deserializer wrote each Nil element into the object's next field slot instead of into the array, so the array field itself read back as Nil and every later field shifted. `serial_nil_array_element.obs` round-trips an object with Nil elements between its fields
+
 ## [v2026.9.3] - 2026-09-14
 
 ### Bug Fixes

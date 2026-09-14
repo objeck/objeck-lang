@@ -1,0 +1,112 @@
+#~
+Integer division must give the same answer at every optimization level.
+
+Two -opt rewrites produced wrong quotients in v2026.9.3 and earlier:
+
+1. Strength reduction (s2 and s3) replaced `n / 2^k` on a local with an
+   arithmetic right shift. A shift rounds toward negative infinity and
+   division truncates toward zero, so every negative dividend that is not an
+   exact multiple came out one too low: -7 / 2 gave -4 instead of -3.
+2. A peephole pattern (s3) treated `LOAD_INT_LIT 1; DIV_INT` as `x / 1`, but
+   the last value pushed is the left operand, so `1 / y` was rewritten to `y`:
+   1 / 5 gave 5 instead of 0.
+
+The interpreter and both JITs agreed on the wrong values, so only comparing
+optimization levels (or a hand-computed answer, as here) catches them. The
+expected values are truncating division, the same as C and Java.
+~#
+
+class OptIntDivision {
+  @field : Int;
+
+  New(v : Int) {
+    @field := v;
+  }
+
+  method : public : FieldHalf() ~ Int {
+    return @field / 2;
+  }
+
+  function : Half(n : Int) ~ Int {
+    return n / 2;
+  }
+
+  function : Quarter(n : Int) ~ Int {
+    return n / 4;
+  }
+
+  function : Kilo(n : Int) ~ Int {
+    return n / 1024;
+  }
+
+  function : Big(n : Int) ~ Int {
+    return n / 65536;
+  }
+
+  function : Inverse(n : Int) ~ Int {
+    return 1 / n;
+  }
+
+  function : Scaled(n : Int) ~ Int {
+    return 1024 / n;
+  }
+
+  function : Times(n : Int) ~ Int {
+    return n * 8;
+  }
+
+  function : Check(name : String, got : Int, want : Int) ~ Int {
+    if(got <> want) {
+      "FAIL: {$name} = {$got}, expected {$want}"->PrintLine();
+      return 1;
+    };
+    return 0;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
+    # negative dividends that are not exact multiples: the shift rounding bug
+    failures += Check("-7 / 2", Half(-7), -3);
+    failures += Check("-1 / 2", Half(-1), 0);
+    failures += Check("-7 / 4", Quarter(-7), -1);
+    failures += Check("-1 / 1024", Kilo(-1), 0);
+    failures += Check("-2049 / 1024", Kilo(-2049), -2);
+    failures += Check("-65537 / 65536", Big(-65537), -1);
+
+    # exact multiples and positives must stay correct
+    failures += Check("-8 / 2", Half(-8), -4);
+    failures += Check("7 / 2", Half(7), 3);
+    failures += Check("2049 / 1024", Kilo(2049), 2);
+    failures += Check("0 / 4", Quarter(0), 0);
+
+    # a literal 1 on the left: the peephole operand-order bug
+    failures += Check("1 / 5", Inverse(5), 0);
+    failures += Check("1 / 1", Inverse(1), 1);
+    failures += Check("1 / -1", Inverse(-1), -1);
+
+    # literal dividend, local divisor, and multiplication (not affected)
+    failures += Check("1024 / -3", Scaled(-3), -341);
+    failures += Check("-7 * 8", Times(-7), -56);
+
+    # an instance field as the dividend
+    obj := OptIntDivision->New(-7);
+    failures += Check("@field(-7) / 2", obj->FieldHalf(), -3);
+
+    # inline in Main, over a range, so the loop body is compiled too
+    for(i := -40; i <= 40; i += 1;) {
+      q := i / 4;
+      r := i - q * 4;
+      if(r <= -4 | r >= 4 | (i < 0 & r > 0) | (i > 0 & r < 0)) {
+        "FAIL: {$i} / 4 = {$q} leaves remainder {$r}"->PrintLine();
+        failures += 1;
+      };
+    };
+
+    if(failures > 0) {
+      "{$failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

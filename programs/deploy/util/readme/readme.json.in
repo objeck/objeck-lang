@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "macOS installs need nothing else -- obr and the OpenCV, ONNX and LAME bindings no longer depend on Homebrew -- an ARM64 garbage-collection bug that corrupted objects under multithreaded load is fixed, Linux archives install their whole runtime, and every platform is verified before a release is tagged",
+	"title": "Integer division is right again at the default optimization level -- two optimizer rewrites gave wrong quotients with no error -- and a Nil element in a deserialized object array no longer corrupts the object that holds it",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,15 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.4",
+			"items": [
+				"Compiler: integer division by a power of two rounded the wrong way at -opt s2 and s3 (the default). A negative dividend that was not an exact multiple came out one too low: -7 / 2 gave -4. Recompile programs built at s2 or s3 with v2026.9.3 or earlier",
+				"Compiler: 1 / n evaluated to n at -opt s3, so 1 / 5 gave 5",
+				"Compiler: obc no longer crashes folding INT64_MIN / -1",
+				"Serialization: a Nil element in an object array no longer corrupts the object that holds the array when it is deserialized"
+			]
+		},
 		{
 			"version": "v2026.9.3",
 			"items": [

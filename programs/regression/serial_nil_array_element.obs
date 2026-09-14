@@ -1,0 +1,123 @@
+#~
+A Nil element inside a serialized object array must come back as Nil in that
+array, and must not disturb the fields that follow the array.
+
+Through v2026.9.3 the deserializer wrote a Nil array element into the
+enclosing object's next field slot instead of into the array. Every Nil
+element shifted the remaining fields of the object: the Int after the array
+read back as 0 and the String after it was lost, while the array kept a
+garbage-free but wrong layout.
+~#
+
+class Item {
+  @id : Int;
+
+  New(id : Int) {
+    @id := id;
+  }
+
+  method : public : GetId() ~ Int {
+    return @id;
+  }
+}
+
+class Holder {
+  @items : Item[];
+  @after : Int;
+  @tail : String;
+
+  New() {
+    @items := Item->New[4];
+    @items[0] := Item->New(10);
+    # @items[1] stays Nil
+    @items[2] := Item->New(30);
+    # @items[3] stays Nil
+    @after := 4242;
+    @tail := "tail";
+  }
+
+  method : public : GetItems() ~ Item[] {
+    return @items;
+  }
+
+  method : public : GetAfter() ~ Int {
+    return @after;
+  }
+
+  method : public : GetTail() ~ String {
+    return @tail;
+  }
+}
+
+class SerialNilArrayElement {
+  function : Main(args : String[]) ~ Nil {
+    serializer := System.IO.Serializer->New();
+    serializer->Write(Holder->New());
+    bytes := serializer->Serialize();
+
+    copy := System.IO.Deserializer->New(bytes)->ReadObject()->As(Holder);
+    failures := 0;
+
+    items := copy->GetItems();
+    if(items = Nil) {
+      "FAIL: items array is Nil"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    if(items->Size() <> 4) {
+      "FAIL: items size = {$items->Size()}, expected 4"->PrintLine();
+      failures += 1;
+    }
+    else {
+      if(items[0] = Nil) {
+        "FAIL: items[0] is Nil"->PrintLine();
+        failures += 1;
+      }
+      else if(items[0]->GetId() <> 10) {
+        "FAIL: items[0] id is wrong"->PrintLine();
+        failures += 1;
+      };
+
+      if(items[1] <> Nil) {
+        "FAIL: items[1] should be Nil"->PrintLine();
+        failures += 1;
+      };
+
+      if(items[2] = Nil) {
+        "FAIL: items[2] is Nil"->PrintLine();
+        failures += 1;
+      }
+      else if(items[2]->GetId() <> 30) {
+        "FAIL: items[2] id is wrong"->PrintLine();
+        failures += 1;
+      };
+
+      if(items[3] <> Nil) {
+        "FAIL: items[3] should be Nil"->PrintLine();
+        failures += 1;
+      };
+    };
+
+    after := copy->GetAfter();
+    if(after <> 4242) {
+      "FAIL: field after the array = {$after}, expected 4242"->PrintLine();
+      failures += 1;
+    };
+
+    tail := copy->GetTail();
+    if(tail = Nil) {
+      "FAIL: String field after the array is Nil"->PrintLine();
+      failures += 1;
+    }
+    else if(tail->Equals("tail") = false) {
+      "FAIL: String field after the array = '{$tail}'"->PrintLine();
+      failures += 1;
+    };
+
+    if(failures > 0) {
+      "{$failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

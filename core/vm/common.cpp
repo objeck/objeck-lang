@@ -1238,7 +1238,9 @@ size_t* ObjectDeserializer::DeserializeObject() {
             // copy content
             for(int i = 0; i < array_size; i++) {
               if(!DeserializeByte()) {
-                instance[instance_pos++] = 0;
+                // a Nil element belongs to the array; writing it through
+                // instance_pos shifted every later field of the enclosing object
+                array_ptr[i] = 0;
               }
               else {
                 ObjectDeserializer deserializer(buffer, buffer_offset, mem_cache,
