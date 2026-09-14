@@ -240,6 +240,24 @@ class MemoryManager {
            p < young_region + young_offset.load(std::memory_order_acquire);
   }
 
+  // Is this young candidate a real object's start? The nursery holds objects only
+  // (AllocateArray always allocates in the old generation), and AllocateObject writes
+  // each one's allocation size in the word before its three header words. A stale or
+  // interior address a conservative scan picks up fails this, where marking it would
+  // OR GC_MARK_BIT into the middle of another object (#816: a TreeNode's @right became
+  // 1). Call only for an address IsYoungCandidate accepted.
+  static inline bool IsYoungObjectStart(size_t* mem, StackClass* cls) {
+    if(!cls || (uint8_t*)mem < young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE)) {
+      return false;
+    }
+    const long inst_size = cls->GetInstanceMemorySize();
+    if(inst_size < 0) {
+      return false;
+    }
+    const size_t alloc_size = (size_t)inst_size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
+    return mem[-(long)(1 + EXTRA_BUF_SIZE)] == alloc_size;
+  }
+
   static inline bool IsAllocated(size_t* mem) {
     // The old-generation branch is an exact set lookup, so it cannot alias the
     // way a range test can and needs no extra guard.

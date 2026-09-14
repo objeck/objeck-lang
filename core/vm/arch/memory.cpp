@@ -2428,8 +2428,14 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
   MUTEX_UNLOCK(&allocated_lock);
 #endif
   if(is_allocated) {
-    // Minor GC optimization: mark old objects but don't recurse into them
-    if(minor_gc_mode.load(std::memory_order_acquire) && IsOldGen(mem)) {
+    // A nursery address from a conservative scan (operand stacks, JIT temp windows,
+    // monitor stacks) may be stale or point into an object; the checks below keep
+    // such a word from being marked (#816).
+    const bool young = IsYoungCandidate(mem);
+
+    // Minor GC optimization: mark old objects but don't recurse into them. IsOldGen
+    // reads the word below mem, which for a nursery address is not a header.
+    if(!young && minor_gc_mode.load(std::memory_order_acquire) && IsOldGen(mem)) {
       MarkMemory(mem);
       return;
     }
@@ -2442,6 +2448,10 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
     }
 
     if(cls) {
+      // A nursery address whose header merely looks like an object's
+      if(young && !IsYoungObjectStart(mem, cls)) {
+        return;
+      }
 #ifdef _DEBUG_GC
       for(int i = 0; i < depth; ++i) {
         std::wcout << L"\t";
@@ -2468,6 +2478,14 @@ void MemoryManager::CheckObject(size_t* mem, bool is_obj, long depth)
         assert(cls);
       }
 #endif
+      // Arrays are never allocated in the nursery, so a nursery address with no class
+      // mapping is not an object at all. Marking it ORed GC_MARK_BIT into whatever word
+      // lies below it: a stale or interior pointer to a young TreeNode's @level turned
+      // its Nil @right into 1, and promotion kept the damage (#816, ARM64 JIT temps).
+      if(young) {
+        return;
+      }
+
       // primitive or object array
       if(MarkMemory(mem)) {
         // ensure we're only checking int and obj arrays
