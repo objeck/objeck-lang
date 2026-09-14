@@ -91,7 +91,7 @@ set "VERDICT=PASS"
 set "TESTS_RAN=0"
 
 echo == verify_platform %VP_PLATFORM%, v%VERSION% @ %COMMIT:~0,10% on %COMPUTERNAME% (%HOSTARCH% host)
-if not "%ENVARCH%"=="%HOSTARCH%" echo   note: this cmd inherited PROCESSOR_ARCHITECTURE=%PROCESSOR_ARCHITECTURE% from an emulated parent on a %HOSTARCH% OS; start the gate from a native cmd
+if not "%ENVARCH%"=="%HOSTARCH%" echo   note: this cmd inherited PROCESSOR_ARCHITECTURE=%PROCESSOR_ARCHITECTURE% from an emulated parent on an %HOSTARCH% OS; start the gate from a native cmd
 
 REM ---- preconditions ----------------------------------------------------------
 for /f %%n in ('git status --porcelain --untracked-files^=no ^| %SYS32%\find.exe /c /v ""') do set "DIRTY=%%n"
@@ -110,7 +110,7 @@ call :record version PASS
 REM Tests run only on the architecture they verify. Another one is refused before
 REM anything is built; --build-only builds it and still cannot pass.
 if "%BUILD_ONLY%"=="0" if not "%ARCH%"=="%HOSTARCH%" (
-    call :record tests "FAIL (%ARCH% cannot be verified on this %HOSTARCH% host; run on a %ARCH% machine, or cross-build with --build-only)"
+    call :record tests "FAIL (%ARCH% cannot be verified on this %HOSTARCH% host; run on an %ARCH% machine, or cross-build with --build-only)"
     goto finish
 )
 
