@@ -305,6 +305,9 @@ class MemoryManager {
     }
   }
 
+  // Relocate a frame's self (mem[0]) only if its object was promoted; see memory.cpp.
+  static void FixupSelf(size_t* mem, StackMethod* method);
+
   static void CollectMinor(size_t* op_stack, size_t stack_pos);
   static void CollectMajor(size_t* op_stack, size_t stack_pos);
   static void ScanDirtyObject(size_t* mem);
