@@ -56,14 +56,38 @@ or a critical problem.
    tagged, each machine runs the same verification from a clean checkout and hands
    the controller its result file:
    ```bash
-   tools/cicd/verify_platform.sh <VERSION>        # Linux x64, Linux ARM64 (WSL2 too), macOS arm64
-   tools\cicd\verify_platform.cmd <VERSION> x64   # Windows x64 (arm64 on the ARM64 box)
+   tools/cicd/verify_platform.sh <VERSION>          # Linux x64, Linux ARM64 (WSL2 too), macOS arm64
+   tools\cicd\verify_platform.cmd <VERSION> x64     # Windows x64
+   tools\cicd\verify_platform.cmd <VERSION> arm64   # Windows ARM64, from a native cmd
    ```
-   It builds the deploy tree the way the release does, runs the regression suite
-   twice (default and `OBJECK_JIT_THRESHOLD=1`), the VM flag, debugger and DAP
-   tests, restores the tracked files the deploy rewrites, and writes
-   `rc-results/<VERSION>/<platform>.txt` ending in `verdict=PASS|FAIL`. All five
-   targets need `verdict=PASS` at the same `commit=` before tagging.
+   It checks its prerequisites, builds the deploy tree the way the release does,
+   runs the regression suite twice (default and `OBJECK_JIT_THRESHOLD=1`), the VM
+   flag, debugger and DAP tests, restores the tracked files the deploy rewrites,
+   and writes `rc-results/<VERSION>/<platform>.txt` ending in `verdict=PASS|FAIL`.
+   All five targets need `verdict=PASS` at the same `commit=` before tagging.
+   - **Prerequisites.** The script stops with `missing prerequisite: X` before it
+     builds anything. Windows: `openssl` on PATH (the TLS regression tests create
+     their certificate with it; the script also looks in
+     `C:\Program Files\OpenSSL-Win64\bin` and the other standard install folders),
+     Visual Studio found through `vswhere`, a real Python 3 (the WindowsApps
+     `python.exe` stub does not count), and 7-Zip for arm64 builds. POSIX:
+     `openssl`, `python3`, `expect` (debugger tests), and `git`, `cmake` and `make`
+     for the build (plus the tools `build_macos_deps.sh` checks, on macOS).
+   - **Windows ARM64: start the gate from a native cmd or PowerShell, never from
+     Git Bash.** Git Bash is x64-emulated. On 2026-09-14 a cmd it launched read
+     `PROCESSOR_ARCHITECTURE=AMD64`, recorded
+     `tests=SKIPPED (arm64 cannot run on a x64 host)` and still ended
+     `verdict=PASS` with no test run; its TLS tests had only ever passed on Git's
+     own `/usr/bin/openssl`. The script now asks the OS for the architecture, but
+     launch natively anyway. The macOS equivalent is a Rosetta shell, which
+     `verify_platform.sh` refuses.
+   - **A SKIPPED test phase is not a pass.** The only `SKIPPED` a passing file may
+     contain is `build=SKIPPED` from `--skip-build`, which tests an existing deploy
+     tree; the gate itself builds. Verifying another architecture than the
+     machine's is refused, and `--build-only` (cross-building arm64 on an x64 host)
+     always ends `verdict=FAIL`. Read each file before accepting it: `platform=`
+     names the target (`windows-arm64`, never a bare `arm64`), and `regression`,
+     `regression_jit1`, `vm_flags`, `debugger` and `dap` are all listed as `PASS`.
 5. **Dry run the release build.** Since #808 a `release-build.yml` dispatch from
    any non-tag branch is safe: it cannot publish and does not push `api.zip`.
    Dispatch it with the real version (never `-rc`: the smoke tests compare the
