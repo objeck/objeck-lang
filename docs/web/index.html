@@ -130,7 +130,7 @@
 
 <span class="kw">class</span> WordFilter {
   <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    words := Vector->New()<String>;
+    words := Vector->New()<span class="kw">&lt;String&gt;</span>;
     words->AddBack(<span class="str">"compiler"</span>); words->AddBack(<span class="str">"jit"</span>);
     words->AddBack(<span class="str">"runtime"</span>); words->AddBack(<span class="str">"gc"</span>);
     words->AddBack(<span class="str">"lambda"</span>);  words->AddBack(<span class="str">"arm64"</span>);
