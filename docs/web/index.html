@@ -94,9 +94,8 @@
 
     completion := Completion->Complete(<span class="str">"gpt-4o"</span>, prompt, token);
     <span class="kw">if</span>(completion <> <span class="kw">Nil</span>) {
-      completion->GetFirstChoice()
-        ->GetMessage()<span class="kw">&lt;String, String&gt;</span>
-        ->GetSecond()->PrintLine();
+      message := completion->GetFirstChoice()->GetMessage();
+      message->GetSecond()->PrintLine();
     };
   }
 }</code></pre>
@@ -128,10 +127,11 @@
     words->AddBack(<span class="str">"runtime"</span>); words->AddBack(<span class="str">"gc"</span>);
     words->AddBack(<span class="str">"lambda"</span>);  words->AddBack(<span class="str">"arm64"</span>);
 
-    words->Each(\^(w : String) =>
+    words->Each(\^(w) => {
       <span class="kw">if</span>(w->Size() > <span class="num">3</span>) {
         <span class="str">"  {$w->ToUpper()}"</span>->PrintLine();
-      });
+      };
+    });
   }
 }</code></pre>
       </div>
@@ -246,8 +246,8 @@
       <h2 class="section-title">Deep Dives</h2>
       <p style="text-align:center; color:#9ca3af; margin: -0.5rem 0 1.5rem;">AI-generated video overviews — a quick tour of the language and its internals.</p>
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem;">
-        <div>
-          <p style="font-weight:600; margin-bottom:0.5rem;">New AI-Native Features</p>
+        <div class="highlight-item">
+          <h3 style="margin-bottom:0.75rem;">New AI-Native Features</h3>
           <div style="position:relative; aspect-ratio:16/9;">
             <iframe title="Objeck: New AI-Native Features — video overview"
               style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;border:0;"
@@ -256,8 +256,8 @@
               referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
           </div>
         </div>
-        <div>
-          <p style="font-weight:600; margin-bottom:0.5rem;">Internals (v2026.9)</p>
+        <div class="highlight-item">
+          <h3 style="margin-bottom:0.75rem;">Internals (v2026.9)</h3>
           <div style="position:relative; aspect-ratio:16/9;">
             <iframe title="Objeck: Internals, v2026.9 — video overview"
               style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;border:0;"
