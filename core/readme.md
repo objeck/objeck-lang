@@ -237,7 +237,7 @@ bash ../../tools/deps/build_quic_deps.sh
 
 # 4. Build
 ./deploy_posix.sh x64    # For x64
-./deploy_posix.sh rpi    # For ARM64/Raspberry Pi
+./deploy_posix.sh arm64  # For ARM64, including 64-bit Raspberry Pi
 
 # 5. Output
 # Binaries: core/release/deploy/bin/{obc,obr,obd,obi}
@@ -433,8 +433,8 @@ make clean && make DEBUG=1
 | Rebuild VM only | `cd core/vm && make clean && make` |
 | Clean all | `cd core/release && make clean` |
 | Test single file | `obc -src test.obs && obr test.obe` |
-| View bytecode | `obd test.obe` (disassembler) |
-| Enable JIT debug | Set `JIT_DEBUG=1` env var |
+| View bytecode | `obc -src test.obs -asm` (writes the bytecode listing to `test.obm`) |
+| Report JIT decisions | Set `OBJECK_JIT_REPORT=1` (names the methods the JIT leaves interpreted, and why) |
 
 ---
 
@@ -492,7 +492,8 @@ bash tools/deps/build_macos_deps.sh # macOS: static OpenCV 4.12.0 for the bindin
 - **Fix:** Compiler must run from its `bin/` directory or use absolute paths
 
 **Problem:** Segfault in JIT code
-- Set `JIT_DEBUG=1` to see generated assembly
+- Run with `--jit=off`: if the crash goes away, it is in compiled code
+- Set `OBJECK_JIT_REPORT=1` to see which methods the JIT compiles and which it declines
 - Check `core/vm/arch/jit/README.md` for debugging tips
 
 **Problem:** Regression tests fail
@@ -507,7 +508,7 @@ bash tools/deps/build_macos_deps.sh # macOS: static OpenCV 4.12.0 for the bindin
 - Enable ccache: `export CC="ccache gcc"`
 
 **Problem:** Slow runtime
-- Check if JIT is enabled: `JIT_STATUS=1 obr program.obe`
+- Check the JIT is not disabled: `OBJECK_JIT_DISABLE` unset and no `--jit=off`; `OBJECK_JIT_REPORT=1` lists methods left interpreted
 - Ensure Release build, not Debug
 
 ---

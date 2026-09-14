@@ -7,6 +7,14 @@
   <meta name="description" content="A modern, JIT-compiled programming language with built-in AI, ML, and computer vision libraries. ARM64 and x86-64 native performance. Try it in your browser."/>
   <link href="style/styles.css" rel="stylesheet"/>
   <link rel="icon" href="style/favicon.ico" type="image/x-icon"/>
+  <style>
+    .perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; }
+    .perf-stat { text-align: center; padding: 22px 14px; background-color: #1a2332; border: 1px solid #2d3a4d; border-radius: 10px; }
+    .perf-num { font-family: 'JetBrains Mono', monospace; font-size: 1.45rem; font-weight: 700; color: #7dd3fc; white-space: nowrap; }
+    .perf-label { margin-top: 8px; font-size: 0.85rem; color: #9ca3af; line-height: 1.45; }
+    .perf-note { text-align: center; font-size: 0.8rem; color: #9ca3af; margin: 16px auto 0; max-width: 720px; line-height: 1.5; }
+    .platform-note { text-align: center; font-size: 0.85rem; color: #9ca3af; margin: 16px auto 0; max-width: 680px; line-height: 1.5; }
+  </style>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -94,9 +102,8 @@
 
     completion := Completion->Complete(<span class="str">"gpt-4o"</span>, prompt, token);
     <span class="kw">if</span>(completion <> <span class="kw">Nil</span>) {
-      completion->GetFirstChoice()
-        ->GetMessage()<span class="kw">&lt;String, String&gt;</span>
-        ->GetSecond()->PrintLine();
+      message := completion->GetFirstChoice()->GetMessage();
+      message->GetSecond()->PrintLine();
     };
   }
 }</code></pre>
@@ -123,15 +130,16 @@
 
 <span class="kw">class</span> WordFilter {
   <span class="kw">function</span> : Main(args : String[]) ~ Nil {
-    words := Vector->New()<String>;
+    words := Vector->New()<span class="kw">&lt;String&gt;</span>;
     words->AddBack(<span class="str">"compiler"</span>); words->AddBack(<span class="str">"jit"</span>);
     words->AddBack(<span class="str">"runtime"</span>); words->AddBack(<span class="str">"gc"</span>);
     words->AddBack(<span class="str">"lambda"</span>);  words->AddBack(<span class="str">"arm64"</span>);
 
-    words->Each(\^(w : String) =>
+    words->Each(\^(w) => {
       <span class="kw">if</span>(w->Size() > <span class="num">3</span>) {
         <span class="str">"  {$w->ToUpper()}"</span>->PrintLine();
-      });
+      };
+    });
   }
 }</code></pre>
       </div>
@@ -208,7 +216,12 @@
         <div class="highlight-item">
           <div class="highlight-icon">FN</div>
           <h3>OOP + Functional</h3>
-          <p>Generics, closures, lambdas, first-class functions, and reflection. One language, both paradigms.</p>
+          <p>Generics with bounds and variance, closures and lambdas, records, string interpolation, nil-safe operators, and reflection. One language, both paradigms.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">ML</div>
+          <h3>Machine Learning &amp; AI</h3>
+          <p><code>System.ML</code>: linear and logistic regression, decision trees, random forests, gradient boosting, naive Bayes, k-NN, k-means, and DBSCAN. <code>System.AI</code>: A*, minimax, Monte Carlo tree search, genetic algorithms, and Q-learning.</p>
         </div>
         <div class="highlight-item">
           <div class="highlight-icon">NLP</div>
@@ -218,14 +231,52 @@
         <div class="highlight-item">
           <div class="highlight-icon">NET</div>
           <h3>Web &amp; Networking</h3>
-          <p>A self-contained networking engine: TCP/UDP, DTLS, HTTP/1.1 + WebSockets, HTTP/2, and HTTP/3/QUIC — all standard library, no packages required.</p>
+          <p>A self-contained networking engine: TCP/UDP, DTLS, HTTP/1.1 + WebSockets, HTTP/2, HTTP/3/QUIC, and an embeddable <code>Web.Server</code> — all standard library, no packages required.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">MT</div>
+          <h3>Concurrency</h3>
+          <p>Threads and mutexes in the core library, structured concurrency with <code>System.Concurrency</code> (<code>TaskScope</code>, <code>Task</code>, <code>Monitor</code>), and a generational garbage collector with parallel marking.</p>
+        </div>
+        <div class="highlight-item">
+          <div class="highlight-icon">3D</div>
+          <h3>Graphics &amp; Games</h3>
+          <p>SDL2 for 2D games and <code>Game.OpenGL</code> for 3D: shaders, meshes, textures, quaternions, normal maps, and a procedural skybox.</p>
         </div>
         <div class="highlight-item">
           <div class="highlight-icon">DEV</div>
           <h3>Industrial Tooling</h3>
-          <p>LSP for 7 editors (VS Code, Sublime, Neovim, Emacs, Kate, ecode, Helix), DAP debugger with live instance field expansion, REPL, and automated API docs.</p>
+          <p>LSP for 7 editors (VS Code, Sublime, Neovim, Emacs, Kate, ecode, Helix), a DAP debugger that stops in any thread, a REPL with a full-screen editor, and automated API docs.</p>
         </div>
       </div>
+    </section>
+
+    <!-- Performance -->
+    <section class="highlights">
+      <h2 class="section-title">Performance</h2>
+      <div class="perf-grid">
+        <div class="perf-stat">
+          <div class="perf-num">26.5 → 5.5 ns</div>
+          <div class="perf-label">A compiled method call, now made directly between JIT-compiled methods</div>
+        </div>
+        <div class="perf-stat">
+          <div class="perf-num">125 → 6.0 ns</div>
+          <div class="perf-label">A <code>virtual</code> call, through an inline cache</div>
+        </div>
+        <div class="perf-stat">
+          <div class="perf-num">16.5x</div>
+          <div class="perf-label">spectralnorm, from 44.86 s to 2.72 s between the June and September releases</div>
+        </div>
+        <div class="perf-stat">
+          <div class="perf-num">13–47x</div>
+          <div class="perf-label">faster than CPython 3.12 on nbody, spectralnorm, and fannkuchredux</div>
+        </div>
+      </div>
+      <p class="perf-note">
+        Call costs on AMD64; benchmarks on an AMD Ryzen 9 7950X3D with Objeck v2026.9.1, median of three runs.
+        Java and LuaJIT remain faster on several benchmarks &mdash;
+        <a href="https://github.com/objeck/objeck-lang/blob/master/docs/performance.md" target="_blank">full results and methodology</a>.
+      </p>
     </section>
 
     <!-- Platforms -->
@@ -237,33 +288,47 @@
         <span class="platform-badge">macOS ARM64</span>
         <span class="platform-badge">Windows x64</span>
         <span class="platform-badge">Windows ARM64</span>
-        <span class="platform-badge">Raspberry Pi</span>
+        <span class="platform-badge">Raspberry Pi (64-bit)</span>
       </div>
+      <p class="platform-note">
+        Every release is built and tested on all five platforms before it ships. Windows installers are Authenticode-signed,
+        and the macOS package is notarized and needs nothing from Homebrew.
+      </p>
     </section>
 
     <!-- Deep Dives -->
     <section class="highlights">
       <h2 class="section-title">Deep Dives</h2>
-      <p style="text-align:center; color:#9ca3af; margin: -0.5rem 0 1.5rem;">AI-generated podcast overviews — great for commutes.</p>
+      <p style="text-align:center; color:#9ca3af; margin: -0.5rem 0 1.5rem;">AI-generated video overviews — start with the introduction, then the AI features and the internals.</p>
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem;">
-        <div>
-          <p style="font-weight:600; margin-bottom:0.5rem;">AI-Native Language</p>
+        <div class="highlight-item">
+          <h3 style="margin-bottom:0.75rem;">Introduction &amp; Guide (v2026.9)</h3>
           <div style="position:relative; aspect-ratio:16/9;">
-            <iframe title="Objeck: AI-Native Language — podcast overview"
+            <iframe title="Objeck v2026.9: Introduction and Guide — video overview"
               style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;border:0;"
-              src="https://www.youtube.com/embed/XMwrkeSODng"
+              src="https://www.youtube.com/embed/u2SCqpPdZm0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen loading="lazy"></iframe>
+              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
           </div>
         </div>
-        <div>
-          <p style="font-weight:600; margin-bottom:0.5rem;">Internals &amp; AI</p>
+        <div class="highlight-item">
+          <h3 style="margin-bottom:0.75rem;">New AI-Native Features</h3>
           <div style="position:relative; aspect-ratio:16/9;">
-            <iframe title="Objeck: Internals &amp; AI — podcast overview"
+            <iframe title="Objeck: New AI-Native Features — video overview"
               style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;border:0;"
-              src="https://www.youtube.com/embed/bm6wBZhQ6kY"
+              src="https://www.youtube.com/embed/DJRX3FqUnBo"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen loading="lazy"></iframe>
+              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
+          </div>
+        </div>
+        <div class="highlight-item">
+          <h3 style="margin-bottom:0.75rem;">Internals (v2026.9)</h3>
+          <div style="position:relative; aspect-ratio:16/9;">
+            <iframe title="Objeck: Internals, v2026.9 — video overview"
+              style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:8px;border:0;"
+              src="https://www.youtube.com/embed/jToZaCETby8"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>
           </div>
         </div>
       </div>
