@@ -1,3 +1,13 @@
+v2026.9.4 (September 15, 2026)
+===
+Integer division is right again at the default optimization level -- two optimizer rewrites gave wrong quotients with no error, so programs compiled at -opt s2 or s3 by v2026.9.3 or earlier should be recompiled. A Nil element in a deserialized object array no longer corrupts the object that holds it.
+
+v2026.9.4
+- Integer division by a power of two rounded the wrong way at -opt s2 and s3 -- strength reduction turned n / 2^k on a local into an arithmetic shift, which rounds toward negative infinity where division truncates toward zero: -7 / 2 gave -4. Division is no longer rewritten; both JITs already compile a constant divisor correctly. The interpreter and the JIT agreed on the wrong value, so the new test checks hand-computed quotients at every level
+- 1 / n evaluated to n at -opt s3 -- a peephole pattern meant for x / 1 matched the left operand instead, so 1 / 5 gave 5. The pattern is gone
+- The compiler crashed folding INT64_MIN / -1 -- the fold ran the division in C++, which faults on x64, so obc exited with no message and no output file. That fold is left to run time now
+- Deserializing an object array with a Nil element corrupted its object -- each Nil element was written into the object's next field instead of the array, so the array read back as Nil and later fields shifted
+
 v2026.9.3 (September 14, 2026)
 ===
 macOS installs need nothing else -- obr and the OpenCV, ONNX and LAME bindings no longer depend on Homebrew, and the package runs on macOS 13.3 or later. An ARM64 garbage-collection bug that corrupted objects under multithreaded load is fixed, Linux archives install their whole runtime, and every platform is verified before a release is tagged.

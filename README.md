@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.3-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.4-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.3/objeck-linux-x64_2026.9.3.tgz
-tar xzf objeck-linux-x64_2026.9.3.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.4/objeck-linux-x64_2026.9.4.tgz
+tar xzf objeck-linux-x64_2026.9.4.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,13 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.3 ✅
+### v2026.9.4 ✅
+  * **Integer division by a power of two rounded the wrong way at `-opt s2` and `s3`** &mdash; strength reduction turned `n / 2^k` on a local into an arithmetic shift, which rounds toward negative infinity where division truncates toward zero: `-7 / 2` gave `-4`. Division is no longer rewritten; both JITs already compile a constant divisor correctly. Programs compiled at `s2` or `s3` (the default) by v2026.9.3 or earlier should be recompiled
+  * **`1 / n` evaluated to `n` at `-opt s3`** &mdash; a peephole pattern meant for `x / 1` matched the left operand instead, so `1 / 5` gave `5`. The pattern is gone
+  * **The compiler crashed folding `INT64_MIN / -1`** &mdash; `obc` exited with no message and no output file; that fold is left to run time now
+  * **Deserializing an object array with a Nil element corrupted its object** &mdash; each Nil element was written into the object's next field instead of the array, so the array read back as Nil and later fields shifted
+
+### v2026.9.3
   * **macOS installs need nothing else** &mdash; every macOS release since v2026.6.3 linked Homebrew's GnuTLS and ngtcp2, plus an ngtcp2 GnuTLS backend Homebrew does not ship, so `obr` stopped at launch on any Mac but the build machine; v2026.9.2's OpenCV, ONNX and LAME bindings needed Homebrew formulas too. HTTP/3's TLS moves to AWS-LC, linked statically into `obr` on Linux and macOS with ngtcp2, nghttp3 and nghttp2, and the `.pkg` carries OpenCV, ONNX Runtime, mbedTLS, libiodbc and LAME. It runs on macOS 13.3 or later, the ONNX binding on macOS 14 ([#812](https://github.com/objeck/objeck-lang/pull/812), [#817](https://github.com/objeck/objeck-lang/pull/817))
   * **ARM64: a collection could corrupt an object under multithreaded load** &mdash; the collector set the mark bit below any nursery address its conservative scans found, including the stale and interior pointers compiled ARM64 code leaves on the stack. For a map's tree node that turned an empty `@right` into 1, and a later lookup crashed: silently or with "Invalid object cast" on Windows arm64, with SIGSEGV on macOS and Linux arm64. It marks only real object starts now ([#821](https://github.com/objeck/objeck-lang/pull/821), [#816](https://github.com/objeck/objeck-lang/issues/816))
   * **Linux archives install their whole runtime** &mdash; `install_deps.sh` installed SDL2 alone, so the other bindings failed to load on a fresh machine; it now maps every library the binaries link to its package, and `--check` reports what is missing ([#809](https://github.com/objeck/objeck-lang/pull/809))
@@ -99,7 +105,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.9.3](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.4](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
