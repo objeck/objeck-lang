@@ -117,7 +117,7 @@ class HttpsPersistenceTest {
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
 		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout {$key} -out {$cert}";
 		if(Runtime->Command(command) <> 0) {
-			Fail("openssl could not create the localhost TLS fixture");
+			Fail("openssl could not create the localhost TLS fixture -- is openssl on PATH?");
 			Runtime->Exit(1);
 		};
 

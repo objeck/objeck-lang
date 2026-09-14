@@ -67,7 +67,7 @@ class TlsVerifyTest {
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
 		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost\" -keyout {$key} -out {$cert}";
 		if(Runtime->Command(command) <> 0) {
-			"  [FAIL] openssl could not create the TLS fixture"->PrintLine();
+			"  [FAIL] openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
 

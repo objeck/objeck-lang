@@ -8,7 +8,8 @@
 # of a different hand-written test list per machine per release. The result
 # file it writes is what tools/cicd/pre_release.sh reads before tagging.
 #
-# Run from a CLEAN checkout of the commit to be released:
+# Run from a CLEAN checkout of the commit to be released, in a native shell:
+#   0. prerequisites: openssl, python3, expect; git, cmake, make for the build
 #   1. build the deploy tree exactly as release-build.yml does
 #      (tools/deps/build_quic_deps.sh, tools/deps/build_macos_deps.sh on macOS, then deploy_posix.sh / deploy_macos_arm64.sh)
 #   2. regression suite, default JIT
@@ -17,16 +18,23 @@
 #
 # Writes rc-results/<VERSION>/<platform>.txt (key=value, verdict=PASS|FAIL) and
 # rc-results/<VERSION>/<platform>.log, restores any tracked files the deploy
-# rewrote, and exits 0 only when every step passed.
+# rewrote, and exits 0 only when every step passed. Anything skipped is a FAIL;
+# the one exception is build=SKIPPED from --skip-build, which tests an existing tree.
 #
 # Windows machines run tools/cicd/verify_platform.cmd, which writes the same format.
 
 set -uo pipefail
 
+usage() { echo "usage: verify_platform.sh <VERSION> [--skip-build]"; exit 2; }
 VERSION="${1:-}"
-[ -n "$VERSION" ] || { echo "usage: verify_platform.sh <VERSION> [--skip-build]"; exit 2; }
+case "$VERSION" in ""|-*) usage ;; esac
 SKIP_BUILD=0
-[ "${2:-}" = "--skip-build" ] && SKIP_BUILD=1
+case "${2:-}" in
+	"") ;;
+	--skip-build) SKIP_BUILD=1 ;;
+	*) echo "unknown argument: $2"; usage ;;
+esac
+[ $# -le 2 ] || { echo "unknown argument: $3"; usage; }
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || { echo "not inside a git checkout"; exit 2; }
 cd "$ROOT"
@@ -36,6 +44,15 @@ case "$(uname -s)-$(uname -m)" in
 	Linux-x86_64)  PLATFORM=linux-x64;   ARCH=x64;   DEPLOY=(./deploy_posix.sh x64) ;;
 	Linux-aarch64) PLATFORM=linux-arm64; ARCH=arm64; DEPLOY=(./deploy_posix.sh arm64) ;;
 	Darwin-arm64)  PLATFORM=macos-arm64; ARCH=arm64; DEPLOY=(./deploy_macos_arm64.sh) ;;
+	Darwin-x86_64)
+		# A shell under Rosetta on an arm64 Mac reports x86_64; what it would test
+		# is not what an arm64 user runs.
+		if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = 1 ]; then
+			echo "unsupported platform: this shell runs under Rosetta; start a native one (arch -arm64 /bin/bash)"
+		else
+			echo "unsupported platform: Darwin-x86_64"
+		fi
+		exit 2 ;;
 	*) echo "unsupported platform: $(uname -s)-$(uname -m)"; exit 2 ;;
 esac
 HOST="$(hostname)"
@@ -49,9 +66,13 @@ mkdir -p "$OUT"
 
 VERDICT=PASS
 declare -a LINES=()
-record() {   # key value
+record() {   # key value -- anything but PASS fails the verdict, except build=SKIPPED
 	LINES+=("$1=$2")
-	case "$2" in FAIL*) VERDICT=FAIL ;; esac
+	case "$2" in
+		PASS*) ;;
+		SKIPPED) [ "$1" = build ] || VERDICT=FAIL ;;
+		*) VERDICT=FAIL ;;
+	esac
 	printf '  %-16s %s\n' "$1" "$2"
 }
 write_result() {
@@ -80,6 +101,33 @@ else
 	record version "FAIL (core/shared/version.h is $(sed -n 's/.*VERSION_STRING L"\([0-9.]*\)".*/\1/p' core/shared/version.h))"
 	write_result; exit 1
 fi
+
+# ---- prerequisites: stop now, not an hour into the build ------------------------
+# Each of these otherwise surfaces late: the TLS regression tests fail when they
+# cannot run openssl for their certificate, run_debugger_tests.sh skips without
+# expect, and the dependency builds stop without cmake.
+MISSING=""
+need() {   # tool why
+	command -v "$1" >/dev/null 2>&1 && return 0
+	echo "  missing prerequisite: $1 -- $2"
+	MISSING="${MISSING:+$MISSING, }$1"
+}
+need openssl "the TLS regression tests create their certificate with it"
+need python3 "run_vm_flag_tests.py and run_dap_tests.py"
+need expect "run_debugger_tests.sh skips the debugger tests without it"
+if [ $SKIP_BUILD -eq 0 ]; then
+	for tool in git cmake make; do need "$tool" "tools/deps/build_quic_deps.sh"; done
+	if [ "$PLATFORM" = macos-arm64 ]; then
+		for tool in curl shasum install_name_tool codesign otool cmp /usr/bin/clang; do
+			need "$tool" "tools/deps/build_macos_deps.sh"
+		done
+	fi
+fi
+if [ -n "$MISSING" ]; then
+	record prereqs "FAIL (missing prerequisite: $MISSING)"
+	write_result; exit 1
+fi
+record prereqs PASS
 
 # Runs one step, appending its output to the log; prints the last lines on failure.
 # A step that says it skipped its tests is a FAIL here even when it exits 0:
