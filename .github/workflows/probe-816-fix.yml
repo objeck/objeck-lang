@@ -1,8 +1,8 @@
 name: probe-816-fix
 
-# Validates #820 on the two ARM64 CI platforms: the P3b map-insert loop with an
+# Validates #821 on the two ARM64 CI platforms: the P3b map-insert loop with an
 # allocating thread and frequent collections, every method compiled, against
-# #820's own CI build artifacts. Before the fix it failed 3/100 on windows-11-arm
+# #821's own CI build artifacts. Before the fix it failed 3/100 on windows-11-arm
 # (run 34783381667) and 6/100 on macOS arm64. The source run id is read from
 # probe-816-run-id.txt so this file never needs editing. Throwaway branch.
 
@@ -30,7 +30,7 @@ jobs:
           "RUN_ID=$id" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Write-Output "artifacts from run $id"
 
-      - name: Download #820's windows-arm64 deploy tree
+      - name: Download #821's windows-arm64 deploy tree
         uses: actions/download-artifact@v4
         with:
           name: objeck-windows-arm64
@@ -62,7 +62,7 @@ jobs:
               if ($first) { Set-Content "results\first-failure.txt" "run=$i exit=$code`n$text"; $first = $false }
             }
           }
-          $line = "| windows-arm64 #820 P3b-gc64k jit1 | 150 | $fail fail | $([int]$sw.Elapsed.TotalSeconds) s |"
+          $line = "| windows-arm64 #821 P3b-gc64k jit1 | 150 | $fail fail | $([int]$sw.Elapsed.TotalSeconds) s |"
           Write-Output $line
           Add-Content $env:GITHUB_STEP_SUMMARY $line
 
@@ -86,7 +86,7 @@ jobs:
           echo "RUN_ID=$id" >> "$GITHUB_ENV"
           echo "artifacts from run $id"
 
-      - name: Download #820's linux-arm64 deploy tree
+      - name: Download #821's linux-arm64 deploy tree
         uses: actions/download-artifact@v4
         with:
           name: objeck-linux-arm64
@@ -120,7 +120,7 @@ jobs:
               [ $fail -eq 1 ] && { echo "run=$i exit=$code"; cat results/last.txt; } > results/first-failure.txt
             fi
           done
-          line="| linux-arm64 #820 P3b-gc64k jit1 | 150 | $fail fail | $((SECONDS - start)) s |"
+          line="| linux-arm64 #821 P3b-gc64k jit1 | 150 | $fail fail | $((SECONDS - start)) s |"
           echo "$line"
           echo "$line" >> "$GITHUB_STEP_SUMMARY"
           exit 0
