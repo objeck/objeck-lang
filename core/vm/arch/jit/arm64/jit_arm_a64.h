@@ -357,7 +357,15 @@ namespace Runtime {
   /**
    * JitArm64 class
    */
-  class JitArm64 : public JitCompiler {
+  // #816 probe switches (never merged)
+static inline bool Probe816Flag(const char* name) {
+  const char* v = getenv(name);
+  return v && v[0] && v[0] != '0';
+}
+static inline bool Probe816NoDirect() { static const bool f = Probe816Flag("OBJECK_816_NO_DIRECT"); return f; }
+static inline bool Probe816NoCache() { static const bool f = Probe816Flag("OBJECK_816_NO_CACHE"); return f; }
+
+class JitArm64 : public JitCompiler {
     static PageManager* page_manager;
     deque<RegInstr*> working_stack;
     vector<RegisterHolder*> aval_regs;
@@ -709,6 +717,7 @@ namespace Runtime {
 
     // Caches a register holding a local variable value (by frame offset).
     void CacheLocalRegister(long offset, RegisterHolder* h) {
+      if(Probe816NoCache()) { ReleaseRegister(h); return; }
       auto it = local_reg_cache.find(offset);
       if(it != local_reg_cache.end()) {
         ReleaseRegister(it->second);
@@ -719,6 +728,7 @@ namespace Runtime {
     }
 
     void CacheLocalFpRegister(long offset, RegisterHolder* h) {
+      if(Probe816NoCache()) { ReleaseFpRegister(h); return; }
       auto it = local_freg_cache.find(offset);
       if(it != local_freg_cache.end()) {
         ReleaseFpRegister(it->second);

@@ -1,0 +1,84 @@
+name: probe-816-bisect
+
+# Issue #816 bisection on ubuntu-24.04-arm, where the P3b loop fails about 1 run in 6.
+# Builds obr from this branch (master 0048a4745e plus probe-only switches in the ARM64
+# JIT) and runs the loop with each switch. A switch that removes the failure points at
+# the JIT feature it disables. lib/ and obc come from master's CI build of the same
+# commit. Throwaway branch; never merged.
+#   OBJECK_816_NO_DIRECT=1  bound calls take the bridge instead of a direct native call
+#   OBJECK_816_NO_CACHE=1   no local register cache
+
+on:
+  push:
+    branches: [probe/816-bisect]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  bisect:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        variant:
+          - { name: baseline, env: "" }
+          - { name: no-direct, env: "OBJECK_816_NO_DIRECT=1" }
+          - { name: no-cache, env: "OBJECK_816_NO_CACHE=1" }
+          - { name: no-direct-no-cache, env: "OBJECK_816_NO_DIRECT=1 OBJECK_816_NO_CACHE=1" }
+    name: ${{ matrix.variant.name }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libmbedtls-dev zlib1g-dev
+
+      - name: QUIC dependencies
+        uses: ./.github/actions/quic-deps
+
+      - name: Build obr from this branch
+        run: |
+          cd core/vm
+          make -f make/Makefile.arm64 -j4 > build.log 2>&1 || { tail -60 build.log; exit 1; }
+          ls -la obr
+          grep -c "OBJECK_816_NO_DIRECT" obr >/dev/null && echo "probe switches present in obr" || { echo "switch strings missing from obr"; exit 1; }
+
+      - name: Master's lib and obc (same commit)
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-linux-arm64
+          run-id: 34789417040
+          github-token: ${{ github.token }}
+          path: tree
+
+      - name: Fixture
+        run: |
+          chmod +x tree/bin/*
+          cp core/vm/obr tree/bin/obr-probe
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          tree/bin/obc -src programs/tests/map_insert_stress_816_mt.obs -lib gen_collect -opt s3 -dest mt.obe
+          [ -f mt.obe ] || { echo "compile failed"; exit 1; }
+
+      - name: 60 runs, ${{ matrix.variant.name }}
+        run: |
+          set +e
+          export OBJECK_LIB_PATH="$PWD/tree/lib"
+          export OBJECK_JIT_THRESHOLD=1
+          for kv in ${{ matrix.variant.env }}; do export "$kv"; done
+          env | grep OBJECK_816 || echo "(no switch)"
+          fail=0; start=$SECONDS; first=""
+          for i in $(seq 1 60); do
+            timeout 120 tree/bin/obr-probe --gc-threshold=64k mt.obe 20000 > last.txt 2>&1
+            code=$?
+            if [ $code -ne 0 ] || ! grep -q PASS last.txt; then
+              fail=$((fail + 1)); [ -z "$first" ] && first="run $i exit $code"
+            fi
+          done
+          line="| ${{ matrix.variant.name }} | 60 | $fail fail | ${first:-none} | $((SECONDS - start)) s |"
+          echo "$line"
+          echo "$line" >> "$GITHUB_STEP_SUMMARY"
+          exit 0

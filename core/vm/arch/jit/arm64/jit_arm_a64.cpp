@@ -798,7 +798,7 @@ void JitArm64::ProcessInstructions() {
         // called straight into its native entry once it has one and through
         // the direct bridge entry until then (EmitNativeCallSite); a
         // `virtual` site keeps an inline cache keyed by the receiver's class.
-        direct_callee = called_method->IsVirtual() ? nullptr : called_method;
+        direct_callee = (called_method->IsVirtual() || Probe816NoDirect()) ? nullptr : called_method;
         if(called_method->IsVirtual()) {
           virtual_site = new JitVirtualSite(called_method, instr->GetOperand(), instr->GetOperand2());
           virtual_sites.push_back(virtual_site);
