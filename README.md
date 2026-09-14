@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.2/objeck-linux-x64_2026.9.2.tgz
-tar xzf objeck-linux-x64_2026.9.2.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.3/objeck-linux-x64_2026.9.3.tgz
+tar xzf objeck-linux-x64_2026.9.3.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,15 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.2 ✅
+### v2026.9.3 ✅
+  * **macOS installs need nothing else** &mdash; every macOS release since v2026.6.3 linked Homebrew's GnuTLS and ngtcp2, plus an ngtcp2 GnuTLS backend Homebrew does not ship, so `obr` stopped at launch on any Mac but the build machine; v2026.9.2's OpenCV, ONNX and LAME bindings needed Homebrew formulas too. HTTP/3's TLS moves to AWS-LC, linked statically into `obr` on Linux and macOS with ngtcp2, nghttp3 and nghttp2, and the `.pkg` carries OpenCV, ONNX Runtime, mbedTLS, libiodbc and LAME. It runs on macOS 13.3 or later, the ONNX binding on macOS 14 ([#812](https://github.com/objeck/objeck-lang/pull/812), [#817](https://github.com/objeck/objeck-lang/pull/817))
+  * **ARM64: a collection could corrupt an object under multithreaded load** &mdash; the collector set the mark bit below any nursery address its conservative scans found, including the stale and interior pointers compiled ARM64 code leaves on the stack. For a map's tree node that turned an empty `@right` into 1, and a later lookup crashed: silently or with "Invalid object cast" on Windows arm64, with SIGSEGV on macOS and Linux arm64. It marks only real object starts now ([#821](https://github.com/objeck/objeck-lang/pull/821), [#816](https://github.com/objeck/objeck-lang/issues/816))
+  * **Linux archives install their whole runtime** &mdash; `install_deps.sh` installed SDL2 alone, so the other bindings failed to load on a fresh machine; it now maps every library the binaries link to its package, and `--check` reports what is missing ([#809](https://github.com/objeck/objeck-lang/pull/809))
+  * **ODBC says why a connection did not open** &mdash; `Connection->GetLastError()` was empty after a failed connect; it returns the driver manager's diagnostic, e.g. `[IM002] ... Data source name not found` ([#819](https://github.com/objeck/objeck-lang/pull/819))
+  * **Licenses ship with the code they cover** &mdash; the AWS-LC, ngtcp2, nghttp3 and nghttp2 code inside `obr`, and the libraries the macOS package carries, ship their license files in `doc/licenses` ([#818](https://github.com/objeck/objeck-lang/pull/818))
+  * **Every platform is verified before a tag** &mdash; one script per machine builds a clean checkout the way the release does and runs the regression suite with the default JIT and with every method compiled, plus the VM flag, debugger and DAP tests; install instructions are checked against the libraries the binaries link; a dispatched Release Build can no longer publish; and a test that did not run no longer counts as a pass ([#814](https://github.com/objeck/objeck-lang/pull/814), [#808](https://github.com/objeck/objeck-lang/pull/808), [#819](https://github.com/objeck/objeck-lang/pull/819))
+
+### v2026.9.2
   * **macOS ships OpenCV and ONNX again** &mdash; v2026.9.1's `.pkg`, `.zip` and `.tgz` carried neither `libobjk_opencv` nor `libobjk_onnx`. Homebrew's default `opencv` is now 5.0, which moved `contourArea`, `boundingRect`, `approxPolyDP` and the affine estimators out of `cv::`, and the release build installed it while CI stayed on `opencv@4`. The release build is pinned too ([#804](https://github.com/objeck/objeck-lang/pull/804))
   * **Linux x64's ONNX loads without `LD_LIBRARY_PATH`** &mdash; `libobjk_onnx.so` had no `$ORIGIN` RUNPATH, so it found the ONNX Runtime shipped beside it only where CI's environment pointed there, and failed for anyone who untarred the release
   * **Linux ARM64 no longer ships an x86-64 ONNX Runtime** &mdash; only an x86-64 runtime is vendored, so ONNX is declared optional on ARM64 and the 16 MB x86-64 library is gone from the tarball
@@ -89,14 +97,9 @@ obc hello && obr hello
   * **`Console->WriteBuffer(Char[])` corrupted every write after it** &mdash; the VM encoded the buffer to UTF-8 itself and wrote the bytes into a stdout already in a wide CRT mode, so the data was encoded twice (`'A','B'` arrived as U+4241) and the invalid sequence left the stream unusable for the rest of the program. It also ignored the count it was given. Found through `fasta`, which had never compiled ([#793](https://github.com/objeck/objeck-lang/pull/793))
   * **The standard libraries are rebuilt by the compiler that ships with them** &mdash; the committed `.obl` predated four compiler correctness fixes, including the func-ref inliner that library code is compiled with (`-opt s3`). 30 of 32 libraries changed ([#792](https://github.com/objeck/objeck-lang/pull/792))
 
-### v2026.9.0
-  * **A server that wrote a response and closed could lose all of it** &mdash; on Windows loopback the reader got a connection reset and zero bytes, even though every byte had been accepted and delivered. `TCPSocket` and `TCPSecureSocket` gain `CloseGracefully()`, which reads until the peer hangs up and then closes, so the client owns the teardown. Measured over 180 transfers of a 16KB response: `Close()` lost 21, `CloseGracefully()` lost none
-  * **The language server serialized every request behind one lock** &mdash; concurrent analysis was correct only because of it, with `TreeFactory` and `TypeFactory` as process-wide singletons underneath. They are now bound per thread through a scope guard, so each analysis gets its own and the coarse lock gives way to per-program locking
-  * **Four publish steps reported success while doing nothing** &mdash; Sourceforge, the Marketplace, the playground and the API docs each skipped on an absent credential and passed, so v2026.8.4 published with all four green while the playground served a three-month-old engine. A missing credential now fails and names the secret, or is declared manual in one place that also prints as a to-do, and a pre-flight gate checks the pipeline can do what it advertises before the tag is pushed
-
 ## Downloads
 
-**Latest Release:** [v2026.9.2](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.3](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

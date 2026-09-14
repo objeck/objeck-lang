@@ -83,6 +83,19 @@ This generates from `.in` templates:
 > never calls the API, but must be bumped to `v<VERSION>` every release or it
 > shows the previous version.
 
+> **Also bump the language server's reported version and the VS Code lockfile by hand.**
+> `tools/lsp/server/server.obs` hard-codes `serverInfo->Insert("version", "<VERSION>")`, and
+> `tools/lsp/clients/vscode/package-lock.json` repeats the extension version twice (the
+> top-level `version` and `packages[""].version`); `update_version.ps1` writes `package.json`
+> only. The `tools` CI job's LSP suite fails when `serverInfo` disagrees with `version.h` --
+> v2026.9.3's bump PR went red on exactly that. `server.obs` is stored with mixed CRLF and LF line endings
+> under a `binary` git attribute, so edit it with `sed -b` (plain `sed -i` in Git Bash strips
+> every CR and rewrites the whole file):
+>
+> ```bash
+> grep -rn "<OLD_VERSION>" tools/lsp --include=*.obs --include='package*.json'   # must print nothing
+> ```
+
 ### 4. Full Windows build via `deploy_windows.cmd`
 
 This must run from a VS Developer Command Prompt or have `VCINSTALLDIR` set. Run:

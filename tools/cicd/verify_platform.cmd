@@ -60,7 +60,7 @@ set "VERDICT=PASS"
 echo == verify_platform %PLATFORM%, v%VERSION% @ %COMMIT:~0,10% on %COMPUTERNAME%
 
 REM ---- preconditions ----------------------------------------------------------
-for /f %%n in ('git status --porcelain --untracked-files^=no ^| find /c /v ""') do set "DIRTY=%%n"
+for /f %%n in ('git status --porcelain --untracked-files^=no ^| %SystemRoot%\System32\find.exe /c /v ""') do set "DIRTY=%%n"
 if not "%DIRTY%"=="0" (
     call :record tree "FAIL (uncommitted changes to tracked files; verify a clean checkout)"
     goto finish

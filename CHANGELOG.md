@@ -2,7 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.9.3] - Unreleased
+## [v2026.9.3] - 2026-09-14
 
 ### Bug Fixes
 - **macOS: `obr` could not start on a user's Mac** ([#812](https://github.com/objeck/objeck-lang/pull/812)): every macOS release since v2026.6.3 linked Homebrew's GnuTLS, nghttp2, nghttp3 and ngtcp2, plus an ngtcp2 GnuTLS backend that Homebrew does not ship, which the build machine had built by hand. On any other Mac `obr` stopped at launch with "Library not loaded: @rpath/libngtcp2_crypto_gnutls.8.dylib", even after the release notes' `brew install`. HTTP/3's TLS moves from GnuTLS to AWS-LC, and `obr` links AWS-LC, ngtcp2, nghttp3 and nghttp2 statically on Linux and macOS, built by `tools/deps/build_quic_deps.sh` from pinned versions. A Linux archive no longer needs those libraries from its distribution. Release builds install the macOS package on a clean runner, with Homebrew moved aside, before anything is published

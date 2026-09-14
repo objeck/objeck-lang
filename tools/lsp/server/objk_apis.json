@@ -3655,7 +3655,7 @@
 					"descriptions": ["**Gets column information for a table as name:type pairs.**\n\n```method : public : GetColumns(table:String) ~ String[]```\n\n\n\ntable: String\n\nreturn: String[]\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\r\nif(conn->IsOpen()) {\r\n  cols := conn->GetColumns(\"users\"); # get column descriptors\r\n  each(c in cols) { cols[c]->PrintLine(); };\r\n  conn->Close();\r\n};\n```"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Gets the last error message from the connection.**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\r\nif(conn->Update(\"BAD SQL\") < 0) {\r\n  conn->GetLastError()->PrintLine(); # print connection error\r\n};\r\nconn->Close();\n```"]
+					"descriptions": ["**Gets the last error message from the connection. For a connection that did not open, this is why the connect failed, e.g. \"[IM002] ... Data source name not found\".**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\r\nif(conn->Update(\"BAD SQL\") < 0) {\r\n  conn->GetLastError()->PrintLine(); # print connection error\r\n};\r\nconn->Close();\n```"]
 				},
 				"GetTables": {
 					"descriptions": ["**Gets the list of table names in the data source.**\n\n```method : public : GetTables() ~ String[]```\n\n\n\nreturn: String[]\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\r\nif(conn->IsOpen()) {\r\n  tables := conn->GetTables(); # list all tables\r\n  each(t in tables) { tables[t]->PrintLine(); };\r\n  conn->Close();\r\n};\n```"]

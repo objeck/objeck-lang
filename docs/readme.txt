@@ -1,3 +1,15 @@
+v2026.9.3 (September 14, 2026)
+===
+macOS installs need nothing else -- obr and the OpenCV, ONNX and LAME bindings no longer depend on Homebrew, and the package runs on macOS 13.3 or later. An ARM64 garbage-collection bug that corrupted objects under multithreaded load is fixed, Linux archives install their whole runtime, and every platform is verified before a release is tagged.
+
+v2026.9.3
+- macOS installs need nothing else -- every macOS release since v2026.6.3 linked Homebrew's GnuTLS and ngtcp2, plus an ngtcp2 GnuTLS backend Homebrew does not ship, so obr stopped at launch on any Mac but the build machine; v2026.9.2's OpenCV, ONNX and LAME bindings needed Homebrew formulas too. HTTP/3's TLS moves to AWS-LC, linked statically into obr on Linux and macOS with ngtcp2, nghttp3 and nghttp2, and the .pkg carries OpenCV, ONNX Runtime, mbedTLS, libiodbc and LAME. It runs on macOS 13.3 or later, the ONNX binding on macOS 14
+- ARM64: a collection could corrupt an object under multithreaded load -- the collector set the mark bit below any nursery address its conservative scans found, including the stale and interior pointers compiled ARM64 code leaves on the stack. For a map's tree node that turned an empty @right into 1, and a later lookup crashed: silently or with 'Invalid object cast' on Windows arm64, with SIGSEGV on macOS and Linux arm64. It marks only real object starts now
+- Linux archives install their whole runtime -- install_deps.sh installed SDL2 alone, so the other bindings failed to load on a fresh machine; it now maps every library the binaries link to its package, and --check reports what is missing
+- ODBC says why a connection did not open -- Connection->GetLastError() was empty after a failed connect; it returns the driver manager's diagnostic, e.g. [IM002] ... Data source name not found
+- Licenses ship with the code they cover -- the AWS-LC, ngtcp2, nghttp3 and nghttp2 code inside obr, and the libraries the macOS package carries, ship their license files in doc/licenses
+- Every platform is verified before a tag -- one script per machine builds a clean checkout the way the release does and runs the regression suite with the default JIT and with every method compiled, plus the VM flag, debugger and DAP tests; install instructions are checked against the libraries the binaries link; a dispatched Release Build can no longer publish; and a test that did not run no longer counts as a pass
+
 v2026.9.2 (September 13, 2026)
 ===
 A corrective release for v2026.9.1's native libraries -- macOS ships OpenCV and ONNX again, Linux x64's ONNX loads without LD_LIBRARY_PATH, and Linux ARM64 no longer carries an x86-64 ONNX Runtime. Deploys now stop instead of shipping incomplete, on a missing native library or a missing example file, and show live progress while they run.
