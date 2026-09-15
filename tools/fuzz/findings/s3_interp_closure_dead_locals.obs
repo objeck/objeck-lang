@@ -1,0 +1,37 @@
+#~
+Fuzzer finding against v2026.9.4 (x64 Windows), hand-minimized from the
+reduce.py output s3off_seed1006.obs in this directory.
+
+signature: diverge: s0/off,s3/default,s3/jit1,s0/jit1 | s3/off first=F#=# vs F#=#
+
+Compiled at s3 and run by the interpreter (obr --jit=off), F0 returns a wrong
+value, though it only returns its parameter: the digest is F0=6. Every other
+configuration -- s0 interpreted, s3 with the JIT (default threshold or
+--jit=1), s0 with --jit=1 -- prints F0=864749906.
+
+The ingredients, found by deleting one at a time: several dead Int locals
+(i0..w2), a zero-argument closure created and called, and the stores to v0
+around it. With one dead local, or without the v0 stores, it passes.
+
+Expected output: F0=864749906
+~#
+
+class B5 {
+  function : F0(p0 : Int) ~ Int {
+    v0 := p0;
+    i0 := 0; w0 := 0;
+    i1 := 0; w1 := 0;
+    i2 := 0; w2 := 0;
+    k0 : FuncRef<IntRef> := \() => IntRef->New((0 - 20));
+    kr0 := k0();
+    v0 := (v0 + kr0->Get()) % 1048573;
+    v0 := p0;
+    return p0;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    d := 0;
+    for(r := 0; r < 12; r += 1;) { d := (d * 31 + F0(r)) % 1000000007; };
+    "F0="->Print(); d->PrintLine();
+  }
+}

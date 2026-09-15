@@ -98,7 +98,7 @@ def shrink(choices, test, max_tests=None, log=None):
     return best, tests[0]
 
 
-def objeck_test(tc, original, forced, workdir, log=None):
+def objeck_test(tc, original, forced, workdir, log=None, basic_lambdas=False):
     """The interestingness test for a real finding; see the module doc."""
     target = original.partition_text()
     limit = original.ref_seconds() * 2 + 0.25
@@ -106,7 +106,7 @@ def objeck_test(tc, original, forced, workdir, log=None):
 
     def test(cand):
         counter[0] += 1
-        prog = gen.generate(choices=cand, features=forced)
+        prog = gen.generate(choices=cand, features=forced, basic_lambdas=basic_lambdas)
         stem = "cand"
         d = os.path.join(workdir, "c%d" % counter[0])
         out = fuzzlib.evaluate(tc, prog.text, d, stem, prog.methods, gen.CLASS_PREFIXES)
@@ -137,21 +137,24 @@ def main(argv=None):
     ap.add_argument("--max-tests", type=int, default=600)
     ap.add_argument("--obc", default=None)
     ap.add_argument("--obr", default=None)
+    ap.add_argument("--basic-lambdas", action="store_true",
+                    help="replay with gen.py's basic_lambdas knob on (implied by a finding recorded with it)")
     args = ap.parse_args(argv)
 
     with open(os.path.join(args.finding, "choices.json"), "r", encoding="utf-8") as f:
         rec = json.load(f)
     forced = rec.get("forced_features")
+    basic = bool(rec.get("basic_lambdas", False)) or args.basic_lambdas
     tc = fuzzlib.Toolchain(args.bin, obc=args.obc, obr=args.obr, timeout=args.timeout)
     workdir = os.path.join(args.finding, "reduce_work")
 
-    prog = gen.generate(choices=rec["choices"], features=forced)
+    prog = gen.generate(choices=rec["choices"], features=forced, basic_lambdas=basic)
     original = fuzzlib.evaluate(tc, prog.text, os.path.join(workdir, "orig"), "orig", prog.methods,
                                 gen.CLASS_PREFIXES)
     print("original: %d choices, %d lines" % (len(prog.choices), prog.text.count("\n")))
     print("  signature: %s" % original.signature)
     print("  partition: %s" % (original.partition_text() if original.results else "-"))
-    test = objeck_test(tc, original, forced, workdir, log=print)
+    test = objeck_test(tc, original, forced, workdir, log=print, basic_lambdas=basic)
     if test(prog.choices) is None:
         print("the original is not interesting under the reducer's test "
               "(compile failure, or the reference itself fails); nothing to reduce")
@@ -159,7 +162,7 @@ def main(argv=None):
 
     start = time.monotonic()
     best, tests = shrink(prog.choices, test, max_tests=args.max_tests, log=print)
-    reduced = gen.generate(choices=best, features=forced)
+    reduced = gen.generate(choices=best, features=forced, basic_lambdas=basic)
     final = fuzzlib.evaluate(tc, reduced.text, os.path.join(workdir, "final"), "final", reduced.methods,
                              gen.CLASS_PREFIXES)
     name = args.name or os.path.basename(os.path.dirname(os.path.abspath(args.finding)))
@@ -170,7 +173,7 @@ def main(argv=None):
     with open(dest, "w", encoding="utf-8", newline="\n") as f:
         f.write(header + reduced.text)
     with open(os.path.join(args.finding, "reduced_choices.json"), "w", encoding="utf-8") as f:
-        json.dump({"choices": best, "forced_features": forced}, f)
+        json.dump({"choices": best, "forced_features": forced, "basic_lambdas": basic}, f)
     shutil.rmtree(workdir, ignore_errors=True)
     print("reduced: %d -> %d choices, %d -> %d lines, %d tests, %.0fs" %
           (len(prog.choices), len(best), prog.text.count("\n"), reduced.text.count("\n"), tests,

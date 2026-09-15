@@ -40,14 +40,14 @@ def sig_hash(sig):
     return hashlib.sha1(sig.encode("utf-8")).hexdigest()[:10]
 
 
-def fuzz_one(tc, seed, features, work_root, keep):
-    prog = gen.generate(seed=seed, features=features)
+def fuzz_one(tc, seed, features, work_root, keep, basic_lambdas=False):
+    prog = gen.generate(seed=seed, features=features, basic_lambdas=basic_lambdas)
     workdir = os.path.join(work_root, "seed_%d" % seed)
     outcome = fuzzlib.evaluate(tc, prog.text, workdir, "prog", prog.methods, gen.CLASS_PREFIXES)
     return prog, outcome, workdir
 
 
-def save_finding(out_dir, prog, outcome, workdir, features):
+def save_finding(out_dir, prog, outcome, workdir, features, basic_lambdas=False):
     dest = os.path.join(out_dir, sig_hash(outcome.signature), "seed_%s" % prog.seed)
     os.makedirs(dest, exist_ok=True)
     with open(os.path.join(dest, "prog.obs"), "w", encoding="utf-8", newline="\n") as f:
@@ -55,7 +55,7 @@ def save_finding(out_dir, prog, outcome, workdir, features):
     with open(os.path.join(dest, "choices.json"), "w", encoding="utf-8") as f:
         json.dump({"seed": prog.seed, "features": prog.features,
                    "forced_features": sorted(features) if features is not None else None,
-                   "choices": prog.choices}, f)
+                   "basic_lambdas": basic_lambdas, "choices": prog.choices}, f)
     with open(os.path.join(dest, "outcome.json"), "w", encoding="utf-8") as f:
         json.dump(outcome.to_json(), f, indent=1)
     return dest
@@ -75,6 +75,8 @@ def main(argv=None):
     ap.add_argument("--out", default=os.path.join(HERE, "out"))
     ap.add_argument("--min-jit", type=float, default=0.90, help="minimum JIT-compiled fraction")
     ap.add_argument("--keep", action="store_true", help="keep every program's work directory")
+    ap.add_argument("--basic-lambdas", action="store_true",
+                    help="also generate the lambda form whose call crashes the 9.4 JIT (see gen.py)")
     ap.add_argument("--json", default=None, help="write the run summary here")
     args = ap.parse_args(argv)
 
@@ -102,7 +104,8 @@ def main(argv=None):
     seeds = range(args.seed, args.seed + args.count)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        futures = {pool.submit(fuzz_one, tc, s, features, work_root, args.keep): s for s in seeds}
+        futures = {pool.submit(fuzz_one, tc, s, features, work_root, args.keep, args.basic_lambdas): s
+                   for s in seeds}
         for fut in concurrent.futures.as_completed(futures):
             prog, outcome, workdir = fut.result()
             stats["programs"] += 1
@@ -126,7 +129,7 @@ def main(argv=None):
                 else:
                     stats["new"] += 1
                 if entry["dir"] is None or entry["count"] <= 3:
-                    d = save_finding(args.out, prog, outcome, workdir, features)
+                    d = save_finding(args.out, prog, outcome, workdir, features, args.basic_lambdas)
                     entry["dir"] = entry["dir"] or d
                 tag = "known" if k else "NEW"
                 print("[%s] seed %d: %s" % (tag, prog.seed, sig), flush=True)
