@@ -1,0 +1,218 @@
+#~
+Int arithmetic has one meaning in the interpreter, both JITs and at every -opt
+level (docs/FEATURES.md, "Integer arithmetic"; core/shared/int_ops.h):
+- + - * wrap in two's complement and never trap;
+- shift counts are taken modulo 64 (n and 63); '>>' sign-fills, '>>>' zero-fills;
+- / truncates toward zero, % takes the dividend's sign;
+- MIN / -1 = MIN and MIN % -1 = 0; a zero divisor is the only integer trap.
+
+Before this, each site did its own C++ arithmetic: MIN / -1 and MIN % -1 with a
+runtime operand killed obr with 0xC0000095 and no message on x64 (interpreter
+and JIT), obc refused to fold them, '>>>' returned 0 for counts outside 0-63
+(S1), and the ARM64 JIT encoded shift immediates with abs() so `x << -1` became
+`x << 1` (S2).
+
+Every expression appears three ways where it matters: all literals (obc's or the
+JIT's constant folder), a runtime left operand with a literal right one (the
+JITs' immediate encoders: shl/sar imm, div by -1), and runtime operands on both
+sides (the interpreter helpers and the JITs' register and memory forms). Run it
+at s0 and s3, with --jit=off and --jit=1; every line must read PASS.
+~#
+
+class IntSemantics {
+	# a value obc cannot fold: it goes through an array element and a call
+	function : Id(v : Int) ~ Int {
+		vals := Int->New[1];
+		vals[0] := v;
+		return vals[0];
+	}
+
+	function : Check(what : String, got : Int, want : Int) ~ Int {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+			return 0;
+		};
+
+		"FAIL: {$what}: got {$got}, want {$want}"->PrintLine();
+		return 1;
+	}
+
+	# '<<' by -1, 0, 63, 64, 65 and 128
+	function : ShiftLeft() ~ Int {
+		failed := 0;
+		min := -9223372036854775807 - 1;
+
+		# literal operands
+		failed += Check("3 << -1 (literal)", 3 << -1, min);
+		failed += Check("3 << 0 (literal)", 3 << 0, 3);
+		failed += Check("3 << 63 (literal)", 3 << 63, min);
+		failed += Check("3 << 64 (literal)", 3 << 64, 3);
+		failed += Check("3 << 65 (literal)", 3 << 65, 6);
+		failed += Check("3 << 128 (literal)", 3 << 128, 3);
+
+		# runtime value, literal count
+		a := Id(3);
+		failed += Check("a << -1 (literal count)", a << -1, min);
+		failed += Check("a << 0 (literal count)", a << 0, 3);
+		failed += Check("a << 63 (literal count)", a << 63, min);
+		failed += Check("a << 64 (literal count)", a << 64, 3);
+		failed += Check("a << 65 (literal count)", a << 65, 6);
+		failed += Check("a << 128 (literal count)", a << 128, 3);
+
+		# runtime value and count
+		failed += Check("a << n, n = -1", a << Id(-1), min);
+		failed += Check("a << n, n = 0", a << Id(0), 3);
+		failed += Check("a << n, n = 63", a << Id(63), min);
+		failed += Check("a << n, n = 64", a << Id(64), 3);
+		failed += Check("a << n, n = 65", a << Id(65), 6);
+		failed += Check("a << n, n = 128", a << Id(128), 3);
+
+		# literal value, runtime count
+		n := Id(65);
+		failed += Check("3 << n, n = 65", 3 << n, 6);
+
+		return failed;
+	}
+
+	# '>>' by -1, 0, 63, 64, 65 and 128
+	function : ShiftRight() ~ Int {
+		failed := 0;
+
+		failed += Check("-8 >> -1 (literal)", -8 >> -1, -1);
+		failed += Check("-8 >> 0 (literal)", -8 >> 0, -8);
+		failed += Check("-8 >> 63 (literal)", -8 >> 63, -1);
+		failed += Check("-8 >> 64 (literal)", -8 >> 64, -8);
+		failed += Check("-8 >> 65 (literal)", -8 >> 65, -4);
+		failed += Check("-8 >> 128 (literal)", -8 >> 128, -8);
+
+		b := Id(-8);
+		failed += Check("b >> -1 (literal count)", b >> -1, -1);
+		failed += Check("b >> 0 (literal count)", b >> 0, -8);
+		failed += Check("b >> 63 (literal count)", b >> 63, -1);
+		failed += Check("b >> 64 (literal count)", b >> 64, -8);
+		failed += Check("b >> 65 (literal count)", b >> 65, -4);
+		failed += Check("b >> 128 (literal count)", b >> 128, -8);
+
+		failed += Check("b >> n, n = -1", b >> Id(-1), -1);
+		failed += Check("b >> n, n = 0", b >> Id(0), -8);
+		failed += Check("b >> n, n = 63", b >> Id(63), -1);
+		failed += Check("b >> n, n = 64", b >> Id(64), -8);
+		failed += Check("b >> n, n = 65", b >> Id(65), -4);
+		failed += Check("b >> n, n = 128", b >> Id(128), -8);
+
+		return failed;
+	}
+
+	# '>>>' (Int->ShiftRightUnsigned) takes the same count
+	function : ShiftRightUnsigned() ~ Int {
+		failed := 0;
+
+		failed += Check("-8 >>> -1 (literal)", -8 >>> -1, 1);
+		failed += Check("-8 >>> 0 (literal)", -8 >>> 0, -8);
+		failed += Check("-8 >>> 63 (literal)", -8 >>> 63, 1);
+		failed += Check("-8 >>> 64 (literal)", -8 >>> 64, -8);
+		failed += Check("-8 >>> 65 (literal)", -8 >>> 65, 9223372036854775804);
+		failed += Check("-8 >>> 128 (literal)", -8 >>> 128, -8);
+
+		c := Id(-8);
+		failed += Check("c >>> n, n = -1", c >>> Id(-1), 1);
+		failed += Check("c >>> n, n = 64", c >>> Id(64), -8);
+		failed += Check("c >>> n, n = 65", c >>> Id(65), 9223372036854775804);
+		failed += Check("c >>> n, n = 128", c >>> Id(128), -8);
+
+		return failed;
+	}
+
+	# MIN / -1 and MIN % -1: no trap
+	function : DivideMinusOne() ~ Int {
+		failed := 0;
+		min := -9223372036854775807 - 1;
+
+		failed += Check("MIN / -1 (literal)", (-9223372036854775807 - 1) / -1, min);
+		failed += Check("MIN % -1 (literal)", (-9223372036854775807 - 1) % -1, 0);
+
+		# runtime dividend, literal divisor
+		m := Id(min);
+		failed += Check("m / -1 (literal divisor)", m / -1, min);
+		failed += Check("m % -1 (literal divisor)", m % -1, 0);
+		failed += Check("7 / -1 (literal divisor)", Id(7) / -1, -7);
+		failed += Check("7 % -1 (literal divisor)", Id(7) % -1, 0);
+
+		# runtime dividend and divisor, the divisor in a local
+		d := Id(-1);
+		failed += Check("m / d, d = -1", m / d, min);
+		failed += Check("m % d, d = -1", m % d, 0);
+		e := Id(7);
+		failed += Check("e / d, d = -1", e / d, -7);
+		failed += Check("e % d, d = -1", e % d, 0);
+
+		# runtime dividend and divisor, the divisor a call result
+		failed += Check("m / Id(-1)", m / Id(-1), min);
+		failed += Check("m % Id(-1)", m % Id(-1), 0);
+
+		# literal dividend, runtime divisor
+		failed += Check("MIN / d, d = -1", (-9223372036854775807 - 1) / d, min);
+		failed += Check("MIN % d, d = -1", (-9223372036854775807 - 1) % d, 0);
+
+		return failed;
+	}
+
+	# + - * wrap
+	function : Wrap() ~ Int {
+		failed := 0;
+		min := -9223372036854775807 - 1;
+		max := 9223372036854775807;
+
+		failed += Check("MAX + 1 (literal)", 9223372036854775807 + 1, min);
+		failed += Check("MIN - 1 (literal)", (-9223372036854775807 - 1) - 1, max);
+		failed += Check("MIN * -1 (literal)", (-9223372036854775807 - 1) * -1, min);
+
+		hi := Id(max);
+		lo := Id(min);
+		failed += Check("hi + 1", hi + 1, min);
+		failed += Check("lo - 1", lo - 1, max);
+		failed += Check("lo * -1", lo * -1, min);
+		failed += Check("hi + hi", hi + Id(max), -2);
+		failed += Check("lo * n, n = -1", lo * Id(-1), min);
+
+		return failed;
+	}
+
+	# / truncates toward zero and % takes the dividend's sign
+	function : Truncate() ~ Int {
+		failed := 0;
+
+		failed += Check("-7 % 3 (literal)", -7 % 3, -1);
+		failed += Check("7 % -3 (literal)", 7 % -3, 1);
+		failed += Check("-7 / 2 (literal)", -7 / 2, -3);
+		failed += Check("7 / -2 (literal)", 7 / -2, -3);
+
+		failed += Check("-7 % 3 (runtime dividend)", Id(-7) % 3, -1);
+		failed += Check("7 % -3 (runtime dividend)", Id(7) % -3, 1);
+		failed += Check("-7 / 2 (runtime dividend)", Id(-7) / 2, -3);
+		failed += Check("7 / -2 (runtime dividend)", Id(7) / -2, -3);
+
+		failed += Check("-7 % 3 (runtime)", Id(-7) % Id(3), -1);
+		failed += Check("7 % -3 (runtime)", Id(7) % Id(-3), 1);
+		failed += Check("-7 / 2 (runtime)", Id(-7) / Id(2), -3);
+		failed += Check("7 / -2 (runtime)", Id(7) / Id(-2), -3);
+
+		return failed;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failed := ShiftLeft();
+		failed += ShiftRight();
+		failed += ShiftRightUnsigned();
+		failed += DivideMinusOne();
+		failed += Wrap();
+		failed += Truncate();
+
+		if(failed > 0) {
+			"int_semantics: {$failed} failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"int_semantics: all passed"->PrintLine();
+	}
+}
