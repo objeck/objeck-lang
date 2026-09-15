@@ -21,6 +21,7 @@ python -m unittest discover -s tools/fuzz -p "test_*.py"  # FUZZ_BIN=<bin> for t
 | `fuzzlib.py` | toolchain runner, output partitions, signatures, JIT report parser, known.json |
 | `run_fuzz.py` | driver: generate, compile, run every configuration, triage, summarize |
 | `reduce.py` | shrinks a finding's choice sequence while the finding still reproduces |
+| `emi.py` | EMI mode: mutates existing regression tests into variants that must print the same output |
 | `known.json` | suppressions: signature regexes of triaged findings |
 | `faults/` | a deliberately broken `obc` and `obr`, used to prove findings are caught |
 | `findings/` | reduced reproducers of real findings (`.obs` only); all are fixed and kept as guards, each also covered by a regression test |
@@ -150,6 +151,50 @@ means a different program once the draw order changes (`test_gen.py` pins it
 with golden hashes), and with the `--basic-lambdas` setting it was recorded
 with (stored in `choices.json`; findings from before the knob existed need
 `--basic-lambdas`).
+
+## EMI mode
+
+`emi.py` fuzzes with real programs instead of generated ones (equivalence
+modulo inputs). It takes regression tests that compile and exit 0 -- no
+`EXPECT_*`, `NONDETERMINISTIC_OUTPUT`/`DIFF_*`/JIT opt-out markers, network,
+thread or timing tests, and whose s0/off output repeats -- and writes variants
+that must print exactly what the original prints:
+
+```
+python tools/fuzz/emi.py --bin core/release/deploy-x64/bin --variants 10 --seed 1 -j 8
+python tools/fuzz/emi.py --bin <bin> --tests core_arithmetic,opt_* --variants 4
+python tools/fuzz/emi.py --bin <bin> --list        # eligible tests
+```
+
+- **dead**: `if(EmiGuardZq->Dead()) { ... };` at a statement boundary. The
+  guard is a static set in `Main` from `args->Size()`, so s3 cannot fold it;
+  the block writes live Int locals, clones the previous statement, loops, and
+  first calls `EmiGuardZq->Trip(<mark>)`, which prints and exits 97.
+- **delete**: a probe build puts `EmiGuardZq->Probe(K);` (stderr, once) at the
+  top of every if/else/while/for/each/do/label block and runs at s0/off;
+  variants empty blocks whose probe never printed.
+- **identity**: Int literals and Int locals become `(x + EmiGuardZq->Zero())`,
+  `(7 * EmiGuardZq->One())`, `xor`/`or` with zero; Float literals
+  `* EmiGuardZq->FOne()`; if/while conditions `(c) & EmiGuardZq->Live()`.
+
+Each variant is compiled at s0 and s3 and run under `--jit=off` and `--jit=1`;
+every configuration is compared with the original's s0/off run (stdout and
+zero/non-zero exit; configurations the original itself fails are dropped). A
+variant whose s0 compile fails is repaired by dropping the mutations on the
+error lines. The oracle is strict: any configuration that differs from the
+reference is a divergence, including every configuration agreeing on a
+different output (a front-end or emitter miscompile hits all opt levels and
+the interpreter alike). Divergences are confirmed by two re-runs, reduced to a
+minimal mutation set (ddmin), saved under `--out/diverge/<test>/v<n>/`
+(`variant.obs`, `reduced.obs`, `outcome.json`) and set exit status 1.
+Signatures read `diverge: ref,s0/off,... | s3/off,...` with `ref` the
+original; uniform ones are prefixed `uniform: dead guard taken;` (EMI-DEAD or
+exit 97), `uniform: exit changed;` or `uniform: output changed;`. Variants
+are a pure function of (seed, test, index, probe hits). `test_emi.py` checks
+determinism, that variants compile and agree, that `faults/fault_obc_emi.py`
+is caught both when only s3 takes the dead guard and when every opt level
+does (`FUZZ_FAULT_OPTS=s0,s3`), that the s3 bytecode keeps every dead block,
+and that the s3 build takes the guard when run with more than 4096 arguments.
 
 ## Proving it catches bugs
 
