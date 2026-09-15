@@ -1,0 +1,29 @@
+# EXPECT_COMPILE_ERROR: Cannot reference an instance method from this context
+#~
+Guards the boundary of captured method calls (v2026.10.0 C3). A lambda body
+may call an instance method on a captured object ('c->Inc()'), but calling an
+instance method with no receiver (implicit self) must still be rejected:
+lambdas do not capture 'self' or '@field' yet, so there is no instance to call
+it on. Accepting it would emit a call on the closure block as if it were self.
+~#
+class BadLambdaImplicitSelf {
+  @n : Int;
+
+  New() {
+    @n := 0;
+  }
+
+  method : public : Inc() ~ IntRef {
+    @n += 1;
+    return IntRef->New(@n);
+  }
+
+  method : public : Run() ~ Int {
+    f := FuncRef->New(\() ~ IntRef : () => Inc())<IntRef>;
+    return f()->Get();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    BadLambdaImplicitSelf->New()->Run()->PrintLine();
+  }
+}

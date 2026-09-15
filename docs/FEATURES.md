@@ -243,6 +243,35 @@ function : Mk(n : Int) ~ FuncRef<IntRef> {
 The verbose form with an explicit annotation is still supported and equivalent:
 `FuncRef->New(\() ~ IntRef : () => x)<IntRef>`.
 
+#### What a lambda can capture
+
+A lambda can use the locals and parameters of the method that creates it:
+values, strings, arrays, objects, function references and other `FuncRef`s.
+Inside the body you can call methods on a captured object (including virtual
+methods) and call a captured function or `FuncRef` directly.
+
+```ruby
+c := Counter->New();
+inc : FuncRef<IntRef> := \() => c->Inc();     # instance method on a captured object
+r : FuncRef<IntRef> := \() => IntRef->New(3);
+next : FuncRef<IntRef> := \() => IntRef->New(r()->Get() + 1);   # captured FuncRef called
+```
+
+Captures are **by copy**, taken when the lambda is created:
+
+- A later assignment to the captured local is not seen: with `n := 1;`, then a
+  lambda that reads `n`, then `n := 2;`, the lambda still sees `1`. A loop
+  variable captured in each iteration keeps that iteration's value.
+- An object is copied as a reference, so the lambda and the enclosing method
+  share it: `c->Inc()` inside the lambda is visible as `c->Get()` outside.
+  Rebinding the local (`c := Counter->New();`) does not change which object
+  the lambda uses.
+
+Not available in lambda bodies yet: `self`, `@field` access, and calling an
+instance method of the enclosing class without a receiver (`Inc()`), which is
+rejected with "Cannot reference an instance method from this context". Capture
+the object in a local and call through it instead.
+
 ### First-Class Functions
 ```ruby
 @f : static : (Int) ~ Int;

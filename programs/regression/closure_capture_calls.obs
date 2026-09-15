@@ -1,0 +1,202 @@
+#~
+Calls through captured variables inside lambda bodies (v2026.10.0 C3 + C6).
+
+C3: an instance method called on a captured program-class object ('c->Inc()')
+was rejected with "Cannot reference an instance method from this context":
+the lambda is compiled as a static function and the static check did not know
+that a captured receiver is loaded from closure memory.
+C6: calling a captured FuncRef ('r()') or a captured function reference
+('g()') inside a lambda failed with "Undefined function/method call": the
+functional-call lookup never consulted the enclosing scope's captures.
+
+Also pins the capture semantics documented in docs/FEATURES.md: objects are
+shared (mutation through the closure is visible outside), values are copied
+when the lambda is created (a later reassignment is not seen), and a captured
+young object survives promotion by minor GCs while the closure is alive.
+~#
+use Collection;
+
+class Counter {
+  @n : Int;
+
+  New() {
+    @n := 0;
+  }
+
+  method : public : Inc() ~ IntRef {
+    @n += 1;
+    return IntRef->New(@n);
+  }
+
+  method : public : Get() ~ Int {
+    return @n;
+  }
+}
+
+class Animal {
+  New() {
+  }
+
+  method : public : Sound() ~ Int {
+    return 1;
+  }
+
+  method : virtual : public : Legs() ~ Int;
+}
+
+class Dog from Animal {
+  New() {
+    Parent();
+  }
+
+  method : public : Sound() ~ Int {
+    return 2;
+  }
+
+  method : public : Legs() ~ Int {
+    return 4;
+  }
+}
+
+class Junk {
+  @a : Int;
+  @b : Int;
+  @c : Int;
+  @d : Int;
+
+  New(v : Int) {
+    @a := v; @b := v; @c := v; @d := v;
+  }
+
+  method : public : Sum() ~ Int {
+    return @a + @b + @c + @d;
+  }
+}
+
+class ClosureCaptureCalls {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "PASS: {$name}"->PrintLine();
+    }
+    else {
+      "FAIL: {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Seven() ~ IntRef {
+    return IntRef->New(7);
+  }
+
+  function : MakeCounterCall(c : Counter) ~ FuncRef<IntRef> {
+    return FuncRef->New(\() ~ IntRef : () => c->Inc())<IntRef>;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    # instance method on a captured object; the object is shared
+    c := Counter->New();
+    inc := FuncRef->New(\() ~ IntRef : () => c->Inc())<IntRef>;
+    first := inc()->Get();
+    second := inc()->Get();
+    Check("instance call on capture", first = 1 & second = 2);
+    Check("mutation visible outside", c->Get() = 2);
+
+    # virtual and overridden methods on a captured object bind exactly as they
+    # do outside the lambda: the abstract virtual Legs() dispatches to Dog (4),
+    # the non-virtual Sound() binds to the declared type Animal (1)
+    a : Animal := Dog->New();
+    legs := FuncRef->New(\() ~ IntRef : () => IntRef->New(a->Legs()))<IntRef>;
+    snd := FuncRef->New(\() ~ IntRef : () => IntRef->New(a->Sound() * 10 + a->Legs()))<IntRef>;
+    outside := a->Sound() * 10 + a->Legs();
+    Check("virtual call on capture", legs()->Get() = 4);
+    Check("overridden call on capture", snd()->Get() = outside & outside = 14);
+    dog := Dog->New();
+    dog_snd := FuncRef->New(\() ~ IntRef : () => IntRef->New(dog->Sound()))<IntRef>;
+    Check("override on derived-typed capture", dog_snd()->Get() = 2);
+
+    # capture by copy: a value reassigned after the lambda is created is not seen
+    n := 1;
+    getn := FuncRef->New(\() ~ IntRef : () => IntRef->New(n))<IntRef>;
+    n := 2;
+    Check("capture by copy (value)", getn()->Get() = 1 & n = 2);
+
+    # the reference is copied too: rebinding the local keeps the old object
+    d := Counter->New();
+    incd := FuncRef->New(\() ~ IntRef : () => d->Inc())<IntRef>;
+    old_d := d;
+    d := Counter->New();
+    incd();
+    Check("capture by copy (reference)", old_d->Get() = 1 & d->Get() = 0);
+
+    # loop variable: each closure keeps the value from its own iteration
+    loops := Vector->New()<FuncRef<IntRef>>;
+    for(i := 0; i < 5; i += 1;) {
+      loops->AddBack(FuncRef->New(\() ~ IntRef : () => IntRef->New(i * 7))<IntRef>);
+    };
+    loop_ok := true;
+    for(i := 0; i < 5; i += 1;) {
+      f := loops->Get(i);
+      if(f()->Get() <> i * 7) {
+        loop_ok := false;
+      };
+    };
+    Check("capture of loop variable", loop_ok);
+
+    # stored closures called later from a Vector, each with its own object
+    counters := Vector->New()<Counter>;
+    stored := Vector->New()<FuncRef<IntRef>>;
+    for(i := 0; i < 4; i += 1;) {
+      k := Counter->New();
+      counters->AddBack(k);
+      stored->AddBack(MakeCounterCall(k));
+    };
+    for(i := 0; i < 4; i += 1;) {
+      for(j := 0; j <= i; j += 1;) {
+        g := stored->Get(i);
+        g();
+      };
+    };
+    stored_ok := true;
+    for(i := 0; i < 4; i += 1;) {
+      if(counters->Get(i)->Get() <> i + 1) {
+        stored_ok := false;
+      };
+    };
+    Check("stored closures called later", stored_ok);
+
+    # a young captured object promoted by minor GCs while the closure is alive:
+    # churn well past the 128MB nursery between creating and calling it
+    young := Counter->New();
+    young_inc := FuncRef->New(\() ~ IntRef : () => young->Inc())<IntRef>;
+    young_inc();
+    churn := 0;
+    for(i := 0; i < 4000000; i += 1;) {
+      junk := Junk->New(i % 4);
+      churn += junk->Sum();
+    };
+    young_inc();
+    after := young_inc()->Get();
+    Check("capture survives minor GC", after = 3 & young->Get() = 3 & churn = 24000000);
+
+    # C6: a captured FuncRef called inside a lambda
+    x := IntRef->New(3);
+    r := FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+    outer := FuncRef->New(\() ~ IntRef : () => IntRef->New(r()->Get() + 1))<IntRef>;
+    Check("captured FuncRef call", outer()->Get() = 4);
+
+    # C6: a captured function reference called inside a lambda
+    seven := Seven() ~ IntRef;
+    call_seven := FuncRef->New(\() ~ IntRef : () => seven())<IntRef>;
+    Check("captured function reference call", call_seven()->Get() = 7);
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} closure capture call check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: closure capture calls"->PrintLine();
+  }
+}
