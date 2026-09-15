@@ -817,7 +817,10 @@ class TestRun:
         self.work = os.path.join(args.work, name)
         os.makedirs(self.work, exist_ok=True)
         self.libs = ",".join([rdiff.BASE_LIBS] + rdiff.parse_markers(self.text)["extra_libs"])
-        self.cwd = self.work
+        # programs run in an empty directory: sources and .obe files pile up in
+        # self.work, and a test that lists its working directory would see them
+        self.cwd = os.path.join(self.work, "run")
+        os.makedirs(self.cwd, exist_ok=True)
         self.rec = {"test": name, "status": "ok", "variants": 0, "pass": 0, "invalid": 0, "semantic": 0,
                     "diverge": 0, "flaky": 0, "repaired": 0, "findings": [], "notes": []}
 
