@@ -7057,8 +7057,18 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
       }
       NextToken();
 
+      // an enum or consts item receiver, glued to 'C#R' by the expression parser:
+      // 'C->R->As(Int)->ToString()'. Build the same enum-call head the statement
+      // parser does, so the chain dispatches on the item's value; as a variable
+      // the item was an undeclared local and the call read no receiver.
+      const size_t enum_mark = ident.find(L'#');
+      if(Match(TOKEN_ASSESSOR) && enum_mark != std::wstring::npos && variable) {
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              ident.substr(0, enum_mark), ident.substr(enum_mark + 1));
+        method_call->SetCastType(variable->GetCastType(), false);
+      }
       // subsequent method calls
-      if(Match(TOKEN_ASSESSOR)) {
+      else if(Match(TOKEN_ASSESSOR)) {
         method_call = ParseMethodCall(variable, depth + 1);
         method_call->SetCastType(variable->GetCastType(), false);
       }
