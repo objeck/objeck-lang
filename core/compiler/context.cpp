@@ -1440,7 +1440,26 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     std::vector<Expression*> capture_expressions = diagnostic_expressions;
 #endif
 
+    // The lambda body is its own method, but it is analyzed from inside the
+    // enclosing statement (a return, an assignment or a call argument). Left
+    // set, those flags made RogueReturn() treat every standalone call in the
+    // body as a used value, so its result was never popped and the
+    // interpreter's operand stack came back unbalanced from the lambda.
+    const int capture_in_loop = in_loop;
+    const bool capture_in_assignment = in_assignment;
+    const bool capture_in_return = in_return;
+    const int capture_expression_depth = expression_depth;
+    const int capture_nested_call_depth = nested_call_depth;
+    in_loop = expression_depth = nested_call_depth = 0;
+    in_assignment = in_return = false;
+
     AnalyzeMethod(method, depth + 1);
+
+    in_loop = capture_in_loop;
+    in_assignment = capture_in_assignment;
+    in_return = capture_in_return;
+    expression_depth = capture_expression_depth;
+    nested_call_depth = capture_nested_call_depth;
 
 #ifdef _DIAG_LIB
     diagnostic_expressions = capture_expressions;

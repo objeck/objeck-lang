@@ -1,0 +1,100 @@
+#~
+Regression: a call used as a statement inside a lambda body must discard its
+result. The context analyzer analyzed the lambda body with the enclosing
+statement's flags still set (in_return / in_assignment / call-argument
+nesting), so RogueReturn() treated `Twice(1);` in the body as a used value and
+no POP was emitted. The lambda then returned with its operand stack
+unbalanced; under the interpreter (--jit=off) the leaked value shifted the
+caller's stack and the program died with an access violation before printing
+anything. The JIT hid it.
+
+Covers lambdas built in a return, an assignment and a call argument, and
+discarded Int, Float, object and function results (POP_INT, POP_FLOAT,
+POP_INT x2), plus a dynamic call statement through a local function variable.
+~#
+
+class ClosureBodyCallResult {
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
+    # the original shape: Check() calls between the closure calls
+    after := CaptureA(100);
+    failures += Check("return: FuncRef->New lambda", after()->Get() = 100);
+    aliased := CaptureB(200);
+    failures += Check("return: FuncRef->New lambda (2)", aliased()->Get() = 200);
+    bare := CaptureC(300);
+    failures += Check("return: bare lambda", bare()->Get() = 300);
+
+    # lambda built in an assignment, discarding float/object/function results
+    base := IntRef->New(7);
+    mixed := FuncRef->New(\() ~ IntRef : () => {
+      Half(3);
+      Box(4);
+      Pick();
+      Twice(5);
+      return base;
+    })<IntRef>;
+    failures += Check("assignment: mixed discarded results", mixed()->Get() = 7);
+
+    # lambda passed straight as a call argument
+    failures += Check("argument: lambda", Apply(FuncRef->New(\() ~ IntRef : () => {
+      Twice(6);
+      return base;
+    })<IntRef>) = 7);
+
+    # dynamic call statement through a local function variable
+    dyn := FuncRef->New(\() ~ IntRef : () => {
+      f := Double(IntRef) ~ IntRef;
+      f(base);
+      return base;
+    })<IntRef>;
+    failures += Check("dynamic call statement", dyn()->Get() = 7);
+
+    # repeated calls keep the operand stack balanced
+    sum := 0;
+    for(i := 0; i < 10000; i += 1;) {
+      sum += after()->Get() + mixed()->Get() + dyn()->Get();
+    };
+    failures += Check("repeated calls", sum = 10000 * 114);
+
+    if(failures > 0) {
+      "FAIL: {$failures} closure body call result check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: closure body call results"->PrintLine();
+  }
+
+  function : CaptureA(n : Int) ~ FuncRef<IntRef> {
+    base := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => { Twice(1); return base; })<IntRef>;
+  }
+
+  function : CaptureB(n : Int) ~ FuncRef<IntRef> {
+    base := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => { Twice(2); return base; })<IntRef>;
+  }
+
+  function : CaptureC(n : Int) ~ FuncRef<IntRef> {
+    base := IntRef->New(n);
+    return \() => { Twice(3); return base; };
+  }
+
+  function : Apply(f : FuncRef<IntRef>) ~ Int {
+    return f()->Get();
+  }
+
+  function : Twice(k : Int) ~ Int { return k * 2; }
+  function : Half(k : Int) ~ Float { return k / 2.0; }
+  function : Box(k : Int) ~ IntRef { return IntRef->New(k); }
+  function : Double(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * 2); }
+  function : Pick() ~ (IntRef) ~ IntRef { return Double(IntRef) ~ IntRef; }
+
+  function : Check(name : String, ok : Bool) ~ Int {
+    if(ok) {
+      "PASS: {$name}"->PrintLine();
+      return 0;
+    };
+    "FAIL: {$name}"->PrintLine();
+    return 1;
+  }
+}
