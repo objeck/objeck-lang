@@ -2541,43 +2541,58 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-  switch(left->GetType()) {
+  // A func-ref is two words, and each is stored by its OWN working-stack
+  // shape. The two routinely differ: a closure built in this method is
+  // LOAD_INT_VAR (closure memory, a frame slot or a register) under
+  // LOAD_INT_LIT (the packed method id, an immediate). Every case used to
+  // assume the second word had the first word's shape, so the immediate case
+  // wrote the closure slot's frame OFFSET (e.g. -120 = 0xff..ff88) as the
+  // closure pointer, and the first call of the lambda read its captures
+  // through it -> access violation (jit_funcref_store_mixed_words.obs).
+  if(is_func_var) {
+    RegInstr* left2 = working_stack.front();
+    working_stack.pop_front();
+    const long offsets[2] = { instr->GetOperand3(), instr->GetOperand3() + (long)sizeof(size_t) };
+    RegInstr* words[2] = { left, left2 };
+    for(int w = 0; w < 2; ++w) {
+      RegInstr* word = words[w];
+      switch(word->GetType()) {
+      case IMM_INT:
+        move_imm_mem(word->GetOperand(), offsets[w], dest);
+        break;
+
+      case MEM_INT: {
+        RegisterHolder* holder = GetRegister();
+        move_mem_reg((long)word->GetOperand(), RBP, holder->GetRegister());
+        move_reg_mem(holder->GetRegister(), offsets[w], dest);
+        ReleaseRegister(holder);
+      }
+        break;
+
+      case REG_INT:
+        move_reg_mem(word->GetRegister()->GetRegister(), offsets[w], dest);
+        ReleaseRegister(word->GetRegister());
+        break;
+
+      default:
+        compile_success = false;
+        break;
+      }
+    }
+    delete left2;
+    left2 = nullptr;
+  }
+  else switch(left->GetType()) {
   case IMM_INT:
-    if(is_func_var) {
-      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
-    }
+    move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    if(is_func_var) {
-      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_mem_reg((long)left2->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // cache the register for local stores, release otherwise
-    if(is_local && !is_func_var) {
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {
@@ -2588,24 +2603,9 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
 
   case REG_INT: {
     RegisterHolder* holder = left->GetRegister();
-    if(is_func_var) {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      RegisterHolder* holder2  = left2->GetRegister();
-
-      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-      ReleaseRegister(holder2);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // cache the register for local stores, release otherwise
-    if(is_local && !is_func_var) {
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {

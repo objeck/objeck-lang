@@ -1962,42 +1962,54 @@ void JitArm64::ProcessStore(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-  switch(left->GetType()) {
+  // A func-ref is two words, and each is stored by its OWN working-stack
+  // shape: a closure built in this method is a slot or register (closure
+  // memory) under an immediate (the packed method id). Every case used to
+  // assume the second word had the first word's shape (mirrors the AMD64 fix;
+  // jit_funcref_store_mixed_words.obs).
+  if(is_func_var) {
+    RegInstr* left2 = working_stack.front();
+    working_stack.pop_front();
+    const long offsets[2] = { instr->GetOperand3(), instr->GetOperand3() + (long)sizeof(size_t) };
+    RegInstr* words[2] = { left, left2 };
+    for(int w = 0; w < 2; ++w) {
+      RegInstr* word = words[w];
+      switch(word->GetType()) {
+      case IMM_INT:
+        move_imm_mem((int64_t)word->GetOperand(), offsets[w], dest);
+        break;
+
+      case MEM_INT: {
+        RegisterHolder* holder = GetRegister();
+        move_mem_reg((long)word->GetOperand(), SP, holder->GetRegister());
+        move_reg_mem(holder->GetRegister(), offsets[w], dest);
+        ReleaseRegister(holder);
+      }
+        break;
+
+      case REG_INT:
+        move_reg_mem(word->GetRegister()->GetRegister(), offsets[w], dest);
+        ReleaseRegister(word->GetRegister());
+        break;
+
+      default:
+        compile_success = false;
+        break;
+      }
+    }
+    delete left2;
+    left2 = nullptr;
+  }
+  else switch(left->GetType()) {
   case IMM_INT:
-    if(is_func_var) {
-      move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_imm_mem((int64_t)left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
-    }
+    move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    if(is_func_var) {
-      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_mem_reg((long)left2->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
-    if(is_local && !is_func_var) {
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {
@@ -2008,22 +2020,8 @@ void JitArm64::ProcessStore(StackInstr* instr) {
 
   case REG_INT: {
     RegisterHolder* holder = left->GetRegister();
-    if(is_func_var) {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      RegisterHolder* holder2  = left2->GetRegister();
-      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-      ReleaseRegister(holder2);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
-    if(is_local && !is_func_var) {
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {
