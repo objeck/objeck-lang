@@ -1,0 +1,106 @@
+#~
+Regression: dead-store elimination dropped side effects.
+
+Found by the differential fuzzer against hardening/integration-3 (seeds
+20263365 and 20262685, signature
+"diverge: s0/off,s0/jit1 | s3/off,s3/default,s3/jit1"). At -opt s1 and above,
+DeadStore removed an assignment to a local that is overwritten before it is
+read, and with it every instruction of the assignment's statement, not only
+the store. When the value had effects they were lost:
+
+  v0 := sh[0]->M(p0);   # M updates a field; the call was removed
+  v0 := p0 / 10;
+
+The same applied to constructors, traps, and operations that raise a runtime
+error (an integer division by zero, an array index out of bounds; those abort
+the program, so they are checked by hand, not here). The fix keeps the
+statement unless its value is effect-free.
+~#
+
+class DsShape {
+  @a : Int;
+  New(a : Int) { @a := a; }
+  method : public : M(x : Int) ~ Int { @a := @a * 2 + x; return @a; }
+  method : public : A() ~ Int { return @a; }
+}
+
+class DsCounter {
+  @count : static : Int;
+  New() { @count += 1; }
+  function : Count() ~ Int { return @count; }
+}
+
+class OptDeadStoreSideEffects {
+  # method call whose result is discarded by a later store
+  function : Call(p0 : Int) ~ Int {
+    s := DsShape->New(5);
+    v0 := 37;
+    v0 := s->M(p0);
+    v0 := p0 / 10;
+    return s->A();
+  }
+
+  # the call nested in a larger expression (the fuzzer's shape)
+  function : Nested(p0 : Int) ~ Int {
+    sh := DsShape->New[2];
+    sh[0] := DsShape->New(5);
+    sh[1] := DsShape->New(7);
+    v0 := 37;
+    v0 := ((sh[v0 and 1]->M(p0) << 9) xor v0) % 1048573;
+    v0 := p0 / 10;
+    return sh[p0 and 1]->A();
+  }
+
+  # constructor with a side effect
+  function : Construct() ~ Int {
+    before := DsCounter->Count();
+    o := DsCounter->New();
+    o := Nil;
+    return DsCounter->Count() - before;
+  }
+
+  # a static function with an effect, called from the discarded value
+  function : Bump() ~ Int {
+    DsCounter->New();
+    return 1;
+  }
+
+  function : Trap() ~ Int {
+    before := DsCounter->Count();
+    v0 := Bump() + 6;
+    v0 := 0;
+    return DsCounter->Count() - before + 6 + v0;
+  }
+
+  # pure arithmetic is still removed correctly and returns the right value
+  function : Pure(p0 : Int) ~ Int {
+    v0 := p0 * 3 + (p0 << 2);
+    v0 := p0 + 1;
+    return v0;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    ok := true;
+
+    got := Call(3);
+    if(got <> 13) { "FAIL: Call="->Print(); got->PrintLine(); ok := false; };
+
+    got := Nested(3);
+    if(got <> 17) { "FAIL: Nested="->Print(); got->PrintLine(); ok := false; };
+
+    got := Construct();
+    if(got <> 1) { "FAIL: Construct="->Print(); got->PrintLine(); ok := false; };
+
+    got := Pure(4);
+    if(got <> 5) { "FAIL: Pure="->Print(); got->PrintLine(); ok := false; };
+
+    # a trap (printing) inside the discarded value must still run
+    got := Trap();
+    if(got <> 7) { "FAIL: Trap="->Print(); got->PrintLine(); ok := false; };
+
+    if(ok = false) {
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

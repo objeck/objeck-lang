@@ -1310,7 +1310,13 @@ IntermediateBlock* ItermediateOptimizer::DeadStore(IntermediateBlock* inputs)
     case STOR_FUNC_VAR:
       if(instr->GetStatement() && IsDeadStore(instr, i, input_instrs)) {
         const std::pair<size_t, size_t> dead_store_edit = DeadStoreEdit(i, input_instrs);
-        dead_store_edits.push_back(dead_store_edit);
+        // Only the store is dead, not the expression: removing a statement
+        // whose value has effects (a method call, an allocation, a trap, a
+        // division that can fault) changed behaviour. `v0 := s->M(p0); v0 := 1;`
+        // lost the call to M at s1+ (fuzzer, programs/regression/opt_dead_store_side_effects.obs).
+        if(IsEffectFreeRange(dead_store_edit.first, dead_store_edit.second, input_instrs)) {
+          dead_store_edits.push_back(dead_store_edit);
+        }
       }
       break;
 
@@ -1345,6 +1351,78 @@ bool ItermediateOptimizer::InDeadStoreRange(size_t pos, std::vector<std::pair<si
 
   return false;
 }
+// True when the instructions in [start_pos, end_pos) (the dead store's value,
+// excluding the store itself at end_pos) can be dropped without a visible
+// difference: no calls, allocations, traps, writes, or operations that can
+// raise a runtime error (division, array access, Nil dereference).
+bool ItermediateOptimizer::IsEffectFreeRange(size_t start_pos, size_t end_pos, std::vector<IntermediateInstruction*>& input_instrs)
+{
+  for(size_t i = start_pos; i < end_pos && i < input_instrs.size(); ++i) {
+    IntermediateInstruction* instr = input_instrs[i];
+    switch(instr->GetType()) {
+    case LOAD_INT_LIT:
+    case LOAD_CHAR_LIT:
+    case LOAD_FLOAT_LIT:
+    case LOAD_CLS_MEM:
+    case LOAD_INST_MEM:
+    case EQL_INT:
+    case NEQL_INT:
+    case LES_INT:
+    case GTR_INT:
+    case LES_EQL_INT:
+    case GTR_EQL_INT:
+    case EQL_FLOAT:
+    case NEQL_FLOAT:
+    case LES_FLOAT:
+    case GTR_FLOAT:
+    case LES_EQL_FLOAT:
+    case GTR_EQL_FLOAT:
+    case AND_INT:
+    case OR_INT:
+    case ADD_INT:
+    case SUB_INT:
+    case MUL_INT:
+    case BIT_AND_INT:
+    case BIT_OR_INT:
+    case BIT_XOR_INT:
+    case BIT_NOT_INT:
+    case SHL_INT:
+    case SHR_INT:
+    case ADD_FLOAT:
+    case SUB_FLOAT:
+    case MUL_FLOAT:
+    case DIV_FLOAT:
+    case I2F:
+    case F2I:
+    case SWAP_INT:
+    case POP_INT:
+    case POP_FLOAT:
+      break;
+
+    case LOAD_INT_VAR:
+    case LOAD_FLOAT_VAR:
+    case LOAD_FUNC_VAR:
+      // a local, or a field of 'self' or of the class; a field of any other
+      // object (an inlined getter) faults when that object is Nil
+      if(instr->GetOperand2() != LOCL) {
+        if(i == start_pos) {
+          return false;
+        }
+        const InstructionType prev = input_instrs[i - 1]->GetType();
+        if(prev != LOAD_INST_MEM && prev != LOAD_CLS_MEM) {
+          return false;
+        }
+      }
+      break;
+
+    default:
+      return false;
+    }
+  }
+
+  return true;
+}
+
 std::pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, std::vector<IntermediateInstruction*>& input_instrs)
 {
   size_t end_pos = start_pos;
