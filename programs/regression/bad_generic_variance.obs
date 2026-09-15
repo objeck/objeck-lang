@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Incompatible generic type arguments: 'Producer<Dog>' and 'Producer<Animal>'
 #~
 Variance must stay sound: a covariant 'out T' does NOT allow the reverse
 direction. Producer<Animal> is not assignable to Producer<Dog>.

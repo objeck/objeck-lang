@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Cannot inherit from an undefined class type
 class BadInheritUnknown from NoSuchParentEver {
     New() { Parent(); }
     function : Main(args : String[]) ~ Nil {

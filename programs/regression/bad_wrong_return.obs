@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Invalid cast with classes: System.Int and System.String
 class BadWrongReturn {
     function : Main(args : String[]) ~ Nil {
         n := GetNum();

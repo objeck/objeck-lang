@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Invalid expression: unexpected token
 #~
 The 'u' suffix reads a literal across the unsigned range, so a value past
 2^64-1 has no representation and must be rejected rather than wrapped.

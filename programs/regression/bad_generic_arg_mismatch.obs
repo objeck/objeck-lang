@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Incompatible generic type arguments: 'Collection.Vector<System.String>' and 'Collection.Vector<System.IntRef>'
 #~
 Guards the generic type-argument compatibility check (and its readable
 diagnostic). Assigning a Vector<IntRef> instance to a Vector<String>-typed

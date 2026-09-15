@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Cannot assign to readonly record field outside constructor
 
 record : readonly : Frozen {
     @x : Int;

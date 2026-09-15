@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Array dimensions cannot exceed 8
 
 class BadArrayTooManyDimensions {
     function : Main(args : String[]) ~ Nil {

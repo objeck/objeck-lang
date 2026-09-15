@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Invalid format specifier in string interpolation: 'zq'
 # An unrecognized interpolation format specifier must be rejected at compile time.
 class BadStringInterpFormat {
     function : Main(args : String[]) ~ Nil {
