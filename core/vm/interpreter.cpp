@@ -3245,7 +3245,7 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
     pool.free_frames.reserve(CALL_STACK_SIZE);
     for(size_t i = 0; i < FRAME_POOL_FILL; ++i) {
       StackFrame* frame = new StackFrame();
-      frame->mem = (size_t*)calloc(LOCAL_SIZE, sizeof(char));
+      frame->mem = (size_t*)calloc(FRAME_MEM_SIZE, sizeof(char));
       pool.free_frames.push_back(frame);
     }
   }
@@ -3259,8 +3259,8 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
   // on release, for a compiled callee that addresses one word of it; the
   // compiler refuses a method that needs more than LOCAL_SIZE.
   size_t bytes = (size_t)method->GetMemorySize() + 2 * sizeof(size_t);
-  if(bytes > LOCAL_SIZE) {
-    bytes = LOCAL_SIZE;
+  if(bytes > FRAME_MEM_SIZE) {
+    bytes = FRAME_MEM_SIZE;
   }
   memset(frame->mem, 0, bytes);
 

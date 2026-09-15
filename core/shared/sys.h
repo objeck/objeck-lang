@@ -49,8 +49,12 @@
 
 #include "logger.h"
 
-// memory size for local stack frames
+// memory size for local stack frames: the locals a method may declare, in
+// bytes (the compiler's limit on mem_size)
 #define LOCAL_SIZE 768
+// an interpreter frame's buffer: those locals plus the two words ahead of
+// them, mem[0] the instance and mem[1] the and/or temporary (local id 0)
+#define FRAME_MEM_SIZE (LOCAL_SIZE + 2 * sizeof(size_t))
 #define INT_VALUE int32_t
 #define INT64_VALUE int64_t
 #define FLOAT_VALUE double

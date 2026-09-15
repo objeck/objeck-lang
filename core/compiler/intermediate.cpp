@@ -7150,8 +7150,15 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
   }
   // method
   else {
+    // Locals only, in bytes. The and/or temporary takes local id 0, so the
+    // declared locals start at id 1, but its word is not counted here: the
+    // VM adds two words to every frame, the instance and the and/or slot
+    // (StackMethod::NewMemory, GetStackFrame's FRAME_MEM_SIZE), and the
+    // optimizer's inliner and LICM rely on the same convention. The old
+    // 'size = 1' here was dead -- overwritten on the next line -- and in the
+    // wrong unit besides. LOCAL_SIZE bounds this value, not the whole frame.
     if(current_method->HasAndOr()) {
-      size = index = 1;
+      index = 1;
     }
     size = CalculateEntrySpace(current_table, index, declarations, false);
   }
