@@ -12,33 +12,25 @@ state (capture_lambda/method/table) after the inner lambda instead of restoring
 the enclosing lambda's, so the next captured variable in the outer body
 dereferenced a null capture table.
 
-The capturing checks avoid two separate v2026.9.4 VM bugs so the test runs in
-every mode: a capturing lambda held in a local function variable and called
-directly crashes under --jit=1, and interleaving calls through several
-capturing FuncRef lambdas with other calls crashes the interpreter. So the
-captures go through FuncRef helpers, all of them run before any Check call,
-and the nested call's result is always used.
+The capturing checks go through FuncRef helpers: a capturing lambda held in a
+local function variable and called directly crashes under --jit=1 on
+v2026.9.4. The nested lambda calls are plain statements, which also needs the
+lambda-body discard fix (closure_body_call_result).
 ~#
 use Collection;
 
 class ClosureLambdaParams {
   function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
     # capture after a nested lambda: the outer lambda's capture state must
     # survive the inner lambda's analysis
     typed := CaptureAfterTyped(100);
-    typed_r := typed();
+    failures += Check("capture after nested typed lambda", typed()->Get() = 100);
     aliased := CaptureAfterAlias(200);
-    aliased_r := aliased();
+    failures += Check("capture after nested alias lambda", aliased()->Get() = 200);
     bare := CaptureAfterBare(300);
-    bare_r := bare();
-    typed_ok := typed_r->Get() = 100;
-    alias_ok := aliased_r->Get() = 200;
-    bare_ok := bare_r->Get() = 300;
-
-    failures := 0;
-    failures += Check("capture after nested typed lambda", typed_ok);
-    failures += Check("capture after nested alias lambda", alias_ok);
-    failures += Check("capture after nested bare lambda", bare_ok);
+    failures += Check("capture after nested bare lambda", bare()->Get() = 300);
 
     v := Vector->New()<IntRef>;
     v->AddBack(IntRef->New(1));
@@ -86,21 +78,17 @@ class ClosureLambdaParams {
     base := IntRef->New(n);
     return FuncRef->New(\() ~ IntRef : () => {
       step := \(Int) ~ Int : (b) => b + 1;
-      if(step(1) <> 2) {
-        return IntRef->New(-1);
-      };
+      step(1);
       return base;
     })<IntRef>;
   }
 
-  # alias-typed lambdas (no parameter-list scan): isolates the capture restore
+  # alias-typed lambda (no parameter-list scan): isolates the capture restore
   function : CaptureAfterAlias(n : Int) ~ FuncRef<IntRef> {
     base := IntRef->New(n);
     return FuncRef->New(\() ~ IntRef : () => {
       g := \Func2I->I : (b) => b + 1;
-      if(g(1) <> 2) {
-        return IntRef->New(-1);
-      };
+      g(1);
       return base;
     })<IntRef>;
   }
@@ -110,9 +98,7 @@ class ClosureLambdaParams {
     base := IntRef->New(n);
     return \() => {
       odd := \(Int) ~ Bool : (k) => k % 2 = 1;
-      if(odd(2)) {
-        return IntRef->New(-1);
-      };
+      odd(2);
       return base;
     };
   }
