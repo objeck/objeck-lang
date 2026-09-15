@@ -3019,6 +3019,9 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
   for(long i = 0; i < size; i++) {
     str[i] = PopInt(op_stack, stack_pos);
   }
+  // The array is old (AllocateArray) and the Strings are young: record it, or a minor
+  // GC neither marks nor repairs elements held only through this array (G13).
+  MemoryManager::WriteBarrier(array);
 #ifdef _DEBUG
   std::wcout << L"stack oper: CPY_CHAR_STR_ARYS" << std::endl;
 #endif
