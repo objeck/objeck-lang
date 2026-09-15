@@ -116,6 +116,16 @@ class ToolchainTest(unittest.TestCase):
         self.assertEqual(list(s["signatures"]),
                          ["diverge: s0/off,s3/off,s3/default | s3/jit1,s0/jit1 first=F#=# vs F#=#"])
 
+    def test_vm_that_ignores_jit1_fails_the_coverage_gate(self):
+        # faults/fault_obr_nojit.py turns --jit=1 into --jit=off: every output
+        # agrees, the report is empty, and only positive evidence notices
+        os.environ["FUZZ_REAL_OBR"] = os.path.join(BIN, "obr" + EXE)
+        status, s = self.fuzz(["--obr", os.path.join(HERE, "faults", "fault_obr_nojit.py"),
+                               "--min-jit", "0.5"], self.SEEDS[:3], ["F2"])
+        self.assertEqual(s["stats"]["new"], 0, s["signatures"])
+        self.assertEqual(s["jit_compiled"], 0)
+        self.assertEqual(status, 1)
+
     def test_reducer_refuses_a_program_that_is_not_a_finding(self):
         import reduce
         d = tempfile.mkdtemp(prefix="fuzz_reduce_clean_")

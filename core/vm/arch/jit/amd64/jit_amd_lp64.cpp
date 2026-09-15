@@ -7981,6 +7981,7 @@ void JitAmd64::ProcessInlineMethod(StackMethod* callee, [[maybe_unused]] StackIn
   skip_jump = false;
   is_inlining = true;
   inline_callee = callee;
+  inlined_callees.push_back(callee);
 
   ProcessInstructions();
 
@@ -8196,6 +8197,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     method_pins_float = false;
     is_inlining = false;
     inline_callee = nullptr;
+    inlined_callees.clear();
     direct_callee = nullptr;
     virtual_site = nullptr;
     virtual_sites.clear();
@@ -8451,6 +8453,12 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
 
       return false;
+    }
+
+    if(JitReportEnabled()) {
+      for(StackMethod* inlined : inlined_callees) {
+        std::wcerr << L"[jit] " << method->GetName() << L": inlined " << inlined->GetName() << std::endl;
+      }
     }
 
     // F3: a jump that leaves a pinned loop goes through a stub that stores the

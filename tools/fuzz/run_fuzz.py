@@ -9,11 +9,13 @@ on stdout or on zero/non-zero exit, crash, time out, or whose compile crashes
 or writes no .obe, are findings. A finding's signature (fuzzlib.signature) is
 matched against known.json; unmatched signatures are new.
 
-Under s3/jit1 the VM runs with OBJECK_JIT_REPORT=1, and every method the JIT
-hands back to the interpreter is counted against the generated methods. The run
-fails when fewer than --min-jit (default 90%) were compiled overall, because a
-differential fuzzer whose methods never reach the JIT compares the interpreter
-with itself.
+Under s3/jit1 the VM runs with OBJECK_JIT_REPORT=1. A generated method counts
+as compiled only when the report names it ('compiled', 'compiled on entry' or
+'inlined <it>') and does not reject it; a method the report never mentions is
+not compiled. The run fails when fewer than --min-jit were compiled overall,
+because a differential fuzzer whose methods never reach the JIT compares the
+interpreter with itself -- and a VM that ignores --jit=1 prints no report at
+all, so counting only rejections would have scored it 100%.
 
 Findings are saved under --out/<signature hash>/seed_<n>/ with the program,
 its recorded choices (for reduce.py) and every run's output. Exit status: 0
@@ -30,8 +32,9 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import fuzzlib  # noqa: E402
-import gen      # noqa: E402
+import fuzzlib       # noqa: E402
+import gen           # noqa: E402
+import known_schema  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -71,10 +74,18 @@ def main(argv=None):
     ap.add_argument("--timeout", type=float, default=30.0, help="seconds per run")
     ap.add_argument("--obc", default=None, help="override the compiler (a .py file runs under python)")
     ap.add_argument("--obr", default=None, help="override the VM (a .py file runs under python)")
-    ap.add_argument("--known", default=os.path.join(HERE, "known.json"))
+    ap.add_argument("--known", default=os.path.join(HERE, "known.json"),
+                    help="suppressions, in the schema of known_schema.py")
+    ap.add_argument("--leg", default="",
+                    help="nightly leg name; known.json entries with a leg regex match only when it is given")
     ap.add_argument("--out", default=os.environ.get("OBJECK_FUZZ_OUT") or os.path.join(HERE, "out"),
                     help="findings directory (default: $OBJECK_FUZZ_OUT, else tools/fuzz/out)")
-    ap.add_argument("--min-jit", type=float, default=0.90, help="minimum JIT-compiled fraction")
+    # 0.70: on the integration-1 x64 VM, positive evidence measures about 76%
+    # (40 swarm programs). The rest are methods reached only from compiled code,
+    # which never counts a call toward the auto-JIT threshold, so they stay
+    # interpreted; the old rejection-only metric reported ~97% for the same runs.
+    ap.add_argument("--min-jit", type=float, default=0.70,
+                    help="minimum JIT-compiled fraction, on positive report evidence (default 0.70)")
     ap.add_argument("--keep", action="store_true", help="keep every program's work directory")
     ap.add_argument("--basic-lambdas", action="store_true",
                     help="also generate the lambda form whose call crashes the 9.4 JIT (see gen.py)")
@@ -93,7 +104,12 @@ def main(argv=None):
             return 2
 
     tc = fuzzlib.Toolchain(args.bin, obc=args.obc, obr=args.obr, timeout=args.timeout)
-    known = fuzzlib.load_known(args.known)
+    try:
+        known = fuzzlib.load_known(args.known)
+    except known_schema.KnownError as e:
+        # never fuzz with suppressions silently dropped
+        print(str(e), file=sys.stderr)
+        return 2
     work_root = os.path.join(args.out, "work_%d_%d" % (args.seed, os.getpid()))
     os.makedirs(work_root, exist_ok=True)
 
@@ -120,7 +136,7 @@ def main(argv=None):
                 stats["clean"] += 1
             else:
                 entry = signatures.get(sig)
-                k = fuzzlib.match_known(sig, known)
+                k = fuzzlib.match_known(sig, known, args.leg)
                 if entry is None:
                     entry = signatures[sig] = {"count": 0, "known": k.get("note", True) if k else None,
                                                "first_seed": prog.seed, "dir": None}
@@ -137,8 +153,9 @@ def main(argv=None):
                 if not k:
                     # tools/cicd/nightly_triage.py's generic parser counts only
                     # lines that start with FAIL; "fuzz" is the test token and
-                    # the seed rides in the message (digits are folded there).
-                    print("FAIL fuzz: %s (seed %d)" % (sig, prog.seed), flush=True)
+                    # the seed rides in the message, from which the triage
+                    # recovers the signature (known_schema.fuzz_signature).
+                    print(known_schema.fuzz_failure_line(sig, prog.seed), flush=True)
             if not args.keep:
                 shutil.rmtree(workdir, ignore_errors=True)
             if stats["programs"] % 25 == 0:
@@ -160,7 +177,7 @@ def main(argv=None):
     print("JIT-compiled fraction (s3/jit1): %d/%d = %.1f%%" % (compiled, total, 100.0 * fraction))
     if rejected_names:
         top = sorted(rejected_names.items(), key=lambda kv: -kv[1])[:10]
-        print("  most rejected: " + ", ".join("%s x%d" % kv for kv in top))
+        print("  most often not compiled: " + ", ".join("%s x%d" % kv for kv in top))
     print("wall time: %.1fs (%.2fs/program, -j %d)" % (wall, wall / max(1, stats["programs"]), args.jobs))
 
     if args.json:

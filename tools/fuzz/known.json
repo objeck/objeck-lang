@@ -1,4 +1,5 @@
 {
+  "schema": 1,
   "known": [
     {
       "signature": "^diverge: s0/off,s3/default,s3/jit1,s0/jit1 \\| s3/off ",

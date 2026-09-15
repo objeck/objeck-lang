@@ -270,7 +270,7 @@ jobs:
           "$PY" "$TRIAGE" run --leg "$LEG" --step fuzz --out "$RESULTS" \
             --config "fuzz" --timeout 2400 --parser generic --default-seed "$SEED" \
             --require tools/fuzz/run_fuzz.py \
-            -- "$PY" tools/fuzz/run_fuzz.py --bin "$TREE/bin" \
+            -- "$PY" tools/fuzz/run_fuzz.py --bin "$TREE/bin" --leg "$LEG" \
                --count "$FUZZ_COUNT" --seed "$SEED"
 
       - name: Regression under the heap verifier (minor stress)
@@ -350,7 +350,10 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Triage tool tests
-        run: python3 -m unittest tools/cicd/test_nightly_triage.py
+        run: |
+          python3 -m unittest tools/cicd/test_nightly_triage.py tools/cicd/test_nightly_contract.py
+          python3 -m unittest discover -s tools/fuzz -p "test_known_schema.py"
+          python3 -m unittest discover -s tools/fuzz -p "test_run_fuzz.py"
 
       - name: Download leg results
         uses: actions/download-artifact@v4

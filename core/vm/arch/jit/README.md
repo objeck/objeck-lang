@@ -172,5 +172,5 @@ a caller that is not native itself; `jit_native_inline.obs` measures the two aga
 
 ## Diagnostics
 
-- `OBJECK_JIT_REPORT=1` — stderr line per method the JIT hands back to the interpreter (unsupported opcode, or the instruction where compilation failed). Both backends. Use it on a real program before deciding which fallback to fix next.
+- `OBJECK_JIT_REPORT=1` — stderr line per method the JIT hands back to the interpreter (unsupported opcode, or the instruction where compilation failed). Both backends. Use it on a real program before deciding which fallback to fix next. It also gives positive evidence: `[jit] <method>: compiled` for every successful compile (both backends, from `JitCompiler::TryAutoJitCompile`) and, on AMD64, `[jit] <caller>: inlined <callee>` for every callee inlined into a compile that succeeded. `tools/fuzz` counts coverage from these lines; a method never named there ran interpreted.
 - `CL=/D_DEBUG_JIT` (MSVC) / `-D_DEBUG_JIT` — build an `obr` that prints every emitted instruction; it also prints per call at runtime, so keep iteration counts small.
