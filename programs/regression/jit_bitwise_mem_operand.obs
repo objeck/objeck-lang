@@ -1,0 +1,86 @@
+# Regression for the AMD64 JIT and/or/xor memory-operand encoding (fuzzer F4,
+# seeds 140/48/18/236). and_mem_reg, or_mem_reg and xor_mem_reg built their REX
+# prefix as RXB(base, reg) instead of RXB(reg, base). With a destination in
+# R8-R15 the REX.R bit was lost, so the result landed in RAX-RDI, and REX.B was
+# set on the RBP base, so the operand was read through R13 instead of the
+# frame. R13 holds a pinned loop local, so `v0 xor v0` after the pinned `for`
+# below read [r13-0x80] = [0x4A00-0x80] and crashed (v2026.9.4, -opt s3, JIT
+# default and --jit=1). Without a pin the same bytes read the caller's R13: a
+# silently wrong result. Each function is called 40 times so it JITs at the
+# default threshold; a crash fails the test by never printing PASS.
+use System;
+
+class JitBitwiseMemOperand {
+  function : Main(args : String[]) ~ Nil {
+    pass := true;
+    for(r := 0; r < 40; r += 1;) {
+      x := FXor(r);
+      if(x <> 27) { pass := false; "  FAIL: FXor({$r})={$x}"->PrintLine(); };
+      a := FAnd(r);
+      if(a <> 18971) { pass := false; "  FAIL: FAnd({$r})={$a}"->PrintLine(); };
+      o := FOr(r);
+      if(o <> 18971) { pass := false; "  FAIL: FOr({$r})={$o}"->PrintLine(); };
+    };
+    if(pass) {
+      "PASS: JIT and/or/xor with a memory operand"->PrintLine();
+    }
+    else {
+      "FAIL: JIT and/or/xor with a memory operand"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : FXor(p0 : Int) ~ Int {
+    v0 := 74;
+    a0 := Int->New[64];
+    g0 := Int->New[8, 4];
+    for(i0 := 0; i0 < 8; i0 += 1;) { for(i1 := 0; i1 < 4; i1 += 1;) { g0[i0, i1] := (i0 * 26 + i1) % 257; }; };
+    do {
+      w0 += 1;
+      a0[((v0 / (0 - 4)) and 63)] := (((a0->Size() / 2) * p0) % 1000003);
+    } while(w0 < 11);
+    if(((a0[(p0 and 63)] + p0) >= (88 >> 27))) {
+      for(i0 := 1; i0 < 9; i0 += 1;) {
+        v0 += v0; v0 := v0 % 1048573;
+      };
+      v0 := ((v0 xor v0) % 1000003);
+    };
+    return v0 + g0[1,1];
+  }
+
+  function : FAnd(p0 : Int) ~ Int {
+    v0 := 74;
+    a0 := Int->New[64];
+    g0 := Int->New[8, 4];
+    for(i0 := 0; i0 < 8; i0 += 1;) { for(i1 := 0; i1 < 4; i1 += 1;) { g0[i0, i1] := (i0 * 26 + i1) % 257; }; };
+    do {
+      w0 += 1;
+      a0[((v0 / (0 - 4)) and 63)] := (((a0->Size() / 2) * p0) % 1000003);
+    } while(w0 < 11);
+    if(((a0[(p0 and 63)] + p0) >= (88 >> 27))) {
+      for(i0 := 1; i0 < 9; i0 += 1;) {
+        v0 += v0; v0 := v0 % 1048573;
+      };
+      v0 := ((v0 and v0) % 1000003);
+    };
+    return v0 + g0[1,1];
+  }
+
+  function : FOr(p0 : Int) ~ Int {
+    v0 := 74;
+    a0 := Int->New[64];
+    g0 := Int->New[8, 4];
+    for(i0 := 0; i0 < 8; i0 += 1;) { for(i1 := 0; i1 < 4; i1 += 1;) { g0[i0, i1] := (i0 * 26 + i1) % 257; }; };
+    do {
+      w0 += 1;
+      a0[((v0 / (0 - 4)) and 63)] := (((a0->Size() / 2) * p0) % 1000003);
+    } while(w0 < 11);
+    if(((a0[(p0 and 63)] + p0) >= (88 >> 27))) {
+      for(i0 := 1; i0 < 9; i0 += 1;) {
+        v0 += v0; v0 := v0 % 1048573;
+      };
+      v0 := ((v0 or v0) % 1000003);
+    };
+    return v0 + g0[1,1];
+  }
+}
