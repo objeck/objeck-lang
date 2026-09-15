@@ -442,6 +442,55 @@ StackClass* StackClass::GetParent() {
   return parent;
 }
 
+/********************************
+ * Skips one encoded function type
+ * "m.(<params>)~<return>" starting at
+ * its 'm'; returns the index of the
+ * ',' (or end) that follows it.
+ *
+ * Scanning to the first '~' and then
+ * the next ',' stopped inside a nested
+ * function type: for a parameter of
+ * type ((Int) ~ Int, Int) ~ Int, i.e.
+ * "m.(m.(i,)~i,i,)~i,", the parser
+ * resumed at ")~i," and rejected the
+ * ')' as "Invalid method signature!",
+ * so such a method never loaded.
+ ********************************/
+static size_t SkipFunctionType(const std::wstring& str, size_t index)
+{
+  bool more = true;
+  while(more && index < str.size()) {
+    // parameter list: to the ')' matching the first '('
+    while(index < str.size() && str[index] != L'(') {
+      index++;
+    }
+    int nesting = 0;
+    while(index < str.size()) {
+      if(str[index] == L'(') {
+        nesting++;
+      }
+      else if(str[index] == L')' && --nesting == 0) {
+        index++;
+        break;
+      }
+      index++;
+    }
+
+    // return type, itself possibly a function type
+    if(index < str.size() && str[index] == L'~') {
+      index++;
+    }
+    more = index < str.size() && str[index] == L'm';
+  }
+
+  while(index < str.size() && str[index] != L',') {
+    index++;
+  }
+
+  return index;
+}
+
 const std::wstring StackMethod::ParseName(const std::wstring& name) const
 {
   int state;
@@ -519,13 +568,7 @@ const std::wstring StackMethod::ParseName(const std::wstring& name) const
         param = FUNC_PARM;
 #endif
         state = 6;
-        index++;
-        while(index < params_name.size() && params_name[index] != '~') {
-          index++;
-        }
-        while(index < params_name.size() && params_name[index] != ',') {
-          index++;
-        }
+        index = SkipFunctionType(params_name, index);
         break;
 
       default:
@@ -1462,13 +1505,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
 
       case L'm':
         data_type_obj[0] = -994;
-        index++;
-        while(index < (int)params_string.size() && params_string[index] != L'~') {
-          index++;
-        }
-        while(index < (int)params_string.size() && params_string[index] != L',') {
-          index++;
-        }
+        index = (int)SkipFunctionType(params_string, (size_t)index);
         break;
 
       default:
