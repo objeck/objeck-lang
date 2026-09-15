@@ -59,10 +59,13 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     collections with a 256k nursery than with the default; OBJECK_GC_STATS=1
     prints a summary line with every field; runtime.memory.peak is never below
     runtime.memory.used (the fixture checks that itself). And collection stays
-    correct when minor GCs are frequent: minor_gc_stress.obs and
-    core_thread_gc_stress.obs pass with --nursery=256k, interpreted and with
-    every method compiled. A v2026.9.4 obr fails all of this: it does not know
-    the flag.
+    correct when minor GCs are frequent: obj_size_layout, minor_gc_stress,
+    core_thread_gc_stress, gc_minor_closure_capture, gc_zero_field_nursery_end
+    and gc_closure_capture_nursery_end pass with --nursery=128k and 256k,
+    interpreted and with every method compiled. (At those sizes an integration-1
+    obr lost a zero-field object that was the last allocation before a
+    collection, and a closure capture copied just before one.) A v2026.9.4 obr
+    fails all of this: it does not know the flag.
  8. An exception in a call the JIT's bridge made ends the program, not the
     process. Neither backend registers unwind information for the code it
     emits, so a C++ exception thrown under compiled code used to terminate
@@ -409,8 +412,12 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
           err.decode(errors="replace")[-200:])
 
     # Collection correctness when minor GCs are frequent. The regression runner
-    # cannot pass VM flags per test, so the minor-GC stress fixtures run here.
-    for name, libs in (("minor_gc_stress", None), ("core_thread_gc_stress", None)):
+    # cannot pass VM flags per test, so the minor-GC stress fixtures run here, at
+    # two small nursery sizes: which allocation a collection lands on depends on the
+    # size, and obj_size_layout lost objects at 128k and 256k but not at 384k -- a
+    # zero-field object that was the last allocation before a collection (its address
+    # equalled the young offset) and a closure capture copied just before one.
+    for name in NURSERY_STRESS_TESTS:
         src = os.path.join(SCRIPT_DIR, name + ".obs")
         dest = os.path.join(SCRIPT_DIR, name + ".obe")
         cmd = [obc, "-src", src, "-lib", "cipher,collect,xml,json", "-opt", "s3", "-dest", dest]
@@ -418,10 +425,22 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
         check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
         if rc != 0:
             continue
-        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
-            rc, out, err = run([obr, "--nursery=256k"] + flags + [dest], env=env, cwd=bin_dir, timeout=600)
-            check(f"{name} passes with --nursery=256k ({label})",
-                  rc == 0 and b"PASS" in out and b"FAIL" not in out, detail(rc, out, err))
+        for size in NURSERY_STRESS_SIZES:
+            for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+                rc, out, err = run([obr, f"--nursery={size}"] + flags + [dest], env=env, cwd=bin_dir, timeout=600)
+                check(f"{name} passes with --nursery={size} ({label})",
+                      rc == 0 and b"PASS" in out and b"FAIL" not in out, detail(rc, out, err))
+
+
+# Run with small nurseries (check_nursery_and_gc_stats); each prints PASS.
+NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_stress", "gc_minor_closure_capture",
+                        "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end")
+NURSERY_STRESS_SIZES = ("128k", "256k")
+
+# The verifier's report prefix. Not a bare b"gc-verify": its back-off notice
+# "[gc-verify] verification took N% of wall time" is printed by clean runs that
+# are slow enough, and matching it failed them.
+VERIFY_REPORT = b">>> gc-verify:"
 
 
 # Existing GC stress and collection tests that must pass unchanged, and print
@@ -478,7 +497,7 @@ def verify_section(obc, obr, env, bin_dir):
             rc, out, err = run([obr] + flags + [obe], env=verify, cwd=bin_dir)
             detail = f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-400:]!r}"
             check(f"{name} passes under OBJECK_GC_VERIFY=1 ({label})",
-                  rc0 == 0 and rc == 0 and b"gc-verify" not in err, detail)
+                  rc0 == 0 and rc == 0 and VERIFY_REPORT not in err, detail)
             check(f"{name} prints the same with the verifier on ({label})", out == out0,
                   f"off={out0[-160:]!r} on={out[-160:]!r}")
 
@@ -491,7 +510,7 @@ def verify_section(obc, obr, env, bin_dir):
               rc0 == 0 and b"PASS:" in out0, f"rc={rc0} out={out0[-120:]!r}")
         rc, out, err = run([obr] + flags + [obe], env=verify, cwd=bin_dir)
         check(f"injection fixture passes with the verifier and no fault ({label})",
-              rc == 0 and out == out0 and b"gc-verify" not in err,
+              rc == 0 and out == out0 and VERIFY_REPORT not in err,
               f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
         for mode, report in VERIFY_INJECTIONS:
             injected = dict(verify)
@@ -504,7 +523,7 @@ def verify_section(obc, obr, env, bin_dir):
             ignored["OBJECK_GC_VERIFY_INJECT"] = mode
             rc, out, err = run([obr] + flags + [obe], env=ignored, cwd=bin_dir)
             check(f"OBJECK_GC_VERIFY_INJECT={mode} without the verifier changes nothing ({label})",
-                  rc == 0 and out == out0 and b"gc-verify" not in err,
+                  rc == 0 and out == out0 and VERIFY_REPORT not in err,
                   f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
 
     bad = dict(plain)

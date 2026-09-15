@@ -1,0 +1,188 @@
+#~
+A zero-field object allocated just before a collection must survive it.
+
+An object's address is the word after its three header words. A class with no
+fields used to get no field words at all, so its address was one past its own
+block. When such an object was the last allocation before a collection, its
+address equalled young_region + young_offset, and every young-generation range
+test is half-open at that offset: the collector saw neither a young nor an old
+object, never marked, promoted or forwarded it, and reset the nursery underneath
+it. The reference then pointed at whatever the nursery handed out next
+("zero-field object lost its class" in obj_size_layout with --nursery=128k, where
+collections are frequent enough for an Empty to be the last allocation before
+one). Objects now get at least one field word, so an object's address is always
+inside its block.
+
+This test needs no VM flag. It fills the default nursery to about half a Big
+object short of full, allocates an Empty kept only in an old-generation array,
+and allocates a Big, which cannot fit and so runs the collection with the Empty
+as the nursery's last object. It confirms the collection ran (the nursery is
+nearly empty afterwards), refills the nursery past where the Empty was so other
+objects' words land there, and checks that the kept reference still names an
+Empty. Byte counts come from runtime.gc.nursery.used; the half-Big margin absorbs
+any error in estimating what reading that property allocates.
+~#
+
+class Empty {
+  New() {
+  }
+}
+
+class F1 { @a : Int; New() { @a := 7; } }
+class F2 { @a : Int; @b : Int; New() { @a := 7; @b := 7; } }
+class F3 { @a : Int; @b : Int; @c : Int; New() { @a := 7; @b := 7; @c := 7; } }
+class F4 { @a : Int; @b : Int; @c : Int; @d : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; } }
+class F5 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; } }
+class F6 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; @f := 7; } }
+class F7 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; @g : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; @f := 7; @g := 7; } }
+class F8 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; @g : Int; @h : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; @f := 7; @g := 7; @h := 7; } }
+
+# 32 field words: the allocation that does not fit and so collects
+class Big {
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+  New() {
+  }
+}
+
+class GcZeroFieldNurseryEnd {
+  @base : Int;     # block bytes of an object with no field words (size word + header)
+  @word : Int;     # bytes per field word
+  @probe : Int;    # nursery bytes one Used() call allocates
+  @trials : Int;
+  @collected : Int;
+  @kept : Empty[];
+  @after : Int[];
+
+  function : Main(args : String[]) ~ Nil {
+    t := GcZeroFieldNurseryEnd->New();
+    t->Run();
+  }
+
+  New() {
+    # arrays live in the old generation
+    @kept := Empty->New[4];
+    @after := Int->New[4];
+  }
+
+  function : Used() ~ Int {
+    return Runtime->GetProperty("runtime.gc.nursery.used")->ToInt();
+  }
+
+  function : Capacity() ~ Int {
+    return Runtime->GetProperty("runtime.gc.nursery.capacity")->ToInt();
+  }
+
+  # estimated nursery bytes in use right now (see the header on the margin)
+  method : Now() ~ Int {
+    return Used() + @probe;
+  }
+
+  # allocate one object of k (1..8) field words
+  method : One(k : Int) ~ Nil {
+    select(k) {
+      label 1: { o := F1->New(); }
+      label 2: { o := F2->New(); }
+      label 3: { o := F3->New(); }
+      label 4: { o := F4->New(); }
+      label 5: { o := F5->New(); }
+      label 6: { o := F6->New(); }
+      label 7: { o := F7->New(); }
+      other: { o := F8->New(); }
+    };
+  }
+
+  # allocate `bytes` of nursery objects (a multiple of the word size)
+  method : Fill(bytes : Int) ~ Nil {
+    big := @base + 8 * @word;
+    small := @base + @word;
+    while(bytes >= big + small) {
+      o := F8->New();
+      bytes -= big;
+    };
+    if(bytes >= small) {
+      if(bytes > big) {
+        One(1);
+        bytes -= small;
+      };
+      One((bytes - @base) / @word);
+    };
+  }
+
+  method : Measure() ~ Bool {
+    u0 := Used(); u1 := Used(); u2 := Used();
+    a := F1->New();
+    u3 := Used();
+    b := F2->New();
+    u4 := Used();
+    @probe := u1 - u0;
+    @word := (u4 - u3) - (u3 - u2);
+    @base := (u3 - u2 - @probe) - @word;
+    if(u2 - u1 <> @probe | @probe <= 0 | @word <> 8 | @base <= 0) {
+      "FAIL: nursery counters moved unexpectedly (probe={$@probe} word={$@word} base={$@base})"->PrintLine();
+      return false;
+    };
+    return true;
+  }
+
+  method : Trial() ~ Nil {
+    cap := Capacity();
+    big_bytes := @base + 32 * @word;
+    # a fresh nursery first, so the fills below need no collection
+    Fill(cap);
+    now := Now();
+    target := cap - big_bytes / 2 - @base;
+    if(target > now + @base + @word) {
+      Fill(target - now);
+      t := @trials;
+      @kept[t] := Empty->New();
+      big := Big->New();        # does not fit: collects with the Empty last in the nursery
+      @after[t] := Used();
+      @trials += 1;
+      if(@after[t] < cap / 2) {
+        @collected += 1;
+      };
+
+      # cover the Empty's old block with other objects' words
+      now := Now();
+      Fill(cap - 2 * @word - now);
+    };
+  }
+
+  method : Run() ~ Nil {
+    if(Measure() = false) {
+      Runtime->Exit(1);
+    };
+
+    each(i : 2) {
+      Trial();
+    };
+
+    failures := 0;
+    each(i : @trials) {
+      e := @kept[i];
+      if(e = Nil) {
+        "FAIL: kept object {$i} became Nil"->PrintLine();
+        failures += 1;
+      }
+      else if(e->TypeOf(Empty) = false) {
+        "FAIL: kept zero-field object {$i} lost its class (it was the last nursery allocation before a collection)"->PrintLine();
+        failures += 1;
+      };
+    };
+
+    if(@trials < 2 | @collected < @trials) {
+      cap := Capacity();
+      a0 := @after[0]; a1 := @after[1];
+      "FAIL: {$@trials} placement(s), {$@collected} collected right after the Empty (used after: {$a0}, {$a1} of {$cap}); the case was not exercised"->PrintLine();
+      Runtime->Exit(1);
+    };
+    if(failures > 0) {
+      "FAIL: {$failures} of {$@trials} zero-field object(s) lost"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: {$@trials} zero-field objects allocated just before a collection survived it"->PrintLine();
+  }
+}

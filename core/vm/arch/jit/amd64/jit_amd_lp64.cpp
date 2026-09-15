@@ -1423,7 +1423,8 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
 // Returns code offset of the success-path jmp (rel32) for the caller to backpatch.
 long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   const long size = cls->GetInstanceMemorySize();
-  const size_t alloc_size = (size_t)size + sizeof(size_t) * EXTRA_BUF_SIZE;
+  // same block size as AllocateObject: a zero-field class gets one pad word
+  const size_t alloc_size = MemoryManager::ObjectBlockSize((size_t)size);
   const size_t total_size = alloc_size + sizeof(size_t);
   const size_t aligned_total = (total_size + sizeof(size_t) - 1) & ~((size_t)(sizeof(size_t) - 1));
   const int64_t nil_type = instructions::MemoryType::NIL_TYPE;

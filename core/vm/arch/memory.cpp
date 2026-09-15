@@ -597,8 +597,9 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     }
     const size_t size = (size_t)inst_size;
     // The instance size is already in bytes (one word per field, two per function
-    // reference). Keep in step with IsYoungObjectStart and the JIT inline allocator.
-    const size_t alloc_size = size + sizeof(size_t) * EXTRA_BUF_SIZE;
+    // reference), padded to one field word for a zero-field class (see ObjectBlockSize).
+    // Keep in step with IsYoungObjectStart and the JIT inline allocator.
+    const size_t alloc_size = ObjectBlockSize(size);
 
     // Total size including the size header for free cache
     const size_t total_size = alloc_size + sizeof(size_t);
@@ -2110,6 +2111,31 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
 {
   if(!mem) return;
 
+  // A dirty closure capture block. NEW_FUNC_INST allocates it (BYTE_ARY_TYPE, always
+  // old) and the capture stores that follow run the write barrier on it BEFORE any
+  // object holds the closure: until the FuncRef (or other holder) is constructed, the
+  // block is reachable only through the method's hidden closure slot (INT_PARM) and the
+  // operand stack, both untyped. A collection triggered by allocating that holder
+  // promoted a young captured object through its own typed local but never marked or
+  // forwarded the block's copy of it, which then dangled into the recycled nursery
+  // ("closure capture field" in obj_size_layout with --nursery=128k). The block has no
+  // declarations of its own, so its words are treated conservatively: CheckObject
+  // accepts only a word that is a real young object's start. GC_RSET_BIT limits this
+  // to blocks written since the last collection -- a capture that was young then
+  // necessarily went through the barrier -- and keeps byte arrays out.
+  if(mem[TYPE] == BYTE_ARY_TYPE) {
+    if(mem[MARKED_FLAG] & GC_RSET_BIT) {
+      const size_t words = mem[SIZE_OR_CLS] / sizeof(size_t);
+      for(size_t k = 0; k < words; ++k) {
+        size_t* ref = (size_t*)mem[k];
+        if(ref && IsYoungCandidate(ref)) {
+          CheckObject(ref, true, 1);
+        }
+      }
+    }
+    return;
+  }
+
   // Scan one dirty old-gen object's direct fields for young pointers and mark them
   if(mem[TYPE] == NIL_TYPE) {
     StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
@@ -2259,6 +2285,15 @@ void MemoryManager::FixupObject(size_t* mem)
     for(size_t i = 0; i < size; ++i) {
       const size_t fwd = ForwardedAddr((size_t*)objects[i]);
       if(fwd) objects[i] = fwd;
+    }
+  }
+  else if(mem[TYPE] == BYTE_ARY_TYPE && (mem[MARKED_FLAG] & GC_RSET_BIT)) {
+    // A closure capture block written since the last collection, possibly before any
+    // holder types it (see ScanDirtyObject). Relocate every word that refers to a
+    // promoted young object; ForwardedAddr accepts only a genuine forwarding address.
+    const size_t words = mem[SIZE_OR_CLS] / sizeof(size_t);
+    for(size_t k = 0; k < words; ++k) {
+      FixupSlot(&mem[k]);
     }
   }
 }
