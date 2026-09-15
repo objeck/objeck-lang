@@ -33,6 +33,7 @@
 
 
 #include "../common.h"
+#include <algorithm>
 #include <random>
 #include <atomic>
 #include <chrono>
@@ -261,13 +262,23 @@ class MemoryManager {
   // this can only ever reject non-pointers:
   //   - 8-byte aligned. A real object's mem is young_region plus a whole number
   //     of words, and the value that crashed here ended in 0xec.
-  //   - at least one word in, because IsOldGen and the header reads address
-  //     mem[MARKED_FLAG], which is mem[-1].
+  //   - at least four words in (the size word plus the three header words every
+  //     object starts with), because callers read mem[TYPE], mem[SIZE_OR_CLS] and
+  //     mem[MARKED_FLAG], down to mem[-3], before anything else is known.
   static inline bool IsYoungCandidate(size_t* mem) {
     uint8_t* p = (uint8_t*)mem;
     return ((uintptr_t)p & (sizeof(size_t) - 1)) == 0 &&
-           p >= young_region + sizeof(size_t) &&
+           p >= young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE) &&
            p < young_region + young_offset.load(std::memory_order_acquire);
+  }
+
+  // Every StackClass* the program loaded, sorted; built once in Initialize and read-only
+  // afterwards. A conservative candidate's class word is checked against it before it
+  // is dereferenced (G5).
+  static std::vector<StackClass*> class_ptrs;
+
+  static inline bool IsClassPointer(StackClass* cls) {
+    return cls && std::binary_search(class_ptrs.begin(), class_ptrs.end(), cls);
   }
 
   // Is this young candidate a real object's start? The nursery holds objects only
@@ -277,7 +288,10 @@ class MemoryManager {
   // OR GC_MARK_BIT into the middle of another object (#816: a TreeNode's @right became
   // 1). Call only for an address IsYoungCandidate accepted.
   static inline bool IsYoungObjectStart(size_t* mem, StackClass* cls) {
-    if(!cls || (uint8_t*)mem < young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE)) {
+    // cls came from the candidate's own SIZE_OR_CLS word, so it is only a number
+    // until IsClassPointer says otherwise: an interior word whose TYPE slot happens
+    // to read NIL_TYPE hands over an arbitrary value (G5).
+    if(!IsClassPointer(cls) || (uint8_t*)mem < young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE)) {
       return false;
     }
     const long inst_size = cls->GetInstanceMemorySize();
@@ -334,6 +348,9 @@ class MemoryManager {
       *slot = fwd;
     }
   }
+
+  // Relocate a frame's self (mem[0]) only if its object was promoted; see memory.cpp.
+  static void FixupSelf(size_t* mem, StackMethod* method);
 
   static void CollectMinor(size_t* op_stack, size_t stack_pos);
   static void CollectMajor(size_t* op_stack, size_t stack_pos);
@@ -395,7 +412,9 @@ class MemoryManager {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
-      return (StackClass*)mem[SIZE_OR_CLS];
+      // A young candidate's class word is unverified; return only a real class (G5)
+      StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+      return IsClassPointer(cls) ? cls : nullptr;
     }
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);

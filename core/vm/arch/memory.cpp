@@ -45,7 +45,20 @@ static bool GcTraceEnabled() {
   return enabled;
 }
 
+// A collection that cannot allocate is fatal. It runs inside stop-the-world holding
+// the GC locks with every other mutator parked, and a survivor it could not copy would
+// leave references dangling once the nursery resets, so report and end the process
+// here rather than unwinding (G6, G15). The report uses C stdio: formatting through
+// wcerr allocates, and under a real memory cap it threw bad_alloc from this very
+// handler. _Exit: no destructors or atexit handlers run while the heap is half-promoted.
+[[noreturn]] static void FatalCollectorOutOfMemory(size_t bytes) {
+  fwprintf(stderr, L">>> garbage collector: out of memory promoting a live object (%zu bytes) <<<\n", bytes);
+  fflush(stderr);
+  std::_Exit(1);
+}
+
 StackProgram* MemoryManager::prgm;
+std::vector<StackClass*> MemoryManager::class_ptrs;
 
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
@@ -139,6 +152,13 @@ pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZE
 void MemoryManager::Initialize(StackProgram* p, size_t m)
 {
   prgm = p;
+
+  // The set of real class pointers conservative scans check candidates against (G5).
+  StackClass** clss = prgm->GetClasses();
+  const size_t cls_num = (size_t)prgm->GetClassNumber();
+  class_ptrs.assign(clss, clss + cls_num);
+  std::sort(class_ptrs.begin(), class_ptrs.end());
+
   if(m <= 0) {
     mem_max_size = MEM_START_MAX;
   }
@@ -512,6 +532,28 @@ void MemoryManager::CheckPendingThreadRoots()
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&pending_thread_root_lock);
 #endif
+}
+
+// Relocate a frame's self, mem[0], if its object was promoted. A young object's
+// MARKED_FLAG word holds a forwarding address only once promotion has copied it;
+// until then it holds the mark bits, and GC_MARK_BIT is 1. The fixups used to take
+// any non-zero word as the new address, so a self that was not forwarded became 1.
+// ForwardedAddr accepts only an address that is a member of the old generation (#820).
+void MemoryManager::FixupSelf(size_t* mem, StackMethod* method)
+{
+  const size_t fwd = ForwardedAddr((size_t*)mem[0]);
+  if(fwd) {
+    mem[0] = fwd;
+  }
+  else if(GcTraceEnabled()) {
+    // Report only a genuine young object start left unforwarded; a stale or interior
+    // nursery word is not a self and is expected to fail ForwardedAddr.
+    size_t* self = (size_t*)mem[0];
+    if(IsYoungCandidate(self) && IsYoungObjectStart(self, GetClass(self)) && self[MARKED_FLAG]) {
+      std::wcerr << L"[gc] self not forwarded: method='" << method->GetName() << L"' self=" << (void*)self
+                 << L" header=" << (void*)self[MARKED_FLAG] << std::endl;
+    }
+  }
 }
 
 // Fixup phase: relocate each pending self/param if its young object was promoted.
@@ -1193,20 +1235,30 @@ void* MemoryManager::CollectMemory(void* arg)
     }
 
     if(mem[MARKED_FLAG] & GC_MARK_BIT) {
-      // Promote to old gen: allocate, copy, store forwarding pointer
+      // Promote to old gen: allocate, copy, store forwarding pointer. A survivor that
+      // cannot be copied is fatal (G6): every reference to it would dangle once the
+      // nursery resets below, and no fixup can recover that.
       size_t* new_raw = (size_t*)calloc(total, 1);
-      if(new_raw) {
-        memcpy(new_raw, raw_mem, total);
-        size_t* new_mem = new_raw + 1 + EXTRA_BUF_SIZE;
-        new_mem[MARKED_FLAG] = GC_OLD_BIT | GC_MARK_BIT;  // set old bit + keep mark bit so sweep preserves it
-        old_generation.insert(new_mem);
-        old_allocation_size += mem_size;
-        promoted_objects.push_back(new_mem);
-        promoted_count++;
-        promoted_bytes += total;
-        // Store forwarding pointer in young region (safe — region is about to be reclaimed)
-        mem[MARKED_FLAG] = (size_t)new_mem;
+      if(!new_raw) {
+        FatalCollectorOutOfMemory(total);
       }
+      memcpy(new_raw, raw_mem, total);
+      size_t* new_mem = new_raw + 1 + EXTRA_BUF_SIZE;
+      new_mem[MARKED_FLAG] = GC_OLD_BIT | GC_MARK_BIT;  // set old bit + keep mark bit so sweep preserves it
+      // Both containers can throw bad_alloc; never let it unwind out of stop-the-world
+      // with both GC locks held and every other mutator parked (G15).
+      try {
+        old_generation.insert(new_mem);
+        promoted_objects.push_back(new_mem);
+      }
+      catch(const std::bad_alloc&) {
+        FatalCollectorOutOfMemory(total);
+      }
+      old_allocation_size += mem_size;
+      promoted_count++;
+      promoted_bytes += total;
+      // Store forwarding pointer in young region (safe — region is about to be reclaimed)
+      mem[MARKED_FLAG] = (size_t)new_mem;
     }
     else {
       // Dead young object
@@ -1264,8 +1316,14 @@ void* MemoryManager::CollectMemory(void* arg)
 
   // --- Fixup phase: replace young pointers with forwarded old-gen addresses ---
   if(young_used > 0) {
-    // Fix up roots (use saved_stack_pos since CheckStack decremented info->stack_pos to -1)
-    FixupRoots(info->op_stack, saved_stack_pos);
+    // Fix up roots (use saved_stack_pos since CheckStack decremented info->stack_pos to -1).
+    // Its frame list can throw bad_alloc; fatal rather than unwinding out of STW (G15).
+    try {
+      FixupRoots(info->op_stack, saved_stack_pos);
+    }
+    catch(const std::bad_alloc&) {
+      FatalCollectorOutOfMemory(0);
+    }
 
     // Fix up old-gen objects
     size_t dc = dirty_count.load(std::memory_order_relaxed);
@@ -2060,9 +2118,20 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
     for(long i = 0; i < num_dclrs; ++i) {
       switch(dclrs[i]->type) {
       case FUNC_PARM: {
-        size_t* ref = (size_t*)*(field_ptr + 1);
-        if(ref && IsYoung(ref)) {
-          CheckObject(ref, true, 0);
+        // A closure's capture block comes from AllocateArray, so it is always old and
+        // the old "descend only if young" test never fired: young captures stored
+        // behind an old holder were never marked (G12). Descend into the captures
+        // regardless of generation, mirroring CheckMemory and FixupMemory. The barrier
+        // on the capture store dirties only the untyped BYTE_ARY_TYPE block, which
+        // cannot be scanned on its own, so the holder is the only place to type it.
+        size_t* lambda_mem = (size_t*)*(field_ptr + 1);
+        if(lambda_mem && MarkMemory(lambda_mem)) {
+          const size_t mthd_cls_id = *field_ptr;
+          const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
+          const long mthd_id = mthd_cls_id & 0xFFFF;
+          std::pair<int, StackDclr**> closure_dclrs =
+            prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+          CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
         }
         field_ptr += 2;
         break;
@@ -2255,11 +2324,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
         // Fix up self
         if(!method->IsLambda()) {
-          size_t* self = (size_t*)(*mem);
-          if(self && IsYoung(self)) {
-            size_t fwd = self[MARKED_FLAG];
-            if(fwd) *mem = fwd;
-          }
+          FixupSelf(mem, method);
         }
 
         // Fix up locals
@@ -2297,11 +2362,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
           StackMethod* method = cur_frame->method;
           size_t* mem = cur_frame->mem;
           if(!method->IsLambda()) {
-            size_t* self = (size_t*)(*mem);
-            if(self && IsYoung(self)) {
-              size_t fwd = self[MARKED_FLAG];
-              if(fwd) *mem = fwd;
-            }
+            FixupSelf(mem, method);
           }
           size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
           FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
@@ -2320,11 +2381,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             StackMethod* method = frame->method;
             size_t* mem = frame->mem;
             if(!method->IsLambda()) {
-              size_t* self = (size_t*)(*mem);
-              if(self && IsYoung(self)) {
-                size_t fwd = self[MARKED_FLAG];
-                if(fwd) *mem = fwd;
-              }
+              FixupSelf(mem, method);
             }
             size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
             FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
@@ -2346,11 +2403,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
     if(mem) {
       // Fix up self
       if(!method->IsLambda()) {
-        size_t* self = (size_t*)frame->mem[0];
-        if(self && IsYoung(self)) {
-          size_t fwd = self[MARKED_FLAG];
-          if(fwd) frame->mem[0] = fwd;
-        }
+        FixupSelf(frame->mem, method);
       }
 
       // Fix up JIT locals
