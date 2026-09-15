@@ -312,6 +312,20 @@ class MemoryManager {
   static void FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_size);
   static void FixupRoots(size_t* op_stack, size_t stack_pos);
 
+  // Heap verifier (OBJECK_GC_VERIFY, see memory_verify.cpp). Both stay 0 unless the
+  // variable is set, so each hook in the collector costs one predictable branch.
+  friend class GcVerifier;
+  enum GcVerifyInject { GC_VERIFY_INJECT_NONE = 0, GC_VERIFY_INJECT_FIELD, GC_VERIFY_INJECT_BARRIER, GC_VERIFY_INJECT_MARK };
+  static int gc_verify;
+  static int gc_verify_inject;
+  static void VerifyInitialize();
+  static void VerifyBeforeCollection(bool minor);
+  static void VerifyAfterMark();
+  static void VerifyNotePromoted(std::vector<size_t*>& promoted);
+  static void VerifyAfterCollection(bool minor);
+  static void VerifyUnforwarded(size_t* value);
+  static bool VerifySkipBarrier(size_t* target_obj);
+
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;
   static long mem_cycle;
@@ -551,6 +565,8 @@ class MemoryManager {
 #endif
     if(!(flags & GC_OLD_BIT)) return;      // young target, skip
     if(flags & GC_RSET_BIT) return;        // already tracked
+    // OBJECK_GC_VERIFY_INJECT=barrier: 0 unless the verifier is on
+    if(gc_verify_inject == GC_VERIFY_INJECT_BARRIER && VerifySkipBarrier(target_obj)) return;
 #ifdef _WIN32
     _InterlockedOr64((volatile LONG64*)&target_obj[MARKED_FLAG], (LONG64)GC_RSET_BIT);
 #else

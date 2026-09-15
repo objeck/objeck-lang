@@ -10,6 +10,9 @@
     <ClCompile Include="..\arch\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\arch\memory_verify.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\vm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

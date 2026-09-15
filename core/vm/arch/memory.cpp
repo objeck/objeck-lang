@@ -188,6 +188,9 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   parked_count.store(0, std::memory_order_relaxed);
   stw_active.store(false, std::memory_order_relaxed);
 
+  // OBJECK_GC_VERIFY / OBJECK_GC_VERIFY_INJECT, read once (memory_verify.cpp)
+  VerifyInitialize();
+
   initialized = true;
 }
 
@@ -866,11 +869,19 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   // freeing live old-gen objects (UAF). Mirrors CollectMinor's locked store.
   minor_gc_mode.store(false, std::memory_order_release);
 
+  if(gc_verify) {
+    VerifyBeforeCollection(false);
+  }
+
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack;
   info->stack_pos = stack_pos;
 
   CollectMemory(info);
+
+  if(gc_verify) {
+    VerifyAfterCollection(false);
+  }
 
 #ifndef _GC_SERIAL
   // Resume the world.
@@ -1013,7 +1024,12 @@ void* MemoryManager::CollectMemory(void* arg)
   CheckPdaRoots(nullptr);
   CheckJitRoots(nullptr);
 #endif
-  
+
+  // mark threads joined; promotion has not yet rewritten the nursery's flag words
+  if(gc_verify) {
+    VerifyAfterMark();
+  }
+
 #ifdef _TIMING
   clock_t end = clock();
   std::wcout << std::dec << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
@@ -1181,6 +1197,11 @@ void* MemoryManager::CollectMemory(void* arg)
     // allocation time (zero-on-alloc, see AllocateObject / the JIT inline allocator),
     // which moves this potentially nursery-sized memset out of the stop-the-world pause.
     young_offset.store(0, std::memory_order_relaxed);
+  }
+
+  // hand the verifier this collection's promotions (checked after the lock drops)
+  if(gc_verify) {
+    VerifyNotePromoted(promoted_objects);
   }
 
   // --- Clear dirty list and RSET bits ---
@@ -2041,6 +2062,8 @@ void MemoryManager::FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case FLOAT_ARY_PARM: {
       const size_t fwd = ForwardedAddr((size_t*)(*mem));
       if(fwd) *mem = fwd;
+      // invariant C: a typed slot must not hold a young object that was never marked
+      else if(gc_verify && *mem) VerifyUnforwarded((size_t*)(*mem));
       mem++;
       break;
     }
@@ -2356,6 +2379,11 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
         << L" ===" << std::endl;
 #endif
 
+  // world stopped, remembered set not yet scanned (A1/A2 need it untouched)
+  if(gc_verify) {
+    VerifyBeforeCollection(true);
+  }
+
   // Phase 1: Scan dirty old-gen objects for young references (with minor_gc_mode=true)
   minor_gc_mode.store(true, std::memory_order_release);
 
@@ -2380,6 +2408,10 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   info->stack_pos = stack_pos;
 
   CollectMemory(info);
+
+  if(gc_verify) {
+    VerifyAfterCollection(true);
+  }
 
 #ifndef _GC_SERIAL
   // Resume the world.

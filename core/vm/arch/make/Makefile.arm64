@@ -1,7 +1,7 @@
 ARGS=-O3 -flto=auto -mcpu=native -Wall -D_ARM64 -D_RPI4 -Wno-unused-function -std=c++20 -MMD -MP
 
 AR=gcc-ar
-SRC=memory.o
+SRC=memory.o memory_verify.o
 LIB=../memory.a
 
 $(LIB): $(SRC)
