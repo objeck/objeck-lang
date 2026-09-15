@@ -1,0 +1,87 @@
+#~
+Guards a JIT crash present through v2026.9.4: a capturing lambda stored in a
+local function variable and called directly crashed obr (0xC0000005) when the
+method holding the variable was compiled -- always under --jit=1, and under
+the default JIT once that method had a loop.
+
+A func-ref is two words: the packed method id and the instance, which for a
+capturing lambda is its closure memory. STOR_FUNC_VAR stored both words by the
+kind of the method id alone. The id is an immediate and the closure is loaded
+from a local, so the immediate path wrote the local's frame offset as the
+closure, and the lambda read its captures through that address. Lambdas
+without captures carry an immediate Nil instance, so they were unaffected.
+
+The checks sit in Main's loop: a method with a loop compiles on its first
+entry, so the default JIT covers them as well as --jit=1.
+~#
+class JitClosureLocalFuncVar {
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+    for(i := 0; i < 3; i += 1;) {
+      base := 100 + i;
+
+      # one parameter, Int capture
+      add := \Func1I->I : (a) => a + base;
+      failures += Check("Int capture, one parameter", add(1) = 101 + i);
+
+      # no parameters, Int capture
+      get := \Func0I->I : () => base;
+      failures += Check("Int capture, no parameters", get() = 100 + i);
+
+      # two parameters
+      sum := \Func2I->I : (a, b) => a + b + base;
+      failures += Check("Int capture, two parameters", sum(1, 2) = 103 + i);
+
+      # object capture read through a method call
+      ref := IntRef->New(7 + i);
+      deref := \Func1I->I : (a) => a + ref->Get();
+      failures += Check("IntRef capture", deref(1) = 8 + i);
+
+      # a static function called inside the lambda
+      twice := \Func1I->I : (a) => Twice(a) + base;
+      failures += Check("static call in lambda", twice(5) = 110 + i);
+
+      # passed on to a helper and called there
+      failures += Check("called through a helper", CallWith(add, 5) = 105 + i);
+
+      # reassigned to a second local
+      copy := add;
+      failures += Check("copied function variable", copy(2) = 102 + i);
+    };
+
+    if(failures > 0) {
+      "FAIL: {$failures} capturing function variable check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: capturing lambdas in local function variables"->PrintLine();
+  }
+
+  function : Twice(a : Int) ~ Int {
+    return a * 2;
+  }
+
+  function : CallWith(f : (Int) ~ Int, a : Int) ~ Int {
+    return f(a);
+  }
+
+  function : Check(name : String, ok : Bool) ~ Int {
+    if(ok) {
+      "PASS: {$name}"->PrintLine();
+      return 0;
+    };
+    "FAIL: {$name}"->PrintLine();
+    return 1;
+  }
+}
+
+alias Func0I {
+  I : () ~ Int
+}
+
+alias Func1I {
+  I : (Int) ~ Int
+}
+
+alias Func2I {
+  I : (Int, Int) ~ Int
+}
