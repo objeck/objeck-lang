@@ -1,0 +1,104 @@
+#~
+# Nursery knob (--nursery / OBJECK_NURSERY) and the GC statistics it is read with.
+#
+# Guards:
+#   1. runtime.memory.peak exists and is never below runtime.memory.used. The
+#      property is new in v2026.10.0; on v2026.9.4 GetProperty returns Nil and
+#      this test fails.
+#   2. runtime.gc.nursery.capacity reports the nursery limit the VM runs with,
+#      within the 64k..128m range the flag accepts.
+#   3. A small nursery really collects: when the limit is 1 MB or less, the churn
+#      below (~19 MB of short-lived objects) must have run minor collections, and
+#      the objects kept alive through an old-generation array must have been
+#      promoted (runtime.gc.promoted.bytes > 0) with their values intact.
+#
+# The regression runner cannot pass VM flags, so here it runs with the default
+# nursery (check 3 is then vacuous). run_vm_flag_tests.py runs this fixture with
+# --nursery=256k and OBJECK_NURSERY=256k, and asserts that the "minor=" line it
+# prints is strictly greater than under the default, and that OBJECK_GC_STATS=1
+# prints its exit summary.
+~#
+
+class Holder {
+	@v : Int;
+	New(v : Int) { @v := v; }
+	method : public : Get() ~ Int { return @v; }
+}
+
+class GcNurseryKnob {
+	function : Stat(name : String) ~ Int {
+		text := Runtime->GetProperty(name);
+		if(text = Nil) {
+			"FAIL: {$name} is not available"->PrintLine();
+			return -1;
+		};
+		return text->ToInt();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		# Old-gen array holding young references (write barrier -> remembered set).
+		keep := Holder->New[64];
+		for(i := 0; i < 64; i += 1;) {
+			keep[i] := Holder->New(i * 13);
+		};
+
+		for(j := 0; j < 400000; j += 1;) {
+			tmp := Holder->New(j);
+			if(tmp->Get() <> j) { bad += 1; };
+		};
+
+		sum := 0;
+		for(i := 0; i < 64; i += 1;) {
+			if(keep[i] = Nil) { bad += 1; }
+			else { sum += keep[i]->Get(); };
+		};
+		# 13 * (0 + 1 + ... + 63)
+		if(sum <> 26208) {
+			"FAIL: kept objects checksum {$sum}, expected 26208"->PrintLine();
+			bad += 1;
+		};
+
+		minor := Stat("runtime.gc.minor");
+		capacity := Stat("runtime.gc.nursery.capacity");
+		used := Stat("runtime.memory.used");
+		peak := Stat("runtime.memory.peak");
+		promoted := Stat("runtime.gc.promoted.bytes");
+		if(minor < 0 | capacity < 0 | used < 0 | peak < 0 | promoted < 0) {
+			bad += 1;
+		};
+
+		"minor={$minor}"->PrintLine();
+		"nursery capacity={$capacity}"->PrintLine();
+
+		if(peak >= 0 & used >= 0 & peak < used) {
+			"FAIL: runtime.memory.peak {$peak} < runtime.memory.used {$used}"->PrintLine();
+			bad += 1;
+		};
+
+		if(capacity >= 0 & (capacity < 65536 | capacity > 134217728)) {
+			"FAIL: nursery capacity {$capacity} outside 64k..128m"->PrintLine();
+			bad += 1;
+		};
+
+		if(capacity > 0 & capacity <= 1048576) {
+			if(minor < 1) {
+				"FAIL: a {$capacity}-byte nursery ran no minor collection"->PrintLine();
+				bad += 1;
+			};
+			if(promoted < 1) {
+				"FAIL: no bytes were promoted out of a {$capacity}-byte nursery"->PrintLine();
+				bad += 1;
+			};
+		};
+
+		if(bad = 0) {
+			"PASS: nursery knob and GC stats"->PrintLine();
+		}
+		else {
+			"FAIL: nursery knob and GC stats ({$bad})"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
