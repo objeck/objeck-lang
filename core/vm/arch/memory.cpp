@@ -1948,9 +1948,20 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
     for(long i = 0; i < num_dclrs; ++i) {
       switch(dclrs[i]->type) {
       case FUNC_PARM: {
-        size_t* ref = (size_t*)*(field_ptr + 1);
-        if(ref && IsYoung(ref)) {
-          CheckObject(ref, true, 0);
+        // A closure's capture block comes from AllocateArray, so it is always old and
+        // the old "descend only if young" test never fired: young captures stored
+        // behind an old holder were never marked (G12). Descend into the captures
+        // regardless of generation, mirroring CheckMemory and FixupMemory. The barrier
+        // on the capture store dirties only the untyped BYTE_ARY_TYPE block, which
+        // cannot be scanned on its own, so the holder is the only place to type it.
+        size_t* lambda_mem = (size_t*)*(field_ptr + 1);
+        if(lambda_mem && MarkMemory(lambda_mem)) {
+          const size_t mthd_cls_id = *field_ptr;
+          const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
+          const long mthd_id = mthd_cls_id & 0xFFFF;
+          std::pair<int, StackDclr**> closure_dclrs =
+            prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+          CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
         }
         field_ptr += 2;
         break;
