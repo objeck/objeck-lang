@@ -1207,6 +1207,17 @@ jobs:
       - name: JIT opt-outs are directives with a stated reason
         run: python3 tools/cicd/check_jit_optouts.py
 
+      # Same class of guard, for programs/regression/run_differential.py. Its
+      # markers take a test out of part of the s0/s3 x JIT comparison, so each
+      # one that removes coverage needs a stated reason, and the
+      # nondeterministic-output marker is capped at 5% of the suite. The unit
+      # tests run the runner against fake obc/obr executables: nothing built.
+      - name: Differential markers have a stated reason
+        run: python3 tools/cicd/check_diff_markers.py
+
+      - name: Differential runner catches divergence
+        run: python3 programs/regression/test_run_differential.py
+
       # Same class of guard. The examples in programs/deploy are copied wholesale
       # into a release, and welcome.obs is the only map a user gets. An unindexed
       # example reaches users undocumented; an index naming a file that is gone
