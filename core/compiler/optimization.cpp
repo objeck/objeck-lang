@@ -2463,8 +2463,13 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
     }
   }
 
-  // allocate a fresh LOCL int slot and update method metadata
+  // allocate a fresh LOCL int slot and update method metadata; -1 when the
+  // slot would take the method past LOCAL_SIZE, the local space an
+  // interpreter frame holds (EmitMethod checked the unoptimized method)
   auto alloc_int_slot = [this]() -> int {
+    if(current_method->GetSpace() + (int)sizeof(INT64_VALUE) > LOCAL_SIZE) {
+      return -1;
+    }
     int slot = current_method->GetEntries()->GetSlotCount() +
                (current_method->HasAndOr() ? 1 : 0);
     current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
@@ -2532,6 +2537,9 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
         }
         else {
           tmp_slot = alloc_int_slot();
+          if(tmp_slot < 0) {
+            continue; // no room for the cached size: leave the pair in the loop
+          }
           arr_to_tmp[arr_slot] = tmp_slot;
           // emit: LOAD arr, LOAD_ARY_SIZE, STOR tmp — before the loop header
           auto& pre = insert_before[lo];
