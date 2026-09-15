@@ -115,9 +115,14 @@ jobs:
     name: Harden ${{ matrix.platform }}
     needs: resolve
     runs-on: ${{ matrix.os }}
-    # Backstop above the sum of the step timeouts below; the first measured
-    # dispatch sets the real number.
-    timeout-minutes: 240
+    # Above the sum of every step timeout below (345, counting both the Linux
+    # and the macOS setup steps although a leg runs one), so a slow step hits
+    # its own timeout and leaves a result file instead of the job being
+    # cancelled around it. GitHub-hosted jobs stop at 360 regardless, so step
+    # budgets are cut to fit; tools/cicd/test_nightly_triage.py checks the sum
+    # and that each wrapper --timeout/--budget ends inside its step. The first
+    # measured dispatch sets the real numbers.
+    timeout-minutes: 355
     strategy:
       fail-fast: false
       matrix:
@@ -156,6 +161,7 @@ jobs:
       JOBS: '3'
     steps:
       - name: Checkout the tested commit
+        timeout-minutes: 5
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.use_dispatch_ref && github.sha || needs.resolve.outputs.head_sha }}
@@ -164,6 +170,7 @@ jobs:
       # workflow never saves; ci-build.yml keeps these entries warm.
       - name: Restore APT packages (Linux)
         if: runner.os == 'Linux'
+        timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
           path: ~/apt-cache
@@ -173,7 +180,7 @@ jobs:
 
       - name: Install Linux runtime dependencies
         if: runner.os == 'Linux'
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
           # The same package set ci-build.yml tested these binaries with.
           mkdir -p ~/apt-cache/partial
@@ -189,6 +196,7 @@ jobs:
 
       - name: Restore Homebrew downloads (macOS)
         if: runner.os == 'macOS'
+        timeout-minutes: 5
         uses: actions/cache/restore@v5
         with:
           path: ~/Library/Caches/Homebrew
@@ -198,13 +206,14 @@ jobs:
 
       - name: Install macOS runtime dependencies
         if: runner.os == 'macOS'
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
           for pkg in unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline; do
             brew list --versions "$pkg" >/dev/null 2>&1 || brew install "$pkg"
           done
 
       - name: Download the CI deploy tree
+        timeout-minutes: 10
         uses: actions/download-artifact@v4
         with:
           name: objeck-${{ matrix.platform }}
@@ -214,6 +223,7 @@ jobs:
 
       - name: Prepare the deploy tree
         id: prep
+        timeout-minutes: 5
         run: |
           set -euo pipefail
           # Artifacts do not keep file modes.
@@ -231,35 +241,40 @@ jobs:
             echo "runner=run_regression.sh" >> "$GITHUB_OUTPUT"
           fi
 
-      # Every step below runs even when an earlier one failed, and each writes
-      # nightly-results/<leg>/<step>.json for the triage job. A tool missing
-      # from this checkout FAILS its step through --require; it never skips.
+      # Every step below runs even when an earlier one failed (but not after a
+      # cancel or job timeout), and each writes nightly-results/<leg>/<step>.json
+      # for the triage job: an "unfinished" marker first, the result on return.
+      # Each wrapper --timeout/--budget ends a few minutes inside its step's
+      # timeout-minutes, so a hang is recorded as a failure, not lost. A tool
+      # missing from this checkout FAILS its step through --require; it never
+      # skips.
 
       - name: Differential regression
-        if: always() && steps.prep.outcome == 'success'
-        timeout-minutes: 75
+        if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
+        timeout-minutes: 55
         run: |
           "$PY" "$TRIAGE" run --leg "$LEG" --step differential --out "$RESULTS" \
-            --config "differential" --timeout 4200 --parser generic \
+            --config "differential" --timeout 3000 --parser generic \
             --require programs/regression/run_differential.py \
             -- "$PY" programs/regression/run_differential.py "$TREE/bin" -j "$JOBS"
 
       - name: Fuzzer
-        if: always() && steps.prep.outcome == 'success'
-        timeout-minutes: 75
+        if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
+        timeout-minutes: 45
         env:
           # Optional for the fuzzer: where to put failing and reduced programs
           # so they reach the uploaded artifact.
           OBJECK_FUZZ_OUT: ${{ github.workspace }}/nightly-results/${{ matrix.platform }}/fuzz-out
+          FUZZ_COUNT: ${{ inputs.fuzz_count || '200' }}
         run: |
           "$PY" "$TRIAGE" run --leg "$LEG" --step fuzz --out "$RESULTS" \
-            --config "fuzz" --timeout 4200 --parser generic --default-seed "$SEED" \
+            --config "fuzz" --timeout 2400 --parser generic --default-seed "$SEED" \
             --require tools/fuzz/run_fuzz.py \
             -- "$PY" tools/fuzz/run_fuzz.py --bin "$TREE/bin" \
-               --count "${{ inputs.fuzz_count || '200' }}" --seed "$SEED"
+               --count "$FUZZ_COUNT" --seed "$SEED"
 
       - name: Regression under the heap verifier (minor stress)
-        if: always() && steps.prep.outcome == 'success'
+        if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
         timeout-minutes: 70
         env:
           OBJECK_NURSERY: 256k
@@ -269,14 +284,14 @@ jobs:
           # --require-text: an obr without the knob would run the suite
           # unverified and report green.
           "$PY" "$TRIAGE" run --leg "$LEG" --step verify-minor --out "$RESULTS" \
-            --config "nursery=256k verify=1" --timeout 4000 --parser regression \
+            --config "nursery=256k verify=1" --timeout 3900 --parser regression \
             --cwd programs/regression \
             --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_NURSERY" \
             --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_GC_VERIFY" \
             -- "${{ steps.prep.outputs.runner }}" "${{ matrix.arch }}"
 
       - name: Regression under the heap verifier (major stress)
-        if: always() && steps.prep.outcome == 'success'
+        if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
         timeout-minutes: 70
         env:
           OBJECK_VM_ARGS: --gc-threshold=64k
@@ -284,23 +299,29 @@ jobs:
           TEST_TIMEOUT: '300'
         run: |
           "$PY" "$TRIAGE" run --leg "$LEG" --step verify-major --out "$RESULTS" \
-            --config "gc-threshold=64k verify=1" --timeout 4000 --parser regression \
+            --config "gc-threshold=64k verify=1" --timeout 3900 --parser regression \
             --cwd programs/regression \
             --require-text "programs/regression/${{ steps.prep.outputs.runner }}:OBJECK_VM_ARGS" \
             --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_GC_VERIFY" \
             -- "${{ steps.prep.outputs.runner }}" "${{ matrix.arch }}"
 
       - name: GC stress loops
-        if: always() && steps.prep.outcome == 'success'
-        timeout-minutes: 60
+        if: ${{ !cancelled() && steps.prep.outcome == 'success' }}
+        timeout-minutes: 50
+        env:
+          STRESS_RUNS: ${{ inputs.stress_runs || '20' }}
         run: |
+          # 3 tests x 2 modes x 20 runs with a 300 s per-run limit could take
+          # 30 hours; --budget stops the loop (as a failure) at 45 minutes, and
+          # the result file is rewritten after every run.
           "$PY" "$TRIAGE" loop --leg "$LEG" --out "$RESULTS" --bin "$TREE/bin" \
             --src-dir programs/regression \
             --tests minor_gc_stress,core_thread_gc_stress,jit_gc_stress \
-            --runs "${{ inputs.stress_runs || '20' }}" --modes off,1 --timeout 300
+            --runs "$STRESS_RUNS" --modes off,1 --timeout 300 --budget 2700
 
       - name: Upload results
         if: always()
+        timeout-minutes: 5
         uses: actions/upload-artifact@v6
         with:
           name: nightly-${{ matrix.platform }}
