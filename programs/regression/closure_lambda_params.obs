@@ -1,0 +1,132 @@
+#~
+Guards two obc crashes (exit 0xC0000005, no diagnostic) present from v2026.6.3
+through v2026.9.4:
+
+C1: every bare lambda with parameters, e.g. v->Filter(\(x) => ...), and the
+typed form \(Int) ~ Int : (a) => ... . ParseLambda scanned the `(...)` list for
+a trailing `~` past the scanner's 3-token look-ahead window, so GetToken()
+returned nullptr and Match() dereferenced it.
+
+C2: a lambda nested in a lambda body. BuildLambdaFunction cleared the capture
+state (capture_lambda/method/table) after the inner lambda instead of restoring
+the enclosing lambda's, so the next captured variable in the outer body
+dereferenced a null capture table.
+
+The capturing checks avoid two separate v2026.9.4 VM bugs so the test runs in
+every mode: a capturing lambda held in a local function variable and called
+directly crashes under --jit=1, and interleaving calls through several
+capturing FuncRef lambdas with other calls crashes the interpreter. So the
+captures go through FuncRef helpers, all of them run before any Check call,
+and the nested call's result is always used.
+~#
+use Collection;
+
+class ClosureLambdaParams {
+  function : Main(args : String[]) ~ Nil {
+    # capture after a nested lambda: the outer lambda's capture state must
+    # survive the inner lambda's analysis
+    typed := CaptureAfterTyped(100);
+    typed_r := typed();
+    aliased := CaptureAfterAlias(200);
+    aliased_r := aliased();
+    bare := CaptureAfterBare(300);
+    bare_r := bare();
+    typed_ok := typed_r->Get() = 100;
+    alias_ok := aliased_r->Get() = 200;
+    bare_ok := bare_r->Get() = 300;
+
+    failures := 0;
+    failures += Check("capture after nested typed lambda", typed_ok);
+    failures += Check("capture after nested alias lambda", alias_ok);
+    failures += Check("capture after nested bare lambda", bare_ok);
+
+    v := Vector->New()<IntRef>;
+    v->AddBack(IntRef->New(1));
+    v->AddBack(IntRef->New(2));
+    v->AddBack(IntRef->New(3));
+
+    # bare one-parameter lambda passed to Filter
+    big := v->Filter(\(x) => x->Get() > 1);
+    failures += Check("Filter bare lambda", big->Size() = 2 & big->Get(0)->Get() = 2);
+
+    # bare one-parameter lambda passed to Map
+    doubled := v->Map(\(x) => IntRef->New(x->Get() * 2));
+    failures += Check("Map bare lambda", doubled->Size() = 3 & doubled->Get(2)->Get() = 6);
+
+    # typed signature with a parameter list
+    inc := \(Int) ~ Int : (a) => a + 1;
+    failures += Check("typed lambda", inc(41) = 42);
+
+    # typed lambda nested inside a typed lambda
+    outer := \(Int) ~ Int : (a) => {
+      inner := \(Int) ~ Int : (b) => b * 10;
+      return inner(a) + 1;
+    };
+    failures += Check("typed-in-typed lambda", outer(4) = 41);
+
+    # bare lambda nested inside a bare lambda
+    nested := v->Filter(\(x) => {
+      w := Vector->New()<IntRef>;
+      w->AddBack(IntRef->New(x->Get()));
+      w->AddBack(IntRef->New(x->Get() * 3));
+      q := w->Filter(\(y) => y->Get() > 5);
+      return q->Size() > 0;
+    });
+    failures += Check("bare-in-bare lambda", nested->Size() = 2 & nested->Get(0)->Get() = 2);
+
+    if(failures > 0) {
+      "FAIL: {$failures} lambda parameter check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: lambda parameters and nesting"->PrintLine();
+  }
+
+  # typed lambda nested in a capturing lambda, capture read after it
+  function : CaptureAfterTyped(n : Int) ~ FuncRef<IntRef> {
+    base := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => {
+      step := \(Int) ~ Int : (b) => b + 1;
+      if(step(1) <> 2) {
+        return IntRef->New(-1);
+      };
+      return base;
+    })<IntRef>;
+  }
+
+  # alias-typed lambdas (no parameter-list scan): isolates the capture restore
+  function : CaptureAfterAlias(n : Int) ~ FuncRef<IntRef> {
+    base := IntRef->New(n);
+    return FuncRef->New(\() ~ IntRef : () => {
+      g := \Func2I->I : (b) => b + 1;
+      if(g(1) <> 2) {
+        return IntRef->New(-1);
+      };
+      return base;
+    })<IntRef>;
+  }
+
+  # bare lambda auto-wrapped on return, with a nested lambda before the capture
+  function : CaptureAfterBare(n : Int) ~ FuncRef<IntRef> {
+    base := IntRef->New(n);
+    return \() => {
+      odd := \(Int) ~ Bool : (k) => k % 2 = 1;
+      if(odd(2)) {
+        return IntRef->New(-1);
+      };
+      return base;
+    };
+  }
+
+  function : Check(name : String, ok : Bool) ~ Int {
+    if(ok) {
+      "PASS: {$name}"->PrintLine();
+      return 0;
+    };
+    "FAIL: {$name}"->PrintLine();
+    return 1;
+  }
+}
+
+alias Func2I {
+  I : (Int) ~ Int
+}

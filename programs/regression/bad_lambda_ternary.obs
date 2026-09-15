@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: Cannot infer the type of a bare lambda here
+#~
+A bare lambda `\() => body` gets its type from a FuncRef<R> assignment target,
+return type or single call argument. In a ternary branch it cannot, and the
+compiler used to report "Invalid alias" / "Invalid lambda type" / "Invalid 'if'
+statement". It must say the type cannot be inferred and suggest FuncRef->New.
+~#
+class BadLambdaTernary {
+  function : Main(args : String[]) ~ Nil {
+    x := IntRef->New(5);
+    b := args->Size() > 0;
+    f : FuncRef<IntRef> := b ? \() => x : \() => x;
+    f()->Get()->PrintLine();
+    Runtime->Exit(1);
+  }
+}
