@@ -107,6 +107,9 @@ class CallOverhead {
       Runtime->Exit(1);
     };
 
-    "PASS: compiled call overhead {$best}x the inline body"->PrintLine();
+    # the ratio varies run to run and by VM mode: stderr, so stdout stays
+    # identical for run_differential.py
+    "  compiled call overhead {$best}x the inline body"->ErrorLine();
+    "PASS: compiled call overhead within 25x the inline body"->PrintLine();
   }
 }

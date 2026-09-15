@@ -25,7 +25,10 @@ class RegexBench {
         c1 := 0;
         n := 0; while(n < 20) { c1 := r1->Find(lit_input)<Result>->Size(); n += 1; };
         elapsed1 := t1->GetElapsedTime();
-        "literal 'fox' x20 on ~11k chars: {$elapsed1}s, matches={$c1}"->PrintLine();
+        # timings go to stderr and match counts to stdout, so run_differential.py
+        # can compare the answers across VM modes
+        "literal 'fox' x20 on ~11k chars: matches={$c1}"->PrintLine();
+        "  {$elapsed1}s"->ErrorLine();
 
         # \d+
         r2 := RegEx->New("\\d+");
@@ -33,7 +36,8 @@ class RegexBench {
         c2 := 0;
         n := 0; while(n < 20) { c2 := r2->Find(digit_input)<Result>->Size(); n += 1; };
         elapsed2 := t2->GetElapsedTime();
-        "digit '\\d+' x20 on ~9k chars: {$elapsed2}s, matches={$c2}"->PrintLine();
+        "digit '\\d+' x20 on ~9k chars: matches={$c2}"->PrintLine();
+        "  {$elapsed2}s"->ErrorLine();
 
         # fox|dog|cat
         r3 := RegEx->New("fox|dog|cat");
@@ -41,13 +45,15 @@ class RegexBench {
         c3 := 0;
         n := 0; while(n < 20) { c3 := r3->Find(or_input)<Result>->Size(); n += 1; };
         elapsed3 := t3->GetElapsedTime();
-        "or 'fox|dog|cat' x20 on ~11k chars: {$elapsed3}s, matches={$c3}"->PrintLine();
+        "or 'fox|dog|cat' x20 on ~11k chars: matches={$c3}"->PrintLine();
+        "  {$elapsed3}s"->ErrorLine();
 
         # pathological (a+)+b
         r4 := RegEx->New("(a+)+b");
         t4 := Timer->New(true);
         n := 0; while(n < 1000) { r4->FindFirst("aaaaaaaaaaaaaaaaaab"); n += 1; };
         elapsed4 := t4->GetElapsedTime();
-        "pathological '(a+)+b' x1000: {$elapsed4}s"->PrintLine();
+        "pathological '(a+)+b' x1000: done"->PrintLine();
+        "  {$elapsed4}s"->ErrorLine();
     }
 }

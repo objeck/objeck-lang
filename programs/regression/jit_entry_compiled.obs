@@ -1,3 +1,5 @@
+# DIFF_REQUIRES_JIT
+# reason: asserts Main and Run are compiled; with --jit=off they are interpreted and it exits 1 by design
 use System.Time;
 use System.Concurrency;
 
@@ -60,7 +62,8 @@ class EntryCompiled {
     run_secs := Worker->Seconds();
     run_x := Worker->Result();
 
-    "  native helper: {$ref_secs}s, Main loop: {$main_secs}s, Run loop: {$run_secs}s"->PrintLine();
+    # timings to stderr, so stdout stays comparable for run_differential.py
+    "  native helper: {$ref_secs}s, Main loop: {$main_secs}s, Run loop: {$run_secs}s"->ErrorLine();
     if(main_x <> ref_x | run_x <> ref_x) {
       "FAIL: results differ ({$ref_x}, {$main_x}, {$run_x})"->PrintLine();
       Runtime->Exit(1);
