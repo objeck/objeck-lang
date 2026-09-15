@@ -6632,8 +6632,20 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     
     if(variable && method_call->GetCallType() == METHOD_CALL) {
       // emit variable
-      EmitVariable(variable);            
+      EmitVariable(variable);
       EmitClassCast(method_call);
+
+      // An unindexed object array receiver reached through a variable (e.g. an
+      // array captured by a lambda, which is resolved as a closure-copy variable)
+      // needs the instance memory pushed after it, exactly like the array entry
+      // path below. Without it Size()/array calls pop one value too many (#849).
+      Type* receiver_type = variable->GetCastType() ? variable->GetCastType() :
+        (variable->GetEntry() ? variable->GetEntry()->GetType() : nullptr);
+      if(!variable->GetIndices() && receiver_type &&
+         receiver_type->GetType() == CLASS_TYPE && receiver_type->GetDimension() > 0) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+        array_receiver_loaded = true;
+      }
     }
     else if(variable && method_call->GetTypeOf()) {
       EmitVariable(variable);
@@ -6761,7 +6773,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
                                (variable->GetCastType() && variable->GetCastType()->GetType() != CLASS_TYPE))) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
-        else if(method_call->IsEnumCall()) {
+        else if(method_call->IsEnumCall() && !array_receiver_loaded) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
       }
@@ -6809,11 +6821,11 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
                                (variable->GetCastType() && variable->GetCastType()->GetType() != CLASS_TYPE))) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
-        else if(method_call->IsEnumCall()) {
+        else if(method_call->IsEnumCall() && !array_receiver_loaded) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
         // note: localized hack for edge case
-        else if(is_nested && lib_method->GetLibraryClass()->GetName() == BASE_ARRAY_CLASS_ID) {
+        else if(is_nested && !array_receiver_loaded && lib_method->GetLibraryClass()->GetName() == BASE_ARRAY_CLASS_ID) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
       } 
