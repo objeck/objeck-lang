@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Class, interface, enum or alias name already defined in this bundle
 class DuplicateClass {
     function : Main(args : String[]) ~ Nil {
         "first"->PrintLine();

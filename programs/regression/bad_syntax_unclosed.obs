@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Expected '}'
 class BadSyntaxUnclosed {
     function : Main(args : String[]) ~ Nil {
         x := 1;

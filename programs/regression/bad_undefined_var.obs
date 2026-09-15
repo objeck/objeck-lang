@@ -1,7 +1,16 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Undefined variable: 'no_such_variable'
+#~
+A read of a variable that was never declared must be rejected with the
+undefined-variable diagnostic.
+
+This used to read `y := no_such_variable + 1;` and passed on the wrong error:
+inside a method an unknown name on the left of an operator is taken as a new
+type-inferred local, so obc reported "Invalid operation '+' between types: Var
+and Int" and never said the variable was undefined. The string-interpolation
+reader resolves the name against the declared symbols and names it.
+~#
 class BadUndefinedVar {
     function : Main(args : String[]) ~ Nil {
-        y := no_such_variable + 1;
-        "hello"->PrintLine();
+        "{$no_such_variable}"->PrintLine();
     }
 }

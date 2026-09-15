@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Undefined function/method call: 'NoSuchMethodOnString(..)'
 class BadCallUndefined {
     function : Main(args : String[]) ~ Nil {
         s := "hello";
