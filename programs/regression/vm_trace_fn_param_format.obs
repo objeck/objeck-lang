@@ -1,0 +1,56 @@
+# EXPECT_RUNTIME_ERROR
+#~
+The stack trace names each method the way its source declares it, including
+function-typed parameters. run_vm_flag_tests.py (section 12) runs this file
+and compares the "Unwinding local stack" lines exactly; the regression runner
+alone can only see the non-zero exit.
+
+MethodFormatter (core/vm/common.cpp) found the end of a function-typed
+parameter by counting every "m.(" in the WHOLE signature and skipping that
+many '~', so P1->Crash with one function-typed parameter printed as
+'P1->Crash(a:(a:Int, , , b:Int, c:Int, , , d:Int)~Int)': the scan ran into the
+parameters that followed, and the nested parameter list was re-split at the
+last '(' and first ')'. It now walks the encoding with the same matching-')'
+rule as SkipFunctionType, and prints function types as the source writes
+them: (Int) ~ Int, ((Int) ~ Int) ~ Int.
+
+Crash dereferences Nil, which the VM reports with the unwinding lines on
+stderr, interpreted and compiled.
+~#
+class P1 {
+  function : Crash(a : Int, b : Float[], c : String, d : (Int) ~ Int,
+      e : ((Int) ~ Int, Int) ~ Int, f : Char[,], g : (Int) ~ (Int) ~ Int,
+      h : (((Int) ~ Int) ~ Int, Int) ~ Int) ~ Int {
+    # index a Nil array in Crash itself: a library call such as String->Size
+    # would add its own frame at -opt s0 and not at s3
+    s : Int[];
+    return s[0] + a;
+  }
+}
+
+class TraceFnParamFormat {
+  function : Inc(x : Int) ~ Int {
+    return x + 1;
+  }
+
+  function : Apply(fn : (Int) ~ Int, x : Int) ~ Int {
+    return fn(x);
+  }
+
+  function : Deep(fn : ((Int) ~ Int) ~ Int, x : Int) ~ Int {
+    return x;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    floats := Float->New[2];
+    chars := Char->New[2, 2];
+    inc : (Int) ~ Int := TraceFnParamFormat->Inc(Int) ~ Int;
+    apply := \((Int) ~ Int, Int) ~ Int : (fn, x) => fn(x);
+    make := \(Int) ~ (Int) ~ Int : (x) => inc;
+    deep := \(((Int) ~ Int) ~ Int, Int) ~ Int : (fn, x) => x;
+    "before"->PrintLine();
+    P1->Crash(1, floats, "x", inc, apply, chars, make, deep)->PrintLine();
+    "after"->PrintLine();
+    Runtime->Exit(1);
+  }
+}

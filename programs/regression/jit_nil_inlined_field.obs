@@ -1,0 +1,78 @@
+# An inlined getter called on a Nil object must raise the same Nil-dereference
+# error compiled as interpreted. At -opt s3 the inliner turns s->GetI() into a
+# field load through s, and constant propagation forwards `s : Sh := Nil` as a
+# literal: LOAD_INT_LIT 0 then LOAD_INT_VAR local=false. The JIT read that
+# immediate's operand as a frame offset, loaded the saved frame pointer (never
+# 0), passed its Nil check and read the "field" off the stack, so --jit=1 exited
+# 0 while --jit=off stopped with "Attempting to dereference a 'Nil' memory
+# instance". Main holds a loop, so it is compiled on its first call.
+#
+# First the inlined Int, Float, object and func-ref getters and setters are
+# checked on a live object (the non-Nil control); a wrong value prints FAIL and
+# exits 0, which fails this negative test. Then the Nil Int getter must stop
+# the program. Siblings cover the Float, object and func-ref getters:
+# jit_nil_inlined_field_float.obs, _object.obs, _funcref.obs.
+# EXPECT_RUNTIME_ERROR
+class NilFieldSh {
+  @i : Int;
+  @f : Float;
+  @o : String;
+  @g : (Int) ~ Int;
+
+  New() {
+    @i := 3;
+    @f := 2.5;
+    @o := "x";
+    @g := NilFieldSh->Twice(Int) ~ Int;
+  }
+
+  function : Twice(v : Int) ~ Int { return v * 2; }
+  function : Thrice(v : Int) ~ Int { return v * 3; }
+
+  method : public : GetI() ~ Int { return @i; }
+  method : public : GetF() ~ Float { return @f; }
+  method : public : GetO() ~ String { return @o; }
+  method : public : GetG() ~ (Int) ~ Int { return @g; }
+  method : public : SetI(v : Int) ~ Nil { @i := v; }
+  method : public : SetF(v : Float) ~ Nil { @f := v; }
+  method : public : SetO(v : String) ~ Nil { @o := v; }
+  method : public : SetG(v : (Int) ~ Int) ~ Nil { @g := v; }
+}
+
+class JitNilInlinedField {
+  function : Fail(what : String) ~ Nil {
+    # exit 0 on purpose: a negative test fails when the program does not error
+    "FAIL: {$what}"->PrintLine();
+    Runtime->Exit(0);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    # non-Nil control: every inlined accessor still reads and writes the field
+    c := NilFieldSh->New();
+    if(c->GetI() <> 3) { Fail("GetI"); };
+    if(c->GetF() <> 2.5) { Fail("GetF"); };
+    if(c->GetO()->Equals("x") = false) { Fail("GetO"); };
+    g := c->GetG();
+    if(g(4) <> 8) { Fail("GetG"); };
+
+    c->SetI(7);
+    c->SetF(7.5);
+    c->SetO("y");
+    c->SetG(NilFieldSh->Thrice(Int) ~ Int);
+    if(c->GetI() <> 7) { Fail("SetI"); };
+    if(c->GetF() <> 7.5) { Fail("SetF"); };
+    if(c->GetO()->Equals("y") = false) { Fail("SetO"); };
+    h := c->GetG();
+    if(h(4) <> 12) { Fail("SetG"); };
+
+    # the loop gets Main compiled on its first call
+    t := 0;
+    for(k := 0; k < 3; k += 1;) { t += k; };
+    if(t <> 3) { Fail("loop"); };
+    "controls passed"->PrintLine();
+
+    s : NilFieldSh := Nil;
+    v := s->GetI();
+    "FAIL: no Nil dereference error, read {$v}"->PrintLine();
+  }
+}

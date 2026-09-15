@@ -1,0 +1,29 @@
+# Float sibling of jit_nil_inlined_field.obs: an inlined Float getter on a Nil
+# object. At -opt s3 constant propagation forwards `s := Nil` as a literal into
+# the inlined LOAD_FLOAT_VAR local=false; the JIT read the literal as a frame
+# offset, missed the Nil check and loaded a double off the stack (exit 0)
+# where the interpreter stops with a Nil-dereference error. Main holds a loop,
+# so it is compiled on its first call.
+# EXPECT_RUNTIME_ERROR
+class NilFloatSh {
+  @f : Float;
+  New() { @f := 2.5; }
+  method : public : GetF() ~ Float { return @f; }
+}
+
+class JitNilInlinedFieldFloat {
+  function : Main(args : String[]) ~ Nil {
+    c := NilFloatSh->New();
+    t := 0.0;
+    for(k := 0; k < 3; k += 1;) { t += c->GetF(); };
+    if(t <> 7.5) {
+      # exit 0 on purpose: a negative test fails when the program does not error
+      "FAIL: control read {$t}"->PrintLine();
+      Runtime->Exit(0);
+    };
+
+    s : NilFloatSh := Nil;
+    v := s->GetF();
+    "FAIL: no Nil dereference error, read {$v}"->PrintLine();
+  }
+}

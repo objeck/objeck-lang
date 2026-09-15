@@ -500,7 +500,13 @@ namespace Runtime {
     
     // Returns the name of a register
     wstring GetRegisterName(Register reg);
-        
+
+    /**
+     * Loads the object reference an instance-memory access goes through into a
+     * register, whatever shape it has on the working stack
+     */
+    RegisterHolder* LoadObjectReference(RegInstr* left);
+
     /**
      * Check for 'Nil' dereferencing
      */

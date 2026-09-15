@@ -242,6 +242,15 @@ class ContextAnalyzer {
   SymbolTable* capture_table;
   SymbolTableManager* symbol_table;
   Lambda* capture_lambda;
+  // one frame per lambda body being analyzed, outermost first: the lambda, the
+  // method it is written in and that method's symbol table. A nested lambda
+  // resolves a capture through every enclosing lambda (see ResolveCaptureEntry).
+  struct CaptureFrame {
+    Lambda* lambda;
+    Method* method;
+    SymbolTable* table;
+  };
+  std::vector<CaptureFrame> capture_frames;
   std::pair<Lambda*, MethodCall*> lambda_inferred;
   std::multimap<int, std::wstring> errors;
   std::multimap<int, std::wstring> warnings;
@@ -317,6 +326,7 @@ class ContextAnalyzer {
   
   // returns a symbol table entry by name
   SymbolEntry* GetEntry(std::wstring name, bool is_parent = false);
+  SymbolEntry* ResolveCaptureEntry(const std::wstring& name, size_t frame_index);
 
   // returns a symbol table entry by name for a given method
   SymbolEntry* GetEntry(MethodCall* method_call, const std::wstring &variable_name, int depth);

@@ -1,0 +1,386 @@
+#~
+A lambda nested in a lambda could not use a variable its enclosing lambda
+captured: obc reported "Invalid operation using classes: Var and Int" (or
+"Dimension size mismatch"), even for p[0] with a literal index.
+
+A lambda body resolves a capture by looking the name up in the table of the
+method the lambda is written in. When that method is itself a lambda body, the
+variable is not there: the enclosing lambda holds it as a closure copy, and
+closure copies live in the class table. The lookup failed, so the nested lambda
+declared the name as a new untyped Var local. ContextAnalyzer now resolves a
+capture through every enclosing lambda, adding the closure copy to each
+intermediate lambda on the way in.
+
+Covers Int[], String[], Bool[], an object, an Int and a function variable plus
+a FuncRef, captured through two and three lambda levels; reads and writes;
+literal, variable and captured-Int indexes; the enclosing lambda using the
+capture before, after or never alongside the nested one; and captures only
+reachable through the closure. Every closure is built by a helper that returns
+it, then a minor GC is forced by allocation churn, then it is called.
+~#
+class ClosureNestedCapture {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+
+    ints := Int->New[4];
+    for(i := 0; i < 4; i += 1;) { ints[i] := i * 10; };
+    strs := String->New[3];
+    strs[0] := "a"; strs[1] := "bb"; strs[2] := "ccc";
+    bools := Bool->New[3];
+    bools[0] := true; bools[1] := false; bools[2] := true;
+    box := NestedCapBox->New(5);
+
+    w_ints := Int->New[4];
+    w_strs := String->New[3];
+    w_bools := Bool->New[3];
+    w_box := NestedCapBox->New(0);
+
+    # two levels, reads
+    int2_lit := IntTwoLiteral(ints);
+    int2_var := IntTwoVar(ints);
+    int2_before := IntTwoOuterFirst(ints);
+    str2 := StringTwo(strs);
+    bool2 := BoolTwo(bools);
+    obj2 := ObjTwo(box);
+    scalar2 := ScalarTwo(7);
+    func2 := FuncTwo(\(Int) ~ Int : (x) => { return x * 2; });
+    ref2 := FuncRefTwo(FuncRef->New(\() ~ IntRef : () => IntRef->New(41))<IntRef>);
+    # three levels, reads
+    int3 := IntThree(ints, 1);
+    str3 := StringThree(strs);
+    bool3 := BoolThree(bools);
+    obj3 := ObjThree(box);
+    scalar3 := ScalarThree(7, 3);
+    func3 := FuncThree(\(Int) ~ Int : (x) => { return x + 100; });
+    owned3 := OwnedThree();
+    mixed3 := MixedThree(ints, strs, bools, box, 2, \(Int) ~ Int : (x) => { return x - 1; });
+    # writes
+    int_write2 := IntWriteTwo(w_ints);
+    int_write3 := IntWriteThree(w_ints);
+    str_write3 := StringWriteThree(w_strs);
+    bool_write3 := BoolWriteThree(w_bools);
+    obj_write3 := ObjWriteThree(w_box);
+    scalar_write3 := ScalarWriteThree(10);
+
+    start := Minors();
+    Churn();
+    if(Minors() = start) {
+      "FAIL: churn did not run a minor GC"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    if(int2_lit(0) <> 20) { "FAIL: Int[] literal index, two levels"->PrintLine(); bad += 1; };
+    if(int2_var(3) <> 30) { "FAIL: Int[] variable index, two levels"->PrintLine(); bad += 1; };
+    if(int2_before(2) <> 30) { "FAIL: Int[] used by the enclosing lambda first"->PrintLine(); bad += 1; };
+    if(str2(2) <> 4) { "FAIL: String[], two levels"->PrintLine(); bad += 1; };
+    if(bool2(1) <> 2) { "FAIL: Bool[], two levels"->PrintLine(); bad += 1; };
+    if(obj2(1) <> 6) { "FAIL: object, two levels"->PrintLine(); bad += 1; };
+    if(scalar2(1) <> 8) { "FAIL: Int, two levels"->PrintLine(); bad += 1; };
+    if(func2(4) <> 8) { "FAIL: function variable, two levels"->PrintLine(); bad += 1; };
+    if(ref2(1) <> 42) { "FAIL: FuncRef, two levels"->PrintLine(); bad += 1; };
+
+    if(int3(2) <> 60) { "FAIL: Int[], three levels"->PrintLine(); bad += 1; };
+    if(str3(1) <> 6) { "FAIL: String[], three levels"->PrintLine(); bad += 1; };
+    if(bool3(0) <> 1) { "FAIL: Bool[], three levels"->PrintLine(); bad += 1; };
+    if(obj3(2) <> 7) { "FAIL: object, three levels"->PrintLine(); bad += 1; };
+    if(scalar3(2) <> 23) { "FAIL: Int, three levels"->PrintLine(); bad += 1; };
+    if(func3(5) <> 105) { "FAIL: function variable, three levels"->PrintLine(); bad += 1; };
+    if(owned3(3) <> 9) { "FAIL: closure-only array, three levels"->PrintLine(); bad += 1; };
+    if(mixed3(1) <> 37) { "FAIL: mixed captures, three levels"->PrintLine(); bad += 1; };
+
+    if(int_write2(5) <> 5 | w_ints[0] <> 5) { "FAIL: Int[] write, two levels"->PrintLine(); bad += 1; };
+    if(int_write3(2) <> 13 | w_ints[2] <> 13 | w_ints[3] <> 99) { "FAIL: Int[] write, three levels"->PrintLine(); bad += 1; };
+    if(str_write3(1) <> 3 | w_strs[1] = Nil | w_strs[1]->Equals("new") = false) { "FAIL: String[] write, three levels"->PrintLine(); bad += 1; };
+    if(bool_write3(2) <> 1 | w_bools[2] = false | w_bools[0]) { "FAIL: Bool[] write, three levels"->PrintLine(); bad += 1; };
+    if(obj_write3(77) <> 77 | w_box->Get() <> 77) { "FAIL: object write, three levels"->PrintLine(); bad += 1; };
+    if(scalar_write3(5) <> 16) { "FAIL: Int write, three levels"->PrintLine(); bad += 1; };
+
+    # a second call sees the same captured state
+    if(int3(3) <> 70 | str2(0) <> 2 | obj3(0) <> 5) { "FAIL: second call"->PrintLine(); bad += 1; };
+
+    if(bad > 0) {
+      "FAIL: closure_nested_capture ({$bad} failure(s))"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: closure_nested_capture"->PrintLine();
+  }
+
+  # --- two levels ---
+
+  function : IntTwoLiteral(p : Int[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \() ~ Int : () => { return p[2]; };
+      return inner() + i;
+    };
+  }
+
+  function : IntTwoVar(p : Int[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \(Int) ~ Int : (j) => { return p[j]; };
+      return inner(i);
+    };
+  }
+
+  # the enclosing lambda captures p before the nested lambda does
+  function : IntTwoOuterFirst(p : Int[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      first := p[1];
+      inner := \(Int) ~ Int : (j) => { return p[j]; };
+      return inner(i) + first - 10 + p[1];
+    };
+  }
+
+  function : StringTwo(p : String[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \(Int) ~ Int : (j) => { return p[j]->Size() + p[0]->Size(); };
+      return inner(i);
+    };
+  }
+
+  function : BoolTwo(p : Bool[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \(Int) ~ Int : (j) => {
+        count := 0;
+        if(p[j] = false) { count += 1; };
+        if(p[2]) { count += 1; };
+        return count;
+      };
+      return inner(i);
+    };
+  }
+
+  function : ObjTwo(b : NestedCapBox) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \(Int) ~ Int : (j) => { return b->Get() + j; };
+      return inner(i);
+    };
+  }
+
+  function : ScalarTwo(n : Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \(Int) ~ Int : (j) => { return n + j; };
+      return inner(i);
+    };
+  }
+
+  function : FuncTwo(f : (Int) ~ Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \(Int) ~ Int : (j) => { return f(j); };
+      return inner(i);
+    };
+  }
+
+  function : FuncRefTwo(r : FuncRef<IntRef>) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      inner := \(Int) ~ Int : (j) => { return r()->Get() + j; };
+      return inner(i);
+    };
+  }
+
+  # --- three levels ---
+
+  function : IntThree(p : Int[], k : Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => { return p[m] + p[k] + p[3]; };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  function : StringThree(p : String[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => { return p[m]->Size() + p[2]->Size() + p[0]->Size(); };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  function : BoolThree(p : Bool[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => {
+          if(p[m] & p[1] = false) { return 1; };
+          return 0;
+        };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  function : ObjThree(b : NestedCapBox) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => { return b->Get() + m; };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  function : ScalarThree(n : Int, k : Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => { return n * k + m; };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  function : FuncThree(f : (Int) ~ Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => { return f(m); };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  # the array is reachable only through the closures
+  function : OwnedThree() ~ (Int) ~ Int {
+    p := Int->New[4];
+    for(i := 0; i < 4; i += 1;) { p[i] := i * 3; };
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => { return p[m]; };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  # every kind at once; the middle lambda also uses some captures itself
+  function : MixedThree(p : Int[], s : String[], q : Bool[], b : NestedCapBox, k : Int, f : (Int) ~ Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        pre := p[k] + s[0]->Size();
+        inner := \(Int) ~ Int : (m) => {
+          total := p[m] + p[k] + s[m]->Size() + b->Get() + f(k);
+          if(q[m] = false) { total += 1; };
+          return total;
+        };
+        return inner(j) + pre - 21 - k;
+      };
+      return mid(i);
+    };
+  }
+
+  # --- writes ---
+
+  function : IntWriteTwo(p : Int[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (v) => {
+      inner := \(Int) ~ Nil : (x) => { p[0] := x; };
+      inner(v);
+      return p[0];
+    };
+  }
+
+  function : IntWriteThree(p : Int[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Nil : (m) => { p[m] := m + 11; p[3] := 99; };
+        inner(j);
+        return p[j];
+      };
+      return mid(i);
+    };
+  }
+
+  function : StringWriteThree(p : String[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Nil : (m) => { p[m] := "new"; };
+        inner(j);
+        return p[j]->Size();
+      };
+      return mid(i);
+    };
+  }
+
+  function : BoolWriteThree(p : Bool[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Nil : (m) => { p[m] := true; p[0] := false; };
+        inner(j);
+        if(p[j]) { return 1; };
+        return 0;
+      };
+      return mid(i);
+    };
+  }
+
+  function : ObjWriteThree(b : NestedCapBox) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Nil : (m) => { b->Set(m); };
+        inner(j);
+        return b->Get();
+      };
+      return mid(i);
+    };
+  }
+
+  # an assignment to a captured Int changes that lambda's own copy
+  function : ScalarWriteThree(n : Int) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => {
+      mid := \(Int) ~ Int : (j) => {
+        inner := \(Int) ~ Int : (m) => { n := n + m + 1; return n; };
+        return inner(j);
+      };
+      return mid(i);
+    };
+  }
+
+  function : Minors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  # about 150MB of short-lived objects against the 128MB nursery: at least one minor GC
+  function : Churn() ~ Nil {
+    for(j := 0; j < 520000; j += 1;) {
+      tmp := NestedCapBlob->New(j);
+      if(tmp->Get() <> j) {
+        "FAIL: churn object corrupted"->PrintLine();
+        Runtime->Exit(1);
+      };
+    };
+  }
+}
+
+class NestedCapBox {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+
+  method : public : Set(v : Int) ~ Nil {
+    @v := v;
+  }
+}
+
+class NestedCapBlob {
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+  New(v : Int) {
+    @a0 := v;
+    @d7 := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @d7;
+  }
+}

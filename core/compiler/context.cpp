@@ -1429,6 +1429,7 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     capture_lambda = lambda;
     capture_method = current_method;
     capture_table = current_table;
+    capture_frames.push_back({ lambda, current_method, current_table });
 
 #ifdef _DIAG_LIB
     // AnalyzeMethod clears diagnostic_expressions on entry and hands the list
@@ -1465,6 +1466,7 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     diagnostic_expressions = capture_expressions;
 #endif
 
+    capture_frames.pop_back();
     current_table = capture_table;
     capture_table = prev_capture_table;
 
@@ -2453,8 +2455,9 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // lambda expressions
   else if(current_method && current_method->IsLambda()) {
-    const std::wstring capture_scope_name = capture_method->GetName() + L':' + variable->GetName();
-    SymbolEntry* capture_entry = capture_table->GetEntry(capture_scope_name);
+    // resolved through every enclosing lambda: a variable captured by the
+    // enclosing lambda lives in that lambda's closure, not its method table
+    SymbolEntry* capture_entry = capture_frames.empty() ? nullptr : ResolveCaptureEntry(variable->GetName(), capture_frames.size() - 1);
     if(capture_entry) {
       // capturing a variable in a closure is a use of it; mark the enclosing
       // entry loaded so it isn't reported as unreferenced (see CheckUnreferencedVariables)
@@ -4494,8 +4497,8 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   // a function or FuncRef variable captured from the enclosing scope of a
   // lambda: resolve it as a variable so the closure copy is created and the
   // call loads it from closure memory
-  if(!entry && capture_lambda && capture_table && capture_method &&
-     capture_table->GetEntry(capture_method->GetName() + L':' + method_call->GetMethodName())) {
+  if(!entry && capture_lambda && !capture_frames.empty() &&
+     ResolveCaptureEntry(method_call->GetMethodName(), capture_frames.size() - 1)) {
     Statement* mc_stmt = static_cast<Statement*>(method_call);
     Variable* variable = TreeFactory::Instance()->MakeVariable(mc_stmt->GetFileName(), mc_stmt->GetLineNumber(),
                                                                mc_stmt->GetLinePosition(), method_call->GetMethodName());
@@ -8184,6 +8187,51 @@ SymbolEntry* ContextAnalyzer::GetEntry(std::wstring name, bool is_parent)
   }
 
   return nullptr;
+}
+
+/****************************
+ * Resolves a variable captured by the lambda in capture_frames[frame_index]:
+ * a local or parameter of the method the lambda is written in, or -- when that
+ * method is itself a lambda body -- a variable of an enclosing scope, captured
+ * into each enclosing lambda's closure on the way in. Closure copies live in the
+ * class table, not the lambda method's own table, so looking only in that table
+ * missed them and a nested lambda re-declared the name as an untyped Var local
+ * ("Invalid operation using classes: Var and Int").
+ ****************************/
+SymbolEntry* ContextAnalyzer::ResolveCaptureEntry(const std::wstring& name, size_t frame_index)
+{
+  const CaptureFrame& frame = capture_frames[frame_index];
+  if(!frame.method || !frame.table) {
+    return nullptr;
+  }
+
+  SymbolEntry* entry = frame.table->GetEntry(frame.method->GetName() + L':' + name);
+  if(entry || !frame.method->IsLambda() || frame_index == 0) {
+    return entry;
+  }
+
+  // frame.method is the body of the enclosing lambda
+  const CaptureFrame& outer = capture_frames[frame_index - 1];
+  if(!outer.lambda || outer.lambda->GetMethod() != frame.method) {
+    return nullptr;
+  }
+
+  SymbolEntry* outer_capture = ResolveCaptureEntry(name, frame_index - 1);
+  if(!outer_capture) {
+    return nullptr;
+  }
+  outer_capture->WasLoaded();
+
+  SymbolEntry* copy_entry = outer.lambda->GetClosure(outer_capture);
+  if(!copy_entry) {
+    const std::wstring var_scope_name = frame.method->GetName() + L':' + name;
+    copy_entry = TreeFactory::Instance()->MakeSymbolEntry(var_scope_name, outer_capture->GetType(), false, false);
+    copy_entry->SetClosureEntry();
+    symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
+    outer.lambda->AddClosure(copy_entry, outer_capture);
+  }
+
+  return copy_entry;
 }
 
 SymbolEntry* ContextAnalyzer::GetEntry(MethodCall* method_call, const std::wstring& variable_name, int depth)
