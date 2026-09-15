@@ -1,0 +1,78 @@
+#~
+Fixture for the heap verifier (OBJECK_GC_VERIFY, core/vm/arch/memory_verify.cpp).
+
+On its own it is an ordinary minor-GC test: an object that becomes old holds a
+reference to a young Node, and a churn loop fills the 128 MB nursery so minor
+collections must find that Node through the write barrier and promote it.
+
+run_vm_flag_tests.py runs it three ways: plainly, with OBJECK_GC_VERIFY=1 (the
+output must not change), and with each OBJECK_GC_VERIFY_INJECT mode, where obr
+must abort with the verifier's report. The shapes the injections need:
+  field   - a promoted object with an object field (Holder, at the first GC)
+  mark    - a surviving young object with an object field (Holder, then Node)
+  barrier - after a collection, the first old object whose write barrier takes
+            the slow path must be one holding a young reference at the next
+            collection: holder->Set() is the only store to an old object in the
+            loop, and the churn between stores allocates without storing
+~#
+class GcVerifyInject {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+    holder := Holder->New();
+
+    for(round := 0; round < 6; round += 1;) {
+      # young Node into holder, which is old from the second round on
+      holder->Set(Node->New(round * 11));
+
+      # at 64 bytes a Node, 3M of them fill the nursery at least once
+      for(j := 0; j < 3000000; j += 1;) {
+        tmp := Node->New(j);
+        if(tmp->Get() < 0) { bad += 1; };
+      };
+
+      node := holder->Get();
+      if(node = Nil) {
+        bad += 1;
+      }
+      else if(node->Get() <> round * 11) {
+        bad += 1;
+      };
+    };
+
+    if(bad = 0) {
+      "PASS: old holder keeps its young node across minor GCs"->PrintLine();
+    }
+    else {
+      "FAIL: old holder lost its young node ({$bad} bad)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
+
+class Holder {
+  @node : Node;
+
+  New() {
+  }
+
+  method : public : Set(node : Node) ~ Nil {
+    @node := node;
+  }
+
+  method : public : Get() ~ Node {
+    return @node;
+  }
+}
+
+class Node {
+  @v : Int;
+  @next : Node;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
