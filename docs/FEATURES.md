@@ -5,6 +5,7 @@ Comprehensive guide to Objeck's language features with examples.
 ## Table of Contents
 - [Object-Oriented Programming](#oop)
 - [Functional Programming](#functional)
+- [Integer Arithmetic](#integers)
 - [Strings & Formatting](#strings)
 - [Platform Support](#platform)
 
@@ -269,6 +270,28 @@ function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
   @g := g;
   return Compose(Int) ~ Int;
 }
+```
+
+---
+
+<a name="integers"></a>
+## Integer Arithmetic
+
+- **Width:** `Int` is 64-bit two's-complement; `Byte` and `Char` widen to `Int`.
+- **Overflow:** `+ - *` wrap and never trap.
+- **Shifts:** use `n and 63`. `>>` sign-fills, `>>>` zero-fills.
+- **Division:** `/` truncates toward zero; `%` takes the dividend's sign.
+- **Traps:** a zero divisor is the only integer trap; `MIN / -1 = MIN` and `MIN % -1 = 0`.
+- **Consistency:** identical in the interpreter, both JITs and at every `-opt` level.
+
+```ruby
+min := -9223372036854775807 - 1;
+(9223372036854775807 + 1 = min)->PrintLine(); # true: wraps
+(min / -1 = min)->PrintLine();                # true: no trap
+(1 << 65)->PrintLine();                       # 2: the count is 65 and 63 = 1
+(-8 >>> 64)->PrintLine();                     # -8: a count of 64 shifts by 0
+(-7 / 2)->PrintLine();                        # -3
+(-7 % 3)->PrintLine();                        # -1
 ```
 
 ---
