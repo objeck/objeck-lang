@@ -444,6 +444,28 @@ void MemoryManager::CheckPendingThreadRoots()
 #endif
 }
 
+// Relocate a frame's self, mem[0], if its object was promoted. A young object's
+// MARKED_FLAG word holds a forwarding address only once promotion has copied it;
+// until then it holds the mark bits, and GC_MARK_BIT is 1. The fixups used to take
+// any non-zero word as the new address, so a self that was not forwarded became 1.
+// ForwardedAddr accepts only an address that is a member of the old generation (#820).
+void MemoryManager::FixupSelf(size_t* mem, StackMethod* method)
+{
+  const size_t fwd = ForwardedAddr((size_t*)mem[0]);
+  if(fwd) {
+    mem[0] = fwd;
+  }
+  else if(GcTraceEnabled()) {
+    // Report only a genuine young object start left unforwarded; a stale or interior
+    // nursery word is not a self and is expected to fail ForwardedAddr.
+    size_t* self = (size_t*)mem[0];
+    if(IsYoungCandidate(self) && IsYoungObjectStart(self, GetClass(self)) && self[MARKED_FLAG]) {
+      std::wcerr << L"[gc] self not forwarded: method='" << method->GetName() << L"' self=" << (void*)self
+                 << L" header=" << (void*)self[MARKED_FLAG] << std::endl;
+    }
+  }
+}
+
 // Fixup phase: relocate each pending self/param if its young object was promoted.
 // FixupSlot validates the forwarding target, so a non-pointer/aliasing value is left
 // untouched. Lock held to pair with RemovePendingThreadRoot (see CheckPendingThreadRoots).
@@ -2188,11 +2210,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
         // Fix up self
         if(!method->IsLambda()) {
-          size_t* self = (size_t*)(*mem);
-          if(self && IsYoung(self)) {
-            size_t fwd = self[MARKED_FLAG];
-            if(fwd) *mem = fwd;
-          }
+          FixupSelf(mem, method);
         }
 
         // Fix up locals
@@ -2230,11 +2248,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
           StackMethod* method = cur_frame->method;
           size_t* mem = cur_frame->mem;
           if(!method->IsLambda()) {
-            size_t* self = (size_t*)(*mem);
-            if(self && IsYoung(self)) {
-              size_t fwd = self[MARKED_FLAG];
-              if(fwd) *mem = fwd;
-            }
+            FixupSelf(mem, method);
           }
           size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
           FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
@@ -2253,11 +2267,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             StackMethod* method = frame->method;
             size_t* mem = frame->mem;
             if(!method->IsLambda()) {
-              size_t* self = (size_t*)(*mem);
-              if(self && IsYoung(self)) {
-                size_t fwd = self[MARKED_FLAG];
-                if(fwd) *mem = fwd;
-              }
+              FixupSelf(mem, method);
             }
             size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
             FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
@@ -2279,11 +2289,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
     if(mem) {
       // Fix up self
       if(!method->IsLambda()) {
-        size_t* self = (size_t*)frame->mem[0];
-        if(self && IsYoung(self)) {
-          size_t fwd = self[MARKED_FLAG];
-          if(fwd) frame->mem[0] = fwd;
-        }
+        FixupSelf(frame->mem, method);
       }
 
       // Fix up JIT locals
