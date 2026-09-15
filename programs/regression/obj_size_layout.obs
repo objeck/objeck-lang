@@ -1,0 +1,357 @@
+#~
+Object field layout must fit the object allocation exactly.
+
+The compiler records a class's instance size in BYTES (one 8-byte slot per
+field, two for a function reference). Through v2026.9.4 the VM allocated
+every object at twice that size, a leftover from 4-byte ints, so a field
+store or collector walk that ran past the declared size landed in unused
+slack and went unnoticed. With exact-size objects, that slack is gone:
+the next nursery object's size word sits right after the last field.
+
+This test builds the shapes most likely to disagree with the instance size
+and keeps them alive through several minor collections (promotion to the
+old generation included), checking every value before it is replaced:
+  - a zero-field class
+  - a Float as the last field
+  - a function reference (two slots) as the last field
+  - a class whose parent is a library class (IntRef)
+  - a closure capture held in a field
+  - a serialization round trip of a class with a trailing function reference
+  - a native library (crypto) storing a result into an argument holder object
+A layout that overruns its allocation corrupts a neighbour, and a value check
+fails or the collector crashes.
+~#
+use Cipher;
+
+class Empty {
+  New() {
+  }
+}
+
+class FloatLast {
+  @id : Int;
+  @f : Float;
+
+  New(id : Int) {
+    @id := id;
+    @f := id->As(Float) / 2.0;
+  }
+
+  method : public : Ok(id : Int) ~ Bool {
+    return @id = id & @f = id->As(Float) / 2.0;
+  }
+}
+
+class FuncLast {
+  @id : Int;
+  @fn : (Int) ~ Int;
+
+  New(id : Int, fn : (Int) ~ Int) {
+    @id := id;
+    @fn := fn;
+  }
+
+  method : public : Ok(id : Int) ~ Bool {
+    return @id = id & @fn(id) = id * 3;
+  }
+}
+
+class Tagged from IntRef {
+  @scale : Float;
+
+  New(v : Int) {
+    Parent(v);
+    @scale := v->As(Float) / 4.0;
+  }
+
+  # the inherited @value is checked by the caller through IntRef->Get()
+  method : public : ScaleOk(v : Int) ~ Bool {
+    return @scale = v->As(Float) / 4.0;
+  }
+}
+
+class Captured {
+  @id : Int;
+  @fr : FuncRef<IntRef>;
+
+  New(id : Int, fr : FuncRef<IntRef>) {
+    @id := id;
+    @fr := fr;
+  }
+
+  method : public : GetId() ~ Int {
+    return @id;
+  }
+
+  method : public : Ok(id : Int) ~ Bool {
+    f := @fr;
+    r := f();
+    return @id = id & r->Get() = id * 7;
+  }
+}
+
+class Ser {
+  @id : Int;
+  @name : String;
+  @ratio : Float;
+  @fn : (Int) ~ Int;
+
+  New(id : Int, fn : (Int) ~ Int) {
+    @id := id;
+    @name := "ser-{$id}";
+    @ratio := id->As(Float) / 8.0;
+    @fn := fn;
+  }
+
+  method : public : Ok(id : Int) ~ Bool {
+    if(@name = Nil) {
+      return false;
+    };
+    return @id = id & @name->Equals("ser-{$id}") & @ratio = id->As(Float) / 8.0;
+  }
+}
+
+# nursery filler: objects only, so the nursery fills and a minor GC runs
+class Pad {
+  @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; @g : Int; @h : Int;
+  @i : Int; @j : Int; @k : Int; @l : Int; @m : Int; @n : Int; @o : Int; @p : Float;
+
+  New(v : Int) {
+    @a := v; @p := v->As(Float);
+  }
+}
+
+class ObjSizeLayout {
+  @empties : Empty[];
+  @floats : FloatLast[];
+  @funcs : FuncLast[];
+  @tags : Tagged[];
+  @caps : Captured[];
+  @ids : Int[];
+  @failures : Int;
+
+  function : Main(args : String[]) ~ Nil {
+    t := ObjSizeLayout->New();
+    t->Run();
+  }
+
+  New() {
+    @empties := Empty->New[KEEP()];
+    @floats := FloatLast->New[KEEP()];
+    @funcs := FuncLast->New[KEEP()];
+    @tags := Tagged->New[KEEP()];
+    @caps := Captured->New[KEEP()];
+    @ids := Int->New[KEEP()];
+    @failures := 0;
+  }
+
+  function : KEEP() ~ Int {
+    return 997;
+  }
+
+  function : Triple(v : Int) ~ Int {
+    return v * 3;
+  }
+
+  function : MakeCapture(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n * 7);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+
+  # Collections of either kind promote surviving nursery objects. The closure,
+  # serializer and hash arrays live in the old generation, so most collections
+  # here are major ones that also recycle the nursery.
+  function : CollectionCount() ~ Int {
+    return Runtime->GetProperty("runtime.gc.total")->ToInt();
+  }
+
+  function : MinorCount() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  function : PromotedCount() ~ Int {
+    return Runtime->GetProperty("runtime.gc.promoted.total")->ToInt();
+  }
+
+  method : Fail(what : String, id : Int) ~ Nil {
+    if(@failures < 20) {
+      "FAIL: {$what} (id={$id})"->PrintLine();
+    };
+    @failures += 1;
+  }
+
+  # verify the slot's previous occupants, then replace them with fresh objects
+  method : Churn(i : Int) ~ Nil {
+    slot := i % KEEP();
+    old_id := @ids[slot];
+    if(@empties[slot] <> Nil) {
+      if(@empties[slot]->TypeOf(Empty) = false) {
+        Fail("zero-field object lost its class", old_id);
+      };
+      if(@floats[slot] = Nil | @floats[slot]->Ok(old_id) = false) {
+        Fail("Float last field", old_id);
+      };
+      if(@funcs[slot] = Nil | @funcs[slot]->Ok(old_id) = false) {
+        Fail("function reference last field", old_id);
+      };
+      if(@tags[slot] = Nil | @tags[slot]->Get() <> old_id | @tags[slot]->ScaleOk(old_id) = false) {
+        Fail("library-class parent", old_id);
+      };
+      # closures are replaced only here, so they carry their own (older) id
+      if(@caps[slot] = Nil | @caps[slot]->GetId() % KEEP() <> slot | @caps[slot]->Ok(@caps[slot]->GetId()) = false) {
+        Fail("closure capture field", old_id);
+      };
+    };
+
+    @ids[slot] := i;
+    @empties[slot] := Empty->New();
+    @floats[slot] := FloatLast->New(i);
+    @funcs[slot] := FuncLast->New(i, Triple(Int) ~ Int);
+    @tags[slot] := Tagged->New(i);
+    @caps[slot] := Captured->New(i, MakeCapture(i));
+  }
+
+  # no arrays and no closures (closure memory is an old-generation array), so the
+  # nursery is what fills and the collection is a minor one
+  method : ChurnObjects(i : Int) ~ Nil {
+    slot := i % KEEP();
+    old_id := @ids[slot];
+    if(@floats[slot]->Ok(old_id) = false) {
+      Fail("Float last field (minor GC)", old_id);
+    };
+    if(@funcs[slot]->Ok(old_id) = false) {
+      Fail("function reference last field (minor GC)", old_id);
+    };
+    if(@tags[slot]->Get() <> old_id | @tags[slot]->ScaleOk(old_id) = false) {
+      Fail("library-class parent (minor GC)", old_id);
+    };
+    if(@empties[slot]->TypeOf(Empty) = false) {
+      Fail("zero-field object lost its class (minor GC)", old_id);
+    };
+    # the closure objects are replaced only in Churn, so they stay valid here
+    if(@caps[slot]->Ok(@caps[slot]->GetId()) = false) {
+      Fail("closure capture field (minor GC)", old_id);
+    };
+
+    @ids[slot] := i;
+    @empties[slot] := Empty->New();
+    @floats[slot] := FloatLast->New(i);
+    @funcs[slot] := FuncLast->New(i, Triple(Int) ~ Int);
+    @tags[slot] := Tagged->New(i);
+    # bound to locals: a discarded `Pad->New(i);` statement crashes the
+    # v2026.9.4 interpreter on its own, unrelated to object size
+    p1 := Pad->New(i); p2 := Pad->New(i); p3 := Pad->New(i); p4 := Pad->New(i);
+  }
+
+  method : RoundTrip(i : Int) ~ Nil {
+    serializer := System.IO.Serializer->New();
+    serializer->Write(Ser->New(i, Triple(Int) ~ Int));
+    copy := System.IO.Deserializer->New(serializer->Serialize())->ReadObject()->As(Ser);
+    if(copy = Nil | copy->Ok(i) = false) {
+      Fail("serialization round trip with a trailing function reference", i);
+    };
+  }
+
+  method : NativeHash(i : Int) ~ Nil {
+    digest := Hash->SHA256("abc"->ToByteArray());
+    if(digest = Nil | digest->Size() <> 32) {
+      Fail("native SHA-256 result holder", i);
+      return;
+    };
+    b0 := digest[0]->As(Int);
+    if(b0 < 0) { b0 += 256; };
+    b31 := digest[31]->As(Int);
+    if(b31 < 0) { b31 += 256; };
+    if(b0 <> 0xba | b31 <> 0xad) {
+      Fail("native SHA-256 result holder", i);
+    };
+  }
+
+  method : Run() ~ Nil {
+    # long-lived objects: promoted to the old generation by the first minor GC
+    long_floats := FloatLast->New[KEEP()];
+    long_funcs := FuncLast->New[KEEP()];
+    long_tags := Tagged->New[KEEP()];
+    each(j : KEEP()) {
+      long_floats[j] := FloatLast->New(j + 1000000);
+      long_funcs[j] := FuncLast->New(j + 1000000, Triple(Int) ~ Int);
+      long_tags[j] := Tagged->New(j + 1000000);
+    };
+
+    start := CollectionCount();
+    promoted_start := PromotedCount();
+    i := 0;
+
+    # fill the rolling window, closures included
+    each(j : KEEP()) {
+      Churn(i);
+      i += 1;
+    };
+
+    # phase 1: object-only churn, so a full nursery runs a minor GC. The count is
+    # polled only between long chunks: GetProperty allocates a String, and any
+    # array allocation past the heap threshold runs a major GC that recycles the
+    # nursery before it can fill.
+    minor_start := MinorCount();
+    while(i < 6000000 & MinorCount() - minor_start < 2) {
+      each(k : 300000) {
+        ChurnObjects(i);
+        i += 1;
+      };
+    };
+    each(j : KEEP()) {
+      ChurnObjects(i);
+      i += 1;
+    };
+    minors := MinorCount() - minor_start;
+    if(minors < 2) {
+      "FAIL: only {$minors} minor collection(s) ran; the nursery layout was not exercised"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    # phase 2: closures, serialization and native calls allocate old-generation
+    # arrays, which drive major collections that promote the nursery survivors
+    major_start := CollectionCount();
+    while(i < 9000000 & CollectionCount() - major_start < 3) {
+      Churn(i);
+      if(i % 64 = 0) {
+        RoundTrip(i);
+      };
+      if(i % 512 = 0) {
+        NativeHash(i);
+      };
+      i += 1;
+    };
+
+    # one full sweep of the rolling window after the last collection
+    each(j : KEEP()) {
+      Churn(i);
+      i += 1;
+    };
+
+    each(j : KEEP()) {
+      if(long_floats[j] = Nil | long_floats[j]->Ok(j + 1000000) = false) {
+        Fail("old-generation Float last field", j);
+      };
+      if(long_funcs[j] = Nil | long_funcs[j]->Ok(j + 1000000) = false) {
+        Fail("old-generation function reference last field", j);
+      };
+      if(long_tags[j] = Nil | long_tags[j]->Get() <> j + 1000000 | long_tags[j]->ScaleOk(j + 1000000) = false) {
+        Fail("old-generation library-class parent", j);
+      };
+    };
+
+    collections := CollectionCount() - start;
+    promoted := PromotedCount() - promoted_start;
+    if(collections < 3 | promoted = 0) {
+      "FAIL: {$collections} collection(s), {$promoted} promotion(s) in {$i} iterations; the layout was not exercised"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} layout check(s) failed over {$i} iterations"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: object layouts intact over {$i} iterations, {$collections} collections, {$promoted} promotions, {$minors} minor collections"->PrintLine();
+  }
+}

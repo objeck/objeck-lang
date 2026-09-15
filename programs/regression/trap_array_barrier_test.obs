@@ -141,10 +141,14 @@ class TrapArrayBarrierTest {
 	#~
 	Fill the nursery so a minor collection runs. Objects bump-allocate young;
 	arrays go straight to the old generation and would never trigger one.
+
+	An IntRef takes 40 bytes of nursery (one field, three header words, the size
+	word), so 6,000,000 of them are 240MB against the 128MB nursery. At 3,000,000
+	this only filled the nursery while objects were allocated at twice their size.
 	~#
 	method : Churn() ~ Nil {
 		sink := 0;
-		for(i := 0; i < 3000000; i += 1;) {
+		for(i := 0; i < 6000000; i += 1;) {
 			r := IntRef->New(i);
 			sink += r->Get();
 		};

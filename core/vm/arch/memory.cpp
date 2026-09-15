@@ -587,16 +587,18 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
   if(cls) {
     const long inst_size = cls->GetInstanceMemorySize();
     // Instance size comes from class metadata (loader-supplied, unvalidated). A
-    // negative or huge value would wrap the size math (on LLP64 `long` is 32-bit,
-    // so `size * 2` also wraps before widening to size_t), under-allocating the
-    // object while field stores use the class's declared offsets -> nursery heap
-    // overflow. Fail closed, mirroring the AllocateArray overflow guard.
-    if(inst_size < 0 || (size_t)inst_size > (~(size_t)0 - sizeof(size_t) * EXTRA_BUF_SIZE) / 2) {
+    // negative or huge value would wrap the size math below (header words, the
+    // size word and alignment), under-allocating the object while field stores
+    // use the class's declared offsets -> nursery heap overflow. Fail closed,
+    // mirroring the AllocateArray overflow guard.
+    if(inst_size < 0 || (size_t)inst_size > ~(size_t)0 - sizeof(size_t) * (EXTRA_BUF_SIZE + 2)) {
       std::wcerr << L">>> Object allocation size overflow <<<" << std::endl;
       exit(1);
     }
     const size_t size = (size_t)inst_size;
-    const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
+    // The instance size is already in bytes (one word per field, two per function
+    // reference). Keep in step with IsYoungObjectStart and the JIT inline allocator.
+    const size_t alloc_size = size + sizeof(size_t) * EXTRA_BUF_SIZE;
 
     // Total size including the size header for free cache
     const size_t total_size = alloc_size + sizeof(size_t);
