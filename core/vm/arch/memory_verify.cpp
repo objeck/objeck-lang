@@ -700,7 +700,8 @@ public:
         return;
       }
       const long inst_size = cls->GetInstanceMemorySize();
-      if(inst_size < 0 || block < (size_t)inst_size * 2 + header) {
+      // objects are allocated at their exact instance size (AllocateObject, G2)
+      if(inst_size < 0 || block < (size_t)inst_size + header) {
         Report(L"B1", origin, block, L"block is smaller than the class instance");
       }
       return;
