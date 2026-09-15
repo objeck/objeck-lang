@@ -3979,13 +3979,34 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       }
 
       // declarations
+      //
+      // Here the receiver -- a string literal, an interpolated string, or the
+      // previous call's result in a chain -- is already on the stack when the
+      // arguments are emitted. An instance method pops its instance first, so
+      // every argument has to be swapped beneath it. A static function (the
+      // '$Int'/'$Char' helpers behind primitive and primitive-array receivers)
+      // takes the receiver as parameter 0 instead, which is the order the stack
+      // already has.
+      //
+      // This used to be keyed on 'new_char_str_count', which only a string
+      // literal sets and every nested EmitMethodCall clears: an argument such
+      // as 'G->Zero()' dropped the swap for the arguments after it, and a
+      // chained receiver never got one, so the call popped an argument as its
+      // instance. The counter is still cleared around each argument so a
+      // literal inside an argument cannot pair with the receiver.
+      //
+      // Conditional receivers ('(t ? "a" : "b")->Size()') crash even without
+      // arguments, for a separate reason that this swap does not address.
+      const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
+        (method_call->GetLibraryMethod() && !method_call->GetLibraryMethod()->IsStatic());
+      const bool swap_under_receiver = !is_str_array && is_instance_call;
+      new_char_str_count = 0;
       std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
         EmitClassCast(expressions[i]);
-        // need to swap values
-        if(!is_str_array && new_char_str_count > 0 && method_call->GetCallingParameters() &&
-           method_call->GetCallingParameters()->GetExpressions().size() > 0) {
+        new_char_str_count = 0;
+        if(swap_under_receiver) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
         }
       }
