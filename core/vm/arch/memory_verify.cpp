@@ -773,6 +773,28 @@ public:
     }
   }
 
+  // B3 for a closure capture block dirtied before the collection. Such a block has no
+  // declarations until a holder types it, so the typed walks above never look inside
+  // one that no holder reaches yet. A word still naming a nursery object start (the
+  // nursery is not cleared, so the stale header is still there) is a capture the
+  // collection promoted without forwarding the block's copy.
+  static void CheckCaptureBlockAfter(size_t* obj) {
+    const size_t words = obj[SIZE_OR_CLS] / sizeof(size_t);
+    for(size_t k = 0; k < words; ++k) {
+      const size_t value = obj[k];
+      size_t* mem = (size_t*)value;
+      if(!InNurseryRange(value) || (value & (sizeof(size_t) - 1)) ||
+         (uint8_t*)mem < MemoryManager::young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE)) {
+        continue;
+      }
+      if(mem[TYPE] == instructions::NIL_TYPE && classes.count((StackClass*)mem[SIZE_OR_CLS]) &&
+         MemoryManager::IsYoungObjectStart(mem, (StackClass*)mem[SIZE_OR_CLS])) {
+        const Origin origin = { obj, nullptr, L"capture block", (long)k, true };
+        Report(L"B3", origin, value, L"dirty closure capture block still refers to a nursery object after the collection (capture not forwarded)");
+      }
+    }
+  }
+
   static void CheckRootsAfter() {
     StackClass** clss = MemoryManager::prgm->GetClasses();
     const long cls_num = MemoryManager::prgm->GetClassNumber();
@@ -993,6 +1015,39 @@ void MemoryManager::VerifyBeforeCollection(bool minor)
     }
   }
 
+  // T0, N1: every nursery block's object address is one the collector's young range
+  // tests accept. This is checked on the nursery's own layout, not through a trace,
+  // because the traces classify addresses with the same IsYoung/IsYoungCandidate the
+  // collector uses: an object whose address fell outside that half-open range (a
+  // zero-field object ending exactly at young_offset, before ObjectBlockSize padded
+  // it) looked like "not young" to both, was never marked, promoted or forwarded, and
+  // the only sign of it was an untyped B3 warning on the array holding it, several
+  // collections later. The walk is linear in nursery objects and runs every collection.
+  {
+    const size_t young_used = young_offset.load(std::memory_order_acquire);
+    uint8_t* scan_ptr = young_region;
+    while(young_region && scan_ptr < young_region + young_used) {
+      size_t* raw_mem = (size_t*)scan_ptr;
+      const size_t block = raw_mem[0];
+      const size_t total = (sizeof(size_t) + block + sizeof(size_t) - 1) & ~(sizeof(size_t) - 1);
+      size_t* mem = raw_mem + 1 + EXTRA_BUF_SIZE;
+      const Origin origin = { nullptr, nullptr, L"nursery", (long)((uint8_t*)raw_mem - young_region), true };
+      if(block < sizeof(size_t) * EXTRA_BUF_SIZE || scan_ptr + total > young_region + young_used) {
+        GcVerifier::Report(L"N1", origin, block, L"nursery block size word runs past the used nursery");
+        break;
+      }
+      if(!IsYoungCandidate(mem)) {
+        GcVerifier::Report(L"N1", origin, (size_t)mem,
+                           L"nursery object's address is outside the collector's young range (block of " +
+                           std::to_wstring(block) + L" bytes ends at the nursery offset): it cannot be marked or forwarded");
+      }
+      else if(mem[TYPE] == instructions::NIL_TYPE && !IsYoungObjectStart(mem, (StackClass*)mem[SIZE_OR_CLS])) {
+        GcVerifier::Report(L"N1", origin, block, L"nursery object's size word does not match its class instance size");
+      }
+      scan_ptr += total;
+    }
+  }
+
   // A2 over the whole old generation (T1), else over what the last collection promoted (T0)
   if(GcVerifier::IsFullCheck()) {
     for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
@@ -1080,6 +1135,14 @@ void MemoryManager::VerifyAfterCollection(bool minor)
     }
   }
   GcVerifier::CheckRootsAfter();
+
+  // T0, B3: dirty closure capture blocks, which no typed walk may reach yet
+  for(size_t i = 0; i < GcVerifier::dirty_snapshot.size(); ++i) {
+    size_t* obj = GcVerifier::dirty_snapshot[i];
+    if(GcVerifier::IsOld((size_t)obj) && obj[TYPE] == instructions::BYTE_ARY_TYPE) {
+      GcVerifier::CheckCaptureBlockAfter(obj);
+    }
+  }
 
   // T1: every old-generation object
   if(full) {

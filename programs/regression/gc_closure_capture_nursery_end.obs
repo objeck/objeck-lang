@@ -1,0 +1,224 @@
+#~
+A closure's captured young object must survive a collection that runs while the
+closure is being built.
+
+`FuncRef->New(\() ~ IntRef : () => x)<IntRef>` allocates the closure's capture
+block (NEW_FUNC_INST, always old generation), copies x into it (a barriered store
+that marks the block dirty), then allocates the FuncRef object. Until that object
+exists, the block is held only by the method's hidden closure slot, declared
+INT_PARM, and by the operand stack: neither tells the collector what the block
+holds. When allocating the FuncRef ran a minor collection, x was promoted through
+its own local, but nothing forwarded the block's copy of it, so the closure
+returned a reference into the recycled nursery ("closure capture field" in
+obj_size_layout with --nursery=128k). The collector now relocates the words of a
+closure block written since the last collection.
+
+This test needs no VM flag. It measures what each step allocates in the nursery,
+fills the default nursery so the captured IntRef fits and the FuncRef does not,
+builds the closure, and checks that exactly one minor collection (and no major one)
+ran there, then refills the nursery past where the IntRef was and checks that the
+closure still returns its own IntRef. The approach to the nursery end is filled
+with zero-field objects, which add nothing to the heap-threshold count: filled
+with larger objects, that count passes the threshold and the capture block's own
+array allocation runs a major collection BEFORE x is copied, which hides the bug.
+~#
+
+class Empty {
+  New() {
+  }
+}
+
+class F1 { @a : Int; New() { @a := 7; } }
+class F2 { @a : Int; @b : Int; New() { @a := 7; @b := 7; } }
+class F3 { @a : Int; @b : Int; @c : Int; New() { @a := 7; @b := 7; @c := 7; } }
+class F4 { @a : Int; @b : Int; @c : Int; @d : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; } }
+class F5 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; } }
+class F6 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; @f := 7; } }
+class F7 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; @g : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; @f := 7; @g := 7; } }
+class F8 { @a : Int; @b : Int; @c : Int; @d : Int; @e : Int; @f : Int; @g : Int; @h : Int; New() { @a := 7; @b := 7; @c := 7; @d := 7; @e := 7; @f := 7; @g := 7; @h := 7; } }
+
+# 32 field words: an allocation that does not fit in a nearly full nursery
+class Big {
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+  New() {
+  }
+}
+
+# holds a closure; allocated after the closure is built
+class Keep {
+  @fr : FuncRef<IntRef>;
+
+  New(fr : FuncRef<IntRef>) {
+    @fr := fr;
+  }
+
+  method : public : Get() ~ FuncRef<IntRef> {
+    return @fr;
+  }
+}
+
+class GcClosureCaptureNurseryEnd {
+  @base : Int;      # block bytes of an object with no field words
+  @word : Int;      # bytes per field word
+  @empty : Int;     # block bytes of an Empty
+  @probe : Int;     # nursery bytes one Used() call allocates
+  @post : Int;      # ...of which it allocates after reading the value
+  @xcost : Int;     # nursery bytes of the captured IntRef
+  @frcost : Int;    # nursery bytes MakeCapture allocates after the IntRef
+  @kept : Keep[];
+
+  function : Main(args : String[]) ~ Nil {
+    t := GcClosureCaptureNurseryEnd->New();
+    t->Run();
+  }
+
+  New() {
+    @kept := Keep->New[2];   # arrays live in the old generation
+  }
+
+  function : Used() ~ Int {
+    return Runtime->GetProperty("runtime.gc.nursery.used")->ToInt();
+  }
+
+  function : Capacity() ~ Int {
+    return Runtime->GetProperty("runtime.gc.nursery.capacity")->ToInt();
+  }
+
+  function : Minors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  function : Majors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.major")->ToInt();
+  }
+
+  function : MakeCapture(n : Int) ~ FuncRef<IntRef> {
+    x := IntRef->New(n * 7);
+    return FuncRef->New(\() ~ IntRef : () => x)<IntRef>;
+  }
+
+  # allocate one object of k (1..8) field words
+  method : One(k : Int) ~ Nil {
+    select(k) {
+      label 1: { o := F1->New(); }
+      label 2: { o := F2->New(); }
+      label 3: { o := F3->New(); }
+      label 4: { o := F4->New(); }
+      label 5: { o := F5->New(); }
+      label 6: { o := F6->New(); }
+      label 7: { o := F7->New(); }
+      other: { o := F8->New(); }
+    };
+  }
+
+  # allocate `bytes` of nursery objects (a multiple of the word size)
+  method : Fill(bytes : Int) ~ Nil {
+    big := @base + 8 * @word;
+    small := @base + @word;
+    while(bytes >= big + small) {
+      o := F8->New();
+      bytes -= big;
+    };
+    if(bytes >= small) {
+      if(bytes > big) {
+        One(1);
+        bytes -= small;
+      };
+      One((bytes - @base) / @word);
+    };
+  }
+
+  # the same, but mostly with zero-field objects (no heap-threshold count)
+  method : FillLight(bytes : Int) ~ Nil {
+    keep := 2 * (@base + 8 * @word);
+    while(bytes >= keep + @empty) {
+      e := Empty->New();
+      bytes -= @empty;
+    };
+    Fill(bytes);
+  }
+
+  method : Fail(what : String) ~ Nil {
+    "FAIL: {$what}"->PrintLine();
+    Runtime->Exit(1);
+  }
+
+  method : Measure() ~ Nil {
+    u0 := Used(); u1 := Used(); u2 := Used();
+    a := F1->New();
+    u3 := Used();
+    b := F2->New();
+    u4 := Used();
+    r := IntRef->New(1);
+    u5 := Used();
+    f := MakeCapture(1);
+    u6 := Used();
+    e := Empty->New();
+    u7 := Used();
+    @probe := u1 - u0;
+    @word := (u4 - u3) - (u3 - u2);
+    @base := (u3 - u2 - @probe) - @word;
+    @xcost := u5 - u4 - @probe;
+    @frcost := u6 - u5 - @probe - @xcost;
+    @empty := u7 - u6 - @probe;
+    if(u2 - u1 <> @probe | @probe <= 0 | @word <> 8 | @base <= 0 | @xcost <= 0 | @frcost < 2 * @word | @empty <= 0) {
+      Fail("nursery counters moved unexpectedly (probe={$@probe} word={$@word} base={$@base} x={$@xcost} fr={$@frcost} empty={$@empty})");
+    };
+
+    # How much of a Used() call's allocation follows the value it reads: collect with
+    # a Big as the first object of the fresh nursery, then read.
+    cap := Capacity();
+    big_bytes := @base + 32 * @word;
+    Fill(cap);
+    now := Used() + @probe;   # over-estimates by what the call allocates first
+    Fill(cap - @word - now);  # leaves less room than a Big
+    big := Big->New();
+    after := Used();
+    pre := after - big_bytes;
+    if(pre < 0 | pre > @probe) {
+      Fail("could not calibrate the property read (used after a collection: {$after})");
+    };
+    @post := @probe - pre;
+  }
+
+  method : Run() ~ Nil {
+    Measure();
+
+    cap := Capacity();
+    Fill(cap);   # a fresh nursery, so the fills below need no collection
+    minors := Minors();
+    majors := Majors();
+    now := Used() + @post;
+    # after the IntRef, leave half the room the FuncRef needs
+    room := @frcost / 2 / @word * @word;
+    FillLight(cap - room - @xcost - now);
+    @kept[0] := Keep->New(MakeCapture(5));   # the FuncRef allocation collects
+    used := Used();
+    minor_runs := Minors() - minors;
+    major_runs := Majors() - majors;
+    if(used > cap / 2 | minor_runs <> 1 | major_runs <> 0) {
+      Fail("the FuncRef allocation did not run a minor collection (nursery used {$used} of {$cap}, {$minor_runs} minor, {$major_runs} major); the case was not exercised");
+    };
+
+    # cover the IntRef's old block with other objects' words, then use the closure
+    now := Used() + @post;
+    Fill(cap - 2 * @word - now);
+    fr := @kept[0]->Get();
+    if(fr = Nil) {
+      Fail("the closure became Nil");
+    };
+    f := fr->Get();
+    r := f();
+    if(r = Nil) {
+      Fail("the closure returned Nil");
+    };
+    v := r->Get();
+    if(v <> 35) {
+      Fail("the closure returned {$v}, expected 35: its captured IntRef was not forwarded");
+    };
+    "PASS: a closure built during a minor collection kept its captured object"->PrintLine();
+  }
+}

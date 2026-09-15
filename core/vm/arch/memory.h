@@ -281,6 +281,23 @@ class MemoryManager {
     return cls && std::binary_search(class_ptrs.begin(), class_ptrs.end(), cls);
   }
 
+  // Bytes an object of inst_size field bytes occupies after its size word: the header
+  // words plus its fields, and never fewer than ONE field word. An object's address is
+  // the word after its header, so a zero-field object with no field word would point
+  // one past its own block. When that object is the last one in the nursery its address
+  // equals young_region + young_offset, which every half-open young test (IsYoung,
+  // IsYoungCandidate, ForwardedAddr, the write barriers) rejects: the collector never
+  // marked, promoted or forwarded it, reset the nursery under it, and the next
+  // allocation to reach the end overwrote its header ("zero-field object lost its
+  // class", reproducible with --nursery=128k). The pad word keeps every object's
+  // address strictly inside its block. AllocateObject, the JIT inline allocator and
+  // IsYoungObjectStart must all size objects with this one function.
+ public:
+  static inline size_t ObjectBlockSize(size_t inst_size) {
+    return (inst_size ? inst_size : sizeof(size_t)) + sizeof(size_t) * EXTRA_BUF_SIZE;
+  }
+ private:
+
   // Is this young candidate a real object's start? The nursery holds objects only
   // (AllocateArray always allocates in the old generation), and AllocateObject writes
   // each one's allocation size in the word before its three header words. A stale or
@@ -298,8 +315,7 @@ class MemoryManager {
     if(inst_size < 0) {
       return false;
     }
-    const size_t alloc_size = (size_t)inst_size + sizeof(size_t) * EXTRA_BUF_SIZE;
-    return mem[-(long)(1 + EXTRA_BUF_SIZE)] == alloc_size;
+    return mem[-(long)(1 + EXTRA_BUF_SIZE)] == ObjectBlockSize((size_t)inst_size);
   }
 
   static inline bool IsAllocated(size_t* mem) {
