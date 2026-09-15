@@ -1,3 +1,16 @@
 {
-  "known": []
+  "known": [
+    {
+      "signature": "^diverge: s0/off,s3/default,s3/jit1,s0/jit1 \\| s3/off ",
+      "note": "v2026.9.4: s3 bytecode run by the interpreter only (--jit=off) returns wrong values or stops with a spurious 'Divide by zero'; the same .obe is right under the JIT and at s0. Seen with dead Int locals beside a closure call or a string local. Repros: findings/s3_interp_closure_dead_locals.obs, findings/s3off_seed1006.obs, findings/s3off_divide_by_zero_seed49.obs"
+    },
+    {
+      "signature": "^diverge: s0/off,s0/jit1 \\| s3/off,s3/default,s3/jit1 first=\\S+ vs  exit 1 >>> Attempting to dereference a 'Nil' memory element <<< ",
+      "note": "v2026.9.4: s3 miscompile of a method holding a static function-reference local and a counted loop; every s3 configuration dereferences Nil. Repro: findings/s3_nil_deref_funcref_seed231.obs"
+    },
+    {
+      "signature": "^crash: s3/off timeout; diverge: s0/off,s0/jit1 \\| s3/off,s3/default,s3/jit1 ",
+      "note": "v2026.9.4: the same s3 function-reference-local miscompile without dead locals never terminates. Repro: findings/s3_funcref_local_loop_hang.obs"
+    }
+  ]
 }

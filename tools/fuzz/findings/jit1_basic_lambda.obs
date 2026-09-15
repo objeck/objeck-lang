@@ -1,0 +1,28 @@
+#~
+Fuzzer finding against v2026.9.4 (x64 Windows). The fuzzer's reduction of
+seed 1015 stopped at 142 lines (a 1500-test budget); this is the construct it
+kept, written by hand.
+
+signature: crash: s3/jit1 access violation; diverge: s0/off,s3/off,s3/default | s3/jit1,s0/jit1 first=h=# vs
+
+A zero-argument lambda that returns a basic type, `\() ~ Int : () => e`,
+compiles, and calling it works in the interpreter (h=6). With --jit=1, at s0
+or s3, obr dies with an access violation (0xC0000005) and prints nothing. The
+default threshold passes here only because Main holds no loop and is never
+compiled; inside a method called ten times it crashes the same way.
+
+tools/fuzz/gen.py generates this form only with --basic-lambdas: a native
+crash carries no message, so no known.json regex could tell it apart from a
+new JIT crash.
+
+Expected output: h=6
+~#
+
+class Lam3 {
+  function : Main(args : String[]) ~ Nil {
+    x := 5;
+    h := \() ~ Int : () => x + 1;
+    hr := h();
+    "h={$hr}"->PrintLine();
+  }
+}
