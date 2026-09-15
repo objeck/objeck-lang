@@ -204,7 +204,8 @@ class KnownTest(unittest.TestCase):
     def test_repository_known_json_parses(self):
         here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "known.json")
         entries = fuzzlib.load_known(here)
-        self.assertTrue(entries)
+        # an empty list is valid: every triaged finding may be fixed
+        self.assertIsInstance(entries, list)
         for e in entries:
             self.assertIn("note", e["raw"])
 

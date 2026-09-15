@@ -23,7 +23,7 @@ python -m unittest discover -s tools/fuzz -p "test_*.py"  # FUZZ_BIN=<bin> for t
 | `reduce.py` | shrinks a finding's choice sequence while the finding still reproduces |
 | `known.json` | suppressions: signature regexes of triaged findings |
 | `faults/` | a deliberately broken `obc` and `obr`, used to prove findings are caught |
-| `findings/` | reduced reproducers of real findings (`.obs` only) |
+| `findings/` | reduced reproducers of real findings (`.obs` only); all are fixed and kept as guards, each also covered by a regression test |
 | `test_*.py` | unit tests; `test_toolchain.py` drives a real deploy tree |
 
 ## Configurations
@@ -55,6 +55,17 @@ The floor is 70% because positive evidence measures about 76% on the x64 VM:
 a method reached only from compiled code never counts a call toward the
 auto-JIT threshold and stays interpreted (the old metric called that ~97%).
 The summary's "most often not compiled" line names them.
+
+A fraction over a handful of methods says little, so the floor applies only
+when at least `--min-jit-sample` methods (default 20) were sampled. `--replay
+SEED` runs that one seed alone and never applies the floor, so replaying a
+clean program whose one method the JIT rejects (4/5 compiled, say) exits 0.
+New findings still fail either run, and so does a run where nothing at all
+compiled, whatever the sample size.
+
+```
+python tools/fuzz/run_fuzz.py --bin core/release/deploy-x64/bin --replay 20260936
+```
 
 ## Programs
 

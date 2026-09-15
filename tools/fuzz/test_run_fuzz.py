@@ -88,6 +88,66 @@ class CoverageGateTest(FakeToolchainCase):
             self.assertEqual(run_fuzz.main(self.argv(path)), 2)
 
 
+class ReplayAndSampleTest(FakeToolchainCase):
+    """A replay or a small sample is not judged on the coverage fraction, but
+    still fails when nothing compiled or a finding is new."""
+
+    def replay(self, mode, known, seed=SEEDS[0], extra=()):
+        os.environ["FAKE_OBR_MODE"] = mode
+        argv = ["--bin", self.bin, "--replay", str(seed), "-j", "1", "--features", "F2",
+                "--obc", FAKE_OBC, "--obr", FAKE_OBR, "--known", known,
+                "--out", os.path.join(self.dir, "out"),
+                "--json", os.path.join(self.dir, "summary.json")] + list(extra)
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            status = run_fuzz.main(argv)
+        summary = None
+        if os.path.exists(os.path.join(self.dir, "summary.json")):
+            with open(os.path.join(self.dir, "summary.json"), encoding="utf-8") as f:
+                summary = json.load(f)
+        return status, summary, buf.getvalue()
+
+    def test_small_sample_does_not_apply_the_floor(self):
+        status, s, out = self.fuzz("partial", self.known([]), ["--min-jit", "0.9"])
+        self.assertLess(s["jit_total"], 20)
+        self.assertGreater(s["jit_compiled"], 0)
+        self.assertLess(s["jit_compiled"], s["jit_total"])
+        self.assertNotIn("FAIL", out)
+        self.assertIn("not applied", out)
+        self.assertEqual(status, 0)
+
+    def test_large_enough_sample_applies_the_floor(self):
+        status, s, out = self.fuzz("partial", self.known([]), ["--min-jit", "0.9", "--min-jit-sample", "10"])
+        self.assertGreaterEqual(s["jit_total"], 10)
+        self.assertIn("FAIL: JIT-compiled fraction", out)
+        self.assertEqual(status, 1)
+
+    def test_replay_runs_one_seed_without_the_floor(self):
+        status, s, out = self.replay("partial", self.known([]), extra=["--min-jit-sample", "0"])
+        self.assertEqual(s["stats"]["programs"], 1)
+        self.assertLess(s["jit_fraction"], 0.70)
+        self.assertIn("not applied (replay)", out)
+        self.assertEqual(status, 0)
+
+    def test_replay_still_fails_a_vm_that_compiles_nothing(self):
+        status, s, out = self.replay("ignore-jit", self.known([]))
+        self.assertEqual(s["jit_compiled"], 0)
+        self.assertIn("FAIL: JIT-compiled fraction 0.0%", out)
+        self.assertEqual(status, 1)
+
+    def test_replay_still_reports_a_new_finding(self):
+        status, s, out = self.replay("diverge", self.known([]))
+        self.assertEqual((s["stats"]["programs"], s["stats"]["new"]), (1, 1))
+        self.assertIn("FAIL fuzz: ", out)
+        self.assertEqual(status, 1)
+
+    def test_replay_excludes_seed_and_count(self):
+        known = self.known([])
+        for extra in (["--seed", "7"], ["--count", "3"]):
+            status, _s, _out = self.replay("honest", known, extra=extra)
+            self.assertEqual(status, 2, extra)
+
+
 class TriageRoundTripTest(FakeToolchainCase):
     LEG = "linux-x64"
 

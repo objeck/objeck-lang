@@ -17,6 +17,11 @@ because a differential fuzzer whose methods never reach the JIT compares the
 interpreter with itself -- and a VM that ignores --jit=1 prints no report at
 all, so counting only rejections would have scored it 100%.
 
+The fraction is judged only over at least --min-jit-sample methods: a single
+program's 4 of 5 is noise, not a coverage regression. --replay SEED runs one
+seed and never applies the fraction floor. Either way a run in which nothing
+at all compiled still fails.
+
 Findings are saved under --out/<signature hash>/seed_<n>/ with the program,
 its recorded choices (for reduce.py) and every run's output. Exit status: 0
 clean, 1 new findings or JIT coverage under the floor, 2 usage error.
@@ -67,8 +72,12 @@ def save_finding(out_dir, prog, outcome, workdir, features, basic_lambdas=False)
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--bin", required=True, help="deploy tree bin directory (obc, obr)")
-    ap.add_argument("--count", type=int, default=100)
-    ap.add_argument("--seed", type=int, default=1, help="first seed; programs use seed..seed+count-1")
+    ap.add_argument("--count", type=int, default=None, help="programs to run (default 100)")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="first seed; programs use seed..seed+count-1 (default 1)")
+    ap.add_argument("--replay", type=int, default=None, metavar="SEED",
+                    help="run this one seed alone, without the JIT-coverage fraction floor "
+                         "(excludes --seed and --count)")
     ap.add_argument("-j", "--jobs", type=int, default=4)
     ap.add_argument("--features", default=None, help="force a feature set, e.g. F2,F5 (default: swarm)")
     ap.add_argument("--timeout", type=float, default=30.0, help="seconds per run")
@@ -86,11 +95,26 @@ def main(argv=None):
     # interpreted; the old rejection-only metric reported ~97% for the same runs.
     ap.add_argument("--min-jit", type=float, default=0.70,
                     help="minimum JIT-compiled fraction, on positive report evidence (default 0.70)")
+    ap.add_argument("--min-jit-sample", type=int, default=20,
+                    help="apply --min-jit only when at least this many methods were sampled (default 20); "
+                         "a run where nothing compiled fails regardless")
     ap.add_argument("--keep", action="store_true", help="keep every program's work directory")
     ap.add_argument("--basic-lambdas", action="store_true",
                     help="also generate the lambda form whose call crashes the 9.4 JIT (see gen.py)")
     ap.add_argument("--json", default=None, help="write the run summary here")
     args = ap.parse_args(argv)
+
+    if args.replay is not None:
+        if args.seed is not None or args.count is not None:
+            print("--replay runs one seed; it cannot be combined with --seed or --count", file=sys.stderr)
+            return 2
+        args.seed, args.count = args.replay, 1
+    else:
+        args.seed = 1 if args.seed is None else args.seed
+        args.count = 100 if args.count is None else args.count
+    if args.count < 1 or args.min_jit_sample < 0:
+        print("--count must be positive and --min-jit-sample non-negative", file=sys.stderr)
+        return 2
 
     if not os.path.isdir(args.bin):
         print("no such bin directory: %s" % args.bin, file=sys.stderr)
@@ -189,9 +213,20 @@ def main(argv=None):
     status = 0
     if stats["new"]:
         status = 1
+    # A replay or a small sample is judged only on whether anything compiled:
+    # one program's 4/5 is not a coverage regression, but 0/N still means the
+    # JIT never ran.
+    floor_applies = bool(total) and (compiled == 0 or
+                                     (args.replay is None and total >= args.min_jit_sample))
     if total and fraction < args.min_jit:
-        print("FAIL: JIT-compiled fraction %.1f%% is under the %.0f%% floor" % (100 * fraction, 100 * args.min_jit))
-        status = 1
+        if floor_applies:
+            print("FAIL: JIT-compiled fraction %.1f%% is under the %.0f%% floor" % (100 * fraction, 100 * args.min_jit))
+            status = 1
+        else:
+            print("note: JIT-compiled fraction %.1f%% is under the %.0f%% floor, not applied (%s)" %
+                  (100 * fraction, 100 * args.min_jit,
+                   "replay" if args.replay is not None
+                   else "%d methods sampled, --min-jit-sample %d" % (total, args.min_jit_sample)))
     if stats["programs"] and not total:
         print("FAIL: no JIT coverage was measured")
         status = 1

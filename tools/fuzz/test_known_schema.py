@@ -61,7 +61,8 @@ class ParseTest(unittest.TestCase):
             ks.load(p)
 
     def test_repository_file_follows_the_schema(self):
-        self.assertTrue(ks.load(os.path.join(HERE, "known.json")))
+        # an empty list is valid: every triaged finding may be fixed
+        self.assertIsInstance(ks.load(os.path.join(HERE, "known.json")), list)
 
 
 class MatchTest(unittest.TestCase):

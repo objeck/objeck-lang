@@ -11,7 +11,9 @@ every configuration, and exits 0. FAKE_OBR_MODE picks how it treats --jit=1:
   ignore-jit  prints no report at all: a VM that never compiles, whose run
               under --jit=1 is the interpreter again;
   diverge     like honest, but under --jit=1 F0 prints a wrong digest (a
-              JIT miscompile), so every program is a finding.
+              JIT miscompile), so every program is a finding;
+  partial     like honest, but reports only the program's first method, so
+              coverage is low without being zero.
 """
 
 import os
@@ -44,8 +46,11 @@ def main(argv):
     for name in names:
         wrong = mode == "diverge" and jit1 and name == "F0"
         sys.stdout.write("%s=%d\n" % (name, 2 if wrong else 1))
-    if jit1 and os.environ.get("OBJECK_JIT_REPORT") and mode in ("honest", "diverge"):
-        for m in methods(text):
+    if jit1 and os.environ.get("OBJECK_JIT_REPORT") and mode in ("honest", "diverge", "partial"):
+        reported = list(methods(text))
+        if mode == "partial":
+            reported = reported[:1]
+        for m in reported:
             sys.stderr.write("[jit] %s:: compiled\n" % m)
     return 0
 
