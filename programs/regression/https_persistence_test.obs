@@ -1,3 +1,5 @@
+# VERIFY_SKIP
+# reason: loopback TLS peers time out when the heap verifier stops the world at every collection (empty TLS responses in the first nightly)
 # EXTRA_LIBS: net,net_server
 use Collection, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
 class HttpsPersistenceHandler from HttpsRequestHandler {

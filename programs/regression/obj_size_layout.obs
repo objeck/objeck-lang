@@ -352,6 +352,9 @@ class ObjSizeLayout {
       "FAIL: {$@failures} layout check(s) failed over {$i} iterations"->PrintLine();
       Runtime->Exit(1);
     };
-    "PASS: object layouts intact over {$i} iterations, {$collections} collections, {$promoted} promotions, {$minors} minor collections"->PrintLine();
+    # the counts depend on when collections land (they differ between -opt levels
+    # and JIT modes), so they go to stderr; the differential runner compares stdout
+    "  {$i} iterations, {$collections} collections, {$promoted} promotions, {$minors} minor collections"->ErrorLine();
+    "PASS: object layouts intact"->PrintLine();
   }
 }

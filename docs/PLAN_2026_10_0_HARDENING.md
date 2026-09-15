@@ -159,8 +159,9 @@ Proof it works, on the release binary:
 - **Triage into three classes:**
   - infra: comment only;
   - known: a `known.json` signature (leg + config + message regex), summary only;
-  - new: its own issue with seed, reduced program and artifacts.
+  - new: listed, grouped by leg and step, in the run's one tracking issue. Its own issue (seed, reduced program, artifacts) only when the same step and test is new on more than one leg, or it is a crash or heap-verifier violation (`tools/cicd/nightly_triage.py`, "Issues"). The first run opened five issues for two test-output bugs and one slow step.
 - The tracking issue closes itself on the next green run.
+- Signal only: tests print collection-timing counts to stderr, never stdout (the differential compares stdout); tests that open sockets carry `# VERIFY_SKIP` (linted by `tools/cicd/check_diff_markers.py`), since loopback peers time out under the verifier.
 
 **Phase 1 exits, split so the lanes are not blocked on everything:**
 - 1.1 + 1.2 + 1.3 unblock the **compiler lane**;

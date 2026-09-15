@@ -267,6 +267,26 @@ class IssueBodyTests(unittest.TestCase):
         base.update(kw)
         return base
 
+    def test_group_body_names_every_leg_and_a_leg_free_snippet(self):
+        a = self.item(step="verify-major", test="gc_zero", config="v=1", seed="", reduced="",
+                      message="runtime error (exit 134)", cross="c0ffee0001", kind="verifier",
+                      detail=">>> gc-verify: B2 violation in collection 4 (minor, after) <<<\n")
+        b = dict(a, id="abc9999999", leg="macos-arm64", message="runtime error",
+                 log="macos-arm64/verify-major.log")
+        body = nt.issue_body([a, b], "https://x/runs/1")
+        for needle in ("new on 2 legs, heap-verifier violation", "`%s`" % nt.issue_key(a),
+                       "| `abc1234567` | linux-arm64 |", "| `abc9999999` | macos-arm64 |",
+                       "`nightly-macos-arm64`", "B2 violation"):
+            self.assertIn(needle, body)
+        entry = json.loads(body.split("~~~json\n")[1].split("\n~~~")[0])
+        self.assertNotIn("id", entry)
+        self.assertEqual(entry["leg"], "^(?:linux\\-arm64|macos\\-arm64)$")
+        self.assertTrue(re.search(entry["message"], "runtime error"))
+        # one issue per step and test, whatever the leg or the runner's wording
+        self.assertEqual(nt.issue_title(a), "Nightly hardening [%s] verify-major gc_zero"
+                         % nt.cross_signature("verify-major", "", "gc_zero", ""))
+        self.assertEqual(nt.issue_title(a), nt.issue_title(dict(b, message="timed out")))
+
     def test_body_has_what_a_fixer_needs(self):
         body = nt.issue_body(self.item(), "https://github.com/o/r/actions/runs/9")
         for needle in ("abc1234567", "linux-arm64", "s3/jit1", "prog_17",
@@ -281,8 +301,7 @@ class IssueBodyTests(unittest.TestCase):
 
     def test_body_without_seed_or_reduction(self):
         body = nt.issue_body(self.item(seed="", reduced="", detail=""))
-        self.assertIn("**Seed:** none recorded", body)
-        self.assertIn("**Reduced program:** none recorded", body)
+        self.assertIn("**linux-arm64:** seed none recorded; reduced program none recorded", body)
         self.assertNotIn("### Output", body)
 
     def test_long_output_is_truncated(self):
@@ -291,9 +310,10 @@ class IssueBodyTests(unittest.TestCase):
         self.assertIn("more lines in the log artifact", body)
         self.assertNotIn("line 499", body)
 
-    def test_title_is_stable_and_unique(self):
-        self.assertEqual(nt.short_title(self.item()),
-                         "Nightly hardening [abc1234567] linux-arm64 fuzz prog_17")
+    def test_fuzz_title_is_keyed_by_the_cross_leg_signature(self):
+        # fuzzer findings share one test name, so the message tells them apart
+        self.assertEqual(nt.issue_title(self.item(cross="feed000001")),
+                         "Nightly hardening [feed000001] fuzz prog_17")
 
 
 class TriageCommandTests(unittest.TestCase):
@@ -318,29 +338,112 @@ class TriageCommandTests(unittest.TestCase):
         with open(self.gh, encoding="utf-8") as f:
             return dict(line.rstrip("\n").split("=", 1) for line in f)
 
-    def test_new_failures_write_issue_files_and_outputs(self):
-        fails = [nt.make_failure("t%d" % i, "exit code 1", "jit=1") for i in range(3)]
-        write_json(os.path.join(self.results, "linux-x64", "stress.json"),
-                   result("linux-x64", "stress", "fail", fails))
-        self.assertEqual(self.triage("linux-x64", "stress", max_issues=2), 0)
-        out = self.outputs()
-        self.assertEqual(out["status"], "new")
-        self.assertEqual(out["new_count"], "3")
-        issues = json.loads(out["new_issues"])
-        self.assertEqual(len(issues), 2)
-        for issue in issues:
-            self.assertTrue(issue["workflow"].startswith("Nightly hardening ["))
-            self.assertTrue(os.path.exists(os.path.join(self.out, issue["body_file"])))
+    def put(self, leg, step, failures):
+        write_json(os.path.join(self.results, leg, step + ".json"),
+                   result(leg, step, "fail", failures))
+
+    def tracking(self):
         with open(os.path.join(self.out, "tracking.md"), encoding="utf-8") as f:
-            self.assertIn("1 more new signatures", f.read())
+            return f.read()
+
+    def test_single_leg_failures_go_to_the_tracking_issue_only(self):
+        # The first nightly's shape: ordinary failures new on one leg each.
+        self.put("linux-x64", "stress", [nt.make_failure("t%d" % i, "exit code 1", "jit=1")
+                                         for i in range(3)])
+        self.put("windows-x64", "verify-major", [nt.make_failure(
+            "slow_test", "timed out after 300s", "v=1")])
+        self.assertEqual(self.triage("linux-x64,windows-x64", "stress,verify-major"), 0)
+        out = self.outputs()
+        self.assertEqual((out["status"], out["new_count"], out["issue_count"], out["new_issues"]),
+                         ("new", "4", "0", "[]"))
+        text = self.tracking()
+        self.assertIn("None gets an issue of its own", text)
+        self.assertIn("##### linux-x64 / stress", text)
+        self.assertIn("##### windows-x64 / verify-major", text)
+        self.assertLess(text.index("##### linux-x64 / stress"),
+                        text.index("##### windows-x64 / verify-major"))
+
+    def test_multi_leg_and_crash_failures_get_one_issue_each(self):
+        # the same timeout on both runners' wording, a verifier abort on one leg,
+        # a signal crash on one leg, and one ordinary single-leg failure
+        self.put("windows-x64", "verify-major", [
+            nt.make_failure("slow", "timed out after 300s", "v=1"),
+            nt.make_failure("gc_zero", "runtime error", "v=1",
+                            detail=">>> gc-verify: B2 violation in collection 4 (minor, after) <<<")])
+        self.put("linux-x64", "verify-major", [
+            nt.make_failure("slow", "timed out after 300s (possible hang / infinite loop)", "v=1"),
+            nt.make_failure("gl_ctx", "runtime error (exit 134)", "v=1"),
+            nt.make_failure("plain", "runtime error (exit 1)", "v=1")])
+        self.triage("windows-x64,linux-x64", "verify-major")
+        out = self.outputs()
+        self.assertEqual((out["new_count"], out["issue_count"]), ("5", "3"))
+        issues = {i["workflow"].split("] ")[1]: i for i in json.loads(out["new_issues"])}
+        self.assertEqual(sorted(issues), ["verify-major gc_zero", "verify-major gl_ctx",
+                                          "verify-major slow"])
+        self.assertEqual(issues["verify-major slow"]["legs"], ["windows-x64", "linux-x64"])
+        for issue in issues.values():
+            self.assertTrue(os.path.exists(os.path.join(self.out, issue["body_file"])))
+        text = self.tracking()
+        self.assertIn("3 of them get an issue of their own", text)
+        self.assertIn("| heap-verifier violation |", text)
+        self.assertIn("| crash |", text)
+        self.assertIn("| linux-x64 |", text)  # "also new on" for the windows timeout
+
+    def test_issue_cap(self):
+        legs = ["linux-x64", "linux-arm64"]
+        for leg in legs:
+            self.put(leg, "stress", [nt.make_failure("t%d" % i, "exit code 1", "jit=1")
+                                     for i in range(3)])
+        self.triage(",".join(legs), "stress", max_issues=2)
+        out = self.outputs()
+        self.assertEqual((out["new_count"], out["issue_count"]), ("6", "2"))
+        self.assertIn("1 more failures qualify for an issue of their own", self.tracking())
 
     def test_green_outputs(self):
         write_json(os.path.join(self.results, "linux-x64", "stress.json"),
                    result("linux-x64", "stress"))
         self.triage("linux-x64", "stress")
         out = self.outputs()
-        self.assertEqual((out["status"], out["new_count"], out["new_issues"]),
-                         ("green", "0", "[]"))
+        self.assertEqual((out["status"], out["new_count"], out["issue_count"], out["new_issues"]),
+                         ("green", "0", "0", "[]"))
+
+
+class FailureKindTests(unittest.TestCase):
+    def test_crashes(self):
+        for message, detail in (("runtime error (exit 139)", ""),
+                                ("runtime error (exit 134)", ""),
+                                ("exit code -11", ""),
+                                ("exit code 3221225477", ""),
+                                ("exit code -1073741571", ""),
+                                ("prog_9: obr exited 139", ""),
+                                ("runtime error", "line 93: 413846 Segmentation fault  obr x.obe"),
+                                ("exit code 1", "timeout: the monitored command dumped core")):
+            self.assertEqual(nt.failure_kind(message, detail), "crash", message + detail)
+
+    def test_verifier_violation(self):
+        self.assertEqual(nt.failure_kind("runtime error", ">>> gc-verify: B2 violation in "
+                                         "collection 424 (major, after): closure=0x1 <<<"),
+                         "verifier")
+
+    def test_ordinary_failures(self):
+        for message, detail in (("runtime error (exit 1)", "FAIL: empty TLS response"),
+                                ("runtime error", ">>> Attempting to dereference a 'Nil' "
+                                 "memory instance in native JIT code <<<"),
+                                ("timed out after 300s", ""),
+                                ("exit code 3", ""),
+                                ("stdout: s0/off vs s3/jit1 differ at line 1", ""),
+                                ("runtime error (exit 1340)", "")):
+            self.assertEqual(nt.failure_kind(message, detail), "", message)
+
+    def test_cross_signature_ignores_leg_runner_suffix_and_counts(self):
+        a = nt.cross_signature("verify-major", "v=1", "t", "timed out after 300s")
+        self.assertEqual(a, nt.cross_signature("verify-major", "v=1", "t",
+                                               "timed out after 300s (possible hang / infinite loop)"))
+        self.assertEqual(nt.cross_signature("s", "c", "t", "runtime error (exit 134)"),
+                         nt.cross_signature("s", "c", "t", "runtime error"))
+        self.assertEqual(nt.cross_signature("d", "s0/off", "t", "peak 8096144 bytes"),
+                         nt.cross_signature("d", "s0/off", "t", "peak 7991126 bytes"))
+        self.assertNotEqual(a, nt.cross_signature("verify-minor", "v=1", "t", "timed out after 300s"))
 
 
 class RunCommandTests(unittest.TestCase):

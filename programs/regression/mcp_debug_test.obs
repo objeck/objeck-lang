@@ -1,3 +1,5 @@
+# VERIFY_SKIP
+# reason: loopback peers time out when the heap verifier stops the world at every collection
 # DEBUG VERSION of mcp_server_test.obs
 #
 # Identical to programs/regression/mcp_server_test.obs except:

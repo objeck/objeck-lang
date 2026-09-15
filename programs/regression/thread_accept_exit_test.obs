@@ -1,3 +1,5 @@
+# VERIFY_SKIP
+# reason: loopback peers time out when the heap verifier stops the world at every collection
 #~
 # A thread parked in accept() must not take the VM down when Main returns (#681).
 #

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep the differential runner's markers honest.
+"""Keep the regression markers that remove coverage honest.
 
 programs/regression/run_differential.py runs every test under several compiler
 and VM configurations and requires identical stdout and exit status. Three
@@ -10,22 +10,33 @@ markers let a test out of part of that comparison, and one changes scheduling:
     # NONDETERMINISTIC_OUTPUT      compare exit status only, never stdout
     # DIFF_SERIAL                  never run beside another test
 
-The first three remove coverage. The JIT opt-out marker showed where that goes
-unchecked (tools/cicd/check_jit_optouts.py): twenty of twenty-two opt-outs never
-said why, and every one passed without it. So, for every
+and two let a test out of a nightly hardening regression run:
+
+    # VERIFY_SKIP                  not run under the heap verifier (OBJECK_GC_VERIFY set)
+    # GC_STRESS_SKIP               not run with a forced tiny heap threshold
+                                   (OBJECK_VM_ARGS names --gc-threshold=)
+
+The coverage-reducing ones need a reason. The JIT opt-out marker showed where
+that goes unchecked (tools/cicd/check_jit_optouts.py): twenty of twenty-two
+opt-outs never said why, and every one passed without it. So, for every
 programs/regression/*.obs, this asserts:
 
 1. A directive is a whole line at column 0 with no trailing whitespace.
    DIFF_CONFIGS lists only -opt levels (s0, s3) or config names (s0/off,
    s3/off, s3/default, s3/jit1, s0/jit1).
-2. The line right after DIFF_CONFIGS, DIFF_REQUIRES_JIT or
-   NONDETERMINISTIC_OUTPUT starts with "# reason:" and says something.
+2. The line right after DIFF_CONFIGS, DIFF_REQUIRES_JIT, NONDETERMINISTIC_OUTPUT,
+   VERIFY_SKIP or GC_STRESS_SKIP starts with "# reason:" and says something.
 3. No other line contains a marker's text (say "the nondeterministic-output
    marker" in prose), and no test carries both DIFF_REQUIRES_JIT and the JIT
    opt-out marker (the two leave nothing to run).
 4. NONDETERMINISTIC_OUTPUT is on at most 5% of the tests. Printing run-dependent
    numbers to stderr ("..."->ErrorLine()) keeps a test comparable; the marker
    is for output that differs by design.
+5. A test whose code (comments stripped) opens a socket or an HTTP client or
+   server carries VERIFY_SKIP. Under the verifier every collection stops the
+   world for a heap walk, a loopback peer times out, and the test fails (an
+   empty TLS response, a 300 s timeout) for the verifier's speed rather than a
+   heap defect. That noise is what the first nightly reported.
 
 Run from anywhere:  python3 tools/cicd/check_diff_markers.py [--dir DIR]
 Exit 0 when the tree conforms, 1 with one line per problem otherwise.
@@ -35,12 +46,31 @@ import os
 import re
 import sys
 
-NEEDS_REASON = ("# DIFF_CONFIGS:", "# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT")
-BARE = ("# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT", "# DIFF_SERIAL")
-ALL = ("# DIFF_CONFIGS", "# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT", "# DIFF_SERIAL")
+NEEDS_REASON = ("# DIFF_CONFIGS:", "# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT",
+                "# VERIFY_SKIP", "# GC_STRESS_SKIP")
+BARE = ("# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT", "# DIFF_SERIAL", "# VERIFY_SKIP",
+        "# GC_STRESS_SKIP")
+ALL = ("# DIFF_CONFIGS", "# DIFF_REQUIRES_JIT", "# NONDETERMINISTIC_OUTPUT", "# DIFF_SERIAL",
+       "# VERIFY_SKIP", "# GC_STRESS_SKIP")
 REASON = "# reason:"
 CONFIG_TOKENS = {"s0", "s3", "s0/off", "s3/off", "s3/default", "s3/jit1", "s0/jit1"}
 NONDET_CAP_PERCENT = 5
+
+# Code that opens a connection: a socket or HTTP client constructed or called,
+# or the HTTP server frameworks imported or extended. Matched with comments
+# removed, so a header that only describes such a call does not count.
+NETWORK_RE = re.compile(
+    r"\b(?:TCPSocket|TCPSecureSocket|TCPSocketServer|TCPSecureSocketServer|UDPSocket|"
+    r"HttpClient|HttpsClient|WebSocket\w*)->"
+    r"|^\s*use\b[^;]*\b(?:Web\.HTTP\.Server|Web\.Server)\b"
+    r"|\bfrom\s+(?:Web\.)?(?:HTTP\.)?Server\b", re.MULTILINE)
+
+
+def strip_comments(text):
+    """Objeck source without #~ ... ~# blocks or # line comments. Strings are not
+    parsed; a '#' inside one only shortens what is searched."""
+    text = re.sub(r"#~.*?~#", "", text, flags=re.S)
+    return re.sub(r"#[^\n]*", "", text)
 
 
 def repo_root():
@@ -89,6 +119,11 @@ def check_file(path):
                                  % hit))
     if requires_jit and "# JIT_DISABLE" in lines:
         problems.append((0, "DIFF_REQUIRES_JIT with the JIT opt-out marker leaves nothing to compare"))
+    if "# VERIFY_SKIP" not in lines:
+        m = NETWORK_RE.search(strip_comments(text))
+        if m:
+            problems.append((0, "opens a connection (%s) but has no '# VERIFY_SKIP' line: network "
+                             "tests time out under the heap verifier" % m.group(0).strip()))
     return problems, nondet
 
 

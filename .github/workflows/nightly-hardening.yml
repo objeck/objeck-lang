@@ -282,7 +282,10 @@ jobs:
           TEST_TIMEOUT: '300'
         run: |
           # --require-text: an obr without the knob would run the suite
-          # unverified and report green.
+          # unverified and report green. Tests carrying '# VERIFY_SKIP' (every
+          # test that opens a socket, linted by tools/cicd/check_diff_markers.py)
+          # are skipped: a loopback peer times out while every collection stops
+          # the world, which reported as empty TLS responses in the first run.
           "$PY" "$TRIAGE" run --leg "$LEG" --step verify-minor --out "$RESULTS" \
             --config "nursery=256k verify=1" --timeout 3900 --parser regression \
             --cwd programs/regression \
@@ -295,6 +298,15 @@ jobs:
         timeout-minutes: 70
         env:
           OBJECK_VM_ARGS: --gc-threshold=64k
+          # Every collection, not a sample: measured on this suite's heaviest
+          # tests, verification is not what costs. closure_enum_array_capture at
+          # --gc-threshold=64k took 82.5 s with no verifier, 80.2 s at
+          # OBJECK_GC_VERIFY=1 and 82.9 s at 16; core_thread_gc_stress and
+          # obj_size_layout were flat too. The 300 s timeouts in the first run
+          # were the forced threshold alone (598 s and 637 s for two
+          # million-iteration codegen tests, measured with the verifier off), so
+          # sampling would have lost coverage and fixed nothing; those two
+          # carry '# GC_STRESS_SKIP' instead and still run in the minor step.
           OBJECK_GC_VERIFY: '1'
           TEST_TIMEOUT: '300'
         run: |
@@ -345,6 +357,7 @@ jobs:
     outputs:
       status: ${{ steps.triage.outputs.status }}
       new_count: ${{ steps.triage.outputs.new_count }}
+      issue_count: ${{ steps.triage.outputs.issue_count }}
       new_issues: ${{ steps.triage.outputs.new_issues }}
     steps:
       - uses: actions/checkout@v5
@@ -383,14 +396,16 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      # new: the tracking issue gets the run's report (and a phone push); each
-      # new signature gets its own issue in report-new below.
+      # new: the one tracking issue gets the run's report, every new signature
+      # grouped by leg and step (and a phone push). Only a failure new on more
+      # than one leg, or a crash or verifier violation, also gets an issue of
+      # its own in report-new below (tools/cicd/nightly_triage.py, "Issues").
       - name: Report new failures
         if: always() && steps.triage.outputs.status == 'new'
         uses: ./.github/actions/notify-failure
         with:
           workflow: Nightly hardening
-          details: "${{ steps.triage.outputs.new_count }} new failure signature(s)."
+          details: "${{ steps.triage.outputs.new_count }} new failure signature(s); ${{ steps.triage.outputs.issue_count }} with an issue of their own."
           body-file: nightly-triage/tracking.md
           ntfy-topic: ${{ secrets.NTFY_TOPIC }}
           github-token: ${{ github.token }}
@@ -433,7 +448,7 @@ jobs:
   report-new:
     name: Issue ${{ matrix.issue.id }}
     needs: triage
-    if: always() && needs.triage.outputs.new_count != '' && needs.triage.outputs.new_count != '0'
+    if: always() && needs.triage.outputs.issue_count != '' && needs.triage.outputs.issue_count != '0'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -457,8 +472,9 @@ jobs:
           name: nightly-triage
           path: nightly-triage
 
-      # The title carries the signature, so a failure seen again on a later
-      # night comments on its existing issue instead of opening a duplicate.
+      # The title carries the cross-leg signature, so a failure seen again on a
+      # later night, or on another leg, comments on its existing issue instead
+      # of opening a duplicate.
       - name: Open or update the signature issue
         uses: ./.github/actions/notify-failure
         with:

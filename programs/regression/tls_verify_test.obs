@@ -1,3 +1,5 @@
+# VERIFY_SKIP
+# reason: loopback TLS peers time out when the heap verifier stops the world at every collection (300 s timeouts and empty responses in the first nightly)
 # EXTRA_LIBS: net,net_server
 #~
 TLS certificate verification must REFUSE. https_persistence_test proves the

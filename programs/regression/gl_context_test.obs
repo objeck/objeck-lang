@@ -6367,7 +6367,7 @@ class GlContextTest {
 		@gl->EndFrame();
 		@gl->BeginFrame();
 		stalled := @gl->GetDelta();
-		"  after a 500ms stall: delta={$stalled}s"->PrintLine();
+		"  after a 500ms stall: delta={$stalled}s"->ErrorLine();
 		Check("a long stall is clamped, not reported in full", Near(stalled, 0.1, 0.0001));
 		@gl->EndFrame();
 
