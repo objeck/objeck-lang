@@ -401,9 +401,15 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
 
     case LBL:
       // ignore jump to next instruction
-      if(!working_stack.empty() && working_stack.front()->GetType() == JMP && 
+      if(!working_stack.empty() && working_stack.front()->GetType() == JMP &&
          working_stack.front()->GetOperand() == instr->GetOperand()) {
+        const bool is_conditional = working_stack.front()->GetOperand2() >= 0;
+        frontend::Statement* jmp_stmt = working_stack.front()->GetStatement();
         working_stack.pop_front();
+        // a conditional jump pops its condition; keep the stack balanced
+        if(is_conditional) {
+          working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(jmp_stmt, cur_line_num, POP_INT));
+        }
       }
       // add back in reverse order
       while(!working_stack.empty()) {
@@ -442,31 +448,38 @@ IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock*
     if(instr->GetType() == MTHD_CALL) {
       IntermediateMethod* mthd_called = program->GetClass(static_cast<int>(instr->GetOperand()))->GetMethod(static_cast<int>(instr->GetOperand2()));
       int status = CanInlineSetterGetter(mthd_called);
+      // The inlined instructions must belong to the call's statement, not the
+      // callee's: DeadStoreEdit finds the start of a dead assignment by walking
+      // back over instructions of the same statement. A foreign statement
+      // stopped that walk mid-expression, leaving operands on the stack (the
+      // interpreter then read them as the caller's values; see
+      // programs/regression/opt_dead_store_stack_balance.obs).
+      IntermediateFactory* factory = IntermediateFactory::Instance();
       //  getter instance pattern
       if(status == 0) {
         std::vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
         std::vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-        outputs->AddInstruction(instrs[1]);
+        outputs->AddInstruction(factory->MakeInstruction(instr->GetStatement(), instrs[1]));
       }
       // getter instance pattern
       else if(status == 1) {
         std::vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
         std::vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-        outputs->AddInstruction(instrs[0]);
+        outputs->AddInstruction(factory->MakeInstruction(instr->GetStatement(), cur_line_num, POP_INT));
+        outputs->AddInstruction(factory->MakeInstruction(instr->GetStatement(), instrs[0]));
       }
       // character print pattern
       else if(status == 2) {
         std::vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
         std::vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-        outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, POP_INT));
-        outputs->AddInstruction(instrs[2]);
-        outputs->AddInstruction(instrs[3]);
+        outputs->AddInstruction(factory->MakeInstruction(instr->GetStatement(), cur_line_num, POP_INT));
+        outputs->AddInstruction(factory->MakeInstruction(instr->GetStatement(), instrs[2]));
+        outputs->AddInstruction(factory->MakeInstruction(instr->GetStatement(), instrs[3]));
       }
       else if(status == 3) {
         std::vector<IntermediateBlock*> blocks = mthd_called->GetBlocks();
         std::vector<IntermediateInstruction*> instrs = blocks[0]->GetInstructions();
-        outputs->AddInstruction(instrs[3]);
+        outputs->AddInstruction(factory->MakeInstruction(instr->GetStatement(), instrs[3]));
       }
       else {
         outputs->AddInstruction(instr);
@@ -1443,7 +1456,8 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       if(instr->GetOperand2() == LOCL) {
         std::unordered_map<INT64_VALUE, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
         if(result != value_prop_map.end()) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, result->second.int_value));
+          // keep the statement (see InlineSettersGetters)
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(instr->GetStatement(), cur_line_num, result->second.int_value));
         }
         else {
           outputs->AddInstruction(instr);
@@ -1496,7 +1510,7 @@ IntermediateBlock* ItermediateOptimizer::ConstantProp(IntermediateBlock* inputs)
       if(instr->GetOperand2() == LOCL) {
         std::unordered_map<INT64_VALUE, PropValue>::iterator result = value_prop_map.find(instr->GetOperand());
         if(result != value_prop_map.end()) {
-          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, result->second.float_value));
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(instr->GetStatement(), cur_line_num, LOAD_FLOAT_LIT, result->second.float_value));
         }
         else {
           outputs->AddInstruction(instr);
@@ -2090,6 +2104,14 @@ IntermediateBlock* ItermediateOptimizer::DeadCodeElim(IntermediateBlock* inputs)
     if(instr->GetType() == JMP && i + 1 < input_instrs.size()) {
       IntermediateInstruction* next = input_instrs[i + 1];
       if(next->GetType() == LBL && instr->GetOperand() == next->GetOperand()) {
+        // A conditional jump pops its condition, so dropping it alone left the
+        // condition on the operand stack: `if(a < b) { v := v; }` lost its body
+        // to RemoveUselessInstructions and then its JMP here, and the leftover
+        // Bool became the caller's divisor ("Divide by zero") in the
+        // interpreter. Keep the pop.
+        if(instr->GetOperand2() >= 0) {
+          outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(instr->GetStatement(), cur_line_num, POP_INT));
+        }
         continue;
       }
     }
