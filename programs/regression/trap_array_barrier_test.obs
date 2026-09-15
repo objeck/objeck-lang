@@ -110,14 +110,16 @@ class TrapArrayBarrierTest {
 
 		start_minor := Minors();
 		before := Damaged(files, count);
-		"  listed {$count} entries, {$before} unreadable before collecting"->PrintLine();
+		# counts depend on the directory and the allocation pattern: stderr, so
+		# stdout stays comparable for run_differential.py
+		"  listed {$count} entries, {$before} unreadable before collecting"->ErrorLine();
 		Check("the trap returns a readable array", before = 0);
 
 		Churn();
 
 		after := Damaged(files, count);
 		end_minor := Minors();
-		"  {$after} unreadable after collecting (minor {$start_minor} to {$end_minor})"->PrintLine();
+		"  {$after} unreadable after collecting (minor {$start_minor} to {$end_minor})"->ErrorLine();
 		Check("a minor collection actually ran", end_minor > start_minor);
 		Check("and its elements survive a collection", after = 0);
 

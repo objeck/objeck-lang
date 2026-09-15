@@ -1,3 +1,5 @@
+# DIFF_CONFIGS: s3
+# reason: Deep->Down(50000) needs the s3 tail-call rewrite; at s0 it overflows the call stack by design
 #~
 Tail-call optimization must respect the receiver.
 

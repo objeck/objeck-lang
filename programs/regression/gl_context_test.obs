@@ -6350,7 +6350,9 @@ class GlContextTest {
 		delta := @gl->GetDelta();
 		fps := @gl->GetFps();
 		vsync := @gl->HasVsync();
-		"  after a 10ms frame: delta={$delta}s fps={$fps} vsync={$vsync}"->PrintLine();
+		# measured, so it varies run to run: stderr keeps stdout comparable for
+		# run_differential.py
+		"  after a 10ms frame: delta={$delta}s fps={$fps} vsync={$vsync}"->ErrorLine();
 
 		# At least the delay, less than double it, and inside the clamp.
 		Check("a measured frame reports its elapsed time", delta >= 0.008);
