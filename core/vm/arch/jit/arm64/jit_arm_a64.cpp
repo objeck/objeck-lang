@@ -2923,28 +2923,29 @@ RegInstr* JitArm64::ProcessIntFold(int64_t left_imm, int64_t right_imm, Instruct
     // Bug fix: Use bitwise OR (|), not logical OR (||)
     return new RegInstr(IMM_INT, left_imm | right_imm);
     
+  // shared/int_ops.h: the interpreter's semantics, so a fold cannot differ
   case ADD_INT:
-    return new RegInstr(IMM_INT, left_imm + right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Add(left_imm, right_imm));
+
   case SUB_INT:
-    return new RegInstr(IMM_INT, left_imm - right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Sub(left_imm, right_imm));
+
   case MUL_INT:
-    return new RegInstr(IMM_INT, left_imm * right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Mul(left_imm, right_imm));
+
   case DIV_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm / right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Div(left_imm, right_imm));
 
   case MOD_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm % right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Mod(left_imm, right_imm));
 
   case SHL_INT:
-    return new RegInstr(IMM_INT, left_imm << right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Shl(left_imm, right_imm));
+
   case SHR_INT:
-    return new RegInstr(IMM_INT, left_imm >> right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Sar(left_imm, right_imm));
     
   case BIT_AND_INT:
     return new RegInstr(IMM_INT, left_imm & right_imm);
@@ -3922,15 +3923,14 @@ void JitArm64::shl_imm_reg(int64_t value, Register dest) {
   uint32_t op_src = dest;
   op_code |= op_src;
 
-  // set bit field
-  bitset<6> imm_bits;
-  imm_bits = abs(value);
-  imm_bits.flip();
-  
-  const uint8_t imms = (uint8_t)imm_bits.to_ulong();
+  // lsl #n is UBFM immr=(64-n)%64, imms=63-n. The count is taken modulo 64
+  // like every other shift (S2): abs() turned `x << -1` into `x << 1`, and an
+  // unmasked immr of 64 spilled into the opcode's N bit.
+  const uint32_t shift = (uint32_t)(value & 63);
+  const uint32_t imms = 63 - shift;
   op_code |= imms << 10;
-  
-  const uint8_t immr = imms + 1;
+
+  const uint32_t immr = (64 - shift) & 63;
   op_code |= immr << 16;
   
   // encode
@@ -3978,7 +3978,9 @@ void JitArm64::shr_imm_reg(int64_t value, Register dest) {
   uint32_t op_src = dest;
   op_code |= op_src;
   
-  op_code |= abs(value) << 16;
+  // asr #n is SBFM immr=n, imms=63; the count is taken modulo 64 (S2): abs()
+  // turned `x >> -1` into `x >> 1`, and a count past 63 overwrote opcode bits
+  op_code |= (uint32_t)(value & 63) << 16;
   
   AddMachineCode(op_code);
 }

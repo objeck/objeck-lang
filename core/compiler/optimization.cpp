@@ -1598,28 +1598,30 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
     working_stack.pop_front();
 
     switch(instr->GetType()) {
+    // folds use shared/int_ops.h, the same semantics the VM executes: wrapping
+    // + - *, MIN / -1 = MIN, MIN % -1 = 0
     case ADD_INT: {
-      const INT64_VALUE value = left->GetOperand7() + right->GetOperand7();
+      const INT64_VALUE value = objeck_int::Add(left->GetOperand7(), right->GetOperand7());
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case SUB_INT: {
-      const INT64_VALUE value = left->GetOperand7() - right->GetOperand7();
+      const INT64_VALUE value = objeck_int::Sub(left->GetOperand7(), right->GetOperand7());
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MUL_INT: {
-      const INT64_VALUE value = left->GetOperand7() * right->GetOperand7();
+      const INT64_VALUE value = objeck_int::Mul(left->GetOperand7(), right->GetOperand7());
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case DIV_INT: {
-      // INT64_MIN / -1 overflows, and folding it here faulted the compiler
-      // (0xC0000095 on x64); leave it to the runtime like a zero divisor
-      if(right->GetOperand7() == 0 || (right->GetOperand7() == -1 && left->GetOperand7() == (INT64_VALUE)(1ULL << 63))) {
+      // a zero divisor is left to trap at runtime; INT64_MIN / -1 used to be
+      // left too (a C++ division faulted the compiler), and now folds to MIN
+      if(right->GetOperand7() == 0) {
         // the operation must survive to trap at runtime, and its operands must
         // land in the output BEFORE it -- emitting the instruction here and
         // leaving the literals on the working stack appended them after it,
@@ -1634,14 +1636,14 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
         outputs->AddInstruction(instr);
         return;
       }
-      const INT64_VALUE value = left->GetOperand7() / right->GetOperand7();
+      const INT64_VALUE value = objeck_int::Div(left->GetOperand7(), right->GetOperand7());
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;
 
     case MOD_INT: {
-      // see DIV_INT: INT64_MIN % -1 traps in C++ on x64
-      if(right->GetOperand7() == 0 || (right->GetOperand7() == -1 && left->GetOperand7() == (INT64_VALUE)(1ULL << 63))) {
+      // see DIV_INT: a zero divisor traps at runtime; INT64_MIN % -1 folds to 0
+      if(right->GetOperand7() == 0) {
         // the operation must survive to trap at runtime, and its operands must
         // land in the output BEFORE it -- emitting the instruction here and
         // leaving the literals on the working stack appended them after it,
@@ -1656,7 +1658,7 @@ void ItermediateOptimizer::CalculateIntFold(IntermediateInstruction* instr, std:
         outputs->AddInstruction(instr);
         return;
       }
-      const INT64_VALUE value = left->GetOperand7() % right->GetOperand7();
+      const INT64_VALUE value = objeck_int::Mod(left->GetOperand7(), right->GetOperand7());
       working_stack.push_front(IntermediateFactory::Instance()->MakeIntLitInstruction(cur_line_num, value));
     }
       break;

@@ -3122,28 +3122,29 @@ RegInstr* JitAmd64::ProcessIntFold(int64_t left_imm, int64_t right_imm, Instruct
   case OR_INT:
     return new RegInstr(IMM_INT, left_imm | right_imm);
     
+  // shared/int_ops.h: the interpreter's semantics, so a fold cannot differ
   case ADD_INT:
-    return new RegInstr(IMM_INT, left_imm + right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Add(left_imm, right_imm));
+
   case SUB_INT:
-    return new RegInstr(IMM_INT, left_imm - right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Sub(left_imm, right_imm));
+
   case MUL_INT:
-    return new RegInstr(IMM_INT, left_imm * right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Mul(left_imm, right_imm));
+
   case DIV_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm / right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Div(left_imm, right_imm));
 
   case MOD_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm % right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Mod(left_imm, right_imm));
 
   case SHL_INT:
-    return new RegInstr(IMM_INT, left_imm << right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Shl(left_imm, right_imm));
 
   case SHR_INT:
-    return new RegInstr(IMM_INT, left_imm >> right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Sar(left_imm, right_imm));
 
   case BIT_AND_INT:
     return new RegInstr(IMM_INT, left_imm & right_imm);
@@ -6236,24 +6237,77 @@ void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
     return;
   }
 
+  // x / -1 is a negation (wrapping, so MIN / -1 = MIN) and x % -1 is 0; idiv
+  // would fault on INT64_MIN (shared/int_ops.h)
+  if(imm == -1) {
+    if(is_mod) {
+      xor_reg_reg(reg, reg);
+    }
+    else {
+      neg_reg(reg);
+    }
+    return;
+  }
+
   // Every other non-zero constant: multiply by its magic number instead of
   // idiv (10-20 cycles of latency against 3). The two constant divisions in
-  // the assessment's integer loop were 85% of its time. -1 and 0 keep the
-  // idiv path: -1 so INT64_MIN / -1 behaves exactly as the interpreter's
-  // C++ division does, 0 so the runtime check fires.
-  if(imm != 0 && imm != -1) {
+  // the assessment's integer loop were 85% of its time. 0 keeps the idiv
+  // path so the runtime check fires.
+  if(imm != 0) {
     EmitMagicDivision(imm, reg, is_mod);
     return;
   }
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
-  div_reg_reg(imm_holder->GetRegister(), reg, is_mod, imm != 0);
+  div_reg_reg(imm_holder->GetRegister(), reg, is_mod, false);
   ReleaseRegister(imm_holder);
+}
+
+/**
+ * A runtime divisor of -1 skips idiv, which faults on INT64_MIN / -1: the flags
+ * hold the compare against -1 on entry; this emits jne over the negation (/)
+ * or clear (%) of dest and a jmp past the idiv that follows. Returns the jmp's
+ * displacement position for PatchDivMinusOneJump.
+ */
+long JitAmd64::EmitDivMinusOneFastPath(Register dest, bool is_mod) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [jne <idiv>]" << std::endl;
+#endif
+  AddMachineCode(0x0f);
+  AddMachineCode(0x85);
+  const long jne_patch = code_index;
+  AddImm(0);
+
+  if(is_mod) {
+    xor_reg_reg(dest, dest);
+  }
+  else {
+    neg_reg(dest);
+  }
+
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [jmp <done>]" << std::endl;
+#endif
+  AddMachineCode(0xe9);
+  const long done_patch = code_index;
+  AddImm(0);
+
+  const int32_t jne_offset = (int32_t)(code_index - (jne_patch + 4));
+  memcpy(&code[(size_t)jne_patch], &jne_offset, 4);
+
+  return done_patch;
+}
+
+void JitAmd64::PatchDivMinusOneJump(long done_patch) {
+  const int32_t done_offset = (int32_t)(code_index - (done_patch + 4));
+  memcpy(&code[(size_t)done_patch], &done_offset, 4);
 }
 
 void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
   CheckDivideByZero(offset, src);
-  
+  cmp_imm_mem(offset, src, -1);
+  const long done_patch = EmitDivMinusOneFastPath(dest, is_mod);
+
   if(is_mod) {
     if(dest != RDX) {
       move_reg_mem(RDX, TMP_REG_1, RBP);
@@ -6309,6 +6363,8 @@ void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
       move_mem_reg(TMP_REG_1, RBP, RDX);
     }
   }
+
+  PatchDivMinusOneJump(done_patch);
 }
 
 void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_nonzero) {
@@ -6317,6 +6373,8 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
   if(!src_nonzero) {
     CheckDivideByZero(src);
   }
+  cmp_imm_reg(-1, src);
+  const long done_patch = EmitDivMinusOneFastPath(dest, is_mod);
 
   // idiv clobbers RAX and RDX. They were saved to the spill slots and restored
   // unconditionally -- four memory operations per division whether or not
@@ -6390,6 +6448,8 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
   if(save_rdx && dest != RDX) {
     move_mem_reg(TMP_REG_1, RBP, RDX);
   }
+
+  PatchDivMinusOneJump(done_patch);
 }
 
 void JitAmd64::inc_reg(Register dest) {
@@ -6441,6 +6501,8 @@ void JitAmd64::inc_mem(long offset, Register dest) {
 }
 
 void JitAmd64::shl_imm_reg(int64_t value, Register dest) {
+  // shift counts are taken modulo 64 (shared/int_ops.h)
+  value &= 63;
   if(value == 1) {
     // SHL r64, 1: REX.W + D1 /4 (3 bytes vs 4)
     AddMachineCode(B(dest));
@@ -6514,6 +6576,7 @@ void JitAmd64::shl_mem_reg(long offset, Register src, Register dest)
 }
 
 void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
+  value &= 63;
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xe8;
@@ -6527,6 +6590,7 @@ void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
 }
 
 void JitAmd64::sar_imm_reg(int64_t value, Register dest) {
+  value &= 63;
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xf8;                  // /7 (SAR) in the reg field
@@ -6939,6 +7003,18 @@ void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
   AddMachineCode(RXB(src, dest));
   AddMachineCode(0x23);
   EmitModRMDisp(ModRM(src, dest), offset);
+}
+
+// negq: REX.W F7 /3
+void JitAmd64::neg_reg(Register reg) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [negq %" << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+  AddMachineCode(B(reg));
+  AddMachineCode(0xf7);
+  unsigned char code = 0xd8;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
 }
 
 // TODO: 64-bit literal operation for Windows
