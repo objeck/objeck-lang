@@ -1,0 +1,189 @@
+#~
+Guards enum-typed arrays against being freed while still live (G11).
+
+Storing an enum item into an element ('a[3] := Color->Blue') used to retype
+the array variable as the scalar enum in the context analyzer. The emitter
+then declared the array's frame, closure-capture and instance slots as
+INT_PARM, which the collector never traces, so the array was reclaimed while
+a closure (or local/field) still pointed at it. Under allocation pressure the
+captured array read back garbage; reading 'a[3]' outside a lambda failed to
+compile with "Dimension size mismatch or uninitialized type". The emitter also
+declared inner-enum arrays INT_PARM instead of INT_ARY_PARM, and 'a->Size()'
+on an enum array pushed an extra receiver, so Size() dereferenced Nil.
+
+Covers a top-level enum and an inner enum, each captured by a closure, held
+in a local and held in an instance field, with heavy allocation between the
+store and every read. Every element is checked.
+~#
+
+enum Color {
+  Red,
+  Green,
+  Blue
+}
+
+class Holder {
+  @colors : Color[];
+  @shades : Holder->Shade[];
+
+  enum Shade {
+    Light,
+    Medium,
+    Dark
+  }
+
+  New() {
+    @colors := Color->New[64];
+    @shades := Shade->New[64];
+    for(i := 0; i < 64; i += 1;) {
+      @colors[i] := Color->Blue;
+      @shades[i] := Shade->Dark;
+    };
+  }
+
+  method : public : Sizes() ~ Int {
+    return @colors->Size() + @shades->Size();
+  }
+
+  method : public : Check() ~ Int {
+    bad := 0;
+    for(i := 0; i < 64; i += 1;) {
+      if(@colors[i] <> Color->Blue) { bad += 1; };
+      if(@shades[i] <> Shade->Dark) { bad += 1; };
+    };
+    return bad;
+  }
+}
+
+class Test {
+  enum Tone {
+    Low,
+    Mid,
+    High
+  }
+
+  function : Churn() ~ Nil {
+    for(k := 0; k < 200; k += 1;) {
+      junk := Int->New[64];
+      junk[0] := k;
+      s := "junk{$k}";
+      junk[1] := s->Size();
+    };
+  }
+
+  function : CountColors(a : Color[]) ~ Int {
+    count := 0;
+    for(i := 0; i < a->Size(); i += 1;) {
+      if(a[i] <> Color->Blue) { count += 1; };
+    };
+    return count;
+  }
+
+  function : CountTones(a : Tone[]) ~ Int {
+    count := 0;
+    for(i := 0; i < a->Size(); i += 1;) {
+      if(a[i] <> Tone->High) { count += 1; };
+    };
+    return count;
+  }
+
+  function : TopLevelClosure() ~ Int {
+    bad := 0;
+    for(j := 0; j < 1000; j += 1;) {
+      a := Color->New[64];
+      for(i := 0; i < 64; i += 1;) {
+        a[i] := Color->Blue;
+      };
+      f := FuncRef->New(\() ~ IntRef : () => IntRef->New(CountColors(a)))<IntRef>;
+      Churn();
+      bad += f()->Get();
+    };
+    return bad;
+  }
+
+  function : InnerClosure() ~ Int {
+    bad := 0;
+    for(j := 0; j < 1000; j += 1;) {
+      a := Tone->New[64];
+      for(i := 0; i < 64; i += 1;) {
+        a[i] := Tone->High;
+      };
+      f := FuncRef->New(\() ~ IntRef : () => IntRef->New(CountTones(a)))<IntRef>;
+      Churn();
+      bad += f()->Get();
+    };
+    return bad;
+  }
+
+  function : Locals() ~ Int {
+    bad := 0;
+    for(j := 0; j < 1000; j += 1;) {
+      a := Color->New[64];
+      b := Tone->New[64];
+      for(i := 0; i < 64; i += 1;) {
+        a[i] := Color->Blue;
+        b[i] := Tone->Mid;
+      };
+      Churn();
+      for(i := 0; i < 64; i += 1;) {
+        c : Color := a[i];
+        if(c <> Color->Blue) { bad += 1; };
+        t : Tone := b[i];
+        if(t <> Tone->Mid) { bad += 1; };
+      };
+    };
+    return bad;
+  }
+
+  function : Fields() ~ Int {
+    bad := 0;
+    for(j := 0; j < 1000; j += 1;) {
+      h := Holder->New();
+      Churn();
+      bad += h->Check();
+    };
+    return bad;
+  }
+
+  function : Sizes() ~ Int {
+    bad := 0;
+    a := Color->New[5];
+    t := Tone->New[7];
+    f := Number->Format->New[6];
+    if(a->Size() <> 5) { bad += 1; };
+    if(t->Size() <> 7) { bad += 1; };
+    if(f->Size() <> 6) { bad += 1; };
+
+    n := 0;
+    each(i : a) { n += 1; };
+    each(i : t) { n += 1; };
+    each(i : f) { n += 1; };
+    if(n <> 18) { bad += 1; };
+
+    h := Holder->New();
+    if(h->Sizes() <> 128) { bad += 1; };
+    return bad;
+  }
+
+  function : Report(name : String, bad : Int) ~ Bool {
+    if(bad = 0) {
+      "PASS: {$name}"->PrintLine();
+      return true;
+    };
+
+    "FAIL: {$name} bad={$bad}"->PrintLine();
+    return false;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    ok := Report("top-level enum array captured", TopLevelClosure());
+    ok := Report("inner enum array captured", InnerClosure()) & ok;
+    ok := Report("enum arrays in locals", Locals()) & ok;
+    ok := Report("enum arrays in instance fields", Fields()) & ok;
+    ok := Report("enum array Size() and each", Sizes()) & ok;
+
+    if(<>ok) {
+      Runtime->Exit(1);
+    };
+  }
+}
