@@ -35,6 +35,7 @@
 #include "../common.h"
 #include <random>
 #include <atomic>
+#include <chrono>
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
@@ -70,6 +71,10 @@
 // Young generation bump allocator sizing
 #define YOUNG_REGION_SIZE  (128 * 1024 * 1024)  // 128MB young region
 #define DIRTY_LIST_MAX     65536               // max dirty old-gen objects tracked
+
+// Peak resident set size (peak working set on Windows) of this process in bytes,
+// 0 if unavailable. Defined in common.cpp beside the current-RSS reader.
+size_t GetProcessPeakResidentBytes();
 
 // used to monitor the state of active stack frames
 struct StackFrameMonitor {
@@ -132,9 +137,14 @@ class MemoryManager {
   // having to be released again for the ClearFreeMemory call it guards.
   static std::atomic<size_t> free_memory_cache_size;
 
-  // Young generation: contiguous bump-allocated region
+  // Young generation: contiguous bump-allocated region. YOUNG_REGION_SIZE bytes are
+  // always reserved; young_region_size is the usable LIMIT (--nursery /
+  // OBJECK_NURSERY), which every bump path (AllocateObject, the JIT inline
+  // allocator) compares against. The collector walks [0, young_offset), and
+  // young_offset never passes the limit, so nothing else depends on the limit.
   static uint8_t* young_region;
   static size_t young_region_size;
+  static size_t nursery_size_request;  // 0 = YOUNG_REGION_SIZE
   static std::atomic<size_t> young_offset;
 
   // Old generation: individually allocated, tracked in set
@@ -203,6 +213,26 @@ class MemoryManager {
   static std::atomic<long long> gc_pause_total_us;
   static std::atomic<size_t> gc_promoted_last;
   static std::atomic<size_t> gc_promoted_total;
+  // Real bytes copied out of the nursery (headers included). Reporting only: the
+  // GC triggers keep counting allocation_size/old_allocation_size as before.
+  static std::atomic<size_t> gc_promoted_bytes_total;
+
+  // OBJECK_GC_STATS=1: every collection's pause, measured from the moment the
+  // collecting thread owns marked_sweep_lock (so the stop-the-world handshake and
+  // the minor dirty-list scan are inside it) until the world is resumed. Kept in
+  // a fixed buffer under gc_stats_lock -- a lock the collector never waits on
+  // anything else while holding -- and summarized to stderr at exit.
+  static const size_t GC_STATS_SAMPLE_MAX = 1 << 20;
+  static bool gc_stats_enabled;
+  static uint32_t* gc_pause_samples;
+  static size_t gc_pause_sample_count;
+#ifdef _WIN32
+  static CRITICAL_SECTION gc_stats_lock;
+#else
+  static pthread_mutex_t gc_stats_lock;
+#endif
+  static void RecordPause(const std::chrono::steady_clock::time_point& start);
+  static void PrintGcStats();
   static std::atomic<size_t> gc_alloc_at_last;
   static std::atomic<long> gc_contention;
 
@@ -381,6 +411,9 @@ class MemoryManager {
   
  public:
   static void Initialize(StackProgram* p, size_t m);
+  // Nursery limit for the next Initialize; the caller has validated it
+  // (vm_options.h: 64k..128m). 0 restores the default.
+  static void SetNurserySize(size_t size) { nursery_size_request = size; }
 
   // Cooperative stop-the-world API (see field comments above).
   static void RegisterMutator();    // a thread begins executing bytecode
@@ -428,6 +461,7 @@ class MemoryManager {
   }
   static size_t GetPromotedLast()      { return gc_promoted_last.load(std::memory_order_relaxed); }
   static size_t GetPromotedTotal()     { return gc_promoted_total.load(std::memory_order_relaxed); }
+  static size_t GetPromotedBytes()     { return gc_promoted_bytes_total.load(std::memory_order_relaxed); }
   static size_t GetAllocSinceGc() {
     const size_t now = allocation_size.load(std::memory_order_relaxed);
     const size_t at = gc_alloc_at_last.load(std::memory_order_relaxed);
@@ -467,7 +501,7 @@ class MemoryManager {
 #ifdef _WIN32
       VirtualFree(young_region, 0, MEM_RELEASE);
 #else
-      munmap(young_region, young_region_size);
+      munmap(young_region, YOUNG_REGION_SIZE);  // the reservation, not the limit
 #endif
       young_region = nullptr;
     }

@@ -473,11 +473,11 @@ Or read keys directly: `System.Runtime->GetProperty(key)->ToInt()`.
 
 | key | meaning |
 |---|---|
-| `runtime.memory.used` / `.allocated` / `.max` / `.overhead` | process RSS / live heap / GC threshold / RSS−heap |
+| `runtime.memory.used` / `.peak` / `.allocated` / `.max` / `.overhead` | process RSS / peak RSS / live heap / GC threshold / RSS−heap |
 | `runtime.gc.minor` / `.major` / `.total` | collection counts |
 | `runtime.gc.pause.last_us` / `.max_us` / `.avg_us` | stop-the-world pause times (µs) |
-| `runtime.gc.nursery.used` / `.occupancy_permille` | young-generation fill |
-| `runtime.gc.promoted.last` / `.total` / `runtime.gc.old.bytes` | promotion rate / old-gen size |
+| `runtime.gc.nursery.used` / `.capacity` / `.occupancy_permille` | young-generation fill / limit (`--nursery`) |
+| `runtime.gc.promoted.last` / `.total` / `.bytes` / `runtime.gc.old.bytes` | promotion rate (objects; real bytes copied) / old-gen size |
 | `runtime.gc.remembered` / `.contention` | cross-gen writes since minor GC / collector-lock contention |
 | `runtime.alloc.since_gc` | bytes allocated since the last collection |
 | `runtime.threads.active` / `.parked` / `.running` | mutator threads (`.parked` includes STW/blocked) |

@@ -66,6 +66,9 @@ namespace Runtime {
   struct VmOptions {
     // 0 means the VM default.
     size_t gc_threshold = 0;
+    // Nursery (young-generation) limit in bytes; 0 means the VM default (128m).
+    // From --nursery, else OBJECK_NURSERY.
+    size_t nursery_size = 0;
     // 0 = default call count, -1 = JIT off, >0 = calls before a method is compiled.
     long jit_threshold = 0;
     // "" (unset), "binary", "utf16" or "utf8". Acted on by Windows only.
@@ -115,6 +118,20 @@ namespace Runtime {
     return true;
   }
 
+  // The nursery is carved out of a fixed 128 MB reservation, so it can shrink
+  // but never grow past it. Below 64k nearly every allocation collects.
+  const size_t NURSERY_SIZE_MIN = 64ULL * 1024ULL;
+  const size_t NURSERY_SIZE_MAX = 128ULL * 1048576ULL;
+
+  inline bool ParseNurserySize(const std::wstring& text, size_t& out) {
+    size_t value = 0;
+    if(!ParseSizeSuffix(text, value) || value < NURSERY_SIZE_MIN || value > NURSERY_SIZE_MAX) {
+      return false;
+    }
+    out = value;
+    return true;
+  }
+
   inline VmOptions ParseVmOptions(const CommandLineParseResult& cmd) {
     VmOptions opts;
     const auto& args = cmd.arguments;
@@ -128,6 +145,45 @@ namespace Runtime {
         if(!ParseSizeSuffix(value, opts.gc_threshold)) {
           opts.error = L"--gc-threshold: expected <number>(k|m|g), got '" + value + L"'";
           return opts;
+        }
+      }
+    }
+
+    // --nursery=<size>   (env OBJECK_NURSERY=<size>; the flag wins, so a bad
+    // variable is not even read when the flag is given)
+    {
+      const std::vector<std::wstring> names = {L"nursery", L"NURSERY"};
+      if(HasCommandLineArgumentWithAliases(args, names)) {
+        ++opts.consumed;
+        const std::wstring value = GetCommandLineArgumentWithAliases(args, names, L"");
+        if(!ParseNurserySize(value, opts.nursery_size)) {
+          opts.error = L"--nursery: expected <number>(k|m) from 64k to 128m, got '" + value + L"'";
+          return opts;
+        }
+      }
+      else {
+        std::string narrow;
+#ifdef _WIN32
+        char buffer[64];
+        size_t len = 0;
+        if(!getenv_s(&len, buffer, sizeof(buffer), "OBJECK_NURSERY") && len > 1) {
+          narrow = buffer;
+        }
+        else if(len > sizeof(buffer)) {
+          narrow = "<too long>";
+        }
+#else
+        const char* env = getenv("OBJECK_NURSERY");
+        if(env) {
+          narrow = env;
+        }
+#endif
+        if(!narrow.empty()) {
+          const std::wstring value(narrow.begin(), narrow.end());
+          if(!ParseNurserySize(value, opts.nursery_size)) {
+            opts.error = L"OBJECK_NURSERY: expected <number>(k|m) from 64k to 128m, got '" + value + L"'";
+            return opts;
+          }
         }
       }
     }
@@ -197,11 +253,14 @@ namespace Runtime {
   // Defined in interpreter.cpp, which can see the JIT headers; the mains cannot
   // include those without dragging the whole interpreter in.
   void SetJitAutoThreshold(long threshold);
+  // Defined in interpreter.cpp; read by MemoryManager::Initialize.
+  void SetNurserySize(size_t size);
 
   // Applies the options that must be in place before the program loads: the
   // library directory (the loader reads OBJECK_LIB_PATH, so the flag sets the
-  // same variable in-process and the two paths cannot disagree) and the JIT
-  // policy (consulted on the first method call).
+  // same variable in-process and the two paths cannot disagree), the JIT
+  // policy (consulted on the first method call) and the nursery limit (read
+  // when the interpreter initializes the collector).
   inline void ApplyVmOptions(const VmOptions& opts) {
     if(!opts.lib_path.empty()) {
       const std::string narrow = UnicodeToBytes(opts.lib_path);
@@ -213,6 +272,9 @@ namespace Runtime {
     }
     if(opts.jit_threshold != 0) {
       SetJitAutoThreshold(opts.jit_threshold);
+    }
+    if(opts.nursery_size != 0) {
+      SetNurserySize(opts.nursery_size);
     }
   }
 
@@ -226,6 +288,10 @@ namespace Runtime {
     usage += L"  --gc-threshold=<size>     Initial garbage-collection threshold\n";
     usage += L"                            <size> is <number>(k|m|g), e.g. 512k, 2m, 1g\n";
     usage += L"                            Legacy: --GC_THRESHOLD=<size>\n";
+    usage += L"  --nursery=<size>          Young-generation size; a full nursery triggers\n";
+    usage += L"                            a minor collection. <size> is <number>(k|m)\n";
+    usage += L"                            from 64k to 128m (default 128m)\n";
+    usage += L"                            Env: OBJECK_NURSERY=<size>\n";
     usage += L"  --jit=off|<calls>         JIT control: 'off' runs the interpreter only;\n";
     usage += L"                            a positive number is how many calls a method\n";
     usage += L"                            makes before it is compiled (default 10)\n";

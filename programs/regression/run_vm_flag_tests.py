@@ -53,6 +53,16 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (since #778). And a command line that is all flags ("obr --jit=off")
     names no program: that is the usage and a non-zero exit, not a silent
     one (it was a silent exit 0 on POSIX).
+ 9. The nursery knob and the GC statistics. --nursery (and OBJECK_NURSERY)
+    accepts 256k and 64m, refuses 2x and 0 with a message naming the range,
+    and the flag wins over a bad variable. gc_nursery_knob.obs runs more minor
+    collections with a 256k nursery than with the default; OBJECK_GC_STATS=1
+    prints a summary line with every field; runtime.memory.peak is never below
+    runtime.memory.used (the fixture checks that itself). And collection stays
+    correct when minor GCs are frequent: minor_gc_stress.obs and
+    core_thread_gc_stress.obs pass with --nursery=256k, interpreted and with
+    every method compiled. A v2026.9.4 obr fails all of this: it does not know
+    the flag.
  8. An exception in a call the JIT's bridge made ends the program, not the
     process. Neither backend registers unwind information for the code it
     emits, so a C++ exception thrown under compiled code used to terminate
@@ -73,6 +83,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     see the text.
 """
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -95,9 +106,12 @@ def check(name, ok, detail=""):
         print(f"  [FAIL] {name}: {detail}")
 
 
-def run(cmd, env=None, cwd=None):
-    p = subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, timeout=120)
+def run(cmd, env=None, cwd=None, timeout=120):
+    try:
+        p = subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        return -999, e.stdout or b"", (e.stderr or b"") + b"\n<timed out>"
     return p.returncode, p.stdout, p.stderr
 
 
@@ -147,7 +161,10 @@ def main():
     for flag, expect in (("--objeck-stdio=1", b"expected 'binary', 'utf16' or 'utf8'"),
                          ("--jit=banana", b"expected 'off' or a positive call count"),
                          ("--jit=0", b"expected 'off' or a positive call count"),
-                         ("--gc-threshold=2x", b"expected <number>(k|m|g)")):
+                         ("--gc-threshold=2x", b"expected <number>(k|m|g)"),
+                         ("--nursery=2x", b"--nursery: expected <number>(k|m) from 64k to 128m"),
+                         ("--nursery=0", b"--nursery: expected <number>(k|m) from 64k to 128m"),
+                         ("--nursery=1g", b"--nursery: expected <number>(k|m) from 64k to 128m")):
         rc, out, err = run([obr, flag, obe], env=env, cwd=bin_dir)
         check(f"{flag} is refused with a message naming what was expected",
               rc != 0 and expect in err, f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
@@ -161,7 +178,7 @@ def main():
     rc, out, err = run([obr], env=env, cwd=bin_dir)
     usage = (out + err).decode(errors="replace")
     check("no-argument usage exits non-zero", rc != 0, f"rc={rc}")
-    for needle in ("--gc-threshold=<size>", "<number>(k|m|g)", "--jit=off|<calls>",
+    for needle in ("--gc-threshold=<size>", "<number>(k|m|g)", "--nursery=<size>", "--jit=off|<calls>",
                    "--lib-path=<dir>", "--objeck-stdio=binary|utf16|utf8"):
         check(f"usage states valid values: {needle}", needle in usage, usage[:400])
 
@@ -296,7 +313,106 @@ def main():
                   lines == [">>> Divide by zero <<<"], detail)
             check(f"under {label} obr exits non-zero after the divide by zero", rc != 0, detail)
 
+    check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base)
+
     return finish()
+
+
+def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
+    # ---- 10. the nursery knob and the GC statistics -----------------------------
+    def detail(rc, out, err):
+        return f"rc={rc} out={out[-160:]!r} stderr={err.decode(errors='replace')[-300:]!r}"
+
+    for size in ("256k", "64m"):
+        rc, out, err = run([obr, f"--nursery={size}", obe], env=env, cwd=bin_dir)
+        check(f"--nursery={size} is accepted and the program prints what the default run printed",
+              rc == 0 and out == base, detail(rc, out, err))
+
+    bad_env = dict(env)
+    bad_env["OBJECK_NURSERY"] = "2x"
+    rc, out, err = run([obr, obe], env=bad_env, cwd=bin_dir)
+    check("OBJECK_NURSERY=2x is refused with a message naming the range",
+          rc != 0 and b"OBJECK_NURSERY: expected <number>(k|m) from 64k to 128m" in err, detail(rc, out, err))
+    rc, out, err = run([obr, "--nursery=256k", obe], env=bad_env, cwd=bin_dir)
+    check("--nursery wins over OBJECK_NURSERY (a bad variable is not read when the flag is given)",
+          rc == 0 and out == base, detail(rc, out, err))
+
+    knob_src = os.path.join(SCRIPT_DIR, "gc_nursery_knob.obs")
+    knob_obe = os.path.join(SCRIPT_DIR, "gc_nursery_knob.obe")
+    rc, out, err = run([obc, "-src", knob_src, "-dest", knob_obe], env=env, cwd=bin_dir)
+    check("nursery fixture compiles", rc == 0 and os.path.exists(knob_obe), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    def minor_of(out):
+        m = re.search(rb"^minor=(\d+)\s*$", out, re.M)
+        return int(m.group(1)) if m else None
+
+    small_env = dict(env)
+    small_env["OBJECK_NURSERY"] = "256k"
+    stats_env = dict(env)
+    stats_env["OBJECK_GC_STATS"] = "1"
+    runs = {}
+    for label, flags, run_env in (("default", [], env),
+                                  ("--nursery=256k", ["--nursery=256k"], env),
+                                  ("OBJECK_NURSERY=256k", [], small_env),
+                                  ("--nursery=256k --jit=1", ["--nursery=256k", "--jit=1"], env),
+                                  ("--nursery=256k with OBJECK_GC_STATS=1", ["--nursery=256k"], stats_env)):
+        rc, out, err = run([obr] + flags + [knob_obe], env=run_env, cwd=bin_dir)
+        runs[label] = (rc, out, err)
+        check(f"nursery fixture passes its own checks ({label})",
+              rc == 0 and b"PASS: nursery knob and GC stats" in out and minor_of(out) is not None,
+              detail(rc, out, err))
+
+    default_minor = minor_of(runs["default"][1])
+    for label in ("--nursery=256k", "OBJECK_NURSERY=256k", "--nursery=256k --jit=1"):
+        small_minor = minor_of(runs[label][1])
+        check(f"a 256k nursery runs more minor collections than the default ({label}: "
+              f"{small_minor} vs {default_minor})",
+              small_minor is not None and default_minor is not None and small_minor > default_minor,
+              f"small={small_minor} default={default_minor}")
+    check("the fixture reports the 256k limit as runtime.gc.nursery.capacity",
+          b"nursery capacity=262144" in runs["--nursery=256k"][1], runs["--nursery=256k"][1][-200:])
+
+    rc, out, err = runs["--nursery=256k with OBJECK_GC_STATS=1"]
+    fields = ("minor", "major", "pauses", "pause_p50_us", "pause_p95_us", "pause_max_us",
+              "promoted_objects", "promoted_bytes", "peak_rss_bytes")
+    line = re.search(rb"^\[gc-stats\] (.*)$", err, re.M)
+    values = {}
+    if line:
+        for key, value in re.findall(rb"(\w+)=(-?\d+)", line.group(1)):
+            values[key.decode()] = int(value)
+    check("OBJECK_GC_STATS=1 prints a [gc-stats] line on stderr with every field",
+          line is not None and all(f in values for f in fields), detail(rc, out, err))
+    if line is not None and all(f in values for f in fields):
+        printed_minor = minor_of(out) or 0
+        check("the summary's counts cover what the program saw (minor >= its runtime.gc.minor > 0, "
+              "one pause per collection)",
+              values["minor"] >= printed_minor > 0 and values["pauses"] == values["minor"] + values["major"],
+              str(values))
+        check("the summary's pauses are ordered: 0 <= p50 <= p95 <= max",
+              0 <= values["pause_p50_us"] <= values["pause_p95_us"] <= values["pause_max_us"], str(values))
+        check("the summary reports promoted bytes and a peak RSS",
+              values["promoted_bytes"] > 0 and values["promoted_objects"] > 0 and values["peak_rss_bytes"] > 0,
+              str(values))
+    rc, out, err = runs["default"]
+    check("without OBJECK_GC_STATS there is no summary line (control)", b"[gc-stats]" not in err,
+          err.decode(errors="replace")[-200:])
+
+    # Collection correctness when minor GCs are frequent. The regression runner
+    # cannot pass VM flags per test, so the minor-GC stress fixtures run here.
+    for name, libs in (("minor_gc_stress", None), ("core_thread_gc_stress", None)):
+        src = os.path.join(SCRIPT_DIR, name + ".obs")
+        dest = os.path.join(SCRIPT_DIR, name + ".obe")
+        cmd = [obc, "-src", src, "-lib", "cipher,collect,xml,json", "-opt", "s3", "-dest", dest]
+        rc, out, err = run(cmd, env=env, cwd=bin_dir)
+        check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr, "--nursery=256k"] + flags + [dest], env=env, cwd=bin_dir, timeout=600)
+            check(f"{name} passes with --nursery=256k ({label})",
+                  rc == 0 and b"PASS" in out and b"FAIL" not in out, detail(rc, out, err))
 
 
 def finish():
