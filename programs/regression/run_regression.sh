@@ -64,6 +64,12 @@ fi
 echo "========================================"
 echo "  Objeck Regression Test Suite"
 echo "  Platform: $PLATFORM"
+# OBJECK_VM_ARGS: extra obr options for every test, placed before the .obe,
+# e.g. OBJECK_VM_ARGS="--gc-threshold=64k" (split on blanks, no globbing).
+read -r -a VM_ARGS <<< "${OBJECK_VM_ARGS:-}"
+if [ ${#VM_ARGS[@]} -gt 0 ]; then
+    echo "  VM args: ${VM_ARGS[*]}"
+fi
 echo "========================================"
 echo ""
 
@@ -104,11 +110,26 @@ for test in *.obs; do
     "$ABS_COMPILER" -src "$ABS_TEST" -lib "$LIBS" -opt s3 -dest "${REGRESSION_DIR}/${NAME}.obe" 2>&1 | tee "${REGRESSION_DIR}/${RESULTS_DIR}/${NAME}_compile.log" > /dev/null
 
     COMPILE_EXIT=${PIPESTATUS[0]}
+
+    # Markers count only at the start of a line (like '# JIT_DISABLE' below). A
+    # substring match made any test whose comment mentioned a marker a negative
+    # test (#729). '# EXPECT_COMPILE_ERROR: <text>' also requires <text>, taken
+    # case-sensitively with surrounding blanks trimmed, in the compiler output,
+    # so a test cannot pass on some other error. run_regression.cmd matches.
     EXPECT_ERR=0
-    grep -q '# EXPECT_COMPILE_ERROR' "$ABS_TEST" 2>/dev/null && EXPECT_ERR=1
+    EXPECT_MSG=""
+    MARKER_LINE=$(grep -m1 '^# EXPECT_COMPILE_ERROR' "$ABS_TEST" 2>/dev/null | tr -d '\r')
+    if [ -n "$MARKER_LINE" ]; then
+        EXPECT_ERR=1
+        case "$MARKER_LINE" in
+            "# EXPECT_COMPILE_ERROR:"*)
+                EXPECT_MSG=$(printf '%s' "${MARKER_LINE#\# EXPECT_COMPILE_ERROR:}" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+                ;;
+        esac
+    fi
 
     EXPECT_RT_ERR=0
-    grep -q '# EXPECT_RUNTIME_ERROR' "$ABS_TEST" 2>/dev/null && EXPECT_RT_ERR=1
+    grep -q '^# EXPECT_RUNTIME_ERROR' "$ABS_TEST" 2>/dev/null && EXPECT_RT_ERR=1
 
     cd "$REGRESSION_DIR"
 
@@ -116,11 +137,18 @@ for test in *.obs; do
         if [ $EXPECT_ERR -eq 1 ]; then
             # Compiler rejected bad code as expected — verify it produced output
             LOG_SIZE=$(wc -c < "${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null || echo 0)
-            if [ "$LOG_SIZE" -gt 0 ]; then
+            if [ "$LOG_SIZE" -eq 0 ]; then
+                record_fail "compiler produced no output — possible crash"
+            elif [ -z "$EXPECT_MSG" ]; then
+                echo "  [WARN] marker names no message; write '# EXPECT_COMPILE_ERROR: <expected message>'"
+                echo "  [PASS] (compile error as expected)"
+                ((PASS_COUNT++))
+            elif grep -qF -- "$EXPECT_MSG" "${RESULTS_DIR}/${NAME}_compile.log"; then
                 echo "  [PASS] (compile error as expected)"
                 ((PASS_COUNT++))
             else
-                record_fail "compiler produced no output — possible crash"
+                record_fail "compile error does not contain expected message: ${EXPECT_MSG}"
+                head -10 "${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null
             fi
         else
             record_fail "compilation error"
@@ -142,9 +170,9 @@ for test in *.obs; do
     # marker -- including five written to catch JIT bugs, whose "do NOT add a
     # '# JIT_DISABLE' marker" sentence did exactly that (2026-09-09).
     if grep -qE '^# JIT_DISABLE$' "$test" 2>/dev/null; then
-        "${TIMEOUT[@]}" env OBJECK_JIT_DISABLE=1 "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+        "${TIMEOUT[@]}" env OBJECK_JIT_DISABLE=1 "$ABS_VM" "${VM_ARGS[@]}" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     else
-        "${TIMEOUT[@]}" "$ABS_VM" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
+        "${TIMEOUT[@]}" "$ABS_VM" "${VM_ARGS[@]}" "$NAME.obe" > "$RESULTS_DIR/${NAME}_output.txt" 2>&1
     fi
     RUN_EXIT=$?
     ELAPSED=$SECONDS

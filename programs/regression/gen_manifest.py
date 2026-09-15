@@ -11,6 +11,11 @@ import glob, re
 from collections import Counter
 
 
+# Anchored to the start of a line, as the runners match it: a comment that only
+# mentions a marker does not make a test negative.
+NEG_MARKER = re.compile(r'^# EXPECT_(COMPILE|RUNTIME)_ERROR', re.M)
+
+
 def read(fn):
     return open(fn, 'r', encoding='utf-8', errors='surrogateescape').read()
 
@@ -72,7 +77,7 @@ def build():
     rows = []
     for fn in sorted(glob.glob('*.obs')):
         name = fn[:-4]; txt = read(fn)
-        neg = ('EXPECT_COMPILE_ERROR' in txt) or ('EXPECT_RUNTIME_ERROR' in txt)
+        neg = bool(NEG_MARKER.search(txt))
         d = desc(txt)
         if not d:
             d = ('rejects ' + name[4:].replace('_', ' ')) if name.startswith('bad_') else name.replace('_', ' ')
@@ -90,8 +95,9 @@ HEADER = """# Regression Test Manifest
 This document inventories every test in `programs/regression/`. The suite runs via
 `run_regression.sh` (Linux/macOS) or `run_regression.cmd` (Windows) and in CI on
 every push; each test compiles with `obc` and runs with `obr`. Tests marked
-**(neg)** expect a compile or runtime error (`# EXPECT_COMPILE_ERROR` /
-`# EXPECT_RUNTIME_ERROR`) and pass when that error is produced.
+**(neg)** expect a compile or runtime error (`# EXPECT_COMPILE_ERROR: <message>` /
+`# EXPECT_RUNTIME_ERROR` at the start of a line) and pass when that error is
+produced; a compile-error test also needs `<message>` in the compiler output.
 
 This file is generated — regenerate it after adding or removing tests with:
 
