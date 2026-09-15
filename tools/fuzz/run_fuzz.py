@@ -72,7 +72,8 @@ def main(argv=None):
     ap.add_argument("--obc", default=None, help="override the compiler (a .py file runs under python)")
     ap.add_argument("--obr", default=None, help="override the VM (a .py file runs under python)")
     ap.add_argument("--known", default=os.path.join(HERE, "known.json"))
-    ap.add_argument("--out", default=os.path.join(HERE, "out"))
+    ap.add_argument("--out", default=os.environ.get("OBJECK_FUZZ_OUT") or os.path.join(HERE, "out"),
+                    help="findings directory (default: $OBJECK_FUZZ_OUT, else tools/fuzz/out)")
     ap.add_argument("--min-jit", type=float, default=0.90, help="minimum JIT-compiled fraction")
     ap.add_argument("--keep", action="store_true", help="keep every program's work directory")
     ap.add_argument("--basic-lambdas", action="store_true",
@@ -133,6 +134,11 @@ def main(argv=None):
                     entry["dir"] = entry["dir"] or d
                 tag = "known" if k else "NEW"
                 print("[%s] seed %d: %s" % (tag, prog.seed, sig), flush=True)
+                if not k:
+                    # tools/cicd/nightly_triage.py's generic parser counts only
+                    # lines that start with FAIL; "fuzz" is the test token and
+                    # the seed rides in the message (digits are folded there).
+                    print("FAIL fuzz: %s (seed %d)" % (sig, prog.seed), flush=True)
             if not args.keep:
                 shutil.rmtree(workdir, ignore_errors=True)
             if stats["programs"] % 25 == 0:
