@@ -67,6 +67,15 @@ std::atomic<long> MemoryManager::gc_pause_max_us(0);
 std::atomic<long long> MemoryManager::gc_pause_total_us(0);
 std::atomic<size_t> MemoryManager::gc_promoted_last(0);
 std::atomic<size_t> MemoryManager::gc_promoted_total(0);
+std::atomic<size_t> MemoryManager::gc_promoted_bytes_total(0);
+bool MemoryManager::gc_stats_enabled = false;
+uint32_t* MemoryManager::gc_pause_samples = nullptr;
+size_t MemoryManager::gc_pause_sample_count = 0;
+#ifdef _WIN32
+CRITICAL_SECTION MemoryManager::gc_stats_lock;
+#else
+pthread_mutex_t MemoryManager::gc_stats_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 std::atomic<size_t> MemoryManager::gc_alloc_at_last(0);
 std::atomic<long> MemoryManager::gc_contention(0);
 // Process start, for runtime.uptime_ms and the alloc-rate derivation.
@@ -80,6 +89,7 @@ long MemoryManager::GetUptimeMs() {
 // Young generation bump allocator
 uint8_t* MemoryManager::young_region;
 size_t MemoryManager::young_region_size;
+size_t MemoryManager::nursery_size_request = 0;
 std::atomic<size_t> MemoryManager::young_offset;
 
 // Old generation
@@ -140,18 +150,22 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   free_memory_cache_size.store(0, std::memory_order_relaxed);
   memset(free_buckets, 0, sizeof(free_buckets));
 
-  // Young generation bump allocator
+  // Young generation bump allocator. The full region is always mapped; a smaller
+  // --nursery only lowers the limit the bump paths test (rounded down to a word).
   young_region_size = YOUNG_REGION_SIZE;
+  if(nursery_size_request > 0 && nursery_size_request < YOUNG_REGION_SIZE) {
+    young_region_size = nursery_size_request & ~(sizeof(size_t) - 1);
+  }
 #ifdef _WIN32
-  young_region = (uint8_t*)VirtualAlloc(nullptr, young_region_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  young_region = (uint8_t*)VirtualAlloc(nullptr, YOUNG_REGION_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 #else
-  young_region = (uint8_t*)mmap(nullptr, young_region_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  young_region = (uint8_t*)mmap(nullptr, YOUNG_REGION_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if(young_region == MAP_FAILED) {
     young_region = nullptr;
   }
 #endif
   if(!young_region) {
-    std::wcerr << L">>> Failed to allocate young generation region (" << young_region_size << L" bytes) <<<" << std::endl;
+    std::wcerr << L">>> Failed to allocate young generation region (" << YOUNG_REGION_SIZE << L" bytes) <<<" << std::endl;
     exit(1);
   }
   young_offset.store(0, std::memory_order_relaxed);
@@ -188,7 +202,80 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   parked_count.store(0, std::memory_order_relaxed);
   stw_active.store(false, std::memory_order_relaxed);
 
+  // OBJECK_GC_STATS=1: summary line on stderr at exit. atexit covers a return
+  // from main and Runtime->Exit alike. Registered once: the debugger initializes
+  // again on every restart.
+  if(!gc_stats_enabled) {
+    bool enabled = false;
+#ifdef _WIN32
+    char value[8];
+    size_t len = 0;
+    enabled = !getenv_s(&len, value, sizeof(value), "OBJECK_GC_STATS") && !strcmp(value, "1");
+#else
+    const char* value = getenv("OBJECK_GC_STATS");
+    enabled = value && !strcmp(value, "1");
+#endif
+    if(enabled) {
+      gc_pause_samples = (uint32_t*)calloc(GC_STATS_SAMPLE_MAX, sizeof(uint32_t));
+      if(gc_pause_samples) {
+#ifdef _WIN32
+        InitializeCriticalSection(&gc_stats_lock);
+#endif
+        gc_stats_enabled = true;
+        atexit(PrintGcStats);
+      }
+    }
+  }
+
   initialized = true;
+}
+
+// Every completed collection, minor or major. 'start' is taken as soon as the
+// collecting thread owns marked_sweep_lock, before the stop-the-world handshake.
+void MemoryManager::RecordPause(const std::chrono::steady_clock::time_point& start)
+{
+  const long long elapsed = (long long)std::chrono::duration_cast<std::chrono::microseconds>(
+    std::chrono::steady_clock::now() - start).count();
+  const long pause_us = elapsed > 0x7fffffffLL ? 0x7fffffffL : (long)elapsed;
+  gc_pause_last_us.store(pause_us, std::memory_order_relaxed);
+  if(pause_us > gc_pause_max_us.load(std::memory_order_relaxed)) {
+    gc_pause_max_us.store(pause_us, std::memory_order_relaxed);
+  }
+  gc_pause_total_us.fetch_add(pause_us, std::memory_order_relaxed);
+
+  if(gc_stats_enabled) {
+    MUTEX_LOCK(&gc_stats_lock);
+    if(gc_pause_sample_count < GC_STATS_SAMPLE_MAX) {
+      gc_pause_samples[gc_pause_sample_count++] = (uint32_t)pause_us;
+    }
+    MUTEX_UNLOCK(&gc_stats_lock);
+  }
+}
+
+// atexit handler for OBJECK_GC_STATS=1. Percentiles are nearest-rank over the
+// recorded pauses (the first GC_STATS_SAMPLE_MAX); max covers every collection.
+void MemoryManager::PrintGcStats()
+{
+  std::vector<uint32_t> pauses;
+  MUTEX_LOCK(&gc_stats_lock);
+  pauses.assign(gc_pause_samples, gc_pause_samples + gc_pause_sample_count);
+  MUTEX_UNLOCK(&gc_stats_lock);
+  std::sort(pauses.begin(), pauses.end());
+
+  const size_t n = pauses.size();
+  const uint32_t p50 = n ? pauses[(n - 1) * 50 / 100] : 0;
+  const uint32_t p95 = n ? pauses[(n - 1) * 95 / 100] : 0;
+
+  std::wcerr << L"[gc-stats] minor=" << minor_gc_count.load()
+             << L" major=" << major_gc_count.load()
+             << L" pauses=" << n
+             << L" pause_p50_us=" << p50
+             << L" pause_p95_us=" << p95
+             << L" pause_max_us=" << gc_pause_max_us.load()
+             << L" promoted_objects=" << gc_promoted_total.load()
+             << L" promoted_bytes=" << gc_promoted_bytes_total.load()
+             << L" peak_rss_bytes=" << GetProcessPeakResidentBytes()
+             << std::endl;
 }
 
 // --- Cooperative stop-the-world ----------------------------------------------
@@ -481,7 +568,9 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     // reaches Objeck only through a plain store into the argument array, which runs
     // no write barrier, so a young object stored there would not be fixed up when
     // promotion moves it.
-    if(young_region && !force_old) {
+    // An object larger than the nursery limit can never fit, and trying would run a
+    // collection on every such allocation; it goes straight to the old generation.
+    if(young_region && !force_old && aligned_total <= young_region_size) {
       size_t offset = young_offset.load(std::memory_order_relaxed);
       while(offset + aligned_total <= young_region_size) {
         if(young_offset.compare_exchange_weak(offset, offset + aligned_total,
@@ -822,6 +911,10 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   clock_t start = clock();
 #endif
 
+  // The pause as mutators see it: the trylock below either succeeds at once or
+  // returns without collecting, so this includes the stop-the-world handshake.
+  const std::chrono::steady_clock::time_point pause_start = std::chrono::steady_clock::now();
+
 #ifndef _GC_SERIAL
 #ifdef _WIN32
   // only one thread at a time can invoke the gargabe collector
@@ -878,7 +971,11 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   stw_active.store(false, std::memory_order_release);
   WAKE_ALL_CONDITION(&stw_cv);
   MUTEX_UNLOCK(&stw_lock);
+#endif
 
+  RecordPause(pause_start);
+
+#ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
@@ -915,10 +1012,8 @@ void* MemoryManager::CollectMemory(void* arg)
     major_gc_count.fetch_add(1, std::memory_order_relaxed);
   }
 
-  // Phase 3: time this collection (≈ the stop-the-world pause; the world is parked
-  // before CollectMemory runs). Recorded just before the single return below.
-  const std::chrono::steady_clock::time_point pause_start = std::chrono::steady_clock::now();
-
+  // The pause is timed by the callers (CollectMinor / CollectAllMemory), so it
+  // includes the stop-the-world handshake and the minor dirty-list scan.
 
 #ifdef _DEBUG_GC
   size_t start = allocation_size;
@@ -1057,6 +1152,7 @@ void* MemoryManager::CollectMemory(void* arg)
   size_t young_used = young_offset.load(std::memory_order_relaxed);
   size_t dead_young_size = 0;
   size_t promoted_count = 0;
+  size_t promoted_bytes = 0;
 
   // Linear walk through young region
   uint8_t* scan_ptr = young_region;
@@ -1091,6 +1187,7 @@ void* MemoryManager::CollectMemory(void* arg)
         old_allocation_size += mem_size;
         promoted_objects.push_back(new_mem);
         promoted_count++;
+        promoted_bytes += total;
         // Store forwarding pointer in young region (safe — region is about to be reclaimed)
         mem[MARKED_FLAG] = (size_t)new_mem;
       }
@@ -1267,17 +1364,11 @@ void* MemoryManager::CollectMemory(void* arg)
   std::wcout << std::dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
 
-  // Phase 3 metrics: pause time, promotion, and the alloc-since-GC snapshot.
+  // Phase 3 metrics: promotion and the alloc-since-GC snapshot (pause: RecordPause).
   {
-    const long pause_us = (long)std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now() - pause_start).count();
-    gc_pause_last_us.store(pause_us, std::memory_order_relaxed);
-    if(pause_us > gc_pause_max_us.load(std::memory_order_relaxed)) {
-      gc_pause_max_us.store(pause_us, std::memory_order_relaxed);
-    }
-    gc_pause_total_us.fetch_add(pause_us, std::memory_order_relaxed);
     gc_promoted_last.store(promoted_count, std::memory_order_relaxed);
     gc_promoted_total.fetch_add(promoted_count, std::memory_order_relaxed);
+    gc_promoted_bytes_total.fetch_add(promoted_bytes, std::memory_order_relaxed);
     gc_alloc_at_last.store(allocation_size.load(std::memory_order_relaxed), std::memory_order_relaxed);
   }
 
@@ -2310,6 +2401,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
 void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 {
+  // Timed from here: includes the handshake and the dirty-list scan (see CollectAllMemory).
+  const std::chrono::steady_clock::time_point pause_start = std::chrono::steady_clock::now();
+
 #ifndef _GC_SERIAL
 #ifdef _WIN32
   // only one thread at a time can invoke the garbage collector
@@ -2387,7 +2481,11 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
   stw_active.store(false, std::memory_order_release);
   WAKE_ALL_CONDITION(&stw_cv);
   MUTEX_UNLOCK(&stw_lock);
+#endif
 
+  RecordPause(pause_start);
+
+#ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 

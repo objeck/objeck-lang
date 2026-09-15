@@ -3409,3 +3409,10 @@ void Runtime::SetJitAutoThreshold(long threshold)
 {
   JitAutoThresholdOverride() = threshold;
 }
+
+// --nursery / OBJECK_NURSERY, validated by ParseVmOptions. Applied when the
+// interpreter calls MemoryManager::Initialize.
+void Runtime::SetNurserySize(size_t size)
+{
+  MemoryManager::SetNurserySize(size);
+}

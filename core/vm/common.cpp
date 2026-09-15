@@ -4145,6 +4145,31 @@ static size_t GetProcessResidentBytes()
 #endif
 }
 
+// Peak resident set size of this process, in bytes; 0 if unavailable. Windows:
+// peak working set. POSIX: ru_maxrss, which Linux reports in kilobytes and
+// macOS in bytes. Declared in memory.h for the OBJECK_GC_STATS exit summary.
+size_t GetProcessPeakResidentBytes()
+{
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS pmc;
+  pmc.cb = sizeof(pmc);
+  if(K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+    return (size_t)pmc.PeakWorkingSetSize;
+  }
+  return 0;
+#else
+  struct rusage ru;
+  if(getrusage(RUSAGE_SELF, &ru) == 0 && ru.ru_maxrss > 0) {
+#ifdef __APPLE__
+    return (size_t)ru.ru_maxrss;
+#else
+    return (size_t)ru.ru_maxrss * 1024;
+#endif
+  }
+  return 0;
+#endif
+}
+
 // Total CPU time (user + kernel) consumed by this process, in milliseconds; the
 // caller samples it over an interval to derive a CPU-usage percentage.
 static size_t GetProcessCpuTimeMs()
@@ -4183,6 +4208,11 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
   // val=…/to_wstring boilerplate in one place and adding a metric to one row.
   static const struct { const wchar_t* key; size_t (*fn)(); } kStats[] = {
     { L"runtime.memory.used",      []() -> size_t { return GetProcessResidentBytes(); } },
+    // Never below a current sample: the OS peak and the current RSS come from two
+    // reads (two sources on POSIX), and a peak lower than "used" would be nonsense.
+    { L"runtime.memory.peak",      []() -> size_t { const size_t p = GetProcessPeakResidentBytes(),
+                                                                 r = GetProcessResidentBytes();
+                                                    return p > r ? p : r; } },
     { L"runtime.memory.allocated", []() -> size_t { return MemoryManager::GetHeapAllocatedSize(); } },
     { L"runtime.memory.max",       []() -> size_t { return MemoryManager::GetHeapMaxSize(); } },
     { L"runtime.memory.overhead",  []() -> size_t { const size_t r = GetProcessResidentBytes(),
@@ -4194,6 +4224,7 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
                                                                     MemoryManager::GetMajorGcCount()); } },
     { L"runtime.gc.stw",           []() -> size_t { return MemoryManager::IsStwActive() ? 1 : 0; } },
     { L"runtime.gc.nursery.used",  []() -> size_t { return MemoryManager::GetNurseryUsed(); } },
+    { L"runtime.gc.nursery.capacity", []() -> size_t { return MemoryManager::GetNurseryCapacity(); } },
     { L"runtime.gc.nursery.occupancy_permille", []() -> size_t {
                                                     const size_t cap = MemoryManager::GetNurseryCapacity();
                                                     if(cap == 0) {
@@ -4218,6 +4249,7 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.gc.pause.avg_us",  []() -> size_t { return (size_t)MemoryManager::GetPauseAvgUs(); } },
     { L"runtime.gc.promoted.last", []() -> size_t { return MemoryManager::GetPromotedLast(); } },
     { L"runtime.gc.promoted.total",[]() -> size_t { return MemoryManager::GetPromotedTotal(); } },
+    { L"runtime.gc.promoted.bytes",[]() -> size_t { return MemoryManager::GetPromotedBytes(); } },
     { L"runtime.gc.old.bytes",     []() -> size_t { return MemoryManager::GetOldGenBytes(); } },
     { L"runtime.gc.contention",    []() -> size_t { return (size_t)MemoryManager::GetGcContention(); } },
     // Compiled-in protocol support. Http3Connect is compiled unconditionally --

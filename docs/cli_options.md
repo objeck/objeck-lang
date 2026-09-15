@@ -33,6 +33,7 @@ graph TD
     %% ---- VM ----
     OBR --> V_FLAGS["<b>Flags</b> (consumed before program args)"]
     V_FLAGS --> V_gc["--gc-threshold=&lt;n&gt;(k|m|g)<br/>legacy: --GC_THRESHOLD="]
+    V_FLAGS --> V_nursery["--nursery=&lt;n&gt;(k|m), 64k to 128m<br/>env: OBJECK_NURSERY"]
     V_FLAGS --> V_stdio["--objeck-stdio=binary|utf16|utf8<br/>acted on by Windows; accepted everywhere<br/>legacy: --OBJECK_STDIO="]
     V_FLAGS --> V_jit["--jit=off | --jit=&lt;calls&gt;<br/>env: OBJECK_JIT_DISABLE / OBJECK_JIT_THRESHOLD"]
     V_FLAGS --> V_lib["--lib-path=&lt;dir&gt;<br/>env: OBJECK_LIB_PATH"]
@@ -42,6 +43,8 @@ graph TD
     V_ENV --> E_stdio["OBJECK_STDIO  (binary stdio mode)"]
     V_ENV --> E_jitd["OBJECK_JIT_DISABLE=1  (auto-JIT off)"]
     V_ENV --> E_jitt["OBJECK_JIT_THRESHOLD=N  (default 10)"]
+    V_ENV --> E_nursery["OBJECK_NURSERY=&lt;size&gt;  (young-generation size)"]
+    V_ENV --> E_gcstats["OBJECK_GC_STATS=1  (GC summary on stderr at exit)"]
 ```
 
 ## Compiler — `obc`
@@ -67,6 +70,8 @@ See [optimization_pipeline.md](optimization_pipeline.md) for what each `-opt` le
 | Option | Legacy form | Description |
 |--------|-------------|-------------|
 | `--gc-threshold=<n>(k\|m\|g)` | `--GC_THRESHOLD=` | Initial garbage-collection threshold, e.g. `512k`, `2m`, `1g` |
+| `--nursery=<n>(k\|m)` | env `OBJECK_NURSERY=<n>(k\|m)` | Young-generation (nursery) size, from `64k` to `128m` (default `128m`). A full nursery triggers a minor collection, so a smaller one collects more often. The 128 MB region stays reserved; this only lowers the limit. The flag wins over the variable, and a bad value in either is an error |
+| — | env `OBJECK_GC_STATS=1` | At exit, print one line to stderr: `[gc-stats] minor= major= pauses= pause_p50_us= pause_p95_us= pause_max_us= promoted_objects= promoted_bytes= peak_rss_bytes=`. Pauses run from the collecting thread taking the collector lock until the world resumes, so they include the stop-the-world handshake and the minor GC's remembered-set scan |
 | `--jit=off` / `--jit=<calls>` | env `OBJECK_JIT_DISABLE=1` / `OBJECK_JIT_THRESHOLD=N` | `off` runs the interpreter only; a positive number is how many calls a method makes before it is compiled (default `10`) |
 | — | env `OBJECK_JIT_REPORT=1` | Print, to stderr, every method the JIT hands back to the interpreter and why: an unsupported opcode (number per `obc -asm`), or the instruction at which compilation failed. Diagnostic; no effect on execution |
 | `--lib-path=<dir>` | env `OBJECK_LIB_PATH` | The Objeck `lib` root. `obc` reads the `.obl` files from it; `obr` loads the native libraries from `<dir>/native/` (`libobjk_*.dll|.so|.dylib`), reads `<dir>/cacert.pem` for TLS, and reports it as the `lib_dir` runtime property. On Windows the third-party runtime DLLs those libraries import (SDL2, onnxruntime, opencv, lame, the VC runtime) are resolved from `obr.exe`'s own directory, so `bin/` keeps them wherever `lib/` is |
@@ -83,6 +88,8 @@ used to be accepted and silently do nothing.
 | `OBJECK_STDIO` | Binary STDIO mode |
 | `OBJECK_JIT_DISABLE=1` | Turn auto-JIT off entirely |
 | `OBJECK_JIT_THRESHOLD=N` | Call count before a method is auto-JIT'd (default `10`) |
+| `OBJECK_NURSERY=<n>(k\|m)` | Nursery size, `64k` to `128m`; `--nursery` wins when both are set |
+| `OBJECK_GC_STATS=1` | One-line GC summary (counts, pause percentiles, promoted bytes, peak RSS) on stderr at exit |
 
 ## Notes
 
