@@ -1,0 +1,206 @@
+#~
+Bool[] references must be declared as byte arrays.
+
+Bool->New[n] allocates a byte array (NEW_BYTE_ARY), but the compiler declared
+every Bool[] local, parameter, field and closure capture as INT_ARY_PARM, the
+declaration of an Int[] (an INT_TYPE block). The collector marks both kinds the
+same way, but anything that trusts a declared type saw the wrong one:
+- the serializer sized a Bool[] field as 8-byte Ints, reading past the byte
+  block, so a Bool[] field serialized to a different size on every run;
+- with OBJECK_GC_VERIFY=1 every collection that found a live Bool[] aborted
+  with "B2 ... typed reference has the wrong memory TYPE 1001 (expected 1003)",
+  first surfaced by closure_array_param_capture.
+The compiler now declares Bool[] as BYTE_ARY_PARM, as the VM's own signature
+parser does.
+
+This program holds Bool[] in every declaration kind across minor collections
+and checks the contents afterwards, and checks that a Bool[] field serializes
+to the same size as a Byte[] field. run_vm_flag_tests.py also runs it with the
+heap verifier (VERIFY_CLEAN_TESTS).
+~#
+class GcBoolArrayDeclaration {
+  @flags : Bool[];
+  @shared : static : Bool[];
+
+  New() {
+    @flags := Pattern(13, 2);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+
+    # local, parameter, instance field, static field
+    local := Pattern(17, 3);
+    @shared := Pattern(19, 4);
+    holder := GcBoolArrayDeclaration->New();
+    grid := Bool->New[3, 5];
+    grid[2, 4] := true;
+
+    # closure captures: a parameter and a local
+    from_param := CaptureParam(Pattern(11, 5));
+    from_local := CaptureLocal();
+
+    start := Minors();
+    Churn();
+    if(Minors() = start) {
+      "FAIL: churn did not run a minor GC"->PrintLine();
+      Runtime->Exit(1);
+    };
+    bad += ViaParam(local, 17, 3);
+    Churn();
+
+    if(Matches(local, 17, 3) = false) { "FAIL: Bool[] local"->PrintLine(); bad += 1; };
+    if(Matches(@shared, 19, 4) = false) { "FAIL: Bool[] static field"->PrintLine(); bad += 1; };
+    if(Matches(holder->GetFlags(), 13, 2) = false) { "FAIL: Bool[] instance field"->PrintLine(); bad += 1; };
+    if(grid[2, 4] = false | grid[0, 0] = true) { "FAIL: Bool[,] local"->PrintLine(); bad += 1; };
+    if(from_param() <> 3) { "FAIL: captured Bool[] parameter"->PrintLine(); bad += 1; };
+    if(from_local() = false) { "FAIL: captured Bool[] local"->PrintLine(); bad += 1; };
+
+    # serialization: a Bool[] field goes through the byte-array path, the same
+    # as a Byte[] field of the same length (it was sized as 8-byte Ints, reading
+    # past the block, so the output size changed from run to run)
+    bool_bytes := SerializeBools();
+    byte_bytes := SerializeBytes();
+    if(bool_bytes = Nil | byte_bytes = Nil | bool_bytes->Size() <> byte_bytes->Size()) {
+      "FAIL: Bool[] field serializes like a Byte[] field"->PrintLine();
+      bad += 1;
+    }
+    else {
+      copy := System.IO.Deserializer->New(bool_bytes)->ReadObject()->As(BoolHolder);
+      if(copy = Nil | copy->Ok() = false) {
+        "FAIL: Bool[] field serialization round trip"->PrintLine();
+        bad += 1;
+      };
+    };
+
+    if(bad > 0) {
+      "FAIL: Bool[] declaration checks bad={$bad}"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: Bool[] declared as byte arrays"->PrintLine();
+  }
+
+  method : public : GetFlags() ~ Bool[] {
+    return @flags;
+  }
+
+  # true at every index divisible by k
+  function : Pattern(n : Int, k : Int) ~ Bool[] {
+    flags := Bool->New[n];
+    for(i := 0; i < n; i += 1;) { flags[i] := i % k = 0; };
+    return flags;
+  }
+
+  function : Matches(flags : Bool[], n : Int, k : Int) ~ Bool {
+    if(flags = Nil) { return false; };
+    if(flags->Size() <> n) { return false; };
+    for(i := 0; i < n; i += 1;) {
+      if(flags[i] <> (i % k = 0)) { return false; };
+    };
+    return true;
+  }
+
+  # a Bool[] parameter live across a minor collection
+  function : ViaParam(flags : Bool[], n : Int, k : Int) ~ Int {
+    Churn();
+    if(Matches(flags, n, k) = false) {
+      "FAIL: Bool[] parameter"->PrintLine();
+      return 1;
+    };
+    return 0;
+  }
+
+  # built in helpers and returned, so the creating frame is gone before the call;
+  # literal indexes only: a captured array indexed by a variable crashes obc (separate bug)
+  function : CaptureParam(p : Bool[]) ~ () ~ Int {
+    return \() ~ Int : () => {
+      count := 0;
+      if(p[0]) { count += 1; };
+      if(p[5]) { count += 1; };
+      if(p[10]) { count += 1; };
+      if(p[3]) { count += 10; };
+      return count;
+    };
+  }
+
+  function : CaptureLocal() ~ () ~ Bool {
+    l := Bool->New[6];
+    l[5] := true;
+    return \() ~ Bool : () => l[5];
+  }
+
+  function : SerializeBools() ~ Byte[] {
+    serializer := System.IO.Serializer->New();
+    serializer->Write(BoolHolder->New());
+    return serializer->Serialize();
+  }
+
+  function : SerializeBytes() ~ Byte[] {
+    serializer := System.IO.Serializer->New();
+    serializer->Write(ByteHolder->New());
+    return serializer->Serialize();
+  }
+
+  function : Minors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  # about 150MB of short-lived objects against the 128MB nursery: at least one minor GC
+  function : Churn() ~ Nil {
+    for(j := 0; j < 520000; j += 1;) {
+      tmp := BoolBlob->New(j);
+      if(tmp->Get() <> j) {
+        "FAIL: churn object corrupted"->PrintLine();
+        Runtime->Exit(1);
+      };
+    };
+  }
+}
+
+# same name length and field layout as ByteHolder, so their serialized sizes match
+class BoolHolder {
+  @flags : Bool[];
+  @tail : Int;
+
+  New() {
+    @flags := Bool->New[21];
+    for(i := 0; i < @flags->Size(); i += 1;) { @flags[i] := i % 3 = 0; };
+    @tail := 424242;
+  }
+
+  method : public : Ok() ~ Bool {
+    if(@flags = Nil | @tail <> 424242) { return false; };
+    if(@flags->Size() <> 21) { return false; };
+    for(i := 0; i < @flags->Size(); i += 1;) {
+      if(@flags[i] <> (i % 3 = 0)) { return false; };
+    };
+    return true;
+  }
+}
+
+class ByteHolder {
+  @flags : Byte[];
+  @tail : Int;
+
+  New() {
+    @flags := Byte->New[21];
+    for(i := 0; i < @flags->Size(); i += 1;) { @flags[i] := i % 3 = 0 ? 1 : 0; };
+    @tail := 424242;
+  }
+}
+
+class BoolBlob {
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+  New(v : Int) {
+    @a0 := v;
+    @d7 := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @d7;
+  }
+}

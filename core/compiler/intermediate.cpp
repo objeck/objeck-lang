@@ -859,11 +859,12 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     switch(entry->GetType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
       if(entry->GetType()->GetDimension() > 0) {
+        // Bool arrays are allocated as byte arrays (NEW_BYTE_ARY), so declare them as such
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
+        GetLogger() << L"\t" << entry->GetId() << L": BYTE_ARY_PARM: name=" << entry->GetName()
           << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
-        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
       }
       else {
 #ifdef _DEBUG
@@ -6897,11 +6898,12 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
         switch(entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
+            // Bool arrays are allocated as byte arrays (NEW_BYTE_ARY), so declare them as such
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() 
+            GetLogger() << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName()
       << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
-            declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+            declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
