@@ -64,6 +64,13 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     through the bridge's own S2F case. The regression runner cannot tell the
     abort from the error (an expected runtime error is any non-zero exit with
     output), so the status is named here.
+ 9. A zero divisor reads the same interpreted and compiled. The interpreter
+    printed ">>> Divide by zero <<<" and compiled code ">>> Divide by zero in
+    native JIT code <<<" (S4); both print the first now (the text lives in
+    core/shared/int_ops.h). bad_runtime_divzero.obs must print exactly that
+    line and exit non-zero under --jit=off, the default and --jit=1. The
+    regression runner accepts any non-zero exit with output, so it cannot
+    see the text.
 """
 import os
 import shutil
@@ -273,6 +280,21 @@ def main():
                   and b"terminating" not in err,
                   detail)
             check(f"under {label} obr exits 1, not by a signal", rc == 1, detail)
+
+    # ---- 9. one divide-by-zero message on every path --------------------------
+    dz_src = os.path.join(SCRIPT_DIR, "bad_runtime_divzero.obs")
+    dz_obe = os.path.join(SCRIPT_DIR, "bad_runtime_divzero.obe")
+    rc, out, err = run([obc, "-src", dz_src, "-dest", dz_obe], env=env, cwd=bin_dir)
+    check("divide-by-zero fixture compiles", rc == 0 and os.path.exists(dz_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr] + flags + [dz_obe], env=env, cwd=bin_dir)
+            text = err.decode(errors="replace") + out.decode(errors="replace")
+            lines = [l.strip() for l in text.splitlines() if "Divide by zero" in l]
+            detail = f"rc={rc} lines={lines!r}"
+            check(f'under {label} a zero divisor prints ">>> Divide by zero <<<" and nothing else about it',
+                  lines == [">>> Divide by zero <<<"], detail)
+            check(f"under {label} obr exits non-zero after the divide by zero", rc != 0, detail)
 
     return finish()
 

@@ -47,10 +47,11 @@ class UnsignedOps {
 		# 63 leaves only the former sign bit
 		if((-1 >>> 63) = 1) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 63"->PrintLine(); };
 
-		# 64 or more shifts every bit out; a negative count is meaningless
-		if((-1 >>> 64) = 0) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 64"->PrintLine(); };
-		if((-1 >>> 100) = 0) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 100"->PrintLine(); };
-		if((-1 >>> -1) = 0) { passed += 1; } else { failed += 1; "FAIL: -1 >>> -1"->PrintLine(); };
+		# the count is taken modulo 64, as for '<<' and '>>' (docs/FEATURES.md,
+		# "Integer arithmetic"): 64 is 0, 100 is 36 and -1 is 63
+		if((-1 >>> 64) = -1) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 64"->PrintLine(); };
+		if((-1 >>> 100) = 268435455) { passed += 1; } else { failed += 1; "FAIL: -1 >>> 100"->PrintLine(); };
+		if((-1 >>> -1) = 1) { passed += 1; } else { failed += 1; "FAIL: -1 >>> -1"->PrintLine(); };
 
 		# a variable count works the same as a literal one
 		count := 3;

@@ -227,6 +227,14 @@ bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const
  */
 void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id)
 {
+  // a zero divisor reads the same on every path (S4); the call context follows
+  if(status == -4) {
+    std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
+    std::wcerr << L"    in JIT-to-JIT call: method='" << callee->GetName()
+               << L"', caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << L"'" << std::endl;
+    exit(1);
+  }
+
   const wchar_t* reason;
   switch(status) {
   case -1:
@@ -235,9 +243,6 @@ void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, con
   case -2:
   case -3:
     reason = L"Index out of bounds";
-    break;
-  case -4:
-    reason = L"Divide by zero";
     break;
   default:
     reason = L"Unknown runtime error";

@@ -32,6 +32,7 @@
 #pragma once
 
 #include "emit.h"
+#include "../shared/int_ops.h"
 
 #include <map>
 #include <deque>
