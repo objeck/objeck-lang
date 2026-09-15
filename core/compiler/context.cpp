@@ -3463,7 +3463,12 @@ void ContextAnalyzer::RogueReturn(MethodCall* method_call)
         method_call->SetRougeReturn(instructions::INT_TYPE);
         return;
       }
-      else if(method_call->GetCallType() != NEW_INST_CALL) {
+      else {
+        // A discarded constructor call ('Foo->New();' as a statement) leaves
+        // the new instance on the operand stack like any other object-returning
+        // call and must be popped. Excluding NEW_INST_CALL here fell through to
+        // NIL_TYPE, dropping the POP_INT, so the interpreter's operand stack
+        // grew one slot per execution (a loop overflowed it and crashed).
         switch(rtrn->GetType()) {
         case frontend::BOOLEAN_TYPE:
         case frontend::BYTE_TYPE:

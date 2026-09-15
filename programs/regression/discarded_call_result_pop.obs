@@ -1,0 +1,155 @@
+#~
+Regression: a discarded constructor call statement must pop its result.
+
+'Pad->New(i);' as a statement leaves the new instance on the operand stack
+like any other object-returning call. ContextAnalyzer::RogueReturn skipped
+NEW_INST_CALL and marked the call NIL_TYPE, so the compiler emitted no
+POP_INT after the constructor MTHD_CALL. The interpreter's operand stack grew
+one slot per execution, and a loop ran it off the end: v2026.9.4 crashed
+with 0xC0000005 under --jit=off at -opt s0 and s3 (the JIT tolerated the
+leftover slot). Binding the result to a local hid the bug.
+
+The loops below cover the discarded constructor plus the other
+discarded-value shapes (object, Float and function-reference results from
+functions, methods, dynamic calls and library calls). Each one runs long
+enough to overflow the operand stack if a single slot leaks, and the
+arithmetic after each loop checks that the stack is still balanced.
+~#
+
+class Pad {
+  @a : Int;
+  @p : Float;
+
+  New(v : Int) {
+    @a := v;
+    @p := v->As(Float);
+  }
+
+  method : public : Me() ~ Pad {
+    return @self;
+  }
+
+  method : public : GetP() ~ Float {
+    return @p;
+  }
+
+  method : public : GetA() ~ Int {
+    return @a;
+  }
+
+  function : Make(v : Int) ~ Pad {
+    return Pad->New(v);
+  }
+
+  function : Half(v : Int) ~ Float {
+    return v->As(Float) / 2.0;
+  }
+
+  function : Twice(x : Int) ~ Int {
+    return x * 2;
+  }
+
+  function : Pick() ~ (Int) ~ Int {
+    return Twice(Int) ~ Int;
+  }
+}
+
+class DiscardedCallResultPop {
+  function : Check(name : String, sum : Int, expected : Int) ~ Nil {
+    if(sum <> expected) {
+      "FAIL: {$name} sum={$sum} expected={$expected}"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    n := 1000000;
+    expected := (n - 1) * n / 2;
+
+    # discarded constructor (the original defect)
+    sum := 0;
+    for(i := 0; i < n; i += 1;) {
+      Pad->New(i);
+      sum += i;
+    };
+    Check("new", sum, expected);
+
+    # discarded constructor inside a while loop
+    sum := 0;
+    i := 0;
+    while(i < n) {
+      Pad->New(i);
+      sum += i;
+      i += 1;
+    };
+    Check("new_while", sum, expected);
+
+    # discarded library-class constructor
+    sum := 0;
+    for(i := 0; i < n; i += 1;) {
+      System.String->New("x");
+      sum += i;
+    };
+    Check("lib_new", sum, expected);
+
+    # discarded constructor followed by a chained call
+    sum := 0;
+    for(i := 0; i < n; i += 1;) {
+      Pad->New(i)->Me();
+      Pad->New(i)->GetP();
+      sum += i;
+    };
+    Check("new_chain", sum, expected);
+
+    # discarded function results: object, Float, function reference
+    sum := 0;
+    for(i := 0; i < n; i += 1;) {
+      Pad->Make(i);
+      Pad->Half(i);
+      Pad->Pick();
+      sum += i;
+    };
+    Check("functions", sum, expected);
+
+    # discarded method results: object, Float, Int
+    p := Pad->New(3);
+    sum := 0;
+    for(i := 0; i < n; i += 1;) {
+      p->Me();
+      p->GetP();
+      p->GetA();
+      sum += i;
+    };
+    Check("methods", sum, expected);
+
+    # discarded dynamic (function-reference) call result
+    f := Pad->Pick();
+    sum := 0;
+    for(i := 0; i < n; i += 1;) {
+      f(i);
+      sum += i;
+    };
+    Check("dynamic", sum, expected);
+
+    # discarded result of a call on a literal
+    sum := 0;
+    for(i := 0; i < n; i += 1;) {
+      "abc"->Size();
+      sum += i;
+    };
+    Check("literal", sum, expected);
+
+    # Float work after all the loops still sees a balanced stack
+    total := 0.0;
+    for(i := 0; i < 10; i += 1;) {
+      Pad->New(i);
+      total += Pad->Half(i);
+    };
+    if(total <> 22.5) {
+      "FAIL: float total={$total}"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS"->PrintLine();
+  }
+}
