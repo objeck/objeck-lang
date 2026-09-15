@@ -99,6 +99,13 @@ bool JitCompiler::TryAutoJitCompile(StackMethod* callee)
     // back to interpreting if a patch is observed before the pointer is visible.
     PatchCallSites(callee, 1);
     callee->SetJitDone();
+    // Positive evidence for OBJECK_JIT_REPORT readers (tools/fuzz): without a
+    // line per compiled method, a VM that never compiles anything prints no
+    // rejections either and looks fully covered. Both backends come through here.
+    static const bool report = JitEnvFlag("OBJECK_JIT_REPORT");
+    if(report) {
+      std::wcerr << L"[jit] " << callee->GetName() << L": compiled" << std::endl;
+    }
     return true;
   }
 

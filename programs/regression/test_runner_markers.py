@@ -58,6 +58,16 @@ BOUNDS = """class {name} {{
 }}
 """
 
+HANG = """class {name} {{
+  function : Main(args : String[]) ~ Nil {{
+    i := 0;
+    while(true) {{ i += 1; }};
+  }}
+}}
+"""
+
+TIMEOUT_SECONDS = 8
+
 NAMED = "# EXPECT_COMPILE_ERROR: Undefined class or enum: 'NoSuchTypeAnywhere'\n"
 
 # name -> (source, expected status, expects a WARN line)
@@ -107,8 +117,9 @@ def make_tree(root, fixtures, deploy):
     """Lay out root/programs/regression + root/core/release/deploy-x64 (a link)."""
     reg = os.path.join(root, "programs", "regression")
     os.makedirs(reg)
-    for script in ("run_regression.cmd", "run_regression.sh"):
-        shutil.copyfile(os.path.join(RUNNER_DIR, script), os.path.join(reg, script))
+    for script in ("run_regression.cmd", "run_regression.sh", "run_with_timeout.ps1"):
+        if os.path.exists(os.path.join(RUNNER_DIR, script)):
+            shutil.copyfile(os.path.join(RUNNER_DIR, script), os.path.join(reg, script))
     release = os.path.join(root, "core", "release")
     os.makedirs(release)
     link = os.path.join(release, "deploy-x64")
@@ -162,12 +173,14 @@ def parse_verdicts(output):
     return verdicts
 
 
-def run_runner(shell, reg, vm_args=None):
+def run_runner(shell, reg, vm_args=None, test_timeout=None):
     env = {k: v for k, v in os.environ.items()
            if k.upper() not in ("NODEFAULTCURRENTDIRECTORYINEXEPATH", "OBJECK_VM_ARGS",
-                                "GITHUB_STEP_SUMMARY", "OBJECK_JIT_DISABLE")}
+                                "GITHUB_STEP_SUMMARY", "OBJECK_JIT_DISABLE", "TEST_TIMEOUT")}
     if vm_args is not None:
         env["OBJECK_VM_ARGS"] = vm_args
+    if test_timeout is not None:
+        env["TEST_TIMEOUT"] = str(test_timeout)
     if shell == "cmd":
         command = ["cmd.exe", "/d", "/c", os.path.join(reg, "run_regression.cmd"), "x64"]
     else:
@@ -204,6 +217,13 @@ class RunnerMarkerTests(object):
         cls.vm_runs = {}
         for args in (None, "--gc-threshold=2x", "--jit=off --gc-threshold=2x", "--jit=off --gc-threshold=2m"):
             cls.vm_runs[args] = run_runner(cls.SHELL, vm_reg, args)
+
+        # TEST_TIMEOUT: nightly-hardening.yml sets it for every leg; the Windows
+        # runner used to ignore it, so one hang stalled the whole step
+        to_reg, link = make_tree(os.path.join(cls.tmp, "timeout"),
+                                 {"to_hang": HANG, "to_hello": HELLO, "to_bounds": BOUNDS}, deploy)
+        links.append(link)
+        cls.timeout_run = run_runner(cls.SHELL, to_reg, "--jit=off", test_timeout=TIMEOUT_SECONDS)
 
     def verdict(self, name, runs=None):
         verdicts = self.verdicts if runs is None else runs[2]
@@ -281,6 +301,26 @@ class RunnerMarkerTests(object):
         good = self.vm_runs["--jit=off --gc-threshold=2m"]
         self.assertEqual(self.verdict("vm_hello", good)["status"], "PASS", good[1])
         self.assertEqual(good[0], 0, good[1])
+
+    # -- TEST_TIMEOUT ---------------------------------------------------------
+    def test_hanging_test_times_out(self):
+        code, out, _ = self.timeout_run
+        verdict = self.verdict("to_hang", self.timeout_run)
+        self.assertEqual(verdict["status"], "FAIL", out)
+        self.assertIn("timed out after %ds" % TIMEOUT_SECONDS, verdict["text"])
+        self.assertEqual(code, 1, out)
+
+    def test_timeout_keeps_output_exit_codes_and_vm_args(self):
+        code, out, _ = self.timeout_run
+        self.assertEqual(self.verdict("to_hello", self.timeout_run)["status"], "PASS", out)
+        # a real non-zero exit still fails as a runtime error, not a timeout
+        bounds = self.verdict("to_bounds", self.timeout_run)
+        self.assertEqual(bounds["status"], "FAIL", out)
+        self.assertNotIn("timed out", bounds["text"])
+        self.assertIn("VM args: --jit=off", out)
+        match = RESULTS_RE.search(out)
+        self.assertIsNotNone(match, out)
+        self.assertEqual((int(match.group(1)), int(match.group(3))), (1, 2), out)
 
 
 class CmdRunnerTests(RunnerMarkerTests, unittest.TestCase):

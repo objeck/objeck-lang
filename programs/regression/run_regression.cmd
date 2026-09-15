@@ -142,10 +142,25 @@ for %%f in (*.obs) do (
             if !errorlevel! equ 0 set OBJECK_JIT_DISABLE=1
 
             REM Run from regression directory
-            "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe" > "%RESULTS_DIR%\%%~nf_output.txt" 2>&1
+            REM TEST_TIMEOUT: seconds per test run, as in run_regression.sh. Unset
+            REM means no limit (a hang then stalls the whole suite).
+            if defined TEST_TIMEOUT (
+                powershell -NoProfile -ExecutionPolicy Bypass -File "%REGRESSION_DIR%\run_with_timeout.ps1" %TEST_TIMEOUT% "%RESULTS_DIR%\%%~nf_output.txt" "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe"
+            ) else (
+                "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe" > "%RESULTS_DIR%\%%~nf_output.txt" 2>&1
+            )
             set RUN_RESULT=!errorlevel!
+            set TIMED_OUT=
+            if defined TEST_TIMEOUT if !RUN_RESULT! equ 124 set TIMED_OUT=1
 
-            if defined EXPECT_RT_ERR (
+            if defined TIMED_OUT (
+                echo   FAIL ^(timed out after %TEST_TIMEOUT%s^)
+                >>"%FAILED_FILE%" echo %%~nf - timed out after %TEST_TIMEOUT%s ^(possible hang / infinite loop^)
+                echo   --- output ---
+                type "%RESULTS_DIR%\%%~nf_output.txt" 2>nul
+                echo   --------------
+                set /a FAIL_COUNT+=1
+            ) else if defined EXPECT_RT_ERR (
                 REM Runtime error expected — PASS if VM exited non-zero with output
                 for %%s in ("%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_output.txt") do set OUT_SIZE=%%~zs
                 if !RUN_RESULT! neq 0 (

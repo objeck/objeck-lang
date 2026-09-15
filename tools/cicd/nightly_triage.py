@@ -41,11 +41,14 @@ Result file (one per leg and step): <out>/<leg>/<step>.json
      "exit_code", "duration_s", "log", "failures": [
         {"test", "config", "message", "detail", "seed", "reduced", "count"}]}
 
-Known signatures (tools/fuzz/known.json): a list, or {"signatures": [...]}.
-Each entry may give regexes (re.search) for "leg", "step", "config", "test"
-and "message"; an absent field matches anything. "id" may instead name a
-signature exactly. A missing or unreadable file is reported as a NEW failure,
-so the nightly cannot go quietly green without its triage data.
+Known signatures (tools/fuzz/known.json): {"schema": 1, "known": [...]}, the
+one schema documented in tools/fuzz/known_schema.py and shared with the
+fuzzer. Each entry may give regexes (re.search) for "leg", "step", "config",
+"test" and "message", a fuzzer "signature" regex (matched against the
+signature in run_fuzz's "FAIL fuzz: <signature> (seed N)" line), or an exact
+triage "id"; an absent field matches anything. A missing, unreadable or
+off-schema file is reported as a NEW failure, so the nightly cannot go
+quietly green without its triage data.
 
 Classes
 -------
@@ -68,6 +71,10 @@ import subprocess
 import sys
 import threading
 import time
+
+# known.json's schema is shared with the fuzzer (tools/fuzz/known_schema.py)
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "fuzz"))
+import known_schema  # noqa: E402
 
 SCHEMA = 1
 DETAIL_LINES = 40
@@ -647,52 +654,20 @@ def signature(leg, step, config, test, message):
 
 def load_known(path):
     """Return (entries, error). A missing or malformed file is an error."""
-    if not os.path.exists(path):
-        return [], "known-signature file missing: " + path
     try:
-        # utf-8-sig: a known.json saved by a Windows editor may carry a BOM.
-        with open(path, "r", encoding="utf-8-sig") as f:
-            data = json.load(f)
-    except (OSError, ValueError) as e:
-        return [], "known-signature file unreadable: %s (%s)" % (path, e)
-    if isinstance(data, dict):
-        data = data.get("signatures", data.get("known", []))
-    if not isinstance(data, list):
-        return [], "known-signature file has no signature list: " + path
-    entries = []
-    for i, e in enumerate(data):
-        if not isinstance(e, dict):
-            return [], "known-signature entry %d is not an object" % i
-        compiled = {"raw": e}
-        for field in ("leg", "step", "config", "test", "message"):
-            if e.get(field):
-                try:
-                    compiled[field] = re.compile(e[field])
-                except re.error as err:
-                    return [], "known-signature entry %d: bad %s regex: %s" % (i, field, err)
-        entries.append(compiled)
-    return entries, None
+        return known_schema.load(path), None
+    except known_schema.KnownError as e:
+        return [], str(e)
 
 
 def match_known(entries, item):
-    for e in entries:
-        raw = e["raw"]
-        if raw.get("id") and raw["id"] == item["id"]:
-            return raw
-        fields = [f for f in ("leg", "step", "config", "test", "message") if f in e]
-        if not fields:
-            continue
-        ok = True
-        for field in fields:
-            value = item.get(field, "")
-            if field == "message":
-                value = item["message"] + "\n" + item.get("detail", "")
-            if not e[field].search(value):
-                ok = False
-                break
-        if ok:
-            return raw
-    return None
+    """The raw known.json entry `item` matches (known_schema.match), or None.
+    A failure parsed from run_fuzz's FAIL line carries its fuzzer signature,
+    so a "signature" entry means the same thing here as in the fuzzer."""
+    if item.get("step") == known_schema.FUZZ_STEP and "signature" not in item:
+        item = dict(item, signature=known_schema.fuzz_signature(item.get("test", ""),
+                                                                item.get("message", "")))
+    return known_schema.match(entries, item)
 
 
 def collect_results(results_dir, legs, steps):
@@ -838,14 +813,24 @@ def issue_body(item, run_url=""):
     ]
     if item["detail"].strip():
         lines += ["### Output", "", fence(item["detail"].rstrip()), ""]
-    snippet = {
-        "id": item["id"],
-        "leg": "^%s$" % re.escape(item["leg"]),
-        "step": "^%s$" % re.escape(item["step"]),
-        "message": re.escape(item["message"][:120]),
-        "issue": "#<this issue>",
-        "note": "<why this is expected>",
-    }
+    fuzz_sig = known_schema.fuzz_signature(item["test"], item["message"]) \
+        if item["step"] == known_schema.FUZZ_STEP else None
+    if fuzz_sig is not None:
+        # the same entry then suppresses it in local run_fuzz runs too
+        snippet = {
+            "signature": "^%s$" % re.escape(fuzz_sig),
+            "issue": "#<this issue>",
+            "note": "<why this is expected>",
+        }
+    else:
+        snippet = {
+            "id": item["id"],
+            "leg": "^%s$" % re.escape(item["leg"]),
+            "step": "^%s$" % re.escape(item["step"]),
+            "message": re.escape(item["message"][:120]),
+            "issue": "#<this issue>",
+            "note": "<why this is expected>",
+        }
     lines += [
         "### Triage",
         "",

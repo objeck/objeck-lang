@@ -166,7 +166,7 @@ class ClassifyTests(unittest.TestCase):
         self.dir = tempfile.mkdtemp()
         self.results = os.path.join(self.dir, "results")
         self.known = os.path.join(self.dir, "known.json")
-        write_json(self.known, {"signatures": [
+        write_json(self.known, {"schema": 1, "known": [
             {"id": "k816", "leg": "arm64$", "config": "jit=1",
              "message": "Invalid object cast", "issue": "#816"}]})
 
@@ -208,7 +208,7 @@ class ClassifyTests(unittest.TestCase):
         f = nt.make_failure("t", "boom", "jit=off")
         self.put(result("linux-x64", "fuzz", "fail", [f]))
         sig = nt.signature("linux-x64", "fuzz", "jit=off", "t", "boom")
-        write_json(self.known, [{"id": sig}])
+        write_json(self.known, {"known": [{"id": sig}]})
         rep = nt.classify(self.results, self.known, ["linux-x64"], ["fuzz"])
         self.assertEqual(rep["status"], "known")
 
@@ -236,7 +236,7 @@ class ClassifyTests(unittest.TestCase):
 
     def test_known_file_with_bom_is_read(self):
         with open(self.known, "wb") as f:
-            f.write(b"\xef\xbb\xbf[]")
+            f.write(b'\xef\xbb\xbf{"known": []}')
         self.put(result("linux-x64", "fuzz"))
         rep = nt.classify(self.results, self.known, ["linux-x64"], ["fuzz"])
         self.assertEqual(rep["status"], "green")
@@ -250,7 +250,7 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(nt.build_command(["git", "status"], self.dir), ["git", "status"])
 
     def test_bad_regex_is_new(self):
-        write_json(self.known, [{"message": "("}])
+        write_json(self.known, {"known": [{"message": "("}]})
         self.put(result("linux-x64", "fuzz"))
         rep = nt.classify(self.results, self.known, ["linux-x64"], ["fuzz"])
         self.assertEqual(rep["status"], "new")
@@ -302,7 +302,7 @@ class TriageCommandTests(unittest.TestCase):
         self.results = os.path.join(self.dir, "results")
         self.out = os.path.join(self.dir, "out")
         self.known = os.path.join(self.dir, "known.json")
-        write_json(self.known, [])
+        write_json(self.known, {"known": []})
         self.gh = os.path.join(self.dir, "gh_output")
 
     def tearDown(self):
@@ -513,7 +513,7 @@ class KilledStepTests(unittest.TestCase):
         with open(self.driver, "w") as f:
             f.write(LOOP_DRIVER % TOOLS_DIR)
         self.known = os.path.join(self.dir, "known.json")
-        write_json(self.known, [])
+        write_json(self.known, {"known": []})
 
     def tearDown(self):
         shutil.rmtree(self.dir, ignore_errors=True)

@@ -128,13 +128,34 @@ class JitReportTest(unittest.TestCase):
         self.assertEqual(set(rej), {"FuzzProgram:F1:i,i,", "FzTree:Check:", "FuzzProgram:#lambda_0:",
                                     "System.String:Get:i,"})
 
-    def test_coverage_counts_generated_methods_and_lambdas(self):
+    def test_coverage_needs_positive_evidence(self):
         generated = ["FuzzProgram:F0", "FuzzProgram:F1", "FzTree:Check", "FzTree:Build"]
-        compiled, total, rejected = fuzzlib.jit_coverage(self.STDERR, generated, ("FuzzProgram:", "Fz"))
-        # 4 generated + 1 rejected lambda; F1, Check and the lambda were rejected;
-        # the library method is not ours
-        self.assertEqual((compiled, total), (2, 5))
-        self.assertEqual(rejected, ["FuzzProgram:#lambda_0:", "FuzzProgram:F1", "FzTree:Check"])
+        stderr = self.STDERR + "\n" + "\n".join([
+            "[jit] FuzzProgram:F0:i,i,: compiled",
+            "[jit] FuzzProgram:F1:i,i,: compiled",       # an overload; F1 was still rejected
+            "[jit] FuzzProgram:F0:i,i,: inlined FzTree:Build:i,i,",
+            "[jit] System.String:Size:: compiled",       # library, not ours
+        ])
+        compiled, total, uncovered = fuzzlib.jit_coverage(stderr, generated, ("FuzzProgram:", "Fz"))
+        # 4 generated + the rejected lambda + Main (compiled on entry); F0 compiled,
+        # Build inlined, Main compiled; F1, Check and the lambda rejected
+        self.assertEqual((compiled, total), (3, 6))
+        self.assertEqual(uncovered, ["FuzzProgram:#lambda_0:", "FuzzProgram:F1", "FzTree:Check"])
+
+    def test_method_the_report_never_names_is_not_compiled(self):
+        generated = ["FuzzProgram:F0", "FuzzProgram:F1"]
+        compiled, total, uncovered = fuzzlib.jit_coverage("[jit] FuzzProgram:F0:: compiled\n",
+                                                          generated, ("FuzzProgram:",))
+        self.assertEqual((compiled, total), (1, 2))
+        self.assertEqual(uncovered, ["FuzzProgram:F1" + fuzzlib.NEVER_COMPILED])
+
+    def test_a_vm_that_ignores_the_jit_scores_zero(self):
+        # The old metric subtracted rejections from the total, so an empty report
+        # -- what an obr that ignores --jit=1 prints -- read as 100% compiled.
+        generated = ["FuzzProgram:F0", "FuzzProgram:F1", "FzTree:Check"]
+        compiled, total, uncovered = fuzzlib.jit_coverage("", generated, ("FuzzProgram:", "Fz"))
+        self.assertEqual((compiled, total), (0, 3))
+        self.assertEqual(len(uncovered), 3)
 
 
 class KnownTest(unittest.TestCase):
@@ -146,7 +167,7 @@ class KnownTest(unittest.TestCase):
         return path
 
     def test_suppression_by_regex(self):
-        path = self.write({"known": [
+        path = self.write({"schema": 1, "known": [
             {"signature": r"^crash: s\d/(jit1|default) access violation", "note": "basic lambda, jit"},
             {"signature": r"\| s3/off first=", "note": "s3 interpreter"},
         ]})
@@ -158,15 +179,34 @@ class KnownTest(unittest.TestCase):
         self.assertIsNone(fuzzlib.match_known("diverge: s0/off | s3/jit1 first=F#=# vs F#=#", known))
         self.assertIsNone(fuzzlib.match_known(None, known))
 
-    def test_list_form_and_missing_file(self):
-        path = self.write([{"signature": "compile: s3"}])
-        self.assertIsNotNone(fuzzlib.match_known("compile: s3 access violation", fuzzlib.load_known(path)))
-        self.assertEqual(fuzzlib.load_known(os.path.join(tempfile.gettempdir(), "no_such_known.json")), [])
+    def test_leg_narrowed_entry_needs_the_leg(self):
+        path = self.write({"known": [{"signature": "^compile: s3", "leg": "arm64$", "note": "arm only"}]})
+        known = fuzzlib.load_known(path)
+        self.assertIsNone(fuzzlib.match_known("compile: s3 access violation", known))
+        self.assertIsNone(fuzzlib.match_known("compile: s3 access violation", known, "linux-x64"))
+        self.assertIsNotNone(fuzzlib.match_known("compile: s3 access violation", known, "linux-arm64"))
+
+    def test_nightly_only_entries_never_suppress_a_fuzz_finding(self):
+        path = self.write({"known": [{"test": "map_insert", "message": "Invalid object cast"},
+                                     {"id": "0123456789"}]})
+        self.assertIsNone(fuzzlib.match_known("crash: s3/jit1 access violation", fuzzlib.load_known(path)))
+
+    def test_off_schema_and_missing_files_are_errors(self):
+        import known_schema
+        for bad in ([{"signature": "compile: s3", "note": "x"}],            # bare list
+                    {"signatures": [{"signature": "x", "note": "x"}]},        # old triage key
+                    {"known": [{"sig": "x"}]}):                               # misspelt matcher
+            with self.assertRaises(known_schema.KnownError):
+                fuzzlib.load_known(self.write(bad))
+        with self.assertRaises(known_schema.KnownError):
+            fuzzlib.load_known(os.path.join(tempfile.gettempdir(), "no_such_known.json"))
 
     def test_repository_known_json_parses(self):
         here = os.path.join(os.path.dirname(os.path.abspath(__file__)), "known.json")
-        for e in fuzzlib.load_known(here):
-            self.assertIn("note", e)
+        entries = fuzzlib.load_known(here)
+        self.assertTrue(entries)
+        for e in entries:
+            self.assertIn("note", e["raw"])
 
 
 if __name__ == "__main__":

@@ -10,12 +10,14 @@ output class; the partition of configurations into classes is the heart of a
 finding's signature.
 """
 
-import json
 import os
 import re
 import subprocess
 import sys
 import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import known_schema  # noqa: E402
 
 # (name, opt level, obr flags). The first entry is the reference.
 CONFIGS = [
@@ -275,6 +277,12 @@ def signature(results, order=None):
 # JIT report
 
 _REJECT = re.compile(r"^\[jit\] (\S+?): (not compiled -- .*|compile failed.*)$")
+# Positive evidence (OBJECK_JIT_REPORT=1): a compile that succeeded -- the
+# shared JitCompiler::TryAutoJitCompile line or the interpreter's entry-method
+# line -- or a callee whose code was inlined into a compiled caller (AMD64).
+_COMPILED = re.compile(r"^\[jit\] (\S+?): compiled(?: on entry\b.*)?$")
+_INLINED = re.compile(r"^\[jit\] (\S+?): inlined (\S+)$")
+NEVER_COMPILED = " (no compile reported)"
 
 
 def jit_rejections(stderr):
@@ -287,23 +295,49 @@ def jit_rejections(stderr):
     return out
 
 
-def jit_coverage(stderr, generated, prefixes):
-    """(compiled, total, rejected names) over the generator's methods.
+def jit_compiled(stderr):
+    """Full names of every method the report says reached native code."""
+    out = set()
+    for line in stderr.split("\n"):
+        line = line.strip()
+        m = _COMPILED.match(line)
+        if m:
+            out.add(m.group(1))
+            continue
+        m = _INLINED.match(line)
+        if m:
+            out.add(m.group(2))
+    return out
 
-    `generated` holds 'Class:Method' names; a rejected name is matched on that
-    prefix of its full 'Class:Method:signature' form. A rejected method under
-    one of `prefixes` the generator did not list (a lambda) joins the total."""
-    rejected = set()
-    extra = set()
+
+def _short(full):
+    return ":".join(full.split(":")[:2])
+
+
+def jit_coverage(stderr, generated, prefixes):
+    """(compiled, total, uncovered names) over the generator's methods.
+
+    A method counts as compiled only on positive evidence: a 'compiled' or
+    'inlined' report line naming it, and no rejection. Subtracting rejections
+    from the total instead scored a VM that ignored --jit=1 -- no report lines
+    at all -- as 100% compiled.
+
+    `generated` holds 'Class:Method' names, matched on that prefix of the
+    report's full 'Class:Method:signature' form. A reported method under one
+    of `prefixes` the generator did not list (a lambda, Main) joins the total.
+    Uncovered names are the rejected ones plus generated methods with no
+    report line, the latter suffixed NEVER_COMPILED."""
     gen = set(generated)
-    for full in jit_rejections(stderr):
-        short = ":".join(full.split(":")[:2])
-        if short in gen:
-            rejected.add(short)
-        elif any(full.startswith(p) for p in prefixes):
-            extra.add(full)
-    total = len(gen) + len(extra)
-    return total - len(rejected) - len(extra), total, sorted(rejected | extra)
+    rejected = jit_rejections(stderr)
+    compiled = jit_compiled(stderr)
+    ours = lambda full: any(full.startswith(p) for p in prefixes)
+    rej_gen = {_short(f) for f in rejected if _short(f) in gen}
+    comp_gen = {_short(f) for f in compiled if _short(f) in gen} - rej_gen
+    rej_extra = {f for f in rejected if _short(f) not in gen and ours(f)}
+    comp_extra = {f for f in compiled if _short(f) not in gen and ours(f)} - rej_extra
+    total = len(gen) + len(rej_extra) + len(comp_extra)
+    silent = {n + NEVER_COMPILED for n in gen - comp_gen - rej_gen}
+    return len(comp_gen) + len(comp_extra), total, sorted(rej_gen | rej_extra | silent)
 
 
 # ---------------------------------------------------------------------------
@@ -382,22 +416,17 @@ def evaluate(tc, text, workdir, stem, methods=(), prefixes=()):
 # ---------------------------------------------------------------------------
 # known.json
 
+#
+# The schema lives in known_schema.py, shared with tools/cicd/nightly_triage.py.
+
 def load_known(path):
-    if not path or not os.path.exists(path):
-        return []
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    entries = data.get("known", []) if isinstance(data, dict) else data
-    for e in entries:
-        e["_re"] = re.compile(e["signature"])
-    return entries
+    """Validated entries of a known.json; raises known_schema.KnownError."""
+    return known_schema.load(path)
 
 
-def match_known(sig, known):
-    """The first known entry whose signature regex matches, or None."""
+def match_known(sig, known, leg=""):
+    """The raw known entry matching fuzzer signature `sig` on `leg`, or None.
+    The fuzzer is always step 'fuzz'."""
     if sig is None:
         return None
-    for e in known:
-        if e["_re"].search(sig):
-            return e
-    return None
+    return known_schema.match(known, {"signature": sig, "leg": leg, "step": known_schema.FUZZ_STEP})

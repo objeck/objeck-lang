@@ -42,10 +42,19 @@ Runs that agree on stdout and on zero/non-zero exit form one output class. A
 compiler crash, a compile error, a missing `.obe`, a VM crash (Windows NTSTATUS
 or POSIX signal) or a timeout is a finding too.
 
-`s3/jit1`'s stderr lists every method the JIT handed back to the interpreter.
-The driver counts those against the generated methods and fails the run when
-fewer than `--min-jit` (default 90%) compiled: a differential fuzzer whose code
-never reaches the JIT only compares the interpreter with itself.
+`s3/jit1` runs with `OBJECK_JIT_REPORT=1`. A generated method counts as
+compiled only on positive evidence: the report names it `compiled`, `compiled
+on entry` or `inlined` (AMD64), and never rejects it. The driver fails the run
+when fewer than `--min-jit` (default 70%) compiled: a differential fuzzer whose
+code never reaches the JIT only compares the interpreter with itself.
+
+The metric used to subtract rejections from the total, so a VM that ignored
+`--jit=1` (no report lines at all) scored 100%; `faults/fault_obr_nojit.py` and
+`faults/fake_obr.py` (`FAKE_OBR_MODE=ignore-jit`) now prove the gate fails it.
+The floor is 70% because positive evidence measures about 76% on the x64 VM:
+a method reached only from compiled code never counts a call toward the
+auto-JIT threshold and stays interpreted (the old metric called that ~97%).
+The summary's "most often not compiled" line names them.
 
 ## Programs
 
@@ -91,15 +100,29 @@ first; `first=` is the first differing stdout line of the second class; a
 failing run adds its exit, the VM's `>>> ... <<<` text and the top frame of its
 unwind trace.
 
-`known.json` suppresses triaged signatures:
+`known.json` suppresses triaged signatures. It has one schema, defined and
+validated in `known_schema.py` and shared with the nightly triage
+(`tools/cicd/nightly_triage.py`), so an entry means the same thing to both:
 
 ```json
-{"known": [{"signature": "^diverge: s0/off,s3/default,s3/jit1,s0/jit1 \\| s3/off ", "note": "why, and the repro"}]}
+{"schema": 1, "known": [{"signature": "^diverge: s0/off,s3/default,s3/jit1,s0/jit1 \\| s3/off ", "note": "why, and the repro"}]}
 ```
+
+- `signature` (regex, needs a `note`) matches a fuzzer signature. It may be
+  narrowed by `leg` and `step` only; an entry with `leg` matches in `run_fuzz`
+  only when `--leg` names a matching leg (the nightly passes it).
+- `leg`, `step`, `config`, `test`, `message` (regexes) and `id` (exact) match
+  nightly triage failures; the fuzzer ignores entries without `signature`.
+- `issue` and `note` are annotations. Unknown keys, a bare list or the old
+  `{"signatures": [...]}` spelling are errors in both tools (`run_fuzz` exits 2,
+  the triage reports a new failure).
 
 The driver prints `[known]` or `[NEW]` per finding, saves up to three examples
 per signature under `--out/<hash>/seed_<n>/` (program, `choices.json`,
-`outcome.json`), and exits 1 on any new signature.
+`outcome.json`), and exits 1 on any new signature. A new finding is also
+printed as `FAIL fuzz: <signature> (seed N)`, the line the nightly triage
+parses and recovers the signature from; a nightly issue for a fuzz finding
+carries a ready `signature` entry.
 
 ## Reducing
 
@@ -123,4 +146,12 @@ with (stored in `choices.json`; findings from before the knob existed need
 
 - `faults/fault_obc.py` (s3 compiles get a wrong constant) is caught as `s0/off,s0/jit1 | s3/off,s3/default,s3/jit1`;
 - `faults/fault_obr.py` (`--jit=1` prints a wrong digit) is caught as `s0/off,s3/off,s3/default | s3/jit1,s0/jit1`;
-- a known.json entry suppresses the caught fault, and the unmodified toolchain is clean on the same seeds.
+- a known.json entry suppresses the caught fault, and the unmodified toolchain is clean on the same seeds;
+- `faults/fault_obr_nojit.py` (`--jit=1` becomes `--jit=off`) fails the JIT-coverage gate.
+
+`test_run_fuzz.py` needs no build: `faults/fake_obc.py` and `faults/fake_obr.py`
+stand in for the toolchain. It checks the coverage gate against a VM that
+ignores `--jit=1`, and the round trip with the nightly triage: a finding
+recorded under `nightly_triage.py run` is `new` without a known.json entry,
+`known` with one, and `run_fuzz` honours the same file. `test_known_schema.py`
+covers the schema itself.
