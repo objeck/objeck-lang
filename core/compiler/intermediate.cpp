@@ -5686,6 +5686,16 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       }
       break;
 
+    // an enum or consts variable holds an Int ('e->As(Float)'); enum item
+    // literals get their I2F where the literal is emitted
+    case frontend::CLASS_TYPE:
+      if(cast_type->GetType() == frontend::FLOAT_TYPE && expression->GetExpressionType() == VAR_EXPR &&
+         (SearchProgramEnums(base_type->GetName()) ||
+          parsed_program->GetLinker()->SearchEnumLibraries(base_type->GetName(), parsed_program->GetLibUses()))) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, I2F));
+      }
+      break;
+
     default:
       break;
     }
