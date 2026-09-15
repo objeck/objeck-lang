@@ -1384,21 +1384,11 @@ Lambda* Parser::ParseLambda(int depth) {
     // from the bare form `\(<params>) => body` (type inferred from context).
     // Both start with `(...)`; in the typed form the matching `)` is followed
     // by `~` (the function type's return marker), in the bare form it is not.
-    int scan = 1;
-    int paren_depth = 1;
-    // the scanner only buffers LOOK_AHEAD tokens; GetToken() past that is nullptr
-    while(paren_depth > 0 && scan < LOOK_AHEAD && !Match(TOKEN_END_OF_STREAM, scan)) {
-      if(Match(TOKEN_OPEN_PAREN, scan)) {
-        paren_depth++;
-      }
-      else if(Match(TOKEN_CLOSED_PAREN, scan)) {
-        paren_depth--;
-      }
-      scan++;
-    }
-
-    // a list too long to classify within the window keeps the explicit-type parse
-    if(scan >= LOOK_AHEAD || Match(TOKEN_TILDE, scan)) {
+    // The matching `)` can be any distance away. The scanner only buffers
+    // LOOK_AHEAD tokens (GetToken() past that is nullptr, which crashed obc,
+    // and a fixed wider window misread long bare parameter lists as typed),
+    // so the scanner peeks past its buffer and restores itself.
+    if(scanner->PeekAfterParens(1) == TOKEN_TILDE) {
       // explicit function-type signature
       type = ParseType(depth + 1);
 

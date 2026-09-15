@@ -1,0 +1,73 @@
+#~
+Regression: lambdas whose parameter list is longer than the scanner's
+look-ahead buffer.
+
+ParseLambda tells the typed form `\(<sig>) ~ R : (<params>) => body` from the
+bare form `\(<params>) => body` by looking for `~` after the matching `)`.
+The first fix raised the buffer to 16 tokens and, when the scan ran out of
+window, assumed the typed form: a bare lambda with ten parameters (21 tokens
+up to its `)`) then failed to compile ("Expected '~'"). Before that, any
+non-empty list read past a 3-token buffer and crashed obc. The scanner now
+peeks past its buffer and restores itself, so the list has no length limit.
+
+The long lists also span lines and carry comments, and the code after them
+uses string, character and number literals, so a peek that failed to restore
+the scanner's position, line or current characters would break the parse or
+the values checked here.
+~#
+class ClosureLambdaManyParams {
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
+    # bare lambda, ten parameters, type inferred from the call
+    bare := Apply10(\(a, b, c, d, e, f, g, h, i, j) => a + b + c + d + e + f + g + h + i + j);
+    failures += Check("bare ten-parameter lambda", bare = 55);
+
+    # bare lambda, twelve parameters over several lines with comments
+    weighted := Apply12(\(a, b, c, d,   # first four
+      e, f, g, h,                        # next four
+      i, j, k, l) => {                   # last four
+        return a * 1 + b * 2 + c * 3 + d * 4 + e * 5 + f * 6 + g * 7 + h * 8 + i * 9 + j * 10 + k * 11 + l * 12;
+      });
+    failures += Check("bare twelve-parameter lambda", weighted = 650);
+
+    # typed lambda, ten parameters
+    typed := \(Int, Int, Int, Int, Int, Int, Int, Int, Int, Int) ~ Int : (a, b, c, d, e, f, g, h, i, j) => a * j + b * i + c * h + d * g + e * f;
+    failures += Check("typed ten-parameter lambda", typed(1, 2, 3, 4, 5, 6, 7, 8, 9, 10) = 110);
+
+    # (No nested parentheses: a typed lambda with a function-typed parameter
+    # does not pass semantic analysis whatever the list length, a separate
+    # compiler limitation.)
+
+    # the scanner state after the peeks: literals, positions and strings
+    text := "paren ) inside a string (";
+    ch := ')';
+    num := 0x1F + 1_000;
+    failures += Check("string literal after the lambdas", text->Size() = 25);
+    failures += Check("character literal after the lambdas", ch = ')');
+    failures += Check("number literal after the lambdas", num = 1031);
+
+    if(failures > 0) {
+      "FAIL: {$failures} long-parameter lambda check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: long-parameter lambdas"->PrintLine();
+  }
+
+  function : Apply10(fn : (Int, Int, Int, Int, Int, Int, Int, Int, Int, Int) ~ Int) ~ Int {
+    return fn(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+  }
+
+  function : Apply12(fn : (Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int) ~ Int) ~ Int {
+    return fn(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12);
+  }
+
+  function : Check(name : String, ok : Bool) ~ Int {
+    if(ok) {
+      "PASS: {$name}"->PrintLine();
+      return 0;
+    };
+    "FAIL: {$name}"->PrintLine();
+    return 1;
+  }
+}

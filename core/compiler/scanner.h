@@ -43,8 +43,8 @@
 #define EXTENDED_COMMENT L'~'
 #define ALT_EXTENDED_COMMENT L'*'
 
-// look ahead value; ParseLambda scans a lambda's `(...)` list within this window
-#define LOOK_AHEAD 16
+// look ahead value; PeekType()/PeekAfterParens() look further without buffering
+#define LOOK_AHEAD 3
 // white space
 #define WHITE_SPACE (iswspace(cur_char) || cur_char == 0x200b || cur_char == 0xfeff)
 
@@ -672,6 +672,24 @@ class Scanner {
   // create a random string
   std::wstring RandomString(size_t len);
 
+  // Everything ParseToken() changes: the read position, the start/end marks,
+  // the three current characters, the line/column counters and the token it
+  // fills (the last lookahead slot, when peeking). Keyword lookups do not
+  // modify ident_map, and alt_syntax, filename and the buffer are read-only.
+  struct PeekState {
+    size_t buffer_pos;
+    size_t start_pos;
+    size_t end_pos;
+    wchar_t cur_char;
+    wchar_t nxt_char;
+    wchar_t nxt_nxt_char;
+    int line_nbr;
+    size_t line_pos;
+    Token token;
+  };
+  void SavePeekState(PeekState& state);
+  void RestorePeekState(PeekState& state);
+
  public:
   // default constructor
   Scanner(std::wstring f, bool a, const std::wstring c = L"");
@@ -683,6 +701,14 @@ class Scanner {
 
   // token accessor
   Token* GetToken(int index = 0);
+
+  // token type at any lookahead distance, including past the fixed buffer
+  ScannerTokenType PeekType(int index);
+
+  // with tokens[index - 1] an open parenthesis, the type of the token after its
+  // matching closing parenthesis (TOKEN_END_OF_STREAM if there is none); one
+  // pass, however long the list
+  ScannerTokenType PeekAfterParens(int index);
 
   // gets the file name
   std::wstring GetFileName() {
