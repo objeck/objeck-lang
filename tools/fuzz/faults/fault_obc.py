@@ -3,9 +3,11 @@
 
 Stands in for obc: forwards every argument to the real compiler named by
 FUZZ_REAL_OBC, except that an s3 compile is fed a copy of the source whose
-first `% 1048573` reads `% 1048571` -- the kind of wrong constant a broken
-folder produces. s0 output is untouched, so every s3 configuration should
-split from the reference.
+first digest step in Main multiplies by 29 instead of 31 -- the kind of wrong
+constant a broken folder produces. (Changing a `% 1048573` would not do: the
+generator keeps values under 2^20, so a nearby modulus rarely changes one.)
+s0 output is untouched, so every s3 configuration should split from the
+reference.
 """
 
 import os
@@ -25,7 +27,7 @@ def main():
             text = f.read()
         faulty = args[i] + ".fault.obs"
         with open(faulty, "w", encoding="utf-8", newline="\n") as f:
-            f.write(text.replace("% 1048573", "% 1048571", 1))
+            f.write(text.replace("(d * 31 + ", "(d * 29 + ", 1))
         args[i] = faulty
     return subprocess.call([real] + args)
 
