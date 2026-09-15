@@ -181,15 +181,20 @@ Each variant is compiled at s0 and s3 and run under `--jit=off` and `--jit=1`;
 every configuration is compared with the original's s0/off run (stdout and
 zero/non-zero exit; configurations the original itself fails are dropped). A
 variant whose s0 compile fails is repaired by dropping the mutations on the
-error lines. All configurations agreeing on a different output is a
-*semantic* change (the mutation's fault, not a finding); anything else is a
-divergence, confirmed by two re-runs, reduced to a minimal mutation set
-(ddmin) and saved under `--out/diverge/<test>/v<n>/` (`variant.obs`,
-`reduced.obs`, `outcome.json`). Signatures read `diverge: ref,s0/off,... |
-s3/off,...` with `ref` the original. Variants are a pure function of
-(seed, test, index, probe hits). `test_emi.py` checks determinism, that
-variants compile and agree, that `faults/fault_obc_emi.py` (s3 takes the dead
-guard) is caught, and that the s3 bytecode keeps every dead block.
+error lines. The oracle is strict: any configuration that differs from the
+reference is a divergence, including every configuration agreeing on a
+different output (a front-end or emitter miscompile hits all opt levels and
+the interpreter alike). Divergences are confirmed by two re-runs, reduced to a
+minimal mutation set (ddmin), saved under `--out/diverge/<test>/v<n>/`
+(`variant.obs`, `reduced.obs`, `outcome.json`) and set exit status 1.
+Signatures read `diverge: ref,s0/off,... | s3/off,...` with `ref` the
+original; uniform ones are prefixed `uniform: dead guard taken;` (EMI-DEAD or
+exit 97), `uniform: exit changed;` or `uniform: output changed;`. Variants
+are a pure function of (seed, test, index, probe hits). `test_emi.py` checks
+determinism, that variants compile and agree, that `faults/fault_obc_emi.py`
+is caught both when only s3 takes the dead guard and when every opt level
+does (`FUZZ_FAULT_OPTS=s0,s3`), that the s3 bytecode keeps every dead block,
+and that the s3 build takes the guard when run with more than 4096 arguments.
 
 ## Proving it catches bugs
 

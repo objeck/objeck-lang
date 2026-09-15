@@ -28,13 +28,16 @@ Every variant is compiled at s0 and s3 and run under --jit=off and --jit=1.
 Configurations are compared with the original's s0/off run (stdout and
 zero/non-zero exit, as fuzzlib does). A variant that fails its s0 compile is
 repaired by dropping the mutations named by the error lines (else half of
-them), up to a few times, and is otherwise discarded as invalid. When every
-configuration of a variant agrees with the others but not with the original,
-the mutation changed the program (a block that ran nondeterministically, say);
-that is counted as a semantic change, not a finding. Anything else -- the
-configurations split, an s3 compile fails, a run crashes -- is a divergence:
-it is re-run twice to confirm, reduced to a minimal set of mutations, and saved
-under --out/<test>/v<index>/.
+them), up to a few times, and is otherwise discarded as invalid. The oracle is
+strict: any configuration whose outcome differs from the original's s0/off run
+is a divergence -- the configurations split, an s3 compile fails, a run
+crashes, or every configuration agrees on a different output. The last kind
+is a *uniform* divergence (a front-end or emitter miscompile that no opt level
+or JIT setting escapes); its signature starts with `uniform: <reason>;`, the
+reason being `dead guard taken` (EMI-DEAD printed or exit 97), `exit changed`
+or `output changed`. Every divergence is re-run twice to confirm, reduced to a
+minimal set of mutations, saved under --out/diverge/<test>/v<index>/ and
+counted in the exit status.
 
 Exit status: 0 no confirmed divergence, 1 divergences, 2 usage error.
 """
@@ -124,9 +127,14 @@ class %(g)s {
 
 # Tests excluded by name or source even without a marker: network, timing,
 # host services, the debugger and native media.
-NAME_EXCLUDE = re.compile(r"(http|socket|net_|_net|tls|web|mcp|dap_|debugger|obd_|api_|thread|timing|"
-                          r"time|timer|bench|perf|stress|sdl|gl_|opencv|onnx|ollama|openai|gemini|"
-                          r"clock|sleep|signal|process|console)", re.I)
+# Identifiers after which an expression starts: `return -5` has a unary minus
+# and `return [1, 2]` an array literal, not a binary operator or an index.
+KEYWORDS_BEFORE_EXPR = frozenset(("return", "leaving", "in", "and", "or", "not"))
+
+# Whole underscore-separated name components, so runtime_* is not "time".
+NAME_EXCLUDE = re.compile(r"(?:^|_)(https?|socket|net|tls|web|websocket|mcp|dap|debugger|obd|api|thread|"
+                          r"timing|time|timer|bench|perf|stress|sdl|gl|opencv|onnx|ollama|openai|gemini|"
+                          r"clock|sleep|signal|process|console)(?=_|$)", re.I)
 SOURCE_EXCLUDE = re.compile(r"(System\.Time|Timer->|Date->New|GetTime|Thread->Sleep|System\.IO\.Net|"
                             r"Console->Read|GetEnv|System\.Concurrency|Web\.HTTP)")
 
@@ -390,7 +398,8 @@ class Analysis:
                     frames.append(Frame("paren", i, code=top.code, func=top.func))
                 else:
                     prev = self._tok(i - 1)
-                    literal = prev is None or not (prev.kind in ("ident", "num", "str") or prev.text in (")", "]"))
+                    literal = prev is None or prev.text in KEYWORDS_BEFORE_EXPR or \
+                        not (prev.kind in ("ident", "num", "str") or prev.text in (")", "]"))
                     frames.append(Frame("array" if literal else "index", i, code=top.code, func=top.func))
                 continue
             if t.kind == "punct" and t.text in ")]":
@@ -470,7 +479,8 @@ class Analysis:
         prev = self._tok(i - 1)
         if prev is not None and prev.text in ("-", "+"):
             pp = self._tok(i - 2)
-            binary = pp is not None and (pp.kind in ("ident", "num", "str", "char") or pp.text in (")", "]"))
+            binary = pp is not None and pp.text not in KEYWORDS_BEFORE_EXPR and \
+                (pp.kind in ("ident", "num", "str", "char") or pp.text in (")", "]"))
             if not binary:
                 return
         if prev is not None and prev.text == "label":
@@ -746,8 +756,8 @@ class Tools:
         r = run_proc(cmd, self.tc.bin_dir, self.env, max(120.0, self.timeout * 2))
         return r, os.path.exists(dest)
 
-    def run(self, obe, flags, cwd, timeout):
-        cmd = fuzzlib.tool_command(self.tc.obr) + list(flags) + [os.path.abspath(obe)]
+    def run(self, obe, flags, cwd, timeout, args=()):
+        cmd = fuzzlib.tool_command(self.tc.obr) + list(flags) + [os.path.abspath(obe)] + list(args)
         return run_proc(cmd, cwd, self.env, timeout)
 
 
@@ -780,20 +790,37 @@ def eligibility(name, text):
     return None
 
 
+def dead_guard_taken(result):
+    return result is not None and (result.code == TRIP_EXIT or "EMI-DEAD " in (result.stdout or ""))
+
+
+def uniform_reason(ref, results, configs=CONFIG_NAMES):
+    """Why a variant whose configurations all agree differs from `ref`."""
+    rs = [results.get(n) for n in configs]
+    if any(dead_guard_taken(r) for r in rs):
+        return "dead guard taken"
+    if any(fuzzlib.outcome_key(r)[0] != fuzzlib.outcome_key(ref)[0] for r in rs):
+        return "exit changed"
+    return "output changed"
+
+
 def classify(ref, results, configs=CONFIG_NAMES):
-    """('pass' | 'semantic' | 'diverge', signature). `ref` is the original's
-    s0/off Result, `results` the variant's per-configuration Results."""
+    """('pass' | 'diverge', signature). `ref` is the original's s0/off Result,
+    `results` the variant's per-configuration Results. Every configuration must
+    match `ref`; a variant all of whose configurations agree on something else
+    is still a divergence, with a signature starting `uniform: <reason>;`."""
     ref_key = fuzzlib.outcome_key(ref)
     keys = {n: fuzzlib.outcome_key(results.get(n)) for n in configs}
     if all(k == ref_key for k in keys.values()):
         return "pass", None
-    if len(set(keys.values())) == 1 and not any(k[0] in ("crash", "timeout", "missing") for k in keys.values()):
-        return "semantic", None
     allres = dict(results)
     allres[REF] = ref
     order = [REF] + list(configs)
     sig = fuzzlib.signature(allres, order)
-    return "diverge", sig or "diverge: %s" % fuzzlib.partition_text(fuzzlib.partition(allres, order))
+    sig = sig or "diverge: %s" % fuzzlib.partition_text(fuzzlib.partition(allres, order))
+    if len(set(keys.values())) == 1:
+        sig = "uniform: %s; %s" % (uniform_reason(ref, results, configs), sig)
+    return "diverge", sig
 
 
 def compile_error_lines(result):
@@ -821,7 +848,7 @@ class TestRun:
         # self.work, and a test that lists its working directory would see them
         self.cwd = os.path.join(self.work, "run")
         os.makedirs(self.cwd, exist_ok=True)
-        self.rec = {"test": name, "status": "ok", "variants": 0, "pass": 0, "invalid": 0, "semantic": 0,
+        self.rec = {"test": name, "status": "ok", "variants": 0, "pass": 0, "invalid": 0, "uniform": 0,
                     "diverge": 0, "flaky": 0, "repaired": 0, "findings": [], "notes": []}
 
     # -- helpers
@@ -974,10 +1001,8 @@ class TestRun:
                 self.rec.setdefault("duplicate", 0)
                 self.rec["duplicate"] += 1
                 continue
-            if status in ("invalid", "pass", "semantic"):
+            if status in ("invalid", "pass"):
                 self.rec[status] += 1
-                if status == "semantic":
-                    self.save(v, stem, "semantic", None, comp, res)
                 continue
             # confirm twice before calling it real
             confirmed = True
@@ -991,6 +1016,8 @@ class TestRun:
                 self.save(v, stem, "flaky", sig, comp, res)
                 continue
             self.rec["diverge"] += 1
+            if sig.startswith("uniform:"):
+                self.rec["uniform"] += 1
             reduced = self.reduce(v, sig, stem) if self.args.reduce else v
             path = self.save(v, stem, "diverge", sig, comp, res, reduced)
             self.rec["findings"].append({"variant": index, "signature": sig, "path": path,
@@ -1099,9 +1126,9 @@ def main(argv=None):
             rec = fut.result()
             records.append(rec)
             if rec["status"] == "ok":
-                log("%-4s %-40s variants=%d pass=%d invalid=%d semantic=%d diverge=%d flaky=%d (%.0fs)" %
+                log("%-4s %-40s variants=%d pass=%d invalid=%d diverge=%d (uniform=%d) flaky=%d (%.0fs)" %
                     ("DIFF" if rec["diverge"] else "ok", rec["test"], rec["variants"], rec["pass"], rec["invalid"],
-                     rec["semantic"], rec["diverge"], rec["flaky"], rec["seconds"]))
+                     rec["diverge"], rec["uniform"], rec["flaky"], rec["seconds"]))
             else:
                 log("%-4s %-40s %s" % (rec["status"], rec["test"], "; ".join(rec["notes"])))
     records.sort(key=lambda r: r["test"])
@@ -1112,7 +1139,7 @@ def main(argv=None):
             signatures.setdefault(f["signature"], []).append("%s v%d" % (r["test"], f["variant"]))
     summary = {"seed": args.seed, "variants_per_test": args.variants, "eligible": len(eligible),
                "skipped": skipped, "ran": sum(1 for r in records if r["status"] == "ok"),
-               "stats": {k: total(k) for k in ("variants", "pass", "invalid", "semantic", "diverge", "flaky",
+               "stats": {k: total(k) for k in ("variants", "pass", "invalid", "diverge", "uniform", "flaky",
                                                "duplicate", "repaired")},
                "signatures": signatures, "tests": records, "seconds": round(time.monotonic() - start, 1)}
     log("")

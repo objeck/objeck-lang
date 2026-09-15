@@ -5,10 +5,13 @@ deploy tree test_toolchain.find_bin() picks (FUZZ_BIN first) and FAIL without
 one, as test_toolchain.py does:
 
   * variants of real regression tests compile at s0 and s3 and agree;
-  * a synthetic miscompile (faults/fault_obc_emi.py: s3 takes the dead guard)
-    is reported as a divergence, and classify() spots one in synthetic runs;
+  * a synthetic miscompile (faults/fault_obc_emi.py) is reported as a
+    divergence and exits 1, both when only s3 takes the dead guard and when
+    every opt level does (a uniform change is a finding, not "semantic");
+    classify() spots both in synthetic runs;
   * the guard is not constant-folded: the s3 bytecode still holds every dead
-    block's Trip mark and the call to the guard.
+    block's Trip mark, and the same s3 build takes the guard at run time when
+    given more than 4096 arguments.
 """
 
 import json
@@ -17,6 +20,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -100,6 +104,24 @@ class AnalysisTest(unittest.TestCase):
             before = SAMPLE[:b.pos].rstrip()
             self.assertFalse(re.search(r"return [^;]*;$", before), before[-40:])
 
+    def test_no_literal_sites_after_return_unary_or_array(self):
+        text = SAMPLE.replace("return x + x;", "if(x < 0) { return -5; };\n    return x + x;")
+        text = text.replace('"never"->PrintLine();', 'q := Pair(); "never"->PrintLine();')
+        text = text.replace("  function : Main(", "  function : Pair() ~ Int[] {\n    return [8, 9];\n  }\n\n"
+                                                  "  function : Main(")
+        a = emi.Analysis(text)
+        lits = [text[s:e] for s, e, _ in a.literals]
+        self.assertNotIn("5", lits)
+        self.assertNotIn("8", lits)
+        self.assertNotIn("9", lits)
+
+    def test_name_exclusions_are_whole_components(self):
+        for name in ("runtime_feature_test", "runtime_gc_stats", "core_processor_ops"):
+            self.assertIsNone(emi.NAME_EXCLUDE.search(name), name)
+        for name in ("http_error_body", "https_persistence_test", "core_net_buffer", "socket_graceful_close_test",
+                     "api_openai_test", "thread_accept_exit_test", "regex_bench", "gl_context_test"):
+            self.assertIsNotNone(emi.NAME_EXCLUDE.search(name), name)
+
     def test_blocks_found(self):
         ctrls = sorted(b.ctrl for b in self.a.blocks)
         self.assertEqual(ctrls, ["else", "for", "if", "if", "label", "label"])
@@ -173,12 +195,28 @@ class ClassifyTest(unittest.TestCase):
         self.assertEqual(status, "diverge")
         self.assertIn("ref,s0/off,s0/jit1 | s3/off,s3/jit1", sig)
 
-    def test_agreement_passes_and_uniform_change_is_semantic(self):
+    def test_agreement_passes(self):
         ref = _res("PASS\n")
         same = {n: _res("PASS\n") for n in emi.CONFIG_NAMES}
         self.assertEqual(emi.classify(ref, same), ("pass", None))
+
+    def test_uniform_change_is_a_divergence(self):
+        # every configuration agrees, but not with the original: an emitter
+        # miscompile looks exactly like this, so it must be a finding
+        ref = _res("PASS\n")
         changed = {n: _res("other\n") for n in emi.CONFIG_NAMES}
-        self.assertEqual(emi.classify(ref, changed), ("semantic", None))
+        status, sig = emi.classify(ref, changed)
+        self.assertEqual(status, "diverge")
+        self.assertTrue(sig.startswith("uniform: output changed; diverge: ref | s0/off,s3/off,s0/jit1,s3/jit1"), sig)
+        dead = {n: _res("PASS\nEMI-DEAD 910004\n", 97) for n in emi.CONFIG_NAMES}
+        status, sig = emi.classify(ref, dead)
+        self.assertEqual(status, "diverge")
+        self.assertTrue(sig.startswith("uniform: dead guard taken; "), sig)
+        # the non-crashing Nil-dereference shape: exit 1, same stdout everywhere
+        nil = {n: _res("PASS\n", 1) for n in emi.CONFIG_NAMES}
+        status, sig = emi.classify(ref, nil)
+        self.assertEqual(status, "diverge")
+        self.assertTrue(sig.startswith("uniform: exit changed; "), sig)
 
     def test_crash_everywhere_is_still_a_divergence(self):
         ref = _res("PASS\n")
@@ -188,6 +226,7 @@ class ClassifyTest(unittest.TestCase):
 
 BIN = find_bin()
 TOOL_TESTS = ["core_arithmetic", "opt_int_division", "core_classes"]
+PROBE_MARK = 910999
 
 
 class ToolchainEmiTest(unittest.TestCase):
@@ -210,12 +249,17 @@ class ToolchainEmiTest(unittest.TestCase):
         # nearly every variant survives its s0 compile (after repair) and matches
         self.assertGreaterEqual(st["pass"], int(0.8 * st["variants"]), st)
 
-    def test_synthetic_miscompile_is_caught(self):
-        os.environ["FUZZ_REAL_OBC"] = os.path.join(BIN, "obc" + EXE)
+    def run_fault(self, opts, variants=4):
+        env = {"FUZZ_REAL_OBC": os.path.join(BIN, "obc" + EXE), "FUZZ_FAULT_OPTS": opts}
         fault = os.path.join(HERE, "faults", "fault_obc_emi.py")
-        status, s = self.run_emi(["--obc", fault, "--no-delete"], ["core_arithmetic"], 4)
+        with mock.patch.dict(os.environ, env):
+            return self.run_emi(["--obc", fault, "--no-delete"], ["core_arithmetic"], variants)
+
+    def test_synthetic_miscompile_is_caught(self):
+        status, s = self.run_fault("s3")
         self.assertEqual(status, 1)
         self.assertGreater(s["stats"]["diverge"], 0)
+        self.assertEqual(s["stats"]["uniform"], 0)
         sigs = list(s["signatures"])
         self.assertTrue(all(sig.startswith("diverge: ref,s0/off,s0/jit1 | s3/off,s3/jit1 ") for sig in sigs), sigs)
         # the reducer keeps a single dead block, the mutation the fault needs
@@ -223,21 +267,43 @@ class ToolchainEmiTest(unittest.TestCase):
         self.assertEqual([m["kind"] for m in finding["mutations"]], ["dead"])
         self.assertTrue(os.path.exists(os.path.join(finding["path"], "reduced.obs")))
 
+    def test_uniform_miscompile_is_caught(self):
+        # every opt level takes the dead guard: all four configurations agree
+        # with each other and not with the original
+        status, s = self.run_fault("s0,s3")
+        self.assertEqual(status, 1, s["stats"])
+        self.assertGreater(s["stats"]["diverge"], 0)
+        self.assertEqual(s["stats"]["uniform"], s["stats"]["diverge"])
+        sigs = list(s["signatures"])
+        # every finding is uniform; most take a dead block (EMI-DEAD, exit 97),
+        # while a `(c) & Live()` condition made false can fail without one
+        self.assertTrue(all(sig.startswith("uniform: ") and "ref | s0/off,s3/off,s0/jit1,s3/jit1" in sig
+                            for sig in sigs), sigs)
+        self.assertTrue(any(sig.startswith("uniform: dead guard taken; ") for sig in sigs), sigs)
+        for finding in s["tests"][0]["findings"]:
+            if finding["signature"].startswith("uniform: dead guard taken; "):
+                self.assertEqual([m["kind"] for m in finding["mutations"]], ["dead"])
+
     def test_guard_is_not_constant_folded(self):
         tools = emi.Tools(BIN, timeout=60)
         with open(os.path.join(emi.REG_DIR, "core_arithmetic.obs"), encoding="utf-8") as f:
             text = f.read().lstrip("﻿").replace("\r\n", "\n")
         a = emi.Analysis(text)
         work = tempfile.mkdtemp(prefix="emi_fold_")
-        checked = 0
+        checked = tripped = 0
         for index in range(6):
             v = emi.make_variant(a, 21, "core_arithmetic", index)
             marks = sorted({int(m) for m in re.findall(r"EmiGuardZq->Trip\((\d+)\)", v.text)})
             if not marks:
                 continue
+            # plus one dead block right after Init, on the path every run takes
+            probe = "if(%s->Dead()) { %s->Trip(%d); };" % (emi.GUARD, emi.GUARD, PROBE_MARK)
+            text = v.text.replace("%s->Init(args);" % emi.GUARD, "%s->Init(args); %s" % (emi.GUARD, probe), 1)
+            self.assertIn(probe, text)
+            marks.append(PROBE_MARK)
             src = os.path.join(work, "v%d.obs" % index)
             with open(src, "w", encoding="utf-8", newline="\n") as f:
-                f.write(v.text)
+                f.write(text)
             dest = os.path.join(work, "v%d.obe" % index)
             r, wrote = tools.compile(src, "s3", dest, "cipher,collect,xml,json", asm=True)
             if not wrote:
@@ -248,9 +314,21 @@ class ToolchainEmiTest(unittest.TestCase):
             main = main[:main.find("\nMethod:", 1)] if "\nMethod:" in main else main
             for mark in marks:
                 self.assertIn("LOAD_INT_LIT: value=%d" % mark, main, "dead block %d folded away" % mark)
-            self.assertRegex(main, r"EmiGuardZq:(Dead|Live|Zero):|LOAD_CLS_INST_INT_VAR")
+            # the guard is live at run time: the same s3 build takes the dead
+            # block after Init only when given more than 4096 arguments. A
+            # guard the compiler had folded could not react to arguments.
+            for flags in (["--jit=off"], ["--jit=1"]):
+                quiet = tools.run(dest, flags, work, 60)
+                self.assertEqual(quiet.code, 0, quiet.stdout)
+                self.assertNotIn("EMI-DEAD", quiet.stdout)
+                r = tools.run(dest, flags, work, 60, args=["x"] * 4097)
+                self.assertEqual(r.code, emi.TRIP_EXIT, "v%d %s ignored its runtime guard: %s" %
+                                 (index, flags, r.stdout[-200:]))
+                self.assertIn("EMI-DEAD %d" % PROBE_MARK, r.stdout)
+                tripped += 1
             checked += 1
         self.assertGreater(checked, 2)
+        self.assertEqual(tripped, 2 * checked)
 
 
 if __name__ == "__main__":
