@@ -90,6 +90,12 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     OBJECK_GC_VERIFY_INJECT fault (field, barrier, mark) in
     vm_gc_verify_inject.obs stops obr with the verifier's report -- a verifier
     nothing can trip would pass the first half just as well as a correct heap.
+ 12. Stack-trace method names read like the source. vm_trace_fn_param_format.obs
+    faults inside a method with scalar, array, object and function-typed (single,
+    nested, doubly nested, function-returning) parameters; the names on its
+    unwinding lines must match exactly at -opt s0 and s3 under --jit=off, the
+    default and --jit=1. MethodFormatter used to print a function-typed parameter
+    as '(a:Int, , , b:Int, ...)~Int' and a mid-list Float[] as 'Float[,]'.
 """
 import os
 import re
@@ -322,12 +328,48 @@ def main():
                   lines == [">>> Divide by zero <<<"], detail)
             check(f"under {label} obr exits non-zero after the divide by zero", rc != 0, detail)
 
+    check_trace_signatures(obc, obr, env, bin_dir)
+
     check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base)
 
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
 
     return finish()
+
+
+# The method names vm_trace_fn_param_format.obs must unwind with, innermost
+# first: every parameter kind the formatter handles, including function types
+# nested one and two levels deep and a function type returning one.
+TRACE_EXPECTED_NAMES = [
+    "P1->Crash(a:Int, b:Float[], c:System.String, d:(Int)~Int, e:((Int)~Int, Int)~Int, f:Char[,], "
+    "g:(Int)~(Int)~Int, h:(((Int)~Int)~Int, Int)~Int)",
+    "TraceFnParamFormat->Main(a:System.String[])",
+]
+
+
+def check_trace_signatures(obc, obr, env, bin_dir):
+    # ---- 12. stack-trace method names read like the source ------------------------
+    # MethodFormatter counted every "m.(" in the whole signature and skipped that
+    # many '~', so a function-typed parameter swallowed the parameters after it,
+    # and a one-dimensional array in the middle of a list printed as "[,]". The
+    # regression runner cannot see stderr text; the names are compared here.
+    src = os.path.join(SCRIPT_DIR, "vm_trace_fn_param_format.obs")
+    for opt in ("s0", "s3"):
+        obe = os.path.join(SCRIPT_DIR, f"vm_trace_fn_param_format_{opt}.obe")
+        rc, out, err = run([obc, "-src", src, "-opt", opt, "-dest", obe], env=env, cwd=bin_dir)
+        check(f"trace-signature fixture compiles (-opt {opt})", rc == 0 and os.path.exists(obe),
+              (out + err).decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+        for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr] + flags + [obe], env=env, cwd=bin_dir)
+            text = err.decode(errors="replace")
+            names = re.findall(r"name='([^']*)'", text)
+            check(f"the unwinding lines name each method as its source declares it (-opt {opt}, {label})",
+                  rc != 0 and b"after" not in out and "Unwinding local stack" in text
+                  and names == TRACE_EXPECTED_NAMES,
+                  f"rc={rc} names={names!r}")
 
 
 def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
