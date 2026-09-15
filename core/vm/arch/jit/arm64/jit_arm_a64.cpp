@@ -1962,6 +1962,35 @@ void JitArm64::ProcessStore(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
+  // A func-ref's second word (the closure instance) is stored from whatever
+  // kind the working stack holds for it; the two words need not share a kind
+  // (a literal method word over a closure held in a local). Mirrors the
+  // AMD64 fix: the stores used the first word's kind for both.
+  auto store_func_word2 = [&](RegInstr* word2, long offset) {
+    switch(word2->GetType()) {
+    case IMM_INT:
+      move_imm_mem((int64_t)word2->GetOperand(), offset, dest);
+      break;
+
+    case MEM_INT: {
+      RegisterHolder* tmp = GetRegister();
+      move_mem_reg((long)word2->GetOperand(), SP, tmp->GetRegister());
+      move_reg_mem(tmp->GetRegister(), offset, dest);
+      ReleaseRegister(tmp);
+    }
+      break;
+
+    case REG_INT:
+      move_reg_mem(word2->GetRegister()->GetRegister(), offset, dest);
+      ReleaseRegister(word2->GetRegister());
+      break;
+
+    default:
+      compile_success = false;
+      break;
+    }
+  };
+
   switch(left->GetType()) {
   case IMM_INT:
     if(is_func_var) {
@@ -1969,7 +1998,7 @@ void JitArm64::ProcessStore(StackInstr* instr) {
 
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_imm_mem((int64_t)left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
+      store_func_word2(left2, instr->GetOperand3() + sizeof(size_t));
 
       delete left2;
       left2 = nullptr;
@@ -1987,8 +2016,7 @@ void JitArm64::ProcessStore(StackInstr* instr) {
 
       RegInstr* left2 = working_stack.front();
       working_stack.pop_front();
-      move_mem_reg((long)left2->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
+      store_func_word2(left2, instr->GetOperand3() + sizeof(size_t));
 
       delete left2;
       left2 = nullptr;
