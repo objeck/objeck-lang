@@ -4387,6 +4387,20 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
 
+  // a function or FuncRef variable captured from the enclosing scope of a
+  // lambda: resolve it as a variable so the closure copy is created and the
+  // call loads it from closure memory
+  if(!entry && capture_lambda && capture_table && capture_method &&
+     capture_table->GetEntry(capture_method->GetName() + L':' + method_call->GetMethodName())) {
+    Statement* mc_stmt = static_cast<Statement*>(method_call);
+    Variable* variable = TreeFactory::Instance()->MakeVariable(mc_stmt->GetFileName(), mc_stmt->GetLineNumber(),
+                                                               mc_stmt->GetLinePosition(), method_call->GetMethodName());
+    AnalyzeVariable(variable, depth + 1);
+    if(variable->GetEntry() && variable->GetEntry()->IsClosureEntry()) {
+      entry = variable->GetEntry();
+    }
+  }
+
   // Direct call of a FuncRef<R> instance: `v()` desugars to `(v->Get())()`.
   // FuncRef only wraps a nullary `() ~ R`, so the call is always zero-arg.
   // Synthesize and resolve the `v->Get()` unwrap, materialize its `() ~ R`
@@ -7949,15 +7963,17 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
   // called method not new, called method not from a variable
   if(current_method->IsStatic() && !method->IsStatic() && 
      method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
+    // a receiver captured by a lambda is loaded from closure memory, so an
+    // instance call on it is valid even though the lambda itself is static
     SymbolEntry* entry = GetEntry(method_call->GetVariableName());
-    if(entry && (entry->IsLocal() || entry->IsStatic())) {
+    if(entry && (entry->IsLocal() || entry->IsStatic() || entry->IsClosureEntry())) {
       return false;
     }
 
     Variable* variable = method_call->GetVariable();
     if(variable) {
       entry = variable->GetEntry();
-      if(entry && (entry->IsLocal() || entry->IsStatic())) {
+      if(entry && (entry->IsLocal() || entry->IsStatic() || entry->IsClosureEntry())) {
         return false;
       }
     }
