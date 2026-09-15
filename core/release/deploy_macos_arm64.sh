@@ -73,18 +73,21 @@ mkdir deploy/lib/native/misc
 mkdir deploy/app
 mkdir deploy/doc
 
+# Every xcodebuild and product copy below must stop the deploy when it fails.
+# This script has no 'set -e': a VM link error once let "Build toolchain" end
+# green with no obr in the tree, and the failure surfaced only in a later step.
 # build compiler
 cd ../compiler
-xcodebuild -project xcode/Compiler.xcodeproj clean build $SIGN_FLAGS
-cp xcode/build/Release/obc ../release/deploy/bin
+xcodebuild -project xcode/Compiler.xcodeproj clean build $SIGN_FLAGS || exit 1
+cp xcode/build/Release/obc ../release/deploy/bin || exit 1
 cp ../lib/*.obl ../release/deploy/lib
 cp ../lib/*.ini ../release/deploy/lib
 cp ../vm/misc/*.pem ../release/deploy/lib
 
 # build VM
 cd ../vm
-xcodebuild -project xcode/VM.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
-cp xcode/build/Release/obr ../release/deploy/bin
+xcodebuild -project xcode/VM.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS" || exit 1
+cp xcode/build/Release/obr ../release/deploy/bin || exit 1
 # obr must start on a Mac with nothing installed. v2026.6.3 through v2026.9.2
 # linked Homebrew's GnuTLS, nghttp2, nghttp3 and ngtcp2 plus a hand-built ngtcp2
 # backend, and aborted at launch on every Mac but the one that built it.
@@ -104,25 +107,25 @@ cp -R "$OBJECK_DEPS/licenses/." ../release/deploy/doc/licenses/ || exit 1
 
 # build debugger
 cd ../debugger
-xcodebuild -project xcode/Debugger.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
-cp xcode/build/Release/obd ../release/deploy/bin
+xcodebuild -project xcode/Debugger.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS" || exit 1
+cp xcode/build/Release/obd ../release/deploy/bin || exit 1
 
 # build module library
 cd ../module
-xcodebuild -project xcode/module.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
+xcodebuild -project xcode/module.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS" || exit 1
 
 # build repl
 cd ../repl
-xcodebuild -project xcode/repl.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS"
-cp xcode/build/Release/obi ../release/deploy/bin
+xcodebuild -project xcode/repl.xcodeproj clean build $SIGN_FLAGS OBJECK_DEPS="$OBJECK_DEPS" || exit 1
+cp xcode/build/Release/obi ../release/deploy/bin || exit 1
 
 # build native launcher
 cd ../utils/launcher
-xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build $SIGN_FLAGS
-cp xcode/build/Release/obb ../../release/deploy/bin
+xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obb clean build $SIGN_FLAGS || exit 1
+cp xcode/build/Release/obb ../../release/deploy/bin || exit 1
 
-xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build $SIGN_FLAGS
-cp xcode/build/Release/obn ../../release/deploy/lib/native/misc
+xcodebuild -project "xcode/Native Launcher.xcodeproj" -target obn clean build $SIGN_FLAGS || exit 1
+cp xcode/build/Release/obn ../../release/deploy/lib/native/misc || exit 1
 cp ../../vm/misc/config.prop ../../release/deploy/lib/native/misc
 
 # build updater

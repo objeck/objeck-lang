@@ -13,6 +13,7 @@
 		ED539423261369610085A5F8 /* posix_main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53941B261369610085A5F8 /* posix_main.cpp */; };
 		ED539424261369610085A5F8 /* vm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53941E261369610085A5F8 /* vm.cpp */; };
 		ED539428261369760085A5F8 /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539426261369760085A5F8 /* memory.cpp */; };
+		AB1000012613A0000085A5F8 /* memory_verify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB1000022613A0000085A5F8 /* memory_verify.cpp */; };
 		ED53942C2613698C0085A5F8 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53942A2613698C0085A5F8 /* jit_arm_a64.cpp */; };
 		ED539434261369A20085A5F8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED539432261369A20085A5F8 /* logger.cpp */; };
 		EDE14A6328FB4D21004D4C25 /* jit_common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EDE14A6228FB4D21004D4C25 /* jit_common.cpp */; };
@@ -45,6 +46,7 @@
 		ED53941E261369610085A5F8 /* vm.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vm.cpp; path = ../vm.cpp; sourceTree = "<group>"; };
 		ED539426261369760085A5F8 /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../arch/memory.cpp; sourceTree = "<group>"; };
 		ED539427261369760085A5F8 /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../arch/memory.h; sourceTree = "<group>"; };
+		AB1000022613A0000085A5F8 /* memory_verify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory_verify.cpp; path = ../arch/memory_verify.cpp; sourceTree = "<group>"; };
 		ED53942A2613698C0085A5F8 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
 		ED53942B2613698C0085A5F8 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
 		ED53942E261369A20085A5F8 /* logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = logger.h; path = ../../shared/logger.h; sourceTree = "<group>"; };
@@ -104,6 +106,7 @@
 				ED53942B2613698C0085A5F8 /* jit_arm_a64.h */,
 				ED539426261369760085A5F8 /* memory.cpp */,
 				ED539427261369760085A5F8 /* memory.h */,
+				AB1000022613A0000085A5F8 /* memory_verify.cpp */,
 				ED539413261369610085A5F8 /* common.cpp */,
 				ED539415261369610085A5F8 /* common.h */,
 				ED539419261369610085A5F8 /* interpreter.cpp */,
@@ -189,6 +192,7 @@
 				ED539421261369610085A5F8 /* loader.cpp in Sources */,
 				ED539424261369610085A5F8 /* vm.cpp in Sources */,
 				ED539428261369760085A5F8 /* memory.cpp in Sources */,
+				AB1000012613A0000085A5F8 /* memory_verify.cpp in Sources */,
 				ED539423261369610085A5F8 /* posix_main.cpp in Sources */,
 				ED539440261369610085A5F8 /* dispatch.cpp in Sources */,
 			);
