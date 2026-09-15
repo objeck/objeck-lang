@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: Cannot infer the type of a bare lambda here
+#~
+A bare lambda is only inferred when it is a call's sole argument. As one of
+several arguments the compiler used to report "Invalid alias" / "Invalid lambda
+type"; it must say the type cannot be inferred and suggest FuncRef->New.
+~#
+class BadLambdaMultiArg {
+  function : Main(args : String[]) ~ Nil {
+    x := IntRef->New(5);
+    Call(\() => x, 2)->PrintLine();
+    Runtime->Exit(1);
+  }
+
+  function : Call(f : FuncRef<IntRef>, n : Int) ~ Int {
+    return f()->Get() * n;
+  }
+}

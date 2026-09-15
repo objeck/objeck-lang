@@ -58,6 +58,9 @@ if exist "%FAILED_FILE%" del "%FAILED_FILE%"
 echo ========================================
 echo   Objeck Regression Test Suite
 echo   Platform: %PLATFORM%
+REM OBJECK_VM_ARGS: extra obr options for every test, placed before the .obe,
+REM e.g. set OBJECK_VM_ARGS=--gc-threshold=64k (mirrors run_regression.sh)
+if defined OBJECK_VM_ARGS echo   VM args: %OBJECK_VM_ARGS%
 echo ========================================
 echo.
 
@@ -74,14 +77,23 @@ for %%f in (*.obs) do (
     set COMPILE_RESULT=!errorlevel!
     popd
 
-    REM Check for expected-compile-error tests
+    REM Markers count only at the start of a line (/B), as '# JIT_DISABLE' does. A
+    REM substring match made any test whose comment mentioned a marker a negative
+    REM test (#729). '# EXPECT_COMPILE_ERROR: <text>' also requires <text>, case-
+    REM sensitive with leading blanks trimmed, in the compiler output. Mirrors
+    REM run_regression.sh. check_test_exit_codes.py rejects texts this cannot carry
+    REM (a double quote, '!', a backslash, trailing blanks).
     set EXPECT_ERR=
-    findstr /c:"# EXPECT_COMPILE_ERROR" "%REGRESSION_DIR%\%%f" >nul 2>&1
+    set EXPECT_MSG=
+    findstr /B /C:"# EXPECT_COMPILE_ERROR" "%REGRESSION_DIR%\%%f" >nul 2>&1
     if !errorlevel! equ 0 set EXPECT_ERR=1
+    for /f "tokens=1* delims=:" %%a in ('findstr /B /C:"# EXPECT_COMPILE_ERROR:" "%REGRESSION_DIR%\%%f" 2^>nul') do if not defined EXPECT_MSG set "EXPECT_MSG=%%b"
+    if defined EXPECT_MSG for /f "tokens=*" %%m in ("!EXPECT_MSG!") do set "EXPECT_MSG=%%m"
+    if defined EXPECT_MSG if "!EXPECT_MSG: =!"=="" set EXPECT_MSG=
 
     REM Check for expected-runtime-error tests
     set EXPECT_RT_ERR=
-    findstr /c:"# EXPECT_RUNTIME_ERROR" "%REGRESSION_DIR%\%%f" >nul 2>&1
+    findstr /B /C:"# EXPECT_RUNTIME_ERROR" "%REGRESSION_DIR%\%%f" >nul 2>&1
     if !errorlevel! equ 0 set EXPECT_RT_ERR=1
 
     if !COMPILE_RESULT! neq 0 (
@@ -89,8 +101,22 @@ for %%f in (*.obs) do (
             REM Compiler rejected bad code as expected — verify it produced output
             for %%s in ("%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log") do set LOG_SIZE=%%~zs
             if !LOG_SIZE! gtr 0 (
-                echo   PASS ^(compile error as expected^)
-                set /a PASS_COUNT+=1
+                if defined EXPECT_MSG (
+                    findstr /L /C:"!EXPECT_MSG!" "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log" >nul 2>&1
+                    if !errorlevel! equ 0 (
+                        echo   PASS ^(compile error as expected^)
+                        set /a PASS_COUNT+=1
+                    ) else (
+                        echo   FAIL ^(compile error does not contain expected message: !EXPECT_MSG!^)
+                        >>"%FAILED_FILE%" echo %%~nf - compile error does not contain expected message: !EXPECT_MSG!
+                        type "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log" 2>nul
+                        set /a FAIL_COUNT+=1
+                    )
+                ) else (
+                    echo   WARN ^(marker names no message; write '# EXPECT_COMPILE_ERROR: ^<expected message^>'^)
+                    echo   PASS ^(compile error as expected^)
+                    set /a PASS_COUNT+=1
+                )
             ) else (
                 echo   FAIL ^(compiler produced no output — possible crash^)
                 >>"%FAILED_FILE%" echo %%~nf - compiler produced no output ^(possible crash^)
@@ -116,10 +142,25 @@ for %%f in (*.obs) do (
             if !errorlevel! equ 0 set OBJECK_JIT_DISABLE=1
 
             REM Run from regression directory
-            "%ABS_VM%" "%%~nf.obe" > "%RESULTS_DIR%\%%~nf_output.txt" 2>&1
+            REM TEST_TIMEOUT: seconds per test run, as in run_regression.sh. Unset
+            REM means no limit (a hang then stalls the whole suite).
+            if defined TEST_TIMEOUT (
+                powershell -NoProfile -ExecutionPolicy Bypass -File "%REGRESSION_DIR%\run_with_timeout.ps1" %TEST_TIMEOUT% "%RESULTS_DIR%\%%~nf_output.txt" "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe"
+            ) else (
+                "%ABS_VM%" %OBJECK_VM_ARGS% "%%~nf.obe" > "%RESULTS_DIR%\%%~nf_output.txt" 2>&1
+            )
             set RUN_RESULT=!errorlevel!
+            set TIMED_OUT=
+            if defined TEST_TIMEOUT if !RUN_RESULT! equ 124 set TIMED_OUT=1
 
-            if defined EXPECT_RT_ERR (
+            if defined TIMED_OUT (
+                echo   FAIL ^(timed out after %TEST_TIMEOUT%s^)
+                >>"%FAILED_FILE%" echo %%~nf - timed out after %TEST_TIMEOUT%s ^(possible hang / infinite loop^)
+                echo   --- output ---
+                type "%RESULTS_DIR%\%%~nf_output.txt" 2>nul
+                echo   --------------
+                set /a FAIL_COUNT+=1
+            ) else if defined EXPECT_RT_ERR (
                 REM Runtime error expected — PASS if VM exited non-zero with output
                 for %%s in ("%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_output.txt") do set OUT_SIZE=%%~zs
                 if !RUN_RESULT! neq 0 (

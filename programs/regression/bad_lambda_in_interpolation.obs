@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Lambdas are not allowed inside string interpolation
+#~
+A lambda inside a {$ } interpolation used to be reported as "Invalid escaped
+string literal" (the scanner sees `\(` as an unknown escape). The compiler must
+name the actual problem and suggest assigning the lambda to a local first.
+~#
+class BadLambdaInInterpolation {
+  function : Main(args : String[]) ~ Nil {
+    x := 5;
+    "value: {$ \(Int) ~ Int : (a) => a + x }"->PrintLine();
+    Runtime->Exit(1);
+  }
+}

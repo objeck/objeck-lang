@@ -859,11 +859,12 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
     switch(entry->GetType()->GetType()) {
     case frontend::BOOLEAN_TYPE:
       if(entry->GetType()->GetDimension() > 0) {
+        // Bool arrays are allocated as byte arrays (NEW_BYTE_ARY), so declare them as such
 #ifdef _DEBUG
-        GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName()
+        GetLogger() << L"\t" << entry->GetId() << L": BYTE_ARY_PARM: name=" << entry->GetName()
           << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
-        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+        closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
       }
       else {
 #ifdef _DEBUG
@@ -942,7 +943,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
-          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
         }
         else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG
@@ -5155,9 +5156,22 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 }
 
 void IntermediateEmitter::EmitConcatToString(SymbolEntry* concat_entry, Method* inst_mthd, LibraryMethod* inst_lib_mthd) {
+  // No ToString: the analyzer only lets an enum or consts value through without
+  // one, and those are Int values on the stack -- append the integer.
+  if(!inst_mthd && !inst_lib_mthd) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:i,"));
+    }
+    else {
+      LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
 #ifdef _DEBUG
-  assert(inst_mthd || inst_lib_mthd);
+      assert(string_append_method);
 #endif
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, string_cls->GetId(), string_append_method->GetId(), 0L));
+    }
+    return;
+  }
 
   // Call ToString method if provided (for program or library classes)
   if(inst_mthd || inst_lib_mthd) {
@@ -5673,6 +5687,16 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       }
       break;
 
+    // an enum or consts variable holds an Int ('e->As(Float)'); enum item
+    // literals get their I2F where the literal is emitted
+    case frontend::CLASS_TYPE:
+      if(cast_type->GetType() == frontend::FLOAT_TYPE && expression->GetExpressionType() == VAR_EXPR &&
+         (SearchProgramEnums(base_type->GetName()) ||
+          parsed_program->GetLinker()->SearchEnumLibraries(base_type->GetName(), parsed_program->GetLibUses()))) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, I2F));
+      }
+      break;
+
     default:
       break;
     }
@@ -5717,9 +5741,16 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   // encoding to the written arguments. So the receiver's value has to reach the
   // stack before those arguments. An object receiver is passed as the instance
   // instead, and its arguments still go first.
+  // A scalar cast makes the receiver a scalar: 'e->As(Int)->Abs()' on an enum
+  // or consts variable (whose base type is its class) is an Int receiver.
+  frontend::Type* receiver_type = variable->GetBaseType();
+  if(variable->GetCastType() && variable->GetCastType()->GetType() != frontend::CLASS_TYPE) {
+    receiver_type = variable->GetCastType();
+  }
+
   bool receiver_is_first_param = false;
   if(variable->GetMethodCall()) {
-    switch(variable->GetBaseType()->GetType()) {
+    switch(receiver_type->GetType()) {
     case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
@@ -5874,7 +5905,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
 
   // emit subsequent method calls
   if(variable->GetMethodCall()) {
-    switch(variable->GetBaseType()->GetType()) {
+    switch(receiver_type->GetType()) {
     case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
@@ -6593,6 +6624,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     SymbolEntry* entry = method_call->GetEntry();
 
     bool is_index_size = false;
+    // set when an array entry receiver is loaded below, together with its instance memory
+    bool array_receiver_loaded = false;
     if(variable && variable->IsInternalVariable()) {
       entry = variable->GetEntry();
       is_index_size = true;
@@ -6600,8 +6633,20 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     
     if(variable && method_call->GetCallType() == METHOD_CALL) {
       // emit variable
-      EmitVariable(variable);            
+      EmitVariable(variable);
       EmitClassCast(method_call);
+
+      // An unindexed object array receiver reached through a variable (e.g. an
+      // array captured by a lambda, which is resolved as a closure-copy variable)
+      // needs the instance memory pushed after it, exactly like the array entry
+      // path below. Without it Size()/array calls pop one value too many (#849).
+      Type* receiver_type = variable->GetCastType() ? variable->GetCastType() :
+        (variable->GetEntry() ? variable->GetEntry()->GetType() : nullptr);
+      if(!variable->GetIndices() && receiver_type &&
+         receiver_type->GetType() == CLASS_TYPE && receiver_type->GetDimension() > 0) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+        array_receiver_loaded = true;
+      }
     }
     else if(variable && method_call->GetTypeOf()) {
       EmitVariable(variable);
@@ -6628,7 +6673,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         }
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-      } 
+        array_receiver_loaded = true;
+      }
       else if(!entry->IsSelf()) {
         switch(entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
@@ -6706,29 +6752,33 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) || 
-               SearchProgramEnums(entry->GetType()->GetName())) {
+            // an enum array entry receiver was already loaded like an object array
+            if(!array_receiver_loaded &&
+               (parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) ||
+                SearchProgramEnums(entry->GetType()->GetName()))) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
             }
             break;
-            
+
           default:
             break;
           }
           // enum check
-          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && !array_receiver_loaded &&
              SearchProgramEnums(entry->GetType()->GetName())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
         }
-        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        // a scalar cast makes the receiver a scalar ('e->As(Int)->PrintLine()' on an enum variable)
+        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE ||
+                               (variable->GetCastType() && variable->GetCastType()->GetType() != CLASS_TYPE))) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
-        else if(method_call->IsEnumCall()) {
+        else if(method_call->IsEnumCall() && !array_receiver_loaded) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
-      } 
-      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
+      }
+      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
               (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {       
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
       }
@@ -6750,29 +6800,33 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) || 
-               SearchProgramEnums(entry->GetType()->GetName()) || is_index_size) {
+            // an enum array entry receiver was already loaded like an object array
+            if((!array_receiver_loaded &&
+                (parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) ||
+                 SearchProgramEnums(entry->GetType()->GetName()))) || is_index_size) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
             }
             break;
-            
+
           default:
             break;
           }
           // enum check
-          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && !array_receiver_loaded &&
              parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
         }
-        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        // a scalar cast makes the receiver a scalar ('e->As(Int)->PrintLine()' on an enum variable)
+        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE ||
+                               (variable->GetCastType() && variable->GetCastType()->GetType() != CLASS_TYPE))) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
-        else if(method_call->IsEnumCall()) {
+        else if(method_call->IsEnumCall() && !array_receiver_loaded) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
         // note: localized hack for edge case
-        else if(is_nested && lib_method->GetLibraryClass()->GetName() == BASE_ARRAY_CLASS_ID) {
+        else if(is_nested && !array_receiver_loaded && lib_method->GetLibraryClass()->GetName() == BASE_ARRAY_CLASS_ID) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
       } 
@@ -6844,11 +6898,12 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
         switch(entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
           if(entry->GetType()->GetDimension() > 0) {
+            // Bool arrays are allocated as byte arrays (NEW_BYTE_ARY), so declare them as such
 #ifdef _DEBUG
-            GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() 
+            GetLogger() << L"\t" << index << L": BYTE_ARY_PARM: name=" << entry->GetName()
       << L", dim=" << entry->GetType()->GetDimension() << std::endl;
 #endif
-            declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
+            declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), BYTE_ARY_PARM));
           } 
           else {
 #ifdef _DEBUG
@@ -6931,7 +6986,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             }
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG

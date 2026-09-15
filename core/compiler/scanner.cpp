@@ -661,6 +661,128 @@ Token* Scanner::GetToken(int index)
   return nullptr;
 }
 
+/****************************
+ * Saves and restores the
+ * state ParseToken() changes
+ * so tokens can be peeked
+ * past the lookahead buffer
+ ****************************/
+void Scanner::SavePeekState(PeekState& state)
+{
+  state.buffer_pos = buffer_pos;
+  state.start_pos = start_pos;
+  state.end_pos = end_pos;
+  state.cur_char = cur_char;
+  state.nxt_char = nxt_char;
+  state.nxt_nxt_char = nxt_nxt_char;
+  state.line_nbr = line_nbr;
+  state.line_pos = line_pos;
+  state.token.Copy(tokens[LOOK_AHEAD - 1]);
+}
+
+void Scanner::RestorePeekState(PeekState& state)
+{
+  buffer_pos = state.buffer_pos;
+  start_pos = state.start_pos;
+  end_pos = state.end_pos;
+  cur_char = state.cur_char;
+  nxt_char = state.nxt_char;
+  nxt_nxt_char = state.nxt_nxt_char;
+  line_nbr = state.line_nbr;
+  line_pos = state.line_pos;
+  tokens[LOOK_AHEAD - 1]->Copy(&state.token);
+}
+
+/****************************
+ * Gets a token type at any
+ * lookahead distance. Past the
+ * fixed buffer, tokens are
+ * scanned into the last slot
+ * and the scanner is restored.
+ ****************************/
+ScannerTokenType Scanner::PeekType(int index)
+{
+  const int last = LOOK_AHEAD - 1;
+  if(index < 0) {
+    return TOKEN_END_OF_STREAM;
+  }
+  if(index <= last) {
+    return tokens[index]->GetType();
+  }
+  if(!buffer || is_first_token) {
+    return TOKEN_END_OF_STREAM;
+  }
+
+  PeekState state;
+  SavePeekState(state);
+
+  ScannerTokenType type = tokens[last]->GetType();
+  for(int i = last; i < index && type != TOKEN_END_OF_STREAM; ++i) {
+    ParseToken(last);
+    type = tokens[last]->GetType();
+  }
+
+  RestorePeekState(state);
+  return type;
+}
+
+/****************************
+ * With tokens[index - 1] an
+ * open parenthesis, gets the
+ * type of the token after its
+ * matching close, scanning
+ * past the buffer in one pass
+ ****************************/
+ScannerTokenType Scanner::PeekAfterParens(int index)
+{
+  const int last = LOOK_AHEAD - 1;
+  if(index < 1 || index > LOOK_AHEAD) {
+    return TOKEN_END_OF_STREAM;
+  }
+
+  int paren_depth = 1;
+  // tokens already buffered
+  for(int i = index; i <= last; ++i) {
+    const ScannerTokenType type = tokens[i]->GetType();
+    if(paren_depth == 0 || type == TOKEN_END_OF_STREAM) {
+      return type;
+    }
+    if(type == TOKEN_OPEN_PAREN) {
+      paren_depth++;
+    }
+    else if(type == TOKEN_CLOSED_PAREN) {
+      paren_depth--;
+    }
+  }
+
+  if(!buffer || is_first_token) {
+    return TOKEN_END_OF_STREAM;
+  }
+
+  // tokens past the buffer, scanned into the last slot
+  PeekState state;
+  SavePeekState(state);
+
+  ScannerTokenType type;
+  do {
+    ParseToken(last);
+    type = tokens[last]->GetType();
+    if(paren_depth == 0) {
+      break;
+    }
+    if(type == TOKEN_OPEN_PAREN) {
+      paren_depth++;
+    }
+    else if(type == TOKEN_CLOSED_PAREN) {
+      paren_depth--;
+    }
+  }
+  while(type != TOKEN_END_OF_STREAM && type != TOKEN_NO_INPUT);
+
+  RestorePeekState(state);
+  return type;
+}
+
 std::wstring Scanner::RandomString(size_t len)
 {
   std::random_device gen;

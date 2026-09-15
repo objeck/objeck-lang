@@ -1174,6 +1174,13 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   if(lambda->GetLambdaType()) {
     lambda_type = lambda->GetLambdaType();
   }
+  // a bare lambda `\(...) => body` whose type cannot be inferred here (a ternary
+  // branch, one of several call arguments, a function-typed variable, ...);
+  // resolving its empty alias name only produced "Invalid alias"
+  else if(!is_inferred && lambda_name.empty()) {
+    ProcessError(lambda, L"Cannot infer the type of a bare lambda here; wrap it as FuncRef->New(\\(...) => ...)<R> or give it an explicit signature \\(...) ~ R : (...) => ...");
+    return;
+  }
   // by name
   else if(!is_inferred) {
     lambda_type = ResolveAlias(lambda_name, lambda);
@@ -1279,7 +1286,12 @@ bool ContextAnalyzer::DerivedFuncRefLambdaArg(MethodCall* lambda_inferred_call, 
       call_params->SetExpression(wrap, i);
       // re-analyzing the wrap re-enters the inferred-lambda machinery for the
       // FuncRef->New(...) call, which builds the lambda from its `<R>` generic
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
       AnalyzeExpression(wrap, 0);
+      // consumed: a later bare lambda must not see this call as its context
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
       return true;
     }
   }
@@ -1322,8 +1334,12 @@ Method* ContextAnalyzer::DerivedLambdaFunction(std::vector<Method*>& alt_mthds)
       inferred_type->SetFunctionParameters(inferred_type_params);
       inferred_type->SetFunctionReturn(inferred_type_rtrn);
 
-      // build lambda function
-      BuildLambdaFunction(lambda_inferred.first, inferred_type, 0);
+      // build lambda function; the inferred state is consumed first so the
+      // lambda body (and any later bare lambda) starts from a clean state
+      Lambda* inferred_lambda = lambda_inferred.first;
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
+      BuildLambdaFunction(inferred_lambda, inferred_type, 0);
       return alt_mthd;
     }
   }
@@ -1331,7 +1347,7 @@ Method* ContextAnalyzer::DerivedLambdaFunction(std::vector<Method*>& alt_mthds)
   return nullptr;
 }
 
-LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*>& alt_mthds)
+LibraryMethod*ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*>& alt_mthds)
 {
   if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
@@ -1364,8 +1380,11 @@ LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*
       inferred_type->SetFunctionParameters(inferred_type_params);
       inferred_type->SetFunctionReturn(inferred_type_rtrn);
 
-      // build lambda function
-      BuildLambdaFunction(lambda_inferred.first, inferred_type, 0);
+      // build lambda function (inferred state consumed first, as above)
+      Lambda* inferred_lambda = lambda_inferred.first;
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
+      BuildLambdaFunction(inferred_lambda, inferred_type, 0);
       return alt_mthd;
     }
   }
@@ -1402,7 +1421,11 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     method->EncodeSignature(current_class, program, linker);
     current_class->AssociateMethod(method);
 
-    // check method and restore context
+    // check method and restore context; a lambda nested in a lambda body re-enters
+    // here, so the enclosing lambda's capture state is saved and restored
+    Lambda* prev_capture_lambda = capture_lambda;
+    Method* prev_capture_method = capture_method;
+    SymbolTable* prev_capture_table = capture_table;
     capture_lambda = lambda;
     capture_method = current_method;
     capture_table = current_table;
@@ -1417,18 +1440,37 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     std::vector<Expression*> capture_expressions = diagnostic_expressions;
 #endif
 
+    // The lambda body is its own method, but it is analyzed from inside the
+    // enclosing statement (a return, an assignment or a call argument). Left
+    // set, those flags made RogueReturn() treat every standalone call in the
+    // body as a used value, so its result was never popped and the
+    // interpreter's operand stack came back unbalanced from the lambda.
+    const int capture_in_loop = in_loop;
+    const bool capture_in_assignment = in_assignment;
+    const bool capture_in_return = in_return;
+    const int capture_expression_depth = expression_depth;
+    const int capture_nested_call_depth = nested_call_depth;
+    in_loop = expression_depth = nested_call_depth = 0;
+    in_assignment = in_return = false;
+
     AnalyzeMethod(method, depth + 1);
+
+    in_loop = capture_in_loop;
+    in_assignment = capture_in_assignment;
+    in_return = capture_in_return;
+    expression_depth = capture_expression_depth;
+    nested_call_depth = capture_nested_call_depth;
 
 #ifdef _DIAG_LIB
     diagnostic_expressions = capture_expressions;
 #endif
 
     current_table = capture_table;
-    capture_table = nullptr;
+    capture_table = prev_capture_table;
 
     current_method = capture_method;
-    capture_method = nullptr;
-    capture_lambda = nullptr;
+    capture_method = prev_capture_method;
+    capture_lambda = prev_capture_lambda;
 
     const std::wstring full_method_name = method->GetName();
     const size_t offset = full_method_name.find(':');
@@ -1492,10 +1534,29 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
       break;
 
     case CLASS_TYPE:
-    case FUNC_TYPE:
       ident = dclr_type->GetName();
       break;
-        
+
+    // A function-typed parameter, e.g. \((Int) ~ Int, Int) ~ Int : (fn, a) => ...
+    // A parsed `(Int) ~ Int` has no name, so the parameter was silently dropped,
+    // the lookup key lost an argument and the lambda's own method '#{Ln}#' was
+    // reported undefined. Pass the `m.(...)~R` encoding instead, which
+    // EncodeFunctionReference maps back to the function type; it matches the
+    // "m." encoding Method::EncodeType gives the parameter in the signature.
+    case FUNC_TYPE: {
+      const std::wstring func_name = dclr_type->GetName();
+      if(func_name.empty()) {
+        ident = L"m." + EncodeFunctionType(dclr_type->GetFunctionParameters(), dclr_type->GetFunctionReturn());
+      }
+      else if(func_name.compare(0, 2, L"m.") == 0) {
+        ident = func_name;
+      }
+      else {
+        ident = L"m." + func_name;
+      }
+    }
+      break;
+
     case ALIAS_TYPE:
       break;
     }
@@ -2415,6 +2476,21 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
         copy_entry->AddVariable(variable);
         capture_lambda->AddClosure(copy_entry, capture_entry);
       }
+
+      // array indices of a captured array: analyzed here exactly as for an
+      // explicitly defined variable above. Skipping them left an index that is
+      // a variable (or any non-literal expression) without a symbol entry or
+      // type, and the emitter dereferenced it (obc crashed with 0xC0000005).
+      ExpressionList* indices = variable->GetIndices();
+      if(indices) {
+        Type* capture_type = capture_entry->GetType();
+        if(capture_type && capture_type->GetDimension() == (int)indices->GetExpressions().size()) {
+          AnalyzeIndices(indices, depth + 1);
+        }
+        else if(!variable->IsInternalVariable()) {
+          ProcessError(variable, L"Dimension size mismatch or uninitialized type");
+        }
+      }
     }
     else {
       // not a capture -- a new type-inferred local declared inside the lambda
@@ -3021,6 +3097,29 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const std::wstring back
   }
 }
 /****************************
+ * True when a call's cast is the scalar cast of its receiver variable, which the
+ * parser copies to the call for 'x->As(Int)->M()' (the call then dispatches on
+ * the cast type). It converts the receiver, not M's return value, so it must not
+ * be validated against the return: 'e->As(Int)->PrintLine()' failed "Cannot cast
+ * a Nil return value" and 'e->As(Int)->ToString()' an Int/String cast error.
+ ****************************/
+static bool IsReceiverScalarCast(Expression* expression)
+{
+  if(expression->GetExpressionType() != METHOD_CALL_EXPR) {
+    return false;
+  }
+
+  Type* cast_type = expression->GetCastType();
+  Variable* variable = static_cast<MethodCall*>(expression)->GetVariable();
+  if(!cast_type || cast_type->GetType() == CLASS_TYPE || !variable || !variable->GetCastType()) {
+    return false;
+  }
+
+  Type* var_cast_type = variable->GetCastType();
+  return var_cast_type->GetType() == cast_type->GetType() && var_cast_type->GetDimension() == cast_type->GetDimension();
+}
+
+/****************************
  * Validates an expression
  * method call
  ****************************/
@@ -3417,7 +3516,12 @@ void ContextAnalyzer::RogueReturn(MethodCall* method_call)
         method_call->SetRougeReturn(instructions::INT_TYPE);
         return;
       }
-      else if(method_call->GetCallType() != NEW_INST_CALL) {
+      else {
+        // A discarded constructor call ('Foo->New();' as a statement) leaves
+        // the new instance on the operand stack like any other object-returning
+        // call and must be popped. Excluding NEW_INST_CALL here fell through to
+        // NIL_TYPE, dropping the POP_INT, so the interpreter's operand stack
+        // grew one slot per execution (a loop overflowed it and crashed).
         switch(rtrn->GetType()) {
         case frontend::BOOLEAN_TYPE:
         case frontend::BYTE_TYPE:
@@ -4284,7 +4388,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
     }
 
-    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
+    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType() && !IsReceiverScalarCast(method_call)) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
     }
     
@@ -4387,6 +4491,20 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   // dynamic function call that is not bound to a class/function until runtime
   SymbolEntry* entry = GetEntry(method_call->GetMethodName());
 
+  // a function or FuncRef variable captured from the enclosing scope of a
+  // lambda: resolve it as a variable so the closure copy is created and the
+  // call loads it from closure memory
+  if(!entry && capture_lambda && capture_table && capture_method &&
+     capture_table->GetEntry(capture_method->GetName() + L':' + method_call->GetMethodName())) {
+    Statement* mc_stmt = static_cast<Statement*>(method_call);
+    Variable* variable = TreeFactory::Instance()->MakeVariable(mc_stmt->GetFileName(), mc_stmt->GetLineNumber(),
+                                                               mc_stmt->GetLinePosition(), method_call->GetMethodName());
+    AnalyzeVariable(variable, depth + 1);
+    if(variable->GetEntry() && variable->GetEntry()->IsClosureEntry()) {
+      entry = variable->GetEntry();
+    }
+  }
+
   // Direct call of a FuncRef<R> instance: `v()` desugars to `(v->Get())()`.
   // FuncRef only wraps a nullary `() ~ R`, so the call is always zero-arg.
   // Synthesize and resolve the `v->Get()` unwrap, materialize its `() ~ R`
@@ -4477,8 +4595,17 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
       dyn_func_params_str += L',';
     }
     
-    // method call parameters
-    type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
+    // method call parameters. This count becomes the DYN_MTHD_CALL operand,
+    // which the JIT reads as the number of operand-stack WORDS holding the
+    // arguments (it marshals operand + 2 entries with the func-ref's own two
+    // words). A function-typed argument is two words, so counting parameters
+    // left a call like apply(Test->Inc(Int) ~ Int, 4) one word short under the
+    // JIT and crashed it; the interpreter ignores the operand.
+    int param_words = 0;
+    for(size_t i = 0; i < func_params.size(); ++i) {
+      param_words += (func_params[i]->GetType() == FUNC_TYPE && func_params[i]->GetDimension() == 0) ? 2 : 1;
+    }
+    type->SetFunctionParameterCount(param_words);
     AnalyzeExpressions(boxed_resolved_params, depth + 1);
 
     // check parameters again dynamic definition
@@ -4654,6 +4781,11 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
 {
   // type cast
   if(expression->GetCastType()) {
+    // the receiver's cast, already checked on the variable
+    if(IsReceiverScalarCast(expression)) {
+      return;
+    }
+
     // get cast and root types
     Type* cast_type = expression->GetCastType();
     ResolveClassEnumType(cast_type);
@@ -5488,8 +5620,13 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         else {
           Type* from_type = expression->GetEvalType();
           AnalyzeClassCast(to_type, from_type, expression, false, depth);
-          variable->SetTypes(from_type);
-          to_entry->SetType(from_type);
+          // storing an item into an element ('a[i] := Color->Blue') must not retype
+          // the array entry as the scalar enum: the GC declarations would then mark
+          // the array slot INT_PARM (never traced) and free the live array
+          if(!variable->GetIndices()) {
+            variable->SetTypes(from_type);
+            to_entry->SetType(from_type);
+          }
         }
       }
     }
@@ -7648,6 +7785,15 @@ std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_pa
         encoded_name += L'v';
         variable->SetEvalType(TypeFactory::Instance()->MakeType(VAR_TYPE), true);
       }
+      // function type encoded by MapLambdaDeclarations ("m.(i,)~i"); an
+      // identifier can never start with "m." so this cannot shadow a class
+      else if(variable->GetName().compare(0, 2, L"m.") == 0) {
+        encoded_name += variable->GetName();
+        Type* func_type = TypeParser::ParseType(variable->GetName());
+        if(func_type) {
+          variable->SetEvalType(func_type, true);
+        }
+      }
       else {
         encoded_name += L"o.";
         // search program
@@ -7949,15 +8095,17 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, Method* method)
   // called method not new, called method not from a variable
   if(current_method->IsStatic() && !method->IsStatic() && 
      method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD) {
+    // a receiver captured by a lambda is loaded from closure memory, so an
+    // instance call on it is valid even though the lambda itself is static
     SymbolEntry* entry = GetEntry(method_call->GetVariableName());
-    if(entry && (entry->IsLocal() || entry->IsStatic())) {
+    if(entry && (entry->IsLocal() || entry->IsStatic() || entry->IsClosureEntry())) {
       return false;
     }
 
     Variable* variable = method_call->GetVariable();
     if(variable) {
       entry = variable->GetEntry();
-      if(entry && (entry->IsLocal() || entry->IsStatic())) {
+      if(entry && (entry->IsLocal() || entry->IsStatic() || entry->IsClosureEntry())) {
         return false;
       }
     }
@@ -8397,11 +8545,20 @@ const std::wstring ContextAnalyzer::EncodeType(Type* type)
       if(type->GetName().size() == 0) {
         type->SetName(EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn()));
       }
+      // Function types are encoded "m.(...)~R" everywhere else (method
+      // signatures, library signatures, declaration names), but a nameless
+      // function type -- a function-typed parameter of a function type -- was
+      // named here without the prefix. A call through a variable of type
+      // ((Int) ~ Int, Int) ~ Int then compared "(i,)~i" against the argument's
+      // "m.(i,)~i" and was reported undefined.
+      if(type->GetName().compare(0, 2, L"m.") != 0) {
+        encoded_name += L"m.";
+      }
       encoded_name += type->GetName();
       break;
     }
   }
-  
+
   return encoded_name;
 }
 
@@ -8689,6 +8846,10 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
           if(concat_expr->GetEvalType()) {
             if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
               const std::wstring cls_name = concat_expr->GetEvalType()->GetName();
+              // enum and consts values are Int: no ToString, appended as the integer
+              if(concat_expr->GetEvalType()->GetDimension() < 1 && HasProgramOrLibraryEnum(cls_name)) {
+                continue;
+              }
               Class* klass = SearchProgramClasses(cls_name);
               if(klass) {
                 Method* method = klass->GetMethod(cls_name + L":ToString:");
@@ -8766,6 +8927,12 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
     }
     else if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetName() != L"System.String" && entry->GetType()->GetName() != L"String") {
       const std::wstring cls_name = entry->GetType()->GetName();
+      // enum and consts values are Int: no ToString, appended as the integer
+      if(HasProgramOrLibraryEnum(cls_name)) {
+        char_str->AddSegment(entry, static_cast<Method*>(nullptr));
+        entry->WasLoaded();
+        return;
+      }
       Class* klass = SearchProgramClasses(cls_name);
       if(klass) {
         Method* method = klass->GetMethod(cls_name + L":ToString:");
@@ -8875,9 +9042,11 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   Method* to_string_method = nullptr;
   LibraryMethod* to_string_lib_method = nullptr;
 
+  // enum and consts values are Int: no ToString, appended as the integer
   if(eval_type->GetType() == CLASS_TYPE &&
      eval_type->GetName() != L"System.String" &&
-     eval_type->GetName() != L"String") {
+     eval_type->GetName() != L"String" &&
+     !HasProgramOrLibraryEnum(eval_type->GetName())) {
     const std::wstring cls_name = eval_type->GetName();
     Class* klass = SearchProgramClasses(cls_name);
     if(klass) {
@@ -9106,6 +9275,10 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
     case CLASS_TYPE:
       if(probe_type->GetName() == L"System.String" || probe_type->GetName() == L"String") {
         wrapped = inner;
+      }
+      // enum and consts values are Int
+      else if(probe_type->GetDimension() < 1 && HasProgramOrLibraryEnum(probe_type->GetName())) {
+        wrapped = L"Int->ToString(" + inner + L"->As(Int))";
       }
       else {
         wrapped = inner + L"->ToString()";

@@ -361,6 +361,16 @@ namespace backend {
       return tmp;
     }
 
+    // copy of an instruction attributed to another statement, used when an
+    // optimization splices instructions into a caller (the optimizer groups
+    // instructions by statement, e.g. DeadStoreEdit)
+    IntermediateInstruction* MakeInstruction(frontend::Statement* s, IntermediateInstruction* src) {
+      IntermediateInstruction* tmp = new IntermediateInstruction(*src);
+      tmp->statement = s;
+      instructions.push_back(tmp);
+      return tmp;
+    }
+
     //
     // instructions without related parse nodes
     //

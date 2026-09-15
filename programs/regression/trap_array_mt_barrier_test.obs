@@ -136,7 +136,9 @@ class TrapArrayMtBarrierTest {
 
 		start_minor := Minors();
 		before := Damaged(files, count);
-		"  listed {$count} entries, {$before} unreadable before"->PrintLine();
+		# counts depend on the directory and the allocation pattern: stderr, so
+		# stdout stays comparable for run_differential.py
+		"  listed {$count} entries, {$before} unreadable before"->ErrorLine();
 		Check("the trap returns a readable array", before = 0);
 
 		# From here to the read below, THIS thread allocates nothing. Enough
@@ -147,7 +149,7 @@ class TrapArrayMtBarrierTest {
 
 		end_minor := Minors();
 		after := Damaged(files, count);
-		"  after another thread allocated (minor {$start_minor} to {$end_minor}): {$after} unreadable"->PrintLine();
+		"  after another thread allocated (minor {$start_minor} to {$end_minor}): {$after} unreadable"->ErrorLine();
 
 		Check("the other thread's allocation actually caused a minor collection",
 			end_minor > start_minor);

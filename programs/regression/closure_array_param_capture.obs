@@ -1,0 +1,261 @@
+#~
+Guards #849: a lambda capturing an object array crashed obr (0xC0000005).
+
+Inside a lambda a captured receiver is resolved as a closure-copy variable, so
+'args->Size()' took the emitter's variable-receiver path. For an object
+(class-typed) array that path never pushed the instance memory that the array
+entry path pushes, so the inlined Size() popped one value too many and read a
+garbage receiver (a Nil dereference in the interpreter, a crash under the JIT).
+Int, Float, Byte, Char and Bool arrays were unaffected because a later fallback
+pushed the load for non-class receivers.
+
+Covers Main's own args, String and object array parameters and locals, arrays
+of every element type captured as parameters and as locals, scalar Int, Float
+and object parameters, and Size() plus literal-index element reads in
+expression and block lambda bodies. Every closure is built, then a minor GC is
+forced by allocation churn, then it is called.
+
+Each closure is built by a helper that returns it, so the creating frame has
+returned before the call. A capturing lambda called while its creating frame
+is still live crashes under --jit=1 for any capture type (a separate, older
+JIT bug), which would hide this test's own coverage in the threshold-1 pass.
+~#
+class ClosureArrayParamCapture {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		# Main's args, as reported in #849
+		args_size := ArgsSize(args);
+		start := Minors();
+		Churn();
+		if(Minors() = start) {
+			"FAIL: churn did not run a minor GC"->PrintLine();
+			Runtime->Exit(1);
+		};
+		if(args_size() <> args->Size()) {
+			"FAIL: Main args Size()"->PrintLine();
+			bad += 1;
+		};
+
+		names := String->New[3];
+		names[0] := "a"; names[1] := "bb"; names[2] := "ccc";
+		bad += StringParam(names);
+		bad += StringLocal();
+
+		boxes := Box->New[4];
+		for(i := 0; i < boxes->Size(); i += 1;) { boxes[i] := Box->New(i * 10); };
+		bad += BoxParam(boxes);
+
+		ints := Int->New[5]; ints[4] := 99;
+		int_size := IntSize(ints);
+		floats := Float->New[6]; floats[5] := 1.5;
+		float_size := FloatSize(floats);
+		float_elem := FloatElem(floats);
+		bytes := Byte->New[7]; bytes[6] := 12;
+		byte_size := ByteSize(bytes);
+		chars := Char->New[8]; chars[7] := 'x';
+		char_size := CharSize(chars);
+		char_elem := CharElem(chars);
+		bools := Bool->New[9]; bools[8] := true;
+		bool_size := BoolSize(bools);
+		bool_elem := BoolElem(bools);
+		locals_size := LocalSizes();
+		int_scalar := IntScalar(41);
+		float_scalar := FloatScalar(2.5);
+		obj_scalar := ObjScalar(Box->New(17));
+		Churn();
+		if(int_size() <> 104) { "FAIL: Int[] param"->PrintLine(); bad += 1; };
+		if(float_size() <> 6 | float_elem() <> 1.5) { "FAIL: Float[] param"->PrintLine(); bad += 1; };
+		if(byte_size() <> 19) { "FAIL: Byte[] param"->PrintLine(); bad += 1; };
+		if(char_size() <> 8 | char_elem() <> 'x') { "FAIL: Char[] param"->PrintLine(); bad += 1; };
+		if(bool_size() <> 9 | bool_elem() = false) { "FAIL: Bool[] param"->PrintLine(); bad += 1; };
+		if(locals_size() <> 20) { "FAIL: primitive and object array locals"->PrintLine(); bad += 1; };
+		if(int_scalar() <> 42) { "FAIL: Int param"->PrintLine(); bad += 1; };
+		if(float_scalar() <> 5.0) { "FAIL: Float param"->PrintLine(); bad += 1; };
+		if(obj_scalar() <> 17) { "FAIL: object param"->PrintLine(); bad += 1; };
+
+		if(bad = 0) {
+			"PASS: lambdas capturing array parameters and locals"->PrintLine();
+		}
+		else {
+			"FAIL: array captures bad="->Print();
+			bad->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : ArgsSize(args : String[]) ~ () ~ Int {
+		return \() ~ Int : () => args->Size();
+	}
+
+	function : StringParam(names : String[]) ~ Int {
+		bad := 0;
+		size := StringSize(names);
+		block := StringSizeBlock(names);
+		elem := StringElem(names);
+		Churn();
+		if(size() <> 3) { "FAIL: String[] param Size()"->PrintLine(); bad += 1; };
+		if(block() <> 4) { "FAIL: String[] param Size() in block body"->PrintLine(); bad += 1; };
+		if(elem()->Equals("ccc") = false) { "FAIL: String[] param element"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : StringSize(p : String[]) ~ () ~ Int {
+		return \() ~ Int : () => p->Size();
+	}
+
+	function : StringSizeBlock(p : String[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			found := p->Size() + 1;
+			return found;
+		};
+	}
+
+	function : StringElem(p : String[]) ~ () ~ String {
+		return \() ~ String : () => p[2];
+	}
+
+	function : StringLocal() ~ Int {
+		bad := 0;
+		size := StringLocalSize();
+		elem := StringLocalElem();
+		Churn();
+		if(size() <> 11) { "FAIL: String[] local Size()"->PrintLine(); bad += 1; };
+		if(elem()->Equals("last") = false) { "FAIL: String[] local element"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : StringLocalSize() ~ () ~ Int {
+		l := String->New[11];
+		return \() ~ Int : () => l->Size();
+	}
+
+	function : StringLocalElem() ~ () ~ String {
+		l := String->New[11];
+		l[10] := "last";
+		return \() ~ String : () => l[10];
+	}
+
+	function : BoxParam(boxes : Box[]) ~ Int {
+		bad := 0;
+		size := BoxSize(boxes);
+		block := BoxSizeBlock(boxes);
+		elem := BoxElem(boxes);
+		Churn();
+		if(size() <> 4) { "FAIL: Box[] param Size()"->PrintLine(); bad += 1; };
+		if(block() <> 8) { "FAIL: Box[] param Size() in block body"->PrintLine(); bad += 1; };
+		if(elem()->Get() <> 30) { "FAIL: Box[] param element"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : BoxSize(p : Box[]) ~ () ~ Int {
+		return \() ~ Int : () => p->Size();
+	}
+
+	function : BoxSizeBlock(p : Box[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			found := 2 * p->Size();
+			return found;
+		};
+	}
+
+	function : BoxElem(p : Box[]) ~ () ~ Box {
+		return \() ~ Box : () => p[3];
+	}
+
+	function : IntSize(p : Int[]) ~ () ~ Int {
+		return \() ~ Int : () => p->Size() + p[4];
+	}
+
+	function : FloatSize(p : Float[]) ~ () ~ Int {
+		return \() ~ Int : () => p->Size();
+	}
+
+	function : FloatElem(p : Float[]) ~ () ~ Float {
+		return \() ~ Float : () => p[5];
+	}
+
+	function : ByteSize(p : Byte[]) ~ () ~ Int {
+		return \() ~ Int : () => p->Size() + p[6];
+	}
+
+	function : CharSize(p : Char[]) ~ () ~ Int {
+		return \() ~ Int : () => p->Size();
+	}
+
+	function : CharElem(p : Char[]) ~ () ~ Char {
+		return \() ~ Char : () => p[7];
+	}
+
+	function : BoolSize(p : Bool[]) ~ () ~ Int {
+		return \() ~ Int : () => p->Size();
+	}
+
+	function : BoolElem(p : Bool[]) ~ () ~ Bool {
+		return \() ~ Bool : () => p[8];
+	}
+
+	function : LocalSizes() ~ () ~ Int {
+		i := Int->New[2];
+		f := Float->New[3];
+		b := Byte->New[4];
+		c := Char->New[5];
+		o := Box->New[6];
+		return \() ~ Int : () => i->Size() + f->Size() + b->Size() + c->Size() + o->Size();
+	}
+
+	function : IntScalar(n : Int) ~ () ~ Int {
+		return \() ~ Int : () => n + 1;
+	}
+
+	function : FloatScalar(x : Float) ~ () ~ Float {
+		return \() ~ Float : () => x * 2.0;
+	}
+
+	function : ObjScalar(box : Box) ~ () ~ Int {
+		return \() ~ Int : () => box->Get();
+	}
+
+	function : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
+	# about 150MB of short-lived objects against the 128MB nursery: at least one minor GC
+	function : Churn() ~ Nil {
+		for(j := 0; j < 520000; j += 1;) {
+			tmp := Blob->New(j);
+			if(tmp->Get() <> j) {
+				"FAIL: churn object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+	}
+}
+
+class Box {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @v;
+	}
+}
+
+class Blob {
+	@a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+	@b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+	@c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+	@d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+	New(v : Int) {
+		@a0 := v;
+		@d7 := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @d7;
+	}
+}

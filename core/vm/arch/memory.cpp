@@ -45,7 +45,20 @@ static bool GcTraceEnabled() {
   return enabled;
 }
 
+// A collection that cannot allocate is fatal. It runs inside stop-the-world holding
+// the GC locks with every other mutator parked, and a survivor it could not copy would
+// leave references dangling once the nursery resets, so report and end the process
+// here rather than unwinding (G6, G15). The report uses C stdio: formatting through
+// wcerr allocates, and under a real memory cap it threw bad_alloc from this very
+// handler. _Exit: no destructors or atexit handlers run while the heap is half-promoted.
+[[noreturn]] static void FatalCollectorOutOfMemory(size_t bytes) {
+  fwprintf(stderr, L">>> garbage collector: out of memory promoting a live object (%zu bytes) <<<\n", bytes);
+  fflush(stderr);
+  std::_Exit(1);
+}
+
 StackProgram* MemoryManager::prgm;
+std::vector<StackClass*> MemoryManager::class_ptrs;
 
 std::unordered_set<StackFrame**> MemoryManager::pda_frames;
 std::unordered_set<StackFrameMonitor*> MemoryManager::pda_monitors;
@@ -67,6 +80,15 @@ std::atomic<long> MemoryManager::gc_pause_max_us(0);
 std::atomic<long long> MemoryManager::gc_pause_total_us(0);
 std::atomic<size_t> MemoryManager::gc_promoted_last(0);
 std::atomic<size_t> MemoryManager::gc_promoted_total(0);
+std::atomic<size_t> MemoryManager::gc_promoted_bytes_total(0);
+bool MemoryManager::gc_stats_enabled = false;
+uint32_t* MemoryManager::gc_pause_samples = nullptr;
+size_t MemoryManager::gc_pause_sample_count = 0;
+#ifdef _WIN32
+CRITICAL_SECTION MemoryManager::gc_stats_lock;
+#else
+pthread_mutex_t MemoryManager::gc_stats_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 std::atomic<size_t> MemoryManager::gc_alloc_at_last(0);
 std::atomic<long> MemoryManager::gc_contention(0);
 // Process start, for runtime.uptime_ms and the alloc-rate derivation.
@@ -80,6 +102,7 @@ long MemoryManager::GetUptimeMs() {
 // Young generation bump allocator
 uint8_t* MemoryManager::young_region;
 size_t MemoryManager::young_region_size;
+size_t MemoryManager::nursery_size_request = 0;
 std::atomic<size_t> MemoryManager::young_offset;
 
 // Old generation
@@ -129,6 +152,13 @@ pthread_mutex_t MemoryManager::free_memory_cache_lock = PTHREAD_MUTEX_INITIALIZE
 void MemoryManager::Initialize(StackProgram* p, size_t m)
 {
   prgm = p;
+
+  // The set of real class pointers conservative scans check candidates against (G5).
+  StackClass** clss = prgm->GetClasses();
+  const size_t cls_num = (size_t)prgm->GetClassNumber();
+  class_ptrs.assign(clss, clss + cls_num);
+  std::sort(class_ptrs.begin(), class_ptrs.end());
+
   if(m <= 0) {
     mem_max_size = MEM_START_MAX;
   }
@@ -140,18 +170,22 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   free_memory_cache_size.store(0, std::memory_order_relaxed);
   memset(free_buckets, 0, sizeof(free_buckets));
 
-  // Young generation bump allocator
+  // Young generation bump allocator. The full region is always mapped; a smaller
+  // --nursery only lowers the limit the bump paths test (rounded down to a word).
   young_region_size = YOUNG_REGION_SIZE;
+  if(nursery_size_request > 0 && nursery_size_request < YOUNG_REGION_SIZE) {
+    young_region_size = nursery_size_request & ~(sizeof(size_t) - 1);
+  }
 #ifdef _WIN32
-  young_region = (uint8_t*)VirtualAlloc(nullptr, young_region_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  young_region = (uint8_t*)VirtualAlloc(nullptr, YOUNG_REGION_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 #else
-  young_region = (uint8_t*)mmap(nullptr, young_region_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  young_region = (uint8_t*)mmap(nullptr, YOUNG_REGION_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if(young_region == MAP_FAILED) {
     young_region = nullptr;
   }
 #endif
   if(!young_region) {
-    std::wcerr << L">>> Failed to allocate young generation region (" << young_region_size << L" bytes) <<<" << std::endl;
+    std::wcerr << L">>> Failed to allocate young generation region (" << YOUNG_REGION_SIZE << L" bytes) <<<" << std::endl;
     exit(1);
   }
   young_offset.store(0, std::memory_order_relaxed);
@@ -188,7 +222,83 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   parked_count.store(0, std::memory_order_relaxed);
   stw_active.store(false, std::memory_order_relaxed);
 
+  // OBJECK_GC_STATS=1: summary line on stderr at exit. atexit covers a return
+  // from main and Runtime->Exit alike. Registered once: the debugger initializes
+  // again on every restart.
+  if(!gc_stats_enabled) {
+    bool enabled = false;
+#ifdef _WIN32
+    char value[8];
+    size_t len = 0;
+    enabled = !getenv_s(&len, value, sizeof(value), "OBJECK_GC_STATS") && !strcmp(value, "1");
+#else
+    const char* value = getenv("OBJECK_GC_STATS");
+    enabled = value && !strcmp(value, "1");
+#endif
+    if(enabled) {
+      gc_pause_samples = (uint32_t*)calloc(GC_STATS_SAMPLE_MAX, sizeof(uint32_t));
+      if(gc_pause_samples) {
+#ifdef _WIN32
+        InitializeCriticalSection(&gc_stats_lock);
+#endif
+        gc_stats_enabled = true;
+        atexit(PrintGcStats);
+      }
+    }
+  }
+
+  // OBJECK_GC_VERIFY / OBJECK_GC_VERIFY_INJECT, read once (memory_verify.cpp)
+  VerifyInitialize();
+
   initialized = true;
+}
+
+// Every completed collection, minor or major. 'start' is taken as soon as the
+// collecting thread owns marked_sweep_lock, before the stop-the-world handshake.
+void MemoryManager::RecordPause(const std::chrono::steady_clock::time_point& start)
+{
+  const long long elapsed = (long long)std::chrono::duration_cast<std::chrono::microseconds>(
+    std::chrono::steady_clock::now() - start).count();
+  const long pause_us = elapsed > 0x7fffffffLL ? 0x7fffffffL : (long)elapsed;
+  gc_pause_last_us.store(pause_us, std::memory_order_relaxed);
+  if(pause_us > gc_pause_max_us.load(std::memory_order_relaxed)) {
+    gc_pause_max_us.store(pause_us, std::memory_order_relaxed);
+  }
+  gc_pause_total_us.fetch_add(pause_us, std::memory_order_relaxed);
+
+  if(gc_stats_enabled) {
+    MUTEX_LOCK(&gc_stats_lock);
+    if(gc_pause_sample_count < GC_STATS_SAMPLE_MAX) {
+      gc_pause_samples[gc_pause_sample_count++] = (uint32_t)pause_us;
+    }
+    MUTEX_UNLOCK(&gc_stats_lock);
+  }
+}
+
+// atexit handler for OBJECK_GC_STATS=1. Percentiles are nearest-rank over the
+// recorded pauses (the first GC_STATS_SAMPLE_MAX); max covers every collection.
+void MemoryManager::PrintGcStats()
+{
+  std::vector<uint32_t> pauses;
+  MUTEX_LOCK(&gc_stats_lock);
+  pauses.assign(gc_pause_samples, gc_pause_samples + gc_pause_sample_count);
+  MUTEX_UNLOCK(&gc_stats_lock);
+  std::sort(pauses.begin(), pauses.end());
+
+  const size_t n = pauses.size();
+  const uint32_t p50 = n ? pauses[(n - 1) * 50 / 100] : 0;
+  const uint32_t p95 = n ? pauses[(n - 1) * 95 / 100] : 0;
+
+  std::wcerr << L"[gc-stats] minor=" << minor_gc_count.load()
+             << L" major=" << major_gc_count.load()
+             << L" pauses=" << n
+             << L" pause_p50_us=" << p50
+             << L" pause_p95_us=" << p95
+             << L" pause_max_us=" << gc_pause_max_us.load()
+             << L" promoted_objects=" << gc_promoted_total.load()
+             << L" promoted_bytes=" << gc_promoted_bytes_total.load()
+             << L" peak_rss_bytes=" << GetProcessPeakResidentBytes()
+             << std::endl;
 }
 
 // --- Cooperative stop-the-world ----------------------------------------------
@@ -424,6 +534,28 @@ void MemoryManager::CheckPendingThreadRoots()
 #endif
 }
 
+// Relocate a frame's self, mem[0], if its object was promoted. A young object's
+// MARKED_FLAG word holds a forwarding address only once promotion has copied it;
+// until then it holds the mark bits, and GC_MARK_BIT is 1. The fixups used to take
+// any non-zero word as the new address, so a self that was not forwarded became 1.
+// ForwardedAddr accepts only an address that is a member of the old generation (#820).
+void MemoryManager::FixupSelf(size_t* mem, StackMethod* method)
+{
+  const size_t fwd = ForwardedAddr((size_t*)mem[0]);
+  if(fwd) {
+    mem[0] = fwd;
+  }
+  else if(GcTraceEnabled()) {
+    // Report only a genuine young object start left unforwarded; a stale or interior
+    // nursery word is not a self and is expected to fail ForwardedAddr.
+    size_t* self = (size_t*)mem[0];
+    if(IsYoungCandidate(self) && IsYoungObjectStart(self, GetClass(self)) && self[MARKED_FLAG]) {
+      std::wcerr << L"[gc] self not forwarded: method='" << method->GetName() << L"' self=" << (void*)self
+                 << L" header=" << (void*)self[MARKED_FLAG] << std::endl;
+    }
+  }
+}
+
 // Fixup phase: relocate each pending self/param if its young object was promoted.
 // FixupSlot validates the forwarding target, so a non-pointer/aliasing value is left
 // untouched. Lock held to pair with RemovePendingThreadRoot (see CheckPendingThreadRoots).
@@ -455,16 +587,19 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
   if(cls) {
     const long inst_size = cls->GetInstanceMemorySize();
     // Instance size comes from class metadata (loader-supplied, unvalidated). A
-    // negative or huge value would wrap the size math (on LLP64 `long` is 32-bit,
-    // so `size * 2` also wraps before widening to size_t), under-allocating the
-    // object while field stores use the class's declared offsets -> nursery heap
-    // overflow. Fail closed, mirroring the AllocateArray overflow guard.
-    if(inst_size < 0 || (size_t)inst_size > (~(size_t)0 - sizeof(size_t) * EXTRA_BUF_SIZE) / 2) {
+    // negative or huge value would wrap the size math below (header words, the
+    // size word and alignment), under-allocating the object while field stores
+    // use the class's declared offsets -> nursery heap overflow. Fail closed,
+    // mirroring the AllocateArray overflow guard.
+    if(inst_size < 0 || (size_t)inst_size > ~(size_t)0 - sizeof(size_t) * (EXTRA_BUF_SIZE + 2)) {
       std::wcerr << L">>> Object allocation size overflow <<<" << std::endl;
       exit(1);
     }
     const size_t size = (size_t)inst_size;
-    const size_t alloc_size = size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
+    // The instance size is already in bytes (one word per field, two per function
+    // reference), padded to one field word for a zero-field class (see ObjectBlockSize).
+    // Keep in step with IsYoungObjectStart and the JIT inline allocator.
+    const size_t alloc_size = ObjectBlockSize(size);
 
     // Total size including the size header for free cache
     const size_t total_size = alloc_size + sizeof(size_t);
@@ -481,7 +616,9 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     // reaches Objeck only through a plain store into the argument array, which runs
     // no write barrier, so a young object stored there would not be fixed up when
     // promotion moves it.
-    if(young_region && !force_old) {
+    // An object larger than the nursery limit can never fit, and trying would run a
+    // collection on every such allocation; it goes straight to the old generation.
+    if(young_region && !force_old && aligned_total <= young_region_size) {
       size_t offset = young_offset.load(std::memory_order_relaxed);
       while(offset + aligned_total <= young_region_size) {
         if(young_offset.compare_exchange_weak(offset, offset + aligned_total,
@@ -822,6 +959,10 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   clock_t start = clock();
 #endif
 
+  // The pause as mutators see it: the trylock below either succeeds at once or
+  // returns without collecting, so this includes the stop-the-world handshake.
+  const std::chrono::steady_clock::time_point pause_start = std::chrono::steady_clock::now();
+
 #ifndef _GC_SERIAL
 #ifdef _WIN32
   // only one thread at a time can invoke the gargabe collector
@@ -866,11 +1007,19 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   // freeing live old-gen objects (UAF). Mirrors CollectMinor's locked store.
   minor_gc_mode.store(false, std::memory_order_release);
 
+  if(gc_verify) {
+    VerifyBeforeCollection(false);
+  }
+
   CollectionInfo* info = new CollectionInfo;
   info->op_stack = op_stack;
   info->stack_pos = stack_pos;
 
   CollectMemory(info);
+
+  if(gc_verify) {
+    VerifyAfterCollection(false);
+  }
 
 #ifndef _GC_SERIAL
   // Resume the world.
@@ -878,7 +1027,11 @@ void MemoryManager::CollectAllMemory(size_t* op_stack, size_t stack_pos)
   stw_active.store(false, std::memory_order_release);
   WAKE_ALL_CONDITION(&stw_cv);
   MUTEX_UNLOCK(&stw_lock);
+#endif
 
+  RecordPause(pause_start);
+
+#ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 
@@ -915,10 +1068,8 @@ void* MemoryManager::CollectMemory(void* arg)
     major_gc_count.fetch_add(1, std::memory_order_relaxed);
   }
 
-  // Phase 3: time this collection (≈ the stop-the-world pause; the world is parked
-  // before CollectMemory runs). Recorded just before the single return below.
-  const std::chrono::steady_clock::time_point pause_start = std::chrono::steady_clock::now();
-
+  // The pause is timed by the callers (CollectMinor / CollectAllMemory), so it
+  // includes the stop-the-world handshake and the minor dirty-list scan.
 
 #ifdef _DEBUG_GC
   size_t start = allocation_size;
@@ -1013,7 +1164,12 @@ void* MemoryManager::CollectMemory(void* arg)
   CheckPdaRoots(nullptr);
   CheckJitRoots(nullptr);
 #endif
-  
+
+  // mark threads joined; promotion has not yet rewritten the nursery's flag words
+  if(gc_verify) {
+    VerifyAfterMark();
+  }
+
 #ifdef _TIMING
   clock_t end = clock();
   std::wcout << std::dec << L"Mark time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
@@ -1057,6 +1213,7 @@ void* MemoryManager::CollectMemory(void* arg)
   size_t young_used = young_offset.load(std::memory_order_relaxed);
   size_t dead_young_size = 0;
   size_t promoted_count = 0;
+  size_t promoted_bytes = 0;
 
   // Linear walk through young region
   uint8_t* scan_ptr = young_region;
@@ -1081,19 +1238,30 @@ void* MemoryManager::CollectMemory(void* arg)
     }
 
     if(mem[MARKED_FLAG] & GC_MARK_BIT) {
-      // Promote to old gen: allocate, copy, store forwarding pointer
+      // Promote to old gen: allocate, copy, store forwarding pointer. A survivor that
+      // cannot be copied is fatal (G6): every reference to it would dangle once the
+      // nursery resets below, and no fixup can recover that.
       size_t* new_raw = (size_t*)calloc(total, 1);
-      if(new_raw) {
-        memcpy(new_raw, raw_mem, total);
-        size_t* new_mem = new_raw + 1 + EXTRA_BUF_SIZE;
-        new_mem[MARKED_FLAG] = GC_OLD_BIT | GC_MARK_BIT;  // set old bit + keep mark bit so sweep preserves it
-        old_generation.insert(new_mem);
-        old_allocation_size += mem_size;
-        promoted_objects.push_back(new_mem);
-        promoted_count++;
-        // Store forwarding pointer in young region (safe — region is about to be reclaimed)
-        mem[MARKED_FLAG] = (size_t)new_mem;
+      if(!new_raw) {
+        FatalCollectorOutOfMemory(total);
       }
+      memcpy(new_raw, raw_mem, total);
+      size_t* new_mem = new_raw + 1 + EXTRA_BUF_SIZE;
+      new_mem[MARKED_FLAG] = GC_OLD_BIT | GC_MARK_BIT;  // set old bit + keep mark bit so sweep preserves it
+      // Both containers can throw bad_alloc; never let it unwind out of stop-the-world
+      // with both GC locks held and every other mutator parked (G15).
+      try {
+        old_generation.insert(new_mem);
+        promoted_objects.push_back(new_mem);
+      }
+      catch(const std::bad_alloc&) {
+        FatalCollectorOutOfMemory(total);
+      }
+      old_allocation_size += mem_size;
+      promoted_count++;
+      promoted_bytes += total;
+      // Store forwarding pointer in young region (safe — region is about to be reclaimed)
+      mem[MARKED_FLAG] = (size_t)new_mem;
     }
     else {
       // Dead young object
@@ -1151,8 +1319,14 @@ void* MemoryManager::CollectMemory(void* arg)
 
   // --- Fixup phase: replace young pointers with forwarded old-gen addresses ---
   if(young_used > 0) {
-    // Fix up roots (use saved_stack_pos since CheckStack decremented info->stack_pos to -1)
-    FixupRoots(info->op_stack, saved_stack_pos);
+    // Fix up roots (use saved_stack_pos since CheckStack decremented info->stack_pos to -1).
+    // Its frame list can throw bad_alloc; fatal rather than unwinding out of STW (G15).
+    try {
+      FixupRoots(info->op_stack, saved_stack_pos);
+    }
+    catch(const std::bad_alloc&) {
+      FatalCollectorOutOfMemory(0);
+    }
 
     // Fix up old-gen objects
     size_t dc = dirty_count.load(std::memory_order_relaxed);
@@ -1181,6 +1355,11 @@ void* MemoryManager::CollectMemory(void* arg)
     // allocation time (zero-on-alloc, see AllocateObject / the JIT inline allocator),
     // which moves this potentially nursery-sized memset out of the stop-the-world pause.
     young_offset.store(0, std::memory_order_relaxed);
+  }
+
+  // hand the verifier this collection's promotions (checked after the lock drops)
+  if(gc_verify) {
+    VerifyNotePromoted(promoted_objects);
   }
 
   // --- Clear dirty list and RSET bits ---
@@ -1267,17 +1446,11 @@ void* MemoryManager::CollectMemory(void* arg)
   std::wcout << std::dec << L"Sweep time: " << (double)(end - start) / CLOCKS_PER_SEC << L" second(s)." << std::endl;
 #endif
 
-  // Phase 3 metrics: pause time, promotion, and the alloc-since-GC snapshot.
+  // Phase 3 metrics: promotion and the alloc-since-GC snapshot (pause: RecordPause).
   {
-    const long pause_us = (long)std::chrono::duration_cast<std::chrono::microseconds>(
-      std::chrono::steady_clock::now() - pause_start).count();
-    gc_pause_last_us.store(pause_us, std::memory_order_relaxed);
-    if(pause_us > gc_pause_max_us.load(std::memory_order_relaxed)) {
-      gc_pause_max_us.store(pause_us, std::memory_order_relaxed);
-    }
-    gc_pause_total_us.fetch_add(pause_us, std::memory_order_relaxed);
     gc_promoted_last.store(promoted_count, std::memory_order_relaxed);
     gc_promoted_total.fetch_add(promoted_count, std::memory_order_relaxed);
+    gc_promoted_bytes_total.fetch_add(promoted_bytes, std::memory_order_relaxed);
     gc_alloc_at_last.store(allocation_size.load(std::memory_order_relaxed), std::memory_order_relaxed);
   }
 
@@ -1938,6 +2111,31 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
 {
   if(!mem) return;
 
+  // A dirty closure capture block. NEW_FUNC_INST allocates it (BYTE_ARY_TYPE, always
+  // old) and the capture stores that follow run the write barrier on it BEFORE any
+  // object holds the closure: until the FuncRef (or other holder) is constructed, the
+  // block is reachable only through the method's hidden closure slot (INT_PARM) and the
+  // operand stack, both untyped. A collection triggered by allocating that holder
+  // promoted a young captured object through its own typed local but never marked or
+  // forwarded the block's copy of it, which then dangled into the recycled nursery
+  // ("closure capture field" in obj_size_layout with --nursery=128k). The block has no
+  // declarations of its own, so its words are treated conservatively: CheckObject
+  // accepts only a word that is a real young object's start. GC_RSET_BIT limits this
+  // to blocks written since the last collection -- a capture that was young then
+  // necessarily went through the barrier -- and keeps byte arrays out.
+  if(mem[TYPE] == BYTE_ARY_TYPE) {
+    if(mem[MARKED_FLAG] & GC_RSET_BIT) {
+      const size_t words = mem[SIZE_OR_CLS] / sizeof(size_t);
+      for(size_t k = 0; k < words; ++k) {
+        size_t* ref = (size_t*)mem[k];
+        if(ref && IsYoungCandidate(ref)) {
+          CheckObject(ref, true, 1);
+        }
+      }
+    }
+    return;
+  }
+
   // Scan one dirty old-gen object's direct fields for young pointers and mark them
   if(mem[TYPE] == NIL_TYPE) {
     StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
@@ -1948,9 +2146,20 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
     for(long i = 0; i < num_dclrs; ++i) {
       switch(dclrs[i]->type) {
       case FUNC_PARM: {
-        size_t* ref = (size_t*)*(field_ptr + 1);
-        if(ref && IsYoung(ref)) {
-          CheckObject(ref, true, 0);
+        // A closure's capture block comes from AllocateArray, so it is always old and
+        // the old "descend only if young" test never fired: young captures stored
+        // behind an old holder were never marked (G12). Descend into the captures
+        // regardless of generation, mirroring CheckMemory and FixupMemory. The barrier
+        // on the capture store dirties only the untyped BYTE_ARY_TYPE block, which
+        // cannot be scanned on its own, so the holder is the only place to type it.
+        size_t* lambda_mem = (size_t*)*(field_ptr + 1);
+        if(lambda_mem && MarkMemory(lambda_mem)) {
+          const size_t mthd_cls_id = *field_ptr;
+          const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
+          const long mthd_id = mthd_cls_id & 0xFFFF;
+          std::pair<int, StackDclr**> closure_dclrs =
+            prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
+          CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
         }
         field_ptr += 2;
         break;
@@ -2041,6 +2250,8 @@ void MemoryManager::FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_
     case FLOAT_ARY_PARM: {
       const size_t fwd = ForwardedAddr((size_t*)(*mem));
       if(fwd) *mem = fwd;
+      // invariant C: a typed slot must not hold a young object that was never marked
+      else if(gc_verify && *mem) VerifyUnforwarded((size_t*)(*mem));
       mem++;
       break;
     }
@@ -2074,6 +2285,15 @@ void MemoryManager::FixupObject(size_t* mem)
     for(size_t i = 0; i < size; ++i) {
       const size_t fwd = ForwardedAddr((size_t*)objects[i]);
       if(fwd) objects[i] = fwd;
+    }
+  }
+  else if(mem[TYPE] == BYTE_ARY_TYPE && (mem[MARKED_FLAG] & GC_RSET_BIT)) {
+    // A closure capture block written since the last collection, possibly before any
+    // holder types it (see ScanDirtyObject). Relocate every word that refers to a
+    // promoted young object; ForwardedAddr accepts only a genuine forwarding address.
+    const size_t words = mem[SIZE_OR_CLS] / sizeof(size_t);
+    for(size_t k = 0; k < words; ++k) {
+      FixupSlot(&mem[k]);
     }
   }
 }
@@ -2141,11 +2361,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
         // Fix up self
         if(!method->IsLambda()) {
-          size_t* self = (size_t*)(*mem);
-          if(self && IsYoung(self)) {
-            size_t fwd = self[MARKED_FLAG];
-            if(fwd) *mem = fwd;
-          }
+          FixupSelf(mem, method);
         }
 
         // Fix up locals
@@ -2183,11 +2399,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
           StackMethod* method = cur_frame->method;
           size_t* mem = cur_frame->mem;
           if(!method->IsLambda()) {
-            size_t* self = (size_t*)(*mem);
-            if(self && IsYoung(self)) {
-              size_t fwd = self[MARKED_FLAG];
-              if(fwd) *mem = fwd;
-            }
+            FixupSelf(mem, method);
           }
           size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
           FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
@@ -2206,11 +2418,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
             StackMethod* method = frame->method;
             size_t* mem = frame->mem;
             if(!method->IsLambda()) {
-              size_t* self = (size_t*)(*mem);
-              if(self && IsYoung(self)) {
-                size_t fwd = self[MARKED_FLAG];
-                if(fwd) *mem = fwd;
-              }
+              FixupSelf(mem, method);
             }
             size_t* local_mem = mem + (method->HasAndOr() ? 2 : 1);
             FixupMemory(local_mem, method->GetDeclarations(), method->GetNumberDeclarations());
@@ -2232,11 +2440,7 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
     if(mem) {
       // Fix up self
       if(!method->IsLambda()) {
-        size_t* self = (size_t*)frame->mem[0];
-        if(self && IsYoung(self)) {
-          size_t fwd = self[MARKED_FLAG];
-          if(fwd) frame->mem[0] = fwd;
-        }
+        FixupSelf(frame->mem, method);
       }
 
       // Fix up JIT locals
@@ -2310,6 +2514,9 @@ void MemoryManager::FixupRoots(size_t* op_stack, size_t stack_pos)
 
 void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 {
+  // Timed from here: includes the handshake and the dirty-list scan (see CollectAllMemory).
+  const std::chrono::steady_clock::time_point pause_start = std::chrono::steady_clock::now();
+
 #ifndef _GC_SERIAL
 #ifdef _WIN32
   // only one thread at a time can invoke the garbage collector
@@ -2356,6 +2563,11 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
         << L" ===" << std::endl;
 #endif
 
+  // world stopped, remembered set not yet scanned (A1/A2 need it untouched)
+  if(gc_verify) {
+    VerifyBeforeCollection(true);
+  }
+
   // Phase 1: Scan dirty old-gen objects for young references (with minor_gc_mode=true)
   minor_gc_mode.store(true, std::memory_order_release);
 
@@ -2381,13 +2593,21 @@ void MemoryManager::CollectMinor(size_t* op_stack, size_t stack_pos)
 
   CollectMemory(info);
 
+  if(gc_verify) {
+    VerifyAfterCollection(true);
+  }
+
 #ifndef _GC_SERIAL
   // Resume the world.
   MUTEX_LOCK(&stw_lock);
   stw_active.store(false, std::memory_order_release);
   WAKE_ALL_CONDITION(&stw_cv);
   MUTEX_UNLOCK(&stw_lock);
+#endif
 
+  RecordPause(pause_start);
+
+#ifndef _GC_SERIAL
   MUTEX_UNLOCK(&marked_sweep_lock);
 #endif
 

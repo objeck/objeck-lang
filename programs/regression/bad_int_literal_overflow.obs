@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Invalid expression: unexpected token
 #~
 An integer literal past the signed range must be rejected. It used to be
 parsed with a saturating signed conversion whose range error was never

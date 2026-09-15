@@ -298,17 +298,20 @@ frontend::Type* TypeParser::ParseType(const std::wstring& type_name)
 
 void TypeParser::ParseFuncStr(const std::wstring& param_str, size_t &index)
 {
-  size_t nest_count = 0;
-  while(index < param_str.size() && param_str[index] != L')') {
+  // skip to the ')' matching the first '(' -- depth is tracked over the whole
+  // span so a parameter list holding several function types, e.g.
+  // "m.(m.(i,)~i,m.(i,)~i,)~i", ends at the right ')'
+  while(index < param_str.size() && param_str[index] != L'(') {
+    index++;
+  }
+  int nest_count = 0;
+  while(index < param_str.size()) {
     if(param_str[index] == L'(') {
       nest_count++;
     }
-    index++;
-  }
-
-  while(nest_count) {
-    if(param_str[index] == L')') {
-      nest_count--;
+    else if(param_str[index] == L')' && --nest_count == 0) {
+      index++;
+      break;
     }
     index++;
   }
@@ -336,9 +339,24 @@ void TypeParser::SetFuncType(frontend::Type* func_type)
 {
   const std::wstring func_name = func_type->GetName();
 
-  // parse parameters
-  size_t start = func_name.rfind(L'(');
-  size_t middle = func_name.find(L')');
+  // Parameters sit between the first '(' and its MATCHING ')'. Taking the last
+  // '(' and the first ')' read the inner parameter list of a nested function
+  // type: "m.(m.(i,)~i,i,)~i" parsed as one Int parameter, so a call through a
+  // variable of type ((Int) ~ Int, Int) ~ Int failed with a size mismatch.
+  size_t start = func_name.find(L'(');
+  size_t middle = std::wstring::npos;
+  if(start != std::wstring::npos) {
+    int nesting = 0;
+    for(size_t i = start; i < func_name.size(); ++i) {
+      if(func_name[i] == L'(') {
+        nesting++;
+      }
+      else if(func_name[i] == L')' && --nesting == 0) {
+        middle = i;
+        break;
+      }
+    }
+  }
 
   if(start != std::wstring::npos && middle != std::wstring::npos) {
     start++;
@@ -346,16 +364,14 @@ void TypeParser::SetFuncType(frontend::Type* func_type)
     std::vector<frontend::Type*> func_params = ParseParameters(params_str);
     func_type->SetFunctionParameters(func_params);
 
-    // parse return
-    size_t end = func_name.find(L',', middle);
-    if(end == std::wstring::npos) {
-      end = func_name.size();
-    }
-
+    // parse return: everything after ")~" (a function-typed return contains
+    // commas of its own, so stopping at the next ',' truncated it)
     middle += 2;
-    const std::wstring rtrn_str = func_name.substr(middle, end - middle);
-    frontend::Type* func_rtrn = ParseType(rtrn_str);
-    func_type->SetFunctionReturn(func_rtrn);
+    if(middle <= func_name.size()) {
+      const std::wstring rtrn_str = func_name.substr(middle);
+      frontend::Type* func_rtrn = ParseType(rtrn_str);
+      func_type->SetFunctionReturn(func_rtrn);
+    }
   }
 }
 

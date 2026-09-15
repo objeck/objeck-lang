@@ -471,6 +471,9 @@ namespace Runtime {
     bool is_inlining;
     long inline_local_offset;
     StackMethod* inline_callee;
+    // callees inlined into this compile, named by OBJECK_JIT_REPORT once it
+    // succeeds: their code ran natively without a compile of their own
+    std::vector<StackMethod*> inlined_callees;
     // set around ProcessStackCallback for a MTHD_CALL whose callee is bound at
     // compile time: the callback goes to JitCompiler::JitDirectCall with this
     // StackMethod* in place of the opcode
@@ -1132,6 +1135,9 @@ namespace Runtime {
     void and_reg_reg(Register src, Register dest);
     void and_mem_reg(long offset, Register src, Register dest);
     void not_reg(Register reg);
+    void neg_reg(Register reg);
+    long EmitDivMinusOneFastPath(Register dest, bool is_mod);
+    void PatchDivMinusOneJump(long done_patch);
 
     void or_imm_reg(int64_t imm, Register reg);
     void or_reg_reg(Register src, Register dest);

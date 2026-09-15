@@ -1,0 +1,296 @@
+#~
+A captured array indexed by a variable inside a lambda crashed obc (0xC0000005).
+
+Inside a lambda a captured variable resolves to a closure-copy entry. That path
+in ContextAnalyzer::AnalyzeVariable bound the variable to its copy but never
+analyzed its index expressions (the explicitly defined variable path does), so
+'p[i]' left 'i' without a symbol entry or type, and the emitter dereferenced
+it. Literal indexes happened to work because a literal needs no entry.
+
+Covers Int[], Float[], Bool[], Char[], String[] and object arrays captured by a
+lambda and indexed by a lambda-local variable, a lambda parameter, a captured
+Int and an expression; element reads and writes; a 2-D array; and indexing in
+a loop inside the lambda. Every closure is built by a helper that returns it
+(so the creating frame is gone), then a minor GC is forced by allocation churn,
+then it is called.
+~#
+class ClosureArrayVarIndex {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+
+    ints := Int->New[5];
+    floats := Float->New[5];
+    bools := Bool->New[5];
+    chars := Char->New[5];
+    strs := String->New[5];
+    boxes := Box->New[5];
+    for(i := 0; i < 5; i += 1;) {
+      ints[i] := i * 10;
+      floats[i] := i * 1.5;
+      bools[i] := i % 2 = 0;
+      chars[i] := 'a' + i;
+      strs[i] := "s{$i}";
+      boxes[i] := Box->New(i * 100);
+    };
+    grid := Int->New[3, 4];
+    for(r := 0; r < 3; r += 1;) {
+      for(c := 0; c < 4; c += 1;) {
+        grid[r, c] := r * 10 + c;
+      };
+    };
+
+    # lambda-local index
+    int_local := IntLocal(ints);
+    float_local := FloatLocal(floats);
+    bool_local := BoolLocal(bools);
+    char_local := CharLocal(chars);
+    str_local := StringLocal(strs);
+    box_local := BoxLocal(boxes);
+    # lambda-parameter index
+    int_param := IntParam(ints);
+    float_param := FloatParam(floats);
+    bool_param := BoolParam(bools);
+    char_param := CharParam(chars);
+    str_param := StringParam(strs);
+    box_param := BoxParam(boxes);
+    # captured Int index and expression index
+    int_captured := IntCaptured(ints, 3);
+    str_expr := StringExpr(strs, 1);
+    # writes
+    int_write := IntWrite(ints);
+    float_write := FloatWrite(floats);
+    bool_write := BoolWrite(bools);
+    char_write := CharWrite(chars);
+    str_write := StringWrite(strs);
+    box_write := BoxWrite(boxes);
+    # 2-D, loops
+    grid_read := GridRead(grid);
+    grid_write := GridWrite(grid);
+    int_loop := IntLoop(ints);
+    str_loop := StringLoop(strs);
+    box_loop := BoxLoop(boxes);
+    bool_loop := BoolLoop(bools);
+
+    start := Minors();
+    Churn();
+    if(Minors() = start) {
+      "FAIL: churn did not run a minor GC"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    if(int_local() <> 20) { "FAIL: Int[] local index"->PrintLine(); bad += 1; };
+    if(float_local() <> 3.0) { "FAIL: Float[] local index"->PrintLine(); bad += 1; };
+    if(bool_local() = false) { "FAIL: Bool[] local index"->PrintLine(); bad += 1; };
+    if(char_local() <> 'd') { "FAIL: Char[] local index"->PrintLine(); bad += 1; };
+    if(str_local()->Equals("s4") = false) { "FAIL: String[] local index"->PrintLine(); bad += 1; };
+    if(box_local() <> 100) { "FAIL: object[] local index"->PrintLine(); bad += 1; };
+
+    if(int_param(4) <> 40) { "FAIL: Int[] parameter index"->PrintLine(); bad += 1; };
+    if(float_param(2) <> 3.0) { "FAIL: Float[] parameter index"->PrintLine(); bad += 1; };
+    if(bool_param(3) = true) { "FAIL: Bool[] parameter index"->PrintLine(); bad += 1; };
+    if(char_param(1) <> 'b') { "FAIL: Char[] parameter index"->PrintLine(); bad += 1; };
+    if(str_param(0)->Equals("s0") = false) { "FAIL: String[] parameter index"->PrintLine(); bad += 1; };
+    if(box_param(3) <> 300) { "FAIL: object[] parameter index"->PrintLine(); bad += 1; };
+
+    if(int_captured() <> 30) { "FAIL: captured Int index"->PrintLine(); bad += 1; };
+    if(str_expr()->Equals("s3") = false) { "FAIL: expression index"->PrintLine(); bad += 1; };
+
+    if(int_write(1, 77) <> 77 | ints[1] <> 77) { "FAIL: Int[] write"->PrintLine(); bad += 1; };
+    if(float_write(1, 7.5) <> 7.5 | floats[1] <> 7.5) { "FAIL: Float[] write"->PrintLine(); bad += 1; };
+    if(bool_write(1, true) = false | bools[1] = false) { "FAIL: Bool[] write"->PrintLine(); bad += 1; };
+    if(char_write(1, 'z') <> 'z' | chars[1] <> 'z') { "FAIL: Char[] write"->PrintLine(); bad += 1; };
+    Churn();
+    if(str_write(1)->Equals("new1") = false | strs[1]->Equals("new1") = false) { "FAIL: String[] write"->PrintLine(); bad += 1; };
+    if(box_write(1) <> 1234 | boxes[1]->Get() <> 1234) { "FAIL: object[] write"->PrintLine(); bad += 1; };
+    Churn();
+    if(strs[1]->Equals("new1") = false) { "FAIL: String[] written element after GC"->PrintLine(); bad += 1; };
+    if(boxes[1]->Get() <> 1234) { "FAIL: object[] written element after GC"->PrintLine(); bad += 1; };
+
+    if(grid_read(2, 3) <> 23) { "FAIL: 2-D read"->PrintLine(); bad += 1; };
+    if(grid_write(1, 2) <> 999 | grid[1, 2] <> 999) { "FAIL: 2-D write"->PrintLine(); bad += 1; };
+    # ints is now 0,77,20,30,40
+    if(int_loop() <> 167) { "FAIL: Int[] loop"->PrintLine(); bad += 1; };
+    if(str_loop()->Equals("s0new1s2s3s4") = false) { "FAIL: String[] loop"->PrintLine(); bad += 1; };
+    # boxes is now 0,1234,200,300,400
+    if(box_loop() <> 2134) { "FAIL: object[] loop"->PrintLine(); bad += 1; };
+    # bools is now T,T,T,F,T
+    if(bool_loop() <> 4) { "FAIL: Bool[] loop"->PrintLine(); bad += 1; };
+
+    if(bad > 0) {
+      "FAIL: captured array variable index bad={$bad}"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: captured arrays indexed by variables"->PrintLine();
+  }
+
+  # lambda-local index
+  function : IntLocal(p : Int[]) ~ () ~ Int {
+    return \() ~ Int : () => { i := 2; return p[i]; };
+  }
+
+  function : FloatLocal(p : Float[]) ~ () ~ Float {
+    return \() ~ Float : () => { i := 2; return p[i]; };
+  }
+
+  function : BoolLocal(p : Bool[]) ~ () ~ Bool {
+    return \() ~ Bool : () => { i := 4; return p[i]; };
+  }
+
+  function : CharLocal(p : Char[]) ~ () ~ Char {
+    return \() ~ Char : () => { i := 3; return p[i]; };
+  }
+
+  function : StringLocal(p : String[]) ~ () ~ String {
+    return \() ~ String : () => { i := 4; return p[i]; };
+  }
+
+  function : BoxLocal(p : Box[]) ~ () ~ Int {
+    return \() ~ Int : () => { i := 1; return p[i]->Get(); };
+  }
+
+  # lambda-parameter index
+  function : IntParam(p : Int[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => p[i];
+  }
+
+  function : FloatParam(p : Float[]) ~ (Int) ~ Float {
+    return \(Int) ~ Float : (i) => p[i];
+  }
+
+  function : BoolParam(p : Bool[]) ~ (Int) ~ Bool {
+    return \(Int) ~ Bool : (i) => p[i];
+  }
+
+  function : CharParam(p : Char[]) ~ (Int) ~ Char {
+    return \(Int) ~ Char : (i) => p[i];
+  }
+
+  function : StringParam(p : String[]) ~ (Int) ~ String {
+    return \(Int) ~ String : (i) => p[i];
+  }
+
+  function : BoxParam(p : Box[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => p[i]->Get();
+  }
+
+  # captured Int index
+  function : IntCaptured(p : Int[], n : Int) ~ () ~ Int {
+    return \() ~ Int : () => p[n];
+  }
+
+  # expression index
+  function : StringExpr(p : String[], n : Int) ~ () ~ String {
+    return \() ~ String : () => { j := 1; return p[n + j * 2 - 1 + 1]; };
+  }
+
+  # writes
+  function : IntWrite(p : Int[]) ~ (Int, Int) ~ Int {
+    return \(Int, Int) ~ Int : (i, v) => { p[i] := v; return p[i]; };
+  }
+
+  function : FloatWrite(p : Float[]) ~ (Int, Float) ~ Float {
+    return \(Int, Float) ~ Float : (i, v) => { p[i] := v; return p[i]; };
+  }
+
+  function : BoolWrite(p : Bool[]) ~ (Int, Bool) ~ Bool {
+    return \(Int, Bool) ~ Bool : (i, v) => { p[i] := v; return p[i]; };
+  }
+
+  function : CharWrite(p : Char[]) ~ (Int, Char) ~ Char {
+    return \(Int, Char) ~ Char : (i, v) => { p[i] := v; return p[i]; };
+  }
+
+  function : StringWrite(p : String[]) ~ (Int) ~ String {
+    return \(Int) ~ String : (i) => { p[i] := "new{$i}"; return p[i]; };
+  }
+
+  function : BoxWrite(p : Box[]) ~ (Int) ~ Int {
+    return \(Int) ~ Int : (i) => { p[i] := Box->New(1234); return p[i]->Get(); };
+  }
+
+  # 2-D
+  function : GridRead(g : Int[,]) ~ (Int, Int) ~ Int {
+    return \(Int, Int) ~ Int : (r, c) => g[r, c];
+  }
+
+  function : GridWrite(g : Int[,]) ~ (Int, Int) ~ Int {
+    return \(Int, Int) ~ Int : (r, c) => { g[r, c] := 999; return g[r, c]; };
+  }
+
+  # loops inside the lambda
+  function : IntLoop(p : Int[]) ~ () ~ Int {
+    return \() ~ Int : () => {
+      sum := 0;
+      for(i := 0; i < p->Size(); i += 1;) { sum += p[i]; };
+      return sum;
+    };
+  }
+
+  function : StringLoop(p : String[]) ~ () ~ String {
+    return \() ~ String : () => {
+      out := "";
+      each(i : p) { out += p[i]; };
+      return out;
+    };
+  }
+
+  function : BoxLoop(p : Box[]) ~ () ~ Int {
+    return \() ~ Int : () => {
+      sum := 0;
+      i := 0;
+      while(i < p->Size()) { sum += p[i]->Get(); i += 1; };
+      return sum;
+    };
+  }
+
+  function : BoolLoop(p : Bool[]) ~ () ~ Int {
+    return \() ~ Int : () => {
+      count := 0;
+      for(i := 0; i < p->Size(); i += 1;) { if(p[i]) { count += 1; }; };
+      return count;
+    };
+  }
+
+  function : Minors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  # about 150MB of short-lived objects against the 128MB nursery: at least one minor GC
+  function : Churn() ~ Nil {
+    for(j := 0; j < 520000; j += 1;) {
+      tmp := VarIndexBlob->New(j);
+      if(tmp->Get() <> j) {
+        "FAIL: churn object corrupted"->PrintLine();
+        Runtime->Exit(1);
+      };
+    };
+  }
+}
+
+class Box {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
+
+class VarIndexBlob {
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+  New(v : Int) {
+    @a0 := v;
+    @d7 := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @d7;
+  }
+}

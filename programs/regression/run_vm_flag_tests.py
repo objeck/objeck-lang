@@ -53,6 +53,19 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (since #778). And a command line that is all flags ("obr --jit=off")
     names no program: that is the usage and a non-zero exit, not a silent
     one (it was a silent exit 0 on POSIX).
+ 10. The nursery knob and the GC statistics. --nursery (and OBJECK_NURSERY)
+    accepts 256k and 64m, refuses 2x and 0 with a message naming the range,
+    and the flag wins over a bad variable. gc_nursery_knob.obs runs more minor
+    collections with a 256k nursery than with the default; OBJECK_GC_STATS=1
+    prints a summary line with every field; runtime.memory.peak is never below
+    runtime.memory.used (the fixture checks that itself). And collection stays
+    correct when minor GCs are frequent: obj_size_layout, minor_gc_stress,
+    core_thread_gc_stress, gc_minor_closure_capture, gc_zero_field_nursery_end
+    and gc_closure_capture_nursery_end pass with --nursery=128k and 256k,
+    interpreted and with every method compiled. (At those sizes an integration-1
+    obr lost a zero-field object that was the last allocation before a
+    collection, and a closure capture copied just before one.) A v2026.9.4 obr
+    fails all of this: it does not know the flag.
  8. An exception in a call the JIT's bridge made ends the program, not the
     process. Neither backend registers unwind information for the code it
     emits, so a C++ exception thrown under compiled code used to terminate
@@ -64,8 +77,22 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     through the bridge's own S2F case. The regression runner cannot tell the
     abort from the error (an expected runtime error is any non-zero exit with
     output), so the status is named here.
+ 9. A zero divisor reads the same interpreted and compiled. The interpreter
+    printed ">>> Divide by zero <<<" and compiled code ">>> Divide by zero in
+    native JIT code <<<" (S4); both print the first now (the text lives in
+    core/shared/int_ops.h). bad_runtime_divzero.obs must print exactly that
+    line and exit non-zero under --jit=off, the default and --jit=1. The
+    regression runner accepts any non-zero exit with output, so it cannot
+    see the text.
+ 11. The heap verifier. OBJECK_GC_VERIFY=1 checks the collector's invariants
+    at every collection (core/vm/arch/memory_verify.cpp): the GC stress tests
+    and four collection tests pass with the same output with it on, and each
+    OBJECK_GC_VERIFY_INJECT fault (field, barrier, mark) in
+    vm_gc_verify_inject.obs stops obr with the verifier's report -- a verifier
+    nothing can trip would pass the first half just as well as a correct heap.
 """
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -88,9 +115,12 @@ def check(name, ok, detail=""):
         print(f"  [FAIL] {name}: {detail}")
 
 
-def run(cmd, env=None, cwd=None):
-    p = subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, timeout=120)
+def run(cmd, env=None, cwd=None, timeout=120):
+    try:
+        p = subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE,
+                           stderr=subprocess.PIPE, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        return -999, e.stdout or b"", (e.stderr or b"") + b"\n<timed out>"
     return p.returncode, p.stdout, p.stderr
 
 
@@ -140,7 +170,10 @@ def main():
     for flag, expect in (("--objeck-stdio=1", b"expected 'binary', 'utf16' or 'utf8'"),
                          ("--jit=banana", b"expected 'off' or a positive call count"),
                          ("--jit=0", b"expected 'off' or a positive call count"),
-                         ("--gc-threshold=2x", b"expected <number>(k|m|g)")):
+                         ("--gc-threshold=2x", b"expected <number>(k|m|g)"),
+                         ("--nursery=2x", b"--nursery: expected <number>(k|m) from 64k to 128m"),
+                         ("--nursery=0", b"--nursery: expected <number>(k|m) from 64k to 128m"),
+                         ("--nursery=1g", b"--nursery: expected <number>(k|m) from 64k to 128m")):
         rc, out, err = run([obr, flag, obe], env=env, cwd=bin_dir)
         check(f"{flag} is refused with a message naming what was expected",
               rc != 0 and expect in err, f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
@@ -154,7 +187,7 @@ def main():
     rc, out, err = run([obr], env=env, cwd=bin_dir)
     usage = (out + err).decode(errors="replace")
     check("no-argument usage exits non-zero", rc != 0, f"rc={rc}")
-    for needle in ("--gc-threshold=<size>", "<number>(k|m|g)", "--jit=off|<calls>",
+    for needle in ("--gc-threshold=<size>", "<number>(k|m|g)", "--nursery=<size>", "--jit=off|<calls>",
                    "--lib-path=<dir>", "--objeck-stdio=binary|utf16|utf8"):
         check(f"usage states valid values: {needle}", needle in usage, usage[:400])
 
@@ -274,7 +307,236 @@ def main():
                   detail)
             check(f"under {label} obr exits 1, not by a signal", rc == 1, detail)
 
+    # ---- 9. one divide-by-zero message on every path --------------------------
+    dz_src = os.path.join(SCRIPT_DIR, "bad_runtime_divzero.obs")
+    dz_obe = os.path.join(SCRIPT_DIR, "bad_runtime_divzero.obe")
+    rc, out, err = run([obc, "-src", dz_src, "-dest", dz_obe], env=env, cwd=bin_dir)
+    check("divide-by-zero fixture compiles", rc == 0 and os.path.exists(dz_obe), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        for label, flags in (("jit=off", ["--jit=off"]), ("default", []), ("jit=1", ["--jit=1"])):
+            rc, out, err = run([obr] + flags + [dz_obe], env=env, cwd=bin_dir)
+            text = err.decode(errors="replace") + out.decode(errors="replace")
+            lines = [l.strip() for l in text.splitlines() if "Divide by zero" in l]
+            detail = f"rc={rc} lines={lines!r}"
+            check(f'under {label} a zero divisor prints ">>> Divide by zero <<<" and nothing else about it',
+                  lines == [">>> Divide by zero <<<"], detail)
+            check(f"under {label} obr exits non-zero after the divide by zero", rc != 0, detail)
+
+    check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base)
+
+    # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
+    verify_section(obc, obr, env, bin_dir)
+
     return finish()
+
+
+def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
+    # ---- 10. the nursery knob and the GC statistics -----------------------------
+    def detail(rc, out, err):
+        return f"rc={rc} out={out[-160:]!r} stderr={err.decode(errors='replace')[-300:]!r}"
+
+    for size in ("256k", "64m"):
+        rc, out, err = run([obr, f"--nursery={size}", obe], env=env, cwd=bin_dir)
+        check(f"--nursery={size} is accepted and the program prints what the default run printed",
+              rc == 0 and out == base, detail(rc, out, err))
+
+    bad_env = dict(env)
+    bad_env["OBJECK_NURSERY"] = "2x"
+    rc, out, err = run([obr, obe], env=bad_env, cwd=bin_dir)
+    check("OBJECK_NURSERY=2x is refused with a message naming the range",
+          rc != 0 and b"OBJECK_NURSERY: expected <number>(k|m) from 64k to 128m" in err, detail(rc, out, err))
+    rc, out, err = run([obr, "--nursery=256k", obe], env=bad_env, cwd=bin_dir)
+    check("--nursery wins over OBJECK_NURSERY (a bad variable is not read when the flag is given)",
+          rc == 0 and out == base, detail(rc, out, err))
+
+    knob_src = os.path.join(SCRIPT_DIR, "gc_nursery_knob.obs")
+    knob_obe = os.path.join(SCRIPT_DIR, "gc_nursery_knob.obe")
+    rc, out, err = run([obc, "-src", knob_src, "-dest", knob_obe], env=env, cwd=bin_dir)
+    check("nursery fixture compiles", rc == 0 and os.path.exists(knob_obe), err.decode(errors="replace")[-300:])
+    if rc != 0:
+        return
+
+    def minor_of(out):
+        m = re.search(rb"^minor=(\d+)\s*$", out, re.M)
+        return int(m.group(1)) if m else None
+
+    small_env = dict(env)
+    small_env["OBJECK_NURSERY"] = "256k"
+    stats_env = dict(env)
+    stats_env["OBJECK_GC_STATS"] = "1"
+    runs = {}
+    for label, flags, run_env in (("default", [], env),
+                                  ("--nursery=256k", ["--nursery=256k"], env),
+                                  ("OBJECK_NURSERY=256k", [], small_env),
+                                  ("--nursery=256k --jit=1", ["--nursery=256k", "--jit=1"], env),
+                                  ("--nursery=256k with OBJECK_GC_STATS=1", ["--nursery=256k"], stats_env)):
+        rc, out, err = run([obr] + flags + [knob_obe], env=run_env, cwd=bin_dir)
+        runs[label] = (rc, out, err)
+        check(f"nursery fixture passes its own checks ({label})",
+              rc == 0 and b"PASS: nursery knob and GC stats" in out and minor_of(out) is not None,
+              detail(rc, out, err))
+
+    default_minor = minor_of(runs["default"][1])
+    for label in ("--nursery=256k", "OBJECK_NURSERY=256k", "--nursery=256k --jit=1"):
+        small_minor = minor_of(runs[label][1])
+        check(f"a 256k nursery runs more minor collections than the default ({label}: "
+              f"{small_minor} vs {default_minor})",
+              small_minor is not None and default_minor is not None and small_minor > default_minor,
+              f"small={small_minor} default={default_minor}")
+    check("the fixture reports the 256k limit as runtime.gc.nursery.capacity",
+          b"nursery capacity=262144" in runs["--nursery=256k"][1], runs["--nursery=256k"][1][-200:])
+
+    rc, out, err = runs["--nursery=256k with OBJECK_GC_STATS=1"]
+    fields = ("minor", "major", "pauses", "pause_p50_us", "pause_p95_us", "pause_max_us",
+              "promoted_objects", "promoted_bytes", "peak_rss_bytes")
+    line = re.search(rb"^\[gc-stats\] (.*)$", err, re.M)
+    values = {}
+    if line:
+        for key, value in re.findall(rb"(\w+)=(-?\d+)", line.group(1)):
+            values[key.decode()] = int(value)
+    check("OBJECK_GC_STATS=1 prints a [gc-stats] line on stderr with every field",
+          line is not None and all(f in values for f in fields), detail(rc, out, err))
+    if line is not None and all(f in values for f in fields):
+        printed_minor = minor_of(out) or 0
+        check("the summary's counts cover what the program saw (minor >= its runtime.gc.minor > 0, "
+              "one pause per collection)",
+              values["minor"] >= printed_minor > 0 and values["pauses"] == values["minor"] + values["major"],
+              str(values))
+        check("the summary's pauses are ordered: 0 <= p50 <= p95 <= max",
+              0 <= values["pause_p50_us"] <= values["pause_p95_us"] <= values["pause_max_us"], str(values))
+        check("the summary reports promoted bytes and a peak RSS",
+              values["promoted_bytes"] > 0 and values["promoted_objects"] > 0 and values["peak_rss_bytes"] > 0,
+              str(values))
+    rc, out, err = runs["default"]
+    check("without OBJECK_GC_STATS there is no summary line (control)", b"[gc-stats]" not in err,
+          err.decode(errors="replace")[-200:])
+
+    # Collection correctness when minor GCs are frequent. The regression runner
+    # cannot pass VM flags per test, so the minor-GC stress fixtures run here, at
+    # two small nursery sizes: which allocation a collection lands on depends on the
+    # size, and obj_size_layout lost objects at 128k and 256k but not at 384k -- a
+    # zero-field object that was the last allocation before a collection (its address
+    # equalled the young offset) and a closure capture copied just before one.
+    for name in NURSERY_STRESS_TESTS:
+        src = os.path.join(SCRIPT_DIR, name + ".obs")
+        dest = os.path.join(SCRIPT_DIR, name + ".obe")
+        cmd = [obc, "-src", src, "-lib", "cipher,collect,xml,json", "-opt", "s3", "-dest", dest]
+        rc, out, err = run(cmd, env=env, cwd=bin_dir)
+        check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            continue
+        for size in NURSERY_STRESS_SIZES:
+            for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+                rc, out, err = run([obr, f"--nursery={size}"] + flags + [dest], env=env, cwd=bin_dir, timeout=600)
+                check(f"{name} passes with --nursery={size} ({label})",
+                      rc == 0 and b"PASS" in out and b"FAIL" not in out, detail(rc, out, err))
+
+
+# Run with small nurseries (check_nursery_and_gc_stats); each prints PASS.
+NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_stress", "gc_minor_closure_capture",
+                        "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end")
+NURSERY_STRESS_SIZES = ("128k", "256k")
+
+# The verifier's report prefix. Not a bare b"gc-verify": its back-off notice
+# "[gc-verify] verification took N% of wall time" is printed by clean runs that
+# are slow enough, and matching it failed them.
+VERIFY_REPORT = b">>> gc-verify:"
+
+
+# Existing GC stress and collection tests that must pass unchanged, and print
+# the same stdout, with the verifier checking every collection.
+VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress", "jit_closure_gc_fixup",
+                      "collect_map_ops", "collect_vector_ops", "collect_hash_ops", "collect_set_ops",
+                      # G12: a closure capture reached only through an old holder
+                      "closure_capture_old_holder_g12",
+                      # Bool[] declared as a byte array in every declaration kind,
+                      # and array captures including Bool[] (B2 wrong memory TYPE)
+                      "gc_bool_array_declaration", "closure_array_param_capture")
+
+# Each injected fault and the report the verifier must stop the program with.
+VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),
+                     ("barrier", b">>> gc-verify: A2 violation"),
+                     # the marked word still points into the nursery range: B3
+                     ("mark", b">>> gc-verify: B3 violation"))
+
+
+def extra_libs(src):
+    libs = "cipher,collect,xml,json"
+    with open(src, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            if line.startswith("# EXTRA_LIBS:"):
+                libs += "," + line.split(":", 1)[1].strip()
+    return libs
+
+
+def verify_section(obc, obr, env, bin_dir):
+    """OBJECK_GC_VERIFY checks every collection against the collector's
+    invariants (core/vm/arch/memory_verify.cpp) and aborts with a report.
+
+    (a) with it on, the GC stress tests and four collection tests still pass
+        and print what they print without it, interpreted and with --jit=1;
+    (b) each OBJECK_GC_VERIFY_INJECT fault makes obr exit non-zero with the
+        verifier's report -- the proof the verifier can fail -- while the same
+        fixture passes with the verifier on and no fault;
+    (c) with the verifier off, an injection request is ignored and the output
+        is unchanged, and a malformed value is refused.
+    """
+    plain = {k: v for k, v in env.items() if not k.startswith("OBJECK_GC_VERIFY")}
+    verify = dict(plain)
+    verify["OBJECK_GC_VERIFY"] = "1"
+
+    def compile_test(name):
+        src = os.path.join(SCRIPT_DIR, name + ".obs")
+        obe = os.path.join(SCRIPT_DIR, name + ".obe")
+        rc, out, err = run([obc, "-src", src, "-lib", extra_libs(src), "-opt", "s3", "-dest", obe],
+                           env=plain, cwd=bin_dir)
+        check(f"{name} compiles", rc == 0 and os.path.exists(obe), (out + err).decode(errors="replace")[-300:])
+        return obe if rc == 0 else None
+
+    for name in VERIFY_CLEAN_TESTS:
+        obe = compile_test(name)
+        if not obe:
+            continue
+        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            rc0, out0, err0 = run([obr] + flags + [obe], env=plain, cwd=bin_dir)
+            rc, out, err = run([obr] + flags + [obe], env=verify, cwd=bin_dir)
+            detail = f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-400:]!r}"
+            check(f"{name} passes under OBJECK_GC_VERIFY=1 ({label})",
+                  rc0 == 0 and rc == 0 and VERIFY_REPORT not in err, detail)
+            check(f"{name} prints the same with the verifier on ({label})", out == out0,
+                  f"off={out0[-160:]!r} on={out[-160:]!r}")
+
+    obe = compile_test("vm_gc_verify_inject")
+    if not obe:
+        return
+    for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+        rc0, out0, err0 = run([obr] + flags + [obe], env=plain, cwd=bin_dir)
+        check(f"injection fixture passes without the verifier ({label})",
+              rc0 == 0 and b"PASS:" in out0, f"rc={rc0} out={out0[-120:]!r}")
+        rc, out, err = run([obr] + flags + [obe], env=verify, cwd=bin_dir)
+        check(f"injection fixture passes with the verifier and no fault ({label})",
+              rc == 0 and out == out0 and VERIFY_REPORT not in err,
+              f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
+        for mode, report in VERIFY_INJECTIONS:
+            injected = dict(verify)
+            injected["OBJECK_GC_VERIFY_INJECT"] = mode
+            rc, out, err = run([obr] + flags + [obe], env=injected, cwd=bin_dir)
+            check(f"OBJECK_GC_VERIFY_INJECT={mode} is caught: non-zero exit and the verifier's report ({label})",
+                  rc != 0 and report in err and b"PASS:" not in out,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-400:]!r}")
+            ignored = dict(plain)
+            ignored["OBJECK_GC_VERIFY_INJECT"] = mode
+            rc, out, err = run([obr] + flags + [obe], env=ignored, cwd=bin_dir)
+            check(f"OBJECK_GC_VERIFY_INJECT={mode} without the verifier changes nothing ({label})",
+                  rc == 0 and out == out0 and VERIFY_REPORT not in err,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
+
+    bad = dict(plain)
+    bad["OBJECK_GC_VERIFY"] = "sometimes"
+    rc, out, err = run([obr, obe], env=bad, cwd=bin_dir)
+    check("OBJECK_GC_VERIFY=sometimes is refused with a message naming what was expected",
+          rc != 0 and b"expected a positive collection period or 'checkmark'" in err,
+          f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
 
 
 def finish():

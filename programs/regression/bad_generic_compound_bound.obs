@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Concrete class: 'OnlyNamed' is incompatible with backing class/interface 'Aged'
 #~
 A concrete type argument that satisfies only one of a compound bound (T : A & B)
 must be rejected. OnlyNamed implements Named but not Aged, so Box<OnlyNamed> is

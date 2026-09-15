@@ -52,7 +52,9 @@ class SafepointTest {
     a->Execute(Nil);
     count := Spin(limit);
     a->Join();
-    "  spin iterations: {$count} of {$limit}, allocator total={$@total}"->PrintLine();
+    # the iteration count depends on thread timing: stderr, so stdout stays
+    # comparable for run_differential.py
+    "  spin iterations: {$count} of {$limit}, allocator total={$@total}"->ErrorLine();
     if(@total <> 899997) {
       "FAIL: allocator total"->PrintLine();
       Runtime->Exit(1);

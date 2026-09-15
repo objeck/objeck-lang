@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Expected expression
 class BadKeywordAsVar {
     function : Main(args : String[]) ~ Nil {
         label := 5;

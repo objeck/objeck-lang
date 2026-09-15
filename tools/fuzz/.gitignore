@@ -1,0 +1,4 @@
+# run_fuzz.py work and findings directories (reduced repros go to findings/)
+out/
+__pycache__/
+*.obe

@@ -1,0 +1,100 @@
+#~
+Guards G5: a conservative root that points INTO a young object must not have its
+"class pointer" dereferenced before that pointer is known to be a real class.
+
+Operand stacks and JIT temp windows are scanned conservatively. For a word inside the
+nursery, GetClassMapping read mem[TYPE] and, when it equalled NIL_TYPE (1000), returned
+mem[SIZE_OR_CLS] as a StackClass*; IsYoungObjectStart then called
+GetInstanceMemorySize() through it. A plain Int that lands three words into a young
+object whose first two fields hold 1000 and a small number is exactly that shape, and
+the collector faulted on the bogus class pointer.
+
+GetInstanceID is the object's address, so this test builds such an interior address,
+keeps it on the operand stack while Churn forces a minor GC, and repeats.
+~#
+class GcConservativeBadClass {
+	function : Main(args : String[]) ~ Nil {
+		start := Minors();
+		sum := 0;
+		rounds := 6;
+		for(round := 0; round < rounds; round += 1;) {
+			fake := Fake->New();
+			# three words in: mem[TYPE] = @a (1000), mem[SIZE_OR_CLS] = @b, mem[MARKED_FLAG] = @c
+			interior := fake->GetInstanceID() + 24;
+			sum += Hold(interior, Churn(1), interior) - interior * 2;
+			if(fake->Get() <> 16) {
+				"FAIL: fake object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+
+		if(Minors() - start < rounds) {
+			"FAIL: churn did not run a minor GC per round"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		if(sum = 0) {
+			"PASS: conservative interior word with a fake class pointer ignored"->PrintLine();
+		}
+		else {
+			"FAIL: operand-stack values changed across GC"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Hold(a : Int, b : Int, c : Int) ~ Int {
+		return a + b + c;
+	}
+
+	# allocates about 'n' nurseries' worth of short-lived objects; returns 0.
+	# A Blob is 288 bytes of nursery (32 fields, three header words, the size
+	# word), so 520000 of them are about 150MB against the 128MB nursery
+	function : Churn(n : Int) ~ Int {
+		for(j := 0; j < n * 520000; j += 1;) {
+			tmp := Blob->New(j);
+			if(tmp->Get() <> j) {
+				"FAIL: churn object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+		return 0;
+	}
+
+	function : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+}
+
+class Fake {
+	@a : Int;
+	@b : Int;
+	@c : Int;
+	@d : Int;
+
+	New() {
+		@a := 1000;
+		@b := 16;
+		@c := 0;
+		@d := 0;
+	}
+
+	method : public : Get() ~ Int {
+		return @b;
+	}
+}
+
+class Blob {
+	@a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+	@b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+	@c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+	@d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+	New(v : Int) {
+		@a0 := v;
+		@d7 := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @d7;
+	}
+}

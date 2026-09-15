@@ -33,8 +33,10 @@
 
 
 #include "../common.h"
+#include <algorithm>
 #include <random>
 #include <atomic>
+#include <chrono>
 #ifndef _WIN32
 #include <sys/mman.h>
 #endif
@@ -70,6 +72,10 @@
 // Young generation bump allocator sizing
 #define YOUNG_REGION_SIZE  (128 * 1024 * 1024)  // 128MB young region
 #define DIRTY_LIST_MAX     65536               // max dirty old-gen objects tracked
+
+// Peak resident set size (peak working set on Windows) of this process in bytes,
+// 0 if unavailable. Defined in common.cpp beside the current-RSS reader.
+size_t GetProcessPeakResidentBytes();
 
 // used to monitor the state of active stack frames
 struct StackFrameMonitor {
@@ -132,9 +138,14 @@ class MemoryManager {
   // having to be released again for the ClearFreeMemory call it guards.
   static std::atomic<size_t> free_memory_cache_size;
 
-  // Young generation: contiguous bump-allocated region
+  // Young generation: contiguous bump-allocated region. YOUNG_REGION_SIZE bytes are
+  // always reserved; young_region_size is the usable LIMIT (--nursery /
+  // OBJECK_NURSERY), which every bump path (AllocateObject, the JIT inline
+  // allocator) compares against. The collector walks [0, young_offset), and
+  // young_offset never passes the limit, so nothing else depends on the limit.
   static uint8_t* young_region;
   static size_t young_region_size;
+  static size_t nursery_size_request;  // 0 = YOUNG_REGION_SIZE
   static std::atomic<size_t> young_offset;
 
   // Old generation: individually allocated, tracked in set
@@ -203,6 +214,26 @@ class MemoryManager {
   static std::atomic<long long> gc_pause_total_us;
   static std::atomic<size_t> gc_promoted_last;
   static std::atomic<size_t> gc_promoted_total;
+  // Real bytes copied out of the nursery (headers included). Reporting only: the
+  // GC triggers keep counting allocation_size/old_allocation_size as before.
+  static std::atomic<size_t> gc_promoted_bytes_total;
+
+  // OBJECK_GC_STATS=1: every collection's pause, measured from the moment the
+  // collecting thread owns marked_sweep_lock (so the stop-the-world handshake and
+  // the minor dirty-list scan are inside it) until the world is resumed. Kept in
+  // a fixed buffer under gc_stats_lock -- a lock the collector never waits on
+  // anything else while holding -- and summarized to stderr at exit.
+  static const size_t GC_STATS_SAMPLE_MAX = 1 << 20;
+  static bool gc_stats_enabled;
+  static uint32_t* gc_pause_samples;
+  static size_t gc_pause_sample_count;
+#ifdef _WIN32
+  static CRITICAL_SECTION gc_stats_lock;
+#else
+  static pthread_mutex_t gc_stats_lock;
+#endif
+  static void RecordPause(const std::chrono::steady_clock::time_point& start);
+  static void PrintGcStats();
   static std::atomic<size_t> gc_alloc_at_last;
   static std::atomic<long> gc_contention;
 
@@ -231,14 +262,41 @@ class MemoryManager {
   // this can only ever reject non-pointers:
   //   - 8-byte aligned. A real object's mem is young_region plus a whole number
   //     of words, and the value that crashed here ended in 0xec.
-  //   - at least one word in, because IsOldGen and the header reads address
-  //     mem[MARKED_FLAG], which is mem[-1].
+  //   - at least four words in (the size word plus the three header words every
+  //     object starts with), because callers read mem[TYPE], mem[SIZE_OR_CLS] and
+  //     mem[MARKED_FLAG], down to mem[-3], before anything else is known.
   static inline bool IsYoungCandidate(size_t* mem) {
     uint8_t* p = (uint8_t*)mem;
     return ((uintptr_t)p & (sizeof(size_t) - 1)) == 0 &&
-           p >= young_region + sizeof(size_t) &&
+           p >= young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE) &&
            p < young_region + young_offset.load(std::memory_order_acquire);
   }
+
+  // Every StackClass* the program loaded, sorted; built once in Initialize and read-only
+  // afterwards. A conservative candidate's class word is checked against it before it
+  // is dereferenced (G5).
+  static std::vector<StackClass*> class_ptrs;
+
+  static inline bool IsClassPointer(StackClass* cls) {
+    return cls && std::binary_search(class_ptrs.begin(), class_ptrs.end(), cls);
+  }
+
+  // Bytes an object of inst_size field bytes occupies after its size word: the header
+  // words plus its fields, and never fewer than ONE field word. An object's address is
+  // the word after its header, so a zero-field object with no field word would point
+  // one past its own block. When that object is the last one in the nursery its address
+  // equals young_region + young_offset, which every half-open young test (IsYoung,
+  // IsYoungCandidate, ForwardedAddr, the write barriers) rejects: the collector never
+  // marked, promoted or forwarded it, reset the nursery under it, and the next
+  // allocation to reach the end overwrote its header ("zero-field object lost its
+  // class", reproducible with --nursery=128k). The pad word keeps every object's
+  // address strictly inside its block. AllocateObject, the JIT inline allocator and
+  // IsYoungObjectStart must all size objects with this one function.
+ public:
+  static inline size_t ObjectBlockSize(size_t inst_size) {
+    return (inst_size ? inst_size : sizeof(size_t)) + sizeof(size_t) * EXTRA_BUF_SIZE;
+  }
+ private:
 
   // Is this young candidate a real object's start? The nursery holds objects only
   // (AllocateArray always allocates in the old generation), and AllocateObject writes
@@ -247,15 +305,17 @@ class MemoryManager {
   // OR GC_MARK_BIT into the middle of another object (#816: a TreeNode's @right became
   // 1). Call only for an address IsYoungCandidate accepted.
   static inline bool IsYoungObjectStart(size_t* mem, StackClass* cls) {
-    if(!cls || (uint8_t*)mem < young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE)) {
+    // cls came from the candidate's own SIZE_OR_CLS word, so it is only a number
+    // until IsClassPointer says otherwise: an interior word whose TYPE slot happens
+    // to read NIL_TYPE hands over an arbitrary value (G5).
+    if(!IsClassPointer(cls) || (uint8_t*)mem < young_region + sizeof(size_t) * (1 + EXTRA_BUF_SIZE)) {
       return false;
     }
     const long inst_size = cls->GetInstanceMemorySize();
     if(inst_size < 0) {
       return false;
     }
-    const size_t alloc_size = (size_t)inst_size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
-    return mem[-(long)(1 + EXTRA_BUF_SIZE)] == alloc_size;
+    return mem[-(long)(1 + EXTRA_BUF_SIZE)] == ObjectBlockSize((size_t)inst_size);
   }
 
   static inline bool IsAllocated(size_t* mem) {
@@ -305,12 +365,29 @@ class MemoryManager {
     }
   }
 
+  // Relocate a frame's self (mem[0]) only if its object was promoted; see memory.cpp.
+  static void FixupSelf(size_t* mem, StackMethod* method);
+
   static void CollectMinor(size_t* op_stack, size_t stack_pos);
   static void CollectMajor(size_t* op_stack, size_t stack_pos);
   static void ScanDirtyObject(size_t* mem);
   static void FixupObject(size_t* mem);
   static void FixupMemory(size_t* mem, StackDclr** dclrs, const long dcls_size);
   static void FixupRoots(size_t* op_stack, size_t stack_pos);
+
+  // Heap verifier (OBJECK_GC_VERIFY, see memory_verify.cpp). Both stay 0 unless the
+  // variable is set, so each hook in the collector costs one predictable branch.
+  friend class GcVerifier;
+  enum GcVerifyInject { GC_VERIFY_INJECT_NONE = 0, GC_VERIFY_INJECT_FIELD, GC_VERIFY_INJECT_BARRIER, GC_VERIFY_INJECT_MARK };
+  static int gc_verify;
+  static int gc_verify_inject;
+  static void VerifyInitialize();
+  static void VerifyBeforeCollection(bool minor);
+  static void VerifyAfterMark();
+  static void VerifyNotePromoted(std::vector<size_t*>& promoted);
+  static void VerifyAfterCollection(bool minor);
+  static void VerifyUnforwarded(size_t* value);
+  static bool VerifySkipBarrier(size_t* target_obj);
 
 #ifdef _MEM_LOGGING
   static ofstream mem_logger;
@@ -351,7 +428,9 @@ class MemoryManager {
 #ifndef _GC_SERIAL
       MUTEX_UNLOCK(&allocated_lock);
 #endif
-      return (StackClass*)mem[SIZE_OR_CLS];
+      // A young candidate's class word is unverified; return only a real class (G5)
+      StackClass* cls = (StackClass*)mem[SIZE_OR_CLS];
+      return IsClassPointer(cls) ? cls : nullptr;
     }
 #ifndef _GC_SERIAL
     MUTEX_UNLOCK(&allocated_lock);
@@ -381,6 +460,9 @@ class MemoryManager {
   
  public:
   static void Initialize(StackProgram* p, size_t m);
+  // Nursery limit for the next Initialize; the caller has validated it
+  // (vm_options.h: 64k..128m). 0 restores the default.
+  static void SetNurserySize(size_t size) { nursery_size_request = size; }
 
   // Cooperative stop-the-world API (see field comments above).
   static void RegisterMutator();    // a thread begins executing bytecode
@@ -428,6 +510,7 @@ class MemoryManager {
   }
   static size_t GetPromotedLast()      { return gc_promoted_last.load(std::memory_order_relaxed); }
   static size_t GetPromotedTotal()     { return gc_promoted_total.load(std::memory_order_relaxed); }
+  static size_t GetPromotedBytes()     { return gc_promoted_bytes_total.load(std::memory_order_relaxed); }
   static size_t GetAllocSinceGc() {
     const size_t now = allocation_size.load(std::memory_order_relaxed);
     const size_t at = gc_alloc_at_last.load(std::memory_order_relaxed);
@@ -467,7 +550,7 @@ class MemoryManager {
 #ifdef _WIN32
       VirtualFree(young_region, 0, MEM_RELEASE);
 #else
-      munmap(young_region, young_region_size);
+      munmap(young_region, YOUNG_REGION_SIZE);  // the reservation, not the limit
 #endif
       young_region = nullptr;
     }
@@ -551,6 +634,8 @@ class MemoryManager {
 #endif
     if(!(flags & GC_OLD_BIT)) return;      // young target, skip
     if(flags & GC_RSET_BIT) return;        // already tracked
+    // OBJECK_GC_VERIFY_INJECT=barrier: 0 unless the verifier is on
+    if(gc_verify_inject == GC_VERIFY_INJECT_BARRIER && VerifySkipBarrier(target_obj)) return;
 #ifdef _WIN32
     _InterlockedOr64((volatile LONG64*)&target_obj[MARKED_FLAG], (LONG64)GC_RSET_BIT);
 #else

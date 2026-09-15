@@ -557,7 +557,17 @@ namespace backend {
     std::vector<IntermediateDeclaration*> GetParameters() {
       return declarations;
     }
-    
+
+    // Number of local slots the declarations occupy (not counting the and/or
+    // slot 0). A func-ref takes two slots, so this is not GetParameters().size().
+    int GetSlotCount() {
+      int slots = 0;
+      for(size_t i = 0; i < declarations.size(); ++i) {
+        slots += declarations[i]->GetType() == instructions::FUNC_PARM ? 2 : 1;
+      }
+      return slots;
+    }
+
     void Debug(bool has_and_or) {
       if(declarations.size() > 0) {
         size_t index = has_and_or ? 1 : 0;

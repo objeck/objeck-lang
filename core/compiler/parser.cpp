@@ -1336,6 +1336,29 @@ Class* Parser::ParseInterface(const std::wstring &bundle_name, int depth)
 }
 
 /****************************
+ * True when a string literal the scanner rejected holds a lambda `\(` inside a
+ * `{$ ... }` interpolation, so the error can name the real problem instead of
+ * reporting a bad escape
+ ****************************/
+static bool HasLambdaInInterpolation(const std::wstring& str)
+{
+  bool in_interpolation = false;
+  for(size_t i = 0; i + 1 < str.size(); ++i) {
+    if(str[i] == L'{' && str[i + 1] == L'$') {
+      in_interpolation = true;
+    }
+    else if(str[i] == L'}') {
+      in_interpolation = false;
+    }
+    else if(in_interpolation && str[i] == L'\\' && str[i + 1] == L'(') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/****************************
  * Parses lambda expression
  ****************************/
 Lambda* Parser::ParseLambda(int depth) {
@@ -1361,19 +1384,11 @@ Lambda* Parser::ParseLambda(int depth) {
     // from the bare form `\(<params>) => body` (type inferred from context).
     // Both start with `(...)`; in the typed form the matching `)` is followed
     // by `~` (the function type's return marker), in the bare form it is not.
-    int scan = 1;
-    int paren_depth = 1;
-    while(paren_depth > 0 && !Match(TOKEN_END_OF_STREAM, scan)) {
-      if(Match(TOKEN_OPEN_PAREN, scan)) {
-        paren_depth++;
-      }
-      else if(Match(TOKEN_CLOSED_PAREN, scan)) {
-        paren_depth--;
-      }
-      scan++;
-    }
-
-    if(Match(TOKEN_TILDE, scan)) {
+    // The matching `)` can be any distance away. The scanner only buffers
+    // LOOK_AHEAD tokens (GetToken() past that is nullptr, which crashed obc,
+    // and a fixed wider window misread long bare parameter lists as typed),
+    // so the scanner peeks past its buffer and restores itself.
+    if(scanner->PeekAfterParens(1) == TOKEN_TILDE) {
       // explicit function-type signature
       type = ParseType(depth + 1);
 
@@ -5688,7 +5703,12 @@ StaticArray* Parser::ParseStaticArray(int depth) {
                                     break;
 
         case TOKEN_BAD_CHAR_STRING_LIT:
-          ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
+          if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
+            ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+          }
+          else {
+            ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
+          }
           NextToken();
           break;
 
@@ -6785,7 +6805,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_BAD_CHAR_STRING_LIT:
-      ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
+      if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
+        ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+      }
+      else {
+        ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
+      }
       NextToken();
       break;
 
@@ -7022,8 +7047,18 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
       }
       NextToken();
 
+      // an enum or consts item receiver, glued to 'C#R' by the expression parser:
+      // 'C->R->As(Int)->ToString()'. Build the same enum-call head the statement
+      // parser does, so the chain dispatches on the item's value; as a variable
+      // the item was an undeclared local and the call read no receiver.
+      const size_t enum_mark = ident.find(L'#');
+      if(Match(TOKEN_ASSESSOR) && enum_mark != std::wstring::npos && variable) {
+        method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              ident.substr(0, enum_mark), ident.substr(enum_mark + 1));
+        method_call->SetCastType(variable->GetCastType(), false);
+      }
       // subsequent method calls
-      if(Match(TOKEN_ASSESSOR)) {
+      else if(Match(TOKEN_ASSESSOR)) {
         method_call = ParseMethodCall(variable, depth + 1);
         method_call->SetCastType(variable->GetCastType(), false);
       }

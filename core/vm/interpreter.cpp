@@ -177,7 +177,8 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
           break;
 
         case -4:
-          std::wcerr << L">>> Divide by zero in native JIT code <<<" << std::endl;
+          // the same text the interpreter prints (S4)
+          std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
           break;
         }
         StackErrorUnwind(method);
@@ -271,23 +272,24 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       (*stack_frame)->mem[instr->GetOperand() + 1] = op_stack[(*stack_pos) - 1];
       continue;
 
+    // integer semantics (wrapping, masked shifts) live in shared/int_ops.h
     case ADD_INT: {
       const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] + (INT64_VALUE)op_stack[sp - 2]);
+      op_stack[sp - 2] = (size_t)objeck_int::Add((INT64_VALUE)op_stack[sp - 1], (INT64_VALUE)op_stack[sp - 2]);
       *stack_pos = sp - 1;
       continue;
     }
 
     case SUB_INT: {
       const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] - (INT64_VALUE)op_stack[sp - 2]);
+      op_stack[sp - 2] = (size_t)objeck_int::Sub((INT64_VALUE)op_stack[sp - 1], (INT64_VALUE)op_stack[sp - 2]);
       *stack_pos = sp - 1;
       continue;
     }
 
     case MUL_INT: {
       const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] * (INT64_VALUE)op_stack[sp - 2]);
+      op_stack[sp - 2] = (size_t)objeck_int::Mul((INT64_VALUE)op_stack[sp - 1], (INT64_VALUE)op_stack[sp - 2]);
       *stack_pos = sp - 1;
       continue;
     }
@@ -371,13 +373,13 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
     // shift ops
     case SHL_INT: {
       const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] << (INT64_VALUE)op_stack[sp - 2]);
+      op_stack[sp - 2] = (size_t)objeck_int::Shl((INT64_VALUE)op_stack[sp - 1], (INT64_VALUE)op_stack[sp - 2]);
       *stack_pos = sp - 1;
       continue;
     }
     case SHR_INT: {
       const size_t sp = *stack_pos;
-      op_stack[sp - 2] = (size_t)((INT64_VALUE)op_stack[sp - 1] >> (INT64_VALUE)op_stack[sp - 2]);
+      op_stack[sp - 2] = (size_t)objeck_int::Sar((INT64_VALUE)op_stack[sp - 1], (INT64_VALUE)op_stack[sp - 2]);
       *stack_pos = sp - 1;
       continue;
     }
@@ -843,7 +845,7 @@ void StackInterpreter::ShlInt(size_t* &op_stack, size_t* &stack_pos)
   const size_t sp = *stack_pos;
   const INT64_VALUE left = static_cast<INT64_VALUE>(op_stack[sp - 1]);
   const INT64_VALUE right = static_cast<INT64_VALUE>(op_stack[sp - 2]);
-  op_stack[sp - 2] = left << right;
+  op_stack[sp - 2] = objeck_int::Shl(left, right);
   *stack_pos = sp - 1;
 }
 
@@ -855,7 +857,7 @@ void StackInterpreter::ShrInt(size_t* &op_stack, size_t* &stack_pos)
   const size_t sp = *stack_pos;
   const INT64_VALUE left = static_cast<INT64_VALUE>(op_stack[sp - 1]);
   const INT64_VALUE right = static_cast<INT64_VALUE>(op_stack[sp - 2]);
-  op_stack[sp - 2] = left >> right;
+  op_stack[sp - 2] = objeck_int::Sar(left, right);
   *stack_pos = sp - 1;
 }
 
@@ -922,7 +924,7 @@ void StackInterpreter::AddInt(size_t* &op_stack, size_t* &stack_pos)
   const size_t sp = *stack_pos;  // Cache stack position locally
   const INT64_VALUE left = static_cast<INT64_VALUE>(op_stack[sp - 1]);
   const INT64_VALUE right = static_cast<INT64_VALUE>(op_stack[sp - 2]);
-  op_stack[sp - 2] = left + right;
+  op_stack[sp - 2] = objeck_int::Add(left, right);
   *stack_pos = sp - 1;
 }
 
@@ -946,7 +948,7 @@ void StackInterpreter::SubInt(size_t* &op_stack, size_t* &stack_pos)
   const size_t sp = *stack_pos;  // Cache stack position locally
   const INT64_VALUE left = static_cast<INT64_VALUE>(op_stack[sp - 1]);
   const INT64_VALUE right = static_cast<INT64_VALUE>(op_stack[sp - 2]);
-  op_stack[sp - 2] = left - right;
+  op_stack[sp - 2] = objeck_int::Sub(left, right);
   *stack_pos = sp - 1;
 }
 
@@ -970,7 +972,7 @@ void StackInterpreter::MulInt(size_t* &op_stack, size_t* &stack_pos)
   const size_t sp = *stack_pos;  // Cache stack position locally
   const INT64_VALUE left = static_cast<INT64_VALUE>(op_stack[sp - 1]);
   const INT64_VALUE right = static_cast<INT64_VALUE>(op_stack[sp - 2]);
-  op_stack[sp - 2] = left * right;
+  op_stack[sp - 2] = objeck_int::Mul(left, right);
   *stack_pos = sp - 1;
 }
 
@@ -986,7 +988,7 @@ void StackInterpreter::DivInt(size_t* &op_stack, size_t* &stack_pos)
     if(TryErrorRecovery(stack_pos)) {
       return;
     }
-    std::wcerr << L">>> Divide by zero <<<" << std::endl;
+    std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
     StackErrorUnwind();
 #ifdef _NO_HALT
     halt = true;
@@ -995,7 +997,8 @@ void StackInterpreter::DivInt(size_t* &op_stack, size_t* &stack_pos)
     exit(1);
 #endif
   }
-  op_stack[sp - 2] = left / right;
+  // MIN / -1 wraps to MIN instead of faulting (shared/int_ops.h)
+  op_stack[sp - 2] = objeck_int::Div(left, right);
   *stack_pos = sp - 1;
 }
 
@@ -1023,7 +1026,7 @@ void StackInterpreter::DivFloat(size_t* &op_stack, size_t* &stack_pos)
     if(TryErrorRecovery(stack_pos)) {
       return;
     }
-    std::wcerr << L">>> Divide by zero <<<" << std::endl;
+    std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
     StackErrorUnwind();
 #ifdef _NO_HALT
     halt = true;
@@ -1050,7 +1053,7 @@ void StackInterpreter::ModInt(size_t* &op_stack, size_t* &stack_pos)
     if(TryErrorRecovery(stack_pos)) {
       return;
     }
-    std::wcerr << L">>> Divide by zero <<<" << std::endl;
+    std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
     StackErrorUnwind();
 #ifdef _NO_HALT
     halt = true;
@@ -1059,7 +1062,8 @@ void StackInterpreter::ModInt(size_t* &op_stack, size_t* &stack_pos)
     exit(1);
 #endif
   }
-  op_stack[sp - 2] = left % right;
+  // MIN % -1 is 0 instead of faulting (shared/int_ops.h)
+  op_stack[sp - 2] = objeck_int::Mod(left, right);
   *stack_pos = sp - 1;
 }
 
@@ -2531,7 +2535,8 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
       break;
 
     case -4:
-      std::wcerr << L">>> Divide by zero in native JIT code <<<" << std::endl;
+      // the same text the interpreter prints (S4)
+      std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
       break;
     }
     StackErrorUnwind(called);
@@ -3408,4 +3413,11 @@ void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
 void Runtime::SetJitAutoThreshold(long threshold)
 {
   JitAutoThresholdOverride() = threshold;
+}
+
+// --nursery / OBJECK_NURSERY, validated by ParseVmOptions. Applied when the
+// interpreter calls MemoryManager::Initialize.
+void Runtime::SetNurserySize(size_t size)
+{
+  MemoryManager::SetNurserySize(size);
 }

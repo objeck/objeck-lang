@@ -1423,7 +1423,8 @@ void JitAmd64::ProcessLoad(StackInstr* instr) {
 // Returns code offset of the success-path jmp (rel32) for the caller to backpatch.
 long JitAmd64::EmitNewObjectInline(StackClass* cls) {
   const long size = cls->GetInstanceMemorySize();
-  const size_t alloc_size = (size_t)size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
+  // same block size as AllocateObject: a zero-field class gets one pad word
+  const size_t alloc_size = MemoryManager::ObjectBlockSize((size_t)size);
   const size_t total_size = alloc_size + sizeof(size_t);
   const size_t aligned_total = (total_size + sizeof(size_t) - 1) & ~((size_t)(sizeof(size_t) - 1));
   const int64_t nil_type = instructions::MemoryType::NIL_TYPE;
@@ -2541,43 +2542,58 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-  switch(left->GetType()) {
+  // A func-ref is two words, and each is stored by its OWN working-stack
+  // shape. The two routinely differ: a closure built in this method is
+  // LOAD_INT_VAR (closure memory, a frame slot or a register) under
+  // LOAD_INT_LIT (the packed method id, an immediate). Every case used to
+  // assume the second word had the first word's shape, so the immediate case
+  // wrote the closure slot's frame OFFSET (e.g. -120 = 0xff..ff88) as the
+  // closure pointer, and the first call of the lambda read its captures
+  // through it -> access violation (jit_funcref_store_mixed_words.obs).
+  if(is_func_var) {
+    RegInstr* left2 = working_stack.front();
+    working_stack.pop_front();
+    const long offsets[2] = { instr->GetOperand3(), instr->GetOperand3() + (long)sizeof(size_t) };
+    RegInstr* words[2] = { left, left2 };
+    for(int w = 0; w < 2; ++w) {
+      RegInstr* word = words[w];
+      switch(word->GetType()) {
+      case IMM_INT:
+        move_imm_mem(word->GetOperand(), offsets[w], dest);
+        break;
+
+      case MEM_INT: {
+        RegisterHolder* holder = GetRegister();
+        move_mem_reg((long)word->GetOperand(), RBP, holder->GetRegister());
+        move_reg_mem(holder->GetRegister(), offsets[w], dest);
+        ReleaseRegister(holder);
+      }
+        break;
+
+      case REG_INT:
+        move_reg_mem(word->GetRegister()->GetRegister(), offsets[w], dest);
+        ReleaseRegister(word->GetRegister());
+        break;
+
+      default:
+        compile_success = false;
+        break;
+      }
+    }
+    delete left2;
+    left2 = nullptr;
+  }
+  else switch(left->GetType()) {
   case IMM_INT:
-    if(is_func_var) {
-      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_imm_mem(left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
-    }
+    move_imm_mem(left->GetOperand(), instr->GetOperand3(), dest);
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    if(is_func_var) {
-      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_mem_reg((long)left2->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
+    move_mem_reg((long)left->GetOperand(), RBP, holder->GetRegister());
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // cache the register for local stores, release otherwise
-    if(is_local && !is_func_var) {
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {
@@ -2588,24 +2604,9 @@ void JitAmd64::ProcessStore(StackInstr* instr) {
 
   case REG_INT: {
     RegisterHolder* holder = left->GetRegister();
-    if(is_func_var) {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      RegisterHolder* holder2  = left2->GetRegister();
-
-      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-      ReleaseRegister(holder2);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
     // cache the register for local stores, release otherwise
-    if(is_local && !is_func_var) {
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {
@@ -3122,28 +3123,29 @@ RegInstr* JitAmd64::ProcessIntFold(int64_t left_imm, int64_t right_imm, Instruct
   case OR_INT:
     return new RegInstr(IMM_INT, left_imm | right_imm);
     
+  // shared/int_ops.h: the interpreter's semantics, so a fold cannot differ
   case ADD_INT:
-    return new RegInstr(IMM_INT, left_imm + right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Add(left_imm, right_imm));
+
   case SUB_INT:
-    return new RegInstr(IMM_INT, left_imm - right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Sub(left_imm, right_imm));
+
   case MUL_INT:
-    return new RegInstr(IMM_INT, left_imm * right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Mul(left_imm, right_imm));
+
   case DIV_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm / right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Div(left_imm, right_imm));
 
   case MOD_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm % right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Mod(left_imm, right_imm));
 
   case SHL_INT:
-    return new RegInstr(IMM_INT, left_imm << right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Shl(left_imm, right_imm));
 
   case SHR_INT:
-    return new RegInstr(IMM_INT, left_imm >> right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Sar(left_imm, right_imm));
 
   case BIT_AND_INT:
     return new RegInstr(IMM_INT, left_imm & right_imm);
@@ -6236,24 +6238,77 @@ void JitAmd64::div_imm_reg(int64_t imm, Register reg, bool is_mod) {
     return;
   }
 
+  // x / -1 is a negation (wrapping, so MIN / -1 = MIN) and x % -1 is 0; idiv
+  // would fault on INT64_MIN (shared/int_ops.h)
+  if(imm == -1) {
+    if(is_mod) {
+      xor_reg_reg(reg, reg);
+    }
+    else {
+      neg_reg(reg);
+    }
+    return;
+  }
+
   // Every other non-zero constant: multiply by its magic number instead of
   // idiv (10-20 cycles of latency against 3). The two constant divisions in
-  // the assessment's integer loop were 85% of its time. -1 and 0 keep the
-  // idiv path: -1 so INT64_MIN / -1 behaves exactly as the interpreter's
-  // C++ division does, 0 so the runtime check fires.
-  if(imm != 0 && imm != -1) {
+  // the assessment's integer loop were 85% of its time. 0 keeps the idiv
+  // path so the runtime check fires.
+  if(imm != 0) {
     EmitMagicDivision(imm, reg, is_mod);
     return;
   }
   RegisterHolder* imm_holder = GetRegister();
   move_imm_reg(imm, imm_holder->GetRegister());
-  div_reg_reg(imm_holder->GetRegister(), reg, is_mod, imm != 0);
+  div_reg_reg(imm_holder->GetRegister(), reg, is_mod, false);
   ReleaseRegister(imm_holder);
+}
+
+/**
+ * A runtime divisor of -1 skips idiv, which faults on INT64_MIN / -1: the flags
+ * hold the compare against -1 on entry; this emits jne over the negation (/)
+ * or clear (%) of dest and a jmp past the idiv that follows. Returns the jmp's
+ * displacement position for PatchDivMinusOneJump.
+ */
+long JitAmd64::EmitDivMinusOneFastPath(Register dest, bool is_mod) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [jne <idiv>]" << std::endl;
+#endif
+  AddMachineCode(0x0f);
+  AddMachineCode(0x85);
+  const long jne_patch = code_index;
+  AddImm(0);
+
+  if(is_mod) {
+    xor_reg_reg(dest, dest);
+  }
+  else {
+    neg_reg(dest);
+  }
+
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [jmp <done>]" << std::endl;
+#endif
+  AddMachineCode(0xe9);
+  const long done_patch = code_index;
+  AddImm(0);
+
+  const int32_t jne_offset = (int32_t)(code_index - (jne_patch + 4));
+  memcpy(&code[(size_t)jne_patch], &jne_offset, 4);
+
+  return done_patch;
+}
+
+void JitAmd64::PatchDivMinusOneJump(long done_patch) {
+  const int32_t done_offset = (int32_t)(code_index - (done_patch + 4));
+  memcpy(&code[(size_t)done_patch], &done_offset, 4);
 }
 
 void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod) {
   CheckDivideByZero(offset, src);
-  
+  cmp_imm_mem(offset, src, -1);
+  const long done_patch = EmitDivMinusOneFastPath(dest, is_mod);
+
   if(is_mod) {
     if(dest != RDX) {
       move_reg_mem(RDX, TMP_REG_1, RBP);
@@ -6309,6 +6364,8 @@ void JitAmd64::div_mem_reg(long offset, Register src, Register dest, bool is_mod
       move_mem_reg(TMP_REG_1, RBP, RDX);
     }
   }
+
+  PatchDivMinusOneJump(done_patch);
 }
 
 void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_nonzero) {
@@ -6317,6 +6374,8 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
   if(!src_nonzero) {
     CheckDivideByZero(src);
   }
+  cmp_imm_reg(-1, src);
+  const long done_patch = EmitDivMinusOneFastPath(dest, is_mod);
 
   // idiv clobbers RAX and RDX. They were saved to the spill slots and restored
   // unconditionally -- four memory operations per division whether or not
@@ -6390,6 +6449,8 @@ void JitAmd64::div_reg_reg(Register src, Register dest, bool is_mod, bool src_no
   if(save_rdx && dest != RDX) {
     move_mem_reg(TMP_REG_1, RBP, RDX);
   }
+
+  PatchDivMinusOneJump(done_patch);
 }
 
 void JitAmd64::inc_reg(Register dest) {
@@ -6441,6 +6502,8 @@ void JitAmd64::inc_mem(long offset, Register dest) {
 }
 
 void JitAmd64::shl_imm_reg(int64_t value, Register dest) {
+  // shift counts are taken modulo 64 (shared/int_ops.h)
+  value &= 63;
   if(value == 1) {
     // SHL r64, 1: REX.W + D1 /4 (3 bytes vs 4)
     AddMachineCode(B(dest));
@@ -6514,6 +6577,7 @@ void JitAmd64::shl_mem_reg(long offset, Register src, Register dest)
 }
 
 void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
+  value &= 63;
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xe8;
@@ -6527,6 +6591,7 @@ void JitAmd64::shr_imm_reg(int64_t value, Register dest) {
 }
 
 void JitAmd64::sar_imm_reg(int64_t value, Register dest) {
+  value &= 63;
   AddMachineCode(B(dest));
   AddMachineCode(0xc1);
   unsigned char code = 0xf8;                  // /7 (SAR) in the reg field
@@ -6936,9 +7001,22 @@ void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  // RXB(reg, base): 'dest' is the ModRM reg field, 'src' the base
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x23);
   EmitModRMDisp(ModRM(src, dest), offset);
+}
+
+// negq: REX.W F7 /3
+void JitAmd64::neg_reg(Register reg) {
+#ifdef _DEBUG_JIT
+  std::wcout << L"  " << (++instr_count) << L": [negq %" << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+  AddMachineCode(B(reg));
+  AddMachineCode(0xf7);
+  unsigned char code = 0xd8;
+  RegisterEncode3(code, 5, reg);
+  AddMachineCode(code);
 }
 
 // TODO: 64-bit literal operation for Windows
@@ -7015,7 +7093,8 @@ void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  // RXB(reg, base): 'dest' is the ModRM reg field, 'src' the base
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0b);
   EmitModRMDisp(ModRM(src, dest), offset);
 }
@@ -7083,7 +7162,11 @@ void JitAmd64::xor_mem_reg(long offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  // RXB(reg, base): 'dest' is the ModRM reg field, 'src' the base. The
+  // arguments were swapped here and in and_mem_reg/or_mem_reg: with an R8-R15
+  // destination REX.R was dropped (the result landed in RAX-RDI) and REX.B
+  // turned the RBP base into R13, a pinned loop local.
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x33);
   EmitModRMDisp(ModRM(src, dest), offset);
 }
@@ -7898,6 +7981,7 @@ void JitAmd64::ProcessInlineMethod(StackMethod* callee, [[maybe_unused]] StackIn
   skip_jump = false;
   is_inlining = true;
   inline_callee = callee;
+  inlined_callees.push_back(callee);
 
   ProcessInstructions();
 
@@ -8113,6 +8197,7 @@ bool JitAmd64::Compile(StackMethod* cm)
     method_pins_float = false;
     is_inlining = false;
     inline_callee = nullptr;
+    inlined_callees.clear();
     direct_callee = nullptr;
     virtual_site = nullptr;
     virtual_sites.clear();
@@ -8368,6 +8453,12 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
 
       return false;
+    }
+
+    if(JitReportEnabled()) {
+      for(StackMethod* inlined : inlined_callees) {
+        std::wcerr << L"[jit] " << method->GetName() << L": inlined " << inlined->GetName() << std::endl;
+      }
     }
 
     // F3: a jump that leaves a pinned loop goes through a stub that stores the

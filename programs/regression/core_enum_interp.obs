@@ -1,0 +1,156 @@
+#~
+Enum and consts values in strings (v2026.10.0 hardening item C4, decision D4).
+
+Through v2026.9.4 an enum or consts value could be printed (e->PrintLine())
+but not put in a string: "{$e}" and "x=" + e failed "Class/enum variable does
+not have a 'ToString' method", "{$C->R}" failed "Expression type does not have
+'ToString' method", and the chained cast e->As(Int)->PrintLine() failed
+"Cannot cast a Nil return value" (e->As(Int)->ToString() failed "Invalid cast
+with classes: System.Int and System.String") because the receiver's scalar cast
+was also applied to the call's return value.
+
+An enum or consts value in a string prints its integer value, the same as
+e->PrintLine(). The values keep their enum/consts type everywhere else:
+typed locals, enum-to-enum comparison, select/label, and consts-typed
+parameters (library and program) must keep compiling and working.
+~#
+
+use Collection, Data.JSON;
+
+enum Color {
+  Red,
+  Green,
+  Blue
+}
+
+consts C {
+  R := 7,
+  S := 42
+}
+
+class Test {
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
+    # program enum, typed local
+    e : Color := Color->Green;
+    failures += Check("interp enum var", "{$e}", "1");
+    failures += Check("interp enum text", "e={$e}!", "e=1!");
+    failures += Check("interp enum item", "{$Color->Blue}", "2");
+    failures += Check("concat enum", "x=" + e, "x=1");
+    failures += Check("concat enum middle", "<" + e + ">", "<1>");
+    failures += Check("concat enum item", "b=" + Color->Blue, "b=2");
+    failures += Check("format enum", "{$e:05}", "00001");
+    failures += Check("format enum hex", "{$Color->Blue:x}", "0x2");
+
+    # program consts, inferred local
+    r := C->R;
+    failures += Check("interp consts var", "{$r}", "7");
+    failures += Check("interp consts item", "{$C->R}", "7");
+    failures += Check("concat consts", "s=" + C->S, "s=42");
+    failures += Check("concat consts var", "r=" + r, "r=7");
+    failures += Check("format consts", "{$r:>4}", "   7");
+
+    # library enum (json) and library consts (collect)
+    jt := JsonElement->JsonType->ARRAY;
+    failures += Check("interp lib enum", "{$jt}", "5");
+    failures += Check("concat lib enum", "t=" + JsonElement->JsonType->OBJECT, "t=6");
+    cap := Collection.Hash->Capacity->MEDIUM;
+    failures += Check("interp lib consts", "{$cap}", "3079");
+    failures += Check("concat lib consts", "c=" + Collection.Hash->Capacity->SMALL, "c=769");
+
+    # chained cast on an enum/consts receiver
+    failures += Check("chained cast ToString", e->As(Int)->ToString(), "1");
+    failures += Check("chained cast consts", r->As(Int)->ToString(), "7");
+    e->As(Int)->PrintLine();
+    r->As(Int)->PrintLine();
+    e->As(Int)->ToString()->PrintLine();
+    abs := e->As(Int)->Abs();
+    failures += Check("chained cast assign", abs->ToString(), "1");
+    str := r->As(Int)->ToString();
+    failures += Check("chained cast assign consts", str, "7");
+    v := e->As(Int);
+    failures += Check("local cast", v->ToString(), "1");
+
+    # chained cast on an enum/consts ITEM (not a variable): the item was parsed
+    # as an undeclared local, so the call read no receiver and crashed
+    item_str := C->R->As(Int)->ToString();
+    failures += Check("item chained cast consts", item_str, "7");
+    item_enum := Color->Blue->As(Int)->ToString();
+    failures += Check("item chained cast enum", item_enum, "2");
+    item_abs := C->R->As(Int)->Abs();
+    failures += Check("item chained cast Abs", item_abs->ToString(), "7");
+    C->R->As(Int)->PrintLine();
+
+    # an enum/consts value cast to Float converts the integer
+    ef := e->As(Float);
+    failures += Check("enum as Float", (ef = 1.0)->ToString(), "true");
+    rf := r->As(Float);
+    failures += Check("consts as Float", (rf = 7.0)->ToString(), "true");
+    itf := C->S->As(Float);
+    failures += Check("consts item as Float", (itf = 42.0)->ToString(), "true");
+
+    # arithmetic still works
+    sum := C->R + C->S;
+    failures += Check("consts arithmetic", sum->ToString(), "49");
+    next := e->As(Int) + 1;
+    failures += Check("enum arithmetic", next->ToString(), "2");
+
+    # enum type is kept: enum-to-enum assignment and comparison
+    e2 : Color := e;
+    if(e2 <> Color->Green | e2 = Color->Red) {
+      "FAIL: enum-to-enum assignment/comparison"->PrintLine();
+      failures += 1;
+    };
+
+    # select/label on consts still works
+    picked := "none";
+    select(r) {
+      label C->R: {
+        picked := "R";
+      }
+
+      label C->S: {
+        picked := "S";
+      }
+    };
+    failures += Check("select consts", picked, "R");
+
+    # consts values still pass to consts-typed parameters (library and program)
+    hash := Collection.Hash->New(Collection.Hash->Capacity->SMALL)<String, IntRef>;
+    hash->Insert("k", IntRef->New(3));
+    failures += Check("lib consts param", hash->Find("k")->Get()->ToString(), "3");
+    failures += Check("program consts param", Describe(C->S), "S");
+
+    if(failures > 0) {
+      "FAIL: {$failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: core_enum_interp"->PrintLine();
+  }
+
+  function : Describe(c : C) ~ String {
+    select(c) {
+      label C->R: {
+        return "R";
+      }
+
+      label C->S: {
+        return "S";
+      }
+    };
+
+    return "?";
+  }
+
+  function : Check(name : String, got : String, expected : String) ~ Int {
+    if(got->Equals(expected)) {
+      "PASS: {$name}"->PrintLine();
+      return 0;
+    };
+
+    "FAIL: {$name}: got '{$got}', expected '{$expected}'"->PrintLine();
+    return 1;
+  }
+}

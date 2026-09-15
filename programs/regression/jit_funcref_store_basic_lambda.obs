@@ -1,0 +1,103 @@
+#~
+JIT: a func-ref store whose two words are different operand kinds.
+
+A func-ref variable is two words: the packed method word and the closure
+instance. `h := \() ~ Int : () => x + 1` compiles to
+
+  LOAD_INT_VAR  (closure instance, a local)  -> MEM_INT or REG_INT
+  LOAD_INT_LIT  (packed cls<<16|mthd)        -> IMM_INT
+  STOR_FUNC_VAR
+
+The JIT's STOR_FUNC_VAR (JitAmd64/JitArm64::ProcessStore) chose how to store
+BOTH words from the first word's kind. With a literal first word it wrote
+the second word's "operand" as an immediate -- for a MEM_INT that is the
+local's frame offset -- so the closure instance became a small number and a
+call through the func-ref dereferenced it inside the lambda: access
+violation under --jit=1 (s0 and s3), nothing printed. A lambda that captures
+nothing never reads its instance, and a Nil-returning func-ref call keeps
+the caller in the interpreter, which is why only capturing lambdas with a
+basic return type crashed.
+
+Run() is called from a loop so the default JIT threshold compiles it too.
+~#
+
+class JitFuncRefStoreMixedWords {
+  function : Basic(x : Int) ~ Int {
+    h := \() ~ Int : () => x + 1;
+    return h();
+  }
+
+  function : Local() ~ Int {
+    x := 5;
+    h := \() ~ Int : () => x + 1;
+    hr := h();
+    return hr;
+  }
+
+  function : Two(a : Int, b : Int) ~ Int {
+    h := \() ~ Int : () => a * 10 + b;
+    return h();
+  }
+
+  function : Flt(x : Int) ~ Float {
+    h := \() ~ Float : () => x + 1.5;
+    return h();
+  }
+
+  function : Reassign(x : Int) ~ Int {
+    h := \() ~ Int : () => x + 1;
+    g := h;
+    return g();
+  }
+
+  function : Run(i : Int) ~ Int {
+    failures := 0;
+
+    v := Basic(i);
+    if(v <> i + 1) {
+      "FAIL Basic({$i}): got {$v}"->PrintLine();
+      failures += 1;
+    };
+
+    v := Local();
+    if(v <> 6) {
+      "FAIL Local: got {$v}"->PrintLine();
+      failures += 1;
+    };
+
+    v := Two(i, 7);
+    e := i * 10 + 7;
+    if(v <> e) {
+      "FAIL Two({$i}): got {$v}"->PrintLine();
+      failures += 1;
+    };
+
+    f := Flt(i);
+    fe := i + 1.5;
+    if(f <> fe) {
+      "FAIL Flt({$i}): got {$f}"->PrintLine();
+      failures += 1;
+    };
+
+    v := Reassign(i);
+    if(v <> i + 1) {
+      "FAIL Reassign({$i}): got {$v}"->PrintLine();
+      failures += 1;
+    };
+
+    return failures;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+    for(i := 0; i < 20; i += 1;) {
+      failures += Run(i);
+    };
+
+    if(failures > 0) {
+      "FAIL: {$failures} failure(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}

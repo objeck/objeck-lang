@@ -1962,42 +1962,54 @@ void JitArm64::ProcessStore(StackInstr* instr) {
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
 
-  switch(left->GetType()) {
+  // A func-ref is two words, and each is stored by its OWN working-stack
+  // shape: a closure built in this method is a slot or register (closure
+  // memory) under an immediate (the packed method id). Every case used to
+  // assume the second word had the first word's shape (mirrors the AMD64 fix;
+  // jit_funcref_store_mixed_words.obs).
+  if(is_func_var) {
+    RegInstr* left2 = working_stack.front();
+    working_stack.pop_front();
+    const long offsets[2] = { instr->GetOperand3(), instr->GetOperand3() + (long)sizeof(size_t) };
+    RegInstr* words[2] = { left, left2 };
+    for(int w = 0; w < 2; ++w) {
+      RegInstr* word = words[w];
+      switch(word->GetType()) {
+      case IMM_INT:
+        move_imm_mem((int64_t)word->GetOperand(), offsets[w], dest);
+        break;
+
+      case MEM_INT: {
+        RegisterHolder* holder = GetRegister();
+        move_mem_reg((long)word->GetOperand(), SP, holder->GetRegister());
+        move_reg_mem(holder->GetRegister(), offsets[w], dest);
+        ReleaseRegister(holder);
+      }
+        break;
+
+      case REG_INT:
+        move_reg_mem(word->GetRegister()->GetRegister(), offsets[w], dest);
+        ReleaseRegister(word->GetRegister());
+        break;
+
+      default:
+        compile_success = false;
+        break;
+      }
+    }
+    delete left2;
+    left2 = nullptr;
+  }
+  else switch(left->GetType()) {
   case IMM_INT:
-    if(is_func_var) {
-      move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_imm_mem((int64_t)left2->GetOperand(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
-    }
+    move_imm_mem((int64_t)left->GetOperand(), instr->GetOperand3(), dest);
     break;
 
   case MEM_INT: {
     RegisterHolder* holder = GetRegister();
-    if(is_func_var) {
-      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      move_mem_reg((long)left2->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
-    if(is_local && !is_func_var) {
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {
@@ -2008,22 +2020,8 @@ void JitArm64::ProcessStore(StackInstr* instr) {
 
   case REG_INT: {
     RegisterHolder* holder = left->GetRegister();
-    if(is_func_var) {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-
-      RegInstr* left2 = working_stack.front();
-      working_stack.pop_front();
-      RegisterHolder* holder2  = left2->GetRegister();
-      move_reg_mem(holder2->GetRegister(), instr->GetOperand3() + sizeof(size_t), dest);
-      ReleaseRegister(holder2);
-
-      delete left2;
-      left2 = nullptr;
-    }
-    else {
-      move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
-    }
-    if(is_local && !is_func_var) {
+    move_reg_mem(holder->GetRegister(), instr->GetOperand3(), dest);
+    if(is_local) {
       CacheLocalRegister(instr->GetOperand3(), holder);
     }
     else {
@@ -2923,28 +2921,29 @@ RegInstr* JitArm64::ProcessIntFold(int64_t left_imm, int64_t right_imm, Instruct
     // Bug fix: Use bitwise OR (|), not logical OR (||)
     return new RegInstr(IMM_INT, left_imm | right_imm);
     
+  // shared/int_ops.h: the interpreter's semantics, so a fold cannot differ
   case ADD_INT:
-    return new RegInstr(IMM_INT, left_imm + right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Add(left_imm, right_imm));
+
   case SUB_INT:
-    return new RegInstr(IMM_INT, left_imm - right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Sub(left_imm, right_imm));
+
   case MUL_INT:
-    return new RegInstr(IMM_INT, left_imm * right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Mul(left_imm, right_imm));
+
   case DIV_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm / right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Div(left_imm, right_imm));
 
   case MOD_INT:
     if(right_imm == 0) return nullptr;
-    return new RegInstr(IMM_INT, left_imm % right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Mod(left_imm, right_imm));
 
   case SHL_INT:
-    return new RegInstr(IMM_INT, left_imm << right_imm);
-    
+    return new RegInstr(IMM_INT, objeck_int::Shl(left_imm, right_imm));
+
   case SHR_INT:
-    return new RegInstr(IMM_INT, left_imm >> right_imm);
+    return new RegInstr(IMM_INT, objeck_int::Sar(left_imm, right_imm));
     
   case BIT_AND_INT:
     return new RegInstr(IMM_INT, left_imm & right_imm);
@@ -3922,15 +3921,14 @@ void JitArm64::shl_imm_reg(int64_t value, Register dest) {
   uint32_t op_src = dest;
   op_code |= op_src;
 
-  // set bit field
-  bitset<6> imm_bits;
-  imm_bits = abs(value);
-  imm_bits.flip();
-  
-  const uint8_t imms = (uint8_t)imm_bits.to_ulong();
+  // lsl #n is UBFM immr=(64-n)%64, imms=63-n. The count is taken modulo 64
+  // like every other shift (S2): abs() turned `x << -1` into `x << 1`, and an
+  // unmasked immr of 64 spilled into the opcode's N bit.
+  const uint32_t shift = (uint32_t)(value & 63);
+  const uint32_t imms = 63 - shift;
   op_code |= imms << 10;
-  
-  const uint8_t immr = imms + 1;
+
+  const uint32_t immr = (64 - shift) & 63;
   op_code |= immr << 16;
   
   // encode
@@ -3978,7 +3976,9 @@ void JitArm64::shr_imm_reg(int64_t value, Register dest) {
   uint32_t op_src = dest;
   op_code |= op_src;
   
-  op_code |= abs(value) << 16;
+  // asr #n is SBFM immr=n, imms=63; the count is taken modulo 64 (S2): abs()
+  // turned `x >> -1` into `x >> 1`, and a count past 63 overwrote opcode bits
+  op_code |= (uint32_t)(value & 63) << 16;
   
   AddMachineCode(op_code);
 }

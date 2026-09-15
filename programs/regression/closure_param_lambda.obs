@@ -1,0 +1,67 @@
+#
+# Regression: typed lambdas that take parameters, with and without captures.
+# ParseLambda looks past the matching ')' for '~' to tell the typed form from the
+# bare one; any non-empty '(...)' ran that scan past the scanner's 3-token
+# lookahead buffer, and obc crashed with an access violation (no output).
+#
+# Each lambda is built in a helper and called from Main: creating and calling a
+# typed capturing lambda in the same JIT-compiled method crashes the JIT at
+# OBJECK_JIT_THRESHOLD=1, a separate VM bug this test is not about.
+#
+class ClosureParamLambda {
+  function : Main(args : String[]) ~ Nil {
+    # one parameter plus a captured local
+    h := AddX();
+    hr := h(3);
+    if(hr <> 8) {
+      "FAIL: capture+param={$hr}"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    # one parameter, no capture
+    g := Twice();
+    gr := g(21);
+    if(gr <> 42) {
+      "FAIL: param={$gr}"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    # long signature (well past the lookahead buffer), captures and block body
+    k := Sum3();
+    kr := k(1, 2, 3);
+    if(kr <> 111) {
+      "FAIL: three params={$kr}"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    # zero parameters still works
+    z := PlusOne();
+    zr := z();
+    if(zr <> 6) {
+      "FAIL: zero params={$zr}"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: closure param lambda"->PrintLine();
+  }
+
+  function : AddX() ~ (Int) ~ Int {
+    x := 5;
+    return \(Int) ~ Int : (a) => a + x;
+  }
+
+  function : Twice() ~ (Int) ~ Int {
+    return \(Int) ~ Int : (a) => a * 2;
+  }
+
+  function : Sum3() ~ (Int, Int, Int) ~ Int {
+    x := 5;
+    y := 100;
+    return \(Int, Int, Int) ~ Int : (a, b, c) => { return a + b + c + x + y; };
+  }
+
+  function : PlusOne() ~ () ~ Int {
+    x := 5;
+    return \() ~ Int : () => x + 1;
+  }
+}

@@ -5,6 +5,7 @@ Comprehensive guide to Objeck's language features with examples.
 ## Table of Contents
 - [Object-Oriented Programming](#oop)
 - [Functional Programming](#functional)
+- [Integer Arithmetic](#integers)
 - [Strings & Formatting](#strings)
 - [Platform Support](#platform)
 
@@ -242,6 +243,35 @@ function : Mk(n : Int) ~ FuncRef<IntRef> {
 The verbose form with an explicit annotation is still supported and equivalent:
 `FuncRef->New(\() ~ IntRef : () => x)<IntRef>`.
 
+#### What a lambda can capture
+
+A lambda can use the locals and parameters of the method that creates it:
+values, strings, arrays, objects, function references and other `FuncRef`s.
+Inside the body you can call methods on a captured object (including virtual
+methods) and call a captured function or `FuncRef` directly.
+
+```ruby
+c := Counter->New();
+inc : FuncRef<IntRef> := \() => c->Inc();     # instance method on a captured object
+r : FuncRef<IntRef> := \() => IntRef->New(3);
+next : FuncRef<IntRef> := \() => IntRef->New(r()->Get() + 1);   # captured FuncRef called
+```
+
+Captures are **by copy**, taken when the lambda is created:
+
+- A later assignment to the captured local is not seen: with `n := 1;`, then a
+  lambda that reads `n`, then `n := 2;`, the lambda still sees `1`. A loop
+  variable captured in each iteration keeps that iteration's value.
+- An object is copied as a reference, so the lambda and the enclosing method
+  share it: `c->Inc()` inside the lambda is visible as `c->Get()` outside.
+  Rebinding the local (`c := Counter->New();`) does not change which object
+  the lambda uses.
+
+Not available in lambda bodies yet: `self`, `@field` access, and calling an
+instance method of the enclosing class without a receiver (`Inc()`), which is
+rejected with "Cannot reference an instance method from this context". Capture
+the object in a local and call through it instead.
+
 ### First-Class Functions
 ```ruby
 @f : static : (Int) ~ Int;
@@ -269,6 +299,28 @@ function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
   @g := g;
   return Compose(Int) ~ Int;
 }
+```
+
+---
+
+<a name="integers"></a>
+## Integer Arithmetic
+
+- **Width:** `Int` is 64-bit two's-complement; `Byte` and `Char` widen to `Int`.
+- **Overflow:** `+ - *` wrap and never trap.
+- **Shifts:** use `n and 63`. `>>` sign-fills, `>>>` zero-fills.
+- **Division:** `/` truncates toward zero; `%` takes the dividend's sign.
+- **Traps:** a zero divisor is the only integer trap; `MIN / -1 = MIN` and `MIN % -1 = 0`.
+- **Consistency:** identical in the interpreter, both JITs and at every `-opt` level.
+
+```ruby
+min := -9223372036854775807 - 1;
+(9223372036854775807 + 1 = min)->PrintLine(); # true: wraps
+(min / -1 = min)->PrintLine();                # true: no trap
+(1 << 65)->PrintLine();                       # 2: the count is 65 and 63 = 1
+(-8 >>> 64)->PrintLine();                     # -8: a count of 64 shifts by 0
+(-7 / 2)->PrintLine();                        # -3
+(-7 % 3)->PrintLine();                        # -1
 ```
 
 ---
@@ -450,11 +502,11 @@ Or read keys directly: `System.Runtime->GetProperty(key)->ToInt()`.
 
 | key | meaning |
 |---|---|
-| `runtime.memory.used` / `.allocated` / `.max` / `.overhead` | process RSS / live heap / GC threshold / RSS−heap |
+| `runtime.memory.used` / `.peak` / `.allocated` / `.max` / `.overhead` | process RSS / peak RSS / live heap / GC threshold / RSS−heap |
 | `runtime.gc.minor` / `.major` / `.total` | collection counts |
 | `runtime.gc.pause.last_us` / `.max_us` / `.avg_us` | stop-the-world pause times (µs) |
-| `runtime.gc.nursery.used` / `.occupancy_permille` | young-generation fill |
-| `runtime.gc.promoted.last` / `.total` / `runtime.gc.old.bytes` | promotion rate / old-gen size |
+| `runtime.gc.nursery.used` / `.capacity` / `.occupancy_permille` | young-generation fill / limit (`--nursery`) |
+| `runtime.gc.promoted.last` / `.total` / `.bytes` / `runtime.gc.old.bytes` | promotion rate (objects; real bytes copied) / old-gen size |
 | `runtime.gc.remembered` / `.contention` | cross-gen writes since minor GC / collector-lock contention |
 | `runtime.alloc.since_gc` | bytes allocated since the last collection |
 | `runtime.threads.active` / `.parked` / `.running` | mutator threads (`.parked` includes STW/blocked) |

@@ -32,6 +32,7 @@
 #pragma once
 
 #include "emit.h"
+#include "../shared/int_ops.h"
 
 #include <map>
 #include <deque>
@@ -98,6 +99,7 @@ class ItermediateOptimizer {
   IntermediateBlock* DeadStore(IntermediateBlock* input);
   bool IsDeadStore(IntermediateInstruction* check_instr, size_t check_pos, std::vector<IntermediateInstruction*>& input_instrs);
   std::pair<size_t, size_t> DeadStoreEdit(size_t start_pos, std::vector<IntermediateInstruction*>& input_instrs);
+  bool IsEffectFreeRange(size_t start_pos, size_t end_pos, std::vector<IntermediateInstruction*>& input_instrs);
   bool InDeadStoreRange(size_t pos, std::vector<std::pair<size_t, size_t>> dead_store_edits);
 
   // copy propagation

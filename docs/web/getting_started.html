@@ -675,7 +675,8 @@ mask := 0x00000000FFFFFFFFu; # a full-width mask
        </p>
        <pre class="line-numbers"><code class="language-cpp">(-8 &gt;&gt; 3)-&gt;PrintLine();  # -1: the sign bit is copied down
 (-8 &gt;&gt;&gt; 3)-&gt;PrintLine(); # 2305843009213693951: zeros shift in
-(-1 &gt;&gt;&gt; 64)-&gt;PrintLine(); # 0: a count of 64 or more shifts every bit out
+(-1 &gt;&gt;&gt; 63)-&gt;PrintLine(); # 1: only the former sign bit is left
+(-1 &gt;&gt;&gt; 64)-&gt;PrintLine(); # -1: counts are taken modulo 64, like every shift
 </code></pre>
        <p>
         <code>Int</code> also carries operations that read both operands as unsigned 64-bit

@@ -442,6 +442,55 @@ StackClass* StackClass::GetParent() {
   return parent;
 }
 
+/********************************
+ * Skips one encoded function type
+ * "m.(<params>)~<return>" starting at
+ * its 'm'; returns the index of the
+ * ',' (or end) that follows it.
+ *
+ * Scanning to the first '~' and then
+ * the next ',' stopped inside a nested
+ * function type: for a parameter of
+ * type ((Int) ~ Int, Int) ~ Int, i.e.
+ * "m.(m.(i,)~i,i,)~i,", the parser
+ * resumed at ")~i," and rejected the
+ * ')' as "Invalid method signature!",
+ * so such a method never loaded.
+ ********************************/
+static size_t SkipFunctionType(const std::wstring& str, size_t index)
+{
+  bool more = true;
+  while(more && index < str.size()) {
+    // parameter list: to the ')' matching the first '('
+    while(index < str.size() && str[index] != L'(') {
+      index++;
+    }
+    int nesting = 0;
+    while(index < str.size()) {
+      if(str[index] == L'(') {
+        nesting++;
+      }
+      else if(str[index] == L')' && --nesting == 0) {
+        index++;
+        break;
+      }
+      index++;
+    }
+
+    // return type, itself possibly a function type
+    if(index < str.size() && str[index] == L'~') {
+      index++;
+    }
+    more = index < str.size() && str[index] == L'm';
+  }
+
+  while(index < str.size() && str[index] != L',') {
+    index++;
+  }
+
+  return index;
+}
+
 const std::wstring StackMethod::ParseName(const std::wstring& name) const
 {
   int state;
@@ -519,13 +568,7 @@ const std::wstring StackMethod::ParseName(const std::wstring& name) const
         param = FUNC_PARM;
 #endif
         state = 6;
-        index++;
-        while(index < params_name.size() && params_name[index] != '~') {
-          index++;
-        }
-        while(index < params_name.size() && params_name[index] != ',') {
-          index++;
-        }
+        index = SkipFunctionType(params_name, index);
         break;
 
       default:
@@ -1462,13 +1505,7 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
 
       case L'm':
         data_type_obj[0] = -994;
-        index++;
-        while(index < (int)params_string.size() && params_string[index] != L'~') {
-          index++;
-        }
-        while(index < (int)params_string.size() && params_string[index] != L',') {
-          index++;
-        }
+        index = (int)SkipFunctionType(params_string, (size_t)index);
         break;
 
       default:
@@ -3019,6 +3056,9 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
   for(long i = 0; i < size; i++) {
     str[i] = PopInt(op_stack, stack_pos);
   }
+  // The array is old (AllocateArray) and the Strings are young: record it, or a minor
+  // GC neither marks nor repairs elements held only through this array (G13).
+  MemoryManager::WriteBarrier(array);
 #ifdef _DEBUG
   std::wcout << L"stack oper: CPY_CHAR_STR_ARYS" << std::endl;
 #endif
@@ -4145,6 +4185,31 @@ static size_t GetProcessResidentBytes()
 #endif
 }
 
+// Peak resident set size of this process, in bytes; 0 if unavailable. Windows:
+// peak working set. POSIX: ru_maxrss, which Linux reports in kilobytes and
+// macOS in bytes. Declared in memory.h for the OBJECK_GC_STATS exit summary.
+size_t GetProcessPeakResidentBytes()
+{
+#ifdef _WIN32
+  PROCESS_MEMORY_COUNTERS pmc;
+  pmc.cb = sizeof(pmc);
+  if(K32GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc))) {
+    return (size_t)pmc.PeakWorkingSetSize;
+  }
+  return 0;
+#else
+  struct rusage ru;
+  if(getrusage(RUSAGE_SELF, &ru) == 0 && ru.ru_maxrss > 0) {
+#ifdef __APPLE__
+    return (size_t)ru.ru_maxrss;
+#else
+    return (size_t)ru.ru_maxrss * 1024;
+#endif
+  }
+  return 0;
+#endif
+}
+
 // Total CPU time (user + kernel) consumed by this process, in milliseconds; the
 // caller samples it over an interval to derive a CPU-usage percentage.
 static size_t GetProcessCpuTimeMs()
@@ -4183,6 +4248,11 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
   // val=…/to_wstring boilerplate in one place and adding a metric to one row.
   static const struct { const wchar_t* key; size_t (*fn)(); } kStats[] = {
     { L"runtime.memory.used",      []() -> size_t { return GetProcessResidentBytes(); } },
+    // Never below a current sample: the OS peak and the current RSS come from two
+    // reads (two sources on POSIX), and a peak lower than "used" would be nonsense.
+    { L"runtime.memory.peak",      []() -> size_t { const size_t p = GetProcessPeakResidentBytes(),
+                                                                 r = GetProcessResidentBytes();
+                                                    return p > r ? p : r; } },
     { L"runtime.memory.allocated", []() -> size_t { return MemoryManager::GetHeapAllocatedSize(); } },
     { L"runtime.memory.max",       []() -> size_t { return MemoryManager::GetHeapMaxSize(); } },
     { L"runtime.memory.overhead",  []() -> size_t { const size_t r = GetProcessResidentBytes(),
@@ -4194,6 +4264,7 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
                                                                     MemoryManager::GetMajorGcCount()); } },
     { L"runtime.gc.stw",           []() -> size_t { return MemoryManager::IsStwActive() ? 1 : 0; } },
     { L"runtime.gc.nursery.used",  []() -> size_t { return MemoryManager::GetNurseryUsed(); } },
+    { L"runtime.gc.nursery.capacity", []() -> size_t { return MemoryManager::GetNurseryCapacity(); } },
     { L"runtime.gc.nursery.occupancy_permille", []() -> size_t {
                                                     const size_t cap = MemoryManager::GetNurseryCapacity();
                                                     if(cap == 0) {
@@ -4218,6 +4289,7 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.gc.pause.avg_us",  []() -> size_t { return (size_t)MemoryManager::GetPauseAvgUs(); } },
     { L"runtime.gc.promoted.last", []() -> size_t { return MemoryManager::GetPromotedLast(); } },
     { L"runtime.gc.promoted.total",[]() -> size_t { return MemoryManager::GetPromotedTotal(); } },
+    { L"runtime.gc.promoted.bytes",[]() -> size_t { return MemoryManager::GetPromotedBytes(); } },
     { L"runtime.gc.old.bytes",     []() -> size_t { return MemoryManager::GetOldGenBytes(); } },
     { L"runtime.gc.contention",    []() -> size_t { return (size_t)MemoryManager::GetGcContention(); } },
     // Compiled-in protocol support. Http3Connect is compiled unconditionally --

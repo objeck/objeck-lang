@@ -1,4 +1,4 @@
-# EXPECT_COMPILE_ERROR
+# EXPECT_COMPILE_ERROR: Undefined class or enum: 'NoSuchClassEverDefined'
 class BadUndefinedType {
     function : Main(args : String[]) ~ Nil {
         x : NoSuchClassEverDefined;

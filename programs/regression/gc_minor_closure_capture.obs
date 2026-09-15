@@ -1,0 +1,136 @@
+#~
+Guards G12: a minor GC must trace the captures of a closure stored in an OLD object.
+
+A closure's capture block is allocated with AllocateArray (BYTE_ARY_TYPE), so it is
+always old-generation. Storing a closure into an old holder runs the write barrier on
+the holder, and ScanDirtyObject then looked at its FUNC_PARM field -- but descended
+only when the closure block was young, which it never is. A fresh young object
+reachable only through the closure's captures was therefore never marked, never
+promoted, and its captured slot dangled once the nursery was recycled.
+
+Each round stores into already-promoted holders a new closure capturing a brand-new
+Box (Store's locals die when it returns, so the closure is the Box's only path),
+churns enough allocation to force minor GCs, then calls every closure and checks the
+Box it returns.
+~#
+class GcMinorClosureCapture {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+		count := 64;
+
+		holders := Cell->New[count];
+		for(i := 0; i < count; i += 1;) {
+			holders[i] := Cell->New();
+			Store(holders[i], -1);
+		};
+
+		# promote the holders to the old generation
+		start := Minors();
+		Churn(2);
+		if(Minors() = start) {
+			"FAIL: churn did not run a minor GC"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		for(round := 0; round < 4; round += 1;) {
+			# store closures capturing FRESH young boxes into the old holders
+			for(i := 0; i < count; i += 1;) {
+				Store(holders[i], round * 1000 + i);
+			};
+
+			Churn(2);
+
+			for(i := 0; i < count; i += 1;) {
+				box := holders[i]->Call();
+				expected := round * 1000 + i;
+				if(box = Nil) {
+					bad += 1;
+				}
+				else if(box->GetV() <> expected | box->GetW() <> expected * 3) {
+					bad += 1;
+				};
+			};
+		};
+
+		if(bad = 0) {
+			"PASS: closure captures stored in old objects survive minor GC"->PrintLine();
+		}
+		else {
+			"FAIL: closure captures stored in old objects lost by minor GC: bad="->Print();
+			bad->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Store(cell : Cell, v : Int) ~ Nil {
+		b := Box->New(v);
+		cell->Set(\() ~ Box : () => b);
+	}
+
+	# allocates about 'n' nurseries' worth of short-lived objects: a Blob is
+	# 288 bytes of nursery (32 fields, three header words, the size word), so
+	# 520000 of them are about 150MB against the 128MB nursery
+	function : Churn(n : Int) ~ Nil {
+		for(j := 0; j < n * 520000; j += 1;) {
+			tmp := Blob->New(j);
+			if(tmp->Get() <> j) {
+				"FAIL: churn object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+	}
+
+	function : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+}
+
+class Cell {
+	@func : () ~ Box;
+
+	New() {
+	}
+
+	method : public : Set(func : () ~ Box) ~ Nil {
+		@func := func;
+	}
+
+	method : public : Call() ~ Box {
+		f := @func;
+		return f();
+	}
+}
+
+class Box {
+	@v : Int;
+	@w : Int;
+
+	New(v : Int) {
+		@v := v;
+		@w := v * 3;
+	}
+
+	method : public : GetV() ~ Int {
+		return @v;
+	}
+
+	method : public : GetW() ~ Int {
+		return @w;
+	}
+}
+
+class Blob {
+	@a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+	@b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+	@c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+	@d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+	New(v : Int) {
+		@a0 := v;
+		@d7 := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @d7;
+	}
+}

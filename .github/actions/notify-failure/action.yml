@@ -4,7 +4,9 @@ description: >
   open tracking issue per workflow (labelled pipeline-failure), with a comment per
   failure linking the run, and an optional phone push through ntfy when an
   ntfy topic is passed in. Adds nothing on success; call it with
-  `if: failure()` or an explicit needs.*.result check.
+  `if: failure()` or an explicit needs.*.result check. The nightly workflow
+  also uses mode `comment-only` (comment on an open issue, never open one) and
+  mode `resolve` (close the open issue after a green run).
 
 inputs:
   workflow:
@@ -14,6 +16,14 @@ inputs:
     description: 'One or two lines on what failed (job names, version)'
     required: false
     default: ''
+  body-file:
+    description: 'Optional Markdown file appended to details (a triage report)'
+    required: false
+    default: ''
+  mode:
+    description: 'failure (default: open or comment), comment-only (comment on an open issue only), resolve (close the open issue)'
+    required: false
+    default: 'failure'
   ntfy-topic:
     description: 'ntfy topic for a phone push; pass secrets.NTFY_TOPIC. Empty = no push.'
     required: false
@@ -31,11 +41,34 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
         WORKFLOW: ${{ inputs.workflow }}
         DETAILS: ${{ inputs.details }}
+        BODY_FILE: ${{ inputs.body-file }}
+        MODE: ${{ inputs.mode }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         set -uo pipefail
         LABEL=pipeline-failure
         TITLE="Pipeline failing: $WORKFLOW"
+        if [ -n "$BODY_FILE" ] && [ -f "$BODY_FILE" ]; then
+          DETAILS="${DETAILS}
+
+        $(head -c 60000 "$BODY_FILE")"
+        fi
+        # --limit: gh lists 30 by default, newest first, and every nightly
+        # signature title also matches the tracking title's search; the exact
+        # select below then picks the right one out of the larger page.
+        EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
+          --limit 300 --search "in:title \"$TITLE\"" --json number,title \
+          --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n 1)
+        if [ "$MODE" = "resolve" ]; then
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --repo "$GITHUB_REPOSITORY" \
+              --comment "**$WORKFLOW** is green on \`${GITHUB_REF_NAME}\` at \`${GITHUB_SHA:0:10}\`. Run: $RUN_URL"
+            echo "Closed #$EXISTING"
+          else
+            echo "No open issue titled '$TITLE'; nothing to close"
+          fi
+          exit 0
+        fi
         gh label create "$LABEL" --repo "$GITHUB_REPOSITORY" --color B60205 \
           --description "Opened by .github/actions/notify-failure" >/dev/null 2>&1 || true
         BODY="**$WORKFLOW** failed on \`${GITHUB_REF_NAME}\` at \`${GITHUB_SHA:0:10}\`.
@@ -45,8 +78,10 @@ runs:
         Run: $RUN_URL
 
         Close this issue once the pipeline is green again; the next failure reopens a new one."
-        EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
-          --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n 1)
+        if [ "$MODE" = "comment-only" ] && [ -z "$EXISTING" ]; then
+          echo "No open issue titled '$TITLE'; comment-only mode opens none"
+          exit 0
+        fi
         if [ -n "$EXISTING" ]; then
           gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
           echo "Commented on #$EXISTING"
@@ -55,7 +90,7 @@ runs:
         fi
 
     - name: Phone push (ntfy)
-      if: inputs.ntfy-topic != ''
+      if: inputs.ntfy-topic != '' && inputs.mode == 'failure'
       shell: bash
       env:
         NTFY_TOPIC: ${{ inputs.ntfy-topic }}

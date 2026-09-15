@@ -54,7 +54,8 @@ class NativeInlineTest {
     thread_secs := Worker->Seconds();
     thread_x := Worker->Result();
 
-    "  main: {$main_secs}s, thread: {$thread_secs}s"->PrintLine();
+    # timings to stderr, so stdout stays comparable for run_differential.py
+    "  main: {$main_secs}s, thread: {$thread_secs}s"->ErrorLine();
     if(thread_x <> main_x) {
       "FAIL: thread result {$thread_x} <> main result {$main_x}"->PrintLine();
       Runtime->Exit(1);
