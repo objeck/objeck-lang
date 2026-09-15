@@ -1653,9 +1653,9 @@ struct StackFrame {
  * Method signature formatter
  ********************************/
 class MethodFormatter {
-  static std::wstring FormatParameters(const std::wstring param_str);
-  static std::wstring FormatType(const std::wstring type_str);
-  static std::wstring FormatFunctionalType(const std::wstring func_str);
+  static std::wstring FormatParameters(const std::wstring &param_str);
+  static std::wstring FormatType(const std::wstring &type_str, size_t &index);
+  static std::wstring FormatFunctionalType(const std::wstring &func_str, size_t &index);
   
  public:
   static std::wstring Format(const std::wstring method_sig);

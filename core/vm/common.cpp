@@ -9518,284 +9518,243 @@ std::wstring MethodFormatter::Format(const std::wstring method_sig)
   return L"<unknown>";
 }
 
-std::wstring MethodFormatter::FormatParameters(const std::wstring param_str)
+/********************************
+ * Formats an encoded parameter
+ * list "i,f*,m.(i,)~i," the way the
+ * source declares it:
+ * "(a:Int, b:Float[], c:(Int)~Int)".
+ *
+ * Types are read by recursive
+ * descent with the rule
+ * SkipFunctionType uses: a function
+ * type's parameter list runs to its
+ * MATCHING ')', and the return type
+ * after '~' may itself be a function
+ * type. The old scan counted every
+ * "m.(" in the whole signature and
+ * skipped that many '~', so one
+ * function-typed parameter swallowed
+ * the parameters after it, and the
+ * nested list was re-split at the
+ * last '(' and first ')':
+ * 'P1->Crash(a:(a:Int, , , b:Int,
+ * c:Int, , , d:Int)~Int)'.
+ ********************************/
+std::wstring MethodFormatter::FormatParameters(const std::wstring &param_str)
 {
-  wchar_t param_name = L'a';
   std::wstring formatted_str = L"(";
   size_t index = 0;
+  size_t count = 0;
 
-  while(index < param_str.size() && param_name != L'{') {
-    switch(param_str[index]) {
-    case 'l':
-      formatted_str += param_name++;
-      formatted_str += L':';
-      formatted_str += L"Boolean";
-      index++;
-      break;
-
-    case 'b':
-      formatted_str += param_name++;
-      formatted_str += L':';
-      formatted_str += L"Byte";
-      index++;
-      break;
-
-    case 'i':
-      formatted_str += param_name++;
-      formatted_str += L':';
-      formatted_str += L"Int";
-      index++;
-      break;
-
-    case 'f':
-      formatted_str += param_name++;
-      formatted_str += L':';
-      formatted_str += L"Float";
-      index++;
-      break;
-
-    case 'c':
-      formatted_str += param_name++;
-      formatted_str += L':';
-      formatted_str += L"Char";
-      index++;
-      break;
-
-    case 'n':
-      formatted_str += param_name++;
-      formatted_str += L':';
-      formatted_str += L"Nil";
-      index++;
-      break;
-
-    case 'm': {
-      formatted_str += param_name++;
-      formatted_str += L':';
-
-      size_t start = index;
-
-      const std::wstring prefix = L"m.(";
-      int nested_count = 1;
-      size_t found = param_str.find(prefix);
-      while(found != std::wstring::npos) {
-        nested_count++;
-        found = param_str.find(prefix, found + prefix.size());
-      }
-
-      while(nested_count--) {
-        while(index < param_str.size() && param_str[index] != L'~') {
-          index++;
-        }
-        if(param_str[index] == L'~') {
-          index++;
-        }
-      }
-
-      while(index < param_str.size() && param_str[index] != L',') {
-        index++;
-      }
-
-      const std::wstring name = param_str.substr(start, index - start - 1);
-      formatted_str += FormatFunctionalType(name);
-    }
-            break;
-
-    case 'o': {
-      formatted_str += param_name++;
-      formatted_str += L':';
-
-      index += 2;
-      size_t start = index;
-      while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
-        index++;
-      }
-      size_t end = index;
-      const std::wstring cls_name = param_str.substr(start, end - start);
-      formatted_str += cls_name;
-    }
-            break;
-    }
-
-    // set generics
-    if(index < param_str.size() && param_str[index] == L'|') {
-      formatted_str += L"<";
-      do {
-        index++;
-        size_t start = index;
-        while(index < param_str.size() && param_str[index] != L'*' && param_str[index] != L',' && param_str[index] != L'|') {
-          index++;
-        }
-        size_t end = index;
-
-        const std::wstring generic_name = param_str.substr(start, end - start);
-        formatted_str += generic_name;
-      }       while(index < param_str.size() && param_str[index] == L'|');
-      formatted_str += L">";
-    }
-
-    // set dimension
-    int dimension = 0;
-    if(index < param_str.size() && param_str[index] == L'*') {
-      formatted_str += L"[";
-      while(index < param_str.size() && param_str[index] == L'*') {
-        dimension++;
-        index++;
-
-        if(index + 1 < param_str.size()) {
-          formatted_str += L",";
-        }
-      }
-      formatted_str += L"]";
-    }
-
-#ifdef _DEBUG
-    assert(index >= param_str.size() || param_str[index] == L',');
-#endif
-
-    index++;
-    if(index < param_str.size()) {
+  while(index < param_str.size()) {
+    if(count > 0) {
       formatted_str += L", ";
     }
+
+    if(count < 26) {
+      formatted_str += (wchar_t)(L'a' + count);
+    }
+    else {
+      formatted_str += L"p" + std::to_wstring(count + 1);
+    }
+    formatted_str += L':';
+    formatted_str += FormatType(param_str, index);
+    count++;
+
+    // to the parameter's ',' (a malformed type stops short of it)
+    while(index < param_str.size() && param_str[index] != L',') {
+      index++;
+    }
+    index++;
   }
   formatted_str += L")";
 
   return formatted_str;
 }
 
-std::wstring MethodFormatter::FormatType(const std::wstring type_str)
+// ends a class or generic name inside an encoded signature
+static bool IsEncodedNameEnd(wchar_t c)
+{
+  return c == L'*' || c == L',' || c == L'|' || c == L')' || c == L'<' || c == L'>' || c == L'~';
+}
+
+/********************************
+ * Formats the one encoded type that
+ * starts at 'index' and leaves
+ * 'index' just past it (its
+ * generics and dimensions included)
+ ********************************/
+std::wstring MethodFormatter::FormatType(const std::wstring &type_str, size_t &index)
 {
   std::wstring formatted_str;
+  const size_t size = type_str.size();
+  if(index >= size) {
+    return formatted_str;
+  }
 
-  size_t index = 0;
   switch(type_str[index]) {
   case L'l':
-    formatted_str += L"Boolean";
+    formatted_str = L"Boolean";
     index++;
     break;
 
   case L'b':
-    formatted_str += L"Byte";
+    formatted_str = L"Byte";
     index++;
     break;
 
   case L'i':
-    formatted_str += L"Int";
+    formatted_str = L"Int";
     index++;
     break;
 
   case L'f':
-    formatted_str += L"Float";
+    formatted_str = L"Float";
     index++;
     break;
 
   case L'c':
-    formatted_str += L"Char";
+    formatted_str = L"Char";
     index++;
     break;
 
   case L'n':
-    formatted_str += L"Nil";
+    formatted_str = L"Nil";
     index++;
     break;
 
-  case L'm': {
-    size_t start = index;
-
-    int nested_count = 1;
-    const std::wstring prefix = L"m.(";
-    size_t found = type_str.find(prefix);
-    while(found != std::wstring::npos) {
-      nested_count++;
-      found = type_str.find(prefix, found + prefix.size());
-    }
-
-    while(nested_count--) {
-      while(index < type_str.size() && type_str[index] != L'~') {
-        index++;
-      }
-      if(type_str[index] == L'~') {
-        index++;
-      }
-    }
-
-    while(index < type_str.size() && type_str[index] != L',') {
-      index++;
-    }
-
-    const std::wstring name = type_str.substr(start, index - start - 1);
-    formatted_str += FormatFunctionalType(name);
-  }
+  case L'v':
+    formatted_str = L"Var";
+    index++;
     break;
 
-  case L'o':
-    index = 2;
-    while(index < type_str.size() && type_str[index] != L'*' && type_str[index] != L'|') {
+  case L'm':
+    formatted_str = FormatFunctionalType(type_str, index);
+    break;
+
+  case L'o': {
+    // "o.<class name>"
+    index = index + 2 < size ? index + 2 : size;
+    const size_t start = index;
+    while(index < size && !IsEncodedNameEnd(type_str[index])) {
       index++;
     }
-    const std::wstring cls_name = type_str.substr(2, index - 2);
-    formatted_str += cls_name;
+    formatted_str = type_str.substr(start, index - start);
+  }
     break;
   }
 
-  // set generics
-  if(index < type_str.size() && type_str[index] == L'|') {
-    formatted_str += L"<";
-    do {
-      index++;
-      size_t start = index;
-      while(index < type_str.size() && type_str[index] != L'*' && type_str[index] != L',' && type_str[index] != L'|') {
-        index++;
+  // generics: "<A|B>"
+  if(index < size && type_str[index] == L'<') {
+    formatted_str += L'<';
+    int nesting = 0;
+    while(index < size) {
+      const wchar_t c = type_str[index++];
+      if(c == L'<') {
+        if(nesting++ > 0) {
+          formatted_str += c;
+        }
       }
-      size_t end = index;
-
-      const std::wstring generic_name = type_str.substr(start, end - start);
-      formatted_str += generic_name;
-    } 
-    while(index < type_str.size() && type_str[index] == L'|');
-    formatted_str += L">";
-  }
-
-  // set dimension
-  int dimension = 0;
-  if(index < type_str.size() && type_str[index] == L'*') {
-    formatted_str += L"[";
-    while(index < type_str.size() && type_str[index] == L'*') {
-      dimension++;
-      index++;
-
-      if(index + 1 < type_str.size()) {
-        formatted_str += L",";
+      else if(c == L'>') {
+        if(--nesting == 0) {
+          break;
+        }
+        formatted_str += c;
+      }
+      else if(c == L'|') {
+        formatted_str += L", ";
+      }
+      else {
+        formatted_str += c;
       }
     }
-    formatted_str += L"]";
+    formatted_str += L'>';
+  }
+  // generics: "|A|B"
+  else if(index < size && type_str[index] == L'|') {
+    formatted_str += L'<';
+    bool first = true;
+    while(index < size && type_str[index] == L'|') {
+      index++;
+      if(!first) {
+        formatted_str += L", ";
+      }
+      first = false;
+
+      const size_t start = index;
+      while(index < size && !IsEncodedNameEnd(type_str[index])) {
+        index++;
+      }
+      formatted_str += type_str.substr(start, index - start);
+    }
+    formatted_str += L'>';
+  }
+
+  // dimensions: one '*' per dimension, "Int[]", "Char[,]"
+  if(index < size && type_str[index] == L'*') {
+    formatted_str += L'[';
+    bool first = true;
+    while(index < size && type_str[index] == L'*') {
+      if(!first) {
+        formatted_str += L',';
+      }
+      first = false;
+      index++;
+    }
+    formatted_str += L']';
   }
 
   return formatted_str;
 }
 
-std::wstring MethodFormatter::FormatFunctionalType(const std::wstring func_str)
+/********************************
+ * Formats the encoded function type
+ * "m.(<type>,...)~<type>" that starts
+ * at 'index' as "(<type>, ...)~<type>";
+ * nested function types recurse
+ ********************************/
+std::wstring MethodFormatter::FormatFunctionalType(const std::wstring &func_str, size_t &index)
 {
-  std::wstring formatted_str;
+  std::wstring formatted_str = L"(";
+  const size_t size = func_str.size();
 
-  // parse parameters
-  size_t start = func_str.rfind(L'(');
-  size_t middle = func_str.find(L')');
+  // "m."
+  if(index < size && func_str[index] == L'm') {
+    index++;
+  }
+  if(index < size && func_str[index] == L'.') {
+    index++;
+  }
 
-  if(start != std::wstring::npos && middle != std::wstring::npos) {
-    start++;
-    const std::wstring params_str = func_str.substr(start, middle - start);
-    formatted_str += FormatParameters(params_str);
+  // parameters, to the matching ')'
+  if(index < size && func_str[index] == L'(') {
+    index++;
+    size_t count = 0;
+    while(index < size && func_str[index] != L')') {
+      if(count++ > 0) {
+        formatted_str += L", ";
+      }
+      formatted_str += FormatType(func_str, index);
 
-    // parse return
-    size_t end = func_str.find(L',', middle);
-    if(end == std::wstring::npos) {
-      end = func_str.size();
+      while(index < size && func_str[index] != L',' && func_str[index] != L')') {
+        index++;
+      }
+      if(index < size && func_str[index] == L',') {
+        index++;
+      }
     }
-    middle += 2;
 
+    if(index < size) {
+      index++;
+    }
+  }
+  formatted_str += L")";
+
+  // return type, itself possibly a function type
+  if(index < size && func_str[index] == L'~') {
+    index++;
     formatted_str += L"~";
-    const std::wstring rtrn_str = func_str.substr(middle, end - middle);
-    formatted_str += FormatType(rtrn_str);
+    formatted_str += FormatType(func_str, index);
   }
 
   return formatted_str;
