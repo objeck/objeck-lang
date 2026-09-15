@@ -254,7 +254,7 @@ class MemoryManager {
     if(inst_size < 0) {
       return false;
     }
-    const size_t alloc_size = (size_t)inst_size * 2 + sizeof(size_t) * EXTRA_BUF_SIZE;
+    const size_t alloc_size = (size_t)inst_size + sizeof(size_t) * EXTRA_BUF_SIZE;
     return mem[-(long)(1 + EXTRA_BUF_SIZE)] == alloc_size;
   }
 
