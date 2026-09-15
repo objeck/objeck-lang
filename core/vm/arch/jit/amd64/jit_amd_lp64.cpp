@@ -7000,7 +7000,8 @@ void JitAmd64::and_mem_reg(long offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  // RXB(reg, base): 'dest' is the ModRM reg field, 'src' the base
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x23);
   EmitModRMDisp(ModRM(src, dest), offset);
 }
@@ -7091,7 +7092,8 @@ void JitAmd64::or_mem_reg(long offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  // RXB(reg, base): 'dest' is the ModRM reg field, 'src' the base
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x0b);
   EmitModRMDisp(ModRM(src, dest), offset);
 }
@@ -7159,7 +7161,11 @@ void JitAmd64::xor_mem_reg(long offset, Register src, Register dest) {
         << GetRegisterName(src) << L"), %" << GetRegisterName(dest) << L"]" << std::endl;
 #endif
   // encode
-  AddMachineCode(RXB(src, dest));
+  // RXB(reg, base): 'dest' is the ModRM reg field, 'src' the base. The
+  // arguments were swapped here and in and_mem_reg/or_mem_reg: with an R8-R15
+  // destination REX.R was dropped (the result landed in RAX-RDI) and REX.B
+  // turned the RBP base into R13, a pinned loop local.
+  AddMachineCode(RXB(dest, src));
   AddMachineCode(0x33);
   EmitModRMDisp(ModRM(src, dest), offset);
 }
