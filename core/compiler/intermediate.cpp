@@ -942,7 +942,7 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
 #ifdef _DEBUG
           GetLogger() << L"\t" << entry->GetId() << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
-          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+          closure_dclrs->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
         }
         else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG
@@ -6931,7 +6931,7 @@ int IntermediateEmitter::CalculateEntrySpace(SymbolTable* table, int &index, Int
 #ifdef _DEBUG
               GetLogger() << L"\t" << index << L": INT_ARY_PARM: name=" << entry->GetName() << std::endl;
 #endif
-              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_PARM));
+              declarations->AddParameter(new IntermediateDeclaration(entry->GetName(), INT_ARY_PARM));
             }
             else if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
 #ifdef _DEBUG

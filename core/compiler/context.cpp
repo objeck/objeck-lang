@@ -5488,8 +5488,13 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         else {
           Type* from_type = expression->GetEvalType();
           AnalyzeClassCast(to_type, from_type, expression, false, depth);
-          variable->SetTypes(from_type);
-          to_entry->SetType(from_type);
+          // storing an item into an element ('a[i] := Color->Blue') must not retype
+          // the array entry as the scalar enum: the GC declarations would then mark
+          // the array slot INT_PARM (never traced) and free the live array
+          if(!variable->GetIndices()) {
+            variable->SetTypes(from_type);
+            to_entry->SetType(from_type);
+          }
         }
       }
     }
