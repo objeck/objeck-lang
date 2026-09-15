@@ -427,7 +427,9 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
 # Existing GC stress and collection tests that must pass unchanged, and print
 # the same stdout, with the verifier checking every collection.
 VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress", "jit_closure_gc_fixup",
-                      "collect_map_ops", "collect_vector_ops", "collect_hash_ops", "collect_set_ops")
+                      "collect_map_ops", "collect_vector_ops", "collect_hash_ops", "collect_set_ops",
+                      # G12: a closure capture reached only through an old holder
+                      "closure_capture_old_holder_g12")
 
 # Each injected fault and the report the verifier must stop the program with.
 VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),

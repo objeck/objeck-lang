@@ -1,0 +1,104 @@
+#~
+G12: a closure capturing a young object, stored in an object that is already
+old, must keep the capture alive across a minor GC.
+
+The store of the closure into the old Holder runs the write barrier, so the
+Holder is in dirty_list; the capture store dirties the closure block, a
+BYTE_ARY_TYPE array. ScanDirtyObject used to scan neither: it ignored
+BYTE_ARY_TYPE blocks, and a holder's FUNC_PARM field descended only when the
+closure block was young, which it never is (arrays are always old). So the Box,
+referenced only by the capture, was not marked or promoted, and the capture
+dangled once the nursery was recycled: Call() returned whatever then occupied
+that address.
+
+This started as a heap-verifier replay below programs/regression/gc_verify.
+The collector fix (hardening/gcfix) made it pass interpreted, but under the
+JIT it still crashed on the first call of a capturing lambda stored through a
+func-ref variable (STOR_FUNC_VAR wrote the closure slot's frame offset as the
+closure pointer; hardening/fix-jit-funcfield-store). With both fixed it runs
+in every mode, so it is a regular test. run_vm_flag_tests.py also runs it with
+OBJECK_GC_VERIFY=1; under OBJECK_GC_VERIFY=checkmark it must pass as well.
+
+The Counts calls are load-bearing: without the calls between Store and Churn a
+stale interpreter word keeps the Box alive and the loss does not show. The
+counts they report differ by configuration, so they go to stderr.
+~#
+class ClosureCaptureOldHolder {
+  function : Main(args : String[]) ~ Nil {
+    bad := 0;
+    holder := Holder->New();
+
+    # promote holder: fill the nursery once
+    Churn();
+    Counts("after first churn");
+
+    for(round := 0; round < 4; round += 1;) {
+      Store(holder, Box->New(round * 7 + 1));
+      Counts("after store");
+      Churn();
+      Counts("after churn");
+      box := holder->Call();
+      if(box = Nil) {
+        bad += 1;
+      }
+      else if(box->GetV() <> round * 7 + 1) {
+        bad += 1;
+      };
+    };
+
+    if(bad = 0) {
+      "PASS: closure captures survive a minor GC through an old holder"->PrintLine();
+    }
+    else {
+      "FAIL: closure capture lost through an old holder ({$bad} bad)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+
+  function : Counts(tag : String) ~ Nil {
+    count := Runtime->GetProperty("runtime.gc.minor");
+    line := "{$tag} minor={$count}";
+    line->ErrorLine();
+  }
+
+  function : Churn() ~ Nil {
+    for(j := 0; j < 3000000; j += 1;) {
+      tmp := Box->New(j);
+      if(tmp->GetV() < 0) { "unreachable"->PrintLine(); };
+    };
+  }
+
+  # the Box's only reference left after this returns is the closure's capture
+  function : Store(holder : Holder, b : Box) ~ Nil {
+    f := \() ~ Box : () => b;
+    holder->Set(f);
+  }
+}
+
+class Holder {
+  @f : () ~ Box;
+
+  New() {
+  }
+
+  method : public : Set(f : () ~ Box) ~ Nil {
+    @f := f;
+  }
+
+  method : public : Call() ~ Box {
+    return @f();
+  }
+}
+
+class Box {
+  @v : Int;
+  @pad : Box;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : GetV() ~ Int {
+    return @v;
+  }
+}
