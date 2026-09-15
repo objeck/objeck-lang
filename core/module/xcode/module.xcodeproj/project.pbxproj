@@ -19,6 +19,7 @@
 		ED2B99812A413913000B6CD8 /* vm.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99782A413913000B6CD8 /* vm.h */; };
 		ED2B99822A413913000B6CD8 /* interpreter.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99792A413913000B6CD8 /* interpreter.h */; };
 		ED2B99852A413935000B6CD8 /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99832A413935000B6CD8 /* memory.cpp */; };
+		AB1000212613A0000085A5F8 /* memory_verify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB1000222613A0000085A5F8 /* memory_verify.cpp */; };
 		ED2B99862A413935000B6CD8 /* memory.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99842A413935000B6CD8 /* memory.h */; };
 		ED2B99882A41393D000B6CD8 /* posix.h in Headers */ = {isa = PBXBuildFile; fileRef = ED2B99872A41393D000B6CD8 /* posix.h */; };
 		ED2B998B2A41394A000B6CD8 /* jit_arm_a64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED2B99892A413949000B6CD8 /* jit_arm_a64.cpp */; };
@@ -69,6 +70,7 @@
 		ED2B99792A413913000B6CD8 /* interpreter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = interpreter.h; path = ../../../vm/interpreter.h; sourceTree = "<group>"; };
 		ED2B99832A413935000B6CD8 /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../../vm/arch/memory.cpp; sourceTree = "<group>"; };
 		ED2B99842A413935000B6CD8 /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../../vm/arch/memory.h; sourceTree = "<group>"; };
+		AB1000222613A0000085A5F8 /* memory_verify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory_verify.cpp; path = ../../../vm/arch/memory_verify.cpp; sourceTree = "<group>"; };
 		ED2B99872A41393D000B6CD8 /* posix.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = posix.h; path = ../../../vm/arch/posix/posix.h; sourceTree = "<group>"; };
 		ED2B99892A413949000B6CD8 /* jit_arm_a64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jit_arm_a64.cpp; path = ../../../vm/arch/jit/arm64/jit_arm_a64.cpp; sourceTree = "<group>"; };
 		ED2B998A2A413949000B6CD8 /* jit_arm_a64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jit_arm_a64.h; path = ../../../vm/arch/jit/arm64/jit_arm_a64.h; sourceTree = "<group>"; };
@@ -150,6 +152,7 @@
 				ED2B99872A41393D000B6CD8 /* posix.h */,
 				ED2B99832A413935000B6CD8 /* memory.cpp */,
 				ED2B99842A413935000B6CD8 /* memory.h */,
+				AB1000222613A0000085A5F8 /* memory_verify.cpp */,
 				ED2B99762A413913000B6CD8 /* common.cpp */,
 				ED2B99742A413913000B6CD8 /* common.h */,
 				ED2B99722A413913000B6CD8 /* interpreter.cpp */,
@@ -294,6 +297,7 @@
 				ED9AB58B2A413FA400C0A8DA /* logger.cpp in Sources */,
 				ED2095812A41DE170084045A /* jit_common.cpp in Sources */,
 				ED2B99852A413935000B6CD8 /* memory.cpp in Sources */,
+				AB1000212613A0000085A5F8 /* memory_verify.cpp in Sources */,
 				ED9AB5BA2A41402D00C0A8DA /* emit.cpp in Sources */,
 				ED9AB5B72A41402D00C0A8DA /* linker.cpp in Sources */,
 				ED2B998B2A41394A000B6CD8 /* jit_arm_a64.cpp in Sources */,

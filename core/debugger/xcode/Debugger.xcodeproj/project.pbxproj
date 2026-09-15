@@ -14,6 +14,7 @@
 		ED53944626136AEB0085A5F8 /* tree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53944226136AEB0085A5F8 /* tree.cpp */; };
 		ED53944E26136AFD0085A5F8 /* logger.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53944926136AFD0085A5F8 /* logger.cpp */; };
 		ED53945226136B0D0085A5F8 /* memory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53945126136B0D0085A5F8 /* memory.cpp */; };
+		AB1000112613A0000085A5F8 /* memory_verify.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AB1000122613A0000085A5F8 /* memory_verify.cpp */; };
 		ED53945C26136B480085A5F8 /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53945726136B480085A5F8 /* loader.cpp */; };
 		ED53945D26136B480085A5F8 /* common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53945826136B480085A5F8 /* common.cpp */; };
 		ED53945E26136B480085A5F8 /* interpreter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = ED53945A26136B480085A5F8 /* interpreter.cpp */; };
@@ -54,6 +55,7 @@
 		ED53944D26136AFD0085A5F8 /* traps.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = traps.h; path = ../../shared/traps.h; sourceTree = "<group>"; };
 		ED53945026136B0D0085A5F8 /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = memory.h; path = ../../vm/arch/memory.h; sourceTree = "<group>"; };
 		ED53945126136B0D0085A5F8 /* memory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory.cpp; path = ../../vm/arch/memory.cpp; sourceTree = "<group>"; };
+		AB1000122613A0000085A5F8 /* memory_verify.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory_verify.cpp; path = ../../vm/arch/memory_verify.cpp; sourceTree = "<group>"; };
 		ED53945426136B480085A5F8 /* loader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = loader.h; path = ../../vm/loader.h; sourceTree = "<group>"; };
 		ED53945526136B480085A5F8 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../../vm/common.h; sourceTree = "<group>"; };
 		ED53945626136B480085A5F8 /* vm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vm.h; path = ../../vm/vm.h; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 				ED53945626136B480085A5F8 /* vm.h */,
 				ED53945126136B0D0085A5F8 /* memory.cpp */,
 				ED53945026136B0D0085A5F8 /* memory.h */,
+				AB1000122613A0000085A5F8 /* memory_verify.cpp */,
 				ED53944826136AFD0085A5F8 /* instrs.h */,
 				ED53944926136AFD0085A5F8 /* logger.cpp */,
 				ED53944A26136AFD0085A5F8 /* logger.h */,
@@ -204,6 +207,7 @@
 				ED53944426136AEB0085A5F8 /* debugger.cpp in Sources */,
 				ED53944626136AEB0085A5F8 /* tree.cpp in Sources */,
 				ED53945226136B0D0085A5F8 /* memory.cpp in Sources */,
+				AB1000112613A0000085A5F8 /* memory_verify.cpp in Sources */,
 				EDE14A6828FB4E41004D4C25 /* jit_common.cpp in Sources */,
 				ED53945D26136B480085A5F8 /* common.cpp in Sources */,
 				ED53945E26136B480085A5F8 /* interpreter.cpp in Sources */,
