@@ -1,0 +1,443 @@
+name: Nightly Hardening
+
+# The long checks CI cannot afford on every push, run against the binaries CI
+# already built and tested: the differential regression, the program fuzzer,
+# the regression suite under the heap verifier in minor and major stress, and
+# loops of the GC stress tests in both JIT modes. A summary job sorts every
+# failure into infra / known / new (tools/cicd/nightly_triage.py) and reports
+# only the new ones as issues. Plan: docs/PLAN_2026_10_0_HARDENING.md, 1.6.
+#
+# Dispatch only for now, so the first runs MEASURE the cost per leg. Enable the
+# schedule after the first measured dispatch, off the hour.
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: 'ci-build.yml run whose objeck-<platform> artifacts to test (default: latest successful push run on master)'
+        required: false
+        default: ''
+      seed:
+        description: 'Fuzzer seed (default: UTC date, YYYYMMDD)'
+        required: false
+        default: ''
+      fuzz_count:
+        description: 'Programs the fuzzer generates per leg'
+        required: false
+        default: '200'
+      stress_runs:
+        description: 'Runs of each stress test per JIT mode'
+        required: false
+        default: '20'
+      use_dispatch_ref:
+        description: 'Check out the dispatched ref instead of the CI run commit (to try tool changes; tests then may not match the binaries)'
+        type: boolean
+        required: false
+        default: false
+  # schedule:
+  #   # Enabled after the first measured dispatch. 07:23 UTC, off the hour.
+  #   - cron: '23 7 * * *'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: nightly-hardening
+  # Never cancel a run in progress: a half-finished nightly measures nothing.
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ============================================
+  # Pick the CI run whose binaries are tested
+  # ============================================
+  resolve:
+    name: Resolve CI artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      run_id: ${{ steps.pick.outputs.run_id }}
+      head_sha: ${{ steps.pick.outputs.head_sha }}
+      seed: ${{ steps.pick.outputs.seed }}
+    steps:
+      - name: Find the latest successful master ci-build run
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.ci_run_id }}
+          INPUT_SEED: ${{ inputs.seed }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_RUN_ID" ]; then
+            RUN_ID="$INPUT_RUN_ID"
+          else
+            RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-build.yml \
+              --branch master --event push --status success --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')
+          fi
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::no successful ci-build.yml push run on master"
+            exit 1
+          fi
+          CONCLUSION=$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          HEAD_SHA=$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "::error::ci-build run $RUN_ID concluded '$CONCLUSION', not success"
+            exit 1
+          fi
+          # ci-build keeps objeck-<platform> for 7 days; an expired set cannot be tested.
+          LIVE=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" \
+            --jq '[.artifacts[] | select((.name | startswith("objeck-")) and (.expired | not))] | length')
+          if [ "$LIVE" -lt 5 ]; then
+            echo "::error::ci-build run $RUN_ID has $LIVE unexpired objeck-* artifacts, need 5"
+            exit 1
+          fi
+          SEED="${INPUT_SEED:-$(date -u +%Y%m%d)}"
+          {
+            echo "run_id=$RUN_ID"
+            echo "head_sha=$HEAD_SHA"
+            echo "seed=$SEED"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Nightly hardening inputs"
+            echo ""
+            echo "- ci-build run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN_ID"
+            echo "- commit: \`${HEAD_SHA:0:10}\`"
+            echo "- fuzzer seed: \`$SEED\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ============================================
+  # Hardening steps, one leg per CI platform
+  # ============================================
+  harden:
+    name: Harden ${{ matrix.platform }}
+    needs: resolve
+    runs-on: ${{ matrix.os }}
+    # Backstop above the sum of the step timeouts below; the first measured
+    # dispatch sets the real number.
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        # Runner labels match ci-build.yml.
+        include:
+          - platform: windows-x64
+            os: windows-2025-vs2026
+            arch: x64
+            py: python
+          - platform: windows-arm64
+            os: windows-11-arm
+            arch: ARM64
+            py: python
+          - platform: linux-x64
+            os: ubuntu-latest
+            arch: x64
+            py: python3
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: arm64
+            py: python3
+          - platform: macos-arm64
+            os: macos-15
+            arch: arm64
+            py: python3
+    defaults:
+      run:
+        shell: bash
+    env:
+      LEG: ${{ matrix.platform }}
+      PY: ${{ matrix.py }}
+      TREE: core/release/deploy-${{ matrix.arch }}
+      RESULTS: nightly-results
+      TRIAGE: tools/cicd/nightly_triage.py
+      SEED: ${{ needs.resolve.outputs.seed }}
+      JOBS: '3'
+    steps:
+      - name: Checkout the tested commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.use_dispatch_ref && github.sha || needs.resolve.outputs.head_sha }}
+
+      # Restore only. The repository cache is over its 10 GB cap, so this
+      # workflow never saves; ci-build.yml keeps these entries warm.
+      - name: Restore APT packages (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/apt-cache
+          key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-apt-
+
+      - name: Install Linux runtime dependencies
+        if: runner.os == 'Linux'
+        timeout-minutes: 15
+        run: |
+          # The same package set ci-build.yml tested these binaries with.
+          mkdir -p ~/apt-cache/partial
+          sudo apt-get update
+          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
+            libopencv-dev libmbedtls-dev unixodbc-dev libsqliteodbc \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
+            libegl1 libegl-mesa0 libgl1-mesa-dri libreadline-dev libeigen3-dev libmp3lame-dev
+          echo '[objeck_sqlite_test]' >> ~/.odbc.ini
+          echo 'Description=Objeck ODBC regression test DSN' >> ~/.odbc.ini
+          echo 'Driver=SQLite3' >> ~/.odbc.ini
+          echo 'Database=:memory:' >> ~/.odbc.ini
+
+      - name: Restore Homebrew downloads (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/Library/Caches/Homebrew
+          key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
+          restore-keys: |
+            ${{ runner.os }}-brew-downloads-
+
+      - name: Install macOS runtime dependencies
+        if: runner.os == 'macOS'
+        timeout-minutes: 15
+        run: |
+          for pkg in unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline; do
+            brew list --versions "$pkg" >/dev/null 2>&1 || brew install "$pkg"
+          done
+
+      - name: Download the CI deploy tree
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-${{ matrix.platform }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.TREE }}
+
+      - name: Prepare the deploy tree
+        id: prep
+        run: |
+          set -euo pipefail
+          # Artifacts do not keep file modes.
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            chmod +x "$TREE"/bin/* 2>/dev/null || true
+          fi
+          ls "$TREE/bin" "$TREE/lib" | head -40
+          "$TREE/bin/obc" --version
+          mkdir -p "$RESULTS/$LEG"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "exe=.exe" >> "$GITHUB_OUTPUT"
+            echo "runner=run_regression.cmd" >> "$GITHUB_OUTPUT"
+          else
+            echo "exe=" >> "$GITHUB_OUTPUT"
+            echo "runner=run_regression.sh" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Every step below runs even when an earlier one failed, and each writes
+      # nightly-results/<leg>/<step>.json for the triage job. A tool missing
+      # from this checkout FAILS its step through --require; it never skips.
+
+      - name: Differential regression
+        if: always() && steps.prep.outcome == 'success'
+        timeout-minutes: 75
+        run: |
+          "$PY" "$TRIAGE" run --leg "$LEG" --step differential --out "$RESULTS" \
+            --config "differential" --timeout 4200 --parser generic \
+            --require programs/regression/run_differential.py \
+            -- "$PY" programs/regression/run_differential.py "$TREE/bin" -j "$JOBS"
+
+      - name: Fuzzer
+        if: always() && steps.prep.outcome == 'success'
+        timeout-minutes: 75
+        env:
+          # Optional for the fuzzer: where to put failing and reduced programs
+          # so they reach the uploaded artifact.
+          OBJECK_FUZZ_OUT: ${{ github.workspace }}/nightly-results/${{ matrix.platform }}/fuzz-out
+        run: |
+          "$PY" "$TRIAGE" run --leg "$LEG" --step fuzz --out "$RESULTS" \
+            --config "fuzz" --timeout 4200 --parser generic --default-seed "$SEED" \
+            --require tools/fuzz/run_fuzz.py \
+            -- "$PY" tools/fuzz/run_fuzz.py --bin "$TREE/bin" \
+               --count "${{ inputs.fuzz_count || '200' }}" --seed "$SEED"
+
+      - name: Regression under the heap verifier (minor stress)
+        if: always() && steps.prep.outcome == 'success'
+        timeout-minutes: 70
+        env:
+          OBJECK_NURSERY: 256k
+          OBJECK_GC_VERIFY: '1'
+          TEST_TIMEOUT: '300'
+        run: |
+          # --require-text: an obr without the knob would run the suite
+          # unverified and report green.
+          "$PY" "$TRIAGE" run --leg "$LEG" --step verify-minor --out "$RESULTS" \
+            --config "nursery=256k verify=1" --timeout 4000 --parser regression \
+            --cwd programs/regression \
+            --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_NURSERY" \
+            --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_GC_VERIFY" \
+            -- "${{ steps.prep.outputs.runner }}" "${{ matrix.arch }}"
+
+      - name: Regression under the heap verifier (major stress)
+        if: always() && steps.prep.outcome == 'success'
+        timeout-minutes: 70
+        env:
+          OBJECK_VM_ARGS: --gc-threshold=64k
+          OBJECK_GC_VERIFY: '1'
+          TEST_TIMEOUT: '300'
+        run: |
+          "$PY" "$TRIAGE" run --leg "$LEG" --step verify-major --out "$RESULTS" \
+            --config "gc-threshold=64k verify=1" --timeout 4000 --parser regression \
+            --cwd programs/regression \
+            --require-text "programs/regression/${{ steps.prep.outputs.runner }}:OBJECK_VM_ARGS" \
+            --require-text "$TREE/bin/obr${{ steps.prep.outputs.exe }}:OBJECK_GC_VERIFY" \
+            -- "${{ steps.prep.outputs.runner }}" "${{ matrix.arch }}"
+
+      - name: GC stress loops
+        if: always() && steps.prep.outcome == 'success'
+        timeout-minutes: 60
+        run: |
+          "$PY" "$TRIAGE" loop --leg "$LEG" --out "$RESULTS" --bin "$TREE/bin" \
+            --src-dir programs/regression \
+            --tests minor_gc_stress,core_thread_gc_stress,jit_gc_stress \
+            --runs "${{ inputs.stress_runs || '20' }}" --modes off,1 --timeout 300
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightly-${{ matrix.platform }}
+          path: nightly-results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  # ============================================
+  # Triage and report
+  # ============================================
+  triage:
+    name: Triage
+    needs: [resolve, harden]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    outputs:
+      status: ${{ steps.triage.outputs.status }}
+      new_count: ${{ steps.triage.outputs.new_count }}
+      new_issues: ${{ steps.triage.outputs.new_issues }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Triage tool tests
+        run: python3 -m unittest tools/cicd/test_nightly_triage.py
+
+      - name: Download leg results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: nightly-*
+          path: nightly-results
+          merge-multiple: true
+
+      - name: Classify failures
+        id: triage
+        run: |
+          python3 tools/cicd/nightly_triage.py triage \
+            --results nightly-results --known tools/fuzz/known.json \
+            --legs windows-x64,windows-arm64,linux-x64,linux-arm64,macos-arm64 \
+            --steps differential,fuzz,verify-minor,verify-major,stress \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --out nightly-triage --github-output "$GITHUB_OUTPUT"
+          cat nightly-triage/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload triage
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: nightly-triage
+          path: nightly-triage/
+          if-no-files-found: warn
+          retention-days: 14
+
+      # new: the tracking issue gets the run's report (and a phone push); each
+      # new signature gets its own issue in report-new below.
+      - name: Report new failures
+        if: always() && steps.triage.outputs.status == 'new'
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow: Nightly hardening
+          details: "${{ steps.triage.outputs.new_count }} new failure signature(s)."
+          body-file: nightly-triage/tracking.md
+          ntfy-topic: ${{ secrets.NTFY_TOPIC }}
+          github-token: ${{ github.token }}
+
+      # infra: comment only, never open an issue for a runner problem.
+      - name: Note infrastructure failures
+        if: always() && steps.triage.outputs.status == 'infra'
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow: Nightly hardening
+          mode: comment-only
+          details: "Infrastructure failures only; nothing new."
+          body-file: nightly-triage/tracking.md
+          github-token: ${{ github.token }}
+
+      - name: Close the tracking issue on a green run
+        if: always() && steps.triage.outputs.status == 'green'
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow: Nightly hardening
+          mode: resolve
+          github-token: ${{ github.token }}
+
+      - name: Report a broken triage
+        if: always() && steps.triage.outcome != 'success'
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow: Nightly hardening
+          details: "The triage step itself failed, so this run's failures are unclassified. See the run log."
+          ntfy-topic: ${{ secrets.NTFY_TOPIC }}
+          github-token: ${{ github.token }}
+
+      # known: summary only. Red for anything that is not green or known.
+      - name: Fail on unclassified or new failures
+        if: always() && steps.triage.outputs.status != 'green' && steps.triage.outputs.status != 'known'
+        run: |
+          echo "::error::nightly triage status '${{ steps.triage.outputs.status }}'"
+          exit 1
+
+  report-new:
+    name: Issue ${{ matrix.issue.id }}
+    needs: triage
+    if: always() && needs.triage.outputs.new_count != '' && needs.triage.outputs.new_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    strategy:
+      fail-fast: false
+      # One at a time, so two new signatures never race on the label or title.
+      max-parallel: 1
+      matrix:
+        issue: ${{ fromJSON(needs.triage.outputs.new_issues) }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/actions
+
+      - name: Download triage
+        uses: actions/download-artifact@v4
+        with:
+          name: nightly-triage
+          path: nightly-triage
+
+      # The title carries the signature, so a failure seen again on a later
+      # night comments on its existing issue instead of opening a duplicate.
+      - name: Open or update the signature issue
+        uses: ./.github/actions/notify-failure
+        with:
+          workflow: ${{ matrix.issue.workflow }}
+          body-file: nightly-triage/${{ matrix.issue.body_file }}
+          github-token: ${{ github.token }}
