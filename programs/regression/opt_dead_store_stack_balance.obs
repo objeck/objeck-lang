@@ -1,3 +1,5 @@
+# JIT_DISABLE
+# reason: the leaked operands only corrupt the caller on the interpreter's shared operand stack; JIT runs pass either way
 #~
 Regression: optimizer passes that left values on the operand stack.
 
