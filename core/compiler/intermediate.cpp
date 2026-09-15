@@ -6706,17 +6706,19 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) || 
-               SearchProgramEnums(entry->GetType()->GetName())) {
+            // an enum array receiver was already loaded like an object array
+            if(entry->GetType()->GetDimension() == 0 &&
+               (parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) ||
+                SearchProgramEnums(entry->GetType()->GetName()))) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
             }
             break;
-            
+
           default:
             break;
           }
           // enum check
-          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && entry->GetType()->GetDimension() == 0 &&
              SearchProgramEnums(entry->GetType()->GetName())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
@@ -6750,17 +6752,19 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            if(parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) || 
-               SearchProgramEnums(entry->GetType()->GetName()) || is_index_size) {
+            // an enum array receiver was already loaded like an object array
+            if((entry->GetType()->GetDimension() == 0 &&
+                (parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) ||
+                 SearchProgramEnums(entry->GetType()->GetName()))) || is_index_size) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
             }
             break;
-            
+
           default:
             break;
           }
           // enum check
-          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && 
+          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && entry->GetType()->GetDimension() == 0 &&
              parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
