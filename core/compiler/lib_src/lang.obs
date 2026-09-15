@@ -1790,22 +1790,19 @@ bundle System {
 		zeros are shifted into the high bits rather than copies of the sign bit. This
 		is what the '>>>' operator compiles to.
 		@param v value to shift
-		@param count number of bits to shift by; 0 returns the value unchanged and a
-		count of 64 or more shifts every bit out, yielding 0
+		@param count number of bits to shift by, taken modulo 64 like every Int shift
+		(count and 63): 0, 64 and -64 return the value unchanged, and -1 shifts by 63
 		@return shifted value
 		~#
 		function : native : ShiftRightUnsigned(v : Int, count : Int) ~ Int {
-			if(count = 0) {
+			n := count and 63;
+			if(n = 0) {
 				return v;
 			};
 
-			if(count < 0 | count > 63) {
-				return 0;
-			};
-
 			# shifting by one and clearing the sign bit gives a true logical shift; the
-			# remaining count-1 bits then shift a non-negative value, where '>>' agrees
-			return ((v >> 1) and 0x7FFFFFFFFFFFFFFF) >> (count - 1);
+			# remaining n-1 bits then shift a non-negative value, where '>>' agrees
+			return ((v >> 1) and 0x7FFFFFFFFFFFFFFF) >> (n - 1);
 		}
 
 		#~
