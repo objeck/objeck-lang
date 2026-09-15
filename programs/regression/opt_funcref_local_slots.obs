@@ -1,0 +1,62 @@
+#~
+Optimizer slot numbering with a function-reference local.
+
+A func-ref local takes two slots, but the s3 method inliner and the loop
+optimizer (LICM) picked the next free slot by counting declarations. In a
+method holding `fr : (Int) ~ Int := G(Int) ~ Int;`, inlining `a->Size()` into
+a counted loop gave its temporaries the slot of the loop counter, so the loop
+never ended (or, with other locals, dereferenced Nil). -opt s0..s2 were correct.
+Fuzzer finding s3_funcref_local_loop_hang.obs.
+~#
+
+class OptFuncRefLocalSlots {
+  function : G0(x : Int) ~ Int { return x; }
+  function : G1(x : Int) ~ Int { return x * 2; }
+
+  # the fuzzer's shape: func-ref declared after the loop
+  function : F0(p0 : Int) ~ Int {
+    v0 := p0;
+    a0 := Int->New[16];
+    for(i0 := 0; i0 < a0->Size(); i0 += 1;) { a0[i0] := (i0 * 1 + p0) % 1009; };
+    fr0 : (Int) ~ Int := G0(Int) ~ Int;
+    v0 := p0;
+    return p0 + a0[15];
+  }
+
+  # func-ref declared before the loop and called inside it
+  function : F1(p0 : Int) ~ Int {
+    fr0 : (Int) ~ Int := G1(Int) ~ Int;
+    s := 0;
+    a0 := Int->New[10];
+    for(i0 := 0; i0 < a0->Size(); i0 += 1;) { a0[i0] := fr0(i0); s += a0[i0]; };
+    return s + p0;
+  }
+
+  # two func-refs and a logical and/or (slot 0) in the same method
+  function : F2(p0 : Int) ~ Int {
+    fa : (Int) ~ Int := G0(Int) ~ Int;
+    fb : (Int) ~ Int := G1(Int) ~ Int;
+    a0 := Int->New[8];
+    c := 0;
+    for(i0 := 0; i0 < a0->Size(); i0 += 1;) {
+      a0[i0] := fa(i0) + fb(p0);
+      if(i0 > 1 & i0 < 6) { c += 1; };
+    };
+    return a0[7] + c + fb(1);
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    d := 0;
+    for(r := 0; r < 12; r += 1;) { d := (d * 31 + F0(r)) % 1000000007; };
+    e := F1(3);
+    f := F2(5);
+    "d="->Print(); d->Print(); ", e="->Print(); e->Print(); ", f="->Print(); f->PrintLine();
+
+    # expected values from -opt s0
+    if(d <> 866954962 | e <> 93 | f <> 23) {
+      "FAIL"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
