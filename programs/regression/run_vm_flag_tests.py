@@ -493,7 +493,10 @@ VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress
                       "closure_capture_old_holder_g12",
                       # Bool[] declared as a byte array in every declaration kind,
                       # and array captures including Bool[] (B2 wrong memory TYPE)
-                      "gc_bool_array_declaration", "closure_array_param_capture")
+                      "gc_bool_array_declaration", "closure_array_param_capture",
+                      # an and/or callee inlined into a caller without one: its locals
+                      # must sit in the slots declared for them
+                      "gc_scoped_local_slot_types")
 
 # Each injected fault and the report the verifier must stop the program with.
 VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),

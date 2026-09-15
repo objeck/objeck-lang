@@ -1031,14 +1031,27 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         IntermediateDeclarations* current_entries = current_method->GetEntries();
         // count slots, not declarations: a func-ref local takes two, and
         // counting it once put the inlined locals over the caller's last local
+        //
+        // The appended declarations start at id 'slots' (id 'slots' + 1 when the
+        // caller holds the and/or temporary, whose word shifts every declared id
+        // up by one): the instance first, then the callee's and/or temporary if it
+        // has one, then the callee's own declarations. The callee's instructions
+        // already number its temporary id 0 and its locals from id 1 in that case,
+        // so they shift by the instance word alone. Only the CALLER's temporary
+        // moves the base. Adding one for the callee's temporary as well (as this
+        // did) put every inlined local one id above its declaration whenever the
+        // caller had none: an inlined Int[] sat in a slot declared Int, the
+        // collector never traced it and freed it while live, and the last local
+        // landed past the declarations (gc_scoped_local_slot_types.obs).
         int local_instr_offset = 1 + current_entries->GetSlotCount();
-
-        if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
+        if(current_method->HasAndOr()) {
           local_instr_offset++;
         }
 
-        // adjust local space
-        current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
+        // adjust local space, in bytes: the instance word, the callee's and/or
+        // word, then its locals -- one word for each declaration appended below
+        current_method->SetSpace(current_method->GetSpace() + (int)sizeof(INT64_VALUE) +
+                                 (mthd_called->HasAndOr() ? (int)sizeof(INT64_VALUE) : 0) + mthd_called->GetSpace());
 
         // fetch inline instructions for called method
         std::vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();
