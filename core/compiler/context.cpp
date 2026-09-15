@@ -2457,6 +2457,21 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
         copy_entry->AddVariable(variable);
         capture_lambda->AddClosure(copy_entry, capture_entry);
       }
+
+      // array indices of a captured array: analyzed here exactly as for an
+      // explicitly defined variable above. Skipping them left an index that is
+      // a variable (or any non-literal expression) without a symbol entry or
+      // type, and the emitter dereferenced it (obc crashed with 0xC0000005).
+      ExpressionList* indices = variable->GetIndices();
+      if(indices) {
+        Type* capture_type = capture_entry->GetType();
+        if(capture_type && capture_type->GetDimension() == (int)indices->GetExpressions().size()) {
+          AnalyzeIndices(indices, depth + 1);
+        }
+        else if(!variable->IsInternalVariable()) {
+          ProcessError(variable, L"Dimension size mismatch or uninitialized type");
+        }
+      }
     }
     else {
       // not a capture -- a new type-inferred local declared inside the lambda

@@ -111,13 +111,13 @@ class GcBoolArrayDeclaration {
   }
 
   # built in helpers and returned, so the creating frame is gone before the call;
-  # literal indexes only: a captured array indexed by a variable crashes obc (separate bug)
+  # both literal and variable indexes (see closure_array_var_index.obs)
   function : CaptureParam(p : Bool[]) ~ () ~ Int {
     return \() ~ Int : () => {
       count := 0;
-      if(p[0]) { count += 1; };
-      if(p[5]) { count += 1; };
-      if(p[10]) { count += 1; };
+      for(i := 0; i < p->Size(); i += 1;) {
+        if(p[i]) { count += 1; };
+      };
       if(p[3]) { count += 10; };
       return count;
     };
@@ -126,7 +126,7 @@ class GcBoolArrayDeclaration {
   function : CaptureLocal() ~ () ~ Bool {
     l := Bool->New[6];
     l[5] := true;
-    return \() ~ Bool : () => l[5];
+    return \() ~ Bool : () => { k := 5; return l[k] & l[5]; };
   }
 
   function : SerializeBools() ~ Byte[] {
