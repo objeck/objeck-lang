@@ -74,7 +74,23 @@ class SignatureTest(unittest.TestCase):
         r["s3/jit1"] = Result(AV, "", err, 0.5)
         sig = fuzzlib.signature(r)
         self.assertTrue(sig.startswith("crash: s3/jit1 access violation >>> Attempting to dereference"), sig)
-        self.assertIn("@FuzzProgram:F3:i,", sig)
+        self.assertIn("@FuzzProgram:F3:i,;", sig)
+
+    def test_runtime_error_adds_error_and_unwound_frame(self):
+        r = all_same("F0=1\nF1=2\n")
+        err = (">>> Attempting to dereference a 'Nil' memory element <<<\n"
+               "Unwinding local stack (0000021692BC2700):\n"
+               "  method: pos=2, name='FuzzProgram->F0(a:Int, b:Int)', file='prog.obs'\n"
+               "  method: pos=1, name='FuzzProgram->Main(a:String[])'\n")
+        for name in ("s3/off", "s3/default", "s3/jit1"):
+            r[name] = ok("", code=1, err=err)
+        self.assertEqual(fuzzlib.signature(r),
+                         "diverge: s0/off,s0/jit1 | s3/off,s3/default,s3/jit1 first=F#=# vs  exit 1 "
+                         ">>> Attempting to dereference a 'Nil' memory element <<< "
+                         "@FuzzProgram->F0(a:Int, b:Int)")
+        # a native crash prints nothing: no empty error or frame fields
+        r["s3/off"] = Result(AV, "", "", 0.2)
+        self.assertTrue(fuzzlib.signature(r).startswith("crash: s3/off access violation; diverge: "))
 
     def test_all_configs_failing_alike_is_still_a_finding(self):
         r = {n: ok("", code=1, err=">>> Index out of bounds: 9 <<<\n") for n in ORDER}

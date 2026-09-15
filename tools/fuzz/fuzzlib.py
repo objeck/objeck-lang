@@ -204,18 +204,35 @@ def error_text(result):
 
 
 def top_frame(result):
-    """Objeck prints no native stack; the nearest thing to a top frame is the
-    method named in the VM's error line (method='...')."""
-    m = re.search(r"method='([^']*)'", result.stderr)
+    """Objeck prints no native stack. The top frame is the first method of the
+    VM's 'Unwinding local stack' trace (method: pos=N, name='...'), else the
+    method named in its error line (method='...'); a native crash has neither."""
+    m = re.search(r"method: pos=\d+, name='([^']*)'", result.stderr)
+    if not m:
+        m = re.search(r"method='([^']*)'", result.stderr)
     return m.group(1) if m else ""
+
+
+def failure_text(result):
+    """' <exit> <error text> @<top frame>' for a failed run, '' for a clean one."""
+    if result is None or (result.code == 0 and not result.timed_out):
+        return ""
+    parts = [describe_exit(result)]
+    err = normalize(error_text(result))
+    if err:
+        parts.append(err)
+    frame = top_frame(result)
+    if frame:
+        parts.append("@" + frame)
+    return " " + " ".join(parts)
 
 
 def signature(results, order=None):
     """A stable text identifying the kind of failure, or None when every
     configuration agrees with the reference and exits 0.
 
-    diverge: <partition> first=<normalized reference line> vs <normalized other>
-    crash:   <config> <exit description> <error text> @<top frame>
+    diverge: <partition> first=<normalized reference line> vs <normalized other>[ <exit> <error> @<frame>]
+    crash:   <config> <exit description>[ <error text>][ @<top frame>]
     """
     order = order or [c[0] for c in CONFIGS]
     groups = partition(results, order)
@@ -236,20 +253,21 @@ def signature(results, order=None):
     if crashed:
         n = crashed[0]
         r = results[n]
-        parts.append("crash: %s %s %s @%s" % (n, describe_exit(r), normalize(error_text(r)), top_frame(r)))
+        parts.append("crash: %s%s" % (n, failure_text(r)))
     if len(groups) > 1:
         other_name = groups[1][0]
         other = results.get(other_name)
         diff = first_difference(ref.stdout if ref else "", other.stdout if other else "")
+        tail = "" if other_name in crashed else failure_text(other)
         if diff:
-            parts.append("diverge: %s first=%s vs %s" % (partition_text(groups), normalize(diff[1]),
-                                                          normalize(diff[2])))
+            parts.append("diverge: %s first=%s vs %s%s" % (partition_text(groups), normalize(diff[1]),
+                                                            normalize(diff[2]), tail))
         else:
-            parts.append("diverge: %s exit=%s vs %s" % (partition_text(groups), describe_exit(ref) if ref else "-",
-                                                         describe_exit(other) if other else "-"))
+            parts.append("diverge: %s exit=%s vs %s%s" % (partition_text(groups), describe_exit(ref) if ref else "-",
+                                                           describe_exit(other) if other else "-", tail))
     elif bad and not crashed:
         r = results[bad[0]]
-        parts.append("fail: all %s %s" % (describe_exit(r), normalize(error_text(r))))
+        parts.append("fail: all%s" % failure_text(r))
     return "; ".join(parts)
 
 

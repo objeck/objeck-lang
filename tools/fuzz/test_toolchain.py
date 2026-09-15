@@ -116,6 +116,16 @@ class ToolchainTest(unittest.TestCase):
         self.assertEqual(list(s["signatures"]),
                          ["diverge: s0/off,s3/off,s3/default | s3/jit1,s0/jit1 first=F#=# vs F#=#"])
 
+    def test_reducer_refuses_a_program_that_is_not_a_finding(self):
+        import reduce
+        d = tempfile.mkdtemp(prefix="fuzz_reduce_clean_")
+        p = gen.generate(seed=500, features=["F2"])
+        with open(os.path.join(d, "choices.json"), "w") as f:
+            json.dump({"seed": 500, "forced_features": ["F2"], "choices": p.choices}, f)
+        dest = os.path.join(d, "findings")
+        self.assertEqual(reduce.main([d, "--bin", BIN, "--dest", dest, "--name", "clean"]), 1)
+        self.assertFalse(os.path.exists(os.path.join(dest, "clean.obs")))
+
     def test_known_json_suppresses_a_caught_fault(self):
         os.environ["FUZZ_REAL_OBR"] = os.path.join(BIN, "obr" + EXE)
         out = tempfile.mkdtemp(prefix="fuzz_known_")

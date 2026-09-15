@@ -52,6 +52,34 @@ class DeterminismTest(unittest.TestCase):
             self.assertEqual(strip(a.text), strip(b.text))
             self.assertEqual(a.choices, b.choices)
 
+    def test_draw_order_is_pinned(self):
+        """Findings are stored as choice sequences, so a generator change that
+        alters which draws a program makes silently turns every saved finding
+        into a different program (it happened once: an unconditional draw added
+        for the basic-lambda knob). Changing these hashes must be deliberate,
+        and saved findings must be re-recorded when they change."""
+        import hashlib
+        golden = {
+            1: ("68fb2b29b1370fb0f45730e69cb5a520793735e3", 2925),
+            140: ("519737b86ea7261e1b230b2b8817a3d775e1c7da", 1671),
+            231: ("e00bef58671a14206eef5404246d11d7db01ad8a", 266),
+            7777: ("367e48e12bab255422d0d4831ffbd08da8fc4375", 1533),
+        }
+        for seed, (digest, ndraws) in golden.items():
+            p = gen.generate(seed=seed)
+            self.assertEqual((hashlib.sha1(p.text.encode()).hexdigest(), len(p.choices)), (digest, ndraws), seed)
+
+    def test_knob_replay_uses_the_recorded_setting(self):
+        # a program recorded with the basic-lambda knob replays exactly with it
+        for seed in range(30):
+            a = gen.generate(seed=seed, basic_lambdas=True)
+            b = gen.generate(choices=a.choices, basic_lambdas=True)
+            self.assertEqual(a.text.split("~#", 1)[1], b.text.split("~#", 1)[1])
+        # and without F5 the knob changes nothing at all
+        a = gen.generate(seed=140, features=["F2"], basic_lambdas=True)
+        b = gen.generate(seed=140, features=["F2"], basic_lambdas=False)
+        self.assertEqual(a.text, b.text)
+
     def test_forced_features_stay_aligned_on_replay(self):
         a = gen.generate(seed=5, features=["F2", "F6"])
         self.assertEqual(a.features, ["F1", "F2", "F6"])

@@ -88,13 +88,24 @@ def shrink(choices, test, max_tests=None, log=None):
                 if any(best[i:i + size]) and attempt(best[:i] + [0] * size + best[i + size:]):
                     changed = True
                 i += size
-        # 4. lower single values
+        # 4. lower single values: 0 first, then bisect for the smallest value
+        #    that still works (treating the test as monotone, which it usually
+        #    is near a working value; a wrong guess only costs a few tests)
         for i in range(len(best)):
-            v = best[i]
-            for smaller in (0, v // 2, v - 1):
-                if 0 <= smaller < v and attempt(best[:i] + [smaller] + best[i + 1:]):
+            v = best[i] if i < len(best) else 0
+            if v == 0:
+                continue
+            if attempt(best[:i] + [0] + best[i + 1:]):
+                changed = True
+                continue
+            lo, hi = 0, v          # lo fails, hi works
+            while hi - lo > 1 and i < len(best) and best[i] == hi:
+                mid = (lo + hi) // 2
+                if attempt(best[:i] + [mid] + best[i + 1:]):
                     changed = True
-                    break
+                    hi = mid
+                else:
+                    lo = mid
     return best, tests[0]
 
 
@@ -154,6 +165,12 @@ def main(argv=None):
     print("original: %d choices, %d lines" % (len(prog.choices), prog.text.count("\n")))
     print("  signature: %s" % original.signature)
     print("  partition: %s" % (original.partition_text() if original.results else "-"))
+    if original.signature is None:
+        # an intermittent failure that did not recur: the partition of a clean
+        # run is one class, and every smaller program would "match" it
+        print("not a finding now: every configuration agrees and exits 0; nothing to reduce")
+        shutil.rmtree(workdir, ignore_errors=True)
+        return 1
     test = objeck_test(tc, original, forced, workdir, log=print, basic_lambdas=basic)
     if test(prog.choices) is None:
         print("the original is not interesting under the reducer's test "
