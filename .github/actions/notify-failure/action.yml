@@ -53,8 +53,12 @@ runs:
 
         $(head -c 60000 "$BODY_FILE")"
         fi
+        # --limit: gh lists 30 by default, newest first, and every nightly
+        # signature title also matches the tracking title's search; the exact
+        # select below then picks the right one out of the larger page.
         EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$LABEL" --state open \
-          --search "in:title \"$TITLE\"" --json number,title --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n 1)
+          --limit 300 --search "in:title \"$TITLE\"" --json number,title \
+          --jq ".[] | select(.title == \"$TITLE\") | .number" | head -n 1)
         if [ "$MODE" = "resolve" ]; then
           if [ -n "$EXISTING" ]; then
             gh issue close "$EXISTING" --repo "$GITHUB_REPOSITORY" \
