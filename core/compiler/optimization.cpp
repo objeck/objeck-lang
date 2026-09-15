@@ -1033,12 +1033,28 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
         // counting it once put the inlined locals over the caller's last local
         int local_instr_offset = 1 + current_entries->GetSlotCount();
 
-        if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
+        // The caller's and/or temp is its id 0, so its declared locals, and the
+        // slots appended below, start at id 1. The callee's and/or temp is the
+        // callee's own id 0 and moves with its other ids onto the INT_PARM
+        // declared for it after the instance slot; it adds nothing here. It
+        // used to: a callee with an and/or temp inlined into a caller without
+        // one had its instance and every local stored one slot above its
+        // declarations, so the collector read each slot under the next
+        // declaration's type and never saw the callee's last local
+        // (gc_zero_field_nursery_end under OBJECK_GC_VERIFY, B2 on
+        // Fill:i, slot 7; opt_inline_and_or_slots.obs).
+        if(current_method->HasAndOr()) {
           local_instr_offset++;
         }
 
-        // adjust local space
-        current_method->SetSpace(current_method->GetSpace() + sizeof(INT_VALUE) * 2 + mthd_called->GetSpace());
+        // adjust local space, in bytes of whole words: the instance slot, the
+        // callee's and/or slot when it has one (its own space leaves that word
+        // out, see CalculateEntrySpace), then the callee's locals. This added
+        // two INT_VALUEs, one word, so the frame the interpreter zeroes ended
+        // a word or two short of the last inlined local.
+        current_method->SetSpace(current_method->GetSpace() +
+                                 (int)sizeof(INT64_VALUE) * (mthd_called->HasAndOr() ? 2 : 1) +
+                                 mthd_called->GetSpace());
 
         // fetch inline instructions for called method
         std::vector<IntermediateBlock*> mthd_called_blocks = mthd_called->GetBlocks();

@@ -61,7 +61,8 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     runtime.memory.used (the fixture checks that itself). And collection stays
     correct when minor GCs are frequent: obj_size_layout, minor_gc_stress,
     core_thread_gc_stress, gc_minor_closure_capture, gc_zero_field_nursery_end
-    and gc_closure_capture_nursery_end pass with --nursery=128k and 256k,
+    gc_closure_capture_nursery_end and opt_inline_and_or_slots pass with
+    --nursery=128k and 256k,
     interpreted and with every method compiled. (At those sizes an integration-1
     obr lost a zero-field object that was the last allocation before a
     collection, and a closure capture copied just before one.) A v2026.9.4 obr
@@ -476,7 +477,10 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
 
 # Run with small nurseries (check_nursery_and_gc_stats); each prints PASS.
 NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_stress", "gc_minor_closure_capture",
-                        "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end")
+                        "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end",
+                        # an -opt s3 inlined callee's object local stays a root; the
+                        # old layout lost it interpreted, which the runner never runs
+                        "opt_inline_and_or_slots")
 NURSERY_STRESS_SIZES = ("128k", "256k")
 
 # The verifier's report prefix. Not a bare b"gc-verify": its back-off notice
@@ -493,7 +497,10 @@ VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress
                       "closure_capture_old_holder_g12",
                       # Bool[] declared as a byte array in every declaration kind,
                       # and array captures including Bool[] (B2 wrong memory TYPE)
-                      "gc_bool_array_declaration", "closure_array_param_capture")
+                      "gc_bool_array_declaration", "closure_array_param_capture",
+                      # an inlined callee with an and/or temp: its locals sat one
+                      # slot above their declarations (B2, Fill:i, slot 7)
+                      "gc_zero_field_nursery_end", "opt_inline_and_or_slots")
 
 # Each injected fault and the report the verifier must stop the program with.
 VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),
