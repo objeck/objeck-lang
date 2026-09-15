@@ -35,6 +35,7 @@ Run from anywhere:  python3 tools/cicd/check_test_exit_codes.py
 Exit 0 when every asserting test can fail, 1 otherwise.
 """
 import os
+import re
 import sys
 
 # Printed by a test to report a failed check. Any of these means the test makes
@@ -45,8 +46,43 @@ FAIL_MARKERS = ("FAIL", "Failed:")
 EXIT_CALLS = ("Runtime->Exit(", "System->Exit(")
 
 # Compile-error tests are checked by the runner on the compiler's exit code and
-# never execute, so they have nothing to exit with.
+# output and never execute, so they have nothing to exit with. The runners honor
+# the marker only at the start of a line, so that is all that exempts a test.
 COMPILE_ERROR_MARKER = "# EXPECT_COMPILE_ERROR"
+COMPILE_ERROR_LINE = re.compile(r"^# EXPECT_COMPILE_ERROR", re.M)
+
+# Characters run_regression.cmd cannot carry through `set` and `findstr /C:`.
+UNSAFE_MESSAGE_CHARS = ('"', "!", "\\")
+
+
+def marker_problems(source):
+    """Return what is wrong with a test's EXPECT_* marker lines, as strings.
+
+    '# EXPECT_COMPILE_ERROR: <message>' must name a message both runners can
+    match identically, and a marker behind a UTF-8 byte-order mark is invisible
+    to the runners (they match at column 0), so the test would run as positive.
+    """
+    problems = []
+    if re.match("﻿# EXPECT_(COMPILE|RUNTIME)_ERROR", source):
+        problems.append("marker follows a UTF-8 byte-order mark; the runners will not see it")
+    for line in source.splitlines():
+        if not line.startswith(COMPILE_ERROR_MARKER):
+            continue
+        rest = line[len(COMPILE_ERROR_MARKER):]
+        if rest == "":
+            continue
+        if not rest.startswith(":"):
+            problems.append("unrecognized marker %r; write '# EXPECT_COMPILE_ERROR: <message>'" % line)
+            continue
+        message = rest[1:].lstrip(" \t")
+        if not message.strip():
+            problems.append("'# EXPECT_COMPILE_ERROR:' names no message")
+        elif message != message.rstrip():
+            problems.append("expected message %r has trailing blanks" % message)
+        elif any(c in message for c in UNSAFE_MESSAGE_CHARS):
+            problems.append("expected message %r contains one of %s, which run_regression.cmd cannot match"
+                            % (message, " ".join(UNSAFE_MESSAGE_CHARS)))
+    return problems
 
 
 def repo_root():
@@ -60,15 +96,19 @@ def main():
         return 1
 
     offenders = []
+    bad_markers = []
     checked = 0
     for name in sorted(os.listdir(tests_dir)):
         if not name.endswith(".obs"):
             continue
         path = os.path.join(tests_dir, name)
-        with open(path, encoding="utf-8", errors="replace") as handle:
+        with open(path, encoding="utf-8", errors="replace", newline="") as handle:
             source = handle.read()
 
-        if COMPILE_ERROR_MARKER in source:
+        for problem in marker_problems(source):
+            bad_markers.append("programs/regression/%s: %s" % (name, problem))
+
+        if COMPILE_ERROR_LINE.search(source):
             continue
         if not any(marker in source for marker in FAIL_MARKERS):
             continue
@@ -76,6 +116,14 @@ def main():
         checked += 1
         if not any(call in source for call in EXIT_CALLS):
             offenders.append(name)
+
+    if bad_markers:
+        sys.stderr.write("%d regression test marker problem(s):\n\n" % len(bad_markers))
+        for problem in bad_markers:
+            sys.stderr.write("    %s\n" % problem)
+        sys.stderr.write("\n")
+        if not offenders:
+            return 1
 
     if offenders:
         sys.stderr.write(
