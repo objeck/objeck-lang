@@ -1016,11 +1016,9 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
         // calculate offset
         IntermediateDeclarations* current_entries = current_method->GetEntries();
-        int local_instr_offset = 1;
-        std::vector<IntermediateDeclaration*> current_dclrs = current_entries->GetParameters();
-        for(size_t j = 0; j < current_dclrs.size(); ++j) {
-          local_instr_offset++;
-        }
+        // count slots, not declarations: a func-ref local takes two, and
+        // counting it once put the inlined locals over the caller's last local
+        int local_instr_offset = 1 + current_entries->GetSlotCount();
 
         if(current_method->HasAndOr() || mthd_called->HasAndOr()) {
           local_instr_offset++;
@@ -2367,7 +2365,7 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
 
   // allocate a fresh LOCL int slot and update method metadata
   auto alloc_int_slot = [this]() -> int {
-    int slot = (int)current_method->GetEntries()->GetParameters().size() +
+    int slot = current_method->GetEntries()->GetSlotCount() +
                (current_method->HasAndOr() ? 1 : 0);
     current_method->GetEntries()->AddParameter(new IntermediateDeclaration(L"", INT_PARM));
     current_method->SetSpace(current_method->GetSpace() + (int)sizeof(INT64_VALUE));
