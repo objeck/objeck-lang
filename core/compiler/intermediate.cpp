@@ -6593,6 +6593,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     SymbolEntry* entry = method_call->GetEntry();
 
     bool is_index_size = false;
+    // set when an array entry receiver is loaded below, together with its instance memory
+    bool array_receiver_loaded = false;
     if(variable && variable->IsInternalVariable()) {
       entry = variable->GetEntry();
       is_index_size = true;
@@ -6628,7 +6630,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         }
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-      } 
+        array_receiver_loaded = true;
+      }
       else if(!entry->IsSelf()) {
         switch(entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
@@ -6706,8 +6709,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            // an enum array receiver was already loaded like an object array
-            if(entry->GetType()->GetDimension() == 0 &&
+            // an enum array entry receiver was already loaded like an object array
+            if(!array_receiver_loaded &&
                (parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) ||
                 SearchProgramEnums(entry->GetType()->GetName()))) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
@@ -6718,7 +6721,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
           }
           // enum check
-          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && entry->GetType()->GetDimension() == 0 &&
+          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && !array_receiver_loaded &&
              SearchProgramEnums(entry->GetType()->GetName())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
@@ -6752,8 +6755,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
 
           case frontend::CLASS_TYPE:
-            // an enum array receiver was already loaded like an object array
-            if((entry->GetType()->GetDimension() == 0 &&
+            // an enum array entry receiver was already loaded like an object array
+            if((!array_receiver_loaded &&
                 (parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses()) ||
                  SearchProgramEnums(entry->GetType()->GetName()))) || is_index_size) {
               imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
@@ -6764,7 +6767,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             break;
           }
           // enum check
-          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && entry->GetType()->GetDimension() == 0 &&
+          if(entry->GetType()->GetType() == frontend::CLASS_TYPE && !array_receiver_loaded &&
              parsed_program->GetLinker()->SearchEnumLibraries(entry->GetType()->GetName(), parsed_program->GetLibUses())) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
