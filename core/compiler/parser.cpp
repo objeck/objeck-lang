@@ -1336,6 +1336,29 @@ Class* Parser::ParseInterface(const std::wstring &bundle_name, int depth)
 }
 
 /****************************
+ * True when a string literal the scanner rejected holds a lambda `\(` inside a
+ * `{$ ... }` interpolation, so the error can name the real problem instead of
+ * reporting a bad escape
+ ****************************/
+static bool HasLambdaInInterpolation(const std::wstring& str)
+{
+  bool in_interpolation = false;
+  for(size_t i = 0; i + 1 < str.size(); ++i) {
+    if(str[i] == L'{' && str[i + 1] == L'$') {
+      in_interpolation = true;
+    }
+    else if(str[i] == L'}') {
+      in_interpolation = false;
+    }
+    else if(in_interpolation && str[i] == L'\\' && str[i + 1] == L'(') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/****************************
  * Parses lambda expression
  ****************************/
 Lambda* Parser::ParseLambda(int depth) {
@@ -1363,7 +1386,8 @@ Lambda* Parser::ParseLambda(int depth) {
     // by `~` (the function type's return marker), in the bare form it is not.
     int scan = 1;
     int paren_depth = 1;
-    while(paren_depth > 0 && !Match(TOKEN_END_OF_STREAM, scan)) {
+    // the scanner only buffers LOOK_AHEAD tokens; GetToken() past that is nullptr
+    while(paren_depth > 0 && scan < LOOK_AHEAD && !Match(TOKEN_END_OF_STREAM, scan)) {
       if(Match(TOKEN_OPEN_PAREN, scan)) {
         paren_depth++;
       }
@@ -1373,7 +1397,8 @@ Lambda* Parser::ParseLambda(int depth) {
       scan++;
     }
 
-    if(Match(TOKEN_TILDE, scan)) {
+    // a list too long to classify within the window keeps the explicit-type parse
+    if(scan >= LOOK_AHEAD || Match(TOKEN_TILDE, scan)) {
       // explicit function-type signature
       type = ParseType(depth + 1);
 
@@ -5688,7 +5713,12 @@ StaticArray* Parser::ParseStaticArray(int depth) {
                                     break;
 
         case TOKEN_BAD_CHAR_STRING_LIT:
-          ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
+          if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
+            ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+          }
+          else {
+            ProcessError(L"Invalid escaped std::string literal", TOKEN_SEMI_COLON);
+          }
           NextToken();
           break;
 
@@ -6785,7 +6815,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_BAD_CHAR_STRING_LIT:
-      ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
+      if(HasLambdaInInterpolation(scanner->GetToken()->GetIdentifier())) {
+        ProcessError(L"Lambdas are not allowed inside string interpolation; assign the lambda to a local first", TOKEN_SEMI_COLON);
+      }
+      else {
+        ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
+      }
       NextToken();
       break;
 

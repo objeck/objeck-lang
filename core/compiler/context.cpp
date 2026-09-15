@@ -1174,6 +1174,13 @@ void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
   if(lambda->GetLambdaType()) {
     lambda_type = lambda->GetLambdaType();
   }
+  // a bare lambda `\(...) => body` whose type cannot be inferred here (a ternary
+  // branch, one of several call arguments, a function-typed variable, ...);
+  // resolving its empty alias name only produced "Invalid alias"
+  else if(!is_inferred && lambda_name.empty()) {
+    ProcessError(lambda, L"Cannot infer the type of a bare lambda here; wrap it as FuncRef->New(\\(...) => ...)<R> or give it an explicit signature \\(...) ~ R : (...) => ...");
+    return;
+  }
   // by name
   else if(!is_inferred) {
     lambda_type = ResolveAlias(lambda_name, lambda);
@@ -1279,7 +1286,12 @@ bool ContextAnalyzer::DerivedFuncRefLambdaArg(MethodCall* lambda_inferred_call, 
       call_params->SetExpression(wrap, i);
       // re-analyzing the wrap re-enters the inferred-lambda machinery for the
       // FuncRef->New(...) call, which builds the lambda from its `<R>` generic
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
       AnalyzeExpression(wrap, 0);
+      // consumed: a later bare lambda must not see this call as its context
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
       return true;
     }
   }
@@ -1322,8 +1334,12 @@ Method* ContextAnalyzer::DerivedLambdaFunction(std::vector<Method*>& alt_mthds)
       inferred_type->SetFunctionParameters(inferred_type_params);
       inferred_type->SetFunctionReturn(inferred_type_rtrn);
 
-      // build lambda function
-      BuildLambdaFunction(lambda_inferred.first, inferred_type, 0);
+      // build lambda function; the inferred state is consumed first so the
+      // lambda body (and any later bare lambda) starts from a clean state
+      Lambda* inferred_lambda = lambda_inferred.first;
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
+      BuildLambdaFunction(inferred_lambda, inferred_type, 0);
       return alt_mthd;
     }
   }
@@ -1331,7 +1347,7 @@ Method* ContextAnalyzer::DerivedLambdaFunction(std::vector<Method*>& alt_mthds)
   return nullptr;
 }
 
-LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*>& alt_mthds)
+LibraryMethod*ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*>& alt_mthds)
 {
   if(lambda_inferred.first && lambda_inferred.second && alt_mthds.size() == 1) {
     MethodCall* lambda_inferred_call = lambda_inferred.second;
@@ -1364,8 +1380,11 @@ LibraryMethod* ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*
       inferred_type->SetFunctionParameters(inferred_type_params);
       inferred_type->SetFunctionReturn(inferred_type_rtrn);
 
-      // build lambda function
-      BuildLambdaFunction(lambda_inferred.first, inferred_type, 0);
+      // build lambda function (inferred state consumed first, as above)
+      Lambda* inferred_lambda = lambda_inferred.first;
+      lambda_inferred.first = nullptr;
+      lambda_inferred.second = nullptr;
+      BuildLambdaFunction(inferred_lambda, inferred_type, 0);
       return alt_mthd;
     }
   }
@@ -1402,7 +1421,11 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
     method->EncodeSignature(current_class, program, linker);
     current_class->AssociateMethod(method);
 
-    // check method and restore context
+    // check method and restore context; a lambda nested in a lambda body re-enters
+    // here, so the enclosing lambda's capture state is saved and restored
+    Lambda* prev_capture_lambda = capture_lambda;
+    Method* prev_capture_method = capture_method;
+    SymbolTable* prev_capture_table = capture_table;
     capture_lambda = lambda;
     capture_method = current_method;
     capture_table = current_table;
@@ -1424,11 +1447,11 @@ void ContextAnalyzer::BuildLambdaFunction(Lambda* lambda, Type* lambda_type, con
 #endif
 
     current_table = capture_table;
-    capture_table = nullptr;
+    capture_table = prev_capture_table;
 
     current_method = capture_method;
-    capture_method = nullptr;
-    capture_lambda = nullptr;
+    capture_method = prev_capture_method;
+    capture_lambda = prev_capture_lambda;
 
     const std::wstring full_method_name = method->GetName();
     const size_t offset = full_method_name.find(':');
