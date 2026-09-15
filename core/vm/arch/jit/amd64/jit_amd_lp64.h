@@ -805,6 +805,12 @@ namespace Runtime {
     void RegisterEncode3(unsigned char& code, long offset, Register reg);
 
     /**
+     * Loads the object reference an instance-memory access goes through into a
+     * register, whatever shape it has on the working stack
+     */
+    RegisterHolder* LoadObjectReference(RegInstr* left);
+
+    /**
      * Check for 'Nil' dereferencing
      */
     inline void CheckNilDereference(Register reg) {

@@ -1,0 +1,34 @@
+# Func-ref sibling of jit_nil_inlined_field.obs: an inlined getter returning a
+# function-reference field (two words), on a Nil object. At -opt s3 constant
+# propagation forwards `s := Nil` as a literal into the inlined LOAD_FUNC_VAR
+# local=false; the JIT read the literal as a frame offset, missed the Nil check
+# and took both words off the stack where the interpreter stops with a
+# Nil-dereference error. The result is never called, so a miss exits 0. Main
+# holds a loop, so it is compiled on its first call.
+# EXPECT_RUNTIME_ERROR
+class NilFuncSh {
+  @g : (Int) ~ Int;
+  New() { @g := NilFuncSh->Twice(Int) ~ Int; }
+  function : Twice(v : Int) ~ Int { return v * 2; }
+  method : public : GetG() ~ (Int) ~ Int { return @g; }
+}
+
+class JitNilInlinedFieldFuncRef {
+  function : Main(args : String[]) ~ Nil {
+    c := NilFuncSh->New();
+    t := 0;
+    for(k := 0; k < 3; k += 1;) {
+      f := c->GetG();
+      t += f(k);
+    };
+    if(t <> 6) {
+      # exit 0 on purpose: a negative test fails when the program does not error
+      "FAIL: control read {$t}"->PrintLine();
+      Runtime->Exit(0);
+    };
+
+    s : NilFuncSh := Nil;
+    v := s->GetG();
+    "FAIL: no Nil dereference error"->PrintLine();
+  }
+}

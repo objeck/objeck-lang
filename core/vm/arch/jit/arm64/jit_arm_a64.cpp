@@ -1275,6 +1275,28 @@ void Runtime::JitArm64::ProcessNot(StackInstr* instr)
   }
 }
 
+// The object an instance-memory load/store/copy goes through. Usually a
+// register or a frame slot, but at -opt s3 constant propagation can forward a
+// literal: `s : Sh := Nil; s->Get()` with Get() inlined becomes LOAD_INT_LIT 0
+// then LOAD_INT_VAR local=false. Reading an IMM_INT's operand as a frame
+// offset loaded [SP+0], which is not 0, so the Nil check passed and the field
+// was read from the stack. Materialize the immediate so the check sees the
+// real value (jit_nil_inlined_field.obs; mirrors the AMD64 fix).
+RegisterHolder* JitArm64::LoadObjectReference(RegInstr* left) {
+  if(left->GetType() == REG_INT) {
+    return left->GetRegister();
+  }
+
+  RegisterHolder* holder = GetRegister();
+  if(left->GetType() == IMM_INT) {
+    move_imm_reg((long)left->GetOperand(), holder->GetRegister());
+  }
+  else {
+    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
+  }
+  return holder;
+}
+
 void JitArm64::ProcessLoad(StackInstr* instr) {
   // method/function memory
   if(instr->GetOperand2() == LOCL) {
@@ -1317,14 +1339,7 @@ void JitArm64::ProcessLoad(StackInstr* instr) {
     RegInstr* left = working_stack.front();
     working_stack.pop_front();
     
-    RegisterHolder* holder;
-    if(left->GetType() == REG_INT) {
-      holder = left->GetRegister();
-    }
-    else {
-      holder = GetRegister();
-      move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
-    }
+    RegisterHolder* holder = LoadObjectReference(left);
     CheckNilDereference(holder->GetRegister());
     
     // int value
@@ -1945,13 +1960,7 @@ void JitArm64::ProcessStore(StackInstr* instr) {
     RegInstr* left = working_stack.front();
     working_stack.pop_front();
 
-    if(left->GetRegister()) {
-      addr_holder = left->GetRegister();
-    }
-    else {
-      addr_holder = GetRegister();
-      move_mem_reg((long)left->GetOperand(), SP, addr_holder->GetRegister());
-    }
+    addr_holder = LoadObjectReference(left);
     dest = addr_holder->GetRegister();
     CheckNilDereference(dest);
 
@@ -2095,8 +2104,7 @@ void JitArm64::ProcessCopy(StackInstr* instr) {
     RegInstr* left = working_stack.front();
     working_stack.pop_front();
 
-    RegisterHolder* holder = GetRegister();
-    move_mem_reg((long)left->GetOperand(), SP, holder->GetRegister());
+    RegisterHolder* holder = LoadObjectReference(left);
     CheckNilDereference(holder->GetRegister());
     dest = holder->GetRegister();
     // Generational write barrier on instance-field reference stores (not static

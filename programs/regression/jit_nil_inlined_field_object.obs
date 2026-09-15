@@ -1,0 +1,34 @@
+# Object sibling of jit_nil_inlined_field.obs: an inlined getter returning an
+# object field, on a Nil object. At -opt s3 constant propagation forwards
+# `s := Nil` as a literal into the inlined LOAD_INT_VAR local=false; the JIT
+# read the literal as a frame offset, missed the Nil check and returned a
+# stack word as the reference (exit 0) where the interpreter stops with a
+# Nil-dereference error. Main holds a loop, so it is compiled on its first call.
+# EXPECT_RUNTIME_ERROR
+class NilObjectSh {
+  @o : String;
+  New() { @o := "x"; }
+  method : public : GetO() ~ String { return @o; }
+}
+
+class JitNilInlinedFieldObject {
+  function : Main(args : String[]) ~ Nil {
+    c := NilObjectSh->New();
+    n := 0;
+    for(k := 0; k < 3; k += 1;) { n += c->GetO()->Size(); };
+    if(n <> 3) {
+      # exit 0 on purpose: a negative test fails when the program does not error
+      "FAIL: control read {$n}"->PrintLine();
+      Runtime->Exit(0);
+    };
+
+    s : NilObjectSh := Nil;
+    v := s->GetO();
+    if(v = Nil) {
+      "FAIL: no Nil dereference error, read Nil"->PrintLine();
+    }
+    else {
+      "FAIL: no Nil dereference error, read a reference"->PrintLine();
+    };
+  }
+}
