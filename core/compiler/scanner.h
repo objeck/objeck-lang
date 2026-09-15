@@ -43,8 +43,8 @@
 #define EXTENDED_COMMENT L'~'
 #define ALT_EXTENDED_COMMENT L'*'
 
-// look ahead value
-#define LOOK_AHEAD 3
+// look ahead value; ParseLambda scans a lambda's `(...)` list within this window
+#define LOOK_AHEAD 16
 // white space
 #define WHITE_SPACE (iswspace(cur_char) || cur_char == 0x200b || cur_char == 0xfeff)
 
