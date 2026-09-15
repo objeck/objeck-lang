@@ -1,0 +1,104 @@
+#~
+Regression: optimizer passes that left values on the operand stack.
+
+Found by the fuzzer against v2026.9.4. Compiled at -opt s2/s3 and run by the
+interpreter (--jit=off), a method returned the right value but left extra
+operands on the shared operand stack, so the caller's arithmetic consumed them:
+digests came out wrong, or `% 1000000007` divided by a leftover 0 and reported
+">>> Divide by zero <<<". The JIT keeps its own stack per call, so JIT runs and
+s0 runs were correct.
+
+Two defects:
+1. DeadStore removes a dead assignment by walking back over the instructions
+   of the same statement. InlineSettersGetters spliced in the callee's own
+   instruction (e.g. IntRef->Get() became the getter's field load, owned by
+   the getter's statement), and ConstantProp made literals with no statement,
+   so the walk stopped mid-expression and the operands before it stayed.
+   Case: `v0 := (v0 + kr0->Get()) % 1048573; v0 := p0;` (F0).
+2. DeadCodeElim (s2+) and CleanJumps dropped a *conditional* JMP to the label
+   right after it without popping the condition. `if(p0 < p0) { v0 := v0; }`
+   loses its body to RemoveUselessInstructions, then its JMP (F1).
+~#
+
+class OptDeadStoreStackBalance {
+  function : F0(p0 : Int) ~ Int {
+    v0 := p0;
+    i0 := 0; w0 := 0;
+    i1 := 0; w1 := 0;
+    i2 := 0; w2 := 0;
+    k0 : FuncRef<IntRef> := \() => IntRef->New((0 - 20));
+    kr0 := k0();
+    v0 := (v0 + kr0->Get()) % 1048573;
+    v0 := p0;
+    return p0;
+  }
+
+  function : F1(p0 : Int, p1 : Int) ~ Int {
+    v0 := p0;
+    i0 := 0; w0 := 0;
+    i1 := 0; w1 := 0;
+    i2 := 0; w2 := 0;
+    s0 := "ab";
+    if((p0 < p0)) {
+      v0 := v0;
+    };
+    return p0;
+  }
+
+  function : F2(p0 : Int) ~ Int {
+    x := 5;
+    i0 := 0; w0 := 0;
+    i1 := 0; w1 := 0;
+    y := p0 * 3 + x * p0;
+    y := 0;
+    return p0;
+  }
+
+  function : F3(p0 : Int) ~ Int {
+    r := IntRef->New(p0);
+    v0 := 0;
+    for(i := 0; i < 3; i += 1;) {
+      if(i < p0) {
+        v0 := v0;
+      };
+    };
+    v0 := r->Get() * 2 + 1;
+    v0 := p0;
+    return v0;
+  }
+
+  function : Check(name : String, got : Int) ~ Bool {
+    if(got <> 864749906) {
+      "FAIL: "->Print(); name->Print(); " digest="->Print(); got->PrintLine();
+      return false;
+    };
+    return true;
+  }
+
+  # the call must sit inside the caller's expression: a leftover operand is
+  # then consumed by `+` or `%` (bind the result to a local and it is not)
+  function : Main(args : String[]) ~ Nil {
+    ok := true;
+
+    d := 0;
+    for(r := 0; r < 12; r += 1;) { d := (d * 31 + F0(r)) % 1000000007; };
+    if(Check("F0", d) = false) { ok := false; };
+
+    d := 0;
+    for(r := 0; r < 12; r += 1;) { d := (d * 31 + F1(r, r)) % 1000000007; };
+    if(Check("F1", d) = false) { ok := false; };
+
+    d := 0;
+    for(r := 0; r < 12; r += 1;) { d := (d * 31 + F2(r)) % 1000000007; };
+    if(Check("F2", d) = false) { ok := false; };
+
+    d := 0;
+    for(r := 0; r < 12; r += 1;) { d := (d * 31 + F3(r)) % 1000000007; };
+    if(Check("F3", d) = false) { ok := false; };
+
+    if(ok = false) {
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+}
