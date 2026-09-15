@@ -46,9 +46,11 @@ class GcConservativeBadClass {
 		return a + b + c;
 	}
 
-	# allocates about 'n' nurseries' worth of short-lived objects; returns 0
+	# allocates about 'n' nurseries' worth of short-lived objects; returns 0.
+	# A Blob is 288 bytes of nursery (32 fields, three header words, the size
+	# word), so 520000 of them are about 150MB against the 128MB nursery
 	function : Churn(n : Int) ~ Int {
-		for(j := 0; j < n * 260000; j += 1;) {
+		for(j := 0; j < n * 520000; j += 1;) {
 			tmp := Blob->New(j);
 			if(tmp->Get() <> j) {
 				"FAIL: churn object corrupted"->PrintLine();
