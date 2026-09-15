@@ -22,7 +22,13 @@ loop     Compile each named regression test once and run it N times in each
          JIT mode (the stress loops). Writes the result file for step "stress".
              nightly_triage.py loop --leg L --out DIR --bin BIN_DIR
                  --tests a,b --runs N [--modes off,1] [--src-dir D]
-                 [--timeout SECS] [--opt s3]
+                 [--timeout SECS] [--budget SECS] [--opt s3]
+         The result file is rewritten after every run; --budget stops the loop
+         (recorded as a failure) before the step's own timeout can kill it.
+
+Both run and loop write an "unfinished" result before starting, so a step
+killed by its timeout, a job timeout or a cancel is classified NEW. Only a step
+that never started (no result file at all) is infra.
 triage   Read every result file, classify each failure as infra, known or new,
          and write the summary, the tracking-issue body and one issue body per
          new signature.
@@ -44,7 +50,8 @@ so the nightly cannot go quietly green without its triage data.
 Classes
 -------
 infra  the runner, network or artifact store failed, or a step left no result
-       file (job cancelled, runner lost, tree download failed). Comment only.
+       file (it never started: tree download or setup failed, runner lost).
+       Comment only.
 known  matches a known.json signature. Summary only.
 new    everything else. Its own issue, with seed, reduced program and a link
        to the artifacts.
@@ -87,6 +94,12 @@ INFRA_RE = re.compile("|".join(INFRA_PATTERNS), re.IGNORECASE)
 
 JIT_MODE_FLAGS = {"off": ["--jit=off"], "1": ["--jit=1"], "default": []}
 
+# Written before a step's command starts and replaced when it returns. Must not
+# match INFRA_RE: a hang that outlives the step timeout is a real finding.
+UNFINISHED_MESSAGE = ("started but never finished: killed before writing its "
+                      "final result (hang past the step timeout, job timeout "
+                      "or cancellation)")
+
 
 # ---------------------------------------------------------------------------
 # Result files
@@ -124,7 +137,10 @@ def tail(text, n):
 RUNNING_RE = re.compile(r"^Running:\s+(.+?)\.\.\.\s*$")
 REG_FAIL_RE = re.compile(r"^\s*(?:\[FAIL\]|FAIL\b)\s*(.*)$")
 OUTPUT_OPEN_RE = re.compile(r"^\s*--- output ---\s*$")
-OUTPUT_CLOSE_RE = re.compile(r"^\s*-{6,}\s*$")
+# Exactly the runners' closing line: a test that prints its own dashed rule
+# must not end the output block early.
+OUTPUT_CLOSE_RE = re.compile(r"^\s*-{14}\s*$")
+SUMMARY_RE = re.compile(r"^\s*(?:={8,}|Failed tests:)\s*$")
 SEED_RE = re.compile(r"\bseed\b\s*[=:]?\s*([0-9A-Za-z_\-]+)", re.IGNORECASE)
 REDUCED_RE = re.compile(r"\breduced(?:\s+program)?\s*[=:]\s*(\S+)", re.IGNORECASE)
 CONFIG_RE = re.compile(r"\bs[0-3]/(?:off|default|jit1|jit=\w+)\b")
@@ -140,9 +156,13 @@ def parse_regression_log(text, config=""):
     a failure "  [FAIL] reason", the Windows one "  FAIL (reason)", and both then
     echo the test's output between "--- output ---" and a dashed line. A FAIL
     printed by the test itself inside that block is detail, not a new failure.
+    The runners record one failure per test, so a second FAIL before the next
+    "Running:" (test output whose own dashed line closed the block early) is
+    also detail.
     """
     failures = []
     current = ""
+    current_failed = False
     in_output = False
     for line in text.splitlines():
         if in_output:
@@ -156,9 +176,18 @@ def parse_regression_log(text, config=""):
         m = RUNNING_RE.match(line)
         if m:
             current = m.group(1)
+            current_failed = False
             continue
         if OUTPUT_OPEN_RE.match(line):
             in_output = True
+            continue
+        if SUMMARY_RE.match(line):
+            current, current_failed = "", False  # the end-of-run report
+            continue
+        if current_failed:
+            d = failures[-1]
+            if line.strip() and d["detail"].count("\n") < DETAIL_LINES:
+                d["detail"] += line.strip() + "\n"
             continue
         m = REG_FAIL_RE.match(line)
         if m and current:
@@ -166,6 +195,7 @@ def parse_regression_log(text, config=""):
             if reason.startswith("(") and reason.endswith(")"):
                 reason = reason[1:-1]
             failures.append(make_failure(current, reason or "failed", config))
+            current_failed = True
     return failures
 
 
@@ -252,6 +282,12 @@ def build_command(command, cwd):
     if not command:
         return command
     first = command[0]
+    # A bare script name means the one in --cwd. cmd /c looks only on PATH when
+    # NoDefaultCurrentDirectoryInExePath is set, so name it by full path.
+    local = os.path.join(cwd or ".", first)
+    if os.path.dirname(first) == "" and os.path.isfile(local):
+        first = os.path.abspath(local)
+        command = [first] + list(command[1:])
     lower = first.lower()
     if lower.endswith((".cmd", ".bat")) and os.name == "nt":
         return ["cmd", "/d", "/c"] + command
@@ -333,6 +369,12 @@ def cmd_run(args, command):
         print("run: no command given after --", file=sys.stderr)
         return 2
     full = build_command(command, args.cwd)
+    # Replaced when the command returns. If the step is killed first (its
+    # timeout-minutes, a job timeout, a cancel), this marker is what triage
+    # reads: a step that started and never finished is a finding, not infra.
+    write_result(args.out, args.leg, args.step, args.config, "fail", -1, 0.0,
+                 log_name, [make_failure("(step)", UNFINISHED_MESSAGE, args.config,
+                                         seed=args.default_seed)], full)
     try:
         code, timed_out = run_tee(full, args.cwd, log_path, args.timeout)
     except OSError as e:
@@ -384,15 +426,49 @@ def extra_libs(src_path):
     return ""
 
 
-def run_loop(tests, runs, modes, compile_fn, run_fn, log=print):
+def run_loop(tests, runs, modes, compile_fn, run_fn, log=print,
+             checkpoint=None, remaining=None):
     """Core of the stress loop, separated from process handling for testing.
 
     compile_fn(test) -> (ok, output, program)
     run_fn(program, flags) -> (exit_code or None on timeout, output)
+    checkpoint(failures, done, total) is called after every compile and run, so
+    a result file on disk is never more than one run stale.
+    remaining() -> seconds left in the budget (None = unlimited). When it hits
+    zero the loop stops and records "budget exhausted" as a failure.
     Returns aggregated failures: one per (test, mode, message) with a count.
     """
     agg = {}
     order = []
+    total = len(tests) * len(modes) * runs
+    done = [0]
+
+    def snapshot():
+        out = []
+        for key in order:
+            f = dict(agg[key])
+            if f["config"] not in ("compile", "budget"):
+                f["detail"] = "failed %d of %d runs; %s" % (f["count"], runs, f["detail"])
+            out.append(f)
+        return out
+
+    def tick():
+        if checkpoint:
+            checkpoint(snapshot(), done[0], total)
+
+    def out_of_budget(test, config):
+        left = remaining() if remaining else None
+        if left is None or left > 0:
+            return False
+        key = ("(loop)", "budget", "budget exhausted")
+        agg[key] = make_failure(
+            "(loop)", "budget exhausted", "budget",
+            detail="stopped at %s %s after %d of %d runs; the slowest test is "
+            "the likeliest hang" % (test, config, done[0], total))
+        order.append(key)
+        log("  [FAIL] budget exhausted after %d of %d runs" % (done[0], total))
+        return True
+
     for test in tests:
         ok, output, program = compile_fn(test)
         if not ok:
@@ -401,6 +477,8 @@ def run_loop(tests, runs, modes, compile_fn, run_fn, log=print):
                                     detail=tail(output, DETAIL_LINES))
             order.append(key)
             log("  [FAIL] %s: compilation failed" % test)
+            done[0] += len(modes) * runs
+            tick()
             continue
         for mode in modes:
             flags = JIT_MODE_FLAGS.get(mode)
@@ -409,8 +487,13 @@ def run_loop(tests, runs, modes, compile_fn, run_fn, log=print):
             config = "jit=" + mode
             bad = 0
             for i in range(1, runs + 1):
+                if out_of_budget(test, config):
+                    tick()
+                    return snapshot()
                 code, output = run_fn(program, flags)
+                done[0] += 1
                 if code == 0:
+                    tick()
                     continue
                 bad += 1
                 message = ("timed out" if code is None else "exit code %d" % code)
@@ -423,12 +506,17 @@ def run_loop(tests, runs, modes, compile_fn, run_fn, log=print):
                         detail="first seen on run %d of %d\n%s"
                         % (i, runs, tail(output, DETAIL_LINES)))
                     order.append(key)
+                tick()
             log("  %s %s: %d/%d failed" % (test, config, bad, runs))
-    for key in order:
-        f = agg[key]
-        if f["config"] != "compile":
-            f["detail"] = "failed %d of %d runs; %s" % (f["count"], runs, f["detail"])
-    return [agg[k] for k in order]
+    return snapshot()
+
+
+def compile_command(obc, src, libs, opt, program):
+    return [obc, "-src", src, "-lib", libs, "-opt", opt, "-dest", program]
+
+
+def run_command(obr, flags, program):
+    return [obr] + flags + [program]
 
 
 def tool_path(bin_dir, name):
@@ -469,6 +557,11 @@ def cmd_loop(args):
 
     log_file = open(log_path, "w", encoding="utf-8")
 
+    def remaining():
+        if not args.budget or args.budget <= 0:
+            return None
+        return args.budget - (time.time() - start)
+
     def log(msg):
         print(msg)
         log_file.write(msg + "\n")
@@ -481,21 +574,30 @@ def cmd_loop(args):
         extra = extra_libs(src)
         if extra:
             libs += "," + extra
-        cmd = [obc, "-src", src, "-lib", libs, "-opt", args.opt, "-dest", program]
+        cmd = compile_command(obc, src, libs, args.opt, program)
         log("compile: " + " ".join(cmd))
+        limit = 600
+        left = remaining()
+        if left is not None:
+            limit = max(1, min(limit, int(left) + 1))
         try:
             p = subprocess.run(cmd, cwd=bin_dir, env=env, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, timeout=600)
+                               stderr=subprocess.STDOUT, timeout=limit)
             out = p.stdout.decode("utf-8", "replace")
             return p.returncode == 0 and os.path.exists(program), out, program
         except (OSError, subprocess.TimeoutExpired) as e:
             return False, str(e), program
 
     def run_fn(program, flags):
+        # One hung run may not outlive the budget either.
+        limit = args.timeout
+        left = remaining()
+        if left is not None:
+            limit = max(1, min(limit, int(left) + 1))
         try:
-            p = subprocess.run([obr] + flags + [program], cwd=work, env=env,
+            p = subprocess.run(run_command(obr, flags, program), cwd=work, env=env,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                               timeout=args.timeout)
+                               timeout=limit)
             return p.returncode, p.stdout.decode("utf-8", "replace")
         except subprocess.TimeoutExpired as e:
             out = (e.stdout or b"").decode("utf-8", "replace")
@@ -503,8 +605,18 @@ def cmd_loop(args):
         except OSError as e:
             return -1, str(e)
 
+    def checkpoint(failures, done, total):
+        # Until the loop returns, the file says "unfinished" on top of what has
+        # failed so far, so a kill leaves a finding rather than no file.
+        marker = make_failure("(step)", UNFINISHED_MESSAGE, config,
+                              detail="%d of %d runs done" % (done, total))
+        write_result(args.out, args.leg, "stress", config, "fail", -1,
+                     time.time() - start, log_name, failures + [marker])
+
+    checkpoint([], 0, len(tests) * len(modes) * args.runs)
     try:
-        failures = run_loop(tests, args.runs, modes, compile_fn, run_fn, log)
+        failures = run_loop(tests, args.runs, modes, compile_fn, run_fn, log,
+                            checkpoint, remaining)
     finally:
         log_file.close()
     status = "fail" if failures else "pass"
@@ -525,6 +637,10 @@ def normalize(message):
 
 
 def signature(leg, step, config, test, message):
+    # Fuzzer program names carry a per-seed index (prog_17); without folding
+    # the digits the same bug found under tomorrow's seed would be "new".
+    if step == "fuzz":
+        test = normalize(test)
     key = "|".join([leg, step, config, test, normalize(message)])
     return hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
 
@@ -534,7 +650,8 @@ def load_known(path):
     if not os.path.exists(path):
         return [], "known-signature file missing: " + path
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        # utf-8-sig: a known.json saved by a Windows editor may carry a BOM.
+        with open(path, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
     except (OSError, ValueError) as e:
         return [], "known-signature file unreadable: %s (%s)" % (path, e)
@@ -852,6 +969,9 @@ def main(argv=None):
     lp.add_argument("--modes", default="off,1")
     lp.add_argument("--src-dir", default="programs/regression")
     lp.add_argument("--timeout", type=int, default=300)
+    lp.add_argument("--budget", type=int, default=0,
+                    help="seconds for the whole loop (0 = unlimited); keep it "
+                    "below the step's timeout-minutes")
     lp.add_argument("--opt", default="s3")
 
     t = sub.add_parser("triage")
