@@ -84,6 +84,7 @@
     <ClCompile Include="..\..\shared\logger.cpp" />
     <ClCompile Include="..\..\vm\arch\jit\arm64\jit_arm_a64.cpp" />
     <ClCompile Include="..\..\vm\arch\memory.cpp" />
+    <ClCompile Include="..\..\vm\arch\memory_verify.cpp" />
     <ClCompile Include="..\..\vm\common.cpp" />
     <ClCompile Include="..\..\vm\interpreter.cpp" />
     <ClCompile Include="..\..\vm\loader.cpp" />

@@ -241,6 +241,7 @@
     <ClCompile Include="..\arch\jit\arm64\jit_arm_a64.cpp" Condition="'$(Platform)'=='ARM64'" />
     <ClCompile Include="..\arch\jit\jit_common.cpp" />
     <ClCompile Include="..\arch\memory.cpp" />
+    <ClCompile Include="..\arch\memory_verify.cpp" />
     <ClCompile Include="..\arch\win32\win32.cpp" />
     <ClCompile Include="..\common.cpp" />
     <ClCompile Include="..\dispatch.cpp" />

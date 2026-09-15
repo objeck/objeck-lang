@@ -16,6 +16,9 @@
     <ClCompile Include="..\..\vm\arch\memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\vm\arch\memory_verify.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="..\parser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

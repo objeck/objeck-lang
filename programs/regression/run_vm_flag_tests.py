@@ -53,7 +53,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (since #778). And a command line that is all flags ("obr --jit=off")
     names no program: that is the usage and a non-zero exit, not a silent
     one (it was a silent exit 0 on POSIX).
- 9. The nursery knob and the GC statistics. --nursery (and OBJECK_NURSERY)
+ 10. The nursery knob and the GC statistics. --nursery (and OBJECK_NURSERY)
     accepts 256k and 64m, refuses 2x and 0 with a message naming the range,
     and the flag wins over a bad variable. gc_nursery_knob.obs runs more minor
     collections with a 256k nursery than with the default; OBJECK_GC_STATS=1
@@ -81,6 +81,12 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     line and exit non-zero under --jit=off, the default and --jit=1. The
     regression runner accepts any non-zero exit with output, so it cannot
     see the text.
+ 11. The heap verifier. OBJECK_GC_VERIFY=1 checks the collector's invariants
+    at every collection (core/vm/arch/memory_verify.cpp): the GC stress tests
+    and four collection tests pass with the same output with it on, and each
+    OBJECK_GC_VERIFY_INJECT fault (field, barrier, mark) in
+    vm_gc_verify_inject.obs stops obr with the verifier's report -- a verifier
+    nothing can trip would pass the first half just as well as a correct heap.
 """
 import os
 import re
@@ -315,6 +321,9 @@ def main():
 
     check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base)
 
+    # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
+    verify_section(obc, obr, env, bin_dir)
+
     return finish()
 
 
@@ -413,6 +422,97 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
             rc, out, err = run([obr, "--nursery=256k"] + flags + [dest], env=env, cwd=bin_dir, timeout=600)
             check(f"{name} passes with --nursery=256k ({label})",
                   rc == 0 and b"PASS" in out and b"FAIL" not in out, detail(rc, out, err))
+
+
+# Existing GC stress and collection tests that must pass unchanged, and print
+# the same stdout, with the verifier checking every collection.
+VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress", "jit_closure_gc_fixup",
+                      "collect_map_ops", "collect_vector_ops", "collect_hash_ops", "collect_set_ops")
+
+# Each injected fault and the report the verifier must stop the program with.
+VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),
+                     ("barrier", b">>> gc-verify: A2 violation"),
+                     # the marked word still points into the nursery range: B3
+                     ("mark", b">>> gc-verify: B3 violation"))
+
+
+def extra_libs(src):
+    libs = "cipher,collect,xml,json"
+    with open(src, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            if line.startswith("# EXTRA_LIBS:"):
+                libs += "," + line.split(":", 1)[1].strip()
+    return libs
+
+
+def verify_section(obc, obr, env, bin_dir):
+    """OBJECK_GC_VERIFY checks every collection against the collector's
+    invariants (core/vm/arch/memory_verify.cpp) and aborts with a report.
+
+    (a) with it on, the GC stress tests and four collection tests still pass
+        and print what they print without it, interpreted and with --jit=1;
+    (b) each OBJECK_GC_VERIFY_INJECT fault makes obr exit non-zero with the
+        verifier's report -- the proof the verifier can fail -- while the same
+        fixture passes with the verifier on and no fault;
+    (c) with the verifier off, an injection request is ignored and the output
+        is unchanged, and a malformed value is refused.
+    """
+    plain = {k: v for k, v in env.items() if not k.startswith("OBJECK_GC_VERIFY")}
+    verify = dict(plain)
+    verify["OBJECK_GC_VERIFY"] = "1"
+
+    def compile_test(name):
+        src = os.path.join(SCRIPT_DIR, name + ".obs")
+        obe = os.path.join(SCRIPT_DIR, name + ".obe")
+        rc, out, err = run([obc, "-src", src, "-lib", extra_libs(src), "-opt", "s3", "-dest", obe],
+                           env=plain, cwd=bin_dir)
+        check(f"{name} compiles", rc == 0 and os.path.exists(obe), (out + err).decode(errors="replace")[-300:])
+        return obe if rc == 0 else None
+
+    for name in VERIFY_CLEAN_TESTS:
+        obe = compile_test(name)
+        if not obe:
+            continue
+        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            rc0, out0, err0 = run([obr] + flags + [obe], env=plain, cwd=bin_dir)
+            rc, out, err = run([obr] + flags + [obe], env=verify, cwd=bin_dir)
+            detail = f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-400:]!r}"
+            check(f"{name} passes under OBJECK_GC_VERIFY=1 ({label})",
+                  rc0 == 0 and rc == 0 and b"gc-verify" not in err, detail)
+            check(f"{name} prints the same with the verifier on ({label})", out == out0,
+                  f"off={out0[-160:]!r} on={out[-160:]!r}")
+
+    obe = compile_test("vm_gc_verify_inject")
+    if not obe:
+        return
+    for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+        rc0, out0, err0 = run([obr] + flags + [obe], env=plain, cwd=bin_dir)
+        check(f"injection fixture passes without the verifier ({label})",
+              rc0 == 0 and b"PASS:" in out0, f"rc={rc0} out={out0[-120:]!r}")
+        rc, out, err = run([obr] + flags + [obe], env=verify, cwd=bin_dir)
+        check(f"injection fixture passes with the verifier and no fault ({label})",
+              rc == 0 and out == out0 and b"gc-verify" not in err,
+              f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
+        for mode, report in VERIFY_INJECTIONS:
+            injected = dict(verify)
+            injected["OBJECK_GC_VERIFY_INJECT"] = mode
+            rc, out, err = run([obr] + flags + [obe], env=injected, cwd=bin_dir)
+            check(f"OBJECK_GC_VERIFY_INJECT={mode} is caught: non-zero exit and the verifier's report ({label})",
+                  rc != 0 and report in err and b"PASS:" not in out,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-400:]!r}")
+            ignored = dict(plain)
+            ignored["OBJECK_GC_VERIFY_INJECT"] = mode
+            rc, out, err = run([obr] + flags + [obe], env=ignored, cwd=bin_dir)
+            check(f"OBJECK_GC_VERIFY_INJECT={mode} without the verifier changes nothing ({label})",
+                  rc == 0 and out == out0 and b"gc-verify" not in err,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-300:]!r}")
+
+    bad = dict(plain)
+    bad["OBJECK_GC_VERIFY"] = "sometimes"
+    rc, out, err = run([obr, obe], env=bad, cwd=bin_dir)
+    check("OBJECK_GC_VERIFY=sometimes is refused with a message naming what was expected",
+          rc != 0 and b"expected a positive collection period or 'checkmark'" in err,
+          f"rc={rc} stderr={err.decode(errors='replace')[-200:]!r}")
 
 
 def finish():
