@@ -3021,6 +3021,29 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const std::wstring back
   }
 }
 /****************************
+ * True when a call's cast is the scalar cast of its receiver variable, which the
+ * parser copies to the call for 'x->As(Int)->M()' (the call then dispatches on
+ * the cast type). It converts the receiver, not M's return value, so it must not
+ * be validated against the return: 'e->As(Int)->PrintLine()' failed "Cannot cast
+ * a Nil return value" and 'e->As(Int)->ToString()' an Int/String cast error.
+ ****************************/
+static bool IsReceiverScalarCast(Expression* expression)
+{
+  if(expression->GetExpressionType() != METHOD_CALL_EXPR) {
+    return false;
+  }
+
+  Type* cast_type = expression->GetCastType();
+  Variable* variable = static_cast<MethodCall*>(expression)->GetVariable();
+  if(!cast_type || cast_type->GetType() == CLASS_TYPE || !variable || !variable->GetCastType()) {
+    return false;
+  }
+
+  Type* var_cast_type = variable->GetCastType();
+  return var_cast_type->GetType() == cast_type->GetType() && var_cast_type->GetDimension() == cast_type->GetDimension();
+}
+
+/****************************
  * Validates an expression
  * method call
  ****************************/
@@ -4284,7 +4307,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
     }
 
-    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType()) {
+    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType() && !IsReceiverScalarCast(method_call)) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
     }
     
@@ -4654,6 +4677,11 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
 {
   // type cast
   if(expression->GetCastType()) {
+    // the receiver's cast, already checked on the variable
+    if(IsReceiverScalarCast(expression)) {
+      return;
+    }
+
     // get cast and root types
     Type* cast_type = expression->GetCastType();
     ResolveClassEnumType(cast_type);
@@ -8689,6 +8717,10 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
           if(concat_expr->GetEvalType()) {
             if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
               const std::wstring cls_name = concat_expr->GetEvalType()->GetName();
+              // enum and consts values are Int: no ToString, appended as the integer
+              if(concat_expr->GetEvalType()->GetDimension() < 1 && HasProgramOrLibraryEnum(cls_name)) {
+                continue;
+              }
               Class* klass = SearchProgramClasses(cls_name);
               if(klass) {
                 Method* method = klass->GetMethod(cls_name + L":ToString:");
@@ -8766,6 +8798,12 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
     }
     else if(entry->GetType()->GetType() == CLASS_TYPE && entry->GetType()->GetName() != L"System.String" && entry->GetType()->GetName() != L"String") {
       const std::wstring cls_name = entry->GetType()->GetName();
+      // enum and consts values are Int: no ToString, appended as the integer
+      if(HasProgramOrLibraryEnum(cls_name)) {
+        char_str->AddSegment(entry, static_cast<Method*>(nullptr));
+        entry->WasLoaded();
+        return;
+      }
       Class* klass = SearchProgramClasses(cls_name);
       if(klass) {
         Method* method = klass->GetMethod(cls_name + L":ToString:");
@@ -8875,9 +8913,11 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   Method* to_string_method = nullptr;
   LibraryMethod* to_string_lib_method = nullptr;
 
+  // enum and consts values are Int: no ToString, appended as the integer
   if(eval_type->GetType() == CLASS_TYPE &&
      eval_type->GetName() != L"System.String" &&
-     eval_type->GetName() != L"String") {
+     eval_type->GetName() != L"String" &&
+     !HasProgramOrLibraryEnum(eval_type->GetName())) {
     const std::wstring cls_name = eval_type->GetName();
     Class* klass = SearchProgramClasses(cls_name);
     if(klass) {
@@ -9106,6 +9146,10 @@ void ContextAnalyzer::AnalyzeCharacterStringFormat(const std::wstring& expr_text
     case CLASS_TYPE:
       if(probe_type->GetName() == L"System.String" || probe_type->GetName() == L"String") {
         wrapped = inner;
+      }
+      // enum and consts values are Int
+      else if(probe_type->GetDimension() < 1 && HasProgramOrLibraryEnum(probe_type->GetName())) {
+        wrapped = L"Int->ToString(" + inner + L"->As(Int))";
       }
       else {
         wrapped = inner + L"->ToString()";

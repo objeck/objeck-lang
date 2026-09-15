@@ -5155,9 +5155,22 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
 }
 
 void IntermediateEmitter::EmitConcatToString(SymbolEntry* concat_entry, Method* inst_mthd, LibraryMethod* inst_lib_mthd) {
+  // No ToString: the analyzer only lets an enum or consts value through without
+  // one, and those are Int values on the stack -- append the integer.
+  if(!inst_mthd && !inst_lib_mthd) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+    if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:i,"));
+    }
+    else {
+      LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:i,");
 #ifdef _DEBUG
-  assert(inst_mthd || inst_lib_mthd);
+      assert(string_append_method);
 #endif
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, string_cls->GetId(), string_append_method->GetId(), 0L));
+    }
+    return;
+  }
 
   // Call ToString method if provided (for program or library classes)
   if(inst_mthd || inst_lib_mthd) {
@@ -5717,9 +5730,16 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   // encoding to the written arguments. So the receiver's value has to reach the
   // stack before those arguments. An object receiver is passed as the instance
   // instead, and its arguments still go first.
+  // A scalar cast makes the receiver a scalar: 'e->As(Int)->Abs()' on an enum
+  // or consts variable (whose base type is its class) is an Int receiver.
+  frontend::Type* receiver_type = variable->GetBaseType();
+  if(variable->GetCastType() && variable->GetCastType()->GetType() != frontend::CLASS_TYPE) {
+    receiver_type = variable->GetCastType();
+  }
+
   bool receiver_is_first_param = false;
   if(variable->GetMethodCall()) {
-    switch(variable->GetBaseType()->GetType()) {
+    switch(receiver_type->GetType()) {
     case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
@@ -5874,7 +5894,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
 
   // emit subsequent method calls
   if(variable->GetMethodCall()) {
-    switch(variable->GetBaseType()->GetType()) {
+    switch(receiver_type->GetType()) {
     case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
@@ -6721,14 +6741,16 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
         }
-        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        // a scalar cast makes the receiver a scalar ('e->As(Int)->PrintLine()' on an enum variable)
+        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE ||
+                               (variable->GetCastType() && variable->GetCastType()->GetType() != CLASS_TYPE))) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
         else if(method_call->IsEnumCall()) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
-      } 
-      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) && 
+      }
+      else if((current_method->GetMethodType() == NEW_PUBLIC_METHOD || current_method->GetMethodType() == NEW_PRIVATE_METHOD) &&
               (method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD) && !is_new_inst) {       
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
       }
@@ -6765,7 +6787,9 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
           }
         }
-        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE)) {
+        // a scalar cast makes the receiver a scalar ('e->As(Int)->PrintLine()' on an enum variable)
+        else if(!is_nested && (!variable || variable->GetEntry()->GetType()->GetType() != CLASS_TYPE ||
+                               (variable->GetCastType() && variable->GetCastType()->GetType() != CLASS_TYPE))) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         }
         else if(method_call->IsEnumCall()) {
