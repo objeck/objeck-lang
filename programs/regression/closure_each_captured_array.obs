@@ -21,10 +21,11 @@ the bound ('each(x := v)'), index ('each(i : v)') and 'reverse' forms, an
 through two lambda levels. Every closure is built, then a minor GC is forced
 by allocation churn, then it is called.
 
-Each closure is built by a helper that returns it, so the creating frame has
-returned before the call. A capturing lambda called while its creating frame
-is still live crashes under --jit=1 for any capture type (a separate, older
-JIT bug), which would hide this test's own coverage in the threshold-1 pass.
+Most closures are built by a helper that returns them, so the creating frame
+has returned before the call. InFrame() covers the other shape -- built and
+called while the frame holding the captures is still live -- which used to
+crash under --jit=1 for any capture type until the two-word STOR_FUNC_VAR bug
+in JitAmd64/JitArm64::ProcessStore was fixed (#845/#847).
 ~#
 class ClosureEachCapturedArray {
 	function : Main(args : String[]) ~ Nil {
@@ -93,6 +94,7 @@ class ClosureEachCapturedArray {
 		if(rev_form() <> 421) { "FAIL: reverse over captured array"->PrintLine(); bad += 1; };
 		if(nested() <> 36) { "FAIL: nested each over captured arrays"->PrintLine(); bad += 1; };
 		if(through_two() <> 9) { "FAIL: each over array captured through two lambdas"->PrintLine(); bad += 1; };
+		bad += InFrame();
 
 		if(bad = 0) {
 			"PASS: each over arrays captured by a lambda"->PrintLine();
@@ -290,6 +292,38 @@ class ClosureEachCapturedArray {
 			};
 			return inner();
 		};
+	}
+
+	# built and called while the frame holding the captures is still live, and
+	# repeated so the JIT threshold is crossed inside the loop. Mixes a scalar
+	# capture with the array so the closure holds more than the array alone.
+	function : InFrame() ~ Int {
+		bad := 0;
+		for(n := 0; n < 50; n += 1;) {
+			v := Int->New[3]; v[0] := 5; v[1] := 7; v[2] := 9;
+			k := 4;
+			f := \() ~ Int : () => {
+				sum := k;
+				each(x := v) { sum += x; };
+				return sum;
+			};
+			if(f() <> 25) { bad += 1; };
+		};
+		if(bad <> 0) { "FAIL: each over captured array, closure called in its creating frame"->PrintLine(); };
+
+		boxes := Box->New[3];
+		for(i := 0; i < boxes->Size(); i += 1;) { boxes[i] := Box->New(i + 1); };
+		g := \() ~ Int : () => {
+			sum := 0;
+			each(b := boxes) { sum += b->Get(); };
+			return sum;
+		};
+		if(g() <> 6) {
+			"FAIL: each over captured object array in its creating frame"->PrintLine();
+			bad += 1;
+		};
+
+		return bad;
 	}
 
 	function : Minors() ~ Int {
