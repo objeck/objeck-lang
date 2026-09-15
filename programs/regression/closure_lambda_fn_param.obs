@@ -1,0 +1,103 @@
+#~
+Guards a compiler defect present through v2026.9.4: a typed lambda with a
+FUNCTION-TYPED parameter failed semantic analysis at its definition, e.g.
+
+  nested := \((Int) ~ Int, Int) ~ Int : (fn, a) => fn(a);
+
+reported "Undefined function/method call: '#{L0}#(..)'". BuildLambdaFunction
+looks the generated lambda method up through a function reference built by
+MapLambdaDeclarations, which names each parameter by its type. A parsed
+`(Int) ~ Int` has no type name, so the parameter was dropped from the lookup key
+and the lambda's own method was never found. The parameter now carries its
+"m.(...)~R" encoding, which EncodeFunctionReference maps to the function type.
+
+Fixing that exposed four more defects on the same path, all guarded here:
+- TypeParser::SetFuncType split "m.(m.(i,)~i,i,)~i" at the last '(' and first
+  ')', so calling the lambda variable failed with a parameter size mismatch.
+- ContextAnalyzer::EncodeType gave a nameless nested function type no "m."
+  prefix, so a call through a variable whose parameter is a function type,
+  e.g. f(g, 3) in Run below, was reported undefined.
+- The VM signature parsers (StackMethod::ParseName and the reflection parser)
+  skipped a function type up to the first '~', so any method with a parameter
+  of type ((Int) ~ Int, Int) ~ Int failed to load: "Invalid method signature!".
+- The DYN_MTHD_CALL operand counted parameters, but the JIT reads it as
+  operand-stack words; a function-typed argument is two, so the call crashed
+  under --jit=1.
+
+Covers: calling the function-typed parameter in the body, passing a named
+function reference and another lambda as the argument, a bare lambda assigned to
+a variable typed with a function-typed parameter, several function parameters,
+and a capture together with a function-typed parameter.
+~#
+class ClosureLambdaFnParam {
+  function : Inc(x : Int) ~ Int {
+    return x + 1;
+  }
+
+  function : Twice(x : Int) ~ Int {
+    return x * 2;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
+    # function-typed parameter called inside the lambda body
+    apply := \((Int) ~ Int, Int) ~ Int : (fn, a) => fn(a);
+
+    # named function reference as the argument
+    failures += Check("named function argument", apply(ClosureLambdaFnParam->Inc(Int) ~ Int, 4) = 5);
+
+    # another lambda as the argument
+    sq := \(Int) ~ Int : (x) => x * x;
+    failures += Check("lambda argument", apply(sq, 7) = 49);
+
+    # block body, parameter called more than once
+    apply_twice := \((Int) ~ Int, Int) ~ Int : (fn, a) => {
+      b := fn(a);
+      return fn(b);
+    };
+    failures += Check("block body", apply_twice(ClosureLambdaFnParam->Twice(Int) ~ Int, 3) = 12);
+
+    # two function-typed parameters (composition)
+    compose := \((Int) ~ Int, (Int) ~ Int, Int) ~ Int : (f, g, a) => g(f(a));
+    failures += Check("two function parameters", compose(ClosureLambdaFnParam->Inc(Int) ~ Int, sq, 2) = 9);
+
+    # function-typed parameter with a non-Int signature
+    str_fn := \((String) ~ Int, String) ~ Int : (fn, s) => fn(s) + 1;
+    len := \(String) ~ Int : (s) => s->Size();
+    failures += Check("String signature", str_fn(len, "abcd") = 5);
+
+    # lambda stored in a variable declared with a function-typed parameter
+    # (a bare \(fn, a) => ... cannot be inferred into any function-typed
+    # variable -- that is a designed diagnostic, not this defect)
+    typed_var : ((Int) ~ Int, Int) ~ Int := \((Int) ~ Int, Int) ~ Int : (fn, a) => fn(a) - 1;
+    failures += Check("lambda into typed variable", typed_var(sq, 5) = 24);
+
+    # capture together with a function-typed parameter
+    offset := 100;
+    capped := \((Int) ~ Int, Int) ~ Int : (fn, a) => fn(a) + offset;
+    failures += Check("capture plus function parameter", capped(ClosureLambdaFnParam->Inc(Int) ~ Int, 1) = 102);
+
+    # passed through a named function taking the same function type
+    failures += Check("passed to a named function", Run(apply, sq) = 9);
+
+    if(failures > 0) {
+      "FAIL: {$failures} function-typed lambda parameter check(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: function-typed lambda parameters"->PrintLine();
+  }
+
+  function : Run(f : ((Int) ~ Int, Int) ~ Int, g : (Int) ~ Int) ~ Int {
+    return f(g, 3);
+  }
+
+  function : Check(name : String, ok : Bool) ~ Int {
+    if(ok) {
+      "PASS: {$name}"->PrintLine();
+      return 0;
+    };
+    "FAIL: {$name}"->PrintLine();
+    return 1;
+  }
+}
