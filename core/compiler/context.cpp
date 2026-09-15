@@ -1534,10 +1534,29 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
       break;
 
     case CLASS_TYPE:
-    case FUNC_TYPE:
       ident = dclr_type->GetName();
       break;
-        
+
+    // A function-typed parameter, e.g. \((Int) ~ Int, Int) ~ Int : (fn, a) => ...
+    // A parsed `(Int) ~ Int` has no name, so the parameter was silently dropped,
+    // the lookup key lost an argument and the lambda's own method '#{Ln}#' was
+    // reported undefined. Pass the `m.(...)~R` encoding instead, which
+    // EncodeFunctionReference maps back to the function type; it matches the
+    // "m." encoding Method::EncodeType gives the parameter in the signature.
+    case FUNC_TYPE: {
+      const std::wstring func_name = dclr_type->GetName();
+      if(func_name.empty()) {
+        ident = L"m." + EncodeFunctionType(dclr_type->GetFunctionParameters(), dclr_type->GetFunctionReturn());
+      }
+      else if(func_name.compare(0, 2, L"m.") == 0) {
+        ident = func_name;
+      }
+      else {
+        ident = L"m." + func_name;
+      }
+    }
+      break;
+
     case ALIAS_TYPE:
       break;
     }
@@ -4561,8 +4580,17 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
       dyn_func_params_str += L',';
     }
     
-    // method call parameters
-    type->SetFunctionParameterCount((int)method_call->GetCallingParameters()->GetExpressions().size());
+    // method call parameters. This count becomes the DYN_MTHD_CALL operand,
+    // which the JIT reads as the number of operand-stack WORDS holding the
+    // arguments (it marshals operand + 2 entries with the func-ref's own two
+    // words). A function-typed argument is two words, so counting parameters
+    // left a call like apply(Test->Inc(Int) ~ Int, 4) one word short under the
+    // JIT and crashed it; the interpreter ignores the operand.
+    int param_words = 0;
+    for(size_t i = 0; i < func_params.size(); ++i) {
+      param_words += (func_params[i]->GetType() == FUNC_TYPE && func_params[i]->GetDimension() == 0) ? 2 : 1;
+    }
+    type->SetFunctionParameterCount(param_words);
     AnalyzeExpressions(boxed_resolved_params, depth + 1);
 
     // check parameters again dynamic definition
@@ -7742,6 +7770,15 @@ std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_pa
         encoded_name += L'v';
         variable->SetEvalType(TypeFactory::Instance()->MakeType(VAR_TYPE), true);
       }
+      // function type encoded by MapLambdaDeclarations ("m.(i,)~i"); an
+      // identifier can never start with "m." so this cannot shadow a class
+      else if(variable->GetName().compare(0, 2, L"m.") == 0) {
+        encoded_name += variable->GetName();
+        Type* func_type = TypeParser::ParseType(variable->GetName());
+        if(func_type) {
+          variable->SetEvalType(func_type, true);
+        }
+      }
       else {
         encoded_name += L"o.";
         // search program
@@ -8493,11 +8530,20 @@ const std::wstring ContextAnalyzer::EncodeType(Type* type)
       if(type->GetName().size() == 0) {
         type->SetName(EncodeFunctionType(type->GetFunctionParameters(), type->GetFunctionReturn()));
       }
+      // Function types are encoded "m.(...)~R" everywhere else (method
+      // signatures, library signatures, declaration names), but a nameless
+      // function type -- a function-typed parameter of a function type -- was
+      // named here without the prefix. A call through a variable of type
+      // ((Int) ~ Int, Int) ~ Int then compared "(i,)~i" against the argument's
+      // "m.(i,)~i" and was reported undefined.
+      if(type->GetName().compare(0, 2, L"m.") != 0) {
+        encoded_name += L"m.";
+      }
       encoded_name += type->GetName();
       break;
     }
   }
-  
+
   return encoded_name;
 }
 
