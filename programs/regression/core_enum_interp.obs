@@ -72,6 +72,24 @@ class Test {
     v := e->As(Int);
     failures += Check("local cast", v->ToString(), "1");
 
+    # chained cast on an enum/consts ITEM (not a variable): the item was parsed
+    # as an undeclared local, so the call read no receiver and crashed
+    item_str := C->R->As(Int)->ToString();
+    failures += Check("item chained cast consts", item_str, "7");
+    item_enum := Color->Blue->As(Int)->ToString();
+    failures += Check("item chained cast enum", item_enum, "2");
+    item_abs := C->R->As(Int)->Abs();
+    failures += Check("item chained cast Abs", item_abs->ToString(), "7");
+    C->R->As(Int)->PrintLine();
+
+    # an enum/consts value cast to Float converts the integer
+    ef := e->As(Float);
+    failures += Check("enum as Float", (ef = 1.0)->ToString(), "true");
+    rf := r->As(Float);
+    failures += Check("consts as Float", (rf = 7.0)->ToString(), "true");
+    itf := C->S->As(Float);
+    failures += Check("consts item as Float", (itf = 42.0)->ToString(), "true");
+
     # arithmetic still works
     sum := C->R + C->S;
     failures += Check("consts arithmetic", sum->ToString(), "49");
