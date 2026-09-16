@@ -96,8 +96,23 @@ but absolute figures from early in that pass may be slightly inflated.
 
 ## Driver
 
-`perf-results/objeck_mac_bench.py` (md5 5cc32ffc429d0396c7719144c2b8d931). `run_benchmarks.sh`
-does not run on macOS: it times with GNU `/usr/bin/time -f`, which BSD time has no flag for.
-The driver reads the VM's `[gc-stats]` stderr line instead and records both RSS instruments.
-Its `stress` mode carries the superseded sequential #861 design and should be replaced by the
-oversubscription design above before reuse.
+These numbers were produced by the driver that is now `perf-results/objeck_bench.py`
+(md5 of the version used here: 5cc32ffc429d0396c7719144c2b8d931). `run_benchmarks.sh` does not
+run on macOS: it times with GNU `/usr/bin/time -f`, which BSD time has no flag for. The driver
+wraps each run in the platform's own RSS instrument and records the VM's `[gc-stats]` number
+alongside it, so the two are never confused for one another.
+
+The version of the driver that produced these numbers is NOT the version in the tree, and the
+differences matter if you reproduce this work:
+
+- Its `stress` mode carried the superseded sequential #861 design, which has no power without
+  CPU affinity -- the very thing the oversubscription result above establishes. The current
+  driver refuses to run that mode rather than emit a misleading clean number.
+- Peak RSS was measured only on macOS. On Linux and Windows it fell back to the VM's own
+  counter, which does not exist before commit 0a5e7ba008 -- so a v2026.9.4 arm would have had
+  no RSS at all. The current driver measures it on all three platforms and records which
+  instrument produced each value.
+- It had no `.exe` handling, so it could not locate `obc`/`obr` on Windows at all.
+
+The macOS numbers here are unaffected by any of that: the macOS RSS path is the one that
+worked, and none of the four items used `stress` mode.
