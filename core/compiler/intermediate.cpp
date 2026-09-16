@@ -3613,7 +3613,9 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       Variable* variable = static_cast<Variable*>(right_expr);
       variable->SetId(variable->GetEntry()->GetId());
       EmitVariable(variable);
-      range_id = variable->GetId();
+      // a captured range is held in its own frame local (see AnalyzeFor); a local
+      // range variable has no holder and is its own slot, as before (#866)
+      range_id = for_stmt->GetRangeEntry() ? for_stmt->GetRangeEntry()->GetId() : variable->GetId();
 
       if(variable->GetEntry()) {
         const std::wstring range_type_name = variable->GetEntry()->GetType()->GetName();

@@ -332,6 +332,7 @@ class ContextAnalyzer {
   // returns a symbol table entry by name
   SymbolEntry* GetEntry(std::wstring name, bool is_parent = false);
   SymbolEntry* ResolveCaptureEntry(const std::wstring& name, size_t frame_index);
+  SymbolEntry* ResolveCapturedVariable(const std::wstring& name, ParseNode* node, const int depth);
 
   // returns a symbol table entry by name for a given method
   SymbolEntry* GetEntry(MethodCall* method_call, const std::wstring &variable_name, int depth);

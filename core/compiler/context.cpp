@@ -5143,6 +5143,12 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
     }
     else {
       SymbolEntry* cond_expr_entry = current_table->GetEntry(current_method->GetName() + L':' + cond_expr_name);
+      if(!cond_expr_entry) {
+        // a range captured by an enclosing lambda (#866): without this the range
+        // went undetected and the loop was lowered as a collection, so the user
+        // was told their Range has no Size()
+        cond_expr_entry = ResolveCapturedVariable(cond_expr_name, for_stmt, depth);
+      }
       if(cond_expr_entry && cond_expr_entry->GetType() && cond_expr_entry->GetType()->GetType() == CLASS_TYPE && IsRangeName(cond_expr_entry->GetType()->GetName())) {
         Variable* variable = TreeFactory::Instance()->MakeVariable(for_stmt->GetFileName(), for_stmt->GetLineNumber(), for_stmt->GetLinePosition(), cond_expr_name);
         cond_expr_entry->WasLoaded();
@@ -5150,6 +5156,21 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
         variable->SetEvalType(cond_expr_entry->GetType(), true);
         cond_expr->SetRight(variable);
         is_range = true;
+
+        // A captured range lives in closure memory, and its id indexes that memory,
+        // not the frame. The loop re-reads the range from a frame slot on every
+        // iteration, so give it one of its own -- the same '#<index>_range' local the
+        // parser declares for a range expression -- rather than letting the emitter
+        // store the closure id as a local slot and clobber whatever local owns it.
+        if(cond_expr_entry->IsClosureEntry()) {
+          const std::wstring holder_name = current_method->GetName() + L":#" +
+            static_cast<Variable*>(cond_expr->GetLeft())->GetName() + L"_range";
+          if(!current_table->GetEntry(holder_name)) {
+            SymbolEntry* holder_entry = TreeFactory::Instance()->MakeSymbolEntry(holder_name, cond_expr_entry->GetType(), false, true);
+            holder_entry->WasLoaded();
+            current_table->AddEntry(holder_entry, true);
+          }
+        }
 
         Variable* range_var = static_cast<Variable*>(cond_expr->GetLeft());
         SymbolEntry* range_entry = current_table->GetEntry(current_method->GetName() + L':' + range_var->GetName());
@@ -8190,6 +8211,28 @@ SymbolEntry* ContextAnalyzer::GetEntry(std::wstring name, bool is_parent)
 }
 
 /****************************
+ * Resolves a name inside a lambda body to its closure copy, creating the copy if
+ * this is the first reference. Copies are made lazily by AnalyzeVariable and are
+ * registered in the class table under <lambdaMethod>:<var>, where GetEntry never
+ * looks, so a site that resolves a name directly must fall back to this before
+ * reporting it undefined: lookup alone misses a copy that exists, and misses
+ * outright when this reference is the one that should create it (#865, #866).
+ * Returns nullptr when the name is not captured by the enclosing lambdas.
+ ****************************/
+SymbolEntry* ContextAnalyzer::ResolveCapturedVariable(const std::wstring& name, ParseNode* node, const int depth)
+{
+  if(!capture_lambda || capture_frames.empty() || !ResolveCaptureEntry(name, capture_frames.size() - 1)) {
+    return nullptr;
+  }
+
+  Variable* variable = TreeFactory::Instance()->MakeVariable(node->GetFileName(), node->GetLineNumber(),
+                                                             node->GetLinePosition(), name);
+  AnalyzeVariable(variable, depth + 1);
+  SymbolEntry* entry = variable->GetEntry();
+  return entry && entry->IsClosureEntry() ? entry : nullptr;
+}
+
+/****************************
  * Resolves a variable captured by the lambda in capture_frames[frame_index]:
  * a local or parameter of the method the lambda is written in, or -- when that
  * method is itself a lambda body -- a variable of an enclosing scope, captured
@@ -9193,6 +9236,10 @@ void ContextAnalyzer::AnalyzeInterpolatedToken(const std::wstring& token, Charac
   }
   else {
     SymbolEntry* entry = GetEntry(token);
+    if(!entry) {
+      // a variable captured by an enclosing lambda (#865)
+      entry = ResolveCapturedVariable(token, char_str, depth);
+    }
     if(entry) {
       AnalyzeCharacterStringVariable(entry, char_str, depth);
     }
