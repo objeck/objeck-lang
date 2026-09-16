@@ -1,0 +1,11 @@
+=== machine state at start ===
+Tue Sep 15 19:12:29 MDT 2026
+macOS 26.6.2 arm64, Apple M4 Max, 14 cores
+Now drawing from 'AC Power'
+ -InternalBattery-0 (id=34865251)	99%; finishing charge; 0:00 remaining present: true
+load: { 1.84 3.80 4.98 }
+other objeck processes: 0
+peer Claude sessions on this Mac: the odbc_sqlite_test task session (its own worktree); no benchmark or build work running here
+=== machine state at end ===
+Tue Sep 15 19:48:05 MDT 2026
+load: { 2.10 1.62 1.66 }

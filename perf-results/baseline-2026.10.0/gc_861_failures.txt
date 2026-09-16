@@ -1,0 +1,22 @@
+exit=-11 wall=0.202
+
+exit=-11 wall=0.189
+
+exit=-11 wall=0.238
+
+exit=-11 wall=0.049
+
+exit=-11 wall=0.072
+
+exit=-11 wall=0.237
+
+exit=-11 wall=0.248
+
+exit=-11 wall=0.437
+
+exit=-11 wall=0.178
+
+exit=-11 wall=0.325
+
+exit=-11 wall=0.391
+

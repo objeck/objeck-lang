@@ -1,0 +1,5 @@
+arm,mode,runs,failures,rate_pct,mean_wall_s
+prefix,jitoff,5000,4,0.080,0.418
+prefix,jit1,5000,7,0.140,0.254
+postfix,jitoff,5000,0,0.000,0.432
+postfix,jit1,5000,0,0.000,0.262
