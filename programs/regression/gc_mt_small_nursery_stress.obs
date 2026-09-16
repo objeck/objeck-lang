@@ -1,0 +1,103 @@
+#~
+# Multithreaded GC stress with thread exits overlapping collections.
+#
+# Guards the crash the stress probe found with a 256k nursery (Linux x64,
+# core_thread_gc_stress: SIGSEGV with no output). When a thread's entry method
+# returns, Execute and ProcessReturn release the top frame and store Nil into the
+# monitor's current-frame slot, but leave call_stack_pos at 0; the thread then
+# leaves the stop-the-world count while its monitor stays registered until it tears
+# its interpreter down. A collection another thread started in that window marked
+# frames from the monitor without checking for the null frame and dereferenced it
+# on a mark thread. A pre-fix obr whose collector logged instead of dereferencing
+# reported exactly that: "bad cur_frame during scan: ptr=0 call_stack_pos=0".
+#
+# What makes the window catchable: the scan has to land inside it, so the
+# collections must be slow (a large long-lived old generation to walk) while
+# threads keep finishing. Each worker holds a long list, works a staggered number
+# of iterations so the eight of them finish one after another, and the rounds
+# repeat so exits keep coming while the others still allocate. A small nursery
+# (--nursery=256k) puts a collection in nearly every exit window. Values are
+# checked on the way out: a lost or corrupted object exits 1.
+~#
+
+use System.Concurrency;
+
+class MtBox {
+  @v : Int;
+  @next : MtBox;
+
+  New(v : Int) { @v := v; @next := Nil; }
+  method : public : V() ~ Int { return @v; }
+  method : public : SetV(v : Int) ~ Nil { @v := v; }
+  method : public : Next() ~ MtBox { return @next; }
+  method : public : SetNext(b : MtBox) ~ Nil { @next := b; }
+}
+
+class MtWorker from Thread {
+  @id : Int;
+  @iters : Int;
+  @errors : Int;
+
+  New(id : Int, iters : Int) {
+    Parent("gc-mt-worker");
+    @id := id; @iters := iters; @errors := 0;
+  }
+
+  method : public : Errors() ~ Int { return @errors; }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    # long-lived list: survives every collection and is walked at the end. Long
+    # enough that the old generation the collector scans keeps growing.
+    head := MtBox->New(@id);
+    for(k := 0; k < 600; k += 1;) {
+      n := MtBox->New(@id);
+      n->SetNext(head);
+      head := n;
+    };
+
+    for(i := 0; i < @iters; i += 1;) {
+      b := MtBox->New(@id);
+      sum := 0;
+      for(j := 0; j < 8; j += 1;) {
+        sum += b->V();
+        junk := MtBox->New(i + j);
+        junk->SetNext(MtBox->New(j));
+      };
+      if(sum <> @id * 8) { @errors += 1; };
+    };
+
+    count := 0;
+    cur := head;
+    while(cur <> Nil) {
+      if(cur->V() <> @id) { @errors += 1; };
+      count += 1;
+      cur := cur->Next();
+    };
+    if(count <> 601) { @errors += 1; };
+  }
+}
+
+class GcMtSmallNurseryStress {
+  function : Main(args : String[]) ~ Nil {
+    nthreads := 8;
+    rounds := 4;
+    total_errors := 0;
+
+    for(r := 0; r < rounds; r += 1;) {
+      workers := MtWorker->New[nthreads];
+      # staggered work: worker i finishes about i/nthreads of the way through the
+      # round, so a thread is exiting while the others still force collections
+      each(i : workers) { workers[i] := MtWorker->New(i + 1, 300 + i * 700); };
+      each(i : workers) { workers[i]->Execute(Nil); };
+      each(i : workers) { workers[i]->Join(); };
+      each(i : workers) { total_errors += workers[i]->Errors(); };
+    };
+
+    if(total_errors = 0) {
+      "PASS: multithreaded small-nursery GC stress"->PrintLine();
+    } else {
+      "FAIL: multithreaded small-nursery GC stress - {$total_errors} corruption(s)"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
