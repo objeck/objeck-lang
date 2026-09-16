@@ -549,14 +549,23 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     # replaces.
     #
     # MEASURED pre-fix against this fixture at --nursery=256k:
-    #   Linux x64, pinned to 2 CPUs ......... 15 / 5800  (0.26%)
-    #   macOS arm64, 6 copies on 14 CPUs .....  3 / 2000  (0.15%)  <- oversubscribed
-    #   Linux x64, sequential unpinned .......  0 / 900
-    #   Windows x64, sequential ..............  0 / 600, and 0 / 400 even PINNED
+    #   Linux x64, pinned to 2 CPUs ......... 15 / 5800   (0.26%)
+    #   macOS arm64, 6 copies on 14 CPUs .... 11 / 10000  (0.11%)  <- oversubscribed
+    #   Linux x64, sequential unpinned ....... 0 / 900
+    #   Windows x64, sequential .............. 0 / 600, and 0 / 400 even PINNED
     # Oversubscription recovers real power on macOS arm64, within a factor of two
-    # of pinning, on a box where the sequential loop had none. The macOS crashes
-    # carry the expected signature: SIGSEGV at address 0x20, which on LP64 is
-    # StackFrame::jit_mem read through a null cur_frame -- the guarded line.
+    # or three of pinning, on a box where the sequential loop had none. The same
+    # arm64 run with the fixed VM: 0 / 10000, 95% upper bound 0.03%. Under equal
+    # rates all 11 events landing in one arm is p < 0.001, assuming nothing about
+    # the underlying rate.
+    #
+    # All 11 crashes are one signature -- SIGSEGV at address 0x20, which on LP64
+    # is StackFrame::jit_mem read through a null cur_frame, the line the guard
+    # wraps -- with an exiting thread in UnregisterMutator and a collection in
+    # CollectMinor. The rate is also mode-dependent in the direction the
+    # mechanism predicts: jit=1 runs are faster (0.25s vs 0.42s) and fail more
+    # often (0.14% vs 0.08%), because more thread turnover per unit time means
+    # more teardown windows, and the window is at teardown.
     #
     # Windows is the outlier: it does not reproduce even PINNED, so its scheduler
     # does not produce the interleaving. That is a statement about Windows, not
