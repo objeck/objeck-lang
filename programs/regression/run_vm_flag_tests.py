@@ -546,7 +546,22 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     # several copies at once until the fixture's threads outnumber the CPUs by
     # about 3x. It is the same starvation by the other end, it needs nothing from
     # the platform, and it costs less wall time than the sequential loop it
-    # replaces. Its detection rate has NOT been measured -- see the label below.
+    # replaces.
+    #
+    # MEASURED pre-fix against this fixture at --nursery=256k:
+    #   Linux x64, pinned to 2 CPUs ......... 15 / 5800  (0.26%)
+    #   macOS arm64, 6 copies on 14 CPUs .....  3 / 2000  (0.15%)  <- oversubscribed
+    #   Linux x64, sequential unpinned .......  0 / 900
+    #   Windows x64, sequential ..............  0 / 600, and 0 / 400 even PINNED
+    # Oversubscription recovers real power on macOS arm64, within a factor of two
+    # of pinning, on a box where the sequential loop had none. The macOS crashes
+    # carry the expected signature: SIGSEGV at address 0x20, which on LP64 is
+    # StackFrame::jit_mem read through a null cur_frame -- the guarded line.
+    #
+    # Windows is the outlier: it does not reproduce even PINNED, so its scheduler
+    # does not produce the interleaving. That is a statement about Windows, not
+    # about the technique. Either way a clean run means THIS CONFIGURATION did
+    # not reproduce -- never that the platform is immune.
     name = MT_NURSERY_LOOP_TEST
     src = os.path.join(SCRIPT_DIR, name + ".obs")
     dest = os.path.join(SCRIPT_DIR, name + ".obe")
