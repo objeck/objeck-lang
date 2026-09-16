@@ -1,0 +1,8 @@
+start: 2026-09-16T06:01:58-06:00
+tree: ad2c610bb092a61dd2d8d53ad988288100c235f3
+driver: origin/hardening/bench-driver 5710c77800
+obr/obc: 0
+cpu%: 12.5
+docker: server=29.8.0 (upgraded from 29.5.3 by the maintainer at ~06:54, during an earlier build attempt; auto-update is OFF; image build restarted on 29.8.0) NCPU=32 MemTotal=66932523008 (Docker Desktop, WSL2 backend; container sees all 32 host threads)
+sweep start: 2026-09-16T07:00:20-06:00
+sweep end: 2026-09-16T07:03:32-06:00 exit=0

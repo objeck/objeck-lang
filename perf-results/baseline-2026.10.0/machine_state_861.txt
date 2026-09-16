@@ -1,0 +1,5 @@
+=== machine state ===
+Tue Sep 15 20:20:04 MDT 2026
+macOS 26.6.2 arm64, 14 cores, AC power
+design: oversubscription (no affinity API on macOS); workers=6 from the branch author's formula ceil(cpus*3/8), fixture spawns 8 threads
+arms: prefix=master ad2c610bb0, postfix=origin/hardening/fix-mt-small-nursery-segfault e864d335fd; identical lang.obl 95a0c64e
