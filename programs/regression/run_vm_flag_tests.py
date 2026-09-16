@@ -539,25 +539,44 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     #
     # Two ways to get there, and the loop takes whichever the host allows.
     # Where taskset exists, confine each run to two CPUs: that is the measured
-    # configuration above, so it stays exactly as it was. Windows and macOS have
-    # no per-process affinity to borrow, and a bare sequential loop there has no
-    # power at all -- 0 in 600 on Windows against 8 in 3600 pinned on Linux. So
-    # instead of giving the run fewer CPUs, give the host more threads: run
-    # several copies at once until the fixture's threads outnumber the CPUs by
-    # about 3x. It is the same starvation by the other end, it needs nothing from
-    # the platform, and it costs less wall time than the sequential loop it
-    # replaces.
+    # configuration above, so it stays exactly as it was. macOS has no
+    # per-process affinity to borrow, so instead of giving the run fewer CPUs,
+    # give the host more threads: run several copies at once until the fixture's
+    # threads outnumber the CPUs by about 3x. Same starvation from the other
+    # end, nothing needed from the platform, and 5.7x less wall time than the
+    # sequential loop it replaces (9.4s against 53.7s for both modes).
     #
     # MEASURED pre-fix against this fixture at --nursery=256k:
     #   Linux x64, pinned to 2 CPUs ......... 15 / 5800   (0.26%)
     #   macOS arm64, 6 copies on 14 CPUs .... 11 / 10000  (0.11%)  <- oversubscribed
     #   Linux x64, sequential unpinned ....... 0 / 900
-    #   Windows x64, sequential .............. 0 / 600, and 0 / 400 even PINNED
+    #   Windows x64, 12 copies on 32 CPUs .... 0 / 8000
+    #   Windows x64, PINNED to 2 CPUs ........ 0 / 8000
+    #   Windows x64, sequential .............. 0 / 2000
     # Oversubscription recovers real power on macOS arm64, within a factor of two
     # or three of pinning, on a box where the sequential loop had none. The same
     # arm64 run with the fixed VM: 0 / 10000, 95% upper bound 0.03%. Under equal
     # rates all 11 events landing in one arm is p < 0.001, assuming nothing about
     # the underlying rate.
+    #
+    # WINDOWS IS THE PLATFORM, NOT THE TECHNIQUE, and an earlier version of this
+    # comment had the reason wrong. Windows DOES have per-process affinity --
+    # `start /affinity 3`, and children inherit the mask -- so the claim that it
+    # had none to borrow was simply false. Pinned to the same two CPUs as the
+    # Linux configuration, it measured 0 in 8000. Oversubscribed, 0 in 8000.
+    # 18000 runs, zero failures of any kind, against P(0 | Linux's 0.26%) = 9e-10
+    # and P(0 | macOS's 0.15%) = 6.1e-06. Windows is statistically incompatible
+    # with both other platforms in both configurations, so nothing this loop can
+    # do recovers power there and spending 4x the wall time to pin buys none.
+    # A plausible mechanism, untested: 3x oversubscription on 32 CPUs is not 3x
+    # on 14, because a descheduled thread on a 32-way box is likelier to be
+    # picked up promptly by a near-idle core. That predicts the loop may regain
+    # power on a 2-4 core CI runner, which is worth checking before trusting the
+    # Windows CI leg for this bug.
+    #
+    # The defect itself is a plain unguarded null dereference in
+    # platform-independent C++. A clean Windows run means THIS CONFIGURATION did
+    # not reproduce; it says nothing about whether the bug is there.
     #
     # All 11 crashes are one signature -- SIGSEGV at address 0x20, which on LP64
     # is StackFrame::jit_mem read through a null cur_frame, the line the guard
@@ -583,7 +602,8 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
         if pin:
             how = "pinned to 2 CPUs"
         elif workers > 1:
-            how = f"{workers} at a time, ~{workers * MT_FIXTURE_THREADS}/{os.cpu_count()} threads per CPU"
+            how = (f"{workers} at a time, ~{workers * MT_FIXTURE_THREADS}/{os.cpu_count()} threads "
+                   "per CPU; 0.11% on macOS arm64, no measured power on Windows x64")
         else:
             how = "sequential -- no power for this bug"
         for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
