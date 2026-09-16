@@ -1,0 +1,214 @@
+#~
+Guards #865 and #866: two sites resolved a name inside a lambda body without the
+lambda's capture resolution, so a captured variable was invisible to them.
+
+A captured variable is reached through a closure copy that AnalyzeVariable makes
+lazily, on the first reference, and registers where GetEntry never looks. Both
+sites now fall back to ResolveCapturedVariable, which looks the capture up and
+creates its copy if this is the first reference:
+
+#865 -- string interpolation of a captured variable, "n={$n}", failed with
+"Undefined variable" plus a bogus "unreferenced" warning, while "n=" + n worked.
+
+#866 -- each over a captured Range was not recognised as a range and was lowered
+as a collection, so the user was told their Range has no Size(). Resolving the
+capture alone then exposed a second fault: the range loop stored the range in
+the frame slot numbered by the variable's id, and a closure copy's id indexes
+closure memory, so the store overwrote an unrelated local. A captured range now
+gets its own frame local, as a range expression already did.
+
+Both failure shapes are covered for each site: a capture whose ONLY use is the
+fixed site (the copy must be created there) and one already referenced (the copy
+exists and must be found). Also: every interpolated type, captured parameters
+and locals, capture through two lambdas, locals around a range loop keeping
+their values, and a minor GC between building each closure and calling it.
+~#
+use System;
+
+class ClosureCaptureResolution {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		interp_only := InterpOnlyUse(0);
+		interp_warm := InterpAfterOtherUse(0);
+		interp_mixed := InterpMixed(0);
+		interp_param := InterpParam(9, "arg");
+		interp_nested := InterpNested(0);
+		range_only := RangeOnlyUse(0);
+		range_twice := RangeTwice(0);
+		range_locals := RangeKeepsLocals(0);
+		range_param := RangeParam(IntRange->New(2, 6));
+		range_nested := RangeNested(0);
+
+		start := Minors();
+		Churn();
+		if(Minors() = start) {
+			"FAIL: churn did not run a minor GC"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		bad += Expect(interp_only(), "n=42 name=ok ch=z b=true fl=1.500000 box=Box7", "#865 interpolation, capture's only use");
+		bad += Expect(interp_warm(), "warm=5 interp=5", "#865 interpolation after another use");
+		bad += Expect(interp_mixed(), "cap=3 loc=4", "#865 captured and lambda-local in one string");
+		bad += Expect(interp_param(), "p=9 s=arg", "#865 interpolation of captured parameters");
+		bad += Expect(interp_nested(), "deep=77", "#865 interpolation through two lambdas");
+		bad += Expect(range_only(), "i=6 c=abc f=1.500000", "#866 each over captured ranges, only use");
+		bad += Expect(range_twice(), "first=10 second=10", "#866 same captured range looped twice");
+		bad += Expect(range_locals(), "a=111 b=keep c=2.500000 t=6", "#866 locals survive a captured-range loop");
+		bad += Expect(range_param(), "sum=14", "#866 each over a captured range parameter");
+		bad += Expect(range_nested(), "nested=6", "#866 each over a range captured through two lambdas");
+
+		if(bad = 0) {
+			"PASS: captured variables resolve in interpolation and range loops"->PrintLine();
+		}
+		else {
+			"FAIL: capture resolution bad="->Print();
+			bad->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Expect(got : String, want : String, what : String) ~ Int {
+		if(got->Equals(want) = false) {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+
+	#
+	# #865 -- interpolation
+	#
+
+	function : InterpOnlyUse(ignore : Int) ~ () ~ String {
+		n := 42; name := "ok"; ch := 'z'; b := true; fl := 1.5; box := Box->New(7);
+		return \() ~ String : () => "n={$n} name={$name} ch={$ch} b={$b} fl={$fl} box={$box}";
+	}
+
+	function : InterpAfterOtherUse(ignore : Int) ~ () ~ String {
+		k := 5;
+		return \() ~ String : () => {
+			warm := "warm=" + k;
+			return warm + " interp={$k}";
+		};
+	}
+
+	function : InterpMixed(ignore : Int) ~ () ~ String {
+		cap := 3;
+		return \() ~ String : () => {
+			loc := 4;
+			return "cap={$cap} loc={$loc}";
+		};
+	}
+
+	function : InterpParam(p : Int, s : String) ~ () ~ String {
+		return \() ~ String : () => "p={$p} s={$s}";
+	}
+
+	function : InterpNested(ignore : Int) ~ () ~ String {
+		deep := 77;
+		return \() ~ String : () => {
+			inner := \() ~ String : () => "deep={$deep}";
+			return inner();
+		};
+	}
+
+	#
+	# #866 -- each over a captured Range
+	#
+
+	function : RangeOnlyUse(ignore : Int) ~ () ~ String {
+		r := IntRange->New(0, 4);
+		cr := CharRange->New('a', 'd');
+		fr := FloatRange->New(0.0, 1.0, 0.25);
+		return \() ~ String : () => {
+			i := 0; each(x : r) { i += x; };
+			c := ""; each(y : cr) { c += y; };
+			f := 0.0; each(z : fr) { f += z; };
+			return "i={$i} c={$c} f={$f}";
+		};
+	}
+
+	function : RangeTwice(ignore : Int) ~ () ~ String {
+		r := IntRange->New(1, 5);
+		return \() ~ String : () => {
+			first := 0; each(x : r) { first += x; };
+			second := 0; each(y : r) { second += y; };
+			return "first={$first} second={$second}";
+		};
+	}
+
+	# the pre-fix store went into the frame slot numbered by the capture's id
+	function : RangeKeepsLocals(ignore : Int) ~ () ~ String {
+		r := IntRange->New(0, 4);
+		return \() ~ String : () => {
+			a := 111;
+			b := "keep";
+			c := 2.5;
+			t := 0;
+			each(x : r) { t += x; };
+			return "a={$a} b={$b} c={$c} t={$t}";
+		};
+	}
+
+	function : RangeParam(r : IntRange) ~ () ~ String {
+		return \() ~ String : () => {
+			sum := 0; each(x : r) { sum += x; };
+			return "sum={$sum}";
+		};
+	}
+
+	function : RangeNested(ignore : Int) ~ () ~ String {
+		r := IntRange->New(0, 4);
+		return \() ~ String : () => {
+			inner := \() ~ String : () => {
+				t := 0; each(x : r) { t += x; };
+				return "nested={$t}";
+			};
+			return inner();
+		};
+	}
+
+	function : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
+	# about 150MB of short-lived objects against the default nursery: at least one minor GC
+	function : Churn() ~ Nil {
+		for(j := 0; j < 520000; j += 1;) {
+			tmp := Blob->New(j);
+			if(tmp->Get() <> j) {
+				"FAIL: churn object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+	}
+}
+
+class Box {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : ToString() ~ String {
+		return "Box{$@v}";
+	}
+}
+
+class Blob {
+	@a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+	@b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+	@c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+	@d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+	New(v : Int) {
+		@a0 := v;
+		@d7 := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @d7;
+	}
+}
