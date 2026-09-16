@@ -105,6 +105,7 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     default and --jit=1. MethodFormatter used to print a function-typed parameter
     as '(a:Int, , , b:Int, ...)~Int' and a mid-list Float[] as 'Float[,]'.
 """
+import concurrent.futures
 import os
 import re
 import shutil
@@ -156,6 +157,21 @@ def mt_cpu_pin_prefix():
     first = (os.getpid() * 2) % len(cpus)
     pair = (cpus[first], cpus[(first + 1) % len(cpus)])
     return ["taskset", "-c", f"{pair[0]},{pair[1]}"]
+
+
+def mt_oversubscribe_workers():
+    """How many copies of the fixture to run at once when pinning is unavailable.
+
+    Starves the same window from the other end: rather than confining one run to
+    two CPUs, run enough copies that the fixture's threads outnumber the host's
+    CPUs by about MT_OVERSUBSCRIBE. Returns 1 when the CPU count is unknown or
+    small enough that a single copy already oversubscribes the host.
+    """
+    cpus = os.cpu_count()
+    if not cpus:
+        return 1
+    workers = -(-cpus * MT_OVERSUBSCRIBE // MT_FIXTURE_THREADS)
+    return max(1, min(workers, MT_NURSERY_LOOP_RUNS))
 
 
 def main():
@@ -519,10 +535,18 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     # pre-fix obr, pinned to two CPUs: 8 SIGSEGVs in 3600 runs, and 7 in 2200 in
     # an independent set -- 15 in 5800 together, 0.26%. Unpinned on the same box:
     # 0 in 900, and 0 in 600 on Windows. The stress probe found the original
-    # crash on a 2-core runner for the same reason. Where taskset exists the loop
-    # therefore runs on two CPUs; without it (Windows, macOS) the runs still
-    # execute, but their measured power against THIS bug is zero -- they prove
-    # the fixture still builds and passes, nothing more.
+    # crash on a 2-core runner for the same reason.
+    #
+    # Two ways to get there, and the loop takes whichever the host allows.
+    # Where taskset exists, confine each run to two CPUs: that is the measured
+    # configuration above, so it stays exactly as it was. Windows and macOS have
+    # no per-process affinity to borrow, and a bare sequential loop there has no
+    # power at all -- 0 in 600 on Windows against 8 in 3600 pinned on Linux. So
+    # instead of giving the run fewer CPUs, give the host more threads: run
+    # several copies at once until the fixture's threads outnumber the CPUs by
+    # about 3x. It is the same starvation by the other end, it needs nothing from
+    # the platform, and it costs less wall time than the sequential loop it
+    # replaces. Its detection rate has NOT been measured -- see the label below.
     name = MT_NURSERY_LOOP_TEST
     src = os.path.join(SCRIPT_DIR, name + ".obs")
     dest = os.path.join(SCRIPT_DIR, name + ".obe")
@@ -531,15 +555,29 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
     if rc == 0:
         pin = mt_cpu_pin_prefix()
-        pinned = "pinned to 2 CPUs" if pin else "unpinned -- no power for this bug"
+        workers = 1 if pin else mt_oversubscribe_workers()
+        if pin:
+            how = "pinned to 2 CPUs"
+        elif workers > 1:
+            how = f"{workers} at a time, ~{workers * MT_FIXTURE_THREADS}/{os.cpu_count()} threads per CPU"
+        else:
+            how = "sequential -- no power for this bug"
         for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            cmd = pin + [obr, "--nursery=256k"] + flags + [dest]
             bad = []
-            for i in range(MT_NURSERY_LOOP_RUNS):
-                rc, out, err = run(pin + [obr, "--nursery=256k"] + flags + [dest],
-                                   env=env, cwd=bin_dir, timeout=300)
+
+            def one(i, cmd=cmd):
+                rc, out, err = run(cmd, env=env, cwd=bin_dir, timeout=300)
                 if rc != 0 or b"PASS" not in out or b"FAIL" in out:
-                    bad.append(f"run {i}: {detail(rc, out, err)}")
-            check(f"{name} passes {MT_NURSERY_LOOP_RUNS} runs with --nursery=256k ({label}, {pinned}; "
+                    return f"run {i}: {detail(rc, out, err)}"
+                return None
+
+            if workers > 1:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+                    bad = [r for r in pool.map(one, range(MT_NURSERY_LOOP_RUNS)) if r]
+            else:
+                bad = [r for r in (one(i) for i in range(MT_NURSERY_LOOP_RUNS)) if r]
+            check(f"{name} passes {MT_NURSERY_LOOP_RUNS} runs with --nursery=256k ({label}, {how}; "
                   f"{len(bad)} failed)", not bad, "; ".join(bad[:3]))
 
 
@@ -558,6 +596,12 @@ NURSERY_STRESS_SIZES = ("128k", "256k")
 # nowhere near a guarantee; the long loops belong in the stress probe.
 MT_NURSERY_LOOP_TEST = "gc_mt_small_nursery_stress"
 MT_NURSERY_LOOP_RUNS = 100
+# Worker threads the fixture spawns per run, and how far past the CPU count the
+# unpinned path aims to push them. 3x matches what pinning achieves on Linux
+# (8 fixture threads against 2 CPUs); it is a target for the same starvation,
+# not a second measured configuration.
+MT_FIXTURE_THREADS = 8
+MT_OVERSUBSCRIBE = 3
 
 # The verifier's report prefix. Not a bare b"gc-verify": its back-off notice
 # "[gc-verify] verification took N% of wall time" is printed by clean runs that
