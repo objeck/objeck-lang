@@ -1,4 +1,7 @@
-# macOS arm64 measurements, v2026.10.0 hardening
+# v2026.10.0 hardening measurements
+
+Sections 1, 3 and 4 are macOS arm64 only. Section 2, the #841 nursery sweep, covers three
+platforms: macOS arm64, Linux x64 in Docker, and Windows x64 native.
 
 Taken 2026-09-15 on Apple M4 Max (14 cores, macOS 26.6.2 arm64, AC power, sleep held off)
 against master `ad2c610bb0` and release `v2026.9.4`, each built from its own clean worktree
@@ -31,25 +34,54 @@ bench_gc_large_heap -26.6% (38.6 vs 52.6 MB, matching the ObjectBlockSize fix), 
 -3.2%, and a constant +320 KB floor on every small benchmark (the obr binary is only +67 KB
 bigger; the rest is the verifier and stats infrastructure master compiles in).
 
-## 2. Nursery sweep (#841) — recommends 64m
+## 2. Nursery sweep (#841) — three platforms; default stays 128m
 
-`nursery_sweep.csv` — master only, 4 sizes x 3 benchmarks x 15 runs, 0 failures.
+All three legs use the same method: tree `ad2c610bb0`, 4 sizes x 3 benchmarks x 15 runs after
+2 warm-ups, 0 failures on each.
 
-| size | binarytrees | bench_gc_churn | bench_gc_large_heap |
+| file | platform | driver |
+|---|---|---|
+| `nursery_sweep.csv` | macOS arm64, M4 Max | Mac driver (md5 5cc32ffc…) |
+| `nursery_sweep_linux_x64_docker.csv` | Linux x64, Docker on the 7950X3D | `objeck_bench.py` 5710c77800 |
+| `nursery_sweep_windows_x64.csv` | Windows x64 native, same 7950X3D | `objeck_bench.py` 5710c77800 |
+
+Machine state for the x64 legs: `machine_state_nursery_linux_x64_docker.txt` and
+`machine_state_nursery_windows_x64.txt`. The x64 CSVs carry a `peak_rss_source` column: `gnu_time`
+for Docker, `win_psapi` for Windows.
+
+Change vs the 128m default (time / peak RSS):
+
+| | macOS arm64 | Linux x64 (Docker) | Windows x64 |
 |---|---|---|---|
-| 16m | +35.3% time, -48.8% RSS | -2.0% time, -84.1% RSS | +318% time, +136% RSS |
-| 32m | +19.5% time, -48.1% RSS | -1.4% time, -72.0% RSS | +317% time, +192% RSS |
-| 64m | +6.5% time, -26.2% RSS | -0.7% time, -48.0% RSS | +0.7% time, same RSS |
-| 128m | baseline | baseline | baseline |
+| binarytrees 16m | +35.3% / -48.8% | +81.2% / -54.3% | +163.3% / -55.5% |
+| binarytrees 32m | +19.5% / -48.1% | +35.2% / -45.2% | +69.8% / -49.0% |
+| **binarytrees 64m** | **+6.5% / -26.2%** | **+10.5% / -31.0%** | **+25.8% / -27.8%** |
+| bench_gc_churn 64m | -0.7% / -48.0% | -9.2% / -46.6% | -2.4% / -47.0% |
+| bench_gc_large_heap 16m | +319% / +136% | +355% / +87% | +1040% / +117% |
+| bench_gc_large_heap 32m | +318% / +192% | +279% / +142% | +991% / +160% |
+| bench_gc_large_heap 64m | +0.9% / 0% | +2.2% / +0.7% | +2.3% / 0% |
 
-64m is the only size that is never bad. 16m and 32m are disqualified by a mechanism, not a
-preference: on a large live set they are 4.2x slower AND use more memory, because the live set
-stops fitting the nursery and survivors get promoted (28 MB promoted against zero at 64m).
+**16m and 32m are ruled out on every platform.** The live set stops fitting the nursery, so
+28 MB gets promoted where 64m and 128m promote nothing. bench_gc_large_heap is then several times
+slower *and* uses more memory.
 
-Pause p95 on churn scales with nursery size: 665us at 16m to 4759us at 128m — the
-throughput-versus-latency trade, for a future release that targets pause.
+**64m is not "never bad" on Windows.** It costs +6.5% on macOS and +10.5% on Linux, but +25.8% on
+Windows. The cause is promotion, not collection count. bench_gc_churn runs 25 extra minor
+collections that promote nothing and pays nothing anywhere, while the cost per promoted MB is
+11–34 ms on Windows, 3–10 ms on Linux x64 and 2.5–5 ms on macOS. **On the same hardware,
+Windows promotion is ~3.5x slower than Linux**, and the binarytrees p95 pause is ~87 ms natively
+vs ~31 ms in Docker. Tracked as #871.
 
-One machine, one architecture; Windows and Docker sweeps should agree before this ships.
+**Decision: keep the 128m default for now.** Fix Windows promotion cost first (#871), then
+re-measure 64m. A default change that slows binarytrees by a quarter on Windows does not
+belong in a hardening release.
+
+Pause p95 on churn still scales with nursery size on every platform (e.g. Windows 1376 us at 16m
+to 7378 us at 128m). That is the throughput-versus-latency evidence for a future release that
+targets pause time.
+
+Absolute binarytrees at 128m: macOS 2.03 s, Linux x64 Docker 1.96 s (docs/performance.md
+documents 2.14 s for x64 Docker, so the container was not core-capped: nproc=32), Windows native 2.59 s.
 
 ## 3. #861 threaded GC crash — reproduced on arm64, fix verified
 

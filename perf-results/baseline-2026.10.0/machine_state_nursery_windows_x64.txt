@@ -1,0 +1,11 @@
+platform: Windows x64 native, AMD Ryzen 9 7950X3D 16C/32T, 128 GB
+os: Microsoft Windows 11 Pro for Workstations 10.0.26200
+tree: ad2c610bb0 (pristine worktree); obc/obr built natively VS 18 Release x64; libs = ad2c610bb0 committed .obl (32/32 verified)
+driver: origin/hardening/bench-driver 5710c77800 objeck_bench.py, nursery mode, 15 runs + 2 warm-ups, adaptive off
+power plan: Power Scheme GUID: e9a42b02-d5df-448d-aa00-03f14749eb61  (Ultimate Performance)
+host obr/obc before: 0
+compilers before: 0
+cpu% before (3s): 6.8
+docker desktop: running idle (no containers); other Claude sessions: 'Latest LVS code' interactive
+sweep start: 2026-09-16T07:13:17.3154258-06:00
+sweep end: 2026-09-16T07:18:37.5319501-06:00 exit=0
