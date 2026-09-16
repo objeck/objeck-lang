@@ -1,0 +1,107 @@
+#~
+An object local of a method inlined at -opt s3 must stay a traced root.
+
+The inliner appends the callee's declarations to the caller's: an instance
+slot, an INT_PARM for the callee's and/or temporary when it has one, then the
+callee's locals. The callee's instructions are pasted with their ids shifted
+onto those slots. When the callee had an and/or temporary and the caller did
+not, the shift was one slot too many: every inlined local was stored one slot
+above its declaration and read by the collector under the next declaration's
+type, and the callee's last local landed past the method's declarations, where
+no collector walk looks. The local space grew by one word per inline, not two,
+so the interpreter did not zero that slot either.
+
+Hold() below is such a callee: its loop condition uses '&', and its last
+declared local is the Node it returns. The Blob allocations in its loop fill
+the nursery, so a minor collection runs while the Node is held only in that
+local. On the old layout the Node was neither promoted nor forwarded, and the
+reference read back a Blob's words or whatever the nursery handed out next
+(found by the heap verifier on gc_zero_field_nursery_end: B2, Fill:i, slot 7).
+~#
+
+class Node {
+  @v : Int;
+
+  New(v : Int) {
+    @v := v;
+  }
+
+  method : public : Get() ~ Int {
+    return @v;
+  }
+}
+
+# 32 field words: fills the nursery in few allocations
+class Blob {
+  @a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+  @b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+  @c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+  @d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+  New() {
+  }
+}
+
+class OptInlineAndOrSlots {
+  function : Main(args : String[]) ~ Nil {
+    t := OptInlineAndOrSlots->New();
+    if(t->Run() = false) {
+      Runtime->Exit(1);
+    };
+    "PASS: an inlined callee's object local survived minor collections"->PrintLine();
+  }
+
+  New() {
+  }
+
+  function : Minors() ~ Int {
+    return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+  }
+
+  function : Capacity() ~ Int {
+    return Runtime->GetProperty("runtime.gc.nursery.capacity")->ToInt();
+  }
+
+  # inlined into Keep(): an and/or temporary, the object local declared last
+  method : Hold(k : Int, rounds : Int) ~ Node {
+    i := 0;
+    b : Blob;
+    n := Node->New(k);
+    while(i < rounds & k > 0) {
+      b := Blob->New();
+      i += 1;
+    };
+    return n;
+  }
+
+  # no and/or temporary of its own
+  method : Keep(k : Int, rounds : Int) ~ Int {
+    n := Hold(k, rounds);
+    if(n = Nil) {
+      return -1;
+    };
+    return n->Get();
+  }
+
+  method : Run() ~ Bool {
+    # twice the nursery in Blobs (about 36 words each) per call
+    rounds := Capacity() / 128;
+    before := Minors();
+    bad := 0;
+    each(j : 3) {
+      k := 1000 + j;
+      v := Keep(k, rounds);
+      if(v <> k) {
+        "FAIL: inlined object local read back {$v}, expected {$k}"->PrintLine();
+        bad += 1;
+      };
+    };
+    after := Minors();
+
+    if(after - before < 3) {
+      m := after - before;
+      "FAIL: {$m} minor collection(s) ran; the case was not exercised"->PrintLine();
+      return false;
+    };
+    return bad = 0;
+  }
+}
