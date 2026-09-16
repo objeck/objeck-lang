@@ -305,14 +305,33 @@ void MemoryManager::PrintGcStats()
 
 void MemoryManager::RegisterMutator()
 {
+  // Join the mutator set under stw_lock, waiting out a collection already in
+  // progress. The old code incremented outside the lock and relied on the
+  // caller's following SafePoint() to notice an active collection. That pair --
+  // the collector stores stw_active then loads mutator_count, the new thread
+  // increments mutator_count then loads stw_active -- is only correct if both
+  // are sequentially consistent; a release store and an acquire load are not, so
+  // each side can miss the other. The collector then scans while this thread
+  // runs bytecode: its monitor is already registered, but its first frame is not
+  // published until Execute's prologue, so the mark phase can read a frame
+  // pointer that was never stored. Taking the lock makes the order explicit --
+  // either this thread is counted before the collector reads the count (and the
+  // collector waits for it to park), or the collection has already finished.
+  MUTEX_LOCK(&stw_lock);
+  while(stw_active.load(std::memory_order_acquire)) {
+    SLEEP_CONDITION(&stw_cv, &stw_lock);
+  }
   mutator_count.fetch_add(1, std::memory_order_acq_rel);
+  MUTEX_UNLOCK(&stw_lock);
 }
 
 void MemoryManager::UnregisterMutator()
 {
   // If a collection is waiting for this thread to park, leaving counts as parking.
-  mutator_count.fetch_sub(1, std::memory_order_acq_rel);
+  // Decrement under the lock, so the count a waiting collector re-reads on this
+  // wake-up cannot be the pre-decrement one.
   MUTEX_LOCK(&stw_lock);
+  mutator_count.fetch_sub(1, std::memory_order_acq_rel);
   WAKE_ALL_CONDITION(&stw_cv);   // collector may now have all-but-self parked
   MUTEX_UNLOCK(&stw_lock);
 }
@@ -1832,17 +1851,27 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
       StackFrame** call_stack = monitor->call_stack;
       StackFrame* cur_frame = *(monitor->cur_frame);
 
-      if(cur_frame->jit_mem) {
+      // cur_frame is null once the thread's entry method has returned: Execute and
+      // ProcessReturn release the top frame and store nullptr but leave
+      // call_stack_pos at 0. The exiting thread then calls UnregisterMutator, so a
+      // collection on another thread no longer waits for it, while its monitor stays
+      // in pda_monitors until ~StackInterpreter removes it. A collection landing in
+      // that window reached this line with a null frame and crashed the mark thread
+      // (SIGSEGV, core_thread_gc_stress with a 256k nursery). FixupRoots and the
+      // verifier already skip a null cur_frame; a finished thread has no frame roots.
+      if(cur_frame) {
+        if(cur_frame->jit_mem) {
 #ifndef _GC_SERIAL
-        MUTEX_LOCK(&jit_frame_lock);
+          MUTEX_LOCK(&jit_frame_lock);
 #endif
-        jit_frames.push_back(cur_frame);
+          jit_frames.push_back(cur_frame);
 #ifndef _GC_SERIAL
-        MUTEX_UNLOCK(&jit_frame_lock);
+          MUTEX_UNLOCK(&jit_frame_lock);
 #endif
-      }
-      else {
-        frames.push_back(cur_frame);
+        }
+        else {
+          frames.push_back(cur_frame);
+        }
       }
 
       // copy frames locally

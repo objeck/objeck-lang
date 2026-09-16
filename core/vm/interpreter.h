@@ -615,6 +615,10 @@ namespace Runtime {
       call_stack_pos = cp;
       stack_frame_monitor = nullptr;
       stack_frame = new StackFrame*;
+      // Published before any collection can read it: the mark phase dereferences
+      // this slot for every registered monitor, and `new StackFrame*` leaves it
+      // indeterminate until Execute's prologue stores the first frame.
+      *stack_frame = nullptr;
       halt = false;
       try_handler_pos = 0;
       try_recovery_ip = -1;
@@ -649,6 +653,10 @@ namespace Runtime {
       stack_frame_monitor->stack_pos = nullptr;
 
       stack_frame = new StackFrame*;
+      // Published before any collection can read it: the mark phase dereferences
+      // this slot for every registered monitor, and `new StackFrame*` leaves it
+      // indeterminate until Execute's prologue stores the first frame.
+      *stack_frame = nullptr;
       stack_frame_monitor->cur_frame = stack_frame;
       MemoryManager::AddPdaMethodRoot(stack_frame_monitor);
     }
@@ -665,6 +673,10 @@ namespace Runtime {
       call_stack_pos = new long;
       *call_stack_pos = -1;
       stack_frame = new StackFrame*;
+      // Published before any collection can read it: the mark phase dereferences
+      // this slot for every registered monitor, and `new StackFrame*` leaves it
+      // indeterminate until Execute's prologue stores the first frame.
+      *stack_frame = nullptr;
       halt = false;
       try_handler_pos = 0;
       try_recovery_ip = -1;
@@ -696,6 +708,10 @@ namespace Runtime {
       call_stack_pos = new long;
       *call_stack_pos = -1;
       stack_frame = new StackFrame*;
+      // Published before any collection can read it: the mark phase dereferences
+      // this slot for every registered monitor, and `new StackFrame*` leaves it
+      // indeterminate until Execute's prologue stores the first frame.
+      *stack_frame = nullptr;
       halt = false;
       try_handler_pos = 0;
       try_recovery_ip = -1;

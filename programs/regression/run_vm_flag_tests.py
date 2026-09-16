@@ -65,7 +65,12 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     interpreted and with every method compiled. (At those sizes an integration-1
     obr lost a zero-field object that was the last allocation before a
     collection, and a closure capture copied just before one.) A v2026.9.4 obr
-    fails all of this: it does not know the flag.
+    fails all of this: it does not know the flag. gc_mt_small_nursery_stress
+    then runs 100 times with --nursery=256k, interpreted and with every method
+    compiled, on two CPUs where taskset exists: threads finish while others
+    force collections, and a collection that landed after a thread's entry
+    method returned crashed a mark thread on its null current frame (SIGSEGV
+    with no output).
  8. An exception in a call the JIT's bridge made ends the program, not the
     process. Neither backend registers unwind information for the code it
     emits, so a C++ exception thrown under compiled code used to terminate
@@ -128,6 +133,26 @@ def run(cmd, env=None, cwd=None, timeout=120):
     except subprocess.TimeoutExpired as e:
         return -999, e.stdout or b"", (e.stderr or b"") + b"\n<timed out>"
     return p.returncode, p.stdout, p.stderr
+
+
+def mt_cpu_pin_prefix():
+    """A taskset prefix confining a run to two CPUs, or [] when that is not possible.
+
+    The multithreaded small-nursery loop only exercises its window when threads
+    outnumber CPUs (see check_nursery_and_gc_stats). Returns [] on a host with no
+    taskset (Windows, macOS) and on a host already limited to two CPUs or fewer,
+    where the run is confined anyway. The pair is picked from this process's own
+    affinity mask and offset by pid, so two copies of this script running side by
+    side do not pile onto the same cores.
+    """
+    if not hasattr(os, "sched_getaffinity") or not shutil.which("taskset"):
+        return []
+    cpus = sorted(os.sched_getaffinity(0))
+    if len(cpus) <= 2:
+        return []
+    first = (os.getpid() * 2) % len(cpus)
+    pair = (cpus[first], cpus[(first + 1) % len(cpus)])
+    return ["taskset", "-c", f"{pair[0]},{pair[1]}"]
 
 
 def main():
@@ -473,11 +498,54 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
                 check(f"{name} passes with --nursery={size} ({label})",
                       rc == 0 and b"PASS" in out and b"FAIL" not in out, detail(rc, out, err))
 
+    # Thread exits overlapping collections. A thread whose entry method returned
+    # left its monitor registered (current frame null) after it left the
+    # stop-the-world count; a collection another thread ran in that window
+    # dereferenced the null frame on a mark thread (SIGSEGV, no output). One run
+    # rarely lands in the window, so loop the fixture; a 256k nursery puts a
+    # collection in nearly every exit window.
+    #
+    # PINNING IS WHAT GIVES THIS LOOP ITS POWER. The window is only wide enough
+    # to hit when the exiting thread is descheduled between leaving the
+    # stop-the-world count and unregistering its monitor, which needs more
+    # runnable threads than CPUs. Measured on a 32-thread box against the
+    # pre-fix obr: 7 SIGSEGVs in 2200 runs (0.32%) pinned to two CPUs, 0 in 900
+    # unpinned. The stress probe found the original crash on a 2-core runner for
+    # the same reason. Where taskset exists the loop therefore runs on two CPUs;
+    # without it (Windows, macOS) the runs still execute but should be read as a
+    # smoke test -- they will not catch a regression of this bug on a big host.
+    name = MT_NURSERY_LOOP_TEST
+    src = os.path.join(SCRIPT_DIR, name + ".obs")
+    dest = os.path.join(SCRIPT_DIR, name + ".obe")
+    rc, out, err = run([obc, "-src", src, "-lib", "cipher,collect,xml,json", "-opt", "s3", "-dest", dest],
+                       env=env, cwd=bin_dir)
+    check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        pin = mt_cpu_pin_prefix()
+        pinned = "pinned to 2 CPUs" if pin else "unpinned -- smoke only"
+        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            bad = []
+            for i in range(MT_NURSERY_LOOP_RUNS):
+                rc, out, err = run(pin + [obr, "--nursery=256k"] + flags + [dest],
+                                   env=env, cwd=bin_dir, timeout=300)
+                if rc != 0 or b"PASS" not in out or b"FAIL" in out:
+                    bad.append(f"run {i}: {detail(rc, out, err)}")
+            check(f"{name} passes {MT_NURSERY_LOOP_RUNS} runs with --nursery=256k ({label}, {pinned}; "
+                  f"{len(bad)} failed)", not bad, "; ".join(bad[:3]))
+
 
 # Run with small nurseries (check_nursery_and_gc_stats); each prints PASS.
 NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_stress", "gc_minor_closure_capture",
                         "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end")
 NURSERY_STRESS_SIZES = ("128k", "256k")
+
+# Looped with a 256k nursery in both JIT modes (check_nursery_and_gc_stats).
+# One pinned run takes about 0.2s, so 100 per mode costs ~40s for both. The
+# pre-fix crash rate pinned to two CPUs was 0.32% per run (7 in 2200), which
+# these 200 runs catch about half the time -- worth having, not a guarantee;
+# the long loops belong in the stress probe.
+MT_NURSERY_LOOP_TEST = "gc_mt_small_nursery_stress"
+MT_NURSERY_LOOP_RUNS = 100
 
 # The verifier's report prefix. Not a bare b"gc-verify": its back-off notice
 # "[gc-verify] verification took N% of wall time" is printed by clean runs that
