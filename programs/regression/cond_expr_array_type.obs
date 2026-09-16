@@ -1,0 +1,187 @@
+#~
+Guards #867: a conditional expression whose branches are primitive arrays was
+typed as a scalar.
+
+AnalyzeConditional set the conditional's eval type with the "zero dimension"
+flag, so `t ? p : q` over two Int[] was typed Int. A method call on it resolved
+to the scalar helper -- `(t ? p : q)->Size()` returned a meaningless value with
+no error -- and the hoisted form `x := t ? p : q` gave x a scalar type, so
+`x[0]` was rejected with "Dimension size mismatch" while `x->Size()` returned
+the same garbage. Object arrays were unaffected.
+
+Covers, for every primitive element type (Int, Float, Char, Byte, Bool) and for
+object arrays: Size() directly on the conditional, Size() and indexed reads on
+the hoisted local, both branches taken (the condition comes from args so it is
+not folded), conditionals over array ELEMENTS (`t ? p[1] : q[1]`, which must
+stay scalar), plain scalar conditionals, and an array that is reachable only
+through a conditional-typed local across a forced minor GC, so a local that is
+not traced as a reference would be caught.
+~#
+class CondExprArrayType {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+		yes := args->Size() = 0;
+		no := args->Size() > 0;
+
+		bad += IntArrays(yes, no);
+		bad += FloatArrays(yes, no);
+		bad += CharArrays(yes, no);
+		bad += ByteArrays(yes, no);
+		bad += BoolArrays(yes, no);
+		bad += ObjectArrays(yes, no);
+		bad += Elements(yes, no);
+		bad += Scalars(yes, no);
+		bad += SurvivesGc(yes, no);
+
+		if(bad = 0) {
+			"PASS: conditional over arrays keeps the array type"->PrintLine();
+		}
+		else {
+			"FAIL: conditional over arrays bad="->Print();
+			bad->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : IntArrays(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		p := Int->New[3]; p[0] := 11; p[1] := 12; p[2] := 13;
+		q := Int->New[5]; q[0] := 21; q[4] := 25;
+		if((yes ? p : q)->Size() <> 3) { "FAIL: Int[] Size() taken branch"->PrintLine(); bad += 1; };
+		if((no ? p : q)->Size() <> 5) { "FAIL: Int[] Size() else branch"->PrintLine(); bad += 1; };
+		x := yes ? p : q;
+		if(x->Size() <> 3 | x[0] <> 11 | x[2] <> 13) { "FAIL: Int[] hoisted taken branch"->PrintLine(); bad += 1; };
+		y := no ? p : q;
+		if(y->Size() <> 5 | y[0] <> 21 | y[4] <> 25) { "FAIL: Int[] hoisted else branch"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : FloatArrays(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		p := Float->New[2]; p[1] := 1.5;
+		q := Float->New[4]; q[3] := 2.5;
+		if((yes ? p : q)->Size() <> 2) { "FAIL: Float[] Size()"->PrintLine(); bad += 1; };
+		x := no ? p : q;
+		if(x->Size() <> 4 | x[3] <> 2.5) { "FAIL: Float[] hoisted"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : CharArrays(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		p := Char->New[2]; p[1] := 'p';
+		q := Char->New[6]; q[5] := 'q';
+		if((yes ? p : q)->Size() <> 2) { "FAIL: Char[] Size()"->PrintLine(); bad += 1; };
+		x := no ? p : q;
+		if(x->Size() <> 6 | x[5] <> 'q') { "FAIL: Char[] hoisted"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : ByteArrays(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		p := Byte->New[7]; p[6] := 7;
+		q := Byte->New[1]; q[0] := 9;
+		if((yes ? p : q)->Size() <> 7) { "FAIL: Byte[] Size()"->PrintLine(); bad += 1; };
+		x := no ? p : q;
+		if(x->Size() <> 1 | x[0] <> 9) { "FAIL: Byte[] hoisted"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : BoolArrays(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		p := Bool->New[4]; p[3] := true;
+		q := Bool->New[8]; q[7] := true;
+		if((yes ? p : q)->Size() <> 4) { "FAIL: Bool[] Size()"->PrintLine(); bad += 1; };
+		x := no ? p : q;
+		if(x->Size() <> 8 | x[7] = false) { "FAIL: Bool[] hoisted"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : ObjectArrays(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		p := String->New[2]; p[0] := "a"; p[1] := "b";
+		q := String->New[3]; q[2] := "z";
+		if((yes ? p : q)->Size() <> 2) { "FAIL: String[] Size()"->PrintLine(); bad += 1; };
+		x := no ? p : q;
+		if(x->Size() <> 3 | x[2]->Equals("z") = false) { "FAIL: String[] hoisted"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	# the branches are array ELEMENTS: the conditional must stay a scalar
+	function : Elements(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		p := Int->New[3]; p[1] := 41;
+		q := Int->New[3]; q[1] := 42;
+		if((yes ? p[1] : q[1]) <> 41) { "FAIL: Int element taken branch"->PrintLine(); bad += 1; };
+		e := no ? p[1] : q[1];
+		if(e <> 42 | e + 1 <> 43) { "FAIL: Int element hoisted"->PrintLine(); bad += 1; };
+		f := Float->New[2]; f[0] := 0.5;
+		g := Float->New[2]; g[0] := 0.25;
+		h := yes ? f[0] : g[0];
+		if(h <> 0.5) { "FAIL: Float element"->PrintLine(); bad += 1; };
+		s := String->New[1]; s[0] := "elem";
+		u := String->New[1]; u[0] := "other";
+		if((yes ? s[0] : u[0])->Size() <> 4) { "FAIL: String element Size()"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : Scalars(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		if((yes ? 3 : 4) <> 3) { "FAIL: Int scalar"->PrintLine(); bad += 1; };
+		if((no ? 3 : 4)->Max(1) <> 4) { "FAIL: Int scalar method"->PrintLine(); bad += 1; };
+		if((yes ? "abc" : "xy")->Size() <> 3) { "FAIL: String scalar Size()"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	# the only reference to each array is a conditional-typed local
+	function : SurvivesGc(yes : Bool, no : Bool) ~ Int {
+		bad := 0;
+		x := yes ? MakeInts(9, 77) : MakeInts(2, 1);
+		y := no ? MakeInts(2, 1) : MakeInts(6, 55);
+		start := Minors();
+		Churn();
+		if(Minors() = start) {
+			"FAIL: churn did not run a minor GC"->PrintLine();
+			Runtime->Exit(1);
+		};
+		if(x->Size() <> 9 | x[8] <> 77) { "FAIL: Int[] via conditional across GC (taken)"->PrintLine(); bad += 1; };
+		if(y->Size() <> 6 | y[5] <> 55) { "FAIL: Int[] via conditional across GC (else)"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : MakeInts(n : Int, last : Int) ~ Int[] {
+		a := Int->New[n];
+		a[n - 1] := last;
+		return a;
+	}
+
+	function : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
+	# about 150MB of short-lived objects against the default nursery: at least one minor GC
+	function : Churn() ~ Nil {
+		for(j := 0; j < 520000; j += 1;) {
+			tmp := Blob->New(j);
+			if(tmp->Get() <> j) {
+				"FAIL: churn object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+	}
+}
+
+class Blob {
+	@a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+	@b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+	@c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+	@d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+	New(v : Int) {
+		@a0 := v;
+		@d7 := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @d7;
+	}
+}
