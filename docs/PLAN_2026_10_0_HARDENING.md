@@ -159,8 +159,13 @@ Proof it works, on the release binary:
 - **Triage into three classes:**
   - infra: comment only;
   - known: a `known.json` signature (leg + config + message regex), summary only;
-  - new: its own issue with seed, reduced program and artifacts.
+  - new: listed, grouped by leg and step, in the run's one tracking issue. Its own issue (seed, reduced program, artifacts) only when the same step and test is new on more than one leg, or it is a crash or heap-verifier violation (`tools/cicd/nightly_triage.py`, "Issues"). The first run opened five issues for two test-output bugs and one slow step.
 - The tracking issue closes itself on the next green run.
+- Signal only: tests print collection-timing counts to stderr, never stdout (the differential compares stdout). A test leaves a verifier step only on a failure observed in a named run -- `# VERIFY_SKIP` under the verifier, `# GC_STRESS_SKIP` under the forced `--gc-threshold=64k` -- and `tools/cicd/check_diff_markers.py` requires the reason to cite that run and caps the opt-outs at five. Run 35027973357 justified four: two million-iteration codegen tests (598 s and 637 s at 64k, measured with the verifier off) and the two TLS tests, whose loopback peer misses their own socket timeouts at that threshold. Nothing opts out of the verifier itself: in that run every test, sockets included, passed the verifier step on all five legs in 0-3 s.
+
+**Parked findings (from run 35027973357, verify-major):** `https_persistence_test` exited **139 with a core dump on linux-arm64** after printing `>>> Attempting to dereference a 'Nil' memory instance in native JIT code <<<` in `System.String->Equals`, where linux-x64 and macos-arm64 printed the same diagnostic and exited 1. Two things sat behind it, and only the first is fixed:
+- the test's own cascade -- an empty TLS response leaves no `content-length` header, and `Find(...)->Equals("0")` then called a method on the `Nil` it returned, after the assertions had already reported the real problem. Guarded in `https_persistence_test.obs`.
+- **open:** the VM's Nil-dereference path in JIT code does not exit the same way on every platform (139 + core on linux-arm64 vs 1 elsewhere). `EXPECT_RUNTIME_ERROR` accepts any non-zero exit, so the suite cannot see the difference; `bad_runtime_null` and the `jit_nil_inlined_field*` tests would be where to look. Needs an ARM64 box or a CI probe run.
 
 **Phase 1 exits, split so the lanes are not blocked on everything:**
 - 1.1 + 1.2 + 1.3 unblock the **compiler lane**;

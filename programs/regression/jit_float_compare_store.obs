@@ -1,3 +1,5 @@
+# GC_STRESS_SKIP
+# reason: a long JIT float loop; with --gc-threshold=64k that took 637 s measured without the verifier (3 s unforced), 163-268 s on the POSIX legs of nightly run 35027973357 and over that step's 300 s limit on both Windows legs there. It tests register allocation, not the heap, and still runs under the verifier in the minor-stress step.
 #~
 # A float comparison whose result is STORED must not clobber a live register.
 #

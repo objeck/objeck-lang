@@ -16,9 +16,14 @@ expression and block lambda bodies. Every closure is built, then a minor GC is
 forced by allocation churn, then it is called.
 
 Each closure is built by a helper that returns it, so the creating frame has
-returned before the call. A capturing lambda called while its creating frame
-is still live crashes under --jit=1 for any capture type (a separate, older
-JIT bug), which would hide this test's own coverage in the threshold-1 pass.
+returned before the call -- the shape #849 was reported in, and the one this
+test keeps covering. When it was written, a capturing lambda called while its
+creating frame was still live crashed under --jit=1 for any capture type, so
+that shape was kept out of here to stop an unrelated JIT bug from hiding this
+test's coverage in the threshold-1 pass. That bug (a two-word STOR_FUNC_VAR
+store in JitAmd64/JitArm64::ProcessStore) was fixed by #845/#847, and the
+in-frame shape now passes; closure_each_captured_array.obs covers it directly
+in its InFrame() section.
 ~#
 class ClosureArrayParamCapture {
 	function : Main(args : String[]) ~ Nil {

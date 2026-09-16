@@ -64,6 +64,25 @@ if defined OBJECK_VM_ARGS echo   VM args: %OBJECK_VM_ARGS%
 echo ========================================
 echo.
 
+REM The nightly hardening steps run this suite in two configurations a test may
+REM opt out of, each with a marker line at column 0 and a '# reason:' line after
+REM it (tools/cicd/check_diff_markers.py lints both; mirrors run_regression.sh):
+REM   '# VERIFY_SKIP'     the heap verifier is on (OBJECK_GC_VERIFY set, not 0).
+REM                       No test carries it today: the verifier alone has not
+REM                       yet been shown to fail one.
+REM   '# GC_STRESS_SKIP'  a tiny heap threshold is forced (--gc-threshold in
+REM                       OBJECK_VM_ARGS). Measured at 64k without the verifier:
+REM                       discarded_call_result_pop 598 s, jit_float_compare_store
+REM                       637 s, against 2-3 s unforced; tls_verify_test and
+REM                       https_persistence_test lose their loopback peer to
+REM                       their own socket timeouts.
+REM A reason must name the run that showed the failure, so neither marker can be
+REM taken on a theory.
+set VERIFY_ON=
+if defined OBJECK_GC_VERIFY if not "%OBJECK_GC_VERIFY%"=="0" set VERIFY_ON=1
+set GC_STRESS_ON=
+if defined OBJECK_VM_ARGS echo.%OBJECK_VM_ARGS%|findstr /C:"--gc-threshold" >nul 2>&1 && set GC_STRESS_ON=1
+
 for %%f in (*.obs) do (
     echo Running: %%~nf...
 
@@ -95,6 +114,18 @@ for %%f in (*.obs) do (
     set EXPECT_RT_ERR=
     findstr /B /C:"# EXPECT_RUNTIME_ERROR" "%REGRESSION_DIR%\%%f" >nul 2>&1
     if !errorlevel! equ 0 set EXPECT_RT_ERR=1
+
+    REM The nightly opt-out markers, matched at the start of a line (/B) as the
+    REM other markers are; see VERIFY_ON and GC_STRESS_ON above.
+    set SKIP_REASON=
+    if defined VERIFY_ON (
+        findstr /B /C:"# VERIFY_SKIP" "%REGRESSION_DIR%\%%f" >nul 2>&1
+        if !errorlevel! equ 0 set SKIP_REASON=not run under the heap verifier: VERIFY_SKIP marker
+    )
+    if defined GC_STRESS_ON if not defined SKIP_REASON (
+        findstr /B /C:"# GC_STRESS_SKIP" "%REGRESSION_DIR%\%%f" >nul 2>&1
+        if !errorlevel! equ 0 set SKIP_REASON=not run with a forced heap threshold: GC_STRESS_SKIP marker
+    )
 
     if !COMPILE_RESULT! neq 0 (
         if defined EXPECT_ERR (
@@ -132,6 +163,9 @@ for %%f in (*.obs) do (
             echo   FAIL ^(should have failed to compile^)
             >>"%FAILED_FILE%" echo %%~nf - should have failed to compile
             set /a FAIL_COUNT+=1
+        ) else if defined SKIP_REASON (
+            echo   SKIP ^(!SKIP_REASON!^)
+            set /a SKIP_COUNT+=1
         ) else (
             REM Per-test opt-out for auto-JIT (mirrors the bash runner)
             REM the marker is '# JIT_DISABLE' at column 0 (/B). findstr cannot anchor the end of

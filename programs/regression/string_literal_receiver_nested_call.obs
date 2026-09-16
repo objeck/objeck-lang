@@ -1,0 +1,107 @@
+#~
+# A method call whose receiver is already on the stack when its arguments are
+# emitted -- a string literal, an interpolated string, or the previous call in
+# a chain -- must swap each argument beneath that receiver. The emitter keyed
+# the swap on a string-literal counter that every nested call clears, so
+# '"abcdef"->SubString(3, 3 + G->Zero())' crashed (the call popped an argument
+# as its instance), '"abcdef"->Get(G->Zero())' dereferenced Nil, and chained
+# receivers with arguments never swapped at all. Conditional receivers such as
+# '(t ? "a" : "b")->Size()' crash for a separate reason and are not covered here.
+# Primitive receivers resolve to static '$' functions that take the receiver as
+# parameter 0 and must stay unswapped. Found by EMI mutation.
+~#
+
+class StringLiteralReceiverNestedCall {
+  @n : Int;
+  @failures : static : Int;
+
+  New() {
+    @n := 2;
+  }
+
+  method : public : Two() ~ Int {
+    return @n;
+  }
+
+  method : public : Name() ~ String {
+    return "cd";
+  }
+
+  function : Check(tag : String, good : Bool) ~ Nil {
+    if(<>good) {
+      "  FAIL: "->Print(); tag->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    o := StringLiteralReceiverNestedCall->New();
+    x := 3;
+
+    # literal receiver, nested static calls in the arguments
+    Check("SubString(3, (3 + G->Zero()))", "abcdef"->SubString(3, (3 + G->Zero()))->Equals("def"));
+    Check("SubString(3, G->Zero() + 3)", "abcdef"->SubString(3, G->Zero() + 3)->Equals("def"));
+    Check("SubString(G->Three(), 3)", "abcdef"->SubString(G->Three(), 3)->Equals("def"));
+    Check("SubString(G->One() + 2, G->Three())", "abcdef"->SubString(G->One() + 2, G->Three())->Equals("def"));
+    Check("Get(G->Zero())", "abcdef"->Get(G->Zero()) = 'a');
+    Check("Find(G->Name())", "abcdef"->Find(G->Name()) = 2);
+    Check("Find(G->Three(), o->Name())", "abcdcdef"->Find(G->Three(), o->Name()) = 4);
+    Check("StartsWith(G->Name())", "cdef"->StartsWith(G->Name()));
+    Check("Equals(G->Name())", "cd"->Equals(G->Name()));
+    Check("not StartsWith(G->Name())", "xcdef"->StartsWith(G->Name()) = false);
+
+    # literal receiver, nested instance calls in the arguments
+    Check("Get(o->Two())", "abcdef"->Get(o->Two()) = 'c');
+    Check("SubString(o->Two(), o->Two() + 1)", "abcdef"->SubString(o->Two(), o->Two() + 1)->Equals("cde"));
+    Check("Find(o->Name())", "abcdcdef"->Find(o->Name()) = 2);
+    Check("StartsWith(o->Name())", "cdef"->StartsWith(o->Name()));
+
+    # literals and literal receivers inside the arguments
+    Check("Find(\"cd\"->Get(G->Zero()))", "abcdef"->Find("cd"->Get(G->Zero())) = 2);
+    Check("Find(G->Three(), \"e\")", "abcdef"->Find(G->Three(), "e") = 4);
+    Check("Get(\"xx\"->Size())", "abcdef"->Get("xx"->Size()) = 'c');
+    Check("Get(\"abc\"->Find(...))", "abcdef"->Get("abc"->Find(G->Name()->Get(G->Zero()))) = 'c');
+    Check("Equals(\"cd\")", "cd"->Equals("cd"));
+
+    # chained calls with arguments after a literal receiver
+    Check("ToUpper()->SubString(1, 2)", "abcdef"->ToUpper()->SubString(1, 2)->Equals("BC"));
+    Check("SubString(..)->SubString(..)", "abcdef"->SubString(G->One(), G->Four())->SubString(G->One(), G->Two())->Equals("cd"));
+    Check("SubString(..)->Size()", "abcdef"->SubString(G->One(), o->Two())->Size() = 2);
+
+    # interpolated-string receivers
+    Check("interpolated SubString", "v{$x}w"->SubString(G->One(), G->One() + 0)->Equals("3"));
+    Check("interpolated Get", "v{$x}w"->Get(o->Two()) = 'w');
+    Check("interpolated chain", "ab{$x}def"->ToUpper()->SubString(G->One(), 2)->Equals("B3"));
+
+    # primitive receivers take the receiver as parameter 0 and stay unswapped
+    Check("(3 + G->One())->Max(G->Two())", (3 + G->One())->Max(G->Two()) = 4);
+    Check("(2 + G->One())->Pow(2)", (2 + G->One())->Pow(2) = 9);
+    Check("Char[]->Size()->Max(..)", ['a', 'b', 'c']->Size()->Max(G->One()) = 3);
+    Check("\"abc\"->Size()->Max(G->Five())", "abc"->Size()->Max(G->Five()) = 5);
+    Check("Get(..)->Max('a')", "abcdef"->Get(G->One())->Max('a') = 'b');
+
+    # controls: the argument hoisted to a local, and a variable receiver
+    z := G->Zero();
+    Check("hoisted", "abcdef"->SubString(3, 3 + z)->Equals("def"));
+    s := "abcdef";
+    Check("variable receiver", s->SubString(3, (3 + G->Zero()))->Equals("def"));
+
+    if(@failures = 0) {
+      "PASS: string literal receiver with nested calls in arguments"->PrintLine();
+    }
+    else {
+      "FAIL: string literal receiver with nested calls in arguments"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
+
+class G {
+  function : Zero() ~ Int { return 0; }
+  function : One() ~ Int { return 1; }
+  function : Two() ~ Int { return 2; }
+  function : Three() ~ Int { return 3; }
+  function : Four() ~ Int { return 4; }
+  function : Five() ~ Int { return 5; }
+  function : Name() ~ String { return "cd"; }
+}

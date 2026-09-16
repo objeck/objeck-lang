@@ -1210,9 +1210,12 @@ jobs:
       # Same class of guard, for programs/regression/run_differential.py. Its
       # markers take a test out of part of the s0/s3 x JIT comparison, so each
       # one that removes coverage needs a stated reason, and the
-      # nondeterministic-output marker is capped at 5% of the suite. The unit
-      # tests run the runner against fake obc/obr executables: nothing built.
-      - name: Differential markers have a stated reason
+      # nondeterministic-output marker is capped at 5% of the suite. The same
+      # lint governs the two markers that take a test out of a nightly verifier
+      # step: each reason must name the run whose log shows the failure, and at
+      # most five tests may opt out at all. The unit tests
+      # run the runner against fake obc/obr executables: nothing built.
+      - name: Differential and verifier markers have a stated reason
         run: python3 tools/cicd/check_diff_markers.py
 
       - name: Differential runner catches divergence
@@ -1243,6 +1246,19 @@ jobs:
       # built trees.
       - name: Docs name only the dependencies Objeck needs
         run: python3 tools/cicd/check_docs_deps.py --docs
+
+      # Same class of guard. Every number on docs/performance.md was measured at
+      # the input printed beside it, and perf-results/run_benchmarks.sh holds the
+      # input the harness actually uses. Nothing kept them in step: the harness
+      # ran binarytrees at depth 21 while every table said 17 (2026-09-22), which
+      # for an exponential workload is roughly 16x -- enough to turn a run planned
+      # from the page into a multi-hour one, and to make anything it measured
+      # incomparable to the page it would have been written into.
+      - name: Benchmark inputs match the documented ones
+        run: python3 tools/cicd/check_benchmark_inputs.py
+
+      - name: Benchmark input check catches drift
+        run: python3 tools/cicd/test_check_benchmark_inputs.py
 
       # Same reason, same cost: nothing built, fails in seconds. A native call
       # whose name is written as a literal at the call site allocates a String

@@ -1,0 +1,180 @@
+#~
+Frame slot types must match what the frame's slots actually hold.
+
+The collector (and OBJECK_GC_VERIFY) walks a frame by its method's declaration
+list: declaration i is the word at local id i, or id i + 1 when the method holds
+the and/or temporary. So a local whose declaration is shifted from its id is
+either an untraced reference (freed while live) or an Int scanned as one.
+
+Found by the heap verifier in gl_context_test (CheckScissorAndStencil,
+CheckInput): the compiler's inliner, pasting a callee that holds the and/or
+temporary (here: a '&' in a loop condition) into a caller that does not, put the
+callee's locals one id above the declarations it appended for them. The
+inlined callee's Int[]/Float[]/object local then sat in a slot declared Int, the
+collector never marked it, and the churn below recycled its block while it was
+still in use: the sums come back wrong without the verifier.
+
+Each Case function is small enough to be inlined into Run, which must stay free
+of and/or, ternaries and select so that it has no temporary of its own. The
+scoped section also checks that locals of different types in sibling scopes keep
+their own typed slots across collections.
+~#
+class GcScopedLocalSlotTypes {
+	function : Main(args : String[]) ~ Nil {
+		bad := Run();
+		bad += Scoped(0);
+		bad += Scoped(1);
+
+		if(bad = 0) {
+			"PASS: inlined and scoped locals keep typed slots across collections"->PrintLine();
+		}
+		else {
+			"FAIL: inlined and scoped locals keep typed slots across collections"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# no and/or in here: the inlined callees supply the temporary
+	function : Run() ~ Int {
+		bad := 0;
+
+		ints := IntCase(64);
+		if(ints <> 14304) {
+			"  Int[] local of an inlined and/or callee lost its values:"->PrintLine();
+			ints->PrintLine();
+			bad += 1;
+		};
+
+		floats := FloatCase(64);
+		if(floats <> 4064.0) {
+			"  Float[] local of an inlined and/or callee lost its values:"->PrintLine();
+			floats->PrintLine();
+			bad += 1;
+		};
+
+		objs := ObjCase(64);
+		if(objs <> 320) {
+			"  object local of an inlined and/or callee lost its value:"->PrintLine();
+			objs->PrintLine();
+			bad += 1;
+		};
+
+		return bad;
+	}
+
+	function : IntCase(n : Int) ~ Int {
+		found := Int->New[n];
+		i := 0;
+		done := false;
+		while(<>done & i < n) {
+			found[i] := i * 7 + 3;
+			i += 1;
+			if(i = n) {
+				done := true;
+			};
+		};
+
+		# allocate same-sized arrays while 'found' is live only in this frame
+		for(j := 0; j < 60000; j += 1;) {
+			junk := Int->New[n];
+			for(k := 0; k < n; k += 1;) {
+				junk[k] := -1;
+			};
+		};
+
+		total := 0;
+		for(m := 0; m < n; m += 1;) {
+			total += found[m];
+		};
+		return total;
+	}
+
+	function : FloatCase(n : Int) ~ Float {
+		found := Float->New[n];
+		v := 0.5;
+		i := 0;
+		while(i < n & v > 0.0) {
+			found[i] := v;
+			v += 2.0;
+			i += 1;
+		};
+
+		for(j := 0; j < 60000; j += 1;) {
+			junk := Float->New[n];
+			for(k := 0; k < n; k += 1;) {
+				junk[k] := -1.0;
+			};
+		};
+
+		total := 0.0;
+		for(m := 0; m < n; m += 1;) {
+			total += found[m];
+		};
+		return total;
+	}
+
+	function : ObjCase(n : Int) ~ Int {
+		held := Holder->New(n * 5);
+		i := 0;
+		while(i < n & held <> Nil) {
+			i += 1;
+		};
+
+		for(j := 0; j < 400000; j += 1;) {
+			tmp := Holder->New(j);
+			tmp->Set(-1);
+		};
+
+		return held->Get();
+	}
+
+	# sibling scopes declaring locals of different types
+	function : Scoped(pass : Int) ~ Int {
+		result := 0;
+		if(pass = 0) {
+			numbers := Int->New[64];
+			numbers[5] := 11;
+			Churn();
+			result := numbers[5];
+		}
+		else {
+			scale := 2.5;
+			boxed := Holder->New(11);
+			Churn();
+			result := boxed->Get();
+			scale += 1.0;
+		};
+
+		if(result <> 11) {
+			"  a scoped local lost its value:"->PrintLine();
+			result->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+
+	function : Churn() ~ Nil {
+		for(j := 0; j < 60000; j += 1;) {
+			junk := Int->New[64];
+			junk[0] := j;
+			box := Holder->New(j);
+			box->Set(0);
+		};
+	}
+}
+
+class Holder {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @v;
+	}
+
+	method : public : Set(v : Int) ~ Nil {
+		@v := v;
+	}
+}

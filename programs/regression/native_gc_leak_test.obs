@@ -145,7 +145,10 @@ class NativeGcLeakTest {
 		};
 
 		end_major := Majors();
-		"  {$rounds} native String returns: peak old gen {$peak} bytes, majors {$start_major} to {$end_major}"->PrintLine();
+		# stderr: the peak and the collection counts depend on when collections
+		# land, which differs between -opt levels and JIT modes, and the
+		# differential runner compares stdout
+		"  {$rounds} native String returns: peak old gen {$peak} bytes, majors {$start_major} to {$end_major}"->ErrorLine();
 
 		# Collections must actually be happening. Without this a small heap only
 		# means nothing ran -- the same trap that made an 8-thread stress test
@@ -153,8 +156,13 @@ class NativeGcLeakTest {
 		Check("major collections run while native calls allocate",
 			end_major > start_major);
 
-		# The property actually under test: bounded, not merely small.
-		Check("old generation stays bounded ({$peak} < {$ceiling})", peak < ceiling);
+		# The property actually under test: bounded, not merely small. The label
+		# carries no numbers for the same reason the line above went to stderr:
+		# a check label is stdout, and peak differs between JIT modes, so
+		# interpolating it here reintroduces exactly the divergence that line
+		# was written to avoid. The values are on stderr when a failure needs
+		# diagnosing.
+		Check("old generation stays bounded", peak < ceiling);
 
 		if(@failures = 0) {
 			"All tests passed"->PrintLine();

@@ -1,0 +1,371 @@
+#~
+Guards the 'each' loop over an array captured by a lambda, which failed to
+compile with "Cannot reference an instance variable from this context" for
+every element type.
+
+A variable captured by a lambda is resolved to a closure-copy symbol entry,
+which is deliberately neither local nor static -- it lives in closure memory
+rather than in the lambda's frame. AnalyzeFor binds the loop variable of an
+'each' by building a Variable for the collection and handing the collection's
+entry to AnalyzeVariable directly, so it took the explicitly-defined-entry
+path and its InvalidStatic(SymbolEntry*) check. Since a lambda is always a
+static method, that check saw a non-local non-static entry and rejected it.
+Both MethodCall overloads of InvalidStatic already exempted closure entries
+(so 'v->Size()' resolved, and the equivalent index loop compiled); the
+SymbolEntry overload did not.
+
+Covers 'each' over captured Int, Float, Byte, Char, Bool, object and String
+arrays, each one as a local of the creating function and as a parameter, plus
+the bound ('each(x := v)'), index ('each(i : v)') and 'reverse' forms, an
+'each' nested in another over two captured arrays, and an array captured
+through two lambda levels. Every closure is built, then a minor GC is forced
+by allocation churn, then it is called.
+
+Most closures are built by a helper that returns them, so the creating frame
+has returned before the call. InFrame() covers the other shape -- built and
+called while the frame holding the captures is still live -- which used to
+crash under --jit=1 for any capture type until the two-word STOR_FUNC_VAR bug
+in JitAmd64/JitArm64::ProcessStore was fixed (#845/#847).
+~#
+class ClosureEachCapturedArray {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		# locals of the creating function
+		int_local := IntLocal();
+		float_local := FloatLocal();
+		byte_local := ByteLocal();
+		char_local := CharLocal();
+		bool_local := BoolLocal();
+		obj_local := ObjLocal();
+		str_local := StrLocal();
+
+		# parameters of the creating function
+		ints := Int->New[3]; ints[0] := 5; ints[1] := 7; ints[2] := 9;
+		int_param := IntParam(ints);
+		floats := Float->New[3]; floats[0] := 1.5; floats[1] := 2.5; floats[2] := 3.0;
+		float_param := FloatParam(floats);
+		bytes := Byte->New[3]; bytes[0] := 1; bytes[1] := 2; bytes[2] := 3;
+		byte_param := ByteParam(bytes);
+		chars := Char->New[3]; chars[0] := 'a'; chars[1] := 'b'; chars[2] := 'c';
+		char_param := CharParam(chars);
+		bools := Bool->New[3]; bools[0] := true; bools[1] := false; bools[2] := true;
+		bool_param := BoolParam(bools);
+		boxes := Box->New[3];
+		for(i := 0; i < boxes->Size(); i += 1;) { boxes[i] := Box->New(i + 1); };
+		obj_param := ObjParam(boxes);
+		names := String->New[3]; names[0] := "a"; names[1] := "bb"; names[2] := "ccc";
+		str_param := StrParam(names);
+
+		# Main's own args, reached through a parameter
+		args_count := ArgsCount(args);
+
+		# loop forms
+		idx_form := IndexForm();
+		rev_form := ReverseForm();
+		nested := NestedEach();
+		through_two := NestedLambda(0);
+
+		start := Minors();
+		Churn();
+		if(Minors() = start) {
+			"FAIL: churn did not run a minor GC"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		if(int_local() <> 21) { "FAIL: each over Int[] local"->PrintLine(); bad += 1; };
+		if(float_local() <> 7.0) { "FAIL: each over Float[] local"->PrintLine(); bad += 1; };
+		if(byte_local() <> 6) { "FAIL: each over Byte[] local"->PrintLine(); bad += 1; };
+		if(char_local() <> 294) { "FAIL: each over Char[] local"->PrintLine(); bad += 1; };
+		if(bool_local() <> 2) { "FAIL: each over Bool[] local"->PrintLine(); bad += 1; };
+		if(obj_local() <> 6) { "FAIL: each over object[] local"->PrintLine(); bad += 1; };
+		if(str_local() <> 6) { "FAIL: each over String[] local"->PrintLine(); bad += 1; };
+
+		if(int_param() <> 21) { "FAIL: each over Int[] param"->PrintLine(); bad += 1; };
+		if(float_param() <> 7.0) { "FAIL: each over Float[] param"->PrintLine(); bad += 1; };
+		if(byte_param() <> 6) { "FAIL: each over Byte[] param"->PrintLine(); bad += 1; };
+		if(char_param() <> 294) { "FAIL: each over Char[] param"->PrintLine(); bad += 1; };
+		if(bool_param() <> 2) { "FAIL: each over Bool[] param"->PrintLine(); bad += 1; };
+		if(obj_param() <> 6) { "FAIL: each over object[] param"->PrintLine(); bad += 1; };
+		if(str_param() <> 6) { "FAIL: each over String[] param"->PrintLine(); bad += 1; };
+
+		if(args_count() <> args->Size()) { "FAIL: each over Main args"->PrintLine(); bad += 1; };
+		if(idx_form() <> 6) { "FAIL: each index form over captured array"->PrintLine(); bad += 1; };
+		if(rev_form() <> 421) { "FAIL: reverse over captured array"->PrintLine(); bad += 1; };
+		if(nested() <> 36) { "FAIL: nested each over captured arrays"->PrintLine(); bad += 1; };
+		if(through_two() <> 9) { "FAIL: each over array captured through two lambdas"->PrintLine(); bad += 1; };
+		bad += InFrame();
+
+		if(bad = 0) {
+			"PASS: each over arrays captured by a lambda"->PrintLine();
+		}
+		else {
+			"FAIL: each over captured arrays bad="->Print();
+			bad->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	#
+	# locals of the creating function
+	#
+
+	function : IntLocal() ~ () ~ Int {
+		v := Int->New[3]; v[0] := 5; v[1] := 7; v[2] := 9;
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := v) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : FloatLocal() ~ () ~ Float {
+		v := Float->New[3]; v[0] := 1.5; v[1] := 2.5; v[2] := 3.0;
+		return \() ~ Float : () => {
+			sum := 0.0;
+			each(x := v) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : ByteLocal() ~ () ~ Int {
+		v := Byte->New[3]; v[0] := 1; v[1] := 2; v[2] := 3;
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := v) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : CharLocal() ~ () ~ Int {
+		v := Char->New[3]; v[0] := 'a'; v[1] := 'b'; v[2] := 'c';
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := v) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : BoolLocal() ~ () ~ Int {
+		v := Bool->New[3]; v[0] := true; v[1] := false; v[2] := true;
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := v) { if(x) { sum += 1; }; };
+			return sum;
+		};
+	}
+
+	function : ObjLocal() ~ () ~ Int {
+		v := Box->New[3];
+		for(i := 0; i < v->Size(); i += 1;) { v[i] := Box->New(i + 1); };
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := v) { sum += x->Get(); };
+			return sum;
+		};
+	}
+
+	function : StrLocal() ~ () ~ Int {
+		v := String->New[3]; v[0] := "a"; v[1] := "bb"; v[2] := "ccc";
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := v) { sum += x->Size(); };
+			return sum;
+		};
+	}
+
+	#
+	# parameters of the creating function
+	#
+
+	function : IntParam(p : Int[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := p) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : FloatParam(p : Float[]) ~ () ~ Float {
+		return \() ~ Float : () => {
+			sum := 0.0;
+			each(x := p) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : ByteParam(p : Byte[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := p) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : CharParam(p : Char[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := p) { sum += x; };
+			return sum;
+		};
+	}
+
+	function : BoolParam(p : Bool[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := p) { if(x) { sum += 1; }; };
+			return sum;
+		};
+	}
+
+	function : ObjParam(p : Box[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := p) { sum += x->Get(); };
+			return sum;
+		};
+	}
+
+	function : StrParam(p : String[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			sum := 0;
+			each(x := p) { sum += x->Size(); };
+			return sum;
+		};
+	}
+
+	function : ArgsCount(p : String[]) ~ () ~ Int {
+		return \() ~ Int : () => {
+			count := 0;
+			each(x := p) { count += 1; };
+			return count;
+		};
+	}
+
+	#
+	# loop forms
+	#
+
+	# index binding rather than element binding
+	function : IndexForm() ~ () ~ Int {
+		v := Int->New[4]; v[3] := 6;
+		return \() ~ Int : () => {
+			sum := 0;
+			each(i : v) { sum += v[i]; };
+			return sum;
+		};
+	}
+
+	function : ReverseForm() ~ () ~ Int {
+		v := Int->New[3]; v[0] := 1; v[1] := 2; v[2] := 4;
+		return \() ~ Int : () => {
+			acc := 0;
+			reverse(x := v) { acc := acc * 10 + x; };
+			return acc;
+		};
+	}
+
+	# two captured arrays, one 'each' inside the other
+	function : NestedEach() ~ () ~ Int {
+		outer := Int->New[2]; outer[0] := 1; outer[1] := 2;
+		inner := Int->New[3]; inner[0] := 3; inner[1] := 4; inner[2] := 5;
+		return \() ~ Int : () => {
+			sum := 0;
+			each(a := outer) {
+				each(b := inner) { sum += a * b; };
+			};
+			return sum;
+		};
+	}
+
+	# the array is captured through two lambda levels, so the inner 'each'
+	# resolves it via ResolveCaptureEntry walking the enclosing frames. The
+	# unused parameter keeps the signature off the zero-parameter form, which
+	# the parser cannot tell from the '() ~ Int' return type.
+	function : NestedLambda(ignore : Int) ~ () ~ Int {
+		v := Int->New[3]; v[0] := 2; v[1] := 3; v[2] := 4;
+		return \() ~ Int : () => {
+			inner := \() ~ Int : () => {
+				sum := 0;
+				each(x := v) { sum += x; };
+				return sum;
+			};
+			return inner();
+		};
+	}
+
+	# built and called while the frame holding the captures is still live, and
+	# repeated so the JIT threshold is crossed inside the loop. Mixes a scalar
+	# capture with the array so the closure holds more than the array alone.
+	function : InFrame() ~ Int {
+		bad := 0;
+		for(n := 0; n < 50; n += 1;) {
+			v := Int->New[3]; v[0] := 5; v[1] := 7; v[2] := 9;
+			k := 4;
+			f := \() ~ Int : () => {
+				sum := k;
+				each(x := v) { sum += x; };
+				return sum;
+			};
+			if(f() <> 25) { bad += 1; };
+		};
+		if(bad <> 0) { "FAIL: each over captured array, closure called in its creating frame"->PrintLine(); };
+
+		boxes := Box->New[3];
+		for(i := 0; i < boxes->Size(); i += 1;) { boxes[i] := Box->New(i + 1); };
+		g := \() ~ Int : () => {
+			sum := 0;
+			each(b := boxes) { sum += b->Get(); };
+			return sum;
+		};
+		if(g() <> 6) {
+			"FAIL: each over captured object array in its creating frame"->PrintLine();
+			bad += 1;
+		};
+
+		return bad;
+	}
+
+	function : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
+	# about 150MB of short-lived objects against the 128MB nursery: at least one minor GC
+	function : Churn() ~ Nil {
+		for(j := 0; j < 520000; j += 1;) {
+			tmp := Blob->New(j);
+			if(tmp->Get() <> j) {
+				"FAIL: churn object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+	}
+}
+
+class Box {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @v;
+	}
+}
+
+class Blob {
+	@a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+	@b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+	@c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+	@d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+	New(v : Int) {
+		@a0 := v;
+		@d7 := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @d7;
+	}
+}

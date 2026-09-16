@@ -132,14 +132,21 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   clock_t start = clock();
 #endif
 
-  // initial setup
+  // initial setup. ORDER MATTERS: the collector reads a monitor's current frame
+  // as soon as call_stack_pos is >= 0, so the frame must be stored -- and the
+  // store made visible -- before that. Setting call_stack_pos to 0 first left a
+  // window in which a collection on another thread dereferenced a frame pointer
+  // this thread had not written yet.
+  (*stack_frame) = GetStackFrame(method, instance);
   if(stack_frame_monitor) {
-    (*call_stack_pos) = 0;
     // register op_stack for young-gen fixup across threads
     stack_frame_monitor->op_stack = op_stack;
     stack_frame_monitor->stack_pos = stack_pos;
+    // pairs with the acquire fence the mark and fixup phases take after reading
+    // call_stack_pos (CheckPdaRoots / FixupRoots)
+    std::atomic_thread_fence(std::memory_order_release);
+    (*call_stack_pos) = 0;
   }
-  (*stack_frame) = GetStackFrame(method, instance);
   
 #ifdef _DEBUG
   std::wcout << L"creating frame=" << (*stack_frame) << std::endl;

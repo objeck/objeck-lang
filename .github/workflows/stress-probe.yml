@@ -1,0 +1,251 @@
+name: Stress Probe
+
+# Loops the GC/JIT regression fixtures that guard the collector and the JIT's
+# pointer handling, many times, in four modes, on all five CI platforms, to put
+# a number on "is this flake gone": runs, failures and the rule-of-three upper
+# bound (3/n) per fixture and mode land in the job summary.
+#
+# It never builds. It downloads the objeck-<platform> deploy trees from the
+# latest successful ci-build.yml run on a branch (default master; the same
+# artifact download nightly-hardening.yml uses) and tests those binaries with
+# the fixtures and tools/cicd/stress_probe.py from the pushed commit.
+#
+# Trigger: push a probe/** branch, or dispatch. On push there are no inputs, so
+# the branch comes from the repository variable STRESS_PROBE_CI_BRANCH (unset
+# = master).
+#
+# Modes (names as read by obr on this branch):
+#   default      no knobs
+#   jit1         --jit=1 (and OBJECK_JIT_THRESHOLD=1): compile every method on
+#                its first call
+#   nursery256k  OBJECK_NURSERY=256k: minor collections every few allocations
+#   verify256k   OBJECK_GC_VERIFY=1 + OBJECK_NURSERY=256k: heap verifier on
+#                every collection
+#
+# Time budget (per leg, target ~90 min): setup ~5 min, loops capped by --budget
+# 4800 s, three runs at a time (--jobs 3; the macOS runner has 3 cores, the
+# others 4). 200 runs per fixture per mode does not fit: core_thread_gc_stress
+# alone takes 82-103 s a run under the 256k nursery on a Ryzen 7950X3D. The
+# per-cell counts, the measured seconds per run and the rule-of-three bound
+# each count leaves are in RUN_COUNTS in tools/cicd/stress_probe.py; the
+# summary table's mean/max columns give the real hosted-runner numbers. If the
+# budget runs out, the remaining cells are reported as not run and the leg
+# FAILS, so a short probe can never read as a clean one.
+on:
+  push:
+    branches: ['probe/**']
+  workflow_dispatch:
+    inputs:
+      ci_branch:
+        description: 'Branch whose latest successful ci-build.yml run supplies the binaries'
+        required: false
+        default: 'master'
+      ci_run_id:
+        description: 'Exact ci-build.yml run id (overrides ci_branch)'
+        required: false
+        default: ''
+      runs:
+        description: 'Runs per fixture per mode for every fixture (empty = RUN_COUNTS in stress_probe.py)'
+        required: false
+        default: ''
+      jobs:
+        description: 'Parallel runs within a fixture/mode'
+        required: false
+        default: '3'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: stress-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  resolve:
+    name: Resolve CI artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      run_id: ${{ steps.pick.outputs.run_id }}
+      head_sha: ${{ steps.pick.outputs.head_sha }}
+      branch: ${{ steps.pick.outputs.branch }}
+    steps:
+      - name: Find the ci-build run
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.ci_run_id }}
+          CI_BRANCH: ${{ inputs.ci_branch || vars.STRESS_PROBE_CI_BRANCH || 'master' }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_RUN_ID" ]; then
+            RUN_ID="$INPUT_RUN_ID"
+          else
+            # master is built by push runs; any other branch only by its PR runs.
+            EVENT_ARGS=()
+            if [ "$CI_BRANCH" = "master" ]; then EVENT_ARGS=(--event push); fi
+            RUN_ID=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci-build.yml \
+              --branch "$CI_BRANCH" ${EVENT_ARGS[@]+"${EVENT_ARGS[@]}"} --status success --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')
+          fi
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::no successful ci-build.yml run on branch '$CI_BRANCH'"
+            exit 1
+          fi
+          CONCLUSION=$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json conclusion --jq .conclusion)
+          HEAD_SHA=$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headSha --jq .headSha)
+          RUN_BRANCH=$(gh run view "$RUN_ID" --repo "$GITHUB_REPOSITORY" --json headBranch --jq .headBranch)
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "::error::ci-build run $RUN_ID concluded '$CONCLUSION', not success"
+            exit 1
+          fi
+          # ci-build keeps objeck-<platform> for 7 days; an expired set cannot be tested.
+          LIVE=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100" \
+            --jq '[.artifacts[] | select((.name | startswith("objeck-")) and (.expired | not))] | length')
+          if [ "$LIVE" -lt 5 ]; then
+            echo "::error::ci-build run $RUN_ID has $LIVE unexpired objeck-* artifacts, need 5"
+            exit 1
+          fi
+          {
+            echo "run_id=$RUN_ID"
+            echo "head_sha=$HEAD_SHA"
+            echo "branch=$RUN_BRANCH"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Stress probe inputs"
+            echo ""
+            echo "- ci-build run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$RUN_ID ($RUN_BRANCH)"
+            echo "- binaries built from: \`${HEAD_SHA:0:10}\`"
+            echo "- fixtures and driver from: \`${GITHUB_SHA:0:10}\` ($GITHUB_REF_NAME)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  probe:
+    name: Probe ${{ matrix.platform }}
+    needs: resolve
+    runs-on: ${{ matrix.os }}
+    # Setup (~10 min worst case) + the probe step's 95 min; the driver's
+    # --budget stops starting runs well inside that and still writes results.
+    timeout-minutes: 115
+    strategy:
+      fail-fast: false
+      matrix:
+        # Runner labels match ci-build.yml.
+        include:
+          - platform: windows-arm64
+            os: windows-11-arm
+            arch: ARM64
+            py: python
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+            arch: arm64
+            py: python3
+          - platform: macos-arm64
+            os: macos-15
+            arch: arm64
+            py: python3
+          - platform: windows-x64
+            os: windows-2025-vs2026
+            arch: x64
+            py: python
+          - platform: linux-x64
+            os: ubuntu-latest
+            arch: x64
+            py: python3
+    defaults:
+      run:
+        shell: bash
+    env:
+      LEG: ${{ matrix.platform }}
+      PY: ${{ matrix.py }}
+      TREE: core/release/deploy-${{ matrix.arch }}
+      RESULTS: stress-probe-results/${{ matrix.platform }}
+    steps:
+      - name: Checkout the probe commit
+        timeout-minutes: 5
+        uses: actions/checkout@v5
+
+      # Restore only; ci-build.yml keeps these entries warm.
+      - name: Restore APT packages (Linux)
+        if: runner.os == 'Linux'
+        timeout-minutes: 5
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/apt-cache
+          key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.arch }}-apt-
+
+      - name: Install Linux runtime dependencies
+        if: runner.os == 'Linux'
+        timeout-minutes: 10
+        run: |
+          # The package set ci-build.yml tested these binaries with.
+          mkdir -p ~/apt-cache/partial
+          sudo apt-get update
+          sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
+            libopencv-dev libmbedtls-dev unixodbc-dev libsqliteodbc \
+            libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
+            libegl1 libegl-mesa0 libgl1-mesa-dri libreadline-dev libeigen3-dev libmp3lame-dev
+
+      - name: Install macOS runtime dependencies
+        if: runner.os == 'macOS'
+        timeout-minutes: 10
+        run: |
+          for pkg in unixodbc sdl2 sdl2_image sdl2_ttf sdl2_mixer readline; do
+            brew list --versions "$pkg" >/dev/null 2>&1 || brew install "$pkg"
+          done
+
+      - name: Download the CI deploy tree
+        timeout-minutes: 10
+        uses: actions/download-artifact@v4
+        with:
+          name: objeck-${{ matrix.platform }}
+          run-id: ${{ needs.resolve.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: ${{ env.TREE }}
+
+      - name: Prepare the deploy tree
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          # Artifacts do not keep file modes.
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            chmod +x "$TREE"/bin/* 2>/dev/null || true
+          fi
+          "$TREE/bin/obc" --version
+          "$PY" -m unittest tools/cicd/test_stress_probe.py
+
+      - name: Stress loops
+        timeout-minutes: 95
+        env:
+          RUNS: ${{ inputs.runs }}
+          JOBS: ${{ inputs.jobs || '3' }}
+        run: |
+          set -euo pipefail
+          RUN_ARGS=()
+          if [ -n "${RUNS:-}" ]; then RUN_ARGS=(--runs "$RUNS"); fi
+          # --timeout 600: the slowest cell (core_thread_gc_stress, verifier)
+          # ran up to 123 s locally; hosted runners and --jobs 3 are slower.
+          "$PY" tools/cicd/stress_probe.py run --bin "$TREE/bin" --out "$RESULTS" \
+            --src-dir programs/regression --jobs "$JOBS" --timeout 600 --budget 4800 \
+            --leg "$LEG" --ci-run "${{ needs.resolve.outputs.run_id }}" \
+            --commit "${{ needs.resolve.outputs.head_sha }}" \
+            --branch "${{ needs.resolve.outputs.branch }}" \
+            --summary "$GITHUB_STEP_SUMMARY" ${RUN_ARGS[@]+"${RUN_ARGS[@]}"}
+
+      - name: Upload results
+        if: always()
+        timeout-minutes: 5
+        uses: actions/upload-artifact@v6
+        with:
+          name: stress-probe-${{ matrix.platform }}
+          path: |
+            stress-probe-results/${{ matrix.platform }}/results.json
+            stress-probe-results/${{ matrix.platform }}/summary.md
+            stress-probe-results/${{ matrix.platform }}/failures/
+          if-no-files-found: warn
+          retention-days: 14

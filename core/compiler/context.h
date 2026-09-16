@@ -309,7 +309,12 @@ class ContextAnalyzer {
 
   // returns true if this entry is duplicated in parent classes
   inline bool InvalidStatic(SymbolEntry* entry) {
-    return current_method->IsStatic() && !entry->IsLocal() && !entry->IsStatic();
+    // a closure copy entry stands in for a local captured by an enclosing
+    // method; it lives in closure memory rather than the lambda's frame, so it
+    // is neither local nor static, yet referencing it from the (always static)
+    // lambda is valid. Both MethodCall overloads of InvalidStatic already make
+    // this exemption -- see InvalidStatic(MethodCall*, Method*).
+    return current_method->IsStatic() && !entry->IsLocal() && !entry->IsStatic() && !entry->IsClosureEntry();
   }
 
   // returns true name match a 'Range' class name

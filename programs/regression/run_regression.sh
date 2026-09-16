@@ -70,6 +70,36 @@ read -r -a VM_ARGS <<< "${OBJECK_VM_ARGS:-}"
 if [ ${#VM_ARGS[@]} -gt 0 ]; then
     echo "  VM args: ${VM_ARGS[*]}"
 fi
+
+# The nightly hardening steps run this suite in two configurations a test may
+# opt out of, each with a whole-line marker at column 0 and a '# reason:' line
+# after it (tools/cicd/check_diff_markers.py lints both; run_regression.cmd
+# matches):
+#   # VERIFY_SKIP      the heap verifier is on (OBJECK_GC_VERIFY set, not 0).
+#                      No test carries it today: the verifier on its own has not
+#                      yet been shown to fail one -- in run 35027973357 every
+#                      test, sockets included, passed that step on all five legs.
+#   # GC_STRESS_SKIP   a tiny heap threshold is forced (--gc-threshold in
+#                      OBJECK_VM_ARGS). Measured at --gc-threshold=64k without
+#                      the verifier: discarded_call_result_pop 598 s and
+#                      jit_float_compare_store 637 s, against 2-3 s unforced;
+#                      tls_verify_test and https_persistence_test lose their
+#                      loopback peer to their own socket timeouts.
+# A reason must name the run that showed the failure, so neither marker can be
+# taken on a theory.
+VERIFY_ON=0
+if [ -n "${OBJECK_GC_VERIFY:-}" ] && [ "${OBJECK_GC_VERIFY}" != "0" ]; then
+    VERIFY_ON=1
+fi
+GC_STRESS_ON=0
+case "${OBJECK_VM_ARGS:-}" in
+    *--gc-threshold*) GC_STRESS_ON=1 ;;
+esac
+
+# A marker is a whole line, so a test that merely mentions one is not marked.
+has_marker() {
+    tr -d '\r' < "$1" | grep -qx "$2"
+}
 echo "========================================"
 echo ""
 
@@ -159,6 +189,21 @@ for test in *.obs; do
 
     if [ $EXPECT_ERR -eq 1 ]; then
         record_fail "should have failed to compile"
+        continue
+    fi
+
+    # Opt-outs for the nightly hardening configurations (see VERIFY_ON and
+    # GC_STRESS_ON above). Compiling still happened, so a compile break shows.
+    if [ $VERIFY_ON -eq 1 ] && has_marker "$ABS_TEST" '# VERIFY_SKIP'; then
+        echo "  [SKIP] not run under the heap verifier (VERIFY_SKIP marker)"
+        SKIPPED_TESTS+=("${NAME} (heap verifier)")
+        ((SKIP_COUNT++))
+        continue
+    fi
+    if [ $GC_STRESS_ON -eq 1 ] && has_marker "$ABS_TEST" '# GC_STRESS_SKIP'; then
+        echo "  [SKIP] not run with a forced heap threshold (GC_STRESS_SKIP marker)"
+        SKIPPED_TESTS+=("${NAME} (forced heap threshold)")
+        ((SKIP_COUNT++))
         continue
     fi
 

@@ -56,16 +56,24 @@ Usage: python run_vm_flag_tests.py <bin_dir>
  10. The nursery knob and the GC statistics. --nursery (and OBJECK_NURSERY)
     accepts 256k and 64m, refuses 2x and 0 with a message naming the range,
     and the flag wins over a bad variable. gc_nursery_knob.obs runs more minor
-    collections with a 256k nursery than with the default; OBJECK_GC_STATS=1
+    collections with a 256k nursery than with the default -- it reports its
+    counters on stderr, since a collection count is not stable enough for the
+    differential to compare across -opt levels, so they are read from there and
+    its stdout stays the bare PASS line; OBJECK_GC_STATS=1
     prints a summary line with every field; runtime.memory.peak is never below
     runtime.memory.used (the fixture checks that itself). And collection stays
     correct when minor GCs are frequent: obj_size_layout, minor_gc_stress,
-    core_thread_gc_stress, gc_minor_closure_capture, gc_zero_field_nursery_end
-    and gc_closure_capture_nursery_end pass with --nursery=128k and 256k,
-    interpreted and with every method compiled. (At those sizes an integration-1
+    core_thread_gc_stress, gc_minor_closure_capture, gc_zero_field_nursery_end,
+    gc_closure_capture_nursery_end and opt_inline_and_or_slots pass with
+    --nursery=128k and 256k, interpreted and with every method compiled. (At those sizes an integration-1
     obr lost a zero-field object that was the last allocation before a
     collection, and a closure capture copied just before one.) A v2026.9.4 obr
-    fails all of this: it does not know the flag.
+    fails all of this: it does not know the flag. gc_mt_small_nursery_stress
+    then runs 100 times with --nursery=256k, interpreted and with every method
+    compiled, on two CPUs where taskset exists: threads finish while others
+    force collections, and a collection that landed after a thread's entry
+    method returned crashed a mark thread on its null current frame (SIGSEGV
+    with no output).
  8. An exception in a call the JIT's bridge made ends the program, not the
     process. Neither backend registers unwind information for the code it
     emits, so a C++ exception thrown under compiled code used to terminate
@@ -128,6 +136,26 @@ def run(cmd, env=None, cwd=None, timeout=120):
     except subprocess.TimeoutExpired as e:
         return -999, e.stdout or b"", (e.stderr or b"") + b"\n<timed out>"
     return p.returncode, p.stdout, p.stderr
+
+
+def mt_cpu_pin_prefix():
+    """A taskset prefix confining a run to two CPUs, or [] when that is not possible.
+
+    The multithreaded small-nursery loop only exercises its window when threads
+    outnumber CPUs (see check_nursery_and_gc_stats). Returns [] on a host with no
+    taskset (Windows, macOS) and on a host already limited to two CPUs or fewer,
+    where the run is confined anyway. The pair is picked from this process's own
+    affinity mask and offset by pid, so two copies of this script running side by
+    side do not pile onto the same cores.
+    """
+    if not hasattr(os, "sched_getaffinity") or not shutil.which("taskset"):
+        return []
+    cpus = sorted(os.sched_getaffinity(0))
+    if len(cpus) <= 2:
+        return []
+    first = (os.getpid() * 2) % len(cpus)
+    pair = (cpus[first], cpus[(first + 1) % len(cpus)])
+    return ["taskset", "-c", f"{pair[0]},{pair[1]}"]
 
 
 def main():
@@ -398,8 +426,12 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     if rc != 0:
         return
 
-    def minor_of(out):
-        m = re.search(rb"^minor=(\d+)\s*$", out, re.M)
+    # The fixture's collection counters are on STDERR: they depend on when a
+    # collection lands, so run_differential.py compared them across -opt levels
+    # and JIT modes and reported the fixture as divergent. Its stdout is the
+    # stable PASS line; everything counted is read from stderr here.
+    def minor_of(err):
+        m = re.search(rb"^minor=(\d+)\s*$", err, re.M)
         return int(m.group(1)) if m else None
 
     small_env = dict(env)
@@ -415,18 +447,18 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
         rc, out, err = run([obr] + flags + [knob_obe], env=run_env, cwd=bin_dir)
         runs[label] = (rc, out, err)
         check(f"nursery fixture passes its own checks ({label})",
-              rc == 0 and b"PASS: nursery knob and GC stats" in out and minor_of(out) is not None,
+              rc == 0 and b"PASS: nursery knob and GC stats" in out and minor_of(err) is not None,
               detail(rc, out, err))
 
-    default_minor = minor_of(runs["default"][1])
+    default_minor = minor_of(runs["default"][2])
     for label in ("--nursery=256k", "OBJECK_NURSERY=256k", "--nursery=256k --jit=1"):
-        small_minor = minor_of(runs[label][1])
+        small_minor = minor_of(runs[label][2])
         check(f"a 256k nursery runs more minor collections than the default ({label}: "
               f"{small_minor} vs {default_minor})",
               small_minor is not None and default_minor is not None and small_minor > default_minor,
               f"small={small_minor} default={default_minor}")
     check("the fixture reports the 256k limit as runtime.gc.nursery.capacity",
-          b"nursery capacity=262144" in runs["--nursery=256k"][1], runs["--nursery=256k"][1][-200:])
+          b"nursery capacity=262144" in runs["--nursery=256k"][2], runs["--nursery=256k"][2][-200:])
 
     rc, out, err = runs["--nursery=256k with OBJECK_GC_STATS=1"]
     fields = ("minor", "major", "pauses", "pause_p50_us", "pause_p95_us", "pause_max_us",
@@ -439,7 +471,7 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     check("OBJECK_GC_STATS=1 prints a [gc-stats] line on stderr with every field",
           line is not None and all(f in values for f in fields), detail(rc, out, err))
     if line is not None and all(f in values for f in fields):
-        printed_minor = minor_of(out) or 0
+        printed_minor = minor_of(err) or 0
         check("the summary's counts cover what the program saw (minor >= its runtime.gc.minor > 0, "
               "one pause per collection)",
               values["minor"] >= printed_minor > 0 and values["pauses"] == values["minor"] + values["major"],
@@ -473,11 +505,59 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
                 check(f"{name} passes with --nursery={size} ({label})",
                       rc == 0 and b"PASS" in out and b"FAIL" not in out, detail(rc, out, err))
 
+    # Thread exits overlapping collections. A thread whose entry method returned
+    # left its monitor registered (current frame null) after it left the
+    # stop-the-world count; a collection another thread ran in that window
+    # dereferenced the null frame on a mark thread (SIGSEGV, no output). One run
+    # rarely lands in the window, so loop the fixture; a 256k nursery puts a
+    # collection in nearly every exit window.
+    #
+    # PINNING IS WHAT GIVES THIS LOOP ITS POWER. The window is only wide enough
+    # to hit when the exiting thread is descheduled between leaving the
+    # stop-the-world count and unregistering its monitor, which needs more
+    # runnable threads than CPUs. Measured on a 32-thread box against the
+    # pre-fix obr, pinned to two CPUs: 8 SIGSEGVs in 3600 runs, and 7 in 2200 in
+    # an independent set -- 15 in 5800 together, 0.26%. Unpinned on the same box:
+    # 0 in 900, and 0 in 600 on Windows. The stress probe found the original
+    # crash on a 2-core runner for the same reason. Where taskset exists the loop
+    # therefore runs on two CPUs; without it (Windows, macOS) the runs still
+    # execute, but their measured power against THIS bug is zero -- they prove
+    # the fixture still builds and passes, nothing more.
+    name = MT_NURSERY_LOOP_TEST
+    src = os.path.join(SCRIPT_DIR, name + ".obs")
+    dest = os.path.join(SCRIPT_DIR, name + ".obe")
+    rc, out, err = run([obc, "-src", src, "-lib", "cipher,collect,xml,json", "-opt", "s3", "-dest", dest],
+                       env=env, cwd=bin_dir)
+    check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
+    if rc == 0:
+        pin = mt_cpu_pin_prefix()
+        pinned = "pinned to 2 CPUs" if pin else "unpinned -- no power for this bug"
+        for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
+            bad = []
+            for i in range(MT_NURSERY_LOOP_RUNS):
+                rc, out, err = run(pin + [obr, "--nursery=256k"] + flags + [dest],
+                                   env=env, cwd=bin_dir, timeout=300)
+                if rc != 0 or b"PASS" not in out or b"FAIL" in out:
+                    bad.append(f"run {i}: {detail(rc, out, err)}")
+            check(f"{name} passes {MT_NURSERY_LOOP_RUNS} runs with --nursery=256k ({label}, {pinned}; "
+                  f"{len(bad)} failed)", not bad, "; ".join(bad[:3]))
+
 
 # Run with small nurseries (check_nursery_and_gc_stats); each prints PASS.
 NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_stress", "gc_minor_closure_capture",
-                        "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end")
+                        "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end",
+                        # an -opt s3 inlined callee's object local stays a root; the
+                        # old layout lost it interpreted, which the runner never runs
+                        "opt_inline_and_or_slots")
 NURSERY_STRESS_SIZES = ("128k", "256k")
+
+# Looped with a 256k nursery in both JIT modes (check_nursery_and_gc_stats).
+# One pinned run takes about 0.2s, so 100 per mode costs ~40s for both. The
+# pre-fix crash rate pinned to two CPUs measured 0.26% per run (15 in 5800), so
+# these 200 runs catch a regression roughly 40% of the time -- worth having,
+# nowhere near a guarantee; the long loops belong in the stress probe.
+MT_NURSERY_LOOP_TEST = "gc_mt_small_nursery_stress"
+MT_NURSERY_LOOP_RUNS = 100
 
 # The verifier's report prefix. Not a bare b"gc-verify": its back-off notice
 # "[gc-verify] verification took N% of wall time" is printed by clean runs that
@@ -493,7 +573,11 @@ VERIFY_CLEAN_TESTS = ("minor_gc_stress", "core_thread_gc_stress", "jit_gc_stress
                       "closure_capture_old_holder_g12",
                       # Bool[] declared as a byte array in every declaration kind,
                       # and array captures including Bool[] (B2 wrong memory TYPE)
-                      "gc_bool_array_declaration", "closure_array_param_capture")
+                      "gc_bool_array_declaration", "closure_array_param_capture",
+                      # an and/or callee inlined into a caller without one: its locals
+                      # must sit in the slots declared for them (B2, Fill:i, slot 7)
+                      "gc_scoped_local_slot_types", "gc_zero_field_nursery_end",
+                      "opt_inline_and_or_slots")
 
 # Each injected fault and the report the verifier must stop the program with.
 VERIFY_INJECTIONS = (("field", b">>> gc-verify: B2 violation"),

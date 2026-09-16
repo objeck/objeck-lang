@@ -43,6 +43,20 @@
 # not in the response codes.
 
 # EXTRA_LIBS: net,net_server,cipher
+# NONDETERMINISTIC_OUTPUT
+# reason: this test sets the MCP server's "debug" flag, so the SERVER LIBRARY
+# traces every request it handles to stdout -- headers, payload and parsed
+# method name. Request() above retries a POST on a transient failure (#669's
+# loopback teardown race drops a response outright on Windows), and a retried
+# request is handled and traced TWICE, so stdout gains a whole extra request
+# block while the test still passes. Measured on Windows x64: 11 of 12 runs
+# byte-identical across s0/off, s3/off, s3/default and s3/jit1, and 1 run
+# (s3/jit1) 205 lines instead of 124 -- the extra block, PASS in both. The
+# difference follows the retry, not the configuration, so comparing this stdout
+# across -opt levels and JIT modes reports a VM divergence for a network timing
+# event. Exit status is still compared and the PASS/FAIL lines are still checked
+# by the regression runners; the non-debug twin mcp_server_test.obs keeps full
+# stdout comparison, so the covered behaviour is not lost.
 use Collection, Data.JSON, System.IO.Net, Web.HTTP, Web.HTTP.Server, Web.HTTP.Server.MCP;
 
 #
