@@ -1,5 +1,3 @@
-# VERIFY_SKIP
-# reason: name resolution waits on the network, not the heap; nothing here is worth a verified collection
 #~
 # TCPSocket->Resolve failure-path test
 #

@@ -1,5 +1,3 @@
-# VERIFY_SKIP
-# reason: loopback peers time out when the heap verifier stops the world at every collection
 #~
 # HTTP Client/Server Loopback Test
 # Tests HTTP GET and POST using raw TCP server + HttpClient.

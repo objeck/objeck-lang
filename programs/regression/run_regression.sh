@@ -76,13 +76,17 @@ fi
 # after it (tools/cicd/check_diff_markers.py lints both; run_regression.cmd
 # matches):
 #   # VERIFY_SKIP      the heap verifier is on (OBJECK_GC_VERIFY set, not 0).
-#                      A loopback network peer times out while every collection
-#                      stops the world for a heap walk, so the test fails for
-#                      the verifier's speed rather than a heap defect.
+#                      No test carries it today: the verifier on its own has not
+#                      yet been shown to fail one -- in run 35027973357 every
+#                      test, sockets included, passed that step on all five legs.
 #   # GC_STRESS_SKIP   a tiny heap threshold is forced (--gc-threshold in
 #                      OBJECK_VM_ARGS). Measured at --gc-threshold=64k without
 #                      the verifier: discarded_call_result_pop 598 s and
-#                      jit_float_compare_store 637 s, against 2-3 s unforced.
+#                      jit_float_compare_store 637 s, against 2-3 s unforced;
+#                      tls_verify_test and https_persistence_test lose their
+#                      loopback peer to their own socket timeouts.
+# A reason must name the run that showed the failure, so neither marker can be
+# taken on a theory.
 VERIFY_ON=0
 if [ -n "${OBJECK_GC_VERIFY:-}" ] && [ "${OBJECK_GC_VERIFY}" != "0" ]; then
     VERIFY_ON=1

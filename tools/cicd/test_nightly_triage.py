@@ -389,6 +389,26 @@ class TriageCommandTests(unittest.TestCase):
         self.assertIn("| crash |", text)
         self.assertIn("| linux-x64 |", text)  # "also new on" for the windows timeout
 
+    def test_also_new_on_names_the_same_legs_as_the_issue(self):
+        # The same test failing with different numbers on two legs is one issue
+        # (issue_key is step + test), so the summary's "Also new on" column has
+        # to name both legs. It read "-" while it was keyed by the signature
+        # that includes the message.
+        self.put("windows-arm64", "differential", [nt.make_failure(
+            "obj_size_layout", "stdout: s0/off vs s3/default differ: 42878 promotions", "s0")])
+        self.put("linux-arm64", "differential", [nt.make_failure(
+            "obj_size_layout", "stdout: s0/off vs s3/default differ: 42883 promotions", "s0")])
+        self.triage("windows-arm64,linux-arm64", "differential")
+        out = self.outputs()
+        self.assertEqual(out["issue_count"], "1")
+        issue = json.loads(out["new_issues"])[0]
+        self.assertEqual(issue["legs"], ["windows-arm64", "linux-arm64"])
+        with open(os.path.join(self.out, "summary.md"), encoding="utf-8") as fh:
+            summary = fh.read()
+        for row in [l for l in summary.splitlines() if "obj_size_layout" in l and l.startswith("|")]:
+            self.assertRegex(row, r"\|\s*(?:windows-arm64|linux-arm64)\s*\|",
+                             "the row names no other leg: " + row)
+
     def test_issue_cap(self):
         legs = ["linux-x64", "linux-arm64"]
         for leg in legs:
@@ -416,9 +436,18 @@ class FailureKindTests(unittest.TestCase):
                                 ("exit code 3221225477", ""),
                                 ("exit code -1073741571", ""),
                                 ("prog_9: obr exited 139", ""),
-                                ("runtime error", "line 93: 413846 Segmentation fault  obr x.obe"),
-                                ("exit code 1", "timeout: the monitored command dumped core")):
+                                ("Segmentation fault", ""),
+                                ("timed out: the monitored command dumped core", "")):
             self.assertEqual(nt.failure_kind(message, detail), "crash", message + detail)
+
+    def test_a_test_printing_crash_words_is_not_a_crash(self):
+        # detail is the test's own output. A fixture that prints one of these
+        # words must not be escalated to an issue of its own; the runner's
+        # verdict (the message) is what says the process died.
+        for detail in ("line 93: 413846 Segmentation fault  obr x.obe",
+                       "timeout: the monitored command dumped core",
+                       "PASS: rejected 'core dumped' in the log"):
+            self.assertEqual(nt.failure_kind("runtime error", detail), "", detail)
 
     def test_verifier_violation(self):
         self.assertEqual(nt.failure_kind("runtime error", ">>> gc-verify: B2 violation in "

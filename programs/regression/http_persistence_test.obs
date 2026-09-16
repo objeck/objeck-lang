@@ -1,5 +1,3 @@
-# VERIFY_SKIP
-# reason: loopback peers time out when the heap verifier stops the world at every collection
 # EXTRA_LIBS: net,net_server
 use Collection, System.IO.Net, Web.HTTP.Server;
 

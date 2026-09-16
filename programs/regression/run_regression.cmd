@@ -67,13 +67,17 @@ echo.
 REM The nightly hardening steps run this suite in two configurations a test may
 REM opt out of, each with a marker line at column 0 and a '# reason:' line after
 REM it (tools/cicd/check_diff_markers.py lints both; mirrors run_regression.sh):
-REM   '# VERIFY_SKIP'     the heap verifier is on (OBJECK_GC_VERIFY set, not 0):
-REM                       a loopback network peer times out while every
-REM                       collection stops the world for a heap walk.
+REM   '# VERIFY_SKIP'     the heap verifier is on (OBJECK_GC_VERIFY set, not 0).
+REM                       No test carries it today: the verifier alone has not
+REM                       yet been shown to fail one.
 REM   '# GC_STRESS_SKIP'  a tiny heap threshold is forced (--gc-threshold in
 REM                       OBJECK_VM_ARGS). Measured at 64k without the verifier:
 REM                       discarded_call_result_pop 598 s, jit_float_compare_store
-REM                       637 s, against 2-3 s unforced.
+REM                       637 s, against 2-3 s unforced; tls_verify_test and
+REM                       https_persistence_test lose their loopback peer to
+REM                       their own socket timeouts.
+REM A reason must name the run that showed the failure, so neither marker can be
+REM taken on a theory.
 set VERIFY_ON=
 if defined OBJECK_GC_VERIFY if not "%OBJECK_GC_VERIFY%"=="0" set VERIFY_ON=1
 set GC_STRESS_ON=

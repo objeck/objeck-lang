@@ -1,5 +1,5 @@
-# VERIFY_SKIP
-# reason: loopback TLS peers time out when the heap verifier stops the world at every collection (300 s timeouts and empty responses in the first nightly)
+# GC_STRESS_SKIP
+# reason: the forced threshold, not the verifier, is what breaks it. In nightly run 35027973357 it PASSED the verifier step (OBJECK_GC_VERIFY=1, nursery 256k) on all five legs in 2-3 s, and failed the --gc-threshold=64k step on all five (300 s timeout on windows-x64, windows-arm64 and macos-arm64; exit 1 on both Linux legs). Its TLS peer runs in another thread behind fixed socket timeouts, which a collection at every 64k of allocation blows past. Reproduced on x64 with the verifier off: unforced it passes in 6 s, and at --gc-threshold=64k it was still in the same stage when killed at 200 s; with the verifier on and no forced threshold it passes in 6 s.
 # EXTRA_LIBS: net,net_server
 #~
 TLS certificate verification must REFUSE. https_persistence_test proves the

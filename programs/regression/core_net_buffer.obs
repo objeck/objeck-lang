@@ -1,5 +1,3 @@
-# VERIFY_SKIP
-# reason: loopback peers time out when the heap verifier stops the world at every collection
 #~
 # Network Buffer Read Test
 # Tests that TCP socket ReadBuffer correctly handles partial reads

@@ -698,11 +698,18 @@ VERIFIER_RE = re.compile(r">>> gc-verify: .*violation")
 
 
 def failure_kind(message, detail):
-    """'verifier', 'crash' or '' (an ordinary failure)."""
-    text = (message or "") + "\n" + (detail or "")
-    if VERIFIER_RE.search(text):
+    """'verifier', 'crash' or '' (an ordinary failure).
+
+    A violation is the verifier's own line, which reaches us inside the test's
+    output, so that scan reads the detail too. A crash is read from the
+    runner's verdict (the message) alone: the detail is whatever the test
+    printed, and a test that printed "Segmentation fault" or "core dumped" --
+    a fixture that greps for one, say -- would otherwise be escalated to its
+    own issue. The POSIX runners put the signal in the message ("runtime error
+    (exit 139)"), which is where a real crash shows up."""
+    if VERIFIER_RE.search((message or "") + "\n" + (detail or "")):
         return "verifier"
-    if CRASH_RE.search(text):
+    if CRASH_RE.search(message or ""):
         return "crash"
     return ""
 
@@ -818,15 +825,19 @@ def classify(results_dir, known_path, legs, steps):
             unique[item["id"]] = item
     items = list(unique.values())
 
-    # Which legs each new failure is new on, by its cross-leg signature, and
-    # which own issue (if any) covers it.
+    # Which legs each new failure is new on, and which own issue (if any)
+    # covers it. Keyed by issue_key, the same key the issues group by, so the
+    # summary's "Also new on" column never names fewer legs than the issue does
+    # (the two disagreed while this was keyed by the message-sensitive
+    # cross-signature: a test failing differently on two runners read as one
+    # leg in the table and three in its issue).
     legs_of = {}
     for item in items:
         if item["class"] == "new":
-            legs_of.setdefault(item["cross"], set()).add(item["leg"])
+            legs_of.setdefault(issue_key(item), set()).add(item["leg"])
     for item in items:
         if item["class"] == "new":
-            item["legs"] = sorted(legs_of[item["cross"]], key=lambda l: (
+            item["legs"] = sorted(legs_of[issue_key(item)], key=lambda l: (
                 legs.index(l) if l in legs else 99, l))
     for group in issue_groups(items):
         for item in group:
