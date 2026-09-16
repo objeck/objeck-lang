@@ -1604,9 +1604,15 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
   MemoryManager::BeginBlocking();
 #ifdef _WIN32
   HANDLE vm_thread = (HANDLE)instance[0];
-  if(WaitForSingleObject(vm_thread, INFINITE) != WAIT_OBJECT_0) {
+  const DWORD wait_result = WaitForSingleObject(vm_thread, INFINITE);
+  if(wait_result != WAIT_OBJECT_0) {
+    // captured before EndBlocking so nothing can overwrite it (#874)
+    const DWORD last_error = GetLastError();
     MemoryManager::EndBlocking();
     std::wcerr << L">>> Unable to join thread! <<<" << std::endl;
+    std::wcerr << L"  wait result=" << wait_result << L", GetLastError=" << last_error
+               << L", handle=0x" << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance
+               << std::dec << std::endl;
 #ifdef _NO_HALT
     return;
 #else
@@ -1616,9 +1622,14 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #else
   void* status;
   pthread_t vm_thread = (pthread_t)instance[0];
-  if(pthread_join(vm_thread, &status)) {
+  const int join_result = pthread_join(vm_thread, &status);
+  if(join_result) {
     MemoryManager::EndBlocking();
+    // the return code is the diagnosis: ESRCH (not a live thread), EINVAL (not
+    // joinable, or already joined), EDEADLK (joining itself) (#874)
     std::wcerr << L">>> Unable to join thread! <<<" << std::endl;
+    std::wcerr << L"  pthread_join=" << join_result << L" (" << strerror(join_result) << L"), handle=0x"
+               << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
 #ifdef _NO_HALT
     return;
 #else
