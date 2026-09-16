@@ -199,7 +199,7 @@ bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const
   // through JIT-compiled methods overruns the fixed call_stack[] buffer.
   if((*call_stack_pos) >= CALL_STACK_SIZE) {
     std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   // Get a stack frame for the callee and register it on the call stack
@@ -239,7 +239,7 @@ void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, con
     std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
     std::wcerr << L"    in JIT-to-JIT call: method='" << callee->GetName()
                << L"', caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << L"'" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   const wchar_t* reason;
@@ -259,7 +259,7 @@ void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, con
              << L"', status=" << status
              << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
              << L"' <<<" << std::endl;
-  exit(1);
+  VmExit(1);
 }
 
 /**
@@ -403,7 +403,7 @@ void JitCompiler::BridgeExceptionExit(const char* what, const bool out_of_memory
   // as the interpreter's own JIT call path does for a guard-stub status
   Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
   intpr.StackErrorUnwind(program->GetClass(cls_id)->GetMethod(mthd_id));
-  exit(1);
+  VmExit(1);
 }
 
 /**
@@ -469,7 +469,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!array) {
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
     PushInt(op_stack, stack_pos, array[2]);
   }
@@ -725,7 +725,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     }
     else {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
   }
     break;
@@ -772,7 +772,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     }
     else {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
   }
     break;
@@ -801,7 +801,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
       std::wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
         << L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
     PushInt(op_stack, stack_pos, result);
   }
@@ -824,7 +824,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!instance) {
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
@@ -842,7 +842,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
       std::wcerr << L"  wait result=" << wait_result << L", GetLastError=" << last_error
                  << L", handle=0x" << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance
                  << std::dec << std::endl;
-      exit(-1);
+      VmExit(-1);
     }
 #else
     void* status;
@@ -855,7 +855,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
       std::wcerr << L"Unable to join thread!" << std::endl;
       std::wcerr << L"  pthread_join=" << join_result << L" (" << strerror(join_result) << L"), handle=0x"
                  << std::hex << (size_t)vm_thread << L", thread object=0x" << (size_t)instance << std::dec << std::endl;
-      exit(-1);
+      VmExit(-1);
     }
 #endif
     MemoryManager::EndBlocking();
@@ -875,7 +875,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!instance) {
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 #ifdef _WIN32      
     InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -890,7 +890,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!instance) {
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 #ifdef _WIN32      
     EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -905,7 +905,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!instance) {
       std::wcerr << L"Attempting to dereference a 'Nil' memory instance" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 #ifdef _WIN32      
     LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
@@ -926,7 +926,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!src_array || !dest_array) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     const long src_array_len = (long)src_array[2];
@@ -958,7 +958,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!src_array || !dest_array) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     const long src_array_len = (long)src_array[2];
@@ -991,7 +991,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!src_array || !dest_array) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     const long src_array_len = (long)src_array[0];
@@ -1033,7 +1033,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     if(!src_array || !dest_array) {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      exit(1);
+      VmExit(1);
     }
 
     const long src_array_len = (long)src_array[0];
@@ -1091,7 +1091,7 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
   case TRAP_RTRN:
     if(!TrapProcessor::ProcessTrap(program, inst, op_stack, stack_pos, nullptr)) {
       std::wcerr << L"  JIT compiled machine code..." << std::endl;
-      exit(1);
+      VmExit(1);
     }
     break;
 

@@ -960,7 +960,7 @@ void MemoryManager::VerifyInitialize()
     const long period = strtol(mode.c_str(), &end, 10);
     if(!end || *end || period < 1) {
       std::wcerr << L">>> OBJECK_GC_VERIFY: expected a positive collection period or 'checkmark' <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
     GcVerifier::period = period;
   }
@@ -977,7 +977,7 @@ void MemoryManager::VerifyInitialize()
   }
   else if(!inject.empty()) {
     std::wcerr << L">>> OBJECK_GC_VERIFY_INJECT: expected 'field', 'barrier' or 'mark' <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   GcVerifier::window_start = std::chrono::steady_clock::now();

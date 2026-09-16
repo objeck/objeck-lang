@@ -460,6 +460,8 @@ class MemoryManager {
   
  public:
   static void Initialize(StackProgram* p, size_t m);
+  // VmExit (common.h): end the process with 'status' from any VM thread.
+  [[noreturn]] static void Exit(int status);
   // Nursery limit for the next Initialize; the caller has validated it
   // (vm_options.h: 64k..128m). 0 restores the default.
   static void SetNurserySize(size_t size) { nursery_size_request = size; }

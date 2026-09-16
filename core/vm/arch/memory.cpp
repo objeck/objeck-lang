@@ -57,6 +57,37 @@ static bool GcTraceEnabled() {
   std::_Exit(1);
 }
 
+// exit() runs the process's teardown on the calling thread while every other
+// thread keeps executing: static destructors free the collector's containers,
+// and on Windows the static C++ runtime frees its locale state. A runtime error or
+// Runtime->Exit with one busy peer thread therefore crashed after the program's
+// own message -- exit 139 instead of 1 on Linux x64 and arm64 and Windows x64, in
+// every JIT mode (#877). While another mutator is registered there is no point at
+// which teardown is safe, so flush what the program wrote and end the process
+// without it: std::_Exit, as FatalCollectorOutOfMemory already does. With no other
+// thread, exit() runs as before, atexit handlers included.
+void MemoryManager::Exit(int status)
+{
+  if(mutator_count.load(std::memory_order_acquire) > 1) {
+    std::wcout.flush();
+    std::cout.flush();
+    std::wcerr.flush();
+    std::cerr.flush();
+    fflush(nullptr);
+    if(gc_stats_enabled) {
+      PrintGcStats();
+      std::wcerr.flush();
+    }
+    std::_Exit(status);
+  }
+  exit(status);
+}
+
+[[noreturn]] void VmExit(int status)
+{
+  MemoryManager::Exit(status);
+}
+
 StackProgram* MemoryManager::prgm;
 std::vector<StackClass*> MemoryManager::class_ptrs;
 
@@ -186,7 +217,7 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
 #endif
   if(!young_region) {
     std::wcerr << L">>> Failed to allocate young generation region (" << YOUNG_REGION_SIZE << L" bytes) <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
   young_offset.store(0, std::memory_order_relaxed);
 
@@ -612,7 +643,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     // mirroring the AllocateArray overflow guard.
     if(inst_size < 0 || (size_t)inst_size > ~(size_t)0 - sizeof(size_t) * (EXTRA_BUF_SIZE + 2)) {
       std::wcerr << L">>> Object allocation size overflow <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
     const size_t size = (size_t)inst_size;
     // The instance size is already in bytes (one word per field, two per function
@@ -711,7 +742,7 @@ size_t* MemoryManager::AllocateObject(const long obj_id, size_t* op_stack, size_
     mem = GetMemory(alloc_size);
     if(!mem) {
       std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
     mem[EXTRA_BUF_SIZE + TYPE] = NIL_TYPE;
     mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = (size_t)cls;
@@ -765,7 +796,7 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
 
   default:
     std::wcerr << L">>> Invalid memory allocation <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   // Guard against integer overflow in the size computation: a wrapped value
@@ -773,7 +804,7 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   // letting in-range indices address memory past the buffer. Fail closed.
   if(size > (~(size_t)0 - sizeof(size_t) * EXTRA_BUF_SIZE) / elem_size) {
     std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
   const size_t calc_size = size * elem_size;
   const size_t alloc_size = calc_size + sizeof(size_t) * EXTRA_BUF_SIZE;
@@ -786,7 +817,7 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
   mem = GetMemory(alloc_size);
   if(!mem) {
     std::wcerr << L">>> Unable to allocate memory of size: " << alloc_size << L" <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
   mem[EXTRA_BUF_SIZE + TYPE] = type;
   mem[EXTRA_BUF_SIZE + SIZE_OR_CLS] = calc_size;
@@ -1110,25 +1141,25 @@ void* MemoryManager::CollectMemory(void* arg)
   thread_ids[0] = (HANDLE)_beginthreadex(nullptr, 0, CheckStatic, info, 0, nullptr);
   if(!thread_ids[0]) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   thread_ids[1] = (HANDLE)_beginthreadex(nullptr, 0, CheckStack, info, 0, nullptr);
   if(!thread_ids[1]) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   thread_ids[2] = (HANDLE)_beginthreadex(nullptr, 0, CheckPdaRoots, nullptr, 0, nullptr);
   if(!thread_ids[2]) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   // join all mark threads
   if(WaitForMultipleObjects(num_threads, thread_ids, TRUE, INFINITE) != WAIT_OBJECT_0) {
     std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   for(int i=0; i < num_threads; ++i) {
@@ -1142,19 +1173,19 @@ void* MemoryManager::CollectMemory(void* arg)
   pthread_t static_thread;
   if(pthread_create(&static_thread, &attrs, CheckStatic, (void*)info)) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   pthread_t stack_thread;
   if(pthread_create(&stack_thread, &attrs, CheckStack, (void*)info)) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   pthread_t pda_thread;
   if(pthread_create(&pda_thread, &attrs, CheckPdaRoots, nullptr)) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
   
   pthread_attr_destroy(&attrs);
@@ -1164,17 +1195,17 @@ void* MemoryManager::CollectMemory(void* arg)
 
   if(pthread_join(static_thread, &status)) {
     std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
   
   if(pthread_join(stack_thread, &status)) {
     std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   if(pthread_join(pda_thread, &status)) {
     std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 #endif  
 #else
@@ -1930,7 +1961,7 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
   HANDLE thread_id = (HANDLE)_beginthreadex(nullptr, 0, CheckJitRoots, nullptr, 0, nullptr);
   if(!thread_id) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 #else
   pthread_attr_t attrs;
@@ -1940,7 +1971,7 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
   pthread_t jit_thread;
   if(pthread_create(&jit_thread, &attrs, CheckJitRoots, nullptr)) {
     std::wcerr << L"Unable to create garbage collection thread!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 #endif
 #endif
@@ -1977,14 +2008,14 @@ void* MemoryManager::CheckPdaRoots([[maybe_unused]] void* arg)
   // wait for JIT thread
   if(WaitForSingleObject(thread_id, INFINITE) != WAIT_OBJECT_0) {
     std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
   CloseHandle(thread_id);
 #else
   void *status;
   if(pthread_join(jit_thread, &status)) {
     std::wcerr << L"Unable to join garbage collection threads!" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
   pthread_exit(nullptr);
 #endif

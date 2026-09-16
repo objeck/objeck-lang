@@ -97,6 +97,11 @@ typedef SSIZE_T ssize_t;
 #endif
 #endif
 
+// Ends the process for a runtime error or Runtime->Exit (#877); defined in
+// arch/memory.cpp. Call it instead of exit() anywhere another VM thread may be
+// running.
+[[noreturn]] void VmExit(int status);
+
 #ifdef _WIN32
 #include <direct.h>
 #include <windows.h>
@@ -1431,7 +1436,7 @@ class StackProgram {
       StackClass* cls = GetClass(L"System.Introspection.Class");
       if(!cls) {
         std::wcerr << L">>> Internal error: unable to find class: System.Introspection.Class <<<" << std::endl;
-        exit(1);
+        VmExit(1);
       }
       cls_cls_id = cls->GetId();
     }
@@ -1444,7 +1449,7 @@ class StackProgram {
       StackClass* cls = GetClass(L"System.Introspection.Method");
       if(!cls) {
         std::wcerr << L">>> Internal error: unable to find class: System.Introspection.Method <<<" << std::endl;
-        exit(1);
+        VmExit(1);
       }
       mthd_cls_id = cls->GetId();
     }
@@ -1457,7 +1462,7 @@ class StackProgram {
       StackClass* cls = GetClass(L"System.IO.Net.TCPSocket");
       if(!cls) {
         std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSocket <<<" << std::endl;
-        exit(1);
+        VmExit(1);
       }
       sock_cls_id = cls->GetId();
     }
@@ -1470,7 +1475,7 @@ class StackProgram {
 			 StackClass* cls = GetClass(L"System.IO.Net.TCPSecureSocket");
 			 if(!cls) {
 				 std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << std::endl;
-				 exit(1);
+				 VmExit(1);
 			 }
 			 sock_cls_id = cls->GetId();
 		 }
@@ -1483,7 +1488,7 @@ class StackProgram {
       StackClass* cls = GetClass(L"System.IO.Net.DTLSSocket");
       if(!cls) {
         std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.DTLSSocket <<<" << std::endl;
-        exit(1);
+        VmExit(1);
       }
       dtls_sock_cls_id = cls->GetId();
     }
@@ -1496,7 +1501,7 @@ class StackProgram {
        StackClass* cls = GetClass(L"System.Introspection.DataType");
        if(!cls) {
          std::wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << std::endl;
-         exit(1);
+         VmExit(1);
        }
        data_type_cls_id = cls->GetId();
      }
@@ -1509,7 +1514,7 @@ class StackProgram {
        StackClass* cls = GetClass(L"System.CommandOutput");
        if(!cls) {
          std::wcerr << L">>> Internal error: unable to find class: System.Introspection.DataType <<<" << std::endl;
-         exit(1);
+         VmExit(1);
        }
        command_output_cls_id = cls->GetId();
      }

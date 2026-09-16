@@ -128,7 +128,7 @@ namespace Runtime {
     inline void PushFrame(StackFrame* f) {
       if((*call_stack_pos) >= CALL_STACK_SIZE) {
         std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
-        exit(1);
+        VmExit(1);
       }
 
       // Write frame pointer before advancing position so GC never
@@ -145,7 +145,7 @@ namespace Runtime {
     inline StackFrame* PopFrame() {
       if((*call_stack_pos) <= 0) {
         std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
-        exit(1);
+        VmExit(1);
       }
 
       // Decrement position before reading the frame so GC does not

@@ -1022,7 +1022,7 @@ size_t* ObjectDeserializer::DeserializeObject() {
   }
   else {
     std::wcerr << L">>> Unable to deserialize class " << cls_name << L", class appears to not be linked <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   long dclr_pos = 0;
@@ -1353,12 +1353,12 @@ void APITools_MethodCall(size_t* op_stack, size_t *stack_pos, size_t* instance, 
     }
     else {
       std::wcerr << L">>> DLL call: Unable to locate method; id=" << mthd_id << L" <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
   }
   else {
     std::wcerr << L">>> DLL call: Unable to locate class; id=" << cls_id << L" <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 }
 
@@ -1374,12 +1374,12 @@ void APITools_MethodCall(size_t* op_stack, size_t* stack_pos, size_t* instance,
     }
     else {
       std::wcerr << L">>> Unable to locate method; name=': " << mthd_id << L"' <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
   }
   else {
     std::wcerr << L">>> Unable to locate class; name='" << cls_id << L"' <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 }
 
@@ -1395,12 +1395,12 @@ void APITools_MethodCallId(size_t* op_stack, size_t *stack_pos, size_t* instance
     }
     else {
       std::wcerr << L">>> DLL call: Unable to locate method; id=: " << mthd_id << L" <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
   }
   else {
     std::wcerr << L">>> DLL call: Unable to locate class; id=" << cls_id << L" <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 }
 
@@ -1443,14 +1443,14 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   const size_t semi_qual_mthd_index = qual_mthd_name.find(':');
   if(semi_qual_mthd_index == std::wstring::npos) {
     std::wcerr << L">>> Internal error: invalid method name <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   const std::wstring &semi_qual_mthd_string = qual_mthd_name.substr(semi_qual_mthd_index + 1);
   const size_t mthd_index = semi_qual_mthd_string.find(':');
   if(mthd_index == std::wstring::npos) {
     std::wcerr << L">>> Internal error: invalid method name <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
   const std::wstring &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
   mthd_obj[2] = (size_t)CreateStringObject(mthd_string, program, op_stack, stack_pos);
@@ -3942,7 +3942,7 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
 
 bool TrapProcessor::Exit(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
-  exit((int)PopInt(op_stack, stack_pos));
+  VmExit((int)PopInt(op_stack, stack_pos));
 
   return true;
 }

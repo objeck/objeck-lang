@@ -1311,7 +1311,7 @@ void Runtime::JitAmd64::ProcessNot([[maybe_unused]] StackInstr* instr)
 
   default:
     std::wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 }
@@ -2032,7 +2032,7 @@ void JitAmd64::ProcessJump(StackInstr* instr) {
 
       default:
         std::wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
-        exit(1);
+        VmExit(1);
         break;
       }
 
@@ -4889,7 +4889,7 @@ void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
   case LES_EQL_FLOAT: case GTR_EQL_FLOAT: cc = 0x93; break;  // setae
   default:
     std::wcerr << L">>> Unknown compare! <<<" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 #ifdef _DEBUG_JIT
@@ -7305,7 +7305,7 @@ unsigned char JitAmd64::ModRM(Register eff_adr, Register mod_rm)
 
   default:
     std::wcerr << L"internal error" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 
@@ -7367,12 +7367,12 @@ unsigned char JitAmd64::ModRM(Register eff_adr, Register mod_rm)
     // should never happen for esp
   case RSP:
     std::wcerr << L"invalid register reference" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
 
   default:
     std::wcerr << L"internal error" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 
@@ -7555,7 +7555,7 @@ void JitAmd64::RegisterEncode3(unsigned char& code, long offset, Register reg)
 
   default:
     std::wcerr << L"internal error" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 
@@ -7574,7 +7574,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
   switch(holder->GetType()) {
   case IMM_INT:
     std::wcerr << L">>> trying to index a constant! <<<" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
 
   case REG_INT:
@@ -7588,7 +7588,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   default:
     std::wcerr << L"internal error" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
   CheckNilDereference(array_holder->GetRegister());
@@ -7627,7 +7627,7 @@ RegisterHolder* JitAmd64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   default:
     std::wcerr << L"internal error" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 
@@ -8273,12 +8273,12 @@ bool JitAmd64::Compile(StackMethod* cm)
     float_consts = (double*)VirtualAlloc(nullptr, sizeof(double) * MAX_DBLS, MEM_COMMIT, PAGE_READWRITE);
     if(!float_consts) {
       std::wcerr << L"Unable to allocate JIT memory for float_consts!" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 #else
     if(posix_memalign((void**)& float_consts, PAGE_SIZE, sizeof(double) * MAX_DBLS)) {
       std::wcerr << L"Unable to reallocate JIT memory!" << std::endl;
-      exit(1);
+      VmExit(1);
     }
 #endif    
     local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
@@ -8680,17 +8680,17 @@ PageHolder::PageHolder()
   buffer = (unsigned char*)VirtualAlloc(nullptr, PAGE_SIZE, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   if(!buffer) {
     std::wcerr << L"Unable to allocate JIT memory!" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 #else
   if(posix_memalign((void**)& buffer, PAGE_SIZE, PAGE_SIZE)) {
     std::wcerr << L"Unable to allocate JIT memory!" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   if(mprotect(buffer, PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
     std::wcerr << L"Unable to mprotect" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 #endif
 }

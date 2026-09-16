@@ -1234,7 +1234,7 @@ void JitArm64::ProcessInstructions() {
     default: {
       InstructionType error = (InstructionType)instr->GetType();
       wcerr << L"Unknown instruction: " << error << L"!" << std::endl;
-      exit(1);
+      VmExit(1);
     }
       break;
     }
@@ -1270,7 +1270,7 @@ void Runtime::JitArm64::ProcessNot(StackInstr* instr)
 
   default:
     std::wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 }
@@ -1521,7 +1521,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
 
       default:
         wcerr << L">>> Should never occur (compiler bug?) type=" << left->GetType() << L" <<<" << std::endl;
-        exit(1);
+        VmExit(1);
         break;
       }
 
@@ -5720,7 +5720,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
   switch(holder->GetType()) {
   case IMM_INT:
     wcerr << L">>> trying to index a constant! <<<" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
 
   case REG_INT:
@@ -5734,7 +5734,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   default:
     wcerr << L">>> Internal error! <<<" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
   CheckNilDereference(array_holder->GetRegister());
@@ -5773,7 +5773,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
 
   default:
     wcerr << L">>> Internal error! <<<" << std::endl;
-    exit(1);
+    VmExit(1);
     break;
   }
 
@@ -5805,7 +5805,7 @@ RegisterHolder* JitArm64::ArrayIndex(StackInstr* instr, MemoryType type)
 
       default:
         wcerr << L">>> Internal error! <<<" << std::endl;
-        exit(1);
+        VmExit(1);
         break;
       }
     }
@@ -6620,7 +6620,7 @@ uint32_t* PageHolder::AddCode(uint32_t* code, int32_t size) {
 #elif defined(_M_ARM64)
   if(!FlushInstructionCache(GetCurrentProcess(), temp, byte_size)) {
     wcerr << L">>> Unable to flush instruction cache! <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
 #else
   __builtin___clear_cache((char*)temp, (char*)temp + byte_size);

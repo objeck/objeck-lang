@@ -303,19 +303,19 @@ namespace Runtime {
       buffer = (uint32_t*)VirtualAlloc(nullptr, alloc_size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         std::wcerr << L"unable virtualalloc!" << std::endl;
-        exit(1);
+        VmExit(1);
       }
 #elif defined(_OSX)
       buffer = (uint32_t*)mmap(nullptr, alloc_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, 0, 0);      
       if(buffer == MAP_FAILED) {
         cerr << "unable to mmap!" << endl;
-        exit(1);
+        VmExit(1);
       }
 #else
       buffer = (uint32_t*)mmap(nullptr, alloc_size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);  
       if(buffer == MAP_FAILED) {
         cerr << "unable to mmap!" << endl;
-        exit(1);
+        VmExit(1);
       }
 #endif
       
@@ -487,7 +487,7 @@ namespace Runtime {
         code = (uint32_t*)realloc(code, code_buf_max);
         if(!code) {
           wcerr << L"Unable to allocate JIT memory!" << endl;
-          exit(1);
+          VmExit(1);
         }
       }
       code[code_index++] = i;
