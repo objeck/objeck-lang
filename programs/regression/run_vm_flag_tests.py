@@ -56,7 +56,10 @@ Usage: python run_vm_flag_tests.py <bin_dir>
  10. The nursery knob and the GC statistics. --nursery (and OBJECK_NURSERY)
     accepts 256k and 64m, refuses 2x and 0 with a message naming the range,
     and the flag wins over a bad variable. gc_nursery_knob.obs runs more minor
-    collections with a 256k nursery than with the default; OBJECK_GC_STATS=1
+    collections with a 256k nursery than with the default -- it reports its
+    counters on stderr, since a collection count is not stable enough for the
+    differential to compare across -opt levels, so they are read from there and
+    its stdout stays the bare PASS line; OBJECK_GC_STATS=1
     prints a summary line with every field; runtime.memory.peak is never below
     runtime.memory.used (the fixture checks that itself). And collection stays
     correct when minor GCs are frequent: obj_size_layout, minor_gc_stress,
@@ -398,8 +401,12 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     if rc != 0:
         return
 
-    def minor_of(out):
-        m = re.search(rb"^minor=(\d+)\s*$", out, re.M)
+    # The fixture's collection counters are on STDERR: they depend on when a
+    # collection lands, so run_differential.py compared them across -opt levels
+    # and JIT modes and reported the fixture as divergent. Its stdout is the
+    # stable PASS line; everything counted is read from stderr here.
+    def minor_of(err):
+        m = re.search(rb"^minor=(\d+)\s*$", err, re.M)
         return int(m.group(1)) if m else None
 
     small_env = dict(env)
@@ -415,18 +422,18 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
         rc, out, err = run([obr] + flags + [knob_obe], env=run_env, cwd=bin_dir)
         runs[label] = (rc, out, err)
         check(f"nursery fixture passes its own checks ({label})",
-              rc == 0 and b"PASS: nursery knob and GC stats" in out and minor_of(out) is not None,
+              rc == 0 and b"PASS: nursery knob and GC stats" in out and minor_of(err) is not None,
               detail(rc, out, err))
 
-    default_minor = minor_of(runs["default"][1])
+    default_minor = minor_of(runs["default"][2])
     for label in ("--nursery=256k", "OBJECK_NURSERY=256k", "--nursery=256k --jit=1"):
-        small_minor = minor_of(runs[label][1])
+        small_minor = minor_of(runs[label][2])
         check(f"a 256k nursery runs more minor collections than the default ({label}: "
               f"{small_minor} vs {default_minor})",
               small_minor is not None and default_minor is not None and small_minor > default_minor,
               f"small={small_minor} default={default_minor}")
     check("the fixture reports the 256k limit as runtime.gc.nursery.capacity",
-          b"nursery capacity=262144" in runs["--nursery=256k"][1], runs["--nursery=256k"][1][-200:])
+          b"nursery capacity=262144" in runs["--nursery=256k"][2], runs["--nursery=256k"][2][-200:])
 
     rc, out, err = runs["--nursery=256k with OBJECK_GC_STATS=1"]
     fields = ("minor", "major", "pauses", "pause_p50_us", "pause_p95_us", "pause_max_us",
@@ -439,7 +446,7 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     check("OBJECK_GC_STATS=1 prints a [gc-stats] line on stderr with every field",
           line is not None and all(f in values for f in fields), detail(rc, out, err))
     if line is not None and all(f in values for f in fields):
-        printed_minor = minor_of(out) or 0
+        printed_minor = minor_of(err) or 0
         check("the summary's counts cover what the program saw (minor >= its runtime.gc.minor > 0, "
               "one pause per collection)",
               values["minor"] >= printed_minor > 0 and values["pauses"] == values["minor"] + values["major"],
