@@ -509,11 +509,13 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     # to hit when the exiting thread is descheduled between leaving the
     # stop-the-world count and unregistering its monitor, which needs more
     # runnable threads than CPUs. Measured on a 32-thread box against the
-    # pre-fix obr: 7 SIGSEGVs in 2200 runs (0.32%) pinned to two CPUs, 0 in 900
-    # unpinned. The stress probe found the original crash on a 2-core runner for
-    # the same reason. Where taskset exists the loop therefore runs on two CPUs;
-    # without it (Windows, macOS) the runs still execute but should be read as a
-    # smoke test -- they will not catch a regression of this bug on a big host.
+    # pre-fix obr, pinned to two CPUs: 8 SIGSEGVs in 3600 runs, and 7 in 2200 in
+    # an independent set -- 15 in 5800 together, 0.26%. Unpinned on the same box:
+    # 0 in 900, and 0 in 600 on Windows. The stress probe found the original
+    # crash on a 2-core runner for the same reason. Where taskset exists the loop
+    # therefore runs on two CPUs; without it (Windows, macOS) the runs still
+    # execute, but their measured power against THIS bug is zero -- they prove
+    # the fixture still builds and passes, nothing more.
     name = MT_NURSERY_LOOP_TEST
     src = os.path.join(SCRIPT_DIR, name + ".obs")
     dest = os.path.join(SCRIPT_DIR, name + ".obe")
@@ -522,7 +524,7 @@ def check_nursery_and_gc_stats(obc, obr, env, bin_dir, obe, base):
     check(f"{name} compiles", rc == 0 and os.path.exists(dest), err.decode(errors="replace")[-300:])
     if rc == 0:
         pin = mt_cpu_pin_prefix()
-        pinned = "pinned to 2 CPUs" if pin else "unpinned -- smoke only"
+        pinned = "pinned to 2 CPUs" if pin else "unpinned -- no power for this bug"
         for label, flags in (("jit=off", ["--jit=off"]), ("jit=1", ["--jit=1"])):
             bad = []
             for i in range(MT_NURSERY_LOOP_RUNS):
@@ -541,9 +543,9 @@ NURSERY_STRESS_SIZES = ("128k", "256k")
 
 # Looped with a 256k nursery in both JIT modes (check_nursery_and_gc_stats).
 # One pinned run takes about 0.2s, so 100 per mode costs ~40s for both. The
-# pre-fix crash rate pinned to two CPUs was 0.32% per run (7 in 2200), which
-# these 200 runs catch about half the time -- worth having, not a guarantee;
-# the long loops belong in the stress probe.
+# pre-fix crash rate pinned to two CPUs measured 0.26% per run (15 in 5800), so
+# these 200 runs catch a regression roughly 40% of the time -- worth having,
+# nowhere near a guarantee; the long loops belong in the stress probe.
 MT_NURSERY_LOOP_TEST = "gc_mt_small_nursery_stress"
 MT_NURSERY_LOOP_RUNS = 100
 
