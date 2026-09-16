@@ -156,8 +156,13 @@ class NativeGcLeakTest {
 		Check("major collections run while native calls allocate",
 			end_major > start_major);
 
-		# The property actually under test: bounded, not merely small.
-		Check("old generation stays bounded ({$peak} < {$ceiling})", peak < ceiling);
+		# The property actually under test: bounded, not merely small. The label
+		# carries no numbers for the same reason the line above went to stderr:
+		# a check label is stdout, and peak differs between JIT modes, so
+		# interpolating it here reintroduces exactly the divergence that line
+		# was written to avoid. The values are on stderr when a failure needs
+		# diagnosing.
+		Check("old generation stays bounded", peak < ceiling);
 
 		if(@failures = 0) {
 			"All tests passed"->PrintLine();
