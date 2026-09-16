@@ -322,6 +322,57 @@ class LintTests(unittest.TestCase):
             self.assertEqual(rc, 1, header)
             self.assertIn(needle, out)
 
+    def test_verify_skip_needs_a_reason(self):
+        self.write("t00", "# VERIFY_SKIP\n# reason: hung under the verifier in run 35027973357\n")
+        self.assertEqual(self.lint()[0], 0)
+        self.write("t00", "# VERIFY_SKIP\nuse System;\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("t00.obs:1: # VERIFY_SKIP without a '# reason: ...' line", out)
+
+    def test_gc_stress_skip_needs_a_reason(self):
+        self.write("t00", "# GC_STRESS_SKIP\n# reason: 600 s at 64k in run 35027973357\n")
+        self.assertEqual(self.lint()[0], 0)
+        self.write("t00", "# GC_STRESS_SKIP\nuse System;\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("t00.obs:1: # GC_STRESS_SKIP without a '# reason: ...' line", out)
+
+    def test_verifier_optout_reason_must_name_a_run(self):
+        # The first attempt at these markers excluded thirteen tests on a
+        # mechanism ("loopback peers time out under the verifier") that the run
+        # it cited disproved -- all thirteen had passed that step. A reason now
+        # has to name the run whose log shows the failure.
+        for marker in ("# VERIFY_SKIP", "# GC_STRESS_SKIP"):
+            self.write("t00", marker + "\n# reason: loopback peers time out under the verifier\n")
+            rc, out = self.lint()
+            self.assertEqual(rc, 1, marker)
+            self.assertIn("whose reason names no run", out)
+            self.write("t00", marker + "\n# reason: timed out on every leg of run 35027973357\n")
+            self.assertEqual(self.lint()[0], 0, marker)
+            # a run number too short to be a workflow run id is not evidence
+            self.write("t00", marker + "\n# reason: timed out on run 42\n")
+            self.assertEqual(self.lint()[0], 1, marker)
+
+    def test_verifier_optout_cap(self):
+        for i in range(5):
+            self.write("t%02d" % i, "# GC_STRESS_SKIP\n# reason: 600 s in run 35027973357\n")
+        self.assertEqual(self.lint()[0], 0)
+        self.write("t05", "# VERIFY_SKIP\n# reason: hung in run 35027973357\n")
+        rc, out = self.lint()
+        self.assertEqual(rc, 1)
+        self.assertIn("opt out of a verifier step, over the cap of 5", out)
+
+    def test_a_socket_test_needs_no_marker(self):
+        # Opening a socket is not by itself a reason to leave the verifier
+        # steps: in run 35027973357 all thirteen socket tests passed the
+        # verifier step on all five legs in 0-3 s.
+        code = "class T { function : Main(a : String[]) ~ Nil { s := TCPSocket->New(\"127.0.0.1\", 1); } }\n"
+        with open(os.path.join(self.dir, "t00.obs"), "w") as fh:
+            fh.write(code)
+        rc, out = self.lint()
+        self.assertEqual(rc, 0, out)
+
     def test_repository_tree_conforms(self):
         p = subprocess.run([sys.executable, LINT], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         self.assertEqual(p.returncode, 0, p.stdout.decode())

@@ -1,3 +1,5 @@
+# GC_STRESS_SKIP
+# reason: millions of iterations to overflow the operand stack; with --gc-threshold=64k that took 598 s measured without the verifier (2.4 s unforced), 112-182 s on the POSIX legs of nightly run 35027973357 and over that step's 300 s limit on both Windows legs there. It tests operand-stack balance, not the heap, and still runs under the verifier in the minor-stress step.
 #~
 Regression: a discarded constructor call statement must pop its result.
 

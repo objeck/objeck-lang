@@ -96,6 +96,8 @@ class RuntimeGcStats {
 			Runtime->Exit(1);
 		};
 
-		"PASS: {$samples} occupancy samples in [{$lowest}, {$highest}] permille"->PrintLine();
+		# stderr: the sample count and range depend on when collections land
+		"  {$samples} occupancy samples in [{$lowest}, {$highest}] permille"->ErrorLine();
+		"PASS: runtime GC stats"->PrintLine();
 	}
 }

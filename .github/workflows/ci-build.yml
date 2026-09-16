@@ -1210,9 +1210,12 @@ jobs:
       # Same class of guard, for programs/regression/run_differential.py. Its
       # markers take a test out of part of the s0/s3 x JIT comparison, so each
       # one that removes coverage needs a stated reason, and the
-      # nondeterministic-output marker is capped at 5% of the suite. The unit
-      # tests run the runner against fake obc/obr executables: nothing built.
-      - name: Differential markers have a stated reason
+      # nondeterministic-output marker is capped at 5% of the suite. The same
+      # lint governs the two markers that take a test out of a nightly verifier
+      # step: each reason must name the run whose log shows the failure, and at
+      # most five tests may opt out at all. The unit tests
+      # run the runner against fake obc/obr executables: nothing built.
+      - name: Differential and verifier markers have a stated reason
         run: python3 tools/cicd/check_diff_markers.py
 
       - name: Differential runner catches divergence

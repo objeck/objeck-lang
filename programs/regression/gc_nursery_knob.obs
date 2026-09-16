@@ -69,8 +69,9 @@ class GcNurseryKnob {
 			bad += 1;
 		};
 
-		"minor={$minor}"->PrintLine();
-		"nursery capacity={$capacity}"->PrintLine();
+		# stderr: the minor count depends on when collections land
+		"minor={$minor}"->ErrorLine();
+		"nursery capacity={$capacity}"->ErrorLine();
 
 		if(peak >= 0 & used >= 0 & peak < used) {
 			"FAIL: runtime.memory.peak {$peak} < runtime.memory.used {$used}"->PrintLine();

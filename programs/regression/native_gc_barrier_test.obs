@@ -119,7 +119,8 @@ class NativeGcBarrierTest {
 
 		# 5. Only now, look at what the slot holds.
 		end_minor := Minors();
-		"  minor collections {$start_minor} to {$end_minor}"->PrintLine();
+		# stderr: collection counts depend on when collections land
+		"  minor collections {$start_minor} to {$end_minor}"->ErrorLine();
 		Check("minor collections actually ran", end_minor > start_minor);
 
 		slot := @call_args[0];

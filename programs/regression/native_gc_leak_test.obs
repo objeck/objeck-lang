@@ -145,7 +145,10 @@ class NativeGcLeakTest {
 		};
 
 		end_major := Majors();
-		"  {$rounds} native String returns: peak old gen {$peak} bytes, majors {$start_major} to {$end_major}"->PrintLine();
+		# stderr: the peak and the collection counts depend on when collections
+		# land, which differs between -opt levels and JIT modes, and the
+		# differential runner compares stdout
+		"  {$rounds} native String returns: peak old gen {$peak} bytes, majors {$start_major} to {$end_major}"->ErrorLine();
 
 		# Collections must actually be happening. Without this a small heap only
 		# means nothing ran -- the same trap that made an 8-thread stress test

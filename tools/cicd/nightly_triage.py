@@ -30,8 +30,9 @@ Both run and loop write an "unfinished" result before starting, so a step
 killed by its timeout, a job timeout or a cancel is classified NEW. Only a step
 that never started (no result file at all) is infra.
 triage   Read every result file, classify each failure as infra, known or new,
-         and write the summary, the tracking-issue body and one issue body per
-         new signature.
+         and write the summary, the tracking-issue body (every new signature,
+         grouped by leg and step) and an issue body for each new failure that
+         deserves its own issue (see "Issues" below).
              nightly_triage.py triage --results DIR --known tools/fuzz/known.json
                  --legs a,b --steps s1,s2 --out DIR [--run-url URL]
                  [--github-output FILE] [--max-issues 5]
@@ -56,8 +57,22 @@ infra  the runner, network or artifact store failed, or a step left no result
        file (it never started: tree download or setup failed, runner lost).
        Comment only.
 known  matches a known.json signature. Summary only.
-new    everything else. Its own issue, with seed, reduced program and a link
-       to the artifacts.
+new    everything else. Listed in the run's one tracking issue.
+
+Issues
+------
+A run reports through ONE tracking issue (a comment per run) that lists every
+new signature, grouped by leg and step. A new failure gets an issue of its own
+(seed, reduced program, output, artifacts, a known.json snippet) only when it
+is worth one on its own:
+  * the same failure is new on more than one leg (a cross-leg signature: the
+    signature without the leg, and without the runners' "(exit N)" /
+    "(possible hang ...)" suffixes that differ between the .sh and .cmd), or
+  * it is a crash (a fatal signal, an access violation) or a heap-verifier
+    violation, on any number of legs.
+One issue per cross-leg signature, titled by it, so a failure on three legs is
+one issue naming the three. The first nightly opened five issues for what was
+two test-output bugs and one slow step; --max-issues still caps the count.
 
 Standard library only.
 """
@@ -652,6 +667,53 @@ def signature(leg, step, config, test, message):
     return hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
 
 
+# The regression runners word the same outcome differently: run_regression.sh
+# says "runtime error (exit 134)" and "timed out after 300s (possible hang /
+# infinite loop)", run_regression.cmd "runtime error" and "timed out after 300s".
+RUNNER_SUFFIX_RE = re.compile(r"\s*\((?:exit [^)]*|possible hang[^)]*)\)\s*$")
+
+
+def cross_signature(step, config, test, message):
+    """The signature without the leg: one failure on several legs shares it."""
+    if step == "fuzz":
+        test = normalize(test)
+    key = "|".join([step, config, test, normalize(RUNNER_SUFFIX_RE.sub("", message))])
+    return hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+
+
+# A process that died rather than failed: a fatal signal (the POSIX runners
+# report 128+N, Python -N), a Windows exception code, or the shell's words.
+CRASH_PATTERNS = [
+    r"\(exit (?:132|134|135|136|139)\)",
+    r"\bexit(?:ed| code) -(?:4|6|7|8|11)\b",
+    r"\bexited (?:132|134|135|136|139)\b",
+    r"\bexit code (?:3221225477|-1073741819|3221225725|-1073741571|3221226505|-1073740791)\b",
+    r"\b0xC0000005\b", r"\b0xC00000FD\b", r"\b0xC0000409\b",
+    r"\bSegmentation fault\b", r"\bBus error\b", r"\bIllegal instruction\b",
+    r"\bcore dumped\b", r"\bdumped core\b", r"\bAborted\b(?! by the user)",
+]
+CRASH_RE = re.compile("|".join(CRASH_PATTERNS), re.IGNORECASE)
+# memory_verify.cpp: ">>> gc-verify: B2 violation in collection 4 (minor, after): ..."
+VERIFIER_RE = re.compile(r">>> gc-verify: .*violation")
+
+
+def failure_kind(message, detail):
+    """'verifier', 'crash' or '' (an ordinary failure).
+
+    A violation is the verifier's own line, which reaches us inside the test's
+    output, so that scan reads the detail too. A crash is read from the
+    runner's verdict (the message) alone: the detail is whatever the test
+    printed, and a test that printed "Segmentation fault" or "core dumped" --
+    a fixture that greps for one, say -- would otherwise be escalated to its
+    own issue. The POSIX runners put the signal in the message ("runtime error
+    (exit 139)"), which is where a real crash shows up."""
+    if VERIFIER_RE.search((message or "") + "\n" + (detail or "")):
+        return "verifier"
+    if CRASH_RE.search(message or ""):
+        return "crash"
+    return ""
+
+
 def load_known(path):
     """Return (entries, error). A missing or malformed file is an error."""
     try:
@@ -714,6 +776,8 @@ def classify(results_dir, known_path, legs, steps):
                 "reduced": f.get("reduced", ""), "count": f.get("count", 1),
                 "log": log}
         item["id"] = signature(leg, step, item["config"], item["test"], item["message"])
+        item["cross"] = cross_signature(step, item["config"], item["test"], item["message"])
+        item["kind"] = failure_kind(item["message"], item["detail"])
         if klass is None:
             if INFRA_RE.search(item["message"]) or INFRA_RE.search(item["detail"]):
                 klass = "infra"
@@ -761,6 +825,24 @@ def classify(results_dir, known_path, legs, steps):
             unique[item["id"]] = item
     items = list(unique.values())
 
+    # Which legs each new failure is new on, and which own issue (if any)
+    # covers it. Keyed by issue_key, the same key the issues group by, so the
+    # summary's "Also new on" column never names fewer legs than the issue does
+    # (the two disagreed while this was keyed by the message-sensitive
+    # cross-signature: a test failing differently on two runners read as one
+    # leg in the table and three in its issue).
+    legs_of = {}
+    for item in items:
+        if item["class"] == "new":
+            legs_of.setdefault(issue_key(item), set()).add(item["leg"])
+    for item in items:
+        if item["class"] == "new":
+            item["legs"] = sorted(legs_of[issue_key(item)], key=lambda l: (
+                legs.index(l) if l in legs else 99, l))
+    for group in issue_groups(items):
+        for item in group:
+            item["issue_key"] = issue_key(item)
+
     if any(i["class"] == "new" for i in items):
         status = "new"
     elif any(i["class"] == "infra" for i in items):
@@ -772,9 +854,77 @@ def classify(results_dir, known_path, legs, steps):
     return {"status": status, "items": items, "results_read": counted}
 
 
-def short_title(item):
+def issue_title(item):
+    """Keyed by issue_key (not the leg), so the same failure on another leg or
+    a later night comments on the existing issue instead of opening another."""
     test = item["test"] or "(step)"
-    return "Nightly hardening [%s] %s %s %s" % (item["id"], item["leg"], item["step"], test)
+    return "Nightly hardening [%s] %s %s" % (issue_key(item), item["step"], test)
+
+
+def issue_key(item):
+    """What one issue covers: a regression test in a step (so the differential's
+    two lines for one divergence, or one test's different messages on two
+    runners, are one issue), or, for fuzzer findings and step-level failures,
+    the cross-leg signature."""
+    test = item["test"]
+    if item["step"] == known_schema.FUZZ_STEP or not test or test.startswith("("):
+        return item.get("cross") or cross_signature(item["step"], item["config"], test,
+                                                    item["message"])
+    return cross_signature(item["step"], "", test, "")
+
+
+KIND_RANK = {"verifier": 0, "crash": 1, "": 2}
+
+
+def group_legs(group):
+    """The distinct legs of a group, in first-seen (report) order."""
+    seen = []
+    for g in group:
+        if g["leg"] not in seen:
+            seen.append(g["leg"])
+    return seen
+
+
+def issue_groups(items):
+    """New failures that get their own issue: [[item, ...], ...], one list per
+    issue_key, holding every new item under that key. A key qualifies when its
+    items span more than one leg or any of them is a crash or verifier
+    violation. Most severe first (verifier, crash, then most legs), so the
+    --max-issues cap drops the least important."""
+    groups = {}
+    order = []
+    for item in items:
+        if item["class"] != "new":
+            continue
+        key = issue_key(item)
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(item)
+    out = []
+    for n, key in enumerate(order):
+        g = groups[key]
+        legs = {i["leg"] for i in g}
+        kinds = [i["kind"] for i in g if i["kind"]]
+        if len(legs) > 1 or kinds:
+            rank = min(KIND_RANK[k] for k in kinds) if kinds else KIND_RANK[""]
+            out.append((rank, -len(legs), n, g))
+    out.sort(key=lambda x: x[:3])
+    return [g for _r, _l, _n, g in out]
+
+
+def message_regex(message):
+    """A known.json message regex that survives changed counts and addresses."""
+    parts = re.split(r"(0x[0-9a-fA-F]+|\d+)", message[:120])
+    out = []
+    for p in parts:
+        if re.match(r"^0x[0-9a-fA-F]+$", p):
+            out.append(r"0x[0-9a-fA-F]+")
+        elif p.isdigit():
+            out.append(r"\d+")
+        else:
+            out.append(re.escape(p))
+    return "".join(out)
 
 
 def fence(text):
@@ -786,33 +936,59 @@ def fence(text):
     return "~~~\n" + "\n".join(lines) + "\n~~~"
 
 
-def issue_body(item, run_url=""):
-    artifact = "nightly-%s" % item["leg"]
+KIND_TEXT = {"verifier": "heap-verifier violation", "crash": "crash", "": "failure"}
+
+
+def issue_body(group, run_url=""):
+    """The body of a new failure's own issue. `group` is one item or the list
+    of items (one per leg) that share a cross-leg signature."""
+    group = [group] if isinstance(group, dict) else list(group)
+    item = group[0]
+    legs = group_legs(group)
+    kinds = sorted({g.get("kind", "") for g in group} - {""}, key=lambda k: KIND_RANK[k])
+    why = []
+    if len(legs) > 1:
+        why.append("new on %d legs" % len(legs))
+    if kinds:
+        why.append(" and ".join(KIND_TEXT[k] for k in kinds))
     lines = [
-        "A new failure signature from the nightly hardening workflow.",
+        "A new failure from the nightly hardening workflow%s." % (
+            " (%s)" % ", ".join(why) if why else ""),
         "",
-        "| Signature | Leg | Step | Configuration | Test | Occurrences |",
-        "| --- | --- | --- | --- | --- | --- |",
-        "| `%s` | %s | %s | %s | %s | %s |" % (
-            item["id"], item["leg"], item["step"], item["config"] or "-",
-            item["test"] or "-", item["count"]),
+        "Issue key: `%s` (step and test, without the leg)" % issue_key(item),
+        "",
+        "| Signature | Leg | Step | Configuration | Test | Message | Occurrences |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
+    ]
+    for g in group:
+        lines.append("| `%s` | %s | %s | %s | %s | %s | %s |" % (
+            g["id"], g["leg"], g["step"], g["config"] or "-", g["test"] or "-",
+            (g["message"] or "-").replace("|", "\\|").replace("\n", " ")[:160], g["count"]))
+    lines += [
         "",
         "**Message:** %s" % (item["message"] or "-"),
         "",
-        "**Seed:** %s" % ("`%s`" % item["seed"] if item["seed"] else "none recorded"),
-        "",
-        "**Reduced program:** %s" % (
-            "`%s` (in artifact `%s`)" % (item["reduced"], artifact)
-            if item["reduced"] else "none recorded"),
-        "",
-        "**Artifacts:** `%s`%s%s" % (
-            artifact,
-            ", log `%s`" % item["log"] if item.get("log") else "",
-            " from %s" % run_url if run_url else ""),
-        "",
     ]
-    if item["detail"].strip():
-        lines += ["### Output", "", fence(item["detail"].rstrip()), ""]
+    for g in group:
+        artifact = "nightly-%s" % g["leg"]
+        lines += [
+            "**%s:** seed %s; reduced program %s; artifacts `%s`%s%s" % (
+                g["leg"],
+                "`%s`" % g["seed"] if g["seed"] else "none recorded",
+                "`%s` (in artifact `%s`)" % (g["reduced"], artifact) if g["reduced"]
+                else "none recorded",
+                artifact,
+                ", log `%s`" % g["log"] if g.get("log") else "",
+                " from %s" % run_url if run_url else ""),
+            "",
+        ]
+    for g in group:
+        if g["detail"].strip():
+            title = "### Output" if len(group) == 1 else "### Output (%s)" % g["leg"]
+            lines += [title, "", fence(g["detail"].rstrip()), ""]
+            if len(group) > 1:
+                lines += ["The other legs' output is in their artifacts.", ""]
+            break
     fuzz_sig = known_schema.fuzz_signature(item["test"], item["message"]) \
         if item["step"] == known_schema.FUZZ_STEP else None
     if fuzz_sig is not None:
@@ -822,12 +998,21 @@ def issue_body(item, run_url=""):
             "issue": "#<this issue>",
             "note": "<why this is expected>",
         }
-    else:
+    elif len(legs) == 1 and len(group) == 1:
         snippet = {
             "id": item["id"],
             "leg": "^%s$" % re.escape(item["leg"]),
             "step": "^%s$" % re.escape(item["step"]),
             "message": re.escape(item["message"][:120]),
+            "issue": "#<this issue>",
+            "note": "<why this is expected>",
+        }
+    else:
+        snippet = {
+            "leg": "^(?:%s)$" % "|".join(re.escape(l) for l in legs),
+            "step": "^%s$" % re.escape(item["step"]),
+            "test": "^%s$" % re.escape(item["test"]),
+            "message": message_regex(RUNNER_SUFFIX_RE.sub("", item["message"])),
             "issue": "#<this issue>",
             "note": "<why this is expected>",
         }
@@ -860,20 +1045,59 @@ def summary_markdown(report, run_url=""):
              ""]
     if run_url:
         lines += ["Run: %s" % run_url, ""]
-    for klass, title in (("new", "New"), ("known", "Known"), ("infra", "Infrastructure")):
+
+    def cell(text):
+        return (text or "").replace("|", "\\|").replace("\n", " ")[:160]
+
+    if by["new"]:
+        groups = issue_groups(items)
+        lines += ["#### New", ""]
+        if groups:
+            lines += ["%d of them get an issue of their own (new on more than one leg, "
+                      "or a crash or verifier violation):" % len(groups), ""]
+            for g in groups:
+                kinds = sorted({x["kind"] for x in g} - {""}, key=lambda k: KIND_RANK[k])
+                lines.append("- `%s` %s %s on %s%s" % (
+                    issue_key(g[0]), g[0]["step"], g[0]["test"] or "(step)",
+                    ", ".join(group_legs(g)),
+                    " (%s)" % ", ".join(KIND_TEXT[k] for k in kinds) if kinds else ""))
+            lines.append("")
+        else:
+            lines += ["None gets an issue of its own: each is new on one leg only and "
+                      "none is a crash or verifier violation.", ""]
+        by_leg_step = {}
+        order = []
+        for i in by["new"]:
+            key = (i["leg"], i["step"])
+            if key not in by_leg_step:
+                by_leg_step[key] = []
+                order.append(key)
+            by_leg_step[key].append(i)
+        for leg, step in order:
+            lines += ["##### %s / %s" % (leg, step), "",
+                      "| Signature | Config | Test | Message | Kind | Also new on | Seed | Count |",
+                      "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+            for i in by_leg_step[(leg, step)]:
+                others = [l for l in i.get("legs", []) if l != leg]
+                lines.append("| `%s` | %s | %s | %s | %s | %s | %s | %s |" % (
+                    i["id"], i["config"] or "-", i["test"] or "-", cell(i["message"]),
+                    KIND_TEXT[i.get("kind", "")], ", ".join(others) or "-",
+                    i["seed"] or "-", i["count"]))
+            lines.append("")
+
+    for klass, title in (("known", "Known"), ("infra", "Infrastructure")):
         if not by[klass]:
             continue
         lines += ["#### %s" % title, "",
                   "| Signature | Leg | Step | Config | Test | Message | Seed | Count |",
                   "| --- | --- | --- | --- | --- | --- | --- | --- |"]
         for i in by[klass]:
-            msg = i["message"].replace("|", "\\|").replace("\n", " ")[:160]
             ref = ""
             if klass == "known" and i.get("known", {}).get("issue"):
                 ref = " (%s)" % i["known"]["issue"]
             lines.append("| `%s` | %s | %s | %s | %s | %s%s | %s | %s |" % (
                 i["id"], i["leg"], i["step"], i["config"] or "-", i["test"] or "-",
-                msg, ref, i["seed"] or "-", i["count"]))
+                cell(i["message"]), ref, i["seed"] or "-", i["count"]))
         lines.append("")
     return "\n".join(lines)
 
@@ -889,18 +1113,21 @@ def cmd_triage(args):
         f.write(summary + "\n")
 
     new = [i for i in report["items"] if i["class"] == "new"]
+    groups = issue_groups(report["items"])
     issues = []
-    for item in new[:args.max_issues]:
-        name = "issues/%s.md" % item["id"]
+    for group in groups[:args.max_issues]:
+        key = issue_key(group[0])
+        name = "issues/%s.md" % key
         with open(os.path.join(args.out, name), "w", encoding="utf-8") as f:
-            f.write(issue_body(item, args.run_url))
-        issues.append({"id": item["id"], "workflow": short_title(item), "body_file": name})
+            f.write(issue_body(group, args.run_url))
+        issues.append({"id": key, "workflow": issue_title(group[0]), "body_file": name,
+                       "legs": group_legs(group)})
 
     tracking = summary
-    if len(new) > args.max_issues:
-        tracking += ("\n%d more new signatures have no issue of their own this run "
-                     "(cap %d); they are in the table above.\n"
-                     % (len(new) - args.max_issues, args.max_issues))
+    if len(groups) > args.max_issues:
+        tracking += ("\n%d more failures qualify for an issue of their own but have none "
+                     "this run (cap %d); they are in the tables above.\n"
+                     % (len(groups) - args.max_issues, args.max_issues))
     with open(os.path.join(args.out, "tracking.md"), "w", encoding="utf-8") as f:
         f.write(tracking[:BODY_LIMIT])
     with open(os.path.join(args.out, "triage.json"), "w", encoding="utf-8") as f:
@@ -914,6 +1141,7 @@ def cmd_triage(args):
         with open(args.github_output, "a", encoding="utf-8") as f:
             f.write("status=%s\n" % report["status"])
             f.write("new_count=%d\n" % counts["new"])
+            f.write("issue_count=%d\n" % len(issues))
             f.write("known_count=%d\n" % counts["known"])
             f.write("infra_count=%d\n" % counts["infra"])
             f.write("new_issues=%s\n" % json.dumps(issues, separators=(",", ":")))
