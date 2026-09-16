@@ -46,6 +46,12 @@ PERF_BENCHMARKS[bench_matrix_multiply]="500"
 PERF_BENCHMARKS[bench_method_dispatch]=""
 PERF_BENCHMARKS[bench_copy_prop]=""
 PERF_BENCHMARKS[bench_dead_code]=""
+# n only; the 200 outer repetitions are fixed in the source (docs: n=1M x 200)
+PERF_BENCHMARKS[bench_tco]="1000000"
+# Hand-`native` kernel: always JIT-compiled, so it never touches the interpreter.
+# Valid for comparing one build against another, but never read it as an
+# interpreter measurement -- it is the control row, not an interpreter row.
+PERF_BENCHMARKS[bench_spectralnorm_native]="2000"
 
 CLBG_DIR="$(cd "$(dirname "$0")" && pwd)/../programs/tests/clbg"
 PERF_DIR="$(cd "$(dirname "$0")" && pwd)/../programs/tests/perf"

@@ -1,35 +1,51 @@
 #!/usr/bin/env python3
-"""Fail when a benchmark's input in the harness disagrees with the docs.
+"""Fail when `perf-results/run_benchmarks.sh` drifts from what it should run.
 
-`perf-results/run_benchmarks.sh` holds the input each benchmark is run with;
-`docs/performance.md` publishes the input each reported number was measured at.
-Nothing kept them in step, and they drifted: the harness ran `binarytrees` at
-depth **21** while every table on the page said **17** (2026-09-22). Depth is
-the exponent of a binary-tree workload, so that is not a 4/17 discrepancy but
-roughly a 16x one -- enough that a harness run planned from the published
-numbers came out with a multi-hour estimate for what the page reports as 2.14s,
-and enough that any number produced by that run would have been silently
-incomparable to the page it would have been written into.
+The harness is not the source of truth for either half of what it does. The
+benchmark *set* belongs to `programs/tests/clbg/` and `programs/tests/perf/`;
+the *input* each published number was measured at belongs to
+`docs/performance.md`. Treating the script as authoritative has produced the
+same silent defect twice:
 
-That is the whole failure family this guards: the run still succeeds, the CSV
-still fills in, and the only symptom is a number measured at an input nobody
-reading it knows about.
+* **Inputs (2026-09-22).** The harness ran `binarytrees` at depth **21** while
+  every table on the page said **17**. Depth is the exponent of a binary-tree
+  workload, so that is not a 4/17 discrepancy but roughly a 16x one -- enough
+  that a harness run planned from the published numbers came out with a
+  multi-hour estimate for what the page reports as 2.14s, and enough that any
+  number it produced would have been silently incomparable to the page it was
+  going to be written into.
+* **Set (2026-09-15).** `programs/tests/perf/` held `bench_tco.obs` and
+  `bench_spectralnorm_native.obs`, and the harness listed neither, so a
+  cross-build comparison covered 10 benchmarks while reporting on 12. The input
+  check sailed past it: it only ever looked at benchmarks that were listed.
 
-What is compared: every benchmark named by both files. From the shell script,
-the `CLBG_BENCHMARKS[name]="input"` and `PERF_BENCHMARKS[name]="input"` array
-entries. From the Markdown, any table row whose first cell names one of those
-benchmarks, taking the input from an `Input` column when the table has one and
-otherwise from an `(n=...)` note in the row. Inputs are compared numerically
-after `50M`/`25M`-style suffixes are expanded, so `50M` and `50000000` agree.
-A benchmark only one file mentions is reported as a note, not a failure: the
-docs cover runs and shapes the harness does not drive, and the harness holds
-benchmarks the page has no row for.
+Both have the same shape -- the run succeeds, the CSV fills in, and the only
+symptom is a result that means something other than what its reader assumes.
+
+Two things are therefore checked.
+
+**The set.** Every `.obs` under `programs/tests/clbg/` and
+`programs/tests/perf/` is either run by the harness or named in `EXCLUSIONS`
+below with a reason; and every benchmark the harness names exists on disk (the
+script only warns and skips when it does not, which is how a typo costs a whole
+benchmark without failing anything).
+
+**The inputs.** Every benchmark named by both the script and the docs. From the
+shell script, the `CLBG_BENCHMARKS[name]="input"` and
+`PERF_BENCHMARKS[name]="input"` array entries. From the Markdown, any table row
+whose first cell names one of those benchmarks, taking the input from an
+`Input` column when the table has one and otherwise from an `(n=...)` note in
+the row. Inputs are compared numerically after `50M`/`25M`-style suffixes are
+expanded, so `50M` and `50000000` agree. A benchmark only one file mentions is
+reported as a note, not a failure: the docs cover runs and shapes the harness
+does not drive, and the harness holds benchmarks the page has no row for.
 
 Usage:
     check_benchmark_inputs.py [--script PATH] [--docs PATH]
+                              [--clbg-dir PATH] [--perf-dir PATH]
 
-Exit 0 when every benchmark named by both files carries the same input, 1
-otherwise.
+Exit 0 when the harness runs the whole benchmark set and every benchmark named
+by both files carries the same input, 1 otherwise.
 """
 
 import argparse
@@ -40,6 +56,22 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_SCRIPT = os.path.join(REPO_ROOT, 'perf-results', 'run_benchmarks.sh')
 DEFAULT_DOCS = os.path.join(REPO_ROOT, 'docs', 'performance.md')
+DEFAULT_CLBG_DIR = os.path.join(REPO_ROOT, 'programs', 'tests', 'clbg')
+DEFAULT_PERF_DIR = os.path.join(REPO_ROOT, 'programs', 'tests', 'perf')
+
+# Which shell array holds which directory's benchmarks.
+SUITES = {'CLBG': 'clbg', 'PERF': 'perf'}
+
+# Benchmarks that exist on disk and are deliberately NOT run by the harness,
+# keyed "<suite>/<name>". The value is the reason, and it has to be one a
+# reader can check: an entry here is the only way a benchmark stays out of a
+# cross-build comparison, so an undocumented one gives back exactly the hole
+# this check exists to close. Example of the shape:
+#
+#     'perf/bench_cuda_matmul': 'needs a GPU no CI runner has',
+#
+# Empty today -- every .obs in both directories is run.
+EXCLUSIONS = {}
 
 # CLBG_BENCHMARKS[binarytrees]="21"   /   PERF_BENCHMARKS[bench_tco]=""
 ARRAY_ENTRY_RE = re.compile(r'^\s*(CLBG|PERF)_BENCHMARKS\[([A-Za-z0-9_]+)\]\s*=\s*"([^"]*)"')
@@ -97,6 +129,60 @@ def parse_script(path):
         if raw:
             found[name] = (raw, number)
     return found
+
+
+def parse_script_set(path):
+    """Every benchmark the harness runs, by suite.
+
+    Returns {'clbg': {name: line_number}, 'perf': {...}}. Unlike parse_script
+    this keeps entries whose input is empty: a benchmark that takes no argument
+    is still a benchmark the harness runs.
+    """
+    found = {suite: {} for suite in SUITES.values()}
+    for number, line in enumerate(read_text(path).splitlines(), 1):
+        match = ARRAY_ENTRY_RE.match(line)
+        if not match:
+            continue
+        found[SUITES[match.group(1)]][match.group(2)] = number
+    return found
+
+
+def list_sources(directory):
+    """Benchmark names on disk: every `.obs` in the directory, extension off."""
+    return sorted(name[:-len('.obs')] for name in os.listdir(directory)
+                  if name.endswith('.obs'))
+
+
+def compare_sets(script_set, sources):
+    """Return (unrun, absent, excluded, stale) for the benchmark set.
+
+    `sources` is {suite: [name]} read off disk. unrun: on disk, not run and not
+    excluded -- the failure the two missing perf benchmarks were. absent: run
+    by the harness with no `.obs` behind it, which the script itself only warns
+    about. excluded and stale are notes: the documented opt-outs, and entries
+    in EXCLUSIONS that no longer name a benchmark that is both present and
+    unrun.
+    """
+    unrun = []
+    absent = []
+    excluded = []
+    for suite in sorted(sources):
+        run = script_set.get(suite, {})
+        for name in sources[suite]:
+            if name in run:
+                continue
+            reason = EXCLUSIONS.get('%s/%s' % (suite, name))
+            if reason:
+                excluded.append((suite, name, reason))
+            else:
+                unrun.append((suite, name))
+        for name in sorted(run):
+            if name not in sources[suite]:
+                absent.append((suite, name, run[name]))
+
+    live = set('%s/%s' % (suite, name) for suite, name, _reason in excluded)
+    stale = [(key, EXCLUSIONS[key]) for key in sorted(EXCLUSIONS) if key not in live]
+    return unrun, absent, excluded, stale
 
 
 def split_row(line):
@@ -182,17 +268,47 @@ def main(argv):
                         help='benchmark harness (default: perf-results/run_benchmarks.sh)')
     parser.add_argument('--docs', default=DEFAULT_DOCS,
                         help='published results (default: docs/performance.md)')
+    parser.add_argument('--clbg-dir', default=DEFAULT_CLBG_DIR,
+                        help='CLBG sources (default: programs/tests/clbg)')
+    parser.add_argument('--perf-dir', default=DEFAULT_PERF_DIR,
+                        help='micro-benchmark sources (default: programs/tests/perf)')
     args = parser.parse_args(argv[1:])
 
     for path in (args.script, args.docs):
         if not os.path.isfile(path):
             print('%s: not found' % path, file=sys.stderr)
             return 1
+    for path in (args.clbg_dir, args.perf_dir):
+        if not os.path.isdir(path):
+            print('%s: not a directory' % path, file=sys.stderr)
+            return 1
 
     script = parse_script(args.script)
     if not script:
         print('%s: no CLBG_BENCHMARKS/PERF_BENCHMARKS entries found' % args.script, file=sys.stderr)
         return 1
+
+    directories = {'clbg': args.clbg_dir, 'perf': args.perf_dir}
+    sources = dict((suite, list_sources(path)) for suite, path in directories.items())
+    unrun, absent, excluded, stale = compare_sets(parse_script_set(args.script), sources)
+
+    for suite, name in unrun:
+        print('%s: %s is not run by the harness' % (args.script, name))
+        print('    source: %s' % os.path.join(directories[suite], name + '.obs'))
+        print('    add %s_BENCHMARKS[%s], or an EXCLUSIONS entry in this check saying why not'
+              % (suite.upper(), name))
+    for suite, name, line in absent:
+        print('%s:%d: %s_BENCHMARKS[%s] has no benchmark behind it'
+              % (args.script, line, suite.upper(), name))
+        print('    expected: %s' % os.path.join(directories[suite], name + '.obs'))
+
+    if unrun or absent:
+        print()
+        print('%d benchmark(s) on disk that the harness does not run, %d listed that do not exist.'
+              % (len(unrun), len(absent)))
+        print('The benchmark directories are the source of truth for what a comparison')
+        print('covers, and the harness only warns and skips over what it cannot find, so')
+        print('either gap costs whole benchmarks from a run that still reports success.')
 
     docs = parse_docs(args.docs, set(script))
     failures, unparsed = compare(script, docs)
@@ -221,9 +337,19 @@ def main(argv):
     if only_script:
         print('note: no documented input for: %s' % ', '.join(only_script))
 
+    for suite, name, reason in excluded:
+        print('note: %s/%s.obs is excluded from the harness: %s' % (suite, name, reason))
+    for key, reason in stale:
+        print('note: stale EXCLUSIONS entry %r (%s): the benchmark is gone or is run now'
+              % (key, reason))
+
     compared = sum(len(docs[name]) for name in set(script) & set(docs))
     print('%d benchmark input(s) in %d benchmark(s): harness and docs agree.'
           % (compared, len(set(script) & set(docs))))
+    if unrun or absent:
+        return 1
+    print('%d benchmark(s) on disk, all run by the harness or documented as excluded.'
+          % sum(len(names) for names in sources.values()))
     return 0
 
 
