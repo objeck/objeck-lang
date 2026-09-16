@@ -1247,6 +1247,19 @@ jobs:
       - name: Docs name only the dependencies Objeck needs
         run: python3 tools/cicd/check_docs_deps.py --docs
 
+      # Same class of guard. Every number on docs/performance.md was measured at
+      # the input printed beside it, and perf-results/run_benchmarks.sh holds the
+      # input the harness actually uses. Nothing kept them in step: the harness
+      # ran binarytrees at depth 21 while every table said 17 (2026-09-22), which
+      # for an exponential workload is roughly 16x -- enough to turn a run planned
+      # from the page into a multi-hour one, and to make anything it measured
+      # incomparable to the page it would have been written into.
+      - name: Benchmark inputs match the documented ones
+        run: python3 tools/cicd/check_benchmark_inputs.py
+
+      - name: Benchmark input check catches drift
+        run: python3 tools/cicd/test_check_benchmark_inputs.py
+
       # Same reason, same cost: nothing built, fails in seconds. A native call
       # whose name is written as a literal at the call site allocates a String
       # on every call -- 1655ns against 130ns for the same call with the name

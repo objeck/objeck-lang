@@ -28,7 +28,7 @@ mkdir -p "$OUTPUT_DIR"
 # CLBG benchmarks
 declare -A CLBG_BENCHMARKS
 CLBG_BENCHMARKS[nbody]="50000000"
-CLBG_BENCHMARKS[binarytrees]="21"
+CLBG_BENCHMARKS[binarytrees]="17"
 CLBG_BENCHMARKS[spectralnorm]="5500"
 CLBG_BENCHMARKS[fannkuchredux]="12"
 CLBG_BENCHMARKS[fasta]="25000000"
