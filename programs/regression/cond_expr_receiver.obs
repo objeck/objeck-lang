@@ -1,0 +1,153 @@
+#~
+# A conditional expression used as a method receiver -- '(t ? "abcdef" : "xy")->
+# SubString(1, 2)' -- leaves its result on the stack before the call is emitted,
+# exactly like a string-literal or chained receiver, and the value on the stack
+# is the call's instance only when the call resolves to an instance method.
+# Two halves of that rule were broken (issue #863, the sibling of #854):
+# every argument has to be swapped beneath the receiver, and the emitter keyed
+# that swap on a string-literal counter a conditional receiver never sets, so
+# the call popped its last argument as 'self'; and a conditional receiver forced
+# 'is_nested' on for every call in the chain, which suppressed the instance
+# memory word that a static '$Int'/'$Char'/'$Float' helper still needs, so
+# '(t ? 3 : 4)->Max(1)' and '(t ? "abc" : "xy")->Size()->Max(1)' read the
+# receiver as their instance word. Both died with an access violation and no
+# output at every -opt level under --jit=off and --jit=1.
+# Controls kept here: the no-argument object form, which always worked, the
+# same calls with the receiver or the argument hoisted into a local, and
+# primitive receivers that are not conditional.
+# Not covered: '(t ? intAry : otherIntAry)->Size()' is mistyped as a scalar by
+# AnalyzeConditional (it zeroes the dimension), which is a separate defect that
+# the hoisted form 'x := t ? p : q; x->Size()' shows just as well.
+~#
+
+class CondExprReceiver {
+  @n : Int;
+  @failures : static : Int;
+
+  New() {
+    @n := 2;
+  }
+
+  method : public : Two() ~ Int {
+    return @n;
+  }
+
+  method : public : Name() ~ String {
+    return "cd";
+  }
+
+  function : Check(tag : String, good : Bool) ~ Nil {
+    if(<>good) {
+      "  FAIL: "->Print(); tag->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    o := CondExprReceiver->New();
+    t := args->Size() = 0;
+    f := args->Size() <> 0;
+
+    # controls: a conditional receiver with no arguments always worked
+    Check("(t ? .. : ..)->Size()", (t ? "abc" : "xy")->Size() = 3);
+    Check("(f ? .. : ..)->Size()", (f ? "abc" : "xy")->Size() = 2);
+    Check("(t ? .. : ..)->ToUpper()", (t ? "abc" : "xy")->ToUpper()->Equals("ABC"));
+
+    # conditional receiver with plain literal arguments
+    Check("SubString(1, 2)", (t ? "abcdef" : "xy")->SubString(1, 2)->Equals("bc"));
+    Check("Find(1, \"c\")", (t ? "abcdef" : "xy")->Find(1, "c") = 2);
+    Check("else branch SubString(0, 2)", (f ? "abcdef" : "xyz")->SubString(0, 2)->Equals("xy"));
+
+    # conditional receiver whose argument contains a call -- the #863 shapes
+    Check("SubString(1, (2 + G->Zero()))", (t ? "abcdef" : "xy")->SubString(1, (2 + G->Zero()))->Equals("bc"));
+    Check("SubString(G->One(), G->Two())", (t ? "abcdef" : "xy")->SubString(G->One(), G->Two())->Equals("bc"));
+    Check("Find((1 + G->Zero()), \"c\")", (t ? "abcdef" : "xy")->Find((1 + G->Zero()), "c") = 2);
+    Check("Find(G->Zero(), G->Name())", (t ? "abcdef" : "xy")->Find(G->Zero(), G->Name()) = 2);
+    Check("Get(G->Zero())", (t ? "abcdef" : "xy")->Get(G->Zero()) = 'a');
+    Check("ReplaceAll(\"b\", G->Zed())", (t ? "abcdef" : "xy")->ReplaceAll("b", G->Zed())->Equals("aZcdef"));
+    Check("instance call in argument", (t ? "abcdef" : "xy")->SubString(o->Two(), o->Two())->Equals("cd"));
+    Check("Find(o->Name())", (t ? "abcdcdef" : "xy")->Find(o->Name()) = 2);
+    Check("else branch with a call argument", (f ? "abcdef" : "xyzw")->SubString(G->One(), (1 + G->Zero()))->Equals("y"));
+
+    # nested conditional receivers
+    Check("nested then-branch", (t ? (t ? "abcdef" : "pq") : "xy")->SubString(1, (2 + G->Zero()))->Equals("bc"));
+    Check("nested else-branch", (f ? "xy" : (t ? "abcdef" : "pq"))->Find((1 + G->Zero()), "c") = 2);
+    Check("nested both branches", (t ? (f ? "q" : "abcdef") : (t ? "r" : "s"))->SubString(G->One(), G->Two())->Equals("bc"));
+
+    # the conditional receiver's result feeds a further chain
+    Check("SubString(..)->ToUpper()", (t ? "abcdef" : "xy")->SubString(1, (2 + G->Zero()))->ToUpper()->Equals("BC"));
+    Check("SubString(..)->Size()", (t ? "abcdef" : "xy")->SubString(G->One(), o->Two())->Size() = 2);
+    Check("ToUpper()->SubString(..)", (t ? "abcdef" : "xy")->ToUpper()->SubString(1, (2 + G->Zero()))->Equals("BC"));
+    Check("used as an argument", G->Wrap((t ? "abcdef" : "xy")->SubString(1, (2 + G->Zero())))->Equals("<bc>"));
+
+    # conditional receivers of a user class and of an array element
+    p := Box->New(10); q := Box->New(20);
+    Check("Box Add((5 + G->Zero()))", (t ? p : q)->Add((5 + G->Zero())) = 15);
+    Check("Box else branch", (f ? p : q)->Add(G->Zero() + 1) = 21);
+    Check("Box two call arguments", (t ? p : q)->Sum(G->One(), (2 + G->Zero())) = 13);
+    strs := ["abcdef", "xyz"];
+    Check("array element branches", (t ? strs[0] : strs[1])->SubString(1, (2 + G->Zero()))->Equals("bc"));
+
+    # primitive conditional receivers resolve to static '$' helpers that take
+    # the receiver as parameter 0 and still need the instance memory word
+    Check("(t ? 3 : 4)->Max(1)", (t ? 3 : 4)->Max(1) = 3);
+    Check("(f ? 3 : 4)->Max(1)", (f ? 3 : 4)->Max(1) = 4);
+    Check("(t ? 3 : 4)->Max(G->Zero() + 5)", (t ? 3 : 4)->Max(G->Zero() + 5) = 5);
+    Check("(t ? 3 : 4)->Abs()", (t ? -3 : 4)->Abs() = 3);
+    Check("(t ? 3 : 4)->ToString()", (t ? 3 : 4)->ToString()->Equals("3"));
+    Check("(t ? 'a' : 'b')->ToString()", (t ? 'a' : 'b')->ToString()->Equals("a"));
+    Check("(t ? 2.0 : 3.0)->Max(9.0)", (t ? 2.0 : 3.0)->Max(9.0) = 9.0);
+    Check("(t ? true : false)->ToString()", (t ? true : false)->ToString()->Equals("true"));
+    Check("(t ? 3 : 4)->Max(1) + 1", ((t ? 3 : 4)->Max(1) + 1) = 4);
+
+    # a chain that lands on a primitive after a conditional receiver
+    Check("cond->Size()->Max(1)", (t ? "abcdef" : "xy")->Size()->Max(1) = 6);
+    Check("cond->Size()->Max(G->Zero() + 9)", (t ? "abcdef" : "xy")->Size()->Max(G->Zero() + 9) = 9);
+    Check("cond->Get(0)->Max('a')", (t ? "abcdef" : "xy")->Get(0)->Max('a') = 'a');
+
+    # controls: the same primitive calls without a conditional receiver
+    Check("(1 + 2)->Max(G->Zero() + 5)", (1 + 2)->Max(G->Zero() + 5) = 5);
+    Check("\"abcdef\"->Size()->Max(1)", "abcdef"->Size()->Max(1) = 6);
+    n := t ? 3 : 4;
+    Check("hoisted primitive receiver", n->Max(1) = 3);
+
+    # controls: the same calls with the receiver hoisted into a local
+    s := t ? "abcdef" : "xy";
+    Check("hoisted receiver", s->SubString(1, (2 + G->Zero()))->Equals("bc"));
+    z := G->Zero();
+    Check("hoisted argument", (t ? "abcdef" : "xy")->SubString(1, (2 + z))->Equals("bc"));
+
+    if(@failures = 0) {
+      "PASS: conditional expression as a method receiver"->PrintLine();
+    }
+    else {
+      "FAIL: conditional expression as a method receiver"->PrintLine();
+      Runtime->Exit(1);
+    };
+  }
+}
+
+class G {
+  function : Zero() ~ Int { return 0; }
+  function : One() ~ Int { return 1; }
+  function : Two() ~ Int { return 2; }
+  function : Name() ~ String { return "cd"; }
+  function : Zed() ~ String { return "Z"; }
+  function : Wrap(s : String) ~ String { return "<" + s + ">"; }
+}
+
+class Box {
+  @n : Int;
+
+  New(n : Int) {
+    @n := n;
+  }
+
+  method : public : Add(x : Int) ~ Int {
+    return @n + x;
+  }
+
+  method : public : Sum(x : Int, y : Int) ~ Int {
+    return @n + x + y;
+  }
+}

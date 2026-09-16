@@ -3995,8 +3995,8 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // instance. The counter is still cleared around each argument so a
       // literal inside an argument cannot pair with the receiver.
       //
-      // Conditional receivers ('(t ? "a" : "b")->Size()') crash even without
-      // arguments, for a separate reason that this swap does not address.
+      // A conditional receiver ('(t ? "a" : "b")->SubString(..)') reaches the
+      // same emitter by a different route and obeys the same rule (#863).
       const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
         (method_call->GetLibraryMethod() && !method_call->GetLibraryMethod()->IsStatic());
       const bool swap_under_receiver = !is_str_array && is_instance_call;
@@ -4013,7 +4013,23 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       new_char_str_count = 0;
 
       // emit call
-      EmitMethodCall(method_call, is_nested || expression->GetExpressionType() == COND_EXPR);
+      //
+      // 'is_nested' tells EmitMethodCall that the value already on the stack is
+      // the call's instance, so it must not push the instance-memory word. That
+      // is only true of an instance method: a static '$Int'/'$Char'/'$Float'/
+      // '$BaseArray' helper takes the receiver as parameter 0 and still needs
+      // that word. A conditional receiver forced the flag on for every call in
+      // the chain regardless of what the call resolved to, so '(t ? 3 : 4)->
+      // Max(1)' and '(t ? "abcdef" : "xy")->Size()->Max(1)' lost it and the
+      // callee read the receiver as its instance word -- an access violation
+      // with no output at every -opt level, interpreted and JIT-compiled alike.
+      //
+      // '(t ? intAry : otherIntAry)->Size()' now runs instead of crashing but
+      // still answers wrongly: AnalyzeConditional zeroes the conditional's
+      // dimension, so the receiver is typed as a scalar and the call resolves
+      // to 'System.$Int:Size'. That mistyping is a separate defect -- the
+      // hoisted form 'x := t ? p : q; x->Size()' has always answered wrongly.
+      EmitMethodCall(method_call, is_nested || (expression->GetExpressionType() == COND_EXPR && is_instance_call));
       // subscript on the call result: GetItems()[0]
       EmitCallIndices(method_call);
 

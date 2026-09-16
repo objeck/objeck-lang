@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: '?' invalid type mismatch
+
+#~
+Guards #867's companion check. Once a conditional keeps its branches'
+dimension, an array branch paired with a scalar branch of the same element type
+would otherwise type silently as an array; it must be rejected like any other
+branch type mismatch.
+~#
+class BadCondExprDimensionMismatch {
+    function : Main(args : String[]) ~ Nil {
+        p := Int->New[3];
+        t := args->Size() = 0;
+        x := t ? p : 5;
+    }
+}

@@ -2129,8 +2129,27 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
   Type* else_type = GetExpressionType(else_conditional, depth + 1);
 
   // validate types
+  // The dimension of the value a branch yields. An indexed element (p[1]) is a
+  // scalar even though its variable's type carries the array's dimension; a call
+  // chain or a cast is already resolved into the branch's type.
+  auto value_dimension = [](Expression* branch, Type* branch_type) {
+    if(!branch->GetCastType() && !branch->GetMethodCall() && branch->GetExpressionType() == VAR_EXPR &&
+       static_cast<Variable*>(branch)->GetIndices()) {
+      return 0;
+    }
+    return branch_type->GetDimension();
+  };
+
   if(if_type && else_type) {
-    if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
+    const int if_dimension = value_dimension(if_conditional, if_type);
+    // an array branch paired with a scalar branch (or arrays of different rank)
+    // is a mismatch like any other; checked first because the class-type branch
+    // below never compares dimensions. Nil stays assignable to either kind.
+    if(if_type->GetType() != NIL_TYPE && else_type->GetType() != NIL_TYPE &&
+       if_dimension != value_dimension(else_conditional, else_type)) {
+      ProcessError(conditional, L"'?' invalid type mismatch");
+    }
+    else if(if_type->GetType() == CLASS_TYPE && else_type->GetType() == CLASS_TYPE) {
       AnalyzeClassCast(if_type, else_conditional, depth + 1);
     }
     else if(if_type->GetType() != else_type->GetType() &&
@@ -2138,8 +2157,11 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
             (if_type->GetType() == NIL_TYPE && else_type->GetType() == CLASS_TYPE))) {
       ProcessError(conditional, L"'?' invalid type mismatch");
     }
-    // set eval type
+    // set eval type with the dimension of the value the branches yield. Zeroing it
+    // unconditionally typed a conditional over primitive arrays as a scalar, so a
+    // call on it resolved to the scalar helper and returned garbage (#867).
     conditional->SetEvalType(if_conditional->GetEvalType(), true);
+    conditional->GetEvalType()->SetDimension(if_dimension);
     current_method->SetAndOr(true);
   }
   else {
