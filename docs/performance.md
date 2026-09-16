@@ -131,7 +131,10 @@ close enough to the harness's resolution that their ratios should be read as
 "too fast to distinguish" rather than as precise multiples.
 `bench_spectralnorm_native` is the control: it is hand-`native`, so it was
 already compiled before this work and comes back unchanged at 0.38 s — which is
-what makes the other rows credible.
+what makes the other rows credible. Because its kernel is `native`-annotated it
+is *always* compiled and never runs through the interpreter, so it is valid for
+comparing one build against another but must never be read as an interpreter
+measurement.
 
 ### Running Benchmarks
 
