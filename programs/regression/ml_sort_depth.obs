@@ -1,0 +1,138 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+System.ML's two hand-written quicksorts: KDTree's SortByDim (sorts row indexes
+by one coordinate) and RegressionTree's split-value sort.
+
+Both used to recurse into BOTH partitions, so their depth grew with the number
+of unbalanced splits. The column below is a worst case for that partition: the
+value read as the pivot is the largest of every range it lands in, so each
+partition peels one element and recurses on the rest, reaching depth 599. The
+VM's call stack is CALL_STACK_SIZE (256) frames and PushFrame's overflow path
+is a bare exit(1), so the old code ended the process with ">>> call stack
+bounds have been exceeded! <<<" before either model finished. SortByDim now
+recurses into the smaller side and loops on the larger; the split-value sort
+delegates to System.ArraySort, which does the same.
+
+Both checks assert the model's answers, not merely that it finished.
+~#
+use System.ML;
+
+class MlSortDepth {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		ok := CheckKdTree() & ok;
+		ok := CheckRegressionTree() & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+
+	# A permutation of 0..599 whose middle element is the LARGEST of every range
+	# the partition visits, so the deep side is the FIRST recursive call. The
+	# smallest-pivot shape drives the trailing call instead, which -opt s3 can
+	# flatten into a loop -- on the old library that masked the failure at s3
+	# while it still died at s0, and the suite compiles at s3.
+	function : Worst() ~ Int[] {
+		return [
+			1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39,
+			41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79,
+			81, 83, 85, 87, 89, 91, 93, 95, 97, 99, 101, 103, 105, 107, 109, 111, 113, 115, 117, 119,
+			121, 123, 125, 127, 129, 131, 133, 135, 137, 139, 141, 143, 145, 147, 149, 151, 153, 155, 157, 159,
+			161, 163, 165, 167, 169, 171, 173, 175, 177, 179, 181, 183, 185, 187, 189, 191, 193, 195, 197, 199,
+			201, 203, 205, 207, 209, 211, 213, 215, 217, 219, 221, 223, 225, 227, 229, 231, 233, 235, 237, 239,
+			241, 243, 245, 247, 249, 251, 253, 255, 257, 259, 261, 263, 265, 267, 269, 271, 273, 275, 277, 279,
+			281, 283, 285, 287, 289, 291, 293, 295, 297, 299, 301, 303, 305, 307, 309, 311, 313, 315, 317, 319,
+			321, 323, 325, 327, 329, 331, 333, 335, 337, 339, 341, 343, 345, 347, 349, 351, 353, 355, 357, 359,
+			361, 363, 365, 367, 369, 371, 373, 375, 377, 379, 381, 383, 385, 387, 389, 391, 393, 395, 397, 399,
+			401, 403, 405, 407, 409, 411, 413, 415, 417, 419, 421, 423, 425, 427, 429, 431, 433, 435, 437, 439,
+			441, 443, 445, 447, 449, 451, 453, 455, 457, 459, 461, 463, 465, 467, 469, 471, 473, 475, 477, 479,
+			481, 483, 485, 487, 489, 491, 493, 495, 497, 499, 501, 503, 505, 507, 509, 511, 513, 515, 517, 519,
+			521, 523, 525, 527, 529, 531, 533, 535, 537, 539, 541, 543, 545, 547, 549, 551, 553, 555, 557, 559,
+			561, 563, 565, 567, 569, 571, 573, 575, 577, 579, 581, 583, 585, 587, 589, 591, 593, 595, 597, 599,
+			74, 300, 150, 302, 18, 304, 152, 306, 76, 308, 154, 310, 38, 312, 156, 314, 78, 316, 158, 318,
+			4, 320, 160, 322, 80, 324, 162, 326, 40, 328, 164, 330, 82, 332, 166, 334, 20, 336, 168, 338,
+			84, 340, 170, 342, 42, 344, 172, 346, 86, 348, 174, 350, 10, 352, 176, 354, 88, 356, 178, 358,
+			44, 360, 180, 362, 90, 364, 182, 366, 22, 368, 184, 370, 92, 372, 186, 374, 46, 376, 188, 378,
+			94, 380, 190, 382, 2, 384, 192, 386, 96, 388, 194, 390, 48, 392, 196, 394, 98, 396, 198, 398,
+			24, 400, 200, 402, 100, 404, 202, 406, 50, 408, 204, 410, 102, 412, 206, 414, 12, 416, 208, 418,
+			104, 420, 210, 422, 52, 424, 212, 426, 106, 428, 214, 430, 26, 432, 216, 434, 108, 436, 218, 438,
+			54, 440, 220, 442, 110, 444, 222, 446, 6, 448, 224, 450, 112, 452, 226, 454, 56, 456, 228, 458,
+			114, 460, 230, 462, 28, 464, 232, 466, 116, 468, 234, 470, 58, 472, 236, 474, 118, 476, 238, 478,
+			14, 480, 240, 482, 120, 484, 242, 486, 60, 488, 244, 490, 122, 492, 246, 494, 30, 496, 248, 498,
+			124, 500, 250, 502, 62, 504, 252, 506, 126, 508, 254, 510, 0, 512, 256, 514, 128, 516, 258, 518,
+			64, 520, 260, 522, 130, 524, 262, 526, 32, 528, 264, 530, 132, 532, 266, 534, 66, 536, 268, 538,
+			134, 540, 270, 542, 16, 544, 272, 546, 136, 548, 274, 550, 68, 552, 276, 554, 138, 556, 278, 558,
+			34, 560, 280, 562, 140, 564, 282, 566, 70, 568, 284, 570, 142, 572, 286, 574, 8, 576, 288, 578,
+			144, 580, 290, 582, 72, 584, 292, 586, 146, 588, 294, 590, 36, 592, 296, 594, 148, 596, 298, 598
+		];
+	}
+
+	function : CheckKdTree() ~ Bool {
+		raw := Worst();
+		n := raw->Size();
+
+		data := Float->New[n, 2];
+		for(i := 0; i < n; i += 1;) {
+			data[i, 0] := raw[i]->As(Float);
+			data[i, 1] := 0.0;
+		};
+
+		tree := KDTree->New(data);
+		ok := tree->Size() = n;
+
+		# every sampled row must find itself back, exactly
+		for(r := 0; r < n; r += 37;) {
+			query := Float->New[2];
+			query[0] := raw[r]->As(Float);
+			query[1] := 0.0;
+
+			nearest := tree->Nearest(1, query);
+			if(nearest->Size() <> 1 | nearest[0] <> r) {
+				ok := false;
+			};
+		};
+
+		return Report("KD-tree builds over the worst-case column and queries exactly", ok);
+	}
+
+	function : CheckRegressionTree() ~ Bool {
+		raw := Worst();
+		n := raw->Size();
+
+		X := Float->New[n, 1];
+		y := Float->New[n, 1];
+		for(i := 0; i < n; i += 1;) {
+			X[i, 0] := raw[i]->As(Float);
+			if(raw[i] < 300) {
+				y[i, 0] := 0.0;
+			}
+			else {
+				y[i, 0] := 1.0;
+			};
+		};
+
+		tree := RegressionTree->New(4, 2);
+		ok := tree->Fit(X, y);
+
+		low := Float->New[1];
+		low[0] := 10.0;
+		high := Float->New[1];
+		high[0] := 590.0;
+
+		ok := ok & tree->Predict(low) < 0.5 & tree->Predict(high) > 0.5;
+
+		return Report("regression tree fits the worst-case feature column and predicts", ok);
+	}
+}
