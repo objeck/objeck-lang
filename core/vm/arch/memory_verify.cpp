@@ -776,8 +776,16 @@ public:
   // B3 for a closure capture block dirtied before the collection. Such a block has no
   // declarations until a holder types it, so the typed walks above never look inside
   // one that no holder reaches yet. A word still naming a nursery object start (the
-  // nursery is not cleared, so the stale header is still there) is a capture the
-  // collection promoted without forwarding the block's copy.
+  // nursery is not cleared, so the stale header is still there) whose header holds a
+  // forwarding address is a capture the collection promoted without forwarding the
+  // block's copy.
+  //
+  // A header with no forwarding address means the capture was never marked, so no
+  // traced path reached the block: it survived only because a conservative word
+  // marked it (a stale JIT temp or operand-stack slot), and its capture was freed
+  // correctly. That is not a lost live capture -- a live closure's untraced captures
+  // are caught as B2 by the typed walk -- so it is a warning (#880: a stale
+  // jit_mem[-6] word on linux-arm64 kept a dead Identity() closure's block alive).
   static void CheckCaptureBlockAfter(size_t* obj) {
     const size_t words = obj[SIZE_OR_CLS] / sizeof(size_t);
     for(size_t k = 0; k < words; ++k) {
@@ -790,7 +798,13 @@ public:
       if(mem[TYPE] == instructions::NIL_TYPE && classes.count((StackClass*)mem[SIZE_OR_CLS]) &&
          MemoryManager::IsYoungObjectStart(mem, (StackClass*)mem[SIZE_OR_CLS])) {
         const Origin origin = { obj, nullptr, L"capture block", (long)k, true };
-        Report(L"B3", origin, value, L"dirty closure capture block still refers to a nursery object after the collection (capture not forwarded)");
+        const size_t forward = mem[MARKED_FLAG];
+        if(forward && MemoryManager::old_generation.count((size_t*)forward)) {
+          Report(L"B3", origin, value, L"dirty closure capture block still refers to a nursery object after the collection (capture not forwarded)");
+        }
+        else {
+          Warn(L"B3", origin, value, L"dirty closure capture block reached only conservatively refers to an unmarked nursery object (block is garbage)");
+        }
       }
     }
   }
