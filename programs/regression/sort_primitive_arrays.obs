@@ -1,0 +1,221 @@
+#~
+# Primitive array sorting: Int, Float, Char and Byte.
+#
+# Int->Sort and its Byte, Char and Float counterparts return a sorted copy;
+# ArraySort->Sort sorts the array it is handed. Both share one implementation
+# per type in System.ArraySort.
+#
+# The 600-element array below is a worst case for the partition: its middle
+# element is the smallest of every range it lands in, so a quicksort that
+# recurses into both sides reaches depth 599. The VM's call stack is
+# CALL_STACK_SIZE (256) frames and overflowing it ends the process with
+# ">>> call stack bounds have been exceeded! <<<", which no program can catch.
+# ArraySort recurses into the smaller side and loops on the larger, so the depth
+# stays at or below log2(size) and this array sorts like any other.
+~#
+
+class SortPrimitiveArrays {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		ok := CheckIntPatterns() & ok;
+		ok := CheckBoundaries() & ok;
+		ok := CheckDeepRecursion() & ok;
+		ok := CheckCopyAndInPlace() & ok;
+		ok := CheckRange() & ok;
+		ok := CheckFloat() & ok;
+		ok := CheckCharAndByte() & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+
+	function : IsSorted(a : Int[]) ~ Bool {
+		for(i := 1; i < a->Size(); i += 1;) {
+			if(a[i - 1] > a[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Sum(a : Int[]) ~ Int {
+		total := 0;
+		for(i := 0; i < a->Size(); i += 1;) {
+			total += a[i];
+		};
+
+		return total;
+	}
+
+	# deterministic, so a failure reproduces
+	function : Fill(a : Int[], seed : Int) ~ Nil {
+		state := seed;
+		for(i := 0; i < a->Size(); i += 1;) {
+			state := (state * 1103515 + 12345) % 2147483647;
+			a[i] := state % 1000;
+		};
+	}
+
+	function : CheckIntPatterns() ~ Bool {
+		ok := true;
+		n := 1000;
+
+		random := Int->New[n];
+		Fill(random, 7);
+		before := Sum(random);
+		ArraySort->Sort(random);
+		ok := Report("random ints sort", IsSorted(random) & Sum(random) = before) & ok;
+
+		ascending := Int->New[n];
+		for(i := 0; i < n; i += 1;) { ascending[i] := i; };
+		ArraySort->Sort(ascending);
+		ok := Report("sorted input stays sorted", IsSorted(ascending) & ascending[0] = 0 & ascending[n - 1] = n - 1) & ok;
+
+		descending := Int->New[n];
+		for(i := 0; i < n; i += 1;) { descending[i] := n - i; };
+		ArraySort->Sort(descending);
+		ok := Report("reversed input sorts", IsSorted(descending)) & ok;
+
+		equal := Int->New[n];
+		for(i := 0; i < n; i += 1;) { equal[i] := 42; };
+		ArraySort->Sort(equal);
+		ok := Report("all-equal input sorts", IsSorted(equal) & equal[0] = 42 & equal[n - 1] = 42) & ok;
+
+		duplicates := Int->New[n];
+		for(i := 0; i < n; i += 1;) { duplicates[i] := i % 2; };
+		ArraySort->Sort(duplicates);
+		ok := Report("two-valued input sorts", IsSorted(duplicates) & duplicates[0] = 0 & duplicates[n - 1] = 1) & ok;
+
+		return ok;
+	}
+
+	# sizes around the insertion-sort cutoff (16), plus the empty and single cases
+	function : CheckBoundaries() ~ Bool {
+		ok := true;
+		for(n := 0; n <= 40; n += 1;) {
+			a := Int->New[n];
+			for(i := 0; i < n; i += 1;) { a[i] := n - i; };
+			ArraySort->Sort(a);
+			if(<>IsSorted(a)) {
+				ok := false;
+			};
+		};
+
+		return Report("sizes 0..40 sort (insertion cutoff boundary)", ok);
+	}
+
+	function : CheckDeepRecursion() ~ Bool {
+		killer := [
+			300, 2, 450, 4, 302, 6, 562, 8, 304, 10, 452, 12, 306, 14, 526, 16, 308, 18, 454, 20,
+			310, 22, 590, 24, 312, 26, 456, 28, 314, 30, 528, 32, 316, 34, 458, 36, 318, 38, 564, 40,
+			320, 42, 460, 44, 322, 46, 530, 48, 324, 50, 462, 52, 326, 54, 582, 56, 328, 58, 464, 60,
+			330, 62, 532, 64, 332, 66, 466, 68, 334, 70, 566, 72, 336, 74, 468, 76, 338, 78, 534, 80,
+			340, 82, 470, 84, 342, 86, 598, 88, 344, 90, 472, 92, 346, 94, 536, 96, 348, 98, 474, 100,
+			350, 102, 568, 104, 352, 106, 476, 108, 354, 110, 538, 112, 356, 114, 478, 116, 358, 118, 584, 120,
+			360, 122, 480, 124, 362, 126, 540, 128, 364, 130, 482, 132, 366, 134, 570, 136, 368, 138, 484, 140,
+			370, 142, 542, 144, 372, 146, 486, 148, 374, 150, 592, 152, 376, 154, 488, 156, 378, 158, 544, 160,
+			380, 162, 490, 164, 382, 166, 572, 168, 384, 170, 492, 172, 386, 174, 546, 176, 388, 178, 494, 180,
+			390, 182, 586, 184, 392, 186, 496, 188, 394, 190, 548, 192, 396, 194, 498, 196, 398, 198, 574, 200,
+			400, 202, 500, 204, 402, 206, 550, 208, 404, 210, 502, 212, 406, 214, 596, 216, 408, 218, 504, 220,
+			410, 222, 552, 224, 412, 226, 506, 228, 414, 230, 576, 232, 416, 234, 508, 236, 418, 238, 554, 240,
+			420, 242, 510, 244, 422, 246, 588, 248, 424, 250, 512, 252, 426, 254, 556, 256, 428, 258, 514, 260,
+			430, 262, 578, 264, 432, 266, 516, 268, 434, 270, 558, 272, 436, 274, 518, 276, 438, 278, 594, 280,
+			440, 282, 520, 284, 442, 286, 560, 288, 444, 290, 522, 292, 446, 294, 580, 296, 448, 298, 524, 0,
+			1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 33, 35, 37, 39,
+			41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 63, 65, 67, 69, 71, 73, 75, 77, 79,
+			81, 83, 85, 87, 89, 91, 93, 95, 97, 99, 101, 103, 105, 107, 109, 111, 113, 115, 117, 119,
+			121, 123, 125, 127, 129, 131, 133, 135, 137, 139, 141, 143, 145, 147, 149, 151, 153, 155, 157, 159,
+			161, 163, 165, 167, 169, 171, 173, 175, 177, 179, 181, 183, 185, 187, 189, 191, 193, 195, 197, 199,
+			201, 203, 205, 207, 209, 211, 213, 215, 217, 219, 221, 223, 225, 227, 229, 231, 233, 235, 237, 239,
+			241, 243, 245, 247, 249, 251, 253, 255, 257, 259, 261, 263, 265, 267, 269, 271, 273, 275, 277, 279,
+			281, 283, 285, 287, 289, 291, 293, 295, 297, 299, 301, 303, 305, 307, 309, 311, 313, 315, 317, 319,
+			321, 323, 325, 327, 329, 331, 333, 335, 337, 339, 341, 343, 345, 347, 349, 351, 353, 355, 357, 359,
+			361, 363, 365, 367, 369, 371, 373, 375, 377, 379, 381, 383, 385, 387, 389, 391, 393, 395, 397, 399,
+			401, 403, 405, 407, 409, 411, 413, 415, 417, 419, 421, 423, 425, 427, 429, 431, 433, 435, 437, 439,
+			441, 443, 445, 447, 449, 451, 453, 455, 457, 459, 461, 463, 465, 467, 469, 471, 473, 475, 477, 479,
+			481, 483, 485, 487, 489, 491, 493, 495, 497, 499, 501, 503, 505, 507, 509, 511, 513, 515, 517, 519,
+			521, 523, 525, 527, 529, 531, 533, 535, 537, 539, 541, 543, 545, 547, 549, 551, 553, 555, 557, 559,
+			561, 563, 565, 567, 569, 571, 573, 575, 577, 579, 581, 583, 585, 587, 589, 591, 593, 595, 597, 599
+		];
+
+		ArraySort->Sort(killer);
+		ok := IsSorted(killer) & killer->Size() = 600 & killer[0] = 0 & killer[599] = 599;
+
+		return Report("600-element worst case sorts without exhausting the call stack", ok);
+	}
+
+	function : CheckCopyAndInPlace() ~ Bool {
+		original := [5, 3, 9, 1, 7];
+
+		copy := Int->Sort(original);
+		untouched := original[0] = 5 & original[1] = 3 & original[2] = 9 & original[3] = 1 & original[4] = 7;
+		ok := Report("Int->Sort returns a sorted copy and leaves its input alone", IsSorted(copy) & untouched);
+
+		ArraySort->Sort(original);
+		ok := Report("ArraySort->Sort sorts in place", IsSorted(original) & original[0] = 1 & original[4] = 9) & ok;
+
+		return ok;
+	}
+
+	function : CheckRange() ~ Bool {
+		a := [9, 8, 7, 6, 5, 4];
+		ArraySort->Sort(a, 1, 4);
+		ok := a[0] = 9 & a[1] = 5 & a[2] = 6 & a[3] = 7 & a[4] = 8 & a[5] = 4;
+
+		b := [3, 2, 1];
+		ArraySort->Sort(b, -1, 2);
+		ArraySort->Sort(b, 0, 99);
+		ArraySort->Sort(b, 2, 1);
+		ok := ok & b[0] = 3 & b[1] = 2 & b[2] = 1;
+
+		return Report("range sort touches only the range it is given", ok);
+	}
+
+	function : CheckFloat() ~ Bool {
+		n := 500;
+		a := Float->New[n];
+		for(i := 0; i < n; i += 1;) {
+			a[i] := ((i * 37) % n)->As(Float) / 4.0;
+		};
+
+		ArraySort->Sort(a);
+		ok := true;
+		for(i := 1; i < n; i += 1;) {
+			if(a[i - 1] > a[i]) {
+				ok := false;
+			};
+		};
+
+		copy := Float->Sort(a);
+		ok := ok & copy[0] = a[0];
+
+		return Report("floats sort", ok);
+	}
+
+	function : CheckCharAndByte() ~ Bool {
+		c := Char->New[6];
+		c[0] := 'd'; c[1] := 'a'; c[2] := 'f'; c[3] := 'b'; c[4] := 'e'; c[5] := 'c';
+		ArraySort->Sort(c);
+		ok := c[0] = 'a' & c[1] = 'b' & c[2] = 'c' & c[3] = 'd' & c[4] = 'e' & c[5] = 'f';
+
+		b := Byte->New[5];
+		b[0] := 9; b[1] := 2; b[2] := 7; b[3] := 1; b[4] := 5;
+		ArraySort->Sort(b);
+		ok := ok & b[0] = 1 & b[1] = 2 & b[2] = 5 & b[3] = 7 & b[4] = 9;
+
+		return Report("chars and bytes sort", ok);
+	}
+}

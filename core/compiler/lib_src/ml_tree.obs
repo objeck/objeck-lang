@@ -771,32 +771,12 @@ pred := tree->Predict([2.5]);
 			return sse;
 		}
 
+		# Sorts values[lo..hi]. System.ArraySort bounds its recursion depth at
+		# log2(size) and cuts off short ranges; the copy that used to live here
+		# recursed into both partitions, so user data of the wrong shape could
+		# exhaust the VM's call stack (#887).
 		method : SortValues(values : Float[], lo : Int, hi : Int) ~ Nil {
-			if(lo >= hi) {
-				return;
-			};
-
-			pivot := values[lo + (hi - lo) / 2];
-			i := lo;
-			j := hi;
-			while(i <= j) {
-				while(values[i] < pivot) {
-					i += 1;
-				};
-				while(values[j] > pivot) {
-					j -= 1;
-				};
-				if(i <= j) {
-					tmp := values[i];
-					values[i] := values[j];
-					values[j] := tmp;
-					i += 1;
-					j -= 1;
-				};
-			};
-
-			SortValues(values, lo, j);
-			SortValues(values, i, hi);
+			ArraySort->Sort(values, lo, hi);
 		}
 
 		#~

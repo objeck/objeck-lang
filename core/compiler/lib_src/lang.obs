@@ -482,48 +482,18 @@ bundle System {
 			BYTES_TO_UNICODE;
 		}
 		
-		function : native :  Sort(v : Byte[]) ~ Byte[] {
+		function : public : native :  Sort(v : Byte[]) ~ Byte[] {
 			size := v->Size();
 			if(size <= 1) {
 				return v;
-			};			
+			};
 			array := Byte->New[size];
 			Runtime->Copy(array, 0, v, 0, size);
-			Sort(array, 0, size - 1);
-			
+			ArraySort->Sort(array);
+
 			return array;
 		}
 		
-		function : native : Sort(array : Byte[], low : Int, high : Int) ~ Nil {
-			i := low; j := high;
-			pivot := array[low + (high - low) / 2];
-
-			while(i <= j) {
-				while(array[i] < pivot) {
-					i+=1;
-				};
-
-				while(array[j] > pivot) {
-					j-=1;
-				};
-
-				if(i <= j) {
-					temp := array[i];
-					array[i] := array[j];
-					array[j] := temp;
-					i+=1; j-=1;
-				};
-			};
-
-			if(low < j) {
-				Sort(array, low, j);
-			};
-
-			if(i < high) {
-				Sort(array, i, high);
-			};
-		}
-
 		function : Size(b : Byte[,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
@@ -990,48 +960,18 @@ bundle System {
 		Prints value with newline
 		@ignore-params
 		~#
-		function : native :  Sort(c : Char[]) ~ Char[] {
+		function : public : native :  Sort(c : Char[]) ~ Char[] {
 			size := c->Size();
 			if(size <= 1) {
 				return c;
-			};			
+			};
 			array := Char->New[size];
 			Runtime->Copy(array, 0, c, 0, size);
-			Sort(array, 0, size - 1);
-			
+			ArraySort->Sort(array);
+
 			return array;
 		}
 		
-		function : native : Sort(array : Char[], low : Int, high : Int) ~ Nil {
-			i := low; j := high;
-			pivot := array[low + (high - low) / 2];
-
-			while(i <= j) {
-				while(array[i] < pivot) {
-					i+=1;
-				};
-	
-				while(array[j] > pivot) {
-					j-=1;
-				};
-
-				if(i <= j) {
-					temp := array[i];
-					array[i] := array[j];
-					array[j] := temp;
-					i+=1; j-=1;
-				};
-			};
-	
-			if(low < j) {
-				Sort(array, low, j);
-			};
-
-			if(i < high) {
-				Sort(array, i, high);
-			};
-		}
-
 		function : Print(c : Char[]) ~ Nil {
 			STD_OUT_STRING;
 		}
@@ -1379,7 +1319,7 @@ bundle System {
 	n := Int->Random(100);         # random 0–99
 	abs := Int->Abs(-42);          # 42
 	mx  := Int->Max(10, 20);       # 20
-	Int->Sort(v);                  # sort int array in-place
+	sorted := Int->Sort(v);        # sorted copy; ArraySort->Sort(v) sorts in place
 	```
 	~#
 	class $Int from Number {
@@ -1893,46 +1833,16 @@ bundle System {
 			return out;
 		}
 
-		function : native :  Sort(v : Int[]) ~ Int[] {
+		function : public : native :  Sort(v : Int[]) ~ Int[] {
 			size := v->Size();
 			if(size <= 1) {
 				return v;
-			};			
+			};
 			array := Int->New[size];
 			Runtime->Copy(array, 0, v, 0, size);
-			Sort(array, 0, size - 1);
-			
+			ArraySort->Sort(array);
+
 			return array;
-		}
-		
-		function : native : Sort(array : Int[], low : Int, high : Int) ~ Nil {
-			i := low; j := high;
-			pivot := array[low + (high - low) / 2];
-
-			while(i <= j) {
-				while(array[i] < pivot) {
-					i+=1;
-				};
-	
-				while(array[j] > pivot) {
-					j-=1;
-				};
-
-				if(i <= j) {
-					temp := array[i];
-					array[i] := array[j];
-					array[j] := temp;
-					i+=1; j-=1;
-				};
-			};
-	
-			if(low < j) {
-				Sort(array, low, j);
-			};
-
-			if(i < high) {
-				Sort(array, i, high);
-			};
 		}
 		
 		#~
@@ -2877,48 +2787,19 @@ bundle System {
 			return buffer;
 		}
 		
-		function : native :  Sort(v : Float[]) ~ Float[] {
+		function : public : native :  Sort(v : Float[]) ~ Float[] {
 			size := v->Size();
 			if(size <= 1) {
 				return v;
-			};			
+			};
 			array := Float->New[size];
 			Runtime->Copy(array, 0, v, 0, size);
-			Sort(array, 0, size - 1);
-			
+			ArraySort->Sort(array);
+
 			return array;
 		}
 		
-		function : native : Sort(array : Float[], low : Int, high : Int) ~ Nil {
-			i := low; j := high;
-			pivot := array[low + (high - low) / 2];
-
-			while(i <= j) {
-				while(array[i] < pivot) {
-					i+=1;
-				};
-	
-				while(array[j] > pivot) {
-					j-=1;
-				};
-
-				if(i <= j) {
-					temp := array[i];
-					array[i] := array[j];
-					array[j] := temp;
-					i+=1; j-=1;
-				};
-			};
-	
-			if(low < j) {
-				Sort(array, low, j);
-			};
-
-			if(i < high) {
-				Sort(array, i, high);
-			};
 		}
-	}
 
 	#~
 	Float range used primarily for looping
@@ -3103,6 +2984,369 @@ bundle System {
 			LOAD_MULTI_ARY_SIZE;
 		}
 	}
+
+	#~
+	Sorts primitive arrays in place
+
+	'Int->Sort(v)' and its Byte, Char and Float counterparts return a sorted copy;
+	these sort the array they are handed. Both share this implementation.
+	```
+	a := [5, 3, 1, 4];
+	ArraySort->Sort(a);
+	a[0]->PrintLine();  # 1
+	```
+	~#
+	class ArraySort {
+
+		#~
+		Sorts a Byte array in place
+		@param array array to sort
+		~#
+		function : public : native : Sort(array : Byte[]) ~ Nil {
+			size := array->Size();
+			if(size > 1) {
+				QuickSort(array, 0, size - 1);
+			};
+		}
+
+		#~
+		Sorts part of a Byte array in place
+		@param array array to sort
+		@param low first index to sort
+		@param high last index to sort
+		~#
+		function : public : native : Sort(array : Byte[], low : Int, high : Int) ~ Nil {
+			size := array->Size();
+			if(low < 0 | high >= size | low >= high) {
+				return;
+			};
+			QuickSort(array, low, high);
+		}
+
+		function : native : QuickSort(array : Byte[], low : Int, high : Int) ~ Nil {
+			lo := low; hi := high;
+
+			while(lo < hi) {
+				# a short range costs less to insert than to partition
+				if(hi - lo < 16) {
+					InsertionSort(array, lo, hi);
+					return;
+				};
+
+				i := lo; j := hi;
+				pivot := array[lo + (hi - lo) / 2];
+				while(i <= j) {
+					while(array[i] < pivot) {
+						i += 1;
+					};
+
+					while(array[j] > pivot) {
+						j -= 1;
+					};
+
+					if(i <= j) {
+						temp := array[i];
+						array[i] := array[j];
+						array[j] := temp;
+						i += 1; j -= 1;
+					};
+				};
+
+				# Recurse into the smaller side and loop on the larger, which bounds the
+				# depth at log2(size). Recursing into both -- what this did before --
+				# reaches depth size-1 on input that makes the middle element the
+				# smallest of every range, and the VM's call stack is CALL_STACK_SIZE
+				# frames: 300 such elements ended the process with "call stack bounds
+				# have been exceeded".
+				if(j - lo < hi - i) {
+					if(lo < j) {
+						QuickSort(array, lo, j);
+					};
+					lo := i;
+				}
+				else {
+					if(i < hi) {
+						QuickSort(array, i, hi);
+					};
+					hi := j;
+				};
+			};
+		}
+
+		function : native : InsertionSort(array : Byte[], low : Int, high : Int) ~ Nil {
+			for(x := low + 1; x <= high; x += 1;) {
+				value := array[x];
+				y := x - 1;
+				while(y >= low & array[y] > value) {
+					array[y + 1] := array[y];
+					y -= 1;
+				};
+				array[y + 1] := value;
+			};
+		}
+
+		#~
+		Sorts a Char array in place
+		@param array array to sort
+		~#
+		function : public : native : Sort(array : Char[]) ~ Nil {
+			size := array->Size();
+			if(size > 1) {
+				QuickSort(array, 0, size - 1);
+			};
+		}
+
+		#~
+		Sorts part of a Char array in place
+		@param array array to sort
+		@param low first index to sort
+		@param high last index to sort
+		~#
+		function : public : native : Sort(array : Char[], low : Int, high : Int) ~ Nil {
+			size := array->Size();
+			if(low < 0 | high >= size | low >= high) {
+				return;
+			};
+			QuickSort(array, low, high);
+		}
+
+		function : native : QuickSort(array : Char[], low : Int, high : Int) ~ Nil {
+			lo := low; hi := high;
+
+			while(lo < hi) {
+				# a short range costs less to insert than to partition
+				if(hi - lo < 16) {
+					InsertionSort(array, lo, hi);
+					return;
+				};
+
+				i := lo; j := hi;
+				pivot := array[lo + (hi - lo) / 2];
+				while(i <= j) {
+					while(array[i] < pivot) {
+						i += 1;
+					};
+
+					while(array[j] > pivot) {
+						j -= 1;
+					};
+
+					if(i <= j) {
+						temp := array[i];
+						array[i] := array[j];
+						array[j] := temp;
+						i += 1; j -= 1;
+					};
+				};
+
+				# Recurse into the smaller side and loop on the larger, which bounds the
+				# depth at log2(size). Recursing into both -- what this did before --
+				# reaches depth size-1 on input that makes the middle element the
+				# smallest of every range, and the VM's call stack is CALL_STACK_SIZE
+				# frames: 300 such elements ended the process with "call stack bounds
+				# have been exceeded".
+				if(j - lo < hi - i) {
+					if(lo < j) {
+						QuickSort(array, lo, j);
+					};
+					lo := i;
+				}
+				else {
+					if(i < hi) {
+						QuickSort(array, i, hi);
+					};
+					hi := j;
+				};
+			};
+		}
+
+		function : native : InsertionSort(array : Char[], low : Int, high : Int) ~ Nil {
+			for(x := low + 1; x <= high; x += 1;) {
+				value := array[x];
+				y := x - 1;
+				while(y >= low & array[y] > value) {
+					array[y + 1] := array[y];
+					y -= 1;
+				};
+				array[y + 1] := value;
+			};
+		}
+
+		#~
+		Sorts a Int array in place
+		@param array array to sort
+		~#
+		function : public : native : Sort(array : Int[]) ~ Nil {
+			size := array->Size();
+			if(size > 1) {
+				QuickSort(array, 0, size - 1);
+			};
+		}
+
+		#~
+		Sorts part of a Int array in place
+		@param array array to sort
+		@param low first index to sort
+		@param high last index to sort
+		~#
+		function : public : native : Sort(array : Int[], low : Int, high : Int) ~ Nil {
+			size := array->Size();
+			if(low < 0 | high >= size | low >= high) {
+				return;
+			};
+			QuickSort(array, low, high);
+		}
+
+		function : native : QuickSort(array : Int[], low : Int, high : Int) ~ Nil {
+			lo := low; hi := high;
+
+			while(lo < hi) {
+				# a short range costs less to insert than to partition
+				if(hi - lo < 16) {
+					InsertionSort(array, lo, hi);
+					return;
+				};
+
+				i := lo; j := hi;
+				pivot := array[lo + (hi - lo) / 2];
+				while(i <= j) {
+					while(array[i] < pivot) {
+						i += 1;
+					};
+
+					while(array[j] > pivot) {
+						j -= 1;
+					};
+
+					if(i <= j) {
+						temp := array[i];
+						array[i] := array[j];
+						array[j] := temp;
+						i += 1; j -= 1;
+					};
+				};
+
+				# Recurse into the smaller side and loop on the larger, which bounds the
+				# depth at log2(size). Recursing into both -- what this did before --
+				# reaches depth size-1 on input that makes the middle element the
+				# smallest of every range, and the VM's call stack is CALL_STACK_SIZE
+				# frames: 300 such elements ended the process with "call stack bounds
+				# have been exceeded".
+				if(j - lo < hi - i) {
+					if(lo < j) {
+						QuickSort(array, lo, j);
+					};
+					lo := i;
+				}
+				else {
+					if(i < hi) {
+						QuickSort(array, i, hi);
+					};
+					hi := j;
+				};
+			};
+		}
+
+		function : native : InsertionSort(array : Int[], low : Int, high : Int) ~ Nil {
+			for(x := low + 1; x <= high; x += 1;) {
+				value := array[x];
+				y := x - 1;
+				while(y >= low & array[y] > value) {
+					array[y + 1] := array[y];
+					y -= 1;
+				};
+				array[y + 1] := value;
+			};
+		}
+
+		#~
+		Sorts a Float array in place
+		@param array array to sort
+		~#
+		function : public : native : Sort(array : Float[]) ~ Nil {
+			size := array->Size();
+			if(size > 1) {
+				QuickSort(array, 0, size - 1);
+			};
+		}
+
+		#~
+		Sorts part of a Float array in place
+		@param array array to sort
+		@param low first index to sort
+		@param high last index to sort
+		~#
+		function : public : native : Sort(array : Float[], low : Int, high : Int) ~ Nil {
+			size := array->Size();
+			if(low < 0 | high >= size | low >= high) {
+				return;
+			};
+			QuickSort(array, low, high);
+		}
+
+		function : native : QuickSort(array : Float[], low : Int, high : Int) ~ Nil {
+			lo := low; hi := high;
+
+			while(lo < hi) {
+				# a short range costs less to insert than to partition
+				if(hi - lo < 16) {
+					InsertionSort(array, lo, hi);
+					return;
+				};
+
+				i := lo; j := hi;
+				pivot := array[lo + (hi - lo) / 2];
+				while(i <= j) {
+					while(array[i] < pivot) {
+						i += 1;
+					};
+
+					while(array[j] > pivot) {
+						j -= 1;
+					};
+
+					if(i <= j) {
+						temp := array[i];
+						array[i] := array[j];
+						array[j] := temp;
+						i += 1; j -= 1;
+					};
+				};
+
+				# Recurse into the smaller side and loop on the larger, which bounds the
+				# depth at log2(size). Recursing into both -- what this did before --
+				# reaches depth size-1 on input that makes the middle element the
+				# smallest of every range, and the VM's call stack is CALL_STACK_SIZE
+				# frames: 300 such elements ended the process with "call stack bounds
+				# have been exceeded".
+				if(j - lo < hi - i) {
+					if(lo < j) {
+						QuickSort(array, lo, j);
+					};
+					lo := i;
+				}
+				else {
+					if(i < hi) {
+						QuickSort(array, i, hi);
+					};
+					hi := j;
+				};
+			};
+		}
+
+		function : native : InsertionSort(array : Float[], low : Int, high : Int) ~ Nil {
+			for(x := low + 1; x <= high; x += 1;) {
+				value := array[x];
+				y := x - 1;
+				while(y >= low & array[y] > value) {
+					array[y + 1] := array[y];
+					y -= 1;
+				};
+				array[y + 1] := value;
+			};
+		}
+	}
+
 
 	#~
 	Interface for primitive types
