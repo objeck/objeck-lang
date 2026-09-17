@@ -284,16 +284,16 @@ namespace Runtime {
       buffer = (unsigned char*)VirtualAlloc(nullptr, available, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
       if(!buffer) {
         std::wcerr << L"Unable to allocate JIT memory!" << std::endl;
-        exit(1);
+        VmExit(1);
       }
 #else
       if(posix_memalign((void**)&buffer, PAGE_SIZE, available)) {
         std::wcerr << L"Unable to allocate JIT memory!" << std::endl;
-        exit(1);
+        VmExit(1);
       }
       if(mprotect(buffer, available, PROT_READ | PROT_WRITE | PROT_EXEC) < 0) {
         std::wcerr << L"Unable to mprotect" << std::endl;
-        exit(1);
+        VmExit(1);
       }
 #endif    
     }
@@ -549,7 +549,7 @@ namespace Runtime {
         code = (unsigned char*)realloc(code, code_buf_max * 2);
         if(!code) {
           std::wcerr << L"Unable to allocate memory!" << std::endl;
-          exit(1);
+          VmExit(1);
         }
 
         code_buf_max *= 2;
@@ -655,7 +655,7 @@ namespace Runtime {
 
       default:
         std::wcerr << L"internal error" << std::endl;
-        exit(1);
+        VmExit(1);
         break;
       }
 

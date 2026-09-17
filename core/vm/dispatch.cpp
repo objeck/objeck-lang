@@ -769,7 +769,7 @@ static DispatchResult Handle_TRAP(DispatchContext& ctx) {
     *ctx.halt = true;
     return DispatchResult::HALT;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   return DispatchResult::CONTINUE;
@@ -785,7 +785,7 @@ static DispatchResult Handle_TRAP_RTRN(DispatchContext& ctx) {
     *ctx.halt = true;
     return DispatchResult::HALT;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   return DispatchResult::CONTINUE;

@@ -193,7 +193,7 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
         halt = true;
         return;
 #else
-        exit(1);
+        VmExit(1);
 #endif
       }
       ReleaseStackFrame(*stack_frame);
@@ -531,7 +531,7 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   size_t mem = op_stack[(*stack_pos) - 2];
@@ -569,7 +569,7 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   cls_inst_mem[instr->GetOperand()] = TopInt(op_stack, stack_pos);
@@ -677,7 +677,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 }
@@ -712,7 +712,7 @@ void StackInterpreter::Str2Float(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 }
@@ -893,7 +893,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   op_stack[(*stack_pos) - 1] = cls_inst_mem[instr->GetOperand()];
@@ -1001,7 +1001,7 @@ void StackInterpreter::DivInt(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   // MIN / -1 wraps to MIN instead of faulting (shared/int_ops.h)
@@ -1039,7 +1039,7 @@ void StackInterpreter::DivFloat(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]) = left_double / right_double;
@@ -1066,7 +1066,7 @@ void StackInterpreter::ModInt(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   // MIN % -1 is 0 instead of faulting (shared/int_ops.h)
@@ -1280,7 +1280,7 @@ void StackInterpreter::LoadArySize(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   PushInt(array[2], op_stack, stack_pos);
@@ -1307,7 +1307,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -1350,7 +1350,7 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -1393,7 +1393,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -1440,7 +1440,7 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, size_t*& stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -1512,7 +1512,7 @@ void StackInterpreter::ObjTypeOf(StackInstr* instr, size_t* &op_stack, size_t* &
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 }
@@ -1533,7 +1533,7 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, size_t*
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   PushInt(result, op_stack, stack_pos);
@@ -1555,7 +1555,7 @@ void StackInterpreter::AsyncMthdCall([[maybe_unused]] size_t* &op_stack, size_t*
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -1595,7 +1595,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -1616,7 +1616,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 #else
@@ -1633,7 +1633,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 #endif
@@ -1656,7 +1656,7 @@ void StackInterpreter::ThreadMutex([[maybe_unused]] size_t* &op_stack, size_t* &
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 #ifdef _WIN32
@@ -1682,7 +1682,7 @@ void StackInterpreter::CriticalStart(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif        
   }
 #ifdef _WIN32
@@ -1708,7 +1708,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, size_t* &stack_pos)
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 #ifdef _WIN32
@@ -1744,7 +1744,7 @@ void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_sta
       halt = true;
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     PushInt(cls_inst_mem[instr->GetOperand() + 1], op_stack, stack_pos);
@@ -1778,7 +1778,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, si
       halt = true;
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     value = *((FLOAT_VALUE*)(&cls_inst_mem[instr->GetOperand()]));
@@ -1812,7 +1812,7 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
       halt = true;
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     cls_inst_mem[instr->GetOperand()] = PopInt(op_stack, stack_pos);
@@ -1851,7 +1851,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, s
       halt = true;
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
@@ -1885,7 +1885,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, si
       halt = true;
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     FLOAT_VALUE value = TopFloat(op_stack, stack_pos);
@@ -1940,7 +1940,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, siz
     // overflow-safe accumulation; AllocateArray applies the final element-size guard
     if(value != 0 && size > (~(size_t)0) / value) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
     size *= value;
     indices[dim++] = value;
@@ -1950,7 +1950,7 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, siz
   // truncation would under-allocate while mem[0] below stays huge → OOB).
   if(size > (~(size_t)0) - (size_t)dim - 2) {
     std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
   size_t* mem = is_float ?
     (size_t*)MemoryManager::AllocateArray(size + (size_t)dim + 2, FLOAT_TYPE, op_stack, *stack_pos) :
@@ -1979,7 +1979,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
     const size_t value = PopInt(op_stack, stack_pos);
     if(value != 0 && size > (~(size_t)0) / value) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
     size *= value;
     indices[dim++] = value;
@@ -1991,7 +1991,7 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
   // would under-allocate while mem[0] stays huge → OOB).
   if(size == 0 || size > (~(size_t)0) - (static_cast<size_t>(dim) + 2) * sizeof(size_t)) {
     std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
   size_t* mem = MemoryManager::AllocateArray(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
@@ -2017,7 +2017,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
     const size_t value = PopInt(op_stack, stack_pos);
     if(value != 0 && size > (~(size_t)0) / value) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
-      exit(1);
+      VmExit(1);
     }
     size *= value;
     indices[dim++] = value;
@@ -2029,7 +2029,7 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
   // would under-allocate while mem[0] stays huge → OOB).
   if(size == 0 || size > (~(size_t)0) - (static_cast<size_t>(dim) + 2) * sizeof(size_t)) {
     std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
-    exit(1);
+    VmExit(1);
   }
   size_t* mem = MemoryManager::AllocateArray(size + ((static_cast<size_t>(dim) + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos);
   mem[0] = size - 1;
@@ -2093,7 +2093,7 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   HANDLE vm_thread = (HANDLE)_beginthreadex(nullptr, 0, AsyncMethodCall, holder, 0, nullptr);
   if(!vm_thread) {
     std::wcerr << L">>> Internal error: Unable to create garbage collection thread! <<<" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 #else
   pthread_attr_t attrs;
@@ -2104,14 +2104,14 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   pthread_t vm_thread;
   if(pthread_create(&vm_thread, &attrs, AsyncMethodCall, (void*)holder)) {
     std::wcerr << L">>> Internal error: Internal error: Unable to create runtime thread! <<<" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 #endif  
   
   // assign thread ID
   if(!instance) {
     std::wcerr << L">>> Internal error: Unable to create runtime thread! <<<" << std::endl;
-    exit(-1);
+    VmExit(-1);
   }
 
   instance[0] = (size_t)vm_thread;
@@ -2317,7 +2317,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
 
   if(mthd_id < 0 || cls_id < 0) {
     std::wcerr << L"Internal VM error." << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   // pop instance
@@ -2377,7 +2377,7 @@ StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMet
     halt = true;
     return nullptr;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -2498,7 +2498,7 @@ void StackInterpreter::ProcessJitOnlyDynamicMethodCall([[maybe_unused]] StackIns
 
   if(mthd_id < 0 || cls_id < 0) {
     std::wcerr << L"Internal VM error." << std::endl;
-    exit(1);
+    VmExit(1);
   }
 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -2562,7 +2562,7 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -2612,7 +2612,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   const INT64_VALUE size = (long)array[0];
@@ -2647,7 +2647,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   
@@ -2684,7 +2684,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   const INT64_VALUE size = (INT64_VALUE)array[0];
@@ -2719,7 +2719,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   const INT64_VALUE size = (INT64_VALUE)array[0];
@@ -2755,7 +2755,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   const INT64_VALUE size = (INT64_VALUE)array[0];
@@ -2790,7 +2790,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2825,7 +2825,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2861,7 +2861,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
     halt = true;
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   const long size = (long)array[0];
@@ -2890,7 +2890,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   if(!instance) {
     std::wcerr << L">>> Unable to load shared library! <<<" << std::endl;
 #ifdef _NO_HALT
-    exit(1);
+    VmExit(1);
 #else
     return;
 #endif
@@ -2902,7 +2902,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   
@@ -2941,7 +2941,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -2990,7 +2990,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   instance[1] = (size_t)dll_handle;
@@ -3003,7 +3003,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -3024,7 +3024,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   instance[1] = (size_t)dll_handle;
@@ -3037,7 +3037,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
   // call function
@@ -3072,7 +3072,7 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     (*ext_unload)();
@@ -3093,7 +3093,7 @@ void StackInterpreter::SharedLibraryUnload([[maybe_unused]] StackInstr* instr)
 #ifdef _NO_HALT
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     // call function
@@ -3188,7 +3188,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
 #ifdef _NO_HALT
     return;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
@@ -3213,7 +3213,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
 #ifdef _NO_HALT
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     // call function
@@ -3239,7 +3239,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
 #ifdef _NO_HALT
       return;
 #else
-      exit(1);
+      VmExit(1);
 #endif
     }
     // call function
@@ -3378,7 +3378,7 @@ INT64_VALUE Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* arr
 #ifdef _NO_HALT
     halt = true;
 #else
-    exit(1);
+    VmExit(1);
 #endif
   }
 
