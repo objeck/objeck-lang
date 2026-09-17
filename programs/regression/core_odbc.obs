@@ -1,7 +1,8 @@
 #~
 # Core ODBC Value Classes Test
-# Date, Timestamp and ColumnInfo are pure Objeck: none of the three declares a
-# native method, so this test needs no database and never loads libobjk_odbc.
+# Date, Timestamp and ColumnInfo are pure Objeck. Only Connection,
+# ParameterStatement and ResultSet call into libobjk_odbc, through DllProxy, so
+# this test needs no database and never loads the library.
 # It is not coverage of the binding. odbc_sqlite_test is the only test that calls
 # into libobjk_odbc, and it skips wherever the objeck_sqlite_test data source is
 # missing -- every CI leg but the two Linux ones. So a green run here, on macOS or
