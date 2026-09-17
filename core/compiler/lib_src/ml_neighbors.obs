@@ -90,33 +90,48 @@ nearest := tree->Nearest(3, [57.0, 170.0]);   # row indexes, closest first
 			return node;
 		}
 
-		# In-place quicksort of indexes[lo..hi] by the dim-th coordinate.
+		# In-place quicksort of indexes[lo..hi] by the dim-th coordinate. It sorts
+		# indexes by a key, so it cannot use System.ArraySort, but it bounds its
+		# depth the same way: recurse into the smaller side, loop on the larger.
+		# Recursing into both reaches depth size-1 on data that makes the middle
+		# element the smallest of every range, which exhausts the VM's call stack
+		# (#887).
 		method : SortByDim(indexes : Int[], lo : Int, hi : Int, dim : Int) ~ Nil {
-			if(lo >= hi) {
-				return;
-			};
+			low := lo; high := hi;
 
-			pivot := @data[indexes[lo + (hi - lo) / 2], dim];
-			i := lo;
-			j := hi;
-			while(i <= j) {
-				while(@data[indexes[i], dim] < pivot) {
-					i += 1;
+			while(low < high) {
+				pivot := @data[indexes[low + (high - low) / 2], dim];
+				i := low;
+				j := high;
+				while(i <= j) {
+					while(@data[indexes[i], dim] < pivot) {
+						i += 1;
+					};
+					while(@data[indexes[j], dim] > pivot) {
+						j -= 1;
+					};
+					if(i <= j) {
+						tmp := indexes[i];
+						indexes[i] := indexes[j];
+						indexes[j] := tmp;
+						i += 1;
+						j -= 1;
+					};
 				};
-				while(@data[indexes[j], dim] > pivot) {
-					j -= 1;
-				};
-				if(i <= j) {
-					tmp := indexes[i];
-					indexes[i] := indexes[j];
-					indexes[j] := tmp;
-					i += 1;
-					j -= 1;
+
+				if(j - low < high - i) {
+					if(low < j) {
+						SortByDim(indexes, low, j, dim);
+					};
+					low := i;
+				}
+				else {
+					if(i < high) {
+						SortByDim(indexes, i, high, dim);
+					};
+					high := j;
 				};
 			};
-
-			SortByDim(indexes, lo, j, dim);
-			SortByDim(indexes, i, hi, dim);
 		}
 
 		#~
