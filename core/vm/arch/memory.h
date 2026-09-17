@@ -65,9 +65,11 @@
 // Bit 0:    Mark bit (existing)
 // Bit 1:    Old generation flag (0=young, 1=old)
 // Bit 2:    Remembered-set flag (0=not in rset, 1=in rset)
+// Bit 3:    Closure captures traced this collection (closure capture blocks only)
 #define GC_MARK_BIT    0x1ULL
 #define GC_OLD_BIT     0x2ULL
 #define GC_RSET_BIT    0x4ULL
+#define GC_TRACED_BIT  0x8ULL
 
 // Young generation bump allocator sizing
 #define YOUNG_REGION_SIZE  (128 * 1024 * 1024)  // 128MB young region
@@ -239,6 +241,14 @@ class MemoryManager {
 
   // if return true, trace memory otherwise do not
   static inline bool MarkMemory(size_t* mem);
+
+  // Marks a closure capture block reached through a typed function reference and
+  // returns true exactly once per collection, for the caller that must trace its
+  // captures (#880, #881). The mark bit cannot decide that: a conservative scan
+  // (CheckObject on a stale JIT temp or operand-stack word) marks the block without
+  // knowing its declarations, and a typed walk that found the bit already set used
+  // to skip the captures, so a capture reachable only through the block was freed.
+  static inline bool MarkClosureCaptures(size_t* mem);
 
   // Generational GC helpers
   static inline bool IsYoung(size_t* mem) {
