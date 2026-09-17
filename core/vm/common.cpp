@@ -3005,8 +3005,11 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
   // allocate 'size' array and copy metadata
   long size = (long)array[1];
   long dim = 1;
+  // 'array' was popped off the op_stack above, so nothing roots it any more, and it
+  // is dereferenced again below. Allocating with collect enabled would make this a
+  // collection point while that raw pointer is live: see AllocateObject in memory.h.
   size_t* mem = MemoryManager::AllocateArray(size + dim + 2, instructions::INT_TYPE,
-                                             op_stack, *stack_pos);
+                                             op_stack, *stack_pos, false);
   int i, j;
   for(i = 0, j = static_cast<int>(size + 2); i < size; i++) {
     mem[i + 3] = array[--j];
@@ -4647,7 +4650,12 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     char client_address[SMALL_BUFFER_MAX] = {0};
     int client_port;
     // accept() blocks indefinitely; park so a stop-the-world collection elsewhere
-    // can proceed (only C locals are touched while parked)
+    // can proceed (only C locals are touched while parked). 'server' is read from
+    // instance[0] ABOVE for that reason: while parked, a collection can promote this
+    // object and leave 'instance' pointing into the recycled nursery (#874), so it is
+    // deliberately never dereferenced after this point -- the debug line below prints
+    // the pointer only. Anything added here that reads instance[...] must re-root it
+    // on the op_stack first and re-read it after, as SockTcpConnect does.
     MemoryManager::BeginBlocking();
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
     MemoryManager::EndBlocking();

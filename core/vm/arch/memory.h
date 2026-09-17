@@ -631,6 +631,15 @@ class MemoryManager {
   }
 
   static size_t* AllocateObject(const long obj_id, size_t* op_stack, size_t stack_pos, bool collect = true, bool force_old = false);
+  // COLLECTION POINTS AND RAW POINTERS. Both allocators call SafePoint() when
+  // 'collect' is true, so each is a point where another thread's collection can run
+  // to completion: young objects move to the old generation and the nursery is reset
+  // under them. A GC pointer held only in a C++ local is not a root and is not fixed
+  // up, so it is stale afterwards -- it may name recycled nursery memory that a
+  // different object now occupies (#874 read a thread handle out of one). While a
+  // raw pointer is live in a C++ local, pass collect=false (nearly every trap in
+  // common.cpp does), or re-root the pointer on the op_stack across the call and
+  // re-read it afterwards (SockTcpConnect, SockTcpInByteAry).
   static size_t* AllocateArray(const size_t size, const MemoryType type, size_t* op_stack, size_t stack_pos, bool collect = true);
 
   // Generational GC write barrier: lock-free dirty list append. Mutator
