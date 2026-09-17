@@ -1,0 +1,269 @@
+#~
+JIT: calling a capturing lambda while its creating frame is still on the stack.
+
+JitAmd64::ProcessStore and JitArm64::ProcessStore chose the two-word
+STOR_FUNC_VAR store from the FIRST word's working-stack shape and assumed the
+second word had the same one. A closure built in the method that calls it
+reaches STOR_FUNC_VAR as LOAD_INT_VAR (the closure memory: a frame slot or a
+register) under LOAD_INT_LIT (the packed method id: an immediate), so the
+immediate case wrote the closure slot's frame OFFSET (e.g. -120 =
+0xffffffffffffff88) as the closure pointer. The lambda's first call read its
+captures through that address: obr exited 0xC0000005 with no output under
+--jit=1, with no garbage collection involved. A closure built in a helper that
+RETURNS it before the call was unaffected -- both words arrived in the same
+shape -- which is why closure_array_param_capture.obs was structured that way.
+
+Covers the three call shapes that crashed on v2026.9.4 -- create and call in
+one frame, a creator that returns the call's result, and a creator that hands
+the closure to another function -- for Int, Float, String, object and array
+captures, plus a discarded result and repeated calls. GcBetween() runs a minor
+GC between creating each closure and calling it, and exits if the churn did not
+collect.
+
+Every helper runs past the default JIT threshold of 10 calls, so the test fails
+without flags as well as in the suite's threshold-1 pass.
+
+Churn() is sized against the 128MB default nursery: ~150MB of short-lived
+objects buys at least one minor GC per GcBetween() call. --nursery/
+OBJECK_NURSERY accepts 64k to 128m, so every other setting is SMALLER and
+collects more often -- verified passing at 256k, 1m, 16m, 32m, 64m and 128m
+under --jit=off and --jit=1. Only a future default above ~150MB would leave the
+churn short, and GcBetween() would then exit 1 with "churn did not run a minor
+GC": that exit means the fixture could not establish its own precondition, not
+that the JIT or the collector is broken. Resize Churn() if that day comes.
+~#
+class JitClosureCallInCreatingFrame {
+	function : Main(args : String[]) ~ Nil {
+		bad := 0;
+
+		for(i := 0; i < 64; i += 1;) {
+			bad += SameFrame(i);
+			bad += CreatorReturnsCallResult(i);
+			bad += PassedToCallee(i);
+			bad += DiscardedAndRepeated(i);
+		};
+
+		for(i := 0; i < 12; i += 1;) {
+			bad += GcBetween(i);
+		};
+
+		if(bad = 0) {
+			"PASS: capturing lambda called from its creating frame"->PrintLine();
+		}
+		else {
+			"FAIL: capturing lambda called from its creating frame ({$bad} bad)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# the crashing shape: build the closure and call it in the same frame
+	function : SameFrame(i : Int) ~ Int {
+		bad := 0;
+
+		n := i + 1;
+		zn := \() ~ Int : () => n;
+		if(zn() <> i + 1) { "FAIL: same-frame Int capture"->PrintLine(); bad += 1; };
+
+		f := i + 0.5;
+		zf := \() ~ Float : () => f;
+		if(zf() <> i + 0.5) { "FAIL: same-frame Float capture"->PrintLine(); bad += 1; };
+
+		s := "v{$i}";
+		zs := \() ~ String : () => s;
+		if(zs()->Equals("v{$i}") = false) { "FAIL: same-frame String capture"->PrintLine(); bad += 1; };
+
+		box := Box->New(i * 3);
+		zb := \() ~ Box : () => box;
+		called := zb();
+		if(called = Nil | called->GetV() <> i * 3) { "FAIL: same-frame object capture"->PrintLine(); bad += 1; };
+
+		ints := Int->New[4];
+		ints[3] := i + 7;
+		ze := \() ~ Int : () => ints[3];
+		zc := \() ~ Int : () => ints->Size();
+		if(ze() <> i + 7) { "FAIL: same-frame array element capture"->PrintLine(); bad += 1; };
+		if(zc() <> 4) { "FAIL: same-frame array Size() capture"->PrintLine(); bad += 1; };
+
+		return bad;
+	}
+
+	# the creator returns the call's result, so its frame is live at the call
+	function : CreatorReturnsCallResult(i : Int) ~ Int {
+		bad := 0;
+		if(IntInCreator(i + 2) <> i + 2) { "FAIL: creator-returns Int capture"->PrintLine(); bad += 1; };
+		if(FloatInCreator(i + 0.25) <> i + 0.25) { "FAIL: creator-returns Float capture"->PrintLine(); bad += 1; };
+		if(StringInCreator("w{$i}")->Equals("w{$i}") = false) { "FAIL: creator-returns String capture"->PrintLine(); bad += 1; };
+		if(BoxInCreator(Box->New(i * 5))->GetV() <> i * 5) { "FAIL: creator-returns object capture"->PrintLine(); bad += 1; };
+		if(ArrayInCreator(i) <> i + 9) { "FAIL: creator-returns array capture"->PrintLine(); bad += 1; };
+		return bad;
+	}
+
+	function : IntInCreator(n : Int) ~ Int {
+		z := \() ~ Int : () => n;
+		return z();
+	}
+
+	function : FloatInCreator(n : Float) ~ Float {
+		z := \() ~ Float : () => n;
+		return z();
+	}
+
+	function : StringInCreator(n : String) ~ String {
+		z := \() ~ String : () => n;
+		return z();
+	}
+
+	function : BoxInCreator(n : Box) ~ Box {
+		z := \() ~ Box : () => n;
+		return z();
+	}
+
+	function : ArrayInCreator(i : Int) ~ Int {
+		a := Int->New[5];
+		a[4] := i + 9;
+		z := \() ~ Int : () => a[4];
+		return z();
+	}
+
+	# the creator hands the closure to another function, which calls it
+	function : PassedToCallee(i : Int) ~ Int {
+		bad := 0;
+
+		n := i + 11;
+		zn := \() ~ Int : () => n;
+		if(CallInt(zn) <> i + 11) { "FAIL: passed-to-callee Int capture"->PrintLine(); bad += 1; };
+
+		f := i + 0.75;
+		zf := \() ~ Float : () => f;
+		if(CallFloat(zf) <> i + 0.75) { "FAIL: passed-to-callee Float capture"->PrintLine(); bad += 1; };
+
+		s := "p{$i}";
+		zs := \() ~ String : () => s;
+		if(CallString(zs)->Equals("p{$i}") = false) { "FAIL: passed-to-callee String capture"->PrintLine(); bad += 1; };
+
+		box := Box->New(i * 13);
+		zb := \() ~ Box : () => box;
+		if(CallBox(zb)->GetV() <> i * 13) { "FAIL: passed-to-callee object capture"->PrintLine(); bad += 1; };
+
+		a := Int->New[6];
+		a[5] := i + 17;
+		za := \() ~ Int : () => a[5];
+		if(CallInt(za) <> i + 17) { "FAIL: passed-to-callee array capture"->PrintLine(); bad += 1; };
+
+		return bad;
+	}
+
+	function : CallInt(f : () ~ Int) ~ Int {
+		return f();
+	}
+
+	function : CallFloat(f : () ~ Float) ~ Float {
+		return f();
+	}
+
+	function : CallString(f : () ~ String) ~ String {
+		return f();
+	}
+
+	function : CallBox(f : () ~ Box) ~ Box {
+		return f();
+	}
+
+	# a call whose result is thrown away, then the same closure called again
+	function : DiscardedAndRepeated(i : Int) ~ Int {
+		bad := 0;
+
+		n := i + 23;
+		z := \() ~ Int : () => n;
+		z();
+		if(z() <> i + 23) { "FAIL: repeated call after discarded result"->PrintLine(); bad += 1; };
+		if(z() <> i + 23) { "FAIL: third call"->PrintLine(); bad += 1; };
+
+		s := "d{$i}";
+		zs := \() ~ String : () => s;
+		zs();
+		if(zs()->Equals("d{$i}") = false) { "FAIL: repeated String call"->PrintLine(); bad += 1; };
+
+		return bad;
+	}
+
+	# a minor GC between creating each closure and calling it, same frame
+	function : GcBetween(i : Int) ~ Int {
+		bad := 0;
+
+		n := i + 31;
+		f := i + 0.125;
+		s := "g{$i}";
+		box := Box->New(i * 19);
+		a := Int->New[7];
+		a[6] := i + 37;
+
+		zn := \() ~ Int : () => n;
+		zf := \() ~ Float : () => f;
+		zs := \() ~ String : () => s;
+		zb := \() ~ Box : () => box;
+		za := \() ~ Int : () => a[6];
+		zc := \() ~ Int : () => a->Size();
+
+		start := Minors();
+		Churn();
+		if(Minors() = start) {
+			"FAIL: churn did not run a minor GC"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		if(zn() <> i + 31) { "FAIL: minor GC then Int capture"->PrintLine(); bad += 1; };
+		if(zf() <> i + 0.125) { "FAIL: minor GC then Float capture"->PrintLine(); bad += 1; };
+		if(zs()->Equals("g{$i}") = false) { "FAIL: minor GC then String capture"->PrintLine(); bad += 1; };
+		called := zb();
+		if(called = Nil | called->GetV() <> i * 19) { "FAIL: minor GC then object capture"->PrintLine(); bad += 1; };
+		if(za() <> i + 37) { "FAIL: minor GC then array element capture"->PrintLine(); bad += 1; };
+		if(zc() <> 7) { "FAIL: minor GC then array Size() capture"->PrintLine(); bad += 1; };
+
+		return bad;
+	}
+
+	function : Minors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.minor")->ToInt();
+	}
+
+	# about 150MB of short-lived objects against the 128MB nursery: at least one minor GC
+	function : Churn() ~ Nil {
+		for(j := 0; j < 520000; j += 1;) {
+			tmp := Blob->New(j);
+			if(tmp->Get() <> j) {
+				"FAIL: churn object corrupted"->PrintLine();
+				Runtime->Exit(1);
+			};
+		};
+	}
+}
+
+class Box {
+	@v : Int;
+	@pad : Box;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : GetV() ~ Int {
+		return @v;
+	}
+}
+
+class Blob {
+	@a0 : Int; @a1 : Int; @a2 : Int; @a3 : Int; @a4 : Int; @a5 : Int; @a6 : Int; @a7 : Int;
+	@b0 : Int; @b1 : Int; @b2 : Int; @b3 : Int; @b4 : Int; @b5 : Int; @b6 : Int; @b7 : Int;
+	@c0 : Int; @c1 : Int; @c2 : Int; @c3 : Int; @c4 : Int; @c5 : Int; @c6 : Int; @c7 : Int;
+	@d0 : Int; @d1 : Int; @d2 : Int; @d3 : Int; @d4 : Int; @d5 : Int; @d6 : Int; @d7 : Int;
+
+	New(v : Int) {
+		@a0 := v;
+		@d7 := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @d7;
+	}
+}

@@ -7,12 +7,17 @@ analyzed its index expressions (the explicitly defined variable path does), so
 'p[i]' left 'i' without a symbol entry or type, and the emitter dereferenced
 it. Literal indexes happened to work because a literal needs no entry.
 
-Covers Int[], Float[], Bool[], Char[], String[] and object arrays captured by a
-lambda and indexed by a lambda-local variable, a lambda parameter, a captured
-Int and an expression; element reads and writes; a 2-D array; and indexing in
-a loop inside the lambda. Every closure is built by a helper that returns it
-(so the creating frame is gone), then a minor GC is forced by allocation churn,
-then it is called.
+Covers Int[], Float[], Byte[], Bool[], Char[], String[] and object arrays
+captured by a lambda and indexed by a lambda-local variable, a lambda parameter,
+a captured Int, an arithmetic expression and 'Size() - 1'; element reads and
+writes; a 2-D array; and indexing in a loop inside the lambda. The captured
+array is a parameter of the enclosing function in one set of helpers and a local
+of it in another -- a captured local is reachable ONLY through the closure's
+capture block once the helper returns, so a minor GC that misses it dangles the
+array itself, not just an element.
+
+Every closure is built by a helper that returns it (so the creating frame is
+gone), then a minor GC is forced by allocation churn, then it is called.
 ~#
 class ClosureArrayVarIndex {
   function : Main(args : String[]) ~ Nil {
@@ -20,6 +25,7 @@ class ClosureArrayVarIndex {
 
     ints := Int->New[5];
     floats := Float->New[5];
+    bytes := Byte->New[5];
     bools := Bool->New[5];
     chars := Char->New[5];
     strs := String->New[5];
@@ -27,6 +33,7 @@ class ClosureArrayVarIndex {
     for(i := 0; i < 5; i += 1;) {
       ints[i] := i * 10;
       floats[i] := i * 1.5;
+      bytes[i] := (i + 1)->As(Byte);
       bools[i] := i % 2 = 0;
       chars[i] := 'a' + i;
       strs[i] := "s{$i}";
@@ -42,6 +49,7 @@ class ClosureArrayVarIndex {
     # lambda-local index
     int_local := IntLocal(ints);
     float_local := FloatLocal(floats);
+    byte_local := ByteLocal(bytes);
     bool_local := BoolLocal(bools);
     char_local := CharLocal(chars);
     str_local := StringLocal(strs);
@@ -49,6 +57,7 @@ class ClosureArrayVarIndex {
     # lambda-parameter index
     int_param := IntParam(ints);
     float_param := FloatParam(floats);
+    byte_param := ByteParam(bytes);
     bool_param := BoolParam(bools);
     char_param := CharParam(chars);
     str_param := StringParam(strs);
@@ -59,6 +68,7 @@ class ClosureArrayVarIndex {
     # writes
     int_write := IntWrite(ints);
     float_write := FloatWrite(floats);
+    byte_write := ByteWrite(bytes);
     bool_write := BoolWrite(bools);
     char_write := CharWrite(chars);
     str_write := StringWrite(strs);
@@ -80,6 +90,7 @@ class ClosureArrayVarIndex {
 
     if(int_local() <> 20) { "FAIL: Int[] local index"->PrintLine(); bad += 1; };
     if(float_local() <> 3.0) { "FAIL: Float[] local index"->PrintLine(); bad += 1; };
+    if(byte_local() <> 3) { "FAIL: Byte[] local index"->PrintLine(); bad += 1; };
     if(bool_local() = false) { "FAIL: Bool[] local index"->PrintLine(); bad += 1; };
     if(char_local() <> 'd') { "FAIL: Char[] local index"->PrintLine(); bad += 1; };
     if(str_local()->Equals("s4") = false) { "FAIL: String[] local index"->PrintLine(); bad += 1; };
@@ -87,6 +98,7 @@ class ClosureArrayVarIndex {
 
     if(int_param(4) <> 40) { "FAIL: Int[] parameter index"->PrintLine(); bad += 1; };
     if(float_param(2) <> 3.0) { "FAIL: Float[] parameter index"->PrintLine(); bad += 1; };
+    if(byte_param(3) <> 4) { "FAIL: Byte[] parameter index"->PrintLine(); bad += 1; };
     if(bool_param(3) = true) { "FAIL: Bool[] parameter index"->PrintLine(); bad += 1; };
     if(char_param(1) <> 'b') { "FAIL: Char[] parameter index"->PrintLine(); bad += 1; };
     if(str_param(0)->Equals("s0") = false) { "FAIL: String[] parameter index"->PrintLine(); bad += 1; };
@@ -97,6 +109,7 @@ class ClosureArrayVarIndex {
 
     if(int_write(1, 77) <> 77 | ints[1] <> 77) { "FAIL: Int[] write"->PrintLine(); bad += 1; };
     if(float_write(1, 7.5) <> 7.5 | floats[1] <> 7.5) { "FAIL: Float[] write"->PrintLine(); bad += 1; };
+    if(byte_write(1, 99->As(Byte)) <> 99 | bytes[1] <> 99) { "FAIL: Byte[] write"->PrintLine(); bad += 1; };
     if(bool_write(1, true) = false | bools[1] = false) { "FAIL: Bool[] write"->PrintLine(); bad += 1; };
     if(char_write(1, 'z') <> 'z' | chars[1] <> 'z') { "FAIL: Char[] write"->PrintLine(); bad += 1; };
     Churn();
@@ -116,11 +129,93 @@ class ClosureArrayVarIndex {
     # bools is now T,T,T,F,T
     if(bool_loop() <> 4) { "FAIL: Bool[] loop"->PrintLine(); bad += 1; };
 
+    bad += CheckLastIndex();
+    bad += CheckCapturedLocals();
+
     if(bad > 0) {
       "FAIL: captured array variable index bad={$bad}"->PrintLine();
       Runtime->Exit(1);
     };
     "PASS: captured arrays indexed by variables"->PrintLine();
+  }
+
+  # 'Size() - 1' as the index: the index expression is a method call on the
+  # captured array itself. A group of its own because Main is at its local limit.
+  function : CheckLastIndex() ~ Int {
+    bad := 0;
+
+    ints := Int->New[5];
+    floats := Float->New[5];
+    bytes := Byte->New[5];
+    bools := Bool->New[5];
+    chars := Char->New[5];
+    strs := String->New[5];
+    boxes := Box->New[5];
+    for(i := 0; i < 5; i += 1;) {
+      ints[i] := i * 10;
+      floats[i] := i * 1.5;
+      bytes[i] := (i + 1)->As(Byte);
+      bools[i] := i % 2 = 0;
+      chars[i] := 'a' + i;
+      strs[i] := "s{$i}";
+      boxes[i] := Box->New(i * 100);
+    };
+
+    int_last := IntLast(ints);
+    float_last := FloatLast(floats);
+    byte_last := ByteLast(bytes);
+    bool_last := BoolLast(bools);
+    char_last := CharLast(chars);
+    str_last := StringLast(strs);
+    box_last := BoxLast(boxes);
+
+    Churn();
+
+    if(int_last() <> 40) { "FAIL: Int[] Size()-1 index"->PrintLine(); bad += 1; };
+    if(float_last() <> 6.0) { "FAIL: Float[] Size()-1 index"->PrintLine(); bad += 1; };
+    if(byte_last() <> 5) { "FAIL: Byte[] Size()-1 index"->PrintLine(); bad += 1; };
+    if(bool_last() = false) { "FAIL: Bool[] Size()-1 index"->PrintLine(); bad += 1; };
+    if(char_last() <> 'e') { "FAIL: Char[] Size()-1 index"->PrintLine(); bad += 1; };
+    if(str_last()->Equals("s4") = false) { "FAIL: String[] Size()-1 index"->PrintLine(); bad += 1; };
+    if(box_last() <> 400) { "FAIL: object[] Size()-1 index"->PrintLine(); bad += 1; };
+
+    return bad;
+  }
+
+  # arrays that are LOCALS of the helper rather than parameters of it: once the
+  # helper returns, the closure's capture block is the only path to the array
+  function : CheckCapturedLocals() ~ Int {
+    bad := 0;
+
+    local_int := LocalInt();
+    local_float := LocalFloat();
+    local_byte := LocalByte();
+    local_bool := LocalBool();
+    local_char := LocalChar();
+    local_str := LocalString();
+    local_box := LocalBox();
+    local_int_write := LocalIntWrite();
+    local_str_write := LocalStringWrite();
+
+    Churn();
+
+    if(local_int() <> 30) { "FAIL: captured local Int[]"->PrintLine(); bad += 1; };
+    if(local_float() <> 3.5) { "FAIL: captured local Float[]"->PrintLine(); bad += 1; };
+    if(local_byte() <> 15) { "FAIL: captured local Byte[]"->PrintLine(); bad += 1; };
+    if(local_bool() <> 3) { "FAIL: captured local Bool[]"->PrintLine(); bad += 1; };
+    if(local_char() <> 's') { "FAIL: captured local Char[]"->PrintLine(); bad += 1; };
+    if(local_str()->Equals("L0L1L2L3") = false) { "FAIL: captured local String[]"->PrintLine(); bad += 1; };
+    if(local_box() <> 44) { "FAIL: captured local object[]"->PrintLine(); bad += 1; };
+
+    # writes into a captured local array accumulate across calls and across a GC
+    if(local_int_write(2, 5) <> 5) { "FAIL: captured local Int[] write"->PrintLine(); bad += 1; };
+    if(local_str_write(1)->Equals("w1") = false) { "FAIL: captured local String[] write"->PrintLine(); bad += 1; };
+    Churn();
+    if(local_int_write(2, 5) <> 10) { "FAIL: captured local Int[] write after GC"->PrintLine(); bad += 1; };
+    if(local_str_write(0)->Equals("w0w1") = false) { "FAIL: captured local String[] write after GC"->PrintLine(); bad += 1; };
+    if(local_str_write(2)->Equals("w0w1w2") = false) { "FAIL: captured local String[] elements after GC"->PrintLine(); bad += 1; };
+
+    return bad;
   }
 
   # lambda-local index
@@ -130,6 +225,10 @@ class ClosureArrayVarIndex {
 
   function : FloatLocal(p : Float[]) ~ () ~ Float {
     return \() ~ Float : () => { i := 2; return p[i]; };
+  }
+
+  function : ByteLocal(p : Byte[]) ~ () ~ Byte {
+    return \() ~ Byte : () => { i := 2; return p[i]; };
   }
 
   function : BoolLocal(p : Bool[]) ~ () ~ Bool {
@@ -155,6 +254,10 @@ class ClosureArrayVarIndex {
 
   function : FloatParam(p : Float[]) ~ (Int) ~ Float {
     return \(Int) ~ Float : (i) => p[i];
+  }
+
+  function : ByteParam(p : Byte[]) ~ (Int) ~ Byte {
+    return \(Int) ~ Byte : (i) => p[i];
   }
 
   function : BoolParam(p : Bool[]) ~ (Int) ~ Bool {
@@ -192,6 +295,10 @@ class ClosureArrayVarIndex {
     return \(Int, Float) ~ Float : (i, v) => { p[i] := v; return p[i]; };
   }
 
+  function : ByteWrite(p : Byte[]) ~ (Int, Byte) ~ Byte {
+    return \(Int, Byte) ~ Byte : (i, v) => { p[i] := v; return p[i]; };
+  }
+
   function : BoolWrite(p : Bool[]) ~ (Int, Bool) ~ Bool {
     return \(Int, Bool) ~ Bool : (i, v) => { p[i] := v; return p[i]; };
   }
@@ -206,6 +313,109 @@ class ClosureArrayVarIndex {
 
   function : BoxWrite(p : Box[]) ~ (Int) ~ Int {
     return \(Int) ~ Int : (i) => { p[i] := Box->New(1234); return p[i]->Get(); };
+  }
+
+  # 'Size() - 1' index: a method call on the captured array itself feeds the index
+  function : IntLast(p : Int[]) ~ () ~ Int {
+    return \() ~ Int : () => p[p->Size() - 1];
+  }
+
+  function : FloatLast(p : Float[]) ~ () ~ Float {
+    return \() ~ Float : () => p[p->Size() - 1];
+  }
+
+  function : ByteLast(p : Byte[]) ~ () ~ Byte {
+    return \() ~ Byte : () => p[p->Size() - 1];
+  }
+
+  function : BoolLast(p : Bool[]) ~ () ~ Bool {
+    return \() ~ Bool : () => p[p->Size() - 1];
+  }
+
+  function : CharLast(p : Char[]) ~ () ~ Char {
+    return \() ~ Char : () => p[p->Size() - 1];
+  }
+
+  function : StringLast(p : String[]) ~ () ~ String {
+    return \() ~ String : () => p[p->Size() - 1];
+  }
+
+  function : BoxLast(p : Box[]) ~ () ~ Int {
+    return \() ~ Int : () => p[p->Size() - 1]->Get();
+  }
+
+  # captured LOCAL arrays: the array is a local of the helper, so once the helper
+  # returns the closure's capture block is the only path to it
+  function : LocalInt() ~ () ~ Int {
+    v := Int->New[4];
+    for(i := 0; i < 4; i += 1;) { v[i] := (i + 1) * 3; };   # 3, 6, 9, 12
+    return \() ~ Int : () => {
+      sum := 0;
+      for(i := 0; i < v->Size(); i += 1;) { sum += v[i]; };
+      return sum;
+    };
+  }
+
+  function : LocalFloat() ~ () ~ Float {
+    v := Float->New[4];
+    for(i := 0; i < 4; i += 1;) { v[i] := (i + 1) * 0.5; };  # 0.5, 1.0, 1.5, 2.0
+    return \() ~ Float : () => { j := 3; return v[j] + v[v->Size() - 2]; };
+  }
+
+  function : LocalByte() ~ () ~ Byte {
+    v := Byte->New[4];
+    for(i := 0; i < 4; i += 1;) { v[i] := (i * 7 + 1)->As(Byte); };  # 1, 8, 15, 22
+    return \() ~ Byte : () => { j := 2; return v[j]; };
+  }
+
+  function : LocalBool() ~ () ~ Int {
+    v := Bool->New[4];
+    for(i := 0; i < 4; i += 1;) { v[i] := i <> 2; };  # true, true, false, true
+    return \() ~ Int : () => {
+      count := 0;
+      for(i := 0; i < v->Size(); i += 1;) { if(v[i]) { count += 1; }; };
+      return count;
+    };
+  }
+
+  function : LocalChar() ~ () ~ Char {
+    v := Char->New[4];
+    for(i := 0; i < 4; i += 1;) { v[i] := 'p' + i; };  # p, q, r, s
+    return \() ~ Char : () => v[v->Size() - 1];
+  }
+
+  function : LocalString() ~ () ~ String {
+    v := String->New[4];
+    for(i := 0; i < 4; i += 1;) { v[i] := "L{$i}"; };
+    return \() ~ String : () => {
+      out := "";
+      for(i := 0; i < v->Size(); i += 1;) { out += v[i]; };
+      return out;
+    };
+  }
+
+  function : LocalBox() ~ () ~ Int {
+    v := Box->New[4];
+    for(i := 0; i < 4; i += 1;) { v[i] := Box->New(i * 11); };  # 0, 11, 22, 33
+    return \() ~ Int : () => { j := 3; return v[j]->Get() + v[j - 2]->Get(); };
+  }
+
+  # writes into a captured local array must accumulate across calls: the element
+  # read back is the one the previous call stored, not a fresh array
+  function : LocalIntWrite() ~ (Int, Int) ~ Int {
+    v := Int->New[4];
+    return \(Int, Int) ~ Int : (i, x) => { v[i] := v[i] + x; return v[i]; };
+  }
+
+  function : LocalStringWrite() ~ (Int) ~ String {
+    v := String->New[3];
+    return \(Int) ~ String : (i) => {
+      j := i;
+      v[j] := "w{$j}";
+      out := "";
+      for(k := 0; k < v->Size(); k += 1;) { if(v[k] <> Nil) { out += v[k]; }; };
+      return out;
+    };
   }
 
   # 2-D
