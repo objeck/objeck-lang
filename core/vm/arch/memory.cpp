@@ -454,6 +454,36 @@ inline bool MemoryManager::MarkMemory(size_t* mem)
   return false;
 }
 
+inline bool MemoryManager::MarkClosureCaptures(size_t* mem)
+{
+  if(!mem) {
+    return false;
+  }
+
+  MarkMemory(mem);
+
+  // claim the trace: set GC_TRACED_BIT, whoever set the mark bit
+#ifndef _GC_SERIAL
+  size_t old_val, new_val;
+  do {
+    old_val = mem[MARKED_FLAG];
+    if(old_val & GC_TRACED_BIT) return false;
+    new_val = old_val | GC_TRACED_BIT;
+#ifdef _WIN32
+  } while(InterlockedCompareExchange64((volatile LONG64*)&mem[MARKED_FLAG], (LONG64)new_val, (LONG64)old_val) != (LONG64)old_val);
+#else
+  } while(!__sync_bool_compare_and_swap(&mem[MARKED_FLAG], old_val, new_val));
+#endif
+#else
+  if(mem[MARKED_FLAG] & GC_TRACED_BIT) {
+    return false;
+  }
+  mem[MARKED_FLAG] |= GC_TRACED_BIT;
+#endif
+
+  return true;
+}
+
 void MemoryManager::AddPdaMethodRoot(StackFrame** frame)
 {
   if(!initialized) {
@@ -1332,7 +1362,7 @@ void* MemoryManager::CollectMemory(void* arg)
     for(auto iter = old_generation.begin(); iter != old_generation.end(); ) {
       size_t* mem = *iter;
       if(mem[MARKED_FLAG] & GC_MARK_BIT) {
-        mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+        mem[MARKED_FLAG] &= ~(GC_MARK_BIT | GC_TRACED_BIT);
         ++iter;
       }
       else {
@@ -1363,7 +1393,7 @@ void* MemoryManager::CollectMemory(void* arg)
     // Minor GC: just clear mark bits on old objects
     for(auto iter = old_generation.begin(); iter != old_generation.end(); ++iter) {
       size_t* mem = *iter;
-      mem[MARKED_FLAG] &= ~GC_MARK_BIT;
+      mem[MARKED_FLAG] &= ~(GC_MARK_BIT | GC_TRACED_BIT);
     }
   }
 
@@ -1641,7 +1671,7 @@ void* MemoryManager::CheckJitRoots([[maybe_unused]] void* arg)
           std::wcout << L"\t" << j << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
           std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
-          if(MarkMemory(lambda_mem)) {
+          if(MarkClosureCaptures(lambda_mem)) {
             CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, 1);
           }
           // update
@@ -2045,7 +2075,7 @@ void MemoryManager::CheckMemory(size_t* mem, StackDclr** dclrs, const long dcls_
       std::wcout << L"\t" << i << L": FUNC_PARM: id=(" << virtual_cls_id << L"," << mthd_id << L"), mem=" << lambda_mem << std::endl;
 #endif
       std::pair<int, StackDclr**> closure_dclrs = prgm->GetClass(virtual_cls_id)->GetClosureDeclarations(static_cast<int>(mthd_id));
-      if(MarkMemory(lambda_mem)) {
+      if(MarkClosureCaptures(lambda_mem)) {
         CheckMemory(lambda_mem, closure_dclrs.second, closure_dclrs.first, depth + 1);
       }
       // update
@@ -2213,7 +2243,7 @@ void MemoryManager::ScanDirtyObject(size_t* mem)
         // on the capture store dirties only the untyped BYTE_ARY_TYPE block, which
         // cannot be scanned on its own, so the holder is the only place to type it.
         size_t* lambda_mem = (size_t*)*(field_ptr + 1);
-        if(lambda_mem && MarkMemory(lambda_mem)) {
+        if(MarkClosureCaptures(lambda_mem)) {
           const size_t mthd_cls_id = *field_ptr;
           const long virtual_cls_id = (mthd_cls_id >> 16) & 0xFFFF;
           const long mthd_id = mthd_cls_id & 0xFFFF;

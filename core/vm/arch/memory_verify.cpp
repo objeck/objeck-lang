@@ -687,8 +687,8 @@ public:
     if(!(flags & GC_OLD_BIT)) {
       Report(L"B1", origin, flags, L"old-generation object lacks GC_OLD_BIT");
     }
-    if(flags & (GC_MARK_BIT | GC_RSET_BIT)) {
-      Report(L"B1", origin, flags, L"mark or remembered-set bit left set after the collection");
+    if(flags & (GC_MARK_BIT | GC_RSET_BIT | GC_TRACED_BIT)) {
+      Report(L"B1", origin, flags, L"mark, remembered-set or traced bit left set after the collection");
     }
     const size_t block = obj[-(long)(1 + EXTRA_BUF_SIZE)];
     const size_t header = sizeof(size_t) * EXTRA_BUF_SIZE;
