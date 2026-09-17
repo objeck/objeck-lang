@@ -1599,11 +1599,19 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #endif
   }
 
+  // The handle is read BEFORE parking. Between BeginBlocking and the read this
+  // thread counts as parked, so another thread's collection can run to completion:
+  // it promotes this Thread object out of the nursery and fixes up the frame's self
+  // slot, but not the C++ local 'instance' taken above, which then points into the
+  // recycled nursery. Reading instance[0] there returned whatever reused that memory
+  // -- once on macOS CI a handle of 0x4, and pthread_join answered ESRCH (#874). The
+  // handle value itself never moves, so reading it first is enough.
+#ifdef _WIN32
+  HANDLE vm_thread = (HANDLE)instance[0];
+
   // Joining blocks in a syscall — count this thread as parked so a collection on
   // another thread doesn't wait forever for it to reach a safepoint.
   MemoryManager::BeginBlocking();
-#ifdef _WIN32
-  HANDLE vm_thread = (HANDLE)instance[0];
   const DWORD wait_result = WaitForSingleObject(vm_thread, INFINITE);
   if(wait_result != WAIT_OBJECT_0) {
     // captured before EndBlocking so nothing can overwrite it (#874)
@@ -1622,6 +1630,9 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #else
   void* status;
   pthread_t vm_thread = (pthread_t)instance[0];
+
+  // see the note above: the handle is read before this thread parks
+  MemoryManager::BeginBlocking();
   const int join_result = pthread_join(vm_thread, &status);
   if(join_result) {
     MemoryManager::EndBlocking();

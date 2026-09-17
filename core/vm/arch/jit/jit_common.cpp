@@ -827,12 +827,16 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
       VmExit(1);
     }
 
+    // The handle is read BEFORE parking: while parked, another thread's collection
+    // can promote this Thread object and leave the local 'instance' pointing into the
+    // recycled nursery, so instance[0] would be whatever reused that memory (#874).
+#ifdef _WIN32
+    HANDLE vm_thread = (HANDLE)instance[0];
+
     // Joining blocks in a syscall — bracket with Begin/EndBlocking so this thread
     // counts as parked, otherwise a collection on another thread waits forever for
     // it to reach a safepoint (the JIT path previously omitted this — deadlock).
     MemoryManager::BeginBlocking();
-#ifdef _WIN32
-    HANDLE vm_thread = (HANDLE)instance[0];
     const DWORD wait_result = WaitForSingleObject(vm_thread, INFINITE);
     if(wait_result != WAIT_OBJECT_0) {
       // captured before EndBlocking so nothing can overwrite it (#874)
@@ -847,6 +851,9 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
 #else
     void* status;
     pthread_t vm_thread = (pthread_t)instance[0];
+
+    // see the note above: the handle is read before this thread parks
+    MemoryManager::BeginBlocking();
     const int join_result = pthread_join(vm_thread, &status);
     if(join_result) {
       MemoryManager::EndBlocking();
