@@ -264,22 +264,20 @@ Console->PrintLine(row->Median());
 				return @columns->Get(0)->ToFloat();
 			};
 
-			# store values and sort
-			sorted := CompareVector->New()<FloatRef>;
+			# a plain Float[] sorted in place: no FloatRef per value, and no vector
+			values := Float->New[@columns->Size()];
 			each(i : @columns) {
-				sorted->AddBack(@columns->Get(i)->ToFloat());
+				values[i] := @columns->Get(i)->ToFloat();
 			};
-			sorted->Sort();
+			ArraySort->Sort(values);
 
 			# find median
-			size := sorted->Size();
+			size := values->Size();
 			if(size % 2 = 0) {
-				right := sorted->Get(size / 2);
-				left := sorted->Get(size / 2 - 1);
-				return (left + right) / 2;
+				return (values[size / 2 - 1] + values[size / 2]) / 2;
 			}
 			else {
-				return sorted->Get(size / 2);
+				return values[size / 2];
 			};
 		}
 		
@@ -492,22 +490,20 @@ Console->PrintLine(col->Median());
 				return @rows->Get(0)->ToFloat();
 			};
 
-			# store values and sort
-			sorted := CompareVector->New()<FloatRef>;
+			# a plain Float[] sorted in place: no FloatRef per value, and no vector
+			values := Float->New[@rows->Size()];
 			each(i : @rows) {
-				sorted->AddBack(@rows->Get(i)->ToFloat());
+				values[i] := @rows->Get(i)->ToFloat();
 			};
-			sorted->Sort();
+			ArraySort->Sort(values);
 
 			# find median
-			size := sorted->Size();
+			size := values->Size();
 			if(size % 2 = 0) {
-				right := sorted->Get(size / 2);
-				left := sorted->Get(size / 2 - 1);
-				return (left + right) / 2;
+				return (values[size / 2 - 1] + values[size / 2]) / 2;
 			}
 			else {
-				return sorted->Get(size / 2);
+				return values[size / 2];
 			};
 		}
 	}
