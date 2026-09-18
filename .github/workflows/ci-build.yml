@@ -575,6 +575,52 @@ jobs:
       shell: bash
       run: python3 tools/cicd/check_docs_deps.py --artifacts "core/release/${{ steps.deploy-dir.outputs.dir }}" --platform ${{ matrix.platform }}
 
+    # #893: the linux-arm64 tree must run on a baseline ARMv8.0 CPU with no SVE. The
+    # makefiles used -mcpu=native, this runner has SVE2, and so the published 9.4
+    # tarball died with SIGILL ("cnth" at Execute+64) on a Raspberry Pi 4/5, Graviton2,
+    # Snapdragon X or Apple silicon under Linux -- while every test here passed,
+    # because the tests ran on the machine that built it. QEMU user-mode emulation of
+    # a Cortex-A72 (ARMv8.0-A, the Pi 4's core) rejects any instruction newer than
+    # that baseline, in the compiled VM and in JIT-emitted code alike.
+    - name: Runs on a baseline ARMv8.0 CPU without SVE (linux-arm64)
+      if: matrix.platform == 'linux-arm64'
+      shell: bash
+      run: |
+        sudo apt-get install -y -q qemu-user >/dev/null 2>&1 || {
+          sudo apt-get update -q >/dev/null && sudo apt-get install -y -q qemu-user >/dev/null; }
+        TREE="$PWD/core/release/${{ steps.deploy-dir.outputs.dir }}"
+        export OBJECK_LIB_PATH="$TREE/lib"
+        CPU="qemu-aarch64 -cpu cortex-a72"
+        work=$(mktemp -d)
+        cat > "$work/baseline.obs" <<'OBS'
+        class Baseline {
+          function : Main(args : String[]) ~ Nil {
+            "baseline cpu ok"->PrintLine();
+          }
+        }
+        OBS
+        $CPU "$TREE/bin/obc" -src "$work/baseline.obs" -dest "$work/baseline.obe"
+        out=$($CPU "$TREE/bin/obr" "$work/baseline.obe")
+        if [ "$out" != "baseline cpu ok" ]; then
+          echo "::error::obr did not run on an emulated Cortex-A72 (no SVE): '$out'"
+          exit 1
+        fi
+        # a JIT-heavy test in both modes: JIT-emitted code must stay within ARMv8.0 too
+        $CPU "$TREE/bin/obc" -src programs/regression/core_arithmetic.obs -lib cipher,collect,xml,json -dest "$work/arith.obe"
+        for jit in off 1; do
+          if ! $CPU "$TREE/bin/obr" --jit=$jit "$work/arith.obe" > "$work/out.txt" 2>&1; then
+            cat "$work/out.txt"
+            echo "::error::core_arithmetic failed on a Cortex-A72 (--jit=$jit)"
+            exit 1
+          fi
+          if grep -q FAIL "$work/out.txt"; then
+            cat "$work/out.txt"
+            echo "::error::core_arithmetic reported FAIL on a Cortex-A72 (--jit=$jit)"
+            exit 1
+          fi
+        done
+        echo "obc and obr run on an emulated Cortex-A72 (ARMv8.0-A, no SVE), JIT off and on"
+
     # ============================================
     # Test Suite
     # ============================================
