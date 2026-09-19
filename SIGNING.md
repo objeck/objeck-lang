@@ -122,7 +122,7 @@ As of 2026-09-19 (`gh secret list`). The Apple certificates are re-checked weekl
 | `KEYCHAIN_PASSWORD` | Set |
 | `APPLE_INSTALLER_CERT_BASE64` | Set — Developer ID Installer (G2 Sub-CA) |
 | `APPLE_INSTALLER_CERT_PASSWORD` | Set |
-| `APPLE_ID` | Set — objeck@gmail.com |
+| `APPLE_ID` | Set |
 | `APPLE_TEAM_ID` | Set — 37JDXYTCG2 |
 | `APPLE_APP_PASSWORD` | Set — app-specific password for notarization |
 | `CODESIGN_CERT_BASE64` | Retired — still set, referenced by no workflow; can be deleted |

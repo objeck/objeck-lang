@@ -34,6 +34,12 @@ Each library typically consists of:
 ### Web & Networking
 - **net_secure.obs** - HTTPS client and secure WebSockets (TLS via mbedTLS)
 - **net_common.obs** - Common networking utilities: URLs, cookies, downloads, server-sent events
+- **net.obs** - HTTP/1.1 client (`HttpClient`) and WebSocket client (`Web.HTTP`)
+- **net_h2.obs** - HTTP/2 client (`Http2Client`)
+- **net_quic.obs** - HTTP/3 client over QUIC (`Http3Client`)
+- **net_server.obs** - HTTP server framework: `WebServer` routes, query and multipart parsing, OAuth token exchange, and an MCP server (`Web.HTTP.Server`)
+- **web_server.obs** - Lightweight embedded web server with typed requests and responses (`Web.Server`)
+- **json_rpc.obs** - JSON-RPC server and client (`Data.JSON.RPC`)
 - **rss.obs** - RSS feed parser
 
 ### Data Processing
@@ -52,6 +58,7 @@ Each library typically consists of:
 
 ### Utilities
 - **regex.obs** - Regular expression support
+- **concurrent.obs** - Structured concurrency (`TaskScope`, `Task`) and a runtime `Monitor` (`System.Concurrency`)
 - **misc.obs** - Miscellaneous utilities
 - **lang.obs** - Core language runtime support
 
