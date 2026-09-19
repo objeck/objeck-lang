@@ -1,0 +1,230 @@
+#~
+Many distinct closure ids going live on several threads at once, while minor
+collections run.
+
+This is the shape of #913. `StackClass::GetClosureDeclarations` returned
+`closure_dclrs[id]`, and `std::map::operator[]` INSERTS when the key is absent,
+so a lookup was a mutation. The collector makes that lookup from its marking
+threads (CheckStatic, CheckStack, CheckPdaRoots, CheckJitRoots) for every
+FUNC_PARM it walks, concurrently. Two threads inserting left the tree
+inconsistent; nothing failed then, and the process died much later in
+~StackClass walking that map. It has only been seen on macOS ARM64: x86-64 is
+TSO, so two racing inserts usually still leave a walkable tree, while a weakly
+ordered machine can publish a link before the node behind it.
+
+Three things this test needs, each of which a plausible-looking version of it
+got wrong (measured with a counter inside GetClosureDeclarations):
+
+  1. Only a FUNCTION-TYPED declaration reaches that code -- `f : (Int) ~ Int`,
+     from frontend::FUNC_TYPE. `FuncRef->New(\() => x)` is an ordinary object
+     and is scanned as one: a version built entirely on FuncRef reached the
+     path ONCE per run, against ~16,000 times for this shape.
+  2. The path lives in the moving young-generation scan, so minor collections
+     have to happen. --gc-threshold is the MAJOR knob; with the default nursery
+     this workload reported minor=0, major=243. --nursery=64k, the smallest the
+     VM accepts, is what makes minor collections run, which is why this test is
+     in run_vm_flag_tests.py's nursery list rather than relying on the plain
+     regression run.
+  3. Each absent id is a race window exactly ONCE, because the buggy lookup
+     inserted it. A single plain function gave one window per run. So every
+     worker in every round binds a DIFFERENT plain, non-capturing function:
+     Plain00..Plain23 have no closure declarations, so each is an id the map has
+     never seen, and a round puts six of them into live frames on six threads at
+     the same moment.
+
+Every value is checked, so corruption shows up as a wrong total and not only as
+a crash: each closure must return exactly what it captured.
+~#
+use System.Concurrency;
+
+class Cell {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : V() ~ Int {
+		return @v;
+	}
+}
+
+class ClosureWorker from Thread {
+	@seed : Int;
+	@iters : Int;
+	@slot : Int;
+	@errors : Int;
+
+	New(seed : Int, iters : Int, slot : Int) {
+		Parent("closure-worker");
+		@seed := seed;
+		@iters := iters;
+		@slot := slot;
+		@errors := 0;
+	}
+
+	method : public : Errors() ~ Int {
+		return @errors;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		seed := @seed;
+		iters := @iters;
+		total := 0;
+		base := IntRef->New(seed);
+
+		# capture blocks the collector must walk and relocate
+		k0 : (Int) ~ Int := Make(base);
+		k1 : (Int) ~ Int := Make(base);
+		k2 : (Int) ~ Int := Make(base);
+		k3 : (Int) ~ Int := Make(base);
+		f : (Int) ~ Int := Make(base);
+
+		# ids the class's closure map has no entry for
+		p0 : (Int) ~ Int := Bind(@slot);
+		p1 : (Int) ~ Int := Bind(@slot);
+		p2 : (Int) ~ Int := Bind(@slot);
+		p3 : (Int) ~ Int := Bind(@slot);
+
+		for(i := 0; i < iters; i += 1;) {
+			f := Make(IntRef->New(seed + i));
+			total += Apply(f, 0);
+
+			total += k0(1);
+			total += k1(1);
+			total += k2(1);
+			total += k3(1);
+
+			total += Apply(p0, 1);
+			total += p1(1);
+			total += p2(1);
+			total += p3(1);
+			Garbage(6);
+		};
+
+		if(total <> Expected(seed, iters)) {
+			@errors += 1;
+		};
+	}
+
+	# per iteration: the fresh capture (seed + i), four long-lived ones
+	# (seed + 1), and four plain references returning 2 each
+	function : Expected(seed : Int, iters : Int) ~ Int {
+		return iters * seed + (iters * (iters - 1)) / 2 + 4 * iters * (seed + 1) + 8 * iters;
+	}
+
+	# a capturing lambda in a function-typed return
+	function : Make(v : IntRef) ~ (Int) ~ Int {
+		return \(Int) ~ Int : (n) => { return v->Get() + n; };
+	}
+
+	# f is live as a function-typed parameter while this allocates
+	function : Apply(f : (Int) ~ Int, n : Int) ~ Int {
+		Garbage(4);
+		v := f(n);
+		Garbage(4);
+
+		return v;
+	}
+
+	function : Garbage(n : Int) ~ Nil {
+		junk := Cell->New(0);
+		each(i : n) {
+			junk := Cell->New(i);
+			junk->V();
+		};
+	}
+
+	# every plain function returns n + 1, so the arithmetic is the same
+	# whichever one a worker binds
+	function : Bind(k : Int) ~ (Int) ~ Int {
+		if(k = 0)  { return Plain00(Int) ~ Int; };
+		if(k = 1)  { return Plain01(Int) ~ Int; };
+		if(k = 2)  { return Plain02(Int) ~ Int; };
+		if(k = 3)  { return Plain03(Int) ~ Int; };
+		if(k = 4)  { return Plain04(Int) ~ Int; };
+		if(k = 5)  { return Plain05(Int) ~ Int; };
+		if(k = 6)  { return Plain06(Int) ~ Int; };
+		if(k = 7)  { return Plain07(Int) ~ Int; };
+		if(k = 8)  { return Plain08(Int) ~ Int; };
+		if(k = 9)  { return Plain09(Int) ~ Int; };
+		if(k = 10) { return Plain10(Int) ~ Int; };
+		if(k = 11) { return Plain11(Int) ~ Int; };
+		if(k = 12) { return Plain12(Int) ~ Int; };
+		if(k = 13) { return Plain13(Int) ~ Int; };
+		if(k = 14) { return Plain14(Int) ~ Int; };
+		if(k = 15) { return Plain15(Int) ~ Int; };
+		if(k = 16) { return Plain16(Int) ~ Int; };
+		if(k = 17) { return Plain17(Int) ~ Int; };
+		if(k = 18) { return Plain18(Int) ~ Int; };
+		if(k = 19) { return Plain19(Int) ~ Int; };
+		if(k = 20) { return Plain20(Int) ~ Int; };
+		if(k = 21) { return Plain21(Int) ~ Int; };
+		if(k = 22) { return Plain22(Int) ~ Int; };
+		if(k = 23) { return Plain23(Int) ~ Int; };
+
+		return Plain00(Int) ~ Int;
+	}
+
+	function : Plain00(n : Int) ~ Int { return n + 1; }
+	function : Plain01(n : Int) ~ Int { return n + 1; }
+	function : Plain02(n : Int) ~ Int { return n + 1; }
+	function : Plain03(n : Int) ~ Int { return n + 1; }
+	function : Plain04(n : Int) ~ Int { return n + 1; }
+	function : Plain05(n : Int) ~ Int { return n + 1; }
+	function : Plain06(n : Int) ~ Int { return n + 1; }
+	function : Plain07(n : Int) ~ Int { return n + 1; }
+	function : Plain08(n : Int) ~ Int { return n + 1; }
+	function : Plain09(n : Int) ~ Int { return n + 1; }
+	function : Plain10(n : Int) ~ Int { return n + 1; }
+	function : Plain11(n : Int) ~ Int { return n + 1; }
+	function : Plain12(n : Int) ~ Int { return n + 1; }
+	function : Plain13(n : Int) ~ Int { return n + 1; }
+	function : Plain14(n : Int) ~ Int { return n + 1; }
+	function : Plain15(n : Int) ~ Int { return n + 1; }
+	function : Plain16(n : Int) ~ Int { return n + 1; }
+	function : Plain17(n : Int) ~ Int { return n + 1; }
+	function : Plain18(n : Int) ~ Int { return n + 1; }
+	function : Plain19(n : Int) ~ Int { return n + 1; }
+	function : Plain20(n : Int) ~ Int { return n + 1; }
+	function : Plain21(n : Int) ~ Int { return n + 1; }
+	function : Plain22(n : Int) ~ Int { return n + 1; }
+	function : Plain23(n : Int) ~ Int { return n + 1; }
+}
+
+class GcClosureIdsStress {
+	function : Main(args : String[]) ~ Nil {
+		rounds := 4;
+		width := 6;
+		iters := 400;
+		errors := 0;
+		workers : ClosureWorker[];
+
+		for(r := 0; r < rounds; r += 1;) {
+			workers := ClosureWorker->New[width];
+			each(i : workers) {
+				workers[i] := ClosureWorker->New(r * 1000 + i, iters, r * width + i);
+			};
+
+			each(i : workers) {
+				workers[i]->Execute(Nil);
+			};
+
+			each(i : workers) {
+				workers[i]->Join();
+			};
+
+			each(i : workers) {
+				errors += workers[i]->Errors();
+			};
+		};
+
+		if(errors = 0) {
+			"PASS: closure ids stress"->PrintLine();
+		}
+		else {
+			"FAIL: closure ids stress - {$errors} wrong total(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
