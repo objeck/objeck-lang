@@ -601,13 +601,13 @@ The sequence, without pausing between:
    appear, once per MSI unless single-logon is on.
 4. Verify signatures on the **published** files and re-prove `SHA256SUMS`.
 
-**Use `post_release.sh --sign`, not `sign_release.cmd` directly.** The .cmd signs,
-verifies and re-uploads the MSIs, but it does NOT touch `SHA256SUMS` -- and signing
-rewrites the MSIs, so the published manifest is left describing pre-signing bytes and
-every user's `sha256sum -c` FAILS on exactly the two files whose integrity matters most.
-Gate 4 of `post_release.sh` regenerates and re-proves it; the bare .cmd leaves you to
-remember, which is how v2026.8.3 shipped a broken manifest. If the .cmd is run on its
-own, regenerating the manifest is not optional cleanup -- it is part of signing.
+**Use `post_release.sh --sign`, not `sign_release.cmd` directly.** Signing rewrites the
+MSIs, so a manifest left alone describes pre-signing bytes and every user's
+`sha256sum -c` FAILS on exactly the two files whose integrity matters most -- which is
+how v2026.8.3 shipped a broken manifest. The .cmd now signs, verifies, re-uploads the
+MSIs and regenerates `SHA256SUMS` itself, stopping with an error if it cannot;
+`post_release.sh` then re-proves the manifest against every published asset (gate 4)
+and runs the other gates, which the bare .cmd does not.
 
 Everything after `release-publish.yml` goes green is a single pipeline, and it runs as
 one script. It used to be four prose sections here, which meant the commands were

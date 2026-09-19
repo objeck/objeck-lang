@@ -15,11 +15,11 @@ There are two independent back-ends sharing the common driver in `jit_common.{h,
 
 | | AMD64 (`amd64/jit_amd_lp64.cpp`) | ARM64 (`arm64/jit_arm_a64.cpp`) |
 |---|---|---|
-| Instruction gating | **whitelist** — `CanJitInstruction()` opts each opcode in | **whitelist** — `CanJitInstruction()`, same shape; accepts three fewer opcodes (`NEW_FUNC_INST`, `TRY_START`, `TRY_END`) |
+| Instruction gating | **whitelist** — `CanJitInstruction()` opts each opcode in | **whitelist** — `CanJitInstruction()`, same shape; accepts one fewer opcode (`NEW_FUNC_INST`). Neither accepts `TRY_START`/`TRY_END`, so a method holding a `Try()` region always runs in the interpreter |
 | Local register cache | yes | yes |
 | Direct JIT→JIT calls | yes | yes |
-| Method inlining | **no** — `ProcessInlineMethod` exists but has no caller (`is_inlining` is never true); `CanInlineMethod` still runs and every compiled frame reserves stack for inlining that never happens | no (all `MTHD_CALL` go through the callback) |
-| Division strength reduction | yes | no |
+| Method inlining | **no** — `ProcessInlineMethod` exists but has no caller (`is_inlining` is never true); `CanInlineMethod` still runs and every compiled frame reserves stack for inlining that never happens | no (never implemented); since [#776](https://github.com/objeck/objeck-lang/pull/776) calls go through native call sites, as on AMD64 |
+| Division strength reduction | yes | yes (`EmitMagicDivision`) |
 | Loop detection (backward-jump scan) | yes | yes (scans backward jumps in the pre-scan; keeps no `detected_loops` list) |
 | `JMP_TABLE` native codegen | **yes** | **yes** — a dense `select` is a bounds check and an indirect jump through an inline table of 32-bit offsets (2026-09-09, F8) |
 
