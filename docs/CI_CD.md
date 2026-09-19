@@ -230,9 +230,10 @@ After publishing, the Windows installers are signed, the playground is deployed 
 
 5. **Deploy Docs Job:**
    - Extract API documentation
-   - Upload to objeck.org via rsync
-   - Update 'latest' symlink
+   - Upload to objeck.org's `api/latest/` via rsync (the only served tree; there are no versioned directories)
+   - Check that `api/latest/index.html` carries the new version stamp
    - Cleanup SSH keys
+   - Declared manual in `RELEASE_MANUAL_STEPS` while the `OBJECK_ORG_*` secrets are unset
 
 6. **Summary Job:**
    - Aggregate deployment status
