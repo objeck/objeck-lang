@@ -251,16 +251,16 @@ class ChatExample {
 
     # single-turn
     response := Response->Respond("gpt-4o-mini",
-      Pair->New("user", "Explain JIT compilation in one sentence.")<String, String>,
+      Pair->New("user", "Explain JIT compilation in one sentence.")&lt;String, String&gt;,
       token);
     response->GetText()->PrintLine();
 
     # multi-turn conversation
-    messages := Vector->New()<Pair<String, String>>;
-    messages->AddBack(Pair->New("system", "You are a concise coding assistant.")<String, String>);
-    messages->AddBack(Pair->New("user",   "What is a closure?")<String, String>);
-    messages->AddBack(Pair->New("assistant", "A closure captures its enclosing scope.")<String, String>);
-    messages->AddBack(Pair->New("user",   "Show me one in Objeck.")<String, String>);
+    messages := Vector->New()&lt;Pair&lt;String, String&gt;&gt;;
+    messages->AddBack(Pair->New("system", "You are a concise coding assistant.")&lt;String, String&gt;);
+    messages->AddBack(Pair->New("user",   "What is a closure?")&lt;String, String&gt;);
+    messages->AddBack(Pair->New("assistant", "A closure captures its enclosing scope.")&lt;String, String&gt;);
+    messages->AddBack(Pair->New("user",   "Show me one in Objeck.")&lt;String, String&gt;);
 
     response := Response->Respond("gpt-4o-mini", messages, Nil, token);   # Nil: no output schema
     response->GetText()->PrintLine();
@@ -275,7 +275,7 @@ class ChatExample {
 
 bytes   := FileReader->ReadBinaryFile("photo.jpg");
 image   := ImageQuery->New("What is in this image?", bytes, ImageQuery->MimeType->JPEG);
-query   := Pair->New("user", image)<String, ImageQuery>;
+query   := Pair->New("user", image)&lt;String, ImageQuery&gt;;
 response := Response->Respond("gpt-4o", query, token);
 response->GetText()->PrintLine();
 </code></pre>
@@ -441,7 +441,7 @@ values := Model->EmbedContent(content, token);
 "Dimensions: {$values->Size()}"->PrintLine();
 
 # batch — multiple texts in one round-trip
-texts := Vector->New()<String>;
+texts := Vector->New()&lt;String&gt;;
 texts->AddBack("Objeck is JIT-compiled");
 texts->AddBack("Python uses an interpreter");
 texts->AddBack("Rust is memory-safe");
@@ -913,15 +913,15 @@ class NLPExample {
       <tr><td>Gemini embeddings</td><td><code>Model::EmbedContent</code> / <code>BatchEmbedContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
       <tr><td>Local chat / generation</td><td><code>Completion</code>, <code>Chat</code></td><td><code>ollama</code></td><td>None</td></tr>
       <tr><td>Local embeddings</td><td><code>Model::Embeddings</code></td><td><code>ollama</code></td><td>None</td></tr>
-      <tr><td>Matrix algebra</td><td><code>Matrix2D</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Linear regression</td><td><code>LinearRegression</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Logistic regression</td><td><code>LogisticRegression</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Neural network</td><td><code>NeuralNetwork</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>K-nearest neighbors</td><td><code>KNearestNeighbors</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>K-means clustering</td><td><code>KMeans</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Naive Bayes</td><td><code>NaiveBayes</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Feature scaling</td><td><code>FeatureScaler</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Model evaluation</td><td><code>Metrics</code>, <code>CrossValidation</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Matrix algebra</td><td><code>Matrix2D</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Linear regression</td><td><code>LinearRegression</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Logistic regression</td><td><code>LogisticRegression</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Neural network</td><td><code>NeuralNetwork</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>K-nearest neighbors</td><td><code>KNearestNeighbors</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>K-means clustering</td><td><code>KMeans</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Naive Bayes</td><td><code>NaiveBayes</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Feature scaling</td><td><code>FeatureScaler</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Model evaluation</td><td><code>Metrics</code>, <code>CrossValidation</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
       <tr><td>Face recognition</td><td><code>FaceSession</code></td><td><code>onnx</code></td><td>None</td></tr>
       <tr><td>Object detection</td><td><code>YoloSession</code></td><td><code>onnx</code></td><td>None</td></tr>
       <tr><td>Local SLM</td><td><code>Phi3Session</code></td><td><code>onnx</code></td><td>None</td></tr>
