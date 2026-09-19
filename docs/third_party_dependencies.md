@@ -6,9 +6,10 @@ statically on Linux and macOS. The TLS, audio, vision and inference libraries co
 from each platform's package channel at build time, so
 security fixes arrive with that channel — and a channel that is behind is behind
 for every release built on it. This page records the provenance so an audit is a
-lookup, not an archaeology dig (the only version string in the tree, "mbedTLS
-3.6.3" in `deploy_windows.cmd`, is a comment about a hand-built ARM64 copy from
-before vcpkg carried it).
+lookup, not an archaeology dig. The few versions the tree pins are in
+`tools/deps/build_quic_deps.sh` (AWS-LC), `tools/deps/build_macos_deps.sh` (the
+macOS static builds) and the `$opencvVersion` of the Windows OpenCV download in
+the three build workflows.
 
 | Library | Windows x64 / ARM64 | Linux x64 / ARM64 | macOS ARM64 | Used by |
 |---|---|---|---|---|
