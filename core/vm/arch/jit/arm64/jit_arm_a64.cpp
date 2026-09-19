@@ -6165,10 +6165,9 @@ bool JitArm64::Compile(StackMethod* cm)
 
     // Pre-scan: reject methods the JIT cannot safely compile. The default
     // branch in ProcessInstruction calls exit(1) on any unhandled opcode, so
-    // anything not in the supported set below MUST be rejected here. Two
-    // implemented instructions are also rejected for correctness:
-    //   STOR_CLS_INST_INT_VAR / COPY_CLS_INST_INT_VAR — no JIT write barrier
-    //     for class field stores.
+    // anything not in the supported set below MUST be rejected here.
+    // STOR_CLS_INST_INT_VAR / COPY_CLS_INST_INT_VAR are compiled: EmitWriteBarrier
+    // covers class field stores.
     // MTHD_CALL and DYN_MTHD_CALL (P2) are supported via ProcessStackCallback
     // + direct JIT-to-JIT calling. STOR_INT_ARY_ELM is safe — integer array
     // stores don't hold references.

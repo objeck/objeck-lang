@@ -1,6 +1,6 @@
 # Web.Server: reimplementation over Web.HTTP.Server
 
-Status: design, 2026-08-30. Supersedes the native-bridge design for issue #654.
+Status: implemented. Shipped in PR #682 (merged 2026-08-30), which closed issue #654. Supersedes the native-bridge design for that issue. One follow-up is still open: option 1 under [GetLocalAddress](#getlocaladdress), a `getsockname` trap for TCP sockets, which does not exist yet.
 
 ## Why this exists
 
@@ -142,8 +142,16 @@ miss. The adapter normalises.
 during teardown, with the server thread parked in `Accept`. Reproduced on
 **pristine master** with an unmodified `net_server.obs` and no `Web.Server`
 involved, 3 runs of 3. No in-tree test caught this because no test both starts
-the server and exits normally. The regression test calls `Runtime->Exit(0)` to
-avoid scoring a passing test as a crash, and the crash is filed separately.
+the server and exits normally. The regression test first called
+`Runtime->Exit(0)` to avoid scoring a passing test as a crash, and the crash was
+filed separately.
+
+Filed as #681, it was fixed in 3a8c28c3f9, which closed the issue. The cause was
+a VM teardown bug, not a web-server one: a thread still blocked in `accept()` when
+`Main` returned ran against the freed program once `WSACleanup` woke it, which is
+why only Windows crashed. `web_server_test.obs` now returns from `Main` normally
+with the server thread parked, and `thread_accept_exit_test.obs` covers the same
+shape with no HTTP involved.
 
 **The accepted socket class can be dropped by the linker.** `SockTcpAccept`
 allocates the client socket natively through `GetSocketObjectId()`, so there is
@@ -151,3 +159,7 @@ no static reference for the linker to follow. A program that uses the server
 without otherwise mentioning `TCPSocket` fails at runtime with
 `unable to find class: System.IO.Net.TCPSocket` -- and in one arrangement
 crashed outright rather than reporting that. Filed with the above.
+
+The fix for #681 settled this one too. The error only ever appeared after `Main`
+returned, when `GetSocketObjectId()` was reading the freed program, so it was the
+same use-after-free and needed no linker change.

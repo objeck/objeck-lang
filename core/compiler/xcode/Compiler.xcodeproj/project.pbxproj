@@ -46,7 +46,6 @@
 		ED5393EE261368B60085A5F8 /* emit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = emit.cpp; path = ../emit.cpp; sourceTree = "<group>"; };
 		ED5393EF261368B60085A5F8 /* optimization.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = optimization.h; path = ../optimization.h; sourceTree = "<group>"; };
 		ED5393F0261368B70085A5F8 /* parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = parser.cpp; path = ../parser.cpp; sourceTree = "<group>"; };
-		ED5393F1261368B70085A5F8 /* regress.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; name = regress.sh; path = ../regress.sh; sourceTree = "<group>"; };
 		ED5393F2261368B70085A5F8 /* tree.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = tree.cpp; path = ../tree.cpp; sourceTree = "<group>"; };
 		ED5393F3261368B70085A5F8 /* context.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = context.h; path = ../context.h; sourceTree = "<group>"; };
 		ED5393F4261368B70085A5F8 /* compiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = compiler.cpp; path = ../compiler.cpp; sourceTree = "<group>"; };
@@ -118,7 +117,6 @@
 				ED5393F0261368B70085A5F8 /* parser.cpp */,
 				ED5393ED261368B60085A5F8 /* parser.h */,
 				ED5393FA261368B70085A5F8 /* posix_main.cpp */,
-				ED5393F1261368B70085A5F8 /* regress.sh */,
 				ED5393E7261368B60085A5F8 /* scanner.cpp */,
 				ED5393F8261368B70085A5F8 /* scanner.h */,
 				ED5393F2261368B70085A5F8 /* tree.cpp */,

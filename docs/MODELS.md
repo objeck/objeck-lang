@@ -57,7 +57,7 @@ See the [Ollama examples](../programs/frameworks/ollama/) and the [AI Developer 
 
 ## ONNX Models
 
-ONNX models run fully on-device using GPU acceleration (DirectML on Windows, CUDA on Linux, CoreML on macOS) or CPU fallback. Models must be downloaded separately — they are too large for the repository.
+ONNX models run fully on-device, on the accelerator the platform's build was compiled for (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS) or on the CPU. The Linux x64 build is CPU-only, and the Linux ARM64 packages do not include ONNX. Models must be downloaded separately — they are too large for the repository.
 
 ### Supported Models
 
@@ -137,11 +137,14 @@ data/models/
 
 ### Execution Providers
 
+Each platform's library is compiled with one execution provider, and the `ep` key can only select that provider or the CPU. Naming any other provider is refused with an error, and no session is created. Leaving `ep` out uses the build's provider.
+
 | Platform | Accelerator | Provider flag |
 |----------|-------------|---------------|
-| Windows | GPU via DirectML | `"ep" → "dml"` |
-| Linux | NVIDIA GPU | `"ep" → "cuda"` |
-| macOS | Apple Neural Engine | `"ep" → "coreml"` |
+| Windows x64 | GPU via DirectML | `"ep" → "dml"` |
+| Windows ARM64 | Qualcomm GPU via QNN | `"ep" → "qnn"` |
+| Linux x64 | none (CPU-only build) | `"ep" → "cpu"` |
+| macOS | Apple Neural Engine / GPU via CoreML | `"ep" → "coreml"` |
 | Any | CPU fallback | `"ep" → "cpu"` |
 
 ### Use in Objeck
@@ -150,7 +153,7 @@ data/models/
 use API.Onnx, Collection;
 
 config := Map->New()<String, String>;
-config->Insert("ep", "dml");   # or "cuda", "coreml", "cpu"
+config->Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds, "cpu" anywhere
 session := Phi3Session->New("data/models/phi3/directml/directml-int4-awq-block-128/model.onnx", config);
 ```
 

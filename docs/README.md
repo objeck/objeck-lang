@@ -6,7 +6,7 @@
 |---|---|
 | [FEATURES.md](FEATURES.md) | What the language has |
 | [EXAMPLES.md](EXAMPLES.md) | Code examples |
-| [cli_options.md](cli_options.md) | `obc`, `obr`, `obd`, `obi` command-line options |
+| [cli_options.md](cli_options.md) | `obc` and `obr` command-line options, and the environment variables they read |
 | [editors.md](editors.md) | Editor and IDE support |
 
 ## Reference
@@ -46,12 +46,20 @@ Written before the work, and kept afterwards as the record of why it looks the w
 - [SYSTEM_TERMINAL_DESIGN.md](SYSTEM_TERMINAL_DESIGN.md) — `System.Terminal`: styled output, progress bars, interactive controls, and the five VM traps they need
 - [UPDATER_DESIGN.md](UPDATER_DESIGN.md) — auto-updater
 - [ONNX_CUDA_PLAN.md](ONNX_CUDA_PLAN.md) — CUDA execution provider for ONNX
+- [web_server_design.md](web_server_design.md) — `Web.Server` reimplemented over `Web.HTTP.Server`, after the native-bridge design proved unusable (#654)
+- [PLAN_2026_10_0_HARDENING.md](PLAN_2026_10_0_HARDENING.md) — the compiler, GC and language hardening plan whose work shipped as v2026.9.5, and what it deferred
+- [JIT_ENTRY_COMPILE_DESIGN.md](JIT_ENTRY_COMPILE_DESIGN.md) — compiling a method with a loop on its first call, and a thread's `Run` on entry, instead of after ten calls
+- [JIT_LOOP_LOCALS_DESIGN.md](JIT_LOOP_LOCALS_DESIGN.md) — loop-carried locals in registers (F3, AMD64 only so far) and short-circuit conditions (F6)
+- [JIT_SELECT_TABLES_DESIGN.md](JIT_SELECT_TABLES_DESIGN.md) — a dense `select` compiled as a jump table on both backends (F8)
+- [JIT_CALLING_CONVENTION_DESIGN.md](JIT_CALLING_CONVENTION_DESIGN.md) — what a call between compiled methods costs, and the native entries and inline caches that cut it (F7)
 
 ## Investigations
 
-Closed bugs whose reasoning is worth keeping.
+Measurements and analyses, and the work they left open.
 
-- [JIT_CODEGEN_ASSESSMENT_2026_09.md](JIT_CODEGEN_ASSESSMENT_2026_09.md) — how efficient the emitted AMD64/ARM64 code is, measured, with the ranked fixes
+- [JIT_CODEGEN_ASSESSMENT_2026_09.md](JIT_CODEGEN_ASSESSMENT_2026_09.md) — how efficient the emitted AMD64/ARM64 code is, measured, with the ranked fixes; the AMD64 ones are done, ARM64's loop and float pins are still open
+- [JIT_ARM64_HANDOFF_2026_09.md](JIT_ARM64_HANDOFF_2026_09.md) — the open ARM64 JIT track (loop locals and `D8`-`D15` float pins, `HasAndOr` narrowing) and the macOS build-and-test loop
+- [ML_TABULAR_GAPS.md](ML_TABULAR_GAPS.md) — what `System.ML` lacks for an ordinary tabular classification study, checked against the library source
 
 ## What is not documentation
 

@@ -1,6 +1,6 @@
-# v2026.10.0 hardening plan: compiler, GC, language
+# v2026.10.0 hardening plan: compiler, GC, language (shipped as v2026.9.5)
 
-Status: **revision 2** (2026-09-15), after six independent reviews of revision 1 and the v2026.9.4 hotfix. Base: master `7a658f2407` (v2026.9.4).
+Status: **shipped as v2026.9.5 on 2026-09-19** (see `CHANGELOG.md`). The version was never bumped to 2026.10.0, so the work went out on the 9.x line, from master. Still open from the plan: [#841](https://github.com/objeck/objeck-lang/issues/841) (the nursery default, G3; the sweep kept 128m), [#864](https://github.com/objeck/objeck-lang/issues/864) (native-library stores, G14) and the **Next release** list under the GC/VM lane, the only record of the work this release deferred. The plan below is **revision 2** (2026-09-15), after six independent reviews of revision 1 and the v2026.9.4 hotfix. Base: master `7a658f2407` (v2026.9.4).
 
 Goal: raise the three weakest areas of the quality review. They are compiler correctness (B-), garbage collector and concurrency (B-), and language rough edges (B). Ecosystem and sustainability are a separate track. The maintainer's direction: solid and tested, not fast and buggy.
 
@@ -78,13 +78,14 @@ Phase 5  release gates → tag → sign → publish
 
 ### Phase 0: bump and baselines
 
-- [ ] **0.1** `bump-version` to 2026.10.0; create `release/2026.9.x` from `v2026.9.4` with a cherry-pick-only policy.
-- [ ] **0.2** Create a `v2026.10.0` GitHub milestone with one issue per item (C1-C6, S1-S4, G2-G13, T1, the fuzzer, the verifier, the nightly). This doc links to the issues; progress lives there, not in checkboxes edited from parallel PRs.
-- [ ] **0.3** Baselines, raw samples committed to `perf-results/baseline-2026.10.0/`:
+- [ ] **0.1** `bump-version` to 2026.10.0; create `release/2026.9.x` from `v2026.9.4` with a cherry-pick-only policy. *Half done: `release/2026.9.x` was cut at `v2026.9.4` and never needed; the bump was not made, and the release shipped from master as v2026.9.5.*
+- [x] **0.2** Create a `v2026.10.0` GitHub milestone with one issue per item (C1-C6, S1-S4, G2-G13, T1, the fuzzer, the verifier, the nightly). This doc links to the issues; progress lives there, not in checkboxes edited from parallel PRs. *Done: 26 issues, all closed but #841 and #864.*
+- [x] **0.3** Baselines, raw samples committed to `perf-results/baseline-2026.10.0/`:
   - **Where:** Docker Linux x64, Windows native x64, macOS arm64 (M4 Max).
   - **What:** CLBG times plus peak RSS (Linux `/usr/bin/time -v`; Windows `PeakWorkingSet64` read after exit), commit charge, and `runtime.gc.pause.max_us` / `promoted.total`.
   - **Separately:** a CI-measured perf-gate baseline, so perf-gate can fail on gross (≥15%) regressions.
-- [ ] **0.4** Decide #820 (`FixupSelf`): fold it into the GC lane's hardening step, or close it.
+  - *Done for macOS arm64: master against v2026.9.4, interleaved, no benchmark more than 5% slower at p<0.01. The #841 nursery sweep covers all three platforms. No x64 CLBG baseline and no new perf-gate baseline were committed; see that directory's `README.md`.*
+- [x] **0.4** Decide #820 (`FixupSelf`): fold it into the GC lane's hardening step, or close it. *Done: folded in; the change landed as hardening (`4542ec7e41`, in the v2026.9.5 notes) and the PR was closed.*
 
 **Exit:** bump merged with CI green on all five legs; the milestone exists; baselines committed.
 
@@ -241,13 +242,16 @@ Proof it works, on the release binary:
 
 ### Phase 5: release gates
 
+*A box is ticked where `CHANGELOG.md`, the published release or git records the step; an unticked box is unrecorded, not known to have failed.*
+
 - [ ] Both lanes' exit gates passed. Anything unfinished is **reverted** or behind a named runtime flag listed in the release notes, never silently disabled.
-- [ ] `.obl` regenerated after the last compiler merge (section 4), and the staleness check clean.
+- [ ] `.obl` regenerated after the last compiler merge (section 4), and the staleness check clean. *The regeneration is recorded (`e5385275d1` rebuilt every `.obl` for 2026.9.5); the staleness check is not.*
 - [ ] Five back-to-back `workflow_dispatch` nightly runs on the frozen release branch: no new signatures.
 - [ ] `verify_platform` windows-x64 and linux-x64 at the tag commit, **never both at once on the same machine**. CI's ARM64 and macOS legs, plus hosted-runner loops, stand in for real hardware unless the Mac or Surface is available.
 - [ ] Clean-machine installs: CI macOS `.pkg` test, per-distro containers, a clean Windows MSI install.
 - [ ] Performance page re-measured (unified Docker run) **including memory**, with version and commit stamps.
-- [ ] Release notes curated; dry run; tag; maintainer signing; post-release gates 1-6; playground deploy; objeck.org upload.
+- [x] Release notes curated; tag; maintainer signing. *v2026.9.5, published 2026-09-19, both Windows MSIs Authenticode-signed.*
+- [ ] Dry run; post-release gates 1-6; playground deploy; objeck.org upload.
 
 ---
 

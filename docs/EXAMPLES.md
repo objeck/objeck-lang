@@ -294,20 +294,34 @@ if(item <> Nil) {
 <a name="computer-vision"></a>
 ## Computer Vision
 
-### OpenCV Face Detection
+### Face Detection (ONNX + OpenCV)
 ```ruby
-# OpenCV face detection
-detector := FaceDetector->New("haarcascade_frontalface_default.xml");
-faces := detector->Detect(image);
-faces->Size()->PrintLine();  # "5 faces detected"
+use API.OpenCV, API.Onnx, System.IO.Filesystem;
+
+# The OpenCV bundle has no cascade classifier: detect faces with the ONNX
+# FaceSession (compile with -lib onnx,opencv) and draw the boxes with OpenCV
+bytes   := FileReader->ReadBinaryFile("group.jpg");
+session := FaceSession->New("det_10g.onnx");
+faces   := session->Detect(bytes, 0.5);
+count   := faces->GetSize();
+"Faces: {$count}"->PrintLine();
+
+image := Image->Load(bytes);
+green := Scalar->New(0.0, 255.0, 0.0);
+detections := faces->GetDetections();
+each(face in detections) {
+    image := image->DrawRectangle(face->GetBounds(), green, 2);
+};
+image->Save("faces.jpg");
+session->Close();
 ```
 
 ### OpenCV Image Processing
 ```ruby
 # Load and process an image
-image := Image->New("photo.jpg");
-gray := image->ToGray();
-blurred := gray->GaussianBlur(5, 5);
+image := Image->Load("photo.jpg");
+gray := image->CvtColor(ColorConversionCodes->BGR2GRAY);
+blurred := gray->GaussianBlur(5, 5, 0.0);
 edges := blurred->Canny(50, 150);
 edges->Save("edges.jpg");
 ```

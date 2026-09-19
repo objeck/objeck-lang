@@ -167,7 +167,7 @@ jobs:
       # deploy_windows.cmd below builds the native libraries and then verifies that
       # every one of them can actually load. libobjk_opencv.dll needs
       # opencv_world4120.dll, and so does libobjk_onnx.dll -- the ONNX binding links
-      # OpenCV (see core/lib/onnx/eq/dml/vs/vs.vcxproj, LibraryPath includes
+      # OpenCV (see core/lib/onnx/vs/vs.vcxproj, LibraryPath includes
       # ..\..\opencv\win\x64\lib). Neither DLL ships in the repo, and this job never
       # fetched them, so deploy printed "opencv_world4120.dll not found" and both
       # libraries then failed to load with error 126.
@@ -678,20 +678,17 @@ jobs:
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
 
-          # Upload versioned docs
+          # objeck.org serves one tree, api/latest/, and it is a real directory:
+          # there are no versioned api/v<VERSION>/ directories. An earlier version
+          # of this step uploaded to api/v<VERSION>/ and ran `ln -sfn v<VERSION>
+          # latest`, which against a real directory creates latest/v<VERSION> and
+          # leaves latest stale.
           rsync -avz --delete \
             -e "ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no" \
             api-temp/api/ \
-            "${{ env.OBJECK_ORG_USER }}@objeck.org:/var/www/objeck.org/api/v${VERSION}/"
+            "${{ env.OBJECK_ORG_USER }}@objeck.org:/var/www/objeck.org/api/latest/"
 
-          # Update 'latest' symlink
-          ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no \
-            "${{ env.OBJECK_ORG_USER }}@objeck.org" \
-            "cd /var/www/objeck.org/api && ln -sfn v${VERSION} latest"
-
-          echo "✅ API docs deployed:"
-          echo "   - https://objeck.org/api/v${VERSION}/"
-          echo "   - https://objeck.org/api/latest/"
+          echo "✅ API docs deployed to https://objeck.org/api/latest/ (v${VERSION})"
 
       - name: Cleanup SSH key
         if: always()
@@ -725,8 +722,7 @@ jobs:
           VERSION="${{ needs.prepare.outputs.version }}"
           echo "ℹ️  objeck.org API docs deploy is declared manual via RELEASE_MANUAL_STEPS - skipping."
           echo "   Deploy by hand from this run's api-docs artifact (or master's docs/api.zip):"
-          echo "     rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/v${VERSION}/"
-          echo "     ssh USER@objeck.org 'cd /var/www/objeck.org/api && ln -sfn v${VERSION} latest'"
+          echo "     rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/latest/"
 
       - name: Missing objeck.org credentials
         if: env.OBJECK_ORG_SSH_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'docs')

@@ -1,7 +1,7 @@
 # Objeck Language CI/CD Architecture
 
-**Version:** 1.1
-**Last Updated:** 2026-04-05
+**Version:** 1.2
+**Last Updated:** 2026-09-19
 
 This document describes the technical architecture of the Objeck Language continuous integration and continuous deployment (CI/CD) system.
 
@@ -25,9 +25,9 @@ The Objeck Language CI/CD system is built entirely on **GitHub Actions**, provid
 
 - ✅ **Zero cost** (public repository = unlimited build minutes)
 - ✅ **Parallel builds** across 6 platforms
-- ✅ **Automated code signing** (no manual intervention)
-- ✅ **Multi-destination distribution** (GitHub, Sourceforge, objeck.org)
-- ✅ **Full release automation** (60 minutes end-to-end)
+- ✅ **macOS code signing and notarization** in CI. Windows installers are signed locally afterwards with a hardware token, which CI cannot hold (see [SIGNING.md](../SIGNING.md))
+- ✅ **Multi-destination distribution** (GitHub Releases, which Sourceforge mirrors; the playground deploy and the objeck.org API docs upload are currently manual)
+- ✅ **Release automation** from a tag (about 25-80 minutes to a published GitHub Release)
 
 ### Design Goals
 
@@ -48,8 +48,8 @@ The Objeck Language CI/CD system is built entirely on **GitHub Actions**, provid
 │                    CI Build (ci-build.yml)                      │
 │  Trigger: Every push/PR to master                               │
 │  Purpose: Fast feedback, catch issues early                     │
-│  Duration: ~20 minutes (with cache)                             │
-│  Platforms: Windows x64, Linux x64/ARM64, macOS ARM64           │
+│  Duration: ~30 minutes                                          │
+│  Platforms: Windows x64/ARM64, Linux x64/ARM64, macOS ARM64     │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               │ Tag pushed (v*.*.*)
@@ -58,31 +58,23 @@ The Objeck Language CI/CD system is built entirely on **GitHub Actions**, provid
 │                Release Build (release-build.yml)                │
 │  Trigger: Git tag (v2026.2.1) or manual                         │
 │  Purpose: Full production builds with installers                │
-│  Duration: ~45 minutes (parallel)                               │
+│  Duration: 15-70 minutes (parallel)                             │
 │  Platforms: Windows x64/ARM64, Linux x64/ARM64, macOS ARM64, LSP│
-│  Outputs: MSI, ZIP, TGZ, API docs                               │
+│  Outputs: MSI, ZIP, TGZ, PKG, API docs                          │
 └─────────────────────────────────────────────────────────────────┘
                               │
-                              │ Manual trigger (with run_id)
+                              │ Automatic on success (tag builds only)
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │              Release Publish (release-publish.yml)              │
-│  Trigger: Manual dispatch                                       │
-│  Purpose: Sign, rename, distribute                              │
-│  Duration: ~15 minutes                                          │
-│  Actions: Code signing, GitHub Release, Sourceforge, docs deploy│
+│  Trigger: Automatic when a tag build succeeds, or manual        │
+│  Purpose: Rename, checksum, distribute (no signing)             │
+│  Duration: ~10 minutes                                          │
+│  Actions: GitHub Release, SHA256SUMS, other deploys (see below) │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Why Manual Trigger for Publish?
-
-The release publish workflow requires manual triggering to:
-1. **Review build artifacts** before distribution
-2. **Verify all platform builds** completed successfully
-3. **Allow testing** installers before public release
-4. **Provide control** over release timing
-
-Future enhancement: Could be fully automatic with approval gates.
+After publishing, the Windows installers are signed, the playground is deployed and the API docs are uploaded to objeck.org by hand; see [release_process.md](release_process.md#manual-steps).
 
 ---
 
@@ -97,7 +89,7 @@ Future enhancement: Could be fully automatic with approval gates.
 - Pull requests targeting `master`
 
 **Jobs:**
-1. **Build Matrix** (parallel):
+1. **Build Matrix** (parallel, each on a native runner):
    - Windows x64
    - Windows ARM64
    - Linux x64
@@ -106,19 +98,26 @@ Future enhancement: Could be fully automatic with approval gates.
 
 2. **For Each Platform:**
    - Install dependencies (cached)
-   - Build compiler bootstrap
+   - Build compiler bootstrap (Linux x64 only)
    - Build full toolchain
    - Run test suite
-   - Run regression tests
+   - Run regression tests twice: as is, then with `OBJECK_JIT_THRESHOLD=1` (every method compiled on its first call)
+   - Run the debugger, DAP and VM flag tests
    - Upload artifacts (7-day retention)
 
 3. **Linux x64 Only:**
    - Generate API documentation
    - Upload API docs artifact
 
-4. **Status Job:**
+4. **Tools Job** (Linux, alongside the matrix):
+   - Consistency checks, among them: library lists, doc comments, documented dependencies, the examples index, regression-test markers and exit paths
+   - Formatter and LSP regression tests
+   - VS Code extension install, compile and lint
+
+5. **Status Job:**
    - Aggregate results
    - Report overall CI status
+   - On a `master` failure, open or update a tracking issue (and send a push notification when `NTFY_TOPIC` is set)
 
 **Optimization:**
 - Dependency caching (~80% cache hit rate)
@@ -126,8 +125,8 @@ Future enhancement: Could be fully automatic with approval gates.
 - Parallel job execution (5 concurrent)
 
 **Fast Feedback:**
-- Typical time: 15-20 minutes (cached)
-- Worst case: 30 minutes (cold cache)
+- Typical time: about 30 minutes
+- Each platform job is capped at 60 minutes
 
 ---
 
@@ -150,20 +149,27 @@ Future enhancement: Could be fully automatic with approval gates.
 
 2. **Build Matrix** (parallel):
    - Windows x64 (MSI + ZIP)
-   - Windows ARM64 (MSI + ZIP)
+   - Windows ARM64 (MSI + ZIP; cross-compiled on the x64 runner)
    - Linux x64 (TGZ)
    - Linux ARM64 (TGZ)
-   - macOS ARM64 (TGZ)
+   - macOS ARM64 (`.pkg` and `.zip`, signed and notarized; plus a `.tgz` kept so older copies of `obu` can self-update)
+
+   Every leg except Windows ARM64 smoke-tests the toolchain it is about to ship: it compiles and runs a small program and checks the reported version.
 
 3. **Build LSP Job:**
    - Package Language Server Protocol binaries
+   - Package the VS Code extension (`vsce package`; the `.vsix` goes into the ZIP and is not published to the Marketplace)
    - Create LSP ZIP archive
 
 4. **Build Docs Job:**
    - Generate API documentation with correct version
    - Package as ZIP
+   - On a tag build, commit it to master as `docs/api.zip`
 
-5. **Summary Job:**
+5. **macOS Install Test Job:**
+   - Install the `.pkg` on clean `macos-14` and `macos-26` runners; a failure fails the run, so Release Publish does not publish it
+
+6. **Summary Job:**
    - Aggregate build results
    - Generate build summary report
    - Notify on failures
@@ -171,15 +177,15 @@ Future enhancement: Could be fully automatic with approval gates.
 **Key Features:**
 - **Automatic versioning** from git tags (no manual edits)
 - **Artifact retention** for 7 days
-- **Unsigned installers** (signing happens in publish step)
+- **Unsigned Windows installers**: nothing in CI signs them; they are signed locally after publishing (see [SIGNING.md](../SIGNING.md))
 
-**Duration:** ~45 minutes (parallel builds)
+**Duration:** 15-70 minutes (parallel builds; the windows-arm64 leg is the long one when its vcpkg cache misses and OpenCV is rebuilt from source)
 
 ---
 
 ### 3. Release Publish (`release-publish.yml`)
 
-**Purpose:** Sign, rename, and distribute release
+**Purpose:** Rename, checksum, and distribute release
 
 **Triggers:**
 - Automatic when a Release Build of a `vYYYY.M.P` tag succeeds (builds of
@@ -192,6 +198,7 @@ Future enhancement: Could be fully automatic with approval gates.
 - `version`: Version number (e.g., 2026.2.1)
 - `run_id`: Release build workflow run ID
 - `skip_sourceforge`: Optional flag
+- `skip_playground`: Optional flag
 - `skip_docs_deploy`: Optional flag
 
 **Jobs:**
@@ -200,13 +207,11 @@ Future enhancement: Could be fully automatic with approval gates.
    - Download all build artifacts
    - Build binary renaming tool
    - Rename files with version numbers
-   - Decode code signing certificate (if available)
-   - Sign Windows MSI installers
-   - Verify signatures
-   - Cleanup certificate securely
+   - Report whether each Windows MSI is signed (`signtool verify /pa`); it does not sign
    - Upload final artifacts (30-day retention)
 
 2. **GitHub Release Job:**
+   - Generate `SHA256SUMS`
    - Generate release notes
    - Create GitHub Release
    - Upload all binaries
@@ -218,23 +223,48 @@ Future enhancement: Could be fully automatic with approval gates.
    - Upload via SFTP
    - Cleanup SSH keys
 
-4. **Deploy Docs Job:**
-   - Extract API documentation
-   - Upload to objeck.org via rsync
-   - Update 'latest' symlink
+4. **Deploy Playground Job:**
+   - Run the playground's `deploy/update.sh` over SSH
+   - Check `/api/health` and the version the sandbox engine reports
    - Cleanup SSH keys
 
-5. **Summary Job:**
+5. **Deploy Docs Job:**
+   - Extract API documentation
+   - Upload to objeck.org's `api/latest/` via rsync (the only served tree; there are no versioned directories)
+   - Check that `api/latest/index.html` carries the new version stamp
+   - Cleanup SSH keys
+   - Declared manual in `RELEASE_MANUAL_STEPS` while the `OBJECK_ORG_*` secrets are unset
+
+6. **Summary Job:**
    - Aggregate deployment status
    - Generate release summary
    - Provide download links
+
+Jobs 3-5 each run when their secrets are set. When they are not, a job passes only if its step (`sourceforge`, `playground` or `docs`) is listed in the `RELEASE_MANUAL_STEPS` repository variable, and fails otherwise. All three are listed today: Sourceforge mirrors the GitHub release through a webhook, and the playground and API docs are deployed by hand.
 
 **Security:**
 - Secrets never logged
 - Temporary files cleaned up (always)
 - SSH keys removed after use
 
-**Duration:** ~15 minutes
+**Duration:** ~10 minutes
+
+---
+
+### 4. Other Workflows
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `perf-gate.yml` | Push to `master` and PRs touching `core/vm`, `core/compiler` or `core/shared`; manual | Objeck vs Java and LuaJIT time ratios against a committed baseline; report-only for now ([PERF_GATE.md](../perf-results/PERF_GATE.md)) |
+| `benchmark.yml` | Manual | Benchmarks on Linux x64 and ARM64, compared against a baseline release tag |
+| `nightly-hardening.yml` | Manual (schedule not yet enabled) | Differential regression, fuzzer, heap verifier and GC stress runs against CI's binaries |
+| `stress-probe.yml` | Push to `probe/**` branches; manual | Loops the GC/JIT regression fixtures in four modes on all five platforms, against a CI build's binaries |
+| `verify-signing-credentials.yml` | Weekly (Monday) and manual | Imports the Apple signing certificates to prove the secrets still work |
+| `codeql.yml` | Push, PRs, weekly | CodeQL analysis |
+| `secret-scan.yml` | Push to `master`, PRs, weekly, manual | gitleaks secret scan |
+| `release-drafter.yml` | Push to `master`, PRs | Keeps a draft release's notes up to date from merged PRs |
+| `release-stats.yml` | Weekly and manual | Snapshots release download counts into `tools/release-stats/downloads.csv` |
+| `jekyll-gh-pages.yml` | Push to `master`, manual | Publishes `docs/web` to GitHub Pages (objeck.github.io/objeck-lang; objeck.org is hosted separately) |
 
 ---
 
@@ -254,12 +284,17 @@ Set in: **Repository Settings → Secrets and variables → Actions**
 | `APPLE_ID` | Apple ID for notarization | Email | N/A |
 | `APPLE_TEAM_ID` | Apple Developer Team ID | 10-char string | N/A |
 | `APPLE_APP_PASSWORD` | App-specific password for notarization | Plain text | Revocable |
-| `CODESIGN_CERT_BASE64` | Windows Sectigo code signing cert | Base64-encoded PFX | 1-3 years |
-| `CODESIGN_PASSWORD` | Windows cert password | Plain text | Same as cert |
 | `SOURCEFORGE_SSH_KEY` | Sourceforge SFTP | SSH private key | Rotate every 2 years |
 | `SOURCEFORGE_USERNAME` | Sourceforge account | Username | N/A |
+| `PLAYGROUND_HOST` | Playground deploy target | Hostname or IP | N/A |
+| `PLAYGROUND_SSH_KEY` | Playground deploy | SSH private key | Rotate every 2 years |
 | `OBJECK_ORG_SSH_KEY` | Web server access | SSH private key | Rotate every 2 years |
 | `OBJECK_ORG_USER` | Web server username | Username | N/A |
+| `NTFY_TOPIC` | Push notification on a failed build (optional) | ntfy topic | N/A |
+
+The Sourceforge, playground and objeck.org secrets are not set: those steps are declared manual in the `RELEASE_MANUAL_STEPS` repository **variable** (`sourceforge,playground,docs`), which `release-publish.yml` reads. `tools/cicd/check_release_config.sh` compares the secrets the release workflows reference with the ones that are set.
+
+There is no Windows signing secret. The certificate is on a SafeNet eToken and is used locally after publishing; the old `CODESIGN_CERT_BASE64` and `CODESIGN_PASSWORD` secrets are referenced by no workflow (see [SIGNING.md](../SIGNING.md)).
 
 ### Creating Secrets
 
@@ -269,16 +304,6 @@ Set in: **Repository Settings → Secrets and variables → Actions**
 # Base64 encode and set as GitHub secret
 base64 -i certificate.p12 | gh secret set APPLE_CERTIFICATE_BASE64
 # CI workflow creates temporary keychain and imports cert automatically
-```
-
-**Windows Code Signing Certificate:**
-```powershell
-# Convert PFX to Base64
-certutil -encode certificate.pfx certificate.base64.txt
-
-# Copy content to CODESIGN_CERT_BASE64 secret (remove header/footer)
-
-# Set CODESIGN_PASSWORD to your certificate password
 ```
 
 **SSH Keys:**
@@ -293,7 +318,8 @@ cat objeck_sf_key
 
 # Set SOURCEFORGE_USERNAME to your Sourceforge username
 
-# Repeat for objeck.org with OBJECK_ORG_SSH_KEY and OBJECK_ORG_USER
+# Repeat for objeck.org with OBJECK_ORG_SSH_KEY and OBJECK_ORG_USER,
+# and for the playground with PLAYGROUND_SSH_KEY and PLAYGROUND_HOST
 ```
 
 ### Security Best Practices
@@ -312,17 +338,19 @@ cat objeck_sf_key
 
 | Platform | Runner | OS Version | Arch | Build Time | Artifacts |
 |----------|--------|------------|------|------------|-----------|
-| Windows x64 | `windows-latest` | Server 2022 | x64 | 25 min | MSI, ZIP |
-| Windows ARM64 | `windows-latest` | Server 2022 | ARM64 | 28 min | MSI, ZIP |
-| Linux x64 | `ubuntu-latest` | Ubuntu 22.04 | x64 | 20 min | TGZ |
-| Linux ARM64 | `ubuntu-24.04-arm` | Ubuntu 24.04 | ARM64 | 22 min | TGZ |
-| macOS ARM64 | `macos-14` | macOS 14 | ARM64 | 30 min | TGZ |
-| LSP | `windows-latest` | Server 2022 | x64 | 10 min | ZIP |
+| Windows x64 | `windows-2025-vs2026` | Server 2025, VS 2026 | x64 | ~10 min | MSI, ZIP |
+| Windows ARM64 | `windows-2025-vs2026` | Server 2025, VS 2026 | ARM64 | 15-70 min | MSI, ZIP |
+| Linux x64 | `ubuntu-latest` | Ubuntu 24.04 | x64 | ~4 min | TGZ |
+| Linux ARM64 | `ubuntu-24.04-arm` | Ubuntu 24.04 | ARM64 | ~4 min | TGZ |
+| macOS ARM64 | `macos-15` | macOS 15 | ARM64 | ~7 min | PKG, ZIP, TGZ |
+| LSP | `ubuntu-latest` | Ubuntu 24.04 | x64 | ~5 min | ZIP |
 
 **Notes:**
+- This is the release build (`release-build.yml`); build times are from the v2026.9.4 and v2026.9.5 tag builds. CI (`ci-build.yml`) uses the same runners except for Windows ARM64, which it builds and tests natively on `windows-11-arm`
 - All builds run **in parallel** (maximum parallelization)
-- Total elapsed time = longest single build (~30 minutes)
-- Windows ARM64 is **cross-compiled** on x64 runner
+- Total elapsed time = longest single build, Windows ARM64: ~15 minutes with warm caches, up to ~70 when vcpkg rebuilds OpenCV from source
+- In the release build, Windows ARM64 is **cross-compiled** on the x64 runner, so its shipped toolchain is not smoke-tested there
+- The macOS `.pkg` is install-tested on `macos-14` and `macos-26`
 
 ### Runner Specifications
 
@@ -340,37 +368,37 @@ cat objeck_sf_key
 
 ### Dependency Caching
 
-**Linux (APT):**
+**Linux (APT):** a user-owned archive directory, because restoring the root-owned `/var/cache/apt/archives` fails with permission errors
 ```yaml
-uses: actions/cache@v4
+uses: actions/cache@v5
 with:
-  path: /var/cache/apt/archives
-  key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/**') }}
+  path: ~/apt-cache
+  key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
   restore-keys: |
     ${{ runner.os }}-${{ matrix.arch }}-apt-
 ```
 
-**macOS (Homebrew):**
+**macOS (Homebrew downloads):**
 ```yaml
-uses: actions/cache@v4
+uses: actions/cache@v5
 with:
-  path: |
-    ~/Library/Caches/Homebrew
-    /opt/homebrew/Cellar
-  key: ${{ runner.os }}-brew-${{ hashFiles('.github/**') }}
+  path: ~/Library/Caches/Homebrew
+  key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
   restore-keys: |
-    ${{ runner.os }}-brew-
+    ${{ runner.os }}-brew-downloads-
 ```
 
 **ccache (Compilation):**
 ```yaml
-uses: actions/cache@v4
+uses: actions/cache@v5
 with:
   path: ~/.ccache
   key: ${{ runner.os }}-${{ matrix.arch }}-ccache-${{ github.sha }}
   restore-keys: |
     ${{ runner.os }}-${{ matrix.arch }}-ccache-
 ```
+
+**Prebuilt dependencies:** the static QUIC stack (`.github/actions/quic-deps`, keyed on `tools/deps/build_quic_deps.sh`), the libraries bundled into the macOS package (`.github/actions/macos-bundle-deps`, keyed on `tools/deps/build_macos_deps.sh`) and the Windows OpenCV runtime DLLs are cached as well.
 
 ### Cache Performance
 
@@ -385,7 +413,7 @@ with:
 ### Cache Invalidation
 
 Caches are invalidated when:
-- Workflow files change (`.github/**` hash changes)
+- Workflow files change (`.github/workflows/**` hash changes)
 - Manual cache clear (repository settings)
 - 7 days of inactivity (GitHub auto-expires)
 
@@ -395,22 +423,18 @@ Caches are invalidated when:
 
 ### Code Signing
 
-**Windows MSI Signing:**
-1. Certificate stored as Base64-encoded secret
-2. Decoded to temporary file during workflow
-3. Used with `signtool` for signing
-4. **Always cleaned up** (even on failure):
-   ```yaml
-   - name: Cleanup certificate
-     if: always()
-     run: Remove-Item cert.pfx -Force
-   ```
-5. Signatures **timestamped** (valid after cert expires)
+**Windows MSI Signing** (outside CI; see [SIGNING.md](../SIGNING.md)):
+1. The private key is on a SafeNet eToken and cannot be exported, so no workflow holds it
+2. After publishing, `tools/cicd/sign_release.cmd` (run by `tools/cicd/post_release.sh --sign`) downloads the MSIs and signs them with `signtool`, selecting the certificate by thumbprint
+3. It uploads the signed MSIs back to the release and regenerates `SHA256SUMS`
+4. Signatures **timestamped** (valid after cert expires)
 
-**Verification:**
+**Verification** (`sign_release.cmd`, and `release-publish.yml`, which only reports):
 ```yaml
 signtool verify /pa setup.msi
 ```
+
+**macOS Signing:** the p12 certificates are imported into a temporary keychain that a cleanup step deletes even when the job fails (`if: always()`).
 
 ### SSH Key Management
 
@@ -445,8 +469,8 @@ GitHub Actions **automatically masks** secret values in logs:
 ### Dependency Security
 
 **Mitigation:**
-- Pin GitHub Actions to **commit SHAs** (not tags)
-- Use official actions only (e.g., `actions/checkout@v4`)
+- Actions are pinned to **major-version tags** (e.g., `actions/checkout@v5`), not commit SHAs
+- Mostly official actions; the third-party ones are `ilammy/msvc-dev-cmd`, `gitleaks/gitleaks-action` and `release-drafter/release-drafter`
 - Regularly update action versions
 - Monitor GitHub Security Advisories
 
@@ -589,32 +613,28 @@ Add to README.md:
 
 ### Potential Improvements
 
-1. **Automatic Release Publishing**
-   - Add approval gates instead of manual trigger
-   - Publish immediately after successful build
+Already done: automatic publishing after a successful tag build, CodeQL scanning, `SHA256SUMS` checksums, macOS signing and notarization, and categorized draft release notes (`release-drafter.yml`).
 
-2. **Continuous Deployment**
+1. **Continuous Deployment**
    - Deploy to test environment on every commit
-   - Automatic nightly builds
+   - Automatic nightly builds (`nightly-hardening.yml` exists; its schedule is not enabled yet)
 
-3. **Enhanced Testing**
-   - Performance benchmarks
+2. **Enhanced Testing**
+   - Enforce the perf gate, which is report-only today (see [PERF_GATE.md](../perf-results/PERF_GATE.md))
    - Memory leak detection
-   - Security scanning (CodeQL)
 
-4. **Artifact Signing**
-   - Sign Linux/macOS binaries (GPG)
-   - Add checksums (SHA256)
+3. **Artifact Signing**
+   - Sign the Linux archives
+   - Sign `SHA256SUMS` so `obu` can detect a substituted manifest (design: [release_integrity.md](release_integrity.md))
 
-5. **Docker Images**
+4. **Docker Images**
    - Publish Docker images to Docker Hub
    - Multi-architecture support
 
-6. **Release Notes Automation**
-   - Generate from commit messages
-   - Categorize changes (features, fixes, etc.)
+5. **Release Notes Automation**
+   - Publish the release body without hand editing (today it is written from the release-drafter draft and `docs/readme.txt`)
 
-7. **Notifications**
+6. **Notifications**
    - Slack/Discord notifications
    - Email on release completion
 
@@ -633,4 +653,6 @@ Add to README.md:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | 2026-09-19 | Windows signing moved out of CI (hardware token); publish is automatic; current runners, artifacts and timings; manual publish steps; other workflows |
+| 1.1 | 2026-04-05 | Apple signing and notarization secrets |
 | 1.0 | 2026-02-10 | Initial CI/CD architecture documentation |

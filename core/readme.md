@@ -45,7 +45,7 @@ graph TB
     subgraph "Virtual Machine"
         Loader["Loader"]
         Interpreter["Runtime<br/>Interpreter"]
-        HotCode["Hot Code Detection<br/>(100+ calls)"]
+        HotCode["Hot Code Detection<br/>(10 calls; loops on first call)"]
         JIT_ARM["ARM64 JIT<br/>(AArch64)"]
         JIT_AMD["AMD64 JIT<br/>(x86-64)"]
         MemMgr["Memory Manager<br/>━━━━━━━━━━━━━━━━<br/>Hash Lookup<br/>Mark & Sweep GC<br/>Generational"]
@@ -62,7 +62,7 @@ graph TB
 
     subgraph "CI/CD"
         GHA["GitHub Actions<br/>Multi-Platform CI"]
-        Tests["Regression Tests<br/>(10 automated)"]
+        Tests["Regression Tests<br/>(299 automated)"]
     end
 
     %% Compiler Flow
@@ -130,7 +130,7 @@ graph TB
 | **JIT Compiler** | ARM64/x64 native code generation | [core/vm/arch/jit](vm/arch/jit/) |
 | **Memory Manager** | Generational GC with O(1) lookups | [core/vm/arch](vm/arch/) |
 | **Debugger** | Interactive debugger with breakpoints | [core/debugger](debugger/) |
-| **REPL** | Interactive shell with autocomplete | [core/repl](repl/) |
+| **REPL** | Interactive shell with a full-screen editor | [core/repl](repl/) |
 
 **Tech Stack:** C++17, x64/ARM64 assembly, GNU Make / Visual Studio
 
@@ -293,19 +293,25 @@ cd core/release
 ```
 
 #### ARM64 Build
+Build natively on an ARM64 Windows machine, as CI's `windows-11-arm` leg does with VS 2022 before running every test on what it built, or cross-compile on an x64 machine, as the release build does with VS 2026. A cross-compiled tree cannot run on the machine that built it.
+
 ```cmd
 1. Install ARM64 build tools:
    - Open Visual Studio Installer
    - Modify → Individual Components
-   - Search "arm64" and install MSVC v143 ARM64 build tools
+   - Search "arm64" and install the MSVC ARM64 build tools for your toolset (v143 in VS 2022, v145 in VS 2026)
 
-2. Open "x64_arm64 Cross Tools Command Prompt for VS 2022"
+2. Open a prompt with the ARM64 toolchain:
+   - on an ARM64 machine: vcvarsall.bat arm64
+   - on an x64 machine: vcvarsall.bat x64_arm64, or the "x64_arm64 Cross Tools Command Prompt"
 3. cd core\release
 4. deploy_windows.cmd arm64
 5. Binaries: core\release\deploy-arm64\bin\
 ```
 
 **Note:** Install mbedTLS and nghttp2 from vcpkg first: `vcpkg install mbedtls:arm64-windows nghttp2:arm64-windows` (see `core/lib/crypto/README.md`)
+
+The ARM64 OpenCV modules are a modular build whose image codecs are separate DLLs, and the deploy copies them from vcpkg and fails if one is missing: `vcpkg install zlib:arm64-windows libjpeg-turbo:arm64-windows libpng:arm64-windows tiff:arm64-windows libwebp:arm64-windows`, as CI's ARM64 leg does.
 
 **Network library support on Windows:**
 - **HTTP/2** (`net_h2`): Requires nghttp2 from vcpkg (`vcpkg install nghttp2:x64-windows`, installed alongside mbedTLS); `core/build/vcpkg.props` adds it to every project
@@ -350,8 +356,8 @@ cd core/release
 ### Automated Testing (CI)
 
 **GitHub Actions** runs on every commit:
-- ✅ Linux x64/ARM64, macOS ARM64, Windows x64/ARM64
-- ✅ 17 deployment tests + 10 regression tests
+- ✅ Linux x64/ARM64, macOS ARM64, Windows x64/ARM64, each built natively and tested on what it built
+- ✅ Sample programs from `programs/deploy` (4 on every leg, 11 on Linux x64), then the 299-test regression suite twice (at the default JIT threshold and with every method compiled), and the debugger, DAP and VM-flag tests
 - ✅ Multi-platform builds with caching
 
 ```bash
@@ -361,7 +367,7 @@ cd core/release
 
 ### Run Tests Locally
 
-#### Regression Suite (10 tests)
+#### Regression Suite (299 tests)
 ```bash
 cd programs/regression
 
@@ -372,10 +378,12 @@ cd programs/regression
 run_regression.cmd x64
 ```
 
+Use `arm64` on an ARM64 machine, and set `OBJECK_JIT_THRESHOLD=1` for the second pass CI runs, with every method compiled on its first call.
+
 **Tests cover:**
-- Core language features (classes, arrays, control flow)
-- ARM64 JIT fixes (char arrays, immediates, bitwise ops)
-- Crypto operations (mbedTLS migration)
+- Core language features (classes, arrays, control flow) and programs the compiler must reject (`bad_*`)
+- Both JITs (`jit_*`, and the every-method-compiled pass), the garbage collector (`gc_*`) and closures
+- Libraries: collections, ML, networking and TLS
 
 #### Manual Testing
 ```bash
@@ -553,8 +561,8 @@ Source (.obs) → Lexer → Parser → AST → Optimizer (s0-s3) → Bytecode (.
 **Optimization Levels:**
 - `s0` - No optimization (fastest compile)
 - `s1` - Basic (constant folding, dead code)
-- `s2` - Moderate (inline small functions)
-- `s3` - Aggressive (all optimizations) ⭐ **default**
+- `s2` - Moderate (common subexpressions, loop-invariant code motion, strength reduction)
+- `s3` - Aggressive (all optimizations, including method inlining) ⭐ **default**
 
 ### VM Execution Flow
 ```
@@ -562,7 +570,7 @@ Bytecode → Interpreter → Hot Code Detection → JIT → Native Code (ARM64/x
 ```
 
 **JIT Tiering:**
-1. First 100 calls: Interpreted
+1. First 10 calls: Interpreted (`OBJECK_JIT_THRESHOLD`); a method with a loop is compiled on its first call instead
 2. After threshold: Compile to native code
 3. Optimizations: Register allocation, instruction combining, branch prediction
 
@@ -593,8 +601,7 @@ GC: Mark-and-sweep with generational collection
 
 ## Version Info
 
-**In development:** v2026.8.2
-**Latest release:** v2026.6.4 (June 2026)
+**Latest release:** v2026.9.5 (September 2026)
 **License:** BSD 3-Clause
 
 **Recent improvements:**

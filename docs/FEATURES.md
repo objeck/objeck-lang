@@ -85,9 +85,10 @@ size := maybe?->ToUpper()->Size() ?? -1;
 
 Both build on the `Try()`/`Otherwise()` intrinsics, so `a?->b()` is exactly
 `a->Try()->b()` and `a ?? b` is `a->Otherwise(b)`. One consequence worth
-knowing: `Try()` guards against *any* runtime error in the chain, not only a
+knowing: `Try()` guards against most runtime errors in the chain, not only a
 `Nil` dereference — `a?->Get(999)` yields `Nil` on an out-of-range index rather
-than faulting.
+than faulting. Two errors still end the program inside a `Try()`: an invalid
+object cast and a call-stack overflow.
 
 ### Anonymous Classes
 ```ruby

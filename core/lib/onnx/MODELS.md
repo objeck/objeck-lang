@@ -122,13 +122,12 @@ Runtime DLLs are provided in `core/lib/onnx/eq/lib/`:
 Large DLLs are compressed as `.7z` archives. Extract to the application directory or system PATH.
 
 ### Linux (CPU)
-- `libonnxruntime.so` (ONNX Runtime, system package or manual install)
-- Install: `pip install onnxruntime` or via distro package manager
+- `libonnxruntime.so.1.19.0` (ONNX Runtime, a CPU-only build) ships inside the Linux x64 package, beside `libobjk_onnx.so` in `lib/native`; nothing to install. `eq/build.sh cpu` links the same copy, vendored in `eq/cuda/lib/x64/lib`.
+- Linux ARM64 packages include no ONNX library: only an x86-64 runtime is vendored.
 
 ### Linux (CUDA)
-- `libonnxruntime.so.1.x` (ONNX Runtime with CUDA EP)
-- Install: `pip install onnxruntime-gpu`
-- Requires CUDA toolkit and cuDNN installed on the system.
+- Not shipped. The vendored runtime is CPU-only, so the Linux package is built with `eq/build.sh cpu`.
+- `eq/build.sh cuda` compiles the CUDA path, but it needs a CUDA-enabled ONNX Runtime linked in place of the vendored one, plus the CUDA toolkit and cuDNN. Against the vendored runtime, every session that does not ask for `ep=cpu` is refused, and the error lists the providers the runtime does have.
 
 ### macOS (CoreML)
 - `libonnxruntime.1.dylib` (ONNX Runtime 1.30.0) ships inside the macOS package, beside `libobjk_onnx.dylib`; nothing to install. Needs macOS 14 or later.

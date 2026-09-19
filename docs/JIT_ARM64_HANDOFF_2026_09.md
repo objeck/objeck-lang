@@ -1,5 +1,15 @@
 # macOS handoff: the ARM64 JIT track (2026-09-09)
 
+> **Status, 2026-09-19.** Open: **4a** (F3, loop locals in `X20`-`X27`), **4b** (`D8`-`D15`
+> float pins) and **4c** (`HasAndOr` narrowing in the compiler). None of the three is in the
+> tree: `jit_arm_a64.cpp` has no pin planner, and `&`/`|` anywhere still sets the flag. Done:
+> **4d**, F7 on ARM64 ([#768](https://github.com/objeck/objeck-lang/pull/768),
+> [#776](https://github.com/objeck/objeck-lang/pull/776)); F4, twelve pool registers
+> ([#770](https://github.com/objeck/objeck-lang/pull/770)); the ARM64 baseline 3b asked for
+> (the assessment's section 5a); and the v2026.9.1 release section 6 planned, with 9.2 to 9.5
+> since. Current below: the check-in block's corrections, next steps, Windows ARM64 notes and
+> traps; sections 2, 4a-4c, 5 and 7; and the traps in 4d. The rest is history, marked as such.
+
 **Audience:** the next working session on the macOS ARM64 machine (maintainer plus agent).
 **Why:** batches 1-5 of `JIT_CODEGEN_ASSESSMENT_2026_09.md` were built on a Windows x64 box,
 where the ARM64 backend could only be cross-compiled; its runtime check was CI's three ARM64
@@ -9,36 +19,25 @@ sits under `lldb` in minutes.
 
 ## Check in here first (written 2026-09-10 night, on the Mac)
 
-Sections 1 and 3 below describe the tree as it was on 2026-09-09; section 4d's step 1 is done,
-and this block says what changed and where to start. The day's full record was
-`docs/HANDOFF_2026_09_10.md`, removed once its work landed; git history has it.
-
-| item | now |
-|---|---|
-| `master` | `433cf916cd`, the v2026.9.1 release commit: after the eight PRs of 2026-09-11 came [#779](https://github.com/objeck/objeck-lang/pull/779) (the exit-status fixture runs compiled again), [#780](https://github.com/objeck/objeck-lang/pull/780) ([#773](https://github.com/objeck/objeck-lang/issues/773), a register holder freed twice on Windows x64), [#781](https://github.com/objeck/objeck-lang/pull/781) (a constant character stored into a `Char[]`), [#782](https://github.com/objeck/objeck-lang/pull/782) and [#783](https://github.com/objeck/objeck-lang/pull/783) (handoffs) and [#784](https://github.com/objeck/objeck-lang/pull/784) (the every-method-compiled pass on every CI leg); every CI leg green on master |
-| the Mac loop on master | run: a fresh checkout of `433cf916cd`, both passes 237/3/0, flag tests 41/41 |
-| the ARM64 call baseline | measured (design section 12): a compiled call 17.7 ns, an interpreted one 29 ns; `Fib(32)` 0.135 s compiled, 0.223 s interpreted |
-| 4d step 1 | done: a compiled call 17.1 ns to 13.4 ns, `RealCall` 0.363 s to 0.279 s, `Fib(32)` 0.135 s to 0.103 s; the frame-size immediate (the "before step 2" item below) fixed with it |
-| two ARM64 bugs the new test found | fixed on the same branch: the entry zeroing wiped the `D8`-`D15` save slots (every compiled method returned zeros in its caller's callee-saved floats), and a func-ref local's pair was written above a slot reserved below it (the next local clobbered, the collector one word low) |
-| `obc` | a nested expression took exponential time in `AnalyzeCalculation` (24 terms over a minute, 30 never); fixed in [#769](https://github.com/objeck/objeck-lang/pull/769), merged |
-| F4 on ARM64 | done, [#770](https://github.com/objeck/objeck-lang/pull/770): `X12`-`X15` in the pool, handed out after `X0`-`X7`; the entry-shapes test's sums are eleven-term statements (a ten-term version crashed Windows x64 with every method compiled, [#773](https://github.com/objeck/objeck-lang/issues/773): not a miscompile but the AMD64 compiler freeing an `RSI`/`RDI` register holder twice, fixed on the PC, and the test's `TenLive` now compiles ten terms there) |
-| the fixture's fallback | gone, [#771](https://github.com/objeck/objeck-lang/pull/771): the libc helpers park a pending caller-saved float in `D8`-`D15` across the call; `OBJECK_JIT_REPORT=1` on `vm_jit_equiv.obs` is silent on ARM64 |
-| 4d step 2 | done, [#776](https://github.com/objeck/objeck-lang/pull/776): the native entry and call site (design section 13); a compiled call 13.8 ns to 7.4 ns, `Fib(32)` 0.107 s to 0.050 s; `DYN_MTHD_CALL_JIT` has a case (compiling a method with a patched func-ref site exited) |
-| the deploy tree on the Mac | the main checkout's `core/release/deploy` holds [#776](https://github.com/objeck/objeck-lang/pull/776)'s `obr` on a `3366d92c4a` tree, which predates the rest of tonight's merges; `deploy_macos_arm64.sh` from master before trusting anything else |
-| `obr` under a locale libc++ rejects | [#772](https://github.com/objeck/objeck-lang/pull/772), merged 2026-09-11: the flag tests ran only with `LC_ALL=en_US.UTF-8` because macOS libc++ refused the composite name Python's locale coercion produces; the VM falls back to a locale it can construct, and the flag tests run from any shell (27/27 on the Mac, both regression passes 231/3/0) |
-| `obr` exit status after a VM error | [#775](https://github.com/objeck/objeck-lang/pull/775), merged 2026-09-11: on Linux and macOS `obr` exited 0 after `Execute` had printed an internal error, out of memory or a load error (the POSIX entry discarded its -1); it exits 1 now, and a flag-only command line (`obr --jit=off`) prints the usage instead of exiting silently. `Runtime->Exit(n)` and runtime traps call `exit` themselves, so they never changed. `vm_error_exit.obs` (`# EXPECT_RUNTIME_ERROR`) and flag-test section 7 (after #772's 5 and #774's 6). Found on the way and fixed by [#778](https://github.com/objeck/objeck-lang/pull/778), merged the same night: with every method compiled, an exception thrown under JIT'd code could not unwind through the native frame and aborted the process before `Execute`'s catch; the bridge now reports it the same way, so the fixture runs compiled too. Nothing in the VM throws on purpose, so the fixture rides on `"1e999"->ToFloat()` (`std::stod` out of range escapes `Str2Float`) |
-
-**From the PC, 2026-09-11 (master `692e304ae6`).** Three things for the ARM64 side.
-
-- *Run both regression passes on master, the second with every method compiled.* [PR #781](https://github.com/objeck/objeck-lang/pull/781) changed how both backends store a constant character into a `Char[]`. ARM64's constant case stored the whole register (its `move_imm_mem32` went through the 64-bit store), so `a[i] := 'x'` zeroed the next element on macOS and Linux and the next three on Windows ARM64, and wrote past the end of the array at the last index; the library's own terminator stores in `String->Pop()` (declared `native`, so always compiled) and `String->Delete()` could run past a nearly full buffer. The fix stores 16 bits on Windows ARM64 and 32 elsewhere, as the register and memory cases always did, and `move_imm_mem32` stores 32 bits. `jit_const_char_store.obs` failed on all three ARM64 legs before the fix (96 characters overwritten) and passes after. CI's ARM64 legs run only the default pass, so the Mac's `OBJECK_JIT_THRESHOLD=1` pass is the first every-method-compiled run of the change on ARM64. **Done on the Mac, 2026-09-11, on `433cf916cd`:** both regression passes 237/3/0 and the flag tests 41/41, with `jit_const_char_store` passing in the every-method-compiled pass as well as the default one, so the fix holds on Apple Silicon in both modes.
-- *The windows-arm64 `core_thread_gc_stress` failure described below is not reproducible on master.* It failed twice, both times with exactly 203 corruptions, within one hour on #768's and #770's branches. A probe on the hosted `windows-11-arm` runner then ran it 180 times without a failure (default, every method compiled, a 1 MB GC threshold, the JIT off, and a diagnostic copy that names the failing worker and checks), and 34 windows-arm64 suite runs since have passed. The Mac's run on `433cf916cd` passed it in both passes as well. The branch `probe/gc-stress-arm64` stays for reruns: push to any `probe/**` branch and its workflow builds the windows-arm64 toolchain and loops the test.
-- *An audit of the fixed-width load/store helpers* found `move_imm_mem32` the only wrong one on either backend (8 of 9 right on ARM64, 12 of 13 on AMD64), and both are fixed. Settled by [#784](https://github.com/objeck/objeck-lang/pull/784): CI runs the every-method-compiled pass on every leg now, the three ARM64 ones included.
+*History, trimmed 2026-09-19.* This block opened with a table of the tree on the night of
+2026-09-10/11 (master `433cf916cd`, the v2026.9.1 release commit) and the PC's three requests
+of 2026-09-11. Every item landed or was settled: the two F7 steps, the two ARM64 bugs the
+entry-shapes test found, F4 ([#770](https://github.com/objeck/objeck-lang/pull/770)), the libc
+float parking ([#771](https://github.com/objeck/objeck-lang/pull/771)), the constant-character
+store ([#781](https://github.com/objeck/objeck-lang/pull/781)), the locale and exit-status
+fixes ([#772](https://github.com/objeck/objeck-lang/pull/772),
+[#775](https://github.com/objeck/objeck-lang/pull/775),
+[#778](https://github.com/objeck/objeck-lang/pull/778)) and the every-method-compiled pass on
+every CI leg ([#784](https://github.com/objeck/objeck-lang/pull/784)); the two windows-arm64
+`core_thread_gc_stress` failures did not reproduce in 180 runs on the hosted runner. Git
+history has the table, and `docs/HANDOFF_2026_09_10.md`, the day's full record. What follows
+is still current.
 
 **Corrections to what is written below.** The pool was eight general registers, `X0`-`X7`, not
 fifteen (`X9`-`X15` were commented out in `Compile()`); it is twelve now, `X0`-`X7` and
 `X12`-`X15`, and `X9`-`X11` are scratch. The float
 pool hands out `D0` first, not `D15`, so `D8`-`D15` are touched only with nine floats live. The
-backend does not spill: an expression with more than eight live temporaries falls back to the
+backend does not spill: an expression with more than twelve live temporaries falls back to the
 interpreter whole, and the bytecode pushes every term of a chain before the first add, so a
 thirteen-term sum is such an expression.
 
@@ -83,18 +82,17 @@ leaves the deploy tree alone; its listing omits emitters that print under `_DEBU
 for alternated timings comes from a `git worktree` of master built the same way. `zsh` treats a
 bare `====` as a command; separate output with `printf`.
 
-## 1. Where the tree is
+## 1. Where the tree was on 2026-09-09 (history)
+
+The batches this track started from, all merged.
 
 | item | state |
 |---|---|
-| `master` | `7072bcedad`, batch 4 merged; `ci-build` green; maintainer tested ARM64 on macOS |
 | batch 1 (#731) | `Size()` inlined on both backends |
 | batch 2 (#732) | division by a constant is a multiply (magic numbers), both backends |
 | batch 3 (#733) | eight-register AMD64 pool (`R8`-`R11`), `XMM10`-`XMM15` saved on Windows, `OBJECK_JIT_REPORT=1` |
 | batch 4 (#735) | F6 short-circuit conditions (compiler); F3 loop locals in `R13`-`R15` (AMD64 only); six fixes: the loop-header safepoint poll that never fired, magic division with the dividend in `RDX`, 16-bit movers without REX, the `HasAndOr` slot-0 contract (ARM64 collector walk), an ARM64 float-register leak per fused compare, and the s3 inliner pasting `native` methods into interpreted callers (the "thread runs 55x slower" mystery) |
-| batch 5 (#738) | F8 `select` jump tables on both backends; green on all 16 checks, **merge on the maintainer's word** |
-| #736, #737 | CI bisect drafts from batch 4, done; close them (the agent cannot close PRs in auto mode) |
-| v2026.9.1 | not tagged; `CHANGELOG.md` carries every batch; README/readme.html/readme.txt/docs/web flip at release time (see section 6) |
+| batch 5 (#738) | F8 `select` jump tables on both backends |
 
 Design and rationale live in `docs/JIT_LOOP_LOCALS_DESIGN.md` (F3, with section 6 listing what
 each fix taught), `docs/JIT_SELECT_TABLES_DESIGN.md` (F8) and the assessment's section 8.
@@ -145,9 +143,11 @@ Debugging a JIT crash on the Mac: `lldb -- core/release/deploy/bin/obr prog.obe`
 a crash in the collector's root scan wants `OBJECK_GC_TRACE=1` first; CI's macOS crash reports
 are in the failure artifact's `crash-reports/*.ips`, local ones in `~/Library/Logs/DiagnosticReports`.
 
-## 3. First things on the Mac
+## 3. First things on the Mac (history: both done)
 
 ### 3a. Issue #722 is fixed -- but 27 tests still opt out of the JIT
+
+*Done: #745 merged; three opt-outs remain, each with a stated reason (`check_jit_optouts.py`).*
 
 `http_persistence_test.obs` and `https_persistence_test.obs` used to carry `# JIT_DISABLE`
 because on ARM64 the JIT miscompiled `String->Equals` inside a virtual request-handler callback
@@ -176,9 +176,10 @@ other does not).
 
 ### 3b. The ARM64 baseline
 
-Section 5 of the assessment still says the ARM64 kernel timings are unmeasured. Before touching
-the backend, time `programs/tests/jit_probe.obs` (the six kernels of section 1, plus the follow-ups)
-interpreted and compiled, and add the table to the assessment. Every later number needs it.
+*Done:* the assessment's section 5a has the six kernels of `programs/tests/jit_probe.obs`,
+interpreted and compiled, measured on an Apple M4 Max at `f9d777fc41` (2026-09-09), and section
+5b explains why the fixture's kernels are no longer `native`. Every later ARM64 number is read
+against that table.
 
 ## 4. Next batches, in order
 
@@ -230,129 +231,27 @@ After F6 most conditions no longer touch slot 0, but the compiler still sets the
 JITs reserve the slot exactly when it is set and the collector skips it exactly when it is set.
 Rebuild the libraries and run the ARM64 suite with `OBJECK_GC_TRACE=1` handy.
 
-### 4d. F7 on ARM64: the bridge is there, the rest is not (updated 2026-09-10)
+### 4d. F7 on ARM64 -- done
 
-On AMD64 the whole of `JIT_CALLING_CONVENTION_DESIGN.md` is built and merged (sections 6 to
-11: the bridge, the callee's entry and exit, the direct native call, inline caches for
-`virtual` and func-ref sites, and the register-argument entry). A bound compiled call went
-from 26.5 ns to 5.5 ns, a virtual one from 125 ns to 6.0 ns, `Fib(32)` from 0.208 s to
-0.043 s. ARM64 has phase 1 only: `ProcessStackCallback` goes through `JitDirectCall` with
-the callee in `X0`, the bridge resolves `virtual` callees and pools frames, and
-`NativeCode::native_entry` is null on this backend (nothing reads it). Everything below is
-the AMD64 file (`jit_amd_lp64.cpp`) translated; keep it open beside `jit_arm_a64.cpp`.
-
-**Measure first.** `programs/tests/jit_call_probe.obs` has never run on the Mac. Its five
-kernels (`InlinedCall`, `RealCall`, `NoCall`, `VirtualCall`, `Fib(32)`) give the per-call
-cost as `RealCall` minus `NoCall`; record them in the design's section 1 beside the AMD64
-column before touching anything, then after each step.
-
-**Step 1, the callee's entry and exit (the design's phase 2).** Three changes, each a
-commit with its probe timings:
-
-- `ProcessParameters` reloads `OP_STACK` and `OP_STACK_POS` for every parameter and does
-  `dec; ldr; lsl; add; ldr` per argument. Compute `top = op_stack + count * 8` once, read
-  each argument at `[top, #-8*w]` (`ldur` for the negative displacement, which the signed
-  helper already emits), and drop them all with one `sub` on the count. `ProcessReturn` is
-  the mirror: a running displacement from `top` and one `add` on the count. The result pops
-  (`ProcessIntCallParameter`, `ProcessFloatCallParameter`, `ProcessFunctionCallParameter`)
-  become `count -= 1; ldr Xd, [op_stack, Xcount, lsl #3]`.
-- `RegisterRoot` zeroes `[TMP_X0, TMP_X0 + offset)` with a five-instruction loop; unroll it
-  into straight `str xzr` (or `stp xzr, xzr`) for frames up to about 24 words, as AMD64 did.
-- The prologue saves `D8`-`D15` unconditionally (eight `str`) and the epilogue restores them.
-  `aval_fregs` hands out `D15` first, so a method that takes no float register never touches
-  them: record the save block's index in `Prolog`, every restore block's index in `Epilog`
-  (every `RTRN` emits its own epilogue -- the AMD64 first version patched only the last one
-  and crashed every early return), and once the body is emitted turn each block into a
-  branch over itself when the FP pool was never used (`xmm_pool_used` on AMD64).
-
-**Before step 2: the prologue's frame-size immediate.** `Prolog` and `Epilog` build their
-`sub sp, sp, #imm` and `add sp, sp, #imm` by ORing `final_local_space << 10` onto a template
-whose immediate field already holds 96 (`0xd10183ff`, `0x910183ff`): a frame whose size has
-bits 5 or 6 clear is over-allocated by 32 to 96 bytes. Harmless so far, since the epilogue
-mirrors it and the three stack arguments are read before the `sub`, but anything that computes
-an `SP`-relative offset from `final_local_space` -- the outgoing area below -- lands in the
-wrong place on such a frame. Compute the immediate exactly (clear the field, then OR), keep the
-12-bit range check, and add a register form (`sub sp, sp, xN`) for frames past 4 KB.
-
-**Step 2, the native entry and the call site (sections 8 to 11 in one go).** Section 8's
-first shape -- the callee's record built on the caller's stack, the bridge entry's eleven
-values passed by hand -- was superseded by section 11 and is gone from AMD64; build section
-11's shape directly:
-
-- *Two prologues over one body.* `EmitBridgePrologue` is today's prologue (`X0`-`X7` and
-  the three stack values into the fixed slots) plus `top = op_stack + count * 8` and the
-  count drop, then a branch to the join. `EmitNativePrologue` fills the same slots itself:
-  `CLS_ID`, `MTHD_ID`, `CLASS_MEM` as immediates, `INSTANCE_MEM` from `X0`, and `OP_STACK`,
-  `OP_STACK_POS`, `CALL_STACK`, `CALL_STACK_POS` copied from the caller's frame through
-  `X1`. Both end with `top` set and meet at `RegisterRoot`; `ProcessParameters` takes `top`
-  and runs once. The bridge entry stays at offset 0 for `JitRuntime::Execute`; the native
-  entry's offset goes into `NativeCode` (add the parameter to the ARM64 constructor, which
-  sets `native_entry` null today) and `SetNativeCode` publishes it.
-- *The arguments.* AMD64 puts them at a fixed offset from the callee's frame pointer because
-  its frame pointer is the caller's stack pointer plus 16. ARM64 frames are `SP`-relative with
-  the fixed slots at `[SP, #0..256)`, so use a third register instead: `X2 = &args` (the
-  end of the caller's outgoing area, `top` for the callee), `X0 = self`, `X1 = caller SP`
-  (the context the four stack pointers are copied from). The caller reserves its outgoing
-  area above its locals -- `final_local_space = local_space + RED_ZONE + out_area`, sized
-  by a pre-scan of its call sites, with the `X19` save slot moving up with it -- and writes
-  the arguments, the receiver and (a func-ref call) the func-ref word there in
-  operand-stack order. `RegisterRoot`'s zeroing and the collector's `offset` are computed
-  from `local_space` before the area is added, so neither sees it.
-- *The frame record.* A block in the callee's frame, also above the locals and outside the
-  scanned region: the `StackFrame`, its two `mem` words `(self, 0)`, and the entry-kind
-  word. The native prologue fills it (`method` immediate, `mem = &block.mem`, `ip = -1`,
-  `jit_called = 0`, `jit_mem = 0`, `jit_offset = 0`, `jit_inst_mem = 0`), points `JIT_MEM`
-  and `JIT_OFFSET` at its fields -- the ARM64 callback path derives `frame->mem` from
-  `JIT_MEM` by `offsetof` arithmetic, which keeps working -- and pushes it:
-  `call_stack[pos] = &block` with `stlr`, then `pos++`, the order `PushFrame` uses. Nothing
-  between the push and `RegisterRoot` can park.
-- *Return.* `RTRN` moves the value into `D0` while the working stack still holds it
-  (`fmov d0, xN` for an `Int`, `fmov d0, dN` for a `Float`; `0x9E670000 | (Rn << 5)` and
-  the `FMOV (register)` encoding), then tests the entry-kind word: the native exit pops the
-  record (`pos--`) and returns; the bridge exit is today's `ProcessReturn`. **A value the
-  working stack does not hold** -- `Runtime->Copy` is `CPY_CHAR_ARY` and a return, so its
-  result sits on the operand stack -- must be popped into `D0` by the native exit; the AMD64
-  first build missed this and every `SubString` came back `Nil` once its callers compiled.
-  `X0` keeps the status on both exits, so the guard stubs are unchanged. A method whose
-  result is a func-ref, two words, keeps the bridge entry only.
-
-- *The call site* (`EmitNativeCallSite`). Marshal the values into the outgoing area and off
-  the working stack (`MarshalOutArgs`, the shape of `ProcessReturn` with the area as the
-  base); the entry from the method's word (`ldar` -- ARM64 needs the acquire that x86 gives
-  a plain load; the same for a site's `current` record) or from the site's inline cache
-  (`JitVirtualSite`, `JitResolveVirtualSite`, `JitResolveFuncRefSite`, `FillSiteRecord` are
-  in `common.h` and `jit_common.cpp`, shared; the receiver's class word or the func-ref word
-  against the record's key); the depth check against `CALL_STACK_SIZE`; `X0`, `X1`, `X2`;
-  `blr`; a negative status (`tbnz x0, #63`) to a block that calls `JitNativeCallError`
-  (shared) with the status, the callee, and the caller's ids. The slow path copies the
-  area onto the operand stack, runs today's bridge sequence and pops the result into `D0`,
-  so both paths join with the value in one place; the result then goes to a pool register
-  (`fmov xN, d0`). The slow path serves a callee not compiled yet (the trampoline counts and
-  compiles it), a full call stack, a `Nil` receiver, and a cache miss the resolver cannot fill.
-
-**What to verify, in this order.** `vm_jit_equiv.obs` byte-identical across `--jit=off`, the
-default and `OBJECK_JIT_THRESHOLD=1` (its `Calls` probes cover bound, virtual, func-ref,
-deep, allocating, `Float`, wide, `Nil`-result, callback-result and inlined-reference calls);
-`OBJECK_JIT_REPORT=1` on it for fallbacks; `jit_native_call_error.obs` and
-`jit_native_call_depth.obs` (the two exits), `jit_frame_unreferenced_local.obs`,
-`inline_funcref_param.obs`; both regression passes with `./run_regression.sh arm64`;
-`core_thread_gc_stress` compiled and pinned to a few cores, since the record's registration
-order against the collector is the risk. Read one `_DEBUG_JIT_JIT` listing per step.
+Both steps are merged. Step 1, the callee's entry and exit (the design's section 12), in
+[#768](https://github.com/objeck/objeck-lang/pull/768): a compiled call 17.1 ns to 13.4 ns,
+`RealCall` 0.363 s to 0.279 s, `Fib(32)` 0.135 s to 0.103 s, with the prologue's frame-size
+immediate computed exactly. Step 2, the native entry and call site (section 13), in
+[#776](https://github.com/objeck/objeck-lang/pull/776): a compiled call 13.8 ns to 7.4 ns,
+`Fib(32)` 0.107 s to 0.050 s. `JIT_CALLING_CONVENTION_DESIGN.md` describes what was built; the
+step-by-step plan that stood here is in git history. The next nanosecond of a call is in the
+callee's native prologue ("Next on the Mac", above).
 
 **Traps the AMD64 work found, all of which apply here.** Every `RTRN` emits its own epilogue
-(patch every one). A callback-left return value at `RTRN` (above). The frame is laid out
+(patch every one). A callback-left return value at `RTRN`: a `Runtime->Copy` result sits on the
+operand stack, not the working stack, and the native exit must pop it into `D0` (the AMD64 first
+build missed this and every `SubString` came back `Nil`). The frame is laid out
 from the declarations, not the references (#761, already on ARM64). A native call site
 reads the receiver from the outgoing area, not the operand stack, so the `Nil` and
 non-object checks move with it. `R11`/`X` scratch use in a call site is safe only after
 every live value is spilled, which `ProcessStackCallback` does before anything else. The
 first native prologue's `top` register must be held across both prologues so the one
 `ProcessParameters` sees the same register from either entry.
-
-**The register pool on ARM64 needs nothing.** It has fifteen general registers (`X0`-`X7`,
-`X9`-`X15`) and fifteen float ones; the gap was the Linux x64 backend, whose four pool
-registers and three aux ones let a method with a dozen locals fall to the interpreter --
-closed on 2026-09-10 by giving it Windows' eight (`R8`-`R11` join the pool and are no
-longer pushed).
 
 ## 5. Rules of the road
 
@@ -363,24 +262,19 @@ longer pushed).
 - PRs target `master`; a stacked PR gets no build legs.
 - Design paragraph first; fixture probes that fail before the change; both regression passes;
   one commit per concern (fix, test, docs); a `CHANGELOG.md` entry per user-visible change under
-  the v2026.9.1 section.
+  the next release's section.
 - Never a bare `git stash`, never a force-push of public history, never credential material in a
   file, a transcript or a workflow, never signing in a workflow.
 - `.obs` files show as binary in `git diff`; use `git diff --text`.
 - The agent cannot run `gh pr close`/`reopen` in auto mode; ask the maintainer.
 
-## 6. Release v2026.9.1: what the Mac can do and what it cannot
+## 6. Releasing from the Mac
 
-`/release` is cloud-only and runs from any machine: the pre-flight gates
-(`tools/cicd/check_release_config.sh`, the `api.zip` stamp), `update-docs` from the CHANGELOG
-(README "What's New", `docs/readme.html`, `docs/readme.txt`, `docs/web/`, and the README badge,
-Quick Start URLs and checkmark, which stay on the published version until the tag exists), the
-tag, then GitHub Actions builds and publishes; macOS signing and notarization happen in CI.
-
-Windows MSI signing does not: it needs the SafeNet token on the Windows box
-(`tools/cicd/sign_release.cmd`, which rewrites the MSIs so `SHA256SUMS` is regenerated). A release
-started from the Mac is complete only after that step runs there, so either tag when the Windows
-box is reachable or accept unsigned MSIs until it is; the README no longer promises signing.
+*History: v2026.9.1, the release this section planned, shipped on 2026-09-12, and 9.2 to 9.5
+followed.* One constraint outlives it. macOS signing and notarization happen in CI, but Windows
+MSI signing needs the SafeNet eToken on the Windows box (`tools/cicd/sign_release.cmd`, which
+rewrites the MSIs and regenerates `SHA256SUMS`), so a release tagged from the Mac is complete
+only once that step has run there.
 
 ## 7. Map
 
@@ -390,7 +284,8 @@ box is reachable or accept unsigned MSIs until it is; the README no longer promi
 - Compiler: `core/compiler/intermediate.cpp` (`EmitBranch`, `EmitSelectJumpTable`),
   `core/compiler/optimization.cpp` (`CanInlineMethod`), `core/compiler/emit.h`.
 - Docs: `docs/JIT_CODEGEN_ASSESSMENT_2026_09.md`, `docs/JIT_LOOP_LOCALS_DESIGN.md`,
-  `docs/JIT_SELECT_TABLES_DESIGN.md`, `core/vm/arch/jit/README.md`, `CHANGELOG.md`.
+  `docs/JIT_SELECT_TABLES_DESIGN.md`, `docs/JIT_CALLING_CONVENTION_DESIGN.md`,
+  `core/vm/arch/jit/README.md`, `CHANGELOG.md`.
 - Tests: `programs/regression/vm_jit_equiv.obs` with `run_vm_flag_tests.py`,
   `jit_gc_safepoint.obs`, `jit_branch_shapes.obs`, `jit_native_inline.obs`,
   `core_bool_short_circuit.obs`; kernels in `programs/tests/jit_probe.obs`.

@@ -157,10 +157,11 @@ sim := FaceSession->Compare(faces1[0]->GetEmbedding(), faces2[0]->GetEmbedding()
 
 ### Computer Vision
 ```ruby
-# OpenCV face detection
-detector := FaceDetector->New("haarcascade_frontalface_default.xml");
-faces := detector->Detect(image);
-faces->Size()->PrintLine();  # "5 faces detected"
+# OpenCV: grayscale, blur and edge detection
+image := Image->Load("photo.jpg");
+gray := image->CvtColor(ColorConversionCodes->BGR2GRAY);
+edges := gray->GaussianBlur(5, 5, 0.0)->Canny(50, 150);
+edges->Save("edges.jpg");
 ```
 
 ### Natural Language Processing

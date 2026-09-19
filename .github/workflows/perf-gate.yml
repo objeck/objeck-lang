@@ -6,9 +6,11 @@ name: Perf Gate
 # run cancel CI machine noise, so a relative regression (like the GC-safepoint
 # one) is caught regardless of how fast the runner is.
 #
-# Rollout: currently REPORT-ONLY (--no-fail) because the committed baseline is an
-# approximation from a dev box. To enforce hard failures: run this workflow once,
-# download the "perf-baseline-measured" artifact, commit it as
+# Rollout: currently REPORT-ONLY (--no-fail). The committed baseline
+# (perf-results/perf_baseline.json) holds ratios measured on this runner
+# (4ed4132972), but they predate the F7 calling-convention work (#757-#767),
+# which moved every ratio. To enforce hard failures: refresh it from a current
+# run's "perf-gate-results" artifact (perf_baseline.measured.json), commit it as
 # perf-results/perf_baseline.json, then remove the `--no-fail` flag below.
 
 on:
@@ -96,7 +98,7 @@ jobs:
 
       - name: Perf gate (report-only for now)
         run: |
-          # report into the job summary; --no-fail until a CI-measured baseline is committed
+          # report into the job summary; --no-fail until the baseline is refreshed (see the header)
           python3 perf-results/check_perf_gate.py /tmp/perf.csv --no-fail --summary "$GITHUB_STEP_SUMMARY"
 
       - name: Produce CI-measured baseline (for committing)

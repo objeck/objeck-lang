@@ -13,7 +13,7 @@ The Objeck Virtual Machine is a high-performance stack-based VM with JIT compila
 - **Multi-Architecture**: Native support for x64 and ARM64
 - **Platform Integration**: Direct access to OS capabilities (networking, files, threading)
 - **Memory Safety**: Automatic memory management with no manual deallocation
-- **Exception Handling**: Built-in exception support with stack unwinding
+- **Runtime Errors**: an error prints its message and the call stack and ends the program, unless it happens inside a `Try()` (`?->`) chain, which yields `Nil` instead
 
 ## Supported Platforms
 

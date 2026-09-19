@@ -87,6 +87,24 @@ All commands start with `/`.
 | `/p` | Set the compiler optimization level |
 | `/o <file>` | Open a source file |
 | `/s <file>.obs` | Save the buffer to a `.obs` file |
+| `/e` | Edit the buffer in the full-screen editor (below) |
+| `/et` | Terminal capability test: lists each key press as decoded, reports resizes and draws a wide-character sample; Ctrl+Q returns |
+
+## Full-screen editor
+
+`/e` opens the buffer in a full-screen terminal editor. Edits land in the buffer itself, so `/l` and `/s` see them, and the line the cursor was on becomes the current line when you return. It needs an interactive terminal and says so when input or output is redirected.
+
+| Key | Action |
+|-----|--------|
+| Ctrl+S | Save (asks for a name, and adds `.obs`, when the buffer has none) |
+| Ctrl+Q | Return to the prompt; with unsaved changes, press it twice |
+| Ctrl+Z / Ctrl+Y | Undo / redo |
+| Shift+arrows, Ctrl+C / Ctrl+X / Ctrl+V | Select, then copy, cut or paste |
+| Ctrl+K | Delete the line |
+| F5 | Compile the buffer with `obc` and run it with `obr`, as child processes, into an output pane; Esc cancels a run |
+| F6 | Show or hide the output pane |
+| F8 | Jump to the next compile error |
+| F2 | Switch between the default bindings and `vi` bindings |
 
 ## Output & color
 
@@ -97,11 +115,12 @@ All commands start with `/`.
 - **Document**: the in-memory buffer (read-only scaffold lines + your read/write lines)
 - **Editor**: the command loop, input classification (expression vs. statement vs. block), and multi-line handling
 - **ObjeckLang**: shared compiler front-end — compiles the buffer in memory and executes it on the VM
+- **Full-screen editor**: header-only (`term.h`, `screen.h`, `keymap.h`, `tui_editor.h`, `highlight.h`, `child_run.h`); its design is in `EDITOR_DESIGN.md`
 
 ## Limitations
 
 - Each entry recompiles and re-runs the whole buffer; there is no persistent live VM state between entries (a variable's value is recomputed from its declaration each run).
-- Arrow-key history and tab-completion are not yet available (input is plain line entry).
+- Arrow-key history and tab-completion are not yet available at the `>` prompt (input is plain line entry).
 - Debug symbols are not generated; for multi-file programs and debugging, use `obc`/`obr`/`obd`.
 
 ## See Also

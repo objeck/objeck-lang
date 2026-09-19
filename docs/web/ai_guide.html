@@ -243,7 +243,7 @@ ollama pull llama3.2</pre>
     <div class="lib-flag">net,net_server,json,cipher,misc,openai</div>
 
     <h4 id="openai-chat">Chat &amp; Text</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI.Responses, System.IO.Filesystem, Collection;
 
 class ChatExample {
   function : Main(args : String[]) ~ Nil {
@@ -262,7 +262,7 @@ class ChatExample {
     messages->AddBack(Pair->New("assistant", "A closure captures its enclosing scope.")<String, String>);
     messages->AddBack(Pair->New("user",   "Show me one in Objeck.")<String, String>);
 
-    response := Response->Respond("gpt-4o-mini", messages, token);
+    response := Response->Respond("gpt-4o-mini", messages, Nil, token);   # Nil: no output schema
     response->GetText()->PrintLine();
   }
 }
@@ -271,7 +271,7 @@ class ChatExample {
 &gt; obr chat</pre>
 
     <h4 id="openai-vision">Vision</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, API.OpenAI.Responses, System.IO.Filesystem, Collection;
 
 bytes   := FileReader->ReadBinaryFile("photo.jpg");
 image   := ImageQuery->New("What is in this image?", bytes, ImageQuery->MimeType->JPEG);
@@ -298,7 +298,8 @@ result := Moderation->Check("I want to hurt someone.", token);
 if(result <> Nil) {
   "Flagged: {$result->IsFlagged()}"->PrintLine();
   if(result->IsFlagged()) {
-    "violence score: {$result->GetScore("violence")}"->PrintLine();
+    score := result->GetScore("violence");
+    "violence score: {$score}"->PrintLine();
   };
 };
 </code></pre>
@@ -306,11 +307,10 @@ if(result <> Nil) {
 
     <h4 id="openai-batch">Batch Processing</h4>
     <p>Up to 50,000 requests at 50% cost. Results within 24 hours.</p>
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI, System.IO.Filesystem;
+    <pre class="line-numbers"><code class="language-cpp">use API.OpenAI;
 
-# 1. upload request file
-data := FileReader->ReadBinaryFile("requests.jsonl");
-file := File->Create("requests.jsonl", "batch", data, token);
+# 1. upload request file (or reuse the one already uploaded)
+file := File->LoadOrCreate("requests.jsonl", "batch", token);
 
 # 2. submit
 job := Batch->Create(file->GetId(), "/v1/chat/completions", token);
@@ -433,7 +433,7 @@ CachedContent->Delete("cachedContents/abc123", token);
 </code></pre>
 
     <h4 id="gemini-embed">Embeddings</h4>
-    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini;
+    <pre class="line-numbers"><code class="language-cpp">use API.Google.Gemini, Collection;
 
 # single embedding (768 dimensions)
 content := Content->New("user")->AddPart(TextPart->New("machine learning"));
@@ -448,7 +448,8 @@ texts->AddBack("Rust is memory-safe");
 
 embeddings := Model->BatchEmbedContent("models/text-embedding-004", texts, token);
 each(i : embeddings) {
-  "  [{$i}] dim={$embeddings->Get(i)->Size()}"->PrintLine();
+  dim := embeddings->Get(i)->Size();
+  "  [{$i}] dim={$dim}"->PrintLine();
 };
 </code></pre>
 
@@ -738,7 +739,8 @@ class EvalExample {
     <h3 id="onnx">ONNX Local Inference</h3>
     <div class="lib-flag">json,cipher,opencv,onnx</div>
     <p>
-      Run ONNX models locally with hardware acceleration: DirectML (Windows), CUDA (Linux), CoreML (macOS).
+      Run ONNX models locally with hardware acceleration: DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS.
+      The Linux x64 library is CPU-only, and the Linux ARM64 packages include no ONNX library.
       CPU inference requires no GPU. Models load from local files — no internet at runtime.
     </p>
 
@@ -779,8 +781,9 @@ session := YoloSession->New("yolov11n.onnx");
 img     := FileReader->ReadBinaryFile("street.jpg");
 result  := session->Inference(img, 640, 640, 0.5, labels);
 
-each(d in result->GetClassifications()) {
-  "{$d->GetLabel()}: {$d->GetConfidence()}"->PrintLine();
+detections := result->GetClassifications();
+each(d in detections) {
+  "{$d->GetName()}: {$d->GetConfidence()}"->PrintLine();
 };
 session->Close();
 </code></pre>
@@ -799,7 +802,7 @@ token_ids := tokenizer->Encode(prompt);
 eos       := Int->New[1]; eos[0] := 32007;
 
 result    := session->Generate(token_ids, 200, 0.7, eos);
-tokenizer->Decode(result->GetTokenIds())->PrintLine();
+tokenizer->Decode(result->GetTokens())->PrintLine();
 session->Close();
 </code></pre>
 
@@ -807,25 +810,35 @@ session->Close();
     <h3 id="opencv">Computer Vision (OpenCV)</h3>
     <div class="lib-flag">json,cipher,opencv</div>
 
-    <pre class="line-numbers"><code class="language-cpp">use API.OpenCV;
+    <pre class="line-numbers"><code class="language-cpp">use API.OpenCV, API.Onnx, System.IO.Filesystem;
 
 class VisionExample {
   function : Main(args : String[]) ~ Nil {
     # load, process, save
-    image   := Image->New("photo.jpg");
-    gray    := image->ToGray();
-    blurred := gray->GaussianBlur(5, 5);
+    image   := Image->Load("photo.jpg");
+    gray    := image->CvtColor(ColorConversionCodes->BGR2GRAY);
+    blurred := gray->GaussianBlur(5, 5, 0.0);   # sigma 0: derived from the kernel size
     edges   := blurred->Canny(50, 150);
     edges->Save("edges.jpg");
 
-    # face detection via Haar cascade
-    detector := FaceDetector->New("haarcascade_frontalface_default.xml");
-    faces    := detector->Detect(image);
-    "Faces detected: {$faces->Size()}"->PrintLine();
+    # face detection: no cascade classifier in the OpenCV bundle, so detect
+    # with ONNX (FaceSession, add onnx to -lib) and draw with OpenCV
+    bytes   := FileReader->ReadBinaryFile("group.jpg");
+    session := FaceSession->New("det_10g.onnx");
+    faces   := session->Detect(bytes, 0.5);
+    "Faces detected: {$faces->GetSize()}"->PrintLine();
+
+    group := Image->Load(bytes);
+    detections := faces->GetDetections();
+    each(face in detections) {
+      group := group->DrawRectangle(face->GetBounds(), Scalar->New(0.0, 255.0, 0.0), 2);
+    };
+    group->Save("faces.jpg");
+    session->Close();
 
     # resize and color space conversion
-    resized := image->Resize(320, 240);
-    resized->ToHsv()->Save("hsv_output.jpg");
+    resized := image->Resize(Size->New(320, 240));
+    resized->CvtColor(ColorConversionCodes->BGR2HSV)->Save("hsv_output.jpg");
   }
 }
 </code></pre>
@@ -835,7 +848,7 @@ class VisionExample {
     <div class="lib-flag">gen_collect,nlp</div>
     <p>Built-in NLP primitives — no model download required. Pure Objeck bytecode.</p>
 
-    <pre class="line-numbers"><code class="language-cpp">use API.ML.NLP;
+    <pre class="line-numbers"><code class="language-cpp">use System.NLP;
 
 class NLPExample {
   function : Main(args : String[]) ~ Nil {
@@ -853,12 +866,12 @@ class NLPExample {
     vector := tfidf->Transform("cats and dogs");
     each(v in vector) { v->PrintLine(); };
 
-    # cosine similarity
-    sim := TextSimilarity->Cosine("hello world", "hello there");
+    # cosine similarity of two TF-IDF vectors
+    sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf->Transform("dogs are pets"));
     "Similarity: {$sim}"->PrintLine();
 
     # tokenization
-    tokens := Tokenizer->Tokenize("The quick brown fox");
+    tokens := Tokenizer->WordTokenize("The quick brown fox");
     each(t in tokens) { t->PrintLine(); };
   }
 }
@@ -899,7 +912,7 @@ class NLPExample {
       <tr><td>Face recognition</td><td><code>FaceSession</code></td><td><code>onnx</code></td><td>None</td></tr>
       <tr><td>Object detection</td><td><code>YoloSession</code></td><td><code>onnx</code></td><td>None</td></tr>
       <tr><td>Local SLM</td><td><code>Phi3Session</code></td><td><code>onnx</code></td><td>None</td></tr>
-      <tr><td>Computer vision</td><td><code>Image</code>, <code>FaceDetector</code></td><td><code>opencv</code></td><td>None</td></tr>
+      <tr><td>Computer vision</td><td><code>Image</code>, <code>VideoCapture</code></td><td><code>opencv</code></td><td>None</td></tr>
       <tr><td>Sentiment / TF-IDF</td><td><code>SentimentAnalyzer</code>, <code>TF_IDF</code></td><td><code>nlp</code></td><td>None</td></tr>
      </tbody>
     </table>
@@ -926,11 +939,11 @@ class NLPExample {
       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">openai_batch.obs</span> <span class="file">openai_tune.obs</span>    <span class="file">openai_responses.obs</span><br>
       <br>
       <span class="dir">gemini/</span>      <span class="file">gemini_image.obs</span> <span class="file">gemini_audio.obs</span>   <span class="file">gemini_files.obs</span><br>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">gemini_cache.obs</span> <span class="file">gemini_ground.obs</span>  <span class="file">gemini_embed.obs</span><br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="file">gemini_cache.obs</span> <span class="file">gemini_grounding.obs</span>  <span class="file">gemini_embed.obs</span><br>
       <br>
-      <span class="dir">ollama/</span>      <span class="file">ollama_chat.obs</span>  <span class="file">ollama_vision.obs</span><br>
+      <span class="dir">ollama/</span>      <span class="file">test_0.obs</span> (generate)  <span class="file">test_1.obs</span> (vision)  <span class="file">test_2.obs</span> (chat)  <span class="file">test_3.obs</span> (models)<br>
       <br>
-      <span class="dir">opencv_onnx/</span> <span class="file">face_recog.obs</span>   <span class="file">yolo_detect.obs</span>    <span class="file">phi3_chat.obs</span>
+      <span class="dir">opencv_onnx/</span> <span class="file">demo_face.obs</span>   <span class="file">demo_yolo.obs</span>    <span class="file">demo_phi3_*.obs</span>
     </div>
 
    </div>

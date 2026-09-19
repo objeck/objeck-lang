@@ -17,7 +17,7 @@ This document provides detailed architectural views of the Objeck programming la
 7. [CI/CD Pipeline](#7-cicd-pipeline)
 8. [Memory Management](#8-memory-management)
 9. [Platform Abstraction](#9-platform-abstraction)
-10. [Exception Handling](#10-exception-handling)
+10. [Runtime Errors](#10-runtime-errors)
 
 ---
 
@@ -54,7 +54,7 @@ graph TB
     subgraph "Virtual Machine"
         Loader["Bytecode Loader"]
         Interpreter["Runtime Interpreter<br/>(Stack-based VM)"]
-        HotCode["Hot Code Detection<br/>(10-call threshold, default)"]
+        HotCode["Hot Code Detection<br/>(10 calls; a method with<br/>a loop on its first call)"]
         JIT_ARM["ARM64 JIT<br/>(AArch64)"]
         JIT_AMD["AMD64 JIT<br/>(x86-64)"]
         CodeCache["JIT Code Cache"]
@@ -70,7 +70,7 @@ graph TB
 
     subgraph "CI/CD"
         GHA["GitHub Actions<br/>Multi-platform Matrix"]
-        Tests["Regression Tests<br/>(205 automated)"]
+        Tests["Regression Tests<br/>(299 automated)"]
         Artifacts["Build Artifacts"]
     end
 
@@ -147,8 +147,8 @@ flowchart LR
 
         G -->|s0 None| H[Skip Optimization]
         G -->|s1 Basic| I[Constant Folding<br/>Dead Code Removal]
-        G -->|s2 Moderate| J[+ Method Inlining<br/>+ Strength Reduction]
-        G -->|s3 Aggressive| K[+ Jump Reduction<br/>+ Constant Propagation<br/>+ Instruction Optimization]
+        G -->|s2 Moderate| J[+ CSE, Loop-Invariant Motion<br/>+ Strength Reduction]
+        G -->|s3 Aggressive| K[+ Method Inlining<br/>+ Instruction Replacement<br/>+ Peephole Optimization]
 
         H --> L[Bytecode]
         I --> L
@@ -172,24 +172,31 @@ flowchart LR
 |-------|------|---------------|----------|
 | **s0** | None | No optimization | Fast compilation, debugging |
 | **s1** | Basic | Constant folding, dead code elimination | Development builds |
-| **s2** | Moderate | + Method inlining, strength reduction | Testing |
-| **s3** | Aggressive | + All passes, instruction optimization | **Production (default)** |
+| **s2** | Moderate | + Common-subexpression elimination, loop-invariant code motion, strength reduction | Testing |
+| **s3** | Aggressive | + Method inlining (not in libraries), instruction replacement, peephole optimization | **Production (default)** |
 
 ### Optimization Passes (s3)
 
+In the order `ItermediateOptimizer` runs them on each method, once each; the method inliner
+runs last, after every method of the class has been through the rest.
+
 ```mermaid
 graph TD
-    A[Intermediate Code] --> B[Jump Reduction]
-    B --> C[Constant Folding]
-    C --> D[Method Inlining]
-    D --> E[Dead Store Removal]
-    E --> F[Constant Propagation]
-    F --> G[Strength Reduction]
-    G --> H[Instruction Optimization]
-    H --> I[Optimized Bytecode]
+    A[Intermediate Code] --> B[Jump Cleanup]
+    B --> C[Dead Block Elimination]
+    C --> D[Tail Calls, Getter/Setter Inlining]
+    D --> E[Constant Propagation]
+    E --> F[Dead Store Removal]
+    F --> G[CSE, Loop-Invariant Motion]
+    G --> H[Constant Folding]
+    H --> I[Strength Reduction]
+    I --> J[Instruction Replacement, Peephole]
+    J --> K[Dead Code Elimination]
+    K --> L[Method Inlining]
+    L --> M[Optimized Bytecode]
 
     style A fill:#e1f5ff
-    style I fill:#e1ffe1
+    style M fill:#e1ffe1
 ```
 
 **Performance Impact:**
@@ -198,7 +205,7 @@ graph TD
 - Compilation time: s0 = 1x, s3 = 1.5x
 
 **Source Files:**
-- `core/compiler/optimizer.h/cpp` - Optimization engine
+- `core/compiler/optimization.h/cpp` - Optimization engine
 - `core/compiler/intermediate.h/cpp` - IR generation
 - `core/compiler/emit.h/cpp` - Bytecode emission
 
@@ -220,8 +227,8 @@ flowchart TB
         D --> E[Runtime Interpreter]
         E --> F{Hot Code?}
 
-        F -->|"< 100 calls"| E
-        F -->|"> 100 calls"| G[Profile Method]
+        F -->|"not yet"| E
+        F -->|"10th call, or first call<br/>of a method with a loop"| G[Compile Method]
 
         G --> H{Platform?}
         H -->|ARM64| I[ARM64 JIT Compiler]
@@ -261,15 +268,16 @@ flowchart TB
 ```mermaid
 stateDiagram-v2
     [*] --> Interpreted
-    Interpreted --> Profiling: 10+ calls
-    Profiling --> JIT_Compiling: Hot threshold met
+    Interpreted --> Counting: Called
+    Counting --> JIT_Compiling: 10th call, or first call with a loop
+    JIT_Compiling --> Interpreted: Pre-scan rejects the method
     JIT_Compiling --> Native_Execution: Compilation complete
     Native_Execution --> [*]: Method returns
-    Native_Execution --> Interpreted: Deoptimization
 
-    note right of Profiling
+    note right of Counting
         Call count tracked
-        per method
+        per method; no
+        deoptimization
     end note
 
     note right of JIT_Compiling
@@ -304,8 +312,8 @@ graph TB
 ```
 
 **Key Features:**
-- **Tiered Execution:** Interpreter → Profiling → JIT
-- **Hot Code Detection:** Automatic at 10 calls (default; configurable via `OBJECK_JIT_THRESHOLD`)
+- **Tiered Execution:** Interpreter → call counting → JIT
+- **Hot Code Detection:** Automatic at 10 calls (default; configurable via `--jit=<calls>` or `OBJECK_JIT_THRESHOLD`). A method with a loop is compiled on its first call instead, which is how `Main` gets compiled, and a thread's `Run` with a loop on entry; see `docs/JIT_ENTRY_COMPILE_DESIGN.md`
 - **Platform-Specific JIT:** Separate compilers for ARM64/x64
 - **Efficient Memory:** O(1) object lookups, generational GC
 
@@ -347,7 +355,7 @@ graph TB
     subgraph "ARM64 Specifics"
         J1[30 General Purpose Registers]
         J2[NEON SIMD Support]
-        J3[Conditional Execution]
+        J3[Conditional Select, csel]
         J4[Fixed 32-bit Instructions]
     end
 
@@ -407,10 +415,13 @@ graph TD
 
 ### Register Allocation Strategy
 
+The registers each backend's allocator hands out; neither spills, so an expression that needs
+more falls back to the interpreter whole.
+
 | Platform | General Purpose | Float/Vector | Reserved |
 |----------|----------------|--------------|----------|
-| **ARM64** | x0-x28 (29 regs) | v0-v31 (32 regs) | x29 (FP), x30 (LR) |
-| **AMD64** | rax-r15 (16 regs) | xmm0-xmm15 (16 regs) | rsp (SP), rbp (BP) |
+| **ARM64** | x0-x7, x12-x15 (12 regs) | d0-d15 (16 regs) | x9-x11 (scratch), x19 (safepoint flag's address), x29 (FP), x30 (LR) |
+| **AMD64** | rax, rbx, rcx, rdx, r8-r11 (8 regs; Windows adds rsi, rdi) | xmm10-xmm15 (6 regs) | r12 (safepoint flag's address), r13-r15 (pinned loop locals), rsp (SP), rbp (BP) |
 
 ### Recent ARM64 Optimizations (v2026.2.1)
 
@@ -630,8 +641,8 @@ graph TB
 
     subgraph "Integrated Editor"
         L[Syntax Highlighting]
-        M[Auto-completion]
-        N[History Navigation]
+        M[Undo / Redo]
+        N[F5 Run Pane]
     end
 
     A -.-> L & M & N
@@ -711,9 +722,8 @@ graph LR
 ### REPL Features
 
 - **Interactive Evaluation:** Execute code line-by-line
-- **Syntax Highlighting:** Real-time syntax coloring
-- **Auto-completion:** Context-aware suggestions
-- **History:** Command history with search
+- **Syntax Highlighting:** In the full-screen editor (`/e`); the line prompt colors only its prompt, status and errors
+- **No history or completion yet:** the line prompt is plain line entry
 - **File Loading:** Execute entire files
 - **Inline/File Modes:** Switch between modes
 
@@ -722,7 +732,7 @@ graph LR
 A terminal editor over the REPL buffer, header-only (`core/repl/{term,screen,keymap,tui_editor,highlight,child_run}.h`) so it adds no build-system changes on any platform. Raw-mode input and damage-diffed rendering work identically on Windows (VT console) and POSIX (termios), with display-width handling for CJK/wide characters.
 
 - **Editing:** movement, selection (Shift+arrows), undo/redo with coalesced typing, an internal clipboard (Ctrl+C/X/V)
-- **Run pane (F5):** compiles and runs the buffer in-process, capturing output at the file-descriptor level; **F8** jumps the cursor through compile errors
+- **Run pane (F5):** compiles the buffer with `obc` and runs it with `obr` as child processes, started from an argument vector with no shell, and streams their merged output into a pane; **Esc** cancels a run, **F8** jumps the cursor through compile errors. The in-process VM cannot run off the main thread, which is why the run is a child
 - **Binding profiles:** a notepad-style default and an opt-in `vi` profile (F2) — a second binding table plus a mode field over the same actions, not a second editor
 - **Read-only shell:** the REPL's class/function frame is dimmed and protected at both the view and model level
 
@@ -765,12 +775,14 @@ graph TB
         B --> D{Platform Matrix}
 
         D -->|Linux x64| E1[Ubuntu Latest]
-        D -->|macOS ARM64| E2[macOS-latest M1/M2/M3/M4]
-        D -->|Windows x64| E3[Windows Latest]
+        D -->|Linux ARM64| E4[ubuntu-24.04-arm]
+        D -->|macOS ARM64| E2[macos-15]
+        D -->|Windows x64| E3[windows-2025-vs2026]
+        D -->|Windows ARM64| E5[windows-11-arm]
     end
 
     subgraph "Build Process"
-        E1 & E2 & E3 --> F[Install Dependencies]
+        E1 & E2 & E3 & E4 & E5 --> F[Install Dependencies]
 
         F --> G{Cache Hit?}
         G -->|Yes| H[Restore Cache]
@@ -804,15 +816,18 @@ graph TB
 
 | Platform | Runner | Architecture | Compiler | Tests |
 |----------|--------|--------------|----------|-------|
-| **Linux** | `ubuntu-latest` | x64 | GCC | 205 regression |
-| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 205 regression |
-| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 205 regression |
-| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 205 regression |
-| **Windows** | `windows-2025-vs2026` | ARM64 | MSVC (v145) | build only &mdash; see below |
+| **Linux** | `ubuntu-latest` | x64 | GCC | 299 regression |
+| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 299 regression |
+| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 299 regression |
+| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 299 regression |
+| **Windows** | `windows-11-arm` | ARM64 | MSVC (v143) | 299 regression |
 
-The Windows ARM64 leg is **cross-compiled on an x64 host, so it cannot execute what it
-builds** and its tests are skipped. That blind spot is how an ARM64-only miscompile
-reached six releases before anyone noticed.
+Every leg builds natively and runs what it builds: the regression suite twice, at the default
+JIT threshold and with every method compiled on its first call (`OBJECK_JIT_THRESHOLD=1`), then
+the debugger, DAP and VM-flag tests. The Windows ARM64 leg used to be **cross-compiled on an x64
+host, which cannot execute what it builds**, so its tests were skipped. That blind spot is how
+an ARM64-only miscompile reached six releases before anyone noticed. The release build still
+cross-compiles Windows ARM64 on the x64 image; CI's native leg is what tests it.
 
 ### Caching Strategy
 
@@ -842,23 +857,23 @@ graph LR
 
 ### Regression Test Suite
 
-205 tests under `programs/regression/`, grouped by the prefix on each filename.
+299 tests under `programs/regression/`, grouped by the prefix on each filename.
 Counts are the file count per prefix, not a sample.
 
 ```mermaid
 mindmap
     root((Regression Tests
-    205 total))
-        Language core (42)
+    299 total))
+        Language core (45)
             core_*
                 Arithmetic, arrays, classes, generics, strings
-        Rejected programs (25)
+        Rejected programs (30)
             bad_*
                 Errors the compiler must refuse
-        JIT (21)
+        JIT (42)
             jit_*
                 Native compilation, float paths, GC interaction
-        Machine learning (13)
+        Machine learning (14)
             ml_*
                 System.ML models and inference
         Fixed defects (11)
@@ -867,7 +882,7 @@ mindmap
         Collections (10)
             collect_*
                 Vector, Hash, Map, Set, Stack, Queue
-        Math and strings (16)
+        Math and strings (19)
             math_* string_* func_*
                 Numerics, formatting, higher-order functions
         ARM64 specific (5)
@@ -876,10 +891,14 @@ mindmap
         Networking and web (15)
             http_* mcp_* xml_* json_* api_*
                 Clients, servers, serialisation
-        Remainder (47)
-            closure_* ai_* dap_* regex_* trap_* native_* and others
-                Closures, AI bindings, debugger, GC barriers
+        Remainder (108)
+            closure_* vm_* gc_* ai_* dap_* regex_* trap_* native_* and others
+                Closures, the VM and its collector, AI bindings, debugger
 ```
+
+---
+
+## 8. Memory Management
 
 ### Multithreaded Collection (Cooperative Stop-the-World)
 
@@ -1080,7 +1099,7 @@ graph LR
         A4[Socket] -->|POSIX| D1[socket/bind/listen]
         A4 -->|Win32| D2[WSASocket/bind/listen]
         A6[HTTP/2] --> D3[nghttp2 + mbedTLS/OpenSSL]
-        A7[HTTP/3] -->|POSIX| D4[ngtcp2 + nghttp3 + GnuTLS]
+        A7[HTTP/3] -->|POSIX| D4[ngtcp2 + nghttp3 + AWS-LC, static]
         A7 -->|Win32| D5[WinHTTP over MsQuic]
     end
 
@@ -1106,7 +1125,7 @@ single most important thing to know before touching this code.
 | --- | --- | --- |
 | HTTP/1.1, HTTPS | **Objeck** (`net.obs`, `net_secure.obs`) — assembled as text | sockets + mbedTLS/OpenSSL |
 | HTTP/2 | **Native** (`common.cpp`) | nghttp2, all platforms |
-| HTTP/3 | **Native** (`common.cpp`) | ngtcp2 + nghttp3 + GnuTLS on POSIX; **WinHTTP over MsQuic** on Windows 11 / Server 2022+ |
+| HTTP/3 | **Native** (`common.cpp`) | ngtcp2 + nghttp3 + AWS-LC on POSIX, linked statically (`tools/deps/build_quic_deps.sh`); **WinHTTP over MsQuic** on Windows 11 / Server 2022+ |
 
 Consequences that have each produced a real bug:
 
@@ -1177,9 +1196,10 @@ sequenceDiagram
 | Platform | Macro | Compiler | ABI |
 |----------|-------|----------|-----|
 | **Linux x64** | `__linux__` && `__x86_64__` | GCC/Clang | System V AMD64 |
+| **Linux ARM64** | `__linux__` && `__aarch64__` | GCC | ARM64 AAPCS |
 | **macOS ARM64** | `__APPLE__` && `__aarch64__` | Clang | ARM64 AAPCS |
 | **Windows x64** | `_WIN32` && `_WIN64` | MSVC | Microsoft x64 |
-| **Windows ARM64** | `_WIN32` && `_M_ARM64` | MSVC | ARM64EC |
+| **Windows ARM64** | `_WIN32` && `_M_ARM64` | MSVC | Microsoft ARM64 |
 
 **Source Files:**
 - `core/vm/arch/posix/posix.h` - POSIX abstractions
@@ -1188,167 +1208,54 @@ sequenceDiagram
 
 ---
 
-## 10. Exception Handling
+## 10. Runtime Errors
 
-Exception dispatch and stack unwinding mechanism.
-
-```mermaid
-sequenceDiagram
-    participant App as Application Code
-    participant VM as VM Interpreter
-    participant MM as Memory Manager
-    participant Handler as Exception Handler
-
-    App->>VM: Execute method
-    VM->>VM: Run bytecode
-
-    Note over VM: Exception thrown
-
-    VM->>Handler: Exception raised
-    Handler->>Handler: Save exception object
-
-    Handler->>VM: Begin stack unwind
-
-    loop For each stack frame
-        VM->>Handler: Check for catch block
-        Handler->>Handler: Match exception type
-
-        alt Catch block found
-            Handler->>VM: Jump to catch block
-            VM->>MM: Cleanup stack frame
-            VM->>App: Resume at catch block
-        else No catch block
-            VM->>Handler: Unwind to caller
-            Handler->>MM: Release frame resources
-        end
-    end
-
-    alt No handler found
-        Handler->>App: Terminate with error
-    end
-```
-
-### Exception Flow
+Objeck has no exceptions: there is no `throw`, `catch` or `finally`, and no exception classes. A
+runtime error ends the program unless a `Try()` region is active, and then the chain it guards
+yields `Nil`.
 
 ```mermaid
-graph TB
-    subgraph "Exception Thrown"
-        A[throw Exception] --> B[Create Exception Object]
-        B --> C[Store in Exception Register]
-    end
+flowchart TB
+    A["Runtime error<br/>Nil dereference, index out of bounds,<br/>divide or modulus by zero"] --> B{"Try() handler<br/>on the handler stack?"}
+    B -->|yes| C["TryErrorRecovery: pop frames back to<br/>the handler's, restore the operand stack"]
+    C --> D["Resume at the handler:<br/>the guarded chain yields Nil"]
+    D --> E["Otherwise() or ?? may supply a default"]
+    B -->|no| F["Message on stderr,<br/>then the methods on the call stack"]
+    F --> G["Exit with status 1<br/>(obd halts instead)"]
 
-    subgraph "Stack Unwinding"
-        C --> D{Current Frame has Catch?}
-
-        D -->|Yes| E{Exception Type Match?}
-        E -->|Yes| F[Jump to Catch Block]
-        E -->|No| G[Continue Unwinding]
-
-        D -->|No| G
-        G --> H[Pop Stack Frame]
-        H --> I[Release Frame Resources]
-        I --> J{More Frames?}
-
-        J -->|Yes| D
-        J -->|No| K[Uncaught Exception]
-    end
-
-    subgraph "Exception Handling"
-        F --> L[Execute Catch Block]
-        L --> M{Finally Block?}
-        M -->|Yes| N[Execute Finally]
-        M -->|No| O[Resume Execution]
-        N --> O
-
-        K --> P[Print Stack Trace]
-        P --> Q[Terminate Program]
-    end
-
-    style F fill:#e1ffe1
-    style K fill:#ffe1e1
-    style L fill:#fff4e1
+    style D fill:#e1ffe1
+    style G fill:#ffe1e1
 ```
 
-### Exception Types
-
-```mermaid
-classDiagram
-    class Exception {
-        +String message
-        +StackTrace[] trace
-        +GetMessage() String
-        +PrintStackTrace() Nil
-    }
-
-    class SystemException {
-        +Int errorCode
-    }
-
-    class NullReferenceException {
-    }
-
-    class IndexOutOfBoundsException {
-        +Int index
-        +Int size
-    }
-
-    class TypeCastException {
-        +String fromType
-        +String toType
-    }
-
-    class DivideByZeroException {
-    }
-
-    Exception <|-- SystemException
-    Exception <|-- NullReferenceException
-    Exception <|-- IndexOutOfBoundsException
-    Exception <|-- TypeCastException
-    Exception <|-- DivideByZeroException
-```
-
-### Stack Trace Capture
-
-```mermaid
-graph LR
-    A[Exception Thrown] --> B[Capture Instruction Pointer]
-    B --> C[Walk Stack Frames]
-    C --> D[For Each Frame]
-
-    D --> E[Get Method Name]
-    D --> F[Get Source File]
-    D --> G[Get Line Number]
-    D --> H[Get Frame Pointer]
-
-    E & F & G & H --> I[Stack Trace Entry]
-    I --> J[Add to Exception Object]
-
-    J --> K{More Frames?}
-    K -->|Yes| C
-    K -->|No| L[Complete Stack Trace]
-
-    style L fill:#e1ffe1
-```
-
-### Exception Overhead
-
-| Operation | Time | Notes |
-|-----------|------|-------|
-| **throw** | ~100ns | Object allocation + register save |
-| **Stack unwind** | ~50ns/frame | Frame cleanup + resource release |
-| **catch** | ~50ns | Type check + jump |
-| **finally** | ~30ns | Guaranteed execution |
-
-**Best Practices:**
-- Exceptions are for exceptional conditions only
-- Don't use for control flow (expensive)
-- Catch specific exception types
-- Always use finally for resource cleanup
+- **Fatal unless guarded.** The interpreter prints one `>>> ... <<<` line, such as
+  `>>> Attempting to dereference a 'Nil' memory instance <<<`, `>>> Index out of bounds: <index>,<size> <<<`
+  or `>>> Divide by zero <<<`, then lists the methods on the call stack (`StackErrorUnwind`) and
+  exits with status 1. An invalid cast (`>>> Invalid object cast ... <<<`) and a call-stack
+  overflow are fatal even inside a `Try()`.
+- **`Try()` and `?->`.** `a?->b()` is `a->Try()->b()`. The compiler brackets the rest of the
+  chain with `TRY_START` and `TRY_END` (`EmitTryIntrinsic`); `TRY_START` pushes a handler, with the
+  operand-stack position and call-stack depth to return to, on the interpreter's handler stack
+  (16 deep). On a `Nil` dereference, a bad index or a zero divisor, `TryErrorRecovery` pops frames
+  back to that depth, restores the operand stack and resumes at the handler, which stores `Nil`
+  as the chain's value. A compiled callee that returns one of those errors as its status is
+  recovered the same way.
+- **`Otherwise()` and `??`.** `a ?? b` is `a->Otherwise(b)`: a `Nil` test, not a handler, so `b`
+  is evaluated only when `a` is `Nil`.
+- **The JIT leaves try regions alone.** `TRY_START` and `TRY_END` are in neither backend's
+  whitelist, so a method that holds one stays interpreted: recovery needs the interpreter's
+  handler stack.
+- **Under the debugger** (`obd`, built with `_NO_HALT`) an unguarded error halts the program
+  instead of exiting, and DAP "uncaught" exception breakpoints stop there first
+  (`Debugger::OnRuntimeError`).
+- **Faults in the VM itself**, a C++ exception such as `std::bad_alloc`, are caught at the top
+  of `Execute`, or by the JIT bridge under compiled code, and reported as
+  `>>> virtual machine: ... <<<`.
 
 **Source Files:**
-- `core/vm/common.h` - Exception definitions
-- `core/shared/traps.h` - Exception codes
-- `core/vm/interpreter.cpp` - Exception handling logic
+- `core/compiler/intermediate.cpp` - `EmitTryIntrinsic`, `EmitOtherwiseIntrinsic`
+- `core/vm/interpreter.h` - the handler stack (`PushTryHandler`, `TryErrorRecovery`)
+- `core/vm/dispatch.cpp` - `TRY_START`, `TRY_END`
+- `core/vm/interpreter.cpp` - error messages and `StackErrorUnwind`
 
 ---
 
@@ -1356,7 +1263,7 @@ graph LR
 
 This architecture demonstrates a modern, multi-platform language implementation with:
 
-✅ **Multi-tiered Execution:** Interpreter → Profiling → JIT compilation
+✅ **Multi-tiered Execution:** Interpreter → call counting → JIT compilation
 ✅ **Platform-Specific JIT:** Optimized ARM64 and x64 code generation
 ✅ **Efficient Memory Management:** O(1) lookups, generational GC
 ✅ **Rich Library Ecosystem:** 32 libraries including AI/ML, web servers
@@ -1377,4 +1284,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on improving this archi
 
 ---
 
-*Last updated: May 2026 | Version: 2026.6.0*
+*Last updated: September 2026 | Version: 2026.9.5*
