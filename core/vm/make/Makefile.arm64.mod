@@ -3,7 +3,7 @@
 # them, and OBJECK_DEPS is its install prefix. Without these the module fell
 # back to the #else stubs, and obi and the embedding API had neither (#897).
 OBJECK_DEPS ?= $(HOME)/objeck-deps/linux-$(shell uname -m)
-ARGS=-O3 -Wall -std=c++20 -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -DOBJECK_HAS_NGHTTP2 -DOBJECK_HAS_NGTCP2 -I$(OBJECK_DEPS)/include -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -MMD -MP
+ARGS=-O3 -Wall -std=c++20 -D_MODULE -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -DOBJECK_HAS_NGHTTP2 -DOBJECK_HAS_NGTCP2 -I$(OBJECK_DEPS)/include -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -MMD -MP
 
 SRC=common.o dispatch.o interpreter.o loader.o vm.o posix_main.o 
 OBJ_LIBS=jit_arm_a64.a memory.a
