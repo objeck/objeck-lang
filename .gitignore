@@ -29,17 +29,23 @@
 *.ifc
 *.ifc.d.json
 *.module.json
+*.dt.d.json
+*.module.json.command
 
-# MSBuild tracking and logs
+# MSBuild tracking and logs. Every .log and .recipe that was ever committed was a
+# build leftover, so neither belongs in git.
 *.tlog
 *.lastbuildstate
-*.Build.CppClean.log
-*.exe.recipe
+*.log
+*.recipe
 *.vcxproj.FileListAbsolute.txt
 UpgradeLog.htm
 
-# Visual Studio user/cache files
+# Visual Studio and Xcode per-user files. The few still tracked hold debugger
+# settings or breakpoints on purpose; new ones stay local.
 .vs/
+*.vcxproj.user
+xcuserdata/
 
 # Sublime Text user workspace files
 *.sublime-workspace
@@ -56,6 +62,8 @@ UpgradeLog.htm
 **/x64/Release/
 **/ARM64/Debug/
 **/ARM64/Release/
+**/ARM64/Release-*/
+**/Release/ARM64/
 **/Release/win64/
 **/Release/x64/
 **/Debug/x64/
@@ -68,8 +76,11 @@ core/lib/experimental/
 
 # Deploy/release staging
 core/release/deploy-x64/
+core/release/deploy-arm64/
 core/release/test-x64/
 core/release/x64/
+# docker/build.cmd copies a deploy tree here for the image, then removes it
+docker/deploy/
 
 # NuGet packages (binaries)
 *.nupkg
@@ -111,6 +122,11 @@ core/release/obr
 # obu has no Xcode/VS output dir on POSIX -- its makefile builds in place, so the
 # binary lands next to obu.cpp exactly the way obc and obr do above.
 core/utils/updater/obu
+# obi, obd, obb and obn build in place the same way
+core/repl/obi
+core/debugger/obd
+core/utils/launcher/obb
+core/utils/launcher/obn
 
 # Build output directories (ONNX)
 core/lib/onnx/vs/x64/
@@ -143,14 +159,15 @@ programs/deploy/test_sdl.obs
 
 # Misc
 nul
+.ftpquota
 build.txt
 /git
 core/release/out.txt
 *.zip
-# Build artifacts
-core/lib/crypto/*.so
+# Build artifacts. POSIX builds leave each native library next to its source
+# (core/lib/sdl/sdl.so); the vendored .so files deeper down stay tracked.
+core/lib/*/*.so
 core/vm/obr_dbg
-core/release/build.log
 core/lib/onnx/eq/*.dylib
 
 # Large media files (host externally)

@@ -27,9 +27,8 @@ drifted. A separate workspace-mode check covers build.json loading against
 ws_lsp_features/.
 
 Positions are located by searching the fixture text at runtime rather than being
-hardcoded. The hand-written TEST_CHECKLIST.md in ws_lsp_features/ drifted out of
-sync with the fixtures it describes; searching keeps this harness from rotting
-the same way.
+hardcoded. Hand-written line numbers drift out of sync with the fixtures they
+describe; searching keeps this harness from rotting that way.
 """
 import json
 import os

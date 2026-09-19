@@ -2,30 +2,21 @@
 
 Cryptographic support for the Objeck language, providing hash functions, AES-256 encryption, and Base64 encoding/decoding.
 
-The current implementation uses **Mbed TLS 3.6.3** as the underlying crypto provider, built for x64 and arm64 Windows targets.
+The underlying crypto provider is **Mbed TLS**.
 
-## Building mbedTLS for Windows
+## Getting mbedTLS
 
-### For Windows x64
-The x64 libraries are already included in the repository at `objeck-lang/core/lib/openssl/win/x64/`.
-
-### For Windows ARM64
-**AUTOMATED:** The ARM64 libraries are automatically built when running `deploy_windows.cmd arm64`.
-
-If you need to build them manually, run:
-```cmd
-cd objeck-lang\core\lib\crypto
-build_mbedtls_arm64.cmd
-```
-
-Or see [BUILD_MBEDTLS_ARM64.md](BUILD_MBEDTLS_ARM64.md) for detailed instructions on:
-- Automated build using the provided script (easiest)
-- Manual build using vcpkg (recommended)
-- Building from source (advanced)
-
-Required libraries:
-- `mbedtls.lib`
-- `mbedcrypto.lib`
-- `mbedx509.lib`
-
-These are automatically placed in: `objeck-lang/core/lib/openssl/win/arm64/` 
+- **Windows (x64 and ARM64):** from vcpkg, together with nghttp2. Run this
+  outside any directory that holds a `vcpkg.json`, or vcpkg switches to
+  manifest mode and rejects the package arguments:
+  ```cmd
+  vcpkg install mbedtls:x64-windows nghttp2:x64-windows
+  vcpkg install mbedtls:arm64-windows nghttp2:arm64-windows
+  ```
+  `core/build/vcpkg.props` finds the install for every project: it checks
+  `%VCPKG_ROOT%`, `C:\vcpkg` and `%USERPROFILE%\vcpkg`, and uses the first one
+  that has the package. `deploy_windows.cmd` checks the same places and stops
+  with the install command if none has it.
+- **Linux:** the distribution's package, e.g. `sudo apt-get install libmbedtls-dev`.
+- **macOS:** a static build with the in-tree `mbedtls_config.h`:
+  `bash tools/deps/build_macos_deps.sh`.

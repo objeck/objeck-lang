@@ -305,10 +305,10 @@ cd core/release
 5. Binaries: core\release\deploy-arm64\bin\
 ```
 
-**Note:** First ARM64 build automatically downloads mbedTLS (5-10 min one-time setup)
+**Note:** Install mbedTLS and nghttp2 from vcpkg first: `vcpkg install mbedtls:arm64-windows nghttp2:arm64-windows` (see `core/lib/crypto/README.md`)
 
 **Network library support on Windows:**
-- **HTTP/2** (`net_h2`): Requires nghttp2 — install via vcpkg: `vcpkg install nghttp2:x64-windows` and add to VS project
+- **HTTP/2** (`net_h2`): Requires nghttp2 from vcpkg (`vcpkg install nghttp2:x64-windows`, installed alongside mbedTLS); `core/build/vcpkg.props` adds it to every project
 - **HTTP/3** (`net_quic`): uses WinHTTP's HTTP/3 support (Windows 11 and later); no extra libraries
 
 ---
@@ -450,9 +450,8 @@ sudo apt-get install libmbedtls-dev
 # macOS: static mbedTLS 3.6.4, built with the in-tree mbedtls_config.h
 bash tools/deps/build_macos_deps.sh
 
-# Windows ARM64
-# Automatically downloads on first build
-# Or manually: cd core/lib/crypto && build_mbedtls_arm64.cmd
+# Windows (x64 or ARM64): from vcpkg
+vcpkg install mbedtls:x64-windows nghttp2:x64-windows      # or :arm64-windows
 ```
 
 **Problem:** `SDL2 not found`

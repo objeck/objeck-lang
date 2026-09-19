@@ -10,8 +10,8 @@ sits under `lldb` in minutes.
 ## Check in here first (written 2026-09-10 night, on the Mac)
 
 Sections 1 and 3 below describe the tree as it was on 2026-09-09; section 4d's step 1 is done,
-and this block says what changed and where to start. `docs/HANDOFF_2026_09_10.md` has the day's
-full record.
+and this block says what changed and where to start. The day's full record was
+`docs/HANDOFF_2026_09_10.md`, removed once its work landed; git history has it.
 
 | item | now |
 |---|---|

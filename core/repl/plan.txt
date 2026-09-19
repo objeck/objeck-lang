@@ -1,2 +1,0 @@
-TODO
-* Create macOS build (module and REPL)

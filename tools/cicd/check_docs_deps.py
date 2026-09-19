@@ -53,8 +53,8 @@ DOC_GLOBS = [
     "tools/lsp/docs/install_guide.html",
     "tools/install_deps.sh",
 ]
-# Historical pages describe old releases on purpose; the changelog does too.
-DOC_EXCLUDE = {"CHANGELOG.md", "docs/HTTP3_WINDOWS_PLAN.md"}
+# The changelog describes old releases on purpose.
+DOC_EXCLUDE = {"CHANGELOG.md"}
 
 INSTALL_RE = re.compile(
     r"(?P<pm>apt-get\s+install|apt\s+install|brew\s+install|dnf\s+install|yum\s+install|pacman\s+-S\w*)\s+(?P<rest>.*)")

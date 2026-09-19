@@ -27,22 +27,52 @@ pull the latest `master`.
   #   command="bash /opt/playground/repo/programs/web-playground/deploy/update.sh",no-pty,no-port-forwarding <pubkey>
   ```
 
-**If `$PLAYGROUND_HOST` is unset or SSH fails: STOP and tell the user.** Do not
-guess a host, do not read or print any key material, do not paste secrets into
-output.
+- **Or an SSH alias named `playground`** in `~/.ssh/config`. The Windows release box
+  has one that logs in as root, and no `$PLAYGROUND_HOST`, so check the alias
+  before concluding there is no access. At v2026.9.5 nobody did, and the deploy
+  was nearly handed back to the maintainer:
+  ```bash
+  ssh -o BatchMode=yes -o ConnectTimeout=15 playground true && echo reachable
+  ```
+
+Below, `$TARGET` is `root@$PLAYGROUND_HOST` or `playground`.
+
+**If neither works: STOP and tell the user.** Do not guess a host, do not read
+or print any key material, do not paste secrets into output.
 
 ## Steps
 
 ### 1. Deploy
 
 ```bash
-ssh -o StrictHostKeyChecking=accept-new root@$PLAYGROUND_HOST \
-  'bash /opt/playground/repo/programs/web-playground/deploy/update.sh'
+ssh -o StrictHostKeyChecking=accept-new $TARGET \
+  'bash /opt/playground/repo/programs/web-playground/deploy/update.sh 2026.9.5'
 ```
 
-`update.sh` does: `git pull origin master`, update the Python venv, rebuild the
-sandbox Docker image, restart the systemd `playground` service, and run a
-`curl -sf http://localhost:8000/api/health` check.
+**The argument is the bare version: `2026.9.5`, not `v2026.9.5`.** `update.sh`
+adds the `v` itself, so `v2026.9.5` asks GitHub for `vv2026.9.5` and fails after
+the pull. With no argument it deploys the version in `core/shared/version.h`.
+
+`update.sh` does: `git pull origin master`, install that version's Linux x64
+release tarball (checked against `SHA256SUMS`), update the Python venv, rebuild
+the sandbox Docker image, restart the systemd `playground` service, then poll
+`/api/health` and run code through the sandbox to confirm the engine version.
+
+On a flaky link, start it detached so a dropped connection cannot kill it
+mid-`docker build`, then poll its log. The `pgrep` guard refuses to start a
+second run while one is going, for example one the maintainer started by hand.
+Send the script on stdin as below: written inline as `ssh $TARGET '...'`, the
+path sits in the remote shell's own command line, `pgrep -f` matches that
+shell, and the guard refuses every run.
+
+```bash
+ssh $TARGET 'bash -s' <<'EOF'
+pgrep -f '[d]eploy/update\.sh' >/dev/null && { echo "BUSY: a deploy is already running"; exit 3; }
+setsid nohup bash -c 'bash /opt/playground/repo/programs/web-playground/deploy/update.sh 2026.9.5; echo "deploy exit=$?"' > /tmp/deploy.log 2>&1 < /dev/null &
+echo STARTED
+EOF
+ssh $TARGET 'tail -5 /tmp/deploy.log'   # repeat until it shows "deploy exit="
+```
 
 ### 2. Recover a stuck git tree (only if `update.sh`'s pull fails)
 
@@ -50,7 +80,7 @@ The server can accumulate local modifications (`.obl` regenerated in place,
 `config.py` touched) and untracked files (artifacts later committed to master):
 
 ```bash
-ssh root@$PLAYGROUND_HOST 'cd /opt/playground/repo && \
+ssh $TARGET 'cd /opt/playground/repo && \
   chmod -R u+w . && \
   git stash && \
   git clean -fd && \
@@ -99,7 +129,7 @@ apparently normal exit. Redirect to a file and read that, or use `tail` on the
 saved output:
 
 ```bash
-ssh root@$PLAYGROUND_HOST 'bash /opt/playground/.../update.sh <VERSION>' 2>&1 | tee /tmp/deploy.log
+ssh $TARGET 'bash /opt/playground/.../update.sh 2026.9.5' 2>&1 | tee /tmp/deploy.log
 ```
 
 The old single-shot health check (`sleep 3` then one curl) also cried wolf on
