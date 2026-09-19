@@ -549,19 +549,18 @@ jobs:
         echo "=== ldd obi"; ldd "$BIN/obi"
         echo "=== ldd obr"; ldd "$BIN/obr"
         echo "=== parity check"; python3 check_obi_obr_parity.py "$BIN"; echo "parity exit=$?"
-        echo "=== obi --quit, no program"; "$BIN/obi" --quit </dev/null; echo "exit=$?"
         echo "=== obi --file, output to files"
-        "$BIN/obi" --file "$T/features.obs" --quit </dev/null >"$T/out.txt" 2>"$T/err.txt"; echo "exit=$?"
+        timeout 300 "$BIN/obi" --file "$T/features.obs" --quit </dev/null >"$T/out.txt" 2>"$T/err.txt"; echo "exit=$?"
         echo "--- stdout:"; cat "$T/out.txt"; echo "--- stderr:"; cat "$T/err.txt"
-        echo "=== obi --file, unbuffered"; stdbuf -o0 -e0 "$BIN/obi" --file "$T/features.obs" --quit </dev/null; echo "exit=$?"
-        echo "=== MALLOC_CHECK_=3"; MALLOC_CHECK_=3 "$BIN/obi" --file "$T/features.obs" --quit </dev/null; echo "exit=$?"
+        echo "=== obi --file, unbuffered"; timeout 300 stdbuf -o0 -e0 "$BIN/obi" --file "$T/features.obs" --quit </dev/null; echo "exit=$?"
+        echo "=== MALLOC_CHECK_=3"; MALLOC_CHECK_=3 timeout 300 "$BIN/obi" --file "$T/features.obs" --quit </dev/null; echo "exit=$?"
         echo "=== gdb"
         sudo apt-get install -y -q gdb >/dev/null 2>&1 || { sudo apt-get update -q >/dev/null; sudo apt-get install -y -q gdb >/dev/null; }
-        gdb -q -batch -ex 'set pagination off' -ex 'set print frame-arguments none' -ex run -ex bt -ex 'info threads' -ex 'thread apply all bt 12' \
+        timeout 600 gdb -q -batch -ex 'set pagination off' -ex 'set print frame-arguments none' -ex run -ex bt -ex 'info threads' -ex 'thread apply all bt 12' \
           --args "$BIN/obi" --file "$T/features.obs" --quit </dev/null 2>&1 | tail -150
         echo "=== valgrind"
         sudo apt-get install -y -q valgrind >/dev/null 2>&1 || { sudo apt-get update -q >/dev/null; sudo apt-get install -y -q valgrind >/dev/null; }
-        valgrind --num-callers=40 --error-limit=no "$BIN/obi" --file "$T/features.obs" --quit </dev/null >"$T/vg.txt" 2>&1; echo "exit=$?"
+        timeout 900 valgrind --num-callers=40 --error-limit=no "$BIN/obi" --file "$T/features.obs" --quit </dev/null >"$T/vg.txt" 2>&1; echo "exit=$?"
         grep -n -B2 -A50 -E 'Invalid free|Mismatched free|double free|Invalid read|Invalid write' "$T/vg.txt" | head -300
         echo "--- valgrind tail:"; tail -40 "$T/vg.txt"
         exit 1
