@@ -251,16 +251,16 @@ class ChatExample {
 
     # single-turn
     response := Response->Respond("gpt-4o-mini",
-      Pair->New("user", "Explain JIT compilation in one sentence.")<String, String>,
+      Pair->New("user", "Explain JIT compilation in one sentence.")&lt;String, String&gt;,
       token);
     response->GetText()->PrintLine();
 
     # multi-turn conversation
-    messages := Vector->New()<Pair<String, String>>;
-    messages->AddBack(Pair->New("system", "You are a concise coding assistant.")<String, String>);
-    messages->AddBack(Pair->New("user",   "What is a closure?")<String, String>);
-    messages->AddBack(Pair->New("assistant", "A closure captures its enclosing scope.")<String, String>);
-    messages->AddBack(Pair->New("user",   "Show me one in Objeck.")<String, String>);
+    messages := Vector->New()&lt;Pair&lt;String, String&gt;&gt;;
+    messages->AddBack(Pair->New("system", "You are a concise coding assistant.")&lt;String, String&gt;);
+    messages->AddBack(Pair->New("user",   "What is a closure?")&lt;String, String&gt;);
+    messages->AddBack(Pair->New("assistant", "A closure captures its enclosing scope.")&lt;String, String&gt;);
+    messages->AddBack(Pair->New("user",   "Show me one in Objeck.")&lt;String, String&gt;);
 
     response := Response->Respond("gpt-4o-mini", messages, Nil, token);   # Nil: no output schema
     response->GetText()->PrintLine();
@@ -275,7 +275,7 @@ class ChatExample {
 
 bytes   := FileReader->ReadBinaryFile("photo.jpg");
 image   := ImageQuery->New("What is in this image?", bytes, ImageQuery->MimeType->JPEG);
-query   := Pair->New("user", image)<String, ImageQuery>;
+query   := Pair->New("user", image)&lt;String, ImageQuery&gt;;
 response := Response->Respond("gpt-4o", query, token);
 response->GetText()->PrintLine();
 </code></pre>
@@ -441,7 +441,7 @@ values := Model->EmbedContent(content, token);
 "Dimensions: {$values->Size()}"->PrintLine();
 
 # batch — multiple texts in one round-trip
-texts := Vector->New()<String>;
+texts := Vector->New()&lt;String&gt;;
 texts->AddBack("Objeck is JIT-compiled");
 texts->AddBack("Python uses an interpreter");
 texts->AddBack("Rust is memory-safe");
@@ -493,7 +493,7 @@ class LocalChat {
 
     <!-- ═══════════════════════════════════════ Machine Learning ═══ -->
     <h3 id="ml">Machine Learning</h3>
-    <div class="lib-flag">ml</div>
+    <div class="lib-flag">ml,gen_collect,csv</div>
     <p>
       Pure Objeck ML routines backed by the Eigen C++ library — no Python, no external frameworks.
       Covers linear algebra, regression, neural networks, clustering, and model evaluation.
@@ -510,25 +510,28 @@ class MatrixExample {
 
     # matrix dot product: [[19,22],[43,50]]
     c := Matrix2D->DotProduct(a, b);
-    rows := c->Size();
-    each(r : rows) {
-      each(col : c[r]->Size()) {
-        "{$c[r,col]} "->Print();
+    dims := c->Size();       # [rows, columns]
+    each(r : dims[0]) {
+      each(col : dims[1]) {
+        value := c[r,col];
+        "{$value} "->Print();
       };
       '\n'->Print();
     };
+    # 19.000000 22.000000
+    # 43.000000 50.000000
 
     # activation functions (element-wise)
     x := [[0.5, -0.3], [1.2, -0.8]];
     Matrix2D->ReLU(x);       # max(0, x): [[0.5,0.0],[1.2,0.0]]
     Matrix2D->Sigmoid(x);    # 1/(1+e^-x)
     Matrix2D->Tanh(x);       # hyperbolic tangent
-    Matrix2D->Softmax(x);    # probability distribution over rows
+    Matrix2D->Softmax(x);    # probability distribution over all elements (sums to 1)
 
     # statistical helpers
-    "Row 0 avg: {$Matrix2D->AverageRow(0, a)}"->PrintLine();  # 1.5
-    "Col 1 sum: {$Matrix2D->SumColumn(1, a)}"->PrintLine();   # 6.0
-    "Std dev:   {$Matrix2D->StdDevColumn(0, a)}"->PrintLine();
+    "Row 0 avg: {$Matrix2D->AverageRow(0, a)}"->PrintLine();   # 1.500000
+    "Col 1 sum: {$Matrix2D->SumColumn(1, a)}"->PrintLine();    # 6.000000
+    "Std dev:   {$Matrix2D->StdDevColumn(0, a)}"->PrintLine(); # 1.414214 (sample)
 
     # random matrices for weight initialization
     weights := Matrix2D->Random(3, 4);          # uniform [0,1]
@@ -550,12 +553,14 @@ class RegressionExample {
     model := LinearRegression->New();
     if(model->Fit(X, y)) {
       preds := model->Predict([[1400.0, 3.0]]);
-      "Predicted price: {$preds[0,0]}"->PrintLine();
-      "R²: {$model->GetRSquared()}"->PrintLine();
+      price := preds[0,0];
+      "Predicted price: {$price}"->PrintLine();       # ~263148
+      "R²: {$model->GetRSquared()}"->PrintLine();      # ~0.998
 
       coefficients := model->GetCoefficients();
       each(i : coefficients->Size()) {
-        "w[{$i}] = {$coefficients[i]}"->PrintLine();
+        weight := coefficients[i];
+        "w[{$i}] = {$weight}"->PrintLine();
       };
     };
   }
@@ -575,8 +580,10 @@ class ClassifierExample {
     if(model->Fit(X, y)) {
       probs   := model->Predict([[5.0, 72.0]]);
       classes := model->PredictClass([[5.0, 72.0]]);
-      "Probability: {$probs[0]}"->PrintLine();
-      "Predicted pass: {$classes[0]}"->PrintLine();
+      probability := probs[0];
+      passed      := classes[0];
+      "Probability: {$probability}"->PrintLine();    # ~0.43
+      "Predicted pass: {$passed}"->PrintLine();      # false
     };
   }
 }
@@ -588,20 +595,20 @@ class ClassifierExample {
 
 class XorNet {
   function : Main(args : String[]) ~ Nil {
-    # XOR training data
-    inputs  := Vector->New()<FloatMatrixRef>;
-    targets := Vector->New()<FloatMatrixRef>;
+    # XOR training data: each sample is a column vector, one row per input node
+    inputs  := Vector->New()&lt;FloatMatrixRef&gt;;
+    targets := Vector->New()&lt;FloatMatrixRef&gt;;
 
-    inputs->AddBack(FloatMatrixRef->New([[0.0, 0.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
-    inputs->AddBack(FloatMatrixRef->New([[0.0, 1.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
-    inputs->AddBack(FloatMatrixRef->New([[1.0, 0.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
-    inputs->AddBack(FloatMatrixRef->New([[1.0, 1.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
+    inputs->AddBack(FloatMatrixRef->New([[0.0], [0.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
+    inputs->AddBack(FloatMatrixRef->New([[0.0], [1.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
+    inputs->AddBack(FloatMatrixRef->New([[1.0], [0.0]])); targets->AddBack(FloatMatrixRef->New([[1.0]]));
+    inputs->AddBack(FloatMatrixRef->New([[1.0], [1.0]])); targets->AddBack(FloatMatrixRef->New([[0.0]]));
 
-    # Train: 2 inputs → 3 hidden (factor) → 1 output
+    # Train: 2 inputs → 6 hidden (2 × factor 3) → 1 output
     net := NeuralNetwork->Train(2, inputs, 3, 1, targets, 0.3, 10000);
     if(net <> Nil) {
-      query := FloatMatrixRef->New([[1.0, 0.0]]);
-      "1 XOR 0 — confidence: {$net->Confidence(query)}"->PrintLine();  # ~1.0
+      query := FloatMatrixRef->New([[1.0], [0.0]]);
+      "1 XOR 0 — confidence: {$net->Confidence(query)}"->PrintLine();  # for example 0.987407 (weights start random)
       "1 XOR 0 — activated:  {$net->Query(query)}"->PrintLine();       # true
       net->Store("xor.dat");
     };
@@ -611,8 +618,10 @@ class XorNet {
     <p>Load CSV training data with the built-in reader — it splits inputs and targets automatically:</p>
     <pre class="line-numbers"><code class="language-cpp">use System.ML, Collection;
 
-# LoadSplitMatrices: filename, target column offset, train%, line ending
-splits := MatrixReader->LoadSplitMatrices("iris.csv", 4, 0.8, "\n");
+# iris.csv: no header row; 4 feature columns scaled to 0..1, then 3 one-hot class columns
+# LoadSplitMatrices: filename, number of target columns (the last 3), train fraction, line ending
+# each row becomes a 4x1 input and a 3x1 target, the column shapes Train expects
+splits := MatrixReader->LoadSplitMatrices("iris.csv", 3, 0.8, "\n");
 
 # splits[0]=train_inputs  splits[1]=train_targets
 # splits[2]=test_inputs   splits[3]=test_targets
@@ -621,7 +630,7 @@ train_targets := splits[1];
 
 net := NeuralNetwork->Train(4, train_inputs, 6, 3, train_targets, 0.05, 5000);
 </code></pre>
-    <pre class="cmd">&gt; obc -src xor_net.obs -lib ml
+    <pre class="cmd">&gt; obc -src xor_net.obs -lib ml,gen_collect,csv
 &gt; obr xor_net</pre>
 
     <h4 id="ml-cluster">Clustering &amp; Classification</h4>
@@ -649,21 +658,23 @@ class KNNExample {
 
 class ClusterExample {
   function : Main(args : String[]) ~ Nil {
-    records := Vector->New()<FloatArrayRef>;
+    records := Vector->New()&lt;FloatArrayRef&gt;;
     records->AddBack(FloatArrayRef->New([1.0, 1.5]));
     records->AddBack(FloatArrayRef->New([1.2, 1.3]));
     records->AddBack(FloatArrayRef->New([8.0, 8.5]));
     records->AddBack(FloatArrayRef->New([7.8, 8.2]));
     records->AddBack(FloatArrayRef->New([4.5, 4.0]));
 
-    groups   := ["low", "high"];
+    groups   := ["high", "low"];   # one label per cluster: K = 2
     grouping := KMeans->Group(groups, records, 2, 0.0, 10.0);
 
-    "Dunn Index: {$grouping->GetDunnIndex()}"->PrintLine();
+    "Dunn Index: {$grouping->GetDunnIndex()}"->PrintLine();   # 1.241838
     each(i : grouping->Size()) {
       g := grouping->Get(i);
       "Group '{$g->GetName()}': {$g->Size()} members"->PrintLine();
     };
+    # Group 'high': 2 members
+    # Group 'low': 3 members
   }
 }
 </code></pre>
@@ -714,25 +725,27 @@ class EvalExample {
     predictions := [true,  false, true,  true,  false];
     actuals     := [true,  true,  false, true,  false];
 
-    "Accuracy:  {$Metrics->Accuracy(predictions, actuals)}"->PrintLine();
-    "Precision: {$Metrics->Precision(predictions, actuals)}"->PrintLine();
-    "Recall:    {$Metrics->Recall(predictions, actuals)}"->PrintLine();
-    "F1 Score:  {$Metrics->F1Score(predictions, actuals)}"->PrintLine();
-    "MCC:       {$Metrics->MCC(predictions, actuals)}"->PrintLine();
+    "Accuracy:  {$Metrics->Accuracy(predictions, actuals)}"->PrintLine();   # 0.600000
+    "Precision: {$Metrics->Precision(predictions, actuals)}"->PrintLine();  # 0.666667
+    "Recall:    {$Metrics->Recall(predictions, actuals)}"->PrintLine();     # 0.666667
+    "F1 Score:  {$Metrics->F1Score(predictions, actuals)}"->PrintLine();    # 0.666667
+    "MCC:       {$Metrics->MCC(predictions, actuals)}"->PrintLine();        # 0.166667
 
-    cm := Metrics->ConfusionMatrix(predictions, actuals);
+    cm := Metrics->ConfusionMatrix(predictions, actuals);   # [[TN, FP], [FN, TP]] = [[1, 1], [1, 2]]
     Metrics->PrintConfusionMatrix(cm);
 
     # ── Train/test split ─────────────────────────────
     data   := [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [9.0, 10.0]];
-    splits := CrossValidation->TrainTestSplit(data, 0.2);  # 80/20
-    train  := splits[0]->Get();
-    test   := splits[1]->Get();
-    "Train rows: {$train->Size()}, Test rows: {$test->Size()}"->PrintLine();
+    splits := CrossValidation->TrainTestSplit(data, 0.2);  # 80/20, rows shuffled
+    train_dims := splits[0]->Get()->Size();  # [rows, columns]
+    test_dims  := splits[1]->Get()->Size();
+    train_rows := train_dims[0];
+    test_rows  := test_dims[0];
+    "Train rows: {$train_rows}, Test rows: {$test_rows}"->PrintLine();  # Train rows: 4, Test rows: 1
   }
 }
 </code></pre>
-    <pre class="cmd">&gt; obc -src eval.obs -lib ml
+    <pre class="cmd">&gt; obc -src eval.obs -lib ml,gen_collect,csv
 &gt; obr eval</pre>
 
     <!-- ═══════════════════════════════════════ ONNX ═══ -->
@@ -900,15 +913,15 @@ class NLPExample {
       <tr><td>Gemini embeddings</td><td><code>Model::EmbedContent</code> / <code>BatchEmbedContent</code></td><td><code>gemini</code></td><td>Gemini</td></tr>
       <tr><td>Local chat / generation</td><td><code>Completion</code>, <code>Chat</code></td><td><code>ollama</code></td><td>None</td></tr>
       <tr><td>Local embeddings</td><td><code>Model::Embeddings</code></td><td><code>ollama</code></td><td>None</td></tr>
-      <tr><td>Matrix algebra</td><td><code>Matrix2D</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Linear regression</td><td><code>LinearRegression</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Logistic regression</td><td><code>LogisticRegression</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Neural network</td><td><code>NeuralNetwork</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>K-nearest neighbors</td><td><code>KNearestNeighbors</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>K-means clustering</td><td><code>KMeans</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Naive Bayes</td><td><code>NaiveBayes</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Feature scaling</td><td><code>FeatureScaler</code></td><td><code>ml</code></td><td>None</td></tr>
-      <tr><td>Model evaluation</td><td><code>Metrics</code>, <code>CrossValidation</code></td><td><code>ml</code></td><td>None</td></tr>
+      <tr><td>Matrix algebra</td><td><code>Matrix2D</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Linear regression</td><td><code>LinearRegression</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Logistic regression</td><td><code>LogisticRegression</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Neural network</td><td><code>NeuralNetwork</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>K-nearest neighbors</td><td><code>KNearestNeighbors</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>K-means clustering</td><td><code>KMeans</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Naive Bayes</td><td><code>NaiveBayes</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Feature scaling</td><td><code>FeatureScaler</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
+      <tr><td>Model evaluation</td><td><code>Metrics</code>, <code>CrossValidation</code></td><td><code>ml,gen_collect,csv</code></td><td>None</td></tr>
       <tr><td>Face recognition</td><td><code>FaceSession</code></td><td><code>onnx</code></td><td>None</td></tr>
       <tr><td>Object detection</td><td><code>YoloSession</code></td><td><code>onnx</code></td><td>None</td></tr>
       <tr><td>Local SLM</td><td><code>Phi3Session</code></td><td><code>onnx</code></td><td>None</td></tr>
