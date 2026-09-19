@@ -101,7 +101,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_SANITIZE;_NO_HALT;_MODULE;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_SANITIZE;_NO_HALT;_MODULE;_DEBUG;_CONSOLE;OBJECK_HAS_NGHTTP2;OBJECK_HAS_WINHTTP_H3;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -116,7 +116,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_SANITIZE;_NO_HALT;_MODULE;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_SANITIZE;_NO_HALT;_MODULE;_DEBUG;_CONSOLE;OBJECK_HAS_NGHTTP2;OBJECK_HAS_WINHTTP_H3;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -135,7 +135,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_NO_JIT;_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_NO_HALT;_MODULE;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_NO_JIT;_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_NO_HALT;_MODULE;NDEBUG;_CONSOLE;OBJECK_HAS_NGHTTP2;OBJECK_HAS_WINHTTP_H3;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -154,7 +154,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_NO_JIT;_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_NO_HALT;_MODULE;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_NO_JIT;_SANITIZE;_OBJECK_NATIVE_LIB_PATH;_NO_HALT;_MODULE;NDEBUG;_CONSOLE;OBJECK_HAS_NGHTTP2;OBJECK_HAS_WINHTTP_H3;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>

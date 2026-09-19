@@ -1,3 +1,9 @@
+# HTTP/2 and HTTP/3 (nghttp2, ngtcp2 + nghttp3, AWS-LC) are compiled into the
+# module the same way they are into obr: tools/deps/build_quic_deps.sh builds
+# them, and OBJECK_DEPS is its install prefix. Without these the module fell
+# back to the #else stubs, and obi and the embedding API had neither (#897).
+OBJECK_DEPS ?= $(HOME)/objeck-deps/linux-$(shell uname -m)
+QUIC_LIBS=$(OBJECK_DEPS)/lib/libnghttp2.a $(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a $(OBJECK_DEPS)/lib/libngtcp2.a $(OBJECK_DEPS)/lib/libnghttp3.a $(OBJECK_DEPS)/lib/libssl.a $(OBJECK_DEPS)/lib/libcrypto.a
 ARGS=-O3 -Wall -std=c++20 -mavx2 -D_NO_HALT -D_X64 -D_OBJECK_NATIVE_LIB_PATH -Wno-unused-function -MMD -MP
 SRC=editor.o repl.o
 OBJ_LIBS=../module/module.a
@@ -5,7 +11,7 @@ MODULE_PATH=../module
 EXE=obi
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) ../compiler/sys.a ../compiler/compiler.a ../vm/memory.a ../vm/vm.a ../vm/arch/jit/amd64/jit_common.a ../vm/arch/jit/amd64/jit_amd_lp64.o -ldl -lmbedtls -lmbedx509 -lmbedcrypto -lreadline -lz -pthread
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) ../compiler/sys.a ../compiler/compiler.a ../vm/memory.a ../vm/vm.a ../vm/arch/jit/amd64/jit_common.a ../vm/arch/jit/amd64/jit_amd_lp64.o -ldl -lmbedtls -lmbedx509 -lmbedcrypto $(QUIC_LIBS) -lreadline -lz -pthread
 
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 
