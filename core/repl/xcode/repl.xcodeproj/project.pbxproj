@@ -253,6 +253,12 @@
 					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
 					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
 					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp3.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libcrypto.a",
 					"-lz",
 				);
 				PRODUCT_MODULE_NAME = obi;
@@ -277,6 +283,12 @@
 					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedtls.a",
 					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedx509.a",
 					"-Wl,$(OBJECK_DEPS)/macos-bundle/mbedtls/lib/libmbedcrypto.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2_crypto_boringssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libngtcp2.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libnghttp3.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libssl.a",
+					"-Wl,$(OBJECK_DEPS)/lib/libcrypto.a",
 					"-lz",
 				);
 				PRODUCT_MODULE_NAME = obi;

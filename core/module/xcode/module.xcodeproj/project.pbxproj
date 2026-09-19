@@ -434,12 +434,17 @@
 				EXCLUDED_ARCHS = x86_64;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					OBJECK_HAS_NGHTTP2,
+					OBJECK_HAS_NGTCP2,
 					_MODULE,
 					_OSX,
 					_ARM64,
 					_DEBUG,
 				);
-				"HEADER_SEARCH_PATHS[arch=*]" = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					"$(OBJECK_DEPS)/include",
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
+				);
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -455,12 +460,17 @@
 				EXCLUDED_ARCHS = x86_64;
 				EXECUTABLE_PREFIX = lib;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					OBJECK_HAS_NGHTTP2,
+					OBJECK_HAS_NGTCP2,
 					_MODULE,
 					_OSX,
 					_ARM64,
 					_OBJECK_NATIVE_LIB_PATH,
 				);
-				"HEADER_SEARCH_PATHS[arch=*]" = "$(OBJECK_DEPS)/macos-bundle/mbedtls/include";
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					"$(OBJECK_DEPS)/include",
+					"$(OBJECK_DEPS)/macos-bundle/mbedtls/include",
+				);
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
