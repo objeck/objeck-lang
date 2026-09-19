@@ -154,7 +154,7 @@ dist := Matrix2D->EuclideanDistance(points);
 		Solves a unit of equations
 		@param m1 data matrix
 		@param m2 result matrix
-		@return least squares
+		@return least squares, or Nil if m1 and m2 have different row counts
 
 ```
 A := [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]];
@@ -166,15 +166,20 @@ each(c in coeffs) {
 ```
 		~#
 		function : native : Solve(m1 : Float[,], m2 : Float[,]) ~ Float[] {
-			if(m1 <> Nil | m2 <> Nil) {
+			if(m1 <> Nil & m2 <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatArrayRef->New();
+				# Every native matrix call in this class reads its result from the holder
+				# it passed, not from array_args[0]. When the native code rejects its
+				# operands (a shape mismatch, an empty matrix) it sets array_args[0] itself
+				# to Nil, so reading the slot back dereferenced Nil; the holder's value is
+				# then still Nil, which is the result.
+				holder := FloatArrayRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m1);
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_solve_matrix_matrix = Nil) { @fn_ml_matrix_solve_matrix_matrix := "ml_matrix_solve_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_solve_matrix_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatArrayRef);
 				return holder->Get();
 			};
 			
@@ -433,13 +438,13 @@ each(c in coeffs) {
 		function : native : Add(c : Float, m : Float[,]) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_add_scalar_matrix = Nil) { @fn_ml_matrix_add_scalar_matrix := "ml_matrix_add_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_add_scalar_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -455,13 +460,13 @@ each(c in coeffs) {
 		function : native : Add(m : Float[,], c : Float) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
 				if(@fn_ml_matrix_add_matrix_scalar = Nil) { @fn_ml_matrix_add_matrix_scalar := "ml_matrix_add_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_add_matrix_scalar, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -472,18 +477,18 @@ each(c in coeffs) {
 		Adds two matrices
 		@param m1 left matrix
 		@param m2 right matrix
-		@return updated matrix
+		@return updated matrix, or Nil if the shapes differ
 		~#
 		function : native : Add(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
-			if(m1 <> Nil | m2 <> Nil) {
+			if(m1 <> Nil & m2 <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m1);
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_add_matrix_matrix = Nil) { @fn_ml_matrix_add_matrix_matrix := "ml_matrix_add_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_add_matrix_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -499,13 +504,13 @@ each(c in coeffs) {
 		function : native : Subtract(c : Float, m : Float[,]) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_sub_scalar_matrix = Nil) { @fn_ml_matrix_sub_scalar_matrix := "ml_matrix_sub_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_sub_scalar_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -521,13 +526,13 @@ each(c in coeffs) {
 		function : native : Subtract(m : Float[,], c : Float) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
 				if(@fn_ml_matrix_sub_matrix_scalar = Nil) { @fn_ml_matrix_sub_matrix_scalar := "ml_matrix_sub_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_sub_matrix_scalar, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -538,18 +543,18 @@ each(c in coeffs) {
 		Subtracts two matrices
 		@param m1 left matrix
 		@param m2 right matrix
-		@return updated matrix
+		@return updated matrix, or Nil if the shapes differ
 		~#
 		function : native : Subtract(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
-			if(m1 <> Nil | m2 <> Nil) {
+			if(m1 <> Nil & m2 <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m1);
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_sub_matrix_matrix = Nil) { @fn_ml_matrix_sub_matrix_matrix := "ml_matrix_sub_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_sub_matrix_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -565,13 +570,13 @@ each(c in coeffs) {
 		function : native : Multiple(c : Float, m : Float[,]) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_mul_scalar_matrix = Nil) { @fn_ml_matrix_mul_scalar_matrix := "ml_matrix_mul_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_mul_scalar_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -587,13 +592,13 @@ each(c in coeffs) {
 		function : native : Multiple(m : Float[,], c : Float) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
 				if(@fn_ml_matrix_mul_matrix_scalar = Nil) { @fn_ml_matrix_mul_matrix_scalar := "ml_matrix_mul_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_mul_matrix_scalar, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -633,18 +638,18 @@ each(c in coeffs) {
 		Calculates the dot product.
 		@param m1 left matrix
 		@param m2 right matrix
-		@return updated matrix
+		@return updated matrix, or Nil if m1's column count is not m2's row count
 		~#
 		function : native : DotProduct(m1 : Float[,], m2 : Float[,]) ~ Float[,] {
-			if(m1 <> Nil | m2 <> Nil) {
+			if(m1 <> Nil & m2 <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m1);
 				array_args[2] := FloatMatrixRef->New(m2);
 				if(@fn_ml_matrix_dot_matrix_matrix = Nil) { @fn_ml_matrix_dot_matrix_matrix := "ml_matrix_dot_matrix_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_dot_matrix_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -660,13 +665,13 @@ each(c in coeffs) {
 		function : native : Divide(c : Float, m : Float[,]) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatRef->New(c);
 				array_args[2] := FloatMatrixRef->New(m);
 				if(@fn_ml_matrix_div_scalar_matrix = Nil) { @fn_ml_matrix_div_scalar_matrix := "ml_matrix_div_scalar_matrix"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_div_scalar_matrix, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -682,13 +687,13 @@ each(c in coeffs) {
 		function : native : Divide(m : Float[,], c : Float) ~ Float[,] {
 			if(m <> Nil) {
 				array_args := Base->New[3];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(m);				
 				array_args[2] := FloatRef->New(c);				
 				if(@fn_ml_matrix_div_matrix_scalar = Nil) { @fn_ml_matrix_div_matrix_scalar := "ml_matrix_div_matrix_scalar"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_div_matrix_scalar, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -732,12 +737,12 @@ each(c in coeffs) {
 		function : native : Transpose(a : Float[,]) ~ Float[,] {
 			if(a <> Nil) {
 				array_args := Base->New[2];
-				array_args[0] := FloatMatrixRef->New();
+				holder := FloatMatrixRef->New();
+				array_args[0] := holder;
 				array_args[1] := FloatMatrixRef->New(a);
 				if(@fn_ml_matrix_transpose = Nil) { @fn_ml_matrix_transpose := "ml_matrix_transpose"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_transpose, array_args);
 				
-				holder := array_args[0]->As(FloatMatrixRef);
 				return holder->Get();
 			};
 			
@@ -747,21 +752,28 @@ each(c in coeffs) {
 		#~
 		Inverse of matrix
 		@param a matrix
-		@return inverted matrix
+		@return inverted matrix, or Nil if the matrix is not square
 		~#
 		function : native : Inverse(a : Float[,]) ~ Float[,] {
-			if(a <> Nil) {
-				array_args := Base->New[2];
-				array_args[0] := FloatMatrixRef->New();
-				array_args[1] := FloatMatrixRef->New(a);
-				if(@fn_ml_matrix_inverse = Nil) { @fn_ml_matrix_inverse := "ml_matrix_inverse"; };
-				Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_inverse, array_args);
-				
-				holder := array_args[0]->As(FloatMatrixRef);
-				return holder->Get();
+			if(a = Nil) {
+				return Nil;
 			};
-			
-			return Nil;
+
+			# A non-square matrix has no inverse. The native code ran Eigen's inverse()
+			# on one before checking its shape, and that never returned.
+			dims := a->Size();
+			if(dims[0] <> dims[1]) {
+				return Nil;
+			};
+
+			array_args := Base->New[2];
+			holder := FloatMatrixRef->New();
+			array_args[0] := holder;
+			array_args[1] := FloatMatrixRef->New(a);
+			if(@fn_ml_matrix_inverse = Nil) { @fn_ml_matrix_inverse := "ml_matrix_inverse"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_ml_matrix_inverse, array_args);
+
+			return holder->Get();
 		}
 		
 		#~
@@ -1390,11 +1402,45 @@ else if(args->Size() = 1) {
 		@param targets training targets
 		@param learning_rate learning rate
 		@param iterations number of training iterations
+		@return trained network, or Nil if an input is not an input_nodes x 1 column or a
+		target not an output_nodes x 1 column
 		~#
 		function : Train(input_nodes : Int, inputs : Vector<FloatMatrixRef>, hidden_factor : Int, output_nodes : Int, targets : Vector<FloatMatrixRef>, learning_rate : Float, iterations : Int) ~ NeuralNetwork {
+			# Any other shape used to fault deep inside the matrix code.
+			if(<>AreColumns(inputs, input_nodes) | <>AreColumns(targets, output_nodes)) {
+				return Nil;
+			};
+
 			network := NeuralNetwork->New(input_nodes, hidden_factor * input_nodes, output_nodes, learning_rate);
 			network->Train(inputs, targets, learning_rate, iterations);
 			return network;		
+		}
+
+		# True when every matrix is a rows x 1 column.
+		function : AreColumns(matrices : Vector<FloatMatrixRef>, rows : Int) ~ Bool {
+			if(matrices = Nil) {
+				return false;
+			};
+
+			matrix : Float[,] := Nil;
+			dims := Int->New[0];
+			each(i : matrices) {
+				if(matrices->Get(i) = Nil) {
+					return false;
+				};
+
+				matrix := matrices->Get(i)->Get();
+				if(matrix = Nil) {
+					return false;
+				};
+
+				dims := matrix->Size();
+				if(dims[0] <> rows | dims[1] <> 1) {
+					return false;
+				};
+			};
+
+			return true;
 		}
 		
 		New : private (input_nodes : Float, hidden_nodes : Float, output_nodes : Float, learning_rate : Float) {
@@ -1556,10 +1602,21 @@ else if(args->Size() = 1) {
 		}
 
 		method : Query(inputs : Float[,]) ~ Float[,] {
-			# calculate signals into hidden layer (weights * inputs + bias)
-			hidden_outputs := Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, inputs), @bias_hidden));
+			# calculate signals into hidden layer (weights * inputs + bias); Nil when the
+			# inputs are not a column the weights can take
+			hidden_inputs := Matrix2D->Add(Matrix2D->DotProduct(@weight_inputs_hidden, inputs), @bias_hidden);
+			if(hidden_inputs = Nil) {
+				return Nil;
+			};
+			hidden_outputs := Matrix2D->Sigmoid(hidden_inputs);
+
 			# calculate the signals emerging from final output layer
-			return Matrix2D->Sigmoid(Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output));
+			final_inputs := Matrix2D->Add(Matrix2D->DotProduct(@weight_outputs_hidden, hidden_outputs), @bias_output);
+			if(final_inputs = Nil) {
+				return Nil;
+			};
+
+			return Matrix2D->Sigmoid(final_inputs);
 		}
 
 		method : Train(inputs : Vector<FloatMatrixRef>, targets : Vector<FloatMatrixRef>, rate : Float, iterations : Int) ~ Nil {
@@ -1605,9 +1662,12 @@ else if(args->Size() = 1) {
 	~#
 	class MatrixReader {
 		#~
-		Load input and output data into matrices
+		Load input and output data into matrices. Rows must end in CRLF: a file with
+		other line endings is not read, and the result is Nil. Every row is a record:
+		a header row is read as one more record, its non-numeric cells as 0.0.
 		@param filename file to process
-		@param target_offset index of first column with target data
+		@param target_offset number of target columns, taken from the end of each row;
+		the columns before them are the inputs
 		@return input and output matrix data
 		~#
 		function : public : LoadMatrices(filename : String, target_offset : Int) ~ Vector[]<FloatMatrixRef> {
@@ -1651,9 +1711,12 @@ else if(args->Size() = 1) {
 		}
 
 		#~
-		Load input and output data into split matrices for training and testing
+		Load input and output data into split matrices for training and testing.
+		Every row is a record: a header row is read as one more record, its
+		non-numeric cells as 0.0.
 		@param filename file to process
-		@param target_offset index of first column with output data
+		@param target_offset number of target columns, taken from the end of each row;
+		the columns before them are the inputs
 		@param training_perc percentage of data used for training
 		@param line_ending CSV line ending (i.e. Unix, Windows, etc.), default CRLF per the spec 
 		@return split matrices for training and testing, first two matrices are training, latter two test data
