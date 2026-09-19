@@ -1,0 +1,45 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Matrix2D->SumColumn and Matrix2D->AverageColumn started their accumulator as
+an Int (`sum := 0;`), so every Float added to it was truncated: SumColumn of
+[1.25, 2.5] returned 3 instead of 3.75, and AverageColumn 1.5 instead of 1.875.
+
+LinearSolver's R-squared takes the mean of y from AverageColumn, so fractional
+y skewed it. The data below is fit by y = 0.625 + 0.75x, and its R-squared is
+exactly 0.9 (2.8125 / 3.125); with the mean truncated from 2.5 to 2 the solver
+reported 0.924242. Issue #903.
+~#
+use System.ML;
+
+class MlColumnSumFractions {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		column := [[1.25], [2.5]];
+		ok := Report("SumColumn keeps fractions", Near(Matrix2D->SumColumn(0, column), 3.75)) & ok;
+		ok := Report("AverageColumn keeps fractions", Near(Matrix2D->AverageColumn(0, column), 1.875)) & ok;
+
+		x := [[1.0, 1.0], [1.0, 2.0], [1.0, 3.0], [1.0, 4.0]];
+		y := [[1.5], [1.75], [3.25], [3.5]];
+		result := LinearSolver->New(x, y)->Calculate(0);
+		ok := Report("LinearSolver R-squared on fractional y", Near(result->GetRSquared(), 0.9)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(actual : Float, expected : Float) ~ Bool {
+		return Float->Abs(actual - expected) < 0.000000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

@@ -2,6 +2,11 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased]
+
+### Bug Fixes
+- **`Matrix2D->SumColumn` and `AverageColumn` dropped fractions, so `LinearSolver`'s R-squared was wrong on fractional data** ([#903](https://github.com/objeck/objeck-lang/issues/903)): both started their accumulator as an `Int` (`sum := 0;`), so every value added was truncated -- `SumColumn` of `[1.25, 2.5]` returned 3, not 3.75. `LinearSolver` takes the mean of y from `AverageColumn`, so a fit whose true R-squared is 0.9 reported 0.924. Both accumulators are `Float` now; `ml_column_sum_fractions.obs` covers the sums and the R-squared
+
 ## [v2026.9.5] - 2026-09-19
 
 **Linux ARM64 users: v2026.9.4's binaries stop with "Illegal instruction" on most ARM64 CPUs
