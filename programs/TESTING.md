@@ -86,7 +86,7 @@ programs/tests/
 
 ### Running Tests
 
-There is no runner for this suite. `core/compiler/regress.sh` still expects `core/compiler/test_src/` and an `update_libs` script, neither of which exists any more, so it does not run.
+There is no runner for this suite. The old `core/compiler/regress.sh` expected `core/compiler/test_src/` and an `update_libs` script, neither of which exists any more, and was removed.
 
 **Run individual test** (with `obc` and `obr` from a deploy tree or an install on `PATH`):
 ```bash
