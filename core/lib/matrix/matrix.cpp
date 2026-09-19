@@ -464,14 +464,16 @@ extern "C" {
       return;
     }
 
-    // calculate value
-    Eigen::MatrixXd result = lhs_matrix.inverse();
- // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
-
+    // before inverse(): Eigen asserts squareness only in debug builds, and a
+    // release build given a non-square matrix never returned
     if(lhs_matrix.cols() != lhs_matrix.rows()) {
       APITools_SetObjectValue(context, 0, 0);
       return;
     }
+
+    // calculate value
+    Eigen::MatrixXd result = lhs_matrix.inverse();
+ // std::cout << "r: " << result(0, 0) << ", " << result(0, 1) << ", " << result(0, 2) << std::endl;
 
     // create and set results from matrix
     size_t* result_obj = MatrixToPtr(result, lhs_data_ptr, context);
@@ -539,6 +541,11 @@ extern "C" {
 //
 Eigen::MatrixXd PtrToMatrix(size_t* matrix_data_ptr)
 {
+  // a Nil matrix: callers reject the empty result
+  if(!matrix_data_ptr) {
+    return Eigen::MatrixXd();
+  }
+
   // ensure 2d matrix
   const size_t array_dim = matrix_data_ptr[1];
   if(array_dim != 2) {

@@ -1,0 +1,103 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Matrix2D operations on operands they cannot combine must return Nil, not fault.
+
+The native matrix code rejects a shape mismatch or an empty matrix by setting
+the result slot, array_args[0], itself to Nil, and every wrapper read its
+result back through that slot: DotProduct([[1.0, 2.0]], [[3.0, 4.0]]) died
+dereferencing Nil instead of returning it, and NeuralNetwork->Train on inputs
+of the wrong orientation died the same way. A Nil operand got past the
+wrappers' "m1 <> Nil | m2 <> Nil" guard and crashed the native code with an
+access violation, and Inverse of a non-square matrix never returned: the native
+code ran Eigen's inverse() before it checked the shape. Issue #903.
+~#
+use Collection;
+use System.ML;
+
+class MlMatrixShapeMismatch {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		none : Float[,] := Nil;
+
+		ok := Report("DotProduct of 1x2 and 2x1 is still [[11]]", IsOne(Matrix2D->DotProduct([[1.0, 2.0]], [[3.0], [4.0]]), 11.0)) & ok;
+		ok := Report("DotProduct of 1x2 and 1x2 is Nil", Matrix2D->DotProduct([[1.0, 2.0]], [[3.0, 4.0]]) = Nil) & ok;
+		ok := Report("Add of 1x2 and 2x1 is Nil", Matrix2D->Add([[1.0, 2.0]], [[3.0], [4.0]]) = Nil) & ok;
+		ok := Report("Subtract of 1x2 and 2x1 is Nil", Matrix2D->Subtract([[1.0, 2.0]], [[3.0], [4.0]]) = Nil) & ok;
+		ok := Report("Solve of 3 rows against 2 is Nil", Matrix2D->Solve([[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]], [[1.0], [2.0]]) = Nil) & ok;
+		ok := Report("a scalar added to an empty matrix is Nil", Matrix2D->Add(1.0, Float->New[0, 0]) = Nil) & ok;
+
+		# A Nil operand used to reach the native code, which crashed on it.
+		ok := Report("DotProduct with a Nil left operand is Nil", Matrix2D->DotProduct(none, [[3.0], [4.0]]) = Nil) & ok;
+		ok := Report("Add with a Nil right operand is Nil", Matrix2D->Add([[1.0, 2.0]], none) = Nil) & ok;
+
+		# NeuralNetwork takes each input and each target as a column.
+		rows := Vector->New()<FloatMatrixRef>;
+		rows->AddBack(FloatMatrixRef->New([[0.0, 1.0]]));
+		columns := Vector->New()<FloatMatrixRef>;
+		columns->AddBack(FloatMatrixRef->New([[0.0], [1.0]]));
+		targets := Vector->New()<FloatMatrixRef>;
+		targets->AddBack(FloatMatrixRef->New([[0.99]]));
+		wide_targets := Vector->New()<FloatMatrixRef>;
+		wide_targets->AddBack(FloatMatrixRef->New([[0.99, 0.01]]));
+
+		ok := Report("NeuralNetwork->Train on row inputs is Nil", NeuralNetwork->Train(2, rows, 2, 1, targets, 0.5, 10) = Nil) & ok;
+		ok := Report("NeuralNetwork->Train on row targets is Nil", NeuralNetwork->Train(2, columns, 2, 1, wide_targets, 0.5, 10) = Nil) & ok;
+
+		network := NeuralNetwork->Train(2, columns, 2, 1, targets, 0.5, 10);
+		trained := network <> Nil;
+		ok := Report("NeuralNetwork->Train on columns gives a network", trained) & ok;
+		if(trained) {
+			ok := Report("Confidence of a row input is 0.0", Near(network->Confidence(FloatMatrixRef->New([[0.0, 1.0]])), 0.0)) & ok;
+			ok := Report("Query of a row input is false", network->Query(FloatMatrixRef->New([[0.0, 1.0]])) = false) & ok;
+		};
+
+		# Last, because before the fix this never returned.
+		ok := Report("Inverse of a 2x3 matrix is Nil", Matrix2D->Inverse([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]) = Nil) & ok;
+		ok := Report("Inverse of [[4, 7], [2, 6]] is still [[0.6, -0.7], [-0.2, 0.4]]", IsInverse(Matrix2D->Inverse([[4.0, 7.0], [2.0, 6.0]]))) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# A 1x1 matrix holding value.
+	function : IsOne(m : Float[,], value : Float) ~ Bool {
+		if(m = Nil) {
+			return false;
+		};
+
+		dims := m->Size();
+		if(dims[0] <> 1 | dims[1] <> 1) {
+			return false;
+		};
+
+		return Near(m[0, 0], value);
+	}
+
+	function : IsInverse(m : Float[,]) ~ Bool {
+		if(m = Nil) {
+			return false;
+		};
+
+		dims := m->Size();
+		if(dims[0] <> 2 | dims[1] <> 2) {
+			return false;
+		};
+
+		return Near(m[0, 0], 0.6) & Near(m[0, 1], -0.7) & Near(m[1, 0], -0.2) & Near(m[1, 1], 0.4);
+	}
+
+	function : Near(actual : Float, expected : Float) ~ Bool {
+		return Float->Abs(actual - expected) < 0.000000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

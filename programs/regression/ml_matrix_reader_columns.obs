@@ -1,0 +1,88 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+MatrixReader's target_offset is the number of target columns, taken from the
+end of each row. Its documentation called it the index of the first target
+column, which gives a different split: with rows of four values and
+target_offset 1, the code reads three inputs and one target, where an index of
+1 would mean one input and three targets. The code is what callers rely on
+(programs/frameworks/ml/nn6.obs passes 1 for its single label column), so the
+documentation changed, and this pins the split it now describes for both
+loaders. Issue #903.
+~#
+use Collection;
+use System.IO.Filesystem;
+use System.ML;
+
+class MlMatrixReaderColumns {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+		file := "ml_matrix_reader_columns.tmp";
+
+		# CsvTable splits rows on CRLF by default.
+		ok := Report("the CSV file is written", FileWriter->WriteFile(file, "1.0,2.0,3.0,4.0\r\n5.0,6.0,7.0,8.0\r\n")) & ok;
+
+		inputs := Vector->New()<FloatMatrixRef>;
+		targets := Vector->New()<FloatMatrixRef>;
+
+		loaded := MatrixReader->LoadMatrices(file, 1);
+		read := loaded <> Nil;
+		ok := Report("LoadMatrices reads the file", read) & ok;
+		if(read) {
+			inputs := loaded[0];
+			targets := loaded[1];
+			ok := Report("LoadMatrices: one record per row", inputs->Size() = 2 & targets->Size() = 2) & ok;
+			if(inputs->Size() = 2 & targets->Size() = 2) {
+				ok := Report("LoadMatrices, offset 1: inputs [1, 2, 3], target [4]", IsColumn(inputs->Get(0)->Get(), [1.0, 2.0, 3.0]) & IsColumn(targets->Get(0)->Get(), [4.0])) & ok;
+				ok := Report("LoadMatrices, offset 1: inputs [5, 6, 7], target [8]", IsColumn(inputs->Get(1)->Get(), [5.0, 6.0, 7.0]) & IsColumn(targets->Get(1)->Get(), [8.0])) & ok;
+			};
+		};
+
+		# Half the rows train, half test; two target columns this time.
+		loaded := MatrixReader->LoadSplitMatrices(file, 2, 0.5);
+		read := loaded <> Nil;
+		ok := Report("LoadSplitMatrices reads the file", read) & ok;
+		if(read) {
+			ok := Report("LoadSplitMatrices: one training and one test record", loaded[0]->Size() = 1 & loaded[2]->Size() = 1) & ok;
+			if(loaded[0]->Size() = 1 & loaded[2]->Size() = 1) {
+				ok := Report("LoadSplitMatrices, offset 2: training inputs [1, 2], targets [3, 4]", IsColumn(loaded[0]->Get(0)->Get(), [1.0, 2.0]) & IsColumn(loaded[1]->Get(0)->Get(), [3.0, 4.0])) & ok;
+				ok := Report("LoadSplitMatrices, offset 2: test inputs [5, 6], targets [7, 8]", IsColumn(loaded[2]->Get(0)->Get(), [5.0, 6.0]) & IsColumn(loaded[3]->Get(0)->Get(), [7.0, 8.0])) & ok;
+			};
+		};
+
+		File->Delete(file);
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# m is a column holding exactly values, in order.
+	function : IsColumn(m : Float[,], values : Float[]) ~ Bool {
+		if(m = Nil) {
+			return false;
+		};
+
+		dims := m->Size();
+		if(dims[0] <> values->Size() | dims[1] <> 1) {
+			return false;
+		};
+
+		each(i : values) {
+			if(Float->Abs(m[i, 0] - values[i]) > 0.000000001) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
