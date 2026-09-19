@@ -1012,8 +1012,22 @@ class StackClass {
     return inst_dclrs;
   }
 
-  inline std::pair<int, StackDclr**> GetClosureDeclarations(const int id) {
-    return closure_dclrs[id];
+  inline std::pair<int, StackDclr**> GetClosureDeclarations(const int id) const {
+    // A LOOKUP, never an insert. The collector calls this from its marking threads
+    // (CheckStatic / CheckStack / CheckPdaRoots / CheckJitRoots) for every FUNC_PARM
+    // it walks, and an id with no closure declarations is ordinary. operator[] would
+    // default-construct an entry for such an id, so two marking threads could insert
+    // into this map at the same time and leave its tree inconsistent. Nothing failed
+    // at the time: the corruption surfaced much later, when ~StackClass walked the
+    // map and dereferenced a null link (#913, macOS arm64, every method compiled).
+    // The absent case returns what the inserted default held, so callers are
+    // unchanged: CheckMemory and FixupMemory loop over first == 0 declarations.
+    std::map<int, std::pair<int, StackDclr**> >::const_iterator found = closure_dclrs.find(id);
+    if(found != closure_dclrs.end()) {
+      return found->second;
+    }
+
+    return std::pair<int, StackDclr**>(0, nullptr);
   }
 
   inline long GetNumberInstanceDeclarations() const {
