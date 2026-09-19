@@ -1,9 +1,9 @@
 {
 	"version": {
-		"string": "2026.9.4",
+		"string": "2026.9.5",
 		"year": 2026
 	},
-	"title": "Integer division is right again at the default optimization level -- two optimizer rewrites gave wrong quotients with no error -- and a Nil element in a deserialized object array no longer corrupts the object that holds it",
+	"title": "Linux ARM64 binaries run on every ARM64 CPU again, a program with more than one thread exits and joins safely, and a hardening pass fixes dozens of compiler and garbage-collector bugs found by fuzzing, differential testing and a heap verifier",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,20 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.5",
+			"items": [
+				"Linux ARM64: the binaries run on every ARM64 CPU. v2026.9.4 was built for the build server's CPU and needed its SVE vector instructions, so it stopped with \"Illegal instruction\" on a Raspberry Pi 4 or 5, AWS Graviton2, Ampere Altra, Snapdragon X under WSL2 and Apple silicon in a Linux VM. It now targets ARMv8-A, at no measured cost in speed, and CI runs every build on an emulated CPU without SVE",
+				"Threads: a runtime error or Runtime->Exit while another thread was running crashed the VM after printing its message (exit 139 instead of 1), on every platform. Such a program now exits with its own status",
+				"Threads: Thread->Join could fail with \"Unable to join thread!\" when a garbage collection ran while it waited, because it read the thread handle from memory the collector had just recycled",
+				"Garbage collector: a closure's captured values could be freed while the closure still held them",
+				"Sorting: Int->Sort, Float->Sort, Char->Sort and Byte->Sort could exhaust the call stack and end the program on input of a particular shape; they are also about 15% faster. The new ArraySort->Sort sorts an array in place, and Byte->Sort and Char->Sort can now be called from programs",
+				"Data.CSV: Median is about 12 times faster on large columns",
+				"Compiler: dozens of fixes for lambdas, enums and conditional expressions -- captured variables in string interpolation, each loops and Ranges, conditionals over arrays, method calls on string literals and conditional receivers, typed and nested lambdas -- most found by comparing every test across optimization levels and JIT settings, and by a program fuzzer",
+				"Integers: one definition of Int arithmetic is shared by the interpreter, compiler and both JITs. INT64_MIN / -1 no longer stops the program, and >>> now takes its shift count modulo 64 like << and >>, so -1 >>> 64 is -1 rather than 0",
+				"Garbage collector: fixes for objects lost at the end of a small nursery, a race when threads exit during a collection, and objects allocated at twice their size; a heap verifier (OBJECK_GC_VERIFY) checks the collector's invariants and runs nightly on all five platforms"
+			]
+		},
 		{
 			"version": "v2026.9.4",
 			"items": [

@@ -7860,6 +7860,14 @@
 				}
 			}
 		},
+		"System.ArraySort": {
+			"description": "Sorts primitive arrays in place 'Int->Sort(v)' and its Byte, Char and Float counterparts return a sorted copy; these sort the array they are handed. Both share this implementation.",
+			"functions": {
+				"Sort": {
+					"descriptions": ["**Sorts a Byte array in place**\n\n```function : native : Sort(array:Byte[]) ~ Nil```\n\n\n\narray: Byte[]\n\nreturn: Nil", "**Sorts part of a Byte array in place**\n\n```function : native : Sort(array:Byte[], low:Int, high:Int) ~ Nil```\n\n\n\narray: Byte[]\n\nlow: Int\n\nhigh: Int\n\nreturn: Nil", "**Sorts a Char array in place**\n\n```function : native : Sort(array:Char[]) ~ Nil```\n\n\n\narray: Char[]\n\nreturn: Nil", "**Sorts part of a Char array in place**\n\n```function : native : Sort(array:Char[], low:Int, high:Int) ~ Nil```\n\n\n\narray: Char[]\n\nlow: Int\n\nhigh: Int\n\nreturn: Nil", "**Sorts a Int array in place**\n\n```function : native : Sort(array:Int[]) ~ Nil```\n\n\n\narray: Int[]\n\nreturn: Nil", "**Sorts part of a Int array in place**\n\n```function : native : Sort(array:Int[], low:Int, high:Int) ~ Nil```\n\n\n\narray: Int[]\n\nlow: Int\n\nhigh: Int\n\nreturn: Nil", "**Sorts a Float array in place**\n\n```function : native : Sort(array:Float[]) ~ Nil```\n\n\n\narray: Float[]\n\nreturn: Nil", "**Sorts part of a Float array in place**\n\n```function : native : Sort(array:Float[], low:Int, high:Int) ~ Nil```\n\n\n\narray: Float[]\n\nlow: Int\n\nhigh: Int\n\nreturn: Nil"]
+				}
+			}
+		},
 		"System.Base": {
 			"description": "Base class for all objects",
 			"functions": {
@@ -14095,6 +14103,10 @@
 		"Table": {
 			"bundle": "Query.Structured"
 ,			"file": "query.obl"
+ 		},
+		"ArraySort": {
+			"bundle": "System"
+,			"file": "lang.obl"
  		},
 		"Base": {
 			"bundle": "System"
