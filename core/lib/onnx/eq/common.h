@@ -717,7 +717,15 @@ static cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
 }
 
 // Write OpenCV image to raw data
+// Twin of opencv_raw_write in opencv/opencv.h -- keep the two in step. They are
+// separate copies because the ONNX and OpenCV libraries build independently.
 static size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
+   // An empty Mat has no data: returning an Image around a zero-byte memcpy from a
+   // null pointer is undefined behaviour, so hand back Nil as the OpenCV library does.
+   if(!image.data) {
+      return nullptr;
+   }
+
    size_t* image_obj = APITools_CreateObject(context, L"API.OpenCV.Image");
 
    image_obj[0] = image.type(); // type

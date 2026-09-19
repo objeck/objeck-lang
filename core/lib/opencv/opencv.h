@@ -167,6 +167,8 @@ cv::Mat opencv_raw_read(size_t* image_obj, VMContext& context) {
 }
 
 // Write OpenCV image to raw data
+// Twin of opencv_raw_write in onnx/eq/common.h -- keep the two in step. They are
+// separate copies because the ONNX and OpenCV libraries build independently.
 size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
    if(!image.data) {
       return nullptr;
