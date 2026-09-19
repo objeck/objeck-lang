@@ -69,40 +69,26 @@ each(group in groups) {
 			k := group_labels->Size();
 			centroids := KMeansPlusPlus(k, records, rand);
 			updated_centroids := FloatArrayRef->New[k];
+			group := Vector->New()<FloatArrayRef>;
+			update := Average(group, record_length);
 
-			groups := Hash->New()<String, Vector<FloatArrayRef>>;
-			each(centroid_label in group_labels) {
-				groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
-			};
+			# Centroid i belongs to group_labels[i] throughout. The update rebuilds each
+			# centroid from its own label's group; it used to take the i-th entry of the
+			# groups hash table, whose order need not match the labels', so centroids
+			# traded places on every pass and never converged. Every pass also assigns
+			# afresh from the current centroids, so the groups returned always match the
+			# final centroids: a pass that moved them used to clear the groups, and
+			# reaching the cap then returned them empty.
+			groups := Assign(group_labels, records, centroids);
 
 			iter := 0;
 			has_changed := true;
 			while(has_changed & iter < max_iterations) {
 				iter += 1;
 
-				each(datum in records) {
-					shortest_index := -1;
-					shortest_distance := Float->Inf();
-
-					each(i : centroids) {
-						centroid := centroids[i];
-						distance := Distance(datum, centroid);
-						if(distance < shortest_distance) {
-							shortest_distance := distance;
-							shortest_index := i;
-						};
-					};
-
-					nearest_centroid_label := group_labels[shortest_index];
-					group := groups->Find(nearest_centroid_label)<FloatArrayRef>;
-					group->AddBack(datum);
-				};
-
-				group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
-				each(i : group_key_values) {
-					group_key_value := group_key_values->Get(i);
-					group := group_key_value->GetSecond();
-
+				updated_centroids := FloatArrayRef->New[k];
+				each(i : group_labels) {
+					group := groups->Find(group_labels[i])<FloatArrayRef>;
 					update := Average(group, record_length);
 					if(update <> Nil) {
 						updated_centroids[i] := update;
@@ -114,19 +100,43 @@ each(group in groups) {
 				};
 
 				has_changed := HasChanged(centroids, updated_centroids);
-				if(has_changed) {
-					centroids := updated_centroids;
-					updated_centroids := FloatArrayRef->New[k];
-
-					each(centroid_label in group_labels) {
-						if(groups->Remove(centroid_label)) {
-							groups->Insert(centroid_label, Vector->New()<FloatArrayRef>);
-						};
-					};
-				};
+				centroids := updated_centroids;
+				groups := Assign(group_labels, records, centroids);
 			};
 
 			return KMeansGrouping->New(groups);
+		}
+
+		# Files every record under the label of its nearest centroid, in fresh groups.
+		function : native : Assign(group_labels : String[], records : Vector<FloatArrayRef>, centroids : FloatArrayRef[]) ~ Hash<String, Vector<FloatArrayRef>> {
+			groups := Hash->New()<String, Vector<FloatArrayRef>>;
+			each(group_label in group_labels) {
+				groups->Insert(group_label, Vector->New()<FloatArrayRef>);
+			};
+
+			shortest_index := -1;
+			shortest_distance := Float->Inf();
+			distance := 0.0;
+			group := Vector->New()<FloatArrayRef>;
+			each(datum in records) {
+				shortest_index := -1;
+				shortest_distance := Float->Inf();
+				each(i : centroids) {
+					distance := Distance(datum, centroids[i]);
+					if(distance < shortest_distance) {
+						shortest_distance := distance;
+						shortest_index := i;
+					};
+				};
+
+				# no centroids (k = 0) leaves the record unassigned instead of indexing -1
+				if(shortest_index > -1) {
+					group := groups->Find(group_labels[shortest_index])<FloatArrayRef>;
+					group->AddBack(datum);
+				};
+			};
+
+			return groups;
 		}
 
 		# k-means++ seeding: the first center is a uniformly random record; each
@@ -917,7 +927,9 @@ resp := gmm->Predict(X);                # soft responsibilities
 		#~
 		Calculates the Dunn index
 		@param groups K-Mean grouping
-		@return Dunn index, higher values indicate more distinct clusters
+		@return Dunn index, higher values indicate more distinct clusters; 0.0 when the
+		index is undefined: no group has any spread (each is empty or one record), or
+		fewer than two groups have records
 		~#
 		method : public : GetDunnIndex() ~ Float {
 			if(@dunn_index < 0.0) {
@@ -974,7 +986,16 @@ resp := gmm->Predict(X);                # soft responsibilities
 					"min_inter_distance={$min_inter_distance}\n---"->PrintLine();
 				};
 
-				@dunn_index := min_inter_distance / max_intra_distance;
+				# With no spread to divide by (every group empty or a single record), or no
+				# two populated groups to compare, the index says nothing about separation --
+				# and the division faulted. 0.0 keeps such a degenerate grouping from winning
+				# a comparison between clusterings.
+				if(max_intra_distance <= 0.0 | min_inter_distance = Float->Inf()) {
+					@dunn_index := 0.0;
+				}
+				else {
+					@dunn_index := min_inter_distance / max_intra_distance;
+				};
 			};
 
 			return @dunn_index;

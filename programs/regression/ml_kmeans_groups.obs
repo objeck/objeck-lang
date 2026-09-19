@@ -1,0 +1,138 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+KMeans->Group returned empty groups, and GetDunnIndex then divided by zero.
+
+Group filed each record under group_labels[i] for its nearest centroid i, but
+rebuilt centroid i from the i-th entry of the groups hash table. When the hash
+listed the labels in a different order, the centroids traded places on every
+pass, never converged, and the loop ran to its cap. A pass that moved the
+centroids also cleared every group, so reaching the cap returned them all
+empty. The same four points grouped 2/2 with the labels ["a", "b"] and 0/0
+with ["b", "a"], and one iteration gave 0/0 with either order.
+
+GetDunnIndex divides the smallest distance between groups by the largest
+distance within one. That largest distance is 0 when every group is empty or
+has a single member, so it faulted. It now returns 0.0 there: with no spread to
+measure, the index says nothing about separation, and 0.0 keeps such a
+degenerate grouping from winning a comparison between clusterings. Issue #903.
+~#
+use Collection;
+use System.ML;
+
+class MlKmeansGroups {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# Two tight pairs far apart: {[1,1], [1.2,1.1]} and {[8,8], [8.2,8.1]}.
+		records := Vector->New()<FloatArrayRef>;
+		records->AddBack(FloatArrayRef->New([1.0, 1.0]));
+		records->AddBack(FloatArrayRef->New([1.2, 1.1]));
+		records->AddBack(FloatArrayRef->New([8.0, 8.0]));
+		records->AddBack(FloatArrayRef->New([8.2, 8.1]));
+
+		# The nearest pair across groups is [1.2,1.1]-[8,8] at sqrt(93.85); each
+		# group's spread is sqrt(0.05). Dunn = sqrt(93.85 / 0.05) = sqrt(1877).
+		expected_dunn := Float->Sqrt(1877.0);
+
+		forward := KMeans->Group(["a", "b"], records, 2, 0.0, 10.0);
+		ok := Report("labels a,b: two groups of two", TwoByTwo(forward)) & ok;
+		ok := Report("labels a,b: Dunn index is sqrt(1877)", Close(forward->GetDunnIndex(), expected_dunn)) & ok;
+
+		# The swapped label order is the case that returned 0/0. Its Dunn index is
+		# read only once its groups are right, so a regression reports here rather
+		# than faulting on the empty groups.
+		swapped := KMeans->Group(["b", "a"], records, 2, 0.0, 10.0);
+		swapped_ok := TwoByTwo(swapped);
+		ok := Report("labels b,a: two groups of two, not 0/0", swapped_ok) & ok;
+		if(swapped_ok) {
+			ok := Report("labels b,a: the same Dunn index", Close(swapped->GetDunnIndex(), expected_dunn)) & ok;
+		};
+
+		capped := KMeans->Group(["a", "b"], records, 2, 0.0, 10.0, 1, 1);
+		ok := Report("one iteration: no empty group, every record kept", NoneEmpty(capped) & Total(capped) = 4) & ok;
+
+		# Last, because before the fix these faulted rather than returning: a
+		# grouping with no spread to divide by must give a defined index.
+		pair := Vector->New()<FloatArrayRef>;
+		pair->AddBack(FloatArrayRef->New([1.0, 1.0]));
+		pair->AddBack(FloatArrayRef->New([8.0, 8.0]));
+		singletons := KMeans->Group(["a", "b"], pair, 2, 0.0, 10.0);
+		ok := Report("single-member groups: Dunn index is 0.0, not a fault", Near(singletons->GetDunnIndex(), 0.0)) & ok;
+
+		lone := Vector->New()<FloatArrayRef>;
+		lone->AddBack(FloatArrayRef->New([1.0, 1.0]));
+		with_empty := KMeans->Group(["a", "b"], lone, 2, 0.0, 10.0);
+		ok := Report("an empty group: Dunn index is 0.0, not a fault", Near(with_empty->GetDunnIndex(), 0.0)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# Both groups hold exactly two records, and each group is one of the two
+	# tight pairs (both near 1, or both near 8) -- the partition, not only the
+	# sizes, so a grouping that split the pairs 2/2 the wrong way still fails.
+	function : TwoByTwo(grouping : KMeansGrouping) ~ Bool {
+		a := grouping->GetGroup("a");
+		b := grouping->GetGroup("b");
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+
+		return OnePair(a->GetValues()) & OnePair(b->GetValues());
+	}
+
+	function : OnePair(values : Vector<FloatArrayRef>) ~ Bool {
+		if(values->Size() <> 2) {
+			return false;
+		};
+
+		first := values->Get(0)->Get();
+		second := values->Get(1)->Get();
+		first_x := first[0];
+		second_x := second[0];
+		return (first_x < 5.0) = (second_x < 5.0);
+	}
+
+	function : NoneEmpty(grouping : KMeansGrouping) ~ Bool {
+		a := grouping->GetGroup("a");
+		b := grouping->GetGroup("b");
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+
+		return a->GetValues()->Size() > 0 & b->GetValues()->Size() > 0;
+	}
+
+	function : Total(grouping : KMeansGrouping) ~ Int {
+		total := 0;
+		a := grouping->GetGroup("a");
+		b := grouping->GetGroup("b");
+		if(a <> Nil) {
+			total += a->GetValues()->Size();
+		};
+		if(b <> Nil) {
+			total += b->GetValues()->Size();
+		};
+
+		return total;
+	}
+
+	function : Close(actual : Float, expected : Float) ~ Bool {
+		return Float->Abs(actual - expected) < 0.000001;
+	}
+
+	function : Near(actual : Float, expected : Float) ~ Bool {
+		return Float->Abs(actual - expected) < 0.000000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
