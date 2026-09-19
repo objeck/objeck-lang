@@ -630,7 +630,14 @@ NURSERY_STRESS_TESTS = ("obj_size_layout", "minor_gc_stress", "core_thread_gc_st
                         "gc_zero_field_nursery_end", "gc_closure_capture_nursery_end",
                         # an -opt s3 inlined callee's object local stays a root; the
                         # old layout lost it interpreted, which the runner never runs
-                        "opt_inline_and_or_slots")
+                        "opt_inline_and_or_slots",
+                        # #913: the collector's closure-declaration lookup inserted into
+                        # a std::map from several marking threads. Each absent id is a
+                        # race window exactly once, so this one puts a fresh id per
+                        # worker per round into live frames -- and it needs a small
+                        # nursery, because the path is in the young-gen scan and the
+                        # default nursery gave it no minor collections at all
+                        "gc_closure_ids_stress")
 NURSERY_STRESS_SIZES = ("128k", "256k")
 
 # Looped with a 256k nursery in both JIT modes (check_nursery_and_gc_stats).
