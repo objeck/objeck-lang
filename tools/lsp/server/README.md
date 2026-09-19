@@ -45,4 +45,4 @@ export OBJECK_STDIO=binary   # required for STDIO transport
 
 ## CI
 
-The server is rebuilt and packaged on every release via `.github/workflows/release-build.yml` (`build-lsp` job). The VS Code extension is published to the Marketplace automatically via the `publish-vscode` job.
+The server is rebuilt and packaged on every release via `.github/workflows/release-build.yml` (`build-lsp` job). The same job packages the VS Code extension with `vsce package` and ships the `.vsix` inside `objeck-lsp_<version>.zip`; it is not published to the VS Code Marketplace (see `tools/lsp/clients/vscode/README.md` for installing it). On every push to `master` and every pull request against it, the `tools` job in `.github/workflows/ci-build.yml` builds the server, runs the formatter and LSP regression tests, and compiles and lints the VS Code extension.

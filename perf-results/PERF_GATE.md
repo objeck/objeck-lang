@@ -19,8 +19,9 @@ where absolute times wander 2–3×.
   baseline; `--no-fail` reports without failing; `--summary FILE` appends a
   Markdown table (used for the GitHub job summary).
 - `perf_baseline.json` — committed baseline ratios (lower = Objeck faster).
-- `.github/workflows/perf-gate.yml` — runs on push to `master` and on PRs that
-  touch `core/vm` / `core/compiler` / `core/shared`, plus manual dispatch.
+- `.github/workflows/perf-gate.yml` — runs on pushes to `master` and PRs that
+  touch `core/vm` / `core/compiler` / `core/shared` (pushes also on
+  `perf-results/` or the workflow itself), plus manual dispatch.
 
 ## Run locally
 
@@ -32,8 +33,14 @@ python3 perf-results/check_perf_gate.py /tmp/perf.csv
 
 ## Enabling hard enforcement
 
-The workflow currently runs **report-only** (`--no-fail`) because the committed
-baseline is an approximation from a dev box. To turn on hard failures:
+The workflow still runs **report-only** (`--no-fail`). Steps 1–3 below were done
+on 2026-06-17 (commit `4ed4132972`): the committed baseline holds ratios measured
+on the GitHub-hosted runner, replacing the dev-box seed. Only step 4 remains.
+
+Those ratios predate the F7 JIT calling-convention work (PRs #757–#767), and
+master now beats every one of them, by 10–94% (Perf Gate run on master,
+2026-09-19). A regression that gave back part of that gain would still pass, so
+repeat steps 1–3 before step 4.
 
 1. Trigger **Perf Gate** once (Actions → Run workflow).
 2. Download the `perf-gate-results` artifact → `perf_baseline.measured.json`.
