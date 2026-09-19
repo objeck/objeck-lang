@@ -2,7 +2,7 @@
 # TODO: get working
 #
 
-ARGS=-O3 -Wall -std=c++20 -D_SANITIZE -D_X64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -MMD -MP
+ARGS=-O3 -Wall -std=c++20 -D_SANITIZE -D_ARM64 -D_OBJECK_NATIVE_LIB_PATH -D_MODULE -Wint-to-pointer-cast -Wno-unused-variable -Wno-unused-function -Wno-int-to-pointer-cast -MMD -MP
 
 SRC=lang.o
 OBJ_LIBS=../shared/sys.cpp ../compiler/compiler.a ../vm/vm.a
