@@ -364,7 +364,7 @@ each(c in coeffs) {
 			cols := dims[1];
 
 			if(c < cols) {
-				sum := 0;
+				sum := 0.0;
 
 				each(i : rows) {
 					sum += matrix[i, c];
@@ -388,7 +388,7 @@ each(c in coeffs) {
 			cols := dims[1];
 
 			if(c < cols) {
-				sum := 0;
+				sum := 0.0;
 				
 				each(i : rows) {
 					sum += matrix[i, c];
