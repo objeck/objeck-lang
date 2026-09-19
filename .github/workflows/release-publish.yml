@@ -167,7 +167,7 @@ jobs:
       # deploy_windows.cmd below builds the native libraries and then verifies that
       # every one of them can actually load. libobjk_opencv.dll needs
       # opencv_world4120.dll, and so does libobjk_onnx.dll -- the ONNX binding links
-      # OpenCV (see core/lib/onnx/eq/dml/vs/vs.vcxproj, LibraryPath includes
+      # OpenCV (see core/lib/onnx/vs/vs.vcxproj, LibraryPath includes
       # ..\..\opencv\win\x64\lib). Neither DLL ships in the repo, and this job never
       # fetched them, so deploy printed "opencv_world4120.dll not found" and both
       # libraries then failed to load with error 126.

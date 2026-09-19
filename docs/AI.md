@@ -46,12 +46,12 @@ All AI and ML capabilities are **standard library** — no third-party packages,
 ## Authentication
 
 ### OpenAI
-Create `openai_api_key.dat` in your working directory containing your API key. The library reads it automatically:
+Create `openai_api_key.dat` in your working directory containing your API key. The static helper reads it:
 
 ```ruby
-use API.OpenAI, System.IO.Filesystem;
+use API.OpenAI;
 
-token := FileReader->ReadFile("openai_api_key.dat")->Trim();
+token := EndPoint->GetApiKey();
 ```
 
 ### Gemini
@@ -75,7 +75,7 @@ No authentication needed. Ollama runs locally at `http://localhost:11434` by def
 **Compile:** `obc -src your.obs -lib net,net_server,json,cipher,misc,openai`
 
 ```ruby
-use API.OpenAI;
+use API.OpenAI.Responses, Collection;
 
 # Single-turn
 response := Response->Respond("gpt-4o-mini",
@@ -92,7 +92,7 @@ messages->AddBack(Pair->New("user", "What is Objeck?")<String, String>);
 messages->AddBack(Pair->New("assistant", "Objeck is a JIT-compiled OO language.")<String, String>);
 messages->AddBack(Pair->New("user", "What platforms does it support?")<String, String>);
 
-response := Response->Respond("gpt-4o-mini", messages, token);
+response := Response->Respond("gpt-4o-mini", messages, Nil, token);   # Nil: no output schema
 response->GetText()->PrintLine();
 ```
 
@@ -100,8 +100,8 @@ response->GetText()->PrintLine();
 # With reasoning control
 response := Response->Respond("o3-mini",
     Pair->New("user", "Prove Fermat's Last Theorem.")<String, String>,
-    Response->ReasoningEffort->HIGH,
-    Response->Verbosity->VERBOSE,
+    ReasoningEffort->HIGH,
+    Verbosity->HIGH,
     Nil, token);
 response->GetText()->PrintLine();
 ```
@@ -111,7 +111,7 @@ response->GetText()->PrintLine();
 ### Vision
 
 ```ruby
-use API.OpenAI, System.IO.Filesystem;
+use API.OpenAI, API.OpenAI.Responses, System.IO.Filesystem, Collection;
 
 bytes := FileReader->ReadBinaryFile("photo.jpg");
 image := ImageQuery->New("What is in this image?", bytes, ImageQuery->MimeType->JPEG);
@@ -130,7 +130,7 @@ Sends audio or text and receives both a text transcript and PCM audio response o
 **Compile:** add `-lib sdl2` for audio playback
 
 ```ruby
-use API.OpenAI, Game.SDL2;
+use API.OpenAI, Game.SDL2, System.IO.Filesystem;
 
 # Text → text + audio
 response := Realtime->Respond("What time is it in Tokyo?",
@@ -147,7 +147,7 @@ if(response <> Nil) {
 
 ```ruby
 # Audio file → text + audio
-audio_bytes := FileReader->ReadBinaryFile("question.wav");
+audio_bytes := FileReader->ReadBinaryFile("question.pcm16");   # raw PCM 16-bit LE, 24kHz mono
 response := Realtime->Respond(audio_bytes, "gpt-4o-realtime-preview", "alloy", token);
 ```
 
@@ -156,13 +156,14 @@ response := Realtime->Respond(audio_bytes, "gpt-4o-realtime-preview", "alloy", t
 ### Image Generation
 
 ```ruby
-use API.OpenAI;
+use API.OpenAI, System.IO.Filesystem;
 
 # DALL-E 3, 1024×1024
 image := Image->Create("A photorealistic Objeck logo on a circuit board",
     "dall-e-3", Image->Size->DALLE3_1024_1024, token);
 if(image <> Nil) {
-    each(url in image->GetUrls()) {
+    urls := image->GetUrls();
+    each(url in urls) {
         url->GetUrl()->PrintLine();
     };
 };
@@ -227,14 +228,13 @@ Categories: `harassment`, `harassment/threatening`, `hate`, `hate/threatening`, 
 Process up to 50,000 requests asynchronously at 50% of standard API cost. Responses are available within 24 hours.
 
 ```ruby
-use API.OpenAI, System.IO.Filesystem;
+use API.OpenAI;
 
-# 1. Upload a .jsonl file of requests
-data := FileReader->ReadBinaryFile("requests.jsonl");
-File->Create("requests.jsonl", "batch", data, token);
+# 1. Upload a .jsonl file of requests (or reuse the one already uploaded)
+file := File->LoadOrCreate("requests.jsonl", "batch", token);
 
 # 2. Create the batch job
-job := Batch->Create(file_id, "/v1/chat/completions", token);
+job := Batch->Create(file->GetId(), "/v1/chat/completions", token);
 "Batch ID: {$job->GetId()}"->PrintLine();
 "Status: {$job->GetStatus()}"->PrintLine();   # "validating"
 
@@ -289,7 +289,7 @@ candidates := Model->GenerateContent("models/gemini-2.0-flash",
 
 ```ruby
 # Image + text
-bytes := FileReader->ReadBinaryFile("chart.png");
+bytes := System.IO.Filesystem.FileReader->ReadBinaryFile("chart.png");
 content := Content->New("user")
     ->AddPart(TextPart->New("Summarize this chart."))
     ->AddPart(BinaryPart->New(bytes, "image/png"));
@@ -315,7 +315,7 @@ r2->GetAllText()->PrintLine();
 Force the model to return valid JSON matching a schema.
 
 ```ruby
-use API.Google.Gemini, Data.JSON.Scheme;
+use API.Google.Gemini, Data.JSON.Scheme, Collection;
 
 content := Content->New("user")
     ->AddPart(TextPart->New("Top 3 programming languages by popularity."));
@@ -355,7 +355,7 @@ if(candidates <> Nil & <>candidates->IsEmpty()) {
 ### Embeddings
 
 ```ruby
-use API.Google.Gemini;
+use API.Google.Gemini, Collection;
 
 # Single embedding
 content := Content->New("user")->AddPart(TextPart->New("machine learning"));
@@ -425,7 +425,7 @@ FileManager->Delete("files/abc123", token);
 Cache large, reused content server-side to avoid paying re-tokenization costs on every request.
 
 ```ruby
-use API.Google.Gemini;
+use API.Google.Gemini, System.IO.Filesystem;
 
 # Cache a large system prompt or document for 5 minutes
 large_context := FileReader->ReadFile("legal_document.txt");
@@ -487,7 +487,7 @@ r2->PrintLine();   # "Your name is Alice."
 
 ```ruby
 # Vision (multimodal models)
-image := File->New("photo.jpg");
+image := System.IO.Filesystem.File->New("photo.jpg");
 response := Completion->Generate("llava", "Describe this image.", image);
 response->PrintLine();
 ```
@@ -503,7 +503,7 @@ dim := values->Size();
 # Model management
 models := Model->List();
 each(m in models) {
-    m->GetName()->PrintLine();
+    m->GetPulled()->GetName()->PrintLine();
 };
 Model->Pull("phi3");
 ```
@@ -512,7 +512,7 @@ Model->Pull("phi3");
 
 ## ONNX Local Inference
 
-Run ML models locally using the ONNX Runtime. Supports DirectML (Windows), CUDA (Linux), and CoreML (macOS) — no GPU required for CPU inference.
+Run ML models locally using the ONNX Runtime. The Windows and macOS libraries are each built with one accelerator (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS), with the CPU as the fallback. The Linux x64 library is CPU-only, and the Linux ARM64 packages include no ONNX library. See [execution providers](MODELS.md#execution-providers) for the `ep` setting.
 
 **Compile:** `obc -src your.obs -lib net,json,cipher,opencv,onnx`
 
@@ -521,7 +521,7 @@ Run ML models locally using the ONNX Runtime. Supports DirectML (Windows), CUDA 
 Uses [InsightFace buffalo_l](https://github.com/deepinsight/insightface): SCRFD 10G-KPS detector + ArcFace R50 (512-dim embeddings).
 
 ```ruby
-use API.Onnx;
+use API.Onnx, System.IO.Filesystem;
 
 session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
 
@@ -557,7 +557,7 @@ count := result->GetSize();
 ### Object Detection (YOLO)
 
 ```ruby
-use API.Onnx;
+use API.Onnx, System.IO.Filesystem;
 
 labels := String->New[80];   # COCO labels
 labels[0] := "person"; labels[1] := "bicycle"; # ... fill all 80
@@ -568,9 +568,9 @@ img := FileReader->ReadBinaryFile("street.jpg");
 result := session->Inference(img, 640, 640, 0.5, labels);
 detections := result->GetClassifications();
 each(d in detections) {
-    label := d->GetLabel();
-    conf  := d->GetConfidence();
-    "{$label}: {$conf}"->PrintLine();
+    name := d->GetName();
+    conf := d->GetConfidence();
+    "{$name}: {$conf}"->PrintLine();
 };
 
 session->Close();
@@ -583,7 +583,7 @@ session->Close();
 Run Microsoft's Phi-3 SLM locally for text or vision tasks.
 
 ```ruby
-use API.Onnx;
+use API.Onnx, System.IO.Filesystem;
 
 tokenizer := Phi3Tokenizer->New("tokenizer.json");
 session   := Phi3Session->New("phi3-mini-4k-instruct.onnx");
@@ -593,25 +593,25 @@ token_ids  := tokenizer->Encode(prompt);
 eos_tokens := Int->New[1]; eos_tokens[0] := 32007;
 
 result  := session->Generate(token_ids, 200, 0.7, eos_tokens);
-decoded := tokenizer->Decode(result->GetTokenIds());
+decoded := tokenizer->Decode(result->GetTokens());
 decoded->PrintLine();
 
 session->Close();
 ```
 
 ```ruby
-# Phi-3 Vision (image + text)
+# Phi-3 Vision (image + text): the image goes between the prefix and suffix tokens
 vision := Phi3VisionSession->New(
     "phi3v-vision.onnx",
     "phi3v-embed.onnx",
     "phi3v-decoder.onnx");
 
 img    := FileReader->ReadBinaryFile("diagram.png");
-prefix := tokenizer->Encode("<|user|>\n<|image_1|>\n");
+prefix := tokenizer->Encode("<|user|>\n");
 suffix := tokenizer->Encode("Describe this diagram.<|end|>\n<|assistant|>\n");
 
 result := vision->Generate(img, prefix, suffix, 300, 0.7, eos_tokens);
-tokenizer->Decode(result->GetTokenIds())->PrintLine();
+tokenizer->Decode(result->GetTokens())->PrintLine();
 
 vision->Close();
 ```
@@ -621,15 +621,15 @@ vision->Close();
 ### Image Classification (ResNet)
 
 ```ruby
-use API.Onnx;
+use API.Onnx, System.IO.Filesystem;
 
 labels := FileReader->ReadFile("imagenet_labels.txt")->Split("\n");
 session := ResNetSession->New("resnet50.onnx");
 img     := FileReader->ReadBinaryFile("cat.jpg");
 
 result := session->Inference(img, 224, 224, labels);
-top := result->GetTopLabel();
-conf := result->GetTopConfidence();
+top  := result->GetName();
+conf := result->GetConfidence();
 "Predicted: {$top} ({$conf})"->PrintLine();
 
 session->Close();
@@ -645,26 +645,38 @@ session->Close();
 use API.OpenCV;
 
 # Load, process, save
-image   := Image->New("photo.jpg");
-gray    := image->ToGray();
-blurred := gray->GaussianBlur(5, 5);
+image   := Image->Load("photo.jpg");
+gray    := image->CvtColor(ColorConversionCodes->BGR2GRAY);
+blurred := gray->GaussianBlur(5, 5, 0.0);   # sigma 0: derived from the kernel size
 edges   := blurred->Canny(50, 150);
 edges->Save("edges.jpg");
 ```
 
 ```ruby
-# Haar cascade face detection
-detector := FaceDetector->New("haarcascade_frontalface_default.xml");
-image    := Image->New("group.jpg");
-faces    := detector->Detect(image);
-count    := faces->Size();
+use API.OpenCV, API.Onnx, System.IO.Filesystem;
+
+# Face detection: the OpenCV bundle has no cascade classifier, so detect faces
+# with the ONNX FaceSession (add onnx to -lib) and draw the boxes with OpenCV
+bytes   := FileReader->ReadBinaryFile("group.jpg");
+session := FaceSession->New("det_10g.onnx");
+faces   := session->Detect(bytes, 0.5);
+count   := faces->GetSize();
 "Faces: {$count}"->PrintLine();
+
+image := Image->Load(bytes);
+green := Scalar->New(0.0, 255.0, 0.0);
+detections := faces->GetDetections();
+each(face in detections) {
+    image := image->DrawRectangle(face->GetBounds(), green, 2);
+};
+image->Save("faces.jpg");
+session->Close();
 ```
 
 ```ruby
 # Resize and color conversion
-resized := image->Resize(320, 240);
-hsv     := resized->ToHsv();
+resized := image->Resize(Size->New(320, 240));
+hsv     := resized->CvtColor(ColorConversionCodes->BGR2HSV);
 hsv->Save("output.jpg");
 ```
 
@@ -675,7 +687,7 @@ hsv->Save("output.jpg");
 **Compile:** `obc -src your.obs -lib gen_collect,nlp`
 
 ```ruby
-use API.ML.NLP;
+use System.NLP;
 
 # Sentiment analysis
 text      := "This product is absolutely wonderful!";
@@ -701,15 +713,15 @@ each(v in vector) {
 
 ```ruby
 # Tokenization
-tokens := Tokenizer->Tokenize("The quick brown fox");
+tokens := Tokenizer->WordTokenize("The quick brown fox");
 each(t in tokens) {
     t->PrintLine();
 };
 ```
 
 ```ruby
-# Text similarity (cosine)
-sim := TextSimilarity->Cosine("hello world", "hello there");
+# Text similarity (cosine over the TF-IDF vectors above)
+sim := TextSimilarity->CosineSimilarity(tfidf->Transform("cats are pets"), tfidf->Transform("dogs are pets"));
 "Similarity: {$sim}"->PrintLine();
 ```
 
@@ -969,9 +981,10 @@ obc -src program.obs -lib @ai -dest program.obe
 | Alias | Expands to | Use for |
 |---|---|---|
 | `@std` | `json`, `json_stream`, `net`, `cipher` | everyday networked apps |
-| `@ml` | `gemini`, `openai`, `net_server`, `misc` | hosted LLM APIs |
-| `@ai` | `ai`, `ml`, `gen_collect`, `csv` | local System.ML / System.AI work |
-| `@game` | `sdl2`, `sdl_game` | SDL games |
+| `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
+| `@ai` | `ai`, `ml`, `nlp`, `csv` | local System.ML / System.AI / System.NLP work |
+| `@vision` | `opencv`, `onnx`, `json`, `cipher` | OpenCV and ONNX inference |
+| `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
 Aliases and explicit names mix freely (`-lib @ai,json`). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`. An unknown alias fails with `Unknown library alias` — check the spelling and that `OBJECK_LIB_PATH` points at the library directory.
 
@@ -1003,7 +1016,7 @@ Aliases and explicit names mix freely (`-lib @ai,json`). Groups are user-editabl
 | Image classification | `ResNetSession` | `onnx` | None |
 | Pose estimation | `OpenPoseSession` | `onnx` | None |
 | Segmentation | `DeepLabSession` | `onnx` | None |
-| Computer vision | `Image`, `FaceDetector` | `opencv` | None |
+| Computer vision | `Image`, `VideoCapture` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |
 | Linear classifiers | `LogisticRegression`, `SVM`, `Perceptron` | `ml` | None |
@@ -1040,7 +1053,9 @@ openai/   openai_chat.obs     openai_images.obs   openai_moderation.obs
 gemini/   gemini_image.obs    gemini_audio.obs     gemini_files.obs
           gemini_cache.obs    gemini_grounding.obs gemini_embed.obs
 
-ollama/   ollama_chat.obs     ollama_vision.obs
+ollama/   test_0.obs (generate)   test_1.obs (vision)
+          test_2.obs (chat)       test_3.obs (models)
 
-opencv_onnx/  face_recognition.obs  yolo_detect.obs  phi3_chat.obs
+opencv_onnx/  demo_face.obs    demo_yolo.obs    demo_resnet.obs
+              demo_phi3_*.obs  demo_phi3v_*.obs
 ```

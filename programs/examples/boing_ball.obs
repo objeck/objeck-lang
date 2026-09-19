@@ -15,8 +15,10 @@ smooth and continuous. A nice GC/JIT workout, too.
 
   compile: obc -src boing_ball.obs -lib sdl2,sdl_game,json,gen_collect
   run:     obr boing_ball
-  note:    every SDL draw call allocates in the binding, so this is also a GC/JIT
-           workout. For a larger heap (fewer, larger collections) run e.g.:
+  note:    the draw calls this demo makes (Renderer->BoxColor) no longer
+           allocate: sdl2.obs reuses one argument buffer per renderer and caches
+           the native call names (boing_ball.md, "What came next"). For a larger
+           heap (fewer, larger collections) run e.g.:
              obr --gc-threshold=64M boing_ball
 ~#
 class BoingBall {

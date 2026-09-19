@@ -20,12 +20,19 @@ See [MODELS.md](MODELS.md) for download links, file layouts, and sizes.
 
 | Platform | Execution Provider | Backend |
 |---|---|---|
-| Windows | DirectML | GPU (any DX12 adapter) |
-| Linux | CPU / CUDA | CPU or NVIDIA GPU |
+| Windows x64 | DirectML | GPU (any DX12 adapter) |
+| Windows ARM64 | QNN | Qualcomm GPU (the default `backend_type`) |
+| Linux x64 | CPU | CPU only: the vendored ONNX Runtime is a CPU-only build |
+| Linux ARM64 | none | not shipped: only an x64 ONNX Runtime is vendored |
 | macOS | CoreML | Apple Neural Engine / GPU |
 
-Build with `eq/build.sh <cpu|cuda>` on Linux; on macOS the deploy builds it with `core/lib/opencv/macos/CMakeLists.txt`.  
-Windows uses the Visual Studio solution `onnx.sln` (DML) or `eq/dml/onnx_dml.sln`.
+Every shipped library is built from `eq/onnx.cpp`, and the `ONNX_EP_*` define it is compiled with (none for the CPU build) fixes its provider. The `ep` session option can name only that provider or `cpu`; any other name is refused and no session is created (see [execution providers](../../../docs/MODELS.md#execution-providers)).
+
+- Windows: `deploy_windows.cmd` builds `onnx.sln` (`vs/vs.vcxproj`) as `Release-DML|x64` or `Release-QNN|ARM64`.
+- Linux: `deploy_posix.sh` runs `eq/build.sh cpu`; the MSYS2 deploy scripts run the same.
+- macOS: `deploy_macos_arm64.sh` builds it with `core/lib/opencv/macos/CMakeLists.txt` (`ONNX_EP_COREML`).
+
+No deploy script or workflow builds the per-provider sources in `eq/dml`, `eq/cuda`, `eq/qnn` and `eq/vitis`, or their solutions such as `eq/dml/onnx_dml.sln`.
 
 ## Quick Start
 
@@ -33,13 +40,14 @@ Windows uses the Visual Studio solution `onnx.sln` (DML) or `eq/dml/onnx_dml.sln
 use API.OpenCV, API.Onnx;
 
 # --- Object detection ---
-session := YoloSession->New("yolo11n.onnx");
+labels := ["person", "bicycle", "car"];   # the model's class names, in order
+yolo := YoloSession->New("yolo11n.onnx");
 img := Image->Load("photo.jpg")->Convert(Image->Format->JPEG);
-result := session->Inference(img, 640, 640, 0.5, labels);
-each(cls in result->GetClassifications()) {
+classes := yolo->Inference(img, 640, 640, 0.5, labels)->GetClassifications();
+each(cls in classes) {
     "{$cls->GetName()}: {$cls->GetConfidence()}"->PrintLine();
 };
-session->Close();
+yolo->Close();
 
 # --- Face recognition ---
 session := FaceSession->New("det_10g.onnx", "w600k_r50.onnx");
@@ -79,19 +87,29 @@ obr demo_face.obe
 
 ## Building the Native Library
 
-### Windows (DirectML)
-Open `onnx.sln` or `eq/dml/onnx_dml.sln` in Visual Studio 2022 and build Release x64.
+### Windows
+`deploy_windows.cmd` restores the NuGet packages (`nuget restore onnx.sln`: ONNX
+Runtime DirectML 1.22.1 and DirectML 1.15.4, listed in `vs/packages.config`) and
+builds `onnx.sln` as `Release-DML|x64` (DirectML) or `Release-QNN|ARM64` (QNN,
+against the runtime in `eq/qnn/win/onnx/arm64`). To build by hand, open `onnx.sln`
+in Visual Studio and pick the same configuration.
 
 ### Linux
 ```sh
 cd eq
-./build.sh cpu       # Linux CPU
-./build.sh cuda      # Linux CUDA
+./build.sh cpu       # what deploy_posix.sh builds and ships
+./build.sh cuda      # compiles the CUDA path only; see below
 ```
+
+Both modes link the vendored ONNX Runtime in `eq/cuda/lib/x64/lib`, which is a
+CPU-only build, so a `cuda` library refuses every session that does not ask for
+`ep=cpu`. Running on CUDA needs a CUDA-enabled ONNX Runtime linked in its place
+(see [MODELS.md](MODELS.md)). Only x64 has a vendored runtime, so `build.sh` stops
+on ARM64. Requires `pkg-config` and an OpenCV development package (module `opencv4`,
+`opencv5` or `opencv`).
 
 ### macOS
 `core/release/deploy_macos_arm64.sh` builds `libobjk_onnx.dylib` (CoreML) with
 `core/lib/opencv/macos/CMakeLists.txt`, against the static OpenCV and the prebuilt
-ONNX Runtime from `tools/deps/build_macos_deps.sh`.
-
-Requires `pkg-config`, `opencv4`, and `libonnxruntime` on the library path.
+ONNX Runtime from `tools/deps/build_macos_deps.sh`. `eq/build.sh` refuses to run on
+macOS.
