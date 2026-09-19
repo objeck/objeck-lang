@@ -67,6 +67,9 @@ step_for() {
     OBJECK_ORG_*)   echo "objeck.org API docs deploy|docs" ;;
     VSCE_PAT)       echo "VS Code Marketplace publish|vscode" ;;
     APPLE_*|CODESIGN_*|KEYCHAIN_*) echo "macOS signing/notarization|" ;;
+    # Phone pushes: the notify-failure action skips its ntfy step when this is
+    # unset; the tracking issue still opens.
+    NTFY_TOPIC)     echo "build notifications|optional" ;;
     *)              echo "unknown step|" ;;
   esac
 }
@@ -77,6 +80,8 @@ for s in $REFERENCED; do
   info=$(step_for "$s"); desc="${info%%|*}"; token="${info##*|}"
   if printf '%s\n' "$CONFIGURED" | grep -qx "$s"; then
     note "set        $s  ($desc)"
+  elif [ "$token" = optional ]; then
+    note "optional   $s  ($desc -- unset, so the step is skipped)"
   elif [ -n "$token" ] && printf '%s' "$MANUAL" | grep -q "$token"; then
     # Declaring a step manual only helps if a workflow actually READS the
     # declaration. It did not for 'docs': this gate printed "manual ... declared
