@@ -18,7 +18,7 @@ flowchart TD
         S0["<b>s0 / always</b><br/>CleanJumps · RemoveUselessInstructions"]
         S0 --> S1["<b>s1+</b>  DeadBlockElimination · TailCallOpt<br/>InlineSettersGetters · ConstantProp · DeadStore<br/>FoldIntConstants · FoldFloatConstants"]
         S1 --> S2["<b>s2+</b>  CSE · LICM<br/>StrengthReduction · DeadCodeElim"]
-        S2 --> S3["<b>s3</b>  InstructionReplacement · PeepholeOptimize<br/>InlineMethod (non-lib) · passes repeated ×N"]
+        S2 --> S3["<b>s3</b>  InstructionReplacement · PeepholeOptimize<br/>InlineMethod (non-lib, after the rest) · each pass runs once"]
     end
 
     S3 --> FE["FileEmitter → Linker<br/>(bytecode written to .obe, zlib-compressed)"]
@@ -31,21 +31,21 @@ flowchart TD
         LOAD --> EXEC["StackInterpreter::Execute()<br/>hot opcodes inlined · cold via dispatch table"]
         EXEC --> CALL{"MTHD_CALL<br/>operand3?"}
         CALL -->|"native kw"| FORCE["force JIT on first call"]
-        CALL -->|"= 0 (untried)"| COUNT["CheckAutoJit():<br/>++callCount; reached threshold?<br/>(10, or OBJECK_JIT_THRESHOLD)"]
+        CALL -->|"= 0 (untried)"| COUNT["CheckAutoJit():<br/>callee has a loop? compile now<br/>else ++callCount; reached threshold?<br/>(10, or OBJECK_JIT_THRESHOLD)"]
         CALL -->|"< 0 (failed)"| INTERP["interpret forever"]
         COUNT -->|"not yet"| EXEC
     end
 
     %% ============ JIT TIER-2 ============
     FORCE --> TRY
-    COUNT -->|"threshold hit"| TRY["JitCompiler::TryAutoJitCompile()"]
+    COUNT -->|"loop, or threshold hit"| TRY["JitCompiler::TryAutoJitCompile()"]
     subgraph JIT["③ JIT  tier-2   —  JitAmd64 / JitArm64 backend"]
         direction TB
         TRY --> SCANV{"Pre-scan validation"}
-        SCANV -->|"AMD64: CanJitInstruction whitelist<br/>ARM64: whitelist + blacklist<br/>(no write-barrier stores, DYN_MTHD_CALL)"| OK
+        SCANV -->|"CanJitInstruction whitelist, both backends<br/>(try regions, frame-dependent traps rejected)"| OK
         SCANV -->|"unsupported instr"| FAIL["return false → operand3 = -1"]
-        OK["accepted"] --> GEN["Codegen + opts:<br/>constant folding (ProcessIntFold)<br/>local register caching · register alloc<br/>method inlining (≤20 instr, non-virtual)<br/>loop detection · direct JIT→JIT calls"]
-        GEN --> PATCH["PatchCallSites():<br/>MTHD_CALL → MTHD_CALL_JIT (zero-branch dispatch)<br/>operand3 = +addr"]
+        OK["accepted"] --> GEN["Codegen + opts:<br/>constant folding (ProcessIntFold)<br/>local register caching · register alloc<br/>magic-number division · select jump tables<br/>loop locals in registers (AMD64)<br/>native JIT→JIT calls + inline caches"]
+        GEN --> PATCH["PatchCallSites():<br/>MTHD_CALL → MTHD_CALL_JIT, DYN_MTHD_CALL → DYN_MTHD_CALL_JIT<br/>(zero-branch dispatch); operand3 = 1"]
     end
 
     PATCH --> JITRUN["subsequent calls run native JIT code"]
@@ -64,9 +64,9 @@ flowchart TD
 
 | Layer | When | Optimizes on | Key idea |
 |-------|------|-------------|----------|
-| **① Compiler (`obc`)** | Ahead-of-time, once | `IntermediateBlock` IR, per method, gated by `-opt s0..s3` | Classic basic-block passes. `s3` runs the whole pass list **multiple iterations** and adds peephole + method inlining (skipped for libraries). |
-| **② VM interpreter** | Every run; all code starts here | `StackInstr` bytecode | Baseline tier. ~20 hot opcodes inlined in `Execute()`; the rest go through a dispatch table. Counts calls per method. |
-| **③ JIT (tier-2)** | After **10 calls** (or `native` → immediately) | One method's bytecode → machine code | Validates first (AMD64 **whitelist** / ARM64 whitelist + blacklist), then does its *own* opt pass: constant folding, register caching, inlining (≤20 instrs), loop detection, JIT→JIT direct calls. |
+| **① Compiler (`obc`)** | Ahead-of-time, once | `IntermediateBlock` IR, per method, gated by `-opt s0..s3` | Classic basic-block passes, each run **once** per method (`num_iterations = 1`). `s3` adds instruction replacement, peephole and method inlining (skipped for libraries). |
+| **② VM interpreter** | Every run; all code starts here | `StackInstr` bytecode | Baseline tier. ~30 hot opcodes inlined in `Execute()`; the rest go through a dispatch table. Counts calls per method. |
+| **③ JIT (tier-2)** | A method with a loop on its **first call** (a thread's `Run` on entry); any other after **10 calls**; `native` immediately | One method's bytecode → machine code | Validates first (each backend's `CanJitInstruction` **whitelist**), then does its *own* opt pass: constant folding, register caching, magic-number division, `select` jump tables, loop locals in registers (AMD64), native JIT→JIT calls. It does not inline methods. |
 
 ## Two details worth knowing
 
@@ -75,7 +75,21 @@ flowchart TD
   `< 0` = JIT rejected, interpret forever. A method that fails validation is never retried.
 - **Constant folding happens in both the compiler and the JIT.** The compiler folds in the
   IR (`FoldIntConstants`); the JIT folds again at codegen (`ProcessIntFold`), because `s3`
-  inlining and JIT-time inlining can expose *new* constant operands the other tier could not see.
+  inlining runs after the compiler's folding and can expose *new* constant operands it never
+  saw, and library code is never folded by the compiler at all (below).
+
+## What the JIT adds
+
+The docs in the last column, all under `docs/`, record what was built and what it measured.
+
+| Optimization | AMD64 | ARM64 | Design |
+|---|---|---|---|
+| Division by a constant becomes a multiply by a magic number (`EmitMagicDivision`, F2b); AMD64 turns a power of two into a biased shift | yes | yes | `JIT_CODEGEN_ASSESSMENT_2026_09.md` |
+| Loop locals in registers (F3): the hottest `Int`/`Char` locals of each loop in `R13`-`R15`, and `Float` locals in `XMM6`-`XMM9` on Windows | yes | not yet | `JIT_LOOP_LOCALS_DESIGN.md` |
+| A dense `select` becomes a jump table (F8) | yes | yes | `JIT_SELECT_TABLES_DESIGN.md` |
+| A compiled caller enters a compiled callee's native entry directly, with inline caches at `virtual` and func-ref sites (F7); the C++ bridge is the slow path | yes | yes | `JIT_CALLING_CONVENTION_DESIGN.md` |
+| A method with a loop compiles on its first call or entry, not its tenth | yes | yes | `JIT_ENTRY_COMPILE_DESIGN.md` |
+| Method inlining | no: `ProcessInlineMethod` exists but is never called | no | |
 
 ## The optimization levels (`-opt`)
 
@@ -84,14 +98,19 @@ flowchart TD
 | `s0` | `CleanJumps`, `RemoveUselessInstructions` (always run) |
 | `s1` | `DeadBlockElimination`, `TailCallOpt`, getter/setter inlining, constant propagation, dead-store removal, int/float constant folding |
 | `s2` | common-subexpression elimination (CSE), loop-invariant code motion (LICM), strength reduction, dead-code elimination |
-| `s3` | instruction replacement, peephole optimization, method inlining; the full pass list is repeated for additional iterations |
+| `s3` | instruction replacement, peephole optimization, method inlining (after every other pass has run on the class's methods) |
+
+Libraries (`-tar lib`) stop after `DeadBlockElimination`: none of the later passes in this
+table, method inlining included, run on library code at any level.
 
 ## Tunables (environment variables)
 
 | Variable | Effect |
 |----------|--------|
-| `OBJECK_JIT_THRESHOLD=N` | Call count before a method is auto-JIT'd (default `10`) |
-| `OBJECK_JIT_DISABLE=1` | Disable auto-JIT entirely (interpret everything) |
+| `OBJECK_JIT_THRESHOLD=N` | Call count before a method is auto-JIT'd (default `10`). At `10` or below, a method with a loop is compiled on its first call instead. `--jit=<calls>` does the same and wins |
+| `OBJECK_JIT_DISABLE=1` | Disable auto-JIT entirely (interpret everything but `native` methods); `--jit=off` does the same |
+| `OBJECK_JIT_REPORT=1` | Name every method the JIT compiles, and every one it hands back to the interpreter with the reason |
+| `OBJECK_JIT_PIN_MAX=n`, `OBJECK_JIT_PIN_SKIP=<substring>` | AMD64: cap the loop locals pinned per loop (`0` turns pinning off), or exempt matching methods |
 
 ## Source map
 
