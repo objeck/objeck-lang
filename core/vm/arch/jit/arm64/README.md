@@ -56,5 +56,12 @@ macOS 11+ enforces W^X for executable code. The back-end allocates and patches c
     </dict>
     ```
 
+### Adding a runtime check or call to emitted code
+Lessons from the 2026 JIT heap-corruption hunt (the investigation itself is in git history as `docs/jit-malloc-corruption-investigation.md`):
+* Load a 64-bit helper address with raw `movz`/`movk` and call it with a raw `blr`. `move_imm_reg` falls back to the constant pool for a value with three or four non-zero 16-bit chunks, and that load (`ldr x9, [sp, #INT_CONSTS]`) reads the wrong slot while SP is shifted by a register-save block; `call_reg` spills LR to the `TMP_LR` frame slot.
+* Preserve **NZCV** around the call: it clobbers the flags, and a store can sit between a compare and its branch.
+* Do not emit a stub inside code that hand-encodes relative branches. The large-frame zeroing loop in `RegisterRoot` encodes `b.lt +4` and `b -4` directly, so anything inserted between them desyncs both.
+* When passing two registers as arguments, load both from their saved stack slots, not the live registers: `mov x0, base; mov x1, off` clobbers `off` when `off` is `x0`.
+
 ### Implementation
 C++ with STL. Sources: `jit_arm_a64.h`, `jit_arm_a64.cpp` (~5.2k lines). Shared driver: [`../jit_common.{h,cpp}`](../jit_common.h).

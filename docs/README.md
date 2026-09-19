@@ -36,7 +36,6 @@ Behaviour specific to one platform, usually discovered the hard way.
 | | |
 |---|---|
 | [CI_CD.md](CI_CD.md) | CI/CD architecture |
-| [CI_CD_QUICK_START.md](CI_CD_QUICK_START.md) | The short version |
 | [release_process.md](release_process.md) | Cutting a release |
 | [release_integrity.md](release_integrity.md) | What a release verifies today, and the signed manifest that would let `obu` detect a substituted `SHA256SUMS` |
 
@@ -47,18 +46,12 @@ Written before the work, and kept afterwards as the record of why it looks the w
 - [SYSTEM_TERMINAL_DESIGN.md](SYSTEM_TERMINAL_DESIGN.md) — `System.Terminal`: styled output, progress bars, interactive controls, and the five VM traps they need
 - [UPDATER_DESIGN.md](UPDATER_DESIGN.md) — auto-updater
 - [ONNX_CUDA_PLAN.md](ONNX_CUDA_PLAN.md) — CUDA execution provider for ONNX
-- [HTTP3_WINDOWS_PLAN.md](HTTP3_WINDOWS_PLAN.md) — enabling HTTP/3 on Windows
-- [HTTP_REQUEST_HEADERS_PLAN.md](HTTP_REQUEST_HEADERS_PLAN.md) — making `AddHeader()` work on HTTP/2 and HTTP/3
-- [OBI_EDITOR_RUN_PLAN.md](OBI_EDITOR_RUN_PLAN.md) — F5 freezing `obi`
 
 ## Investigations
 
 Closed bugs whose reasoning is worth keeping.
 
 - [JIT_CODEGEN_ASSESSMENT_2026_09.md](JIT_CODEGEN_ASSESSMENT_2026_09.md) — how efficient the emitted AMD64/ARM64 code is, measured, with the ranked fixes
-- [jit-malloc-corruption-investigation.md](jit-malloc-corruption-investigation.md) — JIT heap corruption (closed)
-- [VERIFY_ARM64_JIT_FLOAT_FIX.md](VERIFY_ARM64_JIT_FLOAT_FIX.md) — ARM64 JIT float register bug
-- [VERIFY_ARM64_JIT_IMM_FIX.md](VERIFY_ARM64_JIT_IMM_FIX.md) — Windows ARM64 unsigned ops
 
 ## What is not documentation
 

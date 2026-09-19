@@ -29,7 +29,8 @@
 > tokens, so both are left uncolored rather than guessed); char-literal coloring
 > (unreliable token position); find / goto-line; mouse.
 >
-> CI cannot exercise `/e` (no TTY); the gate is a manual terminal matrix.
+> CI cannot exercise `/e` (no TTY); the gate is the
+> [manual test matrix](#manual-test-matrix) at the end of this note.
 
 `obi` today edits by line. `Document`/`Line` hold the buffer and `DoInsertLine`,
 `DoDeleteLine`, `DoReplaceLine`, `DoGotoLine`, `DoList` operate on it through an
@@ -142,3 +143,19 @@ Each phase is independently useful and shippable:
   regression test that `obi --inline`/`--file` still behave headlessly.
 - **Scope.** This is the largest single item in the REPL. Phase 1 alone is worth
   landing before committing to the rest.
+
+## Manual test matrix
+
+CI cannot exercise `/e`, so any change to the editor or its run pane gets this
+matrix by hand, at a real terminal, on each platform the change touches:
+
+| case | expectation |
+| --- | --- |
+| `"hi"->PrintLine();` | output in the pane, editor still responsive |
+| a compile error | diagnostics in the pane, F8 jumps to the line |
+| `while(true) {};` | **Esc cancels**, obi survives, buffer intact |
+| a program printing a lot | pane scrolls, no truncation, no escape-sequence garbage |
+| run twice in a row | second run works; no leaked handles or stale output |
+
+The third row is the bug the subprocess run pane fixed (F5 froze `obi`); test
+it explicitly.
