@@ -22,48 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows builds
-          # Pinned to windows-2025-vs2026, which ships VS2026 (toolset v145).
-          # The .vcxproj files select $(DefaultPlatformToolset) rather than a
-          # hard-coded toolset, so they resolve to v145 here and to v143 on a
-          # VS2022 developer box; VS2026 ships only v145 (no v143), so pinning
-          # either version in the projects breaks one environment or the other.
-          # Explicit label rather than windows-latest/windows-2025 to avoid
-          # future silent image migrations.
-          - platform: windows-x64
-            os: windows-2025-vs2026
-            arch: x64
-            deploy_script: deploy_windows.cmd x64
-            shell: cmd
-
-          # windows-11-arm is a NATIVE ARM64 runner. This leg used to build on
-          # the x64 image and cross-compile, which meant it could not execute a
-          # single thing it produced -- the whole test suite, the debugger tests
-          # and the DAP tests were skipped, so an ARM64-only miscompile had
-          # nothing standing in its way. Native build + native execution closes
-          # that. It ships VS2022 (toolset v143) rather than VS2026's v145; the
-          # .vcxproj files select $(DefaultPlatformToolset), so they follow the
-          # image either way.
-          - platform: windows-arm64
-            os: windows-11-arm
-            arch: ARM64
-            deploy_script: deploy_windows.cmd arm64
-            shell: cmd
-
-          # Linux builds
-          - platform: linux-x64
-            os: ubuntu-latest
-            arch: x64
-            deploy_script: ./deploy_posix.sh x64
-            shell: bash
-
-          # Linux ARM64 - using GitHub-hosted ARM64 runners (public preview)
-          - platform: linux-arm64
-            os: ubuntu-24.04-arm
-            arch: arm64
-            deploy_script: ./deploy_posix.sh arm64
-            shell: bash
-
+          # PROBE (#913): macos-arm64 only
           # macOS build (ARM64 native on Apple Silicon)
           - platform: macos-arm64
             os: macos-15
@@ -565,6 +524,65 @@ jobs:
           ls -la
           exit 1
         fi
+
+    # PROBE -- do not merge (#913). gc_closure_capture_nursery_end crashed once at exit on
+    # macOS arm64 with a corrupted StackClass::closure_dclrs map. Loop it with CI's exact
+    # compile flags under several allocator settings, print any crash report, and stop.
+    - name: PROBE 913 loop gc_closure_capture_nursery_end
+      if: matrix.platform == 'macos-arm64'
+      shell: bash
+      timeout-minutes: 45
+      working-directory: ./programs/regression
+      run: |
+        set +e
+        D="$PWD/../../core/release/${{ steps.deploy-dir.outputs.dir }}"
+        BIN="$D/bin"
+        export OBJECK_LIB_PATH="$D/lib/"
+        T=$(mktemp -d)
+        git log --oneline -1
+        "$BIN/obc" -src gc_closure_capture_nursery_end.obs -lib cipher,collect,xml,json -opt s3 -dest "$T/t.obe" > "$T/compile.log" 2>&1 || { cat "$T/compile.log"; exit 1; }
+        fails=0
+        for mode in plain jit1 jit1scribble jit1guard jit1verify; do
+          n=150
+          case $mode in jit1guard|jit1verify) n=60 ;; esac
+          mfails=0
+          for i in $(seq 1 $n); do
+            unset OBJECK_JIT_THRESHOLD OBJECK_GC_VERIFY MallocScribble MallocPreScribble MallocGuardEdges MallocCheckHeapStart MallocCheckHeapEach
+            case $mode in
+              jit1) export OBJECK_JIT_THRESHOLD=1 ;;
+              jit1scribble) export OBJECK_JIT_THRESHOLD=1 MallocScribble=1 MallocPreScribble=1 ;;
+              jit1guard) export OBJECK_JIT_THRESHOLD=1 MallocGuardEdges=1 MallocCheckHeapStart=1 MallocCheckHeapEach=100 ;;
+              jit1verify) export OBJECK_JIT_THRESHOLD=1 OBJECK_GC_VERIFY=1 ;;
+            esac
+            "$BIN/obr" "$T/t.obe" > "$T/out.txt" 2>&1
+            rc=$?
+            if [ $rc -ne 0 ]; then
+              fails=$((fails+1)); mfails=$((mfails+1))
+              echo "FAIL mode=$mode run=$i rc=$rc"
+              tail -8 "$T/out.txt"
+            fi
+          done
+          echo "== mode $mode: $mfails of $n failed"
+        done
+        echo "=== obr crash reports"
+        for f in $(ls -t ~/Library/Logs/DiagnosticReports/obr-*.ips 2>/dev/null | head -3); do
+          echo "--- $f"
+          python3 - "$f" <<'PY'
+        import json, sys
+        raw = open(sys.argv[1], encoding='utf-8', errors='replace').read()
+        body = json.loads(raw.split('\n', 1)[1])
+        imgs = body.get('usedImages', [])
+        print('exception:', body.get('exception'))
+        for t in body.get('threads', []):
+            if not t.get('triggered'):
+                continue
+            for fr in t.get('frames', [])[:25]:
+                im = imgs[fr['imageIndex']]['name'] if fr.get('imageIndex') is not None and fr['imageIndex'] < len(imgs) else '?'
+                print('  %-12s %s' % (im, fr.get('symbol', hex(fr.get('imageOffset', 0)))))
+        PY
+        done
+        echo "TOTAL fails=$fails"
+        exit 1
 
     # The system libraries this tree links must be exactly the ones
     # core/release/runtime_deps.json declares -- the list the docs gate holds
