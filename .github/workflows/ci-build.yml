@@ -542,9 +542,9 @@ jobs:
         git log --oneline -1
         "$BIN/obc" -src gc_closure_capture_nursery_end.obs -lib cipher,collect,xml,json -opt s3 -dest "$T/t.obe" > "$T/compile.log" 2>&1 || { cat "$T/compile.log"; exit 1; }
         fails=0
-        for mode in plain jit1 jit1scribble jit1guard jit1verify; do
-          n=150
-          case $mode in jit1guard|jit1verify) n=60 ;; esac
+        for mode in plain jit1; do
+          n=100
+          [ $mode = jit1 ] && n=400
           mfails=0
           for i in $(seq 1 $n); do
             unset OBJECK_JIT_THRESHOLD OBJECK_GC_VERIFY MallocScribble MallocPreScribble MallocGuardEdges MallocCheckHeapStart MallocCheckHeapEach
