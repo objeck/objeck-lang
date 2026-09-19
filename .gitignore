@@ -39,6 +39,7 @@
 *.log
 *.recipe
 *.vcxproj.FileListAbsolute.txt
+*.nativecodeanalysis.sarif
 UpgradeLog.htm
 
 # Visual Studio and Xcode per-user files. The few still tracked hold debugger
