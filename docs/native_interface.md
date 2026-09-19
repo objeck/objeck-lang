@@ -294,10 +294,12 @@ The consequence for you: everything you allocate is old, and the argument array
 is old, so every store you make between them is old-to-old and needs no
 barrier. That is what makes `lib_api.h`'s plain stores correct.
 
-The one thing to avoid is storing an object **the caller gave you** into an
-array. A caller's object may be young, an array is always old, and you have no
+The one thing to avoid is storing an object **you did not allocate** into an
+array, or into an object you did allocate. That means an object the caller
+gave you, anything you read out of one, and anything a callback returned: any
+of them may be young, both of those containers are always old, and you have no
 way to run the barrier from library code. If you need to hand a caller's object
-back, put it in the slot it came from rather than into an array you built.
+back, put it in the slot it came from rather than into anything you built.
 
 This is not a hypothetical restriction — the VM's own traps had exactly this
 bug. A trap that returned `String[]` allocated the array (old), filled it with
