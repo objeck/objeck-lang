@@ -17,7 +17,7 @@ before vcpkg carried it).
 | ngtcp2 / nghttp3 / AWS-LC | not used: HTTP/3 goes through WinHTTP (Windows 11 and later) | ngtcp2 v1.25.0, nghttp3 v1.18.0, AWS-LC v5.8.0, static, `tools/deps/build_quic_deps.sh` | same versions, static, same script | HTTP/3 (`net_quic`) |
 | SDL2, SDL2_image, SDL2_mixer, SDL2_ttf | DLLs shipped in `bin\` from the SDL release archives `deploy_windows.cmd` downloads | apt `libsdl2-*-dev` | brew `sdl2*` | `sdl2`, `sdl_game`, `sdl_gl` |
 | OpenCV | `opencv_world4120` — 4.12.0, the one explicit pin (`deploy_windows.cmd`) | apt `libopencv-dev` | 4.12.0, static, `tools/deps/build_macos_deps.sh` | `libobjk_opencv`, `libobjk_onnx` preprocessing |
-| ONNX Runtime | `onnxruntime.dll` from the Microsoft release archive named in `deploy_windows.cmd` | release archive | 1.30.0 Microsoft prebuilt, shipped as `lib/native/libonnxruntime.1.dylib` (`tools/deps/build_macos_deps.sh`) | `libobjk_onnx` |
+| ONNX Runtime | x64: NuGet `Microsoft.ML.OnnxRuntime.DirectML` 1.22.1 (`core/lib/onnx/vs/packages.config`); ARM64: a QNN build vendored in `core/lib/onnx/eq/qnn/win/onnx/arm64/bin` | x64: 1.19.0, a CPU-only build vendored in `core/lib/onnx/eq/cuda/lib/x64/lib`; ARM64: none, so no ONNX | 1.30.0 Microsoft prebuilt, shipped as `lib/native/libonnxruntime.1.dylib` (`tools/deps/build_macos_deps.sh`) | `libobjk_onnx` |
 | LAME | `libmp3lame.dll` shipped in `bin\` | apt `libmp3lame-dev` | 3.100, shared (LGPL), shipped as `lib/native/libmp3lame.0.dylib` (`tools/deps/build_macos_deps.sh`) | `libobjk_lame` |
 | ODBC | Windows SDK | apt `unixodbc-dev` | libiodbc 3.52.12, static, `tools/deps/build_macos_deps.sh` | `libobjk_odbc` |
 | zlib | vendored (`core/lib/zlib`, see `windows_vcpkg_msbuild` for why the vcpkg one must not shadow it) | vendored | vendored | compression traps |
@@ -32,7 +32,7 @@ before vcpkg carried it).
 
 ## What "audit" means here
 
-1. For the two libraries with a security surface exposed to the network — mbedTLS and nghttp2 (ngtcp2/GnuTLS on POSIX) — compare the version the runner image installs against upstream's supported branches (mbedTLS 3.6 LTS at the time of writing; 4.x is not API-compatible and is a migration, not a bump).
+1. For the two libraries with a security surface exposed to the network — mbedTLS and nghttp2 (plus ngtcp2/AWS-LC on POSIX) — compare the version the runner image installs, or the version pinned in the table above, against upstream's supported branches (mbedTLS 3.6 LTS at the time of writing; 4.x is not API-compatible and is a migration, not a bump).
 2. For the pinned archives (OpenCV, ONNX Runtime, SDL2 on Windows) compare the pinned version against the latest patch release and bump the archive name in `deploy_windows.cmd`.
 3. Anything vendored (zlib) is our responsibility to update by hand.
 

@@ -1,3 +1,9 @@
+---
+name: benchmark
+description: Run the Objeck CLBG benchmarks and the cross-language comparison in Docker, report median times and peak RSS, and flag regressions against docs/performance.md
+argument-hint: "[objeck | cross | <benchmark>] e.g. binarytrees  (optional — runs everything by default)"
+---
+
 # Benchmark Skill
 
 Run CLBG benchmarks and cross-language comparisons using Docker.
@@ -28,6 +34,7 @@ docker build -t objeck-bench -f perf-results/docker/Dockerfile .
 | fannkuchredux | `/benchmarks/clbg/fannkuchredux.obs` | 12 |
 | spectralnorm | `/benchmarks/clbg/spectralnorm.obs` | 5500 |
 | mandelbrot | `/benchmarks/clbg/mandelbrot.obs` | 4000 |
+| fasta | `/benchmarks/clbg/fasta.obs` | 25000000 |
 
 4. **Cross-language comparison** (binarytrees depth=17, 3 runs each):
 

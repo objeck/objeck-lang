@@ -1,14 +1,14 @@
 # Objeck Libraries
 
-Native libraries and frameworks that extend Objeck's capabilities. Most libraries consist of an Objeck interface (.obs) paired with a C++ native module (.cpp) that interfaces with external libraries like OpenSSL, SDL2, OpenCV, and OpenAI.
+Native libraries and frameworks that extend Objeck's capabilities. Most libraries are written in Objeck alone (.obs); the rest pair an Objeck interface with a C++ native module (.cpp) that interfaces with external libraries like mbedTLS, SDL2, OpenCV, and ONNX Runtime.
 
 ## Library Structure
 
 Each library typically consists of:
 - **Objeck source code** (.obs) - High-level API in Objeck
-- **C++ native module** (.cpp/.h) - Native code interfacing with external libraries
+- **C++ native module** (.cpp/.h), when needed - Native code interfacing with external libraries
 - **Compiled library** (.obl) - Precompiled Objeck bytecode
-- **External dependencies** - Third-party libraries (OpenSSL, SDL2, etc.)
+- **External dependencies** - Third-party libraries (mbedTLS, SDL2, etc.)
 
 ## Categories
 
@@ -32,8 +32,8 @@ Each library typically consists of:
 - **nlp.obs** - Natural language processing
 
 ### Web & Networking
-- **net_secure.obs** - HTTPS server and client (OpenSSL-based)
-- **net_common.obs** - OAuth and common networking utilities
+- **net_secure.obs** - HTTPS client and secure WebSockets (TLS via mbedTLS)
+- **net_common.obs** - Common networking utilities: URLs, cookies, downloads, server-sent events
 - **rss.obs** - RSS feed parser
 
 ### Data Processing
@@ -48,7 +48,7 @@ Each library typically consists of:
 - **gen_collect.obs** - Generic collections (Map, List, Vector, Hash, etc.)
 
 ### Cryptography & Security
-- **cipher.obs** - Encryption/decryption (AES, RSA) via OpenSSL
+- **cipher.obs** - AES-256 encryption/decryption, SHA/MD5/RIPEMD-160 hashing and Base64, via mbedTLS
 
 ### Utilities
 - **regex.obs** - Regular expression support
@@ -62,7 +62,7 @@ Each library typically consists of:
 - **lame.obs** - MP3 audio encoding (LAME)
 
 ### Diagnostics
-- **diags.obs** - System diagnostics and profiling
+- **diags.obs** - Static analysis and language-server support (diagnostics, symbols, completions)
 
 ## Building Libraries
 
@@ -74,33 +74,38 @@ Libraries are built alongside the compiler. Native modules are compiled into sha
 # See core/lib/<library>/vs/*.vcxproj
 ```
 
-### Linux/macOS
+### Linux
 ```bash
-# Libraries are built via Makefiles
+# Each native module has a build script; core/release/deploy_posix.sh runs them all
 cd core/lib/<library>
-make -f Makefile.amd64  # or Makefile.arm64
+./build_linux.sh <library>  # ONNX: cd core/lib/onnx/eq && ./build.sh cpu
 ```
+
+### macOS
+`core/release/deploy_macos_arm64.sh` builds each native module from its Xcode
+project under `core/lib/<library>/macos`; OpenCV and ONNX build with CMake from
+`core/lib/opencv/macos/CMakeLists.txt`.
 
 ## Using Libraries
 
-Libraries are automatically available to all Objeck programs:
+Only `lang` and `gen_collect` are linked by default; name any other library with `-lib` when compiling, e.g. `obc -src my_app.obs -lib net,net_server,json,cipher,misc,openai`:
 
 ```ruby
 use Data.JSON;
-use API.OpenAI;
+use API.OpenAI.Responses;
 use Collection;
 
 class MyApp {
   function : Main(args : String[]) ~ Nil {
     # Use JSON
-    json := JsonParser->Parse('{"name":"Objeck"}');
+    json := JsonParser->TextToElement("{\"name\":\"Objeck\"}");
 
     # Use collections
-    map := Map->New()<String, Int>;
+    map := Map->New()<String, IntRef>;
     map->Insert("answer", 42);
 
     # Use OpenAI
-    response := Response->Respond("gpt-4o", "Hello!", token);
+    response := Response->Respond("gpt-4o", Pair->New("user", "Hello!")<String, String>, token);
   }
 }
 ```
@@ -111,13 +116,13 @@ To add a new library:
 
 1. Create Objeck source in `compiler/lib_src/<name>.obs`
 2. Create native module in `lib/<name>/<name>.cpp` (if needed)
-3. Add build configuration to appropriate Makefile/VS project
-4. Rebuild compiler to include new library
+3. Add build configuration for the native module (a `build_linux.sh`, a VS project, the macOS project)
+4. Add the library to `core/compiler/build_libs.sh`, which compiles each library's `.obl`, and to the doc-build lists that `tools/cicd/check_doc_lists.py` checks
 
 ## External Dependencies
 
 Some libraries require external dependencies:
-- **OpenSSL** - Used by net_secure, cipher
+- **mbedTLS** - Used by net_secure (TLS, built into the VM) and cipher
 - **SDL2** - Used by sdl_game, sdl_gl, sdl2
 - **OpenGL** - Used by sdl_gl (3.3 core; a system framework on macOS,
   opengl32 on Windows, the driver's libGL on Linux)

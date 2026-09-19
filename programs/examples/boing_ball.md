@@ -13,6 +13,7 @@ garbage collector and a draw-call-heavy workload behave in real time.
 | `MEM`  | process resident set size (OS working set), MB |
 | `HEAP` | the GC-tracked live heap (`allocation_size`), KB — **watch it sawtooth** |
 | `GC`   | `minor / major` collection counts since launch |
+| `PAU`  | the last GC stop-the-world pause, µs |
 | `CPU`  | **% of one core** (process CPU-time ÷ wall-time) |
 
 All of these come from a new VM facility: `System.Runtime->GetProperty("runtime.*")`
@@ -34,9 +35,9 @@ the Amiga way; the spin instead reverses/varies on each corner bounce.
 
 ## Case study: the readout caught a real issue
 
-Watching `MEM` revealed something: it climbs ~**1.5 MB/s and never plateaus**
-(87→207 MB over 80 s), while `HEAP` keeps sawtoothing with a flat ~1 MB floor and
-`GC major` ticks constantly.
+Watching `MEM` revealed something (June 2026, before the fix under "What came
+next"): it climbs ~**1.5 MB/s and never plateaus** (87→207 MB over 80 s), while
+`HEAP` keeps sawtoothing with a flat ~1 MB floor and `GC major` ticks constantly.
 
 - **The logical heap is healthy** — every major GC reclaims the per-frame garbage
   (the `allocation_size` low-water mark is constant). No leak in the tracked heap.
@@ -52,23 +53,27 @@ Watching `MEM` revealed something: it climbs ~**1.5 MB/s and never plateaus**
 So the demo *stress-exposes* the gated "arrays in the nursery" work — and shows it
 to you live, on screen.
 
-## Plan / next steps
+## What came next
 
 ### Memory
-1. Instrument `calloc`/`free` counts and free-list hit-rate to confirm CRT churn.
-2. Mitigations to try: a larger/uncapped free-list for the small array pools; a slab
-   allocator for boxing arrays; ultimately array **bump-allocation in the nursery**
-   (gated on completing interior-pointer fixup coverage).
-3. Success metric: `MEM` slope flattens (RSS plateaus) under the same workload.
+The boxing churn is fixed at its source: the `Renderer` color draws in `sdl2.obs`
+(`BoxColor`, `PixelColor`, `LineColor`, …) reuse one pooled argument buffer per
+renderer and cached function names, instead of allocating a fresh `Base[]` and a
+name string on every call (600k `BoxColor` calls: 33 major GCs → 0). Arrays still
+allocate in the old generation: moving them into the nursery is still open, because
+promotion cannot yet safely fix up every root that points at one (see
+`AllocateArray` in `core/vm/arch/memory.cpp`).
 
 ### Multithreading — the Amiga multitasking angle
 The 1984 demo proved multitasking by running a terminal *while* the ball bounced.
-Recreate and **visualize** that:
+`boing_ball_mt.obs` recreates and **visualizes** that:
 
-1. **Expose thread / stop-the-world stats** alongside the existing keys:
-   `runtime.threads.active` (`mutator_count`) and `runtime.gc.stw` (a collection in
-   progress). HUD adds `THREADS n` and flashes on stop-the-world.
-2. **A multitasking variant:** spawn N background worker threads doing
+1. **Thread / stop-the-world stats** sit alongside the existing keys:
+   `runtime.threads.active` (`mutator_count`), `runtime.gc.stw` (a collection in
+   progress), pause times and lock contention. Its HUD reads them through
+   `System.Concurrency.Monitor` and shows `FPS`, `THRD`, `WORK`, `GC`, `PAUSE` (ms),
+   `CONT` and `CPU`.
+2. **SPACE / W adds a worker:** a `System.Concurrency.TaskScope` task doing
    allocation-heavy work (the modern "terminal") while the main thread renders. This
    exercises the cooperative **stop-the-world** (SafePoint parking, `parked_count`),
    the parallel root scan, and the minor-GC STW path that was the subject of PR #574.
@@ -93,9 +98,11 @@ Read via `System.Runtime->GetProperty(key)->ToInt()`. Implemented in the VM's
 | `runtime.cpu.count`        | logical cores |
 | `runtime.cpu.time`         | process CPU time, ms (sample over an interval for %) |
 
-Planned: `runtime.threads.active`, `runtime.gc.stw`. Typed `System.Runtime` wrappers
-(`GetUsedMemory()`, `GetMajorCollections()`, …) are a follow-up that ships in
-`lang.obl`.
+More keys ship beside these, among them `runtime.threads.active` / `.parked` /
+`.running`, `runtime.gc.stw` and `runtime.gc.pause.last_us`; the full list is in
+[FEATURES.md](../../docs/FEATURES.md#runtime-diagnostics). Typed wrappers ship as
+`System.Concurrency.Monitor` in `concurrent.obl` (`Monitor->UsedMemory()`,
+`Monitor->MajorCollections()`, …), not in `lang.obl`.
 
 ## Build & run
 

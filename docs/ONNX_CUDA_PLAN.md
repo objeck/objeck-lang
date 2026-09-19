@@ -1,8 +1,35 @@
 # CUDA execution provider for ONNX — design
 
-> **Status: PLAN, not implemented.** Written for review before any code, on the
-> pattern that made the HTTP/3-on-Windows work cheap: three reviewers rejected
-> the expensive route before it cost anything.
+> **Status: PLAN, partly implemented.** Written for review before any code, on
+> the pattern that made the HTTP/3-on-Windows work cheap: three reviewers
+> rejected the expensive route before it cost anything.
+>
+> **Landed** in `core/lib/onnx/eq/onnx.cpp`, the source every shipped
+> `libobjk_onnx` is built from:
+>
+> - `ep` is no longer forwarded to ONNX Runtime as a provider option
+>   (f8d4735c76). It is checked against the provider the library was compiled
+>   with: that provider or `cpu` is accepted, and any other name is refused
+>   with an error naming both, rather than silently ignored.
+> - The CUDA branch calls the typed `AppendExecutionProvider_CUDA` instead of
+>   the string form, which rejected `"CUDA"` on every call, and first checks
+>   `Ort::GetAvailableProviders()`, refusing the session rather than running on
+>   CPU when CUDA is absent (01b30f2f8e, moved into place by 1f187887f1). The
+>   vendored Linux runtime is CPU-only, so the Linux and MSYS2 deploys build
+>   `./build.sh cpu`, and no release ships CUDA.
+>
+> **Still open:**
+>
+> - choosing the provider at runtime: it is still fixed at compile time, by the
+>   `ONNX_EP_*` define a build sets (none means CPU);
+> - `eq/cuda/onnx_cuda.cpp:67` still appends `"DML"`;
+> - merging the per-provider variants (`eq/dml`, `eq/cuda`, `eq/qnn`,
+>   `eq/vitis`) into `eq/onnx.cpp`.
+>
+> CORRECTION 2 below is wrong about which source ships: `deploy_windows.cmd`
+> builds `onnx.sln`, which compiles `eq/onnx.cpp`, and `vs/vs.vcxproj` defines
+> one `ONNX_EP_*` per configuration (`Release-DML|x64`, `Release-QNN|ARM64`,
+> ...), not all four. No deploy script or workflow builds the variant sources.
 
 > **CORRECTION (same day, before review).** Two premises below were wrong and
 > are struck through in place. Verify claims against the tree, not against
