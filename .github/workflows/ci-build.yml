@@ -22,53 +22,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows builds
-          # Pinned to windows-2025-vs2026, which ships VS2026 (toolset v145).
-          # The .vcxproj files select $(DefaultPlatformToolset) rather than a
-          # hard-coded toolset, so they resolve to v145 here and to v143 on a
-          # VS2022 developer box; VS2026 ships only v145 (no v143), so pinning
-          # either version in the projects breaks one environment or the other.
-          # Explicit label rather than windows-latest/windows-2025 to avoid
-          # future silent image migrations.
-          - platform: windows-x64
-            os: windows-2025-vs2026
-            arch: x64
-            deploy_script: deploy_windows.cmd x64
-            shell: cmd
-
-          # windows-11-arm is a NATIVE ARM64 runner. This leg used to build on
-          # the x64 image and cross-compile, which meant it could not execute a
-          # single thing it produced -- the whole test suite, the debugger tests
-          # and the DAP tests were skipped, so an ARM64-only miscompile had
-          # nothing standing in its way. Native build + native execution closes
-          # that. It ships VS2022 (toolset v143) rather than VS2026's v145; the
-          # .vcxproj files select $(DefaultPlatformToolset), so they follow the
-          # image either way.
-          - platform: windows-arm64
-            os: windows-11-arm
-            arch: ARM64
-            deploy_script: deploy_windows.cmd arm64
-            shell: cmd
-
-          # Linux builds
-          - platform: linux-x64
-            os: ubuntu-latest
-            arch: x64
-            deploy_script: ./deploy_posix.sh x64
-            shell: bash
-
-          # Linux ARM64 - using GitHub-hosted ARM64 runners (public preview)
+          # PROBE: linux-arm64 only
           - platform: linux-arm64
             os: ubuntu-24.04-arm
             arch: arm64
             deploy_script: ./deploy_posix.sh arm64
-            shell: bash
-
-          # macOS build (ARM64 native on Apple Silicon)
-          - platform: macos-arm64
-            os: macos-15
-            arch: arm64
-            deploy_script: ./deploy_macos_arm64.sh
             shell: bash
 
     defaults:
@@ -565,6 +523,48 @@ jobs:
           ls -la
           exit 1
         fi
+
+    # PROBE -- do not merge. Why does obi abort on linux-arm64 with "double free or
+    # corruption (out)" in #909's parity step? Diagnostics only; the job stops here.
+    - name: PROBE obi on linux-arm64
+      if: matrix.platform == 'linux-arm64'
+      shell: bash
+      working-directory: ./programs/regression
+      run: |
+        set +e
+        D="$PWD/../../core/release/${{ steps.deploy-dir.outputs.dir }}"
+        BIN="$D/bin"
+        export OBJECK_LIB_PATH="$D/lib/"
+        T=$(mktemp -d)
+        cat > "$T/features.obs" <<'EOF'
+        class Features {
+          function : Main(args : String[]) ~ Nil {
+            h2 := System.Runtime->GetProperty("runtime.feature.http2");
+            h3 := System.Runtime->GetProperty("runtime.feature.http3");
+            "http2={$h2} http3={$h3}"->PrintLine();
+          }
+        }
+        EOF
+        echo "=== git"; git log --oneline -1
+        echo "=== ldd obi"; ldd "$BIN/obi"
+        echo "=== ldd obr"; ldd "$BIN/obr"
+        echo "=== parity check"; python3 check_obi_obr_parity.py "$BIN"; echo "parity exit=$?"
+        echo "=== obi --quit, no program"; "$BIN/obi" --quit </dev/null; echo "exit=$?"
+        echo "=== obi --file, output to files"
+        "$BIN/obi" --file "$T/features.obs" --quit </dev/null >"$T/out.txt" 2>"$T/err.txt"; echo "exit=$?"
+        echo "--- stdout:"; cat "$T/out.txt"; echo "--- stderr:"; cat "$T/err.txt"
+        echo "=== obi --file, unbuffered"; stdbuf -o0 -e0 "$BIN/obi" --file "$T/features.obs" --quit </dev/null; echo "exit=$?"
+        echo "=== MALLOC_CHECK_=3"; MALLOC_CHECK_=3 "$BIN/obi" --file "$T/features.obs" --quit </dev/null; echo "exit=$?"
+        echo "=== gdb"
+        sudo apt-get install -y -q gdb >/dev/null 2>&1 || { sudo apt-get update -q >/dev/null; sudo apt-get install -y -q gdb >/dev/null; }
+        gdb -q -batch -ex 'set pagination off' -ex 'set print frame-arguments none' -ex run -ex bt -ex 'info threads' -ex 'thread apply all bt 12' \
+          --args "$BIN/obi" --file "$T/features.obs" --quit </dev/null 2>&1 | tail -150
+        echo "=== valgrind"
+        sudo apt-get install -y -q valgrind >/dev/null 2>&1 || { sudo apt-get update -q >/dev/null; sudo apt-get install -y -q valgrind >/dev/null; }
+        valgrind --num-callers=40 --error-limit=no "$BIN/obi" --file "$T/features.obs" --quit </dev/null >"$T/vg.txt" 2>&1; echo "exit=$?"
+        grep -n -B2 -A50 -E 'Invalid free|Mismatched free|double free|Invalid read|Invalid write' "$T/vg.txt" | head -300
+        echo "--- valgrind tail:"; tail -40 "$T/vg.txt"
+        exit 1
 
     # The system libraries this tree links must be exactly the ones
     # core/release/runtime_deps.json declares -- the list the docs gate holds
