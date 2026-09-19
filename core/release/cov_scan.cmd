@@ -7,6 +7,14 @@ REM this. Companion to cov_scan.sh, which covers the Linux build.
 REM
 REM Usage:  cov_scan.cmd            (from core\release)
 REM
+REM   set COVERITY_DRY_RUN=1      build, capture and verify, then STOP before
+REM                               uploading. Needs no token, and never reads it.
+REM   set COVERITY_UPLOAD_ONLY=1  skip the rebuild; verify and upload the archive
+REM                               a dry run left behind.
+REM
+REM The two modes exist so a capture can be checked before a scan is spent on
+REM it, and so an upload can be retried without another full rebuild.
+REM
 REM ---------------------------------------------------------------------------
 REM Token -- never in the tree:
 REM
@@ -54,7 +62,29 @@ REM ===========================================================================
 
 pushd "%~dp0"
 
+REM ------------------------------------------------------------------ modes ----
+if "%COVERITY_DRY_RUN%"=="1" if "%COVERITY_UPLOAD_ONLY%"=="1" (
+	echo ERROR: COVERITY_DRY_RUN and COVERITY_UPLOAD_ONLY together would do nothing -- pick one. 1>&2
+	popd & exit /b 1
+)
+
+REM Staging paths come first, ahead of everything that can be skipped:
+REM COVERITY_UPLOAD_ONLY jumps past the build and still needs the archive.
+REM
+REM The intermediate directory MUST be named cov-int, and the archive must contain
+REM it at the top level -- that is what Coverity Scan unpacks and analyzes, and
+REM it is what cov_scan.sh produces (tar -czf objeck-int.tgz -C /tmp/ cov-int/).
+REM Wrapping it under any other name uploads fine and then fails server-side.
+set "COV_DIR=%TEMP%\cov-int"
+set "COV_CONFIG=%TEMP%\objeck-cov-conf\coverity_config.xml"
+set "COV_LOG=%TEMP%\objeck-cov-build.log"
+set "COV_TU_LIST=%TEMP%\objeck-cov-tu.txt"
+set "ARCHIVE=%TEMP%\objeck-int.tgz"
+
 REM --------------------------------------------------------------- token ----
+REM A dry run never uploads, so it never needs the token -- and never reads it.
+if "%COVERITY_DRY_RUN%"=="1" goto :cov_token_done
+
 if not defined COVERITY_TOKEN_FILE set "COVERITY_TOKEN_FILE=%USERPROFILE%\Documents\Code\cov_token.dat"
 
 if not defined COVERITY_TOKEN (
@@ -71,6 +101,10 @@ if not defined COVERITY_TOKEN (
 	echo        ^(override that path with COVERITY_TOKEN_FILE^). 1>&2
 	popd & exit /b 1
 )
+:cov_token_done
+
+REM COVERITY_UPLOAD_ONLY needs the token and the version but no toolchain.
+if "%COVERITY_UPLOAD_ONLY%"=="1" goto :cov_version
 
 REM ----------------------------------------------------------- toolchain ----
 if not defined COVERITY_HOME (
@@ -104,6 +138,7 @@ if not exist "%COV_CONFIGURE%" (
 	popd & exit /b 1
 )
 
+:cov_version
 REM ------------------------------------------------------------- version ----
 set "VERSION_H=..\shared\version.h"
 if not exist "%VERSION_H%" (
@@ -112,11 +147,21 @@ if not exist "%VERSION_H%" (
 )
 
 set "VERSION="
-for /f tokens^=2^ delims^=^" %%V in ('"%SystemRoot%\System32indstr.exe" /c:"#define VERSION_STRING" "%VERSION_H%"') do set "VERSION=%%V"
+REM The command inside FOR /F runs under cmd /c, which strips the first and
+REM last quote of a command line that starts with a quote and holds more than
+REM two. Unwrapped, this line lost its quotes, failed with "The directory name
+REM is invalid", and left VERSION unset -- so the script stopped here on every
+REM run. The extra outer pair is what cmd /c strips.
+for /f tokens^=2^ delims^=^" %%V in ('""%SystemRoot%\System32\findstr.exe" /c:"#define VERSION_STRING" "%VERSION_H%""') do set "VERSION=%%V"
 if not defined VERSION (
 	echo ERROR: no VERSION_STRING found in %VERSION_H% -- has the define been renamed? 1>&2
 	popd & exit /b 1
 )
+
+REM Everything from here to the archive check is the rebuild, which
+REM COVERITY_UPLOAD_ONLY skips.
+if "%COVERITY_UPLOAD_ONLY%"=="1" echo  Coverity Scan: Objeck %VERSION% ^(Windows x64^) -- UPLOAD ONLY, no rebuild
+if "%COVERITY_UPLOAD_ONLY%"=="1" goto :cov_verify_archive
 
 REM ---------------------------------------------------- VS build environment -
 if not defined VCINSTALLDIR (
@@ -146,19 +191,11 @@ if not defined COVERITY_BUILD (
 	set "COVERITY_BUILD=msbuild objeck.sln !MSBUILD_ARGS!"
 )
 
-REM The intermediate directory MUST be named cov-int, and the archive must contain
-REM it at the top level -- that is what Coverity Scan unpacks and analyzes, and
-REM it is what cov_scan.sh produces (tar -czf objeck-int.tgz -C /tmp/ cov-int/).
-REM Wrapping it under any other name uploads fine and then fails server-side.
-set "COV_DIR=%TEMP%\cov-int"
-set "COV_CONFIG=%TEMP%\objeck-cov-conf\coverity_config.xml"
-set "COV_LOG=%TEMP%\objeck-cov-build.log"
-set "COV_TU_LIST=%TEMP%\objeck-cov-tu.txt"
-set "ARCHIVE=%TEMP%\objeck-int.tgz"
 
 echo.
 echo ============================================================
 echo  Coverity Scan: Objeck %VERSION% ^(Windows x64^)
+if "%COVERITY_DRY_RUN%"=="1" echo  mode: DRY RUN -- capture and verify only, no upload
 echo ============================================================
 echo  cov-build : %COV_BUILD%
 echo  build     : %COVERITY_BUILD%
@@ -175,15 +212,16 @@ REM cov-configure must run before cov-build or MSVC compilations are not
 REM recognised and the emit comes back empty.
 echo Configuring the MSVC compiler...
 "%COV_CONFIGURE%" --config "%COV_CONFIG%" --msvc >nul
-if errorlevel 1 (
-	echo ERROR: cov-configure failed. 1>&2
+set "CONFIGURE_RC=%ERRORLEVEL%"
+if not "%CONFIGURE_RC%"=="0" (
+	echo ERROR: cov-configure failed ^(exit %CONFIGURE_RC%^). 1>&2
 	popd & exit /b 1
 )
 
 echo Building under cov-build ^(full rebuild, this takes a while^)...
 "%COV_BUILD%" --dir "%COV_DIR%" --config "%COV_CONFIG%" cmd /c "%COVERITY_BUILD%" > "%COV_LOG%" 2>&1
 set "BUILD_RC=%ERRORLEVEL%"
-type "%COV_LOG%" | "%SystemRoot%\System32indstr.exe" /i /c:"compilation units" /c:"ready for analysis" /c:"error"
+type "%COV_LOG%" | "%SystemRoot%\System32\findstr.exe" /i /c:"compilation units" /c:"ready for analysis" /c:"error"
 
 if not "%BUILD_RC%"=="0" (
 	echo. 1>&2
@@ -201,7 +239,7 @@ REM the obvious ones do not work: cov-build does NOT print "0 compilation units"
 REM (it prints the warning matched here), the emit\ directory IS created even when
 REM nothing is captured, and cov-manage-emit exits 0 on an empty emit. Only the
 REM warning string and the LINE COUNT distinguish the two cases.
-"%SystemRoot%\System32indstr.exe" /c:"No files were emitted" "%COV_LOG%" >nul 2>&1
+"%SystemRoot%\System32\findstr.exe" /c:"No files were emitted" "%COV_LOG%" >nul 2>&1
 if not errorlevel 1 (
 	echo. 1>&2
 	echo ERROR: cov-build emitted no files -- nothing would be analyzed. 1>&2
@@ -211,14 +249,20 @@ if not errorlevel 1 (
 	popd & exit /b 1
 )
 
-REM Counted via a temp file rather than a nested-quote FOR /F pipeline. The
-REM inline form ('"cmd" args | find /c /v ""') does not parse in cmd -- it fails
-REM with "invalid command list", leaves the count at 0, and then rejects a
-REM PERFECTLY GOOD capture. That happened on the first real run here.
+REM Counted in pure batch, with no external command. Two earlier forms both
+REM failed the same way: a nested pipeline ('"cmd" args | find /c /v ""') did not
+REM parse, and the temp-file form that replaced it ran find.exe through a quoted
+REM FOR /F command, which cmd /c unquoted into "The filename, directory name,
+REM or volume label syntax is incorrect". Each left TU_COUNT at 0 and so
+REM REJECTED EVERY GOOD CAPTURE.
+REM
+REM Count the "Translation unit:" headers, not lines. cov-manage-emit list
+REM prints two lines per unit -- the header, then "N -> path" -- so a plain line
+REM count reports double: 136 for the 68 units a real capture emitted.
 set "TU_COUNT=0"
 if exist "%COV_MANAGE%" (
 	"%COV_MANAGE%" --dir "%COV_DIR%" list > "%COV_TU_LIST%" 2>nul
-	for /f %%N in ('"%SystemRoot%\System32ind.exe" /c /v "" ^< "%COV_TU_LIST%"') do set "TU_COUNT=%%N"
+	for /f "usebackq delims=" %%L in ("%COV_TU_LIST%") do if "%%L"=="Translation unit:" set /a TU_COUNT+=1
 	del /q "%COV_TU_LIST%" 2>nul
 	if "!TU_COUNT!"=="0" (
 		echo. 1>&2
@@ -233,12 +277,11 @@ REM Coverity reports the share of attempted units it managed to emit. Anything
 REM well short of 100%% means whole projects were skipped and would be reported
 REM as clean because they were never analyzed -- the same blind spot as an empty
 REM emit, just harder to notice. Surface it loudly rather than silently submit.
-for /f "tokens=1 delims= " %%P in ('"%SystemRoot%\System32indstr.exe" /c:"are ready for analysis" "%COV_LOG%"') do set "READY=%%P"
-"%SystemRoot%\System32indstr.exe" /c:"(100%%)" "%COV_LOG%" >nul 2>&1
+"%SystemRoot%\System32\findstr.exe" /c:"(100%%)" "%COV_LOG%" >nul 2>&1
 if errorlevel 1 (
 	echo.
 	echo WARNING: capture is INCOMPLETE -- not every compilation unit was emitted.
-	"%SystemRoot%\System32indstr.exe" /c:"compilation units" "%COV_LOG%"
+	"%SystemRoot%\System32\findstr.exe" /c:"compilation units" "%COV_LOG%"
 	echo          Whole projects missing from the emit are reported as clean because
 	echo          they were never analyzed. Check %COV_DIR%\build-log.txt for
 	echo          "not supported in the current release" before trusting the results.
@@ -257,18 +300,36 @@ if not "%TAR_RC%"=="0" (
 	popd & exit /b 1
 )
 
+:cov_verify_archive
+if not exist "%ARCHIVE%" (
+	echo ERROR: no archive at %ARCHIVE% -- run with COVERITY_DRY_RUN=1 first. 1>&2
+	popd & exit /b 1
+)
+
 REM Confirm the archive really holds cov-int/ at the top level. A wrongly-named or
 REM nested directory uploads with HTTP 200 and only fails later, server-side,
 REM where the cause is invisible from here -- so check it now, before spending
 REM the upload.
-tar -tzf "%ARCHIVE%" | "%SystemRoot%\System32indstr.exe" /b /c:"cov-int/" >nul 2>&1
+tar -tzf "%ARCHIVE%" | "%SystemRoot%\System32\findstr.exe" /b /c:"cov-int/" >nul 2>&1
 if errorlevel 1 (
 	echo. 1>&2
 	echo ERROR: %ARCHIVE% does not contain a top-level cov-int/ directory. 1>&2
 	echo        Coverity Scan would accept the upload and then fail to analyze it. 1>&2
 	echo        Archive contains: 1>&2
-	tar -tzf "%ARCHIVE%" 2>nul | "%SystemRoot%\System32indstr.exe" /n "^" | "%SystemRoot%\System32indstr.exe" /b /c:"1:" /c:"2:" 1>&2
+	tar -tzf "%ARCHIVE%" 2>nul | "%SystemRoot%\System32\findstr.exe" /n "^" | "%SystemRoot%\System32\findstr.exe" /b /c:"1:" /c:"2:" 1>&2
 	popd & exit /b 1
+)
+
+if "%COVERITY_DRY_RUN%"=="1" (
+	echo.
+	echo ============================================================
+	echo  DRY RUN complete: capture verified, nothing uploaded.
+	echo  Archive: %ARCHIVE%
+	echo  To submit it without rebuilding:
+	echo    set COVERITY_UPLOAD_ONLY=1
+	echo    "%~dp0cov_scan.cmd"
+	echo ============================================================
+	popd & exit /b 0
 )
 
 echo Uploading to Coverity Scan...
@@ -279,15 +340,21 @@ curl --fail-with-body ^
   --form version="%VERSION%" ^
   --form description="Objeck %VERSION% (Windows x64)" ^
   https://scan.coverity.com/builds?project=Objeck
-if errorlevel 1 (
+set "UPLOAD_RC=%ERRORLEVEL%"
+REM Compare with 0, never "if errorlevel 1": that test means "1 or more",
+REM so a curl that crashed or could not load -- a NEGATIVE status, such as
+REM 0xC0000135 for a missing DLL -- read as a successful upload, and the
+REM archive was deleted as if it had been submitted.
+if not "%UPLOAD_RC%"=="0" (
 	echo. 1>&2
-	echo ERROR: upload failed. The archive is kept at %ARCHIVE% 1>&2
-	echo        so it can be retried without another full rebuild. 1>&2
+	echo ERROR: upload failed ^(exit %UPLOAD_RC%^). The archive is kept at %ARCHIVE% 1>&2
+	echo        so it can be retried without another full rebuild: 1>&2
+	echo        set COVERITY_UPLOAD_ONLY=1, then run this script again. 1>&2
 	popd & exit /b 1
 )
 
 del /q "%ARCHIVE%"
-rmdir /s /q "%COV_DIR%"
+if exist "%COV_DIR%" rmdir /s /q "%COV_DIR%"
 
 echo.
 echo ============================================================
