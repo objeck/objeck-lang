@@ -872,6 +872,29 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python run_vm_flag_tests.py "%BIN%"
 
+    # obi evaluates code in-process through the module build -- also the embedding
+    # API -- a separate compilation of the VM sources with its own macros and link
+    # line. It lacked HTTP/2 and HTTP/3 for as long as obr has had them, and nothing
+    # noticed (#897). Run one program under both and fail if they disagree. Parity,
+    # not presence: a leg without HTTP/3 in either binary is consistent and passes.
+    - name: obi matches obr on compiled-in protocols (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_obi_obr_parity.py "$BIN"
+
+    - name: obi matches obr on compiled-in protocols (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_obi_obr_parity.py "%BIN%"
+
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
     # Windows included -- plus the update/rollback swap and the command-injection
