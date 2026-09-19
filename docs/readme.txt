@@ -1,3 +1,15 @@
+v2026.9.5 (September 19, 2026)
+===
+Linux ARM64 runs on every ARM64 CPU again -- v2026.9.4 needed SVE instructions and stopped with "Illegal instruction" on most of them. Programs with threads exit and join safely, and a hardening pass fixes dozens of compiler and garbage-collector bugs found by fuzzing, differential testing and a heap verifier.
+
+v2026.9.5
+- Linux ARM64 runs on every ARM64 CPU -- v2026.9.4 needed SVE and stopped with "Illegal instruction" on a Raspberry Pi 4/5, Graviton2, Snapdragon X or Apple silicon in a Linux VM; it now targets ARMv8-A, at no measured cost, and CI runs every build on an emulated CPU without SVE
+- Threads exit and join safely -- a runtime error or Runtime->Exit with another thread running no longer crashes the VM, and Thread->Join no longer fails after a garbage collection
+- Garbage collector -- a closure's captured values could be freed while still held; plus nursery-end, thread-exit and allocation-size fixes, and a heap verifier (OBJECK_GC_VERIFY) runs nightly on all five platforms
+- Sorting -- primitive sorts can no longer exhaust the call stack and are about 15% faster; ArraySort->Sort sorts in place; Data.CSV medians are about 12x faster
+- Compiler -- dozens of fixes for lambdas, enums and conditional expressions, found by differential testing and fuzzing
+- Integer arithmetic has one definition across interpreter, compiler and JITs -- INT64_MIN / -1 no longer stops the program, and >>> takes its shift count modulo 64, so -1 >>> 64 is -1 rather than 0
+
 v2026.9.4 (September 15, 2026)
 ===
 Integer division is right again at the default optimization level -- two optimizer rewrites gave wrong quotients with no error, so programs compiled at -opt s2 or s3 by v2026.9.3 or earlier should be recompiled. A Nil element in a deserialized object array no longer corrupts the object that holds it.

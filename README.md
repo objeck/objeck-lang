@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.4-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.5-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.4/objeck-linux-x64_2026.9.4.tgz
-tar xzf objeck-linux-x64_2026.9.4.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.5/objeck-linux-x64_2026.9.5.tgz
+tar xzf objeck-linux-x64_2026.9.5.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,15 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.4 ✅
+### v2026.9.5 ✅
+  * **Linux ARM64 runs on every ARM64 CPU** &mdash; v2026.9.4 was built for the build server's CPU and needed its SVE instructions, so it stopped with "Illegal instruction" on a Raspberry Pi 4 or 5, Graviton2, Snapdragon X or Apple silicon in a Linux VM. It now targets ARMv8-A at no measured cost, and CI runs every build on an emulated CPU without SVE ([#893](https://github.com/objeck/objeck-lang/issues/893))
+  * **Programs with threads exit and join safely** &mdash; a runtime error or `Runtime->Exit` while another thread ran crashed the VM after printing its message, on every platform ([#877](https://github.com/objeck/objeck-lang/issues/877)); `Thread->Join` could fail with "Unable to join thread!" when a collection ran while it waited ([#874](https://github.com/objeck/objeck-lang/issues/874))
+  * **Garbage collector** &mdash; a closure's captured values could be freed while still held ([#881](https://github.com/objeck/objeck-lang/issues/881)), plus fixes for objects lost at the end of a small nursery, a thread-exit race and objects allocated at twice their size. A heap verifier (`OBJECK_GC_VERIFY`) checks the collector's invariants and runs nightly on all five platforms
+  * **Sorting** &mdash; `Int->Sort` and its `Float`, `Char` and `Byte` counterparts could exhaust the call stack on input of a particular shape; they are about 15% faster, `ArraySort->Sort` sorts an array in place, and `Data.CSV` medians are about 12 times faster ([#887](https://github.com/objeck/objeck-lang/issues/887))
+  * **Compiler** &mdash; dozens of fixes for lambdas, enums and conditional expressions, most found by holding every test to the same output across optimization levels and JIT settings, and by a program fuzzer
+  * **Integer arithmetic has one definition** &mdash; shared by the interpreter, compiler and both JITs. `INT64_MIN / -1` no longer stops the program, and `>>>` takes its shift count modulo 64 like `<<` and `>>`, so `-1 >>> 64` is `-1` rather than `0`
+
+### v2026.9.4
   * **Integer division by a power of two rounded the wrong way at `-opt s2` and `s3`** &mdash; strength reduction turned `n / 2^k` on a local into an arithmetic shift, which rounds toward negative infinity where division truncates toward zero: `-7 / 2` gave `-4`. Division is no longer rewritten; both JITs already compile a constant divisor correctly. Programs compiled at `s2` or `s3` (the default) by v2026.9.3 or earlier should be recompiled
   * **`1 / n` evaluated to `n` at `-opt s3`** &mdash; a peephole pattern meant for `x / 1` matched the left operand instead, so `1 / 5` gave `5`. The pattern is gone
   * **The compiler crashed folding `INT64_MIN / -1`** &mdash; `obc` exited with no message and no output file; that fold is left to run time now
@@ -76,19 +84,9 @@ obc hello && obr hello
   * **Licenses ship with the code they cover** &mdash; the AWS-LC, ngtcp2, nghttp3 and nghttp2 code inside `obr`, and the libraries the macOS package carries, ship their license files in `doc/licenses` ([#818](https://github.com/objeck/objeck-lang/pull/818))
   * **Every platform is verified before a tag** &mdash; one script per machine builds a clean checkout the way the release does and runs the regression suite with the default JIT and with every method compiled, plus the VM flag, debugger and DAP tests; install instructions are checked against the libraries the binaries link; a dispatched Release Build can no longer publish; and a test that did not run no longer counts as a pass ([#814](https://github.com/objeck/objeck-lang/pull/814), [#808](https://github.com/objeck/objeck-lang/pull/808), [#819](https://github.com/objeck/objeck-lang/pull/819))
 
-### v2026.9.2
-  * **macOS ships OpenCV and ONNX again** &mdash; v2026.9.1's `.pkg`, `.zip` and `.tgz` carried neither `libobjk_opencv` nor `libobjk_onnx`. Homebrew's default `opencv` is now 5.0, which moved `contourArea`, `boundingRect`, `approxPolyDP` and the affine estimators out of `cv::`, and the release build installed it while CI stayed on `opencv@4`. The release build is pinned too ([#804](https://github.com/objeck/objeck-lang/pull/804))
-  * **Linux x64's ONNX loads without `LD_LIBRARY_PATH`** &mdash; `libobjk_onnx.so` had no `$ORIGIN` RUNPATH, so it found the ONNX Runtime shipped beside it only where CI's environment pointed there, and failed for anyone who untarred the release
-  * **Linux ARM64 no longer ships an x86-64 ONNX Runtime** &mdash; only an x86-64 runtime is vendored, so ONNX is declared optional on ARM64 and the 16 MB x86-64 library is gone from the tarball
-  * **A deploy that cannot build a required native library now fails** &mdash; the Linux and macOS deploys verified their native libraries and ignored the result, so v2026.9.1 printed verification failures on three platforms and published anyway; CodeQL now also builds and analyzes the OpenCV, ONNX and LAME bindings
-  * **`gl_crystal.obj` ships** &mdash; the model `gl_model.obs` loads had never been committed, because `.gitignore`'s `*.obj` rule for MSVC object files matched it too. Every deploy copies it now, the MSYS2 builds gain the OpenGL examples, and a deploy missing a file an example opens by name fails ([#803](https://github.com/objeck/objeck-lang/pull/803), [#805](https://github.com/objeck/objeck-lang/pull/805))
-  * **`Image->Normalize()` could write past its output array** &mdash; the OpenCV binding sized the array as `rows * cols * 3` in 32-bit `int`, which wraps above about 716 megapixels: a crash up to about 1.43 gigapixels, and an out-of-bounds write on the VM heap beyond that. It is sized in `size_t` now (CodeQL #362, [#806](https://github.com/objeck/objeck-lang/pull/806))
-  * **Deploy scripts show live progress** &mdash; a banner, stage progress and quiet tool output with the full log kept, and `-v` streams everything instead ([#801](https://github.com/objeck/objeck-lang/pull/801))
-  * **The Windows API-docs search-index check runs** &mdash; it existed only in the generated `code_doc64.cmd`, which every deploy regenerates from its template; it is in the template now, and CI checks the templates ([#802](https://github.com/objeck/objeck-lang/pull/802))
-
 ## Downloads
 
-**Latest Release:** [v2026.9.4](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.5](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

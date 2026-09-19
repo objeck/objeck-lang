@@ -59,9 +59,19 @@
   </header>
 
   <main style="text-align: left;">
-   <p>Integer division is right again at the default optimization level &mdash; two optimizer rewrites gave wrong quotients with no error, so programs compiled at <code>-opt s2</code> or <code>s3</code> by v2026.9.3 or earlier should be recompiled. A Nil element in a deserialized object array no longer corrupts the object that holds it.</p>
+   <p>Linux ARM64 runs on every ARM64 CPU again &mdash; v2026.9.4 needed SVE instructions and stopped with &ldquo;Illegal instruction&rdquo; on most of them. Programs with threads exit and join safely, and a hardening pass fixes dozens of compiler and garbage-collector bugs found by fuzzing, differential testing and a heap verifier.</p>
 
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.4" style="color: inherit; text-decoration: none;">v2026.9.4</a></u></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.5" style="color: inherit; text-decoration: none;">v2026.9.5</a></u></h3>
+   <ul>
+    <li><strong>Linux ARM64 runs on every ARM64 CPU</strong> &mdash; v2026.9.4 needed SVE instructions and stopped with &ldquo;Illegal instruction&rdquo; on a Raspberry Pi 4/5, Graviton2, Snapdragon X or Apple silicon in a Linux VM; it now targets ARMv8-A, at no measured cost</li>
+    <li><strong>Threads exit and join safely</strong> &mdash; a runtime error or <code>Runtime-&gt;Exit</code> with another thread running no longer crashes the VM, and <code>Thread-&gt;Join</code> no longer fails after a garbage collection</li>
+    <li><strong>Garbage collector</strong> &mdash; a closure's captured values could be freed while still held; plus nursery-end, thread-exit and allocation-size fixes, and a heap verifier (<code>OBJECK_GC_VERIFY</code>) run nightly</li>
+    <li><strong>Sorting</strong> &mdash; primitive sorts can no longer exhaust the call stack and are about 15% faster; <code>ArraySort-&gt;Sort</code> sorts in place; <code>Data.CSV</code> medians are about 12&times; faster</li>
+    <li><strong>Compiler</strong> &mdash; dozens of fixes for lambdas, enums and conditional expressions, found by differential testing and fuzzing</li>
+    <li><strong>Integer arithmetic</strong> &mdash; one definition across interpreter, compiler and JITs; <code>INT64_MIN / -1</code> no longer stops the program, and <code>&gt;&gt;&gt;</code> takes its shift count modulo 64</li>
+   </ul>
+
+   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.4" style="color: inherit; text-decoration: none;">v2026.9.4</a></h3>
    <ul>
     <li><strong>Integer division by a power of two rounded the wrong way at <code>-opt s2</code> and <code>s3</code></strong> &mdash; strength reduction turned <code>n / 2^k</code> on a local into an arithmetic shift, which rounds toward negative infinity where division truncates toward zero: <code>-7 / 2</code> gave <code>-4</code>. Division is no longer rewritten; both JITs already compile a constant divisor correctly. The interpreter and the JIT agreed on the wrong value, so the new test checks hand-computed quotients at every level</li>
     <li><strong><code>1 / n</code> evaluated to <code>n</code> at <code>-opt s3</code></strong> &mdash; a peephole pattern meant for <code>x / 1</code> matched the left operand instead, so <code>1 / 5</code> gave <code>5</code>. The pattern is gone</li>
