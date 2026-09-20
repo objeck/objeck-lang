@@ -61,7 +61,7 @@
   <main style="text-align: left;">
    <p>Linux ARM64 runs on every ARM64 CPU again &mdash; v2026.9.4 needed SVE instructions and stopped with &ldquo;Illegal instruction&rdquo; on most of them. Programs with threads exit and join safely, and a hardening pass fixes dozens of compiler and garbage-collector bugs found by fuzzing, differential testing and a heap verifier.</p>
 
-   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.6" style="color: inherit; text-decoration: none;">v2026.9.6</a></h3>
+   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.6" style="color: inherit; text-decoration: none;">v2026.9.6</a></u></h3>
    <ul>
     <li><strong><code>System.ML</code> stopped returning wrong numbers</strong> &mdash; column sums and averages truncated every fractional value, so <code>LinearSolver</code> reported the wrong R-squared; <code>KMeans-&gt;Group</code> could hand back empty groups depending on the order of its labels, and the Dunn index then divided by zero</li>
     <li><strong><code>Matrix2D</code> says no instead of stopping the program</strong> &mdash; operations on shapes it cannot combine return <code>Nil</code>, a <code>Nil</code> operand no longer crashes the native code, <code>Inverse</code> of a non-square matrix no longer hangs, and <code>NeuralNetwork-&gt;Train</code> refuses an input or target that is not a column of the right height</li>
@@ -71,7 +71,7 @@
     <li><strong><code>obi</code> exits when its input ends</strong> &mdash; piping a program into the REPL, or closing its input, left it running forever</li>
    </ul>
 
-   <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.5" style="color: inherit; text-decoration: none;">v2026.9.5</a></u></h3>
+   <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.5" style="color: inherit; text-decoration: none;">v2026.9.5</a></h3>
    <ul>
     <li><strong>Linux ARM64 runs on every ARM64 CPU</strong> &mdash; v2026.9.4 needed SVE instructions and stopped with &ldquo;Illegal instruction&rdquo; on a Raspberry Pi 4/5, Graviton2, Snapdragon X or Apple silicon in a Linux VM; it now targets ARMv8-A, at no measured cost</li>
     <li><strong>Threads exit and join safely</strong> &mdash; a runtime error or <code>Runtime-&gt;Exit</code> with another thread running no longer crashes the VM, and <code>Thread-&gt;Join</code> no longer fails after a garbage collection</li>

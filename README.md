@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.5-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.6-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.5/objeck-linux-x64_2026.9.5.tgz
-tar xzf objeck-linux-x64_2026.9.5.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.6/objeck-linux-x64_2026.9.6.tgz
+tar xzf objeck-linux-x64_2026.9.6.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.6
+### v2026.9.6 ✅
   * **`System.ML` stopped returning wrong numbers** &mdash; column sums and averages truncated every fractional value, so `LinearSolver` reported the wrong R-squared; `KMeans->Group` could hand back empty groups depending on the order of its labels, and the Dunn index then divided by zero ([#903](https://github.com/objeck/objeck-lang/issues/903))
   * **`Matrix2D` says no instead of stopping the program** &mdash; operations on shapes it cannot combine return `Nil`, a `Nil` operand no longer crashes the native code, `Inverse` of a non-square matrix no longer hangs, and `NeuralNetwork->Train` refuses an input or target that is not a column of the right height ([#903](https://github.com/objeck/objeck-lang/issues/903))
   * **`obi` and the embedding API speak HTTP/2 and HTTP/3** &mdash; both run code through the module build, which never got the flags or the libraries `obr` has, so they quietly used HTTP/1.1. Every CI leg now runs one program under both and fails if they disagree ([#897](https://github.com/objeck/objeck-lang/issues/897))
@@ -70,7 +70,7 @@ obc hello && obr hello
   * **`API.OpenAI` answers, and sends the picture** &mdash; a text `Respond` posted its request and never read the reply, so the call was billed and returned `Nil`; every image call sent its request as text ([#901](https://github.com/objeck/objeck-lang/issues/901))
   * **`obi` exits when its input ends** &mdash; piping a program into the REPL, or closing its input, left it running forever ([#917](https://github.com/objeck/objeck-lang/issues/917))
 
-### v2026.9.5 ✅
+### v2026.9.5
   * **Linux ARM64 runs on every ARM64 CPU** &mdash; v2026.9.4 was built for the build server's CPU and needed its SVE instructions, so it stopped with "Illegal instruction" on a Raspberry Pi 4 or 5, Graviton2, Snapdragon X or Apple silicon in a Linux VM. It now targets ARMv8-A at no measured cost, and CI runs every build on an emulated CPU without SVE ([#893](https://github.com/objeck/objeck-lang/issues/893))
   * **Programs with threads exit and join safely** &mdash; a runtime error or `Runtime->Exit` while another thread ran crashed the VM after printing its message, on every platform ([#877](https://github.com/objeck/objeck-lang/issues/877)); `Thread->Join` could fail with "Unable to join thread!" when a collection ran while it waited ([#874](https://github.com/objeck/objeck-lang/issues/874))
   * **Garbage collector** &mdash; a closure's captured values could be freed while still held ([#881](https://github.com/objeck/objeck-lang/issues/881)), plus fixes for objects lost at the end of a small nursery, a thread-exit race and objects allocated at twice their size. A heap verifier (`OBJECK_GC_VERIFY`) checks the collector's invariants and runs nightly on all five platforms
@@ -94,7 +94,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.9.5](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.6](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
