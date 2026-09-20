@@ -11,6 +11,9 @@
 #
 # data/gender.csv ships with the examples. data/gender.dat does not -- it is
 # this program's OUTPUT, so train once before running with "brun".
+#
+# data/gender.csv is LF-terminated, so the line ending is passed explicitly:
+# LoadSplitMatrices defaults to CRLF and returns Nil on anything else.
 ~#
 
 use Collection;
@@ -22,7 +25,11 @@ class Test {
 		model_file := "data/gender.dat";
 
 		network : NeuralNetwork;
-		inputs_targets := MatrixReader->LoadSplitMatrices(input_file, 1, 0.8); # 20% test data
+		inputs_targets := MatrixReader->LoadSplitMatrices(input_file, 1, 0.8, "\n"); # 20% test data
+		if(inputs_targets = Nil) {
+			"Unable to read '{$input_file}'"->ErrorLine();
+			Runtime->Exit(1);
+		};
 
 		# load model
 		if(args->Size() = 1 & args[0]->Equals("brun")) {
@@ -49,10 +56,8 @@ class Test {
 		else {
 			"Training model..."->PrintLine();
 			network := NeuralNetwork->Train(2, inputs_targets[0], 8, 1, inputs_targets[1], 0.01625, 196);
-			if(inputs_targets <> Nil) {
-				network->Store(model_file);
-				"Stored model"->PrintLine();
-			};
-		}		
+			network->Store(model_file);
+			"Stored model"->PrintLine();
+		}
 	}
 }
