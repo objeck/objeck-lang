@@ -394,7 +394,15 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
   bool done = false;
   do {
     std::wcout << Runtime::C(Runtime::CLR_GREEN) << L"> " << Runtime::C(Runtime::CLR_RESET);
-    std::getline(std::wcin, in);
+    if(!std::getline(std::wcin, in)) {
+      // End of input: a closed stdin, an exhausted pipe, Ctrl-D or Ctrl-Z. getline
+      // fails and leaves `in` empty, so an unchecked read left this prompt spinning
+      // forever on a stream that will never produce another line (#917). That is
+      // what hung the arm64 probes that ran obi with stdin closed.
+      std::wcout << std::endl;
+      done = true;
+      break;
+    }
 
     // command
     if(in.size() > 1 && in.front() == L'/') {
@@ -859,7 +867,12 @@ void Editor::DoInsertMultiLine(std::wstring& in)
     bool multi_line_done = false;
     do {
       std::wcout << L"Insert '/m' to exit] ";
-      std::getline(std::wcin, in);
+      if(!std::getline(std::wcin, in)) {
+        // End of input ends the insert, as '/m' does (#917).
+        std::wcout << std::endl;
+        multi_line_done = true;
+        break;
+      }
       if(in == L"/m") {
         multi_line_done = true;
       }
