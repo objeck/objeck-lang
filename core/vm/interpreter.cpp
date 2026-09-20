@@ -170,6 +170,15 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       JitRuntime jit_executor;
       const long status = jit_executor.Execute(method, instance, op_stack, stack_pos, call_stack, call_stack_pos, *stack_frame);
       if(status < 0) {
+        // A guard stub's error is recoverable like the interpreter's own: the
+        // compiled frame has already returned, so a Try() region below can take
+        // over (#900). Errors raised inside a JIT callback, an invalid cast, or
+        // in a JIT-to-JIT call still end the program; the callback has no way to
+        // reach this interpreter's handler stack.
+        if(TryErrorRecovery(stack_pos)) {
+          return;
+        }
+
         switch(status) {
         case -1:
           std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance in native JIT code <<<" << std::endl;
@@ -1525,6 +1534,12 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, size_t*
   std::wcout << L"stack oper: OBJ_INST_CAST: from=" << mem << L", to=" << instr->GetOperand() << std::endl;
 #endif
   if(!result && mem) {
+    // Recoverable like the other runtime errors: a?->b() yields Nil rather than
+    // ending the program (#900).
+    if(TryErrorRecovery(stack_pos)) {
+      return;
+    }
+
     StackClass* to_cls = MemoryManager::GetClass((size_t*)mem);
     std::wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
           << L"' to '" << program->GetClass(instr->GetOperand())->GetName() << L"' <<<" << std::endl;
@@ -2319,7 +2334,19 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
 {
   // save current method
   (*stack_frame)->ip = ip;
-  PushFrame((*stack_frame));
+  if(!PushFrame((*stack_frame))) {
+    if(TryErrorRecovery(stack_pos)) {
+      return;
+    }
+    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    VmExit(1);
+#endif
+  }
 
   // make call
   const size_t mthd_cls_id = PopInt(op_stack, stack_pos);
@@ -2430,7 +2457,19 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
 {
   // save current method
   (*stack_frame)->ip = ip;
-  PushFrame((*stack_frame));
+  if(!PushFrame((*stack_frame))) {
+    if(TryErrorRecovery(stack_pos)) {
+      return;
+    }
+    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    VmExit(1);
+#endif
+  }
 
   // pop instance
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -2483,7 +2522,19 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
 void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   (*stack_frame)->ip = ip;
-  PushFrame((*stack_frame));
+  if(!PushFrame((*stack_frame))) {
+    if(TryErrorRecovery(stack_pos)) {
+      return;
+    }
+    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    VmExit(1);
+#endif
+  }
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   StackMethod* concrete_call = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
 
@@ -2501,7 +2552,19 @@ void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &
 void StackInterpreter::ProcessJitOnlyDynamicMethodCall([[maybe_unused]] StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   (*stack_frame)->ip = ip;
-  PushFrame((*stack_frame));
+  if(!PushFrame((*stack_frame))) {
+    if(TryErrorRecovery(stack_pos)) {
+      return;
+    }
+    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    VmExit(1);
+#endif
+  }
 
   const size_t mthd_cls_id = PopInt(op_stack, stack_pos);
   const long cls_id = (mthd_cls_id >> (16 * (1))) & 0xFFFF;
@@ -2547,6 +2610,11 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   JitRuntime jit_executor;
   const long status = jit_executor.Execute(called, instance, op_stack, stack_pos, call_stack, call_stack_pos, *stack_frame);
   if(status < 0) {
+    // Recoverable, as above (#900).
+    if(TryErrorRecovery(stack_pos)) {
+      return;
+    }
+
     if(TryErrorRecovery(stack_pos)) {
       return;
     }

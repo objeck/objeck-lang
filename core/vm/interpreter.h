@@ -125,10 +125,13 @@ namespace Runtime {
     //
     // push call frame
     //
-    inline void PushFrame(StackFrame* f) {
+    // Returns false when the call stack is full. It used to print and exit here,
+    // which made a runaway recursion fatal even inside a Try() region, unlike every
+    // other runtime error (#900). The caller decides: recover into a handler, or
+    // report and end the program.
+    inline bool PushFrame(StackFrame* f) {
       if((*call_stack_pos) >= CALL_STACK_SIZE) {
-        std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
-        VmExit(1);
+        return false;
       }
 
       // Write frame pointer before advancing position so GC never
@@ -137,6 +140,8 @@ namespace Runtime {
       call_stack[pos] = f;
       std::atomic_thread_fence(std::memory_order_release);
       *call_stack_pos = pos + 1;
+
+      return true;
     }
 
     //

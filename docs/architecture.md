@@ -1230,8 +1230,10 @@ flowchart TB
 - **Fatal unless guarded.** The interpreter prints one `>>> ... <<<` line, such as
   `>>> Attempting to dereference a 'Nil' memory instance <<<`, `>>> Index out of bounds: <index>,<size> <<<`
   or `>>> Divide by zero <<<`, then lists the methods on the call stack (`StackErrorUnwind`) and
-  exits with status 1. An invalid cast (`>>> Invalid object cast ... <<<`) and a call-stack
-  overflow are fatal even inside a `Try()`.
+  exits with status 1. An invalid cast (`>>> Invalid object cast ... <<<`) and a full call
+  stack are recovered like the rest when they happen in interpreted code; inside a
+  JIT-compiled method both remain fatal, because the callback that raises a failing cast
+  cannot reach the handler stack and compiled recursion overruns the native stack first.
 - **`Try()` and `?->`.** `a?->b()` is `a->Try()->b()`. The compiler brackets the rest of the
   chain with `TRY_START` and `TRY_END` (`EmitTryIntrinsic`); `TRY_START` pushes a handler, with the
   operand-stack position and call-stack depth to return to, on the interpreter's handler stack
