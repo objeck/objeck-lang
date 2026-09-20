@@ -2,7 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.9.6] - 2026-09-20
+## [v2026.9.6] - 2026-09-19
 
 **A correctness release for the machine-learning library and for the two places Objeck
 runs code that are not `obr`: the REPL and the embedding API.** `System.ML` returned wrong
