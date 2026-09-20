@@ -529,18 +529,21 @@ if(csv->IsParsed()) {
 		@replace_str : static : String;
 
 		#~
-		Constructor
-		@param data CSV data with CRNL line endings
+		Constructor. The line ending is read from the data rather than assumed:
+		CRLF if the data contains one, otherwise LF, otherwise CR. A file written
+		on either platform therefore parses without the caller knowing which.
+		Use the two-argument constructor to force a particular ending.
+		@param data CSV data
 
 ```
-csv := CsvTable->New("name,age\r\nAlice,30\r\nBob,25");
+csv := CsvTable->New("name,age\nAlice,30\nBob,25");
 if(csv->IsParsed()) {
   Console->PrintLine(csv->Size());
 };
 ```
 		~#
 		New(data : String) {
-			Init(data, "\r\n");
+			Init(data, DetectEnding(data));
 		}
 
 		#~
@@ -563,6 +566,28 @@ if(csv->IsParsed()) {
 			return @replace_str;
 		}
 		
+		# The ending a caller did not specify. CRLF is tested first because a CRLF
+		# file also contains LF: testing LF first would split on "\n" and leave a
+		# stray CR on every row. Data with no ending at all keeps the old CRLF
+		# default, so a single-row input still reports IsParsed false as before.
+		function : DetectEnding(data : String) ~ String {
+			ending := "\r\n";
+
+			if(data <> Nil) {
+				if(data->Has("\r\n")) {
+					ending := "\r\n";
+				}
+				else if(data->Has("\n")) {
+					ending := "\n";
+				}
+				else if(data->Has("\r")) {
+					ending := "\r";
+				};
+			};
+
+			return ending;
+		}
+
 		method : Init(data : String, ending : String) ~ Nil {
 			if(@replace_str = Nil) {
 				@replace_str := "";
