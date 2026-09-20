@@ -167,7 +167,8 @@ void Usage()
   usage += L"  --inline, -i <code>     Inline source code statements\n";
   usage += L"  --library, -l <libs>    Linked libraries (comma-separated)\n";
   usage += L"  --optimize, -o <level>  Optimization level: s0-s3 (default: s3)\n";
-  usage += L"  --quit, -q              Exit shell after executing code\n";
+  usage += L"  --quit, -q              Exit shell after executing code; with no\n";
+  usage += L"                          --file or --inline, exit without a shell\n";
   usage += L"\nExamples:\n";
   usage += L"  obi\n";
   usage += L"  obi --file hello.obs\n";
