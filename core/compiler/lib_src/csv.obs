@@ -563,6 +563,18 @@ if(csv->IsParsed()) {
 			return @replace_str;
 		}
 		
+		# Splits data on one ending and parses it, or Nil if that ending does not
+		# yield a table. Both failures count: too few rows to be a table, and rows
+		# ParseColumns rejects.
+		method : Parse(data : String, ending : String) ~ Vector<CsvRow> {
+			rows := data->Split(ending);
+			if(rows->Size() > 1) {
+				return ParseColumns(rows);
+			};
+
+			return Nil;
+		}
+
 		method : Init(data : String, ending : String) ~ Nil {
 			if(@replace_str = Nil) {
 				@replace_str := "";
@@ -580,34 +592,28 @@ if(csv->IsParsed()) {
 				return;
 			};
 
-			rows := data->Split(@ending);
+			@data := Parse(data, @ending);
 
-			# The requested ending split nothing off: try the other common endings
-			# before giving up, so a file that is merely terminated differently than
-			# the caller expected still reads, and ToString() writes it back the way
-			# it came in. Data that parses under the requested ending never reaches
-			# here, so no table that reads today reads differently.
-			if(rows->Size() < 2) {
+			# The requested ending did not yield a table: try the other common
+			# endings before giving up, so a file that is merely terminated
+			# differently than the caller expected still reads. Whichever ending
+			# works is adopted, so ToString() writes the table back the way it came
+			# in. Data that parses under the requested ending never reaches this
+			# loop, so no table that reads today reads differently.
+			if(@data = Nil) {
 				candidates := ["\r\n", "\n"];
 				each(i : candidates) {
 					candidate := candidates[i];
-					if(rows->Size() < 2 & <>candidate->Equals(@ending)) {
-						fallback_rows := data->Split(candidate);
-						if(fallback_rows->Size() > 1) {
+					if(@data = Nil & <>candidate->Equals(@ending)) {
+						@data := Parse(data, candidate);
+						if(@data <> Nil) {
 							@ending := candidate;
-							rows := fallback_rows;
 						};
 					};
 				};
 			};
 
-			if(rows->Size() > 1) {
-				@data := ParseColumns(rows);
-				if(@data = Nil) {
-					@is_parsed := false;
-				};
-			}
-			else {
+			if(@data = Nil) {
 				@is_parsed := false;
 			};
 			
