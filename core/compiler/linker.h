@@ -963,7 +963,11 @@ class Library {
     }
 
     if(alloc_buffer) {
-      delete[] alloc_buffer;
+      // free(), not delete[]: LoadFileBuffer returns UncompressZlib's buffer, which
+      // is malloc'd ("caller frees buffer", sys.h). Mixing the two is undefined
+      // behaviour; valgrind reported it as a mismatched free. The VM's loader frees
+      // its copy of the same buffer correctly (loader.h's ~Loader).
+      free(alloc_buffer);
       alloc_buffer = nullptr;
     }
   }
