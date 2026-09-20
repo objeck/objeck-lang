@@ -895,6 +895,26 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obi_obr_parity.py "%BIN%"
 
+    # obi's prompt read a line without checking the read: at EOF it spun forever
+    # instead of leaving (#917). Every invocation here gets a closed stdin.
+    - name: obi exits at stdin EOF (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_obi_stdin_eof.py "$BIN"
+
+    - name: obi exits at stdin EOF (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_obi_stdin_eof.py "%BIN%"
+
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
     # Windows included -- plus the update/rollback swap and the command-injection
