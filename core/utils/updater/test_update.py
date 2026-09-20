@@ -12,7 +12,7 @@ The hooks (OBU_INSTALL_ROOT / OBU_RELEASE_JSON_FILE / OBU_ASSET_DIR) exist ONLY
 in a build compiled with -DOBU_TEST_HOOKS; the shipped binary ignores them, so
 this harness cannot weaken a real install.
 
-Two suites:
+Three suites:
 
   check   the 'check' command. Runs everywhere, including Windows. This was
           previously untested on every platform: DoCheck built its own request
@@ -25,6 +25,8 @@ Two suites:
           Windows. The swap needs no copy-self-and-re-exec dance there: it
           moves the current tree aside with fs::rename, and Windows permits
           renaming a running image even though it forbids deleting one.
+
+  selfswap  obu replacing the tree it is itself running from.
 
 Fixtures are built with hashlib/tarfile/zipfile rather than sha256sum/tar/zip
 so the harness needs no external tools of its own. The archive format follows
@@ -251,23 +253,118 @@ def make_archive(stage, archive):
                 tar.add(os.path.join(stage, entry), arcname=entry)
 
 
-def make_release(reldir, asset_name, payload_version="NEW", corrupt_hash=False):
-    """A fake release: the platform's archive, a SHA256SUMS, and release JSON."""
+def make_release(reldir, asset_name, payload_version="NEW", corrupt_hash=False,
+                 tag="v9999.1.0", sums_name=None, corrupt_archive=False,
+                 drop_obc=False):
+    """A fake release: the platform's archive, a SHA256SUMS, and release JSON.
+
+    The keyword arguments build the deliberately broken releases:
+      corrupt_hash     SHA256SUMS lists the wrong digest (tampered download)
+      sums_name        SHA256SUMS lists some OTHER file, so the asset is absent
+                       from the manifest entirely
+      corrupt_archive  the archive is garbage but its digest is honest, so the
+                       integrity gate passes and unpacking is what fails
+      drop_obc         the payload has bin/ (so it is still detected as a tree)
+                       but no bin/obc, which is what obu health-checks
+    """
     stage = os.path.join(reldir, "stage")
     make_install(stage, payload_version)
+    if drop_obc:
+        os.remove(os.path.join(stage, "bin", "obc" + EXE_SUFFIX))
     os.makedirs(reldir, exist_ok=True)
     archive = os.path.join(reldir, asset_name)
     make_archive(stage, archive)
+    if corrupt_archive:
+        # overwritten AFTER packing, and hashed below, so the manifest is right
+        # about a file that is not an archive at all
+        with open(archive, "wb") as handle:
+            handle.write(b"this is not an archive\n" * 64)
 
     digest = ("0" * 64 if corrupt_hash
               else hashlib.sha256(open(archive, "rb").read()).hexdigest())
     with open(os.path.join(reldir, "SHA256SUMS"), "w") as handle:
-        handle.write("%s  %s\n" % (digest, asset_name))
+        handle.write("%s  %s\n" % (digest, sums_name or asset_name))
 
-    write_json(os.path.join(reldir, "release.json"), "v9999.1.0",
+    write_json(os.path.join(reldir, "release.json"), tag,
                [asset_name, "SHA256SUMS"])
     return {"OBU_RELEASE_JSON_FILE": os.path.join(reldir, "release.json"),
             "OBU_ASSET_DIR": reldir}
+
+
+# obu's own scratch entries, mirroring IsObuScratchEntry in obu.cpp. Every
+# refusal is asserted against each of these BY NAME rather than against a
+# summary flag, so a failure says which one was left behind.
+RESIDUE_PATHS = (".previous", ".obu-work", ".obu-work/staging", ".obu-rollback")
+
+
+def check_no_residue(label, root):
+    for rel in RESIDUE_PATHS:
+        path = os.path.join(root, *rel.split("/"))
+        check("%s left no %s" % (label, rel), not os.path.exists(path),
+              "%s still exists" % path)
+
+
+def tree_state(root):
+    """Every path under 'root' with file contents hashed -- the evidence that a
+    refused update changed nothing.
+
+    '.obu.lock' is excluded on purpose: AcquireLock creates it in the install
+    root on every update/rollback and ReleaseLock only closes the descriptor, so
+    it appears after the first run and is not a change to the install itself.
+    """
+    state = {}
+    for base, dirs, files in os.walk(root):
+        rel_base = os.path.relpath(base, root)
+        for name in sorted(dirs):
+            rel = os.path.normpath(os.path.join(rel_base, name)).replace("\\", "/")
+            state[rel + "/"] = "dir"
+        for name in sorted(files):
+            rel = os.path.normpath(os.path.join(rel_base, name)).replace("\\", "/")
+            if rel == ".obu.lock":
+                continue
+            with open(os.path.join(base, name), "rb") as handle:
+                state[rel] = hashlib.sha256(handle.read()).hexdigest()
+    return state
+
+
+def check_tree_unchanged(label, root, before):
+    after = tree_state(root)
+    added = sorted(set(after) - set(before))
+    removed = sorted(set(before) - set(after))
+    changed = sorted(k for k in set(before) & set(after) if before[k] != after[k])
+    check("%s left the install tree unchanged" % label,
+          not (added or removed or changed),
+          "added=%s removed=%s changed=%s" % (added, removed, changed))
+
+
+# ------------------------------------------------- version-ordering fixtures
+#
+# CompareVersions in obu.cpp walks the components numerically and pads the
+# shorter side with zeros. Both halves of that are easy to lose to a plain
+# string compare, so the tags below are DERIVED from whatever version the
+# harness just read out of the binary -- they keep their meaning across a
+# release bump instead of encoding today's numbers.
+
+def numeric_parts(version):
+    return [int(part) for part in version.split(".")]
+
+
+def lexically_smaller_newer_tag(version):
+    """A tag numerically NEWER than 'version' that nonetheless sorts BEFORE it
+    as a plain string -- 2026.9.10 against an installed 2026.9.5. Returns None
+    when the installed version admits no such tag (one whose components are all
+    0 or 1, say), in which case the case is reported pending rather than faked.
+    """
+    parts = numeric_parts(version)
+    for i in range(len(parts) - 1, -1, -1):
+        candidates = list(range(parts[i] + 1, parts[i] + 1000))
+        candidates += [10 ** power for power in range(1, 9) if 10 ** power > parts[i]]
+        for value in candidates:
+            bumped = parts[:i] + [value] + [0] * (len(parts) - i - 1)
+            tag = ".".join(str(part) for part in bumped)
+            if tag < version:          # the comparison obu must NOT be doing
+                return tag
+    return None
 
 
 # ---------------------------------------------------------------- check suite
@@ -329,6 +426,69 @@ def suite_check(obu, work):
     code, out = run(obu, ["check", "--bogus"], {"OBU_RELEASE_JSON_FILE": newer})
     check("unknown option is rejected", code == 2 and "Unknown option" in out,
           "exit=%d out=%r" % (code, out))
+
+    # --- ordering is numeric per component, not lexicographic
+    parts = numeric_parts(version)
+
+    lex_tag = lexically_smaller_newer_tag(version)
+    if lex_tag:
+        path = write_json(os.path.join(work, "order-lex.json"), "v" + lex_tag)
+        code, out = run(obu, ["check"], {"OBU_RELEASE_JSON_FILE": path})
+        check("v%s is newer than the installed %s -- a lexicographic compare "
+              "would call this older" % (lex_tag, version),
+              code == 0 and "update is available" in out,
+              "exit=%d out=%r" % (code, out))
+    else:
+        skip("numerically newer but lexicographically smaller tag",
+             "installed version %s admits no such tag" % version)
+
+    if len(parts) >= 2:
+        # one component FEWER than the installed version: CompareVersions pads
+        # the missing component with 0, so 2026.10 == 2026.10.0 and wins
+        short_tag = ".".join(str(p) for p in parts[:-2] + [parts[-2] + 1])
+        path = write_json(os.path.join(work, "order-short.json"), "v" + short_tag)
+        code, out = run(obu, ["check"], {"OBU_RELEASE_JSON_FILE": path})
+        check("the shorter tag v%s pads to %s.0 and is newer than %s -- a "
+              "compare that did not pad, or a lexicographic one, would call "
+              "this older" % (short_tag, short_tag, version),
+              code == 0 and "update is available" in out,
+              "exit=%d out=%r" % (code, out))
+    else:
+        skip("shorter tag pads with zeros", "installed version %s has one component" % version)
+
+    # one component MORE: the installed side is the one that gets padded, and
+    # 2026.9.5.1 beats 2026.9.5.0
+    long_tag = version + ".1"
+    path = write_json(os.path.join(work, "order-long.json"), "v" + long_tag)
+    code, out = run(obu, ["check"], {"OBU_RELEASE_JSON_FILE": path})
+    check("the longer tag v%s is newer than %s -- a compare that stopped at "
+          "the shorter side would call these equal" % (long_tag, version),
+          code == 0 and "update is available" in out, "exit=%d out=%r" % (code, out))
+
+    # the same padding in the other direction: a trailing .0 adds nothing
+    equal_tag = version + ".0"
+    path = write_json(os.path.join(work, "order-equal.json"), "v" + equal_tag)
+    code, out = run(obu, ["check"], {"OBU_RELEASE_JSON_FILE": path})
+    check("v%s pads to exactly the installed %s, so it is up to date, exit 1 -- "
+          "a length-first or lexicographic compare would report an update"
+          % (equal_tag, version),
+          code == 1 and "up to date" in out, "exit=%d out=%r" % (code, out))
+
+    # --- malformed tags: fail with a message, never report an update
+    #
+    # An empty tag stops earlier than the rest: ExtractTagName rejects the empty
+    # string, so the diagnostic is the "tag_name" one rather than "Malformed
+    # release tag". Both are asserted by their own message, so a case that
+    # started failing for the wrong reason would not pass silently.
+    for index, (tag, expected) in enumerate((("v2026.9.x", "Malformed release tag"),
+                                             ("v", "Malformed release tag"),
+                                             ("2026..6", "Malformed release tag"),
+                                             ("", "tag_name"))):
+        path = write_json(os.path.join(work, "bad-tag-%d.json" % index), tag)
+        code, out = run(obu, ["check"], {"OBU_RELEASE_JSON_FILE": path})
+        check("malformed tag %r fails with a message and reports no update" % tag,
+              code == 2 and expected in out and "update is available" not in out,
+              "exit=%d out=%r" % (code, out))
 
 
 # ---------------------------------------------------------------- update suite
@@ -404,6 +564,139 @@ def suite_update(obu, work):
     check("crafted asset name did not execute",
           not os.path.exists(os.path.join(cwd, "PWNED")),
           "COMMAND INJECTION: %r executed" % evil)
+
+    # release carries no asset for THIS platform (the macOS notarization gap
+    # does this for real): refuse before anything is downloaded or moved
+    root = os.path.join(work, "t5", "root")
+    make_install(root, "NOASSET")
+    before = tree_state(root)
+    env = make_release(os.path.join(work, "t5", "rel"),
+                       "objeck-nosuchplatform-x64_9999.1.0" + ASSET_SUFFIX)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update", "--quiet"], env)
+    check("a release with no %s asset is refused" % prefix,
+          code == 2 and ("has no %s asset" % prefix) in out,
+          "exit=%d out=%r" % (code, out))
+    check_tree_unchanged("refused update (no asset for this platform)", root, before)
+    check_no_residue("refused update (no asset for this platform)", root)
+
+    # the asset exists but SHA256SUMS does not list it at all -- distinct from a
+    # listed-but-wrong digest: there is no hash to compare, so obu must refuse
+    # rather than treat an absent line as nothing to check
+    root = os.path.join(work, "t6", "root")
+    make_install(root, "NOSUM")
+    before = tree_state(root)
+    env = make_release(os.path.join(work, "t6", "rel"), asset,
+                       sums_name="objeck-some-other-asset_9999.1.0" + ASSET_SUFFIX)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update", "--quiet"], env)
+    check("an asset absent from SHA256SUMS is refused",
+          code == 2 and "SHA256SUMS does not list" in out,
+          "exit=%d out=%r" % (code, out))
+    check_tree_unchanged("refused update (asset not in SHA256SUMS)", root, before)
+    check_no_residue("refused update (asset not in SHA256SUMS)", root)
+
+    # a corrupt archive whose digest is honest: the integrity gate PASSES and
+    # unpacking is what fails, so this covers the window between the two. Run
+    # without --quiet to prove the run really got past "Verified ...".
+    root = os.path.join(work, "t7", "root")
+    make_install(root, "CORRUPT")
+    before = tree_state(root)
+    env = make_release(os.path.join(work, "t7", "rel"), asset, corrupt_archive=True)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update"], env)
+    check("a corrupt archive that passes its hash is refused at unpack time",
+          code == 2 and "Verified" in out and
+          ("Unable to read the archive" in out or "Unable to unpack" in out or
+           "did not contain an Objeck tree" in out),
+          "exit=%d out=%r" % (code, out))
+    check_tree_unchanged("refused update (corrupt archive)", root, before)
+    check_no_residue("refused update (corrupt archive)", root)
+
+    # payload with a bin/ but no bin/obc: DetectPayloadRoot accepts it, so the
+    # failure lands on the post-install health check (obc -v, obu.cpp ~l.1403),
+    # which must roll the old tree back rather than leave a broken install
+    root = os.path.join(work, "t8", "root")
+    make_install(root, "HEALTHY")
+    before = tree_state(root)
+    env = make_release(os.path.join(work, "t8", "rel"), asset,
+                       payload_version="BROKEN", drop_obc=True)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update", "--quiet"], env)
+    check("a payload without bin/obc fails the post-install health check",
+          code == 2 and "post-install check" in out, "exit=%d out=%r" % (code, out))
+    check_tree_unchanged("failed health check", root, before)
+    check_no_residue("failed health check", root)
+
+    # idempotence. obu compares the version COMPILED INTO the running binary,
+    # not the one in the tree it just wrote, so the release here is tagged with
+    # the installed version and the first pass is forced; a 9999.1.0 fixture
+    # would legitimately update again on the second pass.
+    version = installed_version(obu)
+    root = os.path.join(work, "t9", "root")
+    make_install(root, "PRE")
+    env = make_release(os.path.join(work, "t9", "rel"), asset, tag="v" + version)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update", "--force", "--quiet"], env)
+    if check("--force installs a release matching the installed version",
+             code == 0, "exit=%d out=%r" % (code, out)):
+        settled = tree_state(root)
+        code, out = run(obu, ["update"], env)
+        check("a second update against the same release reports up to date, exit 1",
+              code == 1 and "already at" in out, "exit=%d out=%r" % (code, out))
+        check_tree_unchanged("the repeated update", root, settled)
+        check("the repeated update left no .obu-work",
+              not os.path.exists(os.path.join(root, ".obu-work")))
+
+    # a stale .obu-work left by a run that died mid-download must not block the
+    # next update -- obu clears the staging tree before it creates it
+    root = os.path.join(work, "t10", "root")
+    make_install(root, "STALE")
+    stale = os.path.join(root, ".obu-work", "staging", "leftover")
+    os.makedirs(stale)
+    with open(os.path.join(stale, "junk.txt"), "w") as handle:
+        handle.write("debris from an interrupted run\n")
+    with open(os.path.join(root, ".obu-work", "asset" + ASSET_SUFFIX), "wb") as handle:
+        handle.write(b"half a download")
+    env = make_release(os.path.join(work, "t10", "rel"), asset)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update", "--quiet"], env)
+    if check("a stale .obu-work does not block the next update", code == 0,
+             "exit=%d out=%r" % (code, out)):
+        check("the update over a stale .obu-work installed the new tree",
+              open(os.path.join(root, "VERSION")).read().strip() == "NEW",
+              "VERSION=%r" % open(os.path.join(root, "VERSION")).read())
+        # the debris was inside the staging dir the new payload unpacks into,
+        # so an obu that stopped clearing it would install the leftovers too
+        check("the stale staging debris was not installed into the tree",
+              not os.path.exists(os.path.join(root, "leftover")),
+              "%s was moved into the install" % os.path.join(root, "leftover"))
+        check("the successful update removed the stale .obu-work",
+              not os.path.exists(os.path.join(root, ".obu-work")))
+
+    # interrupted swap: the state a run killed between "archive the current
+    # tree" and "install the payload" leaves behind -- .previous/bin present,
+    # no bin/ in the root. Built directly rather than by killing a process, so
+    # the case is deterministic. RecoverInterruptedSwap (obu.cpp ~l.1182) must
+    # put it back on the next run, before anything else.
+    root = os.path.join(work, "t11", "root")
+    make_install(os.path.join(root, ".previous"), "INTERRUPTED")
+    env = make_release(os.path.join(work, "t11", "rel"), asset, tag="v" + version)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update"], env)
+    check("an interrupted swap is announced and recovered on the next run",
+          "previous update was interrupted" in out, "exit=%d out=%r" % (code, out))
+    check("recovery restored bin/obc into the root",
+          os.path.isfile(os.path.join(root, "bin", "obc" + EXE_SUFFIX)))
+    check("recovery restored the interrupted tree, not the payload",
+          os.path.isfile(os.path.join(root, "VERSION")) and
+          open(os.path.join(root, "VERSION")).read().strip() == "INTERRUPTED")
+    check("recovery cleared .previous",
+          not os.path.exists(os.path.join(root, ".previous")))
+    check("recovery left no .obu-work",
+          not os.path.exists(os.path.join(root, ".obu-work")))
+    check("the recovering run then continues normally and reports up to date, exit 1",
+          code == 1 and "already at" in out, "exit=%d out=%r" % (code, out))
 
 
 # ---------------------------------------------------------------- self-swap
