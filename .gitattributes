@@ -16,14 +16,29 @@ Makefile* text eol=lf
 .github/**/*.yml text eol=lf
 .github/**/*.yaml text eol=lf
 
+# Objeck sources are text. `.obs` is source; `.obe`/`.obm` are the compiled
+# artifacts and are listed as binary below. `*.obs binary` sat in that block
+# instead, so no PR touching a `.obs` rendered a reviewable diff and nothing
+# normalized their endings.
+*.obs text eol=lf
+
+# ...with two exceptions, where CR/LF sits *inside* a string literal and the
+# bytes are data rather than formatting:
+#   http3_downgrade_test.obs - its single CRLF is the header-injection payload
+#   openai.obs - multi-line JSON literals for the Realtime API
+# Normalizing either one changes what the program puts on the wire.
+core/compiler/lib_src/openai.obs -text
+programs/tests/http3_downgrade_test.obs -text
+
 # Binary files - no line ending conversion
 *.exe binary
 *.dll binary
 *.lib binary
 *.so binary
 *.dylib binary
-*.obs binary
 *.obl binary
+*.obe binary
+*.obm binary
 *.png binary
 *.jpg binary
 *.gif binary
