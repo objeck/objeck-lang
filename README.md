@@ -62,6 +62,14 @@ obc hello && obr hello
 
 ## What's New
 
+### v2026.9.6
+  * **`System.ML` stopped returning wrong numbers** &mdash; column sums and averages truncated every fractional value, so `LinearSolver` reported the wrong R-squared; `KMeans->Group` could hand back empty groups depending on the order of its labels, and the Dunn index then divided by zero ([#903](https://github.com/objeck/objeck-lang/issues/903))
+  * **`Matrix2D` says no instead of stopping the program** &mdash; operations on shapes it cannot combine return `Nil`, a `Nil` operand no longer crashes the native code, `Inverse` of a non-square matrix no longer hangs, and `NeuralNetwork->Train` refuses an input or target that is not a column of the right height ([#903](https://github.com/objeck/objeck-lang/issues/903))
+  * **`obi` and the embedding API speak HTTP/2 and HTTP/3** &mdash; both run code through the module build, which never got the flags or the libraries `obr` has, so they quietly used HTTP/1.1. Every CI leg now runs one program under both and fails if they disagree ([#897](https://github.com/objeck/objeck-lang/issues/897))
+  * **Two ARM64-only crashes** &mdash; `obi` aborted with &ldquo;double free or corruption&rdquo; on Linux ARM64, because the REPL's module and the VM it links were built with different macros and disagreed about the objects they share; and a program using function references could be killed at exit by a race between the collector's marking threads ([#913](https://github.com/objeck/objeck-lang/issues/913))
+  * **`API.OpenAI` answers, and sends the picture** &mdash; a text `Respond` posted its request and never read the reply, so the call was billed and returned `Nil`; every image call sent its request as text ([#901](https://github.com/objeck/objeck-lang/issues/901))
+  * **`obi` exits when its input ends** &mdash; piping a program into the REPL, or closing its input, left it running forever ([#917](https://github.com/objeck/objeck-lang/issues/917))
+
 ### v2026.9.5 ✅
   * **Linux ARM64 runs on every ARM64 CPU** &mdash; v2026.9.4 was built for the build server's CPU and needed its SVE instructions, so it stopped with "Illegal instruction" on a Raspberry Pi 4 or 5, Graviton2, Snapdragon X or Apple silicon in a Linux VM. It now targets ARMv8-A at no measured cost, and CI runs every build on an emulated CPU without SVE ([#893](https://github.com/objeck/objeck-lang/issues/893))
   * **Programs with threads exit and join safely** &mdash; a runtime error or `Runtime->Exit` while another thread ran crashed the VM after printing its message, on every platform ([#877](https://github.com/objeck/objeck-lang/issues/877)); `Thread->Join` could fail with "Unable to join thread!" when a collection ran while it waited ([#874](https://github.com/objeck/objeck-lang/issues/874))

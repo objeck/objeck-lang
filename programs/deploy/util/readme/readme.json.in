@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Linux ARM64 binaries run on every ARM64 CPU again, a program with more than one thread exits and joins safely, and a hardening pass fixes dozens of compiler and garbage-collector bugs found by fuzzing, differential testing and a heap verifier",
+	"title": "The machine-learning library stops returning wrong numbers and crashing on shapes it cannot combine, obi and the embedding API gain HTTP/2 and HTTP/3, and two crashes that only ever struck ARM64 machines are fixed",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,19 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.6",
+			"items": [
+				"System.ML: Matrix2D->SumColumn and AverageColumn kept their running total as an integer, so every fractional value was truncated and LinearSolver reported the wrong R-squared. Both keep fractions now",
+				"System.ML: KMeans->Group could return every group empty, and GetDunnIndex then stopped the program by dividing by zero. Each centroid now follows its own label, and the index is defined when a grouping has no spread",
+				"System.ML: Matrix2D operations on shapes they cannot combine return Nil instead of stopping the program. A Nil operand no longer crashes the native code, Inverse of a non-square matrix no longer hangs, and NeuralNetwork->Train returns Nil for an input or target that is not a column of the right height",
+				"obi and the embedding API: HTTP/2 and HTTP/3 are compiled in, as they already were for obr. Code run through the REPL or embedded in a C++ program used HTTP/1.1 without saying so",
+				"ARM64: obi aborted with \"double free or corruption\" on Linux ARM64. The REPL's module and the VM it links were built with different macros, so the two disagreed about the layout of the objects they shared",
+				"ARM64: a program using function references could be killed at exit, after its work was done, by a race between the collector's marking threads",
+				"obi: reaching the end of input now ends the session. Piping a program into obi, or closing its input, left it running forever",
+				"ONNX: an empty or unreadable image is refused instead of crashing"
+			]
+		},
 		{
 			"version": "v2026.9.5",
 			"items": [
