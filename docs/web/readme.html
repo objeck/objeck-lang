@@ -65,6 +65,16 @@
     </div>
 
     <!-- Changelog -->
+    <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.6" style="color: inherit; text-decoration: none;">v2026.9.6</a></h3>
+     <ul>
+      <li><strong><code>System.ML</code> stopped returning wrong numbers</strong> &mdash; column sums and averages truncated every fractional value, so <code>LinearSolver</code> reported the wrong R-squared; <code>KMeans-&gt;Group</code> could hand back empty groups depending on the order of its labels, and the Dunn index then divided by zero</li>
+      <li><strong><code>Matrix2D</code> says no instead of stopping the program</strong> &mdash; operations on shapes it cannot combine return <code>Nil</code>, a <code>Nil</code> operand no longer crashes the native code, <code>Inverse</code> of a non-square matrix no longer hangs, and <code>NeuralNetwork-&gt;Train</code> refuses an input or target that is not a column of the right height</li>
+      <li><strong><code>obi</code> and the embedding API speak HTTP/2 and HTTP/3</strong> &mdash; both run code through the module build, which never got the flags or the libraries <code>obr</code> has, so they quietly used HTTP/1.1</li>
+      <li><strong>Two ARM64-only crashes</strong> &mdash; <code>obi</code> aborted with &ldquo;double free or corruption&rdquo; on Linux ARM64, because the REPL&rsquo;s module and the VM it links were built with different macros; and a program using function references could be killed at exit by a race between the collector&rsquo;s marking threads</li>
+      <li><strong><code>API.OpenAI</code> answers, and sends the picture</strong> &mdash; a text <code>Respond</code> posted its request and never read the reply, so the call was billed and returned <code>Nil</code>; every image call sent its request as text</li>
+      <li><strong><code>obi</code> exits when its input ends</strong> &mdash; piping a program into the REPL, or closing its input, left it running forever</li>
+     </ul>
+
     <h3><u><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.5" style="color: inherit; text-decoration: none;">v2026.9.5</a></u></h3>
      <ul>
       <li><strong>Linux ARM64 runs on every ARM64 CPU</strong> &mdash; v2026.9.4 needed SVE instructions and stopped with &ldquo;Illegal instruction&rdquo; on a Raspberry Pi 4/5, Graviton2, Snapdragon X or Apple silicon in a Linux VM; it now targets ARMv8-A, at no measured cost</li>
