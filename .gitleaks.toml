@@ -28,6 +28,31 @@ paths = [
   '''^core/release/cov_scan\.(in|sh)$''',
 ]
 
+# Documentation placeholders, allowlisted by REGEX rather than by path or commit.
+#
+# core/compiler/lib_src/cipher.obs uses a 32-character literal in the AES-256
+# examples in its doc comments, which generic-api-key reads as a key. It is a
+# placeholder: "mysecretkey" padded with digits to the 32 bytes AES-256 takes.
+#
+# Regex, and deliberately not a path: a paths entry for cipher.obs would also
+# hide a real key committed there tomorrow, which is the argument this file
+# already makes about job-search below. Not a commit entry either -- that can
+# only suppress one SHA, and these findings return whenever anything rewrites
+# those lines.
+#
+# They returned exactly that way once already. gitleaks-action scans only a pull
+# request's new commit range, so renormalizing line endings rewrote every line
+# of the file and two long-standing doc lines were presented as added and
+# scanned as new. The content was unchanged -- verified byte-exactly, the old
+# blob with CRLF->LF applied equals the new one. Any future whole-file rewrite
+# will resurface every pre-existing finding in the files it touches.
+#
+# This entry suppresses that one literal anywhere it appears and leaves every
+# other line of cipher.obs watched.
+regexes = [
+  '''mysecretkey123456789012345678901''',
+]
+
 # The seventeen historical commits behind the 326 findings a FULL-HISTORY scan
 # reports. Every one was reviewed; none is a live credential.
 #
