@@ -87,8 +87,11 @@ Both build on the `Try()`/`Otherwise()` intrinsics, so `a?->b()` is exactly
 `a->Try()->b()` and `a ?? b` is `a->Otherwise(b)`. One consequence worth
 knowing: `Try()` guards against most runtime errors in the chain, not only a
 `Nil` dereference — `a?->Get(999)` yields `Nil` on an out-of-range index rather
-than faulting. Two errors still end the program inside a `Try()`: an invalid
-object cast and a call-stack overflow.
+than faulting. An invalid object cast and a call-stack overflow are recovered
+too, as long as they happen in interpreted code. Inside a JIT-compiled method
+both still end the program: a failing cast is raised in a JIT callback, which
+cannot reach the interpreter's handler stack, and compiled recursion overruns
+the native stack before any frame-count guard fires.
 
 ### Anonymous Classes
 ```ruby

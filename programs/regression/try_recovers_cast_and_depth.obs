@@ -1,0 +1,90 @@
+# JIT_DISABLE
+# reason: the interpreter's own recovery paths are what is under test; inside
+# compiled code both errors still end the program (see the note below)
+#~
+Try() -- and '?->', which is Try() on the chain -- recovers from an invalid
+object cast and from a full call stack, as it does from every other runtime
+error.
+
+Both used to end the program even inside a guarded chain (#900). ObjInstCast
+printed its message and exited without consulting the handler stack, and
+PushFrame's overflow path was a bare exit(1). Recovery pops frames back to the
+handler's depth, which is also what frees the call stack again after a runaway
+recursion.
+
+The errors here are raised deep inside a called method rather than in the chain
+expression itself, which is the case that matters: the handler is far below the
+frame that fails.
+
+Unguarded, both still print their message and exit 1; bad_runtime_stack.obs
+covers the unguarded overflow.
+
+This test opts out of the JIT pass, because the fix reaches only what the
+interpreter owns. Inside compiled code both errors still end the program: a
+failing cast is raised in a JIT callback, which has no way to reach this
+interpreter's handler stack, and compiled recursion overruns the native C stack
+before any frame-count guard can fire. A compiled callee that reports a guard
+stub's status does recover, since its frame has already returned.
+~#
+
+class Animal { New() {} }
+class Dog from Animal { New() { Parent(); } }
+class Cat from Animal { New() { Parent(); } }
+
+class Holder {
+	@animal : Animal;
+
+	New(animal : Animal) {
+		@animal := animal;
+	}
+
+	# fails: the animal is a Cat
+	method : public : AsDog() ~ Dog {
+		return @animal->As(Dog);
+	}
+
+	# runs the call stack out. The work after the call keeps the compiler's
+	# tail-call pass from rewriting this into a loop, which would spin forever
+	# instead of overflowing (the same trap bad_runtime_stack.obs names).
+	method : public : Deep(n : Int) ~ Dog {
+		deeper := Deep(n + 1);
+		if(deeper = Nil) {
+			return Nil;
+		};
+
+		return deeper;
+	}
+}
+
+class TryRecoversCastAndDepth {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		cat_holder := Holder->New(Cat->New());
+
+		bad_cast := cat_holder?->AsDog();
+		ok := Report("invalid cast in a guarded chain yields Nil", bad_cast = Nil) & ok;
+
+		deep := cat_holder?->Deep(0);
+		ok := Report("full call stack in a guarded chain yields Nil", deep = Nil) & ok;
+
+		# the program carries on, and the call stack is usable again
+		dog_holder := Holder->New(Dog->New());
+		good := dog_holder?->AsDog();
+		ok := Report("a valid cast after recovery returns its object", good <> Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
