@@ -1010,20 +1010,28 @@ inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
     in.close();
   }
   else {
-    return nullptr;;
+    return nullptr;
   }
 
   // convert Unicode
 #ifdef _WIN32
   const int wsize = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, nullptr, 0);
   if(wsize == 0) {
-    return nullptr;;
+    free(buffer);
+    return nullptr;
   }
   wchar_t* wbuffer = new wchar_t[wsize];
   const int check = MultiByteToWideChar(CP_UTF8, 0, buffer, -1, wbuffer, wsize);
   if(check == 0) {
-    return nullptr;;
+    delete[] wbuffer;
+    free(buffer);
+    return nullptr;
   }
+  // Report the wide-char count, excluding the terminating null that 'wsize'
+  // includes. Callers (Scanner::NextChar) read buffer_size elements out of
+  // 'wbuffer', so leaving the byte count here over-runs it for any multibyte
+  // source -- the same defect already fixed on the POSIX branch below.
+  buffer_size = (size_t)wsize - 1;
 #else
   // Locale-independent UTF-8 decode of the source bytes. mbstowcs honors
   // LC_CTYPE and rejects every non-ASCII byte outside a UTF-8 locale (LANG

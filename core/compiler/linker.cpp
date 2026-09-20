@@ -771,6 +771,11 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
     buffer_size = (size_t)in.tellg();
     in.seekg(0, std::ios::beg);
     buffer = static_cast<char*>(calloc(buffer_size + 1, sizeof(char)));
+    if(!buffer) {
+      in.close();
+      std::wcerr << L"Unable to allocate memory for file: '" << filename << L"'" << std::endl;
+      return nullptr;
+    }
     in.read(buffer, buffer_size);
     // close file
     in.close();
