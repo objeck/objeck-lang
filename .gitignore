@@ -138,11 +138,20 @@ core/release/ONNX
 core/release/run_*.bat
 core/release/code_doc_output.txt
 
-# Downloaded models and data (large)
-data/
-# ...but not the files every deploy copies into a distribution's examples/data.
-# data/ matches at any depth, so a new one there would never reach git.
-!programs/deploy/data/
+# Downloaded models and data (large).
+#
+# ANCHORED ON PURPOSE. A bare "data/" matches a directory of that name at any
+# depth, so every new file under programs/**/data/ was silently unstageable:
+# git add said nothing and the file never reached a commit. The datasets that
+# live there today survive only because they were added before the rule. That
+# is how programs/frameworks/ml/data/dt2.csv could be replaced by an unrelated
+# file and go unnoticed. Ignore the big downloads by name instead, so a new
+# dataset is visible by default and a large file is something you decline to
+# add rather than something git hides from you.
+/data/
+programs/frameworks/ml/data/*.zip
+programs/tests/data/*.zip
+programs/frameworks/opencv_onnx/data/faces/
 programs/frameworks/opencv_onnx/data/models/
 programs/frameworks/opencv_onnx/data/media/visdrone/
 
