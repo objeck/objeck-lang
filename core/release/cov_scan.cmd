@@ -320,6 +320,36 @@ if errorlevel 1 (
 	popd & exit /b 1
 )
 
+REM The single-shot form upload below is documented only up to 500 MB, and this
+REM capture grows with the codebase: 13 translation units in early 2026, 72 by
+REM 2026-09. Past the limit the form endpoint does not say "too large" -- it
+REM fails in a way that reads as a rejected token or a network error, on a
+REM script whose whole job is to be trusted about why an upload did not happen.
+REM Say it here, where a dry run can see it, not after a rebuild is spent.
+REM
+REM The fix when it trips is Coverity's three-step flow for large submissions --
+REM initialize the build, PUT the tarball to the returned URL, then enqueue it.
+REM The size test comes before the percentage: `set /a` is 32-bit, so an archive
+REM past 2 GB would fail to divide at all, and that is exactly the case this
+REM guard has to survive.
+set "COV_FORM_MAX_BYTES=524288000"
+for %%A in ("%ARCHIVE%") do set "ARCHIVE_BYTES=%%~zA"
+if %ARCHIVE_BYTES% GTR %COV_FORM_MAX_BYTES% (
+	echo. 1>&2
+	echo ERROR: %ARCHIVE% is %ARCHIVE_BYTES% bytes, over the 500 MB limit of the 1>&2
+	echo        single-shot form upload. Switch to Coverity's large-submission flow 1>&2
+	echo        ^(initialize -^> PUT -^> enqueue^); a form post this size fails as 1>&2
+	echo        though the token or the network were at fault. 1>&2
+	popd ^& exit /b 1
+)
+set /a ARCHIVE_PCT=%ARCHIVE_BYTES% / 5242880
+if %ARCHIVE_PCT% GEQ 80 (
+	echo WARNING: archive is %ARCHIVE_PCT%%% of the 500 MB single-shot upload limit.
+	echo          Plan the move to the initialize/PUT/enqueue flow before it trips.
+) else (
+	echo Upload size: %ARCHIVE_PCT%%% of the 500 MB single-shot limit.
+)
+
 if "%COVERITY_DRY_RUN%"=="1" (
 	echo.
 	echo ============================================================

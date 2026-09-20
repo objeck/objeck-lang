@@ -211,6 +211,31 @@ if ! tar -tzf "$ARCHIVE" 2>/dev/null | grep -q '^cov-int/'; then
 fi
 echo "Archive verified: $(pwd)/$ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
 
+# The single-shot form upload below is documented only up to 500 MB, and this
+# capture grows with the codebase: 13 translation units in early 2026, 72 by
+# 2026-09, 174 MB compressed. Past the limit the form endpoint does not say
+# "too large" -- it fails in a way that reads as a rejected token or a network
+# error, on a script whose whole job is to be trusted about why an upload did
+# not happen. Say it here, where the archive is already in hand and a dry run
+# can see it, rather than after a full rebuild has been spent.
+#
+# The fix when it trips is Coverity's three-step flow for large submissions --
+# initialize the build, PUT the tarball to the returned URL, then enqueue it --
+# not a bigger form post.
+COV_FORM_MAX_BYTES=524288000                       # 500 MB, the documented limit
+archive_bytes=$(wc -c < "$ARCHIVE" | tr -d ' ')
+archive_pct=$(( archive_bytes * 100 / COV_FORM_MAX_BYTES ))
+if [ "$archive_bytes" -gt "$COV_FORM_MAX_BYTES" ]; then
+  fail "$ARCHIVE is $archive_bytes bytes, over the 500 MB limit of the single-shot form upload.
+       Switch to Coverity's large-submission flow (initialize -> PUT -> enqueue);
+       a form post this size fails as though the token or the network were at fault."
+elif [ "$archive_pct" -ge 80 ]; then
+  echo "WARNING: archive is ${archive_pct}% of the 500 MB single-shot upload limit."
+  echo "         Plan the move to the initialize/PUT/enqueue flow before it trips."
+else
+  echo "Upload size: ${archive_pct}% of the 500 MB single-shot limit."
+fi
+
 if [ "$DRY_RUN" = "1" ]; then
   echo
   echo "============================================================"
