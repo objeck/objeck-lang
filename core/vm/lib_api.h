@@ -587,8 +587,12 @@ inline const wchar_t* APITools_GetStringValue(size_t* str_obj, size_t index) {
     size_t* string_holder = (size_t*)str_obj[index];
     if(string_holder) {
       size_t* char_array = (size_t*)string_holder[0];
-      const wchar_t* str = (wchar_t*)(char_array + ARRAY_HEADER_OFFSET);
-      return str;
+      // a String whose character array is unset: offsetting null would hand the
+      // caller a pointer just past zero, which reads as a string until it faults
+      if(char_array) {
+        const wchar_t* str = (wchar_t*)(char_array + ARRAY_HEADER_OFFSET);
+        return str;
+      }
     }
   }
 
@@ -598,18 +602,30 @@ inline const wchar_t* APITools_GetStringValue(size_t* str_obj, size_t index) {
 //
 // Gets the C++ string values from an Objeck string array reference (i.e. StringArrayHolder) by index
 //
+// An empty result means "no usable strings": either the array was Nil or empty,
+// or an element was. A Nil element cannot be dropped or replaced, because every
+// caller reads these by index -- ONNX session keys against their values, DeepLab
+// labels against class indexes -- so a shorter vector would silently pair the
+// wrong ones. Callers already treat an empty vector as "nothing to apply".
+//
+// It used to size the loop from the array's [2], the first dimension, rather
+// than [0], its element count (the same for the 1-D arrays passed today), and
+// then built a std::wstring straight from the nullptr that
+// APITools_GetStringValue returns for a Nil element, which faults in wcslen.
 std::vector<std::wstring> APITools_GetStringsValues(VMContext& context, size_t index) {
   std::vector<std::wstring> strings_values;
 
-  size_t* string_array_obj = APITools_GetObjectValue(context, index);
-  if(string_array_obj && string_array_obj[0]) {
-    string_array_obj = (size_t*)string_array_obj[0];
-    const size_t string_array_size = string_array_obj[2];
+  size_t* string_array = APITools_GetArrayAddress(APITools_GetObjectValue(context, index));
+  const size_t string_array_size = APITools_GetArraySize(string_array);
 
-    for(size_t i = 0; i < string_array_size; ++i) {
-      const wchar_t* str_ptr = APITools_GetStringValue(string_array_obj, i);
-      strings_values.push_back(str_ptr);
+  for(size_t i = 0; i < string_array_size; ++i) {
+    const wchar_t* str_ptr = APITools_GetStringValue(string_array, i);
+    if(!str_ptr) {
+      strings_values.clear();
+      return strings_values;
     }
+
+    strings_values.push_back(str_ptr);
   }
 
   return strings_values;
