@@ -571,8 +571,37 @@ if(csv->IsParsed()) {
 
 			@ending := ending;
 			@is_parsed := true;
+
+			# No data at all is an unparsed table, not a fault. FileReader->ReadFile
+			# returns Nil for a file that is not there, and every caller that passes
+			# that straight in used to fault here instead of seeing IsParsed() false.
+			if(data = Nil) {
+				@is_parsed := false;
+				return;
+			};
+
 			rows := data->Split(@ending);
-			if(rows->Size() > 1) {			
+
+			# The requested ending split nothing off: try the other common endings
+			# before giving up, so a file that is merely terminated differently than
+			# the caller expected still reads, and ToString() writes it back the way
+			# it came in. Data that parses under the requested ending never reaches
+			# here, so no table that reads today reads differently.
+			if(rows->Size() < 2) {
+				candidates := ["\r\n", "\n"];
+				each(i : candidates) {
+					candidate := candidates[i];
+					if(rows->Size() < 2 & <>candidate->Equals(@ending)) {
+						fallback_rows := data->Split(candidate);
+						if(fallback_rows->Size() > 1) {
+							@ending := candidate;
+							rows := fallback_rows;
+						};
+					};
+				};
+			};
+
+			if(rows->Size() > 1) {
 				@data := ParseColumns(rows);
 				if(@data = Nil) {
 					@is_parsed := false;
