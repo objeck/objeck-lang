@@ -679,7 +679,6 @@ resp->GetText()->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
-#~
 				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
 				if(chat_json = Nil) {
 					"### Error: Unable to parse response ###"->ErrorLine();
@@ -693,7 +692,6 @@ resp->GetText()->PrintLine();
 				};
 
 				return Response->New(chat_json);
-~#				
 			};
 
 			return Nil;
@@ -899,7 +897,10 @@ resp->GetText()->PrintLine();
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, Nil, token);
+			# the image implementation takes tools before schema; a bare Nil in either
+			# position resolves to the text one, which is what used to happen here
+			no_tools : Vector<Tool>;
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, no_tools, schema, token);
 		}
 
 		#~
@@ -913,7 +914,11 @@ resp->GetText()->PrintLine();
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, Nil, Nil, token);
+			# the image implementation takes tools before schema; a bare Nil in either
+			# position resolves to the text one, which is what used to happen here
+			no_tools : Vector<Tool>;
+			no_schema : ParameterType;
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, no_tools, no_schema, token);
 		}
 
 		#~
@@ -934,7 +939,9 @@ resp->GetText()->PrintLine();
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, schema, Nil, token);
+			# the image implementation takes tools before schema; a bare Nil in either
+			# position resolves to the text one, which is what used to happen here
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, tools, schema, token);
 		}
 		
 		#~
@@ -955,7 +962,10 @@ resp->GetText()->PrintLine();
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, Nil, Nil, token);
+			# the image implementation takes tools before schema; a bare Nil in either
+			# position resolves to the text one, which is what used to happen here
+			no_schema : ParameterType;
+			return Respond(model, messages, max_tokens, temperature, top_p, reasoning_effort, verbosity, tools, no_schema, token);
 		}
 
 		#~
@@ -967,7 +977,10 @@ resp->GetText()->PrintLine();
 		@return completion response
 		~#
 		function : Respond(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, schema : ParameterType, token : String) ~ Response {
-			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, schema, Nil, token);
+			# the image implementation takes tools before schema; a bare Nil in either
+			# position resolves to the text one, which is what used to happen here
+			no_tools : Vector<Tool>;
+			return Respond(model, messages, -1, -1.0, -1.0, ReasoningEffort->NA, Verbosity->NA, no_tools, schema, token);
 		}
 
 		#~
@@ -1511,7 +1524,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Complete(model, messages, -1, -1.0, -1.0, token);
+			return CompleteImages(model, messages, -1, -1.0, -1.0, token);
 		}
 
 		#~
@@ -1528,7 +1541,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 			messages := Vector->New()<Pair<String, API.OpenAI.ImageQuery>>;
 			messages->AddBack(message);
 
-			return Complete(model, messages, max_tokens, temperature, top_p, token);
+			return CompleteImages(model, messages, max_tokens, temperature, top_p, token);
 		}
 
 		#~
@@ -1539,7 +1552,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@return completion response
 		~#
 		function : Complete(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, token : String) ~ Completion {
-			return Complete(model, messages, -1, -1.0, -1.0, token);
+			return CompleteImages(model, messages, -1, -1.0, -1.0, token);
 		}
 
 		#~
@@ -1552,7 +1565,25 @@ choice->GetMessage()->GetSecond()->PrintLine();
 		@param token API token
 		@return completion response
 		~#
+		#~
+		Model response for the given images and query
+		@param model ID of the model to use
+		@param messages list of messages comprising the conversation
+		@param max_tokens maximum number of completion tokens returned by the API
+		@param temperature amount of randomness in the response, valued between 0 inclusive and 2 exclusive
+		@param top_p nucleus sampling threshold, valued between 0 and 1 inclusive
+		@param token API token
+		@return completion response
+		~#
 		function : Complete(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
+			return CompleteImages(model, messages, max_tokens, temperature, top_p, token);
+		}
+
+		# The image implementation, named so the overloads above and below can reach
+		# it: a call written as Complete(model, <images>, ...) resolves to the text
+		# implementation, whose signature is the same once Pair's type arguments are
+		# set aside.
+		function : CompleteImages(model : String, messages : Vector<Pair<String, API.OpenAI.ImageQuery>>, max_tokens : Int, temperature : Float, top_p : Float, token : String) ~ Completion {
 			completion_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			completion_json->Insert("model", model);
 

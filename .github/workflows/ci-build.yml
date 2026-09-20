@@ -1399,6 +1399,15 @@ jobs:
           mkdir -p ../../release/deploy-x64/lib/native
           cp diags.so ../../release/deploy-x64/lib/native/libobjk_diags.so
 
+      # API.OpenAI's image entry points and its text ones differ only in a
+      # generic type argument, which overload resolution does not distinguish,
+      # so an image call that does not otherwise pin the image implementation
+      # compiles to a call to the text one and the picture is never sent (#901).
+      # Nothing at run time shows it without an API key, and nothing at compile
+      # time shows it without reading the emitted calls.
+      - name: API.OpenAI image calls reach the image implementation
+        run: python3 tools/cicd/check_openai_image_dispatch.py core/release/deploy-x64/bin/obc core/lib
+
       - name: Formatter regression
         run: bash tools/lsp/server/format_code/run_regression.sh
 
