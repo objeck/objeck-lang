@@ -1662,16 +1662,18 @@ else if(args->Size() = 1) {
 	~#
 	class MatrixReader {
 		#~
-		Load input and output data into matrices. Rows must end in CRLF: a file with
-		other line endings is not read, and the result is Nil. Every row is a record:
-		a header row is read as one more record, its non-numeric cells as 0.0.
+		Load input and output data into matrices. Rows must end in the given line
+		ending: a file terminated any other way is not read, and the result is Nil.
+		Every row is a record: a header row is read as one more record, its
+		non-numeric cells as 0.0.
 		@param filename file to process
 		@param target_offset number of target columns, taken from the end of each row;
 		the columns before them are the inputs
+		@param line_ending CSV line ending (i.e. Unix, Windows, etc.), default CRLF per the spec
 		@return input and output matrix data
 		~#
-		function : public : LoadMatrices(filename : String, target_offset : Int) ~ Vector[]<FloatMatrixRef> {
-			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename));
+		function : public : LoadMatrices(filename : String, target_offset : Int, line_ending : String := "\r\n") ~ Vector[]<FloatMatrixRef> {
+			table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(filename), line_ending);
 			if(table->IsParsed()) {
 				inputs := Vector->New()<FloatMatrixRef>;
 				targets := Vector->New()<FloatMatrixRef>;
