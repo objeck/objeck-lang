@@ -8183,6 +8183,101 @@ static bool JitReportEnabled() {
   return enabled;
 }
 
+// OBJECK_JIT_DUMP=<dir> writes every compiled method's native bytes to
+// <dir>/<method>.bin, so they can be disassembled outside the VM:
+//
+//   objdump -D -b binary -m i386:x86-64 -M intel <dir>/Hot_Add_i_i_.bin
+//
+// A raw blob has no symbols and no entry points, so <dir>/index.txt carries what
+// the bytes cannot: the method's real name, the byte length and both entries. A
+// compiled AMD64 method has two (see the JIT README, "Two entries, one path"):
+// the bridge entry at offset 0, which JitRuntime::Execute calls, and the
+// register-argument entry, published as StackMethod::native_entry, which is what
+// a compiled caller calls -- disassembly read from offset 0 alone describes the
+// entry the hot path does NOT take. The variable is read once; unset, this costs
+// one already-resolved branch per compiled method and changes nothing, matching
+// OBJECK_JIT_REPORT.
+static const std::string& JitDumpDir() {
+  static const std::string dir = []() {
+    std::string value;
+    JitEnvFlag("OBJECK_JIT_DUMP", &value);
+    return value;
+  }();
+  return dir;
+}
+
+// Method names are signatures ('Hot:Add:i,i,'), and ':', ',', '*' and '/' are
+// not legal in a Windows filename; anything but [A-Za-z0-9._-] becomes '_'. The
+// mapping is lossy and so can collide -- index.txt holds the true name.
+static std::string JitDumpFileName(const std::wstring& name) {
+  std::string out;
+  out.reserve(name.size());
+  for(const wchar_t c : name) {
+    if((c >= L'a' && c <= L'z') || (c >= L'A' && c <= L'Z') ||
+       (c >= L'0' && c <= L'9') || c == L'.' || c == L'-' || c == L'_') {
+      out.push_back((char)c);
+    }
+    else {
+      out.push_back('_');
+    }
+  }
+  // a generic signature can run past what the filesystem takes
+  if(out.size() > 120) {
+    out.resize(120);
+  }
+  if(out.empty()) {
+    out = "method";
+  }
+  out += ".bin";
+
+  return out;
+}
+
+// `code`/`code_index` are the buffer GetPage copies onto the executable page, so
+// these are the bytes that run. Called only with OBJECK_JIT_DUMP set.
+static void JitDumpNativeCode(const std::wstring& method_name, const unsigned char* code,
+                              int32_t code_index, long native_entry_offset) {
+  const std::string& dir = JitDumpDir();
+  if(dir.empty() || !code || code_index <= 0) {
+    return;
+  }
+
+  std::string prefix = dir;
+  const char last = prefix[prefix.size() - 1];
+  if(last != '/' && last != '\\') {
+    prefix += '/';
+  }
+  const std::string file_name = JitDumpFileName(method_name);
+
+  // several mutators can compile different methods at once; index.txt is shared
+  static std::mutex dump_mutex;
+  std::lock_guard<std::mutex> lock(dump_mutex);
+
+  std::ofstream bin(prefix + file_name, std::ios::out | std::ios::binary | std::ios::trunc);
+  if(!bin.is_open()) {
+    // a missing directory is the usual cause, and a silent no-op looks like the
+    // JIT compiled nothing
+    std::wcerr << L"[jit] dump: cannot write '" << BytesToUnicode(prefix + file_name) << L"'" << std::endl;
+    return;
+  }
+  bin.write((const char*)code, code_index);
+  bin.close();
+
+  std::ofstream index(prefix + "index.txt", std::ios::out | std::ios::app);
+  if(index.is_open()) {
+    index << UnicodeToBytes(method_name) << '\t' << "file=" << file_name
+          << '\t' << "bytes=" << code_index
+          << '\t' << "bridge_entry=0" << '\t' << "native_entry=";
+    if(native_entry_offset >= 0) {
+      index << native_entry_offset;
+    }
+    else {
+      index << '-';
+    }
+    index << std::endl;
+  }
+}
+
 bool JitAmd64::Compile(StackMethod* cm)
 {
   compile_success = true;
@@ -8555,6 +8650,13 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
     }
 #endif
+    // OBJECK_JIT_DUMP: the bytes as they are about to be copied to the page, and
+    // before `code` is freed below
+    static const bool dump_native = !JitDumpDir().empty();
+    if(dump_native) {
+      JitDumpNativeCode(method->GetName(), code, code_index, native_entry_offset);
+    }
+
     // store compiled code
     NativeCode* native_code = new NativeCode(page_manager->GetPage(code, code_index), code_index, float_consts, native_entry_offset);
     native_code->SetVirtualSites(virtual_sites);
