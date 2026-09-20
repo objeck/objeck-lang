@@ -895,8 +895,10 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obi_obr_parity.py "%BIN%"
 
-    # obi's prompt read a line without checking the read: at EOF it spun forever
-    # instead of leaving (#917). Every invocation here gets a closed stdin.
+    # Every prompt in the REPL read a line without checking the read. At EOF the
+    # two loops spun forever instead of leaving, and the one-shot prompts acted on
+    # a line nobody typed (#917). Each invocation here reaches a prompt whose input
+    # has ended, and has to exit 0 on its own.
     - name: obi exits at stdin EOF (POSIX)
       if: runner.os != 'Windows'
       working-directory: ./programs/regression

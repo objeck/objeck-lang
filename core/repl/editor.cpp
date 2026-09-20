@@ -338,6 +338,26 @@ void Document::Debug(size_t cur_pos)
 //
 // Editor
 //
+
+// Reads one line from stdin, answering false at end of input: a closed stdin, an
+// exhausted pipe, Ctrl-D, Ctrl-Z, or a stream error. getline empties the string
+// when it fails, so an unchecked read cannot tell a blank line from input that
+// will never arrive -- the prompt loops spun on it forever, and the one-shot
+// prompts acted on a line nobody typed (#917). Emits the newline the missing
+// input would have carried, so whatever prints next starts on its own line.
+//
+// Every caller treats false as end of input and stops asking. That also ends the
+// session: control returns to the loop in Edit(), whose own read fails too.
+static bool ReadInputLine(std::wstring& line)
+{
+  if(std::getline(std::wcin, line)) {
+    return true;
+  }
+
+  std::wcout << std::endl;
+  return false;
+}
+
 Editor::Editor() : doc(DEFAULT_FILE_NAME)
 {
   compiler_libs = USES_STRING;
@@ -352,6 +372,15 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
 
   // process command line
   if(input.empty()) {
+    // '--quit' means leave once the code has run, and with neither '--file' nor
+    // '--inline' there is no code -- nothing to run, so nothing to stay for. It
+    // used to be inert here and drop into the very prompt it asked to skip, which
+    // is how `obi --quit </dev/null` reached the loop that never ended (#917).
+    if(is_exit) {
+      std::wcout << L"=> Nothing to run; '--quit' needs '--file' or '--inline'." << std::endl;
+      return;
+    }
+
     std::wcout << Runtime::C(Runtime::CLR_BOLD) << L"Objeck REPL (" << VERSION_STRING << L")" << Runtime::C(Runtime::CLR_RESET)
                << Runtime::C(Runtime::CLR_GRAY) << L"\n['/h' help | '/t' guided tutorial | omit ';' to print an expression]\n---" << Runtime::C(Runtime::CLR_RESET) << std::endl;
   }
@@ -394,13 +423,11 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
   bool done = false;
   do {
     std::wcout << Runtime::C(Runtime::CLR_GREEN) << L"> " << Runtime::C(Runtime::CLR_RESET);
-    if(!std::getline(std::wcin, in)) {
-      // End of input: a closed stdin, an exhausted pipe, Ctrl-D or Ctrl-Z. getline
-      // fails and leaves `in` empty, so an unchecked read left this prompt spinning
-      // forever on a stream that will never produce another line (#917). That is
-      // what hung the arm64 probes that ran obi with stdin closed.
-      std::wcout << std::endl;
-      done = true;
+    if(!ReadInputLine(in)) {
+      // End of input ends the session, exactly as '/q' does. An unchecked read
+      // left this prompt spinning forever on a stream that would never produce
+      // another line (#917) -- what hung the arm64 probes that ran obi with
+      // stdin closed.
       break;
     }
 
@@ -535,7 +562,9 @@ void Editor::Edit(std::wstring input, std::wstring libs, std::wstring opt, int m
         if(DoReplaceLine(in)) {
           DoExecute();
         }
-        else {
+        else if(std::wcin) {
+          // Silent when the replacement never arrived: the line was fine, the
+          // input ended (#917). The loop's own read fails next and the session ends.
           std::wcout << "Line number read-only or invalid." << std::endl;
         }
         break;
@@ -867,10 +896,9 @@ void Editor::DoInsertMultiLine(std::wstring& in)
     bool multi_line_done = false;
     do {
       std::wcout << L"Insert '/m' to exit] ";
-      if(!std::getline(std::wcin, in)) {
-        // End of input ends the insert, as '/m' does (#917).
-        std::wcout << std::endl;
-        multi_line_done = true;
+      if(!ReadInputLine(in)) {
+        // End of input ends the insert, as '/m' does (#917). Unchecked, this was
+        // the REPL's second endless loop.
         break;
       }
       if(in == L"/m") {
@@ -894,7 +922,13 @@ void Editor::DoCmdArgs(std::wstring& in)
     std::wcout << L"=> Current arguments: " << cmd_args << std::endl;
     std::wcout << L"New arguments] ";
 
-    std::getline(std::wcin, cmd_args);
+    // Read into a temporary: getline empties its string when it fails, so reading
+    // straight into cmd_args threw the current arguments away at end of input (#917).
+    std::wstring new_args;
+    if(!ReadInputLine(new_args)) {
+      return;
+    }
+    cmd_args = std::move(new_args);
     Trim(cmd_args);
   }
   else {
@@ -963,12 +997,25 @@ bool Editor::DoReplaceLine(std::wstring& in)
     try {
       const size_t line_pos = std::stoi(Trim(in));
       if(line_pos <= doc.Size()) {
-        if(doc.DeleteLine(line_pos - 1)) {
-          std::wcout << L"Insert " << line_pos << L"] ";
-          std::getline(std::wcin, in);
+        // Nothing is asked for that the document would refuse: the read-only
+        // shell lines cannot be replaced, and prompting first would eat a line.
+        if(doc.GetLineType(line_pos - 1) != Line::Type::RW_LINE) {
+          return false;
+        }
 
+        std::wcout << L"Insert " << line_pos << L"] ";
+
+        // Ask before deleting. getline empties its string when it fails, so an
+        // unchecked read swapped the line for a blank one at end of input (#917);
+        // now nothing is removed unless a replacement actually arrived.
+        std::wstring replacement;
+        if(!ReadInputLine(replacement)) {
+          return false;
+        }
+
+        if(doc.DeleteLine(line_pos - 1)) {
           cur_pos = line_pos - 1;
-          if(AppendLine(in)) {
+          if(AppendLine(replacement)) {
             std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
             return true;
           }
@@ -989,12 +1036,21 @@ bool Editor::DoReplaceLine(std::wstring& in)
     try {
       const size_t line_pos = cur_pos;
       if(line_pos <= doc.Size()) {
-        if(doc.DeleteLine(line_pos - 1)) {
-          std::wcout << L"Insert " << line_pos << L"] ";
-          std::getline(std::wcin, in);
+        if(doc.GetLineType(line_pos - 1) != Line::Type::RW_LINE) {
+          return false;
+        }
 
+        std::wcout << L"Insert " << line_pos << L"] ";
+
+        // Ask before deleting, as above (#917).
+        std::wstring replacement;
+        if(!ReadInputLine(replacement)) {
+          return false;
+        }
+
+        if(doc.DeleteLine(line_pos - 1)) {
           cur_pos = line_pos - 1;
-          if(AppendLine(in)) {
+          if(AppendLine(replacement)) {
             std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
             return true;
           }
@@ -1082,7 +1138,11 @@ void Editor::DoOptLevel(std::wstring& in)
   if(in.size() == 2) {
     std::wcout << L"=> Currently optimization level: " << compiler_opt_level << std::endl;
     std::wcout << L"New level (s0, s1, s2, s3): ";
-    std::getline(std::wcin, in);
+    // End of input leaves the level alone. Unchecked, the empty string getline
+    // leaves behind was reported as a syntax error nobody typed (#917).
+    if(!ReadInputLine(in)) {
+      return;
+    }
 
     in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
     if(!in.empty()) {
@@ -1107,7 +1167,10 @@ void Editor::DoUseLibraries(std::wstring &in)
   if(in.size() == 2) {
     std::wcout << L"=> Currently used library list: " << compiler_libs << std::endl;
     std::wcout << L"New comma separated list: ";
-    std::getline(std::wcin, in);
+    // End of input leaves the list alone, as with the optimization level (#917).
+    if(!ReadInputLine(in)) {
+      return;
+    }
 
     in.erase(std::remove_if(in.begin(), in.end(), isspace), in.end());
     if(!in.empty()) {
@@ -1204,7 +1267,7 @@ void Editor::DoInput(std::wstring in)
   while(depth > 0) {
     std::wcout << Runtime::C(Runtime::CLR_GRAY) << L"... " << Runtime::C(Runtime::CLR_RESET);
     std::wstring cont;
-    if(!std::getline(std::wcin, cont)) {
+    if(!ReadInputLine(cont)) {
       break;   // EOF / piped input exhausted
     }
     block.push_back(cont);
@@ -1413,6 +1476,11 @@ void Editor::DoInsertBelow()
 {
   std::wcout << Runtime::C(Runtime::CLR_GRAY) << L"Insert] " << Runtime::C(Runtime::CLR_RESET);
   std::wstring line;
-  std::getline(std::wcin, line);
+  if(!ReadInputLine(line)) {
+    // Nothing was inserted, so there is nothing to run. Unchecked, the empty
+    // string getline leaves behind reached DoInput(), which reads a blank line
+    // as "re-run the buffer" and compiled the program again at end of input (#917).
+    return;
+  }
   DoInput(line);
 }
