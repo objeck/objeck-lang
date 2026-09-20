@@ -1,16 +1,19 @@
 # EXTRA_LIBS: ml,gen_collect,csv
 #~
-MatrixReader reads rows through CsvTable, which splits on CRLF unless it is
-handed another ending. LoadSplitMatrices takes a line_ending parameter and
-LoadMatrices does not, so an LF-terminated file loads only through
-LoadSplitMatrices, and only when "\n" is passed. Every CSV in this repository
-has been LF-terminated since the line endings were normalized, which left
-programs/frameworks/ml/nn6.obs and programs/deploy/neural_21.obs loading Nil;
-both now pass "\n". This pins the ending each entry point accepts. Issue #916.
+MatrixReader reads rows through CsvTable, which used to split on CRLF unless it
+was handed another ending. Every CSV in this repository has been LF-terminated
+since the line endings were normalized, so LoadMatrices -- which takes no
+line_ending parameter at all -- could not read any of them, and LoadSplitMatrices
+read them only when "\n" was passed explicitly. That is what left
+programs/frameworks/ml/nn6.obs and programs/deploy/neural_21.obs loading Nil.
 
-The two Nil cases below are today's behavior, not a requirement: #916 also
-proposes giving LoadMatrices a line_ending parameter, or having CsvTable accept
-either ending. Either change should update this test.
+CsvTable now takes the ending from the data: CRLF when the data contains one,
+otherwise LF, otherwise CR. So both entry points read either file with nothing
+passed, and an explicitly supplied ending still wins over the detection. This
+pins all four combinations, plus the override. Issue #916.
+
+An earlier version of this test asserted the two Nil results as the contract;
+they were the defect, and the header said either fix should update this test.
 ~#
 use Collection;
 use System.IO.Filesystem;
@@ -39,12 +42,37 @@ class MlMatrixReaderLineEndings {
 			};
 		};
 
-		# The trap: the CRLF default reads nothing from that same file, and it is
-		# this Nil the two samples now check for.
-		ok := Report("LoadSplitMatrices on an LF file, CRLF default: Nil", MatrixReader->LoadSplitMatrices(lf_file, 1, 0.5) = Nil) & ok;
+		# #916: the same file now reads with no ending given, because CsvTable takes
+		# the ending from the data.
+		lf_default := MatrixReader->LoadSplitMatrices(lf_file, 1, 0.5);
+		read := lf_default <> Nil;
+		ok := Report("LoadSplitMatrices reads an LF file with no ending given", read) & ok;
+		if(read) {
+			ok := Report("LF default: training inputs [1, 2], target [3]", IsColumn(lf_default[0]->Get(0)->Get(), [1.0, 2.0]) & IsColumn(lf_default[1]->Get(0)->Get(), [3.0])) & ok;
+		};
 
-		# LoadMatrices has no line_ending parameter, so LF is out of reach.
-		ok := Report("LoadMatrices on an LF file: Nil", MatrixReader->LoadMatrices(lf_file, 1) = Nil) & ok;
+		# LoadMatrices takes no line_ending parameter, so detection is the only thing
+		# that can make an LF file reachable through it. This is the case the two
+		# NeuralNetwork samples could not work around.
+		lf_all := MatrixReader->LoadMatrices(lf_file, 1);
+		read := lf_all <> Nil;
+		ok := Report("LoadMatrices reads an LF file", read) & ok;
+		if(read) {
+			ok := Report("LF: two records", lf_all[0]->Size() = 2 & lf_all[1]->Size() = 2) & ok;
+		};
+
+		# Detection must not cost the CRLF path: a CRLF file with no ending given
+		# has to pick CRLF, not split on "\n" and leave a stray CR on every row.
+		crlf_default := MatrixReader->LoadSplitMatrices(crlf_file, 1, 0.5);
+		read := crlf_default <> Nil;
+		ok := Report("LoadSplitMatrices reads a CRLF file with no ending given", read) & ok;
+		if(read) {
+			ok := Report("CRLF default: training inputs [1, 2], target [3]", IsColumn(crlf_default[0]->Get(0)->Get(), [1.0, 2.0]) & IsColumn(crlf_default[1]->Get(0)->Get(), [3.0])) & ok;
+		};
+
+		# An explicit ending still overrides the detection, so a caller can force a
+		# reading and get Nil when the file does not match.
+		ok := Report("an explicit \"\\r\\n\" on an LF file still yields Nil", MatrixReader->LoadSplitMatrices(lf_file, 1, 0.5, "\r\n") = Nil) & ok;
 
 		# CRLF still loads through both entry points.
 		crlf_split := MatrixReader->LoadSplitMatrices(crlf_file, 1, 0.5, "\r\n");
