@@ -6354,9 +6354,26 @@ class GlContextTest {
 		# run_differential.py
 		"  after a 10ms frame: delta={$delta}s fps={$fps} vsync={$vsync}"->ErrorLine();
 
-		# At least the delay, less than double it, and inside the clamp.
+		# At least the delay, and never past the clamp ceiling.
+		#
+		# The upper bound used to be `delta < 0.1`, which is the clamp ceiling
+		# itself, so it failed on the boundary: a descheduled thread really does
+		# take 100 ms or more of wall clock, the frame loop clamps that to exactly
+		# 0.1, and a strict `<` then reports the clamp doing its job as the frame
+		# loop inventing time. That reddened master twice (#921, #933).
+		#
+		# No tighter bound is available here. Wall clock is whatever the scheduler
+		# says it is, so any ceiling below the clamp can be exceeded by a busy
+		# runner, and the clamp means nothing above it is observable either. What
+		# is worth asserting is that the clamp holds on the ordinary path and not
+		# only after the deliberate 500 ms stall below.
+		#
+		# The properties this pairs with still pin the rest: the first-frame check
+		# above catches a delta computed from an uninitialised start time, which is
+		# the failure a generous upper bound would otherwise have caught, and the
+		# lower bound catches a delta stuck at zero.
 		Check("a measured frame reports its elapsed time", delta >= 0.008);
-		Check("and does not invent time it did not take", delta < 0.1);
+		Check("and never exceeds the clamp ceiling", delta <= 0.1);
 		Check("GetFps is the reciprocal of the delta", Near(fps, 1.0 / delta, 0.001));
 		@gl->EndFrame();
 
