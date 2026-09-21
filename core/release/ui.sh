@@ -46,6 +46,21 @@ if [ "$UI_MODE" != "plain" ]; then
 	esac
 fi
 
+# The Objeck mark turns at the head of the live region and the check appears
+# inside it when a stage finishes (ui_mark.sh, shared with ui_mark.ps1 on
+# Windows). ui_mark_init leaves UI_MARK_OK at 0 for a pipe, for CI and for a
+# non-UTF-8 locale, and everything below then runs as it did before the mark
+# existed. It is sourced before the redirect further down, so the "is this a
+# terminal" test still sees the real one.
+UI_MARK_OK=0
+UI_MARK_ROWS=1
+_ui_dir=$(dirname "$0")
+if [ -r "$_ui_dir/ui_mark.sh" ]; then
+	. "$_ui_dir/ui_mark.sh"
+	ui_mark_init
+fi
+[ "$UI_MARK_OK" = "1" ] || UI_MARK_ROWS=1
+
 UI_PID=$$
 UI_STEP=0
 UI_TOTAL=1
@@ -148,8 +163,18 @@ ui_live_start() {
 	_done=$((UI_STEP - 1))
 	_lbar=$(ui_bar $((_done * 20 / UI_TOTAL)) 20)
 	_lpct=$((_done * 100 / UI_TOTAL))
-	# "  F BAR PCT  NN/NN  LABEL  M:SS  ": 2+1+1+20+5+2+5+2+label+2+5+2
-	_aw=$((_cols - 47 - ${#UI_LABEL}))
+	# A ticker is started once per stage, so "the first frames of this ticker" is
+	# the same thing as "a stage just finished" -- as long as one did, which is
+	# why the first stage is excluded. Nothing has to cross into the subshell.
+	_beat=0
+	[ "$UI_STEP" -gt 1 ] && _beat=7
+	if [ "$UI_MARK_OK" = "1" ]; then
+		_mbar=$(ui_mark_bar "$_done" "$UI_TOTAL" 20)
+		_aw=$((_cols - UI_MARK_CELLS - 5))
+	else
+		# "  F BAR PCT  NN/NN  LABEL  M:SS  ": 2+1+1+20+5+2+5+2+label+2+5+2
+		_aw=$((_cols - 47 - ${#UI_LABEL}))
+	fi
 	(
 		trap 'exit 0' TERM
 		set -- $UI_SPIN
@@ -166,10 +191,28 @@ ui_live_start() {
 					NF { l = $0 }
 					END { sub(/^ +/, "", l); if (length(l) > w) l = substr(l, 1, w - 3) "..."; print l }')
 			fi
-			printf '\r\033[2K  %s%s%s %s%s%s %3d%%  %s%2d/%d%s  %s%s%s  %s%d:%02d%s  %s%s%s' \
-				"$C_CYAN" "$_f" "$C_RESET" "$C_BLUE" "$_lbar" "$C_RESET" "$_lpct" \
-				"$C_DIM" "$UI_STEP" "$UI_TOTAL" "$C_RESET" "$C_BOLD" "$UI_LABEL" "$C_RESET" \
-				"$C_DIM" $((_el / 60)) $((_el % 60)) "$C_RESET" "$C_DIM" "$_act" "$C_RESET" >&9
+			if [ "$UI_MARK_OK" = "1" ]; then
+				_b=0
+				[ "$_t" -lt "$_beat" ] && _b=1
+				# Three rows: stage and clock, then the bar and counter level with
+				# the widest part of the ring, then the build's latest output. Each
+				# row is cleared before it is written and the cursor is walked back
+				# to the top of the block, so it repaints in place.
+				# The clock sits next to the label, not out at the window edge: on a wide
+				# terminal that put three feet of nothing between them.
+				printf '\033[2K  %s   %s%-24s%s %s%d:%02d%s%*s\n' \
+					"$(ui_mark_row "$_t" "$_b" 0)" "$C_BOLD" "$UI_LABEL" "$C_RESET" \
+					"$C_DIM" $((_el / 60)) $((_el % 60)) "$C_RESET" $((_aw - 31)) "" >&9
+				printf '\033[2K  %s   %s  %s%2d/%d%s\n' \
+					"$(ui_mark_row "$_t" "$_b" 1)" "$_mbar" "$C_DIM" "$UI_STEP" "$UI_TOTAL" "$C_RESET" >&9
+				printf '\033[2K  %s   %s%s%s\r\033[2A' \
+					"$(ui_mark_row "$_t" "$_b" 2)" "$C_DIM" "$_act" "$C_RESET" >&9
+			else
+				printf '\r\033[2K  %s%s%s %s%s%s %3d%%  %s%2d/%d%s  %s%s%s  %s%d:%02d%s  %s%s%s' \
+					"$C_CYAN" "$_f" "$C_RESET" "$C_BLUE" "$_lbar" "$C_RESET" "$_lpct" \
+					"$C_DIM" "$UI_STEP" "$UI_TOTAL" "$C_RESET" "$C_BOLD" "$UI_LABEL" "$C_RESET" \
+					"$C_DIM" $((_el / 60)) $((_el % 60)) "$C_RESET" "$C_DIM" "$_act" "$C_RESET" >&9
+			fi
 			_t=$((_t + 1))
 			sleep 0.1
 		done
@@ -182,7 +225,14 @@ ui_live_stop() {
 	kill "$UI_LIVE_PID" 2>/dev/null
 	wait "$UI_LIVE_PID" 2>/dev/null
 	UI_LIVE_PID=
-	printf '\r\033[2K' >&9
+	# Wipe the whole region and leave the cursor at the top of it, so the line
+	# that follows -- a finished stage, a warning, a build error -- lands there
+	# and stays. This is why a failure gets the screen to itself.
+	if [ "$UI_MARK_OK" = "1" ]; then
+		printf '\r\033[2K\n\033[2K\n\033[2K\r\033[2A' >&9
+	else
+		printf '\r\033[2K' >&9
+	fi
 }
 
 ui_warn() {
@@ -236,9 +286,17 @@ ui_ok() {
 		ui_out '\n  %s! finished with %d failed stage(s): %s%s  %s%d stages in %s%s\n' \
 			"$C_YELLOW" "$UI_FAILED" "$UI_FAILED_LABELS" "$C_RESET" "$C_DIM" "$UI_STEP" "$_total" "$C_RESET"
 	else
-		ui_out '  %s%s%s 100%%\n\n' "$C_GREEN" "$(ui_bar 20 20)" "$C_RESET"
-		ui_out '  %s%s %s%s  %s%d stages in %s%s\n' \
-			"$C_GREEN" "$UI_OK" "$1" "$C_RESET" "$C_DIM" "$UI_STEP" "$_total" "$C_RESET"
+		if [ "$UI_MARK_OK" = "1" ]; then
+			ui_out '  %s\n' "$(ui_mark_bar "$UI_TOTAL" "$UI_TOTAL" 20)"
+		else
+			ui_out '  %s%s%s 100%%\n' "$C_GREEN" "$(ui_bar 20 20)" "$C_RESET"
+		fi
+		ui_out '\n'
+		# The mark, settled, on the line that says the build worked.
+		_mk=
+		[ "$UI_MARK_OK" = "1" ] && _mk="$(ui_mark_row 0 1 1)  "
+		ui_out '  %s%s%s %s%s  %s%d stages in %s%s\n' \
+			"$_mk" "$C_GREEN" "$UI_OK" "$1" "$C_RESET" "$C_DIM" "$UI_STEP" "$_total" "$C_RESET"
 	fi
 	if [ "$UI_MODE" = "live" ]; then
 		ui_out '  %stool output: %s%s\n' "$C_DIM" "$UI_LOG" "$C_RESET"
