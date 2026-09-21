@@ -18,6 +18,11 @@
 @REM   verbose   -v, --verbose or VERBOSE=1 (or no powershell.exe): streaming
 @REM             output with coloured stage lines.
 @REM
+@REM --cube, or OBJECK_DEPLOY_CUBE=1, adds a rotating wireframe cube over the
+@REM live line in relaunch mode (core/release/ui_cube.ps1, which also runs on
+@REM its own). Off by default, ignored in every other mode, and consumed by
+@REM ui.ps1 rather than passed on, so nothing here has to know about it.
+@REM
 @REM Rules this file keeps:
 @REM  * No "@echo off". Echo state is shared with the caller, and turning it off
 @REM    here silently removed every command echo from the rest of the deploy's

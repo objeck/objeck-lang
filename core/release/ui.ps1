@@ -16,6 +16,10 @@
 # appear, and on failure shows the compiler errors and the end of the log. Its
 # exit code is the deploy's. Ctrl+C stops the whole build tree.
 #
+# --cube, or OBJECK_DEPLOY_CUBE=1, adds a rotating wireframe cube above the
+# live line (ui_cube.ps1). Off by default, and dropped from the arguments
+# before the deploy is run.
+#
 # ASCII-only source on purpose: Windows PowerShell 5.1 reads a .ps1 without a
 # BOM as ANSI, so every non-ASCII glyph is built from its code point.
 # UI_DEPLOY_SCRIPT overrides the script that is run, for testing this file.
@@ -26,6 +30,18 @@ $ErrorActionPreference = 'Stop'
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 if ($null -eq $DeployArgs) { $DeployArgs = @() }
+
+# --cube, or OBJECK_DEPLOY_CUBE=1, draws a rotating wireframe cube over the
+# live line while a stage runs (ui_cube.ps1). Off by default: it is decoration,
+# it costs fifteen rows, and the default path should stay what it has been.
+# The flag is consumed here and not passed on to the deploy.
+# Two dashes, like --verbose: a single-dash "-cube" would be read as a
+# parameter of this script before it ever reached $DeployArgs.
+$wantCube = ($env:OBJECK_DEPLOY_CUBE -eq '1')
+$DeployArgs = @($DeployArgs | Where-Object {
+  if ($_ -eq '--cube') { $script:wantCube = $true; $false } else { $true }
+})
+
 $arch = if ($DeployArgs.Count -gt 0) { $DeployArgs[0] } else { 'x64' }
 $deploy = if ($env:UI_DEPLOY_SCRIPT) { $env:UI_DEPLOY_SCRIPT } else { Join-Path $here 'deploy_windows.cmd' }
 $live = -not [Console]::IsOutputRedirected
@@ -74,12 +90,36 @@ $S = @{
   Tail = New-Object 'System.Collections.Generic.Queue[string]'
 }
 
+# The cube, when it was asked for and the window has room for it. $cube stays
+# $null otherwise, and every line below is the code that ran before it existed.
+# Redirected output never gets here ($live), and CI never gets as far as this
+# script at all: ui.cmd's ui_init routes GITHUB_ACTIONS and CI to its own mode
+# and does not set UI_RELAUNCH.
+$cube = $null
+if ($wantCube -and $live) {
+  $cubeScript = Join-Path $here 'ui_cube.ps1'
+  if (Test-Path -LiteralPath $cubeScript) {
+    try {
+      . $cubeScript -NoRun
+      $size = Get-CubeSize ([Math]::Max(40, [Console]::WindowWidth - 1)) ([Console]::WindowHeight)
+      if ($null -ne $size) { $cube = New-CubeState -Width $size[0] -Height $size[1] }
+    } catch { $cube = $null }
+  }
+}
+
 function W([string] $Text, $Color) {
   if ($null -ne $Color) { Write-Host $Text -NoNewline -ForegroundColor $Color } else { Write-Host $Text -NoNewline }
 }
 function NL { Write-Host '' }
 function Width { if ($live) { [Math]::Max(40, [Console]::WindowWidth - 1) } else { 100 } }
-function Clear-Live { if ($live) { [Console]::Write("`r" + (' ' * (Width)) + "`r"); $S.LastKey = $null } }
+function Clear-Live {
+  if (-not $live) { return }
+  # With a cube on screen the live region is the cube plus the one line under
+  # it, so all of it has to go before anything that must stay is printed.
+  if ($null -ne $cube -and -not $cube.Broken) { Clear-CubeBlock $cube (Width) 1 }
+  else { [Console]::Write("`r" + (' ' * (Width)) + "`r") }
+  $S.LastKey = $null
+}
 function Dur([TimeSpan] $t) { '{0}m {1:00}s' -f [int][Math]::Floor($t.TotalMinutes), $t.Seconds }
 
 function Stage-Line([string] $Glyph, $Color, [string] $Label, [string] $Right, $RightColor = 'DarkGray') {
@@ -105,6 +145,23 @@ function Draw-Live {
   $frame = $SPIN[$S.Tick % $SPIN.Count]
   $S.Tick++
   $t = [DateTime]::Now - $S.StageStart
+  # The cube, when there is one, is drawn first and every frame -- it is the
+  # part that has to move. It leaves the cursor on the row below itself, which
+  # is where the live line goes, so everything after this is unchanged. About
+  # 1.3 ms a frame at 34x15, one Write-Host; the live line below costs more
+  # than that whenever it changes.
+  if ($null -ne $cube -and -not $cube.Broken) {
+    $side = @(
+      '',
+      "Objeck $version  windows-$arch",
+      '',
+      $(if ($S.Total -gt 0) { 'stage   {0,2}/{1}' -f $S.Step, $S.Total } else { '' }),
+      $S.Label,
+      '',
+      ('elapsed   {0}:{1:00}' -f [int][Math]::Floor($t.TotalMinutes), $t.Seconds)
+    )
+    Write-CubeBlock $cube $side $w 'Cyan'
+  }
   # Most frames only move the spinner. Repaint that one cell unless something
   # else on the line has changed: Write-Host is the costly part of a frame.
   $key = '{0}|{1}|{2}|{3}|{4}|{5}' -f $w, $S.Step, $S.Total, [int][Math]::Floor($t.TotalSeconds), $S.Label, $S.Activity
