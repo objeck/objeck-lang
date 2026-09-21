@@ -49,8 +49,21 @@ paths = [
 #
 # This entry suppresses that one literal anywhere it appears and leaves every
 # other line of cipher.obs watched.
+#
+# The two SHA-1 digests below are published test vectors, not secrets:
+# a9993e36...d89d is SHA1("abc") and da39a3ee...0709 is SHA1(""), both from
+# RFC 3174. programs/tests/test_mbedtls_migration.obs asserts against them, so
+# generic-api-key -- which matches on shape, a long hex-looking literal -- fires
+# five times across the commits that added and moved that file.
+#
+# By REGEX rather than by commit or path, because these constants are the same
+# everywhere and will be re-attributed to a new SHA by any future line-ending
+# normalization or file move, exactly as cipher.obs was above. A path entry for
+# the test file would also hide a real key pasted into it tomorrow.
 regexes = [
   '''mysecretkey123456789012345678901''',
+  '''a9993e364706816aba3e25717850c26c9cd0d89d''',
+  '''da39a3ee5e6b4b0d3255bfef95601890afd80709''',
 ]
 
 # The seventeen historical commits behind the 326 findings a FULL-HISTORY scan
@@ -103,4 +116,19 @@ commits = [
   # field is literally named 'key:', which generic-api-key matched. A cache key,
   # not a credential.
   "bdf9408e2818d201c6101a38744869564316eb29",  # .github/workflows/ci-build.yml
+
+  # 3 findings: a REAL Google API key, hardcoded into a generativelanguage
+  # googleapis.com URL in programs/frameworks/gemini/test_0.obs and committed
+  # 2024-03-29. It is the one true positive this allowlist has ever recorded.
+  # The file was deleted later (a5456a6a73) and nothing AIza-shaped exists at
+  # HEAD, but deletion does not remove it from a public history -- so the key
+  # was ROTATED on 2026-09-21, which is what actually closed the exposure.
+  #
+  # Allowlisted only after rotation, and by commit so that a new AIza key
+  # committed tomorrow still fires. Left unlisted the scan is red every Monday
+  # on a dead credential, and a job that is always red is a job nobody reads --
+  # which is how the next real finding would be missed.
+  "0f112a09706183939220b26403414786d5a84009",
+  "0733eff9aa8e30bee3f802c3dd7ed0c5cc30b5f8",
+  "1b0a4ff5d5468650d866442ee4a2d76b031de02a",
 ]
