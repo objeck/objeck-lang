@@ -7389,8 +7389,12 @@ static bool h3_send_packets(Http3SessionCtx* ctx) {
     size_t vec_cnt = 0;
     uint32_t flags = NGTCP2_WRITE_STREAM_FLAG_NONE;
 
+    // vec must outlive the block below: vec_ptr is handed to
+    // ngtcp2_conn_writev_stream after it, so a block-scoped array would be
+    // read after its lifetime ended. It worked only because nothing had
+    // reused that stack yet (Coverity CID 1678917, RETURN_LOCAL).
+    nghttp3_vec vec[16];
     if(ctx->h3conn) {
-      nghttp3_vec vec[16];
       nghttp3_ssize vcnt;
       int fin;
       vcnt = nghttp3_conn_writev_stream(ctx->h3conn, &stream_id, &fin, vec, 16);
@@ -7409,8 +7413,7 @@ static bool h3_send_packets(Http3SessionCtx* ctx) {
     if(nwrite < 0) {
       return false;
     }
-    if(nwrite < 0 || nwrite == 0) {
-      if(nwrite < 0) { return false; }
+    if(nwrite == 0) {
       break;
     }
 
