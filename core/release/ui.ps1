@@ -16,6 +16,11 @@
 # appear, and on failure shows the compiler errors and the end of the log. Its
 # exit code is the deploy's. Ctrl+C stops the whole build tree.
 #
+# The Objeck mark turns at the head of the live region while a stage runs, and
+# the check appears inside it when one finishes (ui_mark.ps1, shared with
+# ui_mark.sh). Where the terminal cannot draw it -- legacy conhost, a pipe, CI
+# -- New-Mark returns $null and every line below is what ran before it existed.
+#
 # ASCII-only source on purpose: Windows PowerShell 5.1 reads a .ps1 without a
 # BOM as ANSI, so every non-ASCII glyph is built from its code point.
 # UI_DEPLOY_SCRIPT overrides the script that is run, for testing this file.
@@ -29,6 +34,14 @@ if ($null -eq $DeployArgs) { $DeployArgs = @() }
 $arch = if ($DeployArgs.Count -gt 0) { $DeployArgs[0] } else { 'x64' }
 $deploy = if ($env:UI_DEPLOY_SCRIPT) { $env:UI_DEPLOY_SCRIPT } else { Join-Path $here 'deploy_windows.cmd' }
 $live = -not [Console]::IsOutputRedirected
+
+$mark = $null
+if ($live) {
+  $markScript = Join-Path $here 'ui_mark.ps1'
+  if (Test-Path -LiteralPath $markScript) { try { . $markScript; $mark = New-Mark } catch { $mark = $null } }
+}
+# The live region is three rows with the mark in it and one without.
+$LIVEROWS = if ($null -ne $mark) { $mark.Rows } else { 1 }
 
 function Glyph([int] $CodePoint) { [string][char]$CodePoint }
 if ($env:WT_SESSION -or $env:TERM_PROGRAM -eq 'vscode') {
@@ -69,6 +82,7 @@ catch { $log = Join-Path $env:TEMP "objeck-deploy-$arch-$PID.log" }
 
 $S = @{
   Total = 0; Step = 0; Done = 0; Label = 'starting'; Activity = ''; Ok = $null; Tick = 0; LastKey = $null
+  Origin = -1                     # buffer row the live region starts on; -1 = not drawn
   RunStart = [DateTime]::Now; StageStart = [DateTime]::Now
   Errors = New-Object 'System.Collections.Generic.List[string]'
   Tail = New-Object 'System.Collections.Generic.Queue[string]'
@@ -79,7 +93,24 @@ function W([string] $Text, $Color) {
 }
 function NL { Write-Host '' }
 function Width { if ($live) { [Math]::Max(40, [Console]::WindowWidth - 1) } else { 100 } }
-function Clear-Live { if ($live) { [Console]::Write("`r" + (' ' * (Width)) + "`r"); $S.LastKey = $null } }
+# Erase the live region and put the cursor back at the top of it, so whatever
+# is printed next -- a finished stage, a warning, a compiler error -- lands
+# there and stays. A failed build gets the screen to itself this way.
+function Clear-Live {
+  if (-not $live) { return }
+  $S.LastKey = $null
+  $blank = ' ' * (Width)
+  if ($S.Origin -lt 0) { [Console]::Write("`r" + $blank + "`r"); return }
+  try {
+    [Console]::SetCursorPosition(0, $S.Origin)
+    for ($i = 0; $i -lt $LIVEROWS; $i++) {
+      [Console]::Write($blank)
+      if ($i -lt $LIVEROWS - 1) { [Console]::Write("`n") }
+    }
+    [Console]::SetCursorPosition(0, $S.Origin)
+  } catch { [Console]::Write("`r" + $blank + "`r") }
+  $S.Origin = -1
+}
 function Dur([TimeSpan] $t) { '{0}m {1:00}s' -f [int][Math]::Floor($t.TotalMinutes), $t.Seconds }
 
 function Stage-Line([string] $Glyph, $Color, [string] $Label, [string] $Right, $RightColor = 'DarkGray') {
@@ -91,6 +122,10 @@ function Finish-Stage {
   if ($S.Step -gt 0) {
     Stage-Line $OK 'Green' $S.Label (Dur ([DateTime]::Now - $S.StageStart))
     $S.Done++
+    # A stage landed: the check goes into the ring for a beat. This is the only
+    # thing a milestone does, and it happens here because this is the one place
+    # that knows a stage finished rather than merely started.
+    if ($null -ne $mark) { Set-MarkMilestone $mark }
   }
 }
 
@@ -102,9 +137,25 @@ function Note([string] $Glyph, $Color, [string] $Text) {
 function Draw-Live {
   if (-not $live) { return }
   $w = Width
+  # One tick, one frame: the mark is advanced from the same counter as the
+  # spinner it stands in for, so there is no second place to forget it and a
+  # mark that has stopped means the loop has stopped.
   $frame = $SPIN[$S.Tick % $SPIN.Count]
   $S.Tick++
+  if ($null -ne $mark) { Step-Mark $mark }
   $t = [DateTime]::Now - $S.StageStart
+  $total = [Math]::Max(1, $S.Total)
+  $done = [Math]::Max(0, $S.Step - 1)
+  $cells = 20
+  # No percentage. The only progress this script can see is a stage boundary, so
+  # a number sat still through a long stage (the solution rebuild takes minutes)
+  # and then jumped. The bar counts finished stages, the counter names the
+  # running one, and the stage clock is what shows the build is alive.
+  $n = if ($S.Total -gt 0) { '{0,2}/{1}' -f $S.Step, $S.Total } else { '' }
+  $clock = '{0}:{1:00}' -f [int][Math]::Floor($t.TotalMinutes), $t.Seconds
+
+  if ($null -ne $mark) { Draw-LiveMark $w $t $done $total $cells $n $clock; return }
+
   # Most frames only move the spinner. Repaint that one cell unless something
   # else on the line has changed: Write-Host is the costly part of a frame.
   $key = '{0}|{1}|{2}|{3}|{4}|{5}' -f $w, $S.Step, $S.Total, [int][Math]::Floor($t.TotalSeconds), $S.Label, $S.Activity
@@ -114,16 +165,7 @@ function Draw-Live {
     return
   }
   $S.LastKey = $key
-  $total = [Math]::Max(1, $S.Total)
-  $done = [Math]::Max(0, $S.Step - 1)
-  $cells = 20
   $f = [Math]::Min($cells, [int][Math]::Floor($done * $cells / $total))
-  # No percentage. The only progress this script can see is a stage boundary, so
-  # a number sat still through a long stage (the solution rebuild takes minutes)
-  # and then jumped. The bar counts finished stages, the counter names the
-  # running one, and the stage clock is what shows the build is alive.
-  $n = if ($S.Total -gt 0) { '{0,2}/{1}' -f $S.Step, $S.Total } else { '' }
-  $clock = '{0}:{1:00}' -f [int][Math]::Floor($t.TotalMinutes), $t.Seconds
 
   # "  F BAR  N  LABEL  CLOCK  ACTIVITY"
   $fixed = 2 + 1 + 1 + $cells + 2 + $n.Length + 2 + 2 + $clock.Length
@@ -143,6 +185,56 @@ function Draw-Live {
   W $label 'White'; W "  $clock" 'DarkGray'; W $act 'DarkGray'
   $len = $used + $act.Length
   if ($len -lt $w) { W (' ' * ($w - $len)) }
+}
+
+# The same information beside the mark instead of strung out on one line: the
+# stage and its clock on top, the bar and the counter level with the widest
+# part of the ring, and the build's latest output underneath.
+#
+#     .--.   building vm              3:21
+#    |    |   ######..............   7/15
+#     `--`    vm.vcxproj -> obr.exe
+#
+# Every row is padded to the same width and only the last has no newline after
+# it, which is what stops the region walking down the screen once it reaches
+# the bottom of the buffer.
+function Draw-LiveMark([int] $w, [TimeSpan] $t, [int] $done, [int] $total, [int] $cells, [string] $n, [string] $clock) {
+  $g = Get-Mark $mark
+  $bar = Get-MarkBar $mark $done $total $cells
+  $gap = '   '
+  $left = 2 + $mark.Cols + $gap.Length
+  $room = [Math]::Max(8, $w - $left)
+
+  $head = $S.Label
+  if ($head.Length + 3 + $clock.Length -gt $room) { $head = $head.Substring(0, [Math]::Max(0, $room - 3 - $clock.Length)) }
+  # The clock sits next to the label, not out at the window's edge: on a wide
+  # terminal that put three feet of nothing between them.
+  $head = $head.PadRight([Math]::Max(0, [Math]::Min($room - $clock.Length - 1, 24))) + ' ' + $clock
+  $act = $S.Activity
+  if ($act.Length -gt $room) { $act = $act.Substring(0, $room - $ELL.Length) + $ELL }
+
+  try {
+    if ($S.Origin -ge 0) { [Console]::SetCursorPosition(0, $S.Origin) }
+    for ($r = 0; $r -lt $mark.Rows; $r++) {
+      [Console]::Write("`r  ")
+      $Host.UI.Write($g[$r])
+      W $gap
+      switch ($r) {
+        0 { W $head 'White'; W (' ' * [Math]::Max(0, $room - $head.Length)) }
+        1 { $Host.UI.Write($bar); W "  $n" 'Gray'; W (' ' * [Math]::Max(0, $room - $cells - 2 - $n.Length)) }
+        default { W $act 'DarkGray'; W (' ' * [Math]::Max(0, $room - $act.Length)) }
+      }
+      if ($r -lt $mark.Rows - 1) { [Console]::Write("`n") }
+    }
+    $top = [Console]::CursorTop - ($mark.Rows - 1)
+    $S.Origin = [Math]::Max(0, $top)
+  } catch {
+    # Decoration must never stop a deploy. Give up on the region and let the
+    # next frame fall back to the single line above.
+    $script:mark = $null
+    $script:LIVEROWS = 1
+    $S.Origin = -1
+  }
 }
 
 function Handle-Line([string] $Line) {
@@ -309,8 +401,22 @@ if ($interrupted) {
   Stage-Line $BAD 'Red' $S.Label 'interrupted' 'Red'
   NL; W "  stopped by Ctrl+C after $elapsed; the build was terminated" 'Red'; NL
 } elseif ($code -eq 0 -and $null -ne $S.Ok) {
-  W '  '; W ($FILL * 20) 'Green'; W "  $($S.Done)/$total" 'Gray'; NL; NL
-  W '  '; W "$OK $($S.Ok)" 'Green'; W "  $($S.Done) stages in $elapsed" 'DarkGray'; NL
+  W '  '
+  # The same bar the live region used, full, so the last frame matches the rest.
+  if ($null -ne $mark) { $Host.UI.Write((Get-MarkBar $mark 1 1 20)) } else { W ($FILL * 20) 'Green' }
+  W "  $($S.Done)/$total" 'Gray'; NL; NL
+  if ($null -ne $mark) {
+    # Settled, on the line that says the build worked.
+    Set-MarkDone $mark
+    $g = Get-Mark $mark
+    for ($r = 0; $r -lt $mark.Rows; $r++) {
+      W '  '; $Host.UI.Write($g[$r])
+      if ($r -eq 1) { W "   $OK $($S.Ok)" 'Green'; W "  $($S.Done) stages in $elapsed" 'DarkGray' }
+      NL
+    }
+  } else {
+    W '  '; W "$OK $($S.Ok)" 'Green'; W "  $($S.Done) stages in $elapsed" 'DarkGray'; NL
+  }
   W "  tool output: $log" 'DarkGray'; NL
 } else {
   if ($S.Step -gt 0) { Stage-Line $BAD 'Red' $S.Label (Dur ([DateTime]::Now - $S.StageStart)) 'Red' }
