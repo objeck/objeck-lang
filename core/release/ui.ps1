@@ -151,6 +151,12 @@ function Draw-Live {
   # 1.3 ms a frame at 34x15, one Write-Host; the live line below costs more
   # than that whenever it changes.
   if ($null -ne $cube -and -not $cube.Broken) {
+    # Advance the rotation before drawing it. Without this the block is redrawn
+    # every frame from angles that never change, painting an identical picture
+    # forever: a cube that is repainted is not a cube that is moving. The
+    # standalone ui_cube.ps1 spun correctly because its own loop steps the
+    # state, which is exactly why this was invisible until a deploy ran.
+    Step-CubeState $cube
     $side = @(
       '',
       "Objeck $version  windows-$arch",
