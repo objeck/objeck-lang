@@ -4258,9 +4258,15 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
                                                     return p > r ? p : r; } },
     { L"runtime.memory.allocated", []() -> size_t { return MemoryManager::GetHeapAllocatedSize(); } },
     { L"runtime.memory.max",       []() -> size_t { return MemoryManager::GetHeapMaxSize(); } },
+    // RSS minus the Objeck heap. The two are separate reads, so a heap that
+    // grew between them can exceed the older RSS sample; report no overhead
+    // rather than wrapping the subtraction around SIZE_MAX.
     { L"runtime.memory.overhead",  []() -> size_t { const size_t r = GetProcessResidentBytes(),
                                                                  a = MemoryManager::GetHeapAllocatedSize();
-                                                    return r > a ? r - a : 0; } },
+                                                    if(a >= r) {
+                                                      return 0;
+                                                    }
+                                                    return r - a; } },
     { L"runtime.gc.minor",         []() -> size_t { return (size_t)MemoryManager::GetMinorGcCount(); } },
     { L"runtime.gc.major",         []() -> size_t { return (size_t)MemoryManager::GetMajorGcCount(); } },
     { L"runtime.gc.total",         []() -> size_t { return (size_t)(MemoryManager::GetMinorGcCount() +
@@ -6921,7 +6927,7 @@ static int h2_on_header_cb(nghttp2_session*, const nghttp2_frame* frame,
       ctx->response_status = std::stoi(v);
     }
     else {
-      ctx->response_headers[k] = v;
+      ctx->response_headers[k] = std::move(v);
     }
   }
   return 0;
@@ -7336,7 +7342,7 @@ static int h3ng_recv_header_cb(nghttp3_conn*, int64_t, int32_t,
   if(k == ":status") {
     try { ctx->response_status = std::stoi(v); } catch(...) {}
   } else {
-    ctx->response_headers[k] = v;
+    ctx->response_headers[k] = std::move(v);
   }
   return 0;
 }
@@ -7577,8 +7583,13 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   if(ctx->udp_fd < 0) {
     freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
   }
-  int fflags = fcntl(ctx->udp_fd, F_GETFL, 0);
-  fcntl(ctx->udp_fd, F_SETFL, fflags | O_NONBLOCK);
+  // The read/write loop below assumes a non-blocking socket; a blocking one
+  // would park the VM thread in recvfrom instead of driving the QUIC timers,
+  // so a failure here fails the connect like the socket() call above.
+  const int fflags = fcntl(ctx->udp_fd, F_GETFL, 0);
+  if(fflags < 0 || fcntl(ctx->udp_fd, F_SETFL, fflags | O_NONBLOCK) < 0) {
+    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+  }
 
   // Bind to ephemeral local address
   struct sockaddr_storage local_ss = {};
@@ -7598,8 +7609,12 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   if(bind(ctx->udp_fd, (struct sockaddr*)&local_ss, ctx->local_addrlen) < 0) {
     freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
   }
+  // The bound ephemeral address becomes the local end of the ngtcp2 path; if
+  // it cannot be read back there is no path to build, so fail like bind().
   socklen_t actual_local = sizeof(ctx->local_addr);
-  getsockname(ctx->udp_fd, (struct sockaddr*)&ctx->local_addr, &actual_local);
+  if(getsockname(ctx->udp_fd, (struct sockaddr*)&ctx->local_addr, &actual_local) < 0) {
+    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+  }
   ctx->local_addrlen = actual_local;
 
   memcpy(&ctx->remote_addr, res->ai_addr, res->ai_addrlen);

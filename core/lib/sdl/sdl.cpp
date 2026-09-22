@@ -5290,7 +5290,7 @@ static GLuint objk_gl_compile_stage(GLenum type, const std::string& source, std:
     if(length > 0) {
       std::string buffer((size_t)length, '\0');
       objk_glGETSHADERINFOLOG(shader, length, nullptr, &buffer[0]);
-      log = buffer;
+      log = std::move(buffer);
     }
     else {
       log = "shader compilation failed with no log";
