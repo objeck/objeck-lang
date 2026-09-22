@@ -130,8 +130,11 @@ void DapAdapter::SendMessage(const json& msg)
 
   std::string body = msg.dump();
   std::string header = "Content-Length: " + std::to_string(body.size()) + "\r\n\r\n";
-  WRITE(dap_out_fd, header.data(), (unsigned int)header.size());
-  WRITE(dap_out_fd, body.data(), (unsigned int)body.size());
+  // A short or failed write means the client went away mid-message. There is
+  // no channel left to report that on -- this IS the channel -- so the result
+  // is looked at and deliberately dropped rather than silently ignored.
+  [[maybe_unused]] const auto header_written = WRITE(dap_out_fd, header.data(), (unsigned int)header.size());
+  [[maybe_unused]] const auto body_written = WRITE(dap_out_fd, body.data(), (unsigned int)body.size());
 }
 
 // ============================================

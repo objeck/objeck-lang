@@ -19,14 +19,14 @@
 
 namespace Runtime {
   // ANSI escape codes
-  static const wchar_t* CLR_RESET  = L"\033[0m";
-  static const wchar_t* CLR_BOLD   = L"\033[1m";
-  static const wchar_t* CLR_RED    = L"\033[31m";
-  static const wchar_t* CLR_GREEN  = L"\033[32m";
-  static const wchar_t* CLR_YELLOW = L"\033[33m";
-  static const wchar_t* CLR_BLUE   = L"\033[34m";
-  static const wchar_t* CLR_CYAN   = L"\033[36m";
-  static const wchar_t* CLR_GRAY   = L"\033[90m";
+  inline constexpr const wchar_t* CLR_RESET  = L"\033[0m";
+  inline constexpr const wchar_t* CLR_BOLD   = L"\033[1m";
+  inline constexpr const wchar_t* CLR_RED    = L"\033[31m";
+  inline constexpr const wchar_t* CLR_GREEN  = L"\033[32m";
+  inline constexpr const wchar_t* CLR_YELLOW = L"\033[33m";
+  inline constexpr const wchar_t* CLR_BLUE   = L"\033[34m";
+  inline constexpr const wchar_t* CLR_CYAN   = L"\033[36m";
+  inline constexpr const wchar_t* CLR_GRAY   = L"\033[90m";
 
   static bool color_enabled = false;
 
