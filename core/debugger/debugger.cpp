@@ -296,7 +296,7 @@ std::vector<Runtime::Debugger::ThreadInfo> Runtime::Debugger::ListThreads()
     info.file_name = pair.second.file_name;
     info.stopped = world_stopped && pair.first == self_key;
     info.blocked = pair.second.parked;
-    out.push_back(info);
+    out.push_back(std::move(info));
   }
   std::sort(out.begin(), out.end(), [](const ThreadInfo& a, const ThreadInfo& b) { return a.id < b.id; });
   return out;
@@ -330,10 +330,19 @@ void Runtime::Debugger::ProcessThreads()
 
 void Runtime::Debugger::ProcessInstruction(StackInstr* instr, long ip, StackFrame** call_stack, long call_stack_pos, StackFrame* frame)
 {
+  // The interpreter only reaches this hook with the frame it is about to
+  // execute in, so neither of these is null in practice -- but everything
+  // below dereferences frame->method unconditionally, and a frame with no
+  // method carries no source position, so it could hold no breakpoint anyway.
+  // Decline it the way OnRuntimeError declines the same shape.
+  if(!frame || !frame->method) {
+    return;
+  }
+
   // Every VM thread arrives here now, not just the one the program started on.
   // Note where this thread is BEFORE taking the lock, so a thread blocked
   // behind another's stop is still listed with a real position.
-  if(frame && frame->method && frame->method->GetClass()) {
+  if(frame->method->GetClass()) {
     NoteThreadSite(instr->GetLineNumber(), frame->method->GetClass()->GetFileName(), frame, call_stack, call_stack_pos);
   }
   // All-stop. The state below the lock describes ONE stopped thread; a second

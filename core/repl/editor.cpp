@@ -1015,7 +1015,7 @@ bool Editor::DoReplaceLine(std::wstring& in)
 
         if(doc.DeleteLine(line_pos - 1)) {
           cur_pos = line_pos - 1;
-          if(AppendLine(replacement)) {
+          if(AppendLine(std::move(replacement))) {
             std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
             return true;
           }
@@ -1050,7 +1050,7 @@ bool Editor::DoReplaceLine(std::wstring& in)
 
         if(doc.DeleteLine(line_pos - 1)) {
           cur_pos = line_pos - 1;
-          if(AppendLine(replacement)) {
+          if(AppendLine(std::move(replacement))) {
             std::wcout << "=> Replaced line " << line_pos << L'.' << std::endl;
             return true;
           }

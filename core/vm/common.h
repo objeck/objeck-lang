@@ -319,7 +319,11 @@ struct Http3SessionCtx {
 
   Http3SessionCtx() : conn(nullptr), h3conn(nullptr),
 #ifdef OBJECK_HAS_NGTCP2
-      ssl_ctx(nullptr), ssl(nullptr),
+      // Value-initialized, not left indeterminate: the address pair is handed
+      // to ngtcp2 as a path, and sockaddr_storage carries padding (__ss_align,
+      // __ss_padding) that a later memcpy of a smaller sockaddr never writes.
+      conn_ref(), ssl_ctx(nullptr), ssl(nullptr),
+      local_addr(), remote_addr(),
       local_addrlen(0), remote_addrlen(0),
       handshake_complete(false), last_stream_id(-1),
 #endif
