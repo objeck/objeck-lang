@@ -64,7 +64,7 @@ flowchart TD
 
 | Layer | When | Optimizes on | Key idea |
 |-------|------|-------------|----------|
-| **① Compiler (`obc`)** | Ahead-of-time, once | `IntermediateBlock` IR, per method, gated by `-opt s0..s3` | Classic basic-block passes, each run **once** per method (`num_iterations = 1`). `s3` adds instruction replacement, peephole and method inlining (skipped for libraries). |
+| **① Compiler (`obc`)** | Ahead-of-time, once | `IntermediateBlock` IR, per method, gated by `-opt s0..s3` | Classic basic-block passes, each run **once** per method (`num_iterations = 1`). `s3` adds instruction replacement, peephole and method inlining. A `-tar lib` build stops early, but the program build that links the library does not (below). |
 | **② VM interpreter** | Every run; all code starts here | `StackInstr` bytecode | Baseline tier. ~30 hot opcodes inlined in `Execute()`; the rest go through a dispatch table. Counts calls per method. |
 | **③ JIT (tier-2)** | A method with a loop on its **first call** (a thread's `Run` on entry); any other after **10 calls**; `native` immediately | One method's bytecode → machine code | Validates first (each backend's `CanJitInstruction` **whitelist**), then does its *own* opt pass: constant folding, register caching, magic-number division, `select` jump tables, loop locals in registers (AMD64), native JIT→JIT calls. It does not inline methods. |
 
@@ -76,7 +76,8 @@ flowchart TD
 - **Constant folding happens in both the compiler and the JIT.** The compiler folds in the
   IR (`FoldIntConstants`); the JIT folds again at codegen (`ProcessIntFold`), because `s3`
   inlining runs after the compiler's folding and can expose *new* constant operands it never
-  saw, and library code is never folded by the compiler at all (below).
+  saw, and a library's code is folded when a program links it rather than when the
+  library itself was built (below).
 
 ## What the JIT adds
 
@@ -100,8 +101,29 @@ The docs in the last column, all under `docs/`, record what was built and what i
 | `s2` | common-subexpression elimination (CSE), loop-invariant code motion (LICM), strength reduction, dead-code elimination |
 | `s3` | instruction replacement, peephole optimization, method inlining (after every other pass has run on the class's methods) |
 
-Libraries (`-tar lib`) stop after `DeadBlockElimination`: none of the later passes in this
-table, method inlining included, run on library code at any level.
+### What `-tar lib` does and does not skip
+
+A **library build** stops after `DeadBlockElimination` (`is_lib` in the early return of
+`OptimizeMethod`), and skips `InlineMethod` and `JumpToLocation` in `Optimize()`. So the
+committed `.obl` files hold bytecode that has seen only jump cleanup, useless-instruction
+removal and dead-block elimination.
+
+That is a **deferral, not a skip**. When a program links a library, `EmitLibraries`
+materialises every *called* library class out of its `.obl` and into the program's IR as
+an ordinary `IntermediateClass`, and `Optimize()` then walks `program->GetClasses()`
+without filtering. Library methods therefore go through the full pass list along with the
+program's own — at the **program's** `-opt` level, not the level the library was built at.
+Compiling one program at `s0` versus `s1` rewrites 27 `lang.obl` methods; at `s3`,
+`System.String:ToUpper` gets a `MTHD_CALL` inlined and its frame grows 24 to 40 bytes.
+
+One class of pass genuinely cannot run on library code: instructions reloaded from a
+`.obl` carry `statement = nullptr`, and the statement-sensitive passes test for it
+(`DeadStore` checks `instr->GetStatement()` outright), so those fire only while the
+front-end context still exists — that is, on the code being compiled from source.
+
+Measured: building every shipped library with the `is_lib` early return removed leaves
+277 of 282 regression programs and all 18 CLBG/perf benchmarks compiling to byte-identical
+`.obe` images. See #899.
 
 ## Tunables (environment variables)
 
