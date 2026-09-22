@@ -153,7 +153,7 @@ ui_stage_done() {
 	[ "$UI_MODE" = "live" ] || return 0
 	[ "$UI_STEP" -gt 0 ] || return 0
 	[ "$UI_STAGE_FAILED" = "0" ] || return 0
-	ui_out '  %s%s%s %-32s %s%s%s\n' "$C_GREEN" "$UI_OK" "$C_RESET" "$UI_LABEL" \
+	ui_out '  %s%s%s %-32s %s%s%s\n' "$C_CYAN" "$UI_OK" "$C_RESET" "$UI_LABEL" \
 		"$C_DIM" "$(ui_dur "$UI_STAGE_START")" "$C_RESET"
 }
 
@@ -292,11 +292,19 @@ ui_ok() {
 			ui_out '  %s%s%s 100%%\n' "$C_GREEN" "$(ui_bar 20 20)" "$C_RESET"
 		fi
 		ui_out '\n'
-		# The mark, settled, on the line that says the build worked.
-		_mk=
-		[ "$UI_MARK_OK" = "1" ] && _mk="$(ui_mark_row 0 1 1)  "
-		ui_out '  %s%s%s %s%s  %s%d stages in %s%s\n' \
-			"$_mk" "$C_GREEN" "$UI_OK" "$1" "$C_RESET" "$C_DIM" "$UI_STEP" "$_total" "$C_RESET"
+		# The mark, settled, beside the line that says the build worked. All
+		# three rows: one row of a three-row glyph is not a smaller mark, it is
+		# a mark with its top and bottom cut off, which reads as a rendering
+		# fault. ui.ps1 prints all three on Windows; match it.
+		if [ "$UI_MARK_OK" = "1" ]; then
+			ui_out '  %s\n' "$(ui_mark_row 0 1 0)"
+			ui_out '  %s  %s%s %s%s  %s%d stages in %s%s\n' \
+				"$(ui_mark_row 0 1 1)" "$C_CYAN" "$UI_OK" "$1" "$C_RESET" "$C_DIM" "$UI_STEP" "$_total" "$C_RESET"
+			ui_out '  %s\n' "$(ui_mark_row 0 1 2)"
+		else
+			ui_out '  %s%s %s%s  %s%d stages in %s%s\n' \
+				"$C_CYAN" "$UI_OK" "$1" "$C_RESET" "$C_DIM" "$UI_STEP" "$_total" "$C_RESET"
+		fi
 	fi
 	if [ "$UI_MODE" = "live" ]; then
 		ui_out '  %stool output: %s%s\n' "$C_DIM" "$UI_LOG" "$C_RESET"

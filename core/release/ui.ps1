@@ -120,7 +120,7 @@ function Stage-Line([string] $Glyph, $Color, [string] $Label, [string] $Right, $
 
 function Finish-Stage {
   if ($S.Step -gt 0) {
-    Stage-Line $OK 'Green' $S.Label (Dur ([DateTime]::Now - $S.StageStart))
+    Stage-Line $OK 'Cyan' $S.Label (Dur ([DateTime]::Now - $S.StageStart))
     $S.Done++
     # A stage landed: the check goes into the ring for a beat. This is the only
     # thing a milestone does, and it happens here because this is the one place
@@ -411,11 +411,11 @@ if ($interrupted) {
     $g = Get-Mark $mark
     for ($r = 0; $r -lt $mark.Rows; $r++) {
       W '  '; $Host.UI.Write($g[$r])
-      if ($r -eq 1) { W "   $OK $($S.Ok)" 'Green'; W "  $($S.Done) stages in $elapsed" 'DarkGray' }
+      if ($r -eq 1) { W "   $OK $($S.Ok)" 'Cyan'; W "  $($S.Done) stages in $elapsed" 'DarkGray' }
       NL
     }
   } else {
-    W '  '; W "$OK $($S.Ok)" 'Green'; W "  $($S.Done) stages in $elapsed" 'DarkGray'; NL
+    W '  '; W "$OK $($S.Ok)" 'Cyan'; W "  $($S.Done) stages in $elapsed" 'DarkGray'; NL
   }
   W "  tool output: $log" 'DarkGray'; NL
 } else {
