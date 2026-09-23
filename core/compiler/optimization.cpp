@@ -446,7 +446,11 @@ IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock*
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
-      IntermediateMethod* mthd_called = program->GetClass(static_cast<int>(instr->GetOperand()))->GetMethod(static_cast<int>(instr->GetOperand2()));
+      // The callee may not be in this program's map at all: ids read out of a
+      // .obl are local to that library. Unresolvable means "not inlinable",
+      // never a dereference of end() (#958).
+      IntermediateClass* klass_called = program->GetClass(static_cast<int>(instr->GetOperand()));
+      IntermediateMethod* mthd_called = klass_called ? klass_called->GetMethod(static_cast<int>(instr->GetOperand2())) : nullptr;
       int status = CanInlineSetterGetter(mthd_called);
       // The inlined instructions must belong to the call's statement, not the
       // callee's: DeadStoreEdit finds the start of a dead assignment by walking
@@ -580,6 +584,11 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
 
 bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*>& inlined_mthds, std::set<int>& lbl_jmp_offsets)
 {
+  // an unresolved callee cannot be inspected, let alone inlined
+  if(!mthd_called) {
+    return false;
+  }
+
   // don't inline the same method more then once, since you'll have label/jump conflicts
   std::set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
   if(found != inlined_mthds.end()) {
@@ -727,6 +736,11 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std:
 
 int ItermediateOptimizer::CanInlineSetterGetter(IntermediateMethod* mthd_called)
 {
+  // an unresolved callee cannot be inspected, let alone inlined
+  if(!mthd_called) {
+    return -1;
+  }
+
   if(current_method == mthd_called) {
     return -1;
   };
@@ -1024,7 +1038,11 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
     IntermediateInstruction* instr = input_instrs[i];
 
     if(instr->GetType() == MTHD_CALL) {
-      IntermediateMethod* mthd_called = program->GetClass(static_cast<int>(instr->GetOperand()))->GetMethod(static_cast<int>(instr->GetOperand2()));
+      // The callee may not be in this program's map at all: ids read out of a
+      // .obl are local to that library. Unresolvable means "not inlinable",
+      // never a dereference of end() (#958).
+      IntermediateClass* klass_called = program->GetClass(static_cast<int>(instr->GetOperand()));
+      IntermediateMethod* mthd_called = klass_called ? klass_called->GetMethod(static_cast<int>(instr->GetOperand2())) : nullptr;
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
         // calculate offset
