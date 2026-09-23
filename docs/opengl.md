@@ -174,6 +174,27 @@ a HiDPI display); and shutting everything down in an order that works.
 | `ShadowMap`, `PointShadow`, `Frustum` | Shadows and culling |
 | `Overlay`, `Box` | 2D overlay and bounding volumes |
 
+## Why the calls are coarse-grained
+
+The native call boundary is expensive. The VM resolves each native symbol by
+string on **every** call (`GetProcAddress`/`dlsym`) and boxes every argument into
+a fresh holder, so a 1:1 mapping of OpenGL onto it would be thousands of lookups
+and allocations per frame.
+
+So each call here does real work. "Compile a program from two sources" is one
+call, not the five GL calls it decomposes into, and bulk data crosses as whole
+arrays rather than element by element.
+
+That happens to be exactly what GL 3.3 core wants anyway: upload geometry once,
+then draw with few calls.
+
+### Adding a call (maintainers)
+
+One `void fn(VMContext&)` in the OpenGL section of `core/lib/sdl/sdl.cpp`, and
+one method in `core/compiler/lib_src/sdl_gl.obs` that names it. See that file's
+header for the two rules that matter: positional slot indices, and keeping each
+call coarse.
+
 ## How SDL2 is bundled (maintainers)
 
 The vendored macOS dylibs were built with an absolute install name

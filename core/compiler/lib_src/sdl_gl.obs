@@ -11,47 +11,16 @@ use Collection;
 OpenGL 3.3 core rendering on top of SDL2. Builds on sdl2.obl for the window and
 context; this bundle is the GL side. Compile with -lib sdl2.
 
-Targets the **3.3 core profile**, forward-compatible. That is the highest common
-denominator across the platforms Objeck ships: Windows, Linux and macOS desktop
-all reach it, and macOS caps at 4.1 core so nothing above 4.1 is portable there.
-GLES-only hardware (Raspberry Pi and similar) is out of scope by construction.
+Layers, thinnest first: GLWindow (window and context), GL (state), Shader, Mesh,
+Texture2D, Light, RenderTarget, Material, Frustum, ShadowMap, PointShadow,
+Overlay, Transform, and Box/Scene. All public, so nothing is capped.
 
-Layers, from thinnest to friendliest -- all public, so nothing is capped:
+Targets the 3.3 core profile, forward-compatible: the highest common denominator
+across the desktop platforms Objeck ships, since macOS caps at 4.1 core.
+GLES-only hardware is out of scope by construction.
 
-* GLWindow    -- a window and a 3.3 core context, opened and paced for you.
-* GL          -- static state operations. Thin, but never per-vertex.
-* Shader      -- a linked program; Flat/Textured/TexturedFog/Normals built in,
-                so the common cases need no GLSL at all.
-* Mesh        -- geometry uploaded once into buffer objects, drawn many times,
-                with Cube/Plane/Quad/Sphere built in, OBJ loading, and instancing.
-* Texture2D   -- a texture, from a file or generated; Solid/Checker built in.
-* Light       -- one directional light plus ambient, written into a shader.
-* RenderTarget -- draw into a texture instead of the window, then sample it.
-* Material    -- a surface: its texture, tint and shininess.
-* Frustum     -- the six planes of a view, for skipping what is off screen.
-* ShadowMap   -- shadows from a directional or spot light, depth pass and all.
-* PointShadow -- shadows from a point light, in every direction, via a cube map.
-* Overlay     -- text and rectangles over the scene, positioned in pixels.
-* Transform   -- position, rotation and scale, with a cached matrix.
-* Box, Scene  -- a world of boxes: draws itself, and answers collision.
-
-## Why the API is shaped this way
-
-The native call boundary is expensive: the VM resolves each native symbol by
-string on EVERY call (GetProcAddress/dlsym) and boxes every argument into a
-fresh holder. A 1:1 mapping of OpenGL onto that would be thousands of lookups
-and allocations per frame.
-
-So each call here does real work -- 'compile a program from two sources' is one
-call, not the five GL calls it decomposes into -- and bulk data crosses as whole
-arrays, never element by element. This happens to be exactly what GL 3.3 core
-wants anyway: upload geometry once, then draw with few calls.
-
-## Adding a call
-
-One `void fn(VMContext&)` in the OpenGL section of core/lib/sdl/sdl.cpp, and one
-method here that names it. See that file's header for the two rules that matter
-(positional slot indices, and keeping each call coarse).
+See docs/opengl.md for setup, a minimal program, why the calls are
+coarse-grained, and how to add one.
 ~#
 bundle Game.OpenGL {
 	class : private : Proxy {
