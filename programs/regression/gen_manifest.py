@@ -160,7 +160,10 @@ def main():
     for i, (name, c, d) in enumerate(rows, 1):
         parts.append('| %d | `%s.obs` | %s | %s | ✅ |' % (i, name, esc(c), esc(d)))
     out = '\n'.join(parts) + '\n' + DEBUGGER
-    open('TESTS.md', 'w', encoding='utf-8').write(out)
+    # newline is pinned to LF: the repo stores TESTS.md with LF, and the
+    # default translation on Windows rewrote every line, burying the one
+    # real change in a whole-file diff.
+    open('TESTS.md', 'w', encoding='utf-8', newline='\n').write(out)
     print('wrote TESTS.md:', len(rows), 'runtime tests,', len(counts), 'categories')
 
 
