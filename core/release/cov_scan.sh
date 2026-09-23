@@ -7,6 +7,8 @@
 #   COVERITY_DRY_RUN=1 ./cov_scan.sh        build, capture and verify, then STOP
 #                                           before uploading. Needs no token.
 #   COVERITY_UPLOAD_ONLY=1 ./cov_scan.sh    skip the rebuild; verify and upload
+#   COVERITY_FORCE_LARGE=1 ./cov_scan.sh    use the large-submission flow even
+#                                           when the archive would fit the form
 #                                           the archive a dry run left behind.
 #
 # The two modes exist so a capture can be checked before a scan is spent on it,
@@ -211,29 +213,38 @@ if ! tar -tzf "$ARCHIVE" 2>/dev/null | grep -q '^cov-int/'; then
 fi
 echo "Archive verified: $(pwd)/$ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
 
-# The single-shot form upload below is documented only up to 500 MB, and this
-# capture grows with the codebase: 13 translation units in early 2026, 72 by
-# 2026-09, 174 MB compressed. Past the limit the form endpoint does not say
-# "too large" -- it fails in a way that reads as a rejected token or a network
-# error, on a script whose whole job is to be trusted about why an upload did
-# not happen. Say it here, where the archive is already in hand and a dry run
-# can see it, rather than after a full rebuild has been spent.
+# The single-shot form upload is documented only up to 500 MB, and this capture
+# grows with the codebase: 13 translation units in early 2026, 72 by 2026-09,
+# 174 MB compressed. Past the limit the form endpoint does not say "too large"
+# -- it fails in a way that reads as a rejected token or a network error, on a
+# script whose whole job is to be trusted about why an upload did not happen.
 #
-# The fix when it trips is Coverity's three-step flow for large submissions --
-# initialize the build, PUT the tarball to the returned URL, then enqueue it --
-# not a bigger form post.
+# So the size decides the route: the form under the limit, and Coverity's
+# three-step flow for large submissions above it (initialize the build, PUT the
+# tarball to the returned URL, then enqueue it). Measured here, where the
+# archive is already in hand and a dry run can report the headroom.
 COV_FORM_MAX_BYTES=524288000                       # 500 MB, the documented limit
 archive_bytes=$(wc -c < "$ARCHIVE" | tr -d ' ')
 archive_pct=$(( archive_bytes * 100 / COV_FORM_MAX_BYTES ))
 if [ "$archive_bytes" -gt "$COV_FORM_MAX_BYTES" ]; then
-  fail "$ARCHIVE is $archive_bytes bytes, over the 500 MB limit of the single-shot form upload.
-       Switch to Coverity's large-submission flow (initialize -> PUT -> enqueue);
-       a form post this size fails as though the token or the network were at fault."
+  UPLOAD_FLOW=large
+  echo "Upload size: ${archive_pct}% of the 500 MB single-shot limit -- using the large-submission flow."
 elif [ "$archive_pct" -ge 80 ]; then
+  UPLOAD_FLOW=form
   echo "WARNING: archive is ${archive_pct}% of the 500 MB single-shot upload limit."
-  echo "         Plan the move to the initialize/PUT/enqueue flow before it trips."
+  echo "         The large-submission flow takes over automatically past it."
 else
+  UPLOAD_FLOW=form
   echo "Upload size: ${archive_pct}% of the 500 MB single-shot limit."
+fi
+
+# COVERITY_FORCE_LARGE=1 runs the large flow on an archive that would fit the
+# form, so that path can be exercised without waiting for the capture to grow
+# past 500 MB. Without it the code would first run on the day it is needed,
+# which is the worst day to discover it does not work.
+if [ "${COVERITY_FORCE_LARGE:-0}" = "1" ]; then
+  UPLOAD_FLOW=large
+  echo "COVERITY_FORCE_LARGE=1 -- using the large-submission flow regardless of size."
 fi
 
 if [ "$DRY_RUN" = "1" ]; then
@@ -247,19 +258,97 @@ if [ "$DRY_RUN" = "1" ]; then
 fi
 
 # ---------------------------------------------------------------- upload -----
+# Two flows. Under 500 MB Coverity takes a single form POST; above it that form
+# fails in a way that reads as a rejected token or a network error, and the
+# documented route is initialize -> PUT -> enqueue against the project ID.
+COV_PROJECT_ID=10314
+# Overridable so the three-step flow can be exercised against a local mock --
+# see cov_scan_test.sh. Nothing else should change it.
+COV_API_BASE=${COVERITY_API_BASE:-https://scan.coverity.com}
+
+# Reads one field out of a JSON object without jq, which is not installed on
+# every machine that runs this script. Deliberately strict: the caller checks
+# what comes back and refuses to continue on a value that does not look right,
+# rather than PUTting the archive at an empty URL and reporting success.
+json_string() {
+  sed -n 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1 | sed 's|\/|/|g'
+}
+
+json_number() {
+  sed -n 's/.*"'"$1"'"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' | head -1
+}
+
+retry_hint="$ARCHIVE is kept, so it can be retried without another full rebuild: COVERITY_UPLOAD_ONLY=1 $0 $ARCH"
+
 echo
 echo "Uploading to Coverity Scan..."
-# --fail-with-body: without it curl exits 0 on an HTTP error, so a rejected token
-# or an oversized archive read as a successful submission.
-if ! curl --fail-with-body \
-  --form token="$COVERITY_TOKEN" \
-  --form email=objeck@gmail.com \
-  --form file=@"$ARCHIVE" \
-  --form version="$version" \
-  --form description="Objeck $version (Linux $ARCH)" \
-  https://scan.coverity.com/builds?project=Objeck; then
-  echo >&2
-  fail "upload failed. $ARCHIVE is kept, so it can be retried without another full rebuild: COVERITY_UPLOAD_ONLY=1 $0 $ARCH"
+
+if [ "$UPLOAD_FLOW" = "form" ]; then
+  # --fail-with-body: without it curl exits 0 on an HTTP error, so a rejected
+  # token or an oversized archive read as a successful submission.
+  if ! curl --fail-with-body \
+    --form token="$COVERITY_TOKEN" \
+    --form email=objeck@gmail.com \
+    --form file=@"$ARCHIVE" \
+    --form version="$version" \
+    --form description="Objeck $version (Linux $ARCH)" \
+    "$COV_API_BASE/builds?project=Objeck"; then
+    echo >&2
+    fail "upload failed. $retry_hint"
+  fi
+else
+  # step 1 of 3 -- initialize the build and get a one-time upload URL
+  echo "  [1/3] initializing the build..."
+  if ! init_response=$(curl --fail-with-body -sS -X POST \
+    --data-urlencode "token=$COVERITY_TOKEN" \
+    --data-urlencode "email=objeck@gmail.com" \
+    --data-urlencode "version=$version" \
+    --data-urlencode "description=Objeck $version (Linux $ARCH)" \
+    --data-urlencode "file_name=$ARCHIVE" \
+    "$COV_API_BASE/projects/$COV_PROJECT_ID/builds/init"); then
+    echo >&2
+    fail "build init failed. $retry_hint"
+  fi
+
+  upload_url=$(printf '%s' "$init_response" | json_string url)
+  build_id=$(printf '%s' "$init_response" | json_number build_id)
+
+  # Validate rather than assume. A response that parsed to an empty URL would
+  # be PUT into nothing and enqueued against build "", and the script would then
+  # print "Submitted" over a scan that never happened -- which is the exact
+  # failure this path exists to prevent. The response itself is never echoed: it
+  # carries a signed URL, and this script does not print credentials.
+  case "$upload_url" in
+    https://*) ;;
+    # A non-default COVERITY_API_BASE is a deliberate test target, so a URL
+    # under it is allowed to be plain http. Against the real endpoint the base
+    # is https, so this branch cannot loosen anything in production.
+    "$COV_API_BASE"/*) ;;
+    *) fail "build init returned no usable upload URL. $retry_hint" ;;
+  esac
+  [ -n "$build_id" ] || fail "build init returned no build_id. $retry_hint"
+  echo "        build_id=$build_id"
+
+  # step 2 of 3 -- PUT the tarball at the returned URL
+  echo "  [2/3] uploading $(du -h "$ARCHIVE" | cut -f1)..."
+  if ! curl --fail-with-body -sS -X PUT \
+    --header 'Content-Type: application/json' \
+    --upload-file "$ARCHIVE" \
+    "$upload_url"; then
+    echo >&2
+    fail "upload PUT failed for build $build_id. $retry_hint"
+  fi
+
+  # step 3 of 3 -- enqueue it. Until this succeeds the bytes are uploaded but
+  # nothing will ever look at them, which is indistinguishable from success
+  # anywhere except the project page.
+  echo "  [3/3] enqueuing for analysis..."
+  if ! curl --fail-with-body -sS -X PUT \
+    --data-urlencode "token=$COVERITY_TOKEN" \
+    "$COV_API_BASE/projects/$COV_PROJECT_ID/builds/$build_id/enqueue"; then
+    echo >&2
+    fail "enqueue failed for build $build_id -- the archive uploaded but was never queued. $retry_hint"
+  fi
 fi
 
 rm -f "$ARCHIVE"

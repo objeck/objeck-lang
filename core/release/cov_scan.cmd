@@ -327,6 +327,10 @@ REM fails in a way that reads as a rejected token or a network error, on a
 REM script whose whole job is to be trusted about why an upload did not happen.
 REM Say it here, where a dry run can see it, not after a rebuild is spent.
 REM
+REM cov_scan.sh implements the three-step flow and switches to it automatically;
+REM this script still refuses, because the scans are run from the POSIX side and
+REM a batch implementation would carry its own untested JSON parsing (#941).
+REM
 REM The fix when it trips is Coverity's three-step flow for large submissions --
 REM initialize the build, PUT the tarball to the returned URL, then enqueue it.
 REM The size test comes before the percentage: `set /a` is 32-bit, so an archive
