@@ -208,6 +208,75 @@ void ContextAnalyzer::ProcessError(const std::wstring& fn, const std::wstring& m
 }
 
 /****************************
+ * A bundle that defines an unresolved short class name, when one exists and is
+ * not already in scope. "Undefined class: 'Vector'" is most often a missing
+ * 'use', and the linker already knows which bundle every library class is in.
+ ****************************/
+std::wstring ContextAnalyzer::BundleSuggestion(const std::wstring& name)
+{
+  // an already-qualified name is a different mistake
+  if(name.empty() || name.find(L'.') != std::wstring::npos || !linker) {
+    return L"";
+  }
+
+  std::vector<std::wstring> uses;
+  if(current_class) {
+    uses = program->GetLibUses(current_class->GetFileName());
+  }
+
+  std::set<std::wstring> bundles;
+  const std::unordered_map<std::wstring, LibraryClass*>& klasses = linker->GetAllClassesMap();
+  for(std::unordered_map<std::wstring, LibraryClass*>::const_iterator iter = klasses.begin(); iter != klasses.end(); ++iter) {
+    const std::wstring& full_name = iter->first;
+    const size_t dot = full_name.find_last_of(L'.');
+    if(dot == std::wstring::npos || full_name.substr(dot + 1) != name) {
+      continue;
+    }
+
+    // Already used and still unresolved means the bundle is not the problem,
+    // so suggesting it would send the reader the wrong way.
+    const std::wstring bundle = full_name.substr(0, dot);
+    if(std::find(uses.begin(), uses.end(), bundle) == uses.end()) {
+      bundles.insert(bundle);
+    }
+  }
+
+  if(bundles.empty()) {
+    return L"";
+  }
+
+  std::wstring message = L"\n\t'" + name + L"' is defined in ";
+  if(bundles.size() == 1) {
+    message += L"bundle '" + *bundles.begin() + L"' -- add: use " + *bundles.begin() + L";";
+  }
+  else {
+    message += L"bundles: ";
+    for(std::set<std::wstring>::const_iterator iter = bundles.begin(); iter != bundles.end(); ++iter) {
+      if(iter != bundles.begin()) {
+        message += L", ";
+      }
+      message += *iter;
+    }
+    message += L" -- add a 'use' for the one you want.";
+  }
+
+  return message;
+}
+
+/****************************
+ * The identifier behind an expression, when it is a plain variable reference.
+ * Empty for anything else, so a caller can fall back to a type-only message.
+ ****************************/
+static std::wstring NamedVariable(Expression* expr)
+{
+  if(expr && expr->GetExpressionType() == VAR_EXPR) {
+    return static_cast<Variable*>(expr)->GetName();
+  }
+
+  return L"";
+}
+
+/****************************
  * Formats possible alternative
  * methods
  ****************************/
@@ -247,12 +316,23 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 
   // check and process errors
   if(!errors.empty()) {
-    std::multimap<int, std::wstring>::iterator error;
-    for(error = errors.begin(); error != errors.end(); ++error) {
+    // Repeats are dropped before the cap, not after. The same diagnostic is
+    // raised from more than one resolution path -- an undefined method call can
+    // be reported three times at one position -- and identical copies were
+    // pushing real errors off the end of the output.
+    std::set<std::wstring> seen;
+    std::vector<std::wstring> unique_errors;
+    for(std::multimap<int, std::wstring>::iterator error = errors.begin(); error != errors.end(); ++error) {
+      if(seen.insert(error->second).second) {
+        unique_errors.push_back(error->second);
+      }
+    }
+
+    for(size_t i = 0; i < unique_errors.size(); ++i) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
-      error_strings.push_back(error->second);
+      error_strings.push_back(unique_errors[i]);
 #else
-      std::wcerr << error->second << std::endl;
+      std::wcerr << unique_errors[i] << std::endl;
 #endif
     }
 
@@ -266,8 +346,12 @@ bool ContextAnalyzer::CheckErrorsWarnings()
 #ifndef _MODULE
   // check and process warnings
   if(!warnings.empty()) {
-    std::multimap<int, std::wstring>::iterator warning;
-    for(warning = warnings.begin(); warning != warnings.end(); ++warning) {
+    // same reasoning as the errors above
+    std::set<std::wstring> seen_warnings;
+    for(std::multimap<int, std::wstring>::iterator warning = warnings.begin(); warning != warnings.end(); ++warning) {
+      if(!seen_warnings.insert(warning->second).second) {
+        continue;
+      }
 #ifdef _DIAG_LIB
       warning_strings.push_back(warning->second);
 #else
@@ -644,7 +728,8 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
 
   klass->SetSymbolTable(symbol_table->GetSymbolTable(klass->GetName()));
   if(!HasProgramOrLibraryClass(klass->GetName())) {
-    ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'");
+    ProcessError(klass, L"Undefined class: '" + klass->GetName() + L"'" + BundleSuggestion(klass->GetName()));
+    undefined_classes.insert(klass->GetName());
   }
 
   if(linker->SearchClassLibraries(klass->GetName(), program->GetLibUses(klass->GetFileName())) ||
@@ -2958,7 +3043,7 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
       }
       else {
         if(!variable_name.empty()) {
-          ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
+          ProcessError(static_cast<Expression*>(method_call), L"'" + variable_name + L"' does not resolve to a class; check its declared type");
         }
         else {
           ProcessError(static_cast<Expression*>(method_call), L"Undefined class or method call: '" + method_call->GetMethodName() + L"'");
@@ -2967,7 +3052,8 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
     }
     else {
       if(!variable_name.empty()) {
-        ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'");
+        ProcessError(static_cast<Expression*>(method_call), L"Undefined class: '" + variable_name + L"'" + BundleSuggestion(variable_name));
+        undefined_classes.insert(variable_name);
       }
       else {
         ProcessError(static_cast<Expression*>(method_call), L"Undefined class or method call: '" + method_call->GetMethodName() + L"'");
@@ -6124,7 +6210,20 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
     const std::wstring right_name = ShortTypeName(right);
 
     switch(left->GetType()) {
-    case VAR_TYPE:
+    case VAR_TYPE: {
+      // An operand still typed Var here never got a concrete type. Inside a
+      // method an unknown identifier is silently turned into a new
+      // type-inferred entry -- that is how `x := 1` declares one -- so using a
+      // name that was never declared arrives here rather than being reported
+      // where it was read. Name it, with the guidance the class-level check
+      // already gives, instead of printing the internal placeholder type.
+      const std::wstring var_name = NamedVariable(left_expr);
+      if(!var_name.empty()) {
+        ProcessError(left_expr, L"Undefined variable: '" + var_name + L"'"
+                     L"\n\tCheck spelling, ensure the variable is declared in the current scope, or add a 'use' statement for external bundles.");
+        break;
+      }
+
       // VAR
       switch(right->GetType()) {
       case FUNC_TYPE:
@@ -6168,6 +6267,7 @@ void ContextAnalyzer::AnalyzeCalculationCast(CalculatedExpression* expression, c
         ProcessError(left_expr, L"Invalid operation '" + op + L"' between types: Var and Bool");
         break;
       }
+    }
       break;
 
     case ALIAS_TYPE:
@@ -7556,7 +7656,12 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   }
   else {
     if(left) {
-      ProcessError(expression, L"Unknown class cast type: '" + left->GetName() + L"'");
+      // A name already reported as an undefined class does not need a second,
+      // differently worded complaint about the same name (#cascade): the reader
+      // has one mistake to fix, not two.
+      if(undefined_classes.find(left->GetName()) == undefined_classes.end()) {
+        ProcessError(expression, L"Unknown class cast type: '" + left->GetName() + L"'");
+      }
     }
     else {
       ProcessError(expression, L"Invalid class, enum or method call context\n\tEnsure all required libraries have been included");
@@ -9452,7 +9557,8 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
         expression->SetToLibraryClass(to_lib_class);
       }
       else {
-        ProcessError(expression, L"Undefined class: '" + to_class_name + L"'");
+        ProcessError(expression, L"Undefined class: '" + to_class_name + L"'" + BundleSuggestion(to_class_name));
+        undefined_classes.insert(to_class_name);
       }
     }
   }

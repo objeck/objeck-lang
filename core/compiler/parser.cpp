@@ -31,6 +31,9 @@
 
 #include "parser.h"
 
+#include <set>      // CheckErrors dedups before the cap
+#include <vector>
+
 bool Parser::IsBasicType([[maybe_unused]] ScannerTokenType type)
 {
   switch(GetToken()) {
@@ -210,24 +213,25 @@ bool Parser::CheckErrors()
   if(errors.size()) {
     const size_t error_max = 8;
 
-    std::multimap<int, std::wstring>::iterator error = errors.begin();
-    if(errors.size() > error_max) {
-      for(size_t i = 0; i < error_max; ++error, ++i) {
-#if defined(_DIAG_LIB) || defined(_MODULE)
-        error_strings.push_back(error->second);
-#else
-        std::wcerr << error->second << std::endl;
-#endif
+    // Repeats are dropped before the cap, not after. The same diagnostic is
+    // raised from more than one resolution path -- an undefined method call can
+    // be reported three times at one position -- and identical copies were
+    // pushing real errors off the end of the output.
+    std::set<std::wstring> seen;
+    std::vector<std::wstring> unique_errors;
+    for(std::multimap<int, std::wstring>::iterator error = errors.begin(); error != errors.end(); ++error) {
+      if(seen.insert(error->second).second) {
+        unique_errors.push_back(error->second);
       }
     }
-    else {
-      for(; error != errors.end(); ++error) {
+
+    const size_t shown = unique_errors.size() < error_max ? unique_errors.size() : error_max;
+    for(size_t i = 0; i < shown; ++i) {
 #if defined(_DIAG_LIB) || defined(_MODULE)
-        error_strings.push_back(error->second);
+      error_strings.push_back(unique_errors[i]);
 #else
-        std::wcerr << error->second << std::endl;
+      std::wcerr << unique_errors[i] << std::endl;
 #endif
-      }
     }
 
 #ifdef _DIAG_LIB
