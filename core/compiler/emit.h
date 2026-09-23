@@ -799,11 +799,14 @@ namespace backend {
       blocks.push_back(b);
     }
 
+    // Returns nullptr when this class has no method with that id. The old
+    // version dereferenced end() on a miss -- the assert is _DEBUG-only, so a
+    // release build segfaulted with no diagnostic at all (#958).
     IntermediateMethod* GetMethod(int id) {
       std::map<int, IntermediateMethod*>::iterator result = method_map.find(id);
-#ifdef _DEBUG
-      assert(result != method_map.end());
-#endif
+      if(result == method_map.end()) {
+        return nullptr;
+      }
       return result->second;
     }
 
@@ -1024,11 +1027,14 @@ namespace backend {
       class_map.insert(std::pair<int, IntermediateClass*>(c->GetId(), c));
     }
 
+    // Returns nullptr when no class carries that id. See GetMethod above: a
+    // miss used to dereference end(), which is how a library's own class ids
+    // leaking into a program build turned into a bare SIGSEGV (#958).
     IntermediateClass* GetClass(int id) {
       std::map<int, IntermediateClass*>::iterator result = class_map.find(id);
-#ifdef _DEBUG
-      assert(result != class_map.end());
-#endif
+      if(result == class_map.end()) {
+        return nullptr;
+      }
       return result->second;
     }
 

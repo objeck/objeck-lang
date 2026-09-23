@@ -895,6 +895,30 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obi_obr_parity.py "%BIN%"
 
+    # A library that uses the array copy constructor (`Int->New[src]`) built fine
+    # and then killed obc on the program build: the .obl carried the callee's
+    # library-local ids, the consuming build missed them and dereferenced a
+    # map::end(). SIGSEGV, no message, no output file (#958). No shipped library
+    # uses the construct, so the regression suite never reached it -- this builds
+    # one that does, for all four element types, then links and runs it.
+    - name: a library's array copy constructor survives linking (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_array_copy.py "$BIN"
+
+    - name: a library's array copy constructor survives linking (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_array_copy.py "%BIN%"
+
     # Every prompt in the REPL read a line without checking the read. At EOF the
     # two loops spun forever instead of leaving, and the one-shot prompts acted on
     # a line nobody typed (#917). Each invocation here reaches a prompt whose input

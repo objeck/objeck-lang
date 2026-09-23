@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+"""
+A library may use the array copy constructor, and a program may link it.
+
+Usage: check_lib_array_copy.py <bin_dir>
+
+<bin_dir> must contain obc and obr (with .exe on Windows); the libraries are
+read from the sibling lib/ directory, as run_vm_flag_tests.py does.
+
+`Int->New[src]` compiles to a call into System.$Int:Copy. Emitting that call
+from a `-tar lib` build wrote the callee's numeric ids straight into the .obl --
+but those ids are local to the library being written, and the program that links
+it numbers its own classes. The consuming build looked the id up, missed, and
+dereferenced a map::end(): obc died of SIGSEGV with no message and no output
+file, and the library was simply unusable (#958). The library itself built
+cleanly, which is why this needs both halves.
+
+No shipped library happens to use the construct, so nothing in the regression
+suite reached it. This builds a library that does.
+
+Three things would let a broken check pass silently, and each one fails here:
+- obc "succeeding" by crashing. Every invocation's return code is checked, and
+  a negative code (a signal on POSIX) is named as such.
+- a missing output file read as success. Both the .obl and the .obe must exist
+  and be non-empty before the next step runs.
+- the program running but computing nothing. Its exact stdout must match, so a
+  binary that prints an empty line does not "agree" with one that works.
+
+All four element types the copy constructor supports are covered: a regression
+that reached only one of the four switch arms would otherwise pass.
+"""
+
+import os
+import subprocess
+import sys
+import tempfile
+
+EXE = ".exe" if os.name == "nt" else ""
+TIMEOUT = 180
+
+LIBRARY = """class AryCopy {
+  function : Ints(src : Int[]) ~ Int[] {
+    return Int->New[src];
+  }
+
+  function : Chars(src : Char[]) ~ Char[] {
+    return Char->New[src];
+  }
+
+  function : Bytes(src : Byte[]) ~ Byte[] {
+    return Byte->New[src];
+  }
+
+  function : Floats(src : Float[]) ~ Float[] {
+    return Float->New[src];
+  }
+}
+"""
+
+PROGRAM = """class User {
+  function : Main(args : String[]) ~ Nil {
+    i := Int->New[3];
+    i[0] := 7; i[1] := 8; i[2] := 9;
+    ic := AryCopy->Ints(i);
+    ic[0] := 70;
+    a := ic[0]; b := ic[1]; c := ic[2]; d := i[0];
+    "int={$a},{$b},{$c} src={$d}"->PrintLine();
+
+    ch := Char->New[2];
+    ch[0] := 'a'; ch[1] := 'b';
+    cc := AryCopy->Chars(ch);
+    e := cc[0]; f := cc[1]; g := cc->Size();
+    "char={$e}{$f} size={$g}"->PrintLine();
+
+    by := Byte->New[2];
+    by[0] := 1; by[1] := 2;
+    bc := AryCopy->Bytes(by);
+    h := bc[0]->ToInt(); j := bc[1]->ToInt();
+    "byte={$h},{$j}"->PrintLine();
+
+    fl := Float->New[2];
+    fl[0] := 1.5; fl[1] := 2.5;
+    fc := AryCopy->Floats(fl);
+    k := fc[0]; m := fc[1];
+    "float={$k},{$m}"->PrintLine();
+  }
+}
+"""
+
+# A copy is a copy: writing through it must not reach the source array -- "src=7"
+# is the check that Ints() returned a copy and not the caller's own array.
+# Floats interpolate at six decimal places; bytes are widened with ToInt() so the
+# expectation is digits rather than two control characters.
+EXPECTED = ["int=70,8,9 src=7", "char=ab size=2", "byte=1,2", "float=1.500000,2.500000"]
+
+
+def fail(msg):
+    print("FAIL: %s" % msg)
+    sys.exit(1)
+
+
+def describe(code):
+    if code < 0:
+        return "died on signal %d" % -code
+    return "exit %d" % code
+
+
+def run(argv, cwd, env, what):
+    try:
+        proc = subprocess.run(argv, cwd=cwd, env=env, timeout=TIMEOUT,
+                              stdin=subprocess.DEVNULL,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except subprocess.TimeoutExpired:
+        fail("%s timed out after %ds" % (what, TIMEOUT))
+    out = proc.stdout.decode("utf-8", "replace").strip()
+    if proc.returncode != 0:
+        fail("%s %s\n%s" % (what, describe(proc.returncode), out))
+    return out
+
+
+def non_empty(path, what):
+    if not os.path.isfile(path) or os.path.getsize(path) == 0:
+        fail("%s produced no %s" % (what, os.path.basename(path)))
+
+
+def main():
+    if len(sys.argv) != 2:
+        print(__doc__.strip())
+        return 2
+
+    bin_dir = os.path.abspath(sys.argv[1])
+    obc = os.path.join(bin_dir, "obc" + EXE)
+    obr = os.path.join(bin_dir, "obr" + EXE)
+    lib_dir = os.path.join(os.path.dirname(bin_dir), "lib")
+    for path in (obc, obr):
+        if not os.path.isfile(path):
+            fail("no %s" % path)
+    if not os.path.isdir(lib_dir):
+        fail("no library directory at %s" % lib_dir)
+
+    with tempfile.TemporaryDirectory() as work:
+        # obc resolves -lib against OBJECK_LIB_PATH, so the generated library
+        # goes into a private copy of lib/ rather than the real deploy tree.
+        private_lib = os.path.join(work, "lib")
+        os.mkdir(private_lib)
+        for name in os.listdir(lib_dir):
+            if name.endswith(".obl"):
+                with open(os.path.join(lib_dir, name), "rb") as src:
+                    with open(os.path.join(private_lib, name), "wb") as dst:
+                        dst.write(src.read())
+
+        env = dict(os.environ)
+        env["OBJECK_LIB_PATH"] = private_lib
+
+        lib_src = os.path.join(work, "arycopy.obs")
+        prog_src = os.path.join(work, "user.obs")
+        with open(lib_src, "w") as handle:
+            handle.write(LIBRARY)
+        with open(prog_src, "w") as handle:
+            handle.write(PROGRAM)
+
+        lib_obl = os.path.join(private_lib, "arycopy.obl")
+        prog_obe = os.path.join(work, "user.obe")
+
+        # -opt s3 on both: the inliners are where the bad ids were dereferenced.
+        run([obc, "-src", lib_src, "-tar", "lib", "-dest", lib_obl, "-opt", "s3"],
+            work, env, "library build")
+        non_empty(lib_obl, "library build")
+
+        run([obc, "-src", prog_src, "-lib", "arycopy", "-dest", prog_obe, "-opt", "s3"],
+            work, env, "program build")
+        non_empty(prog_obe, "program build")
+
+        out = run([obr, prog_obe], work, env, "program run")
+
+    lines = [l.strip() for l in out.splitlines() if l.strip()]
+    if lines != EXPECTED:
+        fail("wrong output\n  expected: %s\n  got:      %s" % (EXPECTED, lines))
+
+    print("PASS: a library's array copy constructor survives being linked")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

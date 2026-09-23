@@ -6577,6 +6577,13 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     if(expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) &&
        expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension()) {
 
+      // Each element type's copy constructor is a call into System.$<T>:Copy.
+      // A library build must emit that call symbolically: the ids below are
+      // local to the .obl being written, and the program that links it numbers
+      // its own classes. Baking them in wrote a MTHD_CALL whose class id the
+      // consuming build had never heard of, and the optimizer then looked it
+      // up and dereferenced a map::end() -- a bare SIGSEGV out of obc, with no
+      // message and no output file (#958).
       Type* type = method_call->GetArrayType();
       switch(type->GetType()) {
       case BYTE_TYPE: {
@@ -6585,7 +6592,12 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Byte:Copy:b*,");
           if(lib_mthd) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            if(is_lib) {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LIB_MTHD_CALL, 0L, L"System.$Byte", L"System.$Byte:Copy:b*,"));
+            }
+            else {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            }
           }
         }
       }
@@ -6597,7 +6609,12 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Char:Copy:c*,");
           if(lib_mthd) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            if(is_lib) {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LIB_MTHD_CALL, 0L, L"System.$Char", L"System.$Char:Copy:c*,"));
+            }
+            else {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            }
           }
         }
       }
@@ -6609,7 +6626,12 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Int:Copy:i*,");
           if(lib_mthd) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            if(is_lib) {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LIB_MTHD_CALL, 0L, L"System.$Int", L"System.$Int:Copy:i*,"));
+            }
+            else {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            }
           }
         }
       }
@@ -6621,7 +6643,12 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Float:Copy:f*,");
           if(lib_mthd) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            if(is_lib) {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LIB_MTHD_CALL, 0L, L"System.$Float", L"System.$Float:Copy:f*,"));
+            }
+            else {
+              imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+            }
           }
         }
       }
