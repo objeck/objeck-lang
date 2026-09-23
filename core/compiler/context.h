@@ -253,6 +253,10 @@ class ContextAnalyzer {
   std::vector<CaptureFrame> capture_frames;
   std::pair<Lambda*, MethodCall*> lambda_inferred;
   std::multimap<int, std::wstring> errors;
+  std::wstring BundleSuggestion(const std::wstring& name);
+  // names already reported as undefined classes, so dependent
+  // diagnostics about the same name can be suppressed
+  std::set<std::wstring> undefined_classes;
   std::multimap<int, std::wstring> warnings;
   std::vector<std::wstring> alt_error_method_names;
   std::map<const std::wstring, Type*> type_map;
