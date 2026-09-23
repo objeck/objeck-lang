@@ -961,6 +961,16 @@ jobs:
         command -v python3 >/dev/null 2>&1 || PY=python
         "$PY" core/utils/updater/test_update.py
 
+    # cov_scan.sh's large-submission flow, against a mock Coverity Scan. Above
+    # 500 MB the single-shot form POST stops working and the script switches to
+    # initialize -> PUT -> enqueue; the capture is at about a third of that, so
+    # a normal run never reaches the code. Without this it would first execute
+    # on the day it is needed (#941). Runs on Linux only -- cov_scan.cmd still
+    # refuses an oversized archive with a message naming the limit.
+    - name: Coverity large-submission flow (mock)
+      if: matrix.platform == 'linux-x64'
+      run: python3 core/release/cov_scan_test.py
+
     # Pure-logic unit test for the phi3 token sampler (no ONNX Runtime/model).
     - name: Run ONNX sampling unit test (POSIX)
       if: matrix.platform == 'linux-x64'
