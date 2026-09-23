@@ -119,44 +119,65 @@ jobs:
   # Keep the newest few -- the CodeQL action restores by key PREFIX, so a recent
   # entry still warm-starts a new commit -- and drop the rest. Runs only on
   # master, after the analysis that created today's entry.
+  # Actions caches are capped at 10 GB per repository, and past the cap GitHub
+  # evicts whatever is oldest -- which is how a release build lost its
+  # dependency caches and gained about forty minutes (#940).
+  #
+  # Several families grow without bound because their keys embed something that
+  # changes: CodeQL writes a ~460 MB TRAP cache per analysed COMMIT, and the
+  # dependency caches re-key whenever their input hash moves. Superseded entries
+  # can never be hit again -- the key names them -- so they are pure dead weight.
+  #
+  # Keep the newest few of each family rather than only the current one: these
+  # actions restore by key PREFIX, so a recent entry still warm-starts a new run.
+  # Pruning to exactly one would trade the ceiling problem for a slower build.
   prune-caches:
-    name: Prune superseded CodeQL caches
+    name: Prune superseded caches
     needs: analyze
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       actions: write
     steps:
-      - name: Delete TRAP caches for superseded commits
+      - name: Delete superseded cache entries
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          KEEP: '3'
+          # <key prefix>:<how many newest to keep>
+          FAMILIES: 'codeql-trap:3 macOS-brew-downloads:2 Linux-x64-apt:2 Linux-arm64-apt:2'
         run: |
           set -euo pipefail
 
-          gh api "repos/$REPO/actions/caches?per_page=100" \
-            --jq '.actions_caches[] | select(.key | startswith("codeql-trap")) | "\(.created_at)\t\(.id)\t\(.size_in_bytes)\t\(.key)"' \
-            | sort -r > all.tsv
+          before=$(gh api "repos/$REPO/actions/caches?per_page=100" --jq '[.actions_caches[].size_in_bytes] | add // 0')
+          echo "cache before: $((before / 1048576)) MB"
 
-          total=$(wc -l < all.tsv)
-          echo "codeql-trap caches: $total (keeping newest $KEEP)"
-          if [ "$total" -le "$KEEP" ]; then
-            echo "nothing to prune"
-            exit 0
-          fi
+          for family in $FAMILIES; do
+            prefix=${family%:*}
+            keep=${family#*:}
 
-          tail -n +$((KEEP + 1)) all.tsv | while IFS=$'\t' read -r created id size key; do
-            echo "  deleting $key ($((size / 1048576)) MB, $created)"
-            gh api -X DELETE "repos/$REPO/actions/caches/$id"
+            gh api "repos/$REPO/actions/caches?per_page=100" \
+              --jq ".actions_caches[] | select(.key | startswith(\"$prefix\")) | \"\(.created_at)\t\(.id)\t\(.size_in_bytes)\t\(.key)\"" \
+              | sort -r > family.tsv
+
+            total=$(wc -l < family.tsv)
+            echo "$prefix: $total entries (keeping newest $keep)"
+            [ "$total" -le "$keep" ] && continue
+
+            tail -n +$((keep + 1)) family.tsv | while IFS=$'\t' read -r created id size key; do
+              echo "  deleting $key ($((size / 1048576)) MB, $created)"
+              gh api -X DELETE "repos/$REPO/actions/caches/$id"
+            done
+
+            # Report rather than assume: a delete that silently failed would
+            # otherwise look exactly like a successful prune, which is the whole
+            # failure mode this job exists to prevent.
+            left=$(gh api "repos/$REPO/actions/caches?per_page=100" \
+              --jq "[.actions_caches[] | select(.key | startswith(\"$prefix\"))] | length")
+            if [ "$left" -gt "$keep" ]; then
+              echo "::error::$prefix still has $left entries, expected at most $keep"
+              exit 1
+            fi
           done
 
-          # Report the result rather than assuming it: a delete that silently
-          # failed would otherwise look exactly like a successful prune.
-          left=$(gh api "repos/$REPO/actions/caches?per_page=100" \
-            --jq '[.actions_caches[] | select(.key | startswith("codeql-trap"))] | length')
-          echo "codeql-trap caches remaining: $left"
-          if [ "$left" -gt "$KEEP" ]; then
-            echo "::error::prune left $left caches, expected at most $KEEP"
-            exit 1
-          fi
+          after=$(gh api "repos/$REPO/actions/caches?per_page=100" --jq '[.actions_caches[].size_in_bytes] | add // 0')
+          echo "cache after: $((after / 1048576)) MB (freed $(((before - after) / 1048576)) MB)"
