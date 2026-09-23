@@ -58,6 +58,7 @@
 #include <cerrno>
 #include <fcntl.h>
 #include <sys/file.h>
+#include <sys/stat.h>   // fstat/stat, to re-check the locked inode
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
@@ -1148,28 +1149,63 @@ static int AcquireLock(const fs::path& root)
   }
   return fd;
 #else
-  const int fd = open(lock_path.c_str(), O_CREAT | O_RDWR, 0600);
-  if(fd < 0) {
-    return -1;
+  // ReleaseLock unlinks the file, which makes the naive open+flock unsafe: a
+  // second obu can open the inode, the holder can then unlink it, and the
+  // second obu's flock succeeds on a file that is no longer at lock_path --
+  // while a third obu creates a fresh one and locks that. Two winners.
+  //
+  // Re-check, after locking, that the inode we hold is still the one the path
+  // names. If it is not, the file was replaced under us; drop it and retry.
+  for(int attempt = 0; attempt < 4; ++attempt) {
+    const int fd = open(lock_path.c_str(), O_CREAT | O_RDWR, 0600);
+    if(fd < 0) {
+      return -1;
+    }
+    if(flock(fd, LOCK_EX | LOCK_NB) != 0) {
+      close(fd);
+      return -1;   // another obu holds it
+    }
+
+    struct stat held {}, named {};
+    if(fstat(fd, &held) != 0) {
+      close(fd);
+      return -1;
+    }
+    if(stat(lock_path.c_str(), &named) == 0 &&
+       held.st_dev == named.st_dev && held.st_ino == named.st_ino) {
+      return fd;
+    }
+    close(fd);   // unlinked or replaced between our open and our lock
   }
-  if(flock(fd, LOCK_EX | LOCK_NB) != 0) {
-    close(fd);
-    return -1;
-  }
-  return fd;
+  return -1;
 #endif
 }
 
-// close() for the lock fd. MSVC spells it _close and only exposes the
-// unprefixed name as a deprecated alias.
-static void ReleaseLock(int fd)
+// Releases the lock and removes the file, so a finished obu leaves nothing
+// behind in the user's install root (#931).
+//
+// On POSIX the unlink happens while the lock is still held, so a process that
+// opened the old inode cannot then acquire it and believe it owns a lock on a
+// file that no longer exists -- AcquireLock's inode re-check closes the rest of
+// that window. On Windows exclusion comes from the _SH_DENYRW share mode rather
+// than from the inode, and a file another obu has open cannot be deleted at
+// all, so the failure to remove it there is the correct outcome and is ignored.
+//
+// MSVC spells close() as _close and only exposes the unprefixed name as a
+// deprecated alias.
+static void ReleaseLock(int fd, const fs::path& root)
 {
   if(fd < 0) {
     return;
   }
+  const fs::path lock_path = root / ".obu.lock";
 #ifdef _WIN32
   _close(fd);
+  std::error_code ec;
+  fs::remove(lock_path, ec);
 #else
+  std::error_code ec;
+  fs::remove(lock_path, ec);
   close(fd);
 #endif
 }
@@ -1228,7 +1264,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   RecoverInterruptedSwap(root, is_quiet);
   if(!fs::exists(root / "bin", ec)) {
     std::cerr << "Could not locate the Objeck install root (expected a bin/ beside obu)." << std::endl;
-    ReleaseLock(lock_fd);
+    ReleaseLock(lock_fd, root);
     return EXIT_CHECK_ERROR;
   }
 
@@ -1238,9 +1274,9 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 
   // A single cleanup+unlock path so no early return leaks staging or the lock.
   struct Guard {
-    const fs::path& work; int fd; bool armed = true;
-    ~Guard() { if(armed) { std::error_code e; fs::remove_all(work, e); } ReleaseLock(fd); }
-  } guard{work, lock_fd};
+    const fs::path& work; const fs::path& root; int fd; bool armed = true;
+    ~Guard() { if(armed) { std::error_code e; fs::remove_all(work, e); } ReleaseLock(fd, root); }
+  } guard{work, root, lock_fd};
 
   // resolve the target release
   std::string json, error;
@@ -1395,7 +1431,11 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   if(!MoveTreeEntries(payload, root, error)) {
     std::cerr << "Swap failed while installing the new version: " << error << ". Rolling back." << std::endl;
     RemoveManagedEntries(root);
-    MoveTreeEntries(previous, root, error);
+    if(!MoveTreeEntries(previous, root, error)) {
+      std::cerr << "RESTORE ALSO FAILED: " << error << ". Your install is split between the root and "
+                << previous << "; move the contents of that directory back by hand." << std::endl;
+      return EXIT_CHECK_ERROR;   // keep .previous: it holds the only copy
+    }
     fs::remove_all(previous, ec);
     return EXIT_CHECK_ERROR;
   }
@@ -1407,7 +1447,11 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   if(health != 0) {
     std::cerr << "The updated Objeck failed its post-install check; rolling back." << std::endl;
     RemoveManagedEntries(root);
-    MoveTreeEntries(previous, root, error);
+    if(!MoveTreeEntries(previous, root, error)) {
+      std::cerr << "RESTORE ALSO FAILED: " << error << ". Your install is split between the root and "
+                << previous << "; move the contents of that directory back by hand." << std::endl;
+      return EXIT_CHECK_ERROR;   // keep .previous: it holds the only copy
+    }
     fs::remove_all(previous, ec);
     return EXIT_CHECK_ERROR;
   }
@@ -1449,7 +1493,7 @@ static int DoRollback(bool is_quiet)
   // rollback would move the live install aside and restore nothing
   if(!fs::exists(previous / "bin", ec)) {
     std::cerr << "There is no previous version to roll back to." << std::endl;
-    ReleaseLock(lock_fd);
+    ReleaseLock(lock_fd, root);
     return EXIT_CHECK_ERROR;
   }
 
@@ -1460,14 +1504,14 @@ static int DoRollback(bool is_quiet)
   if(!MoveTreeEntries(root, holding, error)) {
     std::cerr << "Rollback failed while setting aside the current version: " << error << std::endl;
     MoveTreeEntries(holding, root, error);
-    ReleaseLock(lock_fd);
+    ReleaseLock(lock_fd, root);
     return EXIT_CHECK_ERROR;
   }
   if(!MoveTreeEntries(previous, root, error)) {
     std::cerr << "Rollback failed while restoring: " << error << ". Attempting to undo." << std::endl;
     RemoveManagedEntries(root);
     MoveTreeEntries(holding, root, error);
-    ReleaseLock(lock_fd);
+    ReleaseLock(lock_fd, root);
     return EXIT_CHECK_ERROR;
   }
   // The version we rolled back FROM is discarded. On Windows the running
@@ -1482,7 +1526,7 @@ static int DoRollback(bool is_quiet)
   fs::remove_all(previous, ec);
 
   const int health = RunArgv({(root / "bin" / ("obc" OBU_EXE_SUFFIX)).string(), "-v"}, is_quiet);
-  ReleaseLock(lock_fd);
+  ReleaseLock(lock_fd, root);
   if(health != 0) {
     std::cerr << "Warning: the restored version did not pass its health check." << std::endl;
     return EXIT_CHECK_ERROR;

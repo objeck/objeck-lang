@@ -294,7 +294,8 @@ def make_release(reldir, asset_name, payload_version="NEW", corrupt_hash=False,
 # obu's own scratch entries, mirroring IsObuScratchEntry in obu.cpp. Every
 # refusal is asserted against each of these BY NAME rather than against a
 # summary flag, so a failure says which one was left behind.
-RESIDUE_PATHS = (".previous", ".obu-work", ".obu-work/staging", ".obu-rollback")
+RESIDUE_PATHS = (".previous", ".obu-work", ".obu-work/staging", ".obu-rollback",
+                 ".obu.lock")
 
 
 def check_no_residue(label, root):
@@ -308,9 +309,10 @@ def tree_state(root):
     """Every path under 'root' with file contents hashed -- the evidence that a
     refused update changed nothing.
 
-    '.obu.lock' is excluded on purpose: AcquireLock creates it in the install
-    root on every update/rollback and ReleaseLock only closes the descriptor, so
-    it appears after the first run and is not a change to the install itself.
+    Nothing is excluded. '.obu.lock' used to be, because ReleaseLock only closed
+    the descriptor and left the file sitting in the install root; obu removes it
+    on release now (#931), so a run that refuses really does leave the tree byte
+    for byte as it found it, and this function can say so without a carve-out.
     """
     state = {}
     for base, dirs, files in os.walk(root):
@@ -320,8 +322,6 @@ def tree_state(root):
             state[rel + "/"] = "dir"
         for name in sorted(files):
             rel = os.path.normpath(os.path.join(rel_base, name)).replace("\\", "/")
-            if rel == ".obu.lock":
-                continue
             with open(os.path.join(base, name), "rb") as handle:
                 state[rel] = hashlib.sha256(handle.read()).hexdigest()
     return state
