@@ -1,0 +1,84 @@
+#~
+# An unparsed CsvTable reports, it does not crash the VM.
+#
+# CsvTable->Init only built @header_names when the parse succeeded, so a table
+# that failed to parse carried a Nil header map. Every name-keyed reader goes
+# through that map, so the first such call dereferenced Nil and unwound the VM.
+# A caller that checks IsParsed() was fine; one that did not lost the process
+# with no way to report the bad input.
+#
+# Two inputs still leave a table unparsed. Data with no line ending at all is a
+# single row, and DetectEnding keeps the CRLF default for it; and the two-
+# argument constructor takes the caller's ending verbatim, so naming the wrong
+# one splits nothing. (The LF route the original report named is gone --
+# DetectEnding reads the ending out of the data now, so LF text parses. The Nil
+# map it found did not go away with it.)
+#
+# A parsed table is checked alongside with the same readers: a build that had
+# broken parsing outright would otherwise pass the unparsed half perfectly.
+# EXTRA_LIBS: csv,gen_collect
+~#
+
+use Data.CSV;
+
+class CsvUnparsedTable {
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
+    # no line ending at all: one row, so the table never parses
+    bad := CsvTable->New("name,dept");
+    failures += CheckBool("single-line text is not parsed", bad->IsParsed(), false);
+
+    # every name-keyed reader must answer rather than fault
+    failures += CheckInt("unparsed GetRowId", bad->GetRowId("dept"), -1);
+    failures += CheckInt("unparsed CountMatches", bad->CountMatches("dept", "Eng"), 0);
+    failures += CheckBool("unparsed Matches is Nil", bad->Matches("dept", "Eng") = Nil, true);
+    failures += CheckBool("unparsed Contains is Nil", bad->Contains("dept", "Eng") = Nil, true);
+    failures += CheckBool("unparsed ColumnValues is Nil", bad->ColumnValues("dept") = Nil, true);
+
+    # a name that could never exist is the same answer, not a different fault
+    failures += CheckInt("unparsed GetRowId, unknown name", bad->GetRowId("nosuch"), -1);
+
+    # the wrong ending, named explicitly: nothing to split on
+    forced := CsvTable->New("name,dept\nAlice,Eng\nBob,HR", "\r\n");
+    failures += CheckBool("forced wrong ending is not parsed", forced->IsParsed(), false);
+    failures += CheckInt("forced wrong ending GetRowId", forced->GetRowId("dept"), -1);
+    failures += CheckInt("forced wrong ending CountMatches", forced->CountMatches("dept", "Eng"), 0);
+
+    # LF text with the ending detected still parses -- #916's fix, guarded here
+    lf := CsvTable->New("name,dept\nAlice,Eng\nBob,HR");
+    failures += CheckBool("LF text is parsed (detected ending)", lf->IsParsed(), true);
+    failures += CheckInt("LF text GetRowId", lf->GetRowId("dept"), 1);
+
+    # CRLF endings: the same readers still return the real values
+    good := CsvTable->New("name,dept\r\nAlice,Eng\r\nBob,HR\r\nCarol,Eng");
+    failures += CheckBool("CRLF text is parsed", good->IsParsed(), true);
+    failures += CheckInt("parsed GetRowId", good->GetRowId("dept"), 1);
+    failures += CheckInt("parsed CountMatches", good->CountMatches("dept", "Eng"), 2);
+    failures += CheckBool("parsed Matches is not Nil", good->Matches("dept", "Eng") <> Nil, true);
+    failures += CheckBool("parsed GetHeaders is not Nil", good->GetHeaders() <> Nil, true);
+    failures += CheckInt("parsed GetRowId, unknown name", good->GetRowId("nosuch"), -1);
+
+    if(failures > 0) {
+      Runtime->Exit(1);
+    };
+  }
+
+  function : CheckInt(what : String, actual : Int, expected : Int) ~ Int {
+    if(actual <> expected) {
+      "FAIL: {$what}: expected {$expected}, got {$actual}"->PrintLine();
+      return 1;
+    };
+    "PASS: {$what} = {$actual}"->PrintLine();
+    return 0;
+  }
+
+  function : CheckBool(what : String, actual : Bool, expected : Bool) ~ Int {
+    if(actual <> expected) {
+      "FAIL: {$what}: expected {$expected}, got {$actual}"->PrintLine();
+      return 1;
+    };
+    "PASS: {$what} = {$actual}"->PrintLine();
+    return 0;
+  }
+}

@@ -607,8 +607,12 @@ if(csv->IsParsed()) {
 				@is_parsed := false;
 			};
 			
+			# Always give the table a header map, even when the parse failed.
+			# Every name-keyed reader below goes through @header_names, and each
+			# already handles a name it cannot find; leaving it Nil turned an
+			# unparsed table from a reportable state into a VM unwind (#934).
+			@header_names := Hash->New()<String, IntRef>;
 			if(@is_parsed) {
-				@header_names := Hash->New()<String, IntRef>;
 				headers := @data->Get(0)->As(CsvRow);
 				each(i : headers) {
 					@header_names->Insert(headers->Get(i), i);
