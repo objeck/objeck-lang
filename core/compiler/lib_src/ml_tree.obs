@@ -988,16 +988,38 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		@root : RegressionTreeNode;
 		@max_depth : Int;
 		@min_samples : Int;
+		@max_features : Int;
+		@rng_state : Int;
 		@fitted : Bool;
 
 		#~
-		Constructor
+		Constructor. Every feature is considered at every node.
 		@param max_depth deepest the tree may grow
 		@param min_samples a node with this many rows or fewer becomes a leaf
 		~#
 		New(max_depth : Int, min_samples : Int) {
 			@max_depth := max_depth;
 			@min_samples := min_samples;
+			@max_features := 0;
+			@rng_state := 1;
+			@fitted := false;
+		}
+
+		#~
+		Constructor for a tree that considers only a sample of the features at each
+		node, which is how a forest decorrelates its trees. It is also the cheapest
+		lever on build time: the split search dominates, and it is linear in the
+		number of features tried, so trying sqrt(f) of f is roughly that speedup.
+		@param max_depth deepest the tree may grow
+		@param min_samples a node with this many rows or fewer becomes a leaf
+		@param max_features features to sample per node; 0 or more than the width means all
+		@param seed seeds the feature sampling, so the same seed rebuilds the same tree
+		~#
+		New(max_depth : Int, min_samples : Int, max_features : Int, seed : Int) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@max_features := max_features;
+			@rng_state := seed;
 			@fitted := false;
 		}
 
@@ -1030,6 +1052,48 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			return true;
 		}
 
+		#~
+		Builds the tree over a chosen list of rows, which may repeat. A forest fits
+		each tree to a bootstrap sample, and a sample drawn with replacement is a
+		list of row indexes rather than a matrix, so passing the list avoids copying
+		the data once per tree.
+		@param X rows x features, continuous
+		@param y one label per row of X
+		@param rows_idx row indexes to build over; repeats are allowed and meaningful
+		@return true when the tree was built
+		~#
+		method : public : FitRows(X : Float[,], y : Bool[], rows_idx : Int[]) ~ Bool {
+			if(X = Nil | y = Nil | rows_idx = Nil) {
+				return false;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1 | y->Size() <> rows) {
+				return false;
+			};
+
+			count := rows_idx->Size();
+			if(count < 1) {
+				return false;
+			};
+
+			# Copy, because BuildNode partitions the list it is given.
+			indexes := Int->New[count];
+			each(i : count) {
+				if(rows_idx[i] < 0 | rows_idx[i] >= rows) {
+					return false;
+				};
+				indexes[i] := rows_idx[i];
+			};
+
+			@root := BuildNode(X, y, indexes, count, 0);
+			@fitted := true;
+
+			return true;
+		}
+
 		# Recursively builds a node over the rows listed in indexes[0..count-1].
 		method : BuildNode(X : Float[,], y : Bool[], indexes : Int[], count : Int, depth : Int) ~ RegressionTreeNode {
 			positives := 0;
@@ -1054,8 +1118,39 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 			best_threshold := 0.0;
 			best_gini := node_gini;
 
+			# Hoisted: a local declared in a nested block and read outside it is a
+			# known way to fault in this compiler.
+			f : Int;
+			pick : Int;
+			swap : Int;
+
+			# Which features this node considers. Sampling a subset per node is what
+			# decorrelates a forest's trees; max_features 0 means consider them all.
+			try_count := cols;
+			if(@max_features > 0 & @max_features < cols) {
+				try_count := @max_features;
+			};
+
+			feature_list := Int->New[cols];
+			each(i : cols) {
+				feature_list[i] := i;
+			};
+
+			if(try_count < cols) {
+				# Partial Fisher-Yates: the first try_count entries become a sample
+				# without replacement, so a feature cannot be tried twice at one node.
+				for(s := 0; s < try_count; s += 1;) {
+					@rng_state := (@rng_state * 1103515245 + 12345) and 2147483647;
+					pick := s + @rng_state % (cols - s);
+					swap := feature_list[s];
+					feature_list[s] := feature_list[pick];
+					feature_list[pick] := swap;
+				};
+			};
+
 			values := Float->New[count];
-			each(f : cols) {
+			each(fi : try_count) {
+				f := feature_list[fi];
 				each(i : count) {
 					values[i] := X[indexes[i], f];
 				};
@@ -1238,6 +1333,203 @@ recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 		#~
 		Whether Fit has been called successfully.
 		@return true when this tree has been built
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+	}
+
+	#~
+	A forest of continuous-feature classification trees: each is fitted to a
+	bootstrap sample of the rows and considers a sample of the features at every
+	node, and the scores are averaged.
+
+	RandomForest above is built on the binary-feature DecisionTree, so continuous
+	data must be binned before it can be used. This is built on
+	DecisionTreeClassifier and splits on thresholds directly.
+
+	Both kinds of sampling matter, for different reasons. Bootstrapping the rows
+	and sampling the features decorrelates the trees, which is what makes the
+	average better than any single tree. Sampling the features is also the cheapest
+	thing available on build time: the split search dominates and is linear in the
+	features tried, so the default of sqrt(features) is roughly that speedup over
+	trying all of them.
+
+	Deterministic: the same seed rebuilds the same forest, so a result can be
+	reproduced rather than merely repeated.
+
+```
+forest := RandomForestClassifier->New(100, 8, 5, 42);
+forest->Fit(x_train, y_train);
+scores := forest->PredictScore(x_test);
+recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
+```
+	~#
+	class RandomForestClassifier {
+		@trees : Vector<DecisionTreeClassifier>;
+		@num_trees : Int;
+		@max_depth : Int;
+		@min_samples : Int;
+		@max_features : Int;
+		@seed : Int;
+		@fitted : Bool;
+
+		#~
+		Constructor using the usual sqrt(features) sample at each node.
+		@param num_trees trees in the forest
+		@param max_depth deepest any tree may grow
+		@param min_samples a node with this many rows or fewer becomes a leaf
+		@param seed seeds bootstrapping and feature sampling
+		~#
+		New(num_trees : Int, max_depth : Int, min_samples : Int, seed : Int) {
+			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@max_features := 0;
+			@seed := seed;
+			@fitted := false;
+		}
+
+		#~
+		Constructor with an explicit feature sample size.
+		@param num_trees trees in the forest
+		@param max_depth deepest any tree may grow
+		@param min_samples a node with this many rows or fewer becomes a leaf
+		@param max_features features to sample per node; 0 means sqrt(features)
+		@param seed seeds bootstrapping and feature sampling
+		~#
+		New(num_trees : Int, max_depth : Int, min_samples : Int, max_features : Int, seed : Int) {
+			@num_trees := num_trees;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@max_features := max_features;
+			@seed := seed;
+			@fitted := false;
+		}
+
+		#~
+		Grows the forest.
+		@param X rows x features, continuous
+		@param y one label per row, true for the positive class
+		@return true when every tree was built
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			if(X = Nil | y = Nil | @num_trees < 1) {
+				return false;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1 | y->Size() <> rows) {
+				return false;
+			};
+
+			mf := @max_features;
+			if(mf < 1) {
+				mf := Float->Sqrt(cols->As(Float))->As(Int);
+				if(mf < 1) {
+					mf := 1;
+				};
+			};
+
+			@trees := Vector->New()<DecisionTreeClassifier>;
+			state := @seed;
+			sample := Int->New[rows];
+
+			each(t : @num_trees) {
+				# Bootstrap: rows drawn WITH replacement, so about a third of the
+				# rows are left out of each tree and the trees see different data.
+				each(i : rows) {
+					state := (state * 1103515245 + 12345) and 2147483647;
+					sample[i] := state % rows;
+				};
+
+				# Each tree gets its own feature-sampling seed, otherwise every tree
+				# would sample the same features in the same order and the forest
+				# would be one tree repeated.
+				state := (state * 1103515245 + 12345) and 2147483647;
+				tree := DecisionTreeClassifier->New(@max_depth, @min_samples, mf, state);
+				if(<>tree->FitRows(X, y, sample)) {
+					return false;
+				};
+
+				@trees->AddBack(tree);
+			};
+
+			@fitted := true;
+
+			return true;
+		}
+
+		#~
+		The mean of the trees' leaf proportions: the forest's score for each row.
+		@param X rows x features
+		@return one score per row, or Nil when unfitted
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			if(<>@fitted | X = Nil | @trees = Nil | @trees->Size() = 0) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			total := Float->New[rows];
+
+			each(t : @trees) {
+				scores := @trees->Get(t)->PredictScore(X);
+				if(scores = Nil) {
+					return Nil;
+				};
+
+				each(i : rows) {
+					total[i] += scores[i];
+				};
+			};
+
+			count := @trees->Size()->As(Float);
+			each(i : rows) {
+				total[i] := total[i] / count;
+			};
+
+			return total;
+		}
+
+		#~
+		Labels at the usual half-way threshold. Prefer PredictScore with an explicit
+		threshold when the false-alarm rate matters.
+		@param X rows x features
+		@return one label per row, or Nil when unfitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			scores := PredictScore(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] > 0.5;
+			};
+
+			return result;
+		}
+
+		#~
+		How many trees were grown.
+		@return tree count, or 0 when unfitted
+		~#
+		method : public : GetTreeCount() ~ Int {
+			if(<>@fitted | @trees = Nil) {
+				return 0;
+			};
+
+			return @trees->Size();
+		}
+
+		#~
+		Whether Fit has been called successfully.
+		@return true when this forest has been grown
 		~#
 		method : public : IsFitted() ~ Bool {
 			return @fitted;
