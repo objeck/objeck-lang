@@ -281,6 +281,54 @@ if ($needManifest) {
     Write-Host ''
 }
 
+# --- libraries -------------------------------------------------------------
+# The .obl set is tracked in core/lib and deploy_windows.cmd only COPIES it, so
+# a deploy tree can hold libraries from weeks ago while its binaries are current.
+# That is not cosmetic: a stale set cost another session a full suite run reading
+# 304/4/10, where eight of the failures were ml_* sources failing to compile
+# against .obl files that predated the methods they call. Nothing in that output
+# points at the libraries.
+#
+# Rebuilding binaries without refreshing these is the same class of lie this
+# script exists to prevent, so they are refreshed and recorded alongside.
+
+$libRecords = @()
+$libSource = Join-Path $repo 'core\lib'
+$libTarget = Join-Path $target 'lib'
+if (Test-Path $libSource) {
+    if (-not (Test-Path $libTarget) -and -not $WhatIf) {
+        New-Item -ItemType Directory -Path $libTarget | Out-Null
+    }
+    $obls = Get-ChildItem -Path $libSource -Filter *.obl -ErrorAction SilentlyContinue
+    $changed = 0
+    foreach ($obl in $obls) {
+        $destination = Join-Path $libTarget $obl.Name
+        $source = (Get-FileHash $obl.FullName -Algorithm MD5).Hash.Substring(0, 12)
+        $current = ''
+        if (Test-Path $destination) {
+            $current = (Get-FileHash $destination -Algorithm MD5).Hash.Substring(0, 12)
+        }
+        if ($current -ne $source) {
+            $changed++
+            if ($WhatIf) {
+                Write-Host ("  {0,-18} would refresh  {1} -> {2}" -f $obl.Name, $(if ($current) { $current } else { '(absent)' }), $source)
+            } else {
+                Copy-Item $obl.FullName $destination -Force
+                Write-Host ("  {0,-18} refreshed      {1} -> {2}" -f $obl.Name, $(if ($current) { $current } else { '(absent)' }), $source)
+            }
+        }
+        $libRecords += [pscustomobject]@{ Name = $obl.Name; Source = $source }
+    }
+    if ($changed -eq 0) {
+        Write-Host ("Libraries: {0} .obl already current." -f $obls.Count)
+    } else {
+        Write-Host ("Libraries: {0} of {1} .obl refreshed from core/lib." -f $changed, $obls.Count)
+    }
+} else {
+    Write-Host 'core/lib not found -- libraries NOT refreshed.' -ForegroundColor Yellow
+}
+Write-Host ''
+
 # --- record ----------------------------------------------------------------
 
 if (-not $WhatIf) {
@@ -302,8 +350,15 @@ if (-not $WhatIf) {
     foreach ($record in ($records | Sort-Object Name)) {
         $lines += ("{0,-12} source={1} installed={2}" -f $record.Name, $record.Source, $record.Installed)
     }
+    if ($libRecords.Count -gt 0) {
+        $lines += ''
+        $lines += '# libraries copied from core/lib (tracked; no manifest embedding)'
+        foreach ($record in ($libRecords | Sort-Object Name)) {
+            $lines += ("{0,-18} source={1}" -f $record.Name, $record.Source)
+        }
+    }
     Set-Content -Path $manifestPath -Value $lines -Encoding utf8
-    Write-Host ("Recorded {0} binaries in {1}" -f $records.Count, 'DEPLOY_MANIFEST.txt')
+    Write-Host ("Recorded {0} binaries and {1} libraries in {2}" -f $records.Count, $libRecords.Count, 'DEPLOY_MANIFEST.txt')
     Write-Host 'Compare against it when a test result looks impossible: a deploy binary'
     Write-Host 'replaced by another build reporting the same version string is invisible'
     Write-Host 'otherwise, and invalidates every measurement taken against it.'
