@@ -2,6 +2,51 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [v2026.9.7] - 2026-09-24
+
+**Supervised classification becomes usable end to end, three defects that all treated a
+`Bool` array as int-width are fixed, and float comparisons involving NaN follow IEEE.**
+`System.ML` could fit a model but not honestly evaluate one: there was no way to hold a
+scaler's statistics across a train/test split, no stratified fold, no metric that took a
+score rather than a decision, and no classifier that split continuous features. All of
+that is here, with a cross-validation runner over a common interface. Separately, a
+`Bool[]` returned from a method was mishandled in three different places — one refused to
+compile, one silently read the wrong bytes, and one aliased instead of copying. And on
+Windows every comparison involving NaN returned true, so NaN compared equal to 1.0 while
+being both less than and greater than it.
+
+### Machine Learning
+
+- **A scaler can now learn statistics once and reapply them** ([#980](https://github.com/objeck/objeck-lang/pull/980)): the static `StandardScaler` could only standardise whatever matrix it was handed, which cannot express the one correct thing to do across a train/test split. Scaling test data by its own statistics leaks the test distribution into the evaluation and quietly flatters any model measured at a fixed false-alarm rate. `FeatureScaler` gains `Fit`, `Transform` and `FitTransform`
+- **`TableEncoder` turns a mixed `CsvTable` into a model-ready matrix** ([#981](https://github.com/objeck/objeck-lang/pull/981)): the value vocabulary is fixed at `Fit`, so a test split missing a category, or carrying one the training split never saw, encodes against the same columns instead of silently changing the feature space
+- **`StratifiedKFold` keeps the class ratio, from a seed** ([#982](https://github.com/objeck/objeck-lang/pull/982)): `KFold` shuffles with the global generator and ignores labels. On imbalanced data an unseeded split cannot be reproduced, and an unstratified one lets the rare class land unevenly, so a fold may hold too few positives to measure anything at a low false-positive rate
+- **Score-based metrics** ([#983](https://github.com/objeck/objeck-lang/pull/983)): `RecallAtFpr`, `ThresholdAtFpr`, `AucRoc`, `AveragePrecision`, `RocCurve` and `PrCurve`. The existing metrics take `Bool` predictions, which are already thresholded, and a `Bool` array cannot say what recall would be at a different false-alarm rate. Instances sharing a score share an operating point, because splitting them would invent an ordering the scores do not express
+- **Classifiers that split continuous features** ([#984](https://github.com/objeck/objeck-lang/pull/984), [#986](https://github.com/objeck/objeck-lang/pull/986), [#987](https://github.com/objeck/objeck-lang/pull/987)): `DecisionTreeClassifier`, `RandomForestClassifier` and `GradientBoostedClassifier`. The existing trees take `Bool[,]`, so continuous data had to be quantile-binned first — and the binning discards the thresholds the tree exists to find. All three return a score rather than a label, so they can be evaluated at a chosen false-alarm rate
+- **A cross-validation runner** ([#999](https://github.com/objeck/objeck-lang/pull/999)): `ScoreModel` is a common interface the three classifiers implement, and `CrossValidation->Evaluate` runs the folds, fitting the scaler on the training split only. `CrossValResult` reports per-fold values *and* the mean and spread, because a single fold's AUC is extremely noisy when the positive class is rare
+- **Seven unguarded ratios in `System.ML`** ([#989](https://github.com/objeck/objeck-lang/pull/989)): two were reachable from public API with ordinary data and took the VM down — `LinearSolver->Calculate` on a target column that happened to be constant, and `Score` on a zero-row matrix in four classes, which guarded their arguments against `Nil` but not against a matrix that was merely empty
+
+### Compiler
+
+Three defects in one family: a `Bool` array returned from a method was treated as
+int-width in three separate code paths. A `Bool[]` held in a local was correct throughout,
+which is what made each of them look like something else.
+
+- **`if(obj->Predict(x) = Nil)` would not compile when the call returned `Bool[]`** ([#985](https://github.com/objeck/objeck-lang/pull/985)): rejected as "Invalid mathematical operation", while the identical comparison on `Float[]`, or on a `Bool[]` local, compiled. `IsBooleanExpression` applied its array-dimension test only to variables
+- **An indexed `Bool[]` call result read several bytes instead of one** ([#988](https://github.com/objeck/objeck-lang/issues/988)): a `Bool[]` is allocated as `NEW_BYTE_ARY`, but the path for subscripting a call's result classified it as reference width. The value then depended on neighbouring elements and on the platform's memory layout, so a *different* expression misevaluated on each backend — x64 got the left operand of `&` wrong, macOS ARM64 got `|`, Windows ARM64 got `=` against a literal. A silent wrong answer, not a compile error
+- **`Bool->New[src]` aliased instead of copying** ([#995](https://github.com/objeck/objeck-lang/issues/995)): `BOOLEAN_TYPE` had no arm in the array copy constructor's switch, so nothing was emitted and the source reference was left on the stack as the "copy". Writing through the source then changed it
+- **A library's array copy constructor crashed the compiler** ([#958](https://github.com/objeck/objeck-lang/issues/958)): the call was emitted with class ids local to the library being written, and a consuming build then dereferenced a map it had never heard of — a bare SIGSEGV out of `obc` with no message and no output file
+
+### Runtime
+
+- **Every comparison involving NaN returned true on Windows** ([#1000](https://github.com/objeck/objeck-lang/issues/1000)): NaN compared equal to 1.0 and was simultaneously less than and greater than it. Two separate causes in opposite directions. The interpreter's C++ is IEEE-correct, but the VM is built with `/fp:fast`, which permits assuming operands are not NaN — and since that flag is set only in the Windows project, the same program answered differently on Linux and macOS. The amd64 JIT had the opposite error for equality alone, because `ucomisd` sets the zero flag for *both* equal and unordered and only the parity flag separates them
+- **The old generation moved to open addressing** ([#871](https://github.com/objeck/objeck-lang/issues/871)): Windows `binarytrees` went from 2.392s to 1.789s
+- **Twelve library divisions aborted the VM on ordinary input**: `CsvColumn->Average(1, 1)` — the average of an empty range on a populated table — was confirmed as a live crash before anything was changed
+
+### Tooling
+
+- **`refresh_deploy.ps1`** rebuilds the toolchain and refreshes `deploy-<arch>` without `devenv`, which ships only with the full Visual Studio IDE. It never deletes the tree, refreshes the `.obl` set as well as the binaries, and records what it installed with a hash per file — because a deploy binary replaced by another machine's build reporting the same version string is invisible otherwise, and invalidates every measurement taken against it
+- **`audit_ratios.py`** inventories the divisions in Objeck sources and shortlists the unguarded ones. Advisory rather than a gate, and it refuses to report anything until it has classified a set of embedded fixtures correctly
+
 ## [v2026.9.6] - 2026-09-19
 
 **A correctness release for the machine-learning library and for the two places Objeck

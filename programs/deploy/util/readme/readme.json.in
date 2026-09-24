@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "The machine-learning library stops returning wrong numbers and crashing on shapes it cannot combine, obi and the embedding API gain HTTP/2 and HTTP/3, and two crashes that only ever struck ARM64 machines are fixed",
+	"title": "Supervised classification becomes usable end to end, a Bool array returned from a method is no longer mishandled in three separate places, and comparisons involving NaN follow IEEE",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,25 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.9.7",
+			"items": [
+				"System.ML: a model can now be evaluated honestly. FeatureScaler learns a training split's statistics once and reapplies them, so test data is no longer scaled by its own numbers -- which leaks the test distribution and flatters any model measured at a fixed false-alarm rate",
+				"System.ML: TableEncoder turns a mixed CsvTable into a model-ready matrix, with the value vocabulary fixed at Fit. A test split missing a category, or carrying one the training split never saw, encodes against the same columns instead of silently changing the feature space",
+				"System.ML: StratifiedKFold keeps each class's ratio in every fold and takes a seed, so a split can be reproduced. KFold ignores labels and draws from the global generator, which on imbalanced data can leave a fold with too few positives to measure anything",
+				"System.ML: metrics that take a score rather than a decision -- RecallAtFpr, ThresholdAtFpr, AucRoc, AveragePrecision, RocCurve and PrCurve. A Bool array is already thresholded and cannot say what recall would be at a different false-alarm rate",
+				"System.ML: DecisionTreeClassifier, RandomForestClassifier and GradientBoostedClassifier split continuous features directly. The existing trees take Bool[,], so data had to be quantile-binned first -- and the binning discards the thresholds a tree exists to find",
+				"System.ML: CrossValidation->Evaluate runs k folds over any of those classifiers through a common ScoreModel interface, fitting the scaler on the training split only, and reports per-fold values alongside the mean and spread. A single fold's AUC is extremely noisy when the positive class is rare",
+				"System.ML: seven divisions whose denominator depends on the data are guarded. Two took the VM down on ordinary input -- LinearSolver on a target column that happened to be constant, and Score on a matrix with no rows",
+				"Compiler: a Bool[] returned from a method is no longer treated as reference-width. Comparing such a call against Nil would not compile, an indexed call result read several bytes instead of one, and Bool->New[src] returned the source array rather than a copy. A Bool[] held in a local was correct throughout, which is what disguised all three",
+				"Compiler: the indexed-call defect was a silent wrong answer rather than an error, and it broke a different expression on each platform, so from any one machine it looked like an isolated quirk",
+				"Runtime: comparisons involving NaN follow IEEE. On Windows every one of them returned true, so NaN compared equal to 1.0 while being both less than and greater than it, and the same program answered differently on Linux and macOS",
+				"Runtime: twelve library divisions that aborted the VM on ordinary input are guarded, including the average of an empty range on a populated CSV table",
+				"Runtime: the collector's old generation moved to open addressing; Windows binarytrees went from 2.392s to 1.789s",
+				"obu: 'obu verify <archive> <SHA256SUMS>' runs the same integrity check 'update' already performs, for anyone who downloads with curl. A mismatch and an error are different exit codes, so a script can tell a wrong file from a check it could not carry out",
+				"Tools: refresh_deploy.ps1 rebuilds and refreshes a deploy tree without needing the full Visual Studio IDE, never deletes the tree, refreshes the library set as well as the binaries, and records a hash per file so a binary replaced by another machine's build is visible"
+			]
+		},
 		{
 			"version": "v2026.9.6",
 			"items": [
