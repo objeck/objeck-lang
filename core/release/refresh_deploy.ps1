@@ -210,25 +210,42 @@ if ($staged.Count -eq 0) {
 
 # --- install, recording what changed ---------------------------------------
 
+# What was installed last time, keyed by name -> source hash.
+#
+# The comparison has to be against the SOURCE hash, not against the file now
+# sitting in bin: mt.exe embeds the manifest in place, after the copy, so a
+# manifested binary no longer hashes to its build output. Comparing the two
+# reports obi.exe as replaced on every single run, and records in the manifest a
+# hash that is not on disk -- which defeats the one question the file exists to
+# answer. obr.exe hides this, because vm.vcxproj already embeds its manifest and
+# mt.exe is then a no-op.
+$previous = @{}
+$manifestPath = Join-Path $target 'DEPLOY_MANIFEST.txt'
+if (Test-Path $manifestPath) {
+    foreach ($line in (Get-Content $manifestPath)) {
+        if ($line -match '^\s*(\S+\.exe)\s+source=([0-9A-Fa-f]+)') {
+            $previous[$matches[1]] = $matches[2]
+        }
+    }
+}
+
 Write-Host 'Installing:'
 $records = @()
 foreach ($file in $staged) {
     $destination = Join-Path $targetBin $file.Name
-    $before = ''
-    if (Test-Path $destination) {
-        $before = (Get-FileHash $destination -Algorithm MD5).Hash.Substring(0, 12)
-    }
-    $after = (Get-FileHash $file.FullName -Algorithm MD5).Hash.Substring(0, 12)
+    $source = (Get-FileHash $file.FullName -Algorithm MD5).Hash.Substring(0, 12)
+    $recorded = $previous[$file.Name]
+    $present = Test-Path $destination
 
-    if ($before -eq $after) {
-        Write-Host ("  {0,-12} unchanged  {1}" -f $file.Name, $after)
+    if ($present -and $recorded -eq $source) {
+        Write-Host ("  {0,-12} unchanged  source {1}" -f $file.Name, $source)
     } elseif ($WhatIf) {
-        Write-Host ("  {0,-12} would go   {1} -> {2}" -f $file.Name, $(if ($before) { $before } else { '(absent)' }), $after)
+        Write-Host ("  {0,-12} would go   source {1} -> {2}" -f $file.Name, $(if ($recorded) { $recorded } else { '(unrecorded)' }), $source)
     } else {
         Copy-Item $file.FullName $destination -Force
-        Write-Host ("  {0,-12} replaced   {1} -> {2}" -f $file.Name, $(if ($before) { $before } else { '(absent)' }), $after)
+        Write-Host ("  {0,-12} installed  source {1} -> {2}" -f $file.Name, $(if ($recorded) { $recorded } else { '(unrecorded)' }), $source)
     }
-    $records += [pscustomobject]@{ Name = $file.Name; Hash = $after }
+    $records += [pscustomobject]@{ Name = $file.Name; Source = $source; Installed = '' }
 }
 Write-Host ''
 
@@ -264,18 +281,84 @@ if ($needManifest) {
     Write-Host ''
 }
 
+# --- libraries -------------------------------------------------------------
+# The .obl set is tracked in core/lib and deploy_windows.cmd only COPIES it, so
+# a deploy tree can hold libraries from weeks ago while its binaries are current.
+# That is not cosmetic: a stale set cost another session a full suite run reading
+# 304/4/10, where eight of the failures were ml_* sources failing to compile
+# against .obl files that predated the methods they call. Nothing in that output
+# points at the libraries.
+#
+# Rebuilding binaries without refreshing these is the same class of lie this
+# script exists to prevent, so they are refreshed and recorded alongside.
+
+$libRecords = @()
+$libSource = Join-Path $repo 'core\lib'
+$libTarget = Join-Path $target 'lib'
+if (Test-Path $libSource) {
+    if (-not (Test-Path $libTarget) -and -not $WhatIf) {
+        New-Item -ItemType Directory -Path $libTarget | Out-Null
+    }
+    $obls = Get-ChildItem -Path $libSource -Filter *.obl -ErrorAction SilentlyContinue
+    $changed = 0
+    foreach ($obl in $obls) {
+        $destination = Join-Path $libTarget $obl.Name
+        $source = (Get-FileHash $obl.FullName -Algorithm MD5).Hash.Substring(0, 12)
+        $current = ''
+        if (Test-Path $destination) {
+            $current = (Get-FileHash $destination -Algorithm MD5).Hash.Substring(0, 12)
+        }
+        if ($current -ne $source) {
+            $changed++
+            if ($WhatIf) {
+                Write-Host ("  {0,-18} would refresh  {1} -> {2}" -f $obl.Name, $(if ($current) { $current } else { '(absent)' }), $source)
+            } else {
+                Copy-Item $obl.FullName $destination -Force
+                Write-Host ("  {0,-18} refreshed      {1} -> {2}" -f $obl.Name, $(if ($current) { $current } else { '(absent)' }), $source)
+            }
+        }
+        $libRecords += [pscustomobject]@{ Name = $obl.Name; Source = $source }
+    }
+    if ($changed -eq 0) {
+        Write-Host ("Libraries: {0} .obl already current." -f $obls.Count)
+    } else {
+        Write-Host ("Libraries: {0} of {1} .obl refreshed from core/lib." -f $changed, $obls.Count)
+    }
+} else {
+    Write-Host 'core/lib not found -- libraries NOT refreshed.' -ForegroundColor Yellow
+}
+Write-Host ''
+
 # --- record ----------------------------------------------------------------
 
 if (-not $WhatIf) {
-    $manifestPath = Join-Path $target 'DEPLOY_MANIFEST.txt'
+    # Hash the installed files NOW, after any manifest embedding, so `installed`
+    # is what is actually in bin. `source` is what it was built from, and is
+    # what the next run compares against.
+    foreach ($record in $records) {
+        $installedPath = Join-Path $targetBin $record.Name
+        if (Test-Path $installedPath) {
+            $record.Installed = (Get-FileHash $installedPath -Algorithm MD5).Hash.Substring(0, 12)
+        }
+    }
+
     $lines = @()
     $lines += ("# refreshed {0} from commit {1} ({2})" -f (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'), $commit, $Arch)
-    $lines += '# md5 (first 12) of each binary installed by refresh_deploy.ps1'
+    $lines += '# md5 (first 12). source = the build output; installed = the file in bin'
+    $lines += '# after mt.exe embedded its manifest. They differ for binaries whose'
+    $lines += '# project does not embed one at build time, which is expected.'
     foreach ($record in ($records | Sort-Object Name)) {
-        $lines += ("{0,-14} {1}" -f $record.Name, $record.Hash)
+        $lines += ("{0,-12} source={1} installed={2}" -f $record.Name, $record.Source, $record.Installed)
+    }
+    if ($libRecords.Count -gt 0) {
+        $lines += ''
+        $lines += '# libraries copied from core/lib (tracked; no manifest embedding)'
+        foreach ($record in ($libRecords | Sort-Object Name)) {
+            $lines += ("{0,-18} source={1}" -f $record.Name, $record.Source)
+        }
     }
     Set-Content -Path $manifestPath -Value $lines -Encoding utf8
-    Write-Host ("Recorded {0} binaries in {1}" -f $records.Count, 'DEPLOY_MANIFEST.txt')
+    Write-Host ("Recorded {0} binaries and {1} libraries in {2}" -f $records.Count, $libRecords.Count, 'DEPLOY_MANIFEST.txt')
     Write-Host 'Compare against it when a test result looks impossible: a deploy binary'
     Write-Host 'replaced by another build reporting the same version string is invisible'
     Write-Host 'otherwise, and invalidates every measurement taken against it.'
