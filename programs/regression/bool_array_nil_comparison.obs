@@ -68,25 +68,17 @@ class BoolArrayNilComparison {
 		# correct if the defect noted below were fixed, so it is safe to pin.
 		ok := Report("an indexed call works on the right of &", true & MakeArray()[0]) & ok;
 
-		# The three forms below must COMPILE -- that is the regression guard for
-		# this fix, since a dimension test applied to the array type rather than
-		# the indexed result would reject them. Their runtime VALUES are
-		# deliberately NOT asserted, because an indexed call result is evaluated
-		# incorrectly and a DIFFERENT form is wrong on each backend:
-		#
-		#   x64, JIT and interpreted alike : the left operand of &
-		#   macos-arm64                    : |
-		#   windows-arm64                  : = against a literal
-		#
-		# All three predate this change and are identical before and after it.
-		# Pinning what they produce today would cement the defect on one
-		# platform and fail on the others; pinning the right answer fails
-		# everywhere, for a reason that has nothing to do with this fix.
-		sink : Bool;
-		sink := MakeArray()[0] & MakeArray()[2];
-		sink := MakeArray()[1] | MakeArray()[2];
-		sink := MakeArray()[1] = false;
-		ok := Report("every indexed-call form compiles and runs", sink = sink) & ok;
+		# These three could only be checked for COMPILATION when this test was
+		# written: an indexed call result evaluated incorrectly, and a different
+		# form was wrong on each backend -- x64 got the left operand of &, macos
+		# -arm64 got |, windows-arm64 got a comparison against a literal. That
+		# was a Bool[] element being read at int width from a call result
+		# (#988); with the byte-width load in place the values are correct
+		# everywhere, so they are pinned properly here rather than merely
+		# required to parse.
+		ok := Report("an indexed call works under &", MakeArray()[0] & MakeArray()[2]) & ok;
+		ok := Report("an indexed call works under |", MakeArray()[1] | MakeArray()[2]) & ok;
+		ok := Report("an indexed call compares to a literal", MakeArray()[1] = false) & ok;
 
 		# A scalar Bool call is boolean, as it always was.
 		ok := Report("a scalar Bool call is a condition", Truth()) & ok;

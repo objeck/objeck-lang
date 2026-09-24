@@ -6557,7 +6557,16 @@ void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
     instr = LOAD_FLOAT_ARY_ELM;
     break;
 
-  // object, string and boolean elements are all reference/int width
+  // A Bool[] is allocated as NEW_BYTE_ARY and a local element of one is read
+  // with LOAD_BYTE_ARY_ELM, so reading a call's result with the int-width load
+  // pulled several bytes from the element offset instead of one. The value then
+  // depended on the neighbouring elements and on the platform's layout, which
+  // is why a different boolean expression misevaluated on each backend.
+  case frontend::BOOLEAN_TYPE:
+    instr = LOAD_BYTE_ARY_ELM;
+    break;
+
+  // object, string and int elements are all reference/int width
   default:
     instr = LOAD_INT_ARY_ELM;
     break;
