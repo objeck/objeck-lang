@@ -585,8 +585,34 @@ class Snippet {
 				label '\t':
 				label '\r':
 				label '\n': {
-					ParseWhiteSpace();
-					ident->Append(' ');
+					# Consume the run, counting line breaks, instead of collapsing
+					# it to one space. Collapsing is what made a doc comment's
+					# paragraphs, bullets and headings arrive as a single unbroken
+					# line with literal '*' and '#' characters embedded in the
+					# prose -- markdown written in these comments had never once
+					# rendered, in the API pages or in LSP hover.
+					newlines := 0;
+					while(@buffer_index < @buffer->Size() &
+							(@cur_char = ' ' | @cur_char = '\t' | @cur_char = '\r' | @cur_char = '\n')) {
+						if(@cur_char = '\n') {
+							newlines += 1;
+						};
+						NextChar();
+					};
+
+					if(newlines > 1) {
+						# a blank line is a paragraph break
+						ident->Append('\n');
+						ident->Append('\n');
+					}
+					else if(newlines = 1 & (@cur_char = '*' | @cur_char = '#' | @cur_char = '-')) {
+						# a bullet or a heading begins its own line
+						ident->Append('\n');
+					}
+					else {
+						# a wrapped line is still the same sentence
+						ident->Append(' ');
+					};
 				}
 				label '@':
 				label '\0': {
