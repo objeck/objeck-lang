@@ -1,0 +1,148 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Score-based metrics: RecallAtFpr, ThresholdAtFpr, AucRoc, AveragePrecision and
+the two curves.
+
+Metrics' existing functions take Bool predictions, which are already thresholded.
+That fixes one operating point and throws away what these questions need: you
+cannot ask a Bool array what the recall would be at a different false-alarm rate.
+These take scores instead.
+
+Every expected value below is hand-computed rather than recorded from a run, so
+the test pins the definitions and not the implementation's own output. The main
+example is scores 0.9, 0.8, 0.7, 0.6 with actuals T, F, T, F:
+
+  threshold  tp fp   tpr   fpr
+  0.9         1  0   0.5   0.0
+  0.8         1  1   0.5   0.5
+  0.7         2  1   1.0   0.5
+  0.6         2  2   1.0   1.0
+
+AUC by trapezoid is 0.75, which Mann-Whitney confirms independently: of the four
+positive/negative pairs, three are ranked correctly. Average precision is
+0.5*1.0 + 0.5*(2/3) = 0.8333.
+~#
+use System.ML;
+
+class MlScoreMetrics {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		scores := Float->New[4];
+		scores[0] := 0.9; scores[1] := 0.8; scores[2] := 0.7; scores[3] := 0.6;
+
+		actuals := Bool->New[4];
+		actuals[0] := true; actuals[1] := false; actuals[2] := true; actuals[3] := false;
+
+		# AUC 0.75, confirmed independently by Mann-Whitney above.
+		auc := Metrics->AucRoc(scores, actuals);
+		ok := Report("AucRoc is 0.75", Near(auc, 0.75)) & ok;
+
+		ap := Metrics->AveragePrecision(scores, actuals);
+		ok := Report("AveragePrecision is 0.8333", Near(ap, 0.83333333)) & ok;
+
+		# At a zero false-positive budget only the top score qualifies: one of the
+		# two positives, so recall 0.5 at threshold 0.9.
+		ok := Report("recall at 0% FPR is 0.5", Near(Metrics->RecallAtFpr(scores, actuals, 0.0), 0.5)) & ok;
+		ok := Report("threshold at 0% FPR is 0.9", Near(Metrics->ThresholdAtFpr(scores, actuals, 0.0), 0.9)) & ok;
+
+		# Allowing one false alarm in two reaches both positives, at 0.7.
+		ok := Report("recall at 50% FPR is 1.0", Near(Metrics->RecallAtFpr(scores, actuals, 0.5), 1.0)) & ok;
+		ok := Report("threshold at 50% FPR is 0.7", Near(Metrics->ThresholdAtFpr(scores, actuals, 0.5), 0.7)) & ok;
+
+		# The curve carries the origin so it can be plotted without special-casing.
+		roc := Metrics->RocCurve(scores, actuals);
+		ok := Report("RocCurve returns a curve", roc <> Nil) & ok;
+		if(roc <> Nil) {
+			d := roc->Size();
+			ok := Report("RocCurve has one row per point plus the origin", d[0] = 5 & d[1] = 3) & ok;
+			ok := Report("RocCurve starts at the origin",
+				Near(roc[0, 1], 0.0) & Near(roc[0, 2], 0.0)) & ok;
+			ok := Report("RocCurve ends at (1, 1)",
+				Near(roc[4, 1], 1.0) & Near(roc[4, 2], 1.0)) & ok;
+			ok := Report("RocCurve point 2 is fpr 0.5, tpr 0.5",
+				Near(roc[2, 1], 0.5) & Near(roc[2, 2], 0.5)) & ok;
+		};
+
+		pr := Metrics->PrCurve(scores, actuals);
+		ok := Report("PrCurve returns a curve", pr <> Nil) & ok;
+		if(pr <> Nil) {
+			d := pr->Size();
+			ok := Report("PrCurve has one row per point", d[0] = 4 & d[1] = 3) & ok;
+			# first point: one true positive, no false positives
+			ok := Report("PrCurve starts at recall 0.5, precision 1.0",
+				Near(pr[0, 1], 0.5) & Near(pr[0, 2], 1.0)) & ok;
+			# third point: 2 tp, 1 fp -> precision 2/3
+			ok := Report("PrCurve point 2 is recall 1.0, precision 2/3",
+				Near(pr[2, 1], 1.0) & Near(pr[2, 2], 0.66666667)) & ok;
+		};
+
+		# A perfect ranking: every positive above every negative.
+		ps := Float->New[4];
+		ps[0] := 0.9; ps[1] := 0.8; ps[2] := 0.2; ps[3] := 0.1;
+		pa := Bool->New[4];
+		pa[0] := true; pa[1] := true; pa[2] := false; pa[3] := false;
+		ok := Report("a perfect ranking has AUC 1.0", Near(Metrics->AucRoc(ps, pa), 1.0)) & ok;
+		ok := Report("a perfect ranking reaches full recall at 0% FPR",
+			Near(Metrics->RecallAtFpr(ps, pa, 0.0), 1.0)) & ok;
+
+		# Ties must share one operating point. Four identical scores can only be
+		# classified all-positive, so the curve runs origin to (1,1) and AUC is 0.5.
+		# Splitting tied instances would invent an ordering and inflate this.
+		ts := Float->New[4];
+		ts[0] := 0.5; ts[1] := 0.5; ts[2] := 0.5; ts[3] := 0.5;
+		ta := Bool->New[4];
+		ta[0] := true; ta[1] := false; ta[2] := true; ta[3] := false;
+		ok := Report("four tied scores are one operating point, AUC 0.5",
+			Near(Metrics->AucRoc(ts, ta), 0.5)) & ok;
+
+		tpoints := Metrics->OperatingPoints(ts, ta);
+		ok := Report("tied scores collapse to a single point",
+			tpoints <> Nil & tpoints->Size()[0] = 1) & ok;
+
+		# Degenerate inputs: a rate needs both classes present.
+		allpos := Bool->New[4];
+		each(i : 4) {
+			allpos[i] := true;
+		};
+		ok := Report("AUC with no negatives is -1.0", Near(Metrics->AucRoc(scores, allpos), -1.0)) & ok;
+		ok := Report("recall at FPR with no negatives is -1.0",
+			Near(Metrics->RecallAtFpr(scores, allpos, 0.1), -1.0)) & ok;
+
+		# Guards.
+		nothing : Float[];
+		nobools : Bool[];
+		ok := Report("Nil scores return -1.0", Near(Metrics->AucRoc(nothing, actuals), -1.0)) & ok;
+		ok := Report("Nil actuals return -1.0", Near(Metrics->AucRoc(scores, nobools), -1.0)) & ok;
+
+		short := Bool->New[3];
+		ok := Report("mismatched lengths return -1.0", Near(Metrics->AucRoc(scores, short), -1.0)) & ok;
+		ok := Report("an out-of-range FPR budget returns -1.0",
+			Near(Metrics->RecallAtFpr(scores, actuals, 1.5), -1.0)) & ok;
+
+		# Order must not matter: the same instances shuffled give the same AUC.
+		ss := Float->New[4];
+		ss[0] := 0.7; ss[1] := 0.9; ss[2] := 0.6; ss[3] := 0.8;
+		sa := Bool->New[4];
+		sa[0] := true; sa[1] := true; sa[2] := false; sa[3] := false;
+		ok := Report("AUC does not depend on input order", Near(Metrics->AucRoc(ss, sa), 0.75)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
