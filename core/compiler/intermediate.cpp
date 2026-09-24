@@ -6595,6 +6595,15 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       // message and no output file (#958).
       Type* type = method_call->GetArrayType();
       switch(type->GetType()) {
+      // Bool[] copies through $Byte:Copy, as it allocates and indexes through
+      // the byte instructions (NEW_BYTE_ARY, LOAD_BYTE_ARY_ELM) -- the same
+      // pairing the new-array-instance switch below already makes. There is no
+      // System.$Bool:Copy to call, and leaving BOOLEAN_TYPE out of this switch
+      // did not fail loudly: it fell to the default, emitted nothing, and left
+      // the source reference on the stack as the result, so 'Bool->New[src]'
+      // silently handed back src itself. Writing through src then changed the
+      // copy.
+      case frontend::BOOLEAN_TYPE:
       case BYTE_TYPE: {
         LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Byte", parsed_program->GetLibUses());
         if(lib_class) {

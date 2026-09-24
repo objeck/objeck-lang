@@ -26,8 +26,10 @@ Three things would let a broken check pass silently, and each one fails here:
 - the program running but computing nothing. Its exact stdout must match, so a
   binary that prints an empty line does not "agree" with one that works.
 
-All four element types the copy constructor supports are covered: a regression
-that reached only one of the four switch arms would otherwise pass.
+Every element type the copy constructor supports is covered: a regression that
+reached only one of the switch arms would otherwise pass. Bool is one of them as
+of #995 -- it had no arm at all, so the call emitted nothing and the constructor
+silently returned the source array rather than a copy.
 
 Both -opt s3 and -opt s0 build, link and run, because the two levels failed
 differently: at s1 and above obc died in the inliners, while at s0 it reported
@@ -65,6 +67,10 @@ LIBRARY = """class AryCopy {
   function : Floats(src : Float[]) ~ Float[] {
     return Float->New[src];
   }
+
+  function : Bools(src : Bool[]) ~ Bool[] {
+    return Bool->New[src];
+  }
 }
 """
 
@@ -94,6 +100,13 @@ PROGRAM = """class User {
     fc := AryCopy->Floats(fl);
     k := fc[0]; m := fc[1];
     "float={$k},{$m}"->PrintLine();
+
+    bo := Bool->New[3];
+    bo[0] := true; bo[1] := false; bo[2] := true;
+    lc := AryCopy->Bools(bo);
+    bo[0] := false;
+    p := lc[0]; q := lc[1]; r := lc[2]; s := lc->Size(); t := bo[0];
+    "bool={$p},{$q},{$r} size={$s} src={$t}"->PrintLine();
   }
 }
 """
@@ -102,7 +115,14 @@ PROGRAM = """class User {
 # is the check that Ints() returned a copy and not the caller's own array.
 # Floats interpolate at six decimal places; bytes are widened with ToInt() so the
 # expectation is digits rather than two control characters.
-EXPECTED = ["int=70,8,9 src=7", "char=ab size=2", "byte=1,2", "float=1.500000,2.500000"]
+#
+# The bool line writes through the SOURCE after copying, which is the direction
+# #995 failed in: BOOLEAN_TYPE had no arm in the emitter's copy-constructor
+# switch, so the call emitted nothing, the source reference stayed on the stack,
+# and Bool->New[src] handed back src itself. "src=false" pins the other half --
+# without it the line would also pass if the write simply never happened.
+EXPECTED = ["int=70,8,9 src=7", "char=ab size=2", "byte=1,2", "float=1.500000,2.500000",
+            "bool=true,false,true size=3 src=false"]
 
 
 def fail(msg):
