@@ -28,6 +28,17 @@ Three things would let a broken check pass silently, and each one fails here:
 
 All four element types the copy constructor supports are covered: a regression
 that reached only one of the four switch arms would otherwise pass.
+
+Both -opt s3 and -opt s0 build, link and run, because the two levels failed
+differently: at s1 and above obc died in the inliners, while at s0 it reported
+success and handed obr a corrupt .obe. A check that ran only s3 would miss half
+of that.
+
+Not covered here: linking a .obl left over from an EARLIER BUILD of the same
+version, which is the case #970's emission-time refusal exists for. Producing
+one needs a pre-#960 compiler, so this check -- which only ever has the compiler
+it is handed -- cannot construct the input. Keeping that honest needs a checked-in
+.obl fixture, and the .obl format is not stable enough to carry one lightly.
 """
 
 import os
@@ -159,25 +170,40 @@ def main():
         with open(prog_src, "w") as handle:
             handle.write(PROGRAM)
 
-        lib_obl = os.path.join(private_lib, "arycopy.obl")
-        prog_obe = os.path.join(work, "user.obe")
+        # Both levels, because the bug failed differently at each. At s1 and
+        # above the bad id was dereferenced in the inliners and obc died; at s0
+        # nothing dereferenced it, obc reported success, and the corruption rode
+        # into the .obe to fail in obr. Only s3 was ever exercised here.
+        #
+        # The run is what carries s0: #970 refuses an unresolvable id at
+        # emission, so today a regression would be caught at the program build
+        # -- but that check is one `if` away from being narrowed, and if it ever
+        # is, s3 keeps passing while s0 quietly goes back to writing a .obe that
+        # only obr rejects. Running it is what notices.
+        for opt in ("s3", "s0"):
+            # Distinct names per level, so a file left by the first round cannot
+            # stand in for one the second round failed to write.
+            lib_name = "arycopy_" + opt
+            lib_obl = os.path.join(private_lib, lib_name + ".obl")
+            prog_obe = os.path.join(work, "user_" + opt + ".obe")
+            at = " at -opt " + opt
 
-        # -opt s3 on both: the inliners are where the bad ids were dereferenced.
-        run([obc, "-src", lib_src, "-tar", "lib", "-dest", lib_obl, "-opt", "s3"],
-            work, env, "library build")
-        non_empty(lib_obl, "library build")
+            run([obc, "-src", lib_src, "-tar", "lib", "-dest", lib_obl, "-opt", opt],
+                work, env, "library build" + at)
+            non_empty(lib_obl, "library build" + at)
 
-        run([obc, "-src", prog_src, "-lib", "arycopy", "-dest", prog_obe, "-opt", "s3"],
-            work, env, "program build")
-        non_empty(prog_obe, "program build")
+            run([obc, "-src", prog_src, "-lib", lib_name, "-dest", prog_obe, "-opt", opt],
+                work, env, "program build" + at)
+            non_empty(prog_obe, "program build" + at)
 
-        out = run([obr, prog_obe], work, env, "program run")
+            out = run([obr, prog_obe], work, env, "program run" + at)
 
-    lines = [l.strip() for l in out.splitlines() if l.strip()]
-    if lines != EXPECTED:
-        fail("wrong output\n  expected: %s\n  got:      %s" % (EXPECTED, lines))
+            lines = [l.strip() for l in out.splitlines() if l.strip()]
+            if lines != EXPECTED:
+                fail("wrong output%s\n  expected: %s\n  got:      %s"
+                     % (at, EXPECTED, lines))
 
-    print("PASS: a library's array copy constructor survives being linked")
+    print("PASS: a library's array copy constructor survives being linked (-opt s3 and s0)")
     return 0
 
 
