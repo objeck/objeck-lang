@@ -1,0 +1,141 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+RandomForestClassifier: bootstrapped, feature-sampled continuous trees, averaged.
+
+Two properties are worth more than accuracy here.
+
+Determinism: the same seed must rebuild the same forest. A result that cannot be
+reproduced is not a result, and both the bootstrap and the per-node feature
+sample draw from the seed.
+
+That the trees actually differ: a forest whose trees are identical is one tree
+with extra steps, and its scores would all be 0.0 or 1.0. The noisy case below
+puts two rows in conflict with their neighbours, so trees that saw different
+bootstrap samples disagree about them, and the average lands strictly between.
+That is the assertion which fails if bootstrapping or feature sampling is not
+really happening.
+~#
+use System.ML;
+
+class MlRandomForestClassifier {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		rows := 20;
+		x := Float->New[rows, 2];
+		y := Bool->New[rows];
+		each(i : rows) {
+			# feature 0 separates at 2.5; feature 1 is noise
+			x[i, 0] := (i < 10) ? i->As(Float) / 10.0 : 5.0 + i->As(Float) / 10.0;
+			x[i, 1] := (i * 7 % 13)->As(Float);
+			y[i] := i >= 10;
+		};
+
+		forest := RandomForestClassifier->New(20, 4, 1, 42);
+		ok := Report("unfitted PredictScore returns Nil", forest->PredictScore(x) = Nil) & ok;
+		ok := Report("unfitted GetTreeCount is 0", forest->GetTreeCount() = 0) & ok;
+
+		ok := Report("Fit succeeds", forest->Fit(x, y)) & ok;
+		ok := Report("IsFitted after Fit", forest->IsFitted()) & ok;
+		ok := Report("it grew the requested number of trees", forest->GetTreeCount() = 20) & ok;
+
+		scores := forest->PredictScore(x);
+		ok := Report("PredictScore returns one score per row",
+			scores <> Nil & scores->Size() = rows) & ok;
+
+		ok := Report("a separable problem gives AUC 1.0",
+			Near(Metrics->AucRoc(scores, y), 1.0)) & ok;
+		ok := Report("and full recall at a zero false-positive budget",
+			Near(Metrics->RecallAtFpr(scores, y, 0.0), 1.0)) & ok;
+
+		labels := forest->Predict(x);
+		correct := labels <> Nil;
+		if(correct) {
+			each(i : rows) {
+				if(labels[i] <> y[i]) {
+					correct := false;
+				};
+			};
+		};
+		ok := Report("Predict recovers every training label", correct) & ok;
+
+		# Determinism: the same seed must reproduce the forest exactly.
+		twin := RandomForestClassifier->New(20, 4, 1, 42);
+		ok := Report("the twin fits", twin->Fit(x, y)) & ok;
+		ts := twin->PredictScore(x);
+		identical := ts <> Nil & scores <> Nil;
+		if(identical) {
+			each(i : rows) {
+				if(<>Near(ts[i], scores[i])) {
+					identical := false;
+				};
+			};
+		};
+		ok := Report("the same seed rebuilds the same forest", identical) & ok;
+
+		# THE OTHER POINT. Two rows contradict their neighbours, so trees built on
+		# different bootstrap samples disagree about them and the average lands
+		# strictly between 0 and 1. If every tree were identical, every score here
+		# would be exactly 0.0 or 1.0 and this fails.
+		ny := Bool->New[rows];
+		each(i : rows) {
+			ny[i] := i >= 10;
+		};
+		ny[5] := true;
+		ny[15] := false;
+
+		noisy := RandomForestClassifier->New(25, 4, 1, 7);
+		ok := Report("the noisy case fits", noisy->Fit(x, ny)) & ok;
+		ns := noisy->PredictScore(x);
+		fractional := false;
+		if(ns <> Nil) {
+			each(i : rows) {
+				if(ns[i] > 0.0001 & ns[i] < 0.9999) {
+					fractional := true;
+				};
+			};
+		};
+		ok := Report("trees disagree on contradictory rows, so scores are fractional",
+			fractional) & ok;
+
+		# An explicit feature sample of 1 still learns, because the separating
+		# feature is picked often enough across 30 trees.
+		one_feature := RandomForestClassifier->New(30, 4, 1, 1, 3);
+		ok := Report("a forest sampling one feature per node fits", one_feature->Fit(x, y)) & ok;
+		os := one_feature->PredictScore(x);
+		ok := Report("and still separates the classes",
+			os <> Nil & Metrics->AucRoc(os, y) > 0.9) & ok;
+
+		# Guards.
+		nothing : Float[,];
+		nobools : Bool[];
+		ok := Report("Fit with Nil X is false",
+			<>RandomForestClassifier->New(5, 3, 1, 1)->Fit(nothing, y)) & ok;
+		ok := Report("Fit with Nil y is false",
+			<>RandomForestClassifier->New(5, 3, 1, 1)->Fit(x, nobools)) & ok;
+
+		short := Bool->New[3];
+		ok := Report("a label count that does not match the rows is false",
+			<>RandomForestClassifier->New(5, 3, 1, 1)->Fit(x, short)) & ok;
+		ok := Report("a forest of no trees is false",
+			<>RandomForestClassifier->New(0, 3, 1, 1)->Fit(x, y)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
