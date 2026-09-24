@@ -962,6 +962,289 @@ pred := tree->Predict([2.5]);
 	}
 
 	#~
+	A classification tree that splits continuous features on a threshold, chosen
+	by Gini impurity.
+
+	DecisionTree above takes Bool[,]: every feature must already be binary, so
+	continuous data has to be quantile-binned before it can be used, and the
+	binning throws away exactly the thresholds the tree exists to find. This takes
+	Float[,] and finds the threshold itself, the same way RegressionTree does for
+	a continuous target -- sorted values, midpoints between consecutive distinct
+	values as candidates -- with Gini in place of squared error and a class
+	proportion at the leaf.
+
+	PredictScore returns that proportion rather than a label, because a fixed
+	false-positive budget needs a score to threshold. A Bool prediction fixes one
+	operating point and cannot answer what the recall would be at another.
+
+```
+tree := DecisionTreeClassifier->New(8, 5);
+tree->Fit(x_train, y_train);
+scores := tree->PredictScore(x_test);
+recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
+```
+	~#
+	class DecisionTreeClassifier {
+		@root : RegressionTreeNode;
+		@max_depth : Int;
+		@min_samples : Int;
+		@fitted : Bool;
+
+		#~
+		Constructor
+		@param max_depth deepest the tree may grow
+		@param min_samples a node with this many rows or fewer becomes a leaf
+		~#
+		New(max_depth : Int, min_samples : Int) {
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@fitted := false;
+		}
+
+		#~
+		Builds the tree.
+		@param X rows x features, continuous
+		@param y one label per row, true for the positive class
+		@return true when the tree was built, false when the inputs do not line up
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1 | y->Size() <> rows) {
+				return false;
+			};
+
+			indexes := Int->New[rows];
+			each(i : rows) {
+				indexes[i] := i;
+			};
+
+			@root := BuildNode(X, y, indexes, rows, 0);
+			@fitted := true;
+
+			return true;
+		}
+
+		# Recursively builds a node over the rows listed in indexes[0..count-1].
+		method : BuildNode(X : Float[,], y : Bool[], indexes : Int[], count : Int, depth : Int) ~ RegressionTreeNode {
+			positives := 0;
+			each(i : count) {
+				if(y[indexes[i]]) {
+					positives += 1;
+				};
+			};
+			proportion := positives->As(Float) / count->As(Float);
+
+			# Pure, too small, or too deep: the proportion is the answer.
+			if(positives = 0 | positives = count | count <= @min_samples | depth >= @max_depth) {
+				return RegressionTreeNode->NewLeaf(proportion);
+			};
+
+			node_gini := Gini(positives, count);
+
+			x_dims := X->Size();
+			cols := x_dims[1];
+
+			best_feature := -1;
+			best_threshold := 0.0;
+			best_gini := node_gini;
+
+			values := Float->New[count];
+			each(f : cols) {
+				each(i : count) {
+					values[i] := X[indexes[i], f];
+				};
+				SortValues(values, 0, count - 1);
+
+				for(v := 0; v < count - 1; v += 1;) {
+					if(values[v] <> values[v + 1]) {
+						threshold := (values[v] + values[v + 1]) / 2.0;
+						g := SplitGini(X, y, indexes, count, f, threshold);
+						if(g < best_gini) {
+							best_gini := g;
+							best_feature := f;
+							best_threshold := threshold;
+						};
+					};
+				};
+			};
+
+			# No split improves on the node itself.
+			if(best_feature < 0) {
+				return RegressionTreeNode->NewLeaf(proportion);
+			};
+
+			left_indexes := Int->New[count];
+			right_indexes := Int->New[count];
+			left_count := 0;
+			right_count := 0;
+			each(i : count) {
+				row := indexes[i];
+				if(X[row, best_feature] <= best_threshold) {
+					left_indexes[left_count] := row;
+					left_count += 1;
+				}
+				else {
+					right_indexes[right_count] := row;
+					right_count += 1;
+				};
+			};
+
+			if(left_count = 0 | right_count = 0) {
+				return RegressionTreeNode->NewLeaf(proportion);
+			};
+
+			node := RegressionTreeNode->NewInternal(best_feature, best_threshold);
+			node->SetLeft(BuildNode(X, y, left_indexes, left_count, depth + 1));
+			node->SetRight(BuildNode(X, y, right_indexes, right_count, depth + 1));
+
+			return node;
+		}
+
+		# Binary Gini impurity: 2p(1-p), zero when the node holds one class only.
+		method : Gini(positives : Int, count : Int) ~ Float {
+			if(count = 0) {
+				return 0.0;
+			};
+
+			p := positives->As(Float) / count->As(Float);
+
+			return 2.0 * p * (1.0 - p);
+		}
+
+		# Gini of the two children, weighted by how many rows each receives.
+		method : SplitGini(X : Float[,], y : Bool[], indexes : Int[], count : Int, feature : Int, threshold : Float) ~ Float {
+			left_pos := 0;
+			left_count := 0;
+			right_pos := 0;
+			right_count := 0;
+
+			each(i : count) {
+				row := indexes[i];
+				if(X[row, feature] <= threshold) {
+					left_count += 1;
+					if(y[row]) {
+						left_pos += 1;
+					};
+				}
+				else {
+					right_count += 1;
+					if(y[row]) {
+						right_pos += 1;
+					};
+				};
+			};
+
+			if(left_count = 0 | right_count = 0) {
+				return Float->Inf();
+			};
+
+			n := count->As(Float);
+
+			return (left_count->As(Float) * Gini(left_pos, left_count)
+				+ right_count->As(Float) * Gini(right_pos, right_count)) / n;
+		}
+
+		method : SortValues(values : Float[], lo : Int, hi : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			pivot := values[(lo + hi) / 2];
+			i := lo;
+			j := hi;
+
+			while(i <= j) {
+				while(values[i] < pivot) {
+					i += 1;
+				};
+				while(values[j] > pivot) {
+					j -= 1;
+				};
+
+				if(i <= j) {
+					t := values[i];
+					values[i] := values[j];
+					values[j] := t;
+					i += 1;
+					j -= 1;
+				};
+			};
+
+			SortValues(values, lo, j);
+			SortValues(values, i, hi);
+		}
+
+		#~
+		The fraction of training rows at each row's leaf that were positive. This
+		is the score to threshold, and what the fixed-false-positive-rate metrics
+		consume.
+		@param X rows x features, with the same feature count used at Fit
+		@return one score per row, or Nil when unfitted or the shape does not match
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			if(<>@fitted | X = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			result := Float->New[rows];
+
+			each(i : rows) {
+				node := @root;
+				while(node <> Nil & <>node->IsLeaf()) {
+					if(X[i, node->GetFeature()] <= node->GetThreshold()) {
+						node := node->GetLeft();
+					}
+					else {
+						node := node->GetRight();
+					};
+				};
+
+				if(node <> Nil) {
+					result[i] := node->GetValue();
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Labels at the usual half-way threshold. Prefer PredictScore with an
+		explicit threshold when the false-alarm rate matters.
+		@param X rows x features
+		@return one label per row, or Nil when unfitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			scores := PredictScore(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] > 0.5;
+			};
+
+			return result;
+		}
+
+		#~
+		Whether Fit has been called successfully.
+		@return true when this tree has been built
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+	}
+
+	#~
 	Gradient boosted regression trees with squared-error loss: the model
 	starts at the target mean and each stage fits a RegressionTree to the
 	current residuals, added with a shrinkage (learning rate) factor.
