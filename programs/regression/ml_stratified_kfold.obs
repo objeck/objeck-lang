@@ -1,0 +1,171 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+CrossValidation->StratifiedKFold: folds that keep the class ratio, from a seed.
+
+The existing KFold shuffles with the global generator and ignores labels. On
+imbalanced data both hurt: an unseeded split cannot be reproduced, and an
+unstratified one lets the rare class land unevenly, so a fold may hold too few
+positives to measure anything at a low false-positive rate.
+
+The data below is deliberately imbalanced -- 10 positives among 100 rows -- and
+the counts are exact rather than approximate: 10 positives dealt round-robin
+across 5 folds is 2 per fold, and 90 negatives is 18 per fold. A split that
+ignores labels passes the partition assertions and fails those two, which is the
+distinction this test exists to draw.
+~#
+use Collection;
+use System.ML;
+
+class MlStratifiedKfold {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		rows := 100;
+		k := 5;
+		y := Float->New[rows];
+		each(i : rows) {
+			# every tenth row is a positive: 10 of 100
+			y[i] := (i % 10 = 0) ? 1.0 : 0.0;
+		};
+
+		folds := CrossValidation->StratifiedKFold(y, k, 42);
+		ok := Report("StratifiedKFold returns folds", folds <> Nil) & ok;
+
+		if(folds = Nil) {
+			Runtime->Exit(1);
+		};
+
+		ok := Report("there are k folds", folds->Size() = k) & ok;
+
+		# Every row exactly once, and nothing invented.
+		seen := Int->New[rows];
+		total := 0;
+		each(f : k) {
+			fold := folds[f];
+			each(i : fold) {
+				r := fold->Get(i)->Get();
+				if(r >= 0 & r < rows) {
+					seen[r] += 1;
+				};
+				total += 1;
+			};
+		};
+		ok := Report("every row is dealt exactly once", total = rows) & ok;
+
+		all_once := true;
+		each(i : rows) {
+			if(seen[i] <> 1) {
+				all_once := false;
+			};
+		};
+		ok := Report("no row is duplicated or dropped", all_once) & ok;
+
+		# THE POINT. 10 positives across 5 folds is exactly 2 each; 90 negatives
+		# is exactly 18 each. An unstratified split would not hold this.
+		balanced := true;
+		sized := true;
+		each(f : k) {
+			fold := folds[f];
+			pos := 0;
+			each(i : fold) {
+				if(y[fold->Get(i)->Get()] > 0.5) {
+					pos += 1;
+				};
+			};
+			if(pos <> 2) {
+				balanced := false;
+			};
+			if(fold->Size() <> 20) {
+				sized := false;
+			};
+		};
+		ok := Report("each fold holds exactly 2 of the 10 positives", balanced) & ok;
+		ok := Report("each fold holds 20 rows", sized) & ok;
+
+		# Reproducibility: the same seed gives the same folds, which is the whole
+		# reason the seed is a parameter rather than the global generator.
+		again := CrossValidation->StratifiedKFold(y, k, 42);
+		same := again <> Nil;
+		if(same) {
+			each(f : k) {
+				a := folds[f];
+				b := again[f];
+				if(a->Size() <> b->Size()) {
+					same := false;
+				}
+				else {
+					each(i : a) {
+						if(a->Get(i)->Get() <> b->Get(i)->Get()) {
+							same := false;
+						};
+					};
+				};
+			};
+		};
+		ok := Report("the same seed reproduces the same folds", same) & ok;
+
+		# A different seed should not give the same deal. With 100 rows an
+		# accidental match is vanishingly unlikely, so this is a fair assertion.
+		other_folds := CrossValidation->StratifiedKFold(y, k, 7);
+		differs := other_folds <> Nil;
+		if(differs) {
+			identical := true;
+			each(f : k) {
+				a := folds[f];
+				b := other_folds[f];
+				each(i : a) {
+					if(a->Get(i)->Get() <> b->Get(i)->Get()) {
+						identical := false;
+					};
+				};
+			};
+			differs := <>identical;
+		};
+		ok := Report("a different seed gives a different deal", differs) & ok;
+
+		# Stratification must survive a class that barely appears: 3 positives
+		# across 3 folds is one each.
+		rare := Float->New[30];
+		each(i : 30) {
+			rare[i] := (i = 0 | i = 11 | i = 22) ? 1.0 : 0.0;
+		};
+		rf := CrossValidation->StratifiedKFold(rare, 3, 1);
+		spread := rf <> Nil;
+		if(spread) {
+			each(f : 3) {
+				fold := rf[f];
+				pos := 0;
+				each(i : fold) {
+					if(rare[fold->Get(i)->Get()] > 0.5) {
+						pos += 1;
+					};
+				};
+				if(pos <> 1) {
+					spread := false;
+				};
+			};
+		};
+		ok := Report("3 positives across 3 folds is one each", spread) & ok;
+
+		# Guards.
+		nothing : Float[];
+		ok := Report("Nil labels return Nil", CrossValidation->StratifiedKFold(nothing, 5, 1) = Nil) & ok;
+		ok := Report("k below 2 returns Nil", CrossValidation->StratifiedKFold(y, 1, 1) = Nil) & ok;
+		ok := Report("k larger than the row count returns Nil",
+			CrossValidation->StratifiedKFold(y, rows + 1, 1) = Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

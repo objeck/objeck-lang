@@ -1276,6 +1276,117 @@ if(test_x = Nil) {
 		}
 
 		#~
+		Splits row indices into K folds that each keep the class ratio of the whole,
+		shuffled from a caller-supplied seed so the same seed gives the same folds.
+
+		KFold above shuffles with the global generator and ignores labels. Both hurt
+		on imbalanced data: an unseeded split cannot be reproduced, and an unstratified
+		split lets the rare class land unevenly, so a fold may hold too few positives
+		to measure anything at a low false-positive rate. Intrusion-detection sets are
+		exactly that shape.
+
+		Classes are taken from the label values as they first appear. Each class is
+		shuffled independently and dealt round-robin across the folds, continuing from
+		where the previous class stopped, so a remainder cannot pile into fold 0.
+		@param labels one label per row; only the labels are needed to stratify
+		@param k number of folds, at least 2
+		@param seed shuffle seed; the same seed reproduces the same folds
+		@return k vectors of row indices, or Nil on bad input
+
+```
+folds := CrossValidation->StratifiedKFold(y, 5, 42);
+each(f : folds) {
+  test_rows := folds[f];
+};
+```
+		~#
+		function : StratifiedKFold(labels : Float[], k : Int, seed : Int) ~ Vector[]<IntRef> {
+			if(labels = Nil) {
+				return Nil;
+			};
+
+			rows := labels->Size();
+			if(k < 2 | k > rows) {
+				return Nil;
+			};
+
+			# Hoisted: a local declared inside a nested block and read outside it is
+			# a known way to fault in this compiler.
+			found : Int;
+			n : Int;
+			p : Int;
+			t : Int;
+			j : Int;
+			idx : Int[];
+
+			# Distinct class values, in first-seen order, and each row's class.
+			class_values := Float->New[rows];
+			class_of := Int->New[rows];
+			class_count := 0;
+
+			each(i : rows) {
+				found := -1;
+				each(c : class_count) {
+					if(class_values[c] = labels[i]) {
+						found := c;
+					};
+				};
+
+				if(found < 0) {
+					class_values[class_count] := labels[i];
+					found := class_count;
+					class_count += 1;
+				};
+
+				class_of[i] := found;
+			};
+
+			folds := Vector->New[k]<IntRef>;
+			each(f : k) {
+				folds[f] := Vector->New()<IntRef>;
+			};
+
+			state := seed;
+			next_fold := 0;
+
+			each(c : class_count) {
+				n := 0;
+				each(i : rows) {
+					if(class_of[i] = c) {
+						n += 1;
+					};
+				};
+
+				idx := Int->New[n];
+				p := 0;
+				each(i : rows) {
+					if(class_of[i] = c) {
+						idx[p] := i;
+						p += 1;
+					};
+				};
+
+				# Fisher-Yates from the seed. A local generator rather than the global
+				# one, because the point of the seed is that another machine, and a
+				# later run, produce the same folds.
+				for(i := n - 1; i > 0; i -= 1;) {
+					state := (state * 1103515245 + 12345) and 2147483647;
+					j := state % (i + 1);
+					t := idx[i];
+					idx[i] := idx[j];
+					idx[j] := t;
+				};
+
+				each(i : n) {
+					folds[next_fold]->AddBack(idx[i]);
+					next_fold := (next_fold + 1) % k;
+				};
+			};
+
+			return folds;
+		}
+
+		#~
 		Splits data into training and test sets
 		@param data input matrix
 		@param test_ratio percentage of data for testing (0.0 to 1.0)
