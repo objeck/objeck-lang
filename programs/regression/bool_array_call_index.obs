@@ -1,0 +1,142 @@
+#~
+Subscripting a Bool[] returned from a call (#988).
+
+A Bool[] is allocated as NEW_BYTE_ARY and a local element of one is read with
+LOAD_BYTE_ARY_ELM, so its elements are one byte wide. EmitCallIndices, the path
+for subscripting a call's RESULT, classified BOOLEAN_TYPE as reference/int width
+and emitted LOAD_INT_ARY_ELM instead -- reading several bytes from the element
+offset rather than one.
+
+The value therefore depended on the neighbouring elements and on the platform's
+memory layout, which is why a DIFFERENT expression misevaluated on each backend:
+x64 got the left operand of & wrong, macos-arm64 got |, windows-arm64 got a
+comparison against a literal. Each platform passed the cases the others failed,
+so no single machine showed it as anything but an isolated quirk. A local Bool[]
+was always correct, because it took the byte-width path.
+
+The array below is deliberately laid out so that a wrong-width read CANNOT
+coincide with the right answer: alternating values mean an over-wide load at any
+index picks up a neighbour of the opposite value. Both operand positions and all
+four truth-table combinations are pinned, because an expression like
+M()[1] & M()[0] returned the right answer for the wrong reason and would pass a
+test that only checked a couple of cases.
+
+Byte[], Char[], Int[] and Float[] call results are pinned as controls: they were
+never affected, and the fix must not disturb them.
+~#
+
+class BoolArrayCallIndex {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# Flags() is [true, false, true, false]. Alternating, so an over-wide
+		# read at any index sees a neighbour holding the opposite value.
+		ok := Report("element 0 reads true", Flags()[0]) & ok;
+		ok := Report("element 1 reads false", Flags()[1] = false) & ok;
+		ok := Report("element 2 reads true", Flags()[2]) & ok;
+		ok := Report("element 3 reads false", Flags()[3] = false) & ok;
+
+		# --- & with a call result on the LEFT: the x64 failure ---
+		ok := Report("T & T is true", Flags()[0] & Flags()[2]) & ok;
+		ok := Report("T & F is false", (Flags()[0] & Flags()[1]) = false) & ok;
+		ok := Report("F & T is false", (Flags()[1] & Flags()[0]) = false) & ok;
+		ok := Report("F & F is false", (Flags()[1] & Flags()[3]) = false) & ok;
+
+		# --- & with a call result on the RIGHT ---
+		ok := Report("literal & call is true", true & Flags()[0]) & ok;
+		ok := Report("call & literal is true", Flags()[0] & true) & ok;
+		ok := Report("call & false is false", (Flags()[0] & false) = false) & ok;
+
+		# --- | in both positions: the macos-arm64 failure ---
+		ok := Report("T | T is true", Flags()[0] | Flags()[2]) & ok;
+		ok := Report("T | F is true", Flags()[0] | Flags()[1]) & ok;
+		ok := Report("F | T is true", Flags()[1] | Flags()[0]) & ok;
+		ok := Report("F | F is false", (Flags()[1] | Flags()[3]) = false) & ok;
+
+		# --- comparison against a literal: the windows-arm64 failure ---
+		ok := Report("a true element equals true", Flags()[0] = true) & ok;
+		ok := Report("a false element equals false", Flags()[1] = false) & ok;
+		ok := Report("a true element is not false", Flags()[0] <> false) & ok;
+
+		# --- as a condition, and mixed with a local and a scalar call ---
+		if(Flags()[0]) {
+			ok := Report("a call element drives an if", true) & ok;
+		}
+		else {
+			ok := Report("a call element drives an if", false) & ok;
+		};
+
+		local := Flags();
+		ok := Report("call & local agree", Flags()[0] & local[2]) & ok;
+		ok := Report("local & call agree", local[0] & Flags()[2]) & ok;
+		ok := Report("call & scalar call agree", Flags()[0] & Truth()) & ok;
+
+		# A local Bool[] was never affected; pin it so a future change cannot
+		# fix the call path by breaking this one.
+		ok := Report("a local element still reads true", local[0]) & ok;
+		ok := Report("a local element still reads false", local[1] = false) & ok;
+		ok := Report("local & local still works", local[0] & local[2]) & ok;
+
+		# An explicitly declared local takes the value correctly.
+		w : Bool;
+		w := Flags()[2];
+		ok := Report("a declared local receives the element", w) & ok;
+
+		# --- controls: other element widths were never affected ---
+		ok := Report("an Int[] call element reads correctly", Ints()[1] = 20) & ok;
+		ok := Report("a Float[] call element reads correctly", Floats()[1] = 2.5) & ok;
+		ok := Report("a Byte[] call element reads correctly", Bytes()[1] = 7) & ok;
+		ok := Report("a Char[] call element reads correctly", Chars()[1] = 'b') & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Flags() ~ Bool[] {
+		f := Bool->New[4];
+		f[0] := true;
+		f[1] := false;
+		f[2] := true;
+		f[3] := false;
+		return f;
+	}
+
+	function : Truth() ~ Bool {
+		return true;
+	}
+
+	function : Ints() ~ Int[] {
+		a := Int->New[3];
+		a[0] := 10; a[1] := 20; a[2] := 30;
+		return a;
+	}
+
+	function : Floats() ~ Float[] {
+		a := Float->New[3];
+		a[0] := 1.5; a[1] := 2.5; a[2] := 3.5;
+		return a;
+	}
+
+	function : Bytes() ~ Byte[] {
+		a := Byte->New[3];
+		a[0] := 5; a[1] := 7; a[2] := 9;
+		return a;
+	}
+
+	function : Chars() ~ Char[] {
+		a := Char->New[3];
+		a[0] := 'a'; a[1] := 'b'; a[2] := 'c';
+		return a;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
