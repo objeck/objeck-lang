@@ -210,25 +210,42 @@ if ($staged.Count -eq 0) {
 
 # --- install, recording what changed ---------------------------------------
 
+# What was installed last time, keyed by name -> source hash.
+#
+# The comparison has to be against the SOURCE hash, not against the file now
+# sitting in bin: mt.exe embeds the manifest in place, after the copy, so a
+# manifested binary no longer hashes to its build output. Comparing the two
+# reports obi.exe as replaced on every single run, and records in the manifest a
+# hash that is not on disk -- which defeats the one question the file exists to
+# answer. obr.exe hides this, because vm.vcxproj already embeds its manifest and
+# mt.exe is then a no-op.
+$previous = @{}
+$manifestPath = Join-Path $target 'DEPLOY_MANIFEST.txt'
+if (Test-Path $manifestPath) {
+    foreach ($line in (Get-Content $manifestPath)) {
+        if ($line -match '^\s*(\S+\.exe)\s+source=([0-9A-Fa-f]+)') {
+            $previous[$matches[1]] = $matches[2]
+        }
+    }
+}
+
 Write-Host 'Installing:'
 $records = @()
 foreach ($file in $staged) {
     $destination = Join-Path $targetBin $file.Name
-    $before = ''
-    if (Test-Path $destination) {
-        $before = (Get-FileHash $destination -Algorithm MD5).Hash.Substring(0, 12)
-    }
-    $after = (Get-FileHash $file.FullName -Algorithm MD5).Hash.Substring(0, 12)
+    $source = (Get-FileHash $file.FullName -Algorithm MD5).Hash.Substring(0, 12)
+    $recorded = $previous[$file.Name]
+    $present = Test-Path $destination
 
-    if ($before -eq $after) {
-        Write-Host ("  {0,-12} unchanged  {1}" -f $file.Name, $after)
+    if ($present -and $recorded -eq $source) {
+        Write-Host ("  {0,-12} unchanged  source {1}" -f $file.Name, $source)
     } elseif ($WhatIf) {
-        Write-Host ("  {0,-12} would go   {1} -> {2}" -f $file.Name, $(if ($before) { $before } else { '(absent)' }), $after)
+        Write-Host ("  {0,-12} would go   source {1} -> {2}" -f $file.Name, $(if ($recorded) { $recorded } else { '(unrecorded)' }), $source)
     } else {
         Copy-Item $file.FullName $destination -Force
-        Write-Host ("  {0,-12} replaced   {1} -> {2}" -f $file.Name, $(if ($before) { $before } else { '(absent)' }), $after)
+        Write-Host ("  {0,-12} installed  source {1} -> {2}" -f $file.Name, $(if ($recorded) { $recorded } else { '(unrecorded)' }), $source)
     }
-    $records += [pscustomobject]@{ Name = $file.Name; Hash = $after }
+    $records += [pscustomobject]@{ Name = $file.Name; Source = $source; Installed = '' }
 }
 Write-Host ''
 
@@ -267,12 +284,23 @@ if ($needManifest) {
 # --- record ----------------------------------------------------------------
 
 if (-not $WhatIf) {
-    $manifestPath = Join-Path $target 'DEPLOY_MANIFEST.txt'
+    # Hash the installed files NOW, after any manifest embedding, so `installed`
+    # is what is actually in bin. `source` is what it was built from, and is
+    # what the next run compares against.
+    foreach ($record in $records) {
+        $installedPath = Join-Path $targetBin $record.Name
+        if (Test-Path $installedPath) {
+            $record.Installed = (Get-FileHash $installedPath -Algorithm MD5).Hash.Substring(0, 12)
+        }
+    }
+
     $lines = @()
     $lines += ("# refreshed {0} from commit {1} ({2})" -f (Get-Date -Format 'yyyy-MM-ddTHH:mm:ss'), $commit, $Arch)
-    $lines += '# md5 (first 12) of each binary installed by refresh_deploy.ps1'
+    $lines += '# md5 (first 12). source = the build output; installed = the file in bin'
+    $lines += '# after mt.exe embedded its manifest. They differ for binaries whose'
+    $lines += '# project does not embed one at build time, which is expected.'
     foreach ($record in ($records | Sort-Object Name)) {
-        $lines += ("{0,-14} {1}" -f $record.Name, $record.Hash)
+        $lines += ("{0,-12} source={1} installed={2}" -f $record.Name, $record.Source, $record.Installed)
     }
     Set-Content -Path $manifestPath -Value $lines -Encoding utf8
     Write-Host ("Recorded {0} binaries in {1}" -f $records.Count, 'DEPLOY_MANIFEST.txt')
