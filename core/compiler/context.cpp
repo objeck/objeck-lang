@@ -8128,11 +8128,23 @@ bool ContextAnalyzer::IsBooleanExpression(Expression* expression)
 
   Type* eval_type = expression->GetEvalType();
   if(eval_type && eval_type->GetType() == BOOLEAN_TYPE) {
+    // An array of Bool is not a boolean -- unless it has been subscripted, in
+    // which case the result is a scalar even though the eval type still carries
+    // the array's dimension. The dimension test used to be applied to variables
+    // only, so a method call returning Bool[] counted as a boolean and
+    // `if(obj->Predict(x) = Nil)` was rejected as a boolean operation with a
+    // non-boolean operand, while the same comparison on Float[], or on a Bool[]
+    // held in a local, was accepted. A call carries its subscript separately
+    // from a variable's, so both are gathered here.
+    ExpressionList* indices = nullptr;
     if(expression->GetExpressionType() == VAR_EXPR) {
-      return !eval_type->GetDimension() || static_cast<Variable*>(expression)->GetIndices();
+      indices = static_cast<Variable*>(expression)->GetIndices();
+    }
+    else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+      indices = static_cast<MethodCall*>(expression)->GetCallIndices();
     }
 
-    return true;
+    return !eval_type->GetDimension() || indices;
   }
 
   return false;
