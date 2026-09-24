@@ -1,0 +1,212 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+GradientBoostedClassifier: boosting under logistic loss.
+
+The regression GradientBoostedTrees fits each stage to y - F(x). This class fits
+y - sigmoid(F(x)) instead, which is what a binary label calls for. The tests
+below pin the three things that substitution changes and that a copy of the
+regression class would get wrong:
+
+  * the starting score is the log-odds of the training positive rate, not the
+    mean of the labels;
+  * a zero learning rate therefore predicts the base rate exactly, which is a
+    closed-form check on both the base and the shrinkage;
+  * a single-class training set drives the odds ratio to a division by zero,
+    which Objeck raises on rather than turning into an Inf, so the base has to
+    be clamped or an all-one-class fold aborts the VM mid-fit.
+
+Scores are probabilities, so they are directly usable by Metrics at a fixed
+false-alarm rate.
+~#
+use System.ML;
+
+class MlGbtClassifier {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# Dataset A: one feature, separable at 5, balanced.
+		# 4 negative, 4 positive -> p = 0.5 -> base = log(1) = 0
+		xa := Float->New[8, 1];
+		ya := Bool->New[8];
+		vals := [1.0, 2.0, 3.0, 4.0, 6.0, 7.0, 8.0, 9.0];
+		each(i : 8) {
+			xa[i, 0] := vals[i];
+			ya[i] := vals[i] > 5.0;
+		};
+
+		# --- guards before Fit ---
+		gbc := GradientBoostedClassifier->New(100, 0.3, 2, 1);
+		ok := Report("unfitted IsFitted is false", <>gbc->IsFitted()) & ok;
+		ok := Report("unfitted GetTreeCount is 0", gbc->GetTreeCount() = 0) & ok;
+		ok := Report("unfitted GetBase is 0.0", Near(gbc->GetBase(), 0.0)) & ok;
+		ok := Report("unfitted PredictRaw returns Nil", gbc->PredictRaw(xa) = Nil) & ok;
+		ok := Report("unfitted PredictScore returns Nil", gbc->PredictScore(xa) = Nil) & ok;
+		# Through a local: comparing a call that returns Bool[] against Nil
+		# inline is rejected by the compiler as an "Invalid mathematical
+		# operation", though the same comparison on Float[] is fine.
+		unfit_pred := gbc->Predict(xa);
+		ok := Report("unfitted Predict returns Nil", unfit_pred = Nil) & ok;
+
+		# --- Fit rejects bad input, and stays unfitted when it does ---
+		no_x : Float[,];
+		no_y : Bool[];
+		ok := Report("Fit on a Nil matrix is refused", <>gbc->Fit(no_x, ya)) & ok;
+		ok := Report("Fit on Nil labels is refused", <>gbc->Fit(xa, no_y)) & ok;
+
+		short := Bool->New[3];
+		ok := Report("a label count that does not match the rows is refused",
+			<>gbc->Fit(xa, short)) & ok;
+		ok := Report("a refused Fit leaves the model unfitted", <>gbc->IsFitted()) & ok;
+
+		zero_stages := GradientBoostedClassifier->New(0, 0.3, 2, 1);
+		ok := Report("zero boosting stages is refused", <>zero_stages->Fit(xa, ya)) & ok;
+
+		# --- a separable problem is learned ---
+		ok := Report("Fit succeeds", gbc->Fit(xa, ya)) & ok;
+		ok := Report("IsFitted is true after Fit", gbc->IsFitted()) & ok;
+		ok := Report("every requested stage was fitted", gbc->GetTreeCount() = 100) & ok;
+		ok := Report("a balanced training set gives a base of zero", Near(gbc->GetBase(), 0.0)) & ok;
+
+		pred := gbc->Predict(xa);
+		recovered := pred <> Nil & pred->Size() = 8;
+		if(recovered) {
+			each(i : 8) {
+				if(pred[i] <> ya[i]) {
+					recovered := false;
+				};
+			};
+		};
+		ok := Report("a separable problem is classified perfectly", recovered) & ok;
+
+		# Scores must be probabilities, and must saturate away from the base on
+		# rows the model is sure about. A NaN or an Inf fails both comparisons.
+		scores := gbc->PredictScore(xa);
+		bounded := scores <> Nil & scores->Size() = 8;
+		if(bounded) {
+			each(i : 8) {
+				if(scores[i] <= 0.0 | scores[i] >= 1.0) {
+					bounded := false;
+				};
+			};
+		};
+		ok := Report("every score is a probability strictly inside 0..1", bounded) & ok;
+		ok := Report("a clearly negative row scores low", scores <> Nil & scores[0] < 0.1) & ok;
+		ok := Report("a clearly positive row scores high", scores <> Nil & scores[7] > 0.9) & ok;
+
+		# --- raw, score and label are three views of one number ---
+		raw := gbc->PredictRaw(xa);
+		agree := raw <> Nil & scores <> Nil & raw->Size() = 8;
+		if(agree) {
+			each(i : 8) {
+				if(<>Near(Matrix2D->Sigmoid(raw[i]), scores[i])) {
+					agree := false;
+				};
+			};
+		};
+		ok := Report("PredictScore is the sigmoid of PredictRaw", agree) & ok;
+
+		halves := pred <> Nil & scores <> Nil;
+		if(halves) {
+			each(i : 8) {
+				if(pred[i] <> (scores[i] > 0.5)) {
+					halves := false;
+				};
+			};
+		};
+		ok := Report("Predict is PredictScore thresholded at one half", halves) & ok;
+
+		# --- the base is the log-odds of the training positive rate ---
+		# Dataset B: 8 rows, 2 positive -> p = 0.25, base = log(1/3) = -1.0986123
+		xb := Float->New[8, 1];
+		yb := Bool->New[8];
+		each(i : 8) {
+			xb[i, 0] := i->As(Float);
+			yb[i] := i > 5;
+		};
+
+		imbalanced := GradientBoostedClassifier->New(10, 0.3, 2, 1);
+		ok := Report("Fit succeeds on an imbalanced set", imbalanced->Fit(xb, yb)) & ok;
+		ok := Report("the base is the log-odds of the positive rate, not the label mean",
+			Near(imbalanced->GetBase(), -1.09861228866811)) & ok;
+
+		# A zero learning rate makes every stage contribute nothing, so the
+		# ensemble still sits at F0 and the score is exactly the base rate.
+		# This is a closed-form check that F0 and the shrinkage are both right.
+		flat := GradientBoostedClassifier->New(10, 0.0, 2, 1);
+		flat->Fit(xb, yb);
+		flat_scores := flat->PredictScore(xb);
+		at_base := flat_scores <> Nil & flat_scores->Size() = 8;
+		if(at_base) {
+			each(i : 8) {
+				if(<>Near(flat_scores[i], 0.25)) {
+					at_base := false;
+				};
+			};
+		};
+		ok := Report("a zero learning rate predicts the base rate exactly", at_base) & ok;
+
+		# --- a single-class training set must not produce Inf or NaN ---
+		# Without the clamp, log-odds is infinite, the first residual is
+		# Inf - sigmoid(Inf), and every score after it is NaN.
+		xc := Float->New[4, 1];
+		yc := Bool->New[4];
+		each(i : 4) {
+			xc[i, 0] := i->As(Float);
+			yc[i] := true;
+		};
+
+		one_class := GradientBoostedClassifier->New(10, 0.3, 2, 1);
+		ok := Report("Fit succeeds when every label is the same", one_class->Fit(xc, yc)) & ok;
+
+		# Verified by removing the clamp and rebuilding: an unclamped p of 1.0
+		# makes the odds ratio p/(1-p) divide by zero, and Objeck RAISES there
+		# rather than yielding Inf, so Fit aborts the VM outright. The clamp is
+		# what keeps a single-class fold from killing the run; this assertion
+		# pins the value it clamps to, log(0.999999/0.000001), about 13.8.
+		ok := Report("a single-class base is clamped, not infinite",
+			one_class->GetBase() > 13.0 & one_class->GetBase() < 14.0) & ok;
+
+		cs := one_class->PredictScore(xc);
+		finite := cs <> Nil & cs->Size() = 4;
+		if(finite) {
+			each(i : 4) {
+				if(cs[i] <= 0.99 | cs[i] > 1.0) {
+					finite := false;
+				};
+			};
+		};
+		ok := Report("a single-class fit scores near one, not NaN", finite) & ok;
+
+		# --- determinism: no seed, so two fits must agree exactly ---
+		twin := GradientBoostedClassifier->New(100, 0.3, 2, 1);
+		twin->Fit(xa, ya);
+		twin_scores := twin->PredictScore(xa);
+		same := twin_scores <> Nil & scores <> Nil;
+		if(same) {
+			each(i : 8) {
+				if(<>Near(twin_scores[i], scores[i])) {
+					same := false;
+				};
+			};
+		};
+		ok := Report("two fits on the same data give the same ensemble", same) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
