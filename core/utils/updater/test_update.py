@@ -369,6 +369,95 @@ def lexically_smaller_newer_tag(version):
 
 # ---------------------------------------------------------------- check suite
 
+def suite_verify(obu, work):
+    """`obu verify <archive> <SHA256SUMS>` -- the check `update` already does,
+    exposed for anyone who downloaded with curl.
+
+    Runs everywhere, including Windows, because it touches nothing but two
+    files the caller names. The interesting property is that a MISMATCH and an
+    ERROR are different exit codes: a script has to be able to tell "this file
+    is wrong" from "I could not tell", and folding them together would make a
+    missing manifest look like a corrupted download.
+    """
+    print("\nverify command (offline, all platforms):")
+
+    room = os.path.join(work, "verify")
+    os.makedirs(room, exist_ok=True)
+
+    good = os.path.join(room, "payload.tgz")
+    with open(good, "wb") as handle:
+        handle.write(b"objeck release payload\n")
+    digest = hashlib.sha256(open(good, "rb").read()).hexdigest()
+
+    sums = os.path.join(room, "SHA256SUMS")
+    with open(sums, "w") as handle:
+        handle.write("%s  payload.tgz\n" % digest)
+        handle.write("%s  absent.tgz\n" % ("0" * 64))
+
+    code, out = run(obu, ["verify", good, sums])
+    check("a matching file verifies, exit 0",
+          code == 0 and "Verified" in out, "exit=%d out=%r" % (code, out))
+
+    # The manifest lists bare names, so the caller's path must not matter.
+    code, out = run(obu, ["verify", "payload.tgz", "SHA256SUMS"], cwd=room)
+    check("it looks the file up by name, not by the path given",
+          code == 0, "exit=%d out=%r" % (code, out))
+
+    tampered = os.path.join(room, "tampered.tgz")
+    shutil.copyfile(good, tampered)
+    with open(tampered, "ab") as handle:
+        handle.write(b"x")
+    os.replace(tampered, good)
+
+    code, out = run(obu, ["verify", good, sums])
+    check("a tampered file FAILS with exit 1, not 2",
+          code == 1 and "FAILED" in out, "exit=%d out=%r" % (code, out))
+    check("the failure names both hashes",
+          digest in out, "out=%r" % out)
+
+    code, out = run(obu, ["verify", good, sums, "--quiet"])
+    check("--quiet prints nothing and still signals via exit 1",
+          code == 1 and out == "", "exit=%d out=%r" % (code, out))
+
+    stranger = os.path.join(room, "stranger.tgz")
+    with open(stranger, "wb") as handle:
+        handle.write(b"not in the manifest\n")
+    code, out = run(obu, ["verify", stranger, sums])
+    check("a file the manifest does not list is an ERROR, exit 2",
+          code == 2, "exit=%d out=%r" % (code, out))
+
+    code, out = run(obu, ["verify", os.path.join(room, "nope.tgz"), sums])
+    check("a missing archive is an error, exit 2",
+          code == 2, "exit=%d out=%r" % (code, out))
+
+    code, out = run(obu, ["verify", good, os.path.join(room, "nope.sums")])
+    check("a missing manifest is an error, exit 2",
+          code == 2, "exit=%d out=%r" % (code, out))
+
+    code, out = run(obu, ["verify", good])
+    check("too few operands is an error, exit 2",
+          code == 2, "exit=%d out=%r" % (code, out))
+
+    code, out = run(obu, ["verify", good, sums, "--nonsense"])
+    check("an unknown option is refused, exit 2",
+          code == 2, "exit=%d out=%r" % (code, out))
+
+    # A manifest fetched on Windows, or edited there, carries CRLF. ExpectedHash
+    # strips it; without that every line would end in a stray character and
+    # nothing would ever match.
+    crlf_payload = os.path.join(room, "crlf.tgz")
+    with open(crlf_payload, "wb") as handle:
+        handle.write(b"crlf manifest case\n")
+    crlf_digest = hashlib.sha256(open(crlf_payload, "rb").read()).hexdigest()
+    crlf_sums = os.path.join(room, "CRLF_SUMS")
+    with open(crlf_sums, "wb") as handle:
+        handle.write(("%s  crlf.tgz\r\n" % crlf_digest).encode("ascii"))
+
+    code, out = run(obu, ["verify", crlf_payload, crlf_sums])
+    check("a CRLF manifest still matches",
+          code == 0, "exit=%d out=%r" % (code, out))
+
+
 def suite_check(obu, work):
     print("\ncheck command (offline, all platforms):")
     version = installed_version(obu)
@@ -763,6 +852,7 @@ def main():
         print("obu %s (%s), update supported: %s"
               % (installed_version(obu), sys.platform, UPDATE_SUPPORTED))
         suite_check(obu, work)
+        suite_verify(obu, work)
         suite_update(obu, work)
         if UPDATE_SUPPORTED:
             suite_selfswap(obu, work)
