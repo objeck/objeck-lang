@@ -473,6 +473,11 @@ void DapAdapter::HandleInitialize(int request_seq, const json& args)
 
   json capabilities;
   capabilities["supportsConditionalBreakpoints"] = true;
+  // Implemented since hitCondition was bridged to the engine's ignore counts
+  // (see SetIgnoreCountForDap below), but never advertised -- and a client that
+  // does not see this capability hides the hit-count field in its breakpoint UI.
+  // So the feature worked, had a regression fixture, and no user could reach it.
+  capabilities["supportsHitConditionalBreakpoints"] = true;
   capabilities["supportsConfigurationDoneRequest"] = true;
   capabilities["supportsEvaluateForHovers"] = true;
   capabilities["supportsStepBack"] = false;
