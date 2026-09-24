@@ -232,23 +232,37 @@ jobs:
       if: runner.os == 'Windows'
       shell: pwsh
       run: |
-        # Install mbedtls and nghttp2 via vcpkg. The installs download tools
-        # and sources from external CDNs that intermittently 504 (a transient
-        # ninja download failed a whole leg on 2026-06-06), so retry with a
-        # short backoff before giving up.
+        # Install mbedtls and nghttp2 via vcpkg. The installs download tools and
+        # sources from external CDNs that intermittently 504 (a transient ninja
+        # download failed a whole leg on 2026-06-06), so retry before giving up.
+        #
+        # The backoff rides out an OUTAGE, not just a blip. The previous version
+        # made 3 attempts 20s apart -- about a 40-second window -- and on
+        # 2026-09-21 all three drew the same 504 fetching zlib for ARM64, inside
+        # 27 seconds. That reddened master, auto-filed #950, and cost a
+        # diagnosis, on a dependency fetch that had nothing to do with the code.
+        #
+        # 5 attempts at 15s, 45s, 2m and 4m spans about seven minutes. It costs
+        # nothing on success, and windows-arm64 is a shipping target whose leg
+        # already runs 26 minutes -- spending a few more to avoid a false red is
+        # the right trade.
         function Install-VcpkgPackage([string]$pkg) {
-          $max = 3
+          $delays = @(15, 45, 120, 240)
+          $max = $delays.Count + 1
           for($i = 1; $i -le $max; $i++) {
             vcpkg install $pkg
             if($LASTEXITCODE -eq 0) {
               return
             }
             if($i -lt $max) {
-              Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in 20s..."
-              Start-Sleep -Seconds 20
+              $wait = $delays[$i - 1]
+              Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in ${wait}s..."
+              Start-Sleep -Seconds $wait
             }
           }
-          throw "vcpkg install $pkg failed after $max attempts"
+          # Name the likely cause. The failure that reaches here looks identical
+          # to a bad token or a broken config, and it is almost never either.
+          throw "vcpkg install $pkg failed after $max attempts over ~7 minutes. This is usually an upstream CDN outage fetching sources, not a configuration problem -- check the curl status codes above before changing anything."
         }
         Install-VcpkgPackage "mbedtls:${{ matrix.arch }}-windows"
         Install-VcpkgPackage "nghttp2:${{ matrix.arch }}-windows"
