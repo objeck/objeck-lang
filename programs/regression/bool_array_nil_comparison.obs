@@ -1,0 +1,154 @@
+#~
+Comparing a call that returns Bool[] against Nil.
+
+`if(obj->Predict(x) = Nil)` used to fail to compile with "Invalid mathematical
+operation" when Predict returned Bool[], while the identical comparison on
+Float[], or on a Bool[] held in a local, compiled. IsBooleanExpression applied
+its array-dimension test only to variables, so a method call returning Bool[]
+counted as a boolean and EQL_EXPR then rejected the pair as a boolean operation
+with a non-boolean operand.
+
+The fix makes the dimension test general. The cases that matter here are
+therefore not only the ones that used to fail, but the ones that must keep
+working: an INDEXED call returning Bool[] yields a scalar and must still be
+usable as a boolean, in an if and under the boolean operators. Those are the
+places a too-broad dimension test would break, and nothing else in the suite
+covers them.
+~#
+
+class BoolArrayNilComparison {
+	@cached : static : Bool[];
+
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		@cached := Bool->New[3];
+		@cached[0] := true;
+		@cached[1] := false;
+		@cached[2] := true;
+
+		# --- what used to fail to compile ---
+		ok := Report("a Bool[] call returning Nil equals Nil", MakeNil() = Nil) & ok;
+		ok := Report("a Bool[] call returning an array is not Nil", MakeArray() <> Nil) & ok;
+
+		is_nil := MakeArray() = Nil;
+		ok := Report("= Nil is false for a real array", <>is_nil) & ok;
+
+		not_nil := MakeNil() <> Nil;
+		ok := Report("<> Nil is false for a Nil result", <>not_nil) & ok;
+
+		# Reference comparison between a call result and a local holding the
+		# same array. This is the other shape the old check rejected.
+		c := @cached;
+		ok := Report("a call result equals the local holding the same array", Cached() = c) & ok;
+
+		fresh := Bool->New[3];
+		ok := Report("a different array does not compare equal", Cached() <> fresh) & ok;
+
+		# Two dimensions were rejected the same way.
+		ok := Report("a Bool[,] call returning Nil equals Nil", MakeNil2D() = Nil) & ok;
+		ok := Report("a Bool[,] call returning a matrix is not Nil", MakeArray2D() <> Nil) & ok;
+
+		# Indexing TWO dimensions on a call result -- MakeArray2D()[0, 1] -- is a
+		# separate limitation that predates this fix ("Only a single dimension may
+		# be indexed on a method call result") and is deliberately not asserted here.
+
+		# --- what must keep working ---
+		# An indexed call yields a scalar Bool. If the dimension test were
+		# applied to the array type rather than the indexed result, these would
+		# stop being boolean and the file would not compile at all.
+		if(MakeArray()[0]) {
+			ok := Report("an indexed Bool[] call is usable as a condition", true) & ok;
+		}
+		else {
+			ok := Report("an indexed Bool[] call is usable as a condition", false) & ok;
+		};
+
+		# An indexed call on the RIGHT of & is correct today and would stay
+		# correct if the defect noted below were fixed, so it is safe to pin.
+		ok := Report("an indexed call works on the right of &", true & MakeArray()[0]) & ok;
+
+		# The three forms below must COMPILE -- that is the regression guard for
+		# this fix, since a dimension test applied to the array type rather than
+		# the indexed result would reject them. Their runtime VALUES are
+		# deliberately NOT asserted, because an indexed call result is evaluated
+		# incorrectly and a DIFFERENT form is wrong on each backend:
+		#
+		#   x64, JIT and interpreted alike : the left operand of &
+		#   macos-arm64                    : |
+		#   windows-arm64                  : = against a literal
+		#
+		# All three predate this change and are identical before and after it.
+		# Pinning what they produce today would cement the defect on one
+		# platform and fail on the others; pinning the right answer fails
+		# everywhere, for a reason that has nothing to do with this fix.
+		sink : Bool;
+		sink := MakeArray()[0] & MakeArray()[2];
+		sink := MakeArray()[1] | MakeArray()[2];
+		sink := MakeArray()[1] = false;
+		ok := Report("every indexed-call form compiles and runs", sink = sink) & ok;
+
+		# A scalar Bool call is boolean, as it always was.
+		ok := Report("a scalar Bool call is a condition", Truth()) & ok;
+		ok := Report("a scalar Bool call works under &", Truth() & Truth()) & ok;
+		ok := Report("a scalar Bool call compares to a literal", Truth() = true) & ok;
+
+		# A Bool[] local against Nil kept working throughout; pin it so a future
+		# change cannot fix the call case by breaking this one.
+		empty : Bool[];
+		ok := Report("a Nil Bool[] local equals Nil", empty = Nil) & ok;
+		ok := Report("a real Bool[] local is not Nil", c <> Nil) & ok;
+		ok := Report("an indexed Bool[] local is boolean", c[0]) & ok;
+
+		# Float[] was never affected; pin it as the control.
+		ok := Report("a Float[] call still compares to Nil", MakeFloats() <> Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : MakeNil() ~ Bool[] {
+		return Nil;
+	}
+
+	function : MakeArray() ~ Bool[] {
+		a := Bool->New[3];
+		a[0] := true;
+		a[1] := false;
+		a[2] := true;
+		return a;
+	}
+
+	function : Cached() ~ Bool[] {
+		return @cached;
+	}
+
+	function : MakeNil2D() ~ Bool[,] {
+		return Nil;
+	}
+
+	function : MakeArray2D() ~ Bool[,] {
+		m := Bool->New[2, 2];
+		m[0, 1] := true;
+		return m;
+	}
+
+	function : Truth() ~ Bool {
+		return true;
+	}
+
+	function : MakeFloats() ~ Float[] {
+		return Float->New[2];
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
