@@ -2582,6 +2582,12 @@ bundle Game.Framework {
 		@return new vector
 		~#
 		function : Div(lhs : Vector2, rhs : Vector2) ~ Vector2 {
+			# A zero divisor aborts the VM -- Objeck raises on a divide by zero
+			# rather than yielding Inf -- so a zero vector is returned instead.
+			if(rhs->GetX() = 0.0 | rhs->GetY() = 0.0) {
+				return Vector2->New(0.0, 0.0);
+			};
+
 			return Vector2->New(lhs->GetX() / rhs->GetX(), lhs->GetY() / rhs->GetY());
 		}
 
@@ -2602,6 +2608,12 @@ bundle Game.Framework {
 		@return new vector
 		~#
 		function : Div(rhs : Vector2, v : Float) ~ Vector2 {
+			# A zero divisor aborts the VM -- Objeck raises on a divide by zero
+			# rather than yielding Inf -- so a zero vector is returned instead.
+			if(v = 0.0) {
+				return Vector2->New(0.0, 0.0);
+			};
+
 			return Vector2->New(rhs->GetX() / v, rhs->GetY() / v);
 		}
 
@@ -2622,6 +2634,12 @@ bundle Game.Framework {
 		@return new vector
 		~#
 		function : DivX(rhs : Vector2, v : Float) ~ Vector2 {
+			# A zero divisor aborts the VM -- Objeck raises on a divide by zero
+			# rather than yielding Inf -- so a zero vector is returned instead.
+			if(v = 0.0) {
+				return Vector2->New(0.0, rhs->GetY());
+			};
+
 			return Vector2->New(rhs->GetX() / v, rhs->GetY());
 		}
 
@@ -2642,6 +2660,12 @@ bundle Game.Framework {
 		@return new vector
 		~#
 		function : DivY(rhs : Vector2, v : Float) ~ Vector2 {
+			# A zero divisor aborts the VM -- Objeck raises on a divide by zero
+			# rather than yielding Inf -- so a zero vector is returned instead.
+			if(v = 0.0) {
+				return Vector2->New(rhs->GetX(), 0.0);
+			};
+
 			return Vector2->New(rhs->GetX(), rhs->GetY() / v);
 		}
 
