@@ -223,6 +223,13 @@ each(i : results) {
 				row1 := row1->Next();
 			};
 						
+			# Nothing matched, so there is no average to report. count is the
+			# number of rows that contributed, and a query matching no rows is
+			# ordinary rather than exceptional -- without this it aborts the VM.
+			if(count = 0.0) {
+				return 0.0;
+			};
+
 			return sum / count;
 		}
 		

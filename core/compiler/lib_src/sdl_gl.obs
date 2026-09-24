@@ -2182,7 +2182,11 @@ bundle Game.OpenGL {
 			@window->GLSwap();
 
 			if(<>@vsync) {
-				frame_ms := 1000 / @target_fps;
+				# A zero target aborts the VM on the divide; no target means no limiter.
+				frame_ms := 0;
+				if(@target_fps > 0) {
+					frame_ms := 1000 / @target_fps;
+				};
 				spent := Timer->GetTicks() - @frame_start;
 				if(spent < frame_ms) {
 					Timer->Delay(frame_ms - spent);
@@ -4698,7 +4702,11 @@ bundle Game.OpenGL {
 				return Texture2D->New(Nil);
 			};
 
-			step := size / squares;
+			# squares = 0 aborts the VM on the divide; one square is the whole span.
+			step := size;
+			if(squares > 0) {
+				step := size / squares;
+			};
 			if(step < 1) {
 				step := 1;
 			};
@@ -5230,7 +5238,14 @@ bundle Game.OpenGL {
 				return;
 			};
 
-			f := 1.0 / (fov_radians / 2.0)->Tan();
+			# Tan(0) is 0, and a zero field of view would abort the VM on the
+			# divide. The guard above covers aspect and the near/far plane only.
+			half_tan := (fov_radians / 2.0)->Tan();
+			if(half_tan = 0.0) {
+				return;
+			};
+
+			f := 1.0 / half_tan;
 			out[0] := f / aspect;
 			out[5] := f;
 			out[10] := (far + near) / (near - far);
@@ -8956,7 +8971,10 @@ bundle Game.OpenGL {
 			# One texel's width, so the shader can average a few neighbours and turn
 			# a staircase edge into a soft one without knowing the map's size.
 			if(shader->HasUniform("shadow_texel")) {
-				shader->SetFloat("shadow_texel", 1.0 / @size->As(Float));
+				# A zero map size would abort the VM on the divide.
+				if(@size > 0) {
+					shader->SetFloat("shadow_texel", 1.0 / @size->As(Float));
+				};
 			};
 			if(shader->HasUniform("shadow_map")) {
 				shader->SetInt("shadow_map", @unit);
@@ -11412,7 +11430,11 @@ bundle Game.OpenGL {
 							at->GetZ() + vz * delta);
 
 						# Linear from start to end over the particle's life.
-						t := @life[i] / @lifetime;
+						# A zero lifetime would abort the VM on the divide.
+						t := 1.0;
+						if(@lifetime > 0.0) {
+							t := @life[i] / @lifetime;
+						};
 						size := @end_size + (@start_size - @end_size) * t;
 						at->SetScale(size, size, 1.0);
 					};

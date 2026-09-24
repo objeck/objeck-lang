@@ -246,6 +246,14 @@ Console->PrintLine(row->Average());
 				return 0.0;
 			};
 
+			# An empty range has no average. The guard above covers an empty
+			# container but not start = end, and Objeck RAISES on a divide by
+			# zero rather than yielding NaN -- so Average(1, 1) on a populated
+			# table aborted the VM rather than returning anything.
+			if(end - start <= 0) {
+				return 0.0;
+			};
+
 			return Sum(start, end) / (end - start);
 		}
 
@@ -469,6 +477,14 @@ Console->PrintLine(col->Average());
 		~#
 		method : public : Average(start : Int, end : Int) ~ Float {
 			if(@rows->Size() = 0) {
+				return 0.0;
+			};
+
+			# An empty range has no average. The guard above covers an empty
+			# container but not start = end, and Objeck RAISES on a divide by
+			# zero rather than yielding NaN -- so Average(1, 1) on a populated
+			# table aborted the VM rather than returning anything.
+			if(end - start <= 0) {
 				return 0.0;
 			};
 
