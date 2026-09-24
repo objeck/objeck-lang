@@ -216,6 +216,13 @@ classes := gnb->PredictClass([[1.1], [7.9]]);   # [0, 1]
 				};
 			};
 
+			# Nothing predicted means no accuracy to report. The Nil check above
+			# does not cover a zero-row matrix, and Objeck raises on a divide by
+			# zero rather than yielding NaN, so this aborts the VM without it.
+			if(preds->Size() = 0) {
+				return 0.0;
+			};
+
 			return correct->As(Float) / preds->Size()->As(Float);
 		}
 
@@ -475,6 +482,15 @@ else {
 			total := 0.0;
 			each(value := values) {
 				total += value->GetCount();
+			};
+
+			# A group with no entries has neither counts nor vocabulary, so the
+			# smoothed likelihood below is 0/0 -- and Objeck raises on that rather
+			# than yielding NaN, aborting the query. Such a group has seen no
+			# training data and can explain nothing, so it scores below every
+			# trained group instead of taking the VM down.
+			if(total + vocab = 0.0) {
+				return Float->NegInf();
 			};
 
 			# Sum log-likelihoods with add-one (Laplace) smoothing
