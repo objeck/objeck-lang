@@ -1,0 +1,95 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+A CSV file that is not there reports, it does not crash the VM.
+
+FileReader->ReadFile returns Nil for a missing file, and both MatrixReader
+loaders hand that result straight to CsvTable->New. CsvTable->Init then called
+data->Split on it, so a mistyped filename unwound the VM inside String->Split,
+before anything parsed:
+
+  method: pos=5, name='System.String->Split(a:System.String)'
+  method: pos=4, name='Data.CSV.CsvTable->Init(a:System.String, b:System.String)'
+  method: pos=3, name='Data.CSV.CsvTable->New(a:System.String)'
+  method: pos=2, name='System.ML.MatrixReader->LoadMatrices(a:System.String, b:Int)'
+
+DetectEnding already guarded Nil and returned the CRLF default (#916); Init,
+which it calls, did not. This is distinct from #934: that one faulted on
+@header_names after a parse failed, and csv_unparsed_table.obs covers it --
+but every table it builds comes from a non-Nil string, so the Nil route had no
+coverage. The guard here deliberately does not return early, because Init has
+to reach the header-map allocation in every case, which is #934's fix. The
+name-keyed readers below are checked on a Nil-constructed table for exactly
+that reason: a guard written as an early return passes IsParsed and then faults
+here. Issue #977.
+~#
+use Collection;
+use System.IO.Filesystem;
+use System.ML;
+use Data.CSV;
+
+class CsvNilData {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		missing := "csv_nil_data_no_such_file.csv";
+
+		# the file must really be absent, or this test proves nothing
+		failures += CheckBool("the file is absent", File->Exists(missing), false);
+		failures += CheckBool("ReadFile of a missing file is Nil", FileReader->ReadFile(missing) = Nil, true);
+
+		# CsvTable built from Nil: unparsed, and not a fault
+		nil_table := CsvTable->New(FileReader->ReadFile(missing));
+		failures += CheckBool("Nil data gives a table", nil_table <> Nil, true);
+		failures += CheckBool("Nil data is not parsed", nil_table->IsParsed(), false);
+
+		# #934's readers, on the Nil-constructed table: an early-return guard
+		# would skip the header map and fault on the first of these
+		failures += CheckInt("Nil data GetRowId", nil_table->GetRowId("dept"), -1);
+		failures += CheckInt("Nil data CountMatches", nil_table->CountMatches("dept", "Eng"), 0);
+		failures += CheckBool("Nil data Matches is Nil", nil_table->Matches("dept", "Eng") = Nil, true);
+		failures += CheckBool("Nil data Contains is Nil", nil_table->Contains("dept", "Eng") = Nil, true);
+		failures += CheckBool("Nil data ColumnValues is Nil", nil_table->ColumnValues("dept") = Nil, true);
+		failures += CheckInt("Nil data Size", nil_table->Size(), 0);
+
+		# the two-argument constructor takes the same route
+		nil_forced := CsvTable->New(FileReader->ReadFile(missing), "\n");
+		failures += CheckBool("Nil data with an explicit ending is not parsed", nil_forced->IsParsed(), false);
+		failures += CheckInt("Nil data with an explicit ending GetRowId", nil_forced->GetRowId("dept"), -1);
+
+		# the callers that reach it from an ordinary mistyped filename
+		failures += CheckBool("LoadMatrices on a missing file is Nil", MatrixReader->LoadMatrices(missing, 1) = Nil, true);
+		failures += CheckBool("LoadSplitMatrices on a missing file is Nil", MatrixReader->LoadSplitMatrices(missing, 1, 0.8) = Nil, true);
+		failures += CheckBool("LoadSplitMatrices, explicit ending, is Nil", MatrixReader->LoadSplitMatrices(missing, 1, 0.8, "\n") = Nil, true);
+
+		# a real file still loads, so a build that broke reading outright
+		# cannot pass the half above
+		good := "csv_nil_data_real.tmp";
+		failures += CheckBool("the real file is written", FileWriter->WriteFile(good, "a,b,c\n1,2,3\n4,5,6\n"), true);
+		real_table := CsvTable->New(FileReader->ReadFile(good));
+		failures += CheckBool("a real file is parsed", real_table->IsParsed(), true);
+		failures += CheckInt("a real file GetRowId", real_table->GetRowId("b"), 1);
+		failures += CheckBool("LoadMatrices on a real file is not Nil", MatrixReader->LoadMatrices(good, 1) <> Nil, true);
+		File->Delete(good);
+
+		if(failures > 0) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : CheckInt(what : String, actual : Int, expected : Int) ~ Int {
+		if(actual <> expected) {
+			"FAIL: {$what}: expected {$expected}, got {$actual}"->PrintLine();
+			return 1;
+		};
+		"PASS: {$what} = {$actual}"->PrintLine();
+		return 0;
+	}
+
+	function : CheckBool(what : String, actual : Bool, expected : Bool) ~ Int {
+		if(actual <> expected) {
+			"FAIL: {$what}: expected {$expected}, got {$actual}"->PrintLine();
+			return 1;
+		};
+		"PASS: {$what} = {$actual}"->PrintLine();
+		return 0;
+	}
+}
