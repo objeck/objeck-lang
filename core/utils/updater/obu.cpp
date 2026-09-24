@@ -126,7 +126,9 @@ static void Usage()
   std::cout << "Commands:" << std::endl;
   std::cout << "  check              check whether a newer Objeck release is available" << std::endl;
   std::cout << "  update             download, verify and install the latest release in place" << std::endl;
-  std::cout << "  rollback           restore the version kept by the last successful update" << std::endl << std::endl;
+  std::cout << "  rollback           restore the version kept by the last successful update" << std::endl;
+  std::cout << "  verify <archive> <SHA256SUMS>" << std::endl;
+  std::cout << "                     check a file you downloaded yourself against a manifest" << std::endl << std::endl;
   std::cout << "Options for 'check' and 'update':" << std::endl;
   std::cout << "  --quiet            print nothing; communicate via the exit code" << std::endl;
   std::cout << "  --channel <tag>    target a specific release tag (e.g. v2026.8.0)" << std::endl;
@@ -136,6 +138,7 @@ static void Usage()
   std::cout << "  --help             show this message" << std::endl;
   std::cout << "  --version          show the obu version" << std::endl << std::endl;
   std::cout << "Exit codes: 0 = action taken / update available, 1 = up to date, 2 = error" << std::endl;
+  std::cout << "            'verify': 0 = matches, 1 = does NOT match, 2 = could not check" << std::endl;
 }
 
 /****************************
@@ -1467,6 +1470,86 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 /****************************
 * 'rollback' command -- restores the version kept by the last successful update
 ****************************/
+/****************************
+* Verifies a downloaded archive against a SHA256SUMS manifest.
+*
+* `update` already does exactly this before it touches anything, but someone
+* who downloaded with curl has no way to run the same check. This exposes it.
+*
+* It introduces NO new trust. SHA256SUMS ships from the same place as the asset
+* it describes, so a match proves the download was not corrupted or truncated
+* -- it does not prove the release was published by a trusted party, because
+* anyone who can replace an asset can replace the manifest to match. Detecting
+* a substituted manifest needs a signature over SHA256SUMS, which is phases 2-4
+* of docs/release_integrity.md and requires a maintainer-held key.
+*
+* Exit codes follow the rest of obu: 0 the file matches, 1 it does not, 2 the
+* check could not be carried out. A mismatch is deliberately distinct from an
+* error, so a script can tell "this file is wrong" from "I could not tell".
+****************************/
+static int DoVerify(const std::string& archive_arg, const std::string& sums_arg, bool is_quiet)
+{
+  const fs::path archive(archive_arg);
+  const fs::path sums_path(sums_arg);
+
+  std::error_code ec;
+  if(!fs::is_regular_file(archive, ec)) {
+    if(!is_quiet) {
+      std::cerr << "No such file: " << archive_arg << std::endl;
+    }
+    return EXIT_CHECK_ERROR;
+  }
+
+  if(!fs::is_regular_file(sums_path, ec)) {
+    if(!is_quiet) {
+      std::cerr << "No such file: " << sums_arg << std::endl;
+    }
+    return EXIT_CHECK_ERROR;
+  }
+
+  std::ifstream sums_in(sums_path, std::ios::binary);
+  if(!sums_in) {
+    if(!is_quiet) {
+      std::cerr << "Could not read " << sums_arg << std::endl;
+    }
+    return EXIT_CHECK_ERROR;
+  }
+  const std::string sums((std::istreambuf_iterator<char>(sums_in)), std::istreambuf_iterator<char>());
+
+  // The manifest lists bare names, so look the archive up by its file name and
+  // not by whatever path the caller typed.
+  const std::string name = archive.filename().string();
+  std::string expected;
+  if(!ExpectedHash(sums, name, expected)) {
+    if(!is_quiet) {
+      std::cerr << name << " is not listed in " << sums_arg << "; cannot verify it." << std::endl;
+    }
+    return EXIT_CHECK_ERROR;
+  }
+
+  const std::string actual = Sha256File(archive);
+  if(actual.empty()) {
+    if(!is_quiet) {
+      std::cerr << "Could not hash " << archive_arg << std::endl;
+    }
+    return EXIT_CHECK_ERROR;
+  }
+
+  if(actual != expected) {
+    if(!is_quiet) {
+      std::cerr << "Integrity check FAILED for " << name << " (expected " << expected
+                << ", got " << actual << ")." << std::endl;
+    }
+    return EXIT_UP_TO_DATE;   // 1: a definite mismatch, not an error
+  }
+
+  if(!is_quiet) {
+    std::cout << "Verified " << name << " against " << sums_arg << "." << std::endl;
+  }
+
+  return EXIT_UPDATE_AVAILABLE;   // 0: the file is what the manifest says
+}
+
 static int DoRollback(bool is_quiet)
 {
 #if !OBU_UPDATE_SUPPORTED
@@ -1572,6 +1655,31 @@ int main(int argc, const char* argv[])
       }
     }
     return DoRollback(is_quiet);
+  }
+
+  if(command == "verify") {
+    std::vector<std::string> operands;
+    bool verify_quiet = false;
+    for(int i = 2; i < argc; ++i) {
+      const std::string option = argv[i];
+      if(option == "--quiet" || option == "-q") {
+        verify_quiet = true;
+      }
+      else if(!option.empty() && option[0] == '-') {
+        std::cerr << "Unknown option for 'verify': '" << option << "'" << std::endl;
+        return EXIT_CHECK_ERROR;
+      }
+      else {
+        operands.push_back(option);
+      }
+    }
+
+    if(operands.size() != 2) {
+      std::cerr << "Usage: obu verify <archive> <SHA256SUMS>" << std::endl;
+      return EXIT_CHECK_ERROR;
+    }
+
+    return DoVerify(operands[0], operands[1], verify_quiet);
   }
 
   if(command != "check" && command != "update") {
