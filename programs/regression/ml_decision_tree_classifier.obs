@@ -1,0 +1,133 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+DecisionTreeClassifier: continuous splits chosen by Gini.
+
+DecisionTree takes Bool[,], so continuous data must be quantile-binned first, and
+the binning discards the very thresholds a tree exists to find. This finds them.
+
+The assertion that carries the test is generalization to values never trained on:
+a tree fitted to 1, 2, 3, 4 split at 2.5 must classify 2.4 and 2.6 correctly,
+which it can only do by having learned a threshold rather than memorized the
+training values. A binned implementation fails that.
+
+Leaf values are class proportions rather than labels, because a fixed
+false-positive budget needs a score to threshold; the last case feeds those
+scores to Metrics->RecallAtFpr to check the two halves fit together.
+~#
+use System.ML;
+
+class MlDecisionTreeClassifier {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# Separable at 2.5: 1 and 2 negative, 3 and 4 positive.
+		x := Float->New[4, 1];
+		x[0, 0] := 1.0; x[1, 0] := 2.0; x[2, 0] := 3.0; x[3, 0] := 4.0;
+		y := Bool->New[4];
+		y[0] := false; y[1] := false; y[2] := true; y[3] := true;
+
+		tree := DecisionTreeClassifier->New(3, 1);
+		ok := Report("unfitted PredictScore returns Nil", tree->PredictScore(x) = Nil) & ok;
+		ok := Report("unfitted IsFitted is false", <>tree->IsFitted()) & ok;
+
+		ok := Report("Fit succeeds", tree->Fit(x, y)) & ok;
+		ok := Report("IsFitted after Fit", tree->IsFitted()) & ok;
+
+		scores := tree->PredictScore(x);
+		ok := Report("a separable set is learned exactly",
+			scores <> Nil & Near(scores[0], 0.0) & Near(scores[1], 0.0)
+			& Near(scores[2], 1.0) & Near(scores[3], 1.0)) & ok;
+
+		labels := tree->Predict(x);
+		ok := Report("Predict thresholds those scores",
+			labels <> Nil & <>labels[0] & <>labels[1] & labels[2] & labels[3]) & ok;
+
+		# THE POINT. These values were never trained on. Getting them right
+		# requires a learned threshold near 2.5, not memorized training values.
+		unseen := Float->New[4, 1];
+		unseen[0, 0] := 2.4; unseen[1, 0] := 2.6; unseen[2, 0] := 0.5; unseen[3, 0] := 9.0;
+		us := tree->PredictScore(unseen);
+		ok := Report("it generalizes to unseen values either side of the threshold",
+			us <> Nil & Near(us[0], 0.0) & Near(us[1], 1.0)
+			& Near(us[2], 0.0) & Near(us[3], 1.0)) & ok;
+
+		# A depth-0 tree is one leaf holding the base rate, not a guess.
+		stump := DecisionTreeClassifier->New(0, 1);
+		ok := Report("a depth-0 tree fits", stump->Fit(x, y)) & ok;
+		ss := stump->PredictScore(x);
+		ok := Report("a depth-0 tree returns the base rate everywhere",
+			ss <> Nil & Near(ss[0], 0.5) & Near(ss[3], 0.5)) & ok;
+
+		# Fractional leaves. Rows 2, 3 and 10 share a leaf holding one positive of
+		# three, so the score there is 2/3, not a rounded label.
+		fx := Float->New[4, 1];
+		fx[0, 0] := 1.0; fx[1, 0] := 2.0; fx[2, 0] := 3.0; fx[3, 0] := 10.0;
+		fy := Bool->New[4];
+		fy[0] := false; fy[1] := true; fy[2] := false; fy[3] := true;
+
+		ftree := DecisionTreeClassifier->New(1, 1);
+		ok := Report("the fractional case fits", ftree->Fit(fx, fy)) & ok;
+		fs := ftree->PredictScore(fx);
+		ok := Report("a mixed leaf scores as a proportion, not a label",
+			fs <> Nil & Near(fs[0], 0.0)
+			& Near(fs[1], 0.66666667) & Near(fs[2], 0.66666667) & Near(fs[3], 0.66666667)) & ok;
+
+		# min_samples stops splitting before purity when the node is small.
+		msx := Float->New[4, 1];
+		msx[0, 0] := 1.0; msx[1, 0] := 2.0; msx[2, 0] := 3.0; msx[3, 0] := 4.0;
+		mstree := DecisionTreeClassifier->New(10, 4);
+		ok := Report("min_samples fits", mstree->Fit(msx, y)) & ok;
+		ms := mstree->PredictScore(msx);
+		ok := Report("min_samples at the row count leaves a single leaf",
+			ms <> Nil & Near(ms[0], 0.5) & Near(ms[3], 0.5)) & ok;
+
+		# Two features, separable on the second only: the tree must pick feature 1.
+		tx := Float->New[4, 2];
+		tx[0, 0] := 5.0; tx[0, 1] := 1.0;
+		tx[1, 0] := 5.0; tx[1, 1] := 2.0;
+		tx[2, 0] := 5.0; tx[2, 1] := 8.0;
+		tx[3, 0] := 5.0; tx[3, 1] := 9.0;
+		ttree := DecisionTreeClassifier->New(3, 1);
+		ok := Report("the two-feature case fits", ttree->Fit(tx, y)) & ok;
+		ts := ttree->PredictScore(tx);
+		ok := Report("it splits on the feature that separates, ignoring the constant one",
+			ts <> Nil & Near(ts[0], 0.0) & Near(ts[1], 0.0)
+			& Near(ts[2], 1.0) & Near(ts[3], 1.0)) & ok;
+
+		# The scores must be usable by the fixed-FPR metrics; this is the seam
+		# between C1 and C4 and is worth pinning rather than assuming.
+		recall := Metrics->RecallAtFpr(scores, y, 0.0);
+		ok := Report("tree scores drive RecallAtFpr: perfect recall at 0% FPR",
+			Near(recall, 1.0)) & ok;
+		ok := Report("tree scores give AUC 1.0 on a separable set",
+			Near(Metrics->AucRoc(scores, y), 1.0)) & ok;
+
+		# Guards.
+		nothing : Float[,];
+		nobools : Bool[];
+		ok := Report("Fit with Nil X is false", <>DecisionTreeClassifier->New(3, 1)->Fit(nothing, y)) & ok;
+		ok := Report("Fit with Nil y is false", <>DecisionTreeClassifier->New(3, 1)->Fit(x, nobools)) & ok;
+
+		short := Bool->New[3];
+		ok := Report("a label count that does not match the rows is false",
+			<>DecisionTreeClassifier->New(3, 1)->Fit(x, short)) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
