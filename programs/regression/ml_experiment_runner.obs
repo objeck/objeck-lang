@@ -1,0 +1,227 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+CrossValidation's experiment runner: ScoreModel, Split and Evaluate.
+
+Two seams made every experiment hand-written. TransformLabels returns Float[]
+while the classifiers and Metrics take Bool[], so callers kept both forms alive;
+and nothing turned fold indexes into train/test matrices, so that copying was
+rewritten each time. ToBool/ToFloat and Split close them, and Evaluate runs the
+whole loop.
+
+The assertion that carries this file is ALIGNMENT. Every other property -- fold
+sizes, coverage, no overlap -- still holds if the split shuffles labels against
+features, and a model trained on scrambled labels does not error, it just scores
+badly in a way that reads as a weak model. So the labels here are a FUNCTION of
+feature 0, and the test re-derives each split row's expected label from its own
+features. A split that pairs row i's features with row j's label fails that and
+passes everything else.
+
+Evaluate is also checked against a permuted-label control: a learnable problem
+must beat chance and the same problem with labels shuffled must not, or the
+runner is reporting something other than what it claims to measure.
+~#
+use System.ML;
+use Collection;
+
+class MlExperimentRunner {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# --- label conversion, both directions ---
+		f := Float->New[4];
+		f[0] := 1.0; f[1] := 0.0; f[2] := 1.0; f[3] := 0.0;
+		b := CrossValidation->ToBool(f);
+		ok := Report("ToBool maps above-half to true",
+			b <> Nil & b[0] & <>b[1] & b[2] & <>b[3]) & ok;
+
+		rt := CrossValidation->ToFloat(b);
+		round_trips := rt <> Nil & rt->Size() = 4;
+		if(round_trips) {
+			each(i : 4) {
+				if(<>Near(rt[i], f[i])) {
+					round_trips := false;
+				};
+			};
+		};
+		ok := Report("ToFloat round-trips ToBool", round_trips) & ok;
+
+		no_f : Float[];
+		no_b : Bool[];
+		ok := Report("ToBool of Nil is Nil", CrossValidation->ToBool(no_f) = Nil) & ok;
+		nil_f := CrossValidation->ToFloat(no_b);
+		ok := Report("ToFloat of Nil is Nil", nil_f = Nil) & ok;
+
+		# --- data: label is a FUNCTION of feature 0, so misalignment is visible
+		rows := 100;
+		x := Float->New[rows, 2];
+		y := Bool->New[rows];
+		state := 7;
+		each(i : rows) {
+			state := (state * 1103515245 + 12345) and 2147483647;
+			v := (state % 1000)->As(Float) / 100.0;
+			x[i, 0] := v;
+			x[i, 1] := 1.0;
+			y[i] := v > 6.5;
+		};
+
+		folds := CrossValidation->StratifiedKFold(CrossValidation->ToFloat(y), 5, 42);
+		ok := Report("folds are produced", folds <> Nil & folds->Size() = 5) & ok;
+
+		# --- Split: sizes, coverage, and above all alignment ---
+		total_test := 0;
+		aligned := true;
+		sizes_ok := true;
+		split : FoldSplit;
+		tx : Float[,];
+		ty : Bool[];
+		each(fi : 5) {
+			split := CrossValidation->Split(x, y, folds[fi]);
+			if(split = Nil) {
+				sizes_ok := false;
+			}
+			else {
+				total_test += split->GetTestSize();
+				if(split->GetTrainSize() + split->GetTestSize() <> rows) {
+					sizes_ok := false;
+				};
+
+				# every TEST row's label must still follow from its own features
+				tx := split->GetTestX();
+				ty := split->GetTestY();
+				each(r : split->GetTestSize()) {
+					if(ty[r] <> (tx[r, 0] > 6.5)) {
+						aligned := false;
+					};
+				};
+
+				# and every TRAIN row likewise
+				tx := split->GetTrainX();
+				ty := split->GetTrainY();
+				each(r : split->GetTrainSize()) {
+					if(ty[r] <> (tx[r, 0] > 6.5)) {
+						aligned := false;
+					};
+				};
+			};
+		};
+		ok := Report("each split partitions all rows", sizes_ok) & ok;
+		ok := Report("the folds cover every row exactly once", total_test = rows) & ok;
+		ok := Report("labels stay with their own features through the split", aligned) & ok;
+
+		no_rows : Vector<IntRef>;
+		ok := Report("Split rejects Nil fold indexes",
+			CrossValidation->Split(x, y, no_rows) = Nil) & ok;
+
+		# --- Evaluate, through the interface, with all three classifiers ---
+		tree := DecisionTreeClassifier->New(6, 2);
+		r1 := CrossValidation->Evaluate(tree, x, y, 5, 42, 0.1);
+		ok := Report("Evaluate accepts a DecisionTreeClassifier", r1 <> Nil) & ok;
+
+		forest := RandomForestClassifier->New(12, 6, 2, 3);
+		r2 := CrossValidation->Evaluate(forest, x, y, 5, 42, 0.1);
+		ok := Report("Evaluate accepts a RandomForestClassifier", r2 <> Nil) & ok;
+
+		boost := GradientBoostedClassifier->New(20, 0.2, 3, 2);
+		r3 := CrossValidation->Evaluate(boost, x, y, 5, 42, 0.1);
+		ok := Report("Evaluate accepts a GradientBoostedClassifier", r3 <> Nil) & ok;
+
+		if(r2 <> Nil) {
+			ok := Report("it reports one score per fold", r2->GetFolds() = 5) & ok;
+			ok := Report("per-fold AUCs are returned",
+				r2->GetFoldAucs() <> Nil & r2->GetFoldAucs()->Size() = 5) & ok;
+
+			# The signal is a clean threshold on feature 0, so any of these
+			# models should find it easily.
+			auc := r2->GetMeanAuc();
+			ok := Report("a learnable problem beats chance", auc > 0.85) & ok;
+
+			# The mean must actually be the mean of the folds, not a last-fold
+			# value or a running total left undivided.
+			per := r2->GetFoldAucs();
+			sum := 0.0;
+			each(i : per) {
+				sum += per[i];
+			};
+			ok := Report("the mean is the mean of the per-fold values",
+				Near(sum / 5.0, auc)) & ok;
+
+			ok := Report("the spread is a real number", r2->GetStdAuc() >= 0.0) & ok;
+			ok := Report("recall at a fixed FPR is reported",
+				r2->GetMeanRecall() >= -1.0 & r2->GetMeanRecall() <= 1.0) & ok;
+			ok := Report("ToString names the fold count",
+				r2->ToString()->Has("5 folds")) & ok;
+		};
+
+		# --- the control: shuffled labels must not beat chance ---
+		shuffled := Bool->New[rows];
+		each(i : rows) {
+			shuffled[i] := y[i];
+		};
+		st := 987654321;
+		for(i := rows - 1; i > 0; i -= 1;) {
+			st := (st * 1103515245 + 12345) and 2147483647;
+			j := st % (i + 1);
+			tmp := shuffled[i];
+			shuffled[i] := shuffled[j];
+			shuffled[j] := tmp;
+		};
+
+		ctrl_forest := RandomForestClassifier->New(12, 6, 2, 3);
+		ctrl := CrossValidation->Evaluate(ctrl_forest, x, shuffled, 5, 42, 0.1);
+		ok := Report("the control runs", ctrl <> Nil) & ok;
+		if(ctrl <> Nil & r2 <> Nil) {
+			ok := Report("shuffled labels do not beat chance",
+				ctrl->GetMeanAuc() < 0.75) & ok;
+			ok := Report("the real signal clearly beats the control",
+				r2->GetMeanAuc() - ctrl->GetMeanAuc() > 0.2) & ok;
+		};
+
+		# --- guards ---
+		no_x : Float[,];
+		no_model : ScoreModel;
+		ok := Report("Evaluate refuses a Nil model",
+			CrossValidation->Evaluate(no_model, x, y, 5, 42, 0.1) = Nil) & ok;
+		ok := Report("Evaluate refuses a Nil matrix",
+			CrossValidation->Evaluate(forest, no_x, y, 5, 42, 0.1) = Nil) & ok;
+		ok := Report("Evaluate refuses fewer than two folds",
+			CrossValidation->Evaluate(forest, x, y, 1, 42, 0.1) = Nil) & ok;
+		ok := Report("Evaluate refuses more folds than rows",
+			CrossValidation->Evaluate(forest, x, y, rows + 1, 42, 0.1) = Nil) & ok;
+
+		# Without standardization it must still run: the flag is a choice, not
+		# a requirement.
+		r4 := CrossValidation->Evaluate(forest, x, y, 5, 42, 0.1, false);
+		ok := Report("it runs with standardization off", r4 <> Nil) & ok;
+
+		# A single fold's spread is undefined; k-1 would divide by zero, which
+		# Objeck raises on rather than yielding NaN.
+		one := Float->New[1];
+		one[0] := 0.9;
+		single := CrossValResult->New(one, one, one);
+		ok := Report("one fold reports a zero spread rather than aborting",
+			Near(single->GetStdAuc(), 0.0)) & ok;
+		ok := Report("one fold still reports its mean", Near(single->GetMeanAuc(), 0.9)) & ok;
+
+		empty := CrossValResult->New(Float->New[0], Float->New[0], Float->New[0]);
+		ok := Report("no folds reports zero rather than dividing by zero",
+			Near(empty->GetMeanAuc(), 0.0) & empty->GetFolds() = 0) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

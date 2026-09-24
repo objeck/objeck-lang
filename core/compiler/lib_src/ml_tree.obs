@@ -984,7 +984,7 @@ scores := tree->PredictScore(x_test);
 recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 ```
 	~#
-	class DecisionTreeClassifier {
+	class DecisionTreeClassifier implements ScoreModel {
 		@root : RegressionTreeNode;
 		@max_depth : Int;
 		@min_samples : Int;
@@ -1365,7 +1365,7 @@ scores := forest->PredictScore(x_test);
 recall := Metrics->RecallAtFpr(scores, y_test, 0.001);
 ```
 	~#
-	class RandomForestClassifier {
+	class RandomForestClassifier implements ScoreModel {
 		@trees : Vector<DecisionTreeClassifier>;
 		@num_trees : Int;
 		@max_depth : Int;
@@ -2536,7 +2536,7 @@ tree->Predict([true, true])->PrintLine();   # true
 	cut := Metrics->ThresholdAtFpr(test_y, scores, 0.01);
 	```
 	~#
-	class GradientBoostedClassifier {
+	class GradientBoostedClassifier implements ScoreModel {
 		@num_trees : Int;
 		@learning_rate : Float;
 		@max_depth : Int;
