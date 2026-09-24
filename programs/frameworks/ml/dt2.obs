@@ -2,8 +2,10 @@ use Collection;
 use Data.CSV;
 
 class DecisionTree {
+	# Weighted Gini impurity of splitting 'Class' on 'Perf'.
+	# Expects a CSV with binary 1/0 columns: data/dt2_perf.csv
 	function : Main(args : String[]) ~ Nil {
-		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]));
+		table := CsvTable->New(System.IO.Filesystem.FileReader->ReadFile(args[0]), "\n");
 		Calculate(table, "Perf", "Class");
 	}
 
@@ -16,7 +18,7 @@ class DecisionTree {
 		# --- Left ---
 		size := (table->Size() - 1)->As(Float);
 
-		left_goal := table->Count(left_name, "1")->As(Float);
+		left_goal := table->CountMatches(left_name, "1")->As(Float);
 		acheived := 0.0;
 		each(row := table) {
 			if(row->Get(right_name)->Equals("1") & row->Get(left_name)->Equals("1")) {
@@ -31,7 +33,7 @@ class DecisionTree {
 		
 		# --- Right ---
 
-		right_goal := table->Count(left_name, "0")->As(Float);
+		right_goal := table->CountMatches(left_name, "0")->As(Float);
 		acheived := 0.0;
 		each(row := table) {
 			if(row->Get(right_name)->Equals("1") & row->Get(left_name)->Equals("0")) {
