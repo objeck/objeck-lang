@@ -83,6 +83,15 @@ solver->GetRSquared()->PrintLine();
 			};
 # "{$num} / {$dom}"->PrintLine();				
 			
+			# A constant target column has no variance to explain, so the total sum
+			# of squares is zero and R-squared is undefined. Objeck raises on a
+			# divide by zero rather than yielding Inf, so without this an ordinary
+			# fit on constant targets aborts the VM mid-Calculate. 0.0 matches what
+			# the other degenerate branches in this library return.
+			if(dom = 0.0) {
+				return 0.0;
+			};
+
 			return num/dom;
 		}
 	}
@@ -1517,6 +1526,13 @@ each(label in labels) {
 				};
 			};
 
+			# Nothing predicted means no accuracy to report. The Nil check above
+			# does not cover a zero-row matrix, and Objeck raises on a divide by
+			# zero rather than yielding NaN, so this aborts the VM without it.
+			if(preds->Size() = 0) {
+				return 0.0;
+			};
+
 			return correct->As(Float) / preds->Size()->As(Float);
 		}
 
@@ -1809,6 +1825,13 @@ labels := model->PredictClass(X);
 				};
 			};
 
+			# Nothing predicted means no accuracy to report. The Nil check above
+			# does not cover a zero-row matrix, and Objeck raises on a divide by
+			# zero rather than yielding NaN, so this aborts the VM without it.
+			if(preds->Size() = 0) {
+				return 0.0;
+			};
+
 			return correct->As(Float) / preds->Size()->As(Float);
 		}
 
@@ -2069,6 +2092,13 @@ labels := model->PredictClass(X);
 				if(preds[i] = actual) {
 					correct += 1;
 				};
+			};
+
+			# Nothing predicted means no accuracy to report. The Nil check above
+			# does not cover a zero-row matrix, and Objeck raises on a divide by
+			# zero rather than yielding NaN, so this aborts the VM without it.
+			if(preds->Size() = 0) {
+				return 0.0;
 			};
 
 			return correct->As(Float) / preds->Size()->As(Float);

@@ -1,0 +1,123 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Degenerate inputs must not take the VM down.
+
+Float division by zero RAISES in Objeck rather than yielding Inf or NaN, so an
+unguarded ratio in a library is not a wrong number -- it is an abort, inside a
+method the caller never wrote, with nothing naming the input that caused it.
+A sweep of System.ML found ratios whose denominators depend on the data, and
+the degenerate cases are ordinary rather than exotic: a target column that
+happens to be constant, an empty evaluation set, a group with no training data.
+
+Two of these were verified to abort before the guards were added, by running
+this same code against the previous library:
+
+  LinearSolver->Calculate    on a constant target column
+    >>> Divide by zero <<<  in System.ML.LinearSolver->GetRSquared
+  LogisticRegression->Score  on a zero-row matrix
+    >>> Divide by zero <<<  in System.ML.LogisticRegression->Score
+
+So the assertion that matters most here is simply that the program reaches the
+end. Every value checked below is secondary to the run surviving at all.
+~#
+use System.ML;
+
+class MlDegenerateRatios {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# --- a constant target column: the total sum of squares is zero, so
+		# --- R-squared has nothing to divide by.
+		m1 := Float->New[4, 2];
+		m2 := Float->New[4, 1];
+		each(i : 4) {
+			m1[i, 0] := 1.0;
+			m1[i, 1] := i->As(Float);
+			m2[i, 0] := 7.0;
+		};
+
+		res := LinearSolver->New(m1, m2)->Calculate(1);
+		ok := Report("LinearSolver survives a constant target column", res <> Nil) & ok;
+		if(res <> Nil) {
+			r2 := res->GetRSquared();
+			# Not NaN and not Inf: both comparisons fail for either.
+			ok := Report("its R-squared is a finite number", r2 >= 0.0 & r2 <= 1.0) & ok;
+		};
+
+		# --- an empty evaluation set: nothing predicted, so accuracy has no
+		# --- denominator. The Nil guards in these methods do not cover a matrix
+		# --- that is merely empty.
+		x := Float->New[4, 2];
+		y := Float->New[4, 1];
+		each(i : 4) {
+			x[i, 0] := i->As(Float);
+			x[i, 1] := 1.0;
+			if(i < 2) {
+				y[i, 0] := 0.0;
+			}
+			else {
+				y[i, 0] := 1.0;
+			};
+		};
+		empty_x := Float->New[0, 2];
+		empty_y := Float->New[0, 1];
+
+		logistic := LogisticRegression->New(0.1, 50);
+		logistic->Fit(x, y);
+		ok := Report("LogisticRegression scores an empty set as 0.0",
+			Near(logistic->Score(empty_x, empty_y), 0.0)) & ok;
+
+		bayes := GaussianNaiveBayes->New();
+		bayes->Fit(x, y);
+		ok := Report("GaussianNaiveBayes scores an empty set as 0.0",
+			Near(bayes->Score(empty_x, empty_y), 0.0)) & ok;
+
+		perceptron := Perceptron->New(0.1, 50);
+		perceptron->Fit(x, y);
+		ok := Report("Perceptron scores an empty set as 0.0",
+			Near(perceptron->Score(empty_x, empty_y), 0.0)) & ok;
+
+		svm := SVM->New(0.01, 0.1, 50);
+		svm->Fit(x, y);
+		ok := Report("SVM scores an empty set as 0.0",
+			Near(svm->Score(empty_x, empty_y), 0.0)) & ok;
+
+		# A non-empty set must still report a real number, so the guard cannot
+		# have been written as an unconditional early return.
+		trained := logistic->Score(x, y);
+		ok := Report("a non-empty set still scores normally",
+			trained >= 0.0 & trained <= 1.0) & ok;
+
+		# --- a classifier asked about a class it was never trained on ---
+		# NaiveBayes divides by (total + vocabulary), both zero for a group that
+		# has seen nothing.
+		# Both groups hold no entries, so vocabulary and total count are both
+		# zero and the Laplace-smoothed likelihood is 0/0.
+		left := BayesGroup->New(0.5);
+		right := BayesGroup->New(0.5);
+		nb := NaiveBayes->New(left, right);
+		pick := nb->Query(["gamma"]);
+		ok := Report("NaiveBayes survives a query against untrained groups",
+			pick >= -1 & pick <= 1) & ok;
+
+		"reached the end"->PrintLine();
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

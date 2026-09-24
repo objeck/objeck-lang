@@ -2342,6 +2342,13 @@ tree->Predict([true, true])->PrintLine();   # true
 		@return Gini index
 		~#
 		function : native : Gini(acheived : Float, goal : Float) ~ Float {
+			# A group with no members has no impurity. WeightedGini checks this
+			# before both of its calls, but the division aborts the VM rather than
+			# yielding Inf, so the guard belongs here too for any other caller.
+			if(goal <= 0.0) {
+				return 0.0;
+			};
+
 			reached := acheived / goal;
 			not_reached := (goal - acheived) / goal;
 			return 1 - (reached*reached + not_reached*not_reached);
