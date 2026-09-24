@@ -1224,6 +1224,365 @@ if(test_x = Nil) {
 			"Actual Neg  |   {$tn}   |   {$fp}   |"->PrintLine();
 			"Actual Pos  |   {$fn}   |   {$tp}   |"->PrintLine();
 		}
+
+		#~
+		Operating points of a scored classifier, one row per distinct score, from
+		the highest score down: [threshold, false positives, true positives].
+
+		Every metric below is a walk over this. It exists because the functions
+		above take already-thresholded Bool predictions, which throw away exactly
+		what these questions need: a single Bool array fixes one operating point,
+		and cannot answer what the recall would be at a different false-alarm rate.
+
+		Instances that share a score share an operating point. Splitting them would
+		invent an ordering the scores do not express and let a metric read better
+		than the model earned.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@return points x 3 matrix, or Nil when the inputs do not line up
+		~#
+		function : OperatingPoints(scores : Float[], actuals : Bool[]) ~ Float[,] {
+			if(scores = Nil | actuals = Nil) {
+				return Nil;
+			};
+
+			n := scores->Size();
+			if(n = 0 | actuals->Size() <> n) {
+				return Nil;
+			};
+
+			order := SortDescending(scores);
+
+			# First pass: how many distinct scores, so the result can be sized.
+			points := 0;
+			each(i : n) {
+				if(i = 0 | scores[order[i]] <> scores[order[i - 1]]) {
+					points += 1;
+				};
+			};
+
+			result := Float->New[points, 3];
+			tp := 0;
+			fp := 0;
+			p := 0;
+
+			each(i : n) {
+				# Emit the previous run before starting a new score.
+				if(i > 0 & scores[order[i]] <> scores[order[i - 1]]) {
+					result[p, 0] := scores[order[i - 1]];
+					result[p, 1] := fp->As(Float);
+					result[p, 2] := tp->As(Float);
+					p += 1;
+				};
+
+				if(actuals[order[i]]) {
+					tp += 1;
+				}
+				else {
+					fp += 1;
+				};
+			};
+
+			result[p, 0] := scores[order[n - 1]];
+			result[p, 1] := fp->As(Float);
+			result[p, 2] := tp->As(Float);
+
+			return result;
+		}
+
+		function : SortDescending(scores : Float[]) ~ Int[] {
+			n := scores->Size();
+			idx := Int->New[n];
+			each(i : n) {
+				idx[i] := i;
+			};
+
+			# Merge sort rather than anything simpler: a quadratic sort on the
+			# 125,973 rows of a benchmark like NSL-KDD would dominate every metric.
+			buffer := Int->New[n];
+			MergeRange(scores, idx, buffer, 0, n - 1);
+
+			return idx;
+		}
+
+		function : MergeRange(scores : Float[], idx : Int[], buffer : Int[], lo : Int, hi : Int) ~ Nil {
+			if(lo >= hi) {
+				return;
+			};
+
+			mid := (lo + hi) / 2;
+			MergeRange(scores, idx, buffer, lo, mid);
+			MergeRange(scores, idx, buffer, mid + 1, hi);
+
+			i := lo;
+			j := mid + 1;
+			p := lo;
+
+			while(i <= mid & j <= hi) {
+				# >= keeps equal scores in index order, so the result is stable and
+				# the same input always produces the same points.
+				if(scores[idx[i]] >= scores[idx[j]]) {
+					buffer[p] := idx[i];
+					i += 1;
+				}
+				else {
+					buffer[p] := idx[j];
+					j += 1;
+				};
+				p += 1;
+			};
+
+			while(i <= mid) {
+				buffer[p] := idx[i];
+				i += 1;
+				p += 1;
+			};
+
+			while(j <= hi) {
+				buffer[p] := idx[j];
+				j += 1;
+				p += 1;
+			};
+
+			for(q := lo; q <= hi; q += 1;) {
+				idx[q] := buffer[q];
+			};
+		}
+
+		#~
+		The highest recall reachable without exceeding a false-positive rate.
+
+		This is the number an analyst actually cares about: alerts arrive against a
+		fixed budget, so "how many attacks do we catch while raising no more than
+		one false alarm in a thousand" is the question, not accuracy.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@param max_fpr the false-positive rate that must not be exceeded, 0.0 to 1.0
+		@return recall at the best qualifying operating point, or -1.0 on bad input
+
+```
+r := Metrics->RecallAtFpr(scores, actuals, 0.001);
+"recall at 0.1% FPR: {$r}"->PrintLine();
+```
+		~#
+		function : RecallAtFpr(scores : Float[], actuals : Bool[], max_fpr : Float) ~ Float {
+			points := OperatingPoints(scores, actuals);
+			if(points = Nil | max_fpr < 0.0 | max_fpr > 1.0) {
+				return -1.0;
+			};
+
+			positives := CountPositives(actuals);
+			negatives := actuals->Size() - positives;
+			if(positives = 0 | negatives = 0) {
+				return -1.0;
+			};
+
+			dims := points->Size();
+			best := 0.0;
+			each(i : dims[0]) {
+				fpr := points[i, 1] / negatives->As(Float);
+				if(fpr <= max_fpr) {
+					tpr := points[i, 2] / positives->As(Float);
+					if(tpr > best) {
+						best := tpr;
+					};
+				};
+			};
+
+			return best;
+		}
+
+		#~
+		The score threshold of the operating point RecallAtFpr selects.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@param max_fpr the false-positive rate that must not be exceeded
+		@return the threshold to classify at, or 0.0 on bad input
+		~#
+		function : ThresholdAtFpr(scores : Float[], actuals : Bool[], max_fpr : Float) ~ Float {
+			points := OperatingPoints(scores, actuals);
+			if(points = Nil | max_fpr < 0.0 | max_fpr > 1.0) {
+				return 0.0;
+			};
+
+			positives := CountPositives(actuals);
+			negatives := actuals->Size() - positives;
+			if(positives = 0 | negatives = 0) {
+				return 0.0;
+			};
+
+			dims := points->Size();
+			best := 0.0;
+			threshold := 0.0;
+			each(i : dims[0]) {
+				fpr := points[i, 1] / negatives->As(Float);
+				if(fpr <= max_fpr) {
+					tpr := points[i, 2] / positives->As(Float);
+					if(tpr > best) {
+						best := tpr;
+						threshold := points[i, 0];
+					};
+				};
+			};
+
+			return threshold;
+		}
+
+		#~
+		Area under the ROC curve, by trapezoid over the operating points.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@return AUC in 0.0 to 1.0, or -1.0 on bad input
+		~#
+		function : AucRoc(scores : Float[], actuals : Bool[]) ~ Float {
+			points := OperatingPoints(scores, actuals);
+			if(points = Nil) {
+				return -1.0;
+			};
+
+			positives := CountPositives(actuals);
+			negatives := actuals->Size() - positives;
+			if(positives = 0 | negatives = 0) {
+				return -1.0;
+			};
+
+			dims := points->Size();
+			area := 0.0;
+			prev_fpr := 0.0;
+			prev_tpr := 0.0;
+
+			each(i : dims[0]) {
+				fpr := points[i, 1] / negatives->As(Float);
+				tpr := points[i, 2] / positives->As(Float);
+				area += (fpr - prev_fpr) * (tpr + prev_tpr) / 2.0;
+				prev_fpr := fpr;
+				prev_tpr := tpr;
+			};
+
+			return area;
+		}
+
+		#~
+		Average precision: the precision-recall curve summarised as the sum of
+		precision at each point weighted by the recall it gained. Preferred over
+		AUC-ROC when positives are rare, because it does not credit a model for
+		the vast number of true negatives.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@return average precision in 0.0 to 1.0, or -1.0 on bad input
+		~#
+		function : AveragePrecision(scores : Float[], actuals : Bool[]) ~ Float {
+			points := OperatingPoints(scores, actuals);
+			if(points = Nil) {
+				return -1.0;
+			};
+
+			positives := CountPositives(actuals);
+			if(positives = 0) {
+				return -1.0;
+			};
+
+			dims := points->Size();
+			total := 0.0;
+			prev_recall := 0.0;
+
+			each(i : dims[0]) {
+				tp := points[i, 2];
+				fp := points[i, 1];
+				recall := tp / positives->As(Float);
+				precision := 0.0;
+				if(tp + fp > 0.0) {
+					precision := tp / (tp + fp);
+				};
+				total += (recall - prev_recall) * precision;
+				prev_recall := recall;
+			};
+
+			return total;
+		}
+
+		#~
+		The ROC curve as [threshold, false-positive rate, true-positive rate] rows,
+		with the origin included so it can be plotted directly.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@return (points + 1) x 3 matrix, or Nil on bad input
+		~#
+		function : RocCurve(scores : Float[], actuals : Bool[]) ~ Float[,] {
+			points := OperatingPoints(scores, actuals);
+			if(points = Nil) {
+				return Nil;
+			};
+
+			positives := CountPositives(actuals);
+			negatives := actuals->Size() - positives;
+			if(positives = 0 | negatives = 0) {
+				return Nil;
+			};
+
+			dims := points->Size();
+			rows := dims[0];
+			result := Float->New[rows + 1, 3];
+
+			# Row 0 is the origin: classify nothing as positive.
+			result[0, 0] := points[0, 0];
+			result[0, 1] := 0.0;
+			result[0, 2] := 0.0;
+
+			each(i : rows) {
+				result[i + 1, 0] := points[i, 0];
+				result[i + 1, 1] := points[i, 1] / negatives->As(Float);
+				result[i + 1, 2] := points[i, 2] / positives->As(Float);
+			};
+
+			return result;
+		}
+
+		#~
+		The precision-recall curve as [threshold, recall, precision] rows.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@return points x 3 matrix, or Nil on bad input
+		~#
+		function : PrCurve(scores : Float[], actuals : Bool[]) ~ Float[,] {
+			points := OperatingPoints(scores, actuals);
+			if(points = Nil) {
+				return Nil;
+			};
+
+			positives := CountPositives(actuals);
+			if(positives = 0) {
+				return Nil;
+			};
+
+			dims := points->Size();
+			rows := dims[0];
+			result := Float->New[rows, 3];
+
+			each(i : rows) {
+				tp := points[i, 2];
+				fp := points[i, 1];
+				result[i, 0] := points[i, 0];
+				result[i, 1] := tp / positives->As(Float);
+				result[i, 2] := 0.0;
+				if(tp + fp > 0.0) {
+					result[i, 2] := tp / (tp + fp);
+				};
+			};
+
+			return result;
+		}
+
+		function : CountPositives(actuals : Bool[]) ~ Int {
+			count := 0;
+			each(i : actuals) {
+				if(actuals[i]) {
+					count += 1;
+				};
+			};
+
+			return count;
+		}
 	}
 
 	#~
