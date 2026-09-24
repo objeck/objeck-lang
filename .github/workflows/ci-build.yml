@@ -917,6 +917,29 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obi_stdin_eof.py "%BIN%"
 
+    # An array copy constructor, 'Int->New[other]', compiled into a library wrote
+    # the numeric class id of System.$Int into the .obl. Ids mean nothing outside
+    # the unit that assigned them, so linking that library crashed obc at -opt s1
+    # and above, and at s0 produced a .obe that crashed obr instead. Needs two
+    # compilations, so it cannot be a regression *.obs.
+    - name: Array copy constructors survive a library (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_array_copy.py "$BIN"
+
+    - name: Array copy constructors survive a library (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_array_copy.py "%BIN%"
+
     # obu updater: offline end-to-end against fake releases (no network). Builds
     # obu with the test hooks, then exercises 'check' -- which runs everywhere,
     # Windows included -- plus the update/rollback swap and the command-injection

@@ -81,6 +81,10 @@ class ItermediateOptimizer {
   std::vector<IntermediateBlock*> CleanLabelsLocation(std::vector<IntermediateBlock*> inputs);
   std::vector<IntermediateBlock*> JumpToLocation(std::vector<IntermediateBlock*> inputs);
 
+  // resolves an MTHD_CALL's class/method ids, reporting an unknown id rather
+  // than running off the end of the id maps
+  IntermediateMethod* ResolveMethodCall(IntermediateInstruction* instr);
+
   // inline setters/getters
   IntermediateBlock* InlineSettersGetters(IntermediateBlock* inputs);
 

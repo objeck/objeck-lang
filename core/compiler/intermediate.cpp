@@ -6566,6 +6566,73 @@ void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, instr, 1, LOCL));
 }
 
+/****************************
+ * Emits the array copy constructor, 'Int->New[other]', as a call to the
+ * matching 'System.$*:Copy' library function.
+ *
+ * A library build cannot emit MTHD_CALL. Its operands are numeric class and
+ * method ids, and an id is only meaningful inside the compilation unit that
+ * assigned it; writing one into an .obl hands the next build a stale id that
+ * it then looks up in its own class map. So '-tar lib' emits LIB_MTHD_CALL,
+ * which carries the names, and the linker patches in real ids when the
+ * library is linked into a program.
+ *
+ * Element types without a 'Copy' function (bool, object) emit nothing here,
+ * as they always have.
+ ****************************/
+void IntermediateEmitter::EmitArrayCopy(MethodCall* method_call)
+{
+  std::wstring cls_name;
+  std::wstring mthd_name;
+
+  switch(method_call->GetArrayType()->GetType()) {
+  case frontend::BYTE_TYPE:
+    cls_name = L"System.$Byte";
+    mthd_name = L"System.$Byte:Copy:b*,";
+    break;
+
+  case frontend::CHAR_TYPE:
+    cls_name = L"System.$Char";
+    mthd_name = L"System.$Char:Copy:c*,";
+    break;
+
+  case frontend::INT_TYPE:
+    cls_name = L"System.$Int";
+    mthd_name = L"System.$Int:Copy:i*,";
+    break;
+
+  case frontend::FLOAT_TYPE:
+    cls_name = L"System.$Float";
+    mthd_name = L"System.$Float:Copy:f*,";
+    break;
+
+  default:
+    return;
+  }
+
+  LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(cls_name, parsed_program->GetLibUses());
+  if(!lib_class) {
+    return;
+  }
+
+  LibraryMethod* lib_mthd = lib_class->GetMethod(mthd_name);
+  if(!lib_mthd) {
+    return;
+  }
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+
+  // library output
+  if(is_lib) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LIB_MTHD_CALL,
+                                                                               lib_mthd->IsNative(), cls_name, mthd_name));
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL,
+                                                                               lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
+  }
+}
+
 void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested)
 {
   cur_line_num = static_cast<Statement*>(method_call)->GetLineNumber();
@@ -6577,59 +6644,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     if(expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) &&
        expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension()) {
 
-      Type* type = method_call->GetArrayType();
-      switch(type->GetType()) {
-      case BYTE_TYPE: {
-        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Byte", parsed_program->GetLibUses());
-        if(lib_class) {
-          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Byte:Copy:b*,");
-          if(lib_mthd) {
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
-          }
-        }
-      }
-        break;
-
-      case frontend::CHAR_TYPE: {
-        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Char", parsed_program->GetLibUses());
-        if(lib_class) {
-          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Char:Copy:c*,");
-          if(lib_mthd) {
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
-          }
-        }
-      }
-        break;
-
-      case frontend::INT_TYPE: {
-        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Int", parsed_program->GetLibUses());
-        if(lib_class) {
-          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Int:Copy:i*,");
-          if(lib_mthd) {
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
-          }
-        }
-      }
-        break;
-
-      case frontend::FLOAT_TYPE: {
-        LibraryClass* lib_class = parsed_program->GetLinker()->SearchClassLibraries(L"System.$Float", parsed_program->GetLibUses());
-        if(lib_class) {
-          LibraryMethod* lib_mthd = lib_class->GetMethod(L"System.$Float:Copy:f*,");
-          if(lib_mthd) {
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, MTHD_CALL, lib_class->GetId(), lib_mthd->GetId(), lib_mthd->IsNative()));
-          }
-        }
-      }
-        break;
-
-      default:
-        break;
-      }
+      EmitArrayCopy(method_call);
     }
     // new array instance
     else {

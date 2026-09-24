@@ -984,8 +984,11 @@ void IntermediateInstruction::Debug(size_t i) {
     break;
 
   case MTHD_CALL: {
-    IntermediateMethod* method = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand))->GetMethod(static_cast<int>(operand2));
-    GetLogger() << L"  " << std::left << std::setw(6) << i << L"MTHD_CALL: method='" << method->GetName() << L"'; native=" << (operand3 ? "true" : "false") << std::endl;
+    IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand));
+    IntermediateMethod* method = klass ? klass->GetMethod(static_cast<int>(operand2)) : nullptr;
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"MTHD_CALL: method='"
+                << (method ? method->GetName() : L"<unknown id " + std::to_wstring(operand) + L"," + std::to_wstring(operand2) + L">")
+                << L"'; native=" << (operand3 ? "true" : "false") << std::endl;
   }
     break;
 
@@ -1032,13 +1035,13 @@ void IntermediateInstruction::Debug(size_t i) {
 
   case OBJ_INST_CAST: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand));
-    GetLogger() << L"  " << std::left << std::setw(6) << i << L"OBJ_INST_CAST: to='" << klass->GetName() << L"', id=" << operand << std::endl;
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"OBJ_INST_CAST: to='" << (klass ? klass->GetName() : L"<unknown id " + std::to_wstring(operand) + L">") << L"', id=" << operand << std::endl;
   }
     break;
     
   case OBJ_TYPE_OF: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand));
-    GetLogger() << L"  " << std::left << std::setw(6) << i << L"OBJ_TYPE_OF: check='" << klass->GetName() << L"', id=" << operand << std::endl;
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"OBJ_TYPE_OF: check='" << (klass ? klass->GetName() : L"<unknown id " + std::to_wstring(operand) + L">") << L"', id=" << operand << std::endl;
   }
     break;
 
@@ -1060,7 +1063,7 @@ void IntermediateInstruction::Debug(size_t i) {
 
   case NEW_OBJ_INST: {
     IntermediateClass* klass = IntermediateProgram::Instance()->GetClass(static_cast<int>(operand));
-    GetLogger() << L"  " << std::left << std::setw(6) << i << L"NEW_OBJ_INST: class='" << klass->GetName() << L"'" << std::endl;
+    GetLogger() << L"  " << std::left << std::setw(6) << i << L"NEW_OBJ_INST: class='" << (klass ? klass->GetName() : L"<unknown id " + std::to_wstring(operand) + L">") << L"'" << std::endl;
   }
     break;
 

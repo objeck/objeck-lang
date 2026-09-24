@@ -799,11 +799,13 @@ namespace backend {
       blocks.push_back(b);
     }
 
+    // nullptr when 'id' is unknown; see IntermediateProgram::GetClass.
     IntermediateMethod* GetMethod(int id) {
       std::map<int, IntermediateMethod*>::iterator result = method_map.find(id);
-#ifdef _DEBUG
-      assert(result != method_map.end());
-#endif
+      if(result == method_map.end()) {
+        return nullptr;
+      }
+
       return result->second;
     }
 
@@ -1024,11 +1026,16 @@ namespace backend {
       class_map.insert(std::pair<int, IntermediateClass*>(c->GetId(), c));
     }
 
+    // nullptr when 'id' is unknown. Class ids are only meaningful inside the
+    // compilation unit that assigned them, so an id that leaked out of one
+    // (through a library, say) lands here as a miss; callers report it rather
+    // than dereferencing end().
     IntermediateClass* GetClass(int id) {
       std::map<int, IntermediateClass*>::iterator result = class_map.find(id);
-#ifdef _DEBUG
-      assert(result != class_map.end());
-#endif
+      if(result == class_map.end()) {
+        return nullptr;
+      }
+
       return result->second;
     }
 

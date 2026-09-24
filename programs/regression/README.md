@@ -47,6 +47,11 @@ Other runners in this directory:
 - `python3 run_vm_flag_tests.py <bin_dir>` - `obr` flags, and interpreter/JIT equivalence
 - `python3 run_differential.py <bin_dir>` - compiles every test at `-opt s0` and `-opt s3` and requires the same output with the JIT off, on by default and forced on; its header documents its markers
 
+Checks that need more than one compilation, or a tool other than `obc`/`obr`, and so cannot be a `*.obs` the runners above compile once and run. CI runs each on every platform:
+- `python3 check_obi_obr_parity.py <bin_dir>` - `obi` and `obr` agree on which protocols are compiled in
+- `python3 check_obi_stdin_eof.py <bin_dir>` - `obi` exits when stdin reaches EOF
+- `python3 check_lib_array_copy.py <bin_dir>` - an array copy constructor still works when its class is compiled into a library and linked
+
 ## Test Organization
 
 The file-name prefix decides a test's category in `TESTS.md` (`core_`, `jit_`, `arm64_`, `bad_`, `collect_`, `ml_` and so on; the mapping is `CATS` in `gen_manifest.py`, and a name that matches none is filed under Other). Directives are comment lines starting at column 0:

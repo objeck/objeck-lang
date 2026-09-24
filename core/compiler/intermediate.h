@@ -122,6 +122,12 @@ class IntermediateEmitter {
   void EmitMethodCallParameters(MethodCall* method_call);
   void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false, bool is_closure = false);
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
+  // Emits the 'System.$Byte/$Char/$Int/$Float:Copy' call behind an array copy
+  // constructor, 'Int->New[other]'. Keeping all four element types on one path
+  // keeps the library/program branch below in a single place: a numeric class
+  // id is only meaningful inside the unit that assigned it, so a '-tar lib'
+  // build has to emit LIB_MTHD_CALL and let the linker resolve the ids.
+  void EmitArrayCopy(MethodCall* method_call);
   void EmitCallIndices(MethodCall* method_call);
   void EmitMethodCallStatement(MethodCall* method_call);
   void EmitSystemDirective(SystemStatement* statement);

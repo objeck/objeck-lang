@@ -438,6 +438,34 @@ IntermediateBlock* ItermediateOptimizer::CleanJumps(IntermediateBlock* inputs)
   return outputs;
 }
 
+/****************************
+ * Resolves the class and method ids an MTHD_CALL carries.
+ *
+ * Both ids are assigned per compilation unit, so one that reaches here from
+ * somewhere else -- a library that emitted MTHD_CALL instead of LIB_MTHD_CALL,
+ * a stale .obl -- names nothing in this program. That used to read past the
+ * end of the id maps and crash; report it instead, since no correct binary can
+ * come out of an instruction stream this inconsistent.
+ ****************************/
+IntermediateMethod* ItermediateOptimizer::ResolveMethodCall(IntermediateInstruction* instr)
+{
+  IntermediateClass* klass_called = program->GetClass(static_cast<int>(instr->GetOperand()));
+  if(!klass_called) {
+    std::wcerr << L"Error: Unable to resolve class id " << instr->GetOperand()
+               << L" for a method call; a linked library may have been built by a different version of the tool chain" << std::endl;
+    exit(1);
+  }
+
+  IntermediateMethod* mthd_called = klass_called->GetMethod(static_cast<int>(instr->GetOperand2()));
+  if(!mthd_called) {
+    std::wcerr << L"Error: Unable to resolve method id " << instr->GetOperand2() << L" in class '" << klass_called->GetName()
+               << L"'; a linked library may have been built by a different version of the tool chain" << std::endl;
+    exit(1);
+  }
+
+  return mthd_called;
+}
+
 IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock* inputs)
 {
   IntermediateBlock* outputs = new IntermediateBlock;
@@ -446,7 +474,7 @@ IntermediateBlock* ItermediateOptimizer::InlineSettersGetters(IntermediateBlock*
   for(size_t i = 0; i < input_instrs.size(); ++i) {
     IntermediateInstruction* instr = input_instrs[i];
     if(instr->GetType() == MTHD_CALL) {
-      IntermediateMethod* mthd_called = program->GetClass(static_cast<int>(instr->GetOperand()))->GetMethod(static_cast<int>(instr->GetOperand2()));
+      IntermediateMethod* mthd_called = ResolveMethodCall(instr);
       int status = CanInlineSetterGetter(mthd_called);
       // The inlined instructions must belong to the call's statement, not the
       // callee's: DeadStoreEdit finds the start of a dead assignment by walking
@@ -1024,7 +1052,7 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
     IntermediateInstruction* instr = input_instrs[i];
 
     if(instr->GetType() == MTHD_CALL) {
-      IntermediateMethod* mthd_called = program->GetClass(static_cast<int>(instr->GetOperand()))->GetMethod(static_cast<int>(instr->GetOperand2()));
+      IntermediateMethod* mthd_called = ResolveMethodCall(instr);
       // checked called method to determine if it can be inlined
       if(CanInlineMethod(mthd_called, inlined_mthds, lbl_jmp_offsets)) {
         // calculate offset
