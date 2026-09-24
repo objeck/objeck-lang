@@ -1800,5 +1800,389 @@ each(f : folds) {
 
 			return result;
 		}
+
+		#~
+		Converts scored labels to the Bool[] the classifiers and Metrics take.
+
+		TableEncoder hands back Float[] and StratifiedKFold wants that form, but
+		every classifier Fit and every Metrics function takes Bool[]. Without
+		this, each caller keeps both representations alive and writes the same
+		conversion loop.
+		@param labels one value per row; anything above 0.5 is the positive class
+		@return one Bool per row, or Nil for Nil input
+		~#
+		function : ToBool(labels : Float[]) ~ Bool[] {
+			if(labels = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[labels->Size()];
+			each(i : labels) {
+				result[i] := labels[i] > 0.5;
+			};
+
+			return result;
+		}
+
+		#~
+		Converts Bool labels to the Float[] StratifiedKFold takes.
+		@param labels one label per row
+		@return 1.0 for true and 0.0 for false, or Nil for Nil input
+		~#
+		function : ToFloat(labels : Bool[]) ~ Float[] {
+			if(labels = Nil) {
+				return Nil;
+			};
+
+			result := Float->New[labels->Size()];
+			each(i : labels) {
+				if(labels[i]) {
+					result[i] := 1.0;
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Builds the train/test matrices for one fold.
+
+		StratifiedKFold returns row indexes; turning those into matrices is about
+		twenty lines of copying that every experiment otherwise rewrites, and
+		getting it subtly wrong shifts labels against features without any
+		error.
+		Takes ONE fold's row indexes rather than the whole array plus an index:
+		a `Vector[]<T>` parameter compiles inside a library but does not resolve
+		across a library boundary, so the caller passes `folds[i]`.
+		@param X rows x features
+		@param y one label per row
+		@param test_rows row indexes for the test split, i.e. folds[i]
+		@return the split, or Nil on bad input
+		~#
+		function : Split(X : Float[,], y : Bool[], test_rows : Vector<IntRef>) ~ FoldSplit {
+			if(X = Nil | y = Nil | test_rows = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1 | y->Size() <> rows) {
+				return Nil;
+			};
+
+			test_idx := test_rows;
+			n_test := test_idx->Size();
+			n_train := rows - n_test;
+			if(n_test < 1 | n_train < 1) {
+				return Nil;
+			};
+
+			in_test := Bool->New[rows];
+			row : Int;
+			each(f : n_test) {
+				row := test_idx->Get(f)->Get();
+				if(row < 0 | row >= rows) {
+					return Nil;
+				};
+				in_test[row] := true;
+			};
+
+			train_x := Float->New[n_train, cols];
+			train_y := Bool->New[n_train];
+			test_x := Float->New[n_test, cols];
+			test_y := Bool->New[n_test];
+			ti := 0;
+			si := 0;
+			each(i : rows) {
+				if(in_test[i]) {
+					each(c : cols) {
+						test_x[si, c] := X[i, c];
+					};
+					test_y[si] := y[i];
+					si += 1;
+				}
+				else {
+					each(c : cols) {
+						train_x[ti, c] := X[i, c];
+					};
+					train_y[ti] := y[i];
+					ti += 1;
+				};
+			};
+
+			return FoldSplit->New(train_x, train_y, test_x, test_y);
+		}
+
+		#~
+		Runs stratified k-fold cross-validation and reports per-fold scores.
+
+		The model is refitted on each fold's training split, so it is left
+		holding the last fold's fit. Standardization, when asked for, fits the
+		scaler on the TRAINING split only and reapplies it to the test split --
+		scaling test data by its own statistics leaks the test distribution and
+		flatters any model measured at a fixed false-alarm rate.
+		@param model anything that fits on Bool labels and scores rows
+		@param X rows x features
+		@param y one label per row
+		@param k folds
+		@param seed seeds the fold assignment, so a run can be repeated
+		@param max_fpr the false-alarm budget recall is measured at
+		@param standardize fit a FeatureScaler on each training split
+		@return per-fold and averaged scores, or Nil on bad input
+		~#
+		function : Evaluate(model : ScoreModel, X : Float[,], y : Bool[], k : Int, seed : Int, max_fpr : Float, standardize : Bool) ~ CrossValResult {
+			if(model = Nil | X = Nil | y = Nil | k < 2) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			if(rows < k | y->Size() <> rows) {
+				return Nil;
+			};
+
+			folds := StratifiedKFold(ToFloat(y), k, seed);
+			if(folds = Nil) {
+				return Nil;
+			};
+
+			aucs := Float->New[k];
+			recalls := Float->New[k];
+			aps := Float->New[k];
+
+			split : FoldSplit;
+			train_x : Float[,];
+			test_x : Float[,];
+			scaler : FeatureScaler;
+			scores : Float[];
+
+			each(f : k) {
+				split := Split(X, y, folds[f]);
+				if(split = Nil) {
+					return Nil;
+				};
+
+				train_x := split->GetTrainX();
+				test_x := split->GetTestX();
+
+				if(standardize) {
+					scaler := FeatureScaler->New();
+					if(<>scaler->Fit(train_x)) {
+						return Nil;
+					};
+					train_x := scaler->Transform(train_x);
+					test_x := scaler->Transform(test_x);
+					if(train_x = Nil | test_x = Nil) {
+						return Nil;
+					};
+				};
+
+				if(<>model->Fit(train_x, split->GetTrainY())) {
+					return Nil;
+				};
+
+				scores := model->PredictScore(test_x);
+				if(scores = Nil) {
+					return Nil;
+				};
+
+				aucs[f] := Metrics->AucRoc(scores, split->GetTestY());
+				recalls[f] := Metrics->RecallAtFpr(scores, split->GetTestY(), max_fpr);
+				aps[f] := Metrics->AveragePrecision(scores, split->GetTestY());
+			};
+
+			return CrossValResult->New(aucs, recalls, aps);
+		}
+
+		#~
+		Cross-validation with standardization on, which is the usual case.
+		@param model anything that fits on Bool labels and scores rows
+		@param X rows x features
+		@param y one label per row
+		@param k folds
+		@param seed seeds the fold assignment
+		@param max_fpr the false-alarm budget recall is measured at
+		@return per-fold and averaged scores, or Nil on bad input
+		~#
+		function : Evaluate(model : ScoreModel, X : Float[,], y : Bool[], k : Int, seed : Int, max_fpr : Float) ~ CrossValResult {
+			return Evaluate(model, X, y, k, seed, max_fpr, true);
+		}
+	}
+
+	#~
+	Anything that fits on binary labels and scores rows.
+
+	DecisionTreeClassifier, RandomForestClassifier and GradientBoostedClassifier
+	all implement it, so CrossValidation->Evaluate takes any of them without
+	knowing which.
+
+	Scoring rather than predicting is the point: a Bool prediction fixes one
+	operating point and cannot answer what recall would be at another, which is
+	the whole question when alerts arrive against a fixed false-alarm budget.
+	~#
+	interface ScoreModel {
+		#~
+		Fits the model.
+		@param X rows x features
+		@param y one label per row, true for the positive class
+		@return true when the fit succeeded
+		~#
+		method : virtual : public : Fit(X : Float[,], y : Bool[]) ~ Bool;
+
+		#~
+		Scores each row; higher means more positive.
+		@param X rows x features
+		@return one score per row, or Nil when unfitted
+		~#
+		method : virtual : public : PredictScore(X : Float[,]) ~ Float[];
+	}
+
+	#~
+	The train and test matrices for one cross-validation fold.
+	~#
+	class FoldSplit {
+		@train_x : Float[,];
+		@train_y : Bool[];
+		@test_x : Float[,];
+		@test_y : Bool[];
+
+		New(train_x : Float[,], train_y : Bool[], test_x : Float[,], test_y : Bool[]) {
+			@train_x := train_x;
+			@train_y := train_y;
+			@test_x := test_x;
+			@test_y := test_y;
+		}
+
+		method : public : GetTrainX() ~ Float[,] { return @train_x; }
+		method : public : GetTrainY() ~ Bool[] { return @train_y; }
+		method : public : GetTestX() ~ Float[,] { return @test_x; }
+		method : public : GetTestY() ~ Bool[] { return @test_y; }
+
+		#~
+		Rows in the training split.
+		@return training row count
+		~#
+		method : public : GetTrainSize() ~ Int {
+			if(@train_y = Nil) {
+				return 0;
+			};
+
+			return @train_y->Size();
+		}
+
+		#~
+		Rows in the test split.
+		@return test row count
+		~#
+		method : public : GetTestSize() ~ Int {
+			if(@test_y = Nil) {
+				return 0;
+			};
+
+			return @test_y->Size();
+		}
+	}
+
+	#~
+	Cross-validation scores, per fold and averaged.
+
+	The averages are the numbers to report. A single fold's AUC is extremely
+	noisy when the positive class is rare -- on a 200-row set with 10% positives
+	a fold holds about four positives, and shuffled labels have produced a
+	single-fold AUC of 0.68 by chance alone. The spread is given alongside the
+	mean so that noise is visible rather than implied.
+	~#
+	class CrossValResult {
+		@aucs : Float[];
+		@recalls : Float[];
+		@aps : Float[];
+
+		New(aucs : Float[], recalls : Float[], aps : Float[]) {
+			@aucs := aucs;
+			@recalls := recalls;
+			@aps := aps;
+		}
+
+		method : public : GetFoldAucs() ~ Float[] { return @aucs; }
+		method : public : GetFoldRecalls() ~ Float[] { return @recalls; }
+		method : public : GetFoldAveragePrecisions() ~ Float[] { return @aps; }
+
+		#~
+		How many folds were run.
+		@return fold count
+		~#
+		method : public : GetFolds() ~ Int {
+			if(@aucs = Nil) {
+				return 0;
+			};
+
+			return @aucs->Size();
+		}
+
+		method : public : GetMeanAuc() ~ Float { return Mean(@aucs); }
+		method : public : GetMeanRecall() ~ Float { return Mean(@recalls); }
+		method : public : GetMeanAveragePrecision() ~ Float { return Mean(@aps); }
+
+		#~
+		Spread of the per-fold AUCs, as a sample standard deviation.
+
+		Sample rather than population, unlike FeatureScaler: these are k
+		observations of a quantity whose variability is being estimated, not a
+		whole population being standardized. With one fold it is undefined and
+		0.0 is returned rather than dividing by k-1 = 0, which Objeck raises on.
+		@return the spread, or 0.0 for fewer than two folds
+		~#
+		method : public : GetStdAuc() ~ Float { return Spread(@aucs); }
+
+		#~
+		Spread of the per-fold recalls.
+		@return the spread, or 0.0 for fewer than two folds
+		~#
+		method : public : GetStdRecall() ~ Float { return Spread(@recalls); }
+
+		method : Mean(values : Float[]) ~ Float {
+			if(values = Nil | values->Size() = 0) {
+				return 0.0;
+			};
+
+			total := 0.0;
+			each(i : values) {
+				total += values[i];
+			};
+
+			return total / values->Size()->As(Float);
+		}
+
+		method : Spread(values : Float[]) ~ Float {
+			if(values = Nil | values->Size() < 2) {
+				return 0.0;
+			};
+
+			avg := Mean(values);
+			sum_sq := 0.0;
+			each(i : values) {
+				diff := values[i] - avg;
+				sum_sq += diff * diff;
+			};
+
+			return Float->Sqrt(sum_sq / (values->Size() - 1)->As(Float));
+		}
+
+		#~
+		A one-line summary in the form the write-up wants.
+		@return e.g. "AUC 0.941 +/- 0.023 over 5 folds"
+		~#
+		method : public : ToString() ~ String {
+			n := GetFolds();
+			if(n = 0) {
+				return "no folds";
+			};
+
+			a := GetMeanAuc();
+			s := GetStdAuc();
+
+			return "AUC {$a} +/- {$s} over {$n} folds";
+		}
 	}
 }
