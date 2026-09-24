@@ -32,6 +32,29 @@
 #include "interpreter.h"
 #include "vm_options.h"
 #include "dispatch.h"
+
+// IEEE comparison semantics for this translation unit.
+//
+// core/vm/vs/vm.vcxproj builds the VM with <FloatingPointModel>Fast</...>,
+// i.e. MSVC /fp:fast, which permits assuming operands are not NaN and folding
+// comparisons accordingly. The C++ below is IEEE-correct -- `left < right` on
+// two doubles -- but under /fp:fast it compiled into something that was not:
+// EVERY comparison involving NaN returned true, in both operand orders, so NaN
+// compared equal to 1.0 and was simultaneously less than and greater than it.
+//
+// It also diverged by platform. This is the only project in the repository that
+// sets FloatingPointModel, and core/vm/Makefile passes no -ffast-math, so the
+// same program answered differently on Windows than on Linux or macOS.
+//
+// The whole file is pinned rather than the six comparison helpers, because the
+// non-debugger build handles LES_FLOAT and friends in the inline hot-opcode
+// switch inside Execute() and only falls through to those helpers in `default:`
+// -- both paths are here, and a pragma can only wrap whole functions.
+//
+// Scoped to this file so the rest of the VM keeps the faster model. Issue #1000.
+#ifdef _MSC_VER
+#pragma float_control(precise, on, push)
+#endif
 #include "lib_api.h"
 
 #ifndef _NO_JIT

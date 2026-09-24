@@ -4904,6 +4904,46 @@ void JitAmd64::cmov_reg(Register reg, InstructionType oper) {
   unsigned char code = 0xc0;
   RegisterEncode3(code, 5, reg);
   AddMachineCode(code);
+
+  // ucomisd sets ZF, PF and CF all to 1 when either operand is NaN, so `sete`
+  // above reports NaN EQUAL to everything and `setne` reports it unequal to
+  // nothing -- the inverse of IEEE, which makes equality false and inequality
+  // true for an unordered compare. Measured before this fix: a JIT-compiled
+  // `n = 1.0` with n = NaN was true on 199998 of 200000 calls, the two misses
+  // being the calls that ran interpreted before the method was compiled.
+  //
+  // The ordering comparisons need no fixup. `seta` (LES/GTR) requires CF=0 and
+  // ZF=0, and `setae` (LES_EQL/GTR_EQL) requires CF=0, so an unordered compare
+  // already yields false for all four.
+  //
+  // PF is what distinguishes unordered from equal, so a three-byte fixup runs
+  // only when the compare was unordered and the setcc result is wrong.
+  if(oper == EQL_FLOAT || oper == NEQL_FLOAT) {
+#ifdef _DEBUG_JIT
+    std::wcout << L"  " << (++instr_count) << L": [jnp +3; NaN fixup %"
+          << GetRegisterName(reg) << L"]" << std::endl;
+#endif
+    AddMachineCode(0x7b);                                     // jnp +3 (ordered: keep setcc)
+    AddMachineCode(0x03);
+    if(oper == EQL_FLOAT) {
+      // xor reg8, reg8 -- an unordered compare is never equal
+      AddMachineCode((unsigned char)(ext ? 0x45 : 0x40));
+      AddMachineCode(0x30);
+      unsigned char fix = 0xc0;
+      RegisterEncode3(fix, 2, reg);
+      RegisterEncode3(fix, 5, reg);
+      AddMachineCode(fix);
+    }
+    else {
+      // mov reg8, 1 -- an unordered compare is always unequal
+      AddMachineCode((unsigned char)(ext ? 0x41 : 0x40));
+      unsigned char fix = 0xb0;
+      RegisterEncode3(fix, 5, reg);
+      AddMachineCode(fix);
+      AddMachineCode(0x01);
+    }
+  }
+
   // movzx r32, r/m8 (zero-extends into the full register)
   AddMachineCode((unsigned char)(ext ? 0x45 : 0x40));
   AddMachineCode(0x0f);

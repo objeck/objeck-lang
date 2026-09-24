@@ -1,0 +1,150 @@
+#~
+IEEE 754 semantics for NaN and infinity, across the interpreter AND the JIT.
+
+Windows had two defects here, in opposite directions, which is why each looked
+fine when tested alone:
+
+  * The interpreter reported EVERY comparison involving NaN as true, so NaN
+    compared equal to 1.0 and was simultaneously less than and greater than it.
+    The C++ was IEEE-correct; core/vm/vs/vm.vcxproj built the VM with
+    <FloatingPointModel>Fast</FloatingPointModel> (MSVC /fp:fast), which permits
+    assuming operands are not NaN. It also diverged by platform, since
+    core/vm/Makefile passes no -ffast-math.
+
+  * The amd64 JIT had the opposite error for equality only. ucomisd sets ZF for
+    BOTH equal and unordered and only PF separates them, so `sete` reported NaN
+    equal to everything and `setne` reported it unequal to nothing. The ordering
+    comparisons were already right, because seta and setae both require CF=0.
+
+ARM64 needed no change: its condition codes use the V flag to mark unordered, so
+EQ, NE, MI, GT and GE all behave correctly for a NaN operand.
+
+TWO THINGS THIS FILE DOES DELIBERATELY.
+
+Every property is evaluated inside Probe(), called REPS times, and is only OK if
+it holds on EVERY call. A count that is neither 0 nor REPS means the interpreted
+and compiled answers DISAGREE -- which is exactly how these defects presented
+(the JIT one showed 199998 of 200000, the two misses being the calls that ran
+before the method was compiled). A test that checks a property once in Main only
+ever exercises the interpreter.
+
+The special values arrive as PARAMETERS. An earlier version of this sweep built
+them inside Probe() and reported every property correct while a parameter-shaped
+probe showed NaN equal to 1.0 on 199998 of 200000 compiled calls. Constructing
+them in place let the JIT handle them differently and hid the defect entirely.
+~#
+
+class IeeeFloatSemantics {
+	@fails : static : Int;
+	@reps : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@fails := 0;
+		@reps := 50000;
+
+		# --- NaN: every comparison is false except <> ---
+		Check(0,  "NaN <  1.0 is false", false);
+		Check(1,  "NaN >  1.0 is false", false);
+		Check(2,  "NaN <= 1.0 is false", false);
+		Check(3,  "NaN >= 1.0 is false", false);
+		Check(4,  "NaN =  1.0 is false", false);
+		Check(5,  "NaN =  NaN is false", false);
+		Check(6,  "NaN <> NaN is true", true);
+		Check(7,  "NaN <> 1.0 is true", true);
+
+		# --- infinity ordering and arithmetic ---
+		Check(8,  "Inf > 1e300", true);
+		Check(9,  "Inf = Inf", true);
+		Check(10, "-Inf < Inf", true);
+		Check(11, "Inf <> -Inf", true);
+		Check(12, "Inf - Inf is NaN", true);
+		Check(15, "1.0 / Inf is zero", true);
+
+		# --- NaN propagates through arithmetic and the math functions ---
+		Check(13, "NaN + 1.0 is NaN", true);
+		Check(16, "Sqrt(-1.0) is NaN", true);
+		Check(17, "NaN->Abs() is NaN", true);
+		Check(18, "(-Inf)->Abs() is Inf", true);
+
+		# --- signed zero ---
+		Check(14, "+0.0 = -0.0", true);
+
+		# --- a NaN must never win a maximum ---
+		Check(19, "max(NaN, 2.0) picks 2.0", true);
+
+		# --- ordinary values, so a blanket 'everything is false' also fails ---
+		Check(20, "2.0 > 1.0 is true", true);
+		Check(21, "2.0 = 2.0 is true", true);
+		Check(22, "2.0 <> 2.0 is false", false);
+
+		if(@fails > 0) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(id : Int, name : String, expect : Bool) ~ Nil {
+		hits := 0;
+		each(i : @reps) {
+			if(Probe(id, Float->NaN(), Float->Inf(), Float->NegInf())) {
+				hits += 1;
+			};
+		};
+
+		want : Int;
+		if(expect) {
+			want := @reps;
+		}
+		else {
+			want := 0;
+		};
+
+		if(hits = want) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else if(hits = 0 | hits = @reps) {
+			"FAIL: {$name} -- consistent but wrong ({$hits})"->PrintLine();
+			@fails += 1;
+		}
+		else {
+			"FAIL: {$name} -- interpreter and JIT disagree ({$hits} of {$want})"->PrintLine();
+			@fails += 1;
+		};
+	}
+
+	# The specials are parameters, not locals. See the header.
+	function : Probe(id : Int, n : Float, i : Float, g : Float) ~ Bool {
+		if(id = 0)  { return n < 1.0; };
+		if(id = 1)  { return n > 1.0; };
+		if(id = 2)  { return n <= 1.0; };
+		if(id = 3)  { return n >= 1.0; };
+		if(id = 4)  { return n = 1.0; };
+		if(id = 5)  { return n = n; };
+		if(id = 6)  { return n <> n; };
+		if(id = 7)  { return n <> 1.0; };
+		if(id = 8)  { return i > 1.0e300; };
+		if(id = 9)  { return i = i; };
+		if(id = 10) { return g < i; };
+		if(id = 11) { return i <> g; };
+		if(id = 12) { d := i - i; return d <> d; };
+		if(id = 13) { d := n + 1.0; return d <> d; };
+		if(id = 14) { z := 0.0 - 0.0; return 0.0 = z; };
+		if(id = 15) { d := 1.0 / i; return d = 0.0; };
+		if(id = 16) { d := (0.0 - 1.0)->Sqrt(); return d <> d; };
+		if(id = 17) { d := n->Abs(); return d <> d; };
+		if(id = 18) { d := g->Abs(); return d = i; };
+		if(id = 19) {
+			big : Float;
+			if(n > 2.0) {
+				big := n;
+			}
+			else {
+				big := 2.0;
+			};
+			return big = 2.0;
+		};
+		if(id = 20) { return 2.0 > 1.0; };
+		if(id = 21) { return 2.0 = 2.0; };
+
+		return 2.0 <> 2.0;
+	}
+}
