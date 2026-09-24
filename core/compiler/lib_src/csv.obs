@@ -596,17 +596,28 @@ if(csv->IsParsed()) {
 
 			@ending := ending;
 			@is_parsed := true;
-			rows := data->Split(@ending);
-			if(rows->Size() > 1) {			
-				@data := ParseColumns(rows);
-				if(@data = Nil) {
-					@is_parsed := false;
-				};
+
+			# No data at all is an unparsed table, not a fault. FileReader->ReadFile
+			# returns Nil for a file that is not there, and MatrixReader's loaders
+			# hand that result straight to CsvTable->New, so a mistyped filename
+			# used to unwind the VM inside String->Split. This does not return
+			# early: the header map below has to be built in every case (#934).
+			if(data = Nil) {
+				@is_parsed := false;
 			}
 			else {
-				@is_parsed := false;
+				rows := data->Split(@ending);
+				if(rows->Size() > 1) {
+					@data := ParseColumns(rows);
+					if(@data = Nil) {
+						@is_parsed := false;
+					};
+				}
+				else {
+					@is_parsed := false;
+				};
 			};
-			
+
 			# Always give the table a header map, even when the parse failed.
 			# Every name-keyed reader below goes through @header_names, and each
 			# already handles a name it cannot find; leaving it Nil turned an
