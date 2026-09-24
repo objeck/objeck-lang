@@ -137,7 +137,7 @@ size_t MemoryManager::nursery_size_request = 0;
 std::atomic<size_t> MemoryManager::young_offset;
 
 // Old generation
-std::unordered_set<size_t*> MemoryManager::old_generation;
+PtrSet MemoryManager::old_generation;
 size_t MemoryManager::old_allocation_size;
 
 // Lock-free dirty list

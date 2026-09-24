@@ -971,6 +971,17 @@ jobs:
       if: matrix.platform == 'linux-x64'
       run: python3 core/release/cov_scan_test.py
 
+    # PtrSet is the old generation's membership structure: a fault here is a
+    # use-after-free or a lost object, not a wrong answer, so it is tested on its
+    # own rather than only through the collector. Covers growth, erase-during-
+    # iteration (the sweep's pattern), tombstone reuse, and count() being safe to
+    # call with a value that is not a pointer -- which ForwardedAddr relies on.
+    - name: Old-generation set unit tests
+      if: runner.os != 'Windows'
+      run: |
+        g++ -O2 -std=c++17 -Wall -Wextra -o /tmp/ptr_set_test core/vm/arch/ptr_set_test.cpp
+        /tmp/ptr_set_test
+
     # Pure-logic unit test for the phi3 token sampler (no ONNX Runtime/model).
     - name: Run ONNX sampling unit test (POSIX)
       if: matrix.platform == 'linux-x64'

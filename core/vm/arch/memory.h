@@ -33,6 +33,7 @@
 
 
 #include "../common.h"
+#include "ptr_set.h"
 #include <algorithm>
 #include <random>
 #include <atomic>
@@ -150,8 +151,12 @@ class MemoryManager {
   static size_t nursery_size_request;  // 0 = YOUNG_REGION_SIZE
   static std::atomic<size_t> young_offset;
 
-  // Old generation: individually allocated, tracked in set
-  static std::unordered_set<size_t*> old_generation;
+  // Old generation: individually allocated, tracked in an open-addressing set.
+  // Not std::unordered_set -- that allocates a node per insert, and the old
+  // generation gains one entry per promoted object, so a minor collection paid
+  // that allocation once per survivor. On Windows it cost 239.5 ns each against
+  // 67.5 ns under g++, more than the object's own calloc (#871). See ptr_set.h.
+  static PtrSet old_generation;
   static size_t old_allocation_size;
 
   // Lock-free dirty list (replaces remembered_set + remembered_set_lock)
