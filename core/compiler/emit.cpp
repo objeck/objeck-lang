@@ -418,7 +418,33 @@ void IntermediateInstruction::Write(bool is_debug, OutputStream& out_stream) {
     break;
 
   case instructions::ASYNC_MTHD_CALL:
+    // operand is -1 by construction here, so it is not a class id and is not
+    // checked below.
+    WriteInt(static_cast<int32_t>(operand), out_stream);
+    WriteInt(static_cast<int32_t>(operand2), out_stream);
+    WriteInt(static_cast<int32_t>(operand3), out_stream);
+    break;
+
   case MTHD_CALL:
+    // Refuse to write a call whose class this compilation cannot resolve.
+    //
+    // Nothing downstream looks at this id: it goes into the .obe verbatim and
+    // first fails in the VM, at run time, in a program that reported success.
+    // An id absent from the class map means the emitter wrote a reference this
+    // build cannot resolve. The reachable case is a .obl produced by an earlier
+    // compiler of the SAME version -- the toolchain-version check passes, and
+    // the stale ids come through with it (#958).
+    //
+    // Checked here rather than in GetClass because this is the one point where
+    // an unresolvable id becomes a broken artifact. Leaving GetClass tolerant
+    // keeps `obc -asm` able to dump half-linked code, which is exactly when a
+    // dump is worth having, and lets the inliners treat an unresolvable callee
+    // as what it is: not inlinable.
+    if(operand >= 0 && !IntermediateProgram::Instance()->GetClass(static_cast<int>(operand))) {
+      std::wcerr << L"Error: unresolved class id " << operand << L" in a method call." << std::endl
+                 << L"       A linked library was built by a different build of this compiler; rebuild the libraries." << std::endl;
+      exit(1);
+    }
     WriteInt(static_cast<int32_t>(operand), out_stream);
     WriteInt(static_cast<int32_t>(operand2), out_stream);
     WriteInt(static_cast<int32_t>(operand3), out_stream);
