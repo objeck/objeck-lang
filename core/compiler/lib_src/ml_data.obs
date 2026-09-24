@@ -661,6 +661,390 @@ if(test_z = Nil) {
 	}
 
 	#~
+	Turns a CsvTable into the numeric matrix a model can train on, learning its
+	encoding once so the same encoding can be reapplied to other tables.
+
+	MatrixReader already loads a CSV, but only one that is numeric throughout, and
+	it reads the header row as another record whose non-numeric cells become 0.0.
+	Real tabular data is mixed: NSL-KDD's protocol, service and flag columns are
+	strings among thirty-eight numeric ones. This skips the header, one-hot encodes
+	the string columns and passes the numeric ones through.
+
+	The vocabulary is fixed at Fit. Transform reuses it, so a training table and a
+	test table produce the same columns in the same order even when the test split
+	never contains some category, and a category that appears only in test encodes
+	as all-zeros rather than silently shifting every column after it.
+
+```
+enc := TableEncoder->New("class");
+train_x := enc->FitTransform(train);
+train_y := enc->TransformLabelsBinary(train, "normal");
+test_x := enc->Transform(test);
+```
+	~#
+	class TableEncoder {
+		@label_col : String;
+		@source : Int[];
+		@numeric : Bool[];
+		@offset : Int[];
+		@onehot : Hash<String, IntRef>;
+		@names : Vector<String>;
+		@classes : Vector<String>;
+		@width : Int;
+		@fitted : Bool;
+
+		#~
+		Constructor for a table with no label column: every column is a feature.
+		~#
+		New() {
+			@label_col := "";
+			@fitted := false;
+		}
+
+		#~
+		Constructor
+		@param label_col name of the label column, which is excluded from the features
+		~#
+		New(label_col : String) {
+			@label_col := label_col;
+			@fitted := false;
+		}
+
+		#~
+		Learns the feature layout: which columns are numeric, and the value
+		vocabulary of each column that is not.
+
+		A column counts as numeric only when every data value in it parses as a
+		number. One non-numeric value makes the whole column categorical, which is
+		the safe direction: encoding a number as a category costs columns, while
+		reading a category as a number invents an ordering that is not there.
+		@param table table to learn from, normally the training split only
+		@return true when the layout was learned, false for an unparsed or empty table
+		~#
+		method : public : Fit(table : CsvTable) ~ Bool {
+			if(table = Nil | <>table->IsParsed()) {
+				return false;
+			};
+
+			# Row 0 is the header; rows 1 and up are data.
+			rows := table->Size();
+			if(rows < 2) {
+				return false;
+			};
+
+			headers := table->GetHeaders();
+			if(headers = Nil) {
+				return false;
+			};
+
+			cols := headers->Size();
+			feature_count := 0;
+			each(c : cols) {
+				if(<>headers->Get(c)->Equals(@label_col)) {
+					feature_count += 1;
+				};
+			};
+			if(feature_count < 1) {
+				return false;
+			};
+
+			@source := Int->New[feature_count];
+			@numeric := Bool->New[feature_count];
+			@offset := Int->New[feature_count];
+			@onehot := Hash->New()<String, IntRef>;
+			@names := Vector->New()<String>;
+			@classes := Vector->New()<String>;
+
+			f := 0;
+			each(c : cols) {
+				if(<>headers->Get(c)->Equals(@label_col)) {
+					@source[f] := c;
+					@numeric[f] := IsNumericColumn(table, c, rows);
+					f += 1;
+				};
+			};
+
+			# Assign output columns: one per numeric feature, one per distinct value
+			# of each categorical feature, in first-seen row order so the layout is
+			# reproducible from the same training file.
+			@width := 0;
+			each(i : feature_count) {
+				@offset[i] := @width;
+				if(@numeric[i]) {
+					@names->AddBack(headers->Get(@source[i]));
+					@width += 1;
+				}
+				else {
+					for(r := 1; r < rows; r += 1;) {
+						row := table->Get(r);
+						if(row <> Nil) {
+							value := row->Get(@source[i]);
+							if(value <> Nil) {
+								key := Key(i, value);
+								if(<>@onehot->Has(key)) {
+									@onehot->Insert(key, IntRef->New(@width));
+									@names->AddBack(headers->Get(@source[i]) + "=" + value);
+									@width += 1;
+								};
+							};
+						};
+					};
+				};
+			};
+
+			# The label's own classes, in first-seen order, for TransformLabels.
+			if(@label_col->Size() > 0) {
+				li := table->GetRowId(@label_col);
+				if(li > -1) {
+					for(r := 1; r < rows; r += 1;) {
+						row := table->Get(r);
+						if(row <> Nil) {
+							value := row->Get(li);
+							if(value <> Nil & <>HasClass(value)) {
+								@classes->AddBack(value);
+							};
+						};
+					};
+				};
+			};
+
+			@fitted := true;
+
+			return true;
+		}
+
+		method : IsNumericColumn(table : CsvTable, c : Int, rows : Int) ~ Bool {
+			for(r := 1; r < rows; r += 1;) {
+				row := table->Get(r);
+				if(row <> Nil) {
+					value := row->Get(c);
+					if(value = Nil) {
+						return false;
+					};
+
+					if(<>value->IsInt() & <>value->IsFloat()) {
+						return false;
+					};
+				};
+			};
+
+			return true;
+		}
+
+		method : Key(feature : Int, value : String) ~ String {
+			# A separator that cannot occur in a CSV field, so "a=" + "b" and
+			# "a" + "=b" cannot collide into the same vocabulary entry.
+			return feature->ToString() + "\r" + value;
+		}
+
+		method : HasClass(value : String) ~ Bool {
+			each(i : @classes) {
+				if(@classes->Get(i)->Equals(value)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#~
+		Encodes a table using the layout learned by Fit.
+		@param table table to encode; its header row is skipped
+		@return matrix of (data rows) x (encoded width), or Nil when unfitted or the table cannot be read
+
+```
+test_x := enc->Transform(test);
+if(test_x = Nil) {
+  "unfitted, or the table did not parse"->PrintLine();
+};
+```
+		~#
+		method : public : Transform(table : CsvTable) ~ Float[,] {
+			if(<>@fitted | table = Nil | <>table->IsParsed()) {
+				return Nil;
+			};
+
+			rows := table->Size();
+			if(rows < 2) {
+				return Nil;
+			};
+
+			features := @source->Size();
+			result := Float->New[rows - 1, @width];
+
+			for(r := 1; r < rows; r += 1;) {
+				row := table->Get(r);
+				if(row <> Nil) {
+					each(i : features) {
+						value := row->Get(@source[i]);
+						if(value <> Nil) {
+							if(@numeric[i]) {
+								result[r - 1, @offset[i]] := value->ToFloat();
+							}
+							else {
+								found := @onehot->Find(Key(i, value));
+								# A value Fit never saw leaves this group all zeros.
+								# Dropping the row or adding a column instead would
+								# change the feature space between train and test.
+								if(found <> Nil) {
+									result[r - 1, found->Get()] := 1.0;
+								};
+							};
+						};
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Fits on this table and encodes it. For the training split only.
+		@param table table to fit and encode
+		@return encoded matrix, or Nil when the table could not be fitted
+		~#
+		method : public : FitTransform(table : CsvTable) ~ Float[,] {
+			if(<>Fit(table)) {
+				return Nil;
+			};
+
+			return Transform(table);
+		}
+
+		#~
+		Encodes the label column as class indices, using the classes seen at Fit.
+		@param table table to read labels from
+		@return one index per data row; a class unseen at Fit becomes -1.0
+		~#
+		method : public : TransformLabels(table : CsvTable) ~ Float[] {
+			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->Size() = 0) {
+				return Nil;
+			};
+
+			li := table->GetRowId(@label_col);
+			if(li < 0) {
+				return Nil;
+			};
+
+			rows := table->Size();
+			if(rows < 2) {
+				return Nil;
+			};
+
+			result := Float->New[rows - 1];
+			for(r := 1; r < rows; r += 1;) {
+				row := table->Get(r);
+				result[r - 1] := -1.0;
+				if(row <> Nil) {
+					value := row->Get(li);
+					if(value <> Nil) {
+						each(i : @classes) {
+							if(@classes->Get(i)->Equals(value)) {
+								result[r - 1] := i->As(Float);
+							};
+						};
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Encodes the label column as a two-class target: 0.0 for the named value,
+		1.0 for everything else. Intrusion detection labels are usually one benign
+		value against many attack names, and this avoids enumerating the attacks.
+		@param table table to read labels from
+		@param negative the label value that maps to 0.0
+		@return one value per data row, or Nil when unfitted or the label is missing
+		~#
+		method : public : TransformLabelsBinary(table : CsvTable, negative : String) ~ Float[] {
+			if(<>@fitted | table = Nil | <>table->IsParsed() | @label_col->Size() = 0) {
+				return Nil;
+			};
+
+			li := table->GetRowId(@label_col);
+			if(li < 0) {
+				return Nil;
+			};
+
+			rows := table->Size();
+			if(rows < 2) {
+				return Nil;
+			};
+
+			result := Float->New[rows - 1];
+			for(r := 1; r < rows; r += 1;) {
+				row := table->Get(r);
+				result[r - 1] := 1.0;
+				if(row <> Nil) {
+					value := row->Get(li);
+					if(value <> Nil & value->Equals(negative)) {
+						result[r - 1] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Whether Fit has been called successfully.
+		@return true when this encoder holds a layout
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		The number of columns Transform produces.
+		@return encoded width, or 0 when unfitted
+		~#
+		method : public : GetWidth() ~ Int {
+			if(<>@fitted) {
+				return 0;
+			};
+
+			return @width;
+		}
+
+		#~
+		The name of each encoded column: the source column for a numeric feature,
+		and "column=value" for each one-hot column.
+		@return names in output order, or Nil when unfitted
+		~#
+		method : public : GetFeatureNames() ~ String[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			result := String->New[@names->Size()];
+			each(i : @names) {
+				result[i] := @names->Get(i);
+			};
+
+			return result;
+		}
+
+		#~
+		The label classes seen at Fit, in the order TransformLabels indexes them.
+		@return class values, or Nil when unfitted
+		~#
+		method : public : GetLabelClasses() ~ String[] {
+			if(<>@fitted) {
+				return Nil;
+			};
+
+			result := String->New[@classes->Size()];
+			each(i : @classes) {
+				result[i] := @classes->Get(i);
+			};
+
+			return result;
+		}
+	}
+
+	#~
 	Model evaluation metrics for classification tasks
 	~#
 	class Metrics {

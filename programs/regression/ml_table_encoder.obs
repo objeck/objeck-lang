@@ -1,0 +1,131 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+TableEncoder: CsvTable to Float[,] with a vocabulary fixed at Fit.
+
+Two properties carry this test. First, the header row is data to CsvTable -- it is
+row 0 -- and MatrixReader reads it as another record whose non-numeric cells become
+0.0. The encoder must skip it, so the row count below is one less than the table's.
+
+Second, and the reason the class exists: the vocabulary is learned once. A test
+table that is missing a category, or that contains one the training table never
+had, must still encode to the same width with every column meaning the same thing.
+An encoder that re-derives its vocabulary from whatever table it is handed fails
+the width and position assertions here, which is what they are for.
+~#
+use Data.CSV;
+use System.ML;
+
+class MlTableEncoder {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# proto is categorical (tcp, udp, icmp), bytes is numeric, class is the label.
+		train := CsvTable->New("proto,bytes,class\ntcp,100,normal\nudp,200,attack\nicmp,300,attack\n");
+		ok := Report("the training table parses", train->IsParsed()) & ok;
+
+		enc := TableEncoder->New("class");
+		ok := Report("unfitted Transform returns Nil", enc->Transform(train) = Nil) & ok;
+		ok := Report("unfitted GetWidth is 0", enc->GetWidth() = 0) & ok;
+
+		x := enc->FitTransform(train);
+		ok := Report("FitTransform produces a matrix", x <> Nil) & ok;
+		ok := Report("IsFitted after FitTransform", enc->IsFitted()) & ok;
+
+		if(x = Nil) {
+			"cannot continue without a matrix"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# 3 one-hot columns for proto + 1 numeric column for bytes.
+		dims := x->Size();
+		ok := Report("the header row is skipped: 3 data rows, not 4", dims[0] = 3) & ok;
+		ok := Report("width is 3 one-hot + 1 numeric", dims[1] = 4 & enc->GetWidth() = 4) & ok;
+
+		# proto occupies columns 0..2 in first-seen order, bytes is column 3.
+		ok := Report("row 0 encodes tcp,100",
+			Near(x[0, 0], 1.0) & Near(x[0, 1], 0.0) & Near(x[0, 2], 0.0) & Near(x[0, 3], 100.0)) & ok;
+		ok := Report("row 1 encodes udp,200",
+			Near(x[1, 0], 0.0) & Near(x[1, 1], 1.0) & Near(x[1, 2], 0.0) & Near(x[1, 3], 200.0)) & ok;
+		ok := Report("row 2 encodes icmp,300",
+			Near(x[2, 0], 0.0) & Near(x[2, 1], 0.0) & Near(x[2, 2], 1.0) & Near(x[2, 3], 300.0)) & ok;
+
+		names := enc->GetFeatureNames();
+		ok := Report("feature names describe each column",
+			names <> Nil & names->Size() = 4
+			& names[0]->Equals("proto=tcp") & names[1]->Equals("proto=udp")
+			& names[2]->Equals("proto=icmp") & names[3]->Equals("bytes")) & ok;
+
+		# Labels: classes in first-seen order, normal then attack.
+		classes := enc->GetLabelClasses();
+		ok := Report("label classes are normal then attack",
+			classes <> Nil & classes->Size() = 2
+			& classes[0]->Equals("normal") & classes[1]->Equals("attack")) & ok;
+
+		y := enc->TransformLabels(train);
+		ok := Report("labels encode as class indices",
+			y <> Nil & y->Size() = 3 & Near(y[0], 0.0) & Near(y[1], 1.0) & Near(y[2], 1.0)) & ok;
+
+		yb := enc->TransformLabelsBinary(train, "normal");
+		ok := Report("binary labels put normal at 0 and everything else at 1",
+			yb <> Nil & yb->Size() = 3 & Near(yb[0], 0.0) & Near(yb[1], 1.0) & Near(yb[2], 1.0)) & ok;
+
+		# THE CASE THAT MATTERS. This table is missing tcp and icmp entirely, and
+		# contains http, which training never saw. A re-deriving encoder would emit
+		# two columns here (udp, http) and put udp at column 0; the learned layout
+		# must keep four columns and udp at column 1.
+		test := CsvTable->New("proto,bytes,class\nudp,50,attack\nhttp,60,normal\n");
+		tx := enc->Transform(test);
+		ok := Report("the test table encodes", tx <> Nil) & ok;
+
+		if(tx <> Nil) {
+			tdims := tx->Size();
+			ok := Report("test width matches training width", tdims[1] = 4) & ok;
+			ok := Report("test row count skips its header too", tdims[0] = 2) & ok;
+			ok := Report("a category seen in training keeps its trained column",
+				Near(tx[0, 0], 0.0) & Near(tx[0, 1], 1.0) & Near(tx[0, 2], 0.0) & Near(tx[0, 3], 50.0)) & ok;
+			# http was never seen: the whole one-hot group is zero, and bytes still
+			# lands in column 3 rather than shifting.
+			ok := Report("an unseen category encodes as all zeros, shifting nothing",
+				Near(tx[1, 0], 0.0) & Near(tx[1, 1], 0.0) & Near(tx[1, 2], 0.0) & Near(tx[1, 3], 60.0)) & ok;
+		};
+
+		ty := enc->TransformLabels(test);
+		ok := Report("test labels use the training classes",
+			ty <> Nil & ty->Size() = 2 & Near(ty[0], 1.0) & Near(ty[1], 0.0)) & ok;
+
+		# Guards.
+		unparsed : CsvTable;
+		ok := Report("Transform of Nil returns Nil", enc->Transform(unparsed) = Nil) & ok;
+		ok := Report("Fit of Nil returns false", <>TableEncoder->New("class")->Fit(unparsed)) & ok;
+
+		header_only := CsvTable->New("proto,bytes,class\n");
+		ok := Report("a table with no data rows cannot be fitted",
+			<>TableEncoder->New("class")->Fit(header_only)) & ok;
+
+		# With no label column named, every column is a feature and bytes stays numeric.
+		plain := TableEncoder->New();
+		px := plain->FitTransform(train);
+		ok := Report("with no label column, class becomes a feature too",
+			px <> Nil & plain->GetWidth() = 6) & ok;
+		ok := Report("TransformLabels without a label column returns Nil",
+			plain->TransformLabels(train) = Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
