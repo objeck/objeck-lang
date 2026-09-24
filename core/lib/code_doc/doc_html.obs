@@ -224,7 +224,7 @@ class HtmlMaker {
 		bundle_desc := @bundle_snippit->GetDesc();
 		if(bundle_desc <> Nil & bundle_desc->Size() > 0) {
 			main_html += "<div class='bundle-overview'><span class='bundle-overview-label'>Bundle</span> ";
-			main_html += bundle_desc;
+			main_html += RenderDesc(bundle_desc);
 			main_html += "</div>";
 		};
 
@@ -238,9 +238,8 @@ class HtmlMaker {
 			main_html += class_block->GetShortName();
 		};
 
-		main_html += "</h2><p>";
-		main_html += class_block->GetDesc();
-		main_html += "</p>";
+		main_html += "</h2>";
+		main_html += RenderDesc(class_block->GetDesc());
 
 		# inheritance and implements info
 		from_class := class_block->GetFrom();
@@ -351,10 +350,10 @@ class HtmlMaker {
 					main_html += " <span class='badge badge-function'>function</span>";
 				};
 
-      			main_html += "</h3><p>";
-      			main_html += func_desc;
+      			main_html += "</h3>";
+      			main_html += RenderDesc(func_desc);
       			
-      			main_html += "</p><pre><code class='language-objeck'>"
+      			main_html += "<pre><code class='language-objeck'>"
       			main_html += func_sig;
       			main_html += "</code></pre>";
       			# write parameters
@@ -459,15 +458,15 @@ class HtmlMaker {
 		bundle_desc := @bundle_snippit->GetDesc();
 		if(bundle_desc <> Nil & bundle_desc->Size() > 0) {
 			main_html += "<div class='bundle-overview'><span class='bundle-overview-label'>Bundle</span> ";
-			main_html += bundle_desc;
+			main_html += RenderDesc(bundle_desc);
 			main_html += "</div>";
 		};
 
 		main_html += "<h2>";
 		main_html += enum_block->GetName();
-		main_html += "</h2><p>";
-		main_html += enum_block->GetDesc();
-		main_html += "</p><h3>Items</h3><ul>";
+		main_html += "</h2>";
+		main_html += RenderDesc(enum_block->GetDesc());
+		main_html += "<h3>Items</h3><ul>";
 
 		enum_items := enum_block->GetItems();
 		each(enum_item in enum_items) {
@@ -951,5 +950,146 @@ class HtmlMaker {
 		link_name += ".html";
 
 		return link_name;
+	}
+	#~
+	Renders a doc-comment description as HTML.
+
+	Descriptions carry structure now: ParseDesc keeps a blank line as a paragraph
+	break and keeps a bullet or heading on its own line. Dropping the result into
+	a single <p> would put that structure back where it was -- one unbroken run of
+	prose with literal '*' and '#' characters in it, which is how every markdown
+	sequence ever written in these comments has rendered until now.
+
+	Handles what the library sources actually use: paragraphs, '* ' bullets,
+	'## ' headings and '**bold**'. Anything else passes through unchanged, so a
+	description containing deliberate HTML still works.
+	~#
+	function : RenderDesc(desc : String) ~ String {
+		if(desc = Nil | desc->Size() = 0) {
+			return "";
+		};
+
+		html := "";
+		in_list := false;
+		lines := desc->Split("\n");
+		if(lines->Size() = 0) {
+			# Split yields NO parts when the separator is absent, not one, so a
+			# single-line description -- which is most of them -- would render as
+			# nothing at all if this fell through to the loop.
+			return "<p>" + Inline(desc->Trim()) + "</p>";
+		};
+		para := "";
+
+		each(i : lines) {
+			line := lines[i]->Trim();
+
+			if(line->Size() = 0) {
+				# blank line: close whatever is open
+				if(para->Size() > 0) {
+					html += "<p>";
+					html += Inline(para);
+					html += "</p>";
+					para := "";
+				};
+				if(in_list) {
+					html += "</ul>";
+					in_list := false;
+				};
+			}
+			else if(line->StartsWith("* ")) {
+				if(para->Size() > 0) {
+					html += "<p>";
+					html += Inline(para);
+					html += "</p>";
+					para := "";
+				};
+				if(<>in_list) {
+					html += "<ul>";
+					in_list := true;
+				};
+				html += "<li>";
+				html += Inline(line->SubString(2, line->Size() - 2));
+				html += "</li>";
+			}
+			else if(line->StartsWith("## ")) {
+				if(para->Size() > 0) {
+					html += "<p>";
+					html += Inline(para);
+					html += "</p>";
+					para := "";
+				};
+				if(in_list) {
+					html += "</ul>";
+					in_list := false;
+				};
+				# h2 and h3 are the page's own structure, so a heading inside a
+				# description sits below both
+				html += "<h4>";
+				html += Inline(line->SubString(3, line->Size() - 3));
+				html += "</h4>";
+			}
+			else {
+				if(para->Size() > 0) {
+					para += " ";
+				};
+				para += line;
+			};
+		};
+
+		if(para->Size() > 0) {
+			html += "<p>";
+			html += Inline(para);
+			html += "</p>";
+		};
+		if(in_list) {
+			html += "</ul>";
+		};
+
+		return html;
+	}
+
+	#~
+	Inline markup inside one line: only '**bold**', which is what the library
+	sources use. Left deliberately narrow -- a general markdown pass would have to
+	decide what to do with the deliberate HTML some descriptions already contain.
+	~#
+	function : Inline(text : String) ~ String {
+		out := "";
+		rest := text;
+		bold := false;
+
+		index := rest->Find("**");
+		while(index > -1) {
+			# SubString returns Nil for a zero-length request, so text that opens
+			# with '**' or ends on one must not ask for the empty piece.
+			if(index > 0) {
+				out += rest->SubString(index);
+			};
+
+			if(bold) {
+				out += "</strong>";
+			}
+			else {
+				out += "<strong>";
+			};
+			bold := <>bold;
+
+			tail_size := rest->Size() - index - 2;
+			if(tail_size > 0) {
+				rest := rest->SubString(index + 2, tail_size);
+			}
+			else {
+				rest := "";
+			};
+			index := rest->Find("**");
+		};
+		out += rest;
+
+		# an unmatched '**' would otherwise leave the page with an open tag
+		if(bold) {
+			out += "</strong>";
+		};
+
+		return out;
 	}
 }
