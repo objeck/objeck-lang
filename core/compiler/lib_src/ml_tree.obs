@@ -2506,4 +2506,242 @@ tree->Predict([true, true])->PrintLine();   # true
 			return "index={$@index},weighted_gini={$@weighted_gini}";
 		}
 	}
+
+	#~
+	Gradient boosted trees for binary classification, under logistic loss.
+
+	GradientBoostedTrees above fits each stage to the plain residual y - F(x),
+	which is the gradient of squared error. For a binary label the right target
+	is the gradient of the logistic loss, y - sigmoid(F(x)). A row the model
+	already calls correctly, and confidently, leaves a residual near zero and
+	stops steering the fit, so later stages spend their capacity on the rows
+	still being missed. That single substitution is the whole difference: the
+	trees, the shrinkage and the loop are the regression version's.
+
+	PredictScore returns a probability, which is what an evaluation at a fixed
+	false-alarm rate needs; Predict thresholds it half way. Deterministic — the
+	same data gives the same ensemble, with no seed to pass.
+
+	```objeck
+	gbc := GradientBoostedClassifier->New(50, 0.1, 3, 5);
+	gbc->Fit(train_x, train_y);
+	scores := gbc->PredictScore(test_x);
+	cut := Metrics->ThresholdAtFpr(test_y, scores, 0.01);
+	```
+	~#
+	class GradientBoostedClassifier {
+		@num_trees : Int;
+		@learning_rate : Float;
+		@max_depth : Int;
+		@min_samples : Int;
+		@base : Float;
+		@trees : Vector<RegressionTree>;
+		@fitted : Bool;
+
+		#~
+		Constructor
+		@param num_trees boosting stages
+		@param learning_rate shrinkage applied to each stage, e.g. 0.1
+		@param max_depth deepest any stage's tree may grow
+		@param min_samples a node with this many rows or fewer becomes a leaf
+		~#
+		New(num_trees : Int, learning_rate : Float, max_depth : Int, min_samples : Int) {
+			@num_trees := num_trees;
+			@learning_rate := learning_rate;
+			@max_depth := max_depth;
+			@min_samples := min_samples;
+			@fitted := false;
+		}
+
+		#~
+		Fits the ensemble on binary labels.
+		@param X rows x features, continuous
+		@param y one label per row, true for the positive class
+		@return true when every stage was fitted
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			if(X = Nil | y = Nil | @num_trees < 1) {
+				return false;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1 | y->Size() <> rows) {
+				return false;
+			};
+
+			positives := 0;
+			each(i : rows) {
+				if(y[i]) {
+					positives += 1;
+				};
+			};
+
+			# F0 is the log-odds of the training positive rate, so an ensemble of
+			# zero stages already predicts the base rate rather than even odds.
+			# Clamped because a single-class training set drives p to 0 or 1, and
+			# the odds ratio p/(1-p) then divides by zero. Objeck raises on that
+			# rather than yielding Inf, so without the clamp a fold that happens
+			# to hold one class aborts the fit outright.
+			p := positives->As(Float) / rows->As(Float);
+			if(p < 0.000001) {
+				p := 0.000001;
+			};
+			if(p > 0.999999) {
+				p := 0.999999;
+			};
+			odds := p / (1.0 - p);
+			@base := odds->Log();
+
+			raw := Float->New[rows];
+			each(i : rows) {
+				raw[i] := @base;
+			};
+
+			@trees := Vector->New()<RegressionTree>;
+			residuals := Float->New[rows, 1];
+			tree : RegressionTree;
+			stage : Float[,];
+
+			each(t : @num_trees) {
+				each(i : rows) {
+					if(y[i]) {
+						residuals[i,0] := 1.0 - Matrix2D->Sigmoid(raw[i]);
+					}
+					else {
+						residuals[i,0] := 0.0 - Matrix2D->Sigmoid(raw[i]);
+					};
+				};
+
+				tree := RegressionTree->New(@max_depth, @min_samples);
+				if(<>tree->Fit(X, residuals)) {
+					return false;
+				};
+
+				stage := tree->PredictAll(X);
+				if(stage = Nil) {
+					return false;
+				};
+
+				@trees->AddBack(tree);
+
+				each(i : rows) {
+					raw[i] += @learning_rate * stage[i,0];
+				};
+			};
+
+			@fitted := true;
+
+			return true;
+		}
+
+		#~
+		The ensemble's raw score for each row: the log-odds, before the sigmoid.
+		Ranking rows by this gives the same order as ranking by the probability,
+		since the sigmoid is monotone, and skips a pass over the data.
+		@param X rows x features
+		@return one score per row, or Nil when unfitted
+		~#
+		method : public : PredictRaw(X : Float[,]) ~ Float[] {
+			if(<>@fitted | X = Nil | @trees = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			result := Float->New[rows];
+			row := Float->New[cols];
+			ntrees := @trees->Size();
+			sum := 0.0;
+
+			each(r : rows) {
+				each(c : cols) {
+					row[c] := X[r,c];
+				};
+
+				sum := @base;
+				each(t : ntrees) {
+					sum += @learning_rate * @trees->Get(t)->Predict(row);
+				};
+
+				result[r] := sum;
+			};
+
+			return result;
+		}
+
+		#~
+		The ensemble's probability that each row belongs to the positive class.
+		@param X rows x features
+		@return one probability per row, or Nil when unfitted
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			scores := PredictRaw(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			each(i : scores) {
+				scores[i] := Matrix2D->Sigmoid(scores[i]);
+			};
+
+			return scores;
+		}
+
+		#~
+		Labels at the usual half-way threshold. Prefer PredictScore with an
+		explicit threshold when the false-alarm rate matters. Tested against the
+		raw score, since sigmoid(0) is one half and the two agree exactly.
+		@param X rows x features
+		@return one label per row, or Nil when unfitted
+		~#
+		method : public : Predict(X : Float[,]) ~ Bool[] {
+			scores := PredictRaw(X);
+			if(scores = Nil) {
+				return Nil;
+			};
+
+			result := Bool->New[scores->Size()];
+			each(i : scores) {
+				result[i] := scores[i] > 0.0;
+			};
+
+			return result;
+		}
+
+		#~
+		How many boosting stages were fitted.
+		@return stage count, or 0 when unfitted
+		~#
+		method : public : GetTreeCount() ~ Int {
+			if(<>@fitted | @trees = Nil) {
+				return 0;
+			};
+
+			return @trees->Size();
+		}
+
+		#~
+		The starting score, the log-odds of the training positive rate.
+		@return the base score, or 0.0 when unfitted
+		~#
+		method : public : GetBase() ~ Float {
+			if(<>@fitted) {
+				return 0.0;
+			};
+
+			return @base;
+		}
+
+		#~
+		Whether Fit has been called successfully.
+		@return true when this ensemble has been fitted
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+	}
 }
