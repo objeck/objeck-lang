@@ -1,0 +1,122 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+FeatureScaler's stateful Fit/Transform pair.
+
+The static StandardScaler standardizes whatever matrix it is handed, which cannot
+express the only correct thing to do across a train/test split: learn the mean and
+deviation from training data and reapply those SAME numbers to test data. Scaling
+test data by its own statistics leaks the test distribution into the evaluation and
+leaves the two halves on different scales, which quietly flatters any model measured
+at a fixed false-positive rate.
+
+The train/test case below is the one that matters, and it is written so that a
+scaler which re-fits on the data it is transforming FAILS it: the test split has a
+different mean from the training split, so a re-fitting implementation returns
+centred values where the correct answer is off-centre.
+~#
+use System.ML;
+
+class MlFeatureScalerStateful {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# Column 0: 1, 2, 3  -> mean 2, population sd sqrt(2/3) = 0.8164966
+		# Column 1: 10,20,30 -> mean 20, population sd sqrt(200/3) = 8.1649658
+		train := Float->New[3, 2];
+		train[0, 0] := 1.0; train[0, 1] := 10.0;
+		train[1, 0] := 2.0; train[1, 1] := 20.0;
+		train[2, 0] := 3.0; train[2, 1] := 30.0;
+
+		scaler := FeatureScaler->New();
+		ok := Report("unfitted Transform returns Nil", scaler->Transform(train) = Nil) & ok;
+		ok := Report("unfitted IsFitted is false", <>scaler->IsFitted()) & ok;
+
+		ok := Report("Fit succeeds", scaler->Fit(train)) & ok;
+		ok := Report("IsFitted is true after Fit", scaler->IsFitted()) & ok;
+
+		means := scaler->GetMeans();
+		sds := scaler->GetStandardDeviations();
+		ok := Report("learned means are 2 and 20",
+			means <> Nil & means->Size() = 2 & Near(means[0], 2.0) & Near(means[1], 20.0)) & ok;
+		ok := Report("learned deviations are population, not sample",
+			sds <> Nil & Near(sds[0], 0.81649658) & Near(sds[1], 8.16496581)) & ok;
+
+		z := scaler->Transform(train);
+		ok := Report("training data standardizes to hand-computed values",
+			z <> Nil
+			& Near(z[0, 0], -1.22474487) & Near(z[1, 0], 0.0) & Near(z[2, 0], 1.22474487)
+			& Near(z[0, 1], -1.22474487) & Near(z[1, 1], 0.0) & Near(z[2, 1], 1.22474487)) & ok;
+
+		# The static one-shot must agree with the stateful pair on the same matrix.
+		# If these ever diverge, one of them is computing a different statistic.
+		s := FeatureScaler->StandardScaler(train);
+		agree := s <> Nil & z <> Nil;
+		if(agree) {
+			each(r : 3) {
+				for(c := 0; c < 2; c += 1;) {
+					if(<>Near(s[r, c], z[r, c])) {
+						agree := false;
+					};
+				};
+			};
+		};
+		ok := Report("static StandardScaler agrees with Fit+Transform", agree) & ok;
+
+		# THE CASE THAT MATTERS. Test rows have mean 3 and 30, not the training
+		# mean of 2 and 20. Transform must use the TRAINING statistics.
+		#   correct  : (2-2)/0.8165 = 0      and (4-2)/0.8165 =  2.4494897
+		#   re-fitted: mean 3 -> -1.0 and +1.0, which this asserts against
+		test := Float->New[2, 2];
+		test[0, 0] := 2.0; test[0, 1] := 20.0;
+		test[1, 0] := 4.0; test[1, 1] := 40.0;
+
+		tz := scaler->Transform(test);
+		ok := Report("test data is scaled by TRAINING statistics",
+			tz <> Nil
+			& Near(tz[0, 0], 0.0) & Near(tz[1, 0], 2.44948975)
+			& Near(tz[0, 1], 0.0) & Near(tz[1, 1], 2.44948975)) & ok;
+
+		# A different feature space is a caller error, not something to scale anyway.
+		wrong := Float->New[2, 3];
+		ok := Report("a column-count mismatch returns Nil", scaler->Transform(wrong) = Nil) & ok;
+
+		# Zero variance: every value is the mean, so every output is 0. Matches the
+		# static function's behaviour rather than dividing by zero.
+		flat := Float->New[3, 1];
+		flat[0, 0] := 5.0; flat[1, 0] := 5.0; flat[2, 0] := 5.0;
+		fs := FeatureScaler->New();
+		fz := fs->FitTransform(flat);
+		ok := Report("a zero-variance column becomes zeros, not NaN",
+			fz <> Nil & Near(fz[0, 0], 0.0) & Near(fz[1, 0], 0.0) & Near(fz[2, 0], 0.0)) & ok;
+
+		# FitTransform is Fit followed by Transform, and leaves the scaler fitted.
+		ft := FeatureScaler->New();
+		ftz := ft->FitTransform(train);
+		ok := Report("FitTransform matches Fit then Transform",
+			ftz <> Nil & ft->IsFitted() & Near(ftz[0, 0], -1.22474487)) & ok;
+
+		# An unassigned Float[,] local is Nil, and gives the call a type to resolve
+		# against; a bare Nil argument is ambiguous here.
+		nothing : Float[,];
+		nil_scaler := FeatureScaler->New();
+		ok := Report("FitTransform on Nil returns Nil", nil_scaler->FitTransform(nothing) = Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.0000001;
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}

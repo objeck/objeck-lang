@@ -390,6 +390,155 @@ ratios := pca->GetExplainedVarianceRatio();
 	Feature scaling and normalization utilities
 	~#
 	class FeatureScaler {
+		@means : Float[];
+		@stds : Float[];
+		@fitted : Bool;
+
+		#~
+		Constructor for a scaler that learns its statistics once and reapplies them.
+
+		The static functions below standardize whatever matrix they are handed, which
+		makes them unusable for train/test work: scaling test data by its own mean and
+		deviation leaks test statistics into the evaluation, and the two halves end up
+		on different scales besides. Fit on the training split, Transform both.
+		~#
+		New() {
+			@fitted := false;
+		}
+
+		#~
+		Learns each column's mean and standard deviation from this matrix.
+		@param X matrix to learn from, normally the training split only
+		@return true when the statistics were learned, false for empty input
+
+```
+scaler := FeatureScaler->New();
+scaler->Fit(train);
+train_z := scaler->Transform(train);
+test_z := scaler->Transform(test);
+```
+		~#
+		method : public : Fit(X : Float[,]) ~ Bool {
+			if(X = Nil) {
+				return false;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+			if(rows < 1 | cols < 1) {
+				return false;
+			};
+
+			@means := Float->New[cols];
+			@stds := Float->New[cols];
+
+			each(col : cols) {
+				sum := 0.0;
+				each(row : rows) {
+					sum += X[row, col];
+				};
+				mean := sum / rows->As(Float);
+
+				sum_sq := 0.0;
+				each(row : rows) {
+					diff := X[row, col] - mean;
+					sum_sq += diff * diff;
+				};
+
+				@means[col] := mean;
+				# Population deviation, matching the static StandardScaler above. The
+				# two must agree: a caller comparing one against the other on the same
+				# matrix should not see different numbers.
+				@stds[col] := Float->Sqrt(sum_sq / rows->As(Float));
+			};
+
+			@fitted := true;
+
+			return true;
+		}
+
+		#~
+		Applies the learned statistics to a matrix.
+		@param X matrix to transform, with the same column count Fit saw
+		@return standardized matrix, or Nil if this scaler is unfitted or the column count differs
+
+```
+test_z := scaler->Transform(test);
+if(test_z = Nil) {
+  "unfitted, or wrong column count"->PrintLine();
+};
+```
+		~#
+		method : public : Transform(X : Float[,]) ~ Float[,] {
+			if(<>@fitted | X = Nil) {
+				return Nil;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			cols := dims[1];
+
+			# A column-count mismatch means this is not the same feature space the
+			# scaler was fitted on. Say so rather than standardize by the wrong column.
+			if(cols <> @means->Size()) {
+				return Nil;
+			};
+
+			result := Float->New[rows, cols];
+			each(col : cols) {
+				mean := @means[col];
+				std := @stds[col];
+				each(row : rows) {
+					if(std > 0.0) {
+						result[row, col] := (X[row, col] - mean) / std;
+					}
+					else {
+						result[row, col] := 0.0;
+					};
+				};
+			};
+
+			return result;
+		}
+
+		#~
+		Fits on this matrix and transforms it in one call. For the training split only.
+		@param X matrix to fit and transform
+		@return standardized matrix, or Nil if the input could not be fitted
+		~#
+		method : public : FitTransform(X : Float[,]) ~ Float[,] {
+			if(<>Fit(X)) {
+				return Nil;
+			};
+
+			return Transform(X);
+		}
+
+		#~
+		Whether Fit has been called successfully.
+		@return true when this scaler holds statistics
+		~#
+		method : public : IsFitted() ~ Bool {
+			return @fitted;
+		}
+
+		#~
+		The learned per-column means.
+		@return means, or Nil when unfitted
+		~#
+		method : public : GetMeans() ~ Float[] {
+			return @means;
+		}
+
+		#~
+		The learned per-column standard deviations.
+		@return deviations, or Nil when unfitted
+		~#
+		method : public : GetStandardDeviations() ~ Float[] {
+			return @stds;
+		}
+
 		#~
 		Standardizes features by removing mean and scaling to unit variance (Z-score normalization)
 		@param data input matrix
