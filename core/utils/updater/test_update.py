@@ -42,6 +42,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import threading
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(HERE, "obu.cpp")
@@ -842,6 +844,95 @@ def suite_selfswap(obu, work):
         check("an obu is present at the live path after rollback", os.path.isfile(live))
 
 
+def payload_unpacked(staging):
+    """True once the archive has been unpacked, which obu does immediately
+    before the swap. Looking for the payload's bin/ rather than for staging
+    itself: staging is created up front, so waiting on it would grab the
+    handle during the download and release it long before the rename."""
+    for current, dirs, _ in os.walk(staging):
+        if "bin" in dirs:
+            return True
+    return False
+
+
+def suite_rename_contention(obu, work):
+    """A handle held inside the tree for a moment must not abort the update.
+
+    Windows denies the rename of a directory while another process holds a
+    handle inside it -- antivirus scanning a binary whose bytes just changed,
+    the indexer, or a just-exited child whose handle has not been reaped. The
+    holder is gone within milliseconds, but a single rename attempt sees only
+    "Access is denied" and the entire update unwinds. CI hit exactly this on
+    windows-x64, failing to move 'bin', and the identical commit passed on the
+    next run -- which is why it needs a case that is not a coin flip.
+
+    The contending thread waits for the unpacked payload to appear, takes a
+    handle inside the install tree's bin/, and drops it well inside obu's
+    retry budget. Without the retry obu gives up on its first attempt and this
+    case fails, which is the property that makes it worth having.
+
+    POSIX allows the rename regardless, so there the handle is inert and the
+    case just confirms the update still completes.
+    """
+    print("\nrename contention (a handle held while the swap runs):")
+
+    root = os.path.join(work, "contend", "install")
+    make_install(root, "OLD")
+
+    prefix = asset_prefix()
+    asset = "%s_9999.1.0%s" % (prefix, ASSET_SUFFIX)
+    reldir = os.path.join(work, "contend", "rel")
+    stage = os.path.join(reldir, "stage")
+    make_install(stage, "NEW")
+    os.makedirs(reldir, exist_ok=True)
+    archive = os.path.join(reldir, asset)
+    make_archive(stage, archive)
+    with open(os.path.join(reldir, "SHA256SUMS"), "w") as handle:
+        handle.write("%s  %s\n"
+                     % (hashlib.sha256(open(archive, "rb").read()).hexdigest(), asset))
+    write_json(os.path.join(reldir, "release.json"), "v9999.1.0", [asset, "SHA256SUMS"])
+
+    staging = os.path.join(root, ".obu-work", "staging")
+    victim = os.path.join(root, "bin", "obc" + EXE_SUFFIX)
+
+    # The handle is taken BEFORE obu starts, and the thread only decides when
+    # to DROP it. Opening it after the payload appears would race the rename,
+    # and on POSIX -- where the rename is never denied -- that race is usually
+    # lost, leaving a case that silently tested nothing.
+    holder = open(victim, "rb")
+    state = {"released": False}
+
+    def release_once_swap_is_imminent():
+        deadline = time.time() + 60
+        while time.time() < deadline and not payload_unpacked(staging):
+            time.sleep(0.001)
+        time.sleep(0.12)    # inside the retry budget, beyond a single attempt
+        holder.close()
+        state["released"] = True
+
+    thread = threading.Thread(target=release_once_swap_is_imminent)
+    thread.start()
+    env = {"OBU_INSTALL_ROOT": root,
+           "OBU_RELEASE_JSON_FILE": os.path.join(reldir, "release.json"),
+           "OBU_ASSET_DIR": reldir}
+    code, out = run(obu, ["update", "--quiet"], env)
+    thread.join()
+    if not state["released"]:
+        holder.close()
+
+    # without this the case can pass while testing nothing
+    check("the contending handle spanned the swap", state["released"])
+
+    if check("a handle held during the swap does not abort the update",
+             code == 0, "exit=%d out=%r" % (code, out)):
+        check("the contended update installed the new tree",
+              open(os.path.join(root, "VERSION")).read().strip() == "NEW")
+        # a SUCCESSFUL update keeps .previous on purpose -- it is the rollback
+        # copy. Only a refused one has to leave nothing behind.
+        check("the contended update kept the old tree for rollback",
+              open(os.path.join(root, ".previous", "VERSION")).read().strip() == "OLD")
+
+
 # ---------------------------------------------------------------- main
 
 def main():
@@ -854,6 +945,7 @@ def main():
         suite_check(obu, work)
         suite_verify(obu, work)
         suite_update(obu, work)
+        suite_rename_contention(obu, work)
         if UPDATE_SUPPORTED:
             suite_selfswap(obu, work)
     finally:

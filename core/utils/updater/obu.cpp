@@ -1059,6 +1059,57 @@ static bool IsObuScratchEntry(const std::string& name)
          name == ".obu-rollback" || name == ".obu.lock";
 }
 
+// The platform call rather than std::this_thread: neither obu Makefile nor the
+// test harness passes -pthread, and on a glibc older than 2.34 that is a link
+// error waiting for whoever builds the updater on an older distro.
+// <windows.h> and <unistd.h> are already included above.
+static void SleepBriefly(int ms)
+{
+#if defined(_WIN32)
+  Sleep(static_cast<DWORD>(ms));
+#else
+  usleep(static_cast<useconds_t>(ms) * 1000);
+#endif
+}
+
+/****************************
+* fs::rename, retried briefly while something else still holds the entry.
+*
+* Windows denies the rename of a directory while any other process holds a
+* handle inside it -- antivirus scanning a binary whose bytes just changed,
+* the indexer, or a just-exited child whose handle has not been reaped. The
+* holder is gone within milliseconds, but a single attempt sees only
+* "Access is denied" and the entire update unwinds.
+*
+* Observed in CI on windows-x64: the swap failed moving 'bin', the directory
+* holding the running obu.exe, and the identical code passed on the next run.
+* A user running 'obu update' on Windows hits the same race, and the only
+* recourse is to run it again.
+*
+* The retry is deliberately not conditioned on a particular error code. Every
+* caller treats a failure as fatal and unwinds, so a few hundred milliseconds
+* spent before giving up costs nothing on a genuinely permanent error, and
+* the error finally reported is the one the last attempt produced.
+****************************/
+static void RenameWithRetry(const fs::path& from, const fs::path& to, std::error_code& ec)
+{
+  const int attempts = 6;
+  int wait_ms = 10;
+
+  for(int i = 0; i < attempts; i++) {
+    ec.clear();
+    fs::rename(from, to, ec);
+    if(!ec) {
+      return;
+    }
+
+    if(i + 1 < attempts) {
+      SleepBriefly(wait_ms);
+      wait_ms *= 2;
+    }
+  }
+}
+
 /****************************
 * Moves every managed entry from 'from' into 'to' (created if needed).
 * Returns false and stops on the first failure so the caller can unwind.
@@ -1083,7 +1134,7 @@ static bool MoveTreeEntries(const fs::path& from, const fs::path& to, std::strin
     if(IsObuScratchEntry(name)) {
       continue;
     }
-    fs::rename(path, to / name, ec);
+    RenameWithRetry(path, to / name, ec);
     if(ec) {
       error = "Unable to move '" + name + "': " + ec.message();
       return false;
