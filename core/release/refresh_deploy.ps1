@@ -397,11 +397,39 @@ if ($builtNatives.Count -gt 0) {
 if (-not $Native) {
     $versionHeader = Join-Path $repo 'core\shared\version.h'
     if ((Test-Path $versionHeader) -and (Test-Path $nativeTarget)) {
-        $versionTime = (Get-Item $versionHeader).LastWriteTime
+        # The COMMIT time of version.h, not its file mtime. An mtime records when
+        # the file was last written on THIS machine, and a clone, a branch switch
+        # and a 'cp' restore all reset it to now -- every deployed native then
+        # reads as stale. That fired on all eight during #1010's testing, and a
+        # warning that cries wolf is the one people stop reading, which is the
+        # failure this one exists to prevent.
+        #
+        # The exception is a version bump in progress: version.h is edited but not
+        # yet committed, so its commit time still names the PREVIOUS version and
+        # natives built before the bump would stop flagging -- precisely the case
+        # this warning is for. While it is dirty the mtime is the real signal.
+        $versionTime = $null
+        $reference = 'commit time'
+        $dirty = $false
+        try { $dirty = [bool](& git -C $repo status --porcelain -- $versionHeader 2>$null) } catch { $dirty = $false }
+
+        if (-not $dirty) {
+            try {
+                $iso = (& git -C $repo log -1 --format=%cI -- $versionHeader 2>$null)
+                if ($iso) { $versionTime = [datetimeoffset]::Parse($iso).LocalDateTime }
+            }
+            catch { $versionTime = $null }
+        }
+        if (-not $versionTime) {
+            # dirty, no git, or version.h never committed: the mtime is all there is
+            $versionTime = (Get-Item $versionHeader).LastWriteTime
+            $reference = $(if ($dirty) { 'file mtime, version.h is uncommitted' } else { 'file mtime, no commit found' })
+        }
+
         $stale = Get-ChildItem -Path $nativeTarget -Filter 'libobjk_*.dll' -ErrorAction SilentlyContinue |
                  Where-Object { $_.LastWriteTime -lt $versionTime }
         if ($stale) {
-            Write-Host ("WARNING: {0} deployed native librar{1} older than core/shared/version.h." -f $stale.Count, $(if ($stale.Count -eq 1) { 'y is' } else { 'ies are' })) -ForegroundColor Yellow
+            Write-Host ("WARNING: {0} deployed native librar{1} older than core/shared/version.h ({2:yyyy-MM-dd HH:mm}, {3})." -f $stale.Count, $(if ($stale.Count -eq 1) { 'y is' } else { 'ies are' }), $versionTime, $reference) -ForegroundColor Yellow
             foreach ($s in ($stale | Sort-Object Name)) {
                 Write-Host ("         {0,-24} {1:yyyy-MM-dd HH:mm}" -f $s.Name, $s.LastWriteTime) -ForegroundColor Yellow
             }
