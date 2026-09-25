@@ -32,7 +32,7 @@
     x64 (default) or arm64.
 
 .PARAMETER Native
-    Also build the eleven native library solutions. Slow, and they change
+    Also build AND INSTALL the eleven native library solutions. Slow, and they change
     rarely, so this is off by default.
 
 .PARAMETER SkipBuild
@@ -329,6 +329,88 @@ if (Test-Path $libSource) {
 }
 Write-Host ''
 
+
+# --- native libraries -------------------------------------------------------
+# -Native BUILT these; nothing installed them, so the deploy tree kept whatever
+# DLLs it already had. After the 2026.9.7 bump that left a libobjk_diags.dll
+# from the previous day carrying the old VER_NUM, which rejected the current
+# .obl set -- and only the two tests that compile Objeck at RUN time through
+# System.Diagnostics could see it, so 314 of 316 passed and the failure read as
+# two flaky tests rather than a stale artifact (#1008).
+#
+# Output paths differ per project -- Release\win64, vs\Release\x64,
+# ARM64\Release -- so each artifact is located under its own project directory
+# rather than from a hardcoded list that would drift as projects move.
+
+$nativeRecords = @()
+$nativeTarget = Join-Path $target 'lib\native'
+$archPattern = if ($Arch -eq 'arm64') { 'ARM64' } else { 'win64|x64' }
+
+$builtNatives = @{}
+foreach ($project in $nativeProjects) {
+    $projectDir = Join-Path $repo (Split-Path $project.Path -Parent)
+    if (-not (Test-Path $projectDir)) { continue }
+    Get-ChildItem -Path $projectDir -Recurse -Filter 'libobjk_*.dll' -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -match $archPattern } |
+        ForEach-Object {
+            # A project can leave several builds behind; keep the newest.
+            if (-not $builtNatives.ContainsKey($_.Name) -or
+                $_.LastWriteTime -gt $builtNatives[$_.Name].LastWriteTime) {
+                $builtNatives[$_.Name] = $_
+            }
+        }
+}
+
+if ($builtNatives.Count -gt 0) {
+    if (-not (Test-Path $nativeTarget)) {
+        New-Item -ItemType Directory -Path $nativeTarget | Out-Null
+    }
+    Write-Host 'Native libraries:'
+    $nativeChanged = 0
+    foreach ($name in ($builtNatives.Keys | Sort-Object)) {
+        $dll = $builtNatives[$name]
+        $destination = Join-Path $nativeTarget $name
+        $source = (Get-FileHash $dll.FullName -Algorithm MD5).Hash.Substring(0, 12)
+        $current = ''
+        if (Test-Path $destination) {
+            $current = (Get-FileHash $destination -Algorithm MD5).Hash.Substring(0, 12)
+        }
+        if ($current -ne $source) {
+            $nativeChanged++
+            if ($WhatIf) {
+                Write-Host ("  {0,-24} would install  {1} -> {2}" -f $name, $(if ($current) { $current } else { '(absent)' }), $source)
+            } else {
+                Copy-Item $dll.FullName $destination -Force
+                Write-Host ("  {0,-24} installed      {1} -> {2}" -f $name, $(if ($current) { $current } else { '(absent)' }), $source)
+            }
+        }
+        $nativeRecords += [pscustomobject]@{ Name = $name; Source = $source }
+    }
+    if ($nativeChanged -eq 0) {
+        Write-Host ("  {0} native libraries already current." -f $builtNatives.Count)
+    }
+    Write-Host ''
+}
+
+# Silence is what made this expensive: without -Native the script says nothing
+# about libraries it did not build, and a version bump can leave them behind.
+if (-not $Native) {
+    $versionHeader = Join-Path $repo 'core\shared\version.h'
+    if ((Test-Path $versionHeader) -and (Test-Path $nativeTarget)) {
+        $versionTime = (Get-Item $versionHeader).LastWriteTime
+        $stale = Get-ChildItem -Path $nativeTarget -Filter 'libobjk_*.dll' -ErrorAction SilentlyContinue |
+                 Where-Object { $_.LastWriteTime -lt $versionTime }
+        if ($stale) {
+            Write-Host ("WARNING: {0} deployed native librar{1} older than core/shared/version.h." -f $stale.Count, $(if ($stale.Count -eq 1) { 'y is' } else { 'ies are' })) -ForegroundColor Yellow
+            foreach ($s in ($stale | Sort-Object Name)) {
+                Write-Host ("         {0,-24} {1:yyyy-MM-dd HH:mm}" -f $s.Name, $s.LastWriteTime) -ForegroundColor Yellow
+            }
+            Write-Host '         A native library built before a version bump carries the old' -ForegroundColor Yellow
+            Write-Host '         VER_NUM and will reject the current .obl set. Re-run with -Native.' -ForegroundColor Yellow
+            Write-Host ''
+        }
+    }
+}
 # --- record ----------------------------------------------------------------
 
 if (-not $WhatIf) {
@@ -357,8 +439,18 @@ if (-not $WhatIf) {
             $lines += ("{0,-18} source={1}" -f $record.Name, $record.Source)
         }
     }
+    if ($nativeRecords.Count -gt 0) {
+        $lines += ''
+        $lines += '# native libraries built from source (lib/native). A manifest that'
+        $lines += '# omitted these could not answer the question it exists for: they are'
+        $lines += '# the artifact class most likely to go stale, because they are built'
+        $lines += '# separately and only with -Native.'
+        foreach ($record in ($nativeRecords | Sort-Object Name)) {
+            $lines += ("{0,-24} source={1}" -f $record.Name, $record.Source)
+        }
+    }
     Set-Content -Path $manifestPath -Value $lines -Encoding utf8
-    Write-Host ("Recorded {0} binaries and {1} libraries in {2}" -f $records.Count, $libRecords.Count, 'DEPLOY_MANIFEST.txt')
+    Write-Host ("Recorded {0} binaries, {1} libraries and {2} native libraries in {3}" -f $records.Count, $libRecords.Count, $nativeRecords.Count, 'DEPLOY_MANIFEST.txt')
     Write-Host 'Compare against it when a test result looks impossible: a deploy binary'
     Write-Host 'replaced by another build reporting the same version string is invisible'
     Write-Host 'otherwise, and invalidates every measurement taken against it.'
