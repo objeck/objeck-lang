@@ -88,12 +88,6 @@ obc hello && obr hello
   * **Compiler** &mdash; dozens of fixes for lambdas, enums and conditional expressions, most found by holding every test to the same output across optimization levels and JIT settings, and by a program fuzzer
   * **Integer arithmetic has one definition** &mdash; shared by the interpreter, compiler and both JITs. `INT64_MIN / -1` no longer stops the program, and `>>>` takes its shift count modulo 64 like `<<` and `>>`, so `-1 >>> 64` is `-1` rather than `0`
 
-### v2026.9.4
-  * **Integer division by a power of two rounded the wrong way at `-opt s2` and `s3`** &mdash; strength reduction turned `n / 2^k` on a local into an arithmetic shift, which rounds toward negative infinity where division truncates toward zero: `-7 / 2` gave `-4`. Division is no longer rewritten; both JITs already compile a constant divisor correctly. Programs compiled at `s2` or `s3` (the default) by v2026.9.3 or earlier should be recompiled
-  * **`1 / n` evaluated to `n` at `-opt s3`** &mdash; a peephole pattern meant for `x / 1` matched the left operand instead, so `1 / 5` gave `5`. The pattern is gone
-  * **The compiler crashed folding `INT64_MIN / -1`** &mdash; `obc` exited with no message and no output file; that fold is left to run time now
-  * **Deserializing an object array with a Nil element corrupted its object** &mdash; each Nil element was written into the object's next field instead of the array, so the array read back as Nil and later fields shifted
-
 ## Downloads
 
 **Latest Release:** [v2026.9.6](https://github.com/objeck/objeck-lang/releases/latest)
