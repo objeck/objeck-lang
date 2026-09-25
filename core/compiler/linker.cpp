@@ -837,7 +837,28 @@ void Library::LoadFile(const std::wstring &file_name)
   if(buffer) {
     const int ver_num = ReadInt();
     if(ver_num != VER_NUM) {
-      std::wcerr << L"The " << lib_path << L" library appears to be compiled with a different version of the tool chain.\n\tPlease recompile the libraries or link the correct version." << std::endl;
+      // Report BOTH numbers and which side is behind. A mismatch means the two
+      // differ; it does not mean the library is at fault, and saying so sends
+      // the reader to rebuild an artifact that may already be correct. On
+      // 2026-09-24 this named lang.obl while lang.obl exactly matched master --
+      // the stale side was a native library built before a version bump, whose
+      // embedded copy of this check carried the older VER_NUM (#1010, #1008).
+      //
+      // The direction is the whole diagnostic, and both values are already in
+      // hand here.
+      std::wcerr << L"Toolchain version mismatch reading " << lib_path << std::endl
+                 << L"\tthe library was built by toolchain " << ver_num << std::endl
+                 << L"\tthis binary expects                " << VER_NUM << std::endl;
+      if(ver_num > VER_NUM) {
+        std::wcerr << L"\t-> this binary is older than the library. Rebuild it, including any"
+                   << std::endl
+                   << L"\t   native libraries, which build separately and are easy to miss."
+                   << std::endl;
+      }
+      else {
+        std::wcerr << L"\t-> the library is older than this binary. Rebuild the libraries."
+                   << std::endl;
+      }
       exit(1);
     }
 
