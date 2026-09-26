@@ -411,6 +411,32 @@ LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, const std::ve
   return nullptr;
 }
 
+// Reports an unusable '@alias' and exits.
+//
+// The message this replaces named neither the file it searched nor the aliases
+// it did find, so a typo, a group missing from configobjk.ini, and a
+// configobjk.ini that was never read all produced one sentence -- whose only
+// advice was to check an environment variable that is usually not the problem.
+static void ReportUnknownAlias(const std::wstring& file_ref, const std::wstring& config_file_path,
+                               const std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>>& lib_aliases)
+{
+  std::wcerr << L"Unknown library alias: '" << file_ref << L"'." << std::endl;
+
+  if(lib_aliases.empty()) {
+    std::wcerr << L"\tNo alias groups were read from '" << config_file_path << L"'." << std::endl;
+    std::wcerr << L"\tCheck that the file exists, and that 'OBJECK_LIB_PATH' refers to the library directory." << std::endl;
+  }
+  else {
+    std::wcerr << L"\tGroups defined in '" << config_file_path << L"':";
+    for(const auto& alias : lib_aliases) {
+      std::wcerr << L' ' << alias.first;
+    }
+    std::wcerr << std::endl;
+  }
+
+  exit(1);
+}
+
 void Linker::Load(bool is_lib)
 {
 #ifdef _DEBUG
@@ -449,13 +475,11 @@ void Linker::Load(bool is_lib)
               }
             }
             else {
-              std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
-              exit(1);
+              ReportUnknownAlias(file_ref, config_file_path, lib_aliases);
             }
           }
           else {
-            std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
-            exit(1);
+            ReportUnknownAlias(file_ref, config_file_path, lib_aliases);
           }
         }
         else {
@@ -504,8 +528,7 @@ void Linker::Load(bool is_lib)
           }
         }
         else {
-          std::wcerr << L"Unknown library alias: '" << file_ref << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
-          exit(1);
+          ReportUnknownAlias(file_ref, config_file_path, lib_aliases);
         }
       }
       else {
@@ -868,7 +891,7 @@ void Library::LoadFile(const std::wstring &file_name)
       exit(1);
     }
     else if(magic_num != MAGIC_NUM_LIB) {
-      std::wcerr << L"Unable to link invalid library file '" << file_name << L"'.\n\tCheck the alias name and ensure the 'OBJECK_LIB_PATH' environment variable refers to the library directory." << std::endl;
+      std::wcerr << L"Unable to link invalid library file '" << file_name << L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain." << std::endl;
       exit(1);
     }
 

@@ -59,6 +59,7 @@ static int objeck_main(int argc, const char* argv[])
   usage += L"  --source, -src, -s <files>      Source files (comma-separated)\n";
   usage += L"  --destination, -dest, -d <file> Output file name\n";
   usage += L"  --library, -lib, -l <libs>      Linked libraries (comma-separated)\n";
+  usage += L"                                  An entry may be '@name', a group from configobjk.ini\n";
   usage += L"  --target, -tar, -t <type>       Target: 'lib' or 'exe' (default: exe)\n";
   usage += L"  --optimize, -opt, -o <level>    Optimization: s0-s3 (default: s3)\n";
   usage += L"  --inline, -in, -i <code>        Inline code statements\n";
