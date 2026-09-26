@@ -1,3 +1,31 @@
+v2026.9.7 (September 24, 2026)
+===
+Supervised classification becomes usable end to end -- a scaler that holds its statistics across a train/test split, stratified folds, metrics that take a score rather than a decision, classifiers that split continuous features, and a cross-validation runner over all of them. A Bool array returned from a method was mishandled in three separate places, and comparisons involving NaN now follow IEEE on every platform.
+
+v2026.9.7
+- A model can be evaluated honestly, end to end -- System.ML could fit a model but not measure one. Nothing held a scaler's statistics across a train/test split, so test data was scaled by its own numbers, which leaks the test distribution into the result. FeatureScaler and TableEncoder learn from the training split and reapply it, StratifiedKFold keeps each class's ratio in every fold from a seed, and CrossValidation->Evaluate runs the folds over a common ScoreModel interface
+- Metrics that take a score rather than a decision -- RecallAtFpr, ThresholdAtFpr, AucRoc, AveragePrecision, RocCurve and PrCurve. A Bool array is already thresholded, so it cannot say what recall would be at a different false-alarm rate
+- Classifiers that split continuous features directly -- DecisionTreeClassifier, RandomForestClassifier and GradientBoostedClassifier. The existing trees take Bool[,], so data had to be quantile-binned first, and the binning discards the very thresholds a tree exists to find
+- A Bool[] returned from a method was mishandled in three separate places -- comparing such a call against Nil would not compile, subscripting the result read several bytes instead of one, and Bool->New[src] returned the source array rather than a copy. A Bool[] held in a local was correct throughout, which is what disguised all three
+- Every comparison involving NaN returned true on Windows -- NaN compared equal to 1.0 while being both less than and greater than it, and the same program answered differently on Linux and macOS. The VM is built with /fp:fast, which permits assuming operands are not NaN, and the amd64 JIT read the zero flag for equality without the parity flag that separates equal from unordered
+- Nineteen library divisions aborted the VM on ordinary input -- a division by zero raises a runtime error rather than yielding infinity, so an unguarded one ends the program. CsvColumn->Average(1, 1), the average of an empty range on a populated table, was confirmed as a live crash before anything was changed
+- The collector's old generation moved to open addressing -- Windows binarytrees went from 2.392s to 1.789s
+- obu verify <archive> <SHA256SUMS> -- the integrity check update already performs, exposed for anyone who downloads with curl. A mismatch and a check that could not be carried out are different exit codes
+- An update no longer aborts because something briefly held a file -- obu update renames the install tree aside, and Windows denies renaming a directory while another process holds a handle inside it, which antivirus does to a binary whose bytes just changed. One attempt saw "Access is denied" and unwound the whole update; it now retries
+- A toolchain-version mismatch said the wrong side was stale -- the error read "the LIBRARY appears to be compiled with a different version", which sends you to rebuild libraries that are already current, when the stale side is usually the tool reading them. It now names which side is which, and both versions
+
+v2026.9.6 (September 19, 2026)
+===
+A correctness release for the machine-learning library and for the two places Objeck runs code that are not obr: the REPL and the embedding API.
+
+v2026.9.6
+- System.ML stopped returning wrong numbers -- column sums and averages truncated every fractional value, so LinearSolver reported the wrong R-squared; KMeans->Group could hand back empty groups depending on the order of its labels, and the Dunn index then divided by zero
+- Matrix2D says no instead of stopping the program -- operations on shapes it cannot combine return Nil, a Nil operand no longer crashes the native code, Inverse of a non-square matrix no longer hangs, and NeuralNetwork->Train refuses an input or target that is not a column of the right height
+- obi and the embedding API speak HTTP/2 and HTTP/3 -- both run code through the module build, which never got the flags or the libraries obr has, so they quietly used HTTP/1.1
+- Two ARM64-only crashes -- obi aborted with "double free or corruption" on Linux ARM64, because the REPL's module and the VM it links were built with different macros; and a program using function references could be killed at exit by a race between the collector's marking threads
+- API.OpenAI answers, and sends the picture -- a text Respond posted its request and never read the reply, so the call was billed and returned Nil; every image call sent its request as text
+- obi exits when its input ends -- piping a program into the REPL, or closing its input, left it running forever
+
 v2026.9.5 (September 19, 2026)
 ===
 Linux ARM64 runs on every ARM64 CPU again -- v2026.9.4 needed SVE instructions and stopped with "Illegal instruction" on most of them. Programs with threads exit and join safely, and a hardening pass fixes dozens of compiler and garbage-collector bugs found by fuzzing, differential testing and a heap verifier.

@@ -35,6 +35,7 @@ which is what made each of them look like something else.
 - **An indexed `Bool[]` call result read several bytes instead of one** ([#988](https://github.com/objeck/objeck-lang/issues/988)): a `Bool[]` is allocated as `NEW_BYTE_ARY`, but the path for subscripting a call's result classified it as reference width. The value then depended on neighbouring elements and on the platform's memory layout, so a *different* expression misevaluated on each backend — x64 got the left operand of `&` wrong, macOS ARM64 got `|`, Windows ARM64 got `=` against a literal. A silent wrong answer, not a compile error
 - **`Bool->New[src]` aliased instead of copying** ([#995](https://github.com/objeck/objeck-lang/issues/995)): `BOOLEAN_TYPE` had no arm in the array copy constructor's switch, so nothing was emitted and the source reference was left on the stack as the "copy". Writing through the source then changed it
 - **A library's array copy constructor crashed the compiler** ([#958](https://github.com/objeck/objeck-lang/issues/958)): the call was emitted with class ids local to the library being written, and a consuming build then dereferenced a map it had never heard of — a bare SIGSEGV out of `obc` with no message and no output file
+- **A toolchain-version mismatch named the wrong side** ([#1010](https://github.com/objeck/objeck-lang/issues/1010)): the error read "the LIBRARY appears to be compiled with a different version", which sends you to rebuild libraries that are already current — the stale side is usually the reader. It now says which side is which and names both versions, after costing two separate sessions a rebuild each
 
 ### Runtime
 
@@ -42,10 +43,17 @@ which is what made each of them look like something else.
 - **The old generation moved to open addressing** ([#871](https://github.com/objeck/objeck-lang/issues/871)): Windows `binarytrees` went from 2.392s to 1.789s
 - **Twelve library divisions aborted the VM on ordinary input**: `CsvColumn->Average(1, 1)` — the average of an empty range on a populated table — was confirmed as a live crash before anything was changed
 
+### Updater
+
+- **`obu verify <archive> <SHA256SUMS>`** ([#723](https://github.com/objeck/objeck-lang/issues/723)): the integrity check `update` already performs, exposed for anyone who downloads with `curl` instead. A mismatch and a check that could not be carried out are different exit codes, so a script can tell a wrong file from an inconclusive result
+- **A transient lock no longer aborts an update** ([#1006](https://github.com/objeck/objeck-lang/issues/1006)): the swap renames the install tree aside, and Windows denies renaming a directory while any other process holds a handle inside it — antivirus scanning a binary whose bytes just changed, the indexer, a just-exited child. One attempt saw only "Access is denied" and the whole update unwound. It now retries with a short backoff. It always failed safe, restoring the tree, but the only recourse was to run it again
+
 ### Tooling
 
 - **`refresh_deploy.ps1`** rebuilds the toolchain and refreshes `deploy-<arch>` without `devenv`, which ships only with the full Visual Studio IDE. It never deletes the tree, refreshes the `.obl` set as well as the binaries, and records what it installed with a hash per file — because a deploy binary replaced by another machine's build reporting the same version string is invisible otherwise, and invalidates every measurement taken against it
 - **`audit_ratios.py`** inventories the divisions in Objeck sources and shortlists the unguarded ones. Advisory rather than a gate, and it refuses to report anything until it has classified a set of embedded fixtures correctly
+- **`refresh_deploy.ps1` installs the native libraries it builds** ([#1008](https://github.com/objeck/objeck-lang/issues/1008)): `-Native` built the eleven native solutions and nothing copied the results into the deploy tree, so a stale `libobjk_diags.dll` carrying the old `VER_NUM` outlived a version bump and surfaced as two unrelated-looking LSP test failures. Each built `libobjk_*.dll` is now installed and recorded in `DEPLOY_MANIFEST.txt`
+- **The native-staleness warning times off `version.h`'s commit, not its mtime** ([#1012](https://github.com/objeck/objeck-lang/pull/1012)): an mtime records when the file was last written on this machine, so a clone, a branch switch or a `cp` restore reset it and all eight deployed natives read as stale. It falls back to the mtime only while `version.h` is uncommitted — a bump in progress, which is the one case the warning exists for
 
 ## [v2026.9.6] - 2026-09-19
 
