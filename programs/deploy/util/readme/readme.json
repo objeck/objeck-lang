@@ -27,7 +27,10 @@
 				"Runtime: twelve library divisions that aborted the VM on ordinary input are guarded, including the average of an empty range on a populated CSV table",
 				"Runtime: the collector's old generation moved to open addressing; Windows binarytrees went from 2.392s to 1.789s",
 				"obu: 'obu verify <archive> <SHA256SUMS>' runs the same integrity check 'update' already performs, for anyone who downloads with curl. A mismatch and an error are different exit codes, so a script can tell a wrong file from a check it could not carry out",
-				"Tools: refresh_deploy.ps1 rebuilds and refreshes a deploy tree without needing the full Visual Studio IDE, never deletes the tree, refreshes the library set as well as the binaries, and records a hash per file so a binary replaced by another machine's build is visible"
+				"Tools: refresh_deploy.ps1 rebuilds and refreshes a deploy tree without needing the full Visual Studio IDE, never deletes the tree, refreshes the library set as well as the binaries, and records a hash per file so a binary replaced by another machine's build is visible",
+				"obu: an update no longer aborts because something briefly held a file. The swap renames the install tree aside, and Windows denies renaming a directory while another process holds a handle inside it -- which antivirus does to a binary whose bytes just changed. One attempt saw 'Access is denied' and unwound the whole update; it now retries",
+				"Toolchain: a version mismatch said the wrong side was stale. The error read 'the LIBRARY appears to be compiled with a different version', which sends you to rebuild libraries that are already current, when the stale side is usually the tool reading them. It now names which side is which, and both versions",
+				"Tools: refresh_deploy.ps1 installs the native libraries it builds -- previously -Native built them and nothing copied them into the deploy tree, so a stale libobjk_diags.dll outlived a version bump -- and times its staleness warning off version.h's commit rather than its file mtime, which any clone or branch switch resets"
 			]
 		},
 		{
