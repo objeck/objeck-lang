@@ -1079,18 +1079,23 @@ inline std::vector<std::string> ListDir(const char* p)
     path += "\\*";
   }
 
-  WIN32_FIND_DATA file_data;
-  HANDLE find = FindFirstFile(path.c_str(), &file_data);
+  // The ANSI variants explicitly, never the FindFirstFile/WIN32_FIND_DATA
+  // macros: those follow UNICODE, which this header cannot assume. compiler.cpp
+  // built without it and got the char* form; vm, module and diags define it and
+  // got FindFirstFileW, so the macros stopped compiling the moment this moved
+  // into a shared header.
+  WIN32_FIND_DATAA file_data;
+  HANDLE find = FindFirstFileA(path.c_str(), &file_data);
   if(find == INVALID_HANDLE_VALUE) {
     return files;
   }
   else {
     files.push_back(file_data.cFileName);
 
-    BOOL b = FindNextFile(find, &file_data);
+    BOOL b = FindNextFileA(find, &file_data);
     while(b) {
       files.push_back(file_data.cFileName);
-      b = FindNextFile(find, &file_data);
+      b = FindNextFileA(find, &file_data);
     }
     FindClose(find);
   }
