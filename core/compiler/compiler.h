@@ -45,7 +45,6 @@
 #include <map>
 #include <string>
 
-std::vector<std::string> ListDir(const char* p);
 int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::list<std::wstring>& argument_options, const std::wstring usage);
 extern "C"
 {

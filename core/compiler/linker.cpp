@@ -47,6 +47,7 @@
 
 #include "linker.h"
 #include "types.h"
+
 #include "../shared/instrs.h"
 #include "../shared/version.h"
 
@@ -77,9 +78,7 @@ void Linker::ResloveExternalClass(LibraryClass* klass)
           }
         } 
         else {
-          std::wcerr << L"Error: Unable to resolve external library class: '"
-                << instr->GetOperand5() << L"'; check library path" << std::endl;
-          exit(1);
+          ReportUnresolvedClass(instr->GetOperand5());
         }
       }
         break;
@@ -130,9 +129,7 @@ void Linker::ResolveExternalMethodCalls()
               instr->SetOperand(lib_klass->GetId());
             }
             else {
-              std::wcerr << L"Error: Unable to resolve external library class: '"
-                << instr->GetOperand5() << L"'; check library path" << std::endl;
-              exit(1);
+              ReportUnresolvedClass(instr->GetOperand5());
             }
           }
             break;
@@ -144,9 +141,7 @@ void Linker::ResolveExternalMethodCalls()
               instr->SetOperand(lib_klass->GetId());
             }
             else {
-              std::wcerr << L"Error: Unable to resolve external library class: '"
-                << instr->GetOperand5() << L"'; check library path" << std::endl;
-              exit(1);
+              ReportUnresolvedClass(instr->GetOperand5());
             }
           }
             break;
@@ -158,9 +153,7 @@ void Linker::ResolveExternalMethodCalls()
               instr->SetOperand(lib_klass->GetId());
             }
             else {
-              std::wcerr << L"Error: Unable to resolve external library class: '"
-                << instr->GetOperand5() << L"'; check library path" << std::endl;
-              exit(1);
+              ReportUnresolvedClass(instr->GetOperand5());
             }
           }
             break;
@@ -181,8 +174,7 @@ void Linker::ResolveExternalMethodCalls()
               }
             }
             else {
-              std::wcerr << L"Error: Unable to resolve external library class: '" << instr->GetOperand5() << L"'; check library path" << std::endl;
-              exit(1);
+              ReportUnresolvedClass(instr->GetOperand5());
             }
           }
             break;
@@ -204,8 +196,7 @@ void Linker::ResolveExternalMethodCalls()
               }
             }
             else {
-              std::wcerr << L"Error: Unable to resolve external library class: '" << instr->GetOperand5() << L"'; check library path" << std::endl;
-              exit(1);
+              ReportUnresolvedClass(instr->GetOperand5());
             }
           }
             break;
@@ -432,6 +423,73 @@ static void ReportUnknownAlias(const std::wstring& file_ref, const std::wstring&
       std::wcerr << L' ' << alias.first;
     }
     std::wcerr << std::endl;
+  }
+
+  exit(1);
+}
+
+// Names the libraries that define 'cls_name' but were NOT linked.
+//
+// Probing is safe: the linker's class caches (all_classes, all_classes_map)
+// are built only from 'libraries' (see GetAllClasses), so a Library opened
+// here and never inserted there cannot reach them. ~Library frees what it
+// owns, so the probe cleans up after itself.
+//
+// Only reached on a path that is already fatal, so the cost of opening every
+// unlinked .obl is irrelevant. One caveat worth knowing: a .obl built by a
+// different toolchain exits inside Load(), so a stale library in the path
+// replaces this diagnosis with a version-mismatch one -- which is itself the
+// more useful message, and since #1010 it names which side is stale.
+std::vector<std::wstring> Linker::LibrariesDefining(const std::wstring& cls_name)
+{
+  std::vector<std::wstring> hits;
+
+  const std::wstring lib_path = GetLibraryPath();
+  const std::vector<std::string> entries = ListDir(UnicodeToBytes(lib_path).c_str());
+
+  for(const std::string& entry : entries) {
+    const std::wstring name = BytesToUnicode(entry);
+    if(!frontend::EndsWith(name, L".obl")) {
+      continue;
+    }
+
+    const std::wstring file_path = lib_path + name;
+    if(libraries.find(file_path) != libraries.end()) {
+      continue;   // linked already, so it is not what is missing
+    }
+
+    Library probe(file_path);
+    probe.Load();
+    if(probe.GetClass(cls_name)) {
+      hits.push_back(name.substr(0, name.size() - 4));
+    }
+  }
+
+  return hits;
+}
+
+// Reports an unresolvable class and exits, naming the library that would
+// supply it. 'check library path' was the whole of the old advice, which is
+// true and unactionable: the path is usually right and one library is
+// missing from -lib. The @web alias shipped broken for exactly this reason,
+// and this message would have named net_server.obl on the first run.
+void Linker::ReportUnresolvedClass(const std::wstring& cls_name)
+{
+  std::wcerr << L"Error: Unable to resolve external library class: '" << cls_name << L"'." << std::endl;
+
+  const std::vector<std::wstring> supplying = LibrariesDefining(cls_name);
+  if(supplying.empty()) {
+    std::wcerr << L"\tNo library in '" << GetLibraryPath() << L"' defines it." << std::endl;
+  }
+  else {
+    std::wcerr << L"\tAdd it with '-lib ";
+    for(size_t i = 0; i < supplying.size(); ++i) {
+      if(i) {
+        std::wcerr << L',';
+      }
+      std::wcerr << supplying[i];
+    }
+    std::wcerr << L"'" << std::endl;
   }
 
   exit(1);
