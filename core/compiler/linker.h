@@ -1127,6 +1127,12 @@ public:
   // returns all classes including duplicates
   const std::unordered_map<std::wstring, LibraryClass*>& GetAllClassesMap();
 
+  // libraries in the path that define a class but were not linked
+  std::vector<std::wstring> LibrariesDefining(const std::wstring& cls_name);
+
+  // reports an unresolvable class, naming what would supply it, and exits
+  void ReportUnresolvedClass(const std::wstring& cls_name);
+
   // returns all classes including duplicates
   std::vector<LibraryClass*> GetAllClasses();
 
