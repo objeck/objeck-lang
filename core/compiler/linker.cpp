@@ -48,9 +48,6 @@
 #include "linker.h"
 #include "types.h"
 
-// Defined in compiler.cpp. Declared rather than included: compiler.h pulls in
-// this header, so including it back would be circular.
-std::vector<std::string> ListDir(const char* p);
 #include "../shared/instrs.h"
 #include "../shared/version.h"
 

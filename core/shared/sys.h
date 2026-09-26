@@ -37,6 +37,10 @@
 #include <io.h>
 #endif
 
+#if !defined(_WIN32)
+#include <dirent.h>
+#endif
+
 #include <math.h>
 #include <zlib.h>
 #include <string.h>
@@ -1052,3 +1056,63 @@ inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
   free(buffer);
   return wbuffer;
 }
+
+/****************************
+ * Lists a directory's entries.
+ *
+ * Lives here rather than in compiler.cpp because linker.cpp needs it and is
+ * compiled into three targets -- compiler, module and diags -- only two of
+ * which build compiler.cpp. A definition there links on Windows (diags is a
+ * DLL that would fail, but objeck.sln does not build diag.sln) and fails on
+ * the POSIX legs, which is a red CI leg for a diagnostic.
+ ****************************/
+#ifdef _WIN32
+inline std::vector<std::string> ListDir(const char* p)
+{
+  std::vector<std::string> files;
+
+  std::string path = p;
+  if(path.size() > 0 && path[path.size() - 1] == '\\') {
+    path += "*";
+  }
+  else {
+    path += "\\*";
+  }
+
+  WIN32_FIND_DATA file_data;
+  HANDLE find = FindFirstFile(path.c_str(), &file_data);
+  if(find == INVALID_HANDLE_VALUE) {
+    return files;
+  }
+  else {
+    files.push_back(file_data.cFileName);
+
+    BOOL b = FindNextFile(find, &file_data);
+    while(b) {
+      files.push_back(file_data.cFileName);
+      b = FindNextFile(find, &file_data);
+    }
+    FindClose(find);
+  }
+
+  return files;
+}
+#else
+inline std::vector<std::string> ListDir(const char* path) {
+  std::vector<std::string> files;
+
+  struct dirent** names = nullptr;
+  int n = scandir(path, &names, 0, alphasort);
+  if(n > 0) {
+    while(n--) {
+      if((strcmp(names[n]->d_name, "..") != 0) && (strcmp(names[n]->d_name, ".") != 0)) {
+        files.push_back(names[n]->d_name);
+      }
+      free(names[n]);
+    }
+    free(names);
+  }
+
+  return files;
+}
+#endif
