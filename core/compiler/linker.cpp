@@ -495,7 +495,7 @@ void Linker::ReportUnresolvedClass(const std::wstring& cls_name)
   exit(1);
 }
 
-void Linker::Load(bool is_lib)
+void Linker::Load([[maybe_unused]] bool is_lib)
 {
 #ifdef _DEBUG
   GetLogger() << L"--------- Linking Libraries ---------" << std::endl;
@@ -515,7 +515,13 @@ void Linker::Load(bool is_lib)
       std::wstring file_ref = master_path.substr(offset, index - offset);
       if(!file_ref.empty()) {
         // check for alias 
-        if(!is_lib && file_ref[0] == L'@') {
+        // No '!is_lib' here. The guard that used to sit on this branch made an
+        // alias expand or not depending on its POSITION: the final-entry path a
+        // few lines below never had it, so with -tar lib '@std' worked alone and
+        // last, while '@std,misc' tried to open a file named '@std.obl'. Both
+        // branches arrived in the same commit (1b7d261ac9), so the difference was
+        // an oversight rather than a rule -- nothing documents aliases as exe-only.
+        if(file_ref[0] == L'@') {
           if(!lib_aliases.empty()) {
             auto lib_section_aliases = lib_aliases.find(file_ref);
             if(lib_section_aliases != lib_aliases.end()) {

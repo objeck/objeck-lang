@@ -981,12 +981,25 @@ obc -src program.obs -lib @ai -dest program.obe
 | Alias | Expands to | Use for |
 |---|---|---|
 | `@std` | `json`, `json_stream`, `net`, `cipher` | everyday networked apps |
+| `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
+| `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
 | `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | LLM clients: OpenAI, Gemini, Ollama |
 | `@ai` | `ai`, `ml`, `nlp`, `csv` | local System.ML / System.AI / System.NLP work |
 | `@vision` | `opencv`, `onnx`, `json`, `cipher` | OpenCV and ONNX inference |
 | `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL games, 2D and OpenGL |
 
-Aliases and explicit names mix freely (`-lib @ai,json`). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`. An unknown alias fails with `Unknown library alias` — check the spelling and that `OBJECK_LIB_PATH` points at the library directory.
+Aliases and explicit names mix in any order, for either `--target` (`-lib @ai,json` and `-lib json,@ai` are the same). Groups are user-editable: add a section to `configobjk.ini` and reference it as `@yourname`.
+
+A group must be **closed under dependencies** — the linker loads exactly what the group lists and does not chase a member's own dependencies, so a group that omits one fails on every use, even from a program that never touches it.
+
+An unknown alias names the config file and lists the groups it does define. An unresolvable class names the library that would supply it:
+
+```
+Error: Unable to resolve external library class: 'Web.HTTP.Server.Request'.
+        Add it with '-lib net_server'
+```
+
+See [cli_options.md](cli_options.md#library-groups) for the same table alongside the rest of `obc`'s options.
 
 ---
 

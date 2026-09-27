@@ -55,7 +55,7 @@ graph TD
 | `--inline` | `-in`, `-i` | Inline code statements (wrapped in a generated `Main()`) |
 | `--destination` | `-dest`, `-d` | Output file name |
 | `--target` | `-tar`, `-t` | `exe` or `lib` (default: `exe`; produces `.obe` / `.obl`) |
-| `--library` | `-lib`, `-l` | Linked libraries, comma-separated |
+| `--library` | `-lib`, `-l` | Linked libraries, comma-separated. An entry may be `@name`, a group from `configobjk.ini` — see [Library groups](#library-groups) |
 | `--strict` | | Exclude default libraries (`lang`, `gen_collect`) |
 | `--optimize` | `-opt`, `-o` | Optimization level `s0`–`s3` (default: `s3`) |
 | `--alt-syntax` | `-alt` | Use the alternative C-like syntax |
@@ -64,6 +64,39 @@ graph TD
 | `--version` | `-ver`, `-v` | Show version |
 
 See [optimization_pipeline.md](optimization_pipeline.md) for what each `-opt` level enables.
+
+### Library groups
+
+An entry in `--library` that begins with `@` is a **group**, expanded from
+`lib/configobjk.ini` beside the installed `.obl` files. `-lib @web` is shorthand for the
+seven libraries that group lists.
+
+| Group | Expands to | For |
+|-------|------------|-----|
+| `@std` | `json`, `json_stream`, `net`, `cipher` | everyday programs: JSON and HTTP |
+| `@web` | `net_h2`, `net_quic`, `web_server`, `json_rpc`, `net_server`, `net`, `json`, `cipher` | HTTP/2, HTTP/3, the embedded server, JSON-RPC |
+| `@data` | `xml`, `regex`, `csv`, `query`, `rss`, `misc`, `net`, `json`, `cipher` | parsing and querying structured data |
+| `@ml` | `gemini`, `openai`, `ollama`, `net_server`, `misc`, `net`, `json`, `cipher` | hosted-model API clients |
+| `@ai` | `ai`, `ml`, `nlp`, `csv` | local `System.ML` / `System.AI` / `System.NLP` |
+| `@vision` | `opencv`, `onnx`, `json`, `cipher` | OpenCV and ONNX inference |
+| `@game` | `sdl2`, `sdl_game`, `sdl_gl`, `json`, `gen_collect` | SDL2, the 2D game and 3D OpenGL frameworks |
+
+Groups and explicit names mix in any order, for either `--target`: `-lib @ai,json` and
+`-lib json,@ai` are the same. Listing a library twice is harmless.
+
+**Adding your own.** A section in `configobjk.ini` named `[@yourname]` is a group. It must
+be *closed under dependencies* — the linker loads exactly what the group lists and does not
+chase a member's own dependencies, so if a member was built against another `.obl` that one
+must be listed too. A group that misses a dependency fails on every use, including from a
+program that never touches it. `@web` shipped that way, omitting `net_server.obl`.
+
+If a group name is not found, the compiler prints the config file's path and every group
+defined in it. If a class cannot be resolved, it names the library that would supply it:
+
+```
+Error: Unable to resolve external library class: 'Web.HTTP.Server.Request'.
+        Add it with '-lib net_server'
+```
 
 ## Virtual machine — `obr`
 
