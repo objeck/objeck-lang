@@ -1204,6 +1204,18 @@ jobs:
         retention-days: 7
         if-no-files-found: ignore
 
+    # Every example that ships compiles with the '-lib' line README.md prints
+    # beside it. The table is what a reader copies, so a wrong column is a
+    # broken first experience of the language -- and nothing checked it before:
+    # check_examples_index.py verifies an example is LISTED, not that the
+    # listing works. Linux x64 only, since the examples are platform-neutral
+    # and the SDL/ODBC ones only need to link, not run.
+    - name: Shipped examples compile with their documented libraries
+      if: matrix.platform == 'linux-x64'
+      env:
+        OBJECK_LIB_PATH: ${{ github.workspace }}/core/release/${{ steps.deploy-dir.outputs.dir }}/lib
+      run: python3 programs/deploy/build_examples.py
+
     # ============================================
     # API Documentation (Linux x64 only)
     # ============================================
