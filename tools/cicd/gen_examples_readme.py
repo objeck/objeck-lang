@@ -61,6 +61,20 @@ def build():
         out.append("| [`%s`](%s) | %s | %s |\n" % (f, f, libcell, a))
 
     out.append(
+        "\n## Building all of them\n"
+        "\n`build_examples.py` beside this file reads the **Libraries** column above and\n"
+        "compiles each example with exactly what it names:\n"
+        "\n```\n"
+        "python build_examples.py              compile every example, report\n"
+        "python build_examples.py --only json  just the ones whose name matches\n"
+        "python build_examples.py --keep       leave the .obe files behind\n"
+        "```\n"
+        "\nIt finds `obc` in `../bin` (an install) or the repo's deploy tree, and exits\n"
+        "non-zero if any example fails. CI runs it on every change, so the table above is\n"
+        "verified rather than merely written down: a wrong entry in the Libraries column\n"
+        "fails the build.\n"
+    )
+    out.append(
         "\n## Building one\n"
         "\nWith no libraries:\n"
         "\n```\nobc -src hello_0.obs\nobr hello_0.obe\n```\n"
