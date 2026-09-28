@@ -13,6 +13,20 @@ Each program is self-contained and opens with a comment giving its exact
 compile and run lines. Run them from this folder (or from `examples/` in an
 install): two of them read files from `data/`, which ships alongside.
 
+To compile all of them at once, `build_examples.py` beside this file reads the
+**Libraries** column below and builds each example with exactly what it names:
+
+```
+python build_examples.py              compile every example, report
+python build_examples.py --only json  just the ones whose name matches
+python build_examples.py --keep       leave the .obe files behind
+```
+
+It finds `obc` in `../bin` (an install) or the repo's deploy tree, and exits
+non-zero if any example fails. CI runs it on every change, so the table below is
+verified rather than merely written down: a wrong entry in the Libraries column
+fails the build.
+
 | Example | Libraries | What it shows |
 |---|---|---|
 | [`hello_0.obs`](hello_0.obs) | none | a class, Main, and one line of output |
