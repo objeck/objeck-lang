@@ -1,4 +1,4 @@
-v2026.9.7 (September 24, 2026)
+v2026.9.7 (September 28, 2026)
 ===
 Supervised classification becomes usable end to end -- a scaler that holds its statistics across a train/test split, stratified folds, metrics that take a score rather than a decision, classifiers that split continuous features, and a cross-validation runner over all of them. A Bool array returned from a method was mishandled in three separate places, and comparisons involving NaN now follow IEEE on every platform.
 
@@ -13,6 +13,8 @@ v2026.9.7
 - obu verify <archive> <SHA256SUMS> -- the integrity check update already performs, exposed for anyone who downloads with curl. A mismatch and a check that could not be carried out are different exit codes
 - An update no longer aborts because something briefly held a file -- obu update renames the install tree aside, and Windows denies renaming a directory while another process holds a handle inside it, which antivirus does to a binary whose bytes just changed. One attempt saw "Access is denied" and unwound the whole update; it now retries
 - A toolchain-version mismatch said the wrong side was stale -- the error read "the LIBRARY appears to be compiled with a different version", which sends you to rebuild libraries that are already current, when the stale side is usually the tool reading them. It now names which side is which, and both versions
+- obc names the library that would supply an unresolved class -- "Unable to resolve external library class: X; check library path" was true and unactionable: the path is almost always right, one entry is missing from -lib, and finding which one meant grepping the library sources. It now says: Add it with '-lib net_server'
+- The @web library group never worked, and @ groups now expand anywhere in the list -- '-lib @web' failed on any program, even one that never touched HTTP, because the group omitted net_server.obl. Separately, when building a library, '-lib @std' worked while '-lib @std,misc' tried to open a file named @std.obl. Both fixed, and the groups are documented in docs/cli_options.md; obc's usage had never mentioned @ at all
 
 v2026.9.6 (September 19, 2026)
 ===

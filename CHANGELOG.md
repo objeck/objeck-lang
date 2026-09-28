@@ -2,7 +2,7 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.9.7] - 2026-09-24
+## [v2026.9.7] - 2026-09-28
 
 **Supervised classification becomes usable end to end, three defects that all treated a
 `Bool` array as int-width are fixed, and float comparisons involving NaN follow IEEE.**
@@ -36,6 +36,9 @@ which is what made each of them look like something else.
 - **`Bool->New[src]` aliased instead of copying** ([#995](https://github.com/objeck/objeck-lang/issues/995)): `BOOLEAN_TYPE` had no arm in the array copy constructor's switch, so nothing was emitted and the source reference was left on the stack as the "copy". Writing through the source then changed it
 - **A library's array copy constructor crashed the compiler** ([#958](https://github.com/objeck/objeck-lang/issues/958)): the call was emitted with class ids local to the library being written, and a consuming build then dereferenced a map it had never heard of — a bare SIGSEGV out of `obc` with no message and no output file
 - **A toolchain-version mismatch named the wrong side** ([#1010](https://github.com/objeck/objeck-lang/issues/1010)): the error read "the LIBRARY appears to be compiled with a different version", which sends you to rebuild libraries that are already current — the stale side is usually the reader. It now says which side is which and names both versions, after costing two separate sessions a rebuild each
+- **`obc` names the library that would supply an unresolved class** ([#1015](https://github.com/objeck/objeck-lang/pull/1015)): `Unable to resolve external library class: X; check library path` was true and unactionable -- the path is almost always right and one entry is missing from `-lib`, and finding which one meant grepping `lib_src`. The linker now scans the libraries it did not load and says `Add it with '-lib net_server'`
+- **The `@web` library group never worked** ([#1014](https://github.com/objeck/objeck-lang/pull/1014)): `-lib @web` failed on any program, including one that never touched HTTP, because the group omitted `net_server.obl` and the linker loads exactly what a group lists. The other six groups were fine
+- **A `@` group expanded or not depending on where it sat in the list** ([#1016](https://github.com/objeck/objeck-lang/pull/1016)): building a library, `-lib @std` worked and `-lib @std,misc` tried to open a file named `@std.obl`. One of the two expansion paths carried a `!is_lib` guard the other never had; both arrived in the same commit, so the difference was an oversight. Groups now expand in any position, for either `--target`, and are documented in `docs/cli_options.md` -- `obc`'s own usage had never mentioned `@` at all
 
 ### Runtime
 
@@ -54,6 +57,7 @@ which is what made each of them look like something else.
 - **`audit_ratios.py`** inventories the divisions in Objeck sources and shortlists the unguarded ones. Advisory rather than a gate, and it refuses to report anything until it has classified a set of embedded fixtures correctly
 - **`refresh_deploy.ps1` installs the native libraries it builds** ([#1008](https://github.com/objeck/objeck-lang/issues/1008)): `-Native` built the eleven native solutions and nothing copied the results into the deploy tree, so a stale `libobjk_diags.dll` carrying the old `VER_NUM` outlived a version bump and surfaced as two unrelated-looking LSP test failures. Each built `libobjk_*.dll` is now installed and recorded in `DEPLOY_MANIFEST.txt`
 - **The native-staleness warning times off `version.h`'s commit, not its mtime** ([#1012](https://github.com/objeck/objeck-lang/pull/1012)): an mtime records when the file was last written on this machine, so a clone, a branch switch or a `cp` restore reset it and all eight deployed natives read as stale. It falls back to the mtime only while `version.h` is uncommitted — a bump in progress, which is the one case the warning exists for
+- **Every shipped example is compiled on each change** ([#1017](https://github.com/objeck/objeck-lang/pull/1017)): `programs/deploy` ships 31 programs and had no way to build them -- the only check that touched them verified an example was *listed* in the index, not that the listing worked. `build_examples.py` reads the `-lib` line `README.md` prints beside each one, so a wrong column fails the build rather than misleading the first person who copies it
 
 ## [v2026.9.6] - 2026-09-19
 

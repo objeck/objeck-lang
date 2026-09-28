@@ -45,6 +45,22 @@ install): two of them read files from `data/`, which ships alongside.
 | [`ml_regression_26.obs`](ml_regression_26.obs) | `-lib ml,csv` | linear regression over a CSV dataset |
 | [`records_28.obs`](records_28.obs) | `-lib gen_collect` | records: generated constructors and accessors, and readonly |
 
+## Building all of them
+
+`build_examples.py` beside this file reads the **Libraries** column above and
+compiles each example with exactly what it names:
+
+```
+python build_examples.py              compile every example, report
+python build_examples.py --only json  just the ones whose name matches
+python build_examples.py --keep       leave the .obe files behind
+```
+
+It finds `obc` in `../bin` (an install) or the repo's deploy tree, and exits
+non-zero if any example fails. CI runs it on every change, so the table above is
+verified rather than merely written down: a wrong entry in the Libraries column
+fails the build.
+
 ## Building one
 
 With no libraries:

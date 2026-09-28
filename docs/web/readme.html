@@ -77,7 +77,9 @@
       <li><strong><code>obu verify &lt;archive&gt; &lt;SHA256SUMS&gt;</code></strong> &mdash; the integrity check <code>update</code> already performs, exposed for anyone who downloads with <code>curl</code>. A mismatch and a check that could not be carried out are different exit codes</li>
       <li><strong>An update no longer aborts because something briefly held a file</strong> &mdash; <code>obu update</code> renames the install tree aside, and Windows denies renaming a directory while another process holds a handle inside it, which antivirus does to a binary whose bytes just changed. One attempt saw &ldquo;Access is denied&rdquo; and unwound the whole update; it now retries</li>
       <li><strong>A toolchain-version mismatch said the wrong side was stale</strong> &mdash; the error read &ldquo;the LIBRARY appears to be compiled with a different version&rdquo;, which sends you to rebuild libraries that are already current, when the stale side is usually the tool reading them. It now names which side is which, and both versions</li>
-     </ul>
+      <li><strong><code>obc</code> names the library that would supply an unresolved class</strong> &mdash; &ldquo;Unable to resolve external library class&rdquo; was true and unactionable: the path is almost always right, one entry is missing from <code>-lib</code>, and finding which one meant grepping the library sources. It now says <code>Add it with '-lib net_server'</code></li>
+      <li><strong>The <code>@web</code> library group never worked, and <code>@</code> groups now expand anywhere in the list</strong> &mdash; <code>-lib @web</code> failed on any program, even one that never touched HTTP, because the group omitted <code>net_server.obl</code>. Separately, when building a library, <code>-lib @std</code> worked while <code>-lib @std,misc</code> tried to open a file named <code>@std.obl</code>. Both fixed, and the groups are now documented &mdash; <code>obc</code>&rsquo;s usage had never mentioned <code>@</code> at all</li>
+</ul>
 
     <h3><a href="https://github.com/objeck/objeck-lang/releases/tag/v2026.9.6" style="color: inherit; text-decoration: none;">v2026.9.6</a></h3>
      <ul>
