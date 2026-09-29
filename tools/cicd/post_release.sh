@@ -183,7 +183,30 @@ MISS=$(comm -23 "$WORK/named.txt" "$WORK/have.txt")
                || { echo "$MISS" | sed 's/^/  ADVERTISED BUT ABSENT: /'; FAIL=1; }
 # unsubstituted template markers / dead compare links
 grep -q 'compare/v\.\.\.' "$WORK/body.md" && bad "body has an unsubstituted compare link (compare/v...)"
-grep -qE '\$[A-Z_]+' "$WORK/body.md" && bad "body has unsubstituted \$VARIABLES"
+# Unsubstituted template markers. Two rules, because '$UPPERCASE' is not by
+# itself a defect: the body carries shell the reader is meant to run, and
+# 'export PATH=$PATH:$(pwd)/bin' is correct. A flat '\$[A-Z_]+' failed v2026.9.7
+# on exactly that line, and the message named neither the variable nor the line,
+# so finding it meant re-grepping the body by hand.
+#
+#   1. ANY '$UPPERCASE' OUTSIDE a fenced code block. Prose has no reason to carry
+#      one, so a marker that leaked into the text is still caught.
+#   2. The pipeline's OWN names anywhere, fenced or not. '$VERSION' inside a fence
+#      is worse than in prose: it is a command someone will copy and run.
+#
+# Both print the offending line, which the old check did not.
+awk '/^[[:space:]]*```/ { fence = !fence; next } !fence' "$WORK/body.md" > "$WORK/body.prose"
+PROSE_VARS=$(grep -nE '\$[A-Z_]+' "$WORK/body.prose" | head -5)
+if [ -n "$PROSE_VARS" ]; then
+  echo "$PROSE_VARS" | sed 's/^/  UNSUBSTITUTED (outside a code block): /'
+  bad "body has unsubstituted \$VARIABLES outside a code block"
+fi
+TEMPLATE_VARS=$(grep -nE '\$\{?(VERSION|TAG|REPO|SUMMARY|PREV_TAG|PUB_ID|RUN_ID|PLAYGROUND_HOST|OLD_VERSION)\}?' \
+                     "$WORK/body.md" | head -5)
+if [ -n "$TEMPLATE_VARS" ]; then
+  echo "$TEMPLATE_VARS" | sed 's/^/  UNSUBSTITUTED release-pipeline marker: /'
+  bad "body has an unsubstituted release-pipeline variable"
+fi
 # Empty-href links: '[text]()' renders as a clickable link that goes nowhere.
 # The release-drafter template emitted these for every download for years.
 # NOTE: keep this pattern on ONE line. Written across two lines the newline makes
