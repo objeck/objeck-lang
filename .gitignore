@@ -203,3 +203,20 @@ programs/web-playground/docker/sandbox-deploy/
 
 # Release-candidate results written by tools/cicd/verify_platform.sh|.cmd
 rc-results/
+
+# deploy_posix.sh generates a Makefile in each of these four directories by
+# copying make/Makefile.<arch>. They are build output, not source.
+#
+# Two of the four used to be TRACKED, which had two consequences: an ARM64
+# build silently modified them (make/Makefile.arm64 differs from the committed
+# amd64 content), leaving them staged for the next `git add -u`, so an ARM64
+# machine could commit the ARM64 makefile as canonical without anyone typing a
+# thing; and on amd64 the other two sat dirty forever, so `git status` never
+# came back clean after a POSIX build (#1005).
+#
+# Build with `make -f make/Makefile.<arch>`, or let deploy_posix.sh generate
+# these. Nothing reads them expecting them to already exist.
+/core/compiler/Makefile
+/core/vm/Makefile
+/core/debugger/Makefile
+/core/repl/Makefile
