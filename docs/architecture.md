@@ -423,7 +423,7 @@ more falls back to the interpreter whole.
 | **ARM64** | x0-x7, x12-x15 (12 regs) | d0-d15 (16 regs) | x9-x11 (scratch), x19 (safepoint flag's address), x29 (FP), x30 (LR) |
 | **AMD64** | rax, rbx, rcx, rdx, r8-r11 (8 regs; Windows adds rsi, rdi) | xmm10-xmm15 (6 regs) | r12 (safepoint flag's address), r13-r15 (pinned loop locals), rsp (SP), rbp (BP) |
 
-### Recent ARM64 Optimizations (v2026.2.1)
+### ARM64 Optimizations (v2026.2.1)
 
 ```mermaid
 mindmap
@@ -846,14 +846,32 @@ graph LR
     subgraph "Cache Management"
         E[Cache Key: workflow + commit]
         F[Restore Key: workflow]
-        G[Automatic Cleanup: 7 days]
+        G["GitHub evicts at the<br/>10 GB repo ceiling"]
+        H["codeql.yml prunes<br/>superseded entries"]
     end
 
     B1 & B2 & D1 & D2 --> E
     E --> F --> G
+    H --> G
 
     style E fill:#e1ffe1
+    style H fill:#e1ffe1
 ```
+
+**The 10 GB ceiling is the constraint that matters.** Actions caches are capped
+per repository, and past the cap GitHub evicts the oldest entries -- which is how
+a release build lost its dependency caches and gained about forty minutes. The
+families that grow without bound are the ones whose key embeds something that
+changes: CodeQL writes a ~460 MB TRAP cache per analysed *commit*, and the
+dependency caches re-key whenever their input hash moves. A superseded entry can
+never be hit again, because the key names it.
+
+A `prune-caches` job in `codeql.yml` therefore keeps only the newest few of each
+family, taking `<prefix>:<keep>` pairs -- currently
+`codeql-trap:3 macOS-brew-downloads:2 Linux-x64-apt:2 Linux-arm64-apt:2`. It
+keeps several rather than one because these actions restore by key *prefix*, so
+a recent entry still warm-starts a new run; pruning to exactly one would trade
+the ceiling problem for a slower build.
 
 ### Regression Test Suite
 
@@ -924,29 +942,57 @@ stop-the-world scheme rather than OS thread suspension:
 The collector remains generational and non-OS-suspending; correctness comes from
 complete root coverage at the safepoint, not from freezing threads mid-instruction.
 
-### Hash-Based O(1) Lookup
+### Old-Generation Membership
+
+The collector must answer "is this address a live old-generation object?" for
+words taken from conservative scans — operand stacks and JIT temporaries — which
+may not be pointers at all. That rules out reading a flag from the candidate:
+the answer has to be decidable **without dereferencing it**. An object's header
+does carry `GC_OLD_BIT`, but reading it means trusting the address first.
+
+So the old generation keeps a set of known-good addresses, `PtrSet`
+(`core/vm/arch/ptr_set.h`). It is open-addressed: keys live directly in one
+power-of-two array, probed linearly, with `nullptr` for an empty slot and an
+all-ones sentinel for a tombstone.
 
 ```mermaid
 graph LR
-    subgraph "Object Table Structure"
-        A[Object Pointer] --> B[Hash Function]
-        B --> C[Hash Index]
-        C --> D[Bucket Array]
-        D --> E{Collision?}
+    subgraph "PtrSet -- open addressing"
+        A[Object address] --> B["hash = address >> 3<br/>no mixing"]
+        B --> C[index = hash & mask]
+        C --> D[Slot array]
+        D --> E{Occupied?}
 
-        E -->|No| F[Object Metadata]
-        E -->|Yes| G[Linked List]
-        G --> F
-
-        F --> H[Type Info]
-        F --> I[Size]
-        F --> J[GC Flags]
-        F --> K[Reference Count]
+        E -->|"empty"| F[Not a member]
+        E -->|"this key"| G[Member]
+        E -->|"other key<br/>or tombstone"| H[probe i+1]
+        H --> D
     end
 
     style B fill:#e1f5ff
-    style F fill:#e1ffe1
+    style G fill:#e1ffe1
 ```
+
+Two properties are deliberate and easy to undo by accident:
+
+- **The hash is unmixed.** Allocator addresses arrive in rising runs, so an
+  unmixed hash keeps objects allocated near each other in slots near each other
+  and a probe reuses the cache line the last one pulled in. Fibonacci mixing
+  scatters them and costs a miss per lookup: over 2M realistic addresses,
+  insert 6.8 ns and lookup 4.0 ns unmixed against 9.4 ns and 8.2 ns mixed.
+- **There is no reference counting.** Collection is generational mark-and-sweep.
+  The header carries `GC_MARK_BIT`, `GC_OLD_BIT`, `GC_RSET_BIT` and
+  `GC_TRACED_BIT`, and nothing counts references.
+
+This replaced a `std::unordered_set` in v2026.9.7. That container is node-based,
+so every insert was a separate heap allocation, and the old generation gains one
+entry per promoted object — a minor collection paid that allocation once per
+survivor, on top of the object's own. On Windows it cost 239.5 ns per insert
+against the allocation's 38.5 ns. Promotion cost tracks promoted bytes rather
+than collection count, so it dominated: `binarytrees(17)` went from 2.392 s to
+1.789 s (−25.2%) with peak RSS 194.6 MB → 179.1 MB, closing a 3.5× gap against
+Linux on the same hardware. `ptr_set_test.cpp` pins the behaviour the collector
+relies on, including that `count()` never dereferences its argument.
 
 ### GC Algorithm Flow
 
@@ -980,13 +1026,14 @@ sequenceDiagram
     MM->>App: Resume execution
 ```
 
-### Memory Manager Improvements (v2026.2.1)
+### Memory Manager Improvements
 
 ```mermaid
 mindmap
-    root((Memory Manager v2026.2.1))
+    root((Memory Manager))
         Constant-time lookups
-            Hash-based object table
+            Open-addressed old-gen set
+            No per-entry allocation
             No linear scans
         Generational collection
             Young gen frequent and fast
@@ -1286,4 +1333,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on improving this archi
 
 ---
 
-*Last updated: September 2026 | Version: 2026.9.5*
+*Last updated: September 2026 | Version: 2026.9.7*
