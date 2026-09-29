@@ -22,16 +22,37 @@ RESULTS_DIR="./results"
 
 mkdir -p "$RESULTS_DIR"
 
-# Check for expect
+# Check for expect.
+#
+# This used to warn and 'exit 0', which makes a suite that ran NOTHING
+# indistinguishable from one that passed -- to CI, to verify_platform, and to
+# anyone reading a green tick. That is exactly how a v2026.9.7 release-gate run
+# reported every phase PASS on a machine with no expect installed.
+#
+# Exit 2, distinct from 1 (a real test failure), so a caller that genuinely
+# wants to tolerate a missing expect can still say so explicitly. Set
+# OBJECK_ALLOW_SKIP=1 to get the old behaviour.
 if ! command -v expect &> /dev/null; then
-    echo "WARNING: 'expect' not found, skipping debugger tests"
-    exit 0
+    if [ "${OBJECK_ALLOW_SKIP:-0}" = "1" ]; then
+        echo "WARNING: 'expect' not found, skipping debugger tests (OBJECK_ALLOW_SKIP=1)"
+        exit 0
+    fi
+    echo "ERROR: 'expect' not found -- the debugger tests cannot run."
+    echo "       Install it:  apt-get install expect  |  brew install expect"
+    echo "       It is listed in core/release/runtime_deps.json under packages.<mgr>.test."
+    echo "       To skip deliberately: OBJECK_ALLOW_SKIP=1 $0 $PLATFORM"
+    exit 2
 fi
 
-# Check for debugger binary
+# Check for debugger binary -- same reasoning as above.
 if [ ! -f "$DEBUGGER" ]; then
-    echo "WARNING: debugger binary not found at $DEBUGGER, skipping"
-    exit 0
+    if [ "${OBJECK_ALLOW_SKIP:-0}" = "1" ]; then
+        echo "WARNING: debugger binary not found at $DEBUGGER, skipping (OBJECK_ALLOW_SKIP=1)"
+        exit 0
+    fi
+    echo "ERROR: debugger binary not found at $DEBUGGER -- build the deploy tree first."
+    echo "       To skip deliberately: OBJECK_ALLOW_SKIP=1 $0 $PLATFORM"
+    exit 2
 fi
 
 # Get absolute paths

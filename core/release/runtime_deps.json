@@ -64,7 +64,9 @@
         "libopencv-dev", "libgl1-mesa-dev", "libegl1", "libegl-mesa0",
         "libsdl2-dev", "libsdl2-image-dev", "libsdl2-ttf-dev", "libsdl2-mixer-dev"
       ],
-      "test": ["libsqliteodbc", "python3"]
+      "test": ["libsqliteodbc", "python3",
+        "expect"
+       ]
     },
     "brew": {
       "runtime": [],
@@ -72,18 +74,24 @@
         "cmake", "pkg-config", "ccache", "unixodbc", "readline", "eigen",
         "sdl2", "sdl2_image", "sdl2_ttf", "sdl2_mixer"
       ],
-      "test": [],
+      "test": [
+				"expect"
+			],
       "tools": ["macvim"]
     },
     "dnf": {
       "runtime": ["mbedtls", "zlib", "readline", "unixODBC", "lame-libs", "mesa-libGL", "SDL2", "SDL2_image", "SDL2_mixer", "SDL2_ttf", "opencv"],
       "build": [],
-      "test": []
+      "test": [
+				"expect"
+			]
     },
     "pacman": {
       "runtime": ["mbedtls2", "zlib", "readline", "unixodbc", "lame", "mesa", "sdl2", "sdl2-compat", "sdl2_image", "sdl2_mixer", "sdl2_ttf", "opencv"],
       "build": [],
-      "test": []
+      "test": [
+				"expect"
+			]
     }
   }
 }
