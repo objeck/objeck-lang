@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.6-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.7-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.6/objeck-linux-x64_2026.9.6.tgz
-tar xzf objeck-linux-x64_2026.9.6.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.7/objeck-linux-x64_2026.9.7.tgz
+tar xzf objeck-linux-x64_2026.9.7.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.9.7
+### v2026.9.7 ✅
   * **A model can be evaluated honestly, end to end** &mdash; `System.ML` could fit a model but not measure one. Nothing held a scaler's statistics across a train/test split, so test data was scaled by its own numbers, which leaks the test distribution into the result and flatters any model read at a fixed false-alarm rate. `FeatureScaler` and `TableEncoder` learn from the training split and reapply it, `StratifiedKFold` keeps each class's ratio in every fold from a seed, and `CrossValidation->Evaluate` runs the folds over a common `ScoreModel` interface, reporting per-fold values alongside the mean and spread ([#999](https://github.com/objeck/objeck-lang/pull/999))
   * **Metrics that take a score rather than a decision** &mdash; `RecallAtFpr`, `ThresholdAtFpr`, `AucRoc`, `AveragePrecision`, `RocCurve` and `PrCurve`. A `Bool` array is already thresholded, so it cannot say what recall would be at a different false-alarm rate ([#983](https://github.com/objeck/objeck-lang/pull/983))
   * **Classifiers that split continuous features directly** &mdash; `DecisionTreeClassifier`, `RandomForestClassifier` and `GradientBoostedClassifier`. The existing trees take `Bool[,]`, so data had to be quantile-binned first &mdash; and the binning discards the very thresholds a tree exists to find ([#984](https://github.com/objeck/objeck-lang/pull/984))
@@ -76,7 +76,7 @@ obc hello && obr hello
   * **`obc` names the library that would supply an unresolved class** &mdash; `Unable to resolve external library class: X; check library path` was true and unactionable: the path is almost always right, one entry is missing from `-lib`, and finding which one meant grepping the library sources. It now says `Add it with '-lib net_server'` ([#1015](https://github.com/objeck/objeck-lang/pull/1015))
   * **The `@web` library group never worked, and `@` groups now expand anywhere in the list** &mdash; `-lib @web` failed on any program, even one that never touched HTTP, because the group omitted `net_server.obl`. Separately, when building a library, `-lib @std` worked while `-lib @std,misc` tried to open a file named `@std.obl`. Both fixed, and the groups are documented in `docs/cli_options.md` &mdash; `obc`'s usage had never mentioned `@` at all ([#1014](https://github.com/objeck/objeck-lang/pull/1014), [#1016](https://github.com/objeck/objeck-lang/pull/1016))
 
-### v2026.9.6 ✅
+### v2026.9.6
   * **`System.ML` stopped returning wrong numbers** &mdash; column sums and averages truncated every fractional value, so `LinearSolver` reported the wrong R-squared; `KMeans->Group` could hand back empty groups depending on the order of its labels, and the Dunn index then divided by zero ([#903](https://github.com/objeck/objeck-lang/issues/903))
   * **`Matrix2D` says no instead of stopping the program** &mdash; operations on shapes it cannot combine return `Nil`, a `Nil` operand no longer crashes the native code, `Inverse` of a non-square matrix no longer hangs, and `NeuralNetwork->Train` refuses an input or target that is not a column of the right height ([#903](https://github.com/objeck/objeck-lang/issues/903))
   * **`obi` and the embedding API speak HTTP/2 and HTTP/3** &mdash; both run code through the module build, which never got the flags or the libraries `obr` has, so they quietly used HTTP/1.1. Every CI leg now runs one program under both and fails if they disagree ([#897](https://github.com/objeck/objeck-lang/issues/897))
@@ -94,7 +94,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.9.6](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.9.7](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
