@@ -3118,6 +3118,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.call_method_by_name = APITools_MethodCall;
   context.alloc_managed_array = MemoryManager::AllocateArray;
   context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
+  context.write_barrier = MemoryManager::JitWriteBarrier;
   (*ext_load)(context);
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
@@ -3143,7 +3144,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
 #endif
   }
   // call function
-  VMContext context;
+  VMContext context{};
   context.data_array = nullptr;
   context.op_stack = nullptr;
   context.stack_pos = nullptr;
@@ -3151,6 +3152,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.call_method_by_name = APITools_MethodCall;
   context.alloc_managed_array = MemoryManager::AllocateArray;
   context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
+  context.write_barrier = MemoryManager::JitWriteBarrier;
   (*ext_load)(context);
 #endif
 }
@@ -3319,7 +3321,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
 #endif
     }
     // call function
-    VMContext context;
+    VMContext context{};
     context.data_array = args;
     context.op_stack = op_stack;
     context.stack_pos = stack_pos;
@@ -3327,6 +3329,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.call_method_by_id = APITools_MethodCallId;
     context.alloc_managed_array = MemoryManager::AllocateArray;
     context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
+    context.write_barrier = MemoryManager::JitWriteBarrier;
     (*ext_func)(context);
   }
 #else
@@ -3345,7 +3348,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
 #endif
     }
     // call function
-    VMContext context;
+    VMContext context{};
     context.data_array = args;
     context.op_stack = op_stack;
     context.stack_pos = stack_pos;
@@ -3353,6 +3356,7 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.call_method_by_id = APITools_MethodCallId;
     context.alloc_managed_array = MemoryManager::AllocateArray;
     context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
+    context.write_barrier = MemoryManager::JitWriteBarrier;
     (*ext_func)(context);
   }  
 #endif

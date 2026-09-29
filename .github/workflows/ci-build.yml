@@ -1396,6 +1396,27 @@ jobs:
       - name: JIT opt-outs are directives with a stated reason
         run: python3 tools/cicd/check_jit_optouts.py
 
+      # Same class of guard, for a rule that was previously prose only. A native
+      # library may store an object it ALLOCATED anywhere -- those go straight to
+      # the old generation and never move. An object it RECEIVED may be young, so
+      # storing one into an allocated container needs the write barrier or the next
+      # minor GC moves the object and leaves the pointer dangling (#864).
+      #
+      # docs/native_interface.md forbade that store outright, and core/lib/onnx did
+      # it anyway at three sites for as long as those entry points have existed. It
+      # never bit only because callers keep the labels array alive. A prohibition
+      # nothing checks is not a guard.
+      #
+      # The scan carries a positive control: it fails unless it re-finds those three
+      # stores AND each is barriered, because a clean zero from a scanner that
+      # cannot see a known positive is indistinguishable from a clean tree -- which
+      # is exactly how the first version of this audit reported all-clear.
+      - name: Native libraries barrier the objects they receive
+        run: python3 tools/cicd/check_native_write_barrier.py
+
+      - name: The native write-barrier scan can still detect an unbarriered store
+        run: python3 tools/cicd/test_check_native_write_barrier.py
+
       # Same class of guard, for programs/regression/run_differential.py. Its
       # markers take a test out of part of the s0/s3 x JIT comparison, so each
       # one that removes coverage needs a stated reason, and the

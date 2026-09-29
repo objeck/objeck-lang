@@ -41,6 +41,13 @@ typedef void(*APITools_MethodCallByName_Ptr) (size_t* op_stack, size_t* stack_po
 typedef void(*APITools_MethodCallById_Ptr) (size_t* op_stack, size_t* stack_pos, size_t* instance, const int cls_id, const int mthd_id);
 typedef size_t* (*APITools_AllocateObject_Ptr) (const wchar_t*, size_t* op_stack, size_t stack_pos, bool collect);
 typedef size_t* (*APITools_AllocateArray_Ptr) (const size_t size, const instructions::MemoryType type, size_t* op_stack, size_t stack_pos, bool collect);
+// The generational write barrier. A library never needs this for an object it
+// ALLOCATED -- AllocateObjectNative puts those straight in the old generation,
+// where nothing moves them. It is needed when a library stores an object it
+// RECEIVED (an argument, an element of a received array, or a callback's result),
+// because that object may be young: a minor GC then moves it and repairs only
+// references inside containers the barrier recorded (#864).
+typedef void(*APITools_WriteBarrier_Ptr) (size_t* target_obj);
 
 //
 // API calling context
@@ -57,6 +64,10 @@ struct VMContext {
   // method call routines
   APITools_MethodCallByName_Ptr call_method_by_name;
   APITools_MethodCallById_Ptr call_method_by_id;
+  // generational write barrier -- APPEND new fields here, never in the middle:
+  // a library compiled against an older header reads the fields above at the
+  // same offsets, so it keeps working against a newer VM without a rebuild
+  APITools_WriteBarrier_Ptr write_barrier;
 };
 
 //
@@ -531,13 +542,43 @@ size_t* APITools_GetObjectValue(VMContext& context, size_t index) {
 }
 
 //
+// Records that 'target_obj' now holds a reference to a possibly-young object, so
+// the next minor collection repairs it if that object moves.
+//
+// Call this after storing into an object or array an object the library RECEIVED
+// -- an argument, an element of a received array, or a callback's result. It is
+// not needed for a value the library allocated itself: those are old-generation
+// and never move. Calling it anyway is harmless; the barrier's own fast path
+// returns immediately for a young or already-recorded target.
+//
+// A no-op when the VM did not supply a barrier, which is how a library built
+// against this header stays loadable by a VM that predates the field.
+//
+void APITools_WriteBarrier(VMContext& context, size_t* target_obj) {
+  if(context.write_barrier && target_obj) {
+    context.write_barrier(target_obj);
+  }
+}
+
+//
 // Sets an object reference value
+//
+// Barriers unconditionally. The container is the call's argument array, which is
+// always old-generation, and 'obj' may be a received object the caller is about
+// to stop referencing -- so this is exactly the old-to-young store the barrier
+// exists for. Doing it here rather than asking every library to means the
+// supported way of returning an object cannot get this wrong (#864).
 //
 void APITools_SetObjectValue(VMContext &context, int index, size_t * obj) {
   size_t* data_array = context.data_array;
   if(data_array && index < (int)data_array[0]) {
     data_array += ARRAY_HEADER_OFFSET;
     data_array[index] = (size_t)obj;
+    if(obj) {
+      // the barrier takes the array's BASE, where [0] is the element count --
+      // the same pointer the interpreter passes for its own array stores
+      APITools_WriteBarrier(context, context.data_array);
+    }
   }
 }
 
