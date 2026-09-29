@@ -140,6 +140,20 @@ std::vector<frontend::Type*> TypeParser::ParseParameters(const std::wstring& par
       if(type) {
         type->SetGenerics(generics);
       }
+
+      // ParseGenerics stops ON the closing '>' rather than past it, so this
+      // consumes it -- exactly as ParseType does for a return type. Without it
+      // the dimension scan below saw '>' instead of '*' and left the dimension
+      // at 0, so a GENERIC ARRAY parameter came back out of a .obl as a plain
+      // generic: Vector[]<IntRef> read as Vector<IntRef>, and no caller outside
+      // the library could match the signature (#998).
+      //
+      // Only generic arrays were affected. A non-generic array has no '>' in
+      // the way, and a generic array in RETURN position goes through ParseType,
+      // which already had this line.
+      if(index < param_str.size() && param_str[index] == L'>') {
+        index++;
+      }
     }
 
     // set dimension

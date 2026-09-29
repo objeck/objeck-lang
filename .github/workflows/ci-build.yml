@@ -933,6 +933,33 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_array_copy.py "%BIN%"
 
+    # `Vector[]<T>` as a parameter built fine inside a library and resolved for
+    # callers inside it, but a program that linked the library was told the method
+    # did not exist: the signature came back out of the .obl with its array
+    # dimension missing, so `Vector[]<IntRef>` read as `Vector<IntRef>` (#998).
+    # ParseGenerics leaves the index ON the closing '>' and ParseParameters did
+    # not step past it, so the dimension scan saw '>' where it wanted '*'. Return
+    # position went through ParseType, which already consumed it -- which is why
+    # the same type worked as a return value and failed as a parameter. Only a
+    # library round trip shows it; in one program nothing is ever encoded.
+    - name: a generic array parameter survives the .obl round trip (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_generic_array_param.py "$BIN"
+
+    - name: a generic array parameter survives the .obl round trip (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_generic_array_param.py "%BIN%"
+
     # Every prompt in the REPL read a line without checking the read. At EOF the
     # two loops spun forever instead of leaving, and the one-shot prompts acted on
     # a line nobody typed (#917). Each invocation here reaches a prompt whose input
