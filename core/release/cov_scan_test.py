@@ -61,7 +61,8 @@ class Recorder:
         self.enqueue_body = ""
 
 
-def make_server(rec, init_response, enqueue_status=200):
+def make_server(rec, init_response, enqueue_status=200,
+                form_body=b"Build successfully submitted."):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
@@ -85,7 +86,7 @@ def make_server(rec, init_response, enqueue_status=200):
                 self._reply(200, body)
             elif self.path.startswith("/builds"):
                 rec.uploaded = self._body()      # the whole multipart form
-                self._reply(200)
+                self._reply(200, form_body)
             else:
                 self._reply(404)
 
@@ -146,7 +147,8 @@ def run_scan(work, base_url, token_file, force_large=True):
                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 
-def scenario(name, init_response, enqueue_status=200, force_large=True):
+def scenario(name, init_response, enqueue_status=200, force_large=True,
+             form_body=b"Build successfully submitted."):
     root = tempfile.mkdtemp(prefix="covtest-")
     work = make_tree(root)
     try:
@@ -157,7 +159,7 @@ def scenario(name, init_response, enqueue_status=200, force_large=True):
             handle.write("not-a-real-token\n")
 
         rec = Recorder()
-        server = make_server(rec, init_response, enqueue_status)
+        server = make_server(rec, init_response, enqueue_status, form_body)
         port = server.server_address[1]
         try:
             proc = run_scan(work, "http://127.0.0.1:%d" % port, token_file, force_large)
@@ -238,6 +240,21 @@ def main():
     check("reports the size against the limit",
           "of the 500 MB single-shot limit" in out, out[:200])
     check("reports the submission", "Submitted" in out, out[-200:])
+
+    print("\nform flow, upload REFUSED with HTTP 200:")
+    # Coverity answers a refused upload with 200 and a plain-text reason, so
+    # curl exits 0 and --fail-with-body never trips. Before the body was
+    # checked the script printed "Submitted" over it; on 2026-09-30 that cost a
+    # day of waiting on a build the server had actually turned away.
+    refusal = (b"Your build is already in the queue for analysis. "
+               b"Please wait till analysis finishes before uploading another build.")
+    _, proc, out, _, _ = scenario(
+        "form-refused", good, force_large=False, form_body=refusal)
+    check("fails", proc.returncode != 0, "exit %d" % proc.returncode)
+    check("does not claim a submission", "Submitted" not in out, out[-200:])
+    check("repeats what the server said", "already in the queue" in out, out[-300:])
+    # asserted on the output, not the filesystem: scenario() removes its temp tree
+    check("keeps the archive for a retry", "COVERITY_UPLOAD_ONLY=1" in out)
 
     print("\n============================================")
     print("  %d passed, %d failed" % (passed, failed))

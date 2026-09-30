@@ -286,16 +286,41 @@ echo "Uploading to Coverity Scan..."
 if [ "$UPLOAD_FLOW" = "form" ]; then
   # --fail-with-body: without it curl exits 0 on an HTTP error, so a rejected
   # token or an oversized archive read as a successful submission.
-  if ! curl --fail-with-body \
+  #
+  # The body has to be checked as well. Coverity REFUSES an upload with HTTP
+  # 200 and a plain-text reason -- "Your build is already in the queue for
+  # analysis" when the previous build has not been analyzed yet. curl exits 0
+  # on that, so without this check the script prints "Submitted" over an upload
+  # the server rejected, and the wait that follows is for a build that was
+  # never accepted. That is what happened on 2026-09-30: a refusal read as a
+  # submission and cost a day of waiting on a queue that already held the
+  # earlier build.
+  #
+  # Checked POSITIVELY -- the body must say it succeeded. Matching known
+  # failure strings instead would read every future wording as a success.
+  #
+  # The body is captured but the progress meter still reaches the terminal:
+  # curl writes the response to stdout and progress to stderr; only stdout is
+  # taken by the substitution.
+  if ! form_response=$(curl --fail-with-body \
     --form token="$COVERITY_TOKEN" \
     --form email=objeck@gmail.com \
     --form file=@"$ARCHIVE" \
     --form version="$version" \
     --form description="Objeck $version (Linux $ARCH)" \
-    "$COV_API_BASE/builds?project=Objeck"; then
+    "$COV_API_BASE/builds?project=Objeck"); then
     echo >&2
+    printf "%s\n" "$form_response" >&2
     fail "upload failed. $retry_hint"
   fi
+  echo
+  printf "%s\n" "$form_response"
+  case "$form_response" in
+    *"successfully submitted"*) ;;
+    *) fail "Coverity did not accept the upload. It replied: $form_response
+
+$retry_hint" ;;
+  esac
 else
   # step 1 of 3 -- initialize the build and get a one-time upload URL
   echo "  [1/3] initializing the build..."
