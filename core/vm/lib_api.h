@@ -118,8 +118,19 @@ size_t* APITools_GetArray(size_t* data_array) {
 }
 
 //
-// Gets an array from an Objeck array holder reference
-// (i.e. ByteArrayHolder, FloatArrayHolder, etc.)
+// Deprecated alias of APITools_GetArrayAddress. Despite the name it STORES
+// NOTHING: it reads array_holder[0] and hands it back, byte for byte the same as
+// that function. Nothing in this tree calls it.
+//
+// It stays because lib_api.h is compiled into libraries built outside this
+// repository, and removing a function from a public header breaks them for no
+// gain. Do not call it in new code -- call APITools_GetArrayAddress, which says
+// what it does.
+//
+// If you came here looking for the setter the name implies: there is none, and
+// none is needed. An Objeck array is a size_t*, so you return one the same way
+// you return any object, with APITools_SetObjectValue(context, index, array) --
+// which also runs the write barrier for you.
 //
 size_t* APITools_SetArray(size_t* array_holder) {
   if(array_holder) {
