@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "Supervised classification becomes usable end to end, a Bool array returned from a method is no longer mishandled in three separate places, and comparisons involving NaN follow IEEE",
+	"title": "A generic array parameter resolves across a library boundary, and the generated POSIX Makefiles are treated as build output rather than tracked source",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -11,6 +11,15 @@
 		"openai_token": "openai_api_key.dat"
 	},
 	"features": [
+		{
+			"version": "v2026.10.0",
+			"items": [
+				"Compiler: a generic array parameter now resolves across a library boundary. Vector[]<T> as a parameter compiled inside a library and callers in that same library reached it, but a program linking the library was told the method did not exist -- offering an alternative whose signature was missing its []. The array dimension was dropped reading the signature back out of the .obl, which is why the same type worked as a return value and failed as a parameter",
+				"Build: the generated POSIX Makefiles are build output rather than tracked source. deploy_posix.sh copies an architecture's Makefile over four working-tree paths, two of which were tracked, so building for one architecture left tracked files modified, while the other two were not ignored and could be committed by a bulk add",
+				"Tests: a missing 'expect' no longer lets the debugger suite skip every test and still report success. The runner exited 0 when expect was absent; it now fails unless OBJECK_ALLOW_SKIP=1 is set, and expect is listed as a test dependency",
+				"Release tooling: cov_scan.sh no longer reports a submission that Coverity refused. Coverity declines an upload with HTTP 200 and a plain-text reason, so curl exits 0 and --fail-with-body never tripped; the script printed Submitted over a rejected upload and then deleted the archive its own retry hint had just promised was kept"
+			]
+		},
 		{
 			"version": "v2026.9.7",
 			"items": [
