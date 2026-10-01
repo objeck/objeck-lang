@@ -2,6 +2,20 @@
 
 All notable changes to Objeck will be documented in this file.
 
+## [Unreleased] - v2026.10.0
+
+**In development.** The latest released version is [v2026.9.7](https://github.com/objeck/objeck-lang/releases/tag/v2026.9.7).
+
+### Compiler
+
+- **A generic array parameter did not resolve across a library boundary** ([#998](https://github.com/objeck/objeck-lang/issues/998)): `Vector[]<T>` as a parameter compiled inside a library and callers in that same library reached it, but a program linking the library was told the method did not exist, offering an alternative whose signature was missing its `[]`. `TypeParser::ParseGenerics` ended its loop on the closing `>` rather than past it, so the parameter path then read that `>` where it scanned for the dimension and left the dimension at 0. `ParseType`, which decodes return types, already stepped past it -- which is why the same type worked as a return value and failed as a parameter. A reader-only fix: the `.obl` encoding was always correct.
+
+### Build and Test
+
+- **The generated POSIX Makefiles are build output, not source** ([#1005](https://github.com/objeck/objeck-lang/issues/1005)): `deploy_posix.sh` copies an architecture's Makefile over four working-tree paths, two of which were tracked, so building for one architecture left tracked files modified while the other two were not ignored and could be committed by a bulk `git add`.
+- **A missing `expect` skipped the debugger suite and reported success** ([#1022](https://github.com/objeck/objeck-lang/pull/1022)): the runner exited 0 when `expect` was absent, so every debugger test was skipped and the leg passed. It now fails unless `OBJECK_ALLOW_SKIP=1` is set, and `expect` is listed as a test dependency.
+- **A refused Coverity upload was read as a submission** ([#1031](https://github.com/objeck/objeck-lang/pull/1031)): Coverity declines an upload with HTTP 200 and a plain-text reason, so `curl` exits 0 and `--fail-with-body` never tripped. `cov_scan.sh` printed "Submitted" over a rejected upload and then deleted the intermediate archive its own retry hint had just promised was kept. The response body is now required to say the submission succeeded.
+
 ## [v2026.9.7] - 2026-09-28
 
 **Supervised classification becomes usable end to end, three defects that all treated a
