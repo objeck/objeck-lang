@@ -1,0 +1,90 @@
+#~
+Two inlined bodies must not share a label space (#1037).
+
+A method's labels are numbered from its own start, so any two callees containing
+the same construct carry the same numbers. The s3 inliner shifted every body by
+one offset and only advanced it when the SAME method was inlined twice -- so two
+DIFFERENT helpers each evaluating `->Abs()` landed on each other. The second
+body's JMP resolved to the first body's LBL, which is a backward jump into
+already-executed code: an infinite loop.
+
+This test is a loop detector, so it cannot assert on a wrong answer. It either
+returns or it does not. Against the previous compiler it never reaches the final
+print and the suite kills it on the per-test timeout; the counter below is what
+distinguishes "ran" from "ran forever" if the timeout is ever removed.
+
+What has to be present to reproduce it, from the minimisation on the issue: two
+helpers of the shape (a - b)->Abs() < x, one comparing against a parameter and
+one against a literal, both called from the same method, with a float-division
+expression feeding the second call. Dropping any one of those made it pass, so
+all of them are kept here deliberately -- including the division, which looks
+redundant and is not.
+~#
+class OptInlineLabelCollision {
+	@ok : Bool;
+	@calls : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := OptInlineLabelCollision->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+		@calls := 0;
+	}
+
+	#~ Compares against a PARAMETER. ~#
+	function : Close(a : Float, b : Float, tol : Float) ~ Bool {
+		return (a - b)->Abs() < tol;
+	}
+
+	#~ Compares against a LITERAL. Same shape, so the same label numbers. ~#
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	method : Count(name : String, cond : Bool) ~ Nil {
+		@calls += 1;
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : Run() ~ Nil {
+		p := 0.090164;
+
+		# the first inlined body
+		Count("Close against a parameter", Close(p, 0.09, 0.005));
+
+		# a float-division expression feeding the second inlined body
+		exact := (0.99 * 0.001) / (0.99 * 0.001 + 0.01 * 0.999);
+		Count("Near against a literal", Near(p, exact));
+
+		# Reaching here at all is the assertion. Two calls, not more: a backward
+		# jump into the first body would run this counter up without bound.
+		Count("both helpers inlined without colliding", @calls = 2);
+
+		# the same shape again, to catch a fix that only separates the first pair
+		q := 0.5;
+		ratio := (1.0 * 0.25) / (1.0 * 0.25 + 0.5 * 0.75);
+		Count("a third body", Close(q, 0.5, 0.001));
+		Count("a fourth body", Near(q, 0.5));
+		Count("a fifth body", Close(ratio, 0.4, 0.01));
+
+		if(@calls <> 6) {
+			"FAIL: expected 6 counted calls, saw {$@calls}"->PrintLine();
+			@ok := false;
+		};
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end"->PrintLine();
+	}
+}
