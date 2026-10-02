@@ -1,0 +1,381 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Metrics->PrecisionAtBaseRate, ShuffleLabels, RecallByGroup and UnseenGroups.
+
+PrecisionAtBaseRate is checked against Axelsson's own worked example: a detector
+catching 99% of attacks at a 1% false-alarm rate, where attacks are 0.1% of
+traffic, has about 9% precision -- and dropping the false-alarm rate to 0.1%
+raises it to about 50%. Those two numbers are the reason low false-positive
+budgets matter at all, so they are the right thing to pin.
+
+ShuffleLabels is checked for the properties a permutation must have, not for a
+particular arrangement: the multiset is preserved, the same seed repeats, the
+input is untouched, and the result actually differs from the input. A shuffle
+that returned its input unchanged would make the control silently vacuous.
+
+RecallByGroup is checked over positives only. A group's non-positive rows have
+no recall to contribute, and the overall recall a detector reports is an average
+that a rare group barely moves -- which is the whole reason to break it out.
+~#
+use System.ML;
+use Collection;
+
+class MlBaseRateGroups {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlBaseRateGroups->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	#~
+	Tolerance comparisons are inlined rather than wrapped in a second helper
+	beside this one. Two helpers of the shape (a - b)->Abs() < x, one
+	comparing against a parameter and one against a literal, together with a
+	float-division expression feeding the second call, trigger an infinite
+	loop under -opt s3 -- the level this suite compiles at. The same program
+	is correct at s0, s1 and s2, and disabling the JIT does not help, so it
+	is the optimizer rather than code generation. Reported separately;
+	one helper does not reproduce it.
+	~#
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	method : Run() ~ Nil {
+		BaseRateWorkedExample();
+		BaseRateEdges();
+		Shuffle();
+		GroupRecalls();
+		Unseen();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	#~
+	Axelsson's example. tpr 0.99, fpr 0.01:
+	  at a base rate of 0.001, precision is about 0.09
+	  at a base rate of 0.001 with fpr 0.001, precision is about 0.50
+	~#
+	method : BaseRateWorkedExample() ~ Nil {
+		p1 := Metrics->PrecisionAtBaseRate(0.99, 0.01, 0.001);
+		"  tpr=0.99 fpr=0.01 pi=0.001 -> precision {$p1}"->PrintLine();
+		Report("a 1% false-alarm rate at a 0.1% base rate gives about 9% precision",
+			(p1 - 0.09)->Abs() < 0.005);
+
+		p2 := Metrics->PrecisionAtBaseRate(0.99, 0.001, 0.001);
+		"  tpr=0.99 fpr=0.001 pi=0.001 -> precision {$p2}"->PrintLine();
+		Report("dropping the false-alarm rate tenfold gives about 50% precision",
+			(p2 - 0.50)->Abs() < 0.005);
+
+		# The formula restated from named values rather than as one constant
+		# expression. Written as literals it reads better, but a wholly constant
+		# float expression feeding this comparison triggers an infinite loop under
+		# -opt s3 (correct at s0, s1 and s2, and not the JIT), which the suite
+		# compiles with. Issue filed; naming the values avoids it and makes the
+		# arithmetic easier to check against the paper anyway.
+		tpr := 0.99;
+		fpr := 0.01;
+		pi := 0.001;
+		exact := (tpr * pi) / (tpr * pi + fpr * (1.0 - pi));
+		Report("matches the formula exactly", Near(p1, exact));
+
+		# a balanced sample flatters the same detector
+		p3 := Metrics->PrecisionAtBaseRate(0.99, 0.01, 0.5);
+		"  the same detector at a 50% base rate -> precision {$p3}"->PrintLine();
+		Report("the same rates look far better at a 50% base rate", p3 > 0.98);
+		Report("base rate changes precision by an order of magnitude", p3 > p1 * 10.0);
+
+		# monotone in the base rate
+		lo := Metrics->PrecisionAtBaseRate(0.9, 0.05, 0.01);
+		hi := Metrics->PrecisionAtBaseRate(0.9, 0.05, 0.10);
+		Report("precision rises with the base rate", hi > lo);
+	}
+
+	#~ The degenerate and invalid cases must not divide by zero or lie. ~#
+	method : BaseRateEdges() ~ Nil {
+		# a base rate of 0 means there is nothing to detect
+		Report("a base rate of 0 gives 0 precision",
+			Near(Metrics->PrecisionAtBaseRate(0.99, 0.01, 0.0), 0.0));
+
+		# a base rate of 1 means every alert is real
+		Report("a base rate of 1 gives perfect precision",
+			Near(Metrics->PrecisionAtBaseRate(0.99, 0.01, 1.0), 1.0));
+
+		# no detections and no false alarms: no alerts at all, so no denominator
+		Report("a silent detector is guarded, not a crash",
+			Near(Metrics->PrecisionAtBaseRate(0.0, 0.0, 0.01), 0.0));
+
+		# out-of-range arguments are rejected rather than producing a number
+		Report("a tpr above 1 is rejected",
+			Metrics->PrecisionAtBaseRate(1.5, 0.01, 0.01) < 0.0);
+		Report("a negative fpr is rejected",
+			Metrics->PrecisionAtBaseRate(0.9, -0.1, 0.01) < 0.0);
+		Report("a base rate above 1 is rejected",
+			Metrics->PrecisionAtBaseRate(0.9, 0.01, 1.5) < 0.0);
+
+		# the ThresholdResult overload must agree with the rates it reads
+		scores := Float->New[4];
+		scores[0] := 0.9;
+		scores[1] := 0.8;
+		scores[2] := 0.2;
+		scores[3] := 0.1;
+		actuals := Bool->New[4];
+		actuals[0] := true;
+		actuals[1] := false;
+		actuals[2] := false;
+		actuals[3] := false;
+
+		r := Metrics->AtThreshold(scores, actuals, 0.8);
+		Report("AtThreshold for the overload", r <> Nil);
+		if(r <> Nil) {
+			viaResult := Metrics->PrecisionAtBaseRate(r, 0.01);
+			viaRates := Metrics->PrecisionAtBaseRate(r->GetRecall(), r->GetFpr(), 0.01);
+			Report("the ThresholdResult overload matches the rate form",
+				Near(viaResult, viaRates));
+		};
+
+		no_result : ThresholdResult;
+		Report("a Nil ThresholdResult is rejected",
+			Metrics->PrecisionAtBaseRate(no_result, 0.01) < 0.0);
+	}
+
+	#~ A permutation preserves the multiset, repeats on a seed, and moves things. ~#
+	method : Shuffle() ~ Nil {
+		n := 200;
+		labels := Bool->New[n];
+		each(i : n) {
+			labels[i] := i < 40;
+		};
+
+		sh := Metrics->ShuffleLabels(labels, 123);
+		Report("ShuffleLabels returns an array", sh <> Nil);
+		if(sh = Nil) {
+			return;
+		};
+
+		Report("length is preserved", sh->Size() = n);
+
+		# the multiset must be preserved: a permutation moves labels, it does
+		# not invent or destroy them
+		before := Metrics->CountPositives(labels);
+		after := Metrics->CountPositives(sh);
+		Report("the positive count is preserved", before = after);
+
+		# the input must not have been shuffled in place -- the real labels are
+		# still needed to score the control against
+		still := true;
+		each(i : n) {
+			if(labels[i] <> (i < 40)) {
+				still := false;
+			};
+		};
+		Report("the input array is untouched", still);
+
+		# and it must actually differ, or the control is vacuous
+		moved := 0;
+		each(i : n) {
+			if(sh[i] <> labels[i]) {
+				moved += 1;
+			};
+		};
+		"  {$moved} of {$n} positions changed"->PrintLine();
+		Report("the permutation actually moved labels", moved > 0);
+
+		# the same seed must reproduce it
+		again := Metrics->ShuffleLabels(labels, 123);
+		identical := true;
+		each(i : n) {
+			if(again[i] <> sh[i]) {
+				identical := false;
+			};
+		};
+		Report("the same seed reproduces the permutation", identical);
+
+		# a different seed should generally not
+		other_seed := Metrics->ShuffleLabels(labels, 999);
+		differs := false;
+		each(i : n) {
+			if(other_seed[i] <> sh[i]) {
+				differs := true;
+			};
+		};
+		Report("a different seed gives a different permutation", differs);
+
+		# degenerate inputs
+		no_labels : Bool[];
+		Report("Nil is refused", Metrics->ShuffleLabels(no_labels, 1) = Nil);
+		one := Bool->New[1];
+		one[0] := true;
+		single := Metrics->ShuffleLabels(one, 1);
+		Report("a single label survives", single <> Nil & single[0]);
+
+		# the control itself: shuffled labels must destroy the signal
+		m := 300;
+		sc := Float->New[m];
+		ac := Bool->New[m];
+		rnd := Random->New(4);
+		each(i : m) {
+			ac[i] := i < 60;
+			if(ac[i]) {
+				sc[i] := 0.6 + rnd->NextReal() * 0.4;
+			}
+			else {
+				sc[i] := rnd->NextReal() * 0.5;
+			};
+		};
+		honest := Metrics->AucRoc(sc, ac);
+		control := Metrics->AucRoc(sc, Metrics->ShuffleLabels(ac, 7));
+		"  honest AUC {$honest}, shuffled-label AUC {$control}"->PrintLine();
+		Report("the honest AUC is strong", honest > 0.95);
+		Report("the shuffled-label control collapses toward chance", control < 0.70);
+	}
+
+	#~ Recall per group, over positives only. ~#
+	method : GroupRecalls() ~ Nil {
+		# groups 1 and 2 are positive classes; group 0 is negative traffic.
+		# group 1: 4 positives, 3 above the threshold -> 0.75
+		# group 2: 2 positives, 0 above the threshold -> 0.0
+		# group 0: no positives at all -> reported with a count of 0
+		scores := Float->New[10];
+		actuals := Bool->New[10];
+		groups := Float->New[10];
+
+		vals := Float->New[10];
+		vals[0] := 0.9; vals[1] := 0.8; vals[2] := 0.7; vals[3] := 0.2;
+		vals[4] := 0.3; vals[5] := 0.1; vals[6] := 0.05; vals[7] := 0.4;
+		vals[8] := 0.15; vals[9] := 0.25;
+		each(i : 10) {
+			scores[i] := vals[i];
+		};
+
+		# group 1 positives: indexes 0,1,2,3 -> 0.9, 0.8, 0.7, 0.2
+		each(i : 4) {
+			actuals[i] := true;
+			groups[i] := 1.0;
+		};
+		# group 2 positives: indexes 4,5 -> 0.3, 0.1
+		groups[4] := 2.0;
+		groups[5] := 2.0;
+		actuals[4] := true;
+		actuals[5] := true;
+		# group 0 negatives: indexes 6..9
+		each(i : 4) {
+			groups[6 + i] := 0.0;
+			actuals[6 + i] := false;
+		};
+
+		res := Metrics->RecallByGroup(scores, actuals, groups, 0.5);
+		Report("RecallByGroup returns entries", res <> Nil);
+		if(res = Nil) {
+			return;
+		};
+
+		Report("one entry per distinct group", res->Size() = 3);
+
+		g1 : GroupRecall;
+		g2 : GroupRecall;
+		g0 : GroupRecall;
+		each(i : res) {
+			if(res[i]->GetGroup() = 1.0) { g1 := res[i]; };
+			if(res[i]->GetGroup() = 2.0) { g2 := res[i]; };
+			if(res[i]->GetGroup() = 0.0) { g0 := res[i]; };
+		};
+
+		Report("group 1 is present", g1 <> Nil);
+		if(g1 <> Nil) {
+			"  {$g1}"->PrintLine();
+			Report("group 1 has 4 positives", g1->GetPositives() = 4);
+			Report("group 1 detected 3", g1->GetDetected() = 3);
+			Report("group 1 recall is 0.75", Near(g1->GetRecall(), 0.75));
+		};
+
+		Report("group 2 is present", g2 <> Nil);
+		if(g2 <> Nil) {
+			"  {$g2}"->PrintLine();
+			Report("group 2 has 2 positives", g2->GetPositives() = 2);
+			Report("group 2 detected none", g2->GetDetected() = 0);
+			Report("group 2 recall is 0.0", Near(g2->GetRecall(), 0.0));
+		};
+
+		# the group with no positives is reported, not omitted
+		Report("the all-negative group is still reported", g0 <> Nil);
+		if(g0 <> Nil) {
+			Report("it has no positives", g0->GetPositives() = 0);
+			Report("its recall is guarded at 0.0", Near(g0->GetRecall(), 0.0));
+		};
+
+		# the per-group numbers must reconcile with the overall recall
+		overall := Metrics->AtThreshold(scores, actuals, 0.5);
+		if(overall <> Nil & g1 <> Nil & g2 <> Nil) {
+			Report("detected counts sum to the overall true positives",
+				g1->GetDetected() + g2->GetDetected() = overall->GetTruePositives());
+			Report("positives sum to the overall positives",
+				g1->GetPositives() + g2->GetPositives()
+					= overall->GetTruePositives() + overall->GetFalseNegatives());
+			# and the point of the exercise: group 2 is invisible in the average
+			"  overall recall {$overall->GetRecall()} hides a group at 0.0"->PrintLine();
+			Report("the overall recall exceeds the worst group", overall->GetRecall() > g2->GetRecall());
+		};
+
+		Report("mismatched lengths are refused",
+			Metrics->RecallByGroup(scores, actuals, Float->New[3], 0.5) = Nil);
+		# a bare Nil cannot be resolved to Float[] for overload selection
+		no_groups : Float[];
+		Report("Nil groups are refused",
+			Metrics->RecallByGroup(scores, actuals, no_groups, 0.5) = Nil);
+	}
+
+	#~ Group codes in the later set that the earlier set never contained. ~#
+	method : Unseen() ~ Nil {
+		train := Float->New[6];
+		train[0] := 0.0; train[1] := 1.0; train[2] := 1.0;
+		train[3] := 2.0; train[4] := 0.0; train[5] := 2.0;
+
+		test := Float->New[7];
+		test[0] := 0.0; test[1] := 1.0; test[2] := 3.0;
+		test[3] := 2.0; test[4] := 4.0; test[5] := 3.0;
+		test[6] := 0.0;
+
+		un := Metrics->UnseenGroups(train, test);
+		Report("UnseenGroups returns an array", un <> Nil);
+		if(un = Nil) {
+			return;
+		};
+
+		Report("two codes were never trained on", un->Size() = 2);
+		Report("3.0 is reported once", un->Size() > 0 & Near(un[0], 3.0));
+		Report("4.0 is reported", un->Size() > 1 & Near(un[1], 4.0));
+
+		# nothing new
+		same := Metrics->UnseenGroups(train, train);
+		Report("a set compared with itself has nothing unseen", same <> Nil & same->Size() = 0);
+
+		# everything new
+		fresh := Float->New[2];
+		fresh[0] := 9.0;
+		fresh[1] := 9.0;
+		allnew := Metrics->UnseenGroups(train, fresh);
+		Report("a wholly new code is reported once, not twice",
+			allnew <> Nil & allnew->Size() = 1 & Near(allnew[0], 9.0));
+
+		no_codes : Float[];
+		Report("Nil is refused", Metrics->UnseenGroups(no_codes, test) = Nil);
+	}
+}
