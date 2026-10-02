@@ -1293,7 +1293,7 @@ labels := model->PredictClass([[1.0, 1.0]]);
 labels[0]->PrintLine();
 ```
 	~#
-	class LogisticRegression {
+	class LogisticRegression implements ScoreModel {
 		@weights : Float[];
 		@bias : Float;
 		@learning_rate : Float;
@@ -1466,6 +1466,51 @@ each(label in labels) {
 };
 ```
 		~#
+		#~
+		Fits on one Bool per row, which is what ScoreModel and every classifier in
+		this bundle take.
+
+		The Float[,] overload above is the original shape and is kept. This one
+		exists so CrossValidation->Evaluate can take a logistic regression at all:
+		the tree classifiers implement ScoreModel and this did not, so a linear
+		baseline -- the model you most want to compare against -- could not go
+		through the same evaluation path unless the caller wrote an adapter.
+		@param X rows x features
+		@param y one label per row, true for the positive class
+		@return true when the fit succeeded
+		~#
+		method : public : Fit(X : Float[,], y : Bool[]) ~ Bool {
+			if(X = Nil | y = Nil) {
+				return false;
+			};
+
+			dims := X->Size();
+			rows := dims[0];
+			if(y->Size() <> rows) {
+				return false;
+			};
+
+			labels := Float->New[rows, 1];
+			each(i : rows) {
+				labels[i,0] := y[i] ? 1.0 : 0.0;
+			};
+
+			return Fit(X, labels);
+		}
+
+		#~
+		Scores each row; higher means more positive. Satisfies ScoreModel.
+
+		The same values Predict returns -- sigmoid outputs in (0,1). Named for the
+		interface, because a score and a decision are different things: the point
+		of scoring is that the operating point is not yet fixed.
+		@param X rows x features
+		@return one score per row, or Nil when unfitted
+		~#
+		method : public : PredictScore(X : Float[,]) ~ Float[] {
+			return Predict(X);
+		}
+
 		method : public : PredictClass(X : Float[,]) ~ Bool[] {
 			probs := Predict(X);
 			if(probs = Nil) {
