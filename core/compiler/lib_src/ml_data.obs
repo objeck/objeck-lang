@@ -1583,6 +1583,204 @@ r := Metrics->RecallAtFpr(scores, actuals, 0.001);
 
 			return count;
 		}
+
+		#~
+		Recall, false-positive rate and precision at ONE given threshold.
+
+		The counterpart to RecallAtFpr. That one searches for the operating point
+		fitting a false-alarm budget; this one is handed a threshold and reports what
+		it actually does. Both are needed to answer whether a threshold chosen on one
+		set still honours its budget on another: the budget is intended, the rate
+		reported here is what happened.
+
+		An instance counts as predicted positive when its score is >= threshold. That
+		matches OperatingPoints, which accumulates from the highest score down and
+		lets instances sharing a score share an operating point, so a threshold from
+		ThresholdAtFpr can be passed straight here.
+
+		Every rate is guarded. A float division by zero raises in Objeck and would
+		take the program down, and the degenerate cases are ordinary: a threshold
+		above every score predicts nothing positive, leaving precision with no
+		denominator.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@param threshold the cutoff to apply
+		@return the counts and rates, or Nil when the inputs do not line up
+		~#
+		function : AtThreshold(scores : Float[], actuals : Bool[], threshold : Float) ~ ThresholdResult {
+			if(scores = Nil | actuals = Nil) {
+				return Nil;
+			};
+			if(scores->Size() <> actuals->Size() | scores->Size() = 0) {
+				return Nil;
+			};
+
+			tp := 0;
+			fp := 0;
+			fn := 0;
+			tn := 0;
+			each(i : scores) {
+				if(scores[i] >= threshold) {
+					if(actuals[i]) {
+						tp += 1;
+					}
+					else {
+						fp += 1;
+					};
+				}
+				else {
+					if(actuals[i]) {
+						fn += 1;
+					}
+					else {
+						tn += 1;
+					};
+				};
+			};
+
+			return ThresholdResult->New(threshold, tp, fp, fn, tn);
+		}
+
+		#~
+		A percentile of a set of values, by linear interpolation.
+
+		Used for bootstrap intervals, and exposed because a caller resampling a
+		statistic this bundle does not implement still needs the interval.
+
+		p is clamped rather than rejected: 0.0 gives the minimum and 1.0 the maximum,
+		which is what a caller asking for them wants.
+		@param values the sample; not modified
+		@param p the percentile in [0,1]
+		@return the percentile, or 0.0 for an empty sample
+		~#
+		function : Percentile(values : Float[], p : Float) ~ Float {
+			if(values = Nil | values->Size() = 0) {
+				return 0.0;
+			};
+
+			n := values->Size();
+			if(n = 1) {
+				return values[0];
+			};
+
+			q := p;
+			if(q < 0.0) {
+				q := 0.0;
+			};
+			if(q > 1.0) {
+				q := 1.0;
+			};
+
+			# SortDescending returns indexes, so the ascending k-th value sits at
+			# order[n-1-k]. Reusing it avoids a second sort implementation.
+			order := SortDescending(values);
+			if(order = Nil) {
+				return 0.0;
+			};
+
+			pos := q * (n - 1)->As(Float);
+			lo_k := pos->As(Int);
+			if(lo_k >= n - 1) {
+				return values[order[0]];
+			};
+
+			frac := pos - lo_k->As(Float);
+			a := values[order[n - 1 - lo_k]];
+			b := values[order[n - 2 - lo_k]];
+
+			return a + frac * (b - a);
+		}
+
+		#~
+		A bootstrap percentile confidence interval for a metric.
+
+		Resamples the scored instances WITH REPLACEMENT reps times, recomputes the
+		metric on each resample, and takes percentiles of that distribution. The point
+		estimate is the metric on the original sample, not the mean of the resamples.
+
+		Resampling pairs, not scores: a resample draws (score, label) together, so the
+		class balance moves between resamples the way it would between samples. That
+		is the variability being estimated, and it matters most where it is largest --
+		a false-alarm budget of 0.001 on a 10,000-row test set is about ten false
+		positives, and ten is a count whose uncertainty is not negligible.
+
+		A resample can contain only one class, which leaves AUC undefined. The metrics
+		here report that as a NEGATIVE value rather than a real score, so those
+		resamples are discarded rather than averaged in -- folding a sentinel into the
+		distribution would drag the interval toward it. The number that survived is
+		reported, because an interval built from a small fraction of the requested
+		resamples is not the interval that was asked for.
+		@param metric the statistic to resample
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@param reps how many resamples to draw
+		@param seed seeds the resampling, so a run can be repeated
+		@param level the interval width, e.g. 0.95
+		@return the interval, or Nil on bad input or fewer than two usable resamples
+		~#
+		function : Bootstrap(metric : ScoreMetric, scores : Float[], actuals : Bool[], reps : Int, seed : Int, level : Float) ~ ConfInterval {
+			if(metric = Nil | scores = Nil | actuals = Nil) {
+				return Nil;
+			};
+			if(scores->Size() <> actuals->Size() | scores->Size() = 0) {
+				return Nil;
+			};
+			if(reps < 2 | level <= 0.0 | level >= 1.0) {
+				return Nil;
+			};
+
+			n := scores->Size();
+			draws := Float->New[reps];
+			bs := Float->New[n];
+			by := Bool->New[n];
+			rnd := Random->New(seed);
+			usable := 0;
+			j : Int;
+			v : Float;
+
+			each(r : reps) {
+				each(i : n) {
+					j := rnd->NextInt(n);
+					bs[i] := scores[j];
+					by[i] := actuals[j];
+				};
+				v := metric->Compute(bs, by);
+				if(v >= 0.0) {
+					draws[usable] := v;
+					usable += 1;
+				};
+			};
+
+			if(usable < 2) {
+				return Nil;
+			};
+
+			# percentiles over the usable prefix only
+			kept := Float->New[usable];
+			each(i : usable) {
+				kept[i] := draws[i];
+			};
+
+			tail := (1.0 - level) / 2.0;
+			lo := Percentile(kept, tail);
+			hi := Percentile(kept, 1.0 - tail);
+			point := metric->Compute(scores, actuals);
+
+			return ConfInterval->New(point, lo, hi, level, reps, usable);
+		}
+
+		#~
+		A bootstrap interval at the conventional 95% level.
+		@param metric the statistic to resample
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@param reps how many resamples to draw
+		@param seed seeds the resampling
+		@return the interval, or Nil on bad input
+		~#
+		function : Bootstrap(metric : ScoreMetric, scores : Float[], actuals : Bool[], reps : Int, seed : Int) ~ ConfInterval {
+			return Bootstrap(metric, scores, actuals, reps, seed, 0.95);
+		}
 	}
 
 	#~
@@ -2168,6 +2366,259 @@ each(f : folds) {
 	single-fold AUC of 0.68 by chance alone. The spread is given alongside the
 	mean so that noise is visible rather than implied.
 	~#
+
+	#~
+	What a threshold actually did: the four confusion counts and the rates read
+	off them.
+
+	A separate type rather than a bare array because these numbers are only
+	meaningful together. Recall without the false-positive rate says nothing
+	about cost, and a rate without the count behind it hides how few instances it
+	rests on -- a recall of 1.0 over two positives is not the same claim as a
+	recall of 1.0 over two thousand.
+	~#
+	class ThresholdResult {
+		@threshold : Float;
+		@tp : Int;
+		@fp : Int;
+		@fn : Int;
+		@tn : Int;
+
+		New(threshold : Float, tp : Int, fp : Int, fn : Int, tn : Int) {
+			@threshold := threshold;
+			@tp := tp;
+			@fp := fp;
+			@fn := fn;
+			@tn := tn;
+		}
+
+		method : public : GetThreshold() ~ Float { return @threshold; }
+		method : public : GetTruePositives() ~ Int { return @tp; }
+		method : public : GetFalsePositives() ~ Int { return @fp; }
+		method : public : GetFalseNegatives() ~ Int { return @fn; }
+		method : public : GetTrueNegatives() ~ Int { return @tn; }
+
+		#~
+		Detected positives over all real positives, also the true-positive rate.
+		@return the recall, or 0.0 when there are no real positives
+		~#
+		method : public : GetRecall() ~ Float {
+			den := @tp + @fn;
+			if(den = 0) {
+				return 0.0;
+			};
+
+			return @tp->As(Float) / den->As(Float);
+		}
+
+		#~
+		Real negatives wrongly flagged, over all real negatives.
+		
+		The number to compare against an intended budget. A threshold picked to
+		hold a budget on one sample has no obligation to hold it on another, and
+		this is how far it drifted.
+		@return the false-positive rate, or 0.0 when there are no real negatives
+		~#
+		method : public : GetFpr() ~ Float {
+			den := @fp + @tn;
+			if(den = 0) {
+				return 0.0;
+			};
+
+			return @fp->As(Float) / den->As(Float);
+		}
+
+		#~
+		Alerts that were real, over all alerts raised.
+		
+		Measured on this sample, so it carries this sample's class balance. When
+		the deployment balance differs -- and for rare events it usually does --
+		the precision an operator would see is different, and follows from the
+		recall and false-positive rate rather than from this number.
+		@return the precision, or 0.0 when nothing was flagged
+		~#
+		method : public : GetPrecision() ~ Float {
+			den := @tp + @fp;
+			if(den = 0) {
+				return 0.0;
+			};
+
+			return @tp->As(Float) / den->As(Float);
+		}
+
+		#~
+		Correct decisions over all decisions.
+		
+		Included for completeness and deliberately not the number to report when
+		one class dominates: predicting the majority for everything scores well
+		here while detecting nothing.
+		@return the accuracy, or 0.0 for an empty sample
+		~#
+		method : public : GetAccuracy() ~ Float {
+			den := @tp + @fp + @fn + @tn;
+			if(den = 0) {
+				return 0.0;
+			};
+
+			return (@tp + @tn)->As(Float) / den->As(Float);
+		}
+
+		method : public : ToString() ~ String {
+			r := GetRecall();
+			f := GetFpr();
+			p := GetPrecision();
+			return "threshold={$@threshold} recall={$r} fpr={$f} precision={$p} tp={$@tp} fp={$@fp} fn={$@fn} tn={$@tn}";
+		}
+	}
+
+	#~
+	A statistic over scored instances, so it can be resampled without Bootstrap
+	knowing which one it is.
+
+	An interface rather than a function reference, matching ScoreModel and
+	Compare elsewhere in the bundle.
+
+	A metric MUST return a negative value when the sample cannot support it --
+	AUC over a resample that drew only one class, for example. Bootstrap discards
+	those rather than averaging them in. Returning 0.0 instead would be read as a
+	real score of zero and pull the interval down.
+	~#
+	interface ScoreMetric {
+		#~
+		Computes the statistic.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@return the value, or a negative number when the sample cannot support it
+		~#
+		method : virtual : public : Compute(scores : Float[], actuals : Bool[]) ~ Float;
+	}
+
+	#~
+	Area under the ROC curve, as a resampleable metric.
+	~#
+	class AucMetric implements ScoreMetric {
+		New() {
+		}
+
+		method : public : Compute(scores : Float[], actuals : Bool[]) ~ Float {
+			return Metrics->AucRoc(scores, actuals);
+		}
+	}
+
+	#~
+	Recall at a fixed false-alarm budget, as a resampleable metric.
+
+	The budget is fixed at construction so Bootstrap can resample it without
+	knowing the metric takes a parameter.
+	~#
+	class RecallAtFprMetric implements ScoreMetric {
+		@max_fpr : Float;
+
+		New(max_fpr : Float) {
+			@max_fpr := max_fpr;
+		}
+
+		method : public : Compute(scores : Float[], actuals : Bool[]) ~ Float {
+			if(scores = Nil | actuals = Nil) {
+				return -1.0;
+			};
+
+			# RecallAtFpr answers 0.0 for a sample with one class, which is a real
+			# recall value; the resample has to be rejected instead
+			positives := Metrics->CountPositives(actuals);
+			if(positives = 0 | positives = actuals->Size()) {
+				return -1.0;
+			};
+
+			return Metrics->RecallAtFpr(scores, actuals, @max_fpr);
+		}
+	}
+
+	#~
+	Average precision, as a resampleable metric.
+	~#
+	class AveragePrecisionMetric implements ScoreMetric {
+		New() {
+		}
+
+		method : public : Compute(scores : Float[], actuals : Bool[]) ~ Float {
+			if(scores = Nil | actuals = Nil) {
+				return -1.0;
+			};
+
+			positives := Metrics->CountPositives(actuals);
+			if(positives = 0 | positives = actuals->Size()) {
+				return -1.0;
+			};
+
+			return Metrics->AveragePrecision(scores, actuals);
+		}
+	}
+
+	#~
+	A bootstrap percentile interval.
+
+	Carries the requested and usable resample counts alongside the bounds. When
+	those differ, the interval was built from fewer draws than asked for, because
+	some resamples drew only one class and could not support the metric. An
+	interval from a small fraction of the request is not the interval that was
+	requested, and the only way to notice is for the number to travel with it.
+	~#
+	class ConfInterval {
+		@point : Float;
+		@low : Float;
+		@high : Float;
+		@level : Float;
+		@reps : Int;
+		@usable : Int;
+
+		New(point : Float, low : Float, high : Float, level : Float, reps : Int, usable : Int) {
+			@point := point;
+			@low := low;
+			@high := high;
+			@level := level;
+			@reps := reps;
+			@usable := usable;
+		}
+
+		#~
+		The metric on the original sample, not the mean of the resamples.
+		@return the point estimate
+		~#
+		method : public : GetPoint() ~ Float { return @point; }
+
+		method : public : GetLow() ~ Float { return @low; }
+		method : public : GetHigh() ~ Float { return @high; }
+		method : public : GetLevel() ~ Float { return @level; }
+
+		#~
+		Resamples requested.
+		@return the requested count
+		~#
+		method : public : GetReps() ~ Int { return @reps; }
+
+		#~
+		Resamples the metric could actually be computed on.
+		
+		Below GetReps when some resample drew a single class. Worth checking on
+		rare positives: at a few dozen positives in a large sample, a noticeable
+		share of resamples can miss them entirely.
+		@return the usable count
+		~#
+		method : public : GetUsableReps() ~ Int { return @usable; }
+
+		#~
+		Width of the interval.
+		@return high minus low
+		~#
+		method : public : GetWidth() ~ Float { return @high - @low; }
+
+		method : public : ToString() ~ String {
+			pct := (@level * 100.0)->As(Int);
+			return "{$@point} ({$pct}% CI [{$@low}, {$@high}], {$@usable}/{$@reps} resamples)";
+		}
+	}
+
 	class CrossValResult {
 		@aucs : Float[];
 		@recalls : Float[];
