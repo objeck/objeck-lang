@@ -1,0 +1,329 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+CrossValidation: out-of-fold scores, the fold row mapping, stratification by a
+key other than the label, and LogisticRegression as a ScoreModel.
+
+The assertion that carries this test is the pooled out-of-fold AUC, checked two
+ways against each other: once as GetOofScores() returns it, and once assembled by
+hand from GetTestRows(). They must agree to 1e-6.
+
+That cross-check exists because the failure it guards against is silent. Split
+fills its test matrix by walking rows 0..n against a membership mask, so the test
+rows come back ASCENDING -- not in the order StratifiedKFold returned, which is
+shuffled. Pairing scores[k] with the k'th index of the fold vector therefore
+scrambles the pooled vector. Measured on this data, that mistake turns a pooled
+AUC of 0.997 into 0.539, which is chance -- while every per-fold AUC still reads
+0.99, so nothing looks wrong from inside a fold. A test that only checked fold
+means would pass against the broken mapping.
+
+LogisticRegression previously did not implement ScoreModel: it fitted on Float[,]
+labels and its scorer was named Predict, so a linear baseline could not go
+through the same evaluation path as the tree classifiers without the caller
+writing an adapter. Both shapes are kept, and the test pins that they agree.
+~#
+use System.ML;
+use Collection;
+
+class MlCrossValOof {
+	@X : Float[,];
+	@y : Bool[];
+	@cat : Float[];
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlCrossValOof->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	#~ Pseudo-gaussian from uniforms, so the data has separable structure. ~#
+	method : Noise(rnd : Random) ~ Float {
+		t := 0.0;
+		each(k : 4) {
+			t += rnd->NextReal();
+		};
+
+		return t - 2.0;
+	}
+
+	#~
+	Two attack-ish categories inside one positive class, the rarer at about 5%.
+	Stratifying on the binary label alone can leave a fold short of category 2,
+	which is the case the strata overload exists for.
+	~#
+	method : Build(rows : Int, seed : Int) ~ Nil {
+		rnd := Random->New(seed);
+		feats := 8;
+		X := Float->New[rows, feats];
+		y := Bool->New[rows];
+		cat := Float->New[rows];
+		c : Int;
+		roll : Float;
+		v : Float;
+
+		each(i : rows) {
+			roll := rnd->NextReal();
+			c := 0;
+			if(roll > 0.90) {
+				c := 1;
+				if(roll > 0.95) {
+					c := 2;
+				};
+			};
+			cat[i] := c->As(Float);
+			y[i] := c <> 0;
+
+			each(j : feats) {
+				v := Noise(rnd);
+				if(c = 1 & j < 3) {
+					v += 1.8;
+				};
+				if(c = 2 & j > 4) {
+					v += 2.1;
+				};
+				X[i,j] := v;
+			};
+		};
+
+		@X := X;
+		@y := y;
+		@cat := cat;
+	}
+
+	method : Run() ~ Nil {
+		Build(1500, 42);
+
+		LogisticAsScoreModel();
+		OofScores();
+		RowMapping();
+		StrataKey();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	#~ LogisticRegression satisfies ScoreModel, and both Fit shapes agree. ~#
+	method : LogisticAsScoreModel() ~ Nil {
+		model := LogisticRegression->New(0.05, 200, 0.01);
+		res := CrossValidation->Evaluate(model, @X, @y, 5, 42, 0.01, true);
+		Report("Evaluate takes a LogisticRegression", res <> Nil);
+		if(res = Nil) {
+			return;
+		};
+
+		Report("five folds ran", res->GetFolds() = 5);
+		Report("mean AUC is signal rather than chance", res->GetMeanAuc() > 0.9);
+
+		rows := @y->Size();
+		labels := Float->New[rows, 1];
+		each(i : rows) {
+			labels[i,0] := @y[i] ? 1.0 : 0.0;
+		};
+
+		a := LogisticRegression->New(0.05, 200, 0.01);
+		b := LogisticRegression->New(0.05, 200, 0.01);
+		Report("Fit on Bool labels succeeds", a->Fit(@X, @y));
+		Report("Fit on Float labels succeeds", b->Fit(@X, labels));
+
+		sa := a->PredictScore(@X);
+		sb := b->Predict(@X);
+		Report("both scorers return a vector", sa <> Nil & sb <> Nil);
+		if(sa = Nil | sb = Nil) {
+			return;
+		};
+
+		Report("same length", sa->Size() = sb->Size());
+		same := sa->Size() = sb->Size();
+		each(i : sa) {
+			if(<>Near(sa[i], sb[i])) {
+				same := false;
+			};
+		};
+		Report("Fit(Bool[]) and Fit(Float[,]) score identically", same);
+
+		# an unfitted model scores Nil rather than returning stale numbers
+		fresh := LogisticRegression->New(0.05, 200, 0.01);
+		Report("an unfitted model scores Nil", fresh->PredictScore(@X) = Nil);
+	}
+
+	#~ GetOofScores covers every row exactly once and is not scrambled. ~#
+	method : OofScores() ~ Nil {
+		model := LogisticRegression->New(0.05, 200, 0.01);
+		res := CrossValidation->Evaluate(model, @X, @y, 5, 42, 0.01, true, @cat);
+		Report("Evaluate accepts a strata key", res <> Nil);
+		if(res = Nil) {
+			return;
+		};
+
+		oof := res->GetOofScores();
+		Report("out-of-fold scores are returned", oof <> Nil);
+		if(oof = Nil) {
+			return;
+		};
+
+		rows := @y->Size();
+		Report("one score per input row", oof->Size() = rows);
+
+		# a row never placed in a test split would still hold its initial 0.0
+		zeros := 0;
+		each(i : oof) {
+			if(oof[i] = 0.0) {
+				zeros += 1;
+			};
+		};
+		Report("no row left unscored", zeros = 0);
+
+		auc := Metrics->AucRoc(oof, @y);
+		"  pooled OOF AUC = {$auc}"->PrintLine();
+
+		# 0.539 is what the scrambled mapping produced on this generator; the
+		# bound is deliberately far from it in both directions
+		Report("pooled AUC is not near chance", auc > 0.80);
+		Report("pooled AUC is not a perfect-score artifact", auc < 1.0);
+
+		# a threshold picked on these scores is usable
+		thr := Metrics->ThresholdAtFpr(oof, @y, 0.01);
+		Report("a threshold can be chosen from the pooled scores", thr > 0.0 & thr < 1.0);
+	}
+
+	#~ GetTestRows is ascending, total, and reproduces the pooled vector. ~#
+	method : RowMapping() ~ Nil {
+		rows := @y->Size();
+		folds := CrossValidation->StratifiedKFold(@cat, 5, 42);
+		Report("StratifiedKFold returns folds", folds <> Nil);
+		if(folds = Nil) {
+			return;
+		};
+
+		hand := Float->New[rows];
+		seen := Bool->New[rows];
+		split : FoldSplit;
+		scaler : FeatureScaler;
+		m : LogisticRegression;
+		scores : Float[];
+		tr : Int[];
+		ascending := true;
+		covered := 0;
+
+		each(f : folds) {
+			split := CrossValidation->Split(@X, @y, folds[f]);
+			if(split = Nil) {
+				Report("Split returns a fold", false);
+				return;
+			};
+
+			tr := split->GetTestRows();
+			if(tr = Nil) {
+				Report("GetTestRows is populated", false);
+				return;
+			};
+
+			if(tr->Size() <> split->GetTestSize()) {
+				ascending := false;
+			};
+			each(t : tr) {
+				if(t > 0 & tr[t] < tr[t-1]) {
+					ascending := false;
+				};
+			};
+			covered += tr->Size();
+
+			scaler := FeatureScaler->New();
+			scaler->Fit(split->GetTrainX());
+			m := LogisticRegression->New(0.05, 200, 0.01);
+			m->Fit(scaler->Transform(split->GetTrainX()), split->GetTrainY());
+			scores := m->PredictScore(scaler->Transform(split->GetTestX()));
+			each(t : tr) {
+				hand[tr[t]] := scores[t];
+				seen[tr[t]] := true;
+			};
+		};
+
+		Report("test rows are ascending and sized to the split", ascending);
+		Report("folds cover every row exactly once", covered = rows);
+
+		missing := 0;
+		each(i : rows) {
+			if(<>seen[i]) {
+				missing += 1;
+			};
+		};
+		Report("every row received a hand-mapped score", missing = 0);
+
+		model := LogisticRegression->New(0.05, 200, 0.01);
+		res := CrossValidation->Evaluate(model, @X, @y, 5, 42, 0.01, true, @cat);
+		if(res = Nil) {
+			Report("Evaluate for the cross-check", false);
+			return;
+		};
+
+		lib := res->GetOofScores();
+		hand_auc := Metrics->AucRoc(hand, @y);
+		lib_auc := Metrics->AucRoc(lib, @y);
+		"  hand-assembled AUC = {$hand_auc}, library AUC = {$lib_auc}"->PrintLine();
+		Report("library OOF matches hand assembly", Near(hand_auc, lib_auc));
+	}
+
+	#~ The strata key drives fold assignment, and bad input is refused. ~#
+	method : StrataKey() ~ Nil {
+		folds := CrossValidation->StratifiedKFold(@cat, 5, 42);
+		if(folds = Nil) {
+			Report("StratifiedKFold on category codes", false);
+			return;
+		};
+
+		worst := -1;
+		idx : Int;
+		count : Int;
+		each(f : folds) {
+			count := 0;
+			each(k : folds[f]->Size()) {
+				idx := folds[f]->Get(k)->Get();
+				if(@cat[idx] = 2.0) {
+					count += 1;
+				};
+			};
+			if(worst < 0 | count < worst) {
+				worst := count;
+			};
+		};
+		Report("every fold holds some of the rarest category", worst > 0);
+
+		model := LogisticRegression->New(0.05, 200, 0.01);
+
+		short := Float->New[10];
+		Report("a wrong-length strata key is refused",
+			CrossValidation->Evaluate(model, @X, @y, 5, 42, 0.01, true, short) = Nil);
+
+		# a bare Nil cannot be resolved to Float[] for overload selection, so the
+		# Nil has to arrive through a typed local
+		no_strata : Float[];
+		Report("a Nil strata key is refused",
+			CrossValidation->Evaluate(model, @X, @y, 5, 42, 0.01, true, no_strata) = Nil);
+
+		plain := CrossValidation->Evaluate(model, @X, @y, 5, 42, 0.01, true);
+		Report("the 7-argument overload still works", plain <> Nil);
+		if(plain <> Nil) {
+			Report("the 7-argument overload also carries OOF scores",
+				plain->GetOofScores() <> Nil);
+		};
+	}
+}

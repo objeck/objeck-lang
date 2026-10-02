@@ -1892,6 +1892,9 @@ each(f : folds) {
 			train_y := Bool->New[n_train];
 			test_x := Float->New[n_test, cols];
 			test_y := Bool->New[n_test];
+			# recorded as the matrix is filled, so the mapping is exact rather than
+			# reconstructed by a caller who has to know this loop walks in order
+			test_map := Int->New[n_test];
 			ti := 0;
 			si := 0;
 			each(i : rows) {
@@ -1900,6 +1903,7 @@ each(f : folds) {
 						test_x[si, c] := X[i, c];
 					};
 					test_y[si] := y[i];
+					test_map[si] := i;
 					si += 1;
 				}
 				else {
@@ -1911,7 +1915,7 @@ each(f : folds) {
 				};
 			};
 
-			return FoldSplit->New(train_x, train_y, test_x, test_y);
+			return FoldSplit->New(train_x, train_y, test_x, test_y, test_map);
 		}
 
 		#~
@@ -1932,17 +1936,49 @@ each(f : folds) {
 		@return per-fold and averaged scores, or Nil on bad input
 		~#
 		function : Evaluate(model : ScoreModel, X : Float[,], y : Bool[], k : Int, seed : Int, max_fpr : Float, standardize : Bool) ~ CrossValResult {
-			if(model = Nil | X = Nil | y = Nil | k < 2) {
+			if(y = Nil) {
+				return Nil;
+			};
+
+			return Evaluate(model, X, y, k, seed, max_fpr, standardize, ToFloat(y));
+		}
+
+		#~
+		Cross-validation whose folds are stratified by a key of your choosing.
+		
+		The overload above stratifies by the binary label, which keeps the
+		positive rate steady across folds but says nothing about what the
+		positives are made of. When the positive class is a union of rare
+		sub-populations -- attack families, fault types, device models -- a fold
+		can be balanced on the label and still hold none of a sub-population that
+		only has a few dozen members. Pass those category codes as strata and
+		each fold keeps their proportions too.
+		
+		strata is a fold-assignment key only. The model still fits and scores
+		against y, so the metrics are unchanged.
+		@param model anything that fits on Bool labels and scores rows
+		@param X rows x features
+		@param y one label per row
+		@param k folds
+		@param seed seeds the fold assignment, so a run can be repeated
+		@param max_fpr the false-alarm budget recall is measured at
+		@param standardize fit a FeatureScaler on each training split
+		@param strata one code per row; folds preserve its distribution
+		@return per-fold scores, averages and pooled out-of-fold scores, or Nil
+		on bad input
+		~#
+		function : Evaluate(model : ScoreModel, X : Float[,], y : Bool[], k : Int, seed : Int, max_fpr : Float, standardize : Bool, strata : Float[]) ~ CrossValResult {
+			if(model = Nil | X = Nil | y = Nil | strata = Nil | k < 2) {
 				return Nil;
 			};
 
 			dims := X->Size();
 			rows := dims[0];
-			if(rows < k | y->Size() <> rows) {
+			if(rows < k | y->Size() <> rows | strata->Size() <> rows) {
 				return Nil;
 			};
 
-			folds := StratifiedKFold(ToFloat(y), k, seed);
+			folds := StratifiedKFold(strata, k, seed);
 			if(folds = Nil) {
 				return Nil;
 			};
@@ -1950,8 +1986,10 @@ each(f : folds) {
 			aucs := Float->New[k];
 			recalls := Float->New[k];
 			aps := Float->New[k];
+			oof := Float->New[rows];
 
 			split : FoldSplit;
+			test_rows : Int[];
 			train_x : Float[,];
 			test_x : Float[,];
 			scaler : FeatureScaler;
@@ -1990,9 +2028,20 @@ each(f : folds) {
 				aucs[f] := Metrics->AucRoc(scores, split->GetTestY());
 				recalls[f] := Metrics->RecallAtFpr(scores, split->GetTestY(), max_fpr);
 				aps[f] := Metrics->AveragePrecision(scores, split->GetTestY());
+
+				# scatter this fold's scores back to the rows they belong to. Split
+				# reports the mapping, so this does not depend on the order
+				# StratifiedKFold happened to return the fold in.
+				test_rows := split->GetTestRows();
+				if(test_rows = Nil | test_rows->Size() <> scores->Size()) {
+					return Nil;
+				};
+				each(t : test_rows) {
+					oof[test_rows[t]] := scores[t];
+				};
 			};
 
-			return CrossValResult->New(aucs, recalls, aps);
+			return CrossValResult->New(aucs, recalls, aps, oof);
 		}
 
 		#~
@@ -2046,6 +2095,7 @@ each(f : folds) {
 		@train_y : Bool[];
 		@test_x : Float[,];
 		@test_y : Bool[];
+		@test_rows : Int[];
 
 		New(train_x : Float[,], train_y : Bool[], test_x : Float[,], test_y : Bool[]) {
 			@train_x := train_x;
@@ -2054,10 +2104,35 @@ each(f : folds) {
 			@test_y := test_y;
 		}
 
+		New(train_x : Float[,], train_y : Bool[], test_x : Float[,], test_y : Bool[], test_rows : Int[]) {
+			@train_x := train_x;
+			@train_y := train_y;
+			@test_x := test_x;
+			@test_y := test_y;
+			@test_rows := test_rows;
+		}
+
 		method : public : GetTrainX() ~ Float[,] { return @train_x; }
 		method : public : GetTrainY() ~ Bool[] { return @train_y; }
 		method : public : GetTestX() ~ Float[,] { return @test_x; }
 		method : public : GetTestY() ~ Bool[] { return @test_y; }
+
+		#~
+		The original row index of each row of the test split, in the order the
+		test matrix holds them.
+		
+		Needed to map a fold score back to the record it belongs to, which is how
+		an out-of-fold score vector is assembled. Split builds the test matrix by
+		walking rows 0..n against a membership mask, so these come back ASCENDING
+		and NOT in the order StratifiedKFold returned -- that order is shuffled.
+		Without this accessor the obvious caller code pairs scores[k] with the
+		k'th index of the fold vector, which silently scrambles them: measured on
+		a 3000-row set, a pooled AUC of 0.997 read 0.539 -- chance -- while every
+		per-fold AUC still read 0.99, so nothing looked wrong.
+		@return one original row index per test row, or Nil from the 4-argument
+		constructor
+		~#
+		method : public : GetTestRows() ~ Int[] { return @test_rows; }
 
 		#~
 		Rows in the training split.
@@ -2097,6 +2172,7 @@ each(f : folds) {
 		@aucs : Float[];
 		@recalls : Float[];
 		@aps : Float[];
+		@oof : Float[];
 
 		New(aucs : Float[], recalls : Float[], aps : Float[]) {
 			@aucs := aucs;
@@ -2104,9 +2180,33 @@ each(f : folds) {
 			@aps := aps;
 		}
 
+		New(aucs : Float[], recalls : Float[], aps : Float[], oof : Float[]) {
+			@aucs := aucs;
+			@recalls := recalls;
+			@aps := aps;
+			@oof := oof;
+		}
+
 		method : public : GetFoldAucs() ~ Float[] { return @aucs; }
 		method : public : GetFoldRecalls() ~ Float[] { return @recalls; }
 		method : public : GetFoldAveragePrecisions() ~ Float[] { return @aps; }
+
+		#~
+		One out-of-fold score per input row, in input row order.
+		
+		Each score comes from the fold model that did NOT train on that row, so
+		the vector can be thresholded as a whole without leaking a row into its
+		own score. That is what makes it the right input for choosing an
+		operating point: ThresholdAtFpr over these scores picks a threshold
+		honestly, and it can then be applied unchanged to held-out data.
+		
+		Reported separately from the per-fold means because they answer different
+		questions. The fold means say how much the estimate moves between folds;
+		the pooled vector gives one curve over every row, which is what a single
+		threshold has to be chosen from.
+		@return the pooled scores, or Nil from the 3-argument constructor
+		~#
+		method : public : GetOofScores() ~ Float[] { return @oof; }
 
 		#~
 		How many folds were run.
