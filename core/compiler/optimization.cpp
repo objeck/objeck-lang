@@ -582,18 +582,31 @@ void ItermediateOptimizer::ReplacementInstruction(IntermediateInstruction* instr
   }
 }
 
-bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, std::set<IntermediateMethod*>& inlined_mthds, std::set<int>& lbl_jmp_offsets)
+bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, [[maybe_unused]] std::set<IntermediateMethod*>& inlined_mthds, std::set<int>& lbl_jmp_offsets)
 {
   // an unresolved callee cannot be inspected, let alone inlined
   if(!mthd_called) {
     return false;
   }
 
-  // don't inline the same method more then once, since you'll have label/jump conflicts
-  std::set<IntermediateMethod*>::iterator found = inlined_mthds.find(mthd_called);
-  if(found != inlined_mthds.end()) {
-    jump_inline_offset += JUMP_OFF_INC;
-  }
+  // Shift this body's labels into a region of their own.
+  //
+  // This used to advance the offset only when the SAME method was inlined a
+  // second time, on the reasoning that that is when labels repeat. They repeat
+  // between DIFFERENT methods too: a method's labels are numbered from its own
+  // start, so any two callees containing the same construct carry the same
+  // numbers. Two helpers that each evaluate `->Abs()` is enough. Inlined under
+  // one shared offset, the second body's LBL lands on the first body's LBL, the
+  // second body's JMP resolves to the first, and the result is a backward jump
+  // into already-executed code -- an infinite loop in a program that is correct
+  // at every lower optimization level (#1037).
+  //
+  // Advanced unconditionally, so each inlined body is isolated from every other
+  // one rather than only from a copy of itself. A candidate that is rejected
+  // below simply leaves a gap in the numbering, which costs nothing: the offset
+  // only has to be unique, not dense. It must be settled before the conflict
+  // check further down, which tests the SHIFTED operands.
+  jump_inline_offset += JUMP_OFF_INC;
 
   // don't inline recursive calls
   if(mthd_called == current_method) {
@@ -1118,11 +1131,13 @@ IntermediateBlock* ItermediateOptimizer::InlineMethod(IntermediateBlock* inputs)
             break;
 
           case JMP:
+            lbl_jmp_offsets.insert(static_cast<int>(mthd_called_instr->GetOperand() + jump_inline_offset));
             outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, JMP, mthd_called_instr->GetOperand() + jump_inline_offset,
                                                                                      mthd_called_instr->GetOperand2()));
             break;
 
           case LBL:
+            lbl_jmp_offsets.insert(static_cast<int>(mthd_called_instr->GetOperand() + jump_inline_offset));
             outputs->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LBL, mthd_called_instr->GetOperand() + jump_inline_offset,
                                                                                      mthd_called_instr->GetOperand2()));
             break;
