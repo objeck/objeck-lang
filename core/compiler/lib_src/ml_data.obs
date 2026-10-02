@@ -1781,6 +1781,232 @@ r := Metrics->RecallAtFpr(scores, actuals, 0.001);
 		function : Bootstrap(metric : ScoreMetric, scores : Float[], actuals : Bool[], reps : Int, seed : Int) ~ ConfInterval {
 			return Bootstrap(metric, scores, actuals, reps, seed, 0.95);
 		}
+
+		#~
+		Precision an operating point would show at an assumed base rate.
+
+		A detection rate and a false-alarm rate are properties of the detector. The
+		precision an operator sees is not: it depends on how common the thing being
+		detected actually is. The same detector that looks precise on a benchmark
+		where half the records are positive can raise mostly false alarms in a
+		deployment where one in a thousand is.
+
+		precision = tpr*pi / (tpr*pi + fpr*(1-pi))
+
+		Worth being blunt about what this does NOT do. It reprojects the measured
+		rates onto a different class balance, assuming both rates stay the same.
+		They often do not: a deployment whose base rate differs usually differs in
+		other ways too, and the detector does not have to behave identically. The
+		number answers "if these rates held, what precision would this base rate
+		imply" -- which is a bound worth knowing, not a prediction.
+		@param tpr the detection rate, in [0,1]
+		@param fpr the false-alarm rate, in [0,1]
+		@param base_rate the assumed proportion of positives, in [0,1]
+		@return the implied precision, 0.0 when no alerts would be raised, or -1.0
+		when an argument is out of range
+		~#
+		function : PrecisionAtBaseRate(tpr : Float, fpr : Float, base_rate : Float) ~ Float {
+			if(tpr < 0.0 | tpr > 1.0 | fpr < 0.0 | fpr > 1.0) {
+				return -1.0;
+			};
+			if(base_rate < 0.0 | base_rate > 1.0) {
+				return -1.0;
+			};
+
+			hits := tpr * base_rate;
+			alarms := hits + fpr * (1.0 - base_rate);
+			if(alarms <= 0.0) {
+				# nothing would be flagged at all, so precision has no denominator.
+				# 0.0 rather than a sentinel, matching ThresholdResult->GetPrecision
+				return 0.0;
+			};
+
+			return hits / alarms;
+		}
+
+		#~
+		Precision a measured operating point would show at an assumed base rate.
+
+		Takes the rates from a ThresholdResult, so a threshold that has actually been
+		measured on held-out data can be reprojected without the caller restating its
+		numbers. The same caveat applies: this assumes both rates carry over.
+		@param result a measured operating point
+		@param base_rate the assumed proportion of positives, in [0,1]
+		@return the implied precision, or -1.0 on bad input
+		~#
+		function : PrecisionAtBaseRate(result : ThresholdResult, base_rate : Float) ~ Float {
+			if(result = Nil) {
+				return -1.0;
+			};
+
+			return PrecisionAtBaseRate(result->GetRecall(), result->GetFpr(), base_rate);
+		}
+
+		#~
+		A seeded permutation of a label array.
+
+		For a shuffled-label control: a model trained on permuted labels should score
+		near chance, and anything better means information is reaching the model that
+		should not be -- a leak, or a bug in the pipeline rather than in the model. It
+		is the cheapest check there is against a result that is too good.
+
+		Returns a new array; the input is not modified, because the real labels are
+		almost always still needed afterwards to score the control against something.
+
+		Seeded so that a control which does find something can be reproduced. An
+		unseeded shuffle that reported an AUC of 0.68 once cannot be investigated.
+		@param labels the labels to permute
+		@param seed seeds the permutation
+		@return a permuted copy, or Nil when labels is Nil
+		~#
+		function : ShuffleLabels(labels : Bool[], seed : Int) ~ Bool[] {
+			if(labels = Nil) {
+				return Nil;
+			};
+
+			n := labels->Size();
+			out := Bool->New[n];
+			each(i : n) {
+				out[i] := labels[i];
+			};
+			if(n < 2) {
+				return out;
+			};
+
+			# Fisher-Yates, downward, so every permutation is equally likely
+			rnd := Random->New(seed);
+			i := n - 1;
+			j : Int;
+			swap : Bool;
+			while(i > 0) {
+				j := rnd->NextInt(i + 1);
+				swap := out[i];
+				out[i] := out[j];
+				out[j] := swap;
+				i -= 1;
+			};
+
+			return out;
+		}
+
+		#~
+		Recall within each group, at one threshold.
+
+		An overall recall is an average over whatever mix of sub-populations the
+		sample happens to contain, and a rare one contributes almost nothing to it. A
+		detector can report strong recall while missing a whole category that makes
+		up a fraction of a percent of the data -- which is often the category that
+		matters most, because rarity in a benchmark is not unimportance in a
+		deployment.
+
+		Recall is computed over the POSITIVES in each group. Rows of a group that are
+		not positive are counted nowhere: there is no recall to measure on them. A
+		group with no positives is still returned, with a count of zero, so a caller
+		iterating the result sees that it was empty rather than finding it missing.
+		@param scores one score per instance; higher means more positive
+		@param actuals true where the instance really is positive
+		@param groups one group code per instance
+		@param threshold the cutoff to apply, as in AtThreshold
+		@return one entry per distinct group, or Nil when the inputs do not line up
+		~#
+		function : RecallByGroup(scores : Float[], actuals : Bool[], groups : Float[], threshold : Float) ~ GroupRecall[] {
+			if(scores = Nil | actuals = Nil | groups = Nil) {
+				return Nil;
+			};
+
+			n := scores->Size();
+			if(n = 0 | actuals->Size() <> n | groups->Size() <> n) {
+				return Nil;
+			};
+
+			# distinct codes, in first-seen order, so the result is stable for a
+			# caller that built the codes in a meaningful sequence
+			codes := Float->New[n];
+			distinct := 0;
+			seen : Bool;
+			each(i : n) {
+				seen := false;
+				each(k : distinct) {
+					if(codes[k] = groups[i]) {
+						seen := true;
+					};
+				};
+				if(<>seen) {
+					codes[distinct] := groups[i];
+					distinct += 1;
+				};
+			};
+
+			out := GroupRecall->New[distinct];
+			positives : Int;
+			detected : Int;
+			each(g : distinct) {
+				positives := 0;
+				detected := 0;
+				each(i : n) {
+					if(groups[i] = codes[g] & actuals[i]) {
+						positives += 1;
+						if(scores[i] >= threshold) {
+							detected += 1;
+						};
+					};
+				};
+				out[g] := GroupRecall->New(codes[g], positives, detected);
+			};
+
+			return out;
+		}
+
+		#~
+		Group codes present in one set and absent from another.
+
+		For reporting on sub-populations a model was never trained on. Recognising
+		patterns resembling the training data is a different task from detecting
+		something genuinely new, and a single overall number cannot tell them apart,
+		so the groups that were never seen have to be identified before they can be
+		reported separately.
+
+		Order follows first appearance in later, so the result lines up with a
+		RecallByGroup over the same array.
+		@param earlier the codes already seen, e.g. in training
+		@param later the codes to check, e.g. in a test set
+		@return codes in later but not in earlier, or Nil when either is Nil
+		~#
+		function : UnseenGroups(earlier : Float[], later : Float[]) ~ Float[] {
+			if(earlier = Nil | later = Nil) {
+				return Nil;
+			};
+
+			found := Float->New[later->Size()];
+			count := 0;
+			known : Bool;
+			each(i : later) {
+				known := false;
+				each(j : earlier) {
+					if(earlier[j] = later[i]) {
+						known := true;
+					};
+				};
+				if(<>known) {
+					each(k : count) {
+						if(found[k] = later[i]) {
+							known := true;
+						};
+					};
+				};
+				if(<>known) {
+					found[count] := later[i];
+					count += 1;
+				};
+			};
+
+			out := Float->New[count];
+			each(i : count) {
+				out[i] := found[i];
+			};
+
+			return out;
+		}
 	}
 
 	#~
@@ -2564,6 +2790,54 @@ each(f : folds) {
 	interval from a small fraction of the request is not the interval that was
 	requested, and the only way to notice is for the number to travel with it.
 	~#
+
+	#~
+	Recall within one group.
+
+	Carries the count the rate was computed from, not just the rate. A recall of
+	1.0 over two positives and a recall of 1.0 over two thousand are not the same
+	claim, and the rate alone cannot tell them apart -- which matters most for
+	exactly the rare groups this type exists to report.
+	~#
+	class GroupRecall {
+		@group : Float;
+		@positives : Int;
+		@detected : Int;
+
+		New(group : Float, positives : Int, detected : Int) {
+			@group := group;
+			@positives := positives;
+			@detected := detected;
+		}
+
+		method : public : GetGroup() ~ Float { return @group; }
+
+		#~
+		Positives in this group, which is what the recall was computed over.
+		@return the positive count, 0 when the group holds none
+		~#
+		method : public : GetPositives() ~ Int { return @positives; }
+
+		method : public : GetDetected() ~ Int { return @detected; }
+
+		#~
+		Detected over positives in this group.
+		@return the recall, or 0.0 when the group holds no positives
+		~#
+		method : public : GetRecall() ~ Float {
+			if(@positives = 0) {
+				return 0.0;
+			};
+
+			return @detected->As(Float) / @positives->As(Float);
+		}
+
+		method : public : ToString() ~ String {
+			r := GetRecall();
+			return "group={$@group} positives={$@positives} detected={$@detected} recall={$r}";
+		}
+	}
+
 	class ConfInterval {
 		@point : Float;
 		@low : Float;
