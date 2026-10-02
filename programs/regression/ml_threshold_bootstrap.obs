@@ -1,0 +1,373 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Metrics->AtThreshold and Metrics->Bootstrap, plus Percentile underneath them.
+
+AtThreshold is checked against counts worked out by hand rather than against
+another library function, so a shared misunderstanding of the comparison cannot
+hide. The sample is five scores whose confusion counts at three thresholds are
+written out in the test.
+
+The threshold comparison is >=, matching OperatingPoints, which accumulates from
+the highest score down and lets instances sharing a score share an operating
+point. Getting that backwards would make a threshold returned by ThresholdAtFpr
+mean something slightly different when handed to AtThreshold, and the round trip
+asserted here -- pick a threshold for a budget, then measure what it does -- is
+the only check that catches it.
+
+Bootstrap is checked for the property that matters and is easy to get wrong: a
+resample can draw a single class, which leaves AUC undefined. AucRoc reports that
+as -1.0, and folding that into the distribution would drag the interval toward
+it. So the sentinel must be discarded, the surviving count reported, and an
+all-one-class input must yield Nil rather than an interval around -1.0.
+~#
+use System.ML;
+use Collection;
+
+class MlThresholdBootstrap {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MlThresholdBootstrap->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000001;
+	}
+
+	method : Run() ~ Nil {
+		AtThresholdExact();
+		AtThresholdEdges();
+		AtThresholdRoundTrip();
+		PercentileExact();
+		BootstrapBasics();
+		BootstrapDegenerate();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	#~
+	scores 0.9 0.8 0.7 0.6 0.5, actual T F T F F.
+
+	At threshold 0.7 the predicted positives are 0.9, 0.8 and 0.7, so:
+	  tp = 2 (0.9, 0.7)   fp = 1 (0.8)   fn = 0   tn = 2 (0.6, 0.5)
+	  recall = 2/2 = 1.0, fpr = 1/3, precision = 2/3, accuracy = 4/5
+	~#
+	method : AtThresholdExact() ~ Nil {
+		scores := Float->New[5];
+		scores[0] := 0.9;
+		scores[1] := 0.8;
+		scores[2] := 0.7;
+		scores[3] := 0.6;
+		scores[4] := 0.5;
+
+		actuals := Bool->New[5];
+		actuals[0] := true;
+		actuals[1] := false;
+		actuals[2] := true;
+		actuals[3] := false;
+		actuals[4] := false;
+
+		r := Metrics->AtThreshold(scores, actuals, 0.7);
+		Report("AtThreshold returns a result", r <> Nil);
+		if(r = Nil) {
+			return;
+		};
+
+		Report("threshold is carried through", Near(r->GetThreshold(), 0.7));
+		Report("tp = 2", r->GetTruePositives() = 2);
+		Report("fp = 1", r->GetFalsePositives() = 1);
+		Report("fn = 0", r->GetFalseNegatives() = 0);
+		Report("tn = 2", r->GetTrueNegatives() = 2);
+		Report("recall = 1.0", Near(r->GetRecall(), 1.0));
+		Report("fpr = 1/3", Near(r->GetFpr(), 1.0 / 3.0));
+		Report("precision = 2/3", Near(r->GetPrecision(), 2.0 / 3.0));
+		Report("accuracy = 0.8", Near(r->GetAccuracy(), 0.8));
+
+		# the score exactly equal to the threshold must count as positive, which
+		# is what >= means and what OperatingPoints assumes
+		Report("a score equal to the threshold counts as positive",
+			r->GetTruePositives() + r->GetFalsePositives() = 3);
+
+		# and the counts must agree with the independent confusion matrix
+		preds := Bool->New[5];
+		each(i : scores) {
+			preds[i] := scores[i] >= 0.7;
+		};
+		cm := Metrics->ConfusionMatrix(preds, actuals);
+		Report("tn agrees with ConfusionMatrix", cm[0,0] = r->GetTrueNegatives());
+		Report("fp agrees with ConfusionMatrix", cm[0,1] = r->GetFalsePositives());
+		Report("fn agrees with ConfusionMatrix", cm[1,0] = r->GetFalseNegatives());
+		Report("tp agrees with ConfusionMatrix", cm[1,1] = r->GetTruePositives());
+	}
+
+	#~ A threshold outside the range of the scores must not divide by zero. ~#
+	method : AtThresholdEdges() ~ Nil {
+		scores := Float->New[5];
+		scores[0] := 0.9;
+		scores[1] := 0.8;
+		scores[2] := 0.7;
+		scores[3] := 0.6;
+		scores[4] := 0.5;
+
+		actuals := Bool->New[5];
+		actuals[0] := true;
+		actuals[1] := false;
+		actuals[2] := true;
+		actuals[3] := false;
+		actuals[4] := false;
+
+		# above every score: nothing is flagged, so precision has no denominator
+		hi := Metrics->AtThreshold(scores, actuals, 1.0);
+		Report("a threshold above every score returns a result", hi <> Nil);
+		if(hi <> Nil) {
+			Report("nothing flagged", hi->GetTruePositives() = 0 & hi->GetFalsePositives() = 0);
+			Report("recall is 0.0", Near(hi->GetRecall(), 0.0));
+			Report("fpr is 0.0", Near(hi->GetFpr(), 0.0));
+			Report("precision is guarded, not a crash", Near(hi->GetPrecision(), 0.0));
+			Report("accuracy is 3/5", Near(hi->GetAccuracy(), 0.6));
+		};
+
+		# below every score: everything is flagged
+		lo := Metrics->AtThreshold(scores, actuals, 0.0);
+		Report("a threshold below every score returns a result", lo <> Nil);
+		if(lo <> Nil) {
+			Report("everything flagged", lo->GetTruePositives() = 2 & lo->GetFalsePositives() = 3);
+			Report("recall is 1.0", Near(lo->GetRecall(), 1.0));
+			Report("fpr is 1.0", Near(lo->GetFpr(), 1.0));
+			Report("precision is 2/5", Near(lo->GetPrecision(), 0.4));
+		};
+
+		# a sample with no negatives leaves the fpr denominator empty
+		all_pos := Bool->New[5];
+		each(i : all_pos) {
+			all_pos[i] := true;
+		};
+		ap := Metrics->AtThreshold(scores, all_pos, 0.7);
+		Report("no negatives still returns a result", ap <> Nil);
+		if(ap <> Nil) {
+			Report("fpr is guarded when there are no negatives", Near(ap->GetFpr(), 0.0));
+		};
+
+		Report("mismatched lengths are refused",
+			Metrics->AtThreshold(scores, Bool->New[3], 0.5) = Nil);
+	}
+
+	#~
+	The round trip: pick a threshold for a budget, then measure what it did.
+
+	On the same data the measured rate must respect the budget it was chosen
+	for. This is the assertion that catches a >= versus > disagreement between
+	ThresholdAtFpr and AtThreshold.
+	~#
+	method : AtThresholdRoundTrip() ~ Nil {
+		n := 400;
+		scores := Float->New[n];
+		actuals := Bool->New[n];
+		rnd := Random->New(11);
+
+		each(i : n) {
+			if(i < 40) {
+				actuals[i] := true;
+				scores[i] := 0.55 + rnd->NextReal() * 0.45;
+			}
+			else {
+				actuals[i] := false;
+				scores[i] := rnd->NextReal() * 0.6;
+			};
+		};
+
+		budgets := Float->New[3];
+		budgets[0] := 0.001;
+		budgets[1] := 0.01;
+		budgets[2] := 0.05;
+
+		thr : Float;
+		r : ThresholdResult;
+		each(b : budgets) {
+			thr := Metrics->ThresholdAtFpr(scores, actuals, budgets[b]);
+			r := Metrics->AtThreshold(scores, actuals, thr);
+			if(r = Nil) {
+				Report("round trip returns a result", false);
+				return;
+			};
+
+			f := r->GetFpr();
+			budget := budgets[b];
+			"  budget {$budget} -> threshold {$thr}, measured fpr {$f}"->PrintLine();
+			Report("measured fpr respects the budget it was chosen for",
+				f <= budget + 0.000001);
+
+			# and the recall must match what RecallAtFpr claimed for that budget
+			claimed := Metrics->RecallAtFpr(scores, actuals, budget);
+			Report("recall matches RecallAtFpr for the same budget",
+				Near(r->GetRecall(), claimed));
+		};
+	}
+
+	#~ Percentile on values whose answers are arithmetic. ~#
+	method : PercentileExact() ~ Nil {
+		v := Float->New[5];
+		v[0] := 1.0;
+		v[1] := 2.0;
+		v[2] := 3.0;
+		v[3] := 4.0;
+		v[4] := 5.0;
+
+		Report("p=0 is the minimum", Near(Metrics->Percentile(v, 0.0), 1.0));
+		Report("p=1 is the maximum", Near(Metrics->Percentile(v, 1.0), 5.0));
+		Report("p=0.5 is the median", Near(Metrics->Percentile(v, 0.5), 3.0));
+		Report("p=0.25 lands on a value", Near(Metrics->Percentile(v, 0.25), 2.0));
+		Report("p=0.125 interpolates", Near(Metrics->Percentile(v, 0.125), 1.5));
+
+		# unsorted input must give the same answers
+		u := Float->New[5];
+		u[0] := 4.0;
+		u[1] := 1.0;
+		u[2] := 5.0;
+		u[3] := 3.0;
+		u[4] := 2.0;
+		Report("unsorted input gives the same median", Near(Metrics->Percentile(u, 0.5), 3.0));
+		Report("unsorted input gives the same maximum", Near(Metrics->Percentile(u, 1.0), 5.0));
+
+		# out-of-range p is clamped rather than raising
+		Report("p below 0 clamps to the minimum", Near(Metrics->Percentile(v, -1.0), 1.0));
+		Report("p above 1 clamps to the maximum", Near(Metrics->Percentile(v, 2.0), 5.0));
+
+		one := Float->New[1];
+		one[0] := 7.0;
+		Report("a single value is its own percentile", Near(Metrics->Percentile(one, 0.5), 7.0));
+		Report("an empty sample gives 0.0", Near(Metrics->Percentile(Float->New[0], 0.5), 0.0));
+	}
+
+	#~ Bootstrap: brackets the point estimate, repeatable, and reports its draws. ~#
+	method : BootstrapBasics() ~ Nil {
+		n := 300;
+		scores := Float->New[n];
+		actuals := Bool->New[n];
+		rnd := Random->New(5);
+
+		each(i : n) {
+			if(i < 90) {
+				actuals[i] := true;
+				scores[i] := 0.5 + rnd->NextReal() * 0.5;
+			}
+			else {
+				actuals[i] := false;
+				scores[i] := rnd->NextReal() * 0.55;
+			};
+		};
+
+		metric := AucMetric->New();
+		ci := Metrics->Bootstrap(metric, scores, actuals, 200, 7);
+		Report("Bootstrap returns an interval", ci <> Nil);
+		if(ci = Nil) {
+			return;
+		};
+
+		point := Metrics->AucRoc(scores, actuals);
+		"  {$ci}"->PrintLine();
+		Report("the point estimate is the metric on the original sample",
+			Near(ci->GetPoint(), point));
+		Report("the default level is 0.95", Near(ci->GetLevel(), 0.95));
+		Report("low does not exceed high", ci->GetLow() <= ci->GetHigh());
+		Report("the interval brackets the point estimate",
+			ci->GetLow() <= point & point <= ci->GetHigh());
+		Report("width is high minus low",
+			Near(ci->GetWidth(), ci->GetHigh() - ci->GetLow()));
+		Report("requested resamples are reported", ci->GetReps() = 200);
+		Report("usable resamples are reported and plausible",
+			ci->GetUsableReps() > 0 & ci->GetUsableReps() <= 200);
+
+		# the same seed must give the same interval
+		again := Metrics->Bootstrap(metric, scores, actuals, 200, 7);
+		Report("the same seed reproduces the interval",
+			again <> Nil & Near(again->GetLow(), ci->GetLow()) & Near(again->GetHigh(), ci->GetHigh()));
+
+		# a tighter level must not be wider
+		narrow := Metrics->Bootstrap(metric, scores, actuals, 200, 7, 0.50);
+		Report("a 50% interval is no wider than a 95% one",
+			narrow <> Nil & narrow->GetWidth() <= ci->GetWidth() + 0.000001);
+
+		# other metrics go through the same path
+		rec := Metrics->Bootstrap(RecallAtFprMetric->New(0.05), scores, actuals, 100, 3);
+		Report("RecallAtFprMetric can be resampled", rec <> Nil);
+		ap := Metrics->Bootstrap(AveragePrecisionMetric->New(), scores, actuals, 100, 3);
+		Report("AveragePrecisionMetric can be resampled", ap <> Nil);
+
+		# bad input
+		Report("too few resamples are refused",
+			Metrics->Bootstrap(metric, scores, actuals, 1, 7) = Nil);
+		Report("a level of 1.0 is refused",
+			Metrics->Bootstrap(metric, scores, actuals, 100, 7, 1.0) = Nil);
+		Report("a Nil metric is refused",
+			Metrics->Bootstrap(Nil, scores, actuals, 100, 7) = Nil);
+		Report("mismatched lengths are refused",
+			Metrics->Bootstrap(metric, scores, Bool->New[3], 100, 7) = Nil);
+	}
+
+	#~
+	A sample with one class cannot support AUC. Every resample of it is equally
+	undefined, so there is no interval to report and Nil is the answer -- not an
+	interval around the -1.0 sentinel.
+	~#
+	method : BootstrapDegenerate() ~ Nil {
+		n := 50;
+		scores := Float->New[n];
+		all_pos := Bool->New[n];
+		rnd := Random->New(2);
+		each(i : n) {
+			scores[i] := rnd->NextReal();
+			all_pos[i] := true;
+		};
+
+		Report("AucRoc reports a single-class sample as negative",
+			Metrics->AucRoc(scores, all_pos) < 0.0);
+
+		Report("RecallAtFprMetric rejects a single-class sample",
+			RecallAtFprMetric->New(0.05)->Compute(scores, all_pos) < 0.0);
+
+		Report("AveragePrecisionMetric rejects a single-class sample",
+			AveragePrecisionMetric->New()->Compute(scores, all_pos) < 0.0);
+
+		ci := Metrics->Bootstrap(AucMetric->New(), scores, all_pos, 100, 7);
+		Report("Bootstrap on a single-class sample is Nil, not an interval at -1.0",
+			ci = Nil);
+
+		# a sample with very few positives still works, and should report that
+		# some resamples were lost
+		few := Bool->New[n];
+		each(i : n) {
+			few[i] := i < 2;
+		};
+		each(i : n) {
+			if(few[i]) {
+				scores[i] := 0.95;
+			};
+		};
+		thin := Metrics->Bootstrap(AucMetric->New(), scores, few, 200, 7);
+		Report("a sample with two positives still yields an interval", thin <> Nil);
+		if(thin <> Nil) {
+			u := thin->GetUsableReps();
+			"  two positives: {$u} of 200 resamples were usable"->PrintLine();
+			Report("some resamples were discarded as undefined", u < 200);
+			Report("enough survived to form an interval", u >= 2);
+		};
+	}
+}
