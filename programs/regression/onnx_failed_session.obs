@@ -1,0 +1,164 @@
+#~
+# A failed ONNX session is detectable, and inference refuses instead of aborting.
+#
+# EXTRA_LIBS: onnx,opencv,cipher,json
+#
+# This is the one ONNX failure path that can be tested without shipping a model:
+# point a session at a path that does not exist. Every other entry point needs a
+# real model file, which is why onnx_runtime_test.obs only calls GetProviders().
+#
+# What it guards (#1028). onnx_new_session wrote its return slot only on the
+# success path, so a failed session returned whatever the caller had put there.
+# It came out as 0 because IntRef->New() defaults to 0 -- a real failure signal
+# resting on the caller's initialisation. Nothing exposed it, so a dead session
+# was indistinguishable from a live one, and inference then returned without
+# writing its result slot. YOLO and ResNet called Set() on that Nil and took the
+# program down; DeepLab and OpenPose handed back a Nil a caller could not tell
+# from "the model found nothing".
+#
+# The assertion that carries this test is reaching the end. Against the previous
+# build, the first Inference call aborts the VM, so a crash is the failure
+# signal rather than a wrong value -- which is why every check is followed by
+# more work rather than an early exit.
+~#
+use API.Onnx;
+use Collection;
+
+class OnnxFailedSession {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxFailedSession->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	method : Run() ~ Nil {
+		missing := "this_model_does_not_exist_1028.onnx";
+
+		Yolo(missing);
+		ResNet(missing);
+		DeepLab(missing);
+		OpenPose(missing);
+		Faces(missing);
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end without aborting"->PrintLine();
+	}
+
+	#~ A grey 8x8 RGB image: enough to be a valid argument, no model needed. ~#
+	method : Image() ~ Byte[] {
+		px := 8 * 8 * 3;
+		image := Byte->New[px];
+		each(i : px) {
+			image[i] := 128;
+		};
+
+		return image;
+	}
+
+	method : Labels() ~ String[] {
+		labels := String->New[1];
+		labels[0] := "thing";
+
+		return labels;
+	}
+
+	method : Yolo(missing : String) ~ Nil {
+		session := YoloSession->New(missing);
+		Report("a YOLO session on a missing model is constructed, not raised", session <> Nil);
+		if(session = Nil) {
+			return;
+		};
+
+		Report("YOLO IsOpen reports false", <>session->IsOpen());
+
+		# the call that used to abort: Nil result, Set() called on it
+		result := session->Inference(Image(), 8, 8, 0.25, Labels());
+		Report("YOLO inference returns Nil rather than aborting", result = Nil);
+
+		session->Close();
+	}
+
+	method : ResNet(missing : String) ~ Nil {
+		session := ResNetSession->New(missing);
+		Report("a ResNet session on a missing model is constructed", session <> Nil);
+		if(session = Nil) {
+			return;
+		};
+
+		Report("ResNet IsOpen reports false", <>session->IsOpen());
+
+		result := session->Inference(Image(), 8, 8, Labels());
+		Report("ResNet inference returns Nil rather than aborting", result = Nil);
+
+		session->Close();
+	}
+
+	method : DeepLab(missing : String) ~ Nil {
+		session := DeepLabSession->New(missing);
+		if(session = Nil) {
+			Report("a DeepLab session is constructed", false);
+			return;
+		};
+
+		Report("DeepLab IsOpen reports false", <>session->IsOpen());
+
+		result := session->Inference(Image(), Labels());
+		Report("DeepLab inference returns Nil", result = Nil);
+
+		session->Close();
+	}
+
+	method : OpenPose(missing : String) ~ Nil {
+		session := OpenPoseSession->New(missing);
+		if(session = Nil) {
+			Report("an OpenPose session is constructed", false);
+			return;
+		};
+
+		Report("OpenPose IsOpen reports false", <>session->IsOpen());
+
+		result := session->Inference(Image(), Labels());
+		Report("OpenPose inference returns Nil", result = Nil);
+
+		session->Close();
+	}
+
+	#~
+	FaceSession holds two sessions and the recognizer is optional, so IsOpen and
+	IsRecognizerOpen answer different questions and both are checked.
+	~#
+	method : Faces(missing : String) ~ Nil {
+		session := FaceSession->New(missing);
+		if(session = Nil) {
+			Report("a Face session is constructed", false);
+			return;
+		};
+
+		Report("Face IsOpen reports false", <>session->IsOpen());
+		Report("Face IsRecognizerOpen reports false for a detection-only session",
+			<>session->IsRecognizerOpen());
+
+		result := session->Detect(Image(), 0.5);
+		Report("Face detection returns Nil", result = Nil);
+
+		session->Close();
+	}
+}

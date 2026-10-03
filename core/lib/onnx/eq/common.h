@@ -45,8 +45,8 @@ Ort::Env* env = nullptr;
 //
 
 // Formats a tokens/second rate. Kept in a local stream because std::fixed and
-// std::setprecision are sticky: applied to std::wcout they would outlive this
-// call and leave every float the VM prints afterwards in fixed notation at one
+// std::setprecision are sticky: applied to a shared stream they would outlive
+// this call and leave every float printed afterwards in fixed notation at one
 // decimal. Nothing on the Objeck side clears that -- StdOutFloatPer sets the
 // stream's precision but never its floatfield.
 static inline std::wstring format_rate(double value) {
@@ -747,9 +747,7 @@ static size_t* opencv_raw_write(cv::Mat& image, VMContext& context) {
 
 // Process Yolo image using ONNX model
 static void yolo_image_inf(VMContext& context) {
-// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-// #endif
 
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
@@ -989,7 +987,7 @@ static void yolo_image_inf(VMContext& context) {
          const cv::Rect& box = boxes[j];
 
 #ifdef _DEBUG
-         std::wcout << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << box.x << "," << box.y << L"," << box.width << "," << box.height << ")" << std::endl;
+         std::wcerr << L"class_id: " << class_id << L", confidence: " << confidence << L", rect: (" << box.x << "," << box.y << L"," << box.width << "," << box.height << ")" << std::endl;
 #endif
          size_t* class_result_obj = APITools_CreateObject(context, L"API.Onnx.YoloClassification");
          if(class_result_obj) {
@@ -1025,11 +1023,9 @@ static void yolo_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, yolo_result_obj);
 
-// #ifdef _DEBUG
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"=> ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
-// #endif
+      std::wcerr << L"=> ONNX YOLO inference and processing time: " << duration_ms << L" ms" << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -1038,9 +1034,7 @@ static void yolo_image_inf(VMContext& context) {
 
 // Process Resnet image using ONNX model
 static void resnet_image_inf(VMContext& context) {
-// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-// #endif
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
    size_t* input_array = (size_t*)APITools_GetArray(context, 2)[0];
@@ -1163,11 +1157,9 @@ static void resnet_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, resnet_result_obj);
 
-// #ifdef _DEBUG
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"=> ONNX ResNet inference and processing time: " << duration_ms << L" ms" << std::endl;
-// #endif
+      std::wcerr << L"=> ONNX ResNet inference and processing time: " << duration_ms << L" ms" << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -1176,9 +1168,7 @@ static void resnet_image_inf(VMContext& context) {
 
 // Process Deeplab image using ONNX model
 static void deeplab_image_inf(VMContext& context) {
-// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-// #endif
 
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
@@ -1375,11 +1365,9 @@ static void deeplab_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, deeplab_result_obj);
 
-// #ifdef _DEBUG
       const auto end = std::chrono::high_resolution_clock::now();
       const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"=> ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
-// #endif
+      std::wcerr << L"=> ONNX Deeplab inference completed in " << duration << L" ms." << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -1388,9 +1376,7 @@ static void deeplab_image_inf(VMContext& context) {
 
 // Process OpenPose image using ONNX model
 static void openpose_image_inf(VMContext& context) {
-// #ifdef _DEBUG
    auto start = std::chrono::high_resolution_clock::now();
-// #endif
 
    Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
 
@@ -1676,11 +1662,9 @@ static void openpose_image_inf(VMContext& context) {
 
       APITools_SetObjectValue(context, 0, openpose_result_obj);
 
-// #ifdef _DEBUG
       const auto end = std::chrono::high_resolution_clock::now();
       const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"=> ONNX OpenPose inference completed in " << duration << L" ms." << std::endl;
-// #endif
+      std::wcerr << L"=> ONNX OpenPose inference completed in " << duration << L" ms." << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX Runtime Error: " << e.what() << std::endl;
@@ -1892,7 +1876,7 @@ static void phi3_text_inf(VMContext& context) {
       const bool has_kv = model_info.past_kv_consistent();
       const bool use_kv_cache = has_kv && model_info.present_kv_consistent();
 
-      std::wcout << L"=> SLM model: " << model_info.num_layers << L" layers, "
+      std::wcerr << L"=> SLM model: " << model_info.num_layers << L" layers, "
                  << model_info.num_kv_heads << L" kv_heads, head_dim=" << model_info.head_dim
                  << (use_kv_cache ? L", kv_cache=on" : L", kv_cache=off") << std::endl;
 
@@ -2099,7 +2083,7 @@ static void phi3_text_inf(VMContext& context) {
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       double tps = (duration_ms > 0) ? (generated_tokens.size() * 1000.0 / duration_ms) : 0;
-      std::wcout << L"=> SLM generation: " << generated_tokens.size() << L" tokens in "
+      std::wcerr << L"=> SLM generation: " << generated_tokens.size() << L" tokens in "
                  << duration_ms << L" ms (" << format_rate(tps) << L" tok/s)" << std::endl;
    }
    catch(const Ort::Exception& e) {
@@ -2311,7 +2295,7 @@ static void phi3_vision_inf(VMContext& context) {
          return;
       }
 
-      std::wcout << L"=> Vision: " << pad_w << L"x" << pad_h
+      std::wcerr << L"=> Vision: " << pad_w << L"x" << pad_h
                  << L", crops=" << actual_crops << L", img_tokens=" << num_img_tokens << std::endl;
 
       Ort::MemoryInfo mem_info = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
@@ -2370,7 +2354,7 @@ static void phi3_vision_inf(VMContext& context) {
       auto vf_type = vf_info.GetElementType();
       int64_t vf_tokens = vf_shape[1];
       int64_t hidden_size = vf_shape[2];
-      std::wcout << L"=> Visual features: [" << vf_shape[0] << L"," << vf_tokens
+      std::wcerr << L"=> Visual features: [" << vf_shape[0] << L"," << vf_tokens
                  << L"," << hidden_size << L"] type=" << vf_type << std::endl;
 
       // Step 3: Build input_ids with image placeholder tokens
@@ -2501,7 +2485,7 @@ static void phi3_vision_inf(VMContext& context) {
          dec_in_names[i] = dec_in_strs[i].c_str();
       }
 
-      std::wcout << L"=> Vision decoder: " << decoder_info.num_layers << L" layers, "
+      std::wcerr << L"=> Vision decoder: " << decoder_info.num_layers << L" layers, "
                  << decoder_info.num_kv_heads << L" kv_heads, head_dim=" << decoder_info.head_dim
                  << (use_kv_cache ? L", kv_cache=on" : L", kv_cache=off") << std::endl;
 
@@ -2788,7 +2772,7 @@ static void phi3_vision_inf(VMContext& context) {
       auto end = std::chrono::high_resolution_clock::now();
       auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       double tps = (duration_ms > 0) ? (generated_tokens.size() * 1000.0 / duration_ms) : 0;
-      std::wcout << L"=> Vision generation: " << generated_tokens.size() << L" tokens in "
+      std::wcerr << L"=> Vision generation: " << generated_tokens.size() << L" tokens in "
                  << duration_ms << L" ms (" << format_rate(tps) << L" tok/s)" << std::endl;
    }
    catch(const Ort::Exception& e) {
@@ -3048,7 +3032,7 @@ static void face_detect_inf(VMContext& context) {
 
       auto end = std::chrono::high_resolution_clock::now();
       auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"=> SCRFD: " << dets.size() << L" face(s) in " << ms << L" ms" << std::endl;
+      std::wcerr << L"=> SCRFD: " << dets.size() << L" face(s) in " << ms << L" ms" << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX face_detect error: " << BytesToUnicode(e.what()) << std::endl;
@@ -3112,7 +3096,7 @@ static void face_recognize_inf(VMContext& context) {
 
       auto end = std::chrono::high_resolution_clock::now();
       auto ms  = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-      std::wcout << L"=> Face recognize: " << result_ptrs.size() << L" face(s) in " << ms << L" ms" << std::endl;
+      std::wcerr << L"=> Face recognize: " << result_ptrs.size() << L" face(s) in " << ms << L" ms" << std::endl;
    }
    catch(const Ort::Exception& e) {
       std::wcerr << L"ONNX face_recognize error: " << BytesToUnicode(e.what()) << std::endl;

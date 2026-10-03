@@ -128,6 +128,21 @@ bundle API.Onnx {
 		#~
 		Closes the session
 		~#
+		#~
+		Whether the model loaded.
+		
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before inferring: a closed session
+		returns Nil from every inference method, which is otherwise
+		indistinguishable from a model that found nothing.
+		@return true when the model is loaded and inference can run
+		~#
+
+		method : public : IsOpen() ~ Bool {
+			return @session <> 0;
+		}
+
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
@@ -175,6 +190,12 @@ session->Close();
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_yolo_image_inf, array_args);
 			
 			results := array_args[0]->As(API.Onnx.YoloResult);
+			# the native side returns without writing this slot when it refuses --
+			# a null session, or input it cannot use -- so Nil here is a refusal,
+			# not an empty result. Calling Set() on it aborted the program (#1028).
+			if(results = Nil) {
+				return Nil;
+			};
 			results->Set(image, labels);
 
 			return results;
@@ -483,6 +504,21 @@ each(cls in result->GetClassifications()) {
 		#~
 		Closes the session
 		~#
+		#~
+		Whether the model loaded.
+		
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before inferring: a closed session
+		returns Nil from every inference method, which is otherwise
+		indistinguishable from a model that found nothing.
+		@return true when the model is loaded and inference can run
+		~#
+
+		method : public : IsOpen() ~ Bool {
+			return @session <> 0;
+		}
+
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
@@ -525,6 +561,12 @@ session->Close();
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_resnet_image_inf, array_args);
 			
 			results := array_args[0]->As(API.Onnx.ResNetResult);
+			# the native side returns without writing this slot when it refuses --
+			# a null session, or input it cannot use -- so Nil here is a refusal,
+			# not an empty result. Calling Set() on it aborted the program (#1028).
+			if(results = Nil) {
+				return Nil;
+			};
 			results->Set(image, labels);
 
 			return results;
@@ -703,6 +745,21 @@ session->Close();
 		#~
 		Closes the session
 		~#
+		#~
+		Whether the model loaded.
+		
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before inferring: a closed session
+		returns Nil from every inference method, which is otherwise
+		indistinguishable from a model that found nothing.
+		@return true when the model is loaded and inference can run
+		~#
+
+		method : public : IsOpen() ~ Bool {
+			return @session <> 0;
+		}
+
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
@@ -1017,6 +1074,21 @@ session->Close();
 		#~
 		Closes the session
 		~#
+		#~
+		Whether the model loaded.
+		
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before inferring: a closed session
+		returns Nil from every inference method, which is otherwise
+		indistinguishable from a model that found nothing.
+		@return true when the model is loaded and inference can run
+		~#
+
+		method : public : IsOpen() ~ Bool {
+			return @session <> 0;
+		}
+
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
@@ -1654,6 +1726,21 @@ ids := tokenizer->Encode("What is 2+2?");
 		#~
 		Closes the session
 		~#
+		#~
+		Whether the model loaded.
+		
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before inferring: a closed session
+		returns Nil from every inference method, which is otherwise
+		indistinguishable from a model that found nothing.
+		@return true when the model is loaded and inference can run
+		~#
+
+		method : public : IsOpen() ~ Bool {
+			return @session <> 0;
+		}
+
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
@@ -1853,6 +1940,24 @@ text->PrintLine();
 		#~
 		Closes all three sessions (vision, embedding, decoder)
 		~#
+		#~
+		Whether the model loaded.
+		
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before inferring: a closed session
+		returns Nil from every inference method, which is otherwise
+		indistinguishable from a model that found nothing.
+		
+		All three sessions -- vision, embedding and decoder -- must have loaded;
+		any one of them missing leaves generation unable to run.
+		@return true when the model is loaded and inference can run
+		~#
+
+		method : public : IsOpen() ~ Bool {
+			return @vision_session <> 0 & @embed_session <> 0 & @decoder_session <> 0;
+		}
+
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 
@@ -2247,6 +2352,33 @@ text->PrintLine();
 		#~
 		Closes all loaded sessions and releases resources.
 		~#
+		#~
+		Whether the model loaded.
+		
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before inferring: a closed session
+		returns Nil from every inference method, which is otherwise
+		indistinguishable from a model that found nothing.
+		@return true when the model is loaded and inference can run
+		~#
+
+		method : public : IsOpen() ~ Bool {
+			return @det_session <> 0;
+		}
+
+		#~
+		Whether a recognizer model loaded.
+		
+		Separate from IsOpen because the recognizer is optional: the
+		detection-only constructor leaves it unset by design, so a false here
+		is not necessarily a failure.
+		@return true when a recognizer is loaded and Recognize can run
+		~#
+		method : public : IsRecognizerOpen() ~ Bool {
+			return @rec_session <> 0;
+		}
+
 		method : public : Close() ~ Nil {
 			array_args := Base->New[1];
 

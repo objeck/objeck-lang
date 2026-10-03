@@ -230,7 +230,7 @@ extern "C" {
             session = new Ort::Session(*env, model_path.c_str(), session_options);
          }
          catch(const std::exception& e) {
-            std::wcout << L"=> CoreML session failed (" << BytesToUnicode(e.what())
+            std::wcerr << L"=> CoreML session failed (" << BytesToUnicode(e.what())
                        << L"), falling back to CPU" << std::endl;
             Ort::SessionOptions cpu_options;
             cpu_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
@@ -244,6 +244,13 @@ extern "C" {
          APITools_SetIntValue(context, 0, (size_t)session);
       }
       catch(const std::exception& ex) {
+         // Write the failure into the return slot rather than leaving it as the
+         // caller found it. The slot is only set on the success path above, so a
+         // failed session used to return whatever was already there; it worked
+         // out as 0 because IntRef->New() defaults to 0, which made a real
+         // failure signal depend on the caller's initialisation. Objeck reads 0
+         // as "never opened" (API.Onnx.*Session->IsOpen) -- #1028.
+         APITools_SetIntValue(context, 0, 0);
          std::wcerr << L"Error creating ONNX session: " << BytesToUnicode(ex.what()) << std::endl;
       }
    }
