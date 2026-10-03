@@ -995,7 +995,10 @@ static void yolo_image_inf(VMContext& context) {
          if(class_result_obj) {
             class_result_obj[0] = class_id;
             if(class_id < labels_size) {
+               // the label came in as an argument, so it may be young, while the
+               // result object is natively allocated and therefore old (#864)
                class_result_obj[1] = labels_objs[class_id];
+               APITools_WriteBarrier(context, class_result_obj);
             }
             *((double*)(&class_result_obj[2])) = confidence;
 
@@ -1153,7 +1156,9 @@ static void resnet_image_inf(VMContext& context) {
 
       // copy label name
       if(image_index < (size_t)labels_size) {
+         // a received (possibly young) label into an old result object (#864)
          resnet_result_obj[3] = labels_objs[image_index];
+         APITools_WriteBarrier(context, resnet_result_obj);
       }
 
       APITools_SetObjectValue(context, 0, resnet_result_obj);
@@ -1608,7 +1613,9 @@ static void openpose_image_inf(VMContext& context) {
 
             openpose_class_obj[0] = i; // id
             if(i < (size_t)labels_size) {
+               // a received (possibly young) label into an old result object (#864)
                openpose_class_obj[1] = labels_objs[i]; // name
+               APITools_WriteBarrier(context, openpose_class_obj);
             }
             *((double*)(&openpose_class_obj[2])) = x_norm; // normalized x
             *((double*)(&openpose_class_obj[3])) = y_norm; // normalized y

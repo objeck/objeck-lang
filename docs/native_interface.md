@@ -222,13 +222,16 @@ Now look at how a library returns an object:
 ```cpp
 void APITools_SetObjectValue(VMContext& context, int index, size_t* obj) {
   ...
-  data_array[index] = (size_t)obj;      // a plain store, no barrier
+  data_array[index] = (size_t)obj;
+  APITools_WriteBarrier(context, context.data_array);
 }
 ```
 
-`lib_api.h` is compiled *into your library*, not into the VM. It cannot reach
-the collector's write barrier, so it cannot run one. And the argument array is
-always an old-generation object, because `AllocateArray` never uses the nursery.
+The barrier call is there now; it was not always. `lib_api.h` is compiled *into
+your library*, not into the VM, so it has no direct access to the collector — it
+reaches the barrier through a function pointer the VM puts on `VMContext`
+(`write_barrier`, added for #864). And the argument array is always an
+old-generation object, because `AllocateArray` never uses the nursery.
 
 So the VM allocates on your behalf in the old generation instead. Old objects
 are never moved, so nothing needs fixing up, and a major collection recurses
@@ -247,28 +250,42 @@ through primitive holders, which allocate nothing at all.
 down. It fails — with a dangling reference, in practice an "Invalid object cast"
 abort — against a VM that allocates native objects in the nursery.
 
-#### Why this, and not a barrier hook
+#### Why both, and not just one
 
-The principled fix is a write-barrier function pointer on `VMContext`, so
-`lib_api.h` could barrier its own stores the way the rest of the VM does. This
-is not that, and it is worth writing down why, along with when to change your
-mind.
+The allocator rule came first and the barrier hook came second. Both are here,
+and they cover different halves.
 
-Two reasons for the allocator instead. `lib_api.h` compiles *into each library*,
-so a header-only fix reaches only libraries that are rebuilt — every existing
-binary stays broken. And a barrier the author must remember to call is a bug
-that can be reintroduced by omission; allocating old makes the bug
-unrepresentable rather than merely absent.
+**The allocator rule covers every library already compiled.** `lib_api.h`
+compiles *into each library*, so a header-only fix reaches only libraries that
+are rebuilt. Allocating native objects old is VM-side, so it protects binaries
+nobody will ever rebuild. That was the right first move and it is still load
+bearing.
 
-Two things wrong with it, equally worth knowing. It costs almost nothing today
-— measured at +11% old-generation bytes with **no** additional collections —
-but only because arrays are *already* old-generation, so all that moved was a
+**The barrier hook covers what the allocator cannot: a store of an object the
+library did not allocate.** For a while the guard there was a written rule — do
+not store a received object into anything — because a barrier the author must
+remember to call is a bug that can be reintroduced by omission, and allocating
+old makes the bug unrepresentable rather than merely absent.
+
+The trouble is that the rule only makes the bug unrepresentable for values the
+library allocates. A received object is *not* one of those, so for that case the
+written rule was the entire enforcement — and it was being broken. `core/lib/onnx`
+stored a caller's label String into a natively-allocated result object at three
+sites, unbarriered, for as long as those entry points have existed (#864). It
+never bit, because callers happen to keep the labels array alive, but the rule
+was not holding anything down. A prohibition nothing checks is not a guard.
+
+So: the store is now expressible and correct rather than forbidden, and
+`tools/cicd/check_native_write_barrier.py` checks the shape in CI, which is what
+the written rule never could.
+
+One thing to keep in view. Allocating native objects old costs almost nothing
+today — measured at +11% old-generation bytes with **no** additional collections
+— but only because arrays are *already* old-generation, so all that moved was a
 small object header. **If array nursery allocation is ever enabled, that trade
-flips**, native returns become a real old-generation cost, and the barrier hook
-becomes the better answer. And it leaves two rules for one situation: the VM's
-own traps allocate young and barrier, native code allocates old and does not.
-That asymmetry is exactly the kind of thing that let the trap bug sit unnoticed
-beside a correctly barriered sibling.
+flips** and native returns become a real old-generation cost. The hook being in
+place is what makes revisiting that a change of one allocator argument rather
+than an ABI change.
 
 ### Arrays are born old, objects are born young
 
@@ -291,15 +308,30 @@ and a raw `size_t*` you were holding across that call may have moved. Re-fetch
 anything you need after a callback rather than holding it across one.
 
 The consequence for you: everything you allocate is old, and the argument array
-is old, so every store you make between them is old-to-old and needs no
-barrier. That is what makes `lib_api.h`'s plain stores correct.
+is old, so every store you make **between** them is old-to-old and needs no
+barrier.
 
-The one thing to avoid is storing an object **you did not allocate** into an
-array, or into an object you did allocate. That means an object the caller
-gave you, anything you read out of one, and anything a callback returned: any
-of them may be young, both of those containers are always old, and you have no
-way to run the barrier from library code. If you need to hand a caller's object
-back, put it in the slot it came from rather than into anything you built.
+The store that does need one is of an object **you did not allocate**:
+
+```cpp
+// a label that arrived as an argument, into a result object you built
+result_obj[1] = labels_objs[class_id];
+APITools_WriteBarrier(context, result_obj);   // <- required
+```
+
+Three kinds of value are "not yours": an object the caller gave you, anything
+you read out of one, and anything a callback returned. Any of them may be young,
+and every container you could put one in — an array, or an object you allocated
+— is old. `APITools_SetObjectValue` barriers on its own, so returning a value
+through the argument array is always safe; a direct store into an object is
+where you have to call it yourself.
+
+Pass the **container** you stored into, not the value, and pass it as the
+allocator returned it — for an array that is the base pointer, where `[0]` is
+the element count. Calling the barrier when it was not needed is harmless: its
+fast path returns immediately when the container is young or already recorded.
+`APITools_WriteBarrier` is also a no-op against a VM too old to supply the
+pointer, so a library built against this header still loads on one.
 
 This is not a hypothetical restriction — the VM's own traps had exactly this
 bug. A trap that returned `String[]` allocated the array (old), filled it with
