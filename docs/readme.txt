@@ -1,3 +1,15 @@
+v2026.10.0 (October 2, 2026)
+===
+A compiler bug that produced an infinite loop at the default optimization level, and System.ML gains what it needs to evaluate a classifier under a false-positive budget.
+
+v2026.10.0
+- A program could compile to an infinite loop at the default optimization level -- two helper methods containing the same construct were inlined into one shared label space, so the second body's jump resolved to the first body's label: a backward jump into already-executed code. Two helpers that each evaluate ->Abs() was enough, the program was correct at every lower optimization level, and -opt s3 is what obc uses when no level is given. One shipped library, misc.obl, was built wrong by it
+- A classifier can be evaluated against a false-positive budget, end to end -- CrossValidation->Evaluate returns the pooled out-of-fold score for every row, so a threshold can be chosen from scores no model saw its own row in and applied unchanged to held-out data. Folds can be stratified by any key rather than only the binary label. LogisticRegression implements ScoreModel, so a linear baseline goes through the same evaluation path as the tree classifiers
+- Metrics->AtThreshold reports what a threshold actually did -- recall, false-positive rate and precision at one given cutoff, the inverse of RecallAtFpr. Metrics->Bootstrap puts a percentile confidence interval around any of them; a resample drawing a single class cannot support the statistic, so those are discarded rather than averaged in and the surviving count travels with the interval
+- Reporting on rare categories -- Metrics->RecallByGroup breaks recall out per group and carries the count each rate rests on. UnseenGroups identifies categories a model was never trained on, PrecisionAtBaseRate reprojects a measured operating point onto an assumed prevalence, and ShuffleLabels gives the shuffled-label control a seed
+- A generic array parameter did not resolve across a library boundary -- Vector[]<T> as a parameter compiled inside a library and callers there reached it, but a program linking the library was told the method did not exist. The array dimension was dropped reading the signature back out of the .obl, which is why the same type worked as a return value and failed as a parameter
+- Build and test plumbing -- the generated POSIX Makefiles are build output rather than tracked source; a missing 'expect' let the debugger suite skip every test and still report success; and cov_scan.sh reported a submission Coverity had refused, which also deleted the archive it had promised to keep
+
 v2026.9.7 (September 28, 2026)
 ===
 Supervised classification becomes usable end to end -- a scaler that holds its statistics across a train/test split, stratified folds, metrics that take a score rather than a decision, classifiers that split continuous features, and a cross-validation runner over all of them. A Bool array returned from a method was mishandled in three separate places, and comparisons involving NaN now follow IEEE on every platform.
