@@ -23,6 +23,7 @@
 ~#
 use API.Onnx;
 use Collection;
+use System.IO.Filesystem;
 
 class OnnxFailedSession {
 	@ok : Bool;
@@ -46,7 +47,38 @@ class OnnxFailedSession {
 		};
 	}
 
+	#~
+	Whether libobjk_onnx is deployed on this platform.
+	
+	It is not built for linux-arm64: deploy_posix.sh notes that the vendored
+	onnxruntime there is an x86-64 binary in an aarch64 tree, so
+	verify_native_libs.sh declares onnx optional on that architecture. A test
+	that calls into it has to say so rather than fail, which is what
+	onnx_runtime_test.obs does and what this one missed on its first run.
+	@return true when the native library is present
+	~#
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		dll := "{$base}.dll";
+		so := "{$base}.so";
+		dylib := "{$base}.dylib";
+
+		return System.IO.Filesystem.File->Exists(dll) |
+			System.IO.Filesystem.File->Exists(so) |
+			System.IO.Filesystem.File->Exists(dylib);
+	}
+
 	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
 		missing := "this_model_does_not_exist_1028.onnx";
 
 		Yolo(missing);
