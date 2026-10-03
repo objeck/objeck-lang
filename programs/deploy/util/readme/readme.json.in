@@ -3,7 +3,7 @@
 		"string": "@VERSION@",
 		"year": @YEAR@
 	},
-	"title": "A generic array parameter resolves across a library boundary, and the generated POSIX Makefiles are treated as build output rather than tracked source",
+	"title": "A compiler bug that produced an infinite loop at the default optimization level, and System.ML gains what it needs to evaluate a classifier under a false-positive budget",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
@@ -14,10 +14,14 @@
 		{
 			"version": "v2026.10.0",
 			"items": [
+				"Compiler: a program could compile to an infinite loop at the default optimization level. Two helper methods containing the same construct were inlined into one shared label space, so the second body's jump resolved to the first body's label -- a backward jump into already-executed code. Two helpers that each evaluate ->Abs() was enough to trigger it, the program was correct at every lower optimization level, and -opt s3 is what obc uses when no level is given, so no flag was needed to reach it. One shipped library, misc.obl, was built wrong by it",
 				"Compiler: a generic array parameter now resolves across a library boundary. Vector[]<T> as a parameter compiled inside a library and callers in that same library reached it, but a program linking the library was told the method did not exist -- offering an alternative whose signature was missing its []. The array dimension was dropped reading the signature back out of the .obl, which is why the same type worked as a return value and failed as a parameter",
-				"Build: the generated POSIX Makefiles are build output rather than tracked source. deploy_posix.sh copies an architecture's Makefile over four working-tree paths, two of which were tracked, so building for one architecture left tracked files modified, while the other two were not ignored and could be committed by a bulk add",
-				"Tests: a missing 'expect' no longer lets the debugger suite skip every test and still report success. The runner exited 0 when expect was absent; it now fails unless OBJECK_ALLOW_SKIP=1 is set, and expect is listed as a test dependency",
-				"Release tooling: cov_scan.sh no longer reports a submission that Coverity refused. Coverity declines an upload with HTTP 200 and a plain-text reason, so curl exits 0 and --fail-with-body never tripped; the script printed Submitted over a rejected upload and then deleted the archive its own retry hint had just promised was kept"
+				"System.ML: a classifier can be evaluated against a false-positive budget, end to end. CrossValidation->Evaluate returns the pooled out-of-fold score for every row, so a decision threshold can be chosen from scores no model saw its own row in, and applied unchanged to held-out data. FoldSplit->GetTestRows reports which rows a fold holds, which is what that mapping requires: the test matrix is filled in ascending row order while the fold vector is shuffled, so pairing them naively scrambles the scores",
+				"System.ML: folds can be stratified by any key rather than only the binary label, which matters when the positive class is a union of rare categories -- a fold can be balanced on the label and still hold none of a category with a few dozen members. LogisticRegression implements ScoreModel, so a linear baseline goes through the same evaluation path as the tree classifiers",
+				"System.ML: Metrics->AtThreshold reports what a threshold actually did -- recall, false-positive rate and precision at one given cutoff. That is the inverse of RecallAtFpr, and the only way to check whether a budget chosen on one sample still holds on another",
+				"System.ML: Metrics->Bootstrap puts a percentile confidence interval around a metric, resampling scored instances in pairs through a ScoreMetric interface. A resample can draw a single class, which leaves AUC undefined; those are discarded rather than averaged in, and the count that survived travels with the interval",
+				"System.ML: Metrics->RecallByGroup breaks recall out per group and carries the count each rate rests on, because a recall of 1.0 over two positives is not the claim a recall of 1.0 over two thousand is. UnseenGroups identifies categories a model was never trained on, PrecisionAtBaseRate reprojects a measured operating point onto an assumed prevalence, and ShuffleLabels gives the shuffled-label control a seed",
+				"Build and tests: the generated POSIX Makefiles are build output rather than tracked source, so building one architecture no longer leaves tracked files modified. A missing 'expect' let the debugger suite skip every test and still report success. And cov_scan.sh reported a submission Coverity had refused, which also deleted the archive its own retry hint had just promised was kept"
 			]
 		},
 		{
