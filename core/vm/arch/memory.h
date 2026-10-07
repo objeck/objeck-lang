@@ -142,7 +142,8 @@ class MemoryManager {
   static std::atomic<size_t> free_memory_cache_size;
 
   // Young generation: contiguous bump-allocated region. YOUNG_REGION_SIZE bytes are
-  // always reserved; young_region_size is the usable LIMIT (--nursery /
+  // always reserved, and on Windows only young_region_size of that is committed
+  // (#841); young_region_size is the usable LIMIT (--nursery /
   // OBJECK_NURSERY), which every bump path (AllocateObject, the JIT inline
   // allocator) compares against. The collector walks [0, young_offset), and
   // young_offset never passes the limit, so nothing else depends on the limit.
