@@ -1,0 +1,863 @@
+#~~
+Copyright (c) 2026 Randy Hollines
+~~#
+
+use Web.HTTP, Collection, Data.JSON;
+
+#~
+Client for HTTP model-inference servers. Sends tensors to a running server and
+reads tensors back, so a model trained in TensorFlow, PyTorch, ONNX or
+scikit-learn can be used from Objeck without a native binding for each runtime.
+
+Two wire protocols, because no single one covers the field:
+
+- OPEN_INFERENCE is the KServe v2 protocol, spoken by NVIDIA Triton, KServe,
+  OpenVINO Model Server, Seldon MLServer and others. Triton alone serves
+  TensorFlow, ONNX, PyTorch, TensorRT and OpenVINO behind it, so this one
+  protocol reaches most servers and most runtimes. It is the default.
+- TF_SERVING is TensorFlow Serving's own REST API, which does not implement
+  KServe v2 and so needs its own request shape.
+
+The difference is confined to Client: a Tensor is the same object either way.
+Choosing the protocol rather than the server is the whole point -- a client
+written against one server's API reaches one server.
+
+This is a client, not a runtime. The server is a separate process the user
+runs; nothing here loads a model. For in-process inference without a server,
+API.Onnx runs models directly. Compile with -lib inference.
+~#
+bundle API.Inference {
+	#~
+	Shared state and response handling for the client.
+
+	The last error is static, matching API.Ollama: a failed call returns Nil and
+	the reason is asked for separately, rather than every method returning a
+	pair.
+	~#
+	class EndPoint {
+		@last_error : static : String;
+
+		function : SetLastError(last_error : String) ~ Nil {
+			@last_error := last_error;
+		}
+
+		#~
+		The reason the most recent call returned Nil.
+		@return last error, or Nil when nothing has failed
+		~#
+		function : GetLastError() ~ String {
+			return @last_error;
+		}
+
+		#~
+		Parses a response body, setting the last error when it is not JSON.
+
+		Inference servers answer errors as JSON too -- v2 uses {"error": "..."}
+		-- so a body that will not parse means something else went wrong
+		(an HTML error page from a proxy, a truncated response) and the body
+		itself is the most useful thing to report.
+		@param body response text
+		@return parsed element, or Nil
+		~#
+		function : ParseResponse(body : String) ~ JsonElement {
+			if(body = Nil | body->Size() = 0) {
+				SetLastError("empty response from the server");
+				return Nil;
+			};
+
+			parser := JsonParser->New(body);
+			if(<>parser->Parse()) {
+				SetLastError("response was not JSON: {$body}");
+				return Nil;
+			};
+
+			root := parser->GetRoot();
+			if(root = Nil) {
+				SetLastError("response parsed to nothing: {$body}");
+				return Nil;
+			};
+
+			# both protocols report errors in a JSON body rather than only in the
+			# status line, so this is where an error actually surfaces
+			error := root->Get("error");
+			if(error <> Nil) {
+				SetLastError(error->GetString());
+				return Nil;
+			};
+
+			return root;
+		}
+	}
+
+	#~
+	A named, shaped block of numbers -- one input to or output from a model.
+
+	Holds either floats or integers, named by the datatype. Both are needed in
+	practice: pixels and embeddings are FP32, while token ids for a language
+	model are INT64, and sending those as floats is not merely wasteful but
+	wrong past 2^53.
+
+	The shape is carried separately from the data, which stays flat. A 1x3x224x224
+	image is 150,528 floats with shape [1,3,224,224]; nesting it would cost a
+	Vector per row for no gain, since the server wants it flat in v2 anyway.
+	~#
+	class Tensor {
+		@name : String;
+		@datatype : String;
+		@shape : Int[];
+		@floats : Float[];
+		@ints : Int[];
+
+		#~
+		A float tensor, datatype FP32.
+		@param name the input or output name the model uses
+		@param shape dimensions, e.g. [1,3,224,224]
+		@param data elements, flat and in row-major order
+		~#
+		New(name : String, shape : Int[], data : Float[]) {
+			@name := name;
+			@datatype := "FP32";
+			@shape := shape;
+			@floats := data;
+		}
+
+		#~
+		An integer tensor, datatype INT64. Token ids and label indices.
+		@param name the input or output name the model uses
+		@param shape dimensions
+		@param data elements, flat and in row-major order
+		~#
+		New(name : String, shape : Int[], data : Int[]) {
+			@name := name;
+			@datatype := "INT64";
+			@shape := shape;
+			@ints := data;
+		}
+
+		#~
+		A tensor whose datatype is named explicitly, for the types neither
+		constructor covers -- FP16, INT32, UINT8, BOOL. The data is still carried
+		as floats or integers; the datatype tells the server how to read it.
+		@param name the input or output name the model uses
+		@param datatype a KServe v2 datatype, e.g. "FP16", "INT32", "BOOL"
+		@param shape dimensions
+		@param data elements
+		~#
+		New(name : String, datatype : String, shape : Int[], data : Float[]) {
+			@name := name;
+			@datatype := datatype;
+			@shape := shape;
+			@floats := data;
+		}
+
+		method : public : GetName() ~ String { return @name; }
+		method : public : GetDatatype() ~ String { return @datatype; }
+		method : public : GetShape() ~ Int[] { return @shape; }
+
+		#~
+		The float elements, or Nil for an integer tensor.
+		@return elements, or Nil
+		~#
+		method : public : GetFloats() ~ Float[] { return @floats; }
+
+		#~
+		The integer elements, or Nil for a float tensor.
+		@return elements, or Nil
+		~#
+		method : public : GetInts() ~ Int[] { return @ints; }
+
+		#~
+		Whether this tensor carries floats rather than integers.
+		@return true for a float tensor
+		~#
+		method : public : IsFloat() ~ Bool { return @floats <> Nil; }
+
+		#~
+		Elements held, which is the product of the shape for a well-formed
+		tensor. Worth comparing against the shape before sending: a mismatch is
+		rejected by the server with a message that names neither.
+		@return element count
+		~#
+		method : public : GetCount() ~ Int {
+			if(@floats <> Nil) {
+				return @floats->Size();
+			}
+			else if(@ints <> Nil) {
+				return @ints->Size();
+			};
+
+			return 0;
+		}
+
+		#~
+		The product of the dimensions, which GetCount must equal.
+		@return expected element count, or 0 for an unset shape
+		~#
+		method : public : GetShapeProduct() ~ Int {
+			if(@shape = Nil | @shape->Size() = 0) {
+				return 0;
+			};
+
+			total := 1;
+			each(i : @shape) {
+				total *= @shape[i];
+			};
+
+			return total;
+		}
+
+		#~
+		Whether the element count matches the shape.
+		@return true when the tensor is internally consistent
+		~#
+		method : public : IsConsistent() ~ Bool {
+			return GetCount() = GetShapeProduct();
+		}
+
+		method : public : ToString() ~ String {
+			dims := "";
+			if(@shape <> Nil) {
+				each(i : @shape) {
+					if(i > 0) {
+						dims += ",";
+					};
+					d := @shape[i];
+					dims += "{$d}";
+				};
+			};
+			n := GetCount();
+
+			return "{$@name}: {$@datatype}[{$dims}], {$n} element(s)";
+		}
+	}
+
+	#~
+	What a server reports about a model: the names, shapes and datatypes it
+	expects and returns.
+
+	Worth asking for once before inferring. A shape or name mismatch is
+	otherwise reported by the server as a rejected request, and the message
+	rarely says which tensor was wrong.
+	~#
+	class ModelMetadata {
+		@name : String;
+		@platform : String;
+		@inputs : Vector<Tensor>;
+		@outputs : Vector<Tensor>;
+
+		New(name : String, platform : String, inputs : Vector<Tensor>, outputs : Vector<Tensor>) {
+			@name := name;
+			@platform := platform;
+			@inputs := inputs;
+			@outputs := outputs;
+		}
+
+		method : public : GetName() ~ String { return @name; }
+
+		#~
+		The runtime behind the model, when the server reports one -- "tensorflow",
+		"onnxruntime", "pytorch". Empty for servers that do not say.
+		@return platform name
+		~#
+		method : public : GetPlatform() ~ String { return @platform; }
+
+		#~
+		Expected inputs, carrying names, shapes and datatypes but no data. A
+		dimension of -1 means the server accepts any size there, which is usually
+		the batch dimension.
+		@return input descriptions
+		~#
+		method : public : GetInputs() ~ Vector<Tensor> { return @inputs; }
+
+		#~
+		Produced outputs, in the same form.
+		@return output descriptions
+		~#
+		method : public : GetOutputs() ~ Vector<Tensor> { return @outputs; }
+
+		method : public : ToString() ~ String {
+			ins := @inputs->Size();
+			outs := @outputs->Size();
+
+			return "{$@name} ({$@platform}): {$ins} input(s), {$outs} output(s)";
+		}
+	}
+
+	#~
+	A connection to one inference server.
+
+	Holds the host and the wire protocol; a Tensor is the same object either
+	way, so switching servers is a constructor argument rather than a rewrite.
+
+	```
+	client := Client->New("http://localhost:8000");
+	input := Tensor->New("input", shape, pixels);
+	outputs := client->Predict("resnet50", input);
+	if(outputs = Nil) {
+		EndPoint->GetLastError()->PrintLine();
+	};
+	```
+	~#
+	class Client {
+		#~
+		Which wire protocol the server speaks.
+		~#
+		enum Protocol {
+			#~
+			KServe v2, the Open Inference Protocol. Triton, KServe, OpenVINO
+			Model Server and Seldon MLServer. Flat data with an explicit shape
+			and datatype in both directions, which is why it is the default.
+			~#
+			OPEN_INFERENCE,
+			#~
+			TensorFlow Serving's own REST API. It does not implement KServe v2,
+			so it needs its own request shape: the tensor is nested to express
+			its shape rather than carrying one, and the datatype is inferred.
+			~#
+			TF_SERVING
+		}
+
+		@host : String;
+		@protocol : Client->Protocol;
+
+		#~
+		A client speaking KServe v2, which reaches the most servers.
+		@param host base URL, e.g. "http://localhost:8000"
+		~#
+		New(host : String) {
+			@host := Trim(host);
+			@protocol := Client->Protocol->OPEN_INFERENCE;
+		}
+
+		#~
+		A client speaking a chosen protocol.
+		@param host base URL, e.g. "http://localhost:8501" for TensorFlow Serving
+		@param protocol the server's wire protocol
+		~#
+		New(host : String, protocol : Client->Protocol) {
+			@host := Trim(host);
+			@protocol := protocol;
+		}
+
+		#~ A trailing slash would produce a double slash in every URL. ~#
+		function : Trim(host : String) ~ String {
+			if(host = Nil) {
+				return "";
+			};
+
+			out := host;
+			while(out->Size() > 0 & out->Get(out->Size() - 1) = '/') {
+				out := out->SubString(0, out->Size() - 1);
+			};
+
+			return out;
+		}
+
+		method : public : GetHost() ~ String { return @host; }
+		method : public : GetProtocol() ~ Client->Protocol { return @protocol; }
+
+		#~
+		Runs a model on one input tensor, for the common single-input case.
+		@param model model name as the server knows it
+		@param input the input tensor
+		@return output tensors, or Nil with EndPoint->GetLastError set
+		~#
+		method : public : Predict(model : String, input : Tensor) ~ Vector<Tensor> {
+			if(input = Nil) {
+				EndPoint->SetLastError("no input tensor");
+				return Nil;
+			};
+
+			inputs := Vector->New()<Tensor>;
+			inputs->AddBack(input);
+
+			return Predict(model, inputs);
+		}
+
+		#~
+		Runs a model.
+
+		Each input is checked against its own shape before anything is sent: a
+		count that disagrees with the shape is rejected by the server with a
+		message that names neither the tensor nor the mismatch, so it is cheaper
+		to catch here.
+		@param model model name as the server knows it
+		@param inputs input tensors, named as the model expects
+		@return output tensors, or Nil with EndPoint->GetLastError set
+		~#
+		method : public : Predict(model : String, inputs : Vector<Tensor>) ~ Vector<Tensor> {
+			if(model = Nil | model->Size() = 0) {
+				EndPoint->SetLastError("no model name");
+				return Nil;
+			};
+
+			if(inputs = Nil | inputs->IsEmpty()) {
+				EndPoint->SetLastError("no input tensors");
+				return Nil;
+			};
+
+			each(tensor in inputs) {
+				if(<>tensor->IsConsistent()) {
+					name := tensor->GetName();
+					have := tensor->GetCount();
+					want := tensor->GetShapeProduct();
+					EndPoint->SetLastError("tensor '{$name}' holds {$have} element(s) but its shape wants {$want}");
+					return Nil;
+				};
+			};
+
+			if(@protocol = Client->Protocol->TF_SERVING) {
+				return PredictTfServing(model, inputs);
+			};
+
+			return PredictOpenInference(model, inputs);
+		}
+
+		#~
+		Whether the server reports the model loaded and ready to serve.
+
+		Worth calling once at start-up: a model name the server does not know,
+		or one still loading, is otherwise a rejected inference much later.
+		@param model model name
+		@return true when the server says it is ready
+		~#
+		method : public : IsReady(model : String) ~ Bool {
+			if(model = Nil) {
+				return false;
+			};
+
+			if(@protocol = Client->Protocol->TF_SERVING) {
+				# TF Serving reports {"model_version_status":[{"state":"AVAILABLE"}]}
+				url := Url->New("{$@host}/v1/models/{$model}");
+				response := Web.HTTP.HttpClient->QuickGet(url);
+				if(response = Nil) {
+					EndPoint->SetLastError("no response from {$@host}");
+					return false;
+				};
+
+				content := response->GetContent();
+				if(content = Nil) {
+					return false;
+				};
+
+				root := EndPoint->ParseResponse(content->ToString());
+				if(root = Nil) {
+					return false;
+				};
+
+				status := root->Get("model_version_status");
+				if(status = Nil | status->Size() = 0) {
+					return false;
+				};
+
+				state := status->Get(0)->Get("state");
+
+				return state <> Nil & state->GetString()->Equals("AVAILABLE");
+			};
+
+			# v2 answers 200 with an empty body when ready, and 404 when not
+			url := Url->New("{$@host}/v2/models/{$model}/ready");
+			response := Web.HTTP.HttpClient->QuickGet(url);
+			if(response = Nil) {
+				EndPoint->SetLastError("no response from {$@host}");
+				return false;
+			};
+
+			return response->GetCode() = 200;
+		}
+
+		#~
+		What the server says the model expects and returns.
+
+		Only implemented for KServe v2, whose metadata response is specified.
+		TensorFlow Serving's /metadata returns a signature definition in a
+		different shape; it returns Nil with the last error set rather than
+		guessing at it.
+		@param model model name
+		@return metadata, or Nil with EndPoint->GetLastError set
+		~#
+		method : public : Metadata(model : String) ~ ModelMetadata {
+			if(model = Nil) {
+				EndPoint->SetLastError("no model name");
+				return Nil;
+			};
+
+			if(@protocol = Client->Protocol->TF_SERVING) {
+				EndPoint->SetLastError("metadata is only implemented for the KServe v2 protocol");
+				return Nil;
+			};
+
+			url := Url->New("{$@host}/v2/models/{$model}");
+			response := Web.HTTP.HttpClient->QuickGet(url);
+			if(response = Nil) {
+				EndPoint->SetLastError("no response from {$@host}");
+				return Nil;
+			};
+
+			content := response->GetContent();
+			if(content = Nil) {
+				EndPoint->SetLastError("empty metadata response");
+				return Nil;
+			};
+
+			root := EndPoint->ParseResponse(content->ToString());
+			if(root = Nil) {
+				return Nil;
+			};
+
+			platform := "";
+			platform_elem := root->Get("platform");
+			if(platform_elem <> Nil) {
+				platform := platform_elem->GetString();
+			};
+
+			return ModelMetadata->New(model, platform,
+				ReadDescriptors(root->Get("inputs")),
+				ReadDescriptors(root->Get("outputs")));
+		}
+
+		#~ Metadata tensors carry a name, shape and datatype but no data. ~#
+		method : ReadDescriptors(list : JsonElement) ~ Vector<Tensor> {
+			out := Vector->New()<Tensor>;
+			if(list = Nil) {
+				return out;
+			};
+
+			each(i : list->Size()) {
+				entry := list->Get(i);
+				if(entry <> Nil) {
+					name := "";
+					name_elem := entry->Get("name");
+					if(name_elem <> Nil) {
+						name := name_elem->GetString();
+					};
+
+					datatype := "FP32";
+					dt_elem := entry->Get("datatype");
+					if(dt_elem <> Nil) {
+						datatype := dt_elem->GetString();
+					};
+
+					shape := ReadShape(entry->Get("shape"));
+					out->AddBack(Tensor->New(name, datatype, shape, Float->New[0]));
+				};
+			};
+
+			return out;
+		}
+
+		method : ReadShape(list : JsonElement) ~ Int[] {
+			if(list = Nil) {
+				return Int->New[0];
+			};
+
+			shape := Int->New[list->Size()];
+			each(i : list->Size()) {
+				shape[i] := list->Get(i)->GetInt();
+			};
+
+			return shape;
+		}
+
+		#~
+		The request body this client would send, without sending it.
+		
+		A rejected request is reported by the server in terms of what it received,
+		which is hard to act on without seeing what was sent -- the two protocols
+		shape the same tensors very differently, and a tensor nested to the wrong
+		depth looks identical in Objeck. Printing this is usually faster than
+		reading the error.
+		@param inputs input tensors
+		@return the JSON body, or Nil when the inputs are unusable
+		~#
+		method : public : DescribeRequest(inputs : Vector<Tensor>) ~ String {
+			if(inputs = Nil | inputs->IsEmpty()) {
+				EndPoint->SetLastError("no input tensors");
+				return Nil;
+			};
+
+			each(tensor in inputs) {
+				if(<>tensor->IsConsistent()) {
+					name := tensor->GetName();
+					EndPoint->SetLastError("tensor '{$name}' does not match its shape");
+					return Nil;
+				};
+			};
+
+			if(@protocol = Client->Protocol->TF_SERVING) {
+				return BuildTfServingBody(inputs)->ToString();
+			};
+
+			return BuildOpenInferenceBody(inputs)->ToString();
+		}
+
+		# ------------------------------------------------------ KServe v2 ------
+
+		method : BuildOpenInferenceBody(inputs : Vector<Tensor>) ~ JsonElement {
+			body := JsonElement->New(JsonElement->JsonType->OBJECT);
+			list := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			each(tensor in inputs) {
+				entry := JsonElement->New(JsonElement->JsonType->OBJECT);
+				entry->Insert("name", tensor->GetName());
+				entry->Insert("shape", ShapeToJson(tensor->GetShape()));
+				entry->Insert("datatype", tensor->GetDatatype());
+				entry->Insert("data", FlatToJson(tensor));
+				list->Add(entry);
+			};
+			body->Insert("inputs", list);
+
+			return body;
+		}
+
+		method : PredictOpenInference(model : String, inputs : Vector<Tensor>) ~ Vector<Tensor> {
+			body := BuildOpenInferenceBody(inputs);
+
+			url := Url->New("{$@host}/v2/models/{$model}/infer");
+			root := Post(url, body);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			outputs := root->Get("outputs");
+			if(outputs = Nil) {
+				EndPoint->SetLastError("v2 response had no 'outputs'");
+				return Nil;
+			};
+
+			out := Vector->New()<Tensor>;
+			each(i : outputs->Size()) {
+				entry := outputs->Get(i);
+				name := "";
+				name_elem := entry->Get("name");
+				if(name_elem <> Nil) {
+					name := name_elem->GetString();
+				};
+
+				datatype := "FP32";
+				dt_elem := entry->Get("datatype");
+				if(dt_elem <> Nil) {
+					datatype := dt_elem->GetString();
+				};
+
+				shape := ReadShape(entry->Get("shape"));
+				data := JsonToFlat(entry->Get("data"));
+				out->AddBack(Tensor->New(name, datatype, shape, data));
+			};
+
+			return out;
+		}
+
+		# ------------------------------------------- TensorFlow Serving v1 -----
+
+		#~
+		TF Serving infers a tensor's shape from how deeply its data is nested, so
+		the flat elements have to be rebuilt into nested arrays on the way out
+		and flattened again on the way back. That costs a JsonElement per row
+		rather than per tensor, which is the main reason to prefer v2 for
+		anything image-sized.
+		~#
+		method : BuildTfServingBody(inputs : Vector<Tensor>) ~ JsonElement {
+			body := JsonElement->New(JsonElement->JsonType->OBJECT);
+			named := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			each(tensor in inputs) {
+				named->Insert(tensor->GetName(), Nest(tensor, 0, 0));
+			};
+			body->Insert("inputs", named);
+
+			return body;
+		}
+
+		method : PredictTfServing(model : String, inputs : Vector<Tensor>) ~ Vector<Tensor> {
+			body := BuildTfServingBody(inputs);
+
+			url := Url->New("{$@host}/v1/models/{$model}:predict");
+			root := Post(url, body);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			out := Vector->New()<Tensor>;
+
+			# a single-output model answers {"outputs": <nested>}; a multi-output
+			# one answers {"outputs": {"name": <nested>, ...}}
+			outputs := root->Get("outputs");
+			if(outputs = Nil) {
+				# the row format answers under "predictions" instead
+				outputs := root->Get("predictions");
+				if(outputs = Nil) {
+					EndPoint->SetLastError("v1 response had neither 'outputs' nor 'predictions'");
+					return Nil;
+				};
+
+				out->AddBack(Tensor->New("predictions", "FP32", NestedShape(outputs), JsonToFlat(outputs)));
+
+				return out;
+			};
+
+			if(outputs->GetType() = JsonElement->JsonType->ARRAY) {
+				out->AddBack(Tensor->New("outputs", "FP32", NestedShape(outputs), JsonToFlat(outputs)));
+
+				return out;
+			};
+
+			# named outputs; the element names are the tensor names
+			names := outputs->GetNames();
+			if(names = Nil) {
+				EndPoint->SetLastError("v1 named outputs could not be read");
+				return Nil;
+			};
+
+			each(i : names->Size()) {
+				name := names->Get(i);
+				value := outputs->Get(name);
+				out->AddBack(Tensor->New(name, "FP32", NestedShape(value), JsonToFlat(value)));
+			};
+
+			return out;
+		}
+
+		#~ Rebuilds nested arrays from flat data, one level per dimension. ~#
+		method : Nest(tensor : Tensor, dim : Int, offset : Int) ~ JsonElement {
+			shape := tensor->GetShape();
+			if(shape = Nil | dim >= shape->Size()) {
+				return JsonElement->New(JsonElement->JsonType->ARRAY);
+			};
+
+			node := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			if(dim = shape->Size() - 1) {
+				# innermost: the elements themselves
+				floats := tensor->GetFloats();
+				ints := tensor->GetInts();
+				each(i : shape[dim]) {
+					if(floats <> Nil) {
+						node->Add(floats[offset + i]);
+					}
+					else if(ints <> Nil) {
+						node->Add(ints[offset + i]);
+					};
+				};
+
+				return node;
+			};
+
+			stride := 1;
+			k := dim + 1;
+			while(k < shape->Size()) {
+				stride *= shape[k];
+				k += 1;
+			};
+
+			each(i : shape[dim]) {
+				node->Add(Nest(tensor, dim + 1, offset + i * stride));
+			};
+
+			return node;
+		}
+
+		#~ The shape implied by how deeply a response is nested. ~#
+		method : NestedShape(node : JsonElement) ~ Int[] {
+			dims := Vector->New()<IntRef>;
+			walk := node;
+			while(walk <> Nil & walk->GetType() = JsonElement->JsonType->ARRAY & walk->Size() > 0) {
+				dims->AddBack(IntRef->New(walk->Size()));
+				walk := walk->Get(0);
+			};
+
+			shape := Int->New[dims->Size()];
+			each(i : dims->Size()) {
+				shape[i] := dims->Get(i)->Get();
+			};
+
+			return shape;
+		}
+
+		# ------------------------------------------------------- shared --------
+
+		method : Post(url : Url, body : JsonElement) ~ JsonElement {
+			request := body->ToString();
+			response := Web.HTTP.HttpClient->QuickPost(url, request->ToByteArray(), "application/json");
+			if(response = Nil) {
+				EndPoint->SetLastError("no response from {$@host}");
+				return Nil;
+			};
+
+			content := response->GetContent();
+			if(content = Nil) {
+				code := response->GetCode();
+				EndPoint->SetLastError("empty response body, HTTP {$code}");
+				return Nil;
+			};
+
+			return EndPoint->ParseResponse(content->ToString());
+		}
+
+		function : ShapeToJson(shape : Int[]) ~ JsonElement {
+			node := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(shape <> Nil) {
+				each(i : shape) {
+					node->Add(shape[i]);
+				};
+			};
+
+			return node;
+		}
+
+		function : FlatToJson(tensor : Tensor) ~ JsonElement {
+			node := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			floats := tensor->GetFloats();
+			if(floats <> Nil) {
+				each(i : floats) {
+					node->Add(floats[i]);
+				};
+
+				return node;
+			};
+
+			ints := tensor->GetInts();
+			if(ints <> Nil) {
+				each(i : ints) {
+					node->Add(ints[i]);
+				};
+			};
+
+			return node;
+		}
+
+		#~
+		Flattens a response of any nesting depth into one float array, in
+		row-major order -- the same order Nest wrote it out in.
+		~#
+		function : JsonToFlat(node : JsonElement) ~ Float[] {
+			out := Vector->New()<FloatRef>;
+			Collect(node, out);
+
+			data := Float->New[out->Size()];
+			each(i : out->Size()) {
+				data[i] := out->Get(i)->Get();
+			};
+
+			return data;
+		}
+
+		function : Collect(node : JsonElement, out : Vector<FloatRef>) ~ Nil {
+			if(node = Nil) {
+				return;
+			};
+
+			if(node->GetType() = JsonElement->JsonType->ARRAY) {
+				each(i : node->Size()) {
+					Collect(node->Get(i), out);
+				};
+
+				return;
+			};
+
+			out->AddBack(FloatRef->New(node->GetFloat()));
+		}
+	}
+
+}
