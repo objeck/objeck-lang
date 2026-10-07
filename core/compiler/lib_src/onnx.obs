@@ -144,11 +144,21 @@ bundle API.Onnx {
 		}
 
 		method : public : Close() ~ Nil {
+			# Zeroing the handle is what makes this idempotent. close_session deletes
+			# the Ort::Session and nulls its own LOCAL copy, which the caller never
+			# sees, so a handle left here is a pointer to freed memory: a second Close
+			# used to be a double free (0xC0000374 / 0xC0000005) and IsOpen() reported
+			# true forever after -- which #1028 made the documented way to tell a live
+			# session from a dead one. #1046.
+			if(@session = 0) {
+				return;
+			};
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@session := 0;
 		}
 
 		#~
@@ -520,11 +530,21 @@ each(cls in result->GetClassifications()) {
 		}
 
 		method : public : Close() ~ Nil {
+			# Zeroing the handle is what makes this idempotent. close_session deletes
+			# the Ort::Session and nulls its own LOCAL copy, which the caller never
+			# sees, so a handle left here is a pointer to freed memory: a second Close
+			# used to be a double free (0xC0000374 / 0xC0000005) and IsOpen() reported
+			# true forever after -- which #1028 made the documented way to tell a live
+			# session from a dead one. #1046.
+			if(@session = 0) {
+				return;
+			};
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@session := 0;
 		}
 
 		#~
@@ -761,11 +781,21 @@ session->Close();
 		}
 
 		method : public : Close() ~ Nil {
+			# Zeroing the handle is what makes this idempotent. close_session deletes
+			# the Ort::Session and nulls its own LOCAL copy, which the caller never
+			# sees, so a handle left here is a pointer to freed memory: a second Close
+			# used to be a double free (0xC0000374 / 0xC0000005) and IsOpen() reported
+			# true forever after -- which #1028 made the documented way to tell a live
+			# session from a dead one. #1046.
+			if(@session = 0) {
+				return;
+			};
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@session := 0;
 		}
 
 		#~
@@ -1090,11 +1120,21 @@ session->Close();
 		}
 
 		method : public : Close() ~ Nil {
+			# Zeroing the handle is what makes this idempotent. close_session deletes
+			# the Ort::Session and nulls its own LOCAL copy, which the caller never
+			# sees, so a handle left here is a pointer to freed memory: a second Close
+			# used to be a double free (0xC0000374 / 0xC0000005) and IsOpen() reported
+			# true forever after -- which #1028 made the documented way to tell a live
+			# session from a dead one. #1046.
+			if(@session = 0) {
+				return;
+			};
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@session := 0;
 		}
 
 		#~
@@ -1742,11 +1782,21 @@ ids := tokenizer->Encode("What is 2+2?");
 		}
 
 		method : public : Close() ~ Nil {
+			# Zeroing the handle is what makes this idempotent. close_session deletes
+			# the Ort::Session and nulls its own LOCAL copy, which the caller never
+			# sees, so a handle left here is a pointer to freed memory: a second Close
+			# used to be a double free (0xC0000374 / 0xC0000005) and IsOpen() reported
+			# true forever after -- which #1028 made the documented way to tell a live
+			# session from a dead one. #1046.
+			if(@session = 0) {
+				return;
+			};
 			array_args := Base->New[1];
 			array_args[0] := IntRef->New(@session);
 
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@session := 0;
 		}
 
 		#~
@@ -1959,19 +2009,31 @@ text->PrintLine();
 		}
 
 		method : public : Close() ~ Nil {
+			# Zeroing the handle is what makes this idempotent. close_session deletes
+			# the Ort::Session and nulls its own LOCAL copy, which the caller never
+			# sees, so a handle left here is a pointer to freed memory: a second Close
+			# used to be a double free (0xC0000374 / 0xC0000005) and IsOpen() reported
+			# true forever after -- which #1028 made the documented way to tell a live
+			# session from a dead one. #1046.
+			if(@vision_session = 0 & @embed_session = 0 & @decoder_session = 0) {
+				return;
+			};
 			array_args := Base->New[1];
 
 			array_args[0] := IntRef->New(@vision_session);
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@vision_session := 0;
 
 			array_args[0] := IntRef->New(@embed_session);
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@embed_session := 0;
 
 			array_args[0] := IntRef->New(@decoder_session);
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@decoder_session := 0;
 		}
 
 		#~
@@ -2380,16 +2442,27 @@ text->PrintLine();
 		}
 
 		method : public : Close() ~ Nil {
+			# Zeroing the handle is what makes this idempotent. close_session deletes
+			# the Ort::Session and nulls its own LOCAL copy, which the caller never
+			# sees, so a handle left here is a pointer to freed memory: a second Close
+			# used to be a double free (0xC0000374 / 0xC0000005) and IsOpen() reported
+			# true forever after -- which #1028 made the documented way to tell a live
+			# session from a dead one. #1046.
+			if(@det_session = 0 & @rec_session = 0) {
+				return;
+			};
 			array_args := Base->New[1];
 
 			array_args[0] := IntRef->New(@det_session);
 			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@det_session := 0;
 
 			if(@rec_session <> 0) {
 				array_args[0] := IntRef->New(@rec_session);
 				if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+				@rec_session := 0;
 			};
 		}
 
@@ -2483,6 +2556,766 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 				dot += emb1[i] * emb2[i];
 			};
 			return dot;
+		}
+	}
+
+	#~
+	A named tensor: what a model takes in and what it hands back.
+
+	Elements are flat and row-major, and the shape says how to read them. A
+	tensor is carried as Float[] whatever the model's own element type is --
+	`Session` asks the model what each input wants and converts, so nothing here
+	has to know FP16 from INT64 to run a model.
+
+	```
+	pixels := Float->New[1 * 3 * 224 * 224];
+	# ... fill pixels ...
+	input := Tensor->New("data", [1, 3, 224, 224], pixels);
+	```
+	~#
+	class Tensor {
+		@name : String;
+		@datatype : String;
+		@shape : Int[];
+		@data : Float[];
+
+		#~
+		A tensor of floats.
+		@param name the input or output name the model uses
+		@param shape dimensions, e.g. [1,3,224,224]
+		@param data elements, flat and row-major
+		~#
+		New(name : String, shape : Int[], data : Float[]) {
+			@name := name;
+			@datatype := "FP32";
+			@shape := shape;
+			@data := data;
+		}
+
+		#~
+		A tensor of integers -- token ids, class indexes, an attention mask.
+
+		Converted to Float[] for the crossing, which is exact: a Float holds
+		every integer up to 2^53 (9,007,199,254,740,992) without loss, and token
+		ids, indexes and masks are orders of magnitude below that. A value
+		outside that range is REFUSED here rather than rounded, because once it
+		has been rounded nothing downstream can tell that it was.
+		@param name the input or output name the model uses
+		@param shape dimensions
+		@param data elements, flat and row-major
+		~#
+		New(name : String, shape : Int[], data : Int[]) {
+			@name := name;
+			@datatype := "INT64";
+			@shape := shape;
+
+			if(data <> Nil) {
+				exact_limit := 9007199254740992;
+				converted := Float->New[data->Size()];
+
+				for(i := 0; i < data->Size(); i += 1;) {
+					value := data[i];
+					if(value > exact_limit | value < -exact_limit) {
+						">>> ONNX: tensor '{$name}' element {$i} is {$value}, which a Float cannot hold exactly. Integer tensors are limited to +/-2^53. <<<"->ErrorLine();
+						return;
+					};
+					converted[i] := value->ToFloat();
+				};
+
+				@data := converted;
+			};
+		}
+
+		#~
+		A tensor whose element type is named explicitly. Rarely needed on input
+		-- the model's own declared type wins there -- but it is how a result
+		reports what the model actually produced.
+		@param name the input or output name the model uses
+		@param datatype an ONNX element type, e.g. "FP32", "FP16", "INT64", "BOOL"
+		@param shape dimensions
+		@param data elements, flat and row-major
+		~#
+		New(name : String, datatype : String, shape : Int[], data : Float[]) {
+			@name := name;
+			@datatype := datatype;
+			@shape := shape;
+			@data := data;
+		}
+
+		#~
+		The name the model knows this tensor by.
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		The element type. On a result this is what the model produced; on an
+		input it is advisory, since the model's own declaration is used.
+		@return element type name
+		~#
+		method : public : GetDatatype() ~ String {
+			return @datatype;
+		}
+
+		#~
+		Dimensions, outermost first.
+		@return shape
+		~#
+		method : public : GetShape() ~ Int[] {
+			return @shape;
+		}
+
+		#~
+		Elements, flat and row-major.
+		@return elements, or Nil when the tensor was refused at construction
+		~#
+		method : public : GetData() ~ Float[] {
+			return @data;
+		}
+
+		#~
+		Elements rounded back to integers. Exact for any value within +/-2^53,
+		which is every value an integer tensor is allowed to hold.
+		@return elements as integers, or Nil
+		~#
+		method : public : GetInts() ~ Int[] {
+			if(@data = Nil) {
+				return Nil;
+			};
+
+			out := Int->New[@data->Size()];
+			for(i := 0; i < @data->Size(); i += 1;) {
+				out[i] := @data[i]->ToInt();
+			};
+
+			return out;
+		}
+
+		#~
+		Elements held.
+		@return element count
+		~#
+		method : public : GetCount() ~ Int {
+			if(@data = Nil) {
+				return 0;
+			};
+
+			return @data->Size();
+		}
+
+		#~
+		The product of the dimensions, which GetCount must equal.
+		@return expected element count, or 0 for an unset shape
+		~#
+		method : public : GetShapeProduct() ~ Int {
+			if(@shape = Nil | @shape->Size() = 0) {
+				return 0;
+			};
+
+			total := 1;
+			each(i : @shape) {
+				total *= @shape[i];
+			};
+
+			return total;
+		}
+
+		#~
+		Whether the element count matches the shape. Worth checking before a run:
+		a mismatch is otherwise refused by the native layer, which can say the
+		counts disagree but not which tensor caused it.
+		@return true when the tensor is internally consistent
+		~#
+		method : public : IsConsistent() ~ Bool {
+			# No shape, or data the constructor refused, is inconsistent. An
+			# EMPTY tensor is not: [1,32,0,96] with no elements is how every SLM
+			# passes its key/value cache on the first forward pass, and it is
+			# exactly what a "count must be positive" check gets wrong.
+			if(@data = Nil | @shape = Nil | @shape->Size() = 0) {
+				return false;
+			};
+
+			return GetCount() = GetShapeProduct();
+		}
+
+		method : public : ToString() ~ String {
+			dims := "";
+			if(@shape <> Nil) {
+				each(i : @shape) {
+					if(i > 0) {
+						dims += ",";
+					};
+					d := @shape[i];
+					dims += "{$d}";
+				};
+			};
+			n := GetCount();
+
+			return "{$@name}: {$@datatype}[{$dims}], {$n} element(s)";
+		}
+	}
+
+	#~
+	One input or output in a model's signature: its name, element type and shape.
+
+	A dimension the model leaves symbolic -- batch size, sequence length -- is
+	reported as -1. That is not a gap in the report: the model genuinely does not
+	fix it, and the caller is the one who chooses.
+	~#
+	class TensorSpec {
+		@name : String;
+		@datatype : String;
+		@shape : Int[];
+
+		New(name : String, datatype : String, shape : Int[]) {
+			@name := name;
+			@datatype := datatype;
+			@shape := shape;
+		}
+
+		#~
+		The name to use for this tensor in a run.
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		The element type the model declares, e.g. "FP32", "INT64".
+		@return element type name
+		~#
+		method : public : GetDatatype() ~ String {
+			return @datatype;
+		}
+
+		#~
+		Dimensions, with -1 for any the model leaves to the caller.
+		@return shape
+		~#
+		method : public : GetShape() ~ Int[] {
+			return @shape;
+		}
+
+		#~
+		Whether every dimension is fixed by the model.
+		@return true when no dimension is symbolic
+		~#
+		method : public : IsFixed() ~ Bool {
+			if(@shape = Nil) {
+				return false;
+			};
+
+			each(i : @shape) {
+				if(@shape[i] < 0) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		method : public : ToString() ~ String {
+			dims := "";
+			if(@shape <> Nil) {
+				each(i : @shape) {
+					if(i > 0) {
+						dims += ",";
+					};
+					d := @shape[i];
+					dims += "{$d}";
+				};
+			};
+
+			return "{$@name}: {$@datatype}[{$dims}]";
+		}
+	}
+
+	#~
+	What a model takes in and gives back.
+
+	Worth reading once before building inputs. The alternative is guessing at
+	names and shapes, and a mismatch is reported by the runtime in terms of the
+	graph rather than of anything the caller wrote.
+
+	```
+	session := Session->New("model.onnx");
+	info := session->GetModelInfo();
+	each(spec in info->GetInputs()) {
+	  spec->ToString()->PrintLine();
+	};
+	```
+	~#
+	class ModelInfo {
+		# Field order is the native layout (onnx_model_info); do not reorder.
+		@input_names : String[];
+		@input_types : String[];
+		@input_ranks : Int[];
+		@input_dims : Int[];
+		@output_names : String[];
+		@output_types : String[];
+		@output_ranks : Int[];
+		@output_dims : Int[];
+
+		New : private () {}
+
+		#~
+		The model's inputs, in the order the graph declares them.
+		@return input specifications
+		~#
+		method : public : GetInputs() ~ Vector<TensorSpec> {
+			return Unflatten(@input_names, @input_types, @input_ranks, @input_dims);
+		}
+
+		#~
+		The model's outputs, in the order the graph declares them.
+		@return output specifications
+		~#
+		method : public : GetOutputs() ~ Vector<TensorSpec> {
+			return Unflatten(@output_names, @output_types, @output_ranks, @output_dims);
+		}
+
+		#~
+		Input names, for a run that names a subset.
+		@return input names
+		~#
+		method : public : GetInputNames() ~ String[] {
+			return @input_names;
+		}
+
+		#~
+		Output names, for a run that asks for a subset.
+		@return output names
+		~#
+		method : public : GetOutputNames() ~ String[] {
+			return @output_names;
+		}
+
+		#~
+		One input or output by name, whichever side it is on.
+		@param name the tensor name
+		@return the specification, or Nil when the model has no such tensor
+		~#
+		method : public : Find(name : String) ~ TensorSpec {
+			specs := GetInputs();
+			each(spec in specs) {
+				if(spec->GetName()->Equals(name)) {
+					return spec;
+				};
+			};
+
+			specs := GetOutputs();
+			each(spec in specs) {
+				if(spec->GetName()->Equals(name)) {
+					return spec;
+				};
+			};
+
+			return Nil;
+		}
+
+		# The native side sends four parallel arrays with the dimensions
+		# concatenated, which is one crossing instead of one per tensor. Splitting
+		# them back apart is this method, in one place.
+		method : Unflatten(names : String[], types : String[], ranks : Int[], dims : Int[]) ~ Vector<TensorSpec> {
+			specs := Vector->New()<TensorSpec>;
+			if(names = Nil | types = Nil | ranks = Nil | dims = Nil) {
+				return specs;
+			};
+
+			at := 0;
+			for(i := 0; i < ranks->Size(); i += 1;) {
+				rank := ranks[i];
+				shape := Int->New[rank];
+				for(d := 0; d < rank; d += 1;) {
+					shape[d] := dims[at];
+					at += 1;
+				};
+
+				specs->AddBack(TensorSpec->New(names[i], types[i], shape));
+			};
+
+			return specs;
+		}
+
+		method : public : ToString() ~ String {
+			text := "inputs:";
+			# a typed local, not each(... in GetInputs()): the element type of a
+			# Vector returned straight from a call does not resolve
+			specs := GetInputs();
+			each(spec in specs) {
+				line := spec->ToString();
+				text += "\n  {$line}";
+			};
+			text += "\noutputs:";
+			specs := GetOutputs();
+			each(spec in specs) {
+				line := spec->ToString();
+				text += "\n  {$line}";
+			};
+
+			return text;
+		}
+	}
+
+	#~
+	The tensors a run produced.
+
+	`Session->Run` returns these as a Vector<Tensor> and most callers want that.
+	This is the same data before it is split apart, for a caller that would rather
+	read one output out of many without building objects for the rest.
+	~#
+	class RunResult {
+		# Field order is the native layout (onnx_run); do not reorder.
+		@names : String[];
+		@types : String[];
+		@ranks : Int[];
+		@dims : Int[];
+		@data : Float[];
+
+		New : private () {}
+
+		#~
+		How many tensors the run produced.
+		@return output count
+		~#
+		method : public : GetCount() ~ Int {
+			if(@ranks = Nil) {
+				return 0;
+			};
+
+			return @ranks->Size();
+		}
+
+		#~
+		Output names, in the order they were produced.
+		@return names
+		~#
+		method : public : GetNames() ~ String[] {
+			return @names;
+		}
+
+		#~
+		Every output as a tensor.
+		@return output tensors
+		~#
+		method : public : GetTensors() ~ Vector<Tensor> {
+			tensors := Vector->New()<Tensor>;
+			if(@names = Nil | @types = Nil | @ranks = Nil | @dims = Nil | @data = Nil) {
+				return tensors;
+			};
+
+			dim_at := 0;
+			data_at := 0;
+			for(i := 0; i < @ranks->Size(); i += 1;) {
+				rank := @ranks[i];
+				shape := Int->New[rank];
+				elements := 1;
+				for(d := 0; d < rank; d += 1;) {
+					shape[d] := @dims[dim_at];
+					elements *= @dims[dim_at];
+					dim_at += 1;
+				};
+
+				values := Float->New[elements];
+				for(e := 0; e < elements; e += 1;) {
+					values[e] := @data[data_at];
+					data_at += 1;
+				};
+
+				tensors->AddBack(Tensor->New(@names[i], @types[i], shape, values));
+			};
+
+			return tensors;
+		}
+
+		#~
+		One output by name.
+		@param name the output name
+		@return the tensor, or Nil when the run produced no such output
+		~#
+		method : public : Get(name : String) ~ Tensor {
+			tensors := GetTensors();
+			each(tensor in tensors) {
+				if(tensor->GetName()->Equals(name)) {
+					return tensor;
+				};
+			};
+
+			return Nil;
+		}
+	}
+
+	#~
+	A model session that runs any ONNX graph, without knowing what family it
+	belongs to.
+
+	The seven session classes above each own one model family: they letterbox or
+	normalise an image, run it, and decode the result into YOloResult,
+	ResNetResult and the rest. Use them when they fit -- they are less work and
+	they are what the examples use.
+
+	Use this one when they do not: a model with several inputs, a model whose
+	outputs you want to decode yourself, a text or audio model, or anything the
+	eight families do not cover. Preprocessing and decoding are then yours to
+	write, in Objeck, where they can be reused rather than added to the native
+	library as a ninth vertical (docs/INFERENCE_ENGINES_PLAN.md).
+
+	```
+	session := Session->New("model.onnx");
+	if(<>session->IsOpen()) {
+	  return;
+	};
+
+	inputs := Vector->New()<Tensor>;
+	inputs->AddBack(Tensor->New("data", [1, 3, 224, 224], pixels));
+
+	outputs := session->Run(inputs);
+	each(tensor in outputs) {
+	  tensor->ToString()->PrintLine();
+	};
+	session->Close();
+	```
+	~#
+	class Session {
+		# Native entry-point names, held rather than written at each call site: a
+		# string literal is materialised into a fresh String every time it is
+		# evaluated, which on a hot path is an allocation and a copy per call.
+		@fn_onnx_new_session : static : String;
+		@fn_onnx_close_session : static : String;
+		@fn_onnx_model_info : static : String;
+		@fn_onnx_run : static : String;
+		@session : Int;
+		@info : ModelInfo;
+
+		#~
+		Constructor.
+		@param model model path
+		~#
+		New(model : String) {
+			Init(model, Nil);
+		}
+
+		#~
+		Constructor.
+		@param model model path
+		@param config session configuration parameters, e.g. ep
+		~#
+		New(model : String, config : Map<String, String>) {
+			Init(model, config);
+		}
+
+		method : Init(model : String, config : Map<String, String>) ~ Nil {
+			keys := Vector->New()<String>;
+			values := Vector->New()<String>;
+
+			if(config <> Nil) {
+				key_values := config->GetKeyValues()<Pair<String, String>>;
+				each(key_value in key_values) {
+					keys->AddBack(key_value->GetFirst());
+					values->AddBack(key_value->GetSecond());
+				};
+			};
+
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := StringArrayRef->New(keys->ToArray());
+			array_args[2] := StringArrayRef->New(values->ToArray());
+			array_args[3] := model;
+
+			if(@fn_onnx_new_session = Nil) { @fn_onnx_new_session := "onnx_new_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_new_session, array_args);
+			@session := array_args[0]->As(IntRef)->Get();
+		}
+
+		#~
+		Whether the model loaded.
+
+		A session that failed to open is not an error at construction -- the
+		constructor returns an object either way, and the reason was written to
+		stderr while it happened. Test this before running: a closed session
+		returns Nil from Run, which is otherwise indistinguishable from a model
+		that produced nothing.
+		@return true when the model is loaded and a run can proceed
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @session <> 0;
+		}
+
+		#~
+		Releases the model.
+
+		Zeroing the handle afterwards is what makes a second Close safe and makes
+		IsOpen report the truth from then on.
+		~#
+		method : public : Close() ~ Nil {
+			if(@session = 0) {
+				return;
+			};
+
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New(@session);
+
+			if(@fn_onnx_close_session = Nil) { @fn_onnx_close_session := "onnx_close_session"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_close_session, array_args);
+			@session := 0;
+		}
+
+		#~
+		What the model takes in and gives back. Read once and cached: a model's
+		signature does not change under us.
+		@return the signature, or Nil when the session is not open
+		~#
+		method : public : GetModelInfo() ~ ModelInfo {
+			if(@info <> Nil) {
+				return @info;
+			};
+			if(@session = 0) {
+				return Nil;
+			};
+
+			array_args := Base->New[2];
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@session);
+
+			if(@fn_onnx_model_info = Nil) { @fn_onnx_model_info := "onnx_model_info"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_model_info, array_args);
+
+			@info := array_args[0]->As(API.Onnx.ModelInfo);
+			return @info;
+		}
+
+		#~
+		Runs the model, asking for every output it has.
+		@param inputs the model's inputs as named tensors
+		@return the outputs, or Nil when the run was refused
+		~#
+		method : public : Run(inputs : Vector<Tensor>) ~ Vector<Tensor> {
+			every_output := String->New[0];
+			return Run(inputs, every_output);
+		}
+
+		#~
+		Runs the model for named outputs.
+		@param inputs the model's inputs as named tensors
+		@param output_names the outputs wanted; empty for all of them
+		@return the outputs, or Nil when the run was refused
+		~#
+		method : public : Run(inputs : Vector<Tensor>, output_names : String[]) ~ Vector<Tensor> {
+			result := RunTensors(inputs, output_names);
+			if(result = Nil) {
+				return Nil;
+			};
+
+			return result->GetTensors();
+		}
+
+		#~
+		Runs the model and returns the result before it is split into tensors, for
+		a caller reading one output out of many.
+		@param inputs the model's inputs as named tensors
+		@param output_names the outputs wanted; empty or Nil for all of them
+		@return the raw result, or Nil when the run was refused
+		~#
+		method : public : RunTensors(inputs : Vector<Tensor>, output_names : String[]) ~ RunResult {
+			# The caller's own arguments first, the session second. The two are
+			# independent problems and either order reports both, so the order is
+			# chosen for a reason that is not arbitrary: argument validation is then
+			# reachable without a live session, and so testable by a suite that ships
+			# no model. Checking the session first made every such assertion pass for
+			# the wrong reason.
+			if(inputs = Nil | inputs->Size() = 0) {
+				">>> ONNX: a run needs at least one input tensor. <<<"->ErrorLine();
+				return Nil;
+			};
+
+			count := inputs->Size();
+			names := String->New[count];
+			ranks := Int->New[count];
+
+			# Two passes: size the flat arrays, then fill them. One crossing with
+			# four arrays beats one crossing per tensor, and the shapes have to be
+			# summed before anything can be allocated anyway.
+			dim_total := 0;
+			data_total := 0;
+			for(i := 0; i < count; i += 1;) {
+				tensor := inputs->Get(i);
+				if(tensor = Nil) {
+					">>> ONNX: input tensor {$i} is Nil. <<<"->ErrorLine();
+					return Nil;
+				};
+
+				shape := tensor->GetShape();
+				if(shape = Nil | shape->Size() = 0) {
+					name := tensor->GetName();
+					">>> ONNX: input tensor '{$name}' has no shape. <<<"->ErrorLine();
+					return Nil;
+				};
+
+				# Checked here as well as natively, because only here can the
+				# message name the tensor the caller built.
+				if(<>tensor->IsConsistent()) {
+					name := tensor->GetName();
+					held := tensor->GetCount();
+					wanted := tensor->GetShapeProduct();
+					">>> ONNX: input tensor '{$name}' holds {$held} element(s) but its shape calls for {$wanted}. <<<"->ErrorLine();
+					return Nil;
+				};
+
+				names[i] := tensor->GetName();
+				ranks[i] := shape->Size();
+				dim_total += shape->Size();
+				data_total += tensor->GetCount();
+			};
+
+			dims := Int->New[dim_total];
+			data := Float->New[data_total];
+
+			dim_at := 0;
+			data_at := 0;
+			for(i := 0; i < count; i += 1;) {
+				tensor := inputs->Get(i);
+				shape := tensor->GetShape();
+				for(d := 0; d < shape->Size(); d += 1;) {
+					dims[dim_at] := shape[d];
+					dim_at += 1;
+				};
+
+				values := tensor->GetData();
+				for(e := 0; e < values->Size(); e += 1;) {
+					data[data_at] := values[e];
+					data_at += 1;
+				};
+			};
+
+			wanted := output_names;
+			if(wanted = Nil) {
+				wanted := String->New[0];
+			};
+
+			if(@session = 0) {
+				">>> ONNX: run on a session that is not open. <<<"->ErrorLine();
+				return Nil;
+			};
+
+			array_args := Base->New[7];
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(@session);
+			array_args[2] := StringArrayRef->New(names);
+			array_args[3] := IntArrayRef->New(ranks);
+			array_args[4] := IntArrayRef->New(dims);
+			array_args[5] := FloatArrayRef->New(data);
+			array_args[6] := StringArrayRef->New(wanted);
+
+			if(@fn_onnx_run = Nil) { @fn_onnx_run := "onnx_run"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_onnx_run, array_args);
+
+			# Nil here is a refusal the native side has already explained on
+			# stderr, not an empty result. It writes this slot on every exit, so
+			# this does not depend on how the slot was initialised (#1028).
+			return array_args[0]->As(API.Onnx.RunResult);
 		}
 	}
 }

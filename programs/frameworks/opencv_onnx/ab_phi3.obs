@@ -1,0 +1,204 @@
+#~
+# A Phi-3 prefill through the generic chokepoint.
+#
+# This is the hard case, and the reason the chokepoint is worth having. Phi-3
+# takes 67 inputs: input_ids, position_ids and attention_mask as INT64[-1,-1],
+# plus 32 layers x (key, value) as FP16[-1,32,-1,96] -- all EMPTY on the first
+# forward pass. Every dimension is symbolic, so the caller chooses all of them.
+#
+# The per-family path (phi3_text_inf, ~270 lines of C++ plus discover_slm_model
+# and extract_last_logits) exists to do exactly this. Here it is from Objeck,
+# with no model-family knowledge in the native layer at all: build the tensors,
+# Run, argmax the last position's logits, decode the token.
+#
+# It exercises, in one call: 67 inputs, INT64 conversion, FP16 conversion,
+# zero-element tensors, and reading an FP16 output back as Float.
+~#
+
+use API.Onnx, Collection;
+
+class AbPhi3 {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 2) {
+			"Usage: obr ab_phi3 <model_dir> <prompt>"->PrintLine();
+			return;
+		};
+
+		t := AbPhi3->New();
+		t->Run(args[0], args[1]);
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Report(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok    {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL  {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run(model_dir : String, prompt : String) ~ Nil {
+		tokenizer := Phi3Tokenizer->New("{$model_dir}/tokenizer.json");
+		if(<>tokenizer->IsLoaded()) {
+			">>> tokenizer did not load"->PrintLine();
+			return;
+		};
+
+		ids := tokenizer->Encode(prompt);
+		if(ids = Nil | ids->Size() = 0) {
+			">>> prompt tokenized to nothing"->PrintLine();
+			return;
+		};
+		n := ids->Size();
+		"prompt: {$prompt}"->PrintLine();
+		"tokens: {$n}"->PrintLine();
+
+		session := Session->New("{$model_dir}/model.onnx");
+		if(<>session->IsOpen()) {
+			">>> session not open"->PrintLine();
+			return;
+		};
+
+		info := session->GetModelInfo();
+		Report("the model reports its full input set", info <> Nil & info->GetInputNames()->Size() = 67);
+
+		specs := info->GetInputs();
+		int_inputs := 0;
+		half_inputs := 0;
+		symbolic := 0;
+		each(spec in specs) {
+			if(spec->GetDatatype()->Equals("INT64")) {
+				int_inputs += 1;
+			};
+			if(spec->GetDatatype()->Equals("FP16")) {
+				half_inputs += 1;
+			};
+			if(<>spec->IsFixed()) {
+				symbolic += 1;
+			};
+		};
+		Report("three of them are INT64", int_inputs = 3);
+		Report("sixty-four are FP16 cache tensors", half_inputs = 64);
+		Report("and every one has a symbolic dimension the caller must choose", symbolic = 67);
+
+		# ---- build the 67 inputs -------------------------------------------
+		inputs := Vector->New()<Tensor>;
+
+		position_ids := Int->New[n];
+		attention_mask := Int->New[n];
+		for(i := 0; i < n; i += 1;) {
+			position_ids[i] := i;
+			attention_mask[i] := 1;
+		};
+
+		# [1, n] does not parse: an array literal takes literals, not variables.
+		token_shape := Int->New[2];
+		token_shape[0] := 1;
+		token_shape[1] := n;
+
+		inputs->AddBack(Tensor->New("input_ids", token_shape, ids));
+		inputs->AddBack(Tensor->New("position_ids", token_shape, position_ids));
+		inputs->AddBack(Tensor->New("attention_mask", token_shape, attention_mask));
+
+		# An empty cache: 0 elements, and the shape says so. This is the case a
+		# "rank and extent must be positive" check refuses by mistake.
+		empty := Float->New[0];
+		Report("a zero-length Float[] is a usable tensor payload", empty <> Nil & empty->Size() = 0);
+
+		for(layer := 0; layer < 32; layer += 1;) {
+			key := Tensor->New("past_key_values.{$layer}.key", [1, 32, 0, 96], empty);
+			value := Tensor->New("past_key_values.{$layer}.value", [1, 32, 0, 96], empty);
+			inputs->AddBack(key);
+			inputs->AddBack(value);
+		};
+
+		built := inputs->Size();
+		Report("built all 67 input tensors", built = 67);
+		Report("an empty cache tensor reads as consistent", inputs->Get(3)->IsConsistent());
+
+		# ---- one forward pass ----------------------------------------------
+		wanted := String->New[1];
+		wanted[0] := "logits";
+		outputs := session->Run(inputs, wanted);
+		Report("the prefill ran", outputs <> Nil & outputs->Size() = 1);
+		if(outputs = Nil | outputs->Size() = 0) {
+			session->Close();
+			Finish();
+			return;
+		};
+
+		logits := outputs->Get(0);
+		shape := logits->GetShape();
+		rank := shape->Size();
+		Report("logits are rank 3", rank = 3);
+		if(rank <> 3) {
+			session->Close();
+			Finish();
+			return;
+		};
+
+		batch := shape[0];
+		positions := shape[1];
+		vocab := shape[2];
+		"logits: [{$batch},{$positions},{$vocab}]"->PrintLine();
+		Report("one row per prompt token", positions = n);
+		Report("and a vocabulary-sized row", vocab > 30000);
+		Report("the FP16 output came back as finite Floats", Finite(logits->GetData()));
+
+		# ---- greedy next token ---------------------------------------------
+		data := logits->GetData();
+		base := (positions - 1) * vocab;
+		best := 0;
+		for(v := 1; v < vocab; v += 1;) {
+			if(data[base + v] > data[base + best]) {
+				best := v;
+			};
+		};
+
+		next_ids := Int->New[1];
+		next_ids[0] := best;
+		next_text := tokenizer->Decode(next_ids);
+		"next token: id={$best} text='{$next_text}'"->PrintLine();
+		Report("the argmax is a real vocabulary id", best > 0 & best < vocab);
+		Report("and it decodes to something", next_text <> Nil & next_text->Size() > 0);
+
+		session->Close();
+		Finish();
+	}
+
+	method : Finish() ~ Nil {
+		if(@failures = 0) {
+			"PASS"->PrintLine();
+		}
+		else {
+			"FAILURES: {$@failures}"->PrintLine();
+		};
+	}
+
+	# FP16 overflows to infinity above 65504, so a conversion that mis-reads the
+	# bytes shows up here rather than as a plausible-looking number.
+	method : Finite(values : Float[]) ~ Bool {
+		if(values = Nil | values->Size() = 0) {
+			return false;
+		};
+
+		each(i : values) {
+			v := values[i];
+			if(v <> v) {
+				return false;
+			};
+			if(v > 1000000.0 | v < -1000000.0) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+}
