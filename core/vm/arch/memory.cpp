@@ -201,14 +201,41 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   free_memory_cache_size.store(0, std::memory_order_relaxed);
   memset(free_buckets, 0, sizeof(free_buckets));
 
-  // Young generation bump allocator. The full region is always mapped; a smaller
-  // --nursery only lowers the limit the bump paths test (rounded down to a word).
+  // Young generation bump allocator. YOUNG_REGION_SIZE is RESERVED so the address
+  // range is fixed for the lifetime of the process; only the usable limit is
+  // committed (--nursery, rounded down to a word).
   young_region_size = YOUNG_REGION_SIZE;
   if(nursery_size_request > 0 && nursery_size_request < YOUNG_REGION_SIZE) {
     young_region_size = nursery_size_request & ~(sizeof(size_t) - 1);
   }
 #ifdef _WIN32
-  young_region = (uint8_t*)VirtualAlloc(nullptr, YOUNG_REGION_SIZE, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  // Reserve the whole range, commit only the limit (#841).
+  //
+  // This used to be MEM_RESERVE | MEM_COMMIT over YOUNG_REGION_SIZE, so every
+  // program charged 128 MB of commit at startup whatever --nursery said: the
+  // flag lowered the limit the bump paths test and nothing else. --nursery=16m
+  // asked for a 16 MB nursery and still cost 128 MB of commit, which made the
+  // flag useless for the reason most people would reach for it.
+  //
+  // Committing the limit rather than the reservation needs no change to any
+  // allocation path, because none of them can reach past the limit: the C++ bump
+  // CAS at AllocateObject tests `offset + aligned_total <= young_region_size`,
+  // the collector walks [0, young_offset), and young_offset never passes the
+  // limit. The amd64 JIT inlines the same bump in generated code and loads the
+  // same young_region_size (jit_amd_lp64.cpp, YoungRegionSizeAddr), so it is
+  // bounded identically.
+  //
+  // What this deliberately does NOT do is commit on growth for the default
+  // 128 MB case -- that would let a short program charge only what it touches.
+  // It is left out because the JIT inlines the bump: generated code would reach
+  // a page that the runtime had not committed yet, and the commit check would
+  // have to be emitted into the fast path on each backend that inlines it. That
+  // is a separate change and wants its own nightly window. See the issue.
+  young_region = (uint8_t*)VirtualAlloc(nullptr, YOUNG_REGION_SIZE, MEM_RESERVE, PAGE_READWRITE);
+  if(young_region && !VirtualAlloc(young_region, young_region_size, MEM_COMMIT, PAGE_READWRITE)) {
+    VirtualFree(young_region, 0, MEM_RELEASE);
+    young_region = nullptr;
+  }
 #else
   young_region = (uint8_t*)mmap(nullptr, YOUNG_REGION_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if(young_region == MAP_FAILED) {
@@ -216,7 +243,8 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   }
 #endif
   if(!young_region) {
-    std::wcerr << L">>> Failed to allocate young generation region (" << YOUNG_REGION_SIZE << L" bytes) <<<" << std::endl;
+    std::wcerr << L">>> Failed to allocate young generation region (reserve " << YOUNG_REGION_SIZE << L" bytes, commit " << young_region_size
+               << L" bytes) <<<" << std::endl;
     VmExit(1);
   }
   young_offset.store(0, std::memory_order_relaxed);

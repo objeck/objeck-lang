@@ -653,14 +653,27 @@ void get_provider_names(VMContext& context) {
 }
 
 // Build an input tensor in FP32 or FP16 depending on the model input type.
-static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& nchw_f32, const std::vector<int64_t>& shape, ONNXTensorElementDataType elem_type) {
+//
+// BOTH Ort::Value::CreateTensor overloads used here take, in the ORT header's
+// own words, "a user supplied buffer": ORT wraps the pointer and does not copy,
+// so the buffer must outlive the tensor and the Run that consumes it. The FP32
+// path is fine -- it wraps the caller's nchw_f32, alive for the whole call --
+// but the FP16 path built its halves in a vector local to THIS function and
+// wrapped that. The vector was destroyed on return, so the tensor handed back
+// pointed into freed memory and Run read whatever had replaced it.
+//
+// Hence half_storage is a parameter and not a local: the buffer belongs to the
+// caller, whose frame outlives the Run. Only a model whose input is FP16 reaches
+// that branch, which is how this survived -- every shipped model is FP32.
+static inline Ort::Value make_tensor_match_input_type(const std::vector<float>& nchw_f32, const std::vector<int64_t>& shape, ONNXTensorElementDataType elem_type,
+                                                      std::vector<uint16_t>& half_storage) {
    Ort::MemoryInfo mem = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
    if(elem_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
-      std::vector<uint16_t> halfbuf(nchw_f32.size());
-      for(size_t i = 0; i < nchw_f32.size(); ++i) halfbuf[i] = f32_to_f16(nchw_f32[i]);
+      half_storage.resize(nchw_f32.size());
+      for(size_t i = 0; i < nchw_f32.size(); ++i) half_storage[i] = f32_to_f16(nchw_f32[i]);
       // Use the byte-size overload for FP16
       return Ort::Value::CreateTensor(mem,
-                                      halfbuf.data(), halfbuf.size() * sizeof(uint16_t),
+                                      half_storage.data(), half_storage.size() * sizeof(uint16_t),
                                       shape.data(), (size_t)shape.size(),
                                       ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16);
    }
@@ -796,12 +809,14 @@ static void yolo_image_inf(VMContext& context) {
       auto elem = ti.GetElementType(); // ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT or _FLOAT16
 
       // Build tensor that matches the model input type (FP16 if model expects FP16)
+      // outlives the Run below -- the FP16 tensor wraps this buffer, it does not copy
+      std::vector<uint16_t> input_half;
       Ort::Value input_tensor = make_tensor_match_input_type(
          input_tensor_values, { 
             input_shape.begin(), 
             input_shape.end() 
          },
-         elem
+         elem, input_half
       );
 
       // Get input/output names
@@ -1075,10 +1090,12 @@ static void resnet_image_inf(VMContext& context) {
       auto ti = input_type_info.GetTensorTypeAndShapeInfo();
       auto elem = ti.GetElementType();
 
+      // outlives the Run below -- the FP16 tensor wraps this buffer, it does not copy
+      std::vector<uint16_t> input_half;
       Ort::Value input_tensor = make_tensor_match_input_type(
          input_tensor_values,
          { input_shape.begin(), input_shape.end() },
-         elem
+         elem, input_half
       );
 
       // Get input/output names
@@ -1220,10 +1237,12 @@ static void deeplab_image_inf(VMContext& context) {
       std::vector<int64_t> input_shape;
       std::vector<float> preprocessed_input = deeplab_preprocess(img, net_h, net_w, input_shape);
 
+      // outlives the Run below -- the FP16 tensor wraps this buffer, it does not copy
+      std::vector<uint16_t> input_half;
       Ort::Value input_tensor = make_tensor_match_input_type(
          preprocessed_input,          // FP32 buffer from preprocessing
          input_shape,   // already a std::vector<int64_t>
-         elem
+         elem, input_half
       );
 
       // Get input/output names
@@ -1436,12 +1455,14 @@ static void openpose_image_inf(VMContext& context) {
 
       // Match FP32 / FP16, same helper as YOLO / DeepLab / ResNet
       std::vector<int64_t> input_shape{ 1, 3, input_height, input_width };
+      // outlives the Run below -- the FP16 tensor wraps this buffer, it does not copy
+      std::vector<uint16_t> input_half;
       Ort::Value input = make_tensor_match_input_type(
          input_tensor_data, {
             input_shape.begin(),
             input_shape.end()
          },
-         input_elem);
+         input_elem, input_half);
 
       // Run
       const char* in_names[] = { in_name.c_str() };
