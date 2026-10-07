@@ -1,8 +1,14 @@
-# Inference backends: TF Lite beside ONNX — plan
+# Inference backends: one Engine over ONNX and a server — plan
+
+> Was "TF Lite beside ONNX" until 2026-10-07, when the TF Lite half was
+> dropped: it has no published Windows ARM64 build, and a correctly vendored
+> ONNX Runtime covers strictly more. See open question 1.
 
 Status: **P1 is built** (2026-10-07) -- `API.Onnx.Session`, `Tensor`,
 `TensorSpec`, `ModelInfo` and `RunResult` over two new native entry points,
-`onnx_run` and `onnx_model_info`. P2-P5 are still proposed. The HTTP client
+`onnx_run` and `onnx_model_info`. P2 and P5 are still proposed; **P3 (TF Lite) is dropped** -- see open
+question 1 -- and replaced by P3', vendoring ONNX Runtime assets that already
+exist. The HTTP client
 (`core/compiler/lib_src/inference.obs`, written 2026-10-03, 38 assertions) is
 written but **not registered as a library**, so nothing can `use` it yet.
 
@@ -11,25 +17,50 @@ written but **not registered as a library**, so nothing can `use` it yet.
 No single inference backend covers the five platforms Objeck ships on. Measured
 on this tree, not assumed:
 
+> **This table was wrong, and the correction removes the reason for P3.**
+> Checked 2026-10-07; the corrected version is below it.
+
 | | linux-x64 | linux-arm64 | win-x64 | win-arm64 | macos-arm64 | GPU |
 |---|---|---|---|---|---|---|
-| ONNX, in-process | yes | **no** | yes | yes | yes | **no** |
-| TF Lite, in-process | yes | yes | yes | yes | yes | no |
+| ONNX, **as vendored today** | yes | **no** | yes | yes | yes | **no** |
+| ONNX, **vendoring the assets that already exist** | yes | **yes** | yes | yes | yes | **yes** |
+| TF Lite, in-process | yes | yes | yes | **no** | yes | no |
 | HTTP to a server | yes | yes | yes | yes | yes | yes |
 
-Two facts behind the ONNX row, both from `core/release/deploy_posix.sh:130-144`:
+Row 2 dominates row 3 on every column. TF Lite adds nothing it can reach that a
+correctly vendored ONNX Runtime cannot, and it would cost a second runtime and a
+five-platform build matrix to do it.
+
+Two facts behind the first ONNX row, both from
+`core/release/deploy_posix.sh:130-144`:
 
 - The vendored runtime is a **CPU-only build**. It "reports only
   `CPUExecutionProvider` despite living under `eq/cuda/lib`", and building with
-  `ONNX_EP_CUDA` made every session creation fail. So Objeck has no GPU
-  inference path at all today.
+  `ONNX_EP_CUDA` made every session creation fail.
 - Only an x86-64 runtime is vendored, so **linux-arm64 ships no
   `libobjk_onnx`**. `verify_native_libs.sh` declares onnx optional there. This
   was rediscovered on 2026-10-03 when `onnx_failed_session.obs` failed that leg.
 
-TF Lite is the only *in-process* option that covers all five, because it is
-built for edge devices where ARM is a first-class target rather than an
-afterthought. That is the whole argument for adding it.
+**Neither is a platform limitation. Both are vendoring omissions**, and that is
+the finding that changes this plan. ONNX Runtime publishes, for the very version
+already pinned here (1.19.0, `ORT_API_VERSION 19`):
+
+| asset | closes |
+|---|---|
+| `onnxruntime-linux-aarch64-1.19.0.tgz` | the linux-arm64 hole — **no version bump needed** |
+| `onnxruntime-linux-x64-gpu-1.19.0.tgz` | "no GPU inference path at all" |
+
+`deploy_posix.sh` is already written for this. It sets `ORT_ARCH=arm64` and
+guards the whole ONNX step on `[ -d cuda/lib/$ORT_ARCH/lib ]`; the directory is
+simply empty. Populating it is the entire change on the build side.
+
+(Upstream is at 1.30.0 as of 2026-09-10 and ships `linux-aarch64`,
+`win-arm64`, `win-arm64x`, `osx-arm64` and `gpu_cuda12`/`gpu_cuda13`. Bumping is
+a separate, larger piece of work — eleven minor versions — and is **not**
+required to close either gap.)
+
+So the argument for TF Lite was that it is the only *in-process* option covering
+all five platforms. That argument does not survive the next section.
 
 ## The trap: do not mirror the ONNX API
 
@@ -74,15 +105,15 @@ interface Engine {
    method : virtual : public : Close() ~ Nil;
 }
 
-class OnnxEngine   implements Engine   # in-process, needs the generic onnx_run
-class TfLiteEngine implements Engine   # in-process, all five platforms
-class HttpEngine   implements Engine   # a server; the only GPU path
+class OnnxEngine   implements Engine   # in-process; onnx_run shipped in P1
+class HttpEngine   implements Engine   # a server
+# TfLiteEngine was here. P3 is dropped -- see open question 1.
 ```
 
 Calling code names a backend once:
 
 ```objeck
-engine := TfLiteEngine->New("model.tflite");
+engine := OnnxEngine->New("model.onnx");
 if(<>engine->IsOpen()) {
    EndPoint->GetLastError()->PrintLine();
    return;
@@ -92,9 +123,9 @@ outputs := engine->Run(inputs);
 engine->Close();
 ```
 
-Swapping `TfLiteEngine` for `OnnxEngine->New("model.onnx")` or
-`HttpEngine->New("http://gpu-box:8000", "model")` changes nothing else. That is
-the point: the backend is a deployment decision, not an API.
+Swapping that for `HttpEngine->New("http://gpu-box:8000", "model")` changes
+nothing else. That is the point: the backend is a deployment decision, not an
+API -- and it is why dropping a backend costs this design nothing.
 
 **`API.Onnx`'s existing per-family classes stay.** They are a convenience layer
 and people use them. Nothing here removes or changes them.
@@ -159,11 +190,22 @@ Caveats, stated rather than left to be discovered:
 over `API.Onnx.Session`, which is the whole reason P1 came first. **This phase
 owns the Tensor duplication P1 left behind**; see "What is missing" 2.
 
-**P3 — TF Lite.** Vendor `libtensorflowlite_c`, wrap ~12 of its ~30 C functions
-(`TfLiteModelCreateFromFile`, `TfLiteInterpreterCreate`, `AllocateTensors`,
-`GetInputTensor`, `TensorCopyFromBuffer`, `Invoke`, `GetOutputTensor`,
-`TensorCopyToBuffer`), add `TfLiteEngine`. This is the only phase with a new
-native dependency and a five-platform build matrix.
+**P3 — TF Lite. DROPPED, 2026-10-07.** See open question 1: it has no published
+Windows ARM64 build and upstream's own Windows ARM64 support is an unmerged,
+stale PR. A correctly vendored ONNX Runtime covers strictly more.
+
+Replaced by the work that actually closes the gaps, which is smaller than P3 was
+going to be and needs no new dependency:
+
+**P3' — vendor the ONNX Runtime assets that already exist.** Drop
+`onnxruntime-linux-aarch64-1.19.0.tgz` into `cuda/lib/arm64/lib`, which
+`deploy_posix.sh` already looks for, and linux-arm64 stops shipping without
+`libobjk_onnx`; `verify_native_libs.sh` can then stop declaring onnx optional
+there, and `onnx_failed_session.obs` / `onnx_generic_run.obs` can drop their
+`LibraryPresent()` skips on that leg. Separately,
+`onnxruntime-linux-x64-gpu-1.19.0.tgz` gives Objeck the GPU path it has never
+had, which is also step 2 of `ONNX_CUDA_PLAN` finally having something true to
+validate against. Watch the packaging budget: the cache is at its ceiling.
 
 **P4 — registration and docs.** A new library must be added to
 `build_libs.sh`, `code_doc64.in`, `gen_json.cmd`, `gen_json.sh` and
@@ -212,23 +254,57 @@ is already open, so this still belongs to session creation. What remains:
 
 ## Open questions
 
-1. **TF Lite's prebuilt platform coverage is UNVERIFIED.** The claim that
-   `libtensorflowlite_c` ships for all five targets including Windows ARM64 is
-   the load-bearing assumption of this plan and rests on knowledge with a
-   May 2026 cutoff. **Confirm before starting P3.** If Windows ARM64 is not
-   covered, TF Lite loses its one advantage over the generic ONNX path and the
-   plan should stop at P2.
+1. ~~**TF Lite's prebuilt platform coverage is UNVERIFIED.**~~ **ANSWERED
+   2026-10-07: it does not ship for Windows ARM64.** This was the load-bearing
+   assumption, and the rule this document set for itself was "if Windows ARM64 is
+   not covered, TF Lite loses its one advantage over the generic ONNX path and the
+   plan should stop at P2." It is not covered, so **the plan stops at P2.**
+
+   Five channels, all agreeing:
+
+   - **LiteRT** (TF Lite's successor, `google-ai-edge/LiteRT`) publishes prebuilt
+     desktop backends for Linux x64/arm64, macOS arm64 and **Windows x64 only**.
+   - **`tphakala/tflite_c`**, the most-used community redistributor, v2.17.1:
+     Linux amd64 + arm64, macOS arm64 + amd64, **Windows amd64 only**.
+   - **`ValYouW/tflite-dist` issue #11** asked for exactly this — a Windows ARM64
+     `.dll`/`.lib`, for a Qualcomm laptop. Closed with no answer.
+   - **vcpkg has no `tensorflowlite` port at all**; the request
+     (microsoft/vcpkg#26313) was closed for inactivity.
+   - Decisive, because it rules out building it ourselves:
+     **tensorflow/tensorflow#124329, "Add support for building Tensorflow on
+     Windows ARM64 CPUs", is still OPEN.** Filed 2026-07-30, last human activity
+     2026-08-18, and the bot marked it **stale on 2026-09-25** with a close
+     warning. Windows ARM64 is not merged upstream, so vendoring our own build
+     would mean carrying an unmerged PR.
+
+   What this costs: nothing that was working. P1 shipped and stands on its own.
+   What it saves: a second runtime, a new native dependency, a five-platform
+   build matrix, and `libtensorflowlite_c` added to a packaging budget whose
+   `core/lib/onnx/packages` is already 609 MB against an Actions cache at its
+   10 GB ceiling.
+
+   **Caveat on the evidence.** This verified that the official assets *exist and
+   are named as above*; it did not download, link or run any of them. That the
+   `linux-aarch64` tarball closes our gap is an inference from the build script's
+   own structure, and should be confirmed by actually building that leg.
+
+   Reopen this only if TF Lite gains a published Windows ARM64 build, or if a
+   model matters that `tf2onnx` cannot convert and a server will not serve.
 2. **Lifetime.** Objeck has no `AutoCloseable`, so `Close()` is manual and
    callers will forget. Java's TF binding answers this with try-with-resources;
    Objeck's options are a finalizer, leaking until process exit, or documenting
    it. Needs a decision, not a default.
-3. **Datatype coverage.** `Tensor` carries `Float[]` or `Int[]` with a datatype
-   string. FP32 and INT64 cover images, embeddings and token ids. FP16, INT8 and
-   BOOL need a decision about whether to widen the storage or convert at the
-   boundary — quantized int8 models are a large part of why TF Lite is
-   attractive, so this is not deferrable past P3.
-4. **Which backend is the default** when more than one can serve a model, and
-   whether that is Objeck's choice or the caller's.
+3. ~~**Datatype coverage.**~~ **Answered by P1, for ONNX.** `API.Onnx.Tensor`
+   carries everything as `Float[]` and the native side converts to whatever the
+   model declares: FP32, FP16, FP64, INT8/16/32/64, UINT8/16/32/64 and BOOL.
+   Quantized int8 models therefore already work, which was the one thing this
+   question was urgent about while P3 existed. Anything else is refused by name.
+   The residual limit is stated rather than hidden: an integer beyond 2^53 does
+   not survive a `Float`, so it is refused at construction instead of rounded.
+4. ~~**Which backend is the default**~~ — mostly moot now. With TF Lite dropped
+   there are two engines, and they are not interchangeable in practice: one runs
+   in-process, the other needs a server to exist. The caller picks, and the
+   question only returns if a third in-process backend ever does.
 5. **Conversion failures.** `tf2onnx` and `TFLiteConverter` both reject models
    with unsupported ops. Neither in-process path helps then; the HTTP engine is
    the only answer. Worth saying so in the user docs rather than leaving people
