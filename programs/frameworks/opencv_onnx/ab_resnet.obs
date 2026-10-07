@@ -1,0 +1,258 @@
+#~
+# Does the generic chokepoint produce the same answer as the per-family path?
+#
+# Same model, same image. ResNetSession preprocesses in C++ (resnet_preprocess:
+# resize, BGR->RGB, /255, ImageNet mean/std, CHW) and decodes in C++. This
+# replicates that preprocessing in Objeck, pushes the tensor through
+# Session->Run, and softmaxes the logits here.
+#
+# A match means the generic path drives ONNX Runtime the same way the per-family
+# path does. It is not bit-exact by construction -- the Objeck arithmetic is
+# double where the C++ is float, and fill_input_block narrows at the end -- so
+# the comparison is to a tolerance, stated rather than assumed.
+~#
+
+use API.Onnx, API.OpenCV, Collection;
+
+class AbResNet {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() <> 3) {
+			"Usage: obr ab_resnet <image> <resnet34.onnx> <resnet_labels.txt>"->PrintLine();
+			return;
+		};
+
+		t := AbResNet->New();
+		t->Run(args[0], args[1], args[2]);
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Report(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok    {$what}"->PrintLine();
+		}
+		else {
+			"  FAIL  {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run(image_path : String, model : String, labels_path : String) ~ Nil {
+		labels := LoadLabels(labels_path);
+
+		# ---- the per-family path -------------------------------------------
+		image := Image->Load(image_path);
+		if(image = Nil | image->IsEmpty()) {
+			">>> cannot load {$image_path}"->PrintLine();
+			return;
+		};
+		# The ORIGINAL file bytes, not image->Convert(JPEG). Convert re-encodes,
+		# and JPEG is lossy -- the per-family path would then imdecode slightly
+		# different pixels from the ones preprocessed below, which showed up as a
+		# 0.0025 confidence gap that looked like an arithmetic difference and was
+		# not. Both paths now decode the same file with the same OpenCV decoder.
+		jpeg := System.IO.Filesystem.FileReader->ReadBinaryFile(image_path);
+
+		family := ResNetSession->New(model);
+		if(<>family->IsOpen()) {
+			">>> per-family session not open"->PrintLine();
+			return;
+		};
+		family_result := family->Inference(jpeg, 224, 224, labels);
+
+		# #1046, the half a model-less test cannot reach: a LIVE session must zero
+		# its handle on Close. It used not to, so IsOpen() stayed true and the
+		# second Close deleted the same Ort::Session again -- 0xC0000374 heap
+		# corruption, with nothing printed after it.
+		family->Close();
+		Report("a live session reports itself closed after Close", <>family->IsOpen());
+		family->Close();
+		Report("and closing it a second time does not corrupt the heap", true);
+		if(family_result = Nil) {
+			">>> per-family inference refused"->PrintLine();
+			return;
+		};
+
+		family_id := family_result->GetId();
+		family_conf := family_result->GetConfidence();
+		family_name := family_result->GetName();
+		"per-family: id={$family_id} name={$family_name} conf={$family_conf}"->PrintLine();
+
+		# ---- the generic path ----------------------------------------------
+		generic := Session->New(model);
+		if(<>generic->IsOpen()) {
+			">>> generic session not open"->PrintLine();
+			return;
+		};
+
+		info := generic->GetModelInfo();
+		Report("the model reports one input and one output",
+			info <> Nil & info->GetInputNames()->Size() = 1 & info->GetOutputNames()->Size() = 1);
+
+		spec := info->Find(info->GetInputNames()[0]);
+		Report("the input is FP32", spec <> Nil & spec->GetDatatype()->Equals("FP32"));
+		Report("and its batch dimension is symbolic, reported as -1 rather than guessed",
+			spec->GetShape()[0] = -1);
+
+		pixels := Preprocess(image, 224, 224);
+		Report("preprocessing produced 3*224*224 elements", pixels->Size() = 3 * 224 * 224);
+
+		inputs := Vector->New()<Tensor>;
+		inputs->AddBack(Tensor->New(spec->GetName(), [1, 3, 224, 224], pixels));
+
+		outputs := generic->Run(inputs);
+		Report("the run returned outputs", outputs <> Nil & outputs->Size() = 1);
+		if(outputs = Nil | outputs->Size() = 0) {
+			generic->Close();
+			Finish();
+			return;
+		};
+
+		logits := outputs->Get(0);
+		Report("the output is named as the model names it",
+			logits->GetName()->Equals(info->GetOutputNames()[0]));
+		Report("its shape is [1,1000]",
+			logits->GetShape()->Size() = 2 & logits->GetShape()[0] = 1 & logits->GetShape()[1] = 1000);
+		Report("and it is self-consistent: 1000 elements for that shape", logits->IsConsistent());
+
+		probs := Softmax(logits->GetData());
+		top := 0;
+		for(i := 1; i < probs->Size(); i += 1;) {
+			if(probs[i] > probs[top]) {
+				top := i;
+			};
+		};
+		generic_conf := probs[top];
+		generic_name := labels[top];
+		"generic:    id={$top} name={$generic_name} conf={$generic_conf}"->PrintLine();
+
+		# ---- do they agree? -------------------------------------------------
+		Report("the two paths pick the same class", top = family_id);
+		Report("and the same label", generic_name->Equals(family_name));
+
+		gap := generic_conf - family_conf;
+		if(gap < 0.0) {
+			gap *= -1.0;
+		};
+		"confidence gap: {$gap}"->PrintLine();
+		Report("their confidences agree to 1e-4 (double-vs-float preprocessing)", gap < 0.0001);
+
+		# a second run of the same tensor must give the same answer
+		again := generic->Run(inputs);
+		Report("a repeated run is deterministic", again <> Nil & Same(again->Get(0)->GetData(), logits->GetData()));
+
+		# naming an output explicitly selects it
+		wanted := String->New[1];
+		wanted[0] := info->GetOutputNames()[0];
+		named := generic->Run(inputs, wanted);
+		Report("asking for that output by name returns just it",
+			named <> Nil & named->Size() = 1 & named->Get(0)->GetName()->Equals(wanted[0]));
+
+		# a name the model does not have is refused, not guessed at
+		bogus := Vector->New()<Tensor>;
+		bogus->AddBack(Tensor->New("no-such-input", [1, 3, 224, 224], pixels));
+		Report("an unknown input name is refused", generic->Run(bogus) = Nil);
+
+		# a shape that does not match the data is refused before it crosses
+		ragged := Vector->New()<Tensor>;
+		ragged->AddBack(Tensor->New(spec->GetName(), [1, 3, 224, 225], pixels));
+		Report("a shape the data cannot fill is refused", generic->Run(ragged) = Nil);
+
+		generic->Close();
+		Report("a closed session refuses a run", generic->Run(inputs) = Nil);
+
+		Finish();
+	}
+
+	method : Finish() ~ Nil {
+		if(@failures = 0) {
+			"PASS"->PrintLine();
+		}
+		else {
+			"FAILURES: {$@failures}"->PrintLine();
+		};
+	}
+
+	# resnet_preprocess, in Objeck: resize, BGR->RGB, /255, ImageNet mean/std
+	# per channel, then CHW. The order matters; the C++ does exactly this.
+	method : Preprocess(image : Image, height : Int, width : Int) ~ Float[] {
+		resized := image->Resize(Size->New(width, height));
+		rgb := resized->CvtColor(ColorConversionCodes->BGR2RGB);
+		bytes := rgb->Bytes();
+
+		mean := [0.485, 0.456, 0.406];
+		dev := [0.229, 0.224, 0.225];
+
+		out := Float->New[3 * height * width];
+		at := 0;
+		for(c := 0; c < 3; c += 1;) {
+			for(y := 0; y < height; y += 1;) {
+				for(x := 0; x < width; x += 1;) {
+					# the bytes are interleaved RGB, one row after another
+					value := bytes[(y * width + x) * 3 + c]->ToFloat() / 255.0;
+					out[at] := (value - mean[c]) / dev[c];
+					at += 1;
+				};
+			};
+		};
+
+		return out;
+	}
+
+	method : Softmax(logits : Float[]) ~ Float[] {
+		top := logits[0];
+		each(i : logits) {
+			if(logits[i] > top) {
+				top := logits[i];
+			};
+		};
+
+		out := Float->New[logits->Size()];
+		total := 0.0;
+		each(i : logits) {
+			out[i] := (logits[i] - top)->Exp();
+			total += out[i];
+		};
+		each(i : out) {
+			out[i] /= total;
+		};
+
+		return out;
+	}
+
+	method : Same(a : Float[], b : Float[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	method : LoadLabels(path : String) ~ String[] {
+		content := System.IO.Filesystem.FileReader->ReadFile(path);
+		if(content = Nil) {
+			return String->New[0];
+		};
+
+		lines := content->Split("\n");
+		out := Vector->New()<String>;
+		each(i : lines) {
+			line := lines[i]->Trim();
+			if(line->Size() > 0) {
+				out->AddBack(line);
+			};
+		};
+
+		return out->ToArray()->As(String[]);
+	}
+}

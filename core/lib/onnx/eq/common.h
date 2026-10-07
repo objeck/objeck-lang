@@ -3123,3 +3123,637 @@ static void face_recognize_inf(VMContext& context) {
       std::wcerr << L"ONNX face_recognize error: " << BytesToUnicode(e.what()) << std::endl;
    }
 }
+
+//
+// ===========================================================================
+// Generic model execution
+// ===========================================================================
+//
+// Everything above this line owns one model family: it preprocesses, runs and
+// decodes a YOLO, a ResNet, a DeepLab, an OpenPose, a Phi-3 or an SCRFD. Eight
+// verticals with no shared chokepoint is why #1028 (a failed session that read
+// as success) and #1030 (diagnostics written to the program's stdout) each had
+// to be fixed in eight places, both in the same release.
+//
+// The two entry points below are that chokepoint. Hand generic_run a set of
+// named tensors and it returns the model's outputs as named tensors; model_info
+// reports what a model wants and returns, so a caller can build them. There is
+// no letterboxing here, no NMS, no sampling: those are properties of a MODEL
+// FAMILY, not of ONNX Runtime, and they belong above this layer, written once in
+// Objeck where any backend can reuse them (docs/INFERENCE_ENGINES_PLAN.md).
+//
+// The per-family functions stay. They are a convenience layer, they work, and
+// people use them.
+//
+
+// The datatype name Objeck sees. REPORTED, never demanded: the model declares
+// its own input types and this layer converts to them, so a caller never has to
+// know FP16 from FP32 in order to run a model.
+static const wchar_t* elem_type_name(ONNXTensorElementDataType type) {
+   switch(type) {
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:   return L"FP32";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16: return L"FP16";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE:  return L"FP64";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:    return L"INT8";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16:   return L"INT16";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:   return L"INT32";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:   return L"INT64";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:   return L"UINT8";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16:  return L"UINT16";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32:  return L"UINT32";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64:  return L"UINT64";
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL:    return L"BOOL";
+   default:                                    return L"UNSUPPORTED";
+   }
+}
+
+// An Objeck String[]: an Int array whose elements are String object pointers.
+// Every element is freshly allocated here, so none of this needs a write
+// barrier -- the barrier is for storing an object the library RECEIVED
+// (tools/cicd/check_native_write_barrier.py).
+static size_t* make_string_array(VMContext& context, const std::vector<std::wstring>& values) {
+   size_t* array = APITools_MakeIntArray(context, values.size());
+   size_t* buffer = array + ARRAY_HEADER_OFFSET;
+   for(size_t i = 0; i < values.size(); ++i) {
+      buffer[i] = (size_t)APITools_CreateStringObject(context, values[i]);
+   }
+
+   return array;
+}
+
+// An Objeck Int[]. Negative values round-trip: an Objeck Int is a signed 64-bit
+// value in the same slot, which matters because a dynamic dimension is -1.
+static size_t* make_int_array(VMContext& context, const std::vector<int64_t>& values) {
+   size_t* array = APITools_MakeIntArray(context, values.size());
+   size_t* buffer = array + ARRAY_HEADER_OFFSET;
+   for(size_t i = 0; i < values.size(); ++i) {
+      buffer[i] = (size_t)values[i];
+   }
+
+   return array;
+}
+
+template <typename T>
+static void store_elements(std::vector<uint8_t>& block, const double* src, size_t count) {
+   block.resize(count * sizeof(T));
+   T* dst = reinterpret_cast<T*>(block.data());
+   for(size_t i = 0; i < count; ++i) {
+      dst[i] = (T)src[i];
+   }
+}
+
+// Convert the caller's doubles into the element type the MODEL declares, into a
+// buffer the caller owns.
+//
+// Objeck carries every tensor as Float[], i.e. doubles, and the model decides
+// what it actually wants. A double holds every integer up to 2^53 exactly, which
+// covers token ids, class indexes, attention masks and pixel values with room to
+// spare; the Objeck side refuses an integer tensor outside that range rather than
+// letting it round here, where nothing could attribute the loss.
+//
+// An element type this layer does not carry is REFUSED, by name. Reinterpreting
+// a buffer the model is about to read produces confident nonsense, and the model
+// has no way to tell anyone it happened.
+static bool fill_input_block(std::vector<uint8_t>& block, ONNXTensorElementDataType type,
+                             const double* src, size_t count, const std::wstring& name) {
+   switch(type) {
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
+      store_elements<float>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE:
+      store_elements<double>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
+      store_elements<int8_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16:
+      store_elements<int16_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
+      store_elements<int32_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
+      store_elements<int64_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:
+      store_elements<uint8_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16:
+      store_elements<uint16_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32:
+      store_elements<uint32_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64:
+      store_elements<uint64_t>(block, src, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16: {
+      block.resize(count * sizeof(uint16_t));
+      uint16_t* dst = reinterpret_cast<uint16_t*>(block.data());
+      for(size_t i = 0; i < count; ++i) {
+         dst[i] = f32_to_f16((float)src[i]);
+      }
+      return true;
+   }
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL:
+      // ONNX BOOL is one byte, and anything non-zero is true. Casting the double
+      // straight to a bool-sized integer would make 2.0 and 256.0 disagree.
+      block.resize(count);
+      for(size_t i = 0; i < count; ++i) {
+         block[i] = (src[i] != 0.0) ? 1 : 0;
+      }
+      return true;
+
+   default:
+      std::wcerr << L">>> ONNX: input '" << name << L"' wants element type "
+                 << elem_type_name(type)
+                 << L", which this layer does not carry. <<<" << std::endl;
+      return false;
+   }
+}
+
+template <typename T>
+static void load_elements(const Ort::Value& value, double* dst, size_t count) {
+   const T* src = value.GetTensorData<T>();
+   for(size_t i = 0; i < count; ++i) {
+      dst[i] = (double)src[i];
+   }
+}
+
+// Convert a model output to the doubles Objeck reads. Refuses by name for the
+// same reason fill_input_block does.
+static bool read_output_block(const Ort::Value& value, ONNXTensorElementDataType type,
+                              double* dst, size_t count, const std::wstring& name) {
+   switch(type) {
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT:
+      load_elements<float>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_DOUBLE:
+      load_elements<double>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT8:
+      load_elements<int8_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT16:
+      load_elements<int16_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32:
+      load_elements<int32_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64:
+      load_elements<int64_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT8:
+      load_elements<uint8_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT16:
+      load_elements<uint16_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT32:
+      load_elements<uint32_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_UINT64:
+      load_elements<uint64_t>(value, dst, count);
+      return true;
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16: {
+      const uint16_t* src = reinterpret_cast<const uint16_t*>(value.GetTensorRawData());
+      for(size_t i = 0; i < count; ++i) {
+         dst[i] = (double)half_to_float_u16(src[i]);
+      }
+      return true;
+   }
+
+   case ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL: {
+      const uint8_t* src = reinterpret_cast<const uint8_t*>(value.GetTensorRawData());
+      for(size_t i = 0; i < count; ++i) {
+         dst[i] = src[i] ? 1.0 : 0.0;
+      }
+      return true;
+   }
+
+   default:
+      std::wcerr << L">>> ONNX: output '" << name << L"' has element type "
+                 << elem_type_name(type)
+                 << L", which this layer does not carry. <<<" << std::endl;
+      return false;
+   }
+}
+
+// An argument that is an Objeck array, or nullptr when the slot held Nil. Taking
+// holder[0] without the null check is a fault on a Nil argument, which is an
+// ordinary thing for a caller to pass.
+static inline size_t* arg_array(VMContext& context, size_t index) {
+   return APITools_GetArrayAddress(APITools_GetArray(context, index));
+}
+
+// What a model wants and returns, so a caller can size its inputs.
+//
+//   0: out  API.Onnx.ModelInfo, or Nil
+//   1: in   session : Int
+//
+// A dimension the model leaves symbolic -- batch size, sequence length -- is
+// reported as -1 rather than guessed at. The caller chooses it, and only the
+// caller can.
+static void model_info(VMContext& context) {
+   // Written explicitly. Returning without touching slot 0 leaves the caller's
+   // own initialisation standing in for a result, which is correct only by
+   // accident -- the #1028 shape.
+   APITools_SetObjectValue(context, 0, nullptr);
+
+   Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+   if(!session) {
+      std::wcerr << L">>> ONNX: model info requested for a session that is not open. <<<" << std::endl;
+      return;
+   }
+
+   try {
+      Ort::AllocatorWithDefaultOptions allocator;
+
+      std::vector<std::wstring> in_names, in_types, out_names, out_types;
+      std::vector<int64_t> in_ranks, in_dims, out_ranks, out_dims;
+
+      const size_t input_count = session->GetInputCount();
+      for(size_t i = 0; i < input_count; ++i) {
+         Ort::AllocatedStringPtr name = session->GetInputNameAllocated(i, allocator);
+         in_names.push_back(BytesToUnicode(name.get()));
+
+         // keep the TypeInfo alive: GetTensorTypeAndShapeInfo() is a view onto it
+         Ort::TypeInfo type_info = session->GetInputTypeInfo(i);
+         if(type_info.GetONNXType() != ONNX_TYPE_TENSOR) {
+            // A sequence or map input. Reported rather than thrown, so a model
+            // with one unusual input still describes the rest of itself.
+            in_types.push_back(L"NON_TENSOR");
+            in_ranks.push_back(0);
+            continue;
+         }
+
+         auto shape_info = type_info.GetTensorTypeAndShapeInfo();
+         in_types.push_back(elem_type_name(shape_info.GetElementType()));
+
+         const std::vector<int64_t> shape = shape_info.GetShape();
+         in_ranks.push_back((int64_t)shape.size());
+         for(size_t d = 0; d < shape.size(); ++d) {
+            in_dims.push_back(shape[d]);
+         }
+      }
+
+      const size_t output_count = session->GetOutputCount();
+      for(size_t i = 0; i < output_count; ++i) {
+         Ort::AllocatedStringPtr name = session->GetOutputNameAllocated(i, allocator);
+         out_names.push_back(BytesToUnicode(name.get()));
+
+         Ort::TypeInfo type_info = session->GetOutputTypeInfo(i);
+         if(type_info.GetONNXType() != ONNX_TYPE_TENSOR) {
+            out_types.push_back(L"NON_TENSOR");
+            out_ranks.push_back(0);
+            continue;
+         }
+
+         auto shape_info = type_info.GetTensorTypeAndShapeInfo();
+         out_types.push_back(elem_type_name(shape_info.GetElementType()));
+
+         const std::vector<int64_t> shape = shape_info.GetShape();
+         out_ranks.push_back((int64_t)shape.size());
+         for(size_t d = 0; d < shape.size(); ++d) {
+            out_dims.push_back(shape[d]);
+         }
+      }
+
+      // Arrays before the object, so nothing half-built is reachable.
+      size_t* in_names_array = make_string_array(context, in_names);
+      size_t* in_types_array = make_string_array(context, in_types);
+      size_t* in_ranks_array = make_int_array(context, in_ranks);
+      size_t* in_dims_array = make_int_array(context, in_dims);
+      size_t* out_names_array = make_string_array(context, out_names);
+      size_t* out_types_array = make_string_array(context, out_types);
+      size_t* out_ranks_array = make_int_array(context, out_ranks);
+      size_t* out_dims_array = make_int_array(context, out_dims);
+
+      size_t* info_obj = APITools_CreateObject(context, L"API.Onnx.ModelInfo");
+      info_obj[0] = (size_t)in_names_array;
+      info_obj[1] = (size_t)in_types_array;
+      info_obj[2] = (size_t)in_ranks_array;
+      info_obj[3] = (size_t)in_dims_array;
+      info_obj[4] = (size_t)out_names_array;
+      info_obj[5] = (size_t)out_types_array;
+      info_obj[6] = (size_t)out_ranks_array;
+      info_obj[7] = (size_t)out_dims_array;
+
+      APITools_SetObjectValue(context, 0, info_obj);
+   }
+   catch(const std::exception& e) {
+      std::wcerr << L">>> ONNX: reading model info failed: "
+                 << BytesToUnicode(e.what()) << L" <<<" << std::endl;
+   }
+}
+
+// Run a model on named tensors and return its outputs as named tensors.
+//
+//   0: out  API.Onnx.RunResult, or Nil
+//   1: in   session      : Int
+//   2: in   input_names  : String[]   empty => the model's own names, in order
+//   3: in   input_ranks  : Int[]      one per input tensor
+//   4: in   input_dims   : Int[]      every input's dimensions, concatenated
+//   5: in   input_data   : Float[]    every input's elements, concatenated
+//   6: in   output_names : String[]   empty => every output the model has
+//
+// The flat shape is deliberate: it keeps the native boundary to one call and one
+// pass, and it never reaches user code -- API.Onnx.Session->Run takes and returns
+// Vector<Tensor> and does the flattening in Objeck.
+//
+// Nothing here prints a timing line, unlike the eight functions above. A decoder
+// built on this calls it in a loop -- one Run per generated token for an SLM --
+// and an unconditional line per call would bury the program's own output.
+static void generic_run(VMContext& context) {
+   APITools_SetObjectValue(context, 0, nullptr);
+
+   Ort::Session* session = (Ort::Session*)APITools_GetIntValue(context, 1);
+   if(!session) {
+      std::wcerr << L">>> ONNX: run on a session that is not open. <<<" << std::endl;
+      return;
+   }
+
+   // Empty here means "use the model's own", which is the useful default for a
+   // single-input model. It also covers a Nil element in the array, which
+   // APITools_GetStringsValues reports the same way -- a caller error either
+   // way, and one the count check below catches whenever the model has more
+   // than one input.
+   const std::vector<std::wstring> given_input_names = APITools_GetStringsValues(context, 2);
+   const std::vector<std::wstring> wanted_output_names = APITools_GetStringsValues(context, 6);
+
+   size_t* ranks_array = arg_array(context, 3);
+   size_t* dims_array = arg_array(context, 4);
+   size_t* data_array = arg_array(context, 5);
+   if(!ranks_array || !dims_array || !data_array) {
+      std::wcerr << L">>> ONNX: run needs input ranks, dimensions and data. <<<" << std::endl;
+      return;
+   }
+
+   const size_t tensor_count = APITools_GetArraySize(ranks_array);
+   const size_t dim_count = APITools_GetArraySize(dims_array);
+   const size_t data_count = APITools_GetArraySize(data_array);
+   if(tensor_count < 1) {
+      std::wcerr << L">>> ONNX: run needs at least one input tensor. <<<" << std::endl;
+      return;
+   }
+
+   const int64_t* ranks = reinterpret_cast<const int64_t*>(ranks_array + ARRAY_HEADER_OFFSET);
+   const int64_t* dims = reinterpret_cast<const int64_t*>(dims_array + ARRAY_HEADER_OFFSET);
+   const double* data = reinterpret_cast<const double*>(data_array + ARRAY_HEADER_OFFSET);
+
+   // The three arrays describe each other, so a mismatch is caught here rather
+   // than read past. Every one of these was reachable from Objeck before the
+   // Objeck side validated too; both layers check, because the native layer is
+   // the one that would fault.
+   size_t dims_needed = 0;
+   for(size_t i = 0; i < tensor_count; ++i) {
+      if(ranks[i] < 1) {
+         std::wcerr << L">>> ONNX: input " << i << L" has rank " << ranks[i]
+                    << L"; a tensor needs at least one dimension. <<<" << std::endl;
+         return;
+      }
+      dims_needed += (size_t)ranks[i];
+   }
+   if(dims_needed != dim_count) {
+      std::wcerr << L">>> ONNX: the ranks account for " << dims_needed
+                 << L" dimension(s) but " << dim_count << L" were supplied. <<<" << std::endl;
+      return;
+   }
+
+   std::vector<size_t> counts(tensor_count);
+   size_t data_needed = 0;
+   size_t dim_at = 0;
+   for(size_t i = 0; i < tensor_count; ++i) {
+      size_t elements = 1;
+      for(int64_t d = 0; d < ranks[i]; ++d) {
+         const int64_t extent = dims[dim_at++];
+         // Zero is legitimate and 0 elements is a real tensor: every SLM's first
+         // forward pass passes an EMPTY key/value cache, shaped [1,heads,0,dim].
+         // Rejecting it as "not concrete" is what a rank/extent check gets wrong
+         // first -- found by probing Phi-3, whose 64 cache inputs are all empty
+         // on the prefill step. Negative is still refused: a model's own -1 means
+         // the CALLER chooses, not that the extent may be left unset.
+         if(extent < 0) {
+            std::wcerr << L">>> ONNX: input " << i << L" has dimension " << extent
+                       << L". A model's own -1 means the caller chooses that extent, "
+                       << L"not that it may be left unset. <<<" << std::endl;
+            return;
+         }
+         elements *= (size_t)extent;
+      }
+      counts[i] = elements;
+      data_needed += elements;
+   }
+   if(data_needed != data_count) {
+      std::wcerr << L">>> ONNX: the shapes account for " << data_needed
+                 << L" element(s) but " << data_count << L" were supplied. <<<" << std::endl;
+      return;
+   }
+
+   try {
+      Ort::AllocatorWithDefaultOptions allocator;
+
+      const size_t model_input_count = session->GetInputCount();
+      std::vector<std::string> model_input_names(model_input_count);
+      for(size_t i = 0; i < model_input_count; ++i) {
+         Ort::AllocatedStringPtr name = session->GetInputNameAllocated(i, allocator);
+         model_input_names[i] = name.get();
+      }
+
+      if(!given_input_names.empty() && given_input_names.size() != tensor_count) {
+         std::wcerr << L">>> ONNX: " << given_input_names.size() << L" input name(s) for "
+                    << tensor_count << L" tensor(s). <<<" << std::endl;
+         return;
+      }
+      if(given_input_names.empty() && tensor_count != model_input_count) {
+         std::wcerr << L">>> ONNX: " << tensor_count << L" input tensor(s) with no names, but the "
+                    << L"model has " << model_input_count
+                    << L". Name them to supply a subset. <<<" << std::endl;
+         return;
+      }
+
+      // Every buffer below must outlive the Run: Ort::Value::CreateTensor takes
+      // "a user supplied buffer" and wraps the pointer rather than copying it.
+      // Sized up front, so nothing is reallocated while a tensor points into it.
+      std::vector<std::vector<uint8_t>> blocks(tensor_count);
+      std::vector<std::vector<int64_t>> shapes(tensor_count);
+      std::vector<std::string> input_name_bytes(tensor_count);
+      std::vector<Ort::Value> input_values;
+      input_values.reserve(tensor_count);
+
+      Ort::MemoryInfo memory = Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeDefault);
+
+      dim_at = 0;
+      size_t data_at = 0;
+      for(size_t i = 0; i < tensor_count; ++i) {
+         const std::wstring name = given_input_names.empty()
+            ? BytesToUnicode(model_input_names[i])
+            : given_input_names[i];
+         input_name_bytes[i] = UnicodeToBytes(name);
+
+         // Which input this is, because its DECLARED type is what we convert to.
+         size_t model_index = model_input_count;
+         for(size_t m = 0; m < model_input_count; ++m) {
+            if(model_input_names[m] == input_name_bytes[i]) {
+               model_index = m;
+               break;
+            }
+         }
+         if(model_index == model_input_count) {
+            std::wcerr << L">>> ONNX: the model has no input named '" << name << L"'. It wants: ";
+            for(size_t m = 0; m < model_input_count; ++m) {
+               if(m > 0) {
+                  std::wcerr << L", ";
+               }
+               std::wcerr << BytesToUnicode(model_input_names[m]);
+            }
+            std::wcerr << L". <<<" << std::endl;
+            return;
+         }
+
+         Ort::TypeInfo type_info = session->GetInputTypeInfo(model_index);
+         if(type_info.GetONNXType() != ONNX_TYPE_TENSOR) {
+            std::wcerr << L">>> ONNX: input '" << name
+                       << L"' is not a tensor; this layer carries tensors only. <<<" << std::endl;
+            return;
+         }
+         auto shape_info = type_info.GetTensorTypeAndShapeInfo();
+         const ONNXTensorElementDataType elem_type = shape_info.GetElementType();
+
+         if(!fill_input_block(blocks[i], elem_type, data + data_at, counts[i], name)) {
+            return;
+         }
+
+         // An empty tensor still needs a non-null data pointer: reserving gives
+         // data() a real address while size() stays 0, which is what the shape
+         // says the model should read.
+         if(blocks[i].empty()) {
+            blocks[i].reserve(1);
+         }
+
+         shapes[i].assign(dims + dim_at, dims + dim_at + ranks[i]);
+         input_values.push_back(Ort::Value::CreateTensor(
+            memory,
+            blocks[i].data(), blocks[i].size(),
+            shapes[i].data(), shapes[i].size(),
+            elem_type));
+
+         dim_at += (size_t)ranks[i];
+         data_at += counts[i];
+      }
+
+      // Output names, then the pointers into them: a std::string's buffer does
+      // not survive the vector growing, so the pointer vector is built only once
+      // the name vector is final.
+      std::vector<std::string> output_name_bytes;
+      if(wanted_output_names.empty()) {
+         const size_t model_output_count = session->GetOutputCount();
+         for(size_t i = 0; i < model_output_count; ++i) {
+            Ort::AllocatedStringPtr name = session->GetOutputNameAllocated(i, allocator);
+            output_name_bytes.push_back(name.get());
+         }
+      }
+      else {
+         for(size_t i = 0; i < wanted_output_names.size(); ++i) {
+            output_name_bytes.push_back(UnicodeToBytes(wanted_output_names[i]));
+         }
+      }
+      if(output_name_bytes.empty()) {
+         std::wcerr << L">>> ONNX: the model reports no outputs. <<<" << std::endl;
+         return;
+      }
+
+      std::vector<const char*> input_name_ptrs(tensor_count);
+      for(size_t i = 0; i < tensor_count; ++i) {
+         input_name_ptrs[i] = input_name_bytes[i].c_str();
+      }
+      std::vector<const char*> output_name_ptrs(output_name_bytes.size());
+      for(size_t i = 0; i < output_name_bytes.size(); ++i) {
+         output_name_ptrs[i] = output_name_bytes[i].c_str();
+      }
+
+      std::vector<Ort::Value> outputs = session->Run(
+         Ort::RunOptions{ nullptr },
+         input_name_ptrs.data(), input_values.data(), input_values.size(),
+         output_name_ptrs.data(), output_name_ptrs.size());
+
+      // Collect: names and types as strings, shapes concatenated with a rank per
+      // output, elements concatenated. The Objeck side splits them back apart.
+      std::vector<std::wstring> out_names(outputs.size()), out_types(outputs.size());
+      std::vector<int64_t> out_ranks(outputs.size()), out_dims;
+      std::vector<size_t> out_counts(outputs.size());
+      size_t total_elements = 0;
+
+      for(size_t i = 0; i < outputs.size(); ++i) {
+         out_names[i] = BytesToUnicode(output_name_bytes[i]);
+         if(!outputs[i].IsTensor()) {
+            std::wcerr << L">>> ONNX: output '" << out_names[i]
+                       << L"' is not a tensor; this layer carries tensors only. <<<" << std::endl;
+            return;
+         }
+
+         const Ort::TensorTypeAndShapeInfo shape_info = outputs[i].GetTensorTypeAndShapeInfo();
+         out_types[i] = elem_type_name(shape_info.GetElementType());
+
+         const std::vector<int64_t> shape = shape_info.GetShape();
+         out_ranks[i] = (int64_t)shape.size();
+         for(size_t d = 0; d < shape.size(); ++d) {
+            out_dims.push_back(shape[d]);
+         }
+
+         out_counts[i] = shape_info.GetElementCount();
+         total_elements += out_counts[i];
+      }
+
+      size_t* out_data_array = APITools_MakeFloatArray(context, total_elements);
+      double* out_data = reinterpret_cast<double*>(out_data_array + ARRAY_HEADER_OFFSET);
+
+      size_t out_at = 0;
+      for(size_t i = 0; i < outputs.size(); ++i) {
+         const Ort::TensorTypeAndShapeInfo shape_info = outputs[i].GetTensorTypeAndShapeInfo();
+         if(!read_output_block(outputs[i], shape_info.GetElementType(),
+                               out_data + out_at, out_counts[i], out_names[i])) {
+            return;
+         }
+         out_at += out_counts[i];
+      }
+
+      size_t* names_array = make_string_array(context, out_names);
+      size_t* types_array = make_string_array(context, out_types);
+      size_t* ranks_out_array = make_int_array(context, out_ranks);
+      size_t* dims_out_array = make_int_array(context, out_dims);
+
+      size_t* result_obj = APITools_CreateObject(context, L"API.Onnx.RunResult");
+      result_obj[0] = (size_t)names_array;
+      result_obj[1] = (size_t)types_array;
+      result_obj[2] = (size_t)ranks_out_array;
+      result_obj[3] = (size_t)dims_out_array;
+      result_obj[4] = (size_t)out_data_array;
+
+      APITools_SetObjectValue(context, 0, result_obj);
+   }
+   catch(const std::exception& e) {
+      std::wcerr << L">>> ONNX: run failed: " << BytesToUnicode(e.what()) << L" <<<" << std::endl;
+   }
+}

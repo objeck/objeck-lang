@@ -1,8 +1,10 @@
 # Inference backends: TF Lite beside ONNX — plan
 
-Status: proposed. Nothing here is built except the HTTP client
-(`core/compiler/lib_src/inference.obs`, written 2026-10-03, 38 assertions, not
-yet registered as a library).
+Status: **P1 is built** (2026-10-07) -- `API.Onnx.Session`, `Tensor`,
+`TensorSpec`, `ModelInfo` and `RunResult` over two new native entry points,
+`onnx_run` and `onnx_model_info`. P2-P5 are still proposed. The HTTP client
+(`core/compiler/lib_src/inference.obs`, written 2026-10-03, 38 assertions) is
+written but **not registered as a library**, so nothing can `use` it yet.
 
 ## Why
 
@@ -48,12 +50,18 @@ built the same way doubles that.
 
 ## What is missing
 
-1. **A generic `run` on ONNX.** Session creation is already generic; *running* a
-   model is not. There is no `onnx_run(session, inputs) -> outputs`. This is a
-   prerequisite, not a nicety: an `OnnxEngine` cannot exist without it.
-2. **A backend-neutral tensor.** `API.Inference.Tensor` already is one — name,
-   datatype, shape, flat `Float[]` or `Int[]`, with a shape/count consistency
-   check. Written for the HTTP client, usable unchanged.
+1. ~~**A generic `run` on ONNX.**~~ **Built.** `onnx_run` takes named tensors and
+   returns the model's outputs as named tensors. `onnx_model_info` came with it
+   and is not optional: you cannot build inputs for a multi-input model without
+   knowing its names and shapes. The flat marshalling — ranks, concatenated
+   dimensions, concatenated elements — stays inside `onnx.obs`;
+   `Session->Run` takes and returns `Vector<Tensor>`.
+2. **A backend-neutral tensor.** There are now **two** near-identical ones:
+   `API.Onnx.Tensor` (shipped with P1) and `API.Inference.Tensor` (written, not
+   registered). That duplication is deliberate and temporary — P1 could not wait
+   on a new shared library and its five registration points — but it is exactly
+   the drift this document warns about, so **P2 must re-home one, not add a
+   third.**
 3. **An interface both backends implement**, so calling code does not choose a
    backend at every call site.
 
@@ -104,16 +112,52 @@ and should not gate a new backend.
 
 ## Phasing
 
-**P1 — generic ONNX run.** ~150 lines in `onnx.cpp`, ~200 in `onnx.obs`. No new
-dependency, no new build leg, nothing added to packaging. Delivers value alone:
-TF, PyTorch and scikit-learn models all reach it via `tf2onnx`, `torch.onnx` and
-`skl2onnx` on the four platforms ONNX works. Guarded by the write-barrier
-checker that #1026 just added, which is a reason to do it after that lands
-rather than before.
+**P1 — generic ONNX run. DONE, 2026-10-07** (#1047). ~630 lines in `common.h`,
+~830 in `onnx.obs`. No new dependency, no new build leg, nothing added to
+packaging. It delivers value alone: TF, PyTorch and scikit-learn models all
+reach it via `tf2onnx`, `torch.onnx` and `skl2onnx`, on the four platforms ONNX
+works.
+
+Verified against real models rather than argued for, in
+`programs/frameworks/opencv_onnx` (neither program can live in
+`programs/regression`, which ships no model):
+
+| model | what it establishes |
+|---|---|
+| `resnet34` | the generic path and `ResNetSession` agree **exactly** — same class, same label, confidence gap `0.000000` (`ab_resnet.obs`) |
+| `phi3` | 67 inputs: 3 INT64 + 64 **empty** FP16 cache tensors, FP16 logits read back as Float. "The capital of France is" → "Paris" (`ab_phi3.obs`) |
+| `openpose` | four outputs, all returned; the per-family path exposes one |
+| `resnet34`, `phi3` | symbolic dimensions reported as -1 rather than guessed |
+
+Three things the real models taught that the design did not:
+
+- an `extent < 1` validation refused `[1,32,0,96]`, which is how **every** SLM
+  passes its key/value cache on the first forward pass. Zero elements is a real
+  tensor. Found by probing Phi-3, not by reasoning about it.
+- `Ort::Value::CreateTensor` takes, in the ORT header's own words, "a user
+  supplied buffer" — it wraps the pointer rather than copying, so every input
+  buffer must outlive the `Run`. The existing FP16 helper got this wrong and had
+  been returning a tensor over a freed local (#1045); the generic path sizes its
+  buffers up front.
+- all seven per-family `Close` methods left their handle in place after the
+  native delete, so `IsOpen()` lied and a second `Close` was a double free
+  (#1046). Writing one correct `Close` is what exposed it.
+
+Caveats, stated rather than left to be discovered:
+
+- element types carried: FP32, FP16, FP64, INT8/16/32/64, UINT8/16/32/64, BOOL.
+  Anything else is refused **by name**. Tensors only — a sequence or map input is
+  refused, not silently mishandled.
+- every tensor crosses as `Float[]`, exact for integers up to 2^53. An `Int[]`
+  tensor outside that range is refused at construction rather than rounded.
+- `Run` prints no timing line, unlike the eight per-family functions. A decoder
+  calls it once per generated token.
 
 **P2 — `Engine` interface, `OnnxEngine`, `HttpEngine`.** Move `Tensor`,
 `EndPoint` and `ModelMetadata` into the shared bundle; wrap the existing HTTP
-`Client` as `HttpEngine`. No native work.
+`Client` as `HttpEngine`. No native work — `OnnxEngine` is now a thin wrapper
+over `API.Onnx.Session`, which is the whole reason P1 came first. **This phase
+owns the Tensor duplication P1 left behind**; see "What is missing" 2.
 
 **P3 — TF Lite.** Vendor `libtensorflowlite_c`, wrap ~12 of its ~30 C functions
 (`TfLiteModelCreateFromFile`, `TfLiteInterpreterCreate`, `AllocateTensors`,
@@ -153,7 +197,8 @@ than two. Re-checked 2026-10-07: most of that plan is **already implemented**.
 `ep` is already a provider *name* rather than a cpu/dml switch, and a provider the
 build cannot supply is already refused loudly, naming what it does provide.
 
-What remains from it:
+P1 did not touch any of it: `onnx_run` and `onnx_model_info` take a session that
+is already open, so this still belongs to session creation. What remains:
 
 - its step 2, which it calls the crux: validate against
   `Ort::GetAvailableProviders()` at runtime instead of the compile-time

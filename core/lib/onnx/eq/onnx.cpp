@@ -269,6 +269,25 @@ extern "C" {
       close_session(context);
    }
 
+   // Describe a model: the names, element types and shapes of its inputs and
+   // outputs. A symbolic dimension is reported as -1 -- the caller chooses it.
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_model_info(VMContext& context) {
+      model_info(context);
+   }
+
+   // Run a model on named tensors, returning its outputs as named tensors. The
+   // chokepoint the eight per-family functions below never had: no preprocessing
+   // and no decoding, so a decoder written once in Objeck can serve any of them.
+#ifdef _WIN32
+   __declspec(dllexport)
+#endif
+   void onnx_run(VMContext& context) {
+      generic_run(context);
+   }
+
    // YOLO inference
 #ifdef _WIN32
    __declspec(dllexport)

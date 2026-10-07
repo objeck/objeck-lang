@@ -1,0 +1,285 @@
+#~
+# The generic ONNX run entry point: its refusals, and the tensor bookkeeping
+# around it.
+#
+# EXTRA_LIBS: onnx,opencv,cipher,json
+#
+# What this is for. API.Onnx had eleven native entry points, EIGHT of them
+# per-model-family inference functions over 3,100 lines of per-family C++. With
+# no chokepoint, a defect in that pattern is a defect in every copy, which is
+# why #1028 (a failed session that read as success) and #1030 (diagnostics on
+# the program's own stdout) each had to be fixed eight times -- both in the same
+# release. onnx_run and onnx_model_info are the chokepoint: tensors in, tensors
+# out, with preprocessing and decoding left to Objeck above them.
+#
+# What this test can and cannot reach. Running a model needs a model, and the
+# regression tree carries none -- onnx_runtime_test.obs says why: a
+# multi-megabyte asset, plus a dependency on inference being numerically right.
+# So the assertions here cover the half that needs no asset: every refusal path,
+# and the flattening the Objeck side does before it crosses. That is the half
+# where the bugs above lived.
+#
+# The other half is verified against real models in
+# programs/frameworks/opencv_onnx: ab_resnet.obs runs resnet34 through both the
+# generic path and ResNetSession and requires the answers to match, and
+# ab_phi3.obs prefills Phi-3 through the generic path with 67 inputs -- three
+# INT64, sixty-four empty FP16 cache tensors -- and requires "The capital of
+# France is" to produce "Paris". Neither can run here.
+#
+# Skips when the native library is absent, probing for the file rather than
+# checking after the fact: EXT_LIB_LOAD calls exit(1) on a failed load, so a
+# skip written that way is dead code. It is genuinely absent on linux-arm64.
+~#
+
+use API.Onnx;
+use Collection;
+use System.IO.Filesystem;
+
+class OnnxGenericRun {
+	@ok : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := OnnxGenericRun->New();
+		t->Run();
+	}
+
+	New() {
+		@ok := true;
+	}
+
+	method : Report(name : String, cond : Bool) ~ Nil {
+		if(cond) {
+			"PASS: {$name}"->PrintLine();
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@ok := false;
+		};
+	}
+
+	#~ Whether libobjk_onnx is deployed on this platform. Not on linux-arm64. ~#
+	method : LibraryPresent() ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+
+		base := "{$dir}native/libobjk_onnx";
+		dll := "{$base}.dll";
+		so := "{$base}.so";
+		dylib := "{$base}.dylib";
+
+		return System.IO.Filesystem.File->Exists(dll) |
+			System.IO.Filesystem.File->Exists(so) |
+			System.IO.Filesystem.File->Exists(dylib);
+	}
+
+	method : Run() ~ Nil {
+		if(<>LibraryPresent()) {
+			"SKIP: libobjk_onnx is not deployed"->PrintLine();
+			return;
+		};
+
+		Shapes();
+		Integers();
+		Specs();
+		ClosedSession();
+		Arguments();
+		PerFamilyClose();
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+
+		"reached the end without aborting"->PrintLine();
+	}
+
+	#~
+	A tensor's element count and its shape have to agree, and the Objeck side
+	is where that can be said with the tensor's name in the message. The native
+	side checks too, but it only sees three parallel arrays by then.
+	~#
+	method : Shapes() ~ Nil {
+		four := Float->New[4];
+		good := Tensor->New("x", [2, 2], four);
+		Report("a 2x2 of four elements is consistent", good->IsConsistent());
+		Report("and reports its shape product", good->GetShapeProduct() = 4);
+		Report("and its count", good->GetCount() = 4);
+
+		bad := Tensor->New("x", [2, 3], four);
+		Report("a 2x3 of four elements is not", <>bad->IsConsistent());
+
+		# The case a "count must be positive" check gets wrong. Every SLM's first
+		# forward pass passes an EMPTY key/value cache shaped [batch,heads,0,dim],
+		# and Phi-3 passes sixty-four of them.
+		none := Float->New[0];
+		empty := Tensor->New("past_key_values.0.key", [1, 32, 0, 96], none);
+		Report("an empty cache tensor is consistent, not malformed", empty->IsConsistent());
+		Report("its shape product is zero", empty->GetShapeProduct() = 0);
+		Report("and so is its count", empty->GetCount() = 0);
+
+		shapeless := Tensor->New("x", Nil->As(Int[]), four);
+		Report("a tensor with no shape is not consistent", <>shapeless->IsConsistent());
+
+		named := Tensor->New("logits", "FP16", [1, 2], Float->New[2]);
+		Report("a tensor can name its own element type", named->GetDatatype()->Equals("FP16"));
+		Report("and keeps the name the model knows it by", named->GetName()->Equals("logits"));
+	}
+
+	#~
+	Integer tensors cross as Float, which is exact up to 2^53 and covers every
+	token id, class index and attention mask there is. Past that the conversion
+	is REFUSED rather than silently rounded: once a value has been rounded,
+	nothing downstream can tell that it was.
+	~#
+	method : Integers() ~ Nil {
+		ids := [101, 2003, 1037, 2944];
+		tokens := Tensor->New("input_ids", [1, 4], ids);
+		Report("an integer tensor converts", tokens->IsConsistent());
+		Report("and is labelled INT64", tokens->GetDatatype()->Equals("INT64"));
+
+		back := tokens->GetInts();
+		same := back <> Nil & back->Size() = 4;
+		if(same) {
+			each(i : back) {
+				if(back[i] <> ids[i]) {
+					same := false;
+				};
+			};
+		};
+		Report("and round-trips through Float exactly", same);
+
+		# 2^53 is the last integer a Float holds exactly; 2^53 + 1 is not.
+		too_big := Int->New[1];
+		too_big[0] := 9007199254740993;
+		refused := Tensor->New("input_ids", [1, 1], too_big);
+		Report("a value beyond 2^53 is refused, not rounded", refused->GetData() = Nil);
+		Report("and the refused tensor reports itself inconsistent", <>refused->IsConsistent());
+
+		edge := Int->New[1];
+		edge[0] := 9007199254740992;
+		accepted := Tensor->New("input_ids", [1, 1], edge);
+		Report("2^53 itself is accepted", accepted->IsConsistent());
+	}
+
+	#~ A model's signature, including the dimensions it leaves to the caller. ~#
+	method : Specs() ~ Nil {
+		fixed := TensorSpec->New("images", "FP32", [1, 3, 768, 768]);
+		Report("a fully fixed input says so", fixed->IsFixed());
+		Report("and reports its element type", fixed->GetDatatype()->Equals("FP32"));
+
+		# -1 is not a gap in the report: the model genuinely does not fix the
+		# batch size and only the caller can.
+		dynamic := TensorSpec->New("data", "FP32", [-1, 3, 224, 224]);
+		Report("a symbolic batch dimension is not fixed", <>dynamic->IsFixed());
+		Report("and it is reported as -1 rather than guessed at", dynamic->GetShape()[0] = -1);
+
+		Report("a spec with no shape is not fixed", <>TensorSpec->New("x", "FP32", Nil->As(Int[]))->IsFixed());
+	}
+
+	#~
+	A session that never opened must refuse a run, and a closed one must refuse
+	the next. Closing twice has to be safe: the native close deletes the
+	Ort::Session, so a handle left in place would be a second delete of the same
+	pointer.
+	~#
+	method : ClosedSession() ~ Nil {
+		missing := "this_model_does_not_exist_generic_run.onnx";
+		session := Session->New(missing);
+		Report("a session for a missing model is still constructed", session <> Nil);
+		if(session = Nil) {
+			return;
+		};
+
+		Report("but reports itself closed", <>session->IsOpen());
+
+		inputs := Vector->New()<Tensor>;
+		inputs->AddBack(Tensor->New("x", [1, 1], Float->New[1]));
+		Report("a run on it is refused rather than attempted", session->Run(inputs) = Nil);
+		Report("and so is a model-info request", session->GetModelInfo() = Nil);
+
+		session->Close();
+		session->Close();
+		Report("closing a session that never opened, twice, is safe", <>session->IsOpen());
+	}
+
+		#~
+	The refusals that need no live session, which is every argument the caller
+	built itself. RunTensors validates those BEFORE it looks at the session
+	handle, which is what makes them reachable from a test with no model: when
+	the session check came first, each of these passed because the session was
+	dead, not because the argument was rejected.
+	~#
+	method : Arguments() ~ Nil {
+		session := Session->New("this_model_does_not_exist_generic_run.onnx");
+
+		empty_inputs := Vector->New()<Tensor>;
+		Report("a run with no inputs is refused", session->Run(empty_inputs) = Nil);
+
+		nil_inputs := Vector->New()<Tensor>;
+		nil_inputs->AddBack(Nil);
+		Report("a run with a Nil tensor is refused", session->Run(nil_inputs) = Nil);
+
+		shapeless := Vector->New()<Tensor>;
+		shapeless->AddBack(Tensor->New("x", Nil->As(Int[]), Float->New[1]));
+		Report("a run with an unshaped tensor is refused", session->Run(shapeless) = Nil);
+
+		ragged := Vector->New()<Tensor>;
+		ragged->AddBack(Tensor->New("x", [2, 3], Float->New[4]));
+		Report("a run whose shape and data disagree is refused", session->Run(ragged) = Nil);
+
+		# The 2^53 refusal reaches the run path too: the constructor left the data
+		# Nil, so the tensor is inconsistent and never crosses.
+		too_big := Int->New[1];
+		too_big[0] := 9007199254740993;
+		overflowed := Vector->New()<Tensor>;
+		overflowed->AddBack(Tensor->New("input_ids", [1, 1], too_big));
+		Report("a run with a tensor refused at construction is refused", session->Run(overflowed) = Nil);
+
+		session->Close();
+	}
+	#~
+	Closing a per-family session twice must be safe (#1046).
+	
+	Each of the seven per-family Close methods called the native close and left
+	its handle in place. close_session deletes the Ort::Session and nulls its own
+	LOCAL copy, so the handle that stayed behind pointed at freed memory: a
+	second Close was a double free -- reproduced as 0xC0000374 and 0xC0000005 on
+	the same build -- and IsOpen() reported true forever after the first.
+	
+	This reaches the GUARD, which is as far as a test with no model can get: a
+	session that never opened has a zero handle and Close returns early. The
+	other half -- that a LIVE session zeroes its handle, which is where the
+	crash was -- needs a model and is asserted in
+	programs/frameworks/opencv_onnx/ab_resnet.obs.
+	~#
+	method : PerFamilyClose() ~ Nil {
+		missing := "this_model_does_not_exist_generic_run.onnx";
+
+		yolo := YoloSession->New(missing);
+		yolo->Close();
+		yolo->Close();
+		Report("YoloSession closes twice safely", <>yolo->IsOpen());
+
+		resnet := ResNetSession->New(missing);
+		resnet->Close();
+		resnet->Close();
+		Report("ResNetSession closes twice safely", <>resnet->IsOpen());
+
+		deeplab := DeepLabSession->New(missing);
+		deeplab->Close();
+		deeplab->Close();
+		Report("DeepLabSession closes twice safely", <>deeplab->IsOpen());
+
+		openpose := OpenPoseSession->New(missing);
+		openpose->Close();
+		openpose->Close();
+		Report("OpenPoseSession closes twice safely", <>openpose->IsOpen());
+
+		faces := FaceSession->New(missing, missing);
+		faces->Close();
+		faces->Close();
+		Report("FaceSession closes twice safely, with two handles", <>faces->IsOpen());
+	}
+
+}
