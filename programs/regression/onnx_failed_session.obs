@@ -86,6 +86,7 @@ class OnnxFailedSession {
 		DeepLab(missing);
 		OpenPose(missing);
 		Faces(missing);
+		RefusedProvider(missing);
 
 		if(<>@ok) {
 			Runtime->Exit(1);
@@ -193,4 +194,34 @@ class OnnxFailedSession {
 
 		session->Close();
 	}
+	#~
+	A refused execution provider must also be visible, not just a failed load.
+	
+	onnx_new_session has four exits. #1028 fixed the catch; two early refusals --
+	an ep this build cannot provide, and a CUDA build whose linked onnxruntime
+	does not carry CUDA -- still returned without writing the result slot. They
+	read as failure only because IntRef->New() defaults to 0, which is the same
+	fragility #1028 was about. This covers the one of the two that can be
+	triggered from Objeck on any build: name a provider the build does not have.
+	~#
+	method : RefusedProvider(missing : String) ~ Nil {
+		config := Map->New()<String, String>;
+		# Deliberately a provider no single build carries alongside the others, so
+		# this is refused whichever provider the library was compiled with. On a
+		# CPU-only build every named provider is refused, which is also correct.
+		config->Insert("ep", "a-provider-that-does-not-exist");
+
+		session := YoloSession->New(missing, config);
+		Report("a session with a refused provider is constructed", session <> Nil);
+		if(session = Nil) {
+			return;
+		};
+
+		Report("a refused provider leaves IsOpen false", <>session->IsOpen());
+		Report("and inference refuses rather than aborting",
+			session->Inference(Image(), 8, 8, 0.25, Labels()) = Nil);
+
+		session->Close();
+	}
+
 }
