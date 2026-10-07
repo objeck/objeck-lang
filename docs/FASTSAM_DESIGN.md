@@ -1,5 +1,32 @@
 # FastSAM-s segmentation for ONNX — design
 
+Status: **deferred, and the shape below is superseded.** Maintainer decision,
+2026-10-07: FastSAM waits for the generic ONNX run entry point and is then built
+as a **decoder above it**, not as a ninth per-family native function.
+
+Why the change. `API.Onnx` has eight per-family native entry points
+(`onnx_yolo_image_inf`, `onnx_resnet_image_inf`, and so on) over 3,113 lines of
+per-family C++ in `common.h`. That structure has no chokepoint, which is why a
+single defect in the pattern had to be fixed eight separate times -- twice in one
+release: #1028 (a failed session undetectable, two families dereferencing Nil)
+and #1030 (thirteen writes to the program's stdout, spanning every family).
+Adding `onnx_fastsam_image_inf` would make it nine.
+
+What survives unchanged: everything in this document about **FastSAM itself** --
+that the network is not conditioned on the prompt, that one forward pass yields
+every mask and a prompt only selects among them, the decode, the mask assembly,
+the thresholds. That is model knowledge and it is the valuable part.
+
+What is withdrawn: the "Shape" section's single native entry point and the
+`FastSamSession` class that owns a session. In the replacement, FastSAM is a
+decoder that takes an `Engine` (ONNX in-process, TF Lite, or a remote server) and
+turns its output tensors into `FastSamMask` values -- so the decode is written
+once in Objeck and works with any backend, rather than once in C++ per runtime.
+
+Depends on: `INFERENCE_ENGINES_PLAN.md` P1 (the generic `onnx_run`) and P2 (the
+`Engine` interface). FastSAM is the intended first consumer of P5, and the one
+that demonstrates whether the decoder-over-Engine idea actually pays.
+
 Add promptable instance segmentation to `API.Onnx` by wrapping FastSAM-s, with
 the model handling, decode and mask assembly in C++ and a small Objeck surface
 that looks like the model families already there.
@@ -86,6 +113,11 @@ optimised path already linked in.
 ---
 
 ## Shape
+
+> **Superseded** -- see the status note at the top. This section describes the
+> ninth per-family native entry point that the 2026-10-07 decision withdrew.
+> Kept because the arguments and result shape still describe what the decoder
+> needs to produce.
 
 One native entry point, following the existing naming:
 

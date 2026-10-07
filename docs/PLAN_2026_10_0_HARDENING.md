@@ -232,7 +232,12 @@ Proof it works, on the release binary:
    - `OBJECK_NURSERY=128m` stays available through the release as a kill switch.
 9. **G4** promotion via `GetMemory` as a *throughput* item. Rewrite word[0] after the copy; take the cache lock once per batch. Not counted toward the memory gate.
 10. **GC fuzz mode (threads):** per-thread allocation graphs and checksums, verifier on at T2.
-- **Next release:** escape analysis; replacing `old_generation`'s `unordered_set` (~13-15 MB and an O(old-gen) walk per minor GC on binarytrees); adaptive nursery growth on high survival; `@field`/`self` in lambdas (D5).
+- **Next release**, re-checked 2026-10-07. Two of the four had already shipped and this list was the only thing still calling them open:
+  - ~~replacing `old_generation`'s `unordered_set`~~ -- **done**, [#871](https://github.com/objeck/objeck-lang/issues/871): it is an open-addressing `PtrSet`, and Windows `binarytrees` went 2.392s to 1.789s.
+  - ~~**G2**, exact object size ("moves to the next release" in section 7)~~ -- **done**, [#840](https://github.com/objeck/objeck-lang/issues/840): the allocator, the young-object-start test and the AMD64 JIT's inline allocator all went `size * 2 + header` to `size + header`.
+  - adaptive nursery growth on high survival -- **open**, and now split. The commit half is [#1043](https://github.com/objeck/objeck-lang/pull/1043) (Windows commits the nursery limit rather than the 128 MB reservation, so `--nursery` finally reduces memory). The growth half cannot be done in the runtime alone: the AMD64 JIT inlines the nursery bump, so a commit check has to be emitted into the fast path on every backend that inlines it. See [#841](https://github.com/objeck/objeck-lang/issues/841).
+  - escape analysis -- **open**, untouched.
+  - `@field`/`self` in lambdas (D5) -- **open**. Many lambda defects shipped in 9.5 (#834, #845, #847, nested-capture resolution) but not this one.
 
 **GC/VM lane exit gate:**
 - Full regression under the verifier in **both** stress modes (minor: small nursery; major: `--gc-threshold=64k`), default and `--jit=1`, green on all five legs.

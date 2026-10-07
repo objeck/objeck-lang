@@ -103,6 +103,10 @@ extern "C" {
                        << BytesToUnicode(compiled_ep)
                        << L"'. Use ep=" << BytesToUnicode(compiled_ep)
                        << L" or ep=cpu. <<<" << std::endl;
+            // Write the refusal into the return slot. #1028 fixed the catch below but not this
+            // path, which left slot 0 as the caller found it -- reading as failure only
+            // because IntRef->New() defaults to 0.
+            APITools_SetIntValue(context, 0, 0);
             return;
          }
 
@@ -153,6 +157,8 @@ extern "C" {
                           << BytesToUnicode(available_list)
                           << L". Rebuild the native library with './build.sh cpu', or link a "
                           << L"CUDA-enabled onnxruntime. <<<" << std::endl;
+               // As above: this refusal predates #1028 and was missed by it.
+               APITools_SetIntValue(context, 0, 0);
                return;
             }
 
