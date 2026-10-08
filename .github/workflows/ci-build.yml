@@ -1418,6 +1418,14 @@ jobs:
       - name: The native write-barrier scan can still detect an unbarriered store
         run: python3 tools/cicd/test_check_native_write_barrier.py
 
+      # Modelled on the scan above, and carrying a positive control for the same
+      # reason: pointed at a truncated or wrong file, a check without one reports a
+      # clean index, which is indistinguishable from a clean tree. Nine cases, one
+      # of them the trap that a regenerating CI step can compare the fresh index
+      # against itself and pass unconditionally. Nothing built.
+      - name: The API index check can still detect a stale index
+        run: python3 tools/cicd/test_check_api_index.py
+
       # Same class of guard, for programs/regression/run_differential.py. Its
       # markers take a test out of part of the s0/s3 x JIT comparison, so each
       # one that removes coverage needs a stated reason, and the
@@ -1558,6 +1566,34 @@ jobs:
 
       - name: LSP regression
         run: python3 tools/lsp/tests/run_lsp_tests.py core/release/deploy-x64/bin
+
+      # Same family of guard, found the same way: by noticing something shipped was
+      # not in the editor index. objk_apis.json is what the language server answers
+      # completions and hover from, and the copy under clients/vscode is packaged
+      # into the .vsix -- the one users actually get. Both are tracked, both are
+      # generated, and nothing regenerated or verified either, so the index changed
+      # only when someone remembered. They had not: regenerating on 2026-10-07 took
+      # API.Onnx from 48 entries to 58, so the whole generic run API (#1047) shipped
+      # with no completions, and several System.ML releases before it had too.
+      # check_doc_lists.py does not cover this -- a library can be in all six lists
+      # and still absent from the index, which is the state the tree was in (#1050).
+      #
+      # It compares the CLASS SET, not the bytes: the index is emitted by an Objeck
+      # program run on whatever machine the maintainer used, and a guard that reddens
+      # CI over whitespace gets disabled. Missing classes are what drifts.
+      - name: Editor API index is current
+        run: |
+          # gen_json.sh rewrites both tracked copies IN PLACE, so keep the committed
+          # ones and name them explicitly below. Comparing against the tracked path
+          # after regeneration would compare the fresh index with itself and pass
+          # however stale the committed one was.
+          cp tools/lsp/server/objk_apis.json "$RUNNER_TEMP/committed.json"
+          cp tools/lsp/clients/vscode/server/objk_apis.json "$RUNNER_TEMP/packaged.json"
+          sh tools/lsp/server/doc_json/gen_json.sh
+          python3 tools/cicd/check_api_index.py \
+            --committed "$RUNNER_TEMP/committed.json" \
+            --packaged "$RUNNER_TEMP/packaged.json" \
+            --regenerated tools/lsp/server/objk_apis.json
 
       - name: Setup Node
         uses: actions/setup-node@v4
