@@ -48,15 +48,21 @@ def indent(text):
 
 
 def index_for(classes):
+    """A well-formed index for `classes`.
+
+    class-bundle-names values are LISTS, grouped by short name -- the shape since
+    #1052. A short name defined in two bundles carries both candidates, and the
+    checker requires the candidate total to equal the class-details count, so a
+    fixture that groups wrongly fails for the right reason.
+    """
+    grouped = {}
+    for name in classes:
+        bundle, short = name.rsplit(".", 1)
+        grouped.setdefault(short, []).append(
+            {"bundle": bundle, "file": name.split(".")[1].lower() + ".obl"})
     return {
         "class-details": {name: {"description": name} for name in classes},
-        "class-bundle-names": {
-            name.rsplit(".", 1)[-1]: {
-                "bundle": name.rsplit(".", 1)[0],
-                "file": name.split(".")[1].lower() + ".obl",
-            }
-            for name in classes
-        },
+        "class-bundle-names": grouped,
     }
 
 
@@ -151,11 +157,12 @@ try:
     fresh = os.path.join(root, "fresh.json")
     io.open(fresh, "w", encoding="utf-8").write(json.dumps(index_for(both), indent=1))
 
-    # the short-name index really is shadowed, or this proves nothing
-    shadowed = json.load(io.open(fresh, encoding="utf-8"))["class-bundle-names"]["Tensor"]
-    if shadowed["bundle"] != "API.Onnx":
-        failures.append("fixture is not exercising the collision: Tensor resolves to %s"
-                        % shadowed["bundle"])
+    # the fixture really does hold two definitions of one short name, or this
+    # proves nothing. Before #1052 one of them was dropped here.
+    both_entries = json.load(io.open(fresh, encoding="utf-8"))["class-bundle-names"]["Tensor"]
+    if not isinstance(both_entries, list) or len(both_entries) != 2:
+        failures.append("fixture is not exercising the collision: Tensor holds %r"
+                        % (both_entries,))
     else:
         argv = [sys.executable, CHECKER, "--committed", saved, "--packaged", saved,
                 "--regenerated", fresh]
@@ -202,6 +209,23 @@ case("an empty index is rejected",
 
 case("an index with no class-details at all is rejected",
      False, {"class-bundle-names": {}})
+
+# ---------------------------------------------- the #1052 shape invariant -----
+# The pre-#1052 index held one entry per short name rather than a list, so a name
+# defined in several bundles kept only whichever the generator emitted last. That
+# shape must be rejected as stale, not read as current.
+old_shape = index_for(BASE_CLASSES)
+old_shape["class-bundle-names"] = {
+    k: v[0] for k, v in old_shape["class-bundle-names"].items()}
+case("the pre-#1052 single-entry shape is rejected",
+     False, old_shape, must_mention=("1052", "gen_json"))
+
+# And a list-shaped index that nonetheless dropped a candidate: the totals no
+# longer agree, which is the invariant doing the work rather than the shape check.
+dropped = index_for(BASE_CLASSES + ["API.Onnx.Client"])
+dropped["class-bundle-names"]["Client"] = dropped["class-bundle-names"]["Client"][:1]
+case("a list that lost a candidate is rejected on the count",
+     False, dropped, must_mention=("candidate",))
 
 # ------------------------------------------------- the self-comparison trap ---
 # gen_json.sh overwrites the tracked copies in place. A CI step that regenerates

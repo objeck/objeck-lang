@@ -59,11 +59,10 @@ they are not hypothetical.
 ## Limits, stated rather than papered over
 
 - It compares `class-details`, keyed by fully-qualified name. It does NOT check
-  `class-bundle-names`, which is keyed by SHORT name and therefore cannot hold
-  two classes that share one: `Tensor` resolves to `API.Onnx` and not
-  `API.Inference`, `Client` to `Data.JSON.RPC`, `EndPoint` to `API.OpenAI`.
-  That shadowing is a separate defect in the index's shape, not drift, and
-  tightening this check would not fix it.
+  `class-bundle-names`, which is keyed by short name; since #1052 each value is
+  a LIST of every bundle defining that name, so nothing is lost there any more,
+  but a name gaining or losing a second definition is not something this
+  notices.
 - Without --regenerated it verifies only that the two copies agree with each
   other and that the control classes are present. That catches a desynced
   `.vsix` copy but not a stale pair; the CI step passes --regenerated.
@@ -126,9 +125,16 @@ def libraries_by_bundle(index):
     worse than reporting none -- someone would have gone and looked at json_rpc.
     """
     out = {}
-    for entry in index.get("class-bundle-names", {}).values():
-        if isinstance(entry, dict) and entry.get("bundle") and entry.get("file"):
-            out.setdefault(entry["bundle"], entry["file"])
+    for value in index.get("class-bundle-names", {}).values():
+        # A list since #1052: a short name can be defined in several bundles, and
+        # the generator used to emit one duplicate JSON key per definition so a
+        # parser kept only the last. A dict is still accepted, because an index
+        # generated before that change should be reported as stale rather than
+        # crash this check -- being stale is exactly what it is here to say.
+        entries = value if isinstance(value, list) else [value]
+        for entry in entries:
+            if isinstance(entry, dict) and entry.get("bundle") and entry.get("file"):
+                out.setdefault(entry["bundle"], entry["file"])
     return out
 
 
@@ -178,6 +184,41 @@ def main():
 
     committed = load(server_path)
     have = class_names(committed, server_path)
+
+    # 1b. no class may be dropped from the short-name index.
+    #
+    # `class-bundle-names` is keyed by SHORT name, and the generator used to emit
+    # one JSON key per class DEFINITION. Duplicate keys are legal JSON and a
+    # parser keeps whichever it reads last, so 433 definitions arrived as 406 and
+    # twenty-two names lost every candidate but one. The language server reads
+    # this to answer "add a use statement for X", so it inserted the wrong bundle
+    # and wrote the wrong .obl into the build file it generated -- an applied
+    # edit, not a suggestion (#1052). Each value is now a list.
+    #
+    # The invariant is exact: every class in class-details must appear exactly
+    # once among the candidates, so the totals match. That is what a dropped
+    # candidate breaks, and a count is harder to misread than a shape check.
+    bundle_names = committed.get("class-bundle-names")
+    if not isinstance(bundle_names, dict) or not bundle_names:
+        fail("%s has no 'class-bundle-names' object" % server_path)
+
+    scalar = sorted(k for k, v in bundle_names.items() if not isinstance(v, list))
+    if scalar:
+        fail("%d short name(s) in 'class-bundle-names' hold a single entry rather "
+             "than a list of candidates: %s%s\n"
+             "A short name can be defined in several bundles, and a single entry "
+             "cannot say so -- it silently picks one (#1052).\n"
+             "Regenerate with tools/lsp/server/doc_json/gen_json.sh."
+             % (len(scalar), ", ".join(scalar[:10]), " ..." if len(scalar) > 10 else ""))
+
+    candidates = sum(len(v) for v in bundle_names.values())
+    if candidates != len(have):
+        fail("'class-bundle-names' holds %d candidate(s) for %d class(es) in "
+             "'class-details'.\n"
+             "Every class must appear exactly once among the candidates; a "
+             "mismatch means definitions were dropped, which is what duplicate "
+             "JSON keys used to do (#1052)."
+             % (candidates, len(have)))
 
     # 2. the positive control
     missing_control = [name for name in CONTROL if name not in have]

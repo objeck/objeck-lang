@@ -13699,1737 +13699,2549 @@
 		}
 	},
 	"class-bundle-names": {
-		"AudioPart": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"BinaryPart": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"CachedContent": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"CachedContentItem": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"Candidate": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"Chat": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"Content": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"EmbeddingValues": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"EndPoint": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"FileManager": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"GeminiFile": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"Model": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"OAuthEndPoint": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"Part": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"TextPart": {
-			"bundle": "API.Google.Gemini"
-,			"file": "gemini.obl"
- 		},
-		"Chunk": {
-			"bundle": "API.Google.Gemini.Corpus"
-,			"file": "gemini.obl"
- 		},
-		"Corpus": {
-			"bundle": "API.Google.Gemini.Corpus"
-,			"file": "gemini.obl"
- 		},
-		"Document": {
-			"bundle": "API.Google.Gemini.Corpus"
-,			"file": "gemini.obl"
- 		},
-		"Dataset": {
-			"bundle": "API.Google.Gemini.Tuning"
-,			"file": "gemini.obl"
- 		},
-		"Hyperparameters": {
-			"bundle": "API.Google.Gemini.Tuning"
-,			"file": "gemini.obl"
- 		},
-		"TunedModel": {
-			"bundle": "API.Google.Gemini.Tuning"
-,			"file": "gemini.obl"
- 		},
-		"Tuner": {
-			"bundle": "API.Google.Gemini.Tuning"
-,			"file": "gemini.obl"
- 		},
-		"TuningExample": {
-			"bundle": "API.Google.Gemini.Tuning"
-,			"file": "gemini.obl"
- 		},
-		"TuningTask": {
-			"bundle": "API.Google.Gemini.Tuning"
-,			"file": "gemini.obl"
- 		},
-		"Client": {
-			"bundle": "API.Inference"
-,			"file": "inference.obl"
- 		},
-		"EndPoint": {
-			"bundle": "API.Inference"
-,			"file": "inference.obl"
- 		},
-		"ModelMetadata": {
-			"bundle": "API.Inference"
-,			"file": "inference.obl"
- 		},
-		"Tensor": {
-			"bundle": "API.Inference"
-,			"file": "inference.obl"
- 		},
-		"Chat": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"Completion": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"EndPoint": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"Model": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"ModelDetails": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"ModelInfo": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"ModelPulled": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"Options": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"Tool": {
-			"bundle": "API.Ollama"
-,			"file": "ollama.obl"
- 		},
-		"DeepLabClassification": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"DeepLabResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"DeepLabSession": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"FaceDetection": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"FaceDetectionResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"FaceRecognitionResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"FaceResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"FaceSession": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"ModelInfo": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"OnnxRuntime": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"OpenPoseClassification": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"OpenPoseResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"OpenPoseSession": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"Phi3Result": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"Phi3Session": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"Phi3Tokenizer": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"Phi3VisionSession": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"ResNetResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"ResNetSession": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"RunResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"Session": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"Tensor": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"TensorSpec": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"YoloClassification": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"YoloResult": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"YoloSession": {
-			"bundle": "API.Onnx"
-,			"file": "onnx.obl"
- 		},
-		"Assistant": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Batch": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"BatchJob": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Contents": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Embedding": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"EndPoint": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"File": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"FileQuery": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Image": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"ImageQuery": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Message": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Models": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Moderation": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"ModerationResult": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Realtime": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Run": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Thread": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"VectorStore": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"VectorStoreFile": {
-			"bundle": "API.OpenAI"
-,			"file": "openai.obl"
- 		},
-		"Speech": {
-			"bundle": "API.OpenAI.Audio"
-,			"file": "openai.obl"
- 		},
-		"Transcription": {
-			"bundle": "API.OpenAI.Audio"
-,			"file": "openai.obl"
- 		},
-		"Choice": {
-			"bundle": "API.OpenAI.Chat"
-,			"file": "openai.obl"
- 		},
-		"Completion": {
-			"bundle": "API.OpenAI.Chat"
-,			"file": "openai.obl"
- 		},
-		"Conversation": {
-			"bundle": "API.OpenAI.Chat"
-,			"file": "openai.obl"
- 		},
-		"Content": {
-			"bundle": "API.OpenAI.Responses"
-,			"file": "openai.obl"
- 		},
-		"Output": {
-			"bundle": "API.OpenAI.Responses"
-,			"file": "openai.obl"
- 		},
-		"Response": {
-			"bundle": "API.OpenAI.Responses"
-,			"file": "openai.obl"
- 		},
-		"Tool": {
-			"bundle": "API.OpenAI.Responses"
-,			"file": "openai.obl"
- 		},
-		"Checkpoint": {
-			"bundle": "API.OpenAI.Tuning"
-,			"file": "openai.obl"
- 		},
-		"Job": {
-			"bundle": "API.OpenAI.Tuning"
-,			"file": "openai.obl"
- 		},
-		"Tuner": {
-			"bundle": "API.OpenAI.Tuning"
-,			"file": "openai.obl"
- 		},
-		"Image": {
-			"bundle": "API.OpenCV"
-,			"file": "opencv.obl"
- 		},
-		"Point": {
-			"bundle": "API.OpenCV"
-,			"file": "opencv.obl"
- 		},
-		"Rect": {
-			"bundle": "API.OpenCV"
-,			"file": "opencv.obl"
- 		},
-		"Scalar": {
-			"bundle": "API.OpenCV"
-,			"file": "opencv.obl"
- 		},
-		"Size": {
-			"bundle": "API.OpenCV"
-,			"file": "opencv.obl"
- 		},
-		"VideoCapture": {
-			"bundle": "API.OpenCV"
-,			"file": "opencv.obl"
- 		},
-		"VideoWriter": {
-			"bundle": "API.OpenCV"
-,			"file": "opencv.obl"
- 		},
-		"Decrypt": {
-			"bundle": "Cipher"
-,			"file": "cipher.obl"
- 		},
-		"Encrypt": {
-			"bundle": "Cipher"
-,			"file": "cipher.obl"
- 		},
-		"Hash": {
-			"bundle": "Cipher"
-,			"file": "cipher.obl"
- 		},
-		"BackwardIterator": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Cache": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"CompareBackwardIterator": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"CompareForwardIterator": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"CompareList": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"CompareVector": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"ForwardIterator": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Hash": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"HashSet": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Heap": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"List": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Map": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"MultiMap": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Pair": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Queue": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Set": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"SetHash": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Stack": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Vector": {
-			"bundle": "Collection"
-,			"file": "gen_collect.obl"
- 		},
-		"Pair": {
-			"bundle": "Collection.Tuple"
-,			"file": "gen_collect.obl"
- 		},
-		"Quartet": {
-			"bundle": "Collection.Tuple"
-,			"file": "gen_collect.obl"
- 		},
-		"Quintet": {
-			"bundle": "Collection.Tuple"
-,			"file": "gen_collect.obl"
- 		},
-		"Triplet": {
-			"bundle": "Collection.Tuple"
-,			"file": "gen_collect.obl"
- 		},
-		"CsvColumn": {
-			"bundle": "Data.CSV"
-,			"file": "csv.obl"
- 		},
-		"CsvRow": {
-			"bundle": "Data.CSV"
-,			"file": "csv.obl"
- 		},
-		"CsvTable": {
-			"bundle": "Data.CSV"
-,			"file": "csv.obl"
- 		},
-		"JsonBuilder": {
-			"bundle": "Data.JSON"
-,			"file": "json.obl"
- 		},
-		"JsonElement": {
-			"bundle": "Data.JSON"
-,			"file": "json.obl"
- 		},
-		"JsonParser": {
-			"bundle": "Data.JSON"
-,			"file": "json.obl"
- 		},
-		"Client": {
-			"bundle": "Data.JSON.RPC"
-,			"file": "json_rpc.obl"
- 		},
-		"Server": {
-			"bundle": "Data.JSON.RPC"
-,			"file": "json_rpc.obl"
- 		},
-		"FunctionType": {
-			"bundle": "Data.JSON.Scheme"
-,			"file": "json.obl"
- 		},
-		"ParameterType": {
-			"bundle": "Data.JSON.Scheme"
-,			"file": "json.obl"
- 		},
-		"StreamParser": {
-			"bundle": "Data.JSON.Stream"
-,			"file": "json_stream.obl"
- 		},
-		"XmlAttribute": {
-			"bundle": "Data.XML"
-,			"file": "xml.obl"
- 		},
-		"XmlBuilder": {
-			"bundle": "Data.XML"
-,			"file": "xml.obl"
- 		},
-		"XmlElement": {
-			"bundle": "Data.XML"
-,			"file": "xml.obl"
- 		},
-		"XmlParser": {
-			"bundle": "Data.XML"
-,			"file": "xml.obl"
- 		},
-		"ColumnInfo": {
-			"bundle": "Database.ODBC"
-,			"file": "odbc.obl"
- 		},
-		"Connection": {
-			"bundle": "Database.ODBC"
-,			"file": "odbc.obl"
- 		},
-		"Date": {
-			"bundle": "Database.ODBC"
-,			"file": "odbc.obl"
- 		},
-		"ParameterStatement": {
-			"bundle": "Database.ODBC"
-,			"file": "odbc.obl"
- 		},
-		"ResultSet": {
-			"bundle": "Database.ODBC"
-,			"file": "odbc.obl"
- 		},
-		"Timestamp": {
-			"bundle": "Database.ODBC"
-,			"file": "odbc.obl"
- 		},
-		"AnimatedImageSprite": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"GameFramework": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"ImageSprite": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"Position": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"Rectangle": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"Shape": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"Sprite": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"TextSprite": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"TitledImageSprite": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"Vector2": {
-			"bundle": "Game.Framework"
-,			"file": "sdl_game.obl"
- 		},
-		"Box": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Camera": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Freeable": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Frustum": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"GL": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"GLWindow": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"IntHolder": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Light": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"LightRig": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Material": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Matrix4": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Mesh": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Overlay": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Particles": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"PointShadow": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Prop": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"PropBatch": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Quaternion": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"RayHit": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"RenderTarget": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Scene": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Shader": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"ShaderSource": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"ShadowMap": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Skybox": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Texture2D": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Track": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Transform": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"Vector3": {
-			"bundle": "Game.OpenGL"
-,			"file": "sdl_gl.obl"
- 		},
-		"CPU": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Clipboard": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Color": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Core": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Cursor": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Display": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"DisplayMode": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Event": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Filesystem": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Font": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"GLContext": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"GameController": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"GameControllerButtonBind": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Hints": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Image": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"JoyAxisEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"JoyButtonEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"JoyHatEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Joystick": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Keyboard": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"KeyboardEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Keysym": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"MixChunk": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"MixMusic": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Mixer": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"MouseButtonEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"MouseMotionEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"MouseWheelEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"PixelData": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"PixelFormat": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Platform": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Point": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Power": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Rect": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Renderer": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"RendererInfo": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Surface": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"TextInputEvent": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Texture": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Timer": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Window": {
-			"bundle": "Game.SDL2"
-,			"file": "sdl2.obl"
- 		},
-		"Lame": {
-			"bundle": "Game.SDL2.Aux"
-,			"file": "lame.obl"
- 		},
-		"RegEx": {
-			"bundle": "Query.RegEx"
-,			"file": "regex.obl"
- 		},
-		"Result": {
-			"bundle": "Query.RegEx"
-,			"file": "regex.obl"
- 		},
-		"Finder": {
-			"bundle": "Query.Structured"
-,			"file": "query.obl"
- 		},
-		"Row": {
-			"bundle": "Query.Structured"
-,			"file": "query.obl"
- 		},
-		"Table": {
-			"bundle": "Query.Structured"
-,			"file": "query.obl"
- 		},
-		"ArraySort": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Base": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"BaseArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"BasicCompare": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Bool": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"BoolArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"BoolRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Byte": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"ByteArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"ByteBuffer": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"ByteRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Char": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"CharArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"CharRange": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"CharRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Clone": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"CommandOutput": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Compare": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"CompareArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Float": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"FloatArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"FloatRange": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"FloatRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Func2Ref": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Func3Ref": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Func4Ref": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"FuncRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Int": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"IntArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"IntRange": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"IntRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Number": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Primitive": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Range": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Runtime": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"String": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"StringArrayRef": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"Stringify": {
-			"bundle": "System"
-,			"file": "lang.obl"
- 		},
-		"AStar": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"BreadthFirst": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"DepthFirst": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"Dijkstra": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"EnergyFunction": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"Environment": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"FitnessFunction": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"GameState": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"GeneticAlgorithm": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"Graph": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"HillClimbing": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"MarkovDecisionProcess": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"Minimax": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"MonteCarloTreeSearch": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"QLearning": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"Sarsa": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"SearchResult": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"SimulatedAnnealing": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"StepResult": {
-			"bundle": "System.AI"
-,			"file": "ai_search.obl"
- 		},
-		"DllProxy": {
-			"bundle": "System.API"
-,			"file": "lang.obl"
- 		},
-		"Monitor": {
-			"bundle": "System.Concurrency"
-,			"file": "lang.obl"
- 		},
-		"Task": {
-			"bundle": "System.Concurrency"
-,			"file": "lang.obl"
- 		},
-		"TaskScope": {
-			"bundle": "System.Concurrency"
-,			"file": "lang.obl"
- 		},
-		"Thread": {
-			"bundle": "System.Concurrency"
-,			"file": "lang.obl"
- 		},
-		"ThreadMutex": {
-			"bundle": "System.Concurrency"
-,			"file": "lang.obl"
- 		},
-		"Analysis": {
-			"bundle": "System.Diagnostics"
-,			"file": "diags.obl"
- 		},
-		"Analyzer": {
-			"bundle": "System.Diagnostics"
-,			"file": "diags.obl"
- 		},
-		"Result": {
-			"bundle": "System.Diagnostics"
-,			"file": "diags.obl"
- 		},
-		"Console": {
-			"bundle": "System.IO"
-,			"file": "lang.obl"
- 		},
-		"Deserializer": {
-			"bundle": "System.IO"
-,			"file": "lang.obl"
- 		},
-		"InputStream": {
-			"bundle": "System.IO"
-,			"file": "lang.obl"
- 		},
-		"OutputStream": {
-			"bundle": "System.IO"
-,			"file": "lang.obl"
- 		},
-		"Pipe": {
-			"bundle": "System.IO"
-,			"file": "lang.obl"
- 		},
-		"Serializer": {
-			"bundle": "System.IO"
-,			"file": "lang.obl"
- 		},
-		"Directory": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"File": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"FileReader": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"FileReaderWriter": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"FileWriter": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"HardLink": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"Logger": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"SymbolicLink": {
-			"bundle": "System.IO.Filesystem"
-,			"file": "lang.obl"
- 		},
-		"DTLSSocket": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"DTLSSocketServer": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"Http2Session": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"Http3Session": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"TCPSecureSocket": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"TCPSecureSocketServer": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"TCPSocket": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"TCPSocketServer": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"UDPSocket": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"UDPSocketServer": {
-			"bundle": "System.IO.Net"
-,			"file": "lang.obl"
- 		},
-		"OAuthClient": {
-			"bundle": "System.IO.Net.OAuth"
-,			"file": "net_server.obl"
- 		},
-		"OAuthToken": {
-			"bundle": "System.IO.Net.OAuth"
-,			"file": "net_server.obl"
- 		},
-		"Class": {
-			"bundle": "System.Introspection"
-,			"file": "lang.obl"
- 		},
-		"DataType": {
-			"bundle": "System.Introspection"
-,			"file": "lang.obl"
- 		},
-		"Method": {
-			"bundle": "System.Introspection"
-,			"file": "lang.obl"
- 		},
-		"AdaBoost": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"AucMetric": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"AveragePrecisionMetric": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"BayesEntry": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"BayesGroup": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"BoolMatrixRef": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"CrossValidation": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"DBSCAN": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"DecisionTree": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"DecisionTreeClassifier": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"ElasticNet": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"FeatureScaler": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"FloatMatrixRef": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"FoldSplit": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"GaussianMixture": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"GaussianNaiveBayes": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"GradientBoostedClassifier": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"GradientBoostedTrees": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"GroupRecall": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"KDTree": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"KMeans": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"KMeansGroup": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"KMeansGrouping": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"KNearestNeighbors": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"KNeighbor": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"LassoRegression": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"LinearRegression": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"LinearResult": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"LinearSolver": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"LogisticRegression": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"Matrix2D": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"MatrixReader": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"Metrics": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"NaiveBayes": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"NeuralNetwork": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"PCA": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"Perceptron": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"Random": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"RandomForest": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"RandomForestClassifier": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"RecallAtFprMetric": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"RegressionTree": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"RegressionTreeNode": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"RidgeRegression": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"SVM": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"ScoreMetric": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"ScoreModel": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"TableEncoder": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"ThresholdResult": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"TreeNode": {
-			"bundle": "System.ML"
-,			"file": "ml_core.obl"
- 		},
-		"SentimentAnalyzer": {
-			"bundle": "System.NLP"
-,			"file": "nlp.obl"
- 		},
-		"SentimentResult": {
-			"bundle": "System.NLP"
-,			"file": "nlp.obl"
- 		},
-		"TF_IDF": {
-			"bundle": "System.NLP"
-,			"file": "nlp.obl"
- 		},
-		"TextPreprocessor": {
-			"bundle": "System.NLP"
-,			"file": "nlp.obl"
- 		},
-		"TextSimilarity": {
-			"bundle": "System.NLP"
-,			"file": "nlp.obl"
- 		},
-		"Tokenizer": {
-			"bundle": "System.NLP"
-,			"file": "nlp.obl"
- 		},
-		"Alarm": {
-			"bundle": "System.Time"
-,			"file": "lang.obl"
- 		},
-		"Date": {
-			"bundle": "System.Time"
-,			"file": "lang.obl"
- 		},
-		"DateUtility": {
-			"bundle": "System.Time"
-,			"file": "lang.obl"
- 		},
-		"Timer": {
-			"bundle": "System.Time"
-,			"file": "lang.obl"
- 		},
-		"CodeFormatter": {
-			"bundle": "System.Utility"
-,			"file": "misc.obl"
- 		},
-		"Parser": {
-			"bundle": "System.Utility"
-,			"file": "misc.obl"
- 		},
-		"Spinner": {
-			"bundle": "System.Utility"
-,			"file": "misc.obl"
- 		},
-		"Cookie": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"Downloader": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"HeaderCheck": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"Http2Client": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"Http3Client": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"HttpClient": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"HttpsClient": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"Response": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"SSEEvent": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"SSEStream": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"SecureWebSocket": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"Url": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"WebDownloader": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"WebSocket": {
-			"bundle": "Web.HTTP"
-,			"file": "net_common.obl"
- 		},
-		"HttpRequestHandler": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"HttpsRequestHandler": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"MultipartContent": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"MultipartDecoder": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"MultipartEncoder": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"Request": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"RequestPageHandler": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"Response": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"WebServer": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"WebServerConfig": {
-			"bundle": "Web.HTTP.Server"
-,			"file": "net_server.obl"
- 		},
-		"McpRequestHandler": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"McpServer": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"PromptArgument": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"PromptItem": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"PromptMessage": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"ResourceContent": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"ResourceItem": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"ResourceTemplate": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"ToolContent": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"ToolItem": {
-			"bundle": "Web.HTTP.Server.MCP"
-,			"file": "net_server.obl"
- 		},
-		"RSSChannel": {
-			"bundle": "Web.RSS"
-,			"file": "rss.obl"
- 		},
-		"RSSPost": {
-			"bundle": "Web.RSS"
-,			"file": "rss.obl"
- 		},
-		"RSSReader": {
-			"bundle": "Web.RSS"
-,			"file": "rss.obl"
- 		},
-		"ContentType": {
-			"bundle": "Web.Server"
-,			"file": "web_server.obl"
- 		},
-		"Handler": {
-			"bundle": "Web.Server"
-,			"file": "web_server.obl"
- 		},
-		"Request": {
-			"bundle": "Web.Server"
-,			"file": "web_server.obl"
- 		},
-		"Response": {
-			"bundle": "Web.Server"
-,			"file": "web_server.obl"
- 		}
+		"AudioPart": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"BinaryPart": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"CachedContent": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"CachedContentItem": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"Candidate": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"Chat": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			},
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			}
+		],
+		"Content": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			},
+			{
+				"bundle": "API.OpenAI.Responses",
+				"file": "openai.obl"
+			}
+		],
+		"EmbeddingValues": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"EndPoint": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			},
+			{
+				"bundle": "API.Inference",
+				"file": "inference.obl"
+			},
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			},
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"FileManager": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"GeminiFile": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"Model": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			},
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			}
+		],
+		"OAuthEndPoint": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"Part": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"TextPart": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": "gemini.obl"
+			}
+		],
+		"Chunk": [
+			{
+				"bundle": "API.Google.Gemini.Corpus",
+				"file": "gemini.obl"
+			}
+		],
+		"Corpus": [
+			{
+				"bundle": "API.Google.Gemini.Corpus",
+				"file": "gemini.obl"
+			}
+		],
+		"Document": [
+			{
+				"bundle": "API.Google.Gemini.Corpus",
+				"file": "gemini.obl"
+			}
+		],
+		"Dataset": [
+			{
+				"bundle": "API.Google.Gemini.Tuning",
+				"file": "gemini.obl"
+			}
+		],
+		"Hyperparameters": [
+			{
+				"bundle": "API.Google.Gemini.Tuning",
+				"file": "gemini.obl"
+			}
+		],
+		"TunedModel": [
+			{
+				"bundle": "API.Google.Gemini.Tuning",
+				"file": "gemini.obl"
+			}
+		],
+		"Tuner": [
+			{
+				"bundle": "API.Google.Gemini.Tuning",
+				"file": "gemini.obl"
+			},
+			{
+				"bundle": "API.OpenAI.Tuning",
+				"file": "openai.obl"
+			}
+		],
+		"TuningExample": [
+			{
+				"bundle": "API.Google.Gemini.Tuning",
+				"file": "gemini.obl"
+			}
+		],
+		"TuningTask": [
+			{
+				"bundle": "API.Google.Gemini.Tuning",
+				"file": "gemini.obl"
+			}
+		],
+		"Client": [
+			{
+				"bundle": "API.Inference",
+				"file": "inference.obl"
+			},
+			{
+				"bundle": "Data.JSON.RPC",
+				"file": "json_rpc.obl"
+			}
+		],
+		"ModelMetadata": [
+			{
+				"bundle": "API.Inference",
+				"file": "inference.obl"
+			}
+		],
+		"Tensor": [
+			{
+				"bundle": "API.Inference",
+				"file": "inference.obl"
+			},
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"Completion": [
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			},
+			{
+				"bundle": "API.OpenAI.Chat",
+				"file": "openai.obl"
+			}
+		],
+		"ModelDetails": [
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			}
+		],
+		"ModelInfo": [
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			},
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"ModelPulled": [
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			}
+		],
+		"Options": [
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			}
+		],
+		"Tool": [
+			{
+				"bundle": "API.Ollama",
+				"file": "ollama.obl"
+			},
+			{
+				"bundle": "API.OpenAI.Responses",
+				"file": "openai.obl"
+			}
+		],
+		"DeepLabClassification": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"DeepLabResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"DeepLabSession": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"FaceDetection": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"FaceDetectionResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"FaceRecognitionResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"FaceResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"FaceSession": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"OnnxRuntime": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"OpenPoseClassification": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"OpenPoseResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"OpenPoseSession": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"Phi3Result": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"Phi3Session": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"Phi3Tokenizer": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"Phi3VisionSession": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"ResNetResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"ResNetSession": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"RunResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"Session": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"TensorSpec": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"YoloClassification": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"YoloResult": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"YoloSession": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
+		"Assistant": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Batch": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"BatchJob": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Contents": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Embedding": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"File": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			},
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"FileQuery": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Image": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			},
+			{
+				"bundle": "API.OpenCV",
+				"file": "opencv.obl"
+			},
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"ImageQuery": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Message": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Models": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Moderation": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"ModerationResult": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Realtime": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Run": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Thread": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			},
+			{
+				"bundle": "System.Concurrency",
+				"file": "lang.obl"
+			}
+		],
+		"VectorStore": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"VectorStoreFile": [
+			{
+				"bundle": "API.OpenAI",
+				"file": "openai.obl"
+			}
+		],
+		"Speech": [
+			{
+				"bundle": "API.OpenAI.Audio",
+				"file": "openai.obl"
+			}
+		],
+		"Transcription": [
+			{
+				"bundle": "API.OpenAI.Audio",
+				"file": "openai.obl"
+			}
+		],
+		"Choice": [
+			{
+				"bundle": "API.OpenAI.Chat",
+				"file": "openai.obl"
+			}
+		],
+		"Conversation": [
+			{
+				"bundle": "API.OpenAI.Chat",
+				"file": "openai.obl"
+			}
+		],
+		"Output": [
+			{
+				"bundle": "API.OpenAI.Responses",
+				"file": "openai.obl"
+			}
+		],
+		"Response": [
+			{
+				"bundle": "API.OpenAI.Responses",
+				"file": "openai.obl"
+			},
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			},
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			},
+			{
+				"bundle": "Web.Server",
+				"file": "web_server.obl"
+			}
+		],
+		"Checkpoint": [
+			{
+				"bundle": "API.OpenAI.Tuning",
+				"file": "openai.obl"
+			}
+		],
+		"Job": [
+			{
+				"bundle": "API.OpenAI.Tuning",
+				"file": "openai.obl"
+			}
+		],
+		"Point": [
+			{
+				"bundle": "API.OpenCV",
+				"file": "opencv.obl"
+			},
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Rect": [
+			{
+				"bundle": "API.OpenCV",
+				"file": "opencv.obl"
+			},
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Scalar": [
+			{
+				"bundle": "API.OpenCV",
+				"file": "opencv.obl"
+			}
+		],
+		"Size": [
+			{
+				"bundle": "API.OpenCV",
+				"file": "opencv.obl"
+			}
+		],
+		"VideoCapture": [
+			{
+				"bundle": "API.OpenCV",
+				"file": "opencv.obl"
+			}
+		],
+		"VideoWriter": [
+			{
+				"bundle": "API.OpenCV",
+				"file": "opencv.obl"
+			}
+		],
+		"Decrypt": [
+			{
+				"bundle": "Cipher",
+				"file": "cipher.obl"
+			}
+		],
+		"Encrypt": [
+			{
+				"bundle": "Cipher",
+				"file": "cipher.obl"
+			}
+		],
+		"Hash": [
+			{
+				"bundle": "Cipher",
+				"file": "cipher.obl"
+			},
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"BackwardIterator": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Cache": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"CompareBackwardIterator": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"CompareForwardIterator": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"CompareList": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"CompareVector": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"ForwardIterator": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"HashSet": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Heap": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"List": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Map": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"MultiMap": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Pair": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			},
+			{
+				"bundle": "Collection.Tuple",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Queue": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Set": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"SetHash": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Stack": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Vector": [
+			{
+				"bundle": "Collection",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Quartet": [
+			{
+				"bundle": "Collection.Tuple",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Quintet": [
+			{
+				"bundle": "Collection.Tuple",
+				"file": "gen_collect.obl"
+			}
+		],
+		"Triplet": [
+			{
+				"bundle": "Collection.Tuple",
+				"file": "gen_collect.obl"
+			}
+		],
+		"CsvColumn": [
+			{
+				"bundle": "Data.CSV",
+				"file": "csv.obl"
+			}
+		],
+		"CsvRow": [
+			{
+				"bundle": "Data.CSV",
+				"file": "csv.obl"
+			}
+		],
+		"CsvTable": [
+			{
+				"bundle": "Data.CSV",
+				"file": "csv.obl"
+			}
+		],
+		"JsonBuilder": [
+			{
+				"bundle": "Data.JSON",
+				"file": "json.obl"
+			}
+		],
+		"JsonElement": [
+			{
+				"bundle": "Data.JSON",
+				"file": "json.obl"
+			}
+		],
+		"JsonParser": [
+			{
+				"bundle": "Data.JSON",
+				"file": "json.obl"
+			}
+		],
+		"Server": [
+			{
+				"bundle": "Data.JSON.RPC",
+				"file": "json_rpc.obl"
+			}
+		],
+		"FunctionType": [
+			{
+				"bundle": "Data.JSON.Scheme",
+				"file": "json.obl"
+			}
+		],
+		"ParameterType": [
+			{
+				"bundle": "Data.JSON.Scheme",
+				"file": "json.obl"
+			}
+		],
+		"StreamParser": [
+			{
+				"bundle": "Data.JSON.Stream",
+				"file": "json_stream.obl"
+			}
+		],
+		"XmlAttribute": [
+			{
+				"bundle": "Data.XML",
+				"file": "xml.obl"
+			}
+		],
+		"XmlBuilder": [
+			{
+				"bundle": "Data.XML",
+				"file": "xml.obl"
+			}
+		],
+		"XmlElement": [
+			{
+				"bundle": "Data.XML",
+				"file": "xml.obl"
+			}
+		],
+		"XmlParser": [
+			{
+				"bundle": "Data.XML",
+				"file": "xml.obl"
+			}
+		],
+		"ColumnInfo": [
+			{
+				"bundle": "Database.ODBC",
+				"file": "odbc.obl"
+			}
+		],
+		"Connection": [
+			{
+				"bundle": "Database.ODBC",
+				"file": "odbc.obl"
+			}
+		],
+		"Date": [
+			{
+				"bundle": "Database.ODBC",
+				"file": "odbc.obl"
+			},
+			{
+				"bundle": "System.Time",
+				"file": "lang.obl"
+			}
+		],
+		"ParameterStatement": [
+			{
+				"bundle": "Database.ODBC",
+				"file": "odbc.obl"
+			}
+		],
+		"ResultSet": [
+			{
+				"bundle": "Database.ODBC",
+				"file": "odbc.obl"
+			}
+		],
+		"Timestamp": [
+			{
+				"bundle": "Database.ODBC",
+				"file": "odbc.obl"
+			}
+		],
+		"AnimatedImageSprite": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"GameFramework": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"ImageSprite": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"Position": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"Rectangle": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"Shape": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"Sprite": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"TextSprite": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"TitledImageSprite": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"Vector2": [
+			{
+				"bundle": "Game.Framework",
+				"file": "sdl_game.obl"
+			}
+		],
+		"Box": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Camera": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Freeable": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Frustum": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"GL": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"GLWindow": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"IntHolder": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Light": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"LightRig": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Material": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Matrix4": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Mesh": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Overlay": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Particles": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"PointShadow": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Prop": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"PropBatch": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Quaternion": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"RayHit": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"RenderTarget": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Scene": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Shader": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"ShaderSource": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"ShadowMap": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Skybox": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Texture2D": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Track": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Transform": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"Vector3": [
+			{
+				"bundle": "Game.OpenGL",
+				"file": "sdl_gl.obl"
+			}
+		],
+		"CPU": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Clipboard": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Color": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Core": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Cursor": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Display": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"DisplayMode": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Event": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Filesystem": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Font": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"GLContext": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"GameController": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"GameControllerButtonBind": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Hints": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"JoyAxisEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"JoyButtonEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"JoyHatEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Joystick": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Keyboard": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"KeyboardEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Keysym": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"MixChunk": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"MixMusic": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Mixer": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"MouseButtonEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"MouseMotionEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"MouseWheelEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"PixelData": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"PixelFormat": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Platform": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Power": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Renderer": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"RendererInfo": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Surface": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"TextInputEvent": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Texture": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Timer": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			},
+			{
+				"bundle": "System.Time",
+				"file": "lang.obl"
+			}
+		],
+		"Window": [
+			{
+				"bundle": "Game.SDL2",
+				"file": "sdl2.obl"
+			}
+		],
+		"Lame": [
+			{
+				"bundle": "Game.SDL2.Aux",
+				"file": "lame.obl"
+			}
+		],
+		"RegEx": [
+			{
+				"bundle": "Query.RegEx",
+				"file": "regex.obl"
+			}
+		],
+		"Result": [
+			{
+				"bundle": "Query.RegEx",
+				"file": "regex.obl"
+			},
+			{
+				"bundle": "System.Diagnostics",
+				"file": "diags.obl"
+			}
+		],
+		"Finder": [
+			{
+				"bundle": "Query.Structured",
+				"file": "query.obl"
+			}
+		],
+		"Row": [
+			{
+				"bundle": "Query.Structured",
+				"file": "query.obl"
+			}
+		],
+		"Table": [
+			{
+				"bundle": "Query.Structured",
+				"file": "query.obl"
+			}
+		],
+		"ArraySort": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Base": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"BaseArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"BasicCompare": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Bool": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"BoolArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"BoolRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Byte": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"ByteArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"ByteBuffer": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"ByteRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Char": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"CharArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"CharRange": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"CharRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Clone": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"CommandOutput": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Compare": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"CompareArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Float": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"FloatArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"FloatRange": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"FloatRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Func2Ref": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Func3Ref": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Func4Ref": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"FuncRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Int": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"IntArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"IntRange": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"IntRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Number": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Primitive": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Range": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Runtime": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"String": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"StringArrayRef": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"Stringify": [
+			{
+				"bundle": "System",
+				"file": "lang.obl"
+			}
+		],
+		"AStar": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"BreadthFirst": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"DepthFirst": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"Dijkstra": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"EnergyFunction": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"Environment": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"FitnessFunction": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"GameState": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"GeneticAlgorithm": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"Graph": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"HillClimbing": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"MarkovDecisionProcess": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"Minimax": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"MonteCarloTreeSearch": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"QLearning": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"Sarsa": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"SearchResult": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"SimulatedAnnealing": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"StepResult": [
+			{
+				"bundle": "System.AI",
+				"file": "ai_search.obl"
+			}
+		],
+		"DllProxy": [
+			{
+				"bundle": "System.API",
+				"file": "lang.obl"
+			}
+		],
+		"Monitor": [
+			{
+				"bundle": "System.Concurrency",
+				"file": "lang.obl"
+			}
+		],
+		"Task": [
+			{
+				"bundle": "System.Concurrency",
+				"file": "lang.obl"
+			}
+		],
+		"TaskScope": [
+			{
+				"bundle": "System.Concurrency",
+				"file": "lang.obl"
+			}
+		],
+		"ThreadMutex": [
+			{
+				"bundle": "System.Concurrency",
+				"file": "lang.obl"
+			}
+		],
+		"Analysis": [
+			{
+				"bundle": "System.Diagnostics",
+				"file": "diags.obl"
+			}
+		],
+		"Analyzer": [
+			{
+				"bundle": "System.Diagnostics",
+				"file": "diags.obl"
+			}
+		],
+		"Console": [
+			{
+				"bundle": "System.IO",
+				"file": "lang.obl"
+			}
+		],
+		"Deserializer": [
+			{
+				"bundle": "System.IO",
+				"file": "lang.obl"
+			}
+		],
+		"InputStream": [
+			{
+				"bundle": "System.IO",
+				"file": "lang.obl"
+			}
+		],
+		"OutputStream": [
+			{
+				"bundle": "System.IO",
+				"file": "lang.obl"
+			}
+		],
+		"Pipe": [
+			{
+				"bundle": "System.IO",
+				"file": "lang.obl"
+			}
+		],
+		"Serializer": [
+			{
+				"bundle": "System.IO",
+				"file": "lang.obl"
+			}
+		],
+		"Directory": [
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"FileReader": [
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"FileReaderWriter": [
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"FileWriter": [
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"HardLink": [
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"Logger": [
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"SymbolicLink": [
+			{
+				"bundle": "System.IO.Filesystem",
+				"file": "lang.obl"
+			}
+		],
+		"DTLSSocket": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"DTLSSocketServer": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"Http2Session": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"Http3Session": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"TCPSecureSocket": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"TCPSecureSocketServer": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"TCPSocket": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"TCPSocketServer": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"UDPSocket": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"UDPSocketServer": [
+			{
+				"bundle": "System.IO.Net",
+				"file": "lang.obl"
+			}
+		],
+		"OAuthClient": [
+			{
+				"bundle": "System.IO.Net.OAuth",
+				"file": "net_server.obl"
+			}
+		],
+		"OAuthToken": [
+			{
+				"bundle": "System.IO.Net.OAuth",
+				"file": "net_server.obl"
+			}
+		],
+		"Class": [
+			{
+				"bundle": "System.Introspection",
+				"file": "lang.obl"
+			}
+		],
+		"DataType": [
+			{
+				"bundle": "System.Introspection",
+				"file": "lang.obl"
+			}
+		],
+		"Method": [
+			{
+				"bundle": "System.Introspection",
+				"file": "lang.obl"
+			}
+		],
+		"AdaBoost": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"AucMetric": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"AveragePrecisionMetric": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"BayesEntry": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"BayesGroup": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"BoolMatrixRef": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"CrossValidation": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"DBSCAN": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"DecisionTree": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"DecisionTreeClassifier": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"ElasticNet": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"FeatureScaler": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"FloatMatrixRef": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"FoldSplit": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"GaussianMixture": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"GaussianNaiveBayes": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"GradientBoostedClassifier": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"GradientBoostedTrees": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"GroupRecall": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"KDTree": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"KMeans": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"KMeansGroup": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"KMeansGrouping": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"KNearestNeighbors": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"KNeighbor": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"LassoRegression": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"LinearRegression": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"LinearResult": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"LinearSolver": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"LogisticRegression": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"Matrix2D": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"MatrixReader": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"Metrics": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"NaiveBayes": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"NeuralNetwork": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"PCA": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"Perceptron": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"Random": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"RandomForest": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"RandomForestClassifier": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"RecallAtFprMetric": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"RegressionTree": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"RegressionTreeNode": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"RidgeRegression": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"SVM": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"ScoreMetric": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"ScoreModel": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"TableEncoder": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"ThresholdResult": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"TreeNode": [
+			{
+				"bundle": "System.ML",
+				"file": "ml_core.obl"
+			}
+		],
+		"SentimentAnalyzer": [
+			{
+				"bundle": "System.NLP",
+				"file": "nlp.obl"
+			}
+		],
+		"SentimentResult": [
+			{
+				"bundle": "System.NLP",
+				"file": "nlp.obl"
+			}
+		],
+		"TF_IDF": [
+			{
+				"bundle": "System.NLP",
+				"file": "nlp.obl"
+			}
+		],
+		"TextPreprocessor": [
+			{
+				"bundle": "System.NLP",
+				"file": "nlp.obl"
+			}
+		],
+		"TextSimilarity": [
+			{
+				"bundle": "System.NLP",
+				"file": "nlp.obl"
+			}
+		],
+		"Tokenizer": [
+			{
+				"bundle": "System.NLP",
+				"file": "nlp.obl"
+			}
+		],
+		"Alarm": [
+			{
+				"bundle": "System.Time",
+				"file": "lang.obl"
+			}
+		],
+		"DateUtility": [
+			{
+				"bundle": "System.Time",
+				"file": "lang.obl"
+			}
+		],
+		"CodeFormatter": [
+			{
+				"bundle": "System.Utility",
+				"file": "misc.obl"
+			}
+		],
+		"Parser": [
+			{
+				"bundle": "System.Utility",
+				"file": "misc.obl"
+			}
+		],
+		"Spinner": [
+			{
+				"bundle": "System.Utility",
+				"file": "misc.obl"
+			}
+		],
+		"Cookie": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"Downloader": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"HeaderCheck": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"Http2Client": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"Http3Client": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"HttpClient": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"HttpsClient": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"SSEEvent": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"SSEStream": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"SecureWebSocket": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"Url": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"WebDownloader": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"WebSocket": [
+			{
+				"bundle": "Web.HTTP",
+				"file": "net_common.obl"
+			}
+		],
+		"HttpRequestHandler": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"HttpsRequestHandler": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"MultipartContent": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"MultipartDecoder": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"MultipartEncoder": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"Request": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			},
+			{
+				"bundle": "Web.Server",
+				"file": "web_server.obl"
+			}
+		],
+		"RequestPageHandler": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"WebServer": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"WebServerConfig": [
+			{
+				"bundle": "Web.HTTP.Server",
+				"file": "net_server.obl"
+			}
+		],
+		"McpRequestHandler": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"McpServer": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"PromptArgument": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"PromptItem": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"PromptMessage": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"ResourceContent": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"ResourceItem": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"ResourceTemplate": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"ToolContent": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"ToolItem": [
+			{
+				"bundle": "Web.HTTP.Server.MCP",
+				"file": "net_server.obl"
+			}
+		],
+		"RSSChannel": [
+			{
+				"bundle": "Web.RSS",
+				"file": "rss.obl"
+			}
+		],
+		"RSSPost": [
+			{
+				"bundle": "Web.RSS",
+				"file": "rss.obl"
+			}
+		],
+		"RSSReader": [
+			{
+				"bundle": "Web.RSS",
+				"file": "rss.obl"
+			}
+		],
+		"ContentType": [
+			{
+				"bundle": "Web.Server",
+				"file": "web_server.obl"
+			}
+		],
+		"Handler": [
+			{
+				"bundle": "Web.Server",
+				"file": "web_server.obl"
+			}
+		]
 	}
 }
