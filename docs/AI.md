@@ -25,6 +25,8 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Object Detection (YOLO)](#object-detection-yolo)
   - [Phi-3 / Phi-3 Vision](#phi-3--phi-3-vision)
   - [Image Classification (ResNet)](#image-classification-resnet)
+  - [Any Model (generic run)](#any-model-generic-run)
+- [Remote Inference Servers](#remote-inference-servers)
 - [Computer Vision (OpenCV)](#computer-vision-opencv)
 - [Natural Language Processing](#natural-language-processing)
 - [Machine Learning (System.ML)](#machine-learning-systemml)
@@ -635,6 +637,120 @@ conf := result->GetConfidence();
 session->Close();
 ```
 
+### Any Model (generic run)
+
+The six classes above each handle one model family. For anything they do not
+cover -- a model with several inputs, a text or audio model, or a model whose
+output you want to decode yourself -- `Session` runs any ONNX graph. Ask it what
+the model wants, build the tensors, run it:
+
+```objeck
+use API.Onnx, Collection;
+
+session := Session->New("model.onnx");
+if(<>session->IsOpen()) {
+  return;
+};
+
+# what does this model take and return?
+info := session->GetModelInfo();
+specs := info->GetInputs();
+each(spec in specs) {
+  spec->ToString()->PrintLine();      # e.g.  data: FP32[-1,3,224,224]
+};
+
+inputs := Vector->New()<Tensor>;
+inputs->AddBack(Tensor->New("data", [1, 3, 224, 224], pixels));
+
+outputs := session->Run(inputs);
+each(tensor in outputs) {
+  tensor->ToString()->PrintLine();
+};
+
+session->Close();
+```
+
+A dimension the model leaves to you is reported as `-1` -- a batch size or a
+sequence length. You choose it; nothing guesses.
+
+**You never state an element type.** Tensors are carried as `Float[]` and the
+model's own declaration decides what the input actually becomes, so FP32, FP16,
+INT64, UINT8 and BOOL models are all driven the same way. An `Int[]` tensor is
+exact to 2^53, which covers every token id and class index; past that it is
+refused rather than rounded.
+
+Preprocessing and decoding are yours, in Objeck. That is the trade: more work
+than `YoloSession`, and it works for models no per-family class exists for.
+`programs/frameworks/opencv_onnx/ab_phi3.obs` drives Phi-3 through it with 67
+inputs, which is what the shape is for.
+
+---
+
+## Remote Inference Servers
+
+`API.Inference` talks to a model server over HTTP instead of loading a model
+in-process. Use it when the model is not an ONNX file you have locally: a model
+served from a GPU machine, a TensorFlow model you would rather not convert, or
+anything already deployed behind Triton, KServe, TorchServe or TF Serving.
+
+Two wire protocols, because no single one covers the field:
+
+| Protocol | Served by | Shape |
+|---|---|---|
+| `OPEN_INFERENCE` (default) | Triton, KServe, OpenVINO Model Server | KServe v2: flat data, with `shape` and `datatype` stated |
+| `TF_SERVING` | TensorFlow Serving | v1 `:predict`: nesting carries the shape, no datatype |
+
+```objeck
+use API.Inference, Collection;
+
+client := Client->New("http://gpu-box:8000");
+
+inputs := Vector->New()<Tensor>;
+inputs->AddBack(Tensor->New("input", [1, 4], [5.1, 3.5, 1.4, 0.2]));
+
+outputs := client->Predict("iris", inputs);
+if(outputs = Nil) {
+  EndPoint->GetLastError()->PrintLine();
+  return;
+};
+
+each(tensor in outputs) {
+  tensor->ToString()->PrintLine();
+};
+```
+
+A failed call returns `Nil` and the reason is in `EndPoint->GetLastError()`.
+Servers report errors in a JSON body rather than only in the status line, so a
+body that will not parse means something else answered -- a proxy's error page,
+a truncated response -- and the body itself is reported.
+
+Ask the server what a model expects before guessing at names and shapes:
+
+```objeck
+if(client->IsReady("iris")) {
+  client->Metadata("iris")->ToString()->PrintLine();
+};
+```
+
+And when a request is rejected, print the body rather than reading the error:
+
+```objeck
+client->DescribeRequest(inputs)->PrintLine();
+```
+
+The two protocols shape the same tensors very differently and a tensor nested to
+the wrong depth looks identical in Objeck, so seeing what was sent is usually
+faster than interpreting what came back.
+
+```
+v2, shape [4]     {"inputs":[{"data":[...],"datatype":"FP32","name":"input","shape":[4]}]}
+v1, shape [4]     {"inputs":{"input":[1.0,2.0,3.0,4.0]}}
+v1, shape [2,2]   {"inputs":{"input":[[1.0,2.0],[3.0,4.0]]}}
+```
+
+`-lib inference,net,json,cipher,gen_collect`. It is not part of any `@` alias;
+name the libraries, or add a group to `configobjk.ini`.
+
 ---
 
 ## Computer Vision (OpenCV)
@@ -1029,6 +1145,8 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Image classification | `ResNetSession` | `onnx` | None |
 | Pose estimation | `OpenPoseSession` | `onnx` | None |
 | Segmentation | `DeepLabSession` | `onnx` | None |
+| Any ONNX model | `Session`, `Tensor` | `onnx` | None |
+| Model served over HTTP | `Client`, `Tensor` | `inference` | None |
 | Computer vision | `Image`, `VideoCapture` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |

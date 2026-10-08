@@ -1299,6 +1299,7 @@ jobs:
           ../../../compiler/lib_src/json_rpc.obs \
           ../../../compiler/lib_src/opencv.obs \
           ../../../compiler/lib_src/onnx.obs \
+          ../../../compiler/lib_src/inference.obs \
           ../../../compiler/lib_src/nlp.obs \
           ../../../compiler/lib_src/lame.obs \
           ../../../compiler/lib_src/web_server.obs 2>&1 | tee code_doc.log

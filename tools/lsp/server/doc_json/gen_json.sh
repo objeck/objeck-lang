@@ -76,7 +76,7 @@ rm -f *.obe
 	$LIB_SRC/gemini.obs \
 	$LIB_SRC/ollama.obs \
 	$LIB_SRC/opencv.obs \
-	$LIB_SRC/onnx.obs \
+	$LIB_SRC/onnx.obs $LIB_SRC/inference.obs \
 	$LIB_SRC/json_rpc.obs \
 	$LIB_SRC/lame.obs \
 	$LIB_SRC/web_server.obs

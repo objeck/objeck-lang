@@ -553,6 +553,95 @@
 				}
 			}
 		},
+		"API.Inference.Client": {
+			"description": "A connection to one inference server.\n\nHolds the host and the wire protocol; a Tensor is the same object either way, so switching servers is a constructor argument rather than a rewrite.",
+			"functions": {
+				"BuildTfServingBody": {
+					"descriptions": ["**TF Serving infers a tensor's shape from how deeply its data is nested, so the flat elements have to be rebuilt into nested arrays on the way out and flattened again on the way back. That costs a JsonElement per row rather than per tensor, which is the main reason to prefer v2 for anything image-sized.**\n\n```method : private : BuildTfServingBody() ~ JsonElement```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\nreturn: JsonElement"]
+				},
+				"DescribeRequest": {
+					"descriptions": ["**The request body this client would send, without sending it.\n\nA rejected request is reported by the server in terms of what it received, which is hard to act on without seeing what was sent -- the two protocols shape the same tensors very differently, and a tensor nested to the wrong depth looks identical in Objeck. Printing this is usually faster than reading the error.**\n\n```method : public : DescribeRequest(inputs:Vector&lt;Tensor&gt;) ~ String```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\nreturn: String"]
+				},
+				"IsReady": {
+					"descriptions": ["**Whether the server reports the model loaded and ready to serve.\n\nWorth calling once at start-up: a model name the server does not know, or one still loading, is otherwise a rejected inference much later.**\n\n```method : public : IsReady(model:String) ~ Bool```\n\n\n\nmodel: String\n\nreturn: Bool"]
+				},
+				"JsonToFlat": {
+					"descriptions": ["**Flattens a response of any nesting depth into one float array, in row-major order -- the same order Nest wrote it out in.**\n\n```function : JsonToFlat() ~ Float[]```\n\n\n\nnode: JsonElement\n\nreturn: Float[]"]
+				},
+				"Metadata": {
+					"descriptions": ["**What the server says the model expects and returns.\n\nOnly implemented for KServe v2, whose metadata response is specified. TensorFlow Serving's \/metadata returns a signature definition in a different shape; it returns Nil with the last error set rather than guessing at it.**\n\n```method : public : Metadata(model:String) ~ ModelMetadata```\n\n\n\nmodel: String\n\nreturn: ModelMetadata"]
+				},
+				"Nest": {
+					"descriptions": ["**Rebuilds nested arrays from flat data, one level per dimension.**\n\n```method : private : Nest() ~ JsonElement```\n\n\n\ntensor: Tensor\n\ndim: Int\n\noffset: Int\n\nreturn: JsonElement"]
+				},
+				"NestedShape": {
+					"descriptions": ["**The shape implied by how deeply a response is nested.**\n\n```method : private : NestedShape() ~ Int[]```\n\n\n\nnode: JsonElement\n\nreturn: Int[]"]
+				},
+				"New": {
+					"descriptions": ["**A client speaking KServe v2, which reaches the most servers.**\n\n```New(host:String)```\n\n\n\nhost: String", "**A client speaking a chosen protocol.**\n\n```New(host:String, protocol:Client-&gt;Protocol)```\n\n\n\nhost: String\n\nprotocol: Client-&gt;Protocol"]
+				},
+				"Predict": {
+					"descriptions": ["**Runs a model on one input tensor, for the common single-input case.**\n\n```method : public : Predict(model:String, input:Tensor) ~ Vector&lt;Tensor&gt;```\n\n\n\nmodel: String\n\ninput: Tensor\n\nreturn: Vector&lt;Tensor&gt;", "**Runs a model.\n\nEach input is checked against its own shape before anything is sent: a count that disagrees with the shape is rejected by the server with a message that names neither the tensor nor the mismatch, so it is cheaper to catch here.**\n\n```method : public : Predict(model:String, inputs:Vector&lt;Tensor&gt;) ~ Vector&lt;Tensor&gt;```\n\n\n\nmodel: String\n\ninputs: Vector&lt;Tensor&gt;\n\nreturn: Vector&lt;Tensor&gt;"]
+				},
+				"ReadDescriptors": {
+					"descriptions": ["**Metadata tensors carry a name, shape and datatype but no data.**\n\n```method : private : ReadDescriptors() ~ Vector&lt;Tensor&gt;```\n\n\n\nlist: JsonElement\n\nreturn: Vector&lt;Tensor&gt;"]
+				},
+				"Trim": {
+					"descriptions": ["**A trailing slash would produce a double slash in every URL.**\n\n```function : Trim() ~ String```\n\n\n\nhost: String\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Inference.EndPoint": {
+			"description": "Shared state and response handling for the client.\n\nThe last error is static, matching API.Ollama: a failed call returns Nil and the reason is asked for separately, rather than every method returning a pair.",
+			"functions": {
+				"GetLastError": {
+					"descriptions": ["**The reason the most recent call returned Nil.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ParseResponse": {
+					"descriptions": ["**Parses a response body, setting the last error when it is not JSON.\n\nInference servers answer errors as JSON too -- v2 uses {\"error\": \"...\"}\n-- so a body that will not parse means something else went wrong (an HTML error page from a proxy, a truncated response) and the body itself is the most useful thing to report.**\n\n```function : ParseResponse(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.Inference.ModelMetadata": {
+			"description": "What a server reports about a model: the names, shapes and datatypes it expects and returns.\n\nWorth asking for once before inferring. A shape or name mismatch is otherwise reported by the server as a rejected request, and the message rarely says which tensor was wrong.",
+			"functions": {
+				"GetInputs": {
+					"descriptions": ["**Expected inputs, carrying names, shapes and datatypes but no data. A dimension of -1 means the server accepts any size there, which is usually the batch dimension.**\n\n```method : public : GetInputs() ~ Vector&lt;Tensor&gt;```\n\n\n\nreturn: Vector&lt;Tensor&gt;"]
+				},
+				"GetOutputs": {
+					"descriptions": ["**Produced outputs, in the same form.**\n\n```method : public : GetOutputs() ~ Vector&lt;Tensor&gt;```\n\n\n\nreturn: Vector&lt;Tensor&gt;"]
+				},
+				"GetPlatform": {
+					"descriptions": ["**The runtime behind the model, when the server reports one -- \"tensorflow\", \"onnxruntime\", \"pytorch\". Empty for servers that do not say.**\n\n```method : public : GetPlatform() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"API.Inference.Tensor": {
+			"description": "A named, shaped block of numbers -- one input to or output from a model.\n\nHolds either floats or integers, named by the datatype. Both are needed in practice: pixels and embeddings are FP32, while token ids for a language model are INT64, and sending those as floats is not merely wasteful but wrong past 2^53.\n\nThe shape is carried separately from the data, which stays flat. A 1x3x224x224 image is 150,528 floats with shape [1,3,224,224]; nesting it would cost a Vector per row for no gain, since the server wants it flat in v2 anyway.",
+			"functions": {
+				"GetCount": {
+					"descriptions": ["**Elements held, which is the product of the shape for a well-formed tensor. Worth comparing against the shape before sending: a mismatch is rejected by the server with a message that names neither.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFloats": {
+					"descriptions": ["**The float elements, or Nil for an integer tensor.**\n\n```method : public : GetFloats() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetInts": {
+					"descriptions": ["**The integer elements, or Nil for a float tensor.**\n\n```method : public : GetInts() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetShapeProduct": {
+					"descriptions": ["**The product of the dimensions, which GetCount must equal.**\n\n```method : public : GetShapeProduct() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsConsistent": {
+					"descriptions": ["**Whether the element count matches the shape.**\n\n```method : public : IsConsistent() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsFloat": {
+					"descriptions": ["**Whether this tensor carries floats rather than integers.**\n\n```method : public : IsFloat() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A float tensor, datatype FP32.**\n\n```New(name:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Float[]", "**An integer tensor, datatype INT64. Token ids and label indices.**\n\n```New(name:String, shape:Int[], data:Int[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Int[]", "**A tensor whose datatype is named explicitly, for the types neither constructor covers -- FP16, INT32, UINT8, BOOL. The data is still carried as floats or integers; the datatype tells the server how to read it.**\n\n```New(name:String, datatype:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\ndatatype: String\n\nshape: Int[]\n\ndata: Float[]"]
+				}
+			}
+		},
 		"API.Ollama.Chat": {
 			"description": "Ollama chat client",
 			"functions": {
@@ -764,11 +853,11 @@
 		"API.Onnx.DeepLabSession": {
 			"description": "DeepLab inference session for semantic segmentation. Auto-detects model input dimensions and supports both NCHW and NHWC layouts. Returns per-class coverage percentages and polygon boundaries.",
 			"functions": {
-				"Close": {
-					"descriptions": ["**Closes the session**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
 				"Inference": {
 					"descriptions": ["**DeepLab image inference**\n\n```method : public : Inference(image:Byte[], labels:String[]) ~ API.Onnx.DeepLabResult```\n\n\n\nimage: Byte[]\n\nlabels: String[]\n\nreturn: API.Onnx.DeepLabResult\n\n```\nlabels := [\"background\", \"person\", \"car\"];\nsession := DeepLabSession->New(\"deeplabv3.onnx\");\nimage := FileReader->ReadBinaryFile(\"scene.jpg\");\nresult := session->Inference(image, labels);\neach(cls in result->GetClassifications()) {\n  \"{$cls->GetName()}: {$cls->GetConfidence()}%\"->PrintLine();\n};\nsession->Close();\n```"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before inferring: a closed session returns Nil from every inference method, which is otherwise indistinguishable from a model that found nothing.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
@@ -831,20 +920,43 @@
 		"API.Onnx.FaceSession": {
 			"description": "Face recognition session wrapping an SCRFD detector and an ArcFace recognizer. Detect() returns bounding boxes and landmarks; Recognize() additionally extracts 512-dim embeddings for identity comparison via Compare().",
 			"functions": {
-				"Close": {
-					"descriptions": ["**Closes all loaded sessions and releases resources.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
 				"Compare": {
 					"descriptions": ["**Compute cosine similarity between two L2-normalised ArcFace embeddings. Returns a value in [-1, 1]; typically >0.35 indicates the same person.**\n\n```function : Compare(emb1:Float[], emb2:Float[]) ~ Float```\n\n\n\nemb1: Float[]\n\nemb2: Float[]\n\nreturn: Float\n\n```\nr1 := session->Recognize(image1, 0.5);\nr2 := session->Recognize(image2, 0.5);\nsim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults()[0]->GetEmbedding());\n\"Same person? {$sim > 0.35}\"->PrintLine();\n```"]
 				},
 				"Detect": {
 					"descriptions": ["**Detect all faces in an image.**\n\n```method : public : Detect(image:Byte[], conf_threshold:Float) ~ FaceDetectionResult```\n\n\n\nimage: Byte[]\n\nconf_threshold: Float\n\nreturn: FaceDetectionResult\n\n```\nsession := FaceSession->New(\"det_10g.onnx\");\nimage := FileReader->ReadBinaryFile(\"group.jpg\");\nresult := session->Detect(image, 0.5);\n\"Faces found: {$result->GetSize()}\"->PrintLine();\nsession->Close();\n```"]
 				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before inferring: a closed session returns Nil from every inference method, which is otherwise indistinguishable from a model that found nothing.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsRecognizerOpen": {
+					"descriptions": ["**Whether a recognizer model loaded.\n\nSeparate from IsOpen because the recognizer is optional: the detection-only constructor leaves it unset by design, so a false here is not necessarily a failure.**\n\n```method : public : IsRecognizerOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**Constructor - detection only (no recognizer loaded).**\n\n```New(det_model:String)```\n\n\n\ndet_model: String", "**Constructor - detection + recognition.**\n\n```New(det_model:String, rec_model:String)```\n\n\n\ndet_model: String\n\nrec_model: String", "**Constructor with configuration options.**\n\n```New(det_model:String, rec_model:String, config:Map&lt;String,String&gt;)```\n\n\n\ndet_model: String\n\nrec_model: String\n\nconfig: Map&lt;String,String&gt;"]
 				},
 				"Recognize": {
 					"descriptions": ["**Detect faces and extract ArcFace embeddings for each. Requires the recognizer model to have been loaded.**\n\n```method : public : Recognize(image:Byte[], conf_threshold:Float) ~ FaceRecognitionResult```\n\n\n\nimage: Byte[]\n\nconf_threshold: Float\n\nreturn: FaceRecognitionResult\n\n```\nsession := FaceSession->New(\"det_10g.onnx\", \"w600k_r50.onnx\");\nimage := FileReader->ReadBinaryFile(\"portrait.jpg\");\nresult := session->Recognize(image, 0.5);\neach(face in result->GetResults()) {\n  \"Face score: {$face->GetDetection()->GetScore()}\"->PrintLine();\n};\nsession->Close();\n```"]
+				}
+			}
+		},
+		"API.Onnx.ModelInfo": {
+			"description": "What a model takes in and gives back.\n\nWorth reading once before building inputs. The alternative is guessing at names and shapes, and a mismatch is reported by the runtime in terms of the graph rather than of anything the caller wrote.",
+			"functions": {
+				"Find": {
+					"descriptions": ["**One input or output by name, whichever side it is on.**\n\n```method : public : Find(name:String) ~ TensorSpec```\n\n\n\nname: String\n\nreturn: TensorSpec"]
+				},
+				"GetInputNames": {
+					"descriptions": ["**Input names, for a run that names a subset.**\n\n```method : public : GetInputNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetInputs": {
+					"descriptions": ["**The model's inputs, in the order the graph declares them.**\n\n```method : public : GetInputs() ~ Vector&lt;TensorSpec&gt;```\n\n\n\nreturn: Vector&lt;TensorSpec&gt;"]
+				},
+				"GetOutputNames": {
+					"descriptions": ["**Output names, for a run that asks for a subset.**\n\n```method : public : GetOutputNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetOutputs": {
+					"descriptions": ["**The model's outputs, in the order the graph declares them.**\n\n```method : public : GetOutputs() ~ Vector&lt;TensorSpec&gt;```\n\n\n\nreturn: Vector&lt;TensorSpec&gt;"]
 				}
 			}
 		},
@@ -917,11 +1029,11 @@
 		"API.Onnx.OpenPoseSession": {
 			"description": "OpenPose inference session for human pose estimation (17-keypoint COCO skeleton). Uses letterbox preprocessing with inverse keypoint mapping for accurate coordinates. Supports 18\/19\/25\/26\/57-channel output configurations.",
 			"functions": {
-				"Close": {
-					"descriptions": ["**Closes the session**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
 				"Inference": {
 					"descriptions": ["**OpenPose image inference**\n\n```method : public : Inference(image:Byte[], ) ~ API.Onnx.OpenPoseResult```\n\n\n\nimage: Byte[]\n\nlabels: String[]\n\nreturn: API.Onnx.OpenPoseResult\n\n```\nlabels := [\"nose\", \"left_eye\", \"right_eye\", \"left_ear\", \"right_ear\",\n  \"left_shoulder\", \"right_shoulder\", \"left_elbow\", \"right_elbow\",\n  \"left_wrist\", \"right_wrist\", \"left_hip\", \"right_hip\",\n  \"left_knee\", \"right_knee\", \"left_ankle\", \"right_ankle\"];\nsession := OpenPoseSession->New(\"openpose.onnx\");\nimage := FileReader->ReadBinaryFile(\"person.jpg\");\nresult := session->Inference(image, labels);\neach(kp in result->GetClassifications()) {\n  if(kp->GetConfidence() > 0) {\n    \"{$kp->GetName()}: ({$kp->GetNormalizedX()},{$kp->GetNormalizedY()})\"->PrintLine();\n  };\n};\nsession->Close();\n```"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before inferring: a closed session returns Nil from every inference method, which is otherwise indistinguishable from a model that found nothing.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
@@ -945,11 +1057,11 @@
 		"API.Onnx.Phi3Session": {
 			"description": "Phi-3 \/ SLM inference session for text generation. Supports autoregressive generation with KV-cache management, temperature-based sampling, and configurable EOS tokens.",
 			"functions": {
-				"Close": {
-					"descriptions": ["**Closes the session**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
 				"Generate": {
 					"descriptions": ["**Generate text tokens from input token IDs**\n\n```method : public : Generate(token_ids:Int[], max_tokens:Int, temperature:Float, eos_tokens:Int[]) ~ API.Onnx.Phi3Result```\n\n\n\ntoken_ids: Int[]\n\nmax_tokens: Int\n\ntemperature: Float\n\neos_tokens: Int[]\n\nreturn: API.Onnx.Phi3Result\n\n```\nsession := Phi3Session->New(\"phi3-mini\/model.onnx\");\ntokenizer := Phi3Tokenizer->New(\"phi3-mini\/tokenizer.json\");\nids := tokenizer->Encode(\"<|user|>\\nWhat is 2+2?<|end|>\");\neos := [32007, 32000];\nresult := session->Generate(ids, 128, 0.0, eos);\ntokenizer->Decode(result->GetTokens())->PrintLine();\nsession->Close();\n```"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before inferring: a closed session returns Nil from every inference method, which is otherwise indistinguishable from a model that found nothing.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
@@ -982,11 +1094,11 @@
 		"API.Onnx.Phi3VisionSession": {
 			"description": "Phi-3 Vision multimodal session for image understanding and generation. Uses three separate ONNX models: vision encoder, text embedding, and text decoder. Accepts raw image bytes (JPEG\/PNG) and pre-tokenized prompt tokens split into prefix (before image placeholder) and suffix (after image placeholder) segments.",
 			"functions": {
-				"Close": {
-					"descriptions": ["**Closes all three sessions (vision, embedding, decoder)**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
 				"Generate": {
 					"descriptions": ["**Generate text tokens from an image and prompt tokens. The prompt is split into prefix tokens (before the image) and suffix tokens (after the image).**\n\n```method : public : Generate(image_bytes:Byte[], prefix_tokens:Int[], suffix_tokens:Int[], max_tokens:Int, temperature:Float, eos_tokens:Int[]) ~ API.Onnx.Phi3Result```\n\n\n\nimage_bytes: Byte[]\n\nprefix_tokens: Int[]\n\nsuffix_tokens: Int[]\n\nmax_tokens: Int\n\ntemperature: Float\n\neos_tokens: Int[]\n\nreturn: API.Onnx.Phi3Result"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before inferring: a closed session returns Nil from every inference method, which is otherwise indistinguishable from a model that found nothing.\n\nAll three sessions -- vision, embedding and decoder -- must have loaded; any one of them missing leaves generation unable to run.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor.**\n\n```New(vision_model:String, embed_model:String, decoder_model:String)```\n\n\n\nvision_model: String\n\nembed_model: String\n\ndecoder_model: String", "**Constructor with configuration.**\n\n```New(vision_model:String, embed_model:String, decoder_model:String, config:Map&lt;String,String&gt;)```\n\n\n\nvision_model: String\n\nembed_model: String\n\ndecoder_model: String\n\nconfig: Map&lt;String,String&gt;"]
@@ -1019,14 +1131,103 @@
 		"API.Onnx.ResNetSession": {
 			"description": "ResNet inference session for image classification. Performs ImageNet-style classification with softmax probability normalization.",
 			"functions": {
-				"Close": {
-					"descriptions": ["**Closes the session**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
 				"Inference": {
 					"descriptions": ["**ResNet image inference**\n\n```method : public : Inference(image:Byte[], height:Int, labels:String[]) ~ API.Onnx.ResNetResult```\n\n\n\nimage: Byte[]\n\nheight: Int\n\nwidth: Int\n\nlabels: String[]\n\nreturn: API.Onnx.ResNetResult\n\n```\nlabels := [\"cat\", \"dog\", \"bird\"];\nsession := ResNetSession->New(\"resnet50.onnx\");\nimage := FileReader->ReadBinaryFile(\"animal.jpg\");\nresult := session->Inference(image, 224, 224, labels);\n\"Top class: {$result->GetName()} ({$result->GetConfidence()})\"->PrintLine();\nsession->Close();\n```"]
 				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before inferring: a closed session returns Nil from every inference method, which is otherwise indistinguishable from a model that found nothing.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
+				}
+			}
+		},
+		"API.Onnx.RunResult": {
+			"description": "The tensors a run produced.\n\n`Session->Run` returns these as a Vector<Tensor> and most callers want that. This is the same data before it is split apart, for a caller that would rather read one output out of many without building objects for the rest.",
+			"functions": {
+				"Get": {
+					"descriptions": ["**One output by name.**\n\n```method : public : Get(name:String) ~ Tensor```\n\n\n\nname: String\n\nreturn: Tensor"]
+				},
+				"GetCount": {
+					"descriptions": ["**How many tensors the run produced.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetNames": {
+					"descriptions": ["**Output names, in the order they were produced.**\n\n```method : public : GetNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetTensors": {
+					"descriptions": ["**Every output as a tensor.**\n\n```method : public : GetTensors() ~ Vector&lt;Tensor&gt;```\n\n\n\nreturn: Vector&lt;Tensor&gt;"]
+				}
+			}
+		},
+		"API.Onnx.Session": {
+			"description": "A model session that runs any ONNX graph, without knowing what family it belongs to.\n\nThe seven session classes above each own one model family: they letterbox or normalise an image, run it, and decode the result into YOloResult, ResNetResult and the rest. Use them when they fit -- they are less work and they are what the examples use.\n\nUse this one when they do not: a model with several inputs, a model whose outputs you want to decode yourself, a text or audio model, or anything the eight families do not cover. Preprocessing and decoding are then yours to write, in Objeck, where they can be reused rather than added to the native library as a ninth vertical (docs\/INFERENCE_ENGINES_PLAN.md).",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Releases the model.\n\nZeroing the handle afterwards is what makes a second Close safe and makes IsOpen report the truth from then on.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetModelInfo": {
+					"descriptions": ["**What the model takes in and gives back. Read once and cached: a model's signature does not change under us.**\n\n```method : public : GetModelInfo() ~ ModelInfo```\n\n\n\nreturn: ModelInfo"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before running: a closed session returns Nil from Run, which is otherwise indistinguishable from a model that produced nothing.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
+				},
+				"Run": {
+					"descriptions": ["**Runs the model, asking for every output it has.**\n\n```method : public : Run(inputs:Vector&lt;Tensor&gt;) ~ Vector&lt;Tensor&gt;```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\nreturn: Vector&lt;Tensor&gt;", "**Runs the model for named outputs.**\n\n```method : public : Run(inputs:Vector&lt;Tensor&gt;, output_names:String[]) ~ Vector&lt;Tensor&gt;```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\noutput_names: String[]\n\nreturn: Vector&lt;Tensor&gt;"]
+				},
+				"RunTensors": {
+					"descriptions": ["**Runs the model and returns the result before it is split into tensors, for a caller reading one output out of many.**\n\n```method : public : RunTensors(inputs:Vector&lt;Tensor&gt;, output_names:String[]) ~ RunResult```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\noutput_names: String[]\n\nreturn: RunResult"]
+				}
+			}
+		},
+		"API.Onnx.Tensor": {
+			"description": "A named tensor: what a model takes in and what it hands back.\n\nElements are flat and row-major, and the shape says how to read them. A tensor is carried as Float[] whatever the model's own element type is -- `Session` asks the model what each input wants and converts, so nothing here has to know FP16 from INT64 to run a model.",
+			"functions": {
+				"GetCount": {
+					"descriptions": ["**Elements held.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetData": {
+					"descriptions": ["**Elements, flat and row-major.**\n\n```method : public : GetData() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetDatatype": {
+					"descriptions": ["**The element type. On a result this is what the model produced; on an input it is advisory, since the model's own declaration is used.**\n\n```method : public : GetDatatype() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetInts": {
+					"descriptions": ["**Elements rounded back to integers. Exact for any value within +\/-2^53, which is every value an integer tensor is allowed to hold.**\n\n```method : public : GetInts() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetName": {
+					"descriptions": ["**The name the model knows this tensor by.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetShape": {
+					"descriptions": ["**Dimensions, outermost first.**\n\n```method : public : GetShape() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetShapeProduct": {
+					"descriptions": ["**The product of the dimensions, which GetCount must equal.**\n\n```method : public : GetShapeProduct() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsConsistent": {
+					"descriptions": ["**Whether the element count matches the shape. Worth checking before a run: a mismatch is otherwise refused by the native layer, which can say the counts disagree but not which tensor caused it.**\n\n```method : public : IsConsistent() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**A tensor of floats.**\n\n```New(name:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Float[]", "**A tensor of integers -- token ids, class indexes, an attention mask.\n\nConverted to Float[] for the crossing, which is exact: a Float holds every integer up to 2^53 (9,007,199,254,740,992) without loss, and token ids, indexes and masks are orders of magnitude below that. A value outside that range is REFUSED here rather than rounded, because once it has been rounded nothing downstream can tell that it was.**\n\n```New(name:String, shape:Int[], data:Int[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Int[]", "**A tensor whose element type is named explicitly. Rarely needed on input\n-- the model's own declared type wins there -- but it is how a result reports what the model actually produced.**\n\n```New(name:String, datatype:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\ndatatype: String\n\nshape: Int[]\n\ndata: Float[]"]
+				}
+			}
+		},
+		"API.Onnx.TensorSpec": {
+			"description": "One input or output in a model's signature: its name, element type and shape.\n\nA dimension the model leaves symbolic -- batch size, sequence length -- is reported as -1. That is not a gap in the report: the model genuinely does not fix it, and the caller is the one who chooses.",
+			"functions": {
+				"GetDatatype": {
+					"descriptions": ["**The element type the model declares, e.g. \"FP32\", \"INT64\".**\n\n```method : public : GetDatatype() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**The name to use for this tensor in a run.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetShape": {
+					"descriptions": ["**Dimensions, with -1 for any the model leaves to the caller.**\n\n```method : public : GetShape() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"IsFixed": {
+					"descriptions": ["**Whether every dimension is fixed by the model.**\n\n```method : public : IsFixed() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -1085,11 +1286,11 @@
 		"API.Onnx.YoloSession": {
 			"description": "YOLO inference session for object detection (v8 and above). Supports YOLO11\/YOLO12 with fused head, letterbox preprocessing, and automatic FP16\/FP32 input handling.",
 			"functions": {
-				"Close": {
-					"descriptions": ["**Closes the session**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
-				},
 				"Inference": {
 					"descriptions": ["**Yolo image inference, support for models v8 and above**\n\n```method : public : Inference(image:Byte[], height:Int, conf_threshold:Float, labels:String[]) ~ API.Onnx.YoloResult```\n\n\n\nimage: Byte[]\n\nheight: Int\n\nwidth: Int\n\nconf_threshold: Float\n\nlabels: String[]\n\nreturn: API.Onnx.YoloResult\n\n```\nlabels := [\"person\", \"car\", \"dog\"];\nsession := YoloSession->New(\"yolo11n.onnx\");\nimage := FileReader->ReadBinaryFile(\"photo.jpg\");\nresult := session->Inference(image, 640, 640, 0.5, labels);\neach(cls in result->GetClassifications()) {\n  \"{$cls->GetName()}: {$cls->GetConfidence()}\"->PrintLine();\n};\nsession->Close();\n```"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.\n\nA session that failed to open is not an error at construction -- the constructor returns an object either way, and the reason was written to stderr while it happened. Test this before inferring: a closed session returns Nil from every inference method, which is otherwise indistinguishable from a model that found nothing.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
@@ -10664,6 +10865,18 @@
 				}
 			}
 		},
+		"System.ML.AucMetric": {
+			"description": "Area under the ROC curve, as a resampleable metric.",
+			"functions": {
+
+			}
+		},
+		"System.ML.AveragePrecisionMetric": {
+			"description": "Average precision, as a resampleable metric.",
+			"functions": {
+
+			}
+		},
 		"System.ML.BayesEntry": {
 			"description": "Naive Bayes entry of term with counts",
 			"functions": {
@@ -10727,8 +10940,23 @@
 		"System.ML.CrossValidation": {
 			"description": "Cross-validation utilities for model evaluation",
 			"functions": {
+				"Evaluate": {
+					"descriptions": ["**Runs stratified k-fold cross-validation and reports per-fold scores.\n\nThe model is refitted on each fold's training split, so it is left holding the last fold's fit. Standardization, when asked for, fits the scaler on the TRAINING split only and reapplies it to the test split -- scaling test data by its own statistics leaks the test distribution and flatters any model measured at a fixed false-alarm rate.**\n\n```function : Evaluate(model:ScoreModel, X:Float[,], y:Bool[], k:Int, seed:Int, max_fpr:Float, standardize:Bool) ~ CrossValResult```\n\n\n\nmodel: ScoreModel\n\nX: Float[,]\n\ny: Bool[]\n\nk: Int\n\nseed: Int\n\nmax_fpr: Float\n\nstandardize: Bool\n\nreturn: CrossValResult", "**Cross-validation whose folds are stratified by a key of your choosing.\n\nThe overload above stratifies by the binary label, which keeps the positive rate steady across folds but says nothing about what the positives are made of. When the positive class is a union of rare sub-populations -- attack families, fault types, device models -- a fold can be balanced on the label and still hold none of a sub-population that only has a few dozen members. Pass those category codes as strata and each fold keeps their proportions too.\n\nstrata is a fold-assignment key only. The model still fits and scores against y, so the metrics are unchanged.**\n\n```function : Evaluate(model:ScoreModel, X:Float[,], y:Bool[], k:Int, seed:Int, max_fpr:Float, standardize:Bool, strata:Float[]) ~ CrossValResult```\n\n\n\nmodel: ScoreModel\n\nX: Float[,]\n\ny: Bool[]\n\nk: Int\n\nseed: Int\n\nmax_fpr: Float\n\nstandardize: Bool\n\nstrata: Float[]\n\nreturn: CrossValResult", "**Cross-validation with standardization on, which is the usual case.**\n\n```function : Evaluate(model:ScoreModel, X:Float[,], y:Bool[], k:Int, seed:Int, max_fpr:Float) ~ CrossValResult```\n\n\n\nmodel: ScoreModel\n\nX: Float[,]\n\ny: Bool[]\n\nk: Int\n\nseed: Int\n\nmax_fpr: Float\n\nreturn: CrossValResult"]
+				},
 				"KFold": {
 					"descriptions": ["**Splits data into K folds for cross-validation**\n\n```function : native : KFold(data:Float[,], k:Int) ~ Vector[]&lt;IntRef&gt;```\n\n\n\ndata: Float[,]\n\nk: Int\n\nreturn: Vector[]&lt;IntRef&gt;"]
+				},
+				"Split": {
+					"descriptions": ["**Builds the train\/test matrices for one fold.\n\nStratifiedKFold returns row indexes; turning those into matrices is about twenty lines of copying that every experiment otherwise rewrites, and getting it subtly wrong shifts labels against features without any error. Takes ONE fold's row indexes rather than the whole array plus an index: a `Vector[]<T>` parameter compiles inside a library but does not resolve across a library boundary, so the caller passes `folds[i]`.**\n\n```function : Split(X:Float[,], y:Bool[], test_rows:Vector&lt;IntRef&gt;) ~ FoldSplit```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\ntest_rows: Vector&lt;IntRef&gt;\n\nreturn: FoldSplit"]
+				},
+				"StratifiedKFold": {
+					"descriptions": ["**Splits row indices into K folds that each keep the class ratio of the whole, shuffled from a caller-supplied seed so the same seed gives the same folds.\n\nKFold above shuffles with the global generator and ignores labels. Both hurt on imbalanced data: an unseeded split cannot be reproduced, and an unstratified split lets the rare class land unevenly, so a fold may hold too few positives to measure anything at a low false-positive rate. Intrusion-detection sets are exactly that shape.\n\nClasses are taken from the label values as they first appear. Each class is shuffled independently and dealt round-robin across the folds, continuing from where the previous class stopped, so a remainder cannot pile into fold 0.**\n\n```function : StratifiedKFold(labels:Float[], k:Int, seed:Int) ~ Vector[]&lt;IntRef&gt;```\n\n\n\nlabels: Float[]\n\nk: Int\n\nseed: Int\n\nreturn: Vector[]&lt;IntRef&gt;\n\n```\nfolds := CrossValidation->StratifiedKFold(y, 5, 42);\neach(f : folds) {\n  test_rows := folds[f];\n};\n```"]
+				},
+				"ToBool": {
+					"descriptions": ["**Converts scored labels to the Bool[] the classifiers and Metrics take.\n\nTableEncoder hands back Float[] and StratifiedKFold wants that form, but every classifier Fit and every Metrics function takes Bool[]. Without this, each caller keeps both representations alive and writes the same conversion loop.**\n\n```function : ToBool(labels:Float[]) ~ Bool[]```\n\n\n\nlabels: Float[]\n\nreturn: Bool[]"]
+				},
+				"ToFloat": {
+					"descriptions": ["**Converts Bool labels to the Float[] StratifiedKFold takes.**\n\n```function : ToFloat(labels:Bool[]) ~ Float[]```\n\n\n\nlabels: Bool[]\n\nreturn: Float[]"]
 				},
 				"TrainTestSplit": {
 					"descriptions": ["**Splits data into training and test sets**\n\n```function : native : TrainTestSplit(data:Float[,], test_ratio:Float) ~ FloatMatrixRef[]```\n\n\n\ndata: Float[,]\n\ntest_ratio: Float\n\nreturn: FloatMatrixRef[]"]
@@ -10811,6 +11039,29 @@
 				}
 			}
 		},
+		"System.ML.DecisionTreeClassifier": {
+			"description": "A classification tree that splits continuous features on a threshold, chosen by Gini impurity.\n\nDecisionTree above takes Bool[,]: every feature must already be binary, so continuous data has to be quantile-binned before it can be used, and the binning throws away exactly the thresholds the tree exists to find. This takes Float[,] and finds the threshold itself, the same way RegressionTree does for a continuous target -- sorted values, midpoints between consecutive distinct values as candidates -- with Gini in place of squared error and a class proportion at the leaf.\n\nPredictScore returns that proportion rather than a label, because a fixed false-positive budget needs a score to threshold. A Bool prediction fixes one operating point and cannot answer what the recall would be at another.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Builds the tree.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"FitRows": {
+					"descriptions": ["**Builds the tree over a chosen list of rows, which may repeat. A forest fits each tree to a bootstrap sample, and a sample drawn with replacement is a list of row indexes rather than a matrix, so passing the list avoids copying the data once per tree.**\n\n```method : public : FitRows(X:Float[,], y:Bool[], rows_idx:Int[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nrows_idx: Int[]\n\nreturn: Bool"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has been called successfully.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor. Every feature is considered at every node.**\n\n```New(max_depth:Int, min_samples:Int)```\n\n\n\nmax_depth: Int\n\nmin_samples: Int", "**Constructor for a tree that considers only a sample of the features at each node, which is how a forest decorrelates its trees. It is also the cheapest lever on build time: the split search dominates, and it is linear in the number of features tried, so trying sqrt(f) of f is roughly that speedup.**\n\n```New(max_depth:Int, min_samples:Int, max_features:Int, seed:Int)```\n\n\n\nmax_depth: Int\n\nmin_samples: Int\n\nmax_features: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels at the usual half-way threshold. Prefer PredictScore with an explicit threshold when the false-alarm rate matters.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**The fraction of training rows at each row's leaf that were positive. This is the score to threshold, and what the fixed-false-positive-rate metrics consume.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				}
+			}
+		},
 		"System.ML.ElasticNet": {
 			"description": "Elastic-net regularized linear regression fitted by cyclic coordinate descent on mean-centered data with an unpenalized intercept. Minimizes (1\/2n)||y - Xw - b||^2 + alpha*(l1_ratio*|w|_1 + (1-l1_ratio)\/2*|w|_2^2). l1_ratio = 1.0 is the lasso; l1_ratio = 0.0 is ridge (use RidgeRegression for the closed-form solution). The L1 term drives uninformative feature coefficients exactly to zero.",
 			"functions": {
@@ -10855,14 +11106,35 @@
 		"System.ML.FeatureScaler": {
 			"description": "Feature scaling and normalization utilities",
 			"functions": {
+				"Fit": {
+					"descriptions": ["**Learns each column's mean and standard deviation from this matrix.**\n\n```method : public : Fit(X:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\nreturn: Bool\n\n```\nscaler := FeatureScaler->New();\nscaler->Fit(train);\ntrain_z := scaler->Transform(train);\ntest_z := scaler->Transform(test);\n```"]
+				},
+				"FitTransform": {
+					"descriptions": ["**Fits on this matrix and transforms it in one call. For the training split only.**\n\n```method : public : FitTransform(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]"]
+				},
+				"GetMeans": {
+					"descriptions": ["**The learned per-column means.**\n\n```method : public : GetMeans() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetStandardDeviations": {
+					"descriptions": ["**The learned per-column standard deviations.**\n\n```method : public : GetStandardDeviations() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has been called successfully.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"MinMaxScaler": {
 					"descriptions": ["**Scales features to a [0, 1] range (Min-Max normalization)**\n\n```function : native : MinMaxScaler(data:Float[,]) ~ Float[,]```\n\n\n\ndata: Float[,]\n\nreturn: Float[,]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for a scaler that learns its statistics once and reapplies them.\n\nThe static functions below standardize whatever matrix they are handed, which makes them unusable for train\/test work: scaling test data by its own mean and deviation leaks test statistics into the evaluation, and the two halves end up on different scales besides. Fit on the training split, Transform both.**\n\n```New()```\n\n"]
 				},
 				"Normalize": {
 					"descriptions": ["**Normalizes each row to unit norm (L2 normalization)**\n\n```function : native : Normalize(data:Float[,]) ~ Float[,]```\n\n\n\ndata: Float[,]\n\nreturn: Float[,]"]
 				},
 				"StandardScaler": {
 					"descriptions": ["**Standardizes features by removing mean and scaling to unit variance (Z-score normalization)**\n\n```function : native : StandardScaler(data:Float[,]) ~ Float[,]```\n\n\n\ndata: Float[,]\n\nreturn: Float[,]"]
+				},
+				"Transform": {
+					"descriptions": ["**Applies the learned statistics to a matrix.**\n\n```method : public : Transform(X:Float[,]) ~ Float[,]```\n\n\n\nX: Float[,]\n\nreturn: Float[,]\n\n```\ntest_z := scaler->Transform(test);\nif(test_z = Nil) {\n  \"unfitted, or wrong column count\"->PrintLine();\n};\n```"]
 				}
 			}
 		},
@@ -10889,6 +11161,20 @@
 				},
 				"ToString": {
 					"descriptions": ["**Formats the matrix into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"System.ML.FoldSplit": {
+			"description": "The train and test matrices for one cross-validation fold.",
+			"functions": {
+				"GetTestRows": {
+					"descriptions": ["**The original row index of each row of the test split, in the order the test matrix holds them.\n\nNeeded to map a fold score back to the record it belongs to, which is how an out-of-fold score vector is assembled. Split builds the test matrix by walking rows 0..n against a membership mask, so these come back ASCENDING and NOT in the order StratifiedKFold returned -- that order is shuffled. Without this accessor the obvious caller code pairs scores[k] with the k'th index of the fold vector, which silently scrambles them: measured on a 3000-row set, a pooled AUC of 0.997 read 0.539 -- chance -- while every per-fold AUC still read 0.99, so nothing looked wrong.**\n\n```method : public : GetTestRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetTestSize": {
+					"descriptions": ["**Rows in the test split.**\n\n```method : public : GetTestSize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTrainSize": {
+					"descriptions": ["**Rows in the training split.**\n\n```method : public : GetTrainSize() ~ Int```\n\n\n\nreturn: Int"]
 				}
 			}
 		},
@@ -10959,6 +11245,35 @@
 				}
 			}
 		},
+		"System.ML.GradientBoostedClassifier": {
+			"description": "Gradient boosted trees for binary classification, under logistic loss.\n\nGradientBoostedTrees above fits each stage to the plain residual y - F(x), which is the gradient of squared error. For a binary label the right target is the gradient of the logistic loss, y - sigmoid(F(x)). A row the model already calls correctly, and confidently, leaves a residual near zero and stops steering the fit, so later stages spend their capacity on the rows still being missed. That single substitution is the whole difference: the trees, the shrinkage and the loop are the regression version's.\n\nPredictScore returns a probability, which is what an evaluation at a fixed false-alarm rate needs; Predict thresholds it half way. Deterministic \u2014 the same data gives the same ensemble, with no seed to pass.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the ensemble on binary labels.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"GetBase": {
+					"descriptions": ["**The starting score, the log-odds of the training positive rate.**\n\n```method : public : GetBase() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetTreeCount": {
+					"descriptions": ["**How many boosting stages were fitted.**\n\n```method : public : GetTreeCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has been called successfully.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(num_trees:Int, learning_rate:Float, max_depth:Int, min_samples:Int)```\n\n\n\nnum_trees: Int\n\nlearning_rate: Float\n\nmax_depth: Int\n\nmin_samples: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels at the usual half-way threshold. Prefer PredictScore with an explicit threshold when the false-alarm rate matters. Tested against the raw score, since sigmoid(0) is one half and the two agree exactly.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"PredictRaw": {
+					"descriptions": ["**The ensemble's raw score for each row: the log-odds, before the sigmoid. Ranking rows by this gives the same order as ranking by the probability, since the sigmoid is monotone, and skips a pass over the data.**\n\n```method : public : PredictRaw(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**The ensemble's probability that each row belongs to the positive class.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				}
+			}
+		},
 		"System.ML.GradientBoostedTrees": {
 			"description": "Gradient boosted regression trees with squared-error loss: the model starts at the target mean and each stage fits a RegressionTree to the current residuals, added with a shrinkage (learning rate) factor. Deterministic.",
 			"functions": {
@@ -10985,6 +11300,44 @@
 				},
 				"Store": {
 					"descriptions": ["**Saves the fitted ensemble to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.GroupRecall": {
+			"description": "Recall within one group.\n\nCarries the count the rate was computed from, not just the rate. A recall of 1.0 over two positives and a recall of 1.0 over two thousand are not the same claim, and the rate alone cannot tell them apart -- which matters most for exactly the rare groups this type exists to report.",
+			"functions": {
+				"GetFolds": {
+					"descriptions": ["**How many folds were run.**\n\n```method : public : GetFolds() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetOofScores": {
+					"descriptions": ["**One out-of-fold score per input row, in input row order.\n\nEach score comes from the fold model that did NOT train on that row, so the vector can be thresholded as a whole without leaking a row into its own score. That is what makes it the right input for choosing an operating point: ThresholdAtFpr over these scores picks a threshold honestly, and it can then be applied unchanged to held-out data.\n\nReported separately from the per-fold means because they answer different questions. The fold means say how much the estimate moves between folds; the pooled vector gives one curve over every row, which is what a single threshold has to be chosen from.**\n\n```method : public : GetOofScores() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
+				"GetPoint": {
+					"descriptions": ["**The metric on the original sample, not the mean of the resamples.**\n\n```method : public : GetPoint() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetPositives": {
+					"descriptions": ["**Positives in this group, which is what the recall was computed over.**\n\n```method : public : GetPositives() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRecall": {
+					"descriptions": ["**Detected over positives in this group.**\n\n```method : public : GetRecall() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetReps": {
+					"descriptions": ["**Resamples requested.**\n\n```method : public : GetReps() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetStdAuc": {
+					"descriptions": ["**Spread of the per-fold AUCs, as a sample standard deviation.\n\nSample rather than population, unlike FeatureScaler: these are k observations of a quantity whose variability is being estimated, not a whole population being standardized. With one fold it is undefined and 0.0 is returned rather than dividing by k-1 = 0, which Objeck raises on.**\n\n```method : public : GetStdAuc() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetStdRecall": {
+					"descriptions": ["**Spread of the per-fold recalls.**\n\n```method : public : GetStdRecall() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetUsableReps": {
+					"descriptions": ["**Resamples the metric could actually be computed on.\n\nBelow GetReps when some resample drew a single class. Worth checking on rare positives: at a few dozen positives in a large sample, a noticeable share of resamples can miss them entirely.**\n\n```method : public : GetUsableReps() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWidth": {
+					"descriptions": ["**Width of the interval.**\n\n```method : public : GetWidth() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"ToString": {
+					"descriptions": ["**A one-line summary in the form the write-up wants.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
@@ -11180,7 +11533,7 @@
 			"description": "Logistic regression using gradient descent with sigmoid activation. Binary classification only.",
 			"functions": {
 				"Fit": {
-					"descriptions": ["**Fits the model to training data using gradient descent.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool\n\n```\nX := [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];\ny := [[0.0], [0.0], [1.0]];\nmodel := LogisticRegression->New(0.1, 200);\nmodel->Fit(X, y);\n```"]
+					"descriptions": ["**Fits the model to training data using gradient descent.**\n\n```method : public : Fit(X:Float[,], y:Float[,]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Bool\n\n```\nX := [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]];\ny := [[0.0], [0.0], [1.0]];\nmodel := LogisticRegression->New(0.1, 200);\nmodel->Fit(X, y);\n```", "**Fits on one Bool per row, which is what ScoreModel and every classifier in this bundle take.\n\nThe Float[,] overload above is the original shape and is kept. This one exists so CrossValidation->Evaluate can take a logistic regression at all: the tree classifiers implement ScoreModel and this did not, so a linear baseline -- the model you most want to compare against -- could not go through the same evaluation path unless the caller wrote an adapter.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
 				},
 				"GetBias": {
 					"descriptions": ["**Gets the learned bias \/ intercept term.**\n\n```method : public : GetBias() ~ Float```\n\n\n\nreturn: Float"]
@@ -11206,8 +11559,8 @@
 				"Predict": {
 					"descriptions": ["**Predicts probabilities for input data.**\n\n```method : public : Predict(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]\n\n```\nprobs := model->Predict([[2.0, 3.0]]);\n\"Probability: {$probs[0]}\"->PrintLine();\n```"]
 				},
-				"PredictClass": {
-					"descriptions": ["**Predicts class labels for input data (threshold 0.5).**\n\n```method : public : PredictClass(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]\n\n```\nlabels := model->PredictClass([[5.0, 6.0], [1.0, 0.5]]);\neach(label in labels) {\n  label->PrintLine();\n};\n```"]
+				"PredictScore": {
+					"descriptions": ["**Scores each row; higher means more positive. Satisfies ScoreModel.\n\nThe same values Predict returns -- sigmoid outputs in (0,1). Named for the interface, because a score and a decision are different things: the point of scoring is that the operating point is not yet fixed.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
 				},
 				"Score": {
 					"descriptions": ["**Computes classification accuracy on the given data.**\n\n```method : public : Score(X:Float[,], y:Float[,]) ~ Float```\n\n\n\nX: Float[,]\n\ny: Float[,]\n\nreturn: Float"]
@@ -11332,6 +11685,18 @@
 				"Accuracy": {
 					"descriptions": ["**Calculates accuracy: (TP + TN) \/ Total**\n\n```function : native : Accuracy(predictions:Bool[], actuals:Bool[]) ~ Float```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Float"]
 				},
+				"AtThreshold": {
+					"descriptions": ["**Recall, false-positive rate and precision at ONE given threshold.\n\nThe counterpart to RecallAtFpr. That one searches for the operating point fitting a false-alarm budget; this one is handed a threshold and reports what it actually does. Both are needed to answer whether a threshold chosen on one set still honours its budget on another: the budget is intended, the rate reported here is what happened.\n\nAn instance counts as predicted positive when its score is >= threshold. That matches OperatingPoints, which accumulates from the highest score down and lets instances sharing a score share an operating point, so a threshold from ThresholdAtFpr can be passed straight here.\n\nEvery rate is guarded. A float division by zero raises in Objeck and would take the program down, and the degenerate cases are ordinary: a threshold above every score predicts nothing positive, leaving precision with no denominator.**\n\n```function : AtThreshold(scores:Float[], actuals:Bool[], threshold:Float) ~ ThresholdResult```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nthreshold: Float\n\nreturn: ThresholdResult"]
+				},
+				"AucRoc": {
+					"descriptions": ["**Area under the ROC curve, by trapezoid over the operating points.**\n\n```function : AucRoc(scores:Float[], actuals:Bool[]) ~ Float```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float"]
+				},
+				"AveragePrecision": {
+					"descriptions": ["**Average precision: the precision-recall curve summarised as the sum of precision at each point weighted by the recall it gained. Preferred over AUC-ROC when positives are rare, because it does not credit a model for the vast number of true negatives.**\n\n```function : AveragePrecision(scores:Float[], actuals:Bool[]) ~ Float```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float"]
+				},
+				"Bootstrap": {
+					"descriptions": ["**A bootstrap percentile confidence interval for a metric.\n\nResamples the scored instances WITH REPLACEMENT reps times, recomputes the metric on each resample, and takes percentiles of that distribution. The point estimate is the metric on the original sample, not the mean of the resamples.\n\nResampling pairs, not scores: a resample draws (score, label) together, so the class balance moves between resamples the way it would between samples. That is the variability being estimated, and it matters most where it is largest -- a false-alarm budget of 0.001 on a 10,000-row test set is about ten false positives, and ten is a count whose uncertainty is not negligible.\n\nA resample can contain only one class, which leaves AUC undefined. The metrics here report that as a NEGATIVE value rather than a real score, so those resamples are discarded rather than averaged in -- folding a sentinel into the distribution would drag the interval toward it. The number that survived is reported, because an interval built from a small fraction of the requested resamples is not the interval that was asked for.**\n\n```function : Bootstrap(metric:ScoreMetric, scores:Float[], actuals:Bool[], reps:Int, seed:Int, level:Float) ~ ConfInterval```\n\n\n\nmetric: ScoreMetric\n\nscores: Float[]\n\nactuals: Bool[]\n\nreps: Int\n\nseed: Int\n\nlevel: Float\n\nreturn: ConfInterval", "**A bootstrap interval at the conventional 95% level.**\n\n```function : Bootstrap(metric:ScoreMetric, scores:Float[], actuals:Bool[], reps:Int, seed:Int) ~ ConfInterval```\n\n\n\nmetric: ScoreMetric\n\nscores: Float[]\n\nactuals: Bool[]\n\nreps: Int\n\nseed: Int\n\nreturn: ConfInterval"]
+				},
 				"ConfusionMatrix": {
 					"descriptions": ["**Creates a confusion matrix**\n\n```function : native : ConfusionMatrix(predictions:Bool[], actuals:Bool[]) ~ Int[,]```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Int[,]"]
 				},
@@ -11341,14 +11706,44 @@
 				"MCC": {
 					"descriptions": ["**Calculates Matthews Correlation Coefficient (MCC)**\n\n```function : native : MCC(predictions:Bool[], actuals:Bool[]) ~ Float```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Float"]
 				},
+				"OperatingPoints": {
+					"descriptions": ["**Operating points of a scored classifier, one row per distinct score, from the highest score down: [threshold, false positives, true positives].\n\nEvery metric below is a walk over this. It exists because the functions above take already-thresholded Bool predictions, which throw away exactly what these questions need: a single Bool array fixes one operating point, and cannot answer what the recall would be at a different false-alarm rate.\n\nInstances that share a score share an operating point. Splitting them would invent an ordering the scores do not express and let a metric read better than the model earned.**\n\n```function : OperatingPoints(scores:Float[], actuals:Bool[]) ~ Float[,]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float[,]"]
+				},
+				"Percentile": {
+					"descriptions": ["**A percentile of a set of values, by linear interpolation.\n\nUsed for bootstrap intervals, and exposed because a caller resampling a statistic this bundle does not implement still needs the interval.\n\np is clamped rather than rejected: 0.0 gives the minimum and 1.0 the maximum, which is what a caller asking for them wants.**\n\n```function : Percentile(values:Float[], p:Float) ~ Float```\n\n\n\nvalues: Float[]\n\np: Float\n\nreturn: Float"]
+				},
+				"PrCurve": {
+					"descriptions": ["**The precision-recall curve as [threshold, recall, precision] rows.**\n\n```function : PrCurve(scores:Float[], actuals:Bool[]) ~ Float[,]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float[,]"]
+				},
 				"Precision": {
 					"descriptions": ["**Calculates precision: TP \/ (TP + FP)**\n\n```function : native : Precision(predictions:Bool[], actuals:Bool[]) ~ Float```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Float"]
+				},
+				"PrecisionAtBaseRate": {
+					"descriptions": ["**Precision an operating point would show at an assumed base rate.\n\nA detection rate and a false-alarm rate are properties of the detector. The precision an operator sees is not: it depends on how common the thing being detected actually is. The same detector that looks precise on a benchmark where half the records are positive can raise mostly false alarms in a deployment where one in a thousand is.\n\nprecision = tpr*pi \/ (tpr*pi + fpr*(1-pi))\n\nWorth being blunt about what this does NOT do. It reprojects the measured rates onto a different class balance, assuming both rates stay the same. They often do not: a deployment whose base rate differs usually differs in other ways too, and the detector does not have to behave identically. The number answers \"if these rates held, what precision would this base rate imply\" -- which is a bound worth knowing, not a prediction.**\n\n```function : PrecisionAtBaseRate(tpr:Float, fpr:Float, base_rate:Float) ~ Float```\n\n\n\ntpr: Float\n\nfpr: Float\n\nbase_rate: Float\n\nreturn: Float", "**Precision a measured operating point would show at an assumed base rate.\n\nTakes the rates from a ThresholdResult, so a threshold that has actually been measured on held-out data can be reprojected without the caller restating its numbers. The same caveat applies: this assumes both rates carry over.**\n\n```function : PrecisionAtBaseRate(result:ThresholdResult, base_rate:Float) ~ Float```\n\n\n\nresult: ThresholdResult\n\nbase_rate: Float\n\nreturn: Float"]
 				},
 				"PrintConfusionMatrix": {
 					"descriptions": ["**Prints a formatted confusion matrix**\n\n```function : native : PrintConfusionMatrix(matrix:Int[,]) ~ Nil```\n\n\n\nmatrix: Int[,]\n\nreturn: Nil"]
 				},
 				"Recall": {
 					"descriptions": ["**Calculates recall (sensitivity): TP \/ (TP + FN)**\n\n```function : native : Recall(predictions:Bool[], actuals:Bool[]) ~ Float```\n\n\n\npredictions: Bool[]\n\nactuals: Bool[]\n\nreturn: Float"]
+				},
+				"RecallAtFpr": {
+					"descriptions": ["**The highest recall reachable without exceeding a false-positive rate.\n\nThis is the number an analyst actually cares about: alerts arrive against a fixed budget, so \"how many attacks do we catch while raising no more than one false alarm in a thousand\" is the question, not accuracy.**\n\n```function : RecallAtFpr(scores:Float[], actuals:Bool[], max_fpr:Float) ~ Float```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nmax_fpr: Float\n\nreturn: Float\n\n```\nr := Metrics->RecallAtFpr(scores, actuals, 0.001);\n\"recall at 0.1% FPR: {$r}\"->PrintLine();\n```"]
+				},
+				"RecallByGroup": {
+					"descriptions": ["**Recall within each group, at one threshold.\n\nAn overall recall is an average over whatever mix of sub-populations the sample happens to contain, and a rare one contributes almost nothing to it. A detector can report strong recall while missing a whole category that makes up a fraction of a percent of the data -- which is often the category that matters most, because rarity in a benchmark is not unimportance in a deployment.\n\nRecall is computed over the POSITIVES in each group. Rows of a group that are not positive are counted nowhere: there is no recall to measure on them. A group with no positives is still returned, with a count of zero, so a caller iterating the result sees that it was empty rather than finding it missing.**\n\n```function : RecallByGroup(scores:Float[], actuals:Bool[], groups:Float[], threshold:Float) ~ GroupRecall[]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\ngroups: Float[]\n\nthreshold: Float\n\nreturn: GroupRecall[]"]
+				},
+				"RocCurve": {
+					"descriptions": ["**The ROC curve as [threshold, false-positive rate, true-positive rate] rows, with the origin included so it can be plotted directly.**\n\n```function : RocCurve(scores:Float[], actuals:Bool[]) ~ Float[,]```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float[,]"]
+				},
+				"ShuffleLabels": {
+					"descriptions": ["**A seeded permutation of a label array.\n\nFor a shuffled-label control: a model trained on permuted labels should score near chance, and anything better means information is reaching the model that should not be -- a leak, or a bug in the pipeline rather than in the model. It is the cheapest check there is against a result that is too good.\n\nReturns a new array; the input is not modified, because the real labels are almost always still needed afterwards to score the control against something.\n\nSeeded so that a control which does find something can be reproduced. An unseeded shuffle that reported an AUC of 0.68 once cannot be investigated.**\n\n```function : ShuffleLabels(labels:Bool[], seed:Int) ~ Bool[]```\n\n\n\nlabels: Bool[]\n\nseed: Int\n\nreturn: Bool[]"]
+				},
+				"ThresholdAtFpr": {
+					"descriptions": ["**The score threshold of the operating point RecallAtFpr selects.**\n\n```function : ThresholdAtFpr(scores:Float[], actuals:Bool[], max_fpr:Float) ~ Float```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nmax_fpr: Float\n\nreturn: Float"]
+				},
+				"UnseenGroups": {
+					"descriptions": ["**Group codes present in one set and absent from another.\n\nFor reporting on sub-populations a model was never trained on. Recognising patterns resembling the training data is a different task from detecting something genuinely new, and a single overall number cannot tell them apart, so the groups that were never seen have to be identified before they can be reported separately.\n\nOrder follows first appearance in later, so the result lines up with a RecallByGroup over the same array.**\n\n```function : UnseenGroups(earlier:Float[], later:Float[]) ~ Float[]```\n\n\n\nearlier: Float[]\n\nlater: Float[]\n\nreturn: Float[]"]
 				}
 			}
 		},
@@ -11502,6 +11897,35 @@
 				}
 			}
 		},
+		"System.ML.RandomForestClassifier": {
+			"description": "A forest of continuous-feature classification trees: each is fitted to a bootstrap sample of the rows and considers a sample of the features at every node, and the scores are averaged.\n\nRandomForest above is built on the binary-feature DecisionTree, so continuous data must be binned before it can be used. This is built on DecisionTreeClassifier and splits on thresholds directly.\n\nBoth kinds of sampling matter, for different reasons. Bootstrapping the rows and sampling the features decorrelates the trees, which is what makes the average better than any single tree. Sampling the features is also the cheapest thing available on build time: the split search dominates and is linear in the features tried, so the default of sqrt(features) is roughly that speedup over trying all of them.\n\nDeterministic: the same seed rebuilds the same forest, so a result can be reproduced rather than merely repeated.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Grows the forest.**\n\n```method : public : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"GetTreeCount": {
+					"descriptions": ["**How many trees were grown.**\n\n```method : public : GetTreeCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has been called successfully.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor using the usual sqrt(features) sample at each node.**\n\n```New(num_trees:Int, max_depth:Int, min_samples:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nmax_depth: Int\n\nmin_samples: Int\n\nseed: Int", "**Constructor with an explicit feature sample size.**\n\n```New(num_trees:Int, max_depth:Int, min_samples:Int, max_features:Int, seed:Int)```\n\n\n\nnum_trees: Int\n\nmax_depth: Int\n\nmin_samples: Int\n\nmax_features: Int\n\nseed: Int"]
+				},
+				"Predict": {
+					"descriptions": ["**Labels at the usual half-way threshold. Prefer PredictScore with an explicit threshold when the false-alarm rate matters.**\n\n```method : public : Predict(X:Float[,]) ~ Bool[]```\n\n\n\nX: Float[,]\n\nreturn: Bool[]"]
+				},
+				"PredictScore": {
+					"descriptions": ["**The mean of the trees' leaf proportions: the forest's score for each row.**\n\n```method : public : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.RecallAtFprMetric": {
+			"description": "Recall at a fixed false-alarm budget, as a resampleable metric.\n\nThe budget is fixed at construction so Bootstrap can resample it without knowing the metric takes a parameter.",
+			"functions": {
+
+			}
+		},
 		"System.ML.RegressionTree": {
 			"description": "Regression tree over numeric features: recursive binary splits chosen to minimize the children's summed squared error (variance reduction), with depth and minimum-sample stops; leaves predict the mean target. Deterministic. Also the base learner for GradientBoostedTrees.",
 			"functions": {
@@ -11621,6 +12045,77 @@
 				},
 				"Store": {
 					"descriptions": ["**Saves the fitted model to a file.**\n\n```method : public : Store(filename:String) ~ Bool```\n\n\n\nfilename: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"System.ML.ScoreMetric": {
+			"description": "A statistic over scored instances, so it can be resampled without Bootstrap knowing which one it is.\n\nAn interface rather than a function reference, matching ScoreModel and Compare elsewhere in the bundle.\n\nA metric MUST return a negative value when the sample cannot support it -- AUC over a resample that drew only one class, for example. Bootstrap discards those rather than averaging them in. Returning 0.0 instead would be read as a real score of zero and pull the interval down.",
+			"functions": {
+				"Compute": {
+					"descriptions": ["**Computes the statistic.**\n\n```method : public : virutal : Compute(scores:Float[], actuals:Bool[]) ~ Float```\n\n\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Float"]
+				}
+			}
+		},
+		"System.ML.ScoreModel": {
+			"description": "Anything that fits on binary labels and scores rows.\n\nDecisionTreeClassifier, RandomForestClassifier and GradientBoostedClassifier all implement it, so CrossValidation->Evaluate takes any of them without knowing which.\n\nScoring rather than predicting is the point: a Bool prediction fixes one operating point and cannot answer what recall would be at another, which is the whole question when alerts arrive against a fixed false-alarm budget.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Fits the model.**\n\n```method : public : virutal : Fit(X:Float[,], y:Bool[]) ~ Bool```\n\n\n\nX: Float[,]\n\ny: Bool[]\n\nreturn: Bool"]
+				},
+				"PredictScore": {
+					"descriptions": ["**Scores each row; higher means more positive.**\n\n```method : public : virutal : PredictScore(X:Float[,]) ~ Float[]```\n\n\n\nX: Float[,]\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.TableEncoder": {
+			"description": "Turns a CsvTable into the numeric matrix a model can train on, learning its encoding once so the same encoding can be reapplied to other tables.\n\nMatrixReader already loads a CSV, but only one that is numeric throughout, and it reads the header row as another record whose non-numeric cells become 0.0. Real tabular data is mixed: NSL-KDD's protocol, service and flag columns are strings among thirty-eight numeric ones. This skips the header, one-hot encodes the string columns and passes the numeric ones through.\n\nThe vocabulary is fixed at Fit. Transform reuses it, so a training table and a test table produce the same columns in the same order even when the test split never contains some category, and a category that appears only in test encodes as all-zeros rather than silently shifting every column after it.",
+			"functions": {
+				"Fit": {
+					"descriptions": ["**Learns the feature layout: which columns are numeric, and the value vocabulary of each column that is not.\n\nA column counts as numeric only when every data value in it parses as a number. One non-numeric value makes the whole column categorical, which is the safe direction: encoding a number as a category costs columns, while reading a category as a number invents an ordering that is not there.**\n\n```method : public : Fit(table:CsvTable) ~ Bool```\n\n\n\ntable: CsvTable\n\nreturn: Bool"]
+				},
+				"FitTransform": {
+					"descriptions": ["**Fits on this table and encodes it. For the training split only.**\n\n```method : public : FitTransform(table:CsvTable) ~ Float[,]```\n\n\n\ntable: CsvTable\n\nreturn: Float[,]"]
+				},
+				"GetFeatureNames": {
+					"descriptions": ["**The name of each encoded column: the source column for a numeric feature, and \"column=value\" for each one-hot column.**\n\n```method : public : GetFeatureNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetLabelClasses": {
+					"descriptions": ["**The label classes seen at Fit, in the order TransformLabels indexes them.**\n\n```method : public : GetLabelClasses() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetWidth": {
+					"descriptions": ["**The number of columns Transform produces.**\n\n```method : public : GetWidth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"IsFitted": {
+					"descriptions": ["**Whether Fit has been called successfully.**\n\n```method : public : IsFitted() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for a table with no label column: every column is a feature.**\n\n```New()```\n\n", "**Constructor**\n\n```New(label_col:String)```\n\n\n\nlabel_col: String"]
+				},
+				"Transform": {
+					"descriptions": ["**Encodes a table using the layout learned by Fit.**\n\n```method : public : Transform(table:CsvTable) ~ Float[,]```\n\n\n\ntable: CsvTable\n\nreturn: Float[,]\n\n```\ntest_x := enc->Transform(test);\nif(test_x = Nil) {\n  \"unfitted, or the table did not parse\"->PrintLine();\n};\n```"]
+				},
+				"TransformLabels": {
+					"descriptions": ["**Encodes the label column as class indices, using the classes seen at Fit.**\n\n```method : public : TransformLabels(table:CsvTable) ~ Float[]```\n\n\n\ntable: CsvTable\n\nreturn: Float[]"]
+				},
+				"TransformLabelsBinary": {
+					"descriptions": ["**Encodes the label column as a two-class target: 0.0 for the named value, 1.0 for everything else. Intrusion detection labels are usually one benign value against many attack names, and this avoids enumerating the attacks.**\n\n```method : public : TransformLabelsBinary(table:CsvTable, negative:String) ~ Float[]```\n\n\n\ntable: CsvTable\n\nnegative: String\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"System.ML.ThresholdResult": {
+			"description": "What a threshold actually did: the four confusion counts and the rates read off them.\n\nA separate type rather than a bare array because these numbers are only meaningful together. Recall without the false-positive rate says nothing about cost, and a rate without the count behind it hides how few instances it rests on -- a recall of 1.0 over two positives is not the same claim as a recall of 1.0 over two thousand.",
+			"functions": {
+				"GetAccuracy": {
+					"descriptions": ["**Correct decisions over all decisions.\n\nIncluded for completeness and deliberately not the number to report when one class dominates: predicting the majority for everything scores well here while detecting nothing.**\n\n```method : public : GetAccuracy() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetFpr": {
+					"descriptions": ["**Real negatives wrongly flagged, over all real negatives.\n\nThe number to compare against an intended budget. A threshold picked to hold a budget on one sample has no obligation to hold it on another, and this is how far it drifted.**\n\n```method : public : GetFpr() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetPrecision": {
+					"descriptions": ["**Alerts that were real, over all alerts raised.\n\nMeasured on this sample, so it carries this sample's class balance. When the deployment balance differs -- and for rare events it usually does -- the precision an operator would see is different, and follows from the recall and false-positive rate rather than from this number.**\n\n```method : public : GetPrecision() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetRecall": {
+					"descriptions": ["**Detected positives over all real positives, also the true-positive rate.**\n\n```method : public : GetRecall() ~ Float```\n\n\n\nreturn: Float"]
 				}
 			}
 		},
@@ -13206,1651 +13701,1735 @@
 	"class-bundle-names": {
 		"AudioPart": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"BinaryPart": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"CachedContent": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"CachedContentItem": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Candidate": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Chat": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Content": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"EmbeddingValues": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"EndPoint": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"FileManager": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"GeminiFile": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Model": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"OAuthEndPoint": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Part": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TextPart": {
 			"bundle": "API.Google.Gemini"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Chunk": {
 			"bundle": "API.Google.Gemini.Corpus"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Corpus": {
 			"bundle": "API.Google.Gemini.Corpus"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Document": {
 			"bundle": "API.Google.Gemini.Corpus"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Dataset": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Hyperparameters": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TunedModel": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"Tuner": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TuningExample": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
  		},
 		"TuningTask": {
 			"bundle": "API.Google.Gemini.Tuning"
-,			"file": ""
+,			"file": "gemini.obl"
+ 		},
+		"Client": {
+			"bundle": "API.Inference"
+,			"file": "inference.obl"
+ 		},
+		"EndPoint": {
+			"bundle": "API.Inference"
+,			"file": "inference.obl"
+ 		},
+		"ModelMetadata": {
+			"bundle": "API.Inference"
+,			"file": "inference.obl"
+ 		},
+		"Tensor": {
+			"bundle": "API.Inference"
+,			"file": "inference.obl"
  		},
 		"Chat": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Completion": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"EndPoint": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Model": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"ModelDetails": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"ModelInfo": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"ModelPulled": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Options": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"Tool": {
 			"bundle": "API.Ollama"
-,			"file": ""
+,			"file": "ollama.obl"
  		},
 		"DeepLabClassification": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"DeepLabResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"DeepLabSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceDetection": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceDetectionResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceRecognitionResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"FaceSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
+ 		},
+		"ModelInfo": {
+			"bundle": "API.Onnx"
+,			"file": "onnx.obl"
  		},
 		"OnnxRuntime": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"OpenPoseClassification": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"OpenPoseResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"OpenPoseSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3Result": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3Session": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3Tokenizer": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Phi3VisionSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"ResNetResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"ResNetSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
+ 		},
+		"RunResult": {
+			"bundle": "API.Onnx"
+,			"file": "onnx.obl"
+ 		},
+		"Session": {
+			"bundle": "API.Onnx"
+,			"file": "onnx.obl"
+ 		},
+		"Tensor": {
+			"bundle": "API.Onnx"
+,			"file": "onnx.obl"
+ 		},
+		"TensorSpec": {
+			"bundle": "API.Onnx"
+,			"file": "onnx.obl"
  		},
 		"YoloClassification": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"YoloResult": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"YoloSession": {
 			"bundle": "API.Onnx"
-,			"file": ""
+,			"file": "onnx.obl"
  		},
 		"Assistant": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Batch": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"BatchJob": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Contents": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Embedding": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"EndPoint": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"File": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"FileQuery": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Image": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"ImageQuery": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Message": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Models": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Moderation": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"ModerationResult": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Realtime": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Run": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Thread": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"VectorStore": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"VectorStoreFile": {
 			"bundle": "API.OpenAI"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Speech": {
 			"bundle": "API.OpenAI.Audio"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Transcription": {
 			"bundle": "API.OpenAI.Audio"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Choice": {
 			"bundle": "API.OpenAI.Chat"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Completion": {
 			"bundle": "API.OpenAI.Chat"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Conversation": {
 			"bundle": "API.OpenAI.Chat"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Content": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Output": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Response": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Tool": {
 			"bundle": "API.OpenAI.Responses"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Checkpoint": {
 			"bundle": "API.OpenAI.Tuning"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Job": {
 			"bundle": "API.OpenAI.Tuning"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Tuner": {
 			"bundle": "API.OpenAI.Tuning"
-,			"file": ""
+,			"file": "openai.obl"
  		},
 		"Image": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Point": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Rect": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Scalar": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Size": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"VideoCapture": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"VideoWriter": {
 			"bundle": "API.OpenCV"
-,			"file": ""
+,			"file": "opencv.obl"
  		},
 		"Decrypt": {
 			"bundle": "Cipher"
-,			"file": ""
+,			"file": "cipher.obl"
  		},
 		"Encrypt": {
 			"bundle": "Cipher"
-,			"file": ""
+,			"file": "cipher.obl"
  		},
 		"Hash": {
 			"bundle": "Cipher"
-,			"file": ""
+,			"file": "cipher.obl"
  		},
 		"BackwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Cache": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareBackwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareForwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareList": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CompareVector": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"ForwardIterator": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Hash": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"HashSet": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Heap": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"List": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Map": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"MultiMap": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Pair": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Queue": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Set": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"SetHash": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Stack": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Vector": {
 			"bundle": "Collection"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Pair": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Quartet": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Quintet": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"Triplet": {
 			"bundle": "Collection.Tuple"
-,			"file": ""
+,			"file": "gen_collect.obl"
  		},
 		"CsvColumn": {
 			"bundle": "Data.CSV"
-,			"file": ""
+,			"file": "csv.obl"
  		},
 		"CsvRow": {
 			"bundle": "Data.CSV"
-,			"file": ""
+,			"file": "csv.obl"
  		},
 		"CsvTable": {
 			"bundle": "Data.CSV"
-,			"file": ""
+,			"file": "csv.obl"
  		},
 		"JsonBuilder": {
 			"bundle": "Data.JSON"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"JsonElement": {
 			"bundle": "Data.JSON"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"JsonParser": {
 			"bundle": "Data.JSON"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"Client": {
 			"bundle": "Data.JSON.RPC"
-,			"file": ""
+,			"file": "json_rpc.obl"
  		},
 		"Server": {
 			"bundle": "Data.JSON.RPC"
-,			"file": ""
+,			"file": "json_rpc.obl"
  		},
 		"FunctionType": {
 			"bundle": "Data.JSON.Scheme"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"ParameterType": {
 			"bundle": "Data.JSON.Scheme"
-,			"file": ""
+,			"file": "json.obl"
  		},
 		"StreamParser": {
 			"bundle": "Data.JSON.Stream"
-,			"file": ""
+,			"file": "json_stream.obl"
  		},
 		"XmlAttribute": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"XmlBuilder": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"XmlElement": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"XmlParser": {
 			"bundle": "Data.XML"
-,			"file": ""
+,			"file": "xml.obl"
  		},
 		"ColumnInfo": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"Connection": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"Date": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"ParameterStatement": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"ResultSet": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"Timestamp": {
 			"bundle": "Database.ODBC"
-,			"file": ""
+,			"file": "odbc.obl"
  		},
 		"AnimatedImageSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"GameFramework": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"ImageSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Position": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Rectangle": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Shape": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Sprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"TextSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"TitledImageSprite": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Vector2": {
 			"bundle": "Game.Framework"
-,			"file": ""
+,			"file": "sdl_game.obl"
  		},
 		"Box": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Camera": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Freeable": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Frustum": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"GL": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"GLWindow": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"IntHolder": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Light": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"LightRig": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Material": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Matrix4": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Mesh": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Overlay": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Particles": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"PointShadow": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Prop": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"PropBatch": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Quaternion": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"RayHit": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"RenderTarget": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Scene": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Shader": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"ShaderSource": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"ShadowMap": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Skybox": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Texture2D": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Track": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Transform": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"Vector3": {
 			"bundle": "Game.OpenGL"
-,			"file": ""
+,			"file": "sdl_gl.obl"
  		},
 		"CPU": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Clipboard": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Color": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Core": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Cursor": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Display": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"DisplayMode": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Event": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Filesystem": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Font": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"GLContext": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"GameController": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"GameControllerButtonBind": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Hints": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Image": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"JoyAxisEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"JoyButtonEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"JoyHatEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Joystick": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Keyboard": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"KeyboardEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Keysym": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MixChunk": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MixMusic": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Mixer": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MouseButtonEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MouseMotionEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"MouseWheelEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"PixelData": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"PixelFormat": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Platform": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Point": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Power": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Rect": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Renderer": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"RendererInfo": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Surface": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"TextInputEvent": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Texture": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Timer": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Window": {
 			"bundle": "Game.SDL2"
-,			"file": ""
+,			"file": "sdl2.obl"
  		},
 		"Lame": {
 			"bundle": "Game.SDL2.Aux"
-,			"file": ""
+,			"file": "lame.obl"
  		},
 		"RegEx": {
 			"bundle": "Query.RegEx"
-,			"file": ""
+,			"file": "regex.obl"
  		},
 		"Result": {
 			"bundle": "Query.RegEx"
-,			"file": ""
+,			"file": "regex.obl"
  		},
 		"Finder": {
 			"bundle": "Query.Structured"
-,			"file": ""
+,			"file": "query.obl"
  		},
 		"Row": {
 			"bundle": "Query.Structured"
-,			"file": ""
+,			"file": "query.obl"
  		},
 		"Table": {
 			"bundle": "Query.Structured"
-,			"file": ""
+,			"file": "query.obl"
  		},
 		"ArraySort": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Base": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BaseArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BasicCompare": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Bool": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BoolArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"BoolRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Byte": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ByteArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ByteBuffer": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ByteRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Char": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CharArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CharRange": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CharRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Clone": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CommandOutput": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Compare": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CompareArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Float": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FloatArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FloatRange": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FloatRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Func2Ref": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Func3Ref": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Func4Ref": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FuncRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Int": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"IntArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"IntRange": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"IntRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Number": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Primitive": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Range": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Runtime": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"String": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"StringArrayRef": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Stringify": {
 			"bundle": "System"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"AStar": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"BreadthFirst": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"DepthFirst": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"Dijkstra": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"EnergyFunction": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"Environment": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"FitnessFunction": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"GameState": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"GeneticAlgorithm": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"Graph": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"HillClimbing": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"MarkovDecisionProcess": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"Minimax": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"MonteCarloTreeSearch": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"QLearning": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"Sarsa": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"SearchResult": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"SimulatedAnnealing": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"StepResult": {
 			"bundle": "System.AI"
-,			"file": ""
+,			"file": "ai_search.obl"
  		},
 		"DllProxy": {
 			"bundle": "System.API"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Monitor": {
 			"bundle": "System.Concurrency"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Task": {
 			"bundle": "System.Concurrency"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TaskScope": {
 			"bundle": "System.Concurrency"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Thread": {
 			"bundle": "System.Concurrency"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"ThreadMutex": {
 			"bundle": "System.Concurrency"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Analysis": {
 			"bundle": "System.Diagnostics"
-,			"file": ""
+,			"file": "diags.obl"
  		},
 		"Analyzer": {
 			"bundle": "System.Diagnostics"
-,			"file": ""
+,			"file": "diags.obl"
  		},
 		"Result": {
 			"bundle": "System.Diagnostics"
-,			"file": ""
+,			"file": "diags.obl"
  		},
 		"Console": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Deserializer": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"InputStream": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"OutputStream": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Pipe": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Serializer": {
 			"bundle": "System.IO"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Directory": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"File": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FileReader": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FileReaderWriter": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"FileWriter": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"HardLink": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Logger": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"SymbolicLink": {
 			"bundle": "System.IO.Filesystem"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DTLSSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DTLSSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Http2Session": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Http3Session": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSecureSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSecureSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"TCPSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"UDPSocket": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"UDPSocketServer": {
 			"bundle": "System.IO.Net"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"OAuthClient": {
 			"bundle": "System.IO.Net.OAuth"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"OAuthToken": {
 			"bundle": "System.IO.Net.OAuth"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"Class": {
 			"bundle": "System.Introspection"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DataType": {
 			"bundle": "System.Introspection"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Method": {
 			"bundle": "System.Introspection"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"AdaBoost": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"AucMetric": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"AveragePrecisionMetric": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"BayesEntry": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"BayesGroup": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"BoolMatrixRef": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"CrossValidation": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"DBSCAN": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"DecisionTree": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"DecisionTreeClassifier": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"ElasticNet": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"FeatureScaler": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"FloatMatrixRef": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"FoldSplit": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"GaussianMixture": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"GaussianNaiveBayes": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"GradientBoostedClassifier": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"GradientBoostedTrees": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"GroupRecall": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"KDTree": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KMeans": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KMeansGroup": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KMeansGrouping": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KNearestNeighbors": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"KNeighbor": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LassoRegression": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LinearRegression": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LinearResult": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LinearSolver": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"LogisticRegression": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"Matrix2D": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"MatrixReader": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"Metrics": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"NaiveBayes": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"NeuralNetwork": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"PCA": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"Perceptron": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"Random": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"RandomForest": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"RandomForestClassifier": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"RecallAtFprMetric": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"RegressionTree": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"RegressionTreeNode": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"RidgeRegression": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"SVM": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
+ 		},
+		"ScoreMetric": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"ScoreModel": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"TableEncoder": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
+ 		},
+		"ThresholdResult": {
+			"bundle": "System.ML"
+,			"file": "ml_core.obl"
  		},
 		"TreeNode": {
 			"bundle": "System.ML"
-,			"file": ""
+,			"file": "ml_core.obl"
  		},
 		"SentimentAnalyzer": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"SentimentResult": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"TF_IDF": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"TextPreprocessor": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"TextSimilarity": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"Tokenizer": {
 			"bundle": "System.NLP"
-,			"file": ""
+,			"file": "nlp.obl"
  		},
 		"Alarm": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Date": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"DateUtility": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"Timer": {
 			"bundle": "System.Time"
-,			"file": ""
+,			"file": "lang.obl"
  		},
 		"CodeFormatter": {
 			"bundle": "System.Utility"
-,			"file": ""
+,			"file": "misc.obl"
  		},
 		"Parser": {
 			"bundle": "System.Utility"
-,			"file": ""
+,			"file": "misc.obl"
  		},
 		"Spinner": {
 			"bundle": "System.Utility"
-,			"file": ""
+,			"file": "misc.obl"
  		},
 		"Cookie": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"Downloader": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"HeaderCheck": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"Http2Client": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"Http3Client": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"HttpClient": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"HttpsClient": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"Response": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"SSEEvent": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"SSEStream": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"SecureWebSocket": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"Url": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"WebDownloader": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"WebSocket": {
 			"bundle": "Web.HTTP"
-,			"file": ""
+,			"file": "net_common.obl"
  		},
 		"HttpRequestHandler": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"HttpsRequestHandler": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"MultipartContent": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"MultipartDecoder": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"MultipartEncoder": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"Request": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"RequestPageHandler": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"Response": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"WebServer": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"WebServerConfig": {
 			"bundle": "Web.HTTP.Server"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"McpRequestHandler": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"McpServer": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"PromptArgument": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"PromptItem": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"PromptMessage": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ResourceContent": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ResourceItem": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ResourceTemplate": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ToolContent": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"ToolItem": {
 			"bundle": "Web.HTTP.Server.MCP"
-,			"file": ""
+,			"file": "net_server.obl"
  		},
 		"RSSChannel": {
 			"bundle": "Web.RSS"
-,			"file": ""
+,			"file": "rss.obl"
  		},
 		"RSSPost": {
 			"bundle": "Web.RSS"
-,			"file": ""
+,			"file": "rss.obl"
  		},
 		"RSSReader": {
 			"bundle": "Web.RSS"
-,			"file": ""
+,			"file": "rss.obl"
  		},
 		"ContentType": {
 			"bundle": "Web.Server"
-,			"file": ""
+,			"file": "web_server.obl"
  		},
 		"Handler": {
 			"bundle": "Web.Server"
-,			"file": ""
+,			"file": "web_server.obl"
  		},
 		"Request": {
 			"bundle": "Web.Server"
-,			"file": ""
+,			"file": "web_server.obl"
  		},
 		"Response": {
 			"bundle": "Web.Server"
-,			"file": ""
+,			"file": "web_server.obl"
  		}
 	}
 }
