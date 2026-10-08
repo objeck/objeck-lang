@@ -505,6 +505,61 @@ def main():
             }))
             log_result("codeAction declines a filter that excludes quickfix",
                        fixes_other is None, f"got: {fixes_other!r}")
+
+        # --- what the quick fix actually PRODUCES (#1055) --------------------
+        # The case above asserts only that the handler ran, because its fixture
+        # declares `v := Vector->New()` and that yields no fixes at all:
+        # diag_code_action matches a symbol-table entry whose TYPE is a class,
+        # and an inferred-type local has no resolved type there. So the applied
+        # edits -- a 'use' insert, a variable qualification, a generated build
+        # file -- had NO coverage, which is how #1052 shipped a fix naming the
+        # wrong bundle for twenty-two class names.
+        #
+        # This fixture declares the type explicitly, which does reach the path.
+        # The remaining `:=` gap is filed separately; it is the commoner style
+        # and deserves its own fix rather than being folded in here.
+        def fix_titles(obs_name):
+            obs = os.path.join(TESTS_DIR, obs_name)
+            with open(obs, encoding="utf-8") as fh:
+                text = fh.read()
+            uri = path_to_uri(obs)
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+            diags = c.diagnostics_for(uri, timeout=60) or []
+            undef = next((d for d in diags
+                          if str(d.get("message", "")).startswith("Undefined class")), None)
+            if undef is None:
+                return None, [d.get("message") for d in diags]
+            got = result_of(c.request("textDocument/codeAction", {
+                "textDocument": {"uri": uri},
+                "range": undef["range"],
+                "context": {"diagnostics": [undef]},
+            })) or []
+            return [f.get("title", "") for f in got if isinstance(f, dict)], None
+
+        titles, why = fix_titles("lsp_codeaction_declared.obs")
+        log_result("a declared undefined class reports its diagnostic",
+                   titles is not None, f"diagnostics: {why}")
+        if titles is not None:
+            log_result("the quick fix names the bundle that resolves the class",
+                       any("use Collection;" in t for t in titles), f"titles: {titles}")
+            log_result("and offers to qualify the variable with it",
+                       any("Collection.Vector" in t for t in titles), f"titles: {titles}")
+
+        # --- a name defined in several bundles (#1052) -----------------------
+        # Offering one of them is the old behaviour, and it looked correct.
+        amb_titles, amb_why = fix_titles("lsp_codeaction_ambiguous.obs")
+        log_result("an ambiguous undefined class reports its diagnostic",
+                   amb_titles is not None, f"diagnostics: {amb_why}")
+        if amb_titles:
+            log_result("a name defined in two bundles offers a fix for each",
+                       any("API.Inference" in t for t in amb_titles)
+                       and any("Data.JSON.RPC" in t for t in amb_titles),
+                       f"titles: {amb_titles}")
+            log_result("and those fixes are distinguishable",
+                       len(amb_titles) == len(set(amb_titles)) and len(amb_titles) > 1,
+                       f"titles: {amb_titles}")
+
         log_result("textDocument/semanticTokens/full", non_empty(c.request(
             "textDocument/semanticTokens/full", {"textDocument": {"uri": probe_uri}})))
 

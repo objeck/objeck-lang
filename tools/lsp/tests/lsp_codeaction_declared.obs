@@ -1,0 +1,18 @@
+# Fixture for the quick-fix path, with an EXPLICITLY DECLARED local.
+#
+# Vector is a real class in gen_collect.obl but is not in scope without a 'use',
+# so analysis reports "Undefined class or enum" -- the diagnostic
+# Document.CodeAction offers a fix for.
+#
+# The declaration is deliberately `v : Vector;` and not `v := Vector->New()`.
+# diag_code_action matches a symbol-table entry whose TYPE is a class, and an
+# inferred-type local has no resolved type at that point -- diags.cpp skips it
+# with a comment saying so. So the sibling fixture lsp_codeaction.obs, which
+# uses `:=`, produces no fixes at all, and the path went uncovered because the
+# only test of it could not reach it (#1055).
+class NeedsUseDeclared {
+	function : Main(args : String[]) ~ Nil {
+		v : Vector;
+		v->Size()->PrintLine();
+	}
+}

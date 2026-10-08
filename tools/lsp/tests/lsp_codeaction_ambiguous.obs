@@ -1,0 +1,19 @@
+# Fixture for #1052: a short class name defined in MORE THAN ONE bundle.
+#
+# Client is a real class in both API.Inference (inference.obl) and Data.JSON.RPC
+# (json_rpc.obl). Twenty-two short names are in this position; EndPoint is
+# defined in four bundles.
+#
+# The class-to-bundle index used to hold one entry per short name, because the
+# generator emitted duplicate JSON keys and a parser keeps the last. So the quick
+# fix inserted whichever bundle was read last and wrote the matching .obl into the
+# build file: for this name, Data.JSON.RPC, which left anyone who meant
+# API.Inference.Client with an edit that still did not compile.
+#
+# Declared rather than inferred, for the reason lsp_codeaction_declared.obs gives.
+class NeedsChoice {
+	function : Main(args : String[]) ~ Nil {
+		client : Client;
+		client->GetHost()->PrintLine();
+	}
+}
