@@ -82,16 +82,50 @@ class JsonMaker {
 		};
 		buffer += "\n\t},\n\t\"class-bundle-names\": {\n\t";
 
+		# A short name can be defined in SEVERAL bundles -- EndPoint in four of
+		# them, Image in three, twenty-two names in all -- and this used to emit
+		# one JSON key per definition. Duplicate keys are legal JSON and a parser
+		# keeps whichever it reads last, so 433 entries arrived as 406 and the rest
+		# were simply gone. The language server reads this to answer "add a use
+		# statement for X", so it offered a fix naming the WRONG bundle and wrote
+		# the wrong .obl into the build file -- an applied edit, not just a hint.
+		#
+		# The value is now an array of every bundle that defines the name. Grouping
+		# keeps first-seen order rather than sorting, so a name that does not
+		# collide lands exactly where it did before (#1052).
+		grouped := Map->New()<String, Vector<Foo>>;
+		order := Vector->New()<String>;
 		each(i : classes_bundle) {
 			foo := classes_bundle->Get(i);
-
 			class_name := foo->GetClassName();
-			bundle_name := foo->GetBundleName();
-			file_name := foo->GetFileName();
 
-			buffer += "\t\"{$class_name}\": {\n\t\t\t\"bundle\": \"{$bundle_name}\"\n,\t\t\t\"file\": \"{$file_name}\"\n \t\t}";
+			candidates := grouped->Find(class_name);
+			if(candidates = Nil) {
+				candidates := Vector->New()<Foo>;
+				grouped->Insert(class_name, candidates);
+				order->AddBack(class_name);
+			};
+			candidates->AddBack(foo);
+		};
 
-			if(i + 1 < classes_bundle->Size()) {
+		each(i : order) {
+			class_name := order->Get(i);
+			candidates := grouped->Find(class_name);
+
+			buffer += "\t\"{$class_name}\": [";
+			each(j : candidates) {
+				candidate := candidates->Get(j);
+				bundle_name := candidate->GetBundleName();
+				file_name := candidate->GetFileName();
+
+				buffer += "\n\t\t\t{\n\t\t\t\t\"bundle\": \"{$bundle_name}\",\n\t\t\t\t\"file\": \"{$file_name}\"\n\t\t\t}";
+				if(j + 1 < candidates->Size()) {
+					buffer += ",";
+				};
+			};
+			buffer += "\n\t\t]";
+
+			if(i + 1 < order->Size()) {
 				buffer += ",\n\t";
 			};
 		};
