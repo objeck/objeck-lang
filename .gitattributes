@@ -30,6 +30,11 @@ Makefile* text eol=lf
 core/compiler/lib_src/openai.obs -text
 programs/tests/http3_downgrade_test.obs -text
 
+# A signature covers BYTES. These fixtures are a signed manifest and signatures
+# over it (tools/cicd/test_obu_verify.py), so any line-ending conversion would
+# invalidate them -- and the failure would read as a broken verifier.
+tools/cicd/fixtures/obu_verify/** -text
+
 # Binary files - no line ending conversion
 *.exe binary
 *.dll binary

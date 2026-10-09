@@ -47,6 +47,27 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(HERE, "obu.cpp")
+# TweetNaCl, for the Ed25519 verification obu does before trusting a
+# manifest (#723). Compiled as C: as C++ it fails on a 17-byte string
+# literal in a 16-byte array, which C permits. See vendor/README.md.
+VENDOR_C = os.path.join(HERE, "vendor", "tweetnacl.c")
+
+# obu refuses a manifest with no valid signature (#723 phase 3), so the fake
+# releases below have to carry one. The archives come from tarfile/zipfile and
+# so their digests differ every run, which rules out a committed signature; and
+# this suite has no business near the release secret. So it signs with a
+# throwaway key and tells obu to trust it through OBU_TRUSTED_PUBKEY, an
+# override that exists only in builds compiled with -DOBU_TEST_HOOKS.
+sys.path.insert(0, HERE)
+from ed25519_test_signer import TestKey
+
+TEST_KEY = TestKey()
+
+# Named once, for every case: obu checks the signature before it reads a line
+# of a manifest, so a case that forgot this would fail on the signature rather
+# than on whatever it meant to assert. run() below still strips the OTHER
+# hooks per case, which is where leakage would actually hide a bug.
+os.environ["OBU_TRUSTED_PUBKEY"] = TEST_KEY.public_key_b64()
 IS_WINDOWS = sys.platform == "win32"
 
 # Mirrors OBU_UPDATE_SUPPORTED in obu.cpp. Kept as a platform test rather than
@@ -124,15 +145,33 @@ def build(workdir):
             handle.write("@echo off\r\n")
             handle.write('call "%s" >nul\r\n' % vcvars)
             handle.write('if errorlevel 1 exit /b 1\r\n')
+            # /Fo takes a DIRECTORY here, not a file name: there are two
+            # translation units now, and one named .obj would have the second
+            # overwrite the first. The trailing separator is a FORWARD slash on
+            # purpose -- inside quotes a trailing backslash escapes the closing
+            # quote, and cl then reads the whole thing as one mangled argument
+            # (D8036). The /wd flags are upstream TweetNaCl idiom, not defects
+            # -- see the same list in vs/obu.vcxproj.
             handle.write('cl /nologo /std:c++17 /EHsc /O2 /W3 /D OBU_TEST_HOOKS '
-                         '/D _CRT_SECURE_NO_WARNINGS "%s" /Fe:"%s" /Fo:"%s" >nul\r\n'
-                         % (SOURCE, out, os.path.join(workdir, "obu.obj")))
+                         '/D _CRT_SECURE_NO_WARNINGS /wd4146 /wd4244 /wd4018 '
+                         '"%s" "%s" /Fe:"%s" /Fo:"%s" >nul\r\n'
+                         % (SOURCE, VENDOR_C, out, workdir.replace(os.sep, "/") + "/"))
             handle.write('exit /b %ERRORLEVEL%\r\n')
         proc = subprocess.run([script], capture_output=True, text=True)
     else:
         cxx = os.environ.get("CXX") or "c++"
+        # Compiled separately: -std=c++17 is not valid for a C file, and "-x c"
+        # is how the C++ driver is told to treat it as C without this needing a
+        # CC of its own. -w because the project does not police upstream style.
+        vendor_obj = os.path.join(workdir, "tweetnacl.o")
+        proc = subprocess.run([cxx, "-x", "c", "-O2", "-w", "-c", VENDOR_C,
+                               "-o", vendor_obj], capture_output=True, text=True)
+        if proc.returncode != 0:
+            print("BUILD FAILED (vendored tweetnacl, exit %d)\n%s\n%s"
+                  % (proc.returncode, proc.stdout, proc.stderr))
+            sys.exit(1)
         proc = subprocess.run([cxx, "-std=c++17", "-O2", "-Wall", "-Wextra",
-                               "-DOBU_TEST_HOOKS", "-o", out, SOURCE],
+                               "-DOBU_TEST_HOOKS", "-o", out, SOURCE, vendor_obj],
                               capture_output=True, text=True)
     if proc.returncode != 0 or not os.path.exists(out):
         print("BUILD FAILED (exit %d)\n%s\n%s" % (proc.returncode, proc.stdout, proc.stderr))
@@ -257,7 +296,7 @@ def make_archive(stage, archive):
 
 def make_release(reldir, asset_name, payload_version="NEW", corrupt_hash=False,
                  tag="v9999.1.0", sums_name=None, corrupt_archive=False,
-                 drop_obc=False):
+                 drop_obc=False, drop_signature=False, break_signature=False):
     """A fake release: the platform's archive, a SHA256SUMS, and release JSON.
 
     The keyword arguments build the deliberately broken releases:
@@ -268,6 +307,10 @@ def make_release(reldir, asset_name, payload_version="NEW", corrupt_hash=False,
                        integrity gate passes and unpacking is what fails
       drop_obc         the payload has bin/ (so it is still detected as a tree)
                        but no bin/obc, which is what obu health-checks
+      drop_signature   no SHA256SUMS.minisig at all, which is what a release
+                       published before signing existed looks like
+      break_signature  a signature that parses but does not match the manifest,
+                       which is what a substituted manifest looks like
     """
     stage = os.path.join(reldir, "stage")
     make_install(stage, payload_version)
@@ -287,8 +330,22 @@ def make_release(reldir, asset_name, payload_version="NEW", corrupt_hash=False,
     with open(os.path.join(reldir, "SHA256SUMS"), "w") as handle:
         handle.write("%s  %s\n" % (digest, sums_name or asset_name))
 
-    write_json(os.path.join(reldir, "release.json"), tag,
-               [asset_name, "SHA256SUMS"])
+    sums_path = os.path.join(reldir, "SHA256SUMS")
+    assets = [asset_name, "SHA256SUMS"]
+    if not drop_signature:
+        TEST_KEY.sign_file(sums_path, sums_path + ".minisig")
+        if break_signature:
+            # Sign a DIFFERENT message, so the file parses and the key id matches
+            # and only the signature maths disagrees. Truncating or corrupting the
+            # base64 would be caught by a length check well before that.
+            other = sums_path + ".other"
+            with open(other, "w", newline="") as handle:
+                handle.write("%s  %s\n" % ("f" * 64, asset_name))
+            TEST_KEY.sign_file(other, sums_path + ".minisig")
+            os.remove(other)
+        assets.append("SHA256SUMS.minisig")
+
+    write_json(os.path.join(reldir, "release.json"), tag, assets)
     return {"OBU_RELEASE_JSON_FILE": os.path.join(reldir, "release.json"),
             "OBU_ASSET_DIR": reldir}
 
@@ -395,6 +452,9 @@ def suite_verify(obu, work):
     with open(sums, "w") as handle:
         handle.write("%s  payload.tgz\n" % digest)
         handle.write("%s  absent.tgz\n" % ("0" * 64))
+    # obu checks the manifest's signature before reading a line of it, so every
+    # manifest in this suite needs one -- including the ones built by hand here.
+    TEST_KEY.sign_file(sums, sums + ".minisig")
 
     code, out = run(obu, ["verify", good, sums])
     check("a matching file verifies, exit 0",
@@ -454,6 +514,9 @@ def suite_verify(obu, work):
     crlf_sums = os.path.join(room, "CRLF_SUMS")
     with open(crlf_sums, "wb") as handle:
         handle.write(("%s  crlf.tgz\r\n" % crlf_digest).encode("ascii"))
+    # Signed over the CRLF bytes exactly as written: the signature covers the
+    # manifest byte for byte, so normalising line endings anywhere would break it.
+    TEST_KEY.sign_file(crlf_sums, crlf_sums + ".minisig")
 
     code, out = run(obu, ["verify", crlf_payload, crlf_sums])
     check("a CRLF manifest still matches",
@@ -632,6 +695,37 @@ def suite_update(obu, work):
           not os.path.isdir(os.path.join(root, ".previous")))
     check("tampered update left no staging dir",
           not os.path.isdir(os.path.join(root, ".obu-work")))
+
+    # no signature at all: what a release published before signing existed looks
+    # like, and what an attacker serving their own SHA256SUMS would produce. The
+    # manifest here is internally consistent -- the hashes MATCH the archive --
+    # so only the signature check can refuse it.
+    root = os.path.join(work, "sig1", "root")
+    make_install(root, "NOSIG")
+    before = tree_state(root)
+    env = make_release(os.path.join(work, "sig1", "rel"), asset, drop_signature=True)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update"], env)
+    check("an unsigned release is refused",
+          code == 2 and "No signature beside the manifest" in out,
+          "exit=%d out=%r" % (code, out))
+    check_tree_unchanged("refused update (unsigned manifest)", root, before)
+    check_no_residue("refused update (unsigned manifest)", root)
+
+    # a signature that parses, carries the trusted key id, and signs a DIFFERENT
+    # message. Everything structural agrees; only the Ed25519 maths disagrees, so
+    # this is the case a verifier that returns true without checking would pass.
+    root = os.path.join(work, "sig2", "root")
+    make_install(root, "BADSIG")
+    before = tree_state(root)
+    env = make_release(os.path.join(work, "sig2", "rel"), asset, break_signature=True)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update"], env)
+    check("a signature over different content is refused",
+          code == 2 and "SIGNATURE VERIFICATION FAILED" in out,
+          "exit=%d out=%r" % (code, out))
+    check_tree_unchanged("refused update (wrong signature)", root, before)
+    check_no_residue("refused update (wrong signature)", root)
 
     # rollback with nothing to roll back to: refuse, install intact
     root = os.path.join(work, "t3", "root")
@@ -819,10 +913,13 @@ def suite_selfswap(obu, work):
     os.makedirs(reldir, exist_ok=True)
     archive = os.path.join(reldir, asset)
     make_archive(stage, archive)
-    with open(os.path.join(reldir, "SHA256SUMS"), "w") as handle:
+    sums_path = os.path.join(reldir, "SHA256SUMS")
+    with open(sums_path, "w") as handle:
         handle.write("%s  %s\n"
                      % (hashlib.sha256(open(archive, "rb").read()).hexdigest(), asset))
-    write_json(os.path.join(reldir, "release.json"), "v9999.1.0", [asset, "SHA256SUMS"])
+    TEST_KEY.sign_file(sums_path, sums_path + ".minisig")
+    write_json(os.path.join(reldir, "release.json"), "v9999.1.0",
+               [asset, "SHA256SUMS", "SHA256SUMS.minisig"])
 
     # deliberately NO OBU_INSTALL_ROOT: obu must derive the root from its own path
     env = {"OBU_RELEASE_JSON_FILE": os.path.join(reldir, "release.json"),
@@ -887,10 +984,13 @@ def suite_rename_contention(obu, work):
     os.makedirs(reldir, exist_ok=True)
     archive = os.path.join(reldir, asset)
     make_archive(stage, archive)
-    with open(os.path.join(reldir, "SHA256SUMS"), "w") as handle:
+    sums_path = os.path.join(reldir, "SHA256SUMS")
+    with open(sums_path, "w") as handle:
         handle.write("%s  %s\n"
                      % (hashlib.sha256(open(archive, "rb").read()).hexdigest(), asset))
-    write_json(os.path.join(reldir, "release.json"), "v9999.1.0", [asset, "SHA256SUMS"])
+    TEST_KEY.sign_file(sums_path, sums_path + ".minisig")
+    write_json(os.path.join(reldir, "release.json"), "v9999.1.0",
+               [asset, "SHA256SUMS", "SHA256SUMS.minisig"])
 
     staging = os.path.join(root, ".obu-work", "staging")
     victim = os.path.join(root, "bin", "obc" + EXE_SUFFIX)

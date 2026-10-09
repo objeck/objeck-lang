@@ -352,10 +352,12 @@ jobs:
       # platform signature at all, so for those the manifest is the only
       # integrity claim, and it was unsigned (docs/release_integrity.md).
       #
-      # This is phase 2 of that design: the manifest is signed from here on while
-      # obu does not yet REQUIRE the signature. The ordering is deliberate -- an
-      # obu that demanded one before any release carried it would reject every
-      # release it could see.
+      # Phases 2 and 3 of that design are both in: the manifest is signed here,
+      # and obu REFUSES a manifest it cannot verify. The ordering was deliberate
+      # -- an obu that demanded a signature before any release carried one would
+      # have rejected every release it could see -- but it also means the step
+      # below is no longer optional in practice. A release published without
+      # SHA256SUMS.minisig is a release no obu will install.
       - name: Sign SHA256SUMS
         if: env.MINISIGN_SECRET_KEY != ''
         run: |
@@ -370,7 +372,13 @@ jobs:
           trap 'shred -u "$RUNNER_TEMP/minisign.key" 2>/dev/null || rm -f "$RUNNER_TEMP/minisign.key"' EXIT
 
           cd release-final
-          minisign -S -s "$RUNNER_TEMP/minisign.key" -m SHA256SUMS -x SHA256SUMS.minisig
+          # -l is the legacy format: the signature is over the raw manifest rather
+          # than over BLAKE2b-512 of it. That keeps obu to ONE crypto primitive --
+          # Ed25519, from a vendored implementation -- instead of needing a
+          # hand-written BLAKE2b inside the trust path as well. Prehashing exists
+          # so a signer can stream a large file; SHA256SUMS is a few kilobytes, so
+          # it buys nothing here, and a modern minisign verifies either form.
+          minisign -S -l -s "$RUNNER_TEMP/minisign.key" -m SHA256SUMS -x SHA256SUMS.minisig
 
           # Verify what was just produced against the COMMITTED public key, here,
           # before it is uploaded. A secret that does not match the key obu ships
@@ -390,14 +398,17 @@ jobs:
         if: env.MINISIGN_SECRET_KEY == '' && contains(vars.RELEASE_MANUAL_STEPS, 'sig')
         run: |
           echo "ℹ️  Manifest signing is declared manual via RELEASE_MANUAL_STEPS - skipping."
+          echo "   obu REFUSES an unverifiable manifest, so this is not optional:"
+          echo "   without the signature uploaded, no obu will install this release."
           echo "   Sign it locally and upload the signature beside SHA256SUMS:"
-          echo "     minisign -S -s <secret key> -m SHA256SUMS"
+          echo "     minisign -S -l -s <secret key> -m SHA256SUMS"
           echo "     gh release upload v${{ needs.prepare.outputs.version }} SHA256SUMS.minisig"
 
       - name: Missing manifest signing key
         if: env.MINISIGN_SECRET_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'sig')
         run: |
-          echo "::error::MINISIGN_SECRET_KEY is not configured - SHA256SUMS would ship unsigned"
+          echo "::error::MINISIGN_SECRET_KEY is not configured - SHA256SUMS would ship unsigned,"
+          echo "::error::and obu refuses an unsigned manifest, so no obu could install this release"
           echo ""
           echo "Either add the secret MINISIGN_SECRET_KEY (docs/release_integrity.md"
           echo "says how the keypair is made and where the secret belongs),"

@@ -22,12 +22,24 @@ CXX := c++
 endif
 
 ARGS=-O3 -Wall -Wno-unused-function -std=c++17 -mavx2 -MMD -MP
+# The same flags without -std=c++17, which is not valid for a C compile and
+# which gcc rejects outright rather than ignoring.
+CARGS=-O3 -Wall -Wno-unused-function -mavx2 -MMD -MP
 
-SRC=obu.o
+
+# TweetNaCl supplies Ed25519 verification (#723). It must be compiled as C:
+# as C++ it fails on static const u8 sigma[16] = "expand 32-byte k", 17 bytes
+# into a 16-byte array, which C permits and C++ rejects. "-x c" gets that from
+# the C++ driver, so this needs no separate CC and no second copy of the
+# compiler-detection above. See vendor/README.md.
+SRC=obu.o vendor/tweetnacl.o
 EXE=obu
 
 $(EXE): $(SRC)
 	$(CXX) -m64 -o $(EXE) $(SRC)
+
+vendor/tweetnacl.o: vendor/tweetnacl.c
+	$(CXX) -m64 -x c $(CARGS) -o $@ -c $<
 
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $<
@@ -38,4 +50,4 @@ $(EXE): $(SRC)
 -include $(wildcard *.d)
 
 clean:
-	rm -f $(EXE) *.o *.d *~
+	rm -f $(EXE) *.o *.d *~ vendor/*.o vendor/*.d
