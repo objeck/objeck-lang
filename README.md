@@ -129,6 +129,40 @@ obc hello && obr hello
 
 > **Note:** Windows installers are signed and timestamped (`CN=Randy Hollines`, Sectigo); the macOS `.pkg` is signed and notarized. Signing uses a hardware token and therefore happens locally after publication, so verify rather than assume — `Get-AuthenticodeSignature <file>.msi` reports `Valid` only when it really is signed. Check any download against the release's `SHA256SUMS`, which is regenerated after signing. Builds are automated on GitHub Actions runners.
 
+### Verifying a download
+
+Every release ships `SHA256SUMS` and an Ed25519 signature over it,
+`SHA256SUMS.minisig`. Download both beside the archive:
+
+```bash
+obu verify objeck-linux-x64_<VERSION>.tgz SHA256SUMS
+```
+
+`obu` checks the signature before it reads a line of the manifest, and refuses a
+manifest it cannot verify. Exit codes are distinct on purpose: `0` matches, `1`
+does not match, `2` could not be checked.
+
+The manifest matters because it is served from the same place as the assets it
+describes — anyone able to replace an archive could replace the manifest to match.
+The Linux and macOS archives carry no platform signature at all, so for those it
+is the only integrity claim there is. The signature is what an attacker cannot
+reproduce.
+
+**The release public key**, for checking out of band — with `minisign`, or against
+what `obu` reports:
+
+```
+untrusted comment: minisign public key 8237C6B17C7EA6B9
+RWS5pn58scY3gv7X3EL/fJaOQli1V0HDwwFVt+2IWqPXBxvE4U1UhxHC
+```
+
+Key ID `8237C6B17C7EA6B9`. The same key is committed at
+[`core/release/objeck-release.pub`](core/release/objeck-release.pub) and published
+on [objeck.org](https://www.objeck.org). A key you can only obtain from the thing
+you are trying to verify proves nothing, which is why it is in more than one
+place; compare them. Design and key-rotation procedure:
+[`docs/release_integrity.md`](docs/release_integrity.md).
+
 ## See It In Action
 
 ### HTTP/2 Client

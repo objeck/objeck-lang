@@ -1509,6 +1509,25 @@ jobs:
           python3 tools/cicd/check_manifest_resign.py --test
           python3 tools/cicd/check_manifest_resign.py
 
+      # obu's refusal message sends the user to README.md to check the release
+      # key out of band (#723 phase 4). A rotation that updates the .pub and not
+      # the README leaves a shipped message pointing at the WRONG key, which is
+      # worse than publishing none: someone who follows it concludes a forged
+      # release is genuine, or a genuine one forged.
+      - name: README publishes the committed release public key
+        run: |
+          KEY=$(sed -n 2p core/release/objeck-release.pub)
+          if [ -z "$KEY" ]; then
+            echo "::error::core/release/objeck-release.pub has no key on line 2"
+            exit 1
+          fi
+          if ! grep -qF "$KEY" README.md; then
+            echo "::error::README.md does not publish the key in core/release/objeck-release.pub"
+            echo "obu tells users the public half is published there; see #723 phase 4."
+            exit 1
+          fi
+          echo "README publishes $(sed -n 1p core/release/objeck-release.pub)"
+
       # Install instructions drift from what the binaries link: v2026.9.2's notes
       # told macOS users to install two formulas while obr needed four more, one
       # of which Homebrew does not ship. Every package a doc names must be in
