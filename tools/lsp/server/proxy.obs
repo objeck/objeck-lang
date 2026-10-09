@@ -498,7 +498,7 @@ bundle LSP {
 			};
 		}
 
-		method : public : CodeAction(uri : String, start_range_line : Int, start_range_char : Int, var_name : String, build_file : String)  ~ JsonElement {
+		method : public : CodeAction(uri : String, start_range_line : Int, start_range_char : Int, var_name : String, build_file : String, position_is_class : Bool)  ~ JsonElement {
 			if(@analysis = Nil) {
 				return Nil;
 			};
@@ -506,8 +506,48 @@ bundle LSP {
 			result_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 
 			code_action := @analysis->CodeAction(uri, start_range_line, start_range_char, var_name);
-			if(code_action <> Nil & @klass_bundles_json <> Nil) {
-				class_name := code_action->GetName();
+			
+			#
+			# What the fixes are built from, whichever way it was established.
+			#
+			# The analysis matches a symbol-table entry whose TYPE is the class, which
+			# covers a declared local and yields the position of the class in its type.
+			# An inferred-type local has no entry at all at this point -- it is created
+			# during type inference, and analysis aborted on this very undefined class
+			# -- so that lookup returns nothing for `v := Vector->New()`, which is the
+			# dominant style in this codebase (#1057).
+			#
+			# For that shape the caller has already confirmed the diagnostic is
+			# anchored on the class token, so the diagnostic range IS where the
+			# qualifier belongs. Without that confirmation nothing is offered: half of
+			# these diagnostics point at a variable, a parameter or a method name, and
+			# inserting "Bundle." there would leave the program still not compiling.
+			#
+			fix_class_name : String;
+			fix_var_name : String;
+			fix_line := 0;
+			fix_char := 0;
+			has_fix := false;
+			
+			if(code_action <> Nil) {
+				fix_class_name := code_action->GetName();
+				fix_var_name := code_action->GetDescription();
+				fix_line := code_action->GetStartLine();
+				fix_char := code_action->GetStartPosition();
+				has_fix := true;
+			}
+			else if(position_is_class) {
+				# The class names itself here: there is no declared variable to name, so
+				# the qualify title reads "Fully qualify 'Vector' as Collection.Vector".
+				fix_class_name := var_name;
+				fix_var_name := var_name;
+				fix_line := start_range_line;
+				fix_char := start_range_char;
+				has_fix := true;
+			};
+			
+			if(has_fix & @klass_bundles_json <> Nil) {
+				class_name := fix_class_name;
 				# An ARRAY now, one entry per bundle that defines this short name.
 				# Twenty-two names are defined in more than one -- EndPoint in four of
 				# them -- and this index used to carry a single entry per name, because
@@ -577,13 +617,13 @@ bundle LSP {
 							#
 							# variable qualification
 							#
-							var_name := code_action->GetDescription();
+							var_name := fix_var_name;
 							qualify_code_action_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 							qualify_code_action_json->Insert("title", "Fully qualify '{$var_name}' as {$bundle_name}.{$class_name}");
 							qualify_code_action_json->Insert("kind", "quickfix");
 
-							edit_start_line := code_action->GetStartLine();
-							edit_start_pos := code_action->GetStartPosition();
+							edit_start_line := fix_line;
+							edit_start_pos := fix_char;
 
 							bundle_name := class_bundle_json->Get("bundle")->GetString();						
 							create_doc_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -662,13 +702,13 @@ bundle LSP {
 								#
 								# variable qualification
 								#
-								var_name := code_action->GetDescription();
+								var_name := fix_var_name;
 								qualify_code_action_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 								qualify_code_action_json->Insert("title", "Fully qualify '{$var_name}' as {$bundle_name}.{$class_name}");
 								qualify_code_action_json->Insert("kind", "quickfix");
 
-								edit_start_line := code_action->GetStartLine();
-								edit_start_pos := code_action->GetStartPosition();
+								edit_start_line := fix_line;
+								edit_start_pos := fix_char;
 							
 								create_doc_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 								create_doc_array_json->Add(create_doc_json);

@@ -813,12 +813,52 @@ bundle LSP {
 			};
 
 			if(context->Equals("quickfix") & message->StartsWith("Undefined class")) {
+				#
+				# The FIRST quoted token, not everything between the first quote and the
+				# last. These messages do not all quote one thing: an inferred-type local
+				# reports
+				#
+				#   Undefined class: 'Vector'\n\t'Vector' is defined in bundle 'Collection'
+				#
+				# so first-to-last yielded "Vector'\n\t'Vector' is defined in bundle
+				# 'Collection", which matches no class and so produced no fix at all --
+				# while the declared form, whose message quotes only the class, worked.
+				# That is half of #1057; any future message that adds a hint would have
+				# broken the same way.
+				#
+				# String has no Find(Char, Int) here, so the search for the CLOSING quote
+				# runs on the remainder and its result is relative to that.
 				start := message->Find('\'');
-				last := message->FindLast('\'');
-
-				if(last > start) {
+				if(start > -1) {
 					start += 1;
-					return proxy->CodeAction(@uri, start_range_line, start_range_char, message->SubString(start, last - start), build_file);
+					tail := message->SubString(start, message->Size() - start);
+					length := tail->Find('\'');
+					if(length > 0) {
+						class_name := tail->SubString(length);
+						#
+						# Is the DIAGNOSTIC anchored on the class token itself? That is what
+						# separates the shapes a symbol-table lookup cannot serve -- an
+						# inferred-type local like `v := Vector->New()`, whose entry does not
+						# exist yet because analysis aborted on this very error -- from the
+						# shapes where the diagnostic points at a variable, a parameter or a
+						# method name instead. Measured across six shapes: only five of ten
+						# such diagnostics start on the class, and they are exactly the ones
+						# where it is a method-call target. Offering a qualifier at the other
+						# five would insert "Bundle." before a variable or a method name --
+						# an applied fix that leaves the program still not compiling, which
+						# is what #1052 was.
+						#
+						# Only this layer can tell: the document text lives here, and the
+						# native analysis has no source to compare against.
+						#
+						on_class := false;
+						index := GetDocumentIndex(start_range_line, start_range_char);
+						if(@text <> Nil & index > -1 & index + class_name->Size() <= @text->Size()) {
+							on_class := @text->SubString(index, class_name->Size())->Equals(class_name);
+						};
+						
+						return proxy->CodeAction(@uri, start_range_line, start_range_char, class_name, build_file, on_class);
+					};
 				};
 			};
 

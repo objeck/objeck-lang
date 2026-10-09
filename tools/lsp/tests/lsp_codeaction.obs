@@ -1,6 +1,15 @@
-# Fixture for the quick-fix path: Vector is a real class in gen_collect.obl but
+# Fixture for the quick-fix path with an INFERRED-TYPE local, which is the
+# dominant style in this codebase. Vector is a real class in gen_collect.obl but
 # is not in scope without a 'use', so analysis reports "Undefined class ..." --
 # the one diagnostic Document.CodeAction offers a fix for.
+#
+# This form produced no fixes at all until #1057. Two reasons: the class name
+# was read from between the first and last quote of the message, and this form's
+# message carries a bundle hint containing more quotes; and an inferred local has
+# no symbol-table entry to match, because the entry is created during type
+# inference and analysis aborts on this very undefined class. The fix keys off
+# the diagnostic being anchored on the class token, which the sibling
+# lsp_codeaction_declared.obs is not -- see the note there.
 class NeedsUse {
 	function : Main(args : String[]) ~ Nil {
 		v := Vector->New()<IntRef>;
