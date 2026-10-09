@@ -1002,6 +1002,44 @@ jobs:
         command -v python3 >/dev/null 2>&1 || PY=python
         "$PY" core/utils/updater/test_update.py
 
+        # And the signature verification added for #723 phase 3. Separate from
+        # the suite above because it holds a different thing: not that obu can
+        # install a release, but that it refuses one whose manifest was
+        # substituted. Both directions are asserted -- a real signature
+        # accepted, and a missing, tampered, truncated, unparseable or prehashed
+        # one rejected, plus a tampered trusted comment -- because a verifier
+        # that always returns true is a silent total failure, and a suite of
+        # reject cases alone would pass against one that always returns false.
+        #
+        # The fixtures are signed with the release key and committed; a
+        # signature is public data, so this needs no secret and no minisign.
+        # The binary under test is the RELEASE build -- no OBU_TEST_HOOKS, so
+        # it trusts only the key compiled into it, which is what makes the
+        # accept case meaningful. The paths differ per platform: deploy_posix.sh
+        # builds in place under core/utils/updater, MSBuild writes under
+        # vs/<plat>/Release. Checked in order, and an empty result is an ERROR,
+        # not a skip -- a guard that quietly finds no binary is no guard.
+        # The suffix is explicit because `test -f` is not trustworthy here:
+        # MSYS's stat() falls back to <name>.exe, so [ -f .../bin/obu ] is TRUE
+        # on Windows when only obu.exe exists -- and the extensionless path then
+        # reaches Python, which opens files natively and cannot find it.
+        SFX=
+        if [ "${{ runner.os }}" = "Windows" ]; then SFX=.exe; fi
+        OBU_BIN=
+        for cand in core/release/deploy-${{ matrix.arch }}/bin/obu$SFX \
+                    core/release/deploy/bin/obu$SFX \
+                    core/utils/updater/obu$SFX \
+                    core/utils/updater/vs/x64/Release/obu.exe \
+                    core/utils/updater/vs/ARM64/Release/obu.exe; do
+          if [ -f "$cand" ]; then OBU_BIN="$cand"; break; fi
+        done
+        if [ -z "$OBU_BIN" ]; then
+          echo "No obu binary found to verify against; the build step above should have produced one."
+          exit 1
+        fi
+        echo "Verifying signature handling with $OBU_BIN"
+        "$PY" tools/cicd/test_obu_verify.py "$OBU_BIN"
+
     # cov_scan.sh's large-submission flow, against a mock Coverity Scan. Above
     # 500 MB the single-shot form POST stops working and the script switches to
     # initialize -> PUT -> enqueue; the capture is at about a third of that, so
@@ -1458,6 +1496,18 @@ jobs:
       # Windows deploy (2026-09-13).
       - name: Generated files match their .in templates
         run: python3 tools/cicd/check_version_templates.py
+
+      # Same class again, and the one with the worst failure mode. obu refuses a
+      # manifest whose signature does not verify (#723 phase 3), so a tool that
+      # replaces a published SHA256SUMS and leaves SHA256SUMS.minisig alone does
+      # not weaken the release -- it makes it uninstallable, for everyone. Two
+      # tools did exactly that, because Windows MSI signing happens after
+      # publication and rewrites the installer bytes. The self-test runs too: a
+      # guard whose matching has quietly stopped matching reports success.
+      - name: Every SHA256SUMS upload is re-signed
+        run: |
+          python3 tools/cicd/check_manifest_resign.py --test
+          python3 tools/cicd/check_manifest_resign.py
 
       # Install instructions drift from what the binaries link: v2026.9.2's notes
       # told macOS users to install two formulas while obr needed four more, one

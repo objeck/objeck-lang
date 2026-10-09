@@ -27,13 +27,93 @@ There is also no load-time integrity: `obr` executes any `.obe`, links any `.obl
 
 Ed25519 verification is ~600 lines of dependency-free C (the reference or TweetNaCl implementation); `obu` already carries its own SHA-256 for the same reason (no OpenSSL at update time), so this keeps the updater self-contained.
 
+**Correction, 2026-10-09, from the format minisign actually produced.** The
+paragraph above under-counts, because it assumed the legacy signing mode. The
+signature this project's key produces carries algorithm **`ED`**, not `Ed`:
+
+```
+untrusted comment: signature from minisign secret key
+RUS5pn58scY3gpNFQt8L9neY1mGAAGb1G1aJTgsgr1tWvGkkussfxXeBguwgYz246qO1CrDcSJFPbWJ1+NIU2VXlwFkgVDANZQo=
+trusted comment: timestamp:1791564238	file:SHA256SUMS	hashed
+gk3z1ebiIK2ch68JeOlRZ/EW1mwCpVJjDwNv49CQPhy+AYClWg85cBSil0Xu9CDCHKuOpPGtCEPBFVEulFw6BA==
+```
+
+| field | bytes | layout |
+|---|---|---|
+| public key | 42 | `Ed` + 8-byte key id + 32-byte key |
+| signature (line 2) | 74 | `ED` prehashed, or **`Ed` legacy with `-l`** — then key id + 64-byte signature |
+| global signature (line 4) | 64 | Ed25519 over (signature ‖ trusted comment) |
+
+`ED` is the **prehashed** mode, minisign's default since 0.6 and what 0.12
+produces: the signature is over **BLAKE2b-512 of the message**, not the message.
+The trusted comment's trailing `hashed` is minisign's own marker for it.
+
+**Superseded within the hour by reading minisign's own options.** It has `-l`,
+"sign using the legacy format", which produces algorithm `Ed`: the signature is
+over the raw message, there is no BLAKE2b, and the trusted comment loses its
+`hashed` marker. A modern minisign still verifies such a signature — checked,
+not assumed: `Signature and comment signature verified`, exit 0.
+
+**So the signing step uses `-l` and `obu` needs only Ed25519 after all.**
+
+That is worth the trade. Prehashing exists so a signer can stream a large file
+without holding it in memory; `SHA256SUMS` is a few kilobytes, so it buys
+nothing here. Against that it would have put a second hand-written crypto
+primitive inside the trust path, and Ed25519 already hashes internally with
+SHA-512 — which TweetNaCl supplies — so legacy mode is not weaker for a small
+file, merely older.
+
+One primitive, from a known implementation, is a smaller attack surface than two
+where one is ours.
+
+And verifying line 4 as well as line 2 is not optional: without it the trusted
+comment, which names the file the signature is for, is unauthenticated — a
+signature for one file could be presented with a comment claiming another.
+
+**Where the primitives come from is a supply-chain decision, not an
+implementation detail.** A verification bug that always *returns true* is silent
+and total: the feature would look present while protecting nothing, which is
+precisely the failure this document exists to prevent. So the Ed25519 code should
+be a known, unmodified public-domain implementation (TweetNaCl's
+`crypto_sign_open` is the usual choice — public domain, single file, widely
+reviewed) rather than written here.
+
+One thing in our favour: this is *verification with a public key*. There is no
+secret to leak, so constant-time behaviour is not a requirement, which is what
+usually makes vendoring crypto delicate.
+
+Whatever the source, it must be held to behaviour rather than inspection, with
+minisign itself as the oracle: a valid signature accepted, and a tampered
+message, a tampered signature, a wrong key, a truncated signature and a missing
+line 4 each rejected. A test that only checks the accept case cannot tell a
+working verifier from one that always returns true.
+
 **Key rotation.** A new key is introduced by shipping an `obu` that trusts both the old and new keys for one release, then dropping the old one. Rotation, like the eToken certificate's renewal, is a documented manual step with a date in [`SIGNING.md`](../SIGNING.md).
 
 ## Phases
 
-1. **This document; `obu verify` reads `SHA256SUMS` without a signature** (already true for `update`; `verify` exposes it). No new secrets.
-2. **Generate the keypair (maintainer, locally), commit the public key, add the signing step and the `sig` manual token.** The release that ships this has a signed manifest but an `obu` that does not yet require it.
-3. **`obu` verifies the signature; missing or invalid is fatal.** From here on a substituted manifest is caught.
+1. ~~**This document; `obu verify` reads `SHA256SUMS` without a signature**~~ **DONE** (already true for `update`; `verify` exposes it). No new secrets.
+2. ~~**Generate the keypair (maintainer, locally), commit the public key, add the signing step and the `sig` manual token.**~~ **DONE, 2026-10-09.** The release that ships this has a signed manifest but an `obu` that does not yet require it.
+3. ~~**`obu` verifies the signature; missing or invalid is fatal.**~~ **DONE, 2026-10-09.** From here on a substituted manifest is caught. Ed25519 comes from TweetNaCl, vendored unmodified ([`core/utils/updater/vendor/README.md`](../core/utils/updater/vendor/README.md)); `tools/cicd/test_obu_verify.py` holds it to behaviour against a committed fixture signed with the real key, in both directions.
 4. **Publish the public key out of band** (objeck.org, README) and add a `verify-signing-credentials.yml`-style check that the secret key matches the committed public key, on the same weekly schedule.
+
+**The manifest is signed twice.** Windows MSI signing happens after publication,
+on the maintainer's machine, and it rewrites the MSI bytes -- so `SHA256SUMS` is
+regenerated over the published assets afterwards, which invalidates the signature
+made during publication. `.github/workflows/resign-manifest.yml` signs the
+published manifest again, in CI, so the secret stays where it belongs;
+`update_sha256sums.ps1` and `post_release.sh` both trigger it, and
+`post_release.sh` gate `[4b]` verifies the published signature against the
+published manifest with `obu` itself. Before phase 3 a stale signature was
+merely useless. Now it makes the release uninstallable.
+
+**What phase 3 changes at release time.** Up to phase 2, a release that was not
+signed simply had no signature and `obu` carried on. From phase 3, `obu update`
+refuses a manifest it cannot verify -- so an unsigned release is one that no
+`obu` will install, and declaring `sig` manual without then uploading
+`SHA256SUMS.minisig` ships exactly that. The signing step fails the publish when
+the secret is absent and `sig` is not declared manual, which is the interlock;
+the manual path has no such protection by construction, so it is the one to
+check by hand.
 
 The keypair generation and the secret's placement are maintainer actions; nothing in this design has an assistant or CI handle the secret key in the clear.

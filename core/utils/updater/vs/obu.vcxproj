@@ -20,6 +20,26 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\obu.cpp" />
+    <!-- Compiled as C, not C++, and the extension is what tells MSVC so.
+         As C++ it fails: static const u8 sigma[16] = "expand 32-byte k" puts 17
+         bytes into a 16-byte array, which C permits by dropping the NUL and C++
+         rejects (C2117). Do not add CompileAsCpp here. See ..\vendor\README.md. -->
+    <ClCompile Include="..\vendor\tweetnacl.c">
+      <!-- Warnings off, and not escalated, for this file only. It is vendored
+           UNMODIFIED (vendor/README.md), so the project does not get to police
+           its style, and the alternative is editing a file whose value is that
+           it matches upstream byte for byte. The warnings are upstream idiom,
+           not defects: C4146 is -(u64)x for constant-time selection, C4244 is
+           deliberate truncation in the hash cores, C4018 a signed loop bound.
+           This applies to nothing else in the project. -->
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <!-- /sdl is what promotes C4146 to an ERROR, so turning warnings off is
+           not enough on its own. It stays on for every other file in the
+           project; this is the one exception, and it is the file nobody here
+           edits. -->
+      <SDLCheck>false</SDLCheck>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\shared\version.h" />

@@ -151,7 +151,9 @@ static void Usage()
   std::cout << "  update             download, verify and install the latest release in place" << std::endl;
   std::cout << "  rollback           restore the version kept by the last successful update" << std::endl;
   std::cout << "  verify <archive> <SHA256SUMS>" << std::endl;
-  std::cout << "                     check a file you downloaded yourself against a manifest" << std::endl << std::endl;
+  std::cout << "                     check a file you downloaded yourself against a manifest" << std::endl;
+  std::cout << "                     (needs SHA256SUMS.minisig beside it: the manifest's" << std::endl;
+  std::cout << "                     signature is checked before the manifest is read)" << std::endl << std::endl;
   std::cout << "Options for 'check' and 'update':" << std::endl;
   std::cout << "  --quiet            print nothing; communicate via the exit code" << std::endl;
   std::cout << "  --channel <tag>    target a specific release tag (e.g. v2026.8.0)" << std::endl;
@@ -614,6 +616,257 @@ static int DoCheck(bool is_quiet, const std::string& channel)
 * replaced system tool is not an integrity gate at all. Public-domain
 * construction (FIPS 180-4).
 ****************************/
+
+extern "C" {
+#include "vendor/tweetnacl.h"
+}
+
+//
+// TweetNaCl declares this and calls it in exactly two places, both key
+// generation: crypto_box_keypair and crypto_sign_keypair. obu generates no
+// keys, so this aborts rather than returning. A stub that quietly left the
+// buffer untouched would hand a caller a "key" made of whatever was on the
+// stack; failing loudly is the only safe shape for an unimplemented source of
+// randomness. See vendor/README.md.
+//
+extern "C" void randombytes(unsigned char* buffer, unsigned long long length)
+{
+  (void)buffer;
+  (void)length;
+  std::cerr << "obu: randombytes was called, which means a key-generation path was reached. "
+               "obu only verifies signatures and has no source of randomness." << std::endl;
+  std::abort();
+}
+
+//
+// Detached signature verification for SHA256SUMS (#723, docs/release_integrity.md)
+//
+// SHA256SUMS is served from the same place as the assets it describes, so
+// anyone who can replace an asset can replace the manifest to match -- and the
+// hash check below would then compare a substituted archive against a
+// substituted manifest and report success. The Linux and macOS archives carry
+// no platform signature at all, so for those the manifest is the only integrity
+// claim. A detached Ed25519 signature is the part an attacker cannot reproduce
+// without the release key.
+//
+// Ed25519 comes from vendor/tweetnacl.c, unmodified: see vendor/README.md for
+// why it is not written here, how the download was corroborated, and what the
+// randombytes stub below is for.
+//
+namespace minisig {
+  // minisign's file layout, which this parses rather than assumes:
+  //
+  //   public key, 42 bytes   "Ed" + 8-byte key id + 32-byte key
+  //   signature,  74 bytes   "Ed" + 8-byte key id + 64-byte signature
+  //
+  // Releases are signed with `minisign -S -l`, the legacy format, so the
+  // signature is over the RAW manifest. minisign's default prehashed mode is
+  // "ED" and signs BLAKE2b-512 of it, which would have meant a second
+  // hand-written primitive in the trust path; see the correction in
+  // release_integrity.md. "ED" is therefore rejected here rather than
+  // mishandled -- a signature we cannot check must never read as one we did.
+  static const size_t PUBKEY_BYTES = 42;
+  static const size_t SIGNATURE_BYTES = 74;
+  static const size_t ED25519_SIG_BYTES = 64;
+  static const size_t ED25519_KEY_BYTES = 32;
+  static const size_t KEY_ID_BYTES = 8;
+
+  static bool Base64Decode(const std::string& text, std::vector<unsigned char>& out)
+  {
+    static const char* ALPHABET =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    out.clear();
+    unsigned int accum = 0;
+    int bits = 0;
+    size_t padding = 0;
+
+    for(size_t i = 0; i < text.size(); ++i) {
+      const char c = text[i];
+      if(c == '\r' || c == '\n' || c == ' ' || c == '\t') {
+        continue;
+      }
+      if(c == '=') {
+        ++padding;
+        continue;
+      }
+      // Padding is only ever trailing. A '=' followed by data is malformed, and
+      // skipping it quietly would let two different texts decode alike.
+      if(padding) {
+        return false;
+      }
+      const char* at = strchr(ALPHABET, c);
+      if(!at || c == '\0') {
+        return false;
+      }
+      accum = (accum << 6) | (unsigned int)(at - ALPHABET);
+      bits += 6;
+      if(bits >= 8) {
+        bits -= 8;
+        out.push_back((unsigned char)((accum >> bits) & 0xFF));
+      }
+    }
+
+    // Leftover bits must be zero: a trailing group that carries value is a
+    // different string than it appears to be.
+    if(bits && ((accum & ((1u << bits) - 1)) != 0)) {
+      return false;
+    }
+    return padding <= 2;
+  }
+
+  // The second line of a minisign file, decoded. Both the key and the signature
+  // files put their payload there; everything else is comments.
+  static bool SecondLinePayload(const std::string& text, std::vector<unsigned char>& out,
+                                std::string& trusted_comment, std::vector<unsigned char>& global_sig)
+  {
+    std::vector<std::string> lines;
+    std::string line;
+    for(size_t i = 0; i <= text.size(); ++i) {
+      if(i == text.size() || text[i] == '\n') {
+        while(!line.empty() && (line.back() == '\r' || line.back() == ' ')) {
+          line.pop_back();
+        }
+        if(!line.empty()) {
+          lines.push_back(line);
+        }
+        line.clear();
+      }
+      else {
+        line.push_back(text[i]);
+      }
+    }
+
+    if(lines.size() < 2) {
+      return false;
+    }
+    if(!Base64Decode(lines[1], out)) {
+      return false;
+    }
+
+    // A signature file carries two more lines: the trusted comment and a second
+    // signature over (signature || trusted comment). Verifying that one is what
+    // makes the comment trustworthy -- it names the file the signature is for,
+    // so without it a signature for one file could be presented with a comment
+    // claiming another.
+    trusted_comment.clear();
+    global_sig.clear();
+    if(lines.size() >= 4) {
+      static const char* PREFIX = "trusted comment: ";
+      const size_t prefix_len = strlen(PREFIX);
+      if(lines[2].compare(0, prefix_len, PREFIX) == 0) {
+        trusted_comment = lines[2].substr(prefix_len);
+      }
+      if(!Base64Decode(lines[3], global_sig)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  //
+  // Whether 'message' carries a valid signature from the compiled-in release key.
+  //
+  // 'reason' is set on every false return. The caller prints it: a verification
+  // that fails without saying why leaves a user unable to tell a corrupted
+  // download from a substituted one from a bug here.
+  //
+  static bool Verify(const std::string& message, const std::string& signature_file,
+                     const std::string& pubkey_b64, std::string& reason,
+                     std::string& trusted_comment)
+  {
+    std::vector<unsigned char> pubkey;
+    if(!Base64Decode(pubkey_b64, pubkey) || pubkey.size() != PUBKEY_BYTES) {
+      reason = "the release public key compiled into this obu is malformed";
+      return false;
+    }
+
+    std::vector<unsigned char> sig, global_sig;
+    if(!SecondLinePayload(signature_file, sig, trusted_comment, global_sig)) {
+      reason = "the signature file could not be parsed";
+      return false;
+    }
+    if(sig.size() != SIGNATURE_BYTES) {
+      reason = "the signature is " + std::to_string(sig.size()) + " bytes, expected "
+             + std::to_string(SIGNATURE_BYTES);
+      return false;
+    }
+
+    if(sig[0] != 'E' || sig[1] != 'd') {
+      // "ED" is minisign's prehashed mode, which signs BLAKE2b-512 of the
+      // message. obu cannot check that and must not pretend otherwise.
+      const std::string alg(1, (char)sig[0]);
+      reason = "unsupported signature algorithm '" + alg + std::string(1, (char)sig[1])
+             + "'; this obu verifies the legacy 'Ed' form only";
+      return false;
+    }
+    if(pubkey[0] != 'E' || pubkey[1] != 'd') {
+      reason = "the compiled-in public key is not an Ed25519 key";
+      return false;
+    }
+
+    // A signature made by a different key is a wrong key, not a bad signature,
+    // and saying so saves someone debugging the wrong thing.
+    if(memcmp(&sig[2], &pubkey[2], KEY_ID_BYTES) != 0) {
+      reason = "the signature was made by a different key than this obu trusts";
+      return false;
+    }
+
+    const unsigned char* key = &pubkey[2 + KEY_ID_BYTES];
+
+    // TweetNaCl verifies a signed message: signature followed by the message,
+    // and it writes the recovered message out, so the buffer has to hold both.
+    std::vector<unsigned char> signed_message(ED25519_SIG_BYTES + message.size());
+    memcpy(&signed_message[0], &sig[2 + KEY_ID_BYTES], ED25519_SIG_BYTES);
+    if(!message.empty()) {
+      memcpy(&signed_message[ED25519_SIG_BYTES], message.data(), message.size());
+    }
+
+    std::vector<unsigned char> recovered(signed_message.size());
+    unsigned long long recovered_len = 0;
+    if(crypto_sign_open(&recovered[0], &recovered_len, &signed_message[0],
+                        (unsigned long long)signed_message.size(), key) != 0) {
+      reason = "the signature does not match the manifest";
+      return false;
+    }
+
+    // The global signature binds the trusted comment to this signature. Without
+    // checking it the comment is attacker-controlled text that obu would print
+    // as though the key had vouched for it.
+    if(global_sig.empty()) {
+      reason = "the signature file has no global signature, so its trusted comment is unauthenticated";
+      return false;
+    }
+    if(global_sig.size() != ED25519_SIG_BYTES) {
+      reason = "the global signature is " + std::to_string(global_sig.size())
+             + " bytes, expected " + std::to_string(ED25519_SIG_BYTES);
+      return false;
+    }
+
+    std::vector<unsigned char> global_body;
+    global_body.insert(global_body.end(), &sig[2 + KEY_ID_BYTES],
+                       &sig[2 + KEY_ID_BYTES] + ED25519_SIG_BYTES);
+    global_body.insert(global_body.end(), trusted_comment.begin(), trusted_comment.end());
+
+    std::vector<unsigned char> global_signed(ED25519_SIG_BYTES + global_body.size());
+    memcpy(&global_signed[0], &global_sig[0], ED25519_SIG_BYTES);
+    if(!global_body.empty()) {
+      memcpy(&global_signed[ED25519_SIG_BYTES], &global_body[0], global_body.size());
+    }
+
+    std::vector<unsigned char> global_recovered(global_signed.size());
+    unsigned long long global_recovered_len = 0;
+    if(crypto_sign_open(&global_recovered[0], &global_recovered_len, &global_signed[0],
+                        (unsigned long long)global_signed.size(), key) != 0) {
+      reason = "the trusted comment's signature does not match";
+      return false;
+    }
+
+    reason.clear();
+    return true;
+  }
+}
+
 namespace sha256 {
   struct Ctx {
     uint32_t state[8];
@@ -1046,6 +1299,79 @@ static bool DownloadAsset(const std::string& url, const std::string& name,
 * Looks up the expected hash for 'name' in a SHA256SUMS document
 * ('<hex>  <name>' per line)
 ****************************/
+//
+// Whether 'sums' carries a valid signature from the release key.
+//
+// Called before ANY line of the manifest is trusted, by both `update` and
+// `verify`. It is one function for both so the two cannot drift: an updater
+// that checks and a verify subcommand that does not would be worse than
+// neither, because a user would believe the latter.
+//
+// Phase 3 of docs/release_integrity.md: a missing or invalid signature is FATAL.
+//
+static bool VerifyManifestSignature(const std::string& sums, const fs::path& sig_path,
+                                    bool is_quiet, std::string& trusted_comment)
+{
+  std::error_code ec;
+  if(!fs::is_regular_file(sig_path, ec)) {
+    if(!is_quiet) {
+      std::cerr << "No signature beside the manifest ("
+                << sig_path.filename().string() << ")." << std::endl
+                << "SHA256SUMS is served from the same place as the assets it describes, so"
+                << std::endl
+                << "without a signature it shows only that the download was not corrupted --"
+                << std::endl
+                << "not that this release came from the Objeck maintainer." << std::endl;
+    }
+    return false;
+  }
+
+  std::ifstream sig_in(sig_path, std::ios::binary);
+  if(!sig_in) {
+    if(!is_quiet) {
+      std::cerr << "Could not read " << sig_path.string() << std::endl;
+    }
+    return false;
+  }
+  const std::string sig_text((std::istreambuf_iterator<char>(sig_in)),
+                             std::istreambuf_iterator<char>());
+
+  // The key this obu trusts. A release build has exactly one, compiled in.
+  std::string trusted_key = OBU_RELEASE_PUBKEY;
+#ifdef OBU_TEST_HOOKS
+  // Test builds only, and gated the same way as every other hook here:
+  // test_update.py generates fake releases whose manifests carry computed
+  // hashes, so no committed signature could ever match them, and it has no
+  // access to the release secret. It signs with a throwaway key and names it
+  // here. The shipped binary is built WITHOUT OBU_TEST_HOOKS, so there is no
+  // variable for it to read -- an override that survived into a release would
+  // be a bypass for the check this function exists to perform.
+  if(const char* key_override = std::getenv("OBU_TRUSTED_PUBKEY")) {
+    trusted_key = key_override;
+  }
+#endif
+
+  std::string reason;
+  if(!minisig::Verify(sums, sig_text, trusted_key, reason, trusted_comment)) {
+    if(!is_quiet) {
+      std::cerr << "SIGNATURE VERIFICATION FAILED: " << reason << std::endl
+                << "Refusing to trust this manifest. The release key is "
+                << OBU_RELEASE_KEY_ID << "; its public half is published in README.md"
+                << std::endl
+                << "and on objeck.org, so it can be checked out of band." << std::endl;
+    }
+    return false;
+  }
+
+  if(!is_quiet) {
+    std::cout << "Signature verified (key " << OBU_RELEASE_KEY_ID << ")" << std::endl;
+    if(!trusted_comment.empty()) {
+      std::cout << "  " << trusted_comment << std::endl;
+    }
+  }
+  return true;
+}
+
 static bool ExpectedHash(const std::string& sums, const std::string& name, std::string& hash)
 {
   size_t pos = 0;
@@ -1401,6 +1727,11 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
     std::cerr << "Refusing an asset with an unexpected name: '" << asset_name << "'." << std::endl;
     return EXIT_CHECK_ERROR;
   }
+  // Optional at the HTTP level, mandatory at the trust level: a release with no
+  // signature asset reaches VerifyManifestSignature and is refused there.
+  std::string sig_url, sig_name;
+  ExtractAssetUrl(json, "SHA256SUMS.minisig", "", sig_url, sig_name);
+
   if(!ExtractAssetUrl(json, "SHA256SUMS", "", sums_url, sums_name)) {
     std::cerr << "Release " << release_tag << " has no SHA256SUMS asset; refusing to update "
                  "without an integrity manifest." << std::endl;
@@ -1418,19 +1749,35 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   // path, only to look up its line in SHA256SUMS.
   const fs::path asset_path = work / ("asset" OBU_ASSET_SUFFIX);
   const fs::path sums_path = work / "SHA256SUMS";
+  const fs::path sig_path = work / "SHA256SUMS.minisig";
   if(!DownloadAsset(asset_url, asset_name, asset_path, is_quiet, error) ||
      !DownloadAsset(sums_url, sums_name, sums_path, is_quiet, error)) {
     std::cerr << error << std::endl;
     return EXIT_CHECK_ERROR;
   }
 
-  // VERIFY BEFORE ANYTHING IS TOUCHED. This gate proves the download was not
-  // corrupted in transit; it does NOT prove the release was published by a
-  // trusted party (SHA256SUMS ships on the same channel as the asset). The
-  // anti-substitution layer -- Authenticode/notarization checks -- is a
-  // separate control tracked in UPDATER_DESIGN.md, not yet enforced here.
+  // The signature is a separate asset. A release without one fails in
+  // VerifyManifestSignature rather than here, so the message can say what is
+  // missing and why it matters instead of reading as a transfer error.
+  if(sig_url.empty() || !DownloadAsset(sig_url, sig_name, sig_path, is_quiet, error)) {
+    std::error_code sig_ec;
+    fs::remove(sig_path, sig_ec);
+  }
+
+  // VERIFY BEFORE ANYTHING IS TOUCHED, and verify the manifest's SIGNATURE
+  // before any line of the manifest itself. The hash check below shows the
+  // download was not corrupted; on its own it does not show the release came
+  // from the maintainer, because SHA256SUMS ships on the same channel as the
+  // asset and whoever can replace one can replace the other. The signature is
+  // the part that cannot be reproduced without the release key (#723).
   std::ifstream sums_in(sums_path, std::ios::binary);
   std::string sums((std::istreambuf_iterator<char>(sums_in)), std::istreambuf_iterator<char>());
+
+  std::string trusted_comment;
+  if(!VerifyManifestSignature(sums, sig_path, is_quiet, trusted_comment)) {
+    return EXIT_CHECK_ERROR;
+  }
+
   std::string expected;
   if(!ExpectedHash(sums, asset_name, expected)) {
     std::cerr << "SHA256SUMS does not list " << asset_name << "; refusing to update." << std::endl;
@@ -1589,6 +1936,16 @@ static int DoVerify(const std::string& archive_arg, const std::string& sums_arg,
     return EXIT_CHECK_ERROR;
   }
   const std::string sums((std::istreambuf_iterator<char>(sums_in)), std::istreambuf_iterator<char>());
+
+  // The same gate as `update`, through the same function, for the same reason: a
+  // user who fetched with curl and runs `obu verify` is asking the question
+  // `update` asks and must not get a weaker answer. The signature is looked for
+  // beside the manifest, which is where minisign writes it and where a release
+  // publishes it.
+  std::string trusted_comment;
+  if(!VerifyManifestSignature(sums, fs::path(sums_arg + ".minisig"), is_quiet, trusted_comment)) {
+    return EXIT_CHECK_ERROR;
+  }
 
   // The manifest lists bare names, so look the archive up by its file name and
   // not by whatever path the caller typed.

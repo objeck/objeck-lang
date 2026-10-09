@@ -1,0 +1,118 @@
+name: Re-sign SHA256SUMS
+
+# Signs a published release's SHA256SUMS again, in place.
+#
+# WHY THIS HAS TO EXIST
+# ---------------------
+# Windows MSI signing happens AFTER publication, on the release machine with the
+# eToken, because a GitHub-hosted runner has no USB port to plug it into. That
+# rewrites the MSI bytes, so tools/cicd/sign_release.cmd re-uploads the signed
+# installers and tools/cicd/update_sha256sums.ps1 regenerates SHA256SUMS over
+# them (v2026.8.3 shipped a manifest describing the pre-signing MSIs, which made
+# every user's `sha256sum -c` fail on the two files that matter most).
+#
+# The signature made during publication describes the manifest as it was BEFORE
+# that regeneration. Since #723 phase 3 obu refuses a manifest whose signature
+# does not verify, so leaving the old signature in place does not degrade to the
+# previous behaviour -- it makes the release uninstallable by `obu update`, for
+# everyone, with "the signature does not match the manifest". The regeneration
+# and the re-signing are one operation; this is its second half.
+#
+# It runs here, and not on the release machine, so the secret key stays in the
+# Actions secret and the maintainer's password manager. The release machine
+# handles the eToken; it never needs the manifest key.
+#
+# Idempotent: run it as often as you like. If the published signature already
+# verifies against the published manifest it says so and changes nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version without the v (e.g. 2026.10.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  resign:
+    name: Re-sign the published manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Refuse without the signing key
+        env:
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+        run: |
+          if [ -z "$MINISIGN_SECRET_KEY" ]; then
+            echo "::error::MINISIGN_SECRET_KEY is not configured - cannot re-sign the manifest"
+            echo ""
+            echo "The release's SHA256SUMS was regenerated after signing, so the published"
+            echo "signature no longer matches it, and obu refuses a manifest it cannot verify."
+            echo "Until this is signed again, 'obu update' will refuse this release."
+            echo "docs/release_integrity.md says where the secret belongs."
+            exit 1
+          fi
+
+      - name: Re-sign and verify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          TAG="v$VERSION"
+          WORK="$RUNNER_TEMP/resign"
+          mkdir -p "$WORK"
+
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq minisign
+
+          PUB="$GITHUB_WORKSPACE/core/release/objeck-release.pub"
+
+          # The manifest as PUBLISHED. Signing a local copy would prove nothing
+          # about what users download.
+          gh release download "$TAG" --pattern "SHA256SUMS" --dir "$WORK" --clobber
+          test -f "$WORK/SHA256SUMS" || { echo "::error::no SHA256SUMS asset on $TAG"; exit 1; }
+
+          # Is it already correct? A signature is cheap to check and this makes
+          # the workflow safe to re-run, including by a script that cannot tell
+          # whether the manifest changed.
+          if gh release download "$TAG" --pattern "SHA256SUMS.minisig" --dir "$WORK" --clobber 2>/dev/null \
+             && minisign -V -p "$PUB" -x "$WORK/SHA256SUMS.minisig" -m "$WORK/SHA256SUMS" >/dev/null 2>&1; then
+            echo "✅ The published signature already verifies against the published manifest - nothing to do."
+            exit 0
+          fi
+          echo "ℹ️  The published manifest has no valid signature; signing it."
+
+          # The secret reaches a file and nothing else: no command line, no log.
+          # umask before the write, not chmod after, so it is never briefly
+          # readable; removed on the way out however this step ends.
+          umask 077
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$RUNNER_TEMP/minisign.key"
+          trap 'shred -u "$RUNNER_TEMP/minisign.key" 2>/dev/null || rm -f "$RUNNER_TEMP/minisign.key"' EXIT
+
+          # -l matches release-publish.yml: the legacy form signs the raw
+          # manifest. obu verifies only that form, deliberately -- the default
+          # prehashed mode would have put BLAKE2b-512 in the trust path too.
+          cd "$WORK"
+          minisign -S -l -s "$RUNNER_TEMP/minisign.key" -m SHA256SUMS -x SHA256SUMS.minisig
+
+          # Against the COMMITTED public key, before upload. A secret that does
+          # not match the key obu ships with produces a signature that verifies
+          # for nobody, and the first to find out would be a user.
+          minisign -V -p "$PUB" -x SHA256SUMS.minisig -m SHA256SUMS
+
+          gh release upload "$TAG" SHA256SUMS.minisig --clobber
+
+          # Prove it against the release, not against what we just wrote: a
+          # --clobber that silently kept the old asset has to be caught here.
+          rm -rf "$WORK/after" && mkdir -p "$WORK/after"
+          gh release download "$TAG" --pattern "SHA256SUMS" --dir "$WORK/after" --clobber
+          gh release download "$TAG" --pattern "SHA256SUMS.minisig" --dir "$WORK/after" --clobber
+          minisign -V -p "$PUB" -x "$WORK/after/SHA256SUMS.minisig" -m "$WORK/after/SHA256SUMS"
+
+          echo "✅ $TAG: the published SHA256SUMS.minisig verifies against the published SHA256SUMS"

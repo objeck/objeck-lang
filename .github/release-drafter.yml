@@ -97,9 +97,11 @@ template: |
   | **Linux** | x64 | — | `objeck-linux-x64_$RESOLVED_VERSION.tgz` |
   | **Linux** | ARM64 | — | `objeck-linux-arm64_$RESOLVED_VERSION.tgz` |
 
-  Also published: `objeck-lsp_$RESOLVED_VERSION.zip` (language server) and `SHA256SUMS`.
+  Also published: `objeck-lsp_$RESOLVED_VERSION.zip` (language server), `SHA256SUMS` and its Ed25519 signature `SHA256SUMS.minisig`.
 
-  Verify a download against `SHA256SUMS` before installing.
+  Verify a download against `SHA256SUMS` before installing. `obu verify <archive> SHA256SUMS`
+  checks the signature first and refuses a manifest it cannot verify, so download
+  `SHA256SUMS.minisig` beside it; the public key is in `core/release/objeck-release.pub`.
 
   ## 🔗 Links
 
