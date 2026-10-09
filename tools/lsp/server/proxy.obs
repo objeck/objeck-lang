@@ -521,6 +521,22 @@ bundle LSP {
 				# are for: the editor lists them and the user picks. Their titles name
 				# the bundle, or several fixes would read identically.
 				candidates_json := @klass_bundles_json->Get(class_name);
+
+				# An index generated before #1052 holds a single object here rather
+				# than an array. Iterating that produces nothing, which would be the
+				# same silent failure this change exists to remove -- and the index
+				# is a separate file from the server, so a stale one is a real
+				# pairing. Wrap it instead: the old single-candidate behaviour, which
+				# is wrong for a colliding name but not silent.
+				if(candidates_json <> Nil &
+						candidates_json->GetType() <> JsonElement->JsonType->ARRAY) {
+					"### objk_apis.json predates #1052: 'class-bundle-names' holds one entry per name rather than a list, so only one bundle can be offered for '{$class_name}'. Regenerate it with tools/lsp/server/doc_json/gen_json.sh ###"->ErrorLine();
+
+					wrapped_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+					wrapped_json->Add(candidates_json);
+					candidates_json := wrapped_json;
+				};
+
 				if(candidates_json <> Nil) {
 					each(candidate_index : candidates_json->Size()) {
 						class_bundle_json := candidates_json->Get(candidate_index);
