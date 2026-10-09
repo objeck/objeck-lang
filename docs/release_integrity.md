@@ -27,6 +27,55 @@ There is also no load-time integrity: `obr` executes any `.obe`, links any `.obl
 
 Ed25519 verification is ~600 lines of dependency-free C (the reference or TweetNaCl implementation); `obu` already carries its own SHA-256 for the same reason (no OpenSSL at update time), so this keeps the updater self-contained.
 
+**Correction, 2026-10-09, from the format minisign actually produced.** The
+paragraph above under-counts, because it assumed the legacy signing mode. The
+signature this project's key produces carries algorithm **`ED`**, not `Ed`:
+
+```
+untrusted comment: signature from minisign secret key
+RUS5pn58scY3gpNFQt8L9neY1mGAAGb1G1aJTgsgr1tWvGkkussfxXeBguwgYz246qO1CrDcSJFPbWJ1+NIU2VXlwFkgVDANZQo=
+trusted comment: timestamp:1791564238	file:SHA256SUMS	hashed
+gk3z1ebiIK2ch68JeOlRZ/EW1mwCpVJjDwNv49CQPhy+AYClWg85cBSil0Xu9CDCHKuOpPGtCEPBFVEulFw6BA==
+```
+
+| field | bytes | layout |
+|---|---|---|
+| public key | 42 | `Ed` + 8-byte key id + 32-byte key |
+| signature (line 2) | 74 | `ED` + 8-byte key id + 64-byte signature |
+| global signature (line 4) | 64 | Ed25519 over (signature ‖ trusted comment) |
+
+`ED` is the **prehashed** mode, minisign's default since 0.6 and what 0.12
+produces: the signature is over **BLAKE2b-512 of the message**, not the message.
+The trusted comment's trailing `hashed` is minisign's own marker for it.
+
+So `obu` needs **two** primitives, not one:
+
+- Ed25519 verification, as estimated
+- **BLAKE2b-512**, roughly 150 lines — simpler than Ed25519 and with published
+  test vectors, but not free and not mentioned above
+
+And verifying line 4 as well as line 2 is not optional: without it the trusted
+comment, which names the file the signature is for, is unauthenticated — a
+signature for one file could be presented with a comment claiming another.
+
+**Where the primitives come from is a supply-chain decision, not an
+implementation detail.** A verification bug that always *returns true* is silent
+and total: the feature would look present while protecting nothing, which is
+precisely the failure this document exists to prevent. So the Ed25519 code should
+be a known, unmodified public-domain implementation (TweetNaCl's
+`crypto_sign_open` is the usual choice — public domain, single file, widely
+reviewed) rather than written here.
+
+One thing in our favour: this is *verification with a public key*. There is no
+secret to leak, so constant-time behaviour is not a requirement, which is what
+usually makes vendoring crypto delicate.
+
+Whatever the source, it must be held to behaviour rather than inspection, with
+minisign itself as the oracle: a valid signature accepted, and a tampered
+message, a tampered signature, a wrong key, a truncated signature and a missing
+line 4 each rejected. A test that only checks the accept case cannot tell a
+working verifier from one that always returns true.
+
 **Key rotation.** A new key is introduced by shipping an `obu` that trusts both the old and new keys for one release, then dropping the old one. Rotation, like the eToken certificate's renewal, is a documented manual step with a date in [`SIGNING.md`](../SIGNING.md).
 
 ## Phases
