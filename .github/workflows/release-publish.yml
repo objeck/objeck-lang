@@ -311,6 +311,13 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
 
+    # Exposed at job level so the `if: env.MINISIGN_SECRET_KEY == ''` conditions
+    # below can read it. A secret is not available to `if:` through the secrets
+    # context, which is why every other step that distinguishes "absent" from
+    # "declared manual" does it this way.
+    env:
+      MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -335,6 +342,68 @@ jobs:
           sha256sum * > SHA256SUMS
           echo "✅ SHA256SUMS generated:"
           cat SHA256SUMS
+
+      # Sign the manifest.
+      #
+      # SHA256SUMS is served from the same place as the assets it describes, so
+      # anyone who can replace an asset can replace the manifest to match -- and
+      # obu then verifies the substituted archive against the substituted
+      # manifest and reports success. The Linux and macOS archives have no
+      # platform signature at all, so for those the manifest is the only
+      # integrity claim, and it was unsigned (docs/release_integrity.md).
+      #
+      # This is phase 2 of that design: the manifest is signed from here on while
+      # obu does not yet REQUIRE the signature. The ordering is deliberate -- an
+      # obu that demanded one before any release carried it would reject every
+      # release it could see.
+      - name: Sign SHA256SUMS
+        if: env.MINISIGN_SECRET_KEY != ''
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq minisign
+
+          # The secret reaches a file and nothing else: no command line, no log.
+          # umask before the write, not chmod after, so it is never briefly
+          # readable; removed on the way out however this step ends.
+          umask 077
+          printf '%s\n' "$MINISIGN_SECRET_KEY" > "$RUNNER_TEMP/minisign.key"
+          trap 'shred -u "$RUNNER_TEMP/minisign.key" 2>/dev/null || rm -f "$RUNNER_TEMP/minisign.key"' EXIT
+
+          cd release-final
+          minisign -S -s "$RUNNER_TEMP/minisign.key" -m SHA256SUMS -x SHA256SUMS.minisig
+
+          # Verify what was just produced against the COMMITTED public key, here,
+          # before it is uploaded. A secret that does not match the key obu ships
+          # with produces a signature that verifies for nobody, and the first to
+          # find out would otherwise be a user running `obu update` -- which is
+          # the failure mode this whole design exists to remove, reintroduced one
+          # layer up.
+          minisign -V -p "$GITHUB_WORKSPACE/core/release/objeck-release.pub" \
+                   -x SHA256SUMS.minisig -m SHA256SUMS
+
+          echo "✅ SHA256SUMS signed, and the signature verifies against the committed public key"
+
+      # Declaring a step manual is the same rule every other publish step follows
+      # since #692: an absent secret must not report success. v2026.8.4 published
+      # with four steps reporting completed/success having done nothing.
+      - name: Manifest signing is handled manually
+        if: env.MINISIGN_SECRET_KEY == '' && contains(vars.RELEASE_MANUAL_STEPS, 'sig')
+        run: |
+          echo "ℹ️  Manifest signing is declared manual via RELEASE_MANUAL_STEPS - skipping."
+          echo "   Sign it locally and upload the signature beside SHA256SUMS:"
+          echo "     minisign -S -s <secret key> -m SHA256SUMS"
+          echo "     gh release upload v${{ needs.prepare.outputs.version }} SHA256SUMS.minisig"
+
+      - name: Missing manifest signing key
+        if: env.MINISIGN_SECRET_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'sig')
+        run: |
+          echo "::error::MINISIGN_SECRET_KEY is not configured - SHA256SUMS would ship unsigned"
+          echo ""
+          echo "Either add the secret MINISIGN_SECRET_KEY (docs/release_integrity.md"
+          echo "says how the keypair is made and where the secret belongs),"
+          echo "or declare it manual by ADDING 'sig' to the existing list:"
+          echo "  gh variable set RELEASE_MANUAL_STEPS --body \"\$(gh variable get RELEASE_MANUAL_STEPS),sig\""
+          exit 1
 
       - name: Generate release notes
         id: release-notes

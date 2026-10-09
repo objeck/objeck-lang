@@ -66,6 +66,7 @@ step_for() {
     PLAYGROUND_*)   echo "playground deploy|playground" ;;
     OBJECK_ORG_*)   echo "objeck.org API docs deploy|docs" ;;
     VSCE_PAT)       echo "VS Code Marketplace publish|vscode" ;;
+    MINISIGN_*)     echo "SHA256SUMS signing|sig" ;;
     APPLE_*|CODESIGN_*|KEYCHAIN_*) echo "macOS signing/notarization|" ;;
     # Phone pushes: the notify-failure action skips its ntfy step when this is
     # unset; the tracking issue still opens.
