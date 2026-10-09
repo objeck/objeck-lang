@@ -195,6 +195,13 @@ void JitAmd64::Epilog()
   long jmp_div_pos = code_index;
   AddImm(0);
 
+  // a bridge call reported an error (#925). No status is loaded: the call
+  // already returned it in RAX, which is what the stubs above have to set.
+  bridge_status_handler_index = code_index;
+  AddMachineCode(0xe9);
+  long jmp_bridge_pos = code_index;
+  AddImm(0);
+
   // set nominal
   long nominal_index = code_index;
   move_imm_reg(0, RAX);
@@ -217,6 +224,9 @@ void JitAmd64::Epilog()
 
   jmp_offset = teardown_index - (jmp_div_pos + 4);
   memcpy(&code[(size_t)jmp_div_pos], &jmp_offset, 4);
+
+  jmp_offset = teardown_index - (jmp_bridge_pos + 4);
+  memcpy(&code[(size_t)jmp_bridge_pos], &jmp_offset, 4);
 
   // the outgoing area (see Prolog); this is teardown_index, so the error
   // handlers release it too
@@ -2962,6 +2972,11 @@ void JitAmd64::EmitBridgeCall(long instr_id, StackInstr* instr, long instr_index
   move_imm_reg(direct_callee ? (size_t)JitCompiler::JitDirectCall : (size_t)JitCompiler::JitStackCallback, R10);
   call_reg(R10);
   add_imm_reg(80, RSP);
+
+  // After the stack is back: the teardown expects the frame in the shape a
+  // guard stub leaves it, and those are reached from arbitrary points in the
+  // body, so this is the existing contract (#925).
+  CheckBridgeStatus();
 #else
   // save other registers
   push_reg(R15);
@@ -2996,6 +3011,9 @@ void JitAmd64::EmitBridgeCall(long instr_id, StackInstr* instr, long instr_index
   pop_reg(R13);
   pop_reg(R14);
   pop_reg(R15);
+
+  // After the restores, for the reason given in the _WIN64 branch (#925).
+  CheckBridgeStatus();
 #endif
 }
 
@@ -8665,6 +8683,12 @@ bool JitAmd64::Compile(StackMethod* cm)
     for(size_t i = 0; i < div_by_zero_offsets.size(); ++i) {
       const long index = div_by_zero_offsets[i];
       long offset = div_by_zero_handler_index - (index + 4);
+      memcpy(&code[(size_t)index], &offset, 4);
+    }
+
+    for(size_t i = 0; i < bridge_status_offsets.size(); ++i) {
+      const long index = bridge_status_offsets[i];
+      long offset = bridge_status_handler_index - (index + 4);
       memcpy(&code[(size_t)index], &offset, 4);
     }
 #ifdef _DEBUG_JIT

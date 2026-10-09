@@ -361,6 +361,9 @@ namespace Runtime {
     std::vector<long> bounds_less_offsets;    // code -2
     std::vector<long> bounds_greater_offsets; // code -3
     std::vector<long> div_by_zero_offsets;    // code -4
+    // A bridge call that reported an error (#925). Not tied to one code: the
+    // status is whatever StackCallbackBody returned, already in RAX.
+    std::vector<long> bridge_status_offsets;
     long local_space, org_local_space;
     StackMethod* method;
     long instr_count;
@@ -371,6 +374,7 @@ namespace Runtime {
     long bounds_less_handler_index;
     long bounds_greater_handler_index;
     long div_by_zero_handler_index;
+    long bridge_status_handler_index;
     double* float_consts;
     long floats_index;
     long instr_index;
@@ -824,6 +828,28 @@ namespace Runtime {
       nil_deref_offsets.push_back(code_index);
       AddImm(0);
       // jump to exit
+    }
+
+    /**
+     * A bridge call's reported status (#925).
+     *
+     * The call returns 0, or a negative status in the guard stubs' space. A
+     * negative one leaves the method the same way a guard stub does -- through
+     * the epilogue, with the status in RAX -- so the interpreter's bridge can
+     * recover it into an active Try().
+     *
+     * `jl` and not `jne`: 0 is success and every status is negative, while a
+     * bridge call that yields a value leaves a positive one in RAX.
+     */
+    inline void CheckBridgeStatus() {
+      cmp_imm_reg(0, RAX);
+#ifdef _DEBUG_JIT
+      std::wcout << L"  " << (++instr_count) << L": [jl <bridge-status>]" << std::endl;
+#endif
+      AddMachineCode(0x0f);
+      AddMachineCode(0x8c);                  // jl rel32
+      bridge_status_offsets.push_back(code_index);
+      AddImm(0);
     }
 
     /**

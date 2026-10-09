@@ -2345,6 +2345,10 @@ void JitArm64::EmitBridgeCall(long instr_id, StackInstr* instr, long instr_index
 
   move_imm_reg(direct_callee ? (size_t)JitArm64::JitDirectCall : (size_t)JitArm64::JitStackCallback, X10);
   call_reg(X10);
+
+  // Immediately after the call, while the status is still in X0 and before
+  // anything reads the call's value out of it (#925).
+  CheckBridgeStatus();
 }
 
 /**
@@ -6443,6 +6447,19 @@ bool JitArm64::Compile(StackMethod* cm)
       const long index = div_by_zero_offsets[i];
       const long offset = epilog_index - index + 7;
       code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5); mask so a backward (negative) branch doesn't corrupt the opcode/cond bits
+    }
+
+    // A bridge call's status (#925) branches to the TEARDOWN, not to a handler
+    // of its own: X0 already holds the status, which is all a handler would
+    // set. The teardown is epilog_index + 10 -- the four handlers above are at
+    // +1, +3, +5, +7, each a one-instruction move followed by a one-instruction
+    // branch, then `mov x0, 0` at +9. Adding a handler instead would have
+    // shifted all ten of those hand-computed numbers, on the backend that
+    // cannot be exercised locally.
+    for(size_t i = 0; i < bridge_status_offsets.size(); ++i) {
+      const long index = bridge_status_offsets[i];
+      const long offset = epilog_index - index + 10;
+      code[index] |= (offset & 0x7FFFF) << 5;  // imm19 (bits 23:5), as above
     }
     
     // update consts pools

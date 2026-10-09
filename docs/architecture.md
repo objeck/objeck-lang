@@ -1278,9 +1278,16 @@ flowchart TB
   `>>> Attempting to dereference a 'Nil' memory instance <<<`, `>>> Index out of bounds: <index>,<size> <<<`
   or `>>> Divide by zero <<<`, then lists the methods on the call stack (`StackErrorUnwind`) and
   exits with status 1. An invalid cast (`>>> Invalid object cast ... <<<`) and a full call
-  stack are recovered like the rest when they happen in interpreted code; inside a
-  JIT-compiled method both remain fatal, because the callback that raises a failing cast
-  cannot reach the handler stack and compiled recursion overruns the native stack first.
+  stack are recovered like the rest when they happen in interpreted code. An invalid cast is
+  now recovered inside a JIT-compiled method too (#925): the handler stack is per-thread, so
+  the bridge callback that raises the cast can see it, and the callback reports a status (-5)
+  that compiled code tests and carries out through its epilogue, where the interpreter already
+  recovers a guard stub's status. The diagnostic is printed only when no handler is active, so
+  a recovered cast is as silent as it is in interpreted code. **Compiled recursion is still
+  fatal** and is not reachable this way: compiled frames consume the real C stack, so the
+  process dies in the OS with no frame left to return a status from -- recovering it needs a
+  stack-limit test emitted into every compiled prologue, which carries a per-call cost
+  (`docs/TRY_IN_JIT_DESIGN.md`).
 - **`Try()` and `?->`.** `a?->b()` is `a->Try()->b()`. The compiler brackets the rest of the
   chain with `TRY_START` and `TRY_END` (`EmitTryIntrinsic`); `TRY_START` pushes a handler, with the
   operand-stack position and call-stack depth to return to, on the interpreter's handler stack

@@ -232,6 +232,22 @@ namespace Runtime {
     }
 
   public:
+    //
+    // Whether a Try() is active on THIS thread.
+    //
+    // Public and static for the JIT bridge. StackCallbackBody reports an error
+    // by returning a status, and it should print the diagnostic only when
+    // nothing will catch it: the interpreter recovers SILENTLY, so printing
+    // unconditionally would make compiled code noisier than interpreted code
+    // for the very same recovered error -- and #925 is about the two agreeing.
+    //
+    // Reachable at all only because the handler stack is per-thread: a JIT
+    // callback is static and holds no interpreter (see TryHandlerState above).
+    //
+    static bool ThreadHasTryHandler() {
+      return TryState().pos > 0;
+    }
+
     // JIT callback support: frame allocation/deallocation
     static StackFrame* GetStackFrame(StackMethod* method, size_t* instance);
     static void ReleaseStackFrame(StackFrame* frame);

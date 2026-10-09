@@ -193,9 +193,28 @@ protected:
 
   // The bridge's opcode switch, unguarded. JitStackCallback is the entry
   // compiled code calls; it runs this under the catch below.
-  static void StackCallbackBody(const long instr_id, StackInstr* instr, const long cls_id,
+  // int64_t and not long: on Win64 `long` is 32 bits, so a negative status
+  // reached the return register zero-extended -- -5 arriving as
+  // 0x00000000FFFFFFFB, which the 64-bit compare the emitted test uses reads as
+  // POSITIVE. The branch then never fired, the method carried on past a
+  // reported error with nothing pushed for the value it was meant to produce,
+  // and died in the next instruction. Fixing the width is better than narrowing
+  // the compare: the same emitted code serves Win64 (long = 32) and the POSIX
+  // LP64 ABI (long = 64).
+  //
+  // Returns 0, or a negative status in the same space the JIT guard stubs use
+  // (-1 Nil dereference, -2/-3 index out of bounds, -4 divide by zero, -5
+  // invalid object cast). Returning rather than exiting is what lets a Try()
+  // recover from an error raised inside compiled code: the interpreter's bridge
+  // already recovers from a status, since #900. See docs/TRY_IN_JIT_DESIGN.md
+  // (#925), gap 2.
+  static int64_t StackCallbackBody(const long instr_id, StackInstr* instr, const long cls_id,
                                 const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                 StackFrame** call_stack, long* call_stack_pos, const long ip);
+
+  // An invalid object cast, reported by StackCallbackBody. The guard stubs own
+  // -1 to -4; this is the first status raised by the bridge itself.
+  static const int64_t JIT_STATUS_INVALID_CAST = -5;
 
   // A C++ exception the bridge caught on its way out to compiled code. Neither
   // backend registers unwind information for the code it emits, so an
@@ -218,7 +237,9 @@ public:
 
   ~JitCompiler();
 
-  static void JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
+  // Returns the status StackCallbackBody reported, which compiled code tests
+  // and carries out through its epilogue (#925). 0 when nothing went wrong.
+  static int64_t JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
                                const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                StackFrame** call_stack, long* call_stack_pos, const long ip);
 
@@ -226,7 +247,10 @@ public:
   // time (anything but a `virtual` declaration) passes the StackMethod* in
   // place of the opcode, so a call is neither switched on nor looked up.
   // Same register layout as JitStackCallback; instr is kept for symmetry.
-  static void JitDirectCall(StackMethod* callee, StackInstr* instr, const long cls_id,
+  // Always 0. It shares a call site with JitStackCallback, whose status
+  // compiled code tests, so this returns one too rather than leaving whatever
+  // was in the return register for that test to read (#925).
+  static int64_t JitDirectCall(StackMethod* callee, StackInstr* instr, const long cls_id,
                             const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                             StackFrame** call_stack, long* call_stack_pos, const long ip);
 

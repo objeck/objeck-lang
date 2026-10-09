@@ -1,0 +1,84 @@
+#~
+Try() -- and '?->', which is Try() on the chain -- recovers from an invalid
+object cast, whether or not the failing method happened to be JIT-compiled.
+
+Both halves of #900's fix used to stop at the interpreter's edge, so the SAME
+program could recover or abort depending on how many times the failing method
+had been called. That is what #925 closed for the cast: the handler stack is
+per-thread, so the bridge callback that raises a failing cast can see it; the
+callback reports a status instead of exiting; and both backends test that status
+and leave through the epilogue, where the interpreter already recovers a guard
+stub's status.
+
+THE WARM-UP IS PART OF THE TEST. AsDog is called repeatedly with a cast that
+SUCCEEDS so the JIT compiles it, and only then is it given a Cat. Without that,
+the method is called once, stays interpreted, and this test would cover the
+compiled path only under OBJECK_JIT_THRESHOLD=1 -- which is to say it would look
+like coverage it did not have. The method holding the '?->' stays interpreted
+either way: TRY_START is in neither backend's whitelist, so the handler always
+lives in an interpreted frame, which is the shape the recovery relies on.
+
+The recursion half of #900 lives in try_recovers_depth.obs, which still opts out
+of the JIT pass -- compiled frames consume the real C stack, so that one cannot
+be reached by this mechanism at all.
+
+Unguarded, a failing cast still prints its message and exits 1; the diagnostic
+is suppressed only when a handler is active, so a recovered cast is as silent
+here as in interpreted code.
+~#
+
+class Animal { New() {} }
+class Dog from Animal { New() { Parent(); } }
+class Cat from Animal { New() { Parent(); } }
+
+class Holder {
+	@animal : Animal;
+
+	New(animal : Animal) {
+		@animal := animal;
+	}
+
+	# fails when the animal is a Cat
+	method : public : AsDog() ~ Dog {
+		return @animal->As(Dog);
+	}
+}
+
+class TryRecoversCast {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# Warm AsDog past the JIT threshold with casts that succeed, so the
+		# failing call below runs in COMPILED code in every pass.
+		dog_holder := Holder->New(Dog->New());
+		warm := true;
+		each(i : 500) {
+			if(dog_holder?->AsDog() = Nil) {
+				warm := false;
+			};
+		};
+		ok := Report("a valid cast returns its object while warming", warm) & ok;
+
+		cat_holder := Holder->New(Cat->New());
+		bad_cast := cat_holder?->AsDog();
+		ok := Report("invalid cast in a guarded chain yields Nil", bad_cast = Nil) & ok;
+
+		# the program carries on, and the recovered frame did not break the next call
+		good := dog_holder?->AsDog();
+		ok := Report("a valid cast after recovery returns its object", good <> Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
