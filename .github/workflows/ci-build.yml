@@ -1019,8 +1019,18 @@ jobs:
         # builds in place under core/utils/updater, MSBuild writes under
         # vs/<plat>/Release. Checked in order, and an empty result is an ERROR,
         # not a skip -- a guard that quietly finds no binary is no guard.
+        # The suffix is explicit because `test -f` is not trustworthy here:
+        # MSYS's stat() falls back to <name>.exe, so [ -f .../bin/obu ] is TRUE
+        # on Windows when only obu.exe exists -- and the extensionless path then
+        # reaches Python, which opens files natively and cannot find it.
+        SFX=
+        if [ "${{ runner.os }}" = "Windows" ]; then SFX=.exe; fi
         OBU_BIN=
-        for cand in core/release/deploy-${{ matrix.arch }}/bin/obu                     core/release/deploy/bin/obu                     core/utils/updater/obu                     core/release/deploy-${{ matrix.arch }}/bin/obu.exe                     core/release/deploy/bin/obu.exe                     core/utils/updater/vs/x64/Release/obu.exe                     core/utils/updater/vs/ARM64/Release/obu.exe; do
+        for cand in core/release/deploy-${{ matrix.arch }}/bin/obu$SFX \
+                    core/release/deploy/bin/obu$SFX \
+                    core/utils/updater/obu$SFX \
+                    core/utils/updater/vs/x64/Release/obu.exe \
+                    core/utils/updater/vs/ARM64/Release/obu.exe; do
           if [ -f "$cand" ]; then OBU_BIN="$cand"; break; fi
         done
         if [ -z "$OBU_BIN" ]; then
