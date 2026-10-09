@@ -87,12 +87,10 @@ built the same way doubles that.
    knowing its names and shapes. The flat marshalling — ranks, concatenated
    dimensions, concatenated elements — stays inside `onnx.obs`;
    `Session->Run` takes and returns `Vector<Tensor>`.
-2. **A backend-neutral tensor.** There are now **two** near-identical ones:
-   `API.Onnx.Tensor` (shipped with P1) and `API.Inference.Tensor` (written, not
-   registered). That duplication is deliberate and temporary — P1 could not wait
-   on a new shared library and its five registration points — but it is exactly
-   the drift this document warns about, so **P2 must re-home one, not add a
-   third.**
+2. ~~**A backend-neutral tensor.**~~ **Done in P2.** There were two
+   near-identical ones; `API.Models.Tensor` is the one. Merging them was not a
+   compromise between the two: see P2 below for the limit that moved off the
+   constructor and onto the conversion that actually needs it.
 3. **An interface both backends implement**, so calling code does not choose a
    backend at every call site.
 
@@ -184,11 +182,37 @@ Caveats, stated rather than left to be discovered:
 - `Run` prints no timing line, unlike the eight per-family functions. A decoder
   calls it once per generated token.
 
-**P2 — `Engine` interface, `OnnxEngine`, `HttpEngine`.** Move `Tensor`,
-`EndPoint` and `ModelMetadata` into the shared bundle; wrap the existing HTTP
-`Client` as `HttpEngine`. No native work — `OnnxEngine` is now a thin wrapper
-over `API.Onnx.Session`, which is the whole reason P1 came first. **This phase
-owns the Tensor duplication P1 left behind**; see "What is missing" 2.
+**P2 — `Engine` interface, `OnnxEngine`, `HttpEngine`. DONE, 2026-10-09.**
+`API.Models` (`models.obl`) holds `Tensor`, `TensorSpec`, `EndPoint` and the
+`Engine` interface; `API.Onnx.OnnxEngine` and `API.Inference.HttpEngine`
+implement it. No native work, as expected.
+
+The bundle is **`API.Models`, not `API.Engine`** — that would have produced
+`API.Engine.Engine`, which reads badly in every doc and error message.
+
+`ModelMetadata` stayed in `API.Inference` and `ParseResponse` became
+`API.Inference.Wire`: finding an error inside a JSON body is HTTP's business, and
+a backend-neutral bundle should not have to know what JSON is. `ModelInfo` and
+`RunResult` stayed in `API.Onnx` because the native layer creates them by name.
+
+**The Tensor duplication is gone, and merging improved it.** `API.Onnx.Tensor`
+converted `Int[]` to `Float[]` *at construction* and refused past 2^53 there,
+which imposed the native crossing's limit on every backend — including an HTTP
+server that receives integers as JSON integers with no range limit at all.
+`API.Models.Tensor` keeps integers as integers; `AsFloats()` converts, and the
+refusal lives there.
+
+**It is a breaking change, made before the tag on purpose.** Library dependencies
+are not transitive in Objeck (`-lib onnx` alone fails with "Add it with
+`-lib json`"), so every ONNX program gains `-lib models` and `use API.Models`,
+and `Session->Run` returns `Vector<API.Models.Tensor>`. v2026.10.0 was unreleased,
+so nothing was written against P1's shape yet; after the tag this would have
+broken every such program.
+
+Verified: `resnet34` still agrees exactly with `ResNetSession` (gap `0.000000`)
+and Phi-3 still answers "Paris", so the refactor changed no numbers; and one
+`Vector<API.Models.Engine>` holds an `OnnxEngine` and an `HttpEngine` with the
+same loop driving both.
 
 **P3 — TF Lite. DROPPED, 2026-10-07.** See open question 1: it has no published
 Windows ARM64 build and upstream's own Windows ARM64 support is an unmerged,

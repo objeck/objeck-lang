@@ -20,7 +20,7 @@ Objeck, and requires the class, the label and the confidence to match what
 `ResNetSession->Inference` reports for the same bytes.
 
 ```bash
-obc -src ab_resnet.obs -lib onnx,opencv,cipher,json -dest ab_resnet.obe
+obc -src ab_resnet.obs -lib models,onnx,opencv,cipher,json -dest ab_resnet.obe
 obr ab_resnet.obe data/media/bar.jpg data/models/resnet34.onnx data/models/resnet_labels.txt
 ```
 
@@ -45,7 +45,7 @@ dimension is symbolic, so the caller chooses all of them.
 `extract_last_logits` to do this. Here it is from Objeck with none of that.
 
 ```bash
-obc -src ab_phi3.obs -lib onnx,opencv,cipher,json -dest ab_phi3.obe
+obc -src ab_phi3.obs -lib models,onnx,opencv,cipher,json -dest ab_phi3.obe
 obr ab_phi3.obe <deploy>/examples/data/models/phi3 "The capital of France is"
 ```
 

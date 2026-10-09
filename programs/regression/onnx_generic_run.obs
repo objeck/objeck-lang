@@ -2,7 +2,7 @@
 # The generic ONNX run entry point: its refusals, and the tensor bookkeeping
 # around it.
 #
-# EXTRA_LIBS: onnx,opencv,cipher,json
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
 #
 # What this is for. API.Onnx had eleven native entry points, EIGHT of them
 # per-model-family inference functions over 3,100 lines of per-family C++. With
@@ -32,6 +32,7 @@
 ~#
 
 use API.Onnx;
+use API.Models;
 use Collection;
 use System.IO.Filesystem;
 
@@ -127,16 +128,25 @@ class OnnxGenericRun {
 	}
 
 	#~
-	Integer tensors cross as Float, which is exact up to 2^53 and covers every
-	token id, class index and attention mask there is. Past that the conversion
-	is REFUSED rather than silently rounded: once a value has been rounded,
+	An integer tensor keeps its integers, and the Float conversion happens only
+	where a backend demands it.
+	
+	This moved in P2. API.Onnx.Tensor used to convert Int[] to Float[] AT
+	CONSTRUCTION and refuse anything past 2^53 there -- which imposed the native
+	crossing's limit on every backend, including an HTTP server that receives
+	integers as JSON integers with no range limit at all. API.Models.Tensor
+	stores them as integers; AsFloats converts, and that is where the limit now
+	lives.
+	
+	Still REFUSED rather than rounded, because once a value has been rounded
 	nothing downstream can tell that it was.
 	~#
 	method : Integers() ~ Nil {
 		ids := [101, 2003, 1037, 2944];
 		tokens := Tensor->New("input_ids", [1, 4], ids);
-		Report("an integer tensor converts", tokens->IsConsistent());
+		Report("an integer tensor is consistent", tokens->IsConsistent());
 		Report("and is labelled INT64", tokens->GetDatatype()->Equals("INT64"));
+		Report("and holds integers, not a float conversion of them", <>tokens->IsFloat());
 
 		back := tokens->GetInts();
 		same := back <> Nil & back->Size() = 4;
@@ -147,19 +157,23 @@ class OnnxGenericRun {
 				};
 			};
 		};
-		Report("and round-trips through Float exactly", same);
+		Report("and round-trips exactly", same);
 
-		# 2^53 is the last integer a Float holds exactly; 2^53 + 1 is not.
+		# 2^53 is the last integer a Float holds exactly; 2^53 + 1 is not. The
+		# tensor is HELD either way -- a server would take this value happily --
+		# and only the conversion refuses.
 		too_big := Int->New[1];
 		too_big[0] := 9007199254740993;
-		refused := Tensor->New("input_ids", [1, 1], too_big);
-		Report("a value beyond 2^53 is refused, not rounded", refused->GetData() = Nil);
-		Report("and the refused tensor reports itself inconsistent", <>refused->IsConsistent());
+		huge := Tensor->New("input_ids", [1, 1], too_big);
+		Report("a value beyond 2^53 is still held", huge->IsConsistent());
+		Report("and its integers are intact", huge->GetInts()[0] = 9007199254740993);
+		Report("but AsFloats refuses it rather than rounding", huge->AsFloats() = Nil);
 
 		edge := Int->New[1];
 		edge[0] := 9007199254740992;
 		accepted := Tensor->New("input_ids", [1, 1], edge);
-		Report("2^53 itself is accepted", accepted->IsConsistent());
+		Report("2^53 itself is consistent", accepted->IsConsistent());
+		Report("and converts", accepted->AsFloats() <> Nil);
 	}
 
 	#~ A model's signature, including the dimensions it leaves to the caller. ~#
@@ -234,7 +248,9 @@ class OnnxGenericRun {
 		too_big[0] := 9007199254740993;
 		overflowed := Vector->New()<Tensor>;
 		overflowed->AddBack(Tensor->New("input_ids", [1, 1], too_big));
-		Report("a run with a tensor refused at construction is refused", session->Run(overflowed) = Nil);
+		# The tensor itself is valid; the native crossing cannot carry the value,
+		# and the run refuses there rather than rounding on the way through.
+		Report("a run whose tensor cannot convert to Float is refused", session->Run(overflowed) = Nil);
 
 		session->Close();
 	}

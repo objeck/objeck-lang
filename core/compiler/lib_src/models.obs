@@ -1,0 +1,405 @@
+#~~
+# Copyright (c) 2026 Randy Hollines
+# Backend-neutral inference types
+~~#
+
+use Collection;
+
+#~
+The types an inference backend shares, so calling code names a backend once
+rather than at every call site.
+
+`API.Onnx` runs a model in-process; `API.Inference` sends it to a server. They
+answer the same question and neither is right for every deployment: ONNX needs a
+model file and a runtime for the architecture, a server is the only GPU path
+today, and a model that will not convert to ONNX reaches Objeck no other way
+(docs/INFERENCE_ENGINES_PLAN.md).
+
+This bundle exists because both previously defined their own `Tensor`. That was
+deliberate and temporary -- the generic ONNX run shipped before a shared library
+existed -- and two near-identical classes drift. They are one class now.
+
+Compile with -lib models.
+~#
+bundle API.Models {
+	#~
+	A named, shaped block of numbers: one input to or output from a model.
+
+	Elements are flat and row-major; the shape says how to read them. A
+	1x3x224x224 image is 150,528 numbers with shape [1,3,224,224], and nesting
+	it would cost a Vector per row for nothing.
+
+	Floats and integers are held SEPARATELY rather than one being converted to
+	the other. Both are needed in practice -- pixels and embeddings are FP32,
+	token ids for a language model are INT64 -- and a conversion at construction
+	would impose the narrower type's limits on a backend that does not have
+	them. An HTTP server receives an integer tensor as JSON integers with no
+	range limit at all; only the native crossing needs floats, so that is where
+	the conversion and its check live.
+
+	```
+	pixels := Float->New[1 * 3 * 224 * 224];
+	input := Tensor->New("data", [1, 3, 224, 224], pixels);
+
+	ids := [101, 2003, 1037];
+	tokens := Tensor->New("input_ids", [1, 3], ids);
+	```
+	~#
+	class Tensor {
+		@name : String;
+		@datatype : String;
+		@shape : Int[];
+		@floats : Float[];
+		@ints : Int[];
+
+		#~
+		A float tensor, datatype FP32.
+		@param name the input or output name the model uses
+		@param shape dimensions, e.g. [1,3,224,224]
+		@param data elements, flat and row-major
+		~#
+		New(name : String, shape : Int[], data : Float[]) {
+			@name := name;
+			@datatype := "FP32";
+			@shape := shape;
+			@floats := data;
+		}
+
+		#~
+		An integer tensor, datatype INT64 -- token ids, class indexes, a mask.
+
+		Stored as integers, exactly as given. Nothing is lost here; see
+		AsFloats for where a conversion becomes necessary and what it costs.
+		@param name the input or output name the model uses
+		@param shape dimensions
+		@param data elements, flat and row-major
+		~#
+		New(name : String, shape : Int[], data : Int[]) {
+			@name := name;
+			@datatype := "INT64";
+			@shape := shape;
+			@ints := data;
+		}
+
+		#~
+		A tensor whose element type is named explicitly, for the types the two
+		constructors above do not cover -- FP16, INT32, UINT8, BOOL. The data is
+		still carried as floats; the datatype says how to read it.
+		@param name the input or output name the model uses
+		@param datatype an element type, e.g. "FP16", "INT32", "BOOL"
+		@param shape dimensions
+		@param data elements
+		~#
+		New(name : String, datatype : String, shape : Int[], data : Float[]) {
+			@name := name;
+			@datatype := datatype;
+			@shape := shape;
+			@floats := data;
+		}
+
+		#~
+		The name the model knows this tensor by.
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		The element type. On a result this is what the backend produced; on an
+		input it is advisory, because a backend that declares its own input
+		types uses those instead.
+		@return element type name
+		~#
+		method : public : GetDatatype() ~ String {
+			return @datatype;
+		}
+
+		#~
+		Dimensions, outermost first.
+		@return shape
+		~#
+		method : public : GetShape() ~ Int[] {
+			return @shape;
+		}
+
+		#~
+		The float elements, or Nil for an integer tensor. Use AsFloats to get
+		floats whichever way the tensor was built.
+		@return elements, or Nil
+		~#
+		method : public : GetFloats() ~ Float[] {
+			return @floats;
+		}
+
+		#~
+		The integer elements, or Nil for a float tensor.
+		@return elements, or Nil
+		~#
+		method : public : GetInts() ~ Int[] {
+			return @ints;
+		}
+
+		#~
+		Whether this tensor holds floats rather than integers.
+		@return true for a float tensor
+		~#
+		method : public : IsFloat() ~ Bool {
+			return @floats <> Nil;
+		}
+
+		#~
+		The elements as floats, converting an integer tensor if needed.
+
+		REFUSES rather than rounds. A Float holds every integer up to 2^53
+		(9,007,199,254,740,992) exactly, which covers every token id, class
+		index and mask there is, but a value past that cannot survive the
+		conversion and nothing downstream could tell that it had not. Only a
+		backend that must have floats should call this -- the native ONNX
+		crossing does; an HTTP server does not, and sends integers as integers.
+		@return elements as floats, or Nil when a value will not convert
+		~#
+		method : public : AsFloats() ~ Float[] {
+			if(@floats <> Nil) {
+				return @floats;
+			};
+			if(@ints = Nil) {
+				return Nil;
+			};
+
+			exact_limit := 9007199254740992;
+			out := Float->New[@ints->Size()];
+
+			for(i := 0; i < @ints->Size(); i += 1;) {
+				value := @ints[i];
+				if(value > exact_limit | value < -exact_limit) {
+					">>> Tensor '{$@name}' element {$i} is {$value}, which a Float cannot hold exactly. A backend that requires floats is limited to +/-2^53. <<<"->ErrorLine();
+					return Nil;
+				};
+				out[i] := value->ToFloat();
+			};
+
+			return out;
+		}
+
+		#~
+		Elements held.
+		@return element count
+		~#
+		method : public : GetCount() ~ Int {
+			if(@floats <> Nil) {
+				return @floats->Size();
+			}
+			else if(@ints <> Nil) {
+				return @ints->Size();
+			};
+
+			return 0;
+		}
+
+		#~
+		The product of the dimensions, which GetCount must equal.
+		@return expected element count, or 0 for an unset shape
+		~#
+		method : public : GetShapeProduct() ~ Int {
+			if(@shape = Nil | @shape->Size() = 0) {
+				return 0;
+			};
+
+			total := 1;
+			each(i : @shape) {
+				total *= @shape[i];
+			};
+
+			return total;
+		}
+
+		#~
+		Whether the element count matches the shape.
+
+		An EMPTY tensor is consistent: [1,32,0,96] with no elements is how every
+		small language model passes its key/value cache on the first forward
+		pass, and a "count must be positive" check gets that wrong first.
+		@return true when the tensor is internally consistent
+		~#
+		method : public : IsConsistent() ~ Bool {
+			if(@shape = Nil | @shape->Size() = 0) {
+				return false;
+			};
+			if(@floats = Nil & @ints = Nil) {
+				return false;
+			};
+
+			return GetCount() = GetShapeProduct();
+		}
+
+		method : public : ToString() ~ String {
+			dims := "";
+			if(@shape <> Nil) {
+				each(i : @shape) {
+					if(i > 0) {
+						dims += ",";
+					};
+					d := @shape[i];
+					dims += "{$d}";
+				};
+			};
+			n := GetCount();
+
+			return "{$@name}: {$@datatype}[{$dims}], {$n} element(s)";
+		}
+	}
+
+	#~
+	One input or output in a model's signature: its name, element type and shape.
+
+	A dimension a model leaves symbolic -- a batch size, a sequence length -- is
+	reported as -1. That is not a gap in the report: the model genuinely does not
+	fix it, and only the caller can.
+	~#
+	class TensorSpec {
+		@name : String;
+		@datatype : String;
+		@shape : Int[];
+
+		New(name : String, datatype : String, shape : Int[]) {
+			@name := name;
+			@datatype := datatype;
+			@shape := shape;
+		}
+
+		#~
+		The name to use for this tensor in a run.
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		The element type the model declares, e.g. "FP32", "INT64".
+		@return element type name
+		~#
+		method : public : GetDatatype() ~ String {
+			return @datatype;
+		}
+
+		#~
+		Dimensions, with -1 for any the model leaves to the caller.
+		@return shape
+		~#
+		method : public : GetShape() ~ Int[] {
+			return @shape;
+		}
+
+		#~
+		Whether every dimension is fixed by the model.
+		@return true when no dimension is symbolic
+		~#
+		method : public : IsFixed() ~ Bool {
+			if(@shape = Nil) {
+				return false;
+			};
+
+			each(i : @shape) {
+				if(@shape[i] < 0) {
+					return false;
+				};
+			};
+
+			return true;
+		}
+
+		method : public : ToString() ~ String {
+			dims := "";
+			if(@shape <> Nil) {
+				each(i : @shape) {
+					if(i > 0) {
+						dims += ",";
+					};
+					d := @shape[i];
+					dims += "{$d}";
+				};
+			};
+
+			return "{$@name}: {$@datatype}[{$dims}]";
+		}
+	}
+
+	#~
+	Why the last call returned Nil.
+
+	Every backend here reports failure the same way -- Nil, with the reason
+	available afterwards -- because the alternatives are worse: an exception the
+	caller must know to guard, or a message on stderr the caller cannot act on.
+	~#
+	class EndPoint {
+		@last_error : static : String;
+
+		#~
+		Records the reason a call is about to return Nil. Called by a backend.
+		@param last_error the reason
+		~#
+		function : SetLastError(last_error : String) ~ Nil {
+			@last_error := last_error;
+		}
+
+		#~
+		The reason the most recent call returned Nil.
+		@return last error, or Nil when nothing has failed
+		~#
+		function : GetLastError() ~ String {
+			return @last_error;
+		}
+	}
+
+	#~
+	A model that can be run, however it is reached.
+
+	Swapping that for `HttpEngine->New("http://gpu-box:8000", "model")` changes
+	nothing else. That is the point: the backend is a deployment decision, not
+	an API -- and it is why dropping one costs this design nothing, as dropping
+	TF Lite did.
+
+	Preprocessing and decoding belong ABOVE this interface, written once in
+	Objeck. Letterboxing is a property of YOLO, not of a runtime, and the eight
+	per-family native entry points in `API.Onnx` are why a single defect in that
+	pattern had to be fixed eight times, twice in one release.
+
+	Calling code names a backend once:
+
+	```
+	engine := OnnxEngine->New("model.onnx");
+	if(<>engine->IsOpen()) {
+	  EndPoint->GetLastError()->PrintLine();
+	  return;
+	};
+
+	outputs := engine->Run(inputs);
+	engine->Close();
+	```
+	~#
+	interface Engine {
+		#~
+		Runs the model.
+		@param inputs the model's inputs as named tensors
+		@return the outputs, or Nil when the run was refused (see EndPoint)
+		~#
+		method : virtual : public : Run(inputs : Vector<Tensor>) ~ Vector<Tensor>;
+
+		#~
+		Whether the model is loaded and a run can proceed.
+
+		A backend that failed to open is not an error at construction: the
+		constructor returns an object either way. Test this before running, or a
+		refusal is indistinguishable from a model that produced nothing.
+		@return true when a run can proceed
+		~#
+		method : virtual : public : IsOpen() ~ Bool;
+
+		#~
+		Releases the model. Safe to call more than once.
+		~#
+		method : virtual : public : Close() ~ Nil;
+	}
+}

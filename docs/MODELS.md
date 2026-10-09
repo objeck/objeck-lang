@@ -157,6 +157,6 @@ config->Insert("ep", "dml");   # Windows x64; "qnn" or "coreml" on those builds,
 session := Phi3Session->New("data/models/phi3/directml/directml-int4-awq-block-128/model.onnx", config);
 ```
 
-Compile with: `obc -src your.obs -lib net,json,cipher,opencv,onnx`
+Compile with: `obc -src your.obs -lib models,net,json,cipher,opencv,onnx`
 
 See the [ONNX examples](../programs/frameworks/opencv_onnx/), the [detailed model reference](../core/lib/onnx/MODELS.md), and the [AI Developer Guide](https://www.objeck.org/ai_guide.html).

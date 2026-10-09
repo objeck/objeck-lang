@@ -15,7 +15,7 @@
 # zero-element tensors, and reading an FP16 output back as Float.
 ~#
 
-use API.Onnx, Collection;
+use API.Onnx, API.Models, Collection;
 
 class AbPhi3 {
 	@failures : Int;
@@ -150,10 +150,10 @@ class AbPhi3 {
 		"logits: [{$batch},{$positions},{$vocab}]"->PrintLine();
 		Report("one row per prompt token", positions = n);
 		Report("and a vocabulary-sized row", vocab > 30000);
-		Report("the FP16 output came back as finite Floats", Finite(logits->GetData()));
+		Report("the FP16 output came back as finite Floats", Finite(logits->GetFloats()));
 
 		# ---- greedy next token ---------------------------------------------
-		data := logits->GetData();
+		data := logits->GetFloats();
 		base := (positions - 1) * vocab;
 		best := 0;
 		for(v := 1; v < vocab; v += 1;) {
