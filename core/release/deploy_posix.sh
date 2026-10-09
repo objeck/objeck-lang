@@ -136,11 +136,12 @@ cd ../onnx/eq
 # null session rather than an error. Link a CUDA-enabled onnxruntime before
 # switching this back to cuda.
 #
-# Only an x86-64 runtime is vendored (cuda/lib/x64). Build and ship ONNX only
-# for an architecture that has one: on arm64 the link fails, and the copies
-# below put a 16 MB x86-64 libonnxruntime into the aarch64 tree -- which is what
-# the v2026.9.1 linux-arm64 tarball carries, with no libobjk_onnx beside it.
-# verify_native_libs.sh declares onnx optional on arm64 for as long as that holds.
+# Both architectures have a vendored runtime now: cuda/lib/x64 and, since
+# #1048, cuda/lib/arm64. Before that only x86-64 was vendored, so the arm64 link
+# failed and the copies below put a 16 MB x86-64 libonnxruntime into the aarch64
+# tree -- which is what the v2026.9.1 linux-arm64 tarball carries, with no
+# libobjk_onnx beside it. The guard below stays: it is what makes a missing
+# runtime a skipped library rather than a broken one.
 if [ "$1" = "arm64" ]; then
 	ORT_ARCH=arm64
 else
@@ -180,11 +181,12 @@ ui_step "verify native libraries"
 # '|| exit 1' below v2026.9.1 printed "native-library verification failure(s)"
 # on both Linux legs and shipped anyway. verify_native_libs.sh records which
 # libraries each platform requires, and why onnx is optional on arm64.
-if [ "$1" = "arm64" ]; then
-	NATIVE_LIBS="crypto diags lame ml odbc opencv sdl --optional onnx"
-else
-	NATIVE_LIBS="crypto diags lame ml odbc onnx opencv sdl"
-fi
+# onnx is required on BOTH Linux legs since #1048 vendored an aarch64 runtime.
+# Leaving it optional on arm64 would mean a leg that failed to build
+# libobjk_onnx still exited 0 -- which is how this went unnoticed in the first
+# place, and would make a green arm64 build no evidence that the vendored
+# runtime links.
+NATIVE_LIBS="crypto diags lame ml odbc onnx opencv sdl"
 sh ../../release/verify_native_libs.sh ../../release/deploy/lib/native so $NATIVE_LIBS || exit 1
 
 ui_step "launchers (obb, obn)"
