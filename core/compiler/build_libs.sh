@@ -16,8 +16,11 @@ $OBC -src lib_src/concurrent.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/
 $OBC -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 $OBC -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
 $OBC -src lib_src/json.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json.obl
+# The types API.Onnx and API.Inference share. Built before both, because
+# both link it; needs nothing but gen_collect itself.
+$OBC -src lib_src/models.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/models.obl
 $OBC -src lib_src/opencv.obs -lib cipher,json -tar lib -opt s3 -dest ../lib/opencv.obl
-$OBC -src lib_src/onnx.obs -lib opencv,cipher,json -tar lib -opt s3 -dest ../lib/onnx.obl
+$OBC -src lib_src/onnx.obs -lib models,opencv,cipher,json -tar lib -opt s3 -dest ../lib/onnx.obl
 $OBC -src lib_src/lame.obs -tar lib -opt s3 -dest ../lib/lame.obl
 $OBC -src lib_src/diags.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/diags.obl
 $OBC -src lib_src/xml.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/xml.obl
@@ -39,7 +42,7 @@ $OBC -src lib_src/odbc.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/odbc.o
 $OBC -src lib_src/openai.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest ../lib/openai.obl
 $OBC -src lib_src/gemini.obs -lib misc,json,net,net_server,cipher -tar lib -opt s3 -dest ../lib/gemini.obl
 $OBC -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/ollama.obl
-$OBC -src lib_src/inference.obs -lib net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
+$OBC -src lib_src/inference.obs -lib models,net,json,cipher,gen_collect -tar lib -opt s3 -dest ../lib/inference.obl
 $OBC -src lib_src/sdl2.obs -tar lib -dest ../lib/sdl2.obl
 $OBC -src lib_src/sdl_game.obs -lib gen_collect,json,sdl2 -tar lib -dest ../lib/sdl_game.obl
 $OBC -src lib_src/sdl_gl.obs -lib gen_collect,sdl2 -tar lib -dest ../lib/sdl_gl.obl

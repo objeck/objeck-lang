@@ -1,7 +1,7 @@
 #~
 # API.Inference: tensor bookkeeping, error reporting, and the two wire formats.
 #
-# EXTRA_LIBS: inference,net,json,cipher,gen_collect
+# EXTRA_LIBS: models,inference,net,json,cipher,gen_collect
 #
 # API.Inference is the HTTP route to a model server -- the sibling of API.Onnx,
 # which runs a model in-process. It exists because no in-process backend covers
@@ -33,6 +33,7 @@
 # why these assertions are worth having.
 ~#
 use API.Inference;
+use API.Models;
 use Collection;
 
 class InferenceClientTest {
@@ -119,23 +120,23 @@ class InferenceClientTest {
 	thing to say about it.
 	~#
 	method : Errors() ~ Nil {
-		Report("an empty body is refused", EndPoint->ParseResponse("") = Nil);
+		Report("an empty body is refused", Wire->ParseResponse("") = Nil);
 		Report("and says so", EndPoint->GetLastError()->Has("empty"));
 
-		Report("a Nil body is refused", EndPoint->ParseResponse(Nil) = Nil);
+		Report("a Nil body is refused", Wire->ParseResponse(Nil) = Nil);
 
 		html := "<html><body>502 Bad Gateway</body></html>";
-		Report("a non-JSON body is refused", EndPoint->ParseResponse(html) = Nil);
+		Report("a non-JSON body is refused", Wire->ParseResponse(html) = Nil);
 		Report("and the body itself is reported, since nothing else identifies it",
 			EndPoint->GetLastError()->Has("502 Bad Gateway"));
 
 		# the shape a server actually uses to report a bad request
 		Report("a JSON error body is refused",
-			EndPoint->ParseResponse("{\"error\": \"model not found\"}") = Nil);
+			Wire->ParseResponse("{\"error\": \"model not found\"}") = Nil);
 		Report("and the server's own message is passed through",
 			EndPoint->GetLastError()->Equals("model not found"));
 
-		good := EndPoint->ParseResponse("{\"outputs\": []}");
+		good := Wire->ParseResponse("{\"outputs\": []}");
 		Report("a well-formed body parses", good <> Nil);
 	}
 

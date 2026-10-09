@@ -27,6 +27,7 @@ All AI and ML capabilities are **standard library** — no third-party packages,
   - [Image Classification (ResNet)](#image-classification-resnet)
   - [Any Model (generic run)](#any-model-generic-run)
 - [Remote Inference Servers](#remote-inference-servers)
+  - [One interface over both](#one-interface-over-both)
 - [Computer Vision (OpenCV)](#computer-vision-opencv)
 - [Natural Language Processing](#natural-language-processing)
 - [Machine Learning (System.ML)](#machine-learning-systemml)
@@ -516,7 +517,7 @@ Model->Pull("phi3");
 
 Run ML models locally using the ONNX Runtime. The Windows and macOS libraries are each built with one accelerator (DirectML on Windows x64, QNN on Windows ARM64, CoreML on macOS), with the CPU as the fallback. The Linux x64 library is CPU-only, and the Linux ARM64 packages include no ONNX library. See [execution providers](MODELS.md#execution-providers) for the `ep` setting.
 
-**Compile:** `obc -src your.obs -lib net,json,cipher,opencv,onnx`
+**Compile:** `obc -src your.obs -lib models,net,json,cipher,opencv,onnx`
 
 ### Face Recognition
 
@@ -645,7 +646,7 @@ output you want to decode yourself -- `Session` runs any ONNX graph. Ask it what
 the model wants, build the tensors, run it:
 
 ```objeck
-use API.Onnx, Collection;
+use API.Onnx, API.Models, Collection;
 
 session := Session->New("model.onnx");
 if(<>session->IsOpen()) {
@@ -673,11 +674,16 @@ session->Close();
 A dimension the model leaves to you is reported as `-1` -- a batch size or a
 sequence length. You choose it; nothing guesses.
 
-**You never state an element type.** Tensors are carried as `Float[]` and the
-model's own declaration decides what the input actually becomes, so FP32, FP16,
-INT64, UINT8 and BOOL models are all driven the same way. An `Int[]` tensor is
-exact to 2^53, which covers every token id and class index; past that it is
-refused rather than rounded.
+**You never state an element type.** The model's own declaration decides what
+each input becomes, so FP32, FP16, INT64, UINT8 and BOOL models are all driven
+the same way.
+
+An integer tensor keeps its integers. The conversion to `Float` happens only at
+the native crossing, which is the one place that needs it, and refuses a value
+past 2^53 rather than rounding it -- 9,007,199,254,740,992, so every token id and
+class index is far inside it. A server takes integers as JSON integers and has no
+such limit, which is why the conversion lives at the boundary that cares rather
+than in the tensor.
 
 Preprocessing and decoding are yours, in Objeck. That is the trade: more work
 than `YoloSession`, and it works for models no per-family class exists for.
@@ -701,7 +707,7 @@ Two wire protocols, because no single one covers the field:
 | `TF_SERVING` | TensorFlow Serving | v1 `:predict`: nesting carries the shape, no datatype |
 
 ```objeck
-use API.Inference, Collection;
+use API.Inference, API.Models, Collection;
 
 client := Client->New("http://gpu-box:8000");
 
@@ -748,8 +754,42 @@ v1, shape [4]     {"inputs":{"input":[1.0,2.0,3.0,4.0]}}
 v1, shape [2,2]   {"inputs":{"input":[[1.0,2.0],[3.0,4.0]]}}
 ```
 
-`-lib inference,net,json,cipher,gen_collect`. It is not part of any `@` alias;
-name the libraries, or add a group to `configobjk.ini`.
+`-lib models,inference,net,json,cipher,gen_collect`. Neither is part of any `@`
+alias; name the libraries, or add a group to `configobjk.ini`.
+
+### One interface over both
+
+`Tensor`, `EndPoint` and the `Engine` interface live in `API.Models`, which both
+backends link. So calling code can name a backend once and not again:
+
+```objeck
+use API.Models, API.Onnx, API.Inference, Collection;
+
+engine : API.Models.Engine;
+if(use_gpu_box) {
+  engine := HttpEngine->New("http://gpu-box:8000", "iris");
+}
+else {
+  engine := OnnxEngine->New("iris.onnx");
+};
+
+if(<>engine->IsOpen()) {
+  EndPoint->GetLastError()->PrintLine();
+  return;
+};
+
+outputs := engine->Run(inputs);
+engine->Close();
+```
+
+`IsOpen` differs in kind between them and the difference is worth knowing:
+`OnnxEngine` reports whether a file loaded, once; `HttpEngine` asks the server
+and the answer can change between calls, so it is not cached.
+
+What the interface deliberately leaves out is anything only one backend has --
+`GetModelInfo` on ONNX, `Metadata` and `DescribeRequest` on HTTP. Reach them
+through `GetSession()` or `GetClient()`; an interface that carried the union of
+two backends would describe neither.
 
 ---
 
@@ -1145,8 +1185,9 @@ See [cli_options.md](cli_options.md#library-groups) for the same table alongside
 | Image classification | `ResNetSession` | `onnx` | None |
 | Pose estimation | `OpenPoseSession` | `onnx` | None |
 | Segmentation | `DeepLabSession` | `onnx` | None |
-| Any ONNX model | `Session`, `Tensor` | `onnx` | None |
-| Model served over HTTP | `Client`, `Tensor` | `inference` | None |
+| Any ONNX model | `Session`, `Tensor` | `models`, `onnx` | None |
+| Model served over HTTP | `Client`, `Tensor` | `models`, `inference` | None |
+| Either, behind one interface | `Engine`, `OnnxEngine`, `HttpEngine` | `models` + one backend | None |
 | Computer vision | `Image`, `VideoCapture` | `opencv` | None |
 | Sentiment / TF-IDF | `SentimentAnalyzer`, `TF_IDF` | `nlp` | None |
 | Linear / regularized regression | `LinearRegression`, `RidgeRegression`, `LassoRegression`, `ElasticNet` | `ml` | None |

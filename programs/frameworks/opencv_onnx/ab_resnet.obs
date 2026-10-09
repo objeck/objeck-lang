@@ -12,7 +12,7 @@
 # the comparison is to a tolerance, stated rather than assumed.
 ~#
 
-use API.Onnx, API.OpenCV, Collection;
+use API.Onnx, API.Models, API.OpenCV, Collection;
 
 class AbResNet {
 	@failures : Int;
@@ -119,7 +119,7 @@ class AbResNet {
 			logits->GetShape()->Size() = 2 & logits->GetShape()[0] = 1 & logits->GetShape()[1] = 1000);
 		Report("and it is self-consistent: 1000 elements for that shape", logits->IsConsistent());
 
-		probs := Softmax(logits->GetData());
+		probs := Softmax(logits->GetFloats());
 		top := 0;
 		for(i := 1; i < probs->Size(); i += 1;) {
 			if(probs[i] > probs[top]) {
@@ -143,7 +143,7 @@ class AbResNet {
 
 		# a second run of the same tensor must give the same answer
 		again := generic->Run(inputs);
-		Report("a repeated run is deterministic", again <> Nil & Same(again->Get(0)->GetData(), logits->GetData()));
+		Report("a repeated run is deterministic", again <> Nil & Same(again->Get(0)->GetFloats(), logits->GetFloats()));
 
 		# naming an output explicitly selects it
 		wanted := String->New[1];

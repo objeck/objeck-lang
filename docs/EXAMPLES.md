@@ -299,7 +299,7 @@ if(item <> Nil) {
 use API.OpenCV, API.Onnx, System.IO.Filesystem;
 
 # The OpenCV bundle has no cascade classifier: detect faces with the ONNX
-# FaceSession (compile with -lib onnx,opencv) and draw the boxes with OpenCV
+# FaceSession (compile with -lib models,onnx,opencv) and draw the boxes with OpenCV
 bytes   := FileReader->ReadBinaryFile("group.jpg");
 session := FaceSession->New("det_10g.onnx");
 faces   := session->Detect(bytes, 0.5);

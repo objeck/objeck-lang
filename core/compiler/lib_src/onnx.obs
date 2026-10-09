@@ -3,7 +3,7 @@
 # ONNX wrapper
 ~~#	
 
-use Collection, System.API, API.OpenCV, Data.JSON, System.IO.Filesystem;
+use Collection, System.API, API.Models, API.OpenCV, Data.JSON, System.IO.Filesystem;
 
 #~
 ONNX Runtime inference library for running pre-trained models. Supports object detection (YOLO), image classification (ResNet), segmentation (DeepLab), pose estimation (OpenPose), face recognition, and Phi-3 text generation. Compile with -lib onnx.
@@ -2559,279 +2559,7 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 		}
 	}
 
-	#~
-	A named tensor: what a model takes in and what it hands back.
 
-	Elements are flat and row-major, and the shape says how to read them. A
-	tensor is carried as Float[] whatever the model's own element type is --
-	`Session` asks the model what each input wants and converts, so nothing here
-	has to know FP16 from INT64 to run a model.
-
-	```
-	pixels := Float->New[1 * 3 * 224 * 224];
-	# ... fill pixels ...
-	input := Tensor->New("data", [1, 3, 224, 224], pixels);
-	```
-	~#
-	class Tensor {
-		@name : String;
-		@datatype : String;
-		@shape : Int[];
-		@data : Float[];
-
-		#~
-		A tensor of floats.
-		@param name the input or output name the model uses
-		@param shape dimensions, e.g. [1,3,224,224]
-		@param data elements, flat and row-major
-		~#
-		New(name : String, shape : Int[], data : Float[]) {
-			@name := name;
-			@datatype := "FP32";
-			@shape := shape;
-			@data := data;
-		}
-
-		#~
-		A tensor of integers -- token ids, class indexes, an attention mask.
-
-		Converted to Float[] for the crossing, which is exact: a Float holds
-		every integer up to 2^53 (9,007,199,254,740,992) without loss, and token
-		ids, indexes and masks are orders of magnitude below that. A value
-		outside that range is REFUSED here rather than rounded, because once it
-		has been rounded nothing downstream can tell that it was.
-		@param name the input or output name the model uses
-		@param shape dimensions
-		@param data elements, flat and row-major
-		~#
-		New(name : String, shape : Int[], data : Int[]) {
-			@name := name;
-			@datatype := "INT64";
-			@shape := shape;
-
-			if(data <> Nil) {
-				exact_limit := 9007199254740992;
-				converted := Float->New[data->Size()];
-
-				for(i := 0; i < data->Size(); i += 1;) {
-					value := data[i];
-					if(value > exact_limit | value < -exact_limit) {
-						">>> ONNX: tensor '{$name}' element {$i} is {$value}, which a Float cannot hold exactly. Integer tensors are limited to +/-2^53. <<<"->ErrorLine();
-						return;
-					};
-					converted[i] := value->ToFloat();
-				};
-
-				@data := converted;
-			};
-		}
-
-		#~
-		A tensor whose element type is named explicitly. Rarely needed on input
-		-- the model's own declared type wins there -- but it is how a result
-		reports what the model actually produced.
-		@param name the input or output name the model uses
-		@param datatype an ONNX element type, e.g. "FP32", "FP16", "INT64", "BOOL"
-		@param shape dimensions
-		@param data elements, flat and row-major
-		~#
-		New(name : String, datatype : String, shape : Int[], data : Float[]) {
-			@name := name;
-			@datatype := datatype;
-			@shape := shape;
-			@data := data;
-		}
-
-		#~
-		The name the model knows this tensor by.
-		@return name
-		~#
-		method : public : GetName() ~ String {
-			return @name;
-		}
-
-		#~
-		The element type. On a result this is what the model produced; on an
-		input it is advisory, since the model's own declaration is used.
-		@return element type name
-		~#
-		method : public : GetDatatype() ~ String {
-			return @datatype;
-		}
-
-		#~
-		Dimensions, outermost first.
-		@return shape
-		~#
-		method : public : GetShape() ~ Int[] {
-			return @shape;
-		}
-
-		#~
-		Elements, flat and row-major.
-		@return elements, or Nil when the tensor was refused at construction
-		~#
-		method : public : GetData() ~ Float[] {
-			return @data;
-		}
-
-		#~
-		Elements rounded back to integers. Exact for any value within +/-2^53,
-		which is every value an integer tensor is allowed to hold.
-		@return elements as integers, or Nil
-		~#
-		method : public : GetInts() ~ Int[] {
-			if(@data = Nil) {
-				return Nil;
-			};
-
-			out := Int->New[@data->Size()];
-			for(i := 0; i < @data->Size(); i += 1;) {
-				out[i] := @data[i]->ToInt();
-			};
-
-			return out;
-		}
-
-		#~
-		Elements held.
-		@return element count
-		~#
-		method : public : GetCount() ~ Int {
-			if(@data = Nil) {
-				return 0;
-			};
-
-			return @data->Size();
-		}
-
-		#~
-		The product of the dimensions, which GetCount must equal.
-		@return expected element count, or 0 for an unset shape
-		~#
-		method : public : GetShapeProduct() ~ Int {
-			if(@shape = Nil | @shape->Size() = 0) {
-				return 0;
-			};
-
-			total := 1;
-			each(i : @shape) {
-				total *= @shape[i];
-			};
-
-			return total;
-		}
-
-		#~
-		Whether the element count matches the shape. Worth checking before a run:
-		a mismatch is otherwise refused by the native layer, which can say the
-		counts disagree but not which tensor caused it.
-		@return true when the tensor is internally consistent
-		~#
-		method : public : IsConsistent() ~ Bool {
-			# No shape, or data the constructor refused, is inconsistent. An
-			# EMPTY tensor is not: [1,32,0,96] with no elements is how every SLM
-			# passes its key/value cache on the first forward pass, and it is
-			# exactly what a "count must be positive" check gets wrong.
-			if(@data = Nil | @shape = Nil | @shape->Size() = 0) {
-				return false;
-			};
-
-			return GetCount() = GetShapeProduct();
-		}
-
-		method : public : ToString() ~ String {
-			dims := "";
-			if(@shape <> Nil) {
-				each(i : @shape) {
-					if(i > 0) {
-						dims += ",";
-					};
-					d := @shape[i];
-					dims += "{$d}";
-				};
-			};
-			n := GetCount();
-
-			return "{$@name}: {$@datatype}[{$dims}], {$n} element(s)";
-		}
-	}
-
-	#~
-	One input or output in a model's signature: its name, element type and shape.
-
-	A dimension the model leaves symbolic -- batch size, sequence length -- is
-	reported as -1. That is not a gap in the report: the model genuinely does not
-	fix it, and the caller is the one who chooses.
-	~#
-	class TensorSpec {
-		@name : String;
-		@datatype : String;
-		@shape : Int[];
-
-		New(name : String, datatype : String, shape : Int[]) {
-			@name := name;
-			@datatype := datatype;
-			@shape := shape;
-		}
-
-		#~
-		The name to use for this tensor in a run.
-		@return name
-		~#
-		method : public : GetName() ~ String {
-			return @name;
-		}
-
-		#~
-		The element type the model declares, e.g. "FP32", "INT64".
-		@return element type name
-		~#
-		method : public : GetDatatype() ~ String {
-			return @datatype;
-		}
-
-		#~
-		Dimensions, with -1 for any the model leaves to the caller.
-		@return shape
-		~#
-		method : public : GetShape() ~ Int[] {
-			return @shape;
-		}
-
-		#~
-		Whether every dimension is fixed by the model.
-		@return true when no dimension is symbolic
-		~#
-		method : public : IsFixed() ~ Bool {
-			if(@shape = Nil) {
-				return false;
-			};
-
-			each(i : @shape) {
-				if(@shape[i] < 0) {
-					return false;
-				};
-			};
-
-			return true;
-		}
-
-		method : public : ToString() ~ String {
-			dims := "";
-			if(@shape <> Nil) {
-				each(i : @shape) {
-					if(i > 0) {
-						dims += ",";
-					};
-					d := @shape[i];
-					dims += "{$d}";
-				};
-			};
-
-			return "{$@name}: {$@datatype}[{$dims}]";
-		}
-	}
 
 	#~
 	What a model takes in and gives back.
@@ -3283,7 +3011,15 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 					dim_at += 1;
 				};
 
-				values := tensor->GetData();
+				# AsFloats, not GetFloats: an integer tensor is stored as integers and
+				# only this crossing needs floats. The conversion refuses past 2^53
+				# rather than rounding, and returns Nil when it does.
+				values := tensor->AsFloats();
+				if(values = Nil) {
+					name := tensor->GetName();
+					EndPoint->SetLastError("input tensor '{$name}' holds a value no Float can carry");
+					return Nil;
+				};
 				for(e := 0; e < values->Size(); e += 1;) {
 					data[data_at] := values[e];
 					data_at += 1;
@@ -3316,6 +3052,82 @@ sim := FaceSession->Compare(r1->GetResults()[0]->GetEmbedding(), r2->GetResults(
 			# stderr, not an empty result. It writes this slot on every exit, so
 			# this does not depend on how the slot was initialised (#1028).
 			return array_args[0]->As(API.Onnx.RunResult);
+		}
+	}
+	#~
+	API.Onnx as an Engine: a model run in-process.
+	
+	A thin wrapper over Session, which is the whole reason the generic run came
+	first -- without onnx_run there was nothing for an Engine to call, and the
+	eight per-family entry points could not supply one.
+	
+	Use it when calling code should not choose a backend at every call site.
+	Session itself is the better choice when the code is ONNX-specific anyway:
+	GetModelInfo has no equivalent on a remote engine, so it is not on the
+	interface, and this class exposes the Session for that reason.
+	
+	```
+	engine := OnnxEngine->New("model.onnx");
+	if(<>engine->IsOpen()) {
+	  EndPoint->GetLastError()->PrintLine();
+	  return;
+	};
+	
+	outputs := engine->Run(inputs);
+	engine->Close();
+	```
+	~#
+	class OnnxEngine implements API.Models.Engine {
+		@session : Session;
+
+		#~
+		Constructor.
+		@param model model path
+		~#
+		New(model : String) {
+			@session := Session->New(model);
+		}
+
+		#~
+		Constructor.
+		@param model model path
+		@param config session configuration parameters, e.g. ep
+		~#
+		New(model : String, config : Map<String, String>) {
+			@session := Session->New(model, config);
+		}
+
+		#~
+		Runs the model, asking for every output it has.
+		@param inputs the model's inputs as named tensors
+		@return the outputs, or Nil when the run was refused
+		~#
+		method : public : Run(inputs : Vector<Tensor>) ~ Vector<Tensor> {
+			return @session->Run(inputs);
+		}
+
+		#~
+		Whether the model loaded.
+		@return true when a run can proceed
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @session->IsOpen();
+		}
+
+		#~
+		Releases the model. Safe to call more than once.
+		~#
+		method : public : Close() ~ Nil {
+			@session->Close();
+		}
+
+		#~
+		The underlying session, for what the Engine interface deliberately does
+		not carry -- GetModelInfo above all, which has no remote equivalent.
+		@return the session
+		~#
+		method : public : GetSession() ~ Session {
+			return @session;
 		}
 	}
 }

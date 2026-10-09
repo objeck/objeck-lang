@@ -83,6 +83,6 @@ REM
 
 if [%4] == [] goto end
 	del /q *.obe
-	obc -src %4 -lib opencv,onnx,cipher,json -asm
+	obc -src %4 -lib models,opencv,onnx,cipher,json -asm
 	obr %4 %5
 :end

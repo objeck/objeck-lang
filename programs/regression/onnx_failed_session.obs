@@ -1,7 +1,7 @@
 #~
 # A failed ONNX session is detectable, and inference refuses instead of aborting.
 #
-# EXTRA_LIBS: onnx,opencv,cipher,json
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
 #
 # This is the one ONNX failure path that can be tested without shipping a model:
 # point a session at a path that does not exist. Every other entry point needs a

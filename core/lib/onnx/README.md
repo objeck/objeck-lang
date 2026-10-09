@@ -1,6 +1,6 @@
 # ONNX Support
 
-Cross-platform ONNX inference library for Objeck (`-lib onnx`). Wraps [ONNX Runtime](https://onnxruntime.ai/) with OpenCV for image preprocessing and exposes computer vision, language, and face recognition pipelines.
+Cross-platform ONNX inference library for Objeck (`-lib models,onnx`). Wraps [ONNX Runtime](https://onnxruntime.ai/) with OpenCV for image preprocessing and exposes computer vision, language, and face recognition pipelines.
 
 ## Supported Models
 
@@ -81,7 +81,7 @@ Located in `programs/frameworks/opencv_onnx/`:
 
 Compile any demo:
 ```
-obc -src demo_face.obs -lib lang,collect,opencv,onnx,json
+obc -src demo_face.obs -lib models,lang,collect,opencv,onnx,json
 obr demo_face.obe
 ```
 

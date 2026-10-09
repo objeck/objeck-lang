@@ -1,7 +1,7 @@
 #~
 # API.Onnx.OnnxRuntime->GetProviders() reaches the native ONNX Runtime.
 #
-# EXTRA_LIBS: onnx,opencv,cipher,json
+# EXTRA_LIBS: models,onnx,opencv,cipher,json
 #
 # The ONNX binding had no runtime test on any platform. CI's own comment on the
 # native build step says why that matters: "The C++ that actually talks to ONNX

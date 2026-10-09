@@ -1,6 +1,6 @@
 # ONNX Models for Objeck
 
-This document lists the ONNX models used by the Objeck ONNX library (`-lib onnx`). Models are too large for the git repository and must be downloaded separately.
+This document lists the ONNX models used by the Objeck ONNX library (`-lib models,onnx`). Models are too large for the git repository and must be downloaded separately.
 
 ## Computer Vision Models
 

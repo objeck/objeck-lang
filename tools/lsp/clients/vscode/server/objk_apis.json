@@ -591,14 +591,23 @@
 				}
 			}
 		},
-		"API.Inference.EndPoint": {
-			"description": "Shared state and response handling for the client.\n\nThe last error is static, matching API.Ollama: a failed call returns Nil and the reason is asked for separately, rather than every method returning a pair.",
+		"API.Inference.HttpEngine": {
+			"description": "A model server as an Engine.\n\nThe remote counterpart of API.Onnx.OnnxEngine: the same interface, a model reached over HTTP rather than loaded in-process. Swapping one for the other changes nothing else in calling code, which is the point -- the backend is a deployment decision.\n\nA server is the only GPU path Objeck has today, and the only route for a model that will not convert to ONNX.\n\nIsOpen() asks the server whether the model is ready, so unlike an in-process engine it is a network call and can change between calls. It is not cached: a server that was ready a minute ago is not evidence about now.",
 			"functions": {
-				"GetLastError": {
-					"descriptions": ["**The reason the most recent call returned Nil.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				"Close": {
+					"descriptions": ["**Nothing to release: there is no handle, only a URL. Present because the interface has it, so calling code can close any engine without knowing which kind it holds.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
-				"ParseResponse": {
-					"descriptions": ["**Parses a response body, setting the last error when it is not JSON.\n\nInference servers answer errors as JSON too -- v2 uses {\"error\": \"...\"}\n-- so a body that will not parse means something else went wrong (an HTML error page from a proxy, a truncated response) and the body itself is the most useful thing to report.**\n\n```function : ParseResponse(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				"GetClient": {
+					"descriptions": ["**The underlying client, for what the Engine interface does not carry -- Metadata and DescribeRequest, neither of which an in-process engine has.**\n\n```method : public : GetClient() ~ Client```\n\n\n\nreturn: Client"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the server reports the model ready.\n\nA network call, not a cached flag: unlike an in-process engine this can change between calls, and a server that was ready a minute ago is not evidence about now.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor, using the Open Inference protocol (Triton, KServe).**\n\n```New(host:String, model:String)```\n\n\n\nhost: String\n\nmodel: String", "**Constructor naming the protocol.**\n\n```New(host:String, model:String, protocol:Client-&gt;Protocol)```\n\n\n\nhost: String\n\nmodel: String\n\nprotocol: Client-&gt;Protocol"]
+				},
+				"Run": {
+					"descriptions": ["**Sends the inputs to the server and returns what comes back.**\n\n```method : public : Run(inputs:Vector&lt;Tensor&gt;) ~ Vector&lt;Tensor&gt;```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\nreturn: Vector&lt;Tensor&gt;"]
 				}
 			}
 		},
@@ -616,29 +625,91 @@
 				}
 			}
 		},
-		"API.Inference.Tensor": {
-			"description": "A named, shaped block of numbers -- one input to or output from a model.\n\nHolds either floats or integers, named by the datatype. Both are needed in practice: pixels and embeddings are FP32, while token ids for a language model are INT64, and sending those as floats is not merely wasteful but wrong past 2^53.\n\nThe shape is carried separately from the data, which stays flat. A 1x3x224x224 image is 150,528 floats with shape [1,3,224,224]; nesting it would cost a Vector per row for no gain, since the server wants it flat in v2 anyway.",
+		"API.Inference.Wire": {
+			"description": "Reading what came off the wire.\n\nSeparate from API.Models.EndPoint, which carries the last error for every backend. Finding an error inside a JSON body is HTTP's business, and a backend-neutral bundle should not have to know what JSON is.",
 			"functions": {
+				"ParseResponse": {
+					"descriptions": ["**Parses a response body, setting the last error when it is not JSON.\n\nInference servers answer errors as JSON too -- v2 uses {\"error\": \"...\"}\n-- so a body that will not parse means something else went wrong (an HTML error page from a proxy, a truncated response) and the body itself is the most useful thing to report.**\n\n```function : ParseResponse(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.Models.EndPoint": {
+			"description": "Why the last call returned Nil.\n\nEvery backend here reports failure the same way -- Nil, with the reason available afterwards -- because the alternatives are worse: an exception the caller must know to guard, or a message on stderr the caller cannot act on.",
+			"functions": {
+				"GetLastError": {
+					"descriptions": ["**The reason the most recent call returned Nil.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"SetLastError": {
+					"descriptions": ["**Records the reason a call is about to return Nil. Called by a backend.**\n\n```function : SetLastError(last_error:String) ~ Nil```\n\n\n\nlast_error: String\n\nreturn: Nil"]
+				}
+			}
+		},
+		"API.Models.Engine": {
+			"description": "A model that can be run, however it is reached.\n\nSwapping that for `HttpEngine->New(\"http:\/\/gpu-box:8000\", \"model\")` changes nothing else. That is the point: the backend is a deployment decision, not an API -- and it is why dropping one costs this design nothing, as dropping TF Lite did.\n\nPreprocessing and decoding belong ABOVE this interface, written once in Objeck. Letterboxing is a property of YOLO, not of a runtime, and the eight per-family native entry points in `API.Onnx` are why a single defect in that pattern had to be fixed eight times, twice in one release.\n\nCalling code names a backend once:",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Releases the model. Safe to call more than once.**\n\n```method : public : virutal : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model is loaded and a run can proceed.\n\nA backend that failed to open is not an error at construction: the constructor returns an object either way. Test this before running, or a refusal is indistinguishable from a model that produced nothing.**\n\n```method : public : virutal : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Run": {
+					"descriptions": ["**Runs the model.**\n\n```method : public : virutal : Run(inputs:Vector&lt;Tensor&gt;) ~ Vector&lt;Tensor&gt;```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\nreturn: Vector&lt;Tensor&gt;"]
+				}
+			}
+		},
+		"API.Models.Tensor": {
+			"description": "A named, shaped block of numbers: one input to or output from a model.\n\nElements are flat and row-major; the shape says how to read them. A 1x3x224x224 image is 150,528 numbers with shape [1,3,224,224], and nesting it would cost a Vector per row for nothing.\n\nFloats and integers are held SEPARATELY rather than one being converted to the other. Both are needed in practice -- pixels and embeddings are FP32, token ids for a language model are INT64 -- and a conversion at construction would impose the narrower type's limits on a backend that does not have them. An HTTP server receives an integer tensor as JSON integers with no range limit at all; only the native crossing needs floats, so that is where the conversion and its check live.",
+			"functions": {
+				"AsFloats": {
+					"descriptions": ["**The elements as floats, converting an integer tensor if needed.\n\nREFUSES rather than rounds. A Float holds every integer up to 2^53 (9,007,199,254,740,992) exactly, which covers every token id, class index and mask there is, but a value past that cannot survive the conversion and nothing downstream could tell that it had not. Only a backend that must have floats should call this -- the native ONNX crossing does; an HTTP server does not, and sends integers as integers.**\n\n```method : public : AsFloats() ~ Float[]```\n\n\n\nreturn: Float[]"]
+				},
 				"GetCount": {
-					"descriptions": ["**Elements held, which is the product of the shape for a well-formed tensor. Worth comparing against the shape before sending: a mismatch is rejected by the server with a message that names neither.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+					"descriptions": ["**Elements held.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetDatatype": {
+					"descriptions": ["**The element type. On a result this is what the backend produced; on an input it is advisory, because a backend that declares its own input types uses those instead.**\n\n```method : public : GetDatatype() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetFloats": {
-					"descriptions": ["**The float elements, or Nil for an integer tensor.**\n\n```method : public : GetFloats() ~ Float[]```\n\n\n\nreturn: Float[]"]
+					"descriptions": ["**The float elements, or Nil for an integer tensor. Use AsFloats to get floats whichever way the tensor was built.**\n\n```method : public : GetFloats() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"GetInts": {
 					"descriptions": ["**The integer elements, or Nil for a float tensor.**\n\n```method : public : GetInts() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetName": {
+					"descriptions": ["**The name the model knows this tensor by.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetShape": {
+					"descriptions": ["**Dimensions, outermost first.**\n\n```method : public : GetShape() ~ Int[]```\n\n\n\nreturn: Int[]"]
 				},
 				"GetShapeProduct": {
 					"descriptions": ["**The product of the dimensions, which GetCount must equal.**\n\n```method : public : GetShapeProduct() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"IsConsistent": {
-					"descriptions": ["**Whether the element count matches the shape.**\n\n```method : public : IsConsistent() ~ Bool```\n\n\n\nreturn: Bool"]
+					"descriptions": ["**Whether the element count matches the shape.\n\nAn EMPTY tensor is consistent: [1,32,0,96] with no elements is how every small language model passes its key\/value cache on the first forward pass, and a \"count must be positive\" check gets that wrong first.**\n\n```method : public : IsConsistent() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"IsFloat": {
-					"descriptions": ["**Whether this tensor carries floats rather than integers.**\n\n```method : public : IsFloat() ~ Bool```\n\n\n\nreturn: Bool"]
+					"descriptions": ["**Whether this tensor holds floats rather than integers.**\n\n```method : public : IsFloat() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**A float tensor, datatype FP32.**\n\n```New(name:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Float[]", "**An integer tensor, datatype INT64. Token ids and label indices.**\n\n```New(name:String, shape:Int[], data:Int[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Int[]", "**A tensor whose datatype is named explicitly, for the types neither constructor covers -- FP16, INT32, UINT8, BOOL. The data is still carried as floats or integers; the datatype tells the server how to read it.**\n\n```New(name:String, datatype:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\ndatatype: String\n\nshape: Int[]\n\ndata: Float[]"]
+					"descriptions": ["**A float tensor, datatype FP32.**\n\n```New(name:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Float[]", "**An integer tensor, datatype INT64 -- token ids, class indexes, a mask.\n\nStored as integers, exactly as given. Nothing is lost here; see AsFloats for where a conversion becomes necessary and what it costs.**\n\n```New(name:String, shape:Int[], data:Int[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Int[]", "**A tensor whose element type is named explicitly, for the types the two constructors above do not cover -- FP16, INT32, UINT8, BOOL. The data is still carried as floats; the datatype says how to read it.**\n\n```New(name:String, datatype:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\ndatatype: String\n\nshape: Int[]\n\ndata: Float[]"]
+				}
+			}
+		},
+		"API.Models.TensorSpec": {
+			"description": "One input or output in a model's signature: its name, element type and shape.\n\nA dimension a model leaves symbolic -- a batch size, a sequence length -- is reported as -1. That is not a gap in the report: the model genuinely does not fix it, and only the caller can.",
+			"functions": {
+				"GetDatatype": {
+					"descriptions": ["**The element type the model declares, e.g. \"FP32\", \"INT64\".**\n\n```method : public : GetDatatype() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetName": {
+					"descriptions": ["**The name to use for this tensor in a run.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetShape": {
+					"descriptions": ["**Dimensions, with -1 for any the model leaves to the caller.**\n\n```method : public : GetShape() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"IsFixed": {
+					"descriptions": ["**Whether every dimension is fixed by the model.**\n\n```method : public : IsFixed() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -960,6 +1031,26 @@
 				}
 			}
 		},
+		"API.Onnx.OnnxEngine": {
+			"description": "API.Onnx as an Engine: a model run in-process.\n\nA thin wrapper over Session, which is the whole reason the generic run came first -- without onnx_run there was nothing for an Engine to call, and the eight per-family entry points could not supply one.\n\nUse it when calling code should not choose a backend at every call site. Session itself is the better choice when the code is ONNX-specific anyway: GetModelInfo has no equivalent on a remote engine, so it is not on the interface, and this class exposes the Session for that reason.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Releases the model. Safe to call more than once.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetSession": {
+					"descriptions": ["**The underlying session, for what the Engine interface deliberately does not carry -- GetModelInfo above all, which has no remote equivalent.**\n\n```method : public : GetSession() ~ Session```\n\n\n\nreturn: Session"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor.**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor.**\n\n```New(model:String, config:Map&lt;String,String&gt;)```\n\n\n\nmodel: String\n\nconfig: Map&lt;String,String&gt;"]
+				},
+				"Run": {
+					"descriptions": ["**Runs the model, asking for every output it has.**\n\n```method : public : Run(inputs:Vector&lt;Tensor&gt;) ~ Vector&lt;Tensor&gt;```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\nreturn: Vector&lt;Tensor&gt;"]
+				}
+			}
+		},
 		"API.Onnx.OnnxRuntime": {
 			"description": "ONNX runtime utilities for querying execution providers.",
 			"functions": {
@@ -1179,55 +1270,6 @@
 				},
 				"RunTensors": {
 					"descriptions": ["**Runs the model and returns the result before it is split into tensors, for a caller reading one output out of many.**\n\n```method : public : RunTensors(inputs:Vector&lt;Tensor&gt;, output_names:String[]) ~ RunResult```\n\n\n\ninputs: Vector&lt;Tensor&gt;\n\noutput_names: String[]\n\nreturn: RunResult"]
-				}
-			}
-		},
-		"API.Onnx.Tensor": {
-			"description": "A named tensor: what a model takes in and what it hands back.\n\nElements are flat and row-major, and the shape says how to read them. A tensor is carried as Float[] whatever the model's own element type is -- `Session` asks the model what each input wants and converts, so nothing here has to know FP16 from INT64 to run a model.",
-			"functions": {
-				"GetCount": {
-					"descriptions": ["**Elements held.**\n\n```method : public : GetCount() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"GetData": {
-					"descriptions": ["**Elements, flat and row-major.**\n\n```method : public : GetData() ~ Float[]```\n\n\n\nreturn: Float[]"]
-				},
-				"GetDatatype": {
-					"descriptions": ["**The element type. On a result this is what the model produced; on an input it is advisory, since the model's own declaration is used.**\n\n```method : public : GetDatatype() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetInts": {
-					"descriptions": ["**Elements rounded back to integers. Exact for any value within +\/-2^53, which is every value an integer tensor is allowed to hold.**\n\n```method : public : GetInts() ~ Int[]```\n\n\n\nreturn: Int[]"]
-				},
-				"GetName": {
-					"descriptions": ["**The name the model knows this tensor by.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetShape": {
-					"descriptions": ["**Dimensions, outermost first.**\n\n```method : public : GetShape() ~ Int[]```\n\n\n\nreturn: Int[]"]
-				},
-				"GetShapeProduct": {
-					"descriptions": ["**The product of the dimensions, which GetCount must equal.**\n\n```method : public : GetShapeProduct() ~ Int```\n\n\n\nreturn: Int"]
-				},
-				"IsConsistent": {
-					"descriptions": ["**Whether the element count matches the shape. Worth checking before a run: a mismatch is otherwise refused by the native layer, which can say the counts disagree but not which tensor caused it.**\n\n```method : public : IsConsistent() ~ Bool```\n\n\n\nreturn: Bool"]
-				},
-				"New": {
-					"descriptions": ["**A tensor of floats.**\n\n```New(name:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Float[]", "**A tensor of integers -- token ids, class indexes, an attention mask.\n\nConverted to Float[] for the crossing, which is exact: a Float holds every integer up to 2^53 (9,007,199,254,740,992) without loss, and token ids, indexes and masks are orders of magnitude below that. A value outside that range is REFUSED here rather than rounded, because once it has been rounded nothing downstream can tell that it was.**\n\n```New(name:String, shape:Int[], data:Int[])```\n\n\n\nname: String\n\nshape: Int[]\n\ndata: Int[]", "**A tensor whose element type is named explicitly. Rarely needed on input\n-- the model's own declared type wins there -- but it is how a result reports what the model actually produced.**\n\n```New(name:String, datatype:String, shape:Int[], data:Float[])```\n\n\n\nname: String\n\ndatatype: String\n\nshape: Int[]\n\ndata: Float[]"]
-				}
-			}
-		},
-		"API.Onnx.TensorSpec": {
-			"description": "One input or output in a model's signature: its name, element type and shape.\n\nA dimension the model leaves symbolic -- batch size, sequence length -- is reported as -1. That is not a gap in the report: the model genuinely does not fix it, and the caller is the one who chooses.",
-			"functions": {
-				"GetDatatype": {
-					"descriptions": ["**The element type the model declares, e.g. \"FP32\", \"INT64\".**\n\n```method : public : GetDatatype() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetName": {
-					"descriptions": ["**The name to use for this tensor in a run.**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
-				},
-				"GetShape": {
-					"descriptions": ["**Dimensions, with -1 for any the model leaves to the caller.**\n\n```method : public : GetShape() ~ Int[]```\n\n\n\nreturn: Int[]"]
-				},
-				"IsFixed": {
-					"descriptions": ["**Whether every dimension is fixed by the model.**\n\n```method : public : IsFixed() ~ Bool```\n\n\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -13761,8 +13803,8 @@
 				"file": "gemini.obl"
 			},
 			{
-				"bundle": "API.Inference",
-				"file": "inference.obl"
+				"bundle": "API.Models",
+				"file": "models.obl"
 			},
 			{
 				"bundle": "API.Ollama",
@@ -13881,20 +13923,40 @@
 				"file": "json_rpc.obl"
 			}
 		],
+		"HttpEngine": [
+			{
+				"bundle": "API.Inference",
+				"file": "inference.obl"
+			}
+		],
 		"ModelMetadata": [
 			{
 				"bundle": "API.Inference",
 				"file": "inference.obl"
 			}
 		],
-		"Tensor": [
+		"Wire": [
 			{
 				"bundle": "API.Inference",
 				"file": "inference.obl"
-			},
+			}
+		],
+		"Engine": [
 			{
-				"bundle": "API.Onnx",
-				"file": "onnx.obl"
+				"bundle": "API.Models",
+				"file": "models.obl"
+			}
+		],
+		"Tensor": [
+			{
+				"bundle": "API.Models",
+				"file": "models.obl"
+			}
+		],
+		"TensorSpec": [
+			{
+				"bundle": "API.Models",
+				"file": "models.obl"
 			}
 		],
 		"Completion": [
@@ -13993,6 +14055,12 @@
 				"file": "onnx.obl"
 			}
 		],
+		"OnnxEngine": [
+			{
+				"bundle": "API.Onnx",
+				"file": "onnx.obl"
+			}
+		],
 		"OnnxRuntime": [
 			{
 				"bundle": "API.Onnx",
@@ -14060,12 +14128,6 @@
 			}
 		],
 		"Session": [
-			{
-				"bundle": "API.Onnx",
-				"file": "onnx.obl"
-			}
-		],
-		"TensorSpec": [
 			{
 				"bundle": "API.Onnx",
 				"file": "onnx.obl"
