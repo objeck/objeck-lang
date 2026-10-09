@@ -50,11 +50,11 @@ class OnnxFailedSession {
 	#~
 	Whether libobjk_onnx is deployed on this platform.
 	
-	It is not built for linux-arm64: deploy_posix.sh notes that the vendored
-	onnxruntime there is an x86-64 binary in an aarch64 tree, so
-	verify_native_libs.sh declares onnx optional on that architecture. A test
-	that calls into it has to say so rather than fail, which is what
-	onnx_runtime_test.obs does and what this one missed on its first run.
+	Every platform CI builds has it since #1048 vendored an aarch64 runtime,
+	so this no longer skips anywhere in CI. It stays because the library is
+	still genuinely optional: a source build on an architecture with no
+	vendored runtime produces a deploy tree without it, and a test that calls
+	into a library that is not there should say so rather than fail.
 	@return true when the native library is present
 	~#
 	method : LibraryPresent() ~ Bool {

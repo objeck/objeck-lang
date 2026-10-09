@@ -5,7 +5,12 @@
     "  --artifacts: the libraries a built deploy tree actually links must match 'sonames'/'external'",
     "  --docs:      every package a doc tells users to install must be listed here",
     "Change this file in the same PR as any change to what the binaries link, and the",
-    "docs gate names every page that still says otherwise."
+    "docs gate names every page that still says otherwise.",
+    "The x64 and arm64 soname lists are currently IDENTICAL, which is a consequence",
+    "and not a coincidence: since #1048 vendored an aarch64 ONNX Runtime, both Linux",
+    "legs build the same eight native libraries. They stay separate lists because an",
+    "arch can legitimately need something the other does not -- so if they diverge",
+    "again, that divergence means something."
   ],
   "linux": {
     "toolchain_sonames": [
@@ -25,6 +30,7 @@
         "libreadline.so.8", "libodbc.so.2", "libmp3lame.so.0",
         "libSDL2-2.0.so.0", "libSDL2_image-2.0.so.0", "libSDL2_mixer-2.0.so.0", "libSDL2_ttf-2.0.so.0", "libGL.so.1",
         "libopencv_core.so.406", "libopencv_imgproc.so.406", "libopencv_imgcodecs.so.406",
+        "libopencv_calib3d.so.406",
         "libopencv_dnn.so.406", "libopencv_highgui.so.406", "libopencv_videoio.so.406"
       ]
     }
