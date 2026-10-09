@@ -507,17 +507,19 @@ def main():
                        fixes_other is None, f"got: {fixes_other!r}")
 
         # --- what the quick fix actually PRODUCES (#1055) --------------------
-        # The case above asserts only that the handler ran, because its fixture
-        # declares `v := Vector->New()` and that yields no fixes at all:
-        # diag_code_action matches a symbol-table entry whose TYPE is a class,
-        # and an inferred-type local has no resolved type there. So the applied
-        # edits -- a 'use' insert, a variable qualification, a generated build
-        # file -- had NO coverage, which is how #1052 shipped a fix naming the
-        # wrong bundle for twenty-two class names.
+        # The case above asserts only that the handler ran. The fixtures below
+        # assert what it PRODUCES, for both declaration styles.
         #
-        # This fixture declares the type explicitly, which does reach the path.
-        # The remaining `:=` gap is filed separately; it is the commoner style
-        # and deserves its own fix rather than being folded in here.
+        # `v := Vector->New()` used to yield no fixes at all, so the applied
+        # edits -- a 'use' insert, a variable qualification, a generated build
+        # file -- had no coverage in the commonest style, which is how #1052
+        # shipped a fix naming the wrong bundle for twenty-two class names. Two
+        # things were wrong (#1057): the class name was taken from between the
+        # FIRST and LAST quote of the message, which mangles the inferred
+        # form's message because it carries a bundle hint with more quotes in
+        # it; and an inferred local has no symbol-table entry to match, because
+        # the entry is created during type inference and analysis aborts on this
+        # very undefined class.
         def fix_titles(obs_name):
             obs = os.path.join(TESTS_DIR, obs_name)
             with open(obs, encoding="utf-8") as fh:
@@ -537,6 +539,47 @@ def main():
             })) or []
             return [f.get("title", "") for f in got if isinstance(f, dict)], None
 
+        def qualify_edit(obs_name):
+            """Where a 'Fully qualify' fix would insert, and the source line.
+
+            Returns (line, character, inserted_text, source_line) or None. The
+            fix bundles the build-file creation edit when no build.json exists,
+            so the qualifier is picked out as the short single-line insert
+            ending in a dot.
+            """
+            obs = os.path.join(TESTS_DIR, obs_name)
+            with open(obs, encoding="utf-8") as fh:
+                text = fh.read()
+            lines = text.split("\n")
+            uri = path_to_uri(obs)
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+            diags = c.diagnostics_for(uri, timeout=60) or []
+            undef = next((d for d in diags
+                          if str(d.get("message", "")).startswith("Undefined class")), None)
+            if undef is None:
+                return None
+            got = result_of(c.request("textDocument/codeAction", {
+                "textDocument": {"uri": uri},
+                "range": undef["range"],
+                "context": {"diagnostics": [undef]},
+            })) or []
+            for f in got:
+                if not isinstance(f, dict) or not str(f.get("title", "")).startswith("Fully qualify"):
+                    continue
+                for change in f.get("edit", {}).get("documentChanges", []):
+                    if not isinstance(change, dict):
+                        continue
+                    for e in change.get("edits", []) or []:
+                        rng = e.get("range", {}).get("start", {})
+                        new_text = e.get("newText", "")
+                        if "line" not in rng or "\n" in new_text or not new_text.endswith("."):
+                            continue
+                        ln = rng["line"]
+                        src = lines[ln] if ln < len(lines) else ""
+                        return ln, rng.get("character"), new_text, src
+            return None
+
         titles, why = fix_titles("lsp_codeaction_declared.obs")
         log_result("a declared undefined class reports its diagnostic",
                    titles is not None, f"diagnostics: {why}")
@@ -545,6 +588,102 @@ def main():
                        any("use Collection;" in t for t in titles), f"titles: {titles}")
             log_result("and offers to qualify the variable with it",
                        any("Collection.Vector" in t for t in titles), f"titles: {titles}")
+
+        # --- the same, for an inferred-type local (#1057) --------------------
+        # `:=` is the dominant style in this codebase -- the examples, the
+        # libraries and the regression suite are written almost entirely with
+        # it -- so a quick fix that only worked for an explicit declaration was
+        # effectively unavailable.
+        inf_titles, inf_why = fix_titles("lsp_codeaction.obs")
+        log_result("an inferred-type local reports its diagnostic",
+                   inf_titles is not None, f"diagnostics: {inf_why}")
+        if inf_titles is not None:
+            log_result("an inferred-type local is offered the 'use' fix",
+                       any("use Collection;" in t for t in inf_titles),
+                       f"titles: {inf_titles}")
+            log_result("and is offered the qualification too",
+                       any("Collection.Vector" in t for t in inf_titles),
+                       f"titles: {inf_titles}")
+
+        # The assertion that matters: the qualifier must be inserted
+        # immediately before the CLASS token, or applying the fix produces code
+        # that still does not compile -- which is what #1052 was. The inferred
+        # form's position comes from the diagnostic's own range, and only half
+        # of these diagnostics are anchored on the class across other shapes,
+        # so this pins the anchoring rather than trusting it.
+        for fixture in ("lsp_codeaction.obs", "lsp_codeaction_declared.obs"):
+            spot = qualify_edit(fixture)
+            if spot is None:
+                log_result(f"{fixture}: a qualification edit is offered", False, "none found")
+                continue
+            ln, char, new_text, src = spot
+            after = src[char:] if char is not None else ""
+            log_result(f"{fixture}: the qualifier lands on the class token",
+                       after.startswith("Vector"),
+                       f"line {ln} char {char} inserts {new_text!r} before {after[:24]!r}")
+            applied = src[:char] + new_text + src[char:]
+            log_result(f"{fixture}: applying it qualifies the class",
+                       "Collection.Vector" in applied, f"would read: {applied.strip()!r}")
+
+        # --- every shape, including the ones that must be DECLINED (#1057) ---
+        # The gate that stops the inferred-type fallback firing where the
+        # diagnostic is not on the class token is the part a later change drops
+        # silently, so it is asserted directly. Two of this fixture's ten
+        # diagnostics sit on a method name and on a `return` line; offering a
+        # qualifier there would insert "Collection." in front of them and leave
+        # the program still not compiling.
+        def all_qualify_edits(obs_name):
+            obs = os.path.join(TESTS_DIR, obs_name)
+            with open(obs, encoding="utf-8") as fh:
+                text = fh.read()
+            lines = text.split("\n")
+            uri = path_to_uri(obs)
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+            diags = c.diagnostics_for(uri, timeout=60) or []
+            undefs = [d for d in diags
+                      if str(d.get("message", "")).startswith("Undefined class")]
+            out = []
+            for d in undefs:
+                got = result_of(c.request("textDocument/codeAction", {
+                    "textDocument": {"uri": uri},
+                    "range": d["range"],
+                    "context": {"diagnostics": [d]},
+                })) or []
+                spot = None
+                for f in got:
+                    if not isinstance(f, dict) or not str(f.get("title", "")).startswith("Fully qualify"):
+                        continue
+                    for change in f.get("edit", {}).get("documentChanges", []):
+                        if not isinstance(change, dict):
+                            continue
+                        for e in change.get("edits", []) or []:
+                            rng = e.get("range", {}).get("start", {})
+                            new_text = e.get("newText", "")
+                            if "line" not in rng or "\n" in new_text or not new_text.endswith("."):
+                                continue
+                            spot = (rng["line"], rng.get("character"), new_text)
+                out.append((d["range"]["start"], spot, lines))
+            return out
+
+        shapes = all_qualify_edits("lsp_codeaction_shapes.obs")
+        log_result("every shape reports its undefined class",
+                   len(shapes) >= 8, f"{len(shapes)} diagnostics")
+
+        misplaced = []
+        declined = 0
+        for start, spot, lines in shapes:
+            if spot is None:
+                declined += 1
+                continue
+            ln, char, new_text = spot
+            src = lines[ln] if ln < len(lines) else ""
+            if not src[char:].startswith("Vector"):
+                misplaced.append((ln, char, src.strip()))
+        log_result("no qualifier is offered anywhere but on the class token",
+                   not misplaced, f"misplaced: {misplaced}")
+        log_result("the shapes that cannot be served offer no qualification",
+                   declined >= 2, f"{declined} declined of {len(shapes)}")
 
         # --- a name defined in several bundles (#1052) -----------------------
         # Offering one of them is the old behaviour, and it looked correct.

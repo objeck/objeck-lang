@@ -1,0 +1,32 @@
+# Every syntactic shape that can report "Undefined class", in one file.
+#
+# This exists for the NEGATIVE half of #1057. The inferred-type fallback uses the
+# diagnostic's own range as the place to insert a bundle qualifier, and that range
+# only covers the class token for some shapes -- measured here, five of the ten
+# diagnostics this file produces start on the class, and they are exactly the ones
+# where it is a method-call target. The rest point at a variable, a parameter, a
+# method name, or (for a return type) a line the class does not even appear on.
+#
+# So the fix is gated on the text at that position being the class name. Without
+# the gate, two of these would offer to insert "Collection." before a method name
+# and before `return` -- an applied quick fix that leaves the program still not
+# compiling, which is exactly what #1052 was. The suite asserts those two offer
+# no qualification, so losing the gate fails here rather than in someone's editor.
+class Shapes {
+	function : Main(args : String[]) ~ Nil {
+		a := Vector->New();
+		b : Vector;
+		Vector->New();
+		c := Vector->New()->Size();
+		d : Vector := Vector->New();
+		Shapes->Takes(Vector->New());
+	}
+
+	function : Takes(v : Vector) ~ Nil {
+		v->Size();
+	}
+
+	function : Returns() ~ Vector {
+		return Nil;
+	}
+}
