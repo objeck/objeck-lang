@@ -151,6 +151,16 @@ class TestKey:
 
     def sign_file(self, message_path, signature_path,
                   trusted_comment="timestamp:0\tfile:SHA256SUMS"):
+        """Write a minisign-format detached signature for `message_path`.
+
+        `trusted_comment` is PUBLIC, despite the name: it is the comment the
+        global signature covers, which is what makes it trustworthy rather than
+        what makes it secret. It appears in plain text in every .minisig file
+        minisign writes. CodeQL reads the name as a secret and reports
+        py/clear-text-storage-sensitive-data on the line that writes it (alert
+        363, dismissed as a false positive). Nothing secret is written here --
+        the seed is a per-run throwaway and never leaves memory.
+        """
         with open(message_path, "rb") as handle:
             message = handle.read()
 
