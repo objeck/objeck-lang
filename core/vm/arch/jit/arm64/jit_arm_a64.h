@@ -375,6 +375,9 @@ namespace Runtime {
     vector<long> bounds_less_offsets;    // -2
     vector<long> bounds_greater_offsets; // -3
     vector<long> div_by_zero_offsets;    // code -4
+    // A bridge call that reported an error (#925). Not tied to one code: the
+    // status is whatever StackCallbackBody returned, already in X0.
+    vector<long> bridge_status_offsets;
     long local_space;
     bool realign_stack;
     StackMethod* method;
@@ -510,6 +513,36 @@ namespace Runtime {
     /**
      * Check for 'Nil' dereferencing
      */
+    /**
+     * A bridge call's reported status (#925).
+     *
+     * The call returns 0, or a negative status in the guard stubs' space, in
+     * X0. A negative one leaves the method the way a guard stub does -- through
+     * the teardown, with the status in X0 -- so the interpreter's bridge can
+     * recover it into an active Try().
+     *
+     * b.lt and not b.ne: 0 is success and every status is negative, while a
+     * bridge call that yields a value leaves a positive one in X0. The branch
+     * targets the teardown directly rather than a handler of its own, because
+     * X0 is already what a handler would be setting; see the patch loop for
+     * why not adding one matters here.
+     */
+    inline void CheckBridgeStatus() {
+      cmp_imm_reg(0, X0);
+#ifdef _DEBUG_JIT
+      std::wcout << L"  " << (++instr_count) << L": [b.lt <teardown>]" << std::endl;
+#endif
+      bridge_status_offsets.push_back(code_index);
+      AddMachineCode(0x5400000B);        // b.lt, imm19 patched in Compile()
+
+      // cmp_imm_reg left last_cmp_was_zero set, which is a peephole: a
+      // following EQL_INT/NEQL_INT jump would emit `cbz/cbnz last_cmp_reg`
+      // instead of using the flags -- and last_cmp_reg is now X0, holding this
+      // call's return value. The comparison above is consumed by the branch
+      // above and by nothing else, so say so.
+      last_cmp_was_zero = false;
+    }
+
     inline void CheckNilDereference(Register reg) {
       // less than zero
       cmp_imm_reg(0, reg);

@@ -87,11 +87,11 @@ Both build on the `Try()`/`Otherwise()` intrinsics, so `a?->b()` is exactly
 `a->Try()->b()` and `a ?? b` is `a->Otherwise(b)`. One consequence worth
 knowing: `Try()` guards against most runtime errors in the chain, not only a
 `Nil` dereference — `a?->Get(999)` yields `Nil` on an out-of-range index rather
-than faulting. An invalid object cast and a call-stack overflow are recovered
-too, as long as they happen in interpreted code. Inside a JIT-compiled method
-both still end the program: a failing cast is raised in a JIT callback, which
-cannot reach the interpreter's handler stack, and compiled recursion overruns
-the native stack before any frame-count guard fires.
+than faulting. An invalid object cast is recovered too, in
+interpreted and in JIT-compiled code alike — the same program behaves the same
+way whether or not the failing method happened to be compiled. A call-stack
+overflow is recovered in interpreted code only: compiled frames consume the real
+C stack, so the process dies in the OS before any frame-count guard can fire.
 
 ### Anonymous Classes
 ```ruby

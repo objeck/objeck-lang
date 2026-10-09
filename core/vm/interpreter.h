@@ -108,13 +108,53 @@ namespace Runtime {
     // (MemoryManager::stw_active) was already atomic.
     std::atomic<bool> halt;
 
-    // try/error handler stack
+    // try/error handler stack -- PER THREAD, not per interpreter instance.
+    //
+    // A Try() is inherently per-thread: a handler pushed on one thread must
+    // never catch an error raised on another. These used to be instance fields,
+    // which got that right only because each thread runs its own interpreter.
+    //
+    // They moved because a JIT callback cannot reach an interpreter at all.
+    // JitStackCallback is static and receives no interpreter, so the handler
+    // stack holding the active Try() was invisible to it -- jit_common.cpp's
+    // OBJ_INST_CAST case builds a THROWAWAY StackInterpreter purely to print a
+    // stack listing, which is the clearest evidence of it. See
+    // docs/TRY_IN_JIT_DESIGN.md (#925), gap 1.
+    //
+    // THE HAZARD, and why this struct has no Reset():
+    //
+    // One thread genuinely holds several StackInterpreter instances. jit_common.cpp
+    // constructs one at three sites on the same thread as the interpreter already
+    // executing below, and one of those is inside StackCallbackBody itself. Every
+    // constructor used to zero try_handler_pos. With the state per-thread, a
+    // constructor that zeroed it would WIPE A LIVE HANDLER STACK -- a Try()
+    // active below would be destroyed the moment compiled code took any
+    // callback, turning a working recovery into an abort, intermittently,
+    // depending on which methods had been compiled.
+    //
+    // So nothing resets this. The default member initialisers below run once per
+    // thread, by language guarantee, which is both sufficient and safer than an
+    // explicit reset: there is no "top-level Execute" to reset at, because
+    // Execute is re-entered on the same thread through the JIT bridge. If you
+    // find yourself wanting to clear this state, that is the bug above.
     static const int TRY_STACK_SIZE = 16;
-    long try_handler_stack[TRY_STACK_SIZE];
-    size_t try_handler_stack_pos[TRY_STACK_SIZE];
-    long try_handler_call_stack_pos[TRY_STACK_SIZE];
-    int try_handler_pos;
-    long try_recovery_ip;
+
+    struct TryHandlerState {
+      long stack[TRY_STACK_SIZE];
+      size_t stack_pos[TRY_STACK_SIZE];
+      long call_stack_pos[TRY_STACK_SIZE];
+      int pos = 0;
+      long recovery_ip = -1;
+    };
+
+    //
+    // This thread's handler state. Reachable from anywhere on the thread,
+    // including a static JIT callback, which is the whole point.
+    //
+    static TryHandlerState& TryState() {
+      static thread_local TryHandlerState state;
+      return state;
+    }
 
 #ifdef _DEBUGGER
     Debugger* debugger;
@@ -172,24 +212,42 @@ namespace Runtime {
     // check if a try handler is active
     //
     inline bool HasTryHandler() {
-      return try_handler_pos > 0;
+      return TryState().pos > 0;
     }
 
     //
     // get the current try handler target IP
     //
     inline long GetTryHandlerIP() {
-      return try_handler_stack[try_handler_pos - 1];
+      const TryHandlerState& state = TryState();
+      return state.stack[state.pos - 1];
     }
 
     //
     // get the saved stack position for current try handler
     //
     inline size_t GetTryHandlerStackPos() {
-      return try_handler_stack_pos[try_handler_pos - 1];
+      const TryHandlerState& state = TryState();
+      return state.stack_pos[state.pos - 1];
     }
 
   public:
+    //
+    // Whether a Try() is active on THIS thread.
+    //
+    // Public and static for the JIT bridge. StackCallbackBody reports an error
+    // by returning a status, and it should print the diagnostic only when
+    // nothing will catch it: the interpreter recovers SILENTLY, so printing
+    // unconditionally would make compiled code noisier than interpreted code
+    // for the very same recovered error -- and #925 is about the two agreeing.
+    //
+    // Reachable at all only because the handler stack is per-thread: a JIT
+    // callback is static and holds no interpreter (see TryHandlerState above).
+    //
+    static bool ThreadHasTryHandler() {
+      return TryState().pos > 0;
+    }
+
     // JIT callback support: frame allocation/deallocation
     static StackFrame* GetStackFrame(StackMethod* method, size_t* instance);
     static void ReleaseStackFrame(StackFrame* frame);
@@ -203,8 +261,9 @@ namespace Runtime {
     // pop the current try handler
     //
     inline void PopTryHandler() {
-      if(try_handler_pos > 0) {
-        --try_handler_pos;
+      TryHandlerState& state = TryState();
+      if(state.pos > 0) {
+        --state.pos;
       }
     }
 
@@ -212,11 +271,12 @@ namespace Runtime {
     // push a try handler
     //
     inline void PushTryHandler(long handler_ip, size_t saved_stack_pos, long saved_call_stack_pos) {
-      if(try_handler_pos < TRY_STACK_SIZE) {
-        try_handler_stack[try_handler_pos] = handler_ip;
-        try_handler_stack_pos[try_handler_pos] = saved_stack_pos;
-        try_handler_call_stack_pos[try_handler_pos] = saved_call_stack_pos;
-        ++try_handler_pos;
+      TryHandlerState& state = TryState();
+      if(state.pos < TRY_STACK_SIZE) {
+        state.stack[state.pos] = handler_ip;
+        state.stack_pos[state.pos] = saved_stack_pos;
+        state.call_stack_pos[state.pos] = saved_call_stack_pos;
+        ++state.pos;
       }
     }
 
@@ -226,9 +286,10 @@ namespace Runtime {
     //
     inline bool TryErrorRecovery(size_t* &stack_pos) {
       if(HasTryHandler()) {
-        try_recovery_ip = GetTryHandlerIP();
+        TryHandlerState& state = TryState();
+        state.recovery_ip = GetTryHandlerIP();
         *stack_pos = GetTryHandlerStackPos();
-        long saved_call_pos = try_handler_call_stack_pos[try_handler_pos - 1];
+        long saved_call_pos = state.call_stack_pos[state.pos - 1];
         PopTryHandler();
         while(*call_stack_pos > saved_call_pos) {
           StackFrame* current = *stack_frame;
@@ -246,8 +307,9 @@ namespace Runtime {
     // check and get recovery IP (called from Execute loop)
     //
     inline long CheckTryRecovery() {
-      long ip = try_recovery_ip;
-      try_recovery_ip = -1;
+      TryHandlerState& state = TryState();
+      long ip = state.recovery_ip;
+      state.recovery_ip = -1;
       return ip;
     }
 
@@ -256,7 +318,7 @@ namespace Runtime {
     // to skip jit_called checks after TryErrorRecovery unwound frames)
     //
     inline bool HasPendingRecovery() {
-      return try_recovery_ip >= 0;
+      return TryState().recovery_ip >= 0;
     }
 
     // The following methods are public to allow access from dispatch handlers
@@ -625,8 +687,6 @@ namespace Runtime {
       // indeterminate until Execute's prologue stores the first frame.
       *stack_frame = nullptr;
       halt = false;
-      try_handler_pos = 0;
-      try_recovery_ip = -1;
 
       MemoryManager::AddPdaMethodRoot(stack_frame);
     }
@@ -647,8 +707,6 @@ namespace Runtime {
       call_stack_pos = new long;
       *call_stack_pos = -1;
       halt = false;
-      try_handler_pos = 0;
-      try_recovery_ip = -1;
 
       // register monitor
       stack_frame_monitor = new StackFrameMonitor;
@@ -683,8 +741,6 @@ namespace Runtime {
       // indeterminate until Execute's prologue stores the first frame.
       *stack_frame = nullptr;
       halt = false;
-      try_handler_pos = 0;
-      try_recovery_ip = -1;
 
       // register monitor
       stack_frame_monitor = new StackFrameMonitor;
@@ -718,8 +774,6 @@ namespace Runtime {
       // indeterminate until Execute's prologue stores the first frame.
       *stack_frame = nullptr;
       halt = false;
-      try_handler_pos = 0;
-      try_recovery_ip = -1;
 
       // register monitor
       stack_frame_monitor = new StackFrameMonitor;

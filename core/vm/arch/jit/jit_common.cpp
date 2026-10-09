@@ -251,6 +251,11 @@ void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, con
   case -3:
     reason = L"Index out of bounds";
     break;
+  case JIT_STATUS_INVALID_CAST:
+    // The message naming both classes was already printed where the cast
+    // failed; this is the call context for it.
+    reason = L"Invalid object cast";
+    break;
   default:
     reason = L"Unknown runtime error";
     break;
@@ -333,14 +338,14 @@ JitVirtualRecord* JitCompiler::JitResolveFuncRefSite(JitVirtualSite* site, size_
  * JitStackCallback takes: the caller's MTHD_CALL re-executes in the
  * interpreter, which is where the auto-JIT counts the callee's calls.
  */
-void JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackInstr* instr, const long cls_id,
+int64_t JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackInstr* instr, const long cls_id,
                                 const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                 StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
   try {
 #ifndef _NO_JIT
     if(CallCompiled(callee, false, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos)) {
-      return;
+      return 0;
     }
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
@@ -355,6 +360,9 @@ void JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackInstr
   catch(...) {
     BridgeExceptionExit(nullptr, false, cls_id, mthd_id, call_stack, call_stack_pos);
   }
+  // Unreachable: every catch above ends the process. Stated so the signature
+  // does not depend on the compiler agreeing about that.
+  return 0;
 }
 
 /**
@@ -363,12 +371,17 @@ void JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackInstr
  * the catch the header describes, so an exception never reaches the compiled
  * frame below. A nested bridge (compiled code called from here) catches its own.
  */
-void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
+int64_t JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const long cls_id,
                                    const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                    StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
   try {
-    StackCallbackBody(instr_id, instr, cls_id, mthd_id, inst, op_stack, stack_pos, call_stack, call_stack_pos, ip);
+    // Returned, not exited. Compiled code tests this and leaves through its
+    // epilogue with the status in hand, exactly as a guard stub does, and the
+    // interpreter's bridge recovers from it if a Try() is active -- which is
+    // the whole of #925. Unguarded, the bridge reports and exits as before.
+    return StackCallbackBody(instr_id, instr, cls_id, mthd_id, inst, op_stack,
+                             stack_pos, call_stack, call_stack_pos, ip);
   }
   catch(const std::bad_alloc&) {
     BridgeExceptionExit(nullptr, true, cls_id, mthd_id, call_stack, call_stack_pos);
@@ -379,6 +392,9 @@ void JitCompiler::JitStackCallback(const long instr_id, StackInstr* instr, const
   catch(...) {
     BridgeExceptionExit(nullptr, false, cls_id, mthd_id, call_stack, call_stack_pos);
   }
+  // Unreachable: every catch above ends the process. Stated so the signature
+  // does not depend on the compiler agreeing about that.
+  return 0;
 }
 
 /**
@@ -409,7 +425,7 @@ void JitCompiler::BridgeExceptionExit(const char* what, const bool out_of_memory
 /**
  * The bridge's opcode switch (see JitStackCallback)
  */
-void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, const long cls_id,
+int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, const long cls_id,
                                     const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                                     StackFrame** call_stack, long* call_stack_pos, const long ip)
 {
@@ -745,18 +761,18 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
             // binary
           case 'b':
             PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 2));
-            return;
+            return 0;   // parsed, not an error
 
             // octal
           case 'o':
             PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 8));
-            return;
+            return 0;   // parsed, not an error
 
             // hexadecimal
           case 'x':
           case 'X':
             PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 16));
-            return;
+            return 0;   // parsed, not an error
 
           default:
       break;
@@ -797,11 +813,24 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
 #endif
     size_t result = (size_t)MemoryManager::ValidObjectCast(mem, to_id, program->GetHierarchy(), program->GetInterfaces());
     if(!result && mem) {
-      StackClass* to_cls = MemoryManager::GetClass(mem);
-      std::wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
-        << L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << std::endl;
-      std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
-      VmExit(1);
+      // Reported, not exited (#925). The message is printed here, where the
+      // two class names are still in hand; the caller decides what the status
+      // means. Nothing pushes a result on this path -- a recovering Try()
+      // resets the operand stack to the handler's saved position, so a value
+      // left here would be discarded, and a value pushed for an abort would be
+      // read by nobody.
+      // Printed only when nothing will catch it. The interpreter recovers from
+      // this silently, so printing unconditionally would make the same
+      // recovered error noisier in compiled code than in interpreted code --
+      // and the two agreeing is the whole of #925. Unguarded, the message is
+      // unchanged and names both classes, printed here where they are in hand.
+      if(!Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        StackClass* to_cls = MemoryManager::GetClass(mem);
+        std::wcerr << L">>> Invalid object cast: '" << (to_cls ? to_cls->GetName() : L"?")
+          << L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << std::endl;
+        std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
+      }
+      return JIT_STATUS_INVALID_CAST;
     }
     PushInt(op_stack, stack_pos, result);
   }
@@ -1108,6 +1137,9 @@ void JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, cons
     break;
 #endif
   }
+
+  // Every case that did not report an error falls through to here.
+  return 0;
 }
 
 /**

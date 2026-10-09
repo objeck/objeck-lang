@@ -195,9 +195,10 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
       if(status < 0) {
         // A guard stub's error is recoverable like the interpreter's own: the
         // compiled frame has already returned, so a Try() region below can take
-        // over (#900). Errors raised inside a JIT callback, an invalid cast, or
-        // in a JIT-to-JIT call still end the program; the callback has no way to
-        // reach this interpreter's handler stack.
+        // over (#900). An invalid cast raised in a bridge callback arrives here
+        // the same way since #925 -- as status -5, because the handler stack is
+        // per-thread and the callback can report instead of exiting. A
+        // JIT-to-JIT call still reports and exits in JitNativeCallError.
         if(TryErrorRecovery(stack_pos)) {
           return;
         }

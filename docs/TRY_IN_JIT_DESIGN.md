@@ -1,6 +1,22 @@
 # `Try()` inside compiled code — design
 
-Status: **design only, nothing built.** For
+Status: **the cast path is built and shipped; gap 3 remains.** Steps 1-5 and 7
+below are done (2026-10-09): the handler stack is per-thread, the bridge switch
+reports a status instead of exiting, and both backends test it. A guarded cast
+inside compiled code now recovers, with stdout identical to the interpreter's.
+Step 6 -- `EmitNativeCallSite` propagating a *callee's* status to its caller
+rather than calling `JitNativeCallError` -- is still open, so a JIT-to-JIT call
+whose callee fails still ends the program. Compiled recursion stays out of
+scope, for the reason under "What this does not attempt".
+
+One correction worth carrying: the status must be returned as a **fixed-width**
+type. `long` is 32 bits on Win64, so -5 reached the return register
+zero-extended as `0x00000000FFFFFFFB`, which the 64-bit compare the emitted test
+uses reads as positive. The branch never fired, the method carried on past a
+reported error with nothing pushed, and died on the next instruction. The three
+bridge entries return `int64_t`.
+
+Original status: **design only, nothing built.** For
 [#925](https://github.com/objeck/objeck-lang/issues/925), which asks for a design
 before an implementation. Written 2026-10-08 against
 `core/vm/arch/jit/jit_common.cpp`, `core/vm/interpreter.h` and both backends.

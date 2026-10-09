@@ -1,0 +1,74 @@
+# JIT_DISABLE
+# reason: compiled recursion overruns the native C stack before any frame-count
+# guard can fire, so the process dies in the OS with no frame left to return a
+# status from. #925 closed the CAST half (see try_recovers_cast.obs, which runs
+# in every pass); this half needs a stack-limit test emitted into every compiled
+# prologue, which carries a per-call cost and is not built
+#~
+Try() -- and '?->', which is Try() on the chain -- recovers from a full call
+stack, as it does from every other runtime error in interpreted code.
+
+It used to end the program even inside a guarded chain (#900): PushFrame's
+overflow path was a bare exit(1). Recovery pops frames back to the handler's
+depth, which is also what frees the call stack again after a runaway recursion.
+
+The error is raised deep inside a called method rather than in the chain
+expression itself, which is the case that matters: the handler is far below the
+frame that fails.
+
+Unguarded this still prints its message and exits 1; bad_runtime_stack.obs
+covers the unguarded overflow, and opts out of the JIT pass for the same reason
+this does.
+~#
+
+class Animal { New() {} }
+class Dog from Animal { New() { Parent(); } }
+
+class Holder {
+	@animal : Animal;
+
+	New(animal : Animal) {
+		@animal := animal;
+	}
+
+	# runs the call stack out. The work after the call keeps the compiler's
+	# tail-call pass from rewriting this into a loop, which would spin forever
+	# instead of overflowing (the same trap bad_runtime_stack.obs names).
+	method : public : Deep(n : Int) ~ Dog {
+		deeper := Deep(n + 1);
+		if(deeper = Nil) {
+			return Nil;
+		};
+
+		return deeper;
+	}
+}
+
+class TryRecoversDepth {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		holder := Holder->New(Dog->New());
+
+		deep := holder?->Deep(0);
+		ok := Report("full call stack in a guarded chain yields Nil", deep = Nil) & ok;
+
+		# the call stack is usable again
+		again := holder?->Deep(0);
+		ok := Report("the call stack is usable after recovery", again = Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
