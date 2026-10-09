@@ -204,7 +204,7 @@ Or use the GitHub Actions UI:
 
 ## Manual Steps
 
-These happen after `release-publish.yml` goes green. `tools/cicd/post_release.sh <VERSION>` checks the outcome of each (assets, binaries in every archive, signatures, `SHA256SUMS`, the release body, the playground). Without `--sign`, `--body` or `--playground` it changes nothing, except that it regenerates and re-uploads a `SHA256SUMS` that no longer matches the published files.
+These happen after `release-publish.yml` goes green. `tools/cicd/post_release.sh <VERSION>` checks the outcome of each (assets, binaries in every archive, signatures, `SHA256SUMS`, the release body, the playground). Without `--sign`, `--body` or `--playground` it changes nothing, except that it regenerates and re-uploads a `SHA256SUMS` that no longer matches the published files -- and then requests a re-signing, because regenerating the manifest invalidates its signature and `obu` refuses a manifest it cannot verify.
 
 ### 1. Sign the Windows installers
 
@@ -214,7 +214,7 @@ The certificate is on a SafeNet eToken, so CI cannot sign. On the Windows releas
 tools/cicd/post_release.sh <VERSION> --sign --body <release-notes.md>
 ```
 
-`--sign` runs `tools/cicd/sign_release.cmd`, which downloads the published MSIs, signs and verifies them, uploads them back and regenerates `SHA256SUMS` (signing changes the bytes); the token asks for its password. `post_release.sh` then re-checks the signatures and the manifest against the published files. Details: [SIGNING.md](../SIGNING.md).
+`--sign` runs `tools/cicd/sign_release.cmd`, which downloads the published MSIs, signs and verifies them, uploads them back and regenerates `SHA256SUMS` (signing changes the bytes); the token asks for its password. Regenerating the manifest invalidates `SHA256SUMS.minisig`, so it also triggers `resign-manifest.yml` and fails if that run does not succeed -- since #723 phase 3 a manifest whose signature does not verify is one `obu update` refuses outright. `post_release.sh` then re-checks the signatures, the manifest against the published files, and the signature against the published manifest. Details: [SIGNING.md](../SIGNING.md).
 
 ### 2. Deploy the playground
 
@@ -397,7 +397,7 @@ Use this checklist for each release:
 - [ ] Git tag created and pushed (`git tag vX.Y.Z && git push origin vX.Y.Z`)
 - [ ] Release build workflow completed successfully
 - [ ] Release publish workflow completed (auto-triggered)
-- [ ] Windows MSIs signed and `SHA256SUMS` regenerated (`post_release.sh --sign`)
+- [ ] Windows MSIs signed, `SHA256SUMS` regenerated **and re-signed** (`post_release.sh --sign`; gate `[4b]` must pass, or `obu update` refuses the release)
 - [ ] GitHub Release body updated with proper release notes (`post_release.sh --body`)
 - [ ] GitHub Release verified with all platform assets
 - [ ] Playground deployed and reporting the new version

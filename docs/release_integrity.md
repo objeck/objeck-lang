@@ -97,6 +97,16 @@ working verifier from one that always returns true.
 3. ~~**`obu` verifies the signature; missing or invalid is fatal.**~~ **DONE, 2026-10-09.** From here on a substituted manifest is caught. Ed25519 comes from TweetNaCl, vendored unmodified ([`core/utils/updater/vendor/README.md`](../core/utils/updater/vendor/README.md)); `tools/cicd/test_obu_verify.py` holds it to behaviour against a committed fixture signed with the real key, in both directions.
 4. **Publish the public key out of band** (objeck.org, README) and add a `verify-signing-credentials.yml`-style check that the secret key matches the committed public key, on the same weekly schedule.
 
+**The manifest is signed twice.** Windows MSI signing happens after publication,
+on the maintainer's machine, and it rewrites the MSI bytes -- so `SHA256SUMS` is
+regenerated over the published assets afterwards, which invalidates the signature
+made during publication. `.github/workflows/resign-manifest.yml` signs the
+published manifest again, in CI, so the secret stays where it belongs;
+`update_sha256sums.ps1` and `post_release.sh` both trigger it, and
+`post_release.sh` gate `[4b]` verifies the published signature against the
+published manifest with `obu` itself. Before phase 3 a stale signature was
+merely useless. Now it makes the release uninstallable.
+
 **What phase 3 changes at release time.** Up to phase 2, a release that was not
 signed simply had no signature and `obu` carried on. From phase 3, `obu update`
 refuses a manifest it cannot verify -- so an unsigned release is one that no

@@ -18,6 +18,9 @@
 #                                                   file's existence
 #   * v2026.8.3 SHA256SUMS described pre-signing -> signing rewrites the MSIs;
 #     bytes, so verification FAILED for users       regenerate and prove it
+#   * regenerating it then invalidated the        -> re-sign, and verify the
+#     SIGNATURE, which since #723 phase 3            SIGNATURE against the
+#     makes the release UNINSTALLABLE                PUBLISHED manifest [4b]
 #   * the body advertised objeck-lsp-X.zip       -> diff every asset filename in
 #     (hyphen) which is not an asset                the body against reality
 #   * the body linked compare/v...vX            -> reject unsubstituted markers
@@ -66,7 +69,8 @@ for want in "objeck-windows-x64_${VERSION}.msi" \
             "objeck-windows-arm64_${VERSION}.msi" \
             "objeck-macos-arm64_${VERSION}.pkg" \
             "objeck-macos-arm64_${VERSION}.zip" \
-            "SHA256SUMS"; do
+            "SHA256SUMS" \
+            "SHA256SUMS.minisig"; do
   grep -qx "$want" "$WORK/have.txt" || bad "missing required asset: $want"
 done
 
@@ -145,6 +149,16 @@ if [ "$STALE" -eq 1 ]; then
     done < SHA256SUMS
     mv SHA256SUMS.new SHA256SUMS
     gh release upload "$TAG" -R "$REPO" SHA256SUMS --clobber >/dev/null 2>&1 )
+  # The published signature now describes the manifest we just replaced, and obu
+  # refuses a manifest whose signature does not verify -- so stopping here would
+  # leave a release no 'obu update' will install. Re-signing runs in CI, where
+  # the key lives; this machine has the eToken and never needs the manifest key.
+  echo "  re-signing the regenerated manifest (resign-manifest.yml)..."
+  if gh workflow run resign-manifest.yml -R "$REPO" -f version="$VERSION" >/dev/null 2>&1; then
+    note "re-sign requested -- gate [4b] below checks the result"
+  else
+    bad "could not start resign-manifest.yml; the published signature still describes the OLD manifest, so 'obu update' will refuse this release"
+  fi
   # prove it, against a fresh download
   ( cd "$WORK" && rm -rf v && mkdir -p v && gh release download "$TAG" -R "$REPO" --pattern SHA256SUMS --dir v --clobber >/dev/null 2>&1 )
   RC=0
@@ -156,6 +170,51 @@ if [ "$STALE" -eq 1 ]; then
   [ "$RC" -eq 0 ] && note "regenerated and re-verified against the published files" \
                   || bad "SHA256SUMS still does not match after regeneration"
 fi
+fi
+
+# ------------------------------- 4b. the signature describes that manifest
+echo
+echo "[4b] SHA256SUMS.minisig verifies against the PUBLISHED SHA256SUMS"
+# This is the property obu enforces since #723 phase 3: it refuses a manifest
+# whose signature does not verify. A release whose manifest was regenerated
+# after signing fails here -- and fails for every user running 'obu update',
+# which is why it is a gate and not a note.
+#
+# Checked with obu itself where possible: it is the consumer whose refusal
+# decides whether the release installs, it needs nothing installed on this
+# machine, and it carries the trusted key compiled in. minisign is the fallback.
+( cd "$WORK" && gh release download "$TAG" -R "$REPO" --pattern "SHA256SUMS.minisig" --clobber 2>&1 | sed 's/^/    gh: /' )
+if [ ! -f "$WORK/SHA256SUMS.minisig" ]; then
+  bad "no SHA256SUMS.minisig published -- obu refuses an unsigned manifest, so no obu can install $TAG"
+else
+  SIG_OBU=""
+  for cand in "core/release/deploy-x64/bin/obu.exe" "core/release/deploy-x64/bin/obu" \
+              "core/release/deploy/bin/obu.exe" "core/release/deploy/bin/obu"; do
+    # -f only: Git Bash reports the extensionless name as present when just
+    # obu.exe exists, and the name is handed to a program that opens it.
+    if [ -f "$cand" ]; then SIG_OBU="$cand"; break; fi
+  done
+  if [ -n "$SIG_OBU" ]; then
+    # 'verify' checks the signature before it reads a line of the manifest, so
+    # naming the manifest as its own archive reaches the signature check and
+    # nothing else. Exit 2 with a signature message is the failure to catch;
+    # exit 1 (hash mismatch) means the signature PASSED.
+    OUT=$("$SIG_OBU" verify "$WORK/SHA256SUMS" "$WORK/SHA256SUMS" 2>&1)
+    case "$OUT" in
+      *"SIGNATURE VERIFICATION FAILED"*|*"No signature beside the manifest"*)
+        bad "the published signature does not verify against the published manifest -- 'obu update' will refuse $TAG. Run: gh workflow run resign-manifest.yml -f version=$VERSION" ;;
+      *)
+        note "ok       obu accepts the published manifest's signature" ;;
+    esac
+  elif command -v minisign >/dev/null 2>&1; then
+    if minisign -V -p core/release/objeck-release.pub -x "$WORK/SHA256SUMS.minisig" -m "$WORK/SHA256SUMS" >/dev/null 2>&1; then
+      note "ok       minisign accepts the published manifest's signature"
+    else
+      bad "the published signature does not verify against the published manifest -- 'obu update' will refuse $TAG. Run: gh workflow run resign-manifest.yml -f version=$VERSION"
+    fi
+  else
+    bad "no obu and no minisign here, so the signature went UNCHECKED -- build obu or install minisign; an unverified release-critical property is what this script exists to prevent"
+  fi
 fi
 
 # ------------------------------------------------------------- 5. body

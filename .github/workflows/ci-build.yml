@@ -1497,6 +1497,18 @@ jobs:
       - name: Generated files match their .in templates
         run: python3 tools/cicd/check_version_templates.py
 
+      # Same class again, and the one with the worst failure mode. obu refuses a
+      # manifest whose signature does not verify (#723 phase 3), so a tool that
+      # replaces a published SHA256SUMS and leaves SHA256SUMS.minisig alone does
+      # not weaken the release -- it makes it uninstallable, for everyone. Two
+      # tools did exactly that, because Windows MSI signing happens after
+      # publication and rewrites the installer bytes. The self-test runs too: a
+      # guard whose matching has quietly stopped matching reports success.
+      - name: Every SHA256SUMS upload is re-signed
+        run: |
+          python3 tools/cicd/check_manifest_resign.py --test
+          python3 tools/cicd/check_manifest_resign.py
+
       # Install instructions drift from what the binaries link: v2026.9.2's notes
       # told macOS users to install two formulas while obr needed four more, one
       # of which Homebrew does not ship. Every package a doc names must be in

@@ -143,3 +143,64 @@ if ($bad.Count -gt 0) {
 
 Write-Output ""
 Write-Output "SHA256SUMS verified against all $($published.Count) published assets."
+
+# --- the signature still describes the manifest we just replaced --------------
+# SHA256SUMS.minisig was made during publication, over the manifest as it was
+# BEFORE this script rewrote it. Since #723 phase 3 obu refuses a manifest whose
+# signature does not verify, so a stale signature is not a weaker release -- it
+# is one `obu update` will not install, for anyone. Re-signing happens in CI,
+# where the key lives: this machine holds the eToken and never needs the
+# manifest key.
+Write-Output ""
+Write-Output "Re-signing the manifest (resign-manifest.yml) ..."
+$started = (Get-Date).ToUniversalTime()
+& $gh workflow run resign-manifest.yml -f version=$Version
+if ($LASTEXITCODE -ne 0) {
+    throw ("could not start resign-manifest.yml -- the PUBLISHED SIGNATURE STILL DESCRIBES THE OLD " +
+           "MANIFEST, so 'obu update' will refuse this release. Run it by hand: " +
+           "gh workflow run resign-manifest.yml -f version=$Version")
+}
+
+# Find the run this just started, then wait for it. `gh run watch` is not used
+# as the gate: it exits 0 on a network error, so a lost connection would read as
+# a successful re-signing.
+$runId = $null
+for ($i = 0; $i -lt 30; $i++) {
+    Start-Sleep -Seconds 4
+    $runs = & $gh run list --workflow resign-manifest.yml --limit 5 --json databaseId,createdAt,status,conclusion
+    if ($LASTEXITCODE -ne 0) { continue }
+    foreach ($r in (ConvertFrom-Json ($runs -join "`n"))) {
+        if ([datetime]::Parse($r.createdAt).ToUniversalTime() -ge $started.AddSeconds(-30)) {
+            $runId = $r.databaseId
+            break
+        }
+    }
+    if ($runId) { break }
+}
+if (-not $runId) {
+    throw ("started resign-manifest.yml but could not find its run; check it and the published " +
+           "signature by hand: gh run list --workflow resign-manifest.yml")
+}
+Write-Output "  run $runId"
+
+$conclusion = $null
+for ($i = 0; $i -lt 90; $i++) {
+    $one = & $gh run view $runId --json status,conclusion
+    if ($LASTEXITCODE -eq 0) {
+        $parsed = ConvertFrom-Json ($one -join "`n")
+        if ($parsed.status -eq "completed") {
+            $conclusion = $parsed.conclusion
+            break
+        }
+    }
+    Start-Sleep -Seconds 10
+}
+
+if ($conclusion -ne "success") {
+    if (-not $conclusion) { $conclusion = "did not finish in 15 minutes" }
+    throw ("resign-manifest.yml: $conclusion -- the published signature may still describe the OLD " +
+           "manifest, which 'obu update' will refuse. See: gh run view $runId --log-failed")
+}
+
+Write-Output ""
+Write-Output "SHA256SUMS re-signed; the published signature verifies against the published manifest."

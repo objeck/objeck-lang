@@ -98,8 +98,15 @@ Run on the Windows release machine with the token plugged in. It calls `tools/ci
 3. Verifies each with `signtool verify /pa`
 4. Uploads the signed MSIs back to the release (`--clobber`)
 5. Regenerates `SHA256SUMS` with `tools/cicd/update_sha256sums.ps1`, because signing changed the MSI bytes
+6. Which then re-signs it: regenerating the manifest invalidates `SHA256SUMS.minisig`, and since [#723](https://github.com/objeck/objeck-lang/issues/723) phase 3 `obu` **refuses a manifest whose signature does not verify**. A stale signature is not a weaker release; it is one `obu update` will not install, for anyone. `update_sha256sums.ps1` triggers `.github/workflows/resign-manifest.yml` and fails if that run does not succeed.
 
-`post_release.sh` then checks the published MSIs with `tools/cicd/check_release_signatures.ps1` (`Get-AuthenticodeSignature`) and re-verifies `SHA256SUMS` against the published files.
+The re-signing happens in CI on purpose. The manifest's secret key lives in the `MINISIGN_SECRET_KEY` Actions secret and in the maintainer's password manager; this machine holds the eToken and never needs it. The workflow is idempotent — if the published signature already verifies against the published manifest it changes nothing — so it is safe to run by hand at any time:
+
+```bash
+gh workflow run resign-manifest.yml -f version=<VERSION>
+```
+
+`post_release.sh` then checks the published MSIs with `tools/cicd/check_release_signatures.ps1` (`Get-AuthenticodeSignature`), re-verifies `SHA256SUMS` against the published files, and — gate `[4b]` — verifies `SHA256SUMS.minisig` against the published manifest with `obu` itself, which is the consumer whose refusal decides whether the release installs. If `post_release.sh` has to regenerate the manifest itself, it requests the re-signing the same way.
 
 The portable Windows `.zip` archives, and the executables inside them, are not signed.
 
