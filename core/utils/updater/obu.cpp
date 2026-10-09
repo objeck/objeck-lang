@@ -71,6 +71,29 @@ namespace fs = std::filesystem;
 
 #define RELEASES_API_BASE "https://api.github.com/repos/objeck/objeck-lang/releases"
 
+// The release signing key, in minisign's base64 form, matching
+// core/release/objeck-release.pub -- the same bytes, compiled in so a user does
+// not have to trust a file they downloaded alongside what it attests to.
+//
+// SHA256SUMS is served from the same place as the assets it describes, so
+// anyone who can replace an asset can replace the manifest to match; the
+// verification below then compares a substituted archive against a substituted
+// manifest and reports success. The Linux and macOS archives carry no platform
+// signature at all, so for those the manifest is the only integrity claim
+// (docs/release_integrity.md).
+//
+// NOT YET ENFORCED. This is phase 2 of that design: releases are signed from
+// now on, and phase 3 makes a missing or invalid signature fatal here. The
+// ordering is deliberate rather than timid -- an obu that required a signature
+// before any release carried one would reject every release it could see,
+// including the ones already published.
+//
+// Rotation: ship an obu trusting both the old and new keys for one release,
+// then drop the old. Keep the key id beside the key, because two base64 blobs
+// are not something anyone can tell apart by eye.
+#define OBU_RELEASE_KEY_ID "8237C6B17C7EA6B9"
+#define OBU_RELEASE_PUBKEY "RWS5pn58scY3gv7X3EL/fJaOQli1V0HDwwFVt+2IWqPXBxvE4U1UhxHC"
+
 // The release asset for this platform (see release-build.yml), the archive
 // format it ships in -- Linux publishes .tgz, Windows and macOS .zip -- and the
 // suffix the platform puts on an executable.
