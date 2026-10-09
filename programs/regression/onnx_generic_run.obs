@@ -58,7 +58,12 @@ class OnnxGenericRun {
 		};
 	}
 
-	#~ Whether libobjk_onnx is deployed on this platform. Not on linux-arm64. ~#
+	#~
+	Whether libobjk_onnx is deployed on this platform.
+	
+	Everywhere CI builds, since #1048 vendored an aarch64 runtime. Kept for a
+	source build on an architecture with no vendored runtime.
+	~#
 	method : LibraryPresent() ~ Bool {
 		dir := Runtime->GetProperty("lib_dir");
 		if(dir = Nil) {

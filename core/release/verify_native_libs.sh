@@ -26,14 +26,16 @@
 #
 #   platform     required                                   optional
 #   linux-x64    crypto diags lame ml odbc onnx opencv sdl  -
-#   linux-arm64  crypto diags lame ml odbc opencv sdl       onnx
+#   linux-arm64  crypto diags lame ml odbc onnx opencv sdl  -
 #   macos-arm64  crypto diags lame ml odbc onnx opencv sdl  -
 #
-#   onnx is optional on linux-arm64 because the only vendored ONNX Runtime is
-#   x86-64 (core/lib/onnx/eq/cuda/lib/x64) and Ubuntu 24.04 packages none, so
-#   there is nothing to link against. Vendor an aarch64 runtime under
-#   cuda/lib/arm64/lib -- build.sh and deploy_posix.sh pick it up from there --
-#   then move onnx to the required list.
+#   onnx used to be optional on linux-arm64, because the only vendored ONNX
+#   Runtime was x86-64 and Ubuntu packages none, so there was nothing to link
+#   against. #1048 vendored onnxruntime-linux-aarch64-1.19.0 under
+#   cuda/lib/arm64/lib -- the same version as x64, so no API bump -- which
+#   build.sh and deploy_posix.sh already looked for. It is required everywhere
+#   now. An exemption and a missing library look identical from here, so one
+#   that outlives its reason hides exactly the failure it was meant to tolerate.
 #
 #   The two MSYS2 deploys pass all eight as required but still ignore the exit
 #   status; no CI leg runs them to hold them to it.
