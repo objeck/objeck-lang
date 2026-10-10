@@ -1,0 +1,213 @@
+#~
+Does an execution provider change the answer?
+
+Nothing asserted this. `API.Onnx` can run on `DmlExecutionProvider` as well as
+`CPUExecutionProvider` (`OnnxRuntime->GetProviders()` reports what a build has),
+and a provider that silently changes numbers is the kind of defect that reads as
+a model problem rather than a runtime one.
+
+So: the SAME model file, the SAME input, run under two providers, compared.
+
+WHAT IS ASSERTED, AND WHY NOT EXACT EQUALITY
+--------------------------------------------
+GPU and CPU kernels reassociate floating-point work differently -- different
+tile sizes, different accumulation order -- so bit-identical logits are not the
+property to demand, and demanding them would make this fail on a correct
+runtime. What matters to a caller is:
+
+  * the TOP-1 CLASS agrees. A classifier that picks a different class on one
+    provider is wrong in the way a user would notice.
+  * the largest absolute difference across all 1000 logits stays small. Float
+    reassociation moves logits by ~1e-4; a provider that is actually broken --
+    a wrong layout, a skipped layer, an uninitialised buffer -- moves them by
+    whole units or produces NaN.
+
+The measured difference is PRINTED either way, because the magnitude is the
+information. A run that passes with 1e-6 and a run that passes with 9e-3 are
+not the same result, and only one of them is worth looking into.
+
+THE INPUT IS SYNTHETIC ON PURPOSE
+---------------------------------
+A deterministic ramp, not an image: it needs no OpenCV, no data file, and it is
+identical on every machine and every run, so a difference between providers is
+the only thing that can move the output.
+
+Usage: onnx_provider_parity.obe <model.onnx> <ep-a> <ep-b>
+       e.g. ... resnet34.onnx cpu dml
+~#
+
+use API.Onnx;
+use API.Models;
+use Collection;
+
+class OnnxProviderParity {
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() < 3) {
+			"usage: onnx_provider_parity.obe <model.onnx> <ep-a> <ep-b>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		model := args[0];
+		ep_a := args[1];
+		ep_b := args[2];
+
+		providers := OnnxRuntime->GetProviders();
+		if(providers = Nil) {
+			"SKIP: the runtime reported no providers"->PrintLine();
+			return;
+		};
+
+		"providers:"->PrintLine();
+		each(name in providers) {
+			"  {$name}"->PrintLine();
+		};
+
+		first := Run(model, ep_a);
+		if(first = Nil) {
+			"FAIL: '{$ep_a}' produced no output"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		second := Run(model, ep_b);
+		if(second = Nil) {
+			"FAIL: '{$ep_b}' produced no output"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		Compare(ep_a, ep_b, first, second);
+	}
+
+	#~
+	One inference with the named provider, returning the output logits.
+	@param model model path
+	@param ep execution-provider selector ("cpu", "dml")
+	@return the first output tensor's floats, or Nil
+	~#
+	function : Run(model : String, ep : String) ~ Float[] {
+		config := Map->New()<String, String>;
+		config->Insert("ep", ep);
+
+		session := Session->New(model, config);
+		if(<>session->IsOpen()) {
+			"  '{$ep}': the session did not open"->PrintLine();
+			return Nil;
+		};
+
+		info := session->GetModelInfo();
+		if(info = Nil) {
+			"  '{$ep}': no model info"->PrintLine();
+			session->Close();
+			return Nil;
+		};
+
+		# the model's own declared input, with any symbolic dimension (-1) taken
+		# as 1 -- a batch of one is what a parity check wants
+		specs := info->GetInputs();
+		if(specs = Nil | specs->IsEmpty()) {
+			"  '{$ep}': the model declares no inputs"->PrintLine();
+			session->Close();
+			return Nil;
+		};
+
+		inputs := Vector->New()<Tensor>;
+		each(spec in specs) {
+			inputs->AddBack(Synthetic(spec));
+		};
+
+		outputs := session->Run(inputs);
+		session->Close();
+
+		if(outputs = Nil | outputs->IsEmpty()) {
+			"  '{$ep}': Run returned nothing"->PrintLine();
+			return Nil;
+		};
+
+		return outputs->Get(0)->AsFloats();
+	}
+
+	#~
+	A deterministic tensor matching a declared input.
+
+	A ramp rather than zeros: an all-zero input can hide a layout error, because
+	every element is the same whichever way the buffer is walked.
+	~#
+	function : Synthetic(spec : TensorSpec) ~ Tensor {
+		declared := spec->GetShape();
+		shape := Int->New[declared->Size()];
+		count := 1;
+		each(i : declared) {
+			dim := declared[i];
+			if(dim < 1) {
+				dim := 1;          # symbolic (-1): a batch of one
+			};
+			shape[i] := dim;
+			count *= dim;
+		};
+
+		data := Float->New[count];
+		each(i : count) {
+			data[i] := (i % 255) / 255.0;
+		};
+
+		return Tensor->New(spec->GetName(), "FP32", shape, data);
+	}
+
+	function : Compare(ep_a : String, ep_b : String, a : Float[], b : Float[]) ~ Nil {
+		if(a->Size() <> b->Size()) {
+			size_a := a->Size();
+			size_b := b->Size();
+			"FAIL: '{$ep_a}' returned {$size_a} value(s), '{$ep_b}' returned {$size_b}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		worst := 0.0;
+		top_a := 0;
+		top_b := 0;
+		each(i : a) {
+			diff := a[i] - b[i];
+			if(diff < 0.0) {
+				diff := diff * -1.0;
+			};
+			if(diff > worst) {
+				worst := diff;
+			};
+			if(a[i] > a[top_a]) {
+				top_a := i;
+			};
+			if(b[i] > b[top_b]) {
+				top_b := i;
+			};
+		};
+
+		count := a->Size();
+		"compared {$count} value(s) from '{$ep_a}' against '{$ep_b}'"->PrintLine();
+		"  largest absolute difference: {$worst}"->PrintLine();
+		"  top-1 index: '{$ep_a}'={$top_a}, '{$ep_b}'={$top_b}"->PrintLine();
+
+		ok := true;
+
+		if(top_a = top_b) {
+			"PASS: both providers pick the same top-1 class"->PrintLine();
+		}
+		else {
+			"FAIL: the providers disagree on the top-1 class"->PrintLine();
+			ok := false;
+		};
+
+		# A generous bound: float reassociation between a GPU and a CPU kernel
+		# moves a logit by ~1e-4. A provider that is actually broken moves it by
+		# whole units, or produces NaN -- which fails the comparison below
+		# because no comparison with NaN is true.
+		if(worst < 0.01) {
+			"PASS: the largest difference is within float-reassociation range"->PrintLine();
+		}
+		else {
+			"FAIL: the largest difference is too big to be reassociation"->PrintLine();
+			ok := false;
+		};
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+}

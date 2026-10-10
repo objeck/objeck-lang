@@ -1,0 +1,199 @@
+#~
+The same model, in process and served, through one interface.
+
+P2 gave `API.Onnx` and `API.Inference` a shared `API.Models.Engine`, so calling
+code names a backend once instead of at every call site. Nothing checked that
+the two actually AGREE -- that the promise is one interface over two routes to
+the same answer, rather than one interface over two answers.
+
+    OnnxEngine  -> API.Onnx       -> native ONNX Runtime, in this process
+    HttpEngine  -> API.Inference  -> KServe v2 over HTTP, to a real server
+
+`tools/cicd/serve_onnx_model.py` serves the SAME `.onnx` file with Python
+onnxruntime, so the in-process result is a ground truth for the served one. One
+model file, one input, one comparison.
+
+WHY THIS IS ALSO THE SERVED-TENSORFLOW TEST
+-------------------------------------------
+KServe v2 is the protocol Triton and KServe use for TensorFlow, PyTorch, ONNX
+and TensorRT alike, and `Client` speaks it without knowing what is behind it. So
+carrying a real model over the v2 wire exercises the path a served TensorFlow
+model takes. TF Serving's own v1 REST API is a different surface and needs a
+TensorFlow SavedModel; that gap is named in docs/INFERENCE_ENGINES_PLAN.md
+rather than papered over.
+
+NOT bit-identical: the served side runs a different ONNX Runtime build (Python's
+wheel) than the in-process side (the vendored native library), so logits differ
+by float reassociation the same way two execution providers do. The assertions
+are the top-1 class and a reassociation-sized bound -- and the magnitude is
+printed, because a run agreeing to 1e-6 and one agreeing to 9e-3 are not the
+same result.
+
+Usage: engine_parity.obe <model.onnx> <base-url> <model-name>
+~#
+
+use API.Onnx;
+use API.Inference;
+use API.Models;
+use Collection;
+
+class EngineParity {
+	@ok : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@ok := true;
+
+		if(args->Size() < 3) {
+			"usage: engine_parity.obe <model.onnx> <base-url> <model-name>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		model := args[0];
+		host := args[1];
+		served_as := args[2];
+
+		# ---- in process, the ground truth ------------------------------------
+		local : Engine := OnnxEngine->New(model);
+		if(<>Report("the in-process engine opened", local->IsOpen())) {
+			Runtime->Exit(1);
+		};
+
+		# the model's own declared input, so this works for any model
+		session := Session->New(model);
+		info := session->GetModelInfo();
+		session->Close();
+		if(info = Nil) {
+			"FAIL: no model info"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# the specs go through a local: `each(x in <call>)` cannot infer the
+		# element type from a call result
+		specs := info->GetInputs();
+		inputs := Vector->New()<Tensor>;
+		each(spec in specs) {
+			inputs->AddBack(Synthetic(spec));
+		};
+
+		in_process := local->Run(inputs);
+		local->Close();
+		if(<>Report("the in-process engine returned tensors",
+				in_process <> Nil & <>in_process->IsEmpty())) {
+			Runtime->Exit(1);
+		};
+
+		# ---- served, over the wire ------------------------------------------
+		remote : Engine := HttpEngine->New(host, served_as);
+		if(<>Report("the served engine reports the model open", remote->IsOpen())) {
+			Runtime->Exit(1);
+		};
+
+		# the SAME tensors; a fresh Vector only because Run may consume it
+		again := Vector->New()<Tensor>;
+		each(spec in specs) {
+			again->AddBack(Synthetic(spec));
+		};
+
+		served := remote->Run(again);
+		remote->Close();
+		if(<>Report("the served engine returned tensors",
+				served <> Nil & <>served->IsEmpty())) {
+			error := EndPoint->GetLastError();
+			"  last error: {$error}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# ---- one interface, one answer --------------------------------------
+		Report("both engines returned the same number of tensors",
+			in_process->Size() = served->Size());
+
+		Compare(in_process->Get(0), served->Get(0));
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	#~
+	A deterministic tensor matching a declared input: a ramp, not zeros, so a
+	layout error cannot hide behind every element being equal.
+	~#
+	function : Synthetic(spec : TensorSpec) ~ Tensor {
+		declared := spec->GetShape();
+		shape := Int->New[declared->Size()];
+		count := 1;
+		each(i : declared) {
+			dim := declared[i];
+			if(dim < 1) {
+				dim := 1;              # symbolic (-1): a batch of one
+			};
+			shape[i] := dim;
+			count *= dim;
+		};
+
+		data := Float->New[count];
+		each(i : count) {
+			data[i] := (i % 255) / 255.0;
+		};
+
+		return Tensor->New(spec->GetName(), "FP32", shape, data);
+	}
+
+	function : Compare(mine : Tensor, theirs : Tensor) ~ Nil {
+		a := mine->AsFloats();
+		b := theirs->AsFloats();
+
+		if(a = Nil | b = Nil) {
+			"FAIL: one side produced no floats"->PrintLine();
+			@ok := false;
+			return;
+		};
+
+		if(a->Size() <> b->Size()) {
+			size_a := a->Size();
+			size_b := b->Size();
+			"FAIL: in-process returned {$size_a} value(s), served returned {$size_b}"->PrintLine();
+			@ok := false;
+			return;
+		};
+
+		worst := 0.0;
+		top_a := 0;
+		top_b := 0;
+		each(i : a) {
+			diff := a[i] - b[i];
+			if(diff < 0.0) {
+				diff := diff * -1.0;
+			};
+			if(diff > worst) {
+				worst := diff;
+			};
+			if(a[i] > a[top_a]) {
+				top_a := i;
+			};
+			if(b[i] > b[top_b]) {
+				top_b := i;
+			};
+		};
+
+		count := a->Size();
+		"compared {$count} value(s): in-process against served"->PrintLine();
+		"  largest absolute difference: {$worst}"->PrintLine();
+		"  top-1 index: in-process={$top_a}, served={$top_b}"->PrintLine();
+
+		Report("both engines pick the same top-1 class", top_a = top_b);
+		Report("the largest difference is within float-reassociation range", worst < 0.01);
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		@ok := false;
+
+		return false;
+	}
+}
