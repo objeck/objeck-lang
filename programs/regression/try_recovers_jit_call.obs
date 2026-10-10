@@ -83,12 +83,11 @@ class TryRecoversJitCall {
 		# Recover far more times than the call stack has slots (256), so a pop
 		# that is off by one cannot hide behind a single failure.
 		#
-		# The result is ASSIGNED to a local and the local compared, rather than
-		# compared in place. A recovered '?->' only reaches its consumer
-		# correctly through an assignment: compared inline it reads as non-Nil,
-		# in the interpreter as well as compiled, which is its own bug and not
-		# this one. Writing it in place here would have failed for a reason that
-		# has nothing to do with #925.
+		# The result is ASSIGNED to a local and the local compared, to keep this
+		# test about #925 alone. Comparing a recovered '?->' in place is the
+		# property #1067 covers, in try_chain_inline_compare.obs; it was broken
+		# until #1071 and is correct now, but pulling it in here would mean a
+		# failure in either one showing up as a failure in both.
 		drift := true;
 		hop_result : Deep;
 		each(i : 300) {
