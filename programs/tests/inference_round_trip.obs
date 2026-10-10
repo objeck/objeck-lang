@@ -1,0 +1,208 @@
+#~
+API.Inference against a live server: the round trip, not the request body.
+
+programs/regression/inference_client_test.obs asserts what Client->DescribeRequest
+BUILDS, which needs no server and so runs on every platform. What it cannot
+establish is that a server ACCEPTS that body, or that a real response is parsed
+back into the right tensors.
+
+This is the other half. tools/cicd/test_inference_round_trip.py starts
+tools/cicd/mock_inference_server.py -- a strict mock of KServe v2 and TF Serving
+v1 that rejects anything malformed with a 400 -- and passes its base URL here.
+So every PASS below went out over HTTP, was validated against the protocol, and
+came back through the library's own parser.
+
+Run by the harness, not by run_regression: it needs the server. The harness owns
+the port and the lifetime.
+
+Usage: inference_round_trip.obe <base-url> <protocol>
+       protocol is "v2" or "v1"
+~#
+
+use API.Models;
+use API.Inference;
+use Collection;
+
+class InferenceRoundTrip {
+	@ok : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@ok := true;
+
+		if(args->Size() < 2) {
+			"usage: inference_round_trip.obe <base-url> <v2|v1|errors>"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		host := args[0];
+		which := args[1];
+
+		if(which->Equals("v2")) {
+			V2(host);
+		}
+		else if(which->Equals("v1")) {
+			V1(host);
+		}
+		else if(which->Equals("errors")) {
+			# one inference against a server in a failure mode; the harness
+			# asserts the message, which is the only thing a caller can act on
+			Errors(host);
+		}
+		else {
+			"unknown protocol '{$which}'"->ErrorLine();
+			Runtime->Exit(2);
+		};
+
+		if(<>@ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	# ------------------------------------------------------ KServe v2 --------
+	function : V2(host : String) ~ Nil {
+		client := Client->New(host, Client->Protocol->OPEN_INFERENCE);
+
+		Report("the server reports the model ready", client->IsReady("test_model"));
+		Report("a model the server does not know is not ready",
+			<>client->IsReady("no_such_model"));
+
+		meta := client->Metadata("test_model");
+		if(Report("metadata comes back", meta <> Nil)) {
+			Report("metadata names the model", meta->GetName()->Equals("test_model"));
+			Report("metadata names the platform", meta->GetPlatform()->Equals("onnxruntime_onnx"));
+			Report("metadata carries one input", meta->GetInputs()->Size() = 1);
+			Report("metadata carries one output", meta->GetOutputs()->Size() = 1);
+		};
+
+		# the round trip: the mock echoes each input doubled, so a parsed value
+		# cannot be confused with the value that was sent
+		shape := [1, 3];
+		data := [1.0, 2.0, 3.0];
+		input := Tensor->New("x", "FP32", shape, data);
+
+		outputs := client->Predict("test_model", input);
+		if(Report("a v2 inference returns tensors", outputs <> Nil & <>outputs->IsEmpty())) {
+			out := outputs->Get(0);
+			Report("the output's name comes from the response", out->GetName()->Equals("x_out"));
+			Report("the output's datatype comes from the response", out->GetDatatype()->Equals("FP32"));
+
+			out_shape := out->GetShape();
+			same_shape := out_shape->Size() = 2;
+			if(same_shape) {
+				same_shape := out_shape[0] = 1 & out_shape[1] = 3;
+			};
+			Report("the output's shape comes from the response", same_shape);
+
+			floats := out->AsFloats();
+			doubled := floats <> Nil & floats->Size() = 3;
+			if(doubled) {
+				doubled := floats[0] = 2.0 & floats[1] = 4.0 & floats[2] = 6.0;
+			};
+			Report("the output's VALUES are the server's, doubled", doubled);
+		};
+
+		# several tensors in one request, which is where a name mix-up shows
+		many := Vector->New()<Tensor>;
+		many->AddBack(Tensor->New("a", "FP32", [2], [1.0, 2.0]));
+		many->AddBack(Tensor->New("b", "FP32", [2], [10.0, 20.0]));
+		multi := client->Predict("test_model", many);
+		if(Report("a multi-tensor v2 inference returns both", multi <> Nil & multi->Size() = 2)) {
+			first := multi->Get(0);
+			second := multi->Get(1);
+			Report("each output keeps its own name",
+				first->GetName()->Equals("a_out") & second->GetName()->Equals("b_out"));
+			fv := first->AsFloats();
+			sv := second->AsFloats();
+			paired := fv <> Nil & sv <> Nil & fv->Size() = 2 & sv->Size() = 2;
+			if(paired) {
+				paired := fv[0] = 2.0 & sv[0] = 20.0;
+			};
+			Report("each output keeps its own VALUES, not the other's", paired);
+		};
+
+		# an INT64 tensor: the datatype has to survive the trip, because the
+		# generic path's whole point is that the caller never states one
+		ints := client->Predict("test_model", Tensor->New("i", "INT64", [2], [3.0, 4.0]));
+		if(Report("an INT64 tensor round-trips", ints <> Nil & <>ints->IsEmpty())) {
+			Report("and comes back as INT64, not FP32",
+				ints->Get(0)->GetDatatype()->Equals("INT64"));
+		};
+
+		# a model the server does not serve: the client must report, not crash
+		missing := client->Predict("no_such_model", input);
+		Report("an unknown model yields Nil, not a crash", missing = Nil);
+		Report("and the failure is reported", EndPoint->GetLastError() <> Nil);
+
+		# a tensor whose data disagrees with its shape never reaches the wire
+		bad := client->Predict("test_model", Tensor->New("x", "FP32", [2, 2], [1.0]));
+		Report("an inconsistent tensor is refused before the request", bad = Nil);
+	}
+
+	# ------------------------------------------- TensorFlow Serving v1 -------
+	function : V1(host : String) ~ Nil {
+		client := Client->New(host, Client->Protocol->TF_SERVING);
+
+		Report("the server reports the model available", client->IsReady("test_model"));
+		Report("a model the server does not know is not available",
+			<>client->IsReady("no_such_model"));
+
+		# v1 infers the shape from the nesting, so the nesting has to be right
+		# on the way out and flattened again on the way back
+		outputs := client->Predict("test_model", Tensor->New("x", "FP32", [2, 2], [1.0, 2.0, 3.0, 4.0]));
+		if(Report("a v1 inference returns tensors", outputs <> Nil & <>outputs->IsEmpty())) {
+			out := outputs->Get(0);
+			Report("the named output keeps its name", out->GetName()->Equals("x_out"));
+
+			out_shape := out->GetShape();
+			nested_ok := out_shape->Size() = 2;
+			if(nested_ok) {
+				nested_ok := out_shape[0] = 2 & out_shape[1] = 2;
+			};
+			Report("the shape is recovered from the response's NESTING", nested_ok);
+
+			floats := out->AsFloats();
+			flat_ok := floats <> Nil & floats->Size() = 4;
+			if(flat_ok) {
+				flat_ok := floats[0] = 1.0 & floats[3] = 4.0;
+			};
+			Report("the values are flattened back in row-major order", flat_ok);
+		};
+
+		missing := client->Predict("no_such_model", Tensor->New("x", "FP32", [1], [1.0]));
+		Report("an unknown model yields Nil", missing = Nil);
+	}
+
+	#~
+	A single inference against a server that is failing, with the reported error
+	printed for the harness to assert.
+
+	Wire->ParseResponse documents three of these -- an empty body, a body that is
+	not JSON (a proxy's HTML error page), and a JSON {"error": ...} -- and
+	nothing exercised any of them. A caller has only the message to act on, so
+	the message is the result.
+	~#
+	function : Errors(host : String) ~ Nil {
+		client := Client->New(host, Client->Protocol->OPEN_INFERENCE);
+		outputs := client->Predict("test_model", Tensor->New("x", "FP32", [1], [1.0]));
+
+		Report("a failing server yields Nil rather than a tensor", outputs = Nil);
+
+		error := EndPoint->GetLastError();
+		if(Report("and the failure is reported", error <> Nil)) {
+			# printed for the harness; it knows which mode the server is in
+			"ERROR-TEXT: {$error}"->PrintLine();
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		@ok := false;
+
+		return false;
+	}
+}

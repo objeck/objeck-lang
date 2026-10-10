@@ -214,6 +214,42 @@ and Phi-3 still answers "Paris", so the refactor changed no numbers; and one
 `Vector<API.Models.Engine>` holds an `OnnxEngine` and an `HttpEngine` with the
 same loop driving both.
 
+### What the HTTP route is tested against
+
+With P3 dropped, `API.Inference` is the only route to a TensorFlow model, so
+what covers it matters more than it would have.
+
+`programs/regression/inference_client_test.obs` (50 assertions) asserts the
+request body through `Client->DescribeRequest`. It needs no server, so it runs
+in every regression pass on every platform — and it cannot establish that a
+server *accepts* that body, or that a real response is parsed back into the
+right tensors.
+
+`tools/cicd/test_inference_round_trip.py` (48 assertions) is the other half. It
+starts `tools/cicd/mock_inference_server.py` — a strict mock of KServe v2 and
+TF Serving v1 that refuses anything malformed with a 400 naming the reason — and
+drives `programs/tests/inference_round_trip.obs` against it over localhost. So
+each assertion went out over HTTP, was validated against the protocol, and came
+back through the library's own parser. The suite also asserts that the server
+rejected **nothing**, because a request the mock refuses is one a conforming
+server would refuse. It is gating on every platform: it reaches nothing but
+127.0.0.1, so there is no upstream to go down.
+
+Its value is measurable rather than assumed. Making the v2 response reader take
+only the first output tensor leaves the `DescribeRequest` test **passing** and
+fails the round-trip suite — a response-path regression the offline test cannot
+see by construction. (A request-path mutation, sending v2 data nested, is caught
+by both.)
+
+**What is still not established.** The mock is a careful, strict reading of the
+published protocols, not Google's binary: a real server that rejected something
+the mock accepts would not be caught. The driver takes a base URL precisely so it
+can be aimed at the real thing —
+`obr inference_round_trip.obe http://localhost:8501 v1` against a
+`tensorflow/serving` container — and that step is container- and
+network-dependent, so by this repo's convention it would be non-gating and is
+not wired in. No GPU path is covered either; that needs a GPU and a served model.
+
 **P3 — TF Lite. DROPPED, 2026-10-07.** See open question 1: it has no published
 Windows ARM64 build and upstream's own Windows ARM64 support is an unmerged,
 stale PR. A correctly vendored ONNX Runtime covers strictly more.
