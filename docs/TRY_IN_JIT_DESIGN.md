@@ -1,12 +1,11 @@
 # `Try()` inside compiled code — design
 
-Status: **the cast path is built and shipped; gap 3 remains.** Steps 1-5 and 7
-below are done (2026-10-09): the handler stack is per-thread, the bridge switch
-reports a status instead of exiting, and both backends test it. A guarded cast
-inside compiled code now recovers, with stdout identical to the interpreter's.
-Step 6 -- `EmitNativeCallSite` propagating a *callee's* status to its caller
-rather than calling `JitNativeCallError` -- is still open, so a JIT-to-JIT call
-whose callee fails still ends the program. Compiled recursion stays out of
+Status: **built and shipped, all three gaps.** Steps 1-7 are done (2026-10-09):
+the handler stack is per-thread, the bridge switch reports a status instead of
+exiting, both backends test it, and since gap 3 a compiled callee's status
+travels outward one compiled frame at a time instead of ending the program. A
+guarded cast and a guarded JIT-to-JIT failure both recover inside compiled code,
+with stdout identical to the interpreter's. Compiled recursion stays out of
 scope, for the reason under "What this does not attempt".
 
 One correction worth carrying: the status must be returned as a **fixed-width**
@@ -156,7 +155,7 @@ locally on ARM64.
 `BridgeExceptionExit` keeps its role for a genuine C++ exception escaping the
 bridge, which is not a recoverable Objeck error and should not become one.
 
-### 3. A JIT-to-JIT call does not propagate its callee's status
+### 3. A JIT-to-JIT call does not propagate its callee's status — **done**
 
 `EmitNativeCallSite` (and the bridge path at `jit_common.cpp:223`) calls
 `JitNativeCallError` on a negative status, and that function **does not return** —
@@ -172,6 +171,40 @@ universal one.
 
 Both backends. The amd64 side is verifiable here; the ARM64 side is not (see
 below).
+
+**Built.** Two things differ from the plan above, both worth carrying.
+
+*`JitNativeCallError` is removed, not repurposed.* The plan kept it as the
+unguarded reporter. It is not needed for that: when no handler takes the status
+it reaches the interpreter's own status switch, which prints per status **and**
+runs `StackErrorUnwind`, so an unguarded JIT-to-JIT failure now prints the stack
+listing it never had. The one thing lost is its line naming the callee and the
+caller; nothing else prints that pair. The listing it gains names only the
+frames still on the call stack, which for a compiled chain is the interpreted
+caller alone -- the compiled frames have already returned. That is not new to
+gap 3: a guard stub firing in a single compiled method has always reported this
+way (#900), so the two are now consistent rather than one being shorter.
+
+*Frame bookkeeping had to be fixed first, and it is what made the first attempt
+fail.* `EmitNativePrologue` pushes a frame record and marks it `REC_KIND = 1`;
+the only matching decrement was in the `RTRN` handler. A guard stub branches
+straight to the teardown and never reaches `RTRN`, so a natively entered method
+that failed left its record registered and `call_stack_pos` too high. Nothing
+could see it: `TryErrorRecovery` pops frames down to the handler's depth, which
+swept it away in the guarded case, and the unguarded case called
+`JitNativeCallError`, which exited without unwinding. Gap 3 routes that case
+through `StackErrorUnwind` for the first time, and it died there -- `pos=3` with
+one valid frame, then a segfault or a bogus out-of-memory. **The pop therefore
+moves out of `RTRN` and into the head of the teardown**, under the same
+`REC_KIND` test, that being the single point every exit reaches: the nominal
+return falls through to it and all five error handlers branch to it.
+
+On ARM64 that placement is not a preference but the only safe one. Its epilogue
+computes branch distances and patch offsets as literal constants
+(`op_code |= 9,8,6,4,2`, and `epilog_index - index + 1,3,5,7,10`), so a block
+inserted anywhere above the teardown shifts all ten of them -- on the backend
+that cannot be exercised locally. Inserted *at* the teardown, nothing moves: the
+teardown is still `epilog_index + 10`, now the first instruction of the pop.
 
 ## What this does not attempt
 

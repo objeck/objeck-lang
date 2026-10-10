@@ -386,8 +386,10 @@ their `TMP` slots as for a callback. Then:
   fields zero) and pushed on the call stack, slot before count as `PushFrame` orders them.
 - The register arguments are what the bridge passes: the callee's class and method ids and
   its class memory are constants of the callee, the receiver is in its register. `call rax`.
-- A negative status goes to `JitNativeCallError`, which reports as the bridge did and exits.
-  Otherwise the record is popped, the area freed, and the code joins the bridge path's tail:
+- A negative status branches to this method's teardown with the status still in the return
+  register, so it reaches the caller and, through it, any `Try()` below (#925 gap 3; it used
+  to call `JitNativeCallError`, which printed and exited).
+  Otherwise the area is freed and the code joins the bridge path's tail:
   the spilled registers come back, `INSTANCE_MEM` is reloaded from `frame->mem[0]`, the result
   is popped.
 
@@ -548,7 +550,9 @@ working stack never held is one a callback left on the operand stack -- `Runtime
 native exit pops that into `XMM0` instead (the first build did not, and every `SubString`
 came back `Nil` once its callers were compiled: the fixture's `CopyResults` probe). `RAX`
 keeps the status on both exits, so the guard stubs are unchanged and a native caller tests
-it after the call, going to `JitNativeCallError` for a negative one. The caller `movq`s the
+it after the call, branching to its own teardown for a negative one so the status keeps
+travelling outward. The record itself is popped in the teardown rather than at this exit,
+since that is the only point every exit shares. The caller `movq`s the
 result into a pool register. A method whose result is a func-ref, two words, has the bridge
 entry only, and a site whose callee returns one takes the bridge.
 
@@ -741,8 +745,9 @@ area and pops them. The entry comes from the callee's word with `ldar`, the acqu
 load gives for free, or from the site's inline cache: the shared `JitVirtualSite` records, keyed
 by the receiver's class word (after a `Nil` and object-header check) or the func-ref word, and
 filled by the shared resolvers on a miss. Then the depth check against `CALL_STACK_SIZE`, `X0`-`X2`,
-`blr` with `LR` kept by `call_reg`, and `tbnz x0, #63` to a block that calls
-`JitNativeCallError` with the callee and the caller's ids. The slow path copies the area onto
+`blr` with `LR` kept by `call_reg`, and `tbnz x0, #63` to a `b.al` that leaves through the
+teardown with the status in `X0` (#925 gap 3). `tbnz` tests the sign bit, so it is immune to
+the 32-bit `long` trap that bit the bridge test. The slow path copies the area onto
 the operand stack, runs the bridge sequence and pops the result into `D0`, so both paths join
 with the value in one place, and the result moves to a pool register before the spilled values
 come back (`D0` is in the pool). It serves a callee not compiled yet, a full call stack, a `Nil`

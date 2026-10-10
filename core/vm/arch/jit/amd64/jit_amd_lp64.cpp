@@ -228,6 +228,31 @@ void JitAmd64::Epilog()
   jmp_offset = teardown_index - (jmp_bridge_pos + 4);
   memcpy(&code[(size_t)jmp_bridge_pos], &jmp_offset, 4);
 
+  // This method's own frame record comes off the call stack here, if it pushed
+  // one. EmitNativePrologue pushes it and sets REC_KIND = 1; the bridge
+  // prologue sets REC_KIND = 0 and the interpreter pops that one. RTRN used to
+  // do this, but a guard stub never reaches RTRN, so a natively entered method
+  // that failed left the record registered and call_stack_pos too high -- and
+  // StackErrorUnwind then walks entries that are not frames (#925). Here
+  // instead: the nominal return falls through to this point and every error
+  // handler branches to it, so one test covers all of them.
+  //
+  // RAX holds the status and is untouched; RCX is caller-saved scratch and this
+  // is method exit. RBP is still the frame pointer -- the pops are below.
+  cmp_imm_mem(rec_base + REC_KIND, RBP, 0);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x84);          // je: no record of our own, nothing to pop
+  const long jmp_no_rec_pos = code_index;
+  AddImm(0);
+  move_mem_reg(CALL_STACK_POS, RBP, RCX);
+#ifdef _WIN64
+  dec_mem32(0, RCX);
+#else
+  dec_mem(0, RCX);
+#endif
+  jmp_offset = code_index - (jmp_no_rec_pos + 4);
+  memcpy(&code[(size_t)jmp_no_rec_pos], &jmp_offset, 4);
+
   // the outgoing area (see Prolog); this is teardown_index, so the error
   // handlers release it too
   if(out_area > 0) {
@@ -769,12 +794,8 @@ void JitAmd64::ProcessInstructions() {
           move_mem_reg(OP_STACK, RBP, RAX);
           move_base_index_xreg(0, RAX, RDX, sizeof(size_t), XMM0);
         }
-        move_mem_reg(CALL_STACK_POS, RBP, RAX);
-#ifdef _WIN64
-        dec_mem32(0, RAX);
-#else
-        dec_mem(0, RAX);
-#endif
+        // The record comes off the call stack in the teardown, which every
+        // exit reaches -- not here, which only a normal return reaches.
         PatchForwardJump(epilog_patch);
         Epilog();
       }
@@ -5950,32 +5971,22 @@ void JitAmd64::EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_i
     AddImm(back);
   }
 
-  // error: JitNativeCallError(status, callee, caller cls_id, caller mthd_id)
+  // error: the callee's status leaves this method the way a guard stub's does
+  // (#925 gap 3) -- through the epilogue with the status still in RAX, so a
+  // Try() region below can take it. This used to call JitNativeCallError, which
+  // printed and exited, so a compiled caller could not recover from a compiled
+  // callee's failure even though the failing frame had already returned and the
+  // handler stack was intact.
+  //
+  // The same exit as a bridge callback's reported status, deliberately: both
+  // arrive with the status in RAX and want the same unwinding, and sharing the
+  // handler is what keeps the two directions from drifting apart. The epilogue
+  // pops this frame's own record on the way out when it owns one, which is what
+  // makes the chain unwind -- the callee popped its own at its guard stub.
   PatchForwardJump(error_patch);
-#ifdef _WIN64
-  move_reg_reg(RAX, RCX);
-  if(direct_callee) {
-    move_imm_reg((int64_t)direct_callee, RDX);
-  }
-  else {
-    move_mem_reg(RECORD_TARGET, RBX, RDX);
-  }
-  move_mem_reg(CLS_ID, RBP, R8);
-  move_mem_reg(MTHD_ID, RBP, R9);
-  sub_imm_reg(32, RSP);
-#else
-  move_reg_reg(RAX, RDI);
-  if(direct_callee) {
-    move_imm_reg((int64_t)direct_callee, RSI);
-  }
-  else {
-    move_mem_reg(RECORD_TARGET, RBX, RSI);
-  }
-  move_mem_reg(CLS_ID, RBP, RDX);
-  move_mem_reg(MTHD_ID, RBP, RCX);
-#endif
-  move_imm_reg((int64_t)(size_t)JitCompiler::JitNativeCallError, RAX);
-  call_reg(RAX);                 // does not return
+  AddMachineCode(0xe9);          // jmp <bridge-status>
+  bridge_status_offsets.push_back(code_index);
+  AddImm(0);
 
   // slow: the values onto the operand stack, in order, then the bridge
   for(const long patch : slow_patches) {

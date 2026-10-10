@@ -169,8 +169,10 @@ void JitCompiler::PatchCallSites(StackMethod* callee, long patch_value)
  * inline in JitStackCallback; it is the same code with the callee handed in.
  */
 bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const long cls_id, const long mthd_id,
-                               size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos)
+                               size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos,
+                               int64_t& status)
 {
+  status = 0;
   // a `virtual` declaration has no body to run; the bridge resolves it for
   // every receiver but Nil, and Nil is the interpreter's to report
   if(callee->IsVirtual()) {
@@ -212,60 +214,20 @@ bool JitCompiler::CallCompiled(StackMethod* callee, const bool is_dynamic, const
 
   // Execute native code directly
   Runtime::JitRuntime jit_executor;
-  const long status = jit_executor.Execute(callee, callee_inst, op_stack, stack_pos,
-                                            call_stack, call_stack_pos, frame);
+  status = jit_executor.Execute(callee, callee_inst, op_stack, stack_pos,
+                                call_stack, call_stack_pos, frame);
 
   // Unregister and release frame
   (*call_stack_pos)--;
   Runtime::StackInterpreter::ReleaseStackFrame(frame);
 
-  if(status < 0) {
-    JitNativeCallError(status, callee, cls_id, mthd_id);
-  }
+  // The callee's status goes OUT, not to an exit (#925 gap 3). The failing
+  // frame has already returned and the handler stack is intact, so a Try()
+  // below can take it -- and the emitted fast path for the same call does the
+  // same thing, which is what keeps the two from disagreeing.
   return true;
 }
 #endif
-
-/**
- * A compiled callee's error status, reported the way the interpreter reports
- * a runtime error so the one-line failure is actionable (the codes are set by
- * the JIT guard stubs). Reached from the bridge and straight from compiled
- * code after a native call (JitAmd64::EmitNativeCallSite). Does not return.
- */
-void JitCompiler::JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id)
-{
-  // a zero divisor reads the same on every path (S4); the call context follows
-  if(status == -4) {
-    std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
-    std::wcerr << L"    in JIT-to-JIT call: method='" << callee->GetName()
-               << L"', caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << L"'" << std::endl;
-    VmExit(1);
-  }
-
-  const wchar_t* reason;
-  switch(status) {
-  case -1:
-    reason = L"Attempting to dereference a 'Nil' memory instance";
-    break;
-  case -2:
-  case -3:
-    reason = L"Index out of bounds";
-    break;
-  case JIT_STATUS_INVALID_CAST:
-    // The message naming both classes was already printed where the cast
-    // failed; this is the call context for it.
-    reason = L"Invalid object cast";
-    break;
-  default:
-    reason = L"Unknown runtime error";
-    break;
-  }
-  std::wcerr << L">>> " << reason << L" in JIT-to-JIT call: method='" << callee->GetName()
-             << L"', status=" << status
-             << L", caller='" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName()
-             << L"' <<<" << std::endl;
-  VmExit(1);
-}
 
 /**
  * A call site's inline-cache miss (see the header). Misses are rare -- the
@@ -344,8 +306,9 @@ int64_t JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackIn
 {
   try {
 #ifndef _NO_JIT
-    if(CallCompiled(callee, false, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos)) {
-      return 0;
+    int64_t status = 0;
+    if(CallCompiled(callee, false, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos, status)) {
+      return status;
     }
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
@@ -467,7 +430,12 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     }
 
 #ifndef _NO_JIT
-    if(CallCompiled(callee, instr_id == DYN_MTHD_CALL, cls_id, mthd_id, op_stack, stack_pos, call_stack, call_stack_pos)) {
+    int64_t called_status = 0;
+    if(CallCompiled(callee, instr_id == DYN_MTHD_CALL, cls_id, mthd_id, op_stack, stack_pos,
+                    call_stack, call_stack_pos, called_status)) {
+      if(called_status < 0) {
+        return called_status;
+      }
       break;
     }
 #endif

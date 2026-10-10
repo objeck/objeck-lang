@@ -188,8 +188,13 @@ protected:
   // entry. False when the callee has no native code (or is a `virtual`
   // declaration): the caller then takes the interpreter trampoline, which
   // counts the call toward the auto-JIT threshold and compiles the callee.
+  // `status` is the callee's, 0 unless it reported an error. The return value
+  // says only whether this call was handled here; a caller that was handled
+  // must pass the status on, so it reaches the bridge and an active Try()
+  // (#925 gap 3).
   static bool CallCompiled(StackMethod* callee, const bool is_dynamic, const long cls_id, const long mthd_id,
-                           size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos);
+                           size_t* op_stack, size_t* stack_pos, StackFrame** call_stack, long* call_stack_pos,
+                           int64_t& status);
 
   // The bridge's opcode switch, unguarded. JitStackCallback is the entry
   // compiled code calls; it runs this under the catch below.
@@ -253,12 +258,6 @@ public:
   static int64_t JitDirectCall(StackMethod* callee, StackInstr* instr, const long cls_id,
                             const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                             StackFrame** call_stack, long* call_stack_pos, const long ip);
-
-  // Called from compiled code when a callee it called directly (a native
-  // call: no bridge between them) returned one of the guard stubs'
-  // statuses. Reports the way the bridge does and exits; the last two are
-  // the caller's ids, for the message.
-  static void JitNativeCallError(const long status, StackMethod* callee, const long cls_id, const long mthd_id);
 
   // A virtual call site's miss: resolve the override for the receiver's class,
   // fill (or reuse) the site's record for it and publish it. Returns the

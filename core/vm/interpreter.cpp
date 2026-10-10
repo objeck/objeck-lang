@@ -197,8 +197,11 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
         // compiled frame has already returned, so a Try() region below can take
         // over (#900). An invalid cast raised in a bridge callback arrives here
         // the same way since #925 -- as status -5, because the handler stack is
-        // per-thread and the callback can report instead of exiting. A
-        // JIT-to-JIT call still reports and exits in JitNativeCallError.
+        // per-thread and the callback can report instead of exiting. Since
+        // gap 3 a compiled callee's status arrives the same way, having
+        // travelled outward one compiled frame at a time, so this is also where
+        // an unguarded JIT-to-JIT failure is reported -- with the stack listing
+        // below, which the old JitNativeCallError did not produce.
         if(TryErrorRecovery(stack_pos)) {
           return;
         }
