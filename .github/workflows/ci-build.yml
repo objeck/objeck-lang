@@ -909,6 +909,51 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_obi_obr_parity.py "%BIN%"
 
+    # API.Inference over a real HTTP round trip, both protocols.
+    #
+    # programs/regression/inference_client_test.obs asserts the request body
+    # through Client->DescribeRequest, which needs no server -- so it cannot
+    # establish that a server ACCEPTS that body, or that a real response is
+    # parsed back into the right tensors. tools/cicd/mock_inference_server.py is
+    # a strict mock of KServe v2 and TensorFlow Serving v1 that rejects anything
+    # malformed with a 400, and the suite asserts that it rejected NOTHING.
+    #
+    # Demonstrated to catch what the offline test cannot: making the v2 response
+    # reader take only the first output tensor leaves the DescribeRequest test
+    # passing and fails this one.
+    #
+    # GATING, unlike the network tests below: it reaches nothing but 127.0.0.1,
+    # so there is no upstream to go down. Every platform, because whether the
+    # HTTP client behaves the same everywhere is the question -- and Windows
+    # loopback has its own history (#669).
+    - name: API.Inference round trip (POSIX)
+      if: runner.os != 'Windows'
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
+        LIB="$(dirname "$BIN")/lib"
+        OBJECK_LIB_PATH="$LIB" "$BIN/obc" \
+          -src programs/tests/inference_round_trip.obs \
+          -lib models,inference,net,json,cipher,gen_collect \
+          -dest programs/tests/inference_round_trip.obe
+        python3 tools/cicd/mock_inference_server.py --selftest
+        python3 tools/cicd/test_inference_round_trip.py "$BIN"
+
+    - name: API.Inference round trip (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        BIN="core/release/deploy-${{ matrix.arch }}/bin"
+        if [ ! -d "$BIN" ]; then BIN="core/release/deploy/bin"; fi
+        LIB="$(dirname "$BIN")/lib"
+        OBJECK_LIB_PATH="$LIB" "$BIN/obc.exe" \
+          -src programs/tests/inference_round_trip.obs \
+          -lib models,inference,net,json,cipher,gen_collect \
+          -dest programs/tests/inference_round_trip.obe
+        python tools/cicd/mock_inference_server.py --selftest
+        python tools/cicd/test_inference_round_trip.py "$BIN"
+
     # A library that uses the array copy constructor (`Int->New[src]`) built fine
     # and then killed obc on the program build: the .obl carried the callee's
     # library-local ids, the consuming build missed them and dereferenced a
