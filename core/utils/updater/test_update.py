@@ -859,6 +859,30 @@ def suite_update(obu, work):
         check("the successful update removed the stale .obu-work",
               not os.path.exists(os.path.join(root, ".obu-work")))
 
+    # a symlink planted at .obu.lock must be refused rather than followed. The
+    # lock lives in the install root, so anything able to write there could
+    # otherwise have obu open -- and create -- an arbitrary path, which is what
+    # O_NOFOLLOW closes. Coverity read the inode re-check beside it as a TOCTOU
+    # (CID 1680315); that part is deliberate and is not what this tests.
+    if os.name != "nt":
+        root = os.path.join(work, "t10b", "root")
+        make_install(root, "SYMLINK")
+        target = os.path.join(work, "t10b", "obu-should-not-create-this")
+        os.symlink(target, os.path.join(root, ".obu.lock"))
+        env = make_release(os.path.join(work, "t10b", "rel"), asset)
+        env["OBU_INSTALL_ROOT"] = root
+        code, out = run(obu, ["update", "--quiet"], env)
+        check("an update refuses a symlinked .obu.lock", code != 0,
+              "exit=%d out=%r" % (code, out))
+        check("the refusal names the symlink rather than blaming a concurrent obu",
+              "symbolic link" in out, "out=%r" % out)
+        # the vulnerability itself: following the link created the target
+        check("obu did not create the symlink's target", not os.path.exists(target),
+              "%s was created" % target)
+        check("the symlinked lock left the installed version alone",
+              open(os.path.join(root, "VERSION")).read().strip() == "SYMLINK",
+              "VERSION=%r" % open(os.path.join(root, "VERSION")).read())
+
     # interrupted swap: the state a run killed between "archive the current
     # tree" and "install the payload" leaves behind -- .previous/bin present,
     # no bin/ in the root. Built directly rather than by killing a process, so
