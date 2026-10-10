@@ -1,11 +1,15 @@
-use API.OpenAI, API.OpenAI.Chat, Data.JSON, Collection;
+use Data.JSON;
 
 #
-# obr readme_ai features.in readme.html.in openai_api_key.dat
+# Builds the README that ships inside the release archive.
+#
+#   obr readme_builder readme.json
+#
+# readme.json is hand-curated (see the bump-version skill); the file names it
+# reads and writes are in its own "files" block. build.cmd wraps this.
 #
 class ReadmeBuilder {
 	@config_json : JsonElement;
-	@token : String;
 	
 	@title : String;
 	@version : String;
@@ -47,12 +51,13 @@ class ReadmeBuilder {
 		if(title_json = Nil) {
 			return false;
 		};
-		title := title_json->GetString();
-
-		prompt := "Please make the following text after '---' sound a brief feature announcement.
-Please format the output as plain text, with no special characters.
---- {$title}";
-		@title := Complete(prompt);
+		# The title ships as written. It used to go to gpt-4o-mini -- "make the
+		# following text sound a brief feature announcement" -- and the MODEL's
+		# reply became the headline, so the shipped text was never the text in
+		# this file, regenerating it needed an OpenAI key, and it differed from
+		# run to run. The field is hand-curated; rewriting it unreproducibly
+		# defeated the point of curating it.
+		@title := title_json->GetString();
 
 		version_json := @config_json->FindElements("version/string");
 		if(version_json = Nil) {
@@ -73,8 +78,25 @@ Please format the output as plain text, with no special characters.
 		return true;
 	}
 
+	# Text going into the HTML as element content has to have its markup
+	# characters escaped, or the browser reads them as tags and drops them:
+	# 'Vector[]<T>' rendered as 'Vector[]' and 'obu verify <archive> SHA256SUMS'
+	# as 'obu verify  SHA256SUMS'. Ampersand FIRST -- otherwise the entities
+	# this adds are escaped again and '&lt;' ships as '&amp;lt;'.
+	#
+	# Only the HTML output is escaped. FormatWriteMarkdown leaves the text
+	# alone, because '<archive>' is what a reader of readme.md as plain text
+	# should see and '&lt;' is not.
+	method : EscapeHtml(text : String) ~ String {
+		if(text = Nil) {
+			return "";
+		};
+
+		return text->ReplaceAll("&", "&amp;")->ReplaceAll("<", "&lt;")->ReplaceAll(">", "&gt;");
+	}
+
 	method : FormatWriteHtml() ~ Bool {
-		html := "<p>" + @title + "</p>\n";
+		html := "<p>" + EscapeHtml(@title) + "</p>\n";
 
 		features_json := @config_json->Get("features");
 		each(i : features_json) {
@@ -111,7 +133,7 @@ Please format the output as plain text, with no special characters.
 
 				html += "\t\t\t<li>";
 				if(next_feature_item <> Nil & next_feature_item->StartsWith('\t')) {
-					html += feature_item->Trim();
+					html += EscapeHtml(feature_item->Trim());
 
 					if(in_sublist) {
 						html += "</li>\n";
@@ -122,7 +144,7 @@ Please format the output as plain text, with no special characters.
 					};
 				}
 				else {
-					html += feature_item->Trim();
+					html += EscapeHtml(feature_item->Trim());
 
 					if(in_sublist) {
 						html += "\n\t\t\t\t</ul>\n\t\t\t</li>\n";
@@ -265,49 +287,4 @@ Please format the output as plain text, with no special characters.
 		return true;
 	}
 
-	method : Complete(message : String) ~ String {
-		query := Collection.Pair->New("user", message)<String, String>;
-		
-		model := "gpt-4o-mini";
-		token := GetApiKey();
-
-		completion := Completion->Complete(model, query, token);
-		if(completion = Nil) {
-			Completion->GetLastError()->ErrorLine();
-			return Nil;
-		};
-
-		first_choice := completion->GetFirstChoice();
-		if(first_choice = Nil) {
-			return Nil;
-		};
-
-		message_choice := first_choice->GetMessage()<String, String>;
-		return message_choice->GetSecond();
-	}
-
-	method : GetApiKey() ~ String {
-		if(@token = Nil) {
-			openai_token_file_json := @config_json->FindElements("files/openai_token");
-			if(openai_token_file_json = Nil) {
-				">>> Unable to read openai token file <<<"->ErrorLine();
-				Runtime->Exit(1);
-			};
-			filename := openai_token_file_json->GetString();
-
-			@token := System.IO.Filesystem.FileReader->ReadFile(filename);
-			if(@token = Nil) {
-				">>> Unable to read token from file: '{$filename}' <<"->ErrorLine();
-				Runtime->Exit(1);
-			};
-
-			@token := @token->Trim();
-			if(<>@token->StartsWith("sk-")) {
-				">>> Unable to read a valid token from file: '{$filename}' <<"->ErrorLine();
-				Runtime->Exit(1);
-			};
-		};
-
-		return @token;
-	}
 }
