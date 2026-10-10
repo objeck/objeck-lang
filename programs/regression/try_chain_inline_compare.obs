@@ -1,0 +1,91 @@
+#~
+A recovered '?->' value compares the same way inline as it does through a local.
+
+#1067. The chain value a recovering Try() stores is Nil, and comparing it
+against Nil gave different answers depending on where the comparison was
+written:
+
+  if(a?->Hop() = Nil)        -- wrong once the callee was JIT-compiled
+  r := b?->Hop(); if(r = Nil) -- right in every mode
+
+Same program, same build. 'obc --asm' shows both forms emit the same shape
+through the same chain temporary, so this was never a miscompile; the two
+differ only in that the second copies the temporary into a local before
+anything reads it. The failing method is the only thing compiled -- the method
+holding the '?->' carries TRY_START, which is in neither backend's whitelist,
+so it stays interpreted either way.
+
+NO JIT OPT-OUT, deliberately: the two modes agreeing is the entire property
+under test, so a marker here would remove the only thing it checks.
+
+The divide-by-zero is raised inside the CALLEE so the error travels back as a
+compiled method's status rather than being raised in the frame that holds the
+handler. The warm-up loop uses a PLAIN call -- a '?->' there would push and pop
+a handler 500 times and muddy what is being measured.
+~#
+
+class Hop {
+	@n : Int;
+
+	New(n : Int) {
+		@n := n;
+	}
+
+	# fails when @n is 0, and the failure is raised here rather than in the
+	# caller that holds the handler
+	method : public : Self() ~ Hop {
+		if(10 / @n > 0) {
+			return @self;
+		};
+
+		return @self;
+	}
+}
+
+class TryChainInlineCompare {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# warm Self past the JIT threshold with calls that SUCCEED, so the
+		# failing call below runs in compiled code in every pass
+		good := Hop->New(1);
+		warm := true;
+		each(i : 500) {
+			if(good->Self() = Nil) {
+				warm := false;
+			};
+		};
+		ok := Report("a valid call returns its object while warming", warm) & ok;
+
+		# the two forms, on separate objects so neither can affect the other
+		a := Hop->New(0);
+		inline_is_nil := a?->Self() = Nil;
+		ok := Report("a recovered chain compares equal to Nil INLINE", inline_is_nil) & ok;
+
+		b := Hop->New(0);
+		through_local := b?->Self();
+		ok := Report("a recovered chain compares equal to Nil through a local",
+			through_local = Nil) & ok;
+
+		# and the two forms agree, which is the property #1067 broke
+		ok := Report("both forms agree", inline_is_nil = (through_local = Nil)) & ok;
+
+		# recovery left the program usable
+		ok := Report("a valid call after recovery still works", good?->Self() <> Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+
+		return false;
+	}
+}
