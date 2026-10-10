@@ -1,0 +1,117 @@
+#~
+Try() -- and '?->', which is Try() on the chain -- recovers when a COMPILED
+method calls a COMPILED method that fails. That is gap 3 of #925, the last of
+the three, and the one the cast work did not reach.
+
+A divide by zero is used deliberately. It is raised by a guard stub inside the
+callee, so the status travels the native call site (EmitNativeCallSite) rather
+than the bridge callback the cast half uses -- a different path out of compiled
+code, and the one that used to call JitNativeCallError and exit.
+
+THE WARM-UP IS PART OF THE TEST, twice over. Hop is called repeatedly with a
+divisor that works, so that BOTH Hop and the Ratio it calls compile; only then
+is the chain given a zero. Without it, neither is compiled, the inner call goes
+through the bridge, and this test would cover the interpreted path while looking
+like it covered the compiled one. The method holding the '?->' stays interpreted
+either way, because TRY_START is in neither backend's whitelist, so the handler
+always lives in an interpreted frame.
+
+WHAT FAILS WITHOUT THE FIX, measured rather than assumed: this test segfaults
+(exit 139, output lost with the buffer), and the unguarded form prints a stack
+listing that names Main at pos=3. Both come from frame bookkeeping, not from the
+propagation: EmitNativePrologue pushes a frame record and the only matching
+decrement was in the RTRN handler, which a guard stub never reaches, so a
+natively entered method that failed left its record registered. Recovery then
+walked entries that are not frames. The pop now lives at the head of the
+teardown, the one point every exit reaches.
+
+The repeated-recovery loop is there for a future half-fix. One recovery is
+enough to crash the pre-fix build, but a pop that is off by one, or that misses
+one of the two frames in the chain, would drift CALL_STACK_SIZE (256) slots and
+only show after many failures.
+
+The cast half of #925 lives in try_recovers_cast.obs and the recursion half of
+#900 in try_recovers_depth.obs, which still opts out of the JIT pass.
+~#
+
+class Deep {
+	@n : Int;
+	@inner : Deep;
+
+	New(n : Int, inner : Deep) {
+		@n := n;
+		@inner := inner;
+	}
+
+	# compiled, and the call to Ratio is a native-to-native call once both are
+	method : public : Hop() ~ Deep {
+		if(@inner->Ratio() > 0) {
+			return @self;
+		};
+
+		return @self;
+	}
+
+	method : public : Ratio() ~ Int {
+		return 10 / @n;
+	}
+}
+
+class TryRecoversJitCall {
+	function : Main(args : String[]) ~ Nil {
+		ok := true;
+
+		# Warm Hop AND Ratio past the JIT threshold with a divisor that works,
+		# so the failing call below runs compiled-calling-compiled every pass.
+		good := Deep->New(1, Deep->New(5, Nil));
+		warm := true;
+		each(i : 500) {
+			if(good?->Hop() = Nil) {
+				warm := false;
+			};
+		};
+		ok := Report("the warm chain returns its object", warm) & ok;
+
+		# the callee now divides by zero, deep inside the compiled chain
+		bad := Deep->New(1, Deep->New(0, Nil));
+		hopped := bad?->Hop();
+		ok := Report("a failing compiled callee is recovered, not fatal", hopped = Nil) & ok;
+
+		# and the program carries on, with the recovered frames not in the way
+		ok := Report("a good chain after recovery still works", good?->Hop() <> Nil) & ok;
+
+		# Recover far more times than the call stack has slots (256), so a pop
+		# that is off by one cannot hide behind a single failure.
+		#
+		# The result is ASSIGNED to a local and the local compared, rather than
+		# compared in place. A recovered '?->' only reaches its consumer
+		# correctly through an assignment: compared inline it reads as non-Nil,
+		# in the interpreter as well as compiled, which is its own bug and not
+		# this one. Writing it in place here would have failed for a reason that
+		# has nothing to do with #925.
+		drift := true;
+		hop_result : Deep;
+		each(i : 300) {
+			hop_result := bad?->Hop();
+			if(hop_result <> Nil) {
+				drift := false;
+			};
+		};
+		ok := Report("300 recoveries do not drift the call stack", drift) & ok;
+		ok := Report("the good chain still works after all of them", good?->Hop() <> Nil) & ok;
+
+		if(<>ok) {
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Report(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"PASS: {$name}"->PrintLine();
+			return true;
+		};
+
+		"FAIL: {$name}"->PrintLine();
+		return false;
+	}
+}
