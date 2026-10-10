@@ -248,7 +248,88 @@ can be aimed at the real thing —
 `obr inference_round_trip.obe http://localhost:8501 v1` against a
 `tensorflow/serving` container — and that step is container- and
 network-dependent, so by this repo's convention it would be non-gating and is
-not wired in. No GPU path is covered either; that needs a GPU and a served model.
+not wired in.
+
+### How TensorFlow support differs from ONNX support
+
+They are not symmetric, and the asymmetry is the whole reason `API.Inference`
+exists.
+
+| | ONNX | TensorFlow |
+|---|---|---|
+| in process | **yes** — `API.Onnx`, the vendored ONNX Runtime | **no** — TF Lite dropped (no Windows ARM64 build; open question 1) |
+| over HTTP | yes — any server that speaks v2 | **yes, and only this** |
+| GPU in process | yes — `DmlExecutionProvider`, selected with `"ep"` | not applicable |
+| ships in the release | the native library, per platform | nothing to ship; the server is elsewhere |
+| version coupling | the pinned ONNX Runtime | whatever the server runs |
+
+So **ONNX has two routes to the same model and TensorFlow has one.** A
+TensorFlow model is reached by serving it; an ONNX model can be loaded or
+served. `API.Models.Engine` is what makes that a choice at one call site rather
+than two codebases: `OnnxEngine` and `HttpEngine` are interchangeable.
+
+The practical consequences, which are easy to get wrong:
+
+- **TensorFlow needs a running server.** There is no path that only links a
+  library, so a TensorFlow model has an operational dependency an ONNX one does
+  not.
+- **A served ONNX model and a loaded one are not bit-identical.** Different
+  ONNX Runtime builds reassociate float work differently — measured below.
+- **The protocol is not the framework.** KServe v2 is what Triton and KServe use
+  for TensorFlow, PyTorch, ONNX and TensorRT alike, and `Client` speaks it
+  without knowing what is behind it. TF Serving's own v1 REST API is a separate
+  surface, which is why `Client` has both and why `Protocol` is explicit.
+
+### Two parity results
+
+**One interface, one answer** (`programs/tests/engine_parity.obs`, driven by
+`tools/cicd/serve_onnx_model.py`, which really runs the model with Python
+onnxruntime). P2 promised one interface over both backends; this is the check
+that the two agree rather than merely compiling:
+
+| comparison | largest absolute difference over 1000 logits | top-1 |
+|---|---|---|
+| `OnnxEngine` in process vs `HttpEngine` over v2 | **0.000005** | 858 / 858 |
+
+The in-process result is the GROUND TRUTH the served one is checked against,
+which is something no TensorFlow-specific test could have had — there is no
+in-process TensorFlow to compare with. It needs **no new model**: `resnet34.onnx`
+is already in the tree and is the same file both sides load.
+
+**The GPU path** (`tools/cicd/check_onnx_provider_parity.py` with
+`programs/tests/onnx_provider_parity.obs`). A GPU changes nothing about the HTTP
+route, so the suite above neither needs one nor gains from one; where it matters
+is in process:
+
+| comparison | largest absolute difference | top-1 |
+|---|---|---|
+| `cpu` vs `cpu` | 0.000000 | 858 |
+| `dml` vs `dml` | 0.000000 | 858 |
+| `cpu` vs `dml` | **0.000004** | 858 / 858 |
+
+Bit-identical output is deliberately not demanded: GPU and CPU kernels
+accumulate in different orders, so demanding it would fail a correct runtime.
+The assertions are top-1 agreement and a reassociation-sized bound.
+
+The same-provider rows are what make the cross-provider row mean anything. They
+are exactly zero, so the 4e-6 is not run-to-run noise — and it is not zero,
+which is what proves `ep=dml` selects a different kernel rather than silently
+falling back to CPU. Class 858 now agrees across four runtimes: native CPU,
+native DirectML, and Python onnxruntime served.
+
+**Neither parity check is in CI.** The GPU one cannot be: no runner has a GPU, so
+the step would skip on every run, and a skip that quietly becomes permanent is
+how "CI-tested" stops meaning "tested" — `obu` was CI-tested and packaged in no
+archive until v2026.8.2. The engine-parity one needs Python `onnxruntime`, which
+is not a build dependency of this project; it is a local check for the same
+reason, and both say SKIP loudly rather than passing vacuously.
+
+**Still not covered:** TF Serving's own v1 REST API end to end. That needs a
+TensorFlow SavedModel and a TensorFlow install, neither of which is here —
+`resnet34.onnx` cannot stand in for it, because TF Serving cannot load an ONNX
+file. The v1 wire format is covered offline by
+`programs/regression/inference_client_test.obs` and against the strict mock; what
+is missing is a real TF Serving accepting it.
 
 **P3 — TF Lite. DROPPED, 2026-10-07.** See open question 1: it has no published
 Windows ARM64 build and upstream's own Windows ARM64 support is an unmerged,
