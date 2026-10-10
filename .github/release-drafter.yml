@@ -1,5 +1,11 @@
-name-template: 'v$RESOLVED_VERSION'
-tag-template: 'v$RESOLVED_VERSION'
+# This draft accumulates merged PRs and is never published: release-publish.yml
+# writes its own notes and runs `gh release create`. It must therefore not claim
+# a version, and it cannot compute one anyway -- the resolver below is semver,
+# while Objeck versions are YEAR.MONTH.RELEASE, so from v2026.9.7 it proposed
+# v2026.9.8 when the next release was v2026.10.0 because the month rolled. That
+# would be wrong at every month boundary.
+name-template: 'Unreleased changes (since $PREVIOUS_TAG)'
+tag-template: 'unreleased-draft'
 
 categories:
   - title: '🚀 Features'
@@ -75,6 +81,11 @@ version-resolver:
   default: patch
 
 template: |
+  **This is a running draft of what has merged since $PREVIOUS_TAG, not a planned
+  release.** It is never published; the notes for a release are generated at tag
+  time. The version in the archive names below is whatever the semver resolver
+  guessed and is illustrative only.
+
   ## What's Changed
 
   $CHANGES
