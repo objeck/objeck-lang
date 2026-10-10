@@ -288,7 +288,30 @@ namespace Runtime {
       if(HasTryHandler()) {
         TryHandlerState& state = TryState();
         state.recovery_ip = GetTryHandlerIP();
-        *stack_pos = GetTryHandlerStackPos();
+        // The saved position is an unwind TARGET, not a value to assign (#1067).
+        //
+        // TRY_START records the operand stack as it stands, which includes
+        // anything an enclosing expression has already pushed -- in
+        // `if(a?->M() = Nil)` the Nil for the comparison is pushed BEFORE the
+        // try region and popped after the handler. Unwinding DOWN to the saved
+        // position discards what the failing call left behind and leaves that
+        // operand intact, which is what the interpreted path needs: it arrives
+        // here with the stack above the mark (measured: 4, target 2).
+        //
+        // A compiled callee that reports a status arrives BELOW the mark
+        // (measured: 1, target 2) -- the call consumed its receiver and the
+        // method returned a status instead of a value. Assigning the saved
+        // position there RAISES the stack pointer and resurrects the slot the
+        // receiver occupied, and the enclosing expression then pops that stale
+        // pointer as its own operand. `a?->M() = Nil` compared the recovered
+        // Nil against the receiver and answered false, while
+        // `r := a?->M(); r = Nil` was correct because nothing of its own was
+        // left on the stack across the region.
+        //
+        // So: only ever unwind.
+        if(*stack_pos > GetTryHandlerStackPos()) {
+          *stack_pos = GetTryHandlerStackPos();
+        }
         long saved_call_pos = state.call_stack_pos[state.pos - 1];
         PopTryHandler();
         while(*call_stack_pos > saved_call_pos) {
