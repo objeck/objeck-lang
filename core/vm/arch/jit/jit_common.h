@@ -252,9 +252,12 @@ public:
   // time (anything but a `virtual` declaration) passes the StackMethod* in
   // place of the opcode, so a call is neither switched on nor looked up.
   // Same register layout as JitStackCallback; instr is kept for symmetry.
-  // Always 0. It shares a call site with JitStackCallback, whose status
-  // compiled code tests, so this returns one too rather than leaving whatever
-  // was in the return register for that test to read (#925).
+  // Returns the callee's status, 0 unless it reported an error. It shares a
+  // call site with JitStackCallback, whose status compiled code tests, so it
+  // has to return one rather than leave whatever was in the return register
+  // for that test to read (#925). It was always 0 until gap 3: a failing
+  // callee was reported and exited inside CallCompiled, and now travels out
+  // through here instead.
   static int64_t JitDirectCall(StackMethod* callee, StackInstr* instr, const long cls_id,
                             const long mthd_id, size_t* inst, size_t* op_stack, size_t* stack_pos,
                             StackFrame** call_stack, long* call_stack_pos, const long ip);
