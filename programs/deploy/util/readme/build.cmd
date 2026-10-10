@@ -47,17 +47,18 @@ if [%1] == [] (
 	exit /b 1
 )
 
-REM '@ml' is the dependency-closed alias for the LLM clients (core/lib/
-REM configobjk.ini). The old explicit list -- openai,misc,json,net -- omitted
-REM cipher, which openai.obl is built against, so this failed to resolve
-REM 'Cipher.Encrypt'.
+REM Only Data.JSON is needed now. This used to pass '@ml', the alias for the
+REM LLM clients, because the builder asked gpt-4o-mini to rewrite the release
+REM title; it no longer does, so the OpenAI closure went with it.
 echo Compiling %1
-obc -src %1 -lib @ml
+obc -src %1 -lib json
 if errorlevel 1 exit /b 1
 
 if [%2] == [] goto end
 	echo Generating readme.html / readme.md from readme.json
-	obr %1 readme.json
+	REM %1 is the .obs; obr wants the .obe, so %~n1 -- passing %1 made this
+	REM look for readme_builder.obs.obe and the run step never worked.
+	obr %~n1 readme.json
 	if errorlevel 1 exit /b 1
 	echo Done. docs\readme.html is hand-maintained and was left untouched.
 :end
