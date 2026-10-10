@@ -269,6 +269,30 @@ void JitArm64::Epilog() {
   AddMachineCode(op_code);
   
   move_imm_reg(0, X0);
+
+  // This method's own frame record comes off the call stack here, if it pushed
+  // one -- the first instruction of the teardown, which is still
+  // epilog_index + 10, so the hand-computed offsets above are unaffected.
+  // EmitNativePrologue pushes the record and sets REC_KIND = 1; the bridge
+  // prologue sets REC_KIND = 0 and the interpreter pops that one. RTRN used to
+  // do this, but a guard stub never reaches RTRN, so a natively entered method
+  // that failed left the record registered and call_stack_pos too high, and
+  // StackErrorUnwind then walked entries that are not frames (#925). The
+  // nominal return falls through to this point (from `mov x0, 0` at +9) and
+  // every error handler branches to it, so one test covers all of them.
+  //
+  // X0 holds the status and is untouched; X9-X11 are scratch. SP has not moved
+  // yet, so rec_base and CALL_STACK_POS are still valid, and X19 is restored
+  // just below -- this does not use it.
+  move_mem_reg(rec_base + REC_KIND, SP, X9);
+  const long no_rec_patch = code_index;
+  AddMachineCode(0xB4000000 | X9);                                 // cbz x9, skip
+  move_mem_reg(CALL_STACK_POS, SP, X10);
+  load_long(0, X10, X11);
+  sub_imm_reg(1, X11);
+  store_long(X11, 0, X10);
+  PatchBranch(no_rec_patch, code_index);
+
   // Restore callee-saved X19 (cached &stw_active) from the top-of-frame slot the
   // prologue used. Emitted here, before the teardown block, so it is reached by both
   // the nominal fall-through and every error-exit branch above (which all target the
@@ -770,10 +794,8 @@ void JitArm64::ProcessInstructions() {
           move_mem_reg(OP_STACK, SP, X9);
           ldr_base_index_freg(X9, X11, D0);
         }
-        move_mem_reg(CALL_STACK_POS, SP, X10);
-        load_long(0, X10, X11);
-        sub_imm_reg(1, X11);
-        store_long(X11, 0, X10);
+        // The record comes off the call stack in the teardown, which every
+        // exit reaches -- not here, which only a normal return reaches.
         PatchBranch(epilog_patch, code_index);
         Epilog();
       }
@@ -2469,7 +2491,8 @@ void JitArm64::MarshalOutArgs(long params) {
  * A native call site (JIT_CALLING_CONVENTION_DESIGN.md section 12, the ARM64
  * form of sections 8 to 11). The values go to the outgoing area; the entry
  * comes from the callee's word (a bound call) or the site's inline cache (a
- * `virtual` or func-ref call); a negative status goes to JitNativeCallError.
+ * `virtual` or func-ref call); a negative status branches to the teardown,
+ * carrying the callee's status out to this method's own caller (#925 gap 3).
  * The slow path -- a callee not compiled yet, a full call stack, a Nil
  * receiver, a miss the resolver cannot fill -- copies the area onto the
  * operand stack and runs the bridge, then pops the result into D0, where the
@@ -2558,19 +2581,22 @@ void JitArm64::EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_i
     AddMachineCode(B_INSTR | ((uint32_t)(hit_index - code_index) & 0x03FFFFFF));   // b hit
   }
 
-  // error: JitNativeCallError(status, callee, caller cls_id, caller mthd_id)
+  // error: the callee's status leaves this method the way a guard stub's does
+  // (#925 gap 3) -- through the teardown with the status still in X0, so a
+  // Try() region below can take it. This used to call JitNativeCallError, which
+  // printed and exited, so a compiled caller could not recover from a compiled
+  // callee's failure even though the failing frame had already returned and the
+  // handler stack was intact.
+  //
+  // The same exit and the same patch list as CheckBridgeStatus, deliberately:
+  // both arrive with the status in X0 and want the same unwinding. `b.al`
+  // rather than `b`, because that list writes imm19 at bits 23:5 -- the
+  // conditional encoding -- and a plain B's imm26 would be corrupted by it.
+  // The teardown pops this frame's own record on the way out when it owns one,
+  // which is what makes the chain unwind: the callee popped its own already.
   PatchBranch(error_patch, code_index);
-  if(direct_callee) {
-    move_imm_reg((int64_t)direct_callee, X1);
-  }
-  else {
-    move_mem_reg(0, SP, X1);
-    move_mem_reg(RECORD_TARGET, X1, X1);
-  }
-  move_mem_reg(CLS_ID, SP, X2);
-  move_mem_reg(MTHD_ID, SP, X3);
-  move_imm_reg((int64_t)(size_t)JitCompiler::JitNativeCallError, XS2);
-  call_reg(XS2);                                 // does not return
+  bridge_status_offsets.push_back(code_index);
+  AddMachineCode(0x5400000E);                    // b.al <teardown>, imm19 patched
 
   // slow: the values onto the operand stack, in order, then the bridge
   for(const long patch : slow_patches) {
