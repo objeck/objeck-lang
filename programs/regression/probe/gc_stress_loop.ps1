@@ -2,10 +2,25 @@
 # original test and a diagnostic copy many times under several VM
 # configurations, counts failures and hangs, keeps every failing run's output,
 # and writes a summary (also to the GitHub step summary when present).
+#
+# -Profile diag concentrates the budget on the ONE configuration that can
+# answer anything. The original split spends most of its runs on `orig`, which
+# prints a total and nothing else; `diag` reports which worker, which round,
+# how many nodes its list had and the first bad value. Across every probe run
+# to date the diag build has failed exactly once -- and that one was a silent
+# 0xC0000005 that died before printing, so the instrumentation has never
+# actually fired. See investigation.md.
+#
+# -Catcher runs each program under av_catch.py, which puts a faulting address,
+# a module+RVA and (if a PDB is around) a symbol name on that silent crash. It
+# inherits stdout/stderr, so the diag report still lands in the .out file.
 param(
   [Parameter(Mandatory = $true)][string]$Bin,
   [int]$Runs = 40,
-  [int]$TimeoutSec = 180
+  [int]$TimeoutSec = 180,
+  [ValidateSet('survey', 'diag')][string]$Mode = 'survey',
+  [string]$Catcher,
+  [string]$Python = 'python'
 )
 
 $ErrorActionPreference = 'Continue'
@@ -29,13 +44,47 @@ Compile (Join-Path $here '..\core_thread_gc_stress.obs') $orig
 Compile (Join-Path $here 'gc_stress_diag.obs') $diag
 
 # name, program, extra obr arguments, environment, runs
-$configs = @(
-  @{ name = 'orig-default'; obe = $orig; args = @();                     envs = @{};                              runs = $Runs },
-  @{ name = 'diag-default'; obe = $diag; args = @();                     envs = @{};                              runs = $Runs },
-  @{ name = 'orig-jit1';    obe = $orig; args = @();                     envs = @{ OBJECK_JIT_THRESHOLD = '1' };  runs = $Runs },
-  @{ name = 'orig-gc1m';    obe = $orig; args = @('--gc-threshold=1m');  envs = @{};                              runs = $Runs },
-  @{ name = 'orig-jitoff';  obe = $orig; args = @('--jit=off');          envs = @{};                              runs = [math]::Max(1, [int]($Runs / 2)) }
-)
+if ($Mode -eq 'diag') {
+  # Phase 1. Everything on the build that can report, with a small `orig` cell
+  # kept only so a failure can be told apart from "the diag build does not
+  # reproduce it". The jit1/gc1m/jitoff cells are deliberately absent: at the
+  # measured ~0.8% a 40-run cell expects 0.7 failures, so 0 against 1 says
+  # nothing, and splitting the budget five ways is what kept every cell
+  # underpowered. Narrowing by configuration is Phase 4, with 500+ per cell.
+  $configs = @(
+    @{ name = 'diag-default'; obe = $diag; args = @(); envs = @{}; runs = $Runs },
+    @{ name = 'orig-default'; obe = $orig; args = @(); envs = @{}; runs = [math]::Max(1, [int]($Runs / 4)) }
+  )
+}
+else {
+  $configs = @(
+    @{ name = 'orig-default'; obe = $orig; args = @();                     envs = @{};                              runs = $Runs },
+    @{ name = 'diag-default'; obe = $diag; args = @();                     envs = @{};                              runs = $Runs },
+    @{ name = 'orig-jit1';    obe = $orig; args = @();                     envs = @{ OBJECK_JIT_THRESHOLD = '1' };  runs = $Runs },
+    @{ name = 'orig-gc1m';    obe = $orig; args = @('--gc-threshold=1m');  envs = @{};                              runs = $Runs },
+    @{ name = 'orig-jitoff';  obe = $orig; args = @('--jit=off');          envs = @{};                              runs = [math]::Max(1, [int]($Runs / 2)) }
+  )
+}
+
+# The catcher is opt-in and must prove itself before the loop, not on the one
+# run that finally crashes. A probe that silently ran without it would report
+# the same bare exit code the issue already has.
+$useCatcher = $false
+if ($Catcher) {
+  if (-not (Test-Path $Catcher)) { throw "catcher not found: $Catcher" }
+  $Catcher = (Resolve-Path $Catcher).Path
+  # Prove it CATCHES, not merely that it starts. A catcher that runs the program
+  # and reports nothing is indistinguishable from a run that did not crash --
+  # which is the exact ambiguity this whole probe exists to remove. Deliberately
+  # fault a throwaway process and require the report. Uses python rather than
+  # obr so the check does not depend on obr's argument parsing.
+  $probe = & $Python -I $Catcher --timeout 30 -- $Python -c "import ctypes; ctypes.memset(0,0,4)" 2>&1
+  if (-not (($probe -join "`n") -match '\[av\] exception 0xC0000005')) {
+    throw "catcher did not report a deliberate access violation; it would not report a real one:`n$($probe -join "`n")"
+  }
+  $useCatcher = $true
+  Write-Host "catcher: $Catcher (verified on a deliberate access violation)"
+}
 
 $summary = New-Object System.Collections.Generic.List[string]
 $summary.Add("| config | runs | pass | fail | hang | failure lines |")
@@ -49,8 +98,15 @@ foreach ($c in $configs) {
     $out = Join-Path $res ("{0}_{1:D3}.out" -f $c.name, $n)
     $err = Join-Path $res ("{0}_{1:D3}.err" -f $c.name, $n)
     $argList = @($c.args) + @($c.obe)
+    if ($useCatcher) {
+      $exe = $Python
+      $argList = @('-I', $Catcher, '--timeout', $TimeoutSec, '--', $obr) + $argList
+    }
+    else {
+      $exe = $obr
+    }
     $sw = [Diagnostics.Stopwatch]::StartNew()
-    $p = Start-Process -FilePath $obr -ArgumentList $argList -NoNewWindow -PassThru `
+    $p = Start-Process -FilePath $exe -ArgumentList $argList -NoNewWindow -PassThru `
       -RedirectStandardOutput $out -RedirectStandardError $err
     # read the handle now: without it ExitCode can come back empty after the wait
     $null = $p.Handle
@@ -69,7 +125,13 @@ foreach ($c in $configs) {
     }
     else {
       $fail++
-      $first = ($text -split "`n" | Where-Object { $_ -match 'FAIL|round=' } | Select-Object -First 3) -join ' / '
+      # stdout carries the diag report; stderr carries the catcher's faulting
+      # address. The silent crash has NO stdout at all, which is exactly the
+      # case the issue could never say anything about, so read both.
+      $etext = (Get-Content $err -Raw -ErrorAction SilentlyContinue)
+      $parts = @($text -split "`n" | Where-Object { $_ -match 'FAIL|round=' } | Select-Object -First 3)
+      $parts += @($etext -split "`n" | Where-Object { $_ -match '^\[av\]' } | Select-Object -First 4)
+      $first = ($parts | ForEach-Object { $_.Trim() }) -join ' / '
       $lines.Add(("run {0}: exit 0x{1:X8}, {2:N1} s: {3}" -f $n, $code, $sw.Elapsed.TotalSeconds, $first))
     }
   }
