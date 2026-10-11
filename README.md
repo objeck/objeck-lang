@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.7-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.0-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.7/objeck-linux-x64_2026.9.7.tgz
-tar xzf objeck-linux-x64_2026.9.7.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.0/objeck-linux-x64_2026.10.0.tgz
+tar xzf objeck-linux-x64_2026.10.0.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.10.0
+### v2026.10.0 ✅
   * **`Try()` recovers from an error raised inside compiled code** &mdash; whether a guarded chain recovered or ended the program used to depend on how many times the failing method had been called, because an error raised inside a JIT-compiled method could not reach the handler. The same program, run twice, could do either. Three things stood in the way and all three are closed: the handler stack is per-thread, so the JIT callback that raises a failing cast can see it; the callback reports a status instead of exiting; and a compiled method calling a compiled method that fails now carries the status outward one frame at a time instead of printing and exiting. **Compiled recursion that overruns the native C stack stays fatal** &mdash; the process dies in the OS with no frame left to report from ([#925](https://github.com/objeck/objeck-lang/issues/925))
   * **A recovered `?->` compares correctly against `Nil`** &mdash; `if(x?->y() = Nil)` took the wrong branch once the failing method was hot, while the same value read through a local was right in every mode. So the idiom `?->` exists for was the one that broke, and only after warm-up, which means a program could behave correctly in testing and wrongly in production. Recovery itself was never at fault: the handler stored `Nil` and a local read it back correctly ([#1067](https://github.com/objeck/objeck-lang/issues/1067))
   * **`obu`'s install lock no longer follows a symbolic link** &mdash; `.obu.lock` sits in the install root, so anything able to write there could plant a symlink at that name and `obu` would follow it, creating the target if it did not exist. Nothing is ever written through that descriptor, so the reach was creation of a path of the attacker's choosing owned by whoever ran `obu` &mdash; unexpected file creation and denial of service rather than disclosure &mdash; and it needed an install root writable by someone other than that user ([#1075](https://github.com/objeck/objeck-lang/pull/1075))
@@ -86,7 +86,7 @@ obc hello && obr hello
   * **A generic array parameter did not resolve across a library boundary** &mdash; `Vector[]<T>` as a parameter compiled inside a library and callers in that same library reached it, but a program linking the library was told the method did not exist, offering an alternative whose signature was missing its `[]`. The array dimension was dropped reading the signature back out of the `.obl`, which is why the same type worked as a return value and failed as a parameter ([#998](https://github.com/objeck/objeck-lang/issues/998))
   * **Build and test plumbing** &mdash; the generated POSIX `Makefile`s are treated as build output rather than tracked source, so building one architecture no longer leaves tracked files modified ([#1005](https://github.com/objeck/objeck-lang/issues/1005)); a missing `expect` let the debugger suite skip every test and still report success ([#1022](https://github.com/objeck/objeck-lang/pull/1022)); and `cov_scan.sh` reported a submission Coverity had refused, which also deleted the archive it had just promised to keep ([#1031](https://github.com/objeck/objeck-lang/pull/1031))
 
-### v2026.9.7 ✅
+### v2026.9.7
   * **A model can be evaluated honestly, end to end** &mdash; `System.ML` could fit a model but not measure one. Nothing held a scaler's statistics across a train/test split, so test data was scaled by its own numbers, which leaks the test distribution into the result and flatters any model read at a fixed false-alarm rate. `FeatureScaler` and `TableEncoder` learn from the training split and reapply it, `StratifiedKFold` keeps each class's ratio in every fold from a seed, and `CrossValidation->Evaluate` runs the folds over a common `ScoreModel` interface, reporting per-fold values alongside the mean and spread ([#999](https://github.com/objeck/objeck-lang/pull/999))
   * **Metrics that take a score rather than a decision** &mdash; `RecallAtFpr`, `ThresholdAtFpr`, `AucRoc`, `AveragePrecision`, `RocCurve` and `PrCurve`. A `Bool` array is already thresholded, so it cannot say what recall would be at a different false-alarm rate ([#983](https://github.com/objeck/objeck-lang/pull/983))
   * **Classifiers that split continuous features directly** &mdash; `DecisionTreeClassifier`, `RandomForestClassifier` and `GradientBoostedClassifier`. The existing trees take `Bool[,]`, so data had to be quantile-binned first &mdash; and the binning discards the very thresholds a tree exists to find ([#984](https://github.com/objeck/objeck-lang/pull/984))
@@ -118,7 +118,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.9.7](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.10.0](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|

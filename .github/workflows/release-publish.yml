@@ -730,6 +730,16 @@ jobs:
       OBJECK_ORG_USER: ${{ secrets.OBJECK_ORG_USER }}
 
     steps:
+      # The deploy step runs core/release/deploy_website.sh, and this job had no
+      # checkout -- so the script was not on the runner and the step would have
+      # died with "No such file or directory" the moment the secret was set. It
+      # also reads core/shared/version.h and core/compiler/lib_src, and now
+      # docs/web for the site's own pages, none of which are in the artifact.
+      # With the secret unset the step was skipped, so nothing ever exercised
+      # it: the same shape as resign-manifest.yml, which signed a manifest and
+      # could not upload it because it had cd'd out of its checkout (#1081).
+      - uses: actions/checkout@v5
+
       - name: Download API docs
         uses: actions/download-artifact@v4
         with:
@@ -750,8 +760,17 @@ jobs:
           echo "${{ secrets.OBJECK_ORG_SSH_KEY }}" > ~/.ssh/obj_key
           chmod 600 ~/.ssh/obj_key
 
-          # Add objeck.org to known hosts (replace with actual host)
-          # ssh-keyscan objeck.org >> ~/.ssh/known_hosts
+          # Not optional, and not "replace with actual host" -- the host is
+          # objeck.org and has been throughout. This sat commented out while the
+          # sourceforge job two hundred lines up does the same keyscan, so with
+          # the key in place the deploy would have failed on an unknown host
+          # key: deploy_website.sh runs ssh with BatchMode=yes, which cannot
+          # answer the prompt and simply refuses the connection.
+          ssh-keyscan -H "${OBJECK_ORG_HOST:-objeck.org}" >> ~/.ssh/known_hosts 2>/dev/null
+          test -s ~/.ssh/known_hosts || {
+            echo "::error::ssh-keyscan returned nothing for ${OBJECK_ORG_HOST:-objeck.org}"
+            exit 1
+          }
 
       - name: Deploy to objeck.org
         if: env.OBJECK_ORG_SSH_KEY != ''
@@ -771,12 +790,21 @@ jobs:
           # version, warns about a library with no pages at all, requires the
           # remote directory to already exist, uploads beside the live tree and
           # swaps it in, and verifies over HTTPS afterwards.
+          #
+          # No mode flag, so it deploys BOTH halves: the generated reference from
+          # the artifact, and docs/web -- the site's own pages -- from the
+          # checkout. The second half is why this job needs a checkout at all.
+          # v2026.10.0 shipped with api/latest at v2026.10.0 while the landing
+          # page still offered "Download v2026.9.7", because nothing deployed
+          # docs/web and the manual-step hint named a script that did half the
+          # job. The site half refuses a readme.html whose Download button names
+          # a different version, which is the thing that goes stale.
           bash core/release/deploy_website.sh \
             --source api-temp/api \
             --version "$VERSION" \
             --key ~/.ssh/obj_key
 
-          echo "✅ API docs deployed to https://objeck.org/api/latest/ (v${VERSION})"
+          echo "✅ objeck.org deployed: api/latest and the site pages (v${VERSION})"
 
       - name: Cleanup SSH key
         if: always()

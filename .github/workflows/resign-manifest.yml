@@ -60,6 +60,15 @@ jobs:
       - name: Re-sign and verify
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # gh infers the repository from the git remote of the CURRENT
+          # directory, and this step does `cd "$WORK"` before signing, so
+          # every gh call after that line ran outside the checkout and died
+          # with "failed to run git: fatal: not a git repository". The
+          # signature was made and verified against the committed public
+          # key, and then never uploaded -- the work was done and thrown
+          # away, on both of this workflow's only two runs. Naming the repo
+          # makes every call independent of where the step happens to be.
+          GH_REPO: ${{ github.repository }}
           MINISIGN_SECRET_KEY: ${{ secrets.MINISIGN_SECRET_KEY }}
           VERSION: ${{ inputs.version }}
         run: |

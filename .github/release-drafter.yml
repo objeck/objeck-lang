@@ -4,7 +4,13 @@
 # while Objeck versions are YEAR.MONTH.RELEASE, so from v2026.9.7 it proposed
 # v2026.9.8 when the next release was v2026.10.0 because the month rolled. That
 # would be wrong at every month boundary.
-name-template: 'Unreleased changes (since $PREVIOUS_TAG)'
+#
+# $PREVIOUS_TAG does not resolve in name-template. release-drafter substitutes
+# only $RESOLVED_VERSION, the $NEXT_*_VERSION family and $INPUT_* there, so the
+# draft was titled with the marker itself -- literally "Unreleased changes
+# (since $PREVIOUS_TAG)" on the releases page. It DOES resolve in `template`
+# below, which already opens by naming the tag, so the title does not need it.
+name-template: 'Unreleased changes'
 tag-template: 'unreleased-draft'
 
 categories:
