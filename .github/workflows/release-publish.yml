@@ -758,15 +758,23 @@ jobs:
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
 
-          # objeck.org serves one tree, api/latest/, and it is a real directory:
-          # there are no versioned api/v<VERSION>/ directories. An earlier version
-          # of this step uploaded to api/v<VERSION>/ and ran `ln -sfn v<VERSION>
-          # latest`, which against a real directory creates latest/v<VERSION> and
-          # leaves latest stale.
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no" \
-            api-temp/api/ \
-            "${{ env.OBJECK_ORG_USER }}@objeck.org:/var/www/objeck.org/api/latest/"
+          # One implementation, shared with a maintainer run, so a path fix
+          # cannot land in one caller and not the other -- which is how the
+          # destination below stayed wrong. It was /var/www/objeck.org/api/latest/,
+          # a VPS layout; objeck.org is GoDaddy shared hosting serving
+          # ~/public_html, and /var/www/objeck.org does not exist there. With the
+          # secrets unset this step was skipped, so the wrong path was never
+          # exercised: v2026.8.4 published while the site served v2026.8.3 docs
+          # and the pipeline reported the deploy green.
+          #
+          # The script refuses a partial tree, refuses pages stamped for another
+          # version, warns about a library with no pages at all, requires the
+          # remote directory to already exist, uploads beside the live tree and
+          # swaps it in, and verifies over HTTPS afterwards.
+          bash core/release/deploy_website.sh \
+            --source api-temp/api \
+            --version "$VERSION" \
+            --key ~/.ssh/obj_key
 
           echo "✅ API docs deployed to https://objeck.org/api/latest/ (v${VERSION})"
 
@@ -802,7 +810,7 @@ jobs:
           VERSION="${{ needs.prepare.outputs.version }}"
           echo "ℹ️  objeck.org API docs deploy is declared manual via RELEASE_MANUAL_STEPS - skipping."
           echo "   Deploy by hand from this run's api-docs artifact (or master's docs/api.zip):"
-          echo "     rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/latest/"
+          echo "     bash core/release/deploy_website.sh --source api/ --key <key>"
 
       - name: Missing objeck.org credentials
         if: env.OBJECK_ORG_SSH_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'docs')
@@ -815,7 +823,7 @@ jobs:
           echo ""
           echo "The docs that should have shipped are in this run's api-docs artifact,"
           echo "and on master at docs/api.zip. To deploy by hand:"
-          echo "  rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/latest/"
+          echo "  bash core/release/deploy_website.sh --source docs/api.zip --key <your key>"
           echo "  (there are no versioned /api/v<VERSION>/ directories - 'latest' is the only served path)"
           echo ""
           echo "Or declare it manual:  gh variable set RELEASE_MANUAL_STEPS --body '<existing>,docs'"
