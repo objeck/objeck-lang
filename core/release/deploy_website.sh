@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 #
-# Deploys the generated API reference to objeck.org.
+# Deploys objeck.org: the generated API reference, and the site's own pages.
+#
+# IT USED TO DO ONLY THE API REFERENCE, which is why objeck.org kept going
+# stale in the other half. v2026.10.0 published with api/latest correctly at
+# v2026.10.0 while the site's own readme.html still offered "Download v2026.9.7"
+# -- the page a reader actually lands on. docs/web/ is the source of those pages
+# and nothing deployed it, so every release needed someone to remember an
+# undocumented hand-upload. The `docs` manual-step hint named this script, which
+# did half the job and reported success.
 #
 # ONE implementation, called BOTH from release-publish.yml and by hand. The
 # previous arrangement had the rsync written inline in the workflow and nothing
@@ -12,13 +20,24 @@
 # green. A single script means a path fix cannot land in one caller and not the
 # other.
 #
-#   deploy_website.sh [--source <dir|zip>] [--user U] [--host H] [--key K]
+#   deploy_website.sh [--source <dir|zip>] [--site-source <dir>]
+#                     [--api-only | --site-only]
+#                     [--user U] [--host H] [--key K]
 #                     [--version V] [--dry-run] [--no-verify]
 #
+# With no mode flag it does both halves, so one call leaves nothing stale.
+#
 # Needs only ssh and tar locally -- NOT rsync, which Git for Windows does not
-# ship and which has to exist at both ends. The tree is uploaded beside the live
-# one and swapped in, so a reader never sees a half-updated directory and a
-# failed upload leaves the old tree serving.
+# ship and which has to exist at both ends. The reference tree is uploaded
+# beside the live one and swapped in, so a reader never sees a half-updated
+# directory and a failed upload leaves the old tree serving.
+#
+# The site pages CANNOT be swapped that way: they live directly in
+# ~/public_html, alongside api/, .htaccess and objeck-release.pub, so replacing
+# that directory would delete things this script knows nothing about. They are
+# uploaded per file instead -- staged, hash-checked on the server, then moved
+# into place one atomic rename at a time -- and a remote file with no local
+# counterpart is left alone rather than treated as stale.
 #
 # Exits non-zero on any refusal. Every refusal is deliberate: this writes to a
 # live site, and "deployed something wrong" is worse than "did not deploy".
@@ -28,6 +47,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 
 SOURCE=""
+SITE_SOURCE=""
+DO_API=1
+DO_SITE=1
 USER_NAME="${OBJECK_ORG_USER:-objecklang}"
 HOST="${OBJECK_ORG_HOST:-objeck.org}"
 KEY=""
@@ -42,6 +64,11 @@ VERIFY=1
 REMOTE_PARENT="public_html/api"
 REMOTE_NAME="latest"
 
+# The site's own pages. ~/public_html is shared with api/ and with files no
+# release produces, so this is a per-file destination, never a directory to
+# replace.
+SITE_REMOTE="public_html"
+
 # Below this many pages the source is not a real doc tree. A healthy build is
 # ~509; an api.zip containing only the three style files shipped once and
 # nothing noticed.
@@ -49,14 +76,17 @@ MIN_PAGES=400
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --source)     SOURCE="$2"; shift 2 ;;
-    --user)       USER_NAME="$2"; shift 2 ;;
-    --host)       HOST="$2"; shift 2 ;;
-    --key)        KEY="$2"; shift 2 ;;
-    --version)    VERSION="$2"; shift 2 ;;
-    --dry-run)    DRY_RUN=1; shift ;;
-    --no-verify)  VERIFY=0; shift ;;
-    -h|--help)    sed -n '3,24p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    --source)      SOURCE="$2"; shift 2 ;;
+    --site-source) SITE_SOURCE="$2"; shift 2 ;;
+    --api-only)    DO_SITE=0; shift ;;
+    --site-only)   DO_API=0; shift ;;
+    --user)        USER_NAME="$2"; shift 2 ;;
+    --host)        HOST="$2"; shift 2 ;;
+    --key)         KEY="$2"; shift 2 ;;
+    --version)     VERSION="$2"; shift 2 ;;
+    --dry-run)     DRY_RUN=1; shift ;;
+    --no-verify)   VERIFY=0; shift ;;
+    -h|--help)     sed -n '3,41p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *)            echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -72,16 +102,181 @@ if [ -z "$VERSION" ]; then
 fi
 note "version: $VERSION"
 
+# ------------------------------------------------------------ transport ------
+# Shared by both halves, so it is settled before either runs.
+# -T: no pty for a non-interactive command. LogLevel=ERROR: objeck.org's sshd
+# greets every connection with a post-quantum advisory, which is not this
+# script's news to deliver and buried the output it does have to show.
+SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=20 -T -o LogLevel=ERROR"
+[ -n "$KEY" ] && SSH_OPTS="$SSH_OPTS -i $KEY"
+TARGET="$USER_NAME@$HOST"
+
+command -v tar >/dev/null || die "tar is required"
+command -v sha256sum >/dev/null || die "sha256sum is required"
+
+# One cleanup for both halves. TMP holds an unzipped api.zip; WORKERR catches
+# ssh's stderr so a failure can be reported with its reason instead of without.
+TMP=""
+WORKERR="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/deploy_website.$$.err")"
+cleanup() {
+  [ -n "$TMP" ] && rm -rf "$TMP"
+  rm -f "$WORKERR"
+}
+trap cleanup EXIT
+
+# ======================================================== the site's pages ===
+if [ "$DO_SITE" = 1 ]; then
+  [ -n "$SITE_SOURCE" ] || SITE_SOURCE="$REPO/docs/web"
+  [ -d "$SITE_SOURCE" ] || die "site source does not exist: $SITE_SOURCE"
+
+  echo
+  note "site:    $SITE_SOURCE"
+
+  # Both must be there. A source directory that happens to exist but holds
+  # neither of the two pages the site is built around is not docs/web.
+  for required in readme.html index.html; do
+    [ -f "$SITE_SOURCE/$required" ] || \
+      die "$SITE_SOURCE has no $required -- that is not the docs/web tree"
+  done
+
+  # readme.html carries the Download button, and the button is hardcoded. It is
+  # the single thing that goes stale: it sat on v2026.8.1 through the whole of
+  # v2026.8.2, and on v2026.9.7 while v2026.10.0 was live. Uploading a page that
+  # offers the previous release is worse than leaving the old one, because it
+  # looks freshly deployed.
+  if ! grep -q "Download v$VERSION" "$SITE_SOURCE/readme.html"; then
+    offers="$(grep -oE 'Download v[0-9.]+' "$SITE_SOURCE/readme.html" | head -1)"
+    die "$SITE_SOURCE/readme.html offers '${offers:-no Download button at all}', expected 'Download v$VERSION' -- update docs/web before deploying"
+  fi
+  note "button:  Download v$VERSION"
+
+  SITE_FILES="$(cd "$SITE_SOURCE" && find . -type f -printf '%P\n' 2>/dev/null \
+                || (cd "$SITE_SOURCE" && find . -type f | sed 's|^\./||'))"
+  [ -n "$SITE_FILES" ] || die "no files found under $SITE_SOURCE"
+  note "files:   $(printf '%s\n' "$SITE_FILES" | grep -c .)"
+
+  ssh $SSH_OPTS "$TARGET" "test -d ~/$SITE_REMOTE" 2>/dev/null || \
+    die "$TARGET:~/$SITE_REMOTE does not exist (or SSH failed) -- not creating it from here"
+
+  # What is live, so only what differs travels and the output says what changed
+  # rather than "deployed" every time. A path absent remotely hashes to nothing
+  # and therefore counts as changed.
+  #
+  # Retried, and the SSH error SHOWN. This is shared hosting and it drops a
+  # connection now and then: a single hiccup used to end the deploy with
+  # "could not read the live site's hashes" and the reason sent to /dev/null,
+  # which reads as a permanent fault on a site that was perfectly reachable a
+  # second later. Read-only, so a retry cannot half-do anything.
+  REMOTE_HASHES=""
+  for attempt in 1 2 3; do
+    if REMOTE_HASHES="$(printf '%s\n' "$SITE_FILES" | \
+      ssh $SSH_OPTS "$TARGET" "cd ~/$SITE_REMOTE && while read -r f; do
+          if [ -f \"\$f\" ]; then sha256sum \"\$f\"; else echo \"- \$f\"; fi
+        done" 2>"$WORKERR")" && [ -n "$REMOTE_HASHES" ]; then
+      break
+    fi
+    REMOTE_HASHES=""
+    [ "$attempt" = 3 ] && break
+    note "  could not read the live hashes (attempt $attempt/3), retrying"
+    sleep 3
+  done
+  if [ -z "$REMOTE_HASHES" ]; then
+    [ -s "$WORKERR" ] && sed 's/^/  ssh: /' "$WORKERR" >&2
+    die "could not read the live site's hashes after 3 attempts"
+  fi
+
+  CHANGED=""
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    local_h="$(sha256sum "$SITE_SOURCE/$f" | awk '{print $1}')"
+    remote_h="$(printf '%s\n' "$REMOTE_HASHES" | awk -v p="$f" '$2==p {print $1; exit}')"
+    if [ "$local_h" != "$remote_h" ]; then
+      CHANGED="$CHANGED$f
+"
+      if [ "$remote_h" = "-" ] || [ -z "$remote_h" ]; then
+        note "  new      $f"
+      else
+        note "  changed  $f"
+      fi
+    fi
+  done <<SITE_LIST
+$SITE_FILES
+SITE_LIST
+
+  if [ -z "$CHANGED" ]; then
+    note "site pages already current -- nothing to upload"
+  elif [ "$DRY_RUN" = 1 ]; then
+    note "DRY RUN -- would upload $(printf '%s' "$CHANGED" | grep -c .) file(s) to ~/$SITE_REMOTE"
+  else
+    # Staged, hash-checked on the server, then moved into place. The move is one
+    # rename per file, which is atomic, so a reader gets the old page or the new
+    # one and never a truncated upload. Nothing is deleted: a remote file with
+    # no local counterpart -- .htaccess, objeck-release.pub, api/ -- is none of
+    # this script's business.
+    printf '%s' "$CHANGED" | tar -czf - -C "$SITE_SOURCE" -T - | \
+      ssh $SSH_OPTS "$TARGET" "
+        set -e
+        cd ~/$SITE_REMOTE
+        rm -rf .site.new .site.list
+        mkdir -p .site.new
+        tar -xzf - -C .site.new
+        ( cd .site.new && find . -type f | sed 's|^\./||' ) > .site.list
+        while read -r f; do
+          want=\$(sha256sum \".site.new/\$f\" | awk '{print \$1}')
+          mkdir -p \"\$(dirname \"\$f\")\"
+          # The staging name is the path with its slashes flattened, so
+          # style/styles.css cannot collide with a styles.css at the root.
+          tmp=\".\$(echo \"\$f\" | tr / _).incoming\"
+          cp -p \".site.new/\$f\" \"\$tmp\"
+          got=\$(sha256sum \"\$tmp\" | awk '{print \$1}')
+          if [ \"\$got\" != \"\$want\" ]; then
+            echo \"ERROR: \$f arrived corrupt; leaving the live page alone\" >&2
+            rm -f \"\$tmp\"
+            exit 1
+          fi
+          mv \"\$tmp\" \"\$f\"
+          chmod 664 \"\$f\" 2>/dev/null || true
+          echo \"  placed   \$f\"
+        done < .site.list
+        rm -rf .site.new .site.list
+      " || die "site upload failed -- any page not reported as placed was left as it was"
+  fi
+
+  # What a reader gets, cache and all. The upload exiting 0 is not the site
+  # serving the new page.
+  if [ "$VERIFY" = 1 ] && [ "$DRY_RUN" = 0 ] && command -v curl >/dev/null; then
+    live_btn="$(curl -fsSL --max-time 30 "https://www.$HOST/readme.html" 2>/dev/null \
+                | grep -oE 'Download v[0-9.]+' | head -1)"
+    if [ -z "$live_btn" ]; then
+      echo "WARNING: could not read a Download button from https://www.$HOST/readme.html" >&2
+      echo "  The upload reported success; confirm by hand before announcing it." >&2
+    elif [ "$live_btn" != "Download v$VERSION" ]; then
+      die "https://www.$HOST/readme.html still offers '$live_btn', expected 'Download v$VERSION'"
+    else
+      note "live:    https://www.$HOST/readme.html offers $live_btn"
+    fi
+  fi
+fi
+
+# A dry run must not sign off as a deploy. The first version of this line said
+# "site pages deployed" after --dry-run had written nothing, which is the kind
+# of success message this whole file exists to stop producing.
+if [ "$DO_API" = 0 ]; then
+  echo
+  if [ "$DRY_RUN" = 1 ]; then
+    echo "DRY RUN -- validated and reachable, nothing written (v$VERSION)"
+  else
+    echo "site pages deployed to https://www.$HOST/ (v$VERSION)"
+  fi
+  exit 0
+fi
+
 # ---------------------------------------------------------------- source -----
 # Prefer the freshly generated tree. The committed api.zip is produced by hand
 # and drifts: on 2026-10-11 it was stamped v2026.10.0 (correct -- the bump was
 # 10-01) while its CONTENT predated API.Inference (#1051, 10-08) and API.Models
 # (#1062, 10-09), so it carried the right version and was missing two whole
 # libraries. A correct stamp is not evidence of correct content.
-TMP=""
-cleanup() { [ -n "$TMP" ] && rm -rf "$TMP"; }
-trap cleanup EXIT
-
 if [ -z "$SOURCE" ]; then
   for cand in "$REPO/core/release/deploy-x64/doc/api" \
               "$REPO/core/release/deploy-arm64/doc/api" \
@@ -151,12 +346,6 @@ else
 fi
 
 # ------------------------------------------------------------ transport ------
-SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=20"
-[ -n "$KEY" ] && SSH_OPTS="$SSH_OPTS -i $KEY"
-TARGET="$USER_NAME@$HOST"
-
-command -v tar >/dev/null || die "tar is required"
-
 # The destination must already exist. Uploading into a path that does not is how
 # a deploy creates a plausible-looking tree somewhere nobody serves -- the
 # failure this script was written to end. The directory is created once, by
