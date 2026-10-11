@@ -157,11 +157,24 @@ RWS5pn58scY3gv7X3EL/fJaOQli1V0HDwwFVt+2IWqPXBxvE4U1UhxHC
 ```
 
 Key ID `8237C6B17C7EA6B9`. The same key is committed at
-[`core/release/objeck-release.pub`](core/release/objeck-release.pub) and published
-on [objeck.org](https://www.objeck.org). A key you can only obtain from the thing
-you are trying to verify proves nothing, which is why it is in more than one
-place; compare them. Design and key-rotation procedure:
-[`docs/release_integrity.md`](docs/release_integrity.md).
+[`core/release/objeck-release.pub`](core/release/objeck-release.pub) and served,
+independently of this repository, from
+**<https://www.objeck.org/objeck-release.pub>**. A key you can only obtain from
+the thing you are trying to verify proves nothing, which is why it is in more
+than one place. Check that they agree:
+
+```bash
+curl -sS https://www.objeck.org/objeck-release.pub | sha256sum
+# 864c6a9951a539ec356520dbeca4f97ec7a5fc9f4fd31d881f659f59bf7a6c04
+```
+
+That digest is of the whole 113-byte file, both lines, newline included. The
+site serves `.pub` as `application/x-mspublisher`, so a browser offers to
+download it rather than showing it; for reading in a browser there is an
+identical copy at
+[`objeck-release.pub.txt`](https://www.objeck.org/objeck-release.pub.txt),
+served as text and with the same digest. Design and
+key-rotation procedure: [`docs/release_integrity.md`](docs/release_integrity.md).
 
 ## See It In Action
 
