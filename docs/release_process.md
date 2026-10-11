@@ -122,7 +122,7 @@ The release skill runs these steps with their gates; this is the outline.
 
 6. **Verify the release:**
    - GitHub: https://github.com/objeck/objeck-lang/releases
-   - Sourceforge: https://sourceforge.net/projects/objeck/files/
+   - Sourceforge: https://sourceforge.net/projects/objeck-lang/files/
    - API Docs: https://objeck.org/api/latest/
    - Playground: https://playground.objeck.org/api/health
 

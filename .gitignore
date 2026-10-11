@@ -227,3 +227,9 @@ rc-results/
 # were never ignored.
 programs/deploy/util/readme/readme.html
 programs/deploy/util/readme/readme.md
+
+# tools/cicd/sign_release.cmd's staging dir. It removes this on the way out, but
+# not when it exits early -- and the step after signing can fail, which is what
+# happened on v2026.10.0: the run left 78 MB of signed installers sitting
+# untracked in the repository root, exactly where `git add -A` would take them.
+sign-staging/
