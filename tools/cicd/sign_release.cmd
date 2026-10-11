@@ -111,9 +111,20 @@ echo Regenerating SHA256SUMS for the signed installers...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0update_sha256sums.ps1" %VERSION%
 if errorlevel 1 (
     echo.
-    echo ERROR: SHA256SUMS was NOT updated - the release now advertises hashes
-    echo        that do not match the signed MSIs. Fix before announcing:
+    echo ERROR: the post-signing manifest step FAILED. It does two things and
+    echo        the output above says which one stopped:
+    echo.
+    echo          1. regenerate SHA256SUMS over the signed MSIs and upload it
+    echo          2. re-sign it in CI, because the signature published with
+    echo             the release describes the manifest as it was before 1
+    echo.
+    echo        Stopping at 1 leaves hashes that do not match the signed
+    echo        installers. Stopping at 2 leaves correct hashes that obu
+    echo        REFUSES, so "obu update" will not install this release at
+    echo        all. Do not announce until one of these reports success:
+    echo.
     echo          powershell -File tools\cicd\update_sha256sums.ps1 %VERSION%
+    echo          gh workflow run resign-manifest.yml -f version=%VERSION%
     exit /b 1
 )
 
