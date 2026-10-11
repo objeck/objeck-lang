@@ -78,39 +78,67 @@ master, and already builds the Windows ARM64 toolchain the way `ci-build` does
 — which means `obr.pdb` exists in the job. `probe/gc-stress-arm64-oct` is
 already pointed at current master.
 
-Do this before touching hardware:
+**This is done** — push `probe/gc-stress-arm64-oct` and read the artifact. The
+workflow now runs
 
-1. Raise the `diag-default` cell specifically. The existing split spends most of
-   its runs on `orig`, which cannot report anything. **The diag build is the one
-   that can answer the question**, so it should get the runs.
-2. Add the debug-loop catcher (Phase 2) as a wrapper on the diag cell.
+```
+gc_stress_loop.ps1 -Bin ...\deploy-arm64\bin -Mode diag -Runs 300 -Catcher .\av_catch.py
+```
 
-~63 minutes for 450 runs; the job cap is 6 hours.
+`-Mode diag` puts 300 runs on the build that can report and keeps a 75-run
+`orig` cell only so a failure can be told apart from "the diag build does not
+reproduce it". The `jit1`/`gc1m`/`jitoff` cells are gone on purpose: at ~0.8% a
+40-run cell expects 0.7 failures, so 0 against 1 says nothing, and splitting the
+budget five ways is what kept every cell underpowered. Narrowing by
+configuration is Phase 4, with 500+ per cell — `-Mode survey` still runs the old
+split.
 
-### Phase 2 — put a stack on the silent crash
+`-Catcher` wraps every run in `av_catch.py` (Phase 2). The job checks for Python
+**before** the two-hour build, and the loop refuses to start unless the catcher
+reports a deliberately-faulted throwaway process — a catcher that runs and
+reports nothing is indistinguishable from a run that did not crash, which is the
+ambiguity this probe exists to remove.
+
+~63 minutes for 450 runs un-instrumented; 375 under the catcher fits the
+180-minute job cap with the build.
+
+### Phase 2 — put a stack on the silent crash — `av_catch.py`
 
 The `0xC0000005` has never had a faulting frame attached to it. This is the
 highest-value single step, and the technique is known-good here: it root-caused
 the LSP startup crash (PR #717) and #773.
 
-Python + ctypes driving the Win32 debug API — `CreateProcessW` with
+`av_catch.py` drives the Win32 debug API through ctypes — `CreateProcessW` with
 `DEBUG_ONLY_THIS_PROCESS`, a `WaitForDebugEvent` loop, and on a **first-chance**
-`EXCEPTION_ACCESS_VIOLATION` (0xC0000005): `GetThreadContext`, then
-`SymInitialize`/`SymFromAddr` from dbghelp to name the faulting address, then
-scan the stack from the stack pointer for any 8-byte value that symbolizes — a
-poor-man's backtrace, which was enough both previous times. Set
-`_NT_SYMBOL_PATH` to the PDB's directory. Time-bound each run and loop until it
-catches one (a ~4% crash took 33 attempts; this one is ~0.8%, so budget
-hundreds).
+`EXCEPTION_ACCESS_VIOLATION` it reports the faulting address, whether the access
+was a read or a write, the address touched, the module and RVA, and a symbol
+name. Then it hands the exception back `DBG_EXCEPTION_NOT_HANDLED`, so the
+process dies exactly as it would have unobserved. Handles are inherited, so the
+program's own stdout still reaches the `.out` file — the diag report must not be
+lost to the instrumentation.
 
-> **The CONTEXT offsets in the `win-av-catcher` memory note are x64 and are
-> WRONG here.** `CONTEXT` for ARM64 is a different structure and a different
-> size. Take the layout from `winnt.h` (`_CONTEXT` under `_ARM64_`) or print the
-> offsets from a three-line C file compiled for ARM64 — do not reuse 1232 /
-> 0x30 / 0x98 / 0xF8. Getting this silently wrong yields a plausible-looking
-> garbage address, which is the worst outcome available.
+Verified on x64 against a deliberate null write:
 
-Verify the PDB matches the binary by hash before trusting a symbol name.
+```
+[av] exception 0xC0000005 at 0x00007FF9FD661AE4 (first chance)
+[av]   write of 0x0000000000000000
+[av]   in VCRUNTIME140.dll+0x1ae4
+[av]   symbol: memset+0x144
+```
+
+**Module+RVA comes from `VirtualQueryEx` + `GetModuleFileNameExW`, not dbghelp**,
+so a missing PDB or a dbghelp failure degrades to `obr.exe+0x1234` — resolvable
+offline — instead of to nothing. Verify the PDB matches the binary by hash
+before trusting a symbol name.
+
+> **`--stack` is deliberately not implemented, and the CONTEXT offsets in the
+> `win-av-catcher` memory note are x64 and WRONG here.** `CONTEXT` for ARM64 is
+> a different structure and a different size; do not reuse 1232 / 0x30 / 0x98 /
+> 0xF8. A wrong layout yields a plausible-looking garbage address, which is
+> worse than no stack at all. `ExceptionAddress` needs no CONTEXT and is exact,
+> so the first version takes the exact answer over the richer guess. If a stack
+> is genuinely needed later, take the layout from `winnt.h` (`_CONTEXT` under
+> `_ARM64_`) and assert `sizeof` before trusting a single field.
 
 ### Phase 3 — the WoA box, if the cloud rate is too low
 
