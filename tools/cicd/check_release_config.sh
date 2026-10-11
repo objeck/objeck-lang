@@ -132,7 +132,13 @@ if [ -n "$MANUAL" ]; then
       # script instead: it is the same one release-publish.yml runs, and it
       # knows the path, refuses a stale or partial tree, and verifies over
       # HTTPS afterwards.
-      docs)        note "docs         -> regenerate (code_doc64.cmd <arch> deploy), then bash core/release/deploy_website.sh" ;;
+      # Name BOTH halves. This hint used to say "the API docs", and that is all
+      # the script did -- so v2026.10.0 followed it to the letter and still
+      # published with objeck.org's landing page offering the previous release.
+      # The script now does both by default; the hint says so, because a
+      # maintainer reading "API docs" has no reason to wonder about the rest.
+      docs)        note "docs         -> regenerate (code_doc64.cmd <arch> deploy), then bash core/release/deploy_website.sh"
+                   note "                deploys api/latest AND docs/web (the site's own pages); --api-only/--site-only narrow it" ;;
       "")          ;;
       *)           bad "$t (unrecognised token -- no workflow honours it)" ;;
     esac
