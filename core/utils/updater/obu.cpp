@@ -1356,9 +1356,13 @@ static bool VerifyManifestSignature(const std::string& sums, const fs::path& sig
     if(!is_quiet) {
       std::cerr << "SIGNATURE VERIFICATION FAILED: " << reason << std::endl
                 << "Refusing to trust this manifest. The release key is "
-                << OBU_RELEASE_KEY_ID << "; its public half is published in README.md"
+                << OBU_RELEASE_KEY_ID << "; its public half is published at" << std::endl
+                << "  https://www.objeck.org/objeck-release.pub" << std::endl
+                << "and in README.md, so it can be checked out of band. A user who"
                 << std::endl
-                << "and on objeck.org, so it can be checked out of band." << std::endl;
+                << "distrusts this download should prefer the first: it does not come"
+                << std::endl
+                << "from the repository being verified." << std::endl;
     }
     return false;
   }
