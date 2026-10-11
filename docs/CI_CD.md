@@ -26,7 +26,7 @@ The Objeck Language CI/CD system is built entirely on **GitHub Actions**, provid
 - ✅ **Zero cost** (public repository = unlimited build minutes)
 - ✅ **Parallel builds** across 6 platforms
 - ✅ **macOS code signing and notarization** in CI. Windows installers are signed locally afterwards with a hardware token, which CI cannot hold (see [SIGNING.md](../SIGNING.md))
-- ✅ **Multi-destination distribution** (GitHub Releases, which Sourceforge mirrors; the playground deploy and the objeck.org API docs upload are currently manual)
+- ✅ **Multi-destination distribution** (GitHub Releases, which Sourceforge mirrors; the playground deploy and the objeck.org API docs upload are currently manual, both scripted)
 - ✅ **Release automation** from a tag (about 25-80 minutes to a published GitHub Release)
 
 ### Design Goals
@@ -229,11 +229,21 @@ After publishing, the Windows installers are signed, the playground is deployed 
    - Cleanup SSH keys
 
 5. **Deploy Docs Job:**
-   - Extract API documentation
-   - Upload to objeck.org's `api/latest/` via rsync (the only served tree; there are no versioned directories)
-   - Check that `api/latest/index.html` carries the new version stamp
+   - Check out the repository (for the deploy script and `version.h`)
+   - Extract the API documentation artifact
+   - Pin objeck.org's host key with `ssh-keyscan`
+   - Run `core/release/deploy_website.sh`, the SAME script a maintainer runs
    - Cleanup SSH keys
    - Declared manual in `RELEASE_MANUAL_STEPS` while the `OBJECK_ORG_*` secrets are unset
+
+   **This job had never worked.** It rsynced to
+   `/var/www/objeck.org/api/latest/`, a VPS layout, while objeck.org is GoDaddy
+   shared hosting serving `~/public_html` — `/var/www/objeck.org` does not exist
+   there. Because the secrets are unset the step was skipped, so the wrong path
+   was never exercised: v2026.8.4 published while the site served v2026.8.3 docs
+   and the pipeline reported the deploy green. The transport now lives in one
+   script shared with the manual path, so a destination fix cannot land in one
+   caller and not the other.
 
 6. **Summary Job:**
    - Aggregate deployment status
@@ -241,6 +251,51 @@ After publishing, the Windows installers are signed, the playground is deployed 
    - Provide download links
 
 Jobs 3-5 each run when their secrets are set. When they are not, a job passes only if its step (`sourceforge`, `playground` or `docs`) is listed in the `RELEASE_MANUAL_STEPS` repository variable, and fails otherwise. All three are listed today: Sourceforge mirrors the GitHub release through a webhook, and the playground and API docs are deployed by hand.
+
+### Deploying the API reference by hand
+
+Two steps, and the first is the one that gets forgotten.
+
+**1. Regenerate**, because `docs/api.zip` is committed by hand and drifts:
+
+```
+cmd /c "cd /d <repo>\core\release & <repo>\core\release\code_doc64.cmd x64 deploy"
+```
+
+Use the full path to the script: the current directory is not searched for
+executables when `cmd` is invoked from Git Bash, so a bare name reports
+"not recognized" from inside the very directory holding the file. This
+rewrites `docs/api.zip` and `deploy-x64/doc/api`, and refuses to package a
+build whose doc comments were rejected, whose page count is zero, or whose
+`search_index.json` does not parse.
+
+**2. Deploy:**
+
+```
+bash core/release/deploy_website.sh            # add --dry-run first
+```
+
+It needs only `ssh` and `tar` — not `rsync`, which Git for Windows does not
+ship and which must exist at both ends. The tree is uploaded beside the live
+one and swapped in, so a reader never sees a half-written directory and a
+failed transfer leaves the previous docs serving.
+
+What it refuses, and why each one exists:
+
+| refusal | the failure it prevents |
+|---|---|
+| fewer than 400 pages | an `api.zip` holding only the three style files shipped once |
+| pages stamped for another version | the committed zip was stamped `v2026.10.0` while its content predated two libraries |
+| remote directory absent | uploading a plausible tree to a path nobody serves |
+| HTTPS stamp still old afterwards | "the upload exited 0" is not "the site serves the new docs" |
+
+It also **warns** when a bundle declared in `lib_src` has no pages at all.
+That is the check that catches the real failure: `API.Inference` (#1051) and
+`API.Models` (#1062) were absent from the published reference while the total
+page count looked healthy, because a count of ~500 cannot see two missing
+libraries. The check is keyed on the **bundle**, not the source filename,
+since pages are named after the bundle — `ml_core.obs` and six siblings all
+declare `System.ML` and produce `system.ml-*.html`.
 
 **Security:**
 - Secrets never logged

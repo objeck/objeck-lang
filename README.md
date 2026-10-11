@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.9.7-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.0-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.9.7/objeck-linux-x64_2026.9.7.tgz
-tar xzf objeck-linux-x64_2026.9.7.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.0/objeck-linux-x64_2026.10.0.tgz
+tar xzf objeck-linux-x64_2026.10.0.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,11 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.10.0
+### v2026.10.0 ✅
+  * **`Try()` recovers from an error raised inside compiled code** &mdash; whether a guarded chain recovered or ended the program used to depend on how many times the failing method had been called, because an error raised inside a JIT-compiled method could not reach the handler. The same program, run twice, could do either. Three things stood in the way and all three are closed: the handler stack is per-thread, so the JIT callback that raises a failing cast can see it; the callback reports a status instead of exiting; and a compiled method calling a compiled method that fails now carries the status outward one frame at a time instead of printing and exiting. **Compiled recursion that overruns the native C stack stays fatal** &mdash; the process dies in the OS with no frame left to report from ([#925](https://github.com/objeck/objeck-lang/issues/925))
+  * **A recovered `?->` compares correctly against `Nil`** &mdash; `if(x?->y() = Nil)` took the wrong branch once the failing method was hot, while the same value read through a local was right in every mode. So the idiom `?->` exists for was the one that broke, and only after warm-up, which means a program could behave correctly in testing and wrongly in production. Recovery itself was never at fault: the handler stored `Nil` and a local read it back correctly ([#1067](https://github.com/objeck/objeck-lang/issues/1067))
+  * **`obu`'s install lock no longer follows a symbolic link** &mdash; `.obu.lock` sits in the install root, so anything able to write there could plant a symlink at that name and `obu` would follow it, creating the target if it did not exist. Nothing is ever written through that descriptor, so the reach was creation of a path of the attacker's choosing owned by whoever ran `obu` &mdash; unexpected file creation and denial of service rather than disclosure &mdash; and it needed an install root writable by someone other than that user ([#1075](https://github.com/objeck/objeck-lang/pull/1075))
+  * **The release key is published where this repository cannot vouch for it** &mdash; `obu` refuses a manifest it cannot verify and sends the reader to the public key, which until now could only be obtained from the repository being verified. That proves nothing. The key is now also served from <https://www.objeck.org/objeck-release.pub>, and a weekly job checks the published copy still matches the committed one ([#723](https://github.com/objeck/objeck-lang/issues/723))
   * **A program could compile to an infinite loop at the default optimization level** &mdash; two helper methods containing the same construct were inlined into one shared label space, so the second body's jump resolved to the first body's label: a backward jump into already-executed code. Two helpers that each evaluate `->Abs()` was enough to trigger it, the program was correct at every lower optimization level, and `-opt s3` is what `obc` uses when no level is given, so no flag was needed to reach it. One shipped library, `misc.obl`, was built wrong by it ([#1037](https://github.com/objeck/objeck-lang/issues/1037))
   * **A classifier can be evaluated against a false-positive budget, end to end** &mdash; `CrossValidation->Evaluate` now returns the pooled out-of-fold score for every row, so a decision threshold can be chosen from scores no model saw its own row in, and applied unchanged to held-out data. Folds can be stratified by any key rather than only the binary label, which matters when the positive class is a union of rare categories. `LogisticRegression` implements `ScoreModel`, so a linear baseline goes through the same evaluation path as the tree classifiers ([#1035](https://github.com/objeck/objeck-lang/pull/1035))
   * **`Metrics->AtThreshold` reports what a threshold actually did** &mdash; recall, false-positive rate and precision at one given cutoff, which is the inverse of `RecallAtFpr` and the only way to check whether a budget chosen on one sample still holds on another. `Metrics->Bootstrap` puts a percentile confidence interval around any of them; a resample that draws a single class cannot support the statistic, so those are discarded rather than averaged in, and the surviving count travels with the interval ([#1036](https://github.com/objeck/objeck-lang/pull/1036))
@@ -82,7 +86,7 @@ obc hello && obr hello
   * **A generic array parameter did not resolve across a library boundary** &mdash; `Vector[]<T>` as a parameter compiled inside a library and callers in that same library reached it, but a program linking the library was told the method did not exist, offering an alternative whose signature was missing its `[]`. The array dimension was dropped reading the signature back out of the `.obl`, which is why the same type worked as a return value and failed as a parameter ([#998](https://github.com/objeck/objeck-lang/issues/998))
   * **Build and test plumbing** &mdash; the generated POSIX `Makefile`s are treated as build output rather than tracked source, so building one architecture no longer leaves tracked files modified ([#1005](https://github.com/objeck/objeck-lang/issues/1005)); a missing `expect` let the debugger suite skip every test and still report success ([#1022](https://github.com/objeck/objeck-lang/pull/1022)); and `cov_scan.sh` reported a submission Coverity had refused, which also deleted the archive it had just promised to keep ([#1031](https://github.com/objeck/objeck-lang/pull/1031))
 
-### v2026.9.7 ✅
+### v2026.9.7
   * **A model can be evaluated honestly, end to end** &mdash; `System.ML` could fit a model but not measure one. Nothing held a scaler's statistics across a train/test split, so test data was scaled by its own numbers, which leaks the test distribution into the result and flatters any model read at a fixed false-alarm rate. `FeatureScaler` and `TableEncoder` learn from the training split and reapply it, `StratifiedKFold` keeps each class's ratio in every fold from a seed, and `CrossValidation->Evaluate` runs the folds over a common `ScoreModel` interface, reporting per-fold values alongside the mean and spread ([#999](https://github.com/objeck/objeck-lang/pull/999))
   * **Metrics that take a score rather than a decision** &mdash; `RecallAtFpr`, `ThresholdAtFpr`, `AucRoc`, `AveragePrecision`, `RocCurve` and `PrCurve`. A `Bool` array is already thresholded, so it cannot say what recall would be at a different false-alarm rate ([#983](https://github.com/objeck/objeck-lang/pull/983))
   * **Classifiers that split continuous features directly** &mdash; `DecisionTreeClassifier`, `RandomForestClassifier` and `GradientBoostedClassifier`. The existing trees take `Bool[,]`, so data had to be quantile-binned first &mdash; and the binning discards the very thresholds a tree exists to find ([#984](https://github.com/objeck/objeck-lang/pull/984))
@@ -114,7 +118,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.9.7](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.10.0](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
@@ -125,7 +129,7 @@ obc hello && obr hello
 | **macOS** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **LSP** | All platforms | [ZIP Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 
-📦 **Alternative:** [Sourceforge](https://sourceforge.net/projects/objeck/files/) • 📚 **API Docs:** [objeck.org/api/latest](https://www.objeck.org/api/latest/)
+📦 **Alternative:** [Sourceforge](https://sourceforge.net/projects/objeck-lang/files/) • 📚 **API Docs:** [objeck.org/api/latest](https://www.objeck.org/api/latest/)
 
 > **Note:** Windows installers are signed and timestamped (`CN=Randy Hollines`, Sectigo); the macOS `.pkg` is signed and notarized. Signing uses a hardware token and therefore happens locally after publication, so verify rather than assume — `Get-AuthenticodeSignature <file>.msi` reports `Valid` only when it really is signed. Check any download against the release's `SHA256SUMS`, which is regenerated after signing. Builds are automated on GitHub Actions runners.
 
@@ -157,11 +161,24 @@ RWS5pn58scY3gv7X3EL/fJaOQli1V0HDwwFVt+2IWqPXBxvE4U1UhxHC
 ```
 
 Key ID `8237C6B17C7EA6B9`. The same key is committed at
-[`core/release/objeck-release.pub`](core/release/objeck-release.pub) and published
-on [objeck.org](https://www.objeck.org). A key you can only obtain from the thing
-you are trying to verify proves nothing, which is why it is in more than one
-place; compare them. Design and key-rotation procedure:
-[`docs/release_integrity.md`](docs/release_integrity.md).
+[`core/release/objeck-release.pub`](core/release/objeck-release.pub) and served,
+independently of this repository, from
+**<https://www.objeck.org/objeck-release.pub>**. A key you can only obtain from
+the thing you are trying to verify proves nothing, which is why it is in more
+than one place. Check that they agree:
+
+```bash
+curl -sS https://www.objeck.org/objeck-release.pub | sha256sum
+# 864c6a9951a539ec356520dbeca4f97ec7a5fc9f4fd31d881f659f59bf7a6c04
+```
+
+That digest is of the whole 113-byte file, both lines, newline included. The
+site serves `.pub` as `application/x-mspublisher`, so a browser offers to
+download it rather than showing it; for reading in a browser there is an
+identical copy at
+[`objeck-release.pub.txt`](https://www.objeck.org/objeck-release.pub.txt),
+served as text and with the same digest. Design and
+key-rotation procedure: [`docs/release_integrity.md`](docs/release_integrity.md).
 
 ## See It In Action
 

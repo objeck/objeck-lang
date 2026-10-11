@@ -1356,9 +1356,13 @@ static bool VerifyManifestSignature(const std::string& sums, const fs::path& sig
     if(!is_quiet) {
       std::cerr << "SIGNATURE VERIFICATION FAILED: " << reason << std::endl
                 << "Refusing to trust this manifest. The release key is "
-                << OBU_RELEASE_KEY_ID << "; its public half is published in README.md"
+                << OBU_RELEASE_KEY_ID << "; its public half is published at" << std::endl
+                << "  https://www.objeck.org/objeck-release.pub" << std::endl
+                << "and in README.md, so it can be checked out of band. A user who"
                 << std::endl
-                << "and on objeck.org, so it can be checked out of band." << std::endl;
+                << "distrusts this download should prefer the first: it does not come"
+                << std::endl
+                << "from the repository being verified." << std::endl;
     }
     return false;
   }
@@ -1559,9 +1563,32 @@ static int AcquireLock(const fs::path& root)
   //
   // Re-check, after locking, that the inode we hold is still the one the path
   // names. If it is not, the file was replaced under us; drop it and retry.
+  //
+  // THE lstat BELOW IS NOT A TIME-OF-CHECK/TIME-OF-USE CHECK, whatever a static
+  // analyser makes of it pairing with the open above (Coverity CID 1680315,
+  // dismissed as intentional). It does not license the open: the fd is already
+  // open and already exclusively locked before it runs, and its result decides
+  // only whether to KEEP the descriptor we hold or discard it. The operation on
+  // the path comes first and the check exists to detect that the path moved
+  // under it. Checking before opening, or trusting the path, is the bug this
+  // loop was written to close -- see the two-winners case above.
+  //
+  // O_NOFOLLOW is the part that does matter for safety: the lock sits in the
+  // install root, so anything able to write there could otherwise plant a
+  // symlink at this name and have obu follow it, creating the target if absent
+  // and holding it open for writing. A lock file is never legitimately a
+  // symlink. Only the final component is affected, so an install root reached
+  // through a symlink still works.
   for(int attempt = 0; attempt < 4; ++attempt) {
-    const int fd = open(lock_path.c_str(), O_CREAT | O_RDWR, 0600);
+    const int fd = open(lock_path.c_str(), O_CREAT | O_RDWR | O_NOFOLLOW, 0600);
     if(fd < 0) {
+      if(errno == ELOOP) {
+        // Not contention, and not an unwritable root: the name is a symlink,
+        // which means something replaced it. Say so rather than let the
+        // caller report a concurrent obu.
+        std::cerr << "The lock file " << lock_path
+                  << " is a symbolic link; refusing to use it." << std::endl;
+      }
       return -1;
     }
     if(flock(fd, LOCK_EX | LOCK_NB) != 0) {
@@ -1574,7 +1601,11 @@ static int AcquireLock(const fs::path& root)
       close(fd);
       return -1;
     }
-    if(stat(lock_path.c_str(), &named) == 0 &&
+    // lstat, not stat: under O_NOFOLLOW the inode worth comparing is the one
+    // the name itself refers to. A symlink planted here fails this match, so we
+    // retry and the retry's open refuses it. Same result as stat when the path
+    // is a regular file, which is every normal run.
+    if(lstat(lock_path.c_str(), &named) == 0 &&
        held.st_dev == named.st_dev && held.st_ino == named.st_ino) {
       return fd;
     }

@@ -543,7 +543,7 @@ jobs:
 
           ssh -i ~/.ssh/sf_key \
             "${{ env.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" \
-            "mkdir -p /home/frs/project/objeck/v${VERSION}"
+            "mkdir -p /home/frs/project/objeck-lang/v${VERSION}"
 
       - name: Upload to Sourceforge via SFTP
         if: env.SOURCEFORGE_SSH_KEY != ''
@@ -552,11 +552,11 @@ jobs:
 
           sftp -i ~/.ssh/sf_key \
             "${{ env.SOURCEFORGE_USERNAME }}@frs.sourceforge.net" << EOF
-          cd /home/frs/project/objeck/v${VERSION}
+          cd /home/frs/project/objeck-lang/v${VERSION}
           put release-final/*
           EOF
 
-          echo "✅ Uploaded to Sourceforge: https://sourceforge.net/projects/objeck/files/v${VERSION}/"
+          echo "✅ Uploaded to Sourceforge: https://sourceforge.net/projects/objeck-lang/files/v${VERSION}/"
 
       - name: Cleanup SSH key
         if: always()
@@ -730,6 +730,16 @@ jobs:
       OBJECK_ORG_USER: ${{ secrets.OBJECK_ORG_USER }}
 
     steps:
+      # The deploy step runs core/release/deploy_website.sh, and this job had no
+      # checkout -- so the script was not on the runner and the step would have
+      # died with "No such file or directory" the moment the secret was set. It
+      # also reads core/shared/version.h and core/compiler/lib_src, and now
+      # docs/web for the site's own pages, none of which are in the artifact.
+      # With the secret unset the step was skipped, so nothing ever exercised
+      # it: the same shape as resign-manifest.yml, which signed a manifest and
+      # could not upload it because it had cd'd out of its checkout (#1081).
+      - uses: actions/checkout@v5
+
       - name: Download API docs
         uses: actions/download-artifact@v4
         with:
@@ -750,25 +760,51 @@ jobs:
           echo "${{ secrets.OBJECK_ORG_SSH_KEY }}" > ~/.ssh/obj_key
           chmod 600 ~/.ssh/obj_key
 
-          # Add objeck.org to known hosts (replace with actual host)
-          # ssh-keyscan objeck.org >> ~/.ssh/known_hosts
+          # Not optional, and not "replace with actual host" -- the host is
+          # objeck.org and has been throughout. This sat commented out while the
+          # sourceforge job two hundred lines up does the same keyscan, so with
+          # the key in place the deploy would have failed on an unknown host
+          # key: deploy_website.sh runs ssh with BatchMode=yes, which cannot
+          # answer the prompt and simply refuses the connection.
+          ssh-keyscan -H "${OBJECK_ORG_HOST:-objeck.org}" >> ~/.ssh/known_hosts 2>/dev/null
+          test -s ~/.ssh/known_hosts || {
+            echo "::error::ssh-keyscan returned nothing for ${OBJECK_ORG_HOST:-objeck.org}"
+            exit 1
+          }
 
       - name: Deploy to objeck.org
         if: env.OBJECK_ORG_SSH_KEY != ''
         run: |
           VERSION="${{ needs.prepare.outputs.version }}"
 
-          # objeck.org serves one tree, api/latest/, and it is a real directory:
-          # there are no versioned api/v<VERSION>/ directories. An earlier version
-          # of this step uploaded to api/v<VERSION>/ and ran `ln -sfn v<VERSION>
-          # latest`, which against a real directory creates latest/v<VERSION> and
-          # leaves latest stale.
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/obj_key -o StrictHostKeyChecking=no" \
-            api-temp/api/ \
-            "${{ env.OBJECK_ORG_USER }}@objeck.org:/var/www/objeck.org/api/latest/"
+          # One implementation, shared with a maintainer run, so a path fix
+          # cannot land in one caller and not the other -- which is how the
+          # destination below stayed wrong. It was /var/www/objeck.org/api/latest/,
+          # a VPS layout; objeck.org is GoDaddy shared hosting serving
+          # ~/public_html, and /var/www/objeck.org does not exist there. With the
+          # secrets unset this step was skipped, so the wrong path was never
+          # exercised: v2026.8.4 published while the site served v2026.8.3 docs
+          # and the pipeline reported the deploy green.
+          #
+          # The script refuses a partial tree, refuses pages stamped for another
+          # version, warns about a library with no pages at all, requires the
+          # remote directory to already exist, uploads beside the live tree and
+          # swaps it in, and verifies over HTTPS afterwards.
+          #
+          # No mode flag, so it deploys BOTH halves: the generated reference from
+          # the artifact, and docs/web -- the site's own pages -- from the
+          # checkout. The second half is why this job needs a checkout at all.
+          # v2026.10.0 shipped with api/latest at v2026.10.0 while the landing
+          # page still offered "Download v2026.9.7", because nothing deployed
+          # docs/web and the manual-step hint named a script that did half the
+          # job. The site half refuses a readme.html whose Download button names
+          # a different version, which is the thing that goes stale.
+          bash core/release/deploy_website.sh \
+            --source api-temp/api \
+            --version "$VERSION" \
+            --key ~/.ssh/obj_key
 
-          echo "✅ API docs deployed to https://objeck.org/api/latest/ (v${VERSION})"
+          echo "✅ objeck.org deployed: api/latest and the site pages (v${VERSION})"
 
       - name: Cleanup SSH key
         if: always()
@@ -802,7 +838,7 @@ jobs:
           VERSION="${{ needs.prepare.outputs.version }}"
           echo "ℹ️  objeck.org API docs deploy is declared manual via RELEASE_MANUAL_STEPS - skipping."
           echo "   Deploy by hand from this run's api-docs artifact (or master's docs/api.zip):"
-          echo "     rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/latest/"
+          echo "     bash core/release/deploy_website.sh --source api/ --key <key>"
 
       - name: Missing objeck.org credentials
         if: env.OBJECK_ORG_SSH_KEY == '' && !contains(vars.RELEASE_MANUAL_STEPS, 'docs')
@@ -815,7 +851,7 @@ jobs:
           echo ""
           echo "The docs that should have shipped are in this run's api-docs artifact,"
           echo "and on master at docs/api.zip. To deploy by hand:"
-          echo "  rsync -avz --delete api/ USER@objeck.org:/var/www/objeck.org/api/latest/"
+          echo "  bash core/release/deploy_website.sh --source docs/api.zip --key <your key>"
           echo "  (there are no versioned /api/v<VERSION>/ directories - 'latest' is the only served path)"
           echo ""
           echo "Or declare it manual:  gh variable set RELEASE_MANUAL_STEPS --body '<existing>,docs'"
@@ -864,7 +900,7 @@ jobs:
           if [ "${{ needs.github-release.result }}" = "success" ]; then
             echo "## 📦 Downloads" >> $GITHUB_STEP_SUMMARY
             echo "- **GitHub**: https://github.com/${{ github.repository }}/releases/tag/v$VERSION" >> $GITHUB_STEP_SUMMARY
-            echo "- **Sourceforge**: https://sourceforge.net/projects/objeck/files/v$VERSION/" >> $GITHUB_STEP_SUMMARY
+            echo "- **Sourceforge**: https://sourceforge.net/projects/objeck-lang/files/v$VERSION/" >> $GITHUB_STEP_SUMMARY
             echo "- **API Docs**: https://objeck.org/api/v$VERSION/" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "✅ **Release complete!**" >> $GITHUB_STEP_SUMMARY

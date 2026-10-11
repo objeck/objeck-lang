@@ -25,6 +25,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
 
+    # Before the two-hour build, not after it. The catcher is the point of this
+    # run, and discovering at the end that it cannot start would cost the whole
+    # job -- which is the shape of every other failure recorded in #1077.
+    - name: Python for the crash catcher
+      shell: pwsh
+      run: |
+        $v = (& python --version 2>&1) -join ' '
+        if ($LASTEXITCODE -ne 0) {
+          throw "no python on PATH; av_catch.py cannot run and this job exists to run it"
+        }
+        Write-Host "python: $v"
+
     - name: Setup Visual Studio
       uses: microsoft/setup-msbuild@v3
 
@@ -76,10 +88,21 @@ jobs:
       shell: bash
       run: cp ../lib/*.obl deploy-arm64/lib/
 
+    # Phase 1 of investigation.md: put the budget on the ONE build that can
+    # report something, and put a faulting address on the silent crash.
+    #
+    # The previous split ran five configurations at 100 each, four of which
+    # print a bare total. Across every probe run the diag build has failed
+    # exactly once, and that one was a 0xC0000005 that died before printing --
+    # so the instrumentation this directory already carries has never actually
+    # fired. 300 diag runs plus the catcher is aimed squarely at that.
     - name: Stress loop
       working-directory: ./programs/regression/probe
       shell: pwsh
-      run: ./gc_stress_loop.ps1 -Bin ..\..\..\core\release\deploy-arm64\bin -Runs 100
+      run: >
+        ./gc_stress_loop.ps1
+        -Bin ..\..\..\core\release\deploy-arm64\bin
+        -Mode diag -Runs 300 -Catcher .\av_catch.py
 
     - name: Upload results
       if: always()
