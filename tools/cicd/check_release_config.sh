@@ -125,7 +125,14 @@ if [ -n "$MANUAL" ]; then
       # v2026.8.2 and v2026.6.1 all 404. `latest` is the only served path, so
       # rsync straight into it; the symlink dance in the old hint described a
       # layout that has never existed and would send you hunting for a 404.
-      docs)        note "docs         -> rsync api/ into /var/www/objeck.org/api/latest/ (no versioned dirs exist)" ;;
+      # The path here was /var/www/objeck.org/api/latest/ -- a VPS layout, and
+      # absent on objeck.org, which is GoDaddy shared hosting serving
+      # ~/public_html. This is the text a maintainer follows when the step is
+      # declared manual, so it sent them to deploy into nowhere. Name the
+      # script instead: it is the same one release-publish.yml runs, and it
+      # knows the path, refuses a stale or partial tree, and verifies over
+      # HTTPS afterwards.
+      docs)        note "docs         -> regenerate (code_doc64.cmd <arch> deploy), then bash core/release/deploy_website.sh" ;;
       "")          ;;
       *)           bad "$t (unrecognised token -- no workflow honours it)" ;;
     esac
