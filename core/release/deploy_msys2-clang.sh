@@ -14,9 +14,13 @@ missing=""
 for tool in g++ make windres ar pkg-config; do
   command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
 done
-for hdr in /clang64/include/eigen3 /clang64/include/opencv4 /clang64/include/SDL2; do
-  [ -d "$hdr" ] || missing="$missing $(basename "$hdr")"
+# Asked of pkg-config, not guessed from include paths: MSYS2's OpenCV went from
+# opencv4 to opencv5 and a directory check called a correct install missing.
+for mod in eigen3 sdl2; do
+  pkg-config --exists "$mod" 2>/dev/null || missing="$missing $mod"
 done
+pkg-config --exists opencv5 2>/dev/null || pkg-config --exists opencv4 2>/dev/null \
+  || pkg-config --exists opencv 2>/dev/null || missing="$missing opencv"
 if [ -n "$missing" ]; then
   echo "ERROR: missing prerequisites:$missing" >&2
   echo "" >&2
