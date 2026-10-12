@@ -74,14 +74,30 @@ This generates from `.in` templates:
 > successful deploy. This bit 2026.6.1 — the playground served `v2026.6.0` until
 > the constant was bumped and re-deployed.
 
-> **Also bump the README "Latest Release" badge by hand.** `README.md` (line ~15)
-> uses a **static** shields.io badge:
-> `https://img.shields.io/badge/release-v<VERSION>-blue`. It was switched from the
-> dynamic `github/v/release` endpoint because that endpoint intermittently
-> rendered `unable to select next github token from pool` (a shields.io
-> server-side error when its GitHub API token pool is exhausted). The static badge
-> never calls the API, but must be bumped to `v<VERSION>` every release or it
-> shows the previous version.
+> **Do NOT touch README.md here.** This step used to say "also bump the README
+> 'Latest Release' badge by hand", and that was wrong. README's four download
+> markers — the static shields.io badge near line 15, the Quick Start `curl` URL,
+> the Quick Start tarball name, and the `**Latest Release:** [vX]` line above the
+> Downloads table — all name the **published** release. A bump happens *before*
+> the tag exists, so advancing them here puts a download URL on the repo's front
+> page that returns 404 until someone tags. That is the bug
+> [PR #786](https://github.com/objeck/objeck-lang/pull/786) was opened to undo,
+> after the v2026.9.1 release-notes commit flipped them on an untagged version
+> and the landing page served a dead download for hours.
+>
+> They belong to **`update-docs` step 2b**, which `/release` delegates to (its
+> step 3) once the tag exists — together with the `docs/web/readme.html` Download
+> button and the published-release ✅ in What's New. Leave `README.md` out of the
+> bump commit entirely; the 2026.10.1 bump did, and that is the shape to copy.
+>
+> (The badge is static — `https://img.shields.io/badge/release-v<VERSION>-blue` —
+> because the dynamic `github/v/release` endpoint intermittently rendered
+> `unable to select next github token from pool` when shields.io's GitHub token
+> pool was exhausted. Static never calls the API, which is also why it cannot
+> correct itself and has to be flipped by hand at release time.)
+>
+> See [[feedback_readme_markers_flip_at_release]] for the full marker list and
+> the two occasions they were flipped early.
 
 > **Also bump the language server's reported version and the VS Code lockfile by hand.**
 > `tools/lsp/server/server.obs` hard-codes `serverInfo->Insert("version", "<VERSION>")`, and
