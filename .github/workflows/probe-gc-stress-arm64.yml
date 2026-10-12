@@ -102,7 +102,7 @@ jobs:
       run: >
         ./gc_stress_loop.ps1
         -Bin ..\..\..\core\release\deploy-arm64\bin
-        -Mode diag -Runs 300 -Catcher .\av_catch.py
+        -Mode diag -Runs 600 -Catcher .\av_catch.py
 
     - name: Upload results
       if: always()
