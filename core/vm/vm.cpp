@@ -242,7 +242,9 @@ void CleanUpCommandLine(const int argc, wchar_t** wide_args)
   wide_args = nullptr;
 }
 
-#ifndef _WIN32
+// Also built for _MSYS2: the debugger (obd) compiles posix_main.cpp, which calls
+// this, with _WIN32 defined (see vm.h).
+#if !defined(_WIN32) || defined(_MSYS2)
 // std::locale's constructor throws for a name the C++ library cannot build,
 // and both POSIX entry points called it unguarded on whatever setlocale
 // returned, so obr exited before the program ran. Two names get there: on
