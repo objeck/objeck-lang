@@ -1,5 +1,35 @@
 #!/bin/sh
 
+# set -e, because this script had NO failure handling: every stage was
+# `make clean; make -j3` followed by an unconditional `cp`, so a build that
+# failed produced "cp: cannot stat 'obc'" and the script marched on through the
+# VM, the debugger, the REPL and seven native libraries, failing the same way
+# each time. One real error arrived buried in a hundred lines of consequences.
+set -e
+
+# Prerequisites, checked once and named with the command that installs them.
+# Discovering a missing package six stages in -- as `pkg-config: command not
+# found` from inside a library build -- is how this script reads today.
+missing=""
+for tool in g++ make windres ar pkg-config; do
+  command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+done
+for hdr in /clang64/include/eigen3 /clang64/include/opencv4 /clang64/include/SDL2; do
+  [ -d "$hdr" ] || missing="$missing $(basename "$hdr")"
+done
+if [ -n "$missing" ]; then
+  echo "ERROR: missing prerequisites:$missing" >&2
+  echo "" >&2
+  echo "  pacman -S --needed \\" >&2
+  echo "    mingw-w64-clang-x86_64-toolchain mingw-w64-clang-x86_64-pkgconf \\" >&2
+  echo "    mingw-w64-clang-x86_64-eigen3 mingw-w64-clang-x86_64-opencv \\" >&2
+  echo "    mingw-w64-clang-x86_64-SDL2 mingw-w64-clang-x86_64-SDL2_image \\" >&2
+  echo "    mingw-w64-clang-x86_64-SDL2_mixer mingw-w64-clang-x86_64-SDL2_ttf \\" >&2
+  echo "    mingw-w64-clang-x86_64-mbedtls mingw-w64-clang-x86_64-nghttp2 \\" >&2
+  echo "    mingw-w64-clang-x86_64-lame mingw-w64-clang-x86_64-zlib" >&2
+  exit 1
+fi
+
 # A CLANG64 shell has no g++ at all -- only clang++ and c++. Every makefile here
 # builds through a bare $(CXX), which make defaults to g++, so without this the
 # compiler, VM, debugger and repl all die with 'g++: No such file or directory'
@@ -23,7 +53,8 @@ mkdir deploy-msys2-clang/doc
 cd ../compiler
 cp make/Makefile.msys2-clang.amd64 Makefile
 
-make clean; make -j3 OBJECK_LIB_PATH=///".///"
+make clean >/dev/null 2>&1 || true
+make -j3 OBJECK_LIB_PATH=///".///"
 cp obc ../release/deploy-msys2-clang/bin
 cp ../lib/*.obl ../release/deploy-msys2-clang/lib
 cp ../lib/*.ini ../release/deploy-msys2-clang/lib
@@ -33,21 +64,24 @@ cp ../vm/misc/*.pem ../release/deploy-msys2-clang/lib
 cd ../vm
 cp make/Makefile.msys2-clang.amd64 Makefile
 
-make clean; make -j3
+make clean >/dev/null 2>&1 || true
+make -j3
 cp obr ../release/deploy-msys2-clang/bin
 
 # build debugger
 cd ../debugger
 cp make/Makefile.msys2-clang.amd64 Makefile
 
-make clean; make -j3
+make clean >/dev/null 2>&1 || true
+make -j3
 cp obd ../release/deploy-msys2-clang/bin
 
 # build repl
 cd ../repl
 cp make/Makefile.msys2-clang.amd64 Makefile
 
-make clean; make -j3
+make clean >/dev/null 2>&1 || true
+make -j3
 cp obi ../release/deploy-msys2-clang/bin
 
 # build libraries
@@ -96,10 +130,12 @@ cd ../onnx/eq
 cp libobjk_onnx.dll ../../../release/deploy-msys2-clang/lib/native/libobjk_onnx.dll
 
 cd ../../utils/launcher
-make -f make/Makefile.obb.msys2-clang.amd64 clean; make -f make/Makefile.obb.msys2-clang.amd64 -j3
+make -f make/Makefile.obb.msys2-clang.amd64 clean >/dev/null 2>&1 || true
+make -f make/Makefile.obb.msys2-clang.amd64 -j3
 cp obb.exe ../../release/deploy-msys2-clang/bin
 
-make -f make/Makefile.obn.msys2-clang.amd64 clean; make -f make/Makefile.obn.msys2-clang.amd64 -j3
+make -f make/Makefile.obn.msys2-clang.amd64 clean >/dev/null 2>&1 || true
+make -f make/Makefile.obn.msys2-clang.amd64 -j3
 cp obn.exe ../../release/deploy-msys2-clang/lib/native/misc
 
 cp ../../vm/misc/config.prop ../../release/deploy-msys2-clang/lib/native/misc
@@ -109,7 +145,8 @@ cp ../../vm/misc/config.prop ../../release/deploy-msys2-clang/lib/native/misc
 # resource, which is all the msys2 obb/obn variants add. MinGW appends .exe to
 # the makefile's EXE=obu on its own, exactly as it does for obb.
 cd ../updater
-make -f make/Makefile.amd64 clean; make -f make/Makefile.amd64 -j3
+make -f make/Makefile.amd64 clean >/dev/null 2>&1 || true
+make -f make/Makefile.amd64 -j3
 cp obu.exe ../../release/deploy-msys2-clang/bin
 # No 'set -e' here, so a failed make or cp would silently yield a tree with no
 # obu -- how v2026.8.0 shipped without it. Fail loudly instead.

@@ -17,4 +17,4 @@ $(LIB): $(SRC)
 -include $(wildcard *.d)
 
 clean:
-	rm -f *.o *.d *~ $(LIB)
+	rm -f *.o *.d *~ $(LIB) ../compiler/$(LIB) ../vm/$(LIB)
