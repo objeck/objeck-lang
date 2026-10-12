@@ -53,7 +53,9 @@ extern "C"
 wchar_t** ProcessCommandLine(int &argc, const char* argv[]);
 void CleanUpCommandLine(const int argc, wchar_t** wide_args);
 void SetEnv();
-#ifndef _WIN32
+// posix_main.cpp calls it, and the MSYS2 debugger build (obd) compiles
+// posix_main.cpp with _WIN32 AND _MSYS2 defined -- so _MSYS2 needs it too.
+#if !defined(_WIN32) || defined(_MSYS2)
 // The locale std::wcout converts wide characters through, built from what
 // setlocale(LC_ALL, "") returned (NULL included). Never throws: a name the C++
 // library cannot construct falls back to one it can (see vm.cpp).

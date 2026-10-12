@@ -23,5 +23,11 @@ $(LIB): $(SRC)
 # header edit silently relinked stale .o files -- 'make clean' was mandatory.
 -include $(wildcard *.d)
 
+# No copies to remove here, unlike the other three: this makefile sets
+# LIB=../compiler/sys.a and writes the archive straight into its consumer, and
+# nothing on the arm64 path wants ../vm/sys.a -- the repl links
+# ../compiler/sys.a by name. Adding the copy paths here produced
+# ../compiler/../compiler/sys.a, which removes nothing and reads as though it
+# were doing something.
 clean:
-	rm -f *.o *.d *~ $(LIB) ../compiler/$(LIB) ../vm/$(LIB)
+	rm -f *.o *.d *~ $(LIB)

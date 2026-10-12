@@ -4,9 +4,18 @@ AR=ar
 SRC=logger.o sys.o
 LIB=sys.a
 
+# `all`, not $(LIB), is the default goal: the copies below must happen on every
+# invocation. Hung off $(LIB)'s recipe they ran only when the archive was out of
+# date, so a consumer whose own copy had been deleted got "sys.a is up to date"
+# and no copy -- and under -j it depended on which branch arrived first.
+all: $(LIB)
+	cp $(LIB) ../compiler/$(LIB)
+	cp $(LIB) ../vm/$(LIB)
+
+.PHONY: all clean
+
 $(LIB): $(SRC)
 	$(AR) -cvq $(LIB) $(SRC)
-	cp sys.a ../compiler; cp sys.a ../vm
 	
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 

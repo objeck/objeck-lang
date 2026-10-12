@@ -221,6 +221,17 @@ rc-results/
 /core/debugger/Makefile
 /core/repl/Makefile
 
+# obb, obn and obu build into their own source directories on every platform,
+# and a `git add -A` after an MSYS2 deploy committed all three as new files
+# (#1087). They are build output on Windows and on POSIX alike; nothing should
+# ever track them.
+/core/utils/launcher/obb
+/core/utils/launcher/obb.exe
+/core/utils/launcher/obn
+/core/utils/launcher/obn.exe
+/core/utils/updater/obu
+/core/utils/updater/obu.exe
+
 # MSYS2/MinGW build output. These land in the source tree rather than a build
 # directory -- MinGW appends .exe to the makefiles' EXE=obc, and the native-lib
 # scripts write their .dll next to their source -- so none of them were covered
