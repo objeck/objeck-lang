@@ -54,6 +54,20 @@ Read the `## What's New` section in `README.md`.
 
 ### 2b. Update README.md's **Quick Start** and **Downloads** (not just What's New)
 
+> **Only once the tag exists.** These four markers name the **published** release.
+> Flipping them before `v<VERSION>` is tagged puts a download URL on the repo's
+> front page that returns 404 — the bug
+> [PR #786](https://github.com/objeck/objeck-lang/pull/786) was opened to undo,
+> after v2026.9.1's notes commit advanced them on an untagged version and the
+> landing page served a dead download for hours.
+>
+> So: running standalone **before** a tag, do step 2 and skip 2b. Invoked by
+> `/release` after the tag is pushed, do both. `bump-version` deliberately leaves
+> `README.md` alone for the same reason. The symmetric failure is real too —
+> v2026.9.7 and v2026.10.0 both published with the markers still on the previous
+> release because nobody came back to them, so flip them in the **same working
+> session as the publish**, not "later".
+
 Step 2 only touches the "What's New" list. Three other places in `README.md` carry a hardcoded
 version and go stale silently -- none of them is a changelog, so nothing about editing the
 changelog surfaces them:
