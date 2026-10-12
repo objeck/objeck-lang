@@ -243,6 +243,20 @@ cp LICENSE core/release/deploy
 # and never cloned the repo.
 cp tools/install_deps.sh core/release/deploy
 chmod +x core/release/deploy/install_deps.sh
+
+# Linux desktop integration. The tarball shipped no way to set PATH and
+# OBJECK_LIB_PATH -- the README asked people to export both by hand -- while
+# Windows and macOS each have a launcher whose main button does exactly that.
+# env.sh is that button, minus the window. objeck-shell is the same thing for a
+# desktop menu entry, which install-desktop.sh adds per-user on request; the
+# .desktop sets Terminal=true, so the desktop environment supplies the terminal
+# and nothing here has to guess which emulator is installed.
+cp core/release/linux/env.sh core/release/deploy
+cp core/release/linux/objeck-shell core/release/deploy/bin
+cp core/release/linux/install-desktop.sh core/release/linux/objeck.desktop.in \
+   core/release/linux/objeck.png core/release/deploy
+chmod +x core/release/deploy/bin/objeck-shell core/release/deploy/install-desktop.sh
+
 unzip -q docs/api.zip -d core/release/deploy/doc
 
 ui_step "examples"
