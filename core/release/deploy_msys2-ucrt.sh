@@ -131,9 +131,6 @@ cp diags.dll ../../release/deploy-msys2-ucrt/lib/native/libobjk_diags.dll
 # Every native library this script builds must be present (and, on Linux,
 # resolvable) before the tree is packaged. Without this a failed build was
 # dropped from the release with a green exit -- the obu incident, again.
-ui_step "verify native libs"
-sh ../../release/verify_native_libs.sh ../../release/deploy-msys2-ucrt/lib/native dll crypto diags lame ml odbc onnx opencv sdl || ui_fail
-
 ui_step "library: onnx"
 cd ../onnx/eq
 # The vendored libonnxruntime here is a CPU-ONLY build -- it reports only
@@ -144,6 +141,16 @@ cd ../onnx/eq
 # switching this back to cuda.
 ./build.sh cpu || ui_fail
 cp libobjk_onnx.dll ../../../release/deploy-msys2-ucrt/lib/native/libobjk_onnx.dll
+
+# libobjk_onnx imports onnxruntime.dll, so the runtime has to travel with it or
+# loading fails with error 126 on a tree that otherwise looks complete -- the
+# same way the Windows deploy once shipped without it. The DirectML package is
+# where the Windows runtime lives; the eq/cuda tree beside it is ELF-only.
+cp dml/packages/Microsoft.ML.OnnxRuntime.DirectML.1.22.1/runtimes/win-x64/native/*.dll    ../../../release/deploy-msys2-ucrt/bin/ || ui_fail
+
+
+ui_step "verify native libs"
+sh ../../../release/verify_native_libs.sh ../../../release/deploy-msys2-ucrt/lib/native dll crypto diags lame ml odbc onnx opencv sdl || ui_fail
 
 ui_step "launcher (obb, obn)"
 cd ../../../utils/launcher
