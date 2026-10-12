@@ -1,0 +1,39 @@
+#!/bin/sh
+# Open an interactive shell with the Objeck environment already set -- the one
+# thing the Windows and macOS launchers do that is worth having, and the only
+# one that needs a program rather than a document viewer.
+#
+# It takes no interest in WHICH terminal emulator you use, which is the problem
+# that stalled a GTK launcher for Linux: there is no standard, and probing
+# gnome-terminal / konsole / xfce4-terminal / tilix / kitty / alacritty / xterm
+# in turn -- each with different syntax for "run this command" -- fails silently
+# on the setup you did not think of. The .desktop entry beside this file sets
+# Terminal=true, so the desktop environment opens its own terminal and runs this
+# inside it. The hard part is solved by the spec.
+#
+# Run directly, it works the same way in the terminal you are already in.
+
+self_dir="$(cd "$(dirname "$0")" && pwd)"
+home_dir="$(cd "$self_dir/.." && pwd)"
+
+if [ ! -f "$home_dir/env.sh" ]; then
+  echo "objeck-shell: no env.sh beside $home_dir -- is this a complete install?" >&2
+  exit 1
+fi
+
+# Sourced through OBJECK_HOME so this works whatever /bin/sh happens to be:
+# env.sh can only find itself under bash and zsh, and the shell running this
+# script is neither by default.
+OBJECK_HOME="$home_dir"
+export OBJECK_HOME
+# shellcheck source=/dev/null
+. "$home_dir/env.sh" || exit 1
+
+echo
+echo "Try:  obc -src hello.obs -dest hello.obe  &&  obr hello.obe"
+echo "Docs: $home_dir/doc/api/index.html     Examples: $home_dir/examples"
+echo
+
+# exec, so the shell replaces this process rather than nesting under it -- one
+# `exit` leaves, and the terminal window closes as the user expects.
+exec "${SHELL:-/bin/sh}" -i

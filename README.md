@@ -43,8 +43,8 @@ tar xzf objeck-linux-x64_2026.10.0.tgz
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
 ./objeck-lang/install_deps.sh
-export PATH=$PATH:./objeck-lang/bin
-export OBJECK_LIB_PATH=./objeck-lang/lib
+# Sets PATH and OBJECK_LIB_PATH for this shell. Source it, do not run it.
+source ./objeck-lang/env.sh
 
 # Hello World
 echo 'class Hello {

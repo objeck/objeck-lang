@@ -1,0 +1,23 @@
+[Desktop Entry]
+# @OBJECK_HOME@ is substituted by install-desktop.sh. A tarball has no fixed
+# install path, and .desktop files take no relative ones, so this cannot ship
+# ready-made.
+Type=Application
+Version=1.0
+Name=Objeck
+GenericName=Objeck Programming Language
+Comment=Open a shell with the Objeck compiler and libraries on PATH
+# Quoted, because Exec is a command line and the spec splits it on spaces: an
+# install under "~/My Tools/objeck lang" would otherwise run the program
+# "~/My" with "Tools/objeck" and "lang/bin/objeck-shell" as its arguments.
+# Icon is NOT a command line and must stay unquoted.
+Exec="@OBJECK_HOME@/bin/objeck-shell"
+Icon=@OBJECK_HOME@/objeck.png
+# The desktop environment supplies the terminal. This is the whole reason a GUI
+# launcher is unnecessary here: the one button worth having is a terminal with
+# the environment set, and Terminal=true gets it without this file knowing or
+# caring which emulator is installed.
+Terminal=true
+Categories=Development;IDE;ComputerScience;
+Keywords=objeck;programming;compiler;
+StartupNotify=false
