@@ -1,8 +1,11 @@
 #!/bin/sh
+# set -e: a failed compile must not fall through to the link, which then
+# reports `cannot find *.o` and names the glob instead of the real error.
+set -e
+
 # deploy_msys2-ucrt.sh has invoked this script since the MSYS2 deploy was
 # written; it did not exist, so every MSYS2 archive shipped without
 # libobjk_lame.dll. Mirrors crypto/build_msys2-ucrt.sh with lame's link line.
-set -e
 rm -rf *.o
 rm -rf *.dll
 

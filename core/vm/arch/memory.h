@@ -652,9 +652,16 @@ class MemoryManager {
   // threads can race each other here (the collector only touches these bits
   // under stop-the-world), so the flag word is accessed atomically — a plain
   // |= is a data race that weakly-ordered hardware (ARM64) is free to break.
+  //
+  // _MSC_VER, not _WIN32: ReadNoFence64 and _InterlockedOr64 are MSVC
+  // intrinsics, and MinGW-w64 defines _WIN32 while compiling with GCC, which
+  // has neither. The whole MSYS2 build died here -- every translation unit that
+  // includes this header, so obr, obd, obi and the module all failed at once
+  // with "'ReadNoFence64' was not declared in this scope". GCC on Windows has
+  // the __atomic builtins below and wants that path.
   static inline void WriteBarrier(size_t* target_obj) {
     if(!target_obj) return;
-#ifdef _WIN32
+#if defined(_MSC_VER)
     const size_t flags = (size_t)ReadNoFence64((volatile LONG64*)&target_obj[MARKED_FLAG]);
 #else
     const size_t flags = __atomic_load_n(&target_obj[MARKED_FLAG], __ATOMIC_RELAXED);
@@ -663,7 +670,7 @@ class MemoryManager {
     if(flags & GC_RSET_BIT) return;        // already tracked
     // OBJECK_GC_VERIFY_INJECT=barrier: 0 unless the verifier is on
     if(gc_verify_inject == GC_VERIFY_INJECT_BARRIER && VerifySkipBarrier(target_obj)) return;
-#ifdef _WIN32
+#if defined(_MSC_VER)
     _InterlockedOr64((volatile LONG64*)&target_obj[MARKED_FLAG], (LONG64)GC_RSET_BIT);
 #else
     __atomic_fetch_or(&target_obj[MARKED_FLAG], GC_RSET_BIT, __ATOMIC_RELAXED);

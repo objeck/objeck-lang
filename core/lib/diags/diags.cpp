@@ -140,7 +140,15 @@ static ParsedProgram* ProgramArg(VMContext& context, int index)
 // SEH guard: prevents access violations from crashing the LSP server process.
 // Kept in its own function because MSVC forbids __try in a function that also
 // needs C++ object unwinding (the lock and the shared_ptr live in the caller).
-#ifdef _WIN32
+//
+// _MSC_VER, not _WIN32: __try/__except is an MSVC extension, and this file is
+// built with -D_WIN32 under MSYS2, where GCC rejected it outright
+// ("expected 'catch' before '__except'") and libobjk_diags.dll -- the LSP's
+// native half -- could not be built at all. MinGW takes the plain call below;
+// it loses the guard, so an access violation in a diagnostics query takes the
+// process down there rather than being swallowed, which is the same behaviour
+// as the POSIX builds have always had.
+#if defined(_MSC_VER)
 static void SafeCallDiagGuarded(void (*fn)(VMContext&), VMContext& ctx) {
   __try { fn(ctx); } __except(EXCEPTION_EXECUTE_HANDLER) { }
 }

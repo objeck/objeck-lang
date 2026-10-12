@@ -9,6 +9,16 @@
 #include <opencv2/core/utils/logger.hpp>
 #include <opencv2/imgcodecs.hpp>
 
+// OpenCV 5 moved contourArea, boundingRect and getRotationMatrix2D out of
+// imgproc.hpp into geometry/2d.hpp, and opencv.hpp does NOT pull that one in.
+// They are still in namespace cv -- nothing was renamed -- so the build failed
+// with "'contourArea' is not a member of 'cv'" on three call sites and nothing
+// else. MSYS2 ships OpenCV 5.0.0 today; the vendored Windows and Linux builds
+// are still 4.x, which has no such header, hence the version guard.
+#if defined(CV_VERSION_MAJOR) && CV_VERSION_MAJOR >= 5
+#include <opencv2/geometry/2d.hpp>
+#endif
+
 #include "../../vm/lib_api.h"
 
 enum ImageFormat {

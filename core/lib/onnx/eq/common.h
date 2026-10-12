@@ -17,6 +17,21 @@
 #include <sstream>
 
 #include <opencv2/opencv.hpp>
+
+// OpenCV 5 split geometry out of imgproc/calib3d into opencv2/geometry/{2d,3d}.hpp,
+// and opencv.hpp does NOT pull either in. approxPolyDP and contourArea live in
+// 2d.hpp; estimateAffinePartial2D and the LMEDS enum in 3d.hpp.
+//
+// Nothing was renamed and nothing left namespace cv -- the CHANGELOG entry for
+// #804 says these "moved out of cv::", which is not what happened; two headers
+// simply stopped being included by the umbrella one. That matters, because the
+// response at the time was to pin Homebrew to opencv@4 on CI and in
+// release-build, and the actual fix is this include. MSYS2 has no opencv@4 to
+// pin to, which is how it surfaced again.
+#if defined(CV_VERSION_MAJOR) && CV_VERSION_MAJOR >= 5
+#include <opencv2/geometry/2d.hpp>
+#include <opencv2/geometry/3d.hpp>
+#endif
 #include <onnxruntime_cxx_api.h>
 
 #include "scrfd_decode.h"

@@ -33,7 +33,12 @@
 
 // Must precede any Windows header (including those pulled in by mbedTLS/nghttp2)
 // to prevent min/max macro definitions that break std::min/std::max.
-#if defined(_WIN32)
+//
+// Guarded, because MinGW-w64's libstdc++ already defines it (os_defines.h) and
+// an unconditional redefinition warned on every single translation unit of the
+// MSYS2 build -- hundreds of lines of noise with a real diagnostic somewhere in
+// the middle of it.
+#if defined(_WIN32) && !defined(NOMINMAX)
 #  define NOMINMAX
 #endif
 
