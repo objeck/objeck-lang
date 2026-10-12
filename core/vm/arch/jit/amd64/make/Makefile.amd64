@@ -3,11 +3,19 @@ ARGS=-O3 -flto=auto -D_X64 -Wall -Wno-unused-function -std=c++20 -mavx2 -Wno-dep
 AR=gcc-ar
 COMMON_LIBS=jit_common.a
 COMMON_PATH=..
-SRC=../jit_common.o jit_amd_lp64.o
+# ../jit_common.o is built by the jit_common.a sub-make, so it is NOT listed
+# as a prerequisite: this makefile has a %.o: %.cpp rule that matches it, and
+# under -j make would run that rule and the sub-make at the same time, both
+# writing the same file -- or reach ar before either finished
+#   ar: ../jit_common.o: No such file or directory
+# Naming it only inside the recipe leaves make no way to try to produce it,
+# while jit_common.a as a prerequisite still orders the sub-make first.
+COMMON_OBJ=../jit_common.o
+SRC=jit_amd_lp64.o
 LIB=../../../jit_amd_lp64.a
 
 $(LIB): $(COMMON_LIBS) $(SRC)
-	$(AR) -cvq $(LIB) $(SRC)
+	$(AR) -cvq $(LIB) $(COMMON_OBJ) $(SRC)
 
 jit_common.a:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.amd64
