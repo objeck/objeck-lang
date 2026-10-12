@@ -9,9 +9,13 @@ JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -lmbedtls -lmbedx509 -lmbedcrypto -lz -pthread -lwsock32 -luserenv -lws2_32 -lbcrypt
+	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -lmbedtls -lmbedx509 -lmbedcrypto -lnghttp2 -lz -pthread -lwsock32 -luserenv -lws2_32 -lbcrypt
 
 ../vm/vm.a:
+	# clean first: core/vm's objects are shared with the plain and the
+	# other variant build, which compile the same filenames with different
+	# defines. Reusing them links a mixture -- see the commit that added this line.
+	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64.obd clean
 	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64.obd
 
 ../vm/memory.a:

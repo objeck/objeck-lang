@@ -17,6 +17,10 @@ $(LIB): $(SRC) $(OBJ_LIBS)
 	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod
 
 ../vm/vm.a:
+	# clean first: core/vm's objects are shared with the plain and the
+	# other variant build, which compile the same filenames with different
+	# defines. Reusing them links a mixture -- see the commit that added this line.
+	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod clean
 	cd $(VM_PATH); $(MAKE) -f make/Makefile.msys2-clang.amd64.mod
 	
 %.o: %.cpp
