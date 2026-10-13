@@ -179,7 +179,20 @@ jobs:
             echo "|---|---|---|---|---|---|---|---|---|"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          field() { sed -n "s/^$2=//p" "$1" | head -1; }
+          # The Windows legs' result files are CRLF: verify_platform.cmd writes
+          # them with cmd `echo`, so every value arrives with a trailing CR,
+          # while the POSIX legs' files are bare LF. Unstripped, `[ "$v" = PASS ]`
+          # is FALSE for a file that plainly reads verdict=PASS, and the two
+          # Windows commits differ from the three POSIX ones as strings while
+          # naming the same commit. The first real five-leg run failed in exactly
+          # that way -- two bogus "verdict=PASS" errors and a bogus commit
+          # mismatch, on five legs that had all genuinely passed.
+          #
+          # tr -d '\015' rather than '\r': octal, so there is no escape-level
+          # guessing about what reaches tr. sed -n 1p rather than head -1: head
+          # exits after the first line, and under `set -o pipefail` the SIGPIPE
+          # that sends sed can fail the whole command substitution.
+          field() { sed -n "s/^$2=//p" "$1" | tr -d '\015' | sed -n 1p; }
           short() { echo "${1:0:10}"; }
 
           FAIL=0
