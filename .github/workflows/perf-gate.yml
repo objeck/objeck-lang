@@ -65,7 +65,16 @@ jobs:
           restore-keys: ${{ runner.os }}-perfgate-ccache-
 
       - name: Setup ccache
-        run: ccache --max-size=500M && ccache --set-config=compression=true
+        # Pin CCACHE_DIR to the path cached above. ccache 4.x writes to
+        # ~/.cache/ccache unless ~/.ccache already exists, so without this the
+        # cached path stays empty, nothing is ever saved, and every run compiles
+        # cold -- see ci-build.yml's Setup ccache step for the measurement.
+        run: |
+          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
+          export CCACHE_DIR="$HOME/.ccache"
+          mkdir -p "$CCACHE_DIR"
+          ccache --max-size=500M
+          ccache --set-config=compression=true
 
       - name: Build Objeck (obc + obr)
         working-directory: core/vm

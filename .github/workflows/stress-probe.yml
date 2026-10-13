@@ -175,7 +175,7 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: ~/apt-cache
-          key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/stress-probe.yml') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.arch }}-apt-
 
