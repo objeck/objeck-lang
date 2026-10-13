@@ -67,9 +67,32 @@ require_vendored_ort() {
 	fi
 	if [ ! -d "$ORT_VENDORED" ]; then
 		echo "ERROR: no vendored ONNX Runtime for $(uname -m): $ORT_VENDORED does not exist" >&2
-		echo "       (only cuda/lib/x64 is vendored, so libobjk_onnx cannot be built here)" >&2
+		echo "       (x64 and arm64 are vendored, so libobjk_onnx cannot be built here)" >&2
 		exit 1
 	fi
+	# A DIRECTORY test is not enough, which is how this came to fail at the link
+	# anyway. -lonnxruntime opens libonnxruntime.so, and git stores that as a
+	# SYMLINK onto libonnxruntime.so.1 -> libonnxruntime.so.1.19.0. A clone made
+	# on Windows has core.symlinks=false and writes those two links as 19- and
+	# 24-byte TEXT files, so ld finds a file and reports "file format not
+	# recognized; treating as linker script" -- two minutes into compiling
+	# onnx.cpp. The .so.1 link is needed to LOAD the result as well, so there is
+	# nothing to fall back to; the only thing worth adding is saying so up front.
+	for link in libonnxruntime.so libonnxruntime.so.1; do
+		if [ ! -e "$ORT_VENDORED/$link" ]; then
+			echo "ERROR: vendored ONNX Runtime is incomplete: $ORT_VENDORED/$link is missing" >&2
+			exit 1
+		fi
+		[ -L "$ORT_VENDORED/$link" ] && continue
+		if [ "$(wc -c < "$ORT_VENDORED/$link" | tr -d ' ')" -lt 1024 ]; then
+			echo "ERROR: $ORT_VENDORED/$link is a text stub, not a library." >&2
+			echo "       It holds '$(cat "$ORT_VENDORED/$link")' because git records it as a" >&2
+			echo "       symlink and this clone has core.symlinks=$(git config --get core.symlinks 2>/dev/null || echo unset)." >&2
+			echo "       Build from a clone on a native filesystem -- under WSL that means the" >&2
+			echo "       distro's own filesystem, not /mnt/c." >&2
+			exit 1
+		fi
+	done
 }
 
 # The import library by path, not -lonnxruntime: `-l` looks for
