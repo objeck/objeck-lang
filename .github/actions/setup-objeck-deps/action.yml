@@ -1,13 +1,38 @@
 name: 'Setup Objeck Dependencies'
-description: 'Install all dependencies required to build Objeck Language'
+description: 'Install the build and test dependencies for one Objeck target platform'
+
+# This action previously existed but NOTHING used it, and it had drifted far
+# enough from ci-build.yml that adopting it would have quietly weakened the
+# suite. Against the live ci-build.yml blocks it was missing:
+#
+#   libsqliteodbc            -> the ODBC regression tests skip without the driver
+#   expect                   -> run_debugger_tests.sh exits 0 printing a WARNING,
+#                               so the debugger tests silently do not run
+#   libegl1, libegl-mesa0,
+#   libgl1-mesa-dri          -> the headless OpenGL tests
+#   the ODBC test DSN step   -> ~/.odbc.ini, same tests again
+#   Xcode 16.3+ selection    -> objectVersion 90 in the xcodeproj needs it
+#   the OpenCV runtime DLLs  -> windows-x64
+#   the ENTIRE Windows vcpkg install, including the five-attempt backoff that
+#   exists because three 504s inside 27 seconds reddened master (#950)
+#
+# So it is rewritten here FROM those live blocks rather than patched, and is
+# used first by verify-platforms.yml, where nothing else depends on it yet.
+# ci-build.yml and release-build.yml still carry their own copies; moving them
+# onto this action is a separate change, to be made once real gate runs have
+# exercised it.
+#
+# Deliberately NOT here: the Apple signing certificate. It needs secrets, and
+# verification does not sign anything.
 
 inputs:
-  platform:
-    description: 'Platform (linux, macos, windows)'
-    required: true
   arch:
-    description: 'Architecture (x64, arm64)'
+    description: 'vcpkg/MSVC architecture: x64 or ARM64 (also used in cache keys)'
     required: true
+  opencv-x64-dlls:
+    description: 'Fetch the OpenCV runtime DLLs (windows-x64 only)'
+    required: false
+    default: 'false'
   use-cache:
     description: 'Use dependency caching'
     required: false
@@ -16,58 +41,76 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    # ============================================
-    # Linux Dependencies
-    # ============================================
+    # ---- Linux ---------------------------------------------------------------
+    # Cache a USER-OWNED archive dir rather than root-owned /var/cache/apt/
+    # archives: restoring the latter as the unprivileged runner fails with
+    # "tar: ...deb: Permission denied", which silently disables the cache.
     - name: Cache APT packages (Linux)
-      if: inputs.platform == 'linux' && inputs.use-cache == 'true'
-      uses: actions/cache@v4
+      if: runner.os == 'Linux' && inputs.use-cache == 'true'
+      uses: actions/cache@v5
       with:
-        path: /var/cache/apt/archives
-        key: ${{ runner.os }}-${{ inputs.arch }}-apt-${{ hashFiles('.github/**') }}
+        path: ~/apt-cache
+        key: ${{ runner.os }}-${{ inputs.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
         restore-keys: |
           ${{ runner.os }}-${{ inputs.arch }}-apt-
 
     - name: Install Linux dependencies
-      if: inputs.platform == 'linux'
+      if: runner.os == 'Linux'
       shell: bash
       run: |
+        mkdir -p ~/apt-cache/partial
         sudo apt-get update
-        sudo apt-get install -y \
+        sudo apt-get install -y -o Dir::Cache::archives="$HOME/apt-cache" -o APT::Sandbox::User=root \
           build-essential \
           libopencv-dev \
           libmbedtls-dev \
           unixodbc-dev \
+          libsqliteodbc \
           libsdl2-dev \
           libsdl2-image-dev \
           libsdl2-ttf-dev \
           libsdl2-mixer-dev \
+          libegl1 \
+          libegl-mesa0 \
+          libgl1-mesa-dri \
           libreadline-dev \
           libeigen3-dev \
           libmp3lame-dev \
-          ccache
+          ccache \
+          expect
+        # apt writes the .debs as root; make them runner-owned so the cache-save
+        # step (unprivileged) can read them.
+        sudo chown -R "$(id -u):$(id -g)" ~/apt-cache
 
-    # ============================================
-    # macOS Dependencies
-    # ============================================
-    - name: Cache Homebrew (macOS)
-      if: inputs.platform == 'macos' && inputs.use-cache == 'true'
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/Library/Caches/Homebrew
-          /opt/homebrew/Cellar
-        key: ${{ runner.os }}-brew-${{ hashFiles('.github/**') }}
-        restore-keys: |
-          ${{ runner.os }}-brew-
-
-    - name: Install macOS dependencies
-      if: inputs.platform == 'macos'
+    - name: Configure ODBC test DSN (Linux)
+      if: runner.os == 'Linux'
       shell: bash
       run: |
-        brew install \
-          opencv \
-          mbedtls \
+        echo '[objeck_sqlite_test]' >> ~/.odbc.ini
+        echo 'Description=Objeck ODBC regression test DSN' >> ~/.odbc.ini
+        echo 'Driver=SQLite3' >> ~/.odbc.ini
+        echo 'Database=:memory:' >> ~/.odbc.ini
+
+    # ---- macOS ---------------------------------------------------------------
+    - name: Cache Homebrew downloads (macOS)
+      if: runner.os == 'macOS' && inputs.use-cache == 'true'
+      uses: actions/cache@v5
+      with:
+        path: ~/Library/Caches/Homebrew
+        key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
+        restore-keys: |
+          ${{ runner.os }}-brew-downloads-
+
+    - name: Install macOS dependencies
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        # Install only formulae that are not already present. The hosted runner
+        # preinstalls newer versions of some (cmake), so a plain `brew install`
+        # aborts with "already installed" and red annotations even though the
+        # build is fine. Skipping present packages keeps genuine failures visible.
+        for pkg in \
+          cmake \
           unixodbc \
           sdl2 \
           sdl2_image \
@@ -75,40 +118,158 @@ runs:
           sdl2_mixer \
           readline \
           eigen \
-          lame \
-          ccache
+          ccache; do
+          if brew list --versions "$pkg" >/dev/null 2>&1; then
+            echo "✓ $pkg already installed — skipping"
+          else
+            brew install "$pkg"
+          fi
+        done
         brew cleanup
+        export PATH="/opt/homebrew/bin:$PATH"
+        echo "/opt/homebrew/bin" >> $GITHUB_PATH
 
-    # ============================================
-    # Windows Dependencies
-    # ============================================
+    - name: Select Xcode 16.3+ (macOS)
+      if: runner.os == 'macOS'
+      shell: bash
+      run: |
+        # objectVersion 90 in the xcodeproj requires Xcode 16.3+
+        XCODE_PATH=$(ls -d /Applications/Xcode_16.[3-9]*.app 2>/dev/null | sort -V | tail -1)
+        if [ -z "$XCODE_PATH" ]; then
+          XCODE_PATH=$(ls -d /Applications/Xcode_16.*.app 2>/dev/null | sort -V | tail -1)
+        fi
+        if [ -n "$XCODE_PATH" ]; then
+          sudo xcode-select -s "$XCODE_PATH/Contents/Developer"
+          echo "Selected: $XCODE_PATH"
+        fi
+        xcodebuild -version
+
+    # ---- Windows -------------------------------------------------------------
     - name: Setup Visual Studio (Windows)
-      if: inputs.platform == 'windows'
-      uses: microsoft/setup-msbuild@v2
+      if: runner.os == 'Windows'
+      uses: microsoft/setup-msbuild@v3
 
     - name: Setup MSVC Environment (Windows)
-      if: inputs.platform == 'windows'
+      if: runner.os == 'Windows'
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: ${{ inputs.arch }}
 
-    # ============================================
-    # ccache Setup (Non-Windows)
-    # ============================================
-    - name: Cache ccache
-      if: inputs.platform != 'windows' && inputs.use-cache == 'true'
-      uses: actions/cache@v4
+    - name: Install Windows dependencies
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        # vcpkg downloads tools and sources from external CDNs that
+        # intermittently 504. The backoff rides out an OUTAGE, not just a blip:
+        # a previous 3-attempts-20s-apart version drew the same 504 three times
+        # inside 27 seconds fetching zlib for ARM64, reddened master and
+        # auto-filed #950. Five attempts at 15s, 45s, 2m, 4m spans ~7 minutes,
+        # costs nothing on success, and beats a false red on a shipping target.
+        function Install-VcpkgPackage([string]$pkg) {
+          $delays = @(15, 45, 120, 240)
+          $max = $delays.Count + 1
+          for($i = 1; $i -le $max; $i++) {
+            vcpkg install $pkg
+            if($LASTEXITCODE -eq 0) {
+              return
+            }
+            if($i -lt $max) {
+              $wait = $delays[$i - 1]
+              Write-Output "vcpkg install $pkg failed (attempt $i/$max); retrying in ${wait}s..."
+              Start-Sleep -Seconds $wait
+            }
+          }
+          throw "vcpkg install $pkg failed after $max attempts over ~7 minutes. This is usually an upstream CDN outage fetching sources, not a configuration problem -- check the curl status codes above before changing anything."
+        }
+        Install-VcpkgPackage "mbedtls:${{ inputs.arch }}-windows"
+        Install-VcpkgPackage "nghttp2:${{ inputs.arch }}-windows"
+
+        # The committed ARM64 OpenCV modules are a MODULAR build: opencv_core4
+        # imports z.dll and opencv_imgcodecs4 imports jpeg62/libpng16/tiff/
+        # libwebp*, none of which were committed beside them, so
+        # libobjk_opencv.dll failed to load with error 126. x64 downloads
+        # opencv_world, which links the codecs in, and never showed this.
+        if("${{ inputs.arch }}" -eq "ARM64") {
+          Install-VcpkgPackage "zlib:${{ inputs.arch }}-windows"
+          Install-VcpkgPackage "libjpeg-turbo:${{ inputs.arch }}-windows"
+          Install-VcpkgPackage "libpng:${{ inputs.arch }}-windows"
+          Install-VcpkgPackage "tiff:${{ inputs.arch }}-windows"
+          Install-VcpkgPackage "libwebp:${{ inputs.arch }}-windows"
+        }
+
+        $vcpkgRoot = "C:\vcpkg\installed\${{ inputs.arch }}-windows"
+        echo "INCLUDE=$vcpkgRoot\include;$env:INCLUDE" >> $env:GITHUB_ENV
+        echo "LIB=$vcpkgRoot\lib;$env:LIB" >> $env:GITHUB_ENV
+        # nghttp2.dll has to be findable at test runtime, not just link time
+        echo "$vcpkgRoot\bin" >> $env:GITHUB_PATH
+        Write-Output "✅ Installed mbedtls and nghttp2 for ${{ inputs.arch }}"
+
+    - name: Cache OpenCV DLLs (Windows x64)
+      if: inputs.opencv-x64-dlls == 'true' && inputs.use-cache == 'true'
+      id: opencv-cache
+      # Only an optimization: a transient cache-service error must not fail the
+      # run. On a miss or error cache-hit != 'true' and the next step downloads.
+      continue-on-error: true
+      uses: actions/cache@v5
+      with:
+        path: core/lib/opencv/win/x64/bin
+        key: opencv-4.12.0-win-x64-dlls
+
+    - name: Download OpenCV runtime DLLs (Windows x64)
+      if: inputs.opencv-x64-dlls == 'true' && steps.opencv-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        $opencvVersion = "4.12.0"
+        $binDir = "core\lib\opencv\win\x64\bin"
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+
+        $url = "https://github.com/opencv/opencv/releases/download/$opencvVersion/opencv-$opencvVersion-windows.exe"
+        Write-Output "Downloading OpenCV $opencvVersion from $url ..."
+        # same transient-CDN class as the vcpkg installs: bounded retry
+        $max = 3
+        for($i = 1; $i -le $max; $i++) {
+          try {
+            Invoke-WebRequest -Uri $url -OutFile opencv-dl.exe
+            break
+          }
+          catch {
+            if($i -eq $max) { throw }
+            Write-Output "OpenCV download failed (attempt $i/$max); retrying in 20s..."
+            Start-Sleep -Seconds 20
+          }
+        }
+
+        7z x opencv-dl.exe -oopencv-extract -y | Out-Null
+        Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_world4120.dll" $binDir
+        Copy-Item "opencv-extract\opencv\build\x64\vc16\bin\opencv_videoio_ffmpeg4120_64.dll" $binDir
+        Remove-Item opencv-dl.exe -Force
+        Remove-Item -Recurse opencv-extract -Force
+
+        Write-Output "OpenCV DLLs installed:"
+        Get-ChildItem $binDir
+
+    # ---- ccache (POSIX) ------------------------------------------------------
+    # NOTE the key deliberately does NOT include github.sha. ci-build.yml,
+    # its tools job and perf-gate.yml all use `...-ccache-${{ github.sha }}`,
+    # which SAVES a fresh entry (up to 500 MB) per commit per leg -- roughly
+    # seven per master commit. The restore-keys prefix means a stable key
+    # restores just as well without the churn; the Actions cache is capped at
+    # 10 GB and evicts LRU, and when it evicts the windows-arm64 OpenCV entry a
+    # release costs about an extra hour.
+    - name: Cache ccache (POSIX)
+      if: runner.os != 'Windows' && inputs.use-cache == 'true'
+      uses: actions/cache@v5
       with:
         path: ~/.ccache
-        key: ${{ runner.os }}-${{ inputs.arch }}-ccache-${{ github.sha }}
+        key: ${{ runner.os }}-${{ inputs.arch }}-ccache-verify
         restore-keys: |
           ${{ runner.os }}-${{ inputs.arch }}-ccache-
 
-    - name: Setup ccache
-      if: inputs.platform != 'windows'
+    - name: Setup ccache (POSIX)
+      if: runner.os != 'Windows'
       shell: bash
       run: |
+        which ccache || { echo "ccache not found in PATH"; exit 1; }
         ccache --max-size=500M
         ccache --set-config=compression=true
         ccache --zero-stats
-        echo "✅ ccache configured"

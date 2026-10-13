@@ -1,0 +1,219 @@
+name: Verify Platforms
+
+# The release gate (release skill, step 4) run in the cloud instead of on five
+# machines by hand.
+#
+# Each leg runs the SAME script a maintainer would run locally --
+# tools/cicd/verify_platform.sh or .cmd -- from a clean checkout of the
+# dispatched ref, builds the deploy tree the way the release does, runs the
+# regression suite twice, the VM flag, debugger and DAP tests, and writes
+# rc-results/<VERSION>/<platform>.txt ending in verdict=PASS|FAIL.
+#
+# Why this is worth having when ci-build.yml already tests all five platforms:
+# ci-build proves the code works, per push. It does not produce a RECORD. The
+# verdict files are gitignored, so until now each one existed only on whichever
+# machine ran it -- which is how v2026.10.1 came to have two passes at two
+# different commits and three platforms with none. The summary job here closes
+# that by refusing to pass unless every requested leg reports verdict=PASS at
+# the SAME commit, which is the check the scripts' headers attribute to
+# tools/cicd/pre_release.sh -- a file that does not exist in this repository.
+#
+# Dispatch from the ref you intend to tag; actions/checkout takes that ref.
+# windows-arm64 and windows-x64 must each run on their own architecture, since
+# verify_platform.cmd refuses to test an architecture that is not the host's.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to verify, e.g. 2026.10.1 (must match core/shared/version.h)'
+        required: true
+        type: string
+      platforms:
+        description: 'Which legs to run'
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - linux-x64
+          - linux-arm64
+          - macos-arm64
+          - windows-x64
+          - windows-arm64
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # A job-level `if` over a matrix is easy to get subtly wrong, and a leg that
+  # silently does not run is the exact failure this gate exists to prevent. So
+  # the selection happens here, once, and the matrix contains only legs that
+  # will actually run.
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.pick.outputs.matrix }}
+      expected: ${{ steps.pick.outputs.expected }}
+    steps:
+      - name: Choose the legs
+        id: pick
+        shell: bash
+        run: |
+          ALL='[
+            {"platform":"linux-x64",    "os":"ubuntu-latest",       "arch":"x64",   "family":"posix"},
+            {"platform":"linux-arm64",  "os":"ubuntu-24.04-arm",    "arch":"arm64", "family":"posix"},
+            {"platform":"macos-arm64",  "os":"macos-15",            "arch":"arm64", "family":"posix"},
+            {"platform":"windows-x64",  "os":"windows-2025-vs2026", "arch":"x64",   "family":"windows", "cmd_arch":"x64"},
+            {"platform":"windows-arm64","os":"windows-11-arm",      "arch":"ARM64", "family":"windows", "cmd_arch":"arm64"}
+          ]'
+          SEL='${{ inputs.platforms }}'
+          if [ "$SEL" = all ]; then
+            M=$(echo "$ALL" | jq -c .)
+          else
+            M=$(echo "$ALL" | jq -c --arg p "$SEL" '[.[] | select(.platform == $p)]')
+          fi
+          [ "$(echo "$M" | jq 'length')" -gt 0 ] || { echo "no legs selected for '$SEL'"; exit 1; }
+          echo "matrix=$M" >> "$GITHUB_OUTPUT"
+          # A space-separated list, not JSON: the summary job then needs no jq
+          # of its own, and its logic can be exercised outside Actions.
+          echo "expected=$(echo "$M" | jq -r '[.[].platform] | join(" ")')" >> "$GITHUB_OUTPUT"
+          echo "Verifying v${{ inputs.version }} on: $(echo "$M" | jq -r '[.[].platform] | join(", ")')"
+
+  verify:
+    name: Verify ${{ matrix.platform }}
+    needs: plan
+    runs-on: ${{ matrix.os }}
+    # The gate builds the deploy tree AND runs every test phase, so it is
+    # roughly a ci-build leg plus a test pass. windows-arm64 is the long pole.
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-objeck-deps
+        with:
+          arch: ${{ matrix.arch }}
+          opencv-x64-dlls: ${{ matrix.platform == 'windows-x64' }}
+
+      # The gate runs tools/deps/build_quic_deps.sh itself and records
+      # quic_deps=; these restore it from cache first so that step is quick.
+      - name: QUIC dependencies
+        if: matrix.family == 'posix'
+        uses: ./.github/actions/quic-deps
+
+      - name: macOS bundled libraries
+        if: matrix.platform == 'macos-arm64'
+        uses: ./.github/actions/macos-bundle-deps
+
+      # A missing openssl stops the gate at `prereqs` with nothing built. Say
+      # where it is first, so that failure reads as an image change rather than
+      # a mystery.
+      - name: Locate openssl (Windows)
+        if: matrix.family == 'windows'
+        shell: cmd
+        run: |
+          where openssl || echo "not on PATH -- verify_platform.cmd will search the standard install folders"
+          if exist "%ProgramFiles%\OpenSSL\bin\openssl.exe" echo found: %ProgramFiles%\OpenSSL\bin
+          if exist "%ProgramFiles%\OpenSSL-Win64\bin\openssl.exe" echo found: %ProgramFiles%\OpenSSL-Win64\bin
+
+      - name: Verify (POSIX)
+        if: matrix.family == 'posix'
+        shell: bash
+        run: bash tools/cicd/verify_platform.sh "${{ inputs.version }}"
+
+      - name: Verify (Windows)
+        if: matrix.family == 'windows'
+        shell: cmd
+        run: tools\cicd\verify_platform.cmd ${{ inputs.version }} ${{ matrix.cmd_arch }}
+
+      # always(): a FAILED verdict file is the point of the run, not a reason to
+      # withhold it.
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rc-results-${{ matrix.platform }}
+          path: rc-results/
+          if-no-files-found: warn
+          retention-days: 30
+
+  summary:
+    name: Gate summary
+    needs: [plan, verify]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect the verdict files
+        uses: actions/download-artifact@v6
+        with:
+          pattern: rc-results-*
+          path: collected
+          merge-multiple: true
+
+      # Two conditions, both of which the manual process has failed at least
+      # once: every requested leg reports PASS, and they all report the same
+      # commit. v2026.10.1 had windows-x64 passing at ec278f6b29 and linux-x64
+      # at bed975f8d1, which is not a verified release however green both look.
+      - name: Every leg PASS at one commit
+        shell: bash
+        run: |
+          VERSION='${{ inputs.version }}'
+          EXPECTED='${{ needs.plan.outputs.expected }}'
+          DIR="collected/$VERSION"
+
+          {
+            echo "## Release gate: v$VERSION"
+            echo
+            echo "| platform | verdict | commit | build | regression | jit1 | vm_flags | debugger | dap |"
+            echo "|---|---|---|---|---|---|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          field() { sed -n "s/^$2=//p" "$1" | head -1; }
+          short() { echo "${1:0:10}"; }
+
+          FAIL=0
+          COMMITS=""
+          for p in $EXPECTED; do
+            f="$DIR/$p.txt"
+            if [ ! -f "$f" ]; then
+              echo "| $p | **MISSING** | - | - | - | - | - | - | - |" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::$p produced no result file"
+              FAIL=1
+              continue
+            fi
+            v=$(field "$f" verdict)
+            c=$(field "$f" commit)
+            printf '| %s | %s | `%s` | %s | %s | %s | %s | %s | %s |\n' \
+              "$p" "$v" "$(short "$c")" \
+              "$(field "$f" build)" "$(field "$f" regression)" \
+              "$(field "$f" regression_jit1)" "$(field "$f" vm_flags)" \
+              "$(field "$f" debugger)" "$(field "$f" dap)" >> "$GITHUB_STEP_SUMMARY"
+            [ "$v" = PASS ] || { echo "::error::$p verdict=$v"; FAIL=1; }
+            COMMITS="$COMMITS $c"
+          done
+
+          UNIQ=$(echo $COMMITS | tr ' ' '\n' | sort -u | grep -c . || true)
+          echo >> "$GITHUB_STEP_SUMMARY"
+          if [ "$UNIQ" -gt 1 ]; then
+            echo "::error::the legs verified DIFFERENT commits; a release needs one commit verified everywhere"
+            echo "> **Different commits across legs.** A release needs one commit verified on every target." >> "$GITHUB_STEP_SUMMARY"
+            echo $COMMITS | tr ' ' '\n' | sort -u | sed 's/^/> - `/; s/$/`/' >> "$GITHUB_STEP_SUMMARY"
+            FAIL=1
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "> Gate **FAILED**." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "> Gate **PASSED** on every requested target at the same commit." >> "$GITHUB_STEP_SUMMARY"
