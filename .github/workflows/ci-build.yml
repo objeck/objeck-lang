@@ -94,7 +94,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/apt-cache
-        key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
+        key: ${{ runner.os }}-${{ matrix.arch }}-apt-${{ hashFiles('.github/workflows/ci-build.yml') }}
         restore-keys: |
           ${{ runner.os }}-${{ matrix.arch }}-apt-
 
@@ -139,7 +139,7 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
+        key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/ci-build.yml') }}
         restore-keys: |
           ${{ runner.os }}-brew-downloads-
 
@@ -391,9 +391,29 @@ jobs:
       if: runner.os != 'Windows'
       run: |
         which ccache || { echo "ccache not found in PATH"; exit 1; }
+        # PIN the cache directory, or nothing is ever cached between runs.
+        #
+        # The step above caches ~/.ccache. ccache 4.x uses that path only if it
+        # ALREADY EXISTS, and otherwise $XDG_CACHE_HOME/ccache (~/.cache/ccache).
+        # The directory only exists if a cache was restored, and a cache is only
+        # saved if the directory has content -- so once there is no entry there
+        # can never be one. Measured on 2026-10-13: zero ccache entries in the
+        # repo, every run logging
+        #   Cache not found for input keys: Linux-arm64-ccache-<sha>, Linux-arm64-ccache-
+        # no matching "Cache saved with key" in post-job cleanup, and
+        # `ccache --show-stats` reporting 0.0 / 0.5 GB with a 14.71% hit rate
+        # from within the single build. Every CI compile has been cold.
+        #
+        # CCACHE_DIR in $GITHUB_ENV covers the build steps that follow; the
+        # export covers the three commands below, which run before it takes
+        # effect. mkdir -p is what actually breaks the cycle on a cold repo.
+        echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
+        export CCACHE_DIR="$HOME/.ccache"
+        mkdir -p "$CCACHE_DIR"
         ccache --max-size=500M
         ccache --set-config=compression=true
         ccache --zero-stats
+        ccache --show-config | grep -E '^\(.*\) cache_dir' || true
 
     # ============================================
     # Build Compiler Bootstrap (Linux x64 only)
@@ -1627,7 +1647,14 @@ jobs:
           restore-keys: ${{ runner.os }}-tools-ccache-
 
       - name: Setup ccache
-        run: ccache --max-size=500M && ccache --set-config=compression=true
+        # Pin CCACHE_DIR to the path cached above -- see the matrix job's Setup
+        # ccache step for why ~/.ccache is otherwise never written or saved.
+        run: |
+          echo "CCACHE_DIR=$HOME/.ccache" >> "$GITHUB_ENV"
+          export CCACHE_DIR="$HOME/.ccache"
+          mkdir -p "$CCACHE_DIR"
+          ccache --max-size=500M
+          ccache --set-config=compression=true
 
       - name: Build Objeck (obc + obr)
         working-directory: core/vm

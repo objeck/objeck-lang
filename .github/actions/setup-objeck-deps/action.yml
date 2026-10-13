@@ -50,7 +50,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: ~/apt-cache
-        key: ${{ runner.os }}-${{ inputs.arch }}-apt-${{ hashFiles('.github/workflows/**') }}
+        key: ${{ runner.os }}-${{ inputs.arch }}-apt-${{ hashFiles('.github/actions/setup-objeck-deps/action.yml') }}
         restore-keys: |
           ${{ runner.os }}-${{ inputs.arch }}-apt-
 
@@ -97,7 +97,7 @@ runs:
       uses: actions/cache@v5
       with:
         path: ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/workflows/**') }}
+        key: ${{ runner.os }}-brew-downloads-${{ hashFiles('.github/actions/setup-objeck-deps/action.yml') }}
         restore-keys: |
           ${{ runner.os }}-brew-downloads-
 

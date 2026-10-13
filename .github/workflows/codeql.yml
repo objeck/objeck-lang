@@ -144,40 +144,79 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           # <key prefix>:<how many newest to keep>
-          FAMILIES: 'codeql-trap:3 macOS-brew-downloads:2 Linux-x64-apt:2 Linux-arm64-apt:2'
+          #
+          # codeql-overlay was absent until 2026-10-13 and had grown to 68
+          # entries / 1017 MB -- 34 javascript and 34 python, two per analysed
+          # commit, never pruned. It is kept at 6 rather than per-language
+          # because both languages are written by the same run, so the newest
+          # six are the newest three runs of each.
+          #
+          # The ccache families are new here too: cross-run ccache had never
+          # worked (wrong cached path, fixed in the same change), so it saved
+          # nothing and needed no pruning. Now that it saves, five families
+          # write one entry per commit each.
+          FAMILIES: >-
+            codeql-trap:3
+            codeql-overlay:6
+            macOS-brew-downloads:2
+            Linux-x64-apt:2
+            Linux-arm64-apt:2
+            Linux-x64-ccache:2
+            Linux-arm64-ccache:2
+            macOS-arm64-ccache:2
+            Linux-tools-ccache:2
+            Linux-perfgate-ccache:2
         run: |
           set -euo pipefail
 
-          before=$(gh api "repos/$REPO/actions/caches?per_page=100" --jq '[.actions_caches[].size_in_bytes] | add // 0')
-          echo "cache before: $((before / 1048576)) MB"
+          # ONE paginated fetch, processed locally. Every query here used to be
+          # `?per_page=100` with no --paginate, which silently sees only the
+          # first 100 entries -- so above 100 the job would miss deletions AND
+          # its own verification would miss them the same way, reporting a clean
+          # prune. The repo was at 88 and climbing. A pruner that goes blind
+          # exactly when there is most to prune is the failure this job exists
+          # to prevent.
+          gh api --paginate "repos/$REPO/actions/caches?per_page=100" \
+            --jq '.actions_caches[] | [.created_at, (.id|tostring), (.size_in_bytes|tostring), .key] | @tsv' \
+            | sort -r > all.tsv
+
+          total_mb() { awk -F'\t' '{s += $3} END {printf "%d", s / 1048576}' "$1"; }
+          before=$(total_mb all.tsv)
+          echo "cache before: $before MB across $(wc -l < all.tsv) entries"
 
           for family in $FAMILIES; do
             prefix=${family%:*}
             keep=${family#*:}
 
-            gh api "repos/$REPO/actions/caches?per_page=100" \
-              --jq ".actions_caches[] | select(.key | startswith(\"$prefix\")) | \"\(.created_at)\t\(.id)\t\(.size_in_bytes)\t\(.key)\"" \
-              | sort -r > family.tsv
-
+            awk -F'\t' -v p="$prefix" 'index($4, p) == 1' all.tsv > family.tsv
             total=$(wc -l < family.tsv)
             echo "$prefix: $total entries (keeping newest $keep)"
             [ "$total" -le "$keep" ] && continue
 
-            tail -n +$((keep + 1)) family.tsv | while IFS=$'\t' read -r created id size key; do
+            # The loop runs in this shell, so a failed delete fails the step.
+            while IFS=$'\t' read -r created id size key; do
               echo "  deleting $key ($((size / 1048576)) MB, $created)"
               gh api -X DELETE "repos/$REPO/actions/caches/$id"
-            done
+            done < <(tail -n +$((keep + 1)) family.tsv)
+          done
 
-            # Report rather than assume: a delete that silently failed would
-            # otherwise look exactly like a successful prune, which is the whole
-            # failure mode this job exists to prevent.
-            left=$(gh api "repos/$REPO/actions/caches?per_page=100" \
-              --jq "[.actions_caches[] | select(.key | startswith(\"$prefix\"))] | length")
+          # Re-read rather than assume: a delete that silently failed would
+          # otherwise look exactly like a successful prune.
+          gh api --paginate "repos/$REPO/actions/caches?per_page=100" \
+            --jq '.actions_caches[] | [.created_at, (.id|tostring), (.size_in_bytes|tostring), .key] | @tsv' \
+            | sort -r > after.tsv
+
+          bad=0
+          for family in $FAMILIES; do
+            prefix=${family%:*}
+            keep=${family#*:}
+            left=$(awk -F'\t' -v p="$prefix" 'index($4, p) == 1' after.tsv | wc -l)
             if [ "$left" -gt "$keep" ]; then
               echo "::error::$prefix still has $left entries, expected at most $keep"
-              exit 1
+              bad=1
             fi
           done
 
-          after=$(gh api "repos/$REPO/actions/caches?per_page=100" --jq '[.actions_caches[].size_in_bytes] | add // 0')
-          echo "cache after: $((after / 1048576)) MB (freed $(((before - after) / 1048576)) MB)"
+          after=$(total_mb after.tsv)
+          echo "cache after: $after MB across $(wc -l < after.tsv) entries (freed $((before - after)) MB)"
+          exit $bad

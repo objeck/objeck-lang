@@ -219,9 +219,19 @@ jobs:
         if: runner.os == 'macOS'
         uses: actions/cache@v5
         with:
-          path: |
-            ~/Library/Caches/Homebrew
-            /opt/homebrew/Cellar
+          # DOWNLOADS ONLY, not /opt/homebrew/Cellar. Caching the Cellar made
+          # this single entry 1749 MB -- measured 2026-10-13, the largest in the
+          # repo by a wide margin and 17% of the 10 GB ceiling, parked
+          # permanently for a job that runs a few times a month. The ceiling
+          # matters because LRU eviction of the windows-arm64 OpenCV entry adds
+          # about an hour to a release build, so a release pays for this.
+          #
+          # The downloads cache is ~48 MB and is what ci-build.yml already
+          # caches. The install step below skips formulae the runner image
+          # already provides and installs the rest from these downloads, so the
+          # cost of dropping the Cellar is formula installation time, not a
+          # re-download.
+          path: ~/Library/Caches/Homebrew
           key: ${{ runner.os }}-brew-release
           restore-keys: |
             ${{ runner.os }}-brew-
