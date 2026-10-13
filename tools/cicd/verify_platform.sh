@@ -102,6 +102,33 @@ else
 	write_result; exit 1
 fi
 
+# ---- the checkout itself: tracked symlinks have to BE symlinks ------------------
+# Nine paths are stored with mode 120000 -- the two ONNX Runtime SONAME links for
+# each Linux arch, and the macOS lame/SDL dylibs. A clone made on Windows has
+# core.symlinks=false, so git materializes each one as a small TEXT file holding
+# its target's name, and nothing notices until a linker does. On 2026-10-13 a WSL
+# run over /mnt/c spent 169s to reach
+#   ld: ./cuda/lib/x64/lib/libonnxruntime.so: file format not recognized;
+#       treating as linker script
+# having compiled onnx.cpp for two minutes first. There is nothing to fall back
+# to: the .so.1 SONAME link is needed to LOAD the library as well as to link it,
+# and deploy copies that stub into the tree, so a Windows checkout cannot produce
+# a working build on any POSIX target. Clone onto a native filesystem instead --
+# for WSL that means the distro's own filesystem, not /mnt/c.
+STUBS=()
+while IFS= read -r link; do
+	[ -n "$link" ] || continue
+	[ -L "$link" ] || STUBS+=("$link")
+done < <(git ls-files -s | sed -n 's/^120000 [0-9a-f]* [0-9]*	//p')
+if [ ${#STUBS[@]} -gt 0 ]; then
+	echo "  tracked symlinks written as plain files (core.symlinks=$(git config --get core.symlinks || echo unset)):"
+	for s in "${STUBS[@]}"; do echo "    $s  ($(wc -c < "$s" 2>/dev/null || echo 0) bytes)"; done
+	echo "  -> this checkout cannot link or load them; build from a clone on a native filesystem"
+	record symlinks "FAIL (${#STUBS[@]} tracked symlink(s) are text stubs, not links)"
+	write_result; exit 1
+fi
+record symlinks PASS
+
 # ---- prerequisites: stop now, not an hour into the build ------------------------
 # Each of these otherwise surfaces late: the TLS regression tests fail when they
 # cannot run openssl for their certificate, run_debugger_tests.sh skips without
