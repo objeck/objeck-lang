@@ -1,0 +1,73 @@
+#~
+# Rosetta Code: Gapful numbers
+# https://rosettacode.org/wiki/Gapful_numbers
+#
+# A gapful number is divisible by the number formed from its first and last digits. Needs at least three digits by definition, so the first digit must be found by walking the number rather than taken modulo.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaGapful {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaGapful->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		found := 0;
+		n := 100;
+		while(found < 20) {
+			if(IsGapful(n)) {
+				out += "{$n} ";
+				found += 1;
+			};
+			n += 1;
+		};
+		Check("first 20 gapful from 100", out->Trim(),
+			"100 105 108 110 120 121 130 132 135 140 143 150 154 160 165 170 176 180 187 190");
+		CheckInt("100 is gapful", IsGapful(100) ? 1 : 0, 1);
+		CheckInt("101 is not", IsGapful(101) ? 1 : 0, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : IsGapful(n : Int) ~ Bool {
+		last := n % 10;
+		first := n;
+		while(first >= 10) {
+			first := first / 10;
+		};
+		return n % (first * 10 + last) = 0;
+	}
+}

@@ -1,0 +1,111 @@
+#~
+# Rosetta Code: Truncatable primes
+# https://rosettacode.org/wiki/Truncatable_primes
+#
+# Left- and right-truncatable primes below 10000. A zero digit disqualifies a number outright for the left-truncatable case, because the truncation would have a leading zero -- the condition most solutions forget.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaTruncatablePrimes {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaTruncatablePrimes->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		largest_left := 0;
+		count_left := 0;
+		largest_right := 0;
+		count_right := 0;
+		for(n := 2; n < 10000; n += 1;) {
+			if(HasZero(n) = false & IsPrime(n)) {
+				if(LeftOk(n)) {
+					largest_left := n;
+					count_left += 1;
+				};
+				if(RightOk(n)) {
+					largest_right := n;
+					count_right += 1;
+				};
+			};
+		};
+		CheckInt("largest left-truncatable below 10000", largest_left, 9967);
+		CheckInt("how many left-truncatable", count_left, 153);
+		CheckInt("largest right-truncatable below 10000", largest_right, 7393);
+		CheckInt("how many right-truncatable", count_right, 43);
+		# 9967 -> 967 -> 67 -> 7, all prime
+		CheckInt("9967 is left-truncatable", LeftOk(9967) ? 1 : 0, 1);
+		# 7393 -> 739 -> 73 -> 7, all prime
+		CheckInt("7393 is right-truncatable", RightOk(7393) ? 1 : 0, 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : HasZero(n : Int) ~ Bool {
+		while(n > 0) {
+			if(n % 10 = 0) { return true; };
+			n := n / 10;
+		};
+		return false;
+	}
+
+	# dropping leading digits
+	function : LeftOk(n : Int) ~ Bool {
+		s := n->ToString();
+		for(i := 0; i < s->Size(); i += 1;) {
+			if(<>IsPrime(s->SubString(i, s->Size() - i)->ToInt())) { return false; };
+		};
+		return true;
+	}
+
+	# dropping trailing digits
+	function : RightOk(n : Int) ~ Bool {
+		s := n->ToString();
+		for(i := 1; i <= s->Size(); i += 1;) {
+			if(<>IsPrime(s->SubString(i)->ToInt())) { return false; };
+		};
+		return true;
+	}
+	function : IsPrime(n : Int) ~ Bool {
+		if(n < 2) { return false; };
+		if(n < 4) { return true; };
+		if(n % 2 = 0) { return false; };
+		d := 3;
+		while(d * d <= n) {
+			if(n % d = 0) { return false; };
+			d += 2;
+		};
+		return true;
+	}
+}

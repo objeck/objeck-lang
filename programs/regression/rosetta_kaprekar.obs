@@ -1,0 +1,78 @@
+#~
+# Rosetta Code: Kaprekar numbers
+# https://rosettacode.org/wiki/Kaprekar_numbers
+#
+# A Kaprekar number's square splits into two parts that sum to it. The split must reject a zero right part, or every power of ten qualifies -- 100^2 = 10000 splits as 100 + 00.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaKaprekar {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaKaprekar->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		count := 0;
+		for(n := 1; n < 10000; n += 1;) {
+			if(IsKaprekar(n)) {
+				out += "{$n} ";
+				count += 1;
+			};
+		};
+		Check("kaprekar below 10000", out->Trim(),
+			"1 9 45 55 99 297 703 999 2223 2728 4879 4950 5050 5292 7272 7777 9999");
+		CheckInt("how many below 10000", count, 17);
+		# 100 is not one: its square splits only as 100 + 00
+		CheckInt("100 is not kaprekar", IsKaprekar(100) ? 1 : 0, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : IsKaprekar(n : Int) ~ Bool {
+		if(n = 1) { return true; };
+		sq := (n * n)->ToString();
+		for(i := 1; i < sq->Size(); i += 1;) {
+			left := sq->SubString(i);
+			right := sq->SubString(i, sq->Size() - i);
+			r := right->ToInt();
+			# a zero right part would make every power of ten qualify
+			if(r <> 0 & left->ToInt() + r = n) {
+				return true;
+			};
+		};
+		return false;
+	}
+}

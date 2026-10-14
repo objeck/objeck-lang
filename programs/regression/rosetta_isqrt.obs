@@ -1,0 +1,81 @@
+#~
+# Rosetta Code: Isqrt (integer square root) of X
+# https://rosettacode.org/wiki/Isqrt_(integer_square_root)_of_X
+#
+# The floor of the square root, by Newton's method on integers. Asserted as a bracket -- r*r <= n < (r+1)^2 -- which is the definition, rather than against a float square root that rounds the boundary cases wrongly.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaIsqrt {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaIsqrt->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("isqrt(0)", Isqrt(0), 0);
+		CheckInt("isqrt(1)", Isqrt(1), 1);
+		CheckInt("isqrt(3)", Isqrt(3), 1);
+		CheckInt("isqrt(4)", Isqrt(4), 2);
+		CheckInt("isqrt(8)", Isqrt(8), 2);
+		CheckInt("isqrt(9)", Isqrt(9), 3);
+		CheckInt("isqrt(99)", Isqrt(99), 9);
+		CheckInt("isqrt(100)", Isqrt(100), 10);
+		CheckInt("isqrt(2147483647)", Isqrt(2147483647), 46340);
+		CheckInt("isqrt(10^18)", Isqrt(1000000000000000000), 1000000000);
+
+		# the defining bracket, which a float sqrt gets wrong at exact squares
+		bad := 0;
+		for(n := 0; n < 20000; n += 1;) {
+			r := Isqrt(n);
+			if(r * r > n) { bad += 1; };
+			if((r + 1) * (r + 1) <= n) { bad += 1; };
+		};
+		CheckInt("r*r <= n < (r+1)^2 throughout", bad, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Isqrt(n : Int) ~ Int {
+		if(n < 2) { return n; };
+		# Newton from a power-of-two overestimate
+		x := n;
+		y := (x + 1) / 2;
+		while(y < x) {
+			x := y;
+			y := (x + n / x) / 2;
+		};
+		return x;
+	}
+}

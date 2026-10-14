@@ -1,0 +1,78 @@
+#~
+# Rosetta Code: Leonardo numbers
+# https://rosettacode.org/wiki/Leonardo_numbers
+#
+# L(n) = L(n-1) + L(n-2) + 1, from L(0) = L(1) = 1. The task also asks for the variant with first terms 0 and 1 and an added constant of 0, which is Fibonacci -- so the same generator must take all three as parameters.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaLeonardoNumbers {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaLeonardoNumbers->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		l := Leonardo(25, 1, 1, 1);
+		out := "";
+		each(i : l) {
+			out += l[i]->ToString();
+			out += " ";
+		};
+		Check("first 25 Leonardo numbers", out->Trim(),
+			"1 1 3 5 9 15 25 41 67 109 177 287 465 753 1219 1973 3193 5167 8361 " +
+			"13529 21891 35421 57313 92735 150049");
+
+		# with 0, 1 and an added constant of 0 the recurrence is Fibonacci
+		f := Leonardo(10, 0, 1, 0);
+		fout := "";
+		each(i : f) {
+			fout += f[i]->ToString();
+			fout += " ";
+		};
+		Check("the Fibonacci variant", fout->Trim(), "0 1 1 2 3 5 8 13 21 34");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Leonardo(count : Int, a : Int, b : Int, add : Int) ~ Int[] {
+		out := Int->New[count];
+		out[0] := a;
+		if(count > 1) { out[1] := b; };
+		for(i := 2; i < count; i += 1;) {
+			out[i] := out[i - 1] + out[i - 2] + add;
+		};
+		return out;
+	}
+}

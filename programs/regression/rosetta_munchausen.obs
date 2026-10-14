@@ -1,0 +1,76 @@
+#~
+# Rosetta Code: Munchausen numbers
+# https://rosettacode.org/wiki/Munchausen_numbers
+#
+# A Munchausen number equals the sum of its digits raised to themselves. Only 1 and 3435 exist below 5000. The zero digit is the trap: 0^0 is 1 by the usual convention but the task's definition needs it to contribute nothing.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaMunchausen {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaMunchausen->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		for(n := 1; n <= 5000; n += 1;) {
+			if(n = DigitPowerSum(n)) {
+				out += "{$n} ";
+			};
+		};
+		Check("munchausen numbers to 5000", out->Trim(), "1 3435");
+		# 3435 = 3^3 + 4^4 + 3^3 + 5^5
+		CheckInt("3435 digit power sum", DigitPowerSum(3435), 3435);
+		# a zero digit must contribute nothing, not one
+		CheckInt("10 digit power sum", DigitPowerSum(10), 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : DigitPowerSum(n : Int) ~ Int {
+		s := 0;
+		while(n > 0) {
+			d := n % 10;
+			# 0 contributes nothing: the task sums d^d over NON-zero digits
+			if(d > 0) {
+				p := 1;
+				for(i := 0; i < d; i += 1;) { p *= d; };
+				s += p;
+			};
+			n := n / 10;
+		};
+		return s;
+	}
+}

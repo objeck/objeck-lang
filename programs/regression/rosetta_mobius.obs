@@ -1,0 +1,80 @@
+#~
+# Rosetta Code: Möbius function
+# https://rosettacode.org/wiki/M%C3%B6bius_function
+#
+# 0 when a square divides n, otherwise -1 or 1 by the parity of its distinct prime factors. The square case is the one a factor-counting loop drops if it divides a prime out only once.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaMobius {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaMobius->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		for(n := 1; n <= 25; n += 1;) {
+			out += Mobius(n)->ToString();
+			out += " ";
+		};
+		Check("mobius 1..25", out->Trim(),
+			"1 -1 -1 0 -1 1 -1 0 0 1 -1 0 -1 1 1 0 -1 0 -1 0 1 1 -1 0 0");
+		CheckInt("mobius(1)", Mobius(1), 1);
+		CheckInt("a square factor gives 0", Mobius(4), 0);
+		CheckInt("two distinct primes give 1", Mobius(6), 1);
+		CheckInt("one prime gives -1", Mobius(97), -1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Mobius(n : Int) ~ Int {
+		if(n = 1) { return 1; };
+		count := 0;
+		m := n;
+		p := 2;
+		while(p * p <= m) {
+			if(m % p = 0) {
+				m := m / p;
+				# a second factor of p means a square divides n
+				if(m % p = 0) { return 0; };
+				count += 1;
+			};
+			p += 1;
+		};
+		if(m > 1) { count += 1; };
+		if(count % 2 = 0) { return 1; };
+		return -1;
+	}
+}

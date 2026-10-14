@@ -1,0 +1,93 @@
+#~
+# Rosetta Code: Pernicious numbers
+# https://rosettacode.org/wiki/Pernicious_numbers
+#
+# A pernicious number has a prime population count. The first 25 are checked, plus the range 888888877 to 888888888 the task also names.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaPernicious {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaPernicious->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		want := "3 5 6 7 9 10 11 12 13 14 17 18 19 20 21 22 24 25 26 28 31 33 34 35 36";
+		out := "";
+		found := 0;
+		n := 1;
+		while(found < 25) {
+			if(IsPrime(PopCount(n))) {
+				out += "{$n} ";
+				found += 1;
+			};
+			n += 1;
+		};
+		Check("first 25 pernicious", out->Trim(), want);
+
+		# the task's second range
+		out2 := "";
+		for(k := 888888877; k <= 888888888; k += 1;) {
+			if(IsPrime(PopCount(k))) {
+				out2 += "{$k} ";
+			};
+		};
+		Check("888888877..888888888", out2->Trim(),
+			"888888877 888888878 888888880 888888883 888888885 888888886");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : PopCount(n : Int) ~ Int {
+		c := 0;
+		while(n > 0) {
+			c += n % 2;
+			n := n / 2;
+		};
+		return c;
+	}
+
+	function : IsPrime(n : Int) ~ Bool {
+		if(n < 2) { return false; };
+		if(n < 4) { return true; };
+		if(n % 2 = 0) { return false; };
+		d := 3;
+		while(d * d <= n) {
+			if(n % d = 0) { return false; };
+			d += 2;
+		};
+		return true;
+	}
+}

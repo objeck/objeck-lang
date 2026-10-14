@@ -1,0 +1,87 @@
+#~
+# Rosetta Code: Digital root
+# https://rosettacode.org/wiki/Digital_root
+#
+# The additive persistence is the count of summing passes and the digital root is where it lands. Both are asked for, and a solution that returns only the root looks correct against the more memorable half of the answer.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaDigitalRoot {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaDigitalRoot->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("627615 root", Root(627615), 9);
+		CheckInt("627615 persistence", Persistence(627615), 2);
+		CheckInt("39390 root", Root(39390), 6);
+		CheckInt("39390 persistence", Persistence(39390), 2);
+		CheckInt("588225 root", Root(588225), 3);
+		CheckInt("588225 persistence", Persistence(588225), 2);
+		CheckInt("393900588225 root", Root(393900588225), 9);
+		CheckInt("393900588225 persistence", Persistence(393900588225), 2);
+		# a single digit is its own root, with no passes
+		CheckInt("7 root", Root(7), 7);
+		CheckInt("7 persistence", Persistence(7), 0);
+		CheckInt("0 root", Root(0), 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : DigitSum(n : Int) ~ Int {
+		s := 0;
+		while(n > 0) {
+			s += n % 10;
+			n := n / 10;
+		};
+		return s;
+	}
+
+	function : Root(n : Int) ~ Int {
+		while(n > 9) {
+			n := DigitSum(n);
+		};
+		return n;
+	}
+
+	function : Persistence(n : Int) ~ Int {
+		p := 0;
+		while(n > 9) {
+			n := DigitSum(n);
+			p += 1;
+		};
+		return p;
+	}
+}

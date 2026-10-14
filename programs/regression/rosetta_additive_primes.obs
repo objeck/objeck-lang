@@ -1,0 +1,93 @@
+#~
+# Rosetta Code: Additive primes
+# https://rosettacode.org/wiki/Additive_primes
+#
+# A prime whose digit sum is also prime. Both primality tests matter: 2 and 3 qualify through their own digit sums, which a loop starting at 10 misses.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaAdditivePrimes {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaAdditivePrimes->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		count := 0;
+		for(n := 2; n < 500; n += 1;) {
+			if(IsPrime(n) & IsPrime(DigitSum(n))) {
+				out += "{$n} ";
+				count += 1;
+			};
+		};
+		CheckInt("how many additive primes below 500", count, 54);
+		Check("the first ten", FirstN(out->Trim(), 10), "2 3 5 7 11 23 29 41 43 47");
+		# 13 is prime but 1+3 = 4 is not
+		CheckInt("13 is not additive", IsPrime(DigitSum(13)) ? 1 : 0, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : DigitSum(n : Int) ~ Int {
+		s := 0;
+		while(n > 0) {
+			s += n % 10;
+			n := n / 10;
+		};
+		return s;
+	}
+
+	# the first n space-separated fields of a string
+	function : FirstN(text : String, n : Int) ~ String {
+		parts := text->Split(" ");
+		out := "";
+		for(i := 0; i < n & i < parts->Size(); i += 1;) {
+			out += parts[i];
+			out += " ";
+		};
+		return out->Trim();
+	}
+	function : IsPrime(n : Int) ~ Bool {
+		if(n < 2) { return false; };
+		if(n < 4) { return true; };
+		if(n % 2 = 0) { return false; };
+		d := 3;
+		while(d * d <= n) {
+			if(n % d = 0) { return false; };
+			d += 2;
+		};
+		return true;
+	}
+}

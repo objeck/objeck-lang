@@ -1,0 +1,93 @@
+#~
+# Rosetta Code: Zeckendorf number representation
+# https://rosettacode.org/wiki/Zeckendorf_number_representation
+#
+# Every positive integer is a unique sum of non-consecutive Fibonacci numbers. The greedy choice is what guarantees no two adjacent ones, which is asserted directly rather than assumed.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaZeckendorf {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaZeckendorf->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		for(n := 1; n <= 20; n += 1;) {
+			out += Zeckendorf(n);
+			out += " ";
+		};
+		Check("zeckendorf 1..20", out->Trim(),
+			"1 10 100 101 1000 1001 1010 10000 10001 10010 10100 10101 100000 " +
+			"100001 100010 100100 100101 101000 101001 101010");
+		Check("zeckendorf(0)", Zeckendorf(0), "0");
+
+		# no two adjacent ones, for every value in the range
+		adjacent := 0;
+		for(n := 1; n <= 200; n += 1;) {
+			z := Zeckendorf(n);
+			for(i := 1; i < z->Size(); i += 1;) {
+				if(z->Get(i) = '1' & z->Get(i - 1) = '1') { adjacent += 1; };
+			};
+		};
+		CheckInt("no two adjacent ones", adjacent, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Zeckendorf(n : Int) ~ String {
+		if(n = 0) { return "0"; };
+		# Fibonacci numbers from 1, 2, 3, 5 ... with no repeated 1
+		fib := Int->New[64];
+		fib[0] := 1;
+		fib[1] := 2;
+		count := 2;
+		while(fib[count - 1] <= n) {
+			fib[count] := fib[count - 1] + fib[count - 2];
+			count += 1;
+		};
+		out := "";
+		for(i := count - 1; i >= 0; i -= 1;) {
+			if(fib[i] <= n) {
+				out += "1";
+				n -= fib[i];
+			}
+			else if(out->Size() > 0) {
+				out += "0";
+			};
+		};
+		return out;
+	}
+}

@@ -1,0 +1,75 @@
+#~
+# Rosetta Code: Tau function
+# https://rosettacode.org/wiki/Tau_function
+#
+# The count of a number's divisors. Counted by trial division to the square root, where a perfect square must count its root once and not twice -- the classic off-by-one here makes every square's answer one too high.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaTauFunction {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaTauFunction->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		for(n := 1; n <= 100; n += 1;) {
+			out += Tau(n)->ToString();
+			out += " ";
+		};
+		Check("tau 1..100", out->Trim(),
+			"1 2 2 3 2 4 2 4 3 4 2 6 2 4 4 5 2 6 2 6 4 4 2 8 3 4 4 6 2 8 2 6 4 4 4 9 " +
+			"2 4 4 8 2 8 2 6 6 4 2 10 3 6 4 6 2 8 4 8 4 4 2 12 2 4 6 7 4 8 2 6 4 8 2 " +
+			"12 2 4 6 6 4 8 2 10 5 4 2 12 4 4 4 8 2 12 4 6 4 4 4 12 2 6 6 9");
+		# a perfect square has an odd divisor count; its root is counted once
+		CheckInt("tau(36)", Tau(36), 9);
+		CheckInt("tau(1)", Tau(1), 1);
+		CheckInt("tau of a prime", Tau(97), 2);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Tau(n : Int) ~ Int {
+		c := 0;
+		d := 1;
+		while(d * d <= n) {
+			if(n % d = 0) {
+				if(d * d = n) { c += 1; } else { c += 2; };
+			};
+			d += 1;
+		};
+		return c;
+	}
+}

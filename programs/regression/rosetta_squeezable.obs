@@ -1,0 +1,73 @@
+#~
+# Rosetta Code: Determine if a string is squeezable
+# https://rosettacode.org/wiki/Determine_if_a_string_is_squeezable
+#
+# Squeezing removes repeats of one nominated character and leaves every other run intact. The companion to collapsing, and a solution that ignores the nominated character passes the single-character cases by accident.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaSqueezable {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaSqueezable->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("empty string", Squeeze("", '-'), "");
+		Check("squeeze a dash", Squeeze("--- Abraham Lincoln", '-'), "- Abraham Lincoln");
+		# other runs survive: only the nominated character is squeezed
+		Check("other runs survive", Squeeze("aaabbb", 'a'), "abbb");
+		Check("squeeze spaces", Squeeze("The better the 4-wheel drive", ' '),
+			"The better the 4-wheel drive");
+		Check("squeeze a character that is absent", Squeeze("abc", 'z'), "abc");
+		Check("squeeze every character of one run", Squeeze("7777", '7'), "7");
+		# squeezing is idempotent for the same character
+		Check("idempotent", Squeeze(Squeeze("---", '-'), '-'), "-");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Squeeze(s : String, target : Char) ~ String {
+		out := "";
+		each(i : s) {
+			c := s->Get(i);
+			# drop only a repeat OF THE NOMINATED character
+			if(out->Size() > 0 & c = target & out->Get(out->Size() - 1) = target) {
+				continue;
+			};
+			out += c->ToString();
+		};
+		return out;
+	}
+}

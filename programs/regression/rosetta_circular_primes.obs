@@ -1,0 +1,83 @@
+#~
+# Rosetta Code: Circular primes
+# https://rosettacode.org/wiki/Circular_primes
+#
+# Every rotation of the digits must also be prime. A solution that only checks the number and its reverse passes for all the two-digit cases and fails at 113.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaCircularPrimes {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaCircularPrimes->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		for(n := 2; n < 200; n += 1;) {
+			if(IsCircular(n)) {
+				out += "{$n} ";
+			};
+		};
+		Check("circular primes below 200", out->Trim(),
+			"2 3 5 7 11 13 17 31 37 71 73 79 97 113 131 197 199");
+		# 113 needs all three rotations: 113, 131, 311
+		CheckInt("113 is circular", IsCircular(113) ? 1 : 0, 1);
+		# 19 is prime and 91 is 7*13, so it is not
+		CheckInt("19 is not circular", IsCircular(19) ? 1 : 0, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : IsCircular(n : Int) ~ Bool {
+		if(<>IsPrime(n)) { return false; };
+		s := n->ToString();
+		for(i := 1; i < s->Size(); i += 1;) {
+			rot := s->SubString(i, s->Size() - i) + s->SubString(i);
+			if(<>IsPrime(rot->ToInt())) { return false; };
+		};
+		return true;
+	}
+	function : IsPrime(n : Int) ~ Bool {
+		if(n < 2) { return false; };
+		if(n < 4) { return true; };
+		if(n % 2 = 0) { return false; };
+		d := 3;
+		while(d * d <= n) {
+			if(n % d = 0) { return false; };
+			d += 2;
+		};
+		return true;
+	}
+}

@@ -1,0 +1,96 @@
+#~
+# Rosetta Code: Power set
+# https://rosettacode.org/wiki/Power_set
+#
+# All 2^n subsets, enumerated by treating each integer below 2^n as a membership mask. The empty set must be included -- it is the mask zero, which a loop starting at one drops.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaPowerSet {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaPowerSet->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("power set of 1,2,3", PowerSet(3), "{} {1} {2} {3} {1,2} {1,3} {2,3} {1,2,3}");
+		# the empty set's power set is the set containing the empty set
+		Check("power set of nothing", PowerSet(0), "{}");
+		Check("power set of one element", PowerSet(1), "{} {1}");
+		CheckInt("a 4-element set has 16 subsets", PowerSet(4)->Split(" ")->Size(), 16);
+		CheckInt("a 10-element set has 1024", PowerSet(10)->Split(" ")->Size(), 1024);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# subsets ordered by size then value, which is how the task presents them
+	function : PowerSet(n : Int) ~ String {
+		out := "";
+		total := 1;
+		for(i := 0; i < n; i += 1;) { total *= 2; };
+		for(size := 0; size <= n; size += 1;) {
+			for(mask := 0; mask < total; mask += 1;) {
+				if(PopCount(mask) = size) {
+					out += "{";
+					first := true;
+					for(bit := 0; bit < n; bit += 1;) {
+						if((mask / Pow2(bit)) % 2 = 1) {
+							if(<>first) { out += ","; };
+							v := bit + 1;
+							out += v->ToString();
+							first := false;
+						};
+					};
+					out += "} ";
+				};
+			};
+		};
+		return out->Trim();
+	}
+
+	function : Pow2(k : Int) ~ Int {
+		r := 1;
+		for(i := 0; i < k; i += 1;) { r *= 2; };
+		return r;
+	}
+
+	function : PopCount(n : Int) ~ Int {
+		c := 0;
+		while(n > 0) {
+			c += n % 2;
+			n := n / 2;
+		};
+		return c;
+	}
+}

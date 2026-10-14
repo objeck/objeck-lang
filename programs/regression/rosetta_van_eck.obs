@@ -1,0 +1,80 @@
+#~
+# Rosetta Code: Van Eck sequence
+# https://rosettacode.org/wiki/Van_Eck_sequence
+#
+# Each term is the gap back to the previous occurrence of the last term, or zero if there was none. The search must look at terms BEFORE the last one, or every term finds itself and the sequence collapses to zeros.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaVanEck {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaVanEck->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		v := VanEck(20);
+		out := "";
+		each(i : v) {
+			out += v[i]->ToString();
+			out += " ";
+		};
+		Check("van Eck first 20", out->Trim(),
+			"0 0 1 0 2 0 2 2 1 6 0 5 0 2 6 5 4 0 5 3");
+		CheckInt("the first term is 0", v[0], 0);
+		# the second term is 0 too: 0 had not appeared before the first term
+		CheckInt("the second term is 0", v[1], 0);
+		CheckInt("the third term is 1", v[2], 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : VanEck(count : Int) ~ Int[] {
+		v := Int->New[count];
+		v[0] := 0;
+		for(n := 1; n < count; n += 1;) {
+			last := v[n - 1];
+			gap := 0;
+			# search strictly BEFORE the last term
+			for(k := n - 2; k >= 0; k -= 1;) {
+				if(v[k] = last) {
+					gap := n - 1 - k;
+					break;
+				};
+			};
+			v[n] := gap;
+		};
+		return v;
+	}
+}

@@ -1,0 +1,72 @@
+#~
+# Rosetta Code: Determine if a string is collapsible
+# https://rosettacode.org/wiki/Determine_if_a_string_is_collapsible
+#
+# Collapsing removes immediately repeated characters, whatever they are. Distinct from squeezing, which removes repeats of ONE nominated character -- the two tasks are adjacent and the difference is the whole point.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaCollapsible {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaCollapsible->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("empty string", Collapse(""), "");
+		Check("no repeats", Collapse("abc"), "abc");
+		Check("a run of three", Collapse("aaa"), "a");
+		Check("digits and runs", Collapse("..1111111111111111111111111111111111111111111111111111111111111117777888"), ".178");
+		Check("a sentence", Collapse("The better the 4-wheel drive, the further you have to walk for help."),
+			"The beter the 4-whel drive, the further you have to walk for help.");
+		CheckInt("the sentence loses two characters",
+			Collapse("The better the 4-wheel drive, the further you have to walk for help.")->Size(), 66);
+		# collapsing is idempotent: nothing is left to collapse
+		Check("idempotent", Collapse(Collapse("aaabbbccc")), "abc");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Collapse(s : String) ~ String {
+		out := "";
+		each(i : s) {
+			c := s->Get(i);
+			# keep a character unless it repeats the one just kept
+			if(out->Size() = 0 | out->Get(out->Size() - 1) <> c) {
+				out += c->ToString();
+			};
+		};
+		return out;
+	}
+}

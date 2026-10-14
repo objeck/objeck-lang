@@ -1,0 +1,87 @@
+#~
+# Rosetta Code: Population count
+# https://rosettacode.org/wiki/Population_count
+#
+# The count of set bits, and the evil and odious numbers it partitions the integers into. Zero has an even count, so it is evil -- the boundary case that a loop starting at one silently drops.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaPopulationCount {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaPopulationCount->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		for(n := 0; n < 30; n += 1;) {
+			out += PopCount(n)->ToString();
+			out += " ";
+		};
+		Check("population counts 0..29", out->Trim(),
+			"0 1 1 2 1 2 2 3 1 2 2 3 2 3 3 4 1 2 2 3 2 3 3 4 2 3 3 4 3 4");
+
+		evil := "";
+		odious := "";
+		e := 0;
+		o := 0;
+		n := 0;
+		while(e < 15 | o < 15) {
+			if(PopCount(n) % 2 = 0) {
+				if(e < 15) { evil += "{$n} "; e += 1; };
+			}
+			else {
+				if(o < 15) { odious += "{$n} "; o += 1; };
+			};
+			n += 1;
+		};
+		# zero is evil: an even number of set bits, namely none
+		Check("first 15 evil numbers", evil->Trim(),
+			"0 3 5 6 9 10 12 15 17 18 20 23 24 27 29");
+		Check("first 15 odious numbers", odious->Trim(),
+			"1 2 4 7 8 11 13 14 16 19 21 22 25 26 28");
+		CheckInt("popcount of a power of two", PopCount(1024), 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : PopCount(n : Int) ~ Int {
+		c := 0;
+		while(n > 0) {
+			c += n % 2;
+			n := n / 2;
+		};
+		return c;
+	}
+}

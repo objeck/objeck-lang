@@ -1,0 +1,76 @@
+#~
+# Rosetta Code: Count occurrences of a substring
+# https://rosettacode.org/wiki/Count_occurrences_of_a_substring
+#
+# Non-overlapping occurrences. 'abab' occurs once in 'ababab', not twice -- the search must resume AFTER the match, and resuming one character later is the classic wrong answer.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaCountSubstring {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaCountSubstring->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("th in 'the three truths'", Count("the three truths", "th"), 3);
+		# non-overlapping: resuming after the match, not one past its start
+		CheckInt("abab in ababab", Count("ababab", "abab"), 1);
+		CheckInt("a in ababab", Count("ababab", "a"), 3);
+		CheckInt("absent needle", Count("abc", "z"), 0);
+		CheckInt("needle longer than haystack", Count("ab", "abc"), 0);
+		CheckInt("needle equals haystack", Count("abc", "abc"), 1);
+		CheckInt("empty haystack", Count("", "a"), 0);
+		CheckInt("aa in aaaa is two", Count("aaaa", "aa"), 2);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Count(haystack : String, needle : String) ~ Int {
+		if(needle->Size() = 0 | haystack->Size() < needle->Size()) { return 0; };
+		count := 0;
+		i := 0;
+		while(i <= haystack->Size() - needle->Size()) {
+			if(haystack->SubString(i, needle->Size())->Equals(needle)) {
+				count += 1;
+				# resume past the whole match, so occurrences do not overlap
+				i += needle->Size();
+			}
+			else {
+				i += 1;
+			};
+		};
+		return count;
+	}
+}

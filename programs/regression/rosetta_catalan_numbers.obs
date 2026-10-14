@@ -1,0 +1,78 @@
+#~
+# Rosetta Code: Catalan numbers
+# https://rosettacode.org/wiki/Catalan_numbers
+#
+# C(n) = C(2n,n)/(n+1). Built by the recurrence C(n+1) = C(n)*2*(2n+1)/(n+2) rather than from factorials, which overflow long before the 15th term.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaCatalanNumbers {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaCatalanNumbers->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		c := 1;
+		for(n := 0; n < 15; n += 1;) {
+			out += c->ToString();
+			out += " ";
+			c := c * 2 * (2 * n + 1) / (n + 2);
+		};
+		Check("catalan 0..14", out->Trim(),
+			"1 1 2 5 14 42 132 429 1430 4862 16796 58786 208012 742900 2674440");
+
+		# the recurrence must agree with the binomial definition
+		bad := 0;
+		c2 := 1;
+		for(n := 0; n < 15; n += 1;) {
+			if(c2 <> Binomial(2 * n, n) / (n + 1)) { bad += 1; };
+			c2 := c2 * 2 * (2 * n + 1) / (n + 2);
+		};
+		CheckInt("recurrence agrees with the binomial form", bad, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# multiplied and divided in step so the intermediate stays small
+	function : Binomial(n : Int, k : Int) ~ Int {
+		if(k > n - k) { k := n - k; };
+		r := 1;
+		for(i := 0; i < k; i += 1;) {
+			r := r * (n - i) / (i + 1);
+		};
+		return r;
+	}
+}

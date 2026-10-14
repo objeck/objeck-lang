@@ -1,0 +1,82 @@
+#~
+# Rosetta Code: Square but not cube
+# https://rosettacode.org/wiki/Square_but_not_cube
+#
+# The squares that are not also cubes, and the few that are both. A number is both exactly when it is a sixth power, so 1, 64 and 729 are the exclusions below 10000 -- the ones a float cube-root test rounds wrongly.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaSquareButNotCube {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaSquareButNotCube->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		found := 0;
+		n := 1;
+		while(found < 20) {
+			sq := n * n;
+			if(<>IsCube(sq)) {
+				out += "{$sq} ";
+				found += 1;
+			};
+			n += 1;
+		};
+		Check("first 20 squares that are not cubes", out->Trim(),
+			"4 9 16 25 36 49 81 100 121 144 169 196 225 256 289 324 361 400 441 484");
+
+		# the ones that are both are the sixth powers
+		both := "";
+		for(k := 1; k * k < 10000; k += 1;) {
+			if(IsCube(k * k)) {
+				v := k * k;
+				both += "{$v} ";
+			};
+		};
+		Check("squares that are also cubes below 10000", both->Trim(), "1 64 729 4096");
+		CheckInt("64 is a cube", IsCube(64) ? 1 : 0, 1);
+		CheckInt("65 is not", IsCube(65) ? 1 : 0, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# by integer search, not a float cube root, which rounds 64 and 729 wrongly
+	function : IsCube(n : Int) ~ Bool {
+		c := 1;
+		while(c * c * c < n) { c += 1; };
+		return c * c * c = n;
+	}
+}
