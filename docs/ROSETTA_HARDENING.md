@@ -132,6 +132,7 @@ Stated so nobody counts them as remaining work:
 | [#1099](https://github.com/objeck/objeck-lang/issues/1099) | Unary minus rejects a parenthesised operand: `-(a + b)` does not parse, while `-x`, `-7`, `-F()` and `-@n` all do | open |
 | [#1100](https://github.com/objeck/objeck-lang/issues/1100) | The function-composition idiom in `FEATURES.md` silently returns wrong results when a second composer is built -- captures live in static fields, so both references compute the last pair. `add_then_add(2)` returns 60 instead of 5, with no diagnostic | open |
 | [#1101](https://github.com/objeck/objeck-lang/issues/1101) | `FuncRef<R>` has no parameter slots -- it is a thunk type -- but `FEATURES.md:209` documents lambdas as `\(params) => body`. Six spellings, six different errors | open |
+| [#1103](https://github.com/objeck/objeck-lang/issues/1103) | 35 words are reserved and none are documented; using one reports only `Expected identifier` without naming it. `other` -- the conventional parameter name for `Equals`/`Compare`/`Add` -- is `select`'s default label | open |
 
 **#1100 and #1101 together block an entire cluster.** A lambda can close over
 state but cannot take an argument; a first-class function reference takes
@@ -145,6 +146,7 @@ it is a language feature decision rather than a bug fix.
 | Task | Notes |
 |---|---|
 | [Arithmetic/Rational](https://rosettacode.org/wiki/Arithmetic/Rational) | `Rational` with reduction, the six comparisons, flooring integer division and modulo, `Int` coercion, and detected overflow rather than silent wraparound. Verified: `6, 28, 496, 8128` in ~1s. Produced #1099 |
+| [Arbitrary-precision integers (included)](https://rosettacode.org/wiki/Arbitrary-precision_integers_(included)) | 5^262144 computed by 18 squarings. Verified against the published answer: `183231` digits, first 20 `62060698786608744707`, last 20 `92256259918212890625`. **Median 1.21s** over three runs. Produced #1103 |
 
 ---
 
@@ -173,17 +175,38 @@ Exists as a verified standalone implementation. Three things to settle:
 `Arithmetic/Complex` asks for the identical shape. Decide it with `Rational`, so
 the two land in one library with one convention rather than separately.
 
-### `BigInt` -- the larger gap
+### `BigInt` -- measured, and viable in pure Objeck
 
 There is **no arbitrary-precision integer anywhere** in the 32 shipped
 libraries, and `cipher.obl` exposes no multi-precision internals to build on.
 That blocks exact rationals, large factorials, and a long tail of numeric tasks.
-It is also the one proposal that probably wants a native implementation for
-speed, which makes it a project rather than a library file.
 
-`Arbitrary-precision integers (included)` in Tier 1 is the cheapest way to turn
-this from an opinion into a measurement: implement it, and the result either
-works or names exactly what is missing.
+The open question was whether it would have to be native to be useful. **It does
+not.** Roughly 130 lines of Objeck -- little-endian limbs in base 10^6,
+schoolbook multiplication, repeated squaring -- compute 5^262144 correctly in a
+**median 1.21 seconds**, for a 183,231-digit result. For comparison, the whole
+point of the exercise: that is a pure-Objeck implementation on the JIT, doing
+O(n^2) multiplication, landing within a small factor of runtimes whose big
+integers are C.
+
+So the proposal is concrete: `BigInt` belongs in the same `math.obl` as
+`Rational` and `Complex`, written in Objeck, no native library. What the task
+implementation does *not* cover, and a shipped type would need:
+
+- division and modulo, and `ToString` for a sign
+- subtraction and comparison (the task needs neither)
+- Karatsuba above some limb threshold, if anyone multiplies numbers much larger
+  than this; schoolbook is fine to about this size
+- base conversion other than decimal
+
+Base 10^6 was chosen so no intermediate can overflow: a limb is under 10^6, a
+product of two under 10^12, and `Int` holds 9.2 * 10^18, so column sums stay
+exact for operands up to 9.2 million limbs. That margin matters more than it
+looks -- `Int` wraps in silence, so an overflowing column would have produced a
+plausible wrong answer rather than a failure.
+
+**This also removes the overflow question from `Rational`**: backed by `BigInt`
+there is nothing to detect and nothing to document.
 
 ---
 
