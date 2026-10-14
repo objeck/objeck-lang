@@ -1,0 +1,94 @@
+#~
+# A chained method call inside string interpolation.
+#
+# "{$s->ToUpper()->Size()}" segfaulted the VM: no output, no message, exit 139 on
+# POSIX and 0xC0000005 on Windows, in the interpreter and both JITs. One call in
+# the braces was fine and two was fatal, while the identical chain outside an
+# interpolation worked -- so the difference between a working line and a dead
+# process was one '->' (#1107).
+#
+# The emitter chose the String:Append overload from the expression's OWN eval
+# type, which for a chain is the first link's. `s->ToUpper()->Size()` pushes an
+# Int, but the type said String, so the object overload ran and dereferenced the
+# integer as a pointer.
+#
+# Every case below therefore asserts the VALUE, not merely that the program
+# survived. A test that only checked for a crash would pass against an emitter
+# that appended a plausible wrong number -- which is the more likely shape of a
+# regression here, since the fix is a type selection and not a guard.
+#
+# The types are what the overload is selected from, so each primitive the
+# interpolation can append is exercised through a chain: Int, Float, Bool, Char,
+# String, and a chain of three. A cast at the end of the chain is included
+# because EffectiveStackType prefers a trailing cast over the eval type, and
+# nothing else in the suite reaches that preference through an interpolation.
+~#
+
+class InterpChainedCall {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := InterpChainedCall->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		s := "hello";
+
+		# the exact form that crashed: two calls, Int at the end
+		Check("two calls, Int result", "{$s->ToUpper()->Size()}", "5");
+		Check("two calls with surrounding text", "x {$s->ToUpper()->Size()} y", "x 5 y");
+		# three links, to show it is the end of the chain and not the second link
+		Check("three calls", "{$s->ToUpper()->ToLower()->Size()}", "5");
+
+		# a String at the end still takes the object overload
+		Check("chain ending in String", "{$s->ToUpper()->ToLower()}", "hello");
+
+		# each primitive the interpolation can append, reached through a chain,
+		# because the overload is selected from this type
+		n := 5;
+		Check("Int receiver, Int result", "{$n->ToString()->Size()}", "1");
+		f := 2.5;
+		Check("Float receiver, Int result", "{$f->ToString()->Size()}", "8");
+		Check("chain ending in Bool", "{$s->ToUpper()->Equals(\"HELLO\")}", "true");
+		Check("chain ending in Char", "{$s->ToUpper()->Get(0)}", "H");
+
+		# a trailing cast, which EffectiveStackType prefers over the eval type
+		# a Float interpolates at six decimals, so the cast is visible in the output --
+		# which is also what shows the FLOAT overload was selected, not the Int one
+		Check("chain ending in a cast", "{$n->ToString()->Size()->As(Float)}", "1.000000");
+
+		# the forms that always worked, so a fix cannot regress them
+		Check("one call", "{$s->ToUpper()}", "HELLO");
+		Check("a bare variable", "{$n}", "5");
+		v := s->ToUpper()->Size();
+		Check("the same chain via a local", "{$v}", "5");
+
+		# two chains in one literal: the concat accumulator is per interpolated
+		# string, and appending twice from chains is where a shared slot would show
+		Check("two chains in one literal",
+			"{$s->ToUpper()->Size()}-{$s->ToLower()->Size()}", "5-5");
+
+		# a chain inside a literal that also interpolates a plain variable
+		Check("mixed segments", "a{$n}b{$s->ToUpper()->Size()}c", "a5b5c");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

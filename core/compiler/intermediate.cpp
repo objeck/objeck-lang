@@ -4867,6 +4867,43 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
 }
 
 /****************************
+ * The type a sub-expression actually pushes on the stack.
+ *
+ * A trailing cast or method-call chain changes it: `(12.0 + x)->As(Int)` pushes
+ * an Int though the addition's own eval type is Float, and
+ * `s->ToUpper()->Size()` pushes an Int though the first link returns a String.
+ * Anything that selects an opcode or an overload from an operand's type has to
+ * ask for the END of the chain, not the head.
+ *
+ * Getting this wrong is not a wrong answer, it is a crash: a comparison picked a
+ * FLOAT opcode for integer operands (bit-compared ints, handed XMM operands to
+ * the JIT), and string interpolation picked String:Append's OBJECT overload for
+ * an Int and dereferenced the integer as a pointer (#1107).
+ ****************************/
+static frontend::Type* EffectiveStackType(frontend::Expression* e)
+{
+  frontend::Type* type = e->GetEvalType();
+
+  frontend::MethodCall* mc = e->GetMethodCall();
+  if(mc) {
+    while(mc->GetMethodCall()) {
+      mc = mc->GetMethodCall();
+    }
+    if(mc->GetCastType()) {
+      type = mc->GetCastType();
+    }
+    else if(mc->GetEvalType()) {
+      type = mc->GetEvalType();
+    }
+  }
+  else if(e->GetCastType()) {
+    type = e->GetCastType();
+  }
+
+  return type;
+}
+
+/****************************
  * Translates character std::wstring.
  * This creates a new byte array
  * and copies content.
@@ -5079,7 +5116,11 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
   // EXPRESSION type - method calls, array access, etc.
   else if(segment->GetType() == EXPRESSION) {
     Expression* expr = segment->GetExpression();
-    Type* eval_type = expr->GetEvalType();
+    // The END of the chain, not the head: `{$s->ToUpper()->Size()}` pushes an Int
+    // while the expression's own eval type is String, and the Append overload is
+    // chosen from this. Picking the object overload for an Int made Append
+    // dereference the integer (#1107).
+    Type* eval_type = EffectiveStackType(expr);
 
     // Save and reset new_char_str_count to prevent SWAP_INT from being emitted
     // when emitting nested CharacterString expressions
@@ -5435,28 +5476,9 @@ void IntermediateEmitter::EmitAndOr(CalculatedExpression* expression)
  ****************************/
 static bool IsScalarFloat(frontend::Expression* e)
 {
-  // Effective stack type of the operand. A trailing cast/method-call changes the
-  // value actually pushed -- e.g. `(12.0 + x)->As(Int)` pushes an Int even though
-  // the sub-expression's own eval type is Float. The comparison opcode must match
-  // the post-cast type (mirrors EmitCalculation, which emits the operand then its
-  // method-call + cast); otherwise an integer compare gets a FLOAT opcode, which
-  // bit-compares ints and feeds mismatched operands to the JIT (crash/corruption).
-  frontend::Type* type = e->GetEvalType();
-  frontend::MethodCall* mc = e->GetMethodCall();
-  if(mc) {
-    while(mc->GetMethodCall()) {
-      mc = mc->GetMethodCall();
-    }
-    if(mc->GetCastType()) {
-      type = mc->GetCastType();
-    }
-    else if(mc->GetEvalType()) {
-      type = mc->GetEvalType();
-    }
-  }
-  else if(e->GetCastType()) {
-    type = e->GetCastType();
-  }
+  // The comparison opcode must match what the operand actually pushes, not what
+  // the sub-expression's own eval type says -- see EffectiveStackType.
+  frontend::Type* type = EffectiveStackType(e);
 
   if(!type || type->GetType() != frontend::FLOAT_TYPE) {
     return false;
