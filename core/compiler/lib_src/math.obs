@@ -690,4 +690,317 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			return alen;
 		}
 	}
+
+	#~
+	An exact fraction, backed by `BigInt` so no operation can overflow.
+
+	Always in lowest terms with a positive denominator, so equal values are
+	identical and `Compare` is a comparison of two products. Immutable: every
+	operation returns a new value.
+
+```
+# the harmonic number H(5), exactly rather than as a float
+h := Rational->New(0);
+each(i : 5) { h := h->Add(Rational->New(1, i + 1)); };
+h->ToString()->PrintLine();     # 137/60
+```
+	~#
+	class Rational implements System.Compare, System.Stringify {
+		@num : BigInt;
+		@den : BigInt;
+
+		#~
+		Builds num/den in lowest terms. A zero denominator yields Nil, because
+		there is no value to represent -- unlike an `Int`-backed fraction there is
+		no overflow case to signal, so Nil is the only failure.
+		@param num numerator
+		@param den denominator
+		~#
+		function : Of(num : BigInt, den : BigInt) ~ Rational {
+			if(num = Nil | den = Nil | den->IsZero()) {
+				return Nil;
+			};
+
+			# the sign rides on the numerator
+			if(den->Sign() < 0) {
+				num := num->Negate();
+				den := den->Negate();
+			};
+
+			g := num->Gcd(den);
+			if(<>g->Equals(BigInt->One())) {
+				num := num->Divide(g);
+				den := den->Divide(g);
+			};
+
+			return Rational->Make(num, den);
+		}
+
+		function : Of(num : Int, den : Int) ~ Rational {
+			return Rational->Of(BigInt->New(num), BigInt->New(den));
+		}
+
+		#~
+		Coerces a whole number.
+		@param whole value
+		~#
+		function : Of(whole : Int) ~ Rational {
+			return Rational->Make(BigInt->New(whole), BigInt->One());
+		}
+
+		function : Of(whole : BigInt) ~ Rational {
+			if(whole = Nil) { return Nil; };
+			return Rational->Make(whole, BigInt->One());
+		}
+
+		# builds without reducing; callers must already hold lowest terms
+		function : Make(num : BigInt, den : BigInt) ~ Rational {
+			r := Rational->New();
+			r->Set(num, den);
+			return r;
+		}
+
+		New() {
+			Parent();
+		}
+
+		method : Set(num : BigInt, den : BigInt) ~ Nil {
+			@num := num;
+			@den := den;
+		}
+
+		#~
+		Parses `n`, `n/d` or a signed form of either.
+		@param text text
+		@return the value, or Nil if the text is not a fraction
+		~#
+		function : Parse(text : String) ~ Rational {
+			if(text = Nil) { return Nil; };
+			slash := text->Find('/');
+			if(slash < 0) {
+				w := BigInt->Parse(text);
+				if(w = Nil) { return Nil; };
+				return Rational->Of(w);
+			};
+			n := BigInt->Parse(text->SubString(slash));
+			d := BigInt->Parse(text->SubString(slash + 1, text->Size() - slash - 1));
+			if(n = Nil | d = Nil) { return Nil; };
+			return Rational->Of(n, d);
+		}
+
+		function : Zero() ~ Rational { return Rational->Of(0); }
+		function : One() ~ Rational { return Rational->Of(1); }
+
+		method : public : GetNumerator() ~ BigInt { return @num; }
+		method : public : GetDenominator() ~ BigInt { return @den; }
+
+		method : public : Sign() ~ Int { return @num->Sign(); }
+		method : public : IsZero() ~ Bool { return @num->IsZero(); }
+
+		#~
+		Whether this is a whole number, i.e. the reduced denominator is one.
+		@return true if whole
+		~#
+		method : public : IsWhole() ~ Bool { return @den->Equals(BigInt->One()); }
+
+		# ---- unary ----
+
+		method : public : Abs() ~ Rational {
+			if(@num->Sign() >= 0) { return @self; };
+			return Rational->Make(@num->Negate(), @den);
+		}
+
+		method : public : Negate() ~ Rational {
+			if(@num->IsZero()) { return @self; };
+			return Rational->Make(@num->Negate(), @den);
+		}
+
+		#~
+		The multiplicative inverse. Zero has none, so this returns Nil for it.
+		@return reciprocal
+		~#
+		method : public : Reciprocal() ~ Rational {
+			if(@num->IsZero()) { return Nil; };
+			return Rational->Of(@den, @num);
+		}
+
+		# ---- arithmetic ----
+		#
+		# Each result is reduced by Rational->New, so a long chain of operations
+		# keeps its terms as small as the values allow rather than growing the
+		# denominator without bound.
+
+		method : public : Add(rhs : Rational) ~ Rational {
+			if(rhs = Nil) { return Nil; };
+			n := @num->Multiply(rhs->GetDenominator())->Add(
+				rhs->GetNumerator()->Multiply(@den));
+			return Rational->Of(n, @den->Multiply(rhs->GetDenominator()));
+		}
+
+		method : public : Add(whole : Int) ~ Rational {
+			return Add(Rational->Of(whole));
+		}
+
+		method : public : Subtract(rhs : Rational) ~ Rational {
+			if(rhs = Nil) { return Nil; };
+			return Add(rhs->Negate());
+		}
+
+		method : public : Subtract(whole : Int) ~ Rational {
+			return Add(Rational->Of(0 - whole));
+		}
+
+		method : public : Multiply(rhs : Rational) ~ Rational {
+			if(rhs = Nil) { return Nil; };
+			return Rational->Of(@num->Multiply(rhs->GetNumerator()),
+				@den->Multiply(rhs->GetDenominator()));
+		}
+
+		method : public : Multiply(whole : Int) ~ Rational {
+			return Multiply(Rational->Of(whole));
+		}
+
+		#~
+		Division. Dividing by zero yields Nil.
+		@param rhs divisor
+		@return quotient
+		~#
+		method : public : Divide(rhs : Rational) ~ Rational {
+			if(rhs = Nil | rhs->IsZero()) { return Nil; };
+			return Rational->Of(@num->Multiply(rhs->GetDenominator()),
+				@den->Multiply(rhs->GetNumerator()));
+		}
+
+		method : public : Divide(whole : Int) ~ Rational {
+			return Divide(Rational->Of(whole));
+		}
+
+		#~
+		This value raised to an integer power. A negative exponent inverts, so
+		zero raised to one yields Nil.
+		@param e exponent
+		@return the power
+		~#
+		method : public : Pow(e : Int) ~ Rational {
+			if(e = 0) { return Rational->One(); };
+			if(e < 0) {
+				inv := Reciprocal();
+				if(inv = Nil) { return Nil; };
+				return inv->Pow(0 - e);
+			};
+			return Rational->Make(@num->Pow(e), @den->Pow(e));
+		}
+
+		#~
+		The greatest integer not greater than this value.
+
+		BigInt division truncates toward zero, which is the floor only for
+		non-negative values; a negative value with a remainder steps down.
+		@return floor
+		~#
+		method : public : Floor() ~ BigInt {
+			q := @num->Divide(@den);
+			if(@num->Sign() < 0) {
+				if(<>q->Multiply(@den)->Equals(@num)) {
+					q := q->Subtract(BigInt->One());
+				};
+			};
+			return q;
+		}
+
+		#~
+		The least integer not less than this value.
+		@return ceiling
+		~#
+		method : public : Ceiling() ~ BigInt {
+			f := Negate()->Floor();
+			return f->Negate();
+		}
+
+		#~
+		Flooring integer division: the quotient rounded toward negative infinity.
+		@param rhs divisor
+		@return quotient
+		~#
+		method : public : IntegerDivide(rhs : Rational) ~ BigInt {
+			q := Divide(rhs);
+			if(q = Nil) { return Nil; };
+			return q->Floor();
+		}
+
+		#~
+		Modulo, satisfying a = IntegerDivide(a,b) * b + Modulo(a,b). The result
+		takes the divisor's sign, which flooring division implies.
+		@param rhs divisor
+		@return remainder
+		~#
+		method : public : Modulo(rhs : Rational) ~ Rational {
+			q := IntegerDivide(rhs);
+			if(q = Nil) { return Nil; };
+			return Subtract(rhs->Multiply(Rational->Of(q)));
+		}
+
+		# ---- comparison ----
+
+		#~
+		-1, 0 or 1 as this value is less than, equal to or greater than the
+		argument. Both denominators are positive, so comparing the cross
+		products keeps the inequality's direction.
+		@param rhs other value
+		@return ordering
+		~#
+		method : public : Compare(rhs : Compare) ~ Int {
+			o := rhs->As(Rational);
+			if(o = Nil) { return 1; };
+			left := @num->Multiply(o->GetDenominator());
+			right := o->GetNumerator()->Multiply(@den);
+			return left->Compare(right);
+		}
+
+		#~
+		A hash consistent with Compare: lowest terms are unique, so equal values
+		have identical numerators and denominators.
+		@return hash
+		~#
+		method : public : HashID() ~ Int {
+			return @num->HashID() * 31 + @den->HashID();
+		}
+
+		method : public : Equals(rhs : Rational) ~ Bool {
+			if(rhs = Nil) { return false; };
+			# both sides are in lowest terms, so equality is componentwise
+			return @num->Equals(rhs->GetNumerator()) &
+				@den->Equals(rhs->GetDenominator());
+		}
+
+		method : public : LessThan(rhs : Rational) ~ Bool { return Compare(rhs) < 0; }
+		method : public : LessEqual(rhs : Rational) ~ Bool { return Compare(rhs) <= 0; }
+		method : public : GreaterThan(rhs : Rational) ~ Bool { return Compare(rhs) > 0; }
+		method : public : GreaterEqual(rhs : Rational) ~ Bool { return Compare(rhs) >= 0; }
+
+		# ---- conversion ----
+
+		#~
+		The value as a `Float`. Lossy by nature, and Nil-free: a fraction too
+		large for a `Float` yields an infinity rather than an error.
+		@return value
+		~#
+		method : public : ToFloat() ~ Float {
+			return @num->ToString()->ToFloat() / @den->ToString()->ToFloat();
+		}
+
+		#~
+		`n/d`, or just `n` when the denominator is one. Negative values carry the
+		sign on the numerator.
+		@return text
+		~#
+		method : public : ToString() ~ String {
+			if(IsWhole()) {
+				return @num->ToString();
+			};
+			n := @num->ToString();
+			d := @den->ToString();
+			return "{$n}/{$d}";
+		}
+	}
 }

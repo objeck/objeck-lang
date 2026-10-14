@@ -1,0 +1,258 @@
+#~
+# System.Math.Rational: exact fractions, backed by BigInt.
+#
+# EXTRA_LIBS: math
+#
+# Backed by BigInt rather than Int, so there is no overflow case to signal and
+# no precision to lose: the only way to fail is a zero denominator, which yields
+# Nil. An Int-backed fraction would have to detect a chain of unrelated
+# denominators exceeding 64 bits and report something; this cannot.
+#
+# What is pinned here are the properties that make the type usable rather than
+# merely present:
+#
+#   - lowest terms are canonical, with the sign on the numerator and a positive
+#     denominator, so equal values are componentwise identical and Compare is a
+#     comparison of two cross products. 3/-4 and -6/8 must be the same object
+#     shape, or Equals and HashID disagree with Compare.
+#   - flooring IntegerDivide and Modulo, where the remainder takes the DIVISOR's
+#     sign. This is deliberately NOT Int's convention (Int truncates and the
+#     remainder takes the dividend's sign), because a fraction's natural
+#     division is flooring. Both are asserted for all four sign combinations so
+#     the difference cannot be mistaken for an inconsistency.
+#   - exactness past Int. 2^200/3^100 has no representation in any fixed-width
+#     fraction, and a float cannot hold 1/3 at all. The harmonic number H(20) is
+#     the readable version of that: its denominator is larger than any Int.
+#
+# Nothing here interpolates a chained method call -- "{$x->A()->B()}" segfaults
+# the VM (#1107), which is how that defect was found.
+~#
+
+use System.Math;
+
+class MathRational {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MathRational->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# ---- construction reduces to lowest terms ----
+		Check("6/8 reduces", Rational->Of(6, 8)->ToString(), "3/4");
+		Check("100/10 is whole", Rational->Of(100, 10)->ToString(), "10");
+		Check("0/5 is zero", Rational->Of(0, 5)->ToString(), "0");
+		Check("coprime is unchanged", Rational->Of(3, 7)->ToString(), "3/7");
+		Check("Int coercion", Rational->Of(5)->ToString(), "5");
+		Check("BigInt coercion", Rational->Of(BigInt->Parse("123456789012345678901"))->ToString(),
+			"123456789012345678901");
+
+		# the sign rides on the numerator, whichever side carried it
+		Check("3/-4 moves the sign up", Rational->Of(3, -4)->ToString(), "-3/4");
+		Check("-3/4 stays", Rational->Of(-3, 4)->ToString(), "-3/4");
+		Check("-3/-4 cancels", Rational->Of(-3, -4)->ToString(), "3/4");
+		Check("-6/8 reduces and signs", Rational->Of(-6, 8)->ToString(), "-3/4");
+		CheckBool("3/-4 equals -6/8",
+			Rational->Of(3, -4)->Equals(Rational->Of(-6, 8)), true);
+		CheckBool("equal values hash equally",
+			Rational->Of(3, -4)->HashID() = Rational->Of(-6, 8)->HashID(), true);
+		CheckInt("equal values compare 0",
+			Rational->Of(3, -4)->Compare(Rational->Of(-6, 8)), 0);
+
+		# a zero denominator has no value to represent
+		CheckBool("1/0 is Nil", Rational->Of(1, 0) = Nil, true);
+		CheckBool("0/0 is Nil", Rational->Of(0, 0) = Nil, true);
+
+		# ---- parsing ----
+		Check("parse a whole number", Rational->Parse("42")->ToString(), "42");
+		Check("parse a fraction", Rational->Parse("6/8")->ToString(), "3/4");
+		Check("parse a negative fraction", Rational->Parse("-6/8")->ToString(), "-3/4");
+		Check("parse a negative denominator", Rational->Parse("6/-8")->ToString(), "-3/4");
+		CheckBool("reject junk", Rational->Parse("6/x") = Nil, true);
+		CheckBool("reject a zero denominator", Rational->Parse("6/0") = Nil, true);
+
+		# ---- arithmetic ----
+		x := Rational->Of(2, 3);
+		y := Rational->Of(3, 4);
+		Check("2/3 + 3/4", x->Add(y)->ToString(), "17/12");
+		Check("2/3 - 3/4", x->Subtract(y)->ToString(), "-1/12");
+		Check("2/3 * 3/4", x->Multiply(y)->ToString(), "1/2");
+		Check("2/3 / 3/4", x->Divide(y)->ToString(), "8/9");
+		Check("2/3 + 1 (Int)", x->Add(1)->ToString(), "5/3");
+		Check("2/3 - 1 (Int)", x->Subtract(1)->ToString(), "-1/3");
+		Check("2/3 * 3 (Int)", x->Multiply(3)->ToString(), "2");
+		Check("2/3 / 2 (Int)", x->Divide(2)->ToString(), "1/3");
+		Check("sum reduces", Rational->Of(1, 6)->Add(Rational->Of(1, 3))->ToString(), "1/2");
+		Check("difference to zero",
+			Rational->Of(1, 3)->Subtract(Rational->Of(1, 3))->ToString(), "0");
+		CheckBool("divide by zero is Nil",
+			x->Divide(Rational->Of(0)) = Nil, true);
+
+		# ---- unary ----
+		n := Rational->Of(-7, 3);
+		Check("abs(-7/3)", n->Abs()->ToString(), "7/3");
+		Check("abs(7/3)", Rational->Of(7, 3)->Abs()->ToString(), "7/3");
+		Check("negate(-7/3)", n->Negate()->ToString(), "7/3");
+		Check("negate(2/3)", x->Negate()->ToString(), "-2/3");
+		Check("negate(0)", Rational->Of(0)->Negate()->ToString(), "0");
+		Check("reciprocal(2/3)", x->Reciprocal()->ToString(), "3/2");
+		Check("reciprocal(-7/3)", n->Reciprocal()->ToString(), "-3/7");
+		CheckBool("reciprocal of zero is Nil",
+			Rational->Of(0)->Reciprocal() = Nil, true);
+
+		# ---- powers ----
+		Check("(2/3)^0", x->Pow(0)->ToString(), "1");
+		Check("(2/3)^3", x->Pow(3)->ToString(), "8/27");
+		Check("(2/3)^-2", x->Pow(-2)->ToString(), "9/4");
+		Check("(-2/3)^3", Rational->Of(-2, 3)->Pow(3)->ToString(), "-8/27");
+		Check("(-2/3)^2", Rational->Of(-2, 3)->Pow(2)->ToString(), "4/9");
+		CheckBool("0^-1 is Nil", Rational->Of(0)->Pow(-1) = Nil, true);
+
+		# ---- floor, ceiling ----
+		Check("floor(2/3)", Rational->Of(2, 3)->Floor()->ToString(), "0");
+		Check("floor(-2/3)", Rational->Of(-2, 3)->Floor()->ToString(), "-1");
+		Check("floor(7/2)", Rational->Of(7, 2)->Floor()->ToString(), "3");
+		Check("floor(-7/2)", Rational->Of(-7, 2)->Floor()->ToString(), "-4");
+		Check("floor of a whole value", Rational->Of(4)->Floor()->ToString(), "4");
+		Check("floor(-4)", Rational->Of(-4)->Floor()->ToString(), "-4");
+		Check("ceiling(2/3)", Rational->Of(2, 3)->Ceiling()->ToString(), "1");
+		Check("ceiling(-2/3)", Rational->Of(-2, 3)->Ceiling()->ToString(), "0");
+		Check("ceiling(7/2)", Rational->Of(7, 2)->Ceiling()->ToString(), "4");
+		Check("ceiling of a whole value", Rational->Of(4)->Ceiling()->ToString(), "4");
+
+		# ---- flooring division: the remainder takes the DIVISOR's sign ----
+		p := Rational->Of(7, 2);
+		q := Rational->Of(2, 3);
+		Check("7/2 div 2/3", p->IntegerDivide(q)->ToString(), "5");
+		Check("7/2 mod 2/3", p->Modulo(q)->ToString(), "1/6");
+		Check("-7/2 div 2/3", Rational->Of(-7, 2)->IntegerDivide(q)->ToString(), "-6");
+		Check("-7/2 mod 2/3", Rational->Of(-7, 2)->Modulo(q)->ToString(), "1/2");
+		Check("7/2 div -2/3", p->IntegerDivide(Rational->Of(-2, 3))->ToString(), "-6");
+		Check("7/2 mod -2/3", p->Modulo(Rational->Of(-2, 3))->ToString(), "-1/2");
+		Check("-7/2 div -2/3",
+			Rational->Of(-7, 2)->IntegerDivide(Rational->Of(-2, 3))->ToString(), "5");
+		Check("-7/2 mod -2/3",
+			Rational->Of(-7, 2)->Modulo(Rational->Of(-2, 3))->ToString(), "-1/6");
+		Check("exact division leaves no remainder",
+			Rational->Of(1, 2)->Modulo(Rational->Of(1, 4))->ToString(), "0");
+
+		# ---- comparison ----
+		CheckInt("2/3 vs 3/4", x->Compare(y), -1);
+		CheckInt("3/4 vs 2/3", y->Compare(x), 1);
+		CheckInt("2/3 vs 2/3", x->Compare(Rational->Of(2, 3)), 0);
+		CheckInt("-2/3 vs 2/3", Rational->Of(-2, 3)->Compare(x), -1);
+		CheckInt("-3/4 vs -2/3",
+			Rational->Of(-3, 4)->Compare(Rational->Of(-2, 3)), -1);
+		CheckBool("2/3 < 3/4", x->LessThan(y), true);
+		CheckBool("2/3 <= 2/3", x->LessEqual(Rational->Of(2, 3)), true);
+		CheckBool("3/4 > 2/3", y->GreaterThan(x), true);
+		CheckBool("2/3 >= 3/4", x->GreaterEqual(y), false);
+		# 1/3 and 100000/300001 are close enough that a float comparison can tie
+		CheckInt("a near tie orders correctly",
+			Rational->Of(1, 3)->Compare(Rational->Of(100000, 300001)), 1);
+
+		# ---- predicates and accessors ----
+		CheckBool("4/2 is whole", Rational->Of(4, 2)->IsWhole(), true);
+		CheckBool("2/3 is not whole", x->IsWhole(), false);
+		CheckBool("0 is zero", Rational->Of(0)->IsZero(), true);
+		CheckInt("sign of -2/3", Rational->Of(-2, 3)->Sign(), -1);
+		CheckInt("sign of 0", Rational->Of(0)->Sign(), 0);
+		CheckInt("sign of 2/3", x->Sign(), 1);
+		num := x->GetNumerator();
+		den := x->GetDenominator();
+		Check("numerator", num->ToString(), "2");
+		Check("denominator", den->ToString(), "3");
+
+		# ---- exactness past any fixed width ----
+		# 2^200 / 3^100: coprime, so neither side reduces, and both exceed Int
+		big := Rational->Of(BigInt->New(2)->Pow(200), BigInt->New(3)->Pow(100));
+		bnum := big->GetNumerator();
+		bden := big->GetDenominator();
+		CheckInt("2^200 numerator digits", bnum->DigitCount(), 61);
+		CheckInt("3^100 denominator digits", bden->DigitCount(), 48);
+		CheckBool("2^200/3^100 does not reduce",
+			bnum->Equals(BigInt->New(2)->Pow(200)), true);
+
+		# H(20): the denominator exceeds Int, so no Int-backed fraction holds it
+		h := Rational->Of(0);
+		each(i : 20) {
+			h := h->Add(Rational->Of(1, i + 1));
+		};
+		Check("H(20) exactly", h->ToString(), "55835135/15519504");
+		# and it is strictly between 3 and 4, which a float could not settle
+		CheckBool("H(20) > 3", h->GreaterThan(Rational->Of(3)), true);
+		CheckBool("H(20) < 4", h->LessThan(Rational->Of(4)), true);
+
+		# a chain that would overflow 64 bits at every step if it were Int-backed
+		acc := Rational->Of(1);
+		each(i : 30) {
+			acc := acc->Multiply(Rational->Of(i + 2, i + 3));
+		};
+		# (2/3)(3/4)...(31/32) telescopes to 2/32, which in lowest terms is 1/16 --
+		# writing 2/32 here contradicted the reduction this very test asserts
+		Check("a 30-term product telescopes", acc->ToString(), "1/16");
+
+		# ---- the Rosetta Code task: perfect numbers below 2^19 ----
+		# N is perfect when the reciprocals of its divisors sum to exactly 2
+		two := Rational->Of(2);
+		found := "";
+		for(cand := 2; cand < 10000; cand += 1;) {
+			sum := Rational->Of(0);
+			d := 1;
+			while(d * d <= cand) {
+				if(cand % d = 0) {
+					sum := sum->Add(Rational->Of(1, d));
+					e := cand / d;
+					if(e <> d) {
+						sum := sum->Add(Rational->Of(1, e));
+					};
+				};
+				d += 1;
+			};
+			if(sum->Equals(two)) {
+				found += "{$cand} ";
+			};
+		};
+		Check("perfect numbers below 10000", found->Trim(), "6 28 496 8128");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
