@@ -15,6 +15,8 @@ $OBC -src lib_src/gen_collect.obs -lib ../lib/lang -tar lib -opt s3 -dest ../lib
 $OBC -src lib_src/concurrent.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/concurrent.obl
 $OBC -src lib_src/json_stream.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json_stream.obl
 $OBC -src lib_src/cipher.obs -tar lib -opt s3 -dest ../lib/cipher.obl
+# Exact arithmetic. Depends on nothing but lang.
+$OBC -src lib_src/math.obs -tar lib -opt s3 -dest ../lib/math.obl
 $OBC -src lib_src/json.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/json.obl
 # The types API.Onnx and API.Inference share. Built before both, because
 # both link it; needs nothing but gen_collect itself.

@@ -1,0 +1,693 @@
+#~
+Arbitrary-precision and exact arithmetic.
+
+Objeck's `Int` is 64-bit and wraps silently rather than trapping, so a
+calculation that exceeds it produces a plausible wrong answer with no
+diagnostic. `BigInt` is exact at any size instead, bounded only by memory.
+
+Compile with `-lib math`.
+~#
+bundle System.Math {
+	#~
+	An integer of arbitrary size, exact at every step.
+
+	Immutable: every operation returns a new value and none modifies its
+	receiver, so a `BigInt` can be shared without copying.
+
+```
+f := BigInt->New(1);
+each(i : 25) { f := f->Multiply(BigInt->New(i + 1)); };
+f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
+```
+	~#
+	class BigInt implements System.Compare, System.Stringify {
+		# Sign and magnitude. @sign is -1, 0 or 1, and is 0 if and only if the
+		# value is zero -- so a zero never carries a sign and two zeros compare
+		# equal whatever produced them.
+		@sign : Int;
+		# Little-endian limbs, least significant first. @mag may be longer than
+		# @len; only the first @len entries are significant and the top one is
+		# never zero unless the value is zero.
+		@mag : Int[];
+		@len : Int;
+
+		# A decimal base makes ToString a copy rather than a division loop, which
+		# matters because rendering is how a big number is usually consumed.
+		#
+		# 10^6 specifically: a limb is under 10^6, so a product of two is under
+		# 10^12, and a column of such products stays exact in Int (9.2 * 10^18)
+		# for operands up to about 9.2 million limbs. Int wraps in silence, so a
+		# column sum that overflowed would yield a convincing wrong answer rather
+		# than a failure -- the margin is the safety, not an optimisation.
+		function : Base() ~ Int { return 1000000; }
+		function : BaseDigits() ~ Int { return 6; }
+
+		#~
+		Builds a value from an `Int`.
+		@param value value
+		~#
+		New(value : Int) {
+			Parent();
+			@mag := Int->New[4];
+			@len := 1;
+
+			if(value = 0) {
+				@sign := 0;
+				return;
+			};
+
+			if(value < 0) {
+				@sign := -1;
+				# Int->MIN has no positive counterpart, so it is accumulated
+				# through negative values instead of being negated up front
+				b := BigInt->Base();
+				@len := 0;
+				while(value <> 0) {
+					r := value % b;
+					if(r < 0) { r := 0 - r; };
+					@mag := Grow(@mag, @len + 1);
+					@mag[@len] := r;
+					@len += 1;
+					value := value / b;
+				};
+			}
+			else {
+				@sign := 1;
+				b := BigInt->Base();
+				@len := 0;
+				while(value <> 0) {
+					@mag := Grow(@mag, @len + 1);
+					@mag[@len] := value % b;
+					@len += 1;
+					value := value / b;
+				};
+			};
+
+			if(@len = 0) { @len := 1; };
+		}
+
+		New(sign : Int, mag : Int[], len : Int) {
+			Parent();
+			@sign := sign;
+			@mag := mag;
+			@len := len;
+			Trim();
+		}
+
+		#~
+		Parses a decimal string, with an optional leading `-` or `+`.
+		@param text text
+		@return the value, or Nil if the text is not a decimal integer
+		~#
+		function : Parse(text : String) ~ BigInt {
+			if(text = Nil | text->Size() = 0) {
+				return Nil;
+			};
+
+			chars := text->ToCharArray();
+			start := 0;
+			sign := 1;
+			if(chars[0] = '-') {
+				sign := -1;
+				start := 1;
+			}
+			else if(chars[0] = '+') {
+				start := 1;
+			};
+			if(start >= chars->Size()) {
+				return Nil;
+			};
+
+			# every remaining character must be a digit; a partial parse that
+			# stopped at the first non-digit would accept "12x" as 12
+			for(i := start; i < chars->Size(); i += 1;) {
+				d := chars[i]->As(Int) - 48;
+				if(d < 0 | d > 9) {
+					return Nil;
+				};
+			};
+
+			# group the digits into base-10^6 limbs from the least significant
+			# end, so only the most significant limb is a partial group
+			digits := chars->Size() - start;
+			per := BigInt->BaseDigits();
+			len := (digits + per - 1) / per;
+			mag := Int->New[len];
+
+			pos := chars->Size() - 1;
+			for(i := 0; i < len; i += 1;) {
+				v := 0;
+				scale := 1;
+				k := 0;
+				while(k < per & pos >= start) {
+					v += (chars[pos]->As(Int) - 48) * scale;
+					scale *= 10;
+					pos -= 1;
+					k += 1;
+				};
+				mag[i] := v;
+			};
+
+			return BigInt->New(sign, mag, len);
+		}
+
+		function : Zero() ~ BigInt { return BigInt->New(0); }
+		function : One() ~ BigInt { return BigInt->New(1); }
+
+		# ---- inspection ----
+
+		#~
+		-1, 0 or 1 as this value is negative, zero or positive.
+		@return sign
+		~#
+		method : public : Sign() ~ Int { return @sign; }
+
+		method : public : IsZero() ~ Bool { return @sign = 0; }
+
+		#~
+		The number of decimal digits, not counting a sign.
+		@return digit count
+		~#
+		method : public : DigitCount() ~ Int {
+			top := @mag[@len - 1];
+			n := 0;
+			while(top > 0) {
+				n += 1;
+				top := top / 10;
+			};
+			if(n = 0) { n := 1; };
+			return (@len - 1) * BigInt->BaseDigits() + n;
+		}
+
+		#~
+		The value as an `Int`, or 0 if it does not fit. Check with `FitsInt`
+		first; 0 is also a legitimate value, so the result alone cannot say.
+		@return value
+		~#
+		method : public : ToInt() ~ Int {
+			if(<>FitsInt()) { return 0; };
+			b := BigInt->Base();
+			v := 0;
+			for(i := @len - 1; i >= 0; i -= 1;) {
+				v := v * b + @mag[i];
+			};
+			if(@sign < 0) { v := 0 - v; };
+			return v;
+		}
+
+		#~
+		Whether the value fits in an `Int`.
+		@return true if it fits
+		~#
+		method : public : FitsInt() ~ Bool {
+			# 9223372036854775807 is 19 digits, so four base-10^6 limbs (24
+			# digits) can exceed it and three (18) never can
+			if(@len < 4) { return true; };
+			if(@len > 4) { return false; };
+			# compare against the limit exactly rather than by digit count
+			limit := BigInt->Parse("9223372036854775807");
+			if(@sign < 0) {
+				limit := BigInt->Parse("9223372036854775808");
+			};
+			return MagCompareTo(limit) <= 0;
+		}
+
+		# ---- unary ----
+
+		method : public : Abs() ~ BigInt {
+			if(@sign >= 0) { return @self; };
+			return BigInt->New(1, CopyMag(), @len);
+		}
+
+		method : public : Negate() ~ BigInt {
+			if(@sign = 0) { return @self; };
+			s := 0 - @sign;
+			return BigInt->New(s, CopyMag(), @len);
+		}
+
+		# ---- arithmetic ----
+
+		method : public : Add(rhs : BigInt) ~ BigInt {
+			if(rhs = Nil) { return Nil; };
+			if(@sign = 0) { return rhs; };
+			if(rhs->Sign() = 0) { return @self; };
+
+			if(@sign = rhs->Sign()) {
+				return BigInt->New(@sign, MagAdd(rhs), MagAddLen(rhs));
+			};
+
+			# opposite signs: the larger magnitude decides the sign
+			c := MagCompareTo(rhs);
+			if(c = 0) { return BigInt->Zero(); };
+			if(c > 0) {
+				return BigInt->New(@sign, MagSub(rhs), @len);
+			};
+			s := rhs->Sign();
+			return BigInt->New(s, rhs->MagSub(@self), rhs->GetLength());
+		}
+
+		method : public : Subtract(rhs : BigInt) ~ BigInt {
+			if(rhs = Nil) { return Nil; };
+			return Add(rhs->Negate());
+		}
+
+		method : public : Multiply(rhs : BigInt) ~ BigInt {
+			if(rhs = Nil) { return Nil; };
+			if(@sign = 0 | rhs->Sign() = 0) { return BigInt->Zero(); };
+
+			b := BigInt->Base();
+			rlen := rhs->GetLength();
+			rmag := rhs->GetMag();
+			out_len := @len + rlen;
+			out := Int->New[out_len];
+
+			for(i := 0; i < @len; i += 1;) {
+				carry := 0;
+				ai := @mag[i];
+				for(j := 0; j < rlen; j += 1;) {
+					cur := out[i + j] + ai * rmag[j] + carry;
+					out[i + j] := cur % b;
+					carry := cur / b;
+				};
+				k := i + rlen;
+				while(carry > 0) {
+					cur := out[k] + carry;
+					out[k] := cur % b;
+					carry := cur / b;
+					k += 1;
+				};
+			};
+
+			s := @sign * rhs->Sign();
+			return BigInt->New(s, out, out_len);
+		}
+
+		#~
+		Truncating division: the quotient rounds toward zero, matching `Int`'s
+		`/`. Returns Nil for a zero divisor.
+		@param rhs divisor
+		@return quotient
+		~#
+		method : public : Divide(rhs : BigInt) ~ BigInt {
+			return DivMod(rhs, false);
+		}
+
+		#~
+		The remainder of truncating division, taking the dividend's sign --
+		matching `Int`'s `%`. Returns Nil for a zero divisor.
+		@param rhs divisor
+		@return remainder
+		~#
+		method : public : Modulo(rhs : BigInt) ~ BigInt {
+			return DivMod(rhs, true);
+		}
+
+		#~
+		This value raised to a non-negative power, by repeated squaring.
+		@param e exponent
+		@return the power, or Nil if the exponent is negative
+		~#
+		method : public : Pow(e : Int) ~ BigInt {
+			if(e < 0) { return Nil; };
+			if(e = 0) { return BigInt->One(); };
+
+			result := BigInt->One();
+			factor := @self;
+			while(e > 0) {
+				if(e % 2 = 1) {
+					result := result->Multiply(factor);
+				};
+				e := e / 2;
+				if(e > 0) {
+					factor := factor->Multiply(factor);
+				};
+			};
+			return result;
+		}
+
+		#~
+		The greatest common divisor of the two magnitudes, by Euclid. Always
+		non-negative, and zero only when both values are zero.
+		@param rhs other value
+		@return greatest common divisor
+		~#
+		method : public : Gcd(rhs : BigInt) ~ BigInt {
+			if(rhs = Nil) { return Nil; };
+			a := Abs();
+			b := rhs->Abs();
+			while(<>b->IsZero()) {
+				t := a->Modulo(b);
+				a := b;
+				b := t;
+			};
+			return a;
+		}
+
+		# ---- comparison ----
+
+		#~
+		-1, 0 or 1 as this value is less than, equal to or greater than the
+		argument.
+		@param rhs other value
+		@return ordering
+		~#
+		method : public : Compare(rhs : Compare) ~ Int {
+			o := rhs->As(BigInt);
+			if(o = Nil) { return 1; };
+			if(@sign <> o->Sign()) {
+				if(@sign < o->Sign()) { return -1; };
+				return 1;
+			};
+			if(@sign = 0) { return 0; };
+			c := MagCompareTo(o);
+			# with both negative, the larger magnitude is the smaller value
+			if(@sign < 0) { return 0 - c; };
+			return c;
+		}
+
+		#~
+		A hash consistent with Compare: the representation is canonical -- trimmed,
+		with a zero never carrying a sign -- so two equal values always have
+		identical limbs and therefore the same hash.
+		@return hash
+		~#
+		method : public : HashID() ~ Int {
+			h := @sign;
+			for(i := 0; i < @len; i += 1;) {
+				h := h * 31 + @mag[i];
+			};
+			if(h < 0) { h := 0 - h; };
+			return h;
+		}
+
+		method : public : Equals(rhs : BigInt) ~ Bool {
+			if(rhs = Nil) { return false; };
+			return Compare(rhs) = 0;
+		}
+
+		method : public : LessThan(rhs : BigInt) ~ Bool { return Compare(rhs) < 0; }
+		method : public : GreaterThan(rhs : BigInt) ~ Bool { return Compare(rhs) > 0; }
+
+		# ---- rendering ----
+
+		#~
+		The value in decimal, with a leading `-` when negative.
+		@return text
+		~#
+		method : public : ToString() ~ String {
+			if(@sign = 0) { return "0"; };
+
+			out := "";
+			if(@sign < 0) { out += "-"; };
+			# the top limb has no leading zeros; every limb below it is padded to
+			# the full width, because 1 followed by 000001 is not 11
+			out += @mag[@len - 1]->ToString();
+			for(i := @len - 2; i >= 0; i -= 1;) {
+				out += Pad(@mag[i]);
+			};
+			return out;
+		}
+
+		# ---- internals ----
+
+		method : public : GetLength() ~ Int { return @len; }
+		method : public : GetMag() ~ Int[] { return @mag; }
+
+		method : Pad(v : Int) ~ String {
+			s := v->ToString();
+			while(s->Size() < BigInt->BaseDigits()) {
+				s := "0" + s;
+			};
+			return s;
+		}
+
+		method : CopyMag() ~ Int[] {
+			out := Int->New[@len];
+			for(i := 0; i < @len; i += 1;) {
+				out[i] := @mag[i];
+			};
+			return out;
+		}
+
+		function : Grow(a : Int[], need : Int) ~ Int[] {
+			if(a->Size() >= need) { return a; };
+			cap := a->Size() * 2;
+			if(cap < need) { cap := need; };
+			out := Int->New[cap];
+			for(i := 0; i < a->Size(); i += 1;) {
+				out[i] := a[i];
+			};
+			return out;
+		}
+
+		# Drops leading zero limbs, and forces the sign to 0 for a zero value so
+		# that a cancelling subtraction cannot leave a signed zero behind.
+		method : Trim() ~ Nil {
+			while(@len > 1 & @mag[@len - 1] = 0) {
+				@len -= 1;
+			};
+			if(@len = 1 & @mag[0] = 0) {
+				@sign := 0;
+			};
+		}
+
+		# magnitudes only, ignoring both signs
+		method : MagCompareTo(rhs : BigInt) ~ Int {
+			rlen := rhs->GetLength();
+			if(@len <> rlen) {
+				if(@len < rlen) { return -1; };
+				return 1;
+			};
+			rmag := rhs->GetMag();
+			for(i := @len - 1; i >= 0; i -= 1;) {
+				if(@mag[i] <> rmag[i]) {
+					if(@mag[i] < rmag[i]) { return -1; };
+					return 1;
+				};
+			};
+			return 0;
+		}
+
+		method : MagAddLen(rhs : BigInt) ~ Int {
+			if(@len > rhs->GetLength()) { return @len + 1; };
+			return rhs->GetLength() + 1;
+		}
+
+		method : MagAdd(rhs : BigInt) ~ Int[] {
+			b := BigInt->Base();
+			rlen := rhs->GetLength();
+			rmag := rhs->GetMag();
+			n := MagAddLen(rhs);
+			out := Int->New[n];
+
+			carry := 0;
+			for(i := 0; i < n; i += 1;) {
+				cur := carry;
+				if(i < @len) { cur += @mag[i]; };
+				if(i < rlen) { cur += rmag[i]; };
+				out[i] := cur % b;
+				carry := cur / b;
+			};
+			return out;
+		}
+
+		# this magnitude minus rhs's, which the caller has established is smaller
+		method : MagSub(rhs : BigInt) ~ Int[] {
+			b := BigInt->Base();
+			rlen := rhs->GetLength();
+			rmag := rhs->GetMag();
+			out := Int->New[@len];
+
+			borrow := 0;
+			for(i := 0; i < @len; i += 1;) {
+				cur := @mag[i] - borrow;
+				if(i < rlen) { cur -= rmag[i]; };
+				if(cur < 0) {
+					cur += b;
+					borrow := 1;
+				}
+				else {
+					borrow := 0;
+				};
+				out[i] := cur;
+			};
+			return out;
+		}
+
+		#~
+		Truncating division, returning either the quotient or the remainder.
+
+		Schoolbook long division, one quotient limb at a time from the most
+		significant end. The divisor is first scaled so its top limb is at least
+		half the base: with that done, estimating a quotient limb from the top
+		two limbs of the running remainder is wrong by at most two, so the
+		correction loop below is bounded. Without the scaling the estimate can be
+		off by a factor, and the loop degrades into a search.
+		~#
+		method : DivMod(rhs : BigInt, want_remainder : Bool) ~ BigInt {
+			if(rhs = Nil | rhs->IsZero()) { return Nil; };
+			if(@sign = 0) { return BigInt->Zero(); };
+
+			# |dividend| < |divisor|: the quotient is zero and the remainder is
+			# the dividend, both before any scaling
+			if(MagCompareTo(rhs) < 0) {
+				if(want_remainder) { return @self; };
+				return BigInt->Zero();
+			};
+
+			b := BigInt->Base();
+			vlen := rhs->GetLength();
+
+			# a single-limb divisor needs no estimation at all
+			if(vlen = 1) {
+				# an index does not apply directly to a call result
+				vmag := rhs->GetMag();
+				d := vmag[0];
+				q := Int->New[@len];
+				rem := 0;
+				for(i := @len - 1; i >= 0; i -= 1;) {
+					cur := rem * b + @mag[i];
+					q[i] := cur / d;
+					rem := cur % d;
+				};
+				if(want_remainder) {
+					r := Int->New[1];
+					r[0] := rem;
+					return BigInt->New(@sign, r, 1);
+				};
+				s := @sign * rhs->Sign();
+				return BigInt->New(s, q, @len);
+			};
+
+			# scale both sides so the divisor's top limb is >= base/2
+			vmag0 := rhs->GetMag();
+			scale := b / (vmag0[vlen - 1] + 1);
+			if(scale < 1) { scale := 1; };
+			u := MulSmall(@mag, @len, scale);
+			v := MulSmall(vmag0, vlen, scale);
+			ulen := TrimLen(u, @len + 1);
+			vlen := TrimLen(v, vlen + 1);
+
+			quot := Int->New[ulen];
+			# the running remainder, holding at most vlen + 1 limbs
+			rem := Int->New[vlen + 2];
+			rlen := 0;
+
+			for(i := ulen - 1; i >= 0; i -= 1;) {
+				# shift one limb of the dividend in at the bottom
+				for(k := rlen; k > 0; k -= 1;) {
+					rem[k] := rem[k - 1];
+				};
+				rem[0] := u[i];
+				rlen += 1;
+				while(rlen > 1 & rem[rlen - 1] = 0) { rlen -= 1; };
+
+				# estimate this quotient limb from the leading limbs
+				q := 0;
+				if(CompareRaw(rem, rlen, v, vlen) >= 0) {
+					top := rem[rlen - 1];
+					if(rlen > vlen) {
+						top := top * b + rem[rlen - 2];
+					};
+					q := top / v[vlen - 1];
+					if(q > b - 1) { q := b - 1; };
+
+					# bounded by the scaling above: at most two corrections
+					t := MulSmall(v, vlen, q);
+					tlen := TrimLen(t, vlen + 1);
+					while(CompareRaw(t, tlen, rem, rlen) > 0) {
+						q -= 1;
+						t := MulSmall(v, vlen, q);
+						tlen := TrimLen(t, vlen + 1);
+					};
+					rlen := SubRaw(rem, rlen, t, tlen);
+				};
+				quot[i] := q;
+			};
+
+			if(want_remainder) {
+				# undo the scaling; the remainder was scaled with the dividend
+				if(scale > 1) {
+					rem := DivSmall(rem, rlen, scale);
+					rlen := TrimLen(rem, rlen);
+				};
+				return BigInt->New(@sign, rem, rlen);
+			};
+			s := @sign * rhs->Sign();
+			return BigInt->New(s, quot, ulen);
+		}
+
+		# ---- raw magnitude helpers, on plain arrays ----
+
+		function : MulSmall(a : Int[], alen : Int, m : Int) ~ Int[] {
+			b := BigInt->Base();
+			out := Int->New[alen + 2];
+			carry := 0;
+			for(i := 0; i < alen; i += 1;) {
+				cur := a[i] * m + carry;
+				out[i] := cur % b;
+				carry := cur / b;
+			};
+			i := alen;
+			while(carry > 0) {
+				out[i] := carry % b;
+				carry := carry / b;
+				i += 1;
+			};
+			return out;
+		}
+
+		function : DivSmall(a : Int[], alen : Int, d : Int) ~ Int[] {
+			b := BigInt->Base();
+			out := Int->New[alen + 1];
+			rem := 0;
+			for(i := alen - 1; i >= 0; i -= 1;) {
+				cur := rem * b + a[i];
+				out[i] := cur / d;
+				rem := cur % d;
+			};
+			return out;
+		}
+
+		function : TrimLen(a : Int[], len : Int) ~ Int {
+			if(len > a->Size()) { len := a->Size(); };
+			while(len > 1 & a[len - 1] = 0) { len -= 1; };
+			if(len < 1) { len := 1; };
+			return len;
+		}
+
+		function : CompareRaw(a : Int[], alen : Int, c : Int[], clen : Int) ~ Int {
+			if(alen <> clen) {
+				if(alen < clen) { return -1; };
+				return 1;
+			};
+			for(i := alen - 1; i >= 0; i -= 1;) {
+				if(a[i] <> c[i]) {
+					if(a[i] < c[i]) { return -1; };
+					return 1;
+				};
+			};
+			return 0;
+		}
+
+		# a -= c, in place; returns a's new significant length
+		function : SubRaw(a : Int[], alen : Int, c : Int[], clen : Int) ~ Int {
+			b := BigInt->Base();
+			borrow := 0;
+			for(i := 0; i < alen; i += 1;) {
+				cur := a[i] - borrow;
+				if(i < clen) { cur -= c[i]; };
+				if(cur < 0) {
+					cur += b;
+					borrow := 1;
+				}
+				else {
+					borrow := 0;
+				};
+				a[i] := cur;
+			};
+			while(alen > 1 & a[alen - 1] = 0) { alen -= 1; };
+			return alen;
+		}
+	}
+}

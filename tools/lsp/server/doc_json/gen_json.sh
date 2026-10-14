@@ -45,6 +45,7 @@ rm -f *.obe
 	$LIB_SRC/cipher.obs \
 	$LIB_SRC/odbc.obs \
 	$LIB_SRC/csv.obs \
+	$LIB_SRC/math.obs \
 	$LIB_SRC/query.obs \
 	$LIB_SRC/sdl2.obs \
 	$LIB_SRC/sdl_game.obs \
