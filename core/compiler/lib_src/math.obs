@@ -39,8 +39,8 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 		# for operands up to about 9.2 million limbs. Int wraps in silence, so a
 		# column sum that overflowed would yield a convincing wrong answer rather
 		# than a failure -- the margin is the safety, not an optimisation.
-		function : Base() ~ Int { return 1000000; }
-		function : BaseDigits() ~ Int { return 6; }
+		function : private : Base() ~ Int { return 1000000; }
+		function : private : BaseDigits() ~ Int { return 6; }
 
 		#~
 		Builds a value from an `Int`.
@@ -86,7 +86,7 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			if(@len = 0) { @len := 1; };
 		}
 
-		New(sign : Int, mag : Int[], len : Int) {
+		New : private (sign : Int, mag : Int[], len : Int) {
 			Parent();
 			@sign := sign;
 			@mag := mag;
@@ -151,7 +151,15 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			return BigInt->New(sign, mag, len);
 		}
 
+		#~
+		Zero.
+		@return zero
+		~#
 		function : Zero() ~ BigInt { return BigInt->New(0); }
+		#~
+		One.
+		@return one
+		~#
 		function : One() ~ BigInt { return BigInt->New(1); }
 
 		# ---- inspection ----
@@ -162,6 +170,10 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 		~#
 		method : public : Sign() ~ Int { return @sign; }
 
+		#~
+		Whether the value is zero.
+		@return true if zero
+		~#
 		method : public : IsZero() ~ Bool { return @sign = 0; }
 
 		#~
@@ -214,11 +226,19 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 
 		# ---- unary ----
 
+		#~
+		The absolute value.
+		@return the magnitude, as a non-negative value
+		~#
 		method : public : Abs() ~ BigInt {
 			if(@sign >= 0) { return @self; };
 			return BigInt->New(1, CopyMag(), @len);
 		}
 
+		#~
+		The value with its sign reversed. Zero negates to itself.
+		@return the negation
+		~#
 		method : public : Negate() ~ BigInt {
 			if(@sign = 0) { return @self; };
 			s := 0 - @sign;
@@ -227,6 +247,11 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 
 		# ---- arithmetic ----
 
+		#~
+		The sum. Exact at any size.
+		@param rhs value to add
+		@return the sum, or Nil if rhs is Nil
+		~#
 		method : public : Add(rhs : BigInt) ~ BigInt {
 			if(rhs = Nil) { return Nil; };
 			if(@sign = 0) { return rhs; };
@@ -246,11 +271,22 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			return BigInt->New(s, rhs->MagSub(@self), rhs->GetLength());
 		}
 
+		#~
+		The difference.
+		@param rhs value to subtract
+		@return the difference, or Nil if rhs is Nil
+		~#
 		method : public : Subtract(rhs : BigInt) ~ BigInt {
 			if(rhs = Nil) { return Nil; };
 			return Add(rhs->Negate());
 		}
 
+		#~
+		The product. Schoolbook multiplication, so the cost is the product of the
+		operands' lengths.
+		@param rhs value to multiply by
+		@return the product, or Nil if rhs is Nil
+		~#
 		method : public : Multiply(rhs : BigInt) ~ BigInt {
 			if(rhs = Nil) { return Nil; };
 			if(@sign = 0 | rhs->Sign() = 0) { return BigInt->Zero(); };
@@ -380,12 +416,27 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			return h;
 		}
 
+		#~
+		Whether two values are equal.
+		@param rhs value to compare against
+		@return true if equal
+		~#
 		method : public : Equals(rhs : BigInt) ~ Bool {
 			if(rhs = Nil) { return false; };
 			return Compare(rhs) = 0;
 		}
 
+		#~
+		Whether this value is less than the argument.
+		@param rhs value to compare against
+		@return true if less
+		~#
 		method : public : LessThan(rhs : BigInt) ~ Bool { return Compare(rhs) < 0; }
+		#~
+		Whether this value is greater than the argument.
+		@param rhs value to compare against
+		@return true if greater
+		~#
 		method : public : GreaterThan(rhs : BigInt) ~ Bool { return Compare(rhs) > 0; }
 
 		# ---- rendering ----
@@ -410,8 +461,8 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 
 		# ---- internals ----
 
-		method : public : GetLength() ~ Int { return @len; }
-		method : public : GetMag() ~ Int[] { return @mag; }
+		method : private : GetLength() ~ Int { return @len; }
+		method : private : GetMag() ~ Int[] { return @mag; }
 
 		method : Pad(v : Int) ~ String {
 			s := v->ToString();
@@ -429,7 +480,7 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			return out;
 		}
 
-		function : Grow(a : Int[], need : Int) ~ Int[] {
+		function : private : Grow(a : Int[], need : Int) ~ Int[] {
 			if(a->Size() >= need) { return a; };
 			cap := a->Size() * 2;
 			if(cap < need) { cap := need; };
@@ -619,7 +670,7 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 
 		# ---- raw magnitude helpers, on plain arrays ----
 
-		function : MulSmall(a : Int[], alen : Int, m : Int) ~ Int[] {
+		function : private : MulSmall(a : Int[], alen : Int, m : Int) ~ Int[] {
 			b := BigInt->Base();
 			out := Int->New[alen + 2];
 			carry := 0;
@@ -637,7 +688,7 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			return out;
 		}
 
-		function : DivSmall(a : Int[], alen : Int, d : Int) ~ Int[] {
+		function : private : DivSmall(a : Int[], alen : Int, d : Int) ~ Int[] {
 			b := BigInt->Base();
 			out := Int->New[alen + 1];
 			rem := 0;
@@ -649,14 +700,14 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 			return out;
 		}
 
-		function : TrimLen(a : Int[], len : Int) ~ Int {
+		function : private : TrimLen(a : Int[], len : Int) ~ Int {
 			if(len > a->Size()) { len := a->Size(); };
 			while(len > 1 & a[len - 1] = 0) { len -= 1; };
 			if(len < 1) { len := 1; };
 			return len;
 		}
 
-		function : CompareRaw(a : Int[], alen : Int, c : Int[], clen : Int) ~ Int {
+		function : private : CompareRaw(a : Int[], alen : Int, c : Int[], clen : Int) ~ Int {
 			if(alen <> clen) {
 				if(alen < clen) { return -1; };
 				return 1;
@@ -671,7 +722,7 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 		}
 
 		# a -= c, in place; returns a's new significant length
-		function : SubRaw(a : Int[], alen : Int, c : Int[], clen : Int) ~ Int {
+		function : private : SubRaw(a : Int[], alen : Int, c : Int[], clen : Int) ~ Int {
 			b := BigInt->Base();
 			borrow := 0;
 			for(i := 0; i < alen; i += 1;) {
@@ -736,6 +787,12 @@ h->ToString()->PrintLine();     # 137/60
 			return Rational->Make(num, den);
 		}
 
+		#~
+		Builds num/den in lowest terms from two Int values.
+		@param num numerator
+		@param den denominator
+		@return the fraction, or Nil if den is zero
+		~#
 		function : Of(num : Int, den : Int) ~ Rational {
 			return Rational->Of(BigInt->New(num), BigInt->New(den));
 		}
@@ -748,19 +805,24 @@ h->ToString()->PrintLine();     # 137/60
 			return Rational->Make(BigInt->New(whole), BigInt->One());
 		}
 
+		#~
+		Coerces a BigInt to a whole fraction.
+		@param whole value
+		@return the fraction, or Nil if whole is Nil
+		~#
 		function : Of(whole : BigInt) ~ Rational {
 			if(whole = Nil) { return Nil; };
 			return Rational->Make(whole, BigInt->One());
 		}
 
 		# builds without reducing; callers must already hold lowest terms
-		function : Make(num : BigInt, den : BigInt) ~ Rational {
+		function : private : Make(num : BigInt, den : BigInt) ~ Rational {
 			r := Rational->New();
 			r->Set(num, den);
 			return r;
 		}
 
-		New() {
+		New : private () {
 			Parent();
 		}
 
@@ -788,13 +850,37 @@ h->ToString()->PrintLine();     # 137/60
 			return Rational->Of(n, d);
 		}
 
+		#~
+		Zero.
+		@return zero
+		~#
 		function : Zero() ~ Rational { return Rational->Of(0); }
+		#~
+		One.
+		@return one
+		~#
 		function : One() ~ Rational { return Rational->Of(1); }
 
+		#~
+		The numerator, in lowest terms, carrying the sign.
+		@return numerator
+		~#
 		method : public : GetNumerator() ~ BigInt { return @num; }
+		#~
+		The denominator, in lowest terms and always positive.
+		@return denominator
+		~#
 		method : public : GetDenominator() ~ BigInt { return @den; }
 
+		#~
+		-1, 0 or 1 as the value is negative, zero or positive.
+		@return sign
+		~#
 		method : public : Sign() ~ Int { return @num->Sign(); }
+		#~
+		Whether the value is zero.
+		@return true if zero
+		~#
 		method : public : IsZero() ~ Bool { return @num->IsZero(); }
 
 		#~
@@ -805,11 +891,19 @@ h->ToString()->PrintLine();     # 137/60
 
 		# ---- unary ----
 
+		#~
+		The absolute value.
+		@return the magnitude
+		~#
 		method : public : Abs() ~ Rational {
 			if(@num->Sign() >= 0) { return @self; };
 			return Rational->Make(@num->Negate(), @den);
 		}
 
+		#~
+		The value with its sign reversed. Zero negates to itself.
+		@return the negation
+		~#
 		method : public : Negate() ~ Rational {
 			if(@num->IsZero()) { return @self; };
 			return Rational->Make(@num->Negate(), @den);
@@ -830,6 +924,11 @@ h->ToString()->PrintLine();     # 137/60
 		# keeps its terms as small as the values allow rather than growing the
 		# denominator without bound.
 
+		#~
+		The sum, reduced to lowest terms.
+		@param rhs value to add
+		@return the sum, or Nil if rhs is Nil
+		~#
 		method : public : Add(rhs : Rational) ~ Rational {
 			if(rhs = Nil) { return Nil; };
 			n := @num->Multiply(rhs->GetDenominator())->Add(
@@ -837,25 +936,50 @@ h->ToString()->PrintLine();     # 137/60
 			return Rational->Of(n, @den->Multiply(rhs->GetDenominator()));
 		}
 
+		#~
+		The sum with a whole number.
+		@param whole value to add
+		@return the sum
+		~#
 		method : public : Add(whole : Int) ~ Rational {
 			return Add(Rational->Of(whole));
 		}
 
+		#~
+		The difference, reduced to lowest terms.
+		@param rhs value to subtract
+		@return the difference, or Nil if rhs is Nil
+		~#
 		method : public : Subtract(rhs : Rational) ~ Rational {
 			if(rhs = Nil) { return Nil; };
 			return Add(rhs->Negate());
 		}
 
+		#~
+		The difference with a whole number.
+		@param whole value to subtract
+		@return the difference
+		~#
 		method : public : Subtract(whole : Int) ~ Rational {
 			return Add(Rational->Of(0 - whole));
 		}
 
+		#~
+		The product, reduced to lowest terms.
+		@param rhs value to multiply by
+		@return the product, or Nil if rhs is Nil
+		~#
 		method : public : Multiply(rhs : Rational) ~ Rational {
 			if(rhs = Nil) { return Nil; };
 			return Rational->Of(@num->Multiply(rhs->GetNumerator()),
 				@den->Multiply(rhs->GetDenominator()));
 		}
 
+		#~
+		The product with a whole number.
+		@param whole value to multiply by
+		@return the product
+		~#
 		method : public : Multiply(whole : Int) ~ Rational {
 			return Multiply(Rational->Of(whole));
 		}
@@ -871,6 +995,11 @@ h->ToString()->PrintLine();     # 137/60
 				@den->Multiply(rhs->GetNumerator()));
 		}
 
+		#~
+		Division by a whole number.
+		@param whole divisor
+		@return the quotient, or Nil if whole is zero
+		~#
 		method : public : Divide(whole : Int) ~ Rational {
 			return Divide(Rational->Of(whole));
 		}
@@ -966,6 +1095,12 @@ h->ToString()->PrintLine();     # 137/60
 			return @num->HashID() * 31 + @den->HashID();
 		}
 
+		#~
+		Whether two values are equal. Lowest terms are unique, so this is a
+		comparison of numerators and denominators.
+		@param rhs value to compare against
+		@return true if equal
+		~#
 		method : public : Equals(rhs : Rational) ~ Bool {
 			if(rhs = Nil) { return false; };
 			# both sides are in lowest terms, so equality is componentwise
@@ -973,9 +1108,29 @@ h->ToString()->PrintLine();     # 137/60
 				@den->Equals(rhs->GetDenominator());
 		}
 
+		#~
+		Whether this value is less than the argument.
+		@param rhs value to compare against
+		@return true if less
+		~#
 		method : public : LessThan(rhs : Rational) ~ Bool { return Compare(rhs) < 0; }
+		#~
+		Whether this value is less than or equal to the argument.
+		@param rhs value to compare against
+		@return true if less or equal
+		~#
 		method : public : LessEqual(rhs : Rational) ~ Bool { return Compare(rhs) <= 0; }
+		#~
+		Whether this value is greater than the argument.
+		@param rhs value to compare against
+		@return true if greater
+		~#
 		method : public : GreaterThan(rhs : Rational) ~ Bool { return Compare(rhs) > 0; }
+		#~
+		Whether this value is greater than or equal to the argument.
+		@param rhs value to compare against
+		@return true if greater or equal
+		~#
 		method : public : GreaterEqual(rhs : Rational) ~ Bool { return Compare(rhs) >= 0; }
 
 		# ---- conversion ----
