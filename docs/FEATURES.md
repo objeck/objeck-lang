@@ -206,12 +206,20 @@ bytes->Size()->PrintLine();
 
 ### Closures and Lambda Expressions
 
-Write a lambda as `\(params) => body`. When the surrounding context expects a
-`FuncRef<R>` — an assignment target, a `return`, a method argument, or a
+A lambda is written one of two ways, and which you need depends on whether it
+takes parameters.
+
+**No parameters — the shorthand `\() => body`.** When the surrounding context
+expects a `FuncRef<R>` — an assignment target, a `return`, a method argument, or a
 collection element — the return type is inferred and the lambda **auto-wraps**
 into a `FuncRef<R>` (no explicit `FuncRef->New(...)<R>` or `~ R :` annotation).
 Call a `FuncRef` **directly** with `v()` — no `->Get()`/`->Call()` step — and
 chain on the result (`v()->Get()`).
+
+**With parameters — the annotated form `\(types) ~ R : (names) => body`**, which
+targets a function type rather than a `FuncRef<R>`. `FuncRef<R>` wraps a `() ~ R`
+and has no parameter slots, so a lambda taking an argument cannot be a `FuncRef`.
+See *Lambdas with parameters* below.
 
 ```ruby
 # bare lambda; return type inferred from the FuncRef<IntRef> target, called directly
@@ -247,6 +255,40 @@ function : Mk(n : Int) ~ FuncRef<IntRef> {
 The verbose form with an explicit annotation is still supported and equivalent:
 `FuncRef->New(\() ~ IntRef : () => x)<IntRef>`.
 
+#### Lambdas with parameters
+
+The shorthand is zero-parameter only. A lambda that takes arguments uses the
+annotated form — parameter **types**, the return type, then parameter **names** —
+and targets a function type:
+
+```ruby
+f : (Int) ~ Int := \(Int) ~ Int : (x) => x + 1;
+f(41)->PrintLine();                                  # 42
+```
+
+The two parenthesised groups are types and then names, in that order. Writing
+`\(x : Int) => ...` does not compile: the shorthand has no parameter list, and the
+error points at the parameter name rather than saying so.
+
+A parameterised lambda captures exactly as a zero-parameter one does, so a
+function can return one and the captures travel with it — independently per
+lambda, with no shared state:
+
+```ruby
+function : MakeAdder(n : Int) ~ (Int) ~ Int {
+  return \(Int) ~ Int : (x) => x + n;
+}
+
+add3 := MakeAdder(3);
+add100 := MakeAdder(100);
+add3(10)->PrintLine();      # 13
+add100(10)->PrintLine();    # 110
+add3(10)->PrintLine();      # 13 — unaffected by the second
+```
+
+This is what makes currying, partial application and function composition
+expressible; see **First-Class Functions** below for composition.
+
 #### What a lambda can capture
 
 A lambda can use the locals and parameters of the method that creates it:
@@ -277,33 +319,75 @@ rejected with "Cannot reference an instance method from this context". Capture
 the object in a local and call through it instead.
 
 ### First-Class Functions
+
+A named function is passed as `Name(types) ~ Return`, and a function type is
+written the same way. Compose two by returning a **parameterised lambda**, which
+closes over them:
+
 ```ruby
-@f : static : (Int) ~ Int;
-@g : static : (Int) ~ Int;
+function : Compose(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+  return \(Int) ~ Int : (x) => f(g(x));
+}
+
+function : F(a : Int) ~ Int { return a + 14; }
+function : G(a : Int) ~ Int { return a + 15; }
 
 function : Main(args : String[]) ~ Nil {
-  compose := Composer(F(Int) ~ Int, G(Int) ~ Int);
-  compose(13)->PrintLine();
-}
-
-function : F(a : Int) ~ Int {
-  return a + 14;
-}
-
-function : G(a : Int) ~ Int {
-  return a + 15;
-}
-
-function : native : Compose(x : Int) ~ Int {
-  return @f(@g(x));
-}
-
-function : Composer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
-  @f := f;
-  @g := g;
-  return Compose(Int) ~ Int;
+  compose := Compose(F(Int) ~ Int, G(Int) ~ Int);
+  compose(13)->PrintLine();                 # 42
 }
 ```
+
+Each call to `Compose` produces an independent function, so several may be live
+at once.
+
+> **Do not route the captures through static fields.** It is the obvious way to
+> write this without a lambda, because a plain function reference has nowhere to
+> put `f` and `g` — and it is wrong:
+>
+> ```ruby
+> @f : static : (Int) ~ Int;
+> @g : static : (Int) ~ Int;
+>
+> function : native : BadCompose(x : Int) ~ Int { return @f(@g(x)); }
+>
+> function : BadComposer(f : (Int) ~ Int, g : (Int) ~ Int) ~ (Int) ~ Int {
+>   @f := f;  @g := g;
+>   return BadCompose(Int) ~ Int;
+> }
+> ```
+>
+> Every result refers to the same `BadCompose`, which reads whichever pair was
+> stored last. Build two and the first silently changes meaning — no error, no
+> warning, just a wrong number. Use the lambda above.
+
+---
+
+<a name="reserved"></a>
+## Reserved Words
+
+These 40 words cannot be used as identifiers:
+
+```
+alias      and        break      bundle     class      consts     continue
+critical   do         each       else       enum       false      for
+from       function   if         implements in         interface  label
+leaving    method     native     not        or         other      private
+public     readonly   record     return     reverse    select     static
+true       use        virtual    while      xor
+```
+
+Using one reports `Expected identifier` at that position, without naming the
+word. Four of them read as ordinary identifiers and are worth knowing about:
+
+| word | reserved for | commonly wanted as |
+|---|---|---|
+| `other` | the default label in `select` | `Equals(other)`, `Compare(other)`, `Add(other)` |
+| `label` | `select` case labels | a caption, a graph vertex, a class label |
+| `from` | the inheritance clause, `class X from Y` | a date range, a graph edge |
+| `reverse` | `each(... reverse ...)` | a sort direction |
+
+`self`, `parent` and `value` are **not** reserved as identifiers.
 
 ---
 
