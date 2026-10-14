@@ -43,6 +43,7 @@ Behaviour specific to one platform, usually discovered the hard way.
 
 Written before the work, and kept afterwards as the record of why it looks the way it does.
 
+- [ROSETTA_HARDENING.md](ROSETTA_HARDENING.md) — working the Rosetta Code backlog as a hardening vehicle: how to claim a task so sessions do not collide, what to pick and what to skip, the defects it has turned up, and the Rational/Complex/BigInt library questions it raised
 - [SYSTEM_TERMINAL_DESIGN.md](SYSTEM_TERMINAL_DESIGN.md) — `System.Terminal`: styled output, progress bars, interactive controls, and the five VM traps they need
 - [UPDATER_DESIGN.md](UPDATER_DESIGN.md) — auto-updater
 - [ONNX_CUDA_PLAN.md](ONNX_CUDA_PLAN.md) — CUDA execution provider for ONNX
