@@ -146,7 +146,7 @@ it is a language feature decision rather than a bug fix.
 | Task | Notes |
 |---|---|
 | [Arithmetic/Rational](https://rosettacode.org/wiki/Arithmetic/Rational) | `Rational` with reduction, the six comparisons, flooring integer division and modulo, `Int` coercion, and detected overflow rather than silent wraparound. Verified: `6, 28, 496, 8128` in ~1s. Produced #1099 |
-| [Arbitrary-precision integers (included)](https://rosettacode.org/wiki/Arbitrary-precision_integers_(included)) | 5^262144 computed by 18 squarings. Verified against the published answer: `183231` digits, first 20 `62060698786608744707`, last 20 `92256259918212890625`. **Median 1.21s** over three runs. Produced #1103 |
+| [Arbitrary-precision integers (included)](<https://rosettacode.org/wiki/Arbitrary-precision_integers_(included)>) | 5^262144 computed by 18 squarings. Verified against the published answer: `183231` digits, first 20 `62060698786608744707`, last 20 `92256259918212890625`. **Median 1.21s** over three runs. Produced #1103 |
 
 ---
 
