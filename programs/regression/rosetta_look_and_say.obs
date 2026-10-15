@@ -1,0 +1,79 @@
+#~
+# Rosetta Code: Look-and-say sequence
+# https://rosettacode.org/wiki/Look-and-say_sequence
+#
+# Each term describes the previous one as runs of digits. The run-length encoder must emit the final run after the loop ends, which is the omission that truncates every term by one group.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaLookAndSay {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaLookAndSay->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		term := "1";
+		terms := "";
+		for(i := 0; i < 8; i += 1;) {
+			terms += term;
+			terms += " ";
+			term := Next(term);
+		};
+		Check("eight terms from 1", terms->Trim(),
+			"1 11 21 1211 111221 312211 13112221 1113213211");
+		Check("one step from 1", Next("1"), "11");
+		Check("a single long run", Next("111"), "31");
+		# the last run must still be emitted
+		Check("a trailing run is not dropped", Next("1123"), "211213");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Next(s : String) ~ String {
+		out := "";
+		i := 0;
+		while(i < s->Size()) {
+			c := s->Get(i);
+			run := 1;
+			while(i + run < s->Size() & s->Get(i + run) = c) {
+				run += 1;
+			};
+			out += run->ToString();
+			out += c->ToString();
+			i += run;
+		};
+		return out;
+	}
+}

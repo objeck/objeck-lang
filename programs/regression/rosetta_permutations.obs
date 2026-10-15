@@ -1,0 +1,93 @@
+#~
+# Rosetta Code: Permutations
+# https://rosettacode.org/wiki/Permutations
+#
+# All n! orderings, in lexicographic order via the next-permutation step: find the rightmost ascent, swap with its successor, reverse the tail. Getting the tail reversal wrong still produces n! distinct results, just not in order.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaPermutations {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaPermutations->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("permutations of 1,2,3", Permutations(3), "123 132 213 231 312 321");
+		Check("permutations of 1", Permutations(1), "1");
+		Check("permutations of 1,2", Permutations(2), "12 21");
+		CheckInt("4! orderings", Permutations(4)->Split(" ")->Size(), 24);
+		CheckInt("6! orderings", Permutations(6)->Split(" ")->Size(), 720);
+		# the first and last are the sorted and reversed orders
+		parts := Permutations(4)->Split(" ");
+		Check("the first is ascending", parts[0], "1234");
+		Check("the last is descending", parts[parts->Size() - 1], "4321");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Permutations(n : Int) ~ String {
+		p := Int->New[n];
+		for(i := 0; i < n; i += 1;) { p[i] := i + 1; };
+		out := "";
+		while(true) {
+			for(i := 0; i < n; i += 1;) {
+				out += p[i]->ToString();
+			};
+			out += " ";
+
+			# the rightmost ascent
+			i := n - 2;
+			while(i >= 0 & p[i] >= p[i + 1]) { i -= 1; };
+			if(i < 0) { break; };
+			# its rightmost successor
+			j := n - 1;
+			while(p[j] <= p[i]) { j -= 1; };
+			t := p[i];
+			p[i] := p[j];
+			p[j] := t;
+			# reverse the tail, which is what keeps the order lexicographic
+			lo := i + 1;
+			hi := n - 1;
+			while(lo < hi) {
+				t2 := p[lo];
+				p[lo] := p[hi];
+				p[hi] := t2;
+				lo += 1;
+				hi -= 1;
+			};
+		};
+		return out->Trim();
+	}
+}

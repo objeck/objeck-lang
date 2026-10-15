@@ -1,0 +1,86 @@
+#~
+# Rosetta Code: Mertens function
+# https://rosettacode.org/wiki/Mertens_function
+#
+# The running sum of the Möbius function. Worth having beside Möbius itself because a sign error there is invisible in isolation but accumulates here.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaMertens {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaMertens->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		sum := 0;
+		for(n := 1; n <= 25; n += 1;) {
+			sum += Mobius(n);
+			out += sum->ToString();
+			out += " ";
+		};
+		Check("mertens 1..25", out->Trim(),
+			"1 0 -1 -1 -2 -1 -2 -2 -2 -1 -2 -2 -3 -2 -1 -1 -2 -2 -3 -3 -2 -1 -2 -2 -2");
+
+		# M(n) returns to zero at n = 2, and the task notes how rarely it does
+		zeros := 0;
+		sum2 := 0;
+		for(n := 1; n <= 100; n += 1;) {
+			sum2 += Mobius(n);
+			if(sum2 = 0) { zeros += 1; };
+		};
+		CheckInt("zero crossings to 100", zeros, 6);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Mobius(n : Int) ~ Int {
+		if(n = 1) { return 1; };
+		count := 0;
+		m := n;
+		p := 2;
+		while(p * p <= m) {
+			if(m % p = 0) {
+				m := m / p;
+				if(m % p = 0) { return 0; };
+				count += 1;
+			};
+			p += 1;
+		};
+		if(m > 1) { count += 1; };
+		if(count % 2 = 0) { return 1; };
+		return -1;
+	}
+}

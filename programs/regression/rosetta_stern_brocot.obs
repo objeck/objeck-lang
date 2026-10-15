@@ -1,0 +1,76 @@
+#~
+# Rosetta Code: Stern-Brocot sequence
+# https://rosettacode.org/wiki/Stern-Brocot_sequence
+#
+# Built by appending the sum of the considered term and its successor, then the considered term itself. Two values are appended per step, so a loop that appends one produces a plausible but wrong sequence.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaSternBrocot {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaSternBrocot->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		s := SternBrocot(20);
+		out := "";
+		for(i := 0; i < 15; i += 1;) {
+			out += s[i]->ToString();
+			out += " ";
+		};
+		Check("stern-brocot first 15", out->Trim(), "1 1 2 1 3 2 3 1 4 3 5 2 5 3 4");
+		CheckInt("the first term", s[0], 1);
+		CheckInt("the second term", s[1], 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : SternBrocot(count : Int) ~ Int[] {
+		s := Int->New[count + 4];
+		s[0] := 1;
+		s[1] := 1;
+		len := 2;
+		i := 1;
+		while(len < count) {
+			# two appends per considered term
+			s[len] := s[i] + s[i - 1];
+			len += 1;
+			s[len] := s[i];
+			len += 1;
+			i += 1;
+		};
+		return s;
+	}
+}

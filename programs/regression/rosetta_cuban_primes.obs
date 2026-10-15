@@ -1,0 +1,85 @@
+#~
+# Rosetta Code: Cuban primes
+# https://rosettacode.org/wiki/Cuban_primes
+#
+# Primes of the form (n+1)^3 - n^3, which simplifies to 3n^2 + 3n + 1. Checked both ways, because the simplification is where an algebra slip hides.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaCubanPrimes {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaCubanPrimes->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		found := 0;
+		n := 1;
+		while(found < 20) {
+			c := (n + 1) * (n + 1) * (n + 1) - n * n * n;
+			if(IsPrime(c)) {
+				out += "{$c} ";
+				found += 1;
+			};
+			n += 1;
+		};
+		Check("first 20 cuban primes", out->Trim(),
+			"7 19 37 61 127 271 331 397 547 631 919 1657 1801 1951 2269 2437 2791 " +
+			"3169 3571 4219");
+
+		# the difference of cubes equals 3n^2 + 3n + 1
+		disagree := 0;
+		for(k := 1; k <= 200; k += 1;) {
+			cube := (k + 1) * (k + 1) * (k + 1) - k * k * k;
+			form := 3 * k * k + 3 * k + 1;
+			if(cube <> form) { disagree += 1; };
+		};
+		CheckInt("the two forms agree", disagree, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : IsPrime(n : Int) ~ Bool {
+		if(n < 2) { return false; };
+		if(n < 4) { return true; };
+		if(n % 2 = 0) { return false; };
+		d := 3;
+		while(d * d <= n) {
+			if(n % d = 0) { return false; };
+			d += 2;
+		};
+		return true;
+	}
+}

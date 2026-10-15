@@ -1,0 +1,85 @@
+#~
+# Rosetta Code: Modular inverse
+# https://rosettacode.org/wiki/Modular_inverse
+#
+# The extended Euclidean algorithm. The result must be normalised into the positive range, because the algorithm naturally returns a representative that can be negative.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaModularInverse {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaModularInverse->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("42 inverse mod 2017", ModInverse(42, 2017), 1969);
+		CheckInt("3 inverse mod 11", ModInverse(3, 11), 4);
+		CheckInt("1 inverse mod 7", ModInverse(1, 7), 1);
+		# no inverse when the values share a factor
+		CheckInt("6 has no inverse mod 9", ModInverse(6, 9), 0);
+
+		# a*inverse = 1 mod m, for every coprime pair in a range
+		bad := 0;
+		for(a := 1; a < 200; a += 1;) {
+			inv := ModInverse(a, 211);
+			if(inv = 0) { bad += 1; }
+			else if((a * inv) % 211 <> 1) { bad += 1; };
+		};
+		CheckInt("every inverse mod 211 checks out", bad, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# 0 when there is no inverse; gcd(a, m) must be 1
+	function : ModInverse(a : Int, m : Int) ~ Int {
+		g := m;
+		x := 0;
+		x1 := 1;
+		b := a;
+		while(b <> 0) {
+			q := g / b;
+			t := g - q * b;
+			g := b;
+			b := t;
+			t2 := x - q * x1;
+			x := x1;
+			x1 := t2;
+		};
+		if(g <> 1) { return 0; };
+		# normalise into 0..m-1
+		while(x < 0) { x += m; };
+		return x % m;
+	}
+}

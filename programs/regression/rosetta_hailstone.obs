@@ -1,0 +1,95 @@
+#~
+# Rosetta Code: Hailstone sequence
+# https://rosettacode.org/wiki/Hailstone_sequence
+#
+# The sequence for 27 has 112 terms, and the task also asks which start below 100000 gives the longest. Both ends of the 27 sequence are checked, because an off-by-one in the loop condition changes the length without changing the shape.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaHailstone {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaHailstone->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		s := Hailstone(27);
+		CheckInt("27 sequence length", s->Size(), 112);
+		CheckInt("27 starts at 27", s[0], 27);
+		CheckInt("27 second term", s[1], 82);
+		CheckInt("27 third term", s[2], 41);
+		CheckInt("27 fourth term", s[3], 124);
+		CheckInt("27 ends at 1", s[s->Size() - 1], 1);
+		CheckInt("27 ends 8 4 2 1", s[s->Size() - 4], 8);
+		# 1 is the fixed point, a one-term sequence
+		CheckInt("1 is one term", Hailstone(1)->Size(), 1);
+
+		# the longest start below 100000
+		best := 1;
+		best_len := 1;
+		for(n := 2; n < 100000; n += 1;) {
+			len := Length(n);
+			if(len > best_len) {
+				best_len := len;
+				best := n;
+			};
+		};
+		CheckInt("longest start below 100000", best, 77031);
+		CheckInt("its length", best_len, 351);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Hailstone(n : Int) ~ Int[] {
+		out := Int->New[Length(n)];
+		i := 0;
+		while(true) {
+			out[i] := n;
+			i += 1;
+			if(n = 1) { break; };
+			if(n % 2 = 0) { n := n / 2; } else { n := 3 * n + 1; };
+		};
+		return out;
+	}
+
+	# counted separately so the array can be sized exactly
+	function : Length(n : Int) ~ Int {
+		c := 1;
+		while(n <> 1) {
+			if(n % 2 = 0) { n := n / 2; } else { n := 3 * n + 1; };
+			c += 1;
+		};
+		return c;
+	}
+}

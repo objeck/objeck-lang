@@ -1,0 +1,80 @@
+#~
+# Rosetta Code: Determine if a string has all unique characters
+# https://rosettacode.org/wiki/Determine_if_a_string_has_all_unique_characters
+#
+# The task wants the first repeated character and both its positions. Comparing every pair finds the EARLIEST repeat only if the outer loop is the first position -- iterating the other way reports a later pair.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaUniqueCharacters {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaUniqueCharacters->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("empty string is unique", Unique("") ? 1 : 0, 1);
+		CheckInt("one character is unique", Unique(".") ? 1 : 0, 1);
+		CheckInt("abcABC is unique", Unique("abcABC") ? 1 : 0, 1);
+		CheckInt("XYZ ZYX repeats", Unique("XYZ ZYX") ? 1 : 0, 0);
+		CheckInt("a long repeat", Unique("thequickbrownfoxjumps") ? 1 : 0, 0);
+
+		# the first repeat, and where: 1-based "first,second"
+		Check("XYZ ZYX first repeat", FirstRepeat("XYZ ZYX"), "Z,3,5");
+		Check("abcABC has none", FirstRepeat("abcABC"), "none");
+		# 'o' at 15 repeats the 'o' at 11; nothing repeats sooner
+		Check("earliest repeat wins", FirstRepeat("thequickbrownfoxjumps"), "o,11,15");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Unique(s : String) ~ Bool {
+		return FirstRepeat(s)->Equals("none");
+	}
+
+	# The outer loop is the SECOND position: the task asks for the earliest character that repeats something BEFORE it, not the earliest character that is repeated later.
+	function : FirstRepeat(s : String) ~ String {
+		for(j := 1; j < s->Size(); j += 1;) {
+			for(i := 0; i < j; i += 1;) {
+				if(s->Get(i) = s->Get(j)) {
+					c := s->Get(j);
+					a := i + 1;
+					b := j + 1;
+					return "{$c},{$a},{$b}";
+				};
+			};
+		};
+		return "none";
+	}
+}

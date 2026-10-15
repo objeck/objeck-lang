@@ -1,0 +1,82 @@
+#~
+# Rosetta Code: Totient function
+# https://rosettacode.org/wiki/Totient_function
+#
+# Euler's totient, counted by dividing out each prime factor rather than by testing every candidate for coprimality. A number is prime exactly when its totient is one less than itself, which the task uses as a cross-check.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaTotient {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaTotient->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		for(n := 1; n <= 25; n += 1;) {
+			out += Totient(n)->ToString();
+			out += " ";
+		};
+		Check("totient 1..25", out->Trim(),
+			"1 1 2 2 4 2 6 4 6 4 10 4 12 6 8 8 16 6 18 8 12 10 22 8 20");
+		CheckInt("totient(1)", Totient(1), 1);
+		CheckInt("totient of a prime is n-1", Totient(97), 96);
+		CheckInt("totient(36)", Totient(36), 12);
+
+		# n is prime exactly when totient(n) = n - 1
+		primes := 0;
+		for(n := 2; n <= 100; n += 1;) {
+			if(Totient(n) = n - 1) { primes += 1; };
+		};
+		CheckInt("primes to 100 by totient", primes, 25);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Totient(n : Int) ~ Int {
+		result := n;
+		m := n;
+		p := 2;
+		while(p * p <= m) {
+			if(m % p = 0) {
+				while(m % p = 0) { m := m / p; };
+				result -= result / p;
+			};
+			p += 1;
+		};
+		if(m > 1) { result -= result / m; };
+		return result;
+	}
+}

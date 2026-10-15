@@ -1,0 +1,113 @@
+#~
+# Rosetta Code: Balanced ternary
+# https://rosettacode.org/wiki/Balanced_ternary
+#
+# Digits are -1, 0 and 1, written -, 0 and +. A remainder of 2 becomes a digit of -1 with a carry into the next place, which is the step that distinguishes this from ordinary base 3.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaBalancedTernary {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaBalancedTernary->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("0", ToBt(0), "0");
+		Check("1", ToBt(1), "+");
+		Check("-1", ToBt(-1), "-");
+		Check("6", ToBt(6), "+-0");
+		Check("-6", ToBt(-6), "-+0");
+		Check("11", ToBt(11), "++-");
+		Check("-11", ToBt(-11), "--+");
+		Check("32", ToBt(32), "++--");
+		Check("523", ToBt(523), "+-0++0+");
+		Check("-523", ToBt(-523), "-+0--0-");
+
+		# the round trip, which is what proves the carry is right
+		bad := 0;
+		for(n := -500; n <= 500; n += 1;) {
+			if(FromBt(ToBt(n)) <> n) { bad += 1; };
+		};
+		CheckInt("round trip over -500..500", bad, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : ToBt(n : Int) ~ String {
+		if(n = 0) { return "0"; };
+		neg := n < 0;
+		if(neg) { n := 0 - n; };
+		out := "";
+		while(n <> 0) {
+			r := n % 3;
+			n := n / 3;
+			if(r = 0) {
+				out := "0" + out;
+			}
+			else if(r = 1) {
+				out := "+" + out;
+			}
+			else {
+				# a remainder of 2 is a digit of -1 and a carry
+				out := "-" + out;
+				n += 1;
+			};
+		};
+		if(neg) { out := Flip(out); };
+		return out;
+	}
+
+	function : Flip(s : String) ~ String {
+		out := "";
+		each(i : s) {
+			c := s->Get(i);
+			if(c = '+') { out += "-"; }
+			else if(c = '-') { out += "+"; }
+			else { out += "0"; };
+		};
+		return out;
+	}
+
+	function : FromBt(s : String) ~ Int {
+		v := 0;
+		each(i : s) {
+			c := s->Get(i);
+			v *= 3;
+			if(c = '+') { v += 1; }
+			else if(c = '-') { v -= 1; };
+		};
+		return v;
+	}
+}

@@ -1,0 +1,77 @@
+#~
+# Rosetta Code: Determine if a string has all the same characters
+# https://rosettacode.org/wiki/Determine_if_a_string_has_all_the_same_characters
+#
+# The task wants the position of the first differing character as well as the verdict. An empty string and a one-character string both qualify vacuously, which is where a loop starting at index 1 is right and a naive one is not.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaSameCharacters {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaSameCharacters->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the verdict
+		CheckInt("empty string", Same("") ? 1 : 0, 1);
+		CheckInt("one character", Same("3") ? 1 : 0, 1);
+		CheckInt("all the same", Same("333") ? 1 : 0, 1);
+		CheckInt("differs at the end", Same("335") ? 1 : 0, 0);
+		CheckInt("differs in the middle", Same("asdasd") ? 1 : 0, 0);
+		CheckInt("two spaces", Same("  ") ? 1 : 0, 1);
+
+		# the position of the first difference, 1-based, or 0 for none
+		CheckInt("no difference in an empty string", FirstDiff(""), 0);
+		CheckInt("no difference in 333", FirstDiff("333"), 0);
+		CheckInt("335 differs at 3", FirstDiff("335"), 3);
+		CheckInt("asdasd differs at 2", FirstDiff("asdasd"), 2);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Same(s : String) ~ Bool {
+		return FirstDiff(s) = 0;
+	}
+
+	# 1-based position of the first character unlike the first, or 0
+	function : FirstDiff(s : String) ~ Int {
+		if(s->Size() < 2) { return 0; };
+		first := s->Get(0);
+		for(i := 1; i < s->Size(); i += 1;) {
+			if(s->Get(i) <> first) { return i + 1; };
+		};
+		return 0;
+	}
+}

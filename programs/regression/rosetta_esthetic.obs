@@ -1,0 +1,80 @@
+#~
+# Rosetta Code: Esthetic numbers
+# https://rosettacode.org/wiki/Esthetic_numbers
+#
+# Adjacent digits of an esthetic number differ by exactly one. Every single-digit number qualifies vacuously, which a loop over digit pairs gets right only if it handles the one-digit case.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaEsthetic {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaEsthetic->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		count := 0;
+		for(n := 1; n <= 1000; n += 1;) {
+			if(IsEsthetic(n)) {
+				out += "{$n} ";
+				count += 1;
+			};
+		};
+		CheckInt("how many esthetic to 1000", count, 58);
+		Check("esthetic to 1000", out->Trim(),
+			"1 2 3 4 5 6 7 8 9 10 12 21 23 32 34 43 45 54 56 65 67 76 78 87 89 98 " +
+			"101 121 123 210 212 232 234 321 323 343 345 432 434 454 456 543 545 " +
+			"565 567 654 656 676 678 765 767 787 789 876 878 898 987 989");
+		# single digits qualify vacuously
+		CheckInt("5 is esthetic", IsEsthetic(5) ? 1 : 0, 1);
+		CheckInt("11 is not", IsEsthetic(11) ? 1 : 0, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : IsEsthetic(n : Int) ~ Bool {
+		prev := n % 10;
+		n := n / 10;
+		while(n > 0) {
+			d := n % 10;
+			diff := prev - d;
+			if(diff < 0) { diff := 0 - diff; };
+			if(diff <> 1) { return false; };
+			prev := d;
+			n := n / 10;
+		};
+		return true;
+	}
+}

@@ -1,0 +1,84 @@
+#~
+# Rosetta Code: Flatten a list
+# https://rosettacode.org/wiki/Flatten_a_list
+#
+# Arbitrarily nested lists flattened to one sequence. Represented here as a bracketed string so the nesting is explicit, and empty sub-lists must vanish entirely rather than leaving a gap -- the task's example has three of them.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaFlattenAList {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaFlattenAList->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's own example
+		Check("the task's nested list",
+			Flatten("[[1],2,[[3,4],5],[[[]]],[[[6]]],7,8,[]]"),
+			"1 2 3 4 5 6 7 8");
+		Check("already flat", Flatten("[1,2,3]"), "1 2 3");
+		Check("a single element", Flatten("[1]"), "1");
+		# an empty list, and a list of nothing but empty lists
+		Check("empty", Flatten("[]"), "");
+		Check("nothing but empty lists", Flatten("[[],[[]],[[[]]]]"), "");
+		Check("deeply nested single value", Flatten("[[[[[9]]]]]"), "9");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# the brackets carry the nesting, so flattening is dropping them and keeping
+	# the runs of digits in order
+	function : Flatten(text : String) ~ String {
+		out := "";
+		num := "";
+		each(i : text) {
+			c := text->Get(i);
+			if(c >= '0' & c <= '9') {
+				num += c->ToString();
+			}
+			else {
+				if(num->Size() > 0) {
+					out += num;
+					out += " ";
+					num := "";
+				};
+			};
+		};
+		if(num->Size() > 0) {
+			out += num;
+		};
+		return out->Trim();
+	}
+}

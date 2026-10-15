@@ -1,0 +1,92 @@
+#~
+# Rosetta Code: Negative base numbers
+# https://rosettacode.org/wiki/Negative_base_numbers
+#
+# A negative radix represents negative numbers with no sign. A negative remainder must be lifted into range and the carry propagated, which is the step that separates this from ordinary base conversion.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaNegativeBaseNumbers {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaNegativeBaseNumbers->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("10 in base -2", ToNegBase(10, -2), "11110");
+		Check("146 in base -3", ToNegBase(146, -3), "21102");
+		Check("15 in base -10", ToNegBase(15, -10), "195");
+		Check("0 in base -2", ToNegBase(0, -2), "0");
+
+		# the round trip over both positive and negative values
+		bad := 0;
+		for(n := -200; n <= 200; n += 1;) {
+			if(FromNegBase(ToNegBase(n, -2), -2) <> n) { bad += 1; };
+			if(FromNegBase(ToNegBase(n, -3), -3) <> n) { bad += 1; };
+		};
+		CheckInt("round trip in bases -2 and -3", bad, 0);
+		# a negative value needs no sign in a negative base
+		Check("-10 in base -2", ToNegBase(-10, -2), "1010");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Digits() ~ String { return "0123456789abcdefghijklmnopqrstuvwxyz"; }
+
+	function : ToNegBase(n : Int, b : Int) ~ String {
+		if(n = 0) { return "0"; };
+		out := "";
+		while(n <> 0) {
+			r := n % b;
+			n := n / b;
+			if(r < 0) {
+				# lift the remainder into range and carry
+				mag := b;
+				if(mag < 0) { mag := 0 - mag; };
+				r += mag;
+				n += 1;
+			};
+			out := Digits()->SubString(r, 1) + out;
+		};
+		return out;
+	}
+
+	function : FromNegBase(s : String, b : Int) ~ Int {
+		v := 0;
+		each(i : s) {
+			v := v * b + Digits()->Find(s->Get(i));
+		};
+		return v;
+	}
+}

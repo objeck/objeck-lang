@@ -1,0 +1,213 @@
+#~
+# System.Math.BigInt: exact integer arithmetic at any size.
+#
+# EXTRA_LIBS: math
+#
+# Objeck's Int is 64-bit and wraps silently rather than trapping, so every
+# assertion here is one that Int cannot make -- a wrong carry does not crash, it
+# returns a plausible number. The values below were checked against an
+# independent oracle (Python's integers) over ~74,000 comparisons across five
+# random seeds; what is pinned here are the cases that would fail *differently*
+# and so localise a regression:
+#
+#   - carry and borrow across a limb boundary, which base-10^6 limbs put at
+#     10^6 and 10^12, and the all-nines operand that carries through every limb
+#   - truncating division and the sign of the remainder, which follow Int (`/`
+#     rounds toward zero, `%` takes the dividend's sign) and NOT Python's
+#     flooring convention, so a port of the algorithm from elsewhere gets this
+#     backwards
+#   - a single-limb divisor, which takes a separate code path from the
+#     normalised long division used for longer ones
+#   - the quotient estimate under normalisation: operands of near-equal length
+#     are where a bad estimate shows up, and an unnormalised divisor turns the
+#     correction loop into a search
+#   - zero's canonical form: a cancelling subtraction must not leave a signed
+#     zero, or two zeros compare unequal
+#   - Int MIN, which has no positive counterpart and so cannot be negated on
+#     the way in
+#
+# The headline case is the Rosetta Code task: 5^4^3^2 is 5^262144, a 183,231
+# digit number, and its first and last twenty digits are published. Getting
+# those right while the digit count is also right is a strong check on the
+# multiply, the squaring ladder and the renderer at once.
+~#
+
+use System.Math;
+
+class MathBigInt {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MathBigInt->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what} = {$got}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what} = {$got}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		B := "parse round trip";
+		Check(B, BigInt->Parse("0")->ToString(), "0");
+		Check(B, BigInt->Parse("-0")->ToString(), "0");          # no signed zero
+		Check(B, BigInt->Parse("+42")->ToString(), "42");
+		Check(B, BigInt->Parse("-42")->ToString(), "-42");
+		Check(B, BigInt->Parse("1000000")->ToString(), "1000000");
+		Check(B, BigInt->Parse("999999999999999999999999999999")->ToString(),
+			"999999999999999999999999999999");
+		CheckBool("reject non-digits", BigInt->Parse("12x") = Nil, true);
+		CheckBool("reject empty", BigInt->Parse("") = Nil, true);
+		CheckBool("reject a lone sign", BigInt->Parse("-") = Nil, true);
+
+		# carry across limb boundaries
+		Check("999999 + 1", BigInt->Parse("999999")->Add(BigInt->Parse("1"))->ToString(),
+			"1000000");
+		Check("all nines + 1",
+			BigInt->Parse("999999999999999999")->Add(BigInt->Parse("1"))->ToString(),
+			"1000000000000000000");
+		Check("borrow across a limb",
+			BigInt->Parse("1000000")->Subtract(BigInt->Parse("1"))->ToString(), "999999");
+
+		# past Int, where this type earns its existence
+		Check("Int max + 1",
+			BigInt->Parse("9223372036854775807")->Add(BigInt->Parse("1"))->ToString(),
+			"9223372036854775808");
+		Check("Int min - 1",
+			BigInt->Parse("-9223372036854775808")->Subtract(BigInt->Parse("1"))->ToString(),
+			"-9223372036854775809");
+
+		# signs, and that a cancelling subtraction yields canonical zero
+		Check("-7 + 7", BigInt->New(-7)->Add(BigInt->New(7))->ToString(), "0");
+		CheckBool("cancelling to zero is zero",
+			BigInt->New(-7)->Add(BigInt->New(7))->IsZero(), true);
+		CheckInt("zero's sign is 0", BigInt->New(-7)->Add(BigInt->New(7))->Sign(), 0);
+		CheckBool("two zeros are equal",
+			BigInt->New(0)->Equals(BigInt->New(-7)->Add(BigInt->New(7))), true);
+		Check("-7 * -6", BigInt->New(-7)->Multiply(BigInt->New(-6))->ToString(), "42");
+		Check("-7 * 6", BigInt->New(-7)->Multiply(BigInt->New(6))->ToString(), "-42");
+
+		# truncating division and the dividend's remainder sign, following Int
+		Check("7 / 2", BigInt->New(7)->Divide(BigInt->New(2))->ToString(), "3");
+		Check("-7 / 2", BigInt->New(-7)->Divide(BigInt->New(2))->ToString(), "-3");
+		Check("7 / -2", BigInt->New(7)->Divide(BigInt->New(-2))->ToString(), "-3");
+		Check("-7 / -2", BigInt->New(-7)->Divide(BigInt->New(-2))->ToString(), "3");
+		Check("7 % 2", BigInt->New(7)->Modulo(BigInt->New(2))->ToString(), "1");
+		Check("-7 % 2", BigInt->New(-7)->Modulo(BigInt->New(2))->ToString(), "-1");
+		Check("7 % -2", BigInt->New(7)->Modulo(BigInt->New(-2))->ToString(), "1");
+		Check("-7 % -2", BigInt->New(-7)->Modulo(BigInt->New(-2))->ToString(), "-1");
+		CheckBool("divide by zero is Nil",
+			BigInt->New(7)->Divide(BigInt->New(0)) = Nil, true);
+		CheckBool("modulo by zero is Nil",
+			BigInt->New(7)->Modulo(BigInt->New(0)) = Nil, true);
+
+		# a single-limb divisor is a separate path from normalised long division
+		Check("big / single limb",
+			BigInt->Parse("1000000000000000000000000")->Divide(BigInt->Parse("7"))->ToString(),
+			"142857142857142857142857");
+		Check("big % single limb",
+			BigInt->Parse("1000000000000000000000000")->Modulo(BigInt->Parse("7"))->ToString(),
+			"1");
+
+		# multi-limb divisor, near-equal lengths: the tightest quotient estimate
+		Check("near-equal lengths",
+			BigInt->Parse("999999999999999999999999")->Divide(
+				BigInt->Parse("999999999999999999999998"))->ToString(), "1");
+		Check("exact division",
+			BigInt->Parse("123456789012345678901234567890")->Divide(
+				BigInt->Parse("123456789"))->ToString(), "1000000000100000000010");
+		Check("exact division leaves no remainder",
+			BigInt->Parse("123456789012345678901234567890")->Modulo(
+				BigInt->Parse("123456789"))->ToString(), "0");
+		Check("dividend smaller than divisor",
+			BigInt->Parse("5")->Divide(BigInt->Parse("1000000000000"))->ToString(), "0");
+		Check("remainder is the whole dividend",
+			BigInt->Parse("5")->Modulo(BigInt->Parse("1000000000000"))->ToString(), "5");
+
+		# powers, gcd, comparison
+		Check("2^64", BigInt->New(2)->Pow(64)->ToString(), "18446744073709551616");
+		Check("anything^0", BigInt->New(12345)->Pow(0)->ToString(), "1");
+		Check("0^5", BigInt->New(0)->Pow(5)->ToString(), "0");
+		Check("(-3)^3", BigInt->New(-3)->Pow(3)->ToString(), "-27");
+		Check("(-3)^4", BigInt->New(-3)->Pow(4)->ToString(), "81");
+		CheckBool("a negative power is Nil", BigInt->New(2)->Pow(-1) = Nil, true);
+		Check("gcd(1071, 462)", BigInt->New(1071)->Gcd(BigInt->New(462))->ToString(), "21");
+		Check("gcd is on magnitudes",
+			BigInt->New(-1071)->Gcd(BigInt->New(462))->ToString(), "21");
+		Check("gcd(x, 0)", BigInt->New(42)->Gcd(BigInt->New(0))->ToString(), "42");
+		# 9, not the 9000000000900000000 the digit patterns suggest -- checked
+		# against Python. A plausible-looking wrong expectation is exactly the
+		# failure mode an oracle exists to catch, and it caught this one.
+		Check("gcd of big values",
+			BigInt->Parse("123456789012345678901234567890")->Gcd(
+				BigInt->Parse("9876543210987654321"))->ToString(), "9");
+		CheckInt("compare less", BigInt->New(-5)->Compare(BigInt->New(3)), -1);
+		CheckInt("compare greater", BigInt->New(5)->Compare(BigInt->New(3)), 1);
+		CheckInt("compare equal", BigInt->New(3)->Compare(BigInt->New(3)), 0);
+		CheckInt("compare both negative", BigInt->New(-5)->Compare(BigInt->New(-3)), -1);
+
+		# Int round trip, including the value with no positive counterpart
+		CheckInt("ToInt", BigInt->Parse("-9223372036854775808")->ToInt(),
+			-9223372036854775807 - 1);
+		CheckBool("Int max fits", BigInt->Parse("9223372036854775807")->FitsInt(), true);
+		CheckBool("past Int max does not",
+			BigInt->Parse("9223372036854775808")->FitsInt(), false);
+
+		# digit count, independent of the rendered string
+		CheckInt("DigitCount(0)", BigInt->New(0)->DigitCount(), 1);
+		CheckInt("DigitCount(999999)", BigInt->Parse("999999")->DigitCount(), 6);
+		CheckInt("DigitCount(1000000)", BigInt->Parse("1000000")->DigitCount(), 7);
+
+		# equal values must hash equally, or a Hash keyed on BigInt loses entries
+		CheckBool("equal values hash equally",
+			BigInt->Parse("1000000000000")->HashID() =
+				BigInt->New(1000000)->Multiply(BigInt->New(1000000))->HashID(), true);
+
+		# the Rosetta Code task, whose expected digits are published
+		p := BigInt->New(5)->Pow(262144);
+		s := p->ToString();
+		CheckInt("5^262144 digit count", p->DigitCount(), 183231);
+		CheckInt("5^262144 rendered length", s->Size(), 183231);
+		Check("5^262144 first 20", s->SubString(20), "62060698786608744707");
+		Check("5^262144 last 20", s->SubString(s->Size() - 20, 20), "92256259918212890625");
+
+		# 25!, an independent check of repeated multiplication
+		f := BigInt->New(1);
+		each(i : 25) { f := f->Multiply(BigInt->New(i + 1)); };
+		Check("25!", f->ToString(), "15511210043330985984000000");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

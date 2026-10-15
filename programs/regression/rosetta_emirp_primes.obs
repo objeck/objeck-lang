@@ -1,0 +1,93 @@
+#~
+# Rosetta Code: Emirp primes
+# https://rosettacode.org/wiki/Emirp_primes
+#
+# A prime whose digit reversal is a different prime. Palindromic primes must be excluded, which is the condition that separates an emirp from a reversible prime.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaEmirpPrimes {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaEmirpPrimes->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		out := "";
+		found := 0;
+		n := 2;
+		while(found < 20) {
+			if(IsEmirp(n)) {
+				out += "{$n} ";
+				found += 1;
+			};
+			n += 1;
+		};
+		Check("first 20 emirps", out->Trim(),
+			"13 17 31 37 71 73 79 97 107 113 149 157 167 179 199 311 337 347 359 389");
+		# 11 is prime and palindromic, so it is not an emirp
+		CheckInt("11 is not an emirp", IsEmirp(11) ? 1 : 0, 0);
+		CheckInt("13 is an emirp", IsEmirp(13) ? 1 : 0, 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Reverse(n : Int) ~ Int {
+		r := 0;
+		while(n > 0) {
+			r := r * 10 + n % 10;
+			n := n / 10;
+		};
+		return r;
+	}
+
+	function : IsEmirp(n : Int) ~ Bool {
+		if(<>IsPrime(n)) { return false; };
+		r := Reverse(n);
+		# a palindrome is not an emirp, however prime it is
+		if(r = n) { return false; };
+		return IsPrime(r);
+	}
+	function : IsPrime(n : Int) ~ Bool {
+		if(n < 2) { return false; };
+		if(n < 4) { return true; };
+		if(n % 2 = 0) { return false; };
+		d := 3;
+		while(d * d <= n) {
+			if(n % d = 0) { return false; };
+			d += 2;
+		};
+		return true;
+	}
+}

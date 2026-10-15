@@ -1,0 +1,102 @@
+#~
+# Rosetta Code: Sieve of Eratosthenes
+# https://rosettacode.org/wiki/Sieve_of_Eratosthenes
+#
+# The sieve itself, checked against trial division over the same range so a marking off-by-one shows up as a disagreement rather than a plausible list.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaSieve {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaSieve->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		p := Sieve(100);
+		out := "";
+		count := 0;
+		for(i := 2; i <= 100; i += 1;) {
+			if(p[i]) {
+				out += "{$i} ";
+				count += 1;
+			};
+		};
+		Check("primes below 100", out->Trim(),
+			"2 3 5 7 11 13 17 19 23 29 31 37 41 43 47 53 59 61 67 71 73 79 83 89 97");
+		CheckInt("how many below 100", count, 25);
+		CheckInt("1 is not prime", p[1] ? 1 : 0, 0);
+		CheckInt("0 is not prime", p[0] ? 1 : 0, 0);
+		CheckInt("2 is prime", p[2] ? 1 : 0, 1);
+
+		# the sieve must agree with trial division, which fails differently
+		big := Sieve(5000);
+		disagree := 0;
+		for(i := 2; i <= 5000; i += 1;) {
+			if(big[i] <> IsPrime(i)) { disagree += 1; };
+		};
+		CheckInt("sieve agrees with trial division to 5000", disagree, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Sieve(limit : Int) ~ Bool[] {
+		prime := Bool->New[limit + 1];
+		for(i := 2; i <= limit; i += 1;) { prime[i] := true; };
+		p := 2;
+		while(p * p <= limit) {
+			if(prime[p]) {
+				# start at p*p: smaller multiples already have a smaller factor
+				m := p * p;
+				while(m <= limit) {
+					prime[m] := false;
+					m += p;
+				};
+			};
+			p += 1;
+		};
+		return prime;
+	}
+	function : IsPrime(n : Int) ~ Bool {
+		if(n < 2) { return false; };
+		if(n < 4) { return true; };
+		if(n % 2 = 0) { return false; };
+		d := 3;
+		while(d * d <= n) {
+			if(n % d = 0) { return false; };
+			d += 2;
+		};
+		return true;
+	}
+}

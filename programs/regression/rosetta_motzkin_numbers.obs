@@ -1,0 +1,68 @@
+#~
+# Rosetta Code: Motzkin numbers
+# https://rosettacode.org/wiki/Motzkin_numbers
+#
+# M(n) = M(n-1)*(2n+1)/(n+2) + M(n-2)*(3n-3)/(n+2). Both terms share the divisor, so dividing each separately loses a remainder -- the sum must be formed first.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaMotzkinNumbers {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaMotzkinNumbers->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		m := Int->New[15];
+		m[0] := 1;
+		m[1] := 1;
+		for(n := 2; n < 15; n += 1;) {
+			# formed as one numerator, then divided once
+			m[n] := (m[n - 1] * (2 * n + 1) + m[n - 2] * (3 * n - 3)) / (n + 2);
+		};
+		out := "";
+		each(i : m) {
+			out += m[i]->ToString();
+			out += " ";
+		};
+		Check("motzkin 0..14", out->Trim(),
+			"1 1 2 4 9 21 51 127 323 835 2188 5798 15511 41835 113634");
+		CheckInt("M(0)", m[0], 1);
+		CheckInt("M(2)", m[2], 2);
+		CheckInt("M(14)", m[14], 113634);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+}

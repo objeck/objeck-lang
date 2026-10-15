@@ -1,0 +1,76 @@
+#~
+# Rosetta Code: Jacobsthal numbers
+# https://rosettacode.org/wiki/Jacobsthal_numbers
+#
+# J(n) = J(n-1) + 2*J(n-2). The closed form (2^n - (-1)^n)/3 is checked against the recurrence, since the alternating sign is easy to get backwards.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaJacobsthalNumbers {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaJacobsthalNumbers->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		j := Int->New[20];
+		j[0] := 0;
+		j[1] := 1;
+		for(n := 2; n < 20; n += 1;) {
+			j[n] := j[n - 1] + 2 * j[n - 2];
+		};
+		out := "";
+		each(i : j) {
+			out += j[i]->ToString();
+			out += " ";
+		};
+		Check("jacobsthal 0..19", out->Trim(),
+			"0 1 1 3 5 11 21 43 85 171 341 683 1365 2731 5461 10923 21845 43691 " +
+			"87381 174763");
+
+		# the closed form (2^n - (-1)^n)/3
+		bad := 0;
+		pow2 := 1;
+		for(n := 0; n < 20; n += 1;) {
+			sign := 1;
+			if(n % 2 = 1) { sign := -1; };
+			if((pow2 - sign) / 3 <> j[n]) { bad += 1; };
+			pow2 *= 2;
+		};
+		CheckInt("the closed form agrees", bad, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+}

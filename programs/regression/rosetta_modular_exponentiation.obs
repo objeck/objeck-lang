@@ -1,0 +1,84 @@
+#~
+# Rosetta Code: Modular exponentiation
+# https://rosettacode.org/wiki/Modular_exponentiation
+#
+# EXTRA_LIBS: math
+#
+# a^b mod m where a, b and m are far past 64 bits -- the task's own values are a 69-digit base and a 70-digit exponent. Square-and-multiply over BigInt, reducing at every step so the intermediate never exceeds m^2.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+use System.Math;
+
+class RosettaModularExponentiation {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaModularExponentiation->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# small, checkable by hand: 2^1000 mod 1000
+		Check("2^1000 mod 1000",
+			ModPow(BigInt->New(2), BigInt->New(1000), BigInt->New(1000))->ToString(),
+			"376");
+		Check("3^4 mod 5",
+			ModPow(BigInt->New(3), BigInt->New(4), BigInt->New(5))->ToString(), "1");
+		Check("anything^0 mod m",
+			ModPow(BigInt->New(7), BigInt->New(0), BigInt->New(13))->ToString(), "1");
+
+		# the task's own numbers: the last 40 digits of a^b
+		a := BigInt->Parse("2988348162058574136915891421498819466320163312926952423791023078876139");
+		b := BigInt->Parse("2351399303373464486466122544523690094744975233415544072992656881240319");
+		m := BigInt->New(10)->Pow(40);
+		Check("the task's 40-digit result", ModPow(a, b, m)->ToString(),
+			"1527229998585248450016808958343740453059");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : ModPow(base : BigInt, e : BigInt, m : BigInt) ~ BigInt {
+		result := BigInt->One();
+		b := base->Modulo(m);
+		two := BigInt->New(2);
+		zero := BigInt->New(0);
+		while(e->Compare(zero) > 0) {
+			if(e->Modulo(two)->Equals(BigInt->One())) {
+				result := result->Multiply(b)->Modulo(m);
+			};
+			e := e->Divide(two);
+			# reduced every step, so nothing ever exceeds m^2
+			b := b->Multiply(b)->Modulo(m);
+		};
+		return result;
+	}
+}

@@ -1,0 +1,72 @@
+#~
+# Rosetta Code: Pell numbers
+# https://rosettacode.org/wiki/Pell_numbers
+#
+# P(n) = 2*P(n-1) + P(n-2). The recurrence grows faster than Fibonacci, so the 15th term already shows whether the coefficient was applied to the right term.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaPellNumbers {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaPellNumbers->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		p := Pell(15);
+		out := "";
+		each(i : p) {
+			out += p[i]->ToString();
+			out += " ";
+		};
+		Check("first 15 Pell numbers", out->Trim(),
+			"0 1 2 5 12 29 70 169 408 985 2378 5741 13860 33461 80782");
+		CheckInt("P(0)", p[0], 0);
+		CheckInt("P(1)", p[1], 1);
+		# 2*P(13) + P(12) = 2*33461 + 13860
+		CheckInt("P(14)", p[14], 80782);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Pell(count : Int) ~ Int[] {
+		out := Int->New[count];
+		out[0] := 0;
+		if(count > 1) { out[1] := 1; };
+		for(i := 2; i < count; i += 1;) {
+			out[i] := 2 * out[i - 1] + out[i - 2];
+		};
+		return out;
+	}
+}

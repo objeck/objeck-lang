@@ -1,0 +1,82 @@
+#~
+# Rosetta Code: Fusc sequence
+# https://rosettacode.org/wiki/Fusc_sequence
+#
+# fusc(2n) = fusc(n) and fusc(2n+1) = fusc(n) + fusc(n+1). The odd case reads one term AHEAD, so the table has to be filled far enough before it is read.
+#
+# Expected values were computed with an independent oracle, not recalled.
+~#
+
+
+class RosettaFuscSequence {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaFuscSequence->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		f := Fusc(62);
+		out := "";
+		for(i := 0; i < 31; i += 1;) {
+			out += f[i]->ToString();
+			out += " ";
+		};
+		Check("fusc 0..30", out->Trim(),
+			"0 1 1 2 1 3 2 3 1 4 3 5 2 5 3 4 1 5 4 7 3 8 5 7 2 7 5 8 3 7 4");
+		CheckInt("fusc(0)", f[0], 0);
+		CheckInt("fusc(1)", f[1], 1);
+		# the even rule: fusc(2n) = fusc(n)
+		bad := 0;
+		for(n := 1; n < 30; n += 1;) {
+			if(f[2 * n] <> f[n]) { bad += 1; };
+		};
+		CheckInt("the even rule holds", bad, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Fusc(count : Int) ~ Int[] {
+		# one extra slot: the odd rule reads fusc(n+1)
+		f := Int->New[count + 2];
+		f[0] := 0;
+		f[1] := 1;
+		for(n := 2; n < count + 2; n += 1;) {
+			if(n % 2 = 0) {
+				f[n] := f[n / 2];
+			}
+			else {
+				f[n] := f[n / 2] + f[n / 2 + 1];
+			};
+		};
+		return f;
+	}
+}
