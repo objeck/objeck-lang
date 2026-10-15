@@ -570,6 +570,11 @@ namespace frontend {
 
     void SetMethodCall(MethodCall* call);
 
+    // detaches the chain without touching it (SetMethodCall ignores Nil)
+    void ClearMethodCall() {
+      method_call = nullptr;
+    }
+
     void SetPreviousExpression(Expression* e) {
       prev_expr = e;
     }
@@ -1903,6 +1908,11 @@ namespace frontend {
   public:
     StatementType GetStatementType() {
       return SIMPLE_STMT;
+    }
+
+    // a '+' statement whose chain moved to its StringConcat node (see AnalyzeExpression)
+    void SetExpression(Expression* e) {
+      expression = e;
     }
 
     Expression* GetExpression() {
@@ -4407,4 +4417,47 @@ namespace frontend {
     ScopedProgramFactories(const ScopedProgramFactories&) = delete;
     ScopedProgramFactories& operator=(const ScopedProgramFactories&) = delete;
   };
+
+  /****************************
+   * The type a sub-expression actually pushes on the stack.
+   *
+   * A trailing cast or method-call chain changes it: `(12.0 + x)->As(Int)` pushes
+   * an Int though the addition's own eval type is Float, and
+   * `s->ToUpper()->Size()` pushes an Int though the first link returns a String.
+   * Anything that selects an opcode or an overload from an operand's type has to
+   * ask for the END of the chain, not the head.
+   *
+   * Getting this wrong is not a wrong answer, it is a crash: a comparison picked a
+   * FLOAT opcode for integer operands (bit-compared ints, handed XMM operands to
+   * the JIT), string interpolation (#1107) and '+' concatenation picked
+   * String:Append's OBJECT overload for an Int and dereferenced the integer as a
+   * pointer.
+   *
+   * Reads eval types only; it never re-analyzes (analysis has side effects, #752).
+   ****************************/
+  inline Type* EffectiveStackType(Expression* e)
+  {
+    Type* type = e->GetEvalType();
+
+    MethodCall* mc = e->GetMethodCall();
+    if(mc) {
+      while(mc->GetMethodCall()) {
+        mc = mc->GetMethodCall();
+      }
+      if(mc->GetTypeOf()) {
+        type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+      }
+      else if(mc->GetCastType()) {
+        type = mc->GetCastType();
+      }
+      else if(mc->GetEvalType()) {
+        type = mc->GetEvalType();
+      }
+    }
+    else if(e->GetCastType()) {
+      type = e->GetCastType();
+    }
+
+    return type;
+  }
 }

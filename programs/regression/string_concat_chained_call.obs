@@ -1,0 +1,121 @@
+#~
+Regression: '+' concatenation with a chained method call appended the wrong overload.
+
+Found by the Rosetta batch-3 string tasks. The third instance of the #1107
+class: EmitStringConcat (and AnalyzeStringConcat's ToString lookup) selected
+String:Append's overload from the operand's eval type, which for a call chain
+is the type of its HEAD. `"v=" + x->Abs()->ToString()` -- head Int, end String --
+appended the String's address as an integer; `"v=" + t->ToUpper()->Size()` --
+head String, end Int -- dereferenced the Int as a String and crashed. The fix
+selects from the END of the chain (EffectiveStackType), as interpolation does
+since #1107. `+=` already walked the chain and was never affected.
+
+The same head-of-chain typing made interpolation reject `{$b->Me()->Get()}`
+("does not have public 'ToString' method") when the FIRST link returns an
+object without ToString, though the chain ends in an Int.
+~#
+
+class Bare {
+	@n : Int;
+
+	New(n : Int) {
+		@n := n;
+	}
+
+	method : public : Me() ~ Bare {
+		return @self;
+	}
+
+	method : public : Get() ~ Int {
+		return @n;
+	}
+
+	method : public : Name() ~ String {
+		return "bare";
+	}
+}
+
+class Probe {
+	@n : Int;
+
+	New(n : Int) {
+		@n := n;
+	}
+
+	method : public : Get() ~ Int {
+		return @n;
+	}
+
+	method : public : Self() ~ Probe {
+		return @self;
+	}
+
+	method : public : ToString() ~ String {
+		return "Probe({$@n})";
+	}
+}
+
+class StringConcatChainedCall {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		x := -5;
+		t := "abc";
+		arr := Int->New[4];
+		f := 2.5;
+		p := Probe->New(7);
+
+		# head Int, end String: appended the String's address
+		Check("Int->Abs()->ToString()", "v=" + x->Abs()->ToString(), "v=5");
+		Check("String->Size()->ToString()", "v=" + t->Size()->ToString(), "v=3");
+		Check("array->Size()->ToString()", "n=" + arr->Size()->ToString(), "n=4");
+		Check("chain on the left", arr->Size()->ToString() + "=v", "4=v");
+		Check("parenthesised receiver", "v=" + (t->Size())->ToString(), "v=3");
+
+		# head String, end Int: crashed
+		Check("String->ToUpper()->Size()", "v=" + t->ToUpper()->Size(), "v=3");
+
+		# head Float, end Int: appended as a Float
+		Check("Float->Floor()->As(Int)", "v=" + f->Floor()->As(Int), "v=2");
+
+		# head object, end object of another class: its ToString
+		Check("object->Self()", "p=" + p->Self(), "p=Probe(7)");
+		Check("object->Self()->Get()", "p=" + p->Self()->Get(), "p=7");
+
+		# forms that always worked, kept as guards
+		Check("one link", "v=" + x->Abs(), "v=5");
+		n := t->Size();
+		Check("bound to a local first", "n=" + n->ToString(), "n=3");
+		s := "v=";
+		s += t->Size()->ToString();
+		Check("+= with a chain", s, "v=3");
+		Check("interpolation", "n={$t->Size()}", "n=3");
+		b := Bare->New(6);
+		Check("interpolation, head without ToString, ends in Int", "{$b->Me()->Get()}", "6");
+		Check("interpolation, head without ToString, ends in String", "{$b->Me()->Name()}", "bare");
+		Check("several operands", "a" + t->ToUpper()->Size() + "b" + x->Abs()->ToString() + "c", "a3b5c");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		StringConcatChainedCall->New()->Run();
+	}
+}

@@ -1,0 +1,131 @@
+#~
+Regression: a call chain after As(T), and TypeOf(..) at the end of a chain.
+
+Found by the Rosetta batch-3 collection tasks; every case crashed or failed to
+compile in all three execution modes.
+
+1. `u->As(IntRef)->Get() + 1` crashed. As(T) is a cast of the RECEIVER, but the
+   chain's type took the receiver's cast ("favor casts" on the previous
+   expression), so Get()'s Int result was typed IntRef and `+ 1` unboxed it a
+   second time: a field load through an integer. `u->As(IntRef)->Get()->ToString()`
+   was rejected as an IntRef/Int cast, because the statement parser copies the
+   receiver's cast onto the first call and only a scalar copy was recognised.
+2. `h->Find("a")->TypeOf(IntRef)` crashed: the check was emitted twice (once
+   with the call, once by EmitExpression), the second testing the first's Bool.
+   `b := s->ToUpper()->TypeOf(String)` declared b a String, and
+   `b->PrintLine()` called String:PrintLine on the Bool. A call after the check,
+   `->TypeOf(String)->ToString()`, lacked the instance word a '$Bool' helper takes.
+~#
+
+use Collection;
+
+class Holder {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : Val() ~ Int {
+		return @v;
+	}
+
+	method : public : Me() ~ Holder {
+		return @self;
+	}
+
+	method : public : ToString() ~ String {
+		return "H{$@v}";
+	}
+}
+
+class CastAndTypeofChains {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Twice(i : Int) ~ Int {
+		return i * 2;
+	}
+
+	method : Run() ~ Nil {
+		u : Base := IntRef->New(4);
+		f : Base := FloatRef->New(1.5);
+		h : Base := Holder->New(9);
+
+		# 1. As(T) then a call
+		CheckInt("As(IntRef)->Get() + 1", u->As(IntRef)->Get() + 1, 5);
+		CheckInt("1 + As(IntRef)->Get()", 1 + u->As(IntRef)->Get(), 5);
+		CheckInt("-1 * As(IntRef)->Get()", -1 * u->As(IntRef)->Get(), -4);
+		CheckInt("as a call argument", Twice(u->As(IntRef)->Get() + 1), 10);
+		lt := false;
+		if(3 < u->As(IntRef)->Get()) { lt := true; };
+		CheckBool("in a comparison", lt, true);
+		g := f->As(FloatRef)->Get() * 2.0;
+		CheckBool("FloatRef->Get() * 2.0", g = 3.0, true);
+		CheckInt("user class: As(Holder)->Val() + 1", h->As(Holder)->Val() + 1, 10);
+		CheckInt("user class, two links", h->As(Holder)->Me()->Val() + 1, 10);
+		Check("As(IntRef)->Get()->ToString()", u->As(IntRef)->Get()->ToString(), "4");
+		Check("As(IntRef)->ToString()->ToUpper()", u->As(IntRef)->ToString()->ToUpper(), "4");
+		Check("As(Holder)->ToString()", h->As(Holder)->ToString(), "H9");
+		c := u->As(IntRef)->Get();
+		CheckInt("bound to a local", c, 4);
+
+		# 2. TypeOf(..) at the end of a chain
+		m := Hash->New()<String, IntRef>;
+		m->Insert("a", IntRef->New(3));
+		b := "abc"->ToUpper()->TypeOf(String);
+		CheckBool("String->ToUpper()->TypeOf(String)", b, true);
+		CheckBool("Find()->TypeOf(IntRef)", m->Find("a")->TypeOf(IntRef), true);
+		CheckBool("Find()->TypeOf(String)", m->Find("a")->TypeOf(String), false);
+		hit := false;
+		if(m->Find("a")->TypeOf(IntRef)) { hit := true; };
+		CheckBool("in a condition", hit, true);
+		CheckBool("combined with &", m->Find("a")->TypeOf(IntRef) & true, true);
+		Check("then ToString()", "abc"->ToUpper()->TypeOf(String)->ToString(), "true");
+		Check("inside a concatenation", "x: " + m->Find("a")->TypeOf(IntRef), "x: true");
+		CheckBool("on a literal", "abc"->TypeOf(String), true);
+		CheckBool("on a variable", u->TypeOf(IntRef), true);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		CastAndTypeofChains->New()->Run();
+	}
+}
