@@ -93,7 +93,7 @@ findings have come from so far.
 
 | Cluster | Tasks | Why |
 |---|---|---|
-| Closures / functional | Currying, Partial function application, Function composition, Y combinator, Anonymous recursion | **Blocked** -- see Findings. All four need a function that takes an argument *and* closes over state, which the language cannot express today |
+| Closures / functional | Currying, Partial function application, Function composition, Y combinator, Anonymous recursion | **Open, and the mechanism is proven.** A parameterised lambda both takes an argument and captures: `\(Int) ~ Int : (x) => x + n`. Two are independent, so currying and composition are correct and reentrant. Earlier text here called these blocked; that was wrong (see Findings) |
 | Exceptions | Exceptions, Exceptions/Catch an exception thrown in a nested call | Objeck has `Try()`/`Otherwise()` on chains and no `throw`. These tasks establish how far `Try()` reaches and document the gap |
 | Numeric edges | Integer overflow, Two's complement, Zero to the zero power, Extreme floating point values, Infinity, Detect division by zero | `FEATURES.md` states the semantics precisely (64-bit two's complement, `+ - *` wrap and never trap, a zero divisor is the only integer trap). These verify the documentation is true |
 | Arbitrary precision | Arbitrary-precision integers (included) | Needs the first and last 20 digits of 5^4^3^2, a 183,231-digit number. **Settles the BigInt question with a fact** |
@@ -148,34 +148,98 @@ it is a language feature decision rather than a bug fix.
 | [Arithmetic/Rational](https://rosettacode.org/wiki/Arithmetic/Rational) | `Rational` with reduction, the six comparisons, flooring integer division and modulo, `Int` coercion, and detected overflow rather than silent wraparound. Verified: `6, 28, 496, 8128` in ~1s. Produced #1099 |
 | [Arbitrary-precision integers (included)](<https://rosettacode.org/wiki/Arbitrary-precision_integers_(included)>) | 5^262144 computed by 18 squarings. Verified against the published answer: `183231` digits, first 20 `62060698786608744707`, last 20 `92256259918212890625`. **Median 1.21s** over three runs. Produced #1103 |
 
+### Proven, not yet written up
+
+The mechanism is verified and the task entry is still to do. Anyone picking one
+of these up is writing the solution, not discovering whether it is possible.
+
+| Task | Verified by |
+|---|---|
+| Currying, Partial function application | `MakeAdder(3)` and `MakeAdder(100)` return independent closures: `13`, `110`, `13` |
+| Function composition | `Compose(f, g)` as a parameterised lambda: two live composers give `60` and `5`, where the static-field idiom gives `60` and `60` |
+| Y combinator, Anonymous recursion | follows from the above -- a parameterised lambda can capture a `FuncRef`/function reference, which is what self-application needs. **Not** separately verified yet |
+
 ---
 
-## Library proposals
+## Library work required
 
-These are permanent public API, so they are proposed here and decided before
-they land -- not added as a side effect of a task.
+`math.obl` is **approved** (2026-10-14). These are permanent public API, so the
+shape is recorded here rather than decided inside a task.
 
-### `Rational` -- written, undecided
+### `math.obl` -- the work, and every place it has to be registered
 
-Exists as a verified standalone implementation. Three things to settle:
+A new library is not one file. **Nine places**, seven of them guarded by CI. The
+count was written as seven here and corrected after two separate guards caught
+what that estimate missed -- which is the useful part of the story, because both
+misses would have shipped a library that was half-registered and looked fine.
 
-1. **Overflow behaviour.** Numerator and denominator are 64-bit, so a chain of
-   unrelated denominators exceeds the range. The implementation detects it and
-   yields a value that reports itself invalid and propagates. Silent wraparound
-   in a published numeric type is the alternative, and it is worse.
-2. **Where it lives.** Not `lang.obl` -- a version bump must rebuild and commit
-   that or windows-x64 CI fails, and every program pays for it. `misc.obl` is
-   `System.Time` plus `System.Utility` and is not a numeric home. A new
-   `math.obl` is the natural answer.
-3. **Whether to wait for BigInt**, which would remove the overflow question
-   entirely.
+| Where | What |
+|---|---|
+| `core/compiler/lib_src/math.obs` | the source; bundle `System.Math`, which was free |
+| `core/compiler/build_libs.sh` | one `$OBC` line, in dependency order. The single source of truth -- POSIX `update_version.sh` and the Windows CI runners both drive it |
+| `core/lib/math.obl` | built **and committed**; `.obl` files are tracked and the deploy copies them rather than rebuilding |
+| `.github/workflows/ci-build.yml` | the `obr code_doc.obe` list |
+| `.github/workflows/release-build.yml` | the same list again |
+| `core/release/code_doc64.in` | the same list again -- edit the `.in`, never the generated file |
+| `core/release/code_doc64.cmd` | **and the generated file too.** Editing only the template leaves the committed output stale until the next Windows deploy regenerates it |
+| `tools/lsp/server/doc_json/gen_json.{sh,cmd}` | the same list, twice more -- this is what the editor API index is built from |
+| `tools/lsp/server/objk_apis.json` and `tools/lsp/clients/vscode/server/objk_apis.json` | **the regenerated index, both tracked copies.** `sh tools/lsp/server/doc_json/gen_json.sh` rewrites them |
 
-### `Complex` -- same question
+Three guards, and each caught a real omission here rather than a hypothetical:
 
-`Arithmetic/Complex` asks for the identical shape. Decide it with `Rational`, so
-the two land in one library with one convention rather than separately.
+- `tools/cicd/check_doc_lists.py` -- the five `lib_src` lists. It reported all
+  five while they were missing.
+- `tools/cicd/check_version_templates.py` -- a generated file against its `.in`.
+  This is the one that found `code_doc64.cmd`.
+- `tools/cicd/check_api_index.py` -- the editor index's **class set**, not its
+  bytes, so whitespace cannot redden CI but a missing class can. It reported
+  "2 class(es) the libraries define but the index omits".
 
-### `BigInt` -- measured, and viable in pure Objeck
+Note that `check_doc_lists.py` passing proves nothing about the last two: a
+library can be in all five lists and still absent from the index, which is the
+state the tree was in at #1050.
+
+One API-hygiene point that is easy to miss and is not guarded at all: **Objeck
+statics are public unless marked `private`**, so limb-level helpers are published
+API by default. `code_doc` skips private members, so hiding an internal and
+keeping it out of the documentation are the same edit.
+
+Tests go in `programs/regression/` as **self-asserting** programs -- exit
+non-zero on failure, per `tools/cicd/check_test_exit_codes.py`, which rejects a
+test that prints `FAIL` and then returns normally -- and `TESTS.md` is
+regenerated with `python gen_manifest.py`.
+
+Assert **values**, not survival. A test that only checks a program did not crash
+passes against one that computes a plausible wrong answer, and for anything
+type- or overload-selected that is the likelier regression. #1107 is the case in
+point: the bug was a wrong `String:Append` overload, and a crash-only test would
+have gone green the moment the crash became a wrong number.
+
+### Contents, in dependency order
+
+**1. `BigInt` first** -- `Rational` depends on it, so it lands first or they
+land together. Sign and magnitude, little-endian limbs. What a shipped type needs
+beyond what the Rosetta task exercised: subtraction, comparison, division and
+modulo (which `Rational`'s GCD reduction requires), sign handling in `ToString`,
+and parsing from a `String`.
+
+Verify it differentially against Python's integers over random inputs rather than
+against hand-picked cases. A big-integer bug is a wrong digit in the middle of a
+correct-looking number, and `Int` wraps in silence, so an overflowing column sum
+produces a plausible answer rather than a failure. An oracle is the only honest
+check.
+
+**2. `Rational` on `BigInt`** -- already written against `Int` and verified
+(`6, 28, 496, 8128`), with reduction, the six comparisons, flooring division and
+modulo, and `Int` coercion. Backed by `BigInt` its overflow question disappears:
+there is nothing to detect and nothing to document. Keep the detected-invalid
+behaviour only if an `Int` fast path is wanted for speed, and measure before
+adding one.
+
+**3. `Complex`** -- `Float` real and imaginary parts, which is what
+`Arithmetic/Complex` asks for. Independent of the other two.
+
+### Why `BigInt` needs no native code -- the measurement
 
 There is **no arbitrary-precision integer anywhere** in the 32 shipped
 libraries, and `cipher.obl` exposes no multi-precision internals to build on.
