@@ -1,0 +1,102 @@
+#~
+# Rosetta Code: Y combinator
+# https://rosettacode.org/wiki/Y_combinator
+# Claimed in #1120
+#
+# The applicative-order Y (Z) combinator, Y f = (\x. f (\n. x x n)) (\x. f (\n. x x n)), with factorial and Fibonacci given only as non-recursive step functions. Self-application x x needs a recursive type, which Objeck's function types cannot spell directly, so x is wrapped in a one-field class Rec -- the standard device in statically typed languages. Nothing recursive is named: neither the step functions nor Y refer to themselves.
+#
+# It pins down that a parameterised lambda can capture another lambda's parameter and that two fixed points built by the same Y stay independent.
+#
+# Expected values were computed with an independent oracle (Python), not recalled.
+~#
+
+# x in "x x": a function from Rec to the function being defined
+class Rec {
+	@f : (Rec) ~ (Int) ~ Int;
+
+	New(f : (Rec) ~ (Int) ~ Int) {
+		@f := f;
+	}
+
+	# (x x) n
+	method : public : SelfApply(n : Int) ~ Int {
+		g := @f(@self);
+		return g(n);
+	}
+}
+
+class RosettaYCombinator {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaYCombinator->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# Y f = (\x. f (\n. x x n)) (\x. f (\n. x x n))
+	function : Y(f : ((Int) ~ Int) ~ (Int) ~ Int) ~ (Int) ~ Int {
+		h : (Rec) ~ (Int) ~ Int := \(Rec) ~ (Int) ~ Int : (x) => f(\(Int) ~ Int : (n) => x->SelfApply(n));
+		return h(Rec->New(h));
+	}
+
+	method : Run() ~ Nil {
+		fac := Y(\((Int) ~ Int) ~ (Int) ~ Int : (self) => \(Int) ~ Int : (n) => n < 2 ? 1 : n * self(n - 1));
+		fib := Y(\((Int) ~ Int) ~ (Int) ~ Int : (self) => \(Int) ~ Int : (n) => n < 2 ? n : self(n - 1) + self(n - 2));
+
+		CheckInt("fac(0)", fac(0), 1);
+		CheckInt("fac(1)", fac(1), 1);
+		CheckInt("fac(5)", fac(5), 120);
+		CheckInt("fac(10)", fac(10), 3628800);
+		CheckInt("fac(20)", fac(20), 2432902008176640000);
+
+		CheckInt("fib(0)", fib(0), 0);
+		CheckInt("fib(1)", fib(1), 1);
+		CheckInt("fib(10)", fib(10), 55);
+		CheckInt("fib(20)", fib(20), 6765);
+
+		# the first fixed point is unaffected by building and running the second
+		CheckInt("fac(6) after fib", fac(6), 720);
+
+		# the first ten factorials and Fibonacci numbers, as the task prints them
+		facs := "";
+		fibs := "";
+		for(i := 1; i <= 10; i += 1;) {
+			facs += fac(i)->ToString();
+			fibs += fib(i)->ToString();
+			if(i < 10) { facs += " "; fibs += " "; };
+		};
+		if(facs->Equals("1 2 6 24 120 720 5040 40320 362880 3628800")) {
+			"PASS: factorials 1..10"->PrintLine();
+		}
+		else {
+			"FAIL: factorials 1..10: got {$facs}"->PrintLine();
+			@failures += 1;
+		};
+		if(fibs->Equals("1 1 2 3 5 8 13 21 34 55")) {
+			"PASS: Fibonacci 1..10"->PrintLine();
+		}
+		else {
+			"FAIL: Fibonacci 1..10: got {$fibs}"->PrintLine();
+			@failures += 1;
+		};
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,171 @@
+#~
+# Rosetta Code: Exceptions
+# https://rosettacode.org/wiki/Exceptions
+# Claimed in #1123
+#
+# Objeck has no exceptions: no throw, no catch, no finally and no exception classes. What it has is Try() -- spelled ?-> on a call chain -- which turns any runtime error raised anywhere below that chain (Nil dereference, index out of bounds, integer or float divide by zero, invalid cast) into a Nil result, after which the program carries on. This is the closest honest version of the task: the handler is "the guarded call yields Nil", and "throwing" is raising a runtime error on purpose after recording a message where the handler can read it.
+#
+# What cannot be expressed: a user-defined exception type, catching by type (every guarded error looks the same), the error's own message (the runtime prints it only when nothing is guarding), finally, and rethrow. The recorded message is passed down in an array because a field write -- or a call -- in a guarded method two or more frames below the handler, before the error, crashes the recovery under the JIT; an array element store does not.
+#
+# Expected values follow from the arithmetic in each assertion; which errors Try recovers is documented in docs/FEATURES.md and docs/architecture.md.
+~#
+
+class Risky {
+	New() {}
+
+	method : public : Divide(a : Int, b : Int) ~ IntRef {
+		return IntRef->New(a / b);
+	}
+
+	method : public : Reciprocal(x : Float) ~ FloatRef {
+		return FloatRef->New(1.0 / x);
+	}
+
+	method : public : At(values : Int[], i : Int) ~ IntRef {
+		return IntRef->New(values[i]);
+	}
+
+	method : public : Length(s : String) ~ IntRef {
+		return IntRef->New(s->Size());
+	}
+
+	method : public : AsText(b : Base) ~ String {
+		return b->As(String);
+	}
+
+	# "throw": record the message for the handler, then raise
+	method : public : Throw(note : String[], message : String) ~ IntRef {
+		note[0] := message;
+		nothing : String;
+		return IntRef->New(nothing->Size());
+	}
+
+	# two calls deep, with nothing done before the error but the calls
+	method : public : Outer(a : Int, b : Int) ~ IntRef {
+		return Middle(a, b);
+	}
+
+	method : public : Middle(a : Int, b : Int) ~ IntRef {
+		return Divide(a, b);
+	}
+
+	# a handler of its own: recovers, then answers -1 instead
+	method : public : SafeDivide(a : Int, b : Int) ~ IntRef {
+		r := @self?->Divide(a, b);
+		if(r = Nil) {
+			return IntRef->New(-1);
+		};
+		return r;
+	}
+}
+
+class RosettaExceptions {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaExceptions->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckTrue(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# split into four methods: with all of these recoveries in one method, the
+		# program ends with "call stack bounds have been exceeded!" and exit 1 when
+		# every method is JIT-compiled, although every assertion passes
+		r := Risky->New();
+		Kinds(r);
+		Depth(r);
+		Throwing(r);
+		Repeated(r);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Kinds(r : Risky) ~ Nil {
+		# no error: the guarded call returns its value
+		ok := r?->Divide(84, 2);
+		CheckTrue("an unfailing guarded call returns a value", ok <> Nil);
+		CheckInt("and the value is right", ok->Get(), 42);
+
+		# each kind of runtime error is caught. Every guarded result goes through a
+		# local before it is compared: compared inline, or passed straight in as an
+		# argument, a recovered divide by zero in a call that takes arguments leaves
+		# the interpreter's operand stack wrong (the comparison answers false and an
+		# earlier argument reads as Nil)
+		dz := r?->Divide(1, 0);
+		CheckTrue("integer divide by zero is caught", dz = Nil);
+		fz := r?->Reciprocal(0.0);
+		CheckTrue("float divide by zero is caught", fz = Nil);
+		ob := r?->At([1, 2, 3], 3);
+		CheckTrue("index out of bounds is caught", ob = Nil);
+		# a local, because F([1, 2, 3], -1) parses as the array literal minus 1
+		below := -1;
+		ub := r?->At([1, 2, 3], below);
+		CheckTrue("a negative index is caught", ub = Nil);
+		nothing : String;
+		nd := r?->Length(nothing);
+		CheckTrue("a Nil dereference is caught", nd = Nil);
+		bc := r?->AsText(IntRef->New(5));
+		CheckTrue("an invalid cast is caught", bc = Nil);
+	}
+
+	method : Depth(r : Risky) ~ Nil {
+		# the guard reaches an error raised two calls below it
+		two := r?->Outer(5, 0);
+		CheckTrue("an error two calls deep is caught", two = Nil);
+		deep := r?->Outer(50, 5);
+		CheckInt("and the same path without the error answers", deep->Get(), 10);
+	}
+
+	method : Throwing(r : Risky) ~ Nil {
+		# throw and catch: the handler reads what the thrower recorded
+		note := String->New[1];
+		caught := r?->Throw(note, "user error: bad input");
+		CheckTrue("a thrown error is caught", caught = Nil);
+		CheckTrue("the handler sees the thrown message", note[0]->Equals("user error: bad input"));
+
+		# a handler inside a method recovers and the caller never sees the error
+		inner := r->SafeDivide(7, 0);
+		CheckInt("an inner handler substitutes its own answer", inner->Get(), -1);
+		inner_ok := r->SafeDivide(7, 7);
+		CheckInt("the inner handler is transparent on success", inner_ok->Get(), 1);
+	}
+
+	method : Repeated(r : Risky) ~ Nil {
+		# execution continues normally after many recoveries
+		misses := 0;
+		for(i := 0; i < 200; i += 1;) {
+			miss := r?->Divide(i, 0);
+			if(miss = Nil) { misses += 1; };
+		};
+		CheckInt("200 errors in a row are all caught", misses, 200);
+		after := r?->Divide(9, 3);
+		CheckInt("and the program carries on afterwards", after->Get(), 3);
+	}
+}

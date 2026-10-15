@@ -1,0 +1,153 @@
+#~
+# Rosetta Code: Detect division by zero
+# https://rosettacode.org/wiki/Detect_division_by_zero
+# Claimed in #1130
+#
+# The task forbids testing the denominator, so detection has to come from the runtime. A zero divisor -- integer `/` and `%`, and also Float `/` with a zero held in a variable -- raises "Divide by zero", which unguarded aborts the VM with exit 1. The `?->` operator (exactly `->Try()->`, see FEATURES.md "Nil Safety") recovers from it: the guarded call yields Nil, or the `??` default for a value-typed result, and the program continues. This pins detection for each operator, a fault raised one call below the guarded one, the non-zero divisor passing through untouched, and that Float->Mod(x, 0.0) does not raise at all but returns NaN.
+#
+# The number of recovered faults is kept small on purpose: in the interpreter a recovery leaves the operand stack at the wrong depth, and a loop of a few hundred recovered divisions segfaults the VM (reported to the batch lead).
+#
+# Expected values were computed with an independent oracle (Python), not recalled.
+~#
+
+class Divider {
+	New() {
+	}
+
+	method : public : Quotient(a : Int, b : Int) ~ Int {
+		return a / b;
+	}
+
+	method : public : Remainder(a : Int, b : Int) ~ Int {
+		return a % b;
+	}
+
+	method : public : Ratio(a : Float, b : Float) ~ Float {
+		return a / b;
+	}
+
+	method : public : Boxed(a : Int, b : Int) ~ IntRef {
+		return IntRef->New(a / b);
+	}
+
+	# the fault is raised one frame below the guarded call. Two frames below
+	# is not used: with every method JIT-compiled, recovering a fault raised
+	# two compiled frames down segfaults (reported to the batch lead)
+	method : public : Deep(a : Int, b : Int) ~ Int {
+		return Bottom(a, b) * 2 + 1;
+	}
+
+	function : Bottom(a : Int, b : Int) ~ Int {
+		return a / b;
+	}
+}
+
+class RosettaDetectDivisionByZero {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaDetectDivisionByZero->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		d := Divider->New();
+
+		# Every guarded call below is a statement of its own, its result taken
+		# through a local. In the interpreter a recovered '?->' leaves the operand
+		# stack at the wrong depth: `d?->M(x) = Nil` written inline answers false,
+		# and a recovery inside a call made while the caller still has arguments
+		# pending clobbers one of them (both reported to the batch lead)
+
+		# the task's function: true when dividing raised, decided without
+		# looking at the denominator
+		hit := DividesByZero(d, 7, 0);
+		CheckBool("7 / 0 is detected", hit, true);
+		hit := DividesByZero(d, 7, 2);
+		CheckBool("7 / 2 is not", hit, false);
+		hit := DividesByZero(d, 0, 0);
+		CheckBool("0 / 0 is detected", hit, true);
+		hit := DividesByZero(d, -9223372036854775807 - 1, -1);
+		CheckBool("MIN / -1 is not: it wraps, it does not raise", hit, false);
+
+		# value-typed results take the ?? default on a fault
+		v := d?->Quotient(Id(7), Id(0)) ?? -999;
+		CheckInt("7 / 0 falls back to the default", v, -999);
+		v := d?->Quotient(Id(-7), Id(2)) ?? -999;
+		CheckInt("-7 / 2 passes through, truncated toward zero", v, -3);
+		v := d?->Remainder(Id(7), Id(0)) ?? -999;
+		CheckInt("7 % 0 falls back to the default", v, -999);
+		v := d?->Remainder(Id(-7), Id(3)) ?? -999;
+		CheckInt("-7 % 3 passes through, sign of the dividend", v, -1);
+		v := d?->Deep(Id(5), Id(0)) ?? -999;
+		CheckInt("a fault one call deeper is recovered too", v, -999);
+		v := d?->Deep(Id(20), Id(3)) ?? -999;
+		CheckInt("the deep path without a fault", v, 13);
+
+		# a Float zero divisor in a variable raises as well, rather than giving inf
+		f := d?->Ratio(IdF(1.0), IdF(0.0)) ?? -2.5;
+		CheckBool("1.0 / 0.0 at run time is detected", f = -2.5, true);
+		f := d?->Ratio(IdF(1.0), IdF(4.0)) ?? -2.5;
+		CheckBool("1.0 / 4.0 passes through", f = 0.25, true);
+
+		# an object result is Nil after a fault
+		boxed := d?->Boxed(Id(9), Id(0));
+		CheckBool("an object-returning call yields Nil", boxed = Nil, true);
+		boxed := d?->Boxed(Id(9), Id(3));
+		CheckBool("...and the value otherwise", boxed <> Nil, true);
+		if(boxed <> Nil) {
+			CheckInt("9 / 3 boxed", boxed->Get(), 3);
+		};
+
+		# Float->Mod does not raise: fmod(x, 0) is NaN
+		m := Float->Mod(IdF(1.0), IdF(0.0));
+		m_nan := m <> m;
+		CheckBool("Float->Mod(1.0, 0.0) is NaN, not a fault", m_nan, true);
+
+		# the program is still running after every fault above
+		CheckBool("execution continues after recovered faults", true, true);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# true when a / b raised; the denominator is never inspected
+	function : DividesByZero(d : Divider, a : Int, b : Int) ~ Bool {
+		r := d?->Boxed(a, b);
+		return r = Nil;
+	}
+
+	function : Id(v : Int) ~ Int {
+		return v;
+	}
+
+	function : IdF(v : Float) ~ Float {
+		return v;
+	}
+}

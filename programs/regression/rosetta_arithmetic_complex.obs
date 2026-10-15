@@ -1,0 +1,88 @@
+#~
+# Rosetta Code: Arithmetic/Complex
+# https://rosettacode.org/wiki/Arithmetic/Complex
+# Claimed in #1164
+#
+# EXTRA_LIBS: math
+#
+# Addition, multiplication, negation and inversion, plus the optional conjugate, on System.Math.Complex -- and subtraction and division built, as the task says, from pairs of those (a - b = a + (-b), a / b = a * (1/b)). Each result is checked both as numbers (within 1e-12, relative) and as the printed text, because the printed form is what the task asks to see.
+#
+# Expected values were computed with an independent oracle (Python's complex type), not recalled.
+~#
+
+use System.Math;
+
+class RosettaArithmeticComplex {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaArithmeticComplex->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Near(got : Float, want : Float) ~ Bool {
+		scale := Float->Abs(want);
+		if(scale < 1.0) { scale := 1.0; };
+		return Float->Abs(got - want) <= 1.0e-12 * scale;
+	}
+
+	# checks the value numerically and the way it prints
+	method : CheckComplex(what : String, got : Complex, re : Float, im : Float, text : String) ~ Nil {
+		if(got = Nil) {
+			"FAIL: {$what}: expected {$text}, got Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+		gr := got->GetReal();
+		gi := got->GetImaginary();
+		if(Near(gr, re) & Near(gi, im)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected ({$re}, {$im}), got ({$gr}, {$gi})"->PrintLine();
+			@failures += 1;
+		};
+		Check("{$what} prints", got->ToString(), text);
+	}
+
+	method : Run() ~ Nil {
+		a := Complex->New(1.0, 1.0);
+		b := Complex->New(3.14159, 1.25);
+
+		# the four operations the task names
+		CheckComplex("a + b", a->Add(b), 4.14159, 2.25, "4.141590 + 2.250000i");
+		CheckComplex("a * b", a->Multiply(b), 1.8915899999999999, 4.39159, "1.891590 + 4.391590i");
+		CheckComplex("-a", a->Negate(), -1.0, -1.0, "-1.000000 - 1.000000i");
+		CheckComplex("1/a", a->Reciprocal(), 0.5, -0.5, "0.500000 - 0.500000i");
+		CheckComplex("1/b", b->Reciprocal(), 0.27480457417047205, -0.10934135826542932, "0.274805 - 0.109341i");
+
+		# optional: conjugation
+		CheckComplex("conj(b)", b->Conjugate(), 3.14159, -1.25, "3.141590 - 1.250000i");
+
+		# subtraction and division from pairs of the above
+		CheckComplex("a - b as a + (-b)", a->Add(b->Negate()), -2.14159, -0.25, "-2.141590 - 0.250000i");
+		CheckComplex("a / b as a * (1/b)", a->Multiply(b->Reciprocal()), 0.38414593243590134, 0.16546321590504273, "0.384146 + 0.165463i");
+		# and the library's direct forms agree with the pairs
+		CheckComplex("a - b directly", a->Subtract(b), -2.14159, -0.25, "-2.141590 - 0.250000i");
+		CheckComplex("a / b directly", a->Divide(b), 0.38414593243590134, 0.16546321590504276, "0.384146 + 0.165463i");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

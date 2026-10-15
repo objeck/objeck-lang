@@ -1,0 +1,172 @@
+#~
+# Rosetta Code: Reflection/List methods
+# https://rosettacode.org/wiki/Reflection/List_methods
+# Claimed in #1136
+#
+# An object's methods come from `o->GetClass()->GetMethods()` (System.Introspection), as names plus parameter lists. The test pins the list for a class mixing public, private and static members (all are listed, declaration order, constructor included), that only the class's own declarations appear -- an inherited method the subclass does not override is absent -- the parameter count of each method, the array dimension reported for primitive parameters, and that an instance made by name through Class->Instance lists the same methods.
+#
+# Left unasserted because they are wrong today (reported to the batch lead): Method->GetReturn() is always Nil; DataType->GetType() returns codes -1000..-994 that match none of the DataType->TypeId values (-60..-54); an object parameter's class name carries the rest of the signature unless it is the first parameter ("System.String,i"); an object-array parameter reports dimension 0 and a '*' in its class name. And Class->Instance on an unknown name aborts the VM rather than returning Nil.
+#
+# Expected values are the declarations below.
+~#
+
+use System.Introspection;
+
+class Shape {
+	New() {
+	}
+
+	method : public : Area() ~ Float {
+		return 0.0;
+	}
+
+	method : public : Describe() ~ String {
+		return "shape";
+	}
+}
+
+class Widget from Shape {
+	@size : Int;
+
+	New() {
+		Parent();
+		@size := 1;
+	}
+
+	method : public : Grow(by : Int) ~ Nil {
+		@size += by;
+	}
+
+	method : private : Secret() ~ String {
+		return "hidden";
+	}
+
+	function : Make(name : String, count : Int) ~ Widget {
+		return Widget->New();
+	}
+
+	method : public : Area() ~ Float {
+		return @size->As(Float);
+	}
+
+	method : public : Fill(grid : Float[,], row : Int[], flag : Bool, c : Char, b : Byte) ~ Nil {
+	}
+}
+
+class RosettaReflectionListMethods {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaReflectionListMethods->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		w := Widget->New();
+		klass := w->GetClass();
+		Check("class name", klass->GetName(), "Widget");
+
+		# the task: the object's methods, as names
+		Check("method names in declaration order", Names(w), "New Grow Secret Make Area Fill");
+		CheckInt("GetMethodNumber agrees", klass->GetMethodNumber(), 6);
+		CheckInt("GetMethods size agrees", klass->GetMethods()->Size(), 6);
+
+		# parameters of each method
+		Check("parameter counts", Arities(w), "New/0 Grow/1 Secret/0 Make/2 Area/0 Fill/5");
+
+		methods := klass->GetMethods();
+		fill := methods[5];
+		params := fill->GetParameters();
+		CheckInt("Float[,] parameter is 2-dimensional", params[0]->GetDimension(), 2);
+		CheckInt("Int[] parameter is 1-dimensional", params[1]->GetDimension(), 1);
+		CheckInt("Bool parameter is scalar", params[2]->GetDimension(), 0);
+		owner := fill->GetClass();
+		Check("a method knows its class", owner->GetName(), "Widget");
+
+		# an object parameter's class, read where it is the first parameter
+		make := methods[3];
+		make_params := make->GetParameters();
+		Check("Make's first parameter is a String", make_params[0]->GetClassName(), "System.String");
+
+		# only the class's own declarations: Shape's Describe is not listed
+		Check("the parent lists its own methods", Names(Shape->New()), "New Area Describe");
+
+		# an instance created from the class name lists the same methods
+		made := Class->Instance("Widget");
+		Check("Class->Instance(\"Widget\") lists the same methods", Names(made), "New Grow Secret Make Area Fill");
+
+		# a library class is introspectable the same way
+		Check("a String is a System.String", "abc"->GetClass()->GetName(), "System.String");
+		CheckInt("String lists ToUpper", Has("abc", "ToUpper"), 1);
+		CheckInt("String lists no Grow", Has("abc", "Grow"), 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# method names, space-separated, in the order reflection returns them
+	function : Names(o : Base) ~ String {
+		methods := o->GetClass()->GetMethods();
+		out := "";
+		each(i : methods) {
+			if(i > 0) {
+				out += " ";
+			};
+			out += methods[i]->GetName();
+		};
+		return out;
+	}
+
+	# name/parameter-count pairs
+	function : Arities(o : Base) ~ String {
+		methods := o->GetClass()->GetMethods();
+		out := "";
+		each(i : methods) {
+			if(i > 0) {
+				out += " ";
+			};
+			m := methods[i];
+			count := m->GetParameters()->Size();
+			out += m->GetName();
+			out += "/{$count}";
+		};
+		return out;
+	}
+
+	# 1 when o's class declares a method with this name
+	function : Has(o : Base, name : String) ~ Int {
+		methods := o->GetClass()->GetMethods();
+		each(i : methods) {
+			if(methods[i]->GetName()->Equals(name)) {
+				return 1;
+			};
+		};
+		return 0;
+	}
+}

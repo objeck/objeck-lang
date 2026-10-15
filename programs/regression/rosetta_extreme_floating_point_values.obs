@@ -1,0 +1,122 @@
+#~
+# Rosetta Code: Extreme floating point values
+# https://rosettacode.org/wiki/Extreme_floating_point_values
+# Claimed in #1128
+#
+# Produces each IEEE extreme from ordinary values at run time -- +Inf and -Inf by overflowing a multiply, NaN from Inf - Inf, Inf * 0 and Sqrt(-1), -0.0 from 0.0 * -1.0 and -1.0 / Inf, a subnormal that halves to zero -- then pins how each prints, compares and propagates. NaN comparisons are taken as Bool assignments, never as an `if` condition: under the x64 JIT `if(nan = x)` is taken and `if(nan <> x)` is not (reported to the batch lead). A NaN produced by arithmetic prints differently per C runtime ("-nan(ind)" on Windows), so only the library constant's text is asserted.
+#
+# Expected values were computed with an independent oracle (Python floats), not recalled.
+~#
+
+class RosettaExtremeFloatingPointValues {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaExtremeFloatingPointValues->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		big := Id(1.0e308);
+		inf := big * Id(10.0);
+		ninf := big * Id(-10.0);
+		nan := inf - inf;
+		neg_zero := Id(0.0) * Id(-1.0);
+
+		# printing
+		Check("1e308 * 10 prints inf", inf->ToString(), "inf");
+		Check("1e308 * -10 prints -inf", ninf->ToString(), "-inf");
+		Check("0.0 * -1.0 prints -0.000000", neg_zero->ToString(), "-0.000000");
+		Check("-1.0 / inf prints -0.000000", (Id(-1.0) / inf)->ToString(), "-0.000000");
+		Check("Float->NaN() prints nan", Float->NaN()->ToString(), "nan");
+
+		# infinities compare and propagate
+		inf_eq := inf = Float->Inf();
+		CheckBool("overflowed product equals Float->Inf()", inf_eq, true);
+		ninf_eq := ninf = Float->NegInf();
+		CheckBool("negative overflow equals Float->NegInf()", ninf_eq, true);
+		ninf_neg := ninf = -inf;
+		CheckBool("-inf is the negation of inf", ninf_neg, true);
+		above := inf > 1.7976931348623157e308;
+		CheckBool("inf is above the largest finite double", above, true);
+		CheckBool("largest finite double * 2 is inf", Id(1.7976931348623157e308) * Id(2.0) = inf, true);
+		CheckBool("inf + inf is inf", inf + inf = inf, true);
+		CheckBool("inf - 1e308 is still inf", inf - big = inf, true);
+		CheckBool("inf * -1 is -inf", inf * Id(-1.0) = ninf, true);
+		CheckBool("1 / inf is 0", Id(1.0) / inf = 0.0, true);
+		CheckBool("Log(0) is -inf", Float->Log(Id(0.0)) = ninf, true);
+		CheckBool("Exp(1000) is inf", Float->Exp(Id(1000.0)) = inf, true);
+		CheckBool("\"inf\"->ToFloat() is inf", "inf"->ToFloat() = inf, true);
+
+		# NaN is unordered, including against itself
+		ne := nan <> nan;
+		CheckBool("NaN <> NaN", ne, true);
+		eq := nan = nan;
+		CheckBool("NaN = NaN is false", eq, false);
+		lt := nan < Id(1.0);
+		CheckBool("NaN < 1 is false", lt, false);
+		gt := nan > Id(1.0);
+		CheckBool("NaN > 1 is false", gt, false);
+		le := nan <= nan;
+		CheckBool("NaN <= NaN is false", le, false);
+		sq := Float->Sqrt(Id(-1.0));
+		sq_nan := sq <> sq;
+		CheckBool("Sqrt(-1) is NaN", sq_nan, true);
+		prod := inf * Id(0.0);
+		prod_nan := prod <> prod;
+		CheckBool("inf * 0 is NaN", prod_nan, true);
+		plus := nan + Id(1.0);
+		plus_nan := plus <> plus;
+		CheckBool("NaN + 1 is NaN", plus_nan, true);
+		lib := Float->NaN();
+		lib_nan := lib <> lib;
+		CheckBool("Float->NaN() is NaN", lib_nan, true);
+
+		# -0.0 equals 0.0 but keeps its sign. Float->IsNeg(-0.0) is false and
+		# 1.0 / -0.0 raises, so the sign is read through ArcTan2
+		zeq := neg_zero = 0.0;
+		CheckBool("-0.0 = 0.0", zeq, true);
+		neg_side := Float->ArcTan2(neg_zero, Id(-1.0)) < 0.0;
+		CheckBool("-0.0 has its sign bit set (ArcTan2(-0.0, -1) is -pi)", neg_side, true);
+		pos_side := Float->ArcTan2(Id(0.0), Id(-1.0)) > 0.0;
+		CheckBool("+0.0 does not (ArcTan2(0.0, -1) is +pi)", pos_side, true);
+
+		# the smallest subnormal is above zero and halves to zero
+		tiny := Id(4.9e-324);
+		CheckBool("4.9e-324 is above zero", tiny > 0.0, true);
+		CheckBool("4.9e-324 / 2 rounds to zero", tiny / Id(2.0) = 0.0, true);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Id(v : Float) ~ Float {
+		return v;
+	}
+}

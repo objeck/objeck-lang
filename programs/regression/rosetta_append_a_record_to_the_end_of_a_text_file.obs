@@ -1,0 +1,174 @@
+#~
+# Rosetta Code: Append a record to the end of a text file
+# https://rosettacode.org/wiki/Append_a_record_to_the_end_of_a_text_file
+# Claimed in #1161
+#
+# Two passwd records with typed fields (the GECOS field is itself a five-part record) are written, the file is closed and reopened with FileWriter->New(name, true), a third record is appended, and the file is read back. Pins that append mode adds to the end rather than truncating or overwriting, that it creates a missing file, and that the bytes on disk are exactly the records with LF endings -- the writer opens files in binary mode, so Windows gets no CRLF.
+#
+# Expected values: the appended line is the task page's own expected output; the rest are the test's own records, written here byte for byte.
+~#
+
+use System.IO.Filesystem;
+
+class Gecos {
+	@fullname : String;
+	@office : String;
+	@extension : String;
+	@homephone : String;
+	@email : String;
+
+	New(fullname : String, office : String, extension : String, homephone : String, email : String) {
+		@fullname := fullname;
+		@office := office;
+		@extension := extension;
+		@homephone := homephone;
+		@email := email;
+	}
+
+	method : public : ToString() ~ String {
+		return "{$@fullname},{$@office},{$@extension},{$@homephone},{$@email}";
+	}
+}
+
+class PasswdRecord {
+	@account : String;
+	@password : String;
+	@uid : Int;
+	@gid : Int;
+	@gecos : Gecos;
+	@directory : String;
+	@shell : String;
+
+	New(account : String, password : String, uid : Int, gid : Int, gecos : Gecos, directory : String, shell : String) {
+		@account := account;
+		@password := password;
+		@uid := uid;
+		@gid := gid;
+		@gecos := gecos;
+		@directory := directory;
+		@shell := shell;
+	}
+
+	method : public : ToString() ~ String {
+		gecos := @gecos->ToString();
+		return "{$@account}:{$@password}:{$@uid}:{$@gid}:{$gecos}:{$@directory}:{$@shell}";
+	}
+}
+
+class RosettaAppendARecordToTheEndOfATextFile {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaAppendARecordToTheEndOfATextFile->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		jsmith := PasswdRecord->New("jsmith", "x", 1001, 1000,
+			Gecos->New("Joe Smith", "Room 1007", "(234)555-8917", "(234)555-0077", "jsmith@rosettacode.org"),
+			"/home/jsmith", "/bin/bash");
+		jdoe := PasswdRecord->New("jdoe", "x", 1002, 1000,
+			Gecos->New("Jane Doe", "Room 1004", "(234)555-8914", "(234)555-0044", "jdoe@rosettacode.org"),
+			"/home/jdoe", "/bin/bash");
+		xyz := PasswdRecord->New("xyz", "x", 1003, 1000,
+			Gecos->New("X Yz", "Room 1003", "(234)555-8913", "(234)555-0033", "xyz@rosettacode.org"),
+			"/home/xyz", "/bin/bash");
+
+		line1 := "jsmith:x:1001:1000:Joe Smith,Room 1007,(234)555-8917,(234)555-0077,jsmith@rosettacode.org:/home/jsmith:/bin/bash";
+		line2 := "jdoe:x:1002:1000:Jane Doe,Room 1004,(234)555-8914,(234)555-0044,jdoe@rosettacode.org:/home/jdoe:/bin/bash";
+		line3 := "xyz:x:1003:1000:X Yz,Room 1003,(234)555-8913,(234)555-0033,xyz@rosettacode.org:/home/xyz:/bin/bash";
+
+		# used as returned: on POSIX the name is created by mkstemp, so a suffixed copy would leak it
+		name := File->GetTempName();
+
+		# write the first two records, then close
+		writer := FileWriter->New(name);
+		writer->WriteString(jsmith->ToString());
+		writer->WriteString("\n");
+		writer->WriteString(jdoe->ToString());
+		writer->WriteString("\n");
+		writer->Close();
+		first_size := File->Size(name);
+		CheckInt("two records on disk", first_size, line1->Size() + line2->Size() + 2);
+
+		# reopen for append, add the third
+		appender := FileWriter->New(name, true);
+		CheckInt("append-mode writer opened", appender->IsOpen() ? 1 : 0, 1);
+		appender->WriteString(xyz->ToString());
+		appender->WriteString("\n");
+		appender->Close();
+		CheckInt("append grew the file by one record", File->Size(name) - first_size, line3->Size() + 1);
+
+		lines := ReadLines(name);
+		CheckInt("three records read back", lines->Size(), 3);
+		Check("the first record is untouched", lines[0], line1);
+		Check("the second record is untouched", lines[1], line2);
+		# concatenation, not "{$lines[2]}": a bare array access inside {$...} does not compile
+		Check("the last record is the appended one", "Appended record: " + lines[2],
+			"Appended record: xyz:x:1003:1000:X Yz,Room 1003,(234)555-8913,(234)555-0033,xyz@rosettacode.org:/home/xyz:/bin/bash");
+
+		whole := FileReader->ReadFile(name);
+		Check("the exact bytes, LF endings", whole, "{$line1}\n{$line2}\n{$line3}\n");
+
+		# appending to a file that does not exist creates it
+		File->Delete(name);
+		CheckInt("file removed", File->Exists(name) ? 1 : 0, 0);
+		fresh := FileWriter->New(name, true);
+		fresh->WriteString(xyz->ToString());
+		fresh->WriteString("\n");
+		fresh->Close();
+		Check("append creates a missing file", FileReader->ReadFile(name), "{$line3}\n");
+
+		File->Delete(name);
+		CheckInt("temp file removed", File->Exists(name) ? 1 : 0, 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# every line of the file; ReadLine's trailing "" after the final newline is not one
+	function : ReadLines(name : String) ~ String[] {
+		count := 0;
+		reader := FileReader->New(name);
+		line := reader->ReadLine();
+		while(line <> Nil & (line->Size() > 0 | reader->IsEoF() = false)) {
+			count += 1;
+			line := reader->ReadLine();
+		};
+		reader->Close();
+
+		lines := String->New[count];
+		reader := FileReader->New(name);
+		for(i := 0; i < count; i += 1;) {
+			lines[i] := reader->ReadLine();
+		};
+		reader->Close();
+		return lines;
+	}
+}

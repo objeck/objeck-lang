@@ -1,0 +1,119 @@
+#~
+# Rosetta Code: Integer overflow
+# https://rosettacode.org/wiki/Integer_overflow
+# Claimed in #1125
+#
+# Objeck has one fixed-size integer type, the 64-bit two's-complement Int, and FEATURES.md says `+ - *` wrap and never trap, `MIN / -1 = MIN` and `MIN % -1 = 0`. This pins the task's 64-bit signed table, its 64-bit unsigned table read through the unsigned helpers, and the boundary cases (negating MIN, multiplying past 2^63), both as folded constants and with every operand routed through a function so the VM -- not the compiler -- does the arithmetic. No overflow is ever reported, so the task's "show how the exception is caught" has nothing to catch: the program continues with the wrapped value.
+#
+# Expected values were computed with an independent oracle (Python, reducing modulo 2^64), not recalled.
+~#
+
+class RosettaIntegerOverflow {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaIntegerOverflow->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# -9223372036854775808 cannot be written as a literal (its magnitude does
+		# not fit), and the task's own spelling -(-9223372036854775807-1) does not
+		# parse (#1099: unary minus rejects a parenthesised operand), so MIN is
+		# built by subtraction and negated through a variable
+		min := -9223372036854775807 - 1;
+		max := 9223372036854775807;
+		CheckInt("Int->MinSize() is -2^63", Int->MinSize(), min);
+		CheckInt("Int->MaxSize() is 2^63-1", Int->MaxSize(), max);
+
+		# the task's 64-bit signed table, operands from a function call
+		CheckInt("-(-9223372036854775807-1) wraps to MIN", -Id(min), min);
+		CheckInt("5000000000000000000+5000000000000000000", Id(5000000000000000000) + Id(5000000000000000000), -8446744073709551616);
+		CheckInt("-9223372036854775807 - 9223372036854775807", Id(-9223372036854775807) - Id(9223372036854775807), 2);
+		CheckInt("3037000500 * 3037000500", Id(3037000500) * Id(3037000500), -9223372036709301616);
+		CheckInt("(-9223372036854775807-1) / -1 is MIN, no trap", Id(min) / Id(-1), min);
+
+		# the same table, folded by the compiler
+		folded_neg := -min;
+		CheckInt("folded: negating MIN", folded_neg, min);
+		CheckInt("folded: 5e18 + 5e18", 5000000000000000000 + 5000000000000000000, -8446744073709551616);
+		CheckInt("folded: -max - max", -9223372036854775807 - 9223372036854775807, 2);
+		CheckInt("folded: 3037000500 squared", 3037000500 * 3037000500, -9223372036709301616);
+		CheckInt("folded: MIN / -1", (-9223372036854775807 - 1) / -1, min);
+		CheckInt("folded: MIN % -1", (-9223372036854775807 - 1) % -1, 0);
+
+		# boundaries
+		CheckInt("MAX + 1 is MIN", Id(max) + Id(1), min);
+		CheckInt("MIN - 1 is MAX", Id(min) - Id(1), max);
+		CheckInt("MAX * 2 is -2", Id(max) * Id(2), -2);
+		CheckInt("MIN * -1 is MIN", Id(min) * Id(-1), min);
+		CheckInt("MIN % -1 is 0, no trap", Id(min) % Id(-1), 0);
+		CheckInt("MAX * MAX is 1", Id(max) * Id(max), 1);
+		CheckInt("MIN * MIN is 0", Id(min) * Id(min), 0);
+		CheckInt("Abs(MIN) is MIN: there is no positive 2^63", Int->Abs(Id(min)), min);
+
+		# the 64-bit unsigned table: there is no unsigned type, but the same bits
+		# read through ToUnsignedString give the unsigned interpretation.
+		# 10^19 and 2^64-1 exceed the signed range as decimal literals, so they
+		# are written in hex
+		ten19 := 0x8AC7230489E80000;
+		all_ones := 0xFFFFFFFFFFFFFFFF;
+		Check("unsigned 10^19 reads back", ten19->ToUnsignedString(), "10000000000000000000");
+		Check("unsigned -18446744073709551615", (-Id(all_ones))->ToUnsignedString(), "1");
+		Check("unsigned 10^19 + 10^19", (Id(ten19) + Id(ten19))->ToUnsignedString(), "1553255926290448384");
+		Check("unsigned 9223372036854775807 - 18446744073709551615", (Id(max) - Id(all_ones))->ToUnsignedString(), "9223372036854775808");
+		Check("unsigned 4294967296 * 4294967296", (Id(4294967296) * Id(4294967296))->ToUnsignedString(), "0");
+		CheckInt("unsigned compare: 2^64-1 above 1", Int->CompareUnsigned(Id(all_ones), Id(1)), 1);
+		CheckInt("unsigned divide: (2^64-1) / 2", Int->DivideUnsigned(Id(all_ones), Id(2)), max);
+
+		# the 32-bit tables do not overflow at all: Int is the only integer width
+		CheckInt("32-bit 2000000000 + 2000000000 fits in Int", Id(2000000000) + Id(2000000000), 4000000000);
+		CheckInt("32-bit 46341 * 46341 fits in Int", Id(46341) * Id(46341), 2147488281);
+		CheckInt("32-bit unsigned 65537 * 65537 fits in Int", Id(65537) * Id(65537), 4295098369);
+
+		# Byte arrays store 8 bits, so they wrap on store. A scalar Byte local does
+		# NOT: it holds 256 after 255 + 1 (reported to the batch lead), so only
+		# the array form is asserted here
+		bytes := Byte->New[2];
+		bytes[0] := 255;
+		bytes[0] += 1;
+		bytes[1] := 0;
+		bytes[1] -= 1;
+		CheckInt("Byte[] 255 + 1 wraps to 0", bytes[0]->As(Int), 0);
+		CheckInt("Byte[] 0 - 1 wraps to 255", bytes[1]->As(Int), 255);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# routes a value through a call so the arithmetic happens at run time
+	function : Id(v : Int) ~ Int {
+		return v;
+	}
+}

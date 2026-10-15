@@ -1,0 +1,176 @@
+#~
+# Rosetta Code: Church numerals
+# https://rosettacode.org/wiki/Church_numerals
+# Claimed in #1122
+#
+# A Church numeral is a function ((Base) ~ Base) ~ (Base) ~ Base that applies f to x n times. Zero, successor, add, multiply and exponent are built from function values only; three and four are derived from zero by succession; results come back to Int by applying "add one" to a boxed 0. Exponent is the real n m -- applying one numeral to another -- which a type over Int alone cannot express, so the element type is Base and a numeral used as an argument is boxed in FnBox.
+#
+# Workarounds for defects found writing this, each named where it is used: an object argument to a function-typed variable must be cast ->As(Base) by hand, because a call through a function variable does not accept a subclass where a named function does; a cast result is taken into a local before calling a method on it, because a chain var->As(T)->M() is typed as T in an expression; and a lambda never captures two function values -- add and multiply capture one NumPair, composition one Composed -- because a lambda capturing two function values crashes when the second is itself a capturing closure.
+#
+# Expected values are the task's own output: 3+4 = 7, 3*4 = 12, 4^3 = 64, 3^4 = 81.
+~#
+
+# a function value as an object, so a numeral can be the argument of a numeral
+class FnBox {
+	@f : (Base) ~ Base;
+
+	New(f : (Base) ~ Base) {
+		@f := f;
+	}
+
+	method : public : Get() ~ (Base) ~ Base {
+		return @f;
+	}
+}
+
+# f . g, held in one object
+class Composed {
+	@f : (Base) ~ Base;
+	@g : (Base) ~ Base;
+
+	New(f : (Base) ~ Base, g : (Base) ~ Base) {
+		@f := f;
+		@g := g;
+	}
+
+	method : public : Apply(x : Base) ~ Base {
+		return @f(@g(x));
+	}
+}
+
+# two numerals, held in one object
+class NumPair {
+	@m : ((Base) ~ Base) ~ (Base) ~ Base;
+	@n : ((Base) ~ Base) ~ (Base) ~ Base;
+
+	New(m : ((Base) ~ Base) ~ (Base) ~ Base, n : ((Base) ~ Base) ~ (Base) ~ Base) {
+		@m := m;
+		@n := n;
+	}
+
+	# (m + n) f = m f . n f
+	method : public : Add(f : (Base) ~ Base) ~ (Base) ~ Base {
+		return RosettaChurchNumerals->Compose(@m(f), @n(f));
+	}
+
+	# (m * n) f = m (n f)
+	method : public : Mul(f : (Base) ~ Base) ~ (Base) ~ Base {
+		nf := @n(f);
+		return @m(nf);
+	}
+}
+
+class RosettaChurchNumerals {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaChurchNumerals->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Compose(f : (Base) ~ Base, g : (Base) ~ Base) ~ (Base) ~ Base {
+		c := Composed->New(f, g);
+		return \(Base) ~ Base : (x) => c->Apply(x);
+	}
+
+	# zero f = id
+	function : Zero() ~ ((Base) ~ Base) ~ (Base) ~ Base {
+		return \((Base) ~ Base) ~ (Base) ~ Base : (f) => \(Base) ~ Base : (x) => x;
+	}
+
+	# (succ n) f = f . n f
+	function : Succ(n : ((Base) ~ Base) ~ (Base) ~ Base) ~ ((Base) ~ Base) ~ (Base) ~ Base {
+		return \((Base) ~ Base) ~ (Base) ~ Base : (f) => Compose(f, n(f));
+	}
+
+	function : Add(m : ((Base) ~ Base) ~ (Base) ~ Base, n : ((Base) ~ Base) ~ (Base) ~ Base) ~ ((Base) ~ Base) ~ (Base) ~ Base {
+		p := NumPair->New(m, n);
+		return \((Base) ~ Base) ~ (Base) ~ Base : (f) => p->Add(f);
+	}
+
+	function : Mul(m : ((Base) ~ Base) ~ (Base) ~ Base, n : ((Base) ~ Base) ~ (Base) ~ Base) ~ ((Base) ~ Base) ~ (Base) ~ Base {
+		p := NumPair->New(m, n);
+		return \((Base) ~ Base) ~ (Base) ~ Base : (f) => p->Mul(f);
+	}
+
+	# m ^ n = n m: n applied to m, with m lifted to act on boxed functions
+	function : Pow(m : ((Base) ~ Base) ~ (Base) ~ Base, n : ((Base) ~ Base) ~ (Base) ~ Base) ~ ((Base) ~ Base) ~ (Base) ~ Base {
+		lifted : (Base) ~ Base := \(Base) ~ Base : (b) => {
+			box := b->As(FnBox);
+			r : Base := FnBox->New(m(box->Get()));
+			return r;
+		};
+		nm := n(lifted);
+		return \((Base) ~ Base) ~ (Base) ~ Base : (f) => {
+			r := nm(FnBox->New(f)->As(Base));
+			box := r->As(FnBox);
+			return box->Get();
+		};
+	}
+
+	function : FromInt(k : Int) ~ ((Base) ~ Base) ~ (Base) ~ Base {
+		c := Zero();
+		for(i := 0; i < k; i += 1;) {
+			c := Succ(c);
+		};
+		return c;
+	}
+
+	function : ToInt(n : ((Base) ~ Base) ~ (Base) ~ Base) ~ Int {
+		inc : (Base) ~ Base := \(Base) ~ Base : (x) => {
+			v := x->As(IntRef);
+			r : Base := IntRef->New(v->Get() + 1);
+			return r;
+		};
+		g := n(inc);
+		r := g(IntRef->New(0)->As(Base));
+		v := r->As(IntRef);
+		return v->Get();
+	}
+
+	method : Run() ~ Nil {
+		zero := Zero();
+		three := Succ(Succ(Succ(zero)));
+		four := Succ(three);
+
+		CheckInt("church zero", ToInt(zero), 0);
+		CheckInt("church three, by succession", ToInt(three), 3);
+		CheckInt("church four, by succession", ToInt(four), 4);
+
+		CheckInt("3 + 4", ToInt(Add(three, four)), 7);
+		CheckInt("3 * 4", ToInt(Mul(three, four)), 12);
+		CheckInt("4 ^ 3", ToInt(Pow(four, three)), 64);
+		CheckInt("3 ^ 4", ToInt(Pow(three, four)), 81);
+
+		# identities that exercise zero and one as operands
+		one := Succ(zero);
+		CheckInt("0 + 4", ToInt(Add(zero, four)), 4);
+		CheckInt("0 * 4", ToInt(Mul(zero, four)), 0);
+		CheckInt("4 ^ 0", ToInt(Pow(four, zero)), 1);
+		CheckInt("1 ^ 4", ToInt(Pow(one, four)), 1);
+
+		# int -> church -> int round trip, and nesting: (2^2)^(2+1) = 64
+		CheckInt("round trip 17", ToInt(FromInt(17)), 17);
+		two := FromInt(2);
+		CheckInt("(2^2)^(2+1)", ToInt(Pow(Pow(two, two), Add(two, one))), 64);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

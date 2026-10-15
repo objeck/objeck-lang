@@ -1,0 +1,126 @@
+#~
+# Rosetta Code: Enforced immutability
+# https://rosettacode.org/wiki/Enforced_immutability
+# Claimed in #1135
+#
+# Objeck's means are `record : readonly : Name`, whose fields can be assigned only in the generated constructor (assignment elsewhere is a compile error, pinned by bad_readonly_record_assignment.obs and bad_readonly_record_op_assignment.obs), and `consts` blocks of named integer values. A runtime test cannot show a compile error, so it shows the other half through reflection: a readonly record is generated with getters and no setters, where the same record without `readonly` gets a setter. It also pins the limit of the guarantee, which the task asks to show: readonly is shallow, so an array or String held by a frozen record can still be changed through the reference its getter hands out.
+#
+# Expected values are the ones the records were constructed with; the method lists follow the record rules in the record design notes (one getter per field, a setter only when not readonly).
+~#
+
+use System.Introspection;
+
+record : readonly : FrozenPoint {
+	@x : Int;
+	@y : Int;
+	@label2 : String;
+	@cells : Int[];
+}
+
+record ThawedPoint {
+	@x : Int;
+	@y : Int;
+}
+
+consts Limits {
+	LOW := 3,
+	HIGH := 9
+}
+
+class RosettaEnforcedImmutability {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaEnforcedImmutability->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		cells := Int->New[2];
+		cells[0] := 4;
+		cells[1] := 5;
+		p := FrozenPoint->New(3, -8, "origin", cells);
+
+		# the values are fixed at construction
+		CheckInt("x set by the constructor", p->GetX(), 3);
+		CheckInt("y set by the constructor", p->GetY(), -8);
+		Check("label set by the constructor", p->GetLabel2(), "origin");
+
+		# the readonly record exposes getters only; the mutable one has setters
+		Check("readonly record methods", MethodNames(p), "GetCells GetLabel2 GetX GetY New");
+		q := ThawedPoint->New(1, 2);
+		Check("ordinary record methods", MethodNames(q), "GetX GetY New SetX SetY");
+		q->SetX(10);
+		CheckInt("the ordinary record really is mutable", q->GetX(), 10);
+
+		# consts are fixed named values
+		CheckInt("consts LOW", Limits->LOW->As(Int), 3);
+		CheckInt("consts HIGH", Limits->HIGH->As(Int), 9);
+
+		# the limit: readonly is shallow. The getters return the same array and
+		# String the record holds, so their contents can still change
+		held := p->GetCells();
+		held[0] := 99;
+		again := p->GetCells();
+		CheckInt("an array inside a readonly record can be changed", again[0], 99);
+		p->GetLabel2()->Append("!");
+		Check("a String inside a readonly record can be changed", p->GetLabel2(), "origin!");
+		CheckInt("...but the field itself still holds the same array", p->GetCells()->Size(), 2);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# the object's method names, sorted and space-separated
+	function : MethodNames(o : Base) ~ String {
+		methods := o->GetClass()->GetMethods();
+		names := String->New[methods->Size()];
+		each(i : methods) {
+			names[i] := methods[i]->GetName();
+		};
+		# insertion sort: the reflection order is declaration order
+		for(i := 1; i < names->Size(); i += 1;) {
+			j := i;
+			while(j > 0 & names[j - 1]->Compare(names[j]) > 0) {
+				tmp := names[j];
+				names[j] := names[j - 1];
+				names[j - 1] := tmp;
+				j -= 1;
+			};
+		};
+		out := "";
+		each(i : names) {
+			if(i > 0) {
+				out += " ";
+			};
+			out += names[i];
+		};
+		return out;
+	}
+}

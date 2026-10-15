@@ -1,0 +1,111 @@
+#~
+# Rosetta Code: Anonymous recursion
+# https://rosettacode.org/wiki/Anonymous_recursion
+# Claimed in #1121
+#
+# Fibonacci that rejects a negative argument up front and only then recurses, with the recursion done by a lambda that has no name of its own: it reaches itself through a captured holder object whose slot is filled after the lambda exists. Captures are by copy, but an object is copied as a reference, so the later fill is visible inside the body.
+#
+# The direct spelling -- fib : (Int) ~ Int := \(Int) ~ Int : (n) => ... fib(n - 1) ... -- compiles and then segfaults: the lambda copies fib before it is assigned, and calling an unassigned function variable crashes rather than reporting a Nil dereference. The holder is the workaround.
+#
+# Expected values were computed with an independent oracle (Python), not recalled.
+~#
+
+# a slot the recursive lambda can reach without being named
+class Knot {
+	@f : (Int) ~ Int;
+
+	New() {}
+
+	method : public : Tie(f : (Int) ~ Int) ~ Nil {
+		@f := f;
+	}
+
+	method : public : Call(n : Int) ~ Int {
+		return @f(n);
+	}
+}
+
+class RosettaAnonymousRecursion {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaAnonymousRecursion->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckTrue(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# Nil for a negative argument; the recursion itself is anonymous
+	function : Fib(n : Int) ~ IntRef {
+		if(n < 0) {
+			return Nil;
+		};
+
+		knot := Knot->New();
+		knot->Tie(\(Int) ~ Int : (k) => k < 2 ? k : knot->Call(k - 1) + knot->Call(k - 2));
+		return IntRef->New(knot->Call(n));
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("fib(0)", Fib(0)->Get(), 0);
+		CheckInt("fib(1)", Fib(1)->Get(), 1);
+		CheckInt("fib(2)", Fib(2)->Get(), 1);
+		CheckInt("fib(10)", Fib(10)->Get(), 55);
+		CheckInt("fib(20)", Fib(20)->Get(), 6765);
+		CheckInt("fib(25)", Fib(25)->Get(), 75025);
+
+		# the negative check happens before any recursion
+		CheckTrue("fib(-1) is rejected", Fib(-1) = Nil);
+		CheckTrue("fib(-30) is rejected", Fib(-30) = Nil);
+
+		seq := "";
+		for(i := 0; i <= 15; i += 1;) {
+			seq += Fib(i)->Get()->ToString();
+			if(i < 15) { seq += " "; };
+		};
+		want := "0 1 1 2 3 5 8 13 21 34 55 89 144 233 377 610";
+		if(seq->Equals(want)) {
+			"PASS: fib(0..15)"->PrintLine();
+		}
+		else {
+			"FAIL: fib(0..15): expected {$want}, got {$seq}"->PrintLine();
+			@failures += 1;
+		};
+
+		# two anonymous recursions alive at once do not share a knot
+		a := Knot->New();
+		a->Tie(\(Int) ~ Int : (k) => k = 0 ? 1 : k * a->Call(k - 1));
+		b := Knot->New();
+		b->Tie(\(Int) ~ Int : (k) => k = 0 ? 0 : k + b->Call(k - 1));
+		CheckInt("anonymous factorial 10", a->Call(10), 3628800);
+		CheckInt("anonymous triangular 100", b->Call(100), 5050);
+		CheckInt("the factorial knot is untouched by the other", a->Call(5), 120);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
