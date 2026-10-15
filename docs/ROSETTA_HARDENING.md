@@ -168,27 +168,52 @@ shape is recorded here rather than decided inside a task.
 
 ### `math.obl` -- the work, and every place it has to be registered
 
-A new library is not one file. Seven places, five of them guarded by CI, and a
-list that is missing one is how `misc.obl` once shipped stale:
+A new library is not one file. **Nine places**, seven of them guarded by CI. The
+count was written as seven here and corrected after two separate guards caught
+what that estimate missed -- which is the useful part of the story, because both
+misses would have shipped a library that was half-registered and looked fine.
 
 | Where | What |
 |---|---|
-| `core/compiler/lib_src/math.obs` | the source; bundle `System.Math`, which is free |
+| `core/compiler/lib_src/math.obs` | the source; bundle `System.Math`, which was free |
 | `core/compiler/build_libs.sh` | one `$OBC` line, in dependency order. The single source of truth -- POSIX `update_version.sh` and the Windows CI runners both drive it |
 | `core/lib/math.obl` | built **and committed**; `.obl` files are tracked and the deploy copies them rather than rebuilding |
 | `.github/workflows/ci-build.yml` | the `obr code_doc.obe` list |
 | `.github/workflows/release-build.yml` | the same list again |
-| `core/release/code_doc64.in` | the same list again (edit the `.in`, never the generated file) |
-| `tools/lsp/server/doc_json/gen_json.{sh,cmd}` | the same list, twice more -- this is what the editor API index reads |
+| `core/release/code_doc64.in` | the same list again -- edit the `.in`, never the generated file |
+| `core/release/code_doc64.cmd` | **and the generated file too.** Editing only the template leaves the committed output stale until the next Windows deploy regenerates it |
+| `tools/lsp/server/doc_json/gen_json.{sh,cmd}` | the same list, twice more -- this is what the editor API index is built from |
+| `tools/lsp/server/objk_apis.json` and `tools/lsp/clients/vscode/server/objk_apis.json` | **the regenerated index, both tracked copies.** `sh tools/lsp/server/doc_json/gen_json.sh` rewrites them |
 
-`tools/cicd/check_doc_lists.py` enforces the last five against `lib_src`, so a
-missed one fails CI rather than silently dropping the library from the
-documentation and the LSP index.
+Three guards, and each caught a real omission here rather than a hypothetical:
+
+- `tools/cicd/check_doc_lists.py` -- the five `lib_src` lists. It reported all
+  five while they were missing.
+- `tools/cicd/check_version_templates.py` -- a generated file against its `.in`.
+  This is the one that found `code_doc64.cmd`.
+- `tools/cicd/check_api_index.py` -- the editor index's **class set**, not its
+  bytes, so whitespace cannot redden CI but a missing class can. It reported
+  "2 class(es) the libraries define but the index omits".
+
+Note that `check_doc_lists.py` passing proves nothing about the last two: a
+library can be in all five lists and still absent from the index, which is the
+state the tree was in at #1050.
+
+One API-hygiene point that is easy to miss and is not guarded at all: **Objeck
+statics are public unless marked `private`**, so limb-level helpers are published
+API by default. `code_doc` skips private members, so hiding an internal and
+keeping it out of the documentation are the same edit.
 
 Tests go in `programs/regression/` as **self-asserting** programs -- exit
 non-zero on failure, per `tools/cicd/check_test_exit_codes.py`, which rejects a
 test that prints `FAIL` and then returns normally -- and `TESTS.md` is
 regenerated with `python gen_manifest.py`.
+
+Assert **values**, not survival. A test that only checks a program did not crash
+passes against one that computes a plausible wrong answer, and for anything
+type- or overload-selected that is the likelier regression. #1107 is the case in
+point: the bug was a wrong `String:Append` overload, and a crash-only test would
+have gone green the moment the crash became a wrong number.
 
 ### Contents, in dependency order
 
