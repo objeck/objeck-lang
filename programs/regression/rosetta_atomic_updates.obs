@@ -1,0 +1,258 @@
+#~
+# Rosetta Code: Atomic updates
+# https://rosettacode.org/wiki/Atomic_updates
+#
+# EXTRA_LIBS: gen_collect
+#
+# A fixed set of buckets holding integers. Concurrent workers move value between
+# pairs of buckets; the total must never change. The task's point is that a
+# transfer has to be atomic -- read both, write both, with nothing interleaved.
+#
+# Chosen as a hardening test rather than for the entry. The 48 arithmetic tasks
+# in this suite found no defect between them, because they exercise Int, String
+# and arrays -- the most-travelled code in the language. None of them started a
+# thread. This one does.
+#
+# WHY THE ASSERTION IS AN INVARIANT, NOT AN EXPECTED OUTPUT
+#
+# The schedule is nondeterministic and the final per-bucket values are
+# unpredictable, but the SUM is fixed: value only ever moves. So the test can be
+# strict without being flaky. That is the opposite of a deadlock-detection test
+# (Dining philosophers), whose success condition is "did not hang", which can
+# only be asserted with a timeout -- and a timeout on a loaded CI machine is a
+# coin toss dressed as a check.
+#
+# Three distinct ways to fail, each of which shows up as a wrong total:
+#
+#   - a lost update: two transfers read the same bucket and one write wins
+#   - a torn read: the reader observes one half of a transfer
+#   - a collector moving an object a mutator is holding without the barrier
+#     recording it
+#
+# OVERSUBSCRIPTION IS DELIBERATE. This project's threading defects have needed
+# more runnable threads than CPUs to appear at all -- #861 did not reproduce
+# until the thread count exceeded the core count -- so the worker count here is
+# well above any plausible machine's, rather than a tidy two.
+#
+# Each worker also allocates inside its loop, so the nursery fills and
+# collections happen WHILE locks are held and threads are contending. A version
+# that only did arithmetic would exercise the mutex and not the collector, and
+# the collector is the half with the history.
+~#
+
+use System.Concurrency;
+use Collection;
+
+class Bank {
+	@buckets : Int[];
+	@mutex : ThreadMutex;
+	@transfers : Int;
+
+	New(count : Int, each_value : Int) {
+		@buckets := Int->New[count];
+		for(i := 0; i < count; i += 1;) {
+			@buckets[i] := each_value;
+		};
+		@mutex := ThreadMutex->New("bank");
+		@transfers := 0;
+	}
+
+	#~
+	Moves 'amount' from bucket 'a' to bucket 'b', atomically. Refuses rather than
+	letting a bucket go negative, because the task's buckets hold a quantity and
+	a negative one would make the conservation check pass on nonsense.
+	~#
+	method : public : Transfer(a : Int, b : Int, amount : Int) ~ Nil {
+		critical(@mutex) {
+			if(@buckets[a] >= amount) {
+				@buckets[a] -= amount;
+				@buckets[b] += amount;
+				@transfers += 1;
+			};
+		};
+	}
+
+	#~
+	The total across all buckets, read atomically so a transfer cannot be seen
+	half-applied.
+	~#
+	method : public : Total() ~ Int {
+		sum := 0;
+		critical(@mutex) {
+			for(i := 0; i < @buckets->Size(); i += 1;) {
+				sum += @buckets[i];
+			};
+		};
+		return sum;
+	}
+
+	#~
+	True when every bucket is non-negative, read atomically.
+	~#
+	method : public : AllNonNegative() ~ Bool {
+		ok := true;
+		critical(@mutex) {
+			for(i := 0; i < @buckets->Size(); i += 1;) {
+				if(@buckets[i] < 0) {
+					ok := false;
+				};
+			};
+		};
+		return ok;
+	}
+
+	method : public : GetTransfers() ~ Int {
+		n := 0;
+		critical(@mutex) { n := @transfers; };
+		return n;
+	}
+
+	method : public : Size() ~ Int { return @buckets->Size(); }
+}
+
+class Mover from Thread {
+	@bank : Bank;
+	@rounds : Int;
+	@seed : Int;
+	@observed_bad : Int;
+
+	New(name : String, bank : Bank, rounds : Int, seed : Int) {
+		Parent(name);
+		@bank := bank;
+		@rounds := rounds;
+		@seed := seed;
+		@observed_bad := 0;
+	}
+
+	method : public : GetObservedBad() ~ Int { return @observed_bad; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		count := @bank->Size();
+		expected := count * 100;
+		state := @seed;
+		for(r := 0; r < @rounds; r += 1;) {
+			# a cheap deterministic generator: a shared Random would serialise
+			# the workers and hide the contention this test exists to create
+			state := (state * 1103515245 + 12345) and 0x7FFFFFFF;
+			a := state % count;
+			state := (state * 1103515245 + 12345) and 0x7FFFFFFF;
+			b := state % count;
+			amount := (state % 7) + 1;
+
+			if(a <> b) {
+				@bank->Transfer(a, b, amount);
+			};
+
+			# allocate, so the nursery fills and collections land while locks are
+			# held and threads are contending -- the half of this with history
+			junk := IntRef->New(r);
+			if(junk->Get() <> r) {
+				@observed_bad += 1;
+			};
+
+			# read the invariant from inside the worker as well as after the join:
+			# a torn read is only observable while writers are running
+			if(r % 64 = 0) {
+				if(@bank->Total() <> expected) {
+					@observed_bad += 1;
+				};
+			};
+		};
+	}
+}
+
+class RosettaAtomicUpdates {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaAtomicUpdates->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		buckets := 16;
+		per_bucket := 100;
+		expected := buckets * per_bucket;
+
+		# single-threaded first: a transfer conserves, and a refused transfer
+		# changes nothing. If this is wrong the concurrent result means nothing.
+		solo := Bank->New(buckets, per_bucket);
+		CheckInt("initial total", solo->Total(), expected);
+		solo->Transfer(0, 1, 40);
+		CheckInt("a transfer conserves the total", solo->Total(), expected);
+		CheckInt("one transfer was recorded", solo->GetTransfers(), 1);
+		# more than the bucket holds: refused, so nothing moves
+		solo->Transfer(0, 1, 1000000);
+		CheckInt("an oversized transfer is refused", solo->GetTransfers(), 1);
+		CheckInt("and conserves the total", solo->Total(), expected);
+		CheckBool("no bucket went negative", solo->AllNonNegative(), true);
+
+		# now concurrently, with far more workers than any machine has cores
+		workers := 48;
+		rounds := 1500;
+		bank := Bank->New(buckets, per_bucket);
+		movers := Mover->New[workers];
+		for(i := 0; i < workers; i += 1;) {
+			movers[i] := Mover->New("mover-{$i}", bank, rounds, (i * 7919) + 1);
+		};
+
+		for(i := 0; i < workers; i += 1;) {
+			movers[i]->Execute(Nil);
+		};
+		for(i := 0; i < workers; i += 1;) {
+			movers[i]->Join();
+		};
+
+		# the invariant, after all the contention
+		CheckInt("the total is conserved under contention", bank->Total(), expected);
+		CheckBool("no bucket went negative", bank->AllNonNegative(), true);
+
+		# no worker observed a broken invariant WHILE writers were running, which
+		# is the only way to catch a torn read
+		mid_flight := 0;
+		for(i := 0; i < workers; i += 1;) {
+			mid_flight += movers[i]->GetObservedBad();
+		};
+		CheckInt("no worker saw a broken invariant mid-flight", mid_flight, 0);
+
+		# and the work actually happened: a test where every transfer was refused
+		# would conserve the total perfectly and prove nothing
+		done := bank->GetTransfers();
+		if(done > 0) {
+			"PASS: transfers actually ran ({$done})"->PrintLine();
+		}
+		else {
+			"FAIL: no transfer was applied, so the invariant held vacuously"->PrintLine();
+			@failures += 1;
+		};
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
