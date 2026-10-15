@@ -4951,12 +4951,26 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
       ProcessError(expression, L"Dimension size mismatch");
     }
 
-    // class to class: check the cast against the expression's OWN type. The
-    // general path re-derives the right-hand type from the whole call chain, so
-    // `u->As(IntRef)->Get()->ToString()` checked IntRef against String.
-    if(root_type && cast_type->GetType() == CLASS_TYPE && root_type->GetType() == CLASS_TYPE &&
-       expression->GetMethodCall() && cast_type->GetDimension() == root_type->GetDimension()) {
-      AnalyzeClassCast(cast_type, root_type, expression, false, depth + 1);
+    // The cast converts THIS expression, so check it as if nothing followed it.
+    // With the call chain attached, the class check typed the expression by the
+    // chain's end: `u->As(IntRef)->Get()->ToString()` checked IntRef against
+    // String. (A rule in GetExpressionType that typed every link by its
+    // receiver's cast used to hide this, and crashed `u->As(IntRef)->Get() + 1`.)
+    // Against the expression's own class, so a downcast still gets its run-time
+    // check; a generic parameter (`@a->As(Stringify)` in a class of <A>) is no
+    // class to compare with and takes the general path.
+    MethodCall* chain = expression->GetMethodCall();
+    if(chain && cast_type->GetType() == CLASS_TYPE) {
+      expression->ClearMethodCall();
+      if(root_type && root_type->GetType() == CLASS_TYPE && cast_type->GetDimension() == root_type->GetDimension() &&
+         (SearchProgramClasses(root_type->GetName()) ||
+          linker->SearchClassLibraries(root_type->GetName(), program->GetLibUses(current_class->GetFileName())))) {
+        AnalyzeClassCast(cast_type, root_type, expression, false, depth + 1);
+      }
+      else {
+        AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+      }
+      expression->SetMethodCall(chain);
     }
     else {
       AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);

@@ -3914,7 +3914,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   case VAR_EXPR:
     EmitVariable(static_cast<Variable*>(expression));
     // catch dynamic class casting
-    EmitClassCast(expression);
+    EmitClassCast(expression, true);
     break;
 
   case AND_EXPR:
@@ -4025,7 +4025,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
         for(size_t i = 0; i < expressions.size(); ++i) {
           EmitExpression(expressions[i]);
-          EmitClassCast(expressions[i]);
+          EmitClassCast(expressions[i], true);
           new_char_str_count = 0;
           if(swap_under_receiver) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
@@ -5977,7 +5977,7 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
       break;
 
     default:
-      EmitClassCast(variable, true);
+      EmitClassCast(variable);
       break;
     }    
     EmitMethodCallExpression(static_cast<MethodCall*>(variable->GetMethodCall()), true);
@@ -6493,7 +6493,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
-      EmitClassCast(expressions[i]);
+      EmitClassCast(expressions[i], true);
     }
 
     is_new_inst = false;
@@ -6529,7 +6529,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
-      EmitClassCast(expressions[i]);
+      EmitClassCast(expressions[i], true);
       new_char_str_count = 0;
     }
 
@@ -6564,7 +6564,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
-        EmitClassCast(expressions[i]);
+        EmitClassCast(expressions[i], true);
         new_char_str_count = 0;
       }
     }
@@ -7310,7 +7310,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
   return size;
 }
 
-void IntermediateEmitter::EmitClassCast(Expression* expression, bool is_receiver)
+void IntermediateEmitter::EmitClassCast(Expression* expression, bool whole_expression)
 {
   // ensure scalar cast
   if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -7337,7 +7337,7 @@ void IntermediateEmitter::EmitClassCast(Expression* expression, bool is_receiver
   // checked the chain's result -- an Int read as an object (a crash), a String
   // rejected as "Invalid object cast". A conversion of the result to a
   // parameter's type names a different class and is still emitted.
-  if(!is_receiver && expression->GetMethodCall() && expression->GetCastType() && expression->GetCastType()->GetType() == frontend::CLASS_TYPE) {
+  if(whole_expression && expression->GetMethodCall() && expression->GetCastType() && expression->GetCastType()->GetType() == frontend::CLASS_TYPE) {
     const std::wstring& cast_name = expression->GetCastType()->GetName();
     if((expression->GetToClass() && expression->GetToClass()->GetName() == cast_name) ||
        (expression->GetToLibraryClass() && expression->GetToLibraryClass()->GetName() == cast_name)) {

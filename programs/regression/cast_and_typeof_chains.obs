@@ -39,6 +39,25 @@ class Holder {
 	}
 }
 
+class Tok {
+	enum Kind { A, B }
+	@k : Tok->Kind;
+	@v : String;
+
+	New(k : Tok->Kind, v : String) {
+		@k := k;
+		@v := v;
+	}
+
+	method : public : GetKind() ~ Tok->Kind {
+		return @k;
+	}
+
+	method : public : GetValue() ~ String {
+		return @v;
+	}
+}
+
 class CastAndTypeofChains {
 	@failures : Int;
 
@@ -102,6 +121,18 @@ class CastAndTypeofChains {
 		Check("As(Holder)->ToString()", h->As(Holder)->ToString(), "H9");
 		c := u->As(IntRef)->Get();
 		CheckInt("bound to a local", c, 4);
+
+		# a cast on a CALL RESULT, then a call (the library's own shapes:
+		# json.obs, gen_collect.obs)
+		toks := Vector->New()<Tok>;
+		toks->AddBack(Tok->New(Tok->Kind->B, "val"));
+		hit_b := false;
+		select(toks->Get(0)->As(Tok)->GetKind()) {
+			label Tok->Kind->A: { hit_b := false; }
+			label Tok->Kind->B: { hit_b := true; }
+		};
+		CheckBool("call result As(T), then an enum getter", hit_b, true);
+		Check("call result As(T), then a String getter", toks->Get(0)->As(Tok)->GetValue(), "val");
 
 		# 2. TypeOf(..) at the end of a chain
 		m := Hash->New()<String, IntRef>;
