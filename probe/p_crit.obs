@@ -1,0 +1,55 @@
+use System.Concurrency;
+
+class Box {
+	@m : ThreadMutex;
+	@t : Int;
+
+	New() {
+		@m := ThreadMutex->New("box");
+		@t := 1;
+	}
+
+	method : public : WithCrit() ~ Int {
+		n := 0;
+		critical(@m) { n := @t; };
+		return n;
+	}
+
+	method : public : WithCritReturnInside() ~ Int {
+		critical(@m) { return @t; };
+		return -1;
+	}
+
+	method : public : NoCrit() ~ Int {
+		n := 0;
+		n := @t;
+		return n;
+	}
+}
+
+class Probe {
+	function : Check(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		b := Box->New();
+		mode := "crit";
+		if(args->Size() > 0) { mode := args[0]; };
+		"mode={$mode}"->PrintLine();
+		for(i := 0; i < 25; i += 1;) {
+			v := 0;
+			if(mode->Equals("crit")) { v := b->WithCrit(); }
+			else if(mode->Equals("ret")) { v := b->WithCritReturnInside(); }
+			else { v := b->NoCrit(); };
+			"  call {$i} -> {$v}"->PrintLine();
+			Check("call {$i}", v, 1);
+		};
+		"done"->PrintLine();
+	}
+}

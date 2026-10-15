@@ -22,53 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows builds
-          # Pinned to windows-2025-vs2026, which ships VS2026 (toolset v145).
-          # The .vcxproj files select $(DefaultPlatformToolset) rather than a
-          # hard-coded toolset, so they resolve to v145 here and to v143 on a
-          # VS2022 developer box; VS2026 ships only v145 (no v143), so pinning
-          # either version in the projects breaks one environment or the other.
-          # Explicit label rather than windows-latest/windows-2025 to avoid
-          # future silent image migrations.
-          - platform: windows-x64
-            os: windows-2025-vs2026
-            arch: x64
-            deploy_script: deploy_windows.cmd x64
-            shell: cmd
-
-          # windows-11-arm is a NATIVE ARM64 runner. This leg used to build on
-          # the x64 image and cross-compile, which meant it could not execute a
-          # single thing it produced -- the whole test suite, the debugger tests
-          # and the DAP tests were skipped, so an ARM64-only miscompile had
-          # nothing standing in its way. Native build + native execution closes
-          # that. It ships VS2022 (toolset v143) rather than VS2026's v145; the
-          # .vcxproj files select $(DefaultPlatformToolset), so they follow the
-          # image either way.
-          - platform: windows-arm64
-            os: windows-11-arm
-            arch: ARM64
-            deploy_script: deploy_windows.cmd arm64
-            shell: cmd
-
-          # Linux builds
-          - platform: linux-x64
-            os: ubuntu-latest
-            arch: x64
-            deploy_script: ./deploy_posix.sh x64
-            shell: bash
-
-          # Linux ARM64 - using GitHub-hosted ARM64 runners (public preview)
           - platform: linux-arm64
             os: ubuntu-24.04-arm
             arch: arm64
             deploy_script: ./deploy_posix.sh arm64
-            shell: bash
-
-          # macOS build (ARM64 native on Apple Silicon)
-          - platform: macos-arm64
-            os: macos-15
-            arch: arm64
-            deploy_script: ./deploy_macos_arm64.sh
             shell: bash
 
     defaults:
@@ -604,6 +561,28 @@ jobs:
     # core/release/runtime_deps.json declares -- the list the docs gate holds
     # every install instruction to. A new dependency fails here until it is
     # declared (and so documented); a declared one nothing links fails too.
+    - name: PROBE atomic updates on arm64
+      shell: bash
+      working-directory: ./core/release/${{ steps.deploy-dir.outputs.dir }}/bin
+      run: |
+        set +e
+        chmod +x obc obr 2>/dev/null
+        export OBJECK_LIB_PATH="$PWD/../lib"
+        R="$GITHUB_WORKSPACE"
+        ./obc -src "$R/programs/regression/rosetta_atomic_updates.obs" -lib gen_collect -dest /tmp/atomic.obe | tail -1
+        ./obc -src "$R/probe/p_crit.obs" -dest /tmp/pcrit.obe | tail -1
+        for env in "" "OBJECK_JIT_DISABLE=1" "OBJECK_JIT_THRESHOLD=1" "OBJECK_JIT_THRESHOLD=999999999"; do
+          echo "===== atomic [$env]"
+          env $env timeout 120 ./obr /tmp/atomic.obe 2>&1 | head -30; echo "exit=${PIPESTATUS[0]}"
+        done
+        for mode in crit ret none; do
+          for env in "" "OBJECK_JIT_DISABLE=1" "OBJECK_JIT_THRESHOLD=1"; do
+            echo "===== pcrit $mode [$env]"
+            env $env timeout 60 ./obr /tmp/pcrit.obe $mode 2>&1 | grep -v '^PASS\|^  call' | head -20; echo "exit=${PIPESTATUS[0]}"
+          done
+        done
+        exit 1
+
     - name: Declared runtime dependencies match the build (POSIX)
       if: runner.os != 'Windows'
       shell: bash
