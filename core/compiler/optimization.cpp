@@ -1474,15 +1474,14 @@ std::pair<size_t, size_t> ItermediateOptimizer::DeadStoreEdit(size_t start_pos, 
   size_t end_pos = start_pos;
   IntermediateInstruction* dead_store_instr = input_instrs[start_pos];
 
-  bool done = false;
-  for(std::vector<IntermediateInstruction*>::iterator start_iter = input_instrs.begin() + start_pos - 1;
-      !done && start_iter != input_instrs.begin(); --start_iter) {
-    if((*start_iter)->GetStatement() == dead_store_instr->GetStatement()) {
-      --end_pos;
-    }
-    else {
-      done = true;
-    }
+  // Walk back over the store's value, down to and INCLUDING index 0. The old
+  // iterator loop stopped at begin() without examining it, so a dead store whose
+  // value was a method's first instruction (`n := 0;` as the first statement,
+  // overwritten before any read) lost the STOR but kept the LOAD: one stray
+  // value on the operand stack that shifted the caller's arguments by one
+  // (programs/regression/opt_dead_store_first_instr.obs).
+  while(end_pos > 0 && input_instrs[end_pos - 1]->GetStatement() == dead_store_instr->GetStatement()) {
+    --end_pos;
   }
 
   return std::pair<size_t, size_t>(end_pos, start_pos);
