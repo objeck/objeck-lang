@@ -1,0 +1,19 @@
+# EXPECT_RUNTIME_ERROR
+#~
+A Float division by zero must raise even when its result is never read
+(#1178). Dead-store elimination listed DIV_FLOAT as effect-free, which would
+let it drop the store below and the division with it. This case raised even
+before the fix (the pass kept it for other reasons); the test pins the
+behaviour now that the list no longer claims the division cannot trap.
+~#
+
+class FloatDivZeroDeadStore {
+	function : Main(args : String[]) ~ Nil {
+		d := 0.0;
+		if(args->Size() > 100) {
+			d := 1.0;
+		};
+		unused := 1.0 / d;
+		"unreached"->PrintLine();
+	}
+}

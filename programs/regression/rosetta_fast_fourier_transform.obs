@@ -7,7 +7,7 @@
 #
 # Recursive radix-2 Cooley-Tukey over System.Math.Complex. Pins the task's own example -- the FFT of [1,1,1,1,0,0,0,0], whose stated output is 4, 1-2.414214i, 0, 1-0.414214i, 0, 1+0.414214i, 0, 1+2.414214i (magnitudes 4.000 2.613 0.000 1.082 0.000 1.082 0.000 2.613) -- then a 16-point real input against an O(n^2) direct DFT (a different algorithm, so a shared bug in the butterfly cannot agree with itself), a few of its bins against Python values, and an inverse round trip.
 #
-# The twiddle angle uses a pi literal, not Float->Pi(): that returns 3.1415926536, which is off by about 2e-11 and would put an error of that order into every bin.
+# The twiddle angle uses Float->Pi(), which is full double precision since #1178 (it was 3.1415926536, off by about 2e-11 in every bin).
 #
 # Expected values were taken from the task page and computed with an independent oracle (Python's cmath), not recalled.
 ~#
@@ -48,10 +48,6 @@ class RosettaFastFourierTransform {
 		};
 	}
 
-	function : Pi() ~ Float {
-		return 3.141592653589793;
-	}
-
 	# sign is -1 for the forward transform, +1 for the (unscaled) inverse
 	function : Fft(x : Complex[], sign : Float) ~ Complex[] {
 		n := x->Size();
@@ -71,7 +67,7 @@ class RosettaFastFourierTransform {
 
 		out := Complex->New[n];
 		for(k := 0; k < half; k += 1;) {
-			angle := sign * 2.0 * Pi() * k->As(Float) / n->As(Float);
+			angle := sign * 2.0 * Float->Pi() * k->As(Float) / n->As(Float);
 			t := Complex->Polar(1.0, angle)->Multiply(o[k]);
 			out[k] := e[k]->Add(t);
 			out[k + half] := e[k]->Subtract(t);
@@ -86,7 +82,7 @@ class RosettaFastFourierTransform {
 		for(k := 0; k < n; k += 1;) {
 			sum := Complex->Zero();
 			for(j := 0; j < n; j += 1;) {
-				angle := -2.0 * Pi() * (k * j)->As(Float) / n->As(Float);
+				angle := -2.0 * Float->Pi() * (k * j)->As(Float) / n->As(Float);
 				sum := sum->Add(x[j]->Multiply(Complex->Polar(1.0, angle)));
 			};
 			out[k] := sum;
