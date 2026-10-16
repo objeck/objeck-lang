@@ -1756,6 +1756,18 @@ class ObjectSerializer
     }
   }
 
+  // An array's element count, its rank and every one of its dimensions; the
+  // elements, which start after the last dimension, follow. Only the first
+  // dimension was written, so a multi-dimensional array lost its tail (#1174).
+  // A one-dimensional array's header is unchanged.
+  inline void SerializeArrayHeader(const size_t* array) {
+    SerializeInt((INT_VALUE)array[0]);
+    SerializeInt((INT_VALUE)array[1]);
+    for(size_t j = 0; j < array[1]; ++j) {
+      SerializeInt((INT_VALUE)array[2 + j]);
+    }
+  }
+
  public:
   ObjectSerializer(size_t* i) {
     Serialize(i);
@@ -1845,6 +1857,36 @@ class ObjectDeserializer
       return 0;
     }
     return (INT_VALUE)value;
+  }
+
+  // Reads the dimensions after an array's first (the caller read 'first')
+  // into dims and checks them against its element count (#1174)
+  bool DeserializeDimensions(const INT_VALUE size, const INT_VALUE dim, const INT_VALUE first, size_t* dims) {
+    if(read_error || size < 0 || dim < 1 || dim > 8 || first < 0) {
+      read_error = true;
+      return false;
+    }
+    dims[0] = first;
+    INT64_VALUE count = first;
+    for(INT_VALUE j = 1; j < dim; ++j) {
+      const INT_VALUE value = DeserializeInt32();
+      if(read_error || value < 0) {
+        read_error = true;
+        return false;
+      }
+      dims[j] = value;
+      count *= value;
+      if(count > INT32_MAX) {
+        read_error = true;
+        return false;
+      }
+    }
+    // a one-dimensional header is checked as before: its size stands alone
+    if(dim > 1 && count != size) {
+      read_error = true;
+      return false;
+    }
+    return true;
   }
 
   FLOAT_VALUE DeserializeFloat() {

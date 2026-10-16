@@ -820,10 +820,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            char* array_ptr = (char*)(array + 3);
+            SerializeArrayHeader(array);
+            char* array_ptr = (char*)(array + 2 + array[1]);
 
             // values
             SerializeBytes(array_ptr, array_size);
@@ -844,6 +842,18 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
           SerializeByte(1);
           // mark data
           if(!WasSerialized((size_t*)(*mem))) {
+            // a multi-dimensional array is no string: write its dimensions and
+            // then each character (#1174)
+            if(array[1] > 1) {
+              SerializeArrayHeader(array);
+              const wchar_t* array_ptr = (wchar_t*)(array + 2 + array[1]);
+              for(size_t j = 0; j < array[0]; ++j) {
+                SerializeChar(array_ptr[j]);
+              }
+              mem++;
+              break;
+            }
+
             // convert
             const std::string buffer = UnicodeToBytes((wchar_t*)(array + 3));
             const INT_VALUE array_size = (INT_VALUE)buffer.size();
@@ -880,10 +890,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            size_t* array_ptr = array + 3;
+            SerializeArrayHeader(array);
+            size_t* array_ptr = array + 2 + array[1];
 
             // values: Int elements are stored as size_t (8 bytes); SerializeInt
             // would truncate each to int32 (losing values > 2^32). Write the raw
@@ -912,10 +920,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+            SerializeArrayHeader(array);
+            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 2 + array[1]);
 
             // write values
             SerializeBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
@@ -942,10 +948,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            size_t* array_ptr = array + 3;
+            SerializeArrayHeader(array);
+            size_t* array_ptr = array + 2 + array[1];
 
             // write values
             for(int i = 0; i < array_size; i++) {
@@ -1087,15 +1091,16 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE byte_array_size = DeserializeInt32();
             const INT_VALUE byte_array_dim = DeserializeInt32();
             const INT_VALUE byte_array_size_dim = DeserializeInt32();
-            if(read_error || byte_array_size < 0 || byte_array_dim < 0 || !CanRead(byte_array_size)) {
+            size_t dims[8];
+            if(!DeserializeDimensions(byte_array_size, byte_array_dim, byte_array_size_dim, dims) || !CanRead(byte_array_size)) {
               return nullptr;
             }
-            size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + ((byte_array_dim + 2) * sizeof(size_t))),
+            size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t))),
                                                               BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-            char* byte_array_ptr = (char*)(byte_array + 3);
             byte_array[0] = byte_array_size;
             byte_array[1] = byte_array_dim;
-            byte_array[2] = byte_array_size_dim;
+            memcpy(byte_array + 2, dims, byte_array_dim * sizeof(size_t));
+            char* byte_array_ptr = (char*)(byte_array + 2 + byte_array_dim);
             // copy content
             memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
             buffer_offset += byte_array_size;
@@ -1128,6 +1133,29 @@ size_t* ObjectDeserializer::DeserializeObject() {
             INT_VALUE char_array_size = DeserializeInt32();
             const INT_VALUE char_array_dim = DeserializeInt32();
             INT_VALUE char_array_size_dim = DeserializeInt32();
+            // a multi-dimensional array carries every dimension, then each
+            // character (#1174)
+            if(char_array_dim > 1) {
+              size_t dims[8];
+              if(!DeserializeDimensions(char_array_size, char_array_dim, char_array_size_dim, dims)) {
+                return nullptr;
+              }
+              size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
+                ((char_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+              char_array[0] = char_array_size;
+              char_array[1] = char_array_dim;
+              memcpy(char_array + 2, dims, char_array_dim * sizeof(size_t));
+              wchar_t* char_array_ptr = (wchar_t*)(char_array + 2 + char_array_dim);
+              for(INT_VALUE j = 0; j < char_array_size; ++j) {
+                char_array_ptr[j] = DeserializeChar();
+                if(read_error) {
+                  return nullptr;
+                }
+              }
+              mem_cache[-mem_id] = char_array;
+              instance[instance_pos++] = (size_t)char_array;
+              break;
+            }
             if(read_error || char_array_size < 0 || char_array_dim < 0 || !CanRead(char_array_size)) {
               return nullptr;
             }
@@ -1180,15 +1208,16 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE array_size = DeserializeInt32();
             const INT_VALUE array_dim = DeserializeInt32();
             const INT_VALUE array_size_dim = DeserializeInt32();
-            if(read_error || array_size < 0 || array_dim < 0) {
+            size_t dims[8];
+            if(!DeserializeDimensions(array_size, array_dim, array_size_dim, dims)) {
               return nullptr;
             }
             size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
             array[1] = array_dim;
-            array[2] = array_size_dim;
-            size_t* array_ptr = array + 3;
+            memcpy(array + 2, dims, array_dim * sizeof(size_t));
+            size_t* array_ptr = array + 2 + array_dim;
             // copy content: raw 8-byte elements (must match SerializeBytes on the
             // serialize side). Bounds-check the attacker-controlled length first,
             // multiplying in 64-bit so the byte count cannot wrap.
@@ -1226,7 +1255,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE array_size = DeserializeInt32();
             const INT_VALUE array_dim = DeserializeInt32();
             const INT_VALUE array_size_dim = DeserializeInt32();
-            if(read_error || array_size < 0 || array_dim < 0 ||
+            size_t dims[8];
+            if(!DeserializeDimensions(array_size, array_dim, array_size_dim, dims) ||
                !CanRead((INT64_VALUE)array_size * (INT64_VALUE)sizeof(FLOAT_VALUE))) {
               return nullptr;
             }
@@ -1235,8 +1265,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
 
             array[0] = array_size;
             array[1] = array_dim;
-            array[2] = array_size_dim;
-            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+            memcpy(array + 2, dims, array_dim * sizeof(size_t));
+            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 2 + array_dim);
             // copy content
             memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
             buffer_offset += array_size * sizeof(FLOAT_VALUE);
@@ -1269,15 +1299,16 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE array_size = DeserializeInt32();
             const INT_VALUE array_dim = DeserializeInt32();
             const INT_VALUE array_size_dim = DeserializeInt32();
-            if(read_error || array_size < 0 || array_dim < 0) {
+            size_t dims[8];
+            if(!DeserializeDimensions(array_size, array_dim, array_size_dim, dims)) {
               return nullptr;
             }
             size_t* array = MemoryManager::AllocateArray((size_t)(array_size + array_dim + 2), instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
             array[1] = array_dim;
-            array[2] = array_size_dim;
-            size_t* array_ptr = array + 3;
+            memcpy(array + 2, dims, array_dim * sizeof(size_t));
+            size_t* array_ptr = array + 2 + array_dim;
 
             // copy content
             for(int i = 0; i < array_size; i++) {

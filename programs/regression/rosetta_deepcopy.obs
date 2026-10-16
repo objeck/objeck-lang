@@ -5,7 +5,7 @@
 #
 # EXTRA_LIBS: gen_collect
 #
-# Objeck has no clone-everything primitive; the deep copy is a round trip through System.IO.Serializer and Deserializer, which walk the whole object graph. The test pins what the task asks for: a heterogeneous structure (Int, Float, Bool, Char, String, Int[], Float[], a Vector and a Map from gen_collect, a nested object with no zero-argument constructor, a Nil field) comes back equal; a reference cycle and a shared reference come back as a cycle and a shared reference rather than duplicated or unrolled; and the copy is a distinct graph, so mutating it leaves the original untouched. Limitation found and avoided: a multi-dimensional array field (Int[,], Float[,]) loses its last element in the round trip (reported to the batch lead), so none is used here.
+# Objeck has no clone-everything primitive; the deep copy is a round trip through System.IO.Serializer and Deserializer, which walk the whole object graph. The test pins what the task asks for: a heterogeneous structure (Int, Float, Bool, Char, String, Int[], Float[], an Int[,], a Vector and a Map from gen_collect, a nested object with no zero-argument constructor, a Nil field) comes back equal; a reference cycle and a shared reference come back as a cycle and a shared reference rather than duplicated or unrolled; and the copy is a distinct graph, so mutating it leaves the original untouched. A multi-dimensional array field used to lose its last element in the round trip (#1174); the Int[,] field checks it.
 #
 # Expected values are the ones the original structure was built from.
 ~#
@@ -32,6 +32,7 @@ class Node {
 	@grade : Char;
 	@tags : Int[];
 	@reals : Float[];
+	@grid : Int[,];
 	@list : Vector<IntRef>;
 	@map : Map<String, IntRef>;
 	@inner : Inner;
@@ -52,6 +53,9 @@ class Node {
 		@reals := Float->New[2];
 		@reals[0] := weight;
 		@reals[1] := -weight;
+		@grid := Int->New[2, 3];
+		@grid[0, 0] := count;
+		@grid[1, 2] := count + 5;
 		@list := Vector->New()<IntRef>;
 		@list->AddBack(count);
 		@list->AddBack(count + 1);
@@ -67,6 +71,7 @@ class Node {
 	method : public : GetGrade() ~ Char { return @grade; }
 	method : public : GetTags() ~ Int[] { return @tags; }
 	method : public : GetReals() ~ Float[] { return @reals; }
+	method : public : GetGrid() ~ Int[,] { return @grid; }
 	method : public : GetList() ~ Vector<IntRef> { return @list; }
 	method : public : GetMap() ~ Map<String, IntRef> { return @map; }
 	method : public : GetInner() ~ Inner { return @inner; }
@@ -143,6 +148,8 @@ class RosettaDeepcopy {
 		CheckInt("Int[] field", tags[0] + tags[1] + tags[2], 42);
 		reals := c->GetReals();
 		CheckBool("Float[] field", reals[1] = -1.5, true);
+		grid := c->GetGrid();
+		CheckInt("Int[,] field, first and last element", grid[0, 0] + grid[1, 2], 19);
 		# through a local: c->GetList()->Get(1)->Get() does not compile, the
 		# chain loses the Vector's element type (reported to the batch lead)
 		list := c->GetList();

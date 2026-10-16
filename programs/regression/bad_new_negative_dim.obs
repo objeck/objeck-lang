@@ -1,0 +1,14 @@
+# EXPECT_RUNTIME_ERROR
+# A negative dimension beside a zero one must stop the VM too (#1181): the
+# product is 0, so the size-overflow checks alone let Int->New[-1, 0] through
+# in the interpreter and the JIT alike.
+class BadNewNegativeDim {
+    function : Make(n : Int) ~ Int[,] {
+        return Int->New[n, 0];
+    }
+
+    function : Main(args : String[]) ~ Nil {
+        a := Make(-1);
+        a->Size()->PrintLine();
+    }
+}
