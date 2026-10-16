@@ -1,0 +1,98 @@
+#~
+Regression: System.Time GMT dates were computed as local time (#1179).
+
+- Date->New(day, month, year, gmt) never stored the weekday: every such date
+  reported Sunday.
+- A GMT date went through mktime, which reads its fields as LOCAL time and
+  applies the machine's DST rules. On a DST-observing machine a GMT 12:00 in
+  July came back 13:00, 23:30 rolled into the next day, and Clone() -- which
+  builds through the same constructor -- was not equal to its original.
+  Invisible on CI, whose runners are UTC.
+- GetUnixTime ignored GMT and was off by the machine's zone offset.
+- On Windows, mktime rejects years before 1970 or after 3000 (weekday 0, and
+  AddDays jumped to 1970-01-01), and Date->New(-86400, true) aborted the VM
+  with ">>> Unable to get GMT time <<<".
+
+GMT dates are now calendar arithmetic in UTC. Every expected value below comes
+from Python's datetime. The result must not depend on the machine's zone, so
+this is also run with TZ set to a DST-observing zone.
+~#
+
+use System.Time;
+
+class DateGmtCalendar {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the weekday of a date-only constructor (0 = Sunday)
+		CheckInt("26 Dec 2011 is a Monday", Date->New(26, 12, 2011, true)->GetWeekDay(), 1);
+		CheckInt("...also as a local date", Date->New(26, 12, 2011, false)->GetWeekDay(), 1);
+		CheckInt("29 Feb 2024 is a Thursday", Date->New(29, 2, 2024, true)->GetWeekDay(), 4);
+
+		# a GMT time in summer is not shifted by the local DST
+		noon := Date->New(1, 7, 2009, 12, 0, 0, true);
+		CheckInt("GMT 12:00 in July stays 12", noon->GetHours(), 12);
+		late := Date->New(1, 7, 2009, 23, 30, 0, true);
+		CheckInt("GMT 23:30 in July stays on the 1st", late->GetDay(), 1);
+		CheckInt("...at 23", late->GetHours(), 23);
+		CheckInt("Clone() equals its original", noon->Compare(noon->Clone()), 0);
+
+		# Unix time of a GMT date
+		CheckInt("GMT epoch is Unix time 0", Date->New(0, true)->GetUnixTime(), 0);
+		CheckInt("2009-07-01 12:00 GMT", noon->GetUnixTime(), 1246449600);
+
+		# outside 1970..3000, and negative Unix times
+		before := Date->New(-86400, true);
+		CheckInt("Unix -86400 is 31 Dec 1969", before->GetDay(), 31);
+		CheckInt("...a Wednesday", before->GetWeekDay(), 3);
+		old := Date->New(25, 12, 1600, 12, 0, 0, true);
+		CheckInt("25 Dec 1600 is a Monday", old->GetWeekDay(), 1);
+		CheckInt("...Unix time", old->GetUnixTime(), -11645035200);
+		CheckInt("25 Dec 1900 is a Tuesday", Date->New(25, 12, 1900, 12, 0, 0, true)->GetWeekDay(), 2);
+		CheckInt("25 Dec 1969 is a Thursday", Date->New(25, 12, 1969, 12, 0, 0, true)->GetWeekDay(), 4);
+		CheckInt("25 Dec 3001 is a Friday", Date->New(25, 12, 3001, 12, 0, 0, true)->GetWeekDay(), 5);
+		far := Date->New(25, 12, 3100, 0, 0, 0, true);
+		CheckInt("25 Dec 3100 is a Tuesday", far->GetWeekDay(), 2);
+		CheckInt("...Unix time", far->GetUnixTime(), 35690284800);
+
+		# arithmetic on GMT dates
+		leap := Date->New(28, 2, 1900, 0, 0, 0, true);
+		leap->AddDays(1);
+		CheckInt("1900 is not a leap year: 28 Feb + 1 day is March", leap->GetMonth(), 3);
+		CheckInt("...the 1st", leap->GetDay(), 1);
+		spring := Date->New(8, 3, 2009, 1, 30, 0, true);
+		spring->AddHours(1);
+		CheckInt("GMT has no DST jump: 01:30 + 1 hour is 02:30", spring->GetHours(), 2);
+		CheckInt("...and 30 minutes", spring->GetMinutes(), 30);
+
+		# Unix time round-trips through a GMT date
+		times := [0, 1, -1, 86399, 1246449600, -11645035200, 35690284800];
+		each(i : times) {
+			t := times[i];
+			CheckInt("round trip of {$t}", Date->New(t, true)->GetUnixTime(), t);
+		};
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		DateGmtCalendar->New()->Run();
+	}
+}
