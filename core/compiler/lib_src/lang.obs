@@ -2723,35 +2723,14 @@ bundle System {
 		```
 		~#
 		function : ToString(value : Float, precision : Int) ~ String {
-			if(precision < 0) {
-				precision := 0;
-			};
+			# printf's %.*f in the VM: this went through ->As(Int), so above 2^63
+			# it printed "-9223372036854775808.-9223372036854775808", and it lost
+			# the sign of -0.0 (#1173)
+			return String->New(FormatFixed(value, precision));
+		}
 
-			f := value;
-			result := String->New();
-			if(f < 0.0) {
-				result->Append('-');
-				f := f * -1.0;
-			};
-
-			scale := Float->Pow(10.0, precision);
-			scaled := Float->Round(f * scale);
-
-			int_part := Float->Floor(scaled / scale)->As(Int);
-			frac_part := (scaled - (int_part->As(Float) * scale))->As(Int);
-
-			result->Append(int_part);
-			if(precision > 0) {
-				result->Append('.');
-				frac_str := Int->ToString(frac_part);
-				pad_count := precision - frac_str->Size();
-				each(i : pad_count) {
-					result->Append('0');
-				};
-				result->Append(frac_str);
-			};
-
-			return result;
+		function : FormatFixed(value : Float, precision : Int) ~ Char[] {
+			FLOAT_TO_STR_PREC;
 		}
 
 		function : native : ToString(v : Float[]) ~ String {
@@ -10173,9 +10152,18 @@ bundle System.IO.Filesystem {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[8192];
-			ReadString(buffer);
-			return System.String->New(buffer);
+			# the whole line, however long: an 8 KB buffer split longer lines
+			# into several (#1180)
+			chars := ReadLineChars();
+			if(chars = Nil) {
+				return Nil;
+			};
+
+			return System.String->New(chars);
+		}
+
+		method : ReadLineChars() ~ Char[] {
+			FILE_IN_LINE;
 		}
 
 		method : ReadString(buffer : Char[]) ~ Nil {
@@ -10453,9 +10441,18 @@ bundle System.IO.Filesystem {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[8192];
-			ReadString(buffer);
-			return System.String->New(buffer);
+			# the whole line, however long: an 8 KB buffer split longer lines
+			# into several (#1180)
+			chars := ReadLineChars();
+			if(chars = Nil) {
+				return Nil;
+			};
+
+			return System.String->New(chars);
+		}
+
+		method : ReadLineChars() ~ Char[] {
+			FILE_IN_LINE;
 		}
 
 		method : ReadString(buffer : Char[]) ~ Nil {

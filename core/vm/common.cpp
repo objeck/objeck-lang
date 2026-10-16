@@ -150,6 +150,7 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #endif
 
 #include <csignal>
+#include <cmath>
 #include <filesystem>
 
 #ifdef _WIN32
@@ -2641,6 +2642,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     return Http3Request(program, inst, op_stack, stack_pos, frame);
   case HTTP3_REQUEST_HDRS:
     return Http3RequestHdrs(program, inst, op_stack, stack_pos, frame);
+
+  case FLOAT_TO_STR_PREC:
+    return FloatToStrPrec(program, inst, op_stack, stack_pos, frame);
+
+  case FILE_IN_LINE:
+    return FileInLine(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -6403,6 +6410,110 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
     }
   }
 
+  return true;
+}
+
+// A new one-dimensional Char[] holding 'value'
+static size_t* NewCharArray(const std::wstring& value, size_t* op_stack, size_t* stack_pos)
+{
+  const size_t size = value.size();
+  size_t* array = MemoryManager::AllocateArray(size + 1 + ((1 + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+  array[0] = size;
+  array[1] = 1;
+  array[2] = size;
+  wchar_t* out = (wchar_t*)(array + 3);
+  if(size > 0) {
+    memcpy(out, value.c_str(), size * sizeof(wchar_t));
+  }
+  out[size] = L'\0';
+
+  return array;
+}
+
+// Float->ToString(value, precision): printf's %.*f, exact at any magnitude.
+// The library version went through ->As(Int), so above 2^63 it printed
+// "-9223372036854775808.-9223372036854775808", and it lost the sign of -0.0
+// (#1173).
+bool TrapProcessor::FloatToStrPrec(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  INT64_VALUE precision = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+
+  // 1074 digits are enough to write the smallest subnormal exactly
+  if(precision < 0) {
+    precision = 0;
+  }
+  else if(precision > 1074) {
+    precision = 1074;
+  }
+
+  std::wstring out;
+  if(std::isnan(value)) {
+    out = L"nan";
+  }
+  else if(std::isinf(value)) {
+    out = value < 0.0 ? L"-inf" : L"inf";
+  }
+  else {
+    const int prec = (int)precision;
+    const int size = snprintf(nullptr, 0, "%.*f", prec, value);
+    if(size > 0) {
+      std::vector<char> buffer((size_t)size + 1);
+      snprintf(buffer.data(), buffer.size(), "%.*f", prec, value);
+      out.assign(buffer.begin(), buffer.begin() + size);
+    }
+  }
+
+  PushInt((size_t)NewCharArray(out, op_stack, stack_pos), op_stack, stack_pos);
+  return true;
+}
+
+// FileReader->ReadLine(): the whole line, however long. FILE_IN_STRING reads
+// into the caller's buffer with fgets, so a line longer than 8 KB came back
+// as several lines (#1180). Returns Nil at end of file or for a closed reader.
+bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  FILE* file = instance ? (FILE*)instance[0] : nullptr;
+  if(!file) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  std::string line;
+  bool read_any = false;
+  int c;
+  while((c = fgetc(file)) != EOF) {
+    read_any = true;
+    if(c == '\n') {
+      break;
+    }
+    line.push_back((char)c);
+  }
+
+  if(!read_any) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  // "\r\n" endings, as FILE_IN_STRING strips them
+  if(!line.empty() && line.back() == '\r') {
+    line.pop_back();
+  }
+
+  // a byte-order mark, as FILE_IN_STRING removes it
+  std::wstring in = BytesToUnicode(line);
+  if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE)) {
+    in.erase(in.begin(), in.begin() + 1);
+  }
+
+  // look ahead one byte, so IsEoF() is true as soon as the last line is read
+  const int next = fgetc(file);
+  if(next != EOF) {
+    ungetc(next, file);
+  }
+
+  PushInt((size_t)NewCharArray(in, op_stack, stack_pos), op_stack, stack_pos);
   return true;
 }
 

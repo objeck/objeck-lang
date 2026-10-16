@@ -3375,6 +3375,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case FLOAT_TO_STR_PREC:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::FLOAT_TO_STR_PREC);
+      NextToken();
+      break;
+
+    case FILE_IN_LINE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::FILE_IN_LINE);
+      NextToken();
+      break;
+
     case HTTP3_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_CLOSE);
@@ -5492,6 +5504,18 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case HTTP3_REQUEST_HDRS:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::HTTP3_REQUEST_HDRS);
+     NextToken();
+     break;
+
+  case FLOAT_TO_STR_PREC:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FLOAT_TO_STR_PREC);
+     NextToken();
+     break;
+
+  case FILE_IN_LINE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_IN_LINE);
      NextToken();
      break;
 
