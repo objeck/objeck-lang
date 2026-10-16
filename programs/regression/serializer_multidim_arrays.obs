@@ -1,0 +1,147 @@
+#~
+Regression: the Serializer dropped the tail of multi-dimensional arrays (#1174).
+
+An array's header is its element count, its rank and then one slot per
+dimension; the elements start after the last dimension. The serializer wrote
+only the first dimension and took the elements from just after it, so an
+Int[2,3] holding 1..6 came back as 1,2,3,4,5,0 (the second dimension had been
+written as the first element) and a Float[2,2] lost [1,1]. Every dimension is
+now written and read back, and one-dimensional arrays keep the old format.
+~#
+
+class Grid {
+	@ints : Int[,];
+	@floats : Float[,];
+	@bytes : Byte[,];
+	@chars : Char[,];
+	@flags : Bool[,];
+	@names : String[,];
+	@cube : Int[,,];
+	@line : Int[];
+	@text : Char[];
+	@empty : Int[,];
+
+	New() {
+		@ints := Int->New[2, 3];
+		v := 1;
+		for(i := 0; i < 2; i += 1;) {
+			for(j := 0; j < 3; j += 1;) {
+				@ints[i, j] := v;
+				v += 1;
+			};
+		};
+
+		@floats := Float->New[2, 2];
+		@floats[0, 0] := 1.5; @floats[0, 1] := 2.5;
+		@floats[1, 0] := 3.5; @floats[1, 1] := 4.5;
+
+		@bytes := Byte->New[2, 2];
+		@bytes[0, 0] := 10; @bytes[0, 1] := 20;
+		@bytes[1, 0] := 30; @bytes[1, 1] := 40;
+
+		@chars := Char->New[2, 2];
+		@chars[0, 0] := 'a'; @chars[0, 1] := 'b';
+		@chars[1, 0] := 'c'; @chars[1, 1] := 'd';
+
+		@flags := Bool->New[2, 2];
+		@flags[1, 1] := true;
+
+		@names := String->New[2, 2];
+		@names[0, 0] := "nw"; @names[0, 1] := "ne";
+		@names[1, 0] := "sw"; @names[1, 1] := "se";
+
+		@cube := Int->New[2, 2, 2];
+		@cube[1, 1, 1] := 8;
+		@cube[0, 1, 0] := 3;
+
+		@line := [7, 8, 9];
+		@text := "hi"->ToCharArray();
+		@empty := Int->New[0, 4];
+	}
+
+	method : public : GetInts() ~ Int[,] { return @ints; }
+	method : public : GetFloats() ~ Float[,] { return @floats; }
+	method : public : GetBytes() ~ Byte[,] { return @bytes; }
+	method : public : GetChars() ~ Char[,] { return @chars; }
+	method : public : GetFlags() ~ Bool[,] { return @flags; }
+	method : public : GetNames() ~ String[,] { return @names; }
+	method : public : GetCube() ~ Int[,,] { return @cube; }
+	method : public : GetLine() ~ Int[] { return @line; }
+	method : public : GetText() ~ Char[] { return @text; }
+	method : public : GetEmpty() ~ Int[,] { return @empty; }
+}
+
+class SerializerMultidimArrays {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		writer := System.IO.Serializer->New();
+		writer->Write(Grid->New());
+		reader := System.IO.Deserializer->New(writer->Serialize());
+		g := reader->ReadObject()->As(Grid);
+
+		ints := g->GetInts();
+		dims := ints->Size();
+		Check("Int[2,3] keeps both dimensions", dims[0] = 2 & dims[1] = 3);
+		ok := true;
+		v := 1;
+		for(i := 0; i < 2; i += 1;) {
+			for(j := 0; j < 3; j += 1;) {
+				if(ints[i, j] <> v) { ok := false; };
+				v += 1;
+			};
+		};
+		Check("Int[2,3] keeps 1..6, the last element too", ok);
+
+		f := g->GetFloats();
+		Check("Float[2,2] keeps [1,1]", f[0, 0] = 1.5 & f[0, 1] = 2.5 & f[1, 0] = 3.5 & f[1, 1] = 4.5);
+
+		b := g->GetBytes();
+		Check("Byte[2,2] round-trips", b[0, 0] = 10 & b[0, 1] = 20 & b[1, 0] = 30 & b[1, 1] = 40);
+
+		c := g->GetChars();
+		Check("Char[2,2] round-trips", c[0, 0] = 'a' & c[0, 1] = 'b' & c[1, 0] = 'c' & c[1, 1] = 'd');
+
+		fl := g->GetFlags();
+		Check("Bool[2,2] round-trips", <>fl[0, 0] & <>fl[0, 1] & <>fl[1, 0] & fl[1, 1]);
+
+		n := g->GetNames();
+		Check("String[2,2] round-trips", n[0, 0]->Equals("nw") & n[0, 1]->Equals("ne") &
+			n[1, 0]->Equals("sw") & n[1, 1]->Equals("se"));
+
+		cube := g->GetCube();
+		cdims := cube->Size();
+		Check("Int[2,2,2] keeps three dimensions", cdims->Size() = 3 & cdims[0] = 2 & cdims[1] = 2 & cdims[2] = 2);
+		Check("Int[2,2,2] keeps its elements", cube[1, 1, 1] = 8 & cube[0, 1, 0] = 3 & cube[0, 0, 0] = 0);
+
+		line := g->GetLine();
+		Check("Int[] is unchanged", line->Size() = 3 & line[0] = 7 & line[2] = 9);
+		Check("Char[] is unchanged", String->New(g->GetText())->Equals("hi"));
+
+		edims := g->GetEmpty()->Size();
+		Check("Int[0,4] keeps its shape", edims[0] = 0 & edims[1] = 4);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		SerializerMultidimArrays->New()->Run();
+	}
+}
