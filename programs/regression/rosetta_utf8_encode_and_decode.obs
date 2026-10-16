@@ -1,0 +1,165 @@
+#~
+# Rosetta Code: UTF-8 encode and decode
+# https://rosettacode.org/wiki/UTF-8_encode_and_decode
+# Claimed in #1142
+#
+# A hand-written encoder (code point to 1-4 bytes) and decoder (bytes back to a code point), checked at every length boundary and against the library's own conversions: String->ToByteArray must produce the same bytes, and String->New(Byte[]) must round-trip them. The library side is checked through bytes only, because a Char is a UTF-16 unit on Windows and a full code point on POSIX, so a supplementary character is two Chars on one platform and one on the other.
+#
+# Expected byte sequences come from the task page's table and Python's str.encode('utf-8').
+~#
+
+class RosettaUtf8EncodeAndDecode {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaUtf8EncodeAndDecode->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's five characters
+		Round("A U+0041", 0x41, "41");
+		Round("o-umlaut U+00F6", 0xF6, "C3 B6");
+		Round("Zhe U+0416", 0x416, "D0 96");
+		Round("euro U+20AC", 0x20AC, "E2 82 AC");
+		Round("G clef U+1D11E", 0x1D11E, "F0 9D 84 9E");
+
+		# every length boundary
+		Round("last 1-byte U+007F", 0x7F, "7F");
+		Round("first 2-byte U+0080", 0x80, "C2 80");
+		Round("last 2-byte U+07FF", 0x7FF, "DF BF");
+		Round("first 3-byte U+0800", 0x800, "E0 A0 80");
+		Round("last 3-byte U+FFFF", 0xFFFF, "EF BF BF");
+		Round("first 4-byte U+10000", 0x10000, "F0 90 80 80");
+		Round("last code point U+10FFFF", 0x10FFFF, "F4 8F BF BF");
+		Round("emoji U+1F600", 0x1F600, "F0 9F 98 80");
+
+		# the library's encoder on the same characters, as one string
+		lib := "AöЖ€𝄞"->ToByteArray();
+		Check("String->ToByteArray of the task's characters", Hex(lib), "41 C3 B6 D0 96 E2 82 AC F0 9D 84 9E");
+		CheckInt("String->ToByteArray length", lib->Size(), 12);
+
+		# and its decoder: bytes to a String and back to the same bytes
+		back := String->New(lib);
+		Check("String->New(Byte[]) round-trips", Hex(back->ToByteArray()), "41 C3 B6 D0 96 E2 82 AC F0 9D 84 9E");
+		Check("decoded string equals the literal", back->Equals("AöЖ€𝄞") ? "yes" : "no", "yes");
+
+		# the hand decoder walking the library's bytes, character by character
+		Check("hand decoder over library bytes", DecodeAll(lib), "41 F6 416 20AC 1D11E");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Round(what : String, cp : Int, want : String) ~ Nil {
+		bytes := Encode(cp);
+		Check("encode {$what}", Hex(bytes), want);
+		CheckInt("decode {$what}", Decode(bytes, 0), cp);
+	}
+
+	function : Encode(cp : Int) ~ Byte[] {
+		if(cp < 0x80) {
+			out := Byte->New[1];
+			out[0] := cp;
+			return out;
+		}
+		else if(cp < 0x800) {
+			out := Byte->New[2];
+			out[0] := 0xC0 or (cp >> 6);
+			out[1] := 0x80 or (cp and 0x3F);
+			return out;
+		}
+		else if(cp < 0x10000) {
+			out := Byte->New[3];
+			out[0] := 0xE0 or (cp >> 12);
+			out[1] := 0x80 or ((cp >> 6) and 0x3F);
+			out[2] := 0x80 or (cp and 0x3F);
+			return out;
+		};
+
+		out := Byte->New[4];
+		out[0] := 0xF0 or (cp >> 18);
+		out[1] := 0x80 or ((cp >> 12) and 0x3F);
+		out[2] := 0x80 or ((cp >> 6) and 0x3F);
+		out[3] := 0x80 or (cp and 0x3F);
+		return out;
+	}
+
+	# number of bytes in the sequence that starts with lead
+	function : SeqLen(lead : Int) ~ Int {
+		if(lead < 0x80) { return 1; };
+		if(lead < 0xE0) { return 2; };
+		if(lead < 0xF0) { return 3; };
+		return 4;
+	}
+
+	function : Decode(bytes : Byte[], at : Int) ~ Int {
+		lead := bytes[at]->As(Int) and 0xFF;
+		n := SeqLen(lead);
+		cp : Int;
+		select(n) {
+			label 1 { cp := lead; }
+			label 2 { cp := lead and 0x1F; }
+			label 3 { cp := lead and 0x0F; }
+			label 4 { cp := lead and 0x07; }
+		};
+		for(i := 1; i < n; i += 1;) {
+			cp := (cp << 6) or (bytes[at + i]->As(Int) and 0x3F);
+		};
+		return cp;
+	}
+
+	function : DecodeAll(bytes : Byte[]) ~ String {
+		out := String->New();
+		at := 0;
+		while(at < bytes->Size()) {
+			if(out->Size() > 0) {
+				out->Append(' ');
+			};
+			cp := Decode(bytes, at);
+			out->Append(cp->ToHexString()->SubString(2, cp->ToHexString()->Size() - 2)->ToUpper());
+			at += SeqLen(bytes[at]->As(Int) and 0xFF);
+		};
+		return out;
+	}
+
+	function : Hex(bytes : Byte[]) ~ String {
+		digits := "0123456789ABCDEF";
+		out := String->New();
+		each(i : bytes) {
+			v := bytes[i]->As(Int) and 0xFF;
+			if(i > 0) {
+				out->Append(' ');
+			};
+			out->Append(digits->Get(v >> 4));
+			out->Append(digits->Get(v and 0x0F));
+		};
+		return out;
+	}
+}

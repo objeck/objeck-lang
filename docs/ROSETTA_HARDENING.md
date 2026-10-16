@@ -141,6 +141,48 @@ currying, partial application, composition and the Y combinator have no correct
 formulation. That is the most significant thing this effort has turned up, and
 it is a language feature decision rather than a bug fix.
 
+### Batch 3 (2026-10-15): 50 tasks, ~60 findings
+
+Fifty tasks chosen by subsystem reach (#1118-#1167, tests in #1169), against
+the 48 arithmetic tasks before them, which found nothing. The yield is the
+argument for picking this way: the batch found nine compiler defects, all of
+them crashes or wrong values in every execution mode, fixed in #1168:
+- `+` and interpolation typed a call chain by its head
+- `As(T)` and `TypeOf` broke call chains
+- a primitive method on a call result got its arguments reversed
+- closures overlapped a capture placed after a function value
+- function-value results lost their casts
+
+It also found the rest, filed by subsystem:
+
+| # | Area |
+|---|---|
+| [#1170](https://github.com/objeck/objeck-lang/issues/1170) | x64 JIT branches on `nan = x` as if equal |
+| [#1171](https://github.com/objeck/objeck-lang/issues/1171) | `?->` recovery corrupts the operand stack (interpreter with arguments; JIT two frames down) |
+| [#1172](https://github.com/objeck/objeck-lang/issues/1172) | `??` treats a real 0 as Nil |
+| [#1173](https://github.com/objeck/objeck-lang/issues/1173) | `Float->ToString` kills the VM at 1e57 and above |
+| [#1174](https://github.com/objeck/objeck-lang/issues/1174) | serializer drops multi-dimensional array data |
+| [#1175](https://github.com/objeck/objeck-lang/issues/1175) | reflection metadata wrong or missing |
+| [#1176](https://github.com/objeck/objeck-lang/issues/1176) | scalar Byte/Char never narrow; `ToBinaryString(negative)` loops |
+| [#1177](https://github.com/objeck/objeck-lang/issues/1177) | String `Split`/`TrimBack`/`Lines`/`Justify` edge cases |
+| [#1178](https://github.com/objeck/objeck-lang/issues/1178) | `Float->Pi()` to 11 digits; `Abs(-0.0)` |
+| [#1179](https://github.com/objeck/objeck-lang/issues/1179) | System.Time: DST-shifted GMT dates, weekday unset |
+| [#1180](https://github.com/objeck/objeck-lang/issues/1180) | file IO: phantom `ReadLine`, `Flush` loses the handle |
+| [#1181](https://github.com/objeck/objeck-lang/issues/1181) | the JIT allocates negative-size arrays |
+| [#1182](https://github.com/objeck/objeck-lang/issues/1182) | generics: chained calls lose type arguments |
+| [#1183](https://github.com/objeck/objeck-lang/issues/1183) | function types: array parameters, exact classes, unassigned value |
+| [#1184](https://github.com/objeck/objeck-lang/issues/1184) | parser: `F(a)(b)` silently becomes two statements |
+| [#1185](https://github.com/objeck/objeck-lang/issues/1185) | Windows: Char above U+FFFF truncated |
+| [#1186](https://github.com/objeck/objeck-lang/issues/1186) | library gaps (Semaphore, set algebra, comparator sort, ...) |
+
+Two process notes:
+- **Pick from the page itself.** Picks come from the rendered *Tasks not
+  implemented in Objeck* page. Its wikitext is only a template; a category
+  difference gives a different, smaller list.
+- **Run three modes.** Every task ran interpreted, with the default JIT, and
+  with `OBJECK_JIT_THRESHOLD=1`. Three of the findings exist in only one of
+  them.
+
 ### Completed
 
 | Task | Notes |
@@ -150,14 +192,9 @@ it is a language feature decision rather than a bug fix.
 
 ### Proven, not yet written up
 
-The mechanism is verified and the task entry is still to do. Anyone picking one
-of these up is writing the solution, not discovering whether it is possible.
-
-| Task | Verified by |
-|---|---|
-| Currying, Partial function application | `MakeAdder(3)` and `MakeAdder(100)` return independent closures: `13`, `110`, `13` |
-| Function composition | `Compose(f, g)` as a parameterised lambda: two live composers give `60` and `5`, where the static-field idiom gives `60` and `60` |
-| Y combinator, Anonymous recursion | follows from the above -- a parameterised lambda can capture a `FuncRef`/function reference, which is what self-application needs. **Not** separately verified yet |
+Nothing outstanding: Currying, Partial function application, the Y combinator
+and Anonymous recursion were written up in batch 3. Function composition is
+blocked only by the closure defect fixed in #1168.
 
 ---
 

@@ -1,0 +1,166 @@
+#~
+# Rosetta Code: Associative array/Merging
+# https://rosettacode.org/wiki/Associative_array/Merging
+# Claimed in #1150
+#
+# EXTRA_LIBS: gen_collect
+#
+# Merges the task's "base" and "update" tables into a new table where update wins, without mutating either source, on both the library's Collection.Hash and Collection.Map. Values are mixed (String, FloatRef, IntRef) behind Base, so the test also pins that a value's runtime type survives the round trip and that a second Insert on an existing key replaces rather than duplicates.
+#
+# Expected values are the task page's stated result table.
+~#
+
+use Collection;
+
+class RosettaAssociativeArrayMerging {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaAssociativeArrayMerging->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		base := Hash->New()<String, Base>;
+		base->Insert("name", "Rocket Skates");
+		base->Insert("price", FloatRef->New(12.75));
+		base->Insert("color", "yellow");
+
+		update := Hash->New()<String, Base>;
+		update->Insert("price", FloatRef->New(15.25));
+		update->Insert("color", "red");
+		update->Insert("year", IntRef->New(1974));
+
+		merged := Merge(base, update);
+		Check("merged has every key from either table", merged->Size()->ToString(), "4");
+		Check("merged keys", Keys(merged), "color,name,price,year");
+		Check("name comes from base", Show(merged->Find("name")), "Rocket Skates");
+		Check("price comes from update", Show(merged->Find("price")), "15.25");
+		Check("color comes from update", Show(merged->Find("color")), "red");
+		Check("year comes from update", Show(merged->Find("year")), "1974");
+		# TypeOf at the end of a call chain is typed as the receiver, not Bool: merged->Find("year")->TypeOf(IntRef)
+		# compiles, then crashes the VM; and x->TypeOf(T)->ToString() does not compile. Bind both steps.
+		year_value := merged->Find("year");
+		price_value := merged->Find("price");
+		year_is_int := year_value->TypeOf(IntRef);
+		price_is_float := price_value->TypeOf(FloatRef);
+		Check("year is still an Int", year_is_int->ToString(), "true");
+		Check("price is still a Float", price_is_float->ToString(), "true");
+
+		# neither source was mutated
+		Check("base keeps three keys", base->Size()->ToString(), "3");
+		Check("base price untouched", Show(base->Find("price")), "12.75");
+		Check("base color untouched", Show(base->Find("color")), "yellow");
+		Check("base never gained year", base->Has("year")->ToString(), "false");
+		Check("update keeps three keys", update->Size()->ToString(), "3");
+		Check("update never gained name", update->Has("name")->ToString(), "false");
+
+		# merging the other way round: base wins
+		flipped := Merge(update, base);
+		Check("reverse merge: price from base", Show(flipped->Find("price")), "12.75");
+		Check("reverse merge: year still present", Show(flipped->Find("year")), "1974");
+
+		# the same merge on the tree-backed Map, whose keys come out sorted
+		mbase := Map->New()<String, Base>;
+		mbase->Insert("name", "Rocket Skates");
+		mbase->Insert("price", FloatRef->New(12.75));
+		mbase->Insert("color", "yellow");
+		mupdate := Map->New()<String, Base>;
+		mupdate->Insert("price", FloatRef->New(15.25));
+		mupdate->Insert("color", "red");
+		mupdate->Insert("year", IntRef->New(1974));
+		mmerged := MapMerge(mbase, mupdate);
+		Check("Map merge in key order", MapShow(mmerged), "color=red name=Rocket Skates price=15.25 year=1974");
+		Check("Map base untouched", MapShow(mbase), "color=yellow name=Rocket Skates price=12.75");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# a new table: everything from first, then everything from second on top
+	function : Merge(first : Hash<String, Base>, second : Hash<String, Base>) ~ Hash<String, Base> {
+		out := Hash->New()<String, Base>;
+		pairs := first->GetKeyValues()<Pair<String, Base>>;
+		each(p in pairs) { out->Insert(p->GetFirst(), p->GetSecond()); };
+		pairs := second->GetKeyValues()<Pair<String, Base>>;
+		each(p in pairs) { out->Insert(p->GetFirst(), p->GetSecond()); };
+		return out;
+	}
+
+	function : MapMerge(first : Map<String, Base>, second : Map<String, Base>) ~ Map<String, Base> {
+		out := Map->New()<String, Base>;
+		pairs := first->GetKeyValues()<Pair<String, Base>>;
+		each(p in pairs) { out->Insert(p->GetFirst(), p->GetSecond()); };
+		pairs := second->GetKeyValues()<Pair<String, Base>>;
+		each(p in pairs) { out->Insert(p->GetFirst(), p->GetSecond()); };
+		return out;
+	}
+
+	# a hash has no key order, so sort the keys through a Set
+	function : Keys(h : Hash<String, Base>) ~ String {
+		ordered := Set->New()<String>;
+		keys := h->GetKeys()<String>;
+		each(k in keys) { ordered->Insert(k); };
+		sorted := ordered->GetKeys()<String>;
+		out := "";
+		each(i : sorted) {
+			if(i > 0) { out += ","; };
+			out += sorted->Get(i);
+		};
+		return out;
+	}
+
+	function : MapShow(m : Map<String, Base>) ~ String {
+		out := "";
+		pairs := m->GetKeyValues()<Pair<String, Base>>;
+		each(i : pairs) {
+			p := pairs->Get(i);
+			if(i > 0) { out += " "; };
+			out += p->GetFirst() + "=" + Show(p->GetSecond());
+		};
+		return out;
+	}
+
+	# Float->ToString prints six places, so render prices to two
+	function : Show(v : Base) ~ String {
+		if(v = Nil) {
+			return "Nil";
+		};
+		if(v->TypeOf(FloatRef)) {
+			# bind the cast first: in a binary expression x->As(FloatRef)->Get() is typed
+			# as FloatRef, so the compiler emits a second Get() on the Float and the VM crashes
+			price := v->As(FloatRef)->Get();
+			cents := (price * 100.0)->Round()->As(Int);
+			frac := cents % 100;
+			if(frac < 10) {
+				return "{$cents / 100}.0{$frac}";
+			};
+			return "{$cents / 100}.{$frac}";
+		};
+		if(v->TypeOf(IntRef)) {
+			# v->As(IntRef)->Get()->ToString() is rejected as an IntRef-to-String cast; bind first
+			n := v->As(IntRef)->Get();
+			return n->ToString();
+		};
+		if(v->TypeOf(String)) {
+			return v->As(String);
+		};
+		return "?";
+	}
+}

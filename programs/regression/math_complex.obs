@@ -1,0 +1,185 @@
+#~
+# System.Math.Complex: complex numbers with Float parts.
+#
+# EXTRA_LIBS: math
+#
+# What is pinned here are the properties that make the type usable rather than
+# merely present:
+#
+#   - the four operations Arithmetic/Complex asks for (add, multiply, negate,
+#     invert) plus conjugate, subtract and divide, against Python's complex type
+#     as the oracle. Computed values are compared within a relative tolerance;
+#     results that are exact in IEEE arithmetic (i*i, negation, conjugation) are
+#     compared exactly.
+#   - a zero divisor yields Nil. A Float division by zero aborts the program, so
+#     Divide and Reciprocal must test for it rather than let it through.
+#   - Divide and Abs are scaled (Smith's method, a hypot-style magnitude). The
+#     naive formulas compute c^2 + d^2, which underflows to zero for 1e-200 --
+#     turning a perfectly invertible value into a division by zero, i.e. an
+#     abort -- and overflows to infinity for 3e200. Both cases are asserted.
+#   - ToString never prints "+ -0.000000i": a negative zero imaginary part is
+#     still rendered with a plus sign.
+#
+# Expected values were computed with an independent oracle (Python's complex
+# and cmath), not recalled.
+~#
+
+use System.Math;
+
+class MathComplex {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := MathComplex->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# relative tolerance, with an absolute floor for values near zero
+	method : Near(got : Float, want : Float) ~ Bool {
+		scale := Float->Abs(want);
+		if(scale < 1.0) { scale := 1.0; };
+		return Float->Abs(got - want) <= 1.0e-12 * scale;
+	}
+
+	method : CheckFloat(what : String, got : Float, want : Float) ~ Nil {
+		if(Near(got, want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckNear(what : String, got : Complex, re : Float, im : Float) ~ Nil {
+		if(got = Nil) {
+			"FAIL: {$what}: expected a value, got Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+		gr := got->GetReal();
+		gi := got->GetImaginary();
+		if(Near(gr, re) & Near(gi, im)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected ({$re}, {$im}), got ({$gr}, {$gi})"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# exact, for results with no rounding in them
+	method : CheckExact(what : String, got : Complex, re : Float, im : Float) ~ Nil {
+		CheckBool(what, got->Equals(Complex->New(re, im)), true);
+	}
+
+	method : Run() ~ Nil {
+		# the operands most Arithmetic/Complex entries use
+		a := Complex->New(1.0, 1.0);
+		b := Complex->New(3.14159, 1.25);
+
+		CheckExact("real constructor has a zero imaginary part", Complex->New(2.5), 2.5, 0.0);
+		CheckBool("GetReal", a->GetReal() = 1.0, true);
+		CheckBool("GetImaginary", b->GetImaginary() = 1.25, true);
+
+		# ---- the task's four operations, plus conjugate ----
+		CheckNear("a + b", a->Add(b), 4.14159, 2.25);
+		CheckNear("a * b", a->Multiply(b), 1.8915899999999999, 4.39159);
+		CheckExact("-a", a->Negate(), -1.0, -1.0);
+		CheckNear("1/a", a->Reciprocal(), 0.5, -0.5);
+		CheckNear("1/b", b->Reciprocal(), 0.27480457417047205, -0.10934135826542932);
+		CheckExact("conjugate of a", a->Conjugate(), 1.0, -1.0);
+		CheckExact("conjugate twice is the identity", b->Conjugate()->Conjugate(), 3.14159, 1.25);
+
+		# ---- derived operations ----
+		CheckNear("a - b", a->Subtract(b), -2.14159, -0.25);
+		CheckNear("(1+2i)/(3-4i)", Complex->New(1.0, 2.0)->Divide(Complex->New(3.0, -4.0)), -0.2, 0.4);
+		CheckNear("b * (1/b) is one", b->Multiply(b->Reciprocal()), 1.0, 0.0);
+		CheckExact("i * i is exactly -1", Complex->I()->Multiply(Complex->I()), -1.0, 0.0);
+		CheckExact("scalar multiply", b->Multiply(2.0), 6.28318, 2.5);
+		# z * conj(z) = |z|^2, a real number
+		zz := b->Multiply(b->Conjugate());
+		CheckFloat("b * conj(b) is |b|^2", zz->GetReal(), 3.381137046630911 * 3.381137046630911);
+		CheckBool("b * conj(b) has no imaginary part", zz->GetImaginary() = 0.0, true);
+
+		# ---- magnitude and angle ----
+		CheckFloat("|b|", b->Abs(), 3.381137046630911);
+		CheckFloat("|3 + 4i| is 5", Complex->New(3.0, -4.0)->Abs(), 5.0);
+		CheckFloat("arg b", b->Arg(), 0.3786840982027103);
+		# a literal, not Float->Pi(): that returns 3.1415926536, off by 2e-11
+		pi := 3.141592653589793;
+		CheckFloat("arg -1 is pi", Complex->New(-1.0, 0.0)->Arg(), pi);
+		CheckBool("|0| is 0", Complex->Zero()->Abs() = 0.0, true);
+		# a positive zero, not -0.0 (Float->Abs(-0.0) returns -0.0, so the sign is
+		# only visible in the rendering)
+		Check("|-0 - 0i| is +0", Complex->New(-0.0, -0.0)->Abs()->ToString(), "0.000000");
+		nan_abs := Complex->New(0.0, Float->NaN())->Abs();
+		CheckBool("a NaN part gives a NaN magnitude", nan_abs <> nan_abs, true);
+		CheckNear("Polar(2, pi/2) is 2i", Complex->Polar(2.0, pi / 2.0), 0.0, 2.0);
+
+		# ---- no overflow or underflow in the intermediates ----
+		huge := Complex->New(3.0e200, 4.0e200);
+		CheckFloat("|3e200 + 4e200i| does not overflow", huge->Abs() / 1.0e200, 5.0);
+		tiny := Complex->New(1.0e-200, 1.0e-200);
+		inv := tiny->Reciprocal();
+		if(inv = Nil) {
+			"FAIL: 1/(1e-200 + 1e-200i): expected a value, got Nil"->PrintLine();
+			@failures += 1;
+		}
+		else {
+			# 5e199 - 5e199i, scaled down to compare
+			CheckNear("1/(1e-200 + 1e-200i) does not underflow", inv->Multiply(1.0e-200), 0.5, -0.5);
+		};
+		CheckFloat("|3e-200 + 4e-200i| does not underflow", Complex->New(3.0e-200, 4.0e-200)->Abs() * 1.0e200, 5.0);
+
+		# ---- a zero divisor is Nil, not an abort ----
+		CheckBool("1/0 is Nil", Complex->Zero()->Reciprocal() = Nil, true);
+		CheckBool("a / 0 is Nil", a->Divide(Complex->Zero()) = Nil, true);
+		CheckBool("a / Nil is Nil", a->Divide(Nil) = Nil, true);
+		CheckBool("a + Nil is Nil", a->Add(Nil) = Nil, true);
+		# dividing by a purely imaginary value takes the other branch of Smith's method
+		CheckNear("(1+i) / 2i", a->Divide(Complex->New(0.0, 2.0)), 0.5, -0.5);
+
+		# ---- equality and predicates ----
+		CheckBool("equal values are Equal", a->Equals(Complex->New(1.0, 1.0)), true);
+		CheckBool("different values are not", a->Equals(b), false);
+		CheckBool("nothing equals Nil", a->Equals(Nil), false);
+		CheckBool("zero IsZero", Complex->Zero()->IsZero(), true);
+		CheckBool("i is not zero", Complex->I()->IsZero(), false);
+
+		# ---- rendering ----
+		Check("ToString of a", a->ToString(), "1.000000 + 1.000000i");
+		Check("ToString with a negative imaginary part", Complex->New(1.0, -2.0)->ToString(), "1.000000 - 2.000000i");
+		Check("ToString of a negative real part", a->Negate()->ToString(), "-1.000000 - 1.000000i");
+		Check("a negative zero imaginary part prints with a plus", Complex->New(0.0, -0.0)->ToString(), "0.000000 + 0.000000i");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

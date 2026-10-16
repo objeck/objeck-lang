@@ -1,0 +1,95 @@
+#~
+Regression: `T->New[a[i]]` was compiled as a COPY of the array a, not as an
+array of a[i] elements.
+
+Found preparing NSL-KDD data: `indexes := Int->New[counts[category]];` crashed
+the VM with an access violation (0xC0000005, a dialog on Windows) after the
+whole 125,973-row file had been read. The single-argument copy constructor
+(`Int->New[src]`, #995) was chosen when the argument was a variable with an
+array type -- and a variable's eval type keeps the array's dimension even when
+it is indexed. So `counts[category]` was taken for the array `counts`, the
+element's VALUE was passed to $Int:Copy as an array pointer, and reading its
+"size" faulted at (value + 0x10): counts[0] = 956 = 0x3BC, fault at 0x3CC.
+
+IsArrayCopySource now treats an indexed variable as a size, in both the
+analyzer and the emitter. The real copy forms stay copies.
+~#
+
+class NewArrayIndexedSize {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		counts := Int->New[3];
+		counts[0] := 956;
+		counts[1] := 5;
+		counts[2] := 0;
+
+		# the failing shape: the size is an element of another array
+		a := Int->New[counts[0]];
+		CheckInt("Int->New[counts[0]] has counts[0] elements", a->Size(), 956);
+		a[955] := 7;
+		CheckInt("its last element is writable", a[955], 7);
+		CheckInt("it starts zeroed", a[0], 0);
+		CheckInt("counts itself is unchanged", counts->Size(), 3);
+
+		# a variable index, inside a loop, as in the preparation program
+		total := 0;
+		each(c : counts) {
+			idx := Int->New[counts[c]];
+			total += idx->Size();
+		};
+		CheckInt("one array per category, sized by its count", total, 961);
+
+		# every element type
+		f := Float->New[counts[1]];
+		CheckInt("Float->New[counts[1]]", f->Size(), 5);
+		ch := Char->New[counts[1]];
+		CheckInt("Char->New[counts[1]]", ch->Size(), 5);
+		b := Byte->New[counts[1]];
+		CheckInt("Byte->New[counts[1]]", b->Size(), 5);
+		flags := Bool->New[counts[1]];
+		CheckInt("Bool->New[counts[1]]", flags->Size(), 5);
+		s := String->New[counts[1]];
+		CheckInt("String->New[counts[1]]", s->Size(), 5);
+		z := Int->New[counts[2]];
+		CheckInt("a zero count gives an empty array", z->Size(), 0);
+
+		# a 2-D size from elements
+		m := Int->New[counts[1], counts[1]];
+		m[4, 4] := 9;
+		CheckInt("Int->New[counts[1], counts[1]]", m[4, 4], 9);
+
+		# the copy constructor is still a copy
+		src := Int->New[4];
+		src[0] := 11;
+		copy := Int->New[src];
+		copy[0] := 99;
+		CheckInt("Int->New[src] is a copy, of the same size", copy->Size(), 4);
+		CheckInt("writing the copy leaves the source", src[0], 11);
+		lit := Int->New[[1, 2, 3]];
+		CheckInt("Int->New[[1, 2, 3]] copies the literal", lit->Size(), 3);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NewArrayIndexedSize->New()->Run();
+	}
+}

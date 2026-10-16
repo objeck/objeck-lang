@@ -1,0 +1,94 @@
+#~
+# Rosetta Code: Currying
+# https://rosettacode.org/wiki/Currying
+# Claimed in #1118
+#
+# A three-argument add written as nested one-argument lambdas, plus Curry/Uncurry combinators that convert between the two-argument and the curried shape. The point is the closure mechanism: each partial application must carry its own captured argument, so two live partials built from the same curried function must answer independently, in either order.
+#
+# Applications are spelled one call per local (g := add(1); h := g(2); h(3)). The direct form add(1)(2) does not apply twice: semicolons are optional between statements, so it compiles as the two statements add(1); and (2)... and silently yields the last argument.
+#
+# Expected values are small integer arithmetic stated in each assertion, not recalled output.
+~#
+
+class RosettaCurrying {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaCurrying->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Mul(a : Int, b : Int) ~ Int {
+		return a * b;
+	}
+
+	# (Int, Int) ~ Int  ->  (Int) ~ (Int) ~ Int
+	function : Curry(f : (Int, Int) ~ Int) ~ (Int) ~ (Int) ~ Int {
+		return \(Int) ~ (Int) ~ Int : (a) => \(Int) ~ Int : (b) => f(a, b);
+	}
+
+	# (Int) ~ (Int) ~ Int  ->  (Int, Int) ~ Int
+	function : Uncurry(f : (Int) ~ (Int) ~ Int) ~ (Int, Int) ~ Int {
+		return \(Int, Int) ~ Int : (a, b) => { g := f(a); return g(b); };
+	}
+
+	method : Run() ~ Nil {
+		# a curried three-argument add, written directly
+		add : (Int) ~ (Int) ~ (Int) ~ Int := \(Int) ~ (Int) ~ (Int) ~ Int : (a) => \(Int) ~ (Int) ~ Int : (b) => \(Int) ~ Int : (c) => a * 100 + b * 10 + c;
+		g := add(1);
+		h := g(2);
+		CheckInt("add(1)(2)(3) = 123", h(3), 123);
+
+		# partials of the same curried function are independent
+		add4 := add(4);
+		add45 := add4(5);
+		add47 := add4(7);
+		CheckInt("add(4)(5)(6) = 456", add45(6), 456);
+		CheckInt("add(4)(7)(6) = 476", add47(6), 476);
+		CheckInt("the first partial is unchanged by the second", add45(6), 456);
+		CheckInt("the 1-2 partial survives later partials", h(9), 129);
+
+		# Curry over a named function and over a lambda
+		cmul := Curry(Mul(Int, Int) ~ Int);
+		times6 := cmul(6);
+		times9 := cmul(9);
+		CheckInt("Curry(Mul)(6)(7) = 42", times6(7), 42);
+		CheckInt("Curry(Mul)(9)(7) = 63", times9(7), 63);
+		CheckInt("times6 is not disturbed by times9", times6(11), 66);
+
+		csub := Curry(\(Int, Int) ~ Int : (a, b) => a - b);
+		from10 := csub(10);
+		CheckInt("Curry(sub)(10)(3) = 7", from10(3), 7);
+		CheckInt("Curry(sub)(10)(25) = -15", from10(25), -15);
+
+		# Curry over a closure that itself captures
+		k := 1000;
+		plusk := \(Int, Int) ~ Int : (a, b) => a * 10 + b + k;
+		cplusk := Curry(plusk);
+		p1 := cplusk(1);
+		CheckInt("Curry over a capturing closure: 1, 2 -> 1012", p1(2), 1012);
+
+		# Uncurry undoes Curry
+		mul2 := Uncurry(cmul);
+		CheckInt("Uncurry(Curry(Mul))(8, 9) = 72", mul2(8, 9), 72);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

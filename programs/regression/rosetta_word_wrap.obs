@@ -1,0 +1,141 @@
+#~
+# Rosetta Code: Word wrap
+# https://rosettacode.org/wiki/Word_wrap
+# Claimed in #1138
+#
+# The minimum-length greedy algorithm: a word goes on the current line if it fits, otherwise it starts the next one. Checked line by line at widths 72 and 80 and as a whole at 20, plus the edges -- a word longer than the width gets a line to itself and is never broken, runs of spaces and a tab are a single separator, a word exactly filling the width stays, and empty input is no lines.
+#
+# Expected lines come from an independent Python oracle (a direct greedy implementation, cross-checked against textwrap.wrap with long-word and hyphen breaking off).
+~#
+
+class RosettaWordWrap {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaWordWrap->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected [{$want}], got [{$got}]"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		text := "In olden times when wishing still helped one, there lived a king whose daughters were all beautiful, ";
+		text += "but the youngest was so beautiful that the sun itself, which has seen so much, was astonished whenever ";
+		text += "it shone in her face. Close by the king's castle lay a great dark forest, and under an old lime-tree in ";
+		text += "the forest was a well, and when the day was very warm, the king's child went out into the forest and sat ";
+		text += "down by the side of the cool fountain, and when she was bored she took a golden ball, and threw it up on ";
+		text += "high and caught it, and this ball was her favorite plaything.";
+
+		w72 := Wrap(text, 72);
+		CheckInt("width 72 line count", w72->Size(), 9);
+		Check("72 line 1", w72->Get(0), "In olden times when wishing still helped one, there lived a king whose");
+		Check("72 line 2", w72->Get(1), "daughters were all beautiful, but the youngest was so beautiful that the");
+		Check("72 line 3", w72->Get(2), "sun itself, which has seen so much, was astonished whenever it shone in");
+		Check("72 line 4", w72->Get(3), "her face. Close by the king's castle lay a great dark forest, and under");
+		Check("72 line 5", w72->Get(4), "an old lime-tree in the forest was a well, and when the day was very");
+		Check("72 line 6", w72->Get(5), "warm, the king's child went out into the forest and sat down by the side");
+		Check("72 line 7", w72->Get(6), "of the cool fountain, and when she was bored she took a golden ball, and");
+		Check("72 line 8", w72->Get(7), "threw it up on high and caught it, and this ball was her favorite");
+		Check("72 line 9", w72->Get(8), "plaything.");
+
+		w80 := Wrap(text, 80);
+		CheckInt("width 80 line count", w80->Size(), 8);
+		Check("80 line 1", w80->Get(0), "In olden times when wishing still helped one, there lived a king whose daughters");
+		Check("80 line 2", w80->Get(1), "were all beautiful, but the youngest was so beautiful that the sun itself, which");
+		Check("80 line 3", w80->Get(2), "has seen so much, was astonished whenever it shone in her face. Close by the");
+		Check("80 line 4", w80->Get(3), "king's castle lay a great dark forest, and under an old lime-tree in the forest");
+		Check("80 line 5", w80->Get(4), "was a well, and when the day was very warm, the king's child went out into the");
+		Check("80 line 6", w80->Get(5), "forest and sat down by the side of the cool fountain, and when she was bored she");
+		Check("80 line 7", w80->Get(6), "took a golden ball, and threw it up on high and caught it, and this ball was her");
+		Check("80 line 8", w80->Get(7), "favorite plaything.");
+
+		w20 := Wrap(text, 20);
+		CheckInt("width 20 line count", w20->Size(), 31);
+		Check("width 20 first and last", w20->Get(0) + "|" + w20->Get(30), "In olden times when|plaything.");
+		Check("width 20 line 30", w20->Get(29), "her favorite");
+
+		# a longer-than-width word gets its own line; whitespace runs and a tab collapse
+		edge := Wrap("a  supercalifragilisticexpialidocious   word\there", 10);
+		CheckInt("long word line count", edge->Size(), 3);
+		Check("long word lines", edge->Get(0) + "|" + edge->Get(1) + "|" + edge->Get(2), "a|supercalifragilisticexpialidocious|word here");
+
+		# a line that exactly fills the width
+		exact := Wrap("abcd efgh ij", 9);
+		Check("exact fill", exact->Get(0) + "|" + exact->Get(1), "abcd efgh|ij");
+
+		CheckInt("empty input is no lines", Wrap("", 10)->Size(), 0);
+		CheckInt("blank input is no lines", Wrap(" \t ", 10)->Size(), 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Words(text : String) ~ Collection.Vector<String> {
+		words := Collection.Vector->New()<String>;
+		current := String->New();
+		each(i : text) {
+			c := text->Get(i);
+			if(c->IsWhitespace()) {
+				if(current->Size() > 0) {
+					words->AddBack(current);
+					current := String->New();
+				};
+			}
+			else {
+				current->Append(c);
+			};
+		};
+		if(current->Size() > 0) {
+			words->AddBack(current);
+		};
+		return words;
+	}
+
+	function : Wrap(text : String, width : Int) ~ Collection.Vector<String> {
+		lines := Collection.Vector->New()<String>;
+		words := Words(text);
+		line := String->New();
+		each(i : words) {
+			word := words->Get(i);
+			if(line->Size() = 0) {
+				line->Append(word);
+			}
+			else if(line->Size() + 1 + word->Size() <= width) {
+				line->Append(' ');
+				line->Append(word);
+			}
+			else {
+				lines->AddBack(line);
+				line := String->New(word);
+			};
+		};
+		if(line->Size() > 0) {
+			lines->AddBack(line);
+		};
+		return lines;
+	}
+}

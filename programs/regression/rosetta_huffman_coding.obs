@@ -1,0 +1,255 @@
+#~
+# Rosetta Code: Huffman coding
+# https://rosettacode.org/wiki/Huffman_coding
+# Claimed in #1152
+#
+# EXTRA_LIBS: gen_collect
+#
+# Builds the Huffman tree with the library's Collection.Heap as the priority queue and counts symbols in a Collection.Map. Ties make the exact codes non-unique, so the test pins what is invariant: the total encoded bit count, the code-length extremes, that the code is prefix-free and complete (Kraft sum exactly 1), that a heavier symbol never gets a longer code, and that encoding then decoding gives the input back.
+#
+# Expected values were computed with an independent oracle (Python heapq Huffman), not recalled.
+~#
+
+use Collection;
+
+class RosettaHuffmanCoding {
+	@failures : Int;
+	@sequence : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaHuffmanCoding->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+		@sequence := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's string: 19 distinct symbols, 39 characters, 157 bits
+		Verify("task string", "this is an example for huffman encoding", 19, 157, 3, 5);
+		Verify("aaaaabbbbcccdde", "aaaaabbbbcccdde", 5, 33, 2, 3);
+		Verify("abracadabra", "abracadabra", 5, 23, 1, 3);
+		Verify("mississippi river", "mississippi river", 8, 46, 2, 4);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Verify(name : String, text : String, symbols : Int, bits : Int, shortest : Int, longest : Int) ~ Nil {
+		counts := Count(text);
+		codes := Build(counts);
+		CheckInt("{$name}: distinct symbols", codes->Size(), symbols);
+
+		keys := codes->GetKeys()<String>;
+		total := 0;
+		low := 1000;
+		high := 0;
+		each(k in keys) {
+			code := codes->Find(k);
+			weight := counts->Find(k);
+			total += weight->Get() * code->Size();
+			if(code->Size() < low) { low := code->Size(); };
+			if(code->Size() > high) { high := code->Size(); };
+		};
+		CheckInt("{$name}: total encoded bits", total, bits);
+		CheckInt("{$name}: shortest code", low, shortest);
+		CheckInt("{$name}: longest code", high, longest);
+
+		# Kraft: sum of 2^(high - len) over all codes is exactly 2^high
+		kraft := 0;
+		each(k in keys) {
+			code := codes->Find(k);
+			kraft += Pow2(high - code->Size());
+		};
+		CheckInt("{$name}: code is complete (Kraft sum 1)", kraft, Pow2(high));
+
+		# no code is a prefix of another
+		clashes := 0;
+		each(i : keys) {
+			each(j : keys) {
+				if(i <> j) {
+					ci := codes->Find(keys->Get(i));
+					cj := codes->Find(keys->Get(j));
+					if(cj->StartsWith(ci)) { clashes += 1; };
+				};
+			};
+		};
+		CheckInt("{$name}: prefix-free", clashes, 0);
+
+		# a heavier symbol never has a longer code
+		inversions := 0;
+		each(i : keys) {
+			each(j : keys) {
+				wi := counts->Find(keys->Get(i));
+				wj := counts->Find(keys->Get(j));
+				ci := codes->Find(keys->Get(i));
+				cj := codes->Find(keys->Get(j));
+				if(wi->Get() > wj->Get() & ci->Size() > cj->Size()) { inversions += 1; };
+			};
+		};
+		CheckInt("{$name}: heavier symbols get codes no longer", inversions, 0);
+
+		# encode, check the length, decode, compare
+		encoded := "";
+		each(i : text) {
+			encoded += codes->Find(text->Get(i)->ToString());
+		};
+		CheckInt("{$name}: encoded length", encoded->Size(), bits);
+		Check("{$name}: decodes back to the input", Decode(encoded, codes), text);
+	}
+
+	# symbol -> occurrence count
+	function : Count(text : String) ~ Map<String, IntRef> {
+		counts := Map->New()<String, IntRef>;
+		each(i : text) {
+			s := text->Get(i)->ToString();
+			c := counts->Find(s);
+			if(c = Nil) {
+				counts->Insert(s, IntRef->New(1));
+			}
+			else {
+				c->Set(c->Get() + 1);
+			};
+		};
+		return counts;
+	}
+
+	# merge the two lightest nodes until one tree remains, then read codes off it
+	method : Build(counts : Map<String, IntRef>) ~ Map<String, String> {
+		queue := Heap->New(Heap->Order->MIN)<HuffNode>;
+		keys := counts->GetKeys()<String>;
+		each(k in keys) {
+			weight := counts->Find(k);
+			queue->Insert(HuffNode->New(k, weight->Get(), NextSequence(), Nil, Nil));
+		};
+		while(queue->Size() > 1) {
+			first := queue->Pop();
+			second := queue->Pop();
+			queue->Insert(HuffNode->New("", first->GetWeight() + second->GetWeight(), NextSequence(), first, second));
+		};
+		codes := Map->New()<String, String>;
+		Walk(queue->Pop(), "", codes);
+		return codes;
+	}
+
+	method : NextSequence() ~ Int {
+		@sequence += 1;
+		return @sequence;
+	}
+
+	function : Walk(node : HuffNode, prefix : String, codes : Map<String, String>) ~ Nil {
+		if(node->IsLeaf()) {
+			codes->Insert(node->GetSymbol(), prefix);
+		}
+		else {
+			Walk(node->GetLeft(), prefix + "0", codes);
+			Walk(node->GetRight(), prefix + "1", codes);
+		};
+	}
+
+	# the code is prefix-free, so the first match while reading is the symbol
+	function : Decode(bits : String, codes : Map<String, String>) ~ String {
+		reverse_codes := Map->New()<String, String>;
+		keys := codes->GetKeys()<String>;
+		each(k in keys) {
+			reverse_codes->Insert(codes->Find(k), k);
+		};
+		out := "";
+		current := "";
+		each(i : bits) {
+			current += bits->Get(i);
+			symbol := reverse_codes->Find(current);
+			if(symbol <> Nil) {
+				out += symbol;
+				current := "";
+			};
+		};
+		return out;
+	}
+
+	function : Pow2(k : Int) ~ Int {
+		r := 1;
+		for(i := 0; i < k; i += 1;) { r *= 2; };
+		return r;
+	}
+}
+
+# ordered by weight, then by creation order so ties break deterministically
+class HuffNode implements Compare {
+	@symbol : String;
+	@weight : Int;
+	@sequence : Int;
+	@left : HuffNode;
+	@right : HuffNode;
+
+	New(symbol : String, weight : Int, sequence : Int, left : HuffNode, right : HuffNode) {
+		@symbol := symbol;
+		@weight := weight;
+		@sequence := sequence;
+		@left := left;
+		@right := right;
+	}
+
+	method : public : Compare(rhs : System.Compare) ~ Int {
+		node := rhs->As(HuffNode);
+		if(@weight <> node->GetWeight()) {
+			return @weight < node->GetWeight() ? -1 : 1;
+		};
+		if(@sequence <> node->GetSequence()) {
+			return @sequence < node->GetSequence() ? -1 : 1;
+		};
+		return 0;
+	}
+
+	method : public : HashID() ~ Int {
+		return @sequence;
+	}
+
+	method : public : GetWeight() ~ Int {
+		return @weight;
+	}
+
+	method : public : GetSequence() ~ Int {
+		return @sequence;
+	}
+
+	method : public : GetSymbol() ~ String {
+		return @symbol;
+	}
+
+	method : public : GetLeft() ~ HuffNode {
+		return @left;
+	}
+
+	method : public : GetRight() ~ HuffNode {
+		return @right;
+	}
+
+	method : public : IsLeaf() ~ Bool {
+		return @left = Nil;
+	}
+}

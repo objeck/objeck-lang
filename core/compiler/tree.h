@@ -570,6 +570,11 @@ namespace frontend {
 
     void SetMethodCall(MethodCall* call);
 
+    // detaches the chain without touching it (SetMethodCall ignores Nil)
+    void ClearMethodCall() {
+      method_call = nullptr;
+    }
+
     void SetPreviousExpression(Expression* e) {
       prev_expr = e;
     }
@@ -1905,6 +1910,11 @@ namespace frontend {
       return SIMPLE_STMT;
     }
 
+    // a '+' statement whose chain moved to its StringConcat node (see AnalyzeExpression)
+    void SetExpression(Expression* e) {
+      expression = e;
+    }
+
     Expression* GetExpression() {
       return expression;
     }
@@ -2887,6 +2897,7 @@ namespace frontend {
     int mid_line_num;
     int mid_line_pos;
     bool is_try_intrinsic;
+    bool is_try_guarded;
     bool is_otherwise_intrinsic;
     // Subscript applied to the RESULT of this call, as in 'GetItems()[0]'.
     // Distinct from Variable::indices, which subscripts a named variable.
@@ -2920,7 +2931,7 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num,
@@ -2945,7 +2956,7 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num,
@@ -2968,7 +2979,7 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
@@ -2994,13 +3005,17 @@ namespace frontend {
       func_rtrn = nullptr;
       is_rouge_return = instructions::NIL_TYPE;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     ~MethodCall() {
     }
 
   public:
+    // parse time: this call is inside a Try() region (a '?->' earlier in its
+    // chain), so a later '?->' adds no second Try()
+    bool IsTryGuarded() const { return is_try_guarded; }
+    void SetTryGuarded(bool v) { is_try_guarded = v; }
     bool IsTryIntrinsic() const { return is_try_intrinsic; }
     void SetTryIntrinsic(bool v) { is_try_intrinsic = v; }
 
@@ -4407,4 +4422,70 @@ namespace frontend {
     ScopedProgramFactories(const ScopedProgramFactories&) = delete;
     ScopedProgramFactories& operator=(const ScopedProgramFactories&) = delete;
   };
+
+  /****************************
+   * The type a sub-expression actually pushes on the stack.
+   *
+   * A trailing cast or method-call chain changes it: `(12.0 + x)->As(Int)` pushes
+   * an Int though the addition's own eval type is Float, and
+   * `s->ToUpper()->Size()` pushes an Int though the first link returns a String.
+   * Anything that selects an opcode or an overload from an operand's type has to
+   * ask for the END of the chain, not the head.
+   *
+   * Getting this wrong is not a wrong answer, it is a crash: a comparison picked a
+   * FLOAT opcode for integer operands (bit-compared ints, handed XMM operands to
+   * the JIT), string interpolation (#1107) and '+' concatenation picked
+   * String:Append's OBJECT overload for an Int and dereferenced the integer as a
+   * pointer.
+   *
+   * Reads eval types only; it never re-analyzes (analysis has side effects, #752).
+   ****************************/
+  /****************************
+   * True when the single argument of `T->New[x]` is an ARRAY to copy rather
+   * than a size: a whole array variable, or a static array literal.
+   *
+   * An indexed variable is a scalar. `Int->New[counts[c]]` allocates counts[c]
+   * elements; it is not a copy of counts. A variable's eval type keeps the
+   * array's dimension even when indexed, so testing the dimension alone took
+   * that form for the copy constructor, and $Int:Copy then treated the element
+   * VALUE as an array pointer: an access violation reading (count + 0x10).
+   ****************************/
+  inline bool IsArrayCopySource(Expression* e)
+  {
+    if(!e || !e->GetEvalType() || !e->GetEvalType()->GetDimension()) {
+      return false;
+    }
+
+    if(e->GetExpressionType() == STAT_ARY_EXPR) {
+      return true;
+    }
+
+    return e->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(e)->GetIndices();
+  }
+
+  inline Type* EffectiveStackType(Expression* e)
+  {
+    Type* type = e->GetEvalType();
+
+    MethodCall* mc = e->GetMethodCall();
+    if(mc) {
+      while(mc->GetMethodCall()) {
+        mc = mc->GetMethodCall();
+      }
+      if(mc->GetTypeOf()) {
+        type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+      }
+      else if(mc->GetCastType()) {
+        type = mc->GetCastType();
+      }
+      else if(mc->GetEvalType()) {
+        type = mc->GetEvalType();
+      }
+    }
+    else if(e->GetCastType()) {
+      type = e->GetCastType();
+    }
+
+    return type;
+  }
 }

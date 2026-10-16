@@ -1,0 +1,148 @@
+#~
+# Rosetta Code: Camel case and snake case
+# https://rosettacode.org/wiki/Camel_case_and_snake_case
+# Claimed in #1141
+#
+# Converts names between snakeCase and snake_case, treating a space and a '-' as separators like '_', and ignoring leading and trailing blanks. Runs over the task's eight strings, which include a non-ASCII word ("ɛrgo"), punctuation that must pass through untouched, digits, and blanks at both ends. The ASCII-only letter case of Char->ToUpper/ToLower is enough for these inputs; it would not be for a word starting with a non-ASCII letter (see the note at Capitalize).
+#
+# Expected values come from an independent Python oracle modelled on the Python solution on the page (separators [ _-]+, an '_' inserted before every run of capitals).
+~#
+
+class RosettaCamelCaseAndSnakeCase {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaCamelCaseAndSnakeCase->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected [{$want}], got [{$got}]"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's eight strings, to camel case
+		Check("camel snakeCase", ToCamel("snakeCase"), "snakeCase");
+		Check("camel snake_case", ToCamel("snake_case"), "snakeCase");
+		Check("camel variable_10_case", ToCamel("variable_10_case"), "variable10Case");
+		Check("camel variable10Case", ToCamel("variable10Case"), "variable10Case");
+		Check("camel non-ASCII words", ToCamel("ɛrgo rE tHis"), "ɛrgoRETHis");
+		Check("camel hurry-up-joe!", ToCamel("hurry-up-joe!"), "hurryUpJoe!");
+		Check("camel path", ToCamel("c://my-docs/happy_Flag-Day/12.doc"), "c://myDocs/happyFlagDay/12.doc");
+		Check("camel blanks at both ends", ToCamel("  spaces  "), "spaces");
+
+		# and to snake case
+		Check("snake snakeCase", ToSnake("snakeCase"), "snake_case");
+		Check("snake snake_case", ToSnake("snake_case"), "snake_case");
+		Check("snake variable_10_case", ToSnake("variable_10_case"), "variable_10_case");
+		Check("snake variable10Case", ToSnake("variable10Case"), "variable10_case");
+		Check("snake non-ASCII words", ToSnake("ɛrgo rE tHis"), "ɛrgo_r_e_t_his");
+		Check("snake hurry-up-joe!", ToSnake("hurry-up-joe!"), "hurry_up_joe!");
+		Check("snake path", ToSnake("c://my-docs/happy_Flag-Day/12.doc"), "c://my_docs/happy_flag_day/12.doc");
+		Check("snake blanks at both ends", ToSnake("  spaces  "), "spaces");
+
+		# extra separators and edges
+		Check("camel space separated", ToCamel("snake case"), "snakeCase");
+		Check("camel dash separated", ToCamel("snake-case"), "snakeCase");
+		Check("camel leading underscore", ToCamel("_leading"), "Leading");
+		Check("snake run of capitals", ToSnake("HTTPServer"), "httpserver");
+		Check("snake leading underscore", ToSnake("_leading"), "leading");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : IsSep(c : Char) ~ Bool {
+		return c = ' ' | c = '_' | c = '-';
+	}
+
+	# split at runs of separators; a leading run yields one empty first word
+	function : Words(name : String) ~ Collection.Vector<String> {
+		words := Collection.Vector->New()<String>;
+		current := String->New();
+		in_sep := false;
+		each(i : name) {
+			c := name->Get(i);
+			if(IsSep(c)) {
+				if(<>in_sep) {
+					words->AddBack(current);
+					current := String->New();
+				};
+				in_sep := true;
+			}
+			else {
+				current->Append(c);
+				in_sep := false;
+			};
+		};
+		words->AddBack(current);
+		return words;
+	}
+
+	function : ToCamel(name : String) ~ String {
+		words := Words(name->Trim());
+		out := String->New(words->Get(0));
+		for(i := 1; i < words->Size(); i += 1;) {
+			word := words->Get(i);
+			if(word->Size() > 0) {
+				out->Append(Capitalize(word));
+			};
+		};
+		return out;
+	}
+
+	# Char->ToUpper only maps a-z: a word starting with a non-ASCII letter
+	# ("über") would come back unchanged where Python gives "Über".
+	function : Capitalize(word : String) ~ String {
+		out := String->New();
+		out->Append(word->Get(0)->ToUpper());
+		out->Append(word->SubString(1, word->Size() - 1));
+		return out;
+	}
+
+	function : ToSnake(name : String) ~ String {
+		# an '_' before every run of capitals, then everything lower case
+		marked := String->New();
+		trimmed := name->Trim();
+		prev_upper := false;
+		each(i : trimmed) {
+			c := trimmed->Get(i);
+			upper := c >= 'A' & c <= 'Z';
+			if(upper & <>prev_upper) {
+				marked->Append('_');
+			};
+			marked->Append(c->ToLower());
+			prev_upper := upper;
+		};
+
+		# collapse every run of separators to one '_', and drop them at the ends
+		out := String->New();
+		pending := false;
+		each(i : marked) {
+			c := marked->Get(i);
+			if(IsSep(c)) {
+				pending := true;
+			}
+			else {
+				if(pending & out->Size() > 0) {
+					out->Append('_');
+				};
+				pending := false;
+				out->Append(c);
+			};
+		};
+		return out;
+	}
+}

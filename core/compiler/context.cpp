@@ -1961,11 +1961,31 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   if(expression) {
+    // Already lowered to a concatenation that carries the call chain: a second
+    // visit (AnalyzeStringConcat probes an operand before AnalyzeCalculation
+    // visits it again) would build a fresh concatenation WITHOUT the chain,
+    // which had already been moved off this node.
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       expression->GetPreviousExpression()->GetMethodCall()) {
+      return;
+    }
+
     ++expression_depth;
 
     StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
     if(str_concat) {
       expression->SetPreviousExpression(str_concat);
+      // `("a" + b)->ToUpper()`: the chain hangs off the '+' node, which never gets
+      // a type of its own -- the concatenation is a separate node that callers
+      // substitute for it. Resolve the chain against that node, a String, and
+      // move it there so it is emitted after the concatenation. Left on the '+'
+      // node it failed as "Invalid class type or assignment".
+      MethodCall* chain = expression->GetMethodCall();
+      if(chain) {
+        str_concat->SetMethodCall(chain);
+        expression->ClearMethodCall();
+        AnalyzeExpressionMethodCall(str_concat, depth + 1);
+      }
     }
     else {
       switch(expression->GetExpressionType()) {
@@ -3208,13 +3228,15 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const std::wstring back
   }
 }
 /****************************
- * True when a call's cast is the scalar cast of its receiver variable, which the
- * parser copies to the call for 'x->As(Int)->M()' (the call then dispatches on
- * the cast type). It converts the receiver, not M's return value, so it must not
- * be validated against the return: 'e->As(Int)->PrintLine()' failed "Cannot cast
- * a Nil return value" and 'e->As(Int)->ToString()' an Int/String cast error.
+ * True when a call's cast is the cast of its receiver variable, which the parser
+ * copies to the call for 'x->As(T)->M()' (the call then dispatches on the cast
+ * type). It converts the receiver, not M's return value, so it must not be
+ * validated against the return, nor taken as the call's type: 'e->As(Int)->
+ * PrintLine()' failed "Cannot cast a Nil return value", 'e->As(Int)->ToString()'
+ * an Int/String cast error, and for a class cast 'u->As(IntRef)->Get()->
+ * ToString()' an IntRef/Int one.
  ****************************/
-static bool IsReceiverScalarCast(Expression* expression)
+static bool IsReceiverCast(Expression* expression)
 {
   if(expression->GetExpressionType() != METHOD_CALL_EXPR) {
     return false;
@@ -3222,12 +3244,17 @@ static bool IsReceiverScalarCast(Expression* expression)
 
   Type* cast_type = expression->GetCastType();
   Variable* variable = static_cast<MethodCall*>(expression)->GetVariable();
-  if(!cast_type || cast_type->GetType() == CLASS_TYPE || !variable || !variable->GetCastType()) {
+  if(!cast_type || !variable || !variable->GetCastType()) {
     return false;
   }
 
   Type* var_cast_type = variable->GetCastType();
-  return var_cast_type->GetType() == cast_type->GetType() && var_cast_type->GetDimension() == cast_type->GetDimension();
+  if(var_cast_type->GetType() != cast_type->GetType() || var_cast_type->GetDimension() != cast_type->GetDimension()) {
+    return false;
+  }
+
+  // the parser copies the variable's Type, so a class cast is the same class name
+  return cast_type->GetType() != CLASS_TYPE || var_cast_type->GetName() == cast_type->GetName();
 }
 
 /****************************
@@ -3397,7 +3424,8 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   }
   
   // TODO: check for dimension size of 1, looking at type
-  else if(method_call->GetEvalType() && expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) && expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() == 1) {
+  // a copy of an array: an indexed variable is a size, not a source (IsArrayCopySource)
+  else if(method_call->GetEvalType() && expressions.size() == 1 && IsArrayCopySource(expressions[0]) && expressions[0]->GetEvalType()->GetDimension() == 1) {
     Type* left_type = expressions[0]->GetEvalType();
     Type* right_type = method_call->GetEvalType();
 
@@ -3588,6 +3616,13 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
         else {
           ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
         }
+      }
+
+      // `h->Find("a")->TypeOf(IntRef)`: the call's value is the Bool the check
+      // pushes, not the call's return type. Left as the return type, `b := ...`
+      // declared b a String/IntRef and `b->PrintLine()` crashed on the Bool.
+      if(method_call->GetTypeOf()) {
+        AnalyzeCast(method_call, depth + 1);
       }
 
       // check for rouge return
@@ -4499,7 +4534,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
     }
 
-    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType() && !IsReceiverScalarCast(method_call)) {
+    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType() && !IsReceiverCast(method_call)) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
     }
     
@@ -4893,7 +4928,7 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   // type cast
   if(expression->GetCastType()) {
     // the receiver's cast, already checked on the variable
-    if(IsReceiverScalarCast(expression)) {
+    if(IsReceiverCast(expression)) {
       return;
     }
 
@@ -4917,7 +4952,30 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
       ProcessError(expression, L"Dimension size mismatch");
     }
 
-    AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+    // The cast converts THIS expression, so check it as if nothing followed it.
+    // With the call chain attached, the class check typed the expression by the
+    // chain's end: `u->As(IntRef)->Get()->ToString()` checked IntRef against
+    // String. (A rule in GetExpressionType that typed every link by its
+    // receiver's cast used to hide this, and crashed `u->As(IntRef)->Get() + 1`.)
+    // Against the expression's own class, so a downcast still gets its run-time
+    // check; a generic parameter (`@a->As(Stringify)` in a class of <A>) is no
+    // class to compare with and takes the general path.
+    MethodCall* chain = expression->GetMethodCall();
+    if(chain && cast_type->GetType() == CLASS_TYPE) {
+      expression->ClearMethodCall();
+      if(root_type && root_type->GetType() == CLASS_TYPE && cast_type->GetDimension() == root_type->GetDimension() &&
+         (SearchProgramClasses(root_type->GetName()) ||
+          linker->SearchClassLibraries(root_type->GetName(), program->GetLibUses(current_class->GetFileName())))) {
+        AnalyzeClassCast(cast_type, root_type, expression, false, depth + 1);
+      }
+      else {
+        AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+      }
+      expression->SetMethodCall(chain);
+    }
+    else {
+      AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+    }
   }
   // 'TypeOf(..)' check
   else if(expression->GetTypeOf()) {
@@ -5020,7 +5078,16 @@ void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int 
   Expression* expression = simple->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
-    AnalyzeExpressionMethodCall(expression, depth);
+    // `("[" + t + "]")->PrintLine();` -- the chain now hangs off the concatenation
+    // node, which AnalyzeExpression already resolved; emit that node instead
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       expression->GetPreviousExpression()->GetMethodCall()) {
+      expression = expression->GetPreviousExpression();
+      simple->SetExpression(expression);
+    }
+    else {
+      AnalyzeExpressionMethodCall(expression, depth);
+    }
     
     // ensure it's a valid statement
     if(!expression->GetMethodCall()) {
@@ -6062,6 +6129,20 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
     // counting).
     AnalyzeExpression(left, depth + 1);
     AnalyzeExpression(right, depth + 1);
+
+    // An operand that is a concatenation with a call chain, `("a" + t)->Size() * 2`:
+    // the chain was resolved on the concatenation node, so that node is the operand
+    // (as for a return value, an assignment and a call argument).
+    if(left->GetPreviousExpression() && left->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       left->GetPreviousExpression()->GetMethodCall()) {
+      left = left->GetPreviousExpression();
+      expression->SetLeft(left);
+    }
+    if(right->GetPreviousExpression() && right->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       right->GetPreviousExpression()->GetMethodCall()) {
+      right = right->GetPreviousExpression();
+      expression->SetRight(right);
+    }
 
     // check operations
     AnalyzeCalculationCast(expression, depth);
@@ -8453,11 +8534,18 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
     do {
       AnalyzeExpressionMethodCall(mthd_call, depth + 1);
 
-      // favor casts
-      if(mthd_call->GetPreviousExpression() && mthd_call->GetPreviousExpression()->GetCastType() && mthd_call->GetEvalType() && !SearchProgramEnums(mthd_call->GetEvalType()->GetName())) {
-        type = mthd_call->GetPreviousExpression()->GetCastType();
+      // favor a cast on the call itself. A cast on the RECEIVER (`u->As(IntRef)`,
+      // parsed as a cast of 'u') says what the call is made on, not what it
+      // returns: typing `u->As(IntRef)->Get()` as IntRef made `+ 1` unbox the Int
+      // result a second time -- a field load through an integer, a crash in
+      // every mode -- and rejected `u->As(IntRef)->Get()->ToString()` as an
+      // invalid cast.
+      // `s->ToUpper()->TypeOf(String)` is a Bool, whatever ToUpper returns: typed
+      // as a String, `b->PrintLine()` called String:PrintLine on the Bool (a crash)
+      if(mthd_call->GetTypeOf()) {
+        type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
       }
-      else if(mthd_call->GetCastType()) {
+      else if(mthd_call->GetCastType() && !IsReceiverCast(mthd_call)) {
         type = mthd_call->GetCastType();
       }
       else {
@@ -9048,14 +9136,27 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
     concat_exprs.push_front(static_cast<CalculatedExpression*>(expression)->GetRight());
     Expression* calc_left_expr = static_cast<CalculatedExpression*>(expression)->GetLeft();
 
-    while(calc_left_expr && calc_left_expr->GetExpressionType() == ADD_EXPR) {
+    // a parenthesised '+' with its own call chain or cast, `("<" + t)->Size() + 1`,
+    // is ONE operand; flattening through it dropped the chain
+    while(calc_left_expr && calc_left_expr->GetExpressionType() == ADD_EXPR &&
+          !calc_left_expr->GetMethodCall() && !calc_left_expr->GetCastType()) {
       concat_exprs.push_front(static_cast<CalculatedExpression*>(calc_left_expr)->GetRight());
       calc_left_expr = static_cast<CalculatedExpression*>(calc_left_expr)->GetLeft();
     }
 
     if(calc_left_expr) {
       AnalyzeExpression(calc_left_expr, depth + 1);
-      Type* calc_left_type = GetExpressionType(calc_left_expr, depth + 1);
+      Type* calc_left_type = nullptr;
+      // `("<" + t)->ToUpper()->Size() + 1`: the left operand is a concatenation
+      // whose chain ends in an Int, so this '+' is arithmetic, not a concatenation
+      Expression* left_concat = calc_left_expr->GetPreviousExpression();
+      if(left_concat && left_concat->GetExpressionType() == STR_CONCAT_EXPR && left_concat->GetMethodCall()) {
+        calc_left_type = EffectiveStackType(left_concat);
+        calc_left_expr = left_concat;
+      }
+      else {
+        calc_left_type = GetExpressionType(calc_left_expr, depth + 1);
+      }
       if(calc_left_type && calc_left_type->GetName() == L"System.String") {
         concat_exprs.push_front(calc_left_expr);
 
@@ -9071,13 +9172,22 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
           // and printed AAB (#752). The right operands are visited once, here.
           if(concat_expr != calc_left_expr) {
             AnalyzeExpression(concat_expr, depth + 1);
+            // a parenthesised concatenation with its own chain is one operand
+            Expression* inner_concat = concat_expr->GetPreviousExpression();
+            if(inner_concat && inner_concat->GetExpressionType() == STR_CONCAT_EXPR && inner_concat->GetMethodCall()) {
+              concat_expr = inner_concat;
+              *iter = concat_expr;
+            }
           }
 
-          if(concat_expr->GetEvalType()) {
-            if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
-              const std::wstring cls_name = concat_expr->GetEvalType()->GetName();
+          // what the operand pushes, i.e. the END of a call chain: `x->Abs()->ToString()`
+          // is a String though its head is an Int (see EffectiveStackType)
+          Type* concat_type = EffectiveStackType(concat_expr);
+          if(concat_type) {
+            if(concat_type->GetType() == CLASS_TYPE && concat_type->GetName() != L"System.String" && concat_type->GetName() != L"String") {
+              const std::wstring cls_name = concat_type->GetName();
               // enum and consts values are Int: no ToString, appended as the integer
-              if(concat_expr->GetEvalType()->GetDimension() < 1 && HasProgramOrLibraryEnum(cls_name)) {
+              if(concat_type->GetDimension() < 1 && HasProgramOrLibraryEnum(cls_name)) {
                 continue;
               }
               Class* klass = SearchProgramClasses(cls_name);
@@ -9106,7 +9216,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
                 }
               }
             }
-            else if(concat_expr->GetEvalType()->GetType() == FUNC_TYPE) {
+            else if(concat_type->GetType() == FUNC_TYPE) {
               ProcessError(concat_expr, L"Invalid function variable type");
             }
           }
@@ -9249,8 +9359,10 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   // Analyze the expression
   AnalyzeExpression(expr, depth + 1);
 
-  // Check for errors during analysis
-  Type* eval_type = expr->GetEvalType();
+  // Check for errors during analysis. The type is what the expression PUSHES --
+  // the end of a call chain: `{$o->Me()->Name()}` is a String though Me()
+  // returns an object with no ToString, and was rejected for it.
+  Type* eval_type = expr->GetEvalType() ? EffectiveStackType(expr) : nullptr;
   if(!eval_type) {
     ProcessError(char_str, L"Cannot determine type of expression: '" + expr_text + L"'");
     return;
@@ -9260,6 +9372,18 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   if(eval_type->GetType() == NIL_TYPE) {
     ProcessError(char_str, L"Expression cannot return Nil: '" + expr_text + L"'");
     return;
+  }
+
+  // A fully indexed array variable is its element: `{$s[1]}` and `{$m[i,j]}`
+  // push a scalar, though a variable's eval type keeps the array's dimension
+  // (the rest of the analyzer reads the indices, as AnalyzeRightCast does).
+  // FEATURES.md documents array access here; it was rejected outright.
+  if(expr->GetExpressionType() == VAR_EXPR && eval_type->GetDimension() > 0) {
+    ExpressionList* indices = static_cast<Variable*>(expr)->GetIndices();
+    if(indices && (int)indices->GetExpressions().size() == eval_type->GetDimension()) {
+      eval_type = TypeFactory::Instance()->MakeType(eval_type);
+      eval_type->SetDimension(0);
+    }
   }
 
   // Check for array type (not allowed)
