@@ -3,7 +3,7 @@
 # https://rosettacode.org/wiki/Two%27s_complement
 # Claimed in #1126
 #
-# The task's rule -- flip the bits and add one -- written as `(n xor -1) + 1`, checked against unary minus for zero, one, small values and both Int boundaries; MIN is its own two's complement. The 64-bit patterns are rendered by a hand-written formatter because Int->ToBinaryString never returns for a negative argument (it shifts with the sign-filling `>>`, so the loop variable sticks at -1), and an 8-bit two's complement is shown through a Byte array, the only Byte storage that keeps eight bits.
+# The task's rule -- flip the bits and add one -- written as `(n xor -1) + 1`, checked against unary minus for zero, one, small values and both Int boundaries; MIN is its own two's complement. The 64-bit patterns come from Int->ToBinaryString, zero-padded to 64 digits; it returns the two's complement for a negative argument since #1176 (it used to shift with the sign-filling `>>` and never return). An 8-bit two's complement is shown through a Byte array, the only Byte storage that keeps eight bits.
 #
 # Expected values were computed with an independent oracle (Python), not recalled.
 ~#
@@ -94,18 +94,8 @@ class RosettaTwosComplement {
 		return (n xor -1) + 1;
 	}
 
-	# all 64 bits, most significant first. Int->ToBinaryString is not used: it
-	# loops forever on a negative value (reported to the batch lead)
+	# all 64 bits, most significant first
 	function : Bits(n : Int) ~ String {
-		out := "";
-		for(i := 63; i >= 0; i -= 1;) {
-			if(((n >>> i) and 1) = 1) {
-				out += "1";
-			}
-			else {
-				out += "0";
-			};
-		};
-		return out;
+		return Int->ToBinaryString(n)->PadTo(64, '0', true);
 	}
 }
