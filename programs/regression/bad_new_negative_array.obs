@@ -1,0 +1,14 @@
+# EXPECT_RUNTIME_ERROR
+# A negative array size must stop the VM in every mode (#1181). The JIT wrapped
+# the count to 0 and returned an array whose Size() was -1, so this printed -1
+# and exited 0 under OBJECK_JIT_THRESHOLD=1.
+class BadNewNegativeArray {
+    function : Make(n : Int) ~ Byte[] {
+        return Byte->New[n];
+    }
+
+    function : Main(args : String[]) ~ Nil {
+        a := Make(-1);
+        a->Size()->PrintLine();
+    }
+}

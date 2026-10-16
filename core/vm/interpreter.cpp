@@ -1998,13 +1998,19 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, siz
 #endif
   size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
+  // a negative dimension is a huge size_t; with a zero beside it the product
+  // would pass the overflow checks (#1181)
+  if((int64_t)value < 0) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    VmExit(1);
+  }
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
     // overflow-safe accumulation; AllocateArray applies the final element-size guard
-    if(value != 0 && size > (~(size_t)0) / value) {
+    if((int64_t)value < 0 || (value != 0 && size > (~(size_t)0) / value)) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
       VmExit(1);
     }
@@ -2038,12 +2044,18 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
 #endif
   size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
+  // a negative dimension is a huge size_t; with a zero beside it the product
+  // would pass the overflow checks (#1181)
+  if((int64_t)value < 0) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    VmExit(1);
+  }
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
-    if(value != 0 && size > (~(size_t)0) / value) {
+    if((int64_t)value < 0 || (value != 0 && size > (~(size_t)0) / value)) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
       VmExit(1);
     }
@@ -2076,12 +2088,18 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
 #endif
   size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
+  // a negative dimension is a huge size_t; with a zero beside it the product
+  // would pass the overflow checks (#1181)
+  if((int64_t)value < 0) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    VmExit(1);
+  }
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
-    if(value != 0 && size > (~(size_t)0) / value) {
+    if((int64_t)value < 0 || (value != 0 && size > (~(size_t)0) / value)) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
       VmExit(1);
     }
