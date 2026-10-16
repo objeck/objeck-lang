@@ -5,7 +5,7 @@
 #
 # The seventh line of a file, read line by line with FileReader->ReadLine, with the task's three outcomes told apart: the line, "the seventh line is empty", and "fewer than seven lines". Empty lines must still count, CRLF files must give the same line as LF files (ReadLine strips the CR), and a last line with no newline must still be found.
 #
-# ReadLine returns one extra empty string after a file's final newline (with IsEoF() then true) instead of Nil, which would make a six-line file look like one whose seventh line is empty; NextLine() below drops that phantom.
+# A six-line file must not look like one whose seventh line is empty. Before #1180 was fixed, ReadLine returned an extra "" after the final newline and this test had to drop that phantom; now ReadLine returns Nil there, and an empty last line is a real line.
 #
 # Expected values are the test's own file contents, written here byte for byte.
 ~#
@@ -123,14 +123,8 @@ class RosettaReadASpecificLineFromAFile {
 		return count;
 	}
 
-	# ReadLine, but Nil at the end of the file: after the final newline ReadLine
-	# hands back "" with IsEoF() set, which is not a line. A real empty line is
-	# always followed by its newline, so it never arrives with IsEoF() set.
+	# one line, or Nil at the end of the file
 	function : NextLine(reader : FileReader) ~ String {
-		line := reader->ReadLine();
-		if(line <> Nil & line->Size() = 0 & reader->IsEoF()) {
-			return Nil;
-		};
-		return line;
+		return reader->ReadLine();
 	}
 }

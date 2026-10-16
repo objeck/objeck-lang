@@ -6221,9 +6221,18 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
     std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
+    // look ahead one byte, as FileInString does after each line: an empty file
+    // is then at end of file from the start, and ReadLine returns Nil rather
+    // than one empty line (#1180)
+    if(file) {
+      const int next = fgetc(file);
+      if(next != EOF) {
+        ungetc(next, file);
+      }
+    }
     instance[0] = (size_t)file;
   }
-  
+
   return true;
 }
 
@@ -6305,7 +6314,9 @@ bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_s
 #ifdef _DEBUG
     std::wcout << L"# file flush: addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
-    instance[0] = 0;
+    // flush only: clearing instance[0] here (copied from Close) made the file
+    // read as closed after a Flush -- later writes were dropped, Close did
+    // nothing, and the FILE* leaked, keeping the file locked on Windows (#1180)
     fflush(file);
   }
 
@@ -6340,12 +6351,24 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
         in.erase(in.begin(), in.begin() + 1);
       }
 
+      // always room for the terminator: a line as long as the buffer would
+      // otherwise trip MSVC's invalid-parameter handler (as in #1173)
       wchar_t* out = (wchar_t*)(array + 3);
+      const size_t max = in.size() < array[0] ? in.size() : (array[0] > 0 ? array[0] - 1 : 0);
 #ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), in.size());
+      wcsncpy_s(out, array[0], in.c_str(), max);
 #else
-      wcsncpy(out, in.c_str(), in.size());
+      wcsncpy(out, in.c_str(), max);
+      out[max] = 0;
 #endif
+
+      // Look ahead one byte, so end of file is known as soon as the last line
+      // has been read. Without it IsEoF() stayed false after the final newline,
+      // and the documented `while(line <> Nil)` loop got one extra "" (#1180).
+      const int next = fgetc(file);
+      if(next != EOF) {
+        ungetc(next, file);
+      }
     }
   }
 
@@ -8981,7 +9004,11 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
   if(array) {
     array = (size_t*)array[0];
     const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
-    PushInt(std::filesystem::remove(name.c_str()), op_stack, stack_pos);
+    // the error_code overload: the throwing one aborted the VM ("internal error:
+    // remove: The process cannot access the file") for an open file on Windows,
+    // where Delete is documented to return false (#1180)
+    std::error_code error_code;
+    PushInt(std::filesystem::remove(name.c_str(), error_code), op_stack, stack_pos);
   }
 
   return true;
@@ -9309,7 +9336,9 @@ bool TrapProcessor::DirDelete([[maybe_unused]] StackProgram* program, [[maybe_un
   array = (size_t*)array[0];
   if(array) {
     const std::string dir_name = UnicodeToBytes((wchar_t*)(array + 3));
-    const auto count = std::filesystem::remove_all(dir_name);
+    std::error_code remove_error;
+    const auto removed = std::filesystem::remove_all(dir_name, remove_error);
+    const auto count = remove_error ? 0 : removed;
     PushInt(count, op_stack, stack_pos);
   }
   else {
@@ -9332,7 +9361,8 @@ bool TrapProcessor::SymLinkCreate([[maybe_unused]] StackProgram* program, [[mayb
     const std::string link_str = UnicodeToBytes((wchar_t*)(link_obj + 3));
 
     std::error_code error_code;
-    if(std::filesystem::is_directory(target_str)) {
+    std::error_code kind_error;
+    if(std::filesystem::is_directory(target_str, kind_error)) {
       std::filesystem::create_directory_symlink(link_str, target_str, error_code);
     }
     else {
@@ -9411,7 +9441,8 @@ bool TrapProcessor::SymLinkExists([[maybe_unused]] StackProgram* program, [[mayb
   if(array) {
     array = (size_t*)array[0];
     const std::string path_str = UnicodeToBytes((wchar_t*)(array + 3));
-    PushInt(std::filesystem::is_symlink(path_str), op_stack, stack_pos);
+    std::error_code link_error;
+    PushInt(std::filesystem::is_symlink(path_str, link_error), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
