@@ -681,11 +681,24 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
         conv = std::to_wstring(value);
       }
 
-      const size_t max = conv.size() < 64 ? conv.size() : 64;
+      // The buffer is the caller's Char->New[64]: str_ptr[0] elements. Fixed-point
+      // text of a large value does not fit -- 1e60 is 61 digits and ".000000" --
+      // and copying 64 characters into it left no room for the terminator:
+      // MSVC's invalid-parameter handler ended the process with no message, and
+      // POSIX left the string unterminated (#1173). Such a value is written in
+      // scientific notation instead, and the copy always keeps the terminator.
+      const size_t capacity = str_ptr[0];
+      if(conv.size() >= capacity) {
+        std::wstringstream scientific;
+        scientific << std::scientific << value;
+        conv = scientific.str();
+      }
+      const size_t max = conv.size() < capacity ? conv.size() : (capacity > 0 ? capacity - 1 : 0);
 #ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+      wcsncpy_s(str, capacity, conv.c_str(), max);
 #else
       wcsncpy(str, conv.c_str(), max);
+      str[max] = L'\0';
 #endif
     }
   }

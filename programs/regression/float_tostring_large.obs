@@ -1,0 +1,84 @@
+#~
+Regression: converting a Float of about 1e57 or more to a String killed the VM.
+
+Float->ToString, interpolation and concatenation format into a 64-character
+Char buffer. The default fixed-point text of a large value does not fit --
+1e60 is 61 digits plus ".000000" -- and copying 64 characters left no room
+for the terminator. On Windows, MSVC's invalid-parameter handler ended the
+process with exit code 127 and no message, losing buffered output; on POSIX
+the string was left unterminated (#1173). Both the interpreter (Float2Str) and
+the JIT (F2S) had the same copy.
+
+A value whose fixed-point text does not fit is now written in scientific
+notation; everything that fits is unchanged. Each check also parses the text
+back, so a truncated or garbled string cannot pass.
+~#
+
+class FloatToStringLarge {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# defeats constant folding
+	function : Id(v : Float) ~ Float {
+		return v;
+	}
+
+	# the text parses back to the same value, to the precision printed
+	function : RoundTrips(v : Float, s : String) ~ Bool {
+		back := s->ToFloat();
+		if(v = 0.0) {
+			return back = 0.0;
+		};
+		ratio := back / v;
+		return ratio > 0.999999 & ratio < 1.000001;
+	}
+
+	method : Run() ~ Nil {
+		values := [1.0e50, 1.0e56, 1.0e57, 1.0e60, 1.0e100, 1.0e300, 1.7976931348623157e308, -1.0e60, -1.0e300];
+		each(i : values) {
+			v := Id(values[i]);
+			s := v->ToString();
+			Check("ToString of value {$i} round-trips", RoundTrips(v, s));
+			t := "{$v}";
+			Check("interpolation of value {$i} round-trips", RoundTrips(v, t));
+			u := "x" + v;
+			Check("concatenation of value {$i} round-trips", RoundTrips(v, u->SubString(1, u->Size() - 1)));
+		};
+
+		# a value whose text fits keeps the fixed-point format
+		small := Id(1234.5);
+		Check("a value that fits is unchanged", small->ToString()->Equals("1234.500000"));
+		big := Id(1.0e60);
+		Check("a value that does not fit is scientific", big->ToString()->Find('e') > 0);
+
+		# still printable after many conversions (the old path aborted on the first)
+		count := 0;
+		for(k := 0; k < 1000; k += 1;) {
+			w := Id(1.0e200) * Id(k->As(Float) + 1.0);
+			if(w->ToString()->Size() > 0) { count += 1; };
+		};
+		Check("1000 large conversions", count = 1000);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		FloatToStringLarge->New()->Run();
+	}
+}
