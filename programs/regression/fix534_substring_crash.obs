@@ -1,6 +1,7 @@
 #~
 # Fix #534: String->SubString crash on negative or zero length argument
-# Tests that negative or zero length returns Nil instead of crashing
+# Tests that a negative length returns Nil instead of crashing, and a zero
+# length the empty string
 ~#
 
 class Fix534Test {
@@ -30,11 +31,12 @@ class Fix534Test {
       "  FAIL: SubString(0, -100) should return Nil"->PrintLine();
     };
 
-    # Test 4: Zero length returns Nil (existing behavior preserved)
+    # Test 4: Zero length is the empty string, as in Python and Java (#1177).
+    # It used to be Nil, which put Nil fields into Split's result.
     r4 := s->SubString(0, 0);
-    if(r4 <> Nil) {
+    if(r4 = Nil | r4->Size() <> 0) {
       pass := false;
-      "  FAIL: SubString(0, 0) should return Nil"->PrintLine();
+      "  FAIL: SubString(0, 0) should return an empty string"->PrintLine();
     };
 
     # Test 5: Normal SubString still works correctly

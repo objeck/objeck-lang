@@ -1,0 +1,163 @@
+#~
+Regression: String library edge cases (#1177), checked against Python.
+
+- Split(String) completed a delimiter match only on the character after it:
+  "a,b," gave ["a", "b,"], "a,,b" gave ["a", ",b"], "abc" gave [] and
+  "xaab"->Split("ab") gave []. Split(Char) gave [] without the delimiter.
+- SubString(x, 0) was Nil instead of "".
+- Justify(width) padded only past the buffer's capacity, and inverted is_left.
+- TrimBack() dropped a lone significant character: "a"->TrimBack() was "".
+- Lines() dropped a last line with no newline.
+- Int->ToCommaString(-123456) gave "-,123,456".
+- Zero-padded interpolation put the zeros before the sign: "000-42".
+- U+2028 (LINE SEPARATOR) was not white space.
+
+The library's own callers that leaned on the old Split are checked too:
+IsFloat ("12."), CsvTable (a trailing newline) and Directory->CreatePath (a
+path without '/').
+~#
+# EXTRA_LIBS: csv,gen_collect
+
+use System.IO.Filesystem;
+use Data.CSV;
+
+class StringEdgeCases {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckString(what : String, got : String, want : String) ~ Nil {
+		if(got <> Nil & got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected '{$want}', got '{$got}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# the parts joined with '|' and bracketed, so empty fields show
+	function : Show(parts : String[]) ~ String {
+		out := "[";
+		each(i : parts) {
+			if(i > 0) {
+				out += "|";
+			};
+			if(parts[i] = Nil) {
+				out += "<Nil>";
+			}
+			else {
+				out += parts[i];
+			};
+		};
+		out += "]";
+		return out;
+	}
+
+	method : Run() ~ Nil {
+		# Split(String)
+		CheckString("'a,b,'->Split(\",\")", Show("a,b,"->Split(",")), "[a|b|]");
+		CheckString("'a,,b'->Split(\",\")", Show("a,,b"->Split(",")), "[a||b]");
+		CheckString("',a'->Split(\",\")", Show(",a"->Split(",")), "[|a]");
+		CheckString("'abc'->Split(\",\")", Show("abc"->Split(",")), "[abc]");
+		CheckString("'xaab'->Split(\"ab\")", Show("xaab"->Split("ab")), "[xa|]");
+		CheckString("'aa--bb--cc'->Split(\"--\")", Show("aa--bb--cc"->Split("--")), "[aa|bb|cc]");
+		CheckString("'a; ; b'->Split(\"; \")", Show("a; ; b"->Split("; ")), "[a||b]");
+		CheckString("','->Split(\",\")", Show(","->Split(",")), "[|]");
+		Check("''->Split(\",\") is empty", ""->Split(",")->Size() = 0);
+
+		# Split(Char)
+		CheckString("'0'->Split(',')", Show("0"->Split(',')), "[0]");
+		CheckString("'a,b,'->Split(',')", Show("a,b,"->Split(',')), "[a|b|]");
+		CheckString("'a,,b'->Split(',')", Show("a,,b"->Split(',')), "[a||b]");
+		Check("''->Split(',') is empty", ""->Split(',')->Size() = 0);
+
+		# SubString
+		CheckString("SubString(2, 0) is ''", "abc"->SubString(2, 0), "");
+		CheckString("SubString(0) is ''", "abc"->SubString(0), "");
+
+		# Justify: right by default, left when asked
+		CheckString("Justify(5)", "ab"->Justify(5), "   ab");
+		CheckString("Justify(5, true)", "ab"->Justify(5, true), "ab   ");
+		CheckString("Justify(1) leaves it", "ab"->Justify(1), "ab");
+
+		# TrimBack
+		CheckString("'a'->TrimBack()", "a"->TrimBack(), "a");
+		CheckString("'a '->TrimBack()", "a "->TrimBack(), "a");
+		CheckString("'ab  '->TrimBack()", "ab  "->TrimBack(), "ab");
+		CheckString("'  '->TrimBack()", "  "->TrimBack(), "");
+
+		# Lines
+		CheckString("'a\\nb'->Lines()", Show("a\nb"->Lines()), "[a|b]");
+		CheckString("'a\\nb\\n'->Lines()", Show("a\nb\n"->Lines()), "[a|b]");
+		CheckString("'a\\r\\nb'->Lines()", Show("a\r\nb"->Lines()), "[a|b]");
+		CheckString("'a\\n\\nb'->Lines()", Show("a\n\nb"->Lines()), "[a||b]");
+
+		# ToCommaString
+		CheckString("ToCommaString(-123456)", Int->ToCommaString(-123456), "-123,456");
+		CheckString("ToCommaString(-12)", Int->ToCommaString(-12), "-12");
+		CheckString("ToCommaString(1234567)", Int->ToCommaString(1234567), "1,234,567");
+		CheckString("ToCommaString(-1000)", Int->ToCommaString(-1000), "-1,000");
+		CheckString("ToCommaString(999)", Int->ToCommaString(999), "999");
+
+		# zero padding goes after the sign
+		n := -42;
+		CheckString("'{$n:06}' of -42", "{$n:06}", "-00042");
+		p := 42;
+		CheckString("'{$p:06}' of 42", "{$p:06}", "000042");
+		x := -7.125;
+		CheckString("'{$x:09.3}' of -7.125", "{$x:09.3}", "-0007.125");
+		CheckString("space padding keeps the sign in front", "-42"->PadTo(6, ' ', true), "   -42");
+
+		# U+2028 LINE SEPARATOR
+		ls := "a";
+		ls->Append(0x2028->As(Char));
+		CheckString("TrimBack drops U+2028", ls->TrimBack(), "a");
+		Check("U+2028 is white space", Char->IsWhitespace(0x2028->As(Char)));
+
+		# the library's own Split callers
+		Check("'12.'->IsFloat()", "12."->IsFloat());
+		Check("'.5'->IsFloat()", ".5"->IsFloat());
+		Check("'1.5'->IsFloat()", "1.5"->IsFloat());
+		Check("'-1.5'->IsFloat()", "-1.5"->IsFloat());
+		Check("'.'->IsFloat() is false", <>"."->IsFloat());
+		Check("'1.a'->IsFloat() is false", <>"1.a"->IsFloat());
+
+		csv := CsvTable->New("name,age\nAlice,30\nBob,40\n");
+		Check("a CSV ending in a newline parses", csv->IsParsed());
+		if(csv->IsParsed()) {
+			Check("and has a header and two records", csv->Size() = 3);
+		};
+		blank := CsvTable->New("name,age\nAlice,30\n\nBob,40");
+		Check("a CSV with a blank line parses", blank->IsParsed());
+		if(blank->IsParsed()) {
+			Check("and the blank line is no record", blank->Size() = 3);
+		};
+
+		dir := "string_edge_cases_tmp_dir";
+		Check("CreatePath of a single name", Directory->CreatePath(dir));
+		Check("which then exists", Directory->Exists(dir));
+		Directory->Delete(dir);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		StringEdgeCases->New()->Run();
+	}
+}

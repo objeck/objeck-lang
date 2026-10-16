@@ -3,7 +3,7 @@
 # https://rosettacode.org/wiki/Align_columns
 # Claimed in #1137
 #
-# Splits the task's '$'-delimited text into fields, sizes each column to its widest word, and lays the words out left, right and centre justified with one space between columns. Pins String->Split(Char) on lines with and without a trailing '$', and String->PadTo for the padding. String->Justify is not used: for a string shorter than its buffer it returns the string unpadded.
+# Splits the task's '$'-delimited text into fields, sizes each column to its widest word, and lays the words out left, right and centre justified with one space between columns. Pins String->Split(Char) on lines with and without a trailing '$', and String->Justify for the left and right padding (it padded only past the buffer's capacity and inverted its is_left flag until #1177).
 #
 # Expected lines come from an independent Python oracle (str.ljust / str.rjust, centre with the extra space on the right), trailing blanks stripped as the task allows.
 ~#
@@ -131,10 +131,10 @@ class RosettaAlignColumns {
 				word := row[j];
 				w := widths[j];
 				if(how = 'L') {
-					line->Append(word->PadTo(w, ' ', false));
+					line->Append(word->Justify(w, true));
 				}
 				else if(how = 'R') {
-					line->Append(word->PadTo(w, ' ', true));
+					line->Append(word->Justify(w));
 				}
 				else {
 					pad := w - word->Size();

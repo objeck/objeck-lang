@@ -622,7 +622,10 @@ if(csv->IsParsed()) {
 				@is_parsed := false;
 			}
 			else {
-				rows := data->Split(@ending);
+				# Split keeps empty fields now (#1177), so a file ending in a newline
+				# has an empty last row, and a blank line is an empty row: neither
+				# is a record. Both used to be glued onto a neighbouring row.
+				rows := SkipEmptyRows(data->Split(@ending));
 				if(rows->Size() > 1) {
 					@data := ParseColumns(rows);
 					if(@data = Nil) {
@@ -647,6 +650,30 @@ if(csv->IsParsed()) {
 			};
 		}
 		
+		method : SkipEmptyRows(rows : String[]) ~ String[] {
+			count := 0;
+			each(i : rows) {
+				if(<>rows[i]->IsEmpty()) {
+					count += 1;
+				};
+			};
+
+			if(count = rows->Size()) {
+				return rows;
+			};
+
+			kept := String->New[count];
+			count := 0;
+			each(i : rows) {
+				if(<>rows[i]->IsEmpty()) {
+					kept[count] := rows[i];
+					count += 1;
+				};
+			};
+
+			return kept;
+		}
+
 		New(data : Vector<CsvRow>, header_names : Hash<String, IntRef>) {
 			@is_parsed := true;
 			@data := data;
