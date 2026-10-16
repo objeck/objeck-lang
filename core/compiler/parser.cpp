@@ -6955,6 +6955,10 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 #endif
 
   MethodCall* method_call = nullptr;
+  // a caller already inside a Try() region (ParseMethodCall(Expression*)) hands
+  // that down; taken once, so argument lists parsed below do not inherit it
+  const bool inherited_guard = next_call_try_guarded;
+  next_call_try_guarded = false;
   // '?->' -- capture before NextToken() consumes the accessor. The call itself
   // is built exactly as before; it is wrapped in Try() at the return, so every
   // branch below (generics, casts, further chaining) is untouched.
@@ -7129,6 +7133,12 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     method_call->SetCallIndices(ParseIndices(depth + 1));
   }
 
+  // under the Try() this call is about to get, BEFORE the rest of the chain is
+  // parsed, so a later '?->' in it knows it is already guarded
+  if((nil_safe || inherited_guard) && method_call) {
+    method_call->SetTryGuarded(true);
+  }
+
   // subsequent method calls
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
      !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
@@ -7143,7 +7153,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
   // chain, so wrapping the head is enough -- a later '?->' in the same chain is
   // already covered and behaves as a plain accessor. The receiver is named
   // once, so it is evaluated once.
-  if(nil_safe && method_call) {
+  if(nil_safe && !inherited_guard && method_call) {
     MethodCall* try_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
                                                                    line_num, line_pos,
                                                                    GetLineNumber(), GetLinePosition(),
@@ -7168,6 +7178,11 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
   Debug(L"Method call", depth);
 #endif
 
+  // '?->' after a call result or a literal: `R->G()?->Div(1, 0)`,
+  // `"abc"?->SubString(5, 9)`. Capture it before NextToken() consumes the
+  // accessor -- this path dropped the flag, so the call ran unguarded and an
+  // error it should have recovered ended the program.
+  const bool nil_safe = scanner->GetToken()->IsNilSafe();
   NextToken();
 
   if(!Match(TOKEN_IDENT)) {
@@ -7186,22 +7201,45 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
     // to 'expression'; without walking to the tail we would overwrite b() with
     // c() and silently drop the inner call.
     Expression* tail = expression;
+    // Only the first '?->' in a chain introduces Try(): it guards the rest. The
+    // Try() is usually BEHIND this receiver (`s?->ToUpper()?->ToLower()` arrives
+    // here with ToUpper()), and back-links are not set while parsing, so the
+    // calls under a Try() carry a flag instead.
+    bool guarded = expression->GetExpressionType() == METHOD_CALL_EXPR &&
+                   static_cast<MethodCall*>(expression)->IsTryGuarded();
     while(tail->GetMethodCall()) {
       tail = tail->GetMethodCall();
+      if(static_cast<MethodCall*>(tail)->GetMethodName() == L"Try" || static_cast<MethodCall*>(tail)->IsTryGuarded()) {
+        guarded = true;
+      }
     }
-    tail->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
+    next_call_try_guarded = guarded || nil_safe;
+    MethodCall* call = ParseMethodCall(ident_context, depth + 1);
+    next_call_try_guarded = false;
+    if(nil_safe && !guarded && call) {
+      MethodCall* try_call = TreeFactory::Instance()->MakeMethodCall(GetFileName(), line_num, line_pos,
+                                                                     line_num, line_pos,
+                                                                     GetLineNumber(), GetLinePosition(),
+                                                                     ident, L"Try",
+                                                                     TreeFactory::Instance()->MakeExpressionList());
+      try_call->SetMethodCall(call);
+      tail->SetMethodCall(try_call);
+    }
+    else {
+      tail->SetMethodCall(call);
+    }
     // subscript on the call's result: 'a->GetItems()[0]->Name()'
-    if(Match(TOKEN_OPEN_BRACKET) && tail->GetMethodCall()) {
-      tail->GetMethodCall()->SetCallIndices(ParseIndices(depth + 1));
+    if(Match(TOKEN_OPEN_BRACKET) && call) {
+      call->SetCallIndices(ParseIndices(depth + 1));
     }
     // subsequent method calls
     if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
        !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
-      ParseMethodCall(tail->GetMethodCall(), depth + 1);
+      ParseMethodCall(call, depth + 1);
     }
     // type cast
     else {
-      ParseCastTypeOf(tail->GetMethodCall(), depth + 1);
+      ParseCastTypeOf(call, depth + 1);
     }
   }
 }
@@ -7250,6 +7288,7 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
     call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
                                                    mid_line_num, mid_line_pos,
                                                    GetLineNumber(), end_pos, mid_ident, method_ident, exprs);
+    call->SetTryGuarded(true);
     try_call->SetMethodCall(call);
     result = try_call;
   }
@@ -7267,7 +7306,10 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   }
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
+    // the rest of a '?->' chain is already under this Try()
+    next_call_try_guarded = nil_safe;
     call->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
+    next_call_try_guarded = false;
   }
 
   return result;

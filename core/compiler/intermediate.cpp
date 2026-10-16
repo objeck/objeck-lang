@@ -4715,8 +4715,19 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   long handler_label = ++unconditional_label;
   long end_label = ++unconditional_label;
 
-  // set error handler
+  // Nothing the region consumes may be on the stack when it opens. TRY_START
+  // records the operand stack position, and recovery unwinds DOWN to it
+  // (#1067). The receiver -- and, on most emission paths, every guarded call's
+  // arguments -- used to be pushed first, so the mark counted words the failing
+  // call had already consumed. An interpreted callee faulting mid-expression
+  // then left them below the mark: `r?->Div(1, 0) = Nil` compared stale
+  // operands and answered false, a caller's pending argument read as Nil, and
+  // every recovery leaked words until a loop of them overflowed the stack
+  // (#1171). So the receiver is parked in the Try() slot across TRY_START and
+  // the guarded calls' arguments are emitted inside the region, below.
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_START, handler_label, -1));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
 
   // skip Try() itself and process rest of chain
   // The receiver is already on the stack, so chained calls should be nested
@@ -4744,7 +4755,24 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
       return;
     }
 
-    // normal method call in chain
+    // normal method call in chain: its arguments go under the receiver that is
+    // on the stack (a '$' helper whose receiver is parameter 0 gets them from
+    // EmitMethodCall instead), as in EmitExpression's chain
+    if(!ReceiverIsFirstParameter(method_call) && method_call->GetCallingParameters()) {
+      const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
+        (method_call->GetLibraryMethod() && !method_call->GetLibraryMethod()->IsStatic());
+      new_char_str_count = 0;
+      std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+      for(size_t i = 0; i < expressions.size(); ++i) {
+        EmitExpression(expressions[i]);
+        EmitClassCast(expressions[i], true);
+        new_char_str_count = 0;
+        if(is_instance_call && !is_str_array) {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
+        }
+      }
+      new_char_str_count = 0;
+    }
     EmitMethodCall(method_call, is_nested);
     EmitCast(method_call);
     if(!method_call->GetVariable()) {
@@ -6476,12 +6504,38 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
   }
 }
 
+/****************************
+ * True when a call is inside a Try() region: a Try() precedes it in its chain
+ * with no Otherwise() in between. EmitTryIntrinsic emits such a call's
+ * arguments INSIDE the region, after the receiver; see there.
+ ****************************/
+static bool IsTryGuarded(MethodCall* method_call)
+{
+  Expression* prev = method_call->GetPreviousExpression();
+  while(prev && prev->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* prev_call = static_cast<MethodCall*>(prev);
+    if(prev_call->IsOtherwiseIntrinsic()) {
+      return false;
+    }
+    if(prev_call->IsTryIntrinsic()) {
+      return true;
+    }
+    prev = prev_call->GetPreviousExpression();
+  }
+
+  return false;
+}
+
 void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
 {
   // Callers emit a call's arguments before the call itself, which would put
   // them underneath a primitive receiver. Those arguments are emitted later
   // instead, by EmitMethodCall, once the receiver is on the stack.
   if(!emitting_deferred_params && ReceiverIsFirstParameter(method_call)) {
+    return;
+  }
+  // a call guarded by Try() gets its arguments inside the region (EmitTryIntrinsic)
+  if(!emitting_deferred_params && IsTryGuarded(method_call)) {
     return;
   }
 

@@ -97,6 +97,8 @@ class Parser {
   // '>' still owed by a '>>' or '>>>' that closed several generics at once
   int pending_generic_closes;
   bool is_semi_colon;
+  // one-shot: the next ParseMethodCall(IdentifierContext&) is inside a Try() region
+  bool next_call_try_guarded = false;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<std::wstring> error_strings;
