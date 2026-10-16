@@ -7,7 +7,7 @@ JIT_PATH=arch/jit/arm64
 LIB=vm.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
-	rm -f $(LIB).tmp; $(AR) -cvq $(LIB).tmp $(SRC) && mv -f $(LIB).tmp $(LIB)
+	rm -f $(LIB).$$$$.tmp; $(AR) -cvq $(LIB).$$$$.tmp $(SRC) && mv -f $(LIB).$$$$.tmp $(LIB)
 
 memory.a:
 	cd $(MEM_PATH); $(MAKE) -f make/Makefile.arm64

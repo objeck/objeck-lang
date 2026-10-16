@@ -15,7 +15,7 @@ all: $(LIB)
 .PHONY: all clean
 
 $(LIB): $(SRC)
-	rm -f $(LIB).tmp; $(AR) -cvq $(LIB).tmp $(SRC) && mv -f $(LIB).tmp $(LIB)
+	rm -f $(LIB).$$$$.tmp; $(AR) -cvq $(LIB).$$$$.tmp $(SRC) && mv -f $(LIB).$$$$.tmp $(LIB)
 	
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 

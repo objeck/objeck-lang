@@ -13,7 +13,7 @@ AR=ar
 LIB=vm.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
-	rm -f $(LIB).tmp; $(AR) -cvq $(LIB).tmp $(SRC) && mv -f $(LIB).tmp $(LIB)
+	rm -f $(LIB).$$$$.tmp; $(AR) -cvq $(LIB).$$$$.tmp $(SRC) && mv -f $(LIB).$$$$.tmp $(LIB)
 	cp $(LIB) ../module
 
 memory.a:
