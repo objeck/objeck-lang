@@ -851,8 +851,16 @@ void IntermediateEmitter::EmitLambda(Lambda* lambda)
   // class-instance numbering, so assign their ids here. Without this, a second
   // capturing lambda inherits class-global ids and its stores overflow the
   // per-lambda closure allocation (heap corruption).
+  //
+  // An id is a WORD offset, and a function value takes two words (closure_space
+  // below, and local numbering in EmitDeclarations). Numbering one per capture
+  // put a capture that follows a function value on that value's second word:
+  // `\(Int) ~ Int : (x) => f(x) + k` with f captured first overwrote f with k --
+  // a crash in every mode, and FEATURES.md's Compose example among the victims.
+  int closure_id = 0;
   for(size_t i = 0; i < closure_copies.size(); ++i) {
-    closure_copies[i].first->SetId((int)i);
+    closure_copies[i].first->SetId(closure_id);
+    closure_id += closure_copies[i].second->GetType()->GetType() == frontend::FUNC_TYPE ? 2 : 1;
   }
   for(size_t i = 0; i < closure_copies.size(); ++i) {
     SymbolEntry* entry = closure_copies[i].second;
@@ -3906,7 +3914,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
   case VAR_EXPR:
     EmitVariable(static_cast<Variable*>(expression));
     // catch dynamic class casting
-    EmitClassCast(expression);
+    EmitClassCast(expression, true);
     break;
 
   case AND_EXPR:
@@ -3941,19 +3949,25 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
   }
 
-  if(expression->GetTypeOf() && expression->GetExpressionType() != VAR_EXPR) {
+  // A call's own TypeOf(..) is emitted with the call, by EmitCast: emitting it
+  // here as well checked twice, `h->Find("a")->TypeOf(IntRef)` tested the Bool
+  // the first check pushed, and the result was a crash.
+  if(expression->GetTypeOf() && expression->GetExpressionType() != VAR_EXPR && expression->GetExpressionType() != METHOD_CALL_EXPR) {
     frontend::Type* type_of = expression->GetTypeOf();
 #ifdef _DEBUG
     assert(type_of->GetType() == frontend::CLASS_TYPE);
 #endif
+    long id;
     if(SearchProgramClasses(type_of->GetName())) {
-      const long id = SearchProgramClasses(type_of->GetName())->GetId();
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
+      id = SearchProgramClasses(type_of->GetName())->GetId();
     }
     else {
-      const long id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetLibUses())->GetId();
-      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+      id = parsed_program->GetLinker()->SearchClassLibraries(type_of->GetName(), parsed_program->GetLibUses())->GetId();
+    }
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, OBJ_TYPE_OF, id));
+    // the instance word a following '$Bool' call takes as its receiver slot; with
+    // no call it was left on the stack and stored in place of the Bool
+    if(expression->GetMethodCall()) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
     }
   }
@@ -3967,7 +3981,9 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     // note: this is not clean. literals are considered 
     // expressions and turned into instances of 'System.String' 
     // objects are considered nested if a method call is present
-    bool is_nested = false || expression->GetExpressionType() == CHAR_STR_EXPR;
+    // a concatenation leaves its String on the stack just as a literal does:
+    // `("a" + b)->ToUpper()` (the chain moves to the concatenation node in analysis)
+    bool is_nested = expression->GetExpressionType() == CHAR_STR_EXPR || expression->GetExpressionType() == STR_CONCAT_EXPR;
     while(method_call) {
       // handle Try() intrinsic
       if(method_call->IsTryIntrinsic()) {
@@ -4003,13 +4019,17 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         (method_call->GetLibraryMethod() && !method_call->GetLibraryMethod()->IsStatic());
       const bool swap_under_receiver = !is_str_array && is_instance_call;
       new_char_str_count = 0;
-      std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-      for(size_t i = 0; i < expressions.size(); ++i) {
-        EmitExpression(expressions[i]);
-        EmitClassCast(expressions[i]);
-        new_char_str_count = 0;
-        if(swap_under_receiver) {
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
+      // a link whose receiver is parameter 0 gets its arguments from
+      // EmitMethodCall, after the receiver (see ReceiverIsFirstParameter)
+      if(!ReceiverIsFirstParameter(method_call)) {
+        std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+        for(size_t i = 0; i < expressions.size(); ++i) {
+          EmitExpression(expressions[i]);
+          EmitClassCast(expressions[i], true);
+          new_char_str_count = 0;
+          if(swap_under_receiver) {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
+          }
         }
       }
       new_char_str_count = 0;
@@ -4227,6 +4247,10 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
     }
 
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), dyn_rtrn));
+    // the call's own cast: `h(4)->As(Float)`, and the I2F an Int result needs as
+    // an operand of `h(4) * 2.0`. Only the chained calls below got one, so the
+    // Int's bits were read as a Float (4.9e-323 for 10).
+    EmitCast(method_call);
     if(!method_call->GetMethodCall()) {
       switch(method_call->GetRougeReturn()) {
       case instructions::INT_TYPE:
@@ -4457,7 +4481,8 @@ void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
     Expression* concat_expr = *iter;
     EmitExpression(concat_expr);
 
-    switch(concat_expr->GetEvalType()->GetType()) {
+    frontend::Type* concat_type = frontend::EffectiveStackType(concat_expr);
+    switch(concat_type->GetType()) {
     case frontend::BOOLEAN_TYPE:
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, str_concat, cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
       if(is_lib) {
@@ -4542,7 +4567,7 @@ void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
 
     case frontend::CLASS_TYPE:
       // process string instance
-      if(concat_expr->GetEvalType()->GetName() == L"System.String" || concat_expr->GetEvalType()->GetName() == L"String") {
+      if(concat_type->GetName() == L"System.String" || concat_type->GetName() == L"String") {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, str_concat, cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
 
         if(is_lib) {
@@ -4866,42 +4891,7 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   }
 }
 
-/****************************
- * The type a sub-expression actually pushes on the stack.
- *
- * A trailing cast or method-call chain changes it: `(12.0 + x)->As(Int)` pushes
- * an Int though the addition's own eval type is Float, and
- * `s->ToUpper()->Size()` pushes an Int though the first link returns a String.
- * Anything that selects an opcode or an overload from an operand's type has to
- * ask for the END of the chain, not the head.
- *
- * Getting this wrong is not a wrong answer, it is a crash: a comparison picked a
- * FLOAT opcode for integer operands (bit-compared ints, handed XMM operands to
- * the JIT), and string interpolation picked String:Append's OBJECT overload for
- * an Int and dereferenced the integer as a pointer (#1107).
- ****************************/
-static frontend::Type* EffectiveStackType(frontend::Expression* e)
-{
-  frontend::Type* type = e->GetEvalType();
-
-  frontend::MethodCall* mc = e->GetMethodCall();
-  if(mc) {
-    while(mc->GetMethodCall()) {
-      mc = mc->GetMethodCall();
-    }
-    if(mc->GetCastType()) {
-      type = mc->GetCastType();
-    }
-    else if(mc->GetEvalType()) {
-      type = mc->GetEvalType();
-    }
-  }
-  else if(e->GetCastType()) {
-    type = e->GetCastType();
-  }
-
-  return type;
-}
+// EffectiveStackType lives in tree.h: context.cpp needs it too.
 
 /****************************
  * Translates character std::wstring.
@@ -5786,6 +5776,16 @@ void IntermediateEmitter::EmitCast(Expression* expression)
         expression->GetTypeOf()->SetResolved(true);
       }
     }
+
+    // `s->ToUpper()->TypeOf(String)->ToString()`: the next call is a static
+    // '$Bool' helper, which takes the Bool as parameter 0 and still needs the
+    // instance word (as in EmitExpression's TypeOf); without it the helper read
+    // the Bool as its instance and crashed. Only after a real call: the bare
+    // `v->TypeOf(T)->M()` node is no call, and that path already pushes it.
+    if(expression->GetMethodCall() && expression->GetExpressionType() == METHOD_CALL_EXPR &&
+       (static_cast<MethodCall*>(expression)->GetMethod() || static_cast<MethodCall*>(expression)->GetLibraryMethod())) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INST_MEM));
+    }
   }
 }
 
@@ -6416,6 +6416,44 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
     }
   }
 
+  // A link whose receiver is the PREVIOUS call's primitive result:
+  // `IdI(2)->Pow(3)`, `v->Pow(3.0)->Pow(2.0)`. That result is parameter 0 of the
+  // '$' helper just the same; emitted up front with the chain's other arguments,
+  // the 3 sat beneath the 2 and Pow computed 3^2.
+  Expression* prev = method_call->GetPreviousExpression();
+  if(method_call->GetCallType() == METHOD_CALL && prev && prev->GetExpressionType() == METHOD_CALL_EXPR &&
+     !method_call->GetVariable() && !method_call->GetEntry()) {
+    MethodCall* prev_call = static_cast<MethodCall*>(prev);
+    frontend::Type* prev_type = nullptr;
+    if(prev_call->GetTypeOf()) {
+      return false;
+    }
+    else if(prev_call->GetCastType() && !(prev_call->GetVariable() && prev_call->GetVariable()->GetCastType() == prev_call->GetCastType())) {
+      prev_type = prev_call->GetCastType();
+    }
+    else if(prev_call->GetMethod()) {
+      prev_type = prev_call->GetMethod()->GetReturn();
+    }
+    else if(prev_call->GetLibraryMethod()) {
+      prev_type = prev_call->GetLibraryMethod()->GetReturn();
+    }
+
+    if(prev_type && prev_type->GetDimension() == 0) {
+      switch(prev_type->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+      case frontend::BYTE_TYPE:
+      case frontend::CHAR_TYPE:
+      case frontend::INT_TYPE:
+      case frontend::FLOAT_TYPE:
+        return true;
+
+      default:
+        return false;
+      }
+    }
+    return false;
+  }
+
   if(!method_call->GetEntry()) {
     return false;
   }
@@ -6455,7 +6493,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
-      EmitClassCast(expressions[i]);
+      EmitClassCast(expressions[i], true);
     }
 
     is_new_inst = false;
@@ -6491,7 +6529,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     for(size_t i = 0; i < expressions.size(); ++i) {
       EmitExpression(expressions[i]);
-      EmitClassCast(expressions[i]);
+      EmitClassCast(expressions[i], true);
       new_char_str_count = 0;
     }
 
@@ -6526,7 +6564,7 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
       std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
       for(size_t i = 0; i < expressions.size(); ++i) {
         EmitExpression(expressions[i]);
-        EmitClassCast(expressions[i]);
+        EmitClassCast(expressions[i], true);
         new_char_str_count = 0;
       }
     }
@@ -7272,7 +7310,7 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
   return size;
 }
 
-void IntermediateEmitter::EmitClassCast(Expression* expression)
+void IntermediateEmitter::EmitClassCast(Expression* expression, bool whole_expression)
 {
   // ensure scalar cast
   if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -7290,6 +7328,19 @@ void IntermediateEmitter::EmitClassCast(Expression* expression)
   else if(expression->GetExpressionType() == VAR_EXPR) {
     if(static_cast<Variable*>(expression)->GetEntry()->GetType()->GetDimension() > 0 &&
        !static_cast<Variable*>(expression)->GetIndices()) {
+      return;
+    }
+  }
+
+  // `Show(u->As(IntRef)->Get() + 1)`: the head's to-class is its OWN As(IntRef),
+  // which the receiver already got before the chain ran. Applied again here it
+  // checked the chain's result -- an Int read as an object (a crash), a String
+  // rejected as "Invalid object cast". A conversion of the result to a
+  // parameter's type names a different class and is still emitted.
+  if(whole_expression && expression->GetMethodCall() && expression->GetCastType() && expression->GetCastType()->GetType() == frontend::CLASS_TYPE) {
+    const std::wstring& cast_name = expression->GetCastType()->GetName();
+    if((expression->GetToClass() && expression->GetToClass()->GetName() == cast_name) ||
+       (expression->GetToLibraryClass() && expression->GetToLibraryClass()->GetName() == cast_name)) {
       return;
     }
   }
