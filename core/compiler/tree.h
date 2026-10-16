@@ -4435,6 +4435,29 @@ namespace frontend {
    *
    * Reads eval types only; it never re-analyzes (analysis has side effects, #752).
    ****************************/
+  /****************************
+   * True when the single argument of `T->New[x]` is an ARRAY to copy rather
+   * than a size: a whole array variable, or a static array literal.
+   *
+   * An indexed variable is a scalar. `Int->New[counts[c]]` allocates counts[c]
+   * elements; it is not a copy of counts. A variable's eval type keeps the
+   * array's dimension even when indexed, so testing the dimension alone took
+   * that form for the copy constructor, and $Int:Copy then treated the element
+   * VALUE as an array pointer: an access violation reading (count + 0x10).
+   ****************************/
+  inline bool IsArrayCopySource(Expression* e)
+  {
+    if(!e || !e->GetEvalType() || !e->GetEvalType()->GetDimension()) {
+      return false;
+    }
+
+    if(e->GetExpressionType() == STAT_ARY_EXPR) {
+      return true;
+    }
+
+    return e->GetExpressionType() == VAR_EXPR && !static_cast<Variable*>(e)->GetIndices();
+  }
+
   inline Type* EffectiveStackType(Expression* e)
   {
     Type* type = e->GetEvalType();

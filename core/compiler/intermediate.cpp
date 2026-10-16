@@ -6643,8 +6643,7 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {
     std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
     // array copy constructor
-    if(expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) &&
-       expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension()) {
+    if(expressions.size() == 1 && frontend::IsArrayCopySource(expressions[0])) {
 
       // Each element type's copy constructor is a call into System.$<T>:Copy.
       // A library build must emit that call symbolically: the ids below are
