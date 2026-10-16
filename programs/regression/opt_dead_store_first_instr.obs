@@ -1,0 +1,105 @@
+# JIT_DISABLE
+# reason: the leaked operand only corrupts the caller on the interpreter's shared operand stack; JIT runs pass either way
+#~
+Regression: a dead store at a method's first instruction kept its value.
+
+Found by rosetta_atomic_updates.obs (#1112), which failed on all three ARM64
+legs with a Nil dereference in String->Append, reached from a single-threaded
+check. The getter was:
+
+  method : public : GetTransfers() ~ Int {
+    n := 0;
+    critical(@mutex) { n := @transfers; };
+    return n;
+  }
+
+`n := 0` is a dead store (overwritten before any read), and its value,
+LOAD_INT_LIT 0, is the method's first instruction. DeadStoreEdit walks back
+from the STOR over the instructions of the same statement, but its loop
+stopped at index 0 without examining it: the STOR was removed and the LOAD
+kept. The stray 0 stayed on the operand stack, so in
+`CheckInt("...", solo->GetTransfers(), 1)` the caller's arguments shifted by
+one and the string parameter read the 0 as Nil.
+
+Nothing about ARM64 or threads: it reproduces on x64 with the interpreter at
+-opt s1 and above. The method needs no parameters (a parameter's STOR would be
+the first instruction instead). GetExpr and Seven never failed -- earlier
+passes fold them before DeadStore sees index 0 -- and are kept as guards on
+neighbouring shapes.
+~#
+
+class DsFirst {
+  @value : Int;
+
+  New(value : Int) {
+    @value := value;
+  }
+
+  # the shape that failed: a literal, then the real assignment
+  method : public : Get() ~ Int {
+    n := 0;
+    n := @value;
+    return n;
+  }
+
+  # a longer dead value starting at index 0
+  method : public : GetExpr() ~ Int {
+    n := 3 + 4;
+    n := @value;
+    return n;
+  }
+
+  function : Seven() ~ Int {
+    n := 1;
+    n := 7;
+    return n;
+  }
+}
+
+class OptDeadStoreFirstInstr {
+  @failures : Int;
+
+  New() {
+    @failures := 0;
+  }
+
+  # the call sits between a String argument and an Int one, as in the original:
+  # a leftover operand is then read as the String
+  method : Check(what : String, got : Int, want : Int) ~ Nil {
+    if(what = Nil) {
+      "FAIL: argument shifted (what=Nil, got="->Print(); got->Print(); ", want="->Print(); want->Print(); ")"->PrintLine();
+      @failures += 1;
+      return;
+    };
+
+    if(got <> want) {
+      "FAIL: "->Print(); what->Print(); " expected "->Print(); want->Print(); ", got "->Print(); got->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  method : Run() ~ Nil {
+    b := DsFirst->New(42);
+    for(i := 0; i < 3; i += 1;) {
+      Check("method, literal", b->Get(), 42);
+      Check("method, expression", b->GetExpr(), 42);
+      Check("function", DsFirst->Seven(), 7);
+    };
+
+    # and inside arithmetic, where a leftover is consumed by the operator
+    d := 0;
+    for(r := 0; r < 5; r += 1;) {
+      d := d * 31 + b->Get() + DsFirst->Seven();
+    };
+    Check("arithmetic", d, 46760945);
+
+    if(@failures > 0) {
+      Runtime->Exit(1);
+    };
+    "PASS"->PrintLine();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    OptDeadStoreFirstInstr->New()->Run();
+  }
+}
