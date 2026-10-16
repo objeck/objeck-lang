@@ -1,0 +1,90 @@
+#~
+Regression: a primitive method called on a CALL RESULT got its arguments reversed.
+
+Found by the Rosetta batch-3 numeric tasks. `v->Pow(n)` on a primitive is a
+static '$Int'/'$Float' helper whose parameter 0 is the receiver (see
+primitive_receiver_order.obs, which fixed the variable receiver). When the
+receiver was the result of a previous call in the chain, the statement emitter
+pushed the link's arguments up front with the rest of the chain's, beneath the
+receiver, so the helper saw them swapped:
+
+    IdI(2)->Pow(3)            gave 9   (3^2)
+    Id(7.0)->Mod(4.0)         gave 4
+    v->Pow(3.0)->Pow(2.0)     gave 256 (2^(3^2))
+
+primitive_receiver_order.obs did not see it: its chained case is
+`4->Abs()->Pow(2) = 16`, which is the same either way round (4^2 = 2^4).
+~#
+
+class PrimitiveReceiverCallResult {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	function : IdI(i : Int) ~ Int {
+		return i;
+	}
+
+	function : Id(f : Float) ~ Float {
+		return f;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckFloat(what : String, got : Float, want : Float) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("IdI(2)->Pow(3)", IdI(2)->Pow(3), 8);
+		CheckFloat("Id(7.0)->Mod(4.0)", Id(7.0)->Mod(4.0), 3.0);
+		v := 2.0;
+		CheckFloat("v->Pow(3.0)->Pow(2.0)", v->Pow(3.0)->Pow(2.0), 64.0);
+		CheckFloat("Id(2.0)->Pow(3.0)", Id(2.0)->Pow(3.0), 8.0);
+		x := IdI(2)->Pow(3);
+		CheckInt("assigned", x, 8);
+		CheckInt("in a sum", IdI(2)->Pow(3) + IdI(3)->Pow(2), 17);
+		CheckInt("times 10", IdI(2)->Pow(3) * 10, 80);
+		CheckInt("Max then Min", IdI(2)->Max(5)->Min(3), 3);
+		CheckInt("Min then Max", IdI(9)->Min(4)->Max(1), 4);
+		CheckInt("in interpolation", "{$IdI(2)->Pow(3)}"->ToInt(), 8);
+		s := "" + IdI(2)->Pow(3);
+		CheckInt("in a concatenation", s->ToInt(), 8);
+
+		# a further call after the deferred link
+		t := IdI(2)->Pow(3)->ToString();
+		CheckInt("statement-shaped chain", t->ToInt(), 8);
+
+		# guards: receivers that always worked
+		CheckInt("literal head, call result", "abcd"->Size()->Pow(2), 16);
+		CheckInt("literal receiver", 2->Pow(3), 8);
+		w := 2;
+		CheckInt("variable receiver", w->Pow(3), 8);
+		CheckInt("static spelling", Int->Pow(2, 3), 8);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		PrimitiveReceiverCallResult->New()->Run();
+	}
+}

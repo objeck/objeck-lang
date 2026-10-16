@@ -1,0 +1,97 @@
+#~
+Regression: a call on a parenthesised concatenation, and an indexed array in {$...}.
+
+Found by the Rosetta batch-3 string and time tasks.
+
+1. `("[" + t + "]")->PrintLine()` and `x := ("a" + "b")->Size()` did not compile
+   ("Invalid class type or assignment"). The call chain hung off the '+' node,
+   which never gets a type: the concatenation is a separate node substituted for
+   it. Analysis now resolves the chain on the concatenation node and moves it
+   there, the emitter treats that node as a receiver already on the stack, and
+   the places that consume an operand (a statement, an arithmetic operand, an
+   operand of an outer concatenation) take the concatenation node.
+2. `"{$s[1]}"` was rejected ("Invalid expression type or dimension size"),
+   though FEATURES.md documents array access in interpolation: a variable's
+   eval type keeps the array's dimension even when fully indexed.
+~#
+
+class StringConcatReceiverAndInterpIndex {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		t := "ab";
+
+		# 1. a call on a parenthesised concatenation
+		Check("literal + literal, then a call", ("a" + "b")->ToUpper(), "AB");
+		Check("with a variable", ("[" + t + "]")->ToUpper(), "[AB]");
+		CheckInt("a call returning Int", ("[" + "ab" + "]")->Size(), 4);
+		CheckInt("a two-call chain, then arithmetic", ("<" + t + ">")->ToUpper()->Size() + 1, 5);
+		CheckInt("as the left operand of *", ("x" + t)->Size() * 2, 6);
+		CheckInt("as the right operand of +", 1 + ("x" + t)->Size(), 4);
+		Check("inside an outer concatenation", "[" + ("x" + t)->ToUpper() + "]", "[XAB]");
+		Check("two of them", ("a" + t)->ToUpper() + ("c" + t)->Size(), "AAB3");
+		hit := false;
+		if(("a" + t)->Size() = 3) { hit := true; };
+		CheckInt("in a condition", hit ? 1 : 0, 1);
+
+		# the statement form: a call whose result is discarded
+		("[" + t + "]")->Size();
+		CheckInt("as a statement (compiles and runs)", 1, 1);
+
+		# guards: forms that always worked
+		Check("no parentheses", "a" + t, "aab");
+		Check("a parenthesised literal", ("ab")->ToUpper(), "AB");
+		CheckInt("a parenthesised Int", (1 + 2)->Max(5), 5);
+
+		# 2. an indexed array inside interpolation
+		s := Int->New[3];
+		s[1] := 42;
+		w := String->New[2];
+		w[1] := "hi";
+		m := Int->New[2, 2];
+		m[1, 1] := 7;
+		f := Float->New[1];
+		f[0] := 1.5;
+		i := 1;
+		Check("Int[] element", "{$s[1]}", "42");
+		Check("String[] element", "{$w[1]}", "hi");
+		Check("2-D element", "{$m[1,1]}", "7");
+		Check("variable index", "{$s[i]}", "42");
+		Check("Float[] element", "{$f[0]}", "1.500000");
+		Check("with a format spec", "{$s[1]:4}", "  42");
+		Check("several in one string", "<{$s[1]}|{$w[i]}|{$m[1,1]}>", "<42|hi|7>");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		StringConcatReceiverAndInterpIndex->New()->Run();
+	}
+}

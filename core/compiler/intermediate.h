@@ -129,7 +129,8 @@ class IntermediateEmitter {
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
   
   // emits class cast checks
-  void EmitClassCast(Expression* expression);
+  // whole_expression: the expression, call chain included, has already been emitted
+  void EmitClassCast(Expression* expression, bool whole_expression = false);
 
   Class* SearchProgramClasses(const std::wstring &klass_name);
 
