@@ -1,0 +1,94 @@
+#~
+Regression: `?->` recovery from a fault several frames below a compiled
+method (#1171, JIT half).
+
+When compiled code calls a method that is not compiled yet, a bridge
+interpreter runs the callee. Try() handlers are per thread, so when the
+callee faulted the bridge found the handler Main had pushed and recovered
+into it itself: it popped the call stack down to Main, past the compiled
+frames still live on the C stack, and went on running Main's code from
+inside the bridge. When that returned, the compiled frames resumed on stack
+frames that had been released, and the VM crashed -- in default mode and
+with OBJECK_JIT_THRESHOLD=1, while the interpreter was right.
+
+A bridge now recovers only into a handler pushed inside it. For one pushed
+beneath its compiled caller it unwinds to its own entry and returns a status;
+the compiled frames pass it outward and the interpreter that owns the handler
+recovers. Expected values are the interpreter's (OBJECK_JIT_DISABLE=1).
+~#
+
+class Divider {
+	@n : Int;
+
+	New() {
+		@n := 0;
+	}
+
+	method : public : Divide(b : Int) ~ Int {
+		@n += 1;
+		return 10 / b;
+	}
+
+	method : public : Deep(k : Int, b : Int) ~ Int {
+		if(k = 0) {
+			return Divide(b);
+		};
+		return Deep(k - 1, b) + 1;
+	}
+
+	method : public : Flat(a : Int, b : Int) ~ Int {
+		return a / b;
+	}
+
+	method : public : GetCount() ~ Int {
+		return @n;
+	}
+}
+
+class JitRecoveryThroughBridge {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		d := Divider->New();
+
+		# many recoveries in one method, at several depths
+		CheckInt("fault 4 frames down", d?->Deep(3, 0) ?? -1, -1);
+		CheckInt("fault 6 frames down", d?->Deep(5, 0) ?? -2, -2);
+		CheckInt("fault 1 frame down", d?->Flat(1, 0) ?? -3, -3);
+		CheckInt("fault 3 frames down", d?->Deep(2, 0) ?? -4, -4);
+		CheckInt("fault 9 frames down", d?->Deep(8, 0) ?? -6, -6);
+		CheckInt("fault after a field write", d?->Divide(0) ?? -7, -7);
+		CheckInt("no fault after the recoveries", d?->Deep(4, 2) ?? -10, 9);
+
+		# a loop mixing faults and successes through recursive compiled frames
+		s := 0;
+		for(x := 0; x < 2000; x += 1;) {
+			s += d?->Deep(x % 4, x % 3) ?? -1;
+		};
+		CheckInt("2000 mixed calls", s, 11332);
+		CheckInt("every Divide ran once per call", d->GetCount(), 2006);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		JitRecoveryThroughBridge->New()->Run();
+	}
+}

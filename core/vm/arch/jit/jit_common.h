@@ -221,6 +221,12 @@ protected:
   // -1 to -4; this is the first status raised by the bridge itself.
   static const int64_t JIT_STATUS_INVALID_CAST = -5;
 
+  // An interpreted callee, run by a bridge, raised an error that a Try()
+  // beneath this compiled frame takes. The bridge has already unwound its own
+  // frames; compiled frames pass the status outward and the interpreter that
+  // owns the handler recovers (#1171). Never reported: a handler exists.
+  static const int64_t JIT_STATUS_DEFERRED = -6;
+
   // A C++ exception the bridge caught on its way out to compiled code. Neither
   // backend registers unwind information for the code it emits, so an
   // exception thrown in a bridge call -- by the interpreter it nested, a trap,

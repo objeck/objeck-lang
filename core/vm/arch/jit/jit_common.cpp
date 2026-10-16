@@ -313,6 +313,8 @@ int64_t JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackIn
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+    // the interpreted callee failed under a Try() beneath this compiled frame
+    return intpr.BridgeDeferred() ? JIT_STATUS_DEFERRED : 0;
   }
   catch(const std::bad_alloc&) {
     BridgeExceptionExit(nullptr, true, cls_id, mthd_id, call_stack, call_stack_pos);
@@ -475,6 +477,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+    if(intpr.BridgeDeferred()) {
+      return JIT_STATUS_DEFERRED;
+    }
   }
     break;
 
