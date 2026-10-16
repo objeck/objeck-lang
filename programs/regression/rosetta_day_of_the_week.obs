@@ -1,0 +1,94 @@
+#~
+# Rosetta Code: Day of the week
+# https://rosettacode.org/wiki/Day_of_the_week
+# Claimed in #1154
+#
+# The years from 2008 to 2121 in which Christmas falls on a Sunday, found with the library's own Date class rather than a hand-written weekday formula -- the task exists to catch date libraries that break past 2038. The second half pins the weekday the constructors report, because Date->New(day, month, year, gmt) never fills in the weekday at all.
+#
+# Expected values were computed with an independent oracle (Python's datetime), not recalled; the year list also matches the task page.
+~#
+
+use System.Time;
+
+class RosettaDayOfTheWeek {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaDayOfTheWeek->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		Check("Christmas on a Sunday, 2008-2121", SundayChristmases(2008, 2121),
+			"2011 2016 2022 2033 2039 2044 2050 2061 2067 2072 2078 2089 2095 2101 2107 2112 2118");
+
+		# past the 32-bit time_t limit (2038-01-19) the answers must not change
+		CheckInt("Dec 25 2038 is a Saturday", WeekDay(25, 12, 2038), 6);
+		CheckInt("Dec 25 2039 is a Sunday", WeekDay(25, 12, 2039), 0);
+		CheckInt("Dec 25 2121 is a Thursday", WeekDay(25, 12, 2121), 4);
+		# century years: 2100 is not a leap year, so March 1 follows Feb 28
+		CheckInt("Mar 1 2100 is a Monday", WeekDay(1, 3, 2100), 1);
+		CheckInt("Feb 29 2000 is a Tuesday", WeekDay(29, 2, 2000), 2);
+
+		d := Date->New(25, 12, 2011, 12, 0, 0, true);
+		Check("weekday name of Dec 25 2011", d->GetWeekDayName(), "Sunday");
+		e := Date->New(26, 12, 2011, 12, 0, 0, true);
+		Check("weekday name of Dec 26 2011", e->GetWeekDayName(), "Monday");
+
+		# the date-only constructor leaves the weekday at 0 (Sunday) whatever the date;
+		# any Add* call recomputes it, so AddDays(0) is the workaround
+		f := Date->New(26, 12, 2011, true);
+		f->AddDays(0);
+		Check("date-only constructor, after AddDays(0)", f->GetWeekDayName(), "Monday");
+		CheckInt("date-only constructor keeps the day", f->GetDay(), 26);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# Noon, not midnight: on a machine observing daylight saving the 7-argument
+	# constructor moves a GMT time by an hour in summer (it runs mktime with
+	# tm_isdst = 0), and noon keeps that from moving the date.
+	function : WeekDay(day : Int, month : Int, year : Int) ~ Int {
+		return Date->New(day, month, year, 12, 0, 0, true)->GetWeekDay();
+	}
+
+	function : SundayChristmases(first : Int, last : Int) ~ String {
+		out := "";
+		for(y := first; y <= last; y += 1;) {
+			if(WeekDay(25, 12, y) = 0) {
+				if(out->Size() > 0) {
+					out->Append(' ');
+				};
+				out->Append(y);
+			};
+		};
+		return out;
+	}
+}

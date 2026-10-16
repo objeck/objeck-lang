@@ -1,0 +1,197 @@
+#~
+# Rosetta Code: Optional parameters
+# https://rosettacode.org/wiki/Optional_parameters
+# Claimed in #1133
+#
+# Sort a table of string rows by one column, with an optional ordering function (lexicographic by default), column (the first by default) and reverse flag. Objeck has no default argument values and no named arguments, so both styles the task names are shown the way the language allows: positional optional parameters by overloading on argument count, and named ones by a small options object with chained setters. The sort itself is the library's CompareVector->Sort, as the task asks; each row compares itself through the shared options.
+#
+# It pins down overload resolution across one to four arguments, a function-typed parameter with a default, and that the built-in sort is stable, since rows that tie keep their order in both directions.
+#
+# Expected values were computed with an independent oracle (Python's sorted with key= and reverse=), not recalled.
+~#
+
+use Collection;
+
+class SortOptions {
+	@ordering : (String, String) ~ Int;
+	@column : Int;
+	@descending : Bool;
+
+	# the defaults: lexicographic, first column, ascending
+	New() {
+		@ordering := \(String, String) ~ Int : (a, b) => a->Compare(b);
+		@column := 0;
+		@descending := false;
+	}
+
+	method : public : Ordering(ordering : (String, String) ~ Int) ~ SortOptions {
+		@ordering := ordering;
+		return @self;
+	}
+
+	method : public : Column(column : Int) ~ SortOptions {
+		@column := column;
+		return @self;
+	}
+
+	method : public : Descending(descending : Bool) ~ SortOptions {
+		@descending := descending;
+		return @self;
+	}
+
+	method : public : Order(lhs : String[], rhs : String[]) ~ Int {
+		c := @ordering(lhs[@column], rhs[@column]);
+		if(@descending) {
+			return 0 - c;
+		};
+		return c;
+	}
+}
+
+# one row of the table
+class Line {
+	@cells : String[];
+
+	New(cells : String[]) {
+		@cells := cells;
+	}
+
+	method : public : Cells() ~ String[] {
+		return @cells;
+	}
+}
+
+# a row as the sort sees it: a line plus the options to compare it by
+class Row implements Compare {
+	@line : Line;
+	@options : SortOptions;
+
+	New(line : Line, options : SortOptions) {
+		@line := line;
+		@options := options;
+	}
+
+	method : public : GetLine() ~ Line {
+		return @line;
+	}
+
+	method : public : Compare(rhs : System.Compare) ~ Int {
+		row := rhs->As(Row);
+		rhs_line := row->GetLine();
+		return @options->Order(@line->Cells(), rhs_line->Cells());
+	}
+
+	method : public : HashID() ~ Int {
+		return @line->Cells()->Size();
+	}
+}
+
+class RosettaOptionalParameters {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaOptionalParameters->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# the named-parameter form: everything comes from the options object
+	function : SortTable(table : Line[], options : SortOptions) ~ Line[] {
+		rows := CompareVector->New()<Row>;
+		count := table->Size();
+		for(i := 0; i < count; i += 1;) {
+			rows->AddBack(Row->New(table[i], options));
+		};
+		rows->Sort();
+
+		sorted := Line->New[count];
+		for(i := 0; i < count; i += 1;) {
+			row := rows->Get(i);
+			sorted[i] := row->GetLine();
+		};
+		return sorted;
+	}
+
+	# the positional forms: overloads that supply the missing trailing arguments
+	function : SortTable(table : Line[]) ~ Line[] {
+		return SortTable(table, SortOptions->New());
+	}
+
+	function : SortTable(table : Line[], column : Int) ~ Line[] {
+		return SortTable(table, SortOptions->New()->Column(column));
+	}
+
+	function : SortTable(table : Line[], column : Int, descending : Bool) ~ Line[] {
+		return SortTable(table, SortOptions->New()->Column(column)->Descending(descending));
+	}
+
+	function : SortTable(table : Line[], ordering : (String, String) ~ Int, column : Int, descending : Bool) ~ Line[] {
+		return SortTable(table, SortOptions->New()->Ordering(ordering)->Column(column)->Descending(descending));
+	}
+
+	function : Show(table : Line[]) ~ String {
+		out := "";
+		count := table->Size();
+		for(i := 0; i < count; i += 1;) {
+			if(i > 0) { out += "/"; };
+			line := table[i];
+			cells := line->Cells();
+			size := cells->Size();
+			for(j := 0; j < size; j += 1;) {
+				if(j > 0) { out += ","; };
+				out += cells[j];
+			};
+		};
+		return out;
+	}
+
+	function : Table() ~ Line[] {
+		table := Line->New[4];
+		table[0] := Line->New(["a", "b", "c"]);
+		table[1] := Line->New(["", "q", "z"]);
+		table[2] := Line->New(["zap", "zip", "Zot"]);
+		table[3] := Line->New(["Beta", "alpha", "m"]);
+		return table;
+	}
+
+	method : Run() ~ Nil {
+		by_length := \(String, String) ~ Int : (a, b) => a->Size() - b->Size();
+		no_case := \(String, String) ~ Int : (a, b) => a->ToLower()->Compare(b->ToLower());
+
+		# positional, omitting trailing arguments
+		Check("all defaults", Show(SortTable(Table())), ",q,z/Beta,alpha,m/a,b,c/zap,zip,Zot");
+		Check("column 2", Show(SortTable(Table(), 2)), "zap,zip,Zot/a,b,c/Beta,alpha,m/,q,z");
+		Check("column 2, reversed", Show(SortTable(Table(), 2, true)), ",q,z/Beta,alpha,m/a,b,c/zap,zip,Zot");
+		Check("column 2, not reversed", Show(SortTable(Table(), 2, false)), "zap,zip,Zot/a,b,c/Beta,alpha,m/,q,z");
+		Check("by length, column 1 (ties keep their order)", Show(SortTable(Table(), by_length, 1, false)), "a,b,c/,q,z/zap,zip,Zot/Beta,alpha,m");
+		Check("by length, column 1, reversed (ties still keep their order)", Show(SortTable(Table(), by_length, 1, true)), "Beta,alpha,m/zap,zip,Zot/a,b,c/,q,z");
+
+		# named, in any order and any subset
+		Check("named: ordering only", Show(SortTable(Table(), SortOptions->New()->Ordering(no_case))), ",q,z/a,b,c/Beta,alpha,m/zap,zip,Zot");
+		Check("named: reverse before ordering", Show(SortTable(Table(), SortOptions->New()->Descending(true)->Ordering(no_case))), "zap,zip,Zot/Beta,alpha,m/a,b,c/,q,z");
+		Check("named: column only", Show(SortTable(Table(), SortOptions->New()->Column(2))), "zap,zip,Zot/a,b,c/Beta,alpha,m/,q,z");
+
+		# the input is not modified
+		table := Table();
+		SortTable(table, 2);
+		Check("the input table is left in place", Show(table), "a,b,c/,q,z/zap,zip,Zot/Beta,alpha,m");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

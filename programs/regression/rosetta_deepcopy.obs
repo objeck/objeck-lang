@@ -1,0 +1,191 @@
+#~
+# Rosetta Code: Deepcopy
+# https://rosettacode.org/wiki/Deepcopy
+# Claimed in #1134
+#
+# EXTRA_LIBS: gen_collect
+#
+# Objeck has no clone-everything primitive; the deep copy is a round trip through System.IO.Serializer and Deserializer, which walk the whole object graph. The test pins what the task asks for: a heterogeneous structure (Int, Float, Bool, Char, String, Int[], Float[], a Vector and a Map from gen_collect, a nested object with no zero-argument constructor, a Nil field) comes back equal; a reference cycle and a shared reference come back as a cycle and a shared reference rather than duplicated or unrolled; and the copy is a distinct graph, so mutating it leaves the original untouched. Limitation found and avoided: a multi-dimensional array field (Int[,], Float[,]) loses its last element in the round trip (reported to the batch lead), so none is used here.
+#
+# Expected values are the ones the original structure was built from.
+~#
+
+use Collection;
+
+class Inner {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : Get() ~ Int {
+		return @v;
+	}
+}
+
+class Node {
+	@name : String;
+	@weight : Float;
+	@count : Int;
+	@flag : Bool;
+	@grade : Char;
+	@tags : Int[];
+	@reals : Float[];
+	@list : Vector<IntRef>;
+	@map : Map<String, IntRef>;
+	@inner : Inner;
+	@nothing : String;
+	@next : Node;
+	@peer : Node;
+
+	New(name : String, weight : Float, count : Int) {
+		@name := name;
+		@weight := weight;
+		@count := count;
+		@flag := true;
+		@grade := 'B';
+		@tags := Int->New[3];
+		@tags[0] := count;
+		@tags[1] := count * 2;
+		@tags[2] := count * 3;
+		@reals := Float->New[2];
+		@reals[0] := weight;
+		@reals[1] := -weight;
+		@list := Vector->New()<IntRef>;
+		@list->AddBack(count);
+		@list->AddBack(count + 1);
+		@map := Map->New()<String, IntRef>;
+		@map->Insert(name, count);
+		@inner := Inner->New(count * 100);
+	}
+
+	method : public : GetName() ~ String { return @name; }
+	method : public : GetWeight() ~ Float { return @weight; }
+	method : public : GetCount() ~ Int { return @count; }
+	method : public : GetFlag() ~ Bool { return @flag; }
+	method : public : GetGrade() ~ Char { return @grade; }
+	method : public : GetTags() ~ Int[] { return @tags; }
+	method : public : GetReals() ~ Float[] { return @reals; }
+	method : public : GetList() ~ Vector<IntRef> { return @list; }
+	method : public : GetMap() ~ Map<String, IntRef> { return @map; }
+	method : public : GetInner() ~ Inner { return @inner; }
+	method : public : GetNothing() ~ String { return @nothing; }
+	method : public : GetNext() ~ Node { return @next; }
+	method : public : SetNext(n : Node) ~ Nil { @next := n; }
+	method : public : GetPeer() ~ Node { return @peer; }
+	method : public : SetPeer(n : Node) ~ Nil { @peer := n; }
+}
+
+class RosettaDeepcopy {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaDeepcopy->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		a := Node->New("alpha", 1.5, 7);
+		b := Node->New("beta", -2.25, 11);
+		a->SetNext(b);
+		b->SetNext(a);   # a cycle: a -> b -> a
+		a->SetPeer(b);   # a shared reference: a.next and a.peer are one node
+
+		c := DeepCopy(a);
+		CheckBool("the copy exists", c <> Nil, true);
+		if(c = Nil) {
+			"1 failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# every kind of field survives
+		Check("String field", c->GetName(), "alpha");
+		CheckBool("Float field", c->GetWeight() = 1.5, true);
+		CheckInt("Int field", c->GetCount(), 7);
+		CheckBool("Bool field", c->GetFlag(), true);
+		CheckInt("Char field", c->GetGrade()->As(Int), 'B'->As(Int));
+		tags := c->GetTags();
+		CheckInt("Int[] field", tags[0] + tags[1] + tags[2], 42);
+		reals := c->GetReals();
+		CheckBool("Float[] field", reals[1] = -1.5, true);
+		# through a local: c->GetList()->Get(1)->Get() does not compile, the
+		# chain loses the Vector's element type (reported to the batch lead)
+		list := c->GetList();
+		CheckInt("Vector field size", list->Size(), 2);
+		CheckInt("Vector field element", list->Get(1)->Get(), 8);
+		CheckInt("Map field entry", c->GetMap()->Find("alpha")->Get(), 7);
+		CheckInt("nested object with no zero-argument constructor", c->GetInner()->Get(), 700);
+		CheckBool("Nil field stays Nil", c->GetNothing() = Nil, true);
+
+		# the graph's shape survives: the cycle closes and the shared node is one node
+		cb := c->GetNext();
+		Check("the next node", cb->GetName(), "beta");
+		CheckBool("cycle preserved: copy.next.next is copy", cb->GetNext() = c, true);
+		CheckBool("sharing preserved: copy.next is copy.peer", c->GetNext() = c->GetPeer(), true);
+
+		# and it is a different graph
+		CheckBool("the copy is a different object", c <> a, true);
+		CheckBool("its next node is a different object", cb <> b, true);
+		CheckBool("its array is a different array", c->GetTags() <> a->GetTags(), true);
+		CheckBool("its nested object is a different object", c->GetInner() <> a->GetInner(), true);
+
+		# so mutating the copy leaves the original alone
+		tags[0] := 999;
+		c->GetName()->Append("-copy");
+		c->GetList()->AddBack(1000);
+		original_tags := a->GetTags();
+		CheckInt("original array unchanged", original_tags[0], 7);
+		Check("original string unchanged", a->GetName(), "alpha");
+		Check("copy string changed", c->GetName(), "alpha-copy");
+		CheckInt("original vector unchanged", a->GetList()->Size(), 2);
+		CheckInt("copy vector grew", c->GetList()->Size(), 3);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# serialize the whole graph reachable from n, then read it back
+	function : DeepCopy(n : Node) ~ Node {
+		writer := System.IO.Serializer->New();
+		writer->Write(n);
+		reader := System.IO.Deserializer->New(writer->Serialize());
+		return reader->ReadObject()->As(Node);
+	}
+}

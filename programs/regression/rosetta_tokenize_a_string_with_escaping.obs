@@ -1,0 +1,104 @@
+#~
+# Rosetta Code: Tokenize a string with escaping
+# https://rosettacode.org/wiki/Tokenize_a_string_with_escaping
+# Claimed in #1140
+#
+# Splits a string at every separator that is not escaped, dropping the escape character that did the escaping. Empty fields must survive at the start, in the middle and at the end -- the edges where a delimiter split most often loses a field -- and an escape character escapes itself, so "^^|" is a literal '^' followed by a real separator.
+#
+# Expected values come from the task page's test case and an independent Python oracle.
+~#
+
+class RosettaTokenizeAStringWithEscaping {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaTokenizeAStringWithEscaping->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's test case: five fields, two of them empty
+		parts := Tokenize("one^|uno||three^^^^|four^^^|^cuatro|", '|', '^');
+		CheckInt("task case has five fields", parts->Size(), 5);
+		Check("task case fields", Show(parts), "[one|uno][][three^^][four^|cuatro][]");
+
+		# edges, each checked against the Python oracle
+		Check("empty input is one empty field", Show(Tokenize("", '|', '^')), "[]");
+		CheckInt("empty input field count", Tokenize("", '|', '^')->Size(), 1);
+		Check("a lone separator is two empty fields", Show(Tokenize("|", '|', '^')), "[][]");
+		Check("a lone escape is dropped", Show(Tokenize("^", '|', '^')), "[]");
+		Check("a trailing escape is dropped", Show(Tokenize("a^", '|', '^')), "[a]");
+		Check("leading and trailing separators", Show(Tokenize("|a|", '|', '^')), "[][a][]");
+		Check("escaped escapes around a separator", Show(Tokenize("^^|^^", '|', '^')), "[^][^]");
+		Check("escaping an ordinary character", Show(Tokenize("a^bc", '|', '^')), "[abc]");
+
+		# a different separator and escape, including non-ASCII field text
+		Check("other separator and escape", Show(Tokenize("ö,\\,€,,", ',', '\\')), "[ö][,€][][]");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Tokenize(text : String, sep : Char, esc : Char) ~ String[] {
+		fields := Collection.Vector->New()<String>;
+		current := String->New();
+		escaping := false;
+
+		each(i : text) {
+			c := text->Get(i);
+			if(escaping) {
+				current->Append(c);
+				escaping := false;
+			}
+			else if(c = esc) {
+				escaping := true;
+			}
+			else if(c = sep) {
+				fields->AddBack(current);
+				current := String->New();
+			}
+			else {
+				current->Append(c);
+			};
+		};
+		fields->AddBack(current);
+
+		return fields->ToArray();
+	}
+
+	function : Show(parts : String[]) ~ String {
+		out := String->New();
+		each(i : parts) {
+			out->Append('[');
+			out->Append(parts[i]);
+			out->Append(']');
+		};
+		return out;
+	}
+}

@@ -1,0 +1,116 @@
+#~
+# Rosetta Code: Bernoulli numbers
+# https://rosettacode.org/wiki/Bernoulli_numbers
+# Claimed in #1166
+#
+# EXTRA_LIBS: math
+#
+# B(0) through B(60) as exact reduced fractions, by the Akiyama-Tanigawa algorithm the task gives, over System.Math.Rational. B(60)'s numerator has 43 digits, so this is out of reach of any Int-backed fraction: every intermediate must be exact. The algorithm yields the "second" Bernoulli numbers, B(1) = +1/2, which is what the task's table shows. All odd B(n) past B(1) must be exactly zero -- they are suppressed in the task's output, and asserted zero here rather than skipped.
+#
+# Expected values are the task page's stated output, cross-checked against an independent oracle (Python's fractions.Fraction running the same algorithm).
+~#
+
+use System.Math;
+
+class RosettaBernoulliNumbers {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaBernoulliNumbers->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# Akiyama-Tanigawa, exactly as the task states it. The pass for B(n) runs
+	# m = 0..n, and after step m the table's first entry already holds B(m), so
+	# one pass to 60 yields every B(m) on the way: 1,830 steps rather than the
+	# 37,820 of restarting for each n.
+	function : Bernoullis(n : Int) ~ Rational[] {
+		out := Rational->New[n + 1];
+		a := Rational->New[n + 1];
+		for(m := 0; m <= n; m += 1;) {
+			a[m] := Rational->Of(1, m + 1);
+			for(j := m; j >= 1; j -= 1;) {
+				a[j - 1] := a[j - 1]->Subtract(a[j])->Multiply(j);
+			};
+			out[m] := a[0];
+		};
+		return out;
+	}
+
+	method : Run() ~ Nil {
+		# the task's table: B(0), B(1), then the even indices 2..60
+		want := [
+			"1",
+			"1/2",
+			"1/6",
+			"-1/30",
+			"1/42",
+			"-1/30",
+			"5/66",
+			"-691/2730",
+			"7/6",
+			"-3617/510",
+			"43867/798",
+			"-174611/330",
+			"854513/138",
+			"-236364091/2730",
+			"8553103/6",
+			"-23749461029/870",
+			"8615841276005/14322",
+			"-7709321041217/510",
+			"2577687858367/6",
+			"-26315271553053477373/1919190",
+			"2929993913841559/6",
+			"-261082718496449122051/13530",
+			"1520097643918070802691/1806",
+			"-27833269579301024235023/690",
+			"596451111593912163277961/282",
+			"-5609403368997817686249127547/46410",
+			"495057205241079648212477525/66",
+			"-801165718135489957347924991853/1590",
+			"29149963634884862421418123812691/798",
+			"-2479392929313226753685415739663229/870",
+			"84483613348880041862046775994036021/354",
+			"-1215233140483755572040304994079820246041491/56786730"];
+
+		all := Bernoullis(60);
+		w := 0;
+		for(n := 0; n <= 60; n += 1;) {
+			b := all[n];
+			if(n = 1 | n % 2 = 0) {
+				Check("B({$n})", b->ToString(), want[w]);
+				w += 1;
+			}
+			else {
+				# odd and past B(1): zero, which the task suppresses
+				if(b->IsZero()) {
+					"PASS: B({$n}) is zero"->PrintLine();
+				}
+				else {
+					got := b->ToString();
+					"FAIL: B({$n}) is zero: expected 0, got {$got}"->PrintLine();
+					@failures += 1;
+				};
+			};
+		};
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,111 @@
+#~
+# Rosetta Code: Two's complement
+# https://rosettacode.org/wiki/Two%27s_complement
+# Claimed in #1126
+#
+# The task's rule -- flip the bits and add one -- written as `(n xor -1) + 1`, checked against unary minus for zero, one, small values and both Int boundaries; MIN is its own two's complement. The 64-bit patterns are rendered by a hand-written formatter because Int->ToBinaryString never returns for a negative argument (it shifts with the sign-filling `>>`, so the loop variable sticks at -1), and an 8-bit two's complement is shown through a Byte array, the only Byte storage that keeps eight bits.
+#
+# Expected values were computed with an independent oracle (Python), not recalled.
+~#
+
+class RosettaTwosComplement {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaTwosComplement->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		min := -9223372036854775807 - 1;
+		max := 9223372036854775807;
+
+		CheckInt("complement of 0 is 0", Complement(0), 0);
+		CheckInt("complement of 1 is -1", Complement(1), -1);
+		CheckInt("complement of -1 is 1", Complement(-1), 1);
+		CheckInt("complement of 5 is -5", Complement(5), -5);
+		CheckInt("complement of -42 is 42", Complement(-42), 42);
+		CheckInt("complement of MAX is MIN + 1", Complement(max), min + 1);
+		CheckInt("complement of MIN is MIN", Complement(min), min);
+
+		# flip-and-add-one agrees with unary minus everywhere, including MIN
+		values := [0, 1, -1, 7, -7, 123456789, -987654321, 9223372036854775807, -9223372036854775807];
+		agree := 0;
+		each(i : values) {
+			v := values[i];
+			if(Complement(v) = -v) { agree += 1; };
+		};
+		CheckInt("flip-and-add-one equals unary minus for all 9 samples", agree, 9);
+		CheckInt("...and for MIN", Complement(min), -min);
+
+		# the bit patterns the task shows
+		Check("bits of 5", Bits(5), "0000000000000000000000000000000000000000000000000000000000000101");
+		Check("bits of -5", Bits(-5), "1111111111111111111111111111111111111111111111111111111111111011");
+		Check("bits of -1", Bits(-1), "1111111111111111111111111111111111111111111111111111111111111111");
+		Check("bits of MIN", Bits(min), "1000000000000000000000000000000000000000000000000000000000000000");
+		Check("hex of -1", Int->ToHexString(-1), "0xffffffffffffffff");
+		Check("-1 read unsigned is 2^64-1", Int->ToUnsignedString(-1), "18446744073709551615");
+		Check("-5 read unsigned is 2^64-5", Int->ToUnsignedString(-5), "18446744073709551611");
+
+		# 8-bit two's complement: the Byte[] store keeps the low eight bits
+		cell := Byte->New[1];
+		cell[0] := 5;
+		cell[0] := ((cell[0] xor 255) + 1) and 255;
+		CheckInt("8-bit complement of 5 is 251", cell[0]->As(Int), 251);
+		cell[0] := 0;
+		cell[0] := ((cell[0] xor 255) + 1) and 255;
+		CheckInt("8-bit complement of 0 is 0", cell[0]->As(Int), 0);
+		cell[0] := 128;
+		cell[0] := ((cell[0] xor 255) + 1) and 255;
+		CheckInt("8-bit complement of 128 is 128", cell[0]->As(Int), 128);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# the task's definition: flip every bit, then add one
+	function : Complement(n : Int) ~ Int {
+		return (n xor -1) + 1;
+	}
+
+	# all 64 bits, most significant first. Int->ToBinaryString is not used: it
+	# loops forever on a negative value (reported to the batch lead)
+	function : Bits(n : Int) ~ String {
+		out := "";
+		for(i := 63; i >= 0; i -= 1;) {
+			if(((n >>> i) and 1) = 1) {
+				out += "1";
+			}
+			else {
+				out += "0";
+			};
+		};
+		return out;
+	}
+}

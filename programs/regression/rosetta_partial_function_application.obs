@@ -1,0 +1,130 @@
+#~
+# Rosetta Code: Partial function application
+# https://rosettacode.org/wiki/Partial_function_application
+# Claimed in #1119
+#
+# fs(f, s) maps f over a sequence; Partial(fs, f) fixes the first argument and returns a function of the sequence alone, with no mention of fs's other parameter. fsf1 and fsf2 must both stay live and independent, and a partial over a capturing closure must keep that closure's own state.
+#
+# Three workarounds, each a defect found writing this: (1) the sequence is wrapped in a Seq class because a function type with an array parameter, such as (Int[]) ~ Int[], cannot be called; (2) fs is passed as a lambda because a named function whose parameters include a function type, Fs((Int) ~ Int, Seq) ~ Seq, cannot be referenced as a value; (3) a partial over a capturing closure goes through one captured holder object, because a lambda that captures two function values crashes when the second is itself a capturing closure.
+#
+# Expected values are the task's own: [0,2,4,6] [4,8,12,16] for f1 and [0,1,4,9] [4,16,36,64] for f2.
+~#
+
+class Seq {
+	@values : Int[];
+
+	New(values : Int[]) {
+		@values := values;
+	}
+
+	method : public : Values() ~ Int[] {
+		return @values;
+	}
+
+	method : public : ToString() ~ String {
+		out := "";
+		each(i : @values) {
+			if(i > 0) { out += ","; };
+			out += @values[i]->ToString();
+		};
+		return out;
+	}
+}
+
+# holds both functions so a lambda captures one object, not two function values
+class Applied {
+	@fs : ((Int) ~ Int, Seq) ~ Seq;
+	@f : (Int) ~ Int;
+
+	New(fs : ((Int) ~ Int, Seq) ~ Seq, f : (Int) ~ Int) {
+		@fs := fs;
+		@f := f;
+	}
+
+	method : public : Apply(s : Seq) ~ Seq {
+		return @fs(@f, s);
+	}
+}
+
+class RosettaPartialFunctionApplication {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaPartialFunctionApplication->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Fs(f : (Int) ~ Int, s : Seq) ~ Seq {
+		src := s->Values();
+		out := Int->New[src->Size()];
+		each(i : src) {
+			out[i] := f(src[i]);
+		};
+		return Seq->New(out);
+	}
+
+	function : F1(v : Int) ~ Int {
+		return v * 2;
+	}
+
+	function : F2(v : Int) ~ Int {
+		return v * v;
+	}
+
+	# fixes fs's first argument; the result names only the remaining one
+	function : Partial(fs : ((Int) ~ Int, Seq) ~ Seq, f : (Int) ~ Int) ~ (Seq) ~ Seq {
+		return \(Seq) ~ Seq : (s) => fs(f, s);
+	}
+
+	# the same, through one captured holder object (see the header, workaround 3)
+	function : PartialHeld(fs : ((Int) ~ Int, Seq) ~ Seq, f : (Int) ~ Int) ~ (Seq) ~ Seq {
+		held := Applied->New(fs, f);
+		return \(Seq) ~ Seq : (s) => held->Apply(s);
+	}
+
+	function : Times(k : Int) ~ (Int) ~ Int {
+		return \(Int) ~ Int : (v) => v * k;
+	}
+
+	method : Run() ~ Nil {
+		fs : ((Int) ~ Int, Seq) ~ Seq := \((Int) ~ Int, Seq) ~ Seq : (f, s) => Fs(f, s);
+
+		fsf1 := Partial(fs, F1(Int) ~ Int);
+		fsf2 := Partial(fs, F2(Int) ~ Int);
+
+		Check("fsf1(0..3)", fsf1(Seq->New([0, 1, 2, 3]))->ToString(), "0,2,4,6");
+		Check("fsf2(0..3)", fsf2(Seq->New([0, 1, 2, 3]))->ToString(), "0,1,4,9");
+		Check("fsf1(2,4,6,8)", fsf1(Seq->New([2, 4, 6, 8]))->ToString(), "4,8,12,16");
+		Check("fsf2(2,4,6,8)", fsf2(Seq->New([2, 4, 6, 8]))->ToString(), "4,16,36,64");
+
+		# the partial agrees with the full application, for any s
+		Check("fsf1(s) = fs(f1, s)", fsf1(Seq->New([7, -3]))->ToString(), Fs(F1(Int) ~ Int, Seq->New([7, -3]))->ToString());
+		Check("an empty sequence maps to empty", fsf2(Seq->New(Int->New[0]))->ToString(), "");
+
+		# partials over capturing closures keep their own captured factor
+		fsf3 := PartialHeld(fs, Times(3));
+		fsf10 := PartialHeld(fs, Times(10));
+		Check("partial over Times(3)", fsf3(Seq->New([0, 1, 2, 3]))->ToString(), "0,3,6,9");
+		Check("partial over Times(10)", fsf10(Seq->New([0, 1, 2, 3]))->ToString(), "0,10,20,30");
+		Check("Times(3) partial unchanged after Times(10)", fsf3(Seq->New([2, 4]))->ToString(), "6,12");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,98 @@
+#~
+# Rosetta Code: Variadic function
+# https://rosettacode.org/wiki/Variadic_function
+# Claimed in #1132
+#
+# Objeck has no variadic parameter syntax; the idiom is an array parameter, with an array literal at the call site for a fixed argument list and an array built at run time for a computed one. Base[] takes arguments of mixed class, each printed through Stringify; Int[] covers the primitive case. PrintEach returns the lines it would print so the test can assert them.
+#
+# Two limits found writing this: an array literal accepts only literal constants, so [x, y] with variables does not compile and a call over computed values must build its array explicitly; and F([1, 2, 3], -1) parses the -1 as subtraction from the array literal.
+#
+# Expected values are the arguments themselves, one per line.
+~#
+
+use Collection;
+
+class RosettaVariadicFunction {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaVariadicFunction->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# any number of arguments of any class, one per line
+	function : PrintEach(values : Base[]) ~ String {
+		out := "";
+		each(i : values) {
+			value := values[i];
+			if(value = Nil) {
+				out += "Nil";
+			}
+			else {
+				text := value->As(Stringify);
+				out += text->ToString();
+			};
+			out += "|";
+		};
+		return out;
+	}
+
+	# the same for primitive Int arguments
+	function : PrintEach(values : Int[]) ~ String {
+		out := "";
+		each(i : values) {
+			out += values[i]->ToString();
+			out += "|";
+		};
+		return out;
+	}
+
+	method : Run() ~ Nil {
+		# a fixed list, written at the call site
+		Check("three strings", PrintEach(["Mary", "had", "a"]), "Mary|had|a|");
+		Check("one string", PrintEach(["lamb"]), "lamb|");
+		Check("five ints", PrintEach([1, 1, 2, 3, 5]), "1|1|2|3|5|");
+		Check("no arguments", PrintEach(Base->New[0]), "");
+		Check("no Int arguments", PrintEach(Int->New[0]), "");
+
+		# a list built at run time, of mixed classes
+		args := Vector->New()<Base>;
+		args->AddBack("text");
+		args->AddBack(IntRef->New(42));
+		args->AddBack(CharRef->New('z'));
+		args->AddBack(BoolRef->New(true));
+		Check("mixed classes built at run time", PrintEach(args->ToArray()), "text|42|z|true|");
+
+		# a count decided at run time
+		n := 6;
+		squares := Int->New[n];
+		for(i := 0; i < n; i += 1;) {
+			squares[i] := i * i;
+		};
+		Check("computed Int arguments", PrintEach(squares), "0|1|4|9|16|25|");
+
+		# a Nil argument is an argument too
+		holes := Base->New[2];
+		holes[1] := "set";
+		Check("a Nil argument", PrintEach(holes), "Nil|set|");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

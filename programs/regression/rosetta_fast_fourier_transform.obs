@@ -1,0 +1,177 @@
+#~
+# Rosetta Code: Fast Fourier transform
+# https://rosettacode.org/wiki/Fast_Fourier_transform
+# Claimed in #1165
+#
+# EXTRA_LIBS: math
+#
+# Recursive radix-2 Cooley-Tukey over System.Math.Complex. Pins the task's own example -- the FFT of [1,1,1,1,0,0,0,0], whose stated output is 4, 1-2.414214i, 0, 1-0.414214i, 0, 1+0.414214i, 0, 1+2.414214i (magnitudes 4.000 2.613 0.000 1.082 0.000 1.082 0.000 2.613) -- then a 16-point real input against an O(n^2) direct DFT (a different algorithm, so a shared bug in the butterfly cannot agree with itself), a few of its bins against Python values, and an inverse round trip.
+#
+# The twiddle angle uses a pi literal, not Float->Pi(): that returns 3.1415926536, which is off by about 2e-11 and would put an error of that order into every bin.
+#
+# Expected values were taken from the task page and computed with an independent oracle (Python's cmath), not recalled.
+~#
+
+use System.Math;
+
+class RosettaFastFourierTransform {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaFastFourierTransform->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckNear(what : String, got : Complex, re : Float, im : Float, tol : Float) ~ Nil {
+		gr := got->GetReal();
+		gi := got->GetImaginary();
+		if(Float->Abs(gr - re) <= tol & Float->Abs(gi - im) <= tol) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected ({$re}, {$im}), got ({$gr}, {$gi})"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Pi() ~ Float {
+		return 3.141592653589793;
+	}
+
+	# sign is -1 for the forward transform, +1 for the (unscaled) inverse
+	function : Fft(x : Complex[], sign : Float) ~ Complex[] {
+		n := x->Size();
+		if(n <= 1) {
+			return x;
+		};
+
+		half := n / 2;
+		evens := Complex->New[half];
+		odds := Complex->New[half];
+		for(i := 0; i < half; i += 1;) {
+			evens[i] := x[2 * i];
+			odds[i] := x[2 * i + 1];
+		};
+		e := Fft(evens, sign);
+		o := Fft(odds, sign);
+
+		out := Complex->New[n];
+		for(k := 0; k < half; k += 1;) {
+			angle := sign * 2.0 * Pi() * k->As(Float) / n->As(Float);
+			t := Complex->Polar(1.0, angle)->Multiply(o[k]);
+			out[k] := e[k]->Add(t);
+			out[k + half] := e[k]->Subtract(t);
+		};
+		return out;
+	}
+
+	# the definition, summed directly: O(n^2), and no recursion to share a bug with
+	function : Dft(x : Complex[]) ~ Complex[] {
+		n := x->Size();
+		out := Complex->New[n];
+		for(k := 0; k < n; k += 1;) {
+			sum := Complex->Zero();
+			for(j := 0; j < n; j += 1;) {
+				angle := -2.0 * Pi() * (k * j)->As(Float) / n->As(Float);
+				sum := sum->Add(x[j]->Multiply(Complex->Polar(1.0, angle)));
+			};
+			out[k] := sum;
+		};
+		return out;
+	}
+
+	function : FromReals(v : Float[]) ~ Complex[] {
+		out := Complex->New[v->Size()];
+		for(i := 0; i < v->Size(); i += 1;) {
+			out[i] := Complex->New(v[i]);
+		};
+		return out;
+	}
+
+	# magnitude rounded to three places, as the task's reference output prints it
+	function : Mag3(z : Complex) ~ String {
+		return Float->ToString(z->Abs(), 3);
+	}
+
+	method : Run() ~ Nil {
+		# ---- the task's example ----
+		r := Fft(FromReals([1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]), -1.0);
+		s := Float->Sqrt(2.0);
+		# exact values: 1 -+ (1 + sqrt 2)i and 1 -+ (sqrt 2 - 1)i
+		CheckNear("bin 0 is 4", r[0], 4.0, 0.0, 1.0e-12);
+		CheckNear("bin 1 is 1 - 2.414214i", r[1], 1.0, 0.0 - (1.0 + s), 1.0e-12);
+		CheckNear("bin 2 is 0", r[2], 0.0, 0.0, 1.0e-12);
+		CheckNear("bin 3 is 1 - 0.414214i", r[3], 1.0, 0.0 - (s - 1.0), 1.0e-12);
+		CheckNear("bin 4 is 0", r[4], 0.0, 0.0, 1.0e-12);
+		CheckNear("bin 5 is 1 + 0.414214i", r[5], 1.0, s - 1.0, 1.0e-12);
+		CheckNear("bin 6 is 0", r[6], 0.0, 0.0, 1.0e-12);
+		CheckNear("bin 7 is 1 + 2.414214i", r[7], 1.0, 1.0 + s, 1.0e-12);
+
+		mags := "";
+		for(i := 0; i < r->Size(); i += 1;) {
+			if(i > 0) { mags += " "; };
+			mags += Mag3(r[i]);
+		};
+		Check("magnitudes as the task prints them", mags, "4.000 2.613 0.000 1.082 0.000 1.082 0.000 2.613");
+
+		# ---- 16 points: against the direct DFT, and a few bins against Python ----
+		v := Float->New[16];
+		for(i := 0; i < 16; i += 1;) {
+			v[i] := ((i * i) % 7)->As(Float) - 3.0;
+		};
+		x := FromReals(v);
+		f := Fft(x, -1.0);
+		d := Dft(x);
+		worst := 0.0;
+		for(k := 0; k < 16; k += 1;) {
+			e := f[k]->Subtract(d[k])->Abs();
+			if(e > worst) { worst := e; };
+		};
+		if(worst <= 1.0e-9) {
+			"PASS: 16-point FFT agrees with the direct DFT"->PrintLine();
+		}
+		else {
+			"FAIL: 16-point FFT agrees with the direct DFT: largest difference {$worst}"->PrintLine();
+			@failures += 1;
+		};
+		CheckNear("16-point bin 0", f[0], -19.0, 0.0, 1.0e-12);
+		CheckNear("16-point bin 2", f[2], -7.121320343559643, -7.121320343559643, 1.0e-12);
+		CheckNear("16-point bin 4", f[4], 0.0, -5.0, 1.0e-12);
+		CheckNear("16-point bin 5", f[5], -3.7133785139902287, 8.964888770700059, 1.0e-12);
+		CheckNear("16-point bin 8", f[8], -1.0, 0.0, 1.0e-12);
+
+		# ---- inverse: conjugate twiddles, then divide by n ----
+		back := Fft(f, 1.0);
+		worst := 0.0;
+		for(k := 0; k < 16; k += 1;) {
+			e := back[k]->Multiply(1.0 / 16.0)->Subtract(x[k])->Abs();
+			if(e > worst) { worst := e; };
+		};
+		if(worst <= 1.0e-12) {
+			"PASS: inverse FFT recovers the input"->PrintLine();
+		}
+		else {
+			"FAIL: inverse FFT recovers the input: largest difference {$worst}"->PrintLine();
+			@failures += 1;
+		};
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

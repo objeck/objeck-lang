@@ -1,0 +1,189 @@
+#~
+# Rosetta Code: Priority queue
+# https://rosettacode.org/wiki/Priority_queue
+# Claimed in #1146
+#
+# EXTRA_LIBS: gen_collect
+#
+# The library's own Collection.Heap is the priority queue: the task's five prioritised items go in out of order and must come out sorted by priority, with a user class carrying the Compare contract. A seeded mix of Insert, Pop and Pop(value) is then checked step by step against a brute-force reference list, so a sift that loses or misorders an element shows up as a count, not a crash.
+#
+# Expected values come from the task page's own data (priority 1 is the top item) and from the brute-force reference computed in the test itself.
+~#
+
+use Collection;
+
+class RosettaPriorityQueue {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaPriorityQueue->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's data, inserted in the order the page lists it
+		pq := Heap->New(Heap->Order->MIN)<PqTask>;
+		pq->Insert(PqTask->New(3, "Clear drains"));
+		pq->Insert(PqTask->New(4, "Feed cat"));
+		pq->Insert(PqTask->New(5, "Make tea"));
+		pq->Insert(PqTask->New(1, "Solve RC tasks"));
+		pq->Insert(PqTask->New(2, "Tax return"));
+		CheckInt("five items queued", pq->Size(), 5);
+		Check("peek finds the top priority", pq->Top()->GetName(), "Solve RC tasks");
+		CheckInt("peeking does not remove", pq->Size(), 5);
+
+		order := "";
+		while(<>pq->IsEmpty()) {
+			item := pq->Pop();
+			if(order->Size() > 0) { order += "|"; };
+			order += "{$item->GetPriority()} {$item->GetName()}";
+		};
+		Check("dequeued in priority order", order,
+			"1 Solve RC tasks|2 Tax return|3 Clear drains|4 Feed cat|5 Make tea");
+		CheckInt("queue is empty after draining", pq->Size(), 0);
+		empty := pq->Pop();
+		Check("popping an empty queue yields Nil", (empty = Nil)->ToString(), "true");
+
+		# a max-queue over the same items reverses the order
+		mq := Heap->New(Heap->Order->MAX)<PqTask>;
+		mq->Insert(PqTask->New(3, "Clear drains"));
+		mq->Insert(PqTask->New(4, "Feed cat"));
+		mq->Insert(PqTask->New(5, "Make tea"));
+		mq->Insert(PqTask->New(1, "Solve RC tasks"));
+		mq->Insert(PqTask->New(2, "Tax return"));
+		Check("a MAX heap pops the largest first", mq->Pop()->GetName(), "Make tea");
+		# removal of a named priority from the middle
+		Check("Pop(value) removes a buried item", mq->Pop(PqTask->New(2, ""))->ToString(), "true");
+		Check("Pop(value) of an absent priority is false", mq->Pop(PqTask->New(9, ""))->ToString(), "false");
+		rest := "";
+		while(<>mq->IsEmpty()) { rest += mq->Pop()->GetPriority()->ToString(); };
+		Check("the rest drain largest first", rest, "431");
+
+		# grows past the initial capacity of 16
+		big := Heap->New(Heap->Order->MIN)<PqTask>;
+		for(i := 0; i < 200; i += 1;) {
+			p := (i * 37) % 200;
+			big->Insert(PqTask->New(p, p->ToString()));
+		};
+		CheckInt("200 items queued", big->Size(), 200);
+		sorted := true;
+		prev := -1;
+		count := 0;
+		while(<>big->IsEmpty()) {
+			p := big->Pop()->GetPriority();
+			if(p <> prev + 1) { sorted := false; };
+			prev := p;
+			count += 1;
+		};
+		Check("200 items come out as 0..199", sorted->ToString(), "true");
+		CheckInt("all 200 came out", count, 200);
+
+		Stress();
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# seeded Insert / Pop / Pop(value) against a brute-force list
+	method : Stress() ~ Nil {
+		heap := Heap->New(Heap->Order->MIN)<IntRef>;
+		shadow := Vector->New()<IntRef>;
+		seed := 12345;
+		wrong_pop := 0;
+		wrong_remove := 0;
+		wrong_size := 0;
+		for(step := 0; step < 3000; step += 1;) {
+			seed := (seed * 1103515245 + 12345) % 2147483648;
+			op := seed % 5;
+			v := (seed / 7) % 100;
+			if(op < 3) {
+				heap->Insert(IntRef->New(v));
+				shadow->AddBack(IntRef->New(v));
+			}
+			else if(op = 3) {
+				if(shadow->Size() > 0) {
+					low := 0;
+					for(i := 1; i < shadow->Size(); i += 1;) {
+						if(shadow->Get(i)->Get() < shadow->Get(low)->Get()) { low := i; };
+					};
+					want := shadow->Get(low)->Get();
+					shadow->Remove(low);
+					if(heap->Pop()->Get() <> want) { wrong_pop += 1; };
+				};
+			}
+			else {
+				found := -1;
+				for(i := 0; i < shadow->Size(); i += 1;) {
+					if(shadow->Get(i)->Get() = v) { found := i; };
+				};
+				removed := heap->Pop(IntRef->New(v));
+				if(removed <> (found >= 0)) { wrong_remove += 1; };
+				if(found >= 0) { shadow->Remove(found); };
+			};
+			if(heap->Size() <> shadow->Size()) { wrong_size += 1; };
+		};
+		CheckInt("stress: every Pop returned the minimum", wrong_pop, 0);
+		CheckInt("stress: every Pop(value) agreed with the reference", wrong_remove, 0);
+		CheckInt("stress: sizes always agreed", wrong_size, 0);
+		CheckInt("stress: final size matches the reference", heap->Size(), shadow->Size());
+	}
+}
+
+class PqTask implements Compare {
+	@priority : Int;
+	@name : String;
+
+	New(priority : Int, name : String) {
+		@priority := priority;
+		@name := name;
+	}
+
+	method : public : Compare(rhs : System.Compare) ~ Int {
+		other_task := rhs->As(PqTask);
+		if(@priority < other_task->GetPriority()) {
+			return -1;
+		};
+		if(@priority > other_task->GetPriority()) {
+			return 1;
+		};
+		return 0;
+	}
+
+	method : public : HashID() ~ Int {
+		return @priority;
+	}
+
+	method : public : GetPriority() ~ Int {
+		return @priority;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+}
