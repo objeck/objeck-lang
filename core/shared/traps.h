@@ -295,6 +295,11 @@ namespace instructions {
     // ordinal IS the wire id -- inserting anywhere else silently
     // renumbers every trap below it.
     HTTP2_REQUEST_HDRS,
-    HTTP3_REQUEST_HDRS
+    HTTP3_REQUEST_HDRS,
+    // Float->ToString(v, precision) as printf's %.*f, exact at any
+    // magnitude (#1173)
+    FLOAT_TO_STR_PREC,
+    // a whole line, however long, from a FileReader (#1180)
+    FILE_IN_LINE
   };
 }

@@ -421,6 +421,8 @@ enum ScannerTokenType {
   HTTP3_REQUEST,
   HTTP3_REQUEST_HDRS,
   HTTP3_CLOSE,
+  FLOAT_TO_STR_PREC,
+  FILE_IN_LINE,
   // serialization
   SERL_CHAR,
   SERL_INT,
