@@ -1,0 +1,167 @@
+#~
+Regression: leaving a critical() block by return, break or continue never
+released its mutex (#1117).
+
+Only the fall-through exit of a critical section emitted CRITICAL_END, so
+
+  critical(@m) { return @value; };
+
+left @m held. On POSIX the mutex is not recursive, so the very next call
+deadlocked; on Windows a CRITICAL_SECTION is re-entrant, so the same thread
+carried on and every OTHER thread then blocked on it forever. The emitter now
+releases every section a jump leaves, innermost first: `return` all of them,
+`break`/`continue` those opened inside the loop they leave.
+
+The last check takes the lock from a second thread after the main thread has
+returned out of critical sections many times. With the old compiler that
+thread (Windows) or the second call (POSIX) never comes back.
+~#
+
+use System.Concurrency;
+
+class Guarded {
+	@m : ThreadMutex;
+	@inner : ThreadMutex;
+	@value : Int;
+
+	New() {
+		@m := ThreadMutex->New("m");
+		@inner := ThreadMutex->New("inner");
+		@value := 41;
+	}
+
+	method : public : GetMutex() ~ ThreadMutex {
+		return @m;
+	}
+
+	# return from inside: the value must survive the unlock
+	method : public : Read() ~ Int {
+		critical(@m) {
+			return @value + 1;
+		};
+		return -1;
+	}
+
+	# return from two nested sections
+	method : public : ReadNested() ~ Int {
+		critical(@m) {
+			critical(@inner) {
+				return @value;
+			};
+		};
+		return -1;
+	}
+
+	# an early return on one path, fall-through on the other
+	method : public : Maybe(early : Bool) ~ Int {
+		critical(@m) {
+			if(early) {
+				return 1;
+			};
+		};
+		return 2;
+	}
+
+	# break and continue out of a critical section inside a loop
+	method : public : Loop() ~ Int {
+		count := 0;
+		for(i := 0; i < 10; i += 1;) {
+			critical(@m) {
+				if(i % 2 = 0) {
+					continue;
+				};
+				if(i = 7) {
+					break;
+				};
+				count += 1;
+			};
+		};
+		return count;
+	}
+
+	# a critical section OUTSIDE the loop stays held across break
+	method : public : LoopInside() ~ Int {
+		n := 0;
+		critical(@m) {
+			while(true) {
+				n += 1;
+				if(n = 3) {
+					break;
+				};
+			};
+		};
+		return n;
+	}
+}
+
+class Taker from Thread {
+	@g : Guarded;
+	@took : Bool;
+
+	New(g : Guarded) {
+		Parent("taker");
+		@g := g;
+		@took := false;
+	}
+
+	method : public : Took() ~ Bool {
+		return @took;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		m := @g->GetMutex();
+		critical(m) {
+			@took := true;
+		};
+	}
+}
+
+class CriticalExitUnlocks {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		g := Guarded->New();
+
+		# repeated: on POSIX the second call used to deadlock
+		total := 0;
+		for(i := 0; i < 50; i += 1;) {
+			total += g->Read();
+		};
+		CheckInt("return inside critical, 50 times", total, 50 * 42);
+		CheckInt("return from nested critical sections", g->ReadNested(), 41);
+		CheckInt("early return path", g->Maybe(true), 1);
+		CheckInt("fall-through path", g->Maybe(false), 2);
+		CheckInt("break and continue inside critical, in a loop (odd i before 7)", g->Loop(), 3);
+		CheckInt("break inside a loop inside critical", g->LoopInside(), 3);
+		CheckInt("and again, after every exit", g->Loop() + g->Read(), 3 + 42);
+
+		# another thread can now take the lock
+		taker := Taker->New(g);
+		taker->Execute(Nil);
+		taker->Join();
+		CheckInt("a second thread takes the mutex", taker->Took() ? 1 : 0, 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		CriticalExitUnlocks->New()->Run();
+	}
+}
