@@ -1,0 +1,15 @@
+# EXPECT_RUNTIME_ERROR
+#~
+A constant Float division by zero must raise at every optimization level
+(#1178). The VM raises "Divide by zero" for a Float divisor as it does for an
+Int one, but the constant folder computed 6.0 / 0.0 as inf, so this raised at
+-opt s0 and printed inf at s1 and above. The folder now leaves a zero divisor
+to the VM, as it already did for Int.
+~#
+
+class FloatDivZeroFolded {
+	function : Main(args : String[]) ~ Nil {
+		x := 1.0 + 6.0 / 0.0;
+		x->PrintLine();
+	}
+}

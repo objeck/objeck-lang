@@ -1437,7 +1437,7 @@ bool ItermediateOptimizer::IsEffectFreeRange(size_t start_pos, size_t end_pos, s
     case ADD_FLOAT:
     case SUB_FLOAT:
     case MUL_FLOAT:
-    case DIV_FLOAT:
+    // not DIV_FLOAT: a Float division by zero raises, as DIV_INT does (#1178)
     case I2F:
     case F2I:
     case SWAP_INT:
@@ -1899,6 +1899,19 @@ void ItermediateOptimizer::CalculateFloatFold(IntermediateInstruction* instr, st
       break;
     
     case DIV_FLOAT: {
+      // as DIV_INT: the VM raises "Divide by zero" for a Float divisor too, so
+      // a zero divisor is left to trap at runtime. Folding it to inf made
+      // `1.0 / 0.0` raise at -opt s0 and print inf at s1 and above (#1178).
+      if(right->GetOperand4() == 0.0) {
+        working_stack.push_front(right);
+        working_stack.push_front(left);
+        while(!working_stack.empty()) {
+          outputs->AddInstruction(working_stack.back());
+          working_stack.pop_back();
+        }
+        outputs->AddInstruction(instr);
+        return;
+      }
       FLOAT_VALUE value = left->GetOperand4() / right->GetOperand4();
       working_stack.push_front(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_LIT, value));
     }
@@ -2662,16 +2675,16 @@ IntermediateBlock* ItermediateOptimizer::LICM(IntermediateBlock* input)
       // DIV_INT / MOD_INT can TRAP (divide by zero). Track the stack like other
       // binary ops but mark the statement unsafe so it is never hoisted out of a
       // loop that may execute zero times — doing so would turn a never-evaluated
-      // division into an always-evaluated div-by-zero. (Float division yields
-      // inf/nan instead of trapping, so it stays hoistable above.)
-      case DIV_INT:      case MOD_INT:
+      // division into an always-evaluated div-by-zero. Float division traps
+      // the same way -- it does not yield inf -- so it is unsafe too (#1178).
+      case DIV_INT:      case MOD_INT:      case DIV_FLOAT:
         if(stack_depth < 2) { reset_stmt(i + 1); break; }
         stack_depth--;
         stmt_idx.push_back(i);
         stmt_safe = false;
         break;
 
-      case ADD_FLOAT:    case SUB_FLOAT:    case MUL_FLOAT:    case DIV_FLOAT:
+      case ADD_FLOAT:    case SUB_FLOAT:    case MUL_FLOAT:
       case EQL_FLOAT:    case NEQL_FLOAT:   case LES_FLOAT:    case GTR_FLOAT:
       case LES_EQL_FLOAT: case GTR_EQL_FLOAT:
         if(stack_depth < 2) { reset_stmt(i + 1); break; }

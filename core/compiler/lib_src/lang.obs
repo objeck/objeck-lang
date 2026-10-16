@@ -509,11 +509,14 @@ bundle System {
 		~#
 		function : native : ToBinaryString(v : Byte) ~ String {
 			out := "";
+			# a scalar Byte is not narrowed and can hold -1; its low eight bits
+			# are the byte, and >> on a negative value never reached 0
+			b := v->As(Int) and 255;
 			do {
-				out->Append(v and 1 = 0 ? '0' : '1');
-				v := v >> 1;
+				out->Append(b and 1 = 0 ? '0' : '1');
+				b := b >> 1;
 			} 
-			while(v <> 0);
+			while(b <> 0);
 
 			return out->Reverse();
 		}
@@ -1690,7 +1693,8 @@ bundle System {
 			out := "";
 			do {
 				out->Append(v and 1 = 0 ? '0' : '1');
-				v := v >> 1;
+				# >>>: >> sign-fills, so a negative value stuck at -1 forever
+				v := v >>> 1;
 			} 
 			while(v <> 0);
 
@@ -2117,7 +2121,7 @@ bundle System {
 		```
 		~#
 		function : Pi() ~ Float {
-			return 3.1415926536;
+			return 3.141592653589793;
 		}
 
 		function : Size(v : Float) ~ Float {
@@ -2132,7 +2136,7 @@ bundle System {
 		```
 		~#
 		function : E() ~ Float {
-			return 2.7182818285;
+			return 2.718281828459045;
 		}
 
 		#~
@@ -2258,8 +2262,9 @@ bundle System {
 		```
 		~#
 		function : Abs(v : Float) ~ Float {
-			if(v < 0.0) {
-				v *= -1.0;
+			# <= with 0.0 - v: -0.0 is not < 0.0, and -1.0 * -0.0 stays -0.0
+			if(v <= 0.0) {
+				v := 0.0 - v;
 			};
 
 			return v;
