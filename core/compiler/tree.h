@@ -2897,6 +2897,7 @@ namespace frontend {
     int mid_line_num;
     int mid_line_pos;
     bool is_try_intrinsic;
+    bool is_try_guarded;
     bool is_otherwise_intrinsic;
     // Subscript applied to the RESULT of this call, as in 'GetItems()[0]'.
     // Distinct from Variable::indices, which subscripts a named variable.
@@ -2930,7 +2931,7 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num,
@@ -2955,7 +2956,7 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num,
@@ -2978,7 +2979,7 @@ namespace frontend {
       is_rouge_return = instructions::NIL_TYPE;
       func_rtrn = nullptr;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     MethodCall(const std::wstring& file_name, const int line_num, const int line_pos, const int ml, const int mp,
@@ -3004,13 +3005,17 @@ namespace frontend {
       func_rtrn = nullptr;
       is_rouge_return = instructions::NIL_TYPE;
       anonymous_klass = nullptr;
-      is_try_intrinsic = is_otherwise_intrinsic = false;
+      is_try_intrinsic = is_otherwise_intrinsic = is_try_guarded = false;
     }
 
     ~MethodCall() {
     }
 
   public:
+    // parse time: this call is inside a Try() region (a '?->' earlier in its
+    // chain), so a later '?->' adds no second Try()
+    bool IsTryGuarded() const { return is_try_guarded; }
+    void SetTryGuarded(bool v) { is_try_guarded = v; }
     bool IsTryIntrinsic() const { return is_try_intrinsic; }
     void SetTryIntrinsic(bool v) { is_try_intrinsic = v; }
 
