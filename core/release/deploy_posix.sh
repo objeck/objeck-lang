@@ -101,6 +101,17 @@ fi
 make clean; make -j3 || ui_fail
 cp obi ../release/deploy/bin
 
+# ui_fail carries on so verify_native_libs.sh can judge the native libraries,
+# but nothing later checks the core tools. A failed obd build surfaced only in
+# CI's dependency gate, as "runtime_deps.json lists libreadline.so.8 but nothing
+# links it" -- obd being the one binary that links readline. Name it instead.
+for _tool in obc obr obd obi; do
+	if [ ! -f ../release/deploy/bin/$_tool ]; then
+		echo "ERROR: $_tool was not built or copied - aborting deploy"
+		exit 1
+	fi
+done
+
 ui_step "library: odbc"
 # build libraries
 cd ../lib/odbc
