@@ -1609,7 +1609,88 @@ size_t* TrapProcessor::CreateStringObject(const std::wstring &value_str, StackPr
 
 /********************************
  * Date/time calculations
+ *
+ * A GMT date is calendar arithmetic in UTC, never mktime/gmtime. mktime reads
+ * its fields as LOCAL time and applies the machine's DST rules, so a GMT date
+ * built in July on a DST-observing machine came back an hour off, and its Unix
+ * time was off by the zone offset (#1179); on Windows it also rejects years
+ * before 1970 or after 3000, and gmtime_s rejects a negative Unix time. The
+ * helpers below are the proleptic Gregorian calendar (H. Hinnant's
+ * days_from_civil), exact for any year.
  ********************************/
+static INT64_VALUE FloorDiv(INT64_VALUE a, INT64_VALUE b)
+{
+  INT64_VALUE q = a / b;
+  if((a % b != 0) && ((a < 0) != (b < 0))) {
+    --q;
+  }
+  return q;
+}
+
+static INT64_VALUE DaysFromCivil(INT64_VALUE y, INT64_VALUE m, INT64_VALUE d)
+{
+  y -= m <= 2 ? 1 : 0;
+  const INT64_VALUE era = FloorDiv(y, 400);
+  const INT64_VALUE yoe = y - era * 400;
+  const INT64_VALUE doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+  const INT64_VALUE doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return era * 146097 + doe - 719468;
+}
+
+static void CivilFromDays(INT64_VALUE z, INT64_VALUE& y, INT64_VALUE& m, INT64_VALUE& d)
+{
+  z += 719468;
+  const INT64_VALUE era = FloorDiv(z, 146097);
+  const INT64_VALUE doe = z - era * 146097;
+  const INT64_VALUE yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+  const INT64_VALUE doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+  const INT64_VALUE mp = (5 * doy + 2) / 153;
+  d = doy - (153 * mp + 2) / 5 + 1;
+  m = mp < 10 ? mp + 3 : mp - 9;
+  y = yoe + era * 400 + (m <= 2 ? 1 : 0);
+}
+
+// Seconds since 1970-01-01T00:00:00Z. Out-of-range fields roll over the way
+// mktime's do: month 13 is January of the next year, day 32 the next month.
+static INT64_VALUE UtcSeconds(INT64_VALUE year, INT64_VALUE month, INT64_VALUE day,
+                              INT64_VALUE hours, INT64_VALUE mins, INT64_VALUE secs)
+{
+  const INT64_VALUE y = year + FloorDiv(month - 1, 12);
+  const INT64_VALUE m = (month - 1) - FloorDiv(month - 1, 12) * 12 + 1;
+  return (DaysFromCivil(y, m, 1) + day - 1) * 86400 + hours * 3600 + mins * 60 + secs;
+}
+
+// Day of the week, 0 = Sunday, for days since 1970-01-01 (a Thursday)
+static INT64_VALUE WeekdayFromDays(INT64_VALUE days)
+{
+  const INT64_VALUE w = (days + 4) % 7;
+  return w < 0 ? w + 7 : w;
+}
+
+// Fills a Date instance from UTC seconds since the epoch
+static void SetUtcInstance(size_t* instance, INT64_VALUE seconds)
+{
+  const INT64_VALUE days = FloorDiv(seconds, 86400);
+  const INT64_VALUE rem = seconds - days * 86400;
+  INT64_VALUE y, m, d;
+  CivilFromDays(days, y, m, d);
+  instance[0] = (size_t)d;                    // day
+  instance[1] = (size_t)m;                    // month
+  instance[2] = (size_t)y;                    // year
+  instance[3] = (size_t)(rem / 3600);         // hours
+  instance[4] = (size_t)((rem % 3600) / 60);  // mins
+  instance[5] = (size_t)(rem % 60);           // secs
+  instance[6] = 0;                            // no savings time in UTC
+  instance[7] = (size_t)WeekdayFromDays(days);// day of week
+  instance[8] = true;                         // is GMT
+}
+
+static INT64_VALUE UtcSecondsOf(size_t* instance)
+{
+  return UtcSeconds((INT64_VALUE)instance[2], (INT64_VALUE)instance[1], (INT64_VALUE)instance[0],
+                    (INT64_VALUE)instance[3], (INT64_VALUE)instance[4], (INT64_VALUE)instance[5]);
+}
+
 void TrapProcessor::ProcessTimerStart(size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -1667,19 +1748,35 @@ void TrapProcessor::ProcessSetTime1(size_t* &op_stack, size_t* &stack_pos)
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
-    struct tm curr_time;
-    memset(&curr_time, 0, sizeof(struct tm));
-
-    curr_time.tm_mday = static_cast<int>(day);
-    curr_time.tm_mon = static_cast<int>(month - 1);
-    curr_time.tm_year = static_cast<int>(year - 1900);
-    mktime(&curr_time);
+    // A date's day of the week does not depend on the zone, so the calendar
+    // gives it for both; this never set it, and every such Date reported a
+    // Sunday (#1179).
+    const INT64_VALUE days = FloorDiv(UtcSeconds(year, month, day, 0, 0, 0), 86400);
+    INT64_VALUE y, m, d;
+    CivilFromDays(days, y, m, d);
 
     // set instance values
-    instance[0] = curr_time.tm_mday;          // day
-    instance[1] = curr_time.tm_mon + 1;       // month
-    instance[2] = curr_time.tm_year + 1900;   // year
+    instance[0] = (size_t)d;                  // day
+    instance[1] = (size_t)m;                  // month
+    instance[2] = (size_t)y;                  // year
+    instance[3] = 0;                          // hours
+    instance[4] = 0;                          // mins
+    instance[5] = 0;                          // secs
+    instance[7] = (size_t)WeekdayFromDays(days); // day of week
     instance[8] = is_gmt;                     // is GMT
+
+    instance[6] = 0;                          // savings time
+    if(!is_gmt) {
+      struct tm curr_time;
+      memset(&curr_time, 0, sizeof(struct tm));
+      curr_time.tm_mday = static_cast<int>(d);
+      curr_time.tm_mon = static_cast<int>(m - 1);
+      curr_time.tm_year = static_cast<int>(y - 1900);
+      curr_time.tm_isdst = -1;
+      if(mktime(&curr_time) != (time_t)-1) {
+        instance[6] = curr_time.tm_isdst > 0 ? 1 : 0;
+      }
+    }
   }
 }
 
@@ -1699,19 +1796,35 @@ void TrapProcessor::ProcessSetTime2(size_t* &op_stack, size_t* &stack_pos)
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
+    // UTC by the calendar: through mktime a GMT 12:00 in July came back 13:00
+    // on a DST-observing machine, and Clone() (which builds through here) was
+    // not equal to its original (#1179)
+    if(is_gmt) {
+      SetUtcInstance(instance, UtcSeconds(year, month, day, hours, mins, secs));
+      return;
+    }
+
     struct tm curr_time;
     memset(&curr_time, 0, sizeof(struct tm));
 
-    // update time
+    // update time; the C library decides whether DST is in effect
     curr_time.tm_year = static_cast<int>(year - 1900);
     curr_time.tm_mon = static_cast<int>(month - 1);
     curr_time.tm_mday = static_cast<int>(day);
     curr_time.tm_hour = static_cast<int>(hours);
     curr_time.tm_min = static_cast<int>(mins);
     curr_time.tm_sec = static_cast<int>(secs);
-    mktime(&curr_time);
+    curr_time.tm_isdst = -1;
+    if(mktime(&curr_time) == (time_t)-1) {
+      // out of the C library's range (Windows: before 1970 or after 3000):
+      // keep the calendar date and weekday rather than garbage
+      SetUtcInstance(instance, UtcSeconds(year, month, day, hours, mins, secs));
+      instance[8] = false;
+      return;
+    }
 
     // set instance values
+    instance[6] = curr_time.tm_isdst > 0 ? 1 : 0; // savings time
     instance[0] = curr_time.tm_mday;          // day
     instance[1] = curr_time.tm_mon + 1;       // month
     instance[2] = curr_time.tm_year + 1900;   // year
@@ -1756,8 +1869,16 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &s
         break;
     }
 
+    // a GMT date moves by the calendar, with no zone and no DST
+    const bool is_gmt = instance[8];
+    if(is_gmt) {
+      SetUtcInstance(instance, UtcSecondsOf(instance) + offset);
+      return;
+    }
+
     // create time structure
     struct tm set_time;
+    memset(&set_time, 0, sizeof(struct tm));
     set_time.tm_mday = (int)instance[0];          // day
     set_time.tm_mon = (int)instance[1] - 1;       // month
     set_time.tm_year = (int)instance[2] - 1900;   // year
@@ -1768,16 +1889,14 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &s
 
     // calculate difference
     time_t raw_time = mktime(&set_time);
-    const bool is_gmt = instance[8];
-    if(is_gmt) {
-#ifdef _WIN32
-      long timezone;
-      _get_timezone(&timezone);
-#endif
-      raw_time -= timezone;
+    if(raw_time == (time_t)-1) {
+      // out of the C library's range: move by the calendar instead
+      SetUtcInstance(instance, UtcSecondsOf(instance) + offset);
+      instance[8] = false;
+      return;
     }
     raw_time += offset;
-  
+
     struct tm* curr_time;
     const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
@@ -4009,8 +4128,16 @@ bool TrapProcessor::DateToUnixTime(StackProgram* program, size_t* inst, size_t*&
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
+    // a GMT date's Unix time is the calendar's; mktime read it as local time and
+    // answered off by the zone offset (#1179)
+    if(instance[8]) {
+      PushInt((size_t)UtcSecondsOf(instance), op_stack, stack_pos);
+      return true;
+    }
+
     // create time structure
     struct tm set_time;
+    memset(&set_time, 0, sizeof(struct tm));
     set_time.tm_mday = (int)instance[0];          // day
     set_time.tm_mon = (int)instance[1] - 1;       // month
     set_time.tm_year = (int)instance[2] - 1900;   // year
@@ -4036,34 +4163,9 @@ bool TrapProcessor::DateFromUnixTime(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
-#ifdef _WIN32
-    struct tm set_time;
-    if(gmtime_s(&set_time, &value)) {
-      std::wcerr << L">>> Unable to get GMT time <<<" << std::endl;
-      return false;
-    }
-
-    instance[0] = set_time.tm_mday;          // day
-    instance[1] = set_time.tm_mon + 1;       // month
-    instance[2] = set_time.tm_year + 1900;   // year
-    instance[3] = set_time.tm_hour;          // hours
-    instance[4] = set_time.tm_min;           // mins
-    instance[5] = set_time.tm_sec;           // secs
-    instance[6] = set_time.tm_isdst;         // savings time
-    instance[7] = set_time.tm_wday;          // day of week
-    instance[8] = true;                      // is GMT
-#else
-    struct tm* set_time = gmtime(&value);
-    instance[0] = set_time->tm_mday;          // day
-    instance[1] = set_time->tm_mon + 1;       // month
-    instance[2] = set_time->tm_year + 1900;   // year
-    instance[3] = set_time->tm_hour;          // hours
-    instance[4] = set_time->tm_min;           // mins
-    instance[5] = set_time->tm_sec;           // secs
-    instance[6] = set_time->tm_isdst;         // savings time
-    instance[7] = set_time->tm_wday;          // day of week
-    instance[8] = true;                       // is GMT
-#endif
+    // by the calendar: gmtime_s rejects a negative time, which aborted the VM
+    // with ">>> Unable to get GMT time <<<" for any date before 1970 (#1179)
+    SetUtcInstance(instance, (INT64_VALUE)value);
   }
 
   return true;
