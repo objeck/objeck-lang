@@ -1144,14 +1144,17 @@ jobs:
   # ============================================
   # Installs the .pkg this run built on clean runners, the oldest and newest
   # macOS available, with Homebrew moved aside. A failure fails the run, so
-  # release-publish.yml does not publish it.
+  # release-publish.yml does not publish it. GitHub retires the macos-14 image
+  # on 2026-11-02 (with failing brownouts before then), so the oldest hosted
+  # image is now macos-15. The package still declares macOS 13.3 as its
+  # minimum (deploy_macos_arm64.sh); 13 and 14 are no longer tested here.
   install-test-macos:
     name: macOS install test (${{ matrix.os }})
     needs: build
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-26]
+        os: [macos-15, macos-26]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
 
