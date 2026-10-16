@@ -689,6 +689,7 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
   
   current_method = method;
   current_table = current_method->GetSymbolTable();
+  active_criticals.clear();
 
   // gather information
   IntermediateDeclarations* entries = new IntermediateDeclarations;
@@ -1224,6 +1225,7 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
           current_method->GetMethodType() == NEW_PRIVATE_METHOD)) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INST_MEM));
     }
+    EmitCriticalUnlocks(0, statement);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, RTRN));
     new_char_str_count = 0;
   }
@@ -1251,12 +1253,14 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 
   case BREAK_STMT: {
     const std::pair<int, int> break_continue_label = break_labels.top();
+    EmitCriticalUnlocks(break_critical_depth.top(), statement);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, JMP, break_continue_label.first, -1));
   }
     break;
 
   case CONTINUE_STMT: {
     const std::pair<int, int> break_continue_label = break_labels.top();
+    EmitCriticalUnlocks(break_critical_depth.top(), statement);
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, JMP, break_continue_label.second, -1));
   }
     break;
@@ -3522,6 +3526,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   const long unconditional_continue = ++unconditional_label;
   const long break_label = ++unconditional_label;
   break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+  break_critical_depth.push(active_criticals.size());
   
   // conditional expression
   const long conditional = ++conditional_label;
@@ -3563,6 +3568,7 @@ void IntermediateEmitter::EmitDoWhile(DoWhile* do_while_stmt)
   
   std::pair<int, int> break_continue_label = break_labels.top();
   break_labels.pop();
+  break_critical_depth.pop();
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(do_while_stmt, cur_line_num, LBL, (long)break_continue_label.first));
 }
 
@@ -3579,6 +3585,7 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   
   const int break_label = ++conditional_label;
   break_labels.push(std::pair<int, int>(break_label, unconditional));
+  break_critical_depth.push(active_criticals.size());
   EmitBranch(while_stmt->GetExpression(), break_label, false);
   
 
@@ -3596,7 +3603,8 @@ void IntermediateEmitter::EmitWhile(While* while_stmt)
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, JMP, unconditional, -1));
   
   std::pair<int, int> break_continue_label = break_labels.top();
-  break_labels.pop();  
+  break_labels.pop();
+  break_critical_depth.pop();  
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(while_stmt, cur_line_num, LBL, (long)break_continue_label.first));
 }
 
@@ -3666,6 +3674,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       const long break_label = ++conditional_label;
       const long unconditional_continue = ++unconditional_label;
       break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+      break_critical_depth.push(active_criticals.size());
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
 
       // 3
@@ -3688,6 +3697,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
       std::pair<int, int> break_continue_label = break_labels.top();
       break_labels.pop();
+      break_critical_depth.pop();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
     }
     // 'CharRange' and 'IntRange'
@@ -3712,6 +3722,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       const long break_label = ++conditional_label;
       const long unconditional_continue = ++unconditional_label;
       break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+      break_critical_depth.push(active_criticals.size());
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, break_label, false));
 
       // 3
@@ -3734,6 +3745,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, JMP, unconditional, -1));
       std::pair<int, int> break_continue_label = break_labels.top();
       break_labels.pop();
+      break_critical_depth.pop();
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
     }
 #ifdef _DEBUG
@@ -3755,6 +3767,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
     const long break_label = ++conditional_label;
     const long unconditional_continue = ++unconditional_label;
     break_labels.push(std::pair<int, int>(break_label, unconditional_continue));
+    break_critical_depth.push(active_criticals.size());
     EmitBranch(for_stmt->GetExpression(), break_label, false);
 
     // statements
@@ -3776,6 +3789,7 @@ void IntermediateEmitter::EmitFor(For* for_stmt)
 
     std::pair<int, int> break_continue_label = break_labels.top();
     break_labels.pop();
+    break_critical_depth.pop();
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(for_stmt, cur_line_num, LBL, (long)break_continue_label.first));
   }
 }
@@ -3848,12 +3862,32 @@ void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
   EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(critical_stmt, cur_line_num, CRITICAL_START));
 
+  active_criticals.push_back(critical_stmt);
   for(size_t i = 0; i < statements.size(); ++i) {
     EmitStatement(statements[i]);
   }
+  active_criticals.pop_back();
 
   EmitVariable(critical_stmt->GetVariable());
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(critical_stmt, cur_line_num, CRITICAL_END));
+}
+
+/****************************
+ * Releases the critical() sections a jump leaves, innermost first. Only the
+ * fall-through exit of a critical section emitted CRITICAL_END, so `return`
+ * inside one never unlocked: the next caller deadlocked on POSIX's
+ * non-recursive mutex, and on Windows the re-entrant CRITICAL_SECTION stayed
+ * held against every other thread (#1117). `break` and `continue` leave the
+ * sections opened inside their loop. The mutex is only loaded and popped, so a
+ * return value already on the stack is untouched.
+ ****************************/
+void IntermediateEmitter::EmitCriticalUnlocks(size_t keep_depth, Statement* statement)
+{
+  for(size_t i = active_criticals.size(); i > keep_depth; --i) {
+    CriticalSection* critical_stmt = active_criticals[i - 1];
+    EmitVariable(critical_stmt->GetVariable());
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, CRITICAL_END));
+  }
 }
 
 /****************************
