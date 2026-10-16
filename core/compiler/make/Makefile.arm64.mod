@@ -6,7 +6,7 @@ AR=ar
 LIB=compiler.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
-	$(AR) -cvq $(LIB) $(SRC)
+	rm -f $(LIB).tmp; $(AR) -cvq $(LIB).tmp $(SRC) && mv -f $(LIB).tmp $(LIB)
 	cp $(LIB) ../module
 
 % : %.mod

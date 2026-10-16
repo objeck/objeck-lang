@@ -14,7 +14,7 @@ AR=ar
 LIB=module.a
 
 $(LIB): $(SRC) $(OBJ_LIBS)
-	$(AR) -cvq $(LIB) $(SRC)
+	rm -f $(LIB).tmp; $(AR) -cvq $(LIB).tmp $(SRC) && mv -f $(LIB).tmp $(LIB)
 
 ../compiler/compiler.a:
 	cd $(COMPILER_PATH); $(MAKE) -f make/Makefile.arm64.mod

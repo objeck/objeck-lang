@@ -13,7 +13,7 @@ SRC=logger.o sys.o
 LIB=../compiler/sys.a
 
 $(LIB): $(SRC)
-	$(AR) -cvq $(LIB) $(SRC)
+	rm -f $(LIB).tmp; $(AR) -cvq $(LIB).tmp $(SRC) && mv -f $(LIB).tmp $(LIB)
 
 %.o: %.cpp
 	$(CXX) $(ARGS) -c $< 
