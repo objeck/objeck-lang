@@ -24,9 +24,10 @@ class StringSplitOpsTest {
             if(<>parts2[3]->Equals("d")) { pass := false; "  FAIL: char split[3]"->PrintLine(); };
         };
 
-        # Split with no delimiter present → empty array
+        # Split with no delimiter present → the whole string, one field (#1177;
+        # it used to be an empty array)
         parts3 := "hello"->Split(",");
-        if(parts3->Size() <> 0) {
+        if(parts3->Size() <> 1 | <>parts3[0]->Equals("hello")) {
             pass := false;
             "  FAIL: no-match split size = {$parts3->Size()}"->PrintLine();
         };

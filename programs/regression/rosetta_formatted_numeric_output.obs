@@ -3,7 +3,7 @@
 # https://rosettacode.org/wiki/Formatted_numeric_output
 # Claimed in #1145
 #
-# 7.125 as the fixed-width, zero-filled string 00007.125, through the string-interpolation format specifier ("{$x:09.3}") and through the library calls it desugars to (Float->ToString with a precision, String->PadTo). Covers widths, precisions, left justification and integers. A NEGATIVE value with a zero fill is formatted by hand: the specifier zero-pads in front of the sign ("000-7.125"), where printf and Python put the zeros after it ("-0007.125"). Thousands grouping of a negative is likewise done by hand, because Int->ToCommaString(-123456) gives "-,123,456".
+# 7.125 as the fixed-width, zero-filled string 00007.125, through the string-interpolation format specifier ("{$x:09.3}") and through the library calls it desugars to (Float->ToString with a precision, String->PadTo). Covers widths, precisions, left justification and integers. A NEGATIVE value with a zero fill puts the zeros after the sign ("-0007.125"), as printf and Python do, and Int->ToCommaString groups a negative's digits only ("-123,456"); both were wrong until #1177.
 #
 # Expected values come from Python's format() with the same specifiers, not from what Objeck printed.
 ~#
@@ -52,45 +52,23 @@ class RosettaFormattedNumericOutput {
 		Check("integer 06", "{$n:06}", "000042");
 
 		# negatives with a zero fill: the sign goes first, the zeros after it
-		Check("negative float 09.3", ZeroFill(Float->ToString(-7.125, 3), 9), "-0007.125");
-		Check("negative float 06.1", ZeroFill(Float->ToString(-0.5, 1), 6), "-000.5");
-		Check("negative integer 06", ZeroFill(Int->ToString(-42), 6), "-00042");
+		Check("negative float 09.3", Float->ToString(-7.125, 3)->PadTo(9, '0', true), "-0007.125");
+		Check("negative float 06.1", Float->ToString(-0.5, 1)->PadTo(6, '0', true), "-000.5");
+		Check("negative integer 06", Int->ToString(-42)->PadTo(6, '0', true), "-00042");
+		neg := -7.125;
+		Check("negative float through the specifier", "{$neg:09.3}", "-0007.125");
 		# a value already wider than the field is not cut
-		Check("wider than the field", ZeroFill(Float->ToString(-123456.789, 2), 6), "-123456.79");
+		Check("wider than the field", Float->ToString(-123456.789, 2)->PadTo(6, '0', true), "-123456.79");
 
 		# thousands grouping
 		Check("comma grouping", Int->ToCommaString(1234567), "1,234,567");
 		Check("comma grouping, three digits", Int->ToCommaString(999), "999");
-		Check("comma grouping, negative", Grouped(-123456), "-123,456");
-		Check("comma grouping, negative five digits", Grouped(-12345), "-12,345");
+		Check("comma grouping, negative", Int->ToCommaString(-123456), "-123,456");
+		Check("comma grouping, negative five digits", Int->ToCommaString(-12345), "-12,345");
 
 		if(@failures > 0) {
 			"{$@failures} failure(s)"->PrintLine();
 			Runtime->Exit(1);
 		};
-	}
-
-	# Zero-fill to width, keeping a leading '-' in front of the zeros. Written by
-	# hand because "{$v:0N}" and PadTo(N, '0', true) both put the zeros in front
-	# of the sign, giving "000-7.125" for -7.125 at width 9.
-	function : ZeroFill(s : String, width : Int) ~ String {
-		if(s->StartsWith('-')) {
-			digits := s->SubString(1, s->Size() - 1);
-			out := "-";
-			out->Append(digits->PadTo(width - 1, '0', true));
-			return out;
-		};
-		return s->PadTo(width, '0', true);
-	}
-
-	# Int->ToCommaString counts the '-' as a digit, so -123456 comes back as
-	# "-,123,456"; group the magnitude and put the sign back.
-	function : Grouped(v : Int) ~ String {
-		if(v < 0) {
-			out := "-";
-			out->Append(Int->ToCommaString(v * -1));
-			return out;
-		};
-		return Int->ToCommaString(v);
 	}
 }
