@@ -1,0 +1,75 @@
+#~
+# Rosetta Code: Convert seconds to compound duration
+# https://rosettacode.org/wiki/Convert_seconds_to_compound_duration
+# Claimed in #1156
+#
+# A count of seconds broken into weeks, days, hours, minutes and seconds, largest unit first, with zero quantities left out entirely. Pins the three cases the task requires, every single-unit boundary, and the largest Int, whose week count needs the full 64 bits.
+#
+# Expected values: the first three are the task page's own table; the rest were computed with an independent oracle (Python divmod), not recalled.
+~#
+
+class RosettaConvertSecondsToCompoundDuration {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaConvertSecondsToCompoundDuration->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's three test cases
+		Check("7259", Compound(7259), "2 hr, 59 sec");
+		Check("86400", Compound(86400), "1 d");
+		Check("6000000", Compound(6000000), "9 wk, 6 d, 10 hr, 40 min");
+
+		# each unit alone, and the carry from one into the next
+		Check("1", Compound(1), "1 sec");
+		Check("59", Compound(59), "59 sec");
+		Check("60", Compound(60), "1 min");
+		Check("3600", Compound(3600), "1 hr");
+		Check("604800", Compound(604800), "1 wk");
+		Check("604801", Compound(604801), "1 wk, 1 sec");
+		Check("1000000000", Compound(1000000000), "1653 wk, 3 d, 1 hr, 46 min, 40 sec");
+		Check("largest Int", Compound(9223372036854775807), "15250284452471 wk, 3 d, 15 hr, 30 min, 7 sec");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Compound(seconds : Int) ~ String {
+		sizes := [604800, 86400, 3600, 60, 1];
+		names := ["wk", "d", "hr", "min", "sec"];
+
+		out := "";
+		left := seconds;
+		for(i := 0; i < sizes->Size(); i += 1;) {
+			count := left / sizes[i];
+			left := left % sizes[i];
+			if(count > 0) {
+				if(out->Size() > 0) {
+					out->Append(", ");
+				};
+				out->Append(count);
+				out->Append(' ');
+				out->Append(names[i]);
+			};
+		};
+		return out;
+	}
+}

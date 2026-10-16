@@ -1,0 +1,206 @@
+#~
+# Rosetta Code: Brace expansion
+# https://rosettacode.org/wiki/Brace_expansion
+# Claimed in #1143
+#
+# Shell-style brace expansion by recursive descent: a brace pair with at least one comma is an alternation, a pair without one stays literal, an unmatched brace or comma is literal, and a backslash escapes the next character and is kept in the output. Checks the task's four test cases, including the deliberately hostile fourth one, plus small edges (nested groups, empty alternatives, an unclosed group, empty input). Backslash-heavy literals are length-checked first so an escaping slip in the test itself cannot pass silently.
+#
+# Expected values come from the task page and a run of the page's Python reference implementation.
+~#
+
+class RosettaBraceExpansion {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaBraceExpansion->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected [{$want}], got [{$got}]"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's four test cases
+		Check("task case 1", Expand("~/{Downloads,Pictures}/*.{jpg,gif,png}"),
+			"~/Downloads/*.jpg|~/Downloads/*.gif|~/Downloads/*.png|~/Pictures/*.jpg|~/Pictures/*.gif|~/Pictures/*.png");
+		Check("task case 2", Expand("It{{em,alic}iz,erat}e{d,}, please."),
+			"Itemized, please.|Itemize, please.|Italicized, please.|Italicize, please.|Iterated, please.|Iterate, please.");
+
+		case3 := "{,{,gotta have{ ,\\, again\\, }}more }cowbell!";
+		CheckInt("task case 3 literal length", case3->Size(), 44);
+		Check("task case 3", Expand(case3),
+			"cowbell!|more cowbell!|gotta have more cowbell!|gotta have\\, again\\, more cowbell!");
+
+		case4 := "{}} some }{,{\\\\{ edge, edge} \\,}{ cases, {here} \\\\\\\\\\}";
+		CheckInt("task case 4 literal length", case4->Size(), 54);
+		Check("task case 4", Expand(case4),
+			"{}} some }{,{\\\\ edge \\,}{ cases, {here} \\\\\\\\\\}|{}} some }{,{\\\\ edge \\,}{ cases, {here} \\\\\\\\\\}");
+
+		# edges
+		Check("braces without a comma stay literal", Expand("a{b}c"), "a{b}c");
+		Check("two groups multiply", Expand("{a,b}{c,d}"), "ac|ad|bc|bd");
+		Check("nested group", Expand("{a,{b,c}}d"), "ad|bd|cd");
+		Check("two empty alternatives", Expand("x{,}"), "x|x");
+		Check("lone open brace", Expand("{"), "{");
+		Check("lone close brace", Expand("}"), "}");
+		Check("comma outside braces", Expand("a,b"), "a,b");
+		Check("unclosed group", Expand("{a,b"), "{a,b");
+		Check("escaped open brace", Expand("\\{a,b}"), "\\{a,b}");
+		Check("empty braces after a group", Expand("{a,b}{}"), "a{}|b{}");
+		CheckInt("empty input is one empty string", BraceParser->New("")->Run()->Size(), 1);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Expand(text : String) ~ String {
+		results := BraceParser->New(text)->Run();
+		out := String->New();
+		each(i : results) {
+			if(i > 0) {
+				out->Append('|');
+			};
+			out->Append(results->Get(i));
+		};
+		return out;
+	}
+}
+
+# A port of the page's Python reference: GetItem reads up to an unescaped ',' or
+# '}' at depth > 0, GetGroup reads one brace group or reports that there is none.
+class BraceParser {
+	@text : String;
+	@pos : Int;
+
+	New(text : String) {
+		@text := text;
+		@pos := 0;
+	}
+
+	method : public : Run() ~ Collection.Vector<String> {
+		@pos := 0;
+		return GetItem(0);
+	}
+
+	method : GetItem(depth : Int) ~ Collection.Vector<String> {
+		out := Collection.Vector->New()<String>;
+		out->AddBack("");
+
+		while(@pos < @text->Size()) {
+			c := @text->Get(@pos);
+			if(depth > 0 & (c = ',' | c = '}')) {
+				return out;
+			};
+
+			grouped := false;
+			if(c = '{') {
+				save := @pos;
+				@pos += 1;
+				group := GetGroup(depth + 1);
+				if(group <> Nil) {
+					out := Product(out, group);
+					grouped := true;
+				}
+				else {
+					@pos := save;
+				};
+			};
+
+			if(<>grouped) {
+				piece := String->New();
+				piece->Append(c);
+				if(c = '\\' & @pos + 1 < @text->Size()) {
+					@pos += 1;
+					piece->Append(@text->Get(@pos));
+				};
+				@pos += 1;
+				out := Product(out, piece);
+			};
+		};
+
+		return out;
+	}
+
+	method : GetGroup(depth : Int) ~ Collection.Vector<String> {
+		out := Collection.Vector->New()<String>;
+		comma := false;
+
+		while(@pos < @text->Size()) {
+			item := GetItem(depth);
+			if(@pos >= @text->Size()) {
+				return Nil;
+			};
+			each(i : item) {
+				out->AddBack(item->Get(i));
+			};
+
+			if(@text->Get(@pos) = '}') {
+				@pos += 1;
+				if(comma) {
+					return out;
+				};
+				# no comma: the braces were literal after all
+				wrapped := Collection.Vector->New()<String>;
+				each(i : out) {
+					s := String->New("{");
+					s->Append(out->Get(i));
+					s->Append('}');
+					wrapped->AddBack(s);
+				};
+				return wrapped;
+			};
+
+			if(@text->Get(@pos) = ',') {
+				comma := true;
+				@pos += 1;
+			};
+		};
+
+		return Nil;
+	}
+
+	function : Product(left : Collection.Vector<String>, right : Collection.Vector<String>) ~ Collection.Vector<String> {
+		out := Collection.Vector->New()<String>;
+		each(i : left) {
+			each(j : right) {
+				s := String->New(left->Get(i));
+				s->Append(right->Get(j));
+				out->AddBack(s);
+			};
+		};
+		return out;
+	}
+
+	function : Product(left : Collection.Vector<String>, piece : String) ~ Collection.Vector<String> {
+		out := Collection.Vector->New()<String>;
+		each(i : left) {
+			s := String->New(left->Get(i));
+			s->Append(piece);
+			out->AddBack(s);
+		};
+		return out;
+	}
+}

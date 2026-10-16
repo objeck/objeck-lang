@@ -1,0 +1,130 @@
+#~
+# Rosetta Code: Date manipulation
+# https://rosettacode.org/wiki/Date_manipulation
+# Claimed in #1157
+#
+# "March 7 2009 7:30pm EST" plus 12 hours, shown in EST and, for the extra credit, in UTC, CET and JST. Neither Date nor DateUtility can read this string (no month names, no am/pm, no zone names), so it is parsed by hand into a GMT Date; the date arithmetic -- crossing midnight into the next day -- is the library's AddMinutes/AddHours. Zones are fixed offsets: the library has no time-zone database, so "EST" stays UTC-5 even though New York switched to EDT at 2am that very morning.
+#
+# Expected values were computed with an independent oracle (Python's datetime with fixed-offset zones), not recalled.
+~#
+
+use System.Time;
+
+class RosettaDateManipulation {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaDateManipulation->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		input := "March 7 2009 7:30pm EST";
+
+		utc := ParseUtc(input);
+		Check("parsed as UTC", Show(utc, "UTC"), "Sunday March 8 2009 12:30am UTC");
+
+		utc->AddHours(12);
+		Check("12 hours later, UTC", Show(utc, "UTC"), "Sunday March 8 2009 12:30pm UTC");
+
+		Check("12 hours later, EST", Later(input, 12, "EST"), "Sunday March 8 2009 7:30am EST");
+		Check("12 hours later, CET", Later(input, 12, "CET"), "Sunday March 8 2009 1:30pm CET");
+		Check("12 hours later, JST", Later(input, 12, "JST"), "Sunday March 8 2009 9:30pm JST");
+
+		# the twelve-hour clock's edges: 12am is midnight, 12pm is noon
+		Check("12:15am", Later("June 1 2010 12:15am UTC", 0, "UTC"), "Tuesday June 1 2010 12:15am UTC");
+		Check("12:15pm", Later("June 1 2010 12:15pm UTC", 0, "UTC"), "Tuesday June 1 2010 12:15pm UTC");
+		# backwards across a month and a leap day
+		Check("minus 24 hours from Mar 1 2012", Later("March 1 2012 6:00am UTC", -24, "UTC"), "Wednesday February 29 2012 6:00am UTC");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# parse, add hours, convert to the named zone, format
+	function : Later(text : String, hours : Int, zone : String) ~ String {
+		d := ParseUtc(text);
+		d->AddHours(hours);
+		d->AddHours(ZoneOffset(zone));
+		return Show(d, zone);
+	}
+
+	# "<Month> <day> <year> <h>:<mm><am|pm> <zone>" to a GMT Date
+	function : ParseUtc(text : String) ~ Date {
+		parts := text->Split(" ");
+		month := MonthNumber(parts[0]);
+		day := parts[1]->ToInt();
+		year := parts[2]->ToInt();
+
+		clock := parts[3];
+		is_pm := clock->EndsWith("pm");
+		hm := clock->SubString(clock->Size() - 2)->Split(":");
+		hour := hm[0]->ToInt() % 12;
+		if(is_pm) {
+			hour += 12;
+		};
+		minute := hm[1]->ToInt();
+
+		# Midnight GMT from the date-only constructor, then the time added on.
+		# Not the 7-argument constructor: on a machine observing daylight saving
+		# it shifts a GMT time by an hour in summer.
+		d := Date->New(day, month, year, true);
+		d->AddMinutes(hour * 60 + minute - ZoneOffset(parts[4]) * 60);
+		return d;
+	}
+
+	function : ZoneOffset(zone : String) ~ Int {
+		names := ["UTC", "GMT", "EST", "EDT", "CST", "MST", "PST", "CET", "JST"];
+		offsets := [0, 0, -5, -4, -6, -7, -8, 1, 9];
+		for(i := 0; i < names->Size(); i += 1;) {
+			if(names[i]->Equals(zone)) {
+				return offsets[i];
+			};
+		};
+		return 0;
+	}
+
+	function : MonthNumber(name : String) ~ Int {
+		months := ["January", "February", "March", "April", "May", "June", "July",
+			"August", "September", "October", "November", "December"];
+		for(i := 0; i < months->Size(); i += 1;) {
+			if(months[i]->Equals(name)) {
+				return i + 1;
+			};
+		};
+		return 0;
+	}
+
+	function : Show(d : Date, zone : String) ~ String {
+		hour := d->GetHours() % 12;
+		if(hour = 0) {
+			hour := 12;
+		};
+		suffix := d->GetHours() < 12 ? "am" : "pm";
+		mins := d->GetMinutes();
+		pad := mins < 10 ? "0" : "";
+
+		out := "";
+		out->Append(d->GetWeekDayName());
+		out->Append(' ');
+		out->Append(d->GetMonthName());
+		out->Append(" {$d->GetDay()} {$d->GetYear()} {$hour}:{$pad}{$mins}{$suffix} {$zone}");
+		return out;
+	}
+}

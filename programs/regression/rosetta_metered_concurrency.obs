@@ -1,0 +1,221 @@
+#~
+# Rosetta Code: Metered concurrency
+# https://rosettacode.org/wiki/Metered_concurrency
+# Claimed in #1163
+#
+# A counting semaphore with the task's three operations -- acquire, release, count -- guarding a set of workers that each acquire it, report, hold it for a while, and release. System.Concurrency has no semaphore (nor a condition variable to build one on), so this one is a mutex-protected count with a polled acquire. The task's 2-second hold is scaled to a few milliseconds to keep the test fast.
+#
+# WHAT IS ASSERTED: an invariant, not a schedule. Every holder increments a "currently inside" count under a separate lock and records the largest value ever seen; that maximum must never exceed the meter's limit. 24 workers (deliberately more than any machine's cores) contend for a meter of 4, three rounds each, allocating while they hold it so collections land mid-contention. Also: the count returns to the limit when all are done, it never goes negative, every acquire was matched, and the single-threaded semantics (count, a failing TryAcquire at zero, release restoring it) hold before any thread starts.
+#
+# CONTROL: run once in a scratch copy with Acquire's count check removed (it decrements and enters unconditionally): FAILED -- the maximum number inside reached 24 against a limit of 4, and the count went negative.
+#
+# No expected values to source: the oracle is the invariant itself.
+~#
+
+use System.Concurrency;
+
+# A counting semaphore.
+class Meter {
+	@mutex : ThreadMutex;
+	@count : Int;
+	@lowest : Int;
+
+	New(permits : Int) {
+		@mutex := ThreadMutex->New("meter");
+		@count := permits;
+		@lowest := permits;
+	}
+
+	# Takes a permit if one is free; never waits.
+	method : public : TryAcquire() ~ Bool {
+		got := false;
+		critical(@mutex) {
+			if(@count > 0) {
+				@count -= 1;
+				got := true;
+			};
+			if(@count < @lowest) { @lowest := @count; };
+		};
+		return got;
+	}
+
+	# Waits for a permit. Polled: there is no condition variable to block on.
+	method : public : Acquire() ~ Nil {
+		while(<>TryAcquire()) {
+			Thread->Sleep(1);
+		};
+	}
+
+	method : public : Release() ~ Nil {
+		critical(@mutex) { @count += 1; };
+	}
+
+	method : public : Count() ~ Int {
+		c := 0;
+		critical(@mutex) { c := @count; };
+		return c;
+	}
+
+	# the smallest count ever observed; negative would mean over-subscription
+	method : public : GetLowest() ~ Int {
+		c := 0;
+		critical(@mutex) { c := @lowest; };
+		return c;
+	}
+}
+
+# The observer: how many workers are inside right now, and the most ever.
+class Gauge {
+	@mutex : ThreadMutex;
+	@inside : Int;
+	@most : Int;
+	@entries : Int;
+
+	New() {
+		@mutex := ThreadMutex->New("gauge");
+		@inside := 0;
+		@most := 0;
+		@entries := 0;
+	}
+
+	method : public : Enter() ~ Nil {
+		critical(@mutex) {
+			@inside += 1;
+			@entries += 1;
+			if(@inside > @most) { @most := @inside; };
+		};
+	}
+
+	method : public : Exit() ~ Nil {
+		critical(@mutex) { @inside -= 1; };
+	}
+
+	method : public : GetMost() ~ Int {
+		v := 0;
+		critical(@mutex) { v := @most; };
+		return v;
+	}
+
+	method : public : GetInside() ~ Int {
+		v := 0;
+		critical(@mutex) { v := @inside; };
+		return v;
+	}
+
+	method : public : GetEntries() ~ Int {
+		v := 0;
+		critical(@mutex) { v := @entries; };
+		return v;
+	}
+}
+
+class Unit from Thread {
+	@id : Int;
+	@rounds : Int;
+	@meter : Meter;
+	@gauge : Gauge;
+
+	New(id : Int, rounds : Int, meter : Meter, gauge : Gauge) {
+		Parent("unit-{$id}");
+		@id := id;
+		@rounds := rounds;
+		@meter := meter;
+		@gauge := gauge;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		for(r := 0; r < @rounds; r += 1;) {
+			@meter->Acquire();
+			@gauge->Enter();
+			# the task's "report that it has acquired the semaphore", kept off
+			# stdout so the output stays deterministic
+			report := "unit {$@id} acquired the meter";
+			# hold it: allocate so collections land while permits are held
+			junk := IntRef->New(report->Size());
+			for(i := 0; i < 200; i += 1;) {
+				junk := IntRef->New(junk->Get() + i);
+			};
+			Thread->Sleep(3);
+			@gauge->Exit();
+			@meter->Release();
+		};
+	}
+}
+
+class RosettaMeteredConcurrency {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaMeteredConcurrency->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		limit := 4;
+
+		# ---- single-threaded semantics first ----
+		solo := Meter->New(2);
+		CheckInt("a new meter counts its permits", solo->Count(), 2);
+		solo->Acquire();
+		CheckInt("acquire takes one", solo->Count(), 1);
+		CheckBool("the last permit can be taken", solo->TryAcquire(), true);
+		CheckBool("an empty meter refuses", solo->TryAcquire(), false);
+		CheckInt("and stays at zero", solo->Count(), 0);
+		solo->Release();
+		CheckInt("release gives one back", solo->Count(), 1);
+		solo->Release();
+
+		# ---- under contention ----
+		units := 24;
+		rounds := 3;
+		meter := Meter->New(limit);
+		gauge := Gauge->New();
+		crew := Unit->New[units];
+		for(i := 0; i < units; i += 1;) {
+			crew[i] := Unit->New(i, rounds, meter, gauge);
+		};
+		for(i := 0; i < units; i += 1;) {
+			crew[i]->Execute(Nil);
+		};
+		for(i := 0; i < units; i += 1;) {
+			crew[i]->Join();
+		};
+
+		most := gauge->GetMost();
+		CheckBool("never more than {$limit} inside at once (most was {$most})", most <= limit, true);
+		CheckBool("at least one unit got in", most >= 1, true);
+		CheckInt("every acquire was a unit entering", gauge->GetEntries(), units * rounds);
+		CheckInt("nobody is left inside", gauge->GetInside(), 0);
+		CheckInt("the count returns to the limit", meter->Count(), limit);
+		CheckBool("the count never went negative", meter->GetLowest() >= 0, true);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

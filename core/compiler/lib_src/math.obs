@@ -4,6 +4,8 @@ Arbitrary-precision and exact arithmetic.
 Objeck's `Int` is 64-bit and wraps silently rather than trapping, so a
 calculation that exceeds it produces a plausible wrong answer with no
 diagnostic. `BigInt` is exact at any size instead, bounded only by memory.
+`Rational` is an exact fraction on `BigInt`, and `Complex` a complex number
+with `Float` parts.
 
 Compile with `-lib math`.
 ~#
@@ -751,8 +753,8 @@ f->ToString()->PrintLine();     # 25! = 15511210043330985984000000
 
 ```
 # the harmonic number H(5), exactly rather than as a float
-h := Rational->New(0);
-each(i : 5) { h := h->Add(Rational->New(1, i + 1)); };
+h := Rational->Of(0);
+each(i : 5) { h := h->Add(Rational->Of(1, i + 1)); };
 h->ToString()->PrintLine();     # 137/60
 ```
 	~#
@@ -1156,6 +1158,250 @@ h->ToString()->PrintLine();     # 137/60
 			n := @num->ToString();
 			d := @den->ToString();
 			return "{$n}/{$d}";
+		}
+	}
+
+	#~
+	A complex number with `Float` real and imaginary parts.
+
+	Immutable: every operation returns a new value and none modifies its
+	receiver. Division and the reciprocal return Nil for a zero divisor rather
+	than raising, because a `Float` division by zero aborts the program.
+
+```
+# (1 + 2i)(3 - 4i) = 11 + 2i
+z := Complex->New(1.0, 2.0)->Multiply(Complex->New(3.0, -4.0));
+z->ToString()->PrintLine();     # 11.000000 + 2.000000i
+```
+	~#
+	class Complex implements System.Stringify {
+		@re : Float;
+		@im : Float;
+
+		#~
+		Builds re + im*i.
+		@param re real part
+		@param im imaginary part
+		~#
+		New(re : Float, im : Float) {
+			Parent();
+			@re := re;
+			@im := im;
+		}
+
+		#~
+		Builds a real number, with a zero imaginary part.
+		@param re real part
+		~#
+		New(re : Float) {
+			Parent();
+			@re := re;
+			@im := 0.0;
+		}
+
+		#~
+		Builds a value from polar form: magnitude r at angle theta, i.e.
+		r(cos theta + i sin theta). `Polar(1.0, theta)` is e^(i theta).
+		@param r magnitude
+		@param theta angle in radians
+		@return the value
+		~#
+		function : Polar(r : Float, theta : Float) ~ Complex {
+			return Complex->New(r * Float->Cos(theta), r * Float->Sin(theta));
+		}
+
+		#~
+		Zero.
+		@return zero
+		~#
+		function : Zero() ~ Complex { return Complex->New(0.0, 0.0); }
+		#~
+		One.
+		@return one
+		~#
+		function : One() ~ Complex { return Complex->New(1.0, 0.0); }
+		#~
+		The imaginary unit i.
+		@return i
+		~#
+		function : I() ~ Complex { return Complex->New(0.0, 1.0); }
+
+		# ---- inspection ----
+
+		#~
+		The real part.
+		@return real part
+		~#
+		method : public : GetReal() ~ Float { return @re; }
+		#~
+		The imaginary part.
+		@return imaginary part
+		~#
+		method : public : GetImaginary() ~ Float { return @im; }
+
+		#~
+		Whether both parts are zero.
+		@return true if zero
+		~#
+		method : public : IsZero() ~ Bool { return @re = 0.0 & @im = 0.0; }
+
+		#~
+		The magnitude sqrt(re^2 + im^2), scaled so that it neither overflows
+		nor underflows when the parts are large or tiny but the result is not.
+		@return magnitude
+		~#
+		method : public : Abs() ~ Float {
+			a := Float->Abs(@re);
+			b := Float->Abs(@im);
+			# a NaN part makes the magnitude NaN; without this check a NaN
+			# imaginary part beside a zero real part would report 0
+			if(a <> a | b <> b) { return Float->NaN(); };
+			m := a;
+			if(b > m) { m := b; };
+			# Float->Abs returns -0.0 for -0.0, so return a literal zero
+			if(m = 0.0) { return 0.0; };
+			if(m = Float->Inf()) { return m; };
+			a := a / m;
+			b := b / m;
+			return m * Float->Sqrt(a * a + b * b);
+		}
+
+		#~
+		The argument (phase angle) in radians, in the range -pi to pi.
+		@return angle
+		~#
+		method : public : Arg() ~ Float { return Float->ArcTan2(@im, @re); }
+
+		# ---- unary ----
+
+		#~
+		The value with both parts' signs reversed.
+		@return the negation
+		~#
+		method : public : Negate() ~ Complex {
+			return Complex->New(0.0 - @re, 0.0 - @im);
+		}
+
+		#~
+		The complex conjugate, re - im*i.
+		@return the conjugate
+		~#
+		method : public : Conjugate() ~ Complex {
+			return Complex->New(@re, 0.0 - @im);
+		}
+
+		#~
+		The multiplicative inverse, 1/z. Zero has none, so this returns Nil for it.
+		@return reciprocal, or Nil if this value is zero
+		~#
+		method : public : Reciprocal() ~ Complex {
+			return Complex->One()->Divide(@self);
+		}
+
+		# ---- arithmetic ----
+
+		#~
+		The sum.
+		@param rhs value to add
+		@return the sum, or Nil if rhs is Nil
+		~#
+		method : public : Add(rhs : Complex) ~ Complex {
+			if(rhs = Nil) { return Nil; };
+			return Complex->New(@re + rhs->GetReal(), @im + rhs->GetImaginary());
+		}
+
+		#~
+		The difference.
+		@param rhs value to subtract
+		@return the difference, or Nil if rhs is Nil
+		~#
+		method : public : Subtract(rhs : Complex) ~ Complex {
+			if(rhs = Nil) { return Nil; };
+			return Complex->New(@re - rhs->GetReal(), @im - rhs->GetImaginary());
+		}
+
+		#~
+		The product.
+		@param rhs value to multiply by
+		@return the product, or Nil if rhs is Nil
+		~#
+		method : public : Multiply(rhs : Complex) ~ Complex {
+			if(rhs = Nil) { return Nil; };
+			c := rhs->GetReal();
+			d := rhs->GetImaginary();
+			return Complex->New(@re * c - @im * d, @re * d + @im * c);
+		}
+
+		#~
+		The product with a real scalar.
+		@param k scalar
+		@return the scaled value
+		~#
+		method : public : Multiply(k : Float) ~ Complex {
+			return Complex->New(@re * k, @im * k);
+		}
+
+		#~
+		The quotient. Uses Smith's method, which scales by the larger part of the
+		divisor so the intermediate does not overflow or underflow the way
+		(c^2 + d^2) can.
+		@param rhs divisor
+		@return the quotient, or Nil if rhs is Nil or zero
+		~#
+		method : public : Divide(rhs : Complex) ~ Complex {
+			if(rhs = Nil) { return Nil; };
+			c := rhs->GetReal();
+			d := rhs->GetImaginary();
+			if(c = 0.0 & d = 0.0) { return Nil; };
+
+			# every division below is by a part known to be non-zero: a Float
+			# division by zero aborts rather than yielding an infinity
+			if(c <> 0.0 & (d = 0.0 | Float->Abs(c) >= Float->Abs(d))) {
+				r := d / c;
+				den := c + d * r;
+				return Complex->New((@re + @im * r) / den, (@im - @re * r) / den);
+			};
+
+			if(d <> 0.0) {
+				r := c / d;
+				den := c * r + d;
+				return Complex->New((@re * r + @im) / den, (@im * r - @re) / den);
+			};
+
+			# only reachable when a part of the divisor is NaN
+			return Complex->New(Float->NaN(), Float->NaN());
+		}
+
+		# ---- comparison ----
+
+		#~
+		Whether two values are exactly equal, part by part. Floating-point
+		results rarely compare exactly; compare `Subtract(...)->Abs()` against a
+		tolerance when the values were computed.
+		@param rhs value to compare against
+		@return true if both parts are equal
+		~#
+		method : public : Equals(rhs : Complex) ~ Bool {
+			if(rhs = Nil) { return false; };
+			return @re = rhs->GetReal() & @im = rhs->GetImaginary();
+		}
+
+		# ---- conversion ----
+
+		#~
+		`a + bi` or `a - bi`, each part formatted as `Float->ToString` formats it.
+		@return text
+		~#
+		method : public : ToString() ~ String {
+			r := @re->ToString();
+			if(@im < 0.0) {
+				m := (0.0 - @im)->ToString();
+				return "{$r} - {$m}i";
+			};
+			# 0.0 + (-0.0) is +0.0, so a negative zero prints as "+ 0", never
+			# "+ -0". Float->Abs would not do: it returns -0.0 unchanged.
+			p := (0.0 + @im)->ToString();
+			return "{$r} + {$p}i";
 		}
 	}
 }

@@ -1,0 +1,204 @@
+#~
+# Rosetta Code: Gaussian elimination
+# https://rosettacode.org/wiki/Gaussian_elimination
+# Claimed in #1167
+#
+# Solves Ax = b by forward elimination with scaled partial pivoting (the pivot is the row whose candidate is largest RELATIVE to that row's largest entry, as the task asks for "partial pivoting and scaling"), then back substitution. Pins the task's 6x6 system, whose stated output is [-0.01, 1.60279, -1.6132, 1.24549, -0.49099, 0.0657607]; a system with a zero on the diagonal, which fails without pivoting; one where unscaled pivoting picks the wrong row; and a singular matrix, which must return Nil rather than divide by zero (a Float division by zero aborts the program).
+#
+# Expected values: the task page's stated output, and an exact rational solve of the same system in Python (fractions.Fraction) as the independent oracle.
+~#
+
+class RosettaGaussianElimination {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaGaussianElimination->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckVector(what : String, got : Float[], want : Float[], tol : Float) ~ Nil {
+		if(got = Nil) {
+			"FAIL: {$what}: expected a solution, got Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+		worst := 0.0;
+		for(i := 0; i < want->Size(); i += 1;) {
+			e := Float->Abs(got[i] - want[i]);
+			if(e > worst) { worst := e; };
+		};
+		if(worst <= tol) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: largest error {$worst}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# Solves a x = b. Works on copies, so the caller's matrix is untouched.
+	# Returns Nil for a singular matrix.
+	function : Solve(a_in : Float[,], b_in : Float[]) ~ Float[] {
+		dims := a_in->Size();
+		n := dims[0];
+		a := Float->New[n, n];
+		b := Float->New[n];
+		scale := Float->New[n];
+		for(i := 0; i < n; i += 1;) {
+			b[i] := b_in[i];
+			scale[i] := 0.0;
+			for(j := 0; j < n; j += 1;) {
+				a[i, j] := a_in[i, j];
+				if(Float->Abs(a[i, j]) > scale[i]) { scale[i] := Float->Abs(a[i, j]); };
+			};
+			# an all-zero row: singular, and it would divide by zero below
+			if(scale[i] = 0.0) { return Nil; };
+		};
+
+		for(col := 0; col < n; col += 1;) {
+			# scaled partial pivoting: largest entry relative to its row's scale
+			pivot := col;
+			best := Float->Abs(a[col, col]) / scale[col];
+			for(r := col + 1; r < n; r += 1;) {
+				ratio := Float->Abs(a[r, col]) / scale[r];
+				if(ratio > best) {
+					best := ratio;
+					pivot := r;
+				};
+			};
+			if(best = 0.0) { return Nil; };
+
+			if(pivot <> col) {
+				for(j := 0; j < n; j += 1;) {
+					t := a[col, j];
+					a[col, j] := a[pivot, j];
+					a[pivot, j] := t;
+				};
+				t := b[col];
+				b[col] := b[pivot];
+				b[pivot] := t;
+				t := scale[col];
+				scale[col] := scale[pivot];
+				scale[pivot] := t;
+			};
+
+			for(r := col + 1; r < n; r += 1;) {
+				f := a[r, col] / a[col, col];
+				for(j := col; j < n; j += 1;) {
+					a[r, j] := a[r, j] - f * a[col, j];
+				};
+				b[r] := b[r] - f * b[col];
+			};
+		};
+
+		x := Float->New[n];
+		for(i := n - 1; i >= 0; i -= 1;) {
+			sum := b[i];
+			for(j := i + 1; j < n; j += 1;) {
+				sum := sum - a[i, j] * x[j];
+			};
+			x[i] := sum / a[i, i];
+		};
+		return x;
+	}
+
+	method : Run() ~ Nil {
+		# ---- the task's system ----
+		rows := [
+			[1.00, 0.00, 0.00,  0.00,  0.00,   0.00],
+			[1.00, 0.63, 0.39,  0.25,  0.16,   0.10],
+			[1.00, 1.26, 1.58,  1.98,  2.49,   3.13],
+			[1.00, 1.88, 3.55,  6.70, 12.62,  23.80],
+			[1.00, 2.51, 6.32, 15.88, 39.90, 100.28],
+			[1.00, 3.14, 9.87, 31.01, 97.41, 306.02]];
+		a := Float->New[6, 6];
+		for(i := 0; i < 6; i += 1;) {
+			for(j := 0; j < 6; j += 1;) {
+				a[i, j] := rows[i, j];
+			};
+		};
+		b := [-0.01, 0.61, 0.91, 0.99, 0.60, 0.02];
+
+		x := Solve(a, b);
+		CheckVector("the task's system, against an exact rational solve", x,
+			[-0.01, 1.602790394502114, -1.6132030599055613, 1.2454941213714368, -0.4909897195846576, 0.065760696175232], 1.0e-9);
+
+		# the task's stated output, to the digits it prints
+		if(x <> Nil) {
+			Check("x[1] as the task prints it", Float->ToString(x[1], 5), "1.60279");
+			Check("x[2] as the task prints it", Float->ToString(x[2], 4), "-1.6132");
+			Check("x[3] as the task prints it", Float->ToString(x[3], 5), "1.24549");
+			Check("x[4] as the task prints it", Float->ToString(x[4], 5), "-0.49099");
+			Check("x[5] as the task prints it", Float->ToString(x[5], 7), "0.0657607");
+
+			# and the residual: A x reproduces b
+			worst := 0.0;
+			for(i := 0; i < 6; i += 1;) {
+				s := 0.0;
+				for(j := 0; j < 6; j += 1;) {
+					s := s + a[i, j] * x[j];
+				};
+				e := Float->Abs(s - b[i]);
+				if(e > worst) { worst := e; };
+			};
+			CheckBool("A x reproduces b to 1e-12", worst <= 1.0e-12, true);
+			CheckBool("the input matrix was not modified", a[5, 5] = 306.02, true);
+		};
+
+		# ---- a zero pivot: unsolvable without a row swap ----
+		z := Float->New[2, 2];
+		z[0, 0] := 0.0; z[0, 1] := 1.0;
+		z[1, 0] := 1.0; z[1, 1] := 1.0;
+		CheckVector("a zero on the diagonal needs a row swap", Solve(z, [2.0, 3.0]), [1.0, 2.0], 1.0e-12);
+
+		# ---- scaling: the row with the larger raw entry is the worse pivot ----
+		# Unscaled partial pivoting keeps row 0 (|30| > |5.291|), and in four-
+		# figure arithmetic that gives x = (-10, 1.001); scaled pivoting compares
+		# 30/591400 against 5.291/6.130 and swaps. Double precision gives the
+		# right answer either way, so this pins the result, not the swap.
+		s := Float->New[2, 2];
+		s[0, 0] := 30.0;  s[0, 1] := 591400.0;
+		s[1, 0] := 5.291; s[1, 1] := -6.130;
+		CheckVector("the classic scaling example", Solve(s, [591700.0, 46.78]), [10.0, 1.0], 1.0e-9);
+
+		# ---- singular: Nil, not an abort ----
+		sing := Float->New[3, 3];
+		for(i := 0; i < 3; i += 1;) {
+			for(j := 0; j < 3; j += 1;) {
+				sing[i, j] := (i + j)->As(Float);
+			};
+		};
+		# rows 0,1,2 are (0,1,2), (1,2,3), (2,3,4): row 2 = 2*row1 - row0
+		CheckBool("a singular matrix gives Nil", Solve(sing, [1.0, 2.0, 3.0]) = Nil, true);
+		CheckBool("an all-zero row gives Nil", Solve(Float->New[2, 2], [1.0, 2.0]) = Nil, true);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
