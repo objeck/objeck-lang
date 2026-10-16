@@ -4155,6 +4155,35 @@ bool JitAmd64::cond_jmp(InstructionType type) {
 #ifdef _DEBUG_JIT
     std::wcout << L"JMP: id=" << next_instr->GetOperand() << L", regs=" << aval_regs.size() << L"," << aux_regs.size() << std::endl;
 #endif
+    // Float equality has to read the parity flag. An unordered compare (a NaN
+    // operand) sets ZF as well as PF, so a bare je/jne took `if(nan = x)` and
+    // skipped `if(nan <> x)` (#1170). #1000 fixed only the value path (sete).
+    if(type == EQL_FLOAT || type == NEQL_FLOAT) {
+      const bool jump_when_equal = (next_instr->GetOperand2() != 0) == (type == EQL_FLOAT);
+      if(jump_when_equal) {
+        // jp over the je: unordered is never equal
+        AddMachineCode(0x7a);
+        AddMachineCode(0x06);
+        AddMachineCode(0x0f);
+        AddMachineCode(0x84);
+        jump_table.insert(std::pair<long, StackInstr*>(code_index, next_instr));
+        AddImm(0);
+      }
+      else {
+        // not equal, OR unordered: two jumps to the same target
+        AddMachineCode(0x0f);
+        AddMachineCode(0x85);
+        jump_table.insert(std::pair<long, StackInstr*>(code_index, next_instr));
+        AddImm(0);
+        AddMachineCode(0x0f);
+        AddMachineCode(0x8a);
+        jump_table.insert(std::pair<long, StackInstr*>(code_index, next_instr));
+        AddImm(0);
+      }
+      skip_jump = true;
+      return true;
+    }
+
     AddMachineCode(0x0f);
 
     //

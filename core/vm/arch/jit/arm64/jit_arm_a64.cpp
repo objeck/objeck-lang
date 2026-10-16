@@ -5006,11 +5006,19 @@ bool JitArm64::cond_jmp(InstructionType type) {
     if(next_instr->GetOperand2() == 1) {
       switch(type) {
       case LES_INT:
-      case LES_FLOAT:
 #ifdef _DEBUG_JIT_JIT
         std::wcout << L"  " << (++instr_count) << L": [b.lt]" << std::endl;
 #endif
         AddMachineCode(0x5400000B);
+        break;
+
+      // a float compare with a NaN operand is unordered (N=0 Z=0 C=1 V=1), where
+      // lt/le/ge/gt-as-ints would read it as less: use the ordered conditions
+      case LES_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+        std::wcout << L"  " << (++instr_count) << L": [b.mi]" << std::endl;
+#endif
+        AddMachineCode(0x54000004);
         break;
 
       case GTR_INT:
@@ -5050,11 +5058,19 @@ bool JitArm64::cond_jmp(InstructionType type) {
         break;
 
       case LES_EQL_INT:
-      case LES_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
         std::wcout << L"  " << (++instr_count) << L": [b.le]" << std::endl;
 #endif
         AddMachineCode(0x5400000D);
+        break;
+
+      // a float compare with a NaN operand is unordered (N=0 Z=0 C=1 V=1), where
+      // lt/le/ge/gt-as-ints would read it as less: use the ordered conditions
+      case LES_EQL_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+        std::wcout << L"  " << (++instr_count) << L": [b.ls]" << std::endl;
+#endif
+        AddMachineCode(0x54000009);
         break;
         
       case GTR_EQL_INT:
@@ -5075,11 +5091,19 @@ bool JitArm64::cond_jmp(InstructionType type) {
     else {
       switch(type) {
       case LES_INT:
-      case LES_FLOAT:
 #ifdef _DEBUG_JIT_JIT
         std::wcout << L"  " << (++instr_count) << L": [b.ge]" << std::endl;
 #endif
         AddMachineCode(0x5400000A);
+        break;
+
+      // a float compare with a NaN operand is unordered (N=0 Z=0 C=1 V=1), where
+      // lt/le/ge/gt-as-ints would read it as less: use the ordered conditions
+      case LES_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+        std::wcout << L"  " << (++instr_count) << L": [b.pl]" << std::endl;
+#endif
+        AddMachineCode(0x54000005);
         break;
 
       case GTR_INT:
@@ -5119,11 +5143,19 @@ bool JitArm64::cond_jmp(InstructionType type) {
         break;
 
       case LES_EQL_INT:
-      case LES_EQL_FLOAT:
 #ifdef _DEBUG_JIT_JIT
         std::wcout << L"  " << (++instr_count) << L": [b.gt]" << std::endl;
 #endif
         AddMachineCode(0x5400000C);
+        break;
+
+      // a float compare with a NaN operand is unordered (N=0 Z=0 C=1 V=1), where
+      // lt/le/ge/gt-as-ints would read it as less: use the ordered conditions
+      case LES_EQL_FLOAT:
+#ifdef _DEBUG_JIT_JIT
+        std::wcout << L"  " << (++instr_count) << L": [b.hi]" << std::endl;
+#endif
+        AddMachineCode(0x54000008);
         break;
         
       case GTR_EQL_INT:
