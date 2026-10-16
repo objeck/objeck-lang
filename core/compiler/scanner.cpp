@@ -546,7 +546,12 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
 
     // set token. A literal too large for its range used to saturate silently,
     // so 99999999999999999999 compiled as the signed maximum.
-    if(errno == ERANGE || *ending) {
+    if(errno == ERANGE && !*ending) {
+      // well formed, but too large: say so rather than "unexpected token"
+      tokens[index]->SetType(TOKEN_BAD_INT_LIT);
+      tokens[index]->SetIdentifier(ident);
+    }
+    else if(errno == ERANGE || *ending) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
     }
     else {

@@ -1,0 +1,99 @@
+#~
+Regression: parse gaps found by the Rosetta batch-3 tasks (#1184).
+
+- An array literal ate the comma after it, so F([1, 2, 3], -1) parsed as
+  [1, 2, 3] - 1 ("Invalid array operation '-'"). The comma between rows of
+  a nested literal is still taken by the outer literal.
+- A bound `each` took only a plain variable: `each(s in "c,d"->Split(","))`
+  and `each(n in [5, 6])` did not parse, and `each(s in Names())` compared
+  the index with the call's result instead of its size. The collection is
+  now evaluated once into a hidden local.
+~#
+# EXTRA_LIBS: gen_collect
+
+use Collection;
+
+class ParserGaps {
+	@failures : Int;
+	@calls : Int;
+
+	New() {
+		@failures := 0;
+		@calls := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : First(a : Int[], n : Int) ~ Int {
+		return a[0] + n;
+	}
+
+	function : Pair(a : Int[], b : Int[]) ~ Int {
+		return a[0] * 10 + b[1];
+	}
+
+	method : Names() ~ Vector<String> {
+		@calls += 1;
+		v := Vector->New()<String>;
+		v->AddBack("x");
+		v->AddBack("y");
+		v->AddBack("z");
+		return v;
+	}
+
+	method : Run() ~ Nil {
+		Check("F([1, 2, 3], -1)", First([1, 2, 3], -1) = 0);
+		n := 4;
+		Check("F([1, 2, 3], -n)", First([1, 2, 3], -n) = -3);
+		Check("two literals as arguments", Pair([7, 8], [1, 2]) = 72);
+		m := [[1, 2], [3, 4]];
+		Check("nested rows still parse", m[0, 1] = 2 & m[1, 0] = 3);
+
+		joined := "";
+		each(s in "c,d,e"->Split(",")) {
+			joined += s;
+		};
+		Check("each over a split string", joined->Equals("cde"));
+
+		total := 0;
+		each(v in [5, 6, 7]) {
+			total += v;
+		};
+		Check("each over an array literal", total = 18);
+
+		names := "";
+		each(s in Names()) {
+			names += s;
+		};
+		Check("each over a call result", names->Equals("xyz"));
+		Check("the call is evaluated once", @calls = 1);
+
+		count := 0;
+		each(i : 3) {
+			count += 1;
+		};
+		Check("each(i : 3) is unchanged", count = 3);
+		sum := 0;
+		each(i : IntRange->New(1, 4)) {
+			sum += i;
+		};
+		Check("each over a range is unchanged", sum = 6);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ParserGaps->New()->Run();
+	}
+}

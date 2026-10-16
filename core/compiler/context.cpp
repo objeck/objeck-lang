@@ -2626,6 +2626,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       // not a capture -- a new type-inferred local declared inside the lambda
       // body (e.g. `a := ...` in a `{ }` block body). Create it in the lambda's
       // own scope, mirroring the normal type-inferred-variable path below.
+      CheckImplicitDeclaration(variable);
       const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
       SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
       current_table->AddEntry(var_entry, true);
@@ -2639,6 +2640,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // type inferred variable
   else if(current_method) {
+    CheckImplicitDeclaration(variable);
     const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
     SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
     current_table->AddEntry(var_entry, true);
@@ -5726,6 +5728,25 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
 /****************************
  * Analyzes an assignment statement
  ****************************/
+/****************************
+ * Only `name := value` declares a variable. A field (`@name`) is declared
+ * in its class, and the target of +=, -= and the like must already exist:
+ * `@cuont += 1` used to declare a new local and compile (#1184). The entry
+ * is still created afterwards so analysis carries on.
+ ****************************/
+void ContextAnalyzer::CheckImplicitDeclaration(Variable* variable)
+{
+  const std::wstring &name = variable->GetName();
+  if(!name.empty() && name[0] == L'@') {
+    ProcessError(variable, L"Undefined variable: '" + name + L"'"
+                 L"\n\tFields are declared in the class; check the spelling.");
+  }
+  else if(in_operation_assignment) {
+    ProcessError(variable, L"Undefined variable: '" + name + L"'"
+                 L"\n\tA compound assignment needs an existing variable; declare it with ':=' first.");
+  }
+}
+
 void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
 {
 #ifdef _DEBUG
@@ -5736,7 +5757,9 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
   Variable* variable = assignment->GetVariable();
   if(variable) {
+    in_operation_assignment = type != ASSIGN_STMT;
     AnalyzeVariable(variable, depth + 1);
+    in_operation_assignment = false;
     if(current_class && current_class->IsReadonlyRecord() && current_method &&
        current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
        variable->GetName().size() > 0 && variable->GetName()[0] == L'@') {

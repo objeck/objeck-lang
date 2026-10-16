@@ -117,6 +117,8 @@ enum ScannerTokenType {
   TOKEN_CHAR_LIT,
   TOKEN_CHAR_STRING_LIT,
   TOKEN_BAD_CHAR_STRING_LIT,
+  // an integer literal outside its range (#1184)
+  TOKEN_BAD_INT_LIT,
   // reserved words
   TOKEN_NATIVE_ID,
   TOKEN_IF_ID,
