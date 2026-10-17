@@ -5660,6 +5660,11 @@ StaticArray* Parser::ParseStaticArray(int depth) {
   if(Match(TOKEN_OPEN_BRACKET)) {
     while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
       expressions->AddExpression(ParseStaticArray(depth + 1));
+
+      // the comma between rows belongs to the outer array
+      if(Match(TOKEN_COMMA)) {
+        NextToken();
+      }
     }
 
     if(!Match(TOKEN_CLOSED_BRACKET)) {
@@ -5762,11 +5767,9 @@ StaticArray* Parser::ParseStaticArray(int depth) {
       ProcessError(L"Expected ']'", TOKEN_CLOSED_BRACKET);
     }
     NextToken();
-
-    // next row
-    if(Match(TOKEN_COMMA)) {
-      NextToken();
-    }
+    // A comma after the ']' is not this literal's: the row loop above takes
+    // it between rows. Consuming it here also ate the separator after an
+    // outermost literal, so F([1, 2, 3], -1) parsed as [1, 2, 3] - 1 (#1184).
   }
 
   return TreeFactory::Instance()->MakeStaticArray(file_name, line_num, line_pos, expressions);
@@ -6842,6 +6845,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
       break;
 
+    case TOKEN_BAD_INT_LIT:
+      ProcessError(L"Integer literal out of range: '" + scanner->GetToken()->GetIdentifier() +
+                   L"'\n\tInt is 64 bits: -9223372036854775808 to 9223372036854775807, or up to 18446744073709551615 with a 'u' suffix", TOKEN_SEMI_COLON);
+      NextToken();
+      break;
+
     case TOKEN_OPEN_BRACKET:
       expression = ParseStaticArray(depth + 1);
       break;
@@ -7665,7 +7674,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(L"Expected ')'", TOKEN_OPEN_PAREN);
+    ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
@@ -7866,6 +7875,19 @@ For* Parser::ParseEach(bool reverse, int depth)
       NextToken();
       break;
 
+    // a bound collection that is not a plain variable: a literal, or a call
+    // chain starting from one (#1184)
+    case TOKEN_CHAR_STRING_LIT:
+    case TOKEN_OPEN_BRACKET:
+      if(is_bound) {
+        left_pre_count = HoistEachCollection(ParseExpression(depth + 1), bound_ident, pre_statements, line_num, line_pos, depth);
+      }
+      else {
+        ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+        NextToken();
+      }
+      break;
+
     case TOKEN_IDENT: {
       left_pre_count = ParseExpression(depth + 1);
       if(left_pre_count && left_pre_count->GetExpressionType() == VAR_EXPR) {
@@ -7876,6 +7898,12 @@ For* Parser::ParseEach(bool reverse, int depth)
           left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
                                                                    variable->GetName(), L"Size", TreeFactory::Instance()->MakeExpressionList());
         }
+      }
+      // A bound each over a call result, `each(s in list->Get())`: the call
+      // was compared with the index as if it were the size. Ranges cannot be
+      // bound, so a bound call is always a collection (#1184).
+      else if(is_bound && left_pre_count && left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
+        left_pre_count = HoistEachCollection(left_pre_count, bound_ident, pre_statements, line_num, line_pos, depth);
       }
       else if(left_pre_count && left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
         // add count entry
@@ -7936,6 +7964,36 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmts, statements);
+}
+
+/****************************
+ * Evaluates an 'each' collection expression once, into a hidden local
+ * '#<bound>_coll', and returns '#<bound>_coll->Size()' for the loop
+ * condition; the analyzer then binds the element exactly as it does for a
+ * named collection.
+ ****************************/
+Expression* Parser::HoistEachCollection(Expression* collection, const std::wstring& bound_ident, StatementList* pre_statements,
+                                        const int line_num, const int line_pos, int depth)
+{
+  const std::wstring file_name = GetFileName();
+  if(!collection) {
+    return nullptr;
+  }
+
+  const std::wstring coll_ident = L'#' + bound_ident + L"_coll";
+  SymbolEntry* coll_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(coll_ident),
+                                                                     TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  if(!symbol_table->CurrentParseScope()->AddEntry(coll_entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + coll_ident + L"'");
+  }
+
+  Variable* coll_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, coll_ident);
+  Assignment* coll_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), coll_var, collection);
+  pre_statements->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), coll_entry, coll_assign));
+
+  const int size_pos = GetLinePosition();
+  return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, size_pos, GetLineNumber(), size_pos, -1, -1,
+                                                 coll_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
 }
 
 /****************************

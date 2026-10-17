@@ -272,6 +272,8 @@ class ContextAnalyzer {
   bool use_static_check;
   int in_loop;
   bool in_assignment;
+  // analyzing the target of +=, -= and the like: it must already exist (#1184)
+  bool in_operation_assignment = false;
   bool in_return;
   int expression_depth;
   int nested_call_depth;
@@ -580,6 +582,7 @@ class ContextAnalyzer {
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth);
   bool CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only = false, bool left_is_target = true);
+  void CheckImplicitDeclaration(Variable* variable);
   void AnalyzeAssignment(Assignment * assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);

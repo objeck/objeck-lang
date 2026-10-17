@@ -1289,11 +1289,13 @@ bundle Web.HTTP.Server {
 		~#
 		method : public : SetForwardAlias(name : String) ~ Bool {
 			if(@server_config <> Nil & @server_config->HasStaticHandler(name)) {
-				@forward_name := "";
+				# @forward_name was undeclared, so it was a new local and the alias was
+				# never stored; GetForwardAlias/HasForwardAlias read @forward_alias_name
+				@forward_alias_name := "";
 				if(<>name->StartsWith('/')) {
-					@forward_name += '/';
+					@forward_alias_name += '/';
 				};
-				@forward_name += name;
+				@forward_alias_name += name;
 
 				return true;
 			};

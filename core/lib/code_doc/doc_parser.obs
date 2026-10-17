@@ -392,10 +392,10 @@ class SnippetParser {
 				else if(state <> 1 & AtLineStart() & @cur_char = 'b' & @nxt_char = 'u') {
 					ident := ParseIdent();
 					if(ident->Equals("bundle")) {
-						@bundle_name := ParseIdent();
-						if(@bundle_name->Size() > 0) {
+						bundle_name := ParseIdent();
+						if(bundle_name->Size() > 0) {
 							bundle_block := BundleSnippet->New(@uses);
-							bundle_block->SetName(@bundle_name);
+							bundle_block->SetName(bundle_name);
 							bundle_block->SetFileName(file);
 							@file_uses->Insert(file, bundle_block);							
 							SetBundle(bundle_block);

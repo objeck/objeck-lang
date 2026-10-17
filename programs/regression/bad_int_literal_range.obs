@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Integer literal out of range: '99999999999999999999'
+#~
+An integer literal too large for Int names the problem (#1184); it was
+reported only as "unexpected token".
+~#
+class BadIntLiteralRange {
+	function : Main(args : String[]) ~ Nil {
+		x := 99999999999999999999;
+		x->PrintLine();
+	}
+}

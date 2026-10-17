@@ -213,6 +213,8 @@ class Parser {
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
   For* ParseEach(bool reverse, int depth);
+  Expression* HoistEachCollection(Expression* collection, const std::wstring& bound_ident, StatementList* pre_statements,
+                                  const int line_num, const int line_pos, int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
   Declaration* ParseDeclaration(IdentifierContext &context, bool is_stmt, int depth);
