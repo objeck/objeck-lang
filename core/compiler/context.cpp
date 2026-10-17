@@ -3097,7 +3097,7 @@ void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concr
   }
 }
 
-void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
+void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node, Class* scope)
 {
   const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
@@ -3115,7 +3115,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         bool resolved = GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass);
         if(!resolved) {
-          inf_klass = current_class->GetGenericClass(concrete_name);
+          inf_klass = (scope ? scope : current_class)->GetGenericClass(concrete_name);
           resolved = (inf_klass != nullptr);
         }
         if(resolved) {
@@ -3137,7 +3137,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         const std::wstring concrete_type_name = concrete_type->GetName();
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramOrLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
-           !current_class->GetGenericClass(concrete_type_name)) {
+           !(scope ? scope : current_class)->GetGenericClass(concrete_type_name)) {
           ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_type_name) + L"'");
         }
       }
@@ -3145,7 +3145,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
   }
 }
 
-void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, Class* klass, ParseNode* node)
+void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, Class* klass, ParseNode* node, Class* scope)
 {
   const std::vector<Class*> class_generics = klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
@@ -3165,7 +3165,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         bool resolved = GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass);
         if(!resolved) {
-          inf_klass = current_class->GetGenericClass(concrete_name);
+          inf_klass = (scope ? scope : current_class)->GetGenericClass(concrete_name);
           resolved = (inf_klass != nullptr);
         }
         if(resolved) {
@@ -3187,7 +3187,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         const std::wstring concrete_type_name = concrete_type->GetName();
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramOrLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
-           !current_class->GetGenericClass(concrete_type_name)) {
+           !(scope ? scope : current_class)->GetGenericClass(concrete_type_name)) {
           ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_type_name) + L"'");
         }
       }
@@ -3953,7 +3953,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         // cannot be set to method, need to preserve test against other selections
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -3974,7 +3974,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
       MethodCallSelection* match = new MethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         // add parameter match
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
@@ -4001,7 +4001,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         expression = expression->GetMethodCall();
       }
       // erase/resolve type
-      Type* left = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+      Type* left = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
   }
@@ -4184,7 +4184,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
           ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
         }
         // check generic parameters for call
-        Type* left = ResolveGenericType(mthd_params[i]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* left = ResolveGenericParam(mthd_params[i]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
       }
     }
@@ -4267,6 +4267,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     // resolve generic to concrete, if needed
     Type* eval_type = method_call->GetEvalType();
     if(klass->HasGenerics()) {
+      // see the library-class path: `Wrap(a : T) ~ Cell<T>` (#1182)
+      if(eval_type->HasGenerics() && method_call->GetConcreteTypes().empty() && !is_new) {
+        eval_type = MapReturnGenerics(eval_type, method_call, klass, nullptr);
+        method_call->SetEvalType(eval_type, false);
+      }
       eval_type = ResolveGenericType(eval_type, method_call, klass, nullptr, true);
       method_call->SetEvalType(eval_type, false);
     }
@@ -4278,8 +4283,22 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
     // set subsequent call type
     if(method_call->GetMethodCall()) {
-      Type* expr_type = ResolveGenericType(method->GetReturn(), method_call, klass, nullptr, true);
+      // `c->Wrap(x)->Get()`: Wrap's Cell<T> is a Cell<String> to the next call
+      Type* rtrn_type = method->GetReturn();
+      if(rtrn_type->HasGenerics() && klass->HasGenerics() && method_call->GetConcreteTypes().empty() && !is_new) {
+        rtrn_type = MapReturnGenerics(rtrn_type, method_call, klass, nullptr);
+      }
+      Type* expr_type = ResolveGenericType(rtrn_type, method_call, klass, nullptr, true);
       method_call->GetMethodCall()->SetEvalType(expr_type, false);
+      // kept apart from the eval type, which SetMethod replaces (#1182). A
+      // constructor's, or a same-class return's, type arguments are on this
+      // call's eval type -- `Ops->New()<String>->Id(..)` -- not on the return.
+      if(expr_type->HasGenerics()) {
+        method_call->GetMethodCall()->SetReceiverGenerics(expr_type->GetGenerics());
+      }
+      else if(eval_type && eval_type->GetName() == expr_type->GetName()) {
+        method_call->GetMethodCall()->SetReceiverGenerics(eval_type->GetGenerics());
+      }
     }
 
     // enum check
@@ -4332,7 +4351,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -4353,7 +4372,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
@@ -4378,7 +4397,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         expression = expression->GetMethodCall();
       }
       // map generic to concrete type, if needed
-      Type* left = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+      Type* left = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
 
@@ -4583,6 +4602,15 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // resolve generic to concrete, if needed
     Type* eval_type = method_call->GetEvalType();
     if(lib_method->GetLibraryClass()->HasGenerics()) {
+      // A return built from the class's own parameters -- Map->GetKeys() is
+      // Vector<K> -- has its arguments mapped through the receiver's, so
+      // `a->GetKeys()` on a Map<String, IntRef> is a Vector<String>. Without
+      // this the caller had to write `<K>`, and even a declared
+      // `k : Vector<String> := a->GetKeys()` was rejected (#1182).
+      if(eval_type->HasGenerics() && method_call->GetConcreteTypes().empty()) {
+        eval_type = MapReturnGenerics(eval_type, method_call, nullptr, lib_klass);
+        method_call->SetEvalType(eval_type, false);
+      }
       eval_type = ResolveGenericType(eval_type, method_call, nullptr, lib_klass, true);
       method_call->SetEvalType(eval_type, false);
     }
@@ -4619,6 +4647,16 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       Type* first_type = concrete_types[0];
       ResolveClassEnumType(first_type);
       method_call->SetEvalType(first_type, true);
+    }
+
+    // The next call in a chain takes its type arguments from its own eval type,
+    // which was set above to the RAW return -- 'V' for Map->Find -- so
+    // `m->Find(k)->Insert(x)` looked for Insert(H) on a Set with no H and
+    // failed, while the same call through a local worked. Hand it the resolved
+    // return, type arguments and all, as the program-class path does (#1182).
+    if(method_call->GetMethodCall() && method_call->GetEvalType()) {
+      method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
+      method_call->GetMethodCall()->SetReceiverGenerics(method_call->GetEvalType()->GetGenerics());
     }
 
     // next call
@@ -5656,7 +5694,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   in_return = false;
 }
 
-void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth)
+void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth, Class* scope)
 {
   if(!cls_type || !concrete_type) {
     return;
@@ -5665,7 +5703,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
   const std::wstring concrete_type_name = concrete_type->GetName();
   Class* concrete_klass = nullptr; LibraryClass* concrete_lib_klass = nullptr;
   if(!GetProgramOrLibraryClass(concrete_type, concrete_klass, concrete_lib_klass)) {
-    concrete_klass = current_class->GetGenericClass(concrete_type_name);
+    concrete_klass = (scope ? scope : current_class)->GetGenericClass(concrete_type_name);
   }
 
   if(concrete_klass || concrete_lib_klass) {
@@ -5676,7 +5714,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
       const std::wstring cls_type_name = cls_type->GetName();
       Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
       if(!GetProgramOrLibraryClass(cls_type, dclr_klass, dclr_lib_klass)) {
-        dclr_klass = current_class->GetGenericClass(cls_type_name);
+        dclr_klass = (scope ? scope : current_class)->GetGenericClass(cls_type_name);
       }
 
       if(dclr_klass && dclr_klass->HasGenerics()) {
@@ -5685,7 +5723,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
           ProcessError(node, L"Generic to concrete size mismatch");
         }
         else {
-          ValidateGenericConcreteMapping(concrete_types, dclr_klass, node);
+          ValidateGenericConcreteMapping(concrete_types, dclr_klass, node, scope);
         }
       }
       else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
@@ -5694,7 +5732,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
           ProcessError(node, L"Generic to concrete size mismatch");
         }
         else {
-          ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, node);
+          ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, node, scope);
         }
       }
     }
@@ -7948,7 +7986,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
         ProcessError(entry, L"Undefined class or enum: '" + FormatTypeString(type->GetName()) + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
-      ValidateConcrete(type, type, declaration, depth);
+      ValidateConcrete(type, type, declaration, depth, klass);
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
@@ -9955,6 +9993,10 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         else if(!method_call->GetConcreteTypes().empty()) {
           concrete_types = method_call->GetConcreteTypes();
         }
+        // a call on the previous call's result: that result's type arguments
+        else if(!method_call->GetReceiverGenerics().empty()) {
+          concrete_types = method_call->GetReceiverGenerics();
+        }
         else if(method_call->GetEvalType()) {
           concrete_types = method_call->GetEvalType()->GetGenerics();
           method_call->SetConcreteTypes(concrete_types);
@@ -9976,6 +10018,52 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
   }
 
   return candidate_type;
+}
+
+/****************************
+ * A return type's own type arguments mapped through the receiver's: for a
+ * Map<String, IntRef>, GetKeys()'s Vector<K> is a Vector<String> (#1182).
+ * Arguments that are not the class's parameters are kept, and nested ones
+ * (Vector<Pair<K, V>>) are mapped too. Returns 'rtrn' itself if nothing
+ * changes.
+ ****************************/
+Type* ContextAnalyzer::MapReturnGenerics(Type* rtrn, MethodCall* method_call, Class* klass, LibraryClass* lib_klass)
+{
+  const std::vector<Type*> args = rtrn->GetGenerics();
+  std::vector<Type*> mapped;
+  bool changed = false;
+  for(Type* arg : args) {
+    Type* to = arg->HasGenerics() ? MapReturnGenerics(arg, method_call, klass, lib_klass) :
+      ResolveGenericType(arg, method_call, klass, lib_klass, false);
+    if(to != arg) {
+      changed = true;
+    }
+    mapped.push_back(to);
+  }
+
+  if(!changed) {
+    return rtrn;
+  }
+
+  Type* out = TypeFactory::Instance()->MakeType(rtrn);
+  out->SetGenerics(mapped);
+  return out;
+}
+
+/****************************
+ * A parameter's type for matching a call: the class parameter it names
+ * resolved, and, for a parameter like `a : Cell<T>` or `v : Vector<T>`, its
+ * own type arguments mapped through the receiver's (#1182)
+ ****************************/
+Type* ContextAnalyzer::ResolveGenericParam(Type* param_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn)
+{
+  // map first: resolving Cell<T> as a class reports T as an undefined class
+  Type* mapped = param_type;
+  if(param_type->HasGenerics() && ((klass && klass->HasGenerics()) || (lib_klass && lib_klass->HasGenerics()))) {
+    mapped = MapReturnGenerics(param_type, method_call, klass, lib_klass);
+  }
+
+  return ResolveGenericType(mapped, method_call, klass, lib_klass, is_rtrn);
 }
 
 Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass)

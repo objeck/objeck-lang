@@ -5,7 +5,7 @@
 #
 # Objeck passes arguments by value and has no reference parameters, so no function can exchange two of its caller's local variables; what can be swapped are storage places reachable through an object. Genericity is by class type parameters (no generic methods, and a type argument must be a class, so Int values are boxed as IntRef). Three forms: a generic Pair<T> that swaps its own two slots, a generic Swapper<T> that swaps two elements of any T[] array, and a generic Ref<T> cell whose Exchange(v) stores v and returns the old value, so two cells swap in one line.
 #
-# The direct form -- a method taking another Ref<T>, such as a.SwapWith(b : Ref<T>) -- does not compile: a parameter whose type is a generic class instantiated with the enclosing class's own type parameter reports "Undefined class or interface: 'T'" at the first call. Exchange is the workaround. Swapper is held in a local because a call chained directly onto Swapper->New()<String> loses the type argument.
+# The direct form -- a method taking another Ref<T>, a.SwapWith(b : Ref<T>) -- compiles since #1182 (a parameter whose type is a generic class instantiated with the enclosing class's own type parameter reported "Undefined class or interface: 'T'"), and so does a call chained directly onto Swapper->New()<String>. Exchange is kept as a second form.
 #
 # Expected values are the inputs, exchanged.
 ~#
@@ -57,6 +57,13 @@ class Ref<T> {
 
 	method : public : Set(value : T) ~ Nil {
 		@value := value;
+	}
+
+	# exchanges this cell's value with another cell of the same type
+	method : public : SwapWith(rhs : Ref<T>) ~ Nil {
+		t := @value;
+		@value := rhs->Get();
+		rhs->Set(t);
 	}
 
 	# stores value, returns what was there
@@ -164,6 +171,17 @@ class RosettaGenericSwap {
 		n := Ref->New(Point->New(9, 9))<Point>;
 		n->Set(m->Exchange(n->Get()));
 		Check("Ref<Point> cells swapped", ShowPoints(m->Get(), n->Get()), "(9,9)(0,0)");
+
+		# the direct form, a method taking another Ref<T>
+		c := Ref->New("one")<String>;
+		d := Ref->New("two")<String>;
+		c->SwapWith(d);
+		Check("Ref<String> SwapWith", c->Get() + " " + d->Get(), "two one");
+
+		# a call chained onto the constructor keeps its type argument
+		more := ["x", "y"];
+		Swapper->New()<String>->SwapAt(more, 0, 1);
+		Check("chained Swapper<String>", more[0] + more[1], "yx");
 
 		if(@failures > 0) {
 			"{$@failures} failure(s)"->PrintLine();

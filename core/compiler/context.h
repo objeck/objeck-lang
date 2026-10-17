@@ -418,11 +418,13 @@ class ContextAnalyzer {
   Type* ResolveGenericType(Type* generic_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
 
   Type* ResolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass);
+  Type* MapReturnGenerics(Type* rtrn, MethodCall* method_call, Class* klass, LibraryClass* lib_klass);
+  Type* ResolveGenericParam(Type* param_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn);
 
   // validates mapping of generic to concrete types
-  void ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node);
+  void ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node, Class* scope = nullptr);
 
-  void ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, Class* klass, ParseNode* node);
+  void ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, Class* klass, ParseNode* node, Class* scope = nullptr);
 
   void ValidateConcretes(Type* from_concrete_type, Type* to_concrete_type, MethodCall* method_call);
   
@@ -430,7 +432,10 @@ class ContextAnalyzer {
   void ValidateGenericBacking(Type* type, const std::wstring backing_inf_name, Expression * expression);
 
   // validate concrete type
-  void ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth);
+  // 'scope' is the class whose type parameters are in view, when that is not
+  // current_class: a callee's parameter declarations are checked from its
+  // caller (#1182)
+  void ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth, Class* scope = nullptr);
 
   // finds the first class match; note multiple matches may exist
   Class* SearchProgramClasses(const std::wstring &klass_name);

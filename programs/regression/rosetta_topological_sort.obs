@@ -95,10 +95,7 @@ class RosettaTopologicalSort {
 			for(i := 1; i < words->Size(); i += 1;) {
 				dep := words[i];
 				if(dep->Size() > 0 & <>dep->Equals(lib)) {
-					# a chained call on a nested-generic value loses its type argument
-					# (deps->Find(lib)->Insert(dep) does not compile), so bind it first
-					lib_deps := deps->Find(lib);
-					lib_deps->Insert(dep);
+					deps->Find(lib)->Insert(dep);
 					if(<>deps->Has(dep)) {
 						deps->Insert(dep, Set->New()<String>);
 					};

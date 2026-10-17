@@ -2894,6 +2894,7 @@ namespace frontend {
     SymbolEntry* dyn_func_entry;
     MethodCall* func_ref_unwrap;
     std::vector<Type*> concrete_types;
+    std::vector<Type*> receiver_generics;
     int mid_line_num;
     int mid_line_pos;
     bool is_try_intrinsic;
@@ -3182,6 +3183,18 @@ namespace frontend {
     void SetLibraryEnumItem(LibraryEnumItem* i, const std::wstring &enum_name) {
       lib_enum_item = i;
       SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, enum_name), false);
+    }
+
+    // The type arguments of the value this call is made on, when that value is
+    // the previous call's result: `m->Find(k)->Insert(x)` makes Insert on a
+    // Set<String>. SetMethod/SetLibraryMethod replace eval_type with the raw
+    // return, so they cannot live there (#1182).
+    void SetReceiverGenerics(const std::vector<Type*>& g) {
+      receiver_generics = g;
+    }
+
+    const std::vector<Type*>& GetReceiverGenerics() const {
+      return receiver_generics;
     }
 
     void SetLibraryMethod(LibraryMethod* l, bool set_rtrn = true) {

@@ -150,11 +150,9 @@ class RosettaDeepcopy {
 		CheckBool("Float[] field", reals[1] = -1.5, true);
 		grid := c->GetGrid();
 		CheckInt("Int[,] field, first and last element", grid[0, 0] + grid[1, 2], 19);
-		# through a local: c->GetList()->Get(1)->Get() does not compile, the
-		# chain loses the Vector's element type (reported to the batch lead)
-		list := c->GetList();
-		CheckInt("Vector field size", list->Size(), 2);
-		CheckInt("Vector field element", list->Get(1)->Get(), 8);
+		# a chain through the generic element compiles since #1182
+		CheckInt("Vector field size", c->GetList()->Size(), 2);
+		CheckInt("Vector field element", c->GetList()->Get(1)->Get(), 8);
 		CheckInt("Map field entry", c->GetMap()->Find("alpha")->Get(), 7);
 		CheckInt("nested object with no zero-argument constructor", c->GetInner()->Get(), 700);
 		CheckBool("Nil field stays Nil", c->GetNothing() = Nil, true);
