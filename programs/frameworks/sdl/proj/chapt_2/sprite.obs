@@ -26,7 +26,8 @@ class SpriteComponent from Component {
 	}
 
 	method : public : Free() ~ Nil {
-		@parent->As(Component)->Free();
+		# Component->Free(): there is no parent-method call, so inline it
+		GetOwner()->RemoveComponent(@self);
 		GetOwner()->GetGame()->RemoveSprite(@self);
 	}
 

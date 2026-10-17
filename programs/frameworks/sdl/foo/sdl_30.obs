@@ -299,7 +299,6 @@ class Test {
 			if(end < FRAME_RATE) {
 				Timer->Delay(FRAME_RATE - end);
 			};
-			frame += 1;
 		};
 
 		e->Free();

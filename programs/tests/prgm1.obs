@@ -17,6 +17,7 @@ bundle Default {
 			x += (8 * 2);
 			x->PrintLine();
 
+			y := 1;
 			y *= args->Size();
 			y->PrintLine();
 

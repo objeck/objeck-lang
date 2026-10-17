@@ -4,11 +4,11 @@ use System.Time;
 class Mc {
  
     function: Main(args: String[]) ~ Nil {
-        @I := 20;
-        @J := 20;
-        @K := 5;
+        max_i := 20;
+        max_j := 20;
+        max_k := 5;
 
-        CrashRun(@I, @J, @K);
+        CrashRun(max_i, max_j, max_k);
     }
     
     function: native: CrashRun(@I: Int, @J: Int, @K: Int) ~ Nil {

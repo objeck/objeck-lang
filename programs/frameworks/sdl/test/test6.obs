@@ -5,6 +5,7 @@ class War {
 	@framework : GameFramework;
 	@missle : Missle;
 	@color_black : Color;
+	@color_blue : Color;
 	@mountain : Collection.Vector<Rocks>;
 	@is_debug : Bool;
 

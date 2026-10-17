@@ -129,6 +129,7 @@ class Paddle {
 	@score_texture : Sprite;
 	@high_score_texture : Sprite;
 	@score_color : Color;
+	@font : Font;
 	
 	@ball_x : Int;
 	@ball_y : Int;
