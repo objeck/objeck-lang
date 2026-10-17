@@ -175,6 +175,10 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   std::wcout << L"creating frame=" << (*stack_frame) << std::endl;
 #endif
   (*stack_frame)->jit_called = jit_called;
+  if(jit_called) {
+    bridge_call_pos = *call_stack_pos;
+    bridge_deferred = false;
+  }
 
 #if !defined(_DEBUGGER) && !defined(_NO_JIT)
   // An entry method -- Main, a thread's Run -- is called once, so the auto-JIT's
@@ -528,6 +532,14 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
 #ifndef _DEBUGGER
 loop_exit: ;
 #endif
+
+  // A bridge that left an error to its compiled caller stopped on its entry
+  // frame; release it as the return to compiled code does (#1171)
+  if(bridge_deferred && *stack_frame) {
+    (*stack_frame)->jit_called = false;
+    ReleaseStackFrame(*stack_frame);
+    *stack_frame = nullptr;
+  }
 
 #ifdef _TIMING
   clock_t end = clock();
