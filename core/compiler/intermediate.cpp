@@ -1294,6 +1294,42 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
  * Translates a nested method 
  * call
  ****************************/
+// true if any link of the chain is the Try() intrinsic ('?->' desugars to it)
+static bool ChainHasTryIntrinsic(MethodCall* method_call)
+{
+  for(MethodCall* link = method_call; link; link = link->GetMethodCall()) {
+    if(link->IsTryIntrinsic()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// True if the chain's value is the one word a Try() region or an Otherwise()
+// leaves: calls after a Try() run inside its region, so only calls after a
+// trailing Otherwise() decide the result themselves
+static bool ChainEndsInTryResult(MethodCall* method_call)
+{
+  bool ends_in_intrinsic_result = false;
+  bool after_otherwise = false;
+  for(MethodCall* link = method_call; link; link = link->GetMethodCall()) {
+    if(link->IsTryIntrinsic()) {
+      ends_in_intrinsic_result = true;
+      after_otherwise = false;
+    }
+    else if(link->IsOtherwiseIntrinsic()) {
+      ends_in_intrinsic_result = true;
+      after_otherwise = true;
+    }
+    else if(after_otherwise) {
+      ends_in_intrinsic_result = false;
+    }
+  }
+
+  return ends_in_intrinsic_result;
+}
+
 void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
 {
   // find end of nested call
@@ -1507,12 +1543,46 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       method_call = method_call->GetMethodCall();
     } 
   }
+  else if(ChainHasTryIntrinsic(method_call)) {
+    // `t?->Show();` as a statement. This path emitted each link as a plain
+    // call and never opened the Try() region, so Try() went out as an ordinary
+    // call on @self -- Nil in a function -- and the program died with a Nil
+    // dereference (#1113). The expression path handles Try(); emit the chain
+    // there and drop the one word its region leaves.
+    EmitExpression(static_cast<Expression*>(method_call));
+    MethodCall* tail = method_call;
+    while(tail->GetMethodCall()) {
+      tail = tail->GetMethodCall();
+    }
+    if(ChainEndsInTryResult(method_call)) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+    }
+    else {
+      switch(tail->GetRougeReturn()) {
+      case instructions::INT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        break;
+
+      case instructions::FLOAT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_FLOAT));
+        break;
+
+      case instructions::FUNC_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(static_cast<Statement*>(method_call), cur_line_num, POP_INT));
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
   else {
     MethodCall* tail = method_call;
     while(tail->GetMethodCall()) {
       tail = tail->GetMethodCall();
     }
-    
+
     // emit parameters for nested call
     MethodCall* temp = tail;
     while(temp) {
@@ -4782,7 +4852,9 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   // The receiver is already on the stack, so chained calls should be nested
   is_nested = true;
   method_call = method_call->GetMethodCall();
+  MethodCall* last_call = nullptr;
   while(method_call) {
+    last_call = method_call;
     if(method_call->IsOtherwiseIntrinsic()) {
       // end try scope before Otherwise
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
@@ -4856,6 +4928,23 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
     }
 
     method_call = method_call->GetMethodCall();
+  }
+
+  // A guarded call that returns nothing -- `t?->Show()` with Show() ~ Nil --
+  // leaves no word for the region's result: the store below then took a word
+  // the region never pushed, and the program failed with a Nil dereference at
+  // its first such call (#1113). Its result is Nil, as on the error path.
+  if(last_call) {
+    Type* last_rtrn = nullptr;
+    if(last_call->GetMethod()) {
+      last_rtrn = last_call->GetMethod()->GetReturn();
+    }
+    else if(last_call->GetLibraryMethod()) {
+      last_rtrn = last_call->GetLibraryMethod()->GetReturn();
+    }
+    if(last_rtrn && last_rtrn->GetType() == frontend::NIL_TYPE) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
+    }
   }
 
   // end of chain without Otherwise - store result and end try

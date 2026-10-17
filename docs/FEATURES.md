@@ -93,6 +93,18 @@ way whether or not the failing method happened to be compiled. A call-stack
 overflow is recovered in interpreted code only: compiled frames consume the real
 C stack, so the process dies in the OS before any frame-count guard can fire.
 
+A guarded call works as a statement too: `t?->Close();` runs `Close()` unless
+`t` is `Nil`, and recovers a runtime error inside it. A method that returns
+nothing yields `Nil` through the guard.
+
+### Tail calls
+A method's call to itself on `@self` in tail position (`Down(); }` or
+`return Down();`) is compiled as a jump at `-opt s1` and above, so unbounded
+tail recursion runs in constant stack. The transform is skipped for `Main`,
+constructors, virtual methods, methods containing `&`/`|`, and methods with a
+`Try()` region of their own. A call on another instance of the class is a
+real call, and so is any call at `-opt s0`.
+
 ### Anonymous Classes
 ```ruby
 interface Greetings {
