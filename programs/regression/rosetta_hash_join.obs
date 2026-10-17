@@ -90,9 +90,7 @@ class RosettaHashJoin {
 			if(<>multimap->Has(key)) {
 				multimap->Insert(key, Vector->New()<JoinRow>);
 			};
-			# bind first: multimap->Find(key)->AddBack(row) loses Vector's type argument
-			bucket := multimap->Find(key);
-			bucket->AddBack(row);
+			multimap->Find(key)->AddBack(row);
 		};
 
 		out := Vector->New()<String>;
