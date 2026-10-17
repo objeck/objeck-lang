@@ -164,11 +164,8 @@ class Dot {
 	@velY : Int;
 
 	New(x : Int, y : Int, dot_texture : LTexture) {
-		@box := Rect->New();
-
-		# Initialize the offsets
-	    @posX := x;
-	    @posY := y;
+		# Initialize the offsets and the collision box
+		@box := Rect->New(x, y, Consts->DOT_WIDTH, Consts->DOT_HEIGHT);
 	    @dot_texture := dot_texture;
 
 	    # Initialize the velocity
@@ -367,7 +364,6 @@ class Game {
 			if(end < FRAME_RATE) {
 				Timer->Delay(FRAME_RATE - end);
 			};
-			frame += 1;
 		};
 
 		e->Free();

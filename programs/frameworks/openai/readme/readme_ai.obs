@@ -131,8 +131,8 @@ class ReadmeBuilder {
 
 	method : MakeMarkdown() ~ String {
 		System.IO.Filesystem.FileWriter->WriteFile("readme.md", @merged_markdown);
-		@merged_markdown_size := @merged_markdown->Size();
-		"Write 'readme.md', size={$@merged_markdown_size}..."->PrintLine();
+		merged_markdown_size := @merged_markdown->Size();
+		"Write 'readme.md', size={$merged_markdown_size}..."->PrintLine();
 
 		return @merged_markdown;
 	}

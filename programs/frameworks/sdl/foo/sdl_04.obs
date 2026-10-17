@@ -21,6 +21,7 @@ class Test {
 	@window : static : Window;
 	@screen_surface : static : Surface;
 	@key_press_surfaces : static : Surface[];
+	@current_surface : static : Surface;
 	
 	function : Main(args : String[]) ~ Nil {
 		@key_press_surfaces := Surface->New[KeyPressSurfaces->KEY_PRESS_SURFACE_TOTAL]; 
