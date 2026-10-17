@@ -6801,6 +6801,17 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
       break;
 
+    // -(a + b), -(x), -(F()): a parenthesised operand, as `<>` already takes
+    // (#1099). It is the same -1 * operand the call form above builds.
+    case TOKEN_OPEN_PAREN: {
+      Expression* right = ParseTerm(depth + 1);
+      if(right) {
+        Expression* left = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -1);
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR, left, right);
+      }
+    }
+      break;
+
     case TOKEN_UNKNOWN:
       ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
       break;
