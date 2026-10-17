@@ -166,6 +166,7 @@ class Flashcards {
 			GetProblem();
 			
 			quit := false;
+			frame_count := 0;
 			while(<>quit) {
 				@framework->FrameStart();
 				

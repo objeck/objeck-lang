@@ -11,6 +11,7 @@ bundle Default {
 # target->PrintLine();
 #			"Hello"->PrintLine();
 # target->Size()->PrintLine();			
+    		retVal := 0;
     		for(i := 0; i < target->Size(); i += 1;) {
 i->PrintLine(); 
 "World"->PrintLine();
