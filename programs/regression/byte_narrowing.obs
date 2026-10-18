@@ -1,0 +1,247 @@
+#~
+Regression: a scalar Byte wraps to 8 bits (#1176).
+
+A value stored into a Byte local, field or parameter, returned from a
+'~ Byte' method, or cast with ->As(Byte) keeps its low 8 bits, exactly as a
+Byte[] element store always did: 255 + 1 is 0, 0 - 1 is 255, 300 is 44. Before
+the fix only array stores truncated; a scalar Byte held 256, -1 and 300, and
+Int->ToByte(300) returned 300. The compiler emits the mask, so the interpreter,
+the JIT and the optimizer agree; run in all three modes.
+
+A Byte also printed three ways: ToString gave "65", interpolation "A" and
+PrintLine "0x41". All of them now give the unsigned decimal value.
+
+A scalar Char is NOT narrowed: it holds a whole code point, which
+String->Append(Char) relies on for characters above U+FFFF (#1185).
+~#
+
+class ByteNarrowing {
+	@failures : static : Int;
+	@round : static : Int;
+	@field : Byte;
+	@shared : static : Byte;
+
+	New() {
+	}
+
+	function : Check(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			if(@round = 0) {
+				"PASS: {$what}"->PrintLine();
+			};
+		}
+		else {
+			"FAIL: {$what} (round {$@round}): expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : CheckString(what : String, got : String, want : String) ~ Nil {
+		if(got <> Nil & got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected '{$want}', got '{$got}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# a parameter wraps on entry
+	function : Widen(b : Byte) ~ Int {
+		return b->As(Int);
+	}
+
+	# and so does a returned value
+	function : Narrow(v : Int) ~ Byte {
+		return v;
+	}
+
+	function : Sum(a : Byte, b : Byte) ~ Byte {
+		return a + b;
+	}
+
+	function : Locals() ~ Nil {
+		b : Byte := 255;
+		b := b + 1;
+		Check("local 255 + 1", b, 0);
+
+		b := 0;
+		b := b - 1;
+		Check("local 0 - 1", b, 255);
+
+		b := 300;
+		Check("local := 300", b, 44);
+
+		i := 300;
+		c : Byte := i;
+		Check("local := Int variable 300", c, 44);
+
+		c := -1;
+		Check("local := -1", c, 255);
+
+		c := i * 3;
+		Check("local := 900", c, 132);
+
+		# the value is unsigned after the store, so it compares as one
+		d : Byte := 200;
+		d := d + 100;
+		Check("local 200 + 100", d, 44);
+		Check("a wrapped Byte is never negative", (d < 0) ? 1 : 0, 0);
+
+		# an untyped local that a Byte expression declares is a Byte too
+		e := d;
+		e := e - 45;
+		Check("inferred Byte local 44 - 45", e, 255);
+
+		# a Byte[] element store, which always wrapped
+		bytes := Byte->New[2];
+		bytes[0] := 300;
+		bytes[1] := bytes[0] - 45;
+		Check("Byte[] element := 300", bytes[0], 44);
+		Check("Byte[] element 44 - 45", bytes[1], 255);
+
+		# the arithmetic itself is Int-wide; only the store narrows
+		f : Byte := 255;
+		Check("Byte + 1 as an Int expression", f + 1, 256);
+	}
+
+	method : Fields() ~ Nil {
+		@field := 300;
+		Check("field := 300", @field, 44);
+
+		@field := @field + 212;
+		Check("field 44 + 212", @field, 0);
+
+		@field := @field - 1;
+		Check("field 0 - 1", @field, 255);
+
+		@shared := 511;
+		Check("static field := 511", @shared, 255);
+
+		@shared := @shared + 1;
+		Check("static field 255 + 1", @shared, 0);
+	}
+
+	method : CompoundAssignment() ~ Nil {
+		b : Byte := 250;
+		b += 10;
+		Check("local 250 += 10", b, 4);
+
+		b -= 10;
+		Check("local 4 -= 10", b, 250);
+
+		b *= 2;
+		Check("local 250 *= 2", b, 244);
+
+		b := 255;
+		b += 1;
+		Check("local 255 += 1", b, 0);
+
+		b := 255;
+		b++;
+		Check("local 255++", b, 0);
+
+		b--;
+		Check("local 0--", b, 255);
+
+		@field := 200;
+		@field += 100;
+		Check("field 200 += 100", @field, 44);
+
+		@field -= 45;
+		Check("field 44 -= 45", @field, 255);
+
+		@field *= 3;
+		Check("field 255 *= 3", @field, 253);
+
+		@shared := 0;
+		@shared -= 1;
+		Check("static field 0 -= 1", @shared, 255);
+
+		# a loop counter wraps instead of running past 255
+		count := 0;
+		c : Byte := 250;
+		while(count < 10) {
+			c += 1;
+			count += 1;
+		};
+		Check("Byte counter 250 + 10 steps", c, 4);
+	}
+
+	function : Parameters() ~ Nil {
+		Check("parameter 300", Widen(300), 44);
+		Check("parameter -1", Widen(-1), 255);
+		Check("parameter 256", Widen(256), 0);
+		i := 1000;
+		Check("parameter Int variable 1000", Widen(i), 232);
+
+		Check("return 300", Narrow(300), 44);
+		Check("return -2", Narrow(-2), 254);
+		Check("Byte + Byte returned as Byte", Sum(200, 100), 44);
+	}
+
+	function : Conversions() ~ Nil {
+		Check("Int->ToByte(300)", Int->ToByte(300), 44);
+		Check("Int->ToByte(-1)", Int->ToByte(-1), 255);
+		Check("Int->ToByte(65)", Int->ToByte(65), 65);
+		Check("Float->ToByte(300.7)", Float->ToByte(300.7), 44);
+
+		Check("300->As(Byte)", 300->As(Byte), 44);
+		i := -1;
+		Check("Int variable -1->As(Byte)", i->As(Byte), 255);
+		f := 257.9;
+		Check("Float 257.9->As(Byte)", f->As(Byte), 1);
+		c : Char := 0x141;
+		Check("Char 0x141->As(Byte)", c->As(Byte), 0x41);
+
+		# a scalar Char keeps the whole code point
+		Check("Int->ToChar(0x1F600)", Int->ToChar(0x1F600)->As(Int), 0x1F600);
+		w : Char := 0xFFFF;
+		w := w + 1;
+		Check("Char 0xFFFF + 1 is not wrapped", w->As(Int), 0x10000);
+	}
+
+	function : Printing() ~ Nil {
+		b : Byte := 65;
+		CheckString("ToString", b->ToString(), "65");
+		CheckString("interpolation", "{$b}", "65");
+		CheckString("concatenation", "b=" + b, "b=65");
+		s := String->New();
+		s->Append(b);
+		CheckString("String->Append(Byte)", s, "65");
+
+		# unsigned: 200 is not -56
+		h : Byte := 200;
+		CheckString("ToString of 200", h->ToString(), "200");
+		CheckString("interpolation of 200", "{$h}", "200");
+
+		# the character, when that is what is wanted
+		CheckString("b->As(Char) interpolates as the character", "{$b->As(Char)}", "A");
+
+		# PrintLine writes to stdout, which a test cannot read back; the
+		# runner's log shows this line as "PRINT: 65"
+		"PRINT: "->Print();
+		b->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# past the default JIT threshold (10 calls), so the later rounds run
+		# JIT-compiled in the default mode too
+		for(@round := 0; @round < 12; @round += 1;) {
+			Locals();
+			ByteNarrowing->New()->Fields();
+			ByteNarrowing->New()->CompoundAssignment();
+			Parameters();
+			Conversions();
+		};
+		@round := 0;
+		Printing();
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -757,6 +757,18 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       }
     }
 
+    // A Byte parameter wraps on entry, as a local does on store (#1176). It is
+    // re-stored after the prologue rather than masked inside it: the JIT reads
+    // the first num_params instructions as the parameter stores.
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      SymbolEntry* entry = declarations[i]->GetEntry();
+      if(!entry->IsSelf() && IsScalarByte(entry->GetType())) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, entry->GetId(), LOCL));
+        EmitByteNarrowing();
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, STOR_INT_VAR, entry->GetId(), LOCL));
+      }
+    }
+
     // statements
     bool end_return = false;
     StatementList* statement_list = method->GetStatements();
@@ -1207,6 +1219,12 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
     Expression* expression = static_cast<Return*>(statement)->GetExpression();
     if(expression) {
       EmitExpression(expression);
+      // a method declared '~ Byte' returns a wrapped value (#1176)
+      Type* rtrn_type = current_method->GetReturn();
+      if(rtrn_type && rtrn_type->GetType() == frontend::BYTE_TYPE && rtrn_type->GetDimension() == 0 &&
+         !IsByteNarrowed(expression)) {
+        EmitByteNarrowing();
+      }
     }
     // post statements
     if(!post_statements.empty()) {
@@ -5969,6 +5987,67 @@ void IntermediateEmitter::EmitCalculation(CalculatedExpression* expression)
 /****************************
  * Translates a type cast
  ****************************/
+/****************************
+ * Byte narrowing (#1176): a value
+ * that lands in a scalar Byte -- a
+ * store, parameter, return or cast --
+ * keeps its low 8 bits, exactly as a
+ * Byte[] element store does. The mask
+ * is plain bytecode, so the interpreter,
+ * both JITs and the optimizer agree on it.
+ ****************************/
+bool IntermediateEmitter::IsScalarByte(Type* type)
+{
+  return type && type->GetType() == frontend::BYTE_TYPE && type->GetDimension() == 0;
+}
+
+void IntermediateEmitter::EmitByteNarrowing()
+{
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, cur_line_num, 0xff));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, cur_line_num, BIT_AND_INT));
+}
+
+// True when the value 'expression' leaves on the stack is already 0..255: a
+// Byte variable or Byte[] element, a cast to Byte (EmitCast masked it), or a
+// literal in range. Anything computed -- 'b + 1', a call -- is masked.
+bool IntermediateEmitter::IsByteNarrowed(Expression* expression)
+{
+  if(!expression || expression->GetMethodCall()) {
+    return false;
+  }
+
+  if(expression->GetCastType()) {
+    return IsScalarByte(expression->GetCastType());
+  }
+
+  switch(expression->GetExpressionType()) {
+  // the declared type, not the eval type: an Int variable stored into a Byte
+  // carries the target's type as its eval type
+  case VAR_EXPR: {
+    Variable* variable = static_cast<Variable*>(expression);
+    SymbolEntry* entry = variable->GetEntry();
+    if(!entry || !entry->GetType() || entry->GetType()->GetType() != frontend::BYTE_TYPE) {
+      return false;
+    }
+    // a Byte[] element, or a scalar Byte
+    return variable->GetIndices() || entry->GetType()->GetDimension() == 0;
+  }
+
+  case INT_LIT_EXPR: {
+    const INT64_VALUE value = static_cast<IntegerLiteral*>(expression)->GetValue();
+    return value >= 0 && value <= 0xff;
+  }
+
+  case CHAR_LIT_EXPR: {
+    const INT64_VALUE value = static_cast<CharacterLiteral*>(expression)->GetValue();
+    return value >= 0 && value <= 0xff;
+  }
+
+  default:
+    return false;
+  }
+}
+
 void IntermediateEmitter::EmitCast(Expression* expression)
 {
   cur_line_num = expression->GetLineNumber();
@@ -6002,11 +6081,18 @@ void IntermediateEmitter::EmitCast(Expression* expression)
       if(cast_type->GetType() == frontend::FLOAT_TYPE) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, I2F));
       }
+      // 'v->As(Byte)' wraps as a Byte store does (#1176)
+      else if(base_type->GetType() != frontend::BYTE_TYPE && IsScalarByte(cast_type)) {
+        EmitByteNarrowing();
+      }
       break;
 
     case frontend::FLOAT_TYPE:
       if(cast_type->GetType() != CLASS_TYPE && cast_type->GetType() != frontend::FLOAT_TYPE) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, F2I));
+        if(IsScalarByte(cast_type)) {
+          EmitByteNarrowing();
+        }
       }
       break;
 
@@ -6017,6 +6103,11 @@ void IntermediateEmitter::EmitCast(Expression* expression)
          (SearchProgramEnums(base_type->GetName()) ||
           parsed_program->GetLinker()->SearchEnumLibraries(base_type->GetName(), parsed_program->GetLibUses()))) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, I2F));
+      }
+      // an enum value is an Int, so 'e->As(Byte)' wraps too (#1176)
+      else if(IsScalarByte(cast_type) && (SearchProgramEnums(base_type->GetName()) ||
+              parsed_program->GetLinker()->SearchEnumLibraries(base_type->GetName(), parsed_program->GetLibUses()))) {
+        EmitByteNarrowing();
       }
       break;
 
@@ -6294,6 +6385,13 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
   ExpressionList* indices = variable->GetIndices();
   MemoryContext mem_context;
 
+  // a scalar Byte wraps on store, as a Byte[] element does (#1176): the value
+  // of ':=' now, a compound operator's result after its operation below
+  const bool narrow_byte = !indices && IsScalarByte(variable->GetEntry()->GetType());
+  if(narrow_byte && assignment->GetStatementType() == ASSIGN_STMT && !IsByteNarrowed(assignment->GetExpression())) {
+    EmitByteNarrowing();
+  }
+
   // memory context
   if(variable->GetEntry()->IsLocal()) {
     mem_context = LOCL;
@@ -6412,6 +6510,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, ADD_INT));
       }
+      if(narrow_byte) {
+        EmitByteNarrowing();
+      }
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
@@ -6428,6 +6529,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       } 
       else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, SUB_INT));
+      }
+      if(narrow_byte) {
+        EmitByteNarrowing();
       }
       // load instance or class memory
       if(mem_context == INST) {
@@ -6446,6 +6550,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, MUL_INT));
       }      
+      if(narrow_byte) {
+        EmitByteNarrowing();
+      }
       // load instance or class memory
       if(mem_context == INST) {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, LOAD_INST_MEM));
@@ -6462,6 +6569,9 @@ void IntermediateEmitter::EmitAssignment(Assignment* assignment)
       } 
       else {
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(assignment, cur_line_num, DIV_INT));
+      }
+      if(narrow_byte) {
+        EmitByteNarrowing();
       }
       // load instance or class memory
       if(mem_context == INST) {
