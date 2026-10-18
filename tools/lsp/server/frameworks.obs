@@ -579,7 +579,49 @@ bundle LSP {
 				return RpcRequest->New(false);
 			};
 
-			return RpcRequest->New(id_elem, mthd_elem->GetValue(), node->Get("params"));
+			return RpcRequest->New(Decoded(id_elem), JsonElement->Decode(mthd_elem->GetValue()), Decoded(node->Get("params")));
+		}
+
+		#
+		# Data.JSON's parser keeps string values as they were written, escapes and
+		# all, and leaves decoding to the caller (JsonElement->Decode). Every string
+		# in a message is decoded here, once, so the rest of the server works on
+		# plain text and the serializer's escaping on the way out is the only one.
+		#
+		# The Document used to hand-decode its text instead, and only \t \r \n \\
+		# and \": a client that sent non-ASCII as \u escapes left six characters
+		# in the document per character, and every column after it on the line was
+		# wrong (#1216).
+		#
+		function : Decoded(elem : JsonElement) ~ JsonElement {
+			if(elem = Nil) {
+				return Nil;
+			};
+
+			type := elem->GetType();
+			if(type = JsonElement->JsonType->STRING) {
+				return JsonElement->New(JsonElement->Decode(elem->GetValue()));
+			}
+			else if(type = JsonElement->JsonType->ARRAY) {
+				elems := Vector->New()<JsonElement>;
+				each(i : elem) {
+					elems->AddBack(Decoded(elem->Get(i)));
+				};
+				return JsonElement->New(elems);
+			}
+			else if(type = JsonElement->JsonType->OBJECT) {
+				members := Map->New()<String, JsonElement>;
+				names := elem->GetNames();
+				if(names <> Nil) {
+					each(i : names) {
+						name := names->Get(i);
+						members->Insert(JsonElement->Decode(name), Decoded(elem->Get(name)));
+					};
+				};
+				return JsonElement->New(members);
+			};
+
+			return elem;
 		}
 
 		# --- server-to-client request ---
@@ -868,12 +910,12 @@ bundle LSP {
 		New(uri : String, text : String, workspace : LspWorkspace, is_debug : Bool) {
 			@workspace := workspace;
 			@uri := uri;
-			@text := GetText(text);
+			@text := String->New(text);
 			@is_debug := is_debug;
 		}
 
 		method : public : Refresh(text : String) ~ Nil {
-			@text := GetText(text);
+			@text := String->New(text);
 		}
 		
 		method : public : Reload() ~ Nil {
@@ -1576,14 +1618,12 @@ bundle LSP {
 				mthd_str += @text->SubString(end_pos + 1, length);
 			};
 
-			while(index >= 0 & (@text->Get(index) = ' ' | 
-					(index >= 1 & @text->Get(index) = 'n' & @text->Get(index - 1) = '\\') |
-					(index >= 1 & @text->Get(index) = 'r' & @text->Get(index - 1) = '\\') |
-					(index >= 1 & @text->Get(index) = 't' & @text->Get(index - 1) = '\\'))) {
+			# Whitespace between the receiver's '->' and the name. This skipped
+			# escape PAIRS ('\' 'n'), from when the text held JSON escapes; the text
+			# is plain now, so it skips the characters themselves (#1216).
+			while(index >= 0 & (@text->Get(index) = ' ' | @text->Get(index) = '\t' |
+					@text->Get(index) = '\r' | @text->Get(index) = '\n')) {
 				index -= 1;
-				if(index >= 1 & @text->Get(index - 1) = '\\') {
-					index -= 1;
-				};
 			};
 
 			has_var := index >= 1 & @text->Get(index) = '>' & @text->Get(index - 1) = '-';
@@ -1631,7 +1671,7 @@ bundle LSP {
 				System.IO.Filesystem.Logger->Instance()->Info("### UpdatAll: text='{$text}' ###");
 			};
 
-			@text := GetText(text);
+			@text := String->New(text);
 		}
 
 		method : public : Update(text : String, start_line : Int, start_char: Int, end_line : Int, end_char : Int) ~ Nil {
@@ -1654,7 +1694,7 @@ bundle LSP {
 				if(range_length > 0) {
 					@text->Delete(start, range_length);
 				};
-				@text->Insert(start, GetText(text));
+				@text->Insert(start, text);
 			};
 		}
 
@@ -1670,66 +1710,45 @@ bundle LSP {
 			return @alt_text;
 		}
 
-		method : GetLineCharacterIndex(index : Int, line_pos : IntRef, char_pos : IntRef) ~ Nil {
-			cur_line := 0;
-			cur_char := 0;
-
-			for(pos := 0; pos < index; pos += 1;) {
-				char := @text->Get(pos);
-				next_char := '\0';				
-				if(pos + 1 < @text->Size()) {
-					next_char := @text->Get(pos + 1);
-				};
-
-				if(char = '\\') {
-					pos += 1;
-					
-					if(next_char = 'n') {
-							cur_line += 1;
-							cur_char := 0;
-					}
-					else if(next_char <> 'r') {
-						cur_char += 1;
-					};
-				}
-				else {
-					cur_char += 1;
-				};
-			};
-
-			line_pos->Set(cur_line);
-			char_pos->Set(cur_char - 1);
-		}
-
+		#
+		# The text index of a position. As LSP asks, a character past the end of its
+		# line means the end of that line, and a line past the end of the document
+		# means the end of the document. This returned -1 past the last line, and
+		# the edit was then dropped silently, leaving the server's copy different
+		# from the editor's; and a character past the line ran on into the next one.
+		#
 		method : GetDocumentIndex(line_pos : Int, char_pos : Int) ~ Int {
-			if(@text = Nil  | (line_pos = 0 & char_pos = 0)) {
+			if(@text = Nil | line_pos < 0) {
 				return 0;
 			};
-			
-			cur_line := 0; cur_char := 0;
-			each(pos : @text) {
-				char := @text->Get(pos);
-				next_char := '\0';				
-				if(pos + 1 < @text->Size()) {
-					next_char := @text->Get(pos + 1);
-				};
 
-				if(char = '\n') {
-					cur_line += 1;					
-				};
-				cur_char += 1;
-
-				if(cur_line = line_pos) {
-					index := cur_char + char_pos;
-					if(cur_line = 0) {
-						index -= 1;
+			# start of the line
+			start := 0;
+			cur_line := 0;
+			while(cur_line < line_pos) {
+				next := -1;
+				for(i := start; i < @text->Size() & next < 0; i += 1;) {
+					if(@text->Get(i) = '\n') {
+						next := i;
 					};
-					
-					return index;
 				};
+
+				if(next < 0) {
+					return @text->Size();
+				};
+
+				start := next + 1;
+				cur_line += 1;
 			};
 
-			return -1;
+			# clamped to the line's end (before its line ending, or the end of the text)
+			index := start;
+			while(index < @text->Size() & index - start < char_pos &
+					@text->Get(index) <> '\n' & @text->Get(index) <> '\r') {
+				index += 1;
+			};
+
+			return index;
 		}
 
 		method : GetDocumentEnd() ~ Int[] {
@@ -1752,56 +1771,6 @@ bundle LSP {
 			indexes[1] := cur_char;
 
 			return indexes;
-		}
-
-		function : GetText(text : String) ~ String {
-			out := "";
-
-			each(i : text) {
-				cur_char := text->Get(i);
-				next_char := '\0';
-				if(i + 1 < text->Size()) {
-					next_char := text->Get(i + 1);
-				};
-
-				if(cur_char = '\\') {
-					select(next_char) {
-						label 't' {
-							out += '\t';
-							i += 1;
-						}
-
-						label 'r' {
-							out += '\r';
-							i += 1;
-						}
-
-						label 'n' {
-							out += '\n';
-							i += 1;
-						}
-
-						label '\\' {
-							out += '\\';
-							i += 1;
-						}
-
-						label '"' {
-							out += '"';
-							i += 1;
-						}
-
-						other {
-							out += cur_char;
-						}
-					};
-				}
-				else {
-					out += cur_char;
-				};
-			};
-
-			return out;
 		}
 
 		method : DumpDocument() ~ Nil {

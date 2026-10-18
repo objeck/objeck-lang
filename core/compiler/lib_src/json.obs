@@ -1444,12 +1444,14 @@ obj->ToString()->PrintLine();
 				if(c = '\\' & i + 1 < str->Size()) {
 					i += 1;
 					select(str->Get(i)) {
+						# backspace and form feed are 0x08 and 0x0C; these produced 0x10
+						# and 0x14 (DLE, DC4)
 						label 'b': {
-							buffer->Append(0x10->As(Char));
+							buffer->Append(0x08->As(Char));
 						}
 
 						label 'f': {
-							buffer->Append(0x14->As(Char));
+							buffer->Append(0x0C->As(Char));
 						}
 
 						label 'n': {
@@ -1479,11 +1481,28 @@ obj->ToString()->PrintLine();
 						label 'u': {
 							i += 1;
 							if(i + 3 < str->Size()) {
-								str_code := str->SubString(i, 4);
-								if(<>str_code->IsEmpty()) {
-									buffer->Append("0x{$str_code}"->ToInt()->As(Char));
-								};
+								code := "0x{$str->SubString(i, 4)}"->ToInt();
 								i += 3;
+
+								# A character outside the BMP arrives as a surrogate pair,
+								# two escapes. Appending each half as a Char is right where a
+								# Char is UTF-16 and wrong where it is a full code point
+								# (Linux, macOS), so the pair is combined and appended as the
+								# code point, which String lays out for the platform.
+								if(code >= 0xD800 & code <= 0xDBFF & i + 6 < str->Size() &
+										str->Get(i + 1) = '\\' & str->Get(i + 2) = 'u') {
+									low := "0x{$str->SubString(i + 3, 4)}"->ToInt();
+									if(low >= 0xDC00 & low <= 0xDFFF) {
+										buffer->Append(String->FromCodePoint(0x10000 + (code - 0xD800) * 0x400 + (low - 0xDC00)));
+										i += 6;
+									}
+									else {
+										buffer->Append(code->As(Char));
+									};
+								}
+								else {
+									buffer->Append(code->As(Char));
+								};
 							}
 							else if(i < str->Size()) {
 								buffer->Append(str->Get(i));
@@ -1550,11 +1569,12 @@ obj->ToString()->PrintLine();
 				}
 				else {
 					select(c) {
-						label 0x10: {
+						# 0x08 and 0x0C; these matched 0x10 and 0x14
+						label 0x08: {
 							buffer->Append("\\b");
 						}
 
-						label 0x14: {
+						label 0x0C: {
 							buffer->Append("\\f");
 						}
 
@@ -1583,7 +1603,14 @@ obj->ToString()->PrintLine();
 						}
 
 						other: {
-							buffer->Append(c);
+							# JSON forbids a raw control character in a string; it was
+							# copied through and produced text no parser accepts
+							if(c < 0x20) {
+								AppendHexEscape(c->As(Int), buffer);
+							}
+							else {
+								buffer->Append(c);
+							};
 						}
 					};
 				};
