@@ -1,0 +1,103 @@
+#~
+Regression: `??` after a guarded call that yields a value type (#1172).
+
+`??` tested its left side against 0, so a real 0 could not be told from a
+recovered failure: `""?->Size() ?? -1` answered -1 although Size() returned
+0, and FEATURES.md's own example gave -1 for "". A guarded call that yields a
+Bool, Byte, Char or Int now takes the default only when it failed. An object
+result still takes it for Nil as well, the nil-coalescing that `??` means.
+
+Three neighbours were wrong too. A Nil receiver relied on the guarded call to
+fault, and a method that never touches @self ran on Nil without one, so
+`n?->Zero() ?? -1` answered 0. A method call on a parenthesised `??` of a
+value, `(x ?? -1)->PrintLine()`, crashed with no output. And `@self?->M()` loaded a field that does not exist as
+its receiver, which went unnoticed while the guarded method never touched
+@self.
+~#
+
+class Probe {
+	New() {
+	}
+
+	method : public : Zero() ~ Int {
+		return 0;
+	}
+
+	method : public : Boom() ~ Int {
+		return 1 / 0;
+	}
+
+	method : public : NoName() ~ String {
+		return Nil;
+	}
+
+	method : public : False() ~ Bool {
+		return false;
+	}
+
+	# `@self?->` loaded a field that does not exist as its receiver
+	method : public : SelfZero() ~ Int {
+		return @self?->Zero() ?? -1;
+	}
+}
+
+class NilCoalesceValues {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		p := Probe->New();
+		CheckInt("a Size() of 0 is kept", ""?->Size() ?? -1, 0);
+		CheckInt("a method returning 0 is kept", p?->Zero() ?? -1, 0);
+		CheckInt("a failure takes the default", p?->Boom() ?? -1, -1);
+		n : Probe := Nil;
+		CheckInt("a Nil receiver takes the default", n?->Zero() ?? -1, -1);
+		Check("a false result is kept", (p?->False() ?? true) = false);
+		CheckInt("@self?-> uses the instance", p->SelfZero(), 0);
+
+		maybe : String := Nil;
+		CheckInt("FEATURES.md's example on Nil", maybe?->ToUpper()->Size() ?? -1, -1);
+		empty := "";
+		CheckInt("FEATURES.md's example on \"\"", empty?->ToUpper()->Size() ?? -1, 0);
+
+		# objects keep nil-coalescing
+		Check("a Nil object result takes the default", (p?->NoName() ?? "dflt")->Equals("dflt"));
+		Check("a String result is kept", ("abc"?->ToUpper() ?? "dflt")->Equals("ABC"));
+
+		x := 3;
+		CheckInt("a call on a parenthesised ?? of a value", (x ?? -1)->Abs(), 3);
+		CheckInt("a call on a parenthesised guarded value", (p?->Zero() ?? -1)->Abs(), 0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NilCoalesceValues->New()->Run();
+	}
+}
