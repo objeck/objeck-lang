@@ -30,6 +30,7 @@ Positions are located by searching the fixture text at runtime rather than being
 hardcoded. Hand-written line numbers drift out of sync with the fixtures they
 describe; searching keeps this harness from rotting that way.
 """
+import glob
 import json
 import os
 import re
@@ -592,6 +593,115 @@ def check_rename_and_organize(c, probe_text, probe_uri):
                organize("crlf", crlf) == ("use Collection;\nuse System.IO;\n\n" + body).replace("\n", "\r\n"))
 
 
+def range_key(r):
+    return ((r["start"]["line"], r["start"]["character"]),
+            (r["end"]["line"], r["end"]["character"]))
+
+
+def inside(inner, outer):
+    (a, b), (c, d) = range_key(inner), range_key(outer)
+    return c <= a and b <= d
+
+
+def symbol_tree_faults(symbols, text, parent=None, path=""):
+    """Every rule a client enforces on DocumentSymbol[], as a list of faults.
+
+    VS Code rejects the WHOLE answer when one selectionRange falls outside its
+    range, so a single bad node empties the outline.
+    """
+    lines = text.split("\n")
+    faults = []
+    previous = None
+    for s in symbols:
+        name = f"{path}/{s.get('name')}"
+        rng, sel = s.get("range"), s.get("selectionRange")
+        if not rng or not sel:
+            faults.append(f"{name}: no range or selectionRange")
+            continue
+        if not inside(sel, rng):
+            faults.append(f"{name}: selectionRange {range_key(sel)} outside range {range_key(rng)}")
+        if parent and not inside(rng, parent):
+            faults.append(f"{name}: range outside its parent's")
+        if previous and range_key(previous)[1] > range_key(rng)[0]:
+            faults.append(f"{name}: overlaps the symbol before it")
+        line = lines[sel["start"]["line"]] if sel["start"]["line"] < len(lines) else ""
+        selected = line[sel["start"]["character"]:sel["end"]["character"]]
+        if selected != s.get("name"):
+            faults.append(f"{name}: selectionRange selects {selected!r}")
+        previous = rng
+        faults += symbol_tree_faults(s.get("children") or [], text, rng, name)
+    return faults
+
+
+def check_document_symbol_tree(c, probe_text, probe_uri):
+    """documentSymbol answers a DocumentSymbol tree to a client that takes one (#1230)."""
+    syms = result_of(c.request("textDocument/documentSymbol",
+                               {"textDocument": {"uri": probe_uri}})) or []
+    top = {s.get("name"): s for s in syms if isinstance(s, dict)}
+    log_result("documentSymbol answers a tree (DocumentSymbol[])",
+               bool(top) and all("selectionRange" in s and "location" not in s for s in top.values()),
+               f"got: {json.dumps(syms)[:200]}")
+    probe = top.get("Probe") or {}
+    kids = {k.get("name"): k for k in probe.get("children") or []}
+    log_result("methods are nested under their class",
+               {"Main", "Describe"} <= set(kids), f"Probe's children: {sorted(kids)}")
+    log_result("an enum declared in a class is nested under it",
+               (kids.get("Kind") or {}).get("kind") == 10, f"Probe's children: {sorted(kids)}")
+    log_result("an interface is reported as an interface",
+               (top.get("Drawable") or {}).get("kind") == 11,
+               f"got kind {(top.get('Drawable') or {}).get('kind')}")
+    faults = symbol_tree_faults(syms, probe_text)
+    log_result("every symbol range holds its name and its children", not faults, f"{faults[:4]}")
+
+    path = os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    uri = path_to_uri(path)
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    syms = result_of(c.request("textDocument/documentSymbol",
+                               {"textDocument": {"uri": uri}}, timeout=60)) or []
+    bundles = [s for s in syms if isinstance(s, dict) and s.get("kind") == 3]
+    classes = [k for b in bundles for k in b.get("children") or []]
+    log_result("a real library file nests its classes under their bundles",
+               len(bundles) >= 2 and any(k.get("name") == "JsonElement"
+                                         and k.get("detail") == "Data.JSON.JsonElement" for k in classes),
+               f"bundles {[b.get('name') for b in bundles]}, classes {[k.get('name') for k in classes][:6]}")
+    faults = symbol_tree_faults(syms, text)
+    log_result("and every range in it is well formed", not faults, f"{len(faults)}: {faults[:3]}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+    # Every library source (about 30 s). The probe and json.obs were clean
+    # while nine of these were not: lambdas' synthetic classes, a default-
+    # parameter method compiled into one overload per arity at one position,
+    # and native method ends that ran into the next method, which nested
+    # methods inside methods six deep.
+    bad = []
+    sources = sorted(glob.glob(os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "*.obs")))
+    for path in sources:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+        uri = path_to_uri(path)
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        resp = c.request("textDocument/documentSymbol", {"textDocument": {"uri": uri}}, timeout=120)
+        faults = symbol_tree_faults(result_of(resp) or [], text)
+        if resp is None or "error" in resp or faults:
+            bad.append((os.path.basename(path), faults[:2] if faults else resp))
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+    log_result(f"every library source has a well-formed outline ({len(sources)} files)",
+               len(sources) > 40 and not bad, f"{len(bad)} bad: {bad[:3]}")
+
+
+def flatten_symbols(symbols):
+    out = []
+    for s in symbols or []:
+        if isinstance(s, dict):
+            out.append(s)
+            out += flatten_symbols(s.get("children"))
+    return out
+
+
 def check_large_real_file(c):
     """Every read-only handler over a real library source, errors and all.
 
@@ -635,7 +745,9 @@ def check_large_real_file(c):
         log_result(f"large real file: {label} answers", resp is not None,
                    "no response (server down?)")
 
-    names = {s.get("name") for s in symbols or [] if isinstance(s, dict)}
+    # a tree (DocumentSymbol[]) or a flat list (SymbolInformation[]), either way
+    flat = flatten_symbols(symbols)
+    names = {s.get("detail") or s.get("name") for s in flat}
     log_result("large real file: symbols from both bundles",
                {"Data.JSON.JsonElement", "Data.JSON.Scheme.FunctionType"} <= names,
                f"{len(names)} names, e.g. {sorted(n for n in names if n)[:6]}")
@@ -647,8 +759,8 @@ def check_large_real_file(c):
     opening = next(i for i, l in enumerate(lines) if l.startswith("bundle Data.JSON {"))
     second = next(i for i, l in enumerate(lines) if l.startswith("bundle Data.JSON.Scheme {"))
     closing = max(i for i, l in enumerate(lines[:second]) if l.startswith("}"))
-    ns = next((s for s in symbols or [] if s.get("name") == "Data.JSON" and s.get("kind") == 3), None)
-    rng = (ns or {}).get("location", {}).get("range", {})
+    ns = next((s for s in flat if s.get("name") == "Data.JSON" and s.get("kind") == 3), None)
+    rng = (ns or {}).get("range") or (ns or {}).get("location", {}).get("range", {})
     log_result("large real file: a bundle spans 'bundle' to its closing brace",
                rng.get("start", {}).get("line") == opening and rng.get("end", {}).get("line") == closing,
                f"got {rng}, want lines {opening}..{closing}")
@@ -1081,7 +1193,9 @@ def main():
         resp = c.request("initialize", {
             "processId": os.getpid(),
             "rootUri": None,
-            "capabilities": {"general": {"positionEncodings": ["utf-16", "utf-32"]}},
+            "capabilities": {"general": {"positionEncodings": ["utf-16", "utf-32"]},
+                             "textDocument": {"documentSymbol": {
+                                 "hierarchicalDocumentSymbolSupport": True}}},
         }, timeout=90)
 
         caps = (result_of(resp) or {}).get("capabilities")
@@ -1634,6 +1748,7 @@ def main():
 
         check_completion_docs(c, caps, probe_text, probe_uri)
         check_rename_and_organize(c, probe_text, probe_uri)
+        check_document_symbol_tree(c, probe_text, probe_uri)
         check_large_real_file(c)
         check_text_encoding(c, caps)
         check_batching(c)
@@ -1669,6 +1784,11 @@ def main():
                           position_in(probe_text, probe_uri, "circle := Circle", 1, 1))
         log_result("rootUri-only session survives didChangeWatchedFiles",
                    non_empty(hover) and c.proc.poll() is None)
+        flat = result_of(c.request("textDocument/documentSymbol",
+                                   {"textDocument": {"uri": probe_uri}})) or []
+        log_result("a client without hierarchical support gets SymbolInformation[]",
+                   bool(flat) and all("location" in s and "children" not in s for s in flat),
+                   f"got: {json.dumps(flat)[:160]}")
         contents = (result_of(hover) or {}).get("contents")
         log_result("a plain-text client gets plain-text hover",
                    isinstance(contents, dict) and contents.get("kind") == "plaintext",

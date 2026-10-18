@@ -1216,10 +1216,13 @@ bundle LSP {
 			return result;
 		}
 
-		method : public : GetSymbols(uri : String) ~ JsonElement {
+		method : public : GetSymbols(uri : String, hierarchical : Bool) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
 			if(proxy->Build()) {
+				if(hierarchical) {
+					return proxy->GetDocumentSymbols(uri, @workspace->GetLibs(), @text);
+				};
 				return proxy->GetSymbols(uri, @workspace->GetLibs());
 			};
 

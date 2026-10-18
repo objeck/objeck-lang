@@ -1063,6 +1063,151 @@ bundle LSP {
 			return Nil;
 		}
 
+		#
+		# DocumentSymbol[]: the outline as a tree -- bundle, then class, then
+		# method -- for a client that declares hierarchicalDocumentSymbolSupport.
+		# The native walk already returns the tree; it was flattened to
+		# SymbolInformation[], so editors had no outline nesting or breadcrumbs.
+		#
+		# VS Code rejects the whole answer when a selectionRange falls outside its
+		# range, so the ranges are normalised against the text: each runs to the
+		# end of its last line, covers its children, and selects the name.
+		#
+		method : public : GetDocumentSymbols(uri : String, sys_path : String, text : String) ~ JsonElement {
+			if(@analysis = Nil | text = Nil) {
+				return Nil;
+			};
+
+			symbol := @analysis->GetSymbols(uri, sys_path);
+			if(symbol = Nil) {
+				return Nil;
+			};
+
+			lines := text->Split('\n');
+			if(lines->Size() = 0) {
+				lines := String->New[1];
+				lines[0] := "";
+			};
+
+			nodes := Vector->New()<SymbolNode>;
+			CollectSymbols(symbol->GetResults(), uri, lines, nodes);
+			nodes := Nest(nodes);
+
+			array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : nodes) {
+				array->Add(nodes->Get(i)->ToJson());
+			};
+			return array;
+		}
+
+		# This file's symbols at this level; a symbol of another file passes its
+		# own children of this file up a level.
+		method : CollectSymbols(results : Result[], uri : String, lines : String[], nodes : Vector<SymbolNode>) ~ Nil {
+			if(results = Nil) {
+				return;
+			};
+
+			each(i : results) {
+				result := results[i];
+				# a lambda's synthetic class ('json_rpc_55_48#') isn't in the source
+				if(result <> Nil & result->GetName() <> Nil & result->GetName()->Find('#') < 0) {
+					children := Vector->New()<SymbolNode>;
+					CollectSymbols(result->GetResults(), uri, lines, children);
+
+					desc := result->GetDescription();
+					if(desc = Nil | desc->Equals(uri)) {
+						node := SymbolNode->New(result->GetName(), result->GetKind()->As(Int) - 200,
+							result->GetStartLine(), result->GetStartPosition(), result->GetEndLine(), lines);
+						each(j : children) {
+							node->AddChild(children->Get(j));
+						};
+						nodes->AddBack(node);
+					}
+					else {
+						each(j : children) {
+							nodes->AddBack(children->Get(j));
+						};
+					};
+				};
+			};
+		}
+
+		#
+		# A symbol whose range lies inside a sibling's goes under it, where Objeck
+		# can declare one inside the other: an enum
+		# declared in a class is reported beside the class by the native walk.
+		#
+		function : Nest(source_nodes : Vector<SymbolNode>) ~ Vector<SymbolNode> {
+			SortByStart(source_nodes);
+
+			# A method with default parameters is compiled into one overload per
+			# arity, all at the same place in the source: one symbol, as written.
+			nodes := Vector->New()<SymbolNode>;
+			each(i : source_nodes) {
+				node := source_nodes->Get(i);
+				if(nodes->Size() > 0 & nodes->Last()->SameDeclaration(node)) {
+					nodes->Last()->Absorb(node);
+				}
+				else {
+					nodes->AddBack(node);
+				};
+			};
+
+			# Two symbols that overlap without one holding the other: the first
+			# ran past the next declaration, as the native end of a class or an
+			# enum does, so it ends where that one starts. Cut first, or a symbol
+			# is nested in a range that no longer holds it.
+			for(i := 0; i < nodes->Size(); i += 1;) {
+				for(j := i + 1; j < nodes->Size(); j += 1;) {
+					if(<>nodes->Get(i)->Holds(nodes->Get(j))) {
+						nodes->Get(i)->EndBefore(nodes->Get(j));
+					};
+				};
+			};
+
+			nested := Vector->New()<SymbolNode>;
+			each(i : nodes) {
+				node := nodes->Get(i);
+				# assigned, not just declared: a local declared in a loop body keeps
+				# the value it had at the end of the previous pass
+				parent : SymbolNode := Nil;
+				each(j : nodes) {
+					candidate := nodes->Get(j);
+					if(i <> j & candidate->Holds(node) & (parent = Nil | parent->Contains(candidate))) {
+						# the innermost container, and only one of two equal ranges
+						if(<>node->Contains(candidate) | j < i) {
+							parent := candidate;
+						};
+					};
+				};
+
+				if(parent <> Nil) {
+					parent->AddChild(node);
+				}
+				else {
+					nested->AddBack(node);
+				};
+			};
+
+			each(i : nested) {
+				nested->Get(i)->NestChildren();
+			};
+			return nested;
+		}
+
+		# in source order
+		function : SortByStart(nodes : Vector<SymbolNode>) ~ Nil {
+			for(i := 1; i < nodes->Size(); i += 1;) {
+				j := i;
+				while(j > 0 & nodes->Get(j)->StartsBefore(nodes->Get(j - 1))) {
+					swap := nodes->Get(j);
+					nodes->Set(nodes->Get(j - 1), j);
+					nodes->Set(swap, j - 1);
+					j -= 1;
+				};
+			};
+		}
+
 		method : GetSymbols(symbol : Result, uri : String, array : JsonElement) ~ Nil {
 			# An empty slot in a native result array must not take the server down;
 			# a Nil child here killed the process (#1214).
@@ -1555,6 +1700,283 @@ bundle LSP {
 			if(@analysis <> Nil) {
 				@analysis->Release();
 			};
+		}
+	}
+
+	#~
+	One DocumentSymbol, with ranges normalised against the document text
+	~#
+	class : private : SymbolNode {
+		@name : String;
+		@kind : Int;
+		@start_line : Int;
+		@start_char : Int;
+		@end_line : Int;
+		@end_char : Int;
+		@select_line : Int;
+		@select_start : Int;
+		@select_end : Int;
+		@children : Vector<SymbolNode>;
+		@lines : String[];
+		@detail : String;
+
+		New(name : String, kind : Int, start_line : Int, start_char : Int, end_line : Int, lines : String[]) {
+			# 'JsonBuilder' under its bundle, with 'Data.JSON.JsonBuilder' beside it;
+			# a bundle keeps its whole name
+			@name := name;
+			if(kind <> 3 & name->FindLast('.') > -1) {
+				@name := ShortName(name);
+				@detail := name;
+			};
+			@lines := lines;
+			@kind := kind;
+			@children := Vector->New()<SymbolNode>;
+
+			last := lines->Size() - 1;
+			@start_line := Clamp(start_line, 0, last);
+			@end_line := Clamp(end_line, @start_line, last);
+
+			start_text := LineText(lines, @start_line);
+			@start_char := Clamp(start_char, 0, start_text->Size());
+			# to the end of the last line: the native end positions are
+			# inconsistent from one kind of declaration to the next
+			@end_char := LineText(lines, @end_line)->Size();
+
+			# the name, where the range starts at a keyword ('class', 'method : ...')
+			@select_line := @start_line;
+			@select_start := @start_char;
+			@select_end := @start_char;
+			found := FindName(start_text, @start_char, name);
+			if(found < 0) {
+				short_name := ShortName(name);
+				found := FindName(start_text, @start_char, short_name);
+				if(found > -1) {
+					@select_start := found;
+					@select_end := found + short_name->Size();
+				};
+			}
+			else {
+				@select_start := found;
+				@select_end := found + name->Size();
+			};
+		}
+
+		function : Clamp(value : Int, low : Int, high : Int) ~ Int {
+			if(value < low) {
+				return low;
+			};
+
+			if(value > high) {
+				return high;
+			};
+
+			return value;
+		}
+
+		function : LineText(lines : String[], line : Int) ~ String {
+			text := lines[line];
+			if(text = Nil) {
+				return "";
+			};
+
+			if(text->EndsWith('\r')) {
+				return text->SubString(text->Size() - 1);
+			};
+			return text;
+		}
+
+		# 'Bundle.Klass' -> 'Klass'
+		function : ShortName(name : String) ~ String {
+			index := name->FindLast('.');
+			if(index > -1) {
+				return name->SubString(index + 1, name->Size() - index - 1);
+			};
+			return name;
+		}
+
+		function : FindName(text : String, start : Int, name : String) ~ Int {
+			if(name->IsEmpty() | start >= text->Size()) {
+				return -1;
+			};
+
+			index := text->SubString(start, text->Size() - start)->Find(name);
+			if(index < 0) {
+				return -1;
+			};
+			return start + index;
+		}
+
+		# a child widens this range to cover it
+		method : public : AddChild(child : SymbolNode) ~ Nil {
+			@children->AddBack(child);
+
+			if(child->GetStartLine() < @start_line | (child->GetStartLine() = @start_line & child->GetStartChar() < @start_char)) {
+				@start_line := child->GetStartLine();
+				@start_char := child->GetStartChar();
+			};
+
+			if(child->GetEndLine() > @end_line | (child->GetEndLine() = @end_line & child->GetEndChar() > @end_char)) {
+				@end_line := child->GetEndLine();
+				@end_char := child->GetEndChar();
+			};
+		}
+
+		method : public : Contains(candidate : SymbolNode) ~ Bool {
+			starts_before := @start_line < candidate->GetStartLine() |
+				(@start_line = candidate->GetStartLine() & @start_char <= candidate->GetStartChar());
+			ends_after := @end_line > candidate->GetEndLine() |
+				(@end_line = candidate->GetEndLine() & @end_char >= candidate->GetEndChar());
+			return starts_before & ends_after;
+		}
+
+		#
+		# Declared inside this symbol: within its range, and of a kind Objeck can
+		# declare there -- classes, interfaces and enums in a bundle; methods and
+		# enums in a class. A method never holds another, however far its native
+		# end runs.
+		#
+		method : public : Holds(candidate : SymbolNode) ~ Bool {
+			if(<>Contains(candidate)) {
+				return false;
+			};
+
+			kind := candidate->GetKind();
+			if(@kind = 3) {
+				return kind <> 3;
+			};
+
+			if(@kind = 5 | @kind = 11) {
+				return kind = 6 | kind = 9 | kind = 12 | kind = 10;
+			};
+
+			return false;
+		}
+
+		method : public : SameDeclaration(candidate : SymbolNode) ~ Bool {
+			return @kind = candidate->GetKind() & @name->Equals(candidate->GetName()) &
+				@start_line = candidate->GetStartLine() & @start_char = candidate->GetStartChar();
+		}
+
+		# the other overload's extent and children
+		method : public : Absorb(candidate : SymbolNode) ~ Nil {
+			if(candidate->GetEndLine() > @end_line | (candidate->GetEndLine() = @end_line & candidate->GetEndChar() > @end_char)) {
+				@end_line := candidate->GetEndLine();
+				@end_char := candidate->GetEndChar();
+			};
+
+			children := candidate->GetChildren();
+			each(i : children) {
+				@children->AddBack(children->Get(i));
+			};
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetChildren() ~ Vector<SymbolNode> {
+			return @children;
+		}
+
+		method : public : GetKind() ~ Int {
+			return @kind;
+		}
+
+		method : public : StartsBefore(candidate : SymbolNode) ~ Bool {
+			return @start_line < candidate->GetStartLine() |
+				(@start_line = candidate->GetStartLine() & @start_char < candidate->GetStartChar());
+		}
+
+		#
+		# Ends on the line before 'next' starts, if it ran into it, or where 'next'
+		# starts when both share a line. Never before its own name.
+		#
+		method : public : EndBefore(next : SymbolNode) ~ Nil {
+			if(@end_line < next->GetStartLine() |
+					(@end_line = next->GetStartLine() & @end_char <= next->GetStartChar())) {
+				return;
+			};
+
+			if(next->GetStartLine() > @select_line) {
+				@end_line := next->GetStartLine() - 1;
+				@end_char := LineText(@lines, @end_line)->Size();
+			}
+			else {
+				@end_line := @select_line;
+				@end_char := next->GetStartChar() > @select_end ? next->GetStartChar() : @select_end;
+			};
+		}
+
+		method : public : NestChildren() ~ Nil {
+			# this range may have been cut short at the next symbol; so are its children
+			each(i : @children) {
+				@children->Get(i)->EndBy(@end_line, @end_char);
+			};
+			@children := AstProxy->Nest(@children);
+		}
+
+		# ends no later than this position, and never before its own name
+		method : public : EndBy(end_line : Int, end_char : Int) ~ Nil {
+			if(@end_line < end_line | (@end_line = end_line & @end_char <= end_char)) {
+				return;
+			};
+
+			@end_line := end_line;
+			@end_char := end_char;
+			if(@end_line < @select_line | (@end_line = @select_line & @end_char < @select_end)) {
+				@end_line := @select_line;
+				@end_char := @select_end;
+			};
+		}
+
+		method : public : GetStartLine() ~ Int {
+			return @start_line;
+		}
+
+		method : public : GetStartChar() ~ Int {
+			return @start_char;
+		}
+
+		method : public : GetEndLine() ~ Int {
+			return @end_line;
+		}
+
+		method : public : GetEndChar() ~ Int {
+			return @end_char;
+		}
+
+		function : MakeRange(start_line : Int, start_char : Int, end_line : Int, end_char : Int) ~ JsonElement {
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", start_line);
+			start->Insert("character", start_char);
+
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", end_line);
+			end->Insert("character", end_char);
+
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			range->Insert("start", start);
+			range->Insert("end", end);
+			return range;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			symbol := JsonElement->New(JsonElement->JsonType->OBJECT);
+			symbol->Insert("name", @name);
+			if(@detail <> Nil) {
+				symbol->Insert("detail", @detail);
+			};
+			symbol->Insert("kind", @kind);
+			symbol->Insert("range", MakeRange(@start_line, @start_char, @end_line, @end_char));
+			symbol->Insert("selectionRange", MakeRange(@select_line, @select_start, @select_line, @select_end));
+
+			children := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : @children) {
+				children->Add(@children->Get(i)->ToJson());
+			};
+			symbol->Insert("children", children);
+
+			return symbol;
 		}
 	}
 }
