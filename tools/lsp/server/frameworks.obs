@@ -23,13 +23,30 @@ bundle LSP {
 		@pipe_bytes : Byte[];
 		@pipe_start : Int;
 		@pipe_end : Int;
+		# messages read ahead by the LspReader thread, not yet handled
+		@inbox : Vector<RpcRequest>;
+		@inbox_mutex : System.Concurrency.ThreadMutex;
+		@stream_closed : Bool;
+		# documents whose diagnostics wait for typing to pause
+		@pending_diagnostics : Map<String, String>;
+		@quiet_ticks : Int;
 
 		# JSON-RPC / LSP error codes
 		consts ErrorCode {
 			PARSE_ERROR := -32700,
 			INVALID_REQUEST := -32600,
 			METHOD_NOT_FOUND := -32601,
-			SERVER_NOT_INITIALIZED := -32002
+			SERVER_NOT_INITIALIZED := -32002,
+			REQUEST_CANCELLED := -32800,
+			CONTENT_MODIFIED := -32801
+		}
+
+		# Diagnostics are published once no message has arrived for this many idle
+		# ticks of IDLE_TICK_MS (about 150 ms). Ticks, not a clock: the VM's Timer
+		# measures CPU time on POSIX.
+		consts Debounce {
+			IDLE_TICK_MS := 10,
+			QUIET_TICKS := 15
 		}
 
 		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
@@ -40,17 +57,40 @@ bundle LSP {
 
 			@is_debug := is_debug;
 			@workspace := LspWorkspace->New(@is_debug);
+
+			@inbox := Vector->New()<RpcRequest>;
+			@inbox_mutex := System.Concurrency.ThreadMutex->New("lsp-inbox");
+			@pending_diagnostics := Map->New()<String, String>;
 		}
 
+		#
+		# A reader thread reads ahead into the inbox; this thread handles what has
+		# arrived in batches. That is what lets a burst of keystrokes cost one
+		# analysis instead of one each, and lets a request that was cancelled, or
+		# whose document changed under it, be answered without doing the work.
+		# Handling and reading used to alternate on one thread, so every message
+		# waited behind every analysis before it, and a cancel arrived only after
+		# its request had been answered (#1217).
+		#
 		method : public : Run(param : Base) ~ Nil {
+			reader := LspReader->New(@self);
+			reader->Execute(Nil);
+
 			while(<>@quit) {
-				request := ReadRpcRequest();
-				if(request <> Nil) {
-					ProcessResponse(request);
+				batch := TakeInbox();
+				if(batch->Size() > 0) {
+					@quiet_ticks := 0;
+					ProcessBatch(batch);
+				}
+				else if(@stream_closed) {
+					@quit := true;
 				}
 				else {
-					# the stream closed
-					@quit := true;
+					@quiet_ticks += 1;
+					if(@quiet_ticks >= LspWorker->Debounce->QUIET_TICKS->As(Int)) {
+						PublishPendingDiagnostics();
+					};
+					System.Concurrency.Thread->Sleep(LspWorker->Debounce->IDLE_TICK_MS->As(Int));
 				};
 			};
 
@@ -60,6 +100,138 @@ bundle LSP {
 			else if(@pipe <> Nil) {
 				@pipe->Close();
 			};
+		}
+
+		# called by the reader thread; Nil means the stream has closed
+		method : public : Enqueue(request : RpcRequest) ~ Nil {
+			critical(@inbox_mutex) {
+				if(request = Nil) {
+					@stream_closed := true;
+				}
+				else {
+					@inbox->AddBack(request);
+				};
+			};
+		}
+
+		method : TakeInbox() ~ Vector<RpcRequest> {
+			batch : Vector<RpcRequest>;
+			critical(@inbox_mutex) {
+				batch := @inbox;
+				@inbox := Vector->New()<RpcRequest>;
+			};
+			return batch;
+		}
+
+		method : public : IsQuitting() ~ Bool {
+			return @quit;
+		}
+
+		#
+		# Everything that had arrived, in order. Two things are decided from the
+		# whole batch first: which requests the client has since cancelled, and
+		# which documents change later in it -- a request about a document that
+		# the client edited after asking is answered ContentModified, since its
+		# answer would describe text that no longer exists.
+		#
+		method : ProcessBatch(batch : Vector<RpcRequest>) ~ Nil {
+			cancelled := Map->New()<String, String>;
+			last_change := Map->New()<String, IntRef>;
+			each(i : batch) {
+				request := batch->Get(i);
+				method_id := request->GetMethod();
+				if(method_id <> Nil & request->IsNotification()) {
+					if(method_id->Equals("$/cancelRequest")) {
+						id_json := FindJson(request->GetParams(), "id");
+						if(id_json <> Nil) {
+							key := id_json->ToString();
+							cancelled->Insert(key, key);
+						};
+					}
+					else if(method_id->Equals("textDocument/didChange")) {
+						uri := FindString(request->GetParams(), "textDocument/uri");
+						if(uri <> Nil) {
+							last_change->Remove(uri);
+							last_change->Insert(uri, IntRef->New(i));
+						};
+					};
+				};
+			};
+
+			each(i : batch) {
+				request := batch->Get(i);
+				method_id := request->GetMethod();
+
+				if(method_id <> Nil & <>request->IsNotification() & <>request->IsResponse() & <>@is_shutdown) {
+					@reply_id := request->GetIdJson();
+					uri := FindString(request->GetParams(), "textDocument/uri");
+					changed_at : IntRef;
+					if(uri <> Nil) {
+						changed_at := last_change->Find(uri);
+					};
+
+					if(cancelled->Has(@reply_id->ToString())) {
+						WriteRpcError(request->GetId(), LspWorker->ErrorCode->REQUEST_CANCELLED->As(Int), "Request cancelled");
+					}
+					else if(changed_at <> Nil & changed_at->Get() > i) {
+						WriteRpcError(request->GetId(), LspWorker->ErrorCode->CONTENT_MODIFIED->As(Int), "Content modified");
+					}
+					else {
+						# These read the last text that analyzed cleanly, which a
+						# diagnostics run refreshes; run a pending one first, so a
+						# completion right after typing sees what was just typed.
+						if(uri <> Nil & @pending_diagnostics->Has(uri) &
+								(method_id->Equals("textDocument/completion") | method_id->Equals("textDocument/hover") |
+								 method_id->Equals("textDocument/signatureHelp"))) {
+							PublishDiagnostics(uri);
+						};
+						ProcessResponse(request);
+					};
+				}
+				else if(method_id = Nil | <>method_id->Equals("$/cancelRequest")) {
+					ProcessResponse(request);
+				};
+			};
+		}
+
+		# a document changed: publish its diagnostics once typing pauses
+		method : public : DeferDiagnostics(uri : String) ~ Nil {
+			@pending_diagnostics->Remove(uri);
+			@pending_diagnostics->Insert(uri, uri);
+		}
+
+		method : public : DropPendingDiagnostics(uri : String) ~ Nil {
+			@pending_diagnostics->Remove(uri);
+		}
+
+		method : PublishPendingDiagnostics() ~ Nil {
+			uris := @pending_diagnostics->GetKeys()<String>;
+			each(i : uris) {
+				PublishDiagnostics(uris->Get(i));
+			};
+		}
+
+		method : PublishDiagnostics(uri : String) ~ Nil {
+			@pending_diagnostics->Remove(uri);
+			document := @workspace->GetDocument(uri);
+			if(document <> Nil) {
+				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+			};
+		}
+
+		function : FindJson(params : JsonElement, path : String) ~ JsonElement {
+			if(params = Nil | params->GetType() <> JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+			return params->FindElements(path);
+		}
+
+		function : FindString(params : JsonElement, path : String) ~ String {
+			found := FindJson(params, path);
+			if(found = Nil | found->GetType() <> JsonElement->JsonType->STRING) {
+				return Nil;
+			};
+			return found->GetValue();
 		}
 
 		method : public : IsDebug() ~ Bool {
@@ -543,7 +715,7 @@ bundle LSP {
 		# The next message, or Nil once the stream has closed. A body that is not
 		# a JSON-RPC message comes back as a request with no method, so it can be
 		# answered with an error instead of ending the session.
-		method : ReadRpcRequest() ~ RpcRequest {
+		method : public : ReadRpcRequest() ~ RpcRequest {
 			text := ReadString();
 			if(text = Nil) {
 				return Nil;
@@ -906,12 +1078,19 @@ bundle LSP {
 		@text : String;
 		@alt_text : String;
 		@is_debug : Bool;
+		# the client's version of the text, or -1 if it sent none
+		@version : Int;
 
 		New(uri : String, text : String, workspace : LspWorkspace, is_debug : Bool) {
 			@workspace := workspace;
 			@uri := uri;
 			@text := String->New(text);
 			@is_debug := is_debug;
+			@version := -1;
+		}
+
+		method : public : SetVersion(version : Int) ~ Nil {
+			@version := version;
 		}
 
 		method : public : Refresh(text : String) ~ Nil {
@@ -948,6 +1127,11 @@ bundle LSP {
 			result := proxy->GetDiagnostics(was_analyzed, @uri, @workspace->GetLibs());
 			if(was_analyzed->Get()) {
 				@alt_text := @text->Clone()->As(String);
+			};
+
+			# which text these describe, so a client can discard a stale set
+			if(result <> Nil & @version > -1) {
+				result->Insert("version", @version);
 			};
 
 			return result;
@@ -1776,6 +1960,30 @@ bundle LSP {
 		method : DumpDocument() ~ Nil {
 			if(@is_debug) {
 				System.IO.Filesystem.Logger->Instance()->Info("TEXT='{$@text}'");
+			};
+		}
+	}
+
+	#~
+	Reads messages ahead of the worker that handles them
+	~#
+	class : private : LspReader from System.Concurrency.Thread {
+		@worker : LspWorker;
+
+		New(worker : LspWorker) {
+			Parent();
+			@worker := worker;
+		}
+
+		# Only this thread reads; only the worker writes. Nil goes on the queue
+		# when the stream closes, and the worker then ends the session.
+		method : public : Run(param : Base) ~ Nil {
+			while(true) {
+				request := @worker->ReadRpcRequest();
+				@worker->Enqueue(request);
+				if(request = Nil | @worker->IsQuitting()) {
+					return;
+				};
 			};
 		}
 	}
