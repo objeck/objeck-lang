@@ -1,0 +1,14 @@
+# EXPECT_RUNTIME_ERROR
+#~
+Calling a function variable that was never assigned is a Nil dereference
+(#1183). It used to run class 0's method 0 -- usually a segfault with no
+message, losing buffered output. Every function value now carries a tag, so
+an unassigned one (0) is recognizable.
+~#
+
+class BadUnassignedFunctionValue {
+	function : Main(args : String[]) ~ Nil {
+		fib : (Int) ~ Int;
+		fib(3)->PrintLine();
+	}
+}

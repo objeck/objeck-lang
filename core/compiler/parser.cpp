@@ -6619,6 +6619,54 @@ Expression* Parser::ParseFactor(int depth)
 }
 
 /****************************
+ * The type an expression names, for a function type's parameter list read
+ * as expressions: `Int`, `String`, `Int[]`, or a nested `(Int) ~ Int`.
+ * Nil when the expression is not a type name.
+ ****************************/
+Type* Parser::ExpressionToType(Expression* expression)
+{
+  if(!expression || expression->GetExpressionType() != VAR_EXPR || expression->GetMethodCall()) {
+    return nullptr;
+  }
+
+  Variable* variable = static_cast<Variable*>(expression);
+  const std::wstring name = variable->GetName();
+  if(name == FUNC_TYPE_MARKER) {
+    return variable->GetEvalType();
+  }
+
+  Type* type = nullptr;
+  if(name == BOOL_CLASS_ID) {
+    type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+  }
+  else if(name == BYTE_CLASS_ID) {
+    type = TypeFactory::Instance()->MakeType(BYTE_TYPE);
+  }
+  else if(name == INT_CLASS_ID) {
+    type = TypeFactory::Instance()->MakeType(INT_TYPE);
+  }
+  else if(name == FLOAT_CLASS_ID) {
+    type = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+  }
+  else if(name == CHAR_CLASS_ID) {
+    type = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+  }
+  else if(name == NIL_CLASS_ID) {
+    type = TypeFactory::Instance()->MakeType(NIL_TYPE);
+  }
+  else {
+    type = TypeFactory::Instance()->MakeType(CLASS_TYPE, name);
+  }
+
+  // `Int[]` reads as a variable indexed by empty slots
+  if(variable->GetIndices()) {
+    type->SetDimension((int)variable->GetIndices()->GetExpressions().size());
+  }
+
+  return type;
+}
+
+/****************************
  * Parses a simple expression.
  ****************************/
 Expression* Parser::ParseSimpleExpression(int depth)
@@ -6745,10 +6793,43 @@ Expression* Parser::ParseSimpleExpression(int depth)
   else if(Match(TOKEN_OPEN_PAREN)) {
     NextToken();
     expression = ParseExpression(depth + 1);
+
+    // A function type written as an argument of a function reference:
+    // `Ap((Int) ~ Int, Int) ~ Int` (#1183). The scanner sees three tokens
+    // ahead, too few to find the '~' first, so the group is read as
+    // expressions and turned into parameter types once the '~' shows. The
+    // type rides on a marker variable that EncodeFunctionReference encodes.
+    std::vector<Expression*> group;
+    group.push_back(expression);
+    while(Match(TOKEN_COMMA)) {
+      NextToken();
+      group.push_back(ParseExpression(depth + 1));
+    }
+
     if(!Match(TOKEN_CLOSED_PAREN)) {
       ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
     }
     NextToken();
+
+    if(Match(TOKEN_TILDE)) {
+      NextToken();
+      std::vector<Type*> func_params;
+      for(Expression* item : group) {
+        Type* param_type = ExpressionToType(item);
+        if(!param_type) {
+          ProcessError(L"Expected a type in a function type", TOKEN_SEMI_COLON);
+          return nullptr;
+        }
+        func_params.push_back(param_type);
+      }
+      Type* func_rtrn = ParseType(depth + 1);
+      Variable* func_type_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, FUNC_TYPE_MARKER);
+      func_type_var->SetEvalType(TypeFactory::Instance()->MakeType(func_params, func_rtrn), false);
+      expression = func_type_var;
+    }
+    else if(group.size() > 1) {
+      ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+    }
   }
   // lambda expression
   else if(Match(TOKEN_BACK_SLASH)) {

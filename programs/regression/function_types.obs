@@ -1,0 +1,97 @@
+#~
+Regression: function types (#1183).
+
+- An array parameter: `r := Plain(Int[]) ~ Int; r(a)` was "Undefined
+  function/method call", because the call encoded the function type's own
+  dimension (0) for each parameter. `\(Int[]) ~ Int : (t) => t->Size()`
+  failed at its own definition for the same loss of the brackets.
+- A function-typed parameter in a reference, `Ap((Int) ~ Int, Int) ~ Int`,
+  was "Expected expression".
+- A call through a function variable demanded the exact class: with
+  `g : (Base) ~ Base`, g("hi"), g(IntRef->New(0)) and g(Nil) were rejected.
+- A call through an unassigned function variable segfaulted; it is a Nil
+  dereference now, recoverable under `?->` (see also
+  bad_unassigned_function_value.obs).
+~#
+
+class Holder {
+	@f : (Int) ~ Int;
+
+	New() {}
+
+	method : public : Call(x : Int) ~ IntRef {
+		return IntRef->New(@f(x));
+	}
+}
+
+class FunctionTypes {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	function : Plain(a : Int[]) ~ Int {
+		return a->Size();
+	}
+
+	function : Ap(g : (Int) ~ Int, x : Int) ~ Int {
+		return g(x);
+	}
+
+	function : Dbl(x : Int) ~ Int {
+		return x * 2;
+	}
+
+	function : Id(b : Base) ~ Base {
+		return b;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		r := Plain(Int[]) ~ Int;
+		CheckInt("a reference with an Int[] parameter", r([1, 2, 3]), 3);
+
+		f := \(Int[]) ~ Int : (t) => t->Size();
+		CheckInt("a lambda with an Int[] parameter", f([4, 5]), 2);
+
+		h := Ap((Int) ~ Int, Int) ~ Int;
+		CheckInt("a reference with a function-typed parameter", h(Dbl(Int) ~ Int, 5), 10);
+
+		g : (Base) ~ Base := Id(Base) ~ Base;
+		Check("a String through (Base) ~ Base", g("hi") <> Nil);
+		Check("an IntRef through (Base) ~ Base", g(IntRef->New(0)) <> Nil);
+		Check("Nil through (Base) ~ Base", g(Nil) = Nil);
+
+		holder := Holder->New();
+		Check("?-> recovers a call through an unassigned function field", holder?->Call(5) = Nil);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		FunctionTypes->New()->Run();
+	}
+}

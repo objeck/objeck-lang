@@ -29,6 +29,13 @@
 
 #pragma once
 
+// Set on every function value's (class << 16 | method) word, so a real
+// reference is never 0 -- not even class 0's method 0 -- and an unassigned
+// function variable, which holds 0, can be reported as a Nil dereference
+// instead of calling class 0's method 0 (#1183). Readers mask the ids with
+// 0xFFFF, so the bit is invisible to them.
+#define FUNC_VALUE_TAG 0x100000000LL
+
 namespace instructions {
   // vm instructions
   enum InstructionType {
