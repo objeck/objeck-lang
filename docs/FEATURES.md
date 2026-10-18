@@ -83,6 +83,11 @@ A chain that ends in a value type needs `??` to supply the result, since an
 size := maybe?->ToUpper()->Size() ?? -1;
 ```
 
+For a guarded value -- `Bool`, `Byte`, `Char` or `Int` -- the default replaces
+only a failure: `size` above is `-1` when `maybe` is `Nil` and `0` when it is
+`""`. For a guarded object, `??` takes the default when the chain failed or
+yielded `Nil`.
+
 Both build on the `Try()`/`Otherwise()` intrinsics, so `a?->b()` is exactly
 `a->Try()->b()` and `a ?? b` is `a->Otherwise(b)`. One consequence worth
 knowing: `Try()` guards against most runtime errors in the chain, not only a
