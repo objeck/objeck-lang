@@ -10273,7 +10273,17 @@ bundle System.IO.Filesystem {
 		```
 		~#
 		function : ReadFile(name : String) ~ String {
+			# Nil only for a missing file: an empty one was Nil too, so the two
+			# could not be told apart (#1180)
+			if(<>File->Exists(name)) {
+				return Nil;
+			};
+
 			len := File->Size(name);
+			if(len <= 0) {
+				return String->New();
+			};
+
 			if(len > 0) {
 				buffer := Char->New[len + 1];
 				input := FileReader->New(name);
@@ -10294,7 +10304,12 @@ bundle System.IO.Filesystem {
 		@return byte array, Nil if file is not found
 		~#
 		function : ReadBinaryFile(name : String) ~ Byte[] {
+			# a missing file's size is -1, and Byte->New[-1] ended the program
+			# (#1180)
 			len := File->Size(name);
+			if(len < 0) {
+				return Nil;
+			};
 			buffer := Byte->New[len];
 			input := FileReader->New(name);
 			if(input->IsOpen()) {
@@ -10556,7 +10571,17 @@ bundle System.IO.Filesystem {
 		@return character string, Nil if file is not found
 		~#
 		function : ReadFile(name : String) ~ String {
+			# Nil only for a missing file: an empty one was Nil too, so the two
+			# could not be told apart (#1180)
+			if(<>File->Exists(name)) {
+				return Nil;
+			};
+
 			len := File->Size(name);
+			if(len <= 0) {
+				return String->New();
+			};
+
 			if(len > 0) {
 				buffer := Char->New[len + 1];
 				input := FileReader->New(name);
@@ -10577,7 +10602,12 @@ bundle System.IO.Filesystem {
 		@return byte array, Nil if file is not found
 		~#
 		function : ReadBinaryFile(name : String) ~ Byte[] {
+			# a missing file's size is -1, and Byte->New[-1] ended the program
+			# (#1180)
 			len := File->Size(name);
+			if(len < 0) {
+				return Nil;
+			};
 			buffer := Byte->New[len];
 			input := FileReader->New(name);
 			if(input->IsOpen()) {
