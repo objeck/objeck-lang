@@ -379,7 +379,44 @@ def main():
     # ---- 11. the heap verifier (OBJECK_GC_VERIFY) ----------------------------------
     verify_section(obc, obr, env, bin_dir)
 
+    check_binary_stdio_utf8(obc, obr, env, bin_dir)
+
     return finish()
+
+
+def check_binary_stdio_utf8(obc, obr, env, bin_dir):
+    """13. --objeck-stdio=binary writes UTF-8 bytes.
+
+    On Windows, binary mode put stdout in _O_BINARY and wide output then went
+    out as each wchar_t's two bytes: every program run that way printed
+    UTF-16LE, including the LSP's framed replies over stdio, which no client
+    could read ('C\\0o\\0n\\0...'). Strings, numbers, characters and Bools all
+    go through the same stream, so each is checked. POSIX ignores the flag and
+    must print the same bytes.
+    """
+    work = tempfile.mkdtemp(prefix="objk-stdio-")
+    try:
+        src = os.path.join(work, "stdio_utf8.obs")
+        with open(src, "w", encoding="utf-8") as fh:
+            fh.write("class StdioUtf8 {\n  function : Main(args : String[]) ~ Nil {\n"
+                     "    \"héllo \U0001F600 \"->Print();\n    42->Print();\n"
+                     "    ' '->Print();\n    1.5->Print();\n    ' '->Print();\n"
+                     "    true->PrintLine();\n  }\n}\n")
+        obe = os.path.join(work, "stdio_utf8.obe")
+        rc, out, err = run([obc, "-src", src, "-dest", obe], env=env, cwd=bin_dir)
+        check("binary-stdio fixture compiles", rc == 0 and os.path.exists(obe), err.decode(errors="replace")[-300:])
+        if rc != 0:
+            return
+
+        want = "héllo \U0001F600 42 1.5 true".encode("utf-8")
+        for label, flags, extra in (("--objeck-stdio=binary", ["--objeck-stdio=binary"], {}),
+                                    ("OBJECK_STDIO=binary", [], {"OBJECK_STDIO": "binary"})):
+            rc, out, err = run([obr] + flags + [obe], env=dict(env, **extra), cwd=bin_dir)
+            check(f"{label}: output is UTF-8 bytes, not UTF-16",
+                  rc == 0 and out.rstrip(b"\r\n") == want and b"\x00" not in out,
+                  f"rc={rc} out={out[:80]!r}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 # The method names vm_trace_fn_param_format.obs must unwind with, innermost
