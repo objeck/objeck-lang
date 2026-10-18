@@ -3712,9 +3712,14 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     // every stdio client on Linux and macOS was answered with a parse error,
     // or the server crashed. Decoded as wcin was: UTF-8, the locale posix_main
     // sets up.
+    //
+    // getc_unlocked: a thread blocked here waiting for input otherwise holds
+    // stdin's lock, and exit() -- which takes every stream's lock to flush it --
+    // then waits for it forever (glibc). A program that reads stdin on one
+    // thread and exits from another, as the LSP does, never ended.
     std::string buffer;
     int c;
-    while((c = getc(stdin)) != EOF && c != '\n') {
+    while((c = getc_unlocked(stdin)) != EOF && c != '\n') {
       buffer += (char)c;
     }
     wbuffer = BytesToUnicode(buffer);
