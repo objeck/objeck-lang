@@ -30,6 +30,14 @@ bundle LSP {
 		# documents whose diagnostics wait for typing to pause
 		@pending_diagnostics : Map<String, String>;
 		@quiet_ticks : Int;
+		# Server-initiated progress (window/workDoneProgress/create): the client
+		# takes it, a token it has acknowledged and that is not in use yet, and the
+		# create request still waiting for its reply.
+		@client_progress : Bool;
+		@progress_token : String;
+		@progress_pending_id : String;
+		@progress_pending_token : String;
+		@progress_count : Int;
 
 		# JSON-RPC / LSP error codes
 		consts ErrorCode {
@@ -190,7 +198,21 @@ bundle LSP {
 								 method_id->Equals("textDocument/signatureHelp"))) {
 							PublishDiagnostics(uri);
 						};
+
+						# A client that passes a workDoneToken shows progress for the
+						# request on it: it was ignored.
+						work_token := FindJson(request->GetParams(), "workDoneToken");
+						if(work_token <> Nil & work_token->GetType() <> JsonElement->JsonType->STRING &
+								work_token->GetType() <> JsonElement->JsonType->NUMBER) {
+							work_token := Nil;
+						};
+						if(work_token <> Nil) {
+							SendProgressBegin(work_token, "Objeck: {$method_id}");
+						};
 						ProcessResponse(request);
+						if(work_token <> Nil) {
+							SendProgressEnd(work_token);
+						};
 					};
 				}
 				else if(method_id = Nil | <>method_id->Equals("$/cancelRequest")) {
@@ -220,8 +242,93 @@ bundle LSP {
 			@pending_diagnostics->Remove(uri);
 			document := @workspace->GetDocument(uri);
 			if(document <> Nil) {
+				# A workspace program -- every file its build.json lists -- is the
+				# analysis that takes seconds; it is reported while it runs, when
+				# it will run rather than come from the cache.
+				token : String := Nil;
+				folder := @workspace->FolderFor(uri);
+				if(folder <> Nil & @workspace->NeedsAnalysis(uri)) {
+					folder_name := folder->GetName();
+					token := BeginServerProgress("Objeck: analyzing '{$folder_name}'");
+				};
+
 				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+
+				if(token <> Nil) {
+					EndServerProgress(token);
+				};
 			};
+		}
+
+		#
+		# Progress
+		#
+		method : public : SetClientProgress(client_progress : Bool) ~ Nil {
+			@client_progress := client_progress;
+		}
+
+		# Asks the client for a token ahead of time, so one is ready when an
+		# analysis starts: progress may be reported only on a token the client has
+		# acknowledged, and its reply can't be waited for mid-analysis.
+		method : RequestProgressToken() ~ Nil {
+			if(<>@client_progress | @progress_token <> Nil | @progress_pending_id <> Nil) {
+				return;
+			};
+
+			@progress_count += 1;
+			token := "objk-progress-{$@progress_count}";
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("token", token);
+			@progress_pending_token := token;
+			@progress_pending_id := WriteRpcServerRequest("window/workDoneProgress/create", params);
+		}
+
+		# the ready token, now in use; Nil when there is none
+		method : BeginServerProgress(title : String) ~ String {
+			token := @progress_token;
+			if(token <> Nil) {
+				@progress_token := Nil;
+				SendProgressBegin(JsonElement->New(token), title);
+			};
+			return token;
+		}
+
+		# a token ends with its work; the next one is asked for straight away
+		method : EndServerProgress(token : String) ~ Nil {
+			SendProgressEnd(JsonElement->New(token));
+			RequestProgressToken();
+		}
+
+		method : SendProgressBegin(token : JsonElement, title : String) ~ Nil {
+			value := JsonElement->New(JsonElement->JsonType->OBJECT);
+			value->Insert("kind", "begin");
+			value->Insert("title", title);
+			value->Insert("cancellable", false);
+			SendProgress(token, value);
+		}
+
+		method : SendProgressEnd(token : JsonElement) ~ Nil {
+			value := JsonElement->New(JsonElement->JsonType->OBJECT);
+			value->Insert("kind", "end");
+			SendProgress(token, value);
+		}
+
+		method : SendProgress(token : JsonElement, value : JsonElement) ~ Nil {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("token", token);
+			params->Insert("value", value);
+			WriteRpcRequest("$/progress", params);
+		}
+
+		#
+		# window/logMessage: what used to go only to a log file the user never
+		# sees. Type 1 error, 2 warning, 3 info, 4 log.
+		#
+		method : public : LogMessage(type : Int, message : String) ~ Nil {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("type", type);
+			params->Insert("message", message);
+			WriteRpcRequest("window/logMessage", params);
 		}
 
 		function : FindJson(params : JsonElement, path : String) ~ JsonElement {
@@ -293,9 +400,19 @@ bundle LSP {
 			# A reply to one of OUR requests (client/registerCapability). Nothing
 			# waits on it; these used to be dispatched as requests named '<none>'.
 			if(request->IsResponse()) {
+				reply_id := request->GetIdJson()->GetValue();
+				is_progress := @progress_pending_id <> Nil & reply_id <> Nil & reply_id->Equals(@progress_pending_id);
+				if(is_progress) {
+					@progress_pending_id := Nil;
+				};
+
 				if(request->GetError() <> Nil) {
 					error_text := request->GetError()->ToString();
 					System.IO.Filesystem.Logger->Instance()->Error("*** Client rejected a server request: {$error_text} ***");
+					LogMessage(2, "The client rejected a server request: {$error_text}");
+				}
+				else if(is_progress) {
+					@progress_token := @progress_pending_token;
 				};
 				return;
 			};
@@ -807,18 +924,21 @@ bundle LSP {
 		}
 
 		# --- server-to-client request ---
-		method : WriteRpcServerRequest(kind : String, params : JsonElement) ~ Nil {
+		# the request's id, to match its reply
+		method : WriteRpcServerRequest(kind : String, params : JsonElement) ~ String {
 			node := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			# Its own id space, as strings, so it can never be mistaken for one of
 			# the client's numeric ids. This was a fixed 101.
 			@next_server_id += 1;
+			id := "objk-{$@next_server_id}";
 			node->Insert("jsonrpc", "2.0");
-			node->Insert("id", "objk-{$@next_server_id}");
+			node->Insert("id", id);
 			node->Insert("method", kind);
 			node->Insert("params", params);
 
 			WriteString(node->ToString());
+			return id;
 		}
 
 		# --- response ---
@@ -951,18 +1071,7 @@ bundle LSP {
 				@proxies_generation := @generation;
 			};
 
-			key := use_alt ? "alt|" : "text|";
-			if(folder <> Nil) {
-				key += "folder|";
-				key += folder->GetUri();
-			}
-			else if(uri = Nil) {
-				key += "*";
-			}
-			else {
-				key += uri;
-			};
-
+			key := ProxyKey(uri, folder, use_alt);
 			proxy := @proxies->Find(key);
 			if(proxy = Nil) {
 				texts : String[,];
@@ -977,6 +1086,29 @@ bundle LSP {
 			};
 
 			return proxy;
+		}
+
+		function : ProxyKey(uri : String, folder : LspFolder, use_alt : Bool) ~ String {
+			key := use_alt ? "alt|" : "text|";
+			if(folder <> Nil) {
+				key += "folder|";
+				key += folder->GetUri();
+			}
+			else if(uri = Nil) {
+				key += "*";
+			}
+			else {
+				key += uri;
+			};
+			return key;
+		}
+
+		# diagnostics for this document would parse and analyze, not reuse a program
+		method : public : NeedsAnalysis(uri : String) ~ Bool {
+			if(@no_cache | @proxies_generation <> @generation) {
+				return true;
+			};
+			return <>@proxies->Has(ProxyKey(uri, FolderFor(uri), false));
 		}
 
 		# some text the programs were parsed from has changed
@@ -1275,6 +1407,7 @@ bundle LSP {
 		@file_strs : String[];
 		@libs_str : String;
 		@load_error : String;
+		@is_missing : Bool;
 		@is_debug : Bool;
 
 		New(name : String, uri : String, is_debug : Bool) {
@@ -1327,6 +1460,12 @@ bundle LSP {
 			@file_strs := Nil;
 			@libs_str := Nil;
 			@load_error := Nil;
+
+			if(<>System.IO.Filesystem.File->Exists(@build_file)) {
+				@is_missing := true;
+				return false;
+			};
+			@is_missing := false;
 
 			text := System.IO.Filesystem.FileReader->ReadFile(@build_file);
 			if(text = Nil) {
@@ -1381,6 +1520,18 @@ bundle LSP {
 
 		method : public : GetLoadError() ~ String {
 			return @load_error;
+		}
+
+		# no build.json at all: the folder's files are analyzed one at a time
+		method : public : IsMissing() ~ Bool {
+			return @is_missing;
+		}
+
+		method : public : FileCount() ~ Int {
+			if(@file_strs = Nil) {
+				return 0;
+			};
+			return @file_strs->Size();
 		}
 
 		method : public : GetName() ~ String {

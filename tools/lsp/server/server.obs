@@ -780,6 +780,10 @@ bundle LSP {
 			# 'initialized' (NotifyInitialized), and is only sent to a client that
 			# says it supports it. It went out here, unconditionally, before the
 			# client had even received this response.
+			# server-initiated progress for long analyses, to a client that shows it
+			progress_json := FindJson(params, "capabilities/window/workDoneProgress");
+			SetClientProgress(progress_json <> Nil & progress_json->GetType() = JsonElement->JsonType->TRUE);
+
 			dynamic_json := params->FindElements("capabilities/workspace/didChangeWatchedFiles/dynamicRegistration");
 			@can_register_watchers := dynamic_json <> Nil & dynamic_json->GetType() = JsonElement->JsonType->TRUE;
 
@@ -805,7 +809,30 @@ bundle LSP {
 
 		# a workspace folder, configured from its own build.json
 		method : ProcessConfiguration(folder_name : String, folder_uri : String) ~ Nil {
-			@workspace->AddFolder(folder_name, folder_uri);
+			folder := @workspace->AddFolder(folder_name, folder_uri);
+			if(folder <> Nil) {
+				ReportFolder(folder);
+			};
+		}
+
+		#
+		# How a folder is configured, in the client's log. A build.json that can't
+		# be read or parsed was reported only to a log file, and the folder's files
+		# were then analyzed without it, with no sign of why.
+		#
+		method : ReportFolder(folder : LspFolder) ~ Nil {
+			name := folder->GetName();
+			if(folder->IsConfigured()) {
+				count := folder->FileCount();
+				LogMessage(3, "Workspace folder '{$name}': build.json lists {$count} file(s)");
+			}
+			else if(folder->IsMissing()) {
+				LogMessage(3, "Workspace folder '{$name}' has no build.json: each of its files is analyzed on its own");
+			}
+			else {
+				error := folder->GetLoadError();
+				LogMessage(1, "Workspace folder '{$name}': {$error}; its files are analyzed on their own");
+			};
 		}
 
 		# Which files make up a program changed: every open document is analyzed
@@ -931,6 +958,7 @@ bundle LSP {
 		#
 		method : NotifyInitialized(params : JsonElement) ~ Nil {
 			@is_initialized := true;
+			RequestProgressToken();
 
 			if(@can_register_watchers) {
 				RegisterWatchers();
@@ -970,7 +998,10 @@ bundle LSP {
 				# a configuration file added, changed or deleted: reload the folder it
 				# is in
 				if(type = 1 | type = 2 | type = 3) {
-					@workspace->ReloadFolders(uri);
+					reloaded := @workspace->ReloadFolders(uri);
+					each(j : reloaded) {
+						ReportFolder(reloaded->Get(j));
+					};
 					RefreshAllDiagnostics();
 				};
 			};

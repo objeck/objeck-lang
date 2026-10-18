@@ -1058,6 +1058,127 @@ def check_multi_root(obr, server_obe, apis_json, bin_dir):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def check_progress_and_log(obr, server_obe, apis_json, bin_dir):
+    """window/logMessage and work-done progress (#1234).
+
+    The server sent neither: a build.json that could not be read went to a log
+    file the user never sees, a multi-file analysis showed nothing in the
+    editor, and a workDoneToken a client passed was ignored.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-progress-")
+    try:
+        good = os.path.join(work, "good")
+        shutil.copytree(WS_DIR, good)
+        bad = os.path.join(work, "bad")
+        os.makedirs(bad)
+        with open(os.path.join(bad, "build.json"), "w", encoding="utf-8") as fh:
+            fh.write('{ "files": [ "main.obs" ')
+        none = os.path.join(work, "none")
+        os.makedirs(none)
+        main_uri = path_to_uri(os.path.join(good, "main.obs"))
+        with open(os.path.join(good, "main.obs"), encoding="utf-8") as fh:
+            main_text = fh.read()
+        folders = [{"uri": path_to_uri(d), "name": n} for n, d in (("good", good), ("bad", bad), ("none", none))]
+
+        def progress(token):
+            return [n["params"]["value"].get("kind") for n in c.notifications
+                    if n.get("method") == "$/progress" and n["params"].get("token") == token]
+
+        def wait_for(pred, seconds=30):
+            end = time.time() + seconds
+            while time.time() < end:
+                found = pred()
+                if found:
+                    return found
+                c.drain(0.2)
+            return pred()
+
+        def creates():
+            return [r for r in c.server_requests if r.get("method") == "window/workDoneProgress/create"]
+
+        def reply(req, error=False):
+            msg = {"jsonrpc": "2.0", "id": req["id"]}
+            if error:
+                msg["error"] = {"code": -32603, "message": "declined by the test"}
+            else:
+                msg["result"] = None
+            c._write(msg)
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {"processId": os.getpid(), "rootUri": folders[0]["uri"],
+                                     "capabilities": {"window": {"workDoneProgress": True}},
+                                     "workspaceFolders": folders}, timeout=90)
+            logs = [(n["params"].get("type"), n["params"].get("message", "")) for n in c.notifications
+                    if n.get("method") == "window/logMessage"]
+            log_result("logMessage reports a folder's build.json",
+                       any(t == 3 and "'good'" in m and "3 file" in m for t, m in logs), f"{logs}")
+            log_result("logMessage reports a build.json that can't be parsed as an error",
+                       any(t == 1 and "'bad'" in m and "build.json" in m for t, m in logs), f"{logs}")
+            log_result("logMessage says a folder has no build.json",
+                       any(t == 3 and "'none'" in m and "no build.json" in m for t, m in logs), f"{logs}")
+
+            c.notify("initialized", {})
+            first = wait_for(creates)
+            log_result("a client that shows progress is asked for a token after 'initialized'",
+                       len(first) == 1, f"{c.server_requests}")
+            if first:
+                token = first[0]["params"]["token"]
+                reply(first[0])
+                time.sleep(0.3)
+                c.notify("textDocument/didOpen", {"textDocument": {
+                    "uri": main_uri, "languageId": "objeck", "version": 1, "text": main_text}})
+                c.diagnostics_for(main_uri, timeout=90)
+                kinds = wait_for(lambda: progress(token) if "end" in progress(token) else None)
+                log_result("a workspace analysis reports begin and end on that token",
+                           kinds == ["begin", "end"], f"got {kinds}")
+                title = next((n["params"]["value"].get("title") for n in c.notifications
+                              if n.get("method") == "$/progress" and n["params"].get("token") == token
+                              and n["params"]["value"].get("kind") == "begin"), "")
+                log_result("and names the folder", "good" in str(title), f"title {title!r}")
+
+                second = wait_for(lambda: creates()[1:] or None)
+                log_result("a used token is replaced at once", bool(second), f"{c.server_requests}")
+                if second:
+                    # a rejected request reaches the client's log, not just a file
+                    c.notifications.clear()
+                    reply(second[0], error=True)
+                    warned = wait_for(lambda: [n for n in c.notifications if n.get("method") == "window/logMessage"
+                                               and n["params"].get("type") == 2])
+                    log_result("a server request the client rejects is logged as a warning",
+                               bool(warned), f"{c.notifications}")
+
+            # a token the client passes with a request
+            c.notifications.clear()
+            resp = c.request("textDocument/references", dict(
+                position_in(main_text, main_uri, "Main", 1, 0),
+                context={"includeDeclaration": True}, workDoneToken="client-token"))
+            c.drain(0.5)
+            log_result("a request's workDoneToken gets begin and end",
+                       resp is not None and progress("client-token") == ["begin", "end"],
+                       f"got {progress('client-token')}")
+        finally:
+            c.close()
+
+        # a client that doesn't show progress is never asked
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {"processId": os.getpid(), "rootUri": folders[0]["uri"],
+                                     "capabilities": {}, "workspaceFolders": folders[:1]}, timeout=90)
+            c.notify("initialized", {})
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": main_uri, "languageId": "objeck", "version": 1, "text": main_text}})
+            c.diagnostics_for(main_uri, timeout=90)
+            c.drain(0.5)
+            log_result("a client without window.workDoneProgress gets no tokens or progress",
+                       not creates() and not any(n.get("method") == "$/progress" for n in c.notifications),
+                       f"{c.server_requests}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
     """The base protocol, not the language features (#1215)."""
     init_params = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
@@ -2020,6 +2141,7 @@ def main():
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
+    check_progress_and_log(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the
