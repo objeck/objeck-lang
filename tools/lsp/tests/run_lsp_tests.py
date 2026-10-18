@@ -1179,6 +1179,130 @@ def stdio_exit_code(obr, server_obe, apis_json, bin_dir, shutdown_first):
         return f"no exit ({type(e).__name__})"
 
 
+class StdioClient(LspClient):
+    """The same client over the server's stdin/stdout, as editors start it."""
+
+    def __init__(self, obr, server_obe, apis_json, bin_dir, transport="stdio"):
+        env = make_env(bin_dir)
+        env["OBJECK_STDIO"] = "binary"
+        self.proc = subprocess.Popen([obr, server_obe, apis_json, transport],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.DEVNULL, cwd=bin_dir, env=env)
+        self.q = queue.Queue()
+        self.notifications = []
+        self.server_requests = []
+        self.rid = 0
+        self.lock = threading.Lock()
+        threading.Thread(target=self._reader, daemon=True).start()
+
+    def _reader(self):
+        out = self.proc.stdout
+        while True:
+            length = None
+            while True:
+                line = out.readline()
+                if not line:
+                    return
+                line = line.strip()
+                if not line:
+                    break
+                if line.lower().startswith(b"content-length:"):
+                    length = int(line.split(b":", 1)[1])
+            if length is None:
+                continue
+            body = out.read(length)
+            if len(body) < length:
+                return
+            try:
+                self.q.put(json.loads(body))
+            except json.JSONDecodeError:
+                pass
+
+    def _write(self, msg):
+        head, body = frame(msg)
+        with self.lock:
+            try:
+                self.proc.stdin.write(head + body)
+                self.proc.stdin.flush()
+            except OSError:
+                pass
+
+    def close(self):
+        """shutdown, then exit; the exit code (0 means a clean shutdown)."""
+        try:
+            self.request("shutdown", timeout=10)
+            self.notify("exit")
+            return self.proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            return "no exit"
+
+
+def check_stdio_sessions(obr, server_obe, apis_json, bin_dir):
+    """A whole session over stdio, two servers side by side (#1233).
+
+    The VS Code client now starts one server per window over stdio, where it
+    used to share a fixed named pipe between windows. Every other shipped
+    client already used stdio, and this harness drove it only as far as
+    initialize and exit.
+    """
+    probe_obs = os.path.join(TESTS_DIR, "lsp_probe.obs")
+    with open(probe_obs, encoding="utf-8") as fh:
+        probe_text = fh.read()
+    probe_uri = path_to_uri(probe_obs)
+    other_uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_stdio_other.obs"))
+    other_text = "class StdioOther {\n  function : Main(args : String[]) ~ Nil {\n  }\n}\n"
+
+    # the second as vscode-languageclient starts a stdio server, with '--stdio'
+    first = StdioClient(obr, server_obe, apis_json, bin_dir)
+    second = StdioClient(obr, server_obe, apis_json, bin_dir, "--stdio")
+    try:
+        for name, c in (("stdio", first), ("--stdio", second)):
+            resp = c.request("initialize", {"processId": os.getpid(), "rootUri": None,
+                                            "capabilities": {}}, timeout=90)
+            log_result(f"{name}: initialize answers",
+                       bool((result_of(resp) or {}).get("capabilities")), f"got: {resp!r}"[:160])
+            c.notify("initialized", {})
+
+        first.notify("textDocument/didOpen", {"textDocument": {
+            "uri": probe_uri, "languageId": "objeck", "version": 1, "text": probe_text}})
+        second.notify("textDocument/didOpen", {"textDocument": {
+            "uri": other_uri, "languageId": "objeck", "version": 1, "text": other_text}})
+        diags = first.diagnostics_for(probe_uri, timeout=90)
+        log_result("stdio: diagnostics are published", diags is not None and not diags,
+                   f"got: {diags!r}"[:160])
+        log_result("stdio: hover answers", non_empty(first.request(
+            "textDocument/hover", position_in(probe_text, probe_uri, "circle := Circle", 1, 1))))
+
+        # each window's server sees only its own documents
+        mine = {s.get("name") for s in result_of(first.request(
+            "workspace/symbol", {"query": "Stdio"})) or []}
+        theirs = {s.get("name") for s in result_of(second.request(
+            "workspace/symbol", {"query": "Stdio"})) or []}
+        log_result("two stdio servers keep their documents apart",
+                   "StdioOther" not in mine and "StdioOther" in theirs,
+                   f"first saw {sorted(mine)}, second saw {sorted(theirs)}")
+
+        # non-ASCII text out and back: formatting returns the whole document
+        literal = '"héllo \U0001F600"'
+        text = ("class StdioText {\n  function : Main(args : String[]) ~ Nil {\n"
+                "    x := " + literal + ";\n    x->PrintLine();\n  }\n}\n")
+        uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_stdio_text.obs"))
+        second.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        second.diagnostics_for(uri, timeout=60)
+        edits = result_of(second.request("textDocument/formatting", {
+            "textDocument": {"uri": uri}, "options": {"tabSize": 2, "insertSpaces": True}})) or []
+        log_result("stdio: non-ASCII text survives the round trip",
+                   any(literal in str(e.get("newText", "")) for e in edits),
+                   f"got: {json.dumps(edits)[:160]}")
+        log_result("stdio: and the stream stays framed after it", second.request(
+            "textDocument/foldingRange", {"textDocument": {"uri": uri}}) is not None)
+    finally:
+        codes = (first.close(), second.close())
+    log_result("both stdio servers shut down cleanly", codes == (0, 0), f"exit codes {codes}")
+
+
 def check_pipe_transport(obr, server_obe, apis_json, bin_dir):
     """VS Code's transport on Windows: a message-mode named pipe.
 
@@ -1895,6 +2019,7 @@ def main():
 
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
     check_multi_root(obr, server_obe, apis_json, bin_dir)
+    check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the
