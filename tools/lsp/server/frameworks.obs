@@ -1258,18 +1258,24 @@ bundle LSP {
 			return Nil;
 		}
 
-		method : public : Hover(line_pos : Int, char_pos : Int) ~ JsonElement {
+		method : public : Hover(line_pos : Int, char_pos : Int, markdown : Bool) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, true);
 			
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
-					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(), markdown);
 				};
 			};
 
 			return Nil;
+		}
+
+		# the signature and documentation of a completion item (completionItem/resolve)
+		method : public : ResolveCompletion(item_name : String, line_pos : Int, char_pos : Int, var_str : String, markdown : Bool) ~ JsonElement {
+			proxy := @workspace->GetProxy(@uri, true);
+			return proxy->ResolveCompletion(item_name, line_pos, char_pos, var_str, @uri, @workspace->GetLibs(), markdown);
 		}
 
 		method : public : SignatureHelp(line_pos : Int, char_pos : Int) ~ JsonElement {

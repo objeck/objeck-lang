@@ -401,6 +401,116 @@ def check_formatting_literals(c):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def completion_items(resp):
+    r = result_of(resp)
+    if isinstance(r, dict):
+        r = r.get("items")
+    return r if isinstance(r, list) else []
+
+
+def markup_value(doc):
+    """The text of a MarkupContent, or None if it is not one."""
+    if isinstance(doc, dict) and doc.get("kind") in ("markdown", "plaintext"):
+        return doc.get("value")
+    return None
+
+
+def check_completion_docs(c, caps, probe_text, probe_uri):
+    """Completion carries real signatures and documentation (#1228).
+
+    Every item used to say "<name> details" and "<name> documentation", which
+    the editor showed as written, and completionItem/resolve echoed the item
+    back behind a resolveProvider of false.
+    """
+    log_result("completionProvider.resolveProvider is true",
+               (caps.get("completionProvider") or {}).get("resolveProvider") is True,
+               f"got: {caps.get('completionProvider')}")
+
+    items = completion_items(c.request("textDocument/completion", dict(
+        position_in(probe_text, probe_uri, "circle->GetArea", 1, 11),
+        context={"triggerKind": 1})))
+    placeholder = [i.get("label") for i in items
+                   if " details" in str(i.get("detail", ""))
+                   or " documentation" in str(i.get("documentation", ""))]
+    log_result("no completion item carries placeholder text",
+               bool(items) and not placeholder, f"{len(items)} items, placeholders on {placeholder[:5]}")
+    keywords = [i for i in items if i.get("kind") == 14]
+    log_result("keyword items say they are keywords",
+               bool(keywords) and all(i.get("detail") == "keyword" for i in keywords),
+               f"got: {[(i.get('label'), i.get('detail')) for i in keywords[:3]]}")
+
+    area = next((i for i in items if i.get("label") == "GetArea"), None)
+    log_result("completion offers the user method", area is not None,
+               f"labels: {[i.get('label') for i in items][:12]}")
+    if area:
+        got = result_of(c.request("completionItem/resolve", area)) or {}
+        log_result("resolve gives a user method its signature",
+                   "GetArea" in str(got.get("detail", "")) and "Float" in str(got.get("detail", "")),
+                   f"got: {got.get('detail')!r}")
+        log_result("and documentation as MarkupContent",
+                   "GetArea" in str(markup_value(got.get("documentation"))),
+                   f"got: {got.get('documentation')!r}")
+        log_result("resolve keeps the item's label and kind",
+                   got.get("label") == "GetArea" and got.get("kind") == area.get("kind"),
+                   f"got: {got.get('label')!r} {got.get('kind')!r}")
+
+    # A library receiver: the documentation comes from objk_apis.json.
+    text = ("class LibDocs {\n"
+            "  function : Main(args : String[]) ~ Nil {\n"
+            "    v := Collection.Vector->New()<String>;\n"
+            "    v->AddBack(\"a\");\n"
+            "    v->Each(" + chr(92) + "^(s) => s->PrintLine());\n"
+            "  }\n"
+            "}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_completion_docs.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    c.diagnostics_for(uri, timeout=60)
+
+    def resolved(needle, offset, name):
+        found = completion_items(c.request("textDocument/completion", dict(
+            position_in(text, uri, needle, 1, offset), context={"triggerKind": 1})))
+        item = next((i for i in found if i.get("label") == name), None)
+        if item is None:
+            return None, [i.get("label") for i in found][:12]
+        return result_of(c.request("completionItem/resolve", item)) or {}, None
+
+    got, labels = resolved("v->AddBack", 6, "AddBack")
+    log_result("completion offers a library method", got is not None, f"labels: {labels}")
+    if got is not None:
+        log_result("resolve gives a library method its signature",
+                   "Collection.Vector->AddBack" in str(got.get("detail", "")),
+                   f"got: {got.get('detail')!r}")
+        doc = markup_value(got.get("documentation"))
+        log_result("and its documentation from the API index",
+                   doc is not None and "Adds a value to the end" in doc
+                   and got["documentation"].get("kind") == "markdown",
+                   f"got: {got.get('documentation')!r}")
+
+    got, labels = resolved("v->Each", 6, "Each")
+    doc = markup_value((got or {}).get("documentation")) or ""
+    # The index is written for the HTML pages: inside markdown code an entity
+    # is shown literally, so it is decoded there (and only there -- outside
+    # code the renderer decodes it, and a bare '<' could read as a tag).
+    log_result("documentation code shows <H>, not &lt;H&gt;",
+               "~ Vector<H>`" in doc and "~ Vector&lt;" not in doc, f"got: {doc[:200]!r}")
+
+    hover = result_of(c.request("textDocument/hover",
+                                position_in(text, uri, "AddBack", 1, 2))) or {}
+    value = markup_value(hover.get("contents"))
+    log_result("hover is MarkupContent",
+               value is not None and hover["contents"].get("kind") == "markdown",
+               f"got: {hover!r}"[:300])
+    log_result("hover on a library method shows its documentation",
+               "Adds a value to the end" in str(value), f"got: {str(value)[:160]!r}")
+
+    hover = result_of(c.request("textDocument/hover",
+                                position_in(probe_text, probe_uri, "circle := Circle", 1, 1))) or {}
+    log_result("hover on a user type is MarkupContent too",
+               markup_value(hover.get("contents")) is not None, f"got: {hover!r}"[:300])
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
 def check_large_real_file(c):
     """Every read-only handler over a real library source, errors and all.
 
@@ -1441,6 +1551,7 @@ def main():
         log_result("declaration on a chained call resolves the chained method",
                    decl_line == get_line, f"got: {decl}")
 
+        check_completion_docs(c, caps, probe_text, probe_uri)
         check_large_real_file(c)
         check_text_encoding(c, caps)
         check_batching(c)
@@ -1454,9 +1565,10 @@ def main():
     # workspace and the watched-files handler must stay alive.
     c = LspClient(obr, server_obe, apis_json, bin_dir)
     try:
+        # ...and a client that renders only plain text (#1228)
         resp = c.request("initialize", {
             "processId": os.getpid(), "rootUri": path_to_uri(TESTS_DIR),
-            "capabilities": {},
+            "capabilities": {"textDocument": {"hover": {"contentFormat": ["plaintext"]}}},
         }, timeout=90)
         log_result("initialize with rootUri only (no workspaceFolders)",
                    bool((result_of(resp) or {}).get("capabilities")))
@@ -1467,11 +1579,14 @@ def main():
         c.diagnostics_for(probe_uri, timeout=60)
         c.notify("workspace/didChangeWatchedFiles", {"changes": [
             {"uri": path_to_uri(TESTS_DIR) + "/build.json", "type": 2}]})
-        alive = non_empty(c.request("textDocument/hover",
-                                    position_in(probe_text, probe_uri,
-                                                "circle := Circle", 1, 1)))
+        hover = c.request("textDocument/hover",
+                          position_in(probe_text, probe_uri, "circle := Circle", 1, 1))
         log_result("rootUri-only session survives didChangeWatchedFiles",
-                   alive and c.proc.poll() is None)
+                   non_empty(hover) and c.proc.poll() is None)
+        contents = (result_of(hover) or {}).get("contents")
+        log_result("a plain-text client gets plain-text hover",
+                   isinstance(contents, dict) and contents.get("kind") == "plaintext",
+                   f"got: {contents!r}"[:200])
     finally:
         c.close()
 

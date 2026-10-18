@@ -329,9 +329,22 @@ bundle LSP {
 					item := JsonElement->New(JsonElement->JsonType->OBJECT);
 					item->Insert("label", keyword);
 					item->Insert("kind", code);
-					item->Insert("data", i);
-					item->Insert("detail", "{$keyword} details");
-		      		item->Insert("documentation", "{$keyword} documentation");
+
+					# A method says where it was asked for: completionItem/resolve looks
+					# its signature and documentation up from this, for the one item
+					# the user lands on. Every item used to carry "<name> details" and
+					# "<name> documentation", which the editor showed as they were.
+					if(code = 2 | code = 3) {
+						data := JsonElement->New(JsonElement->JsonType->OBJECT);
+						data->Insert("uri", uri);
+						data->Insert("line", line_pos);
+						data->Insert("character", char_pos);
+						data->Insert("var", var_str);
+						item->Insert("data", data);
+					}
+					else if(code = 14) {
+						item->Insert("detail", "keyword");
+					};
 					response->Add(item);
 				};
 				
@@ -341,7 +354,180 @@ bundle LSP {
 			return Nil;
 		}
 
-		method : public : Hover(line_pos : Int, char_pos : Int, var_str : String, mthd_str : String, uri : String, sys_path : String) ~ JsonElement {
+		#
+		# The signature and documentation of one completion item, for
+		# completionItem/resolve: 'detail' and 'documentation' to merge into it, or
+		# Nil when the name isn't a method that resolves here (a variable, an enum
+		# item, or text that has changed since).
+		#
+		# The signatures come from the same lookup signature help uses, which knows
+		# the receiver's class; the class names the objk_apis.json entry.
+		#
+		method : public : ResolveCompletion(item_name : String, line_pos : Int, char_pos : Int, var_str : String, uri : String, sys_path : String, markdown : Bool) ~ JsonElement {
+			if(@analysis = Nil | item_name = Nil | item_name->IsEmpty()) {
+				return Nil;
+			};
+
+			root_signature := @analysis->SignatureHelp(uri, line_pos, char_pos, var_str, item_name, sys_path);
+			if(root_signature = Nil) {
+				return Nil;
+			};
+
+			signatures := root_signature->GetResults();
+			if(signatures = Nil | signatures->Size() = 0) {
+				return Nil;
+			};
+
+			first := signatures[0]->GetName();
+			if(first = Nil) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			detail := String->New(first);
+			if(signatures->Size() > 1) {
+				others := signatures->Size() - 1;
+				detail += " (+{$others} overload";
+				if(others > 1) {
+					detail += 's';
+				};
+				detail += ')';
+			};
+			result->Insert("detail", detail);
+
+			# 'method : public : Collection.Vector->AddBack(H) ~ Nil' names the class
+			doc_text : String;
+			klass_name := SignatureClass(first);
+			if(klass_name <> Nil) {
+				docs_json := GetDocumentation(klass_name, item_name);
+				if(docs_json <> Nil) {
+					doc_text := JoinDocumentation(docs_json);
+				};
+			};
+
+			# a method of the user's own code has no entry: list its signatures
+			if(doc_text = Nil | doc_text->IsEmpty()) {
+				doc_text := "```objeck\n";
+				each(i : signatures) {
+					name := signatures[i]->GetName();
+					if(name <> Nil) {
+						doc_text += name;
+						doc_text += '\n';
+					};
+				};
+				doc_text += "```";
+			};
+			result->Insert("documentation", MakeMarkup(doc_text, markdown));
+
+			return result;
+		}
+
+		# 'method : public : System.$Int->Pow(Int) ~ Int' -> 'System.Int'
+		function : SignatureClass(signature : String) ~ String {
+			arrow := signature->Find("->");
+			if(arrow < 1) {
+				return Nil;
+			};
+
+			start := arrow;
+			while(start > 0 & signature->Get(start - 1) <> ' ') {
+				start -= 1;
+			};
+
+			klass_name := signature->SubString(start, arrow - start);
+			# the primitive types' methods live on hidden classes ($Int, $Float, ...)
+			return klass_name->ReplaceAll("$", "");
+		}
+
+		#
+		# One string, or the descriptions of each overload. The index is read with
+		# Data.JSON's parser, which keeps strings as they were written, escapes and
+		# all, so each is decoded once here.
+		#
+		function : JoinDocumentation(docs_json : JsonElement) ~ String {
+			if(docs_json->GetType() = JsonElement->JsonType->STRING) {
+				return JsonElement->Decode(docs_json->GetString());
+			};
+
+			text := "";
+			if(docs_json->GetType() = JsonElement->JsonType->ARRAY) {
+				each(i : docs_json) {
+					doc := JsonElement->Decode(docs_json->Get(i)->GetString());
+					if(doc <> Nil & <>doc->IsEmpty()) {
+						if(<>text->IsEmpty()) {
+							text += "\n\n---\n\n";
+						};
+						text += doc;
+					};
+				};
+			};
+
+			return text;
+		}
+
+		#
+		# MarkupContent. The documentation index is written for the HTML API pages,
+		# so code in it carries '&lt;' and '&gt;': markdown shows those literally
+		# inside code, where they are decoded here. Outside code a markdown renderer
+		# decodes them itself, and a bare '<' there could be taken for a tag.
+		#
+		function : MakeMarkup(text : String, markdown : Bool) ~ JsonElement {
+			markup := JsonElement->New(JsonElement->JsonType->OBJECT);
+			markup->Insert("kind", markdown ? "markdown" : "plaintext");
+			markup->Insert("value", DecodeCodeEntities(text, markdown));
+			return markup;
+		}
+
+		function : DecodeCodeEntities(text : String, markdown : Bool) ~ String {
+			if(text->Find('&') < 0) {
+				return text;
+			};
+
+			# plain text has no markup to protect
+			if(<>markdown) {
+				return DecodeEntities(text);
+			};
+
+			out := "";
+			segment := "";
+			in_code := false;
+			i := 0;
+			while(i < text->Size()) {
+				c := text->Get(i);
+				if(c = '`') {
+					# a run of backticks opens or closes code (inline or fenced)
+					run := "";
+					while(i < text->Size() & text->Get(i) = '`') {
+						run += '`';
+						i += 1;
+					};
+					out += in_code ? DecodeEntities(segment) : segment;
+					out += run;
+					segment := "";
+					in_code := <>in_code;
+				}
+				else {
+					segment += c;
+					i += 1;
+				};
+			};
+			out += in_code ? DecodeEntities(segment) : segment;
+
+			return out;
+		}
+
+		function : DecodeEntities(text : String) ~ String {
+			if(text->Find('&') < 0) {
+				return text;
+			};
+
+			decoded := text->ReplaceAll("&lt;", "<");
+			decoded := decoded->ReplaceAll("&gt;", ">");
+			decoded := decoded->ReplaceAll("&quot;", "\"");
+			return decoded->ReplaceAll("&amp;", "&");
+		}
+
+		method : public : Hover(line_pos : Int, char_pos : Int, var_str : String, mthd_str : String, uri : String, sys_path : String, markdown : Bool) ~ JsonElement {
 			if(@analysis = Nil) {
 				return Nil;
 			};
@@ -411,39 +597,28 @@ bundle LSP {
 						};
 					};
 
+					# MarkupContent. This answered with a bare string or a string array,
+					# the MarkedString form LSP deprecated in 3.0.
+					text : String;
 					if(content <> Nil) {
-						if(content->GetType() = JsonElement->JsonType->STRING) {
-							content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-							content_json->Insert("contents", content);
-							return content_json;
-						}
-						else {
-							docs_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
-							each(i : content) {
-								docs_json->Add(content->Get(i)->GetValue());
-							};
-
-							content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-							content_json->Insert("contents", docs_json);
-
-							return content_json;
-
-						};
-					}
-					# Fallback for user-defined classes (no entry in objk_apis.json):
-					# return a minimal hover from the name (type) and desc (method).
-					else {
-						fallback := name;
-						if(desc <> Nil) {
-							fallback += "::";
-							fallback += desc;
-						};
-
-						content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-						content_json->Insert("contents", fallback);
-						return content_json;
+						text := JoinDocumentation(content);
 					};
+
+					# Fallback for user-defined classes (no entry in objk_apis.json):
+					# a minimal hover from the name (type) and desc (method).
+					if(text = Nil | text->IsEmpty()) {
+						text := "```objeck\n";
+						text += name;
+						if(desc <> Nil) {
+							text += "->";
+							text += desc;
+						};
+						text += "\n```";
+					};
+
+					content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					content_json->Insert("contents", MakeMarkup(text, markdown));
+					return content_json;
 				};
 			};
 
