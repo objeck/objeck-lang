@@ -704,6 +704,102 @@ def flatten_symbols(symbols):
     return out
 
 
+def decode_tokens(data):
+    """LSP's relative token encoding -> absolute (line, char, length, type, mods)."""
+    out, line, char = [], 0, 0
+    for i in range(0, len(data or []) - 4, 5):
+        dl, dc, length, typ, mods = data[i:i + 5]
+        line += dl
+        char = char + dc if dl == 0 else dc
+        out.append((line, char, length, typ, mods))
+    return out
+
+
+def apply_token_edits(data, edits):
+    data = list(data)
+    for e in sorted(edits, key=lambda e: e["start"], reverse=True):
+        data[e["start"]:e["start"] + e.get("deleteCount", 0)] = e.get("data", [])
+    return data
+
+
+def check_tokens_lens_links(c, caps, probe_text, probe_uri):
+    """semanticTokens range and delta, codeLens and documentLink (#1235)."""
+    sem = caps.get("semanticTokensProvider") or {}
+    log_result("semantic tokens advertise range and full/delta",
+               sem.get("range") is True and sem.get("full") == {"delta": True}, f"got: {sem}")
+    log_result("codeLens and documentLink are advertised",
+               "codeLensProvider" in caps and "documentLinkProvider" in caps)
+
+    full = result_of(c.request("textDocument/semanticTokens/full",
+                               {"textDocument": {"uri": probe_uri}})) or {}
+    tokens = decode_tokens(full.get("data"))
+    log_result("full semantic tokens carry a resultId", bool(full.get("resultId")) and bool(tokens),
+               f"got keys {sorted(full)}")
+    lo, hi = 70, 90
+    ranged = result_of(c.request("textDocument/semanticTokens/range", {
+        "textDocument": {"uri": probe_uri},
+        "range": {"start": {"line": lo, "character": 0}, "end": {"line": hi, "character": 0}}})) or {}
+    want = [t for t in tokens if lo <= t[0] <= hi]
+    log_result("range tokens are the full tokens on those lines",
+               bool(want) and decode_tokens(ranged.get("data")) == want,
+               f"{len(decode_tokens(ranged.get('data')))} vs {len(want)}")
+
+    # a delta, applied to the tokens it follows, gives the new tokens
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_tokens_delta.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": probe_text}})
+    c.diagnostics_for(uri, timeout=60)
+    before = result_of(c.request("textDocument/semanticTokens/full", {"textDocument": {"uri": uri}})) or {}
+    line, _ = find_pos(probe_text, "total->PrintLine")
+    c.notifications.clear()
+    c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": 2}, "contentChanges": [{
+        "range": {"start": {"line": line, "character": 0}, "end": {"line": line, "character": 0}},
+        "text": "\t\tsquare->Draw()->PrintLine();\n"}]})
+    c.diagnostics_for(uri, timeout=60)
+    delta = result_of(c.request("textDocument/semanticTokens/full/delta", {
+        "textDocument": {"uri": uri}, "previousResultId": before.get("resultId")})) or {}
+    after = result_of(c.request("textDocument/semanticTokens/full", {"textDocument": {"uri": uri}})) or {}
+    edits = delta.get("edits")
+    log_result("a delta answers edits, not every token",
+               isinstance(edits, list) and len(edits) == 1 and "data" not in delta,
+               f"got keys {sorted(delta)}")
+    log_result("applying the delta gives the new tokens",
+               isinstance(edits, list) and after.get("data")
+               and apply_token_edits(before.get("data") or [], edits) == after["data"],
+               f"{len(before.get('data') or [])} -> {len(after.get('data') or [])}")
+    stale = result_of(c.request("textDocument/semanticTokens/full/delta", {
+        "textDocument": {"uri": uri}, "previousResultId": "no-such-result"})) or {}
+    log_result("a delta from an unknown result answers full tokens",
+               stale.get("data") == after.get("data") and "edits" not in stale, f"got keys {sorted(stale)}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+    # codeLens: how to run the program, here as a label (no client command)
+    lenses = result_of(c.request("textDocument/codeLens", {"textDocument": {"uri": probe_uri}})) or []
+    main_line, main_char = find_pos(probe_text, "function : Main(", 1, len("function : "))
+    title = ((lenses[0] if lenses else {}).get("command") or {}).get("title", "")
+    log_result("a code lens sits on Main",
+               len(lenses) == 1 and lenses[0]["range"]["start"] == {"line": main_line, "character": main_char},
+               f"got: {lenses}")
+    log_result("and says how to build and run the file",
+               title == "Run: obc -src lsp_probe.obs -dest lsp_probe.obe && obr lsp_probe.obe", f"title {title!r}")
+
+    # documentLink: each documented 'use' bundle
+    text = "use Collection, System.IO;\nuse Bogus.Bundle;\n\nclass Links {\n  function : Main(args : String[]) ~ Nil {\n  }\n}\n"
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_links.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    links = result_of(c.request("textDocument/documentLink", {"textDocument": {"uri": uri}})) or []
+    lines = text.split("\n")
+    linked = {lines[l["range"]["start"]["line"]][l["range"]["start"]["character"]:l["range"]["end"]["character"]]:
+              l.get("target") for l in links}
+    log_result("documentLink links each documented 'use' bundle",
+               set(linked) == {"Collection", "System.IO"}, f"got: {linked}")
+    log_result("to its entry in the API reference",
+               linked.get("Collection") == "https://www.objeck.org/api/latest/index.html?scrollTo=collection",
+               f"got: {linked.get('Collection')!r}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
 def check_large_real_file(c):
     """Every read-only handler over a real library source, errors and all.
 
@@ -1211,7 +1307,7 @@ def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
         log_result("a string request id is echoed back unchanged", sid is not None,
                    "no response carrying id 'abc-7'")
 
-        unknown = c.request("textDocument/codeLens", {"textDocument": {"uri": "file:///x.obs"}})
+        unknown = c.request("textDocument/noSuchMethod", {"textDocument": {"uri": "file:///x.obs"}})
         log_result("an unknown request gets MethodNotFound",
                    (unknown or {}).get("error", {}).get("code") == -32601, f"got: {unknown}")
 
@@ -2132,6 +2228,7 @@ def main():
         check_completion_docs(c, caps, probe_text, probe_uri)
         check_rename_and_organize(c, probe_text, probe_uri)
         check_document_symbol_tree(c, probe_text, probe_uri)
+        check_tokens_lens_links(c, caps, probe_text, probe_uri)
         check_large_real_file(c)
         check_text_encoding(c, caps)
         check_batching(c)
@@ -2257,6 +2354,8 @@ def main():
             "processId": os.getpid(), "rootUri": ws_uri,
             "capabilities": {"workspace": {"configuration": True}},
             "workspaceFolders": [{"uri": ws_uri, "name": "ws_lsp_features"}],
+            # the VS Code client names its run command (#1235)
+            "initializationOptions": {"runCommand": "objeck.runProgram"},
         }, timeout=90)
         log_result("workspace mode initializes",
                    bool((result_of(resp) or {}).get("capabilities")))
@@ -2269,6 +2368,20 @@ def main():
                    diags is not None and not [d for d in diags
                                               if d.get("severity") == 1],
                    f"{diags}")
+
+        # the Run lens builds the folder's program, with the client's command
+        lenses = result_of(c.request("textDocument/codeLens", {"textDocument": {"uri": main_uri}})) or []
+        command = (lenses[0] if lenses else {}).get("command") or {}
+        run = (command.get("arguments") or [{}])[0]
+        log_result("the Run lens invokes the client's command",
+                   command.get("command") == "objeck.runProgram" and command.get("title") == "Run",
+                   f"got: {command}")
+        log_result("with the folder's build.json files, libraries and directory",
+                   run.get("obc") == ["-src", "shapes.obs,animals.obs,main.obs", "-lib", "gen_collect",
+                                      "-dest", "main.obe"]
+                   and run.get("obr") == ["main.obe"]
+                   and os.path.normcase(os.path.abspath(run.get("cwd", ""))) == os.path.normcase(WS_DIR),
+                   f"got: {run}")
     finally:
         c.close()
 

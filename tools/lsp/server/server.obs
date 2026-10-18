@@ -107,6 +107,8 @@ bundle LSP {
 	class LintService from LspWorker {
 		# the client can take a dynamic registration for workspace/didChangeWatchedFiles
 		@can_register_watchers : Bool;
+		# the client's command for running a program, from initializationOptions
+		@run_command : String;
 		# MarkupContent kinds the client renders
 		@hover_markdown : Bool;
 		# documentSymbol answers DocumentSymbol[] (a tree) rather than SymbolInformation[]
@@ -430,6 +432,57 @@ bundle LSP {
 			else {
 				WriteRpcResponse(id, Nil);
 			};
+		}
+
+		method : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			start_json := FindJson(params, "range/start/line");
+			end_json := FindJson(params, "range/end/line");
+			if(document <> Nil & start_json <> Nil & end_json <> Nil) {
+				WriteRpcResponse(id, document->SemanticTokensRange(start_json->GetInt(), end_json->GetInt()));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackSemanticTokensDelta(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->SemanticTokensDelta(FindString(params, "previousResultId")));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackCodeLens(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->CodeLens(@run_command));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackDocumentLink(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->DocumentLinks());
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		# the open document params.textDocument.uri names, or Nil
+		method : DocumentOf(params : JsonElement) ~ Document {
+			uri := FindString(params, "textDocument/uri");
+			if(uri = Nil) {
+				return Nil;
+			};
+			return @workspace->GetDocument(uri);
 		}
 
 		method : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil {
@@ -774,7 +827,18 @@ bundle LSP {
 
 			semanticTokensProvider := capabilities->AddChild("semanticTokensProvider");
 			semanticTokensProvider->Insert("legend", semanticTokensLegend);
-			semanticTokensProvider->Insert("full", true);
+			semanticTokensProvider->Insert("range", true);
+			semanticTokensFull := semanticTokensProvider->AddChild("full");
+			semanticTokensFull->Insert("delta", true);
+
+			codeLensProvider := capabilities->AddChild("codeLensProvider");
+			codeLensProvider->Insert("resolveProvider", false);
+			documentLinkProvider := capabilities->AddChild("documentLinkProvider");
+			documentLinkProvider->Insert("resolveProvider", false);
+
+			# A client that can run a program names its command; the 'Run' lens
+			# then invokes it. Without one the lens only says what to run.
+			@run_command := FindString(params, "initializationOptions/runCommand");
 
 			# Dynamic registration is a request, so it waits for the client's
 			# 'initialized' (NotifyInitialized), and is only sent to a client that

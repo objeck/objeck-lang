@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { workspace, window, ExtensionContext, debug, DebugAdapterDescriptorFactory, DebugSession, DebugAdapterDescriptor, DebugAdapterExecutable, DebugAdapterExecutableOptions, ProviderResult } from 'vscode';
+import { workspace, window, commands, tasks, Task, TaskExecution, TaskScope, ProcessExecution, ExtensionContext, debug, DebugAdapterDescriptorFactory, DebugSession, DebugAdapterDescriptor, DebugAdapterExecutable, DebugAdapterExecutableOptions, ProviderResult } from 'vscode';
 
 import {
     Executable,
@@ -55,16 +55,75 @@ export function activate(context: ExtensionContext) {
             documentSelector: [{ scheme: 'file', language: 'objeck' }],
             synchronize: {
                 fileEvents: workspace.createFileSystemWatcher('**/build.json')
-            }
+            },
+            // the server's 'Run' code lens invokes this command
+            initializationOptions: { runCommand: RUN_COMMAND }
         };
 
         client = new LanguageClient('objeck_lsp', 'Objeck Language Server', serverOptions, clientOptions);
         client.start();
+
+        context.subscriptions.push(commands.registerCommand(RUN_COMMAND,
+            (run: RunRequest) => runProgram(installDir, run)));
     }
 
     // Register debug adapter
     const debugAdapterFactory = new ObjeckDebugAdapterFactory();
     context.subscriptions.push(debug.registerDebugAdapterDescriptorFactory('objeck', debugAdapterFactory));
+}
+
+const RUN_COMMAND = 'objeck.runProgram';
+
+// What the server's 'Run' lens passes: the program's directory, and the
+// arguments for obc and for obr.
+interface RunRequest {
+    cwd: string;
+    obc: string[];
+    obr: string[];
+}
+
+// Compiles the program, then runs it if it compiled, each as a task with its
+// own terminal. Processes, not a shell command line: the paths come from the
+// server and the settings, and are never parsed by a shell.
+async function runProgram(installDir: string, run: RunRequest): Promise<void> {
+    if(!run || !Array.isArray(run.obc) || !Array.isArray(run.obr)) {
+        return;
+    }
+
+    const isWindows = process.platform === 'win32';
+    const bin = path.join(installDir, 'bin');
+    const options = {
+        cwd: run.cwd,
+        env: { OBJECK_LIB_PATH: path.join(installDir, 'lib') }
+    };
+
+    const build = new Task({ type: 'objeck', step: 'build' }, TaskScope.Workspace, 'build', 'objeck',
+        new ProcessExecution(path.join(bin, isWindows ? 'obc.exe' : 'obc'), run.obc, options));
+    const exitCode = await executeAndWait(build);
+    if(exitCode !== 0) {
+        window.showErrorMessage(`Objeck: the program did not compile (obc exited with ${exitCode}).`);
+        return;
+    }
+
+    const program = new Task({ type: 'objeck', step: 'run' }, TaskScope.Workspace, 'run', 'objeck',
+        new ProcessExecution(path.join(bin, isWindows ? 'obr.exe' : 'obr'), run.obr, options));
+    await tasks.executeTask(program);
+}
+
+function executeAndWait(task: Task): Promise<number | undefined> {
+    return new Promise((resolve) => {
+        let execution: TaskExecution | undefined;
+        const listener = tasks.onDidEndTaskProcess((e) => {
+            if(e.execution === execution) {
+                listener.dispose();
+                resolve(e.exitCode);
+            }
+        });
+        tasks.executeTask(task).then((started) => { execution = started; }, () => {
+            listener.dispose();
+            resolve(undefined);
+        });
+    });
 }
 
 class ObjeckDebugAdapterFactory implements DebugAdapterDescriptorFactory {

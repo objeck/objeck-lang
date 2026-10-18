@@ -11,6 +11,7 @@ bundle LSP {
 		@doc_json_cache : static : Cache<String, JsonElement>;
 		@klass_bundles_json : static : JsonElement;
 		@klass_details_json : static : JsonElement;
+		@doc_bundles : static : Set<String>;
 		@doc_path : static : String;
 		@is_debug : Bool;
 
@@ -1649,6 +1650,93 @@ bundle LSP {
 			};
 
 			return Nil;
+		}
+
+		#
+		# The tokens as absolute rows, five Ints each: line, character, length,
+		# type, modifiers. Full, range and delta answers are all encoded from this.
+		#
+		method : public : SemanticTokenRows(uri : String, sys_path : String) ~ Int[] {
+			if(@analysis = Nil) {
+				return Nil;
+			};
+
+			tokens := @analysis->SemanticTokens(uri, sys_path);
+			if(tokens = Nil) {
+				return Nil;
+			};
+
+			rows := Int->New[tokens->Size() * 5];
+			each(i : tokens) {
+				token := tokens[i];
+				rows[i * 5] := token->GetStartLine();
+				rows[i * 5 + 1] := token->GetStartPosition();
+				rows[i * 5 + 2] := token->GetEndLine();
+				rows[i * 5 + 3] := token->GetEndPosition();
+				rows[i * 5 + 4] := token->GetKind()->As(Int);
+			};
+			return rows;
+		}
+
+		#
+		# The rows on lines [start_line, end_line] in LSP's relative encoding; all
+		# of them for a start_line below 0.
+		#
+		function : EncodeTokens(rows : Int[], start_line : Int, end_line : Int) ~ Int[] {
+			count := 0;
+			for(i := 0; i < rows->Size(); i += 5;) {
+				if(start_line < 0 | (rows[i] >= start_line & rows[i] <= end_line)) {
+					count += 1;
+				};
+			};
+
+			data := Int->New[count * 5];
+			index := 0;
+			prev_line := 0;
+			prev_char := 0;
+			for(i := 0; i < rows->Size(); i += 5;) {
+				line := rows[i];
+				if(start_line < 0 | (line >= start_line & line <= end_line)) {
+					start_char := rows[i + 1];
+					data[index] := line - prev_line;
+					data[index + 1] := line = prev_line ? start_char - prev_char : start_char;
+					data[index + 2] := rows[i + 2];
+					data[index + 3] := rows[i + 3];
+					data[index + 4] := rows[i + 4];
+					index += 5;
+					prev_line := line;
+					prev_char := start_char;
+				};
+			};
+
+			return data;
+		}
+
+		function : IntsToJson(values : Int[]) ~ JsonElement {
+			array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : values) {
+				array->Add(values[i]);
+			};
+			return array;
+		}
+
+		# Every 'use' bundle the API reference documents, from the index's class names.
+		function : HasDocumentedBundle(bundle_name : String) ~ Bool {
+			if(@doc_bundles = Nil) {
+				@doc_bundles := Set->New()<String>;
+				names := @klass_details_json->GetNames();
+				if(names <> Nil) {
+					each(i : names) {
+						name := names->Get(i);
+						dot := name->FindLast('.');
+						if(dot > 0) {
+							@doc_bundles->Insert(name->SubString(dot));
+						};
+					};
+				};
+			};
+
+			return @doc_bundles->Has(bundle_name);
 		}
 
 		method : public : SemanticTokens(uri : String, sys_path : String) ~ JsonElement {
