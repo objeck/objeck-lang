@@ -459,7 +459,10 @@ def check_large_real_file(c):
     c.notify("textDocument/didClose", doc)
 
 
-def utf16_col(line, index):
+def column(line, index, encoding):
+    """The column of line[index] in the negotiated position encoding."""
+    if encoding == "utf-32":
+        return index
     return len(line[:index].encode("utf-16-le")) // 2
 
 
@@ -470,12 +473,14 @@ def check_text_encoding(c, caps):
     The server kept escapes literally in its copy of the document, so every
     column after the character was off by five (BMP) or ten (an emoji) (#1216).
     """
-    log_result("positionEncoding is advertised",
-               caps.get("positionEncoding") in ("utf-16", "utf-32"),
-               f"got: {caps.get('positionEncoding')}")
+    encoding = caps.get("positionEncoding")
+    log_result("positionEncoding is advertised", encoding in ("utf-16", "utf-32"),
+               f"got: {encoding}")
     if os.name == "nt":
-        log_result("positionEncoding is utf-16 where a Char is UTF-16",
-                   caps.get("positionEncoding") == "utf-16")
+        log_result("positionEncoding is utf-16 where a Char is UTF-16", encoding == "utf-16")
+    else:
+        log_result("positionEncoding is utf-32 where a Char is a code point and it is offered",
+                   encoding == "utf-32", f"got: {encoding}")
 
     shapes = [("comment", "# caf{ch}\nclass U{n} {{\n  function : Main(a : String[]) ~ Nil {{\n"
                           "    y := zzz;\n  }}\n}}\n", 3),
@@ -494,7 +499,7 @@ def check_text_encoding(c, caps):
                                            "text": text}}}, ensure_ascii=escaped).encode("utf-8"))
                 diags = c.diagnostics_for(uri, timeout=60) or []
                 line = text.split("\n")[line_no]
-                want = {"line": line_no, "character": utf16_col(line, line.index("zzz"))}
+                want = {"line": line_no, "character": column(line, line.index("zzz"), encoding)}
                 got = [d["range"]["start"] for d in diags if "zzz" in str(d.get("message", ""))]
                 how = "escaped" if escaped else "raw"
                 label = f"{where} with {ch_name} sent {how}"
@@ -502,7 +507,7 @@ def check_text_encoding(c, caps):
 
                 # an edit after the character lands in the right place too
                 c.notifications.clear()
-                col = utf16_col(line, line.index("zzz"))
+                col = column(line, line.index("zzz"), encoding)
                 c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": 2},
                          "contentChanges": [{"range": {
                              "start": {"line": line_no, "character": col},
@@ -765,10 +770,12 @@ def main():
     c = LspClient(obr, server_obe, apis_json, bin_dir)
     try:
         # --- initialize -----------------------------------------------------
+        # Offer both encodings: where a Char is a code point (Linux, macOS) the
+        # server then answers in utf-32, which is exact there (#1216, #1226).
         resp = c.request("initialize", {
             "processId": os.getpid(),
             "rootUri": None,
-            "capabilities": {},
+            "capabilities": {"general": {"positionEncodings": ["utf-16", "utf-32"]}},
         }, timeout=90)
 
         caps = (result_of(resp) or {}).get("capabilities")
