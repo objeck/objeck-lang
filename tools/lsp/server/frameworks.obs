@@ -900,16 +900,12 @@ bundle LSP {
 	}
 
 	#~
-	Workspaace
+	Workspace: the open documents, and one configuration per workspace folder
 	~#
 	class : private : LspWorkspace {
 		@is_debug : Bool;
-		@name : String;
-		@root : String;
-		@local_path : String;
-		@file_strs : String[];		
-		@libs_str : String;		
 		@documents : Map<String, Document>;
+		@folders : Vector<LspFolder>;
 		@texts : String[,];
 		# parsed and analyzed programs, kept until any text changes (#1218)
 		@proxies : Map<String, AstProxy>;
@@ -920,6 +916,7 @@ bundle LSP {
 		New(is_debug : Bool) {
 			@is_debug := is_debug;
 			@documents := Map->New()<String, Document>;
+			@folders := Vector->New()<LspFolder>;
 			@proxies := Map->New()<String, AstProxy>;
 
 			# OBJECK_LSP_NO_CACHE=1 parses afresh for every request, as before, to
@@ -935,29 +932,47 @@ bundle LSP {
 		# analyzer cache never outlived a request: hover, symbols, highlights and
 		# the rest each paid for a full analysis.
 		#
-		# One program per use_alt in workspace mode, where every document's
-		# request parses the same set of files; one per document otherwise, and
-		# one for 'every open document' (a Nil uri, from workspace/symbol).
+		# One program per folder whose build.json lists the document; otherwise one
+		# per document, and one for 'every open document outside a folder' (a Nil
+		# uri, from workspace/symbol). Each comes in a current and a last-clean
+		# ('alt') text version.
 		#
 		method : public : GetProxy(uri : String, use_alt : Bool) ~ AstProxy {
+			folder : LspFolder := Nil;
+			if(uri <> Nil) {
+				folder := FolderFor(uri);
+			};
+			return GetProxy(uri, folder, use_alt);
+		}
+
+		method : GetProxy(uri : String, folder : LspFolder, use_alt : Bool) ~ AstProxy {
 			if(@no_cache | @proxies_generation <> @generation) {
 				ReleaseProxies();
 				@proxies_generation := @generation;
 			};
 
 			key := use_alt ? "alt|" : "text|";
-			if(@file_strs = Nil) {
-				if(uri = Nil) {
-					key += "*";
-				}
-				else {
-					key += uri;
-				};
+			if(folder <> Nil) {
+				key += "folder|";
+				key += folder->GetUri();
+			}
+			else if(uri = Nil) {
+				key += "*";
+			}
+			else {
+				key += uri;
 			};
 
 			proxy := @proxies->Find(key);
 			if(proxy = Nil) {
-				proxy := AstProxy->New(@self, uri, use_alt, @is_debug);
+				texts : String[,];
+				if(folder <> Nil) {
+					texts := folder->GetTexts(@documents, use_alt);
+				}
+				else {
+					texts := GetStandaloneTexts(uri, use_alt);
+				};
+				proxy := AstProxy->New(texts, @is_debug);
 				@proxies->Insert(key, proxy);
 			};
 
@@ -989,129 +1004,198 @@ bundle LSP {
 			@proxies := Map->New()<String, AstProxy>;
 		}
 
-		method : public : SetRoot(name : String, root : String) ~ Nil {
-			@name := name;
-			@root := root;
+		#
+		# A workspace folder, configured from its own build.json. Folders used to
+		# share one root and one file list, and each new folder overwrote the last
+		# (SetRoot): with two folders open, the first was analyzed against the
+		# second's files and libraries (#1232).
+		#
+		method : public : AddFolder(name : String, uri : String) ~ LspFolder {
+			if(uri = Nil | uri->IsEmpty()) {
+				return Nil;
+			};
+			RemoveFolder(uri);
+
+			folder := LspFolder->New(name, uri, @is_debug);
+			folder->Load();
+			@folders->AddBack(folder);
 			Invalidate();
+
+			return folder;
 		}
 
-		method : public : SetFilesLibs(local_path : String, file_strs : String[], libs_str : String) ~ Nil {
-			@local_path := local_path;
-			@file_strs := file_strs;
-			@libs_str := libs_str;
-			Invalidate();
+		# A folder the client closed: its documents are analyzed without it.
+		# didChangeWorkspaceFolders used to only log a removal.
+		method : public : RemoveFolder(uri : String) ~ Bool {
+			key := LspFolder->TrimUri(uri);
+			kept := Vector->New()<LspFolder>;
+			removed := false;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->GetUri()->Equals(key)) {
+					removed := true;
+				}
+				else {
+					kept->AddBack(folder);
+				};
+			};
+
+			if(removed) {
+				@folders := kept;
+				Invalidate();
+			};
+
+			return removed;
 		}
 
-		method : public : GetTexts(uri : String, use_alt : Bool) ~ String[,] {
-			# workspace
-			if(@file_strs <> Nil) {
-				file_count := @file_strs->Size();
-				if(file_count > 0) {
-					@texts := String->New[file_count, 2];
-
-					each(i : file_count) {
-						local_file_path := String->New(@local_path);
-						local_file_path += '/';
-						local_file_path += @file_strs[i];
-
-						file_uri := String->New(@root);
-						file_uri += '/';
-						file_uri += @file_strs[i];
-
-						text : String;
-						document := @documents->Find(file_uri);
-						if(document <> Nil) {
-							if(use_alt) {
-								text := document->GetAltText();
-							}
-							else {
-								text := document->GetText();
-							};
-
-							if(@is_debug & text <> Nil) {
-								size := text->Size();
-								System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
-							};
-						}
-						else {
-							text := System.IO.Filesystem.FileReader->ReadFile(local_file_path);
-							if(@is_debug & text <> Nil) {
-								size := text->Size();
-								System.IO.Filesystem.Logger->Instance()->Info("### From disk: local_file_path='{$local_file_path}', size={$size} ###");
-							};
-						};
-
-						if(text = Nil) {
-							System.IO.Filesystem.Logger->Instance()->Error("Unable to open file: {$local_file_path}");
-						}
-						else {
-							@texts[i,0] := file_uri;
-							@texts[i,1] := text;
-						};
-					};
-
-					return @texts;
+		#
+		# A watched file changed: reload the build.json of the folder it is in, or
+		# every folder's when it is in none of them. This reloaded whichever folder
+		# happened to be configured last.
+		#
+		method : public : ReloadFolders(changed_uri : String) ~ Vector<LspFolder> {
+			reloaded := Vector->New()<LspFolder>;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(changed_uri <> Nil & folder->Contains(changed_uri)) {
+					folder->Load();
+					reloaded->AddBack(folder);
 				};
-			}
-			# non-workspace
-			else {
-				# Libraries assumed for a file with no build.json. gen_collect.obl was
-				# listed TWICE here, and the list omitted regex, xml, csv, query and the
-				# json_rpc/json_stream pair -- so a standalone file using any of them was
-				# told its classes were undefined, with the diagnostic pointing at the
-				# user's code rather than at this list.
-				@libs_str := "gen_collect.obl,cipher.obl,csv.obl,json.obl,json_rpc.obl,json_stream.obl,misc.obl,net.obl,net_server.obl,query.obl,regex.obl,rss.obl,xml.obl";
+			};
 
-				# One document, or -- with no uri, which is how workspace/symbol asks once
-				# more than one file is open -- every open document. That case called
-				# Equals(Nil) here and took the server down (#1214).
-				key_values := @documents->GetKeyValues()<Pair<String, Document>>;
-				count := 0;
-				each(i : key_values) {
-					key_value := key_values->Get(i);
-					if(uri = Nil | key_value->GetFirst()->Equals(uri)) {
-						count += 1;
-					};
+			if(reloaded->Size() = 0) {
+				each(i : @folders) {
+					folder := @folders->Get(i);
+					folder->Load();
+					reloaded->AddBack(folder);
 				};
+			};
 
-				@texts := String->New[count > 0 ? count : 1, 2];
-				index := 0;
-				each(i : key_values) {
-					key_value := key_values->Get(i);
+			Invalidate();
+			return reloaded;
+		}
 
-					file_uri := key_value->GetFirst();
-					if(uri = Nil | file_uri->Equals(uri)) {
-						document := key_value->GetSecond();
+		method : public : HasFolders() ~ Bool {
+			return @folders->Size() > 0;
+		}
 
-						text : String;
-						if(use_alt) {
-							text := document->GetAltText();
-						}
-						else {
-							text := document->GetText();
-						};
-
-						if(@is_debug & text <> Nil) {
-							size := text->Size();
-							System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
-						};
-
-						@texts[index,0] := file_uri;
-						@texts[index,1] := text;
-						index += 1;
+		#
+		# The folder whose build.json lists this document, the innermost when
+		# folders nest; Nil when none does and the document stands alone.
+		#
+		method : public : FolderFor(uri : String) ~ LspFolder {
+			found : LspFolder;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->Lists(uri)) {
+					if(found = Nil | folder->GetUri()->Size() > found->GetUri()->Size()) {
+						found := folder;
 					};
 				};
 			};
-			
+
+			return found;
+		}
+
+		#
+		# The build.json a quick fix should use for this document: its folder's,
+		# configured or not, or one beside the document outside every folder. With
+		# no folder the fix offered to create 'file:////build.json', at the root of
+		# the file system.
+		#
+		method : public : BuildFileFor(uri : String) ~ String {
+			found : LspFolder;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->Contains(uri)) {
+					if(found = Nil | folder->GetUri()->Size() > found->GetUri()->Size()) {
+						found := folder;
+					};
+				};
+			};
+
+			if(found <> Nil) {
+				return found->GetBuildFile();
+			};
+
+			path := LspFolder->LocalPath(uri);
+			slash := path->FindLast('/');
+			if(slash < 0) {
+				return "build.json";
+			};
+			return path->SubString(slash + 1) + "build.json";
+		}
+
+		method : public : GetLibs(uri : String) ~ String {
+			if(uri <> Nil) {
+				folder := FolderFor(uri);
+				if(folder <> Nil) {
+					return folder->GetLibs();
+				};
+			};
+
+			return LspFolder->StandaloneLibs();
+		}
+
+		#
+		# One document, or -- with no uri, which is how workspace/symbol asks --
+		# every open document that no folder's build.json lists. The uri = Nil case
+		# called Equals(Nil) here once and took the server down (#1214).
+		#
+		method : GetStandaloneTexts(uri : String, use_alt : Bool) ~ String[,] {
+			key_values := @documents->GetKeyValues()<Pair<String, Document>>;
+			count := 0;
+			each(i : key_values) {
+				file_uri := key_values->Get(i)->GetFirst();
+				if(IsStandaloneMatch(uri, file_uri)) {
+					count += 1;
+				};
+			};
+
+			@texts := String->New[count > 0 ? count : 1, 2];
+			index := 0;
+			each(i : key_values) {
+				key_value := key_values->Get(i);
+				file_uri := key_value->GetFirst();
+				if(IsStandaloneMatch(uri, file_uri)) {
+					document := key_value->GetSecond();
+
+					text : String;
+					if(use_alt) {
+						text := document->GetAltText();
+					}
+					else {
+						text := document->GetText();
+					};
+
+					if(@is_debug & text <> Nil) {
+						size := text->Size();
+						System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
+					};
+
+					@texts[index,0] := file_uri;
+					@texts[index,1] := text;
+					index += 1;
+				};
+			};
+
 			return @texts;
 		}
 
-		method : public : GetLibs() ~ String {
-			return @libs_str;
+		# the document asked for, or with no uri any document outside every folder
+		method : IsStandaloneMatch(uri : String, file_uri : String) ~ Bool {
+			if(uri = Nil) {
+				return FolderFor(file_uri) = Nil;
+			};
+			return file_uri->Equals(uri);
 		}
 
 		method : public : GetDocument(uri : String) ~ Document {
 			return @documents->Find(uri);
+		}
+
+		method : public : GetUris() ~ Vector<String> {
+			return @documents->GetKeys()<String>;
 		}
 
 		method : public : AddDocument(uri : String, document : Document) ~ Nil {
@@ -1135,19 +1219,249 @@ bundle LSP {
 			Invalidate();
 		}
 
+		#
+		# workspace/symbol: matches from each folder's program, and from the open
+		# documents that belong to none, restricted to open documents.
+		#
 		method : public : GetSymbol(query : String) ~ JsonElement {
-			uri : String;
 			uris := @documents->GetKeys()<String>;
-			if(uris->Size() = 1) {
-				uri := uris->Get(0);
+			matches := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->IsConfigured()) {
+					proxy := GetProxy(Nil, folder, false);
+					if(proxy->Build()) {
+						AddAll(matches, proxy->GetSymbol(query, uris, folder->GetLibs()));
+					};
+				};
 			};
 
-			proxy := GetProxy(uri, false);
-			if(proxy->Build()) {
-				return proxy->GetSymbol(query, uris, GetLibs());
+			standalone := false;
+			each(i : uris) {
+				if(FolderFor(uris->Get(i)) = Nil) {
+					standalone := true;
+				};
 			};
 
-			return Nil;
+			if(standalone) {
+				proxy := GetProxy(Nil, Nil, false);
+				if(proxy->Build()) {
+					AddAll(matches, proxy->GetSymbol(query, uris, LspFolder->StandaloneLibs()));
+				};
+			};
+
+			return matches;
+		}
+
+		function : AddAll(to : JsonElement, from_json : JsonElement) ~ Nil {
+			if(from_json <> Nil & from_json->GetType() = JsonElement->JsonType->ARRAY) {
+				each(i : from_json) {
+					to->Add(from_json->Get(i));
+				};
+			};
+		}
+	}
+
+	#~
+	A workspace folder and the build.json that configures it
+	~#
+	class : private : LspFolder {
+		@name : String;
+		# as the client sent it, without a trailing slash
+		@uri : String;
+		@local_path : String;
+		@build_file : String;
+		@file_strs : String[];
+		@libs_str : String;
+		@load_error : String;
+		@is_debug : Bool;
+
+		New(name : String, uri : String, is_debug : Bool) {
+			@name := name;
+			@uri := TrimUri(uri);
+			@is_debug := is_debug;
+
+			@local_path := LocalPath(@uri);
+			@build_file := String->New(@local_path);
+			@build_file += "/build.json";
+		}
+
+		# 'file:///c%3A/dir' -> 'c:/dir', 'file:///home/dir' -> '/home/dir'
+		function : LocalPath(uri : String) ~ String {
+			path := Web.HTTP.Url->Decode(uri);
+			if(path->StartsWith("file:///")) {
+				offset : Int;
+				if(Query.RegEx.RegEx->New("file:///([a-z]|[A-Z]):.*")->MatchExact(path)) {
+					offset := "file:///"->Size();
+				}
+				else {
+					offset := "file://"->Size();
+				};
+				path->Delete(0, offset);
+			};
+			return path;
+		}
+
+		function : TrimUri(uri : String) ~ String {
+			if(uri <> Nil & uri->EndsWith('/')) {
+				return uri->SubString(uri->Size() - 1);
+			};
+			return uri;
+		}
+
+		# Libraries assumed for a file no build.json lists. gen_collect.obl was
+		# listed TWICE here once, and the list omitted regex, xml, csv, query and the
+		# json_rpc/json_stream pair -- so a standalone file using any of them was
+		# told its classes were undefined, with the diagnostic pointing at the
+		# user's code rather than at this list.
+		function : StandaloneLibs() ~ String {
+			return "gen_collect.obl,cipher.obl,csv.obl,json.obl,json_rpc.obl,json_stream.obl,misc.obl,net.obl,net_server.obl,query.obl,regex.obl,rss.obl,xml.obl";
+		}
+
+		#
+		# (Re)reads build.json. True when it configured the folder; otherwise the
+		# folder's documents stand alone and GetLoadError says why.
+		#
+		method : public : Load() ~ Bool {
+			@file_strs := Nil;
+			@libs_str := Nil;
+			@load_error := Nil;
+
+			text := System.IO.Filesystem.FileReader->ReadFile(@build_file);
+			if(text = Nil) {
+				@load_error := "Unable to load configuration '{$@build_file}'";
+				System.IO.Filesystem.Logger->Instance()->Error("--- {$@load_error} ---");
+				return false;
+			};
+
+			json := JsonParser->New(text);
+			if(<>json->Parse()) {
+				@load_error := "Unable to parse configuration '{$@build_file}'";
+				System.IO.Filesystem.Logger->Instance()->Error("--- {$@load_error} ---");
+				return false;
+			};
+
+			root := json->GetRoot();
+			files_json := root->Get("files");
+			libs_json := root->Get("libs");
+			if(files_json = Nil | libs_json = Nil) {
+				@load_error := "Configuration '{$@build_file}' needs 'files' and 'libs'";
+				System.IO.Filesystem.Logger->Instance()->Error("--- {$@load_error} ---");
+				return false;
+			};
+
+			file_strs := String->New[files_json->Size()];
+			each(i : files_json) {
+				file_strs[i] := JsonElement->Decode(files_json->Get(i)->GetValue());
+			};
+
+			libs_str := "";
+			each(i : libs_json) {
+				libs_str += JsonElement->Decode(libs_json->Get(i)->GetValue());
+				libs_str += ',';
+			};
+
+			if(<>libs_str->IsEmpty()) {
+				libs_str->Pop();
+			};
+
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("--- Files and libraries:  local_path='{$@local_path}', libs_str='{$libs_str}' ---\n");
+			};
+
+			@file_strs := file_strs;
+			@libs_str := libs_str;
+			return true;
+		}
+
+		method : public : IsConfigured() ~ Bool {
+			return @file_strs <> Nil;
+		}
+
+		method : public : GetLoadError() ~ String {
+			return @load_error;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetUri() ~ String {
+			return @uri;
+		}
+
+		method : public : GetBuildFile() ~ String {
+			return @build_file;
+		}
+
+		method : public : GetLibs() ~ String {
+			return @libs_str;
+		}
+
+		# a uri inside this folder
+		method : public : Contains(uri : String) ~ Bool {
+			return uri <> Nil & uri->StartsWith(@uri + "/");
+		}
+
+		# a document this folder's build.json lists
+		method : public : Lists(uri : String) ~ Bool {
+			if(@file_strs = Nil | <>Contains(uri)) {
+				return false;
+			};
+
+			each(i : @file_strs) {
+				file_uri := String->New(@uri);
+				file_uri += '/';
+				file_uri += @file_strs[i];
+				if(file_uri->Equals(uri)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# every file the build.json lists: the open text where it is open, else disk
+		method : public : GetTexts(documents : Map<String, Document>, use_alt : Bool) ~ String[,] {
+			if(@file_strs = Nil | @file_strs->Size() = 0) {
+				return String->New[1, 2];
+			};
+
+			texts := String->New[@file_strs->Size(), 2];
+			each(i : @file_strs) {
+				local_file_path := String->New(@local_path);
+				local_file_path += '/';
+				local_file_path += @file_strs[i];
+
+				file_uri := String->New(@uri);
+				file_uri += '/';
+				file_uri += @file_strs[i];
+
+				text : String;
+				document := documents->Find(file_uri);
+				if(document <> Nil) {
+					if(use_alt) {
+						text := document->GetAltText();
+					}
+					else {
+						text := document->GetText();
+					};
+				}
+				else {
+					text := System.IO.Filesystem.FileReader->ReadFile(local_file_path);
+				};
+
+				if(text = Nil) {
+					System.IO.Filesystem.Logger->Instance()->Error("Unable to open file: {$local_file_path}");
+				}
+				else {
+					texts[i,0] := file_uri;
+					texts[i,1] := text;
+				};
+			};
+
+			return texts;
 		}
 	}
 
@@ -1205,7 +1519,7 @@ bundle LSP {
 			proxy := @workspace->GetProxy(@uri, false);
 
 			was_analyzed := BoolRef->New();
-			result := proxy->GetDiagnostics(was_analyzed, @uri, @workspace->GetLibs());
+			result := proxy->GetDiagnostics(was_analyzed, @uri, @workspace->GetLibs(@uri));
 			if(was_analyzed->Get()) {
 				@alt_text := @text->Clone()->As(String);
 				# completion and hover parse this text, not the current one
@@ -1225,9 +1539,9 @@ bundle LSP {
 
 			if(proxy->Build()) {
 				if(hierarchical) {
-					return proxy->GetDocumentSymbols(uri, @workspace->GetLibs(), @text);
+					return proxy->GetDocumentSymbols(uri, @workspace->GetLibs(@uri), @text);
 				};
-				return proxy->GetSymbols(uri, @workspace->GetLibs());
+				return proxy->GetSymbols(uri, @workspace->GetLibs(@uri));
 			};
 
 			return Nil;
@@ -1236,13 +1550,13 @@ bundle LSP {
 		method : public : FindReferences(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindReferences(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindReferences(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : CodeRename(new_name : String, line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->CodeRename(new_name, line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->CodeRename(new_name, line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		#
@@ -1596,13 +1910,13 @@ bundle LSP {
 		method : public : FindDeclaration(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindDeclaration(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindDeclaration(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : FindDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindDefinition(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : Completion(line_pos : Int, char_pos : Int) ~ JsonElement {
@@ -1612,7 +1926,7 @@ bundle LSP {
 			if(index > -1) {
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
-					return proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+					return proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri));
 				};
 			};
 
@@ -1626,7 +1940,7 @@ bundle LSP {
 			if(index > -1) {
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
-					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(), markdown);
+					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri), markdown);
 				};
 			};
 
@@ -1636,7 +1950,7 @@ bundle LSP {
 		# the signature and documentation of a completion item (completionItem/resolve)
 		method : public : ResolveCompletion(item_name : String, line_pos : Int, char_pos : Int, var_str : String, markdown : Bool) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, true);
-			return proxy->ResolveCompletion(item_name, line_pos, char_pos, var_str, @uri, @workspace->GetLibs(), markdown);
+			return proxy->ResolveCompletion(item_name, line_pos, char_pos, var_str, @uri, @workspace->GetLibs(@uri), markdown);
 		}
 
 		method : public : SignatureHelp(line_pos : Int, char_pos : Int) ~ JsonElement {
@@ -1646,7 +1960,7 @@ bundle LSP {
 			if(index > -1) {
 				var_str := "";	mthd_str := "";
 				if(GetVariableMethodStrings(index, var_str, mthd_str)) {
-					return proxy->SignatureHelp(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+					return proxy->SignatureHelp(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri));
 				};
 			};
 			
@@ -1716,67 +2030,67 @@ bundle LSP {
 		method : public : FindTypeDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindTypeDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindTypeDefinition(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : FindImplementation(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindImplementation(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindImplementation(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : PrepareCallHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->PrepareCallHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->PrepareCallHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : IncomingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->IncomingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->IncomingCalls(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : OutgoingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->OutgoingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->OutgoingCalls(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : InlayHint(start_line : Int, end_line : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs());
+			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : SemanticTokensFull() ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->SemanticTokens(@uri, @workspace->GetLibs());
+			return proxy->SemanticTokens(@uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : DocumentHighlight(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->DocumentHighlight(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->DocumentHighlight(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : PrepareTypeHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->PrepareTypeHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->PrepareTypeHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : TypeHierarchySupertypes(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->TypeHierarchySupertypes(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->TypeHierarchySupertypes(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : TypeHierarchySubtypes(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->TypeHierarchySubtypes(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->TypeHierarchySubtypes(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : FoldingRange() ~ JsonElement {
