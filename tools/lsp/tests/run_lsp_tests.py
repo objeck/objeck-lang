@@ -160,6 +160,8 @@ class LspClient:
             cwd=bin_dir, env=make_env(bin_dir))
         self.q = queue.Queue()
         self.notifications = []
+        # requests the server sent us (client/registerCapability), in order
+        self.server_requests = []
         self.rid = 0
 
         # The server loads a 600KB API index before it binds, so retry.
@@ -231,9 +233,45 @@ class LspClient:
                 break
             if msg.get("id") == rid and ("result" in msg or "error" in msg):
                 return msg
-            if "method" in msg and "id" not in msg:
-                self.notifications.append(msg)
+            self._keep(msg)
         return None
+
+    def _keep(self, msg):
+        if "method" in msg and "id" not in msg:
+            self.notifications.append(msg)
+        elif "method" in msg:
+            self.server_requests.append(msg)
+
+    def send_raw(self, body, headers=None):
+        """Frame and send bytes as-is, with optional extra header lines first."""
+        head = b"".join(h + b"\r\n" for h in (headers or []))
+        try:
+            self.sock.sendall(head + b"Content-Length: " + str(len(body)).encode()
+                              + b"\r\n\r\n" + body)
+        except OSError:
+            pass
+
+    def response_to(self, rid, timeout=20):
+        """The response carrying this id (any JSON type), or None."""
+        end = time.time() + timeout
+        while time.time() < end:
+            try:
+                msg = self.q.get(timeout=max(0.01, end - time.time()))
+            except queue.Empty:
+                break
+            if "method" not in msg and msg.get("id", "<absent>") == rid:
+                return msg
+            self._keep(msg)
+        return None
+
+    def drain(self, seconds):
+        """Collect whatever arrives in the next few seconds."""
+        end = time.time() + seconds
+        while time.time() < end:
+            try:
+                self._keep(self.q.get(timeout=0.1))
+            except queue.Empty:
+                pass
 
     def diagnostics_for(self, uri, timeout=20):
         """Drain publishDiagnostics for a uri (may already have arrived)."""
@@ -249,8 +287,7 @@ class LspClient:
                 msg = self.q.get(timeout=0.2)
             except queue.Empty:
                 continue
-            if "method" in msg and "id" not in msg:
-                self.notifications.append(msg)
+            self._keep(msg)
 
     def close(self):
         try:
@@ -262,7 +299,8 @@ class LspClient:
             except OSError:
                 pass
             try:
-                self.proc.wait(timeout=5)
+                # over TCP, exit ends the connection, not the multi-client process
+                self.proc.wait(timeout=1)
             except subprocess.TimeoutExpired:
                 self.proc.kill()
 
@@ -419,6 +457,204 @@ def check_large_real_file(c):
                    for s in result_of(ws) or [] if isinstance(s, dict)),
                json.dumps(result_of(ws))[:160])
     c.notify("textDocument/didClose", doc)
+
+
+def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
+    """The base protocol, not the language features (#1215)."""
+    init_params = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
+
+    # --- before initialize, and the framing --------------------------------
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        early = c.request("workspace/symbol", {"query": "x"}, timeout=20)
+        log_result("a request before initialize gets ServerNotInitialized",
+                   (early or {}).get("error", {}).get("code") == -32002, f"got: {early}")
+
+        # Content-Type is a legal header, and some clients send it first
+        body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                           "params": init_params}).encode()
+        c.send_raw(body, [b"Content-Type: application/vscode-jsonrpc; charset=utf-8"])
+        init = c.response_to(1, timeout=60)
+        log_result("a Content-Type header before Content-Length is accepted",
+                   bool((init or {}).get("result", {}).get("capabilities")), f"got: {init}")
+
+        # no dynamicRegistration in these capabilities: nothing may be registered
+        c.notify("initialized", {})
+        c.drain(1.5)
+        log_result("no registerCapability for a client that cannot take one",
+                   not c.server_requests, f"got: {c.server_requests}")
+
+        # ids are 'integer | string' and come back unchanged
+        c.send_raw(json.dumps({"jsonrpc": "2.0", "id": "abc-7", "method": "workspace/symbol",
+                               "params": {"query": "x"}}).encode())
+        sid = c.response_to("abc-7", timeout=20)
+        log_result("a string request id is echoed back unchanged", sid is not None,
+                   "no response carrying id 'abc-7'")
+
+        unknown = c.request("textDocument/codeLens", {"textDocument": {"uri": "file:///x.obs"}})
+        log_result("an unknown request gets MethodNotFound",
+                   (unknown or {}).get("error", {}).get("code") == -32601, f"got: {unknown}")
+
+        c.send_raw(b"{not json")
+        bad = c.response_to(None, timeout=20)
+        log_result("a body that is not JSON gets ParseError",
+                   (bad or {}).get("error", {}).get("code") == -32700, f"got: {bad}")
+        alive = c.request("workspace/symbol", {"query": "x"})
+        log_result("and the session carries on", alive is not None and "result" in alive)
+
+        # --- shutdown: only exit is valid afterwards --------------------------
+        down = c.request("shutdown")
+        log_result("shutdown answers null", down is not None and down.get("result") is None,
+                   f"got: {down}")
+        after = c.request("workspace/symbol", {"query": "x"})
+        log_result("a request after shutdown gets InvalidRequest",
+                   (after or {}).get("error", {}).get("code") == -32600, f"got: {after}")
+    finally:
+        try:
+            c.notify("exit")
+            c.sock.close()
+        except OSError:
+            pass
+        c.proc.kill()
+
+    # --- dynamic registration waits for 'initialized' -------------------------
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        c.request("initialize", dict(init_params, capabilities={"workspace": {
+            "didChangeWatchedFiles": {"dynamicRegistration": True}}}), timeout=90)
+        c.drain(1.5)
+        log_result("registerCapability is not sent before 'initialized'",
+                   not c.server_requests, f"got: {c.server_requests}")
+        c.notify("initialized", {})
+        c.drain(1.5)
+        regs = [r for r in c.server_requests if r.get("method") == "client/registerCapability"]
+        log_result("and is sent after it, to a client that supports it", len(regs) == 1,
+                   f"got: {c.server_requests}")
+        if regs:
+            # the client's reply is a response, not a request to be answered
+            c._write({"jsonrpc": "2.0", "id": regs[0]["id"], "result": None})
+            c.drain(1.0)
+            alive = c.request("workspace/symbol", {"query": "x"})
+            log_result("the client's reply to it is not treated as a request",
+                       alive is not None and "result" in alive, f"got: {alive}")
+    finally:
+        c.close()
+
+    # --- exit codes, over stdio (the process is the client's to end) ---------
+    for label, shutdown_first, expected in (("after shutdown", True, 0),
+                                            ("without shutdown", False, 1)):
+        rc = stdio_exit_code(obr, server_obe, apis_json, bin_dir, shutdown_first)
+        log_result(f"exit {label} ends the process with {expected}", rc == expected,
+                   f"exit code {rc}")
+
+    if os.name == "nt":
+        check_pipe_transport(obr, server_obe, apis_json, bin_dir)
+
+
+def frame(obj):
+    body = json.dumps(obj).encode("utf-8")
+    return b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n", body
+
+
+def stdio_exit_code(obr, server_obe, apis_json, bin_dir, shutdown_first):
+    env = make_env(bin_dir)
+    env["OBJECK_STDIO"] = "binary"
+    proc = subprocess.Popen([obr, server_obe, apis_json, "stdio"], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            cwd=bin_dir, env=env)
+    try:
+        msgs = [{"jsonrpc": "2.0", "id": 1, "method": "initialize",
+                 "params": {"processId": os.getpid(), "rootUri": None, "capabilities": {}}},
+                {"jsonrpc": "2.0", "method": "initialized", "params": {}}]
+        if shutdown_first:
+            msgs.append({"jsonrpc": "2.0", "id": 2, "method": "shutdown"})
+        msgs.append({"jsonrpc": "2.0", "method": "exit"})
+        for m in msgs:
+            head, body = frame(m)
+            proc.stdin.write(head + body)
+        proc.stdin.flush()
+        threading.Thread(target=proc.stdout.read, daemon=True).start()
+        return proc.wait(timeout=90)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        proc.kill()
+        return f"no exit ({type(e).__name__})"
+
+
+def check_pipe_transport(obr, server_obe, apis_json, bin_dir):
+    """VS Code's transport on Windows: a message-mode named pipe.
+
+    vscode-jsonrpc writes the header and the body separately, and a 56 KB
+    document is far over the VM's 8 KB pipe read. The server read the pipe as
+    if each read were one whole message, so the first lost every body and the
+    second lost the document (#1215).
+    """
+    pipe_name = r"\\.\pipe\objk-pipe"
+    proc = subprocess.Popen([obr, server_obe, apis_json, "pipe"], stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL, cwd=bin_dir, env=make_env(bin_dir))
+    f = None
+    try:
+        end = time.time() + 60
+        while time.time() < end and f is None:
+            try:
+                f = open(pipe_name, "r+b", buffering=0)
+            except OSError:
+                time.sleep(0.5)
+        if f is None:
+            log_result("named pipe: server listens", False, pipe_name)
+            return
+
+        pending = [b""]
+
+        def read_until(pred, timeout):
+            # a synchronous pipe handle cannot read and write at once, so reads
+            # happen only here, one at a time
+            stop = time.time() + timeout
+            while time.time() < stop:
+                while b"\r\n\r\n" in pending[0]:
+                    head, rest = pending[0].split(b"\r\n\r\n", 1)
+                    n = int(head.split(b"Content-Length: ")[1].split(b"\r\n")[0])
+                    if len(rest) < n:
+                        break
+                    pending[0] = rest[n:]
+                    msg = json.loads(rest[:n])
+                    if pred(msg):
+                        return msg
+                got = [None]
+                t = threading.Thread(target=lambda: got.__setitem__(0, f.read(65536)), daemon=True)
+                t.start()
+                t.join(max(0.1, stop - time.time()))
+                if t.is_alive() or not got[0]:
+                    return None
+                pending[0] += got[0]
+            return None
+
+        def send(obj):
+            head, body = frame(obj)
+            f.write(head)       # two writes, as vscode-jsonrpc does
+            f.write(body)
+
+        send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+              "params": {"processId": os.getpid(), "rootUri": None, "capabilities": {}}})
+        log_result("named pipe: initialize with header and body written separately",
+                   read_until(lambda m: m.get("id") == 1, 60) is not None)
+        send({"jsonrpc": "2.0", "method": "initialized", "params": {}})
+
+        path = os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        uri = path_to_uri(path)
+        send({"jsonrpc": "2.0", "method": "textDocument/didOpen", "params": {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}}})
+        diag = read_until(lambda m: m.get("method") == "textDocument/publishDiagnostics", 60)
+        log_result("named pipe: a document larger than one pipe read arrives whole",
+                   diag is not None, f"{len(text)} characters")
+    finally:
+        if f is not None:
+            try:
+                f.close()
+            except OSError:
+                pass
+        proc.kill()
 
 
 def main():
@@ -1011,6 +1247,8 @@ def main():
         check_large_real_file(c)
     finally:
         c.close()
+
+    check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the

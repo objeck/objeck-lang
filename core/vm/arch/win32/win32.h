@@ -363,10 +363,19 @@ public:
     return true;
   }
   
-  static bool ReadByte(char &value, HANDLE pipe) {
-    DWORD read;
+  // A pipe created here is message-mode. Reading less than a whole message
+  // fails with ERROR_MORE_DATA, but the bytes WERE read and the rest of the
+  // message is returned by the next read. Treating that as a failure dropped
+  // the data: any message larger than the caller's buffer -- an 8 KB read
+  // against a 56 KB LSP didOpen -- was lost.
+  static bool ReadSucceeded(BOOL status) {
+    return status || GetLastError() == ERROR_MORE_DATA;
+  }
 
-    if(ReadFile(pipe, &value, 1, &read, nullptr)) {
+  static bool ReadByte(char &value, HANDLE pipe) {
+    DWORD read = 0;
+
+    if(ReadSucceeded(ReadFile(pipe, &value, 1, &read, nullptr))) {
       return read == 1;
     }
 
@@ -374,8 +383,8 @@ public:
   }
 
   static size_t ReadByteArray(char* buffer, size_t offset, size_t num, HANDLE pipe) {
-    DWORD read;
-    if(ReadFile(pipe, buffer + offset, (DWORD)num, &read, nullptr)) {
+    DWORD read = 0;
+    if(ReadSucceeded(ReadFile(pipe, buffer + offset, (DWORD)num, &read, nullptr))) {
       return read;
     }
 
@@ -404,7 +413,7 @@ public:
     char buffer[MID_BUFFER_MAX];
     DWORD read = 0;
 
-    if(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr) && read > 0) {
+    if(ReadSucceeded(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr)) && read > 0) {
       // trim trailing \r\n
       while(read > 0 && (buffer[read - 1] == '\r' || buffer[read - 1] == '\n')) {
         read--;

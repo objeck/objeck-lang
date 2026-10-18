@@ -109,6 +109,8 @@ bundle LSP {
 	class LintService from LspWorker {
 		@decoded_folder_uri : String;
 		@build_json_file : String;
+		# the client can take a dynamic registration for workspace/didChangeWatchedFiles
+		@can_register_watchers : Bool;
 
 		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
 			Parent(pipe, socket, is_debug);
@@ -676,10 +678,14 @@ bundle LSP {
 			semanticTokensProvider->Insert("legend", semanticTokensLegend);
 			semanticTokensProvider->Insert("full", true);
 
-			WriteRpcResponse(id, response);
+			# Dynamic registration is a request, so it waits for the client's
+			# 'initialized' (NotifyInitialized), and is only sent to a client that
+			# says it supports it. It went out here, unconditionally, before the
+			# client had even received this response.
+			dynamic_json := params->FindElements("capabilities/workspace/didChangeWatchedFiles/dynamicRegistration");
+			@can_register_watchers := dynamic_json <> Nil & dynamic_json->GetType() = JsonElement->JsonType->TRUE;
 
-			# register watchers
-			RegisterWatchers();
+			WriteRpcResponse(id, response);
 		}
 
 		method : ProcessConfiguration(folder_name : String, folder_uri : String) ~ Nil {
@@ -771,7 +777,7 @@ bundle LSP {
 			registrars_obj := JsonElement->New(JsonElement->JsonType->OBJECT);
 			registrars_obj->Insert("registrations", registrars_array);
 
-			WriteRpcCapability(101, registrars_obj);
+			WriteRpcServerRequest("client/registerCapability", registrars_obj);
 		}
 
 		method : CallbackShutdown(id : Int, params : JsonElement) ~ Nil {
@@ -779,8 +785,11 @@ bundle LSP {
 				System.IO.Filesystem.Logger->Instance()->Info("=> CallbackShutdown");
 			};
 
+			# Only 'exit' is valid from here on (LspWorker answers anything else with
+			# InvalidRequest). Ending the read loop here closed the connection
+			# before the client could send 'exit'.
+			@is_shutdown := true;
 			WriteRpcResponse(id, Nil);
-			@quit := true;
 		}
 
 		method : CallbackDocumentSymbol(id : Int, params : JsonElement) ~ Nil {
@@ -816,6 +825,10 @@ bundle LSP {
 		#
 		method : NotifyInitialized(params : JsonElement) ~ Nil {
 			@is_initialized := true;
+
+			if(@can_register_watchers) {
+				RegisterWatchers();
+			};
 		}
 
 		method : NotifyCancel(params : JsonElement) ~ Nil {
@@ -824,12 +837,11 @@ bundle LSP {
 				return;
 			};
 			
-			# Record it. WriteRpcResponse has always had machinery to act on
-			# @cancel_id, but nothing ever assigned it -- the constructor set it to
-			# -1 and no other line touched it, so the guard could never fire and a
-			# long completion could not be cancelled at all.
-			@cancel_id := id_obj->GetInt();
-			
+			# Requests are handled one at a time, in order, so by the time this is
+			# read the request it names has already been answered, and the spec lets
+			# a server ignore a cancel then. Recording it only left a stale id that a
+			# later request reusing it would have been refused by. Cancelling work
+			# still queued needs a read-ahead queue (#1217).
 			id := id_obj->GetValue();
 
 			if(IsDebug()) {
