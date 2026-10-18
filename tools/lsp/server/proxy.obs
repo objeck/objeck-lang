@@ -14,11 +14,12 @@ bundle LSP {
 		@doc_path : static : String;
 		@is_debug : Bool;
 
-		New(workspace : LspWorkspace, uri : String, use_alt : Bool, is_debug : Bool) {
+		# the program these texts make: rows of [uri, text]
+		New(texts : String[,], is_debug : Bool) {
 			@is_debug := is_debug;
 
-			if(workspace <> Nil) {
-				@analysis := Analyzer->ParseText(workspace->GetTexts(uri, use_alt));
+			if(texts <> Nil) {
+				@analysis := Analyzer->ParseText(texts);
 			};
 		}
 		
@@ -830,10 +831,18 @@ bundle LSP {
 								use_code_action_json->Insert("kind", "quickfix");
 
 								# create build file
-								create_uri := "file:///" + build_file->ToLower();
+								# The path as it is: it was lowercased, which names another
+								# file where paths are case-sensitive, and a POSIX path
+								# ('/home/...') came out as 'file:////home/...'.
+								create_path := build_file;
 								if(System.IO.Filesystem.Directory->GetSlash() <> '/') {
-									create_uri := create_uri->ReplaceAll('\\', '/');
+									create_path := create_path->ReplaceAll('\\', '/');
 								};
+								create_uri := "file:///";
+								if(create_path->StartsWith('/')) {
+									create_uri := "file://";
+								};
+								create_uri += create_path;
 
 								create_doc_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 								create_doc_json->Insert("kind", "create");

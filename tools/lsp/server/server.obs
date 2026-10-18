@@ -107,8 +107,6 @@ bundle LSP {
 	Handles TCP client requests
 	~#
 	class LintService from LspWorker {
-		@decoded_folder_uri : String;
-		@build_json_file : String;
 		# the client can take a dynamic registration for workspace/didChangeWatchedFiles
 		@can_register_watchers : Bool;
 		# MarkupContent kinds the client renders
@@ -551,7 +549,7 @@ bundle LSP {
 					};
 					
 					if(document <> Nil & wants_quickfix) {
-						response := document->CodeAction(diagnostic_start_line, diagnostic_start_char, diagnostic_end_line, diagnostic_end_char, diagnostic_message, "quickfix", @build_json_file);
+						response := document->CodeAction(diagnostic_start_line, diagnostic_start_char, diagnostic_end_line, diagnostic_end_char, diagnostic_message, "quickfix", @workspace->BuildFileFor(uri));
 					};
 				};
 			};
@@ -632,10 +630,13 @@ bundle LSP {
 			}
 			else {
 				# single-folder clients that only send rootUri
+				# A JSON null reads as an empty string, which configured a folder at
+				# '' -- and with it a quick fix that wrote build.json to the root of
+				# the file system.
 				root_uri_obj := params->Get("rootUri");
-				if(root_uri_obj <> Nil) {
+				if(root_uri_obj <> Nil & root_uri_obj->GetType() = JsonElement->JsonType->STRING) {
 					root_uri := root_uri_obj->GetValue();
-					if(root_uri <> Nil & <>root_uri->Equals("null")) {
+					if(root_uri <> Nil & <>root_uri->IsEmpty() & <>root_uri->Equals("null")) {
 						if(@is_debug) {
 							System.IO.Filesystem.Logger->Instance()->Info("\n--- Added workspace from rootUri: '{$root_uri}' ---\n");
 						};
@@ -804,71 +805,17 @@ bundle LSP {
 			return false;
 		}
 
+		# a workspace folder, configured from its own build.json
 		method : ProcessConfiguration(folder_name : String, folder_uri : String) ~ Nil {
-			@workspace->SetRoot(folder_name, folder_uri);
-
-			@decoded_folder_uri := Web.HTTP.Url->Decode(folder_uri);
-			if(@decoded_folder_uri->StartsWith("file:///")) {
-				offset : Int;
-				if(Query.RegEx.RegEx->New("file:///([a-z]|[A-Z]):.*")->MatchExact(@decoded_folder_uri)) {
-					offset := "file:///"->Size();
-				}
-				else {
-					offset := "file://"->Size();
-				};
-				@decoded_folder_uri->Delete(0, offset);
-			};
-			@build_json_file := String->New(@decoded_folder_uri);
-			@build_json_file += "/build.json";
-			
-			LoadConfigurationFile();
+			@workspace->AddFolder(folder_name, folder_uri);
 		}
 
-		method : LoadConfigurationFile() ~ Nil {
-			# no workspace folder was configured at initialize; interpolating a
-			# Nil @build_json_file below would crash the server
-			if(@build_json_file = Nil) {
-				System.IO.Filesystem.Logger->Instance()->Error("--- No workspace configured, skipping build.json load ---");
-				return;
-			};
-
-			text := System.IO.Filesystem.FileReader->ReadFile(@build_json_file);
-			if(text <> Nil) {
-				json :=JsonParser->New(text);
-				if(json->Parse()) {
-					root := json->GetRoot();
-					
-					files_json := root->Get("files");
-					libs_json := root->Get("libs");
-					if(files_json <> Nil & libs_json <> Nil) {
-						file_strs := String->New[files_json->Size()];
-						each(i : files_json) {
-							file_strs[i] := files_json->Get(i)->GetValue();
-						};
-
-						libs_str := "";
-						each(i : libs_json) {
-							libs_str += libs_json->Get(i)->GetValue();
-							libs_str += ',';
-						};
-
-						if(<>libs_str->IsEmpty()) {
-							libs_str->Pop();
-						};
-
-						if(@is_debug) {
-							System.IO.Filesystem.Logger->Instance()->Info("--- Files and libraries:  @decoded_folder_uri='{$@decoded_folder_uri}', libs_str='{$libs_str}' ---\n");
-						};
-
-						@workspace->SetFilesLibs(@decoded_folder_uri, file_strs, libs_str);
-					};
-				}
-				else {
-					System.IO.Filesystem.Logger->Instance()->Error("--- Unable to parse configuration '{$@build_json_file}' ---");
-				};
-			}
-			else {
-				System.IO.Filesystem.Logger->Instance()->Error("--- Unable to load configuration '{$@build_json_file}' ---");
+		# Which files make up a program changed: every open document is analyzed
+		# again, once typing pauses.
+		method : RefreshAllDiagnostics() ~ Nil {
+			uris := @workspace->GetUris();
+			each(i : uris) {
+				DeferDiagnostics(uris->Get(i));
 			};
 		}
 
@@ -1022,9 +969,11 @@ bundle LSP {
 					System.IO.Filesystem.Logger->Instance()->Info("NotifyDidChangeWatchedFiles: uri='{$uri}', uri={$type}");
 				};
 
-				# configuration file added or changed
-				if(type = 1 | type = 2) {
-					LoadConfigurationFile();
+				# a configuration file added, changed or deleted: reload the folder it
+				# is in
+				if(type = 1 | type = 2 | type = 3) {
+					@workspace->ReloadFolders(uri);
+					RefreshAllDiagnostics();
 				};
 			};
 		}
@@ -1083,6 +1032,7 @@ bundle LSP {
 		}
 
 		method : NotifyDidChangeWorkspace(params : JsonElement) ~ Nil {
+			changed := false;
 			added := params->FindElements("event/added");
 			each(i : added) {
 				folder := added->Get(i);
@@ -1099,6 +1049,7 @@ bundle LSP {
 				# and every file in it was analysed as if standalone. The capability
 				# workspaceFolders.changeNotifications was advertised as true anyway.
 				ProcessConfiguration(folder_name, folder_uri);
+				changed := true;
 			};
 
 			removed := params->FindElements("event/removed");
@@ -1110,6 +1061,16 @@ bundle LSP {
 				if(@is_debug) {
 					System.IO.Filesystem.Logger->Instance()->Info("--- Removed workspace: '{$folder_uri}', '{$folder_name}' ---");
 				};
+
+				# This only logged: a removed folder's build.json went on deciding
+				# how its documents were analyzed (#1232).
+				if(@workspace->RemoveFolder(folder_uri)) {
+					changed := true;
+				};
+			};
+
+			if(changed) {
+				RefreshAllDiagnostics();
 			};
 		}
 		

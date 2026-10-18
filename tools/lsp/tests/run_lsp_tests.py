@@ -35,9 +35,11 @@ import json
 import os
 import re
 import queue
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -965,6 +967,97 @@ def check_batching(c):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def check_multi_root(obr, server_obe, apis_json, bin_dir):
+    """Each workspace folder is configured by its own build.json (#1232).
+
+    The server kept one root and one file list, and each folder overwrote the
+    last: with two folders open, the first was analyzed against the second's
+    files. A removed folder was only logged, and a watched build.json change
+    reloaded whichever folder had been configured last.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-multi-")
+    try:
+        folders = {}
+        for name in ("ws_multi_a", "ws_multi_b"):
+            shutil.copytree(os.path.join(TESTS_DIR, name), os.path.join(work, name))
+            folders[name] = path_to_uri(os.path.join(work, name))
+        a_main = folders["ws_multi_a"] + "/main.obs"
+        b_main = folders["ws_multi_b"] + "/main.obs"
+
+        def errors(diags):
+            return [d.get("message") for d in diags or [] if d.get("severity") == 1]
+
+        def fresh_diagnostics(uri, timeout=60):
+            """The next publish for uri after the notifications seen so far."""
+            end = time.time() + timeout
+            while time.time() < end:
+                for n in c.notifications:
+                    if (n.get("method") == "textDocument/publishDiagnostics"
+                            and n["params"].get("uri", "").lower() == uri.lower()):
+                        c.notifications.remove(n)
+                        return n["params"].get("diagnostics", [])
+                c.drain(0.2)
+            return None
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {
+                "processId": os.getpid(), "rootUri": folders["ws_multi_a"], "capabilities": {},
+                "workspaceFolders": [{"uri": folders["ws_multi_a"], "name": "a"},
+                                     {"uri": folders["ws_multi_b"], "name": "b"}],
+            }, timeout=90)
+            c.notify("initialized", {})
+            for uri in (a_main, b_main):
+                with open(os.path.join(work, uri.split("/")[-2], "main.obs"), encoding="utf-8") as fh:
+                    c.notify("textDocument/didOpen", {"textDocument": {
+                        "uri": uri, "languageId": "objeck", "version": 1, "text": fh.read()}})
+            a_diags, b_diags = fresh_diagnostics(a_main), fresh_diagnostics(b_main)
+            log_result("two folders: the first resolves against its own build.json",
+                       a_diags is not None and not errors(a_diags), f"{errors(a_diags)}")
+            log_result("two folders: and so does the second",
+                       b_diags is not None and not errors(b_diags), f"{errors(b_diags)}")
+
+            found = {s.get("name") for s in result_of(c.request(
+                "workspace/symbol", {"query": "Main"})) or []}
+            log_result("workspace/symbol searches every folder",
+                       {"AlphaMain", "BetaMain"} <= found, f"got: {sorted(found)}")
+
+            # a removed folder no longer configures its documents
+            c.notifications.clear()
+            c.notify("workspace/didChangeWorkspaceFolders", {"event": {
+                "added": [], "removed": [{"uri": folders["ws_multi_b"], "name": "b"}]}})
+            b_diags = fresh_diagnostics(b_main)
+            log_result("a removed folder's document is analyzed without its build.json",
+                       any("BetaShape" in str(m) for m in errors(b_diags)), f"{errors(b_diags)}")
+            a_diags = fresh_diagnostics(a_main)
+            log_result("and the remaining folder still resolves",
+                       a_diags is not None and not errors(a_diags), f"{errors(a_diags)}")
+
+            c.notifications.clear()
+            c.notify("workspace/didChangeWorkspaceFolders", {"event": {
+                "added": [{"uri": folders["ws_multi_b"], "name": "b"}], "removed": []}})
+            b_diags = fresh_diagnostics(b_main)
+            log_result("adding it back configures it again",
+                       b_diags is not None and not errors(b_diags), f"{errors(b_diags)}")
+
+            # a changed build.json reloads its own folder, not the other
+            with open(os.path.join(work, "ws_multi_a", "build.json"), "w", encoding="utf-8") as fh:
+                json.dump({"files": ["main.obs"], "libs": ["gen_collect.obl"], "flags": ""}, fh)
+            c.notifications.clear()
+            c.notify("workspace/didChangeWatchedFiles", {"changes": [
+                {"uri": folders["ws_multi_a"] + "/build.json", "type": 2}]})
+            a_diags = fresh_diagnostics(a_main)
+            log_result("a changed build.json reloads its folder",
+                       any("AlphaShape" in str(m) for m in errors(a_diags)), f"{errors(a_diags)}")
+            b_diags = fresh_diagnostics(b_main)
+            log_result("and leaves the other folder as it was",
+                       b_diags is not None and not errors(b_diags), f"{errors(b_diags)}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
     """The base protocol, not the language features (#1215)."""
     init_params = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
@@ -1527,6 +1620,21 @@ def main():
                    bool(use_texts) and all(t.endswith("\n") and chr(92) not in t for t in use_texts),
                    f"newText: {use_texts!r}")
 
+        # With no workspace folder the build file goes beside the document. It
+        # was 'file:////build.json' -- the root of the file system -- because a
+        # null rootUri configured a folder at '', and the path was lowercased.
+        creates = []
+        if undef is not None:
+            for f in result_of(c.request("textDocument/codeAction", {
+                    "textDocument": {"uri": uri}, "range": undef["range"],
+                    "context": {"diagnostics": [undef]}})) or []:
+                for change in (f.get("edit", {}).get("documentChanges", []) if isinstance(f, dict) else []):
+                    if isinstance(change, dict) and change.get("kind") == "create":
+                        creates.append(change.get("uri"))
+        want = path_to_uri(TESTS_DIR) + "/build.json"
+        log_result("a quick fix outside any folder creates build.json beside the file",
+                   bool(creates) and all(u == want for u in creates), f"{set(creates)} vs {want}")
+
         # --- the same, for an inferred-type local (#1057) --------------------
         # `:=` is the dominant style in this codebase -- the examples, the
         # libraries and the regression suite are written almost entirely with
@@ -1786,6 +1894,7 @@ def main():
         c.close()
 
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
+    check_multi_root(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the
