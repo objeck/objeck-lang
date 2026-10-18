@@ -664,6 +664,7 @@ class StackMethod {
   std::atomic<long> jit_call_count;
   std::atomic<int> jit_state;
   MemoryType rtrn_type;
+  std::wstring rtrn_name;
   StackDclr** dclrs;
   long num_dclrs;
   StackClass* cls;
@@ -831,6 +832,16 @@ class StackMethod {
 
   MemoryType GetReturn() const {
     return rtrn_type;
+  }
+
+  // the encoded return type ("o.System.String", "i*", "n"), for reflection's
+  // Method->GetReturn(); rtrn_type keeps only its memory type (#1175)
+  void SetReturnName(const std::wstring& n) {
+    rtrn_name = n;
+  }
+
+  const std::wstring& GetReturnName() const {
+    return rtrn_name;
   }
 
   void SetInstructions(StackInstr* ii, int ic) {

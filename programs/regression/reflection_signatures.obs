@@ -1,0 +1,106 @@
+#~
+Regression: reflection over method signatures (#1175).
+
+- DataType->GetType() returned -1000..-994, which matches none of the
+  DataType->TypeId values (-60..-54), so `t->GetType() = DataType->TypeId->INT`
+  was never true.
+- An object parameter after the first carried the rest of the signature in
+  its class name ("System.String,i"): the name was cut with a position passed
+  as a length.
+- An object-array parameter reported dimension 0, with its '*' in the name.
+- Method->GetReturn() was always Nil.
+- Class->Instance("NoSuchClass") aborted the VM instead of returning Nil.
+~#
+
+use System.Introspection;
+
+class Sig {
+	New() {
+	}
+
+	method : public : Mid(a : Int, s : String, b : Int) ~ String {
+		return s;
+	}
+
+	method : public : Arr(names : String[], grid : Float[,]) ~ Int[] {
+		return Nil;
+	}
+
+	method : public : Flags(f : Bool, c : Char, y : Byte, x : Float) ~ Nil {
+	}
+
+	method : public : Fn(g : (Int) ~ Int) ~ Bool {
+		return true;
+	}
+}
+
+class ReflectionSignatures {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Find(name : String) ~ Method {
+		methods := Sig->New()->GetClass()->GetMethods();
+		each(i : methods) {
+			if(methods[i]->GetName()->Equals(name)) {
+				return methods[i];
+			};
+		};
+		return Nil;
+	}
+
+	method : Run() ~ Nil {
+		mid := Find("Mid");
+		params := mid->GetParameters();
+		Check("Mid has three parameters", params->Size() = 3);
+		Check("an Int parameter is DataType->TypeId->INT", params[0]->GetType() = DataType->TypeId->INT);
+		Check("a String parameter is DataType->TypeId->CLASS", params[1]->GetType() = DataType->TypeId->CLASS);
+		Check("a middle object parameter's class is just its class", params[1]->GetClassName()->Equals("System.String"));
+		Check("the Int after it is still an INT", params[2]->GetType() = DataType->TypeId->INT);
+		rtrn := mid->GetReturn();
+		Check("GetReturn is set", rtrn <> Nil);
+		if(rtrn <> Nil) {
+			Check("Mid returns a System.String", rtrn->GetType() = DataType->TypeId->CLASS & rtrn->GetClassName()->Equals("System.String"));
+		};
+
+		arr := Find("Arr")->GetParameters();
+		Check("String[] is a CLASS of dimension 1", arr[0]->GetType() = DataType->TypeId->CLASS & arr[0]->GetDimension() = 1);
+		Check("String[]'s class name has no '*'", arr[0]->GetClassName()->Equals("System.String"));
+		Check("Float[,] is a FLOAT of dimension 2", arr[1]->GetType() = DataType->TypeId->FLOAT & arr[1]->GetDimension() = 2);
+		arr_rtrn := Find("Arr")->GetReturn();
+		Check("Arr returns Int[]", arr_rtrn <> Nil & arr_rtrn->GetType() = DataType->TypeId->INT & arr_rtrn->GetDimension() = 1);
+
+		flags := Find("Flags")->GetParameters();
+		Check("Bool, Char, Byte and Float codes", flags[0]->GetType() = DataType->TypeId->BOOL & flags[1]->GetType() = DataType->TypeId->CHAR &
+			flags[2]->GetType() = DataType->TypeId->BYTE & flags[3]->GetType() = DataType->TypeId->FLOAT);
+		Check("a Nil return is Nil", Find("Flags")->GetReturn() = Nil);
+
+		fn := Find("Fn");
+		Check("a function parameter is DataType->TypeId->FUNC", fn->GetParameters()[0]->GetType() = DataType->TypeId->FUNC);
+		Check("Fn returns a BOOL", fn->GetReturn()->GetType() = DataType->TypeId->BOOL);
+
+		Check("Class->Instance of an unknown class is Nil", Class->Instance("NoSuchClassAnywhere") = Nil);
+		Check("Class->Instance of a known class works", Class->Instance("Sig") <> Nil);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ReflectionSignatures->New()->Run();
+	}
+}
