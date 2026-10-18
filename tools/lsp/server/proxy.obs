@@ -889,6 +889,12 @@ bundle LSP {
 		}
 
 		method : GetSymbols(symbol : Result, uri : String, array : JsonElement) ~ Nil {
+			# An empty slot in a native result array must not take the server down;
+			# a Nil child here killed the process (#1214).
+			if(symbol = Nil) {
+				return;
+			};
+
 			builder := JsonBuilder->New();
 			
 			start_line := symbol->GetStartLine();

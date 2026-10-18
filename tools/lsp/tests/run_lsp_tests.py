@@ -363,6 +363,64 @@ def check_formatting_literals(c):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def check_large_real_file(c):
+    """Every read-only handler over a real library source, errors and all.
+
+    lsp_probe.obs is deliberately small and clean. lib_src/json.obs is neither:
+    2.5k lines, two bundles, and -- opened without its build.json -- ten
+    diagnostics. documentSymbol killed the server on it, because the native
+    symbol walk lost every bundle but the last (#1214).
+    """
+    path = os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")
+    if not os.path.exists(path):
+        log_result("large real file: fixture present", False, path)
+        return
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    uri = path_to_uri(path)
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    log_result("large real file: diagnostics published",
+               c.diagnostics_for(uri, timeout=60) is not None)
+
+    doc = {"textDocument": {"uri": uri}}
+    mid = {"line": text[:text.find("class JsonElement")].count("\n"), "character": 8}
+    last = text.count("\n")
+    requests = [
+        ("documentSymbol", "textDocument/documentSymbol", doc),
+        ("semanticTokens/full", "textDocument/semanticTokens/full", doc),
+        ("foldingRange", "textDocument/foldingRange", doc),
+        ("selectionRange", "textDocument/selectionRange", dict(doc, positions=[mid])),
+        ("inlayHint", "textDocument/inlayHint", dict(doc, range={
+            "start": {"line": 0, "character": 0}, "end": {"line": last, "character": 0}})),
+        ("hover", "textDocument/hover", dict(doc, position=mid)),
+        ("documentHighlight", "textDocument/documentHighlight", dict(doc, position=mid)),
+    ]
+    symbols = None
+    for label, method, params in requests:
+        resp = c.request(method, params, timeout=60)
+        if label == "documentSymbol":
+            symbols = result_of(resp)
+        log_result(f"large real file: {label} answers", resp is not None,
+                   "no response (server down?)")
+
+    names = {s.get("name") for s in symbols or [] if isinstance(s, dict)}
+    log_result("large real file: symbols from both bundles",
+               {"Data.JSON.JsonElement", "Data.JSON.Scheme.FunctionType"} <= names,
+               f"{len(names)} names, e.g. {sorted(n for n in names if n)[:6]}")
+
+    # Several standalone documents are open by now. workspace/symbol then asks
+    # for every open document's text, and that path dereferenced a Nil uri.
+    ws = c.request("workspace/symbol", {"query": "JsonElement"}, timeout=60)
+    log_result("workspace/symbol with several open documents answers", ws is not None,
+               "no response (server down?)")
+    log_result("and finds the class in the large file",
+               any(str(s.get("name", "")).endswith("JsonElement")
+                   for s in result_of(ws) or [] if isinstance(s, dict)),
+               json.dumps(result_of(ws))[:160])
+    c.notify("textDocument/didClose", doc)
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -949,6 +1007,8 @@ def main():
         decl_line = (decl or {}).get("range", {}).get("start", {}).get("line", -1)
         log_result("declaration on a chained call resolves the chained method",
                    decl_line == get_line, f"got: {decl}")
+
+        check_large_real_file(c)
     finally:
         c.close()
 
