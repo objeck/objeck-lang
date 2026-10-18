@@ -389,9 +389,14 @@ extern "C" {
       was_analyzed = (analyzer != nullptr);
     }
 
-    // list of bundles for classes
-    size_t* bundle_array = nullptr;
-    size_t* klass_array = nullptr;
+    // Top-level entries: a namespace Result per named bundle (classes as its
+    // children), and the classes of an unnamed bundle directly. The bundle array
+    // used to be allocated INSIDE the loop, once per named bundle, so only the
+    // last bundle's slot survived and every earlier one was Nil -- a file with
+    // two bundles (lib_src/json.obs), or any multi-file workspace, crashed the
+    // LSP's documentSymbol walking a Nil child (#1214). An unnamed bundle next to
+    // a named one also lost its classes.
+    std::vector<size_t*> top_level;
 
     // bundles
     std::wstring file_uri;
@@ -408,18 +413,16 @@ extern "C" {
       size_t* bundle_symb_obj = nullptr;
       const std::wstring bundle_name = bundle->GetName();
       if(!bundle_name.empty()) {
-        bundle_array = APITools_MakeIntArray(context, (int)bundles.size());
-        size_t* bundle_array_ptr = bundle_array + 3;
-
         bundle_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, bundle_name);
+        bundle_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, bundle->GetFileName());
         bundle_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
         bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber();
         bundle_symb_obj[ResultPosition::POS_START_POS] = bundle->GetLinePosition();
         bundle_symb_obj[ResultPosition::POS_END_LINE] = bundle->GetEndLineNumber();
         bundle_symb_obj[ResultPosition::POS_END_POS] = bundle->GetEndLinePosition();
 
-        bundle_array_ptr[i] = (size_t)bundle_symb_obj;
+        top_level.push_back(bundle_symb_obj);
       }
 
       // get classes and enums
@@ -427,7 +430,7 @@ extern "C" {
       const std::vector<Enum*> eenums = bundle->GetEnums();
 
       // classes
-      klass_array = APITools_MakeIntArray(context, (int)(klasses.size() + eenums.size()));
+      size_t* klass_array = APITools_MakeIntArray(context, (int)(klasses.size() + eenums.size()));
       size_t* klass_array_ptr = klass_array + 3;
 
       size_t index = 0;
@@ -507,10 +510,21 @@ extern "C" {
         klass_array_ptr[index++] = (size_t)eenum_symb_obj;
       }
 
-      // attach list of bundles or classes
+      // attach the classes to their bundle, or list them at the top level
       if(bundle_symb_obj) {
         bundle_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)klass_array;
       }
+      else {
+        for(size_t j = 0; j < index; ++j) {
+          top_level.push_back((size_t*)klass_array_ptr[j]);
+        }
+      }
+    }
+
+    size_t* top_array = APITools_MakeIntArray(context, (int)top_level.size());
+    size_t* top_array_ptr = top_array + 3;
+    for(size_t i = 0; i < top_level.size(); ++i) {
+      top_array_ptr[i] = (size_t)top_level[i];
     }
 
     // file root
@@ -518,7 +532,7 @@ extern "C" {
     file_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, file_uri);
     file_symb_obj[ResultPosition::POS_CODE] = was_analyzed ? 1 : 0;
     file_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_FILE; // file type
-    file_symb_obj[ResultPosition::POS_CHILDREN] = bundle_array ? (size_t)bundle_array : (size_t)klass_array;
+    file_symb_obj[ResultPosition::POS_CHILDREN] = (size_t)top_array;
     file_symb_obj[ResultPosition::POS_START_LINE] = file_symb_obj[ResultPosition::POS_START_POS] = file_symb_obj[ResultPosition::POS_END_LINE] = file_symb_obj[ResultPosition::POS_END_POS] = -1;
 
     prgm_obj[2] = (size_t)file_symb_obj;

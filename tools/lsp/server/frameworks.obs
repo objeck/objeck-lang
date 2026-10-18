@@ -568,13 +568,25 @@ bundle LSP {
 				# user's code rather than at this list.
 				@libs_str := "gen_collect.obl,cipher.obl,csv.obl,json.obl,json_rpc.obl,json_stream.obl,misc.obl,net.obl,net_server.obl,query.obl,regex.obl,rss.obl,xml.obl";
 
+				# One document, or -- with no uri, which is how workspace/symbol asks once
+				# more than one file is open -- every open document. That case called
+				# Equals(Nil) here and took the server down (#1214).
 				key_values := @documents->GetKeyValues()<Pair<String, Document>>;
-				@texts := String->New[1, 2];
+				count := 0;
 				each(i : key_values) {
 					key_value := key_values->Get(i);
-					
+					if(uri = Nil | key_value->GetFirst()->Equals(uri)) {
+						count += 1;
+					};
+				};
+
+				@texts := String->New[count > 0 ? count : 1, 2];
+				index := 0;
+				each(i : key_values) {
+					key_value := key_values->Get(i);
+
 					file_uri := key_value->GetFirst();
-					if(file_uri->Equals(uri)) {
+					if(uri = Nil | file_uri->Equals(uri)) {
 						document := key_value->GetSecond();
 
 						text : String;
@@ -590,8 +602,9 @@ bundle LSP {
 							System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
 						};
 
-						@texts[0,0] := file_uri;
-						@texts[0,1] := text;
+						@texts[index,0] := file_uri;
+						@texts[index,1] := text;
+						index += 1;
 					};
 				};
 			};
