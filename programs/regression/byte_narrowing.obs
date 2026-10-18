@@ -10,6 +10,9 @@ the JIT and the optimizer agree; run in all three modes.
 
 A Byte also printed three ways: ToString gave "65", interpolation "A" and
 PrintLine "0x41". All of them now give the unsigned decimal value.
+
+A scalar Char is NOT narrowed: it holds a whole code point, which
+String->Append(Char) relies on for characters above U+FFFF (#1185).
 ~#
 
 class ByteNarrowing {
@@ -190,6 +193,12 @@ class ByteNarrowing {
 		Check("Float 257.9->As(Byte)", f->As(Byte), 1);
 		c : Char := 0x141;
 		Check("Char 0x141->As(Byte)", c->As(Byte), 0x41);
+
+		# a scalar Char keeps the whole code point
+		Check("Int->ToChar(0x1F600)", Int->ToChar(0x1F600)->As(Int), 0x1F600);
+		w : Char := 0xFFFF;
+		w := w + 1;
+		Check("Char 0xFFFF + 1 is not wrapped", w->As(Int), 0x10000);
 	}
 
 	function : Printing() ~ Nil {
