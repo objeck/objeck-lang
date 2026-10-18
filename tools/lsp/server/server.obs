@@ -111,6 +111,9 @@ bundle LSP {
 		@build_json_file : String;
 		# the client can take a dynamic registration for workspace/didChangeWatchedFiles
 		@can_register_watchers : Bool;
+		# MarkupContent kinds the client renders
+		@hover_markdown : Bool;
+		@completion_markdown : Bool;
 
 		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
 			Parent(pipe, socket, is_debug);
@@ -467,7 +470,7 @@ bundle LSP {
 
 			doc := @workspace->GetDocument(uri);
 			if(doc <> Nil) {
-				response := doc->Hover(line_pos->ToInt(), char_pos->ToInt());
+				response := doc->Hover(line_pos->ToInt(), char_pos->ToInt(), @hover_markdown);
 				WriteRpcResponse(id, response);
 			}
 			else {
@@ -610,8 +613,13 @@ bundle LSP {
 				};
 			};
 			capabilities->Insert("positionEncoding", position_encoding);
+			# markdown where the client takes it, and plain text where it says it
+			# takes only that
+			@hover_markdown := AcceptsMarkdown(params, "capabilities/textDocument/hover/contentFormat");
+			@completion_markdown := AcceptsMarkdown(params, "capabilities/textDocument/completion/completionItem/documentationFormat");
+
 			completionProvider := capabilities->AddChild("completionProvider");
-			completionProvider->Insert("resolveProvider", false);
+			completionProvider->Insert("resolveProvider", true);
 			triggerCharacters := JsonElement->New(JsonElement->JsonType->ARRAY);
 			triggerCharacters->Add("@");
 			triggerCharacters->Add(".");
@@ -704,6 +712,23 @@ bundle LSP {
 			@can_register_watchers := dynamic_json <> Nil & dynamic_json->GetType() = JsonElement->JsonType->TRUE;
 
 			WriteRpcResponse(id, response);
+		}
+
+		# A client that lists its formats and leaves markdown out gets plain text.
+		# One that lists none is assumed to take markdown, as every current client does.
+		method : AcceptsMarkdown(params : JsonElement, path : String) ~ Bool {
+			formats := FindJson(params, path);
+			if(formats = Nil | formats->GetType() <> JsonElement->JsonType->ARRAY | formats->Size() = 0) {
+				return true;
+			};
+
+			each(i : formats) {
+				if(formats->Get(i)->GetValue()->Equals("markdown")) {
+					return true;
+				};
+			};
+
+			return false;
 		}
 
 		method : ProcessConfiguration(folder_name : String, folder_uri : String) ~ Nil {
@@ -833,9 +858,54 @@ bundle LSP {
 			WriteRpcResponse(id, response);
 		}
 
+		#
+		# completionItem/resolve: the item back, with the signature and documentation
+		# of a method filled in. Its 'data' says where completion was asked for. This
+		# echoed the item unchanged, behind a resolveProvider of false.
+		#
 		method : CallbackResolve(id : Int, params : JsonElement) ~ Nil {
-			# write response
-	        WriteRpcResponse(id, params);
+			if(params = Nil | params->GetType() <> JsonElement->JsonType->OBJECT) {
+				WriteRpcResponse(id, params);
+				return;
+			};
+
+			item_name := FindString(params, "label");
+			uri := FindString(params, "data/uri");
+			var_str := FindString(params, "data/var");
+			line_json := FindJson(params, "data/line");
+			char_json := FindJson(params, "data/character");
+			kind_json := params->Get("kind");
+
+			# methods and functions only: the rest carry what they have already
+			is_method := kind_json <> Nil & (kind_json->GetInt() = 2 | kind_json->GetInt() = 3);
+			if(is_method & item_name <> Nil & uri <> Nil & var_str <> Nil & line_json <> Nil & char_json <> Nil) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					resolved := document->ResolveCompletion(item_name, line_json->GetInt(), char_json->GetInt(), var_str, @completion_markdown);
+					if(resolved <> Nil) {
+						# the item as sent, with what was resolved in place of its own
+						item := JsonElement->New(JsonElement->JsonType->OBJECT);
+						names := params->GetNames();
+						each(i : names) {
+							name := names->Get(i);
+							if(<>resolved->Has(name)) {
+								item->Insert(name, params->Get(name));
+							};
+						};
+
+						names := resolved->GetNames();
+						each(i : names) {
+							name := names->Get(i);
+							item->Insert(name, resolved->Get(name));
+						};
+
+						WriteRpcResponse(id, item);
+						return;
+					};
+				};
+			};
+
+			WriteRpcResponse(id, params);
 		}
 
 		#
