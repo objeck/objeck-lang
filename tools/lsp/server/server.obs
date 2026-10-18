@@ -113,6 +113,8 @@ bundle LSP {
 		@can_register_watchers : Bool;
 		# MarkupContent kinds the client renders
 		@hover_markdown : Bool;
+		# documentSymbol answers DocumentSymbol[] (a tree) rather than SymbolInformation[]
+		@hierarchical_symbols : Bool;
 		@completion_markdown : Bool;
 
 		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
@@ -678,6 +680,9 @@ bundle LSP {
 			@hover_markdown := AcceptsMarkdown(params, "capabilities/textDocument/hover/contentFormat");
 			@completion_markdown := AcceptsMarkdown(params, "capabilities/textDocument/completion/completionItem/documentationFormat");
 
+			hierarchical_json := FindJson(params, "capabilities/textDocument/documentSymbol/hierarchicalDocumentSymbolSupport");
+			@hierarchical_symbols := hierarchical_json <> Nil & hierarchical_json->GetType() = JsonElement->JsonType->TRUE;
+
 			completionProvider := capabilities->AddChild("completionProvider");
 			completionProvider->Insert("resolveProvider", true);
 			triggerCharacters := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -909,7 +914,7 @@ bundle LSP {
 				url_str := uri->GetValue();
 				document := @workspace->GetDocument(url_str);
 				if(document <> Nil & url_str <> Nil) {
-					WriteRpcResponse(id, document->GetSymbols(url_str));
+					WriteRpcResponse(id, document->GetSymbols(url_str, @hierarchical_symbols));
 				}
 				else {
 					WriteRpcResponse(id, Nil);

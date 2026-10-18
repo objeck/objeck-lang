@@ -450,7 +450,8 @@ extern "C" {
         size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         klass_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, klass->GetName());
         klass_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, klass->GetFileName());
-        klass_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS; // class type
+        // an interface is its own kind of symbol in an outline
+        klass_symb_obj[ResultPosition::POS_TYPE] = klass->IsInterface() ? ResultType::TYPE_INTERFACE : ResultType::TYPE_CLASS;
         klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber() - 1;
         klass_symb_obj[ResultPosition::POS_START_POS] = safe_pos(klass->GetLinePosition());
         klass_symb_obj[ResultPosition::POS_END_LINE] = klass->GetEndLineNumber() - 1;
@@ -513,10 +514,12 @@ extern "C" {
         eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, eenum_name);
         eenum_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, eenum->GetFileName());
         eenum_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ENUM; // enum type
-        eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber();
-        eenum_symb_obj[ResultPosition::POS_START_POS] = eenum->GetLinePosition();
-        eenum_symb_obj[ResultPosition::POS_END_LINE] = eenum->GetEndLineNumber();
-        eenum_symb_obj[ResultPosition::POS_END_POS] = eenum->GetEndLinePosition();
+        // 0-based, as the classes are: these were the parser's 1-based values,
+        // so an enum's symbol started on the line after its declaration
+        eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber() - 1;
+        eenum_symb_obj[ResultPosition::POS_START_POS] = safe_pos(eenum->GetLinePosition());
+        eenum_symb_obj[ResultPosition::POS_END_LINE] = eenum->GetEndLineNumber() - 1;
+        eenum_symb_obj[ResultPosition::POS_END_POS] = safe_pos(eenum->GetEndLinePosition());
         klass_array_ptr[index++] = (size_t)eenum_symb_obj;
       }
 
