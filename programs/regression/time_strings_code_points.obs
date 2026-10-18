@@ -1,0 +1,86 @@
+#~
+Regression: Date strings (#1179, library half) and code points above U+FFFF
+(#1185).
+
+- Date->GetTimeString(true) for 19:30 gave "9:30:00 AM": the 12-hour form ran
+  for the 24-hour flag, halved the hour, wrote it back into the Date and
+  swapped AM/PM. Its padding stopped at 8 ("9:9:9").
+- DateUtility->Parse took an hour off ("00:30" was the previous day at 23:30),
+  and DateUtility->Format did not zero-pad.
+- Appending a Char above U+FFFF truncated it to 16 bits where a String stores
+  UTF-16 (Windows): U+1D11E became U+D11E. String->FromCodePoint and
+  String->CodePoints are new.
+~#
+# EXTRA_LIBS: gen_collect,cipher,net,json,misc
+
+use System.Time;
+use System.Utility;
+
+class TimeStringsCodePoints {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckString(what : String, got : String, want : String) ~ Nil {
+		if(got <> Nil & got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected '{$want}', got '{$got}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		evening := Date->New(1, 7, 2009, 19, 5, 9, true);
+		CheckString("24-hour 19:05:09", evening->GetTimeString(true), "19:05:09");
+		CheckString("12-hour 19:05:09", evening->GetTimeString(false), "7:05:09 PM");
+		Check("GetTimeString leaves the Date alone", evening->GetHours() = 19);
+		CheckString("12-hour midnight", Date->New(1, 7, 2009, 0, 30, 0, true)->GetTimeString(false), "12:30:00 AM");
+		CheckString("12-hour noon", Date->New(1, 7, 2009, 12, 0, 0, true)->GetTimeString(false), "12:00:00 PM");
+		CheckString("July", evening->GetMonthName(), "July");
+
+		parsed := DateUtility->Parse("01/07/2009 00:30", "dd/MM/yyyy hh:mm", true);
+		Check("Parse keeps the hour", parsed->GetHours() = 0 & parsed->GetMinutes() = 30 & parsed->GetDay() = 1);
+		CheckString("Format zero-pads", DateUtility->Format(Date->New(3, 7, 2009, 4, 5, 6, true), "dd/MM/yyyy hh:mm:ss"), "03/07/2009 04:05:06");
+
+		clef := String->FromCodePoint(0x1D11E);
+		bytes := clef->ToByteArray();
+		Check("FromCodePoint(0x1D11E) is 4 UTF-8 bytes", bytes->Size() = 4);
+		if(bytes->Size() = 4) {
+			Check("and they are F0 9D 84 9E", bytes[0] = 0xF0 & bytes[1] = 0x9D & bytes[2] = 0x84 & bytes[3] = 0x9E);
+		};
+		appended := String->New();
+		appended->Append(0x1D11E->As(Char));
+		Check("Append(Char) above U+FFFF matches FromCodePoint", appended->Equals(clef));
+		points := "a"->CodePoints();
+		Check("CodePoints of 'a'", points->Size() = 1 & points[0] = 97);
+		mixed := String->New();
+		mixed->Append('x');
+		mixed->Append(0x1F600->As(Char));
+		mixed->Append('y');
+		cps := mixed->CodePoints();
+		Check("CodePoints counts a supplementary character once", cps->Size() = 3 & cps[0] = 'x'->As(Int) & cps[1] = 0x1F600 & cps[2] = 'y'->As(Int));
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		TimeStringsCodePoints->New()->Run();
+	}
+}
