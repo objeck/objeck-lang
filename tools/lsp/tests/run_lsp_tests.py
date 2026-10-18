@@ -909,6 +909,11 @@ def check_text_encoding(c, caps):
         log_result("positionEncoding is utf-32 where a Char is a code point and it is offered",
                    encoding == "utf-32", f"got: {encoding}")
 
+    check_unicode_columns(c, encoding, "")
+
+
+def check_unicode_columns(c, encoding, tag):
+    """Diagnostics and edits after a non-ASCII character, in `encoding`."""
     shapes = [("comment", "# caf{ch}\nclass U{n} {{\n  function : Main(a : String[]) ~ Nil {{\n"
                           "    y := zzz;\n  }}\n}}\n", 3),
               ("literal", "class U{n} {{\n  function : Main(a : String[]) ~ Nil {{\n"
@@ -919,7 +924,7 @@ def check_text_encoding(c, caps):
             for escaped in (True, False):
                 n += 1
                 text = template.format(ch=ch, n=n)
-                uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_unicode_{n}.obs"))
+                uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_unicode_{tag.strip(': ')}{n}.obs"))
                 c.send_raw(json.dumps({"jsonrpc": "2.0", "method": "textDocument/didOpen",
                                        "params": {"textDocument": {
                                            "uri": uri, "languageId": "objeck", "version": 1,
@@ -929,7 +934,7 @@ def check_text_encoding(c, caps):
                 want = {"line": line_no, "character": column(line, line.index("zzz"), encoding)}
                 got = [d["range"]["start"] for d in diags if "zzz" in str(d.get("message", ""))]
                 how = "escaped" if escaped else "raw"
-                label = f"{where} with {ch_name} sent {how}"
+                label = f"{tag}{where} with {ch_name} sent {how}"
                 log_result(f"{label}: diagnostic column", want in got, f"want {want}, got {got}")
 
                 # an edit after the character lands in the right place too
@@ -944,6 +949,8 @@ def check_text_encoding(c, caps):
                 log_result(f"{label}: an edit after it", want in got, f"want {want}, got {got}")
                 c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
+
+def check_clamped_positions(c):
     # A position past the end of its line means the end of that line. It ran on
     # into the next line; one past the last line was dropped silently (#1216).
     text = "class Clamp {\n  function : Main(a : String[]) ~ Nil {\n  }\n}\n"
@@ -964,6 +971,52 @@ def check_text_encoding(c, caps):
     log_result("positions past a line, or past the document, are clamped",
                end == document_end(expected), f"server's end {end}, editor's {document_end(expected)}")
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
+def check_utf16_only_client(obr, server_obe, apis_json, bin_dir):
+    """A client that offers only UTF-16 gets UTF-16 columns everywhere (#1226).
+
+    Where a Char is a whole code point (Linux, macOS) the server counted an
+    emoji as one column and the client as two, so every column after it on its
+    line was one short -- diagnostics, navigation, semantic tokens, and the
+    client's own edits. VS Code offers only UTF-16. On Windows a Char is a
+    UTF-16 unit, so this holds by construction there.
+    """
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        resp = c.request("initialize", {"processId": os.getpid(), "rootUri": None,
+                                        "capabilities": {}}, timeout=90)
+        encoding = ((result_of(resp) or {}).get("capabilities") or {}).get("positionEncoding")
+        log_result("utf-16 client: positionEncoding is utf-16", encoding == "utf-16", f"got: {encoding}")
+        c.notify("initialized", {})
+        check_unicode_columns(c, "utf-16", "utf-16 client: ")
+
+        # a request's position, and the ranges and tokens that come back
+        text = ("class Wide {\n  function : Main(a : String[]) ~ Nil {\n"
+                "    s := \"\U0001F600\"; t := s; t->PrintLine();\n  }\n}\n")
+        uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_utf16_wide.obs"))
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        c.diagnostics_for(uri, timeout=60)
+        line = text.split("\n")[2]
+        use = line.index("t := s") + len("t := ")
+        highlights = result_of(c.request("textDocument/documentHighlight", {
+            "textDocument": {"uri": uri},
+            "position": {"line": 2, "character": column(line, use, "utf-16")}})) or []
+        starts = sorted(h["range"]["start"]["character"] for h in highlights)
+        want = sorted({column(line, line.index("s := "), "utf-16"), column(line, use, "utf-16")})
+        log_result("utf-16 client: a position after an emoji resolves, and its ranges come back in UTF-16",
+                   starts == want, f"got {starts}, want {want}")
+
+        tokens = decode_tokens((result_of(c.request("textDocument/semanticTokens/full", {
+            "textDocument": {"uri": uri}})) or {}).get("data"))
+        call_column = column(line, line.index("PrintLine"), "utf-16")
+        log_result("utf-16 client: semantic tokens after an emoji sit at UTF-16 columns",
+                   any(t[0] == 2 and t[1] == call_column and t[2] == len("PrintLine") for t in tokens),
+                   f"line 2 tokens {[t for t in tokens if t[0] == 2]}, want one at {call_column}")
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+    finally:
+        c.close()
 
 
 def check_batching(c):
@@ -2288,6 +2341,7 @@ def main():
         check_tokens_lens_links(c, caps, probe_text, probe_uri)
         check_large_real_file(c)
         check_text_encoding(c, caps)
+        check_clamped_positions(c)
         check_batching(c)
     finally:
         c.close()
@@ -2297,6 +2351,7 @@ def main():
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
     check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
+    check_utf16_only_client(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the

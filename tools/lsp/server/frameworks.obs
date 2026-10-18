@@ -34,6 +34,7 @@ bundle LSP {
 		# takes it, a token it has acknowledged and that is not in use yet, and the
 		# create request still waiting for its reply.
 		@client_progress : Bool;
+		@reply_uri : String;
 		# Pull diagnostics (textDocument/diagnostic): the client asks, and nothing
 		# is pushed to it; and it can be told to ask again.
 		@pull_diagnostics : Bool;
@@ -178,6 +179,11 @@ bundle LSP {
 				if(method_id <> Nil & <>request->IsNotification() & <>request->IsResponse() & <>@is_shutdown) {
 					@reply_id := request->GetIdJson();
 					uri := FindString(request->GetParams(), "textDocument/uri");
+					# the document a reply's positions belong to, unless they name another
+					@reply_uri := uri;
+					if(@workspace->IsUtf16()) {
+						request->SetParams(ConvertPositions(request->GetParams(), uri, false, Map->New()<String, TextLines>));
+					};
 					# Assigned, not just declared: a local declared in a loop body keeps
 					# the previous pass's value, so a request with no document (such as
 					# workspace/symbol) inherited the one before it and could be refused
@@ -388,6 +394,116 @@ bundle LSP {
 			params->Insert("type", type);
 			params->Insert("message", message);
 			WriteRpcRequest("window/logMessage", params);
+		}
+
+		#
+		# Columns between the client's UTF-16 units and the server's Chars, where a
+		# Char is a whole code point (Linux, macOS) and the client takes only
+		# UTF-16 -- VS Code among them. A character outside the BMP is one Char and
+		# two UTF-16 units, so every later column on its line was one short:
+		# diagnostics, navigation, edits and the client's own edits (#1226).
+		#
+		# Every Position ({line, character}) in the message is converted against the
+		# text of the document it belongs to: the request's, or the one a
+		# containing object names ('uri', 'textDocument', or a key of a
+		# WorkspaceEdit's 'changes'). The text is the open document's, else the file
+		# on disk; lines are looked up once per message.
+		#
+		method : ConvertPositions(elem : JsonElement, uri : String, to_client : Bool, lines : Map<String, TextLines>) ~ JsonElement {
+			if(elem = Nil) {
+				return Nil;
+			};
+
+			type := elem->GetType();
+			if(type = JsonElement->JsonType->ARRAY) {
+				elems := Vector->New()<JsonElement>;
+				each(i : elem) {
+					elems->AddBack(ConvertPositions(elem->Get(i), uri, to_client, lines));
+				};
+				return JsonElement->New(elems);
+			};
+
+			if(type <> JsonElement->JsonType->OBJECT) {
+				return elem;
+			};
+
+			# the document this object's positions belong to
+			scope_uri := uri;
+			uri_json := elem->Get("uri");
+			if(uri_json <> Nil & uri_json->GetType() = JsonElement->JsonType->STRING) {
+				scope_uri := uri_json->GetValue();
+			}
+			else {
+				doc_uri := FindString(elem, "textDocument/uri");
+				if(doc_uri <> Nil) {
+					scope_uri := doc_uri;
+				};
+			};
+
+			line_json := elem->Get("line");
+			char_json := elem->Get("character");
+			is_position := line_json <> Nil & char_json <> Nil &
+				line_json->GetType() = JsonElement->JsonType->NUMBER & char_json->GetType() = JsonElement->JsonType->NUMBER;
+
+			members := Map->New()<String, JsonElement>;
+			names := elem->GetNames();
+			each(i : names) {
+				name := names->Get(i);
+				child := elem->Get(name);
+				if(is_position & name->Equals("character")) {
+					line_text := LineOf(scope_uri, line_json->GetInt(), lines);
+					column := char_json->GetInt();
+					if(to_client) {
+						column := Document->CharsToUnits(line_text, column);
+					}
+					else {
+						column := Document->UnitsToChars(line_text, column);
+					};
+					members->Insert(name, JsonElement->New(column));
+				}
+				else if(name->Equals("changes") & child->GetType() = JsonElement->JsonType->OBJECT) {
+					# a WorkspaceEdit's changes: each key is a document
+					changes := Map->New()<String, JsonElement>;
+					change_uris := child->GetNames();
+					each(j : change_uris) {
+						change_uri := change_uris->Get(j);
+						changes->Insert(change_uri, ConvertPositions(child->Get(change_uri), change_uri, to_client, lines));
+					};
+					members->Insert(name, JsonElement->New(changes));
+				}
+				else {
+					members->Insert(name, ConvertPositions(child, scope_uri, to_client, lines));
+				};
+			};
+
+			return JsonElement->New(members);
+		}
+
+		# a line of a document: the open text, else the file; "" when neither has it
+		method : LineOf(uri : String, line : Int, lines : Map<String, TextLines>) ~ String {
+			if(uri = Nil | line < 0) {
+				return "";
+			};
+
+			text_lines := lines->Find(uri);
+			if(text_lines = Nil) {
+				text : String := Nil;
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					text := document->GetText();
+				}
+				else {
+					text := System.IO.Filesystem.FileReader->ReadFile(LspFolder->LocalPath(uri));
+				};
+
+				if(text = Nil) {
+					text := "";
+				};
+				text_lines := TextLines->New(text->Split('\n'));
+				lines->Insert(uri, text_lines);
+			};
+
+			return text_lines->Get(line);
 		}
 
 		function : FindJson(params : JsonElement, path : String) ~ JsonElement {
@@ -1030,6 +1146,10 @@ bundle LSP {
 
 		# --- response ---
 		method : WriteRpcResponse(id : Int, result : JsonElement) ~ Nil {
+			if(result <> Nil & @workspace->IsUtf16()) {
+				result := ConvertPositions(result, @reply_uri, true, Map->New()<String, TextLines>);
+			};
+
 			node := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			node->Insert("jsonrpc", "2.0");
@@ -1090,6 +1210,11 @@ bundle LSP {
 
 		# --- request ---
 		method : WriteRpcRequest(kind : String, result : JsonElement) ~ Nil {
+			# publishDiagnostics names its document
+			if(result <> Nil & @workspace->IsUtf16() & kind->Equals("textDocument/publishDiagnostics")) {
+				result := ConvertPositions(result, Nil, true, Map->New()<String, TextLines>);
+			};
+
 			node := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			node->Insert("jsonrpc", "2.0");
@@ -1119,6 +1244,8 @@ bundle LSP {
 		@generation : Int;
 		@proxies_generation : Int;
 		@no_cache : Bool;
+		# columns go to and from the client in UTF-16 units while Chars are code points
+		@utf16 : Bool;
 
 		New(is_debug : Bool) {
 			@is_debug := is_debug;
@@ -1196,6 +1323,14 @@ bundle LSP {
 				return true;
 			};
 			return <>@proxies->Has(ProxyKey(uri, FolderFor(uri), false));
+		}
+
+		method : public : SetUtf16(utf16 : Bool) ~ Nil {
+			@utf16 := utf16;
+		}
+
+		method : public : IsUtf16() ~ Bool {
+			return @utf16;
 		}
 
 		# some text the programs were parsed from has changed
@@ -2379,7 +2514,7 @@ bundle LSP {
 		#
 		method : public : SemanticTokensFull() ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
-			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			rows := TokenUnits(proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri)));
 			if(rows = Nil) {
 				return Nil;
 			};
@@ -2394,7 +2529,7 @@ bundle LSP {
 		# semanticTokens/range: the tokens of these lines
 		method : public : SemanticTokensRange(start_line : Int, end_line : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
-			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			rows := TokenUnits(proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri)));
 			if(rows = Nil) {
 				return Nil;
 			};
@@ -2412,7 +2547,7 @@ bundle LSP {
 		#
 		method : public : SemanticTokensDelta(previous_id : String) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
-			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			rows := TokenUnits(proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri)));
 			if(rows = Nil) {
 				return Nil;
 			};
@@ -2458,6 +2593,65 @@ bundle LSP {
 			result->Insert("resultId", KeepTokens(data));
 			result->Insert("edits", edits);
 			return result;
+		}
+
+		#
+		# Columns of one line, between Chars and UTF-16 units. A Char above U+FFFF
+		# is two units; a column inside such a pair means the Char after it.
+		#
+		function : CharsToUnits(line : String, chars : Int) ~ Int {
+			units := 0;
+			for(i := 0; i < chars & i < line->Size(); i += 1;) {
+				units += line->Get(i)->As(Int) > 0xffff ? 2 : 1;
+			};
+			if(chars > line->Size()) {
+				units += chars - line->Size();
+			};
+			return units;
+		}
+
+		function : UnitsToChars(line : String, units : Int) ~ Int {
+			counted := 0;
+			index := 0;
+			while(counted < units & index < line->Size()) {
+				counted += line->Get(index)->As(Int) > 0xffff ? 2 : 1;
+				index += 1;
+			};
+			if(counted < units) {
+				index += units - counted;
+			};
+			return index;
+		}
+
+		# the text of one line of this document
+		method : public : LineText(line : Int) ~ String {
+			start := GetDocumentIndex(line, 0);
+			end := start;
+			while(end < @text->Size() & @text->Get(end) <> '\n' & @text->Get(end) <> '\r') {
+				end += 1;
+			};
+			return @text->SubString(start, end - start);
+		}
+
+		# token rows (line, char, length, ...) with columns and lengths in UTF-16 units
+		method : TokenUnits(rows : Int[]) ~ Int[] {
+			if(rows = Nil | <>@workspace->IsUtf16()) {
+				return rows;
+			};
+
+			line_index := -1;
+			line_text := "";
+			for(i := 0; i < rows->Size(); i += 5;) {
+				if(rows[i] <> line_index) {
+					line_index := rows[i];
+					line_text := LineText(line_index);
+				};
+				start := CharsToUnits(line_text, rows[i + 1]);
+				end := CharsToUnits(line_text, rows[i + 1] + rows[i + 2]);
+				rows[i + 1] := start;
+				rows[i + 2] := end - start;
+			};
+			return rows;
 		}
 
 		# the tokens a later delta is computed from, and their id
@@ -3255,6 +3449,30 @@ bundle LSP {
 	}
 
 	#~
+	A document's lines, looked up while converting one message's columns
+	~#
+	class : private : TextLines {
+		@lines : String[];
+
+		New(lines : String[]) {
+			@lines := lines;
+		}
+
+		# the line without its ending; "" past the end
+		method : public : Get(line : Int) ~ String {
+			if(line < 0 | line >= @lines->Size()) {
+				return "";
+			};
+
+			text := @lines[line];
+			if(text->EndsWith('\r')) {
+				return text->SubString(text->Size() - 1);
+			};
+			return text;
+		}
+	}
+
+	#~
 	Reads messages ahead of the worker that handles them
 	~#
 	class : private : LspReader from System.Concurrency.Thread {
@@ -3347,6 +3565,10 @@ bundle LSP {
 
 		method : public : GetMethod() ~ String {
 			return @mthd;
+		}
+
+		method : public : SetParams(params : JsonElement) ~ Nil {
+			@params := params;
 		}
 
 		method : public : GetParams() ~ JsonElement {
