@@ -1649,7 +1649,18 @@ ExpressionList* ContextAnalyzer::MapLambdaDeclarations(DeclarationList* declarat
     }
 
     if(!ident.empty()) {
-      expressions->AddExpression(TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), dclrs[i]->GetLinePosition(), ident));
+      Variable* param = TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), dclrs[i]->GetLinePosition(), ident);
+      // an array parameter keeps its dimension, as `Int[]` parses: one empty
+      // index slot per dimension. Without it \(Int[]) ~ Int looked up
+      // '#{L0}#(i)' for a method encoded '(i*)' and was undefined (#1183).
+      if(dclr_type->GetType() != FUNC_TYPE && dclr_type->GetDimension() > 0) {
+        ExpressionList* slots = TreeFactory::Instance()->MakeExpressionList();
+        for(int j = 0; j < dclr_type->GetDimension(); ++j) {
+          slots->AddExpression(TreeFactory::Instance()->MakeVariable(dclrs[i]->GetFileName(), dclrs[i]->GetLineNumber(), dclrs[i]->GetLinePosition(), L"#"));
+        }
+        param->SetIndices(slots);
+      }
+      expressions->AddExpression(param);
     }
   }
 
@@ -4773,9 +4784,10 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
         boxed_resolved_params->AddExpression(calling_param);
       }
 
-      // encode parameter
+      // encode parameter: the PARAMETER's dimension -- this read the function
+      // type's own, which is 0, so an Int[] parameter never matched (#1183)
       dyn_func_params_str += EncodeType(func_param);
-      for(int j = 0; j < type->GetDimension(); ++j) {
+      for(int j = 0; j < func_param->GetDimension(); ++j) {
         dyn_func_params_str += L'*';
       }
       dyn_func_params_str += L',';
@@ -4794,9 +4806,22 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
     type->SetFunctionParameterCount(param_words);
     AnalyzeExpressions(boxed_resolved_params, depth + 1);
 
-    // check parameters again dynamic definition
+    // check parameters against the dynamic definition. An exact encoding is a
+    // match; otherwise each argument is matched by the rules a named call uses,
+    // so with g : (Base) ~ Base, g("hi") and g(Nil) are accepted -- they were
+    // rejected for not being exactly Base (#1183)
     const std::wstring call_params_str = EncodeMethodCall(boxed_resolved_params, depth);
-    if(dyn_func_params_str != call_params_str) {
+    bool params_match = dyn_func_params_str == call_params_str;
+    if(!params_match) {
+      params_match = true;
+      const std::vector<Expression*> resolved_params = boxed_resolved_params->GetExpressions();
+      for(size_t i = 0; i < resolved_params.size() && i < func_params.size(); ++i) {
+        if(MatchCallingParameter(resolved_params[i], func_params[i], nullptr, nullptr, depth) < 0) {
+          params_match = false;
+        }
+      }
+    }
+    if(!params_match) {
       ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" + method_call->GetMethodName() +
                    L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
     }
@@ -8077,6 +8102,13 @@ std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_pa
       else if(variable->GetName() == VAR_CLASS_ID) {
         encoded_name += L'v';
         variable->SetEvalType(TypeFactory::Instance()->MakeType(VAR_TYPE), true);
+      }
+      // a function type written in the reference itself, `Ap((Int) ~ Int)`:
+      // the parser left the type on a marker variable (#1183)
+      else if(variable->GetName() == FUNC_TYPE_MARKER && variable->GetEvalType() &&
+              variable->GetEvalType()->GetType() == FUNC_TYPE) {
+        Type* func_type = variable->GetEvalType();
+        encoded_name += L"m." + EncodeFunctionType(func_type->GetFunctionParameters(), func_type->GetFunctionReturn());
       }
       // function type encoded by MapLambdaDeclarations ("m.(i,)~i"); an
       // identifier can never start with "m." so this cannot shadow a class

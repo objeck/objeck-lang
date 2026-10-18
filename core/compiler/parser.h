@@ -230,6 +230,7 @@ class Parser {
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
+  Type* ExpressionToType(Expression* expression);
 
  public:
   Parser(const std::wstring &s, bool a, std::vector<std::pair<std::wstring, std::wstring> > &p) {

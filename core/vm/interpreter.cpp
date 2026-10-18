@@ -2400,8 +2400,43 @@ void __attribute__((noinline)) StackInterpreter::CheckAutoJit(StackMethod* calle
 /********************************
  * Processes a synchronous dynamic method call.
  ********************************/
+/********************************
+ * A call through an unassigned function variable: its value word is 0,
+ * since every real function value carries FUNC_VALUE_TAG. Calling it ran
+ * class 0's method 0 and usually segfaulted with no message (#1183); it is
+ * a Nil dereference, recoverable under Try() like any other. Returns true
+ * when it handled the call.
+ ********************************/
+bool StackInterpreter::NilFunctionValue(size_t* &op_stack, size_t* &stack_pos)
+{
+  if(op_stack[(*stack_pos) - 1] != 0) {
+    return false;
+  }
+
+  // the value's two words: the method word and the instance word
+  (*stack_pos) -= 2;
+  if(TryErrorRecovery(stack_pos)) {
+    return true;
+  }
+
+  std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
+  std::wcerr << L"  the function variable was never assigned" << std::endl;
+  StackErrorUnwind();
+#ifdef _NO_HALT
+  halt = true;
+  return true;
+#else
+  VmExit(1);
+  return true;
+#endif
+}
+
 void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
+  if(NilFunctionValue(op_stack, stack_pos)) {
+    return;
+  }
+
   // save current method
   (*stack_frame)->ip = ip;
   if(!PushFrame((*stack_frame))) {
@@ -2621,6 +2656,10 @@ void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &
  ********************************/
 void StackInterpreter::ProcessJitOnlyDynamicMethodCall([[maybe_unused]] StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
+  if(NilFunctionValue(op_stack, stack_pos)) {
+    return;
+  }
+
   (*stack_frame)->ip = ip;
   if(!PushFrame((*stack_frame))) {
     if(TryErrorRecovery(stack_pos)) {

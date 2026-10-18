@@ -65,6 +65,9 @@
 #define NIL_CLASS_ID L"System.$Nil"
 #define VAR_CLASS_ID L"System.$Var"
 #define BASE_ARRAY_CLASS_ID L"System.$BaseArray"
+// a function type written as a function-reference argument, `(Int) ~ Int`;
+// the parser hangs the type on a variable of this name (#1183)
+#define FUNC_TYPE_MARKER L"#func_type#"
 
 namespace frontend {
   class TreeFactory;
