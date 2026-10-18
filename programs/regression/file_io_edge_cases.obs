@@ -1,0 +1,79 @@
+#~
+Regression: the smaller File IO defects of #1180.
+
+- FileReader->ReadFile returned Nil for an empty file as well as a missing
+  one, so the two could not be told apart. An empty file now reads as "".
+- FileReader->ReadBinaryFile of a missing file called Byte->New[-1], which
+  ended the program. It now returns Nil.
+- File->GetTempName() created the file on POSIX (mkstemp) but only named
+  one on Windows. It now creates it on both.
+- On Windows every file was opened unshared (fopen_s), so a file open for
+  writing could not be read through another handle. Files are now opened
+  shared, as on POSIX.
+~#
+
+use System.IO.Filesystem;
+
+class FileIoEdgeCases {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		missing := "file_io_edge_cases.missing.txt";
+		File->Delete(missing);
+		Check("ReadFile of a missing file is Nil", FileReader->ReadFile(missing) = Nil);
+		Check("ReadBinaryFile of a missing file is Nil", FileReader->ReadBinaryFile(missing) = Nil);
+
+		empty := "file_io_edge_cases.empty.txt";
+		w := FileWriter->New(empty);
+		w->Close();
+		text := FileReader->ReadFile(empty);
+		Check("ReadFile of an empty file is \"\"", text <> Nil & text->Size() = 0);
+		bytes := FileReader->ReadBinaryFile(empty);
+		Check("ReadBinaryFile of an empty file is an empty array", bytes <> Nil & bytes->Size() = 0);
+		File->Delete(empty);
+
+		temp := File->GetTempName();
+		Check("GetTempName returns a name", temp <> Nil & temp->Size() > 0);
+		if(temp <> Nil & temp->Size() > 0) {
+			Check("and creates the file", File->Exists(temp));
+			File->Delete(temp);
+		};
+
+		shared := "file_io_edge_cases.shared.txt";
+		writer := FileWriter->New(shared);
+		writer->WriteString("shared\n");
+		writer->Flush();
+		reader := FileReader->New(shared);
+		Check("a file open for writing can be opened for reading", reader->IsOpen());
+		if(reader->IsOpen()) {
+			line := reader->ReadLine();
+			Check("and read", line <> Nil & line->Equals("shared"));
+			reader->Close();
+		};
+		writer->Close();
+		File->Delete(shared);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		FileIoEdgeCases->New()->Run();
+	}
+}
