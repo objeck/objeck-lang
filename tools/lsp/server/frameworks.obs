@@ -34,6 +34,10 @@ bundle LSP {
 		# takes it, a token it has acknowledged and that is not in use yet, and the
 		# create request still waiting for its reply.
 		@client_progress : Bool;
+		# Pull diagnostics (textDocument/diagnostic): the client asks, and nothing
+		# is pushed to it; and it can be told to ask again.
+		@pull_diagnostics : Bool;
+		@diagnostic_refresh : Bool;
 		@progress_token : String;
 		@progress_pending_id : String;
 		@progress_pending_token : String;
@@ -252,11 +256,66 @@ bundle LSP {
 					token := BeginServerProgress("Objeck: analyzing '{$folder_name}'");
 				};
 
-				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+				# A pull client keeps the report until it asks; pushing to it as well
+				# would show every diagnostic twice.
+				diagnostics := document->GetDiagnostics();
+				if(@pull_diagnostics) {
+					document->KeepReport(diagnostics);
+				}
+				else {
+					WriteRpcRequest("textDocument/publishDiagnostics", diagnostics);
+				};
 
 				if(token <> Nil) {
 					EndServerProgress(token);
 				};
+			};
+		}
+
+		# A closed document's diagnostics are cleared; a pull client drops a closed
+		# document's report itself.
+		method : public : PublishClosed(uri : String) ~ Nil {
+			if(@pull_diagnostics) {
+				return;
+			};
+
+			empty_diagnostics := JsonElement->New(JsonElement->JsonType->OBJECT);
+			empty_diagnostics->Insert("uri", uri);
+			empty_diagnostics->Insert("diagnostics", JsonElement->New(JsonElement->JsonType->ARRAY));
+			WriteRpcRequest("textDocument/publishDiagnostics", empty_diagnostics);
+		}
+
+		method : public : SetPullDiagnostics(pull : Bool, refresh : Bool) ~ Nil {
+			@pull_diagnostics := pull;
+			@diagnostic_refresh := refresh;
+		}
+
+		method : public : IsPullDiagnostics() ~ Bool {
+			return @pull_diagnostics;
+		}
+
+		#
+		# textDocument/diagnostic: the document's report, analyzed now if an edit
+		# is waiting; 'unchanged' when it's the report the client already has.
+		#
+		method : public : PullDiagnostics(uri : String, previous_id : String) ~ JsonElement {
+			document := @workspace->GetDocument(uri);
+			if(document = Nil) {
+				return Nil;
+			};
+
+			if(@pending_diagnostics->Has(uri) | <>document->HasReport()) {
+				PublishDiagnostics(uri);
+			};
+
+			return document->DiagnosticReport(previous_id);
+		}
+
+		# Results elsewhere may have changed (a build.json, a folder): a pull client
+		# that takes it is asked to pull again.
+		method : public : RefreshPulledDiagnostics() ~ Nil {
+			if(@pull_diagnostics & @diagnostic_refresh) {
+				WriteRpcServerRequest("workspace/diagnostic/refresh", Nil);
 			};
 		}
 
@@ -394,6 +453,7 @@ bundle LSP {
 		method : virtual : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensDelta(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackCodeLens(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackDocumentDiagnostic(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackDocumentLink(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackPrepareTypeHierarchy(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackTypeHierarchySupertypes(id : Int, params : JsonElement) ~ Nil;
@@ -629,6 +689,10 @@ bundle LSP {
 
 					label "textDocument/codeLens" {
 						CallbackCodeLens(id, request->GetParams());
+					}
+
+					label "textDocument/diagnostic" {
+						CallbackDocumentDiagnostic(id, request->GetParams());
 					}
 
 					label "textDocument/documentLink" {
@@ -955,7 +1019,10 @@ bundle LSP {
 			node->Insert("jsonrpc", "2.0");
 			node->Insert("id", id);
 			node->Insert("method", kind);
-			node->Insert("params", params);
+			# JSON-RPC's params is an object or an array, or absent: never null
+			if(params <> Nil) {
+				node->Insert("params", params);
+			};
 
 			WriteString(node->ToString());
 			return id;
@@ -1665,6 +1732,11 @@ bundle LSP {
 		@is_debug : Bool;
 		# the client's version of the text, or -1 if it sent none
 		@version : Int;
+		# the last diagnostics report, for a pull client; its id changes with it
+		@report_items : JsonElement;
+		@report_text : String;
+		@report_id : String;
+		@report_count : Int;
 		# the semantic tokens last sent, for semanticTokens/full/delta
 		@token_data : Int[];
 		@token_result_id : String;
@@ -1725,6 +1797,50 @@ bundle LSP {
 			};
 
 			return result;
+		}
+
+		# keeps a diagnostics result (publishDiagnostics params) as the report
+		method : public : KeepReport(result : JsonElement) ~ Nil {
+			items : JsonElement := Nil;
+			if(result <> Nil) {
+				items := result->Get("diagnostics");
+			};
+			if(items = Nil) {
+				items := JsonElement->New(JsonElement->JsonType->ARRAY);
+			};
+
+			text := items->ToString();
+			if(@report_text = Nil | <>@report_text->Equals(text)) {
+				@report_count += 1;
+				@report_id := "{$@version}.{$@report_count}";
+				@report_text := text;
+			};
+			@report_items := items;
+		}
+
+		method : public : HasReport() ~ Bool {
+			return @report_items <> Nil;
+		}
+
+		method : public : DiagnosticReport(previous_id : String) ~ JsonElement {
+			report := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(previous_id <> Nil & @report_id <> Nil & previous_id->Equals(@report_id)) {
+				report->Insert("kind", "unchanged");
+				report->Insert("resultId", @report_id);
+				return report;
+			};
+
+			report->Insert("kind", "full");
+			if(@report_id <> Nil) {
+				report->Insert("resultId", @report_id);
+			};
+			if(@report_items <> Nil) {
+				report->Insert("items", @report_items);
+			}
+			else {
+				report->Insert("items", JsonElement->New(JsonElement->JsonType->ARRAY));
+			};
+			return report;
 		}
 
 		method : public : GetSymbols(uri : String, hierarchical : Bool) ~ JsonElement {
