@@ -7113,6 +7113,26 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Expression* expression
   return AnalyzeRightCast(left, GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
 }
 
+// True when 'expression' carries an explicit scalar Byte, Char or Int cast
+// ('f->As(Byte)'), which a Float value converts through on its own
+bool ContextAnalyzer::HasIntegralCast(Expression* expression)
+{
+  Type* cast_type = expression->GetCastType();
+  if(!cast_type || cast_type->GetDimension() > 0) {
+    return false;
+  }
+
+  switch(cast_type->GetType()) {
+  case BYTE_TYPE:
+  case CHAR_TYPE:
+  case INT_TYPE:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth)
 {
   // assert(left && right);
@@ -7221,7 +7241,11 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case FLOAT_TYPE:
-        expression->SetCastType(left, false);
+        // keep an explicit integral cast: the parameter type replaced
+        // 'f->As(Byte)' and the Byte wrap was lost (#1176)
+        if(!HasIntegralCast(expression)) {
+          expression->SetCastType(left, false);
+        }
         expression->SetEvalType(right, false);
         break;
 
@@ -7273,7 +7297,11 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case FLOAT_TYPE:
-        expression->SetCastType(left, false);
+        // keep an explicit integral cast: the parameter type replaced
+        // 'f->As(Byte)' and the Byte wrap was lost (#1176)
+        if(!HasIntegralCast(expression)) {
+          expression->SetCastType(left, false);
+        }
         expression->SetEvalType(right, false);
         break;
 
@@ -7325,7 +7353,11 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
         break;
 
       case FLOAT_TYPE:
-        expression->SetCastType(left, false);
+        // keep an explicit integral cast: the parameter type replaced
+        // 'f->As(Byte)' and the Byte wrap was lost (#1176)
+        if(!HasIntegralCast(expression)) {
+          expression->SetCastType(left, false);
+        }
         expression->SetEvalType(right, false);
         break;
 

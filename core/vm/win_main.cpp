@@ -167,6 +167,97 @@ int main(const int argc, const char* argv[])
   return 1;
 }
 
+#ifndef _MSYS2_CLANG
+//
+// Wide output as UTF-8 bytes, for a stdout in binary mode. On a binary stream
+// the C runtime writes each wchar_t as its two bytes, so with OBJECK_STDIO=binary
+// every program's output -- the LSP's framed replies over stdio among them --
+// left as UTF-16LE, which no client reads: "Content-Length" arrived as
+// "C\0o\0n\0...". Input was already read as bytes and decoded from UTF-8.
+//
+// Unbuffered, so the bytes keep their order with anything written to stdout
+// directly. A surrogate pair split across two calls is held until its second
+// half arrives.
+//
+class Utf8StdoutBuffer : public std::wstreambuf {
+  FILE* file;
+  wchar_t pending_high;
+
+  void Put(char32_t code) {
+    char bytes[4];
+    size_t size;
+    if(code < 0x80) {
+      bytes[0] = (char)code;
+      size = 1;
+    }
+    else if(code < 0x800) {
+      bytes[0] = (char)(0xc0 | (code >> 6));
+      bytes[1] = (char)(0x80 | (code & 0x3f));
+      size = 2;
+    }
+    else if(code < 0x10000) {
+      bytes[0] = (char)(0xe0 | (code >> 12));
+      bytes[1] = (char)(0x80 | ((code >> 6) & 0x3f));
+      bytes[2] = (char)(0x80 | (code & 0x3f));
+      size = 3;
+    }
+    else {
+      bytes[0] = (char)(0xf0 | (code >> 18));
+      bytes[1] = (char)(0x80 | ((code >> 12) & 0x3f));
+      bytes[2] = (char)(0x80 | ((code >> 6) & 0x3f));
+      bytes[3] = (char)(0x80 | (code & 0x3f));
+      size = 4;
+    }
+    fwrite(bytes, 1, size, file);
+  }
+
+  void PutUnit(wchar_t unit) {
+    if(pending_high) {
+      const wchar_t high = pending_high;
+      pending_high = 0;
+      if(unit >= 0xdc00 && unit <= 0xdfff) {
+        Put(0x10000 + (((char32_t)high - 0xd800) << 10) + ((char32_t)unit - 0xdc00));
+        return;
+      }
+      // a lone high surrogate: U+FFFD, as a decoder would show it
+      Put(0xfffd);
+    }
+
+    if(unit >= 0xd800 && unit <= 0xdbff) {
+      pending_high = unit;
+    }
+    else if(unit >= 0xdc00 && unit <= 0xdfff) {
+      Put(0xfffd);
+    }
+    else {
+      Put((char32_t)unit);
+    }
+  }
+
+protected:
+  int_type overflow(int_type c) override {
+    if(!traits_type::eq_int_type(c, traits_type::eof())) {
+      PutUnit(traits_type::to_char_type(c));
+    }
+    return traits_type::not_eof(c);
+  }
+
+  std::streamsize xsputn(const wchar_t* s, std::streamsize n) override {
+    for(std::streamsize i = 0; i < n; ++i) {
+      PutUnit(s[i]);
+    }
+    return n;
+  }
+
+  int sync() override {
+    return fflush(file) == 0 ? 0 : -1;
+  }
+
+public:
+  Utf8StdoutBuffer(FILE* f) : file(f), pending_high(0) {}
+};
+#endif
+
 bool SetStdIo(const char* value)
 {
   // set as binary
@@ -181,6 +272,10 @@ bool SetStdIo(const char* value)
       std::wcerr << "Unable to initialize I/O subsystem" << std::endl;
       exit(1);
     }
+
+    // wide output goes out as UTF-8 bytes; lives for the whole process
+    static Utf8StdoutBuffer utf8_stdout(stdout);
+    std::wcout.rdbuf(&utf8_stdout);
 
     return true;
 #endif

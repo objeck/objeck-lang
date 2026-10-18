@@ -10,41 +10,39 @@ bundle LSP {
 		@port : Int;
 		@is_debug : Bool;
 
+		#
+		# obr objeck_lsp.obe <objk_apis.json> (stdio | --stdio | pipe | <port>) [debug]
+		#
+		# '--stdio' is what vscode-languageclient and others append for a stdio
+		# server; it was not understood, and the server started no transport.
+		#
 		function : Main(args : String[]) ~ Nil {
-			if(args->Size() = 2) {
-				port : Int;
-
-				if(args[1]->Equals("stdio")) {
-					Runtime->SetProperty("stdio", "binary");
-					port := -1;
-				}
-				else if(args[1]->Equals("pipe")) {
-					port := -2;
-				}
-				else {
-					port := args[1]->ToInt();
-				};
-
-				AstProxy->Init(args[0]);
-				LintServer->New(port, false)->Listen();
-			}
-			else if(args->Size() = 3 & args[2]->Equals("debug")) {
-				port : Int;
-
-				if(args[1]->Equals("stdio")) {
-					Runtime->SetProperty("stdio", "binary");
-					port := -1;
-				}
-				else if(args[1]->Equals("pipe")) {
-					port := -2;
-				}
-				else {
-					port := args[1]->ToInt();
-				};
-				
-				AstProxy->Init(args[0]);
-				LintServer->New(port, true)->Listen();
+			if(args->Size() < 2 | args->Size() > 3) {
+				"Usage: obr objeck_lsp.obe <objk_apis.json> (stdio | pipe | <port>) [debug]"->ErrorLine();
+				Runtime->Exit(1);
 			};
+
+			is_debug := args->Size() = 3;
+			if(is_debug & <>args[2]->Equals("debug")) {
+				"Usage: obr objeck_lsp.obe <objk_apis.json> (stdio | pipe | <port>) [debug]"->ErrorLine();
+				Runtime->Exit(1);
+			};
+
+			port : Int;
+			transport := args[1];
+			if(transport->Equals("stdio") | transport->Equals("--stdio")) {
+				Runtime->SetProperty("stdio", "binary");
+				port := -1;
+			}
+			else if(transport->Equals("pipe")) {
+				port := -2;
+			}
+			else {
+				port := transport->ToInt();
+			};
+
+			AstProxy->Init(args[0]);
+			LintServer->New(port, is_debug)->Listen();
 		}
 
 		New(port : Int, is_debug : Bool) {
@@ -107,10 +105,15 @@ bundle LSP {
 	Handles TCP client requests
 	~#
 	class LintService from LspWorker {
-		@decoded_folder_uri : String;
-		@build_json_file : String;
 		# the client can take a dynamic registration for workspace/didChangeWatchedFiles
 		@can_register_watchers : Bool;
+		# the client's command for running a program, from initializationOptions
+		@run_command : String;
+		# MarkupContent kinds the client renders
+		@hover_markdown : Bool;
+		# documentSymbol answers DocumentSymbol[] (a tree) rather than SymbolInformation[]
+		@hierarchical_symbols : Bool;
+		@completion_markdown : Bool;
 
 		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
 			Parent(pipe, socket, is_debug);
@@ -146,8 +149,34 @@ bundle LSP {
 
 			document := @workspace->GetDocument(uri);
 			if(document <> Nil) {
-				response := document->CodeRename(new_name, line_pos->ToInt(), char_pos->ToInt());
+				# An edit to a name that doesn't parse leaves the program
+				# uncompilable; the client shows this message instead of applying it.
+				rename_to := document->RenameTo(new_name, line_pos->ToInt(), char_pos->ToInt());
+				if(rename_to = Nil) {
+					WriteRpcError(id, LspWorker->ErrorCode->REQUEST_FAILED->As(Int), "'{$new_name}' is not a valid Objeck name here");
+					return;
+				};
+
+				response := document->CodeRename(rename_to, line_pos->ToInt(), char_pos->ToInt());
 				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackPrepareRename(id : Int, params : JsonElement) ~ Nil {
+			uri := FindString(params, "textDocument/uri");
+			line_json := FindJson(params, "position/line");
+			char_json := FindJson(params, "position/character");
+
+			document : Document;
+			if(uri <> Nil) {
+				document := @workspace->GetDocument(uri);
+			};
+
+			if(document <> Nil & line_json <> Nil & char_json <> Nil) {
+				WriteRpcResponse(id, document->PrepareRename(line_json->GetInt(), char_json->GetInt()));
 			}
 			else {
 				WriteRpcResponse(id, Nil);
@@ -405,6 +434,57 @@ bundle LSP {
 			};
 		}
 
+		method : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			start_json := FindJson(params, "range/start/line");
+			end_json := FindJson(params, "range/end/line");
+			if(document <> Nil & start_json <> Nil & end_json <> Nil) {
+				WriteRpcResponse(id, document->SemanticTokensRange(start_json->GetInt(), end_json->GetInt()));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackSemanticTokensDelta(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->SemanticTokensDelta(FindString(params, "previousResultId")));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackCodeLens(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->CodeLens(@run_command));
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackDocumentLink(id : Int, params : JsonElement) ~ Nil {
+			document := DocumentOf(params);
+			if(document <> Nil) {
+				WriteRpcResponse(id, document->DocumentLinks());
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		# the open document params.textDocument.uri names, or Nil
+		method : DocumentOf(params : JsonElement) ~ Document {
+			uri := FindString(params, "textDocument/uri");
+			if(uri = Nil) {
+				return Nil;
+			};
+			return @workspace->GetDocument(uri);
+		}
+
 		method : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil {
 			uri := params->FindElements("textDocument/uri")->GetValue();
 
@@ -467,7 +547,7 @@ bundle LSP {
 
 			doc := @workspace->GetDocument(uri);
 			if(doc <> Nil) {
-				response := doc->Hover(line_pos->ToInt(), char_pos->ToInt());
+				response := doc->Hover(line_pos->ToInt(), char_pos->ToInt(), @hover_markdown);
 				WriteRpcResponse(id, response);
 			}
 			else {
@@ -520,12 +600,46 @@ bundle LSP {
 					};
 					
 					if(document <> Nil & wants_quickfix) {
-						response := document->CodeAction(diagnostic_start_line, diagnostic_start_char, diagnostic_end_line, diagnostic_end_char, diagnostic_message, "quickfix", @build_json_file);
+						response := document->CodeAction(diagnostic_start_line, diagnostic_start_char, diagnostic_end_line, diagnostic_end_char, diagnostic_message, "quickfix", @workspace->BuildFileFor(uri));
+					};
+				};
+			};
+
+			# Advertised in codeActionKinds all along, and never produced. Offered
+			# only when asked for by kind, as editors do for "Organize Imports" and
+			# on save; a lightbulb at the cursor doesn't ask for source actions.
+			if(RequestsKind(params, "source.organizeImports")) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					organize := document->OrganizeImports();
+					if(organize <> Nil) {
+						if(response = Nil) {
+							response := JsonElement->New(JsonElement->JsonType->ARRAY);
+						};
+						response->Add(organize);
 					};
 				};
 			};
 
 			WriteRpcResponse(id, response);
+		}
+
+		# context.only names this kind or a parent of it ('source')
+		method : RequestsKind(params : JsonElement, kind : String) ~ Bool {
+			only_json := FindJson(params, "context/only");
+			if(only_json = Nil | only_json->GetType() <> JsonElement->JsonType->ARRAY) {
+				return false;
+			};
+
+			each(i : only_json) {
+				requested := only_json->Get(i)->GetValue();
+				if(requested <> Nil & <>requested->IsEmpty() &
+						(kind->Equals(requested) | kind->StartsWith(requested + "."))) {
+					return true;
+				};
+			};
+
+			return false;
 		}
 
 		method : CallbackCompletion(id : Int, params : JsonElement) ~ Nil {
@@ -567,10 +681,13 @@ bundle LSP {
 			}
 			else {
 				# single-folder clients that only send rootUri
+				# A JSON null reads as an empty string, which configured a folder at
+				# '' -- and with it a quick fix that wrote build.json to the root of
+				# the file system.
 				root_uri_obj := params->Get("rootUri");
-				if(root_uri_obj <> Nil) {
+				if(root_uri_obj <> Nil & root_uri_obj->GetType() = JsonElement->JsonType->STRING) {
 					root_uri := root_uri_obj->GetValue();
-					if(root_uri <> Nil & <>root_uri->Equals("null")) {
+					if(root_uri <> Nil & <>root_uri->IsEmpty() & <>root_uri->Equals("null")) {
 						if(@is_debug) {
 							System.IO.Filesystem.Logger->Instance()->Info("\n--- Added workspace from rootUri: '{$root_uri}' ---\n");
 						};
@@ -610,8 +727,16 @@ bundle LSP {
 				};
 			};
 			capabilities->Insert("positionEncoding", position_encoding);
+			# markdown where the client takes it, and plain text where it says it
+			# takes only that
+			@hover_markdown := AcceptsMarkdown(params, "capabilities/textDocument/hover/contentFormat");
+			@completion_markdown := AcceptsMarkdown(params, "capabilities/textDocument/completion/completionItem/documentationFormat");
+
+			hierarchical_json := FindJson(params, "capabilities/textDocument/documentSymbol/hierarchicalDocumentSymbolSupport");
+			@hierarchical_symbols := hierarchical_json <> Nil & hierarchical_json->GetType() = JsonElement->JsonType->TRUE;
+
 			completionProvider := capabilities->AddChild("completionProvider");
-			completionProvider->Insert("resolveProvider", false);
+			completionProvider->Insert("resolveProvider", true);
 			triggerCharacters := JsonElement->New(JsonElement->JsonType->ARRAY);
 			triggerCharacters->Add("@");
 			triggerCharacters->Add(".");
@@ -653,7 +778,15 @@ bundle LSP {
 			capabilities->Insert("referencesProvider", true);
 			capabilities->Insert("declarationProvider", true);
 			capabilities->Insert("definitionProvider", true);
-			capabilities->Insert("renameProvider", true);
+			# prepareRename tells the editor up front what can be renamed
+			prepare_json := FindJson(params, "capabilities/textDocument/rename/prepareSupport");
+			if(prepare_json <> Nil & prepare_json->GetType() = JsonElement->JsonType->TRUE) {
+				renameProvider := capabilities->AddChild("renameProvider");
+				renameProvider->Insert("prepareProvider", true);
+			}
+			else {
+				capabilities->Insert("renameProvider", true);
+			};
 			capabilities->Insert("hoverProvider", true);
 			capabilities->Insert("documentFormattingProvider", true);
 			capabilities->Insert("documentRangeFormattingProvider", true);
@@ -694,83 +827,84 @@ bundle LSP {
 
 			semanticTokensProvider := capabilities->AddChild("semanticTokensProvider");
 			semanticTokensProvider->Insert("legend", semanticTokensLegend);
-			semanticTokensProvider->Insert("full", true);
+			semanticTokensProvider->Insert("range", true);
+			semanticTokensFull := semanticTokensProvider->AddChild("full");
+			semanticTokensFull->Insert("delta", true);
+
+			codeLensProvider := capabilities->AddChild("codeLensProvider");
+			codeLensProvider->Insert("resolveProvider", false);
+			documentLinkProvider := capabilities->AddChild("documentLinkProvider");
+			documentLinkProvider->Insert("resolveProvider", false);
+
+			# A client that can run a program names its command; the 'Run' lens
+			# then invokes it. Without one the lens only says what to run.
+			@run_command := FindString(params, "initializationOptions/runCommand");
 
 			# Dynamic registration is a request, so it waits for the client's
 			# 'initialized' (NotifyInitialized), and is only sent to a client that
 			# says it supports it. It went out here, unconditionally, before the
 			# client had even received this response.
+			# server-initiated progress for long analyses, to a client that shows it
+			progress_json := FindJson(params, "capabilities/window/workDoneProgress");
+			SetClientProgress(progress_json <> Nil & progress_json->GetType() = JsonElement->JsonType->TRUE);
+
 			dynamic_json := params->FindElements("capabilities/workspace/didChangeWatchedFiles/dynamicRegistration");
 			@can_register_watchers := dynamic_json <> Nil & dynamic_json->GetType() = JsonElement->JsonType->TRUE;
 
 			WriteRpcResponse(id, response);
 		}
 
-		method : ProcessConfiguration(folder_name : String, folder_uri : String) ~ Nil {
-			@workspace->SetRoot(folder_name, folder_uri);
-
-			@decoded_folder_uri := Web.HTTP.Url->Decode(folder_uri);
-			if(@decoded_folder_uri->StartsWith("file:///")) {
-				offset : Int;
-				if(Query.RegEx.RegEx->New("file:///([a-z]|[A-Z]):.*")->MatchExact(@decoded_folder_uri)) {
-					offset := "file:///"->Size();
-				}
-				else {
-					offset := "file://"->Size();
-				};
-				@decoded_folder_uri->Delete(0, offset);
+		# A client that lists its formats and leaves markdown out gets plain text.
+		# One that lists none is assumed to take markdown, as every current client does.
+		method : AcceptsMarkdown(params : JsonElement, path : String) ~ Bool {
+			formats := FindJson(params, path);
+			if(formats = Nil | formats->GetType() <> JsonElement->JsonType->ARRAY | formats->Size() = 0) {
+				return true;
 			};
-			@build_json_file := String->New(@decoded_folder_uri);
-			@build_json_file += "/build.json";
-			
-			LoadConfigurationFile();
+
+			each(i : formats) {
+				if(formats->Get(i)->GetValue()->Equals("markdown")) {
+					return true;
+				};
+			};
+
+			return false;
 		}
 
-		method : LoadConfigurationFile() ~ Nil {
-			# no workspace folder was configured at initialize; interpolating a
-			# Nil @build_json_file below would crash the server
-			if(@build_json_file = Nil) {
-				System.IO.Filesystem.Logger->Instance()->Error("--- No workspace configured, skipping build.json load ---");
-				return;
+		# a workspace folder, configured from its own build.json
+		method : ProcessConfiguration(folder_name : String, folder_uri : String) ~ Nil {
+			folder := @workspace->AddFolder(folder_name, folder_uri);
+			if(folder <> Nil) {
+				ReportFolder(folder);
 			};
+		}
 
-			text := System.IO.Filesystem.FileReader->ReadFile(@build_json_file);
-			if(text <> Nil) {
-				json :=JsonParser->New(text);
-				if(json->Parse()) {
-					root := json->GetRoot();
-					
-					files_json := root->Get("files");
-					libs_json := root->Get("libs");
-					if(files_json <> Nil & libs_json <> Nil) {
-						file_strs := String->New[files_json->Size()];
-						each(i : files_json) {
-							file_strs[i] := files_json->Get(i)->GetValue();
-						};
-
-						libs_str := "";
-						each(i : libs_json) {
-							libs_str += libs_json->Get(i)->GetValue();
-							libs_str += ',';
-						};
-
-						if(<>libs_str->IsEmpty()) {
-							libs_str->Pop();
-						};
-
-						if(@is_debug) {
-							System.IO.Filesystem.Logger->Instance()->Info("--- Files and libraries:  @decoded_folder_uri='{$@decoded_folder_uri}', libs_str='{$libs_str}' ---\n");
-						};
-
-						@workspace->SetFilesLibs(@decoded_folder_uri, file_strs, libs_str);
-					};
-				}
-				else {
-					System.IO.Filesystem.Logger->Instance()->Error("--- Unable to parse configuration '{$@build_json_file}' ---");
-				};
+		#
+		# How a folder is configured, in the client's log. A build.json that can't
+		# be read or parsed was reported only to a log file, and the folder's files
+		# were then analyzed without it, with no sign of why.
+		#
+		method : ReportFolder(folder : LspFolder) ~ Nil {
+			name := folder->GetName();
+			if(folder->IsConfigured()) {
+				count := folder->FileCount();
+				LogMessage(3, "Workspace folder '{$name}': build.json lists {$count} file(s)");
+			}
+			else if(folder->IsMissing()) {
+				LogMessage(3, "Workspace folder '{$name}' has no build.json: each of its files is analyzed on its own");
 			}
 			else {
-				System.IO.Filesystem.Logger->Instance()->Error("--- Unable to load configuration '{$@build_json_file}' ---");
+				error := folder->GetLoadError();
+				LogMessage(1, "Workspace folder '{$name}': {$error}; its files are analyzed on their own");
+			};
+		}
+
+		# Which files make up a program changed: every open document is analyzed
+		# again, once typing pauses.
+		method : RefreshAllDiagnostics() ~ Nil {
+			uris := @workspace->GetUris();
+			each(i : uris) {
+				DeferDiagnostics(uris->Get(i));
 			};
 		}
 
@@ -816,7 +950,7 @@ bundle LSP {
 				url_str := uri->GetValue();
 				document := @workspace->GetDocument(url_str);
 				if(document <> Nil & url_str <> Nil) {
-					WriteRpcResponse(id, document->GetSymbols(url_str));
+					WriteRpcResponse(id, document->GetSymbols(url_str, @hierarchical_symbols));
 				}
 				else {
 					WriteRpcResponse(id, Nil);
@@ -833,9 +967,54 @@ bundle LSP {
 			WriteRpcResponse(id, response);
 		}
 
+		#
+		# completionItem/resolve: the item back, with the signature and documentation
+		# of a method filled in. Its 'data' says where completion was asked for. This
+		# echoed the item unchanged, behind a resolveProvider of false.
+		#
 		method : CallbackResolve(id : Int, params : JsonElement) ~ Nil {
-			# write response
-	        WriteRpcResponse(id, params);
+			if(params = Nil | params->GetType() <> JsonElement->JsonType->OBJECT) {
+				WriteRpcResponse(id, params);
+				return;
+			};
+
+			item_name := FindString(params, "label");
+			uri := FindString(params, "data/uri");
+			var_str := FindString(params, "data/var");
+			line_json := FindJson(params, "data/line");
+			char_json := FindJson(params, "data/character");
+			kind_json := params->Get("kind");
+
+			# methods and functions only: the rest carry what they have already
+			is_method := kind_json <> Nil & (kind_json->GetInt() = 2 | kind_json->GetInt() = 3);
+			if(is_method & item_name <> Nil & uri <> Nil & var_str <> Nil & line_json <> Nil & char_json <> Nil) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					resolved := document->ResolveCompletion(item_name, line_json->GetInt(), char_json->GetInt(), var_str, @completion_markdown);
+					if(resolved <> Nil) {
+						# the item as sent, with what was resolved in place of its own
+						item := JsonElement->New(JsonElement->JsonType->OBJECT);
+						names := params->GetNames();
+						each(i : names) {
+							name := names->Get(i);
+							if(<>resolved->Has(name)) {
+								item->Insert(name, params->Get(name));
+							};
+						};
+
+						names := resolved->GetNames();
+						each(i : names) {
+							name := names->Get(i);
+							item->Insert(name, resolved->Get(name));
+						};
+
+						WriteRpcResponse(id, item);
+						return;
+					};
+				};
+			};
+
+			WriteRpcResponse(id, params);
 		}
 
 		#
@@ -843,6 +1022,7 @@ bundle LSP {
 		#
 		method : NotifyInitialized(params : JsonElement) ~ Nil {
 			@is_initialized := true;
+			RequestProgressToken();
 
 			if(@can_register_watchers) {
 				RegisterWatchers();
@@ -879,9 +1059,14 @@ bundle LSP {
 					System.IO.Filesystem.Logger->Instance()->Info("NotifyDidChangeWatchedFiles: uri='{$uri}', uri={$type}");
 				};
 
-				# configuration file added or changed
-				if(type = 1 | type = 2) {
-					LoadConfigurationFile();
+				# a configuration file added, changed or deleted: reload the folder it
+				# is in
+				if(type = 1 | type = 2 | type = 3) {
+					reloaded := @workspace->ReloadFolders(uri);
+					each(j : reloaded) {
+						ReportFolder(reloaded->Get(j));
+					};
+					RefreshAllDiagnostics();
 				};
 			};
 		}
@@ -940,6 +1125,7 @@ bundle LSP {
 		}
 
 		method : NotifyDidChangeWorkspace(params : JsonElement) ~ Nil {
+			changed := false;
 			added := params->FindElements("event/added");
 			each(i : added) {
 				folder := added->Get(i);
@@ -956,6 +1142,7 @@ bundle LSP {
 				# and every file in it was analysed as if standalone. The capability
 				# workspaceFolders.changeNotifications was advertised as true anyway.
 				ProcessConfiguration(folder_name, folder_uri);
+				changed := true;
 			};
 
 			removed := params->FindElements("event/removed");
@@ -967,6 +1154,16 @@ bundle LSP {
 				if(@is_debug) {
 					System.IO.Filesystem.Logger->Instance()->Info("--- Removed workspace: '{$folder_uri}', '{$folder_name}' ---");
 				};
+
+				# This only logged: a removed folder's build.json went on deciding
+				# how its documents were analyzed (#1232).
+				if(@workspace->RemoveFolder(folder_uri)) {
+					changed := true;
+				};
+			};
+
+			if(changed) {
+				RefreshAllDiagnostics();
 			};
 		}
 		

@@ -71,7 +71,7 @@ The `.obe` is what runs, so recompile after every edit.
 
 | Editor | Transport | Setup |
 |--------|-----------|-------|
-| **VS Code** | Named pipe | Install the [`.vsix` extension](https://github.com/objeck/objeck-lang/releases/latest), set install path in settings |
+| **VS Code** | STDIO (one server per window) | Install the [`.vsix` extension](https://github.com/objeck/objeck-lang/releases/latest), set install path in settings |
 | **Sublime Text** | STDIO | Add config from [`clients/sublime/`](clients/sublime/) to LSP settings |
 | **Kate** | STDIO | Add server entry in LSP Client settings ([instructions](README.txt)) |
 | **ecode** | STDIO | Add server to [`lspclient.json`](README.txt) |
@@ -143,7 +143,7 @@ graph LR
         Compiler --> Docs
     end
 
-    VSCode --> Pipe
+    VSCode --> STDIO
     Sublime --> STDIO
     Kate --> STDIO
     ecode --> STDIO
@@ -177,18 +177,37 @@ graph LR
 |---------|--------|
 | Initialize | `initialize` |
 | Shutdown | `shutdown` |
-| Completion | `textDocument/completion` |
-| Document Symbol | `textDocument/documentSymbol` |
-| Workspace Symbol | `workspace/symbol` |
+| Completion | `textDocument/completion`, `completionItem/resolve` |
+| Hover | `textDocument/hover` (MarkupContent) |
 | Signature Help | `textDocument/signatureHelp` |
-| References | `textDocument/references` |
 | Definition | `textDocument/definition` |
 | Declaration | `textDocument/declaration` |
-| Rename | `textDocument/rename` |
-| Hover | `textDocument/hover` |
-| Code Action | `textDocument/codeAction` |
+| Type Definition | `textDocument/typeDefinition` |
+| Implementation | `textDocument/implementation` |
+| References | `textDocument/references` |
+| Document Highlight | `textDocument/documentHighlight` |
+| Document Symbol | `textDocument/documentSymbol` (a tree for clients that take one) |
+| Rename | `textDocument/prepareRename`, `textDocument/rename` |
+| Code Action | `textDocument/codeAction` (quick fixes, `source.organizeImports`) |
+| Code Lens | `textDocument/codeLens` (Run on `Main`) |
+| Document Link | `textDocument/documentLink` (`use` bundles to the API reference) |
 | Format Document | `textDocument/formatting` |
 | Format Selection | `textDocument/rangeFormatting` |
+| Folding Range | `textDocument/foldingRange` |
+| Selection Range | `textDocument/selectionRange` |
+| Inlay Hint | `textDocument/inlayHint` |
+| Semantic Tokens | `textDocument/semanticTokens/full`, `/full/delta`, `/range` |
+| Call Hierarchy | `textDocument/prepareCallHierarchy`, `callHierarchy/incomingCalls`, `callHierarchy/outgoingCalls` |
+| Type Hierarchy | `textDocument/prepareTypeHierarchy`, `typeHierarchy/supertypes`, `typeHierarchy/subtypes` |
+
+### Server to client
+
+| Feature | Method |
+|---------|--------|
+| Diagnostics | `textDocument/publishDiagnostics` |
+| Log | `window/logMessage` |
+| Progress | `window/workDoneProgress/create`, `$/progress` |
+| Watch build.json | `client/registerCapability` |
 
 ### Workspace
 
