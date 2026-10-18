@@ -522,11 +522,6 @@ bundle System {
 		}
 
 		#~
-		Returns a positive hexadecimal string representation of the value
-		@ignore-params
-		@return hexadecimal string representation of the value
-		~#
-		#~
 		Returns the value's hex digits without the 0x prefix, padded with zeros to a minimum width (ToHexString keeps the prefix)
 		@ignore-params
 		@return lower-case hex digits, at least width of them
@@ -542,6 +537,11 @@ bundle System {
 			return digits->PadTo(width, '0', true);
 		}
 
+		#~
+		Returns a positive hexadecimal string representation of the value
+		@ignore-params
+		@return hexadecimal string representation of the value
+		~#
 		function : native : ToHexString(b : Byte) ~ String {
 			buffer := Char->New[32];
 			Number->IntToString(b, 16, buffer);
