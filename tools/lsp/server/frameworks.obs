@@ -1270,7 +1270,13 @@ bundle LSP {
 			options->Insert("end-line", (end_range_line + 1)->ToString());
 
 			formatter := CodeFormatter->New(options);
-			new_text := PutText(formatter->Format(GetText(@text)));
+			# @text is already plain text, and the JSON serializer escapes on the way
+			# out. This was PutText(formatter->Format(GetText(@text))), which escaped
+			# the result a second time -- clients received a literal backslash-n for
+			# every newline and the file collapsed onto one line -- and decoded the
+			# source a second time, turning an escape inside a string literal into the
+			# character it names (#1213).
+			new_text := formatter->Format(@text);
 
 			# format and upate json
 			edits_builder := JsonBuilder->New();
@@ -1321,7 +1327,8 @@ bundle LSP {
 				options->Insert("ident-space", tab_spaces->ToString());
 			};
 			formatter := CodeFormatter->New(options);
-			new_text := PutText(formatter->Format(GetText(@text)));
+			# plain text in, plain text out: see FormatRange (#1213)
+			new_text := formatter->Format(@text);
 			
 			# format and upate json
 			edits_builder := JsonBuilder->New();
@@ -1519,59 +1526,23 @@ bundle LSP {
 		method : GetDocumentEnd() ~ Int[] {
 			indexes := Int->New[2];
 
+			# The position just past the last character. The newline itself was
+			# counted as a character of the line it starts, so a document ending in a
+			# newline reported (lines, 1) -- one past the end of an empty last line.
 			cur_line := 0; cur_char := 0;
 			each(pos : @text) {
-				char := @text->Get(pos);
-				next_char := '\0';				
-				if(pos + 1 < @text->Size()) {
-					next_char := @text->Get(pos + 1);
-				};
-
-				if(char = '\n') {
+				if(@text->Get(pos) = '\n') {
 					cur_line += 1;
-					cur_char := 0;			
+					cur_char := 0;
+				}
+				else {
+					cur_char += 1;
 				};
-				cur_char += 1;
 			};
 			indexes[0] := cur_line;
 			indexes[1] := cur_char;
 
 			return indexes;
-		}
-
-		function : PutText(text : String) ~ String {
-			out := "";
-
-			each(i : text) {
-				cur_char := text->Get(i);
-				select(cur_char) {
-					label '\t' {
-						out += "\\t";
-					}
-
-					label '\r' {
-						out += "\\r";
-					}
-
-					label '\n' {
-						out += "\\n";
-					}
-
-					label '\\' {
-						out += "\\\\";
-					}
-
-					label '"' {
-						out += "\\\"";
-					}
-
-					other {
-						out += cur_char;
-					}
-				};
-			};
-
-			return out;
 		}
 
 		function : GetText(text : String) ~ String {

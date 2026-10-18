@@ -88,8 +88,13 @@ bundle System.Diagnostics {
 				};
 				
 				names[i] := name;
-				text += "\r\n";
-				texts[i] := text;
+				# Append to a copy: `+=` modifies the string in place, and these are the
+				# caller's own strings. The LSP passes its live document text, so every
+				# request added another CRLF to the server's copy of the file and ranges
+				# computed from it drifted past the end (#1213).
+				source := String->New(text);
+				source += "\r\n";
+				texts[i] := source;
 			};
 
 			array_args := Base->New[6];

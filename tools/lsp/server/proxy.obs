@@ -43,7 +43,9 @@ bundle LSP {
 						diagnostic := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 						diagnostic->Insert("severity", result->GetKind()->As(Int) - 100);
-						diagnostic->Insert("message", JsonElement->Encode(result->GetName()));
+						# Plain text: the serializer escapes on the way out, so a pre-encoded
+						# message reached the client with a literal backslash-n in it (#1213).
+						diagnostic->Insert("message", result->GetName());
 						diagnostic->Insert("source", "objk-linter");
 
 						range := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -439,7 +441,7 @@ bundle LSP {
 						};
 
 						content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-						content_json->Insert("contents", JsonElement->Encode(fallback));
+						content_json->Insert("contents", fallback);
 						return content_json;
 					};
 				};
@@ -597,10 +599,10 @@ bundle LSP {
 
 							new_name : String;
 							if(@analysis->HasUses()) {
-								new_name := "use {$bundle_name};\\r\\n";
+								new_name := "use {$bundle_name};\n";
 							}
 							else {
-								new_name := "use {$bundle_name};\\r\\n\\r\\n";
+								new_name := "use {$bundle_name};\n\n";
 							};
 						
 							text_doc_edit_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -679,7 +681,7 @@ bundle LSP {
 								build_file_json->Insert("files", files_json);
 								build_file_json->Insert("libs", libs_json);
 								build_file_json->Insert("flags", "");
-								build_file_text := JsonElement->Encode(build_file_json->ToFormattedString());
+								build_file_text := build_file_json->ToFormattedString();
 
 								# add changes
 								create_doc_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -688,10 +690,10 @@ bundle LSP {
 
 								new_name : String;
 								if(@analysis->HasUses()) {
-									new_name := "use {$bundle_name};\\r\\n";
+									new_name := "use {$bundle_name};\n";
 								}
 								else {
-									new_name := "use {$bundle_name};\\r\\n\\r\\n";
+									new_name := "use {$bundle_name};\n\n";
 								};
 								create_doc_array_json->Add(MakeTextEdit(new_name, 0, 0, 0, 0, uri));
 								doc_changes_json := JsonElement->New(JsonElement->JsonType->OBJECT);

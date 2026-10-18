@@ -284,6 +284,85 @@ def non_empty(resp):
     return bool(r)
 
 
+def offset_of(text, pos):
+    """Index into text of an LSP position (UTF-16 columns)."""
+    lines = text.split("\n")
+    line = min(pos["line"], len(lines))
+    index = sum(len(l) + 1 for l in lines[:line])
+    if line < len(lines):
+        units = lines[line].encode("utf-16-le")
+        col = min(pos["character"] * 2, len(units))
+        index += len(units[:col].decode("utf-16-le", errors="ignore"))
+    return min(index, len(text))
+
+
+def apply_edits(text, edits):
+    """Apply TextEdit[] the way a client does: back to front."""
+    spans = sorted(((offset_of(text, e["range"]["start"]),
+                     offset_of(text, e["range"]["end"]), e.get("newText", ""))
+                    for e in edits), reverse=True)
+    for start, end, new in spans:
+        text = text[:start] + new + text[end:]
+    return text
+
+
+def document_end(text):
+    lines = text.split("\n")
+    return {"line": len(lines) - 1,
+            "character": len(lines[-1].encode("utf-16-le")) // 2}
+
+
+def check_formatting_applies(edits, original, label):
+    """A formatting answer is only correct if APPLYING it keeps the program.
+
+    The handler used to escape its output twice: every newline reached the
+    client as a literal backslash-n, so the edit collapsed the file onto one
+    line. The old assertion was non_empty, which that passed (#1213).
+    """
+    if not edits:
+        log_result(f"{label}: formatting edits apply", False, "no edits")
+        return
+    rng = edits[0].get("range", {})
+    log_result(f"{label}: whole-document edit ends at the true end",
+               rng.get("end") == document_end(original),
+               f"end {rng.get('end')} vs {document_end(original)}")
+    applied = apply_edits(original, edits)
+    lines_in, lines_out = original.count("\n"), applied.count("\n")
+    log_result(f"{label}: formatted text keeps its lines",
+               lines_out * 4 >= lines_in * 3, f"{lines_in} lines in, {lines_out} out")
+    log_result(f"{label}: formatting adds no backslashes",
+               applied.count(chr(92)) == original.count(chr(92)),
+               f"{original.count(chr(92))} in, {applied.count(chr(92))} out")
+
+
+def check_formatting_literals(c):
+    """String literals holding escapes must come back byte-for-byte."""
+    bs = chr(92)
+    lit_nl = '"a' + bs + 'nb"'
+    lit_q = '"a' + bs + '"b"'
+    text = ("class Lits {\n"
+            "  function : Main(args : String[]) ~ Nil {\n"
+            "    x := " + lit_nl + ";\n"
+            "    y := " + lit_q + ";\n"
+            "    x->PrintLine(); y->PrintLine();\n"
+            "  }\n"
+            "}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_format_literals.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    c.diagnostics_for(uri, timeout=60)
+    edits = result_of(c.request("textDocument/formatting", {
+        "textDocument": {"uri": uri},
+        "options": {"tabSize": 2, "insertSpaces": True}}))
+    check_formatting_applies(edits, text, "escaped literals")
+    applied = apply_edits(text, edits or [])
+    log_result("formatting keeps an escaped newline inside a literal",
+               lit_nl in applied, repr(applied[:160]))
+    log_result("formatting keeps an escaped quote inside a literal",
+               lit_q in applied, repr(applied[:160]))
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -429,10 +508,13 @@ def main():
             "textDocument/completion",
             dict(at("circle->GetArea", 1, 8),
                  context={"triggerKind": 2, "triggerCharacter": ">"}))))
-        log_result("textDocument/formatting", non_empty(c.request(
+        fmt = result_of(c.request(
             "textDocument/formatting",
             {"textDocument": {"uri": probe_uri},
-             "options": {"tabSize": 4, "insertSpaces": False}})))
+             "options": {"tabSize": 4, "insertSpaces": False}}))
+        log_result("textDocument/formatting", bool(fmt))
+        check_formatting_applies(fmt, probe_text, "lsp_probe.obs")
+        check_formatting_literals(c)
         log_result("textDocument/foldingRange", non_empty(c.request(
             "textDocument/foldingRange", {"textDocument": {"uri": probe_uri}})))
         log_result("textDocument/selectionRange", non_empty(c.request(
@@ -588,6 +670,36 @@ def main():
                        any("use Collection;" in t for t in titles), f"titles: {titles}")
             log_result("and offers to qualify the variable with it",
                        any("Collection.Vector" in t for t in titles), f"titles: {titles}")
+
+        # --- what the edits and messages carry is plain text (#1213) ---------
+        # The server pre-escaped these before a serializer that escapes on its
+        # own, so the 'use' fix inserted a literal backslash-r-backslash-n into
+        # the user's file and multi-line diagnostics showed literal escapes.
+        obs = os.path.join(TESTS_DIR, "lsp_codeaction.obs")
+        with open(obs, encoding="utf-8") as fh:
+            text = fh.read()
+        uri = path_to_uri(obs)
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        diags = c.diagnostics_for(uri, timeout=60) or []
+        log_result("diagnostic messages carry no literal escapes",
+                   bool(diags) and not any(chr(92) in str(d.get("message", "")) for d in diags),
+                   f"messages: {[d.get('message') for d in diags][:3]}")
+        undef = next((d for d in diags
+                      if str(d.get("message", "")).startswith("Undefined class")), None)
+        use_texts = []
+        if undef is not None:
+            for f in result_of(c.request("textDocument/codeAction", {
+                    "textDocument": {"uri": uri}, "range": undef["range"],
+                    "context": {"diagnostics": [undef]}})) or []:
+                if isinstance(f, dict) and "use Collection;" in str(f.get("title", "")):
+                    for change in f.get("edit", {}).get("documentChanges", []):
+                        for e in (change.get("edits", []) if isinstance(change, dict) else []):
+                            if str(e.get("newText", "")).startswith("use "):
+                                use_texts.append(e["newText"])
+        log_result("the 'use' fix inserts a real line break",
+                   bool(use_texts) and all(t.endswith("\n") and chr(92) not in t for t in use_texts),
+                   f"newText: {use_texts!r}")
 
         # --- the same, for an inferred-type local (#1057) --------------------
         # `:=` is the dominant style in this codebase -- the examples, the
