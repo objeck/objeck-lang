@@ -71,7 +71,7 @@ The `.obe` is what runs, so recompile after every edit.
 
 | Editor | Transport | Setup |
 |--------|-----------|-------|
-| **VS Code** | Named pipe | Install the [`.vsix` extension](https://github.com/objeck/objeck-lang/releases/latest), set install path in settings |
+| **VS Code** | STDIO (one server per window) | Install the [`.vsix` extension](https://github.com/objeck/objeck-lang/releases/latest), set install path in settings |
 | **Sublime Text** | STDIO | Add config from [`clients/sublime/`](clients/sublime/) to LSP settings |
 | **Kate** | STDIO | Add server entry in LSP Client settings ([instructions](README.txt)) |
 | **ecode** | STDIO | Add server to [`lspclient.json`](README.txt) |
@@ -143,7 +143,7 @@ graph LR
         Compiler --> Docs
     end
 
-    VSCode --> Pipe
+    VSCode --> STDIO
     Sublime --> STDIO
     Kate --> STDIO
     ecode --> STDIO

@@ -34,7 +34,7 @@ Open the folder (not just the file) in VS Code to activate workspace mode.
 
 ## Transport
 
-VS Code uses a **named pipe** connection on all platforms, avoiding the need for `OBJECK_STDIO`.
+Each VS Code window starts its own server over **STDIO**, launched and stopped by the language client. The extension runs `obr` from the configured install directory directly (no shell), with `OBJECK_STDIO=binary` set. It used to share one fixed named pipe between windows, so a second window reached the first window's server.
 
 ## Debugging (DAP)
 

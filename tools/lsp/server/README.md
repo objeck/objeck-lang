@@ -30,7 +30,7 @@ obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code
 # STDIO transport (used by most editors)
 obr objeck_lsp.obe objk_apis.json stdio
 
-# Named pipe transport (VS Code on Windows)
+# Named pipe transport
 obr objeck_lsp.obe objk_apis.json pipe
 
 # TCP socket transport
