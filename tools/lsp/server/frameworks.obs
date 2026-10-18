@@ -6,12 +6,31 @@ bundle LSP {
 	~#
 	class LspWorker from System.Concurrency.Thread {
 		@quit : Bool;
+		# 'initialize' has been answered; until then requests get ServerNotInitialized
+		@initialize_seen : Bool;
+		# the client's 'initialized' notification has arrived
 		@is_initialized : Bool;
+		# 'shutdown' has been answered; only 'exit' is valid now
+		@is_shutdown : Bool;
 		@is_debug : Bool;
 		@workspace : LspWorkspace;
 		@socket : TCPSocket;
 		@pipe : Pipe;
-		@cancel_id : Int;
+		# the id of the request being answered, exactly as the client sent it
+		@reply_id : JsonElement;
+		@next_server_id : Int;
+		# pipe input not yet consumed: bytes [@pipe_start, @pipe_end)
+		@pipe_bytes : Byte[];
+		@pipe_start : Int;
+		@pipe_end : Int;
+
+		# JSON-RPC / LSP error codes
+		consts ErrorCode {
+			PARSE_ERROR := -32700,
+			INVALID_REQUEST := -32600,
+			METHOD_NOT_FOUND := -32601,
+			SERVER_NOT_INITIALIZED := -32002
+		}
 
 		New(pipe : Pipe, socket : TCPSocket, is_debug : Bool) {
 			Parent();
@@ -20,7 +39,6 @@ bundle LSP {
 			@pipe := pipe;
 
 			@is_debug := is_debug;
-			@cancel_id := -1;
 			@workspace := LspWorkspace->New(@is_debug);
 		}
 
@@ -29,8 +47,9 @@ bundle LSP {
 				request := ReadRpcRequest();
 				if(request <> Nil) {
 					ProcessResponse(request);
-				}	
+				}
 				else {
+					# the stream closed
 					@quit := true;
 				};
 			};
@@ -93,13 +112,42 @@ bundle LSP {
 
 		# --- process requests ---
 		method : ProcessResponse(request : RpcRequest) ~ Nil {
+			# A reply to one of OUR requests (client/registerCapability). Nothing
+			# waits on it; these used to be dispatched as requests named '<none>'.
+			if(request->IsResponse()) {
+				if(request->GetError() <> Nil) {
+					error_text := request->GetError()->ToString();
+					System.IO.Filesystem.Logger->Instance()->Error("*** Client rejected a server request: {$error_text} ***");
+				};
+				return;
+			};
+
+			# Not JSON, or JSON that is not a request: answer with a null id, as
+			# JSON-RPC asks, and carry on reading. This used to end the session.
+			if(request->GetMethod() = Nil) {
+				@reply_id := Nil;
+				if(request->IsParseError()) {
+					WriteRpcError(-1, LspWorker->ErrorCode->PARSE_ERROR->As(Int), "Parse error");
+				}
+				else {
+					WriteRpcError(-1, LspWorker->ErrorCode->INVALID_REQUEST->As(Int), "Invalid request");
+				};
+				return;
+			};
+
 			id := request->GetId();
 			method_id := request->GetMethod();
-			
+			@reply_id := request->GetIdJson();
+
 			# notification
-			if(id->IsNeg()) {
+			if(request->IsNotification()) {
 				if(@is_debug) {
 					System.IO.Filesystem.Logger->Instance()->Info("NOTIFICATION='{$method_id}'\n");
+				};
+
+				# Before 'initialize', every notification except 'exit' is dropped.
+				if(<>@initialize_seen & <>method_id->Equals("exit")) {
+					return;
 				};
 
 				select(method_id) {
@@ -136,10 +184,11 @@ bundle LSP {
 					}
 
 					label "exit" {
-						Runtime->Exit(0);
+						Exit();
 					}
 
 					other {
+						# unknown notifications ($/setTrace, $/progress, ...) are ignored
 						if(@is_debug) {
 							System.IO.Filesystem.Logger->Instance()->Error("*** Unknown notification='{$method_id}' ***");
 						};
@@ -152,8 +201,21 @@ bundle LSP {
 					System.IO.Filesystem.Logger->Instance()->Info("METHOD='{$method_id}', id={$id}");
 				};
 
+				# After 'shutdown' only 'exit' is valid.
+				if(@is_shutdown) {
+					WriteRpcError(id, LspWorker->ErrorCode->INVALID_REQUEST->As(Int), "Server is shutting down");
+					return;
+				};
+
+				# Until 'initialize', nothing else may be answered.
+				if(<>@initialize_seen & <>method_id->Equals("initialize")) {
+					WriteRpcError(id, LspWorker->ErrorCode->SERVER_NOT_INITIALIZED->As(Int), "Server not initialized");
+					return;
+				};
+
 				select(method_id) {
 					label "initialize" {
+						@initialize_seen := true;
 						CallbackInitialize(id, request->GetParams());
 					}
 					
@@ -267,89 +329,192 @@ bundle LSP {
 					}
 
 					other {
-						if(@is_debug & <>method_id->Equals("<none>")) {
+						# Every request gets an answer. An unknown one used to get none,
+						# and the client's promise waited forever.
+						if(@is_debug) {
 							System.IO.Filesystem.Logger->Instance()->Error("*** Unknown method='{$method_id}' ***");
 						};
+						WriteRpcError(id, LspWorker->ErrorCode->METHOD_NOT_FOUND->As(Int), "Method not found: {$method_id}");
 					}
 				};
 			};
 		}
 
 		# --- utilities ---
+
+		#
+		# One message: header lines up to a blank line, then Content-Length bytes.
+		# Returns Nil when the stream has closed.
+		#
+		# This read exactly ONE header line and one blank line, so a client that
+		# sent Content-Type (legal, and sent first by some) got no answer at all.
+		# The pipe was read as if each read returned one whole message, which a
+		# message-mode pipe does not promise: a body over 8 KB was cut short and the
+		# message lost, and a client that writes the header and the body separately
+		# (vscode-jsonrpc does) had its body discarded as the "blank line". The pipe
+		# is now read as a byte stream through a buffer.
+		#
 		method : ReadString() ~ String {
+			length := -1;
+			while(true) {
+				line := ReadHeaderLine();
+				if(line = Nil) {
+					return Nil;
+				};
+
+				if(line->IsEmpty()) {
+					# end of the header block; a blank line before any header means
+					# the stream is gone (a closed console or socket reads as empty)
+					if(length < 0) {
+						return Nil;
+					};
+
+					text := ReadBody(length);
+					if(@is_debug & text <> Nil) {
+						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
+					};
+					return text;
+				};
+
+				index := line->Find(':');
+				if(index > 0) {
+					name := line->SubString(index)->Trim()->ToLower();
+					if(name->Equals("content-length")) {
+						length := line->SubString(index + 1, line->Size() - index - 1)->Trim()->ToInt();
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		# A header line without its line ending, or Nil when the stream has closed.
+		method : ReadHeaderLine() ~ String {
 			line : String;
 			if(@socket <> Nil) {
 				line := @socket->ReadLine();
-				@socket->ReadLine();
 			}
 			else if(@pipe <> Nil) {
-				line := @pipe->ReadLine();
-				# pipe message mode: the full message (header + body) arrives in one read.
-				# extract body after the double \r\n if present.
-				body_start := line->Find("\r\n\r\n");
-				if(body_start > -1) {
-					header := line->SubString(body_start);
-					body := line->SubString(body_start + 4, line->Size() - body_start - 4);
-					index := header->Find(':');
-					if(index > 0) {
-						if(@is_debug) {
-							System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$body}'");
-						};
-						return body;
-					};
-				}
-				else {
-					@pipe->ReadLine();
-				};
+				line := ReadPipeLine();
 			}
 			else {
 				line := Console->ReadLine();
-				Console->ReadLine();
 			};
 
-			index := line->Find(':');
-			if(index > 0) {
-				index += 2;
-				length := line->SubString(index, line->Size() - index)->ToInt();
+			if(line = Nil) {
+				return Nil;
+			};
 
-				# read from socket
-				if(@socket <> Nil) {
-					buffer := Byte->New[length];
-					@socket->ReadBuffer(0, buffer->Size(), buffer);
+			return line->Trim();
+		}
 
-					text := String->New(buffer->ToUnicode());
-					if(@is_debug) {
-						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
+		method : ReadBody(length : Int) ~ String {
+			if(length = 0) {
+				return "";
+			};
+
+			# socket
+			if(@socket <> Nil) {
+				buffer := Byte->New[length];
+				@socket->ReadBuffer(0, buffer->Size(), buffer);
+				return String->New(buffer->ToUnicode());
+			}
+			# pipe
+			else if(@pipe <> Nil) {
+				buffer := ReadPipeBytes(length);
+				if(buffer = Nil) {
+					return Nil;
+				};
+				return String->New(buffer->ToUnicode());
+			};
+
+			# stdin
+			buffer := Char->New[length];
+			Console->ReadBuffer(0, buffer->Size(), buffer);
+			return String->New(buffer);
+		}
+
+		#
+		# Buffered pipe input: whatever each read returns -- part of a message, one
+		# message, or several -- is appended here and framing is parsed from it.
+		#
+		method : FillPipe() ~ Bool {
+			chunk := Byte->New[8192];
+			read := @pipe->ReadBuffer(0, chunk->Size(), chunk);
+			if(read <= 0) {
+				return false;
+			};
+
+			if(@pipe_bytes = Nil) {
+				@pipe_bytes := Byte->New[16384];
+			};
+
+			# compact, then grow if needed
+			if(@pipe_start > 0) {
+				pending := @pipe_end - @pipe_start;
+				for(i := 0; i < pending; i += 1;) {
+					@pipe_bytes[i] := @pipe_bytes[@pipe_start + i];
+				};
+				@pipe_start := 0;
+				@pipe_end := pending;
+			};
+
+			if(@pipe_end + read > @pipe_bytes->Size()) {
+				size := @pipe_bytes->Size() * 2;
+				while(@pipe_end + read > size) {
+					size *= 2;
+				};
+				grown := Byte->New[size];
+				for(i := 0; i < @pipe_end; i += 1;) {
+					grown[i] := @pipe_bytes[i];
+				};
+				@pipe_bytes := grown;
+			};
+
+			for(i := 0; i < read; i += 1;) {
+				@pipe_bytes[@pipe_end + i] := chunk[i];
+			};
+			@pipe_end += read;
+
+			return true;
+		}
+
+		method : ReadPipeLine() ~ String {
+			while(true) {
+				for(i := @pipe_start; i < @pipe_end; i += 1;) {
+					if(@pipe_bytes[i] = 10) {
+						size := i - @pipe_start;
+						line := Byte->New[size];
+						for(j := 0; j < size; j += 1;) {
+							line[j] := @pipe_bytes[@pipe_start + j];
+						};
+						@pipe_start := i + 1;
+						return String->New(line->ToUnicode());
 					};
+				};
 
-					return text;
-				}
-				# read from pipe - fallback for split messages
-				else if(@pipe <> Nil) {
-					buffer := Byte->New[length];
-					@pipe->ReadBuffer(0, buffer->Size(), buffer);
-					text := String->New(buffer->ToUnicode());
-
-					if(@is_debug) {
-						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
-					};
-
-					return text;
-				}
-				# read from stdin
-				else {
-					buffer := Char->New[length];
-					Console->ReadBuffer(0, buffer->Size(), buffer);
-					text := String->New(buffer);
-					if(@is_debug) {
-						System.IO.Filesystem.Logger->Instance()->Info("====\nREAD='{$text}'");
-					};
-
-					return text;
+				if(<>FillPipe()) {
+					return Nil;
 				};
 			};
 
-			return "";
+			return Nil;
+		}
+
+		method : ReadPipeBytes(length : Int) ~ Byte[] {
+			while(@pipe_end - @pipe_start < length) {
+				if(<>FillPipe()) {
+					return Nil;
+				};
+			};
+
+			bytes := Byte->New[length];
+			for(i := 0; i < length; i += 1;) {
+				bytes[i] := @pipe_bytes[@pipe_start + i];
+			};
+			@pipe_start += length;
+
+			return bytes;
 		}
 
 		method : WriteString(text : String) ~ Nil {
@@ -375,90 +540,121 @@ bundle LSP {
 			};
 		}
 
+		# The next message, or Nil once the stream has closed. A body that is not
+		# a JSON-RPC message comes back as a request with no method, so it can be
+		# answered with an error instead of ending the session.
 		method : ReadRpcRequest() ~ RpcRequest {
 			text := ReadString();
-			if(<>text->IsEmpty()) {
-				json :=JsonParser->New(text);
-				if(json->Parse()) {
-					node := json->GetRoot();
-					
-					id := -1;
-					id_elem := node->Get("id");
-					if(id_elem <> Nil) {
-						id := id_elem->GetValue()->ToInt();
-					};
-
-					ver := node->Get("jsonrpc");
-					
-					mthd : String;
-					mthd_elem := node->Get("method");
-					if(mthd_elem <> Nil) {
-						mthd := mthd_elem->GetValue();
-					}
-					else {
-						mthd := "<none>";
-					};
-
-					params := node->Get("params");
-					if(params = Nil) {
-						params := node->Get("result");
-					};
-
-					if(ver <> Nil & ver->GetValue()->Equals("2.0") & mthd <> Nil) {
-						return RpcRequest->New(id, mthd, params);
-					};
-				};
+			if(text = Nil) {
+				return Nil;
 			};
 
-			return Nil;
+			json := JsonParser->New(text);
+			if(<>json->Parse()) {
+				return RpcRequest->New(true);
+			};
+
+			node := json->GetRoot();
+			if(node = Nil | node->GetType() <> JsonElement->JsonType->OBJECT) {
+				return RpcRequest->New(false);
+			};
+
+			# kept as sent: ids are 'integer | string' and are echoed back verbatim
+			id_elem := node->Get("id");
+			if(id_elem <> Nil & id_elem->GetType() = JsonElement->JsonType->NULL) {
+				id_elem := Nil;
+			};
+
+			mthd_elem := node->Get("method");
+			if(mthd_elem = Nil) {
+				# a reply to one of our requests
+				if(id_elem <> Nil & (node->Get("result") <> Nil | node->Get("error") <> Nil)) {
+					return RpcRequest->New(id_elem, node->Get("error"));
+				};
+				return RpcRequest->New(false);
+			};
+
+			ver := node->Get("jsonrpc");
+			if(ver = Nil | <>ver->GetValue()->Equals("2.0")) {
+				return RpcRequest->New(false);
+			};
+
+			return RpcRequest->New(id_elem, mthd_elem->GetValue(), node->Get("params"));
 		}
 
-		# --- capability ---
-		method : WriteRpcCapability(id : Int, params : JsonElement) ~ Nil {
+		# --- server-to-client request ---
+		method : WriteRpcServerRequest(kind : String, params : JsonElement) ~ Nil {
 			node := JsonElement->New(JsonElement->JsonType->OBJECT);
-			
+
+			# Its own id space, as strings, so it can never be mistaken for one of
+			# the client's numeric ids. This was a fixed 101.
+			@next_server_id += 1;
 			node->Insert("jsonrpc", "2.0");
-			node->Insert("method", "client/registerCapability");
+			node->Insert("id", "objk-{$@next_server_id}");
+			node->Insert("method", kind);
 			node->Insert("params", params);
-			node->Insert("id", id);
 
 			WriteString(node->ToString());
 		}
 
 		# --- response ---
 		method : WriteRpcResponse(id : Int, result : JsonElement) ~ Nil {
-			# A cancelled request still needs an answer. Dropping the response
-			# leaves the client holding a pending promise forever; LSP asks for an
-			# error with code -32800 (RequestCancelled), so send that.
-			if(id > -1 & id = @cancel_id) {
-				@cancel_id := -1;
-			
-				node := JsonElement->New(JsonElement->JsonType->OBJECT);
-				node->Insert("jsonrpc", "2.0");
-				node->Insert("id", id);
-				error := node->AddChild("error");
-				error->Insert("code", -32800);
-				error->Insert("message", "Request cancelled");
-			
-				WriteString(node->ToString());
+			node := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			node->Insert("jsonrpc", "2.0");
+			InsertReplyId(node, id);
+			if(result = Nil) {
+				node->Insert("result", JsonElement->New(JsonElement->JsonType->NULL));
 			}
 			else {
-				node := JsonElement->New(JsonElement->JsonType->OBJECT);
-
-				node->Insert("jsonrpc", "2.0");
-				if(result = Nil) {
-					node->Insert("result", JsonElement->New(JsonElement->JsonType->NULL));
-				}
-				else {
-					node->Insert("result", result);
-				};
-
-				if(id > -1) {
-					node->Insert("id", id);
-				};
-
-				WriteString(node->ToString());
+				node->Insert("result", result);
 			};
+
+			WriteString(node->ToString());
+		}
+
+		method : WriteRpcError(id : Int, code : Int, message : String) ~ Nil {
+			node := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			node->Insert("jsonrpc", "2.0");
+			InsertReplyId(node, id);
+			error := node->AddChild("error");
+			error->Insert("code", code);
+			error->Insert("message", message);
+
+			WriteString(node->ToString());
+		}
+
+		# The id exactly as the client sent it -- a string id used to be read with
+		# ToInt and answered as 0. JSON-RPC answers an unidentifiable request with
+		# a null id.
+		method : InsertReplyId(node : JsonElement, id : Int) ~ Nil {
+			if(@reply_id <> Nil) {
+				node->Insert("id", @reply_id);
+			}
+			else if(id > -1) {
+				node->Insert("id", id);
+			}
+			else {
+				node->Insert("id", JsonElement->New(JsonElement->JsonType->NULL));
+			};
+		}
+
+		#
+		# 'exit': the process ends with 0 after a 'shutdown' and 1 without one. On a
+		# TCP connection the process serves other clients, so only this connection
+		# ends.
+		#
+		method : Exit() ~ Nil {
+			if(@socket <> Nil) {
+				@quit := true;
+				return;
+			};
+
+			if(@is_shutdown) {
+				Runtime->Exit(0);
+			};
+			Runtime->Exit(1);
 		}
 
 		# --- request ---
@@ -1619,20 +1815,67 @@ bundle LSP {
 	Handles JSON-RPC requests
 	~#
 	class : private : RpcRequest {
-		@id : Int;
+		@id_json : JsonElement;
 		@mthd : String;
 		@params : JsonElement;
-		@is_debug : Bool;
+		@error : JsonElement;
+		@is_response : Bool;
+		@is_parse_error : Bool;
 
-		New(id : Int, mthd : String, params : JsonElement) {
-			@id := id;
+		# a request (id present) or a notification (id Nil)
+		New(id_json : JsonElement, mthd : String, params : JsonElement) {
+			@id_json := id_json;
 			@mthd := mthd;
 			@params := params;
-			@is_debug := true;
 		}
 
+		# the client's reply to a request of ours
+		New(id_json : JsonElement, error : JsonElement) {
+			@id_json := id_json;
+			@error := error;
+			@is_response := true;
+		}
+
+		# not a JSON-RPC message: no method
+		New(is_parse_error : Bool) {
+			@is_parse_error := is_parse_error;
+		}
+
+		# -1 for a notification. A numeric id is passed through for logging; a
+		# string id reads as 0 -- the reply uses GetIdJson, never this.
 		method : public : GetId() ~ Int {
-			return @id;
+			if(@id_json = Nil) {
+				return -1;
+			};
+
+			if(@id_json->GetType() = JsonElement->JsonType->NUMBER) {
+				id := @id_json->GetInt();
+				if(id > -1) {
+					return id;
+				};
+			};
+
+			return 0;
+		}
+
+		method : public : GetIdJson() ~ JsonElement {
+			return @id_json;
+		}
+
+		method : public : IsNotification() ~ Bool {
+			return @id_json = Nil;
+		}
+
+		method : public : IsResponse() ~ Bool {
+			return @is_response;
+		}
+
+		method : public : IsParseError() ~ Bool {
+			return @is_parse_error;
+		}
+
+		method : public : GetError() ~ JsonElement {
+			return @error;
 		}
 
 		method : public : GetMethod() ~ String {
