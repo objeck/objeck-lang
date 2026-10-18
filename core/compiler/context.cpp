@@ -2442,6 +2442,20 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
   if(left_type->GetType() == CLASS_TYPE) {
     left_type->SetName(L"System.String");
   }
+
+  // '["a", "b"][1]': the subscripted literal is one element (#1184)
+  ExpressionList* indices = array->GetIndices();
+  if(indices) {
+    std::vector<Expression*> index_exprs = indices->GetExpressions();
+    if((int)index_exprs.size() != array->GetDimension()) {
+      ProcessError(array, L"Dimension size mismatch: the literal has " + ToString(array->GetDimension()) +
+                   L" dimension(s), the subscript " + ToString((int)index_exprs.size()));
+    }
+    AnalyzeIndices(indices, depth + 1);
+
+    left_type = TypeFactory::Instance()->MakeType(left_type);
+    left_type->SetDimension(0);
+  }
   array->SetEvalType(left_type, false);
 
   // ensure that element sizes match dimensions
@@ -2540,6 +2554,10 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, const int depth)
 
 void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, const int depth)
 {
+  // taken once, so a name read in the target's own subscript is not a target
+  const bool is_target = in_assignment_target;
+  in_assignment_target = false;
+
   // explicitly defined variable
   if(entry) {
     entry->WasLoaded();
@@ -2637,7 +2655,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       // not a capture -- a new type-inferred local declared inside the lambda
       // body (e.g. `a := ...` in a `{ }` block body). Create it in the lambda's
       // own scope, mirroring the normal type-inferred-variable path below.
-      CheckImplicitDeclaration(variable);
+      CheckImplicitDeclaration(variable, is_target);
       const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
       SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
       current_table->AddEntry(var_entry, true);
@@ -2651,7 +2669,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // type inferred variable
   else if(current_method) {
-    CheckImplicitDeclaration(variable);
+    CheckImplicitDeclaration(variable, is_target);
     const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
     SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
     current_table->AddEntry(var_entry, true);
@@ -3560,6 +3578,10 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
       else {
         ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
       }
+    }
+    // 'F(a)(b)': call the function value the previous link returned
+    else if(method_call->IsCurriedCall()) {
+      AnalyzeCurriedCall(expression, method_call, depth);
     }
     else {
       // track rouge return
@@ -4680,6 +4702,162 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 }
 
 /********************************
+ * Analyzes a call through a function
+ * value held by 'entry': a function
+ * variable 'f(x)', or the hidden local
+ * of a curried call 'F(a)(b)'
+ ********************************/
+void ContextAnalyzer::AnalyzeFunctionValueCall(MethodCall* method_call, SymbolEntry* entry, const std::wstring& call_name, const int depth)
+{
+  entry->WasLoaded();
+
+  // track rouge return
+  ++nested_call_depth;
+  
+  // generate parameter strings
+  Type* type = entry->GetType();
+  AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
+
+  // get calling and function parameters
+  const std::vector<Type*> func_params = type->GetFunctionParameters();
+  std::vector<Expression*> calling_params = method_call->GetCallingParameters()->GetExpressions();
+  if(func_params.size() != calling_params.size()) {
+    ProcessError(static_cast<Expression*>(method_call), L"Function call parameter size mismatch");
+    return;
+  }
+
+  // check parameters
+  std::wstring dyn_func_params_str;
+  ExpressionList* boxed_resolved_params = TreeFactory::Instance()->MakeExpressionList();
+  for(size_t i = 0; i < func_params.size(); ++i) {
+    Type* func_param = func_params[i];
+    Expression* calling_param = calling_params[i];
+
+    // check for boxing/unboxing
+    Expression* boxed_param = BoxExpression(func_param, calling_param, depth + 1);
+    if(boxed_param) {
+      boxed_resolved_params->AddExpression(boxed_param);
+    }
+    else if((boxed_param = UnboxingExpression(func_param, calling_param, false, depth + 1))) {
+      boxed_resolved_params->AddExpression(boxed_param);
+    }
+    // add default
+    if(!boxed_param) {
+      boxed_resolved_params->AddExpression(calling_param);
+    }
+
+    // encode parameter: the PARAMETER's dimension -- this read the function
+    // type's own, which is 0, so an Int[] parameter never matched (#1183)
+    dyn_func_params_str += EncodeType(func_param);
+    for(int j = 0; j < func_param->GetDimension(); ++j) {
+      dyn_func_params_str += L'*';
+    }
+    dyn_func_params_str += L',';
+  }
+  
+  // method call parameters. This count becomes the DYN_MTHD_CALL operand,
+  // which the JIT reads as the number of operand-stack WORDS holding the
+  // arguments (it marshals operand + 2 entries with the func-ref's own two
+  // words). A function-typed argument is two words, so counting parameters
+  // left a call like apply(Test->Inc(Int) ~ Int, 4) one word short under the
+  // JIT and crashed it; the interpreter ignores the operand.
+  int param_words = 0;
+  for(size_t i = 0; i < func_params.size(); ++i) {
+    param_words += (func_params[i]->GetType() == FUNC_TYPE && func_params[i]->GetDimension() == 0) ? 2 : 1;
+  }
+  type->SetFunctionParameterCount(param_words);
+  AnalyzeExpressions(boxed_resolved_params, depth + 1);
+
+  // check parameters against the dynamic definition. An exact encoding is a
+  // match; otherwise each argument is matched by the rules a named call uses,
+  // so with g : (Base) ~ Base, g("hi") and g(Nil) are accepted -- they were
+  // rejected for not being exactly Base (#1183)
+  const std::wstring call_params_str = EncodeMethodCall(boxed_resolved_params, depth);
+  bool params_match = dyn_func_params_str == call_params_str;
+  if(!params_match) {
+    params_match = true;
+    const std::vector<Expression*> resolved_params = boxed_resolved_params->GetExpressions();
+    for(size_t i = 0; i < resolved_params.size() && i < func_params.size(); ++i) {
+      if(MatchCallingParameter(resolved_params[i], func_params[i], nullptr, nullptr, depth) < 0) {
+        params_match = false;
+      }
+    }
+  }
+  if(!params_match) {
+    ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" + call_name +
+                 L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
+  }
+  // reset calling parameters
+  method_call->SetCallingParameters(boxed_resolved_params);
+
+  // set entry reference and return type
+  method_call->SetFunctionalCall(entry);
+  method_call->SetEvalType(type->GetFunctionReturn(), true);
+  if(method_call->GetMethodCall()) {
+    method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
+  }
+
+  // next call
+  AnalyzeExpressionMethodCall(method_call, depth + 1);
+  
+  // check for rouge return
+  --nested_call_depth;
+  RogueReturn(method_call);
+}
+
+/********************************
+ * Analyzes a curried call 'F(a)(b)':
+ * 'method_call' applies the function
+ * value 'expression' returned. The value
+ * goes into a hidden local, and the call
+ * is then a function-value call (#1184).
+ ********************************/
+void ContextAnalyzer::AnalyzeCurriedCall(Expression* expression, MethodCall* method_call, const int depth)
+{
+  // the callee's name, for messages
+  std::wstring callee_name;
+  if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+    MethodCall* callee = static_cast<MethodCall*>(expression);
+    callee_name = callee->IsCurriedCall() ? L"(..)" : callee->GetMethodName();
+    if(callee_name.empty()) {
+      callee_name = callee->GetVariableName();
+    }
+  }
+  const std::wstring call_name = callee_name + L"(..)";
+
+  // binary-op operands are analyzed more than once: reuse the first pass's local
+  SymbolEntry* entry = method_call->GetFunctionalEntry();
+  if(!entry) {
+    // the previous link's own result (GetExpressionType would walk on into this link)
+    Type* func_type = expression->GetEvalType();
+    bool is_scalar = true;
+    if(expression->GetExpressionType() == METHOD_CALL_EXPR && static_cast<MethodCall*>(expression)->GetCallIndices()) {
+      is_scalar = false;
+    }
+
+    if(!func_type || func_type->GetType() != FUNC_TYPE || func_type->GetDimension() > 0 || !is_scalar) {
+      const std::wstring type_name = func_type ? FormatGenericType(func_type) : L"Nil";
+      ProcessError(static_cast<Expression*>(method_call), L"Cannot call the result of '" + call_name + L"': it is '" +
+                   type_name + L"', not a function\n\t'F(a)(b)' calls the function value F(a) returns; end the statement with ';' if a new statement was meant");
+      return;
+    }
+
+    if(!current_method || !current_table) {
+      ProcessError(static_cast<Expression*>(method_call), L"A curried call must be inside a method or function");
+      return;
+    }
+
+    static int curried_tmp_id = 0;
+    const std::wstring tmp_name = current_method->GetName() + L":#curried_tmp#" + std::to_wstring(curried_tmp_id++);
+    entry = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, TypeFactory::Instance()->MakeType(func_type), false, true);
+    current_table->AddEntry(entry, true);
+    entry->WasLoaded();
+  }
+
+  AnalyzeFunctionValueCall(method_call, entry, call_name, depth);
+}
+
+/********************************
  * Analyzes a dynamic function
  * call
  ********************************/
@@ -4747,100 +4925,7 @@ void ContextAnalyzer::AnalyzeVariableFunctionCall(MethodCall* method_call, const
   }
 
   if(entry && entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
-    entry->WasLoaded();
-
-    // track rouge return
-    ++nested_call_depth;
-    
-    // generate parameter strings
-    Type* type = entry->GetType();
-    AnalyzeVariableFunctionParameters(type, static_cast<Expression*>(method_call));
-
-    // get calling and function parameters
-    const std::vector<Type*> func_params = type->GetFunctionParameters();
-    std::vector<Expression*> calling_params = method_call->GetCallingParameters()->GetExpressions();
-    if(func_params.size() != calling_params.size()) {
-      ProcessError(static_cast<Expression*>(method_call), L"Function call parameter size mismatch");
-      return;
-    }
-
-    // check parameters
-    std::wstring dyn_func_params_str;
-    ExpressionList* boxed_resolved_params = TreeFactory::Instance()->MakeExpressionList();
-    for(size_t i = 0; i < func_params.size(); ++i) {
-      Type* func_param = func_params[i];
-      Expression* calling_param = calling_params[i];
-
-      // check for boxing/unboxing
-      Expression* boxed_param = BoxExpression(func_param, calling_param, depth + 1);
-      if(boxed_param) {
-        boxed_resolved_params->AddExpression(boxed_param);
-      }
-      else if((boxed_param = UnboxingExpression(func_param, calling_param, false, depth + 1))) {
-        boxed_resolved_params->AddExpression(boxed_param);
-      }
-      // add default
-      if(!boxed_param) {
-        boxed_resolved_params->AddExpression(calling_param);
-      }
-
-      // encode parameter: the PARAMETER's dimension -- this read the function
-      // type's own, which is 0, so an Int[] parameter never matched (#1183)
-      dyn_func_params_str += EncodeType(func_param);
-      for(int j = 0; j < func_param->GetDimension(); ++j) {
-        dyn_func_params_str += L'*';
-      }
-      dyn_func_params_str += L',';
-    }
-    
-    // method call parameters. This count becomes the DYN_MTHD_CALL operand,
-    // which the JIT reads as the number of operand-stack WORDS holding the
-    // arguments (it marshals operand + 2 entries with the func-ref's own two
-    // words). A function-typed argument is two words, so counting parameters
-    // left a call like apply(Test->Inc(Int) ~ Int, 4) one word short under the
-    // JIT and crashed it; the interpreter ignores the operand.
-    int param_words = 0;
-    for(size_t i = 0; i < func_params.size(); ++i) {
-      param_words += (func_params[i]->GetType() == FUNC_TYPE && func_params[i]->GetDimension() == 0) ? 2 : 1;
-    }
-    type->SetFunctionParameterCount(param_words);
-    AnalyzeExpressions(boxed_resolved_params, depth + 1);
-
-    // check parameters against the dynamic definition. An exact encoding is a
-    // match; otherwise each argument is matched by the rules a named call uses,
-    // so with g : (Base) ~ Base, g("hi") and g(Nil) are accepted -- they were
-    // rejected for not being exactly Base (#1183)
-    const std::wstring call_params_str = EncodeMethodCall(boxed_resolved_params, depth);
-    bool params_match = dyn_func_params_str == call_params_str;
-    if(!params_match) {
-      params_match = true;
-      const std::vector<Expression*> resolved_params = boxed_resolved_params->GetExpressions();
-      for(size_t i = 0; i < resolved_params.size() && i < func_params.size(); ++i) {
-        if(MatchCallingParameter(resolved_params[i], func_params[i], nullptr, nullptr, depth) < 0) {
-          params_match = false;
-        }
-      }
-    }
-    if(!params_match) {
-      ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" + method_call->GetMethodName() +
-                   L"(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls");
-    }
-    // reset calling parameters
-    method_call->SetCallingParameters(boxed_resolved_params);
-
-    // set entry reference and return type
-    method_call->SetFunctionalCall(entry);
-    method_call->SetEvalType(type->GetFunctionReturn(), true);
-    if(method_call->GetMethodCall()) {
-      method_call->GetMethodCall()->SetEvalType(type->GetFunctionReturn(), false);
-    }
-
-    // next call
-    AnalyzeExpressionMethodCall(method_call, depth + 1);
-    
-    // check for rouge return
-    --nested_call_depth;
-    RogueReturn(method_call);
+    AnalyzeFunctionValueCall(method_call, entry, method_call->GetMethodName(), depth);
   }
   else if(!use_static_check) {
     const std::wstring &mthd_name = method_call->GetMethodName();
@@ -5797,7 +5882,7 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
  * `@cuont += 1` used to declare a new local and compile (#1184). The entry
  * is still created afterwards so analysis carries on.
  ****************************/
-void ContextAnalyzer::CheckImplicitDeclaration(Variable* variable)
+void ContextAnalyzer::CheckImplicitDeclaration(Variable* variable, bool is_target)
 {
   const std::wstring &name = variable->GetName();
   if(!name.empty() && name[0] == L'@') {
@@ -5807,6 +5892,12 @@ void ContextAnalyzer::CheckImplicitDeclaration(Variable* variable)
   else if(in_operation_assignment) {
     ProcessError(variable, L"Undefined variable: '" + name + L"'"
                  L"\n\tA compound assignment needs an existing variable; declare it with ':=' first.");
+  }
+  // a name that is only read: 'y := zzz' reported "Invalid operation using
+  // classes: Var and Var", and 'Foo(zzz)' an undefined Foo (#1184)
+  else if(!is_target && !variable->IsInternalVariable() && !variable->IsAlt() && !name.empty() && name[0] != L'#') {
+    ProcessError(variable, L"Undefined variable: '" + name + L"'"
+                 L"\n\tCheck spelling, ensure the variable is declared in the current scope, or add a 'use' statement for external bundles.");
   }
 }
 
@@ -5821,7 +5912,9 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
   Variable* variable = assignment->GetVariable();
   if(variable) {
     in_operation_assignment = type != ASSIGN_STMT;
+    in_assignment_target = type == ASSIGN_STMT;
     AnalyzeVariable(variable, depth + 1);
+    in_assignment_target = false;
     in_operation_assignment = false;
     if(current_class && current_class->IsReadonlyRecord() && current_method &&
        current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
@@ -5888,6 +5981,15 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
             variable->GetEvalType()->SetDimension(0);
             entry->GetType()->SetDimension(0);
           }
+        }
+        // ... or a call's result: 'x := f->GetCells()[1]' declared x an Int[]
+        // holding the element, and the first use of x dereferenced it (#1184)
+        else if(expression->GetExpressionType() == METHOD_CALL_EXPR &&
+                static_cast<MethodCall*>(expression)->GetCallIndices() && entry->GetType()) {
+          Type* scalar_type = TypeFactory::Instance()->MakeType(entry->GetType());
+          scalar_type->SetDimension(0);
+          variable->SetTypes(scalar_type);
+          entry->SetType(scalar_type);
         }
       }
     }

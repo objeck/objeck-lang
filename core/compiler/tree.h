@@ -693,6 +693,8 @@ namespace frontend {
     bool matching_types;
     ExpressionType cur_type;
     bool matching_lengths;
+    // subscript on the literal itself: '["a", "b"][1]' (#1184)
+    ExpressionList* indices = nullptr;
 
     void GetAllElements(StaticArray* array, ExpressionList* elems);
 
@@ -718,6 +720,14 @@ namespace frontend {
 
     ExpressionType GetExpressionType() {
       return STAT_ARY_EXPR;
+    }
+
+    ExpressionList* GetIndices() {
+      return indices;
+    }
+
+    void SetIndices(ExpressionList* i) {
+      indices = i;
     }
 
     void SetId(int i) {
@@ -2907,6 +2917,10 @@ namespace frontend {
     // Distinct from Variable::indices, which subscripts a named variable.
     // Defaulted in-class so the five constructors need not each set it.
     ExpressionList* call_indices = nullptr;
+    // A curried application 'F(a)(b)': this link calls the function value the
+    // previous link returned. It has no name; the analyzer binds it to a hidden
+    // local holding that value (#1184).
+    bool is_curried_call = false;
 
     MethodCall(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num,
                const int end_line_pos, MethodCallType t, const std::wstring &v, ExpressionList* e);
@@ -3026,6 +3040,10 @@ namespace frontend {
     // Subscript applied to this call's result: 'GetItems()[0]'
     ExpressionList* GetCallIndices() { return call_indices; }
     void SetCallIndices(ExpressionList* i) { call_indices = i; }
+
+    // 'F(a)(b)': this link applies the previous link's function-valued result
+    bool IsCurriedCall() const { return is_curried_call; }
+    void SetCurriedCall() { is_curried_call = true; }
     bool IsOtherwiseIntrinsic() const { return is_otherwise_intrinsic; }
     void SetOtherwiseIntrinsic(bool v) { is_otherwise_intrinsic = v; }
 

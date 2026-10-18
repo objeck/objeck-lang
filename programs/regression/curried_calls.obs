@@ -1,0 +1,126 @@
+#~
+Regression: curried calls (#1184). `F(a)(b)` calls the function value F(a)
+returns with (b); chains such as `F(a)(b)(c)` apply each result in turn.
+Semicolons between statements are optional, so `Adder(2)(5)` used to parse
+as two statements, `Adder(2)` and `(5)`, and printed 5.
+
+A callee whose result is not a function is a compile error; see
+bad_curried_call_not_function.obs.
+~#
+
+class Maker {
+	@base : Int;
+
+	New(base : Int) {
+		@base := base;
+	}
+
+	method : public : Make(n : Int) ~ (Int) ~ Int {
+		b := @base;
+		return \(Int) ~ Int : (x) => x * n + b;
+	}
+}
+
+class CurriedCalls {
+	@failures : Int;
+	@order : String;
+
+	New() {
+		@failures := 0;
+		@order := "";
+	}
+
+	function : Adder(n : Int) ~ (Int) ~ Int {
+		return \(Int) ~ Int : (x) => x + n;
+	}
+
+	function : Add3(a : Int) ~ (Int) ~ (Int) ~ Int {
+		return \(Int) ~ (Int) ~ Int : (b) => \(Int) ~ Int : (c) => a * 100 + b * 10 + c;
+	}
+
+	function : Greeter(greeting : String) ~ (String) ~ String {
+		return \(String) ~ String : (name) => greeting + ", " + name;
+	}
+
+	function : Scaler(k : Float) ~ (Float) ~ Float {
+		return \(Float) ~ Float : (x) => x * k;
+	}
+
+	method : Mark(tag : String, n : Int) ~ Int {
+		@order += tag;
+		return n;
+	}
+
+	method : Curry(n : Int) ~ (Int) ~ Int {
+		@order += "f";
+		return \(Int) ~ Int : (x) => x - n;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("F(a)(b)", Adder(2)(5), 7);
+
+		v := Adder(10)(5);
+		CheckInt("v := F(a)(b)", v, 15);
+
+		CheckInt("F(a)(b)(c)", Add3(1)(2)(3), 123);
+		CheckInt("F(a)(b) in an expression", Adder(1)(1) + Adder(2)(2) * 10, 42);
+		CheckInt("F(a)(b) as an argument", Adder(Adder(1)(2))(4), 7);
+		CheckInt("F(a)(b)->Max(c)", Adder(2)(5)->Max(9), 9);
+		CheckInt("F(a)(b)->Max(c) with a smaller c", Adder(2)(5)->Max(3), 7);
+		Check("a String result", Greeter("Hello")("Ada")->Equals("Hello, Ada"));
+		CheckInt("a String result, then a call", Greeter("Hi")("Bo")->Size(), 6);
+		Check("a Float result", Scaler(2.5)(4.0) = 10.0);
+
+		maker := Maker->New(1);
+		CheckInt("obj->Make(a)(b)", maker->Make(3)(4), 13);
+		CheckInt("New(..)->Make(a)(b)", Maker->New(5)->Make(2)(10), 25);
+
+		f := Adder(3);
+		CheckInt("a function variable, then F(a)(b)", f(4) + Adder(f(1))(1), 12);
+
+		g := \(Int) ~ (Int) ~ Int : (a) => \(Int) ~ Int : (b) => a - b;
+		CheckInt("a lambda that returns a lambda", g(10)(3), 7);
+
+		Adder(1)(1);
+		Check("a curried call as a statement", true);
+
+		total := 0;
+		for(i := 0; i < 4; i += 1;) {
+			total += Adder(i)(i);
+		};
+		CheckInt("in a loop", total, 12);
+
+		@order := "";
+		CheckInt("evaluation order", Curry(Mark("a", 1))(Mark("b", 10)), 9);
+		Check("the callee is evaluated before its argument", @order->Equals("afb"));
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		CurriedCalls->New()->Run();
+	}
+}

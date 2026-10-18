@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: Expected ';' between two statements on the same line
+#~
+`x := 1 Foo(3);` compiled as an assignment and a call (#1184). Two statements
+on one line need a ';' between them.
+~#
+class BadStatementsSameLineAssign {
+	function : Foo(n : Int) ~ Nil {
+		n->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := 1 Foo(3);
+		x->PrintLine();
+	}
+}

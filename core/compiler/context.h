@@ -274,6 +274,9 @@ class ContextAnalyzer {
   bool in_assignment;
   // analyzing the target of +=, -= and the like: it must already exist (#1184)
   bool in_operation_assignment = false;
+  // one-shot: the next AnalyzeVariable is the target of 'name := value', the
+  // only place an undeclared name declares a variable (#1184)
+  bool in_assignment_target = false;
   bool in_return;
   int expression_depth;
   int nested_call_depth;
@@ -587,7 +590,7 @@ class ContextAnalyzer {
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth);
   bool CheckGenericEqualTypes(Type* left, Type* right, Expression* expression, bool check_only = false, bool left_is_target = true);
-  void CheckImplicitDeclaration(Variable* variable);
+  void CheckImplicitDeclaration(Variable* variable, bool is_target);
   void AnalyzeAssignment(Assignment * assignment, StatementType type, const int depth);
   void AnalyzeSimpleStatement(SimpleStatement* simple, const int depth);
   void AnalyzeIf(If* if_stmt, const int depth);
@@ -629,6 +632,8 @@ class ContextAnalyzer {
   std::wstring EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn);
   std::wstring EncodeFunctionReference(ExpressionList* calling_params, const int depth);
   void AnalyzeVariableFunctionCall(MethodCall* method_call, const int depth);
+  void AnalyzeFunctionValueCall(MethodCall* method_call, SymbolEntry* entry, const std::wstring& call_name, const int depth);
+  void AnalyzeCurriedCall(Expression* expression, MethodCall* method_call, const int depth);
   void AnalyzeFunctionReference(Class* klass, MethodCall* method_call, std::wstring &encoding, const int depth);
   void AnalyzeFunctionReference(LibraryClass* klass, MethodCall* method_call, std::wstring &encoding, const int depth);
   

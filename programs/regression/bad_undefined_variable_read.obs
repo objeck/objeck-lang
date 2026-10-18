@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Undefined variable: 'zzz'
+#~
+Reading a name that was never declared (#1184). Inside a method an unknown
+name silently became a new untyped local, so `y := zzz` reported "Invalid
+operation using classes: Var and Var" and `Foo(zzz)` an undefined Foo.
+~#
+class BadUndefinedVariableRead {
+	function : Main(args : String[]) ~ Nil {
+		y := zzz;
+		y->PrintLine();
+	}
+}

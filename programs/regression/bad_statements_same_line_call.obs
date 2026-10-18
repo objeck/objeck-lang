@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: Expected ';' between two statements on the same line
+#~
+Semicolons between statements are optional, so `Foo(2) Foo(3);` compiled as
+two calls without a word (#1184). Two statements on one line need a ';'.
+~#
+class BadStatementsSameLineCall {
+	function : Foo(n : Int) ~ Nil {
+		n->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Foo(2) Foo(3);
+	}
+}

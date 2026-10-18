@@ -122,6 +122,8 @@ class IntermediateEmitter {
   // function on the hidden '$' class ($Int, $Float, ...) that takes the
   // receiver as its FIRST parameter.
   bool ReceiverIsFirstParameter(MethodCall* method_call);
+  bool FunctionValueReturnsObject(MethodCall* method_call);
+  void EmitCurriedCall(MethodCall* method_call);
   // Set while the deferred arguments of such a call are being emitted.
   bool emitting_deferred_params = false;
   void EmitMethodCallParameters(MethodCall* method_call);
