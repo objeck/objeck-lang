@@ -166,7 +166,11 @@ bundle LSP {
 				if(method_id <> Nil & <>request->IsNotification() & <>request->IsResponse() & <>@is_shutdown) {
 					@reply_id := request->GetIdJson();
 					uri := FindString(request->GetParams(), "textDocument/uri");
-					changed_at : IntRef;
+					# Assigned, not just declared: a local declared in a loop body keeps
+					# the previous pass's value, so a request with no document (such as
+					# workspace/symbol) inherited the one before it and could be refused
+					# ContentModified for an edit to a document it never named.
+					changed_at : IntRef := Nil;
 					if(uri <> Nil) {
 						changed_at := last_change->Find(uri);
 					};
@@ -2018,7 +2022,9 @@ bundle LSP {
 				};
 
 				# build nested selection range from outermost to innermost
-				selection : JsonElement;
+				# Assigned, not just declared (see ProcessBatch): with several
+				# positions, each one's ranges were chained onto the previous one's.
+				selection : JsonElement := Nil;
 
 				for(k := containing_count - 1; k >= 0; k -= 1;) {
 					idx := containing_indices[k];

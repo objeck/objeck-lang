@@ -934,6 +934,9 @@ def check_batching(c):
         {"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": "cancel-me"}},
         {"jsonrpc": "2.0", "id": "stale", "method": "textDocument/hover",
          "params": {"textDocument": {"uri": uri}, "position": {"line": 3, "character": 6}}},
+        # names no document, so no edit can make it stale
+        {"jsonrpc": "2.0", "id": "no-document", "method": "workspace/symbol",
+         "params": {"query": "Burst"}},
         {"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
             "textDocument": {"uri": uri, "version": 22},
             "contentChanges": [{"range": {"start": {"line": 0, "character": 0},
@@ -953,6 +956,11 @@ def check_batching(c):
     stale = c.response_to("stale", timeout=60)
     log_result("a request whose document then changed gets ContentModified",
                (stale or {}).get("error", {}).get("code") == -32801, f"got: {stale}")
+    # It inherited the hover's 'changed later' mark: a loop-body local that was
+    # declared but not assigned keeps the previous pass's value.
+    no_document = c.response_to("no-document", timeout=60)
+    log_result("a request that names no document is answered, not ContentModified",
+               no_document is not None and "result" in no_document, f"got: {no_document}")
     c.notify("textDocument/didClose", {"textDocument": {"uri": busy}})
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
@@ -1317,6 +1325,28 @@ def main():
             "textDocument/selectionRange",
             {"textDocument": {"uri": probe_uri},
              "positions": [circle_decl["position"]]})))
+
+        # Several positions: each answer is its own chain. Each was chained onto
+        # the previous position's, because a loop-body local was declared but not
+        # assigned and so kept its last value.
+        first_pos = at("return 3.14159")["position"]
+        second_pos = at("return @side * @side")["position"]
+        chains = result_of(c.request("textDocument/selectionRange", {
+            "textDocument": {"uri": probe_uri}, "positions": [first_pos, second_pos]})) or []
+
+        def holds(rng, pos):
+            return ((rng["start"]["line"], rng["start"]["character"]) <= (pos["line"], pos["character"])
+                    <= (rng["end"]["line"], rng["end"]["character"]))
+
+        def chain_ok(node, pos):
+            while node:
+                if not holds(node["range"], pos):
+                    return False
+                node = node.get("parent")
+            return True
+        log_result("selectionRange answers each position with its own chain",
+                   len(chains) == 2 and chain_ok(chains[0], first_pos) and chain_ok(chains[1], second_pos),
+                   f"got {len(chains)} chains")
         hints_resp = c.request(
             "textDocument/inlayHint",
             {"textDocument": {"uri": probe_uri},
