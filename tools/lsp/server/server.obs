@@ -895,8 +895,12 @@ bundle LSP {
 			};
 			
 			document := Document->New(uri, text, @workspace, IsDebug());
+			version_json := params->FindElements("textDocument/version");
+			if(version_json <> Nil) {
+				document->SetVersion(version_json->GetInt());
+			};
 			@workspace->AddDocument(uri, document);
-			WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+			PublishDiagnostics(uri);
 		}
 
 		method : NotifyDidSave(params : JsonElement) ~ Nil {
@@ -916,14 +920,16 @@ bundle LSP {
 					System.IO.Filesystem.Logger->Instance()->Info("NotifyDidSave: uri='{$uri}', from_text={$from_text}");
 				};
 				
-				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+				PublishDiagnostics(uri);
 			};
 		}
-		
+
 		method : NotifyDidClose(params : JsonElement) ~ Nil {
 			uri := params->FindElements("textDocument/uri")->GetValue();
 			document:= @workspace->GetDocument(params->FindElements("textDocument/uri")->GetValue());
 			if(document <> Nil) {
+				# closed: nothing more to publish for it
+				DropPendingDiagnostics(uri);
 				@workspace->RemoveDocument(uri, document);
 
 				empty_diagnostics := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1006,7 +1012,13 @@ bundle LSP {
 					};
 				};
 
-				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+				# Once typing pauses (LspWorker), not per keystroke: each analysis
+				# covers the whole workspace, and the next keystroke waited for it.
+				version_json := params->FindElements("textDocument/version");
+				if(version_json <> Nil) {
+					document->SetVersion(version_json->GetInt());
+				};
+				DeferDiagnostics(uri);
 			};
 		}
 	}

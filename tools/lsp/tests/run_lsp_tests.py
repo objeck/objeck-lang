@@ -539,6 +539,95 @@ def check_text_encoding(c, caps):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def check_batching(c):
+    """A burst of edits costs one analysis, and queued work can be refused (#1217).
+
+    The server read one message, handled it, then read the next: each
+    keystroke paid for a whole-workspace analysis and published diagnostics,
+    every request waited behind all of them, and a cancel arrived only after
+    its request had been answered.
+    """
+    text = ("class Burst {\n  function : Main(a : String[]) ~ Nil {\n"
+            "    x := 1;\n    x->PrintLine();\n  }\n}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_burst.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    c.diagnostics_for(uri, timeout=60)
+
+    c.notifications.clear()
+    final_text = text
+    for v in range(2, 22):
+        # typing 'y' at the start of line 2, twenty times
+        c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": v},
+                 "contentChanges": [{"range": {"start": {"line": 2, "character": 4},
+                                               "end": {"line": 2, "character": 4}}, "text": "y"}]})
+        final_text = final_text.replace("    ", "    y", 1) if v == 2 else \
+            final_text.replace("    y", "    yy", 1)
+    start = time.time()
+    resp = c.request("textDocument/documentSymbol", {"textDocument": {"uri": uri}}, timeout=60)
+    log_result("a request after a burst of edits is answered promptly",
+               resp is not None and time.time() - start < 10,
+               f"{time.time() - start:.2f}s")
+    c.drain(1.5)
+    pubs = [n for n in c.notifications if n.get("method") == "textDocument/publishDiagnostics"
+            and n["params"].get("uri", "").lower() == uri.lower()]
+    # once, normally; a scheduling stall mid-burst on a loaded runner may split it
+    log_result("twenty edits publish diagnostics once", 1 <= len(pubs) <= 3, f"{len(pubs)} publishes")
+    log_result("for the final version",
+               bool(pubs) and pubs[-1]["params"].get("version") == 21,
+               f"version {pubs[-1]['params'].get('version') if pubs else None}")
+
+    # the coalesced result matches a fresh analysis of the same text
+    fresh = path_to_uri(os.path.join(TESTS_DIR, "lsp_burst_fresh.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": fresh, "languageId": "objeck", "version": 1, "text": final_text}})
+    want = sorted(d["message"] for d in (c.diagnostics_for(fresh, timeout=60) or []))
+    got = sorted(d["message"] for d in (pubs[-1]["params"]["diagnostics"] if pubs else []))
+    log_result("and match a fresh analysis of the same text", want == got,
+               f"burst {got} vs fresh {want}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": fresh}})
+
+    # Keep the server busy analyzing a 2.5k-line file, and meanwhile queue a
+    # request and its cancel, then a hover and an edit to the hover's document:
+    # all four are handled in one batch once the analysis ends.
+    path = os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")
+    with open(path, encoding="utf-8") as fh:
+        big = fh.read()
+    busy = path_to_uri(os.path.join(TESTS_DIR, "lsp_busy.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": busy, "languageId": "objeck", "version": 1, "text": big}})
+    # let that analysis start (it takes a few hundred ms), then send the four in
+    # one write so they are read while it runs
+    time.sleep(0.05)
+    queued = [
+        {"jsonrpc": "2.0", "id": "cancel-me", "method": "textDocument/documentSymbol",
+         "params": {"textDocument": {"uri": uri}}},
+        {"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": "cancel-me"}},
+        {"jsonrpc": "2.0", "id": "stale", "method": "textDocument/hover",
+         "params": {"textDocument": {"uri": uri}, "position": {"line": 3, "character": 6}}},
+        {"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
+            "textDocument": {"uri": uri, "version": 22},
+            "contentChanges": [{"range": {"start": {"line": 0, "character": 0},
+                                          "end": {"line": 0, "character": 0}}, "text": "# edited\n"}]}},
+    ]
+    wire = b""
+    for m in queued:
+        head, body = frame(m)
+        wire += head + body
+    try:
+        c.sock.sendall(wire)
+    except OSError:
+        pass
+    cancelled = c.response_to("cancel-me", timeout=60)
+    log_result("a request cancelled while queued gets RequestCancelled",
+               (cancelled or {}).get("error", {}).get("code") == -32800, f"got: {cancelled}")
+    stale = c.response_to("stale", timeout=60)
+    log_result("a request whose document then changed gets ContentModified",
+               (stale or {}).get("error", {}).get("code") == -32801, f"got: {stale}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": busy}})
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
 def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
     """The base protocol, not the language features (#1215)."""
     init_params = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
@@ -1328,6 +1417,7 @@ def main():
 
         check_large_real_file(c)
         check_text_encoding(c, caps)
+        check_batching(c)
     finally:
         c.close()
 

@@ -306,29 +306,93 @@ class File {
  * Pipe support class
  ****************************/
 class Pipe {
+  // One read or write that waits for its own completion. A pipe created here
+  // is OVERLAPPED so that one thread can write while another is blocked
+  // reading: Windows serializes synchronous I/O on a handle, so with a
+  // synchronous pipe a reader parked in ReadFile held every WriteFile until the
+  // peer sent something -- a language server reading on one thread could not
+  // answer on another. Callers still see a blocking call. An OVERLAPPED
+  // structure is also valid on a synchronous handle (a pipe from Open), where
+  // the call simply completes before returning.
+  static BOOL Transfer(HANDLE pipe, bool is_read, void* buffer, DWORD num, DWORD& done) {
+    done = 0;
+
+    OVERLAPPED overlapped;
+    ZeroMemory(&overlapped, sizeof(overlapped));
+    overlapped.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    if(!overlapped.hEvent) {
+      return FALSE;
+    }
+
+    BOOL status = is_read ? ReadFile(pipe, buffer, num, nullptr, &overlapped) : WriteFile(pipe, buffer, num, nullptr, &overlapped);
+    DWORD error = status ? ERROR_SUCCESS : GetLastError();
+    if(status || error == ERROR_IO_PENDING || error == ERROR_MORE_DATA) {
+      status = GetOverlappedResult(pipe, &overlapped, &done, TRUE);
+      error = status ? ERROR_SUCCESS : GetLastError();
+    }
+
+    CloseHandle(overlapped.hEvent);
+    SetLastError(error);
+
+    return status;
+  }
+
+  // A pipe created here is message-mode. Reading less than a whole message
+  // fails with ERROR_MORE_DATA, but the bytes WERE read and the rest of the
+  // message is returned by the next read. Treating that as a failure dropped
+  // the data: any message larger than the caller's buffer -- an 8 KB read
+  // against a 56 KB LSP didOpen -- was lost.
+  static bool ReadSucceeded(BOOL status) {
+    return status || GetLastError() == ERROR_MORE_DATA;
+  }
+
 public:
   static bool Create(const char* name, HANDLE& pipe) {
     pipe = CreateNamedPipe(name,
-                           PIPE_ACCESS_DUPLEX,
+                           PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                            PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
                            PIPE_UNLIMITED_INSTANCES,
                            65536, // output buffer size
                            65536, // input buffer size
-                           0, 
+                           0,
                            nullptr);
     if(pipe == INVALID_HANDLE_VALUE) {
       return false;
     }
 
-    if(ConnectNamedPipe(pipe, nullptr) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED)) {
-      return true;
-    }
-    else {
+    // an overlapped handle needs an OVERLAPPED connect, too
+    OVERLAPPED overlapped;
+    ZeroMemory(&overlapped, sizeof(overlapped));
+    overlapped.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    if(!overlapped.hEvent) {
       CloseHandle(pipe);
       return false;
     }
+
+    bool connected = false;
+    if(ConnectNamedPipe(pipe, &overlapped)) {
+      connected = true;
+    }
+    else {
+      const DWORD error = GetLastError();
+      if(error == ERROR_PIPE_CONNECTED) {
+        connected = true;
+      }
+      else if(error == ERROR_IO_PENDING) {
+        DWORD ignored = 0;
+        connected = GetOverlappedResult(pipe, &overlapped, &ignored, TRUE) ? true : false;
+      }
+    }
+    CloseHandle(overlapped.hEvent);
+
+    if(connected) {
+      return true;
+    }
+
+    CloseHandle(pipe);
+    return false;
   }
-  
+
   static bool Open(const char* name, HANDLE& pipe) {
     while(true) {
       pipe = CreateFile(
@@ -362,20 +426,11 @@ public:
 
     return true;
   }
-  
-  // A pipe created here is message-mode. Reading less than a whole message
-  // fails with ERROR_MORE_DATA, but the bytes WERE read and the rest of the
-  // message is returned by the next read. Treating that as a failure dropped
-  // the data: any message larger than the caller's buffer -- an 8 KB read
-  // against a 56 KB LSP didOpen -- was lost.
-  static bool ReadSucceeded(BOOL status) {
-    return status || GetLastError() == ERROR_MORE_DATA;
-  }
 
   static bool ReadByte(char &value, HANDLE pipe) {
     DWORD read = 0;
 
-    if(ReadSucceeded(ReadFile(pipe, &value, 1, &read, nullptr))) {
+    if(ReadSucceeded(Transfer(pipe, true, &value, 1, read))) {
       return read == 1;
     }
 
@@ -384,7 +439,7 @@ public:
 
   static size_t ReadByteArray(char* buffer, size_t offset, size_t num, HANDLE pipe) {
     DWORD read = 0;
-    if(ReadSucceeded(ReadFile(pipe, buffer + offset, (DWORD)num, &read, nullptr))) {
+    if(ReadSucceeded(Transfer(pipe, true, buffer + offset, (DWORD)num, read))) {
       return read;
     }
 
@@ -392,8 +447,8 @@ public:
   }
 
   static size_t WriteByteArray(const char* buffer, size_t offset, size_t num, HANDLE pipe) {
-    DWORD written;
-    if(WriteFile(pipe, buffer + offset, (DWORD)num, &written, nullptr)) {
+    DWORD written = 0;
+    if(Transfer(pipe, false, (void*)(buffer + offset), (DWORD)num, written)) {
       return written;
     }
 
@@ -401,8 +456,8 @@ public:
   }
 
   static bool WriteByte(char value, HANDLE pipe) {
-    DWORD written;
-    if(WriteFile(pipe, &value, 1, &written, nullptr)) {
+    DWORD written = 0;
+    if(Transfer(pipe, false, &value, 1, written)) {
       return written == 1;
     }
 
@@ -413,7 +468,7 @@ public:
     char buffer[MID_BUFFER_MAX];
     DWORD read = 0;
 
-    if(ReadSucceeded(ReadFile(pipe, buffer, MID_BUFFER_MAX - 1, &read, nullptr)) && read > 0) {
+    if(ReadSucceeded(Transfer(pipe, true, buffer, MID_BUFFER_MAX - 1, read)) && read > 0) {
       // trim trailing \r\n
       while(read > 0 && (buffer[read - 1] == '\r' || buffer[read - 1] == '\n')) {
         read--;
@@ -427,9 +482,9 @@ public:
   }
 
   static bool WriteString(const std::string& line, HANDLE pipe) {
-    DWORD written;
+    DWORD written = 0;
     const DWORD len = (DWORD)line.size();
-    if(WriteFile(pipe, line.c_str(), len, &written, nullptr)) {
+    if(Transfer(pipe, false, (void*)line.c_str(), len, written)) {
       return written == len;
     }
 
