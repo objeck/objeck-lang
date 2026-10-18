@@ -71,6 +71,11 @@ class IntermediateEmitter {
   LibraryClass*  string_cls;
   long string_cls_id;
   std::stack<std::pair<int, int> > break_labels;
+  // critical() sections open at this point of the method, innermost last, and
+  // how many were open when each enclosing loop began (#1117)
+  std::vector<CriticalSection*> active_criticals;
+  std::stack<size_t> break_critical_depth;
+  void EmitCriticalUnlocks(size_t keep_depth, Statement* statement);
   bool is_str_array;
   std::queue<OperationAssignment*>post_statements;
   
@@ -129,7 +134,8 @@ class IntermediateEmitter {
   int CalculateEntrySpace(IntermediateDeclarations* parameters, bool is_static);
   
   // emits class cast checks
-  void EmitClassCast(Expression* expression);
+  // whole_expression: the expression, call chain included, has already been emitted
+  void EmitClassCast(Expression* expression, bool whole_expression = false);
 
   Class* SearchProgramClasses(const std::wstring &klass_name);
 

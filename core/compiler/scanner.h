@@ -117,6 +117,8 @@ enum ScannerTokenType {
   TOKEN_CHAR_LIT,
   TOKEN_CHAR_STRING_LIT,
   TOKEN_BAD_CHAR_STRING_LIT,
+  // an integer literal outside its range (#1184)
+  TOKEN_BAD_INT_LIT,
   // reserved words
   TOKEN_NATIVE_ID,
   TOKEN_IF_ID,
@@ -421,6 +423,8 @@ enum ScannerTokenType {
   HTTP3_REQUEST,
   HTTP3_REQUEST_HDRS,
   HTTP3_CLOSE,
+  FLOAT_TO_STR_PREC,
+  FILE_IN_LINE,
   // serialization
   SERL_CHAR,
   SERL_INT,

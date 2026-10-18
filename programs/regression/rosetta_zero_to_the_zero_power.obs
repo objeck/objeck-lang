@@ -1,0 +1,88 @@
+#~
+# Rosetta Code: Zero to the zero power
+# https://rosettacode.org/wiki/Zero_to_the_zero_power
+# Claimed in #1127
+#
+# 0^0 is 1 in every spelling Objeck offers: the static Int->Pow and Float->Pow overloads (Int^Int, Float^Float, Float^Int, Int^Float), a primitive receiver held in a variable (the task's own `x = 0; y = 0; z = x**y` form), and operands produced at run time so nothing is folded. The neighbouring cases 0^1, 1^0 and 0.0^0.5 pin that the special case is not hiding a wider bug.
+#
+# Expected values come from the task (which asks only to show the result) checked against Python's 0**0, 0.0**0.0 and math.pow(0, 0), all 1.
+~#
+
+class RosettaZeroToTheZeroPower {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaZeroToTheZeroPower->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckFloat(what : String, got : Float, want : Float) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		CheckInt("Int->Pow(0, 0)", Int->Pow(0, 0), 1);
+		CheckFloat("Float->Pow(0.0, 0.0)", Float->Pow(0.0, 0.0), 1.0);
+		CheckFloat("Float->Pow(0.0, 0)", Float->Pow(0.0, 0), 1.0);
+		CheckFloat("Int->Pow(0, 0.0)", Int->Pow(0, 0.0), 1.0);
+
+		# the task's suggested form: the operands in variables
+		x := 0;
+		y := 0;
+		z := x->Pow(y);
+		CheckInt("x := 0; y := 0; x->Pow(y)", z, 1);
+		fx := 0.0;
+		fy := 0.0;
+		fz := fx->Pow(fy);
+		CheckFloat("fx := 0.0; fy := 0.0; fx->Pow(fy)", fz, 1.0);
+
+		# operands produced at run time. Each result goes to a local first: a
+		# call result used directly as the receiver -- IdF(0.0)->Pow(...) --
+		# passes the arguments in the wrong order (reported to the batch lead)
+		zi := Id(0);
+		CheckInt("run-time 0 ^ run-time 0", Int->Pow(zi, Id(0)), 1);
+		zf := IdF(0.0);
+		CheckFloat("run-time 0.0 ^ run-time 0.0", Float->Pow(zf, IdF(0.0)), 1.0);
+		CheckFloat("run-time 0.0 receiver ^ 0.0", zf->Pow(0.0), 1.0);
+
+		# the neighbours
+		CheckInt("0 ^ 1 is 0", Int->Pow(0, 1), 0);
+		CheckInt("1 ^ 0 is 1", Int->Pow(1, 0), 1);
+		CheckInt("7 ^ 0 is 1", Int->Pow(7, 0), 1);
+		CheckFloat("0.0 ^ 0.5 is 0.0", Float->Pow(0.0, 0.5), 0.0);
+		CheckFloat("-0.0 ^ 0.0 is 1.0", Float->Pow(-0.0, 0.0), 1.0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Id(v : Int) ~ Int {
+		return v;
+	}
+
+	function : IdF(v : Float) ~ Float {
+		return v;
+	}
+}

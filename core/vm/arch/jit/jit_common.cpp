@@ -313,6 +313,8 @@ int64_t JitCompiler::JitDirectCall(StackMethod* callee, [[maybe_unused]] StackIn
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+    // the interpreted callee failed under a Try() beneath this compiled frame
+    return intpr.BridgeDeferred() ? JIT_STATUS_DEFERRED : 0;
   }
   catch(const std::bad_alloc&) {
     BridgeExceptionExit(nullptr, true, cls_id, mthd_id, call_stack, call_stack_pos);
@@ -386,6 +388,36 @@ void JitCompiler::BridgeExceptionExit(const char* what, const bool out_of_memory
 }
 
 /**
+ * Pops a new array's dimensions into indices and returns its element count,
+ * stopping the VM -- as the interpreter's ProcessNewArray does -- on a negative
+ * dimension or a count that leaves no room for 'reserve' more bytes or slots
+ * (#1181). Without the checks Byte->New[-1] wrapped the count to 0 and handed
+ * back an array whose Size() was -1.
+ */
+static size_t PopArrayDimensions(StackInstr* instr, size_t* op_stack, size_t* stack_pos,
+                                 size_t* indices, long &dim, const size_t reserve)
+{
+  size_t size = 1;
+  dim = 0;
+  for(long i = 0; i < instr->GetOperand(); ++i) {
+    const size_t value = JitCompiler::PopInt(op_stack, stack_pos);
+    if((int64_t)value < 0 || (value != 0 && size > (~(size_t)0) / value)) {
+      std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+      VmExit(1);
+    }
+    size *= value;
+    indices[dim++] = value;
+  }
+
+  if(size > (~(size_t)0) - reserve) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    VmExit(1);
+  }
+
+  return size;
+}
+
+/**
  * The bridge's opcode switch (see JitStackCallback)
  */
 int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, const long cls_id,
@@ -445,6 +477,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);
+    if(intpr.BridgeDeferred()) {
+      return JIT_STATUS_DEFERRED;
+    }
   }
     break;
 
@@ -465,15 +500,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case NEW_BYTE_ARY: {
     size_t indices[8];
-    size_t value = PopInt(op_stack, stack_pos);
-    size_t size = value;
-    indices[0] = value;
-    long dim = 1;
-    for(long i = 1; i < instr->GetOperand(); ++i) {
-      size_t value = PopInt(op_stack, stack_pos);
-      size *= value;
-      indices[dim++] = value;
-    }
+    long dim;
+    size_t size = PopArrayDimensions(instr, op_stack, stack_pos, indices, dim, 1 + (8 + 2) * sizeof(size_t));
 
     // One byte of NUL padding in the ALLOCATION only. [0] is the element
     // count -- as the interpreter's ProcessNewByteArray, NEW_CHAR_ARY below and
@@ -497,15 +525,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case NEW_CHAR_ARY: {
     size_t indices[8];
-    size_t value = PopInt(op_stack, stack_pos);
-    size_t size = value;
-    indices[0] = value;
-    long dim = 1;
-    for(long i = 1; i < instr->GetOperand(); ++i) {
-      size_t value = PopInt(op_stack, stack_pos);
-      size *= value;
-      indices[dim++] = value;
-    }
+    long dim;
+    size_t size = PopArrayDimensions(instr, op_stack, stack_pos, indices, dim, 1 + (8 + 2) * sizeof(size_t));
 
     size++;
     size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + ((dim + 2) * sizeof(size_t))), CHAR_ARY_TYPE, op_stack, *stack_pos);
@@ -523,15 +544,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case NEW_INT_ARY: {
     size_t indices[8];
-    size_t value = PopInt(op_stack, stack_pos);
-    size_t size = value;
-    indices[0] = value;
-    long dim = 1;
-    for(long i = 1; i < instr->GetOperand(); ++i) {
-      size_t value = PopInt(op_stack, stack_pos);
-      size *= value;
-      indices[dim++] = value;
-    }
+    long dim;
+    const size_t size = PopArrayDimensions(instr, op_stack, stack_pos, indices, dim, 8 + 2);
 
     size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), INT_TYPE, op_stack, *stack_pos);
 #ifdef _DEBUG_JIT
@@ -547,15 +561,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
   case NEW_FLOAT_ARY: {
     size_t indices[8];
-    size_t value = PopInt(op_stack, stack_pos);
-    size_t size = value;
-    indices[0] = value;
-    long dim = 1;
-    for(long i = 1; i < instr->GetOperand(); ++i) {
-      size_t value = PopInt(op_stack, stack_pos);
-      size *= value;
-      indices[dim++] = value;
-    }
+    long dim;
+    const size_t size = PopArrayDimensions(instr, op_stack, stack_pos, indices, dim, 8 + 2);
 
     size_t* mem = (size_t*)MemoryManager::AllocateArray((int64_t)(size + dim + 2), FLOAT_TYPE, op_stack, *stack_pos);
     mem[0] = size;
@@ -681,11 +688,24 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
         conv = std::to_wstring(value);
       }
 
-      const size_t max = conv.size() < 64 ? conv.size() : 64;
+      // The buffer is the caller's Char->New[64]: str_ptr[0] elements. Fixed-point
+      // text of a large value does not fit -- 1e60 is 61 digits and ".000000" --
+      // and copying 64 characters into it left no room for the terminator:
+      // MSVC's invalid-parameter handler ended the process with no message, and
+      // POSIX left the string unterminated (#1173). Such a value is written in
+      // scientific notation instead, and the copy always keeps the terminator.
+      const size_t capacity = str_ptr[0];
+      if(conv.size() >= capacity) {
+        std::wstringstream scientific;
+        scientific << std::scientific << value;
+        conv = scientific.str();
+      }
+      const size_t max = conv.size() < capacity ? conv.size() : (capacity > 0 ? capacity - 1 : 0);
 #ifdef _WIN32
-      wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+      wcsncpy_s(str, capacity, conv.c_str(), max);
 #else
       wcsncpy(str, conv.c_str(), max);
+      str[max] = L'\0';
 #endif
     }
   }

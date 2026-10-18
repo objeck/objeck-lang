@@ -108,6 +108,17 @@ namespace Runtime {
     // (MemoryManager::stw_active) was already atomic.
     std::atomic<bool> halt;
 
+    // A bridge interpreter -- one compiled code starts, to run a callee that
+    // is not compiled -- shares the thread's call stack and its Try() handlers.
+    // bridge_call_pos is the call-stack depth it began at (-1: not a bridge).
+    // A handler pushed below that depth belongs to a frame beneath the compiled
+    // caller, so the bridge must not recover into it: it unwinds to its entry,
+    // sets bridge_deferred, and the compiled caller passes the failure outward
+    // as a status (#1171). Recovering here ran the outer method's code on top
+    // of compiled frames whose stack frames were then released.
+    long bridge_call_pos = -1;
+    bool bridge_deferred = false;
+
     // try/error handler stack -- PER THREAD, not per interpreter instance.
     //
     // A Try() is inherently per-thread: a handler pushed on one thread must
@@ -287,6 +298,22 @@ namespace Runtime {
     inline bool TryErrorRecovery(size_t* &stack_pos) {
       if(HasTryHandler()) {
         TryHandlerState& state = TryState();
+
+        // the handler is beneath this bridge's compiled caller: leave it for
+        // that caller's status path (see bridge_call_pos)
+        if(bridge_call_pos >= 0 && state.call_stack_pos[state.pos - 1] < bridge_call_pos) {
+          while(*call_stack_pos > bridge_call_pos) {
+            StackFrame* current = *stack_frame;
+            *stack_frame = PopFrame();
+            if(current != *stack_frame) {
+              ReleaseStackFrame(current);
+            }
+          }
+          bridge_deferred = true;
+          halt = true;
+          return true;
+        }
+
         state.recovery_ip = GetTryHandlerIP();
         // The saved position is an unwind TARGET, not a value to assign (#1067).
         //
@@ -342,6 +369,12 @@ namespace Runtime {
     //
     inline bool HasPendingRecovery() {
       return TryState().recovery_ip >= 0;
+    }
+
+    // true when this bridge left an error to its compiled caller (see
+    // bridge_call_pos); the caller returns a status instead of a value
+    inline bool BridgeDeferred() const {
+      return bridge_deferred;
     }
 
     // The following methods are public to allow access from dispatch handlers

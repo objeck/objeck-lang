@@ -1,0 +1,230 @@
+#~
+# Rosetta Code: Natural sorting
+# https://rosettacode.org/wiki/Natural_sorting
+# Claimed in #1139
+#
+# The task's first four features: ignore leading, trailing and repeated blanks; treat every whitespace character alike (tab, CR, LF, vertical tab, form feed); ignore case; and compare runs of digits as numbers, so foo9 sorts before foo10 and x9y99 before x9y100. Sorting goes through Collection.CompareVector over a key class implementing System.Compare, and the key leans on Char->IsWhitespace, String->ToLower and String->Compare. Each list is also sorted plainly, to show the natural order is not what a code-unit sort gives.
+#
+# Expected orders come from an independent Python oracle (sorted() with a key that collapses whitespace, lower-cases, and splits on digit runs), not from what Objeck printed.
+~#
+
+class RosettaNaturalSorting {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaNaturalSorting->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		lead := ["ignore leading spaces:  2-2", " ignore leading spaces:  2-1", "  ignore leading spaces:  2+0", "   ignore leading spaces:  2+1"];
+		Check("leading spaces, natural", NaturalOrder(lead), "2 3 1 0");
+		Check("leading spaces, plain", PlainOrder(lead), "3 2 1 0");
+
+		mas := ["ignore m.a.s spaces:  2-2", "ignore m.a.s  spaces:  2-1", "ignore m.a.s   spaces:  2+0", "ignore m.a.s    spaces:  2+1"];
+		Check("multiple adjacent spaces, natural", NaturalOrder(mas), "2 3 1 0");
+		Check("multiple adjacent spaces, plain", PlainOrder(mas), "3 2 1 0");
+
+		vt := String->New(); vt->Append(0x0B->As(Char));
+		ff := String->New(); ff->Append(0x0C->As(Char));
+		ws := String->New[6];
+		ws[0] := "Equiv. spaces: 3-3";
+		ws[1] := "Equiv.\rspaces: 3-2";
+		ws[2] := "Equiv." + ff + "spaces: 3-1";
+		ws[3] := "Equiv." + vt + "spaces: 3+0";
+		ws[4] := "Equiv.\nspaces: 3+1";
+		ws[5] := "Equiv.\tspaces: 3+2";
+		Check("equivalent whitespace, natural", NaturalOrder(ws), "3 4 5 2 1 0");
+		Check("equivalent whitespace, plain", PlainOrder(ws), "5 4 3 2 1 0");
+
+		cases := ["cASE INDEPENENT: 3-2", "caSE INDEPENENT: 3-1", "casE INDEPENENT: 3+0", "case INDEPENENT: 3+1"];
+		Check("case independent, natural", NaturalOrder(cases), "2 3 1 0");
+		Check("case independent, plain", PlainOrder(cases), "0 1 2 3");
+
+		num := ["foo100bar99baz0.txt", "foo100bar10baz0.txt", "foo1000bar99baz10.txt", "foo1000bar99baz9.txt"];
+		Check("numeric fields, natural", NaturalOrder(num), "1 0 3 2");
+		Check("numeric fields, plain", PlainOrder(num), "2 3 1 0");
+
+		files := ["foo10.txt", "foo9.txt", "x10y0", "x9y100", "x9y99"];
+		Check("foo9 before foo10, x9y99 before x9y100 before x10y0", NaturalOrder(files), "1 0 4 3 2");
+		Check("the same, plain", PlainOrder(files), "0 1 2 3 4");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# indexes of the inputs in natural order
+	function : NaturalOrder(items : String[]) ~ String {
+		v := Collection.CompareVector->New()<NaturalKey>;
+		each(i : items) {
+			v->AddBack(NaturalKey->New(items[i], i));
+		};
+		v->Sort();
+		out := String->New();
+		each(i : v) {
+			if(i > 0) {
+				out->Append(' ');
+			};
+			out->Append(v->Get(i)->GetIndex());
+		};
+		return out;
+	}
+
+	# indexes of the inputs in plain String->Compare order
+	function : PlainOrder(items : String[]) ~ String {
+		v := Collection.CompareVector->New()<PlainKey>;
+		each(i : items) {
+			v->AddBack(PlainKey->New(items[i], i));
+		};
+		v->Sort();
+		out := String->New();
+		each(i : v) {
+			if(i > 0) {
+				out->Append(' ');
+			};
+			out->Append(v->Get(i)->GetIndex());
+		};
+		return out;
+	}
+}
+
+class PlainKey implements System.Compare {
+	@text : String;
+	@index : Int;
+
+	New(text : String, index : Int) {
+		@text := text;
+		@index := index;
+	}
+
+	method : public : GetIndex() ~ Int {
+		return @index;
+	}
+
+	method : public : GetText() ~ String {
+		return @text;
+	}
+
+	method : public : Compare(rhs : System.Compare) ~ Int {
+		return @text->Compare(rhs->As(PlainKey)->GetText());
+	}
+
+	method : public : HashID() ~ Int {
+		return @text->HashID();
+	}
+}
+
+class NaturalKey implements System.Compare {
+	@index : Int;
+	@chunks : String[];
+
+	New(text : String, index : Int) {
+		@index := index;
+		@chunks := Chunks(Normalize(text));
+	}
+
+	method : public : GetIndex() ~ Int {
+		return @index;
+	}
+
+	method : public : GetChunks() ~ String[] {
+		return @chunks;
+	}
+
+	# trim, collapse every whitespace run to one space, lower-case
+	function : Normalize(text : String) ~ String {
+		out := String->New();
+		pending := false;
+		each(i : text) {
+			c := text->Get(i);
+			if(c->IsWhitespace()) {
+				pending := true;
+			}
+			else {
+				if(pending & out->Size() > 0) {
+					out->Append(' ');
+				};
+				pending := false;
+				out->Append(c);
+			};
+		};
+		return out->ToLower();
+	}
+
+	# alternating text and digit runs, always starting with a (possibly empty) text run
+	function : Chunks(text : String) ~ String[] {
+		chunks := Collection.Vector->New()<String>;
+		current := String->New();
+		digits := false;
+		each(i : text) {
+			c := text->Get(i);
+			if(c->IsDigit() <> digits) {
+				chunks->AddBack(current);
+				current := String->New();
+				digits := c->IsDigit();
+			};
+			current->Append(c);
+		};
+		chunks->AddBack(current);
+		return chunks->ToArray();
+	}
+
+	# digit runs compare by value: strip leading zeros, then by length, then digit by digit
+	function : CompareNumber(a : String, b : String) ~ Int {
+		a := StripZeros(a);
+		b := StripZeros(b);
+		if(a->Size() <> b->Size()) {
+			return a->Size() < b->Size() ? -1 : 1;
+		};
+		return a->Compare(b);
+	}
+
+	function : StripZeros(s : String) ~ String {
+		i := 0;
+		while(i < s->Size() - 1 & s->Get(i) = '0') {
+			i += 1;
+		};
+		return s->SubString(i, s->Size() - i);
+	}
+
+	method : public : Compare(rhs : System.Compare) ~ Int {
+		other_chunks := rhs->As(NaturalKey)->GetChunks();
+		n := Int->Min(@chunks->Size(), other_chunks->Size());
+		for(i := 0; i < n; i += 1;) {
+			c : Int;
+			if(i % 2 = 1) {
+				c := CompareNumber(@chunks[i], other_chunks[i]);
+			}
+			else {
+				c := @chunks[i]->Compare(other_chunks[i]);
+			};
+			if(c <> 0) {
+				return c < 0 ? -1 : 1;
+			};
+		};
+		if(@chunks->Size() = other_chunks->Size()) {
+			return 0;
+		};
+		return @chunks->Size() < other_chunks->Size() ? -1 : 1;
+	}
+
+	method : public : HashID() ~ Int {
+		return @index;
+	}
+}

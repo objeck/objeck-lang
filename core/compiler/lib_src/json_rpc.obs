@@ -160,8 +160,11 @@ bundle Data.JSON.RPC {
 		```
 		~#
 		method : public : Call(func_name : String,  func_params: JsonElement) ~ JsonElement {
-			@server := TCPSocket->New(@address, @port);
-			if(@server->IsOpen()) {
+			# One connection per call, closed on every path. It was '@server', a
+			# field the client never declared, so each call made a new local
+			# socket and left it open (#1184 now rejects the undeclared field).
+			socket := TCPSocket->New(@address, @port);
+			if(socket->IsOpen()) {
 				buffer := "{\"jsonrpc\": \"2.0\", \"method\": \"";
 				buffer += func_name;
 				buffer += "\", \"params\": ";
@@ -169,13 +172,15 @@ bundle Data.JSON.RPC {
 				buffer += ", \"id\": ";
 				buffer += @id;
 				buffer += "}\r\n";
-				@server->WriteString(buffer);
+				socket->WriteString(buffer);
 
 				if(@id > 512) {
 					@id := 1;
 				};
 
-				response_str := @server->ReadLine();
+				response_str := socket->ReadLine();
+				socket->Close();
+
 				if(response_str <> Nil) {
 					response_json := JsonParser->TextToElement(response_str);
 					if(response_json <> Nil) {

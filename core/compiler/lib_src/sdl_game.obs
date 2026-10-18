@@ -1323,6 +1323,9 @@ bundle Game.Framework {
 	~#
 	class GameFramework {
 		@is_ok : Bool;
+		# held like every other SDL resource here; it was an undeclared name,
+		# so a local, and nothing kept the window reachable after Init (#1184)
+		@window : Window;
 		@screen_width : Int;
 		@screen_height : Int;
 		@renderer : Renderer;

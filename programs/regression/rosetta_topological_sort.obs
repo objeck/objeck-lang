@@ -1,0 +1,166 @@
+#~
+# Rosetta Code: Topological sort
+# https://rosettacode.org/wiki/Topological_sort
+# Claimed in #1147
+#
+# EXTRA_LIBS: gen_collect
+#
+# Kahn's algorithm over the task's VHDL library dependencies, built from the library's own collections: a Map from each library to the Set of libraries it still waits on, and a min-Heap of Strings as the ready queue so ties break alphabetically and the order is deterministic. Self dependencies are dropped, libraries that only appear as dependencies are still placed, and the page's own un-orderable variant (dw04 added to dw01's list) must be flagged with exactly the libraries caught in the cycle.
+#
+# Expected values were computed with an independent oracle (Python, the same alphabetical Kahn order), not recalled.
+~#
+
+use Collection;
+
+class RosettaTopologicalSort {
+	@failures : Int;
+	@stuck : String;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaTopologicalSort->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+		@stuck := "";
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		data := String->New[13];
+		data[0] := "des_system_lib   std synopsys std_cell_lib des_system_lib dw02 dw01 ramlib ieee";
+		data[1] := "dw01             ieee dw01 dware gtech";
+		data[2] := "dw02             ieee dw02 dware";
+		data[3] := "dw03             std synopsys dware dw03 dw02 dw01 ieee gtech";
+		data[4] := "dw04             dw04 ieee dw01 dware gtech";
+		data[5] := "dw05             dw05 ieee dware";
+		data[6] := "dw06             dw06 ieee dware";
+		data[7] := "dw07             ieee dware";
+		data[8] := "dware            ieee dware";
+		data[9] := "gtech            ieee gtech";
+		data[10] := "ramlib           std ieee";
+		data[11] := "std_cell_lib     ieee std_cell_lib";
+		data[12] := "synopsys";
+
+		order := Sort(Parse(data, ""));
+		Check("compile order of the task's libraries", order,
+			"ieee dware dw02 dw05 dw06 dw07 gtech dw01 dw04 std ramlib std_cell_lib synopsys des_system_lib dw03");
+		Check("nothing is left un-orderable", @stuck, "");
+		Check("the order respects every dependency", Respects(Parse(data, ""), order)->ToString(), "true");
+
+		# the page's note: adding dw04 to dw01's dependencies makes it un-orderable
+		order := Sort(Parse(data, "dw04"));
+		Check("orderable prefix once dw01 depends on dw04", order,
+			"ieee dware dw02 dw05 dw06 dw07 gtech std ramlib std_cell_lib synopsys");
+		Check("the cycle and everything behind it is flagged", @stuck, "des_system_lib dw01 dw03 dw04");
+
+		# a two-node cycle with an independent bystander
+		tiny := String->New[3];
+		tiny[0] := "a b";
+		tiny[1] := "b a";
+		tiny[2] := "c";
+		order := Sort(Parse(tiny, ""));
+		Check("bystander still ordered beside a cycle", order, "c");
+		Check("both members of a 2-cycle are flagged", @stuck, "a b");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# library -> set of libraries it depends on (self dependencies dropped)
+	method : Parse(lines : String[], extra : String) ~ Map<String, Set<String>> {
+		deps := Map->New()<String, Set<String>>;
+		each(line in lines) {
+			# String->Split returns an EMPTY array when the delimiter never occurs
+			# ("synopsys"->Split(" ") has no elements), and the String-delimiter form
+			# also mangles runs of spaces; a trailing space plus the Char form avoids both
+			padded := line + " ";
+			words := padded->Split(' ');
+			lib := words[0];
+			if(<>deps->Has(lib)) {
+				deps->Insert(lib, Set->New()<String>);
+			};
+			for(i := 1; i < words->Size(); i += 1;) {
+				dep := words[i];
+				if(dep->Size() > 0 & <>dep->Equals(lib)) {
+					deps->Find(lib)->Insert(dep);
+					if(<>deps->Has(dep)) {
+						deps->Insert(dep, Set->New()<String>);
+					};
+				};
+			};
+		};
+		if(extra->Size() > 0) {
+			dw01_deps := deps->Find("dw01");
+			dw01_deps->Insert(extra);
+		};
+		return deps;
+	}
+
+	# Kahn's algorithm; the ready queue is a min-heap so ties break alphabetically
+	method : Sort(deps : Map<String, Set<String>>) ~ String {
+		ready := Heap->New(Heap->Order->MIN)<String>;
+		names := deps->GetKeys()<String>;
+		each(name in names) {
+			if(deps->Find(name)->IsEmpty()) {
+				ready->Insert(name);
+			};
+		};
+
+		placed := Set->New()<String>;
+		out := "";
+		while(<>ready->IsEmpty()) {
+			n := ready->Pop();
+			placed->Insert(n);
+			if(out->Size() > 0) { out += " "; };
+			out += n;
+			each(name in names) {
+				waiting := deps->Find(name);
+				if(waiting->Remove(n) & waiting->IsEmpty()) {
+					ready->Insert(name);
+				};
+			};
+		};
+
+		@stuck := "";
+		each(name in names) {
+			if(<>placed->Has(name)) {
+				if(@stuck->Size() > 0) { @stuck += " "; };
+				@stuck += name;
+			};
+		};
+		return out;
+	}
+
+	# every library appears after each of its dependencies
+	method : Respects(deps : Map<String, Set<String>>, order : String) ~ Bool {
+		position := Map->New()<String, IntRef>;
+		names := order->Split(" ");
+		each(i : names) {
+			position->Insert(names[i], IntRef->New(i));
+		};
+		lib_names := deps->GetKeys()<String>;
+		each(lib in lib_names) {
+			lib_deps := deps->Find(lib);
+			needs := lib_deps->GetKeys()<String>;
+			each(dep in needs) {
+				if(position->Find(dep)->Get() > position->Find(lib)->Get()) {
+					return false;
+				};
+			};
+		};
+		return true;
+	}
+}

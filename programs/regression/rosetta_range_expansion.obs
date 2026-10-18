@@ -1,0 +1,109 @@
+#~
+# Rosetta Code: Range expansion
+# https://rosettacode.org/wiki/Range_expansion
+# Claimed in #1144
+#
+# Expands a range description such as -6,-3--1,3-5 into the integers it names. The hard part is the minus sign: it is both the sign of a number and the range separator, so "-3--1" is the range from minus three to minus one. Splitting on ',' and parsing each end with String->ToInt pins the library's handling of a leading '-' and of single-field input (no delimiter at all).
+#
+# Expected values come from the task page and an independent Python oracle, not from what Objeck printed.
+~#
+
+class RosettaRangeExpansion {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaRangeExpansion->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's own input and the output every solution on the page prints
+		Check("task example", Expand("-6,-3--1,3-5,7-11,14,15,17-20"), "-6,-3,-2,-1,3,4,5,7,8,9,10,11,14,15,17,18,19,20");
+		CheckInt("task example has 18 values", Count("-6,-3--1,3-5,7-11,14,15,17-20"), 18);
+
+		# one field and no comma: the whole string is the only field
+		Check("single zero", Expand("0"), "0");
+		Check("single negative", Expand("-1"), "-1");
+		# a range whose ends are equal and negative
+		Check("degenerate negative range", Expand("-5--5"), "-5");
+		# a range that crosses zero
+		Check("range across zero", Expand("-2-2"), "-2,-1,0,1,2");
+		Check("range then a negative", Expand("10-12,-1"), "10,11,12,-1");
+
+		# the library's own parse of a signed field
+		CheckInt("ToInt of -3", "-3"->ToInt(), -3);
+		CheckInt("ToInt of -20", "-20"->ToInt(), -20);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Count(desc : String) ~ Int {
+		return Expand(desc)->Split(',')->Size();
+	}
+
+	function : Expand(desc : String) ~ String {
+		out := String->New();
+		# String->Split(Char) returns an EMPTY array when the delimiter does not
+		# occur ("0"->Split(',') has no elements), so a one-field description is
+		# handled on its own rather than through Split.
+		fields : String[];
+		if(desc->Has(',')) {
+			fields := desc->Split(',');
+		}
+		else {
+			fields := String->New[1];
+			fields[0] := desc;
+		};
+
+		each(i : fields) {
+			field := fields[i]->Trim();
+			# the range '-' is the first '-' that is not at position 0
+			dash := field->Find(1, '-');
+			if(dash > 0) {
+				lo := field->SubString(0, dash)->ToInt();
+				hi := field->SubString(dash + 1, field->Size() - dash - 1)->ToInt();
+				for(v := lo; v <= hi; v += 1;) {
+					Emit(out, v);
+				};
+			}
+			else {
+				Emit(out, field->ToInt());
+			};
+		};
+		return out;
+	}
+
+	function : Emit(out : String, v : Int) ~ Nil {
+		if(out->Size() > 0) {
+			out->Append(',');
+		};
+		out->Append(v);
+	}
+}

@@ -1,0 +1,130 @@
+#~
+# Rosetta Code: Read a specific line from a file
+# https://rosettacode.org/wiki/Read_a_specific_line_from_a_file
+# Claimed in #1159
+#
+# The seventh line of a file, read line by line with FileReader->ReadLine, with the task's three outcomes told apart: the line, "the seventh line is empty", and "fewer than seven lines". Empty lines must still count, CRLF files must give the same line as LF files (ReadLine strips the CR), and a last line with no newline must still be found.
+#
+# A six-line file must not look like one whose seventh line is empty. Before #1180 was fixed, ReadLine returned an extra "" after the final newline and this test had to drop that phantom; now ReadLine returns Nil there, and an empty last line is a real line.
+#
+# Expected values are the test's own file contents, written here byte for byte.
+~#
+
+use System.IO.Filesystem;
+
+class RosettaReadASpecificLineFromAFile {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaReadASpecificLineFromAFile->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# used as returned: on POSIX the name is created by mkstemp, so a suffixed copy would leak it
+		name := File->GetTempName();
+
+		# line 3 is empty and must still be counted
+		FileWriter->WriteFile(name, "one\ntwo\n\nfour\nfive\nsix\nseventh line\neight\n");
+		CheckInt("written as LF only (no newline translation)", File->Size(name), 42);
+		Check("line 7 of an LF file", SeventhLine(name), "seventh line");
+		CheckInt("an LF file has 8 lines", LineCount(name), 8);
+
+		FileWriter->WriteFile(name, "one\r\ntwo\r\n\r\nfour\r\nfive\r\nsix\r\nseventh line\r\neight\r\n");
+		Check("line 7 of a CRLF file", SeventhLine(name), "seventh line");
+		CheckInt("a CRLF file has 8 lines", LineCount(name), 8);
+
+		FileWriter->WriteFile(name, "1\n2\n3\n4\n5\n6\nlast, no newline");
+		Check("line 7 without a final newline", SeventhLine(name), "last, no newline");
+
+		FileWriter->WriteFile(name, "1\n2\n3\n4\n5\n6\n");
+		Check("six lines", SeventhLine(name), "the file has fewer than seven lines");
+		CheckInt("six lines counted", LineCount(name), 6);
+
+		FileWriter->WriteFile(name, "1\n2\n3\n4\n5\n6\n\n8\n");
+		Check("empty seventh line", SeventhLine(name), "the seventh line is empty");
+
+		FileWriter->WriteFile(name, "1\n2\n3\n4\n5\n6\n\n");
+		Check("empty seventh line, last in the file", SeventhLine(name), "the seventh line is empty");
+
+		FileWriter->WriteFile(name, "");
+		CheckInt("an empty file has no lines", LineCount(name), 0);
+
+		File->Delete(name);
+		CheckInt("temp file removed", File->Exists(name) ? 1 : 0, 0);
+		Check("missing file", SeventhLine(name), "the file cannot be opened");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : SeventhLine(name : String) ~ String {
+		reader := FileReader->New(name);
+		if(reader->IsOpen() = false) {
+			return "the file cannot be opened";
+		};
+
+		count := 0;
+		found : String := Nil;
+		line := NextLine(reader);
+		while(line <> Nil & found = Nil) {
+			count += 1;
+			if(count = 7) {
+				found := line;
+			};
+			line := NextLine(reader);
+		};
+		reader->Close();
+
+		if(found = Nil) {
+			return "the file has fewer than seven lines";
+		};
+		if(found->Size() = 0) {
+			return "the seventh line is empty";
+		};
+		return found;
+	}
+
+	function : LineCount(name : String) ~ Int {
+		reader := FileReader->New(name);
+		count := 0;
+		line := NextLine(reader);
+		while(line <> Nil) {
+			count += 1;
+			line := NextLine(reader);
+		};
+		reader->Close();
+		return count;
+	}
+
+	# one line, or Nil at the end of the file
+	function : NextLine(reader : FileReader) ~ String {
+		return reader->ReadLine();
+	}
+}

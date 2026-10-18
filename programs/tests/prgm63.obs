@@ -14,7 +14,7 @@ bundle Default {
 
 #		function : Run() ~ Nil {
 		function : native : Run() ~ Nil {
-			@buckets := List->New[337];
+			buckets := List->New[337];
 			
 			(13 and 7)->PrintLine();
 			a : Int := 13;

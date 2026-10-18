@@ -509,11 +509,14 @@ bundle System {
 		~#
 		function : native : ToBinaryString(v : Byte) ~ String {
 			out := "";
+			# a scalar Byte is not narrowed and can hold -1; its low eight bits
+			# are the byte, and >> on a negative value never reached 0
+			b := v->As(Int) and 255;
 			do {
-				out->Append(v and 1 = 0 ? '0' : '1');
-				v := v >> 1;
+				out->Append(b and 1 = 0 ? '0' : '1');
+				b := b >> 1;
 			} 
-			while(v <> 0);
+			while(b <> 0);
 
 			return out->Reverse();
 		}
@@ -883,7 +886,7 @@ bundle System {
 		function : native : IsWhitespace(c : Char) ~ Bool {
 			if(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
 					c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | 
-					c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029) {
+					c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2028 | c = 0x2029) {
 				return true;
 			};
 			
@@ -1690,7 +1693,8 @@ bundle System {
 			out := "";
 			do {
 				out->Append(v and 1 = 0 ? '0' : '1');
-				v := v >> 1;
+				# >>>: >> sign-fills, so a negative value stuck at -1 forever
+				v := v >>> 1;
 			} 
 			while(v <> 0);
 
@@ -1870,14 +1874,23 @@ bundle System {
 			Number->IntToString(v->As(Int), 10, buffer);
 			str := String->New(buffer, false);
 
+			# the sign is not a digit: -123456 gave "-,123,456" (#1177)
+			first := 0;
+			if(str->Size() > 0 & str->Get(0) = '-') {
+				first := 1;
+			};
+
 			count := 1;
 			comma_str : String := "";
-			for(i := str->Size() - 1; i >= 0; i -= 1;) {
+			for(i := str->Size() - 1; i >= first; i -= 1;) {
 				comma_str->Append(str->Get(i));
-				if(count % 3 = 0 & count + 1 <= str->Size()) {
+				if(count % 3 = 0 & i > first) {
 					comma_str->Append(',');
 				};
 				count += 1;
+			};
+			if(first = 1) {
+				comma_str->Append('-');
 			};
 
 			return comma_str->Reverse();
@@ -2117,7 +2130,7 @@ bundle System {
 		```
 		~#
 		function : Pi() ~ Float {
-			return 3.1415926536;
+			return 3.141592653589793;
 		}
 
 		function : Size(v : Float) ~ Float {
@@ -2132,7 +2145,7 @@ bundle System {
 		```
 		~#
 		function : E() ~ Float {
-			return 2.7182818285;
+			return 2.718281828459045;
 		}
 
 		#~
@@ -2258,8 +2271,9 @@ bundle System {
 		```
 		~#
 		function : Abs(v : Float) ~ Float {
-			if(v < 0.0) {
-				v *= -1.0;
+			# <= with 0.0 - v: -0.0 is not < 0.0, and -1.0 * -0.0 stays -0.0
+			if(v <= 0.0) {
+				v := 0.0 - v;
 			};
 
 			return v;
@@ -2709,35 +2723,14 @@ bundle System {
 		```
 		~#
 		function : ToString(value : Float, precision : Int) ~ String {
-			if(precision < 0) {
-				precision := 0;
-			};
+			# printf's %.*f in the VM: this went through ->As(Int), so above 2^63
+			# it printed "-9223372036854775808.-9223372036854775808", and it lost
+			# the sign of -0.0 (#1173)
+			return String->New(FormatFixed(value, precision));
+		}
 
-			f := value;
-			result := String->New();
-			if(f < 0.0) {
-				result->Append('-');
-				f := f * -1.0;
-			};
-
-			scale := Float->Pow(10.0, precision);
-			scaled := Float->Round(f * scale);
-
-			int_part := Float->Floor(scaled / scale)->As(Int);
-			frac_part := (scaled - (int_part->As(Float) * scale))->As(Int);
-
-			result->Append(int_part);
-			if(precision > 0) {
-				result->Append('.');
-				frac_str := Int->ToString(frac_part);
-				pad_count := precision - frac_str->Size();
-				each(i : pad_count) {
-					result->Append('0');
-				};
-				result->Append(frac_str);
-			};
-
-			return result;
+		function : FormatFixed(value : Float, precision : Int) ~ Char[] {
+			FLOAT_TO_STR_PREC;
 		}
 
 		function : native : ToString(v : Float[]) ~ String {
@@ -5445,30 +5438,20 @@ each(i : cities) {
 			if(@pos > 1) {
 				count := Count('.');
 				if(count = 1) {
+					# one '.', so always two halves; either may be empty ("12.",
+					# ".5") but not both. Split gave [] for "12." and this relied
+					# on it (#1177).
 					halves := Split(".");
-									
-					count := halves->Size();
-					if(count = 0) {
-						for(i := 0; i < @pos - 1; i +=1;) {
-							c := @string[i];
-							if(<>(c >= '0' & c <= '9')) {
-								return false;
-							};
-						};
-
-						return true;
+					first := halves[0];
+					second := halves[1];
+					if(first->IsEmpty()) {
+						return IsInt(second);
 					}
-					else if(count = 2) {
-						first := halves[0];
-						second := halves[1];
-
-						if(first <> Nil & second <> Nil) {
-							return IsInt(first) & IsInt(second);
-						}
-						else {
-							return IsInt(second);
-						};
+					else if(second->IsEmpty()) {
+						return IsInt(first);
 					};
+
+					return IsInt(first) & IsInt(second);
 				};
 
 				return false;
@@ -6211,8 +6194,10 @@ each(i : cities) {
 		@return padded string
 		~#
 		method : public : Justify(width : Int, is_left : Bool := false) ~ String {
-			if(width > 0 & @string->Size() < width) {
-				return Pad(' ', width - @pos, is_left);
+			# @pos, not the buffer's capacity; and justifying left pads on the
+			# right (#1177)
+			if(width > 0 & @pos < width) {
+				return Pad(' ', width - @pos, <>is_left);
 			};
 
 			return String->New(@string);
@@ -6274,6 +6259,16 @@ each(i : cities) {
 		method : public : PadTo(width : Int, ch : Char, is_left : Bool) ~ String {
 			if(@pos >= width) {
 				return String->New(@string);
+			};
+
+			# zero padding goes after a sign: "{$n:06}" of -42 is "-00042", not
+			# "000-42" (#1177)
+			if(ch = '0' & is_left & @pos > 0 & (@string[0] = '-' | @string[0] = '+')) {
+				digits := String->New(@string, 1, @pos - 1);
+				padded := String->New();
+				padded->Append(@string[0]);
+				padded->Append(digits->Pad(ch, width - @pos, true));
+				return padded;
 			};
 
 			return Pad(ch, width - @pos, is_left);
@@ -6732,7 +6727,7 @@ each(i : cities) {
 	            	c := @string[start];
 	            	if(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' |
 						c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d |
-						c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029) {
+						c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2028 | c = 0x2029) {
 					start += 1;
 				}
 				else {
@@ -6756,16 +6751,14 @@ each(i : cities) {
                     return "";
             };
 
-			end := @pos;
-			do {
+			# the last character was dropped whether or not it was white space:
+			# "a"->TrimBack() was "" (#1177)
+			end := @pos - 1;
+			while(end > -1 & Char->IsWhitespace(@string[end])) {
 				end -= 1;
-				c := @string[end];
-			}
-			while(end > 0 & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
-				c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a |	c >= 0x000a & c <= 0x000d | 
-				c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029));
+			};
 
-			if(end < 1) {
+			if(end < 0) {
 				return "";
 			};
 
@@ -6790,7 +6783,7 @@ each(i : cities) {
 				c := @string[start];
 				if(c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' |
 					c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d |
-					c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029) {
+					c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2028 | c = 0x2029) {
 					start += 1;
 				}
 				else {
@@ -6805,7 +6798,7 @@ each(i : cities) {
 			}
 			while(end > 0 & (c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = '\v' | c = '\f' | 
 				c = 0xa0 | c = 0x1680 | c >= 0x2000 & c <= 0x200a | c >= 0x000a & c <= 0x000d | 
-				c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2029));
+				c = 0x202f | c = 0x205f | c = 0x3000 | c = 0x0085 | c = 0x2028 | c = 0x2029));
 
 			if(end < start) {
 				return "";
@@ -6868,6 +6861,11 @@ each(i : cities) {
 				};
 			};
 
+			# a last line without a newline is still a line (#1177)
+			if(start < @pos) {
+				count += 1;
+			};
+
 			# response array
 			lines := String->New[count];
 			count := 0;
@@ -6910,6 +6908,10 @@ each(i : cities) {
 				};
 			};
 
+			if(start < @pos) {
+				lines[count++] := SubString(start, @pos - start);
+			};
+
 			return lines;
 		}
 
@@ -6929,76 +6931,55 @@ each(i : cities) {
 			if(delim_size = 0 | @pos = 0) {
 				return String->New[0];
 			};
-			
-			# first-pass count tokens
+
+			# Matches are found left to right without overlap, and every field
+			# between them is kept: "a,,b" is ["a", "", "b"], "a,b," ends in "",
+			# and a string without the delimiter is one field (#1177). Only the
+			# character after a match used to complete it, so "a,b," gave
+			# ["a", "b,"] and "abc" gave [].
+			count := 1;
+			i := 0;
+			while(i + delim_size <= @pos) {
+				if(SplitMatchesAt(delim, i)) {
+					count += 1;
+					i += delim_size;
+				}
+				else {
+					i += 1;
+				};
+			};
+
+			parts := String->New[count];
 			count := 0;
-			start_index := 0;
-			found_index := -1;
-			delim_index := 0;
-			
-			each(i : @pos) {
-				if(found_index = -1 & delim->Get(0) = @string[i]) {
-					found_index := i;
-				};
-				
-				if(found_index > -1) {
-					if(delim_index < delim_size & delim->Get(delim_index) = @string[i]) {
-						delim_index += 1;
-					}
-					else if(delim_index = delim_size) {
-						count += 1;
-						start_index := found_index + delim_size;
-						found_index := -1;
-						delim_index := 0;
-					}
-					else {
-						found_index := -1;
-						delim_index := 0;
-					};
+			start := 0;
+			i := 0;
+			while(i + delim_size <= @pos) {
+				if(SplitMatchesAt(delim, i)) {
+					parts[count] := SubString(start, i - start);
+					count += 1;
+					i += delim_size;
+					start := i;
+				}
+				else {
+					i += 1;
 				};
 			};
-			
-			if(start_index <> 0) {
-				count += 1;
-			};
-			
-			# second-pass parse tokens
-			parsed_strings : String[] := String->New[count];
-			count := 0;
-			start_index := 0;
-			found_index := -1;
-			delim_index := 0;
-			
-			each(i : @pos) {
-				if(found_index = -1 & delim->Get(0) = @string[i]) {
-					found_index := i;
+			parts[count] := SubString(start, @pos - start);
+
+			return parts;
+		}
+
+		method : private : SplitMatchesAt(delim : String, offset : Int) ~ Bool {
+			delim_size := delim->Size();
+			j := 0;
+			while(j < delim_size) {
+				if(@string[offset + j] <> delim->Get(j)) {
+					return false;
 				};
-				
-				if(found_index > -1) {
-					if(delim_index < delim_size & delim->Get(delim_index) = @string[i]) {
-						delim_index += 1;
-					}
-					else if(delim_index = delim_size) {
-						parsed_strings[count] := SubString(start_index, found_index - start_index);
-						count += 1;
-						
-						start_index := found_index + delim_size;
-						found_index := -1;
-						delim_index := 0;
-					}
-					else {
-						found_index := -1;
-						delim_index := 0;
-					};
-				};
+				j += 1;
 			};
-			
-			if(start_index <> 0) {
-				parsed_strings[count] := SubString(start_index, @pos - start_index);
-				count += 1;
-			};
-			
-			return parsed_strings;
+
+			return true;
 		}
 
 
@@ -7012,16 +6993,17 @@ each(i : cities) {
 		```
 		~#
 		method : public : Split(delim : Char) ~ String[] {
-			count := 0;
-			
+			if(@pos = 0) {
+				return String->New[0];
+			};
+
+			# one more field than delimiters: without one, the string is the
+			# only field (#1177)
+			count := 1;
 			each(i : @pos) {
 				if(@string[i] = delim) {
 					count += 1;
 				};
-			};
-
-			if(count <> 0) {
-				count += 1;
 			};
 
 			strings := String->New[count];
@@ -7036,9 +7018,7 @@ each(i : cities) {
 				};
 			};
 
-			if(start <> 0) {
-				strings[count++] := String->New(@string, start, @pos - start);
-			};
+			strings[count++] := String->New(@string, start, @pos - start);
 
 			return strings;
 		}
@@ -7120,6 +7100,11 @@ each(i : cities) {
 			end : Int := length + offset;
 			if(end > @pos) {
 				return Nil;
+			};
+
+			# Runtime->Copy reports failure for a zero-length copy (#1177)
+			if(length = 0) {
+				return String->New();
 			};
 
 			array := Char->New[length];
@@ -10167,9 +10152,18 @@ bundle System.IO.Filesystem {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[8192];
-			ReadString(buffer);
-			return System.String->New(buffer);
+			# the whole line, however long: an 8 KB buffer split longer lines
+			# into several (#1180)
+			chars := ReadLineChars();
+			if(chars = Nil) {
+				return Nil;
+			};
+
+			return System.String->New(chars);
+		}
+
+		method : ReadLineChars() ~ Char[] {
+			FILE_IN_LINE;
 		}
 
 		method : ReadString(buffer : Char[]) ~ Nil {
@@ -10447,9 +10441,18 @@ bundle System.IO.Filesystem {
 				return Nil;
 			};
 
-			buffer : Char[] := Char->New[8192];
-			ReadString(buffer);
-			return System.String->New(buffer);
+			# the whole line, however long: an 8 KB buffer split longer lines
+			# into several (#1180)
+			chars := ReadLineChars();
+			if(chars = Nil) {
+				return Nil;
+			};
+
+			return System.String->New(chars);
+		}
+
+		method : ReadLineChars() ~ Char[] {
+			FILE_IN_LINE;
 		}
 
 		method : ReadString(buffer : Char[]) ~ Nil {
@@ -10916,10 +10919,12 @@ bundle System.IO.Filesystem {
 		@return true if directory path was created 
 		~#
 		function : CreatePath(n : String) ~ Bool {	
+			# a path without '/' is one field now, not [] (#1177): fall back to
+			# '\\' when that is the separator it uses
 			sub_dirs := n->Split("/");
-			if(sub_dirs->Size() = 0) {
+			if(sub_dirs->Size() = 1 & n->Has('\\')) {
 				sub_dirs := n->Split("\\");
-			};		
+			};
 			
 			if(sub_dirs->Size() > 0) {
 				is_okay := true;
@@ -10941,12 +10946,15 @@ bundle System.IO.Filesystem {
 				};
 				
 				for(j := i; j < sub_dirs->Size() & is_okay; j += 1;) {
-					path->Append(sub_dirs[j]);
-					path->Append('/');
-					
-					is_okay := Exists(path);
-					if(<>is_okay) {
-						is_okay := Create(path);
+					# "a//b" and a trailing '/' give empty fields: no directory
+					if(<>sub_dirs[j]->IsEmpty()) {
+						path->Append(sub_dirs[j]);
+						path->Append('/');
+
+						is_okay := Exists(path);
+						if(<>is_okay) {
+							is_okay := Create(path);
+						};
 					};
 				};
 				

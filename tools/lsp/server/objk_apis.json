@@ -12252,6 +12252,68 @@
 				}
 			}
 		},
+		"System.Math.Complex": {
+			"description": "A complex number with `Float` real and imaginary parts.\n\nImmutable: every operation returns a new value and none modifies its receiver. Division and the reciprocal return Nil for a zero divisor rather than raising, because a `Float` division by zero aborts the program.",
+			"functions": {
+				"Abs": {
+					"descriptions": ["**The magnitude sqrt(re^2 + im^2), scaled so that it neither overflows nor underflows when the parts are large or tiny but the result is not.**\n\n```method : public : Abs() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Add": {
+					"descriptions": ["**The sum.**\n\n```method : public : Add(rhs:Complex) ~ Complex```\n\n\n\nrhs: Complex\n\nreturn: Complex"]
+				},
+				"Arg": {
+					"descriptions": ["**The argument (phase angle) in radians, in the range -pi to pi.**\n\n```method : public : Arg() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"Conjugate": {
+					"descriptions": ["**The complex conjugate, re - im*i.**\n\n```method : public : Conjugate() ~ Complex```\n\n\n\nreturn: Complex"]
+				},
+				"Divide": {
+					"descriptions": ["**The quotient. Uses Smith's method, which scales by the larger part of the divisor so the intermediate does not overflow or underflow the way (c^2 + d^2) can.**\n\n```method : public : Divide(rhs:Complex) ~ Complex```\n\n\n\nrhs: Complex\n\nreturn: Complex"]
+				},
+				"Equals": {
+					"descriptions": ["**Whether two values are exactly equal, part by part. Floating-point results rarely compare exactly; compare `Subtract(...)->Abs()` against a tolerance when the values were computed.**\n\n```method : public : Equals(rhs:Complex) ~ Bool```\n\n\n\nrhs: Complex\n\nreturn: Bool"]
+				},
+				"GetImaginary": {
+					"descriptions": ["**The imaginary part.**\n\n```method : public : GetImaginary() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetReal": {
+					"descriptions": ["**The real part.**\n\n```method : public : GetReal() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"I": {
+					"descriptions": ["**The imaginary unit i.**\n\n```function : I() ~ Complex```\n\n\n\nreturn: Complex"]
+				},
+				"IsZero": {
+					"descriptions": ["**Whether both parts are zero.**\n\n```method : public : IsZero() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Multiply": {
+					"descriptions": ["**The product.**\n\n```method : public : Multiply(rhs:Complex) ~ Complex```\n\n\n\nrhs: Complex\n\nreturn: Complex", "**The product with a real scalar.**\n\n```method : public : Multiply(k:Float) ~ Complex```\n\n\n\nk: Float\n\nreturn: Complex"]
+				},
+				"Negate": {
+					"descriptions": ["**The value with both parts' signs reversed.**\n\n```method : public : Negate() ~ Complex```\n\n\n\nreturn: Complex"]
+				},
+				"New": {
+					"descriptions": ["**Builds re + im*i.**\n\n```New(re:Float, im:Float)```\n\n\n\nre: Float\n\nim: Float", "**Builds a real number, with a zero imaginary part.**\n\n```New(re:Float)```\n\n\n\nre: Float"]
+				},
+				"One": {
+					"descriptions": ["**One.**\n\n```function : One() ~ Complex```\n\n\n\nreturn: Complex"]
+				},
+				"Polar": {
+					"descriptions": ["**Builds a value from polar form: magnitude r at angle theta, i.e. r(cos theta + i sin theta). `Polar(1.0, theta)` is e^(i theta).**\n\n```function : Polar(r:Float, theta:Float) ~ Complex```\n\n\n\nr: Float\n\ntheta: Float\n\nreturn: Complex"]
+				},
+				"Reciprocal": {
+					"descriptions": ["**The multiplicative inverse, 1\/z. Zero has none, so this returns Nil for it.**\n\n```method : public : Reciprocal() ~ Complex```\n\n\n\nreturn: Complex"]
+				},
+				"Subtract": {
+					"descriptions": ["**The difference.**\n\n```method : public : Subtract(rhs:Complex) ~ Complex```\n\n\n\nrhs: Complex\n\nreturn: Complex"]
+				},
+				"ToString": {
+					"descriptions": ["**`a + bi` or `a - bi`, each part formatted as `Float->ToString` formats it.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Zero": {
+					"descriptions": ["**Zero.**\n\n```function : Zero() ~ Complex```\n\n\n\nreturn: Complex"]
+				}
+			}
+		},
 		"System.Math.Rational": {
 			"description": "An exact fraction, backed by `BigInt` so no operation can overflow.\n\nAlways in lowest terms with a positive denominator, so equal values are identical and `Compare` is a comparison of two products. Immutable: every operation returns a new value.",
 			"functions": {
@@ -16189,6 +16251,12 @@
 			}
 		],
 		"BigInt": [
+			{
+				"bundle": "System.Math",
+				"file": ""
+			}
+		],
+		"Complex": [
 			{
 				"bundle": "System.Math",
 				"file": ""

@@ -1,0 +1,157 @@
+#~
+# Rosetta Code: Hash join
+# https://rosettacode.org/wiki/Hash_join
+# Claimed in #1151
+#
+# EXTRA_LIBS: gen_collect
+#
+# The task's two-phase inner join: hash table B into a multimap built from the library's Collection.Hash (join value -> Vector of rows), then probe it with each row of A. The output must be the page's seven rows, a row whose key has no partner (Popeye) must drop out, and the hash join must agree row for row with a nested-loop join over the same tables.
+#
+# Expected values are the task page's stated output table (in table A's order).
+~#
+
+use Collection;
+
+class RosettaHashJoin {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaHashJoin->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# table A: (Age, Name), joined on column 1
+		a := Vector->New()<JoinRow>;
+		a->AddBack(JoinRow->New("27", "Jonah"));
+		a->AddBack(JoinRow->New("18", "Alan"));
+		a->AddBack(JoinRow->New("28", "Glory"));
+		a->AddBack(JoinRow->New("18", "Popeye"));
+		a->AddBack(JoinRow->New("28", "Alan"));
+
+		# table B: (Character, Nemesis), joined on column 0
+		b := Vector->New()<JoinRow>;
+		b->AddBack(JoinRow->New("Jonah", "Whales"));
+		b->AddBack(JoinRow->New("Jonah", "Spiders"));
+		b->AddBack(JoinRow->New("Alan", "Ghosts"));
+		b->AddBack(JoinRow->New("Alan", "Zombies"));
+		b->AddBack(JoinRow->New("Glory", "Buffy"));
+
+		joined := HashJoin(a, 1, b, 0);
+		Check("seven joined rows", joined->Size()->ToString(), "7");
+		Check("row 1", joined->Get(0), "27,Jonah,Jonah,Whales");
+		Check("row 2", joined->Get(1), "27,Jonah,Jonah,Spiders");
+		Check("row 3", joined->Get(2), "18,Alan,Alan,Ghosts");
+		Check("row 4", joined->Get(3), "18,Alan,Alan,Zombies");
+		Check("row 5", joined->Get(4), "28,Glory,Glory,Buffy");
+		Check("row 6", joined->Get(5), "28,Alan,Alan,Ghosts");
+		Check("row 7", joined->Get(6), "28,Alan,Alan,Zombies");
+		Check("Popeye has no nemesis, so no row", Contains(joined, "Popeye")->ToString(), "false");
+
+		nested := NestedLoopJoin(a, 1, b, 0);
+		Check("agrees with a nested-loop join", Join(joined), Join(nested));
+
+		# joining the other way round (hash table A on Name, probe with B)
+		swapped := HashJoin(b, 0, a, 1);
+		Check("swapped join also has seven rows", swapped->Size()->ToString(), "7");
+		Check("swapped join, first row", swapped->Get(0), "Jonah,Whales,27,Jonah");
+		Check("swapped join, Alan meets both ages", swapped->Get(2) + "|" + swapped->Get(3), "Alan,Ghosts,18,Alan|Alan,Ghosts,28,Alan");
+
+		# no common keys: empty result
+		c := Vector->New()<JoinRow>;
+		c->AddBack(JoinRow->New("Nobody", "Nothing"));
+		Check("disjoint keys join to nothing", HashJoin(a, 1, c, 0)->Size()->ToString(), "0");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# hash phase over table b, then probe with every row of a
+	function : HashJoin(a : Vector<JoinRow>, ja : Int, b : Vector<JoinRow>, jb : Int) ~ Vector<String> {
+		multimap := Hash->New()<String, Vector<JoinRow>>;
+		each(row in b) {
+			key := row->Column(jb);
+			if(<>multimap->Has(key)) {
+				multimap->Insert(key, Vector->New()<JoinRow>);
+			};
+			multimap->Find(key)->AddBack(row);
+		};
+
+		out := Vector->New()<String>;
+		each(row in a) {
+			matches := multimap->Find(row->Column(ja));
+			if(matches <> Nil) {
+				each(m in matches) {
+					out->AddBack(row->ToString() + "," + m->ToString());
+				};
+			};
+		};
+		return out;
+	}
+
+	function : NestedLoopJoin(a : Vector<JoinRow>, ja : Int, b : Vector<JoinRow>, jb : Int) ~ Vector<String> {
+		out := Vector->New()<String>;
+		each(x in a) {
+			each(y in b) {
+				if(x->Column(ja)->Equals(y->Column(jb))) {
+					out->AddBack(x->ToString() + "," + y->ToString());
+				};
+			};
+		};
+		return out;
+	}
+
+	function : Join(rows : Vector<String>) ~ String {
+		out := "";
+		each(r in rows) {
+			out += r + ";";
+		};
+		return out;
+	}
+
+	function : Contains(rows : Vector<String>, name : String) ~ Bool {
+		each(r in rows) {
+			if(r->Find(name) > -1) {
+				return true;
+			};
+		};
+		return false;
+	}
+}
+
+class JoinRow {
+	@left : String;
+	@right : String;
+
+	New(left : String, right : String) {
+		@left := left;
+		@right := right;
+	}
+
+	method : public : Column(i : Int) ~ String {
+		if(i = 0) {
+			return @left;
+		};
+		return @right;
+	}
+
+	method : public : ToString() ~ String {
+		return @left + "," + @right;
+	}
+}

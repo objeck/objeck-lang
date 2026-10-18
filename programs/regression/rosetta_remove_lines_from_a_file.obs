@@ -1,0 +1,152 @@
+#~
+# Rosetta Code: Remove lines from a file
+# https://rosettacode.org/wiki/Remove_lines_from_a_file
+# Claimed in #1160
+#
+# RemoveLines(file, start, count) with one-based line numbers, as the task specifies: empty lines count and are removed like any other, and a range running past the end of the file leaves the file untouched and reports it. The file is checked byte for byte afterwards, including whether it still ends in a newline. Lines are rewritten with LF, so a CRLF file comes back LF -- ReadLine strips both forms.
+#
+# Whether the file ended with a newline is read from its last character. (Before #1180 was fixed, ReadLine returned an extra "" after the final newline, and this routine used that phantom as the signal.)
+#
+# Expected values are the test's own file contents, written here byte for byte.
+~#
+
+use System.IO.Filesystem;
+
+class RosettaRemoveLinesFromAFile {
+	@failures : Int;
+	@ends_with_newline : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaRemoveLinesFromAFile->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+		@ends_with_newline := false;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# used as returned: on POSIX the name is created by mkstemp, so a suffixed copy would leak it
+		name := File->GetTempName();
+		five := "one\ntwo\n\nfour\nfive\n";
+
+		# the task's example: remove the first two lines
+		FileWriter->WriteFile(name, five);
+		Check("remove lines 1-2 reports", RemoveLines(name, 1, 2), "removed 2 line(s)");
+		Check("remove lines 1-2 leaves", Contents(name), "\nfour\nfive\n");
+
+		# the empty third line is removed like any other
+		FileWriter->WriteFile(name, five);
+		RemoveLines(name, 3, 1);
+		Check("remove the empty line 3", Contents(name), "one\ntwo\nfour\nfive\n");
+
+		FileWriter->WriteFile(name, five);
+		RemoveLines(name, 5, 1);
+		Check("remove the last line", Contents(name), "one\ntwo\n\nfour\n");
+
+		FileWriter->WriteFile(name, five);
+		RemoveLines(name, 1, 5);
+		Check("remove every line", Contents(name), "");
+		CheckInt("an emptied file is zero bytes", File->Size(name), 0);
+
+		# past the end: a message, and the file is not touched
+		FileWriter->WriteFile(name, five);
+		Check("range past the end reports", RemoveLines(name, 4, 3), "cannot remove lines 4-6: the file has only 5 line(s)");
+		Check("range past the end leaves the file", Contents(name), five);
+		Check("start past the end reports", RemoveLines(name, 9, 1), "cannot remove lines 9-9: the file has only 5 line(s)");
+		Check("zero lines is an error", RemoveLines(name, 1, 0), "nothing to remove");
+
+		# no final newline: none is added
+		FileWriter->WriteFile(name, "a\nb\nc");
+		RemoveLines(name, 2, 1);
+		Check("no final newline is kept that way", Contents(name), "a\nc");
+
+		# CRLF in, LF out
+		FileWriter->WriteFile(name, "a\r\nb\r\nc\r\n");
+		RemoveLines(name, 1, 1);
+		Check("a CRLF file is rewritten with LF", Contents(name), "b\nc\n");
+		CheckInt("and is 4 bytes", File->Size(name), 4);
+
+		File->Delete(name);
+		CheckInt("temp file removed", File->Exists(name) ? 1 : 0, 0);
+		Check("missing file", RemoveLines(name, 1, 1), "cannot open the file");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : RemoveLines(name : String, start : Int, count : Int) ~ String {
+		if(start < 1 | count < 1) {
+			return "nothing to remove";
+		};
+
+		reader := FileReader->New(name);
+		if(reader->IsOpen() = false) {
+			return "cannot open the file";
+		};
+
+		# read every line; total counts them
+		kept := "";
+		total := 0;
+		text := Contents(name);
+		@ends_with_newline := text->Size() > 0 & text->Get(text->Size() - 1) = '\n';
+		line := reader->ReadLine();
+		while(line <> Nil) {
+			total += 1;
+			if(total < start | total >= start + count) {
+				kept->Append(line);
+				kept->Append('\n');
+			};
+			line := reader->ReadLine();
+		};
+		reader->Close();
+
+		last := start + count - 1;
+		if(last > total) {
+			return "cannot remove lines {$start}-{$last}: the file has only {$total} line(s)";
+		};
+
+		# the last line written had a newline added; take it off if the file had none
+		if(@ends_with_newline = false & kept->Size() > 0) {
+			kept := kept->SubString(kept->Size() - 1);
+		};
+
+		writer := FileWriter->New(name);
+		writer->WriteString(kept);
+		writer->Close();
+
+		return "removed {$count} line(s)";
+	}
+
+	# exact file contents; ReadFile returns Nil for an empty file as well as a missing one
+	function : Contents(name : String) ~ String {
+		text := FileReader->ReadFile(name);
+		if(text = Nil) {
+			return "";
+		};
+		return text;
+	}
+}

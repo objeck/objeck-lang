@@ -1,0 +1,99 @@
+#~
+# Rosetta Code: Infinity
+# https://rosettacode.org/wiki/Infinity
+# Claimed in #1129
+#
+# Float is an IEEE double, so the task's function returns positive infinity rather than the largest finite value. The test pins that the library's Float->Inf() is the same value an overflowing product of the task's literal 1.5 reaches at run time, that it sits above every finite double, that it survives the operations which should keep it infinite, and that it prints and parses as "inf". It also pins the one way a program cannot obtain infinity: dividing by a zero held in a variable raises instead (see rosetta_detect_division_by_zero.obs).
+#
+# Expected values were computed with an independent oracle (Python floats), not recalled.
+~#
+
+class RosettaInfinity {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaInfinity->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		inf := PositiveInfinity();
+		Check("the task's function returns inf", inf->ToString(), "inf");
+
+		# the library constant and an overflowing product of 1.5 agree
+		grown := Grow(1.5);
+		CheckBool("1.5 doubled until it stops changing is Float->Inf()", grown = inf, true);
+		CheckBool("Float->Inf() is not NaN", inf = inf, true);
+
+		# above every finite double, and below nothing
+		CheckBool("inf > largest finite double", inf > 1.7976931348623157e308, true);
+		CheckBool("inf > 1.5", inf > Id(1.5), true);
+		CheckBool("-inf < smallest finite double", Float->NegInf() < -1.7976931348623157e308, true);
+		CheckBool("Max(inf, 1.5) is inf", Float->Max(inf, Id(1.5)) = inf, true);
+		CheckBool("Min(-inf, 1.5) is -inf", Float->Min(Float->NegInf(), Id(1.5)) = Float->NegInf(), true);
+
+		# arithmetic that keeps it infinite
+		CheckBool("inf + 1.5 is inf", inf + Id(1.5) = inf, true);
+		CheckBool("inf * 1.5 is inf", inf * Id(1.5) = inf, true);
+		CheckBool("inf / 1.5 is inf", inf / Id(1.5) = inf, true);
+		CheckBool("-inf is -(inf)", -inf = Float->NegInf(), true);
+		CheckBool("Abs(-inf) is inf", Float->Abs(Float->NegInf()) = inf, true);
+		CheckBool("1.5 / inf is 0", Id(1.5) / inf = 0.0, true);
+
+		# text round trip
+		Check("-inf prints -inf", Float->NegInf()->ToString(), "-inf");
+		CheckBool("\"inf\"->ToFloat() is inf", "inf"->ToFloat() = inf, true);
+		CheckBool("\"-inf\"->ToFloat() is -inf", "-inf"->ToFloat() = Float->NegInf(), true);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# the task: Float is IEEE, so infinity is supported and is returned
+	function : PositiveInfinity() ~ Float {
+		return Float->Inf();
+	}
+
+	# doubles x until doubling no longer changes it, which for IEEE doubles
+	# can only stop at infinity
+	function : Grow(x : Float) ~ Float {
+		steps := 0;
+		next := x * 2.0;
+		while(next <> x & steps < 2000) {
+			x := next;
+			next := x * 2.0;
+			steps += 1;
+		};
+		return x;
+	}
+
+	function : Id(v : Float) ~ Float {
+		return v;
+	}
+}

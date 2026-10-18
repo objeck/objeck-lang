@@ -4,12 +4,12 @@ use System.Time;
 class Mc {
  
     function: Main(args: String[]) ~ Nil {
-        @I := 100;
-        @J := 100;
-        @K := 10;
+        max_i := 100;
+        max_j := 100;
+        max_k := 10;
 
-        NormlRun(@I, @J, @K);
-        CrashRun(@I, @J, @K);
+        NormlRun(max_i, max_j, max_k);
+        CrashRun(max_i, max_j, max_k);
     }
     
     function: NormlRun(@I: Int, @J: Int, @K: Int) ~ Nil {

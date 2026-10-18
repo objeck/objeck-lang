@@ -1,0 +1,121 @@
+#~
+# Rosetta Code: Longest common subsequence
+# https://rosettacode.org/wiki/Longest_common_subsequence
+# Claimed in #1153
+#
+# Dynamic-programming LCS over a 2-D Int table, then a backtrack to recover one subsequence. The task's two examples have a unique LCS ("1234" and "tsitest"), so they are pinned exactly; for a pair with several answers the test pins the length, membership in the set of all LCSs, and that the result really is a subsequence of both inputs.
+#
+# Expected values were computed with an independent oracle (Python, enumerating every LCS), not recalled.
+~#
+
+class RosettaLongestCommonSubsequence {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaLongestCommonSubsequence->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# the task's examples; each has exactly one LCS
+		Check("LCS of 1234 and 1224533324", Lcs("1234", "1224533324"), "1234");
+		Check("LCS of thisisatest and testing123testing", Lcs("thisisatest", "testing123testing"), "tsitest");
+		Check("argument order does not matter", Lcs("testing123testing", "thisisatest"), "tsitest");
+		Check("LCS of AGGTAB and GXTXAYB", Lcs("AGGTAB", "GXTXAYB"), "GTAB");
+
+		# edges
+		Check("identical strings", Lcs("abc", "abc"), "abc");
+		Check("nothing in common", Lcs("abc", "def"), "");
+		Check("empty left", Lcs("", "abc"), "");
+		Check("empty right", Lcs("abc", ""), "");
+		Check("case-sensitive", Lcs("ABC", "abc"), "");
+
+		# several LCSs exist (BCAB, BCBA, BDAB): pin length, membership and validity
+		got := Lcs("ABCBDAB", "BDCABA");
+		Check("ABCBDAB/BDCABA length", got->Size()->ToString(), "4");
+		known := got->Equals("BCAB") | got->Equals("BCBA") | got->Equals("BDAB");
+		Check("ABCBDAB/BDCABA is one of the three LCSs", known->ToString(), "true");
+		Check("it is a subsequence of the first", IsSubsequence(got, "ABCBDAB")->ToString(), "true");
+		Check("it is a subsequence of the second", IsSubsequence(got, "BDCABA")->ToString(), "true");
+
+		# a longer pair, checked by validity and the oracle's length
+		long_a := "ACCGGTCGAGTGCGCGGAAGCCGGCCGAA";
+		long_b := "GTCGTTCGGAATGCCGTTGCTCTGTAAA";
+		got := Lcs(long_a, long_b);
+		Check("DNA pair length", got->Size()->ToString(), "20");
+		Check("DNA pair result is a common subsequence",
+			(IsSubsequence(got, long_a) & IsSubsequence(got, long_b))->ToString(), "true");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Lcs(a : String, b : String) ~ String {
+		rows := a->Size() + 1;
+		cols := b->Size() + 1;
+		table := Int->New[rows, cols];
+		for(i := 1; i < rows; i += 1;) {
+			for(j := 1; j < cols; j += 1;) {
+				if(a->Get(i - 1) = b->Get(j - 1)) {
+					table[i, j] := table[i - 1, j - 1] + 1;
+				}
+				else if(table[i - 1, j] >= table[i, j - 1]) {
+					table[i, j] := table[i - 1, j];
+				}
+				else {
+					table[i, j] := table[i, j - 1];
+				};
+			};
+		};
+
+		# walk back from the corner, collecting matched characters in reverse
+		out := "";
+		i := a->Size();
+		j := b->Size();
+		while(i > 0 & j > 0) {
+			if(a->Get(i - 1) = b->Get(j - 1)) {
+				# bind first: in a '+' concatenation a->Get(k)->ToString() is appended as
+				# a Char (the head of the chain), not as the String it returns
+				matched := a->Get(i - 1);
+				out := matched->ToString() + out;
+				i -= 1;
+				j -= 1;
+			}
+			else if(table[i - 1, j] >= table[i, j - 1]) {
+				i -= 1;
+			}
+			else {
+				j -= 1;
+			};
+		};
+		return out;
+	}
+
+	function : IsSubsequence(s : String, t : String) ~ Bool {
+		k := 0;
+		each(i : t) {
+			if(k < s->Size()) {
+				if(s->Get(k) = t->Get(i)) {
+					k += 1;
+				};
+			};
+		};
+		return k = s->Size();
+	}
+}

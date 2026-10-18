@@ -214,8 +214,8 @@ class Enemy {
 	New(platform : Platform) {
 		@platform := platform;
 		@game_map := @platform->GetMap();
-		@engine := @platform->GetEngine();
-		@enemy := @engine->AddImageSprite("images/enemy.png");
+		engine := @platform->GetEngine();
+		@enemy := engine->AddImageSprite("images/enemy.png");
 	}
 
 	method : public : native : HandleEvents() ~ Nil {

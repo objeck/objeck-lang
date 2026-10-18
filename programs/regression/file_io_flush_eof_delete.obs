@@ -1,0 +1,118 @@
+#~
+Regression: three file defects (#1180).
+
+1. File->Flush() cleared the file handle before flushing (copied from Close):
+   afterwards the file read as closed, later writes were dropped, Close() did
+   nothing and the FILE* leaked -- on Windows it stayed locked, so reading the
+   file back failed for the rest of the process.
+2. FileReader->ReadLine() returned an extra "" after a file's final newline,
+   before Nil: IsEoF() only became true after a read found nothing. The
+   documented `while(line <> Nil)` loop therefore saw a phantom empty line.
+3. File->Delete() of a file still open for writing aborted the VM on Windows
+   ("internal error: remove: The process cannot access the file") instead of
+   returning false. On POSIX deleting an open file succeeds; either answer is
+   fine here -- the program must simply keep running.
+
+An empty file also read as one empty line: IsEoF() was false until a read
+found nothing. The file is now looked ahead one byte when opened, and after
+each line, so end of file is known as soon as it is reached.
+~#
+
+use System.IO.Filesystem;
+
+class FileIoFlushEofDelete {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		name := "file_io_flush_eof_delete.tmp.txt";
+
+		# 1. writes after a Flush reach the file, and Close closes it
+		w := FileWriter->New(name);
+		w->WriteString("first\n");
+		w->Flush();
+		Check("still open after Flush", w->IsOpen());
+		w->WriteString("second\n");
+		w->Close();
+		Check("closed after Close", <>w->IsOpen());
+		content := FileReader->ReadFile(name);
+		Check("both writes reached the file", content <> Nil & content->Equals("first\nsecond\n"));
+
+		# 2. ReadLine: exactly the lines, then Nil
+		r := FileReader->New(name);
+		lines := 0;
+		empty := 0;
+		line := r->ReadLine();
+		while(line <> Nil) {
+			lines += 1;
+			if(line->Size() = 0) { empty += 1; };
+			line := r->ReadLine();
+		};
+		r->Close();
+		CheckInt("two lines read", lines, 2);
+		CheckInt("no phantom empty line", empty, 0);
+
+		# a genuinely empty last line is still a line
+		w2 := FileWriter->New(name);
+		w2->WriteString("a\n\n");
+		w2->Close();
+		r2 := FileReader->New(name);
+		got := 0;
+		l2 := r2->ReadLine();
+		while(l2 <> Nil) {
+			got += 1;
+			l2 := r2->ReadLine();
+		};
+		r2->Close();
+		CheckInt("'a\\n\\n' is two lines, the second empty", got, 2);
+
+		# an empty file has no lines: the first ReadLine is already Nil
+		w4 := FileWriter->New(name);
+		w4->Close();
+		r4 := FileReader->New(name);
+		Check("an empty file is at end of file when opened", r4->IsEoF());
+		Check("its first ReadLine is Nil", r4->ReadLine() = Nil);
+		r4->Close();
+
+		# 3. Delete of an open file returns instead of aborting the VM
+		w3 := FileWriter->New(name);
+		w3->WriteString("open");
+		deleted := File->Delete(name);
+		Check("Delete of an open file returned (" + deleted + ")", true);
+		w3->Close();
+		File->Delete(name);
+		Check("the file is gone afterwards", <>File->Exists(name));
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		FileIoFlushEofDelete->New()->Run();
+	}
+}

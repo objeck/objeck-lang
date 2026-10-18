@@ -425,6 +425,8 @@ void Scanner::LoadKeywords()
   ident_map[L"HTTP3_REQUEST"] = HTTP3_REQUEST;
   ident_map[L"HTTP3_REQUEST_HDRS"] = HTTP3_REQUEST_HDRS;
   ident_map[L"HTTP3_CLOSE"] = HTTP3_CLOSE;
+  ident_map[L"FLOAT_TO_STR_PREC"] = FLOAT_TO_STR_PREC;
+  ident_map[L"FILE_IN_LINE"] = FILE_IN_LINE;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;
@@ -544,7 +546,12 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
 
     // set token. A literal too large for its range used to saturate silently,
     // so 99999999999999999999 compiled as the signed maximum.
-    if(errno == ERANGE || *ending) {
+    if(errno == ERANGE && !*ending) {
+      // well formed, but too large: say so rather than "unexpected token"
+      tokens[index]->SetType(TOKEN_BAD_INT_LIT);
+      tokens[index]->SetIdentifier(ident);
+    }
+    else if(errno == ERANGE || *ending) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
     }
     else {

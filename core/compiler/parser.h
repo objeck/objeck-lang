@@ -97,6 +97,8 @@ class Parser {
   // '>' still owed by a '>>' or '>>>' that closed several generics at once
   int pending_generic_closes;
   bool is_semi_colon;
+  // one-shot: the next ParseMethodCall(IdentifierContext&) is inside a Try() region
+  bool next_call_try_guarded = false;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<std::wstring> error_strings;
@@ -211,6 +213,8 @@ class Parser {
   For* ParseEach(int depth);
   CriticalSection* ParseCritical(int depth);
   For* ParseEach(bool reverse, int depth);
+  Expression* HoistEachCollection(Expression* collection, const std::wstring& bound_ident, StatementList* pre_statements,
+                                  const int line_num, const int line_pos, int depth);
   Return* ParseReturn(int depth);
   Leaving* ParseLeaving(int depth);
   Declaration* ParseDeclaration(IdentifierContext &context, bool is_stmt, int depth);

@@ -1,0 +1,141 @@
+#~
+Regression: generic type arguments through chained calls, generic returns
+and self-referential generics (#1182).
+
+- A call on another call's result lost the result's type arguments:
+  `m->Find(k)->Insert(x)` on a Map<String, Set<String>> reported
+  "Undefined function/method call: 'Insert(..)'", while the same call
+  through a local worked. The analyzer replaced the call's eval type with
+  the method's raw return before resolving, so the receiver's arguments now
+  travel separately.
+- A return built from the class's parameters -- Map->GetKeys() is
+  Vector<K> -- needed `<K>` at the call site, and even
+  `k : Vector<String> := a->GetKeys()` was rejected. Its arguments are now
+  mapped through the receiver's.
+- A method of C<T> taking or returning another generic of T -- Peek(a :
+  Cell<T>), Wrap(a : T) ~ Cell<T>, First(v : Vector<T>) -- failed at the
+  first call with "Undefined class or interface: 'T'": the callee's
+  declarations were checked against the caller's type parameters.
+~#
+# EXTRA_LIBS: gen_collect
+
+use Collection;
+
+class Cell<T> {
+	@v : T;
+
+	New(v : T) {
+		@v := v;
+	}
+
+	method : public : Get() ~ T {
+		return @v;
+	}
+
+	method : public : Peek(a : Cell<T>) ~ T {
+		return a->Get();
+	}
+
+	method : public : Wrap(a : T) ~ Cell<T> {
+		return Cell->New(a)<T>;
+	}
+
+	method : public : First(v : Vector<T>) ~ T {
+		return v->Get(0);
+	}
+}
+
+class Ops<T> {
+	New() {}
+
+	method : public : Id(v : T) ~ T {
+		return v;
+	}
+}
+
+class Holder {
+	@list : Vector<IntRef>;
+
+	New() {
+		@list := Vector->New()<IntRef>;
+		@list->AddBack(7);
+	}
+
+	method : public : GetList() ~ Vector<IntRef> {
+		return @list;
+	}
+}
+
+class GenericsChainedCalls {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# chained calls on a generic element
+		d := Map->New()<String, Set<String>>;
+		d->Insert("a", Set->New()<String>);
+		d->Find("a")->Insert("x");
+		d->Find("a")->Insert("y");
+		Check("Map<String, Set<String>>->Find()->Insert()", d->Find("a")->Size() = 2);
+
+		v := Vector->New()<Set<String>>;
+		v->AddBack(Set->New()<String>);
+		v->Get(0)->Insert("z");
+		Check("Vector<Set<String>>->Get()->Insert()", v->Get(0)->Has("z"));
+
+		m := Map->New()<String, Vector<String>>;
+		l := Vector->New()<String>;
+		l->AddBack("first");
+		m->Insert("k", l);
+		Check("Map<String, Vector<String>>->Find()->Get()", m->Find("k")->Get(0)->Equals("first"));
+
+		Check("a method's Vector<IntRef> return, chained", Holder->New()->GetList()->Get(0)->Get() = 7);
+		Check("a call chained onto a generic constructor", Ops->New()<String>->Id("q")->Equals("q"));
+
+		# generic returns need no annotation
+		a := Map->New()<String, IntRef>;
+		a->Insert("k", 1);
+		keys := a->GetKeys();
+		Check("GetKeys() without <K>", keys->Size() = 1 & keys->Get(0)->Equals("k"));
+		typed : Vector<String> := a->GetKeys();
+		Check("k : Vector<String> := GetKeys()", typed->Get(0)->Equals("k"));
+		kv := a->GetKeyValues();
+		Check("GetKeyValues()->Get()->GetFirst()", kv->Get(0)->GetFirst()->Equals("k"));
+
+		# self-referential generics
+		c := Cell->New("p")<String>;
+		e := Cell->New("q")<String>;
+		Check("Peek(a : Cell<T>)", c->Peek(e)->Equals("q"));
+		Check("Wrap(a : T) ~ Cell<T>, chained", c->Wrap("w")->Get()->Equals("w"));
+		w := c->Wrap("u");
+		Check("Wrap(a : T) ~ Cell<T>, through a local", w->Get()->Equals("u"));
+		words := Vector->New()<String>;
+		words->AddBack("f");
+		Check("First(v : Vector<T>)", c->First(words)->Equals("f"));
+
+		ints := Cell->New(3)<IntRef>;
+		Check("the same methods for Cell<IntRef>", ints->Peek(Cell->New(4)<IntRef>)->Get() = 4);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		GenericsChainedCalls->New()->Run();
+	}
+}

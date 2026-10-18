@@ -1961,11 +1961,31 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
   if(expression) {
+    // Already lowered to a concatenation that carries the call chain: a second
+    // visit (AnalyzeStringConcat probes an operand before AnalyzeCalculation
+    // visits it again) would build a fresh concatenation WITHOUT the chain,
+    // which had already been moved off this node.
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       expression->GetPreviousExpression()->GetMethodCall()) {
+      return;
+    }
+
     ++expression_depth;
 
     StringConcat* str_concat = AnalyzeStringConcat(expression, depth + 1);
     if(str_concat) {
       expression->SetPreviousExpression(str_concat);
+      // `("a" + b)->ToUpper()`: the chain hangs off the '+' node, which never gets
+      // a type of its own -- the concatenation is a separate node that callers
+      // substitute for it. Resolve the chain against that node, a String, and
+      // move it there so it is emitted after the concatenation. Left on the '+'
+      // node it failed as "Invalid class type or assignment".
+      MethodCall* chain = expression->GetMethodCall();
+      if(chain) {
+        str_concat->SetMethodCall(chain);
+        expression->ClearMethodCall();
+        AnalyzeExpressionMethodCall(str_concat, depth + 1);
+      }
     }
     else {
       switch(expression->GetExpressionType()) {
@@ -2606,6 +2626,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       // not a capture -- a new type-inferred local declared inside the lambda
       // body (e.g. `a := ...` in a `{ }` block body). Create it in the lambda's
       // own scope, mirroring the normal type-inferred-variable path below.
+      CheckImplicitDeclaration(variable);
       const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
       SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
       current_table->AddEntry(var_entry, true);
@@ -2619,6 +2640,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   }
   // type inferred variable
   else if(current_method) {
+    CheckImplicitDeclaration(variable);
     const std::wstring scope_name = current_method->GetName() + L':' + variable->GetName();
     SymbolEntry* var_entry = TreeFactory::Instance()->MakeSymbolEntry(scope_name, TypeFactory::Instance()->MakeType(VAR_TYPE), false, true);
     current_table->AddEntry(var_entry, true);
@@ -3075,7 +3097,7 @@ void ContextAnalyzer::ValidateConcretes(Type* from_concrete_type, Type* to_concr
   }
 }
 
-void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node)
+void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, LibraryClass* lib_klass, ParseNode* node, Class* scope)
 {
   const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
@@ -3093,7 +3115,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         bool resolved = GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass);
         if(!resolved) {
-          inf_klass = current_class->GetGenericClass(concrete_name);
+          inf_klass = (scope ? scope : current_class)->GetGenericClass(concrete_name);
           resolved = (inf_klass != nullptr);
         }
         if(resolved) {
@@ -3115,7 +3137,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         const std::wstring concrete_type_name = concrete_type->GetName();
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramOrLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
-           !current_class->GetGenericClass(concrete_type_name)) {
+           !(scope ? scope : current_class)->GetGenericClass(concrete_type_name)) {
           ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_type_name) + L"'");
         }
       }
@@ -3123,7 +3145,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
   }
 }
 
-void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, Class* klass, ParseNode* node)
+void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> concrete_types, Class* klass, ParseNode* node, Class* scope)
 {
   const std::vector<Class*> class_generics = klass->GetGenericClasses();
   if(class_generics.size() != concrete_types.size()) {
@@ -3143,7 +3165,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         Class* inf_klass = nullptr; LibraryClass* inf_lib_klass = nullptr;
         bool resolved = GetProgramOrLibraryClass(concrete_type, inf_klass, inf_lib_klass);
         if(!resolved) {
-          inf_klass = current_class->GetGenericClass(concrete_name);
+          inf_klass = (scope ? scope : current_class)->GetGenericClass(concrete_name);
           resolved = (inf_klass != nullptr);
         }
         if(resolved) {
@@ -3165,7 +3187,7 @@ void ContextAnalyzer::ValidateGenericConcreteMapping(const std::vector<Type*> co
         const std::wstring concrete_type_name = concrete_type->GetName();
         Class* generic_klass = nullptr; LibraryClass* generic_lib_klass = nullptr;
         if(!GetProgramOrLibraryClass(concrete_type, generic_klass, generic_lib_klass) &&
-           !current_class->GetGenericClass(concrete_type_name)) {
+           !(scope ? scope : current_class)->GetGenericClass(concrete_type_name)) {
           ProcessError(node, L"Undefined class or interface: '" + FormatTypeString(concrete_type_name) + L"'");
         }
       }
@@ -3208,13 +3230,15 @@ void ContextAnalyzer::ValidateGenericBacking(Type* type, const std::wstring back
   }
 }
 /****************************
- * True when a call's cast is the scalar cast of its receiver variable, which the
- * parser copies to the call for 'x->As(Int)->M()' (the call then dispatches on
- * the cast type). It converts the receiver, not M's return value, so it must not
- * be validated against the return: 'e->As(Int)->PrintLine()' failed "Cannot cast
- * a Nil return value" and 'e->As(Int)->ToString()' an Int/String cast error.
+ * True when a call's cast is the cast of its receiver variable, which the parser
+ * copies to the call for 'x->As(T)->M()' (the call then dispatches on the cast
+ * type). It converts the receiver, not M's return value, so it must not be
+ * validated against the return, nor taken as the call's type: 'e->As(Int)->
+ * PrintLine()' failed "Cannot cast a Nil return value", 'e->As(Int)->ToString()'
+ * an Int/String cast error, and for a class cast 'u->As(IntRef)->Get()->
+ * ToString()' an IntRef/Int one.
  ****************************/
-static bool IsReceiverScalarCast(Expression* expression)
+static bool IsReceiverCast(Expression* expression)
 {
   if(expression->GetExpressionType() != METHOD_CALL_EXPR) {
     return false;
@@ -3222,12 +3246,17 @@ static bool IsReceiverScalarCast(Expression* expression)
 
   Type* cast_type = expression->GetCastType();
   Variable* variable = static_cast<MethodCall*>(expression)->GetVariable();
-  if(!cast_type || cast_type->GetType() == CLASS_TYPE || !variable || !variable->GetCastType()) {
+  if(!cast_type || !variable || !variable->GetCastType()) {
     return false;
   }
 
   Type* var_cast_type = variable->GetCastType();
-  return var_cast_type->GetType() == cast_type->GetType() && var_cast_type->GetDimension() == cast_type->GetDimension();
+  if(var_cast_type->GetType() != cast_type->GetType() || var_cast_type->GetDimension() != cast_type->GetDimension()) {
+    return false;
+  }
+
+  // the parser copies the variable's Type, so a class cast is the same class name
+  return cast_type->GetType() != CLASS_TYPE || var_cast_type->GetName() == cast_type->GetName();
 }
 
 /****************************
@@ -3397,7 +3426,8 @@ void ContextAnalyzer::AnalyzeNewArrayCall(MethodCall* method_call, const int dep
   }
   
   // TODO: check for dimension size of 1, looking at type
-  else if(method_call->GetEvalType() && expressions.size() == 1 && (expressions[0]->GetExpressionType() == VAR_EXPR || expressions[0]->GetExpressionType() == STAT_ARY_EXPR) && expressions[0]->GetEvalType() && expressions[0]->GetEvalType()->GetDimension() == 1) {
+  // a copy of an array: an indexed variable is a size, not a source (IsArrayCopySource)
+  else if(method_call->GetEvalType() && expressions.size() == 1 && IsArrayCopySource(expressions[0]) && expressions[0]->GetEvalType()->GetDimension() == 1) {
     Type* left_type = expressions[0]->GetEvalType();
     Type* right_type = method_call->GetEvalType();
 
@@ -3588,6 +3618,13 @@ void ContextAnalyzer::AnalyzeExpressionMethodCall(Expression* expression, const 
         else {
           ProcessError(static_cast<Expression*>(method_call), L"Undefined class reference.\n\tIf external reference to generic ensure it has been typed");
         }
+      }
+
+      // `h->Find("a")->TypeOf(IntRef)`: the call's value is the Bool the check
+      // pushes, not the call's return type. Left as the return type, `b := ...`
+      // declared b a String/IntRef and `b->PrintLine()` crashed on the Bool.
+      if(method_call->GetTypeOf()) {
+        AnalyzeCast(method_call, depth + 1);
       }
 
       // check for rouge return
@@ -3916,7 +3953,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         // cannot be set to method, need to preserve test against other selections
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -3937,7 +3974,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
       MethodCallSelection* match = new MethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         // add parameter match
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
@@ -3964,7 +4001,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         expression = expression->GetMethodCall();
       }
       // erase/resolve type
-      Type* left = ResolveGenericType(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+      Type* left = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
   }
@@ -4147,7 +4184,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
           ProcessError(static_cast<Expression*>(method_call), L"Invalid operation with 'Nil' value");
         }
         // check generic parameters for call
-        Type* left = ResolveGenericType(mthd_params[i]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* left = ResolveGenericParam(mthd_params[i]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         AnalyzeRightCast(left, expression->GetEvalType(), expression, IsScalar(expression), depth + 1);
       }
     }
@@ -4230,6 +4267,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     // resolve generic to concrete, if needed
     Type* eval_type = method_call->GetEvalType();
     if(klass->HasGenerics()) {
+      // see the library-class path: `Wrap(a : T) ~ Cell<T>` (#1182)
+      if(eval_type->HasGenerics() && method_call->GetConcreteTypes().empty() && !is_new) {
+        eval_type = MapReturnGenerics(eval_type, method_call, klass, nullptr);
+        method_call->SetEvalType(eval_type, false);
+      }
       eval_type = ResolveGenericType(eval_type, method_call, klass, nullptr, true);
       method_call->SetEvalType(eval_type, false);
     }
@@ -4241,8 +4283,22 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
     // set subsequent call type
     if(method_call->GetMethodCall()) {
-      Type* expr_type = ResolveGenericType(method->GetReturn(), method_call, klass, nullptr, true);
+      // `c->Wrap(x)->Get()`: Wrap's Cell<T> is a Cell<String> to the next call
+      Type* rtrn_type = method->GetReturn();
+      if(rtrn_type->HasGenerics() && klass->HasGenerics() && method_call->GetConcreteTypes().empty() && !is_new) {
+        rtrn_type = MapReturnGenerics(rtrn_type, method_call, klass, nullptr);
+      }
+      Type* expr_type = ResolveGenericType(rtrn_type, method_call, klass, nullptr, true);
       method_call->GetMethodCall()->SetEvalType(expr_type, false);
+      // kept apart from the eval type, which SetMethod replaces (#1182). A
+      // constructor's, or a same-class return's, type arguments are on this
+      // call's eval type -- `Ops->New()<String>->Id(..)` -- not on the return.
+      if(expr_type->HasGenerics()) {
+        method_call->GetMethodCall()->SetReceiverGenerics(expr_type->GetGenerics());
+      }
+      else if(eval_type && eval_type->GetName() == expr_type->GetName()) {
+        method_call->GetMethodCall()->SetReceiverGenerics(eval_type->GetGenerics());
+      }
     }
 
     // enum check
@@ -4295,7 +4351,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -4316,7 +4372,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
@@ -4341,7 +4397,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         expression = expression->GetMethodCall();
       }
       // map generic to concrete type, if needed
-      Type* left = ResolveGenericType(method_parms[j], method_call, nullptr, klass, false);
+      Type* left = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
 
@@ -4499,7 +4555,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       ProcessError(static_cast<Expression*>(method_call), L"Invalid enum reference");
     }
 
-    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType() && !IsReceiverScalarCast(method_call)) {
+    if(lib_method->GetReturn()->GetType() == NIL_TYPE && method_call->GetCastType() && !IsReceiverCast(method_call)) {
       ProcessError(static_cast<Expression*>(method_call), L"Cannot cast a Nil return value");
     }
     
@@ -4546,6 +4602,15 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // resolve generic to concrete, if needed
     Type* eval_type = method_call->GetEvalType();
     if(lib_method->GetLibraryClass()->HasGenerics()) {
+      // A return built from the class's own parameters -- Map->GetKeys() is
+      // Vector<K> -- has its arguments mapped through the receiver's, so
+      // `a->GetKeys()` on a Map<String, IntRef> is a Vector<String>. Without
+      // this the caller had to write `<K>`, and even a declared
+      // `k : Vector<String> := a->GetKeys()` was rejected (#1182).
+      if(eval_type->HasGenerics() && method_call->GetConcreteTypes().empty()) {
+        eval_type = MapReturnGenerics(eval_type, method_call, nullptr, lib_klass);
+        method_call->SetEvalType(eval_type, false);
+      }
       eval_type = ResolveGenericType(eval_type, method_call, nullptr, lib_klass, true);
       method_call->SetEvalType(eval_type, false);
     }
@@ -4582,6 +4647,16 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
       Type* first_type = concrete_types[0];
       ResolveClassEnumType(first_type);
       method_call->SetEvalType(first_type, true);
+    }
+
+    // The next call in a chain takes its type arguments from its own eval type,
+    // which was set above to the RAW return -- 'V' for Map->Find -- so
+    // `m->Find(k)->Insert(x)` looked for Insert(H) on a Set with no H and
+    // failed, while the same call through a local worked. Hand it the resolved
+    // return, type arguments and all, as the program-class path does (#1182).
+    if(method_call->GetMethodCall() && method_call->GetEvalType()) {
+      method_call->GetMethodCall()->SetEvalType(method_call->GetEvalType(), false);
+      method_call->GetMethodCall()->SetReceiverGenerics(method_call->GetEvalType()->GetGenerics());
     }
 
     // next call
@@ -4893,7 +4968,7 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
   // type cast
   if(expression->GetCastType()) {
     // the receiver's cast, already checked on the variable
-    if(IsReceiverScalarCast(expression)) {
+    if(IsReceiverCast(expression)) {
       return;
     }
 
@@ -4917,7 +4992,30 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
       ProcessError(expression, L"Dimension size mismatch");
     }
 
-    AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+    // The cast converts THIS expression, so check it as if nothing followed it.
+    // With the call chain attached, the class check typed the expression by the
+    // chain's end: `u->As(IntRef)->Get()->ToString()` checked IntRef against
+    // String. (A rule in GetExpressionType that typed every link by its
+    // receiver's cast used to hide this, and crashed `u->As(IntRef)->Get() + 1`.)
+    // Against the expression's own class, so a downcast still gets its run-time
+    // check; a generic parameter (`@a->As(Stringify)` in a class of <A>) is no
+    // class to compare with and takes the general path.
+    MethodCall* chain = expression->GetMethodCall();
+    if(chain && cast_type->GetType() == CLASS_TYPE) {
+      expression->ClearMethodCall();
+      if(root_type && root_type->GetType() == CLASS_TYPE && cast_type->GetDimension() == root_type->GetDimension() &&
+         (SearchProgramClasses(root_type->GetName()) ||
+          linker->SearchClassLibraries(root_type->GetName(), program->GetLibUses(current_class->GetFileName())))) {
+        AnalyzeClassCast(cast_type, root_type, expression, false, depth + 1);
+      }
+      else {
+        AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+      }
+      expression->SetMethodCall(chain);
+    }
+    else {
+      AnalyzeRightCast(cast_type, root_type, expression, IsScalar(expression), depth + 1);
+    }
   }
   // 'TypeOf(..)' check
   else if(expression->GetTypeOf()) {
@@ -5020,7 +5118,16 @@ void ContextAnalyzer::AnalyzeSimpleStatement(SimpleStatement* simple, const int 
   Expression* expression = simple->GetExpression();
   if(expression) {
     AnalyzeExpression(expression, depth + 1);
-    AnalyzeExpressionMethodCall(expression, depth);
+    // `("[" + t + "]")->PrintLine();` -- the chain now hangs off the concatenation
+    // node, which AnalyzeExpression already resolved; emit that node instead
+    if(expression->GetPreviousExpression() && expression->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       expression->GetPreviousExpression()->GetMethodCall()) {
+      expression = expression->GetPreviousExpression();
+      simple->SetExpression(expression);
+    }
+    else {
+      AnalyzeExpressionMethodCall(expression, depth);
+    }
     
     // ensure it's a valid statement
     if(!expression->GetMethodCall()) {
@@ -5587,7 +5694,7 @@ void ContextAnalyzer::AnalyzeReturn(Return* rtrn, const int depth)
   in_return = false;
 }
 
-void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth)
+void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth, Class* scope)
 {
   if(!cls_type || !concrete_type) {
     return;
@@ -5596,7 +5703,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
   const std::wstring concrete_type_name = concrete_type->GetName();
   Class* concrete_klass = nullptr; LibraryClass* concrete_lib_klass = nullptr;
   if(!GetProgramOrLibraryClass(concrete_type, concrete_klass, concrete_lib_klass)) {
-    concrete_klass = current_class->GetGenericClass(concrete_type_name);
+    concrete_klass = (scope ? scope : current_class)->GetGenericClass(concrete_type_name);
   }
 
   if(concrete_klass || concrete_lib_klass) {
@@ -5607,7 +5714,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
       const std::wstring cls_type_name = cls_type->GetName();
       Class* dclr_klass = nullptr; LibraryClass* dclr_lib_klass = nullptr;
       if(!GetProgramOrLibraryClass(cls_type, dclr_klass, dclr_lib_klass)) {
-        dclr_klass = current_class->GetGenericClass(cls_type_name);
+        dclr_klass = (scope ? scope : current_class)->GetGenericClass(cls_type_name);
       }
 
       if(dclr_klass && dclr_klass->HasGenerics()) {
@@ -5616,7 +5723,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
           ProcessError(node, L"Generic to concrete size mismatch");
         }
         else {
-          ValidateGenericConcreteMapping(concrete_types, dclr_klass, node);
+          ValidateGenericConcreteMapping(concrete_types, dclr_klass, node, scope);
         }
       }
       else if(dclr_lib_klass && dclr_lib_klass->HasGenerics()) {
@@ -5625,7 +5732,7 @@ void ContextAnalyzer::ValidateConcrete(Type* cls_type, Type* concrete_type, Pars
           ProcessError(node, L"Generic to concrete size mismatch");
         }
         else {
-          ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, node);
+          ValidateGenericConcreteMapping(concrete_types, dclr_lib_klass, node, scope);
         }
       }
     }
@@ -5659,6 +5766,25 @@ void ContextAnalyzer::AnalyzeLeaving(Leaving* leaving_stmt, const int depth)
 /****************************
  * Analyzes an assignment statement
  ****************************/
+/****************************
+ * Only `name := value` declares a variable. A field (`@name`) is declared
+ * in its class, and the target of +=, -= and the like must already exist:
+ * `@cuont += 1` used to declare a new local and compile (#1184). The entry
+ * is still created afterwards so analysis carries on.
+ ****************************/
+void ContextAnalyzer::CheckImplicitDeclaration(Variable* variable)
+{
+  const std::wstring &name = variable->GetName();
+  if(!name.empty() && name[0] == L'@') {
+    ProcessError(variable, L"Undefined variable: '" + name + L"'"
+                 L"\n\tFields are declared in the class; check the spelling.");
+  }
+  else if(in_operation_assignment) {
+    ProcessError(variable, L"Undefined variable: '" + name + L"'"
+                 L"\n\tA compound assignment needs an existing variable; declare it with ':=' first.");
+  }
+}
+
 void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType type, const int depth)
 {
 #ifdef _DEBUG
@@ -5669,7 +5795,9 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
 
   Variable* variable = assignment->GetVariable();
   if(variable) {
+    in_operation_assignment = type != ASSIGN_STMT;
     AnalyzeVariable(variable, depth + 1);
+    in_operation_assignment = false;
     if(current_class && current_class->IsReadonlyRecord() && current_method &&
        current_method->GetMethodType() != NEW_PUBLIC_METHOD && current_method->GetMethodType() != NEW_PRIVATE_METHOD &&
        variable->GetName().size() > 0 && variable->GetName()[0] == L'@') {
@@ -6062,6 +6190,20 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
     // counting).
     AnalyzeExpression(left, depth + 1);
     AnalyzeExpression(right, depth + 1);
+
+    // An operand that is a concatenation with a call chain, `("a" + t)->Size() * 2`:
+    // the chain was resolved on the concatenation node, so that node is the operand
+    // (as for a return value, an assignment and a call argument).
+    if(left->GetPreviousExpression() && left->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       left->GetPreviousExpression()->GetMethodCall()) {
+      left = left->GetPreviousExpression();
+      expression->SetLeft(left);
+    }
+    if(right->GetPreviousExpression() && right->GetPreviousExpression()->GetExpressionType() == STR_CONCAT_EXPR &&
+       right->GetPreviousExpression()->GetMethodCall()) {
+      right = right->GetPreviousExpression();
+      expression->SetRight(right);
+    }
 
     // check operations
     AnalyzeCalculationCast(expression, depth);
@@ -7844,7 +7986,7 @@ void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass
         ProcessError(entry, L"Undefined class or enum: '" + FormatTypeString(type->GetName()) + L"'\n\tIf generic ensure concrete types are properly defined.");
       }
 
-      ValidateConcrete(type, type, declaration, depth);
+      ValidateConcrete(type, type, declaration, depth, klass);
     }
     else if(entry->GetType() && entry->GetType()->GetType() == FUNC_TYPE) {
       // resolve function name
@@ -8453,11 +8595,18 @@ Type* ContextAnalyzer::GetExpressionType(Expression* expression, int depth)
     do {
       AnalyzeExpressionMethodCall(mthd_call, depth + 1);
 
-      // favor casts
-      if(mthd_call->GetPreviousExpression() && mthd_call->GetPreviousExpression()->GetCastType() && mthd_call->GetEvalType() && !SearchProgramEnums(mthd_call->GetEvalType()->GetName())) {
-        type = mthd_call->GetPreviousExpression()->GetCastType();
+      // favor a cast on the call itself. A cast on the RECEIVER (`u->As(IntRef)`,
+      // parsed as a cast of 'u') says what the call is made on, not what it
+      // returns: typing `u->As(IntRef)->Get()` as IntRef made `+ 1` unbox the Int
+      // result a second time -- a field load through an integer, a crash in
+      // every mode -- and rejected `u->As(IntRef)->Get()->ToString()` as an
+      // invalid cast.
+      // `s->ToUpper()->TypeOf(String)` is a Bool, whatever ToUpper returns: typed
+      // as a String, `b->PrintLine()` called String:PrintLine on the Bool (a crash)
+      if(mthd_call->GetTypeOf()) {
+        type = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
       }
-      else if(mthd_call->GetCastType()) {
+      else if(mthd_call->GetCastType() && !IsReceiverCast(mthd_call)) {
         type = mthd_call->GetCastType();
       }
       else {
@@ -9048,14 +9197,27 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
     concat_exprs.push_front(static_cast<CalculatedExpression*>(expression)->GetRight());
     Expression* calc_left_expr = static_cast<CalculatedExpression*>(expression)->GetLeft();
 
-    while(calc_left_expr && calc_left_expr->GetExpressionType() == ADD_EXPR) {
+    // a parenthesised '+' with its own call chain or cast, `("<" + t)->Size() + 1`,
+    // is ONE operand; flattening through it dropped the chain
+    while(calc_left_expr && calc_left_expr->GetExpressionType() == ADD_EXPR &&
+          !calc_left_expr->GetMethodCall() && !calc_left_expr->GetCastType()) {
       concat_exprs.push_front(static_cast<CalculatedExpression*>(calc_left_expr)->GetRight());
       calc_left_expr = static_cast<CalculatedExpression*>(calc_left_expr)->GetLeft();
     }
 
     if(calc_left_expr) {
       AnalyzeExpression(calc_left_expr, depth + 1);
-      Type* calc_left_type = GetExpressionType(calc_left_expr, depth + 1);
+      Type* calc_left_type = nullptr;
+      // `("<" + t)->ToUpper()->Size() + 1`: the left operand is a concatenation
+      // whose chain ends in an Int, so this '+' is arithmetic, not a concatenation
+      Expression* left_concat = calc_left_expr->GetPreviousExpression();
+      if(left_concat && left_concat->GetExpressionType() == STR_CONCAT_EXPR && left_concat->GetMethodCall()) {
+        calc_left_type = EffectiveStackType(left_concat);
+        calc_left_expr = left_concat;
+      }
+      else {
+        calc_left_type = GetExpressionType(calc_left_expr, depth + 1);
+      }
       if(calc_left_type && calc_left_type->GetName() == L"System.String") {
         concat_exprs.push_front(calc_left_expr);
 
@@ -9071,13 +9233,22 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
           // and printed AAB (#752). The right operands are visited once, here.
           if(concat_expr != calc_left_expr) {
             AnalyzeExpression(concat_expr, depth + 1);
+            // a parenthesised concatenation with its own chain is one operand
+            Expression* inner_concat = concat_expr->GetPreviousExpression();
+            if(inner_concat && inner_concat->GetExpressionType() == STR_CONCAT_EXPR && inner_concat->GetMethodCall()) {
+              concat_expr = inner_concat;
+              *iter = concat_expr;
+            }
           }
 
-          if(concat_expr->GetEvalType()) {
-            if(concat_expr->GetEvalType()->GetType() == CLASS_TYPE && concat_expr->GetEvalType()->GetName() != L"System.String" && concat_expr->GetEvalType()->GetName() != L"String") {
-              const std::wstring cls_name = concat_expr->GetEvalType()->GetName();
+          // what the operand pushes, i.e. the END of a call chain: `x->Abs()->ToString()`
+          // is a String though its head is an Int (see EffectiveStackType)
+          Type* concat_type = EffectiveStackType(concat_expr);
+          if(concat_type) {
+            if(concat_type->GetType() == CLASS_TYPE && concat_type->GetName() != L"System.String" && concat_type->GetName() != L"String") {
+              const std::wstring cls_name = concat_type->GetName();
               // enum and consts values are Int: no ToString, appended as the integer
-              if(concat_expr->GetEvalType()->GetDimension() < 1 && HasProgramOrLibraryEnum(cls_name)) {
+              if(concat_type->GetDimension() < 1 && HasProgramOrLibraryEnum(cls_name)) {
                 continue;
               }
               Class* klass = SearchProgramClasses(cls_name);
@@ -9106,7 +9277,7 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
                 }
               }
             }
-            else if(concat_expr->GetEvalType()->GetType() == FUNC_TYPE) {
+            else if(concat_type->GetType() == FUNC_TYPE) {
               ProcessError(concat_expr, L"Invalid function variable type");
             }
           }
@@ -9249,8 +9420,10 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   // Analyze the expression
   AnalyzeExpression(expr, depth + 1);
 
-  // Check for errors during analysis
-  Type* eval_type = expr->GetEvalType();
+  // Check for errors during analysis. The type is what the expression PUSHES --
+  // the end of a call chain: `{$o->Me()->Name()}` is a String though Me()
+  // returns an object with no ToString, and was rejected for it.
+  Type* eval_type = expr->GetEvalType() ? EffectiveStackType(expr) : nullptr;
   if(!eval_type) {
     ProcessError(char_str, L"Cannot determine type of expression: '" + expr_text + L"'");
     return;
@@ -9260,6 +9433,18 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
   if(eval_type->GetType() == NIL_TYPE) {
     ProcessError(char_str, L"Expression cannot return Nil: '" + expr_text + L"'");
     return;
+  }
+
+  // A fully indexed array variable is its element: `{$s[1]}` and `{$m[i,j]}`
+  // push a scalar, though a variable's eval type keeps the array's dimension
+  // (the rest of the analyzer reads the indices, as AnalyzeRightCast does).
+  // FEATURES.md documents array access here; it was rejected outright.
+  if(expr->GetExpressionType() == VAR_EXPR && eval_type->GetDimension() > 0) {
+    ExpressionList* indices = static_cast<Variable*>(expr)->GetIndices();
+    if(indices && (int)indices->GetExpressions().size() == eval_type->GetDimension()) {
+      eval_type = TypeFactory::Instance()->MakeType(eval_type);
+      eval_type->SetDimension(0);
+    }
   }
 
   // Check for array type (not allowed)
@@ -9808,6 +9993,10 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
         else if(!method_call->GetConcreteTypes().empty()) {
           concrete_types = method_call->GetConcreteTypes();
         }
+        // a call on the previous call's result: that result's type arguments
+        else if(!method_call->GetReceiverGenerics().empty()) {
+          concrete_types = method_call->GetReceiverGenerics();
+        }
         else if(method_call->GetEvalType()) {
           concrete_types = method_call->GetEvalType()->GetGenerics();
           method_call->SetConcreteTypes(concrete_types);
@@ -9829,6 +10018,52 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
   }
 
   return candidate_type;
+}
+
+/****************************
+ * A return type's own type arguments mapped through the receiver's: for a
+ * Map<String, IntRef>, GetKeys()'s Vector<K> is a Vector<String> (#1182).
+ * Arguments that are not the class's parameters are kept, and nested ones
+ * (Vector<Pair<K, V>>) are mapped too. Returns 'rtrn' itself if nothing
+ * changes.
+ ****************************/
+Type* ContextAnalyzer::MapReturnGenerics(Type* rtrn, MethodCall* method_call, Class* klass, LibraryClass* lib_klass)
+{
+  const std::vector<Type*> args = rtrn->GetGenerics();
+  std::vector<Type*> mapped;
+  bool changed = false;
+  for(Type* arg : args) {
+    Type* to = arg->HasGenerics() ? MapReturnGenerics(arg, method_call, klass, lib_klass) :
+      ResolveGenericType(arg, method_call, klass, lib_klass, false);
+    if(to != arg) {
+      changed = true;
+    }
+    mapped.push_back(to);
+  }
+
+  if(!changed) {
+    return rtrn;
+  }
+
+  Type* out = TypeFactory::Instance()->MakeType(rtrn);
+  out->SetGenerics(mapped);
+  return out;
+}
+
+/****************************
+ * A parameter's type for matching a call: the class parameter it names
+ * resolved, and, for a parameter like `a : Cell<T>` or `v : Vector<T>`, its
+ * own type arguments mapped through the receiver's (#1182)
+ ****************************/
+Type* ContextAnalyzer::ResolveGenericParam(Type* param_type, MethodCall* method_call, Class* klass, LibraryClass* lib_klass, bool is_rtrn)
+{
+  // map first: resolving Cell<T> as a class reports T as an undefined class
+  Type* mapped = param_type;
+  if(param_type->HasGenerics() && ((klass && klass->HasGenerics()) || (lib_klass && lib_klass->HasGenerics()))) {
+    mapped = MapReturnGenerics(param_type, method_call, klass, lib_klass);
+  }
+
+  return ResolveGenericType(mapped, method_call, klass, lib_klass, is_rtrn);
 }
 
 Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Class* left_klass, LibraryClass* lib_left_klass)

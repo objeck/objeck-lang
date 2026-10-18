@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Undefined variable: 'cuont'
+#~
+Only `name := value` declares a local (#1184). The target of +=, -= and the
+like must already exist; a typo used to declare a new local silently.
+~#
+class BadLocalTypoCompoundAssign {
+	function : Main(args : String[]) ~ Nil {
+		count := 0;
+		cuont += 1;
+		count->PrintLine();
+	}
+}

@@ -1,0 +1,21 @@
+# EXPECT_COMPILE_ERROR: Undefined variable: '@cuont'
+#~
+A misspelt field in a compound assignment is an error (#1184). Any unknown
+name used to become a new type-inferred local, so `@cuont += 1` compiled,
+ran, and left @count at 0.
+~#
+class BadFieldTypoCompoundAssign {
+	@count : Int;
+
+	New() {
+		@count := 0;
+	}
+
+	method : Bump() ~ Nil {
+		@cuont += 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		BadFieldTypoCompoundAssign->New()->Bump();
+	}
+}

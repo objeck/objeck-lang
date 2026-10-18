@@ -1,0 +1,74 @@
+#~
+# Rosetta Code: Formatted numeric output
+# https://rosettacode.org/wiki/Formatted_numeric_output
+# Claimed in #1145
+#
+# 7.125 as the fixed-width, zero-filled string 00007.125, through the string-interpolation format specifier ("{$x:09.3}") and through the library calls it desugars to (Float->ToString with a precision, String->PadTo). Covers widths, precisions, left justification and integers. A NEGATIVE value with a zero fill puts the zeros after the sign ("-0007.125"), as printf and Python do, and Int->ToCommaString groups a negative's digits only ("-123,456"); both were wrong until #1177.
+#
+# Expected values come from Python's format() with the same specifiers, not from what Objeck printed.
+~#
+
+class RosettaFormattedNumericOutput {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaFormattedNumericOutput->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		x := 7.125;
+		# the task's own example
+		Check("interpolation 09.3", "{$x:09.3}", "00007.125");
+		Check("library calls 09.3", Float->ToString(x, 3)->PadTo(9, '0', true), "00007.125");
+
+		pi := 3.14159;
+		Check("interpolation 08.2 rounds", "{$pi:08.2}", "00003.14");
+		half := 0.5;
+		Check("interpolation 06.1 below one", "{$half:06.1}", "0000.5");
+		big := 123456.789;
+		Check("interpolation 012.2", "{$big:012.2}", "000123456.79");
+
+		# space fill, right and left justified
+		Check("interpolation 9.3 right justified", "{$x:9.3}", "    7.125");
+		Check("interpolation <9.3 left justified", "{$x:<9.3}", "7.125    ");
+
+		# integers
+		n := 42;
+		Check("integer 06", "{$n:06}", "000042");
+
+		# negatives with a zero fill: the sign goes first, the zeros after it
+		Check("negative float 09.3", Float->ToString(-7.125, 3)->PadTo(9, '0', true), "-0007.125");
+		Check("negative float 06.1", Float->ToString(-0.5, 1)->PadTo(6, '0', true), "-000.5");
+		Check("negative integer 06", Int->ToString(-42)->PadTo(6, '0', true), "-00042");
+		neg := -7.125;
+		Check("negative float through the specifier", "{$neg:09.3}", "-0007.125");
+		# a value already wider than the field is not cut
+		Check("wider than the field", Float->ToString(-123456.789, 2)->PadTo(6, '0', true), "-123456.79");
+
+		# thousands grouping
+		Check("comma grouping", Int->ToCommaString(1234567), "1,234,567");
+		Check("comma grouping, three digits", Int->ToCommaString(999), "999");
+		Check("comma grouping, negative", Int->ToCommaString(-123456), "-123,456");
+		Check("comma grouping, negative five digits", Int->ToCommaString(-12345), "-12,345");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,71 @@
+#~
+Regression: unary minus on a parenthesised operand (#1099).
+
+`-(x)`, `-(F())` and `-(3 + 4)` reported "Expected expression": the unary
+minus took an identifier, a literal, a field or a call, but never a
+parenthesised operand, while `<>` took every form. It now negates any
+parenthesised expression, binding tighter than the binary operators.
+~#
+
+class UnaryMinusParenthesised {
+	@n : Int;
+	@failures : Int;
+
+	New() {
+		@n := 4;
+		@failures := 0;
+	}
+
+	function : F() ~ Int {
+		return 6;
+	}
+
+	function : G() ~ Float {
+		return 2.5;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		x := 3;
+		CheckInt("-(x)", -(x), -3);
+		CheckInt("-(F())", -(F()), -6);
+		CheckInt("-(3 + 4)", -(3 + 4), -7);
+		CheckInt("-(x + F()) * 2 binds the minus first", -(x + F()) * 2, -18);
+		CheckInt("10 - -(x)", 10 - -(x), 13);
+		CheckInt("-(@n)", -(@n), -4);
+		CheckInt("-(-(x))", -(-(x)), 3);
+
+		f := 1.5;
+		Check("-(f + G()) is -4.0", -(f + G()) = -4.0);
+		z := 0.0;
+		Check("-(0.0) is -0.0", Float->ArcTan2(-(z), -1.0) < 0.0);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		UnaryMinusParenthesised->New()->Run();
+	}
+}

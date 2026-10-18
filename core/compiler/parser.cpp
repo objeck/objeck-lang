@@ -3375,6 +3375,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case FLOAT_TO_STR_PREC:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::FLOAT_TO_STR_PREC);
+      NextToken();
+      break;
+
+    case FILE_IN_LINE:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::FILE_IN_LINE);
+      NextToken();
+      break;
+
     case HTTP3_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_CLOSE);
@@ -5495,6 +5507,18 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
      NextToken();
      break;
 
+  case FLOAT_TO_STR_PREC:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FLOAT_TO_STR_PREC);
+     NextToken();
+     break;
+
+  case FILE_IN_LINE:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FILE_IN_LINE);
+     NextToken();
+     break;
+
   case HTTP3_CLOSE:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::HTTP3_CLOSE);
@@ -5636,6 +5660,11 @@ StaticArray* Parser::ParseStaticArray(int depth) {
   if(Match(TOKEN_OPEN_BRACKET)) {
     while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
       expressions->AddExpression(ParseStaticArray(depth + 1));
+
+      // the comma between rows belongs to the outer array
+      if(Match(TOKEN_COMMA)) {
+        NextToken();
+      }
     }
 
     if(!Match(TOKEN_CLOSED_BRACKET)) {
@@ -5738,11 +5767,9 @@ StaticArray* Parser::ParseStaticArray(int depth) {
       ProcessError(L"Expected ']'", TOKEN_CLOSED_BRACKET);
     }
     NextToken();
-
-    // next row
-    if(Match(TOKEN_COMMA)) {
-      NextToken();
-    }
+    // A comma after the ']' is not this literal's: the row loop above takes
+    // it between rows. Consuming it here also ate the separator after an
+    // outermost literal, so F([1, 2, 3], -1) parsed as [1, 2, 3] - 1 (#1184).
   }
 
   return TreeFactory::Instance()->MakeStaticArray(file_name, line_num, line_pos, expressions);
@@ -6774,6 +6801,17 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
       break;
 
+    // -(a + b), -(x), -(F()): a parenthesised operand, as `<>` already takes
+    // (#1099). It is the same -1 * operand the call form above builds.
+    case TOKEN_OPEN_PAREN: {
+      Expression* right = ParseTerm(depth + 1);
+      if(right) {
+        Expression* left = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -1);
+        expression = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, MUL_EXPR, left, right);
+      }
+    }
+      break;
+
     case TOKEN_UNKNOWN:
       ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
       break;
@@ -6815,6 +6853,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
       else {
         ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
       }
+      NextToken();
+      break;
+
+    case TOKEN_BAD_INT_LIT:
+      ProcessError(L"Integer literal out of range: '" + scanner->GetToken()->GetIdentifier() +
+                   L"'\n\tInt is 64 bits: -9223372036854775808 to 9223372036854775807, or up to 18446744073709551615 with a 'u' suffix", TOKEN_SEMI_COLON);
       NextToken();
       break;
 
@@ -6955,6 +6999,10 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 #endif
 
   MethodCall* method_call = nullptr;
+  // a caller already inside a Try() region (ParseMethodCall(Expression*)) hands
+  // that down; taken once, so argument lists parsed below do not inherit it
+  const bool inherited_guard = next_call_try_guarded;
+  next_call_try_guarded = false;
   // '?->' -- capture before NextToken() consumes the accessor. The call itself
   // is built exactly as before; it is wrapped in Try() at the return, so every
   // branch below (generics, casts, further chaining) is untouched.
@@ -7129,6 +7177,12 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     method_call->SetCallIndices(ParseIndices(depth + 1));
   }
 
+  // under the Try() this call is about to get, BEFORE the rest of the chain is
+  // parsed, so a later '?->' in it knows it is already guarded
+  if((nil_safe || inherited_guard) && method_call) {
+    method_call->SetTryGuarded(true);
+  }
+
   // subsequent method calls
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
      !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
@@ -7143,7 +7197,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
   // chain, so wrapping the head is enough -- a later '?->' in the same chain is
   // already covered and behaves as a plain accessor. The receiver is named
   // once, so it is evaluated once.
-  if(nil_safe && method_call) {
+  if(nil_safe && !inherited_guard && method_call) {
     MethodCall* try_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
                                                                    line_num, line_pos,
                                                                    GetLineNumber(), GetLinePosition(),
@@ -7168,6 +7222,11 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
   Debug(L"Method call", depth);
 #endif
 
+  // '?->' after a call result or a literal: `R->G()?->Div(1, 0)`,
+  // `"abc"?->SubString(5, 9)`. Capture it before NextToken() consumes the
+  // accessor -- this path dropped the flag, so the call ran unguarded and an
+  // error it should have recovered ended the program.
+  const bool nil_safe = scanner->GetToken()->IsNilSafe();
   NextToken();
 
   if(!Match(TOKEN_IDENT)) {
@@ -7186,22 +7245,45 @@ void Parser::ParseMethodCall(Expression* expression, int depth)
     // to 'expression'; without walking to the tail we would overwrite b() with
     // c() and silently drop the inner call.
     Expression* tail = expression;
+    // Only the first '?->' in a chain introduces Try(): it guards the rest. The
+    // Try() is usually BEHIND this receiver (`s?->ToUpper()?->ToLower()` arrives
+    // here with ToUpper()), and back-links are not set while parsing, so the
+    // calls under a Try() carry a flag instead.
+    bool guarded = expression->GetExpressionType() == METHOD_CALL_EXPR &&
+                   static_cast<MethodCall*>(expression)->IsTryGuarded();
     while(tail->GetMethodCall()) {
       tail = tail->GetMethodCall();
+      if(static_cast<MethodCall*>(tail)->GetMethodName() == L"Try" || static_cast<MethodCall*>(tail)->IsTryGuarded()) {
+        guarded = true;
+      }
     }
-    tail->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
+    next_call_try_guarded = guarded || nil_safe;
+    MethodCall* call = ParseMethodCall(ident_context, depth + 1);
+    next_call_try_guarded = false;
+    if(nil_safe && !guarded && call) {
+      MethodCall* try_call = TreeFactory::Instance()->MakeMethodCall(GetFileName(), line_num, line_pos,
+                                                                     line_num, line_pos,
+                                                                     GetLineNumber(), GetLinePosition(),
+                                                                     ident, L"Try",
+                                                                     TreeFactory::Instance()->MakeExpressionList());
+      try_call->SetMethodCall(call);
+      tail->SetMethodCall(try_call);
+    }
+    else {
+      tail->SetMethodCall(call);
+    }
     // subscript on the call's result: 'a->GetItems()[0]->Name()'
-    if(Match(TOKEN_OPEN_BRACKET) && tail->GetMethodCall()) {
-      tail->GetMethodCall()->SetCallIndices(ParseIndices(depth + 1));
+    if(Match(TOKEN_OPEN_BRACKET) && call) {
+      call->SetCallIndices(ParseIndices(depth + 1));
     }
     // subsequent method calls
     if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
        !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
-      ParseMethodCall(tail->GetMethodCall(), depth + 1);
+      ParseMethodCall(call, depth + 1);
     }
     // type cast
     else {
-      ParseCastTypeOf(tail->GetMethodCall(), depth + 1);
+      ParseCastTypeOf(call, depth + 1);
     }
   }
 }
@@ -7250,6 +7332,7 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
     call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
                                                    mid_line_num, mid_line_pos,
                                                    GetLineNumber(), end_pos, mid_ident, method_ident, exprs);
+    call->SetTryGuarded(true);
     try_call->SetMethodCall(call);
     result = try_call;
   }
@@ -7267,7 +7350,10 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   }
 
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
+    // the rest of a '?->' chain is already under this Try()
+    next_call_try_guarded = nil_safe;
     call->SetMethodCall(ParseMethodCall(ident_context, depth + 1));
+    next_call_try_guarded = false;
   }
 
   return result;
@@ -7599,7 +7685,7 @@ For* Parser::ParseEach(bool reverse, int depth)
   NextToken();
   symbol_table->CurrentParseScope()->NewParseScope();
   if(!Match(TOKEN_OPEN_PAREN)) {
-    ProcessError(L"Expected ')'", TOKEN_OPEN_PAREN);
+    ProcessError(L"Expected '('", TOKEN_OPEN_PAREN);
   }
   NextToken();
 
@@ -7800,6 +7886,19 @@ For* Parser::ParseEach(bool reverse, int depth)
       NextToken();
       break;
 
+    // a bound collection that is not a plain variable: a literal, or a call
+    // chain starting from one (#1184)
+    case TOKEN_CHAR_STRING_LIT:
+    case TOKEN_OPEN_BRACKET:
+      if(is_bound) {
+        left_pre_count = HoistEachCollection(ParseExpression(depth + 1), bound_ident, pre_statements, line_num, line_pos, depth);
+      }
+      else {
+        ProcessError(L"Expected variable or literal expression", TOKEN_SEMI_COLON);
+        NextToken();
+      }
+      break;
+
     case TOKEN_IDENT: {
       left_pre_count = ParseExpression(depth + 1);
       if(left_pre_count && left_pre_count->GetExpressionType() == VAR_EXPR) {
@@ -7810,6 +7909,12 @@ For* Parser::ParseEach(bool reverse, int depth)
           left_pre_count = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), line_pos, -1, -1,
                                                                    variable->GetName(), L"Size", TreeFactory::Instance()->MakeExpressionList());
         }
+      }
+      // A bound each over a call result, `each(s in list->Get())`: the call
+      // was compared with the index as if it were the size. Ranges cannot be
+      // bound, so a bound call is always a collection (#1184).
+      else if(is_bound && left_pre_count && left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
+        left_pre_count = HoistEachCollection(left_pre_count, bound_ident, pre_statements, line_num, line_pos, depth);
       }
       else if(left_pre_count && left_pre_count->GetExpressionType() == METHOD_CALL_EXPR) {
         // add count entry
@@ -7870,6 +7975,36 @@ For* Parser::ParseEach(bool reverse, int depth)
   }
 
   return TreeFactory::Instance()->MakeFor(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), pre_statements, cond_expr, update_stmts, statements);
+}
+
+/****************************
+ * Evaluates an 'each' collection expression once, into a hidden local
+ * '#<bound>_coll', and returns '#<bound>_coll->Size()' for the loop
+ * condition; the analyzer then binds the element exactly as it does for a
+ * named collection.
+ ****************************/
+Expression* Parser::HoistEachCollection(Expression* collection, const std::wstring& bound_ident, StatementList* pre_statements,
+                                        const int line_num, const int line_pos, int depth)
+{
+  const std::wstring file_name = GetFileName();
+  if(!collection) {
+    return nullptr;
+  }
+
+  const std::wstring coll_ident = L'#' + bound_ident + L"_coll";
+  SymbolEntry* coll_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(coll_ident),
+                                                                     TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  if(!symbol_table->CurrentParseScope()->AddEntry(coll_entry)) {
+    ProcessError(L"Variable already defined in this scope: '" + coll_ident + L"'");
+  }
+
+  Variable* coll_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, coll_ident);
+  Assignment* coll_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), coll_var, collection);
+  pre_statements->AddStatement(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), coll_entry, coll_assign));
+
+  const int size_pos = GetLinePosition();
+  return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, size_pos, GetLineNumber(), size_pos, -1, -1,
+                                                 coll_ident, L"Size", TreeFactory::Instance()->MakeExpressionList());
 }
 
 /****************************

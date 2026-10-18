@@ -5904,9 +5904,9 @@ bundle Game.SDL2 {
 			array_args[1] := surface;
 			array_args[2] := file;
 
-			@lib_proxy := Proxy->GetDllProxy();
+			lib_proxy := Proxy->GetDllProxy();
 			if(@fn_sdl_surface_savebmp = Nil) { @fn_sdl_surface_savebmp := "sdl_surface_savebmp"; };
-			@lib_proxy->CallFunction(@fn_sdl_surface_savebmp, array_args);
+			lib_proxy->CallFunction(@fn_sdl_surface_savebmp, array_args);
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
@@ -6022,9 +6022,9 @@ bundle Game.SDL2 {
 				array_args[3] := g;
 				array_args[4] := b;
 
-				@lib_proxy := Proxy->GetDllProxy();
+				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_sdl_surface_get_color_mod = Nil) { @fn_sdl_surface_get_color_mod := "sdl_surface_get_color_mod"; };
-				@lib_proxy->CallFunction(@fn_sdl_surface_get_color_mod, array_args);
+				lib_proxy->CallFunction(@fn_sdl_surface_get_color_mod, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -6305,9 +6305,9 @@ bundle Game.SDL2 {
 				array_args[3] := dst;
 				array_args[4] := dstrect;
 
-				@lib_proxy := Proxy->GetDllProxy();
+				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_sdl_surface_blit_scaled = Nil) { @fn_sdl_surface_blit_scaled := "sdl_surface_blit_scaled"; };
-				@lib_proxy->CallFunction(@fn_sdl_surface_blit_scaled, array_args);
+				lib_proxy->CallFunction(@fn_sdl_surface_blit_scaled, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7038,9 +7038,9 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@renderer);
 				array_args[2] := rect;
 
-				@lib_proxy := Proxy->GetDllProxy();
+				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_sdl_renderer_render_draw_rect = Nil) { @fn_sdl_renderer_render_draw_rect := "sdl_renderer_render_draw_rect"; };
-				@lib_proxy->CallFunction(@fn_sdl_renderer_render_draw_rect, array_args);
+				lib_proxy->CallFunction(@fn_sdl_renderer_render_draw_rect, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7059,9 +7059,9 @@ bundle Game.SDL2 {
 				array_args[0] := IntRef->New(@renderer);
 				array_args[1] := rect;
 
-				@lib_proxy := Proxy->GetDllProxy();
+				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_sdl_renderer_render_get_viewport = Nil) { @fn_sdl_renderer_render_get_viewport := "sdl_renderer_render_get_viewport"; };
-				@lib_proxy->CallFunction(@fn_sdl_renderer_render_get_viewport, array_args);
+				lib_proxy->CallFunction(@fn_sdl_renderer_render_get_viewport, array_args);
 			};
 		}
 
@@ -7078,9 +7078,9 @@ bundle Game.SDL2 {
 				array_args[1] := IntRef->New(@renderer);
 				array_args[2] := rect;
 
-				@lib_proxy := Proxy->GetDllProxy();
+				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_sdl_renderer_render_set_viewport = Nil) { @fn_sdl_renderer_render_set_viewport := "sdl_renderer_render_set_viewport"; };
-				@lib_proxy->CallFunction(@fn_sdl_renderer_render_set_viewport, array_args);
+				lib_proxy->CallFunction(@fn_sdl_renderer_render_set_viewport, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
@@ -7183,9 +7183,9 @@ bundle Game.SDL2 {
 				array_args[6] := center;
 				array_args[7] := IntRef->New(flip->As(Int));
 
-				@lib_proxy := Proxy->GetDllProxy();
+				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_sdl_renderer_render_copy_ex = Nil) { @fn_sdl_renderer_render_copy_ex := "sdl_renderer_render_copy_ex"; };
-				@lib_proxy->CallFunction(@fn_sdl_renderer_render_copy_ex, array_args);
+				lib_proxy->CallFunction(@fn_sdl_renderer_render_copy_ex, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();

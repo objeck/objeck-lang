@@ -112,6 +112,7 @@ class Test {
 		rate := 30;
 		flipType := RendererFlip->SDL_FLIP_NONE;
 		degrees := 0.0;
+		frame := 0;
 
 		# Event handler
 		e := Event->New();

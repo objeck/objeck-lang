@@ -1,0 +1,202 @@
+#~
+# Rosetta Code: Set
+# https://rosettacode.org/wiki/Set
+# Claimed in #1148
+#
+# EXTRA_LIBS: gen_collect
+#
+# Creation, membership, union, intersection, difference, subset, proper subset, equality and mutation, on the library's tree-backed Collection.Set (Int elements, ordered) and hash-backed Collection.HashSet (String elements). Neither type offers the algebra, so union and friends are written here over GetKeys / ToVector; the test pins that duplicates collapse, membership is by value not identity, and removal really removes.
+#
+# Expected values were computed with an independent oracle (Python sets), not recalled.
+~#
+
+use Collection;
+
+class RosettaSet {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaSet->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		Check(what, got->ToString(), want->ToString());
+	}
+
+	method : Run() ~ Nil {
+		a := Make(5, 1, 2, 3, 4, 5);
+		b := Make(4, 4, 5, 6, 7, 0);
+		c := Make(2, 1, 2, 0, 0, 0);
+		d := Make(5, 5, 4, 3, 2, 1);
+
+		# creation: duplicates collapse
+		dup := Make(5, 3, 3, 1, 3, 1);
+		Check("duplicates collapse on insert", Show(dup), "{1,3}");
+		Check("set A", Show(a), "{1,2,3,4,5}");
+
+		# membership is by value: a fresh IntRef finds the stored one
+		CheckBool("3 is in A", a->Has(IntRef->New(3)), true);
+		CheckBool("6 is not in A", a->Has(IntRef->New(6)), false);
+
+		Check("A union B", Show(Union(a, b)), "{1,2,3,4,5,6,7}");
+		Check("A intersect B", Show(Intersect(a, b)), "{4,5}");
+		Check("A minus B", Show(Minus(a, b)), "{1,2,3}");
+		Check("B minus A", Show(Minus(b, a)), "{6,7}");
+		Check("A union B is unchanged A", Show(a), "{1,2,3,4,5}");
+
+		CheckBool("C is a subset of A", IsSubset(c, a), true);
+		CheckBool("A is not a subset of C", IsSubset(a, c), false);
+		CheckBool("A equals D (insertion order ignored)", SetEquals(a, d), true);
+		CheckBool("A does not equal B", SetEquals(a, b), false);
+		CheckBool("C is a proper subset of A", IsSubset(c, a) & <>SetEquals(c, a), true);
+		CheckBool("A is not a proper subset of D", IsSubset(a, d) & <>SetEquals(a, d), false);
+		CheckBool("the empty set is a subset of A", IsSubset(Set->New()<IntRef>, a), true);
+
+		# mutation
+		m := Make(3, 1, 2, 3, 0, 0);
+		m->Insert(IntRef->New(9));
+		m->Insert(IntRef->New(2));
+		CheckBool("removing a member reports true", m->Remove(IntRef->New(1)), true);
+		CheckBool("removing it again reports false", m->Remove(IntRef->New(1)), false);
+		Check("mutated set", Show(m), "{2,3,9}");
+		Check("mutated set size", m->Size()->ToString(), "3");
+
+		# the hash-backed set, with String elements
+		s := HashSet->New()<String>;
+		CheckBool("first add of apple is new", s->Add("apple"), true);
+		s->Add("banana");
+		s->Add("cherry");
+		CheckBool("second add of apple is a duplicate", s->Add("apple"), false);
+		t := HashSet->New()<String>;
+		t->Add("cherry");
+		t->Add("date");
+		CheckBool("date is not in S", s->Has("date"), false);
+		CheckBool("a built-up string still matches", s->Has("app" + "le"), true);
+		Check("S union T", Sorted(HashUnion(s, t)), "{apple,banana,cherry,date}");
+		Check("S intersect T", Sorted(HashIntersect(s, t)), "{cherry}");
+		Check("S minus T", Sorted(HashMinus(s, t)), "{apple,banana}");
+		CheckBool("S remove banana", s->Remove("banana"), true);
+		Check("S after removal", Sorted(s), "{apple,cherry}");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# the first n of up to five values
+	function : Make(n : Int, v0 : Int, v1 : Int, v2 : Int, v3 : Int, v4 : Int) ~ Set<IntRef> {
+		values := Int->New[5];
+		values[0] := v0; values[1] := v1; values[2] := v2; values[3] := v3; values[4] := v4;
+		s := Set->New()<IntRef>;
+		for(i := 0; i < n; i += 1;) {
+			s->Insert(IntRef->New(values[i]));
+		};
+		return s;
+	}
+
+	function : Show(s : Set<IntRef>) ~ String {
+		out := "{";
+		keys := s->GetKeys()<IntRef>;
+		each(i : keys) {
+			if(i > 0) { out += ","; };
+			out += keys->Get(i)->Get()->ToString();
+		};
+		return out + "}";
+	}
+
+	function : Union(a : Set<IntRef>, b : Set<IntRef>) ~ Set<IntRef> {
+		r := Set->New()<IntRef>;
+		ak := a->GetKeys()<IntRef>;
+		each(k in ak) { r->Insert(k); };
+		bk := b->GetKeys()<IntRef>;
+		each(k in bk) { r->Insert(k); };
+		return r;
+	}
+
+	function : Intersect(a : Set<IntRef>, b : Set<IntRef>) ~ Set<IntRef> {
+		r := Set->New()<IntRef>;
+		ak := a->GetKeys()<IntRef>;
+		each(k in ak) {
+			if(b->Has(k)) { r->Insert(k); };
+		};
+		return r;
+	}
+
+	function : Minus(a : Set<IntRef>, b : Set<IntRef>) ~ Set<IntRef> {
+		r := Set->New()<IntRef>;
+		ak := a->GetKeys()<IntRef>;
+		each(k in ak) {
+			if(<>b->Has(k)) { r->Insert(k); };
+		};
+		return r;
+	}
+
+	function : IsSubset(a : Set<IntRef>, b : Set<IntRef>) ~ Bool {
+		ak := a->GetKeys()<IntRef>;
+		each(k in ak) {
+			if(<>b->Has(k)) { return false; };
+		};
+		return true;
+	}
+
+	function : SetEquals(a : Set<IntRef>, b : Set<IntRef>) ~ Bool {
+		return a->Size() = b->Size() & IsSubset(a, b);
+	}
+
+	# a HashSet has no order, so route it through the tree-backed Set to print it
+	function : Sorted(h : HashSet<String>) ~ String {
+		ordered := Set->New()<String>;
+		values := h->ToVector()<String>;
+		each(v in values) { ordered->Insert(v); };
+		keys := ordered->GetKeys()<String>;
+		out := "{";
+		each(i : keys) {
+			if(i > 0) { out += ","; };
+			out += keys->Get(i);
+		};
+		return out + "}";
+	}
+
+	function : HashUnion(a : HashSet<String>, b : HashSet<String>) ~ HashSet<String> {
+		r := HashSet->New()<String>;
+		av := a->ToVector()<String>;
+		each(v in av) { r->Add(v); };
+		bv := b->ToVector()<String>;
+		each(v in bv) { r->Add(v); };
+		return r;
+	}
+
+	function : HashIntersect(a : HashSet<String>, b : HashSet<String>) ~ HashSet<String> {
+		r := HashSet->New()<String>;
+		av := a->ToVector()<String>;
+		each(v in av) {
+			if(b->Has(v)) { r->Add(v); };
+		};
+		return r;
+	}
+
+	function : HashMinus(a : HashSet<String>, b : HashSet<String>) ~ HashSet<String> {
+		r := HashSet->New()<String>;
+		av := a->ToVector()<String>;
+		each(v in av) {
+			if(<>b->Has(v)) { r->Add(v); };
+		};
+		return r;
+	}
+}

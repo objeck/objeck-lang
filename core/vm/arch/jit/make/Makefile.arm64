@@ -15,7 +15,7 @@ SRC=jit_common.o
 LIB=arm64/jit_common.a
 
 $(LIB): $(SRC)
-	$(AR) -cvq $(LIB) $(SRC)
+	rm -f $(LIB).$$$$.tmp; $(AR) -cvq $(LIB).$$$$.tmp $(SRC) && mv -f $(LIB).$$$$.tmp $(LIB)
 
 %.o: %.cpp
 	$(CXX) $(ARGS) -c $< 

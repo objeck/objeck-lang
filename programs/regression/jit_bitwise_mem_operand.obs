@@ -35,6 +35,7 @@ class JitBitwiseMemOperand {
     a0 := Int->New[64];
     g0 := Int->New[8, 4];
     for(i0 := 0; i0 < 8; i0 += 1;) { for(i1 := 0; i1 < 4; i1 += 1;) { g0[i0, i1] := (i0 * 26 + i1) % 257; }; };
+    w0 := 0;
     do {
       w0 += 1;
       a0[((v0 / (0 - 4)) and 63)] := (((a0->Size() / 2) * p0) % 1000003);
@@ -53,6 +54,7 @@ class JitBitwiseMemOperand {
     a0 := Int->New[64];
     g0 := Int->New[8, 4];
     for(i0 := 0; i0 < 8; i0 += 1;) { for(i1 := 0; i1 < 4; i1 += 1;) { g0[i0, i1] := (i0 * 26 + i1) % 257; }; };
+    w0 := 0;
     do {
       w0 += 1;
       a0[((v0 / (0 - 4)) and 63)] := (((a0->Size() / 2) * p0) % 1000003);
@@ -71,6 +73,7 @@ class JitBitwiseMemOperand {
     a0 := Int->New[64];
     g0 := Int->New[8, 4];
     for(i0 := 0; i0 < 8; i0 += 1;) { for(i1 := 0; i1 < 4; i1 += 1;) { g0[i0, i1] := (i0 * 26 + i1) % 257; }; };
+    w0 := 0;
     do {
       w0 += 1;
       a0[((v0 / (0 - 4)) and 63)] := (((a0->Size() / 2) * p0) % 1000003);

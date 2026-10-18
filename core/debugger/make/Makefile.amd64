@@ -13,6 +13,13 @@ $(EXE): $(SRC) $(OBJ_LIBS)
 ../vm/vm.a:
 	cd $(VM_PATH); $(MAKE) -f make/Makefile.amd64.obd
 
+# The vm.a sub-make builds memory.a and jit_amd_lp64.a itself, as its own
+# prerequisites. Under -j these two rules ran beside it and rebuilt the same
+# archives concurrently -- two gcc-ar -cvq on amd64/jit_common.a, then
+#   ar: amd64/jit_common.a: file format not recognized
+# and no obd. Ordering them after vm.a leaves them to find everything built.
+../vm/memory.a ../vm/jit_amd_lp64.a: | ../vm/vm.a
+
 ../vm/memory.a:
 	cd $(MEM_PATH); $(MAKE) -f make/Makefile.amd64
 

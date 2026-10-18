@@ -15,7 +15,7 @@ SRC=jit_amd_lp64.o
 LIB=../../../jit_amd_lp64.a
 
 $(LIB): $(COMMON_LIBS) $(SRC)
-	$(AR) -cvq $(LIB) $(COMMON_OBJ) $(SRC)
+	rm -f $(LIB).$$$$.tmp; $(AR) -cvq $(LIB).$$$$.tmp $(COMMON_OBJ) $(SRC) && mv -f $(LIB).$$$$.tmp $(LIB)
 
 jit_common.a:
 	cd $(COMMON_PATH); $(MAKE) -f make/Makefile.amd64

@@ -1,0 +1,191 @@
+#~
+# Rosetta Code: Generic swap
+# https://rosettacode.org/wiki/Generic_swap
+# Claimed in #1131
+#
+# Objeck passes arguments by value and has no reference parameters, so no function can exchange two of its caller's local variables; what can be swapped are storage places reachable through an object. Genericity is by class type parameters (no generic methods, and a type argument must be a class, so Int values are boxed as IntRef). Three forms: a generic Pair<T> that swaps its own two slots, a generic Swapper<T> that swaps two elements of any T[] array, and a generic Ref<T> cell whose Exchange(v) stores v and returns the old value, so two cells swap in one line.
+#
+# The direct form -- a method taking another Ref<T>, a.SwapWith(b : Ref<T>) -- compiles since #1182 (a parameter whose type is a generic class instantiated with the enclosing class's own type parameter reported "Undefined class or interface: 'T'"), and so does a call chained directly onto Swapper->New()<String>. Exchange is kept as a second form.
+#
+# Expected values are the inputs, exchanged.
+~#
+
+class Pair<T> {
+	@first : T;
+	@second : T;
+
+	New(first : T, second : T) {
+		@first := first;
+		@second := second;
+	}
+
+	method : public : First() ~ T {
+		return @first;
+	}
+
+	method : public : Second() ~ T {
+		return @second;
+	}
+
+	method : public : Swap() ~ Nil {
+		t := @first;
+		@first := @second;
+		@second := t;
+	}
+}
+
+class Swapper<T> {
+	New() {}
+
+	method : public : SwapAt(a : T[], i : Int, j : Int) ~ Nil {
+		t := a[i];
+		a[i] := a[j];
+		a[j] := t;
+	}
+}
+
+class Ref<T> {
+	@value : T;
+
+	New(value : T) {
+		@value := value;
+	}
+
+	method : public : Get() ~ T {
+		return @value;
+	}
+
+	method : public : Set(value : T) ~ Nil {
+		@value := value;
+	}
+
+	# exchanges this cell's value with another cell of the same type
+	method : public : SwapWith(rhs : Ref<T>) ~ Nil {
+		t := @value;
+		@value := rhs->Get();
+		rhs->Set(t);
+	}
+
+	# stores value, returns what was there
+	method : public : Exchange(value : T) ~ T {
+		old := @value;
+		@value := value;
+		return old;
+	}
+}
+
+class Point {
+	@x : Int;
+	@y : Int;
+
+	New(x : Int, y : Int) {
+		@x := x;
+		@y := y;
+	}
+
+	method : public : ToString() ~ String {
+		return "({$@x},{$@y})";
+	}
+}
+
+class RosettaGenericSwap {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaGenericSwap->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : ShowInts(a : IntRef, b : IntRef) ~ String {
+		x := a->Get();
+		y := b->Get();
+		return "{$x} {$y}";
+	}
+
+	function : ShowPoints(a : Point, b : Point) ~ String {
+		x := a->ToString();
+		y := b->ToString();
+		return x + y;
+	}
+
+	method : Run() ~ Nil {
+		# a pair swaps its own slots, for any class type
+		ps := Pair->New("left", "right")<String>;
+		ps->Swap();
+		Check("Pair<String> swapped", ps->First() + " " + ps->Second(), "right left");
+
+		pi := Pair->New(1, 2)<IntRef>;
+		pi->Swap();
+		# results go through Show(): a chained call as an operand of string '+',
+		# such as "x" + p->First()->ToString(), is converted using the first
+		# link's type and appends garbage (or crashes)
+		Check("Pair<IntRef> swapped", ShowInts(pi->First(), pi->Second()), "2 1");
+
+		pp := Pair->New(Point->New(1, 2), Point->New(3, 4))<Point>;
+		pp->Swap();
+		Check("Pair<Point> swapped", ShowPoints(pp->First(), pp->Second()), "(3,4)(1,2)");
+
+		pi->Swap();
+		Check("swapping twice restores", ShowInts(pi->First(), pi->Second()), "1 2");
+
+		# two places in an array, for any element class
+		strings := Swapper->New()<String>;
+		words := ["alpha", "beta", "gamma"];
+		strings->SwapAt(words, 0, 2);
+		Check("Swapper<String> over String[]", words[0] + " " + words[1] + " " + words[2], "gamma beta alpha");
+
+		floats := Swapper->New()<FloatRef>;
+		fs := FloatRef->New[2];
+		fs[0] := FloatRef->New(1.5);
+		fs[1] := FloatRef->New(-2.25);
+		floats->SwapAt(fs, 0, 1);
+		f0 := fs[0]->Get();
+		f1 := fs[1]->Get();
+		swapped := f0 = -2.25 & f1 = 1.5;
+		Check("Swapper<FloatRef> over FloatRef[]", swapped->ToString(), "true");
+
+		strings->SwapAt(words, 1, 1);
+		Check("swapping a place with itself is a no-op", words[1], "beta");
+
+		# two independent cells, swapped in one line
+		a := Ref->New("first")<String>;
+		b := Ref->New("second")<String>;
+		b->Set(a->Exchange(b->Get()));
+		Check("Ref<String> cells swapped", a->Get() + " " + b->Get(), "second first");
+
+		m := Ref->New(Point->New(0, 0))<Point>;
+		n := Ref->New(Point->New(9, 9))<Point>;
+		n->Set(m->Exchange(n->Get()));
+		Check("Ref<Point> cells swapped", ShowPoints(m->Get(), n->Get()), "(9,9)(0,0)");
+
+		# the direct form, a method taking another Ref<T>
+		c := Ref->New("one")<String>;
+		d := Ref->New("two")<String>;
+		c->SwapWith(d);
+		Check("Ref<String> SwapWith", c->Get() + " " + d->Get(), "two one");
+
+		# a call chained onto the constructor keeps its type argument
+		more := ["x", "y"];
+		Swapper->New()<String>->SwapAt(more, 0, 1);
+		Check("chained Swapper<String>", more[0] + more[1], "yx");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,141 @@
+#~
+Regression: `?->` recovery left the operand stack unbalanced, and `?->` after a
+call result or a literal was ignored (#1171).
+
+1. TRY_START records the operand stack position, and recovery unwinds DOWN to
+   it (#1067). The receiver -- and on most paths every guarded call's arguments
+   -- were pushed BEFORE TRY_START, so the mark counted words the failing call
+   had consumed. An interpreted callee faulting mid-expression left them below
+   the mark:
+     `r?->Div(1, 0) = Nil`             false (true under the JIT)
+     `Show("label", r?->Div(1, 0) = Nil)`   the caller's "label" read as Nil
+     a loop of recovered faults             leaked words until the VM crashed
+   EmitTryIntrinsic now parks the receiver in the Try() slot across TRY_START
+   and emits the guarded calls' arguments inside the region.
+2. `R->G()?->Div(1, 0)` and `"abc"?->SubString(..)` compiled with NO try region:
+   ParseMethodCall(Expression*) consumed the '?->' without reading its flag, so
+   the error ended the program.
+
+Not covered here: a fault two COMPILED frames below the guard still crashes
+under the JIT (#1171, the JIT half).
+~#
+
+class Div {
+	New() {}
+
+	method : public : Div(a : Int, b : Int) ~ IntRef {
+		return IntRef->New(a / b);
+	}
+
+	method : public : DivNoArg() ~ IntRef {
+		b := 0;
+		return IntRef->New(1 / b);
+	}
+
+	method : public : Div1(a : Int) ~ IntRef {
+		b := 0;
+		return IntRef->New(a / b);
+	}
+
+	method : public : Me(a : Int) ~ Div {
+		return @self;
+	}
+
+	method : public : Ok(a : Int, b : Int) ~ IntRef {
+		return IntRef->New(a + b);
+	}
+
+	function : Make() ~ Div {
+		return Div->New();
+	}
+}
+
+class TryRecoveryStackBalance {
+	@failures : Int;
+	@d : Div;
+
+	New() {
+		@failures := 0;
+		@d := Div->New();
+	}
+
+	method : CheckBool(what : String, got : Bool, want : Bool) ~ Nil {
+		if(what = Nil) {
+			"FAIL: a caller's argument arrived as Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(what = Nil) {
+			"FAIL: a caller's argument arrived as Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		r := Div->New();
+
+		# 1. a recovered failure inside an enclosing expression
+		CheckBool("no arguments, = Nil", r?->DivNoArg() = Nil, true);
+		CheckBool("one argument, = Nil", r?->Div1(5) = Nil, true);
+		CheckBool("two arguments, = Nil", r?->Div(1, 0) = Nil, true);
+		CheckBool("a chain, = Nil", r?->Me(7)->Div(1, 0) = Nil, true);
+		CheckBool("a field receiver", @d?->Div(1, 0) = Nil, true);
+		v := r?->Div(1, 0);
+		CheckBool("through a local", v = Nil, true);
+		CheckInt("with ??", (r?->Div(1, 0) ?? IntRef->New(-1))->Get(), -1);
+		CheckInt("success keeps its value", (r?->Ok(2, 3) ?? IntRef->New(-1))->Get(), 5);
+		CheckInt("success through a chain", r?->Me(1)->Ok(4, 4)->Get(), 8);
+
+		# the caller's other arguments survive (the label is checked for Nil)
+		CheckBool("label survives a failing argument", r?->Div(1, 0) = Nil, true);
+
+		# 2. '?->' after a call result and after a literal
+		CheckBool("call result receiver", Div->Make()?->Div(1, 0) = Nil, true);
+		CheckInt("call result receiver, success", (Div->Make()?->Ok(1, 2) ?? IntRef->New(-1))->Get(), 3);
+		s := "abc"?->SubString(1, 2);
+		CheckBool("literal receiver, success", s->Equals("bc"), true);
+
+		# a later '?->' in a chain is already guarded: one Try() region, not two
+		w := "actual";
+		u := w->ToUpper()?->ToLower()?->ToUpper();
+		CheckBool("'?->' after a call, twice", u->Equals("ACTUAL"), true);
+		u3 := w?->ToUpper()?->ToLower()?->ToUpper();
+		CheckBool("'?->' three times from a variable", u3->Equals("ACTUAL"), true);
+
+		# 3. many recoveries: each used to leak words; a few hundred overflowed
+		recovered := 0;
+		for(i := 0; i < 2000; i += 1;) {
+			if(r?->Div(i, 0) = Nil) {
+				recovered += 1;
+			};
+		};
+		CheckInt("2000 recoveries in a loop", recovered, 2000);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		TryRecoveryStackBalance->New()->Run();
+	}
+}

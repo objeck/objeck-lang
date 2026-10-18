@@ -1,0 +1,135 @@
+#~
+Regression: under the x64 JIT, `if(nan = x)` was taken and `if(nan <> x)` was not.
+
+The fused compare-and-branch emitted a bare je/jne after ucomisd. An unordered
+compare (a NaN operand) sets ZF as well as PF, so je treated NaN as equal
+(#1170). #1000 had fixed only the value path (`b := nan = x`, sete), and
+ieee_float_semantics.obs tests only that path, never a branch. The fix reads
+PF: jump-if-equal skips on parity, jump-if-not-equal also jumps on it.
+
+The ARM64 JIT had the same gap for `<` and `<=`. After fcmp an unordered
+result reads as N=0 Z=0 C=1 V=1, and the integer conditions lt/le take it as
+"less", so `if(nan < 1.0)` was taken. Its value path (cset) already used the
+ordered mi/ls; the branches now use mi/ls and their inverses pl/hi.
+
+Each comparison runs in a hot loop so the method is compiled at the default
+threshold too, and is checked in every form a branch can take: if, if/else,
+while, a ternary, both operand orders, and NaN on both sides.
+~#
+
+class JitFloatBranchNan {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	# defeats constant folding: the compare must happen at run time
+	function : Id(v : Float) ~ Float {
+		return v;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		nan := Float->Sqrt(Id(-1.0));
+		one := Id(1.0);
+		n := 2000;
+
+		eq := 0; ne := 0; eq_else := 0; ne_else := 0; tern_eq := 0; tern_ne := 0;
+		swapped_eq := 0; swapped_ne := 0; both_eq := 0; both_ne := 0;
+		real_eq := 0; real_ne := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(nan = one) { eq += 1; };
+			if(nan <> one) { ne += 1; };
+			if(nan = one) { eq_else += 0; } else { eq_else += 1; };
+			if(nan <> one) { ne_else += 1; } else { ne_else += 0; };
+			tern_eq += (nan = one) ? 1 : 0;
+			tern_ne += (nan <> one) ? 1 : 0;
+			if(one = nan) { swapped_eq += 1; };
+			if(one <> nan) { swapped_ne += 1; };
+			if(nan = nan) { both_eq += 1; };
+			if(nan <> nan) { both_ne += 1; };
+			# ordinary operands must still compare normally
+			if(one = Id(1.0)) { real_eq += 1; };
+			if(one <> Id(2.0)) { real_ne += 1; };
+		};
+
+		CheckInt("if(nan = 1.0) never taken", eq, 0);
+		CheckInt("if(nan <> 1.0) always taken", ne, n);
+		CheckInt("if/else on nan = 1.0 takes the else", eq_else, n);
+		CheckInt("if/else on nan <> 1.0 takes the then", ne_else, n);
+		CheckInt("ternary nan = 1.0 is false", tern_eq, 0);
+		CheckInt("ternary nan <> 1.0 is true", tern_ne, n);
+		CheckInt("if(1.0 = nan) never taken", swapped_eq, 0);
+		CheckInt("if(1.0 <> nan) always taken", swapped_ne, n);
+		CheckInt("if(nan = nan) never taken", both_eq, 0);
+		CheckInt("if(nan <> nan) always taken", both_ne, n);
+		CheckInt("1.0 = 1.0 still taken", real_eq, n);
+		CheckInt("1.0 <> 2.0 still taken", real_ne, n);
+
+		# every relational comparison with a NaN operand is false, as a branch
+		lt := 0; le := 0; gt := 0; ge := 0; lt_else := 0; le_else := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(nan < one) { lt += 1; };
+			if(nan <= one) { le += 1; };
+			if(nan > one) { gt += 1; };
+			if(nan >= one) { ge += 1; };
+			if(one < nan) { lt += 1; };
+			if(one <= nan) { le += 1; };
+			if(one > nan) { gt += 1; };
+			if(one >= nan) { ge += 1; };
+			if(nan < one) { lt_else += 0; } else { lt_else += 1; };
+			if(nan <= one) { le_else += 0; } else { le_else += 1; };
+		};
+		CheckInt("if(nan < x) / if(x < nan) never taken", lt, 0);
+		CheckInt("if(nan <= x) / if(x <= nan) never taken", le, 0);
+		CheckInt("if(nan > x) / if(x > nan) never taken", gt, 0);
+		CheckInt("if(nan >= x) / if(x >= nan) never taken", ge, 0);
+		CheckInt("if/else on nan < x takes the else", lt_else, n);
+		CheckInt("if/else on nan <= x takes the else", le_else, n);
+
+		# and as values
+		vals := 0;
+		for(i := 0; i < n; i += 1;) {
+			b1 := nan < one; b2 := nan <= one; b3 := nan > one; b4 := nan >= one;
+			b5 := nan = one; b6 := nan <> one;
+			if(b1 | b2 | b3 | b4 | b5 | <>b6) { vals += 1; };
+		};
+		CheckInt("as values: every comparison false, <> true", vals, 0);
+
+		# ordinary ordered operands still compare normally
+		two := Id(2.0);
+		ord := 0;
+		for(i := 0; i < n; i += 1;) {
+			if(one < two & one <= two & two > one & two >= one & one <= one & one >= one) { ord += 1; };
+			if(two < one | two <= one | one > two | one >= two) { ord -= 1; };
+		};
+		CheckInt("ordered comparisons unchanged", ord, n);
+
+		# a while loop whose condition is a float equality with NaN
+		k := 0;
+		while(nan = one & k < 5) { k += 1; };
+		CheckInt("while(nan = 1.0) never iterates", k, 0);
+		m := 0;
+		while(nan <> one & m < 5) { m += 1; };
+		CheckInt("while(nan <> 1.0) iterates", m, 5);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		JitFloatBranchNan->New()->Run();
+	}
+}

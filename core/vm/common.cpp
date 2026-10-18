@@ -150,6 +150,7 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #endif
 
 #include <csignal>
+#include <cmath>
 #include <filesystem>
 
 #ifdef _WIN32
@@ -819,10 +820,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            char* array_ptr = (char*)(array + 3);
+            SerializeArrayHeader(array);
+            char* array_ptr = (char*)(array + 2 + array[1]);
 
             // values
             SerializeBytes(array_ptr, array_size);
@@ -843,6 +842,18 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
           SerializeByte(1);
           // mark data
           if(!WasSerialized((size_t*)(*mem))) {
+            // a multi-dimensional array is no string: write its dimensions and
+            // then each character (#1174)
+            if(array[1] > 1) {
+              SerializeArrayHeader(array);
+              const wchar_t* array_ptr = (wchar_t*)(array + 2 + array[1]);
+              for(size_t j = 0; j < array[0]; ++j) {
+                SerializeChar(array_ptr[j]);
+              }
+              mem++;
+              break;
+            }
+
             // convert
             const std::string buffer = UnicodeToBytes((wchar_t*)(array + 3));
             const INT_VALUE array_size = (INT_VALUE)buffer.size();
@@ -879,10 +890,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            size_t* array_ptr = array + 3;
+            SerializeArrayHeader(array);
+            size_t* array_ptr = array + 2 + array[1];
 
             // values: Int elements are stored as size_t (8 bytes); SerializeInt
             // would truncate each to int32 (losing values > 2^32). Write the raw
@@ -911,10 +920,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+            SerializeArrayHeader(array);
+            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 2 + array[1]);
 
             // write values
             SerializeBytes(array_ptr, array_size * sizeof(FLOAT_VALUE));
@@ -941,10 +948,8 @@ void ObjectSerializer::CheckMemory(size_t* mem, StackDclr** dclrs, const long dc
               << array_size << L" byte(s) -----" << std::endl;
 #endif
             // write metadata
-            SerializeInt((INT_VALUE)array[0]);
-            SerializeInt((INT_VALUE)array[1]);
-            SerializeInt((INT_VALUE)array[2]);
-            size_t* array_ptr = array + 3;
+            SerializeArrayHeader(array);
+            size_t* array_ptr = array + 2 + array[1];
 
             // write values
             for(int i = 0; i < array_size; i++) {
@@ -1086,15 +1091,16 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE byte_array_size = DeserializeInt32();
             const INT_VALUE byte_array_dim = DeserializeInt32();
             const INT_VALUE byte_array_size_dim = DeserializeInt32();
-            if(read_error || byte_array_size < 0 || byte_array_dim < 0 || !CanRead(byte_array_size)) {
+            size_t dims[8];
+            if(!DeserializeDimensions(byte_array_size, byte_array_dim, byte_array_size_dim, dims) || !CanRead(byte_array_size)) {
               return nullptr;
             }
-            size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + ((byte_array_dim + 2) * sizeof(size_t))),
+            size_t* byte_array = MemoryManager::AllocateArray((size_t)(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t))),
                                                               BYTE_ARY_TYPE, op_stack, *stack_pos, false);
-            char* byte_array_ptr = (char*)(byte_array + 3);
             byte_array[0] = byte_array_size;
             byte_array[1] = byte_array_dim;
-            byte_array[2] = byte_array_size_dim;
+            memcpy(byte_array + 2, dims, byte_array_dim * sizeof(size_t));
+            char* byte_array_ptr = (char*)(byte_array + 2 + byte_array_dim);
             // copy content
             memcpy(byte_array_ptr, buffer + buffer_offset, byte_array_size);
             buffer_offset += byte_array_size;
@@ -1127,6 +1133,29 @@ size_t* ObjectDeserializer::DeserializeObject() {
             INT_VALUE char_array_size = DeserializeInt32();
             const INT_VALUE char_array_dim = DeserializeInt32();
             INT_VALUE char_array_size_dim = DeserializeInt32();
+            // a multi-dimensional array carries every dimension, then each
+            // character (#1174)
+            if(char_array_dim > 1) {
+              size_t dims[8];
+              if(!DeserializeDimensions(char_array_size, char_array_dim, char_array_size_dim, dims)) {
+                return nullptr;
+              }
+              size_t* char_array = MemoryManager::AllocateArray(char_array_size + 1 +
+                ((char_array_dim + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+              char_array[0] = char_array_size;
+              char_array[1] = char_array_dim;
+              memcpy(char_array + 2, dims, char_array_dim * sizeof(size_t));
+              wchar_t* char_array_ptr = (wchar_t*)(char_array + 2 + char_array_dim);
+              for(INT_VALUE j = 0; j < char_array_size; ++j) {
+                char_array_ptr[j] = DeserializeChar();
+                if(read_error) {
+                  return nullptr;
+                }
+              }
+              mem_cache[-mem_id] = char_array;
+              instance[instance_pos++] = (size_t)char_array;
+              break;
+            }
             if(read_error || char_array_size < 0 || char_array_dim < 0 || !CanRead(char_array_size)) {
               return nullptr;
             }
@@ -1179,15 +1208,16 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE array_size = DeserializeInt32();
             const INT_VALUE array_dim = DeserializeInt32();
             const INT_VALUE array_size_dim = DeserializeInt32();
-            if(read_error || array_size < 0 || array_dim < 0) {
+            size_t dims[8];
+            if(!DeserializeDimensions(array_size, array_dim, array_size_dim, dims)) {
               return nullptr;
             }
             size_t* array = MemoryManager::AllocateArray(array_size + array_dim + 2, instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
             array[1] = array_dim;
-            array[2] = array_size_dim;
-            size_t* array_ptr = array + 3;
+            memcpy(array + 2, dims, array_dim * sizeof(size_t));
+            size_t* array_ptr = array + 2 + array_dim;
             // copy content: raw 8-byte elements (must match SerializeBytes on the
             // serialize side). Bounds-check the attacker-controlled length first,
             // multiplying in 64-bit so the byte count cannot wrap.
@@ -1225,7 +1255,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE array_size = DeserializeInt32();
             const INT_VALUE array_dim = DeserializeInt32();
             const INT_VALUE array_size_dim = DeserializeInt32();
-            if(read_error || array_size < 0 || array_dim < 0 ||
+            size_t dims[8];
+            if(!DeserializeDimensions(array_size, array_dim, array_size_dim, dims) ||
                !CanRead((INT64_VALUE)array_size * (INT64_VALUE)sizeof(FLOAT_VALUE))) {
               return nullptr;
             }
@@ -1234,8 +1265,8 @@ size_t* ObjectDeserializer::DeserializeObject() {
 
             array[0] = array_size;
             array[1] = array_dim;
-            array[2] = array_size_dim;
-            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 3);
+            memcpy(array + 2, dims, array_dim * sizeof(size_t));
+            FLOAT_VALUE* array_ptr = (FLOAT_VALUE*)(array + 2 + array_dim);
             // copy content
             memcpy(array_ptr, buffer + buffer_offset, array_size * sizeof(FLOAT_VALUE));
             buffer_offset += array_size * sizeof(FLOAT_VALUE);
@@ -1268,15 +1299,16 @@ size_t* ObjectDeserializer::DeserializeObject() {
             const INT_VALUE array_size = DeserializeInt32();
             const INT_VALUE array_dim = DeserializeInt32();
             const INT_VALUE array_size_dim = DeserializeInt32();
-            if(read_error || array_size < 0 || array_dim < 0) {
+            size_t dims[8];
+            if(!DeserializeDimensions(array_size, array_dim, array_size_dim, dims)) {
               return nullptr;
             }
             size_t* array = MemoryManager::AllocateArray((size_t)(array_size + array_dim + 2), instructions::INT_TYPE,
                                                          op_stack, *stack_pos, false);
             array[0] = array_size;
             array[1] = array_dim;
-            array[2] = array_size_dim;
-            size_t* array_ptr = array + 3;
+            memcpy(array + 2, dims, array_dim * sizeof(size_t));
+            size_t* array_ptr = array + 2 + array_dim;
 
             // copy content
             for(int i = 0; i < array_size; i++) {
@@ -1609,7 +1641,88 @@ size_t* TrapProcessor::CreateStringObject(const std::wstring &value_str, StackPr
 
 /********************************
  * Date/time calculations
+ *
+ * A GMT date is calendar arithmetic in UTC, never mktime/gmtime. mktime reads
+ * its fields as LOCAL time and applies the machine's DST rules, so a GMT date
+ * built in July on a DST-observing machine came back an hour off, and its Unix
+ * time was off by the zone offset (#1179); on Windows it also rejects years
+ * before 1970 or after 3000, and gmtime_s rejects a negative Unix time. The
+ * helpers below are the proleptic Gregorian calendar (H. Hinnant's
+ * days_from_civil), exact for any year.
  ********************************/
+static INT64_VALUE FloorDiv(INT64_VALUE a, INT64_VALUE b)
+{
+  INT64_VALUE q = a / b;
+  if((a % b != 0) && ((a < 0) != (b < 0))) {
+    --q;
+  }
+  return q;
+}
+
+static INT64_VALUE DaysFromCivil(INT64_VALUE y, INT64_VALUE m, INT64_VALUE d)
+{
+  y -= m <= 2 ? 1 : 0;
+  const INT64_VALUE era = FloorDiv(y, 400);
+  const INT64_VALUE yoe = y - era * 400;
+  const INT64_VALUE doy = (153 * (m + (m > 2 ? -3 : 9)) + 2) / 5 + d - 1;
+  const INT64_VALUE doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+  return era * 146097 + doe - 719468;
+}
+
+static void CivilFromDays(INT64_VALUE z, INT64_VALUE& y, INT64_VALUE& m, INT64_VALUE& d)
+{
+  z += 719468;
+  const INT64_VALUE era = FloorDiv(z, 146097);
+  const INT64_VALUE doe = z - era * 146097;
+  const INT64_VALUE yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+  const INT64_VALUE doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+  const INT64_VALUE mp = (5 * doy + 2) / 153;
+  d = doy - (153 * mp + 2) / 5 + 1;
+  m = mp < 10 ? mp + 3 : mp - 9;
+  y = yoe + era * 400 + (m <= 2 ? 1 : 0);
+}
+
+// Seconds since 1970-01-01T00:00:00Z. Out-of-range fields roll over the way
+// mktime's do: month 13 is January of the next year, day 32 the next month.
+static INT64_VALUE UtcSeconds(INT64_VALUE year, INT64_VALUE month, INT64_VALUE day,
+                              INT64_VALUE hours, INT64_VALUE mins, INT64_VALUE secs)
+{
+  const INT64_VALUE y = year + FloorDiv(month - 1, 12);
+  const INT64_VALUE m = (month - 1) - FloorDiv(month - 1, 12) * 12 + 1;
+  return (DaysFromCivil(y, m, 1) + day - 1) * 86400 + hours * 3600 + mins * 60 + secs;
+}
+
+// Day of the week, 0 = Sunday, for days since 1970-01-01 (a Thursday)
+static INT64_VALUE WeekdayFromDays(INT64_VALUE days)
+{
+  const INT64_VALUE w = (days + 4) % 7;
+  return w < 0 ? w + 7 : w;
+}
+
+// Fills a Date instance from UTC seconds since the epoch
+static void SetUtcInstance(size_t* instance, INT64_VALUE seconds)
+{
+  const INT64_VALUE days = FloorDiv(seconds, 86400);
+  const INT64_VALUE rem = seconds - days * 86400;
+  INT64_VALUE y, m, d;
+  CivilFromDays(days, y, m, d);
+  instance[0] = (size_t)d;                    // day
+  instance[1] = (size_t)m;                    // month
+  instance[2] = (size_t)y;                    // year
+  instance[3] = (size_t)(rem / 3600);         // hours
+  instance[4] = (size_t)((rem % 3600) / 60);  // mins
+  instance[5] = (size_t)(rem % 60);           // secs
+  instance[6] = 0;                            // no savings time in UTC
+  instance[7] = (size_t)WeekdayFromDays(days);// day of week
+  instance[8] = true;                         // is GMT
+}
+
+static INT64_VALUE UtcSecondsOf(size_t* instance)
+{
+  return UtcSeconds((INT64_VALUE)instance[2], (INT64_VALUE)instance[1], (INT64_VALUE)instance[0],
+                    (INT64_VALUE)instance[3], (INT64_VALUE)instance[4], (INT64_VALUE)instance[5]);
+}
+
 void TrapProcessor::ProcessTimerStart(size_t* &op_stack, size_t* &stack_pos)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -1667,19 +1780,35 @@ void TrapProcessor::ProcessSetTime1(size_t* &op_stack, size_t* &stack_pos)
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
-    struct tm curr_time;
-    memset(&curr_time, 0, sizeof(struct tm));
-
-    curr_time.tm_mday = static_cast<int>(day);
-    curr_time.tm_mon = static_cast<int>(month - 1);
-    curr_time.tm_year = static_cast<int>(year - 1900);
-    mktime(&curr_time);
+    // A date's day of the week does not depend on the zone, so the calendar
+    // gives it for both; this never set it, and every such Date reported a
+    // Sunday (#1179).
+    const INT64_VALUE days = FloorDiv(UtcSeconds(year, month, day, 0, 0, 0), 86400);
+    INT64_VALUE y, m, d;
+    CivilFromDays(days, y, m, d);
 
     // set instance values
-    instance[0] = curr_time.tm_mday;          // day
-    instance[1] = curr_time.tm_mon + 1;       // month
-    instance[2] = curr_time.tm_year + 1900;   // year
+    instance[0] = (size_t)d;                  // day
+    instance[1] = (size_t)m;                  // month
+    instance[2] = (size_t)y;                  // year
+    instance[3] = 0;                          // hours
+    instance[4] = 0;                          // mins
+    instance[5] = 0;                          // secs
+    instance[7] = (size_t)WeekdayFromDays(days); // day of week
     instance[8] = is_gmt;                     // is GMT
+
+    instance[6] = 0;                          // savings time
+    if(!is_gmt) {
+      struct tm curr_time;
+      memset(&curr_time, 0, sizeof(struct tm));
+      curr_time.tm_mday = static_cast<int>(d);
+      curr_time.tm_mon = static_cast<int>(m - 1);
+      curr_time.tm_year = static_cast<int>(y - 1900);
+      curr_time.tm_isdst = -1;
+      if(mktime(&curr_time) != (time_t)-1) {
+        instance[6] = curr_time.tm_isdst > 0 ? 1 : 0;
+      }
+    }
   }
 }
 
@@ -1699,19 +1828,35 @@ void TrapProcessor::ProcessSetTime2(size_t* &op_stack, size_t* &stack_pos)
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
+    // UTC by the calendar: through mktime a GMT 12:00 in July came back 13:00
+    // on a DST-observing machine, and Clone() (which builds through here) was
+    // not equal to its original (#1179)
+    if(is_gmt) {
+      SetUtcInstance(instance, UtcSeconds(year, month, day, hours, mins, secs));
+      return;
+    }
+
     struct tm curr_time;
     memset(&curr_time, 0, sizeof(struct tm));
 
-    // update time
+    // update time; the C library decides whether DST is in effect
     curr_time.tm_year = static_cast<int>(year - 1900);
     curr_time.tm_mon = static_cast<int>(month - 1);
     curr_time.tm_mday = static_cast<int>(day);
     curr_time.tm_hour = static_cast<int>(hours);
     curr_time.tm_min = static_cast<int>(mins);
     curr_time.tm_sec = static_cast<int>(secs);
-    mktime(&curr_time);
+    curr_time.tm_isdst = -1;
+    if(mktime(&curr_time) == (time_t)-1) {
+      // out of the C library's range (Windows: before 1970 or after 3000):
+      // keep the calendar date and weekday rather than garbage
+      SetUtcInstance(instance, UtcSeconds(year, month, day, hours, mins, secs));
+      instance[8] = false;
+      return;
+    }
 
     // set instance values
+    instance[6] = curr_time.tm_isdst > 0 ? 1 : 0; // savings time
     instance[0] = curr_time.tm_mday;          // day
     instance[1] = curr_time.tm_mon + 1;       // month
     instance[2] = curr_time.tm_year + 1900;   // year
@@ -1756,8 +1901,16 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &s
         break;
     }
 
+    // a GMT date moves by the calendar, with no zone and no DST
+    const bool is_gmt = instance[8];
+    if(is_gmt) {
+      SetUtcInstance(instance, UtcSecondsOf(instance) + offset);
+      return;
+    }
+
     // create time structure
     struct tm set_time;
+    memset(&set_time, 0, sizeof(struct tm));
     set_time.tm_mday = (int)instance[0];          // day
     set_time.tm_mon = (int)instance[1] - 1;       // month
     set_time.tm_year = (int)instance[2] - 1900;   // year
@@ -1768,16 +1921,14 @@ void TrapProcessor::ProcessAddTime(TimeInterval t, size_t* &op_stack, size_t* &s
 
     // calculate difference
     time_t raw_time = mktime(&set_time);
-    const bool is_gmt = instance[8];
-    if(is_gmt) {
-#ifdef _WIN32
-      long timezone;
-      _get_timezone(&timezone);
-#endif
-      raw_time -= timezone;
+    if(raw_time == (time_t)-1) {
+      // out of the C library's range: move by the calendar instead
+      SetUtcInstance(instance, UtcSecondsOf(instance) + offset);
+      instance[8] = false;
+      return;
     }
     raw_time += offset;
-  
+
     struct tm* curr_time;
     const bool got_time = GetTime(curr_time, raw_time, is_gmt);
 
@@ -2491,6 +2642,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
     return Http3Request(program, inst, op_stack, stack_pos, frame);
   case HTTP3_REQUEST_HDRS:
     return Http3RequestHdrs(program, inst, op_stack, stack_pos, frame);
+
+  case FLOAT_TO_STR_PREC:
+    return FloatToStrPrec(program, inst, op_stack, stack_pos, frame);
+
+  case FILE_IN_LINE:
+    return FileInLine(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -4009,8 +4166,16 @@ bool TrapProcessor::DateToUnixTime(StackProgram* program, size_t* inst, size_t*&
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
+    // a GMT date's Unix time is the calendar's; mktime read it as local time and
+    // answered off by the zone offset (#1179)
+    if(instance[8]) {
+      PushInt((size_t)UtcSecondsOf(instance), op_stack, stack_pos);
+      return true;
+    }
+
     // create time structure
     struct tm set_time;
+    memset(&set_time, 0, sizeof(struct tm));
     set_time.tm_mday = (int)instance[0];          // day
     set_time.tm_mon = (int)instance[1] - 1;       // month
     set_time.tm_year = (int)instance[2] - 1900;   // year
@@ -4036,34 +4201,9 @@ bool TrapProcessor::DateFromUnixTime(StackProgram* program, size_t* inst, size_t
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(instance) {
-#ifdef _WIN32
-    struct tm set_time;
-    if(gmtime_s(&set_time, &value)) {
-      std::wcerr << L">>> Unable to get GMT time <<<" << std::endl;
-      return false;
-    }
-
-    instance[0] = set_time.tm_mday;          // day
-    instance[1] = set_time.tm_mon + 1;       // month
-    instance[2] = set_time.tm_year + 1900;   // year
-    instance[3] = set_time.tm_hour;          // hours
-    instance[4] = set_time.tm_min;           // mins
-    instance[5] = set_time.tm_sec;           // secs
-    instance[6] = set_time.tm_isdst;         // savings time
-    instance[7] = set_time.tm_wday;          // day of week
-    instance[8] = true;                      // is GMT
-#else
-    struct tm* set_time = gmtime(&value);
-    instance[0] = set_time->tm_mday;          // day
-    instance[1] = set_time->tm_mon + 1;       // month
-    instance[2] = set_time->tm_year + 1900;   // year
-    instance[3] = set_time->tm_hour;          // hours
-    instance[4] = set_time->tm_min;           // mins
-    instance[5] = set_time->tm_sec;           // secs
-    instance[6] = set_time->tm_isdst;         // savings time
-    instance[7] = set_time->tm_wday;          // day of week
-    instance[8] = true;                       // is GMT
-#endif
+    // by the calendar: gmtime_s rejects a negative time, which aborted the VM
+    // with ">>> Unable to get GMT time <<<" for any date before 1970 (#1179)
+    SetUtcInstance(instance, (INT64_VALUE)value);
   }
 
   return true;
@@ -6119,9 +6259,18 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
     std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
+    // look ahead one byte, as FileInString does after each line: an empty file
+    // is then at end of file from the start, and ReadLine returns Nil rather
+    // than one empty line (#1180)
+    if(file) {
+      const int next = fgetc(file);
+      if(next != EOF) {
+        ungetc(next, file);
+      }
+    }
     instance[0] = (size_t)file;
   }
-  
+
   return true;
 }
 
@@ -6203,7 +6352,9 @@ bool TrapProcessor::FileFlush(StackProgram* program, size_t* inst, size_t* &op_s
 #ifdef _DEBUG
     std::wcout << L"# file flush: addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
-    instance[0] = 0;
+    // flush only: clearing instance[0] here (copied from Close) made the file
+    // read as closed after a Flush -- later writes were dropped, Close did
+    // nothing, and the FILE* leaked, keeping the file locked on Windows (#1180)
     fflush(file);
   }
 
@@ -6238,15 +6389,131 @@ bool TrapProcessor::FileInString(StackProgram* program, size_t* inst, size_t* &o
         in.erase(in.begin(), in.begin() + 1);
       }
 
+      // always room for the terminator: a line as long as the buffer would
+      // otherwise trip MSVC's invalid-parameter handler (as in #1173)
       wchar_t* out = (wchar_t*)(array + 3);
+      const size_t max = in.size() < array[0] ? in.size() : (array[0] > 0 ? array[0] - 1 : 0);
 #ifdef _WIN32
-      wcsncpy_s(out, array[0], in.c_str(), in.size());
+      wcsncpy_s(out, array[0], in.c_str(), max);
 #else
-      wcsncpy(out, in.c_str(), in.size());
+      wcsncpy(out, in.c_str(), max);
+      out[max] = 0;
 #endif
+
+      // Look ahead one byte, so end of file is known as soon as the last line
+      // has been read. Without it IsEoF() stayed false after the final newline,
+      // and the documented `while(line <> Nil)` loop got one extra "" (#1180).
+      const int next = fgetc(file);
+      if(next != EOF) {
+        ungetc(next, file);
+      }
     }
   }
 
+  return true;
+}
+
+// A new one-dimensional Char[] holding 'value'
+static size_t* NewCharArray(const std::wstring& value, size_t* op_stack, size_t* stack_pos)
+{
+  const size_t size = value.size();
+  size_t* array = MemoryManager::AllocateArray(size + 1 + ((1 + 2) * sizeof(size_t)), CHAR_ARY_TYPE, op_stack, *stack_pos, false);
+  array[0] = size;
+  array[1] = 1;
+  array[2] = size;
+  wchar_t* out = (wchar_t*)(array + 3);
+  if(size > 0) {
+    memcpy(out, value.c_str(), size * sizeof(wchar_t));
+  }
+  out[size] = L'\0';
+
+  return array;
+}
+
+// Float->ToString(value, precision): printf's %.*f, exact at any magnitude.
+// The library version went through ->As(Int), so above 2^63 it printed
+// "-9223372036854775808.-9223372036854775808", and it lost the sign of -0.0
+// (#1173).
+bool TrapProcessor::FloatToStrPrec(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  INT64_VALUE precision = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+
+  // 1074 digits are enough to write the smallest subnormal exactly
+  if(precision < 0) {
+    precision = 0;
+  }
+  else if(precision > 1074) {
+    precision = 1074;
+  }
+
+  std::wstring out;
+  if(std::isnan(value)) {
+    out = L"nan";
+  }
+  else if(std::isinf(value)) {
+    out = value < 0.0 ? L"-inf" : L"inf";
+  }
+  else {
+    const int prec = (int)precision;
+    const int size = snprintf(nullptr, 0, "%.*f", prec, value);
+    if(size > 0) {
+      std::vector<char> buffer((size_t)size + 1);
+      snprintf(buffer.data(), buffer.size(), "%.*f", prec, value);
+      out.assign(buffer.begin(), buffer.begin() + size);
+    }
+  }
+
+  PushInt((size_t)NewCharArray(out, op_stack, stack_pos), op_stack, stack_pos);
+  return true;
+}
+
+// FileReader->ReadLine(): the whole line, however long. FILE_IN_STRING reads
+// into the caller's buffer with fgets, so a line longer than 8 KB came back
+// as several lines (#1180). Returns Nil at end of file or for a closed reader.
+bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  FILE* file = instance ? (FILE*)instance[0] : nullptr;
+  if(!file) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  std::string line;
+  bool read_any = false;
+  int c;
+  while((c = fgetc(file)) != EOF) {
+    read_any = true;
+    if(c == '\n') {
+      break;
+    }
+    line.push_back((char)c);
+  }
+
+  if(!read_any) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  // "\r\n" endings, as FILE_IN_STRING strips them
+  if(!line.empty() && line.back() == '\r') {
+    line.pop_back();
+  }
+
+  // a byte-order mark, as FILE_IN_STRING removes it
+  std::wstring in = BytesToUnicode(line);
+  if(in.size() > 0 && (in[0] == (wchar_t)0xFEFF || in[0] == (wchar_t)0xFFFE)) {
+    in.erase(in.begin(), in.begin() + 1);
+  }
+
+  // look ahead one byte, so IsEoF() is true as soon as the last line is read
+  const int next = fgetc(file);
+  if(next != EOF) {
+    ungetc(next, file);
+  }
+
+  PushInt((size_t)NewCharArray(in, op_stack, stack_pos), op_stack, stack_pos);
   return true;
 }
 
@@ -8879,7 +9146,11 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
   if(array) {
     array = (size_t*)array[0];
     const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
-    PushInt(std::filesystem::remove(name.c_str()), op_stack, stack_pos);
+    // the error_code overload: the throwing one aborted the VM ("internal error:
+    // remove: The process cannot access the file") for an open file on Windows,
+    // where Delete is documented to return false (#1180)
+    std::error_code error_code;
+    PushInt(std::filesystem::remove(name.c_str(), error_code), op_stack, stack_pos);
   }
 
   return true;
@@ -9207,7 +9478,9 @@ bool TrapProcessor::DirDelete([[maybe_unused]] StackProgram* program, [[maybe_un
   array = (size_t*)array[0];
   if(array) {
     const std::string dir_name = UnicodeToBytes((wchar_t*)(array + 3));
-    const auto count = std::filesystem::remove_all(dir_name);
+    std::error_code remove_error;
+    const auto removed = std::filesystem::remove_all(dir_name, remove_error);
+    const auto count = remove_error ? 0 : removed;
     PushInt(count, op_stack, stack_pos);
   }
   else {
@@ -9230,7 +9503,8 @@ bool TrapProcessor::SymLinkCreate([[maybe_unused]] StackProgram* program, [[mayb
     const std::string link_str = UnicodeToBytes((wchar_t*)(link_obj + 3));
 
     std::error_code error_code;
-    if(std::filesystem::is_directory(target_str)) {
+    std::error_code kind_error;
+    if(std::filesystem::is_directory(target_str, kind_error)) {
       std::filesystem::create_directory_symlink(link_str, target_str, error_code);
     }
     else {
@@ -9309,7 +9583,8 @@ bool TrapProcessor::SymLinkExists([[maybe_unused]] StackProgram* program, [[mayb
   if(array) {
     array = (size_t*)array[0];
     const std::string path_str = UnicodeToBytes((wchar_t*)(array + 3));
-    PushInt(std::filesystem::is_symlink(path_str), op_stack, stack_pos);
+    std::error_code link_error;
+    PushInt(std::filesystem::is_symlink(path_str, link_error), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);

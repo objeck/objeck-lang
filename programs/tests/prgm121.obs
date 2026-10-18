@@ -53,7 +53,6 @@ class Test {
 			for(j := 0; j < 3; j += 1;) {
 				value := matrix[i,j];
 				"{$value} "->Print();
-				k -= 1;
 			};
 			"\n"->Print();
 		};

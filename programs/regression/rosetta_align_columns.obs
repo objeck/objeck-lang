@@ -1,0 +1,176 @@
+#~
+# Rosetta Code: Align columns
+# https://rosettacode.org/wiki/Align_columns
+# Claimed in #1137
+#
+# Splits the task's '$'-delimited text into fields, sizes each column to its widest word, and lays the words out left, right and centre justified with one space between columns. Pins String->Split(Char) on lines with and without a trailing '$', and String->Justify for the left and right padding (it padded only past the buffer's capacity and inverted its is_left flag until #1177).
+#
+# Expected lines come from an independent Python oracle (str.ljust / str.rjust, centre with the extra space on the right), trailing blanks stripped as the task allows.
+~#
+
+class RosettaAlignColumns {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		t := RosettaAlignColumns->New();
+		t->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected [{$want}], got [{$got}]"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		text := String->New[6];
+		text[0] := "Given$a$text$file$of$many$lines,$where$fields$within$a$line$";
+		text[1] := "are$delineated$by$a$single$'dollar'$character,$write$a$program";
+		text[2] := "that$aligns$each$column$of$fields$by$ensuring$that$words$in$each$";
+		text[3] := "column$are$separated$by$at$least$one$space.";
+		text[4] := "Further,$allow$for$each$word$in$a$column$to$be$either$left$";
+		text[5] := "justified,$right$justified,$or$center$justified$within$its$column.";
+
+		rows := Fields(text);
+		CheckInt("line 1 has 12 fields (trailing $ dropped)", rows->Get(0)->Fields()->Size(), 12);
+		CheckInt("line 2 has 10 fields (no trailing $)", rows->Get(1)->Fields()->Size(), 10);
+
+		widths := Widths(rows);
+		Check("column widths", Join(widths), "10 10 10 6 6 9 10 8 7 7 6 4");
+
+		left := Align(rows, widths, 'L');
+		Check("left 1", left[0], "Given      a          text       file   of     many      lines,     where    fields  within  a      line");
+		Check("left 2", left[1], "are        delineated by         a      single 'dollar'  character, write    a       program");
+		Check("left 3", left[2], "that       aligns     each       column of     fields    by         ensuring that    words   in     each");
+		Check("left 4", left[3], "column     are        separated  by     at     least     one        space.");
+		Check("left 5", left[4], "Further,   allow      for        each   word   in        a          column   to      be      either left");
+		Check("left 6", left[5], "justified, right      justified, or     center justified within     its      column.");
+
+		right := Align(rows, widths, 'R');
+		Check("right 1", right[0], "     Given          a       text   file     of      many     lines,    where  fields  within      a line");
+		Check("right 2", right[1], "       are delineated         by      a single  'dollar' character,    write       a program");
+		Check("right 3", right[2], "      that     aligns       each column     of    fields         by ensuring    that   words     in each");
+		Check("right 4", right[3], "    column        are  separated     by     at     least        one   space.");
+		Check("right 5", right[4], "  Further,      allow        for   each   word        in          a   column      to      be either left");
+		Check("right 6", right[5], "justified,      right justified,     or center justified     within      its column.");
+
+		center := Align(rows, widths, 'C');
+		Check("center 1", center[0], "  Given        a         text     file    of     many      lines,    where   fields  within    a    line");
+		Check("center 2", center[1], "   are     delineated     by       a    single 'dollar'  character,  write      a    program");
+		Check("center 3", center[2], "   that      aligns      each    column   of    fields       by     ensuring  that    words    in   each");
+		Check("center 4", center[3], "  column      are     separated    by     at     least      one      space.");
+		Check("center 5", center[4], " Further,    allow       for      each   word     in         a       column    to      be    either left");
+		Check("center 6", center[5], "justified,   right    justified,   or   center justified   within     its    column.");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Fields(text : String[]) ~ Collection.Vector<Row> {
+		rows := Collection.Vector->New()<Row>;
+		each(i : text) {
+			parts := text[i]->Split('$');
+			# a trailing '$' leaves one empty last field: drop it
+			n := parts->Size();
+			if(n > 0 & parts[n - 1]->IsEmpty()) {
+				n -= 1;
+			};
+			row := String->New[n];
+			each(j : n) {
+				row[j] := parts[j];
+			};
+			rows->AddBack(Row->New(row));
+		};
+		return rows;
+	}
+
+	function : Widths(rows : Collection.Vector<Row>) ~ Int[] {
+		cols := 0;
+		each(i : rows) {
+			cols := Int->Max(cols, rows->Get(i)->Fields()->Size());
+		};
+		widths := Int->New[cols];
+		each(i : rows) {
+			row := rows->Get(i)->Fields();
+			each(j : row) {
+				widths[j] := Int->Max(widths[j], row[j]->Size());
+			};
+		};
+		return widths;
+	}
+
+	function : Align(rows : Collection.Vector<Row>, widths : Int[], how : Char) ~ String[] {
+		out := String->New[rows->Size()];
+		each(i : rows) {
+			row := rows->Get(i)->Fields();
+			line := String->New();
+			each(j : row) {
+				if(j > 0) {
+					line->Append(' ');
+				};
+				word := row[j];
+				w := widths[j];
+				if(how = 'L') {
+					line->Append(word->Justify(w, true));
+				}
+				else if(how = 'R') {
+					line->Append(word->Justify(w));
+				}
+				else {
+					pad := w - word->Size();
+					before := pad / 2;
+					line->Append(" "->Repeat(before));
+					line->Append(word);
+					line->Append(" "->Repeat(pad - before));
+				};
+			};
+			out[i] := line->TrimBack();
+		};
+		return out;
+	}
+
+	function : Join(values : Int[]) ~ String {
+		out := String->New();
+		each(i : values) {
+			if(i > 0) {
+				out->Append(' ');
+			};
+			out->Append(values[i]);
+		};
+		return out;
+	}
+}
+
+# One line's fields. A wrapper because Vector->New()<String[]> is accepted at the
+# declaration and then rejects every AddBack(String[]) as an undefined call.
+class Row {
+	@fields : String[];
+
+	New(fields : String[]) {
+		@fields := fields;
+	}
+
+	method : public : Fields() ~ String[] {
+		return @fields;
+	}
+}

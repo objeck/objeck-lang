@@ -1,0 +1,108 @@
+#~
+Regression: Float->ToString(v, precision) above 2^63 (#1173) and
+FileReader->ReadLine on lines longer than 8 KB (#1180).
+
+- Float->ToString(v, precision), which interpolation's "{$x:.2}" uses, went
+  through ->As(Int): Float->ToString(1.0e19, 2) gave
+  "-9223372036854775808.-9223372036854775808", and -0.0 lost its sign. It is
+  now the VM's printf %.*f (the FLOAT_TO_STR_PREC trap), so it agrees with
+  Python's f"{x:.Nf}", including round-half-to-even on exact binary halves.
+- ReadLine read through an 8 KB fgets buffer, so a longer line came back as
+  several lines. The FILE_IN_LINE trap reads the whole line.
+~#
+# EXTRA_LIBS: gen_collect
+
+use System.IO.Filesystem;
+use Collection;
+
+class FloatPrecisionLongLines {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckString(what : String, got : String, want : String) ~ Nil {
+		if(got <> Nil & got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected '{$want}', got '{$got}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# expected values from Python's f"{x:.Nf}"
+		CheckString("1e19 to 2 places", Float->ToString(1.0e19, 2), "10000000000000000000.00");
+		CheckString("-1e19 to 1 place", Float->ToString(-1.0e19, 1), "-10000000000000000000.0");
+		CheckString("2^63 to 0 places", Float->ToString(9223372036854775808.0, 0), "9223372036854775808");
+		CheckString("-0.0 keeps its sign", Float->ToString(-0.0, 1), "-0.0");
+		CheckString("3.14159 to 2 places", Float->ToString(3.14159, 2), "3.14");
+		CheckString("2.675 to 2 places (binary 2.67499...)", Float->ToString(2.675, 2), "2.67");
+		CheckString("2.5 to 0 places (half to even)", Float->ToString(2.5, 0), "2");
+		CheckString("0.125 to 2 places (half to even)", Float->ToString(0.125, 2), "0.12");
+		CheckString("-7.125 to 3 places", Float->ToString(-7.125, 3), "-7.125");
+		CheckString("a negative precision is 0", Float->ToString(1.5, -3), "2");
+		CheckString("1e-7 to 10 places", Float->ToString(0.0000001, 10), "0.0000001000");
+		big := Float->ToString(1.0e300, 0);
+		CheckString("1e300 to 0 places, every digit", big, "1000000000000000052504760255204420248704468581108159154915854115511802457988908195786371375080447864043704443832883878176942523235360430575644792184786706982848387200926575803737830233794788090059368953234970799945081119038967640880074652742780142494579258788820056842838115669472196386865459400540160");
+		x := 1.0e19;
+		CheckString("interpolation {$x:.2}", "{$x:.2}", "10000000000000000000.00");
+
+		# a line of 20000 characters, then short ones; CRLF; no final newline
+		name := "float_precision_long_lines.tmp.txt";
+		long := String->New();
+		each(i : 20000) {
+			long->Append(('a'->As(Int) + i % 26)->As(Char));
+		};
+		w := FileWriter->New(name);
+		w->WriteString(long);
+		w->WriteString("\nabc\r\n");
+		w->WriteString(long);
+		w->WriteString("\r\nend");
+		w->Close();
+
+		r := FileReader->New(name);
+		lines := Vector->New()<String>;
+		line := r->ReadLine();
+		while(line <> Nil) {
+			lines->AddBack(line);
+			line := r->ReadLine();
+		};
+		r->Close();
+		Check("four lines read", lines->Size() = 4);
+		if(lines->Size() = 4) {
+			Check("the 20000-character line is one line", lines->Get(0)->Equals(long));
+			CheckString("the short line after it", lines->Get(1), "abc");
+			Check("a long line ending in CRLF", lines->Get(2)->Equals(long));
+			CheckString("a last line without a newline", lines->Get(3), "end");
+		};
+
+		w2 := FileWriter->New(name);
+		w2->Close();
+		r2 := FileReader->New(name);
+		Check("an empty file has no lines", r2->ReadLine() = Nil);
+		r2->Close();
+		File->Delete(name);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		FloatPrecisionLongLines->New()->Run();
+	}
+}

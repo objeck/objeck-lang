@@ -175,6 +175,10 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
   std::wcout << L"creating frame=" << (*stack_frame) << std::endl;
 #endif
   (*stack_frame)->jit_called = jit_called;
+  if(jit_called) {
+    bridge_call_pos = *call_stack_pos;
+    bridge_deferred = false;
+  }
 
 #if !defined(_DEBUGGER) && !defined(_NO_JIT)
   // An entry method -- Main, a thread's Run -- is called once, so the auto-JIT's
@@ -529,6 +533,14 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
 loop_exit: ;
 #endif
 
+  // A bridge that left an error to its compiled caller stopped on its entry
+  // frame; release it as the return to compiled code does (#1171)
+  if(bridge_deferred && *stack_frame) {
+    (*stack_frame)->jit_called = false;
+    ReleaseStackFrame(*stack_frame);
+    *stack_frame = nullptr;
+  }
+
 #ifdef _TIMING
   clock_t end = clock();
   std::wcout << L"---------------------------" << std::endl;
@@ -871,11 +883,24 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
       conv = std::to_wstring(value);
     }
 
-    const size_t max = conv.size() < 64 ? conv.size() : 64;
+    // The buffer is the caller's Char->New[64]: str_ptr[0] elements. Fixed-point
+    // text of a large value does not fit -- 1e60 is 61 digits and ".000000" --
+    // and copying 64 characters into it left no room for the terminator:
+    // MSVC's invalid-parameter handler ended the process with no message, and
+    // POSIX left the string unterminated (#1173). Such a value is written in
+    // scientific notation instead, and the copy always keeps the terminator.
+    const size_t capacity = str_ptr[0];
+    if(conv.size() >= capacity) {
+      std::wstringstream scientific;
+      scientific << std::scientific << value;
+      conv = scientific.str();
+    }
+    const size_t max = conv.size() < capacity ? conv.size() : (capacity > 0 ? capacity - 1 : 0);
 #ifdef _WIN32
-		wcsncpy_s(str, str_ptr[0], conv.c_str(), max);
+    wcsncpy_s(str, capacity, conv.c_str(), max);
 #else
-		wcsncpy(str, conv.c_str(), max);
+    wcsncpy(str, conv.c_str(), max);
+    str[max] = L'\0';
 #endif
   }
 }
@@ -1985,13 +2010,19 @@ void StackInterpreter::ProcessNewArray(StackInstr* instr, size_t* &op_stack, siz
 #endif
   size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
+  // a negative dimension is a huge size_t; with a zero beside it the product
+  // would pass the overflow checks (#1181)
+  if((int64_t)value < 0) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    VmExit(1);
+  }
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
     // overflow-safe accumulation; AllocateArray applies the final element-size guard
-    if(value != 0 && size > (~(size_t)0) / value) {
+    if((int64_t)value < 0 || (value != 0 && size > (~(size_t)0) / value)) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
       VmExit(1);
     }
@@ -2025,12 +2056,18 @@ void StackInterpreter::ProcessNewByteArray(StackInstr* instr, size_t* &op_stack,
 #endif
   size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
+  // a negative dimension is a huge size_t; with a zero beside it the product
+  // would pass the overflow checks (#1181)
+  if((int64_t)value < 0) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    VmExit(1);
+  }
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
-    if(value != 0 && size > (~(size_t)0) / value) {
+    if((int64_t)value < 0 || (value != 0 && size > (~(size_t)0) / value)) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
       VmExit(1);
     }
@@ -2063,12 +2100,18 @@ void StackInterpreter::ProcessNewCharArray(StackInstr* instr, size_t* &op_stack,
 #endif
   size_t indices[8]{};
   const size_t value = PopInt(op_stack, stack_pos);
+  // a negative dimension is a huge size_t; with a zero beside it the product
+  // would pass the overflow checks (#1181)
+  if((int64_t)value < 0) {
+    std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
+    VmExit(1);
+  }
   size_t size = value;
   indices[0] = value;
   long dim = 1;
   for(long i = 1; i < instr->GetOperand(); i++) {
     const size_t value = PopInt(op_stack, stack_pos);
-    if(value != 0 && size > (~(size_t)0) / value) {
+    if((int64_t)value < 0 || (value != 0 && size > (~(size_t)0) / value)) {
       std::wcerr << L">>> Array allocation size overflow <<<" << std::endl;
       VmExit(1);
     }
