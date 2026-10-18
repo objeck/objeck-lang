@@ -186,7 +186,7 @@ void Linker::ResolveExternalMethodCalls()
               if(lib_method) {
                 const int16_t lib_method_id = lib_method->GetId();
                 const int16_t lib_cls_id = lib_method->GetLibraryClass()->GetId();
-                const int lib_method_cls_id = (lib_cls_id << 16) | lib_method_id;
+                const INT64_VALUE lib_method_cls_id = FUNC_VALUE_TAG | ((INT64_VALUE)lib_cls_id << 16) | lib_method_id;
                 instr->SetType(instructions::LOAD_INT_LIT);
                 instr->SetOperand7(lib_method_cls_id);
               }

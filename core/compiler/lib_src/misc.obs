@@ -129,10 +129,10 @@ Console->Print("Day: ")->PrintLine(date->GetDay());
 						pos := hours + offset + 1;
 						if(pos > -1 & pos < date_str->Size()) { 
 							if(date_str->Get(pos)->IsDigit()) {
-								date_hours := date_str->SubString(hours + offset, 2)->ToInt() - 1;
+								date_hours := date_str->SubString(hours + offset, 2)->ToInt();
 							}
 							else {
-								date_hours := date_str->SubString(hours + offset, 1)->ToInt() - 1;
+								date_hours := date_str->SubString(hours + offset, 1)->ToInt();
 								offset -= 1;
 							};
 						};
@@ -205,12 +205,12 @@ formatted->PrintLine();
 
 				# day
 				if(cur_char = 'd' & next_char = 'd') {
-					buffer->Append(day);
+					AppendTwoDigits(buffer, day);
 					i += 1;
 				}
 				# month
 				else if(cur_char = 'M' & next_char = 'M') {
-					buffer->Append(mon);
+					AppendTwoDigits(buffer, mon);
 					i += 1;
 				}
 				# year
@@ -222,22 +222,22 @@ formatted->PrintLine();
 					}
 					else {
 						i += 1;
-						buffer->Append(year - 2000);
+						AppendTwoDigits(buffer, year % 100);
 					};
 				}
 				# hours
 				else if(cur_char = 'h' & next_char = 'h') {
-					buffer->Append(hours);
+					AppendTwoDigits(buffer, hours);
 					i += 1;
 				}
 				# minutes
 				else if(cur_char = 'm' & next_char = 'm') {
-					buffer->Append(mins);
+					AppendTwoDigits(buffer, mins);
 					i += 1;
 				}
 				# seconds
 				else if(cur_char = 's' & next_char = 's') {
-					buffer->Append(secs);
+					AppendTwoDigits(buffer, secs);
 					i += 1;
 				}
 				# other
@@ -247,6 +247,15 @@ formatted->PrintLine();
 			};
 
 			return buffer;
+		}
+
+		# a two-digit field, zero padded: Format wrote 7 for 'MM' where July is 07
+		# (#1179)
+		function : AppendTwoDigits(buffer : String, value : Int) ~ Nil {
+			if(value < 10) {
+				buffer->Append('0');
+			};
+			buffer->Append(value);
 		}
 
 		#~

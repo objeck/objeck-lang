@@ -286,6 +286,12 @@ JitVirtualRecord* JitCompiler::JitResolveVirtualSite(JitVirtualSite* site, size_
  */
 JitVirtualRecord* JitCompiler::JitResolveFuncRefSite(JitVirtualSite* site, size_t packed)
 {
+  // an unassigned function variable: no record, so the call takes the slow
+  // path, where the interpreter reports it (#1183)
+  if(!packed) {
+    return nullptr;
+  }
+
   const long cls_id = (long)((packed >> 16) & 0xFFFF);
   const long mthd_id = (long)(packed & 0xFFFF);
   StackClass* cls = program->GetClass(cls_id);
@@ -439,7 +445,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     StackMethod* callee;
     if(instr_id == DYN_MTHD_CALL) {
       const size_t fref = op_stack[(*stack_pos) - 1];
-      callee = program->GetClass((long)((fref >> 16) & 0xFFFF))->GetMethod((long)(fref & 0xFFFF));
+      // 0 is an unassigned function variable (see FUNC_VALUE_TAG): no callee;
+      // the interpreter below reports it, or recovers it under a Try() (#1183)
+      callee = fref ? program->GetClass((long)((fref >> 16) & 0xFFFF))->GetMethod((long)(fref & 0xFFFF)) : nullptr;
     }
     else {
       callee = program->GetClass(instr->GetOperand())->GetMethod(instr->GetOperand2());
@@ -463,8 +471,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 
 #ifndef _NO_JIT
     int64_t called_status = 0;
-    if(CallCompiled(callee, instr_id == DYN_MTHD_CALL, cls_id, mthd_id, op_stack, stack_pos,
-                    call_stack, call_stack_pos, called_status)) {
+    if(callee && CallCompiled(callee, instr_id == DYN_MTHD_CALL, cls_id, mthd_id, op_stack, stack_pos,
+                              call_stack, call_stack_pos, called_status)) {
       if(called_status < 0) {
         return called_status;
       }
@@ -473,7 +481,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
 #endif
 
 #ifdef _DEBUG_JIT
-    std::wcout << L"jit oper: MTHD_CALL: mthd=" << callee->GetName() << std::endl;
+    std::wcout << L"jit oper: MTHD_CALL: mthd=" << (callee ? callee->GetName() : L"<unassigned>") << std::endl;
 #endif
     Runtime::StackInterpreter intpr(call_stack, call_stack_pos);
     intpr.Execute(op_stack, stack_pos, ip, program->GetClass(cls_id)->GetMethod(mthd_id), inst, true);

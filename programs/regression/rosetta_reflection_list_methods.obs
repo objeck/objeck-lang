@@ -5,7 +5,7 @@
 #
 # An object's methods come from `o->GetClass()->GetMethods()` (System.Introspection), as names plus parameter lists. The test pins the list for a class mixing public, private and static members (all are listed, declaration order, constructor included), that only the class's own declarations appear -- an inherited method the subclass does not override is absent -- the parameter count of each method, the array dimension reported for primitive parameters, and that an instance made by name through Class->Instance lists the same methods.
 #
-# Left unasserted because they are wrong today (reported to the batch lead): Method->GetReturn() is always Nil; DataType->GetType() returns codes -1000..-994 that match none of the DataType->TypeId values (-60..-54); an object parameter's class name carries the rest of the signature unless it is the first parameter ("System.String,i"); an object-array parameter reports dimension 0 and a '*' in its class name. And Class->Instance on an unknown name aborts the VM rather than returning Nil.
+# Return types, DataType->TypeId codes, object and object-array parameter names, and Class->Instance on an unknown name were wrong until #1175; reflection_signatures.obs asserts them.
 #
 # Expected values are the declarations below.
 ~#
