@@ -1451,8 +1451,10 @@ bool TrapProcessor::CreateNewObject(const std::wstring &cls_id, size_t* &op_stac
     APITools_MethodCall(op_stack, stack_pos, obj, cls_id.c_str(), mthd_name.c_str());
   }
   else {
-    std::wcerr << L">>> Unable to load class; name='" << cls_id.c_str() << L"' <<<" << std::endl;
-    return false;
+    // no such class: Class->Instance(name) is Nil, as it is for a Nil name.
+    // This aborted the VM ("Unable to load class"), so a program could not
+    // ask whether a class exists (#1175).
+    PushInt(0, op_stack, stack_pos);
   }
 
   return true;
@@ -1487,71 +1489,87 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   const std::wstring &mthd_string = semi_qual_mthd_string.substr(0, mthd_index);
   mthd_obj[2] = (size_t)CreateStringObject(mthd_string, program, op_stack, stack_pos);
 
-  // parse parameter string      
-  int index = 0;
-  const std::wstring &params_string = semi_qual_mthd_string.substr(mthd_index + 1);
-  std::vector<size_t*> data_type_obj_holder;
-  while(index < (int)params_string.size()) {
-    size_t* data_type_obj = MemoryManager::AllocateObject(program->GetDataTypeObjectId(),
-                                                          op_stack, *stack_pos,
-                                                          false);
-    data_type_obj_holder.push_back(data_type_obj);
-
-    switch(params_string[index]) {
-      case L'l':
-        data_type_obj[0] = -1000;
-        index++;
-        break;
-
-      case L'b':
-        data_type_obj[0] = -999;
-        index++;
-        break;
-
-      case L'i':
-        data_type_obj[0] = -997;
-        index++;
-        break;
-
-      case L'f':
-        data_type_obj[0] = -996;
-        index++;
-        break;
-
-      case L'c':
-        data_type_obj[0] = -998;
-        index++;
-        break;
-
-      case L'o': {
-        data_type_obj[0] = -995;
-        index++;
-        const int start_index = index + 1;
-        while(index < (int)params_string.size() && params_string[index] != L',') {
-          index++;
-        }
-        data_type_obj[1] = (size_t)CreateStringObject(params_string.substr(start_index, index - 2),
-                                                      program, op_stack, stack_pos);
-      }
-      break;
-
-      case L'm':
-        data_type_obj[0] = -994;
-        index = (int)SkipFunctionType(params_string, (size_t)index);
-        break;
-
-      default:
-        throw std::runtime_error("Invalid method signature!");
-        break;
+  // One encoded type, from 'index' up to the next ',' or the end: a DataType
+  // with the DataType->TypeId code, the class name and the dimension (#1175).
+  // The codes were -1000..-994, so `p->GetType() = DataType->TypeId->INT` was
+  // never true; the class name was cut with substr(start, index - 2), which
+  // passes a position as a length, so a later object parameter carried the
+  // rest of the signature; and an object array kept its '*'s in the name,
+  // with dimension 0. Returns Nil for a Nil return ('n').
+  auto parse_data_type = [&](const std::wstring& sig, size_t& index) -> size_t* {
+    if(index >= sig.size() || sig[index] == L'n') {
+      index = sig.size();
+      return (size_t*)nullptr;
     }
 
-    // check array dimension
+    size_t* data_type_obj = MemoryManager::AllocateObject(program->GetDataTypeObjectId(), op_stack, *stack_pos, false);
+    switch(sig[index]) {
+    case L'l':
+      data_type_obj[0] = (size_t)-60;
+      index++;
+      break;
+
+    case L'b':
+      data_type_obj[0] = (size_t)-59;
+      index++;
+      break;
+
+    case L'c':
+      data_type_obj[0] = (size_t)-58;
+      index++;
+      break;
+
+    case L'i':
+      data_type_obj[0] = (size_t)-57;
+      index++;
+      break;
+
+    case L'f':
+      data_type_obj[0] = (size_t)-56;
+      index++;
+      break;
+
+    case L'o': {
+      data_type_obj[0] = (size_t)-55;
+      // 'o.' then the class name, which ends at a '*', a ',' or the end
+      index += 2;
+      const size_t name_start = index;
+      while(index < sig.size() && sig[index] != L',' && sig[index] != L'*') {
+        index++;
+      }
+      data_type_obj[1] = (size_t)CreateStringObject(sig.substr(name_start, index - name_start), program, op_stack, stack_pos);
+    }
+      break;
+
+    case L'm':
+      data_type_obj[0] = (size_t)-54;
+      index = SkipFunctionType(sig, index);
+      break;
+
+    default:
+      throw std::runtime_error("Invalid method signature!");
+    }
+
+    // array dimension
     int dimension = 0;
-    while(index < (int)params_string.size() && params_string[index] == L'*') {
+    while(index < sig.size() && sig[index] == L'*') {
       dimension++;
       index++;
     }
     data_type_obj[2] = dimension;
+
+    return data_type_obj;
+  };
+
+  // parse parameter string
+  size_t index = 0;
+  const std::wstring &params_string = semi_qual_mthd_string.substr(mthd_index + 1);
+  std::vector<size_t*> data_type_obj_holder;
+  while(index < params_string.size()) {
+    size_t* data_type_obj = parse_data_type(params_string, index);
+    if(data_type_obj) {
+      data_type_obj_holder.push_back(data_type_obj);
+    }
 
     // match ','
     index++;
@@ -1577,6 +1595,10 @@ size_t* TrapProcessor::CreateMethodObject(size_t* cls_obj, StackMethod* mthd, St
   MemoryManager::WriteBarrier(type_obj_array);
   // set type array
   mthd_obj[3] = (size_t)type_obj_array;
+
+  // return type: Nil for a method that returns nothing
+  size_t rtrn_index = 0;
+  mthd_obj[4] = (size_t)parse_data_type(mthd->GetReturnName(), rtrn_index);
 
   return mthd_obj;
 }

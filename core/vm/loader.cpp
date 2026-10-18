@@ -516,6 +516,7 @@ void Loader::LoadMethods(StackClass* cls, bool is_debug)
 
     StackMethod* mthd = new StackMethod(id, name, is_virtual, has_and_or, is_lambda, dclrs,
           num_dclrs, params, mem_size, rtrn_type, cls);    
+    mthd->SetReturnName(rtrn_name);
     // load statements
 #ifdef _DEBUG
     std::wcout << L"Method(" << mthd << L"): id=" << id << L"; name='" << name << L"'; return='" 
