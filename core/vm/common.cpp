@@ -123,6 +123,8 @@ static bool h3_valid_header_name(const std::string& n)
 
 // Process/system stats for Runtime->GetProperty("runtime.*") diagnostics
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #if defined(__APPLE__)
 #include <mach/mach.h>
 #include <sys/resource.h>
@@ -2670,6 +2672,15 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case FILE_IN_LINE:
     return FileInLine(program, inst, op_stack, stack_pos, frame);
+
+  case COND_NEW:
+    return CondNew(program, inst, op_stack, stack_pos, frame);
+
+  case COND_WAIT:
+    return CondWait(program, inst, op_stack, stack_pos, frame);
+
+  case COND_SIGNAL:
+    return CondSignal(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -6561,6 +6572,141 @@ bool TrapProcessor::FileInLine(StackProgram* program, size_t* inst, size_t*& op_
   }
 
   PushInt((size_t)NewCharArray(in, op_stack, stack_pos), op_stack, stack_pos);
+  return true;
+}
+
+//
+// System.Concurrency.Condition (#1186)
+//
+// The wait state lives on the C++ heap, not in the Condition object: a young
+// object is moved when it is promoted, and a thread blocked on a condition
+// variable holds that variable's address. The object keeps only the pointer.
+// Like a ThreadMutex's critical section, it is never freed.
+struct ConditionVariable {
+  std::mutex lock;
+  std::condition_variable cond;
+};
+
+#ifdef _WIN32
+typedef CRITICAL_SECTION NativeThreadMutex;
+#else
+typedef pthread_mutex_t NativeThreadMutex;
+#endif
+
+void ThreadMutexCreate(size_t* instance)
+{
+  // like the critical section it replaces, never freed
+  NativeThreadMutex* mutex = new NativeThreadMutex;
+#ifdef _WIN32
+  InitializeCriticalSection(mutex);
+#else
+  pthread_mutex_init(mutex, nullptr);
+#endif
+  instance[1] = (size_t)mutex;
+}
+
+void ThreadMutexLock(size_t* instance)
+{
+  NativeThreadMutex* mutex = (NativeThreadMutex*)instance[1];
+  if(!mutex) {
+    return;
+  }
+#ifdef _WIN32
+  if(!TryEnterCriticalSection(mutex)) {
+    MemoryManager::BeginBlocking();
+    EnterCriticalSection(mutex);
+    MemoryManager::EndBlocking();
+  }
+#else
+  if(pthread_mutex_trylock(mutex) != 0) {
+    MemoryManager::BeginBlocking();
+    pthread_mutex_lock(mutex);
+    MemoryManager::EndBlocking();
+  }
+#endif
+}
+
+void ThreadMutexUnlock(size_t* instance)
+{
+  NativeThreadMutex* mutex = (NativeThreadMutex*)instance[1];
+  if(!mutex) {
+    return;
+  }
+#ifdef _WIN32
+  LeaveCriticalSection(mutex);
+#else
+  pthread_mutex_unlock(mutex);
+#endif
+}
+
+// function : Create() ~ Int
+bool TrapProcessor::CondNew(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  PushInt((size_t)new ConditionVariable, op_stack, stack_pos);
+  return true;
+}
+
+// method : WaitNative(mutex : ThreadMutex, millis : Int) ~ Bool
+//
+// The caller holds 'mutex' (it is inside critical(mutex)). It is released only
+// once the condition's own lock is held, and a signal takes that lock, so a
+// signal sent after the release cannot be lost. While waiting the thread is
+// parked, so other threads' collections run; both native locks are on the C++
+// heap, so the objects moving does not matter.
+//
+// Returns false if 'millis' (when not negative) passed without a signal. Like
+// any condition variable it may also return early, so callers wait in a loop.
+bool TrapProcessor::CondWait(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE millis = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* mutex = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  ConditionVariable* condition = instance ? (ConditionVariable*)instance[0] : nullptr;
+  if(!condition || !mutex) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  // copy the lock's address: the object holding it can move once we park
+  size_t native_mutex[2] = { 0, mutex[1] };
+
+  bool signaled = true;
+  std::unique_lock<std::mutex> guard(condition->lock);
+  ThreadMutexUnlock(native_mutex);
+  MemoryManager::BeginBlocking();
+  if(millis < 0) {
+    condition->cond.wait(guard);
+  }
+  else {
+    signaled = condition->cond.wait_for(guard, std::chrono::milliseconds(millis)) == std::cv_status::no_timeout;
+  }
+  guard.unlock();
+  MemoryManager::EndBlocking();
+
+  ThreadMutexLock(native_mutex);
+
+  PushInt(signaled ? 1 : 0, op_stack, stack_pos);
+  return true;
+}
+
+// method : SignalNative(all : Bool) ~ Nil
+bool TrapProcessor::CondSignal(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const bool all = PopInt(op_stack, stack_pos) != 0;
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  ConditionVariable* condition = instance ? (ConditionVariable*)instance[0] : nullptr;
+  if(condition) {
+    std::lock_guard<std::mutex> guard(condition->lock);
+    if(all) {
+      condition->cond.notify_all();
+    }
+    else {
+      condition->cond.notify_one();
+    }
+  }
+
   return true;
 }
 

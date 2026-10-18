@@ -427,6 +427,9 @@ void Scanner::LoadKeywords()
   ident_map[L"HTTP3_CLOSE"] = HTTP3_CLOSE;
   ident_map[L"FLOAT_TO_STR_PREC"] = FLOAT_TO_STR_PREC;
   ident_map[L"FILE_IN_LINE"] = FILE_IN_LINE;
+  ident_map[L"COND_NEW"] = COND_NEW;
+  ident_map[L"COND_WAIT"] = COND_WAIT;
+  ident_map[L"COND_SIGNAL"] = COND_SIGNAL;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;

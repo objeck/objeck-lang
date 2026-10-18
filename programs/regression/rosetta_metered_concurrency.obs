@@ -3,66 +3,18 @@
 # https://rosettacode.org/wiki/Metered_concurrency
 # Claimed in #1163
 #
-# A counting semaphore with the task's three operations -- acquire, release, count -- guarding a set of workers that each acquire it, report, hold it for a while, and release. System.Concurrency has no semaphore (nor a condition variable to build one on), so this one is a mutex-protected count with a polled acquire. The task's 2-second hold is scaled to a few milliseconds to keep the test fast.
+# EXTRA_LIBS: concurrent
 #
-# WHAT IS ASSERTED: an invariant, not a schedule. Every holder increments a "currently inside" count under a separate lock and records the largest value ever seen; that maximum must never exceed the meter's limit. 24 workers (deliberately more than any machine's cores) contend for a meter of 4, three rounds each, allocating while they hold it so collections land mid-contention. Also: the count returns to the limit when all are done, it never goes negative, every acquire was matched, and the single-threaded semantics (count, a failing TryAcquire at zero, release restoring it) hold before any thread starts.
+# The library's counting semaphore, System.Concurrency.Semaphore, with the task's three operations -- Acquire, Release and the count (Available) -- guarding a set of workers that each acquire it, report, hold it for a while, and release. A waiting Acquire sleeps on a Condition rather than polling. (This test used to carry a hand-written, polled semaphore because the library had none, #1186.) The task's 2-second hold is scaled to a few milliseconds to keep the test fast.
 #
-# CONTROL: run once in a scratch copy with Acquire's count check removed (it decrements and enters unconditionally): FAILED -- the maximum number inside reached 24 against a limit of 4, and the count went negative.
+# WHAT IS ASSERTED: an invariant, not a schedule. Every holder increments a "currently inside" count under a separate lock and records the largest value ever seen; that maximum must never exceed the meter's limit. 24 workers (deliberately more than any machine's cores) contend for a meter of 4, three rounds each, allocating while they hold it so collections land mid-contention. Also: the count returns to the limit when all are done, every acquire was matched, and the single-threaded semantics (count, a failing TryAcquire at zero, release restoring it) hold before any thread starts.
+#
+# CONTROL: run against a scratch concurrent.obl whose Semaphore->Acquire has its wait loop removed (it takes a permit unconditionally): FAILED -- the maximum number inside reached 24 against a limit of 4.
 #
 # No expected values to source: the oracle is the invariant itself.
 ~#
 
 use System.Concurrency;
-
-# A counting semaphore.
-class Meter {
-	@mutex : ThreadMutex;
-	@count : Int;
-	@lowest : Int;
-
-	New(permits : Int) {
-		@mutex := ThreadMutex->New("meter");
-		@count := permits;
-		@lowest := permits;
-	}
-
-	# Takes a permit if one is free; never waits.
-	method : public : TryAcquire() ~ Bool {
-		got := false;
-		critical(@mutex) {
-			if(@count > 0) {
-				@count -= 1;
-				got := true;
-			};
-			if(@count < @lowest) { @lowest := @count; };
-		};
-		return got;
-	}
-
-	# Waits for a permit. Polled: there is no condition variable to block on.
-	method : public : Acquire() ~ Nil {
-		while(<>TryAcquire()) {
-			Thread->Sleep(1);
-		};
-	}
-
-	method : public : Release() ~ Nil {
-		critical(@mutex) { @count += 1; };
-	}
-
-	method : public : Count() ~ Int {
-		c := 0;
-		critical(@mutex) { c := @count; };
-		return c;
-	}
-
-	# the smallest count ever observed; negative would mean over-subscription
-	method : public : GetLowest() ~ Int {
-		c := 0;
-		critical(@mutex) { c := @lowest; };
-		return c;
-	}
-}
 
 # The observer: how many workers are inside right now, and the most ever.
 class Gauge {
@@ -112,10 +64,10 @@ class Gauge {
 class Unit from Thread {
 	@id : Int;
 	@rounds : Int;
-	@meter : Meter;
+	@meter : Semaphore;
 	@gauge : Gauge;
 
-	New(id : Int, rounds : Int, meter : Meter, gauge : Gauge) {
+	New(id : Int, rounds : Int, meter : Semaphore, gauge : Gauge) {
 		Parent("unit-{$id}");
 		@id := id;
 		@rounds := rounds;
@@ -178,21 +130,21 @@ class RosettaMeteredConcurrency {
 		limit := 4;
 
 		# ---- single-threaded semantics first ----
-		solo := Meter->New(2);
-		CheckInt("a new meter counts its permits", solo->Count(), 2);
+		solo := Semaphore->New(2);
+		CheckInt("a new meter counts its permits", solo->Available(), 2);
 		solo->Acquire();
-		CheckInt("acquire takes one", solo->Count(), 1);
+		CheckInt("acquire takes one", solo->Available(), 1);
 		CheckBool("the last permit can be taken", solo->TryAcquire(), true);
 		CheckBool("an empty meter refuses", solo->TryAcquire(), false);
-		CheckInt("and stays at zero", solo->Count(), 0);
+		CheckInt("and stays at zero", solo->Available(), 0);
 		solo->Release();
-		CheckInt("release gives one back", solo->Count(), 1);
+		CheckInt("release gives one back", solo->Available(), 1);
 		solo->Release();
 
 		# ---- under contention ----
 		units := 24;
 		rounds := 3;
-		meter := Meter->New(limit);
+		meter := Semaphore->New(limit);
 		gauge := Gauge->New();
 		crew := Unit->New[units];
 		for(i := 0; i < units; i += 1;) {
@@ -210,8 +162,7 @@ class RosettaMeteredConcurrency {
 		CheckBool("at least one unit got in", most >= 1, true);
 		CheckInt("every acquire was a unit entering", gauge->GetEntries(), units * rounds);
 		CheckInt("nobody is left inside", gauge->GetInside(), 0);
-		CheckInt("the count returns to the limit", meter->Count(), limit);
-		CheckBool("the count never went negative", meter->GetLowest() >= 0, true);
+		CheckInt("the count returns to the limit", meter->Available(), limit);
 
 		if(@failures > 0) {
 			"{$@failures} failure(s)"->PrintLine();

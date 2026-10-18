@@ -11,6 +11,9 @@
 #
 # Monitor wraps the VM's runtime.* diagnostics (Runtime->GetProperty) as typed calls.
 #
+# Semaphore, CountDownLatch and Barrier are built on ThreadMutex and lang.obl's
+# Condition, so a waiting thread sleeps (parked for GC) instead of polling.
+#
 # Build: obc -src lib_src/concurrent.obs -lib gen_collect -tar lib -dest ../lib/concurrent.obl
 # Use:   use System.Concurrency;  (link -lib gen_collect,concurrent)
 ~#
@@ -100,6 +103,284 @@ bundle System.Concurrency {
     #~ The first child error observed (by convention, a non-Nil result a body chose to
        report as an error). Nil if none. ~#
     method : public : FirstError() ~ System.Base { return Nil; }
+  }
+
+  #~
+  Counting semaphore: a pool of permits. Acquire takes one, waiting while none
+  are left; Release returns one and wakes a waiting thread. Built on a
+  ThreadMutex and a Condition, so a waiting thread sleeps rather than spins.
+  ```
+sem := Semaphore->New(2);
+sem->Acquire();
+sem->Available()->PrintLine(); # 1
+sem->TryAcquire()->PrintLine(); # true
+sem->TryAcquire()->PrintLine(); # false
+sem->Release();
+sem->Release();
+sem->Available()->PrintLine(); # 2
+  ```
+  ~#
+  class Semaphore {
+    @mutex : ThreadMutex;
+    @available : Condition;
+    @permits : Int;
+
+    #~
+    Creates a semaphore
+    @param permits number of permits available at the start (a negative number counts as 0)
+    ~#
+    New(permits : Int) {
+      @mutex := ThreadMutex->New("semaphore");
+      @available := Condition->New();
+      @permits := permits < 0 ? 0 : permits;
+    }
+
+    #~
+    Takes a permit, waiting until one is available
+    ~#
+    method : public : Acquire() ~ Nil {
+      critical(@mutex) {
+        while(@permits < 1) {
+          @available->Wait(@mutex);
+        };
+        @permits -= 1;
+      };
+    }
+
+    #~
+    Takes a permit if one is available, without waiting
+    @return true if a permit was taken, false otherwise
+    ~#
+    method : public : TryAcquire() ~ Bool {
+      acquired := false;
+      critical(@mutex) {
+        if(@permits > 0) {
+          @permits -= 1;
+          acquired := true;
+        };
+      };
+      return acquired;
+    }
+
+    #~
+    Returns a permit and wakes one waiting thread
+    ~#
+    method : public : Release() ~ Nil {
+      critical(@mutex) {
+        @permits += 1;
+        @available->Signal();
+      };
+    }
+
+    #~
+    Returns several permits and wakes the waiting threads
+    @param count number of permits to return (nothing happens unless it is positive)
+    ~#
+    method : public : Release(count : Int) ~ Nil {
+      if(count > 0) {
+        critical(@mutex) {
+          @permits += count;
+          @available->Broadcast();
+        };
+      };
+    }
+
+    #~
+    Number of permits available now
+    @return number of permits
+    ~#
+    method : public : Available() ~ Int {
+      permits := 0;
+      critical(@mutex) {
+        permits := @permits;
+      };
+      return permits;
+    }
+  }
+
+  #~
+  One-shot countdown latch: threads wait in Await until CountDown has been called
+  the given number of times. Once the count reaches zero it stays there, and
+  Await returns at once.
+  ```
+latch := CountDownLatch->New(2);
+latch->CountDown();
+latch->GetCount()->PrintLine(); # 1
+latch->CountDown();
+latch->Await(); # returns at once: the count is 0
+  ```
+  ~#
+  class CountDownLatch {
+    @mutex : ThreadMutex;
+    @zero : Condition;
+    @count : Int;
+
+    #~
+    Creates a latch
+    @param count number of CountDown calls that release the waiting threads
+    ~#
+    New(count : Int) {
+      @mutex := ThreadMutex->New("latch");
+      @zero := Condition->New();
+      @count := count < 0 ? 0 : count;
+    }
+
+    #~
+    Lowers the count by one, releasing every waiting thread when it reaches zero
+    ~#
+    method : public : CountDown() ~ Nil {
+      critical(@mutex) {
+        if(@count > 0) {
+          @count -= 1;
+          if(@count = 0) {
+            @zero->Broadcast();
+          };
+        };
+      };
+    }
+
+    #~
+    Waits until the count reaches zero
+    ~#
+    method : public : Await() ~ Nil {
+      critical(@mutex) {
+        while(@count > 0) {
+          @zero->Wait(@mutex);
+        };
+      };
+    }
+
+    #~
+    The count still to go
+    @return remaining count
+    ~#
+    method : public : GetCount() ~ Int {
+      count := 0;
+      critical(@mutex) {
+        count := @count;
+      };
+      return count;
+    }
+  }
+
+  #~
+  Cyclic barrier: each of a fixed number of threads calls Await, and none returns
+  until all of them have arrived. The barrier then resets, so the same threads
+  can meet at it again (a checkpoint per round). A thread that has finished
+  calls Leave, and the rest carry on without it.
+  ```
+class Worker from Thread {
+  @barrier : Barrier;
+
+  New(barrier : Barrier) {
+    Parent("worker");
+    @barrier := barrier;
+  }
+
+  method : public : Run(param : System.Base) ~ Nil {
+    each(round : 3) {
+      # ... this round's work ...
+      @barrier->Await(); # wait for every worker to finish the round
+    };
+  }
+}
+  ```
+  ~#
+  class Barrier {
+    @mutex : ThreadMutex;
+    @tripped : Condition;
+    @parties : Int;
+    @waiting : Int;
+    @generation : Int;
+
+    #~
+    Creates a barrier
+    @param parties number of threads that meet at the barrier (at least 1)
+    ~#
+    New(parties : Int) {
+      @mutex := ThreadMutex->New("barrier");
+      @tripped := Condition->New();
+      @parties := parties < 1 ? 1 : parties;
+      @waiting := 0;
+      @generation := 0;
+    }
+
+    #~
+    Waits until every party has called Await in this round
+    @return arrival order in this round: 0 for the first thread to arrive, parties - 1 for the last, which releases the others
+    ~#
+    method : public : Await() ~ Int {
+      index := 0;
+      generation := 0;
+      critical(@mutex) {
+        generation := @generation;
+        index := @waiting;
+        @waiting += 1;
+        if(@waiting = @parties) {
+          @waiting := 0;
+          @generation += 1;
+          @tripped->Broadcast();
+        }
+        else {
+          while(generation = @generation) {
+            @tripped->Wait(@mutex);
+          };
+        };
+      };
+      return index;
+    }
+
+    #~
+    Leaves the barrier for good: one fewer party meets at it from now on. If every remaining party is already waiting, the round is complete and they are released.
+    ~#
+    method : public : Leave() ~ Nil {
+      critical(@mutex) {
+        if(@parties > 0) {
+          @parties -= 1;
+          if(@parties > 0 & @waiting = @parties) {
+            @waiting := 0;
+            @generation += 1;
+            @tripped->Broadcast();
+          };
+        };
+      };
+    }
+
+    #~
+    Number of threads that meet at the barrier
+    @return number of parties
+    ~#
+    method : public : GetParties() ~ Int {
+      parties := 0;
+      critical(@mutex) {
+        parties := @parties;
+      };
+      return parties;
+    }
+
+    #~
+    Number of rounds completed: how many times every party has met at the barrier
+    @return number of completed rounds
+    ~#
+    method : public : GetRounds() ~ Int {
+      rounds := 0;
+      critical(@mutex) {
+        rounds := @generation;
+      };
+      return rounds;
+    }
+
+    #~
+    Number of threads waiting at the barrier now
+    @return number of waiting threads
+    ~#
+    method : public : GetWaiting() ~ Int {
+      waiting := 0;
+      critical(@mutex) {
+        waiting := @waiting;
+      };
+      return waiting;
+    }
   }
 
   #~

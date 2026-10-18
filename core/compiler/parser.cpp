@@ -3400,6 +3400,24 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case COND_NEW:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::COND_NEW);
+      NextToken();
+      break;
+
+    case COND_WAIT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::COND_WAIT);
+      NextToken();
+      break;
+
+    case COND_SIGNAL:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::COND_SIGNAL);
+      NextToken();
+      break;
+
     case HTTP3_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_CLOSE);
@@ -5529,6 +5547,24 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case FILE_IN_LINE:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::FILE_IN_LINE);
+     NextToken();
+     break;
+
+  case COND_NEW:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COND_NEW);
+     NextToken();
+     break;
+
+  case COND_WAIT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COND_WAIT);
+     NextToken();
+     break;
+
+  case COND_SIGNAL:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COND_SIGNAL);
      NextToken();
      break;
 

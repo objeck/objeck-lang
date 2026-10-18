@@ -1,0 +1,86 @@
+#~
+# Allocating inside a contended critical section (#1186).
+#
+# Eight threads share one ThreadMutex and allocate inside critical(mutex).
+# Before the fix this hung every time: a thread waiting to enter the section was
+# blocked inside the lock without being counted as parked, so when the thread
+# holding the lock allocated and started a collection, the collector waited
+# forever for the blocked thread to reach a safepoint. The released 2026.10.1
+# VM hung on this program in 3 runs of 3, and the hang showed up first as the
+# Condition-based queue in concurrent_sync_primitives.obs never finishing.
+#
+# The fix parks a thread while it waits for a ThreadMutex, and keeps the native
+# lock on the C++ heap: once waiting threads are parked a collection really
+# runs, and it moves young objects, so the lock can no longer live inside the
+# ThreadMutex object as it did.
+#
+# WHAT IS ASSERTED: the program finishes, and the counter guarded by the mutex
+# reaches exactly threads x rounds (mutual exclusion still holds).
+#
+# CONTROL: the 2026.10.1 VM and libraries (before the fix): hung in 3 of 3 runs
+# (killed after 30 s).
+~#
+
+use Collection;
+use System.Concurrency;
+
+class Shared {
+	@mutex : ThreadMutex;
+	@count : Int;
+	@last : String;
+
+	New() {
+		@mutex := ThreadMutex->New("shared");
+	}
+
+	method : public : Bump(i : Int) ~ Nil {
+		critical(@mutex) {
+			@count += 1;
+			@last := String->New("item {$i}");
+		};
+	}
+
+	method : public : GetCount() ~ Int {
+		return @count;
+	}
+}
+
+class Worker from Thread {
+	@shared : Shared;
+	@rounds : Int;
+
+	New(shared : Shared, rounds : Int) {
+		Parent("worker");
+		@shared := shared;
+		@rounds := rounds;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : @rounds) {
+			@shared->Bump(i);
+		};
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		"Testing allocation inside a contended critical section..."->PrintLine();
+		workers := 8; rounds := 20000;
+		shared := Shared->New();
+		threads := Vector->New()<Thread>;
+		each(i : workers) {
+			threads->AddBack(Worker->New(shared, rounds));
+		};
+		each(i : threads) { threads->Get(i)->Execute(Nil); };
+		each(i : threads) { threads->Get(i)->Join(); };
+
+		if(shared->GetCount() = workers * rounds) {
+			"PASSED"->PrintLine();
+		}
+		else {
+			"  FAIL: count={$shared->GetCount()}, expected {$workers * rounds}"->PrintLine();
+			"FAILED"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

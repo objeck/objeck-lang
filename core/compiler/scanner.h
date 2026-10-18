@@ -425,6 +425,9 @@ enum ScannerTokenType {
   HTTP3_CLOSE,
   FLOAT_TO_STR_PREC,
   FILE_IN_LINE,
+  COND_NEW,
+  COND_WAIT,
+  COND_SIGNAL,
   // serialization
   SERL_CHAR,
   SERL_INT,

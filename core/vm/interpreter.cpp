@@ -1737,11 +1737,7 @@ void StackInterpreter::ThreadMutex([[maybe_unused]] size_t* &op_stack, size_t* &
     VmExit(1);
 #endif
   }
-#ifdef _WIN32
-  InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-  pthread_mutex_init((pthread_mutex_t*)&instance[1], nullptr);
-#endif
+  ThreadMutexCreate(instance);
 }
 
 void StackInterpreter::CriticalStart(size_t* &op_stack, size_t* &stack_pos)
@@ -1763,11 +1759,7 @@ void StackInterpreter::CriticalStart(size_t* &op_stack, size_t* &stack_pos)
     VmExit(1);
 #endif        
   }
-#ifdef _WIN32
-  EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-  pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
-#endif
+  ThreadMutexLock(instance);
 }
 
 void StackInterpreter::CriticalEnd(size_t* &op_stack, size_t* &stack_pos)
@@ -1789,11 +1781,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, size_t* &stack_pos)
     VmExit(1);
 #endif
   }
-#ifdef _WIN32
-  LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-  pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
-#endif
+  ThreadMutexUnlock(instance);
 }
 
 /********************************

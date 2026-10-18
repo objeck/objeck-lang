@@ -1,0 +1,181 @@
+#~
+# Set algebra on Collection.Set, HashSet and SetHash, and the method names the
+# three now share (#1186): Insert and Add, GetKeys and ToVector, ToArray, Each
+# and Filter.
+#
+# EXTRA_LIBS: gen_collect
+#
+# The same two sets, A = {1,2,3,4,5} and B = {4,5,6,7}, go through Union,
+# Intersect, Difference (both ways), SymmetricDifference, IsSubset and
+# IsSuperset on each of the three classes, and the results are compared as
+# sorted Int lists. Also: Nil counts as the empty set, the empty set is a subset
+# of everything, neither operand is changed, and membership is by value.
+#
+# Expected values: A u B = 1..7, A n B = {4,5}, A \ B = {1,2,3}, B \ A = {6,7},
+# A ^ B = {1,2,3,6,7}; checked against Python sets.
+~#
+
+use Collection;
+
+class Test {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := Test->New();
+		test->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : public : Run() ~ Nil {
+		"Testing set algebra on Set, HashSet and SetHash..."->PrintLine();
+		@failures := 0;
+
+		CheckSet();
+		CheckHashSet();
+		CheckSetHash();
+		CheckNames();
+
+		if(@failures = 0) {
+			"PASSED"->PrintLine();
+		}
+		else {
+			"FAILED ({$@failures})"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Expect(what : String, got : Vector<IntRef>, want : Int[]) ~ Nil {
+		values := Int->New[got->Size()];
+		each(i : got) {
+			values[i] := got->Get(i)->Get();
+		};
+		ArraySort->Sort(values);
+
+		same := values->Size() = want->Size();
+		if(same) {
+			each(i : want) {
+				if(values[i] <> want[i]) {
+					same := false;
+				};
+			};
+		};
+
+		if(<>same) {
+			"  FAIL: {$what}: got {$values->ToString()}, want {$want->ToString()}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(what : String, cond : Bool) ~ Nil {
+		if(<>cond) {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckSet() ~ Nil {
+		a := Set->New()<IntRef>;
+		b := Set->New()<IntRef>;
+		each(i : 5) { a->Insert(i + 1); };
+		each(i : 4) { b->Insert(i + 4); };
+		none : Set<IntRef>;
+
+		Expect("Set union", a->Union(b)->GetKeys(), [1, 2, 3, 4, 5, 6, 7]);
+		Expect("Set intersect", a->Intersect(b)->GetKeys(), [4, 5]);
+		Expect("Set A\\B", a->Difference(b)->GetKeys(), [1, 2, 3]);
+		Expect("Set B\\A", b->Difference(a)->GetKeys(), [6, 7]);
+		Expect("Set symmetric", a->SymmetricDifference(b)->GetKeys(), [1, 2, 3, 6, 7]);
+		Expect("Set symmetric reversed", b->SymmetricDifference(a)->GetKeys(), [1, 2, 3, 6, 7]);
+		Expect("Set union Nil", a->Union(none)->GetKeys(), [1, 2, 3, 4, 5]);
+		Check("Set intersect Nil is empty", a->Intersect(none)->IsEmpty());
+		Expect("Set difference Nil", a->Difference(none)->GetKeys(), [1, 2, 3, 4, 5]);
+		Check("Set subset", a->Intersect(b)->IsSubset(a) & a->Intersect(b)->IsSubset(b));
+		Check("Set not subset", <>a->IsSubset(b) & <>b->IsSubset(a));
+		Check("Set subset of itself", a->IsSubset(a));
+		Check("Set empty is subset", Set->New()<IntRef>->IsSubset(a) & Set->New()<IntRef>->IsSubset(none));
+		Check("Set superset", a->Union(b)->IsSuperset(a) & <>a->IsSuperset(b) & a->IsSuperset(none));
+		Check("Set operands unchanged", a->Size() = 5 & b->Size() = 4);
+		Check("Set membership by value", a->Union(b)->Has(IntRef->New(6)));
+	}
+
+	method : CheckHashSet() ~ Nil {
+		a := HashSet->New()<IntRef>;
+		b := HashSet->New()<IntRef>;
+		each(i : 5) { a->Insert(i + 1); };
+		each(i : 4) { b->Add(i + 4); };
+		none : HashSet<IntRef>;
+
+		Expect("HashSet union", a->Union(b)->ToVector(), [1, 2, 3, 4, 5, 6, 7]);
+		Expect("HashSet intersect", a->Intersect(b)->GetKeys(), [4, 5]);
+		Expect("HashSet A\\B", a->Difference(b)->ToVector(), [1, 2, 3]);
+		Expect("HashSet B\\A", b->Difference(a)->ToVector(), [6, 7]);
+		Expect("HashSet symmetric", a->SymmetricDifference(b)->ToVector(), [1, 2, 3, 6, 7]);
+		Expect("HashSet union Nil", a->Union(none)->ToVector(), [1, 2, 3, 4, 5]);
+		Check("HashSet intersect Nil is empty", a->Intersect(none)->IsEmpty());
+		Check("HashSet subset", a->Intersect(b)->IsSubset(b) & <>a->IsSubset(b) & HashSet->New()<IntRef>->IsSubset(none));
+		Check("HashSet superset", a->Union(b)->IsSuperset(b) & <>b->IsSuperset(a));
+		Check("HashSet operands unchanged", a->Size() = 5 & b->Size() = 4);
+	}
+
+	method : CheckSetHash() ~ Nil {
+		a := SetHash->New()<IntRef>;
+		b := SetHash->New()<IntRef>;
+		each(i : 5) { a->Insert(i + 1); };
+		each(i : 4) { b->Add(i + 4); };
+		none : SetHash<IntRef>;
+
+		Expect("SetHash union", a->Union(b)->GetKeys(), [1, 2, 3, 4, 5, 6, 7]);
+		Expect("SetHash intersect", a->Intersect(b)->ToVector(), [4, 5]);
+		Expect("SetHash A\\B", a->Difference(b)->GetKeys(), [1, 2, 3]);
+		Expect("SetHash B\\A", b->Difference(a)->GetKeys(), [6, 7]);
+		Expect("SetHash symmetric", a->SymmetricDifference(b)->GetKeys(), [1, 2, 3, 6, 7]);
+		Expect("SetHash difference Nil", a->Difference(none)->GetKeys(), [1, 2, 3, 4, 5]);
+		Check("SetHash subset", a->Intersect(b)->IsSubset(a) & <>b->IsSubset(a) & SetHash->New()<IntRef>->IsSubset(a));
+		Check("SetHash superset", a->IsSuperset(a->Intersect(b)) & a->IsSuperset(none));
+		Check("SetHash operands unchanged", a->Size() = 5 & b->Size() = 4);
+	}
+
+	# the names the three classes now share
+	method : CheckNames() ~ Nil {
+		set := Set->New()<String>;
+		hash_set := HashSet->New()<String>;
+		set_hash := SetHash->New()<String>;
+
+		Check("Set Add new", set->Add("x"));
+		Check("Set Add duplicate", <>set->Add("x"));
+		Check("Set Add Nil", <>set->Add(Nil));
+		set->Insert("y");
+		Check("HashSet Add new", hash_set->Add("x"));
+		Check("HashSet Add duplicate", <>hash_set->Add("x"));
+		hash_set->Insert("y");
+		Check("SetHash Add new", set_hash->Add("x"));
+		Check("SetHash Add duplicate", <>set_hash->Add("x"));
+		set_hash->Insert("y");
+
+		Check("sizes", set->Size() = 2 & hash_set->Size() = 2 & set_hash->Size() = 2);
+		Check("GetKeys", set->GetKeys()->Size() = 2 & hash_set->GetKeys()->Size() = 2 & set_hash->GetKeys()->Size() = 2);
+		Check("ToVector", set->ToVector()->Size() = 2 & hash_set->ToVector()->Size() = 2 & set_hash->ToVector()->Size() = 2);
+		Check("ToArray", set->ToArray()->Size() = 2 & hash_set->ToArray()->Size() = 2 & set_hash->ToArray()->Size() = 2);
+
+		# Set keeps its order: x before y
+		keys := set->ToArray();
+		Check("Set ToArray order", keys[0]->Equals("x") & keys[1]->Equals("y"));
+
+		long := Set->New()<String>;
+		long->Insert("apple"); long->Insert("fig"); long->Insert("banana");
+		Check("Set Filter", long->Filter(\(s) => s->Size() > 3)->Size() = 2);
+		Check("HashSet Filter", hash_set->Filter(\(s) => s->Equals("y"))->Size() = 1);
+		Check("SetHash Filter", set_hash->Filter(\(s) => false)->IsEmpty());
+		Check("Filter leaves the set", long->Size() = 3);
+
+		total := IntRef->New(0);
+		long->Each(\(s) => { total->Set(total->Get() + s->Size()); });
+		Check("Set Each", total->Get() = 14);
+		hash_set->Each(\(s) => { total->Set(total->Get() + 1); });
+		set_hash->Each(\(s) => { total->Set(total->Get() + 1); });
+		Check("HashSet and SetHash Each", total->Get() = 18);
+	}
+}

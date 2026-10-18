@@ -1,0 +1,133 @@
+#~
+# String additions from #1186: SplitWhitespace, Split(delim, escape), Center,
+# Wrap and WrapLines, and Int/Byte ToHexDigits(value, width) (zero-padded, no
+# 0x prefix).
+#
+# Edges: empty and all-blank input, leading/trailing/mixed white space, an
+# escaped delimiter, an escaped escape, a trailing lone escape (dropped), empty fields at
+# both ends, uneven centering (the extra fill goes right), a word longer than
+# the wrap width, a word exactly filling it, and hex values wider than the
+# requested width (never truncated).
+#
+# Expected values: the escape case is the Rosetta Code "Tokenize a string with
+# escaping" test string and its listed output; the wrap and center cases were
+# checked against Python (textwrap.wrap with long-word breaking off, and
+# str.center with the odd space moved right); hex against format(v, '0Nx').
+~#
+
+class Test {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := Test->New();
+		test->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : public : Run() ~ Nil {
+		"Testing Wrap, Center, SplitWhitespace, Split(delim, escape) and padded hex..."->PrintLine();
+
+		CheckSplitWhitespace();
+		CheckSplitEscaped();
+		CheckCenter();
+		CheckWrap();
+		CheckHex();
+
+		if(@failures = 0) {
+			"PASSED"->PrintLine();
+		}
+		else {
+			"FAILED ({$@failures})"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Same(what : String, got : String, want : String) ~ Nil {
+		if(got = Nil | <>got->Equals(want)) {
+			"  FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Count(what : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"  FAIL: {$what}: got {$got}, want {$want}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Fields(what : String, got : String[], want : String[]) ~ Nil {
+		same := got->Size() = want->Size();
+		if(same) {
+			each(i : want) {
+				if(<>got[i]->Equals(want[i])) {
+					same := false;
+				};
+			};
+		};
+		if(<>same) {
+			"  FAIL: {$what}: got {$got->Size()} fields"->PrintLine();
+			each(i : got) {
+				"    [{$i}] '{$got[i]}'"->PrintLine();
+			};
+			@failures += 1;
+		};
+	}
+
+	method : CheckSplitWhitespace() ~ Nil {
+		Fields("SplitWhitespace", "  one two\tthree  \n"->SplitWhitespace(), ["one", "two", "three"]);
+		Fields("SplitWhitespace single", "x"->SplitWhitespace(), ["x"]);
+		Fields("SplitWhitespace runs", "a \t\r\n b"->SplitWhitespace(), ["a", "b"]);
+		Count("SplitWhitespace empty", ""->SplitWhitespace()->Size(), 0);
+		Count("SplitWhitespace blank", "  \t "->SplitWhitespace()->Size(), 0);
+	}
+
+	method : CheckSplitEscaped() ~ Nil {
+		# the Rosetta Code task's string and output
+		Fields("Split escape (task)", "one^|uno||three^^^^|four^^^|^cuatro|"->Split('|', '^'),
+			["one|uno", "", "three^^", "four^|cuatro", ""]);
+		Fields("Split escape leading delimiter", "|a"->Split('|', '^'), ["", "a"]);
+		Fields("Split escape no delimiter", "abc"->Split('|', '^'), ["abc"]);
+		Fields("Split escape trailing escape dropped", "ab^"->Split('|', '^'), ["ab"]);
+		Fields("Split escape lone escape", "^"->Split('|', '^'), [""]);
+		Fields("Split escape only escapes", "^^^|"->Split('|', '^'), ["^|"]);
+		Count("Split escape empty", ""->Split('|', '^')->Size(), 0);
+	}
+
+	method : CheckCenter() ~ Nil {
+		Same("Center even", "abc"->Center(7), "  abc  ");
+		Same("Center odd extra goes right", "abc"->Center(8), "  abc   ");
+		Same("Center narrower than the string", "abc"->Center(2), "abc");
+		Same("Center exact", "abc"->Center(3), "abc");
+		Same("Center fill", "abc"->Center(9, '*'), "***abc***");
+		Same("Center empty", ""->Center(4, '-'), "----");
+	}
+
+	method : CheckWrap() ~ Nil {
+		text := "the quick brown fox jumps over the lazy dog";
+		Same("Wrap 10", text->Wrap(10), "the quick\nbrown fox\njumps over\nthe lazy\ndog");
+		Fields("WrapLines 10", text->WrapLines(10), ["the quick", "brown fox", "jumps over", "the lazy", "dog"]);
+		Same("Wrap wide", text->Wrap(80), text);
+		Same("Wrap long word", "an elephant ox"->Wrap(5), "an\nelephant\nox");
+		Same("Wrap exact fit", "abc def"->Wrap(7), "abc def");
+		Same("Wrap collapses white space", "a\nb   c\td"->Wrap(80), "a b c d");
+		Same("Wrap empty", ""->Wrap(10), "");
+		Count("WrapLines blank", "   "->WrapLines(10)->Size(), 0);
+	}
+
+	method : CheckHex() ~ Nil {
+		Same("Int hex padded", Int->ToHexDigits(255, 4), "00ff");
+		Same("Int hex receiver form", 255->ToHexDigits(4), "00ff");
+		Same("Int hex zero", Int->ToHexDigits(0, 2), "00");
+		Same("Int hex width 0", Int->ToHexDigits(4096, 0), "1000");
+		Same("Int hex wider than width", Int->ToHexDigits(65535, 2), "ffff");
+		Same("Int hex negative", Int->ToHexDigits(-1, 4), "ffffffffffffffff");
+		Same("Byte hex padded", Byte->ToHexDigits(10->As(Byte), 2), "0a");
+		Same("Byte hex", Byte->ToHexDigits(255->As(Byte), 2), "ff");
+		# the one-argument form keeps its prefix
+		Same("Int hex unpadded", Int->ToHexString(255), "0xff");
+	}
+}

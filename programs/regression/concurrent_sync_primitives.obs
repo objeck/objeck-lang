@@ -1,0 +1,427 @@
+#~
+# System.Concurrency's blocking primitives (#1186): Condition (lang.obl, new
+# COND_NEW/COND_WAIT/COND_SIGNAL traps), and Semaphore, CountDownLatch and
+# Barrier (concurrent.obl), which are built on it.
+#
+# EXTRA_LIBS: concurrent
+#
+# WHAT IS ASSERTED: invariants, not schedules. A bounded queue of 4 slots
+# guarded by one mutex and two Conditions moves 6,000 items from 6 producers to
+# 6 consumers: every item arrives exactly once and the queue never overfills. A
+# Semaphore of 3 guards 16 workers: no more than 3 are ever inside at once, and
+# all 3 permits are back at the end. A CountDownLatch holds 8 waiters until 8
+# workers count down: none passes early. A Barrier of 12 runs 30 rounds: no
+# thread passes a round before all 12 arrive, and each round has exactly one
+# last arriver. Every worker allocates while it holds a lock, so collections
+# (and promotions of the mutexes and conditions themselves) land while other
+# threads are parked in Wait -- the case COND_WAIT re-reads its mutex for.
+# Timed waits: Wait(m, 50) with no signal returns false after roughly 50 ms.
+#
+# CONTROL: run in scratch copies. (1) The consumer's wait loop turned into a
+# single if (no re-check after waking): FAILED by hanging, twice (killed after
+# 120 s) -- a consumer woken with the queue empty gives up its turn, so items
+# are left over and the producers block on a full queue. (2)
+# Semaphore->Acquire's wait loop removed: FAILED, the most inside reached 16
+# against a limit of 3. (3) Barrier->Await's wait loop removed: FAILED, 319
+# early passes and rounds without a single last arriver.
+~#
+
+use Collection;
+use System.Concurrency;
+
+class Ledger {
+	@mutex : ThreadMutex;
+	@inside : Int;
+	@most : Int;
+	@errors : Int;
+	@seen : Bool[];
+
+	New(items : Int) {
+		@mutex := ThreadMutex->New("ledger");
+		@seen := Bool->New[items];
+	}
+
+	method : public : Enter() ~ Nil {
+		critical(@mutex) {
+			@inside += 1;
+			if(@inside > @most) {
+				@most := @inside;
+			};
+		};
+	}
+
+	method : public : Leave() ~ Nil {
+		critical(@mutex) {
+			@inside -= 1;
+		};
+	}
+
+	method : public : See(item : Int) ~ Nil {
+		critical(@mutex) {
+			if(item < 0 | item >= @seen->Size()) {
+				@errors += 1;
+			}
+			else if(@seen[item]) {
+				@errors += 1;
+			}
+			else {
+				@seen[item] := true;
+			};
+		};
+	}
+
+	method : public : Error() ~ Nil {
+		critical(@mutex) {
+			@errors += 1;
+		};
+	}
+
+	method : public : GetMost() ~ Int { return @most; }
+	method : public : GetErrors() ~ Int { return @errors; }
+
+	method : public : Missing() ~ Int {
+		missing := 0;
+		each(i : @seen) {
+			if(<>@seen[i]) {
+				missing += 1;
+			};
+		};
+		return missing;
+	}
+}
+
+# bounded FIFO: one mutex, a Condition per direction
+class BoundedQueue {
+	@mutex : ThreadMutex;
+	@not_full : Condition;
+	@not_empty : Condition;
+	@items : Int[];
+	@head : Int;
+	@count : Int;
+	@overfull : Int;
+
+	New(capacity : Int) {
+		@mutex := ThreadMutex->New("queue");
+		@not_full := Condition->New();
+		@not_empty := Condition->New();
+		@items := Int->New[capacity];
+	}
+
+	method : public : Put(item : Int) ~ Nil {
+		garbage : String;
+		critical(@mutex) {
+			while(@count = @items->Size()) {
+				@not_full->Wait(@mutex);
+			};
+			if(@count >= @items->Size()) {
+				@overfull += 1;
+			};
+			@items[(@head + @count) % @items->Size()] := item;
+			@count += 1;
+			garbage := String->New("put {$item}");
+			@not_empty->Signal();
+		};
+	}
+
+	method : public : Take() ~ Int {
+		item := -1;
+		garbage : String;
+		critical(@mutex) {
+			while(@count = 0) {
+				@not_empty->Wait(@mutex);
+			};
+			if(@count > 0) {
+				item := @items[@head];
+				@head := (@head + 1) % @items->Size();
+				@count -= 1;
+			};
+			garbage := String->New("take {$item}");
+			@not_full->Signal();
+		};
+		return item;
+	}
+
+	method : public : GetOverfull() ~ Int { return @overfull; }
+}
+
+class Producer from Thread {
+	@queue : BoundedQueue;
+	@first : Int;
+	@count : Int;
+
+	New(queue : BoundedQueue, first : Int, count : Int) {
+		Parent("producer");
+		@queue := queue; @first := first; @count := count;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : @count) {
+			@queue->Put(@first + i);
+		};
+	}
+}
+
+class Consumer from Thread {
+	@queue : BoundedQueue;
+	@ledger : Ledger;
+	@count : Int;
+
+	New(queue : BoundedQueue, ledger : Ledger, count : Int) {
+		Parent("consumer");
+		@queue := queue; @ledger := ledger; @count := count;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : @count) {
+			@ledger->See(@queue->Take());
+		};
+	}
+}
+
+class Metered from Thread {
+	@sem : Semaphore;
+	@ledger : Ledger;
+
+	New(sem : Semaphore, ledger : Ledger) {
+		Parent("metered");
+		@sem := sem; @ledger := ledger;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(round : 5) {
+			@sem->Acquire();
+			@ledger->Enter();
+			junk := Int->New[64];
+			Thread->Sleep(1);
+			if(junk->Size() <> 64) {
+				@ledger->Error();
+			};
+			@ledger->Leave();
+			@sem->Release();
+		};
+	}
+}
+
+class Counter from Thread {
+	@latch : CountDownLatch;
+	@done : Ledger;
+
+	New(latch : CountDownLatch, done : Ledger) {
+		Parent("counter");
+		@latch := latch; @done := done;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		Thread->Sleep(5);
+		@done->Enter();
+		@latch->CountDown();
+	}
+}
+
+class LatchWaiter from Thread {
+	@latch : CountDownLatch;
+	@done : Ledger;
+	@ledger : Ledger;
+	@workers : Int;
+
+	New(latch : CountDownLatch, done : Ledger, ledger : Ledger, workers : Int) {
+		Parent("latch-waiter");
+		@latch := latch; @done := done; @ledger := ledger; @workers := workers;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@latch->Await();
+		# every counter entered the ledger before it counted down
+		if(@done->GetMost() <> @workers) {
+			@ledger->Error();
+		};
+	}
+}
+
+class Arrivals {
+	@mutex : ThreadMutex;
+	@arrived : Int[];
+	@lasts : Int[];
+
+	New(rounds : Int) {
+		@mutex := ThreadMutex->New("arrivals");
+		@arrived := Int->New[rounds];
+		@lasts := Int->New[rounds];
+	}
+
+	method : public : Arrive(round : Int) ~ Nil {
+		critical(@mutex) {
+			@arrived[round] += 1;
+		};
+	}
+
+	method : public : Arrived(round : Int) ~ Int {
+		count := 0;
+		critical(@mutex) {
+			count := @arrived[round];
+		};
+		return count;
+	}
+
+	method : public : Last(round : Int) ~ Nil {
+		critical(@mutex) {
+			@lasts[round] += 1;
+		};
+	}
+
+	method : public : Lasts(round : Int) ~ Int {
+		return @lasts[round];
+	}
+}
+
+class Party from Thread {
+	@barrier : Barrier;
+	@arrivals : Arrivals;
+	@ledger : Ledger;
+	@rounds : Int;
+
+	New(barrier : Barrier, arrivals : Arrivals, ledger : Ledger, rounds : Int) {
+		Parent("party");
+		@barrier := barrier; @arrivals := arrivals; @ledger := ledger; @rounds := rounds;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(round : @rounds) {
+			@arrivals->Arrive(round);
+			junk := String->New("round {$round}");
+			index := @barrier->Await();
+			if(junk->Size() = 0) {
+				@ledger->Error();
+			};
+			if(index = @barrier->GetParties() - 1) {
+				@arrivals->Last(round);
+			};
+			# nobody passes a round before every party has arrived at it
+			if(@arrivals->Arrived(round) <> @barrier->GetParties()) {
+				@ledger->Error();
+			};
+		};
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		"Testing Condition, Semaphore, CountDownLatch and Barrier..."->PrintLine();
+		pass := true;
+
+		# --- single-threaded semantics ---
+		mutex := ThreadMutex->New("timed");
+		cond := Condition->New();
+		signaled := true;
+		critical(mutex) {
+			signaled := cond->Wait(mutex, 50);
+		};
+		if(signaled) {
+			"  FAIL: an unsignaled timed Wait returned true"->PrintLine();
+			pass := false;
+		};
+		cond->Signal(); # nobody waiting: a no-op
+		cond->Broadcast();
+
+		sem := Semaphore->New(2);
+		if(sem->Available() <> 2 | <>sem->TryAcquire() | <>sem->TryAcquire() | sem->TryAcquire() | sem->Available() <> 0) {
+			"  FAIL: Semaphore TryAcquire/Available"->PrintLine();
+			pass := false;
+		};
+		sem->Release(2);
+		if(sem->Available() <> 2) {
+			"  FAIL: Semaphore Release(2) gave {$sem->Available()}"->PrintLine();
+			pass := false;
+		};
+		if(Semaphore->New(-3)->Available() <> 0) {
+			"  FAIL: a negative permit count"->PrintLine();
+			pass := false;
+		};
+
+		latch := CountDownLatch->New(2);
+		latch->CountDown(); latch->CountDown(); latch->CountDown();
+		if(latch->GetCount() <> 0) {
+			"  FAIL: CountDownLatch went to {$latch->GetCount()}"->PrintLine();
+			pass := false;
+		};
+		latch->Await(); # count is 0: returns at once
+
+		solo := Barrier->New(1);
+		if(solo->Await() <> 0 | solo->Await() <> 0) {
+			"  FAIL: a one-party Barrier"->PrintLine();
+			pass := false;
+		};
+
+		# --- producer/consumer over two Conditions ---
+		producers := 6; per := 1000;
+		queue := BoundedQueue->New(4);
+		items := Ledger->New(producers * per);
+		threads := Vector->New()<Thread>;
+		each(i : producers) {
+			threads->AddBack(Consumer->New(queue, items, per));
+		};
+		each(i : producers) {
+			threads->AddBack(Producer->New(queue, i * per, per));
+		};
+		each(i : threads) { threads->Get(i)->Execute(Nil); };
+		each(i : threads) { threads->Get(i)->Join(); };
+		if(items->GetErrors() <> 0 | items->Missing() <> 0 | queue->GetOverfull() <> 0) {
+			"  FAIL: queue errors={$items->GetErrors()}, missing={$items->Missing()}, overfull={$queue->GetOverfull()}"->PrintLine();
+			pass := false;
+		};
+
+		# --- semaphore ---
+		meter := Semaphore->New(3);
+		inside := Ledger->New(0);
+		threads := Vector->New()<Thread>;
+		each(i : 16) { threads->AddBack(Metered->New(meter, inside)); };
+		each(i : threads) { threads->Get(i)->Execute(Nil); };
+		each(i : threads) { threads->Get(i)->Join(); };
+		if(inside->GetMost() > 3 | meter->Available() <> 3) {
+			"  FAIL: semaphore most inside={$inside->GetMost()}, available={$meter->Available()}"->PrintLine();
+			pass := false;
+		};
+
+		# --- latch ---
+		gate := CountDownLatch->New(8);
+		counted := Ledger->New(0);
+		early := Ledger->New(0);
+		threads := Vector->New()<Thread>;
+		each(i : 8) { threads->AddBack(LatchWaiter->New(gate, counted, early, 8)); };
+		each(i : 8) { threads->AddBack(Counter->New(gate, counted)); };
+		each(i : threads) { threads->Get(i)->Execute(Nil); };
+		each(i : threads) { threads->Get(i)->Join(); };
+		if(early->GetErrors() <> 0 | gate->GetCount() <> 0) {
+			"  FAIL: latch early passes={$early->GetErrors()}, count={$gate->GetCount()}"->PrintLine();
+			pass := false;
+		};
+
+		# --- barrier ---
+		parties := 12; rounds := 30;
+		barrier := Barrier->New(parties);
+		arrivals := Arrivals->New(rounds);
+		passes := Ledger->New(0);
+		threads := Vector->New()<Thread>;
+		each(i : parties) { threads->AddBack(Party->New(barrier, arrivals, passes, rounds)); };
+		each(i : threads) { threads->Get(i)->Execute(Nil); };
+		each(i : threads) { threads->Get(i)->Join(); };
+		lasts_ok := true;
+		each(round : rounds) {
+			if(arrivals->Lasts(round) <> 1) {
+				lasts_ok := false;
+			};
+		};
+		if(passes->GetErrors() <> 0 | <>lasts_ok | barrier->GetWaiting() <> 0) {
+			"  FAIL: barrier early passes={$passes->GetErrors()}, one last arriver per round={$lasts_ok}, waiting={$barrier->GetWaiting()}"->PrintLine();
+			pass := false;
+		};
+
+		if(pass) {
+			"PASSED"->PrintLine();
+		}
+		else {
+			"FAILED"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
