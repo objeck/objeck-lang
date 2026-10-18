@@ -511,6 +511,87 @@ def check_completion_docs(c, caps, probe_text, probe_uri):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def check_rename_and_organize(c, probe_text, probe_uri):
+    """prepareRename, name validation, and source.organizeImports (#1229)."""
+    def prepare(needle, offset):
+        return result_of(c.request("textDocument/prepareRename",
+                                   position_in(probe_text, probe_uri, needle, 1, offset)))
+
+    got = prepare("circle := Circle", 2)
+    line, char = find_pos(probe_text, "circle := Circle")
+    log_result("prepareRename on a local gives its range and name",
+               isinstance(got, dict) and got.get("placeholder") == "circle"
+               and got.get("range") == {"start": {"line": line, "character": char},
+                                        "end": {"line": line, "character": char + 6}},
+               f"got: {got!r}")
+    log_result("prepareRename declines a keyword", prepare("if(drawable", 0) is None)
+    log_result("prepareRename declines a string literal", prepare('"circle"', 2) is None)
+    log_result("prepareRename declines a library method",
+               prepare("total->PrintLine", 9) is None)
+    got = prepare("@radius := radius", 3)
+    log_result("prepareRename on an instance variable includes its '@'",
+               isinstance(got, dict) and got.get("placeholder") == "@radius", f"got: {got!r}")
+
+    for bad in ("x y", "if", "1abc", "a-b"):
+        resp = c.request("textDocument/rename", dict(
+            position_in(probe_text, probe_uri, "circle := Circle", 1, 2), newName=bad))
+        log_result(f"rename refuses {bad!r}",
+                   bool(resp) and "result" not in resp
+                   and resp.get("error", {}).get("code") == -32803, f"got: {resp!r}"[:200])
+
+    # Renaming an instance variable wrote the new name over '@radius' without
+    # its '@', and missed the class-level declaration: either way the result
+    # did not compile.
+    ren = result_of(c.request("textDocument/rename", dict(
+        position_in(probe_text, probe_uri, "@radius := radius", 1, 3), newName="rad")))
+    edits = (ren or {}).get("documentChanges", [{}])[0].get("edits", [])
+    applied = apply_edits(probe_text, edits)
+    log_result("renaming an instance variable keeps its '@'",
+               bool(edits) and all(e.get("newText") == "@rad" for e in edits),
+               f"newTexts: {sorted({e.get('newText') for e in edits})}")
+    dline, _ = find_pos(probe_text, "@radius : Float")
+    log_result("and renames its declaration",
+               any(e["range"]["start"]["line"] == dline for e in edits)
+               and "@radius" not in applied and "@rad : Float" in applied,
+               f"edit lines: {sorted(e['range']['start']['line'] for e in edits)}")
+
+    # --- organizeImports ---------------------------------------------------
+    def organize(name, text, only=("source.organizeImports",)):
+        uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_organize_{name}.obs"))
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        context = {"diagnostics": []}
+        if only is not None:
+            context["only"] = list(only)
+        got = result_of(c.request("textDocument/codeAction", {
+            "textDocument": {"uri": uri},
+            "range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 0}},
+            "context": context})) or []
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+        actions = [a for a in got if isinstance(a, dict) and a.get("kind") == "source.organizeImports"]
+        if not actions:
+            return None
+        return apply_edits(text, actions[0].get("edit", {}).get("changes", {}).get(uri, []))
+
+    body = "class Org {\n  function : Main(args : String[]) ~ Nil {\n  }\n}\n"
+    messy = "#~\nheader\n~#\n\nuse System.IO;\nuse Collection;\n\nuse System.IO;\n\n" + body
+    log_result("organizeImports sorts and deduplicates the 'use' block",
+               organize("messy", messy) == "#~\nheader\n~#\n\nuse Collection;\nuse System.IO;\n\n" + body,
+               repr(organize("messy", messy))[:200])
+    log_result("organizeImports keeps one statement as one statement",
+               organize("single", "use System.IO, Collection;\n\n" + body)
+               == "use Collection, System.IO;\n\n" + body)
+    log_result("organizeImports is answered for the parent kind 'source'",
+               organize("parent", messy, ("source",)) is not None)
+    log_result("organizeImports offers nothing for a sorted block",
+               organize("sorted", "use Collection;\nuse System.IO;\n\n" + body) is None)
+    log_result("organizeImports is not offered at a plain lightbulb",
+               organize("lightbulb", messy, None) is None)
+    crlf = ("use System.IO;\nuse Collection;\n\n" + body).replace("\n", "\r\n")
+    log_result("organizeImports keeps CRLF line endings",
+               organize("crlf", crlf) == ("use Collection;\nuse System.IO;\n\n" + body).replace("\n", "\r\n"))
+
+
 def check_large_real_file(c):
     """Every read-only handler over a real library source, errors and all.
 
@@ -1552,6 +1633,7 @@ def main():
                    decl_line == get_line, f"got: {decl}")
 
         check_completion_docs(c, caps, probe_text, probe_uri)
+        check_rename_and_organize(c, probe_text, probe_uri)
         check_large_real_file(c)
         check_text_encoding(c, caps)
         check_batching(c)
@@ -1568,8 +1650,12 @@ def main():
         # ...and a client that renders only plain text (#1228)
         resp = c.request("initialize", {
             "processId": os.getpid(), "rootUri": path_to_uri(TESTS_DIR),
-            "capabilities": {"textDocument": {"hover": {"contentFormat": ["plaintext"]}}},
+            "capabilities": {"textDocument": {"hover": {"contentFormat": ["plaintext"]},
+                                              "rename": {"prepareSupport": True}}},
         }, timeout=90)
+        rename_cap = ((result_of(resp) or {}).get("capabilities") or {}).get("renameProvider")
+        log_result("a client with prepareSupport is offered prepareRename",
+                   rename_cap == {"prepareProvider": True}, f"got: {rename_cap!r}")
         log_result("initialize with rootUri only (no workspaceFolders)",
                    bool((result_of(resp) or {}).get("capabilities")))
         c.notify("initialized", {})

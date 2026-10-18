@@ -149,8 +149,34 @@ bundle LSP {
 
 			document := @workspace->GetDocument(uri);
 			if(document <> Nil) {
-				response := document->CodeRename(new_name, line_pos->ToInt(), char_pos->ToInt());
+				# An edit to a name that doesn't parse leaves the program
+				# uncompilable; the client shows this message instead of applying it.
+				rename_to := document->RenameTo(new_name, line_pos->ToInt(), char_pos->ToInt());
+				if(rename_to = Nil) {
+					WriteRpcError(id, LspWorker->ErrorCode->REQUEST_FAILED->As(Int), "'{$new_name}' is not a valid Objeck name here");
+					return;
+				};
+
+				response := document->CodeRename(rename_to, line_pos->ToInt(), char_pos->ToInt());
 				WriteRpcResponse(id, response);
+			}
+			else {
+				WriteRpcResponse(id, Nil);
+			};
+		}
+
+		method : CallbackPrepareRename(id : Int, params : JsonElement) ~ Nil {
+			uri := FindString(params, "textDocument/uri");
+			line_json := FindJson(params, "position/line");
+			char_json := FindJson(params, "position/character");
+
+			document : Document;
+			if(uri <> Nil) {
+				document := @workspace->GetDocument(uri);
+			};
+
+			if(document <> Nil & line_json <> Nil & char_json <> Nil) {
+				WriteRpcResponse(id, document->PrepareRename(line_json->GetInt(), char_json->GetInt()));
 			}
 			else {
 				WriteRpcResponse(id, Nil);
@@ -528,7 +554,41 @@ bundle LSP {
 				};
 			};
 
+			# Advertised in codeActionKinds all along, and never produced. Offered
+			# only when asked for by kind, as editors do for "Organize Imports" and
+			# on save; a lightbulb at the cursor doesn't ask for source actions.
+			if(RequestsKind(params, "source.organizeImports")) {
+				document := @workspace->GetDocument(uri);
+				if(document <> Nil) {
+					organize := document->OrganizeImports();
+					if(organize <> Nil) {
+						if(response = Nil) {
+							response := JsonElement->New(JsonElement->JsonType->ARRAY);
+						};
+						response->Add(organize);
+					};
+				};
+			};
+
 			WriteRpcResponse(id, response);
+		}
+
+		# context.only names this kind or a parent of it ('source')
+		method : RequestsKind(params : JsonElement, kind : String) ~ Bool {
+			only_json := FindJson(params, "context/only");
+			if(only_json = Nil | only_json->GetType() <> JsonElement->JsonType->ARRAY) {
+				return false;
+			};
+
+			each(i : only_json) {
+				requested := only_json->Get(i)->GetValue();
+				if(requested <> Nil & <>requested->IsEmpty() &
+						(kind->Equals(requested) | kind->StartsWith(requested + "."))) {
+					return true;
+				};
+			};
+
+			return false;
 		}
 
 		method : CallbackCompletion(id : Int, params : JsonElement) ~ Nil {
@@ -661,7 +721,15 @@ bundle LSP {
 			capabilities->Insert("referencesProvider", true);
 			capabilities->Insert("declarationProvider", true);
 			capabilities->Insert("definitionProvider", true);
-			capabilities->Insert("renameProvider", true);
+			# prepareRename tells the editor up front what can be renamed
+			prepare_json := FindJson(params, "capabilities/textDocument/rename/prepareSupport");
+			if(prepare_json <> Nil & prepare_json->GetType() = JsonElement->JsonType->TRUE) {
+				renameProvider := capabilities->AddChild("renameProvider");
+				renameProvider->Insert("prepareProvider", true);
+			}
+			else {
+				capabilities->Insert("renameProvider", true);
+			};
 			capabilities->Insert("hoverProvider", true);
 			capabilities->Insert("documentFormattingProvider", true);
 			capabilities->Insert("documentRangeFormattingProvider", true);

@@ -37,6 +37,7 @@ bundle LSP {
 			INVALID_REQUEST := -32600,
 			METHOD_NOT_FOUND := -32601,
 			SERVER_NOT_INITIALIZED := -32002,
+			REQUEST_FAILED := -32803,
 			REQUEST_CANCELLED := -32800,
 			CONTENT_MODIFIED := -32801
 		}
@@ -260,6 +261,7 @@ bundle LSP {
 		method : virtual : CallbackCodeAction(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackResolve(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackRename(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackPrepareRename(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackDocumentSymbol(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackWorkspaceSymbol(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackReferences(id : Int, params : JsonElement) ~ Nil;
@@ -409,6 +411,10 @@ bundle LSP {
 					
 					label "textDocument/rename" {
 						CallbackRename(id, request->GetParams());
+					}
+
+					label "textDocument/prepareRename" {
+						CallbackPrepareRename(id, request->GetParams());
 					}
 					
 					label "textDocument/documentSymbol" {
@@ -1230,6 +1236,354 @@ bundle LSP {
 			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->CodeRename(new_name, line_pos, char_pos, @uri, @workspace->GetLibs());
+		}
+
+		#
+		# The text a rename writes for new_name at this position, or Nil if it isn't
+		# a name the program could use. An instance variable's references span its
+		# '@', so a new name typed without one gets it back: renaming @radius to
+		# 'rad' wrote 'rad' over '@radius' and turned it into an undefined local.
+		#
+		method : public : RenameTo(new_name : String, line_pos : Int, char_pos : Int) ~ String {
+			if(new_name = Nil) {
+				return Nil;
+			};
+
+			span := IdentifierAt(line_pos, char_pos);
+			is_instance := span <> Nil & @text->Get(span[0]) = '@';
+
+			name := new_name;
+			if(name->StartsWith('@')) {
+				if(<>is_instance) {
+					return Nil;
+				};
+				name := name->SubString(1, name->Size() - 1);
+			};
+
+			if(<>IsIdentifier(name)) {
+				return Nil;
+			};
+
+			if(is_instance) {
+				return "@" + name;
+			};
+
+			return name;
+		}
+
+		#
+		# textDocument/prepareRename: the range and text of the identifier under the
+		# cursor, or Nil when it can't be renamed -- a keyword, a literal, or a name
+		# that resolves to nothing in the user's code (a library method). The
+		# editor used to offer rename everywhere and then get back no edits.
+		#
+		method : public : PrepareRename(line_pos : Int, char_pos : Int) ~ JsonElement {
+			span := IdentifierAt(line_pos, char_pos);
+			if(span = Nil) {
+				return Nil;
+			};
+
+			name := @text->SubString(span[0], span[1] - span[0]);
+			bare := name->StartsWith('@') ? name->SubString(1, name->Size() - 1) : name;
+			if(bare->IsEmpty() | bare->Get(0)->IsDigit() | IsReserved(bare)) {
+				return Nil;
+			};
+
+			# renameable only where the references the rename would edit include
+			# the name under the cursor
+			start_char := char_pos - (GetDocumentIndex(line_pos, char_pos) - span[0]);
+			end_char := start_char + name->Size();
+			references := FindReferences(line_pos, char_pos);
+			if(references = Nil | references->GetType() <> JsonElement->JsonType->ARRAY) {
+				return Nil;
+			};
+
+			found := false;
+			each(i : references) {
+				reference := references->Get(i);
+				ref_uri := reference->Get("uri");
+				ref_line := reference->FindElements("range/start/line");
+				ref_start := reference->FindElements("range/start/character");
+				ref_end := reference->FindElements("range/end/character");
+				if(ref_uri <> Nil & ref_line <> Nil & ref_start <> Nil & ref_end <> Nil) {
+					if(ref_uri->GetValue()->Equals(@uri) & ref_line->GetInt() = line_pos &
+							ref_start->GetInt() <= char_pos & char_pos <= ref_end->GetInt()) {
+						found := true;
+					};
+				};
+			};
+
+			if(<>found) {
+				return Nil;
+			};
+
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", line_pos);
+			start->Insert("character", start_char);
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", line_pos);
+			end->Insert("character", end_char);
+			range->Insert("start", start);
+			range->Insert("end", end);
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("range", range);
+			result->Insert("placeholder", name);
+			return result;
+		}
+
+		#
+		# [start, end) of the identifier at or just before a position, or Nil. An
+		# instance variable's '@' is part of it, as it is of the ranges a rename
+		# edits.
+		#
+		method : IdentifierAt(line_pos : Int, char_pos : Int) ~ Int[] {
+			if(@text = Nil) {
+				return Nil;
+			};
+
+			index := GetDocumentIndex(line_pos, char_pos);
+			# the cursor may sit just after the name
+			if((index >= @text->Size() | <>IsIdentifierChar(@text->Get(index))) & index > 0 &
+					IsIdentifierChar(@text->Get(index - 1))) {
+				index -= 1;
+			};
+
+			if(index >= @text->Size() | <>IsIdentifierChar(@text->Get(index))) {
+				return Nil;
+			};
+
+			start := index;
+			while(start > 0 & IsIdentifierChar(@text->Get(start - 1))) {
+				start -= 1;
+			};
+
+			if(start > 0 & @text->Get(start - 1) = '@') {
+				start -= 1;
+			};
+
+			end := index;
+			while(end < @text->Size() & IsIdentifierChar(@text->Get(end))) {
+				end += 1;
+			};
+
+			span := Int->New[2];
+			span[0] := start;
+			span[1] := end;
+			return span;
+		}
+
+		function : IsIdentifierChar(c : Char) ~ Bool {
+			return c->IsChar() | c->IsDigit() | c = '_';
+		}
+
+		#
+		# A name the rename may write: an Objeck identifier that isn't reserved.
+		# Anything else produced edits that left the program uncompilable.
+		#
+		function : IsIdentifier(name : String) ~ Bool {
+			if(name = Nil | name->IsEmpty() | name->Get(0)->IsDigit()) {
+				return false;
+			};
+
+			each(i : name) {
+				if(<>IsIdentifierChar(name->Get(i))) {
+					return false;
+				};
+			};
+
+			return <>IsReserved(name);
+		}
+
+		# the scanner's words (core/compiler/scanner.cpp), less the trap names
+		function : IsReserved(name : String) ~ Bool {
+			words := ["and", "not", "or", "xor", "virtual", "if", "else", "do", "while", "break",
+				"continue", "use", "bundle", "native", "static", "public", "private", "class",
+				"record", "interface", "alias", "readonly", "implements", "function", "method",
+				"select", "other", "enum", "consts", "for", "each", "in", "reverse", "label",
+				"return", "leaving", "Byte", "Int", "Parent", "from", "Float", "Char", "Bool",
+				"true", "false", "New", "Nil", "As", "TypeOf", "critical"];
+			each(i : words) {
+				if(words[i]->Equals(name)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#
+		# source.organizeImports: the leading 'use' statements, deduplicated and
+		# sorted, as a CodeAction; Nil when there are none or they are in order.
+		# 'use class' and 'use bundle' lines are kept as they are, after the rest.
+		# A block it can't read with certainty (a statement over several lines, a
+		# comment on a 'use' line) is left alone.
+		#
+		method : public : OrganizeImports() ~ JsonElement {
+			if(@text = Nil) {
+				return Nil;
+			};
+
+			line_ending := "\n";
+			if(@text->Find("\r\n") > -1) {
+				line_ending := "\r\n";
+			};
+
+			lines := @text->Split('\n');
+			first := -1;
+			last := -1;
+			in_comment := false;
+			done := false;
+			for(i := 0; i < lines->Size() & <>done; i += 1;) {
+				line := lines[i]->Trim();
+				if(in_comment) {
+					if(line->Find("~#") > -1) {
+						in_comment := false;
+					};
+				}
+				else if(line->IsEmpty()) {
+					# blank lines before or inside the block
+				}
+				else if(first < 0 & line->StartsWith("#~")) {
+					in_comment := line->Find("~#") < 0;
+				}
+				else if(first < 0 & line->StartsWith("#")) {
+					# a line comment before the block
+				}
+				else if(line->StartsWith("use ") | line->StartsWith("use\t")) {
+					if(<>line->EndsWith(";") | line->Find('#') > -1) {
+						return Nil;
+					};
+					if(first < 0) {
+						first := i;
+					};
+					last := i;
+				}
+				else {
+					done := true;
+				};
+			};
+
+			if(first < 0) {
+				return Nil;
+			};
+
+			names := Vector->New()<String>;
+			seen := Set->New()<String>;
+			kept := Vector->New()<String>;
+			plain_count := 0;
+			for(i := first; i <= last; i += 1;) {
+				line := lines[i]->Trim();
+				if(<>line->IsEmpty()) {
+					body := line->SubString(3, line->Size() - 4)->Trim();
+					if(body->StartsWith("class ") | body->StartsWith("bundle ")) {
+						kept->AddBack(line);
+					}
+					else {
+						plain_count += 1;
+						parts := body->Split(',');
+						each(j : parts) {
+							part := parts[j]->Trim();
+							if(part->IsEmpty()) {
+								return Nil;
+							};
+							if(<>seen->Has(part)) {
+								seen->Insert(part);
+								names->AddBack(part);
+							};
+						};
+					};
+				};
+			};
+
+			# sorted, ordinal
+			for(i := 1; i < names->Size(); i += 1;) {
+				j := i;
+				while(j > 0 & names->Get(j - 1)->Compare(names->Get(j)) > 0) {
+					swap := names->Get(j);
+					names->Set(names->Get(j - 1), j);
+					names->Set(swap, j - 1);
+					j -= 1;
+				};
+			};
+
+			organized := "";
+			# one statement stays one statement
+			if(plain_count = 1 & kept->Size() = 0) {
+				organized += "use ";
+				each(i : names) {
+					if(i > 0) {
+						organized += ", ";
+					};
+					organized += names->Get(i);
+				};
+				organized += ';';
+			}
+			else {
+				each(i : names) {
+					if(<>organized->IsEmpty()) {
+						organized += line_ending;
+					};
+					organized += "use ";
+					organized += names->Get(i);
+					organized += ';';
+				};
+				each(i : kept) {
+					if(<>organized->IsEmpty()) {
+						organized += line_ending;
+					};
+					organized += kept->Get(i);
+				};
+			};
+
+			# the block as written, from its first character to the end of its last line
+			last_line := lines[last];
+			if(last_line->EndsWith("\r")) {
+				last_line := last_line->SubString(last_line->Size() - 1);
+			};
+			original := "";
+			for(i := first; i <= last; i += 1;) {
+				line := lines[i];
+				if(line->EndsWith("\r")) {
+					line := line->SubString(line->Size() - 1);
+				};
+				if(i > first) {
+					original += line_ending;
+				};
+				original += line;
+			};
+
+			if(original->Equals(organized)) {
+				return Nil;
+			};
+
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", first);
+			start->Insert("character", 0);
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", last);
+			end->Insert("character", last_line->Size());
+			range->Insert("start", start);
+			range->Insert("end", end);
+
+			text_edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+			text_edit->Insert("range", range);
+			text_edit->Insert("newText", organized);
+			edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+			edits->Add(text_edit);
+
+			changes := JsonElement->New(JsonElement->JsonType->OBJECT);
+			changes->Insert(@uri, edits);
+			edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+			edit->Insert("changes", changes);
+
+			action := JsonElement->New(JsonElement->JsonType->OBJECT);
+			action->Insert("title", "Organize 'use' statements");
+			action->Insert("kind", "source.organizeImports");
+			action->Insert("edit", edit);
+			return action;
 		}
 		
 		method : public : FindDeclaration(line_pos : Int, char_pos : Int) ~ JsonElement {
