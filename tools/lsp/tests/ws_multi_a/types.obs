@@ -1,0 +1,13 @@
+#~
+Multi-root fixture for run_lsp_tests.py: AlphaShape is defined here and used by
+main.obs, so main.obs resolves only when this folder's build.json is in effect.
+~#
+
+class AlphaShape {
+	New() {
+	}
+
+	method : public : Name() ~ String {
+		return "a";
+	}
+}

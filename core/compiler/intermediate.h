@@ -114,6 +114,9 @@ class IntermediateEmitter {
   void EmitBranch(Expression* expression, long target_label, bool jump_if_true);
   void EmitCalculation(CalculatedExpression* expression);
   void EmitCast(Expression* expression);
+  bool IsScalarByte(Type* type);
+  void EmitByteNarrowing();
+  bool IsByteNarrowed(Expression* expression);
   void EmitVariable(Variable* variable);
   void EmitAssignment(Assignment* assignment);
   void EmitStringConcat(OperationAssignment* assignment);

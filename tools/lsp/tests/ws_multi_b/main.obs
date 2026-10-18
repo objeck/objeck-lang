@@ -1,0 +1,6 @@
+class BetaMain {
+	function : Main(args : String[]) ~ Nil {
+		shape := BetaShape->New();
+		shape->Name()->PrintLine();
+	}
+}

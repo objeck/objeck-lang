@@ -1,0 +1,6 @@
+class AlphaMain {
+	function : Main(args : String[]) ~ Nil {
+		shape := AlphaShape->New();
+		shape->Name()->PrintLine();
+	}
+}

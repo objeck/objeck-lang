@@ -30,6 +30,14 @@ bundle LSP {
 		# documents whose diagnostics wait for typing to pause
 		@pending_diagnostics : Map<String, String>;
 		@quiet_ticks : Int;
+		# Server-initiated progress (window/workDoneProgress/create): the client
+		# takes it, a token it has acknowledged and that is not in use yet, and the
+		# create request still waiting for its reply.
+		@client_progress : Bool;
+		@progress_token : String;
+		@progress_pending_id : String;
+		@progress_pending_token : String;
+		@progress_count : Int;
 
 		# JSON-RPC / LSP error codes
 		consts ErrorCode {
@@ -37,6 +45,7 @@ bundle LSP {
 			INVALID_REQUEST := -32600,
 			METHOD_NOT_FOUND := -32601,
 			SERVER_NOT_INITIALIZED := -32002,
+			REQUEST_FAILED := -32803,
 			REQUEST_CANCELLED := -32800,
 			CONTENT_MODIFIED := -32801
 		}
@@ -165,7 +174,11 @@ bundle LSP {
 				if(method_id <> Nil & <>request->IsNotification() & <>request->IsResponse() & <>@is_shutdown) {
 					@reply_id := request->GetIdJson();
 					uri := FindString(request->GetParams(), "textDocument/uri");
-					changed_at : IntRef;
+					# Assigned, not just declared: a local declared in a loop body keeps
+					# the previous pass's value, so a request with no document (such as
+					# workspace/symbol) inherited the one before it and could be refused
+					# ContentModified for an edit to a document it never named.
+					changed_at : IntRef := Nil;
 					if(uri <> Nil) {
 						changed_at := last_change->Find(uri);
 					};
@@ -185,7 +198,21 @@ bundle LSP {
 								 method_id->Equals("textDocument/signatureHelp"))) {
 							PublishDiagnostics(uri);
 						};
+
+						# A client that passes a workDoneToken shows progress for the
+						# request on it: it was ignored.
+						work_token := FindJson(request->GetParams(), "workDoneToken");
+						if(work_token <> Nil & work_token->GetType() <> JsonElement->JsonType->STRING &
+								work_token->GetType() <> JsonElement->JsonType->NUMBER) {
+							work_token := Nil;
+						};
+						if(work_token <> Nil) {
+							SendProgressBegin(work_token, "Objeck: {$method_id}");
+						};
 						ProcessResponse(request);
+						if(work_token <> Nil) {
+							SendProgressEnd(work_token);
+						};
 					};
 				}
 				else if(method_id = Nil | <>method_id->Equals("$/cancelRequest")) {
@@ -215,8 +242,93 @@ bundle LSP {
 			@pending_diagnostics->Remove(uri);
 			document := @workspace->GetDocument(uri);
 			if(document <> Nil) {
+				# A workspace program -- every file its build.json lists -- is the
+				# analysis that takes seconds; it is reported while it runs, when
+				# it will run rather than come from the cache.
+				token : String := Nil;
+				folder := @workspace->FolderFor(uri);
+				if(folder <> Nil & @workspace->NeedsAnalysis(uri)) {
+					folder_name := folder->GetName();
+					token := BeginServerProgress("Objeck: analyzing '{$folder_name}'");
+				};
+
 				WriteRpcRequest("textDocument/publishDiagnostics", document->GetDiagnostics());
+
+				if(token <> Nil) {
+					EndServerProgress(token);
+				};
 			};
+		}
+
+		#
+		# Progress
+		#
+		method : public : SetClientProgress(client_progress : Bool) ~ Nil {
+			@client_progress := client_progress;
+		}
+
+		# Asks the client for a token ahead of time, so one is ready when an
+		# analysis starts: progress may be reported only on a token the client has
+		# acknowledged, and its reply can't be waited for mid-analysis.
+		method : RequestProgressToken() ~ Nil {
+			if(<>@client_progress | @progress_token <> Nil | @progress_pending_id <> Nil) {
+				return;
+			};
+
+			@progress_count += 1;
+			token := "objk-progress-{$@progress_count}";
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("token", token);
+			@progress_pending_token := token;
+			@progress_pending_id := WriteRpcServerRequest("window/workDoneProgress/create", params);
+		}
+
+		# the ready token, now in use; Nil when there is none
+		method : BeginServerProgress(title : String) ~ String {
+			token := @progress_token;
+			if(token <> Nil) {
+				@progress_token := Nil;
+				SendProgressBegin(JsonElement->New(token), title);
+			};
+			return token;
+		}
+
+		# a token ends with its work; the next one is asked for straight away
+		method : EndServerProgress(token : String) ~ Nil {
+			SendProgressEnd(JsonElement->New(token));
+			RequestProgressToken();
+		}
+
+		method : SendProgressBegin(token : JsonElement, title : String) ~ Nil {
+			value := JsonElement->New(JsonElement->JsonType->OBJECT);
+			value->Insert("kind", "begin");
+			value->Insert("title", title);
+			value->Insert("cancellable", false);
+			SendProgress(token, value);
+		}
+
+		method : SendProgressEnd(token : JsonElement) ~ Nil {
+			value := JsonElement->New(JsonElement->JsonType->OBJECT);
+			value->Insert("kind", "end");
+			SendProgress(token, value);
+		}
+
+		method : SendProgress(token : JsonElement, value : JsonElement) ~ Nil {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("token", token);
+			params->Insert("value", value);
+			WriteRpcRequest("$/progress", params);
+		}
+
+		#
+		# window/logMessage: what used to go only to a log file the user never
+		# sees. Type 1 error, 2 warning, 3 info, 4 log.
+		#
+		method : public : LogMessage(type : Int, message : String) ~ Nil {
+			params := JsonElement->New(JsonElement->JsonType->OBJECT);
+			params->Insert("type", type);
+			params->Insert("message", message);
+			WriteRpcRequest("window/logMessage", params);
 		}
 
 		function : FindJson(params : JsonElement, path : String) ~ JsonElement {
@@ -260,6 +372,7 @@ bundle LSP {
 		method : virtual : CallbackCodeAction(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackResolve(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackRename(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackPrepareRename(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackDocumentSymbol(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackWorkspaceSymbol(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackReferences(id : Int, params : JsonElement) ~ Nil;
@@ -278,6 +391,10 @@ bundle LSP {
 		method : virtual : CallbackOutgoingCalls(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackInlayHint(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackSemanticTokensDelta(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackCodeLens(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackDocumentLink(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackPrepareTypeHierarchy(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackTypeHierarchySupertypes(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackTypeHierarchySubtypes(id : Int, params : JsonElement) ~ Nil;
@@ -287,9 +404,19 @@ bundle LSP {
 			# A reply to one of OUR requests (client/registerCapability). Nothing
 			# waits on it; these used to be dispatched as requests named '<none>'.
 			if(request->IsResponse()) {
+				reply_id := request->GetIdJson()->GetValue();
+				is_progress := @progress_pending_id <> Nil & reply_id <> Nil & reply_id->Equals(@progress_pending_id);
+				if(is_progress) {
+					@progress_pending_id := Nil;
+				};
+
 				if(request->GetError() <> Nil) {
 					error_text := request->GetError()->ToString();
 					System.IO.Filesystem.Logger->Instance()->Error("*** Client rejected a server request: {$error_text} ***");
+					LogMessage(2, "The client rejected a server request: {$error_text}");
+				}
+				else if(is_progress) {
+					@progress_token := @progress_pending_token;
 				};
 				return;
 			};
@@ -410,6 +537,10 @@ bundle LSP {
 					label "textDocument/rename" {
 						CallbackRename(id, request->GetParams());
 					}
+
+					label "textDocument/prepareRename" {
+						CallbackPrepareRename(id, request->GetParams());
+					}
 					
 					label "textDocument/documentSymbol" {
 						CallbackDocumentSymbol(id, request->GetParams());
@@ -486,6 +617,22 @@ bundle LSP {
 
 					label "textDocument/semanticTokens/full" {
 						CallbackSemanticTokensFull(id, request->GetParams());
+					}
+
+					label "textDocument/semanticTokens/range" {
+						CallbackSemanticTokensRange(id, request->GetParams());
+					}
+
+					label "textDocument/semanticTokens/full/delta" {
+						CallbackSemanticTokensDelta(id, request->GetParams());
+					}
+
+					label "textDocument/codeLens" {
+						CallbackCodeLens(id, request->GetParams());
+					}
+
+					label "textDocument/documentLink" {
+						CallbackDocumentLink(id, request->GetParams());
 					}
 
 					label "textDocument/prepareTypeHierarchy" {
@@ -797,18 +944,21 @@ bundle LSP {
 		}
 
 		# --- server-to-client request ---
-		method : WriteRpcServerRequest(kind : String, params : JsonElement) ~ Nil {
+		# the request's id, to match its reply
+		method : WriteRpcServerRequest(kind : String, params : JsonElement) ~ String {
 			node := JsonElement->New(JsonElement->JsonType->OBJECT);
 
 			# Its own id space, as strings, so it can never be mistaken for one of
 			# the client's numeric ids. This was a fixed 101.
 			@next_server_id += 1;
+			id := "objk-{$@next_server_id}";
 			node->Insert("jsonrpc", "2.0");
-			node->Insert("id", "objk-{$@next_server_id}");
+			node->Insert("id", id);
 			node->Insert("method", kind);
 			node->Insert("params", params);
 
 			WriteString(node->ToString());
+			return id;
 		}
 
 		# --- response ---
@@ -890,16 +1040,12 @@ bundle LSP {
 	}
 
 	#~
-	Workspaace
+	Workspace: the open documents, and one configuration per workspace folder
 	~#
 	class : private : LspWorkspace {
 		@is_debug : Bool;
-		@name : String;
-		@root : String;
-		@local_path : String;
-		@file_strs : String[];		
-		@libs_str : String;		
 		@documents : Map<String, Document>;
+		@folders : Vector<LspFolder>;
 		@texts : String[,];
 		# parsed and analyzed programs, kept until any text changes (#1218)
 		@proxies : Map<String, AstProxy>;
@@ -910,6 +1056,7 @@ bundle LSP {
 		New(is_debug : Bool) {
 			@is_debug := is_debug;
 			@documents := Map->New()<String, Document>;
+			@folders := Vector->New()<LspFolder>;
 			@proxies := Map->New()<String, AstProxy>;
 
 			# OBJECK_LSP_NO_CACHE=1 parses afresh for every request, as before, to
@@ -925,33 +1072,63 @@ bundle LSP {
 		# analyzer cache never outlived a request: hover, symbols, highlights and
 		# the rest each paid for a full analysis.
 		#
-		# One program per use_alt in workspace mode, where every document's
-		# request parses the same set of files; one per document otherwise, and
-		# one for 'every open document' (a Nil uri, from workspace/symbol).
+		# One program per folder whose build.json lists the document; otherwise one
+		# per document, and one for 'every open document outside a folder' (a Nil
+		# uri, from workspace/symbol). Each comes in a current and a last-clean
+		# ('alt') text version.
 		#
 		method : public : GetProxy(uri : String, use_alt : Bool) ~ AstProxy {
+			folder : LspFolder := Nil;
+			if(uri <> Nil) {
+				folder := FolderFor(uri);
+			};
+			return GetProxy(uri, folder, use_alt);
+		}
+
+		method : GetProxy(uri : String, folder : LspFolder, use_alt : Bool) ~ AstProxy {
 			if(@no_cache | @proxies_generation <> @generation) {
 				ReleaseProxies();
 				@proxies_generation := @generation;
 			};
 
-			key := use_alt ? "alt|" : "text|";
-			if(@file_strs = Nil) {
-				if(uri = Nil) {
-					key += "*";
-				}
-				else {
-					key += uri;
-				};
-			};
-
+			key := ProxyKey(uri, folder, use_alt);
 			proxy := @proxies->Find(key);
 			if(proxy = Nil) {
-				proxy := AstProxy->New(@self, uri, use_alt, @is_debug);
+				texts : String[,];
+				if(folder <> Nil) {
+					texts := folder->GetTexts(@documents, use_alt);
+				}
+				else {
+					texts := GetStandaloneTexts(uri, use_alt);
+				};
+				proxy := AstProxy->New(texts, @is_debug);
 				@proxies->Insert(key, proxy);
 			};
 
 			return proxy;
+		}
+
+		function : ProxyKey(uri : String, folder : LspFolder, use_alt : Bool) ~ String {
+			key := use_alt ? "alt|" : "text|";
+			if(folder <> Nil) {
+				key += "folder|";
+				key += folder->GetUri();
+			}
+			else if(uri = Nil) {
+				key += "*";
+			}
+			else {
+				key += uri;
+			};
+			return key;
+		}
+
+		# diagnostics for this document would parse and analyze, not reuse a program
+		method : public : NeedsAnalysis(uri : String) ~ Bool {
+			if(@no_cache | @proxies_generation <> @generation) {
+				return true;
+			};
+			return <>@proxies->Has(ProxyKey(uri, FolderFor(uri), false));
 		}
 
 		# some text the programs were parsed from has changed
@@ -979,129 +1156,198 @@ bundle LSP {
 			@proxies := Map->New()<String, AstProxy>;
 		}
 
-		method : public : SetRoot(name : String, root : String) ~ Nil {
-			@name := name;
-			@root := root;
+		#
+		# A workspace folder, configured from its own build.json. Folders used to
+		# share one root and one file list, and each new folder overwrote the last
+		# (SetRoot): with two folders open, the first was analyzed against the
+		# second's files and libraries (#1232).
+		#
+		method : public : AddFolder(name : String, uri : String) ~ LspFolder {
+			if(uri = Nil | uri->IsEmpty()) {
+				return Nil;
+			};
+			RemoveFolder(uri);
+
+			folder := LspFolder->New(name, uri, @is_debug);
+			folder->Load();
+			@folders->AddBack(folder);
 			Invalidate();
+
+			return folder;
 		}
 
-		method : public : SetFilesLibs(local_path : String, file_strs : String[], libs_str : String) ~ Nil {
-			@local_path := local_path;
-			@file_strs := file_strs;
-			@libs_str := libs_str;
-			Invalidate();
+		# A folder the client closed: its documents are analyzed without it.
+		# didChangeWorkspaceFolders used to only log a removal.
+		method : public : RemoveFolder(uri : String) ~ Bool {
+			key := LspFolder->TrimUri(uri);
+			kept := Vector->New()<LspFolder>;
+			removed := false;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->GetUri()->Equals(key)) {
+					removed := true;
+				}
+				else {
+					kept->AddBack(folder);
+				};
+			};
+
+			if(removed) {
+				@folders := kept;
+				Invalidate();
+			};
+
+			return removed;
 		}
 
-		method : public : GetTexts(uri : String, use_alt : Bool) ~ String[,] {
-			# workspace
-			if(@file_strs <> Nil) {
-				file_count := @file_strs->Size();
-				if(file_count > 0) {
-					@texts := String->New[file_count, 2];
-
-					each(i : file_count) {
-						local_file_path := String->New(@local_path);
-						local_file_path += '/';
-						local_file_path += @file_strs[i];
-
-						file_uri := String->New(@root);
-						file_uri += '/';
-						file_uri += @file_strs[i];
-
-						text : String;
-						document := @documents->Find(file_uri);
-						if(document <> Nil) {
-							if(use_alt) {
-								text := document->GetAltText();
-							}
-							else {
-								text := document->GetText();
-							};
-
-							if(@is_debug & text <> Nil) {
-								size := text->Size();
-								System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
-							};
-						}
-						else {
-							text := System.IO.Filesystem.FileReader->ReadFile(local_file_path);
-							if(@is_debug & text <> Nil) {
-								size := text->Size();
-								System.IO.Filesystem.Logger->Instance()->Info("### From disk: local_file_path='{$local_file_path}', size={$size} ###");
-							};
-						};
-
-						if(text = Nil) {
-							System.IO.Filesystem.Logger->Instance()->Error("Unable to open file: {$local_file_path}");
-						}
-						else {
-							@texts[i,0] := file_uri;
-							@texts[i,1] := text;
-						};
-					};
-
-					return @texts;
+		#
+		# A watched file changed: reload the build.json of the folder it is in, or
+		# every folder's when it is in none of them. This reloaded whichever folder
+		# happened to be configured last.
+		#
+		method : public : ReloadFolders(changed_uri : String) ~ Vector<LspFolder> {
+			reloaded := Vector->New()<LspFolder>;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(changed_uri <> Nil & folder->Contains(changed_uri)) {
+					folder->Load();
+					reloaded->AddBack(folder);
 				};
-			}
-			# non-workspace
-			else {
-				# Libraries assumed for a file with no build.json. gen_collect.obl was
-				# listed TWICE here, and the list omitted regex, xml, csv, query and the
-				# json_rpc/json_stream pair -- so a standalone file using any of them was
-				# told its classes were undefined, with the diagnostic pointing at the
-				# user's code rather than at this list.
-				@libs_str := "gen_collect.obl,cipher.obl,csv.obl,json.obl,json_rpc.obl,json_stream.obl,misc.obl,net.obl,net_server.obl,query.obl,regex.obl,rss.obl,xml.obl";
+			};
 
-				# One document, or -- with no uri, which is how workspace/symbol asks once
-				# more than one file is open -- every open document. That case called
-				# Equals(Nil) here and took the server down (#1214).
-				key_values := @documents->GetKeyValues()<Pair<String, Document>>;
-				count := 0;
-				each(i : key_values) {
-					key_value := key_values->Get(i);
-					if(uri = Nil | key_value->GetFirst()->Equals(uri)) {
-						count += 1;
-					};
+			if(reloaded->Size() = 0) {
+				each(i : @folders) {
+					folder := @folders->Get(i);
+					folder->Load();
+					reloaded->AddBack(folder);
 				};
+			};
 
-				@texts := String->New[count > 0 ? count : 1, 2];
-				index := 0;
-				each(i : key_values) {
-					key_value := key_values->Get(i);
+			Invalidate();
+			return reloaded;
+		}
 
-					file_uri := key_value->GetFirst();
-					if(uri = Nil | file_uri->Equals(uri)) {
-						document := key_value->GetSecond();
+		method : public : HasFolders() ~ Bool {
+			return @folders->Size() > 0;
+		}
 
-						text : String;
-						if(use_alt) {
-							text := document->GetAltText();
-						}
-						else {
-							text := document->GetText();
-						};
-
-						if(@is_debug & text <> Nil) {
-							size := text->Size();
-							System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
-						};
-
-						@texts[index,0] := file_uri;
-						@texts[index,1] := text;
-						index += 1;
+		#
+		# The folder whose build.json lists this document, the innermost when
+		# folders nest; Nil when none does and the document stands alone.
+		#
+		method : public : FolderFor(uri : String) ~ LspFolder {
+			found : LspFolder;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->Lists(uri)) {
+					if(found = Nil | folder->GetUri()->Size() > found->GetUri()->Size()) {
+						found := folder;
 					};
 				};
 			};
-			
+
+			return found;
+		}
+
+		#
+		# The build.json a quick fix should use for this document: its folder's,
+		# configured or not, or one beside the document outside every folder. With
+		# no folder the fix offered to create 'file:////build.json', at the root of
+		# the file system.
+		#
+		method : public : BuildFileFor(uri : String) ~ String {
+			found : LspFolder;
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->Contains(uri)) {
+					if(found = Nil | folder->GetUri()->Size() > found->GetUri()->Size()) {
+						found := folder;
+					};
+				};
+			};
+
+			if(found <> Nil) {
+				return found->GetBuildFile();
+			};
+
+			path := LspFolder->LocalPath(uri);
+			slash := path->FindLast('/');
+			if(slash < 0) {
+				return "build.json";
+			};
+			return path->SubString(slash + 1) + "build.json";
+		}
+
+		method : public : GetLibs(uri : String) ~ String {
+			if(uri <> Nil) {
+				folder := FolderFor(uri);
+				if(folder <> Nil) {
+					return folder->GetLibs();
+				};
+			};
+
+			return LspFolder->StandaloneLibs();
+		}
+
+		#
+		# One document, or -- with no uri, which is how workspace/symbol asks --
+		# every open document that no folder's build.json lists. The uri = Nil case
+		# called Equals(Nil) here once and took the server down (#1214).
+		#
+		method : GetStandaloneTexts(uri : String, use_alt : Bool) ~ String[,] {
+			key_values := @documents->GetKeyValues()<Pair<String, Document>>;
+			count := 0;
+			each(i : key_values) {
+				file_uri := key_values->Get(i)->GetFirst();
+				if(IsStandaloneMatch(uri, file_uri)) {
+					count += 1;
+				};
+			};
+
+			@texts := String->New[count > 0 ? count : 1, 2];
+			index := 0;
+			each(i : key_values) {
+				key_value := key_values->Get(i);
+				file_uri := key_value->GetFirst();
+				if(IsStandaloneMatch(uri, file_uri)) {
+					document := key_value->GetSecond();
+
+					text : String;
+					if(use_alt) {
+						text := document->GetAltText();
+					}
+					else {
+						text := document->GetText();
+					};
+
+					if(@is_debug & text <> Nil) {
+						size := text->Size();
+						System.IO.Filesystem.Logger->Instance()->Info("### Cached: file_uri='{$file_uri}', size={$size} ###");
+					};
+
+					@texts[index,0] := file_uri;
+					@texts[index,1] := text;
+					index += 1;
+				};
+			};
+
 			return @texts;
 		}
 
-		method : public : GetLibs() ~ String {
-			return @libs_str;
+		# the document asked for, or with no uri any document outside every folder
+		method : IsStandaloneMatch(uri : String, file_uri : String) ~ Bool {
+			if(uri = Nil) {
+				return FolderFor(file_uri) = Nil;
+			};
+			return file_uri->Equals(uri);
 		}
 
 		method : public : GetDocument(uri : String) ~ Document {
 			return @documents->Find(uri);
+		}
+
+		method : public : GetUris() ~ Vector<String> {
+			return @documents->GetKeys()<String>;
 		}
 
 		method : public : AddDocument(uri : String, document : Document) ~ Nil {
@@ -1125,19 +1371,286 @@ bundle LSP {
 			Invalidate();
 		}
 
+		#
+		# workspace/symbol: matches from each folder's program, and from the open
+		# documents that belong to none, restricted to open documents.
+		#
 		method : public : GetSymbol(query : String) ~ JsonElement {
-			uri : String;
 			uris := @documents->GetKeys()<String>;
-			if(uris->Size() = 1) {
-				uri := uris->Get(0);
+			matches := JsonElement->New(JsonElement->JsonType->ARRAY);
+
+			each(i : @folders) {
+				folder := @folders->Get(i);
+				if(folder->IsConfigured()) {
+					proxy := GetProxy(Nil, folder, false);
+					if(proxy->Build()) {
+						AddAll(matches, proxy->GetSymbol(query, uris, folder->GetLibs()));
+					};
+				};
 			};
 
-			proxy := GetProxy(uri, false);
-			if(proxy->Build()) {
-				return proxy->GetSymbol(query, uris, GetLibs());
+			standalone := false;
+			each(i : uris) {
+				if(FolderFor(uris->Get(i)) = Nil) {
+					standalone := true;
+				};
 			};
 
-			return Nil;
+			if(standalone) {
+				proxy := GetProxy(Nil, Nil, false);
+				if(proxy->Build()) {
+					AddAll(matches, proxy->GetSymbol(query, uris, LspFolder->StandaloneLibs()));
+				};
+			};
+
+			return matches;
+		}
+
+		function : AddAll(to : JsonElement, from_json : JsonElement) ~ Nil {
+			if(from_json <> Nil & from_json->GetType() = JsonElement->JsonType->ARRAY) {
+				each(i : from_json) {
+					to->Add(from_json->Get(i));
+				};
+			};
+		}
+	}
+
+	#~
+	A workspace folder and the build.json that configures it
+	~#
+	class : private : LspFolder {
+		@name : String;
+		# as the client sent it, without a trailing slash
+		@uri : String;
+		@local_path : String;
+		@build_file : String;
+		@file_strs : String[];
+		@libs_str : String;
+		@load_error : String;
+		@is_missing : Bool;
+		@is_debug : Bool;
+
+		New(name : String, uri : String, is_debug : Bool) {
+			@name := name;
+			@uri := TrimUri(uri);
+			@is_debug := is_debug;
+
+			@local_path := LocalPath(@uri);
+			@build_file := String->New(@local_path);
+			@build_file += "/build.json";
+		}
+
+		# 'file:///c%3A/dir' -> 'c:/dir', 'file:///home/dir' -> '/home/dir'
+		function : LocalPath(uri : String) ~ String {
+			path := Web.HTTP.Url->Decode(uri);
+			if(path->StartsWith("file:///")) {
+				offset : Int;
+				if(Query.RegEx.RegEx->New("file:///([a-z]|[A-Z]):.*")->MatchExact(path)) {
+					offset := "file:///"->Size();
+				}
+				else {
+					offset := "file://"->Size();
+				};
+				path->Delete(0, offset);
+			};
+			return path;
+		}
+
+		function : TrimUri(uri : String) ~ String {
+			if(uri <> Nil & uri->EndsWith('/')) {
+				return uri->SubString(uri->Size() - 1);
+			};
+			return uri;
+		}
+
+		# Libraries assumed for a file no build.json lists. gen_collect.obl was
+		# listed TWICE here once, and the list omitted regex, xml, csv, query and the
+		# json_rpc/json_stream pair -- so a standalone file using any of them was
+		# told its classes were undefined, with the diagnostic pointing at the
+		# user's code rather than at this list.
+		function : StandaloneLibs() ~ String {
+			return "gen_collect.obl,cipher.obl,csv.obl,json.obl,json_rpc.obl,json_stream.obl,misc.obl,net.obl,net_server.obl,query.obl,regex.obl,rss.obl,xml.obl";
+		}
+
+		#
+		# (Re)reads build.json. True when it configured the folder; otherwise the
+		# folder's documents stand alone and GetLoadError says why.
+		#
+		method : public : Load() ~ Bool {
+			@file_strs := Nil;
+			@libs_str := Nil;
+			@load_error := Nil;
+
+			if(<>System.IO.Filesystem.File->Exists(@build_file)) {
+				@is_missing := true;
+				return false;
+			};
+			@is_missing := false;
+
+			text := System.IO.Filesystem.FileReader->ReadFile(@build_file);
+			if(text = Nil) {
+				@load_error := "Unable to load configuration '{$@build_file}'";
+				System.IO.Filesystem.Logger->Instance()->Error("--- {$@load_error} ---");
+				return false;
+			};
+
+			json := JsonParser->New(text);
+			if(<>json->Parse()) {
+				@load_error := "Unable to parse configuration '{$@build_file}'";
+				System.IO.Filesystem.Logger->Instance()->Error("--- {$@load_error} ---");
+				return false;
+			};
+
+			root := json->GetRoot();
+			files_json := root->Get("files");
+			libs_json := root->Get("libs");
+			if(files_json = Nil | libs_json = Nil) {
+				@load_error := "Configuration '{$@build_file}' needs 'files' and 'libs'";
+				System.IO.Filesystem.Logger->Instance()->Error("--- {$@load_error} ---");
+				return false;
+			};
+
+			file_strs := String->New[files_json->Size()];
+			each(i : files_json) {
+				file_strs[i] := JsonElement->Decode(files_json->Get(i)->GetValue());
+			};
+
+			libs_str := "";
+			each(i : libs_json) {
+				libs_str += JsonElement->Decode(libs_json->Get(i)->GetValue());
+				libs_str += ',';
+			};
+
+			if(<>libs_str->IsEmpty()) {
+				libs_str->Pop();
+			};
+
+			if(@is_debug) {
+				System.IO.Filesystem.Logger->Instance()->Info("--- Files and libraries:  local_path='{$@local_path}', libs_str='{$libs_str}' ---\n");
+			};
+
+			@file_strs := file_strs;
+			@libs_str := libs_str;
+			return true;
+		}
+
+		method : public : IsConfigured() ~ Bool {
+			return @file_strs <> Nil;
+		}
+
+		method : public : GetLoadError() ~ String {
+			return @load_error;
+		}
+
+		# no build.json at all: the folder's files are analyzed one at a time
+		method : public : IsMissing() ~ Bool {
+			return @is_missing;
+		}
+
+		method : public : FileCount() ~ Int {
+			if(@file_strs = Nil) {
+				return 0;
+			};
+			return @file_strs->Size();
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetUri() ~ String {
+			return @uri;
+		}
+
+		method : public : GetBuildFile() ~ String {
+			return @build_file;
+		}
+
+		method : public : GetLocalPath() ~ String {
+			return @local_path;
+		}
+
+		# the build.json files, as obc's -src takes them
+		method : public : GetSources() ~ String {
+			sources := "";
+			if(@file_strs <> Nil) {
+				each(i : @file_strs) {
+					if(i > 0) {
+						sources += ',';
+					};
+					sources += @file_strs[i];
+				};
+			};
+			return sources;
+		}
+
+		method : public : GetLibs() ~ String {
+			return @libs_str;
+		}
+
+		# a uri inside this folder
+		method : public : Contains(uri : String) ~ Bool {
+			return uri <> Nil & uri->StartsWith(@uri + "/");
+		}
+
+		# a document this folder's build.json lists
+		method : public : Lists(uri : String) ~ Bool {
+			if(@file_strs = Nil | <>Contains(uri)) {
+				return false;
+			};
+
+			each(i : @file_strs) {
+				file_uri := String->New(@uri);
+				file_uri += '/';
+				file_uri += @file_strs[i];
+				if(file_uri->Equals(uri)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# every file the build.json lists: the open text where it is open, else disk
+		method : public : GetTexts(documents : Map<String, Document>, use_alt : Bool) ~ String[,] {
+			if(@file_strs = Nil | @file_strs->Size() = 0) {
+				return String->New[1, 2];
+			};
+
+			texts := String->New[@file_strs->Size(), 2];
+			each(i : @file_strs) {
+				local_file_path := String->New(@local_path);
+				local_file_path += '/';
+				local_file_path += @file_strs[i];
+
+				file_uri := String->New(@uri);
+				file_uri += '/';
+				file_uri += @file_strs[i];
+
+				text : String;
+				document := documents->Find(file_uri);
+				if(document <> Nil) {
+					if(use_alt) {
+						text := document->GetAltText();
+					}
+					else {
+						text := document->GetText();
+					};
+				}
+				else {
+					text := System.IO.Filesystem.FileReader->ReadFile(local_file_path);
+				};
+
+				if(text = Nil) {
+					System.IO.Filesystem.Logger->Instance()->Error("Unable to open file: {$local_file_path}");
+				}
+				else {
+					texts[i,0] := file_uri;
+					texts[i,1] := text;
+				};
+			};
+
+			return texts;
 		}
 	}
 
@@ -1152,6 +1665,10 @@ bundle LSP {
 		@is_debug : Bool;
 		# the client's version of the text, or -1 if it sent none
 		@version : Int;
+		# the semantic tokens last sent, for semanticTokens/full/delta
+		@token_data : Int[];
+		@token_result_id : String;
+		@token_count : Int;
 
 		New(uri : String, text : String, workspace : LspWorkspace, is_debug : Bool) {
 			@workspace := workspace;
@@ -1195,7 +1712,7 @@ bundle LSP {
 			proxy := @workspace->GetProxy(@uri, false);
 
 			was_analyzed := BoolRef->New();
-			result := proxy->GetDiagnostics(was_analyzed, @uri, @workspace->GetLibs());
+			result := proxy->GetDiagnostics(was_analyzed, @uri, @workspace->GetLibs(@uri));
 			if(was_analyzed->Get()) {
 				@alt_text := @text->Clone()->As(String);
 				# completion and hover parse this text, not the current one
@@ -1210,11 +1727,14 @@ bundle LSP {
 			return result;
 		}
 
-		method : public : GetSymbols(uri : String) ~ JsonElement {
+		method : public : GetSymbols(uri : String, hierarchical : Bool) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
 			if(proxy->Build()) {
-				return proxy->GetSymbols(uri, @workspace->GetLibs());
+				if(hierarchical) {
+					return proxy->GetDocumentSymbols(uri, @workspace->GetLibs(@uri), @text);
+				};
+				return proxy->GetSymbols(uri, @workspace->GetLibs(@uri));
 			};
 
 			return Nil;
@@ -1223,25 +1743,373 @@ bundle LSP {
 		method : public : FindReferences(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindReferences(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindReferences(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : CodeRename(new_name : String, line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->CodeRename(new_name, line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->CodeRename(new_name, line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
+		}
+
+		#
+		# The text a rename writes for new_name at this position, or Nil if it isn't
+		# a name the program could use. An instance variable's references span its
+		# '@', so a new name typed without one gets it back: renaming @radius to
+		# 'rad' wrote 'rad' over '@radius' and turned it into an undefined local.
+		#
+		method : public : RenameTo(new_name : String, line_pos : Int, char_pos : Int) ~ String {
+			if(new_name = Nil) {
+				return Nil;
+			};
+
+			span := IdentifierAt(line_pos, char_pos);
+			is_instance := span <> Nil & @text->Get(span[0]) = '@';
+
+			name := new_name;
+			if(name->StartsWith('@')) {
+				if(<>is_instance) {
+					return Nil;
+				};
+				name := name->SubString(1, name->Size() - 1);
+			};
+
+			if(<>IsIdentifier(name)) {
+				return Nil;
+			};
+
+			if(is_instance) {
+				return "@" + name;
+			};
+
+			return name;
+		}
+
+		#
+		# textDocument/prepareRename: the range and text of the identifier under the
+		# cursor, or Nil when it can't be renamed -- a keyword, a literal, or a name
+		# that resolves to nothing in the user's code (a library method). The
+		# editor used to offer rename everywhere and then get back no edits.
+		#
+		method : public : PrepareRename(line_pos : Int, char_pos : Int) ~ JsonElement {
+			span := IdentifierAt(line_pos, char_pos);
+			if(span = Nil) {
+				return Nil;
+			};
+
+			name := @text->SubString(span[0], span[1] - span[0]);
+			bare := name->StartsWith('@') ? name->SubString(1, name->Size() - 1) : name;
+			if(bare->IsEmpty() | bare->Get(0)->IsDigit() | IsReserved(bare)) {
+				return Nil;
+			};
+
+			# renameable only where the references the rename would edit include
+			# the name under the cursor
+			start_char := char_pos - (GetDocumentIndex(line_pos, char_pos) - span[0]);
+			end_char := start_char + name->Size();
+			references := FindReferences(line_pos, char_pos);
+			if(references = Nil | references->GetType() <> JsonElement->JsonType->ARRAY) {
+				return Nil;
+			};
+
+			found := false;
+			each(i : references) {
+				reference := references->Get(i);
+				ref_uri := reference->Get("uri");
+				ref_line := reference->FindElements("range/start/line");
+				ref_start := reference->FindElements("range/start/character");
+				ref_end := reference->FindElements("range/end/character");
+				if(ref_uri <> Nil & ref_line <> Nil & ref_start <> Nil & ref_end <> Nil) {
+					if(ref_uri->GetValue()->Equals(@uri) & ref_line->GetInt() = line_pos &
+							ref_start->GetInt() <= char_pos & char_pos <= ref_end->GetInt()) {
+						found := true;
+					};
+				};
+			};
+
+			if(<>found) {
+				return Nil;
+			};
+
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", line_pos);
+			start->Insert("character", start_char);
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", line_pos);
+			end->Insert("character", end_char);
+			range->Insert("start", start);
+			range->Insert("end", end);
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("range", range);
+			result->Insert("placeholder", name);
+			return result;
+		}
+
+		#
+		# [start, end) of the identifier at or just before a position, or Nil. An
+		# instance variable's '@' is part of it, as it is of the ranges a rename
+		# edits.
+		#
+		method : IdentifierAt(line_pos : Int, char_pos : Int) ~ Int[] {
+			if(@text = Nil) {
+				return Nil;
+			};
+
+			index := GetDocumentIndex(line_pos, char_pos);
+			# the cursor may sit just after the name
+			if((index >= @text->Size() | <>IsIdentifierChar(@text->Get(index))) & index > 0 &
+					IsIdentifierChar(@text->Get(index - 1))) {
+				index -= 1;
+			};
+
+			if(index >= @text->Size() | <>IsIdentifierChar(@text->Get(index))) {
+				return Nil;
+			};
+
+			start := index;
+			while(start > 0 & IsIdentifierChar(@text->Get(start - 1))) {
+				start -= 1;
+			};
+
+			if(start > 0 & @text->Get(start - 1) = '@') {
+				start -= 1;
+			};
+
+			end := index;
+			while(end < @text->Size() & IsIdentifierChar(@text->Get(end))) {
+				end += 1;
+			};
+
+			span := Int->New[2];
+			span[0] := start;
+			span[1] := end;
+			return span;
+		}
+
+		function : IsIdentifierChar(c : Char) ~ Bool {
+			return c->IsChar() | c->IsDigit() | c = '_';
+		}
+
+		#
+		# A name the rename may write: an Objeck identifier that isn't reserved.
+		# Anything else produced edits that left the program uncompilable.
+		#
+		function : IsIdentifier(name : String) ~ Bool {
+			if(name = Nil | name->IsEmpty() | name->Get(0)->IsDigit()) {
+				return false;
+			};
+
+			each(i : name) {
+				if(<>IsIdentifierChar(name->Get(i))) {
+					return false;
+				};
+			};
+
+			return <>IsReserved(name);
+		}
+
+		# the scanner's words (core/compiler/scanner.cpp), less the trap names
+		function : IsReserved(name : String) ~ Bool {
+			words := ["and", "not", "or", "xor", "virtual", "if", "else", "do", "while", "break",
+				"continue", "use", "bundle", "native", "static", "public", "private", "class",
+				"record", "interface", "alias", "readonly", "implements", "function", "method",
+				"select", "other", "enum", "consts", "for", "each", "in", "reverse", "label",
+				"return", "leaving", "Byte", "Int", "Parent", "from", "Float", "Char", "Bool",
+				"true", "false", "New", "Nil", "As", "TypeOf", "critical"];
+			each(i : words) {
+				if(words[i]->Equals(name)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		#
+		# source.organizeImports: the leading 'use' statements, deduplicated and
+		# sorted, as a CodeAction; Nil when there are none or they are in order.
+		# 'use class' and 'use bundle' lines are kept as they are, after the rest.
+		# A block it can't read with certainty (a statement over several lines, a
+		# comment on a 'use' line) is left alone.
+		#
+		method : public : OrganizeImports() ~ JsonElement {
+			if(@text = Nil) {
+				return Nil;
+			};
+
+			line_ending := "\n";
+			if(@text->Find("\r\n") > -1) {
+				line_ending := "\r\n";
+			};
+
+			lines := @text->Split('\n');
+			first := -1;
+			last := -1;
+			in_comment := false;
+			done := false;
+			for(i := 0; i < lines->Size() & <>done; i += 1;) {
+				line := lines[i]->Trim();
+				if(in_comment) {
+					if(line->Find("~#") > -1) {
+						in_comment := false;
+					};
+				}
+				else if(line->IsEmpty()) {
+					# blank lines before or inside the block
+				}
+				else if(first < 0 & line->StartsWith("#~")) {
+					in_comment := line->Find("~#") < 0;
+				}
+				else if(first < 0 & line->StartsWith("#")) {
+					# a line comment before the block
+				}
+				else if(line->StartsWith("use ") | line->StartsWith("use\t")) {
+					if(<>line->EndsWith(";") | line->Find('#') > -1) {
+						return Nil;
+					};
+					if(first < 0) {
+						first := i;
+					};
+					last := i;
+				}
+				else {
+					done := true;
+				};
+			};
+
+			if(first < 0) {
+				return Nil;
+			};
+
+			names := Vector->New()<String>;
+			seen := Set->New()<String>;
+			kept := Vector->New()<String>;
+			plain_count := 0;
+			for(i := first; i <= last; i += 1;) {
+				line := lines[i]->Trim();
+				if(<>line->IsEmpty()) {
+					body := line->SubString(3, line->Size() - 4)->Trim();
+					if(body->StartsWith("class ") | body->StartsWith("bundle ")) {
+						kept->AddBack(line);
+					}
+					else {
+						plain_count += 1;
+						parts := body->Split(',');
+						each(j : parts) {
+							part := parts[j]->Trim();
+							if(part->IsEmpty()) {
+								return Nil;
+							};
+							if(<>seen->Has(part)) {
+								seen->Insert(part);
+								names->AddBack(part);
+							};
+						};
+					};
+				};
+			};
+
+			# sorted, ordinal
+			for(i := 1; i < names->Size(); i += 1;) {
+				j := i;
+				while(j > 0 & names->Get(j - 1)->Compare(names->Get(j)) > 0) {
+					swap := names->Get(j);
+					names->Set(names->Get(j - 1), j);
+					names->Set(swap, j - 1);
+					j -= 1;
+				};
+			};
+
+			organized := "";
+			# one statement stays one statement
+			if(plain_count = 1 & kept->Size() = 0) {
+				organized += "use ";
+				each(i : names) {
+					if(i > 0) {
+						organized += ", ";
+					};
+					organized += names->Get(i);
+				};
+				organized += ';';
+			}
+			else {
+				each(i : names) {
+					if(<>organized->IsEmpty()) {
+						organized += line_ending;
+					};
+					organized += "use ";
+					organized += names->Get(i);
+					organized += ';';
+				};
+				each(i : kept) {
+					if(<>organized->IsEmpty()) {
+						organized += line_ending;
+					};
+					organized += kept->Get(i);
+				};
+			};
+
+			# the block as written, from its first character to the end of its last line
+			last_line := lines[last];
+			if(last_line->EndsWith("\r")) {
+				last_line := last_line->SubString(last_line->Size() - 1);
+			};
+			original := "";
+			for(i := first; i <= last; i += 1;) {
+				line := lines[i];
+				if(line->EndsWith("\r")) {
+					line := line->SubString(line->Size() - 1);
+				};
+				if(i > first) {
+					original += line_ending;
+				};
+				original += line;
+			};
+
+			if(original->Equals(organized)) {
+				return Nil;
+			};
+
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", first);
+			start->Insert("character", 0);
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", last);
+			end->Insert("character", last_line->Size());
+			range->Insert("start", start);
+			range->Insert("end", end);
+
+			text_edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+			text_edit->Insert("range", range);
+			text_edit->Insert("newText", organized);
+			edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+			edits->Add(text_edit);
+
+			changes := JsonElement->New(JsonElement->JsonType->OBJECT);
+			changes->Insert(@uri, edits);
+			edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+			edit->Insert("changes", changes);
+
+			action := JsonElement->New(JsonElement->JsonType->OBJECT);
+			action->Insert("title", "Organize 'use' statements");
+			action->Insert("kind", "source.organizeImports");
+			action->Insert("edit", edit);
+			return action;
 		}
 		
 		method : public : FindDeclaration(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindDeclaration(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindDeclaration(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : FindDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindDefinition(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : Completion(line_pos : Int, char_pos : Int) ~ JsonElement {
@@ -1251,25 +2119,31 @@ bundle LSP {
 			if(index > -1) {
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
-					return proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+					return proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri));
 				};
 			};
 
 			return Nil;
 		}
 
-		method : public : Hover(line_pos : Int, char_pos : Int) ~ JsonElement {
+		method : public : Hover(line_pos : Int, char_pos : Int, markdown : Bool) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, true);
 			
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
-					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri), markdown);
 				};
 			};
 
 			return Nil;
+		}
+
+		# the signature and documentation of a completion item (completionItem/resolve)
+		method : public : ResolveCompletion(item_name : String, line_pos : Int, char_pos : Int, var_str : String, markdown : Bool) ~ JsonElement {
+			proxy := @workspace->GetProxy(@uri, true);
+			return proxy->ResolveCompletion(item_name, line_pos, char_pos, var_str, @uri, @workspace->GetLibs(@uri), markdown);
 		}
 
 		method : public : SignatureHelp(line_pos : Int, char_pos : Int) ~ JsonElement {
@@ -1279,7 +2153,7 @@ bundle LSP {
 			if(index > -1) {
 				var_str := "";	mthd_str := "";
 				if(GetVariableMethodStrings(index, var_str, mthd_str)) {
-					return proxy->SignatureHelp(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs());
+					return proxy->SignatureHelp(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri));
 				};
 			};
 			
@@ -1349,67 +2223,350 @@ bundle LSP {
 		method : public : FindTypeDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindTypeDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindTypeDefinition(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : FindImplementation(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->FindImplementation(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->FindImplementation(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : PrepareCallHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->PrepareCallHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->PrepareCallHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : IncomingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->IncomingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->IncomingCalls(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : OutgoingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->OutgoingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->OutgoingCalls(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : InlayHint(start_line : Int, end_line : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs());
+			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs(@uri));
 		}
 
+		#
+		# semanticTokens/full, with a resultId: the next delta request names it, and
+		# is answered with the edit from these tokens to the new ones. Every edit
+		# re-sent every token in the file.
+		#
 		method : public : SemanticTokensFull() ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
 
-			return proxy->SemanticTokens(@uri, @workspace->GetLibs());
+			data := AstProxy->EncodeTokens(rows, -1, -1);
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("resultId", KeepTokens(data));
+			result->Insert("data", AstProxy->IntsToJson(data));
+			return result;
+		}
+
+		# semanticTokens/range: the tokens of these lines
+		method : public : SemanticTokensRange(start_line : Int, end_line : Int) ~ JsonElement {
+			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("data", AstProxy->IntsToJson(AstProxy->EncodeTokens(rows, start_line, end_line)));
+			return result;
+		}
+
+		#
+		# semanticTokens/full/delta: the edit from the tokens last sent under
+		# previous_id to the current ones -- one replacement of the span between
+		# their common prefix and suffix. Full tokens when previous_id isn't the
+		# last result, which the client then takes as they are.
+		#
+		method : public : SemanticTokensDelta(previous_id : String) ~ JsonElement {
+			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			data := AstProxy->EncodeTokens(rows, -1, -1);
+			old := @token_data;
+			matches := previous_id <> Nil & @token_result_id <> Nil & previous_id->Equals(@token_result_id) & old <> Nil;
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(<>matches) {
+				result->Insert("resultId", KeepTokens(data));
+				result->Insert("data", AstProxy->IntsToJson(data));
+				return result;
+			};
+
+			prefix := 0;
+			while(prefix < old->Size() & prefix < data->Size() & old[prefix] = data[prefix]) {
+				prefix += 1;
+			};
+
+			suffix := 0;
+			while(suffix < old->Size() - prefix & suffix < data->Size() - prefix &
+					old[old->Size() - 1 - suffix] = data[data->Size() - 1 - suffix]) {
+				suffix += 1;
+			};
+
+			edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+			delete_count := old->Size() - prefix - suffix;
+			insert_count := data->Size() - prefix - suffix;
+			if(delete_count > 0 | insert_count > 0) {
+				inserted := Int->New[insert_count];
+				for(i := 0; i < insert_count; i += 1;) {
+					inserted[i] := data[prefix + i];
+				};
+
+				edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+				edit->Insert("start", prefix);
+				edit->Insert("deleteCount", delete_count);
+				edit->Insert("data", AstProxy->IntsToJson(inserted));
+				edits->Add(edit);
+			};
+
+			result->Insert("resultId", KeepTokens(data));
+			result->Insert("edits", edits);
+			return result;
+		}
+
+		# the tokens a later delta is computed from, and their id
+		method : KeepTokens(data : Int[]) ~ String {
+			@token_count += 1;
+			@token_data := data;
+			@token_result_id := "{$@token_count}";
+			return @token_result_id;
+		}
+
+		#
+		# textDocument/codeLens: one on each 'function : Main(args : String[])',
+		# saying how to build and run the program it starts. With run_command (the
+		# client's command id, from initializationOptions.runCommand) the lens runs
+		# it, given { cwd, obc, obr } -- the compiler's and the VM's arguments;
+		# otherwise it's a label. A file in a configured folder builds with that
+		# folder's build.json files and libraries.
+		#
+		method : public : CodeLens(run_command : String) ~ JsonElement {
+			lenses := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(@text = Nil) {
+				return lenses;
+			};
+
+			# the program: its sources, libraries and directory
+			local_path := LspFolder->LocalPath(@uri);
+			slash := local_path->FindLast('/');
+			dir := slash > 0 ? local_path->SubString(slash) : ".";
+			file_name := slash > -1 ? local_path->SubString(slash + 1, local_path->Size() - slash - 1) : local_path;
+			sources := file_name;
+			libs := "";
+
+			folder := @workspace->FolderFor(@uri);
+			if(folder <> Nil) {
+				dir := folder->GetLocalPath();
+				sources := folder->GetSources();
+				libs := folder->GetLibs()->ReplaceAll(".obl", "");
+			};
+
+			program := file_name;
+			if(program->EndsWith(".obs")) {
+				program := program->SubString(program->Size() - 4);
+			};
+			program += ".obe";
+
+			lines := @text->Split('\n');
+			in_comment := false;
+			each(i : lines) {
+				line := lines[i];
+				trimmed := line->Trim();
+				if(in_comment) {
+					if(trimmed->Find("~#") > -1) {
+						in_comment := false;
+					};
+				}
+				else if(trimmed->StartsWith("#~")) {
+					in_comment := trimmed->Find("~#") < 0;
+				}
+				else if(<>trimmed->StartsWith("#")) {
+					main_at := line->Find("function : Main(");
+					if(main_at > -1 & line->Find("String[]") > main_at) {
+						name_at := main_at + "function : "->Size();
+						lenses->Add(MakeRunLens(i, name_at, run_command, dir, sources, libs, program));
+					};
+				};
+			};
+
+			return lenses;
+		}
+
+		method : MakeRunLens(line : Int, start_char : Int, run_command : String, dir : String,
+				sources : String, libs : String, program : String) ~ JsonElement {
+			obc_args := JsonElement->New(JsonElement->JsonType->ARRAY);
+			obc_args->Add("-src");
+			obc_args->Add(sources);
+			if(<>libs->IsEmpty()) {
+				obc_args->Add("-lib");
+				obc_args->Add(libs);
+			};
+			obc_args->Add("-dest");
+			obc_args->Add(program);
+
+			obr_args := JsonElement->New(JsonElement->JsonType->ARRAY);
+			obr_args->Add(program);
+
+			command_line := "obc -src {$sources}";
+			if(<>libs->IsEmpty()) {
+				command_line += " -lib {$libs}";
+			};
+			command_line += " -dest {$program} && obr {$program}";
+
+			command := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(run_command <> Nil) {
+				command->Insert("title", "Run");
+				command->Insert("command", run_command);
+
+				run := JsonElement->New(JsonElement->JsonType->OBJECT);
+				run->Insert("cwd", dir);
+				run->Insert("obc", obc_args);
+				run->Insert("obr", obr_args);
+				arguments := JsonElement->New(JsonElement->JsonType->ARRAY);
+				arguments->Add(run);
+				command->Insert("arguments", arguments);
+			}
+			else {
+				# no client command: a label that says what to run
+				command->Insert("title", "Run: {$command_line}");
+				command->Insert("command", "");
+			};
+
+			lens := JsonElement->New(JsonElement->JsonType->OBJECT);
+			lens->Insert("range", MakeLineRange(line, start_char, line, start_char + "Main"->Size()));
+			lens->Insert("command", command);
+			return lens;
+		}
+
+		function : MakeLineRange(start_line : Int, start_char : Int, end_line : Int, end_char : Int) ~ JsonElement {
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", start_line);
+			start->Insert("character", start_char);
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", end_line);
+			end->Insert("character", end_char);
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			range->Insert("start", start);
+			range->Insert("end", end);
+			return range;
+		}
+
+		#
+		# textDocument/documentLink: each bundle a leading 'use' names that the API
+		# reference documents, linked to its entry there.
+		#
+		method : public : DocumentLinks() ~ JsonElement {
+			links := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(@text = Nil) {
+				return links;
+			};
+
+			lines := @text->Split('\n');
+			in_comment := false;
+			done := false;
+			for(i := 0; i < lines->Size() & <>done; i += 1;) {
+				line := lines[i];
+				trimmed := line->Trim();
+				if(in_comment) {
+					if(trimmed->Find("~#") > -1) {
+						in_comment := false;
+					};
+				}
+				else if(trimmed->IsEmpty()) {
+				}
+				else if(trimmed->StartsWith("#~")) {
+					in_comment := trimmed->Find("~#") < 0;
+				}
+				else if(trimmed->StartsWith("#")) {
+				}
+				else if(trimmed->StartsWith("use ") | trimmed->StartsWith("use\t")) {
+					AddUseLinks(i, line, links);
+				}
+				else {
+					done := true;
+				};
+			};
+
+			return links;
+		}
+
+		# the bundle names on one 'use' line, where they are on it
+		method : AddUseLinks(line_index : Int, line : String, links : JsonElement) ~ Nil {
+			index := line->Find("use") + 3;
+			end := line->Find(';');
+			if(end < 0) {
+				end := line->Size();
+			};
+
+			while(index < end) {
+				while(index < end & (line->Get(index) = ' ' | line->Get(index) = '\t' | line->Get(index) = ',')) {
+					index += 1;
+				};
+
+				start := index;
+				while(index < end & line->Get(index) <> ' ' & line->Get(index) <> '\t' & line->Get(index) <> ',') {
+					index += 1;
+				};
+
+				if(index > start) {
+					name := line->SubString(start, index - start);
+					# 'use bundle X' and 'use class X' -- the keywords aren't links
+					if(<>name->Equals("bundle") & <>name->Equals("class") & AstProxy->HasDocumentedBundle(name)) {
+						target := "https://www.objeck.org/api/latest/index.html?scrollTo=";
+						target += name->ToLower();
+
+						link := JsonElement->New(JsonElement->JsonType->OBJECT);
+						link->Insert("range", MakeLineRange(line_index, start, line_index, index));
+						link->Insert("target", target);
+						link->Insert("tooltip", "{$name} in the Objeck API reference");
+						links->Add(link);
+					};
+				};
+			};
 		}
 
 		method : public : DocumentHighlight(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->DocumentHighlight(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->DocumentHighlight(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : PrepareTypeHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->PrepareTypeHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->PrepareTypeHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : TypeHierarchySupertypes(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->TypeHierarchySupertypes(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->TypeHierarchySupertypes(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : TypeHierarchySubtypes(line_pos : Int, char_pos : Int) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
 
-			return proxy->TypeHierarchySubtypes(line_pos, char_pos, @uri, @workspace->GetLibs());
+			return proxy->TypeHierarchySubtypes(line_pos, char_pos, @uri, @workspace->GetLibs(@uri));
 		}
 
 		method : public : FoldingRange() ~ JsonElement {
@@ -1655,7 +2812,9 @@ bundle LSP {
 				};
 
 				# build nested selection range from outermost to innermost
-				selection : JsonElement;
+				# Assigned, not just declared (see ProcessBatch): with several
+				# positions, each one's ranges were chained onto the previous one's.
+				selection : JsonElement := Nil;
 
 				for(k := containing_count - 1; k >= 0; k -= 1;) {
 					idx := containing_indices[k];

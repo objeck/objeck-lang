@@ -28,6 +28,12 @@
 	],
 	"main": "./client/out/extension",
 	"contributes": {
+		"taskDefinitions": [{
+			"type": "objeck",
+			"properties": {
+				"step": { "type": "string", "description": "build or run, for the Run code lens" }
+			}
+		}],
 		"configuration": {
 			"type": "object",
 			"title": "LSP configuration",

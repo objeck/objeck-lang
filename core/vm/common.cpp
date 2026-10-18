@@ -3391,13 +3391,14 @@ bool TrapProcessor::StdOutByte(StackProgram* program, size_t* inst, size_t* &op_
   std::wcout << L"  STD_OUT_BYTE" << std::endl;
 #endif
 
-  std::ios_base::fmtflags flags(std::wcout.flags());
+  // a Byte prints as its unsigned decimal value, as ToString, interpolation
+  // and String->Append(Byte) give it (#1176); it printed as "0x41"
+  const int value = (int)(unsigned char)PopInt(op_stack, stack_pos);
 #ifdef _MODULE_STDIO
-  program->output_buffer << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
+  program->output_buffer << value;
 #else
-  std::wcout << std::hex << L"0x" << ((unsigned char)PopInt(op_stack, stack_pos));
+  std::wcout << value;
 #endif
-  std::wcout.flags(flags);
 
   return true;
 }
@@ -3838,7 +3839,8 @@ bool TrapProcessor::StdErrByte(StackProgram* program, size_t* inst, size_t* &op_
 #ifdef _DEBUG
   std::wcout << L"  STD_ERR_BYTE" << std::endl;
 #endif
-  std::wcerr << (unsigned char)PopInt(op_stack, stack_pos);
+  // decimal, as STD_OUT_BYTE (#1176); it wrote the byte as a character
+  std::wcerr << (int)(unsigned char)PopInt(op_stack, stack_pos);
 
   return true;
 }
