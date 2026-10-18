@@ -600,6 +600,7 @@ class ContextAnalyzer {
   void AnalyzeLeaving(Leaving* leaving_stmt, const int depth);
   Expression* AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth);
   Expression* AnalyzeRightCast(Type* left, Expression* expression, bool is_scalar, const int depth);
+  bool HasIntegralCast(Expression* expression);
   Expression* AnalyzeRightCast(Type* left, Type* right, Expression* expression, bool is_scalar, const int depth);
   Expression* BoxExpression(Type* type, Expression* expression, int depth);
   Expression* UnboxingExpression(Type* right, Expression* expression, bool is_cast, int depth);
