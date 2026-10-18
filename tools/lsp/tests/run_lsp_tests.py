@@ -459,6 +459,86 @@ def check_large_real_file(c):
     c.notify("textDocument/didClose", doc)
 
 
+def column(line, index, encoding):
+    """The column of line[index] in the negotiated position encoding."""
+    if encoding == "utf-32":
+        return index
+    return len(line[:index].encode("utf-16-le")) // 2
+
+
+def check_text_encoding(c, caps):
+    """Non-ASCII text, sent the two legal ways, lands where the client put it.
+
+    A client may send a non-ASCII character raw (UTF-8) or as a \\u escape.
+    The server kept escapes literally in its copy of the document, so every
+    column after the character was off by five (BMP) or ten (an emoji) (#1216).
+    """
+    encoding = caps.get("positionEncoding")
+    log_result("positionEncoding is advertised", encoding in ("utf-16", "utf-32"),
+               f"got: {encoding}")
+    if os.name == "nt":
+        log_result("positionEncoding is utf-16 where a Char is UTF-16", encoding == "utf-16")
+    else:
+        log_result("positionEncoding is utf-32 where a Char is a code point and it is offered",
+                   encoding == "utf-32", f"got: {encoding}")
+
+    shapes = [("comment", "# caf{ch}\nclass U{n} {{\n  function : Main(a : String[]) ~ Nil {{\n"
+                          "    y := zzz;\n  }}\n}}\n", 3),
+              ("literal", "class U{n} {{\n  function : Main(a : String[]) ~ Nil {{\n"
+                          "    s := \"caf{ch}\"; s->PrintLine(); y := zzz;\n  }}\n}}\n", 2)]
+    n = 0
+    for where, template, line_no in shapes:
+        for ch_name, ch in (("e-acute", "é"), ("emoji", "\U0001F600")):
+            for escaped in (True, False):
+                n += 1
+                text = template.format(ch=ch, n=n)
+                uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_unicode_{n}.obs"))
+                c.send_raw(json.dumps({"jsonrpc": "2.0", "method": "textDocument/didOpen",
+                                       "params": {"textDocument": {
+                                           "uri": uri, "languageId": "objeck", "version": 1,
+                                           "text": text}}}, ensure_ascii=escaped).encode("utf-8"))
+                diags = c.diagnostics_for(uri, timeout=60) or []
+                line = text.split("\n")[line_no]
+                want = {"line": line_no, "character": column(line, line.index("zzz"), encoding)}
+                got = [d["range"]["start"] for d in diags if "zzz" in str(d.get("message", ""))]
+                how = "escaped" if escaped else "raw"
+                label = f"{where} with {ch_name} sent {how}"
+                log_result(f"{label}: diagnostic column", want in got, f"want {want}, got {got}")
+
+                # an edit after the character lands in the right place too
+                c.notifications.clear()
+                col = column(line, line.index("zzz"), encoding)
+                c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": 2},
+                         "contentChanges": [{"range": {
+                             "start": {"line": line_no, "character": col},
+                             "end": {"line": line_no, "character": col + 3}}, "text": "qqq"}]})
+                diags = c.diagnostics_for(uri, timeout=60) or []
+                got = [d["range"]["start"] for d in diags if "qqq" in str(d.get("message", ""))]
+                log_result(f"{label}: an edit after it", want in got, f"want {want}, got {got}")
+                c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+    # A position past the end of its line means the end of that line. It ran on
+    # into the next line; one past the last line was dropped silently (#1216).
+    text = "class Clamp {\n  function : Main(a : String[]) ~ Nil {\n  }\n}\n"
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_clamp.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    c.diagnostics_for(uri, timeout=60)
+    c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": 2},
+             "contentChanges": [
+                 {"range": {"start": {"line": 0, "character": 40}, "end": {"line": 0, "character": 40}},
+                  "text": " # past the end"},
+                 {"range": {"start": {"line": 9, "character": 0}, "end": {"line": 9, "character": 0}},
+                  "text": "# appended\n"}]})
+    expected = text.replace("class Clamp {", "class Clamp { # past the end", 1) + "# appended\n"
+    edits = result_of(c.request("textDocument/formatting", {
+        "textDocument": {"uri": uri}, "options": {"tabSize": 2, "insertSpaces": True}}))
+    end = (edits or [{}])[0].get("range", {}).get("end")
+    log_result("positions past a line, or past the document, are clamped",
+               end == document_end(expected), f"server's end {end}, editor's {document_end(expected)}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
 def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
     """The base protocol, not the language features (#1215)."""
     init_params = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
@@ -690,10 +770,12 @@ def main():
     c = LspClient(obr, server_obe, apis_json, bin_dir)
     try:
         # --- initialize -----------------------------------------------------
+        # Offer both encodings: where a Char is a code point (Linux, macOS) the
+        # server then answers in utf-32, which is exact there (#1216, #1226).
         resp = c.request("initialize", {
             "processId": os.getpid(),
             "rootUri": None,
-            "capabilities": {},
+            "capabilities": {"general": {"positionEncodings": ["utf-16", "utf-32"]}},
         }, timeout=90)
 
         caps = (result_of(resp) or {}).get("capabilities")
@@ -1245,6 +1327,7 @@ def main():
                    decl_line == get_line, f"got: {decl}")
 
         check_large_real_file(c)
+        check_text_encoding(c, caps)
     finally:
         c.close()
 

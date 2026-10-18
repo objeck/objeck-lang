@@ -1,0 +1,73 @@
+#~
+JsonElement->Decode and Encode agree on every JSON escape. \b and \f were mapped
+to 0x10 and 0x14 instead of 0x08 and 0x0C, both ways; Encode copied raw control
+characters through, which no JSON parser accepts; and a surrogate pair was
+decoded as two separate Chars, which is wrong wherever a Char is a whole code
+point. Found by the LSP audit (#1216), whose server now decodes every string a
+client sends with Decode.
+~#
+use Data.JSON;
+
+class JsonCodecEscapes {
+	function : Main(args : String[]) ~ Nil {
+		fails := 0;
+
+		# a surrogate pair is one character outside the BMP
+		emoji := JsonElement->Decode("a\\ud83d\\ude00b");
+		cps := emoji->CodePoints();
+		if(cps->Size() <> 3 | cps[1] <> 0x1F600) {
+			"FAIL: a surrogate pair decodes to U+1F600"->PrintLine();
+			fails += 1;
+		};
+
+		# a BMP escape
+		cafe := JsonElement->Decode("caf\\u00e9");
+		if(cafe->CodePoints()->Size() <> 4 | cafe->CodePoints()[3] <> 0xE9) {
+			"FAIL: \\u00e9 decodes to U+00E9"->PrintLine();
+			fails += 1;
+		};
+
+		# backspace and form feed, both ways
+		bf := JsonElement->Decode("\\b\\f");
+		if(bf->Size() <> 2 | bf->Get(0)->As(Int) <> 0x08 | bf->Get(1)->As(Int) <> 0x0C) {
+			"FAIL: \\b and \\f decode to 0x08 and 0x0C"->PrintLine();
+			fails += 1;
+		};
+
+		encoded := JsonElement->Encode(bf);
+		if(<>encoded->Equals("\\b\\f")) {
+			"FAIL: 0x08 and 0x0C encode as \\b and \\f"->PrintLine();
+			fails += 1;
+		};
+
+		# any other control character is escaped
+		control := String->New();
+		control->Append(0x01->As(Char));
+		encoded := JsonElement->Encode(control);
+		if(<>encoded->Equals("\\u0001")) {
+			"FAIL: a control character encodes as \\u0001"->PrintLine();
+			fails += 1;
+		};
+
+		# serialize, parse, decode: the original comes back
+		original := "line\n\ttab \"quoted\" back\\slash caf";
+		original->Append(0xE9->As(Char));
+		original += String->FromCodePoint(0x1F600);
+		original->Append(0x0C->As(Char));
+
+		obj := JsonElement->New(JsonElement->JsonType->OBJECT);
+		obj->Insert("s", original);
+		parsed := JsonParser->TextToElement(obj->ToString());
+		back := JsonElement->Decode(parsed->Get("s")->GetValue());
+		if(<>back->Equals(original)) {
+			"FAIL: serialize, parse and decode round-trips"->PrintLine();
+			fails += 1;
+		};
+
+		if(fails > 0) {
+			Runtime->Exit(1);
+		};
+
+		"PASS: JSON escapes decode and encode symmetrically"->PrintLine();
+	}
+}

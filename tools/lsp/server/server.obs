@@ -592,6 +592,24 @@ bundle LSP {
 			serverInfo->Insert("version", "2026.10.1");
 
 			capabilities := response->AddChild("capabilities");
+
+			# Columns are counted in the server's Chars. Where a Char is UTF-16
+			# (Windows) that is LSP's default encoding exactly. Where a Char is a whole
+			# code point (Linux, macOS) it is UTF-32, which is exact when the client
+			# accepts it; a client that offers only UTF-16 is still answered in UTF-16,
+			# and a character outside the BMP then counts one column short there.
+			position_encoding := "utf-16";
+			if(String->FromCodePoint(0x1F600)->Size() = 1) {
+				offered := params->FindElements("capabilities/general/positionEncodings");
+				if(offered <> Nil) {
+					each(i : offered) {
+						if(offered->Get(i)->GetValue()->Equals("utf-32")) {
+							position_encoding := "utf-32";
+						};
+					};
+				};
+			};
+			capabilities->Insert("positionEncoding", position_encoding);
 			completionProvider := capabilities->AddChild("completionProvider");
 			completionProvider->Insert("resolveProvider", false);
 			triggerCharacters := JsonElement->New(JsonElement->JsonType->ARRAY);
@@ -967,14 +985,17 @@ bundle LSP {
 						end_line_json := change->FindElements("range/end/line");
 						end_char_json := change->FindElements("range/end/character");
 
-						if(range_length_json <> Nil & text <> Nil & start_line <> Nil & start_char <> Nil) {
-							range_length := range_length_json->GetValue();
-							document->Update(range_length->ToInt(), text, start_line->ToInt(), start_char->ToInt());
-						}
-						else if(text <> Nil & start_line <> Nil & start_char <> Nil  & end_line_json <> Nil & end_char_json <> Nil) {
+						# The range end, not 'rangeLength': that is deprecated, and it
+						# counts UTF-16 units, which are not the server's characters
+						# where a Char is a full code point. It is the fallback only.
+						if(text <> Nil & start_line <> Nil & start_char <> Nil  & end_line_json <> Nil & end_char_json <> Nil) {
 							end_line := end_line_json->GetValue();
 							end_char := end_char_json->GetValue();
 							document->Update(text, start_line->ToInt(), start_char->ToInt(), end_line->ToInt(), end_char->ToInt());
+						}
+						else if(range_length_json <> Nil & text <> Nil & start_line <> Nil & start_char <> Nil) {
+							range_length := range_length_json->GetValue();
+							document->Update(range_length->ToInt(), text, start_line->ToInt(), start_char->ToInt());
 						};
 					}
 					else {
