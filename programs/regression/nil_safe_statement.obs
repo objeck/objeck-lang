@@ -1,0 +1,107 @@
+#~
+Regression: a `?->` call used as a statement (#1113).
+
+`t?->Down();` was emitted link by link as plain calls, and the Try() region
+was never opened. Try() went out as an ordinary call on @self, which is Nil
+in a function, so the program stopped with "Attempting to dereference a
+'Nil' memory instance" at the first such statement, whatever the method did.
+The issue first showed as a tail-recursive method that overflowed when
+guarded, but the tail-call transform was never involved: even a single
+guarded call to a method returning Nil failed.
+
+A guarded call whose method returns Nil also left no word for the region's
+result. Both are fixed: the statement takes the expression path, and that
+region yields Nil for a method that returns nothing.
+~#
+
+class Counter {
+	@d : Int;
+	@limit : Int;
+
+	New(limit : Int) {
+		@d := 0;
+		@limit := limit;
+	}
+
+	method : public : Show() ~ Nil {
+		@d += 1;
+	}
+
+	method : public : Down() ~ Nil {
+		@d += 1;
+		if(@d = @limit) {
+			return;
+		};
+		Down();
+	}
+
+	method : public : Boom() ~ Nil {
+		x := 1 / (@d - @d);
+		@d := x;
+	}
+
+	method : public : Value() ~ IntRef {
+		@d += 1;
+		return IntRef->New(@d);
+	}
+
+	method : public : GetD() ~ Int {
+		return @d;
+	}
+}
+
+class NilSafeStatement {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		c := Counter->New(0);
+		c?->Show();
+		CheckInt("a guarded statement to a Nil method runs it", c->GetD(), 1);
+
+		c?->Value();
+		CheckInt("a guarded statement whose result is dropped", c->GetD(), 2);
+
+		c?->Boom();
+		CheckInt("a fault in a guarded statement is recovered", c->GetD(), 2);
+
+		n : Counter := Nil;
+		n?->Show();
+		CheckInt("a guarded statement on Nil does nothing", c->GetD(), 2);
+
+		# the issue's case: tail recursion under the guard runs as a loop
+		deep := Counter->New(1000000);
+		deep?->Down();
+		CheckInt("guarded tail recursion, a million deep", deep->GetD(), 1000000);
+
+		# and in a loop, the stack stays balanced
+		loop := Counter->New(0);
+		for(i := 0; i < 10000; i += 1;) {
+			loop?->Show();
+			loop?->Boom();
+		};
+		CheckInt("10000 guarded statements in a loop", loop->GetD(), 10000);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NilSafeStatement->New()->Run();
+	}
+}
