@@ -5437,21 +5437,14 @@ each(i : cities) {
 		}
 		
 		#~
-		Appends a byte
+		Appends a byte as its unsigned decimal value, which is also how string
+		interpolation and concatenation show a Byte: "{$b}" and "" + b give "65"
+		for 65, as b->ToString() and b->PrintLine() do (#1176). For the character
+		append a Char: b->As(Char)
 		@param c byte to append
 		~#
 		method : public : Append(c : Byte) ~ Nil {
-			if(@pos >= @max) {
-				# expand string
-				@max += @pos << 1;
-				temp := Char->New[@max];
-				# copy elements
-				Runtime->Copy(temp, 0, @string, 0, @string->Size());
-				@string := temp;
-			};
-
-			@string[@pos] := c;
-			@pos += 1;
+			Append(c->As(Int));
 		}
 		
 		#~

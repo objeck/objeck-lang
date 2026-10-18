@@ -416,6 +416,8 @@ word. Four of them read as ordinary identifiers and are worth knowing about:
 - **Shifts:** use `n and 63`. `>>` sign-fills, `>>>` zero-fills.
 - **Division:** `/` truncates toward zero; `%` takes the dividend's sign.
 - **Traps:** a zero divisor is the only integer trap; `MIN / -1 = MIN` and `MIN % -1 = 0`.
+- **Byte narrowing:** a `Byte` is unsigned, 0 to 255. A value that lands in a scalar `Byte` -- a local, field or parameter, a `~ Byte` return, `->As(Byte)` or `Int->ToByte` -- keeps its low 8 bits, as a `Byte[]` element store does: `255 + 1` is 0, `0 - 1` is 255, 300 is 44. The arithmetic runs at `Int` width and wraps only where its result lands in a `Byte`: with `b` at 255, `b + 1 = 256` is true, but `(b + 1)->PrintLine()` prints 0, because `PrintLine` takes a `Byte` parameter.
+- **Printing a Byte:** always its decimal value. `ToString`, `Print`/`PrintLine`, interpolation, concatenation and `String->Append(Byte)` all give "65" for 65; use `b->As(Char)` for the character.
 - **Consistency:** identical in the interpreter, both JITs and at every `-opt` level.
 
 ```ruby
@@ -426,6 +428,12 @@ min := -9223372036854775807 - 1;
 (-8 >>> 64)->PrintLine();                     # -8: a count of 64 shifts by 0
 (-7 / 2)->PrintLine();                        # -3
 (-7 % 3)->PrintLine();                        # -1
+
+b : Byte := 255;
+b += 1;
+b->PrintLine();                               # 0: a Byte wraps on store
+Int->ToByte(300)->PrintLine();                # 44
+(b - 1 = -1)->PrintLine();                    # true: the arithmetic is Int-wide
 ```
 
 ---
