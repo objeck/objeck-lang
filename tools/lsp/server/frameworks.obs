@@ -901,21 +901,95 @@ bundle LSP {
 		@libs_str : String;		
 		@documents : Map<String, Document>;
 		@texts : String[,];
+		# parsed and analyzed programs, kept until any text changes (#1218)
+		@proxies : Map<String, AstProxy>;
+		@generation : Int;
+		@proxies_generation : Int;
+		@no_cache : Bool;
 
 		New(is_debug : Bool) {
 			@is_debug := is_debug;
 			@documents := Map->New()<String, Document>;
+			@proxies := Map->New()<String, AstProxy>;
+
+			# OBJECK_LSP_NO_CACHE=1 parses afresh for every request, as before, to
+			# compare against the cache
+			no_cache := Runtime->GetEnvironmentVariable("OBJECK_LSP_NO_CACHE");
+			@no_cache := no_cache <> Nil & no_cache->Equals("1");
+		}
+
+		#
+		# A parsed and analyzed program for these texts, shared by every request
+		# until a text changes. Each request used to parse and analyze the whole
+		# workspace and throw the result away, so the native side's per-program
+		# analyzer cache never outlived a request: hover, symbols, highlights and
+		# the rest each paid for a full analysis.
+		#
+		# One program per use_alt in workspace mode, where every document's
+		# request parses the same set of files; one per document otherwise, and
+		# one for 'every open document' (a Nil uri, from workspace/symbol).
+		#
+		method : public : GetProxy(uri : String, use_alt : Bool) ~ AstProxy {
+			if(@no_cache | @proxies_generation <> @generation) {
+				ReleaseProxies();
+				@proxies_generation := @generation;
+			};
+
+			key := use_alt ? "alt|" : "text|";
+			if(@file_strs = Nil) {
+				if(uri = Nil) {
+					key += "*";
+				}
+				else {
+					key += uri;
+				};
+			};
+
+			proxy := @proxies->Find(key);
+			if(proxy = Nil) {
+				proxy := AstProxy->New(@self, uri, use_alt, @is_debug);
+				@proxies->Insert(key, proxy);
+			};
+
+			return proxy;
+		}
+
+		# some text the programs were parsed from has changed
+		method : public : Invalidate() ~ Nil {
+			@generation += 1;
+		}
+
+		# the last cleanly analyzed text of a document changed
+		method : public : InvalidateAlt() ~ Nil {
+			keys := @proxies->GetKeys()<String>;
+			each(i : keys) {
+				key := keys->Get(i);
+				if(key->StartsWith("alt|")) {
+					@proxies->Find(key)->Release();
+					@proxies->Remove(key);
+				};
+			};
+		}
+
+		method : ReleaseProxies() ~ Nil {
+			proxies := @proxies->GetValues()<AstProxy>;
+			each(i : proxies) {
+				proxies->Get(i)->Release();
+			};
+			@proxies := Map->New()<String, AstProxy>;
 		}
 
 		method : public : SetRoot(name : String, root : String) ~ Nil {
 			@name := name;
 			@root := root;
+			Invalidate();
 		}
 
 		method : public : SetFilesLibs(local_path : String, file_strs : String[], libs_str : String) ~ Nil {
 			@local_path := local_path;
 			@file_strs := file_strs;
 			@libs_str := libs_str;
+			Invalidate();
 		}
 
 		method : public : GetTexts(uri : String, use_alt : Bool) ~ String[,] {
@@ -1037,6 +1111,7 @@ bundle LSP {
 
 			@documents->Remove(uri);
 			@documents->Insert(uri, document);
+			Invalidate();
 		}
 
 		method : public : RemoveDocument(uri : String, document : Document) ~ Nil {
@@ -1047,6 +1122,7 @@ bundle LSP {
 			if(@documents->Remove(uri)) {
 				document->Release();
 			};
+			Invalidate();
 		}
 
 		method : public : GetSymbol(query : String) ~ JsonElement {
@@ -1056,11 +1132,7 @@ bundle LSP {
 				uri := uris->Get(0);
 			};
 
-			proxy := AstProxy->New(@self, uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
-
+			proxy := GetProxy(uri, false);
 			if(proxy->Build()) {
 				return proxy->GetSymbol(query, uris, GetLibs());
 			};
@@ -1095,6 +1167,7 @@ bundle LSP {
 
 		method : public : Refresh(text : String) ~ Nil {
 			@text := String->New(text);
+			@workspace->Invalidate();
 		}
 		
 		method : public : Reload() ~ Nil {
@@ -1113,20 +1186,20 @@ bundle LSP {
 				text := System.IO.Filesystem.FileReader->ReadFile(filename);
 				if(text <> Nil) {
 					@text := text;
+					@workspace->Invalidate();
 				};
 			};
 		}
 		
 		method : public : GetDiagnostics() ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			was_analyzed := BoolRef->New();
 			result := proxy->GetDiagnostics(was_analyzed, @uri, @workspace->GetLibs());
 			if(was_analyzed->Get()) {
 				@alt_text := @text->Clone()->As(String);
+				# completion and hover parse this text, not the current one
+				@workspace->InvalidateAlt();
 			};
 
 			# which text these describe, so a client can discard a stale set
@@ -1138,10 +1211,7 @@ bundle LSP {
 		}
 
 		method : public : GetSymbols(uri : String) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			if(proxy->Build()) {
 				return proxy->GetSymbols(uri, @workspace->GetLibs());
@@ -1151,46 +1221,31 @@ bundle LSP {
 		}
 
 		method : public : FindReferences(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->FindReferences(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : CodeRename(new_name : String, line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->CodeRename(new_name, line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 		
 		method : public : FindDeclaration(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->FindDeclaration(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : FindDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->FindDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : Completion(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, true, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, true);
 			
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
@@ -1204,10 +1259,7 @@ bundle LSP {
 		}
 
 		method : public : Hover(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, true, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, true);
 			
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
@@ -1221,10 +1273,7 @@ bundle LSP {
 		}
 
 		method : public : SignatureHelp(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, true, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, true);
 
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
@@ -1242,10 +1291,7 @@ bundle LSP {
 				System.IO.Filesystem.Logger->Instance()->Info("=> CodeAction: uri='{$@uri}'");
 			};
 			
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			if(context->Equals("quickfix") & message->StartsWith("Undefined class")) {
 				#
@@ -1301,100 +1347,67 @@ bundle LSP {
 		}
 
 		method : public : FindTypeDefinition(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->FindTypeDefinition(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : FindImplementation(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->FindImplementation(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : PrepareCallHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->PrepareCallHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : IncomingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->IncomingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : OutgoingCalls(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->OutgoingCalls(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : InlayHint(start_line : Int, end_line : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs());
 		}
 
 		method : public : SemanticTokensFull() ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->SemanticTokens(@uri, @workspace->GetLibs());
 		}
 
 		method : public : DocumentHighlight(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->DocumentHighlight(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : PrepareTypeHierarchy(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->PrepareTypeHierarchy(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : TypeHierarchySupertypes(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->TypeHierarchySupertypes(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
 
 		method : public : TypeHierarchySubtypes(line_pos : Int, char_pos : Int) ~ JsonElement {
-			proxy := AstProxy->New(@workspace, @uri, false, @is_debug);
-			leaving {
-				proxy->Release();
-			};
+			proxy := @workspace->GetProxy(@uri, false);
 
 			return proxy->TypeHierarchySubtypes(line_pos, char_pos, @uri, @workspace->GetLibs());
 		}
@@ -1856,6 +1869,7 @@ bundle LSP {
 			};
 
 			@text := String->New(text);
+			@workspace->Invalidate();
 		}
 
 		method : public : Update(text : String, start_line : Int, start_char: Int, end_line : Int, end_char : Int) ~ Nil {
@@ -1879,6 +1893,7 @@ bundle LSP {
 					@text->Delete(start, range_length);
 				};
 				@text->Insert(start, text);
+				@workspace->Invalidate();
 			};
 		}
 

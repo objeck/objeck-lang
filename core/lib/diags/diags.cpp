@@ -79,10 +79,15 @@ struct ProgramState {
   // evicted each other on every request.
   ContextAnalyzer* analyzer;
   std::wstring lib_path;
+  // Analyze() ran and reported errors. The analyzer is kept (its Linker owns
+  // what the AST now points at) and is never run a second time, for the
+  // reasons above.
+  bool failed;
   bool released;
 
   ProgramState() {
     analyzer = nullptr;
+    failed = false;
     released = false;
   }
 
@@ -195,23 +200,26 @@ static ContextAnalyzer* EnsureAnalyzed(ParsedProgram* program, const std::wstrin
   }
 
   if(state->analyzer && state->lib_path == lib_path) {
-    return state->analyzer;
+    return state->failed ? nullptr : state->analyzer;
   }
 
   delete state->analyzer;
   state->analyzer = nullptr;
+  state->failed = false;
   state->lib_path.clear();
 
+  // A failed analysis is remembered, not retried. It used to be deleted and
+  // the next query ran Analyze() again on the same, already-analyzed tree: a
+  // program with errors then reported errors the first pass never did
+  // ("Generic to concrete size mismatch") and lost its symbols. Unseen while
+  // every request parsed a fresh program; a program kept across requests
+  // (the LSP, #1218) is queried many times.
   ContextAnalyzer* fresh = new ContextAnalyzer(program, lib_path, false);
-  if(!fresh->Analyze()) {
-    delete fresh;
-    return nullptr;
-  }
-
   state->analyzer = fresh;
   state->lib_path = lib_path;
+  state->failed = !fresh->Analyze();
 
-  return state->analyzer;
+  return state->failed ? nullptr : state->analyzer;
 }
 
 
@@ -417,9 +425,11 @@ extern "C" {
         bundle_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, bundle_name);
         bundle_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, bundle->GetFileName());
         bundle_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_NAMESPACE; // namespace type
-        bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber();
-        bundle_symb_obj[ResultPosition::POS_START_POS] = bundle->GetLinePosition();
-        bundle_symb_obj[ResultPosition::POS_END_LINE] = bundle->GetEndLineNumber();
+        // 0-based, as the class entries below are; these were the parser's
+        // 1-based values, so the namespace began a line late
+        bundle_symb_obj[ResultPosition::POS_START_LINE] = bundle->GetLineNumber() - 1;
+        bundle_symb_obj[ResultPosition::POS_START_POS] = safe_pos(bundle->GetLinePosition());
+        bundle_symb_obj[ResultPosition::POS_END_LINE] = bundle->GetEndLineNumber() - 1;
         bundle_symb_obj[ResultPosition::POS_END_POS] = bundle->GetEndLinePosition();
 
         top_level.push_back(bundle_symb_obj);

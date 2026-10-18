@@ -215,6 +215,11 @@ obc -src frameworks.obs,proxy.obs,server.obs,format_code/scanner.obs,format_code
     -lib diags,net,json,regex,cipher -dest objeck_lsp.obe
 ```
 
+**Testing the server:** `python tests/run_lsp_tests.py <objeck>/bin [server_dir]`.
+The server keeps each parsed and analyzed program until a document changes;
+set `OBJECK_LSP_NO_CACHE=1` to parse afresh for every request instead, and
+compare the two when a result looks wrong.
+
 ## Resources
 
 - [Install Guide](docs/install_guide.html) &mdash; detailed setup for all editors

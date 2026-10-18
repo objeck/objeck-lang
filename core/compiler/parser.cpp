@@ -442,6 +442,11 @@ void Parser::ParseBundle(int depth)
     // parse bundle
     if(Match(TOKEN_BUNDLE_ID)) {
       while(Match(TOKEN_BUNDLE_ID)) {
+        // where this bundle starts: the 'bundle' keyword, not the start of the
+        // file's parse, which is the first 'use' and was reported as the start
+        // of every bundle in the file
+        const int bundle_line_num = GetLineNumber();
+        const int bundle_line_pos = GetLinePosition();
         NextToken();
 
         std::wstring bundle_name = ParseBundleName();
@@ -458,7 +463,7 @@ void Parser::ParseBundle(int depth)
         }
         else {
           symbol_table = new SymbolTableManager;
-          bundle = new ParsedBundle(file_name, line_num, line_pos, bundle_name, symbol_table);
+          bundle = new ParsedBundle(file_name, bundle_line_num, bundle_line_pos, bundle_name, symbol_table);
           program->AddBundle(bundle);
         }
         current_bundle = bundle;
@@ -501,6 +506,14 @@ void Parser::ParseBundle(int depth)
             NextToken();
             break;
           }
+        }
+
+        // A named bundle's end was never recorded -- only the unnamed bundle's
+        // was -- so it read as uninitialized memory. Recorded by the file that
+        // declared the bundle; a later file adding to it does not move it.
+        if(bundle->GetFileName() == file_name) {
+          bundle->SetEndLineNumber(GetLineNumber());
+          bundle->SetEndLinePosition(GetLinePosition());
         }
 
         if(!Match(TOKEN_CLOSED_BRACE)) {
