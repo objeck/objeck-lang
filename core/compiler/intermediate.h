@@ -109,7 +109,7 @@ class IntermediateEmitter {
   void EmitAppendCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
   void EmitConditional(Cond* conditional);
   void EmitTryIntrinsic(MethodCall* method_call, Expression* expression, bool is_nested);
-  void EmitOtherwiseIntrinsic(MethodCall* method_call, Expression* expression);
+  void EmitOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, bool value_resolved = false);
   void EmitAndOr(CalculatedExpression* expression);
   void EmitBranch(Expression* expression, long target_label, bool jump_if_true);
   void EmitCalculation(CalculatedExpression* expression);

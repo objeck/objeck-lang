@@ -1294,6 +1294,38 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
  * Translates a nested method 
  * call
  ****************************/
+// true if the call returns a scalar Bool, Byte, Char or Int: a value for which
+// 0 is a value, not a missing object (#1172)
+static bool ReturnsValueType(MethodCall* method_call)
+{
+  if(!method_call) {
+    return false;
+  }
+
+  Type* rtrn = nullptr;
+  if(method_call->GetMethod()) {
+    rtrn = method_call->GetMethod()->GetReturn();
+  }
+  else if(method_call->GetLibraryMethod()) {
+    rtrn = method_call->GetLibraryMethod()->GetReturn();
+  }
+
+  if(!rtrn || rtrn->GetDimension() > 0) {
+    return false;
+  }
+
+  switch(rtrn->GetType()) {
+  case frontend::BOOLEAN_TYPE:
+  case frontend::BYTE_TYPE:
+  case frontend::CHAR_TYPE:
+  case frontend::INT_TYPE:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 // true if any link of the chain is the Try() intrinsic ('?->' desugars to it)
 static bool ChainHasTryIntrinsic(MethodCall* method_call)
 {
@@ -4476,6 +4508,14 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
             EmitVariable(variable);
             EmitClassCast(method_call);
           }
+          // `@self?->M()`: the receiver is the instance itself. Its entry has no
+          // slot (id -1), so loading it read a field that does not exist; the
+          // guarded call then ran on garbage, which worked only while the
+          // method never touched @self -- and failed once the region started
+          // testing its receiver for Nil (#1172)
+          else if(entry && entry->IsSelf()) {
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+          }
           else if(entry) {
             MemoryContext mem_context;
             if(entry->IsLocal()) {
@@ -4845,6 +4885,17 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   // (#1171). So the receiver is parked in the Try() slot across TRY_START and
   // the guarded calls' arguments are emitted inside the region, below.
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+
+  // A Nil receiver goes straight to the handler, before the region opens (so
+  // no try record is pushed to unwind). It used to rely on the guarded call
+  // faulting, and a method that never touches @self runs on Nil without one:
+  // `n?->Zero() ?? -1` answered 0 for a Nil n. The zero test in ?? had hidden
+  // that until value results stopped being tested against 0 (#1172).
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, expression, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, EQL_INT));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, handler_label, 1L));
+
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_START, handler_label, -1));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
 
@@ -4854,7 +4905,30 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
   method_call = method_call->GetMethodCall();
   MethodCall* last_call = nullptr;
   while(method_call) {
-    last_call = method_call;
+    if(method_call->IsOtherwiseIntrinsic() && ReturnsValueType(last_call)) {
+      // `s?->Size() ?? -1`: the guarded call yields a value type, which 0 cannot
+      // stand in for -- Size() of "" IS 0 -- so the default replaces only a
+      // failure, never a value. Testing the value against 0 made a real 0
+      // indistinguishable from a recovered error (#1172). The handler takes the
+      // default itself and the success path keeps the value as it is.
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, TRY_END));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, JMP, end_label, -1));
+
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, handler_label));
+      const std::vector<Expression*>& defaults = method_call->GetCallingParameters()->GetExpressions();
+      EmitExpression(defaults[0]);
+      EmitCast(method_call);
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
+      new_char_str_count = 0;
+
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+      // the rest of the chain, after the Otherwise(), with no Nil test
+      EmitOtherwiseIntrinsic(method_call, expression, true);
+      return;
+    }
+
     if(method_call->IsOtherwiseIntrinsic()) {
       // end try scope before Otherwise
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, STOR_INT_VAR, 0, LOCL));
@@ -4927,6 +5001,7 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
       is_nested = false;
     }
 
+    last_call = method_call;
     method_call = method_call->GetMethodCall();
   }
 
@@ -4969,8 +5044,11 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
  * chain. Receiver value is
  * already on the stack.
  ****************************/
-void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expression* expression)
+void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, bool value_resolved)
 {
+  // value_resolved: a Try() region already chose between the value and the
+  // default (#1172); only the chain after the Otherwise() is left to emit
+  if(!value_resolved) {
   long end_label = ++unconditional_label;
 
   // save receiver to var 0
@@ -4997,6 +5075,7 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, skip_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LBL, end_label));
   imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, LOAD_INT_VAR, 0, LOCL));
+  }
 
   // Emit the rest of the chain, the way EmitTryIntrinsic does. Both callers
   // break out of their chain loop right after calling this, so without it
@@ -5008,7 +5087,14 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
   // The result is on the stack, so chained calls are nested. A chained
   // Otherwise() recurses here and re-consumes that value as its receiver.
   MethodCall* tail_call = method_call->GetMethodCall();
-  bool is_nested = true;
+  // Nested only for an object result. A value -- `(x ?? -1)->PrintLine()` --
+  // is the receiver of a static $Int/$Char helper, which takes it as parameter
+  // 0 and still needs the instance word; passing it as nested dropped that
+  // word and the call crashed with no output (#1172).
+  Type* otherwise_type = method_call->GetEvalType();
+  bool is_nested = otherwise_type && otherwise_type->GetType() == frontend::CLASS_TYPE && otherwise_type->GetDimension() == 0 &&
+    !parsed_program->GetLinker()->SearchEnumLibraries(otherwise_type->GetName(), parsed_program->GetLibUses()) &&
+    !SearchProgramEnums(otherwise_type->GetName());
   while(tail_call) {
     if(tail_call->IsTryIntrinsic()) {
       EmitTryIntrinsic(tail_call, expression, is_nested);
@@ -5018,6 +5104,26 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
     if(tail_call->IsOtherwiseIntrinsic()) {
       EmitOtherwiseIntrinsic(tail_call, expression);
       return;
+    }
+
+    // the call's arguments go under the receiver on the stack, as in
+    // EmitTryIntrinsic's chain: this loop emitted none, so
+    // `(s?->ToUpper() ?? "x")->Equals("ABC")` ran Equals with no argument
+    // and crashed (#1172)
+    if(!ReceiverIsFirstParameter(tail_call) && tail_call->GetCallingParameters()) {
+      const bool is_instance_call = (tail_call->GetMethod() && !tail_call->GetMethod()->IsStatic()) ||
+        (tail_call->GetLibraryMethod() && !tail_call->GetLibraryMethod()->IsStatic());
+      new_char_str_count = 0;
+      std::vector<Expression*> args = tail_call->GetCallingParameters()->GetExpressions();
+      for(size_t i = 0; i < args.size(); ++i) {
+        EmitExpression(args[i]);
+        EmitClassCast(args[i], true);
+        new_char_str_count = 0;
+        if(is_instance_call && !is_str_array) {
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
+        }
+      }
+      new_char_str_count = 0;
     }
 
     EmitMethodCall(tail_call, is_nested);
