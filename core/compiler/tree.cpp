@@ -135,12 +135,11 @@ bool CharacterString::AddSegment(const std::wstring& orig)
           skip = 0;
           break;
 
-#ifndef _WIN32
+        // ESC; MSVC has no '\e' literal, so spell it on every platform
         case L'e':
-          escaped_str += L'\e';
+          escaped_str += L'\x1b';
           skip = 0;
           break;
-#endif
 
         case L'f':
           escaped_str += L'\f';
