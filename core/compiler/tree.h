@@ -3830,6 +3830,9 @@ namespace frontend {
       symbol_table = t;
       line_num = l;
       line_pos = p;
+      // until the parser records the closing brace
+      end_line_num = l;
+      end_line_pos = p;
     }
 
     ~ParsedBundle() {

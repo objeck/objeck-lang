@@ -163,6 +163,9 @@ bundle System.Diagnostics {
 		@outgoing_results : Result[];
 		@inlay_results : Result[];
 		@semantic_results : Result[];
+		# not native slots: after every slot above, so the order stays intact
+		@is_diagnosed : Bool;
+		@was_analyzed : Bool;
 
 		New(progam_handle : Int, table_handle : Int, is_parsed : Bool, has_uses : Bool) {
 			Parent();
@@ -241,14 +244,26 @@ bundle System.Diagnostics {
 		```
 		~#
 		method : public : GetDiagnostics(was_analyzed : BoolRef, uri : String, sys_path : String) ~ Result[] {
-			if(@diagnostics_results = Nil) {
+			# Computed once per Analysis, and BOTH halves are kept. The results were
+			# cached but the analyzed flag was reported only by the call that filled
+			# them, so asking again said "not analyzed" -- harmless while every
+			# caller used a fresh Analysis, wrong for one kept across requests. The
+			# results also stayed Nil for a clean program, so it re-ran every time.
+			if(<>@is_diagnosed) {
+				analyzed := BoolRef->New();
 				array_args := Base->New[4];
 				array_args[0] := @self;
 				array_args[1] := uri;
 				array_args[2] := sys_path;
-				array_args[3] := was_analyzed;
+				array_args[3] := analyzed;
 				if(@fn_diag_get_diagnosis = Nil) { @fn_diag_get_diagnosis := "diag_get_diagnosis"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_diag_get_diagnosis, array_args);
+				@was_analyzed := analyzed->Get();
+				@is_diagnosed := true;
+			};
+
+			if(was_analyzed <> Nil) {
+				was_analyzed->Set(@was_analyzed);
 			};
 
 			return @diagnostics_results;

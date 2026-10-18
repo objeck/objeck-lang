@@ -435,8 +435,10 @@ def check_large_real_file(c):
         ("documentHighlight", "textDocument/documentHighlight", dict(doc, position=mid)),
     ]
     symbols = None
+    first = {}
     for label, method, params in requests:
         resp = c.request(method, params, timeout=60)
+        first[label] = result_of(resp)
         if label == "documentSymbol":
             symbols = result_of(resp)
         log_result(f"large real file: {label} answers", resp is not None,
@@ -446,6 +448,30 @@ def check_large_real_file(c):
     log_result("large real file: symbols from both bundles",
                {"Data.JSON.JsonElement", "Data.JSON.Scheme.FunctionType"} <= names,
                f"{len(names)} names, e.g. {sorted(n for n in names if n)[:6]}")
+
+    # A bundle spans its 'bundle' keyword to its closing brace. The start was the
+    # file's first 'use', and a named bundle's end was never recorded, so it read
+    # as uninitialized memory: 140421408 in one run and 0 in the next (#1218).
+    lines = text.split("\n")
+    opening = next(i for i, l in enumerate(lines) if l.startswith("bundle Data.JSON {"))
+    second = next(i for i, l in enumerate(lines) if l.startswith("bundle Data.JSON.Scheme {"))
+    closing = max(i for i, l in enumerate(lines[:second]) if l.startswith("}"))
+    ns = next((s for s in symbols or [] if s.get("name") == "Data.JSON" and s.get("kind") == 3), None)
+    rng = (ns or {}).get("location", {}).get("range", {})
+    log_result("large real file: a bundle spans 'bundle' to its closing brace",
+               rng.get("start", {}).get("line") == opening and rng.get("end", {}).get("line") == closing,
+               f"got {rng}, want lines {opening}..{closing}")
+
+    # The analysis is kept between requests now (#1218): asking again, with no
+    # edit in between, must give the same answer, not a second, damaged analysis.
+    again = result_of(c.request("textDocument/documentSymbol", doc, timeout=60))
+    log_result("large real file: a repeated request gets the same answer",
+               json.dumps(again, sort_keys=True) == json.dumps(symbols, sort_keys=True))
+    tokens_again = c.request("textDocument/semanticTokens/full", doc, timeout=60)
+    log_result("large real file: and so does a different one after it",
+               tokens_again is not None
+               and json.dumps(result_of(tokens_again), sort_keys=True)
+               == json.dumps(first.get("semanticTokens/full"), sort_keys=True))
 
     # Several standalone documents are open by now. workspace/symbol then asks
     # for every open document's text, and that path dereferenced a Nil uri.
