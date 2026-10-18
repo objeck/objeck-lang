@@ -5329,6 +5329,22 @@ each(i : cities) {
 		@param c character to append
 		~#
 		method : public : Append(c : Char) ~ Nil {
+			# Where a Char[] element is a 16-bit unit (Windows), a code point above
+			# U+FFFF is stored as its surrogate pair, as a string literal holding the
+			# character is. It was truncated to its low 16 bits: U+1D11E became
+			# U+D11E (#1185).
+			cp := c->As(Int);
+			if(cp > 0xFFFF & IsUtf16Storage()) {
+				cp -= 0x10000;
+				AppendUnit((0xD800 + (cp >> 10))->As(Char));
+				AppendUnit((0xDC00 + (cp and 0x3FF))->As(Char));
+			}
+			else {
+				AppendUnit(c);
+			};
+		}
+
+		method : AppendUnit(c : Char) ~ Nil {
 			if(@pos >= @max) {
 				# expand string
 				@max += @pos << 1;
@@ -5340,6 +5356,84 @@ each(i : cities) {
 
 			@string[@pos] := c;
 			@pos += 1;
+		}
+
+		#~
+		True where a String stores text as UTF-16 units (Windows), so a code point
+		above U+FFFF takes two Char elements; false where each Char is a whole
+		code point (Linux, macOS)
+		@return true for UTF-16 storage
+		~#
+		function : IsUtf16Storage() ~ Bool {
+			probe := Char->New[1];
+			probe[0] := 0x10000->As(Char);
+			return probe[0]->As(Int) <> 0x10000;
+		}
+
+		#~
+		A string holding one Unicode code point, on every platform: a surrogate
+		pair where strings are UTF-16
+		@param cp code point
+		@return string of that character
+		```
+		String->FromCodePoint(0x1D11E)->ToByteArray()->Size()->PrintLine();  # 4
+		```
+		~#
+		function : FromCodePoint(cp : Int) ~ String {
+			out := String->New();
+			out->Append(cp->As(Char));
+			return out;
+		}
+
+		#~
+		The string's Unicode code points, a surrogate pair counted once where
+		strings are UTF-16
+		@return code points
+		```
+		"a"->CodePoints()[0]->PrintLine();  # 97
+		```
+		~#
+		method : public : CodePoints() ~ Int[] {
+			count := 0;
+			i := 0;
+			while(i < @pos) {
+				if(IsHighSurrogateAt(i)) {
+					i += 2;
+				}
+				else {
+					i += 1;
+				};
+				count += 1;
+			};
+
+			points := Int->New[count];
+			count := 0;
+			i := 0;
+			while(i < @pos) {
+				if(IsHighSurrogateAt(i)) {
+					high := @string[i]->As(Int) - 0xD800;
+					low := @string[i + 1]->As(Int) - 0xDC00;
+					points[count] := 0x10000 + (high << 10) + low;
+					i += 2;
+				}
+				else {
+					points[count] := @string[i]->As(Int);
+					i += 1;
+				};
+				count += 1;
+			};
+
+			return points;
+		}
+
+		method : IsHighSurrogateAt(i : Int) ~ Bool {
+			c := @string[i]->As(Int);
+			if(c >= 0xD800 & c <= 0xDBFF & i + 1 < @pos) {
+				d := @string[i + 1]->As(Int);
+				return d >= 0xDC00 & d <= 0xDFFF;
+			};
+
+			return false;
 		}
 		
 		#~
@@ -7759,7 +7853,7 @@ bundle System.Time {
 	Provides date and time functionality
 	```
 	today := System.Time.Date->New();
-	today->GetDateString()->PrintLine();   # e.g. 2026-05-23
+	today->GetDateString()->PrintLine();   # e.g. 5/23/2026
 	today->GetTimeString(true)->PrintLine(); # 24-hr time
 	```
 	~#
@@ -7975,7 +8069,8 @@ bundle System.Time {
 		~#
 		method : public : GetMonthName() ~ String {
 			days_of_month := ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-			if(@month > -1 & @month - 1 < days_of_month->Size()) {
+			# months are 1-based: 0 read days_of_month[-1] (#1179)
+			if(@month > 0 & @month - 1 < days_of_month->Size()) {
 				return days_of_month[@month - 1];
 			};
 
@@ -8021,42 +8116,38 @@ bundle System.Time {
 		@return time string
 		```
 		d := System.Time.Date->New();
-		d->GetTimeString(false)->PrintLine();  # 3:45 PM
-		d->GetTimeString(true)->PrintLine();   # 15:45
+		d->GetTimeString(false)->PrintLine();  # 3:45:07 PM
+		d->GetTimeString(true)->PrintLine();   # 15:45:07
 		```
 		~#
 		method : public : GetTimeString(is_24hr : Bool := true) ~ String {
+			# The 12-hour form ran when is_24hr was TRUE, halved the hour (19:30
+			# became 9:30), wrote it back into @hours, and swapped AM and PM; the
+			# zero padding stopped at 8, so 9 minutes printed as :9 (#1179).
 			buffer := "";
-			is_pm := false;
+			hours := @hours;
+			suffix := "";
+			if(<>is_24hr) {
+				suffix := hours < 12 ? " AM" : " PM";
+				hours := hours % 12;
+				if(hours = 0) {
+					hours := 12;
+				};
+			};
+			buffer->Append(hours);
 
-			if(is_24hr & @hours > 12) {
-	   			@hours /= 2;
-	   			is_pm := true;
-		   	};
-	   		buffer->Append(@hours);
+			buffer->Append(':');
+			if(@mins < 10) {
+				buffer->Append('0');
+			};
+			buffer->Append(@mins);
 
-			if(@mins < 9) {
-	   			buffer->Append(":0{$@mins}");
-	   		}
-	   		else {
-	   			buffer->Append(":{$@mins}");
-	   		}
-
-	   		if(@secs < 9) {
-	   			buffer->Append(":0{$@secs}");
-	   		}
-	   		else {
-	   			buffer->Append(":{$@secs}");
-	   		}
-
-	   		if(is_24hr) {
-		   		if(is_pm) {
-		   			buffer->Append(" AM");
-		   		}
-		   		else {
-		   			buffer->Append(" PM");
-		   		};
-		   	};
+			buffer->Append(':');
+			if(@secs < 10) {
+				buffer->Append('0');
+			};
+			buffer->Append(@secs);
+			buffer->Append(suffix);
 
 			return buffer;
 		}
@@ -8066,7 +8157,7 @@ bundle System.Time {
 		@return date string
 		```
 		d := System.Time.Date->New();
-		d->GetDateString()->PrintLine();  # 2026-05-23
+		d->GetDateString()->PrintLine();  # 5/23/2026
 		```
 		~#
 		method : public : GetDateString() ~ String {
