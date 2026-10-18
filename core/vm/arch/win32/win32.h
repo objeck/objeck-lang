@@ -36,6 +36,7 @@
 #include "../../common.h"
 #include <windows.h>
 #include <io.h>
+#include <share.h>
 #include <tchar.h>
 #include <userenv.h>
 #include <sys/stat.h>
@@ -124,9 +125,20 @@ class File {
 
  public:
   static std::string TempName() {
+    // Create the file, as mkstemp does on POSIX: File->GetTempName() used to
+    // name a file here and create one there (#1180). CREATE_NEW also closes
+    // the window in which another process could take the name.
     char buffer[FILENAME_MAX + 1];
-    if(!tmpnam_s(buffer, FILENAME_MAX)) {
-      return std::string(buffer);
+    for(int attempt = 0; attempt < 8; ++attempt) {
+      if(tmpnam_s(buffer, FILENAME_MAX)) {
+        return "";
+      }
+
+      HANDLE handle = CreateFileA(buffer, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+      if(handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(handle);
+        return std::string(buffer);
+      }
     }
 
     return "";
@@ -218,7 +230,10 @@ class File {
 #ifdef _MINGW
     file = fopen(name, mode);
 #else
-    if(fopen_s(&file, name, mode) != 0) {
+    // Shared, as files are on POSIX: fopen_s opens them unshared, so a file
+    // open for writing could not be read by another handle (#1180)
+    file = _fsopen(name, mode, _SH_DENYNO);
+    if(!file) {
       return nullptr;
     }
 #endif
