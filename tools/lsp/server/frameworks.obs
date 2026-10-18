@@ -391,6 +391,10 @@ bundle LSP {
 		method : virtual : CallbackOutgoingCalls(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackInlayHint(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackSemanticTokensFull(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackSemanticTokensRange(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackSemanticTokensDelta(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackCodeLens(id : Int, params : JsonElement) ~ Nil;
+		method : virtual : CallbackDocumentLink(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackPrepareTypeHierarchy(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackTypeHierarchySupertypes(id : Int, params : JsonElement) ~ Nil;
 		method : virtual : CallbackTypeHierarchySubtypes(id : Int, params : JsonElement) ~ Nil;
@@ -613,6 +617,22 @@ bundle LSP {
 
 					label "textDocument/semanticTokens/full" {
 						CallbackSemanticTokensFull(id, request->GetParams());
+					}
+
+					label "textDocument/semanticTokens/range" {
+						CallbackSemanticTokensRange(id, request->GetParams());
+					}
+
+					label "textDocument/semanticTokens/full/delta" {
+						CallbackSemanticTokensDelta(id, request->GetParams());
+					}
+
+					label "textDocument/codeLens" {
+						CallbackCodeLens(id, request->GetParams());
+					}
+
+					label "textDocument/documentLink" {
+						CallbackDocumentLink(id, request->GetParams());
 					}
 
 					label "textDocument/prepareTypeHierarchy" {
@@ -1546,6 +1566,24 @@ bundle LSP {
 			return @build_file;
 		}
 
+		method : public : GetLocalPath() ~ String {
+			return @local_path;
+		}
+
+		# the build.json files, as obc's -src takes them
+		method : public : GetSources() ~ String {
+			sources := "";
+			if(@file_strs <> Nil) {
+				each(i : @file_strs) {
+					if(i > 0) {
+						sources += ',';
+					};
+					sources += @file_strs[i];
+				};
+			};
+			return sources;
+		}
+
 		method : public : GetLibs() ~ String {
 			return @libs_str;
 		}
@@ -1627,6 +1665,10 @@ bundle LSP {
 		@is_debug : Bool;
 		# the client's version of the text, or -1 if it sent none
 		@version : Int;
+		# the semantic tokens last sent, for semanticTokens/full/delta
+		@token_data : Int[];
+		@token_result_id : String;
+		@token_count : Int;
 
 		New(uri : String, text : String, workspace : LspWorkspace, is_debug : Bool) {
 			@workspace := workspace;
@@ -2214,10 +2256,293 @@ bundle LSP {
 			return proxy->InlayHints(start_line, end_line, @uri, @workspace->GetLibs(@uri));
 		}
 
+		#
+		# semanticTokens/full, with a resultId: the next delta request names it, and
+		# is answered with the edit from these tokens to the new ones. Every edit
+		# re-sent every token in the file.
+		#
 		method : public : SemanticTokensFull() ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
 
-			return proxy->SemanticTokens(@uri, @workspace->GetLibs(@uri));
+			data := AstProxy->EncodeTokens(rows, -1, -1);
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("resultId", KeepTokens(data));
+			result->Insert("data", AstProxy->IntsToJson(data));
+			return result;
+		}
+
+		# semanticTokens/range: the tokens of these lines
+		method : public : SemanticTokensRange(start_line : Int, end_line : Int) ~ JsonElement {
+			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			result->Insert("data", AstProxy->IntsToJson(AstProxy->EncodeTokens(rows, start_line, end_line)));
+			return result;
+		}
+
+		#
+		# semanticTokens/full/delta: the edit from the tokens last sent under
+		# previous_id to the current ones -- one replacement of the span between
+		# their common prefix and suffix. Full tokens when previous_id isn't the
+		# last result, which the client then takes as they are.
+		#
+		method : public : SemanticTokensDelta(previous_id : String) ~ JsonElement {
+			proxy := @workspace->GetProxy(@uri, false);
+			rows := proxy->SemanticTokenRows(@uri, @workspace->GetLibs(@uri));
+			if(rows = Nil) {
+				return Nil;
+			};
+
+			data := AstProxy->EncodeTokens(rows, -1, -1);
+			old := @token_data;
+			matches := previous_id <> Nil & @token_result_id <> Nil & previous_id->Equals(@token_result_id) & old <> Nil;
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(<>matches) {
+				result->Insert("resultId", KeepTokens(data));
+				result->Insert("data", AstProxy->IntsToJson(data));
+				return result;
+			};
+
+			prefix := 0;
+			while(prefix < old->Size() & prefix < data->Size() & old[prefix] = data[prefix]) {
+				prefix += 1;
+			};
+
+			suffix := 0;
+			while(suffix < old->Size() - prefix & suffix < data->Size() - prefix &
+					old[old->Size() - 1 - suffix] = data[data->Size() - 1 - suffix]) {
+				suffix += 1;
+			};
+
+			edits := JsonElement->New(JsonElement->JsonType->ARRAY);
+			delete_count := old->Size() - prefix - suffix;
+			insert_count := data->Size() - prefix - suffix;
+			if(delete_count > 0 | insert_count > 0) {
+				inserted := Int->New[insert_count];
+				for(i := 0; i < insert_count; i += 1;) {
+					inserted[i] := data[prefix + i];
+				};
+
+				edit := JsonElement->New(JsonElement->JsonType->OBJECT);
+				edit->Insert("start", prefix);
+				edit->Insert("deleteCount", delete_count);
+				edit->Insert("data", AstProxy->IntsToJson(inserted));
+				edits->Add(edit);
+			};
+
+			result->Insert("resultId", KeepTokens(data));
+			result->Insert("edits", edits);
+			return result;
+		}
+
+		# the tokens a later delta is computed from, and their id
+		method : KeepTokens(data : Int[]) ~ String {
+			@token_count += 1;
+			@token_data := data;
+			@token_result_id := "{$@token_count}";
+			return @token_result_id;
+		}
+
+		#
+		# textDocument/codeLens: one on each 'function : Main(args : String[])',
+		# saying how to build and run the program it starts. With run_command (the
+		# client's command id, from initializationOptions.runCommand) the lens runs
+		# it, given { cwd, obc, obr } -- the compiler's and the VM's arguments;
+		# otherwise it's a label. A file in a configured folder builds with that
+		# folder's build.json files and libraries.
+		#
+		method : public : CodeLens(run_command : String) ~ JsonElement {
+			lenses := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(@text = Nil) {
+				return lenses;
+			};
+
+			# the program: its sources, libraries and directory
+			local_path := LspFolder->LocalPath(@uri);
+			slash := local_path->FindLast('/');
+			dir := slash > 0 ? local_path->SubString(slash) : ".";
+			file_name := slash > -1 ? local_path->SubString(slash + 1, local_path->Size() - slash - 1) : local_path;
+			sources := file_name;
+			libs := "";
+
+			folder := @workspace->FolderFor(@uri);
+			if(folder <> Nil) {
+				dir := folder->GetLocalPath();
+				sources := folder->GetSources();
+				libs := folder->GetLibs()->ReplaceAll(".obl", "");
+			};
+
+			program := file_name;
+			if(program->EndsWith(".obs")) {
+				program := program->SubString(program->Size() - 4);
+			};
+			program += ".obe";
+
+			lines := @text->Split('\n');
+			in_comment := false;
+			each(i : lines) {
+				line := lines[i];
+				trimmed := line->Trim();
+				if(in_comment) {
+					if(trimmed->Find("~#") > -1) {
+						in_comment := false;
+					};
+				}
+				else if(trimmed->StartsWith("#~")) {
+					in_comment := trimmed->Find("~#") < 0;
+				}
+				else if(<>trimmed->StartsWith("#")) {
+					main_at := line->Find("function : Main(");
+					if(main_at > -1 & line->Find("String[]") > main_at) {
+						name_at := main_at + "function : "->Size();
+						lenses->Add(MakeRunLens(i, name_at, run_command, dir, sources, libs, program));
+					};
+				};
+			};
+
+			return lenses;
+		}
+
+		method : MakeRunLens(line : Int, start_char : Int, run_command : String, dir : String,
+				sources : String, libs : String, program : String) ~ JsonElement {
+			obc_args := JsonElement->New(JsonElement->JsonType->ARRAY);
+			obc_args->Add("-src");
+			obc_args->Add(sources);
+			if(<>libs->IsEmpty()) {
+				obc_args->Add("-lib");
+				obc_args->Add(libs);
+			};
+			obc_args->Add("-dest");
+			obc_args->Add(program);
+
+			obr_args := JsonElement->New(JsonElement->JsonType->ARRAY);
+			obr_args->Add(program);
+
+			command_line := "obc -src {$sources}";
+			if(<>libs->IsEmpty()) {
+				command_line += " -lib {$libs}";
+			};
+			command_line += " -dest {$program} && obr {$program}";
+
+			command := JsonElement->New(JsonElement->JsonType->OBJECT);
+			if(run_command <> Nil) {
+				command->Insert("title", "Run");
+				command->Insert("command", run_command);
+
+				run := JsonElement->New(JsonElement->JsonType->OBJECT);
+				run->Insert("cwd", dir);
+				run->Insert("obc", obc_args);
+				run->Insert("obr", obr_args);
+				arguments := JsonElement->New(JsonElement->JsonType->ARRAY);
+				arguments->Add(run);
+				command->Insert("arguments", arguments);
+			}
+			else {
+				# no client command: a label that says what to run
+				command->Insert("title", "Run: {$command_line}");
+				command->Insert("command", "");
+			};
+
+			lens := JsonElement->New(JsonElement->JsonType->OBJECT);
+			lens->Insert("range", MakeLineRange(line, start_char, line, start_char + "Main"->Size()));
+			lens->Insert("command", command);
+			return lens;
+		}
+
+		function : MakeLineRange(start_line : Int, start_char : Int, end_line : Int, end_char : Int) ~ JsonElement {
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", start_line);
+			start->Insert("character", start_char);
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", end_line);
+			end->Insert("character", end_char);
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			range->Insert("start", start);
+			range->Insert("end", end);
+			return range;
+		}
+
+		#
+		# textDocument/documentLink: each bundle a leading 'use' names that the API
+		# reference documents, linked to its entry there.
+		#
+		method : public : DocumentLinks() ~ JsonElement {
+			links := JsonElement->New(JsonElement->JsonType->ARRAY);
+			if(@text = Nil) {
+				return links;
+			};
+
+			lines := @text->Split('\n');
+			in_comment := false;
+			done := false;
+			for(i := 0; i < lines->Size() & <>done; i += 1;) {
+				line := lines[i];
+				trimmed := line->Trim();
+				if(in_comment) {
+					if(trimmed->Find("~#") > -1) {
+						in_comment := false;
+					};
+				}
+				else if(trimmed->IsEmpty()) {
+				}
+				else if(trimmed->StartsWith("#~")) {
+					in_comment := trimmed->Find("~#") < 0;
+				}
+				else if(trimmed->StartsWith("#")) {
+				}
+				else if(trimmed->StartsWith("use ") | trimmed->StartsWith("use\t")) {
+					AddUseLinks(i, line, links);
+				}
+				else {
+					done := true;
+				};
+			};
+
+			return links;
+		}
+
+		# the bundle names on one 'use' line, where they are on it
+		method : AddUseLinks(line_index : Int, line : String, links : JsonElement) ~ Nil {
+			index := line->Find("use") + 3;
+			end := line->Find(';');
+			if(end < 0) {
+				end := line->Size();
+			};
+
+			while(index < end) {
+				while(index < end & (line->Get(index) = ' ' | line->Get(index) = '\t' | line->Get(index) = ',')) {
+					index += 1;
+				};
+
+				start := index;
+				while(index < end & line->Get(index) <> ' ' & line->Get(index) <> '\t' & line->Get(index) <> ',') {
+					index += 1;
+				};
+
+				if(index > start) {
+					name := line->SubString(start, index - start);
+					# 'use bundle X' and 'use class X' -- the keywords aren't links
+					if(<>name->Equals("bundle") & <>name->Equals("class") & AstProxy->HasDocumentedBundle(name)) {
+						target := "https://www.objeck.org/api/latest/index.html?scrollTo=";
+						target += name->ToLower();
+
+						link := JsonElement->New(JsonElement->JsonType->OBJECT);
+						link->Insert("range", MakeLineRange(line_index, start, line_index, index));
+						link->Insert("target", target);
+						link->Insert("tooltip", "{$name} in the Objeck API reference");
+						links->Add(link);
+					};
+				};
+			};
 		}
 
 		method : public : DocumentHighlight(line_pos : Int, char_pos : Int) ~ JsonElement {
