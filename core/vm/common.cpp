@@ -3695,6 +3695,7 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     std::wstring wbuffer;
+#ifdef _WIN32
     if(Runtime::StackInterpreter::IsBinaryStdio()) {
       std::string buffer;
       std::getline(std::cin, buffer);
@@ -3703,13 +3704,32 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     else {
       std::getline(std::wcin, wbuffer);
     }
-
-    // copy to dest
-    wchar_t* dest = (wchar_t*)(array + 3);
-#ifdef _WIN32
-    wcsncpy_s(dest, array[0] + 1, wbuffer.c_str(), wbuffer.size());
 #else
-    wcsncpy(dest, wbuffer.c_str(), wbuffer.size());
+    // Bytes, as the array reads (fread) are. Reading lines through std::wcin
+    // made stdin wide-oriented, and C forbids byte functions on a wide stream:
+    // a program that read a line and then a buffer -- the LSP over stdio, a
+    // header line and then a Content-Length body -- got no body at all, so
+    // every stdio client on Linux and macOS was answered with a parse error,
+    // or the server crashed. Decoded as wcin was: UTF-8, the locale posix_main
+    // sets up.
+    std::string buffer;
+    int c;
+    while((c = getc(stdin)) != EOF && c != '\n') {
+      buffer += (char)c;
+    }
+    wbuffer = BytesToUnicode(buffer);
+#endif
+
+    // copy to dest, bounded by its size: an unbounded copy of a long line ran
+    // past the array
+    wchar_t* dest = (wchar_t*)(array + 3);
+    const size_t capacity = array[0];
+    const size_t count = wbuffer.size() < capacity ? wbuffer.size() : capacity;
+#ifdef _WIN32
+    wcsncpy_s(dest, capacity + 1, wbuffer.c_str(), count);
+#else
+    wcsncpy(dest, wbuffer.c_str(), count);
+    dest[count] = L'\0';
 #endif
   }
 
