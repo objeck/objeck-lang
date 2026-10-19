@@ -4583,8 +4583,8 @@ bundle System {
 
 		#~
 		Returns a string for the instance. A Stringify instance prints its own
-		ToString; any other prints its class name and instance ID, e.g.
-		"Point@0x1f". A concrete method is bound statically, so a ToString a class
+		ToString; any other prints its class name and hex instance ID, joined by
+		an at sign. A concrete method is bound statically, so a ToString a class
 		declares without implementing Stringify is not reached through a Base
 		reference: implement Stringify for that.
 		@return string for the instance
