@@ -771,6 +771,12 @@ namespace frontend {
       is_dynamic = true;
     }
 
+    // a ragged literal, '[[1], [1, 1]]', is one-dimensional: an array of rows (#1246)
+    void SetJaggedRows() {
+      dim = 1;
+      is_dynamic = true;
+    }
+
     SymbolEntry* GetDynamicEntry() {
       return dynamic_entry;
     }
@@ -1124,6 +1130,12 @@ namespace frontend {
     int id;
     std::wstring name;
     ExpressionList* indices;
+    // 'rows[i][j]': the index groups after the first, for a jagged array (#1246)
+    std::vector<ExpressionList*> chained_indices;
+    // the array each chained group indexes, outermost first (#1246)
+    std::vector<Type*> chained_types;
+    // 'rows[i]' of a jagged array is a row: an array value, not a scalar (#1246)
+    bool is_row_value = false;
     SymbolEntry* entry;
     OperationAssignment* pre_operation;
     bool checked_pre_operation;
@@ -1193,6 +1205,34 @@ namespace frontend {
 
     void SetConcreteTypes(std::vector<Type*>& c) {
       concrete_types = c;
+    }
+
+    bool IsRowValue() {
+      return is_row_value;
+    }
+
+    void SetRowValue(bool r) {
+      is_row_value = r;
+    }
+
+    const std::vector<Type*> &GetChainedTypes() {
+      return chained_types;
+    }
+
+    void SetChainedTypes(const std::vector<Type*> &t) {
+      chained_types = t;
+    }
+
+    const std::vector<ExpressionList*> &GetChainedIndices() {
+      return chained_indices;
+    }
+
+    void AddChainedIndices(ExpressionList* c) {
+      chained_indices.push_back(c);
+    }
+
+    void ClearChainedIndices() {
+      chained_indices.clear();
     }
 
     ExpressionList* GetIndices() {

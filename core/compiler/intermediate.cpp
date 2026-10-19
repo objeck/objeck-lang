@@ -6291,6 +6291,13 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   if(variable->GetCastType() && variable->GetCastType()->GetType() != frontend::CLASS_TYPE) {
     receiver_type = variable->GetCastType();
   }
+  // a jagged array's row, or an element read through chained subscripts (#1246)
+  if(variable->IsRowValue()) {
+    receiver_type = variable->GetEvalType();
+  }
+  else if(!variable->GetChainedTypes().empty()) {
+    receiver_type = variable->GetChainedTypes().back();
+  }
 
   bool receiver_is_first_param = false;
   if(variable->GetMethodCall()) {
@@ -6383,6 +6390,12 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
   // array variable
   if(indices) {
     int dimension = (int)indices->GetExpressions().size();
+    // 'rows[i][j]' (#1246): each chained group's indices go beneath the array it
+    // indexes, so they are emitted innermost first, before the first group's
+    const std::vector<ExpressionList*> chained = variable->GetChainedIndices();
+    for(int k = (int)chained.size() - 1; k > -1; --k) {
+      EmitIndices(chained[k]);
+    }
     EmitIndices(indices);
 
     // load instance or class memory
@@ -6417,6 +6430,32 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
 
     default:
       break;
+    }
+
+    // then each chained group loads from the array the one before it left
+    const std::vector<frontend::Type*> chained_types = variable->GetChainedTypes();
+    for(size_t k = 0; k < chained.size() && k < chained_types.size(); ++k) {
+      instructions::InstructionType load_instr;
+      switch(chained_types[k]->GetType()) {
+      case frontend::BYTE_TYPE:
+      case frontend::BOOLEAN_TYPE:
+        load_instr = LOAD_BYTE_ARY_ELM;
+        break;
+
+      case frontend::CHAR_TYPE:
+        load_instr = LOAD_CHAR_ARY_ELM;
+        break;
+
+      case frontend::FLOAT_TYPE:
+        load_instr = LOAD_FLOAT_ARY_ELM;
+        break;
+
+      default:
+        load_instr = LOAD_INT_ARY_ELM;
+        break;
+      }
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, load_instr,
+                                                                                 (long)chained[k]->GetExpressions().size(), LOCL));
     }
   }
   // scalar variable
@@ -6994,7 +7033,13 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
       return false;
     }
 
-    switch(variable->GetBaseType()->GetType()) {
+    // a jagged array's row is an array; its element is of the last array's type (#1246)
+    if(variable->IsRowValue()) {
+      return false;
+    }
+    frontend::Type* element_type = variable->GetChainedTypes().empty() ? variable->GetBaseType() : variable->GetChainedTypes().back();
+
+    switch(element_type->GetType()) {
     case frontend::BOOLEAN_TYPE:
     case frontend::BYTE_TYPE:
     case frontend::CHAR_TYPE:
@@ -7417,6 +7462,11 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         array_receiver_loaded = true;
       }
+      // a jagged array's row, 'rows[i]->Size()', is an array receiver too (#1246)
+      else if(variable->IsRowValue()) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+        array_receiver_loaded = true;
+      }
     }
     else if(variable && method_call->GetTypeOf()) {
       EmitVariable(variable);
@@ -7501,6 +7551,24 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       emitting_deferred_params = true;
       EmitMethodCallParameters(method_call);
       emitting_deferred_params = false;
+    }
+
+    // A jagged array's element, 'rows[i][j]->PrintLine()' (#1246), has the last
+    // array's element type, not the entry's row type: a primitive one is a
+    // static '$' call that takes the instance word, as any primitive receiver.
+    if(variable && !variable->IsRowValue() && !variable->GetChainedTypes().empty()) {
+      switch(variable->GetChainedTypes().back()->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+      case frontend::BYTE_TYPE:
+      case frontend::CHAR_TYPE:
+      case frontend::INT_TYPE:
+      case frontend::FLOAT_TYPE:
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
+        break;
+
+      default:
+        break;
+      }
     }
 
     // program method call
