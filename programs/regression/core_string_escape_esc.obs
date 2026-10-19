@@ -1,0 +1,51 @@
+#~
+# String Escape \e Test
+# "\e" in a string literal is ESC (27) on every platform; a Windows-built obc
+# used to leave it as the two characters '\' and 'e' (#1253)
+~#
+
+class CoreStringEscapeEscTest {
+    function : Main(args : String[]) ~ Nil {
+        "Testing the \\e string escape..."->PrintLine();
+
+        pass := true;
+
+        esc := "\e";
+        if(esc->Size() <> 1) {
+            pass := false;
+            size := esc->Size();
+            "  FAIL: \"\\e\"->Size() = {$size}, expected 1"->PrintLine();
+        }
+        else {
+            code := esc->Get(0)->As(Int);
+            if(code <> 27) {
+                pass := false;
+                "  FAIL: \"\\e\" code = {$code}, expected 27"->PrintLine();
+            };
+
+            if(esc->Get(0) <> '\e') {
+                pass := false;
+                "  FAIL: \"\\e\" differs from the char literal '\\e'"->PrintLine();
+            };
+        };
+
+        # embedded between other characters
+        mixed := "a\e[0mb";
+        if(mixed->Size() <> 6) {
+            pass := false;
+            size := mixed->Size();
+            "  FAIL: \"a\\e[0mb\"->Size() = {$size}, expected 6"->PrintLine();
+        }
+        else if(mixed->Get(1)->As(Int) <> 27 | mixed->Get(2) <> '[') {
+            pass := false;
+            "  FAIL: \"a\\e[0mb\" has the wrong characters"->PrintLine();
+        };
+
+        if(pass) {
+            "PASS: \\e string escape"->PrintLine();
+        } else {
+            "FAIL: \\e string escape"->PrintLine();
+            Runtime->Exit(1);
+        };
+    }
+}
