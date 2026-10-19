@@ -1,0 +1,21 @@
+# EXPECT_COMPILE_ERROR: Type parameter 'T': 'System.Base' does not meet its bound 'System.Compare'
+#~
+Method generics (#1242): an argument that does not meet the bound.
+~#
+class BadMethodGenericBound {
+	function : Big<T : Compare>(a : T[]) ~ T {
+		return a[0];
+	}
+
+	function : Big2<T : Compare>(a : T, b : T) ~ T {
+		return a;
+	}
+
+	function : Same<T>(a : T, b : T) ~ T {
+		return a;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Big([Base->New()]);
+	}
+}

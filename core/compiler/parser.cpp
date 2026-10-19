@@ -1674,6 +1674,18 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
     mid_line_pos = GetLinePosition();
     method_name = current_class->GetName() + L':' + ident;
     NextToken();
+
+    // 'Max<T : Compare>(...)': the method's own type parameters (#1242). Each is
+    // erased to its first bound, or System.Base, as the method is parsed.
+    method_generic_bounds.clear();
+    if(Match(TOKEN_LES)) {
+      std::vector<Class*> generic_params = ParseGenericClasses(L"", depth + 1);
+      for(size_t i = 0; i < generic_params.size(); ++i) {
+        Class* generic_param = generic_params[i];
+        Type* bound = generic_param->GetGenericInterface();
+        method_generic_bounds[generic_param->GetName()] = bound ? bound->GetName() : L"System.Base";
+      }
+    }
   }
 
 #ifdef _DEBUG
@@ -1722,6 +1734,7 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 
   symbol_table->PreviousParseScope(method->GetParsedName());
   current_method = nullptr;
+  method_generic_bounds.clear();
 
   return method;
 }
@@ -8716,7 +8729,15 @@ Type* Parser::ParseType(int depth)
       ident += L"#";
       ident += ParseBundleName();
     }
-    type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident, file_name, line_num, line_pos);
+    // a method type parameter is its bound, marked with its name (#1242)
+    std::map<std::wstring, std::wstring>::iterator method_generic = method_generic_bounds.find(ident);
+    if(method_generic != method_generic_bounds.end()) {
+      type = TypeFactory::Instance()->MakeType(CLASS_TYPE, method_generic->second, file_name, line_num, line_pos);
+      type->SetMethodGeneric(ident);
+    }
+    else {
+      type = TypeFactory::Instance()->MakeType(CLASS_TYPE, ident, file_name, line_num, line_pos);
+    }
   }
     break;
 

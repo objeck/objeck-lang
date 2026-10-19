@@ -153,6 +153,8 @@ namespace frontend {
     bool is_resolved;
     void* klass_cache_ptr;
     void* lib_klass_cache_ptr;
+    // a method type parameter erased to its bound: the parameter's name (#1242)
+    std::wstring method_generic;
     
     Type(Type* t) {
 #ifdef _DEBUG
@@ -171,6 +173,7 @@ namespace frontend {
         is_resolved = t->is_resolved;
         klass_cache_ptr = t->klass_cache_ptr;
         lib_klass_cache_ptr = t->lib_klass_cache_ptr;
+        method_generic = t->method_generic;
       } 
     }
     
@@ -219,6 +222,28 @@ namespace frontend {
     }
 
   public:
+    // a method type parameter erased to its bound (#1242): 'T' in Max<T : Compare>
+    const std::wstring &GetMethodGeneric() const {
+      return method_generic;
+    }
+
+    void SetMethodGeneric(const std::wstring &g) {
+      method_generic = g;
+    }
+
+    // whether the type, or one of its generic arguments, came from a method type parameter
+    bool HasMethodGeneric() const {
+      if(!method_generic.empty()) {
+        return true;
+      }
+      for(size_t i = 0; i < generic_types.size(); ++i) {
+        if(generic_types[i] && generic_types[i]->HasMethodGeneric()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     static Type* CharStringType();
 
     void SetType(EntryType t) {
