@@ -40,6 +40,24 @@ interface Color {
 }
 ```
 
+### Default and Named Arguments
+Trailing parameters can have default values. An argument can be passed by name,
+`name: value`, after any positional ones. Named arguments may come in any order,
+and they may skip any parameter that has a default, not just the trailing ones:
+```ruby
+function : Train(data : Int[], epochs : Int := 10, rate : Float := 0.01, verbose : Bool := false) ~ Nil { ... }
+
+Train(data);                        # every default
+Train(data, verbose: true);         # skip epochs and rate
+Train(data, rate: 0.1, epochs: 50); # any order
+Point->New(y: 2, x: 1);             # constructors too
+```
+Arguments are evaluated in the order written. Named arguments work for the
+functions, methods and constructors of the program being compiled. Library
+methods, virtual methods and function values do not take them yet: a call that
+tries is a compile error, never a silent positional call. See
+[NAMED_ARGUMENTS_DESIGN.md](NAMED_ARGUMENTS_DESIGN.md).
+
 ### Type Inference
 ```ruby
 value := "Hello World!";

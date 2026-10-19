@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: A function value has no parameter names; pass its arguments by position
+#~
+Named arguments (#1244): a function value: a function type has no parameter names.
+~#
+class BadNamedArgumentFunctionValue {
+	function : F(a : Int, b : Int := 2) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		g := \(Int) ~ Int : (x) => x;
+		g(x: 1)->PrintLine();
+	}
+}

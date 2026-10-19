@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Parameter 'a' is given both by position and by name
+#~
+Named arguments (#1244): one parameter given by position and again by name.
+~#
+class BadNamedArgumentTwice {
+	function : F(a : Int, b : Int := 2) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		F(1, a: 2);
+	}
+}

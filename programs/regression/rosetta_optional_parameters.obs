@@ -3,7 +3,7 @@
 # https://rosettacode.org/wiki/Optional_parameters
 # Claimed in #1133
 #
-# Sort a table of string rows by one column, with an optional ordering function (lexicographic by default), column (the first by default) and reverse flag. Objeck has no default argument values and no named arguments, so both styles the task names are shown the way the language allows: positional optional parameters by overloading on argument count, and named ones by a small options object with chained setters. The sort itself is the library's CompareVector->Sort, as the task asks; each row compares itself through the shared options.
+# Sort a table of string rows by one column, with an optional ordering function (lexicographic by default), column (the first by default) and reverse flag. Both styles the task names are shown three ways: the language's own default values and named arguments (SortBy, #1244), which can skip any optional parameter and name the rest in any order; positional optional parameters by overloading on argument count; and named ones by a small options object with chained setters. The sort itself is the library's CompareVector->Sort, as the task asks; each row compares itself through the shared options.
 #
 # It pins down overload resolution across one to four arguments, a function-typed parameter with a default, and that the built-in sort is stable, since rows that tie keep their order in both directions.
 #
@@ -125,6 +125,17 @@ class RosettaOptionalParameters {
 		return sorted;
 	}
 
+	# the language's own form: default values, and named arguments for any subset
+	# (#1244); the ordering's default is the lexicographic one, so it is the overload
+	# without it
+	function : SortBy(table : Line[], column : Int := 0, descending : Bool := false) ~ Line[] {
+		return SortTable(table, SortOptions->New()->Column(column)->Descending(descending));
+	}
+
+	function : SortBy(table : Line[], ordering : (String, String) ~ Int, column : Int := 0, descending : Bool := false) ~ Line[] {
+		return SortTable(table, SortOptions->New()->Ordering(ordering)->Column(column)->Descending(descending));
+	}
+
 	# the positional forms: overloads that supply the missing trailing arguments
 	function : SortTable(table : Line[]) ~ Line[] {
 		return SortTable(table, SortOptions->New());
@@ -183,6 +194,14 @@ class RosettaOptionalParameters {
 		Check("named: ordering only", Show(SortTable(Table(), SortOptions->New()->Ordering(no_case))), ",q,z/a,b,c/Beta,alpha,m/zap,zip,Zot");
 		Check("named: reverse before ordering", Show(SortTable(Table(), SortOptions->New()->Descending(true)->Ordering(no_case))), "zap,zip,Zot/Beta,alpha,m/a,b,c/,q,z");
 		Check("named: column only", Show(SortTable(Table(), SortOptions->New()->Column(2))), "zap,zip,Zot/a,b,c/Beta,alpha,m/,q,z");
+
+		# default values and named arguments
+		Check("SortBy: all defaults", Show(SortBy(Table())), ",q,z/Beta,alpha,m/a,b,c/zap,zip,Zot");
+		Check("SortBy: column only", Show(SortBy(Table(), column: 2)), "zap,zip,Zot/a,b,c/Beta,alpha,m/,q,z");
+		Check("SortBy: descending before column", Show(SortBy(Table(), descending: true, column: 2)), ",q,z/Beta,alpha,m/a,b,c/zap,zip,Zot");
+		Check("SortBy: ordering only", Show(SortBy(Table(), ordering: no_case)), ",q,z/a,b,c/Beta,alpha,m/zap,zip,Zot");
+		Check("SortBy: descending before ordering", Show(SortBy(Table(), descending: true, ordering: no_case)), "zap,zip,Zot/Beta,alpha,m/a,b,c/,q,z");
+		Check("SortBy: positional", Show(SortBy(Table(), by_length, 1, true)), "Beta,alpha,m/zap,zip,Zot/a,b,c/,q,z");
 
 		# the input is not modified
 		table := Table();

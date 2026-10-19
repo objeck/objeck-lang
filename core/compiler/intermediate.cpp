@@ -796,26 +796,39 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       const int diff_offset = original->HasAndOr() ? 1 : 0;
       for(size_t i = 0; i < original_params.size(); ++i) {
         SymbolEntry* var_entry = original_params[i]->GetEntry();
+        // A named-argument forwarder (#1244) takes its parameters in a call's
+        // written order, so the original's slots are not its own: load each
+        // from the declaration or default assignment that holds it here.
+        int var_id = var_entry->GetId() - diff_offset;
+        if(method->IsNamedForwarder()) {
+          Declaration* forwarded = method->GetForwardedDeclaration(i);
+          Assignment* forwarded_default = method->GetForwardedDefault(i);
+          SymbolEntry* forwarded_entry = forwarded ? forwarded->GetEntry() :
+            (forwarded_default ? forwarded_default->GetVariable()->GetEntry() : nullptr);
+          if(forwarded_entry) {
+            var_id = forwarded_entry->GetId() - (method->HasAndOr() ? 1 : 0);
+          }
+        }
         switch(var_entry->GetType()->GetType()) {
         case frontend::BOOLEAN_TYPE:
         case frontend::BYTE_TYPE:
         case frontend::CHAR_TYPE:
         case frontend::INT_TYPE:
         case frontend::CLASS_TYPE:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, var_entry->GetId() - diff_offset, LOCL));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, var_id, LOCL));
           break;
 
         case frontend::FLOAT_TYPE:
           if(var_entry->GetType()->GetDimension() > 0) {
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, var_entry->GetId() - diff_offset, LOCL));
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, var_id, LOCL));
           }
           else {
-            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, var_entry->GetId() - diff_offset, LOCL));
+            imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FLOAT_VAR, var_id, LOCL));
           }
           break;
 
         case frontend::FUNC_TYPE:
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, var_entry->GetId() - diff_offset, LOCL));
+          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_FUNC_VAR, var_id, LOCL));
           break;
 
         default:

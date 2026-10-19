@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Named arguments are not supported for library methods yet
+#~
+Named arguments (#1244): a library method: a release .obl keeps no parameter names (phase 2).
+~#
+class BadNamedArgumentLibrary {
+	function : F(a : Int, b : Int := 2) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		"s"->Pad(char: 32, num: 4);
+	}
+}

@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: No parameter named 'zzz'; the parameters are: a, b
+#~
+Named arguments (#1244): a parameter name the method does not have; the error lists the ones it has.
+~#
+class BadNamedArgumentUnknown {
+	function : F(a : Int, b : Int := 2) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		F(1, zzz: 2);
+	}
+}
