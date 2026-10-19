@@ -3963,6 +3963,80 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
 }
 
 /****************************
+ * The ToString an object operand
+ * of a concatenation calls: its
+ * class's own, else the nearest
+ * ancestor's, ending at System.Base
+ * (which defers to Stringify).
+ * False when the class is unknown;
+ * true with neither set when the
+ * nearest one is private.
+ ****************************/
+bool ContextAnalyzer::ResolveConcatToString(const std::wstring &cls_name, Method* &method, LibraryMethod* &lib_method)
+{
+  method = nullptr;
+  lib_method = nullptr;
+
+  std::wstring name = cls_name;
+  bool found_class = false;
+  // a class cannot be its own ancestor, but bound the walk all the same
+  for(int depth = 0; depth < 64 && !name.empty(); ++depth) {
+    Class* klass = SearchProgramClasses(name);
+    if(klass) {
+      found_class = true;
+      Method* candidate = klass->GetMethod(klass->GetName() + L":ToString:");
+      if(candidate) {
+        if(candidate->GetMethodType() != PRIVATE_METHOD) {
+          method = candidate;
+        }
+        return true;
+      }
+      name = klass->GetParentName();
+      continue;
+    }
+
+    LibraryClass* lib_klass = linker->SearchClassLibraries(name, program->GetLibUses());
+    if(lib_klass) {
+      found_class = true;
+      LibraryMethod* candidate = lib_klass->GetMethod(lib_klass->GetName() + L":ToString:");
+      if(candidate) {
+        if(candidate->GetMethodType() != PRIVATE_METHOD) {
+          lib_method = candidate;
+        }
+        return true;
+      }
+      name = lib_klass->GetParentName();
+      continue;
+    }
+
+    break;
+  }
+
+  if(!found_class) {
+    return false;
+  }
+
+  // every class ends at System.Base, whatever its declared chain says
+  LibraryClass* base_klass = linker->SearchClassLibraries(L"System.Base", program->GetLibUses());
+  if(base_klass) {
+    LibraryMethod* candidate = base_klass->GetMethod(L"System.Base:ToString:");
+    if(candidate && candidate->GetMethodType() != PRIVATE_METHOD) {
+      lib_method = candidate;
+    }
+  }
+  else {
+    Class* klass = SearchProgramClasses(L"System.Base");
+    if(klass) {
+      Method* candidate = klass->GetMethod(L"System.Base:ToString:");
+      if(candidate && candidate->GetMethodType() != PRIVATE_METHOD) {
+        method = candidate;
+      }
+    }
+  }
+  return true;
+}
+
+/****************************
  * The receiver of a call on a
  * primitive ('v->Pow(2)'): the
  * type its encoding names, or
@@ -9497,30 +9571,19 @@ StringConcat* ContextAnalyzer::AnalyzeStringConcat(Expression* expression, int d
               if(concat_type->GetDimension() < 1 && HasProgramOrLibraryEnum(cls_name)) {
                 continue;
               }
-              Class* klass = SearchProgramClasses(cls_name);
-              if(klass) {
-                Method* method = klass->GetMethod(cls_name + L":ToString:");
-                if(method && method->GetMethodType() != PRIVATE_METHOD) {
-                  methods_to_string[concat_expr] = method;
-                }
-                else {
-                  ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
-                }
+              Method* method = nullptr;
+              LibraryMethod* lib_method = nullptr;
+              if(!ResolveConcatToString(cls_name, method, lib_method)) {
+                ProcessError(concat_expr, L"Class/enum variable does not have a 'ToString' method");
+              }
+              else if(method) {
+                methods_to_string[concat_expr] = method;
+              }
+              else if(lib_method) {
+                lib_methods_to_string[concat_expr] = lib_method;
               }
               else {
-                LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses());
-                if(lib_klass) {
-                  LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
-                  if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
-                    lib_methods_to_string[concat_expr] = lib_method;
-                  }
-                  else {
-                    ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
-                  }
-                }
-                else {
-                  ProcessError(concat_expr, L"Class/enum variable does not have a 'ToString' method");
-                }
+                ProcessError(concat_expr, L"Class/enum variable does not have a public 'ToString' method");
               }
             }
             else if(concat_type->GetType() == FUNC_TYPE) {
@@ -9580,32 +9643,21 @@ void ContextAnalyzer::AnalyzeCharacterStringVariable(SymbolEntry* entry, Charact
         entry->WasLoaded();
         return;
       }
-      Class* klass = SearchProgramClasses(cls_name);
-      if(klass) {
-        Method* method = klass->GetMethod(cls_name + L":ToString:");
-        if(method && method->GetMethodType() != PRIVATE_METHOD) {
-          char_str->AddSegment(entry, method);
-          entry->WasLoaded();
-        }
-        else {
-          ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
-        }
+      Method* method = nullptr;
+      LibraryMethod* lib_method = nullptr;
+      if(!ResolveConcatToString(cls_name, method, lib_method)) {
+        ProcessError(char_str, L"Class/enum variable does not have a 'ToString' method");
+      }
+      else if(method) {
+        char_str->AddSegment(entry, method);
+        entry->WasLoaded();
+      }
+      else if(lib_method) {
+        char_str->AddSegment(entry, lib_method);
+        entry->WasLoaded();
       }
       else {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses());
-        if(lib_klass) {
-          LibraryMethod* lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
-          if(lib_method && lib_method->GetMethodType() != PRIVATE_METHOD) {
-            char_str->AddSegment(entry, lib_method);
-            entry->WasLoaded();
-          }
-          else {
-            ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
-          }
-        }
-        else {
-          ProcessError(char_str, L"Class/enum variable does not have a 'ToString' method");
-        }
+        ProcessError(char_str, L"Class/enum variable does not have a public 'ToString' method");
       }
     }
     else if(entry->GetType()->GetType() == FUNC_TYPE) {

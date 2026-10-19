@@ -630,6 +630,7 @@ class ContextAnalyzer {
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth, Type* receiver = nullptr);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth, Type* receiver = nullptr);
   Type* PrimitiveReceiverType(const std::wstring &encoding);
+  bool ResolveConcatToString(const std::wstring &cls_name, Method* &method, LibraryMethod* &lib_method);
   bool IsReceiverParameter(Type* parameter, Type* receiver);
   int MatchCallingParameter(Expression* calling_param, Type* method_type, Class* klass, LibraryClass* lib_klass, const int depth);
   std::wstring EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn);
