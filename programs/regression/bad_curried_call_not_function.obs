@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: Cannot call the result of 'Foo(..)': it is 'Int', not a function
+#~
+`Foo(2)(5)` is a curried call (#1184): it calls the value Foo(2) returns.
+Foo returns an Int, so this is a compile error. It used to compile as two
+statements, `Foo(2)` and `(5)`, and print 5.
+~#
+class BadCurriedCallNotFunction {
+	function : Foo(n : Int) ~ Int {
+		return n;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Foo(2)(5)->PrintLine();
+	}
+}

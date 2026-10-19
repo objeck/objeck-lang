@@ -1,0 +1,117 @@
+#~
+Regression: subscripting a literal or a call result (#1184).
+
+- `["a", "b"][1]` did not parse: the subscript was read as a second literal.
+  It now indexes the literal, in any expression and as a call receiver.
+- `f->GetCells()[0] := 99` did not parse. A call result can now be assigned
+  through, with :=, the compound operators, ++ and --; the call runs once.
+- `x := f->GetCells()[1]` declared x as an Int[] holding the element, and the
+  first use of x dereferenced Nil.
+~#
+
+class Cells {
+	@cells : Int[];
+	@calls : Int;
+
+	New() {
+		@cells := Int->New[3];
+		@calls := 0;
+	}
+
+	method : public : GetCells() ~ Int[] {
+		@calls += 1;
+		return @cells;
+	}
+
+	method : public : GetCalls() ~ Int {
+		return @calls;
+	}
+}
+
+class LiteralAndCallIndexing {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	function : Twice(n : Int) ~ Int {
+		return n * 2;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		# literals
+		s := ["a", "b", "c"][1];
+		Check("a String[] literal", s->Equals("b"));
+		Check("a String[] literal as a receiver", ["xy", "abc"][1]->Size() = 3);
+		CheckInt("an Int[] literal in arithmetic", [1, 2, 3][2] + 1, 4);
+		CheckInt("an Int[] literal as an argument", Twice([5, 6][0]), 10);
+		Check("a Float[] literal", [1.5, 2.5][1] = 2.5);
+		Check("a Char[] literal", ['x', 'y'][0] = 'x');
+		Check("a Bool[] literal", [false, true][1]);
+		CheckInt("a 2-D literal", [[1, 2], [3, 4]][1, 0], 3);
+		i := 2;
+		CheckInt("an index variable", [10, 20, 30][i], 30);
+		m := [[1, 2], [3, 4]];
+		Check("rows of a nested literal still parse", m[0, 1] = 2 & m[1, 0] = 3);
+		CheckInt("a whole literal still parses", [7, 8, 9]->Size(), 3);
+
+		# call results
+		f := Cells->New();
+		f->GetCells()[0] := 99;
+		CheckInt("call()[i] := v", f->GetCells()[0], 99);
+		f->GetCells()[0] += 5;
+		CheckInt("call()[i] += v", f->GetCells()[0], 104);
+		f->GetCells()[0] -= 4;
+		f->GetCells()[0] *= 2;
+		f->GetCells()[0] /= 4;
+		CheckInt("-=, *= and /=", f->GetCells()[0], 50);
+		f->GetCells()[1]++;
+		f->GetCells()[1]++;
+		f->GetCells()[2]--;
+		CheckInt("call()[i]++", f->GetCells()[1], 2);
+		CheckInt("call()[i]--", f->GetCells()[2], -1);
+
+		before := f->GetCalls();
+		f->GetCells()[2] += 10;
+		CheckInt("a compound assignment calls once", f->GetCalls() - before, 1);
+
+		x := f->GetCells()[1];
+		CheckInt("x := call()[i] is a scalar", x + 1, 3);
+		Check("x is a scalar receiver", x->ToString()->Equals("2"));
+
+		for(j := 0; j < 3; j += 1;) {
+			f->GetCells()[j] := j * 7;
+		};
+		CheckInt("in a loop body", f->GetCells()[2], 14);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		LiteralAndCallIndexing->New()->Run();
+	}
+}
