@@ -1275,6 +1275,63 @@ def check_progress_and_log(obr, server_obe, apis_json, bin_dir):
         shutil.rmtree(work, ignore_errors=True)
 
 
+def check_pull_diagnostics(obr, server_obe, apis_json, bin_dir):
+    """textDocument/diagnostic, for a client that pulls (#1231)."""
+    broken = ("class PullCheck {\n  function : Main(args : String[]) ~ Nil {\n"
+              "    x := Undefined->New();\n  }\n}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_pull.obs"))
+
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        resp = c.request("initialize", {"processId": os.getpid(), "rootUri": None, "capabilities": {
+            "textDocument": {"diagnostic": {"dynamicRegistration": False}},
+            "workspace": {"diagnostics": {"refreshSupport": True}}}}, timeout=90)
+        provider = ((result_of(resp) or {}).get("capabilities") or {}).get("diagnosticProvider")
+        log_result("a pull client is offered diagnosticProvider",
+                   isinstance(provider, dict) and provider.get("interFileDependencies") is True
+                   and provider.get("workspaceDiagnostics") is False, f"got: {provider}")
+        c.notify("initialized", {})
+
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": broken}})
+        c.drain(1.5)
+        log_result("nothing is pushed to a pull client",
+                   not [n for n in c.notifications if n.get("method") == "textDocument/publishDiagnostics"])
+
+        first = result_of(c.request("textDocument/diagnostic", {"textDocument": {"uri": uri}})) or {}
+        log_result("a pull answers a full report with the document's diagnostics",
+                   first.get("kind") == "full" and bool(first.get("resultId"))
+                   and any("Undefined" in str(d.get("message")) for d in first.get("items", [])),
+                   f"got: {json.dumps(first)[:200]}")
+        again = result_of(c.request("textDocument/diagnostic", {
+            "textDocument": {"uri": uri}, "previousResultId": first.get("resultId")})) or {}
+        log_result("and 'unchanged' when nothing has changed",
+                   again == {"kind": "unchanged", "resultId": first.get("resultId")}, f"got: {again}")
+
+        fixed = broken.replace("x := Undefined->New();", "x := 1;" + chr(10) + "    x->PrintLine();")
+        c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": 2},
+                                            "contentChanges": [{"text": fixed}]})
+        after = result_of(c.request("textDocument/diagnostic", {
+            "textDocument": {"uri": uri}, "previousResultId": first.get("resultId")})) or {}
+        log_result("after an edit, a new report for the new text",
+                   after.get("kind") == "full" and after.get("items") == []
+                   and after.get("resultId") not in (None, first.get("resultId")), f"got: {after}")
+
+        # results elsewhere may have changed: the client is asked to pull again
+        c.notify("workspace/didChangeWatchedFiles", {"changes": [
+            {"uri": path_to_uri(TESTS_DIR) + "/build.json", "type": 2}]})
+        c.drain(1.5)
+        log_result("a configuration change asks the client to pull again",
+                   any(r.get("method") == "workspace/diagnostic/refresh" and "params" not in r
+                       for r in c.server_requests), f"{c.server_requests}")
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+        c.drain(0.5)
+        pushed = [n for n in c.notifications if n.get("method") == "textDocument/publishDiagnostics"]
+        log_result("and closing a document pushes nothing either", not pushed, f"{pushed}")
+    finally:
+        c.close()
+
+
 def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
     """The base protocol, not the language features (#1215)."""
     init_params = {"processId": os.getpid(), "rootUri": None, "capabilities": {}}
@@ -2239,6 +2296,7 @@ def main():
     check_multi_root(obr, server_obe, apis_json, bin_dir)
     check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
+    check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the

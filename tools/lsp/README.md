@@ -189,6 +189,7 @@ graph LR
 | Document Symbol | `textDocument/documentSymbol` (a tree for clients that take one) |
 | Rename | `textDocument/prepareRename`, `textDocument/rename` |
 | Code Action | `textDocument/codeAction` (quick fixes, `source.organizeImports`) |
+| Diagnostics (pull) | `textDocument/diagnostic`, for clients that pull |
 | Code Lens | `textDocument/codeLens` (Run on `Main`) |
 | Document Link | `textDocument/documentLink` (`use` bundles to the API reference) |
 | Format Document | `textDocument/formatting` |
@@ -204,7 +205,7 @@ graph LR
 
 | Feature | Method |
 |---------|--------|
-| Diagnostics | `textDocument/publishDiagnostics` |
+| Diagnostics | `textDocument/publishDiagnostics` (push clients), `workspace/diagnostic/refresh` (pull clients) |
 | Log | `window/logMessage` |
 | Progress | `window/workDoneProgress/create`, `$/progress` |
 | Watch build.json | `client/registerCapability` |

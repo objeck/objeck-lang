@@ -456,6 +456,22 @@ bundle LSP {
 			};
 		}
 
+		method : CallbackDocumentDiagnostic(id : Int, params : JsonElement) ~ Nil {
+			uri := FindString(params, "textDocument/uri");
+			report : JsonElement := Nil;
+			if(uri <> Nil) {
+				report := PullDiagnostics(uri, FindString(params, "previousResultId"));
+			};
+
+			# an empty report for a document the server doesn't have open
+			if(report = Nil) {
+				report := JsonElement->New(JsonElement->JsonType->OBJECT);
+				report->Insert("kind", "full");
+				report->Insert("items", JsonElement->New(JsonElement->JsonType->ARRAY));
+			};
+			WriteRpcResponse(id, report);
+		}
+
 		method : CallbackCodeLens(id : Int, params : JsonElement) ~ Nil {
 			document := DocumentOf(params);
 			if(document <> Nil) {
@@ -831,6 +847,20 @@ bundle LSP {
 			semanticTokensFull := semanticTokensProvider->AddChild("full");
 			semanticTokensFull->Insert("delta", true);
 
+			# Pull diagnostics, for a client that takes them; the rest keep the push
+			# model. interFileDependencies: an edit to one file can change
+			# another's results, through a build.json program.
+			pull_json := FindJson(params, "capabilities/textDocument/diagnostic");
+			refresh_json := FindJson(params, "capabilities/workspace/diagnostics/refreshSupport");
+			SetPullDiagnostics(pull_json <> Nil & pull_json->GetType() = JsonElement->JsonType->OBJECT,
+				refresh_json <> Nil & refresh_json->GetType() = JsonElement->JsonType->TRUE);
+			if(IsPullDiagnostics()) {
+				diagnosticProvider := capabilities->AddChild("diagnosticProvider");
+				diagnosticProvider->Insert("identifier", "objeck");
+				diagnosticProvider->Insert("interFileDependencies", true);
+				diagnosticProvider->Insert("workspaceDiagnostics", false);
+			};
+
 			codeLensProvider := capabilities->AddChild("codeLensProvider");
 			codeLensProvider->Insert("resolveProvider", false);
 			documentLinkProvider := capabilities->AddChild("documentLinkProvider");
@@ -906,6 +936,7 @@ bundle LSP {
 			each(i : uris) {
 				DeferDiagnostics(uris->Get(i));
 			};
+			RefreshPulledDiagnostics();
 		}
 
 		method : RegisterWatchers() ~ Nil {
@@ -1116,11 +1147,7 @@ bundle LSP {
 				# closed: nothing more to publish for it
 				DropPendingDiagnostics(uri);
 				@workspace->RemoveDocument(uri, document);
-
-				empty_diagnostics := JsonElement->New(JsonElement->JsonType->OBJECT);
-				empty_diagnostics->Insert("uri", uri);
-				empty_diagnostics->Insert("diagnostics", JsonElement->New(JsonElement->JsonType->ARRAY));
-				WriteRpcRequest("textDocument/publishDiagnostics", empty_diagnostics);
+				PublishClosed(uri);
 			};
 		}
 
