@@ -1,0 +1,18 @@
+# EXPECT_COMPILE_ERROR: Undefined function/method call: 'ToHexString(..)'
+#~
+A call on a primitive passes the receiver as parameter 0 of a function on
+its $ class, so `255->ToHexString(4)` needs a ToHexString(Int, Int), and
+there is none. The resolver used to match the written arguments alone: it
+bound the call to ToHexString(4), which printed 0x4, and pushed the receiver
+as well, so `Show("x", 255->ToHexString(4))` compiled and then segfaulted
+(#1248).
+~#
+class BadPrimitiveReceiverArity {
+	function : Show(name : String, s : String) ~ Nil {
+		"{$name}={$s}"->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Show("x", 255->ToHexString(4));
+	}
+}

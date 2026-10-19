@@ -3963,10 +3963,75 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
 }
 
 /****************************
+ * The receiver of a call on a
+ * primitive ('v->Pow(2)'): the
+ * type its encoding names, or
+ * nullptr for any other call
+ ****************************/
+Type* ContextAnalyzer::PrimitiveReceiverType(const std::wstring &encoding)
+{
+  // AnalyzeExpressionMethodCall: "i," for an Int, "b**," for a Byte[,], and
+  // "o.System.Base*," for an object array, which is not a primitive
+  if(encoding.size() < 2 || encoding.back() != L',') {
+    return nullptr;
+  }
+
+  EntryType type;
+  switch(encoding[0]) {
+  case L'l':
+    type = BOOLEAN_TYPE;
+    break;
+
+  case L'b':
+    type = BYTE_TYPE;
+    break;
+
+  case L'c':
+    type = CHAR_TYPE;
+    break;
+
+  case L'i':
+    type = INT_TYPE;
+    break;
+
+  case L'f':
+    type = FLOAT_TYPE;
+    break;
+
+  default:
+    return nullptr;
+  }
+
+  int dimension = 0;
+  for(size_t i = 1; i + 1 < encoding.size(); ++i) {
+    if(encoding[i] != L'*') {
+      return nullptr;
+    }
+    ++dimension;
+  }
+
+  Type* receiver = TypeFactory::Instance()->MakeType(type);
+  receiver->SetDimension(dimension);
+  return receiver;
+}
+
+/****************************
+ * Whether a function's first
+ * parameter takes the receiver
+ ****************************/
+bool ContextAnalyzer::IsReceiverParameter(Type* parameter, Type* receiver)
+{
+  return parameter && receiver && parameter->GetType() == receiver->GetType() &&
+    parameter->GetDimension() == receiver->GetDimension();
+}
+
+/****************************
  * Resolves method calls
  ****************************/
-Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth)
+Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth, Type* receiver)
 {
+  // a primitive receiver is parameter 0 of a static function (see AnalyzeMethodCall)
+  const size_t offset = receiver ? 1 : 0;
   const std::wstring method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
   std::vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -3979,14 +4044,15 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
     Method* candidate = candidates[i];
     std::vector<Declaration*> method_parms = candidate->GetDeclarations()->GetDeclarations();
 
-    if(expr_params.size() == method_parms.size()) {
+    if(expr_params.size() + offset == method_parms.size() &&
+       (!receiver || (candidate->IsStatic() && IsReceiverParameter(method_parms[0]->GetEntry()->GetType(), receiver)))) {
       // box and unbox parameters
       std::vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         // cannot be set to method, need to preserve test against other selections
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericParam(method_parms[j + offset]->GetEntry()->GetType(), method_call, klass, nullptr, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -4007,7 +4073,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
 
       MethodCallSelection* match = new MethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+        Type* method_type = ResolveGenericParam(method_parms[j + offset]->GetEntry()->GetType(), method_call, klass, nullptr, false);
         // add parameter match
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, klass, nullptr, depth);
         match->AddParameterMatch(compare);
@@ -4034,7 +4100,7 @@ Method* ContextAnalyzer::ResolveMethodCall(Class* klass, MethodCall* method_call
         expression = expression->GetMethodCall();
       }
       // erase/resolve type
-      Type* left = ResolveGenericParam(method_parms[j]->GetEntry()->GetType(), method_call, klass, nullptr, false);
+      Type* left = ResolveGenericParam(method_parms[j + offset]->GetEntry()->GetType(), method_call, klass, nullptr, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
   }
@@ -4073,8 +4139,13 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
   AnalyzeExpressions(call_params, depth + 1);
 
-  // note: find system based methods and call with function parameters (i.e. $Int, $Float)
-  Method* method = ResolveMethodCall(klass, method_call, depth);
+  // note: find system based methods and call with function parameters (i.e. $Int, $Float).
+  // A primitive receiver is parameter 0 of the function, so only a function that
+  // takes it can match: resolving the written arguments alone bound
+  // 255->ToHexString(4) to ToHexString(4), and an instance method of an ancestor
+  // (Base) to an Int 'self'.
+  Type* receiver = PrimitiveReceiverType(encoding);
+  Method* method = ResolveMethodCall(klass, method_call, depth, receiver);
   if(!method) {
     const std::wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding +
       EncodeMethodCall(method_call->GetCallingParameters(), depth);
@@ -4365,8 +4436,10 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 /****************************
  * Resolves library method calls
  ****************************/
-LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth)
+LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth, Type* receiver)
 {
+  // a primitive receiver is parameter 0 of a static function (see AnalyzeMethodCall)
+  const size_t offset = receiver ? 1 : 0;
   const std::wstring &method_name = method_call->GetMethodName();
   ExpressionList* calling_params = method_call->GetCallingParameters();
   std::vector<Expression*> expr_params = calling_params->GetExpressions();
@@ -4378,13 +4451,14 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
     // match parameter sizes
     LibraryMethod* candidate = candidates[i];
     std::vector<Type*> method_parms = candidate->GetDeclarationTypes();
-    if(expr_params.size() == method_parms.size()) {
+    if(expr_params.size() + offset == method_parms.size() &&
+       (!receiver || (candidate->IsStatic() && IsReceiverParameter(method_parms[0], receiver)))) {
       // box and unbox parameters
       std::vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -4405,7 +4479,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
+        Type* method_type = ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false);
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
@@ -4430,7 +4504,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         expression = expression->GetMethodCall();
       }
       // map generic to concrete type, if needed
-      Type* left = ResolveGenericParam(method_parms[j], method_call, nullptr, klass, false);
+      Type* left = ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false);
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
 
@@ -4471,11 +4545,17 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   CheckLambdaInferredTypes(method_call, depth + 1);
   
   AnalyzeExpressions(call_params, depth + 1);
-  LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth);
+  // A primitive receiver is parameter 0 of a static function on its $ class, so
+  // only a function that takes it can match. Resolving the written arguments
+  // alone bound 255->ToHexString(4) to ToHexString(4) (the receiver was pushed
+  // as well, and the stack went wrong) and an ancestor's instance method, such
+  // as one on Base, to an Int 'self'.
+  Type* receiver = PrimitiveReceiverType(encoding);
+  LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth, receiver);
   if(!lib_method) {
     LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     while(!lib_method && parent) {
-      lib_method = ResolveMethodCall(parent, method_call, depth);
+      lib_method = ResolveMethodCall(parent, method_call, depth, receiver);
       parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     }
   }
