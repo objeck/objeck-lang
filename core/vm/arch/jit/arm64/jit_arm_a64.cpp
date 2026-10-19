@@ -1247,6 +1247,8 @@ void JitArm64::ProcessInstructions() {
       std::wcout << L"LBL: id=" << instr->GetOperand() << endl;
 #endif
       FlushLocalCache();
+      // falling into a label ends a block too (#1256)
+      MaterializeWorkingStack();
       // The safepoint poll is emitted at the jump TARGET, the instruction after
       // this label (see the top of ProcessInstructions): the compiler resolves
       // a label to the index of the next instruction, so keying on the LBL's
@@ -1427,6 +1429,8 @@ void JitArm64::ProcessJumpTable(StackInstr* instr) {
 
   RegInstr* left = working_stack.front();
   working_stack.pop_front();
+  // every arm must see what stays on the working stack in one place (#1256)
+  MaterializeWorkingStack();
   RegisterHolder* idx_holder = nullptr;
   switch(left->GetType()) {
   case IMM_INT:
@@ -1510,6 +1514,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
           << endl;
 #endif
     if(instr->GetOperand2() < 0) {
+      MaterializeWorkingStack();
 #ifdef _DEBUG_JIT_JIT
       std::wcout << L"  " << (++instr_count) << L": [b <imm>]" << std::endl;
 #endif
@@ -1518,6 +1523,7 @@ void JitArm64::ProcessJump(StackInstr* instr) {
     else {
       RegInstr* left = working_stack.front();
       working_stack.pop_front();
+      MaterializeWorkingStack();
 
       switch(left->GetType()) {
       case IMM_INT:{
@@ -5000,6 +5006,9 @@ bool JitArm64::cond_jmp(InstructionType type) {
   
   StackInstr* next_instr = method->GetInstruction(instr_index);
   if(next_instr->GetType() == JMP && next_instr->GetOperand2() > -1) {
+    // the jump ends the block: what stays on the working stack must be in a
+    // register on both paths (a mov or ldr leaves the flags alone) (#1256)
+    MaterializeWorkingStack();
     //
     // jump if true
     //
