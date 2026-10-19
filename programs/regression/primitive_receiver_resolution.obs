@@ -1,0 +1,70 @@
+#~
+Calls on primitive receivers resolve to the $-class function that takes the
+receiver as parameter 0 (#1248).
+
+The resolver first matched the written arguments alone, across the $ class
+and its ancestors, and fell back to the receiver-inclusive name only when that
+failed. A function of the same name with one parameter fewer won
+(`255->ToHexString(4)` became ToHexString(4)), and an ancestor's instance
+method would have won over every primitive call of its name: a ToString on
+System.Base took `i->ToString()` and every `{$i}`, ran with an Int as `self`
+and crashed the VM. Only a static function whose first parameter takes the
+receiver can match now. These are the shapes that must keep resolving.
+~#
+class PrimitiveReceiverResolution {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		v := 255;
+		f := 2.5;
+		c := 'A';
+		b := 7->As(Byte);
+		t := true;
+
+		# no written argument: the receiver is the only one
+		Check("Int ToString", v->ToString(), "255");
+		Check("Int ToHexString", v->ToHexString(), "0xff");
+		Check("literal ToHexString", 255->ToHexString(), "0xff");
+		Check("Char ToString", c->ToString(), "A");
+		Check("Byte ToString", b->ToString(), "7");
+		Check("Bool ToString", t->ToString(), "true");
+		Check("interpolation", "item {$v}", "item 255");
+
+		# written arguments follow the receiver
+		Check("Int Pow", v->Pow(2)->ToString(), "65025");
+		Check("Int Min", v->Min(3)->ToString(), "3");
+		Check("Float Pow", f->Pow(2.0)->ToString(), "6.250000");
+		Check("expression receiver", (-5)->Abs()->ToString(), "5");
+		Check("chained", v->Pow(2)->Min(1000)->ToString(), "1000");
+
+		# many times over, so the JIT compiles the callers too
+		total := 0;
+		for(i := 0; i < 2000; i += 1;) {
+			total += i->ToString()->Size();
+		};
+		Check("ToString in a loop", total->ToString(), "6890");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		PrimitiveReceiverResolution->New()->Run();
+	}
+}

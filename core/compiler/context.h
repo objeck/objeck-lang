@@ -627,8 +627,10 @@ class ContextAnalyzer {
   void AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_call, bool is_expr, std::wstring &encoding, bool is_parent, const int depth);
   void AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* method_call, bool is_virtual, bool is_expr, const int depth);
   std::wstring EncodeMethodCall(ExpressionList * calling_params, const int depth);
-  Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth);
-  LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth);
+  Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth, Type* receiver = nullptr);
+  LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth, Type* receiver = nullptr);
+  Type* PrimitiveReceiverType(const std::wstring &encoding);
+  bool IsReceiverParameter(Type* parameter, Type* receiver);
   int MatchCallingParameter(Expression* calling_param, Type* method_type, Class* klass, LibraryClass* lib_klass, const int depth);
   std::wstring EncodeFunctionType(std::vector<Type*> func_params, Type* func_rtrn);
   std::wstring EncodeFunctionReference(ExpressionList* calling_params, const int depth);
