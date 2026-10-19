@@ -780,6 +780,32 @@ namespace Runtime {
       local_freg_cache.clear();
     }
 
+    // A value left on the working stack across a block boundary (a jump, a
+    // jump table, falling into a label) must be in a register before it. A deferred LOAD (MEM_INT/MEM_FLOAT, still naming its
+    // slot) is otherwise materialized by whichever later store overwrites the
+    // slot, and that store's block runs on one path only: the other path reads
+    // a register nothing set. `f(a <> Nil & a->X(), b <> Nil & b->Y())` keeps
+    // the first argument in the temp both `&`s store to (#1256). Every boundary
+    // calls this, so the first one after a push -- on every path to a later
+    // use -- does the load, and later blocks see the same register.
+    void MaterializeWorkingStack() {
+      for(size_t wi = 0; wi < working_stack.size(); ++wi) {
+        RegInstr* pend = working_stack[wi];
+        if(pend->GetType() == MEM_INT) {
+          RegisterHolder* mh = GetRegister();
+          move_mem_reg((long)pend->GetOperand(), SP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+        else if(pend->GetType() == MEM_FLOAT) {
+          RegisterHolder* mh = GetFpRegister();
+          move_mem_freg((long)pend->GetOperand(), SP, mh->GetRegister());
+          delete pend;
+          working_stack[wi] = new RegInstr(mh);
+        }
+      }
+    }
+
     // move instructions
     void move_sp_reg(Register dest);
 

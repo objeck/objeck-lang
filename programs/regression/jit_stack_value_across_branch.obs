@@ -1,0 +1,161 @@
+#~
+JIT: a value left on the working stack across a branch (#1256).
+
+`f(a <> Nil & a->Kind() = 6, b <> Nil & b->Kind() = 2)` evaluates both
+short-circuit `&`s into the same temp local. The first result is loaded
+(deferred: the JIT keeps a load of a local as a reference to its slot) and
+stays on the working stack while the second `&` branches and stores to that
+temp again. JitAmd64 and JitArm64 materialized the deferred load at the first
+store they compiled -- inside one arm of the second `&` -- so on the other arm
+the argument was a register nothing had set: here, the second object's
+address. A true Bool held that address. `if(x)` still took it as true;
+`if(<>x)` compares with 1 and did not.
+
+The language server's `if(<>IsPullDiagnostics())` pushed diagnostics to a pull
+client this way. A ternary keeps its result in a shared temp the same way, so
+the Int and Float cases check that shape too. The load must happen at the
+FIRST block boundary after the push, whatever kind it is: a fix that did it only
+at jumps let an inlined `select` (a jump table) reach its arms without it, and
+rosetta_utf8_encode_and_decode passed 3 as a String; Classify below has that
+shape. Every case runs often enough to cross
+the default JIT threshold, so the test fails without flags.
+~#
+class Elem {
+	@kind : Int;
+
+	New(kind : Int) {
+		@kind := kind;
+	}
+
+	method : public : Kind() ~ Int {
+		return @kind;
+	}
+}
+
+class Worker {
+	@pad : Int;
+	@pull : Bool;
+	@refresh : Bool;
+
+	New() {
+		@pad := 0;
+	}
+
+	method : public : SetFlags(pull : Bool, refresh : Bool) ~ Nil {
+		@pull := pull;
+		@refresh := refresh;
+	}
+
+	method : public : IsPull() ~ Bool {
+		return @pull;
+	}
+
+	method : public : IsRefresh() ~ Bool {
+		return @refresh;
+	}
+
+	method : public : Init(p : Elem, r : Elem) ~ Nil {
+		SetFlags(p <> Nil & p->Kind() = 6, r <> Nil & r->Kind() = 2);
+	}
+
+	# taken as the issue had it: true when the flag is NOT set
+	method : public : NotPull() ~ Bool {
+		if(<>IsPull()) {
+			return true;
+		};
+		return false;
+	}
+}
+
+class JitStackValueAcrossBranch {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	function : Pair(a : Int, b : Int) ~ Int {
+		return a * 10 + b;
+	}
+
+	function : FloatPair(a : Float, b : Float) ~ Float {
+		return a * 10.0 + b;
+	}
+
+	function : IntTernaries(x : Bool, y : Bool) ~ Int {
+		return Pair(x ? 1 : 2, y ? 3 : 4);
+	}
+
+	function : FloatTernaries(x : Bool, y : Bool) ~ Float {
+		return FloatPair(x ? 1.0 : 2.0, y ? 3.0 : 4.0);
+	}
+
+	# a select and a loop, inlined into the caller while its first argument waits
+	function : Classify(n : Int) ~ Int {
+		k : Int;
+		select(n) {
+			label 1 { k := 10; }
+			label 2 { k := 20; }
+			label 3 { k := 30; }
+			label 4 { k := 40; }
+		};
+		for(i := 0; i < n; i += 1;) {
+			k += 1;
+		};
+		return k;
+	}
+
+	function : Tag(name : String, k : Int) ~ String {
+		return "{$name}:{$k}";
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			if(@failures < 10) {
+				"FAIL: {$what}"->PrintLine();
+			};
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		p : Elem;
+		r : Elem;
+		for(i := 0; i < 400; i += 1;) {
+			p := Nil;
+			if(i % 4 <> 3) {
+				p := Elem->New((i % 2 = 0) ? 6 : 5);
+			};
+			r := Nil;
+			if(i % 3 <> 2) {
+				r := Elem->New((i % 5 = 0) ? 9 : 2);
+			};
+			pull := p <> Nil & p->Kind() = 6;
+			refresh := r <> Nil & r->Kind() = 2;
+
+			w := Worker->New();
+			w->Init(p, r);
+			Check("pull flag ({$i})", w->IsPull() = pull);
+			Check("refresh flag ({$i})", w->IsRefresh() = refresh);
+			Check("<>IsPull() ({$i})", w->NotPull() = (<>pull));
+
+			x := i % 2 = 0;
+			y := i % 3 = 0;
+			Check("Int ternaries ({$i})", IntTernaries(x, y) = (x ? 10 : 20) + (y ? 3 : 4));
+			n := i % 4 + 1;
+			name := "tag";
+			Check("String argument across an inlined select ({$i})", Tag(name, Classify(n))->Equals("tag:{$(n * 11)}"));
+			Check("Float ternaries ({$i})", FloatTernaries(x, y) = (x ? 10.0 : 20.0) + (y ? 3.0 : 4.0));
+		};
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: values on the working stack survive a branch"->PrintLine();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		JitStackValueAcrossBranch->New()->Run();
+	}
+}
