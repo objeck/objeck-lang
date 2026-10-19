@@ -522,6 +522,22 @@ bundle System {
 		}
 
 		#~
+		Returns the value's hex digits without the 0x prefix, padded with zeros to a minimum width (ToHexString keeps the prefix)
+		@ignore-params
+		@return lower-case hex digits, at least width of them
+		```
+		255->As(Byte)->ToHexDigits(4)->PrintLine(); # 00ff
+		```
+		~#
+		function : ToHexDigits(v : Byte, width : Int) ~ String {
+			digits := ToHexString(v);
+			if(digits->StartsWith("0x")) {
+				digits := digits->SubString(2, digits->Size() - 2);
+			};
+			return digits->PadTo(width, '0', true);
+		}
+
+		#~
 		Returns a positive hexadecimal string representation of the value
 		@ignore-params
 		@return hexadecimal string representation of the value
@@ -1701,6 +1717,22 @@ bundle System {
 			return out->Reverse();
 		}
 		
+		#~
+		Returns the value's hex digits without the 0x prefix, padded with zeros to a minimum width (ToHexString keeps the prefix)
+		@ignore-params
+		@return lower-case hex digits, at least width of them
+		```
+		255->ToHexDigits(4)->PrintLine(); # 00ff
+		```
+		~#
+		function : ToHexDigits(v : Int, width : Int) ~ String {
+			digits := ToHexString(v);
+			if(digits->StartsWith("0x")) {
+				digits := digits->SubString(2, digits->Size() - 2);
+			};
+			return digits->PadTo(width, '0', true);
+		}
+
 		#~
 		Returns a hex string value
 		@ignore-params
@@ -7111,6 +7143,221 @@ each(i : cities) {
 		}
 		
 		#~
+		Splits a string on runs of white space. Leading and trailing white space make no empty fields.
+		@return array of words, empty if the string is all white space
+		```
+		words := "  one two\tthree  "->SplitWhitespace();
+		words->Size()->PrintLine();  # 3
+		```
+		~#
+		method : public : SplitWhitespace() ~ String[] {
+			count := 0;
+			in_word := false;
+			each(i : @pos) {
+				if(Char->IsWhitespace(@string[i])) {
+					in_word := false;
+				}
+				else if(<>in_word) {
+					in_word := true;
+					count += 1;
+				};
+			};
+
+			words := String->New[count];
+			count := 0;
+			start := 0;
+			in_word := false;
+			each(i : @pos) {
+				if(Char->IsWhitespace(@string[i])) {
+					if(in_word) {
+						words[count++] := String->New(@string, start, i - start);
+						in_word := false;
+					};
+				}
+				else if(<>in_word) {
+					in_word := true;
+					start := i;
+				};
+			};
+			if(in_word) {
+				words[count++] := String->New(@string, start, @pos - start);
+			};
+
+			return words;
+		}
+
+		#~
+		Splits a string on a delimiter, where an escape character makes the character after it literal. The escape characters are removed, and a lone escape at the very end is dropped. Empty fields are kept, as Split(delim) keeps them, and an empty string has no fields, as with Split(delim).
+		@param delim splitting delimiter
+		@param escape escape character
+		@return array of split sub strings
+		```
+		parts := "one^|uno||three^^^^|four"->Split('|', '^');
+		each(part in parts) {
+		  part->PrintLine(); # one|uno, then an empty field, then three^^, then four
+		};
+		```
+		~#
+		method : public : Split(delim : Char, escape : Char) ~ String[] {
+			if(@pos = 0) {
+				return String->New[0];
+			};
+
+			counting : String[];
+			fields := String->New[SplitEscaped(delim, escape, counting)];
+			SplitEscaped(delim, escape, fields);
+			return fields;
+		}
+
+		# counts the fields, and fills 'fields' when it is not Nil
+		method : private : SplitEscaped(delim : Char, escape : Char, fields : String[]) ~ Int {
+			count := 0;
+			field := String->New();
+			i := 0;
+			while(i < @pos) {
+				char := @string[i];
+				if(char = escape) {
+					# a lone escape at the very end escapes nothing and is dropped
+					if(i + 1 < @pos) {
+						field->Append(@string[i + 1]);
+					};
+					i += 2;
+				}
+				else {
+					if(char = delim) {
+						if(fields <> Nil) {
+							fields[count] := field;
+						};
+						count += 1;
+						field := String->New();
+					}
+					else {
+						field->Append(char);
+					};
+					i += 1;
+				};
+			};
+			if(fields <> Nil) {
+				fields[count] := field;
+			};
+
+			return count + 1;
+		}
+
+		#~
+		Centers the string in a field of spaces. When the padding is uneven the extra space goes on the right.
+		@param width width of the field; a string at least this long is returned unchanged
+		@return centered string
+		```
+		"abc"->Center(7)->Size()->PrintLine(); # 7: two spaces, abc, two spaces
+		```
+		~#
+		method : public : Center(width : Int) ~ String {
+			return Center(width, ' ');
+		}
+
+		#~
+		Centers the string in a field of a fill character. When the padding is uneven the extra character goes on the right.
+		@param width width of the field; a string at least this long is returned unchanged
+		@param ch fill character
+		@return centered string
+		```
+		"abc"->Center(9, '*')->PrintLine(); # ***abc***
+		```
+		~#
+		method : public : Center(width : Int, ch : Char) ~ String {
+			if(@pos >= width) {
+				return String->New(@string);
+			};
+
+			padding := width - @pos;
+			left := padding / 2;
+			right := padding - left;
+			centered := String->New();
+			each(i : left) {
+				centered->Append(ch);
+			};
+			centered->Append(@string);
+			each(i : right) {
+				centered->Append(ch);
+			};
+
+			return centered;
+		}
+
+		#~
+		Wraps the text into lines no longer than a width, breaking between words (greedy, as a word processor does). Any run of white space, line breaks included, separates words; a word longer than the width gets a line to itself.
+		@param width longest line
+		@return lines joined by line feeds, with no trailing line feed
+		```
+		"the quick brown fox jumps"->Wrap(10)->PrintLine();
+		# the quick
+		# brown fox
+		# jumps
+		```
+		~#
+		method : public : Wrap(width : Int) ~ String {
+			lines := WrapLines(width);
+			wrapped := String->New();
+			each(i : lines) {
+				if(i > 0) {
+					wrapped->Append('\n');
+				};
+				wrapped->Append(lines[i]);
+			};
+
+			return wrapped;
+		}
+
+		#~
+		Wraps the text as Wrap(width) does, returning the lines
+		@param width longest line
+		@return array of lines
+		```
+		lines := "the quick brown fox jumps"->WrapLines(10);
+		lines->Size()->PrintLine(); # 3
+		```
+		~#
+		method : public : WrapLines(width : Int) ~ String[] {
+			words := SplitWhitespace();
+			counting : String[];
+			lines := String->New[WrapWords(words, width, counting)];
+			WrapWords(words, width, lines);
+			return lines;
+		}
+
+		# counts the lines, and fills 'lines' when it is not Nil
+		method : private : WrapWords(words : String[], width : Int, lines : String[]) ~ Int {
+			count := 0;
+			line : String;
+			each(i : words) {
+				word := words[i];
+				if(line = Nil) {
+					line := String->New(word);
+				}
+				else if(line->Size() + 1 + word->Size() <= width) {
+					line->Append(' ');
+					line->Append(word);
+				}
+				else {
+					if(lines <> Nil) {
+						lines[count] := line;
+					};
+					count += 1;
+					line := String->New(word);
+				};
+			};
+			if(line <> Nil) {
+				if(lines <> Nil) {
+					lines[count] := line;
+				};
+				count += 1;
+			};
+
+			return count;
+		}
+
+		#~
 		Transforms a to upper case
 		@return upper case string
 		```
@@ -8599,8 +8846,9 @@ class Counter from System.Concurrency.Thread {
 	~#	
 	class ThreadMutex {
 		@name : String;
-		# hack to hold a mutex struct.  Largest struct 
-		# is 64-bytes for x64 POSIX
+		# @m0 holds the address of the native lock, which lives on the C++
+		# heap so the object can move during a collection; @m1-@m7 are
+		# unused, left over from when the lock was stored in place
 		@m0 : Int;
 		@m1 : Int;
 		@m2 : Int;
@@ -8626,6 +8874,98 @@ class Counter from System.Concurrency.Thread {
 		~#
 		method : public : GetName() ~ String {
 			return @name;
+		}
+	}
+
+	#~
+	Condition variable: lets a thread holding a ThreadMutex sleep until another thread signals that the state it guards has changed. Wait releases the mutex while it sleeps and holds it again when it returns. A wait may also return without a signal, so always wait in a loop that re-checks the condition. Semaphore, CountDownLatch and Barrier in concurrent.obl are built on it.
+	```
+class Box {
+  @mutex : ThreadMutex;
+  @ready : Condition;
+  @value : String;
+
+  New() {
+    @mutex := ThreadMutex->New("box");
+    @ready := Condition->New();
+  }
+
+  method : public : Put(value : String) ~ Nil {
+    critical(@mutex) {
+      @value := value;
+      @ready->Signal();
+    };
+  }
+
+  method : public : Take() ~ String {
+    value : String;
+    critical(@mutex) {
+      while(@value = Nil) {
+        @ready->Wait(@mutex);
+      };
+      value := @value;
+    };
+    return value;
+  }
+}
+	```
+	~#
+	class Condition {
+		@handle : Int;
+
+		#~
+		Creates a condition variable
+		~#
+		New() {
+			Parent();
+			@handle := Create();
+		}
+
+		function : Create() ~ Int {
+			COND_NEW;
+		}
+
+		#~
+		Releases the mutex, sleeps until the condition is signaled, then locks the mutex again. Call it inside critical(mutex), and only once: a mutex locked twice by the same thread stays locked while it waits.
+		@param mutex mutex that guards the condition, held by the caller
+		~#
+		method : public : Wait(mutex : ThreadMutex) ~ Nil {
+			WaitNative(mutex, -1);
+		}
+
+		#~
+		Like Wait(mutex), but gives up after the given time
+		@param mutex mutex that guards the condition, held by the caller
+		@param millis longest time to wait, in milliseconds
+		@return false if the time passed without a signal, true otherwise
+		~#
+		method : public : Wait(mutex : ThreadMutex, millis : Int) ~ Bool {
+			if(millis < 0) {
+				millis := 0;
+			};
+			return WaitNative(mutex, millis);
+		}
+
+		method : WaitNative(mutex : ThreadMutex, millis : Int) ~ Bool {
+			COND_WAIT;
+		}
+
+		#~
+		Wakes one waiting thread, if any are waiting
+		~#
+		method : public : Signal() ~ Nil {
+			SignalNative(false);
+		}
+
+		#~
+		Wakes every waiting thread
+		~#
+		method : public : Broadcast() ~ Nil {
+			SignalNative(true);
+		}
+
+		method : SignalNative(all : Bool) ~ Nil {
+			COND_SIGNAL;
 		}
 	}
 }

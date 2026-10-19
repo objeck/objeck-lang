@@ -5,7 +5,7 @@
 #
 # EXTRA_LIBS: gen_collect
 #
-# (A \ B) u (B \ A) over the task's two name sets, computed both on the tree-backed Collection.Set and on the hash-backed Collection.SetHash, and also via the page's second formulation (A u B) \ (A n B). The page's note is pinned too: input lists with duplicates (Serena and Jim twice) must still yield just Serena and Jim.
+# (A \ B) u (B \ A) over the task's two name sets, using the library's SymmetricDifference on both the tree-backed Collection.Set and the hash-backed Collection.SetHash, and also via the page's second formulation (A u B) \ (A n B) built from Union / Intersect / Difference. The page's note is pinned too: input lists with duplicates (Serena and Jim twice) must still yield just Serena and Jim.
 #
 # Expected values were computed with an independent oracle (Python sets), not recalled.
 ~#
@@ -45,20 +45,23 @@ class RosettaSymmetricDifference {
 		b := ToSet(list_b);
 		Check("A", Show(a), "Bob,John,Mary,Serena");
 		Check("B", Show(b), "Bob,Jim,John,Mary");
-		Check("A \\ B", Show(Minus(a, b)), "Serena");
-		Check("B \\ A", Show(Minus(b, a)), "Jim");
-		Check("symmetric difference", Show(Union(Minus(a, b), Minus(b, a))), "Jim,Serena");
-		Check("(A u B) \\ (A n B) agrees", Show(Minus(Union(a, b), Intersect(a, b))), "Jim,Serena");
-		Check("it is symmetric", Show(Union(Minus(b, a), Minus(a, b))), "Jim,Serena");
+		Check("A \\ B", Show(a->Difference(b)), "Serena");
+		Check("B \\ A", Show(b->Difference(a)), "Jim");
+		Check("symmetric difference", Show(a->SymmetricDifference(b)), "Jim,Serena");
+		# bound in steps: a chained a->Union(b)->Difference(...) loses the type arguments
+		both := a->Union(b);
+		common := a->Intersect(b);
+		Check("(A u B) \\ (A n B) agrees", Show(both->Difference(common)), "Jim,Serena");
+		Check("it is symmetric", Show(b->SymmetricDifference(a)), "Jim,Serena");
 		Check("A is untouched", Show(a), "Bob,John,Mary,Serena");
 
 		da := ToSet(dup_a);
 		db := ToSet(dup_b);
 		Check("duplicate input collapses to 4 names", da->Size()->ToString(), "4");
-		Check("symmetric difference of the duplicated lists", Show(Union(Minus(da, db), Minus(db, da))), "Jim,Serena");
+		Check("symmetric difference of the duplicated lists", Show(da->SymmetricDifference(db)), "Jim,Serena");
 
 		# a set with itself has an empty symmetric difference
-		Check("A xor A is empty", Show(Union(Minus(a, a), Minus(a, a))), "");
+		Check("A xor A is empty", Show(a->SymmetricDifference(a)), "");
 
 		# the hash-backed set gives the same answer
 		ha := SetHash->New()<String>;
@@ -66,15 +69,10 @@ class RosettaSymmetricDifference {
 		hb := SetHash->New()<String>;
 		each(n in dup_b) { hb->Insert(n); };
 		Check("SetHash sizes ignore duplicates", "{$ha->Size()} {$hb->Size()}", "4 4");
+		hsym := ha->SymmetricDifference(hb);
 		sym := Set->New()<String>;
-		ka := ha->GetKeys()<String>;
-		each(k in ka) {
-			if(<>hb->Has(k)) { sym->Insert(k); };
-		};
-		kb := hb->GetKeys()<String>;
-		each(k in kb) {
-			if(<>ha->Has(k)) { sym->Insert(k); };
-		};
+		keys := hsym->GetKeys()<String>;
+		each(k in keys) { sym->Insert(k); };
 		Check("SetHash symmetric difference", Show(sym), "Jim,Serena");
 
 		if(@failures > 0) {
@@ -97,32 +95,5 @@ class RosettaSymmetricDifference {
 			out += keys->Get(i);
 		};
 		return out;
-	}
-
-	function : Union(a : Set<String>, b : Set<String>) ~ Set<String> {
-		r := Set->New()<String>;
-		ak := a->GetKeys()<String>;
-		each(k in ak) { r->Insert(k); };
-		bk := b->GetKeys()<String>;
-		each(k in bk) { r->Insert(k); };
-		return r;
-	}
-
-	function : Intersect(a : Set<String>, b : Set<String>) ~ Set<String> {
-		r := Set->New()<String>;
-		ak := a->GetKeys()<String>;
-		each(k in ak) {
-			if(b->Has(k)) { r->Insert(k); };
-		};
-		return r;
-	}
-
-	function : Minus(a : Set<String>, b : Set<String>) ~ Set<String> {
-		r := Set->New()<String>;
-		ak := a->GetKeys()<String>;
-		each(k in ak) {
-			if(<>b->Has(k)) { r->Insert(k); };
-		};
-		return r;
 	}
 }

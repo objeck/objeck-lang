@@ -3,73 +3,18 @@
 # https://rosettacode.org/wiki/Checkpoint_synchronization
 # Claimed in #1162
 #
-# A reusable checkpoint (a cyclic barrier) for workers that assemble parts in rounds, with workers leaving part way through, as the task invites. System.Concurrency has Thread and ThreadMutex but no barrier, semaphore or condition variable, so the checkpoint is built here from a mutex and a polled generation number. The generation is the whole fix for the race the task describes: a worker waits for the generation it arrived in to END, not for "everyone has arrived", so a fast worker that has already reset and re-arrived cannot strand a slow one, and cannot be counted twice in one round.
+# EXTRA_LIBS: concurrent
+#
+# A reusable checkpoint for workers that assemble parts in rounds, with workers leaving part way through, as the task invites: the library's cyclic barrier, System.Concurrency.Barrier, with Await at each checkpoint and Leave when a worker is done. (This test used to build its own checkpoint from a mutex and a polled generation number, because the library had no barrier or condition variable, #1186.) The barrier counts rounds by generation, which is the whole fix for the race the task describes: a worker waits for the round it arrived in to END, not for "everyone has arrived", so a fast worker that has already reset and re-arrived cannot strand a slow one, and cannot be counted twice in one round. A waiting worker sleeps on a Condition.
 #
 # WHAT IS ASSERTED: an invariant, not a schedule. Every worker records its arrival at checkpoint c in a ledger (its own lock) BEFORE waiting, and on passing checkpoint c checks that every worker still in the workshop has arrived at c. A worker that passes early -- the "counted twice" bug, or no barrier at all -- sees a lagging worker and records a violation. 32 workers (deliberately more than any machine's cores) run 40 rounds; a quarter of them leave after round 10, so the barrier must also shrink correctly. Each worker allocates in its loop so collections land while threads are parked in the barrier.
 #
-# CONTROL: run once each in a scratch copy, with the synchronisation removed. (1) Await's wait loop removed (arrive, then return at once): FAILED, with 13,434 premature-pass observations and 67 trips instead of 40. (2) The task's broken event scheme -- wait while 0 < arrived < parties, the last arriver resetting the count: FAILED by hanging (killed after 20 s), because a fast worker re-arrives before the slow ones see the reset and strands them, which is exactly the race the task warns about.
+# CONTROL: run against a scratch concurrent.obl whose Barrier->Await has its wait loop removed (arrive, then return at once): FAILED, with 13,510 premature-pass observations and 65 trips instead of 40.
 #
 # No expected values to source: the oracle is the invariant itself.
 ~#
 
 use System.Concurrency;
-
-# A cyclic barrier: mutex plus a polled generation counter.
-class Checkpoint {
-	@mutex : ThreadMutex;
-	@parties : Int;
-	@arrived : Int;
-	@generation : Int;
-
-	New(parties : Int) {
-		@mutex := ThreadMutex->New("checkpoint");
-		@parties := parties;
-		@arrived := 0;
-		@generation := 0;
-	}
-
-	# Arrive and wait until every current member has arrived.
-	method : public : Await() ~ Nil {
-		mine := 0;
-		critical(@mutex) {
-			mine := @generation;
-			@arrived += 1;
-			if(@arrived = @parties) {
-				@arrived := 0;
-				@generation += 1;
-			};
-		};
-		# no condition variable exists, so poll; a return inside critical would
-		# never release the lock (#1117), hence the flag
-		waiting := true;
-		while(waiting) {
-			critical(@mutex) {
-				waiting := @generation = mine;
-			};
-			if(waiting) {
-				Thread->Sleep(1);
-			};
-		};
-	}
-
-	# Leave the workshop. If everyone remaining has already arrived, the round
-	# they are waiting on is now complete.
-	method : public : Leave() ~ Nil {
-		critical(@mutex) {
-			@parties -= 1;
-			if(@parties > 0 & @arrived = @parties) {
-				@arrived := 0;
-				@generation += 1;
-			};
-		};
-	}
-
-	method : public : GetGeneration() ~ Int {
-		g := 0;
-		critical(@mutex) { g := @generation; };
-		return g;
-	}
-}
 
 # The observer: who has arrived where, under its own lock.
 class Ledger {
@@ -124,11 +69,11 @@ class Ledger {
 class Worker from Thread {
 	@id : Int;
 	@rounds : Int;
-	@checkpoint : Checkpoint;
+	@checkpoint : Barrier;
 	@ledger : Ledger;
 	@completed : Int;
 
-	New(id : Int, rounds : Int, checkpoint : Checkpoint, ledger : Ledger) {
+	New(id : Int, rounds : Int, checkpoint : Barrier, ledger : Ledger) {
 		Parent("worker-{$id}");
 		@id := id;
 		@rounds := rounds;
@@ -189,7 +134,7 @@ class RosettaCheckpointSynchronization {
 		early := 10;
 		leavers := workers / 4;
 
-		checkpoint := Checkpoint->New(workers);
+		checkpoint := Barrier->New(workers);
 		ledger := Ledger->New(workers);
 		crew := Worker->New[workers];
 		expected_passes := 0;
@@ -209,7 +154,7 @@ class RosettaCheckpointSynchronization {
 
 		CheckInt("no worker passed a checkpoint before every member reached it", ledger->GetViolations(), 0);
 		CheckInt("every worker passed every checkpoint it signed up for", ledger->GetPasses(), expected_passes);
-		CheckInt("the checkpoint tripped once per round", checkpoint->GetGeneration(), rounds);
+		CheckInt("the checkpoint tripped once per round", checkpoint->GetRounds(), rounds);
 		finished := 0;
 		for(i := 0; i < workers; i += 1;) {
 			if(i < leavers) {

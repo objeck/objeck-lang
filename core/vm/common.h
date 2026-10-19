@@ -2398,6 +2398,9 @@ class TrapProcessor {
   static bool Http3RequestHdrs(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool FloatToStrPrec(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool FileInLine(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool CondNew(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool CondWait(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool CondSignal(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool Http3Close(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockUdpCreate(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockUdpBind(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
@@ -2667,6 +2670,15 @@ class TrapProcessor {
 };
 
 bool EndsWith(std::wstring const& str, std::wstring const& ending);
+
+// System.Concurrency.ThreadMutex. The native lock lives on the C++ heap and
+// the object's first word field (@m0) holds its address: a young object is
+// moved when it is promoted, and a lock that threads are blocked on cannot
+// move. Locking parks the thread while it waits, so a collection started by
+// the thread holding the lock (it allocates inside critical) can finish.
+void ThreadMutexCreate(size_t* instance);
+void ThreadMutexLock(size_t* instance);
+void ThreadMutexUnlock(size_t* instance);
 
 /********************************
  * Call back for DLL method calls

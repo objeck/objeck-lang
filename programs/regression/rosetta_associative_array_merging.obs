@@ -5,7 +5,7 @@
 #
 # EXTRA_LIBS: gen_collect
 #
-# Merges the task's "base" and "update" tables into a new table where update wins, without mutating either source, on both the library's Collection.Hash and Collection.Map. Values are mixed (String, FloatRef, IntRef) behind Base, so the test also pins that a value's runtime type survives the round trip and that a second Insert on an existing key replaces rather than duplicates.
+# Merges the task's "base" and "update" tables into a new table where update wins, without mutating either source. On Collection.Hash this is the library's Copy() followed by Merge(that), whose values win; Collection.Map has neither, so its merge is still written here. Values are mixed (String, FloatRef, IntRef) behind Base, so the test also pins that a value's runtime type survives the round trip and that a second Insert on an existing key replaces rather than duplicates.
 #
 # Expected values are the task page's stated result table.
 ~#
@@ -45,7 +45,10 @@ class RosettaAssociativeArrayMerging {
 		update->Insert("color", "red");
 		update->Insert("year", IntRef->New(1974));
 
-		merged := Merge(base, update);
+		# Copy then Merge in two statements: base->Copy()->Merge(update) loses the type arguments
+		merged := base->Copy();
+		returned := merged->Merge(update);
+		Check("Merge returns the hash it merged into", (returned = merged)->ToString(), "true");
 		Check("merged has every key from either table", merged->Size()->ToString(), "4");
 		Check("merged keys", Keys(merged), "color,name,price,year");
 		Check("name comes from base", Show(merged->Find("name")), "Rocket Skates");
@@ -70,11 +73,16 @@ class RosettaAssociativeArrayMerging {
 		Check("update never gained name", update->Has("name")->ToString(), "false");
 
 		# merging the other way round: base wins
-		flipped := Merge(update, base);
+		flipped := update->Copy();
+		flipped->Merge(base);
 		Check("reverse merge: price from base", Show(flipped->Find("price")), "12.75");
 		Check("reverse merge: year still present", Show(flipped->Find("year")), "1974");
 
-		# the same merge on the tree-backed Map, whose keys come out sorted
+		# merging Nil changes nothing
+		merged->Merge(Nil);
+		Check("merging Nil keeps four keys", merged->Size()->ToString(), "4");
+
+		# the same merge on the tree-backed Map, whose keys come out sorted; Map has no Copy / Merge, so it is written here
 		mbase := Map->New()<String, Base>;
 		mbase->Insert("name", "Rocket Skates");
 		mbase->Insert("price", FloatRef->New(12.75));
@@ -93,16 +101,7 @@ class RosettaAssociativeArrayMerging {
 		};
 	}
 
-	# a new table: everything from first, then everything from second on top
-	function : Merge(first : Hash<String, Base>, second : Hash<String, Base>) ~ Hash<String, Base> {
-		out := Hash->New()<String, Base>;
-		pairs := first->GetKeyValues()<Pair<String, Base>>;
-		each(p in pairs) { out->Insert(p->GetFirst(), p->GetSecond()); };
-		pairs := second->GetKeyValues()<Pair<String, Base>>;
-		each(p in pairs) { out->Insert(p->GetFirst(), p->GetSecond()); };
-		return out;
-	}
-
+	# a new map: everything from first, then everything from second on top
 	function : MapMerge(first : Map<String, Base>, second : Map<String, Base>) ~ Map<String, Base> {
 		out := Map->New()<String, Base>;
 		pairs := first->GetKeyValues()<Pair<String, Base>>;

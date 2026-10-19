@@ -629,6 +629,8 @@ while(<>heap->IsEmpty()) {
 		@heap : H[];
 		@length : Int;
 		@min : Bool;
+		@compare : (H, H) ~ Int;
+		@has_compare : Bool;
 
 		#~
 		Heap sort order
@@ -676,6 +678,45 @@ heap->Pop()->PrintLine(); # 9
 			@heap := H->New[16];
 			@length := 0;
 			@min := order = Heap->Order->MIN ? true : false;
+		}
+
+		#~
+		Constructor that orders the values with a comparator instead of their Compare method
+		@param order sort order: MIN pops the value the comparator ranks lowest first
+		@param compare comparator: negative if the first value ranks lower, 0 if equal, positive if higher
+
+```
+# longest string first
+heap := Collection.Heap->New(Collection.Heap->Order->MAX,
+  \(String, String) ~ Int : (a, b) => a->Size() - b->Size())<String>;
+heap->Insert("fig"); heap->Insert("banana"); heap->Insert("kiwi");
+heap->Pop()->PrintLine(); # banana
+```
+		~#
+		New(order : Heap->Order, compare : (H, H) ~ Int) {
+			@heap := H->New[16];
+			@length := 0;
+			@min := order = Heap->Order->MIN ? true : false;
+			@compare := compare;
+			@has_compare := true;
+		}
+
+		#~
+		Constructor for a min-heap ordered by a comparator: Pop returns the value the comparator ranks lowest
+		@param compare comparator: negative if the first value ranks lower, 0 if equal, positive if higher
+
+```
+heap := Collection.Heap->New(\(IntRef, IntRef) ~ Int : (a, b) => b->Get() - a->Get())<IntRef>;
+heap->Insert(IntRef->New(1)); heap->Insert(IntRef->New(5));
+heap->Pop()->PrintLine(); # 5: the comparator reverses the order
+```
+		~#
+		New(compare : (H, H) ~ Int) {
+			@heap := H->New[16];
+			@length := 0;
+			@min := true;
+			@compare := compare;
+			@has_compare := true;
 		}
 
 		#~
@@ -783,7 +824,7 @@ heap->Size()->PrintLine();              # 1
 			each(i : @heap) {
 				elem := @heap[i];
 				if(elem <> Nil) {
-					if(value->Compare(elem) = 0) {
+					if(Order(value, elem) = 0) {
 						Swap(i, @length);
 						@heap[@length] := Nil;
 						@length--;
@@ -836,6 +877,28 @@ heap->Top()->PrintLine(); # 2
 		}
 
 		#~
+		Returns the value Pop would return, without removing it; the same as Top
+		@return smallest or largest value, Nil if the heap is empty
+
+```
+heap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;
+heap->Insert(IntRef->New(5)); heap->Insert(IntRef->New(2));
+heap->Peek()->PrintLine(); # 2
+heap->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Peek() ~ H {
+			return Top();
+		}
+
+		method : Order(a : H, b : H) ~ Int {
+			if(@has_compare) {
+				return @compare(a, b);
+			};
+			return a->Compare(b);
+		}
+
+		#~
 		Size of heap, including Nil values
 		@return size of heap
 
@@ -862,13 +925,13 @@ heap->Size()->PrintLine(); # 2
 
 		method : ShiftUp(index : Int) ~ Nil {
 			if(@min) {
-				while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) > 0)) {
+				while(HasParent(index) & (Order(GetParent(index), @heap[index]) > 0)) {
 					Swap(index, GetParentIndex(index));
 					index := GetParentIndex(index);
 				}   
 			}
 			else {
-				while(HasParent(index) & (GetParent(index)->Compare(@heap[index]) < 0)) {
+				while(HasParent(index) & (Order(GetParent(index), @heap[index]) < 0)) {
 					Swap(index, GetParentIndex(index));
 					index := GetParentIndex(index);
 				};  
@@ -883,11 +946,11 @@ heap->Size()->PrintLine(); # 2
 			if(@min) {
 				while(HasLeftChild((index))) {
 					smaller := GetLeftIndex(index);
-					if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) > 0) {
+					if(HasRightChild(index) & Order(@heap[GetLeftIndex(index)], @heap[GetRightIndex(index)]) > 0) {
 						smaller := GetRightIndex(index);
 					}
 
-					if(@heap[index]->Compare(@heap[smaller]) > 0) {
+					if(Order(@heap[index], @heap[smaller]) > 0) {
 						Swap(index, smaller);
 					}
 					else {
@@ -899,11 +962,11 @@ heap->Size()->PrintLine(); # 2
 			else {
 				while(HasLeftChild((index))) {
 					larger := GetLeftIndex(index);
-					if(HasRightChild(index) & @heap[GetLeftIndex(index)]->Compare(@heap[GetRightIndex(index)]) < 0) {
+					if(HasRightChild(index) & Order(@heap[GetLeftIndex(index)], @heap[GetRightIndex(index)]) < 0) {
 						larger := GetRightIndex(index);
 					}
 
-					if(@heap[index]->Compare(@heap[larger]) < 0) {
+					if(Order(@heap[index], @heap[larger]) < 0) {
 						Swap(index, larger);
 					}
 					else { 
@@ -1478,6 +1541,235 @@ set->ToString()->PrintLine();
 			};
 			buffer->Append('}');
 			return buffer;
+		}
+
+		#~
+		Inserts a value into the set; the same as Add, for the method name Set and SetHash use
+		@param value value to insert
+
+```
+set := Collection.HashSet->New()<String>;
+set->Insert("apple");
+set->Has("apple")->PrintLine(); # true
+```
+		~#
+		method : public : Insert(value : H) ~ Nil {
+			Add(value);
+		}
+
+		#~
+		Gets all values as a vector; the same as ToVector, for the method name Set and SetHash use
+		@return vector of values
+
+```
+set := Collection.HashSet->New()<String>;
+set->Insert("x"); set->Insert("y");
+set->GetKeys()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : GetKeys() ~ Vector<H> {
+			return ToVector();
+		}
+
+		#~
+		Elements in this set, the other set, or both. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.HashSet->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.HashSet->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Union(b)->Size()->PrintLine(); # 4
+```
+		~#
+		method : public : Union(that : HashSet<H>) ~ HashSet<H> {
+			result := HashSet->New()<H>;
+			keys := ToVector();
+			each(i : keys) {
+				result->Insert(keys->Get(i));
+			};
+			if(that <> Nil) {
+				keys := that->ToVector();
+				each(i : keys) {
+					result->Insert(keys->Get(i));
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in both this set and the other set. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.HashSet->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.HashSet->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Intersect(b)->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Intersect(that : HashSet<H>) ~ HashSet<H> {
+			result := HashSet->New()<H>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(that = Nil) {
+				}
+				else if(that->Has(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in this set that are not in the other set. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.HashSet->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.HashSet->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Difference(b)->Has(1)->PrintLine(); # true
+```
+		~#
+		method : public : Difference(that : HashSet<H>) ~ HashSet<H> {
+			result := HashSet->New()<H>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(that = Nil) {
+					result->Insert(key);
+				}
+				else if(<>that->Has(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in exactly one of the two sets. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.HashSet->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.HashSet->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->SymmetricDifference(b)->Size()->PrintLine(); # 2 (1 and 4)
+```
+		~#
+		method : public : SymmetricDifference(that : HashSet<H>) ~ HashSet<H> {
+			result := Difference(that);
+			if(that <> Nil) {
+				keys := that->ToVector();
+				each(i : keys) {
+					if(<>Has(keys->Get(i))) {
+						result->Insert(keys->Get(i));
+					};
+				};
+			};
+			return result;
+		}
+
+		#~
+		Checks that every element of this set is in the other set. The empty set is a subset of every set.
+		@param that other set (Nil counts as empty)
+		@return true if this set is a subset of the other, false otherwise
+
+```
+a := Collection.HashSet->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.HashSet->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Intersect(b)->IsSubset(b)->PrintLine(); # true
+a->IsSubset(b)->PrintLine(); # false
+```
+		~#
+		method : public : IsSubset(that : HashSet<H>) ~ Bool {
+			if(that = Nil) {
+				return IsEmpty();
+			};
+			if(Size() > that->Size()) {
+				return false;
+			};
+			keys := ToVector();
+			each(i : keys) {
+				if(<>that->Has(keys->Get(i))) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		#~
+		Checks that every element of the other set is in this set
+		@param that other set (Nil counts as empty)
+		@return true if this set is a superset of the other, false otherwise
+
+```
+a := Collection.HashSet->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.HashSet->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Union(b)->IsSuperset(a)->PrintLine(); # true
+```
+		~#
+		method : public : IsSuperset(that : HashSet<H>) ~ Bool {
+			if(that = Nil) {
+				return true;
+			};
+			return that->IsSubset(@self);
+		}
+
+		#~
+		Calls a function for each element
+		@param f function called
+		@return this set
+
+```
+set := Collection.HashSet->New()<String>;
+set->Insert("x"); set->Insert("y");
+set->Each(\(s) => { s->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (H) ~ Nil) ~ HashSet<H> {
+			keys := ToVector();
+			each(i : keys) {
+				f(keys->Get(i));
+			};
+			return @self;
+		}
+
+		#~
+		Keeps the elements a function accepts. The set is not changed.
+		@param f function that returns true for each element to keep
+		@return new set
+
+```
+set := Collection.HashSet->New()<String>;
+set->Insert("apple"); set->Insert("kiwi");
+set->Filter(\(s) => s->Size() > 4)->Size()->PrintLine(); # 1
+```
+		~#
+		method : public : Filter(f : (H) ~ Bool) ~ HashSet<H> {
+			result := HashSet->New()<H>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
 		}
 	}
 
@@ -2237,6 +2529,96 @@ hash->Size()->PrintLine(); # 2
 		~#
 		method : public : Size() ~ Int {
 			return @size;
+		}
+
+		#~
+		Copies the hash. The keys and values are shared, not cloned.
+		@return new hash with the same entries
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("a", 1);
+copy := hash->Copy();
+copy->Insert("b", 2);
+hash->Size()->PrintLine(); # 1
+copy->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Copy() ~ Hash<K, V> {
+			copy := Hash->New(@auto_resize)<K, V>;
+			copy->Merge(@self);
+			return copy;
+		}
+
+		#~
+		Inserts every entry of another hash into this one. Where both have a key, that hash's value wins.
+		@param that hash to merge in (Nil changes nothing)
+		@return this hash
+
+```
+a := Collection.Hash->New()<String, IntRef>;
+a->Insert("x", 1); a->Insert("y", 2);
+b := Collection.Hash->New()<String, IntRef>;
+b->Insert("y", 20); b->Insert("z", 30);
+a->Merge(b);
+a->Find("y")->PrintLine(); # 20
+a->Size()->PrintLine();    # 3
+```
+		~#
+		method : public : Merge(that : Hash<K, V>) ~ Hash<K, V> {
+			if(that = Nil) {
+				return @self;
+			};
+
+			pairs := that->GetKeyValues();
+			each(i : pairs) {
+				pair := pairs->Get(i);
+				Insert(pair->GetFirst(), pair->GetSecond());
+			};
+			return @self;
+		}
+
+		#~
+		Calls a function for each key and value. The function may change the hash: it is called on a snapshot of the entries.
+		@param f function called
+		@return this hash
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("a", 1); hash->Insert("b", 2);
+hash->Each(\(k, v) => { "{$k}={$v}"->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ Hash<K, V> {
+			pairs := GetKeyValues();
+			each(i : pairs) {
+				pair := pairs->Get(i);
+				f(pair->GetFirst(), pair->GetSecond());
+			};
+			return @self;
+		}
+
+		#~
+		Keeps the entries whose keys a function accepts, as Map->Filter does. The hash is not changed.
+		@param f function that returns true for each key to keep
+		@return new hash
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->Insert("apple", 1); hash->Insert("kiwi", 2);
+hash->Filter(\(k) => k->Size() > 4)->Size()->PrintLine(); # 1
+```
+		~#
+		method : public : Filter(f : (K) ~ Bool) ~ Hash<K, V> {
+			filtered := Hash->New(@auto_resize)<K, V>;
+			pairs := GetKeyValues();
+			each(i : pairs) {
+				pair := pairs->Get(i);
+				if(f(pair->GetFirst())) {
+					filtered->Insert(pair->GetFirst(), pair->GetSecond());
+				};
+			};
+			return filtered;
 		}
 	}
 
@@ -5333,6 +5715,77 @@ v->FindIndex(\(s : String) ~ Bool { return s->StartsWith("b"); })->PrintLine(); 
 			};
 			return -1;
 		}
+
+		#~
+		Sorts the values in place with a comparator. The sort is stable: values the comparator calls equal keep their order.
+		@param compare comparator: negative if the first value goes first, 0 if equal, positive if the second goes first
+
+```
+v := Collection.Vector->New()<String>;
+v->AddBack("pear"); v->AddBack("fig"); v->AddBack("banana");
+v->Sort(\(a, b) => a->Size() - b->Size());
+v->Get(0)->PrintLine(); # fig
+```
+		~#
+		method : public : Sort(compare : (H, H) ~ Int) ~ Nil {
+			if(@size < 2) {
+				return;
+			};
+
+			b : H[] := H->New[@size];
+			SortWith(0, @size - 1, @values, b, compare);
+		}
+
+		method : SortWith(low : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
+			if(low < hi) {
+				if(hi - low < 16) {
+					for(i := low + 1; i <= hi; i += 1;) {
+						value := a[i];
+						j := i - 1;
+						while(j >= low & compare(a[j], value) > 0) {
+							a[j + 1] := a[j];
+							j -= 1;
+						};
+						a[j + 1] := value;
+					};
+					return;
+				};
+
+				mid := (low + hi) >> 1;
+				SortWith(low, mid, a, b, compare);
+				SortWith(mid + 1, hi, a, b, compare);
+				MergeWith(low, mid, hi, a, b, compare);
+			};
+		}
+
+		method : MergeWith(low : Int, mid : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
+			for(i := low; i <= hi; i += 1;) {
+				b[i] := a[i];
+			};
+
+			i := low;
+			j := mid + 1;
+			k := low;
+			while(i <= mid & j <= hi) {
+				# <= keeps equal values in their original order
+				if(compare(b[i], b[j]) <= 0) {
+					a[k] := b[i];
+					i += 1;
+				}
+				else {
+					a[k] := b[j];
+					j += 1;
+				};
+				k += 1;
+			};
+
+			# the rest of the second half is already in place
+			while(i <= mid) {
+				a[k] := b[i];
+				k += 1;
+				i += 1;
+			};
+		}
 	}
 
 	#~
@@ -5794,6 +6247,77 @@ v->Get(0)->PrintLine(); # 1
 			a : H[] := @values;
 			b : H[] := H->New[@size];
 			MergeSort(0, @size - 1, a, b);
+		}
+
+		#~
+		Sorts the values in place with a comparator. The sort is stable: values the comparator calls equal keep their order.
+		@param compare comparator: negative if the first value goes first, 0 if equal, positive if the second goes first
+
+```
+v := Collection.CompareVector->New()<String>;
+v->AddBack("pear"); v->AddBack("fig"); v->AddBack("banana");
+v->Sort(\(a, b) => a->Size() - b->Size());
+v->Get(0)->PrintLine(); # fig
+```
+		~#
+		method : public : Sort(compare : (H, H) ~ Int) ~ Nil {
+			if(@size < 2) {
+				return;
+			};
+
+			b : H[] := H->New[@size];
+			SortWith(0, @size - 1, @values, b, compare);
+		}
+
+		method : SortWith(low : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
+			if(low < hi) {
+				if(hi - low < 16) {
+					for(i := low + 1; i <= hi; i += 1;) {
+						value := a[i];
+						j := i - 1;
+						while(j >= low & compare(a[j], value) > 0) {
+							a[j + 1] := a[j];
+							j -= 1;
+						};
+						a[j + 1] := value;
+					};
+					return;
+				};
+
+				mid := (low + hi) >> 1;
+				SortWith(low, mid, a, b, compare);
+				SortWith(mid + 1, hi, a, b, compare);
+				MergeWith(low, mid, hi, a, b, compare);
+			};
+		}
+
+		method : MergeWith(low : Int, mid : Int, hi : Int, a : H[], b : H[], compare : (H, H) ~ Int) ~ Nil {
+			for(i := low; i <= hi; i += 1;) {
+				b[i] := a[i];
+			};
+
+			i := low;
+			j := mid + 1;
+			k := low;
+			while(i <= mid & j <= hi) {
+				# <= keeps equal values in their original order
+				if(compare(b[i], b[j]) <= 0) {
+					a[k] := b[i];
+					i += 1;
+				}
+				else {
+					a[k] := b[j];
+					j += 1;
+				};
+				k += 1;
+			};
+
+			# the rest of the second half is already in place
+			while(i <= mid) {
+				a[k] := b[i];
+				k += 1;
+				i += 1;
+			};
 		}
 		
 		method : MergeSort(low : Int, hi : Int, a : H[], b : H[]) ~ Nil {
@@ -7010,6 +7534,259 @@ set->Size()->PrintLine(); # 3
 		method : public : Size() ~ Int {
 			return @map->Size();
 		}
+
+		#~
+		Adds a key to the set; the same as Insert, but says whether it was new
+		@param key key
+		@return true if added, false if it was already in the set (or is Nil)
+
+```
+set := Collection.Set->New()<String>;
+set->Add("apple")->PrintLine(); # true
+set->Add("apple")->PrintLine(); # false
+```
+		~#
+		method : public : Add(key : K) ~ Bool {
+			if(key = Nil | @map->Has(key)) {
+				return false;
+			};
+			@map->Insert(key, key);
+			return true;
+		}
+
+		#~
+		Gets all elements as a vector; the same as GetKeys
+		@return vector of elements
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("x"); set->Insert("y");
+set->ToVector()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : ToVector() ~ Vector<K> {
+			return @map->GetKeys();
+		}
+
+		#~
+		Gets all elements as an array
+		@return array of elements
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("p"); set->Insert("q");
+set->ToArray()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : ToArray() ~ K[] {
+			keys := @map->GetKeys();
+			array := K->New[keys->Size()];
+			each(i : keys) {
+				array[i] := keys->Get(i);
+			};
+			return array;
+		}
+
+		#~
+		Elements in this set, the other set, or both. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.Set->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.Set->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Union(b)->Size()->PrintLine(); # 4
+```
+		~#
+		method : public : Union(that : Set<K>) ~ Set<K> {
+			result := Set->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				result->Insert(keys->Get(i));
+			};
+			if(that <> Nil) {
+				keys := that->ToVector();
+				each(i : keys) {
+					result->Insert(keys->Get(i));
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in both this set and the other set. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.Set->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.Set->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Intersect(b)->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Intersect(that : Set<K>) ~ Set<K> {
+			result := Set->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(that = Nil) {
+				}
+				else if(that->Has(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in this set that are not in the other set. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.Set->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.Set->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Difference(b)->Has(1)->PrintLine(); # true
+```
+		~#
+		method : public : Difference(that : Set<K>) ~ Set<K> {
+			result := Set->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(that = Nil) {
+					result->Insert(key);
+				}
+				else if(<>that->Has(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in exactly one of the two sets. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.Set->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.Set->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->SymmetricDifference(b)->Size()->PrintLine(); # 2 (1 and 4)
+```
+		~#
+		method : public : SymmetricDifference(that : Set<K>) ~ Set<K> {
+			result := Difference(that);
+			if(that <> Nil) {
+				keys := that->ToVector();
+				each(i : keys) {
+					if(<>Has(keys->Get(i))) {
+						result->Insert(keys->Get(i));
+					};
+				};
+			};
+			return result;
+		}
+
+		#~
+		Checks that every element of this set is in the other set. The empty set is a subset of every set.
+		@param that other set (Nil counts as empty)
+		@return true if this set is a subset of the other, false otherwise
+
+```
+a := Collection.Set->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.Set->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Intersect(b)->IsSubset(b)->PrintLine(); # true
+a->IsSubset(b)->PrintLine(); # false
+```
+		~#
+		method : public : IsSubset(that : Set<K>) ~ Bool {
+			if(that = Nil) {
+				return IsEmpty();
+			};
+			if(Size() > that->Size()) {
+				return false;
+			};
+			keys := ToVector();
+			each(i : keys) {
+				if(<>that->Has(keys->Get(i))) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		#~
+		Checks that every element of the other set is in this set
+		@param that other set (Nil counts as empty)
+		@return true if this set is a superset of the other, false otherwise
+
+```
+a := Collection.Set->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.Set->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Union(b)->IsSuperset(a)->PrintLine(); # true
+```
+		~#
+		method : public : IsSuperset(that : Set<K>) ~ Bool {
+			if(that = Nil) {
+				return true;
+			};
+			return that->IsSubset(@self);
+		}
+
+		#~
+		Calls a function for each element
+		@param f function called
+		@return this set
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("x"); set->Insert("y");
+set->Each(\(s) => { s->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (K) ~ Nil) ~ Set<K> {
+			keys := ToVector();
+			each(i : keys) {
+				f(keys->Get(i));
+			};
+			return @self;
+		}
+
+		#~
+		Keeps the elements a function accepts. The set is not changed.
+		@param f function that returns true for each element to keep
+		@return new set
+
+```
+set := Collection.Set->New()<String>;
+set->Insert("apple"); set->Insert("kiwi");
+set->Filter(\(s) => s->Size() > 4)->Size()->PrintLine(); # 1
+```
+		~#
+		method : public : Filter(f : (K) ~ Bool) ~ Set<K> {
+			result := Set->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
+		}
 	}
 
 	#~
@@ -7162,6 +7939,255 @@ sh->Size()->PrintLine(); # 2
 		~#
 		method : public : Size() ~ Int {
 			return @set->Size();
+		}
+
+		#~
+		Adds a key to the set; the same as Insert, but says whether it was new
+		@param key key
+		@return true if added, false if it was already in the set (or is Nil)
+
+```
+set := Collection.SetHash->New()<String>;
+set->Add("apple")->PrintLine(); # true
+set->Add("apple")->PrintLine(); # false
+```
+		~#
+		method : public : Add(key : K) ~ Bool {
+			return @set->Add(key);
+		}
+
+		#~
+		Gets all elements as a vector; the same as GetKeys
+		@return vector of elements
+
+```
+set := Collection.SetHash->New()<String>;
+set->Insert("x"); set->Insert("y");
+set->ToVector()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : ToVector() ~ Vector<K> {
+			return @set->ToVector();
+		}
+
+		#~
+		Gets all elements as an array
+		@return array of elements
+
+```
+set := Collection.SetHash->New()<String>;
+set->Insert("p"); set->Insert("q");
+set->ToArray()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : ToArray() ~ K[] {
+			keys := @set->ToVector();
+			array := K->New[keys->Size()];
+			each(i : keys) {
+				array[i] := keys->Get(i);
+			};
+			return array;
+		}
+
+		#~
+		Elements in this set, the other set, or both. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.SetHash->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.SetHash->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Union(b)->Size()->PrintLine(); # 4
+```
+		~#
+		method : public : Union(that : SetHash<K>) ~ SetHash<K> {
+			result := SetHash->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				result->Insert(keys->Get(i));
+			};
+			if(that <> Nil) {
+				keys := that->ToVector();
+				each(i : keys) {
+					result->Insert(keys->Get(i));
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in both this set and the other set. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.SetHash->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.SetHash->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Intersect(b)->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Intersect(that : SetHash<K>) ~ SetHash<K> {
+			result := SetHash->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(that = Nil) {
+				}
+				else if(that->Has(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in this set that are not in the other set. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.SetHash->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.SetHash->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Difference(b)->Has(1)->PrintLine(); # true
+```
+		~#
+		method : public : Difference(that : SetHash<K>) ~ SetHash<K> {
+			result := SetHash->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(that = Nil) {
+					result->Insert(key);
+				}
+				else if(<>that->Has(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
+		}
+
+		#~
+		Elements in exactly one of the two sets. Neither set is changed.
+		@param that other set (Nil counts as empty)
+		@return new set
+
+```
+a := Collection.SetHash->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.SetHash->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->SymmetricDifference(b)->Size()->PrintLine(); # 2 (1 and 4)
+```
+		~#
+		method : public : SymmetricDifference(that : SetHash<K>) ~ SetHash<K> {
+			result := Difference(that);
+			if(that <> Nil) {
+				keys := that->ToVector();
+				each(i : keys) {
+					if(<>Has(keys->Get(i))) {
+						result->Insert(keys->Get(i));
+					};
+				};
+			};
+			return result;
+		}
+
+		#~
+		Checks that every element of this set is in the other set. The empty set is a subset of every set.
+		@param that other set (Nil counts as empty)
+		@return true if this set is a subset of the other, false otherwise
+
+```
+a := Collection.SetHash->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.SetHash->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Intersect(b)->IsSubset(b)->PrintLine(); # true
+a->IsSubset(b)->PrintLine(); # false
+```
+		~#
+		method : public : IsSubset(that : SetHash<K>) ~ Bool {
+			if(that = Nil) {
+				return IsEmpty();
+			};
+			if(Size() > that->Size()) {
+				return false;
+			};
+			keys := ToVector();
+			each(i : keys) {
+				if(<>that->Has(keys->Get(i))) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		#~
+		Checks that every element of the other set is in this set
+		@param that other set (Nil counts as empty)
+		@return true if this set is a superset of the other, false otherwise
+
+```
+a := Collection.SetHash->New()<IntRef>;
+a->Insert(1); a->Insert(2); a->Insert(3);
+b := Collection.SetHash->New()<IntRef>;
+b->Insert(2); b->Insert(3); b->Insert(4);
+a->Union(b)->IsSuperset(a)->PrintLine(); # true
+```
+		~#
+		method : public : IsSuperset(that : SetHash<K>) ~ Bool {
+			if(that = Nil) {
+				return true;
+			};
+			return that->IsSubset(@self);
+		}
+
+		#~
+		Calls a function for each element
+		@param f function called
+		@return this set
+
+```
+set := Collection.SetHash->New()<String>;
+set->Insert("x"); set->Insert("y");
+set->Each(\(s) => { s->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (K) ~ Nil) ~ SetHash<K> {
+			keys := ToVector();
+			each(i : keys) {
+				f(keys->Get(i));
+			};
+			return @self;
+		}
+
+		#~
+		Keeps the elements a function accepts. The set is not changed.
+		@param f function that returns true for each element to keep
+		@return new set
+
+```
+set := Collection.SetHash->New()<String>;
+set->Insert("apple"); set->Insert("kiwi");
+set->Filter(\(s) => s->Size() > 4)->Size()->PrintLine(); # 1
+```
+		~#
+		method : public : Filter(f : (K) ~ Bool) ~ SetHash<K> {
+			result := SetHash->New()<K>;
+			keys := ToVector();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					result->Insert(key);
+				};
+			};
+			return result;
 		}
 	}
 		
@@ -7510,4 +8536,349 @@ mmap->TotalSize()->PrintLine(); # 3
 		}
 	}
 
+
+	#~
+	Hash table that holds multiple values with the same key: a MultiMap whose keys are unordered, with constant-time lookups
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("fruits", 1);
+mmap->Insert("fruits", 2);
+mmap->Insert("vegetables", 3);
+values := mmap->Find("fruits")<IntRef>;
+each(v := values) {
+   v->PrintLine();
+};
+```
+	~#
+	class MultiHash<K : Compare, V> {
+		@map : Hash<K, Vector<V> >;
+
+		#~
+		Default constructor
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1));
+mmap->Size()->PrintLine(); # 1
+```
+		~#
+		New() {
+			@map := Hash->New()<K, Vector<V> >;
+		}
+
+		#~
+		Inserts a value into the map
+		@param key key
+		@param value value
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("fruits", IntRef->New(1));
+mmap->Insert("fruits", IntRef->New(2));
+mmap->Find("fruits")->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Insert(key : K, value : V) ~ Nil {
+			if(key = Nil) {
+				return;
+			};
+
+			values := Find(key);
+			if(values = Nil) {
+				values := Vector->New()<V>;
+				@map->Insert(key, values);
+			};
+
+			values->AddBack(value);
+		}
+
+		#~
+		Finds all values for a key in the map
+		@param key search key
+		@return vector of values, or Nil if not found
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("k", IntRef->New(10)); mmap->Insert("k", IntRef->New(20));
+vals := mmap->Find("k")<IntRef>;
+each(v := vals) { v->PrintLine(); } # 10, 20
+```
+		~#
+		method : public : Find(key : K) ~ Vector<V> {
+			return @map->Find(key);
+		}
+
+		#~
+		Get a collection of keys
+		@return vector of keys
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+keys := mmap->GetKeys()<String>;
+each(k := keys) { k->PrintLine(); }
+```
+		~#
+		method : public : GetKeys() ~ Vector<K> {
+			return @map->GetKeys();
+		}
+
+		#~
+		Gets a collection of all values across all keys
+		@return vector of values
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+all_values := mmap->GetValues()<IntRef>;
+all_values->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : GetValues() ~ Vector<V> {
+			values := Vector->New()<V>;
+			values->Reserve(TotalSize());
+
+			keys := @map->GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				local_values := @map->Find(key)<V>;
+				each(j : local_values) {
+					values->AddBack(local_values->Get(j));
+				};
+			};
+
+			return values;
+		}
+
+		#~
+		Formats the collection into a string. If an element implements the 'Stringify'
+		interface, it's 'ToString()' is called.
+		@return string representation
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("a", IntRef->New(2));
+mmap->ToString()->PrintLine(); # [(a:12)]
+```
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+
+			keys := @map->GetKeys();
+			each(i : keys) {
+
+				# get key
+				key := keys->Get(i);
+				if(key->TypeOf(Stringify)) {
+					buffer->Append('(');
+					buffer->Append(key->As(System.Stringify)->ToString());
+				}
+				# use instance ID instead
+				else {
+					buffer->Append('(');
+					buffer->Append(key->GetInstanceID()->ToHexString());
+				};
+				buffer->Append(':');
+
+				# get values
+				values := @map->Find(key)<V>;
+				each(j : values) {
+					value := values->Get(j);
+					if(value <> Nil) {
+						if(value->TypeOf(Stringify)) {
+							buffer->Append(value->As(System.Stringify)->ToString());
+							
+						}
+						# use instance ID instead
+						else {
+							buffer->Append(value->GetInstanceID()->ToHexString());
+						};
+					};
+
+					# add comma
+					if(j + 1 < values->Size()) {
+						buffer->Append(',');
+					};
+				};
+				buffer->Append(')');
+
+				# add comma
+				if(i + 1 < keys->Size()) {
+					buffer->Append(',');
+				};
+			};
+			buffer->Append(']');
+
+			return buffer;
+		}
+
+		#~
+		Checks to see if the map is empty
+		@return true if empty, false otherwise
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->IsEmpty()->PrintLine(); # true
+mmap->Insert("a", IntRef->New(1));
+mmap->IsEmpty()->PrintLine(); # false
+```
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @map->Size() = 0;
+		}
+
+		#~
+		Clears the map
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1));
+mmap->Empty();
+mmap->IsEmpty()->PrintLine(); # true
+```
+		~#
+		method : public : Empty() ~ Nil {
+			@map->Empty();
+		}
+
+		#~
+		Checks for a value in a map
+		@param key search key
+		@return true if found, false otherwise
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("x", IntRef->New(5));
+mmap->Has("x")->PrintLine(); # true
+mmap->Has("y")->PrintLine(); # false
+```
+		~#
+		method : public : Has(key : K) ~ Bool {
+			return @map->Has(key);
+		}
+
+		#~
+		Uses the given function to filter out values
+		@param f function to use a filter. If the function evaluates to true the value is added to the collection.
+		@return filtered MultiHash
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+filtered := mmap->Filter(\(k) => k->Equals("a"))<String, IntRef>;
+filtered->Size()->PrintLine(); # 1
+```
+		~#
+		method : public : Filter(f : (K) ~ Bool) ~ MultiHash<K, V> {
+			filtered := MultiHash->New()<K, V>;
+			
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				if(f(key)) {
+					values := Find(key);
+					each(j : values) {
+						filtered->Insert(key, values->Get(j));
+					};
+				};
+			};
+			
+			return filtered;
+		}
+
+		#~
+		Uses the given function to reduce the values
+		@param a initial value (i.e. accumulator)
+		@param f function to use a reduce
+		@return reduced value
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(0)); mmap->Insert("b", IntRef->New(0));
+concat := mmap->Reduce("", \(String, String) ~ String : (acc, k) => "{$acc}{$k}");
+concat->PrintLine(); # ab
+```
+		~#
+		method : public : Reduce(a : K, f : (K, K) ~ K) ~ K {
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				a := f(a, key);
+			};
+
+			return a;
+		}
+
+		#~
+		Function called for each element
+		@param f function called
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("a", IntRef->New(2));
+mmap->Each(\(k, v) => { "{$k}={$v}"->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (K, V) ~ Nil) ~ MultiHash<K, V> {
+			keys := GetKeys();
+			each(i : keys) {
+				key := keys->Get(i);
+				values := Find(key);
+				each(j : values) {
+					f(key, values->Get(j));
+				};
+			};
+			return @self;
+		}
+
+		#~
+		Removes a set of values from the map
+		@param key key for values to remove
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("del", IntRef->New(1)); mmap->Insert("del", IntRef->New(2));
+mmap->Remove("del")->PrintLine(); # true
+mmap->Has("del")->PrintLine();    # false
+```
+		~#
+		method : public : Remove(key : K) ~ Bool {
+			return @map->Remove(key);
+		}
+
+		#~
+		Size of unique keys
+		@return size of unique keys
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
+mmap->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Size() ~ Int {
+			return @map->Size();
+		}
+
+		#~
+		Size of values
+		@return size of values
+
+```
+mmap := Collection.MultiHash->New()<String, IntRef>;
+mmap->Insert("a", IntRef->New(1)); mmap->Insert("a", IntRef->New(2)); mmap->Insert("b", IntRef->New(3));
+mmap->TotalSize()->PrintLine(); # 3
+```
+		~#
+		method : public : TotalSize() ~ Int {
+			total := 0;
+			values := @map->GetValues()<Vector<V> >;
+			each(i : values) {
+				inner := values->Get(i)<Vector<V> >;
+				total += inner->Size();
+			};
+			return total;
+		}
+	}
 }

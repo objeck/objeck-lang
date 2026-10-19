@@ -5,7 +5,7 @@
 #
 # EXTRA_LIBS: gen_collect
 #
-# Creation, membership, union, intersection, difference, subset, proper subset, equality and mutation, on the library's tree-backed Collection.Set (Int elements, ordered) and hash-backed Collection.HashSet (String elements). Neither type offers the algebra, so union and friends are written here over GetKeys / ToVector; the test pins that duplicates collapse, membership is by value not identity, and removal really removes.
+# Creation, membership, union, intersection, difference, subset, proper subset, equality and mutation, on the library's tree-backed Collection.Set (Int elements, ordered) and hash-backed Collection.HashSet (String elements). The algebra is the library's own Union / Intersect / Difference / SymmetricDifference / IsSubset / IsSuperset on both types, each returning a new set and leaving its operands alone; the test also pins that duplicates collapse, membership is by value not identity, and removal really removes.
 #
 # Expected values were computed with an independent oracle (Python sets), not recalled.
 ~#
@@ -53,19 +53,24 @@ class RosettaSet {
 		CheckBool("3 is in A", a->Has(IntRef->New(3)), true);
 		CheckBool("6 is not in A", a->Has(IntRef->New(6)), false);
 
-		Check("A union B", Show(Union(a, b)), "{1,2,3,4,5,6,7}");
-		Check("A intersect B", Show(Intersect(a, b)), "{4,5}");
-		Check("A minus B", Show(Minus(a, b)), "{1,2,3}");
-		Check("B minus A", Show(Minus(b, a)), "{6,7}");
+		Check("A union B", Show(a->Union(b)), "{1,2,3,4,5,6,7}");
+		Check("A intersect B", Show(a->Intersect(b)), "{4,5}");
+		Check("A minus B", Show(a->Difference(b)), "{1,2,3}");
+		Check("B minus A", Show(b->Difference(a)), "{6,7}");
 		Check("A union B is unchanged A", Show(a), "{1,2,3,4,5}");
 
-		CheckBool("C is a subset of A", IsSubset(c, a), true);
-		CheckBool("A is not a subset of C", IsSubset(a, c), false);
+		CheckBool("C is a subset of A", c->IsSubset(a), true);
+		CheckBool("A is not a subset of C", a->IsSubset(c), false);
 		CheckBool("A equals D (insertion order ignored)", SetEquals(a, d), true);
 		CheckBool("A does not equal B", SetEquals(a, b), false);
-		CheckBool("C is a proper subset of A", IsSubset(c, a) & <>SetEquals(c, a), true);
-		CheckBool("A is not a proper subset of D", IsSubset(a, d) & <>SetEquals(a, d), false);
-		CheckBool("the empty set is a subset of A", IsSubset(Set->New()<IntRef>, a), true);
+		CheckBool("C is a proper subset of A", c->IsSubset(a) & <>SetEquals(c, a), true);
+		CheckBool("A is not a proper subset of D", a->IsSubset(d) & <>SetEquals(a, d), false);
+		empty := Set->New()<IntRef>;
+		CheckBool("the empty set is a subset of A", empty->IsSubset(a), true);
+		Check("A xor B", Show(a->SymmetricDifference(b)), "{1,2,3,6,7}");
+		CheckBool("A is a superset of C", a->IsSuperset(c), true);
+		CheckBool("C is not a superset of A", c->IsSuperset(a), false);
+		Check("Nil counts as empty", Show(a->Union(Nil)), "{1,2,3,4,5}");
 
 		# mutation
 		m := Make(3, 1, 2, 3, 0, 0);
@@ -87,9 +92,10 @@ class RosettaSet {
 		t->Add("date");
 		CheckBool("date is not in S", s->Has("date"), false);
 		CheckBool("a built-up string still matches", s->Has("app" + "le"), true);
-		Check("S union T", Sorted(HashUnion(s, t)), "{apple,banana,cherry,date}");
-		Check("S intersect T", Sorted(HashIntersect(s, t)), "{cherry}");
-		Check("S minus T", Sorted(HashMinus(s, t)), "{apple,banana}");
+		Check("S union T", Sorted(s->Union(t)), "{apple,banana,cherry,date}");
+		Check("S intersect T", Sorted(s->Intersect(t)), "{cherry}");
+		Check("S minus T", Sorted(s->Difference(t)), "{apple,banana}");
+		Check("S xor T", Sorted(s->SymmetricDifference(t)), "{apple,banana,date}");
 		CheckBool("S remove banana", s->Remove("banana"), true);
 		Check("S after removal", Sorted(s), "{apple,cherry}");
 
@@ -120,43 +126,8 @@ class RosettaSet {
 		return out + "}";
 	}
 
-	function : Union(a : Set<IntRef>, b : Set<IntRef>) ~ Set<IntRef> {
-		r := Set->New()<IntRef>;
-		ak := a->GetKeys()<IntRef>;
-		each(k in ak) { r->Insert(k); };
-		bk := b->GetKeys()<IntRef>;
-		each(k in bk) { r->Insert(k); };
-		return r;
-	}
-
-	function : Intersect(a : Set<IntRef>, b : Set<IntRef>) ~ Set<IntRef> {
-		r := Set->New()<IntRef>;
-		ak := a->GetKeys()<IntRef>;
-		each(k in ak) {
-			if(b->Has(k)) { r->Insert(k); };
-		};
-		return r;
-	}
-
-	function : Minus(a : Set<IntRef>, b : Set<IntRef>) ~ Set<IntRef> {
-		r := Set->New()<IntRef>;
-		ak := a->GetKeys()<IntRef>;
-		each(k in ak) {
-			if(<>b->Has(k)) { r->Insert(k); };
-		};
-		return r;
-	}
-
-	function : IsSubset(a : Set<IntRef>, b : Set<IntRef>) ~ Bool {
-		ak := a->GetKeys()<IntRef>;
-		each(k in ak) {
-			if(<>b->Has(k)) { return false; };
-		};
-		return true;
-	}
-
 	function : SetEquals(a : Set<IntRef>, b : Set<IntRef>) ~ Bool {
-		return a->Size() = b->Size() & IsSubset(a, b);
+		return a->IsSubset(b) & b->IsSubset(a);
 	}
 
 	# a HashSet has no order, so route it through the tree-backed Set to print it
@@ -171,32 +142,5 @@ class RosettaSet {
 			out += keys->Get(i);
 		};
 		return out + "}";
-	}
-
-	function : HashUnion(a : HashSet<String>, b : HashSet<String>) ~ HashSet<String> {
-		r := HashSet->New()<String>;
-		av := a->ToVector()<String>;
-		each(v in av) { r->Add(v); };
-		bv := b->ToVector()<String>;
-		each(v in bv) { r->Add(v); };
-		return r;
-	}
-
-	function : HashIntersect(a : HashSet<String>, b : HashSet<String>) ~ HashSet<String> {
-		r := HashSet->New()<String>;
-		av := a->ToVector()<String>;
-		each(v in av) {
-			if(b->Has(v)) { r->Add(v); };
-		};
-		return r;
-	}
-
-	function : HashMinus(a : HashSet<String>, b : HashSet<String>) ~ HashSet<String> {
-		r := HashSet->New()<String>;
-		av := a->ToVector()<String>;
-		each(v in av) {
-			if(<>b->Has(v)) { r->Add(v); };
-		};
-		return r;
 	}
 }

@@ -300,6 +300,11 @@ namespace instructions {
     // magnitude (#1173)
     FLOAT_TO_STR_PREC,
     // a whole line, however long, from a FileReader (#1180)
-    FILE_IN_LINE
+    FILE_IN_LINE,
+    // System.Concurrency.Condition: a condition variable that waits on a
+    // ThreadMutex (#1186)
+    COND_NEW,
+    COND_WAIT,
+    COND_SIGNAL
   };
 }

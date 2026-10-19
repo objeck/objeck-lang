@@ -1,0 +1,235 @@
+#~
+# Collection additions from #1186: Hash->Copy, Merge, Each and Filter; the
+# hash-backed MultiHash; Heap->Peek and the comparator constructors; and
+# Vector->Sort / CompareVector->Sort with a comparator function.
+#
+# EXTRA_LIBS: gen_collect
+#
+# The sort is checked on 500 records, enough to go through the merge path (runs
+# under 16 use insertion sort), against an order computed independently in the
+# test (counting by key), and for stability: records with equal keys must keep
+# their input order. The comparator heap is drained and compared with the same
+# values sorted by the comparator; Pop(value) must find a value by the
+# comparator too.
+~#
+
+use Collection;
+
+class Record {
+	@key : Int;
+	@seq : Int;
+
+	New(key : Int, seq : Int) {
+		@key := key;
+		@seq := seq;
+	}
+
+	method : public : GetKey() ~ Int { return @key; }
+	method : public : GetSeq() ~ Int { return @seq; }
+}
+
+class Test {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := Test->New();
+		test->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : public : Run() ~ Nil {
+		"Testing Hash, MultiHash, Heap and comparator sorts..."->PrintLine();
+
+		CheckHash();
+		CheckMultiHash();
+		CheckHeap();
+		CheckSort();
+
+		if(@failures = 0) {
+			"PASSED"->PrintLine();
+		}
+		else {
+			"FAILED ({$@failures})"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Check(what : String, cond : Bool) ~ Nil {
+		if(<>cond) {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckHash() ~ Nil {
+		base := Hash->New()<String, IntRef>;
+		base->Insert("name", 1); base->Insert("price", 2); base->Insert("color", 3);
+		update := Hash->New()<String, IntRef>;
+		update->Insert("price", 20); update->Insert("year", 40);
+
+		copy := base->Copy();
+		Check("Copy size", copy->Size() = 3);
+		copy->Insert("extra", 9);
+		Check("Copy is independent", base->Size() = 3 & copy->Size() = 4);
+
+		# two statements: a chained base->Copy()->Merge(update) does not compile,
+		# as Merge's parameter type loses the receiver's type arguments
+		merged := base->Copy();
+		merged->Merge(update);
+		Check("Merge size", merged->Size() = 4);
+		Check("Merge: the other hash wins", merged->Find("price")->Get() = 20);
+		Check("Merge keeps the rest", merged->Find("name")->Get() = 1 & merged->Find("year")->Get() = 40);
+		Check("Merge leaves both sources", base->Find("price")->Get() = 2 & update->Size() = 2);
+		none : Hash<String, IntRef>;
+		unchanged := base->Copy();
+		Check("Merge Nil", unchanged->Merge(none)->Size() = 3);
+
+		total := IntRef->New(0);
+		base->Each(\(k, v) => { total->Set(total->Get() + v->Get() * k->Size()); });
+		# name 1*4 + price 2*5 + color 3*5
+		Check("Each sees every entry", total->Get() = 29);
+
+		long := base->Filter(\(k) => k->Size() = 5);
+		Check("Filter", long->Size() = 2 & long->Has("price") & long->Has("color") & <>long->Has("name"));
+		Check("Filter leaves the hash", base->Size() = 3);
+
+		# Each on a snapshot: the function may change the hash
+		base->Each(\(k, v) => { base->Remove(k); });
+		Check("Each tolerates removal", base->IsEmpty());
+	}
+
+	method : CheckMultiHash() ~ Nil {
+		mh := MultiHash->New()<String, IntRef>;
+		mh->Insert("fruit", IntRef->New(1));
+		mh->Insert("fruit", IntRef->New(2));
+		mh->Insert("veg", IntRef->New(3));
+		mh->Insert(Nil, IntRef->New(4)); # ignored, as MultiMap ignores it
+
+		Check("MultiHash Size", mh->Size() = 2);
+		Check("MultiHash TotalSize", mh->TotalSize() = 3);
+		fruit := mh->Find("fruit");
+		Check("MultiHash Find keeps order", fruit->Size() = 2 & fruit->Get(0)->Get() = 1 & fruit->Get(1)->Get() = 2);
+		Check("MultiHash Find missing", mh->Find("nut") = Nil);
+		Check("MultiHash Has", mh->Has("veg") & <>mh->Has("nut"));
+		Check("MultiHash GetValues", mh->GetValues()->Size() = 3);
+		Check("MultiHash Filter", mh->Filter(\(k) => k->Equals("fruit"))->TotalSize() = 2);
+
+		total := IntRef->New(0);
+		mh->Each(\(k, v) => { total->Set(total->Get() + v->Get()); });
+		Check("MultiHash Each", total->Get() = 6);
+
+		Check("MultiHash Remove", mh->Remove("fruit") & mh->Size() = 1 & mh->TotalSize() = 1);
+		mh->Empty();
+		Check("MultiHash Empty", mh->IsEmpty());
+	}
+
+	method : CheckHeap() ~ Nil {
+		natural := Heap->New(Heap->Order->MIN)<IntRef>;
+		Check("Peek empty", natural->Peek() = Nil);
+		natural->Insert(5); natural->Insert(2); natural->Insert(8);
+		Check("Peek", natural->Peek()->Get() = 2 & natural->Size() = 3);
+
+		# by string length: the comparator, not String->Compare
+		words := ["kiwi", "banana", "fig", "cherry", "apple", "date", "elderberry", "grape"];
+		longest := Heap->New(Heap->Order->MAX, \(String, String) ~ Int : (a, b) => a->Size() - b->Size())<String>;
+		shortest := Heap->New(\(String, String) ~ Int : (a, b) => a->Size() - b->Size())<String>;
+		each(i : words) {
+			longest->Insert(words[i]);
+			shortest->Insert(words[i]);
+		};
+		Check("comparator MAX Peek", longest->Peek()->Equals("elderberry"));
+		Check("comparator MIN Peek", shortest->Peek()->Equals("fig"));
+
+		lengths := Int->New[words->Size()];
+		each(i : words) {
+			lengths[i] := words[i]->Size();
+		};
+		ArraySort->Sort(lengths);
+
+		ordered := true;
+		each(i : lengths) {
+			if(shortest->Pop()->Size() <> lengths[i]) {
+				ordered := false;
+			};
+		};
+		Check("comparator MIN drains in order", ordered & shortest->IsEmpty());
+
+		ordered := true;
+		for(i := lengths->Size() - 1; i >= 0; i -= 1;) {
+			if(longest->Pop()->Size() <> lengths[i]) {
+				ordered := false;
+			};
+		};
+		Check("comparator MAX drains in order", ordered & longest->IsEmpty());
+
+		# Pop(value) matches by the comparator: any 5-letter word is "equal" to "apple"
+		by_len := Heap->New(\(String, String) ~ Int : (a, b) => a->Size() - b->Size())<String>;
+		by_len->Insert("fig"); by_len->Insert("grape"); by_len->Insert("banana");
+		Check("Pop(value) by comparator", by_len->Pop("melon") & by_len->Size() = 2 & by_len->Pop()->Equals("fig"));
+	}
+
+	method : CheckSort() ~ Nil {
+		records := Vector->New()<Record>;
+		counts := Int->New[10];
+		seed := 7;
+		each(i : 500) {
+			seed := (seed * 1103515245 + 12345) % 2147483648;
+			key := (seed / 65536) % 10;
+			records->AddBack(Record->New(key, i));
+			counts[key] += 1;
+		};
+
+		records->Sort(\(Record, Record) ~ Int : (a, b) => a->GetKey() - b->GetKey());
+
+		# keys ascending, with each key's records in input order (stable)
+		sorted := true;
+		stable := true;
+		position := 0;
+		last_seq := -1;
+		item : Record;
+		each(key : counts) {
+			last_seq := -1;
+			each(j : counts[key]) {
+				item := records->Get(position);
+				if(item->GetKey() <> key) {
+					sorted := false;
+				};
+				if(item->GetSeq() <= last_seq) {
+					stable := false;
+				};
+				last_seq := item->GetSeq();
+				position += 1;
+			};
+		};
+		Check("Vector->Sort keys ascending", sorted & records->Size() = 500);
+		Check("Vector->Sort is stable", stable);
+
+		small := Vector->New()<String>;
+		small->AddBack("pear"); small->AddBack("fig"); small->AddBack("banana");
+		small->Sort(\(a, b) => a->Size() - b->Size());
+		Check("Vector->Sort short", small->Get(0)->Equals("fig") & small->Get(1)->Equals("pear") & small->Get(2)->Equals("banana"));
+
+		empty := Vector->New()<String>;
+		empty->Sort(\(a, b) => a->Size() - b->Size());
+		Check("Vector->Sort empty", empty->IsEmpty());
+
+		# CompareVector: the comparator replaces Compare, here reversing it
+		numbers := CompareVector->New()<IntRef>;
+		each(i : 40) {
+			numbers->AddBack((i * 17) % 40);
+		};
+		numbers->Sort(\(a, b) => b->Compare(a));
+		descending := true;
+		each(i : 40) {
+			if(numbers->Get(i)->Get() <> 39 - i) {
+				descending := false;
+			};
+		};
+		Check("CompareVector->Sort(comparator)", descending);
+		numbers->Sort();
+		Check("CompareVector->Sort() still ascending", numbers->Get(0)->Get() = 0 & numbers->Get(39)->Get() = 39);
+	}
+}

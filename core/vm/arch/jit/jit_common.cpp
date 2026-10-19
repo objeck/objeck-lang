@@ -909,11 +909,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
     }
-#ifdef _WIN32      
-    InitializeCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-    pthread_mutex_init((pthread_mutex_t*)&instance[1], nullptr);
-#endif    
+    ThreadMutexCreate(instance);
   }
     break;
 
@@ -924,11 +920,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
     }
-#ifdef _WIN32      
-    EnterCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-    pthread_mutex_lock((pthread_mutex_t*)&instance[1]);
-#endif      
+    ThreadMutexLock(instance);
   }
     break;
 
@@ -939,11 +931,7 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
       std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       VmExit(1);
     }
-#ifdef _WIN32      
-    LeaveCriticalSection((CRITICAL_SECTION*)&instance[1]);
-#else
-    pthread_mutex_unlock((pthread_mutex_t*)&instance[1]);
-#endif      
+    ThreadMutexUnlock(instance);
   }
     break;
 
