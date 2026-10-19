@@ -146,12 +146,11 @@ treat a parameter rename like a signature change.
    form of the task.
 5. **Docs:** a FEATURES.md section.
 
-## Found on the way
+## Note
 
-- `reverse` is a reserved word, so `reverse : Bool` is not a parameter name (the error is
-  "Expected identifier").
-- A lambda as a default value (`f : (Int) ~ Int := \(Int) ~ Int : (x) => x`) does not parse
-  inside a parameter list. Its parameter commas end the declaration.
+`reverse` is a keyword, so it cannot name a parameter (`reverse : Bool` is "Expected
+identifier"). Choose another name, such as `descending`, for a flag that callers will pass by
+name.
 
 ## Not in scope
 
