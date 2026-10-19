@@ -1,0 +1,125 @@
+#~
+Method-level generics, phase 1 (#1242; docs/METHOD_GENERICS_DESIGN.md).
+
+A function or method declares its own type parameters after its name,
+'Max<T : Compare>(...)'. They are inferred from the arguments -- a parameter
+typed T, T[] or C<..T..> binds T to the argument's class -- and checked
+against their bounds. The body is compiled once, with each type parameter
+erased to its bound (or Base); a call's value has the return type with the
+inferred arguments substituted, so it needs no cast.
+~#
+use Collection;
+
+class Picker {
+	@items : String[];
+
+	New() {
+		@items := ["x", "yy", "zzz"];
+	}
+
+	method : public : Pick<T>(a : T[], i : Int) ~ T {
+		return a[i];
+	}
+
+	# a generic method calling another
+	method : public : Last<T>(a : T[]) ~ T {
+		return Pick(a, a->Size() - 1);
+	}
+
+	method : public : Items() ~ String[] {
+		return @items;
+	}
+}
+
+class MethodGenerics {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Max<T : Compare>(values : Vector<T>) ~ T {
+		best := values->Get(0);
+		for(i := 1; i < values->Size(); i += 1;) {
+			v := values->Get(i);
+			if(v->Compare(best) > 0) {
+				best := v;
+			};
+		};
+		return best;
+	}
+
+	function : First<T>(a : T[]) ~ T {
+		return a[0];
+	}
+
+	function : Swap<T>(a : T[], i : Int, j : Int) ~ Nil {
+		t := a[i];
+		a[i] := a[j];
+		a[j] := t;
+	}
+
+	function : Left<A, B>(a : A, b : B) ~ A {
+		return a;
+	}
+
+	function : Right<A, B>(a : A, b : B) ~ B {
+		return b;
+	}
+
+	method : Run() ~ Nil {
+		# T from a generic class, with a bound; the result needs no cast
+		v := Vector->New()<IntRef>;
+		v->AddBack(IntRef->New(3));
+		v->AddBack(IntRef->New(9));
+		v->AddBack(IntRef->New(4));
+		best := Max(v);
+		Check("T from Vector<T>, bounded", best->Get()->ToString(), "9");
+		Check("the result used directly", (Max(v)->Get() + 1)->ToString(), "10");
+		s := Vector->New()<String>;
+		s->AddBack("pear");
+		s->AddBack("apple");
+		Check("the same function over Strings", Max(s)->ToUpper(), "PEAR");
+
+		# T from an array
+		names := ["b", "a", "c"];
+		Check("T from T[]", First(names)->ToUpper(), "B");
+		Swap(names, 0, 2);
+		Check("T[] swapped in place", names[0] + names[2], "cb");
+
+		# two type parameters
+		Check("two type parameters, the first", Left("x", IntRef->New(2))->Size()->ToString(), "1");
+		Check("two type parameters, the second", Right("x", IntRef->New(2))->Get()->ToString(), "2");
+
+		# instance methods, one generic calling another
+		p := Picker->New();
+		Check("an instance method", p->Pick(p->Items(), 1)->Size()->ToString(), "2");
+		Check("a generic method calling another", p->Last(p->Items()), "zzz");
+
+		# often enough for the JIT
+		total := 0;
+		for(i := 0; i < 5000; i += 1;) {
+			total += p->Pick(p->Items(), i % 3)->Size();
+		};
+		Check("in a loop", total->ToString(), "9999");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		MethodGenerics->New()->Run();
+	}
+}

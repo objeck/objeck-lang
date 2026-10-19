@@ -1,0 +1,21 @@
+# EXPECT_COMPILE_ERROR: Type parameter 'T' is bound to both 'System.String' and 'System.IntRef'
+#~
+Method generics (#1242): two arguments that bind T to different classes.
+~#
+class BadMethodGenericConflict {
+	function : Big<T : Compare>(a : T[]) ~ T {
+		return a[0];
+	}
+
+	function : Big2<T : Compare>(a : T, b : T) ~ T {
+		return a;
+	}
+
+	function : Same<T>(a : T, b : T) ~ T {
+		return a;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Same("a", IntRef->New(1));
+	}
+}

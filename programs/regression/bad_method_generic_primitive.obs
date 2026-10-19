@@ -1,0 +1,21 @@
+# EXPECT_COMPILE_ERROR: Type parameter 'T' takes an object
+#~
+Method generics (#1242): a primitive argument: a type parameter takes an object, as class generics do.
+~#
+class BadMethodGenericPrimitive {
+	function : Big<T : Compare>(a : T[]) ~ T {
+		return a[0];
+	}
+
+	function : Big2<T : Compare>(a : T, b : T) ~ T {
+		return a;
+	}
+
+	function : Same<T>(a : T, b : T) ~ T {
+		return a;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		Big2(3, 4);
+	}
+}

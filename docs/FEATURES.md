@@ -245,6 +245,20 @@ class Test {
 }
 ```
 
+### Generic Methods
+A function or method can declare its own type parameters, inferred from the
+arguments at each call:
+```ruby
+function : Max<T : Compare>(values : Vector<T>) ~ T { ... }
+function : Swap<T>(a : T[], i : Int, j : Int) ~ Nil { ... }
+
+best := Max(scores);   # scores is a Vector<IntRef>, so best is an IntRef
+Swap(names, 0, 2);     # T is String
+```
+A type parameter takes an object (box primitives as `IntRef`, ...). Generic
+library methods are not supported yet. See
+[METHOD_GENERICS_DESIGN.md](METHOD_GENERICS_DESIGN.md).
+
 ### Type Boxing
 ```ruby
 list := Collection.List->New()<IntRef>;
