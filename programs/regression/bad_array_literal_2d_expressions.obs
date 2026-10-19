@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: A multi-dimensional array literal must hold only literals
+#~
+Array literals with expressions (#1245): expressions are one-dimensional for now; ragged rows are #1246.
+~#
+class BadArrayLiteral2dExpressions {
+	function : Main(args : String[]) ~ Nil {
+		x := 1;
+		a := [[x, 2], [3, 4]];
+		a[0, 0]->PrintLine();
+	}
+}

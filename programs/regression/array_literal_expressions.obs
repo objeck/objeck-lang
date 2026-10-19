@@ -1,0 +1,122 @@
+#~
+Array literals with expressions (#1245; docs/ARRAY_LITERALS_DESIGN.md).
+
+A literal used to accept only literal constants, so [x, y] did not compile.
+An element that is not a literal now makes the array one built when it is
+evaluated: allocated, then each element evaluated in the order written and
+stored. All the same primitive is that primitive's array; all objects of one
+class, that class's; several classes, Base[]; objects with primitives, Base[]
+with the primitives boxed.
+~#
+class Item {
+	@name : String;
+
+	New(name : String) {
+		@name := name;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+}
+
+class ArrayLiteralExpressions {
+	@failures : Int;
+	@trace : String;
+
+	New() {
+		@failures := 0;
+		@trace := "";
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Sum(v : Int[]) ~ Int {
+		total := 0;
+		each(i : v) {
+			total += v[i];
+		};
+		return total;
+	}
+
+	function : Join(v : String[]) ~ String {
+		out := "";
+		each(i : v) {
+			if(i > 0) {
+				out += ",";
+			};
+			out += v[i];
+		};
+		return out;
+	}
+
+	function : JoinAll(v : Base[]) ~ String {
+		out := "";
+		each(i : v) {
+			if(i > 0) {
+				out += ",";
+			};
+			out += v[i]->ToString();
+		};
+		return out;
+	}
+
+	method : Mark(tag : String, v : Int) ~ Int {
+		@trace += tag;
+		return v;
+	}
+
+	method : Run() ~ Nil {
+		x := 3;
+		y := 4;
+		Check("variables", Sum([x, y, 5])->ToString(), "12");
+		Check("expressions and negation", Sum([x * 2, -y, 1 + 1])->ToString(), "4");
+		Check("calls", Sum([Sum([x]), Sum([y, x])])->ToString(), "10");
+		Check("all literals, unchanged", Sum([1, 2, 3])->ToString(), "6");
+		Check("a subscripted literal", [x, y][1]->ToString(), "4");
+
+		f := 1.5;
+		g := [f, f * 2.0, 0.25];
+		Check("Float", (g[0] + g[1] + g[2])->ToString(), "4.750000");
+		c := 'z';
+		Check("Char", ['a', c][1]->ToString(), "z");
+		Check("Bool", [true, x > 5][1]->ToString(), "false");
+
+		s := "b";
+		Check("String", Join(["a", s, s->ToUpper()]), "a,b,B");
+		Check("one class", [Item->New("p"), Item->New("q")][1]->GetName(), "q");
+		Check("several classes are Base[]", JoinAll([IntRef->New(1), "two"]), "1,two");
+		Check("primitives among objects are boxed", JoinAll(["id", x, 2.5, true, 'c']), "id,3,2.500000,true,c");
+		Check("literals of an object and a primitive", JoinAll(["n", 1]), "n,1");
+
+		# evaluated in the order written
+		@trace := "";
+		Sum([Mark("1", 1), Mark("2", 2), Mark("3", 3)]);
+		Check("evaluated in written order", @trace, "123");
+
+		# allocation in every element, often enough for the JIT and the collector
+		total := 0;
+		for(i := 0; i < 200000; i += 1;) {
+			a := [String->New("x{$i}"), String->New("yy"), "{$i}{$i}"];
+			total += a[0]->Size() + a[1]->Size() + a[2]->Size();
+		};
+		Check("built in a loop", total->ToString(), "3866670");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ArrayLiteralExpressions->New()->Run();
+	}
+}

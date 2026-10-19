@@ -4853,6 +4853,55 @@ void IntermediateEmitter::EmitStringConcat(StringConcat* str_concat)
  ****************************/
 void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
   cur_line_num = array->GetLineNumber();
+
+  // An element that is not a literal (#1245): allocate the array, store each
+  // element in the order written, and leave the array on the stack. It is built
+  // in a hidden local -- a slot of its own, never the shared temp in slot 0 that
+  // a '?:' or '&' uses, since an element may contain one.
+  if(array->IsDynamic()) {
+    SymbolEntry* entry = array->GetDynamicEntry();
+    std::vector<Expression*> elements = array->GetElements()->GetExpressions();
+    const long tmp_id = entry->GetId();
+
+    instructions::InstructionType new_instr;
+    instructions::InstructionType store_instr;
+    switch(entry->GetType()->GetType()) {
+    case frontend::BOOLEAN_TYPE:
+    case frontend::BYTE_TYPE:
+      new_instr = NEW_BYTE_ARY;
+      store_instr = STOR_BYTE_ARY_ELM;
+      break;
+
+    case frontend::CHAR_TYPE:
+      new_instr = NEW_CHAR_ARY;
+      store_instr = STOR_CHAR_ARY_ELM;
+      break;
+
+    case frontend::FLOAT_TYPE:
+      new_instr = NEW_FLOAT_ARY;
+      store_instr = STOR_FLOAT_ARY_ELM;
+      break;
+
+    default:
+      new_instr = NEW_INT_ARY;
+      store_instr = STOR_INT_ARY_ELM;
+      break;
+    }
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)elements.size()));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, new_instr, 1L));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, STOR_INT_VAR, tmp_id, LOCL));
+
+    for(size_t i = 0; i < elements.size(); ++i) {
+      EmitExpression(elements[i]);
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)i));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_VAR, tmp_id, LOCL));
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, store_instr, 1L, LOCL));
+    }
+
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_VAR, tmp_id, LOCL));
+    return;
+  }
   
   if(array->GetType() != frontend::CLASS_TYPE) {
     // emit dimensions

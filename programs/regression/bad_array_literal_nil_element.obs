@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: An array literal element cannot be Nil alone
+#~
+Array literals with expressions (#1245): a bare Nil has no type to give the array.
+~#
+class BadArrayLiteralNilElement {
+	function : Main(args : String[]) ~ Nil {
+		x := "s";
+		a := [x, Nil];
+		a[0]->PrintLine();
+	}
+}

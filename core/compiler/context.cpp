@@ -2665,11 +2665,197 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   char_str->SetProcessed();
 }
 
+// an element type, as an error message names it
+static std::wstring ElementTypeName(Type* type)
+{
+  switch(type->GetType()) {
+  case BOOLEAN_TYPE:
+    return L"Bool";
+  case BYTE_TYPE:
+    return L"Byte";
+  case CHAR_TYPE:
+    return L"Char";
+  case INT_TYPE:
+    return L"Int";
+  case FLOAT_TYPE:
+    return L"Float";
+  default:
+    return type->GetName();
+  }
+}
+
+/****************************
+ * Analyzes an array literal
+ * whose elements are not all
+ * literals: '[x, y + 1, F()]'
+ * (#1245). It is built when it
+ * is evaluated, in a hidden
+ * local.
+ ****************************/
+void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
+{
+  array->SetDynamic();
+
+  if(array->GetDimension() > 1) {
+    ProcessError(array, L"A multi-dimensional array literal must hold only literals; build it with ->New[..]");
+    return;
+  }
+
+  if(!current_method || !current_table) {
+    ProcessError(array, L"An array literal with variables must be inside a method or function");
+    return;
+  }
+
+  // Every element is the same primitive type, or every element is an object --
+  // of one class, or System.Base for a mix. Primitives among objects are boxed
+  // ('["a", 1]' is a Base[] of a String and an IntRef); two different primitive
+  // types are an error, as there is no implicit numeric promotion.
+  Type* element_type = nullptr;
+  Type* primitive_type = nullptr;
+  Type* class_type = nullptr;
+  Type* mismatched_primitive = nullptr;
+  bool mixed_classes = false;
+  std::vector<Expression*> elements = array->GetElements()->GetExpressions();
+  std::vector<Type*> types;
+  for(size_t i = 0; i < elements.size(); ++i) {
+    Expression* element = elements[i];
+    AnalyzeExpression(element, depth + 1);
+
+    Type* type = GetExpressionType(element, depth + 1);
+    if(!type) {
+      return;
+    }
+
+    if(type->GetDimension() > 0) {
+      ProcessError(element, L"An array literal element cannot be an array");
+      return;
+    }
+
+    switch(type->GetType()) {
+    case BOOLEAN_TYPE:
+    case BYTE_TYPE:
+    case CHAR_TYPE:
+    case INT_TYPE:
+    case FLOAT_TYPE:
+      if(primitive_type && primitive_type->GetType() != type->GetType() && !mismatched_primitive) {
+        mismatched_primitive = type;
+      }
+      else if(!primitive_type) {
+        primitive_type = type;
+      }
+      break;
+
+    case CLASS_TYPE:
+      if(class_type && class_type->GetName() != type->GetName()) {
+        mixed_classes = true;
+      }
+      class_type = type;
+      break;
+
+    case NIL_TYPE:
+      ProcessError(element, L"An array literal element cannot be Nil alone; give the array a type with ->New[..]");
+      return;
+
+    default:
+      ProcessError(element, L"Invalid array literal element");
+      return;
+    }
+    types.push_back(type);
+  }
+
+  if(class_type && primitive_type) {
+    // box the primitives
+    for(size_t i = 0; i < elements.size(); ++i) {
+      std::wstring holder;
+      switch(types[i]->GetType()) {
+      case BOOLEAN_TYPE:
+        holder = L"System.BoolRef";
+        break;
+      case BYTE_TYPE:
+        holder = L"System.ByteRef";
+        break;
+      case CHAR_TYPE:
+        holder = L"System.CharRef";
+        break;
+      case INT_TYPE:
+        holder = L"System.IntRef";
+        break;
+      case FLOAT_TYPE:
+        holder = L"System.FloatRef";
+        break;
+      default:
+        break;
+      }
+
+      if(!holder.empty()) {
+        Expression* boxed = BoxExpression(TypeFactory::Instance()->MakeType(CLASS_TYPE, holder), elements[i], depth + 1);
+        if(!boxed) {
+          ProcessError(elements[i], L"Cannot box this array literal element");
+          return;
+        }
+        array->GetElements()->SetExpression(boxed, i);
+      }
+    }
+    element_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base");
+    mixed_classes = false;
+  }
+  else if(mismatched_primitive) {
+    ProcessError(array, L"Array element types do not match: '" + ElementTypeName(primitive_type) +
+                 L"' and '" + ElementTypeName(mismatched_primitive) + L"'");
+    return;
+  }
+  else {
+    element_type = class_type ? class_type : primitive_type;
+  }
+
+  if(!element_type) {
+    ProcessError(array, L"Empty array literal");
+    return;
+  }
+
+  Type* array_type = TypeFactory::Instance()->MakeType(element_type);
+  if(array_type->GetType() == CLASS_TYPE && mixed_classes) {
+    array_type->SetName(L"System.Base");
+  }
+  array_type->SetDimension(1);
+
+  // the array is built in a hidden local, then loaded
+  static int dynamic_array_id = 0;
+  const std::wstring tmp_name = current_method->GetName() + L":#array_tmp#" + std::to_wstring(dynamic_array_id++);
+  SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, array_type, false, true);
+  current_table->AddEntry(entry, true);
+  entry->WasLoaded();
+  array->SetDynamicEntry(entry);
+
+  // '[x, y][1]': the subscripted literal is one element
+  ExpressionList* indices = array->GetIndices();
+  if(indices) {
+    if(indices->GetExpressions().size() != 1) {
+      ProcessError(array, L"Dimension size mismatch: the literal has 1 dimension");
+    }
+    AnalyzeIndices(indices, depth + 1);
+
+    Type* element = TypeFactory::Instance()->MakeType(array_type);
+    element->SetDimension(0);
+    array->SetEvalType(element, false);
+  }
+  else {
+    array->SetEvalType(array_type, false);
+  }
+}
+
 /****************************
  * Analyzes a static array
  ****************************/
 void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 {
+  // an element that is not a literal, or literals of an object and a primitive
+  // ('["a", 1]'): built at run time (#1245)
+  if(array->IsDynamic() || (!array->IsMatchingTypes() && array->GetDimension() == 1)) {
+    AnalyzeDynamicArray(array, depth);
+    return;
+  }
+
   // TOOD: support for 3d or 4d initialization
   if(array->GetDimension() > 2) {
     ProcessError(array, L"Invalid static array declaration.");
