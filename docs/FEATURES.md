@@ -58,6 +58,17 @@ methods, virtual methods and function values do not take them yet: a call that
 tries is a compile error, never a silent positional call. See
 [NAMED_ARGUMENTS_DESIGN.md](NAMED_ARGUMENTS_DESIGN.md).
 
+### Array Literals
+An array literal can hold expressions as well as constants; it is built when it is
+evaluated, the elements in the order written. Objects of several classes make a
+`Base[]`, and primitives among objects are boxed:
+```ruby
+x := 3;
+squares := [x, x * x, Square(x + 1)];  # Int[]
+row := ["id", x, 2.5, true];           # Base[]: String, IntRef, FloatRef, BoolRef
+PrintEach([name, title->ToUpper()]);   # the variadic idiom: an array at the call site
+```
+
 ### Type Inference
 ```ruby
 value := "Hello World!";

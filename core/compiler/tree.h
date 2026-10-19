@@ -723,6 +723,10 @@ namespace frontend {
     bool matching_lengths;
     // subscript on the literal itself: '["a", "b"][1]' (#1184)
     ExpressionList* indices = nullptr;
+    // an element that is not a literal: the array is built when evaluated, in a
+    // hidden local, rather than copied from the literal pool (#1245)
+    bool is_dynamic = false;
+    SymbolEntry* dynamic_entry = nullptr;
 
     void GetAllElements(StaticArray* array, ExpressionList* elems);
 
@@ -758,6 +762,23 @@ namespace frontend {
       indices = i;
     }
 
+    bool IsDynamic() {
+      return is_dynamic;
+    }
+
+    // literals of an object and a primitive are built at run time too
+    void SetDynamic() {
+      is_dynamic = true;
+    }
+
+    SymbolEntry* GetDynamicEntry() {
+      return dynamic_entry;
+    }
+
+    void SetDynamicEntry(SymbolEntry* e) {
+      dynamic_entry = e;
+    }
+
     void SetId(int i) {
       id = i;
     }
@@ -771,6 +792,11 @@ namespace frontend {
     }
 
     EntryType GetType() {
+      // a literal built at run time: its elements' type (#1245)
+      if(is_dynamic && GetEvalType()) {
+        return GetEvalType()->GetType();
+      }
+
       switch(cur_type) {
       case BOOLEAN_LIT_EXPR:
         return BOOLEAN_TYPE;

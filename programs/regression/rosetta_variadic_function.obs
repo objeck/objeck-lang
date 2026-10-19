@@ -3,9 +3,9 @@
 # https://rosettacode.org/wiki/Variadic_function
 # Claimed in #1132
 #
-# Objeck has no variadic parameter syntax; the idiom is an array parameter, with an array literal at the call site for a fixed argument list and an array built at run time for a computed one. Base[] takes arguments of mixed class, each printed through Stringify; Int[] covers the primitive case. PrintEach returns the lines it would print so the test can assert them.
+# Objeck has no variadic parameter syntax; the idiom is an array parameter, with an array literal at the call site. Base[] takes arguments of mixed class, each printed through Stringify; Int[] covers the primitive case. PrintEach returns the lines it would print so the test can assert them.
 #
-# Two limits found writing this: an array literal accepts only literal constants, so [x, y] with variables does not compile and a call over computed values must build its array explicitly; and F([1, 2, 3], -1) parses the -1 as subtraction from the array literal.
+# An array literal may hold expressions (#1245): [x, x * x] is an Int[] built when evaluated, and a literal that mixes objects and primitives, ["text", 42, 'z', true], is a Base[] with the primitives boxed -- so a call over computed or mixed values needs no hand-built array. (F([1, 2, 3], -1) parsing the -1 as subtraction was fixed by #1184.)
 #
 # Expected values are the arguments themselves, one per line.
 ~#
@@ -68,6 +68,11 @@ class RosettaVariadicFunction {
 		Check("five ints", PrintEach([1, 1, 2, 3, 5]), "1|1|2|3|5|");
 		Check("no arguments", PrintEach(Base->New[0]), "");
 		Check("no Int arguments", PrintEach(Int->New[0]), "");
+
+		# a literal of expressions, and one mixing objects and primitives (#1245)
+		x := 3;
+		Check("computed values in a literal", PrintEach([x, x * x, -x]), "3|9|-3|");
+		Check("mixed classes in a literal", PrintEach(["text", 42, 'z', true]), "text|42|z|true|");
 
 		# a list built at run time, of mixed classes
 		args := Vector->New()<Base>;

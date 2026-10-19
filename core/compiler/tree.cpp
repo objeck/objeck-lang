@@ -626,6 +626,21 @@ void StaticArray::Validate(StaticArray* array) {
         Validate(static_cast<StaticArray*>(static_array[i]));
       }
       else {
+        // an element that is not a literal makes the array one built at run time (#1245)
+        switch(static_array[i]->GetExpressionType()) {
+        case CHAR_LIT_EXPR:
+        case INT_LIT_EXPR:
+        case FLOAT_LIT_EXPR:
+        case BOOLEAN_LIT_EXPR:
+        case CHAR_STR_EXPR:
+          break;
+
+        default:
+          is_dynamic = true;
+          array->is_dynamic = true;
+          break;
+        }
+
         // check lengths
         if(cur_width == -1) {
           cur_width = (int)static_array.size();

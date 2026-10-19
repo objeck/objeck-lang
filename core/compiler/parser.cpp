@@ -5856,7 +5856,34 @@ StaticArray* Parser::ParseStaticArray(int depth) {
   else {
     while(!Match(TOKEN_CLOSED_BRACKET) && !Match(TOKEN_END_OF_STREAM)) {
       Expression* expression = nullptr;
-      if(Match(TOKEN_SUB)) {
+      // A literal element is one a ',' or ']' follows; anything else -- a
+      // variable, '2 * x', a call -- is an expression, and the array is built
+      // when it is evaluated (#1245).
+      const bool literal_end = Match(TOKEN_COMMA, SECOND_INDEX) || Match(TOKEN_CLOSED_BRACKET, SECOND_INDEX);
+      const bool negative_literal = Match(TOKEN_SUB) && (Match(TOKEN_INT_LIT, SECOND_INDEX) || Match(TOKEN_FLOAT_LIT, SECOND_INDEX)) &&
+        (Match(TOKEN_COMMA, THIRD_INDEX) || Match(TOKEN_CLOSED_BRACKET, THIRD_INDEX));
+      bool is_literal = negative_literal;
+      if(!Match(TOKEN_SUB) && literal_end) {
+        switch(GetToken()) {
+        case TOKEN_INT_LIT:
+        case TOKEN_TRUE_ID:
+        case TOKEN_FALSE_ID:
+        case TOKEN_FLOAT_LIT:
+        case TOKEN_CHAR_LIT:
+        case TOKEN_CHAR_STRING_LIT:
+        case TOKEN_BAD_CHAR_STRING_LIT:
+          is_literal = true;
+          break;
+
+        default:
+          break;
+        }
+      }
+
+      if(!is_literal) {
+        expression = ParseExpression(depth + 1);
+      }
+      else if(Match(TOKEN_SUB)) {
         NextToken();
 
         switch(GetToken()) {

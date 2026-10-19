@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Array element types do not match: 'Int' and 'Float'
+#~
+Array literals with expressions (#1245): an Int and a Float in one literal: there is no implicit numeric promotion.
+~#
+class BadArrayLiteralMixedPrimitives {
+	function : Main(args : String[]) ~ Nil {
+		x := 1;
+		f := 2.0;
+		a := [x, f];
+		a[0]->PrintLine();
+	}
+}
