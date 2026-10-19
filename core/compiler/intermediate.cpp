@@ -6278,9 +6278,23 @@ void IntermediateEmitter::EmitVariable(Variable* variable)
     emit_attached_call_parameters();
   }
   
-  // self
+  // self: the instance, then whatever is attached to it. `@self->TypeOf(T)` and
+  // `@self->As(T)->M()` used to stop at the instance: the test and the cast were
+  // never emitted, so `if(@self->TypeOf(T))` was always taken and the chain
+  // returned @self itself in place of M()'s result.
   if(variable->GetEntry()->IsSelf()) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, variable, cur_line_num, LOAD_INST_MEM));
+    EmitCast(variable);
+    if(variable->GetMethodCall()) {
+      EmitClassCast(variable);
+      EmitMethodCallExpression(static_cast<MethodCall*>(variable->GetMethodCall()), true);
+
+      MethodCall* tail = static_cast<MethodCall*>(variable->GetMethodCall());
+      while(tail->GetMethodCall()) {
+        tail = tail->GetMethodCall();
+      }
+      variable->SetEvalType(tail->GetCastType() ? tail->GetCastType() : tail->GetEvalType(), false);
+    }
     return;
   }
   

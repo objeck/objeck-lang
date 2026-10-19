@@ -455,6 +455,26 @@ i := 41;
 "upper = {$name->ToUpper()}"->PrintLine();  # upper = WORLD
 ```
 
+Any object can be interpolated or concatenated. It prints through the nearest
+`ToString` in its class chain, ending at `System.Base->ToString`. That method
+prints a `Stringify` instance's own `ToString`, and for any other object the
+class name and instance ID (`Point@0x1f`). So a mixed `Base[]` prints without a
+cast. Methods with a body are bound statically. To make an object print its own
+way through a `Base` reference, implement `Stringify` rather than only declaring
+a `ToString`:
+```ruby
+class Point implements Stringify {
+  @x : Int; @y : Int;
+  New(x : Int, y : Int) { @x := x; @y := y; }
+  method : public : ToString() ~ String { return "({$@x}, {$@y})"; }
+}
+
+items := Base->New[2];
+items[0] := Point->New(1, 2);
+items[1] := "text";
+each(i : items) { items[i]->ToString()->PrintLine(); };  # (1, 2) / text
+```
+
 ### Format specifiers
 Append `:spec` to an interpolated expression for precision, width, alignment, or
 radix (Python / .NET–style):

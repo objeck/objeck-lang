@@ -4582,6 +4582,25 @@ bundle System {
 		}
 
 		#~
+		Returns a string for the instance. A Stringify instance prints its own
+		ToString; any other prints its class name and hex instance ID, joined by
+		an at sign. A concrete method is bound statically, so a ToString a class
+		declares without implementing Stringify is not reached through a Base
+		reference: implement Stringify for that.
+		@return string for the instance
+		~#
+		method : public : ToString() ~ String {
+			if(@self->TypeOf(Stringify)) {
+				return @self->As(Stringify)->ToString();
+			};
+
+			buffer := String->New(@self->GetClass()->GetName());
+			buffer->Append('@');
+			buffer->Append(@self->GetInstanceID()->ToHexString());
+			return buffer;
+		}
+
+		#~
 		Compiler intrinsic: wraps subsequent chain calls in error recovery.
 		Returns Nil if the following method call raises an error.
 		@return result of the following method call, or Nil on error

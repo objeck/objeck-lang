@@ -1,0 +1,57 @@
+#~
+`@self->TypeOf(T)` and `@self->As(T)->M()` (found adding Base->ToString, #1248).
+
+EmitVariable returned as soon as it had loaded @self, before the cast, the
+type test and any call attached to them. So `@self->TypeOf(T)` pushed the
+instance itself: `if(@self->TypeOf(T))` was always taken. And
+`@self->As(T)->M()` returned @self in place of M()'s result. Both compiled
+without a word, at every optimization level.
+~#
+class Tagged implements Stringify {
+	New() {}
+
+	method : public : ToString() ~ String {
+		return "tagged";
+	}
+
+	method : public : IsStringify() ~ Bool {
+		if(@self->TypeOf(Stringify)) {
+			return true;
+		};
+		return false;
+	}
+
+	method : public : IsCompare() ~ Bool {
+		if(@self->TypeOf(Compare)) {
+			return true;
+		};
+		return false;
+	}
+
+	method : public : Viewed() ~ String {
+		return @self->As(Stringify)->ToString();
+	}
+
+	method : public : ViewedSize() ~ Int {
+		return @self->As(Stringify)->ToString()->Size();
+	}
+}
+
+class SelfTypeOfAsChain {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		t := Tagged->New();
+		for(i := 0; i < 300; i += 1;) {
+			if(<>t->IsStringify()) { failures += 1; };
+			if(t->IsCompare()) { failures += 1; };
+			if(<>t->Viewed()->Equals("tagged")) { failures += 1; };
+			if(t->ViewedSize() <> 6) { failures += 1; };
+		};
+
+		if(failures > 0) {
+			"FAIL: {$failures} wrong result(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: @self->TypeOf and @self->As chains"->PrintLine();
+	}
+}

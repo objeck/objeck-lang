@@ -1,0 +1,119 @@
+#~
+System.Base->ToString (#1248, from #1186).
+
+Every object has a ToString now. A Stringify instance prints its own; any
+other prints its class name and instance ID ("Plain@0x1f"). That makes a
+mixed Base[] printable without `->As(Stringify)`, and lets any object be
+interpolated or concatenated: the compiler used to accept only a ToString
+declared on the operand's own class, so a subclass of Date without one could
+not be interpolated either. It now takes the nearest ancestor's.
+
+A concrete method is bound statically, so Base's ToString defers to Stringify
+itself; a ToString a class declares WITHOUT implementing Stringify is reached
+through its own type, not through a Base reference.
+
+It also needs `@self->TypeOf(T)` and `@self->As(T)->M()`, which the compiler
+dropped: the test was never emitted (the branch was always taken) and the
+chain returned @self in place of M()'s result. self_typeof_as_chain.obs
+covers that on its own.
+
+Adding the method used to crash every `{$i}` on an Int: the resolver bound
+primitive ToString calls to Base's instance method (fixed by #1261).
+~#
+use Collection;
+use System.Time;
+
+class Shown implements Stringify {
+	New() {}
+
+	method : public : ToString() ~ String {
+		return "shown";
+	}
+}
+
+class OwnToString {
+	New() {}
+
+	method : public : ToString() ~ String {
+		return "own";
+	}
+}
+
+class Plain {
+	New() {}
+}
+
+class LaterDate from Date {
+	New() {
+		Parent();
+	}
+}
+
+class BaseToString {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : IsDefault(s : String, cls : String) ~ Bool {
+		return s->StartsWith("{$cls}@0x") & s->Size() > cls->Size() + 3;
+	}
+
+	method : Run() ~ Nil {
+		plain := Plain->New();
+		b : Base := Shown->New();
+
+		Check("a Stringify instance through Base prints its own", b->ToString()->Equals("shown"));
+		Check("a plain object prints class@id", IsDefault(plain->ToString(), "Plain"));
+		Check("the same instance prints the same id", plain->ToString()->Equals(plain->ToString()));
+		Check("two instances print different ids", <>plain->ToString()->Equals(Plain->New()->ToString()));
+		Check("a class's own ToString, through its own type", OwnToString->New()->ToString()->Equals("own"));
+
+		# a mixed Base[]: no As(Stringify) needed
+		mixed := Base->New[4];
+		mixed[0] := Shown->New();
+		mixed[1] := plain;
+		mixed[2] := "text";
+		mixed[3] := IntRef->New(5);
+		Check("mixed[0] Stringify", mixed[0]->ToString()->Equals("shown"));
+		Check("mixed[1] plain", IsDefault(mixed[1]->ToString(), "Plain"));
+		Check("mixed[2] String", mixed[2]->ToString()->Equals("text"));
+		Check("mixed[3] IntRef", mixed[3]->ToString()->Equals("5"));
+
+		# interpolation and concatenation take any object
+		own := OwnToString->New();
+		Check("interpolating a plain object", IsDefault("{$plain}", "Plain"));
+		Check("concatenating a plain object", ("x " + plain)->StartsWith("x Plain@0x"));
+		Check("interpolating a class with its own ToString", "{$own}"->Equals("own"));
+		later := LaterDate->New();
+		Check("interpolating a subclass takes the parent's ToString", "{$later}"->Size() > 10 & <>"{$later}"->StartsWith("LaterDate@"));
+
+		# primitives still bind to their $ class (the crash this was blocked on)
+		junk : String;
+		each(i : 200000) {
+			junk := String->New("item {$i}");
+		};
+		Check("Int interpolation in a loop", junk->Equals("item 199999"));
+		Check("Int ToString", 7->ToString()->Equals("7"));
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		BaseToString->New()->Run();
+	}
+}
