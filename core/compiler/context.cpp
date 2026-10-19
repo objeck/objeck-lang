@@ -1953,6 +1953,64 @@ void ContextAnalyzer::CheckLambdaInferredTypes(MethodCall* method_call, int dept
 }
 
 /****************************
+ * A subscripted jagged array
+ * (#1246): 'rows[i]' is a row,
+ * an array value; each further
+ * group, 'rows[i][j]', indexes
+ * into the array before it.
+ ****************************/
+void ContextAnalyzer::AnalyzeJaggedAccess(Variable* variable, Type* array_type, const int depth)
+{
+  if(!array_type || array_type->GetType() != CLASS_TYPE || !IsRowTypeName(array_type->GetName())) {
+    if(!variable->GetChainedIndices().empty()) {
+      ProcessError(variable, L"Only a jagged array's element takes a second subscript");
+    }
+    return;
+  }
+
+  // the row the first group selects
+  Type* current = RowElementType(array_type);
+  ResolveClassEnumType(current);
+
+  std::vector<Type*> chained_types;
+  const std::vector<ExpressionList*> chained = variable->GetChainedIndices();
+  for(size_t i = 0; i < chained.size(); ++i) {
+    ExpressionList* group = chained[i];
+    if(current->GetDimension() == 0) {
+      ProcessError(variable, L"Too many subscripts for this jagged array");
+      return;
+    }
+    if((int)group->GetExpressions().size() != current->GetDimension()) {
+      ProcessError(variable, L"Dimension size mismatch in a jagged array subscript");
+      return;
+    }
+    AnalyzeIndices(group, depth + 1);
+    chained_types.push_back(current);
+
+    if(current->GetType() == CLASS_TYPE && IsRowTypeName(current->GetName())) {
+      current = RowElementType(current);
+      ResolveClassEnumType(current);
+    }
+    else {
+      current = TypeFactory::Instance()->MakeType(current);
+      current->SetDimension(0);
+    }
+  }
+  variable->SetChainedTypes(chained_types);
+
+  // A row (an array) is a value of its own type; an element read through
+  // chained groups is a scalar of the last array's element type.
+  if(current->GetDimension() > 0) {
+    variable->SetRowValue(true);
+    variable->SetEvalType(current, false);
+  }
+  else {
+    Type* last = chained_types.back();
+    variable->SetEvalType(last, false);
+  }
+}
+
+/****************************
  * Analyzes method return
  * paths
  ****************************/
@@ -2714,6 +2772,7 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
   Type* primitive_type = nullptr;
   Type* class_type = nullptr;
   Type* mismatched_primitive = nullptr;
+  Type* row_type = nullptr;
   bool mixed_classes = false;
   std::vector<Expression*> elements = array->GetElements()->GetExpressions();
   std::vector<Type*> types;
@@ -2726,8 +2785,22 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
       return;
     }
 
+    // an array element makes the literal an array of rows: '[a, b]' with a, b
+    // Int[] is an Int[][] (#1246); every row must be the same array type
     if(type->GetDimension() > 0) {
-      ProcessError(element, L"An array literal element cannot be an array");
+      if(type->GetDimension() > 1) {
+        ProcessError(element, L"A jagged array's rows must be one-dimensional");
+        return;
+      }
+      if(row_type && (row_type->GetType() != type->GetType() || row_type->GetName() != type->GetName())) {
+        ProcessError(array, L"Jagged array rows must be of one type");
+        return;
+      }
+      row_type = type;
+      continue;
+    }
+    if(row_type) {
+      ProcessError(element, L"An array literal cannot mix rows and single values");
       return;
     }
 
@@ -2763,7 +2836,22 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
     types.push_back(type);
   }
 
-  if(class_type && primitive_type) {
+  if(row_type) {
+    if(primitive_type || class_type) {
+      ProcessError(array, L"An array literal cannot mix rows and single values");
+      return;
+    }
+    // the array of rows: '$Int[]' for Int[] rows, '$Int[][]' for rows that are Int[][]
+    ResolveClassEnumType(row_type);
+    int levels = 1;
+    std::wstring base = RowBaseName(row_type);
+    if(row_type->GetType() == CLASS_TYPE && IsRowTypeName(row_type->GetName())) {
+      base = RowTypeBase(row_type->GetName(), levels);
+      levels++;
+    }
+    element_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, RowTypeName(base, levels));
+  }
+  else if(class_type && primitive_type) {
     // box the primitives
     for(size_t i = 0; i < elements.size(); ++i) {
       std::wstring holder;
@@ -2849,6 +2937,11 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
 {
+  // a ragged literal, '[[1], [1, 1]]', is an array of rows (#1246)
+  if(array->GetDimension() == 2 && !array->IsMatchingLenghts()) {
+    array->SetJaggedRows();
+  }
+
   // an element that is not a literal, or literals of an object and a primitive
   // ('["a", 1]'): built at run time (#1245)
   if(array->IsDynamic() || (!array->IsMatchingTypes() && array->GetDimension() == 1)) {
@@ -3020,6 +3113,26 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       ProcessError(variable, L"Variable '" + name + L"' already used to define a class, enum or function\n\tIf passing a function reference ensure the full signature is provided");
     }
 
+    // A jagged array's row, 'rows[i]', is an array value (#1246). Its type is
+    // settled first: the calls attached to it below are made on the row.
+    bool jagged_done = false;
+    if(!variable->GetEvalType() && variable->GetIndices() && entry->GetType() &&
+       entry->GetType()->GetType() == CLASS_TYPE && IsRowTypeName(entry->GetType()->GetName()) &&
+       entry->GetType()->GetDimension() == (int)variable->GetIndices()->GetExpressions().size()) {
+      variable->SetTypes(entry->GetType());
+      variable->SetEntry(entry);
+      entry->AddVariable(variable);
+      AnalyzeIndices(variable->GetIndices(), depth + 1);
+      AnalyzeJaggedAccess(variable, entry->GetType(), depth);
+      jagged_done = true;
+
+      Expression* expression = variable;
+      while(expression->GetMethodCall()) {
+        AnalyzeExpressionMethodCall(expression, depth + 1);
+        expression = expression->GetMethodCall();
+      }
+    }
+
     // associate variable and entry
     if(!variable->GetEvalType()) {
       Type* entry_type = entry->GetType();
@@ -3042,15 +3155,22 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
 
     // array parameters
     ExpressionList* indices = variable->GetIndices();
-    if(indices) {
+    if(indices && jagged_done) {
+      // analyzed above
+    }
+    else if(indices) {
       // check dimensions
       if(entry->GetType() && entry->GetType()->GetDimension() == (int)indices->GetExpressions().size()) {
         AnalyzeIndices(indices, depth + 1);
+        AnalyzeJaggedAccess(variable, entry->GetType(), depth);
       }
       // note: internal edge case
       else if(!variable->IsInternalVariable()) {
         ProcessError(variable, L"Dimension size mismatch or uninitialized type");
       }
+    }
+    else if(!variable->GetChainedIndices().empty()) {
+      ProcessError(variable, L"Only a jagged array's element takes a second subscript");
     }
 
     // static check
@@ -6798,7 +6918,8 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
         // set variable to scalar type if we're dereferencing an array variable
         if(expression->GetExpressionType() == VAR_EXPR) {
           Variable* expr_variable = static_cast<Variable*>(expression);
-          if(entry->GetType() && expr_variable->GetIndices()) {
+          // a jagged array's row is an array (#1246)
+          if(entry->GetType() && expr_variable->GetIndices() && !expr_variable->IsRowValue()) {
             variable->GetBaseType()->SetDimension(0);
             variable->GetEvalType()->SetDimension(0);
             entry->GetType()->SetDimension(0);
@@ -7923,7 +8044,8 @@ MethodCall* ContextAnalyzer::BoxUnboxingReturn(Type* to_type, Expression* from_e
 Expression* ContextAnalyzer::AnalyzeRightCast(Variable* variable, Expression* expression, bool is_scalar, const int depth)
 {
   Expression* box_expression = AnalyzeRightCast(variable->GetEvalType(), GetExpressionType(expression, depth + 1), expression, is_scalar, depth);
-  if(variable->GetIndices() && !is_scalar) {
+  // a jagged array's row takes an array (#1246)
+  if(variable->GetIndices() && !is_scalar && !variable->IsRowValue()) {
     ProcessError(expression, L"Dimension size mismatch");
   }
 
@@ -8553,6 +8675,20 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
 {
   // this will be cause upstream
   if((left && left->GetType() != CLASS_TYPE) || (right && right->GetType() != CLASS_TYPE)) {
+    return;
+  }
+
+  // a jagged array's row type (#1246) is no class: two row types are the same
+  // type exactly when they name the same rows
+  if((left && IsRowTypeName(left->GetName())) || (right && IsRowTypeName(right->GetName()))) {
+    if(left && right) {
+      ResolveClassEnumType(left);
+      ResolveClassEnumType(right);
+      if(left->GetName() != right->GetName()) {
+        ProcessError(expression, L"Invalid cast between jagged array types: '" + FormatTypeString(left->GetName().substr(1)) +
+                     L"[]' and '" + FormatTypeString(right->GetName().substr(1)) + L"[]'");
+      }
+    }
     return;
   }
 
@@ -9233,6 +9369,10 @@ bool ContextAnalyzer::IsScalar(Expression* expression, bool check_last /*= true*
   if(type && type->GetDimension() > 0) {
     ExpressionList* indices = nullptr;
     if(expression->GetExpressionType() == VAR_EXPR) {
+      // a jagged array's row is an array value (#1246)
+      if(static_cast<Variable*>(expression)->IsRowValue()) {
+        return false;
+      }
       indices = static_cast<Variable*>(expression)->GetIndices();
     }
     else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
@@ -9931,6 +10071,24 @@ const std::wstring ContextAnalyzer::EncodeType(Type* type)
 
 bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 {
+   // a jagged array's row type, '$String[]': resolve the class it is built on,
+   // so '$String[]' and '$System.String[]' are one type (#1246)
+   if(IsRowTypeName(type->GetName())) {
+     int levels = 0;
+     const std::wstring base = RowTypeBase(type->GetName(), levels);
+     if(base == L"Bool" || base == L"Byte" || base == L"Char" || base == L"Int" || base == L"Float") {
+       type->SetResolved(true);
+       return true;
+     }
+     Type* base_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, base);
+     if(!ResolveClassEnumType(base_type, context_klass)) {
+       return false;
+     }
+     type->SetName(RowTypeName(base_type->GetName(), levels));
+     type->SetResolved(true);
+     return true;
+   }
+
    if(type->IsResolved()) {
       auto is_resloved = true;
 

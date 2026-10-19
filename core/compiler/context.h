@@ -592,6 +592,7 @@ class ContextAnalyzer {
   void AnalyzeOtherwiseIntrinsic(MethodCall* method_call, Expression* expression, const int depth);
   void AnalyzeStaticArray(StaticArray* array, const int depth);
   void AnalyzeDynamicArray(StaticArray* array, const int depth);
+  void AnalyzeJaggedAccess(Variable* variable, Type* array_type, const int depth);
   void AnalyzeCast(Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Expression* expression, const int depth);
   void AnalyzeClassCast(Type* left, Type* right, Expression* expression, bool generic_check, const int depth);

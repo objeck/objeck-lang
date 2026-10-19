@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Invalid array cast
+#~
+Jagged arrays (#1246): a Float[] row in an Int[][].
+~#
+class BadJaggedRowType {
+	function : Main(args : String[]) ~ Nil {
+		rows := Int[]->New[2];
+		rows[0] := [1.5, 2.5];
+		rows->Size()->PrintLine();
+	}
+}

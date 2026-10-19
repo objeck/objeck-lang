@@ -1,0 +1,10 @@
+# EXPECT_COMPILE_ERROR: Jagged array rows must be of one type
+#~
+Jagged arrays (#1246): an Int row and a String row in one literal.
+~#
+class BadJaggedMixedRows {
+	function : Main(args : String[]) ~ Nil {
+		r := [[1, 2], ["a"]];
+		r->Size()->PrintLine();
+	}
+}

@@ -516,6 +516,86 @@ namespace frontend {
 
   bool EndsWith(std::wstring const& str, std::wstring const& ending);
   void RemoveSubString(std::wstring& str_in, const std::wstring& find);
+
+  //
+  // Jagged arrays (#1246; docs/JAGGED_ARRAYS_DESIGN.md). 'Int[][]' is a one-
+  // dimensional array of the row type '$Int[]', a class name only the compiler
+  // uses: object arrays already work everywhere, and the row type turns back
+  // into the array it names where an element is read or written.
+  //
+
+  // '$Int[]', '$System.String[][]'
+  inline bool IsRowTypeName(const std::wstring &name) {
+    return name.size() > 3 && name[0] == L'$' && name.compare(name.size() - 2, 2, L"[]") == 0;
+  }
+
+  // the row type for 'levels' levels of 'base' ('Int', 'System.String'): levels 1 is '$Int[]'
+  inline std::wstring RowTypeName(const std::wstring &base, int levels) {
+    std::wstring name = L"$" + base;
+    for(int i = 0; i < levels; ++i) {
+      name += L"[]";
+    }
+    return name;
+  }
+
+  // a row type's base ('Int', 'System.String') and its number of levels
+  inline std::wstring RowTypeBase(const std::wstring &name, int &levels) {
+    levels = 0;
+    std::wstring base = name.substr(1);
+    while(base.size() > 2 && base.compare(base.size() - 2, 2, L"[]") == 0) {
+      base.erase(base.size() - 2);
+      levels++;
+    }
+    return base;
+  }
+
+  // the base type's name as a row type spells it
+  inline std::wstring RowBaseName(Type* type) {
+    switch(type->GetType()) {
+    case BOOLEAN_TYPE:
+      return L"Bool";
+    case BYTE_TYPE:
+      return L"Byte";
+    case CHAR_TYPE:
+      return L"Char";
+    case INT_TYPE:
+      return L"Int";
+    case FLOAT_TYPE:
+      return L"Float";
+    default:
+      return type->GetName();
+    }
+  }
+
+  // the array a row type names: '$Int[]' is Int[], '$Int[][]' is '$Int[]' with dimension 1
+  inline Type* RowElementType(Type* row) {
+    int levels = 0;
+    const std::wstring base = RowTypeBase(row->GetName(), levels);
+    Type* element;
+    if(levels > 1) {
+      element = TypeFactory::Instance()->MakeType(CLASS_TYPE, RowTypeName(base, levels - 1));
+    }
+    else if(base == L"Bool") {
+      element = TypeFactory::Instance()->MakeType(BOOLEAN_TYPE);
+    }
+    else if(base == L"Byte") {
+      element = TypeFactory::Instance()->MakeType(BYTE_TYPE);
+    }
+    else if(base == L"Char") {
+      element = TypeFactory::Instance()->MakeType(CHAR_TYPE);
+    }
+    else if(base == L"Int") {
+      element = TypeFactory::Instance()->MakeType(INT_TYPE);
+    }
+    else if(base == L"Float") {
+      element = TypeFactory::Instance()->MakeType(FLOAT_TYPE);
+    }
+    else {
+      element = TypeFactory::Instance()->MakeType(CLASS_TYPE, base);
+    }
+    element->SetDimension(1);
+    return element;
+  }
 }
 
 namespace backend {

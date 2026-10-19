@@ -1,0 +1,139 @@
+#~
+Jagged arrays (#1246; docs/JAGGED_ARRAYS_DESIGN.md).
+
+'Int[][]' is an array of Int[] rows of any length. It is an object array at
+run time, so the VM, the JIT and the collector need nothing new. The compiler
+types it as an array of the row type '$Int[]', which turns back into Int[]
+where a row is read or written. 'rows[i]' is a row (an array value);
+'rows[i][j]' is an element; 'rows[i][j] := v' reads the row into a hidden
+local first. A ragged literal, or a literal of arrays, is a jagged array.
+~#
+class Triangle {
+	@rows : Int[][];
+
+	New(n : Int) {
+		@rows := Int[]->New[n];
+		for(i := 0; i < n; i += 1;) {
+			row := Int->New[i + 1];
+			row[0] := 1;
+			row[i] := 1;
+			for(j := 1; j < i; j += 1;) {
+				row[j] := @rows[i - 1][j - 1] + @rows[i - 1][j];
+			};
+			@rows[i] := row;
+		};
+	}
+
+	method : public : Get(i : Int, j : Int) ~ Int {
+		return @rows[i][j];
+	}
+
+	method : public : GetRows() ~ Int[][] {
+		return @rows;
+	}
+}
+
+class JaggedArrays {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Sum(rows : Int[][]) ~ Int {
+		total := 0;
+		each(i : rows) {
+			row := rows[i];
+			each(j : row) {
+				total += row[j];
+			};
+		};
+		return total;
+	}
+
+	function : Halves(n : Int) ~ Float[][] {
+		out := Float[]->New[n];
+		for(i := 0; i < n; i += 1;) {
+			out[i] := Float->New[i + 1];
+			out[i][i] := 0.5 * i;
+		};
+		return out;
+	}
+
+	method : Run() ~ Nil {
+		# allocate rows, set them, read through one and two subscripts
+		rows := Int[]->New[3];
+		rows[0] := [1, 2, 3];
+		rows[1] := Int->New[5];
+		x := 7;
+		rows[2] := [x, 8];
+		Check("number of rows", rows->Size()->ToString(), "3");
+		Check("row lengths differ", "{$(rows[0]->Size())},{$(rows[1]->Size())},{$(rows[2]->Size())}", "3,5,2");
+		Check("an element", rows[0][1]->ToString(), "2");
+		Check("elements of two rows", (rows[0][2] + rows[2][0])->ToString(), "10");
+		Check("a jagged parameter", Sum(rows)->ToString(), "21");
+		row := rows[2];
+		Check("a row in a local", row[1]->ToString(), "8");
+
+		# assignment through two subscripts
+		rows[1][4] := 40;
+		Check("assigned through two subscripts", rows[1][4]->ToString(), "40");
+
+		# ragged literals and literals of arrays
+		t := [[1], [1, 1], [1, 2, 1]];
+		Check("a ragged literal", "{$(t->Size())}:{$(t[2][1])}", "3:2");
+		a := [1, 2];
+		b := [3];
+		ab := [a, b];
+		Check("a literal of arrays", ab[1][0]->ToString(), "3");
+
+		# fields, return values, Float and String rows
+		tri := Triangle->New(6);
+		Check("a jagged field", tri->Get(5, 2)->ToString(), "10");
+		Check("a jagged return value", Sum(tri->GetRows())->ToString(), "63");
+		f := Halves(4);
+		Check("Float rows", f[3][3]->ToString(), "1.500000");
+		names := String[]->New[2];
+		names[0] := ["a", "b"];
+		names[1] := ["cc"];
+		Check("String rows", "{$(names[1][0])}{$(names[0][1])}", "ccb");
+		Check("a call on an element", names[1][0]->Size()->ToString(), "2");
+
+		# three levels
+		cube := Int[][]->New[2];
+		cube[0] := [[1, 2], [3]];
+		cube[1] := Int[]->New[1];
+		cube[1][0] := [7, 8, 9];
+		Check("three levels", "{$(cube[1][0][2])},{$(cube[0][1][0])}", "9,3");
+
+		# enough rows to collect, every row reachable only through the array
+		total := 0;
+		for(i := 0; i < 100000; i += 1;) {
+			r := Int[]->New[3];
+			r[0] := [i];
+			r[1] := [i, i];
+			r[2] := Int->New[0];
+			total += r[0][0] + r[1][1] - r[2]->Size();
+		};
+		Check("rows survive collection", total->ToString(), "9999900000");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		JaggedArrays->New()->Run();
+	}
+}

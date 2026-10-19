@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Only a jagged array's element takes a second subscript
+#~
+Jagged arrays (#1246): a second subscript on an Int[].
+~#
+class BadJaggedSecondSubscript {
+	function : Main(args : String[]) ~ Nil {
+		v := Int->New[2];
+		x := v[0][1];
+		x->PrintLine();
+	}
+}
