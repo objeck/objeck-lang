@@ -1588,7 +1588,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         }
       } 
       else {
-        is_nested = false;
+        is_nested = FunctionValueReturnsObject(method_call);
       }
       method_call = method_call->GetMethodCall();
     } 
@@ -1704,7 +1704,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
         }
       } 
       else {
-        is_nested = false;
+        is_nested = FunctionValueReturnsObject(method_call);
       }
       
       // class cast
@@ -4045,8 +4045,38 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     EmitCharacterString(static_cast<CharacterString*>(expression));
     break;
 
-  case STAT_ARY_EXPR:
-    EmitStaticArray(static_cast<StaticArray*>(expression));
+  case STAT_ARY_EXPR: {
+    // '["a", "b"][1]': the indices go beneath the literal, as for a variable
+    StaticArray* array = static_cast<StaticArray*>(expression);
+    ExpressionList* indices = array->GetIndices();
+    if(indices) {
+      EmitIndices(indices);
+    }
+    EmitStaticArray(array);
+    if(indices) {
+      instructions::InstructionType instr;
+      switch(array->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+      case frontend::BYTE_TYPE:
+        instr = LOAD_BYTE_ARY_ELM;
+        break;
+
+      case frontend::CHAR_TYPE:
+        instr = LOAD_CHAR_ARY_ELM;
+        break;
+
+      case frontend::FLOAT_TYPE:
+        instr = LOAD_FLOAT_ARY_ELM;
+        break;
+
+      default:
+        instr = LOAD_INT_ARY_ELM;
+        break;
+      }
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, instr,
+                                                                                 (long)indices->GetExpressions().size(), LOCL));
+    }
+  }
     break;
 
   case STR_CONCAT_EXPR:
@@ -4153,6 +4183,11 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
     // a concatenation leaves its String on the stack just as a literal does:
     // `("a" + b)->ToUpper()` (the chain moves to the concatenation node in analysis)
     bool is_nested = expression->GetExpressionType() == CHAR_STR_EXPR || expression->GetExpressionType() == STR_CONCAT_EXPR;
+    // so does one element of a String[] literal: '["a", "b"][1]->Size()'
+    if(expression->GetExpressionType() == STAT_ARY_EXPR && static_cast<StaticArray*>(expression)->GetIndices() &&
+       static_cast<StaticArray*>(expression)->GetType() == frontend::CLASS_TYPE) {
+      is_nested = true;
+    }
     while(method_call) {
       // handle Try() intrinsic
       if(method_call->IsTryIntrinsic()) {
@@ -4285,7 +4320,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
         }
       }
       else {
-        is_nested = false;
+        is_nested = FunctionValueReturnsObject(method_call);
       }
 
       method_call = method_call->GetMethodCall();
@@ -4491,7 +4526,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
         }
       } 
       else {
-        is_nested = false;
+        is_nested = FunctionValueReturnsObject(method_call);
       }
       method_call = method_call->GetMethodCall();
     } 
@@ -4619,7 +4654,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
         }
       }
       else {
-        is_nested = false;
+        is_nested = FunctionValueReturnsObject(method_call);
       }
       // process next method
       method_call = method_call->GetMethodCall();
@@ -5016,7 +5051,7 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
       }
     }
     else {
-      is_nested = false;
+      is_nested = FunctionValueReturnsObject(method_call);
     }
 
     last_call = method_call;
@@ -5174,7 +5209,7 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
       }
     }
     else {
-      is_nested = false;
+      is_nested = FunctionValueReturnsObject(method_call);
     }
 
     tail_call = tail_call->GetMethodCall();
@@ -6758,6 +6793,76 @@ void IntermediateEmitter::EmitDeclaration(Declaration* declaration)
  * Translates a method call
  * parameters
  ****************************/
+/****************************
+ * True when a link's result is an object a following link is called on:
+ * a curried link 'F(a)(b)' has no Method to read its return type from.
+ ****************************/
+bool IntermediateEmitter::FunctionValueReturnsObject(MethodCall* method_call)
+{
+  if(!method_call->IsFunctionalCall() || !method_call->GetFunctionalEntry()) {
+    return false;
+  }
+
+  frontend::Type* func_type = method_call->GetFunctionalEntry()->GetType();
+  frontend::Type* rtrn = func_type ? func_type->GetFunctionReturn() : nullptr;
+  if(!rtrn || rtrn->GetType() != CLASS_TYPE || rtrn->GetDimension() > 0) {
+    return false;
+  }
+
+  return !parsed_program->GetLinker()->SearchEnumLibraries(rtrn->GetName(), parsed_program->GetLibUses()) &&
+    !SearchProgramEnums(rtrn->GetName());
+}
+
+/****************************
+ * A curried link 'F(a)(b)': the function value F(a) left on the stack is
+ * stored into the link's hidden local, the arguments follow, and the call is
+ * the one a function variable makes (#1184). The arguments are emitted here,
+ * after the value, so 'F(a)(b)' evaluates a before b.
+ ****************************/
+void IntermediateEmitter::EmitCurriedCall(MethodCall* method_call)
+{
+  SymbolEntry* entry = method_call->GetFunctionalEntry();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, STOR_FUNC_VAR, entry->GetId(), LOCL));
+
+  emitting_deferred_params = true;
+  EmitMethodCallParameters(method_call);
+  emitting_deferred_params = false;
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_FUNC_VAR, entry->GetId(), LOCL));
+
+  // operand2 = the real return type, which the JIT needs to marshal the result
+  instructions::MemoryType dyn_rtrn = instructions::NIL_TYPE;
+  frontend::Type* dyn_fret = entry->GetType() ? entry->GetType()->GetFunctionReturn() : nullptr;
+  if(dyn_fret && dyn_fret->GetType() != frontend::NIL_TYPE) {
+    if(dyn_fret->GetDimension() > 0) {
+      dyn_rtrn = instructions::INT_TYPE;
+    }
+    else {
+      switch(dyn_fret->GetType()) {
+      case frontend::BOOLEAN_TYPE:
+      case frontend::BYTE_TYPE:
+      case frontend::CHAR_TYPE:
+      case frontend::INT_TYPE:
+      case frontend::CLASS_TYPE:
+        dyn_rtrn = instructions::INT_TYPE;
+        break;
+
+      case frontend::FLOAT_TYPE:
+        dyn_rtrn = instructions::FLOAT_TYPE;
+        break;
+
+      case frontend::FUNC_TYPE:
+        dyn_rtrn = instructions::FUNC_TYPE;
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, DYN_MTHD_CALL, entry->GetType()->GetFunctionParameterCount(), dyn_rtrn));
+}
+
 bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
 {
   // A call written as 'v->Name(args)' on a primitive resolves to a static
@@ -6769,6 +6874,11 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
   //
   if(!method_call) {
     return false;
+  }
+
+  // a curried link's arguments follow the function value (EmitCurriedCall)
+  if(method_call->IsCurriedCall()) {
+    return true;
   }
 
   // A Variable receiver reaches this point for shapes like 'arr[i]->Pow(n)',
@@ -6818,6 +6928,10 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
     }
     else if(prev_call->GetLibraryMethod()) {
       prev_type = prev_call->GetLibraryMethod()->GetReturn();
+    }
+    // 'F(a)(b)->Max(c)': the curried link's result is the receiver
+    else if(prev_call->IsCurriedCall() && prev_call->GetFunctionalEntry() && prev_call->GetFunctionalEntry()->GetType()) {
+      prev_type = prev_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
     }
 
     if(prev_type && prev_type->GetDimension() == 0) {
@@ -7046,6 +7160,12 @@ void IntermediateEmitter::EmitCallIndices(MethodCall* method_call)
 void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested)
 {
   cur_line_num = static_cast<Statement*>(method_call)->GetLineNumber();
+
+  // 'F(a)(b)': the previous link left a function value on the stack
+  if(method_call->IsCurriedCall()) {
+    EmitCurriedCall(method_call);
+    return;
+  }
   
   // new array
   if(method_call->GetCallType() == NEW_ARRAY_CALL) {

@@ -30,13 +30,16 @@ Positions are located by searching the fixture text at runtime rather than being
 hardcoded. Hand-written line numbers drift out of sync with the fixtures they
 describe; searching keeps this harness from rotting that way.
 """
+import glob
 import json
 import os
 import re
 import queue
+import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -401,6 +404,402 @@ def check_formatting_literals(c):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def completion_items(resp):
+    r = result_of(resp)
+    if isinstance(r, dict):
+        r = r.get("items")
+    return r if isinstance(r, list) else []
+
+
+def markup_value(doc):
+    """The text of a MarkupContent, or None if it is not one."""
+    if isinstance(doc, dict) and doc.get("kind") in ("markdown", "plaintext"):
+        return doc.get("value")
+    return None
+
+
+def check_completion_docs(c, caps, probe_text, probe_uri):
+    """Completion carries real signatures and documentation (#1228).
+
+    Every item used to say "<name> details" and "<name> documentation", which
+    the editor showed as written, and completionItem/resolve echoed the item
+    back behind a resolveProvider of false.
+    """
+    log_result("completionProvider.resolveProvider is true",
+               (caps.get("completionProvider") or {}).get("resolveProvider") is True,
+               f"got: {caps.get('completionProvider')}")
+
+    items = completion_items(c.request("textDocument/completion", dict(
+        position_in(probe_text, probe_uri, "circle->GetArea", 1, 11),
+        context={"triggerKind": 1})))
+    placeholder = [i.get("label") for i in items
+                   if " details" in str(i.get("detail", ""))
+                   or " documentation" in str(i.get("documentation", ""))]
+    log_result("no completion item carries placeholder text",
+               bool(items) and not placeholder, f"{len(items)} items, placeholders on {placeholder[:5]}")
+    keywords = [i for i in items if i.get("kind") == 14]
+    log_result("keyword items say they are keywords",
+               bool(keywords) and all(i.get("detail") == "keyword" for i in keywords),
+               f"got: {[(i.get('label'), i.get('detail')) for i in keywords[:3]]}")
+
+    area = next((i for i in items if i.get("label") == "GetArea"), None)
+    log_result("completion offers the user method", area is not None,
+               f"labels: {[i.get('label') for i in items][:12]}")
+    if area:
+        got = result_of(c.request("completionItem/resolve", area)) or {}
+        log_result("resolve gives a user method its signature",
+                   "GetArea" in str(got.get("detail", "")) and "Float" in str(got.get("detail", "")),
+                   f"got: {got.get('detail')!r}")
+        log_result("and documentation as MarkupContent",
+                   "GetArea" in str(markup_value(got.get("documentation"))),
+                   f"got: {got.get('documentation')!r}")
+        log_result("resolve keeps the item's label and kind",
+                   got.get("label") == "GetArea" and got.get("kind") == area.get("kind"),
+                   f"got: {got.get('label')!r} {got.get('kind')!r}")
+
+    # A library receiver: the documentation comes from objk_apis.json.
+    text = ("class LibDocs {\n"
+            "  function : Main(args : String[]) ~ Nil {\n"
+            "    v := Collection.Vector->New()<String>;\n"
+            "    v->AddBack(\"a\");\n"
+            "    v->Each(" + chr(92) + "^(s) => s->PrintLine());\n"
+            "  }\n"
+            "}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_completion_docs.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    c.diagnostics_for(uri, timeout=60)
+
+    def resolved(needle, offset, name):
+        found = completion_items(c.request("textDocument/completion", dict(
+            position_in(text, uri, needle, 1, offset), context={"triggerKind": 1})))
+        item = next((i for i in found if i.get("label") == name), None)
+        if item is None:
+            return None, [i.get("label") for i in found][:12]
+        return result_of(c.request("completionItem/resolve", item)) or {}, None
+
+    got, labels = resolved("v->AddBack", 6, "AddBack")
+    log_result("completion offers a library method", got is not None, f"labels: {labels}")
+    if got is not None:
+        log_result("resolve gives a library method its signature",
+                   "Collection.Vector->AddBack" in str(got.get("detail", "")),
+                   f"got: {got.get('detail')!r}")
+        doc = markup_value(got.get("documentation"))
+        log_result("and its documentation from the API index",
+                   doc is not None and "Adds a value to the end" in doc
+                   and got["documentation"].get("kind") == "markdown",
+                   f"got: {got.get('documentation')!r}")
+
+    got, labels = resolved("v->Each", 6, "Each")
+    doc = markup_value((got or {}).get("documentation")) or ""
+    # The index is written for the HTML pages: inside markdown code an entity
+    # is shown literally, so it is decoded there (and only there -- outside
+    # code the renderer decodes it, and a bare '<' could read as a tag).
+    log_result("documentation code shows <H>, not &lt;H&gt;",
+               "~ Vector<H>`" in doc and "~ Vector&lt;" not in doc, f"got: {doc[:200]!r}")
+
+    hover = result_of(c.request("textDocument/hover",
+                                position_in(text, uri, "AddBack", 1, 2))) or {}
+    value = markup_value(hover.get("contents"))
+    log_result("hover is MarkupContent",
+               value is not None and hover["contents"].get("kind") == "markdown",
+               f"got: {hover!r}"[:300])
+    log_result("hover on a library method shows its documentation",
+               "Adds a value to the end" in str(value), f"got: {str(value)[:160]!r}")
+
+    hover = result_of(c.request("textDocument/hover",
+                                position_in(probe_text, probe_uri, "circle := Circle", 1, 1))) or {}
+    log_result("hover on a user type is MarkupContent too",
+               markup_value(hover.get("contents")) is not None, f"got: {hover!r}"[:300])
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
+def check_rename_and_organize(c, probe_text, probe_uri):
+    """prepareRename, name validation, and source.organizeImports (#1229)."""
+    def prepare(needle, offset):
+        return result_of(c.request("textDocument/prepareRename",
+                                   position_in(probe_text, probe_uri, needle, 1, offset)))
+
+    got = prepare("circle := Circle", 2)
+    line, char = find_pos(probe_text, "circle := Circle")
+    log_result("prepareRename on a local gives its range and name",
+               isinstance(got, dict) and got.get("placeholder") == "circle"
+               and got.get("range") == {"start": {"line": line, "character": char},
+                                        "end": {"line": line, "character": char + 6}},
+               f"got: {got!r}")
+    log_result("prepareRename declines a keyword", prepare("if(drawable", 0) is None)
+    log_result("prepareRename declines a string literal", prepare('"circle"', 2) is None)
+    log_result("prepareRename declines a library method",
+               prepare("total->PrintLine", 9) is None)
+    got = prepare("@radius := radius", 3)
+    log_result("prepareRename on an instance variable includes its '@'",
+               isinstance(got, dict) and got.get("placeholder") == "@radius", f"got: {got!r}")
+
+    for bad in ("x y", "if", "1abc", "a-b"):
+        resp = c.request("textDocument/rename", dict(
+            position_in(probe_text, probe_uri, "circle := Circle", 1, 2), newName=bad))
+        log_result(f"rename refuses {bad!r}",
+                   bool(resp) and "result" not in resp
+                   and resp.get("error", {}).get("code") == -32803, f"got: {resp!r}"[:200])
+
+    # Renaming an instance variable wrote the new name over '@radius' without
+    # its '@', and missed the class-level declaration: either way the result
+    # did not compile.
+    ren = result_of(c.request("textDocument/rename", dict(
+        position_in(probe_text, probe_uri, "@radius := radius", 1, 3), newName="rad")))
+    edits = (ren or {}).get("documentChanges", [{}])[0].get("edits", [])
+    applied = apply_edits(probe_text, edits)
+    log_result("renaming an instance variable keeps its '@'",
+               bool(edits) and all(e.get("newText") == "@rad" for e in edits),
+               f"newTexts: {sorted({e.get('newText') for e in edits})}")
+    dline, _ = find_pos(probe_text, "@radius : Float")
+    log_result("and renames its declaration",
+               any(e["range"]["start"]["line"] == dline for e in edits)
+               and "@radius" not in applied and "@rad : Float" in applied,
+               f"edit lines: {sorted(e['range']['start']['line'] for e in edits)}")
+
+    # --- organizeImports ---------------------------------------------------
+    def organize(name, text, only=("source.organizeImports",)):
+        uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_organize_{name}.obs"))
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        context = {"diagnostics": []}
+        if only is not None:
+            context["only"] = list(only)
+        got = result_of(c.request("textDocument/codeAction", {
+            "textDocument": {"uri": uri},
+            "range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 0}},
+            "context": context})) or []
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+        actions = [a for a in got if isinstance(a, dict) and a.get("kind") == "source.organizeImports"]
+        if not actions:
+            return None
+        return apply_edits(text, actions[0].get("edit", {}).get("changes", {}).get(uri, []))
+
+    body = "class Org {\n  function : Main(args : String[]) ~ Nil {\n  }\n}\n"
+    messy = "#~\nheader\n~#\n\nuse System.IO;\nuse Collection;\n\nuse System.IO;\n\n" + body
+    log_result("organizeImports sorts and deduplicates the 'use' block",
+               organize("messy", messy) == "#~\nheader\n~#\n\nuse Collection;\nuse System.IO;\n\n" + body,
+               repr(organize("messy", messy))[:200])
+    log_result("organizeImports keeps one statement as one statement",
+               organize("single", "use System.IO, Collection;\n\n" + body)
+               == "use Collection, System.IO;\n\n" + body)
+    log_result("organizeImports is answered for the parent kind 'source'",
+               organize("parent", messy, ("source",)) is not None)
+    log_result("organizeImports offers nothing for a sorted block",
+               organize("sorted", "use Collection;\nuse System.IO;\n\n" + body) is None)
+    log_result("organizeImports is not offered at a plain lightbulb",
+               organize("lightbulb", messy, None) is None)
+    crlf = ("use System.IO;\nuse Collection;\n\n" + body).replace("\n", "\r\n")
+    log_result("organizeImports keeps CRLF line endings",
+               organize("crlf", crlf) == ("use Collection;\nuse System.IO;\n\n" + body).replace("\n", "\r\n"))
+
+
+def range_key(r):
+    return ((r["start"]["line"], r["start"]["character"]),
+            (r["end"]["line"], r["end"]["character"]))
+
+
+def inside(inner, outer):
+    (a, b), (c, d) = range_key(inner), range_key(outer)
+    return c <= a and b <= d
+
+
+def symbol_tree_faults(symbols, text, parent=None, path=""):
+    """Every rule a client enforces on DocumentSymbol[], as a list of faults.
+
+    VS Code rejects the WHOLE answer when one selectionRange falls outside its
+    range, so a single bad node empties the outline.
+    """
+    lines = text.split("\n")
+    faults = []
+    previous = None
+    for s in symbols:
+        name = f"{path}/{s.get('name')}"
+        rng, sel = s.get("range"), s.get("selectionRange")
+        if not rng or not sel:
+            faults.append(f"{name}: no range or selectionRange")
+            continue
+        if not inside(sel, rng):
+            faults.append(f"{name}: selectionRange {range_key(sel)} outside range {range_key(rng)}")
+        if parent and not inside(rng, parent):
+            faults.append(f"{name}: range outside its parent's")
+        if previous and range_key(previous)[1] > range_key(rng)[0]:
+            faults.append(f"{name}: overlaps the symbol before it")
+        line = lines[sel["start"]["line"]] if sel["start"]["line"] < len(lines) else ""
+        selected = line[sel["start"]["character"]:sel["end"]["character"]]
+        if selected != s.get("name"):
+            faults.append(f"{name}: selectionRange selects {selected!r}")
+        previous = rng
+        faults += symbol_tree_faults(s.get("children") or [], text, rng, name)
+    return faults
+
+
+def check_document_symbol_tree(c, probe_text, probe_uri):
+    """documentSymbol answers a DocumentSymbol tree to a client that takes one (#1230)."""
+    syms = result_of(c.request("textDocument/documentSymbol",
+                               {"textDocument": {"uri": probe_uri}})) or []
+    top = {s.get("name"): s for s in syms if isinstance(s, dict)}
+    log_result("documentSymbol answers a tree (DocumentSymbol[])",
+               bool(top) and all("selectionRange" in s and "location" not in s for s in top.values()),
+               f"got: {json.dumps(syms)[:200]}")
+    probe = top.get("Probe") or {}
+    kids = {k.get("name"): k for k in probe.get("children") or []}
+    log_result("methods are nested under their class",
+               {"Main", "Describe"} <= set(kids), f"Probe's children: {sorted(kids)}")
+    log_result("an enum declared in a class is nested under it",
+               (kids.get("Kind") or {}).get("kind") == 10, f"Probe's children: {sorted(kids)}")
+    log_result("an interface is reported as an interface",
+               (top.get("Drawable") or {}).get("kind") == 11,
+               f"got kind {(top.get('Drawable') or {}).get('kind')}")
+    faults = symbol_tree_faults(syms, probe_text)
+    log_result("every symbol range holds its name and its children", not faults, f"{faults[:4]}")
+
+    path = os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "json.obs")
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    uri = path_to_uri(path)
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    syms = result_of(c.request("textDocument/documentSymbol",
+                               {"textDocument": {"uri": uri}}, timeout=60)) or []
+    bundles = [s for s in syms if isinstance(s, dict) and s.get("kind") == 3]
+    classes = [k for b in bundles for k in b.get("children") or []]
+    log_result("a real library file nests its classes under their bundles",
+               len(bundles) >= 2 and any(k.get("name") == "JsonElement"
+                                         and k.get("detail") == "Data.JSON.JsonElement" for k in classes),
+               f"bundles {[b.get('name') for b in bundles]}, classes {[k.get('name') for k in classes][:6]}")
+    faults = symbol_tree_faults(syms, text)
+    log_result("and every range in it is well formed", not faults, f"{len(faults)}: {faults[:3]}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+    # Every library source (about 30 s). The probe and json.obs were clean
+    # while nine of these were not: lambdas' synthetic classes, a default-
+    # parameter method compiled into one overload per arity at one position,
+    # and native method ends that ran into the next method, which nested
+    # methods inside methods six deep.
+    bad = []
+    sources = sorted(glob.glob(os.path.join(REPO_ROOT, "core", "compiler", "lib_src", "*.obs")))
+    for path in sources:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+        uri = path_to_uri(path)
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        resp = c.request("textDocument/documentSymbol", {"textDocument": {"uri": uri}}, timeout=120)
+        faults = symbol_tree_faults(result_of(resp) or [], text)
+        if resp is None or "error" in resp or faults:
+            bad.append((os.path.basename(path), faults[:2] if faults else resp))
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+    log_result(f"every library source has a well-formed outline ({len(sources)} files)",
+               len(sources) > 40 and not bad, f"{len(bad)} bad: {bad[:3]}")
+
+
+def flatten_symbols(symbols):
+    out = []
+    for s in symbols or []:
+        if isinstance(s, dict):
+            out.append(s)
+            out += flatten_symbols(s.get("children"))
+    return out
+
+
+def decode_tokens(data):
+    """LSP's relative token encoding -> absolute (line, char, length, type, mods)."""
+    out, line, char = [], 0, 0
+    for i in range(0, len(data or []) - 4, 5):
+        dl, dc, length, typ, mods = data[i:i + 5]
+        line += dl
+        char = char + dc if dl == 0 else dc
+        out.append((line, char, length, typ, mods))
+    return out
+
+
+def apply_token_edits(data, edits):
+    data = list(data)
+    for e in sorted(edits, key=lambda e: e["start"], reverse=True):
+        data[e["start"]:e["start"] + e.get("deleteCount", 0)] = e.get("data", [])
+    return data
+
+
+def check_tokens_lens_links(c, caps, probe_text, probe_uri):
+    """semanticTokens range and delta, codeLens and documentLink (#1235)."""
+    sem = caps.get("semanticTokensProvider") or {}
+    log_result("semantic tokens advertise range and full/delta",
+               sem.get("range") is True and sem.get("full") == {"delta": True}, f"got: {sem}")
+    log_result("codeLens and documentLink are advertised",
+               "codeLensProvider" in caps and "documentLinkProvider" in caps)
+
+    full = result_of(c.request("textDocument/semanticTokens/full",
+                               {"textDocument": {"uri": probe_uri}})) or {}
+    tokens = decode_tokens(full.get("data"))
+    log_result("full semantic tokens carry a resultId", bool(full.get("resultId")) and bool(tokens),
+               f"got keys {sorted(full)}")
+    lo, hi = 70, 90
+    ranged = result_of(c.request("textDocument/semanticTokens/range", {
+        "textDocument": {"uri": probe_uri},
+        "range": {"start": {"line": lo, "character": 0}, "end": {"line": hi, "character": 0}}})) or {}
+    want = [t for t in tokens if lo <= t[0] <= hi]
+    log_result("range tokens are the full tokens on those lines",
+               bool(want) and decode_tokens(ranged.get("data")) == want,
+               f"{len(decode_tokens(ranged.get('data')))} vs {len(want)}")
+
+    # a delta, applied to the tokens it follows, gives the new tokens
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_tokens_delta.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": probe_text}})
+    c.diagnostics_for(uri, timeout=60)
+    before = result_of(c.request("textDocument/semanticTokens/full", {"textDocument": {"uri": uri}})) or {}
+    line, _ = find_pos(probe_text, "total->PrintLine")
+    c.notifications.clear()
+    c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": 2}, "contentChanges": [{
+        "range": {"start": {"line": line, "character": 0}, "end": {"line": line, "character": 0}},
+        "text": "\t\tsquare->Draw()->PrintLine();\n"}]})
+    c.diagnostics_for(uri, timeout=60)
+    delta = result_of(c.request("textDocument/semanticTokens/full/delta", {
+        "textDocument": {"uri": uri}, "previousResultId": before.get("resultId")})) or {}
+    after = result_of(c.request("textDocument/semanticTokens/full", {"textDocument": {"uri": uri}})) or {}
+    edits = delta.get("edits")
+    log_result("a delta answers edits, not every token",
+               isinstance(edits, list) and len(edits) == 1 and "data" not in delta,
+               f"got keys {sorted(delta)}")
+    log_result("applying the delta gives the new tokens",
+               isinstance(edits, list) and after.get("data")
+               and apply_token_edits(before.get("data") or [], edits) == after["data"],
+               f"{len(before.get('data') or [])} -> {len(after.get('data') or [])}")
+    stale = result_of(c.request("textDocument/semanticTokens/full/delta", {
+        "textDocument": {"uri": uri}, "previousResultId": "no-such-result"})) or {}
+    log_result("a delta from an unknown result answers full tokens",
+               stale.get("data") == after.get("data") and "edits" not in stale, f"got keys {sorted(stale)}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+    # codeLens: how to run the program, here as a label (no client command)
+    lenses = result_of(c.request("textDocument/codeLens", {"textDocument": {"uri": probe_uri}})) or []
+    main_line, main_char = find_pos(probe_text, "function : Main(", 1, len("function : "))
+    title = ((lenses[0] if lenses else {}).get("command") or {}).get("title", "")
+    log_result("a code lens sits on Main",
+               len(lenses) == 1 and lenses[0]["range"]["start"] == {"line": main_line, "character": main_char},
+               f"got: {lenses}")
+    log_result("and says how to build and run the file",
+               title == "Run: obc -src lsp_probe.obs -dest lsp_probe.obe && obr lsp_probe.obe", f"title {title!r}")
+
+    # documentLink: each documented 'use' bundle
+    text = "use Collection, System.IO;\nuse Bogus.Bundle;\n\nclass Links {\n  function : Main(args : String[]) ~ Nil {\n  }\n}\n"
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_links.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    links = result_of(c.request("textDocument/documentLink", {"textDocument": {"uri": uri}})) or []
+    lines = text.split("\n")
+    linked = {lines[l["range"]["start"]["line"]][l["range"]["start"]["character"]:l["range"]["end"]["character"]]:
+              l.get("target") for l in links}
+    log_result("documentLink links each documented 'use' bundle",
+               set(linked) == {"Collection", "System.IO"}, f"got: {linked}")
+    log_result("to its entry in the API reference",
+               linked.get("Collection") == "https://www.objeck.org/api/latest/index.html?scrollTo=collection",
+               f"got: {linked.get('Collection')!r}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
 def check_large_real_file(c):
     """Every read-only handler over a real library source, errors and all.
 
@@ -444,7 +843,9 @@ def check_large_real_file(c):
         log_result(f"large real file: {label} answers", resp is not None,
                    "no response (server down?)")
 
-    names = {s.get("name") for s in symbols or [] if isinstance(s, dict)}
+    # a tree (DocumentSymbol[]) or a flat list (SymbolInformation[]), either way
+    flat = flatten_symbols(symbols)
+    names = {s.get("detail") or s.get("name") for s in flat}
     log_result("large real file: symbols from both bundles",
                {"Data.JSON.JsonElement", "Data.JSON.Scheme.FunctionType"} <= names,
                f"{len(names)} names, e.g. {sorted(n for n in names if n)[:6]}")
@@ -456,8 +857,8 @@ def check_large_real_file(c):
     opening = next(i for i, l in enumerate(lines) if l.startswith("bundle Data.JSON {"))
     second = next(i for i, l in enumerate(lines) if l.startswith("bundle Data.JSON.Scheme {"))
     closing = max(i for i, l in enumerate(lines[:second]) if l.startswith("}"))
-    ns = next((s for s in symbols or [] if s.get("name") == "Data.JSON" and s.get("kind") == 3), None)
-    rng = (ns or {}).get("location", {}).get("range", {})
+    ns = next((s for s in flat if s.get("name") == "Data.JSON" and s.get("kind") == 3), None)
+    rng = (ns or {}).get("range") or (ns or {}).get("location", {}).get("range", {})
     log_result("large real file: a bundle spans 'bundle' to its closing brace",
                rng.get("start", {}).get("line") == opening and rng.get("end", {}).get("line") == closing,
                f"got {rng}, want lines {opening}..{closing}")
@@ -508,6 +909,11 @@ def check_text_encoding(c, caps):
         log_result("positionEncoding is utf-32 where a Char is a code point and it is offered",
                    encoding == "utf-32", f"got: {encoding}")
 
+    check_unicode_columns(c, encoding, "")
+
+
+def check_unicode_columns(c, encoding, tag):
+    """Diagnostics and edits after a non-ASCII character, in `encoding`."""
     shapes = [("comment", "# caf{ch}\nclass U{n} {{\n  function : Main(a : String[]) ~ Nil {{\n"
                           "    y := zzz;\n  }}\n}}\n", 3),
               ("literal", "class U{n} {{\n  function : Main(a : String[]) ~ Nil {{\n"
@@ -518,7 +924,7 @@ def check_text_encoding(c, caps):
             for escaped in (True, False):
                 n += 1
                 text = template.format(ch=ch, n=n)
-                uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_unicode_{n}.obs"))
+                uri = path_to_uri(os.path.join(TESTS_DIR, f"lsp_unicode_{tag.strip(': ')}{n}.obs"))
                 c.send_raw(json.dumps({"jsonrpc": "2.0", "method": "textDocument/didOpen",
                                        "params": {"textDocument": {
                                            "uri": uri, "languageId": "objeck", "version": 1,
@@ -528,7 +934,7 @@ def check_text_encoding(c, caps):
                 want = {"line": line_no, "character": column(line, line.index("zzz"), encoding)}
                 got = [d["range"]["start"] for d in diags if "zzz" in str(d.get("message", ""))]
                 how = "escaped" if escaped else "raw"
-                label = f"{where} with {ch_name} sent {how}"
+                label = f"{tag}{where} with {ch_name} sent {how}"
                 log_result(f"{label}: diagnostic column", want in got, f"want {want}, got {got}")
 
                 # an edit after the character lands in the right place too
@@ -543,6 +949,8 @@ def check_text_encoding(c, caps):
                 log_result(f"{label}: an edit after it", want in got, f"want {want}, got {got}")
                 c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
+
+def check_clamped_positions(c):
     # A position past the end of its line means the end of that line. It ran on
     # into the next line; one past the last line was dropped silently (#1216).
     text = "class Clamp {\n  function : Main(a : String[]) ~ Nil {\n  }\n}\n"
@@ -563,6 +971,52 @@ def check_text_encoding(c, caps):
     log_result("positions past a line, or past the document, are clamped",
                end == document_end(expected), f"server's end {end}, editor's {document_end(expected)}")
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
+def check_utf16_only_client(obr, server_obe, apis_json, bin_dir):
+    """A client that offers only UTF-16 gets UTF-16 columns everywhere (#1226).
+
+    Where a Char is a whole code point (Linux, macOS) the server counted an
+    emoji as one column and the client as two, so every column after it on its
+    line was one short -- diagnostics, navigation, semantic tokens, and the
+    client's own edits. VS Code offers only UTF-16. On Windows a Char is a
+    UTF-16 unit, so this holds by construction there.
+    """
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        resp = c.request("initialize", {"processId": os.getpid(), "rootUri": None,
+                                        "capabilities": {}}, timeout=90)
+        encoding = ((result_of(resp) or {}).get("capabilities") or {}).get("positionEncoding")
+        log_result("utf-16 client: positionEncoding is utf-16", encoding == "utf-16", f"got: {encoding}")
+        c.notify("initialized", {})
+        check_unicode_columns(c, "utf-16", "utf-16 client: ")
+
+        # a request's position, and the ranges and tokens that come back
+        text = ("class Wide {\n  function : Main(a : String[]) ~ Nil {\n"
+                "    s := \"\U0001F600\"; t := s; t->PrintLine();\n  }\n}\n")
+        uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_utf16_wide.obs"))
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        c.diagnostics_for(uri, timeout=60)
+        line = text.split("\n")[2]
+        use = line.index("t := s") + len("t := ")
+        highlights = result_of(c.request("textDocument/documentHighlight", {
+            "textDocument": {"uri": uri},
+            "position": {"line": 2, "character": column(line, use, "utf-16")}})) or []
+        starts = sorted(h["range"]["start"]["character"] for h in highlights)
+        want = sorted({column(line, line.index("s := "), "utf-16"), column(line, use, "utf-16")})
+        log_result("utf-16 client: a position after an emoji resolves, and its ranges come back in UTF-16",
+                   starts == want, f"got {starts}, want {want}")
+
+        tokens = decode_tokens((result_of(c.request("textDocument/semanticTokens/full", {
+            "textDocument": {"uri": uri}})) or {}).get("data"))
+        call_column = column(line, line.index("PrintLine"), "utf-16")
+        log_result("utf-16 client: semantic tokens after an emoji sit at UTF-16 columns",
+                   any(t[0] == 2 and t[1] == call_column and t[2] == len("PrintLine") for t in tokens),
+                   f"line 2 tokens {[t for t in tokens if t[0] == 2]}, want one at {call_column}")
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+    finally:
+        c.close()
 
 
 def check_batching(c):
@@ -631,6 +1085,9 @@ def check_batching(c):
         {"jsonrpc": "2.0", "method": "$/cancelRequest", "params": {"id": "cancel-me"}},
         {"jsonrpc": "2.0", "id": "stale", "method": "textDocument/hover",
          "params": {"textDocument": {"uri": uri}, "position": {"line": 3, "character": 6}}},
+        # names no document, so no edit can make it stale
+        {"jsonrpc": "2.0", "id": "no-document", "method": "workspace/symbol",
+         "params": {"query": "Burst"}},
         {"jsonrpc": "2.0", "method": "textDocument/didChange", "params": {
             "textDocument": {"uri": uri, "version": 22},
             "contentChanges": [{"range": {"start": {"line": 0, "character": 0},
@@ -650,8 +1107,282 @@ def check_batching(c):
     stale = c.response_to("stale", timeout=60)
     log_result("a request whose document then changed gets ContentModified",
                (stale or {}).get("error", {}).get("code") == -32801, f"got: {stale}")
+    # It inherited the hover's 'changed later' mark: a loop-body local that was
+    # declared but not assigned keeps the previous pass's value.
+    no_document = c.response_to("no-document", timeout=60)
+    log_result("a request that names no document is answered, not ContentModified",
+               no_document is not None and "result" in no_document, f"got: {no_document}")
     c.notify("textDocument/didClose", {"textDocument": {"uri": busy}})
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
+def check_multi_root(obr, server_obe, apis_json, bin_dir):
+    """Each workspace folder is configured by its own build.json (#1232).
+
+    The server kept one root and one file list, and each folder overwrote the
+    last: with two folders open, the first was analyzed against the second's
+    files. A removed folder was only logged, and a watched build.json change
+    reloaded whichever folder had been configured last.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-multi-")
+    try:
+        folders = {}
+        for name in ("ws_multi_a", "ws_multi_b"):
+            shutil.copytree(os.path.join(TESTS_DIR, name), os.path.join(work, name))
+            folders[name] = path_to_uri(os.path.join(work, name))
+        a_main = folders["ws_multi_a"] + "/main.obs"
+        b_main = folders["ws_multi_b"] + "/main.obs"
+
+        def errors(diags):
+            return [d.get("message") for d in diags or [] if d.get("severity") == 1]
+
+        def fresh_diagnostics(uri, timeout=60):
+            """The next publish for uri after the notifications seen so far."""
+            end = time.time() + timeout
+            while time.time() < end:
+                for n in c.notifications:
+                    if (n.get("method") == "textDocument/publishDiagnostics"
+                            and n["params"].get("uri", "").lower() == uri.lower()):
+                        c.notifications.remove(n)
+                        return n["params"].get("diagnostics", [])
+                c.drain(0.2)
+            return None
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {
+                "processId": os.getpid(), "rootUri": folders["ws_multi_a"], "capabilities": {},
+                "workspaceFolders": [{"uri": folders["ws_multi_a"], "name": "a"},
+                                     {"uri": folders["ws_multi_b"], "name": "b"}],
+            }, timeout=90)
+            c.notify("initialized", {})
+            for uri in (a_main, b_main):
+                with open(os.path.join(work, uri.split("/")[-2], "main.obs"), encoding="utf-8") as fh:
+                    c.notify("textDocument/didOpen", {"textDocument": {
+                        "uri": uri, "languageId": "objeck", "version": 1, "text": fh.read()}})
+            a_diags, b_diags = fresh_diagnostics(a_main), fresh_diagnostics(b_main)
+            log_result("two folders: the first resolves against its own build.json",
+                       a_diags is not None and not errors(a_diags), f"{errors(a_diags)}")
+            log_result("two folders: and so does the second",
+                       b_diags is not None and not errors(b_diags), f"{errors(b_diags)}")
+
+            found = {s.get("name") for s in result_of(c.request(
+                "workspace/symbol", {"query": "Main"})) or []}
+            log_result("workspace/symbol searches every folder",
+                       {"AlphaMain", "BetaMain"} <= found, f"got: {sorted(found)}")
+
+            # a removed folder no longer configures its documents
+            c.notifications.clear()
+            c.notify("workspace/didChangeWorkspaceFolders", {"event": {
+                "added": [], "removed": [{"uri": folders["ws_multi_b"], "name": "b"}]}})
+            b_diags = fresh_diagnostics(b_main)
+            log_result("a removed folder's document is analyzed without its build.json",
+                       any("BetaShape" in str(m) for m in errors(b_diags)), f"{errors(b_diags)}")
+            a_diags = fresh_diagnostics(a_main)
+            log_result("and the remaining folder still resolves",
+                       a_diags is not None and not errors(a_diags), f"{errors(a_diags)}")
+
+            c.notifications.clear()
+            c.notify("workspace/didChangeWorkspaceFolders", {"event": {
+                "added": [{"uri": folders["ws_multi_b"], "name": "b"}], "removed": []}})
+            b_diags = fresh_diagnostics(b_main)
+            log_result("adding it back configures it again",
+                       b_diags is not None and not errors(b_diags), f"{errors(b_diags)}")
+
+            # a changed build.json reloads its own folder, not the other
+            with open(os.path.join(work, "ws_multi_a", "build.json"), "w", encoding="utf-8") as fh:
+                json.dump({"files": ["main.obs"], "libs": ["gen_collect.obl"], "flags": ""}, fh)
+            c.notifications.clear()
+            c.notify("workspace/didChangeWatchedFiles", {"changes": [
+                {"uri": folders["ws_multi_a"] + "/build.json", "type": 2}]})
+            a_diags = fresh_diagnostics(a_main)
+            log_result("a changed build.json reloads its folder",
+                       any("AlphaShape" in str(m) for m in errors(a_diags)), f"{errors(a_diags)}")
+            b_diags = fresh_diagnostics(b_main)
+            log_result("and leaves the other folder as it was",
+                       b_diags is not None and not errors(b_diags), f"{errors(b_diags)}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def check_progress_and_log(obr, server_obe, apis_json, bin_dir):
+    """window/logMessage and work-done progress (#1234).
+
+    The server sent neither: a build.json that could not be read went to a log
+    file the user never sees, a multi-file analysis showed nothing in the
+    editor, and a workDoneToken a client passed was ignored.
+    """
+    work = tempfile.mkdtemp(prefix="objk-lsp-progress-")
+    try:
+        good = os.path.join(work, "good")
+        shutil.copytree(WS_DIR, good)
+        bad = os.path.join(work, "bad")
+        os.makedirs(bad)
+        with open(os.path.join(bad, "build.json"), "w", encoding="utf-8") as fh:
+            fh.write('{ "files": [ "main.obs" ')
+        none = os.path.join(work, "none")
+        os.makedirs(none)
+        main_uri = path_to_uri(os.path.join(good, "main.obs"))
+        with open(os.path.join(good, "main.obs"), encoding="utf-8") as fh:
+            main_text = fh.read()
+        folders = [{"uri": path_to_uri(d), "name": n} for n, d in (("good", good), ("bad", bad), ("none", none))]
+
+        def progress(token):
+            return [n["params"]["value"].get("kind") for n in c.notifications
+                    if n.get("method") == "$/progress" and n["params"].get("token") == token]
+
+        def wait_for(pred, seconds=30):
+            end = time.time() + seconds
+            while time.time() < end:
+                found = pred()
+                if found:
+                    return found
+                c.drain(0.2)
+            return pred()
+
+        def creates():
+            return [r for r in c.server_requests if r.get("method") == "window/workDoneProgress/create"]
+
+        def reply(req, error=False):
+            msg = {"jsonrpc": "2.0", "id": req["id"]}
+            if error:
+                msg["error"] = {"code": -32603, "message": "declined by the test"}
+            else:
+                msg["result"] = None
+            c._write(msg)
+
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {"processId": os.getpid(), "rootUri": folders[0]["uri"],
+                                     "capabilities": {"window": {"workDoneProgress": True}},
+                                     "workspaceFolders": folders}, timeout=90)
+            logs = [(n["params"].get("type"), n["params"].get("message", "")) for n in c.notifications
+                    if n.get("method") == "window/logMessage"]
+            log_result("logMessage reports a folder's build.json",
+                       any(t == 3 and "'good'" in m and "3 file" in m for t, m in logs), f"{logs}")
+            log_result("logMessage reports a build.json that can't be parsed as an error",
+                       any(t == 1 and "'bad'" in m and "build.json" in m for t, m in logs), f"{logs}")
+            log_result("logMessage says a folder has no build.json",
+                       any(t == 3 and "'none'" in m and "no build.json" in m for t, m in logs), f"{logs}")
+
+            c.notify("initialized", {})
+            first = wait_for(creates)
+            log_result("a client that shows progress is asked for a token after 'initialized'",
+                       len(first) == 1, f"{c.server_requests}")
+            if first:
+                token = first[0]["params"]["token"]
+                reply(first[0])
+                time.sleep(0.3)
+                c.notify("textDocument/didOpen", {"textDocument": {
+                    "uri": main_uri, "languageId": "objeck", "version": 1, "text": main_text}})
+                c.diagnostics_for(main_uri, timeout=90)
+                kinds = wait_for(lambda: progress(token) if "end" in progress(token) else None)
+                log_result("a workspace analysis reports begin and end on that token",
+                           kinds == ["begin", "end"], f"got {kinds}")
+                title = next((n["params"]["value"].get("title") for n in c.notifications
+                              if n.get("method") == "$/progress" and n["params"].get("token") == token
+                              and n["params"]["value"].get("kind") == "begin"), "")
+                log_result("and names the folder", "good" in str(title), f"title {title!r}")
+
+                second = wait_for(lambda: creates()[1:] or None)
+                log_result("a used token is replaced at once", bool(second), f"{c.server_requests}")
+                if second:
+                    # a rejected request reaches the client's log, not just a file
+                    c.notifications.clear()
+                    reply(second[0], error=True)
+                    warned = wait_for(lambda: [n for n in c.notifications if n.get("method") == "window/logMessage"
+                                               and n["params"].get("type") == 2])
+                    log_result("a server request the client rejects is logged as a warning",
+                               bool(warned), f"{c.notifications}")
+
+            # a token the client passes with a request
+            c.notifications.clear()
+            resp = c.request("textDocument/references", dict(
+                position_in(main_text, main_uri, "Main", 1, 0),
+                context={"includeDeclaration": True}, workDoneToken="client-token"))
+            c.drain(0.5)
+            log_result("a request's workDoneToken gets begin and end",
+                       resp is not None and progress("client-token") == ["begin", "end"],
+                       f"got {progress('client-token')}")
+        finally:
+            c.close()
+
+        # a client that doesn't show progress is never asked
+        c = LspClient(obr, server_obe, apis_json, bin_dir)
+        try:
+            c.request("initialize", {"processId": os.getpid(), "rootUri": folders[0]["uri"],
+                                     "capabilities": {}, "workspaceFolders": folders[:1]}, timeout=90)
+            c.notify("initialized", {})
+            c.notify("textDocument/didOpen", {"textDocument": {
+                "uri": main_uri, "languageId": "objeck", "version": 1, "text": main_text}})
+            c.diagnostics_for(main_uri, timeout=90)
+            c.drain(0.5)
+            log_result("a client without window.workDoneProgress gets no tokens or progress",
+                       not creates() and not any(n.get("method") == "$/progress" for n in c.notifications),
+                       f"{c.server_requests}")
+        finally:
+            c.close()
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def check_pull_diagnostics(obr, server_obe, apis_json, bin_dir):
+    """textDocument/diagnostic, for a client that pulls (#1231)."""
+    broken = ("class PullCheck {\n  function : Main(args : String[]) ~ Nil {\n"
+              "    x := Undefined->New();\n  }\n}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_pull.obs"))
+
+    c = LspClient(obr, server_obe, apis_json, bin_dir)
+    try:
+        resp = c.request("initialize", {"processId": os.getpid(), "rootUri": None, "capabilities": {
+            "textDocument": {"diagnostic": {"dynamicRegistration": False}},
+            "workspace": {"diagnostics": {"refreshSupport": True}}}}, timeout=90)
+        provider = ((result_of(resp) or {}).get("capabilities") or {}).get("diagnosticProvider")
+        log_result("a pull client is offered diagnosticProvider",
+                   isinstance(provider, dict) and provider.get("interFileDependencies") is True
+                   and provider.get("workspaceDiagnostics") is False, f"got: {provider}")
+        c.notify("initialized", {})
+
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": broken}})
+        c.drain(1.5)
+        log_result("nothing is pushed to a pull client",
+                   not [n for n in c.notifications if n.get("method") == "textDocument/publishDiagnostics"])
+
+        first = result_of(c.request("textDocument/diagnostic", {"textDocument": {"uri": uri}})) or {}
+        log_result("a pull answers a full report with the document's diagnostics",
+                   first.get("kind") == "full" and bool(first.get("resultId"))
+                   and any("Undefined" in str(d.get("message")) for d in first.get("items", [])),
+                   f"got: {json.dumps(first)[:200]}")
+        again = result_of(c.request("textDocument/diagnostic", {
+            "textDocument": {"uri": uri}, "previousResultId": first.get("resultId")})) or {}
+        log_result("and 'unchanged' when nothing has changed",
+                   again == {"kind": "unchanged", "resultId": first.get("resultId")}, f"got: {again}")
+
+        fixed = broken.replace("x := Undefined->New();", "x := 1;" + chr(10) + "    x->PrintLine();")
+        c.notify("textDocument/didChange", {"textDocument": {"uri": uri, "version": 2},
+                                            "contentChanges": [{"text": fixed}]})
+        after = result_of(c.request("textDocument/diagnostic", {
+            "textDocument": {"uri": uri}, "previousResultId": first.get("resultId")})) or {}
+        log_result("after an edit, a new report for the new text",
+                   after.get("kind") == "full" and after.get("items") == []
+                   and after.get("resultId") not in (None, first.get("resultId")), f"got: {after}")
+
+        # results elsewhere may have changed: the client is asked to pull again
+        c.notify("workspace/didChangeWatchedFiles", {"changes": [
+            {"uri": path_to_uri(TESTS_DIR) + "/build.json", "type": 2}]})
+        c.drain(1.5)
+        log_result("a configuration change asks the client to pull again",
+                   any(r.get("method") == "workspace/diagnostic/refresh" and "params" not in r
+                       for r in c.server_requests), f"{c.server_requests}")
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+        c.drain(0.5)
+        pushed = [n for n in c.notifications if n.get("method") == "textDocument/publishDiagnostics"]
+        log_result("and closing a document pushes nothing either", not pushed, f"{pushed}")
+    finally:
+        c.close()
 
 
 def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
@@ -686,7 +1417,7 @@ def check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir):
         log_result("a string request id is echoed back unchanged", sid is not None,
                    "no response carrying id 'abc-7'")
 
-        unknown = c.request("textDocument/codeLens", {"textDocument": {"uri": "file:///x.obs"}})
+        unknown = c.request("textDocument/noSuchMethod", {"textDocument": {"uri": "file:///x.obs"}})
         log_result("an unknown request gets MethodNotFound",
                    (unknown or {}).get("error", {}).get("code") == -32601, f"got: {unknown}")
 
@@ -773,6 +1504,130 @@ def stdio_exit_code(obr, server_obe, apis_json, bin_dir, shutdown_first):
     except (subprocess.TimeoutExpired, OSError) as e:
         proc.kill()
         return f"no exit ({type(e).__name__})"
+
+
+class StdioClient(LspClient):
+    """The same client over the server's stdin/stdout, as editors start it."""
+
+    def __init__(self, obr, server_obe, apis_json, bin_dir, transport="stdio"):
+        env = make_env(bin_dir)
+        env["OBJECK_STDIO"] = "binary"
+        self.proc = subprocess.Popen([obr, server_obe, apis_json, transport],
+                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.DEVNULL, cwd=bin_dir, env=env)
+        self.q = queue.Queue()
+        self.notifications = []
+        self.server_requests = []
+        self.rid = 0
+        self.lock = threading.Lock()
+        threading.Thread(target=self._reader, daemon=True).start()
+
+    def _reader(self):
+        out = self.proc.stdout
+        while True:
+            length = None
+            while True:
+                line = out.readline()
+                if not line:
+                    return
+                line = line.strip()
+                if not line:
+                    break
+                if line.lower().startswith(b"content-length:"):
+                    length = int(line.split(b":", 1)[1])
+            if length is None:
+                continue
+            body = out.read(length)
+            if len(body) < length:
+                return
+            try:
+                self.q.put(json.loads(body))
+            except json.JSONDecodeError:
+                pass
+
+    def _write(self, msg):
+        head, body = frame(msg)
+        with self.lock:
+            try:
+                self.proc.stdin.write(head + body)
+                self.proc.stdin.flush()
+            except OSError:
+                pass
+
+    def close(self):
+        """shutdown, then exit; the exit code (0 means a clean shutdown)."""
+        try:
+            self.request("shutdown", timeout=10)
+            self.notify("exit")
+            return self.proc.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            self.proc.kill()
+            return "no exit"
+
+
+def check_stdio_sessions(obr, server_obe, apis_json, bin_dir):
+    """A whole session over stdio, two servers side by side (#1233).
+
+    The VS Code client now starts one server per window over stdio, where it
+    used to share a fixed named pipe between windows. Every other shipped
+    client already used stdio, and this harness drove it only as far as
+    initialize and exit.
+    """
+    probe_obs = os.path.join(TESTS_DIR, "lsp_probe.obs")
+    with open(probe_obs, encoding="utf-8") as fh:
+        probe_text = fh.read()
+    probe_uri = path_to_uri(probe_obs)
+    other_uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_stdio_other.obs"))
+    other_text = "class StdioOther {\n  function : Main(args : String[]) ~ Nil {\n  }\n}\n"
+
+    # the second as vscode-languageclient starts a stdio server, with '--stdio'
+    first = StdioClient(obr, server_obe, apis_json, bin_dir)
+    second = StdioClient(obr, server_obe, apis_json, bin_dir, "--stdio")
+    try:
+        for name, c in (("stdio", first), ("--stdio", second)):
+            resp = c.request("initialize", {"processId": os.getpid(), "rootUri": None,
+                                            "capabilities": {}}, timeout=90)
+            log_result(f"{name}: initialize answers",
+                       bool((result_of(resp) or {}).get("capabilities")), f"got: {resp!r}"[:160])
+            c.notify("initialized", {})
+
+        first.notify("textDocument/didOpen", {"textDocument": {
+            "uri": probe_uri, "languageId": "objeck", "version": 1, "text": probe_text}})
+        second.notify("textDocument/didOpen", {"textDocument": {
+            "uri": other_uri, "languageId": "objeck", "version": 1, "text": other_text}})
+        diags = first.diagnostics_for(probe_uri, timeout=90)
+        log_result("stdio: diagnostics are published", diags is not None and not diags,
+                   f"got: {diags!r}"[:160])
+        log_result("stdio: hover answers", non_empty(first.request(
+            "textDocument/hover", position_in(probe_text, probe_uri, "circle := Circle", 1, 1))))
+
+        # each window's server sees only its own documents
+        mine = {s.get("name") for s in result_of(first.request(
+            "workspace/symbol", {"query": "Stdio"})) or []}
+        theirs = {s.get("name") for s in result_of(second.request(
+            "workspace/symbol", {"query": "Stdio"})) or []}
+        log_result("two stdio servers keep their documents apart",
+                   "StdioOther" not in mine and "StdioOther" in theirs,
+                   f"first saw {sorted(mine)}, second saw {sorted(theirs)}")
+
+        # non-ASCII text out and back: formatting returns the whole document
+        literal = '"héllo \U0001F600"'
+        text = ("class StdioText {\n  function : Main(args : String[]) ~ Nil {\n"
+                "    x := " + literal + ";\n    x->PrintLine();\n  }\n}\n")
+        uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_stdio_text.obs"))
+        second.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        second.diagnostics_for(uri, timeout=60)
+        edits = result_of(second.request("textDocument/formatting", {
+            "textDocument": {"uri": uri}, "options": {"tabSize": 2, "insertSpaces": True}})) or []
+        log_result("stdio: non-ASCII text survives the round trip",
+                   any(literal in str(e.get("newText", "")) for e in edits),
+                   f"got: {json.dumps(edits)[:160]}")
+        log_result("stdio: and the stream stays framed after it", second.request(
+            "textDocument/foldingRange", {"textDocument": {"uri": uri}}) is not None)
+    finally:
+        codes = (first.close(), second.close())
+    log_result("both stdio servers shut down cleanly", codes == (0, 0), f"exit codes {codes}")
 
 
 def check_pipe_transport(obr, server_obe, apis_json, bin_dir):
@@ -890,7 +1745,9 @@ def main():
         resp = c.request("initialize", {
             "processId": os.getpid(),
             "rootUri": None,
-            "capabilities": {"general": {"positionEncodings": ["utf-16", "utf-32"]}},
+            "capabilities": {"general": {"positionEncodings": ["utf-16", "utf-32"]},
+                             "textDocument": {"documentSymbol": {
+                                 "hierarchicalDocumentSymbolSupport": True}}},
         }, timeout=90)
 
         caps = (result_of(resp) or {}).get("capabilities")
@@ -1012,6 +1869,28 @@ def main():
             "textDocument/selectionRange",
             {"textDocument": {"uri": probe_uri},
              "positions": [circle_decl["position"]]})))
+
+        # Several positions: each answer is its own chain. Each was chained onto
+        # the previous position's, because a loop-body local was declared but not
+        # assigned and so kept its last value.
+        first_pos = at("return 3.14159")["position"]
+        second_pos = at("return @side * @side")["position"]
+        chains = result_of(c.request("textDocument/selectionRange", {
+            "textDocument": {"uri": probe_uri}, "positions": [first_pos, second_pos]})) or []
+
+        def holds(rng, pos):
+            return ((rng["start"]["line"], rng["start"]["character"]) <= (pos["line"], pos["character"])
+                    <= (rng["end"]["line"], rng["end"]["character"]))
+
+        def chain_ok(node, pos):
+            while node:
+                if not holds(node["range"], pos):
+                    return False
+                node = node.get("parent")
+            return True
+        log_result("selectionRange answers each position with its own chain",
+                   len(chains) == 2 and chain_ok(chains[0], first_pos) and chain_ok(chains[1], second_pos),
+                   f"got {len(chains)} chains")
         hints_resp = c.request(
             "textDocument/inlayHint",
             {"textDocument": {"uri": probe_uri},
@@ -1191,6 +2070,21 @@ def main():
         log_result("the 'use' fix inserts a real line break",
                    bool(use_texts) and all(t.endswith("\n") and chr(92) not in t for t in use_texts),
                    f"newText: {use_texts!r}")
+
+        # With no workspace folder the build file goes beside the document. It
+        # was 'file:////build.json' -- the root of the file system -- because a
+        # null rootUri configured a folder at '', and the path was lowercased.
+        creates = []
+        if undef is not None:
+            for f in result_of(c.request("textDocument/codeAction", {
+                    "textDocument": {"uri": uri}, "range": undef["range"],
+                    "context": {"diagnostics": [undef]}})) or []:
+                for change in (f.get("edit", {}).get("documentChanges", []) if isinstance(f, dict) else []):
+                    if isinstance(change, dict) and change.get("kind") == "create":
+                        creates.append(change.get("uri"))
+        want = path_to_uri(TESTS_DIR) + "/build.json"
+        log_result("a quick fix outside any folder creates build.json beside the file",
+                   bool(creates) and all(u == want for u in creates), f"{set(creates)} vs {want}")
 
         # --- the same, for an inferred-type local (#1057) --------------------
         # `:=` is the dominant style in this codebase -- the examples, the
@@ -1441,23 +2335,38 @@ def main():
         log_result("declaration on a chained call resolves the chained method",
                    decl_line == get_line, f"got: {decl}")
 
+        check_completion_docs(c, caps, probe_text, probe_uri)
+        check_rename_and_organize(c, probe_text, probe_uri)
+        check_document_symbol_tree(c, probe_text, probe_uri)
+        check_tokens_lens_links(c, caps, probe_text, probe_uri)
         check_large_real_file(c)
         check_text_encoding(c, caps)
+        check_clamped_positions(c)
         check_batching(c)
     finally:
         c.close()
 
     check_jsonrpc_conformance(obr, server_obe, apis_json, bin_dir)
+    check_multi_root(obr, server_obe, apis_json, bin_dir)
+    check_stdio_sessions(obr, server_obe, apis_json, bin_dir)
+    check_progress_and_log(obr, server_obe, apis_json, bin_dir)
+    check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
+    check_utf16_only_client(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the
     # workspace and the watched-files handler must stay alive.
     c = LspClient(obr, server_obe, apis_json, bin_dir)
     try:
+        # ...and a client that renders only plain text (#1228)
         resp = c.request("initialize", {
             "processId": os.getpid(), "rootUri": path_to_uri(TESTS_DIR),
-            "capabilities": {},
+            "capabilities": {"textDocument": {"hover": {"contentFormat": ["plaintext"]},
+                                              "rename": {"prepareSupport": True}}},
         }, timeout=90)
+        rename_cap = ((result_of(resp) or {}).get("capabilities") or {}).get("renameProvider")
+        log_result("a client with prepareSupport is offered prepareRename",
+                   rename_cap == {"prepareProvider": True}, f"got: {rename_cap!r}")
         log_result("initialize with rootUri only (no workspaceFolders)",
                    bool((result_of(resp) or {}).get("capabilities")))
         c.notify("initialized", {})
@@ -1467,11 +2376,19 @@ def main():
         c.diagnostics_for(probe_uri, timeout=60)
         c.notify("workspace/didChangeWatchedFiles", {"changes": [
             {"uri": path_to_uri(TESTS_DIR) + "/build.json", "type": 2}]})
-        alive = non_empty(c.request("textDocument/hover",
-                                    position_in(probe_text, probe_uri,
-                                                "circle := Circle", 1, 1)))
+        hover = c.request("textDocument/hover",
+                          position_in(probe_text, probe_uri, "circle := Circle", 1, 1))
         log_result("rootUri-only session survives didChangeWatchedFiles",
-                   alive and c.proc.poll() is None)
+                   non_empty(hover) and c.proc.poll() is None)
+        flat = result_of(c.request("textDocument/documentSymbol",
+                                   {"textDocument": {"uri": probe_uri}})) or []
+        log_result("a client without hierarchical support gets SymbolInformation[]",
+                   bool(flat) and all("location" in s and "children" not in s for s in flat),
+                   f"got: {json.dumps(flat)[:160]}")
+        contents = (result_of(hover) or {}).get("contents")
+        log_result("a plain-text client gets plain-text hover",
+                   isinstance(contents, dict) and contents.get("kind") == "plaintext",
+                   f"got: {contents!r}"[:200])
     finally:
         c.close()
 
@@ -1550,6 +2467,8 @@ def main():
             "processId": os.getpid(), "rootUri": ws_uri,
             "capabilities": {"workspace": {"configuration": True}},
             "workspaceFolders": [{"uri": ws_uri, "name": "ws_lsp_features"}],
+            # the VS Code client names its run command (#1235)
+            "initializationOptions": {"runCommand": "objeck.runProgram"},
         }, timeout=90)
         log_result("workspace mode initializes",
                    bool((result_of(resp) or {}).get("capabilities")))
@@ -1562,6 +2481,20 @@ def main():
                    diags is not None and not [d for d in diags
                                               if d.get("severity") == 1],
                    f"{diags}")
+
+        # the Run lens builds the folder's program, with the client's command
+        lenses = result_of(c.request("textDocument/codeLens", {"textDocument": {"uri": main_uri}})) or []
+        command = (lenses[0] if lenses else {}).get("command") or {}
+        run = (command.get("arguments") or [{}])[0]
+        log_result("the Run lens invokes the client's command",
+                   command.get("command") == "objeck.runProgram" and command.get("title") == "Run",
+                   f"got: {command}")
+        log_result("with the folder's build.json files, libraries and directory",
+                   run.get("obc") == ["-src", "shapes.obs,animals.obs,main.obs", "-lib", "gen_collect",
+                                      "-dest", "main.obe"]
+                   and run.get("obr") == ["main.obe"]
+                   and os.path.normcase(os.path.abspath(run.get("cwd", ""))) == os.path.normcase(WS_DIR),
+                   f"got: {run}")
     finally:
         c.close()
 

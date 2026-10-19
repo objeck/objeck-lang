@@ -11,14 +11,16 @@ bundle LSP {
 		@doc_json_cache : static : Cache<String, JsonElement>;
 		@klass_bundles_json : static : JsonElement;
 		@klass_details_json : static : JsonElement;
+		@doc_bundles : static : Set<String>;
 		@doc_path : static : String;
 		@is_debug : Bool;
 
-		New(workspace : LspWorkspace, uri : String, use_alt : Bool, is_debug : Bool) {
+		# the program these texts make: rows of [uri, text]
+		New(texts : String[,], is_debug : Bool) {
 			@is_debug := is_debug;
 
-			if(workspace <> Nil) {
-				@analysis := Analyzer->ParseText(workspace->GetTexts(uri, use_alt));
+			if(texts <> Nil) {
+				@analysis := Analyzer->ParseText(texts);
 			};
 		}
 		
@@ -329,9 +331,22 @@ bundle LSP {
 					item := JsonElement->New(JsonElement->JsonType->OBJECT);
 					item->Insert("label", keyword);
 					item->Insert("kind", code);
-					item->Insert("data", i);
-					item->Insert("detail", "{$keyword} details");
-		      		item->Insert("documentation", "{$keyword} documentation");
+
+					# A method says where it was asked for: completionItem/resolve looks
+					# its signature and documentation up from this, for the one item
+					# the user lands on. Every item used to carry "<name> details" and
+					# "<name> documentation", which the editor showed as they were.
+					if(code = 2 | code = 3) {
+						data := JsonElement->New(JsonElement->JsonType->OBJECT);
+						data->Insert("uri", uri);
+						data->Insert("line", line_pos);
+						data->Insert("character", char_pos);
+						data->Insert("var", var_str);
+						item->Insert("data", data);
+					}
+					else if(code = 14) {
+						item->Insert("detail", "keyword");
+					};
 					response->Add(item);
 				};
 				
@@ -341,7 +356,180 @@ bundle LSP {
 			return Nil;
 		}
 
-		method : public : Hover(line_pos : Int, char_pos : Int, var_str : String, mthd_str : String, uri : String, sys_path : String) ~ JsonElement {
+		#
+		# The signature and documentation of one completion item, for
+		# completionItem/resolve: 'detail' and 'documentation' to merge into it, or
+		# Nil when the name isn't a method that resolves here (a variable, an enum
+		# item, or text that has changed since).
+		#
+		# The signatures come from the same lookup signature help uses, which knows
+		# the receiver's class; the class names the objk_apis.json entry.
+		#
+		method : public : ResolveCompletion(item_name : String, line_pos : Int, char_pos : Int, var_str : String, uri : String, sys_path : String, markdown : Bool) ~ JsonElement {
+			if(@analysis = Nil | item_name = Nil | item_name->IsEmpty()) {
+				return Nil;
+			};
+
+			root_signature := @analysis->SignatureHelp(uri, line_pos, char_pos, var_str, item_name, sys_path);
+			if(root_signature = Nil) {
+				return Nil;
+			};
+
+			signatures := root_signature->GetResults();
+			if(signatures = Nil | signatures->Size() = 0) {
+				return Nil;
+			};
+
+			first := signatures[0]->GetName();
+			if(first = Nil) {
+				return Nil;
+			};
+
+			result := JsonElement->New(JsonElement->JsonType->OBJECT);
+			detail := String->New(first);
+			if(signatures->Size() > 1) {
+				others := signatures->Size() - 1;
+				detail += " (+{$others} overload";
+				if(others > 1) {
+					detail += 's';
+				};
+				detail += ')';
+			};
+			result->Insert("detail", detail);
+
+			# 'method : public : Collection.Vector->AddBack(H) ~ Nil' names the class
+			doc_text : String;
+			klass_name := SignatureClass(first);
+			if(klass_name <> Nil) {
+				docs_json := GetDocumentation(klass_name, item_name);
+				if(docs_json <> Nil) {
+					doc_text := JoinDocumentation(docs_json);
+				};
+			};
+
+			# a method of the user's own code has no entry: list its signatures
+			if(doc_text = Nil | doc_text->IsEmpty()) {
+				doc_text := "```objeck\n";
+				each(i : signatures) {
+					name := signatures[i]->GetName();
+					if(name <> Nil) {
+						doc_text += name;
+						doc_text += '\n';
+					};
+				};
+				doc_text += "```";
+			};
+			result->Insert("documentation", MakeMarkup(doc_text, markdown));
+
+			return result;
+		}
+
+		# 'method : public : System.$Int->Pow(Int) ~ Int' -> 'System.Int'
+		function : SignatureClass(signature : String) ~ String {
+			arrow := signature->Find("->");
+			if(arrow < 1) {
+				return Nil;
+			};
+
+			start := arrow;
+			while(start > 0 & signature->Get(start - 1) <> ' ') {
+				start -= 1;
+			};
+
+			klass_name := signature->SubString(start, arrow - start);
+			# the primitive types' methods live on hidden classes ($Int, $Float, ...)
+			return klass_name->ReplaceAll("$", "");
+		}
+
+		#
+		# One string, or the descriptions of each overload. The index is read with
+		# Data.JSON's parser, which keeps strings as they were written, escapes and
+		# all, so each is decoded once here.
+		#
+		function : JoinDocumentation(docs_json : JsonElement) ~ String {
+			if(docs_json->GetType() = JsonElement->JsonType->STRING) {
+				return JsonElement->Decode(docs_json->GetString());
+			};
+
+			text := "";
+			if(docs_json->GetType() = JsonElement->JsonType->ARRAY) {
+				each(i : docs_json) {
+					doc := JsonElement->Decode(docs_json->Get(i)->GetString());
+					if(doc <> Nil & <>doc->IsEmpty()) {
+						if(<>text->IsEmpty()) {
+							text += "\n\n---\n\n";
+						};
+						text += doc;
+					};
+				};
+			};
+
+			return text;
+		}
+
+		#
+		# MarkupContent. The documentation index is written for the HTML API pages,
+		# so code in it carries '&lt;' and '&gt;': markdown shows those literally
+		# inside code, where they are decoded here. Outside code a markdown renderer
+		# decodes them itself, and a bare '<' there could be taken for a tag.
+		#
+		function : MakeMarkup(text : String, markdown : Bool) ~ JsonElement {
+			markup := JsonElement->New(JsonElement->JsonType->OBJECT);
+			markup->Insert("kind", markdown ? "markdown" : "plaintext");
+			markup->Insert("value", DecodeCodeEntities(text, markdown));
+			return markup;
+		}
+
+		function : DecodeCodeEntities(text : String, markdown : Bool) ~ String {
+			if(text->Find('&') < 0) {
+				return text;
+			};
+
+			# plain text has no markup to protect
+			if(<>markdown) {
+				return DecodeEntities(text);
+			};
+
+			out := "";
+			segment := "";
+			in_code := false;
+			i := 0;
+			while(i < text->Size()) {
+				c := text->Get(i);
+				if(c = '`') {
+					# a run of backticks opens or closes code (inline or fenced)
+					run := "";
+					while(i < text->Size() & text->Get(i) = '`') {
+						run += '`';
+						i += 1;
+					};
+					out += in_code ? DecodeEntities(segment) : segment;
+					out += run;
+					segment := "";
+					in_code := <>in_code;
+				}
+				else {
+					segment += c;
+					i += 1;
+				};
+			};
+			out += in_code ? DecodeEntities(segment) : segment;
+
+			return out;
+		}
+
+		function : DecodeEntities(text : String) ~ String {
+			if(text->Find('&') < 0) {
+				return text;
+			};
+
+			decoded := text->ReplaceAll("&lt;", "<");
+			decoded := decoded->ReplaceAll("&gt;", ">");
+			decoded := decoded->ReplaceAll("&quot;", "\"");
+			return decoded->ReplaceAll("&amp;", "&");
+		}
+
+		method : public : Hover(line_pos : Int, char_pos : Int, var_str : String, mthd_str : String, uri : String, sys_path : String, markdown : Bool) ~ JsonElement {
 			if(@analysis = Nil) {
 				return Nil;
 			};
@@ -411,39 +599,28 @@ bundle LSP {
 						};
 					};
 
+					# MarkupContent. This answered with a bare string or a string array,
+					# the MarkedString form LSP deprecated in 3.0.
+					text : String;
 					if(content <> Nil) {
-						if(content->GetType() = JsonElement->JsonType->STRING) {
-							content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-							content_json->Insert("contents", content);
-							return content_json;
-						}
-						else {
-							docs_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-
-							each(i : content) {
-								docs_json->Add(content->Get(i)->GetValue());
-							};
-
-							content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-							content_json->Insert("contents", docs_json);
-
-							return content_json;
-
-						};
-					}
-					# Fallback for user-defined classes (no entry in objk_apis.json):
-					# return a minimal hover from the name (type) and desc (method).
-					else {
-						fallback := name;
-						if(desc <> Nil) {
-							fallback += "::";
-							fallback += desc;
-						};
-
-						content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-						content_json->Insert("contents", fallback);
-						return content_json;
+						text := JoinDocumentation(content);
 					};
+
+					# Fallback for user-defined classes (no entry in objk_apis.json):
+					# a minimal hover from the name (type) and desc (method).
+					if(text = Nil | text->IsEmpty()) {
+						text := "```objeck\n";
+						text += name;
+						if(desc <> Nil) {
+							text += "->";
+							text += desc;
+						};
+						text += "\n```";
+					};
+
+					content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+					content_json->Insert("contents", MakeMarkup(text, markdown));
+					return content_json;
 				};
 			};
 
@@ -655,10 +832,18 @@ bundle LSP {
 								use_code_action_json->Insert("kind", "quickfix");
 
 								# create build file
-								create_uri := "file:///" + build_file->ToLower();
+								# The path as it is: it was lowercased, which names another
+								# file where paths are case-sensitive, and a POSIX path
+								# ('/home/...') came out as 'file:////home/...'.
+								create_path := build_file;
 								if(System.IO.Filesystem.Directory->GetSlash() <> '/') {
-									create_uri := create_uri->ReplaceAll('\\', '/');
+									create_path := create_path->ReplaceAll('\\', '/');
 								};
+								create_uri := "file:///";
+								if(create_path->StartsWith('/')) {
+									create_uri := "file://";
+								};
+								create_uri += create_path;
 
 								create_doc_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 								create_doc_json->Insert("kind", "create");
@@ -886,6 +1071,151 @@ bundle LSP {
 			};
 
 			return Nil;
+		}
+
+		#
+		# DocumentSymbol[]: the outline as a tree -- bundle, then class, then
+		# method -- for a client that declares hierarchicalDocumentSymbolSupport.
+		# The native walk already returns the tree; it was flattened to
+		# SymbolInformation[], so editors had no outline nesting or breadcrumbs.
+		#
+		# VS Code rejects the whole answer when a selectionRange falls outside its
+		# range, so the ranges are normalised against the text: each runs to the
+		# end of its last line, covers its children, and selects the name.
+		#
+		method : public : GetDocumentSymbols(uri : String, sys_path : String, text : String) ~ JsonElement {
+			if(@analysis = Nil | text = Nil) {
+				return Nil;
+			};
+
+			symbol := @analysis->GetSymbols(uri, sys_path);
+			if(symbol = Nil) {
+				return Nil;
+			};
+
+			lines := text->Split('\n');
+			if(lines->Size() = 0) {
+				lines := String->New[1];
+				lines[0] := "";
+			};
+
+			nodes := Vector->New()<SymbolNode>;
+			CollectSymbols(symbol->GetResults(), uri, lines, nodes);
+			nodes := Nest(nodes);
+
+			array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : nodes) {
+				array->Add(nodes->Get(i)->ToJson());
+			};
+			return array;
+		}
+
+		# This file's symbols at this level; a symbol of another file passes its
+		# own children of this file up a level.
+		method : CollectSymbols(results : Result[], uri : String, lines : String[], nodes : Vector<SymbolNode>) ~ Nil {
+			if(results = Nil) {
+				return;
+			};
+
+			each(i : results) {
+				result := results[i];
+				# a lambda's synthetic class ('json_rpc_55_48#') isn't in the source
+				if(result <> Nil & result->GetName() <> Nil & result->GetName()->Find('#') < 0) {
+					children := Vector->New()<SymbolNode>;
+					CollectSymbols(result->GetResults(), uri, lines, children);
+
+					desc := result->GetDescription();
+					if(desc = Nil | desc->Equals(uri)) {
+						node := SymbolNode->New(result->GetName(), result->GetKind()->As(Int) - 200,
+							result->GetStartLine(), result->GetStartPosition(), result->GetEndLine(), lines);
+						each(j : children) {
+							node->AddChild(children->Get(j));
+						};
+						nodes->AddBack(node);
+					}
+					else {
+						each(j : children) {
+							nodes->AddBack(children->Get(j));
+						};
+					};
+				};
+			};
+		}
+
+		#
+		# A symbol whose range lies inside a sibling's goes under it, where Objeck
+		# can declare one inside the other: an enum
+		# declared in a class is reported beside the class by the native walk.
+		#
+		function : Nest(source_nodes : Vector<SymbolNode>) ~ Vector<SymbolNode> {
+			SortByStart(source_nodes);
+
+			# A method with default parameters is compiled into one overload per
+			# arity, all at the same place in the source: one symbol, as written.
+			nodes := Vector->New()<SymbolNode>;
+			each(i : source_nodes) {
+				node := source_nodes->Get(i);
+				if(nodes->Size() > 0 & nodes->Last()->SameDeclaration(node)) {
+					nodes->Last()->Absorb(node);
+				}
+				else {
+					nodes->AddBack(node);
+				};
+			};
+
+			# Two symbols that overlap without one holding the other: the first
+			# ran past the next declaration, as the native end of a class or an
+			# enum does, so it ends where that one starts. Cut first, or a symbol
+			# is nested in a range that no longer holds it.
+			for(i := 0; i < nodes->Size(); i += 1;) {
+				for(j := i + 1; j < nodes->Size(); j += 1;) {
+					if(<>nodes->Get(i)->Holds(nodes->Get(j))) {
+						nodes->Get(i)->EndBefore(nodes->Get(j));
+					};
+				};
+			};
+
+			nested := Vector->New()<SymbolNode>;
+			each(i : nodes) {
+				node := nodes->Get(i);
+				# assigned, not just declared: a local declared in a loop body keeps
+				# the value it had at the end of the previous pass
+				parent : SymbolNode := Nil;
+				each(j : nodes) {
+					candidate := nodes->Get(j);
+					if(i <> j & candidate->Holds(node) & (parent = Nil | parent->Contains(candidate))) {
+						# the innermost container, and only one of two equal ranges
+						if(<>node->Contains(candidate) | j < i) {
+							parent := candidate;
+						};
+					};
+				};
+
+				if(parent <> Nil) {
+					parent->AddChild(node);
+				}
+				else {
+					nested->AddBack(node);
+				};
+			};
+
+			each(i : nested) {
+				nested->Get(i)->NestChildren();
+			};
+			return nested;
+		}
+
+		# in source order
+		function : SortByStart(nodes : Vector<SymbolNode>) ~ Nil {
+			for(i := 1; i < nodes->Size(); i += 1;) {
+				j := i;
+				while(j > 0 & nodes->Get(j)->StartsBefore(nodes->Get(j - 1))) {
+					swap := nodes->Get(j);
+					nodes->Set(nodes->Get(j - 1), j);
+					nodes->Set(swap, j - 1);
+					j -= 1;
+				};
+			};
 		}
 
 		method : GetSymbols(symbol : Result, uri : String, array : JsonElement) ~ Nil {
@@ -1322,6 +1652,93 @@ bundle LSP {
 			return Nil;
 		}
 
+		#
+		# The tokens as absolute rows, five Ints each: line, character, length,
+		# type, modifiers. Full, range and delta answers are all encoded from this.
+		#
+		method : public : SemanticTokenRows(uri : String, sys_path : String) ~ Int[] {
+			if(@analysis = Nil) {
+				return Nil;
+			};
+
+			tokens := @analysis->SemanticTokens(uri, sys_path);
+			if(tokens = Nil) {
+				return Nil;
+			};
+
+			rows := Int->New[tokens->Size() * 5];
+			each(i : tokens) {
+				token := tokens[i];
+				rows[i * 5] := token->GetStartLine();
+				rows[i * 5 + 1] := token->GetStartPosition();
+				rows[i * 5 + 2] := token->GetEndLine();
+				rows[i * 5 + 3] := token->GetEndPosition();
+				rows[i * 5 + 4] := token->GetKind()->As(Int);
+			};
+			return rows;
+		}
+
+		#
+		# The rows on lines [start_line, end_line] in LSP's relative encoding; all
+		# of them for a start_line below 0.
+		#
+		function : EncodeTokens(rows : Int[], start_line : Int, end_line : Int) ~ Int[] {
+			count := 0;
+			for(i := 0; i < rows->Size(); i += 5;) {
+				if(start_line < 0 | (rows[i] >= start_line & rows[i] <= end_line)) {
+					count += 1;
+				};
+			};
+
+			data := Int->New[count * 5];
+			index := 0;
+			prev_line := 0;
+			prev_char := 0;
+			for(i := 0; i < rows->Size(); i += 5;) {
+				line := rows[i];
+				if(start_line < 0 | (line >= start_line & line <= end_line)) {
+					start_char := rows[i + 1];
+					data[index] := line - prev_line;
+					data[index + 1] := line = prev_line ? start_char - prev_char : start_char;
+					data[index + 2] := rows[i + 2];
+					data[index + 3] := rows[i + 3];
+					data[index + 4] := rows[i + 4];
+					index += 5;
+					prev_line := line;
+					prev_char := start_char;
+				};
+			};
+
+			return data;
+		}
+
+		function : IntsToJson(values : Int[]) ~ JsonElement {
+			array := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : values) {
+				array->Add(values[i]);
+			};
+			return array;
+		}
+
+		# Every 'use' bundle the API reference documents, from the index's class names.
+		function : HasDocumentedBundle(bundle_name : String) ~ Bool {
+			if(@doc_bundles = Nil) {
+				@doc_bundles := Set->New()<String>;
+				names := @klass_details_json->GetNames();
+				if(names <> Nil) {
+					each(i : names) {
+						name := names->Get(i);
+						dot := name->FindLast('.');
+						if(dot > 0) {
+							@doc_bundles->Insert(name->SubString(dot));
+						};
+					};
+				};
+			};
+
+			return @doc_bundles->Has(bundle_name);
+		}
+
 		method : public : SemanticTokens(uri : String, sys_path : String) ~ JsonElement {
 			if(@analysis = Nil) {
 				return Nil;
@@ -1380,6 +1797,283 @@ bundle LSP {
 			if(@analysis <> Nil) {
 				@analysis->Release();
 			};
+		}
+	}
+
+	#~
+	One DocumentSymbol, with ranges normalised against the document text
+	~#
+	class : private : SymbolNode {
+		@name : String;
+		@kind : Int;
+		@start_line : Int;
+		@start_char : Int;
+		@end_line : Int;
+		@end_char : Int;
+		@select_line : Int;
+		@select_start : Int;
+		@select_end : Int;
+		@children : Vector<SymbolNode>;
+		@lines : String[];
+		@detail : String;
+
+		New(name : String, kind : Int, start_line : Int, start_char : Int, end_line : Int, lines : String[]) {
+			# 'JsonBuilder' under its bundle, with 'Data.JSON.JsonBuilder' beside it;
+			# a bundle keeps its whole name
+			@name := name;
+			if(kind <> 3 & name->FindLast('.') > -1) {
+				@name := ShortName(name);
+				@detail := name;
+			};
+			@lines := lines;
+			@kind := kind;
+			@children := Vector->New()<SymbolNode>;
+
+			last := lines->Size() - 1;
+			@start_line := Clamp(start_line, 0, last);
+			@end_line := Clamp(end_line, @start_line, last);
+
+			start_text := LineText(lines, @start_line);
+			@start_char := Clamp(start_char, 0, start_text->Size());
+			# to the end of the last line: the native end positions are
+			# inconsistent from one kind of declaration to the next
+			@end_char := LineText(lines, @end_line)->Size();
+
+			# the name, where the range starts at a keyword ('class', 'method : ...')
+			@select_line := @start_line;
+			@select_start := @start_char;
+			@select_end := @start_char;
+			found := FindName(start_text, @start_char, name);
+			if(found < 0) {
+				short_name := ShortName(name);
+				found := FindName(start_text, @start_char, short_name);
+				if(found > -1) {
+					@select_start := found;
+					@select_end := found + short_name->Size();
+				};
+			}
+			else {
+				@select_start := found;
+				@select_end := found + name->Size();
+			};
+		}
+
+		function : Clamp(value : Int, low : Int, high : Int) ~ Int {
+			if(value < low) {
+				return low;
+			};
+
+			if(value > high) {
+				return high;
+			};
+
+			return value;
+		}
+
+		function : LineText(lines : String[], line : Int) ~ String {
+			text := lines[line];
+			if(text = Nil) {
+				return "";
+			};
+
+			if(text->EndsWith('\r')) {
+				return text->SubString(text->Size() - 1);
+			};
+			return text;
+		}
+
+		# 'Bundle.Klass' -> 'Klass'
+		function : ShortName(name : String) ~ String {
+			index := name->FindLast('.');
+			if(index > -1) {
+				return name->SubString(index + 1, name->Size() - index - 1);
+			};
+			return name;
+		}
+
+		function : FindName(text : String, start : Int, name : String) ~ Int {
+			if(name->IsEmpty() | start >= text->Size()) {
+				return -1;
+			};
+
+			index := text->SubString(start, text->Size() - start)->Find(name);
+			if(index < 0) {
+				return -1;
+			};
+			return start + index;
+		}
+
+		# a child widens this range to cover it
+		method : public : AddChild(child : SymbolNode) ~ Nil {
+			@children->AddBack(child);
+
+			if(child->GetStartLine() < @start_line | (child->GetStartLine() = @start_line & child->GetStartChar() < @start_char)) {
+				@start_line := child->GetStartLine();
+				@start_char := child->GetStartChar();
+			};
+
+			if(child->GetEndLine() > @end_line | (child->GetEndLine() = @end_line & child->GetEndChar() > @end_char)) {
+				@end_line := child->GetEndLine();
+				@end_char := child->GetEndChar();
+			};
+		}
+
+		method : public : Contains(candidate : SymbolNode) ~ Bool {
+			starts_before := @start_line < candidate->GetStartLine() |
+				(@start_line = candidate->GetStartLine() & @start_char <= candidate->GetStartChar());
+			ends_after := @end_line > candidate->GetEndLine() |
+				(@end_line = candidate->GetEndLine() & @end_char >= candidate->GetEndChar());
+			return starts_before & ends_after;
+		}
+
+		#
+		# Declared inside this symbol: within its range, and of a kind Objeck can
+		# declare there -- classes, interfaces and enums in a bundle; methods and
+		# enums in a class. A method never holds another, however far its native
+		# end runs.
+		#
+		method : public : Holds(candidate : SymbolNode) ~ Bool {
+			if(<>Contains(candidate)) {
+				return false;
+			};
+
+			kind := candidate->GetKind();
+			if(@kind = 3) {
+				return kind <> 3;
+			};
+
+			if(@kind = 5 | @kind = 11) {
+				return kind = 6 | kind = 9 | kind = 12 | kind = 10;
+			};
+
+			return false;
+		}
+
+		method : public : SameDeclaration(candidate : SymbolNode) ~ Bool {
+			return @kind = candidate->GetKind() & @name->Equals(candidate->GetName()) &
+				@start_line = candidate->GetStartLine() & @start_char = candidate->GetStartChar();
+		}
+
+		# the other overload's extent and children
+		method : public : Absorb(candidate : SymbolNode) ~ Nil {
+			if(candidate->GetEndLine() > @end_line | (candidate->GetEndLine() = @end_line & candidate->GetEndChar() > @end_char)) {
+				@end_line := candidate->GetEndLine();
+				@end_char := candidate->GetEndChar();
+			};
+
+			children := candidate->GetChildren();
+			each(i : children) {
+				@children->AddBack(children->Get(i));
+			};
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetChildren() ~ Vector<SymbolNode> {
+			return @children;
+		}
+
+		method : public : GetKind() ~ Int {
+			return @kind;
+		}
+
+		method : public : StartsBefore(candidate : SymbolNode) ~ Bool {
+			return @start_line < candidate->GetStartLine() |
+				(@start_line = candidate->GetStartLine() & @start_char < candidate->GetStartChar());
+		}
+
+		#
+		# Ends on the line before 'next' starts, if it ran into it, or where 'next'
+		# starts when both share a line. Never before its own name.
+		#
+		method : public : EndBefore(next : SymbolNode) ~ Nil {
+			if(@end_line < next->GetStartLine() |
+					(@end_line = next->GetStartLine() & @end_char <= next->GetStartChar())) {
+				return;
+			};
+
+			if(next->GetStartLine() > @select_line) {
+				@end_line := next->GetStartLine() - 1;
+				@end_char := LineText(@lines, @end_line)->Size();
+			}
+			else {
+				@end_line := @select_line;
+				@end_char := next->GetStartChar() > @select_end ? next->GetStartChar() : @select_end;
+			};
+		}
+
+		method : public : NestChildren() ~ Nil {
+			# this range may have been cut short at the next symbol; so are its children
+			each(i : @children) {
+				@children->Get(i)->EndBy(@end_line, @end_char);
+			};
+			@children := AstProxy->Nest(@children);
+		}
+
+		# ends no later than this position, and never before its own name
+		method : public : EndBy(end_line : Int, end_char : Int) ~ Nil {
+			if(@end_line < end_line | (@end_line = end_line & @end_char <= end_char)) {
+				return;
+			};
+
+			@end_line := end_line;
+			@end_char := end_char;
+			if(@end_line < @select_line | (@end_line = @select_line & @end_char < @select_end)) {
+				@end_line := @select_line;
+				@end_char := @select_end;
+			};
+		}
+
+		method : public : GetStartLine() ~ Int {
+			return @start_line;
+		}
+
+		method : public : GetStartChar() ~ Int {
+			return @start_char;
+		}
+
+		method : public : GetEndLine() ~ Int {
+			return @end_line;
+		}
+
+		method : public : GetEndChar() ~ Int {
+			return @end_char;
+		}
+
+		function : MakeRange(start_line : Int, start_char : Int, end_line : Int, end_char : Int) ~ JsonElement {
+			start := JsonElement->New(JsonElement->JsonType->OBJECT);
+			start->Insert("line", start_line);
+			start->Insert("character", start_char);
+
+			end := JsonElement->New(JsonElement->JsonType->OBJECT);
+			end->Insert("line", end_line);
+			end->Insert("character", end_char);
+
+			range := JsonElement->New(JsonElement->JsonType->OBJECT);
+			range->Insert("start", start);
+			range->Insert("end", end);
+			return range;
+		}
+
+		method : public : ToJson() ~ JsonElement {
+			symbol := JsonElement->New(JsonElement->JsonType->OBJECT);
+			symbol->Insert("name", @name);
+			if(@detail <> Nil) {
+				symbol->Insert("detail", @detail);
+			};
+			symbol->Insert("kind", @kind);
+			symbol->Insert("range", MakeRange(@start_line, @start_char, @end_line, @end_char));
+			symbol->Insert("selectionRange", MakeRange(@select_line, @select_start, @select_line, @select_end));
+
+			children := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(i : @children) {
+				children->Add(@children->Get(i)->ToJson());
+			};
+			symbol->Insert("children", children);
+
+			return symbol;
 		}
 	}
 }

@@ -450,7 +450,8 @@ extern "C" {
         size_t* klass_symb_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
         klass_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, klass->GetName());
         klass_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, klass->GetFileName());
-        klass_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_CLASS; // class type
+        // an interface is its own kind of symbol in an outline
+        klass_symb_obj[ResultPosition::POS_TYPE] = klass->IsInterface() ? ResultType::TYPE_INTERFACE : ResultType::TYPE_CLASS;
         klass_symb_obj[ResultPosition::POS_START_LINE] = klass->GetLineNumber() - 1;
         klass_symb_obj[ResultPosition::POS_START_POS] = safe_pos(klass->GetLinePosition());
         klass_symb_obj[ResultPosition::POS_END_LINE] = klass->GetEndLineNumber() - 1;
@@ -513,10 +514,12 @@ extern "C" {
         eenum_symb_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, eenum_name);
         eenum_symb_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, eenum->GetFileName());
         eenum_symb_obj[ResultPosition::POS_TYPE] = ResultType::TYPE_ENUM; // enum type
-        eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber();
-        eenum_symb_obj[ResultPosition::POS_START_POS] = eenum->GetLinePosition();
-        eenum_symb_obj[ResultPosition::POS_END_LINE] = eenum->GetEndLineNumber();
-        eenum_symb_obj[ResultPosition::POS_END_POS] = eenum->GetEndLinePosition();
+        // 0-based, as the classes are: these were the parser's 1-based values,
+        // so an enum's symbol started on the line after its declaration
+        eenum_symb_obj[ResultPosition::POS_START_LINE] = eenum->GetLineNumber() - 1;
+        eenum_symb_obj[ResultPosition::POS_START_POS] = safe_pos(eenum->GetLinePosition());
+        eenum_symb_obj[ResultPosition::POS_END_LINE] = eenum->GetEndLineNumber() - 1;
+        eenum_symb_obj[ResultPosition::POS_END_POS] = safe_pos(eenum->GetEndLinePosition());
         klass_array_ptr[index++] = (size_t)eenum_symb_obj;
       }
 
@@ -2137,20 +2140,26 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
           expressions.swap(filtered);
         }
 
+        // An instance variable is declared in its class, not in any method, so
+        // no expression holds its declaration: references and rename covered
+        // every use and left '@radius : Float;' behind, and renaming produced a
+        // program with an undefined variable and an unused one.
+        Declaration* inst_dclr = is_var ? FindInstanceDeclaration(method->GetClass(), expressions) : nullptr;
+
         // format
         if(!expressions.empty()) {
           Method* mthd_dclr = nullptr;
           size_t* refs_array = nullptr;
 
-          const bool skip_expr = expressions.size() == 1 && 
-            expressions[0]->GetExpressionType() == METHOD_CALL_EXPR && 
+          const bool skip_expr = expressions.size() == 1 &&
+            expressions[0]->GetExpressionType() == METHOD_CALL_EXPR &&
             static_cast<MethodCall*>(expressions[0])->GetVariableName() == L"#";
           if(skip_expr) {
             mthd_dclr = static_cast<MethodCall*>(expressions[0])->GetMethod();
             refs_array = APITools_MakeIntArray(context, (int)expressions.size());
           }
           else if(is_var) {
-              refs_array = APITools_MakeIntArray(context, (int)expressions.size());
+              refs_array = APITools_MakeIntArray(context, (int)expressions.size() + (inst_dclr ? 1 : 0));
           }
           else {
             refs_array = APITools_MakeIntArray(context, (int)expressions.size() + 1);
@@ -2206,6 +2215,20 @@ size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program
             reference_obj[ResultPosition::POS_START_POS] = (size_t)start_pos - 1;
             reference_obj[ResultPosition::POS_END_POS] = (size_t)end_pos - 1;
             refs_array_ptr[i] = (size_t)reference_obj;
+          }
+
+          if(inst_dclr) {
+            const std::wstring& full_name = inst_dclr->GetEntry()->GetName();
+            const std::wstring var_name = full_name.substr(full_name.find_last_of(L':') + 1);
+
+            size_t* reference_obj = APITools_CreateObject(context, L"System.Diagnostics.Result");
+            reference_obj[ResultPosition::POS_TYPE] = 100;
+            reference_obj[ResultPosition::POS_NAME] = (size_t)APITools_CreateStringObject(context, var_name);
+            reference_obj[ResultPosition::POS_DESC] = (size_t)APITools_CreateStringObject(context, inst_dclr->GetFileName());
+            reference_obj[ResultPosition::POS_START_LINE] = reference_obj[ResultPosition::POS_END_LINE] = (size_t)inst_dclr->GetLineNumber() - 1;
+            reference_obj[ResultPosition::POS_START_POS] = (size_t)inst_dclr->GetLinePosition() - 1;
+            reference_obj[ResultPosition::POS_END_POS] = (size_t)(inst_dclr->GetLinePosition() + (int)var_name.size()) - 1;
+            refs_array_ptr[expressions.size()] = (size_t)reference_obj;
           }
 
           // update declaration name (guard: mthd_dclr can be null when
@@ -2344,6 +2367,52 @@ void GetTypeName(frontend::Type* type, std::wstring& output)
   default:
     output = L"Unknown";
   }
+}
+
+//
+// The class-level declaration of the instance variable these expressions use
+// ('@radius : Float;'), or nullptr when they name a local or a parameter. Only a
+// declaration with a source position is returned, so a synthetic one can't
+// produce a bogus edit.
+//
+Declaration* FindInstanceDeclaration(frontend::Class* klass, const std::vector<frontend::Expression*>& expressions)
+{
+  if(!klass || expressions.empty()) {
+    return nullptr;
+  }
+
+  std::wstring var_name;
+  Expression* expression = expressions[0];
+  if(expression->GetExpressionType() == VAR_EXPR) {
+    var_name = static_cast<Variable*>(expression)->GetName();
+  }
+  else if(expression->GetExpressionType() == METHOD_CALL_EXPR) {
+    var_name = static_cast<MethodCall*>(expression)->GetVariableName();
+  }
+
+  if(var_name.empty() || var_name[0] != L'@') {
+    return nullptr;
+  }
+
+  const std::wstring suffix = L':' + var_name;
+  std::vector<Statement*> statements = klass->GetStatements();
+  for(size_t i = 0; i < statements.size(); ++i) {
+    if(statements[i]->GetStatementType() != DECLARATION_STMT) {
+      continue;
+    }
+
+    for(Declaration* declaration = static_cast<Declaration*>(statements[i]); declaration; declaration = declaration->GetChild()) {
+      SymbolEntry* entry = declaration->GetEntry();
+      if(entry && declaration->GetLineNumber() > 0 && declaration->GetLinePosition() > 0) {
+        const std::wstring& name = entry->GetName();
+        if(name.size() >= suffix.size() && name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0) {
+          return declaration;
+        }
+      }
+    }
+  }
+
+  return nullptr;
 }
 
 std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Class* klass, class ContextAnalyzer& analyzer, const int line_num, const int line_pos)

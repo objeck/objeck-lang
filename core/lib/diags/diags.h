@@ -53,6 +53,7 @@ enum ResultType {
   TYPE_CLASS = 205,
   TYPE_FUNC = 212,
   TYPE_ENUM = 210,
+  TYPE_INTERFACE = 211,
   TYPE_CONSTR = 209,
   TYPE_METHOD = 206,
   TYPE_VARIABLE = 213,
@@ -73,6 +74,7 @@ enum ResultPosition {
 
 size_t* FormatErrors(VMContext& context, const std::vector<std::wstring>& error_strings, const std::vector<std::wstring>& warning_strings = std::vector<std::wstring>());
 void GetTypeName(frontend::Type* type, std::wstring &output);
+frontend::Declaration* FindInstanceDeclaration(frontend::Class* klass, const std::vector<frontend::Expression*>& expressions);
 size_t* GetExpressionsCalls(VMContext& context, frontend::ParsedProgram* program, const std::wstring uri, const int line_num, const int line_pos, const std::wstring lib_path);
 std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Class* klass, class ContextAnalyzer &analyzer, const int line_num, const int line_pos);
 std::vector<frontend::Expression*> FetchRenamedExpressions(frontend::Method* method, class ContextAnalyzer& analyzer, const int line_num, const int line_pos, bool &is_var);
