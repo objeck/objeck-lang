@@ -2991,6 +2991,24 @@ void IntermediateEmitter::EmitSystemDirective(SystemStatement* statement)
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 3L));
     break;
 
+  // function : GetErrorNative() ~ String -- the message of the error a Try() last recovered from (#1247)
+  case instructions::RUNTIME_GET_ERROR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::RUNTIME_GET_ERROR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 1L));
+    break;
+
+  // function : GetErrorKindNative() ~ Int -- its kind
+  case instructions::RUNTIME_GET_ERROR_KIND:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::RUNTIME_GET_ERROR_KIND));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP_RTRN, 1L));
+    break;
+
+  // function : ClearError() ~ Nil
+  case instructions::RUNTIME_CLEAR_ERROR:
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, instructions::RUNTIME_CLEAR_ERROR));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRAP, 1L));
+    break;
+
     //----------- serialization methods -----------
   case SERL_CHAR:
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(statement, cur_line_num, SERL_CHAR));
