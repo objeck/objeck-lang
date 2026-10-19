@@ -270,6 +270,32 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
       name = L"o.";
       const std::vector<std::wstring> uses = program->GetLibUses();
 
+      // a jagged array's row type (#1246): its base class by its full name
+      if(IsRowTypeName(type->GetName())) {
+        int levels = 0;
+        std::wstring base = RowTypeBase(type->GetName(), levels);
+        if(base != L"Bool" && base != L"Byte" && base != L"Char" && base != L"Int" && base != L"Float") {
+          Class* base_klass = program->GetClass(base);
+          for(size_t k = 0; !base_klass && k < uses.size(); ++k) {
+            base_klass = program->GetClass(uses[k] + L"." + base);
+          }
+          if(base_klass) {
+            base = base_klass->GetName();
+          }
+          else if(linker) {
+            LibraryClass* base_lib_klass = linker->SearchClassLibraries(base, uses);
+            if(base_lib_klass) {
+              base = base_lib_klass->GetName();
+            }
+          }
+        }
+        name += RowTypeName(base, levels);
+        for(int k = 0; k < type->GetDimension(); ++k) {
+          name += L'*';
+        }
+        return name;
+      }
+
       // program class check
       const std::wstring type_klass_name = type->GetName();
       Class* prgm_klass = program->GetClass(type_klass_name);

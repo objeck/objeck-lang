@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Too many subscripts for this jagged array
+#~
+Jagged arrays (#1246): a third subscript on an Int[][].
+~#
+class BadJaggedTooManySubscripts {
+	function : Main(args : String[]) ~ Nil {
+		rows := Int[]->New[2];
+		x := rows[0][1][2];
+		x->PrintLine();
+	}
+}

@@ -3602,6 +3602,30 @@ Statement* Parser::ParseVariableOperation(Variable* variable, int line_num, int 
 {
   Statement* statement = nullptr;
 
+  // 'rows[i][j] := v' (#1246): the row is read into a hidden local, which takes
+  // the last subscript -- as for an indexed call result (ParseCallElementOperation)
+  const std::vector<ExpressionList*> chained = variable->GetChainedIndices();
+  if(!chained.empty()) {
+    const std::wstring tmp_ident = L"#ary_" + std::to_wstring(hidden_local_id++);
+    SymbolEntry* tmp_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(tmp_ident),
+                                                                      TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+    symbol_table->CurrentParseScope()->AddEntry(tmp_entry);
+
+    Variable* source = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, variable->GetName());
+    source->SetIndices(variable->GetIndices());
+    for(size_t i = 0; i + 1 < chained.size(); ++i) {
+      source->AddChainedIndices(chained[i]);
+    }
+
+    Variable* tmp_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+    Assignment* tmp_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), tmp_var, source);
+    pending_statements.push_back(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), tmp_entry, tmp_assign));
+
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+    target->SetIndices(chained.back());
+    variable = target;
+  }
+
   switch(GetToken()) {
   case TOKEN_ASSIGN:
     statement = ParseAssignment(variable, depth + 1);
@@ -6003,6 +6027,10 @@ Variable* Parser::ParseVariable(IdentifierContext& context, int depth)
     variable->SetConcreteTypes(generic_dclrs);
   }
   variable->SetIndices(ParseIndices(depth + 1));
+  // 'rows[i][j]': a jagged array's element (#1246)
+  while(variable->GetIndices() && Match(TOKEN_OPEN_BRACKET)) {
+    variable->AddChainedIndices(ParseIndices(depth + 1));
+  }
 
   return variable;
 }
@@ -6982,6 +7010,39 @@ Expression* Parser::ParseSimpleExpression(int depth)
     default:
       ident = ParseBundleName();
       break;
+    }
+
+    // 'Int[]->New[n]': n rows of a jagged array, an array of the row type
+    // '$Int[]' (#1246)
+    if(!pre_inc && !pre_dec && Match(TOKEN_OPEN_BRACKET) && Match(TOKEN_CLOSED_BRACKET, SECOND_INDEX) &&
+       (Match(TOKEN_ASSESSOR, THIRD_INDEX) || Match(TOKEN_OPEN_BRACKET, THIRD_INDEX))) {
+      std::wstring row_base = ident;
+      if(ident == BOOL_CLASS_ID) {
+        row_base = L"Bool";
+      }
+      else if(ident == BYTE_CLASS_ID) {
+        row_base = L"Byte";
+      }
+      else if(ident == INT_CLASS_ID) {
+        row_base = L"Int";
+      }
+      else if(ident == FLOAT_CLASS_ID) {
+        row_base = L"Float";
+      }
+      else if(ident == CHAR_CLASS_ID) {
+        row_base = L"Char";
+      }
+
+      int levels = 0;
+      while(Match(TOKEN_OPEN_BRACKET) && Match(TOKEN_CLOSED_BRACKET, SECOND_INDEX)) {
+        NextToken();
+        NextToken();
+        levels++;
+      }
+      if(!Match(TOKEN_ASSESSOR) || !Match(TOKEN_NEW_ID, SECOND_INDEX) || !Match(TOKEN_OPEN_BRACKET, THIRD_INDEX)) {
+        ProcessError(L"Expected '->New[..]' to allocate the rows of a jagged array", TOKEN_SEMI_COLON);
+      }
+      ident = RowTypeName(row_base, levels);
     }
 
     switch(GetToken()) {
@@ -8777,6 +8838,22 @@ Type* Parser::ParseType(int depth)
         ProcessError(L"Expected ']'", TOKEN_CLOSED_BRACKET);
       }
       NextToken();
+    }
+
+    // 'Int[][]': an array of the row type '$Int[]' (#1246). Every level is
+    // one-dimensional in this phase.
+    int levels = dimension > 0 ? 1 : 0;
+    while(dimension == 1 && Match(TOKEN_OPEN_BRACKET) && Match(TOKEN_CLOSED_BRACKET, SECOND_INDEX)) {
+      NextToken();
+      NextToken();
+      levels++;
+    }
+    if(levels > 1) {
+      type = TypeFactory::Instance()->MakeType(CLASS_TYPE, RowTypeName(RowBaseName(type), levels - 1), file_name, line_num, line_pos);
+      dimension = 1;
+    }
+    else if(dimension > 1 && Match(TOKEN_OPEN_BRACKET) && Match(TOKEN_CLOSED_BRACKET, SECOND_INDEX)) {
+      ProcessError(L"A jagged array's levels must each be one-dimensional, e.g. 'Int[][]'", TOKEN_SEMI_COLON);
     }
     type->SetDimension(dimension);
 

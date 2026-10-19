@@ -69,6 +69,20 @@ row := ["id", x, 2.5, true];           # Base[]: String, IntRef, FloatRef, BoolR
 PrintEach([name, title->ToUpper()]);   # the variadic idiom: an array at the call site
 ```
 
+### Jagged Arrays
+`T[][]` is an array of `T[]` rows of any length, at any depth:
+```ruby
+rows := Int[]->New[3];               # three rows, each Nil until set
+rows[0] := [1, 2, 3];
+rows[1] := Int->New[5];
+rows[2] := [x, y];
+total := rows[0][1] + rows[2][0];     # rows[i] is an Int[]; rows[i][j] an Int
+triangle := [[1], [1, 1], [1, 2, 1]]; # a ragged literal is an Int[][]
+
+function : Sum(rows : Int[][]) ~ Int { ... }
+```
+See [JAGGED_ARRAYS_DESIGN.md](JAGGED_ARRAYS_DESIGN.md).
+
 ### Type Inference
 ```ruby
 value := "Hello World!";
