@@ -1743,7 +1743,10 @@ StatementList* Parser::ParseStatementList(int depth)
 
   StatementList* statements = TreeFactory::Instance()->MakeStatementList();
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
-    statements->AddStatement(ParseStatement(depth + 1));
+    Statement* statement = ParseStatement(depth + 1);
+    TakePendingStatements(statements);
+    statements->AddStatement(statement);
+    CheckStatementSeparator(statement);
   }
   if(!Match(TOKEN_CLOSED_BRACE)) {
     ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
@@ -3571,6 +3574,204 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
 }
 
 /****************************
+ * True when the current token assigns to the target just parsed: ':=', the
+ * compound forms, '++' and '--'.
+ ****************************/
+bool Parser::IsOperationAssignToken()
+{
+  switch(GetToken()) {
+  case TOKEN_ASSIGN:
+  case TOKEN_ADD_ASSIGN:
+  case TOKEN_SUB_ASSIGN:
+  case TOKEN_MUL_ASSIGN:
+  case TOKEN_DIV_ASSIGN:
+  case TOKEN_ADD_ADD:
+  case TOKEN_SUB_SUB:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
+/****************************
+ * Parses the assignment to an indexed target, 'a[i] := v', 'a[i] += v' or
+ * 'a[i]++'; the current token is the operator.
+ ****************************/
+Statement* Parser::ParseVariableOperation(Variable* variable, int line_num, int line_pos, const std::wstring& file_name, int depth)
+{
+  Statement* statement = nullptr;
+
+  switch(GetToken()) {
+  case TOKEN_ASSIGN:
+    statement = ParseAssignment(variable, depth + 1);
+    break;
+
+  case TOKEN_ADD_ASSIGN: {
+    NextToken();
+
+    Expression* asgn_expr = ParseExpression(depth + 1);
+    if(!asgn_expr) {
+      return nullptr;
+    }
+
+    asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+    statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                 variable, asgn_expr, ADD_ASSIGN_STMT);
+  }
+    break;
+
+  case TOKEN_SUB_ASSIGN: {
+    NextToken();
+
+    Expression* asgn_expr = ParseExpression(depth + 1);
+    if(!asgn_expr) {
+      return nullptr;
+    }
+
+    asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+    statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                 variable, asgn_expr, SUB_ASSIGN_STMT);
+  }
+    break;
+
+  case TOKEN_MUL_ASSIGN: {
+    NextToken();
+
+    Expression* asgn_expr = ParseExpression(depth + 1);
+    if(!asgn_expr) {
+      return nullptr;
+    }
+
+    asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+    statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                 variable, asgn_expr, MUL_ASSIGN_STMT);
+  }
+    break;
+
+  case TOKEN_DIV_ASSIGN: {
+    NextToken();
+
+    Expression* asgn_expr = ParseExpression(depth + 1);
+    if(!asgn_expr) {
+      return nullptr;
+    }
+
+    asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
+    statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                 variable, asgn_expr, DIV_ASSIGN_STMT);
+  }
+    break;
+
+  case TOKEN_ADD_ADD: {
+    NextToken();
+
+    Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
+    asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
+
+    statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                 variable, asgn_lit, ADD_ASSIGN_STMT);
+  }
+    break;
+
+  case TOKEN_SUB_SUB: {
+    NextToken();
+
+    Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
+    asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
+
+    statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                                 variable, asgn_lit, SUB_ASSIGN_STMT);
+  }
+    break;
+
+  default:
+    break;
+  }
+
+  return statement;
+}
+
+/****************************
+ * 'f->GetCells()[0] := 99': the call's result goes into a hidden local,
+ * declared just before this statement, and the element is assigned through
+ * it, so 'f->GetCells()[0] += 5' evaluates the call once (#1184).
+ ****************************/
+Statement* Parser::ParseCallElementOperation(MethodCall* head, int line_num, int line_pos, const std::wstring& file_name, int depth)
+{
+  MethodCall* tail = head;
+  while(tail->GetMethodCall()) {
+    tail = tail->GetMethodCall();
+  }
+
+  ExpressionList* indices = tail->GetCallIndices();
+  if(!indices) {
+    ProcessError(L"Invalid assignment target; expected a variable or an indexed call result");
+    return head;
+  }
+  tail->SetCallIndices(nullptr);
+
+  const std::wstring tmp_ident = L"#ary_" + std::to_wstring(hidden_local_id++);
+  SymbolEntry* tmp_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(tmp_ident),
+                                                                    TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(tmp_entry);
+
+  Variable* tmp_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+  Assignment* tmp_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), tmp_var, head);
+  pending_statements.push_back(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), tmp_entry, tmp_assign));
+
+  Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+  target->SetIndices(indices);
+  return ParseVariableOperation(target, line_num, line_pos, file_name, depth + 1);
+}
+
+/****************************
+ * Moves the hidden declarations the last statement needs into its list,
+ * ahead of it.
+ ****************************/
+void Parser::TakePendingStatements(StatementList* statements)
+{
+  for(size_t i = 0; i < pending_statements.size(); ++i) {
+    statements->AddStatement(pending_statements[i]);
+  }
+  pending_statements.clear();
+}
+
+/****************************
+ * Semicolons between statements are optional, so 'Foo(2) Foo(3);' and
+ * 'x := 1 Foo(3);' compiled as two statements without a word. Two statements
+ * on one line need a ';' between them; a block statement ('if', 'while', ...)
+ * ends at its '}' and may be followed directly (#1184).
+ ****************************/
+void Parser::CheckStatementSeparator(Statement* statement)
+{
+  if(alt_syntax || is_semi_colon || !statement || Match(TOKEN_CLOSED_BRACE) || Match(TOKEN_END_OF_STREAM) ||
+     GetLineNumber() != prev_token_line) {
+    return;
+  }
+
+  switch(statement->GetStatementType()) {
+  case DECLARATION_STMT:
+  case ASSIGN_STMT:
+  case ADD_ASSIGN_STMT:
+  case SUB_ASSIGN_STMT:
+  case MUL_ASSIGN_STMT:
+  case DIV_ASSIGN_STMT:
+  case STRING_CONCAT_STMT:
+  case METHOD_CALL_STMT:
+  case SIMPLE_STMT:
+  case RETURN_STMT:
+  case BREAK_STMT:
+  case CONTINUE_STMT:
+    ProcessError(L"Expected ';' between two statements on the same line");
+    break;
+
+  default:
+    break;
+  }
+}
+
+/****************************
  * Parses identifier-starting statements.
  ****************************/
 Statement* Parser::ParseIdentifierStatement(const std::wstring& ident, int line_num, int line_pos, const std::wstring& file_name, int depth)
@@ -3588,7 +3789,14 @@ Statement* Parser::ParseIdentifierStatement(const std::wstring& ident, int line_
   case TOKEN_ASSESSOR:
   case TOKEN_OPEN_PAREN: {
     IdentifierContext ident_context(ident, line_num, line_pos);
-    statement = ParseMethodCall(ident_context, depth + 1);
+    MethodCall* method_call = ParseMethodCall(ident_context, depth + 1);
+    // 'f->GetCells()[0] := 99' stores into the call's result (#1184)
+    if(method_call && IsOperationAssignToken()) {
+      statement = ParseCallElementOperation(method_call, line_num, line_pos, file_name, depth + 1);
+    }
+    else {
+      statement = method_call;
+    }
   }
     break;
 
@@ -3597,88 +3805,6 @@ Statement* Parser::ParseIdentifierStatement(const std::wstring& ident, int line_
     Variable* variable = ParseVariable(ident_context, depth + 1);
 
     switch(GetToken()) {
-    case TOKEN_ASSIGN:
-      statement = ParseAssignment(variable, depth + 1);
-      break;
-
-    case TOKEN_ADD_ASSIGN: {
-      NextToken();
-
-      Expression* asgn_expr = ParseExpression(depth + 1);
-      if(!asgn_expr) {
-        return nullptr;
-      }
-
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   variable, asgn_expr, ADD_ASSIGN_STMT);
-    }
-      break;
-
-    case TOKEN_SUB_ASSIGN: {
-      NextToken();
-
-      Expression* asgn_expr = ParseExpression(depth + 1);
-      if(!asgn_expr) {
-        return nullptr;
-      }
-
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   variable, asgn_expr, SUB_ASSIGN_STMT);
-    }
-      break;
-
-    case TOKEN_MUL_ASSIGN: {
-      NextToken();
-
-      Expression* asgn_expr = ParseExpression(depth + 1);
-      if(!asgn_expr) {
-        return nullptr;
-      }
-
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   variable, asgn_expr, MUL_ASSIGN_STMT);
-    }
-      break;
-
-    case TOKEN_DIV_ASSIGN: {
-      NextToken();
-
-      Expression* asgn_expr = ParseExpression(depth + 1);
-      if(!asgn_expr) {
-        return nullptr;
-      }
-
-      asgn_expr->SetLinePosition(asgn_expr->GetLinePosition() + 1);
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   variable, asgn_expr, DIV_ASSIGN_STMT);
-    }
-      break;
-
-    case TOKEN_ADD_ADD: {
-      NextToken();
-
-      Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
-      asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
-
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   variable, asgn_lit, ADD_ASSIGN_STMT);
-    }
-      break;
-
-    case TOKEN_SUB_SUB: {
-      NextToken();
-
-      Expression* asgn_lit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 1);
-      asgn_lit->SetLinePosition(asgn_lit->GetLinePosition() + 1);
-
-      statement = TreeFactory::Instance()->MakeOperationAssignment(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                                   variable, asgn_lit, SUB_ASSIGN_STMT);
-    }
-      break;
-
     case TOKEN_ASSESSOR:
       // subsequent method
       if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) &&
@@ -3693,7 +3819,12 @@ Statement* Parser::ParseIdentifierStatement(const std::wstring& ident, int line_
       break;
 
     default:
-      ProcessError(L"Expected statement", TOKEN_SEMI_COLON);
+      if(IsOperationAssignToken()) {
+        statement = ParseVariableOperation(variable, line_num, line_pos, file_name, depth + 1);
+      }
+      else {
+        ProcessError(L"Expected statement", TOKEN_SEMI_COLON);
+      }
       break;
     }
   }
@@ -6994,6 +7125,12 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     case TOKEN_OPEN_BRACKET:
       expression = ParseStaticArray(depth + 1);
+      // a subscript on the literal itself: '["a", "b"][1]' (#1184). Taken only
+      // here, at the top of a literal: between the rows of a nested literal a
+      // '[' starts the next row.
+      if(Match(TOKEN_OPEN_BRACKET)) {
+        static_cast<StaticArray*>(expression)->SetIndices(ParseIndices(depth + 1));
+      }
       break;
 
     case TOKEN_NIL_ID:
@@ -7307,6 +7444,11 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     method_call->SetCallIndices(ParseIndices(depth + 1));
   }
 
+  // 'F(a)(b)' calls the function value F(a) returns (#1184)
+  if(Match(TOKEN_OPEN_PAREN) && IsCurriableCall(method_call)) {
+    ParseCurriedCalls(method_call, depth + 1);
+  }
+
   // under the Try() this call is about to get, BEFORE the rest of the chain is
   // parsed, so a later '?->' in it knows it is already guarded
   if((nil_safe || inherited_guard) && method_call) {
@@ -7479,6 +7621,11 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
     call->SetCallIndices(ParseIndices(depth + 1));
   }
 
+  // 'v->Make(a)(b)' calls the function value Make(a) returns (#1184)
+  if(Match(TOKEN_OPEN_PAREN) && IsCurriableCall(call)) {
+    call = ParseCurriedCalls(call, depth + 1);
+  }
+
   if(Match(TOKEN_ASSESSOR) && !Match(TOKEN_AS_ID, SECOND_INDEX) && !Match(TOKEN_TYPE_OF_ID, SECOND_INDEX)) {
     // the rest of a '?->' chain is already under this Try()
     next_call_try_guarded = nil_safe;
@@ -7487,6 +7634,46 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   }
 
   return result;
+}
+
+/****************************
+ * A call written with an argument list may be applied again: 'F(a)(b)'.
+ * A function reference ('F(Int) ~ Int') and a call without parentheses
+ * may not.
+ ****************************/
+bool Parser::IsCurriableCall(MethodCall* method_call)
+{
+  return method_call && method_call->GetCallType() == METHOD_CALL && method_call->GetCallingParameters() &&
+    !method_call->IsFunctionDefinition();
+}
+
+/****************************
+ * Parses the argument lists that follow a call, 'F(a)(b)(c)': each one is a
+ * link that calls the function value the link before it returned. The
+ * analyzer requires that value to be a function (#1184). Returns the last
+ * link.
+ ****************************/
+MethodCall* Parser::ParseCurriedCalls(MethodCall* method_call, int depth)
+{
+  while(Match(TOKEN_OPEN_PAREN)) {
+    const std::wstring file_name = GetFileName();
+    const int line_num = GetLineNumber();
+    const int line_pos = GetLinePosition();
+
+    int end_pos = 0;
+    ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
+    MethodCall* curried = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, line_num, line_pos,
+                                                                  GetLineNumber(), end_pos, L"", L"", exprs);
+    curried->SetCurriedCall();
+    method_call->SetMethodCall(curried);
+
+    if(Match(TOKEN_OPEN_BRACKET)) {
+      curried->SetCallIndices(ParseIndices(depth + 1));
+    }
+    method_call = curried;
+  }
+
+  return method_call;
 }
 
 /****************************
@@ -8160,7 +8347,9 @@ For* Parser::ParseFor(int depth)
   // pre-statement
   StatementList* pre_statements = TreeFactory::Instance()->MakeStatementList();
   while(Match(TOKEN_IDENT) && !is_semi_colon) {
-    pre_statements->AddStatement(ParseStatement(depth + 1));
+    Statement* pre_statement = ParseStatement(depth + 1);
+    TakePendingStatements(pre_statements);
+    pre_statements->AddStatement(pre_statement);
     if(Match(TOKEN_COMMA)) {
       NextToken();
     }
@@ -8178,7 +8367,9 @@ For* Parser::ParseFor(int depth)
   // update statement
   StatementList* update_stmts = TreeFactory::Instance()->MakeStatementList();
   while(Match(TOKEN_IDENT) && !is_semi_colon) {
-    update_stmts->AddStatement(ParseStatement(depth + 1, false));
+    Statement* update_stmt = ParseStatement(depth + 1, false);
+    TakePendingStatements(update_stmts);
+    update_stmts->AddStatement(update_stmt);
     if(Match(TOKEN_COMMA)) {
       NextToken();
     }

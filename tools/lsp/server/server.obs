@@ -456,6 +456,22 @@ bundle LSP {
 			};
 		}
 
+		method : CallbackDocumentDiagnostic(id : Int, params : JsonElement) ~ Nil {
+			uri := FindString(params, "textDocument/uri");
+			report : JsonElement := Nil;
+			if(uri <> Nil) {
+				report := PullDiagnostics(uri, FindString(params, "previousResultId"));
+			};
+
+			# an empty report for a document the server doesn't have open
+			if(report = Nil) {
+				report := JsonElement->New(JsonElement->JsonType->OBJECT);
+				report->Insert("kind", "full");
+				report->Insert("items", JsonElement->New(JsonElement->JsonType->ARRAY));
+			};
+			WriteRpcResponse(id, report);
+		}
+
 		method : CallbackCodeLens(id : Int, params : JsonElement) ~ Nil {
 			document := DocumentOf(params);
 			if(document <> Nil) {
@@ -712,9 +728,9 @@ bundle LSP {
 
 			# Columns are counted in the server's Chars. Where a Char is UTF-16
 			# (Windows) that is LSP's default encoding exactly. Where a Char is a whole
-			# code point (Linux, macOS) it is UTF-32, which is exact when the client
-			# accepts it; a client that offers only UTF-16 is still answered in UTF-16,
-			# and a character outside the BMP then counts one column short there.
+			# code point (Linux, macOS) it is UTF-32, used when the client accepts it;
+			# a client that offers only UTF-16 gets UTF-16, and every column is
+			# converted at the JSON boundary (#1226).
 			position_encoding := "utf-16";
 			if(String->FromCodePoint(0x1F600)->Size() = 1) {
 				offered := params->FindElements("capabilities/general/positionEncodings");
@@ -727,6 +743,8 @@ bundle LSP {
 				};
 			};
 			capabilities->Insert("positionEncoding", position_encoding);
+			# answered in UTF-16 where a Char is a code point: convert every column
+			@workspace->SetUtf16(position_encoding->Equals("utf-16") & String->FromCodePoint(0x1F600)->Size() = 1);
 			# markdown where the client takes it, and plain text where it says it
 			# takes only that
 			@hover_markdown := AcceptsMarkdown(params, "capabilities/textDocument/hover/contentFormat");
@@ -831,6 +849,20 @@ bundle LSP {
 			semanticTokensFull := semanticTokensProvider->AddChild("full");
 			semanticTokensFull->Insert("delta", true);
 
+			# Pull diagnostics, for a client that takes them; the rest keep the push
+			# model. interFileDependencies: an edit to one file can change
+			# another's results, through a build.json program.
+			pull_json := FindJson(params, "capabilities/textDocument/diagnostic");
+			refresh_json := FindJson(params, "capabilities/workspace/diagnostics/refreshSupport");
+			SetPullDiagnostics(pull_json <> Nil & pull_json->GetType() = JsonElement->JsonType->OBJECT,
+				refresh_json <> Nil & refresh_json->GetType() = JsonElement->JsonType->TRUE);
+			if(IsPullDiagnostics()) {
+				diagnosticProvider := capabilities->AddChild("diagnosticProvider");
+				diagnosticProvider->Insert("identifier", "objeck");
+				diagnosticProvider->Insert("interFileDependencies", true);
+				diagnosticProvider->Insert("workspaceDiagnostics", false);
+			};
+
 			codeLensProvider := capabilities->AddChild("codeLensProvider");
 			codeLensProvider->Insert("resolveProvider", false);
 			documentLinkProvider := capabilities->AddChild("documentLinkProvider");
@@ -906,6 +938,7 @@ bundle LSP {
 			each(i : uris) {
 				DeferDiagnostics(uris->Get(i));
 			};
+			RefreshPulledDiagnostics();
 		}
 
 		method : RegisterWatchers() ~ Nil {
@@ -1116,11 +1149,7 @@ bundle LSP {
 				# closed: nothing more to publish for it
 				DropPendingDiagnostics(uri);
 				@workspace->RemoveDocument(uri, document);
-
-				empty_diagnostics := JsonElement->New(JsonElement->JsonType->OBJECT);
-				empty_diagnostics->Insert("uri", uri);
-				empty_diagnostics->Insert("diagnostics", JsonElement->New(JsonElement->JsonType->ARRAY));
-				WriteRpcRequest("textDocument/publishDiagnostics", empty_diagnostics);
+				PublishClosed(uri);
 			};
 		}
 
@@ -1194,7 +1223,14 @@ bundle LSP {
 						if(text <> Nil & start_line <> Nil & start_char <> Nil  & end_line_json <> Nil & end_char_json <> Nil) {
 							end_line := end_line_json->GetValue();
 							end_char := end_char_json->GetValue();
-							document->Update(text, start_line->ToInt(), start_char->ToInt(), end_line->ToInt(), end_char->ToInt());
+							# each change against the text the one before it left
+							start_column := start_char->ToInt();
+							end_column := end_char->ToInt();
+							if(@workspace->IsUtf16()) {
+								start_column := Document->UnitsToChars(document->LineText(start_line->ToInt()), start_column);
+								end_column := Document->UnitsToChars(document->LineText(end_line->ToInt()), end_column);
+							};
+							document->Update(text, start_line->ToInt(), start_column, end_line->ToInt(), end_column);
 						}
 						else if(range_length_json <> Nil & text <> Nil & start_line <> Nil & start_char <> Nil) {
 							range_length := range_length_json->GetValue();

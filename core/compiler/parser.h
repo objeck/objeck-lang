@@ -99,6 +99,13 @@ class Parser {
   bool is_semi_colon;
   // one-shot: the next ParseMethodCall(IdentifierContext&) is inside a Try() region
   bool next_call_try_guarded = false;
+  // line of the token NextToken() last consumed: two statements on one line
+  // need a ';' between them (#1184)
+  int prev_token_line = -1;
+  // hidden declarations a statement needs to run before it, such as the local
+  // that 'GetCells()[0] := 99' stores through; the enclosing list takes them
+  std::vector<Statement*> pending_statements;
+  int hidden_local_id = 0;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
   std::vector<std::wstring> error_strings;
@@ -106,6 +113,7 @@ class Parser {
 
   // gets the scanner token
   inline void NextToken() {
+    prev_token_line = scanner->GetToken()->GetLineNumber();
     scanner->NextToken();
   }
   // returns true of scanner token matches 
@@ -190,6 +198,13 @@ class Parser {
   MethodCall* ParseMethodCall(IdentifierContext &context, int depth);
   void ParseMethodCall(Expression* expression, int depth);
   MethodCall* ParseMethodCall(Variable* variable, int depth);
+  bool IsCurriableCall(MethodCall* method_call);
+  MethodCall* ParseCurriedCalls(MethodCall* method_call, int depth);
+  bool IsOperationAssignToken();
+  Statement* ParseVariableOperation(Variable* variable, int line_num, int line_pos, const std::wstring& file_name, int depth);
+  Statement* ParseCallElementOperation(MethodCall* head, int line_num, int line_pos, const std::wstring& file_name, int depth);
+  void TakePendingStatements(StatementList* statements);
+  void CheckStatementSeparator(Statement* statement);
   void ParseAnonymousClass(MethodCall* method_call, int depth);
   StatementList* ParseStatementList(int depth);
   Statement* ParseStatement(int depth, bool semi_colon = true);
