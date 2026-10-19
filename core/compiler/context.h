@@ -637,6 +637,12 @@ class ContextAnalyzer {
   Method* ResolveMethodCall(Class* klass, MethodCall* method_call, const int depth, Type* receiver = nullptr);
   LibraryMethod* ResolveMethodCall(LibraryClass* klass, MethodCall* method_call, const int depth, Type* receiver = nullptr);
   Type* PrimitiveReceiverType(const std::wstring &encoding);
+  bool IsGenericMethod(Method* method);
+  bool UnifyMethodGeneric(Type* param, Type* arg, int arg_dimension, std::map<std::wstring, Type*> &bindings,
+                          std::map<std::wstring, std::wstring> &bounds, std::wstring &error);
+  bool InferMethodGenerics(Method* method, const std::vector<Expression*> &arguments,
+                           std::map<std::wstring, Type*> &bindings, std::wstring &error, const int depth);
+  Type* SubstituteMethodGenerics(Type* type, const std::map<std::wstring, Type*> &bindings);
   bool ResolveConcatToString(const std::wstring &cls_name, Method* &method, LibraryMethod* &lib_method);
   bool IsReceiverParameter(Type* parameter, Type* receiver);
   int MatchCallingParameter(Expression* calling_param, Type* method_type, Class* klass, LibraryClass* lib_klass, const int depth);

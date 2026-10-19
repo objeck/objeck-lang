@@ -3011,6 +3011,7 @@ namespace frontend {
     LibraryEnumItem* lib_enum_item;
     std::wstring variable_name;
     std::wstring method_name;
+    std::map<std::wstring, Type*> method_generic_bindings;
     ExpressionList* expressions;
     SymbolEntry* entry;
     MethodCallType call_type;
@@ -3273,6 +3274,15 @@ namespace frontend {
     // a call with named arguments is bound to its generated forwarder (#1244)
     void SetMethodName(const std::wstring &m) {
       method_name = m;
+    }
+
+    // a generic method's type arguments, inferred from this call's arguments (#1242)
+    const std::map<std::wstring, Type*> &GetMethodGenericBindings() {
+      return method_generic_bindings;
+    }
+
+    void SetMethodGenericBindings(const std::map<std::wstring, Type*> &b) {
+      method_generic_bindings = b;
     }
 
     void SetEnumName(const std::wstring &v, const std::wstring& m) {

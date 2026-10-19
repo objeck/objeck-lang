@@ -87,6 +87,8 @@ class Parser {
   ParsedBundle* current_bundle;
   Class* current_class;
   Method* current_method;
+  // the method being parsed: its type parameters and their bounds, as they erase (#1242)
+  std::map<std::wstring, std::wstring> method_generic_bounds;
   Method* prev_method;
   Scanner* scanner;
   SymbolTableManager* symbol_table;
