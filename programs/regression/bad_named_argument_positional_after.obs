@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Positional arguments must come before named ones
+#~
+Named arguments (#1244): a positional argument after a named one.
+~#
+class BadNamedArgumentPositionalAfter {
+	function : F(a : Int, b : Int := 2) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		F(b: 1, 2);
+	}
+}

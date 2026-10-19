@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Parameter 'a' has no default value and is not given
+#~
+Named arguments (#1244): skipping a parameter that has no default.
+~#
+class BadNamedArgumentMissingRequired {
+	function : F(a : Int, b : Int := 2) ~ Int {
+		return a + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		F(b: 2);
+	}
+}

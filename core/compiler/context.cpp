@@ -443,6 +443,7 @@ bool ContextAnalyzer::Analyze(bool is_lib)
       std::vector<Method*> methods = klass->GetMethods();
       for(size_t k = 0; k < methods.size(); ++k) {
         AddDefaultParameterMethods(bundle, klass, methods[k]);
+        GenerateNamedForwarders(bundle, klass, methods[k]);
       }
     }
   }
@@ -710,6 +711,266 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
       ProcessError(method, L"Method or function already overloaded '" + method->GetUserName() + L"'");
     }
   }
+}
+
+/****************************
+ * A parameter's name as written:
+ * entries are scoped, e.g.
+ * 'Class:Method:name'
+ ****************************/
+static std::wstring BareParameterName(Declaration* declaration)
+{
+  if(!declaration || !declaration->GetEntry()) {
+    return L"";
+  }
+  const std::wstring name = declaration->GetEntry()->GetName();
+  const size_t start = name.find_last_of(L':');
+  return start == std::wstring::npos ? name : name.substr(start + 1);
+}
+
+/****************************
+ * The method's parameter names,
+ * for an error message
+ ****************************/
+std::wstring ContextAnalyzer::ParameterNames(Method* method)
+{
+  std::wstring names;
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    if(i > 0) {
+      names += L", ";
+    }
+    names += BareParameterName(declarations[i]);
+  }
+  return names.empty() ? L"none" : names;
+}
+
+/****************************
+ * Maps a call's argument shape
+ * ("" for each positional argument,
+ * then the names written) onto a
+ * method's parameters: 'order' is
+ * the parameter each argument binds
+ * to, in written order (#1244)
+ ****************************/
+bool ContextAnalyzer::MapNamedArguments(Method* method, const std::vector<std::wstring> &shape, std::vector<size_t> &order, std::wstring &error)
+{
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  std::vector<bool> given(declarations.size(), false);
+  order.clear();
+
+  for(size_t i = 0; i < shape.size(); ++i) {
+    size_t index = declarations.size();
+    if(shape[i].empty()) {
+      if(i >= declarations.size()) {
+        error = L"Too many arguments for '" + method->GetUserName() + L"'";
+        return false;
+      }
+      index = i;
+    }
+    else {
+      for(size_t j = 0; j < declarations.size(); ++j) {
+        if(BareParameterName(declarations[j]) == shape[i]) {
+          index = j;
+          break;
+        }
+      }
+      if(index == declarations.size()) {
+        error = L"No parameter named '" + shape[i] + L"'; the parameters are: " + ParameterNames(method);
+        return false;
+      }
+    }
+
+    if(given[index]) {
+      error = L"Parameter '" + BareParameterName(declarations[index]) + L"' is given both by position and by name";
+      return false;
+    }
+    given[index] = true;
+    order.push_back(index);
+  }
+
+  for(size_t j = 0; j < declarations.size(); ++j) {
+    if(!given[j] && !declarations[j]->GetAssignment()) {
+      error = L"Parameter '" + BareParameterName(declarations[j]) + L"' has no default value and is not given";
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
+ * The forwarder a named call
+ * binds to: a name no source can
+ * spell, so it never collides
+ * with an overload
+ ****************************/
+std::wstring ContextAnalyzer::NamedForwarderName(const std::wstring &name, const std::vector<size_t> &order)
+{
+  std::wstring forwarder = name + L"$n";
+  for(size_t i = 0; i < order.size(); ++i) {
+    if(i > 0) {
+      forwarder += L'_';
+    }
+    forwarder += ToString((int)order[i]);
+  }
+  return forwarder;
+}
+
+/****************************
+ * Generates a forwarder for each
+ * named-call shape this method
+ * accepts (#1244). It takes the
+ * arguments in written order,
+ * assigns the defaults of those
+ * not given in the callee's
+ * context -- as a default
+ * alternate does -- and calls
+ * the original.
+ ****************************/
+void ContextAnalyzer::GenerateNamedForwarders(ParsedBundle* bundle, Class* klass, Method* method)
+{
+  if(method->IsAlt() || method->IsVirtual()) {
+    return;
+  }
+
+  const std::wstring full_name = method->GetName();
+  const size_t start = full_name.find(L':');
+  const std::wstring name = start == std::wstring::npos ? full_name : full_name.substr(start + 1);
+
+  const std::set<std::vector<std::wstring> > shapes = program->GetNamedCallShapes(name);
+  for(std::set<std::vector<std::wstring> >::const_iterator iter = shapes.begin(); iter != shapes.end(); ++iter) {
+    std::vector<size_t> order;
+    std::wstring error;
+    if(!MapNamedArguments(method, *iter, order, error)) {
+      continue;
+    }
+
+    std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+    Method* forwarder = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
+                                                            method->GetEndLineNumber(), method->GetEndLinePosition(),
+                                                            NamedForwarderName(full_name, order), method->GetMethodType(),
+                                                            method->IsStatic(), method->IsNative());
+    forwarder->SetReturn(method->GetReturn());
+
+    DeclarationList* forwarder_declarations = TreeFactory::Instance()->MakeDeclarationList();
+    StatementList* forwarder_statements = TreeFactory::Instance()->MakeStatementList();
+    std::vector<Declaration*> forwarded_declarations(declarations.size(), nullptr);
+    std::vector<Assignment*> forwarded_defaults(declarations.size(), nullptr);
+
+    bundle->GetSymbolTableManager()->NewParseScope();
+
+    // the arguments, in the order the call writes them
+    std::vector<bool> given(declarations.size(), false);
+    for(size_t i = 0; i < order.size(); ++i) {
+      Declaration* declaration = declarations[order[i]]->Copy();
+      forwarder_declarations->AddDeclaration(declaration);
+      bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(declaration->GetEntry());
+      forwarded_declarations[order[i]] = declaration;
+      given[order[i]] = true;
+    }
+
+    // the defaults of the rest, evaluated here as a default alternate does
+    for(size_t j = 0; j < declarations.size(); ++j) {
+      if(!given[j]) {
+        Declaration* declaration = declarations[j]->Copy();
+        // a fresh assignment and variable: Copy() shares the original's, so the
+        // default alternates and every forwarder would bind one variable, and a
+        // forwarder -- whose slots differ -- would store and load the default
+        // through another method's entry. The default expression stays shared,
+        // as it is between the alternates.
+        Assignment* shared = declaration->GetAssignment();
+        Variable* shared_variable = shared->GetVariable();
+        Variable* variable = TreeFactory::Instance()->MakeVariable(shared_variable->GetFileName(), shared_variable->GetLineNumber(),
+                                                                   shared_variable->GetLinePosition(), shared_variable->GetName());
+        Assignment* assignment = TreeFactory::Instance()->MakeAssignment(shared->GetFileName(), shared->GetLineNumber(), shared->GetLinePosition(),
+                                                                         shared->GetEndLineNumber(), shared->GetEndLinePosition(),
+                                                                         variable, shared->GetExpression());
+        assignment->GetVariable()->WasAlt();
+        assignment->GetExpression()->SetEvalType(declaration->GetEntry()->GetType(), true);
+        forwarder_statements->AddStatement(assignment);
+        forwarded_defaults[j] = assignment;
+      }
+    }
+
+    forwarder->SetStatements(forwarder_statements);
+    forwarder->SetDeclarations(forwarder_declarations);
+    forwarder->SetOriginal(method);
+    forwarder->SetForwardedParameters(forwarded_declarations, forwarded_defaults);
+    bundle->GetSymbolTableManager()->PreviousParseScope(forwarder->GetParsedName());
+
+    // overloads with the same parameter types under one shape are one forwarder
+    klass->AddMethod(forwarder);
+  }
+}
+
+/****************************
+ * Binds a call with named
+ * arguments to the forwarder
+ * generated for its shape
+ * (#1244). False, with an error
+ * reported, when no overload
+ * takes it.
+ ****************************/
+bool ContextAnalyzer::BindNamedArguments(Class* klass, MethodCall* method_call)
+{
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  const std::vector<std::wstring> shape = call_params->GetNames();
+  const std::wstring name = method_call->GetMethodName();
+
+  std::set<std::wstring> forwarders;
+  std::wstring first_error;
+  bool virtual_target = false;
+  std::vector<Method*> candidates = klass->GetAllUnqualifiedMethods(name);
+  // not a method of this class (a function value, say): the call's own path
+  // reports the named arguments it cannot take
+  if(candidates.empty()) {
+    return true;
+  }
+
+  for(size_t i = 0; i < candidates.size(); ++i) {
+    Method* candidate = candidates[i];
+    if(candidate->IsAlt()) {
+      continue;
+    }
+
+    std::vector<size_t> order;
+    std::wstring error;
+    if(MapNamedArguments(candidate, shape, order, error)) {
+      if(candidate->IsVirtual()) {
+        virtual_target = true;
+      }
+      else {
+        forwarders.insert(NamedForwarderName(name, order));
+      }
+    }
+    else if(first_error.empty()) {
+      first_error = error;
+    }
+  }
+
+  call_params->ClearNames();
+  if(forwarders.empty()) {
+    if(virtual_target) {
+      ProcessError(static_cast<Expression*>(method_call), L"Named arguments are not supported for virtual methods yet");
+    }
+    else if(!first_error.empty()) {
+      ProcessError(static_cast<Expression*>(method_call), first_error);
+    }
+    else {
+      ProcessError(static_cast<Expression*>(method_call), L"Undefined function/method call: '" + name + L"(..)'");
+    }
+    return false;
+  }
+
+  if(forwarders.size() > 1) {
+    ProcessError(static_cast<Expression*>(method_call), L"Named arguments match more than one overload of '" + name +
+                 L"'; pass the ambiguous ones by position");
+    return false;
+  }
+
+  method_call->SetMethodName(*forwarders.begin());
+  return true;
 }
 
 /****************************
@@ -1143,7 +1404,9 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
     // check for return
     if(method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD &&
        method->GetReturn() && method->GetReturn()->GetType() != NIL_TYPE) {
-      if(!AnalyzeReturnPaths(method->GetStatements(), depth + 1) && !method->IsAlt()) {
+      // an alternate forwards to the original, which returns; a named-argument
+      // forwarder that only reorders has no statements at all (#1244)
+      if(!method->IsAlt() && !AnalyzeReturnPaths(method->GetStatements(), depth + 1)) {
         ProcessError(method, L"All method/function paths must return a value");
       }
 
@@ -2871,6 +3134,22 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
   Debug(msg, (static_cast<Expression*>(method_call))->GetLineNumber(), depth);
 #endif
 
+  // Named arguments are consumed where a call binds to a program method
+  // (BindNamedArguments) or rejected for a library one. Any other kind of call
+  // -- a function value, a lambda, a curried link -- has no parameter names, and
+  // must not quietly take them by position (#1244).
+  struct NamedArgumentGuard {
+    ContextAnalyzer* analyzer;
+    MethodCall* call;
+    ~NamedArgumentGuard() {
+      ExpressionList* params = call->GetCallingParameters();
+      if(params && params->HasNames()) {
+        params->ClearNames();
+        analyzer->ProcessError(static_cast<Expression*>(call), L"Named arguments need a method or function of a class; this call has no parameter names");
+      }
+    }
+  } named_argument_guard = { this, method_call };
+
   // A subscript on this call's result, 'GetItems()[i]'. The index expressions
   // are ordinary expressions and must be analyzed, or they reach the emitter
   // with no resolved entry -- which segfaults rather than diagnosing, and marks
@@ -4213,6 +4492,11 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
 
   AnalyzeExpressions(call_params, depth + 1);
 
+  // named arguments bind to the forwarder generated for the call's shape (#1244)
+  if(call_params->HasNames() && !BindNamedArguments(klass, method_call)) {
+    return;
+  }
+
   // note: find system based methods and call with function parameters (i.e. $Int, $Float).
   // A primitive receiver is parameter 0 of the function, so only a function that
   // takes it can match: resolving the written arguments alone bound
@@ -4619,6 +4903,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   CheckLambdaInferredTypes(method_call, depth + 1);
   
   AnalyzeExpressions(call_params, depth + 1);
+  // a release .obl keeps no parameter names (#1244, phase 2); a call that is not
+  // to one of this class's methods is left to its own path to report
+  if(call_params->HasNames() && !klass->GetUnqualifiedMethods(method_call->GetMethodName()).empty()) {
+    ProcessError(static_cast<Expression*>(method_call), L"Named arguments are not supported for library methods yet");
+    call_params->ClearNames();
+  }
   // A primitive receiver is parameter 0 of a static function on its $ class, so
   // only a function that takes it can match. Resolving the written arguments
   // alone bound 255->ToHexString(4) to ToHexString(4) (the receiver was pushed
@@ -4864,6 +5154,12 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
 void ContextAnalyzer::AnalyzeFunctionValueCall(MethodCall* method_call, SymbolEntry* entry, const std::wstring& call_name, const int depth)
 {
   entry->WasLoaded();
+
+  // a function type has no parameter names (#1244)
+  if(method_call->GetCallingParameters()->HasNames()) {
+    ProcessError(static_cast<Expression*>(method_call), L"A function value has no parameter names; pass its arguments by position");
+    method_call->GetCallingParameters()->ClearNames();
+  }
 
   // track rouge return
   ++nested_call_depth;

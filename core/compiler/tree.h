@@ -648,6 +648,8 @@ namespace frontend {
   class ExpressionList {
     friend class TreeFactory;
     std::vector<Expression*> expressions;
+    // a call's argument names, "" for a positional one; empty when none is named (#1244)
+    std::vector<std::wstring> names;
 
     ExpressionList() {
     }
@@ -675,6 +677,32 @@ namespace frontend {
 
     void AddExpression(Expression* e) {
       expressions.push_back(e);
+    }
+
+    void AddNamedExpression(Expression* e, const std::wstring &n) {
+      expressions.push_back(e);
+      names.resize(expressions.size());
+      names.back() = n;
+    }
+
+    bool HasNames() const {
+      for(size_t i = 0; i < names.size(); ++i) {
+        if(!names[i].empty()) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // the argument shape: "" for each positional argument, then the names in written order
+    const std::vector<std::wstring> GetNames() const {
+      std::vector<std::wstring> shape = names;
+      shape.resize(expressions.size());
+      return shape;
+    }
+
+    void ClearNames() {
+      names.clear();
     }
   };
 
@@ -2141,6 +2169,8 @@ namespace frontend {
     bool is_native;
     bool has_and_or;
     Method* original;
+    std::vector<Declaration*> forwarded_declarations;
+    std::vector<Assignment*> forwarded_defaults;
     SymbolTable* symbol_table;
     Class* klass;
 #ifdef _DIAG_LIB
@@ -2299,6 +2329,27 @@ namespace frontend {
 
     void SetOriginal(Method* o) {
       original = o;
+    }
+
+    // A named-argument forwarder (#1244) takes its parameters in a call's written
+    // order, so they do not sit in the original's slots: for each parameter of the
+    // original, the declaration that receives it here, or the assignment of its
+    // default when the call skips it. Empty for an ordinary default alternate.
+    void SetForwardedParameters(const std::vector<Declaration*> &d, const std::vector<Assignment*> &a) {
+      forwarded_declarations = d;
+      forwarded_defaults = a;
+    }
+
+    bool IsNamedForwarder() {
+      return !forwarded_declarations.empty();
+    }
+
+    Declaration* GetForwardedDeclaration(size_t i) {
+      return i < forwarded_declarations.size() ? forwarded_declarations[i] : nullptr;
+    }
+
+    Assignment* GetForwardedDefault(size_t i) {
+      return i < forwarded_defaults.size() ? forwarded_defaults[i] : nullptr;
     }
 
     bool IsAlt() {
@@ -3151,6 +3202,11 @@ namespace frontend {
 
     const std::wstring GetMethodName() const {
       return method_name;
+    }
+
+    // a call with named arguments is bound to its generated forwarder (#1244)
+    void SetMethodName(const std::wstring &m) {
+      method_name = m;
     }
 
     void SetEnumName(const std::wstring &v, const std::wstring& m) {
@@ -4019,7 +4075,22 @@ namespace frontend {
     std::vector<std::wstring> warning_strings;
 #endif
 
+    // the argument shapes calls with named arguments use, by method name (#1244)
+    std::map<std::wstring, std::set<std::vector<std::wstring> > > named_call_shapes;
+
   public:
+    void AddNamedCallShape(const std::wstring &method_name, const std::vector<std::wstring> &shape) {
+      named_call_shapes[method_name].insert(shape);
+    }
+
+    const std::set<std::vector<std::wstring> > GetNamedCallShapes(const std::wstring &method_name) {
+      std::map<std::wstring, std::set<std::vector<std::wstring> > >::iterator result = named_call_shapes.find(method_name);
+      if(result != named_call_shapes.end()) {
+        return result->second;
+      }
+      return std::set<std::vector<std::wstring> >();
+    }
+
     ParsedProgram() {
       linker = nullptr;
       start_class = nullptr;

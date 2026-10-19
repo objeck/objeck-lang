@@ -6345,7 +6345,7 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
 /****************************
  * Parses a expression std::list.
  ****************************/
-ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerTokenType open, ScannerTokenType closed)
+ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerTokenType open, ScannerTokenType closed, bool allow_named)
 {
 #ifdef _DEBUG
   Debug(L"Calling Parameters", depth);
@@ -6357,11 +6357,35 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
   }
   NextToken();
 
+  std::set<std::wstring> arg_names;
   while(!Match(closed) && !Match(TOKEN_END_OF_STREAM)) {
+    // a named argument, 'name: value' (#1244): an argument never starts with an
+    // identifier and a colon otherwise -- a ternary's ':' follows its '?'
+    std::wstring arg_name;
+    if(allow_named && Match(TOKEN_IDENT) && Match(TOKEN_COLON, SECOND_INDEX)) {
+      arg_name = scanner->GetToken()->GetIdentifier();
+      NextToken();
+      NextToken();
+      if(arg_name.empty() || arg_name[0] == L'@' || arg_name.find(L'.') != std::wstring::npos) {
+        ProcessError(L"Expected a parameter name before ':'");
+      }
+      else if(!arg_names.insert(arg_name).second) {
+        ProcessError(L"Parameter '" + arg_name + L"' is named more than once");
+      }
+    }
+    else if(!arg_names.empty()) {
+      ProcessError(L"Positional arguments must come before named ones");
+    }
+
     // expression
     Expression* expression = ParseExpression(depth + 1);
     if(expression) {
-      expressions->AddExpression(expression);
+      if(arg_name.empty()) {
+        expressions->AddExpression(expression);
+      }
+      else {
+        expressions->AddNamedExpression(expression, arg_name);
+      }
 
       if(Match(TOKEN_COMMA) && !Match(closed, SECOND_INDEX)) {
         NextToken();
@@ -6383,6 +6407,22 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
 
   NextToken();
 
+  return expressions;
+}
+
+/****************************
+ * Parses a call's arguments,
+ * which may be named; records
+ * the shape of a named call so
+ * its forwarder can be generated
+ * (#1244)
+ ****************************/
+ExpressionList* Parser::ParseCallArguments(int &end_pos, int depth, const std::wstring &method_name)
+{
+  ExpressionList* expressions = ParseExpressionList(end_pos, depth, TOKEN_OPEN_PAREN, TOKEN_CLOSED_PAREN, true);
+  if(expressions->HasNames() && program) {
+    program->AddNamedCallShape(method_name, expressions->GetNames());
+  }
   return expressions;
 }
 
@@ -7246,7 +7286,7 @@ MethodCall* Parser::ParseMethodCall(int depth)
   NextToken();
 
   int end_pos = 0;
-  ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
+  ExpressionList* exprs = ParseCallArguments(end_pos, depth + 1, L"New");
 
   return TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, GetLineNumber(), end_pos, PARENT_CALL, L"", exprs);
 }
@@ -7287,7 +7327,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
 
       if(Match(TOKEN_OPEN_PAREN)) {
         int end_pos = 0;
-        ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
+        ExpressionList* exprs = ParseCallArguments(end_pos, depth + 1, method_ident);
 
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, mid_line_num, mid_line_pos, 
                                                               GetLineNumber(), end_pos, ident, method_ident, exprs);
@@ -7333,7 +7373,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
       // new object
       else {
         int end_pos = 0;
-        ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
+        ExpressionList* exprs = ParseCallArguments(end_pos, depth + 1, L"New");
 
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
                                                               GetLineNumber(), end_pos, NEW_INST_CALL, ident, exprs);
@@ -7414,7 +7454,7 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
     const std::wstring klass_name = current_class ? current_class->GetName() : L"";
 
     int end_pos = 0;
-    ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
+    ExpressionList* exprs = ParseCallArguments(end_pos, depth + 1, ident);
 
     method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos, -1, -1,
                                                           GetLineNumber(), end_pos, klass_name, ident, exprs);
@@ -7585,7 +7625,7 @@ MethodCall* Parser::ParseMethodCall(Variable* variable, int depth)
   IdentifierContext ident_context(mid_ident, mid_line_num, mid_line_pos);
 
   int end_pos = 0;
-  ExpressionList* exprs = ParseExpressionList(end_pos, depth + 1);
+  ExpressionList* exprs = ParseCallArguments(end_pos, depth + 1, method_ident);
 
   // 'a?->b()' desugars to 'a->Try()->b()'. Try() guards the whole remainder of
   // the chain, so only the first '?->' introduces one; a later '?->' in the same

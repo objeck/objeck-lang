@@ -235,7 +235,8 @@ class Parser {
   Declaration* ParseDeclaration(IdentifierContext &context, bool is_stmt, int depth);
   DeclarationList* ParseDecelerationList(int depth);
   ExpressionList* ParseExpressionList(int& end_pos, int depth, ScannerTokenType open = TOKEN_OPEN_PAREN,
-                                      ScannerTokenType close = TOKEN_CLOSED_PAREN);
+                                      ScannerTokenType close = TOKEN_CLOSED_PAREN, bool allow_named = false);
+  ExpressionList* ParseCallArguments(int& end_pos, int depth, const std::wstring &method_name);
   ExpressionList* ParseIndices(int depth);
   void ParseCastTypeOf(Expression* expression, int depth);
   Type* ParseType(int depth);

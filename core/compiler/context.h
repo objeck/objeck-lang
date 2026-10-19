@@ -548,6 +548,11 @@ class ContextAnalyzer {
   void AnalyzeDuplicateEntries(std::vector<Class*> &classes, const int depth);
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
+  void GenerateNamedForwarders(ParsedBundle* bundle, Class* klass, Method* method);
+  bool MapNamedArguments(Method* method, const std::vector<std::wstring> &shape, std::vector<size_t> &order, std::wstring &error);
+  std::wstring NamedForwarderName(const std::wstring &name, const std::vector<size_t> &order);
+  std::wstring ParameterNames(Method* method);
+  bool BindNamedArguments(Class* klass, MethodCall* method_call);
   void AnalyzeMethods(Class* klass, const int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, Class* lib_parent, const int depth);
   bool AnalyzeVirtualMethods(Class* impl_class, LibraryClass* lib_parent, const int depth);
