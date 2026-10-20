@@ -744,7 +744,11 @@ bool ItermediateOptimizer::CanInlineMethod(IntermediateMethod* mthd_called, [[ma
     }
   }
 
-  return true;
+  // A body with no RTRN never returns: a tail call turned into a loop leaves by
+  // its backward jump or by an error. The inliner continues the caller where the
+  // callee's RTRN was, so such a body was spliced in without its loop and left
+  // the caller's stack unbalanced -- a crash at s3 even interpreted (#1269).
+  return found_rtrn;
 }
 
 int ItermediateOptimizer::CanInlineSetterGetter(IntermediateMethod* mthd_called)
