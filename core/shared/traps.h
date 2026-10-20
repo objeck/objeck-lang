@@ -309,6 +309,9 @@ namespace instructions {
     // the error a Try() region last recovered from (#1247)
     RUNTIME_GET_ERROR,
     RUNTIME_GET_ERROR_KIND,
-    RUNTIME_CLEAR_ERROR
+    RUNTIME_CLEAR_ERROR,
+    // raising an Error, and the Error last recovered from (#1247, phase 1)
+    RUNTIME_RAISE,
+    RUNTIME_GET_LAST_ERROR
   };
 }

@@ -7711,6 +7711,113 @@ each(i : cities) {
 	}
 	
 	#~
+	An error a program raises with Runtime->Raise, and the base of the runtime's
+	own: subclass it for an error of your own. A ?-> region recovers from any of
+	them, and Runtime->GetLastError returns the one it recovered from.
+	<pre>
+class ParseError from Error {
+  New(message : String) { Parent(message); }
+}
+...
+Runtime->Raise(ParseError->New("row 12: expected a number"));
+	</pre>
+	~#
+	class Error {
+		@message : String;
+
+		#~
+		Constructor
+		@param message what went wrong
+		~#
+		New(message : String) {
+			Parent();
+			@message := message;
+		}
+
+		#~
+		What went wrong
+		@return the message
+		~#
+		method : public : GetMessage() ~ String {
+			return @message;
+		}
+
+		#~
+		What went wrong
+		@return the message
+		~#
+		method : public : ToString() ~ String {
+			return @message;
+		}
+	}
+
+	#~
+	A method call or field access on Nil, recovered by a ?-> region
+	~#
+	class NilError from Error {
+		#~
+		Constructor
+		@param message what went wrong
+		~#
+		New(message : String) {
+			Parent(message);
+		}
+	}
+
+	#~
+	An array index outside the array, recovered by a ?-> region
+	~#
+	class IndexError from Error {
+		#~
+		Constructor
+		@param message what went wrong
+		~#
+		New(message : String) {
+			Parent(message);
+		}
+	}
+
+	#~
+	An integer or float division or modulo by zero, recovered by a ?-> region
+	~#
+	class DivideByZeroError from Error {
+		#~
+		Constructor
+		@param message what went wrong
+		~#
+		New(message : String) {
+			Parent(message);
+		}
+	}
+
+	#~
+	A cast to a class the object is not, recovered by a ?-> region
+	~#
+	class CastError from Error {
+		#~
+		Constructor
+		@param message what went wrong
+		~#
+		New(message : String) {
+			Parent(message);
+		}
+	}
+
+	#~
+	Any other runtime error -- a failed assertion, a failing library call --
+	recovered by a ?-> region
+	~#
+	class RuntimeError from Error {
+		#~
+		Constructor
+		@param message what went wrong
+		~#
+		New(message : String) {
+			Parent(message);
+		}
+	}
+
+	#~
 	Provides access to runtime system
 	~#	
 	class Runtime {
@@ -7739,7 +7846,8 @@ each(i : cities) {
 			INDEX_OUT_OF_BOUNDS,
 			DIVIDE_BY_ZERO,
 			INVALID_CAST,
-			OTHER
+			OTHER,
+			RAISED
 		}
 
 		#~
@@ -7774,6 +7882,30 @@ each(i : cities) {
 		~#
 		function : ClearError() ~ Nil {
 			RUNTIME_CLEAR_ERROR;
+		}
+
+		#~
+		Raises an error. A ?-> region on this thread recovers from it, as from a
+		runtime error; with none, the program reports it and ends. Raising the
+		error a handler recovered from passes it on.
+		@param e the error
+		~#
+		function : Raise(e : Error) ~ Nil {
+			RaiseNative(e, e->GetMessage());
+		}
+
+		function : RaiseNative(e : Error, message : String) ~ Nil {
+			RUNTIME_RAISE;
+		}
+
+		#~
+		The error a ?-> (Try) region on this thread last recovered from: the one
+		raised, or for a runtime error a NilError, IndexError, DivideByZeroError,
+		CastError or RuntimeError
+		@return the error, or Nil if none is recorded
+		~#
+		function : GetLastError() ~ Error {
+			RUNTIME_GET_LAST_ERROR;
 		}
 
 		function : GetErrorKindNative() ~ Int {

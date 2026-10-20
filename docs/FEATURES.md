@@ -165,6 +165,32 @@ if(Runtime->HasError()) {
 A Nil receiver is not an error: `x?->M()` with `x` Nil calls nothing. See
 [RECOVERED_ERRORS_DESIGN.md](RECOVERED_ERRORS_DESIGN.md).
 
+### Raising errors
+An error is an object: `System.Error`, or a subclass of your own. `Runtime->Raise`
+raises one, `?->` recovers from it as from any runtime error, and
+`Runtime->GetLastError()` returns it:
+```ruby
+class ParseError from Error {
+  New(message : String) { Parent(message); }
+}
+
+row := parser?->Next();
+if(row = Nil) {
+  e := Runtime->GetLastError();
+  if(e->TypeOf(ParseError)) {
+    "skipped: {$(e->GetMessage())}"->ErrorLine();
+  }
+  else {
+    Runtime->Raise(e);   # not ours: pass it on
+  };
+};
+```
+The runtime's own errors come back as `NilError`, `IndexError`,
+`DivideByZeroError`, `CastError` and `RuntimeError` (a failed `Runtime->Assert`,
+a failing library call). An error nothing recovers from ends the program with
+`Unhandled <class>: <message>`. Typed `try`/`on`/`finally` blocks are next; see
+[ERROR_HANDLING_DESIGN.md](ERROR_HANDLING_DESIGN.md).
+
 ### Tail calls
 A method's call to itself on `@self` in tail position (`Down(); }` or
 `return Down();`) is compiled as a jump at `-opt s1` and above, so unbounded

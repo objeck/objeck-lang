@@ -227,6 +227,11 @@ protected:
   // owns the handler recovers (#1171). Never reported: a handler exists.
   static const int64_t JIT_STATUS_DEFERRED = -6;
 
+  // A trap failed, or Runtime->Raise ran, under a Try(): the callback recorded
+  // the error and the interpreter that owns the handler recovers (#1247).
+  // Never reported: a handler exists.
+  static const int64_t JIT_STATUS_TRAP_FAILED = -7;
+
   // A C++ exception the bridge caught on its way out to compiled code. Neither
   // backend registers unwind information for the code it emits, so an
   // exception thrown in a bridge call -- by the interpreter it nested, a trap,

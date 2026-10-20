@@ -2412,7 +2412,39 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::TailCallOpt(std::vector<In
 
   const int self_class_id = current_method->GetClass()->GetId();
   const int self_method_id = current_method->GetId();
-  const int tco_body_label = ++unconditional_label;
+
+  // The body label must be new to THIS method, not just to the counter: an
+  // inlined callee's labels are shifted by multiples of JUMP_OFF_INC and can
+  // sit anywhere above it. When one coincided, a loop's backward jump resolved
+  // to this label instead and re-ran the method from its top -- an infinite
+  // loop at s3 in DecisionTreeClassifier:SortValues once lang gained three
+  // functions and the counter moved (#1247).
+  const int saved_unconditional_label = unconditional_label;
+  int max_label = unconditional_label;
+  for(auto* block : inputs) {
+    for(auto* instr : block->GetInstructions()) {
+      switch(instr->GetType()) {
+      case LBL:
+      case JMP:
+      case JMP_TABLE_SLOT:
+        if(static_cast<int>(instr->GetOperand()) > max_label) {
+          max_label = static_cast<int>(instr->GetOperand());
+        }
+        break;
+
+      case JMP_TABLE:
+        if(static_cast<int>(instr->GetOperand3()) > max_label) {
+          max_label = static_cast<int>(instr->GetOperand3());
+        }
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+  const int tco_body_label = max_label + 1;
+  unconditional_label = tco_body_label;
   bool found_tco = false;
 
   // first pass: rewrite tail calls
@@ -2457,7 +2489,7 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::TailCallOpt(std::vector<In
   }
 
   if(!found_tco) {
-    --unconditional_label; // reclaim unused label id
+    unconditional_label = saved_unconditional_label; // reclaim unused label id
     return tco_outputs;
   }
 

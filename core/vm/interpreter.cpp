@@ -553,7 +553,20 @@ loop_exit: ;
 
 bool StackInterpreter::ProcessTrap(size_t* &op_stack, size_t* &stack_pos)
 {
-  return TrapProcessor::ProcessTrap(program, (size_t*)(*stack_frame)->mem[0], op_stack, stack_pos, (*stack_frame));
+  if(TrapProcessor::ProcessTrap(program, (size_t*)(*stack_frame)->mem[0], op_stack, stack_pos, (*stack_frame))) {
+    return true;
+  }
+
+  // A failing trap -- Runtime->Raise among them -- recovers under a ?-> handler
+  // like any runtime error (#1247). It went straight to exit before.
+  bool& recorded = TrapErrorRecorded();
+  const bool had_record = recorded;
+  recorded = false;
+  if(HasTryHandler()) {
+    return TryErrorRecovery(stack_pos, had_record ? RECOVERED_NONE : RECOVERED_OTHER,
+                            had_record ? L"" : L"A runtime library call failed");
+  }
+  return false;
 }
 
 void StackInterpreter::StorLoclIntVar(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos)
