@@ -1785,8 +1785,12 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
   Statement* statement = nullptr;
   is_semi_colon = false;
 
+  // 'try {' (#1247): a contextual keyword, so 'try' stays an ordinary name
+  if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"try") {
+    statement = ParseTry(depth + 1);
+  }
   // identifier
-  if(Match(TOKEN_IDENT)) {
+  else if(Match(TOKEN_IDENT)) {
     const std::wstring ident = ParseBundleName();
     statement = ParseIdentifierStatement(ident, line_num, line_pos, file_name, depth);
   }
@@ -8150,6 +8154,93 @@ While* Parser::ParseWhile(int depth)
 /****************************
  * Parses a critical section
  ****************************/
+/****************************
+ * Parses 'try { } on(e : T) { } finally { }'
+ * (#1247). 'try', 'on' and 'finally' are
+ * contextual: each is a keyword only where
+ * it opens its part, so a parameter or
+ * variable may still be named 'on' (the
+ * standard library has one).
+ ****************************/
+Try* Parser::ParseTry(int depth)
+{
+  const std::wstring file_name = GetFileName();
+  const int line_num = GetLineNumber();
+  const int line_pos = GetLinePosition();
+
+#ifdef _DEBUG
+  Debug(L"Try", depth);
+#endif
+
+  NextToken();
+
+  // the error a handler tests, and one to raise again after 'finally'
+  const std::wstring id = std::to_wstring(hidden_local_id++);
+  SymbolEntry* error_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(L"#try_error_" + id),
+                                                                      TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Error", file_name, line_num, line_pos),
+                                                                      false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(error_entry);
+  SymbolEntry* raise_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(L"#try_raise_" + id),
+                                                                      TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Error", file_name, line_num, line_pos),
+                                                                      false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(raise_entry);
+
+  symbol_table->CurrentParseScope()->NewParseScope();
+  StatementList* body = ParseStatementList(depth + 1);
+  symbol_table->CurrentParseScope()->PreviousParseScope();
+
+  // 'on(name : Type) { ... }', any number
+  std::vector<TryHandler*> handlers;
+  while(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_PAREN, 1) && scanner->GetToken()->GetIdentifier() == L"on") {
+    TryHandler* handler = new TryHandler;
+    handler->file_name = file_name;
+    handler->line_num = GetLineNumber();
+    handler->line_pos = GetLinePosition();
+    NextToken();
+    NextToken();
+
+    if(!Match(TOKEN_IDENT)) {
+      ProcessError(TOKEN_IDENT);
+    }
+    const std::wstring name = scanner->GetToken()->GetIdentifier();
+    NextToken();
+
+    if(!Match(TOKEN_COLON)) {
+      ProcessError(L"Expected ':'", TOKEN_COLON);
+    }
+    NextToken();
+    handler->type = ParseType(depth + 1);
+
+    if(!Match(TOKEN_CLOSED_PAREN)) {
+      ProcessError(L"Expected ')'", TOKEN_CLOSED_PAREN);
+    }
+    NextToken();
+
+    symbol_table->CurrentParseScope()->NewParseScope();
+    handler->entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, handler->line_num, handler->line_pos, GetScopeName(name),
+                                                              handler->type, false, current_method != nullptr);
+    if(!symbol_table->CurrentParseScope()->AddEntry(handler->entry)) {
+      ProcessError(L"Variable already defined in this scope: '" + name + L"'");
+    }
+    handler->statements = ParseStatementList(depth + 1);
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+
+    handlers.push_back(handler);
+  }
+
+  // 'finally { ... }'
+  StatementList* finally_stmts = nullptr;
+  if(Match(TOKEN_IDENT) && Match(TOKEN_OPEN_BRACE, 1) && scanner->GetToken()->GetIdentifier() == L"finally") {
+    NextToken();
+    symbol_table->CurrentParseScope()->NewParseScope();
+    finally_stmts = ParseStatementList(depth + 1);
+    symbol_table->CurrentParseScope()->PreviousParseScope();
+  }
+
+  return TreeFactory::Instance()->MakeTry(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(), body, handlers, finally_stmts,
+                                         error_entry, raise_entry);
+}
+
 CriticalSection* Parser::ParseCritical(int depth)
 {
   const std::wstring file_name = GetFileName();

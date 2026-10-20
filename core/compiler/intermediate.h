@@ -73,7 +73,9 @@ class IntermediateEmitter {
   std::stack<std::pair<int, int> > break_labels;
   // critical() sections open at this point of the method, innermost last, and
   // how many were open when each enclosing loop began (#1117)
-  std::vector<CriticalSection*> active_criticals;
+  // the critical sections and try blocks a jump out of the current point
+  // leaves, innermost last (#1117, #1247)
+  std::vector<Statement*> active_criticals;
   std::stack<size_t> break_critical_depth;
   void EmitCriticalUnlocks(size_t keep_depth, Statement* statement);
   bool is_str_array;
@@ -98,6 +100,7 @@ class IntermediateEmitter {
   void EmitSelectJumpTable(Select* select_stmt);
   void EmitFor(For* for_stmt);
   void EmitCriticalSection(CriticalSection* critical_stmt);
+  void EmitTry(Try* try_stmt);
   void EmitIndices(ExpressionList* indices);
   void EmitExpressions(ExpressionList* parameters);
   void EmitExpression(Expression* expression);

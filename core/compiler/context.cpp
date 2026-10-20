@@ -2141,6 +2141,18 @@ bool ContextAnalyzer::AnalyzeReturnPaths(StatementList* statement_list, const in
     case RETURN_STMT:
       return true;
 
+    case TRY_STMT: {
+      // an error no handler takes is raised again, so only the body and the
+      // handlers need to return (#1247)
+      Try* try_stmt = static_cast<Try*>(last_statement);
+      bool returns = AnalyzeReturnPaths(try_stmt->GetBody(), depth + 1);
+      const std::vector<TryHandler*> &handlers = try_stmt->GetHandlers();
+      for(size_t i = 0; returns && i < handlers.size(); ++i) {
+        returns = AnalyzeReturnPaths(handlers[i]->statements, depth + 1);
+      }
+      return returns;
+    }
+
     case EMPTY_STMT: {
       std::vector<Statement*>::reverse_iterator rev_iter = statements.rbegin();
       while(rev_iter != statements.rend() && (*rev_iter)->GetStatementType() == EMPTY_STMT) {
@@ -2350,6 +2362,9 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       break;
 
     case RETURN_STMT:
+      if(!finally_loops.empty()) {
+        ProcessError(statement, L"A 'finally' block cannot be left with 'return'");
+      }
       AnalyzeReturn(static_cast<Return*>(statement), depth);
       break;
 
@@ -2378,6 +2393,9 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
       if(in_loop <= 0) {
         ProcessError(statement, L"Breaks are only allowed in loops.");
       }
+      else if(!finally_loops.empty() && in_loop <= finally_loops.back()) {
+        ProcessError(statement, L"A 'finally' block cannot be left with 'break' or 'continue'");
+      }
       break;
 
     case SELECT_STMT:
@@ -2387,6 +2405,10 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 
     case CRITICAL_STMT:
       AnalyzeCritical(static_cast<CriticalSection*>(statement), depth);
+      break;
+
+    case TRY_STMT:
+      AnalyzeTry(static_cast<Try*>(statement), depth);
       break;
 
     default:
@@ -6748,6 +6770,62 @@ void ContextAnalyzer::AnalyzeSelect(Select* select_stmt, const int depth)
 /****************************
  * Analyzes a critical section
  ****************************/
+/****************************
+ * Analyzes 'try { } on(e : T) { }
+ * finally { }' (#1247): each handler's
+ * type is System.Error or a subclass,
+ * and none is unreachable behind an
+ * earlier one
+ ****************************/
+void ContextAnalyzer::AnalyzeTry(Try* try_stmt, const int depth)
+{
+#ifdef _DEBUG
+  Debug(L"try", try_stmt->GetLineNumber(), depth);
+#endif
+
+  if(try_stmt->GetHandlers().empty() && !try_stmt->GetFinally()) {
+    ProcessError(try_stmt, L"A 'try' block needs an 'on' clause or a 'finally' block");
+  }
+
+  // the hidden locals hold System.Error
+  ResolveClassEnumType(try_stmt->GetErrorEntry()->GetType());
+  ResolveClassEnumType(try_stmt->GetRaiseEntry()->GetType());
+
+  AnalyzeStatements(try_stmt->GetBody(), depth + 1);
+
+  const std::vector<TryHandler*> &handlers = try_stmt->GetHandlers();
+  std::vector<std::wstring> taken;
+  for(size_t i = 0; i < handlers.size(); ++i) {
+    TryHandler* handler = handlers[i];
+
+    Type* type = handler->type;
+    bool valid = type->GetType() == CLASS_TYPE && type->GetDimension() == 0 && ResolveClassEnumType(type);
+    Class* klass = valid ? SearchProgramClasses(type->GetName()) : nullptr;
+    LibraryClass* lib_klass = valid && !klass ? linker->SearchClassLibraries(type->GetName(), program->GetLibUses(current_class->GetFileName())) : nullptr;
+    if(!valid || (!klass && !lib_klass) || !ValidDownCast(L"System.Error", klass, lib_klass)) {
+      ProcessError(try_stmt, L"An 'on' clause takes System.Error or a subclass of it");
+    }
+    else {
+      // an earlier clause for this class or one of its parents takes every error this one would
+      for(size_t j = 0; j < taken.size(); ++j) {
+        if(ValidDownCast(taken[j], klass, lib_klass)) {
+          ProcessError(try_stmt, L"This 'on' clause is unreachable: an earlier one takes '" + taken[j] + L"'");
+          break;
+        }
+      }
+      taken.push_back(type->GetName());
+    }
+
+    AnalyzeStatements(handler->statements, depth + 1);
+  }
+
+  if(try_stmt->GetFinally()) {
+    finally_loops.push_back(in_loop);
+    AnalyzeStatements(try_stmt->GetFinally(), depth + 1);
+    finally_loops.pop_back();
+  }
+}
+
 void ContextAnalyzer::AnalyzeCritical(CriticalSection* mutex, const int depth)
 {
   Variable* variable = mutex->GetVariable();

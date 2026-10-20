@@ -105,7 +105,8 @@ namespace frontend {
     LEAVING_STMT,
     CRITICAL_STMT,
     SYSTEM_STMT,
-    EMPTY_STMT
+    EMPTY_STMT,
+    TRY_STMT
   };
 
   /****************************
@@ -1825,6 +1826,90 @@ namespace frontend {
 
     StatementType GetStatementType() {
       return CRITICAL_STMT;
+    }
+  };
+
+  /****************************
+   * An 'on(e : T) { ... }' clause of a
+   * try block (#1247)
+   ****************************/
+  struct TryHandler {
+    Type* type;
+    SymbolEntry* entry;
+    StatementList* statements;
+    std::wstring file_name;
+    int line_num;
+    int line_pos;
+  };
+
+  /****************************
+   * 'try { } on(e : T) { } finally { }'
+   * (#1247; docs/ERROR_HANDLING_DESIGN.md).
+   * The body is a TRY_START/TRY_END region
+   * in its own method; the handlers are
+   * tested in order against the error
+   * recovered, and one nothing matches is
+   * raised again after 'finally'.
+   ****************************/
+  class Try : public Statement {
+    StatementList* body;
+    std::vector<TryHandler*> handlers;
+    StatementList* finally_statements;
+    SymbolEntry* error_entry;
+    SymbolEntry* raise_entry;
+    int emit_phase;
+
+  public:
+    Try(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+        StatementList* b, const std::vector<TryHandler*> &h, StatementList* f, SymbolEntry* e, SymbolEntry* r)
+      : Statement(file_name, line_num, line_pos, end_line_num, end_line_pos) {
+      body = b;
+      handlers = h;
+      finally_statements = f;
+      error_entry = e;
+      raise_entry = r;
+      emit_phase = 0;
+    }
+
+    ~Try() {
+      for(size_t i = 0; i < handlers.size(); ++i) {
+        delete handlers[i];
+      }
+      handlers.clear();
+    }
+
+    StatementList* GetBody() {
+      return body;
+    }
+
+    const std::vector<TryHandler*> &GetHandlers() {
+      return handlers;
+    }
+
+    StatementList* GetFinally() {
+      return finally_statements;
+    }
+
+    SymbolEntry* GetErrorEntry() {
+      return error_entry;
+    }
+
+    SymbolEntry* GetRaiseEntry() {
+      return raise_entry;
+    }
+
+    // the emitter's position: 0 the body's region is open, 1 the handlers'
+    // region is open, 2 neither (finally and after)
+    int GetEmitPhase() {
+      return emit_phase;
+    }
+
+    void SetEmitPhase(int p) {
+      emit_phase = p;
+    }
+
+    StatementType GetStatementType() {
+      return TRY_STMT;
     }
   };
 
@@ -3907,6 +3992,13 @@ namespace frontend {
     For* MakeFor(const std::wstring& file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
                  StatementList* pre_stmts, Expression* cond_expr, StatementList* update_stmts, Assignment* bind_assignment, StatementList* stmts) {
       For* tmp = new For(file_name, line_num, line_pos, end_line_num, end_line_pos, pre_stmts, cond_expr, update_stmts, bind_assignment, stmts);
+      statements.push_back(tmp);
+      return tmp;
+    }
+
+    Try* MakeTry(const std::wstring &file_name, const int line_num, const int line_pos, const int end_line_num, const int end_line_pos,
+                 StatementList* body, const std::vector<TryHandler*> &handlers, StatementList* finally_stmts, SymbolEntry* error_entry, SymbolEntry* raise_entry) {
+      Try* tmp = new Try(file_name, line_num, line_pos, end_line_num, end_line_pos, body, handlers, finally_stmts, error_entry, raise_entry);
       statements.push_back(tmp);
       return tmp;
     }

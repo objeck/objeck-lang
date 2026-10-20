@@ -3,55 +3,81 @@
 # https://rosettacode.org/wiki/Exceptions/Catch_an_exception_thrown_in_a_nested_call
 # Claimed in #1124
 #
-# foo calls bar twice, bar calls baz, and baz raises U0 on its first call and U1 on its second; foo must catch U0 only. Objeck has no user-defined exceptions and Try() cannot catch selectively -- ?-> recovers every runtime error alike and does not say which one -- so this is the closest honest version: baz records which exception it is raising in a shared note (an Int array) and then raises a real runtime error (U0 a divide by zero, U1 an index out of bounds); foo catches everything at its ?->, reads the note, and for anything but U0 raises again, which is the only rethrow there is.
+# foo calls bar twice, bar calls baz, and baz raises U0 on its first call and U1
+# on its second; foo must catch U0 only. U0 and U1 are exception types of their
+# own (subclasses of System.Error); baz throws them with Runtime->Raise, and
+# foo's try catches U0 with 'on(e : U0)'. U1 is not named there, so it goes on
+# out of foo.
 #
-# What happens when it runs: U0 is caught in foo and foo continues to its second call; U1 is raised again from foo and escapes it. Unguarded, that ends the program with an error message and exit status 1, as an uncaught exception would. Here Main guards the call to foo instead, so the escape is observed rather than fatal. The note is an array, not a field, because a field write in a guarded method two frames below the handler, before the error, crashes the recovery under the JIT.
+# What happens when it runs: U0 is caught in foo and foo continues to its second
+# call; U1 escapes foo. Unguarded, that ends the program with "Unhandled U1: ..."
+# and exit status 1, as the task describes. Here Main catches it instead, so the
+# escape is observed rather than fatal.
 #
-# Expected values follow from the task's definition of foo, bar and baz.
+# This used to need a note in a shared array and two different runtime errors
+# raised on purpose to tell U0 from U1 (#1247).
 ~#
 
-class Nested {
-	# the note: [0] the exception baz raised last, [1] calls to baz,
-	# [2] exceptions foo handled, [3] the last call foo completed
-	New() {}
+class U0 from Error {
+	New(message : String) {
+		Parent(message);
+	}
+}
 
-	# exception identities
-	function : U0() ~ Int { return 1; }
-	function : U1() ~ Int { return 2; }
+class U1 from Error {
+	New(message : String) {
+		Parent(message);
+	}
+}
+
+class Nested {
+	@baz_calls : Int;
+	@caught : Int;
+	@completed : Int;
+
+	New() {
+		@baz_calls := 0;
+		@caught := 0;
+		@completed := 0;
+	}
 
 	# raises U0 on the first call, U1 on the second
-	method : public : Baz(call : Int, note : Int[]) ~ IntRef {
-		note[1] := note[1] + 1;
+	method : public : Baz(call : Int) ~ Nil {
+		@baz_calls += 1;
 		if(call = 0) {
-			note[0] := U0();
-			zero := 0;
-			return IntRef->New(10 / zero);
+			Runtime->Raise(U0->New("baz, call 1"));
 		};
-		note[0] := U1();
-		return IntRef->New(note[99]);
+		Runtime->Raise(U1->New("baz, call 2"));
 	}
 
-	method : public : Bar(call : Int, note : Int[]) ~ IntRef {
-		return Baz(call, note);
+	method : public : Bar(call : Int) ~ Nil {
+		Baz(call);
 	}
 
-	# catches U0 only; anything else is raised again
-	method : public : Foo(note : Int[]) ~ IntRef {
+	# catches U0 only
+	method : public : Foo() ~ Nil {
 		for(call := 0; call < 2; call += 1;) {
-			result := @self?->Bar(call, note);
-			if(result = Nil) {
-				if(note[0] = U0()) {
-					note[2] := note[2] + 1;
-				}
-				else {
-					nothing : String;
-					return IntRef->New(nothing->Size());
-				};
+			try {
+				Bar(call);
+			}
+			on(e : U0) {
+				@caught += 1;
 			};
 			# reached only after a handled U0, on the first call
-			note[3] := call + 1;
+			@completed := call + 1;
 		};
-		return IntRef->New(0);
+	}
+
+	method : public : GetBazCalls() ~ Int {
+		return @baz_calls;
+	}
+
+	method : public : GetCaught() ~ Int {
+		return @caught;
+	}
+
+	method : public : GetCompleted() ~ Int {
+		return @completed;
 	}
 }
 
@@ -59,8 +85,7 @@ class RosettaExceptionsCatchAnExceptionThrownInANestedCall {
 	@failures : Int;
 
 	function : Main(args : String[]) ~ Nil {
-		t := RosettaExceptionsCatchAnExceptionThrownInANestedCall->New();
-		t->Run();
+		RosettaExceptionsCatchAnExceptionThrownInANestedCall->New()->Run();
 	}
 
 	New() {
@@ -77,33 +102,31 @@ class RosettaExceptionsCatchAnExceptionThrownInANestedCall {
 		};
 	}
 
-	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
-		if(got = want) {
-			"PASS: {$what}"->PrintLine();
-		}
-		else {
-			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
-			@failures += 1;
-		};
-	}
-
 	method : Run() ~ Nil {
 		n := Nested->New();
-		note := Int->New[4];
+		escaped := "";
+		try {
+			n->Foo();
+		}
+		on(e : U1) {
+			escaped := e->GetMessage();
+		};
 
-		escaped := n?->Foo(note);
-
-		CheckTrue("U1 escapes foo", escaped = Nil);
-		CheckInt("the exception that escaped is U1", note[0], Nested->U1());
-		CheckInt("foo caught exactly one exception, U0", note[2], 1);
-		CheckInt("baz was called twice", note[1], 2);
-		CheckInt("foo carried on after U0 to make its second call", note[3], 1);
+		CheckTrue("U1 escapes foo", escaped->Equals("baz, call 2"));
+		CheckTrue("foo caught exactly one exception, U0", n->GetCaught() = 1);
+		CheckTrue("baz was called twice", n->GetBazCalls() = 2);
+		CheckTrue("foo carried on after U0 to make its second call", n->GetCompleted() = 1);
 
 		# a second, independent run behaves the same way
-		again := Int->New[4];
-		escaped_again := n?->Foo(again);
-		CheckTrue("a second run also lets U1 escape", escaped_again = Nil);
-		CheckInt("and also caught U0 once", again[2], 1);
+		again := Nested->New();
+		escaped_again := false;
+		try {
+			again->Foo();
+		}
+		on(e : U1) {
+			escaped_again := true;
+		};
+		CheckTrue("a second run also lets U1 escape", escaped_again & again->GetCaught() = 1);
 
 		if(@failures > 0) {
 			"{$@failures} failure(s)"->PrintLine();

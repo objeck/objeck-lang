@@ -3,72 +3,79 @@
 # https://rosettacode.org/wiki/Exceptions
 # Claimed in #1123
 #
-# Objeck has no exceptions: no throw, no catch, no finally and no exception classes. What it has is Try() -- spelled ?-> on a call chain -- which turns any runtime error raised anywhere below that chain (Nil dereference, index out of bounds, integer or float divide by zero, invalid cast) into a Nil result, after which the program carries on. This is the closest honest version of the task: the handler is "the guarded call yields Nil", and "throwing" is raising a runtime error on purpose after recording a message where the handler can read it.
+# Define an exception type, throw one, and catch it. An exception is a
+# System.Error, or a subclass of it; Runtime->Raise throws it, and a try block
+# catches it by type with 'on', runs 'finally' on every way out, and throws
+# again whatever no clause names. The runtime's own errors are Errors too
+# (DivideByZeroError, IndexError, NilError, CastError, RuntimeError), so the
+# same try catches them. ?-> still turns any error below a guarded call into
+# Nil, and Runtime->GetLastError() says which one it was.
 #
-# What cannot be expressed: a user-defined exception type, catching by type (every guarded error looks the same), the error's own message (the runtime prints it only when nothing is guarding), finally, and rethrow. The recorded message is passed down in an array because a field write -- or a call -- in a guarded method two or more frames below the handler, before the error, crashes the recovery under the JIT; an array element store does not.
-#
-# Expected values follow from the arithmetic in each assertion; which errors Try recovers is documented in docs/FEATURES.md and docs/architecture.md.
+# This used to be done with a note in a shared array and a divide by zero on
+# purpose, which was all the language had (#1247).
 ~#
+
+# the task's exception type, with a field of its own
+class MyError from Error {
+	@code : Int;
+
+	New(message : String, code : Int) {
+		Parent(message);
+		@code := code;
+	}
+
+	method : public : GetCode() ~ Int {
+		return @code;
+	}
+}
 
 class Risky {
 	New() {}
 
-	method : public : Divide(a : Int, b : Int) ~ IntRef {
-		return IntRef->New(a / b);
+	method : public : Throw(message : String, code : Int) ~ Nil {
+		Runtime->Raise(MyError->New(message, code));
 	}
 
-	method : public : Reciprocal(x : Float) ~ FloatRef {
-		return FloatRef->New(1.0 / x);
+	method : public : Divide(a : Int, b : Int) ~ Int {
+		return a / b;
 	}
 
-	method : public : At(values : Int[], i : Int) ~ IntRef {
-		return IntRef->New(values[i]);
+	method : public : At(values : Int[], i : Int) ~ Int {
+		return values[i];
 	}
 
-	method : public : Length(s : String) ~ IntRef {
-		return IntRef->New(s->Size());
-	}
-
-	method : public : AsText(b : Base) ~ String {
-		return b->As(String);
-	}
-
-	# "throw": record the message for the handler, then raise
-	method : public : Throw(note : String[], message : String) ~ IntRef {
-		note[0] := message;
-		nothing : String;
-		return IntRef->New(nothing->Size());
-	}
-
-	# two calls deep, with nothing done before the error but the calls
-	method : public : Outer(a : Int, b : Int) ~ IntRef {
+	# two calls deep
+	method : public : Outer(a : Int, b : Int) ~ Int {
 		return Middle(a, b);
 	}
 
-	method : public : Middle(a : Int, b : Int) ~ IntRef {
-		return Divide(a, b);
+	method : public : Middle(a : Int, b : Int) ~ Int {
+		v := Divide(a, b);
+		return v;
 	}
 
-	# a handler of its own: recovers, then answers -1 instead
-	method : public : SafeDivide(a : Int, b : Int) ~ IntRef {
-		r := @self?->Divide(a, b);
-		if(r = Nil) {
-			return IntRef->New(-1);
+	# catches its own error and answers -1 instead
+	method : public : SafeDivide(a : Int, b : Int) ~ Int {
+		try {
+			return Divide(a, b);
+		}
+		on(e : DivideByZeroError) {
+			return -1;
 		};
-		return r;
 	}
 }
 
 class RosettaExceptions {
 	@failures : Int;
+	@log : String;
 
 	function : Main(args : String[]) ~ Nil {
-		t := RosettaExceptions->New();
-		t->Run();
+		RosettaExceptions->New()->Run();
 	}
 
 	New() {
 		@failures := 0;
+		@log := "";
 	}
 
 	method : CheckTrue(what : String, ok : Bool) ~ Nil {
@@ -81,91 +88,133 @@ class RosettaExceptions {
 		};
 	}
 
-	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
-		if(got = want) {
-			"PASS: {$what}"->PrintLine();
-		}
-		else {
-			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
-			@failures += 1;
-		};
-	}
-
 	method : Run() ~ Nil {
-		# split into four methods: with all of these recoveries in one method, the
-		# program ends with "call stack bounds have been exceeded!" and exit 1 when
-		# every method is JIT-compiled, although every assertion passes
 		r := Risky->New();
-		Kinds(r);
-		Depth(r);
-		Throwing(r);
-		Repeated(r);
+
+		# throw and catch a user-defined exception, by type
+		code := 0;
+		message := "";
+		try {
+			r->Throw("bad input", 42);
+			CheckTrue("not reached after a throw", false);
+		}
+		on(e : MyError) {
+			code := e->GetCode();
+			message := e->GetMessage();
+		};
+		CheckTrue("a thrown MyError is caught by type", code = 42);
+		CheckTrue("the handler reads its message", message->Equals("bad input"));
+
+		# the runtime's own errors, each by its type
+		got := "";
+		try {
+			r->Divide(1, 0);
+		}
+		on(e : DivideByZeroError) {
+			got := "divide";
+		};
+		CheckTrue("divide by zero is a DivideByZeroError", got->Equals("divide"));
+
+		got := "";
+		try {
+			r->At([1, 2, 3], 3);
+		}
+		on(e : IndexError) {
+			got := "index";
+		};
+		CheckTrue("an out-of-bounds index is an IndexError", got->Equals("index"));
+
+		got := "";
+		try {
+			nothing : String;
+			n := nothing->Size();
+		}
+		on(e : NilError) {
+			got := "nil";
+		};
+		CheckTrue("a Nil dereference is a NilError", got->Equals("nil"));
+
+		# the first clause that matches wins; Error catches anything
+		got := "";
+		try {
+			r->Throw("x", 1);
+		}
+		on(e : DivideByZeroError) {
+			got := "wrong";
+		}
+		on(e : Error) {
+			got := "any";
+		};
+		CheckTrue("a later 'on(e : Error)' catches what earlier ones do not", got->Equals("any"));
+
+		# finally runs whether or not anything was thrown
+		@log := "";
+		try {
+			r->Divide(4, 2);
+		}
+		finally {
+			@log += "a";
+		};
+		try {
+			r->Throw("y", 2);
+		}
+		on(e : MyError) {
+			@log += "b";
+		}
+		finally {
+			@log += "c";
+		};
+		CheckTrue("finally runs on both paths", @log->Equals("abc"));
+
+		# thrown two calls deep
+		got := "";
+		try {
+			r->Outer(5, 0);
+		}
+		on(e : DivideByZeroError) {
+			got := "deep";
+		};
+		CheckTrue("an error two calls deep is caught", got->Equals("deep"));
+
+		# rethrow: an inner handler passes the exception on
+		code := 0;
+		try {
+			try {
+				r->Throw("passed on", 7);
+			}
+			on(e : MyError) {
+				Runtime->Raise(e);
+			};
+		}
+		on(e : MyError) {
+			code := e->GetCode();
+		};
+		CheckTrue("a rethrown exception reaches the outer handler", code = 7);
+
+		# a handler inside a method: its caller never sees the error
+		CheckTrue("an inner handler substitutes its own answer", r->SafeDivide(7, 0) = -1);
+		CheckTrue("and is transparent on success", r->SafeDivide(7, 7) = 1);
+
+		# ?-> as before, and the error it recovered from
+		r?->Throw("guarded", 3);
+		e := Runtime->GetLastError();
+		CheckTrue("?-> recovers from a throw and keeps the error", e->TypeOf(MyError) & e->As(MyError)->GetCode() = 3);
+
+		# many in a row
+		caught := 0;
+		for(i := 0; i < 200; i += 1;) {
+			try {
+				r->Divide(i, 0);
+			}
+			on(e : DivideByZeroError) {
+				caught += 1;
+			};
+		};
+		CheckTrue("200 errors in a row are all caught", caught = 200);
 
 		if(@failures > 0) {
 			"{$@failures} failure(s)"->PrintLine();
 			Runtime->Exit(1);
 		};
-	}
-
-	method : Kinds(r : Risky) ~ Nil {
-		# no error: the guarded call returns its value
-		ok := r?->Divide(84, 2);
-		CheckTrue("an unfailing guarded call returns a value", ok <> Nil);
-		CheckInt("and the value is right", ok->Get(), 42);
-
-		# each kind of runtime error is caught. Every guarded result goes through a
-		# local before it is compared: compared inline, or passed straight in as an
-		# argument, a recovered divide by zero in a call that takes arguments leaves
-		# the interpreter's operand stack wrong (the comparison answers false and an
-		# earlier argument reads as Nil)
-		dz := r?->Divide(1, 0);
-		CheckTrue("integer divide by zero is caught", dz = Nil);
-		fz := r?->Reciprocal(0.0);
-		CheckTrue("float divide by zero is caught", fz = Nil);
-		ob := r?->At([1, 2, 3], 3);
-		CheckTrue("index out of bounds is caught", ob = Nil);
-		# a local, because F([1, 2, 3], -1) parses as the array literal minus 1
-		below := -1;
-		ub := r?->At([1, 2, 3], below);
-		CheckTrue("a negative index is caught", ub = Nil);
-		nothing : String;
-		nd := r?->Length(nothing);
-		CheckTrue("a Nil dereference is caught", nd = Nil);
-		bc := r?->AsText(IntRef->New(5));
-		CheckTrue("an invalid cast is caught", bc = Nil);
-	}
-
-	method : Depth(r : Risky) ~ Nil {
-		# the guard reaches an error raised two calls below it
-		two := r?->Outer(5, 0);
-		CheckTrue("an error two calls deep is caught", two = Nil);
-		deep := r?->Outer(50, 5);
-		CheckInt("and the same path without the error answers", deep->Get(), 10);
-	}
-
-	method : Throwing(r : Risky) ~ Nil {
-		# throw and catch: the handler reads what the thrower recorded
-		note := String->New[1];
-		caught := r?->Throw(note, "user error: bad input");
-		CheckTrue("a thrown error is caught", caught = Nil);
-		CheckTrue("the handler sees the thrown message", note[0]->Equals("user error: bad input"));
-
-		# a handler inside a method recovers and the caller never sees the error
-		inner := r->SafeDivide(7, 0);
-		CheckInt("an inner handler substitutes its own answer", inner->Get(), -1);
-		inner_ok := r->SafeDivide(7, 7);
-		CheckInt("the inner handler is transparent on success", inner_ok->Get(), 1);
-	}
-
-	method : Repeated(r : Risky) ~ Nil {
-		# execution continues normally after many recoveries
-		misses := 0;
-		for(i := 0; i < 200; i += 1;) {
-			miss := r?->Divide(i, 0);
-			if(miss = Nil) { misses += 1; };
-		};
-		CheckInt("200 errors in a row are all caught", misses, 200);
-		after := r?->Divide(9, 3);
-		CheckInt("and the program carries on afterwards", after->Get(), 3);
 	}
 }
