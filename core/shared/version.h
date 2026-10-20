@@ -35,7 +35,11 @@
 #include "traps.h"
 
 #define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
-#define MAGIC_NUM_LIB 0xffb6 // bitmask 'k'
+// A library records its methods' parameter names and which take defaults, so
+// a caller can name a library method's arguments (#1244). An .obl written
+// before that carries the old signature and must be rebuilt.
+#define MAGIC_NUM_LIB 0xffb7
+#define MAGIC_NUM_LIB_NO_PARAM_NAMES 0xffb6 // bitmask 'k'
 
 #define VER_NUM 2026101
 #define VERSION_STRING L"2026.10.1"

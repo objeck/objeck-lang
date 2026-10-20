@@ -66,7 +66,8 @@ jobs:
           #include "traps.h"
 
           #define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
-          #define MAGIC_NUM_LIB 0xffb6 // bitmask 'k'
+          #define MAGIC_NUM_LIB 0xffb7
+          #define MAGIC_NUM_LIB_NO_PARAM_NAMES 0xffb6 // bitmask 'k'
 
           #define VER_NUM $VERSION_NUMBER
           #define VERSION_STRING L"$VERSION"

@@ -53,9 +53,15 @@ Train(data, rate: 0.1, epochs: 50); # any order
 Point->New(y: 2, x: 1);             # constructors too
 ```
 Arguments are evaluated in the order written. Named arguments work for the
-functions, methods and constructors of the program being compiled. Library
-methods, virtual methods and function values do not take them yet: a call that
-tries is a compile error, never a silent positional call. See
+functions, methods and constructors of the program being compiled, and for those
+of libraries, which record their parameter names:
+```ruby
+"abc"->Pad(num: 2, char: '*', is_left: true);  # "**abc"
+Int->Clamp(value: v, min: 0, max: 10);
+```
+Virtual methods, function values and calls on a primitive value (`v->Clamp(...)`)
+do not take them: a call that tries is a compile error, never a silent positional
+call. A library's parameter names are part of its API. See
 [NAMED_ARGUMENTS_DESIGN.md](NAMED_ARGUMENTS_DESIGN.md).
 
 ### Array Literals

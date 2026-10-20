@@ -511,6 +511,9 @@ namespace backend {
     std::vector<IntermediateBlock*> blocks;
     IntermediateDeclarations* entries;
     IntermediateClass* klass;
+    // a library method's parameter names, and which take a default value (#1244)
+    std::vector<std::wstring> param_names;
+    std::vector<bool> param_defaults;
 
   public:
     IntermediateMethod(int i, const std::wstring &n, bool v, bool h, bool l, const std::wstring &r,
@@ -550,6 +553,8 @@ namespace backend {
       is_lib = true;
       instr_count = 0;
       klass = k;
+      param_names = lib_method->GetParameterNames();
+      param_defaults = lib_method->GetParameterDefaults();
       
       // process instructions
       IntermediateBlock* block = new IntermediateBlock;
@@ -558,6 +563,11 @@ namespace backend {
         block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(lib_instructions[i]));
       }
       AddBlock(block);
+    }
+
+    void SetParameters(const std::vector<std::wstring> &n, const std::vector<bool> &d) {
+      param_names = n;
+      param_defaults = d;
     }
 
     ~IntermediateMethod() {

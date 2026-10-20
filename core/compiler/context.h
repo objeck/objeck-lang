@@ -549,6 +549,9 @@ class ContextAnalyzer {
   void AddDefaultParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method);
   void GenerateNamedForwarders(ParsedBundle* bundle, Class* klass, Method* method);
+  void GenerateMaskForwarder(ParsedBundle* bundle, Class* klass, Method* method);
+  Expression* NamedPlaceholder(Type* type, Expression* at);
+  bool BindNamedLibraryArguments(LibraryClass* klass, MethodCall* method_call, const int depth);
   bool MapNamedArguments(Method* method, const std::vector<std::wstring> &shape, std::vector<size_t> &order, std::wstring &error);
   std::wstring NamedForwarderName(const std::wstring &name, const std::vector<size_t> &order);
   std::wstring ParameterNames(Method* method);

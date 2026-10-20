@@ -721,6 +721,19 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
                                       method->GetMethodType(), method->IsNative(), method->IsStatic(), 
                                       space, num_params, entries, imm_klass);
 
+  // the parameters' names as written, and which take a default (#1244)
+  {
+    std::vector<std::wstring> param_names;
+    std::vector<bool> param_defaults;
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      const std::wstring scoped = declarations[i]->GetEntry()->GetName();
+      const size_t start = scoped.find_last_of(L':');
+      param_names.push_back(start == std::wstring::npos ? scoped : scoped.substr(start + 1));
+      param_defaults.push_back(declarations[i]->GetAssignment() != nullptr);
+    }
+    imm_method->SetParameters(param_names, param_defaults);
+  }
+
   if(!method->IsVirtual()) {
     // block
     NewBlock();
@@ -4280,11 +4293,10 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
       // a link whose receiver is parameter 0 gets its arguments from
       // EmitMethodCall, after the receiver (see ReceiverIsFirstParameter)
       if(!ReceiverIsFirstParameter(method_call)) {
-        std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-        for(size_t i = 0; i < expressions.size(); ++i) {
-          EmitExpression(expressions[i]);
-          EmitClassCast(expressions[i], true);
-          new_char_str_count = 0;
+        const size_t count = method_call->GetCallingParameters()->GetExpressions().size();
+        EmitNamedArgumentTemps(method_call);
+        for(size_t i = 0; i < count; ++i) {
+          EmitCallArgument(method_call, i);
           if(swap_under_receiver) {
             imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
           }
@@ -5113,11 +5125,10 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
       const bool is_instance_call = (method_call->GetMethod() && !method_call->GetMethod()->IsStatic()) ||
         (method_call->GetLibraryMethod() && !method_call->GetLibraryMethod()->IsStatic());
       new_char_str_count = 0;
-      std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-      for(size_t i = 0; i < expressions.size(); ++i) {
-        EmitExpression(expressions[i]);
-        EmitClassCast(expressions[i], true);
-        new_char_str_count = 0;
+      const size_t count = method_call->GetCallingParameters()->GetExpressions().size();
+      EmitNamedArgumentTemps(method_call);
+      for(size_t i = 0; i < count; ++i) {
+        EmitCallArgument(method_call, i);
         if(is_instance_call && !is_str_array) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
         }
@@ -5270,11 +5281,10 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
       const bool is_instance_call = (tail_call->GetMethod() && !tail_call->GetMethod()->IsStatic()) ||
         (tail_call->GetLibraryMethod() && !tail_call->GetLibraryMethod()->IsStatic());
       new_char_str_count = 0;
-      std::vector<Expression*> args = tail_call->GetCallingParameters()->GetExpressions();
-      for(size_t i = 0; i < args.size(); ++i) {
-        EmitExpression(args[i]);
-        EmitClassCast(args[i], true);
-        new_char_str_count = 0;
+      const size_t count = tail_call->GetCallingParameters()->GetExpressions().size();
+      EmitNamedArgumentTemps(tail_call);
+      for(size_t i = 0; i < count; ++i) {
+        EmitCallArgument(tail_call, i);
         if(is_instance_call && !is_str_array) {
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, expression, cur_line_num, SWAP_INT));
         }
@@ -7245,15 +7255,65 @@ void IntermediateEmitter::EmitMethodCallParameters(MethodCall* method_call)
   else {
     // declarations
     if(method_call->GetCallingParameters()) {
-      std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
-      for(size_t i = 0; i < expressions.size(); ++i) {
-        EmitExpression(expressions[i]);
-        EmitClassCast(expressions[i], true);
-        new_char_str_count = 0;
+      const size_t count = method_call->GetCallingParameters()->GetExpressions().size();
+      EmitNamedArgumentTemps(method_call);
+      for(size_t i = 0; i < count; ++i) {
+        EmitCallArgument(method_call, i);
       }
     }
     is_new_inst = false;
   }
+}
+
+/****************************
+ * A named call to a library method
+ * (#1244) passes its arguments in
+ * parameter order but evaluates them
+ * in the order written: each goes
+ * into its own hidden local first.
+ * Stack-neutral, so it may run with
+ * a chain's receiver on the stack.
+ ****************************/
+void IntermediateEmitter::EmitNamedArgumentTemps(MethodCall* method_call)
+{
+  const std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+  const std::vector<size_t> &eval_order = method_call->GetNamedEvalOrder();
+  const std::vector<SymbolEntry*> &temps = method_call->GetNamedTemps();
+  if(eval_order.empty() || temps.size() != expressions.size()) {
+    return;
+  }
+
+  for(size_t k = 0; k < eval_order.size(); ++k) {
+    const size_t p = eval_order[k];
+    EmitExpression(expressions[p]);
+    EmitClassCast(expressions[p], true);
+    new_char_str_count = 0;
+    const bool is_float = temps[p]->GetType()->GetType() == frontend::FLOAT_TYPE && temps[p]->GetType()->GetDimension() == 0;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num,
+                                                                               is_float ? STOR_FLOAT_VAR : STOR_INT_VAR, temps[p]->GetId(), LOCL));
+  }
+}
+
+/****************************
+ * Emits a call's i-th argument: its
+ * hidden local, when a named call
+ * evaluated it already, or else the
+ * expression itself
+ ****************************/
+void IntermediateEmitter::EmitCallArgument(MethodCall* method_call, const size_t i)
+{
+  const std::vector<Expression*> expressions = method_call->GetCallingParameters()->GetExpressions();
+  const std::vector<SymbolEntry*> &temps = method_call->GetNamedTemps();
+  if(!method_call->GetNamedEvalOrder().empty() && temps.size() == expressions.size() && temps[i]) {
+    const bool is_float = temps[i]->GetType()->GetType() == frontend::FLOAT_TYPE && temps[i]->GetType()->GetDimension() == 0;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num,
+                                                                               is_float ? LOAD_FLOAT_VAR : LOAD_INT_VAR, temps[i]->GetId(), LOCL));
+  }
+  else {
+    EmitExpression(expressions[i]);
+    EmitClassCast(expressions[i], true);
+  }
+  new_char_str_count = 0;
 }
 
 /****************************
