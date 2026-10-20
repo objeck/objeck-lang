@@ -1842,10 +1842,53 @@ LibraryMethod*ContextAnalyzer::DerivedLambdaFunction(std::vector<LibraryMethod*>
       lambda_inferred.first = nullptr;
       lambda_inferred.second = nullptr;
       BuildLambdaFunction(inferred_lambda, inferred_type, 0);
+
+      // a result typed by the method's own type parameter -- Map<R>((H) ~ R) --
+      // is bound by what the lambda's body returns (#1242)
+      Type* declared_rtrn = alt_mthd_type->GetFunctionReturn();
+      if(declared_rtrn && !declared_rtrn->GetMethodGeneric().empty()) {
+        Type* result_type = LambdaResultType(inferred_lambda);
+        if(result_type) {
+          std::map<std::wstring, Type*> bindings = lambda_inferred_call->GetMethodGenericBindings();
+          Type* binding = TypeFactory::Instance()->MakeType(BoxedBindingType(result_type));
+          binding->SetMethodGeneric(L"");
+          ResolveClassEnumType(binding);
+          bindings[declared_rtrn->GetMethodGeneric()] = binding;
+          lambda_inferred_call->SetMethodGenericBindings(bindings);
+        }
+      }
       return alt_mthd;
     }
   }
 
+  return nullptr;
+}
+
+/****************************
+ * The type a lambda's body returns:
+ * the expression of its last return
+ * (#1242)
+ ****************************/
+Type* ContextAnalyzer::LambdaResultType(Lambda* lambda)
+{
+  Method* method = lambda->GetMethod();
+  if(!method || !method->GetStatements()) {
+    return nullptr;
+  }
+  std::vector<Statement*> statements = method->GetStatements()->GetStatements();
+  for(size_t i = statements.size(); i > 0; --i) {
+    if(statements[i - 1]->GetStatementType() == RETURN_STMT) {
+      Expression* expression = static_cast<Return*>(statements[i - 1])->GetExpression();
+      if(expression) {
+        Expression* last = expression;
+        while(last->GetMethodCall()) {
+          last = last->GetMethodCall();
+        }
+        return last->GetEvalType();
+      }
+      return nullptr;
+    }
+  }
   return nullptr;
 }
 
@@ -4877,6 +4920,29 @@ bool ContextAnalyzer::UnifyMethodGeneric(Type* param, Type* arg, int arg_dimensi
     return true;
   }
 
+  // (A, ..) ~ R: match a function argument's parameters and return (#1242)
+  if(param->GetType() == FUNC_TYPE) {
+    if(arg->GetType() != FUNC_TYPE) {
+      return true;
+    }
+    const std::vector<Type*> param_funcs = param->GetFunctionParameters();
+    const std::vector<Type*> arg_funcs = arg->GetFunctionParameters();
+    if(param_funcs.size() == arg_funcs.size()) {
+      for(size_t i = 0; i < param_funcs.size(); ++i) {
+        if(param_funcs[i] && arg_funcs[i] && param_funcs[i]->HasMethodGeneric() &&
+           !UnifyMethodGeneric(param_funcs[i], arg_funcs[i], arg_funcs[i]->GetDimension(), bindings, bounds, error)) {
+          return false;
+        }
+      }
+    }
+    Type* param_rtrn = param->GetFunctionReturn();
+    Type* arg_rtrn = arg->GetFunctionReturn();
+    if(param_rtrn && arg_rtrn && param_rtrn->HasMethodGeneric()) {
+      return UnifyMethodGeneric(param_rtrn, arg_rtrn, arg_rtrn->GetDimension(), bindings, bounds, error);
+    }
+    return true;
+  }
+
   // C<.., T, ..>: match the type arguments pairwise
   const std::vector<Type*> param_generics = param->GetGenerics();
   const std::vector<Type*> arg_generics = arg->GetGenerics();
@@ -4908,8 +4974,12 @@ bool ContextAnalyzer::InferMethodGenerics(Method* method, const std::vector<Expr
       continue;
     }
 
-    Type* arg = GetExpressionType(arguments[i], depth + 1);
+    Type* arg = arguments[i]->GetExpressionType() == LAMBDA_EXPR ? static_cast<Lambda*>(arguments[i])->GetLambdaType() :
+      GetExpressionType(arguments[i], depth + 1);
     if(!arg) {
+      if(arguments[i]->GetExpressionType() == LAMBDA_EXPR) {
+        continue;
+      }
       return false;
     }
     const int arg_dimension = IsScalar(arguments[i]) ? 0 : arg->GetDimension();
@@ -4967,7 +5037,150 @@ Type* ContextAnalyzer::SubstituteMethodGenerics(Type* type, const std::map<std::
     generics[i] = SubstituteMethodGenerics(generics[i], bindings);
   }
   result->SetGenerics(generics);
+
+  // a function type's parameters and return (#1242)
+  if(type->GetType() == FUNC_TYPE) {
+    std::vector<Type*> func_params = type->GetFunctionParameters();
+    for(size_t i = 0; i < func_params.size(); ++i) {
+      func_params[i] = SubstituteMethodGenerics(func_params[i], bindings);
+    }
+    result->SetFunctionParameters(func_params);
+    result->SetFunctionReturn(SubstituteMethodGenerics(type->GetFunctionReturn(), bindings));
+  }
   return result;
+}
+
+/****************************
+ * Applies a call's type arguments
+ * to a parameter type the class's
+ * own were already resolved in,
+ * walking the original for the
+ * marks: resolving rebuilds a
+ * function type from its encoded
+ * name, which carries the bound and
+ * not the mark (#1242)
+ ****************************/
+Type* ContextAnalyzer::SubstituteAlong(Type* original, Type* resolved, const std::map<std::wstring, Type*> &bindings)
+{
+  if(!original || !resolved || bindings.empty() || !original->HasMethodGeneric()) {
+    return resolved;
+  }
+
+  const std::wstring &name = original->GetMethodGeneric();
+  if(!name.empty()) {
+    std::map<std::wstring, Type*>::const_iterator found = bindings.find(name);
+    if(found == bindings.end()) {
+      return resolved;
+    }
+    Type* result = TypeFactory::Instance()->MakeType(found->second);
+    result->SetDimension(found->second->GetDimension() + original->GetDimension());
+    return result;
+  }
+
+  Type* result = TypeFactory::Instance()->MakeType(resolved);
+  const std::vector<Type*> original_generics = original->GetGenerics();
+  std::vector<Type*> generics = resolved->GetGenerics();
+  for(size_t i = 0; i < generics.size() && i < original_generics.size(); ++i) {
+    generics[i] = SubstituteAlong(original_generics[i], generics[i], bindings);
+  }
+  result->SetGenerics(generics);
+
+  if(original->GetType() == FUNC_TYPE && resolved->GetType() == FUNC_TYPE) {
+    const std::vector<Type*> original_params = original->GetFunctionParameters();
+    std::vector<Type*> params = resolved->GetFunctionParameters();
+    for(size_t i = 0; i < params.size() && i < original_params.size(); ++i) {
+      params[i] = SubstituteAlong(original_params[i], params[i], bindings);
+    }
+    result->SetFunctionParameters(params);
+    result->SetFunctionReturn(SubstituteAlong(original->GetFunctionReturn(), resolved->GetFunctionReturn(), bindings));
+    // matched by its encoded name, which still spells the bound
+    result->SetName(L"");
+  }
+  return result;
+}
+
+/****************************
+ * Infers a generic library
+ * method's type arguments from a
+ * call's arguments, and checks each
+ * against its bound (#1242, phase 2)
+ ****************************/
+bool ContextAnalyzer::InferLibraryMethodGenerics(LibraryMethod* method, const std::vector<Expression*> &arguments, const size_t offset,
+                                                 std::map<std::wstring, Type*> &bindings, std::wstring &error, const int depth)
+{
+  std::map<std::wstring, std::wstring> bounds;
+  std::vector<Type*> params = method->GetDeclarationTypes();
+  for(size_t i = 0; i < arguments.size() && i + offset < params.size(); ++i) {
+    Type* param = params[i + offset];
+    if(!param || !param->HasMethodGeneric()) {
+      continue;
+    }
+
+    // a lambda's declared type; an inferred one has none yet, and its result
+    // binds after it is built (DerivedLambdaFunction)
+    Type* arg = nullptr;
+    if(arguments[i]->GetExpressionType() == LAMBDA_EXPR) {
+      arg = static_cast<Lambda*>(arguments[i])->GetLambdaType();
+    }
+    else {
+      arg = GetExpressionType(arguments[i], depth + 1);
+    }
+    if(!arg) {
+      continue;
+    }
+    const int arg_dimension = IsScalar(arguments[i]) ? 0 : arg->GetDimension();
+    if(!UnifyMethodGeneric(param, arg, arg_dimension, bindings, bounds, error)) {
+      return false;
+    }
+  }
+
+  for(std::map<std::wstring, Type*>::iterator iter = bindings.begin(); iter != bindings.end(); ++iter) {
+    const std::wstring bound_name = bounds[iter->first];
+    if(bound_name.empty() || bound_name == L"System.Base" || iter->second->GetDimension() > 0) {
+      continue;
+    }
+
+    Type* bound = TypeFactory::Instance()->MakeType(CLASS_TYPE, bound_name);
+    ResolveClassEnumType(bound);
+    Class* klass = nullptr;
+    LibraryClass* lib_klass = nullptr;
+    if(GetProgramOrLibraryClass(iter->second, klass, lib_klass) && !ValidDownCast(bound->GetName(), klass, lib_klass)) {
+      error = L"Type parameter '" + iter->first + L"': '" + FormatTypeString(iter->second->GetName()) +
+        L"' does not meet its bound '" + FormatTypeString(bound->GetName()) + L"'";
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/****************************
+ * The class a value of a type is
+ * an object of, for a type
+ * parameter's binding: primitives
+ * box as they do when passed as a
+ * Base (#1242)
+ ****************************/
+Type* ContextAnalyzer::BoxedBindingType(Type* type)
+{
+  if(!type || type->GetDimension() > 0) {
+    return type;
+  }
+
+  switch(type->GetType()) {
+  case BOOLEAN_TYPE:
+    return TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.BoolRef");
+  case BYTE_TYPE:
+    return TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.ByteRef");
+  case CHAR_TYPE:
+    return TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.CharRef");
+  case INT_TYPE:
+    return TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.IntRef");
+  case FLOAT_TYPE:
+    return TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.FloatRef");
+  default:
+    return type;
+  }
 }
 
 /****************************
@@ -5426,20 +5639,34 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
   std::vector<Expression*> expr_params = calling_params->GetExpressions();
   std::vector<LibraryMethod*> candidates = klass->GetUnqualifiedMethods(method_name);
 
-  // save all valid candidates
+  // save all valid candidates; a generic method's type arguments, per candidate (#1242)
   std::vector<LibraryMethodCallSelection*> matches;
+  std::map<LibraryMethod*, std::map<std::wstring, Type*> > candidate_bindings;
+  std::wstring generic_error;
   for(size_t i = 0; i < candidates.size(); ++i) {
     // match parameter sizes
     LibraryMethod* candidate = candidates[i];
     std::vector<Type*> method_parms = candidate->GetDeclarationTypes();
     if(expr_params.size() + offset == method_parms.size() &&
        (!receiver || (candidate->IsStatic() && IsReceiverParameter(method_parms[0], receiver)))) {
+      std::map<std::wstring, Type*> bindings;
+      if(candidate->IsGeneric()) {
+        std::wstring error;
+        if(!InferLibraryMethodGenerics(candidate, expr_params, offset, bindings, error, depth)) {
+          if(generic_error.empty()) {
+            generic_error = error;
+          }
+          continue;
+        }
+        candidate_bindings[candidate] = bindings;
+      }
+
       // box and unbox parameters
       std::vector<Expression*> boxed_resolved_params;
       for(size_t j = 0; j < expr_params.size(); ++j) {
         Expression* expr_param = expr_params[j];
         Type* expr_type = expr_param->GetEvalType();
-        Type* method_type = ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false);
+        Type* method_type = SubstituteAlong(method_parms[j + offset], ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false), bindings);
 
         Expression* boxed_param = BoxExpression(method_type, expr_param, depth);
         if(boxed_param) {
@@ -5460,7 +5687,7 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 
       LibraryMethodCallSelection* match = new LibraryMethodCallSelection(candidate, boxed_resolved_params);
       for(size_t j = 0; j < boxed_resolved_params.size(); ++j) {
-        Type* method_type = ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false);
+        Type* method_type = SubstituteAlong(method_parms[j + offset], ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false), bindings);
         const int compare = MatchCallingParameter(boxed_resolved_params[j], method_type, nullptr, klass, depth);
         match->AddParameterMatch(compare);
       }
@@ -5472,6 +5699,11 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
   LibraryMethodCallSelector selector(method_call, matches);
   LibraryMethod* lib_method = selector.GetSelection();
   if(lib_method) {
+    std::map<LibraryMethod*, std::map<std::wstring, Type*> >::iterator bound = candidate_bindings.find(lib_method);
+    if(bound != candidate_bindings.end()) {
+      method_call->SetMethodGenericBindings(bound->second);
+    }
+
     // check casts on final candidate
     std::vector<Type*> method_parms = lib_method->GetDeclarationTypes();
     for(size_t j = 0; j < expr_params.size(); ++j) {
@@ -5485,7 +5717,8 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
         expression = expression->GetMethodCall();
       }
       // map generic to concrete type, if needed
-      Type* left = ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false);
+      Type* left = SubstituteAlong(method_parms[j + offset], ResolveGenericParam(method_parms[j + offset], method_call, nullptr, klass, false),
+                                   method_call->GetMethodGenericBindings());
       AnalyzeRightCast(left, expression, IsScalar(expression), depth + 1);
     }
 
@@ -5502,6 +5735,9 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
     }
     else if(alt_mthds.size()) {
       alt_error_method_names = selector.GetAlternativeMethodNames();
+    }
+    else if(!generic_error.empty()) {
+      ProcessError(static_cast<Expression*>(method_call), generic_error);
     }
   }
 
@@ -5910,6 +6146,11 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     // associate method
     lib_method->GetLibraryClass()->SetCalled(true);
     method_call->SetLibraryMethod(lib_method);
+
+    // a generic method's return type, with the call's inferred type arguments (#1242)
+    if(!method_call->GetMethodGenericBindings().empty()) {
+      method_call->SetEvalType(SubstituteMethodGenerics(lib_method->GetReturn(), method_call->GetMethodGenericBindings()), false);
+    }
 
     if(method_call->GetMethodCall()) {
       method_call->GetMethodCall()->SetEvalType(lib_method->GetReturn(), false);

@@ -732,6 +732,16 @@ IntermediateMethod* IntermediateEmitter::EmitMethod(Method* method)
       param_defaults.push_back(declarations[i]->GetAssignment() != nullptr);
     }
     imm_method->SetParameters(param_names, param_defaults);
+
+    // where the method's own type parameters stand: 'p<i>' a parameter, 'r' the return (#1242)
+    std::vector<std::pair<std::wstring, std::wstring> > marks;
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      declarations[i]->GetEntry()->GetType()->GetMethodGenericMarks(L"p" + std::to_wstring(i), marks);
+    }
+    if(method->GetReturn()) {
+      method->GetReturn()->GetMethodGenericMarks(L"r", marks);
+    }
+    imm_method->SetGenericMarks(marks);
   }
 
   if(!method->IsVirtual()) {

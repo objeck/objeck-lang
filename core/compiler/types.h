@@ -231,7 +231,8 @@ namespace frontend {
       method_generic = g;
     }
 
-    // whether the type, or one of its generic arguments, came from a method type parameter
+    // whether the type, one of its generic arguments, or a function type's
+    // parameter or return came from a method type parameter
     bool HasMethodGeneric() const {
       if(!method_generic.empty()) {
         return true;
@@ -240,6 +241,62 @@ namespace frontend {
         if(generic_types[i] && generic_types[i]->HasMethodGeneric()) {
           return true;
         }
+      }
+      for(size_t i = 0; i < func_params.size(); ++i) {
+        if(func_params[i] && func_params[i]->HasMethodGeneric()) {
+          return true;
+        }
+      }
+      return func_rtrn && func_rtrn->HasMethodGeneric();
+    }
+
+    // Where a method type parameter stands in this type, as paths: '' for the
+    // type itself, '.g<i>' a generic argument, '.f<i>' a function parameter and
+    // '.r' a function's return (#1242). A library's .obl keeps these, because
+    // its signatures carry the bound a parameter was erased to, not the mark.
+    void GetMethodGenericMarks(const std::wstring &path, std::vector<std::pair<std::wstring, std::wstring> > &marks) const {
+      if(!method_generic.empty()) {
+        marks.push_back(std::make_pair(path, method_generic));
+      }
+      for(size_t i = 0; i < generic_types.size(); ++i) {
+        if(generic_types[i]) {
+          generic_types[i]->GetMethodGenericMarks(path + L".g" + std::to_wstring(i), marks);
+        }
+      }
+      for(size_t i = 0; i < func_params.size(); ++i) {
+        if(func_params[i]) {
+          func_params[i]->GetMethodGenericMarks(path + L".f" + std::to_wstring(i), marks);
+        }
+      }
+      if(func_rtrn) {
+        func_rtrn->GetMethodGenericMarks(path + L".r", marks);
+      }
+    }
+
+    // sets a mark at a path GetMethodGenericMarks produced; false if the type has no such part
+    bool SetMethodGenericAt(const std::wstring &path, const std::wstring &mark) {
+      if(path.empty()) {
+        method_generic = mark;
+        return true;
+      }
+      if(path.size() < 2 || path[0] != L'.') {
+        return false;
+      }
+      const wchar_t kind = path[1];
+      size_t end = path.find(L'.', 1);
+      if(end == std::wstring::npos) {
+        end = path.size();
+      }
+      const std::wstring rest = path.substr(end);
+      if(kind == L'r') {
+        return func_rtrn && func_rtrn->SetMethodGenericAt(rest, mark);
+      }
+      const size_t index = (size_t)std::stoul(path.substr(2, end - 2));
+      if(kind == L'g') {
+        return index < generic_types.size() && generic_types[index] && generic_types[index]->SetMethodGenericAt(rest, mark);
+      }
+      if(kind == L'f') {
+        return index < func_params.size() && func_params[index] && func_params[index]->SetMethodGenericAt(rest, mark);
       }
       return false;
     }

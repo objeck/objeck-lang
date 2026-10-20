@@ -954,6 +954,10 @@ void Library::LoadFile(const std::wstring &file_name)
       std::wcerr << L"Unable to use executable '" << file_name << L"' as linked library." << std::endl;
       exit(1);
     }
+    else if(magic_num == MAGIC_NUM_LIB_NO_GENERIC_MARKS) {
+      std::wcerr << L"Library '" << file_name << L"' was built before libraries recorded their methods' type parameters.\n\tRebuild it with this toolchain." << std::endl;
+      exit(1);
+    }
     else if(magic_num == MAGIC_NUM_LIB_NO_PARAM_NAMES) {
       std::wcerr << L"Library '" << file_name << L"' was built before libraries recorded their parameter names.\n\tRebuild it with this toolchain." << std::endl;
       exit(1);
@@ -1274,6 +1278,16 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
       param_defaults.push_back(ReadByte() != 0);
     }
     mthd->SetParameters(param_names, param_defaults);
+
+    // where its own type parameters stand (#1242)
+    std::vector<std::pair<std::wstring, std::wstring> > generic_marks;
+    const int num_generic_marks = ReadInt();
+    for(int i = 0; i < num_generic_marks; ++i) {
+      const std::wstring path = ReadString();
+      const std::wstring mark = ReadString();
+      generic_marks.push_back(std::make_pair(path, mark));
+    }
+    mthd->SetGenericMarks(generic_marks);
     // load statements
     LoadStatements(mthd, is_debug);
 

@@ -37,8 +37,10 @@
 #define MAGIC_NUM_EXE 0xffbe // bitmask 'e'
 // A library records its methods' parameter names and which take defaults, so
 // a caller can name a library method's arguments (#1244). An .obl written
-// before that carries the old signature and must be rebuilt.
-#define MAGIC_NUM_LIB 0xffb7
+// before that carries the old signature and must be rebuilt. Since 0xffb8 it
+// also records where a method's own type parameters stand in its signature (#1242).
+#define MAGIC_NUM_LIB 0xffb8
+#define MAGIC_NUM_LIB_NO_GENERIC_MARKS 0xffb7
 #define MAGIC_NUM_LIB_NO_PARAM_NAMES 0xffb6 // bitmask 'k'
 
 #define VER_NUM @VERSION_NUMBER@
