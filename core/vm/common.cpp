@@ -2329,6 +2329,21 @@ void TrapProcessor::DeserializeObject(size_t* inst, size_t* &op_stack, size_t* &
  * Handles callback traps from
  * the interpreter and JIT code
  ********************************/
+// A failing trap's error (#1247): recorded for a ?-> handler on this thread,
+// which then recovers from it, or printed when nothing guards. Returns false,
+// the trap's failure.
+static bool TrapError(long kind, const std::wstring& message)
+{
+  if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+    Runtime::StackInterpreter::RecordRecoveredError(kind, message);
+    Runtime::StackInterpreter::TrapErrorRecorded() = true;
+  }
+  else {
+    std::wcerr << L">>> " << message << L" <<<" << std::endl;
+  }
+  return false;
+}
+
 bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
                                 size_t* &op_stack, size_t* &stack_pos, StackFrame* frame) {
   const INT64_VALUE id = (INT64_VALUE)PopInt(op_stack, stack_pos);
@@ -2690,6 +2705,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case RUNTIME_CLEAR_ERROR:
     return RuntimeClearError(program, inst, op_stack, stack_pos, frame);
+
+  case RUNTIME_RAISE:
+    return RuntimeRaise(program, inst, op_stack, stack_pos, frame);
+
+  case RUNTIME_GET_LAST_ERROR:
+    return RuntimeGetLastError(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -3133,8 +3154,7 @@ bool TrapProcessor::ConvertBytesToUnicode(StackProgram* program, size_t* inst, s
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
   const std::wstring out = BytesToUnicode((char*)(array + 3));
 
@@ -3165,8 +3185,7 @@ bool TrapProcessor::ConvertUnicodeToBytes(StackProgram* program, size_t* inst, s
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
   const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
 
@@ -3197,8 +3216,7 @@ bool TrapProcessor::LoadMultiArySize(StackProgram* program, size_t* inst, size_t
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // allocate 'size' array and copy metadata
@@ -3229,8 +3247,7 @@ bool TrapProcessor::CpyCharStrAry(StackProgram* program, size_t* inst, size_t* &
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element");
   }
   const long size = (long)array[2];
   wchar_t* str = (wchar_t*)(array + 3);
@@ -3248,8 +3265,7 @@ bool TrapProcessor::CpyCharStrArys(StackProgram* program, size_t* inst, size_t* 
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element");
   }
   const long size = (long)array[0];
   const long dim = (long)array[1];
@@ -3276,8 +3292,7 @@ bool TrapProcessor::CpyBoolStrAry(StackProgram* program, size_t* inst, size_t*& 
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element");
   }
   const long size = (long)array[0];
   const long dim = (long)array[1];
@@ -3301,8 +3316,7 @@ bool TrapProcessor::CpyByteStrAry(StackProgram* program, size_t* inst, size_t*& 
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element");
   }
   const long size = (long)array[0];
   const long dim = (long)array[1];
@@ -3327,8 +3341,7 @@ bool TrapProcessor::CpyIntStrAry(StackProgram* program, size_t* inst, size_t* &o
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element");
   }
   const long size = (long)array[0];
   const long dim = (long)array[1];
@@ -3351,8 +3364,7 @@ bool TrapProcessor::CpyFloatStrAry(StackProgram* program, size_t* inst, size_t* 
   // copy array
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element");
   }
   const long size = (long)array[0];
   const long dim = (long)array[1];
@@ -4004,8 +4016,7 @@ bool TrapProcessor::StdErrByteAry(StackProgram* program, size_t* inst, size_t* &
 bool TrapProcessor::AssertTrue(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   if(!PopInt(op_stack, stack_pos)) {
-    std::wcerr << L">>> Assert failed! <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Assert failed!");
   }
   
   return true;
@@ -4287,8 +4298,7 @@ bool TrapProcessor::DateFromLocalTime(StackProgram* program, size_t* inst, size_
 #ifdef _WIN32
     struct tm set_time;
     if (localtime_s(&set_time, &value)) {
-      std::wcerr << L">>> Unable to get local time <<<" << std::endl;
-      return false;
+      return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Unable to get local time");
     }
 
     instance[0] = set_time.tm_mday;          // day
@@ -6079,8 +6089,7 @@ bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // setup buffers
@@ -6116,8 +6125,7 @@ bool TrapProcessor::UncompressZlibBytes(StackProgram* program, size_t* inst, siz
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // setup buffers
@@ -6153,8 +6161,7 @@ bool TrapProcessor::CompressGzipBytes(StackProgram* program, size_t* inst, size_
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // setup buffers
@@ -6190,8 +6197,7 @@ bool TrapProcessor::UncompressGzipBytes(StackProgram* program, size_t* inst, siz
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // setup buffers
@@ -6227,8 +6233,7 @@ bool TrapProcessor::CompressBrBytes(StackProgram* program, size_t* inst, size_t*
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // setup buffers
@@ -6264,8 +6269,7 @@ bool TrapProcessor::UncompressBrBytes(StackProgram* program, size_t* inst, size_
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // setup buffers
@@ -6301,8 +6305,7 @@ bool TrapProcessor::TrapProcessor::CRC32Bytes(StackProgram* program, size_t* ins
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if (!array) {
-    std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
   // setup buffers
@@ -6675,6 +6678,85 @@ bool TrapProcessor::RuntimeClearError(StackProgram* program, size_t* inst, size_
   Runtime::StackInterpreter::RecoveredErrorState& state = Runtime::StackInterpreter::RecoveredError();
   state.kind = Runtime::StackInterpreter::RECOVERED_NONE;
   state.message.clear();
+  Runtime::StackInterpreter::RaisedError().object = nullptr;
+  return true;
+}
+
+// function : RaiseNative(e : Error, message : String) ~ Nil (#1247). Never
+// returns: under a ?-> handler the error is recorded and the region recovers;
+// with none, it is reported and the program ends, as a runtime fault does.
+bool TrapProcessor::RuntimeRaise(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* message_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* error = (size_t*)PopInt(op_stack, stack_pos);
+  if(!error) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  std::wstring message;
+  if(message_obj && message_obj[0]) {
+    message = (wchar_t*)((size_t*)message_obj[0] + 3);
+  }
+
+  if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+    Runtime::StackInterpreter::RecordRecoveredError(Runtime::StackInterpreter::RECOVERED_RAISED, message);
+    Runtime::StackInterpreter::SetRaisedErrorObject(error);
+    Runtime::StackInterpreter::TrapErrorRecorded() = true;
+  }
+  else {
+    StackClass* cls = MemoryManager::GetClass(error);
+    std::wcerr << L">>> Unhandled " << (cls ? cls->GetName() : L"System.Error") << L": " << message << L" <<<" << std::endl;
+  }
+  return false;
+}
+
+// function : GetLastError() ~ Error (#1247): the Error a ?-> region on this
+// thread last recovered from -- the one raised, or, for a runtime fault, an
+// instance of its built-in subclass made on first request -- or Nil
+bool TrapProcessor::RuntimeGetLastError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const Runtime::StackInterpreter::RecoveredErrorState& state = Runtime::StackInterpreter::RecoveredError();
+  Runtime::StackInterpreter::RaisedErrorState& raised = Runtime::StackInterpreter::RaisedError();
+  if(state.kind == Runtime::StackInterpreter::RECOVERED_NONE) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+  if(!raised.object) {
+    const wchar_t* name;
+    switch(state.kind) {
+    case Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE:
+      name = L"System.NilError";
+      break;
+
+    case Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS:
+      name = L"System.IndexError";
+      break;
+
+    case Runtime::StackInterpreter::RECOVERED_DIVIDE_BY_ZERO:
+      name = L"System.DivideByZeroError";
+      break;
+
+    case Runtime::StackInterpreter::RECOVERED_INVALID_CAST:
+      name = L"System.CastError";
+      break;
+
+    default:
+      name = L"System.RuntimeError";
+      break;
+    }
+
+    size_t* error = MemoryManager::AllocateObject(name, op_stack, *stack_pos, false);
+    if(!error) {
+      PushInt(0, op_stack, stack_pos);
+      return true;
+    }
+    // Error's one field, @message
+    error[0] = (size_t)CreateStringObject(state.message, program, op_stack, stack_pos);
+    Runtime::StackInterpreter::SetRaisedErrorObject(error);
+  }
+
+  PushInt((size_t)raised.object, op_stack, stack_pos);
   return true;
 }
 

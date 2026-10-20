@@ -1,0 +1,205 @@
+#~
+Raising an Error and reading the one a ?-> region recovered from (#1247, phase 1;
+docs/ERROR_HANDLING_DESIGN.md).
+
+Runtime->Raise(e) raises a System.Error -- typically a subclass of the program's
+own -- and a ?-> region recovers from it as from a runtime fault.
+Runtime->GetLastError() returns that object, or for a runtime fault an instance
+of its built-in subclass (NilError, IndexError, DivideByZeroError, CastError,
+RuntimeError). Also here:
+- a failing library call (a trap) recovers instead of ending the program; a
+  failed Runtime->Assert was the case at hand;
+- more than 16 nested guarded calls: the handler stack held 16, and an error
+  under 21 recovered at the 16th from the outside, so the frames inside it
+  never ran their recovery code;
+- the raised object is a GC root until it is cleared or replaced.
+Raises come from callees run often enough for the JIT, so the compiled path
+(status -7) is covered in the default and threshold-1 modes.
+~#
+class ParseError from Error {
+	@line : Int;
+
+	New(message : String, line : Int) {
+		Parent(message);
+		@line := line;
+	}
+
+	method : public : GetLine() ~ Int {
+		return @line;
+	}
+}
+
+class Worker {
+	@depth : Int;
+
+	New(depth : Int) {
+		@depth := depth;
+	}
+
+	method : public : Parse(line : Int) ~ IntRef {
+		if(line % 2 = 1) {
+			Runtime->Raise(ParseError->New("bad row", line));
+		};
+		return IntRef->New(line);
+	}
+
+	# raises from three frames down; not a tail call, which the optimizer turns
+	# into a loop (an error in one of those is #1269's, with its own test)
+	method : public : Deep(n : Int) ~ IntRef {
+		if(n = 0) {
+			Runtime->Raise(ParseError->New("deep", 3));
+		};
+		r := Deep(n - 1);
+		if(r = Nil) {
+			return Nil;
+		};
+		return r;
+	}
+
+	method : public : Div(d : Int) ~ IntRef {
+		return IntRef->New(10 / d);
+	}
+
+	method : public : At(a : Int[], i : Int) ~ IntRef {
+		return IntRef->New(a[i]);
+	}
+
+	method : public : Missing() ~ Worker {
+		return Nil;
+	}
+
+	method : public : Cast(b : Base) ~ IntRef {
+		return b->As(IntRef);
+	}
+
+	method : public : Fail() ~ IntRef {
+		Runtime->Assert(false);
+		return IntRef->New(1);
+	}
+
+	# a handler that passes the error on, from inside a guarded call
+	method : public : Rethrow() ~ IntRef {
+		r := Parse(1);
+		if(r = Nil) {
+			Runtime->Raise(Runtime->GetLastError());
+		};
+		return r;
+	}
+
+	method : public : Inner() ~ IntRef {
+		return Parse(1);
+	}
+
+	# each level opens a region; the deepest divides by zero
+	method : public : Nest(count : IntRef) ~ IntRef {
+		if(@depth = 0) {
+			return Div(0);
+		};
+		r := Worker->New(@depth - 1)?->Nest(count);
+		if(r = Nil) {
+			count->Set(count->Get() + 1);
+		};
+		return r;
+	}
+}
+
+class ErrorRaise {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		w := Worker->New(0);
+
+		# a raised error, recovered and read back
+		Runtime->ClearError();
+		r := w?->Parse(3);
+		e := Runtime->GetLastError();
+		Check("a raise recovers to Nil", r = Nil);
+		Check("the kind is RAISED", Runtime->GetErrorKind() = Runtime->ErrorKind->RAISED);
+		Check("the object is the one raised", e->TypeOf(ParseError));
+		Check("its fields survive", e->As(ParseError)->GetLine() = 3);
+		Check("its message", e->GetMessage()->Equals("bad row"));
+		Check("GetError has the message", Runtime->GetError()->Equals("bad row"));
+		Check("the same object twice", Runtime->GetLastError() = e);
+
+		# no raise, nothing new
+		Runtime->ClearError();
+		Check("cleared", Runtime->GetLastError() = Nil & Runtime->HasError() = false);
+		v := w?->Parse(4);
+		Check("a call that succeeds records nothing", v->Get() = 4 & Runtime->GetLastError() = Nil);
+
+		# from three frames down
+		w?->Deep(3);
+		Check("raised three frames down", Runtime->GetLastError()->TypeOf(ParseError));
+
+		# the runtime's own errors as objects
+		w?->Div(0);
+		Check("DivideByZeroError", Runtime->GetLastError()->TypeOf(DivideByZeroError));
+		w?->At([1, 2], 5);
+		Check("IndexError", Runtime->GetLastError()->TypeOf(IndexError));
+		w?->Missing()?->Div(1);
+		Check("a Nil receiver is not an error", Runtime->GetLastError()->TypeOf(IndexError));
+		Runtime->ClearError();
+		w->Missing()?->Div(1);
+		w?->Cast("x");
+		Check("CastError", Runtime->GetLastError()->TypeOf(CastError));
+		w?->Fail();
+		le := Runtime->GetLastError();
+		Check("a failed Assert recovers as a RuntimeError", le->TypeOf(RuntimeError) & le->GetMessage()->Equals("Assert failed!"));
+		Check("every one is an Error", le->TypeOf(Error));
+		Check("a runtime error's object is not a ParseError", le->TypeOf(ParseError) = false);
+
+		# re-raised from a handler inside a guarded call
+		Runtime->ClearError();
+		w?->Rethrow();
+		again := Runtime->GetLastError();
+		Check("re-raised", again->TypeOf(ParseError) & again->As(ParseError)->GetLine() = 1);
+
+		# a raise in a callee called often enough to be compiled
+		raised := 0;
+		for(i := 0; i < 3000; i += 1;) {
+			if(w?->Parse(i) = Nil) {
+				if(Runtime->GetLastError()->As(ParseError)->GetLine() = i) {
+					raised += 1;
+				};
+			};
+		};
+		Check("raised in a loop ({$raised})", raised = 1500);
+
+		# the raised object outlives collections
+		w?->Parse(7);
+		total := 0;
+		for(i := 0; i < 200000; i += 1;) {
+			total += String->New("garbage {$i}")->Size();
+		};
+		kept := Runtime->GetLastError();
+		Check("kept across collections", kept->As(ParseError)->GetLine() = 7 & kept->GetMessage()->Equals("bad row"));
+
+		# more than 16 nested regions: every level recovers
+		count := IntRef->New(0);
+		Worker->New(25)?->Nest(count);
+		Check("25 nested regions all recover ({$(count->Get())})", count->Get() = 25);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ErrorRaise->New()->Run();
+	}
+}

@@ -148,12 +148,16 @@ namespace Runtime {
     // explicit reset: there is no "top-level Execute" to reset at, because
     // Execute is re-entered on the same thread through the JIT bridge. If you
     // find yourself wanting to clear this state, that is the bug above.
-    static const int TRY_STACK_SIZE = 16;
-
+    //
+    // The handler stack grows (#1247). It held 16: a 17th push was dropped while
+    // its TRY_END still popped, so with 21 nested guarded calls (recursion
+    // through '?->' is enough) an error recovered at the 16th handler from the
+    // outside and the five frames inside it never ran their recovery code.
+    //
     struct TryHandlerState {
-      long stack[TRY_STACK_SIZE];
-      size_t stack_pos[TRY_STACK_SIZE];
-      long call_stack_pos[TRY_STACK_SIZE];
+      std::vector<long> stack;
+      std::vector<size_t> stack_pos;
+      std::vector<long> call_stack_pos;
       int pos = 0;
       long recovery_ip = -1;
     };
@@ -179,8 +183,49 @@ namespace Runtime {
       RECOVERED_INDEX_OUT_OF_BOUNDS,
       RECOVERED_DIVIDE_BY_ZERO,
       RECOVERED_INVALID_CAST,
-      RECOVERED_OTHER
+      RECOVERED_OTHER,
+      RECOVERED_RAISED
     };
+
+    //
+    // The Error object a raise carried, or the one GetLastError built for a
+    // runtime fault, per thread (#1247). Its slot is a GC root from the first
+    // store until the thread ends; a C++ thread_local is otherwise invisible
+    // to the collector, which would free or move the object under it.
+    //
+    struct RaisedErrorState {
+      size_t* object = nullptr;
+      bool registered = false;
+
+      ~RaisedErrorState() {
+        if(registered) {
+          MemoryManager::RemovePendingThreadRoot(&object);
+        }
+      }
+    };
+
+    static RaisedErrorState& RaisedError() {
+      static thread_local RaisedErrorState state;
+      return state;
+    }
+
+    static void SetRaisedErrorObject(size_t* object) {
+      RaisedErrorState& state = RaisedError();
+      if(!state.registered) {
+        MemoryManager::AddPendingThreadRoot(&state.object);
+        state.registered = true;
+      }
+      state.object = object;
+    }
+
+    //
+    // Set by a trap that failed under a handler after recording its own error,
+    // so the recovery does not replace it with a generic one
+    //
+    static bool& TrapErrorRecorded() {
+      static thread_local bool recorded = false;
+      return recorded;
+    }
 
     struct RecoveredErrorState {
       long kind = RECOVERED_NONE;
@@ -196,6 +241,8 @@ namespace Runtime {
     static void RecordRecoveredError(long kind, const std::wstring &message) {
       RecoveredErrorState& state = RecoveredError();
       state.kind = kind;
+      // a raise sets its object after this; any other error has none until asked
+      RaisedError().object = nullptr;
       std::wstring text = message;
       if(text.compare(0, 4, L">>> ") == 0) {
         text.erase(0, 4);
@@ -221,7 +268,8 @@ namespace Runtime {
         break;
       default:
         // -5: the bridge callback recorded the cast with both class names;
-        // -6: deferred by a bridge, which recorded the error it saw
+        // -6: deferred by a bridge, which recorded the error it saw;
+        // -7: a failing trap or a raise, recorded by the callback
         break;
       }
     }
@@ -344,12 +392,17 @@ namespace Runtime {
     //
     inline void PushTryHandler(long handler_ip, size_t saved_stack_pos, long saved_call_stack_pos) {
       TryHandlerState& state = TryState();
-      if(state.pos < TRY_STACK_SIZE) {
+      if((size_t)state.pos == state.stack.size()) {
+        state.stack.push_back(handler_ip);
+        state.stack_pos.push_back(saved_stack_pos);
+        state.call_stack_pos.push_back(saved_call_stack_pos);
+      }
+      else {
         state.stack[state.pos] = handler_ip;
         state.stack_pos[state.pos] = saved_stack_pos;
         state.call_stack_pos[state.pos] = saved_call_stack_pos;
-        ++state.pos;
       }
+      ++state.pos;
     }
 
     //

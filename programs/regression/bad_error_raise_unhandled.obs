@@ -1,0 +1,18 @@
+# EXPECT_RUNTIME_ERROR
+#~
+Runtime->Raise with no ?-> region to recover from (#1247): the program reports
+"Unhandled <class>: <message>" and ends with a failure exit, as an unguarded
+runtime error does.
+~#
+class ConfigError from Error {
+	New(message : String) {
+		Parent(message);
+	}
+}
+
+class BadErrorRaiseUnhandled {
+	function : Main(args : String[]) ~ Nil {
+		Runtime->Raise(ConfigError->New("missing key 'rate'"));
+		"UNREACHABLE: the raise returned"->PrintLine();
+	}
+}

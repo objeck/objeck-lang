@@ -1118,6 +1118,17 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
   case TRAP:
   case TRAP_RTRN:
     if(!TrapProcessor::ProcessTrap(program, inst, op_stack, stack_pos, nullptr)) {
+      // under a ?-> handler a failing trap, a raise among them, passes outward
+      // as a status like a guard stub's (#1247)
+      bool& recorded = Runtime::StackInterpreter::TrapErrorRecorded();
+      const bool had_record = recorded;
+      recorded = false;
+      if(Runtime::StackInterpreter::ThreadHasTryHandler()) {
+        if(!had_record) {
+          Runtime::StackInterpreter::RecordRecoveredError(Runtime::StackInterpreter::RECOVERED_OTHER, L"A runtime library call failed");
+        }
+        return JIT_STATUS_TRAP_FAILED;
+      }
       std::wcerr << L"  JIT compiled machine code..." << std::endl;
       VmExit(1);
     }

@@ -40,6 +40,7 @@ if(Runtime->HasError()) {
   | `DIVIDE_BY_ZERO` | integer or float division or modulo by zero |
   | `INVALID_CAST` | `->As(T)` on an object that is not a `T` |
   | `OTHER` | any other runtime error (a trap or native call) |
+  | `RAISED` | `Runtime->Raise` (ERROR_HANDLING_DESIGN.md) |
 
 - **The message is the text the runtime prints** for an unguarded error, without the
   `>>> <<<` markers. One difference by mode: an index error raised in JIT-compiled code is
