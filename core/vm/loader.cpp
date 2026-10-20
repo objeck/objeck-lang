@@ -69,6 +69,7 @@ void Loader::Load()
   const int magic_num = static_cast<int>(ReadInt());
   switch(magic_num) {
   case MAGIC_NUM_LIB:
+  case MAGIC_NUM_LIB_NO_GENERIC_MARKS:
   case MAGIC_NUM_LIB_NO_PARAM_NAMES:
     std::wcerr << L"Unable to use execute shared library '" << filename << L"'." << std::endl;
     exit(1);

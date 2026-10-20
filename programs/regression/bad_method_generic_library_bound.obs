@@ -1,0 +1,15 @@
+# EXPECT_COMPILE_ERROR: does not meet its bound
+#~
+Method-level generics in libraries (#1242, phase 2): CompareList's Map<R : Compare>
+is checked against its bound, as a program method's is. A result that is not a
+Compare is refused at the call.
+~#
+use Collection;
+
+class BadMethodGenericLibraryBound {
+	function : Main(args : String[]) ~ Nil {
+		list := CompareList->New()<IntRef>;
+		list->AddBack(IntRef->New(1));
+		mapped := list->Map(\(IntRef) ~ Base : (n) => n);
+	}
+}

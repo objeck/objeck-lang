@@ -62,9 +62,46 @@ The same model as class generics: one body, and the type parameters are erased.
 | functions and methods of the program's own classes | yes |
 | type parameters on constructors | no (a class's own type parameters cover that) |
 | primitive arguments (`Max(3, 5)`) | no: a type parameter takes an object, as class generics do (`IntRef`) |
-| library methods (`Vector->Map<R>`) | **phase 2**: the `.obl` must keep the type-parameter marks |
+| library methods (`Vector->Map<R>`) | **phase 2** (shipped): the `.obl` keeps the type-parameter marks |
 
-Phase 2 would also reshape the library APIs the issue names (`Vector->Map`, `Reduce`).
+## Phase 2: library methods (shipped)
+
+A library's signatures carry the bound a type parameter was erased to (`Max<T : Compare>`
+reads `Max(o.Collection.Vector|o.System.Compare)`), not the parameter, so a caller in another
+binary could not infer anything: a library generic returned its bound.
+
+- **The `.obl` keeps the marks.** After each method's parameter names, a library writes where
+  its own type parameters stand, as `(path, name)` pairs. `p<i>` is a parameter and `r` the
+  return, followed by `.g<i>` for a generic argument, `.f<i>` for a function type's parameter,
+  and `.r` for a function type's return (`Type::GetMethodGenericMarks`). The linker applies
+  them to the parsed types (`LibraryMethod::SetGenericMarks`). Paths rather than positions mean a
+  mark can never land on the wrong part of a type. The library magic is `0xffb8`, and a
+  `0xffb7` library is refused with a rebuild message.
+- **Inference at a library call.** `InferLibraryMethodGenerics` mirrors the program path,
+  and `UnifyMethodGeneric` now matches function types: `(A, ..) ~ R` against the argument's
+  function type, parameters and return.
+  - A typed lambda gives its declared type, and so does a function value.
+  - An inferred lambda has no type until it is built. `DerivedLambdaFunction` builds it with
+    the parameter's bound, then binds the parameter from what the lambda's body returns
+    (`LambdaResultType`). Such a lambda must return an object: a primitive is not boxed into
+    the bound, as it is not in an assignment to a `Base`.
+- **Matching.** Resolving a class's own type arguments rebuilds a function type from its
+  encoded name, which spells the bound. So the bindings are applied afterwards, walking the
+  marked original alongside (`SubstituteAlong`), and the function type is re-encoded.
+- **The call's value** has the return type with the bindings substituted, before the class's
+  own type arguments are mapped. `words->Map(..)->Get(0)` therefore sees an `IntRef`.
+- **APIs:** `Vector`, `List` and `CompareList` take `Map<R>((H) ~ R) ~ C<R>`; `CompareList`'s is
+  `Map<R : Compare>`. A map that keeps the element type behaves as before. `Reduce` keeps
+  its shape.
+
+Found on the way: 34 doc examples in `gen_collect.obs` used `\(x : T) ~ R { return e; }`, which
+does not parse. They are now `\(T) ~ R : (x) => e`, and every lambda example in the file
+compiles.
+
+Tests: `method_generics_library.obs` (`Map<R>` with typed, inferred and function-value
+arguments, chained, in a loop), `bad_method_generic_library_bound.obs`, and
+`check_lib_generic_methods.py`, which builds a library of generic functions and methods and
+links a program against it in three modes.
 
 ## Implementation
 

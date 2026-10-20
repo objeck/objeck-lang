@@ -302,8 +302,14 @@ function : Swap<T>(a : T[], i : Int, j : Int) ~ Nil { ... }
 best := Max(scores);   # scores is a Vector<IntRef>, so best is an IntRef
 Swap(names, 0, 2);     # T is String
 ```
-A type parameter takes an object (box primitives as `IntRef`, ...). Generic
-library methods are not supported yet. See
+A type parameter takes an object (box primitives as `IntRef`, ...). Library
+methods take type parameters too: `Vector`, `List` and `CompareList` have
+`Map<R>((H) ~ R)`, so a map can change the element type:
+```ruby
+lengths := words->Map(\(String) ~ IntRef : (s) => IntRef->New(s->Size()));  # Vector<IntRef>
+upper := words->Map(\(s) => s->ToUpper());                                   # R from the body
+```
+An inferred lambda for a type parameter must return an object. See
 [METHOD_GENERICS_DESIGN.md](METHOD_GENERICS_DESIGN.md).
 
 ### Type Boxing

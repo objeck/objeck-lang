@@ -360,6 +360,13 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
       WriteString(param_names[i], out_stream);
       WriteByte(i < param_defaults.size() && param_defaults[i], out_stream);
     }
+
+    // where the method's own type parameters stand (#1242)
+    WriteInt((int)generic_marks.size(), out_stream);
+    for(size_t i = 0; i < generic_marks.size(); ++i) {
+      WriteString(generic_marks[i].first, out_stream);
+      WriteString(generic_marks[i].second, out_stream);
+    }
   }
 
   // write statements

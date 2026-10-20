@@ -649,6 +649,11 @@ class ContextAnalyzer {
   bool InferMethodGenerics(Method* method, const std::vector<Expression*> &arguments,
                            std::map<std::wstring, Type*> &bindings, std::wstring &error, const int depth);
   Type* SubstituteMethodGenerics(Type* type, const std::map<std::wstring, Type*> &bindings);
+  bool InferLibraryMethodGenerics(LibraryMethod* method, const std::vector<Expression*> &arguments, const size_t offset,
+                                  std::map<std::wstring, Type*> &bindings, std::wstring &error, const int depth);
+  Type* BoxedBindingType(Type* type);
+  Type* SubstituteAlong(Type* original, Type* resolved, const std::map<std::wstring, Type*> &bindings);
+  Type* LambdaResultType(Lambda* lambda);
   bool ResolveConcatToString(const std::wstring &cls_name, Method* &method, LibraryMethod* &lib_method);
   bool IsReceiverParameter(Type* parameter, Type* receiver);
   int MatchCallingParameter(Expression* calling_param, Type* method_type, Class* klass, LibraryClass* lib_klass, const int depth);

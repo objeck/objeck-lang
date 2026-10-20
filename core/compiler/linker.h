@@ -210,6 +210,8 @@ class LibraryMethod {
   // the parameters' names, and which take a default value (#1244)
   std::vector<std::wstring> param_names;
   std::vector<bool> param_defaults;
+  // where the method's own type parameters stand in its signature (#1242)
+  std::vector<std::pair<std::wstring, std::wstring> > generic_marks;
   backend::IntermediateDeclarations* entries;
   
   void ParseDeclarations();
@@ -235,6 +237,50 @@ class LibraryMethod {
   void SetParameters(const std::vector<std::wstring> &n, const std::vector<bool> &d) {
     param_names = n;
     param_defaults = d;
+  }
+
+  // marks the parsed parameter and return types where the method's own type
+  // parameters stand (#1242): 'p<i>' a parameter, 'r' the return, then a path
+  void SetGenericMarks(const std::vector<std::pair<std::wstring, std::wstring> > &m) {
+    generic_marks = m;
+    for(size_t i = 0; i < m.size(); ++i) {
+      const std::wstring &path = m[i].first;
+      if(path.empty()) {
+        continue;
+      }
+      size_t end = path.find(L'.');
+      if(end == std::wstring::npos) {
+        end = path.size();
+      }
+      if(path[0] == L'r' && end == 1) {
+        if(rtrn_type) {
+          rtrn_type->SetMethodGenericAt(path.substr(end), m[i].second);
+        }
+      }
+      else if(path[0] == L'p') {
+        const size_t index = (size_t)std::stoul(path.substr(1, end - 1));
+        if(index < declarations.size() && declarations[index]) {
+          declarations[index]->SetMethodGenericAt(path.substr(end), m[i].second);
+        }
+      }
+    }
+  }
+
+  const std::vector<std::pair<std::wstring, std::wstring> > &GetGenericMarks() {
+    return generic_marks;
+  }
+
+  // whether the method declares its own type parameters (#1242)
+  bool IsGeneric() {
+    if(rtrn_type && rtrn_type->HasMethodGeneric()) {
+      return true;
+    }
+    for(size_t i = 0; i < declarations.size(); ++i) {
+      if(declarations[i] && declarations[i]->HasMethodGeneric()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   const std::vector<std::wstring> &GetParameterNames() {

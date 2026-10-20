@@ -514,6 +514,8 @@ namespace backend {
     // a library method's parameter names, and which take a default value (#1244)
     std::vector<std::wstring> param_names;
     std::vector<bool> param_defaults;
+    // where its own type parameters stand in its signature (#1242)
+    std::vector<std::pair<std::wstring, std::wstring> > generic_marks;
 
   public:
     IntermediateMethod(int i, const std::wstring &n, bool v, bool h, bool l, const std::wstring &r,
@@ -555,6 +557,7 @@ namespace backend {
       klass = k;
       param_names = lib_method->GetParameterNames();
       param_defaults = lib_method->GetParameterDefaults();
+      generic_marks = lib_method->GetGenericMarks();
       
       // process instructions
       IntermediateBlock* block = new IntermediateBlock;
@@ -568,6 +571,10 @@ namespace backend {
     void SetParameters(const std::vector<std::wstring> &n, const std::vector<bool> &d) {
       param_names = n;
       param_defaults = d;
+    }
+
+    void SetGenericMarks(const std::vector<std::pair<std::wstring, std::wstring> > &m) {
+      generic_marks = m;
     }
 
     ~IntermediateMethod() {

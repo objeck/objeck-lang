@@ -3617,12 +3617,12 @@ list->Get()->PrintLine(); # 42
 list := Collection.CompareList->New()<IntRef>;
 list->AddBack(IntRef->New(3));
 list->AddBack(IntRef->New(4));
-doubled := list->Map(\(v : IntRef) ~ IntRef { return IntRef->New(v->Get() * 2); });
+doubled := list->Map(\(IntRef) ~ IntRef : (v) => IntRef->New(v->Get() * 2));
 doubled->Size()->PrintLine(); # 2
 ```
 		~#
-		method : public : Map(f : (H) ~ H) ~ CompareList<H> {
-			list : CompareList<H> := CompareList->New()<H>;
+		method : public : Map<R : Compare>(f : (H) ~ R) ~ CompareList<R> {
+			list : CompareList<R> := CompareList->New()<R>;
 
 			start := @head;
 			while(start <> Nil) {
@@ -3644,7 +3644,7 @@ list := Collection.CompareList->New()<IntRef>;
 list->AddBack(IntRef->New(1));
 list->AddBack(IntRef->New(2));
 list->AddBack(IntRef->New(3));
-evens := list->Filter(\(v : IntRef) ~ Bool { return v->Get() % 2 = 0; });
+evens := list->Filter(\(IntRef) ~ Bool : (v) => v->Get() % 2 = 0);
 evens->Size()->PrintLine(); # 1
 ```
 		~#
@@ -3674,7 +3674,7 @@ list := Collection.CompareList->New()<IntRef>;
 list->AddBack(IntRef->New(1));
 list->AddBack(IntRef->New(2));
 list->AddBack(IntRef->New(3));
-sum := list->Reduce(IntRef->New(0), \(a : IntRef, v : IntRef) ~ IntRef { return IntRef->New(a->Get() + v->Get()); });
+sum := list->Reduce(IntRef->New(0), \(IntRef, IntRef) ~ IntRef : (a, v) => IntRef->New(a->Get() + v->Get()));
 sum->PrintLine(); # 6
 ```
 		~#
@@ -4380,12 +4380,12 @@ list->Back()->PrintLine(); # second
 list := Collection.List->New()<String>;
 list->AddBack("hello");
 list->AddBack("world");
-upper := list->Map(\(s : String) ~ String { return s->ToUpper(); });
+upper := list->Map(\(String) ~ String : (s) => s->ToUpper());
 upper->Size()->PrintLine(); # 2
 ```
 		~#
-		method : public : Map(f : (H) ~ H) ~ List<H> {
-			list : List<H> := List->New()<H>;
+		method : public : Map<R>(f : (H) ~ R) ~ List<R> {
+			list : List<R> := List->New()<R>;
 			
 			start := @head;
 			while(start <> Nil) {
@@ -4405,7 +4405,7 @@ upper->Size()->PrintLine(); # 2
 list := Collection.List->New()<String>;
 list->AddBack("a");
 list->AddBack("b");
-list->Each(\(s : String) ~ Nil { s->PrintLine(); });
+list->Each(\(String) ~ Nil : (s) => s->PrintLine());
 ```
 		~#
 		method : public : Each(f : (H) ~ Nil) ~ List<H> {
@@ -4499,7 +4499,7 @@ list := Collection.List->New()<String>;
 list->AddBack("apple");
 list->AddBack("banana");
 list->AddBack("apricot");
-filtered := list->Filter(\(s : String) ~ Bool { return s->StartsWith("a"); });
+filtered := list->Filter(\(String) ~ Bool : (s) => s->StartsWith("a"));
 filtered->Size()->PrintLine(); # 2
 ```
 		~#
@@ -4529,7 +4529,7 @@ list := Collection.List->New()<String>;
 list->AddBack("a");
 list->AddBack("b");
 list->AddBack("c");
-joined := list->Reduce("", \(acc : String, s : String) ~ String { return acc + s; });
+joined := list->Reduce("", \(String, String) ~ String : (acc, s) => acc + s);
 joined->PrintLine(); # abc
 ```
 		~#
@@ -5288,17 +5288,18 @@ v->Size()->PrintLine(); # 2
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("hello"); v->AddBack("world");
-upper := v->Map(\(s : String) ~ String { return s->ToUpper(); });
+upper := v->Map(\(String) ~ String : (s) => s->ToUpper());
 upper->Get(0)->PrintLine(); # HELLO
+lengths := v->Map(\(String) ~ IntRef : (s) => IntRef->New(s->Size())); # a Vector<IntRef>
 ```
 		~#
-		method : public : Map(f : (H) ~ H) ~ Vector<H> {
-			array : H[] := H->New[@size];
+		method : public : Map<R>(f : (H) ~ R) ~ Vector<R> {
+			array : R[] := Base->New[@size];
 			for(i : Int := 0; i < @size; i += 1;) {
 				array[i] := f(@values[i]);
 			};
-      
-			return Vector->New(array)<H>;
+
+			return Vector->New(array)<R>;
 		}
 
 		#~
@@ -5308,7 +5309,7 @@ upper->Get(0)->PrintLine(); # HELLO
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("a"); v->AddBack("b");
-v->Each(\(s : String) ~ Nil { s->PrintLine(); });
+v->Each(\(String) ~ Nil : (s) => s->PrintLine());
 ```
 		~#
 		method : public : Each(f : (H) ~ Nil) ~ Vector<H> {
@@ -5326,7 +5327,7 @@ v->Each(\(s : String) ~ Nil { s->PrintLine(); });
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("apple"); v->AddBack("banana"); v->AddBack("avocado");
-filtered := v->Filter(\(s : String) ~ Bool { return s->StartsWith("a"); });
+filtered := v->Filter(\(String) ~ Bool : (s) => s->StartsWith("a"));
 filtered->Size()->PrintLine(); # 2
 ```
 		~#
@@ -5352,7 +5353,7 @@ filtered->Size()->PrintLine(); # 2
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("a"); v->AddBack("b"); v->AddBack("c");
-joined := v->Reduce("", \(acc : String, s : String) ~ String { return acc + s; });
+joined := v->Reduce("", \(String, String) ~ String : (acc, s) => acc + s);
 joined->PrintLine(); # abc
 ```
 		~#
@@ -5623,7 +5624,7 @@ arr[0]->PrintLine(); # a
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("hello"); v->AddBack("world");
-v->Any(\(s : String) ~ Bool { return s->StartsWith("h"); })->PrintLine(); # true
+v->Any(\(String) ~ Bool : (s) => s->StartsWith("h"))->PrintLine(); # true
 ```
 		~#
 		method : public : Any(f : (H) ~ Bool) ~ Bool {
@@ -5643,7 +5644,7 @@ v->Any(\(s : String) ~ Bool { return s->StartsWith("h"); })->PrintLine(); # true
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("hello"); v->AddBack("world");
-v->All(\(s : String) ~ Bool { return s->Size() > 3; })->PrintLine(); # true
+v->All(\(String) ~ Bool : (s) => s->Size() > 3)->PrintLine(); # true
 ```
 		~#
 		method : public : All(f : (H) ~ Bool) ~ Bool {
@@ -5663,7 +5664,7 @@ v->All(\(s : String) ~ Bool { return s->Size() > 3; })->PrintLine(); # true
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("apple"); v->AddBack("apricot"); v->AddBack("banana");
-v->Count(\(s : String) ~ Bool { return s->StartsWith("a"); })->PrintLine(); # 2
+v->Count(\(String) ~ Bool : (s) => s->StartsWith("a"))->PrintLine(); # 2
 ```
 		~#
 		method : public : Count(f : (H) ~ Bool) ~ Int {
@@ -5684,7 +5685,7 @@ v->Count(\(s : String) ~ Bool { return s->StartsWith("a"); })->PrintLine(); # 2
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("apple"); v->AddBack("banana");
-v->FindFirst(\(s : String) ~ Bool { return s->StartsWith("b"); })->PrintLine(); # banana
+v->FindFirst(\(String) ~ Bool : (s) => s->StartsWith("b"))->PrintLine(); # banana
 ```
 		~#
 		method : public : FindFirst(f : (H) ~ Bool) ~ H {
@@ -5704,7 +5705,7 @@ v->FindFirst(\(s : String) ~ Bool { return s->StartsWith("b"); })->PrintLine(); 
 ```
 v := Collection.Vector->New()<String>;
 v->AddBack("apple"); v->AddBack("banana");
-v->FindIndex(\(s : String) ~ Bool { return s->StartsWith("b"); })->PrintLine(); # 1
+v->FindIndex(\(String) ~ Bool : (s) => s->StartsWith("b"))->PrintLine(); # 1
 ```
 		~#
 		method : public : FindIndex(f : (H) ~ Bool) ~ Int {
@@ -5989,7 +5990,7 @@ v->Size()->PrintLine(); # 2
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
-doubled := v->Map(\(n : IntRef) ~ IntRef { return IntRef->New(n->Get() * 2); });
+doubled := v->Map(\(IntRef) ~ IntRef : (n) => IntRef->New(n->Get() * 2));
 doubled->Get(0)->PrintLine(); # 2
 ```
 		~#
@@ -6034,7 +6035,7 @@ first2->Size()->PrintLine(); # 2
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2));
-v->Each(\(n : IntRef) ~ Nil { n->PrintLine(); });
+v->Each(\(IntRef) ~ Nil : (n) => n->PrintLine());
 ```
 		~#
 		method : public : Each(f : (H) ~ Nil) ~ CompareVector<H> {
@@ -6466,7 +6467,7 @@ v->Has(IntRef->New(99))->PrintLine(); # false
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
-evens := v->Filter(\(x : IntRef) ~ Bool { return x->Get() % 2 = 0; })<IntRef>;
+evens := v->Filter(\(IntRef) ~ Bool : (x) => x->Get() % 2 = 0)<IntRef>;
 evens->Size()->PrintLine(); # 1
 ```
 		~#
@@ -6492,7 +6493,7 @@ evens->Size()->PrintLine(); # 1
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
-sum := v->Reduce(IntRef->New(0), \(a : IntRef, b : IntRef) ~ IntRef { return IntRef->New(a->Get() + b->Get()); });
+sum := v->Reduce(IntRef->New(0), \(IntRef, IntRef) ~ IntRef : (a, b) => IntRef->New(a->Get() + b->Get()));
 sum->PrintLine(); # 6
 ```
 		~#
@@ -6557,8 +6558,8 @@ unique->Size()->PrintLine(); # 2
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(4)); v->AddBack(IntRef->New(9));
-v->Any(\(x : IntRef) ~ Bool { return x->Get() > 5; })->PrintLine(); # true
-v->Any(\(x : IntRef) ~ Bool { return x->Get() > 10; })->PrintLine(); # false
+v->Any(\(IntRef) ~ Bool : (x) => x->Get() > 5)->PrintLine(); # true
+v->Any(\(IntRef) ~ Bool : (x) => x->Get() > 10)->PrintLine(); # false
 ```
 		~#
 		method : public : Any(f : (H) ~ Bool) ~ Bool {
@@ -6578,8 +6579,8 @@ v->Any(\(x : IntRef) ~ Bool { return x->Get() > 10; })->PrintLine(); # false
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(4)); v->AddBack(IntRef->New(6));
-v->All(\(x : IntRef) ~ Bool { return x->Get() % 2 = 0; })->PrintLine(); # true
-v->All(\(x : IntRef) ~ Bool { return x->Get() > 3; })->PrintLine();     # false
+v->All(\(IntRef) ~ Bool : (x) => x->Get() % 2 = 0)->PrintLine(); # true
+v->All(\(IntRef) ~ Bool : (x) => x->Get() > 3)->PrintLine();     # false
 ```
 		~#
 		method : public : All(f : (H) ~ Bool) ~ Bool {
@@ -6599,7 +6600,7 @@ v->All(\(x : IntRef) ~ Bool { return x->Get() > 3; })->PrintLine();     # false
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(1)); v->AddBack(IntRef->New(2)); v->AddBack(IntRef->New(3));
-v->Count(\(x : IntRef) ~ Bool { return x->Get() > 1; })->PrintLine(); # 2
+v->Count(\(IntRef) ~ Bool : (x) => x->Get() > 1)->PrintLine(); # 2
 ```
 		~#
 		method : public : Count(f : (H) ~ Bool) ~ Int {
@@ -6620,7 +6621,7 @@ v->Count(\(x : IntRef) ~ Bool { return x->Get() > 1; })->PrintLine(); # 2
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(3)); v->AddBack(IntRef->New(7)); v->AddBack(IntRef->New(2));
-found := v->FindFirst(\(x : IntRef) ~ Bool { return x->Get() > 4; });
+found := v->FindFirst(\(IntRef) ~ Bool : (x) => x->Get() > 4);
 found->PrintLine(); # 7
 ```
 		~#
@@ -6641,7 +6642,7 @@ found->PrintLine(); # 7
 ```
 v := Collection.CompareVector->New()<IntRef>;
 v->AddBack(IntRef->New(3)); v->AddBack(IntRef->New(7)); v->AddBack(IntRef->New(2));
-v->FindIndex(\(x : IntRef) ~ Bool { return x->Get() > 4; })->PrintLine(); # 1
+v->FindIndex(\(IntRef) ~ Bool : (x) => x->Get() > 4)->PrintLine(); # 1
 ```
 		~#
 		method : public : FindIndex(f : (H) ~ Bool) ~ Int {
@@ -6894,7 +6895,7 @@ map->Has("dog")->PrintLine(); # false
 ```
 map := Collection.Map->New()<String, IntRef>;
 map->Insert("a", IntRef->New(1)); map->Insert("b", IntRef->New(2));
-map->Each(\(k : String, v : IntRef) ~ Nil { "{$k}={$v}"->PrintLine(); });
+map->Each(\(String, IntRef) ~ Nil : (k, v) => "{$k}={$v}"->PrintLine());
 ```
 		~#
 		method : public : Each(f : (K, V) ~ Nil) ~ Map<K, V> {
@@ -7252,7 +7253,7 @@ map->Has("tmp")->PrintLine();     # false
 ```
 map := Collection.Map->New()<String, IntRef>;
 map->Insert("a", IntRef->New(1)); map->Insert("b", IntRef->New(2));
-filtered := map->Filter(\(k : String) ~ Bool { return k->Equals("a"); })<String, IntRef>;
+filtered := map->Filter(\(String) ~ Bool : (k) => k->Equals("a"))<String, IntRef>;
 filtered->Size()->PrintLine(); # 1
 ```
 		~#
@@ -7285,7 +7286,7 @@ filtered->Size()->PrintLine(); # 1
 ```
 map := Collection.Map->New()<String, IntRef>;
 map->Insert("a", IntRef->New(0)); map->Insert("b", IntRef->New(0));
-concat := map->Reduce("", \(acc : String, k : String) ~ String { return "{$acc}{$k}"; });
+concat := map->Reduce("", \(String, String) ~ String : (acc, k) => "{$acc}{$k}");
 concat->PrintLine(); # ab
 ```
 		~#
@@ -8420,7 +8421,7 @@ mmap->Has("y")->PrintLine(); # false
 ```
 mmap := Collection.MultiMap->New()<String, IntRef>;
 mmap->Insert("a", IntRef->New(1)); mmap->Insert("b", IntRef->New(2));
-filtered := mmap->Filter(\(k : String) ~ Bool { return k->Equals("a"); })<String, IntRef>;
+filtered := mmap->Filter(\(String) ~ Bool : (k) => k->Equals("a"))<String, IntRef>;
 filtered->Size()->PrintLine(); # 1
 ```
 		~#
@@ -8450,7 +8451,7 @@ filtered->Size()->PrintLine(); # 1
 ```
 mmap := Collection.MultiMap->New()<String, IntRef>;
 mmap->Insert("a", IntRef->New(0)); mmap->Insert("b", IntRef->New(0));
-concat := mmap->Reduce("", \(acc : String, k : String) ~ String { return "{$acc}{$k}"; });
+concat := mmap->Reduce("", \(String, String) ~ String : (acc, k) => "{$acc}{$k}");
 concat->PrintLine(); # ab
 ```
 		~#
@@ -8471,7 +8472,7 @@ concat->PrintLine(); # ab
 ```
 mmap := Collection.MultiMap->New()<String, IntRef>;
 mmap->Insert("a", IntRef->New(1)); mmap->Insert("a", IntRef->New(2));
-mmap->Each(\(k : String, v : IntRef) ~ Nil { "{$k}={$v}"->PrintLine(); });
+mmap->Each(\(String, IntRef) ~ Nil : (k, v) => "{$k}={$v}"->PrintLine());
 ```
 		~#
 		method : public : Each(f : (K, V) ~ Nil) ~ MultiMap<K, V> {
