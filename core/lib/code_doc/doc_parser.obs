@@ -1146,6 +1146,8 @@ class ClassSnippet from Snippet {
 
 class FuncSnippet from Snippet {
 	@name : String;
+	# a method's own type parameters, '<R : Compare>' (#1242)
+	@method_generics : String;
 	@signature : String;
 	@desc : String;
 	@tags : Map<String, SnippetTag>;
@@ -1226,6 +1228,9 @@ class FuncSnippet from Snippet {
 				};
 		
 				@signature->Append(@name);
+				if(@method_generics <> Nil) {
+					@signature->Append(@method_generics);
+				};
 			};
 			@signature->Append('(');
 
@@ -1427,6 +1432,31 @@ class FuncSnippet from Snippet {
 			};
 		};
 		
+		# a method's own type parameters, 'Map<R : Compare>(...)' (#1242): kept for
+		# the signature; the doc comment was rejected and the method dropped before
+		if(@name <> Nil & @cur_char = '<') {
+			@method_generics := "&lt;";
+			NextChar();
+			level := 1;
+			while(@cur_char <> '\0' & level > 0) {
+				if(@cur_char = '<') {
+					level += 1;
+					@method_generics += "&lt;";
+				}
+				else if(@cur_char = '>') {
+					level -= 1;
+					if(level > 0) {
+						@method_generics += "&gt;";
+					};
+				}
+				else {
+					@method_generics->Append(@cur_char);
+				};
+				NextChar();
+			};
+			@method_generics += "&gt;";
+		};
+
 		if(@name = Nil | <>MatchChar('(')) {
 			return false;
 		};

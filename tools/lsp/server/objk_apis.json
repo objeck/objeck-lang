@@ -2474,6 +2474,9 @@
 				"IsFront": {
 					"descriptions": ["**Checks to see if the pointer is at the front of the list**\n\n```method : public : IsFront() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nlist := Collection.CompareList->New()<IntRef>;\nlist->AddBack(IntRef->New(1));\nlist->AddBack(IntRef->New(2));\nlist->Rewind();\nlist->IsFront()->PrintLine(); # true\nlist->Next();\nlist->IsFront()->PrintLine(); # false\n```"]
 				},
+				"Map": {
+					"descriptions": ["**Maps the given function to each value in the list**\n\n```method : public : Map&lt;R : Compare&gt;(f:(H)~R) ~ CompareList&lt;R&gt;```\n\n\n\nf: (H)~R\n\nreturn: CompareList&lt;R&gt;\n\n```\nlist := Collection.CompareList->New()<IntRef>;\nlist->AddBack(IntRef->New(3));\nlist->AddBack(IntRef->New(4));\ndoubled := list->Map(\\(IntRef) ~ IntRef : (v) => IntRef->New(v->Get() * 2));\ndoubled->Size()->PrintLine(); # 2\n```"]
+				},
 				"More": {
 					"descriptions": ["**Checks to see the pointer can be advanced**\n\n```method : public : More() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nlist := Collection.CompareList->New()<IntRef>;\nlist->AddBack(IntRef->New(1));\nlist->Rewind();\nwhile(list->More()) {\n   list->Get()->PrintLine();\n   list->Next();\n};\n```"]
 				},
@@ -2848,6 +2851,9 @@
 				},
 				"Limit": {
 					"descriptions": ["**Returns a limited list**\n\n```method : public : Limit(l:Int) ~ List&lt;H&gt;```\n\n\n\nl: Int\n\nreturn: List&lt;H&gt;\n\n```\nlist := Collection.List->New()<String>;\nlist->AddBack(\"a\");\nlist->AddBack(\"b\");\nlist->AddBack(\"c\");\nfirst2 := list->Limit(2);\nfirst2->Size()->PrintLine(); # 2\n```"]
+				},
+				"Map": {
+					"descriptions": ["**Maps the given function to each value in the list**\n\n```method : public : Map&lt;R&gt;(f:(H)~R) ~ List&lt;R&gt;```\n\n\n\nf: (H)~R\n\nreturn: List&lt;R&gt;\n\n```\nlist := Collection.List->New()<String>;\nlist->AddBack(\"hello\");\nlist->AddBack(\"world\");\nupper := list->Map(\\(String) ~ String : (s) => s->ToUpper());\nupper->Size()->PrintLine(); # 2\n```"]
 				},
 				"More": {
 					"descriptions": ["**Checks to see the pointer can be advanced**\n\n```method : public : More() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nlist := Collection.List->New()<String>;\nlist->AddBack(\"x\");\nlist->Rewind();\nwhile(list->More()) {\n   list->Get()->PrintLine();\n   list->Next();\n};\n```"]
@@ -3322,6 +3328,9 @@
 				},
 				"Limit": {
 					"descriptions": ["**Returns a limited list**\n\n```method : public : Limit(l:Int) ~ Vector&lt;H&gt;```\n\n\n\nl: Int\n\nreturn: Vector&lt;H&gt;\n\n```\nv := Collection.Vector->New()<String>;\nv->AddBack(\"a\"); v->AddBack(\"b\"); v->AddBack(\"c\");\nfirst2 := v->Limit(2);\nfirst2->Size()->PrintLine(); # 2\n```"]
+				},
+				"Map": {
+					"descriptions": ["**Maps the given function to each value in the vector**\n\n```method : public : Map&lt;R&gt;(f:(H)~R) ~ Vector&lt;R&gt;```\n\n\n\nf: (H)~R\n\nreturn: Vector&lt;R&gt;\n\n```\nv := Collection.Vector->New()<String>;\nv->AddBack(\"hello\"); v->AddBack(\"world\");\nupper := v->Map(\\(String) ~ String : (s) => s->ToUpper());\nupper->Get(0)->PrintLine(); # HELLO\nlengths := v->Map(\\(String) ~ IntRef : (s) => IntRef->New(s->Size())); # a Vector<IntRef>\n```"]
 				},
 				"New": {
 					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nv := Collection.Vector->New()<String>;\nv->AddBack(\"hello\");\nv->Size()->PrintLine(); # 1\n```", "**Copy constructor**\n\n```New(values:H[])```\n\n\n\nvalues: H[]\n\n```\narr := String->New[2];\narr[0] := \"a\"; arr[1] := \"b\";\nv := Collection.Vector->New(arr)<String>;\nv->Size()->PrintLine(); # 2\n```", "**Copy constructor**\n\n```New(values:Vector&lt;H&gt;)```\n\n\n\nvalues: Vector&lt;H&gt;\n\n```\nsrc := Collection.Vector->New()<String>;\nsrc->AddBack(\"x\");\ncopy := Collection.Vector->New(src)<String>;\ncopy->Get(0)->PrintLine(); # x\n```"]
