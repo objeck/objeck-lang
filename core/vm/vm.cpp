@@ -275,9 +275,13 @@ std::locale ConsoleLocale(const char* name)
   candidates[count++] = "C.UTF-8";
   candidates[count++] = "en_US.UTF-8";
 
+  // Only the candidate's character conversion is taken (the ctype category,
+  // which carries codecvt): the rest stays classic. Imbuing the whole locale
+  // gave wcout its digit grouping, so under en_US.UTF-8 an Int printed as
+  // "9,000" on macOS and Linux.
   for(size_t i = 0; i < count; ++i) {
     try {
-      return std::locale(candidates[i].c_str());
+      return std::locale(std::locale::classic(), std::locale(candidates[i].c_str()), std::locale::ctype);
     }
     catch(const std::runtime_error&) {
       // not one this C++ library can build; the next is coarser
