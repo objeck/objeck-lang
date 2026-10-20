@@ -3012,6 +3012,8 @@ namespace frontend {
     std::wstring variable_name;
     std::wstring method_name;
     std::map<std::wstring, Type*> method_generic_bindings;
+    std::vector<size_t> named_eval_order;
+    std::vector<SymbolEntry*> named_temps;
     ExpressionList* expressions;
     SymbolEntry* entry;
     MethodCallType call_type;
@@ -3274,6 +3276,24 @@ namespace frontend {
     // a call with named arguments is bound to its generated forwarder (#1244)
     void SetMethodName(const std::wstring &m) {
       method_name = m;
+    }
+
+    // A named call to a library method (#1244): its arguments are passed in
+    // parameter order but evaluated as written. Each written argument is stored
+    // in a hidden local first; GetNamedEvalOrder lists their positions in the
+    // argument list in written order, and GetNamedTemps the local for each
+    // position (nullptr for a placeholder or the mask).
+    const std::vector<size_t> &GetNamedEvalOrder() {
+      return named_eval_order;
+    }
+
+    const std::vector<SymbolEntry*> &GetNamedTemps() {
+      return named_temps;
+    }
+
+    void SetNamedEvaluation(const std::vector<size_t> &o, const std::vector<SymbolEntry*> &t) {
+      named_eval_order = o;
+      named_temps = t;
     }
 
     // a generic method's type arguments, inferred from this call's arguments (#1242)

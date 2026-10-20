@@ -352,6 +352,16 @@ void IntermediateMethod::Write(bool emit_lib, bool is_debug, OutputStream& out_s
   WriteInt(space, out_stream);
   entries->Write(is_debug, out_stream);
 
+  // a library's parameter names, and which take a default value, so a caller
+  // can name the arguments (#1244)
+  if(emit_lib) {
+    WriteInt((int)param_names.size(), out_stream);
+    for(size_t i = 0; i < param_names.size(); ++i) {
+      WriteString(param_names[i], out_stream);
+      WriteByte(i < param_defaults.size() && param_defaults[i], out_stream);
+    }
+  }
+
   // write statements
   unsigned long num_instrs = 0;
   for(size_t i = 0; i < blocks.size(); ++i) {

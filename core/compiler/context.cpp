@@ -444,6 +444,10 @@ bool ContextAnalyzer::Analyze(bool is_lib)
       for(size_t k = 0; k < methods.size(); ++k) {
         AddDefaultParameterMethods(bundle, klass, methods[k]);
         GenerateNamedForwarders(bundle, klass, methods[k]);
+        // a library's callers name its arguments through one mask forwarder (#1244)
+        if(is_lib) {
+          GenerateMaskForwarder(bundle, klass, methods[k]);
+        }
       }
     }
   }
@@ -659,18 +663,14 @@ void ContextAnalyzer::AddDefaultParameterMethods(ParsedBundle* bundle, Class* kl
  ****************************/
 void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klass, Method* method)
 {
-  // find initial parameter offset
+  // find initial parameter offset: the first parameter with a default, which may be the
+  // first parameter (so 0 cannot mean 'not found', or 'F()' is never generated)
   std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
-  size_t inital_param_offset = 0;
-
-  if(!inital_param_offset) {
-    for(size_t i = 0; i < declarations.size(); ++i) {
-      Declaration* declaration = declarations[i];
-      if(declaration->GetAssignment()) {
-        if(!inital_param_offset) {
-          inital_param_offset = i;
-        }
-      }
+  size_t inital_param_offset = declarations.size();
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    if(declarations[i]->GetAssignment()) {
+      inital_param_offset = i;
+      break;
     }
   }
 
@@ -711,6 +711,115 @@ void ContextAnalyzer::GenerateParameterMethods(ParsedBundle* bundle, Class* klas
       ProcessError(method, L"Method or function already overloaded '" + method->GetUserName() + L"'");
     }
   }
+}
+
+/****************************
+ * A library method with two or
+ * more default values gets a
+ * mask forwarder, 'F$m' (#1244,
+ * phase 2): every parameter, then
+ * an Int whose bit j says the
+ * caller gave parameter j. It
+ * assigns each default the caller
+ * skipped, in the callee's context,
+ * and calls the original. One per
+ * method, not one per subset: a
+ * caller in another binary cannot
+ * generate its own.
+ ****************************/
+void ContextAnalyzer::GenerateMaskForwarder(ParsedBundle* bundle, Class* klass, Method* method)
+{
+  if(method->IsAlt() || method->IsVirtual()) {
+    return;
+  }
+
+  std::vector<Declaration*> declarations = method->GetDeclarations()->GetDeclarations();
+  int defaults = 0;
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    if(declarations[i]->GetAssignment()) {
+      defaults++;
+    }
+  }
+  if(defaults < 2 || declarations.size() > 62) {
+    return;
+  }
+
+  const std::wstring forwarder_name = method->GetName() + L"$m";
+  Method* forwarder = TreeFactory::Instance()->MakeMethod(method->GetFileName(), method->GetLineNumber(), method->GetLinePosition(),
+                                                          method->GetEndLineNumber(), method->GetEndLinePosition(),
+                                                          forwarder_name, method->GetMethodType(), method->IsStatic(), method->IsNative());
+  forwarder->SetReturn(method->GetReturn());
+
+  DeclarationList* forwarder_declarations = TreeFactory::Instance()->MakeDeclarationList();
+  StatementList* forwarder_statements = TreeFactory::Instance()->MakeStatementList();
+  std::vector<Declaration*> forwarded_declarations;
+  std::vector<Assignment*> forwarded_defaults(declarations.size(), nullptr);
+
+  bundle->GetSymbolTableManager()->NewParseScope();
+
+  // every parameter, scoped to the forwarder so its body can read and set them
+  const std::wstring file_name = method->GetFileName();
+  const int line_num = method->GetLineNumber();
+  const int line_pos = method->GetLinePosition();
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    const std::wstring scoped = declarations[i]->GetEntry()->GetName();
+    const size_t start = scoped.find_last_of(L':');
+    const std::wstring bare = start == std::wstring::npos ? scoped : scoped.substr(start + 1);
+
+    SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, forwarder_name + L':' + bare,
+                                                                  TypeFactory::Instance()->MakeType(declarations[i]->GetEntry()->GetType()),
+                                                                  false, true);
+    Declaration* declaration = TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos,
+                                                                        entry, (Declaration*)nullptr, (Assignment*)nullptr);
+    forwarder_declarations->AddDeclaration(declaration);
+    bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(entry);
+    forwarded_declarations.push_back(declaration);
+  }
+
+  // the mask
+  SymbolEntry* mask_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, forwarder_name + L":$mask",
+                                                                     TypeFactory::Instance()->MakeType(INT_TYPE), false, true);
+  forwarder_declarations->AddDeclaration(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos,
+                                                                                  mask_entry, (Declaration*)nullptr, (Assignment*)nullptr));
+  bundle->GetSymbolTableManager()->CurrentParseScope()->AddEntry(mask_entry);
+
+  // 'if(($mask and bit) = 0) { p := default; }' for each parameter with a default
+  for(size_t i = 0; i < declarations.size(); ++i) {
+    Assignment* original = declarations[i]->GetAssignment();
+    if(!original) {
+      continue;
+    }
+
+    const std::wstring scoped = declarations[i]->GetEntry()->GetName();
+    const size_t start = scoped.find_last_of(L':');
+    const std::wstring bare = start == std::wstring::npos ? scoped : scoped.substr(start + 1);
+
+    Variable* mask = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, L"$mask");
+    IntegerLiteral* bit = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, ((INT64_VALUE)1) << i);
+    CalculatedExpression* masked = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, BIT_AND_EXPR, mask, bit);
+    IntegerLiteral* zero = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
+    CalculatedExpression* skipped = TreeFactory::Instance()->MakeCalculatedExpression(file_name, line_num, line_pos, EQL_EXPR, masked, zero);
+
+    Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, bare);
+    Assignment* assignment = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos,
+                                                                     target, original->GetExpression());
+    // the if's block is a scope of its own, as the parser would make it: the
+    // analyzer walks a method's scopes in the order they were made
+    bundle->GetSymbolTableManager()->CurrentParseScope()->NewParseScope();
+    StatementList* then_statements = TreeFactory::Instance()->MakeStatementList();
+    then_statements->AddStatement(assignment);
+    bundle->GetSymbolTableManager()->CurrentParseScope()->PreviousParseScope();
+    forwarder_statements->AddStatement(TreeFactory::Instance()->MakeIf(file_name, line_num, line_pos, line_num, line_pos,
+                                                                       skipped, then_statements));
+  }
+
+  forwarder->SetStatements(forwarder_statements);
+  forwarder->SetDeclarations(forwarder_declarations);
+  forwarder->SetOriginal(method);
+  forwarder->SetForwardedParameters(forwarded_declarations, forwarded_defaults);
+  bundle->GetSymbolTableManager()->PreviousParseScope(forwarder->GetParsedName());
+
+  klass->AddMethod(forwarder);
 }
 
 /****************************
@@ -5378,6 +5487,249 @@ LibraryMethod* ContextAnalyzer::ResolveMethodCall(LibraryClass* klass, MethodCal
 }
 
 /****************************
+ * A placeholder for a library
+ * parameter a named call skips
+ * (#1244): the mask forwarder
+ * overwrites it with the default
+ ****************************/
+Expression* ContextAnalyzer::NamedPlaceholder(Type* type, Expression* at)
+{
+  const std::wstring &file_name = at->GetFileName();
+  const int line_num = at->GetLineNumber();
+  const int line_pos = at->GetLinePosition();
+
+  if(type->GetDimension() > 0) {
+    return TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+  }
+
+  switch(type->GetType()) {
+  case BOOLEAN_TYPE:
+    return TreeFactory::Instance()->MakeBooleanLiteral(file_name, line_num, line_pos, false);
+
+  case CHAR_TYPE:
+    return TreeFactory::Instance()->MakeCharacterLiteral(file_name, line_num, line_pos, L'\0');
+
+  case BYTE_TYPE:
+  case INT_TYPE:
+    return TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
+
+  case FLOAT_TYPE:
+    return TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, 0.0);
+
+  case CLASS_TYPE:
+    return TreeFactory::Instance()->MakeNilLiteral(file_name, line_num, line_pos);
+
+  default:
+    return nullptr;
+  }
+}
+
+/****************************
+ * Binds a named call to a library
+ * method through the parameter
+ * names its .obl records (#1244,
+ * phase 2). A call that skips
+ * nothing becomes a positional
+ * call; one that skips a default
+ * calls the method's mask
+ * forwarder with a placeholder for
+ * each skipped parameter and the
+ * mask of those given. Either way
+ * the arguments are evaluated as
+ * written, through hidden locals
+ * when the order changes.
+ ****************************/
+bool ContextAnalyzer::BindNamedLibraryArguments(LibraryClass* klass, MethodCall* method_call, const int depth)
+{
+  ExpressionList* call_params = method_call->GetCallingParameters();
+  const std::vector<std::wstring> shape = call_params->GetNames();
+  const std::wstring name = method_call->GetMethodName();
+  const std::vector<Expression*> written = call_params->GetExpressions();
+  call_params->ClearNames();
+
+  struct Plan {
+    LibraryMethod* method;
+    std::vector<size_t> order;
+    std::vector<size_t> missing;
+  };
+  std::vector<Plan> plans;
+  std::wstring first_error;
+
+  // this class's overloads, then its parents'
+  std::vector<LibraryMethod*> candidates;
+  for(LibraryClass* search = klass; search; ) {
+    const std::vector<LibraryMethod*> methods = search->GetUnqualifiedMethods(name);
+    candidates.insert(candidates.end(), methods.begin(), methods.end());
+    search = search->GetParentName().empty() ? nullptr :
+      linker->SearchClassLibraries(search->GetParentName(), program->GetLibUses(current_class->GetFileName()));
+  }
+
+  for(size_t c = 0; c < candidates.size(); ++c) {
+    LibraryMethod* candidate = candidates[c];
+    const std::vector<std::wstring> &names = candidate->GetParameterNames();
+    const std::vector<bool> &defaults = candidate->GetParameterDefaults();
+    if(names.size() != candidate->GetDeclarationTypes().size()) {
+      continue;
+    }
+
+    Plan plan;
+    plan.method = candidate;
+    std::vector<bool> given(names.size(), false);
+    std::wstring error;
+    for(size_t i = 0; error.empty() && i < shape.size(); ++i) {
+      size_t index = names.size();
+      if(shape[i].empty()) {
+        if(i < names.size()) {
+          index = i;
+        }
+        else {
+          error = L"Too many arguments for '" + name + L"'";
+        }
+      }
+      else {
+        for(size_t j = 0; j < names.size(); ++j) {
+          if(names[j] == shape[i]) {
+            index = j;
+            break;
+          }
+        }
+        if(index == names.size()) {
+          std::wstring list;
+          for(size_t j = 0; j < names.size(); ++j) {
+            list += (j > 0 ? L", " : L"") + names[j];
+          }
+          error = L"No parameter named '" + shape[i] + L"'; the parameters are: " + (list.empty() ? L"none" : list);
+        }
+      }
+      if(error.empty()) {
+        if(given[index]) {
+          error = L"Parameter '" + names[index] + L"' is given both by position and by name";
+        }
+        else {
+          given[index] = true;
+          plan.order.push_back(index);
+        }
+      }
+    }
+    for(size_t j = 0; error.empty() && j < names.size(); ++j) {
+      if(!given[j]) {
+        if(j < defaults.size() && defaults[j]) {
+          plan.missing.push_back(j);
+        }
+        else {
+          error = L"Parameter '" + names[j] + L"' has no default value and is not given";
+        }
+      }
+    }
+
+    if(error.empty()) {
+      plans.push_back(plan);
+    }
+    else if(first_error.empty()) {
+      first_error = error;
+    }
+  }
+
+  if(plans.empty()) {
+    ProcessError(static_cast<Expression*>(method_call), first_error.empty() ? L"Undefined function/method call: '" + name + L"(..)'" : first_error);
+    return false;
+  }
+
+  // a plan that skips nothing calls the method itself (or a default alternate);
+  // one that skips a default needs the method's mask forwarder
+  const Plan* chosen = nullptr;
+  bool ambiguous = false;
+  for(size_t p = 0; p < plans.size(); ++p) {
+    if(plans[p].missing.empty()) {
+      if(chosen && chosen->order != plans[p].order) {
+        ambiguous = true;
+      }
+      chosen = chosen ? chosen : &plans[p];
+    }
+  }
+  bool use_mask = false;
+  if(!chosen) {
+    for(size_t p = 0; p < plans.size(); ++p) {
+      LibraryClass* owner = plans[p].method->GetLibraryClass();
+      if(owner->GetUnqualifiedMethods(name + L"$m").empty()) {
+        continue;
+      }
+      if(chosen && (chosen->order != plans[p].order || chosen->missing != plans[p].missing)) {
+        ambiguous = true;
+      }
+      chosen = chosen ? chosen : &plans[p];
+      use_mask = true;
+    }
+    if(!chosen) {
+      ProcessError(static_cast<Expression*>(method_call), L"'" + name + L"' cannot skip a parameter by name: rebuild its library with this toolchain");
+      return false;
+    }
+  }
+  if(ambiguous) {
+    ProcessError(static_cast<Expression*>(method_call), L"Named arguments match more than one overload of '" + name +
+                 L"'; pass the ambiguous ones by position");
+    return false;
+  }
+
+  // the arguments in parameter order, a placeholder for each skipped parameter
+  const std::vector<frontend::Type*> types = chosen->method->GetDeclarationTypes();
+  std::vector<Expression*> arguments(types.size(), nullptr);
+  for(size_t k = 0; k < chosen->order.size(); ++k) {
+    arguments[chosen->order[k]] = written[k];
+  }
+  INT64_VALUE mask = 0;
+  for(size_t k = 0; k < chosen->order.size(); ++k) {
+    mask |= ((INT64_VALUE)1) << chosen->order[k];
+  }
+  for(size_t m = 0; m < chosen->missing.size(); ++m) {
+    const size_t p = chosen->missing[m];
+    Expression* placeholder = NamedPlaceholder(types[p], static_cast<Expression*>(method_call));
+    if(!placeholder) {
+      ProcessError(static_cast<Expression*>(method_call), L"A function-typed parameter of a library method cannot be skipped by name");
+      return false;
+    }
+    arguments[p] = placeholder;
+  }
+  if(use_mask) {
+    arguments.push_back(TreeFactory::Instance()->MakeIntegerLiteral(static_cast<Expression*>(method_call)->GetFileName(),
+                                                                    static_cast<Expression*>(method_call)->GetLineNumber(),
+                                                                    static_cast<Expression*>(method_call)->GetLinePosition(), mask));
+    method_call->SetMethodName(name + L"$m");
+  }
+  call_params->SetExpressions(arguments);
+
+  // evaluated as written: through hidden locals when the order changes
+  bool in_order = true;
+  for(size_t k = 1; k < chosen->order.size(); ++k) {
+    if(chosen->order[k] < chosen->order[k - 1]) {
+      in_order = false;
+    }
+  }
+  if(!in_order && current_method && current_table) {
+    static int named_tmp_id = 0;
+    std::vector<size_t> eval_order;
+    std::vector<SymbolEntry*> temps(arguments.size(), nullptr);
+    for(size_t k = 0; k < chosen->order.size(); ++k) {
+      const size_t p = chosen->order[k];
+      Type* temp_type = TypeFactory::Instance()->MakeType(types[p]);
+      if(temp_type->GetType() == FUNC_TYPE) {
+        ProcessError(static_cast<Expression*>(method_call), L"A function-typed argument to a library method must be passed in parameter order");
+        return false;
+      }
+      const std::wstring tmp_name = current_method->GetName() + L":#named_tmp#" + std::to_wstring(named_tmp_id++);
+      SymbolEntry* entry = TreeFactory::Instance()->MakeSymbolEntry(tmp_name, temp_type, false, true);
+      current_table->AddEntry(entry, true);
+      entry->WasLoaded();
+      temps[p] = entry;
+      eval_order.push_back(p);
+    }
+    method_call->SetNamedEvaluation(eval_order, temps);
+  }
+
+  return true;
+}
+
+/****************************
  * Analyzes a method call.  This
  * is method call within a linked
  * library
@@ -5395,11 +5747,26 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   CheckLambdaInferredTypes(method_call, depth + 1);
   
   AnalyzeExpressions(call_params, depth + 1);
-  // a release .obl keeps no parameter names (#1244, phase 2); a call that is not
-  // to one of this class's methods is left to its own path to report
-  if(call_params->HasNames() && !klass->GetUnqualifiedMethods(method_call->GetMethodName()).empty()) {
-    ProcessError(static_cast<Expression*>(method_call), L"Named arguments are not supported for library methods yet");
-    call_params->ClearNames();
+  // named arguments, through the parameter names the .obl records (#1244). The
+  // method may be one this class inherits from a library parent.
+  if(call_params->HasNames()) {
+    bool found = false;
+    for(LibraryClass* search = klass; search && !found; ) {
+      found = !search->GetUnqualifiedMethods(method_call->GetMethodName()).empty();
+      search = search->GetParentName().empty() ? nullptr :
+        linker->SearchClassLibraries(search->GetParentName(), program->GetLibUses(current_class->GetFileName()));
+    }
+
+    // a call to none of them is left to its own path
+    if(!found) {
+    }
+    else if(PrimitiveReceiverType(encoding)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Named arguments are not supported for calls on a primitive value");
+      call_params->ClearNames();
+    }
+    else if(!BindNamedLibraryArguments(klass, method_call, depth)) {
+      return;
+    }
   }
   // A primitive receiver is parameter 0 of a static function on its $ class, so
   // only a function that takes it can match. Resolving the written arguments
@@ -5430,6 +5797,13 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   const std::wstring bundle_name = klass->GetBundleName();
   if(!klass->IsPublic() && current_class && current_class->GetBundleName() != bundle_name) {
     ProcessError(static_cast<Expression*>(method_call), L"Cannot access private class '" + klass->GetName() + L"' from this bundle scope");
+  }
+
+  // names no path consumed must not bind to a library method by position; a
+  // chained call has no guard. Without a method, the call is some other path's.
+  if(lib_method && call_params->HasNames()) {
+    call_params->ClearNames();
+    ProcessError(static_cast<Expression*>(method_call), L"Named arguments need a method or function of a class; this call has no parameter names");
   }
 
   method_call->SetOriginalLibraryClass(klass);

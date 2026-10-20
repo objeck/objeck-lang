@@ -954,6 +954,10 @@ void Library::LoadFile(const std::wstring &file_name)
       std::wcerr << L"Unable to use executable '" << file_name << L"' as linked library." << std::endl;
       exit(1);
     }
+    else if(magic_num == MAGIC_NUM_LIB_NO_PARAM_NAMES) {
+      std::wcerr << L"Library '" << file_name << L"' was built before libraries recorded their parameter names.\n\tRebuild it with this toolchain." << std::endl;
+      exit(1);
+    }
     else if(magic_num != MAGIC_NUM_LIB) {
       std::wcerr << L"Unable to link invalid library file '" << file_name << L"'.\n\tThe file carries no Objeck library signature -- check that it is a .obl, not an .obe or a file from another toolchain." << std::endl;
       exit(1);
@@ -1260,6 +1264,16 @@ void Library::LoadMethods(LibraryClass* cls, bool is_debug)
 
     LibraryMethod* mthd = new LibraryMethod(id, name, rtrn_name, type, is_virtual, has_and_or,
                                             is_native, is_static, is_lambda, params, mem_size, cls, entries);
+
+    // the parameters' names, and which take a default value (#1244)
+    std::vector<std::wstring> param_names;
+    std::vector<bool> param_defaults;
+    const int num_param_names = ReadInt();
+    for(int i = 0; i < num_param_names; ++i) {
+      param_names.push_back(ReadString());
+      param_defaults.push_back(ReadByte() != 0);
+    }
+    mthd->SetParameters(param_names, param_defaults);
     // load statements
     LoadStatements(mthd, is_debug);
 

@@ -1,0 +1,80 @@
+#~
+Named arguments to library methods (#1244, phase 2; docs/NAMED_ARGUMENTS_DESIGN.md).
+
+A library's .obl records its methods' parameter names, so a call into the standard
+library can name them: reordered, mixed with positional arguments, or skipping a
+default. The arguments are still evaluated in the order written.
+
+Also here: a method whose parameters ALL have defaults, called with none. The
+zero-argument alternate was never generated when the first parameter had a
+default and a later one did too, in a program as in a library.
+check_lib_named_args.py covers a library built for the test: a skipped middle
+default, constructors and inherited methods.
+~#
+class NamedArgumentsLibrary {
+	@failures : Int;
+	@trace : String;
+
+	New() {
+		@failures := 0;
+		@trace := "";
+	}
+
+	method : Check(what : String, got : String, want : String) ~ Nil {
+		if(got->Equals(want)) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Mark(t : String, v : Int) ~ Int {
+		@trace += t;
+		return v;
+	}
+
+	function : AllDefaults(a : Int := 1, b : Int := 2) ~ Int {
+		return a * 10 + b;
+	}
+
+	method : Run() ~ Nil {
+		# a default given by name
+		Check("a default by name", "abc"->Pad(' ', 2, is_left: true), "  abc");
+		Check("a default left out", "abc"->Pad('.', 2), "abc..");
+
+		# every argument by name, reordered
+		Check("all by name, reordered", "abc"->Pad(num: 2, is_left: true, char: '*'), "**abc");
+		Check("required ones by name", "abc"->Pad(num: 1, char: '-'), "abc-");
+
+		# evaluated as written, not in parameter order
+		s := "ab"->Pad(num: Mark("1", 2), char: Mark("2", 'x'->As(Int))->As(Char));
+		Check("reordered arguments keep their value", s, "abxx");
+		Check("and are evaluated as written", @trace, "12");
+
+		# a static library function
+		Check("a library function", Int->Clamp(value: 15, max: 10, min: 0)->ToString(), "10");
+
+		# every parameter defaulted, called with none, one or two
+		Check("all defaults, none given", AllDefaults()->ToString(), "12");
+		Check("all defaults, one given", AllDefaults(5)->ToString(), "52");
+		Check("all defaults, the second by name", AllDefaults(b: 7)->ToString(), "17");
+
+		# often enough for the JIT
+		total := 0;
+		for(i := 0; i < 3000; i += 1;) {
+			total += "a"->Pad(num: i % 3 + 1, char: 'z')->Size();
+		};
+		Check("in a loop", total->ToString(), "9000");
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NamedArgumentsLibrary->New()->Run();
+	}
+}

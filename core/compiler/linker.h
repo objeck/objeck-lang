@@ -207,6 +207,9 @@ class LibraryMethod {
   int num_params;
   int mem_size;
   std::vector<frontend::Type*> declarations;
+  // the parameters' names, and which take a default value (#1244)
+  std::vector<std::wstring> param_names;
+  std::vector<bool> param_defaults;
   backend::IntermediateDeclarations* entries;
   
   void ParseDeclarations();
@@ -229,6 +232,19 @@ class LibraryMethod {
   void EncodeUserName();
   
  public:
+  void SetParameters(const std::vector<std::wstring> &n, const std::vector<bool> &d) {
+    param_names = n;
+    param_defaults = d;
+  }
+
+  const std::vector<std::wstring> &GetParameterNames() {
+    return param_names;
+  }
+
+  const std::vector<bool> &GetParameterDefaults() {
+    return param_defaults;
+  }
+
   LibraryMethod(int i, const std::wstring &n, const std::wstring &r, frontend::MethodType t, bool v,  bool h,
                 bool nt, bool s, bool l, int p, int m, LibraryClass* c, backend::IntermediateDeclarations* e) {
     id = i;

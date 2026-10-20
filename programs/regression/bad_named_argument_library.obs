@@ -1,13 +1,10 @@
-# EXPECT_COMPILE_ERROR: Named arguments are not supported for library methods yet
+# EXPECT_COMPILE_ERROR: No parameter named 'chr'; the parameters are: char, num, is_left
 #~
-Named arguments (#1244): a library method: a release .obl keeps no parameter names (phase 2).
+Named arguments (#1244): a name a library method does not have. The error lists the
+parameter names its .obl records.
 ~#
 class BadNamedArgumentLibrary {
-	function : F(a : Int, b : Int := 2) ~ Int {
-		return a + b;
-	}
-
 	function : Main(args : String[]) ~ Nil {
-		"s"->Pad(char: 32, num: 4);
+		"s"->Pad(chr: ' ', num: 4);
 	}
 }

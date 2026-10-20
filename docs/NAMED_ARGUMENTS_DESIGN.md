@@ -94,34 +94,64 @@ where names in a default expression would resolve against the caller.
 
 ### 5. What it applies to
 
-| Target | Phase 1 | Notes |
+| Target | Supported | Notes |
 |---|---|---|
-| Functions and methods of classes in the program being compiled | yes | |
-| Constructors (`New`) | yes | the most common place for options |
+| Functions and methods of classes in the program being compiled | yes (phase 1) | |
+| Constructors (`New`) | yes (phase 1) | the most common place for options |
+| Library methods and constructors (`String->Pad`, `Hash->New`, ...) | yes (phase 2) | see below |
 | Virtual and interface methods | **no**: later | they cannot have defaults; an interface cannot hold the concrete forwarder |
-| Library methods (`String->Pad`, `Hash->New`, ...) | **no**: phase 2 | see below |
 | Function values and lambdas | no | a function type has no parameter names |
-| Primitive receivers (`v->Pow(...)`) | no | library functions; parameter 0 is the receiver |
+| Primitive receivers (`v->Clamp(...)`) | no | library functions; parameter 0 is the receiver |
 
 A named argument to a target that does not support it is a compile error that says why,
 not a silent positional call.
 
 ### 6. Phase 2: library methods
 
-A release `.obl` keeps a method's parameter **types** but not their names. The names are
-written only in a debug build (`Library::LoadMethods`, `is_debug`), and a caller cannot
-generate a forwarder inside another binary. Phase 2 needs:
+A release `.obl` kept a method's parameter **types** but not their names, and a caller cannot
+generate a forwarder inside another binary. Phase 2 (shipped) adds:
 
-1. Parameter names in every `.obl`. This is a format change, so the linker version check
-   must accept the old layout or the libraries must be rebuilt together, as they always are.
-2. One **mask forwarder** per library method with two or more defaults. It takes every
-   parameter plus an `Int` mask of the supplied ones, and assigns each missing default under
-   `if((mask and bit) = 0)`. The caller passes a zero, `0.0` or `Nil` placeholder for each
-   skipped parameter. That is one extra method per such method, not one per subset.
+1. **Parameter names in every `.obl`.** After each method's entries, a library build writes
+   the parameter count, then each parameter's bare name and whether it has a default
+   (`IntermediateMethod::Write`). The library magic is now `0xffb7`. The compiler refuses a
+   library with the old magic (`0xffb6`) and asks for it to be rebuilt. The VM accepts both,
+   because an `.obe` never contains the names.
+2. **One mask forwarder** per library method with two or more defaults
+   (`GenerateMaskForwarder`, library targets only). `F$m` takes every parameter plus an `Int`
+   whose bit *j* says the caller gave parameter *j*. It assigns each default the caller skipped,
+   under `if((mask and bit) = 0)`, in the callee's context, then calls `F`. That is one extra
+   method per such method, not one per subset. Methods with more than 62 parameters get
+   none.
+3. **Binding at the call site** (`BindNamedLibraryArguments`). The call shape is mapped onto
+   each overload, in the receiver's class and its library parents, through the recorded
+   names:
+   - a call that skips nothing becomes a **positional call**, its arguments put in parameter
+     order (a default alternate covers any trailing defaults it leaves out);
+   - a call that skips a default calls `F$m`, with a typed placeholder (`Nil`, `false`, `'\0'`,
+     `0` or `0.0`) for each skipped parameter, and the mask as a literal.
 
-Once phase 2 lands, **standard-library parameter names become public API**: renaming one
-breaks named callers. That is accepted, as in Kotlin, C# and Swift. Library reviews should
-treat a parameter rename like a signature change.
+   When the parameter order differs from the written order, each argument is evaluated in
+   the order written into a hidden local, then loaded in parameter order
+   (`EmitNamedArgumentTemps`, `EmitCallArgument`). This works in every chain form too.
+   A function-typed parameter cannot be skipped or reordered by name, because it has no
+   placeholder or local to hold it. The error asks for it to be passed in place.
+
+**Standard-library parameter names are now public API**: renaming one breaks named callers.
+That is accepted, as in Kotlin, C# and Swift. Library reviews should treat a parameter rename
+like a signature change.
+
+Found on the way: `GenerateParameterMethods` used offset 0 to mean "no default found". When
+the *first* parameter had a default and a later one did too, it started at 1, so `F()` was
+never generated, in a program or a library. A library call that named a method only its
+parent class declared skipped the named-argument path. The chained form then bound the names
+by position, silently. A backstop in the library path now reports any names left unconsumed.
+
+Tests: `named_arguments_library.obs` (standard-library methods: reordering, mixing, written
+order, all-defaults), `bad_named_argument_library.obs` (an unknown name lists the recorded
+ones), `bad_named_argument_primitive.obs`, and `check_lib_named_args.py`. That last one
+builds a library and links a program against it, covering a skipped middle default,
+constructors, inherited methods (on a variable and chained) and an unknown name, in three
+modes.
 
 ## Phase 1 plan
 
@@ -132,7 +162,8 @@ treat a parameter rename like a signature change.
    - In `AnalyzeMethodCall` (program classes), `BindNamedArguments` maps a named call onto
      each original overload and binds it to the forwarder for its shape. Several overloads
      taking one call is an ambiguity error that asks for positional arguments.
-   - Give the errors above for library targets, function values and bad names. A guard in
+   - Give the errors above for function values and bad names (library targets were an error
+     until phase 2). A guard in
      `AnalyzeMethodCall` reports any named call no path consumed, so names are never dropped
      silently.
 3. **Forwarder generation:** `GenerateNamedForwarders` is `GenerateParameterMethods`

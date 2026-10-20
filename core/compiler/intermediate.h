@@ -130,6 +130,8 @@ class IntermediateEmitter {
   // Set while the deferred arguments of such a call are being emitted.
   bool emitting_deferred_params = false;
   void EmitMethodCallParameters(MethodCall* method_call);
+  void EmitNamedArgumentTemps(MethodCall* method_call);
+  void EmitCallArgument(MethodCall* method_call, const size_t i);
   void EmitMethodCallExpression(MethodCall* method_call, bool is_variable = false, bool is_closure = false);
   void EmitMethodCall(MethodCall* method_call, bool is_nested);
   void EmitCallIndices(MethodCall* method_call);

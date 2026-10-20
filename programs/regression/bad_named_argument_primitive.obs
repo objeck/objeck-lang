@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Named arguments are not supported for calls on a primitive value
+#~
+Named arguments (#1244): a call on a primitive value is a static call with the value as
+a hidden first parameter, so its parameter names do not line up with the call's.
+~#
+class BadNamedArgumentPrimitive {
+	function : Main(args : String[]) ~ Nil {
+		v := 7;
+		v->Clamp(min: 0, max: 5);
+	}
+}
