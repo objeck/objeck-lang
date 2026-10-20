@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: A call with 'ref' arguments must be a statement of its own or the right side of an assignment
+#~
+Reference parameters (#1243): a call with a 'ref' argument in an 'if' condition; its copy back would come after the whole 'if'.
+~#
+class BadRefInCondition {
+	function : F(ref a : Int) ~ Bool {
+		a += 1;
+		return true;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := 0;
+		if(F(ref x)) {
+			x->PrintLine();
+		};
+	}
+}

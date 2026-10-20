@@ -1,0 +1,187 @@
+#~
+Reference parameters (#1243; docs/REFERENCE_PARAMETERS_DESIGN.md).
+
+  function : Swap(ref a : Int, ref b : Int) ~ Nil { ... }
+  Swap(ref x, ref y);
+
+Copy in, copy out: the argument's value goes into a one-element cell the callee
+reads and writes as its parameter, and the caller's variable takes the cell's
+value after the statement. The call site says 'ref' too. A local, a parameter
+or a field can be passed, including a 'ref' parameter passed on.
+
+Also here: an array literal with a subscripted element, '[a[i], a[2]]', is an
+array of single values. It was typed by the array's dimension and rejected.
+~#
+class Point {
+	@x : Int;
+
+	New(x : Int) {
+		@x := x;
+	}
+
+	method : public : GetX() ~ Int {
+		return @x;
+	}
+}
+
+class Counter {
+	@count : Int;
+
+	New() {
+		@count := 0;
+	}
+
+	method : public : Bump() ~ Nil {
+		RefParameters->Inc(ref @count);
+	}
+
+	method : public : Get() ~ Int {
+		return @count;
+	}
+}
+
+class RefParameters {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Swap(ref a : Int, ref b : Int) ~ Nil {
+		t := a;
+		a := b;
+		b := t;
+	}
+
+	function : SwapFloat(ref a : Float, ref b : Float) ~ Nil {
+		t := a;
+		a := b;
+		b := t;
+	}
+
+	function : SwapText(ref a : String, ref b : String) ~ Nil {
+		t := a;
+		a := b;
+		b := t;
+	}
+
+	function : Flip(ref b : Bool) ~ Nil {
+		b := b = false;
+	}
+
+	function : SwapPoint(ref a : Point, ref b : Point) ~ Nil {
+		t := a;
+		a := b;
+		b := t;
+	}
+
+	function : Inc(ref n : Int) ~ Nil {
+		n += 1;
+	}
+
+	# a 'ref' parameter passed on
+	function : Twice(ref n : Int) ~ Nil {
+		Inc(ref n);
+		Inc(ref n);
+	}
+
+	# a second result
+	function : Divmod(a : Int, b : Int, ref remainder : Int) ~ Int {
+		remainder := a % b;
+		return a / b;
+	}
+
+	# a lambda changes the captured parameter
+	function : AddWith(ref total : Int, k : Int) ~ Nil {
+		add := \(Int) ~ Nil : (v) => { total += v; };
+		add(k);
+	}
+
+	function : CountDown(ref steps : Int, n : Int) ~ Nil {
+		if(n > 0) {
+			steps += 1;
+			CountDown(ref steps, n - 1);
+		};
+	}
+
+	method : Run() ~ Nil {
+		x := 1;
+		y := 2;
+		Swap(ref x, ref y);
+		Check("Int swapped", x = 2 & y = 1);
+
+		f := 1.5;
+		g := 2.5;
+		SwapFloat(ref f, ref g);
+		Check("Float swapped", f = 2.5 & g = 1.5);
+
+		s := "left";
+		t := "right";
+		SwapText(ref s, ref t);
+		Check("String swapped", s->Equals("right") & t->Equals("left"));
+
+		on := true;
+		Flip(ref on);
+		Check("Bool changed", on = false);
+
+		p := Point->New(1);
+		q := Point->New(2);
+		SwapPoint(ref p, ref q);
+		Check("objects swapped", p->GetX() = 2 & q->GetX() = 1);
+
+		c := Counter->New();
+		c->Bump();
+		c->Bump();
+		Check("a field passed as ref", c->Get() = 2);
+
+		n := 5;
+		Twice(ref n);
+		Check("ref passed on", n = 7);
+
+		r := 0;
+		quotient := Divmod(17, 5, ref r);
+		Check("a second result, declared", quotient = 3 & r = 2);
+		quotient := Divmod(23, 4, ref r);
+		Check("a second result, assigned", quotient = 5 & r = 3);
+
+		total := 10;
+		AddWith(ref total, 5);
+		Check("a lambda changes a ref parameter", total = 15);
+
+		steps := 0;
+		CountDown(ref steps, 25);
+		Check("through recursion", steps = 25);
+
+		# often enough for the JIT
+		sum := 0;
+		for(i := 0; i < 3000; i += 1;) {
+			Inc(ref sum);
+		};
+		Check("in a loop ({$sum})", sum = 3000);
+
+		# a subscripted element in an array literal
+		a := [10, 20, 30];
+		i := 1;
+		b := [a[i], a[2]];
+		Check("[a[i], a[2]] is an Int[]", b[0] + b[1] = 50);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		RefParameters->New()->Run();
+	}
+}

@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: A call with 'ref' arguments must be a statement of its own or the right side of an assignment
+#~
+Reference parameters (#1243): a call with a 'ref' argument in a return; its copy back would never run.
+~#
+class BadRefInReturn {
+	function : F(ref a : Int) ~ Int {
+		a += 1;
+		return a;
+	}
+
+	function : G() ~ Int {
+		x := 0;
+		return F(ref x);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		G();
+	}
+}

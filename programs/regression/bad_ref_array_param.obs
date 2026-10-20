@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: A 'ref' parameter takes a single value, not an array or a function
+#~
+Reference parameters (#1243): a 'ref' parameter of an array type; an array is already shared.
+~#
+class BadRefArrayParam {
+	function : F(ref a : Int[]) ~ Nil {
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := Int->New[1];
+	}
+}

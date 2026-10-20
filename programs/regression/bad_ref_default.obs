@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: A 'ref' parameter cannot have a default value
+#~
+Reference parameters (#1243): a 'ref' parameter has a default; the caller's cell is its value.
+~#
+class BadRefDefault {
+	function : F(ref a : Int := 1) ~ Nil {
+		a += 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := 0;
+		F(ref x);
+	}
+}

@@ -215,7 +215,9 @@ TreeFactory* TreeFactory::Instance()
  ****************************/
 SymbolEntry* SymbolEntry::Copy() 
 {
-  return TreeFactory::Instance()->MakeSymbolEntry(name, type, is_static, is_local, is_self);
+  SymbolEntry* copy = TreeFactory::Instance()->MakeSymbolEntry(name, type, is_static, is_local, is_self);
+  copy->SetReference(is_reference);
+  return copy;
 }
 
 void SymbolEntry::SetId(int i)
