@@ -13,7 +13,7 @@
   <a href="https://scan.coverity.com/projects/objeck"><img src="https://scan.coverity.com/projects/10314/badge.svg" alt="Coverity Scan Build Status"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/ci-build.yml/badge.svg" alt="CI Build"></a>
   <a href="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml"><img src="https://github.com/objeck/objeck-lang/actions/workflows/release-build.yml/badge.svg" alt="Release Build"></a>
-  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.0-blue" alt="Latest Release"></a>
+  <a href="https://github.com/objeck/objeck-lang/releases"><img src="https://img.shields.io/badge/release-v2026.10.1-blue" alt="Latest Release"></a>
 </p>
 
 ## Why Objeck?
@@ -37,8 +37,8 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 
 ```bash
 # Install (example for macOS/Linux)
-curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.0/objeck-linux-x64_2026.10.0.tgz
-tar xzf objeck-linux-x64_2026.10.0.tgz
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.1/objeck-linux-x64_2026.10.1.tgz
+tar xzf objeck-linux-x64_2026.10.1.tgz
 # Linux only: install the system libraries the toolchain links against
 # (mbedTLS, readline, SDL2/GL, OpenCV, unixODBC, LAME) --
 # obr does not start without them. --check reports without installing.
@@ -62,7 +62,7 @@ obc hello && obr hello
 
 ## What's New
 
-### v2026.10.1
+### v2026.10.1 ✅
   * **Errors you can raise, catch by type, and clean up after** &mdash; System.Error and its subclasses are raised with Runtime->Raise and caught with try { } on(e : ParseError) { } finally { }. Clauses are tested in order, an error no clause names goes on after finally, and return, break and continue leave through finally. The runtime's own faults are NilError, IndexError, DivideByZeroError, CastError and RuntimeError, and a failed Runtime->Assert or library call now recovers instead of ending the program. ?-> still recovers from anything, and Runtime->GetLastError() says what it was (#1267, #1273, #1274)
   * **Named arguments** &mdash; F(data, rate: 0.1, epochs: 50) in any order, skipping any defaulted parameter, for the program's own methods and constructors and for library ones: every .obl records its parameter names, so standard-library parameter names are now public API. Arguments are still evaluated in the order written (#1263, #1268)
   * **Method-level generics** &mdash; function : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) ~ T, inferred from the arguments and checked against the bound, in the program and in libraries. Vector, List and CompareList gain Map&lt;R&gt;, so a map can change the element type: words-&gt;Map(\(s) =&gt; s-&gt;ToUpper()) is a Vector&lt;String&gt; (#1266, #1275)
@@ -79,7 +79,7 @@ obc hello && obr hello
   * **objeck.org offered the previous release** &mdash; v2026.10.0 published with `objeck.org/api/latest` correctly at v2026.10.0 while the page a reader actually lands on still offered "Download v2026.9.7". The deploy script only ever deployed the generated API reference; the site's own pages needed an undocumented hand-upload nobody had written down. It now deploys both halves by default, per file and hash-verified at both ends, and refuses a page whose Download button names a version other than the one being deployed ([#1084](https://github.com/objeck/objeck-lang/pull/1084))
   * **Release verification runs on all five platforms in the cloud** &mdash; one dispatch builds and tests windows-x64, windows-arm64, linux-x64, linux-arm64 and macos-arm64 from a clean checkout, and refuses to pass unless every leg reports `verdict=PASS` at the *same* commit &mdash; which five machines run by hand could never check, and v2026.10.1 had already failed by having two passes at two commits. It also caught that a checkout made on Windows cannot build the POSIX ONNX library at all: nine paths in the repository are git symlinks, and a Windows clone writes them as text files, which the linker reported 169 seconds into a build ([#1094](https://github.com/objeck/objeck-lang/pull/1094), [#1095](https://github.com/objeck/objeck-lang/pull/1095), [#1096](https://github.com/objeck/objeck-lang/pull/1096))
 
-### v2026.10.0 ✅
+### v2026.10.0
   * **`Try()` recovers from an error raised inside compiled code** &mdash; whether a guarded chain recovered or ended the program used to depend on how many times the failing method had been called, because an error raised inside a JIT-compiled method could not reach the handler. The same program, run twice, could do either. Three things stood in the way and all three are closed: the handler stack is per-thread, so the JIT callback that raises a failing cast can see it; the callback reports a status instead of exiting; and a compiled method calling a compiled method that fails now carries the status outward one frame at a time instead of printing and exiting. **Compiled recursion that overruns the native C stack stays fatal** &mdash; the process dies in the OS with no frame left to report from ([#925](https://github.com/objeck/objeck-lang/issues/925))
   * **A recovered `?->` compares correctly against `Nil`** &mdash; `if(x?->y() = Nil)` took the wrong branch once the failing method was hot, while the same value read through a local was right in every mode. So the idiom `?->` exists for was the one that broke, and only after warm-up, which means a program could behave correctly in testing and wrongly in production. Recovery itself was never at fault: the handler stored `Nil` and a local read it back correctly ([#1067](https://github.com/objeck/objeck-lang/issues/1067))
   * **`obu`'s install lock no longer follows a symbolic link** &mdash; `.obu.lock` sits in the install root, so anything able to write there could plant a symlink at that name and `obu` would follow it, creating the target if it did not exist. Nothing is ever written through that descriptor, so the reach was creation of a path of the attacker's choosing owned by whoever ran `obu` &mdash; unexpected file creation and denial of service rather than disclosure &mdash; and it needed an install root writable by someone other than that user ([#1075](https://github.com/objeck/objeck-lang/pull/1075))
@@ -119,7 +119,7 @@ obc hello && obr hello
 
 ## Downloads
 
-**Latest Release:** [v2026.10.0](https://github.com/objeck/objeck-lang/releases/latest)
+**Latest Release:** [v2026.10.1](https://github.com/objeck/objeck-lang/releases/latest)
 
 | Platform | Architecture | Download |
 |----------|--------------|----------|
