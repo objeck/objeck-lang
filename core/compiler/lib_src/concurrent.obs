@@ -19,6 +19,9 @@
 ~#
 use Collection;
 
+#~
+Structured concurrency and synchronization on the stock Thread model: TaskScope runs closures as worker threads and joins them all; Semaphore, CountDownLatch and Barrier park waiting threads on a Condition; Monitor reads the runtime's diagnostics. Link with -lib gen_collect,concurrent.
+~#
 bundle System.Concurrency {
   #~
   A single child task: runs a captured closure on its own Thread, storing the result
