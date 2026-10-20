@@ -141,11 +141,13 @@ kind of result to a side table behind the existing accessors, with the suite and
   - incremental *code generation*;
   - parallel analysis across classes (the analyzer's lambda and capture state is per
     analyzer, and that change is separate);
-  - the superlinear `obc` case with clashing names, which is a lookup-cost bug in
-    `GetClass` (a linear scan over all bundles) and wants its own issue.
+  - the superlinear `obc` case with clashing names. Its cause is not known yet:
+    `ParsedProgram::GetClass` walks the bundles with a hash lookup in each, which is
+    linear in bundles, not classes, so profiling has to find it before an issue can say
+    what to fix.
 
 ## First steps
 
 1. Phase 0's timing switch and test, and the measured split recorded in this document.
 2. Phase 1, step 1: the byte cache, behind a switch, compared with `OBJECK_LSP_NO_CACHE=1`.
-3. File the `GetClass` linear-scan finding as its own issue, with the 10k-line case.
+3. Profile the superlinear 10k-line `obc` case and file what it finds as its own issue.
