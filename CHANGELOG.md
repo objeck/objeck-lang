@@ -20,6 +20,10 @@ All notable changes to Objeck will be documented in this file.
 
 - **The language server, rebuilt around LSP 3.17** (#1221-#1259): pull diagnostics, real completion documentation and MarkupContent hover, rename with validation and organize imports, hierarchical document symbols, one configuration per workspace folder, semantic token ranges and deltas, a Run code lens, links for 'use', progress reporting, and one server per VS Code window over stdio. Analysis is reused until the text changes and edits are debounced; positions are UTF-16 on every platform.
 
+### Packaging
+
+- **Debian packages for Ubuntu 24.04**: sudo apt install ./objeck-ubuntu24.04-x64_2026.10.1.deb (or -arm64) installs the toolchain under /usr/lib/objeck with the commands on PATH, and apt installs the system libraries it needs; OpenCV, SDL2, unixODBC and LAME are recommended rather than required, since only the libraries that wrap them load them. The package holds the release's own Linux binaries, unchanged; apt remove takes it all out. Built from the published tarballs by `.github/workflows/release-deb.yml`, which installs each in a clean container before uploading it and adding it to `SHA256SUMS`; design in `docs/DEB_PACKAGE_DESIGN.md`.
+
 ### Libraries
 
 - **Libraries** (#1108, #1169, #1251, #1262): Condition, Semaphore, CountDownLatch and Barrier; set algebra; Hash, Heap and sort additions; String helpers; System.Math.Rational and Complex; System.Base->ToString for every class.

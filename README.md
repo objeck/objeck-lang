@@ -36,7 +36,11 @@ AI/ML prototyping • Computer vision • Web services • Real-time application
 ## Quick Start
 
 ```bash
-# Install (example for macOS/Linux)
+# Ubuntu 24.04: one package, system libraries included (-arm64 for ARM)
+curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.1/objeck-ubuntu24.04-x64_2026.10.1.deb
+sudo apt install ./objeck-ubuntu24.04-x64_2026.10.1.deb
+
+# Any other Linux, or macOS: the archive
 curl -LO https://github.com/objeck/objeck-lang/releases/download/v2026.10.1/objeck-linux-x64_2026.10.1.tgz
 tar xzf objeck-linux-x64_2026.10.1.tgz
 # Linux only: install the system libraries the toolchain links against
@@ -69,6 +73,7 @@ obc hello && obr hello
   * **Reference parameters** &mdash; function : Swap(ref a : Int, ref b : Int) and Swap(ref x, ref y): copy in, copy out, as Swift's inout, with 'ref' at the call site too. A local, a parameter or a field can be passed (#1277)
   * **Array literals hold expressions; jagged arrays** &mdash; [x, x * x, Square(x + 1)] is built when evaluated, and objects of several classes make a Base[]. T[][] is an array of rows of any length, as a local, parameter, field or return, with ragged literals (#1264, #1265)
   * **The language server, rebuilt around LSP 3.17** &mdash; pull diagnostics, real completion documentation and MarkupContent hover, rename with validation and organize imports, hierarchical document symbols, one configuration per workspace folder, semantic token ranges and deltas, a Run code lens, links for 'use', progress reporting, and one server per VS Code window over stdio. Analysis is reused until the text changes and edits are debounced; positions are UTF-16 on every platform (#1221-#1259)
+  * **Debian packages for Ubuntu 24.04** &mdash; `sudo apt install ./objeck-ubuntu24.04-x64_2026.10.1.deb` (or -arm64) installs the toolchain under /usr/lib/objeck with the commands on PATH, and apt installs the system libraries it needs; OpenCV, SDL2, unixODBC and LAME are recommended rather than required, since only the libraries that wrap them load them. The package holds the release's own Linux binaries, unchanged; apt remove takes it all out
   * **Libraries** &mdash; Condition, Semaphore, CountDownLatch and Barrier; set algebra; Hash, Heap and sort additions; String helpers; System.Math.Rational and Complex; System.Base->ToString for every class (#1108, #1169, #1251, #1262)
   * **Linux gets the environment helper and desktop entry its tarball never had** &mdash; sourcing `env.sh` sets `PATH` and `OBJECK_LIB_PATH`, which the README previously asked you to export by hand, and `install-desktop.sh` adds an "Objeck" entry to your own application menu. It writes only under `XDG_DATA_HOME`, so it needs no root and cannot collide with a distribution package, and the entry sets `Terminal=true` so your desktop environment supplies the terminal rather than this guessing which emulator you have installed ([#1088](https://github.com/objeck/objeck-lang/pull/1088))
   * **`obu` can verify a release manifest again** &mdash; Windows signing rewrites the installers, so `SHA256SUMS` is rebuilt over them, which invalidates the signature `obu` checks before it reads a line of the manifest. The workflow meant to repair that had never once completed: it signed the manifest, verified it against the committed public key, and then could not upload it, because it had changed directory out of its checkout and every `gh` call after that lost the repository it was working on. v2026.10.0's manifest was re-signed by hand ([#1081](https://github.com/objeck/objeck-lang/pull/1081))
@@ -125,8 +130,8 @@ obc hello && obr hello
 |----------|--------------|----------|
 | **Windows** | x64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
 | **Windows** | ARM64 | [MSI Installer](https://github.com/objeck/objeck-lang/releases/latest) / [ZIP](https://github.com/objeck/objeck-lang/releases/latest) |
-| **Linux** | x64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
-| **Linux** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **Linux** | x64 | [DEB (Ubuntu 24.04)](https://github.com/objeck/objeck-lang/releases/latest) / [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
+| **Linux** | ARM64 | [DEB (Ubuntu 24.04)](https://github.com/objeck/objeck-lang/releases/latest) / [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **macOS** | ARM64 | [TGZ Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 | **LSP** | All platforms | [ZIP Archive](https://github.com/objeck/objeck-lang/releases/latest) |
 

@@ -1,0 +1,166 @@
+name: Release .deb packages
+
+# Debian packages for Ubuntu 24.04, made from a PUBLISHED release's Linux tarballs,
+# so they hold exactly the binaries the release already shipped and verified.
+# Design: docs/DEB_PACKAGE_DESIGN.md.
+#
+#   after Release Publish   build, test, upload, add to SHA256SUMS, re-sign
+#   workflow_dispatch       the same, for a version already published
+#   pull_request            build and test against the latest release; publish nothing
+#
+# Windows signing (tools/cicd/post_release.sh --sign) also rewrites SHA256SUMS. It
+# keeps every line it does not own, so the two can run in either order -- but not
+# at the same moment, or the later upload drops the other's change.
+
+on:
+  workflow_run:
+    workflows: ["Release Publish"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Published release version without the v (e.g. 2026.10.1)'
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - 'tools/packaging/**'
+      - '.github/workflows/release-deb.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    name: Resolve the release
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - id: v
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            # Release Publish runs on master, not on the tag, so its run names no
+            # version. It has just published, so the latest release is the one.
+            VERSION="$(gh release view --json tagName --jq .tagName | sed 's/^v//')"
+          fi
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::bad version '$VERSION'"; exit 1; }
+          gh release view "v$VERSION" --json isDraft --jq '.isDraft' | grep -qx false \
+            || { echo "::error::v$VERSION is not a published release"; exit 1; }
+          PUBLISH=true
+          [ "${{ github.event_name }}" = pull_request ] && PUBLISH=false
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "v$VERSION, publish=$PUBLISH"
+
+  build:
+    name: Build and test (${{ matrix.arch }})
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The runners the release tarballs are built on, so dpkg-shlibdeps names
+          # the same library packages the binaries were linked against.
+          - arch: x64
+            os: ubuntu-24.04
+          - arch: arm64
+            os: ubuntu-24.04-arm
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the released tarball
+        run: |
+          set -euo pipefail
+          mkdir -p dl
+          gh release download "v$VERSION" --pattern "objeck-linux-${{ matrix.arch }}_$VERSION.tgz" --dir dl
+          ls -la dl
+
+      # dpkg-shlibdeps reads this machine's package database, so the libraries the
+      # tarball links must be installed here -- the tarball's own script knows which.
+      - name: Install the tarball's runtime libraries
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq dpkg-dev
+          mkdir -p tree && tar -xzf "dl/objeck-linux-${{ matrix.arch }}_$VERSION.tgz" -C tree
+          bash tree/objeck-lang/install_deps.sh --yes --tree tree/objeck-lang
+
+      - name: Build the .deb
+        run: |
+          set -euo pipefail
+          bash tools/packaging/build_deb.sh "dl/objeck-linux-${{ matrix.arch }}_$VERSION.tgz" --out out
+          dpkg-deb -I out/*.deb
+
+      - name: Install and test on a clean Ubuntu 24.04
+        run: bash tools/packaging/test_deb.sh out/objeck-ubuntu24.04-${{ matrix.arch }}_$VERSION.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb-${{ matrix.arch }}
+          path: out/*.deb
+          if-no-files-found: error
+
+  publish:
+    name: Upload and add to SHA256SUMS
+    needs: [version, build]
+    if: needs.version.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: deb-*
+          merge-multiple: true
+          path: debs
+
+      - name: Upload the packages
+        run: |
+          set -euo pipefail
+          ls -la debs
+          gh release upload "v$VERSION" debs/*.deb --clobber
+
+      # Against the PUBLISHED bytes: hash what users will download, not the local
+      # copies, so a --clobber that kept an old asset is caught.
+      - name: Add the packages to SHA256SUMS
+        run: |
+          set -euo pipefail
+          mkdir -p m pub
+          gh release download "v$VERSION" --pattern "SHA256SUMS" --dir m
+          gh release download "v$VERSION" --pattern "*.deb" --dir pub
+          grep -v '\.deb$' m/SHA256SUMS > m/SHA256SUMS.new || true
+          ( cd pub && sha256sum *.deb ) >> m/SHA256SUMS.new
+          for f in debs/*.deb; do
+            cmp -s "$f" "pub/$(basename "$f")" || { echo "::error::published $(basename "$f") differs from the one built"; exit 1; }
+          done
+          mv m/SHA256SUMS.new m/SHA256SUMS
+          cat m/SHA256SUMS
+          gh release upload "v$VERSION" m/SHA256SUMS --clobber
+
+  # The manifest just changed, so its signature no longer matches it; obu refuses
+  # a manifest it cannot verify.
+  resign:
+    name: Re-sign SHA256SUMS
+    needs: [version, publish]
+    uses: ./.github/workflows/resign-manifest.yml
+    with:
+      version: ${{ needs.version.outputs.version }}
+    secrets: inherit
