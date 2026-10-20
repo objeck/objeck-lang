@@ -6296,7 +6296,7 @@ bool JitArm64::Compile(StackMethod* cm)
     ints = new int64_t[MAX_INTS];
     float_consts = new double[MAX_DBLS];
     
-    local_space = floats_index = instr_index = code_index = instr_count = 0;
+    local_space = floats_index = instr_index = code_index = epilog_index = instr_count = 0;
     float_consts[floats_index++] = 0.0;
     
     // General-purpose pool, handed out from the back: X0-X7 first, then
@@ -6431,6 +6431,15 @@ bool JitArm64::Compile(StackMethod* cm)
 
       ReleaseVirtualSites();
       return false;
+    }
+
+    // RTRN emits the epilogue, and with it the error handlers and the teardown
+    // they branch to. A method with no RTRN -- a tail call the optimizer turned
+    // into a loop ends in its backward branch -- had none, so epilog_index
+    // stayed 0 and every error exit branched into the method's own prologue
+    // (#1269). Emit one after the body; nothing falls through to it.
+    if(epilog_index == 0) {
+      Epilog();
     }
 
     // phase 2: a method that never took D8-D15 need not save and restore

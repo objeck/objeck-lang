@@ -8671,6 +8671,16 @@ bool JitAmd64::Compile(StackMethod* cm)
       }
     }
 
+    // RTRN emits the epilogue, and with it the error handlers and the teardown
+    // they jump to. A method with no RTRN -- a tail call the optimizer turned
+    // into a loop ends in its backward jump -- had none, so its guard stubs and
+    // bridge-status checks were patched to handler offsets left over from the
+    // previously compiled method and jumped into the middle of its own code
+    // (#1269). Emit one after the body; nothing falls through to it.
+    if(epilog_index == 0) {
+      Epilog();
+    }
+
     // F3: a jump that leaves a pinned loop goes through a stub that stores the
     // pinned locals first; the stubs sit after the method body
     EmitPinExitStubs();
