@@ -1,0 +1,177 @@
+#~
+Regression: a recovered array-bounds error corrupted the operand stack when
+the caller had already pushed an argument (#1270).
+
+`Check("x", l?->Get(a) ?? -2, -2)` crashed with an access violation,
+interpreted and compiled, at every -opt level, while the same shape with a
+divide-by-zero or a Nil dereference worked. StackInterpreter::ArrayIndex
+returned -1 after TryErrorRecovery had unwound the stack, but the
+load/store-element handlers went on to push array[-1 + dim] (or pop a store
+value) on the unwound stack, one slot past the try mark. With nothing pushed
+before the guarded call the stray word happened to be harmless.
+
+Covers loads and stores of every element type, a negative index, a
+two-dimensional index, failures with arguments pushed before and after the
+guarded call, and a loop that recovers enough times to compile the callee.
+~#
+
+class Arrays {
+	New() {}
+
+	method : public : GetInt(a : Int[], i : Int) ~ Int {
+		return a[i];
+	}
+
+	method : public : GetFloat(a : Float[], i : Int) ~ Float {
+		return a[i];
+	}
+
+	method : public : GetByte(a : Byte[], i : Int) ~ Int {
+		return a[i];
+	}
+
+	method : public : GetChar(a : Char[], i : Int) ~ Char {
+		return a[i];
+	}
+
+	method : public : Get2(a : Int[,], i : Int, j : Int) ~ Int {
+		return a[i, j];
+	}
+
+	method : public : SetInt(a : Int[], i : Int, v : Int) ~ Int {
+		a[i] := v;
+		return v;
+	}
+
+	method : public : SetFloat(a : Float[], i : Int, v : Float) ~ Float {
+		a[i] := v;
+		return v;
+	}
+
+	method : public : SetByte(a : Byte[], i : Int, v : Int) ~ Int {
+		a[i] := v;
+		return v;
+	}
+
+	method : public : SetChar(a : Char[], i : Int, v : Char) ~ Char {
+		a[i] := v;
+		return v;
+	}
+}
+
+class TryRecoversBoundsMidArgs {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(what = Nil) {
+			"FAIL: a caller's argument arrived as Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckFloat(what : String, got : Float, want : Float) ~ Nil {
+		if(what = Nil) {
+			"FAIL: a caller's argument arrived as Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckChar(what : String, got : Char, want : Char) ~ Nil {
+		if(what = Nil) {
+			"FAIL: a caller's argument arrived as Nil"->PrintLine();
+			@failures += 1;
+			return;
+		};
+
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Sum3(a : Int, b : Int, c : Int) ~ Int {
+		return a + b + c;
+	}
+
+	method : Run() ~ Nil {
+		r := Arrays->New();
+		ints := Int->New[4];
+		ints[2] := 42;
+		floats := Float->New[4];
+		floats[1] := 2.5;
+		bytes := Byte->New[4];
+		bytes[3] := 7;
+		chars := Char->New[4];
+		chars[0] := 'q';
+		grid := Int->New[2, 3];
+		grid[1, 2] := 12;
+
+		# the #1270 shape: an argument is already on the stack
+		CheckInt("Int load past the end", r?->GetInt(ints, 7) ?? -2, -2);
+		CheckInt("Int load, negative index", r?->GetInt(ints, -1) ?? -3, -3);
+		CheckFloat("Float load", r?->GetFloat(floats, 9) ?? -1.5, -1.5);
+		CheckInt("Byte load", r?->GetByte(bytes, 4) ?? -4, -4);
+		CheckChar("Char load", r?->GetChar(chars, 5) ?? 'z', 'z');
+		CheckInt("two-dimensional load", r?->Get2(grid, 1, 9) ?? -5, -5);
+		CheckInt("Int store", r?->SetInt(ints, 8, 1) ?? -6, -6);
+		CheckFloat("Float store", r?->SetFloat(floats, 8, 1.0) ?? -6.5, -6.5);
+		CheckInt("Byte store", r?->SetByte(bytes, -2, 1) ?? -7, -7);
+		CheckChar("Char store", r?->SetChar(chars, 4, 'a') ?? 'y', 'y');
+
+		# successes keep their values, and the failed stores wrote nothing
+		CheckInt("Int load, in bounds", r?->GetInt(ints, 2) ?? -1, 42);
+		CheckFloat("Float load, in bounds", r?->GetFloat(floats, 1) ?? -1.0, 2.5);
+		CheckInt("Byte load, in bounds", r?->GetByte(bytes, 3) ?? -1, 7);
+		CheckChar("Char load, in bounds", r?->GetChar(chars, 0) ?? 'z', 'q');
+		CheckInt("two-dimensional load, in bounds", r?->Get2(grid, 1, 2) ?? -1, 12);
+		CheckInt("Int store, in bounds", r?->SetInt(ints, 0, 9) ?? -1, 9);
+		CheckInt("Int array after the stores", ints[0] + ints[1] + ints[2] + ints[3], 51);
+
+		# arguments on both sides of the guarded call
+		CheckInt("middle argument", Sum3(100, r?->GetInt(ints, 99) ?? 10, 1), 111);
+		CheckInt("first argument", Sum3(r?->GetInt(ints, 99) ?? 10, 100, 1), 111);
+		CheckInt("last argument", Sum3(100, 1, r?->GetInt(ints, 99) ?? 10), 111);
+		CheckInt("two failing arguments", Sum3(100, r?->GetInt(ints, 99) ?? 10, r?->SetInt(ints, 99, 0) ?? 20), 130);
+
+		# enough recoveries to compile the callee under the default JIT threshold
+		total := 0;
+		for(i := 0; i < 2000; i += 1;) {
+			total += Sum3(1, r?->GetInt(ints, 4 + i % 3) ?? 2, 3);
+		};
+		CheckInt("2000 recoveries in an argument list", total, 12000);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		TryRecoversBoundsMidArgs->New()->Run();
+	}
+}

@@ -2816,11 +2816,10 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
   const INT64_VALUE size = (long)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   PushInt(array[index + instr->GetOperand()], op_stack, stack_pos);
 }
 
@@ -2852,11 +2851,10 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
   const INT64_VALUE size = (long)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   array[index + instr->GetOperand()] = PopInt(op_stack, stack_pos);
   // Generational GC write barrier for array stores (array base is at array - 2)
   MemoryManager::WriteBarrier(array - 2);
@@ -2888,11 +2886,10 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
   const INT64_VALUE size = (INT64_VALUE)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   array += instr->GetOperand();
   PushInt(((unsigned char*)array)[index], op_stack, stack_pos);
 }
@@ -2923,11 +2920,10 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
   const INT64_VALUE size = (INT64_VALUE)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   array += instr->GetOperand();
   const wchar_t* char_array = (wchar_t*)array;
   PushInt(char_array[index], op_stack, stack_pos);
@@ -2959,11 +2955,10 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
   const INT64_VALUE size = (INT64_VALUE)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   array += instr->GetOperand();
   ((unsigned char*)array)[index] = (char)PopInt(op_stack, stack_pos);
 }
@@ -2994,11 +2989,10 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
   const long size = (long)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   array += instr->GetOperand();
   ((wchar_t*)array)[index] = (wchar_t)PopInt(op_stack, stack_pos);
 }
@@ -3029,11 +3023,10 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
   const long size = (long)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   FLOAT_VALUE value;
   memcpy(&value, array + index + instr->GetOperand(), sizeof(FLOAT_VALUE));
   PushFloat(value, op_stack, stack_pos);
@@ -3065,11 +3058,10 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
   const long size = (long)array[0];
   array += 2;
   const INT64_VALUE index = ArrayIndex(instr, array, size, op_stack, stack_pos);
-#ifdef _NO_HALT
-  if(halt) {
+  // a recovered (or, under _NO_HALT, halting) bounds error: nothing to load or store
+  if(index < 0) {
     return;
   }
-#endif
   FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
   memcpy(array + index + instr->GetOperand(), &value, sizeof(FLOAT_VALUE));
 }
@@ -3579,6 +3571,7 @@ INT64_VALUE Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* arr
     StackErrorUnwind();
 #ifdef _NO_HALT
     halt = true;
+    return -1;
 #else
     VmExit(1);
 #endif
