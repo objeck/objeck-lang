@@ -69,6 +69,8 @@ for want in "objeck-windows-x64_${VERSION}.msi" \
             "objeck-windows-arm64_${VERSION}.msi" \
             "objeck-macos-arm64_${VERSION}.pkg" \
             "objeck-macos-arm64_${VERSION}.zip" \
+            "objeck-ubuntu24.04-x64_${VERSION}.deb" \
+            "objeck-ubuntu24.04-arm64_${VERSION}.deb" \
             "SHA256SUMS" \
             "SHA256SUMS.minisig"; do
   grep -qx "$want" "$WORK/have.txt" || bad "missing required asset: $want"

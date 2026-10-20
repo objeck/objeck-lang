@@ -350,7 +350,7 @@
       Installation
      </h2>
      <p>
-      Objeck can be installed using the Windows or macOS installers or compressed archives. Supported platforms are Windows (x64 and ARM64), macOS (Apple Silicon) and Linux (x64 and ARM64).
+      Objeck can be installed using the Windows or macOS installers, a <code>.deb</code> package on Ubuntu 24.04, or compressed archives. Supported platforms are Windows (x64 and ARM64), macOS (Apple Silicon) and Linux (x64 and ARM64).
      </p>
      <p>
       In order to compile programs outside of the
@@ -367,6 +367,19 @@
      </p>
      <pre class="cmd">&gt; set OBJECK_LIB_PATH=C:\Users\[account]\objeck-lang\lib
 &gt; set PATH=%PATH%;C:\Users\[account]\objeck-lang\bin;C:\Users\[account]\objeck-lang\lib\sdl</pre>
+     <h3 id="ubuntu_deb">
+      Ubuntu 24.04 (.deb)
+     </h3>
+     <p>
+      On Ubuntu 24.04 LTS and distributions built on it (Linux Mint 22, Pop!_OS 24.04), download the <code>.deb</code> for your architecture from the
+      <a href="https://github.com/objeck/objeck-lang/releases/latest">latest release</a> and install it with apt, which also installs the system libraries the toolchain needs. The commands are on <code>PATH</code> in every shell, with nothing to set:
+     </p>
+     <pre class="cmd">&gt; sudo apt install ./objeck-ubuntu24.04-x64_2026.10.1.deb      # or -arm64
+&gt; obc hello &amp;&amp; obr hello</pre>
+     <p>
+      OpenCV, SDL2, unixODBC and LAME are recommended rather than required: they are needed only by the libraries that wrap them, and
+      <code>--no-install-recommends</code> leaves them out. <code>sudo apt remove objeck</code> uninstalls. Upgrade by installing the next release's <code>.deb</code>; <code>obu update</code> is disabled for an apt install. Other distributions use the archive below.
+     </p>
      <h3 id="mac_linux">
       macOS and Linux
      </h3>

@@ -32,6 +32,12 @@ on:
         description: 'Release version without the v (e.g. 2026.10.0)'
         required: true
         type: string
+  # release-deb.yml adds its packages to SHA256SUMS and then calls this.
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
 
 permissions:
   contents: write
