@@ -2,12 +2,33 @@
 
 All notable changes to Objeck will be documented in this file.
 
-## [v2026.10.1] - 2026-10-13
+## [v2026.10.1] - 2026-10-20
 
+**Objeck gains structured error handling (try/on/finally over Error objects), named arguments, method-level generics, reference parameters, expression array literals and jagged arrays; the language server is rebuilt around LSP 3.17; and more than a hundred defects found by Rosetta Code tasks are fixed.**
 
-**The MSYS2 toolchain compiles again after five independent breakages, Linux gains the environment helper and desktop entry its tarball never had, `obu` can verify a release manifest again, and release verification moves off five hand-run machines into one cloud dispatch.**
+> **Upgrading:** the language grows -- `try`, `on`, `finally` and `ref` are contextual, so no existing name stops compiling -- and every `.obl` is a new format (magic `0xffb8`): rebuild any library of your own with this toolchain. Standard-library parameter names are now public API, because a call can name them.
 
-> **Upgrading:** nothing in this release changes the language or a library interface. It is a build-and-release release: if you build from source on MSYS2/MinGW, or against OpenCV 5, those now work; if you install the Linux tarball, `env.sh` replaces the exports the README used to ask for by hand.
+### Language
+
+- **Errors you can raise, catch by type, and clean up after** (#1267, #1273, #1274): System.Error and its subclasses are raised with Runtime->Raise and caught with try { } on(e : ParseError) { } finally { }. Clauses are tested in order, an error no clause names goes on after finally, and return, break and continue leave through finally. The runtime's own faults are NilError, IndexError, DivideByZeroError, CastError and RuntimeError, and a failed Runtime->Assert or library call now recovers instead of ending the program. ?-> still recovers from anything, and Runtime->GetLastError() says what it was.
+- **Named arguments** (#1263, #1268): F(data, rate: 0.1, epochs: 50) in any order, skipping any defaulted parameter, for the program's own methods and constructors and for library ones: every .obl records its parameter names, so standard-library parameter names are now public API. Arguments are still evaluated in the order written.
+- **Method-level generics** (#1266, #1275): function : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) ~ T, inferred from the arguments and checked against the bound, in the program and in libraries. Vector, List and CompareList gain Map&lt;R&gt;, so a map can change the element type: words-&gt;Map(\(s) =&gt; s-&gt;ToUpper()) is a Vector&lt;String&gt;.
+- **Reference parameters** (#1277): function : Swap(ref a : Int, ref b : Int) and Swap(ref x, ref y): copy in, copy out, as Swift's inout, with 'ref' at the call site too. A local, a parameter or a field can be passed.
+- **Array literals hold expressions; jagged arrays** (#1264, #1265): [x, x * x, Square(x + 1)] is built when evaluated, and objects of several classes make a Base[]. T[][] is an array of rows of any length, as a local, parameter, field or return, with ragged literals.
+
+### Language server
+
+- **The language server, rebuilt around LSP 3.17** (#1221-#1259): pull diagnostics, real completion documentation and MarkupContent hover, rename with validation and organize imports, hierarchical document symbols, one configuration per workspace folder, semantic token ranges and deltas, a Run code lens, links for 'use', progress reporting, and one server per VS Code window over stdio. Analysis is reused until the text changes and edits are debounced; positions are UTF-16 on every platform.
+
+### Libraries
+
+- **Libraries** (#1108, #1169, #1251, #1262): Condition, Semaphore, CountDownLatch and Barrier; set algebra; Hash, Heap and sort additions; String helpers; System.Math.Rational and Complex; System.Base->ToString for every class.
+
+### Bug Fixes
+
+- **JIT and recovery fixes** (#1190, #1198, #1205, #1260, #1271, #1272, #1273): a deferred load materialized in one branch arm; an error in a tail-call loop and a bounds error mid-argument-list crashed recovery; more than 16 nested guarded calls lost their inner handlers; a NaN compared as equal (x64) and as less (ARM64); negative array sizes; ?-> deferred correctly from a bridge interpreter.
+- **Compiler fixes** (#1168, #1197, #1204, #1207, #1208, #1249, #1261): wrong code in call chains and closures, generic type arguments through chained calls, primitive receivers, unary minus on a parenthesised operand, critical() locks released on return, a tail-call label that collided with an inlined callee's (an infinite loop at -opt s3), a returned literal swapped with a leaving block's, and typos that used to declare a variable silently.
+- **VM and library fixes** (#1192, #1193, #1195, #1199, #1200, #1201, #1211, #1212, #1240, #1257, #1268): Float->ToString of large values, GMT dates and pre-1970 times, file I/O edge cases (Flush, ReadLine, empty files), multi-dimensional serialization, reflection metadata, String edge cases, "\e" as ESC, Byte arithmetic, and Ints no longer printed with a locale's digit grouping on macOS and Linux.
 
 ### Platforms
 
