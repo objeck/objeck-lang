@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: Only a variable or a field can be passed as 'ref'
+#~
+Reference parameters (#1243): an array element passed as 'ref'; the copy back would evaluate its index again.
+~#
+class BadRefArgumentExpression {
+	function : F(ref a : Int) ~ Nil {
+		a += 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := Int->New[2];
+		F(ref x[0]);
+	}
+}

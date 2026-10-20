@@ -1754,17 +1754,31 @@ StatementList* Parser::ParseStatementList(int depth)
   }
   NextToken();
 
+  // The statement this block belongs to -- an 'if' whose condition holds a call
+  // -- may have hidden statements of its own waiting. They go around that
+  // statement, so they are set aside: the block's first statement would take
+  // them otherwise, and a temporary would be declared inside the block it is
+  // read before (#1243).
+  std::vector<Statement*> outer_pending = pending_statements;
+  std::vector<Statement*> outer_trailing = trailing_statements;
+  pending_statements.clear();
+  trailing_statements.clear();
+
   StatementList* statements = TreeFactory::Instance()->MakeStatementList();
   while(!Match(TOKEN_CLOSED_BRACE) && !Match(TOKEN_END_OF_STREAM)) {
     Statement* statement = ParseStatement(depth + 1);
     TakePendingStatements(statements);
     statements->AddStatement(statement);
+    TakeTrailingStatements(statements, statement);
     CheckStatementSeparator(statement);
   }
   if(!Match(TOKEN_CLOSED_BRACE)) {
     ProcessError(L"Expected '}'", TOKEN_CLOSED_BRACE);
   }
   NextToken();
+
+  pending_statements = outer_pending;
+  trailing_statements = outer_trailing;
 
   return statements;
 }
@@ -3794,6 +3808,86 @@ Statement* Parser::ParseCallElementOperation(MethodCall* head, int line_num, int
   Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
   target->SetIndices(indices);
   return ParseVariableOperation(target, line_num, line_pos, file_name, depth + 1);
+}
+
+/****************************
+ * A 'ref x' argument (#1243): '#ref_N := [x]' goes ahead of the statement, the
+ * call takes '#ref_N', and 'x := #ref_N[0]' follows the statement. Only a plain
+ * variable or field can be passed: the copy back writes to it by name.
+ ****************************/
+Expression* Parser::ParseReferenceArgument(Expression* expression)
+{
+  const std::wstring file_name = expression->GetFileName();
+  const int line_num = expression->GetLineNumber();
+  const int line_pos = expression->GetLinePosition();
+
+  if(expression->GetExpressionType() != VAR_EXPR || expression->GetMethodCall() ||
+     static_cast<Variable*>(expression)->GetIndices() || expression->GetCastType()) {
+    ProcessError(L"Only a variable or a field can be passed as 'ref'");
+    return expression;
+  }
+  const std::wstring name = static_cast<Variable*>(expression)->GetName();
+
+  const std::wstring tmp_ident = L"#ref_" + std::to_wstring(hidden_local_id++);
+  SymbolEntry* tmp_entry = TreeFactory::Instance()->MakeSymbolEntry(file_name, line_num, line_pos, GetScopeName(tmp_ident),
+                                                                    TypeFactory::Instance()->MakeType(VAR_TYPE), false, current_method != nullptr);
+  symbol_table->CurrentParseScope()->AddEntry(tmp_entry);
+
+  // #ref_N := [x]
+  ExpressionList* cell = TreeFactory::Instance()->MakeExpressionList();
+  cell->AddExpression(expression);
+  Variable* tmp_var = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+  Assignment* tmp_assign = TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, tmp_var,
+                                                                   TreeFactory::Instance()->MakeStaticArray(file_name, line_num, line_pos, cell));
+  pending_statements.push_back(TreeFactory::Instance()->MakeDeclaration(file_name, line_num, line_pos, line_num, line_pos, tmp_entry, tmp_assign));
+
+  // x := #ref_N[0]
+  Variable* source = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+  ExpressionList* zero = TreeFactory::Instance()->MakeExpressionList();
+  zero->AddExpression(TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0));
+  source->SetIndices(zero);
+  Variable* target = TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, name);
+  trailing_statements.push_back(TreeFactory::Instance()->MakeAssignment(file_name, line_num, line_pos, line_num, line_pos, target, source));
+
+  return TreeFactory::Instance()->MakeVariable(file_name, line_num, line_pos, tmp_ident);
+}
+
+/****************************
+ * Moves the copies back the last statement's 'ref' arguments need (#1243)
+ * into its list, after it. A statement that decides control flow -- a
+ * condition, a loop, a return -- would copy back at the wrong time, so it
+ * cannot take one.
+ ****************************/
+void Parser::TakeTrailingStatements(StatementList* statements, Statement* statement)
+{
+  if(trailing_statements.empty()) {
+    return;
+  }
+
+  if(statement) {
+    switch(statement->GetStatementType()) {
+    case METHOD_CALL_STMT:
+    case SIMPLE_STMT:
+    case ASSIGN_STMT:
+    case DECLARATION_STMT:
+    case ADD_ASSIGN_STMT:
+    case SUB_ASSIGN_STMT:
+    case MUL_ASSIGN_STMT:
+    case DIV_ASSIGN_STMT:
+    case STRING_CONCAT_STMT:
+      break;
+
+    default:
+      ProcessError(L"A call with 'ref' arguments must be a statement of its own or the right side of an assignment");
+      trailing_statements.clear();
+      return;
+    }
+  }
+
+  for(size_t i = 0; i < trailing_statements.size(); ++i) {
+    statements->AddStatement(trailing_statements[i]);
+  }
+  trailing_statements.clear();
 }
 
 /****************************
@@ -6445,6 +6539,13 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
     if(!Match(TOKEN_IDENT)) {
       ProcessError(TOKEN_IDENT);
     }
+    // 'ref name : Type' (#1243): a contextual word, so a parameter may still be named 'ref'
+    bool is_reference = false;
+    if(scanner->GetToken()->GetIdentifier() == L"ref" && Match(TOKEN_IDENT, SECOND_INDEX) && Match(TOKEN_COLON, THIRD_INDEX)) {
+      is_reference = true;
+      NextToken();
+    }
+
     // identifier
     const std::wstring ident = scanner->GetToken()->GetIdentifier();
     const int line_num = GetLineNumber();
@@ -6453,7 +6554,22 @@ DeclarationList* Parser::ParseDecelerationList(int depth)
     IdentifierContext ident_context(ident, line_num, line_pos);
     NextToken();
 
-    declarations->AddDeclaration(ParseDeclaration(ident_context, false, depth + 1));
+    Declaration* declaration = ParseDeclaration(ident_context, false, depth + 1);
+    if(is_reference && declaration && declaration->GetEntry()) {
+      Type* type = declaration->GetEntry()->GetType();
+      if(type->GetDimension() > 0 || type->GetType() == FUNC_TYPE) {
+        ProcessError(L"A 'ref' parameter takes a single value, not an array or a function");
+      }
+      else if(declaration->GetAssignment()) {
+        ProcessError(L"A 'ref' parameter cannot have a default value");
+      }
+      else {
+        // the caller passes a one-element cell; the name is its element
+        type->SetDimension(1);
+        declaration->GetEntry()->SetReference(true);
+      }
+    }
+    declarations->AddDeclaration(declaration);
 
     if(Match(TOKEN_COMMA)) {
       NextToken();
@@ -6509,8 +6625,19 @@ ExpressionList* Parser::ParseExpressionList(int &end_pos, int depth, ScannerToke
       ProcessError(L"Positional arguments must come before named ones");
     }
 
+    // 'ref x' (#1243): the variable goes in a one-element cell for the call and is
+    // set from it after the statement -- copy in, copy out
+    bool is_reference = false;
+    if(allow_named && Match(TOKEN_IDENT) && Match(TOKEN_IDENT, SECOND_INDEX) && scanner->GetToken()->GetIdentifier() == L"ref") {
+      is_reference = true;
+      NextToken();
+    }
+
     // expression
     Expression* expression = ParseExpression(depth + 1);
+    if(expression && is_reference) {
+      expression = ParseReferenceArgument(expression);
+    }
     if(expression) {
       if(arg_name.empty()) {
         expressions->AddExpression(expression);

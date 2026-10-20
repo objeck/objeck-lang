@@ -64,6 +64,21 @@ do not take them: a call that tries is a compile error, never a silent positiona
 call. A library's parameter names are part of its API. See
 [NAMED_ARGUMENTS_DESIGN.md](NAMED_ARGUMENTS_DESIGN.md).
 
+### Reference Parameters
+A `ref` parameter lets a function change its caller's variable. The call site
+says `ref` too, so a reader sees which arguments a call may change:
+```ruby
+function : Swap(ref a : Int, ref b : Int) ~ Nil { t := a; a := b; b := t; }
+function : Divmod(a : Int, b : Int, ref remainder : Int) ~ Int { remainder := a % b; return a / b; }
+
+Swap(ref x, ref y);
+q := Divmod(17, 5, ref r);   # q is 3, r is 2
+```
+The value is copied in and copied back after the statement, as Swift's `inout`
+is. A local, a parameter or a field can be passed. A call with `ref` arguments is
+a statement of its own or the right side of an assignment. See
+[REFERENCE_PARAMETERS_DESIGN.md](REFERENCE_PARAMETERS_DESIGN.md).
+
 ### Array Literals
 An array literal can hold expressions as well as constants; it is built when it is
 evaluated, the elements in the order written. Objects of several classes make a

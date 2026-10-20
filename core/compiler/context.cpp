@@ -2958,6 +2958,12 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
     if(!type) {
       return;
     }
+    // a subscripted element, '[a[i]]', is a single value: its eval type keeps the
+    // array's dimension, which callers take the subscripts from
+    if(type->GetDimension() > 0 && IsScalar(element)) {
+      type = TypeFactory::Instance()->MakeType(type);
+      type->SetDimension(0);
+    }
 
     // an array element makes the literal an array of rows: '[a, b]' with a, b
     // Int[] is an Int[][] (#1246); every row must be the same array type
@@ -3277,6 +3283,14 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
   // explicitly defined variable
   if(entry) {
     entry->WasLoaded();
+
+    // a 'ref' parameter (#1243): the name is element 0 of the caller's cell
+    if(entry->IsReference() && !variable->GetIndices()) {
+      ExpressionList* zero = TreeFactory::Instance()->MakeExpressionList();
+      zero->AddExpression(TreeFactory::Instance()->MakeIntegerLiteral(variable->GetFileName(), variable->GetLineNumber(),
+                                                                      variable->GetLinePosition(), 0));
+      variable->SetIndices(zero);
+    }
 #ifdef _DEBUG
     std::wstring msg = L"variable reference: name='" + variable->GetName() + L"' local=" + (entry->IsLocal() ? L"true" : L"false") + L"' loaded=" + (entry->IsLoaded() ? L"true" : L"false");;
     Debug(msg, variable->GetLineNumber(), depth);
@@ -3361,6 +3375,13 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
       // capturing a variable in a closure is a use of it; mark the enclosing
       // entry loaded so it isn't reported as unreferenced (see CheckUnreferencedVariables)
       capture_entry->WasLoaded();
+      // a captured 'ref' parameter (#1243): the closure holds the cell, the name is its element
+      if(capture_entry->IsReference() && !variable->GetIndices()) {
+        ExpressionList* zero = TreeFactory::Instance()->MakeExpressionList();
+        zero->AddExpression(TreeFactory::Instance()->MakeIntegerLiteral(variable->GetFileName(), variable->GetLineNumber(),
+                                                                        variable->GetLinePosition(), 0));
+        variable->SetIndices(zero);
+      }
       if(capture_lambda->HasClosure(capture_entry)) {
         SymbolEntry* copy_entry = capture_lambda->GetClosure(capture_entry);
         variable->SetTypes(copy_entry->GetType());
@@ -3371,6 +3392,8 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
         const std::wstring var_scope_name = current_method->GetName() + L':' + variable->GetName();
         SymbolEntry* copy_entry = TreeFactory::Instance()->MakeSymbolEntry(var_scope_name, capture_entry->GetType(), false, false);
         copy_entry->SetClosureEntry();
+        // a lambda capturing a 'ref' parameter captures its cell (#1243)
+        copy_entry->SetReference(capture_entry->IsReference());
         symbol_table->GetSymbolTable(current_class->GetName())->AddEntry(copy_entry, true);
 
         variable->SetTypes(copy_entry->GetType());

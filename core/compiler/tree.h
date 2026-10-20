@@ -124,6 +124,9 @@ namespace frontend {
     bool is_param;
     bool is_loaded;
     bool is_closure;
+    // a 'ref' parameter (#1243): its slot holds a one-element array, the
+    // caller's cell, and every use of the name is that element
+    bool is_reference = false;
 
   SymbolEntry(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &n, Type* t,
         bool s, bool c, bool e = false) : ParseNode(file_name, line_num, line_pos) {
@@ -143,6 +146,14 @@ namespace frontend {
   public:
     void SetParameter() {
       is_param = true;
+    }
+
+    void SetReference(bool r) {
+      is_reference = r;
+    }
+
+    bool IsReference() {
+      return is_reference;
     }
 
     bool IsParameter() {

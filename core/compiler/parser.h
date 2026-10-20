@@ -107,6 +107,8 @@ class Parser {
   // hidden declarations a statement needs to run before it, such as the local
   // that 'GetCells()[0] := 99' stores through; the enclosing list takes them
   std::vector<Statement*> pending_statements;
+  // the copies back after a statement with 'ref' arguments (#1243)
+  std::vector<Statement*> trailing_statements;
   int hidden_local_id = 0;
 
 #if defined(_DIAG_LIB) || defined(_MODULE)
@@ -206,6 +208,8 @@ class Parser {
   Statement* ParseVariableOperation(Variable* variable, int line_num, int line_pos, const std::wstring& file_name, int depth);
   Statement* ParseCallElementOperation(MethodCall* head, int line_num, int line_pos, const std::wstring& file_name, int depth);
   void TakePendingStatements(StatementList* statements);
+  void TakeTrailingStatements(StatementList* statements, Statement* statement);
+  Expression* ParseReferenceArgument(Expression* expression);
   void CheckStatementSeparator(Statement* statement);
   void ParseAnonymousClass(MethodCall* method_call, int depth);
   StatementList* ParseStatementList(int depth);
