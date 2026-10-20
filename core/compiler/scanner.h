@@ -428,6 +428,9 @@ enum ScannerTokenType {
   COND_NEW,
   COND_WAIT,
   COND_SIGNAL,
+  RUNTIME_GET_ERROR,
+  RUNTIME_GET_ERROR_KIND,
+  RUNTIME_CLEAR_ERROR,
   // serialization
   SERL_CHAR,
   SERL_INT,

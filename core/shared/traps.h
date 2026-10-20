@@ -305,6 +305,10 @@ namespace instructions {
     // ThreadMutex (#1186)
     COND_NEW,
     COND_WAIT,
-    COND_SIGNAL
+    COND_SIGNAL,
+    // the error a Try() region last recovered from (#1247)
+    RUNTIME_GET_ERROR,
+    RUNTIME_GET_ERROR_KIND,
+    RUNTIME_CLEAR_ERROR
   };
 }

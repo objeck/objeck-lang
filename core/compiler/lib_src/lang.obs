@@ -7729,6 +7729,58 @@ each(i : cities) {
 		}
 
 		#~
+		The kind of runtime error a ?-> (Try) region last recovered from.<br/>
+		<p><pre>Runtime->ErrorKind</pre></p>
+		@class Runtime
+		~#
+		enum ErrorKind {
+			NONE,
+			NIL_DEREFERENCE,
+			INDEX_OUT_OF_BOUNDS,
+			DIVIDE_BY_ZERO,
+			INVALID_CAST,
+			OTHER
+		}
+
+		#~
+		Whether a ?-> (Try) region on this thread has recovered from a runtime error
+		since the last ClearError
+		@return true if an error is recorded
+		~#
+		function : HasError() ~ Bool {
+			return GetErrorKindNative() <> 0;
+		}
+
+		#~
+		The message of the runtime error a ?-> (Try) region on this thread last
+		recovered from, e.g. "Divide by zero"
+		@return the message, or Nil if none is recorded
+		~#
+		function : GetError() ~ String {
+			RUNTIME_GET_ERROR;
+		}
+
+		#~
+		The kind of the runtime error a ?-> (Try) region on this thread last
+		recovered from
+		@return the kind, or NONE if none is recorded
+		~#
+		function : GetErrorKind() ~ ErrorKind {
+			return GetErrorKindNative()->As(ErrorKind);
+		}
+
+		#~
+		Forgets the recorded error, so HasError is false until the next recovery
+		~#
+		function : ClearError() ~ Nil {
+			RUNTIME_CLEAR_ERROR;
+		}
+
+		function : GetErrorKindNative() ~ Int {
+			RUNTIME_GET_ERROR_KIND;
+		}
+
+		#~
 		Sets the runtime locale
 		@param locale <a href='https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/setlocale-wsetlocale?view=msvc-170'>locale string</a>
 		~#

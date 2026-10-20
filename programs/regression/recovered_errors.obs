@@ -1,0 +1,105 @@
+#~
+Reading the error a ?-> region recovered from (#1247; docs/RECOVERED_ERRORS_DESIGN.md).
+
+?-> turns a runtime error below a guarded call into Nil (or the ?? default),
+and every recovered error looked the same. The VM now records, per thread,
+the kind and message of the last error a Try() region took:
+Runtime->HasError(), GetError(), GetErrorKind() and ClearError(). A Nil
+receiver is not an error -- x?->M() with x Nil calls nothing -- but a Nil
+dereference inside the call is. Each kind is raised in a callee, so it is
+recorded whether that callee runs interpreted or compiled.
+~#
+class Target {
+	@v : Int;
+
+	New(v : Int) {
+		@v := v;
+	}
+
+	method : public : Div(d : Int) ~ IntRef {
+		return IntRef->New(@v / d);
+	}
+
+	method : public : At(a : Int[], i : Int) ~ IntRef {
+		return IntRef->New(a[i]);
+	}
+
+	method : public : Missing() ~ Target {
+		return Nil;
+	}
+
+	method : public : Get() ~ Int {
+		return @v;
+	}
+
+	method : public : Broken() ~ Int {
+		return Missing()->Get();
+	}
+
+	method : public : AsInt(o : Base) ~ IntRef {
+		return o->As(IntRef);
+	}
+}
+
+class RecoveredErrors {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		t := Target->New(10);
+		Runtime->ClearError();
+		Check("nothing recorded at the start", <>Runtime->HasError() & Runtime->GetError() = Nil &
+			Runtime->GetErrorKind() = Runtime->ErrorKind->NONE);
+
+		# often enough that the callees are compiled
+		for(i := 0; i < 300; i += 1;) {
+			r := t?->Div(0);
+			Check("divide by zero ({$i})", r = Nil & Runtime->GetErrorKind() = Runtime->ErrorKind->DIVIDE_BY_ZERO &
+				Runtime->GetError()->Equals("Divide by zero"));
+
+			r := t?->At([1, 2], 5);
+			Check("index out of bounds ({$i})", r = Nil & Runtime->GetErrorKind() = Runtime->ErrorKind->INDEX_OUT_OF_BOUNDS &
+				Runtime->GetError()->StartsWith("Index out of bounds"));
+
+			n := t?->Broken();
+			Check("a Nil dereference in the call ({$i})", Runtime->GetErrorKind() = Runtime->ErrorKind->NIL_DEREFERENCE);
+
+			b : Base := t;
+			x := t?->AsInt(b);
+			Check("an invalid cast ({$i})", x = Nil & Runtime->GetErrorKind() = Runtime->ErrorKind->INVALID_CAST &
+				Runtime->GetError()->Equals("Invalid object cast: 'Target' to 'System.IntRef'"));
+
+			# a call that succeeds leaves the last error in place
+			r := t?->Div(2);
+			Check("a success keeps the last error ({$i})", r->Get() = 5 & Runtime->GetErrorKind() = Runtime->ErrorKind->INVALID_CAST);
+
+			# a Nil receiver is not an error
+			Runtime->ClearError();
+			u : Target := Nil;
+			m := u?->Get();
+			Check("a Nil receiver records nothing ({$i})", <>Runtime->HasError());
+		};
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		RecoveredErrors->New()->Run();
+	}
+}

@@ -145,6 +145,20 @@ A guarded call works as a statement too: `t?->Close();` runs `Close()` unless
 `t` is `Nil`, and recovers a runtime error inside it. A method that returns
 nothing yields `Nil` through the guard.
 
+### Reading a recovered error
+After a `?->` recovers, the error it took is recorded for the thread:
+```ruby
+value := table->Get(key)?->Parse() ?? 0;
+if(Runtime->HasError()) {
+  kind := Runtime->GetErrorKind();   # NIL_DEREFERENCE, INDEX_OUT_OF_BOUNDS,
+                                     # DIVIDE_BY_ZERO, INVALID_CAST, OTHER
+  "skipped {$key}: {$(Runtime->GetError())}"->ErrorLine();
+  Runtime->ClearError();
+};
+```
+A Nil receiver is not an error: `x?->M()` with `x` Nil calls nothing. See
+[RECOVERED_ERRORS_DESIGN.md](RECOVERED_ERRORS_DESIGN.md).
+
 ### Tail calls
 A method's call to itself on `@self` in tail position (`Down(); }` or
 `return Down();`) is compiled as a jump at `-opt s1` and above, so unbounded

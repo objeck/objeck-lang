@@ -206,7 +206,10 @@ void StackInterpreter::Execute(size_t* op_stack, size_t* stack_pos, long i, Stac
         // travelled outward one compiled frame at a time, so this is also where
         // an unguarded JIT-to-JIT failure is reported -- with the stack listing
         // below, which the old JitNativeCallError did not produce.
-        if(TryErrorRecovery(stack_pos)) {
+        if(HasTryHandler()) {
+          RecordRecoveredStatus(status);
+        }
+        if(TryErrorRecovery(stack_pos, RECOVERED_NONE)) {
           return;
         }
 
@@ -570,7 +573,7 @@ void StackInterpreter::StorClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
 
   size_t* cls_inst_mem = (size_t*)op_stack[(*stack_pos) - 1];
   if(!cls_inst_mem) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -608,7 +611,7 @@ void StackInterpreter::CopyClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
 
   size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
   if(!cls_inst_mem) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -716,7 +719,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, size_t* &stack_pos)
     }
   }
   else {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -751,7 +754,7 @@ void StackInterpreter::Str2Float(size_t* &op_stack, size_t* &stack_pos)
     }
   }
   else {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -945,7 +948,7 @@ void StackInterpreter::LoadClsInstIntVar(StackInstr* instr, size_t* &op_stack, s
 #endif      
   size_t* cls_inst_mem = (size_t*)op_stack[(*stack_pos) - 1];
   if(!cls_inst_mem) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1053,7 +1056,7 @@ void StackInterpreter::DivInt(size_t* &op_stack, size_t* &stack_pos)
   const INT64_VALUE left = static_cast<INT64_VALUE>(op_stack[sp - 1]);
   const INT64_VALUE right = static_cast<INT64_VALUE>(op_stack[sp - 2]);
   if(right == 0) [[unlikely]] {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_DIVIDE_BY_ZERO, OBJECK_DIVIDE_BY_ZERO_MESSAGE)) {
       return;
     }
     std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
@@ -1091,7 +1094,7 @@ void StackInterpreter::DivFloat(size_t* &op_stack, size_t* &stack_pos)
   const FLOAT_VALUE left_double = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 1]);
   const FLOAT_VALUE right_double = *reinterpret_cast<FLOAT_VALUE*>(&op_stack[sp - 2]);
   if(right_double == 0.0) [[unlikely]] {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_DIVIDE_BY_ZERO, OBJECK_DIVIDE_BY_ZERO_MESSAGE)) {
       return;
     }
     std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
@@ -1118,7 +1121,7 @@ void StackInterpreter::ModInt(size_t* &op_stack, size_t* &stack_pos)
   // modulus by zero raises the same hardware fault division does; without
   // this guard it died silently instead of trapping like DivInt
   if(right == 0) [[unlikely]] {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_DIVIDE_BY_ZERO, OBJECK_DIVIDE_BY_ZERO_MESSAGE)) {
       return;
     }
     std::wcerr << OBJECK_DIVIDE_BY_ZERO_MESSAGE << std::endl;
@@ -1332,7 +1335,7 @@ void StackInterpreter::LoadArySize(size_t* &op_stack, size_t* &stack_pos)
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1359,7 +1362,7 @@ void StackInterpreter::CpyByteAry(size_t* &op_stack, size_t* &stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1402,7 +1405,7 @@ void StackInterpreter::CpyCharAry(size_t* &op_stack, size_t* &stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1445,7 +1448,7 @@ void StackInterpreter::CpyIntAry(size_t* &op_stack, size_t* &stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1492,7 +1495,7 @@ void StackInterpreter::CpyFloatAry(size_t*& op_stack, size_t*& stack_pos)
   size_t* dest_array = (size_t*)PopInt(op_stack, stack_pos);
 
   if(!src_array || !dest_array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1588,7 +1591,7 @@ void StackInterpreter::ObjInstCast(StackInstr* instr, size_t* &op_stack, size_t*
   if(!result && mem) {
     // Recoverable like the other runtime errors: a?->b() yields Nil rather than
     // ending the program (#900).
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_INVALID_CAST, std::wstring(L"Invalid object cast: '") + (MemoryManager::GetClass((size_t*)mem) ? MemoryManager::GetClass((size_t*)mem)->GetName() : L"?") + L"' to '" + program->GetClass(instr->GetOperand())->GetName() + L"'")) {
       return;
     }
 
@@ -1613,7 +1616,7 @@ void StackInterpreter::AsyncMthdCall([[maybe_unused]] size_t* &op_stack, size_t*
 
   StackClass* impl_class = MemoryManager::GetClass(instance);
   if(!impl_class) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -1653,7 +1656,7 @@ void StackInterpreter::ThreadJoin([[maybe_unused]] size_t* &op_stack, size_t* &s
 #endif
   size_t* instance = (size_t*)(*stack_frame)->mem[0];
   if(!instance) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1725,7 +1728,7 @@ void StackInterpreter::ThreadMutex([[maybe_unused]] size_t* &op_stack, size_t* &
 #endif
   size_t* instance = (size_t*)(*stack_frame)->mem[0];
   if(!instance) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1747,7 +1750,7 @@ void StackInterpreter::CriticalStart(size_t* &op_stack, size_t* &stack_pos)
 #endif
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(!instance) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1769,7 +1772,7 @@ void StackInterpreter::CriticalEnd(size_t* &op_stack, size_t* &stack_pos)
 #endif
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(!instance) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1801,7 +1804,7 @@ void StackInterpreter::ProcessLoadFunctionVar(StackInstr* instr, size_t* &op_sta
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      if(TryErrorRecovery(stack_pos)) {
+      if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
         return;
       }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1835,7 +1838,7 @@ void StackInterpreter::ProcessLoadFloat(StackInstr* instr, size_t* &op_stack, si
   } else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      if(TryErrorRecovery(stack_pos)) {
+      if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
         return;
       }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1869,7 +1872,7 @@ void StackInterpreter::ProcessStoreFunctionVar(StackInstr* instr, size_t* &op_st
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      if(TryErrorRecovery(stack_pos)) {
+      if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
         return;
       }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1908,7 +1911,7 @@ void StackInterpreter::ProcessStoreFloat(StackInstr* instr, size_t* &op_stack, s
   else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      if(TryErrorRecovery(stack_pos)) {
+      if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
         return;
       }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -1942,7 +1945,7 @@ void StackInterpreter::ProcessCopyFloat(StackInstr* instr, size_t* &op_stack, si
   } else {
     size_t* cls_inst_mem = (size_t*)PopInt(op_stack, stack_pos);
     if(!cls_inst_mem) {
-      if(TryErrorRecovery(stack_pos)) {
+      if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
         return;
       }
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -2403,7 +2406,7 @@ bool StackInterpreter::NilFunctionValue(size_t* &op_stack, size_t* &stack_pos)
 
   // the value's two words: the method word and the instance word
   (*stack_pos) -= 2;
-  if(TryErrorRecovery(stack_pos)) {
+  if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
     return true;
   }
 
@@ -2428,7 +2431,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
   // save current method
   (*stack_frame)->ip = ip;
   if(!PushFrame((*stack_frame))) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
     std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
@@ -2499,7 +2502,7 @@ StackMethod* __attribute__((noinline, cold)) StackInterpreter::ResolveVirtualMet
 {
   StackClass* concrete_class = MemoryManager::GetClass((size_t*)instance);
   if(!concrete_class) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
       return nullptr;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -2551,7 +2554,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
   // save current method
   (*stack_frame)->ip = ip;
   if(!PushFrame((*stack_frame))) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
     std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
@@ -2616,7 +2619,7 @@ void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &
 {
   (*stack_frame)->ip = ip;
   if(!PushFrame((*stack_frame))) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
     std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
@@ -2650,7 +2653,7 @@ void StackInterpreter::ProcessJitOnlyDynamicMethodCall([[maybe_unused]] StackIns
 
   (*stack_frame)->ip = ip;
   if(!PushFrame((*stack_frame))) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
     std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
@@ -2708,11 +2711,17 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
   const long status = jit_executor.Execute(called, instance, op_stack, stack_pos, call_stack, call_stack_pos, *stack_frame);
   if(status < 0) {
     // Recoverable, as above (#900).
-    if(TryErrorRecovery(stack_pos)) {
+    if(HasTryHandler()) {
+      RecordRecoveredStatus(status);
+    }
+    if(TryErrorRecovery(stack_pos, RECOVERED_NONE)) {
       return;
     }
 
-    if(TryErrorRecovery(stack_pos)) {
+    if(HasTryHandler()) {
+      RecordRecoveredStatus(status);
+    }
+    if(TryErrorRecovery(stack_pos, RECOVERED_NONE)) {
       return;
     }
     switch(status) {
@@ -2779,7 +2788,7 @@ void StackInterpreter::ProcessLoadIntArrayElement(StackInstr* instr, size_t* &op
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -2814,7 +2823,7 @@ void StackInterpreter::ProcessStoreIntArrayElement(StackInstr* instr, size_t* &o
 
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -2851,7 +2860,7 @@ void StackInterpreter::ProcessLoadByteArrayElement(StackInstr* instr, size_t* &o
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -2886,7 +2895,7 @@ void StackInterpreter::ProcessLoadCharArrayElement(StackInstr* instr, size_t* &o
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -2922,7 +2931,7 @@ void StackInterpreter::ProcessStoreByteArrayElement(StackInstr* instr, size_t* &
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -2957,7 +2966,7 @@ void StackInterpreter::ProcessStoreCharArrayElement(StackInstr* instr, size_t* &
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -2992,7 +3001,7 @@ void StackInterpreter::ProcessLoadFloatArrayElement(StackInstr* instr, size_t* &
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -3028,7 +3037,7 @@ void StackInterpreter::ProcessStoreFloatArrayElement(StackInstr* instr, size_t* 
 #endif
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element")) {
       return;
     }
     std::wcerr << L">>> Attempting to dereference a 'Nil' memory element <<<" << std::endl;
@@ -3550,7 +3559,7 @@ INT64_VALUE Runtime::StackInterpreter::ArrayIndex(StackInstr* instr, size_t* arr
 
   // bounds check
   if(index < 0 || index >= size) {
-    if(TryErrorRecovery(stack_pos)) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_INDEX_OUT_OF_BOUNDS, L"Index out of bounds: " + std::to_wstring(index) + L"," + std::to_wstring(size))) {
       return -1;
     }
     std::wcerr << L">>> Index out of bounds: " << index << L"," << size << L" <<<" << std::endl;

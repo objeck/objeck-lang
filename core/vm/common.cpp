@@ -2682,6 +2682,15 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case COND_SIGNAL:
     return CondSignal(program, inst, op_stack, stack_pos, frame);
 
+  case RUNTIME_GET_ERROR:
+    return RuntimeGetError(program, inst, op_stack, stack_pos, frame);
+
+  case RUNTIME_GET_ERROR_KIND:
+    return RuntimeGetErrorKind(program, inst, op_stack, stack_pos, frame);
+
+  case RUNTIME_CLEAR_ERROR:
+    return RuntimeClearError(program, inst, op_stack, stack_pos, frame);
+
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
 
@@ -6639,6 +6648,34 @@ void ThreadMutexUnlock(size_t* instance)
 #else
   pthread_mutex_unlock(mutex);
 #endif
+}
+
+// The error a Try() region last recovered from, on this thread (#1247): its
+// message (Nil when there is none), its kind, and clearing it.
+bool TrapProcessor::RuntimeGetError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const Runtime::StackInterpreter::RecoveredErrorState& state = Runtime::StackInterpreter::RecoveredError();
+  if(state.kind == Runtime::StackInterpreter::RECOVERED_NONE) {
+    PushInt(0, op_stack, stack_pos);
+  }
+  else {
+    PushInt((size_t)CreateStringObject(state.message, program, op_stack, stack_pos), op_stack, stack_pos);
+  }
+  return true;
+}
+
+bool TrapProcessor::RuntimeGetErrorKind(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  PushInt((size_t)Runtime::StackInterpreter::RecoveredError().kind, op_stack, stack_pos);
+  return true;
+}
+
+bool TrapProcessor::RuntimeClearError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  Runtime::StackInterpreter::RecoveredErrorState& state = Runtime::StackInterpreter::RecoveredError();
+  state.kind = Runtime::StackInterpreter::RECOVERED_NONE;
+  state.message.clear();
+  return true;
 }
 
 // function : Create() ~ Int

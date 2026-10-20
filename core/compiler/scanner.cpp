@@ -430,6 +430,9 @@ void Scanner::LoadKeywords()
   ident_map[L"COND_NEW"] = COND_NEW;
   ident_map[L"COND_WAIT"] = COND_WAIT;
   ident_map[L"COND_SIGNAL"] = COND_SIGNAL;
+  ident_map[L"RUNTIME_GET_ERROR"] = RUNTIME_GET_ERROR;
+  ident_map[L"RUNTIME_GET_ERROR_KIND"] = RUNTIME_GET_ERROR_KIND;
+  ident_map[L"RUNTIME_CLEAR_ERROR"] = RUNTIME_CLEAR_ERROR;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;

@@ -826,6 +826,14 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
           << L"' to '" << program->GetClass(to_id)->GetName() << L"' <<<" << std::endl;
         std::wcerr << L"  native method: name=" << program->GetClass(cls_id)->GetMethod(mthd_id)->GetName() << std::endl;
       }
+      else {
+        // what a Try() will recover from, with both names while they are in
+        // hand; the status carries only the kind (#1247)
+        StackClass* to_cls = MemoryManager::GetClass(mem);
+        Runtime::StackInterpreter::RecordRecoveredError(Runtime::StackInterpreter::RECOVERED_INVALID_CAST,
+          std::wstring(L"Invalid object cast: '") + (to_cls ? to_cls->GetName() : L"?") + L"' to '" +
+          program->GetClass(to_id)->GetName() + L"'");
+      }
       return JIT_STATUS_INVALID_CAST;
     }
     PushInt(op_stack, stack_pos, result);

@@ -167,6 +167,67 @@ namespace Runtime {
       return state;
     }
 
+  public:
+    //
+    // The error a Try() region last recovered from, per thread (#1247; see
+    // docs/RECOVERED_ERRORS_DESIGN.md). Kinds match lang.obs's
+    // Runtime->ErrorKind, and the JIT's statuses map onto them.
+    //
+    enum RecoveredErrorKind : long {
+      RECOVERED_NONE = 0,
+      RECOVERED_NIL_DEREFERENCE,
+      RECOVERED_INDEX_OUT_OF_BOUNDS,
+      RECOVERED_DIVIDE_BY_ZERO,
+      RECOVERED_INVALID_CAST,
+      RECOVERED_OTHER
+    };
+
+    struct RecoveredErrorState {
+      long kind = RECOVERED_NONE;
+      std::wstring message;
+    };
+
+    static RecoveredErrorState& RecoveredError() {
+      static thread_local RecoveredErrorState state;
+      return state;
+    }
+
+    // records an error a handler takes; the text without the '>>> <<<' markers
+    static void RecordRecoveredError(long kind, const std::wstring &message) {
+      RecoveredErrorState& state = RecoveredError();
+      state.kind = kind;
+      std::wstring text = message;
+      if(text.compare(0, 4, L">>> ") == 0) {
+        text.erase(0, 4);
+      }
+      if(text.size() >= 4 && text.compare(text.size() - 4, 4, L" <<<") == 0) {
+        text.erase(text.size() - 4);
+      }
+      state.message = text;
+    }
+
+    // a JIT status (-1 to -5) as a recovered error
+    static void RecordRecoveredStatus(long status) {
+      switch(status) {
+      case -1:
+        RecordRecoveredError(RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+        break;
+      case -2:
+      case -3:
+        RecordRecoveredError(RECOVERED_INDEX_OUT_OF_BOUNDS, L"Index out of bounds");
+        break;
+      case -4:
+        RecordRecoveredError(RECOVERED_DIVIDE_BY_ZERO, OBJECK_DIVIDE_BY_ZERO_MESSAGE);
+        break;
+      default:
+        // -5: the bridge callback recorded the cast with both class names;
+        // -6: deferred by a bridge, which recorded the error it saw
+        break;
+      }
+    }
+
+  private:
+
 #ifdef _DEBUGGER
     Debugger* debugger;
 #endif
@@ -295,8 +356,12 @@ namespace Runtime {
     // recover from error using try handler
     // returns true if recovery happened, false if no handler
     //
-    inline bool TryErrorRecovery(size_t* &stack_pos) {
+    inline bool TryErrorRecovery(size_t* &stack_pos, long kind = RECOVERED_OTHER, const std::wstring &message = L"") {
       if(HasTryHandler()) {
+        // what went wrong, for the code after the guarded call (#1247)
+        if(kind != RECOVERED_NONE) {
+          RecordRecoveredError(kind, message);
+        }
         TryHandlerState& state = TryState();
 
         // the handler is beneath this bridge's compiled caller: leave it for
