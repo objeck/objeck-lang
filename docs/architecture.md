@@ -4,6 +4,10 @@
 
 This document provides detailed architectural views of the Objeck programming language implementation, including the compiler, virtual machine, JIT compilation, and development tools.
 
+![Objeck toolchain architecture](images/objeck-architecture.svg)
+
+*The whole toolchain on one page ([SVG](images/objeck-architecture.svg)); the sections below go into each part.*
+
 ---
 
 ## Table of Contents
@@ -23,108 +27,166 @@ This document provides detailed architectural views of the Objeck programming la
 
 ## 1. Complete System Overview
 
-High-level view of the entire Objeck language system from source code to execution.
+The whole toolchain, from the editor to the five platforms a release ships to. Source is
+compiled by `obc` into an executable (`.obe`) or a library (`.obl`); `obr` runs it, interpreting
+until a method is hot and then compiling it to native code. The language server analyzes the
+same source with the compiler's own front end, linked into a native library.
 
 ```mermaid
-graph TB
-    subgraph "Development Tools"
-        REPL["REPL<br/>(Interactive Shell)"]
-        Debugger["Interactive Debugger<br/>Breakpoints, Stack Inspection"]
-        LSP["LSP Server"]
-        Editors["VS Code, Sublime, Kate<br/>Textadapt, eCode, etc."]
+flowchart LR
+    subgraph AUTHOR["Authoring"]
+        direction TB
+        EDITORS["Editors<br/>VS Code · Neovim · Vim · Emacs<br/>Helix · Sublime · Kate"]
+        LSP["Language server<br/>tools/lsp (Objeck)<br/>LSP 3.17: diagnostics, hover,<br/>completion, rename, symbols,<br/>semantic tokens, code lens"]
+        DIAGS["libobjk_diags<br/>compiler front end<br/>as a native library"]
+        EDITORS <-->|"JSON-RPC over stdio"| LSP
+        LSP --> DIAGS
     end
 
-    subgraph "Compiler"
-        Source["Source Code<br/>(.obs)"]
-        Scanner["Scanner<br/>(Lexer)"]
-        Parser["Parser<br/>(AST Generator)"]
-        Analyzer["Contextual Analyzer<br/>(Type Checking)"]
-        IR["Intermediate<br/>Representation"]
-        Optimizer["Bytecode Optimizer<br/>4 Levels: s0-s3"]
-        Emitter["Binary Code Emitter"]
-        Linker["Linker"]
+    subgraph COMPILE["Compiler · obc"]
+        direction TB
+        SRC[".obs source"]
+        FRONT["Scanner → Parser<br/>→ Context analyzer<br/>types, generics, named and<br/>ref arguments, try/on/finally"]
+        BACK["Intermediate emitter<br/>→ Optimizer s0–s3<br/>(inlining, tail calls,<br/>constant folding)"]
+        LINK["Linker<br/>reads .obl libraries"]
+        OUT[".obe program<br/>.obl library"]
+        SRC --> FRONT --> BACK --> OUT
+        LINK --> FRONT
     end
 
-    subgraph "Libraries & Build"
-        StdLib["Standard Libraries (30+)<br/>Core, AI/ML, Web, Data, Media"]
-        BinaryLib["Binary Library<br/>(.obl)"]
-        BuildSys["Build System<br/>Platform-specific"]
+    subgraph RUN["Virtual machine · obr"]
+        direction TB
+        LOAD["Loader"]
+        INTERP["Stack interpreter<br/>?-> and try regions,<br/>error recovery"]
+        JIT["JIT compilers<br/>AMD64 · ARM64<br/>hot methods → native"]
+        GC["Memory manager<br/>generational GC,<br/>multithreaded"]
+        TRAPS["Trap processor<br/>I/O · sockets · threads<br/>time · native calls"]
+        LOAD --> INTERP
+        INTERP <-->|"bridge, statuses"| JIT
+        INTERP <--> GC
+        JIT <--> GC
+        INTERP --> TRAPS
     end
 
-    subgraph "Virtual Machine"
-        Loader["Bytecode Loader"]
-        Interpreter["Runtime Interpreter<br/>(Stack-based VM)"]
-        HotCode["Hot Code Detection<br/>(10 calls; a method with<br/>a loop on its first call)"]
-        JIT_ARM["ARM64 JIT<br/>(AArch64)"]
-        JIT_AMD["AMD64 JIT<br/>(x86-64)"]
-        CodeCache["JIT Code Cache"]
-        MemMgr["Memory Manager<br/>O(1) Hash Lookup<br/>Mark & Sweep GC"]
-        HostAPI["Host APIs<br/>(Platform I/O)"]
+    subgraph LIBS["Libraries · 46 sources, .obl"]
+        direction TB
+        CORE["lang · collections · concurrency<br/>regex · math · misc"]
+        DOMAIN["Data · Networking · Web<br/>AI and ML · Media"]
+        NATIVE["Native modules<br/>.dll · .so · .dylib<br/>(see the library stack below)"]
+        DOMAIN --> NATIVE
     end
 
-    subgraph "Platform Layer"
-        POSIX["POSIX APIs<br/>(Linux/macOS)"]
-        Win32["Win32 APIs<br/>(Windows)"]
-        Runtime["Platform Runtime<br/>ARM64 / AMD64"]
+    subgraph TOOLS["Command-line tools"]
+        direction TB
+        OBI["obi · REPL and editor"]
+        OBD["obd · debugger<br/>CLI and Debug Adapter Protocol"]
+        OBU["obu · updater<br/>signed release manifests"]
+        OBB["obb · app builder<br/>native launchers"]
     end
 
-    subgraph "CI/CD"
-        GHA["GitHub Actions<br/>Multi-platform Matrix"]
-        Tests["Regression Tests<br/>(299 automated)"]
-        Artifacts["Build Artifacts"]
+    subgraph PLAT["Platforms"]
+        direction TB
+        WIN["Windows x64 · ARM64"]
+        LNX["Linux x64 · ARM64"]
+        MAC["macOS ARM64"]
     end
 
-    %% Connections
-    Source --> Scanner --> Parser --> Analyzer --> IR --> Optimizer
-    Optimizer --> Emitter --> Linker
-    StdLib --> Linker
-    Linker --> BinaryLib
-    BinaryLib --> Loader
+    subgraph SHIP["Build, test and release"]
+        direction TB
+        CI["GitHub Actions<br/>CI on 5 platform legs<br/>regression suite ×3 JIT modes<br/>LSP, DAP, debugger tests"]
+        REL["Release build and publish<br/>MSI · ZIP · TGZ · signed .pkg<br/>.vsix · SHA256SUMS (minisign)"]
+        SITE["objeck.org API docs<br/>playground (sandboxed)"]
+        CI --> REL --> SITE
+    end
 
-    Loader --> Interpreter
-    Interpreter --> HotCode
-    HotCode -->|"Hot Code"| JIT_ARM
-    HotCode -->|"Hot Code"| JIT_AMD
-    JIT_ARM --> CodeCache
-    JIT_AMD --> CodeCache
-    CodeCache --> Runtime
-
-    Interpreter <--> MemMgr
-    JIT_ARM <--> MemMgr
-    JIT_AMD <--> MemMgr
-
-    Interpreter --> HostAPI
-    HostAPI --> POSIX
-    HostAPI --> Win32
-    POSIX --> Runtime
-    Win32 --> Runtime
-
-    REPL --> Parser
-    REPL --> Interpreter
-    Debugger <--> Interpreter
-    LSP --> Parser
-    LSP --> Editors
-
-    BuildSys --> GHA
-    GHA --> Tests
-    Tests --> Artifacts
-
-    Linker --> Debugger
-
-    style JIT_ARM fill:#e1f5ff
-    style JIT_AMD fill:#e1f5ff
-    style MemMgr fill:#ffe1e1
-    style StdLib fill:#fff4e1
-    style GHA fill:#e1ffe1
+    DIAGS -.->|"same front end"| FRONT
+    EDITORS -->|"debug sessions"| OBD
+    OUT --> LOAD
+    CORE --> LINK
+    DOMAIN --> LINK
+    NATIVE -->|"loaded at run time"| TRAPS
+    OBI --> FRONT
+    OBI --> INTERP
+    OBD <--> INTERP
+    OBU --> REL
+    TRAPS --> PLAT
+    JIT --> PLAT
+    COMPILE -.-> CI
+    RUN -.-> CI
 ```
 
-**Key Components:**
-- **Compiler:** Multi-pass with 4 optimization levels (s0-s3)
-- **VM:** Dual execution (Interpreter + JIT)
-- **JIT:** Platform-specific (ARM64 AArch64, AMD64 x86-64)
-- **Memory:** Generational GC with O(1) hash lookups
-- **Libraries:** 30+ including AI/ML, web servers, graphics
-- **CI/CD:** Automated testing across 5 platform legs
+### The library stack
+
+Most libraries are Objeck alone. The rest pair an Objeck interface with a C++ module that the
+VM loads when the program first calls it, and that module wraps the third-party code a release
+bundles or the platform supplies.
+
+```mermaid
+flowchart TB
+    subgraph OBJECK["Objeck libraries (.obl)"]
+        direction LR
+        L_CORE["lang · gen_collect<br/>concurrent · regex · misc"]
+        L_DATA["json · json_stream · xml<br/>csv · query · odbc"]
+        L_NET["net · net_h2 · net_quic<br/>net_server · web_server<br/>json_rpc · rss · cipher"]
+        L_AI["ml_* · ai_* · nlp<br/>openai · gemini · ollama<br/>models · inference"]
+        L_VISION["onnx · opencv"]
+        L_MEDIA["sdl2 · sdl_game · sdl_gl<br/>lame"]
+        L_TOOLS["diags"]
+    end
+
+    subgraph MODULES["Native modules (C++)"]
+        direction LR
+        M_CRYPTO["crypto"]
+        M_NET["net / TLS"]
+        M_ODBC["odbc"]
+        M_MATRIX["matrix"]
+        M_ONNX["onnx"]
+        M_CV["opencv"]
+        M_SDL["sdl"]
+        M_LAME["lame"]
+        M_DIAGS["diags"]
+    end
+
+    subgraph THIRD["Third-party and system code"]
+        direction LR
+        T_TLS["mbedTLS"]
+        T_HTTP["nghttp2 (HTTP/2)<br/>ngtcp2 + nghttp3 (HTTP/3, POSIX)"]
+        T_ODBC["ODBC driver manager"]
+        T_ORT["ONNX Runtime<br/>CPU · DirectML · QNN<br/>CUDA · CoreML"]
+        T_CV["OpenCV"]
+        T_SDL["SDL2 · image · mixer · ttf<br/>OpenGL 3.3 core"]
+        T_LAME["LAME (MP3)"]
+        T_ZLIB["zlib"]
+        T_CC["obc front end"]
+    end
+
+    L_NET --> M_CRYPTO & M_NET
+    L_DATA --> M_ODBC
+    L_AI --> M_MATRIX
+    L_AI -->|"model inference"| M_ONNX
+    L_VISION --> M_ONNX & M_CV
+    L_MEDIA --> M_SDL & M_LAME
+    L_TOOLS --> M_DIAGS
+    L_CORE -->|"compression"| T_ZLIB
+
+    M_CRYPTO & M_NET --> T_TLS
+    M_NET --> T_HTTP
+    M_ODBC --> T_ODBC
+    M_ONNX --> T_ORT
+    M_CV --> T_CV
+    M_SDL --> T_SDL
+    M_LAME --> T_LAME
+    M_DIAGS --> T_CC
+```
+
+**Key components:**
+- **Compiler (`obc`):** scanner, parser and context analyzer, an intermediate emitter, an optimizer with four levels (s0–s3, s3 by default), and a linker that reads `.obl` libraries. Libraries record their methods' parameter names and type parameters, so named arguments and generic inference work across binaries.
+- **VM (`obr`):** a stack interpreter that JIT-compiles hot methods for AMD64 and ARM64. Errors under `?->` or `try` recover in either mode; a compiled method reports a status the interpreter that owns the handler acts on.
+- **Memory:** generational, multithreaded garbage collection; C++ code that stores into an old object takes a write barrier.
+- **Language server:** written in Objeck (`tools/lsp`), analyzing with the compiler's own front end through `libobjk_diags`, so editor diagnostics match `obc`.
+- **Tools:** `obi` (REPL and full-screen editor), `obd` (debugger, also a Debug Adapter Protocol server), `obu` (updater that verifies signed manifests), `obb` (builds a native launcher for a program).
+- **Libraries:** 46 library sources; native modules wrap mbedTLS, nghttp2/ngtcp2, ODBC, ONNX Runtime, OpenCV, SDL2 and LAME.
+- **CI and release:** five platform legs on every pull request, the regression suite in three JIT modes, LSP, DAP and debugger tests, and a release gate that verifies all five platforms at one commit before tagging.
 
 ---
 
@@ -464,7 +526,7 @@ mindmap
 
 ## 5. Library Ecosystem
 
-30+ standard libraries providing comprehensive functionality.
+46 library sources providing comprehensive functionality.
 
 ```mermaid
 mindmap
@@ -816,11 +878,11 @@ graph TB
 
 | Platform | Runner | Architecture | Compiler | Tests |
 |----------|--------|--------------|----------|-------|
-| **Linux** | `ubuntu-latest` | x64 | GCC | 299 regression |
-| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 299 regression |
-| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 299 regression |
-| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 299 regression |
-| **Windows** | `windows-11-arm` | ARM64 | MSVC (v143) | 299 regression |
+| **Linux** | `ubuntu-latest` | x64 | GCC | 528 regression |
+| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 528 regression |
+| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 528 regression |
+| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 528 regression |
+| **Windows** | `windows-11-arm` | ARM64 | MSVC (v143) | 528 regression |
 
 Every leg builds natively and runs what it builds: the regression suite twice, at the default
 JIT threshold and with every method compiled on its first call (`OBJECK_JIT_THRESHOLD=1`), then
@@ -875,42 +937,45 @@ the ceiling problem for a slower build.
 
 ### Regression Test Suite
 
-299 tests under `programs/regression/`, grouped by the prefix on each filename.
+528 tests under `programs/regression/`, grouped by the prefix on each filename.
 Counts are the file count per prefix, not a sample.
 
 ```mermaid
 mindmap
     root((Regression Tests
-    299 total))
-        Language core (45)
+    528 total))
+        Language core (46)
             core_*
                 Arithmetic, arrays, classes, generics, strings
-        Rejected programs (30)
+        Rejected programs (72)
             bad_*
                 Errors the compiler must refuse
-        JIT (42)
+        JIT (46)
             jit_*
                 Native compilation, float paths, GC interaction
-        Machine learning (14)
+        Machine learning (31)
             ml_*
                 System.ML models and inference
-        Fixed defects (11)
+        Fixed defects (13)
             fix_*
                 Regressions pinned to the bug that caused them
-        Collections (10)
+        Collections (12)
             collect_*
                 Vector, Hash, Map, Set, Stack, Queue
-        Math and strings (19)
+        Math and strings (26)
             math_* string_* func_*
                 Numerics, formatting, higher-order functions
         ARM64 specific (5)
             arm64_*
                 Bitwise, char arrays, 64-bit immediates, multiply
-        Networking and web (15)
+        Networking and web (16)
             http_* mcp_* xml_* json_* api_*
                 Clients, servers, serialisation
-        Remainder (108)
-            closure_* vm_* gc_* ai_* dap_* regex_* trap_* native_* and others
+        Rosetta Code tasks (99)
+            rosetta_*
+                Programs from Rosetta Code, output checked
+        Remainder (162)
+            closure_* try_* vm_* gc_* opt_* dap_* debugger_* onnx_* and others
                 Closures, the VM and its collector, AI bindings, debugger
 ```
 
