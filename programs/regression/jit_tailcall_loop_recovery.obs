@@ -1,0 +1,180 @@
+#~
+Regression: `?->` recovery from an error inside a method whose tail call
+the optimizer turned into a loop (#1269).
+
+From -opt s1 up, `return Deep(n - 1)` becomes a backward jump, so a method
+whose only return is that tail call has no RTRN at all. Two things went wrong
+with such a method:
+
+- The JIT emitted the epilogue -- the error handlers and the teardown they
+  jump to -- only at an RTRN, so the method had none. Its guard stubs and
+  bridge-status checks were patched to handler offsets left over from
+  another method, and any error crashed the VM (an access violation)
+  instead of recovering.
+- At s3 the inliner spliced the body into its caller as if it ended in an
+  RTRN, without its loop, leaving the caller's stack unbalanced: a crash
+  even with the JIT off.
+
+Each method below can only leave by an error: a guard stub (divide by zero,
+Nil dereference, array bounds), a bridge status (an interpreted callee
+failing) or a stack callback (an invalid cast, raised on the path traps
+take). Expected values are the interpreter's (OBJECK_JIT_DISABLE=1).
+~#
+
+class Looper {
+	@calls : Int;
+
+	New() {
+		@calls := 0;
+	}
+
+	# not a tail call: a separate method, so it fails through a call
+	method : public : Helper() ~ Nil {
+		@calls += 1;
+		z := 0;
+		v := 1 / z;
+		v->PrintLine();
+	}
+
+	# guard stub: the division is inline in the converted loop
+	method : public : DivDeep(n : Int) ~ IntRef {
+		if(n = 0) {
+			z := 0;
+			v := 1 / z;
+			v->PrintLine();
+		};
+		return DivDeep(n - 1);
+	}
+
+	# guard stub: a Nil dereference
+	method : public : NilDeep(n : Int) ~ IntRef {
+		if(n = 0) {
+			s : String := Nil;
+			return NilDeep(s->Size());
+		};
+		return NilDeep(n - 1);
+	}
+
+	# guard stub: an index past the end of an array
+	method : public : BoundsDeep(n : Int, a : Int[]) ~ IntRef {
+		if(n = 0) {
+			return BoundsDeep(a[a->Size() + 3], a);
+		};
+		return BoundsDeep(n - 1, a);
+	}
+
+	# bridge status: the callee fails, not this method
+	method : public : BridgeDeep(n : Int) ~ IntRef {
+		if(n = 0) {
+			Helper();
+		};
+		return BridgeDeep(n - 1);
+	}
+
+	# stack callback: an invalid cast
+	method : public : CastDeep(n : Int, o : Base) ~ IntRef {
+		if(n = 0) {
+			i := o->As(IntRef);
+			return CastDeep(i->Get(), o);
+		};
+		return CastDeep(n - 1, o);
+	}
+
+	# the function below fails, not this method
+	method : public : StaticDeep(n : Int, k : Int) ~ IntRef {
+		return IntRef->New(Statics->DivDeep(n, k));
+	}
+
+	method : public : GetCalls() ~ Int {
+		return @calls;
+	}
+}
+
+class Statics {
+	# a function, not a method
+	function : DivDeep(n : Int, k : Int) ~ Int {
+		if(n = 0) {
+			return DivDeep(k / n, k);
+		};
+		return DivDeep(n - 1, k + 1);
+	}
+}
+
+class JitTailCallLoopRecovery {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, got : IntRef) ~ Nil {
+		if(got = Nil) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected Nil"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : CheckInt(what : String, got : Int, want : Int) ~ Nil {
+		if(got = want) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}: expected {$want}, got {$got}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		l := Looper->New();
+		a := Int->New[4];
+		f := FloatRef->New(1.5);
+
+		# each result is taken into a local before it is checked, not passed
+		# straight into the check's argument list
+		r := l?->DivDeep(2);
+		Check("divide by zero, 3 passes in", r);
+		r := l?->DivDeep(0);
+		Check("divide by zero, first pass", r);
+		r := l?->NilDeep(5);
+		Check("Nil dereference", r);
+		r := l?->BoundsDeep(5, a);
+		Check("array bounds", r);
+		r := l?->BridgeDeep(3);
+		Check("failing callee", r);
+		r := l?->CastDeep(4, f);
+		Check("invalid cast", r);
+		r := l?->StaticDeep(6, 1);
+		Check("function", r);
+
+		# many recoveries, so every method is compiled and fails compiled
+		recovered := 0;
+		for(i := 0; i < 500; i += 1;) {
+			r := l?->DivDeep(i % 7);
+			if(r = Nil) { recovered += 1; };
+			r := l?->NilDeep(i % 4);
+			if(r = Nil) { recovered += 1; };
+			r := l?->BoundsDeep(i % 6, a);
+			if(r = Nil) { recovered += 1; };
+			r := l?->BridgeDeep(i % 5);
+			if(r = Nil) { recovered += 1; };
+			r := l?->CastDeep(i % 3, f);
+			if(r = Nil) { recovered += 1; };
+			r := l?->StaticDeep(i % 9, i);
+			if(r = Nil) { recovered += 1; };
+		};
+		CheckInt("3000 recoveries", recovered, 3000);
+		CheckInt("the failing callee ran once per call", l->GetCalls(), 501);
+
+		if(@failures > 0) {
+			"{$@failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		JitTailCallLoopRecovery->New()->Run();
+	}
+}
