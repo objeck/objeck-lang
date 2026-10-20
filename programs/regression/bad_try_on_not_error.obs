@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: An 'on' clause takes System.Error or a subclass of it
+#~
+try (#1247): an 'on' clause names a class that is not an Error.
+~#
+class BadTryOnNotError {
+	function : F() ~ Nil {
+		try {
+			x := 1;
+		}
+		on(e : String) {
+			x := 2;
+		};
+	}
+	function : Main(args : String[]) ~ Nil {
+		F();
+	}
+}

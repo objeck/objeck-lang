@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: A 'try' block needs an 'on' clause or a 'finally' block
+#~
+try (#1247): a try with neither handles nothing.
+~#
+class BadTryEmpty {
+	function : F() ~ Nil {
+		try {
+			x := 1;
+		};
+	}
+	function : Main(args : String[]) ~ Nil {
+		F();
+	}
+}

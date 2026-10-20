@@ -271,6 +271,8 @@ class ContextAnalyzer {
   int byte_str_index;
   bool use_static_check;
   int in_loop;
+  // inside a 'finally' block: the loop count where it began, innermost last (#1247)
+  std::vector<int> finally_loops;
   bool in_assignment;
   // analyzing the target of +=, -= and the like: it must already exist (#1184)
   bool in_operation_assignment = false;
@@ -608,6 +610,7 @@ class ContextAnalyzer {
   void AnalyzeWhile(While* while_stmt, const int depth);
   void AnalyzeSelect(Select* select_stmt, const int depth);
   void AnalyzeCritical(CriticalSection* mutex, const int depth);
+  void AnalyzeTry(Try* try_stmt, const int depth);
   void AnalyzeFor(For* for_stmt, const int depth);
   void AnalyzeReturn(Return* rtrn, const int depth);
   void AnalyzeLeaving(Leaving* leaving_stmt, const int depth);

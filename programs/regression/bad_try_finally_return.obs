@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: A 'finally' block cannot be left with 'return'
+#~
+try (#1247): a return out of a finally block would drop the error it runs for.
+~#
+class BadTryFinallyReturn {
+	function : F() ~ Int {
+		try {
+			return 1;
+		}
+		finally {
+			return 2;
+		};
+	}
+	function : Main(args : String[]) ~ Nil {
+		F();
+	}
+}

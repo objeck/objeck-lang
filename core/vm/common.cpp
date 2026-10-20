@@ -6693,6 +6693,10 @@ bool TrapProcessor::RuntimeRaise(StackProgram* program, size_t* inst, size_t*& o
     return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
 
+  // a try block raising again passes no message: Error's @message, field 0
+  if(!message_obj) {
+    message_obj = (size_t*)error[0];
+  }
   std::wstring message;
   if(message_obj && message_obj[0]) {
     message = (wchar_t*)((size_t*)message_obj[0] + 3);
@@ -6746,7 +6750,12 @@ bool TrapProcessor::RuntimeGetLastError(StackProgram* program, size_t* inst, siz
       break;
     }
 
+    // A program links only the library classes it names. One that never names
+    // DivideByZeroError cannot test for it either, so System.Error stands in.
     size_t* error = MemoryManager::AllocateObject(name, op_stack, *stack_pos, false);
+    if(!error) {
+      error = MemoryManager::AllocateObject(L"System.Error", op_stack, *stack_pos, false);
+    }
     if(!error) {
       PushInt(0, op_stack, stack_pos);
       return true;

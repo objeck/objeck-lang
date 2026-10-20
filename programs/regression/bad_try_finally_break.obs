@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: A 'finally' block cannot be left with 'break' or 'continue'
+#~
+try (#1247): a break out of a finally block would drop the error it runs for.
+~#
+class BadTryFinallyBreak {
+	function : F() ~ Nil {
+		for(i := 0; i < 3; i += 1;) {
+			try {
+				x := i;
+			}
+			finally {
+				break;
+			};
+		};
+	}
+	function : Main(args : String[]) ~ Nil {
+		F();
+	}
+}

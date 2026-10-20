@@ -1257,12 +1257,16 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
       EmitAssignment(post_statements.front());
       post_statements.pop();
     }
-    // leaving
+    // leaving: as for finally, a returned string literal on the stack must not
+    // pair with the leaving block's own literals (#1247)
     if(current_method->GetLeaving()) {
+      const int saved_char_str_count = new_char_str_count;
+      new_char_str_count = 0;
       std::vector<Statement*> leavings = current_method->GetLeaving()->GetStatements()->GetStatements();
       for(size_t i = 0; i < leavings.size(); ++i) {
         EmitStatement(leavings[i]);
       }
+      new_char_str_count = saved_char_str_count;
     }
     // early return in constructor must push instance for caller
     if(!expression && (current_method->GetMethodType() == NEW_PUBLIC_METHOD ||
@@ -1311,6 +1315,10 @@ void IntermediateEmitter::EmitStatement(Statement* statement)
 
   case CRITICAL_STMT:
     EmitCriticalSection(static_cast<CriticalSection*>(statement));
+    break;
+
+  case TRY_STMT:
+    EmitTry(static_cast<Try*>(statement));
     break;
     
   case SYSTEM_STMT:
@@ -4100,10 +4108,171 @@ void IntermediateEmitter::EmitCriticalSection(CriticalSection* critical_stmt)
 void IntermediateEmitter::EmitCriticalUnlocks(size_t keep_depth, Statement* statement)
 {
   for(size_t i = active_criticals.size(); i > keep_depth; --i) {
-    CriticalSection* critical_stmt = active_criticals[i - 1];
-    EmitVariable(critical_stmt->GetVariable());
-    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, CRITICAL_END));
+    Statement* active = active_criticals[i - 1];
+    if(active->GetStatementType() == TRY_STMT) {
+      // a jump out of a try block closes its open region, then runs its
+      // finally block (#1247); the analyzer keeps a finally block from jumping
+      Try* try_stmt = static_cast<Try*>(active);
+      if(try_stmt->GetEmitPhase() < 2) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, TRY_END));
+      }
+      if(try_stmt->GetFinally()) {
+        const int phase = try_stmt->GetEmitPhase();
+        try_stmt->SetEmitPhase(2);
+        // a returned string literal is on the stack: it is not the first of a
+        // pair the finally block's own literals would swap with
+        const int saved_char_str_count = new_char_str_count;
+        new_char_str_count = 0;
+        std::vector<Statement*> finally_stmts = try_stmt->GetFinally()->GetStatements();
+        for(size_t j = 0; j < finally_stmts.size(); ++j) {
+          EmitStatement(finally_stmts[j]);
+        }
+        new_char_str_count = saved_char_str_count;
+        try_stmt->SetEmitPhase(phase);
+      }
+    }
+    else {
+      CriticalSection* critical_stmt = static_cast<CriticalSection*>(active);
+      EmitVariable(critical_stmt->GetVariable());
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(statement, cur_line_num, CRITICAL_END));
+    }
   }
+}
+
+/****************************
+ * Translates 'try { } on(e : T) { }
+ * finally { }' (#1247):
+ *
+ *   raise := Nil
+ *   TRY_START H1; body; TRY_END; JMP AFTER
+ * H1:
+ *   error := GetLastError()
+ *   TRY_START H2
+ *     each 'on': error TypeOf T? e := error; handler; JMP DONE
+ *     raise := error            -- nothing matched
+ * DONE:
+ *   TRY_END; JMP AFTER
+ * H2:
+ *   raise := GetLastError()     -- a handler failed
+ * AFTER:
+ *   finally
+ *   raise <> Nil? Raise(raise)
+ *
+ * The handlers run in a region of their own, so finally runs before an
+ * error raised in one of them goes on.
+ ****************************/
+void IntermediateEmitter::EmitTry(Try* try_stmt)
+{
+  cur_line_num = try_stmt->GetLineNumber();
+  const long error_id = try_stmt->GetErrorEntry()->GetId();
+  const long raise_id = try_stmt->GetRaiseEntry()->GetId();
+  const long handler_label = ++unconditional_label;
+  const long handler_error_label = ++unconditional_label;
+  const long done_label = ++unconditional_label;
+  const long after_label = ++unconditional_label;
+
+  // raise := Nil
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(try_stmt, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, STOR_INT_VAR, raise_id, LOCL));
+
+  // the body's region
+  active_criticals.push_back(try_stmt);
+  try_stmt->SetEmitPhase(0);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, TRY_START, handler_label, -1));
+  std::vector<Statement*> body = try_stmt->GetBody()->GetStatements();
+  for(size_t i = 0; i < body.size(); ++i) {
+    EmitStatement(body[i]);
+  }
+  cur_line_num = try_stmt->GetLineNumber();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, TRY_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, JMP, after_label, -1));
+
+  // the error the body raised
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LBL, handler_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(try_stmt, cur_line_num, instructions::RUNTIME_GET_LAST_ERROR));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, TRAP_RTRN, 1L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, STOR_INT_VAR, error_id, LOCL));
+
+  // the handlers, in their own region
+  try_stmt->SetEmitPhase(1);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, TRY_START, handler_error_label, -1));
+  const std::vector<TryHandler*> &handlers = try_stmt->GetHandlers();
+  for(size_t i = 0; i < handlers.size(); ++i) {
+    TryHandler* handler = handlers[i];
+    cur_line_num = handler->line_num;
+    const long next_label = ++unconditional_label;
+
+    // error TypeOf T?
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LOAD_INT_VAR, error_id, LOCL));
+    const std::wstring &type_name = handler->type->GetName();
+    if(SearchProgramClasses(type_name)) {
+      if(is_lib) {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LIB_OBJ_TYPE_OF, type_name));
+      }
+      else {
+        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, OBJ_TYPE_OF, (long)SearchProgramClasses(type_name)->GetId()));
+      }
+    }
+    else if(is_lib) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LIB_OBJ_TYPE_OF, type_name));
+    }
+    else {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, OBJ_TYPE_OF,
+        (long)parsed_program->GetLinker()->SearchClassLibraries(type_name, parsed_program->GetLibUses())->GetId()));
+    }
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, JMP, next_label, false));
+
+    // e := error
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LOAD_INT_VAR, error_id, LOCL));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, STOR_INT_VAR, handler->entry->GetId(), LOCL));
+
+    std::vector<Statement*> statements = handler->statements->GetStatements();
+    for(size_t j = 0; j < statements.size(); ++j) {
+      EmitStatement(statements[j]);
+    }
+    cur_line_num = handler->line_num;
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, JMP, done_label, -1));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LBL, next_label));
+  }
+
+  // nothing matched: raise it again after finally
+  cur_line_num = try_stmt->GetLineNumber();
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LOAD_INT_VAR, error_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, STOR_INT_VAR, raise_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LBL, done_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, TRY_END));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, JMP, after_label, -1));
+
+  // a handler raised: it goes on after finally
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LBL, handler_error_label));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(try_stmt, cur_line_num, instructions::RUNTIME_GET_LAST_ERROR));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, TRAP_RTRN, 1L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, STOR_INT_VAR, raise_id, LOCL));
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LBL, after_label));
+  try_stmt->SetEmitPhase(2);
+  active_criticals.pop_back();
+
+  // finally
+  if(try_stmt->GetFinally()) {
+    std::vector<Statement*> finally_stmts = try_stmt->GetFinally()->GetStatements();
+    for(size_t i = 0; i < finally_stmts.size(); ++i) {
+      EmitStatement(finally_stmts[i]);
+    }
+  }
+
+  // raise <> Nil? Raise(raise) -- the message is read from the error itself
+  cur_line_num = try_stmt->GetLineNumber();
+  const long end_label = ++unconditional_label;
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LOAD_INT_VAR, raise_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(try_stmt, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, EQL_INT));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, JMP, end_label, true));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LOAD_INT_VAR, raise_id, LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(try_stmt, cur_line_num, 0L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(try_stmt, cur_line_num, instructions::RUNTIME_RAISE));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, TRAP, 3L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(try_stmt, cur_line_num, LBL, end_label));
 }
 
 /****************************

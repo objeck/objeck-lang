@@ -1,0 +1,20 @@
+# EXPECT_COMPILE_ERROR: This 'on' clause is unreachable: an earlier one takes 'System.Error'
+#~
+try (#1247): a clause for a subclass after one for its parent can never run.
+~#
+class BadTryOnUnreachable {
+	function : F() ~ Nil {
+		try {
+			x := 1;
+		}
+		on(e : Error) {
+			x := 2;
+		}
+		on(e : IndexError) {
+			x := 3;
+		};
+	}
+	function : Main(args : String[]) ~ Nil {
+		F();
+	}
+}

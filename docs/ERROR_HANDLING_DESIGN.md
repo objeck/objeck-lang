@@ -144,13 +144,57 @@ finally {
    - Found on the way: an error under `?->` in a method whose tail call the optimizer made a
      loop crashes the JIT (#1269, on master before this work).
    - Tests: `error_raise.obs` (21 checks, three modes) and `bad_error_raise_unhandled.obs`.
-2. **`try` / `on`.** Parser, analysis (clause types must be `Error` subclasses; a later clause
+2. **`try` / `on`** (shipped, with phase 3). Parser, analysis (clause types must be `Error` subclasses; a later clause
    shadowed by an earlier one is an error), emission, and unmatched re-raise. Tests cover
    nesting, a raise from three frames down, a raise from JIT code, and an unmatched error
    reaching an outer `try`.
-3. **`finally`**, with `return`/`break`/`continue` leaving a region, and the interaction with
+3. **`finally`** (shipped), with `return`/`break`/`continue` leaving a region, and the interaction with
    `leaving`.
-4. **Docs and Rosetta:** FEATURES.md, and the Exceptions tasks rewritten in the new form.
+4. **Docs and Rosetta** (shipped): FEATURES.md, and the Exceptions tasks rewritten in the new form.
+
+## Phases 2 to 4, as built
+
+- **Contextual words.** `on` is a parameter name in the standard library
+  (`SetQuitOnEscape(on : Bool)`), and named arguments made parameter names public API, so
+  none of the three is reserved. `try` is a keyword only when `{` follows it, `on` only when
+  `(` follows it after a `try` block or another clause, and `finally` only when `{` follows
+  it there.
+- **Parse.** A `Try` node holds the body, the clauses (type, a typed local and statements),
+  `finally` and two hidden `System.Error` locals: the error being handled and one to raise
+  again.
+- **Analysis.** A clause's type must be `System.Error` or a subclass, and a clause that an
+  earlier one covers is an error. A `try` with neither a clause nor `finally` is an error.
+  `return` anywhere in `finally`, and `break`/`continue` that would leave it, are errors. A
+  `try` returns on every path when its body and all its clauses do.
+- **Emission** (`EmitTry`):
+
+  ```
+  raise := Nil
+  TRY_START H1; body; TRY_END; JMP AFTER
+  H1: error := GetLastError(); TRY_START H2
+      per clause: error TypeOf T? e := error; statements; JMP DONE
+      raise := error                      -- no clause matched
+  DONE: TRY_END; JMP AFTER
+  H2: raise := GetLastError()             -- a clause raised
+  AFTER: finally; raise <> Nil? Raise(raise)
+  ```
+
+  The clauses run in a region of their own, so `finally` runs before an error raised in one
+  of them goes on. A `try` sits on the emitter's exit stack beside `critical` sections. A
+  `return`, `break` or `continue` that leaves it closes the region still open, then emits
+  the `finally` statements, innermost first, as `leaving` does for a return.
+- **Found on the way:**
+  - The emitter counts string literals to decide when two must be swapped. A returned
+    literal was still counted when the first literal of a `leaving` block (or of `finally`)
+    was emitted after it. The two swapped, and the method returned the leaving block's
+    literal while printing its return value. The count is saved and reset around both.
+  - A program links only the library classes it names, so `GetLastError` could not build a
+    `DivideByZeroError` for a program that never named it. It falls back to `System.Error`,
+    since such a program cannot test for the subclass anyway.
+- **Rosetta:** `rosetta_exceptions.obs` and
+  `rosetta_exceptions_catch_an_exception_thrown_in_a_nested_call.obs` now use exception
+  classes, `try`/`on`/`finally` and rethrow. Their shared-note workarounds are gone.
+- **Tests:** `try_blocks.obs` (13 checks, three modes) and five `bad_try_*.obs`.
 
 ## Alternatives considered
 

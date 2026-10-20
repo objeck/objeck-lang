@@ -165,31 +165,46 @@ if(Runtime->HasError()) {
 A Nil receiver is not an error: `x?->M()` with `x` Nil calls nothing. See
 [RECOVERED_ERRORS_DESIGN.md](RECOVERED_ERRORS_DESIGN.md).
 
-### Raising errors
-An error is an object: `System.Error`, or a subclass of your own. `Runtime->Raise`
-raises one, `?->` recovers from it as from any runtime error, and
-`Runtime->GetLastError()` returns it:
+### Errors: raise, try, on, finally
+An error is an object: `System.Error`, or a subclass of your own.
+`Runtime->Raise` raises one; a `try` block catches errors by type, and `finally`
+runs on every way out:
 ```ruby
 class ParseError from Error {
   New(message : String) { Parent(message); }
 }
 
-row := parser?->Next();
-if(row = Nil) {
-  e := Runtime->GetLastError();
-  if(e->TypeOf(ParseError)) {
-    "skipped: {$(e->GetMessage())}"->ErrorLine();
-  }
-  else {
-    Runtime->Raise(e);   # not ours: pass it on
-  };
+try {
+  rows := Load(path);
+  model := Fit(rows);
+}
+on(e : ParseError) {
+  "bad row: {$(e->GetMessage())}"->ErrorLine();
+}
+on(e : DivideByZeroError) {
+  model := Nil;
+}
+finally {
+  log->Close();
 };
 ```
-The runtime's own errors come back as `NilError`, `IndexError`,
-`DivideByZeroError`, `CastError` and `RuntimeError` (a failed `Runtime->Assert`,
-a failing library call). An error nothing recovers from ends the program with
-`Unhandled <class>: <message>`. Typed `try`/`on`/`finally` blocks are next; see
-[ERROR_HANDLING_DESIGN.md](ERROR_HANDLING_DESIGN.md).
+- `on` clauses are tested in order; an error none of them names is raised again
+  after `finally`, so a typed `try` never swallows what it did not ask for.
+  `on(e : Error)` takes anything.
+- The runtime's own errors are `NilError`, `IndexError`, `DivideByZeroError`,
+  `CastError` and `RuntimeError` (a failed `Runtime->Assert`, a failing library
+  call).
+- `Runtime->Raise(e)` in a handler passes the error on. An error raised in a
+  handler still runs `finally` first.
+- `return`, `break` and `continue` may leave a `try` body or a handler, through
+  `finally`; they may not leave `finally` itself.
+- `try`, `on` and `finally` are contextual: they can still be used as names.
+- `?->` still recovers from any error below a guarded call, and
+  `Runtime->GetLastError()` returns the one it took.
+- An error nothing catches ends the program with `Unhandled <class>: <message>`.
+
+A method with a `try` block runs interpreted (the JIT compiles its callees), as
+one with a `?->` does. See [ERROR_HANDLING_DESIGN.md](ERROR_HANDLING_DESIGN.md).
 
 ### Tail calls
 A method's call to itself on `@self` in tail position (`Down(); }` or
