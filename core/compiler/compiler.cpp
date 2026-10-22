@@ -150,7 +150,7 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
     std::wcout << VERSION_STRING << L" Objeck (Linux x86)" << std::endl;
 #endif
     std::wcout << L"---" << std::endl;
-    std::wcout << L"Copyright (c) 2025, Randy Hollines" << std::endl;
+    std::wcout << L"Copyright (c) 2007-2026, Randy Hollines" << std::endl;
     std::wcout << L"This is free software; see the source for copying conditions.There is NO" << std::endl;
     std::wcout << L"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." << std::endl;
     argument_options.remove(L"version");
