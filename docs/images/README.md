@@ -17,12 +17,13 @@ Historical architecture diagrams (still useful for visual reference):
 
 | File | Description | Format | Status |
 |------|-------------|--------|--------|
-| **design3.svg/.png** | Runtime components focus | Visio SVG | Legacy |
-| **design2.svg/.png** | Compiler pipeline focus | Visio SVG | Legacy |
+| **objeck-architecture.svg** | Whole toolchain on one page | SVG | Current |
+| **design3.svg** | Runtime components focus | Visio SVG | Legacy |
+| **design2.svg** | Compiler pipeline focus | Visio SVG | Legacy |
 | **design.png** | Original architecture (v1) | PNG | Historical |
-| **jit_design.svg/.png** | JIT frame structure detail | Visio SVG | Still relevant |
+| **jit_design.svg** | JIT frame structure detail | Visio SVG | Still relevant |
 | **toolchain.svg** | Build & distribution | SVG | Still relevant |
-| **compiling2.svg/.png** | Compilation flow | Visio SVG | Legacy |
+| **compiling2.svg** | Compilation flow | Visio SVG | Legacy |
 
 **Note:** The `.svg` files are editable sources created in Microsoft Visio. They can be edited with Inkscape or any SVG editor.
 
