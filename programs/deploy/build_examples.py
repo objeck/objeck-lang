@@ -43,11 +43,14 @@ def find_obc():
     if os.path.isfile(shipped):
         return os.path.abspath(shipped)
 
-    # repo layout, whatever the deploy tree is called
+    # repo layout, whatever the deploy tree is called. The most recently built
+    # wins: a machine can hold several trees (deploy-msys2-ucrt, deploy-x64t), and
+    # taking the first alphabetically compiled against a months-old toolchain that
+    # rejected every newer example.
     pattern = os.path.join(HERE, "..", "..", "core", "release", "deploy*", "bin", exe)
-    for candidate in sorted(glob.glob(pattern)):
-        if os.path.isfile(candidate):
-            return os.path.abspath(candidate)
+    candidates = [c for c in glob.glob(pattern) if os.path.isfile(c)]
+    if candidates:
+        return os.path.abspath(max(candidates, key=os.path.getmtime))
 
     found = shutil.which(exe)
     if found:

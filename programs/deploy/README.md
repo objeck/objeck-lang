@@ -44,6 +44,7 @@ install): two of them read files from `data/`, which ships alongside.
 | [`ai_search_25.obs`](ai_search_25.obs) | `-lib ai` | shortest-path search across a small map |
 | [`ml_regression_26.obs`](ml_regression_26.obs) | `-lib ml,csv` | linear regression over a CSV dataset |
 | [`records_28.obs`](records_28.obs) | `-lib gen_collect` | records: generated constructors and accessors, and readonly |
+| [`errors_29.obs`](errors_29.obs) | none | raise errors and catch them by type with try, on and finally |
 
 ## Building all of them
 

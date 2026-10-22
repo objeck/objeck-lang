@@ -122,7 +122,7 @@ class Example {
 Recommended order for learning Objeck:
 
 1. **Basic Syntax** - Start with `deploy/hello_0.obs`, `deploy/functions_5.obs` and `deploy/loops_27.obs`
-2. **Object-Oriented** - Move to `deploy/visitor_20.obs` and `deploy/records_28.obs`
+2. **Object-Oriented** - Move to `deploy/visitor_20.obs` and `deploy/records_28.obs`, then error handling in `deploy/errors_29.obs`
 3. **Collections** - Explore `examples/queue.obs`, `examples/hash.obs` and `examples/double_list.obs`
 4. **File I/O** - Check `deploy/serial_14.obs` and `examples/file.obs`
 5. **Networking** - Try `deploy/https_1.obs`, then the `frameworks/web` examples

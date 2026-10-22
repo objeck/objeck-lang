@@ -1,0 +1,82 @@
+#~
+# compile: obc -src errors_29.obs
+# run:     obr errors_29.obe
+#
+# Errors you can raise, catch by type, and clean up after. Runtime->Raise
+# raises any Error, or a subclass you write; it travels up through calls until
+# a try takes it.
+#
+#   try { ... }
+#   on(e : ConfigError) { ... }   # clauses are tested in order; e is typed
+#   on(e : Error) { ... }         # so a catch-all goes last
+#   finally { ... };              # runs on every way out
+#
+# An error no 'on' clause names goes on after 'finally', so a typed try never
+# swallows what it did not ask for. The runtime's own faults are errors too:
+# NilError, IndexError, DivideByZeroError, CastError and RuntimeError.
+#
+# For a one-line fallback, ?-> still recovers from any error in a call chain,
+# and Runtime->GetLastError() says what it was.
+~#
+
+# a custom error: subclass Error and add whatever the handler needs
+class ConfigError from Error {
+  @line : Int;
+
+  New(message : String, line : Int) {
+    Parent(message);
+    @line := line;
+  }
+
+  method : public : GetLine() ~ Int {
+    return @line;
+  }
+}
+
+class Errors {
+  function : ParsePort(text : String, line : Int) ~ Int {
+    if(text->Size() = 0) {
+      Runtime->Raise(ConfigError->New("missing port", line));
+    };
+    return text->ToInt();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    ports := ["8080", "", "443"];
+
+    each(i : ports) {
+      try {
+        port := ParsePort(ports[i], i + 1);
+        "line {$(i + 1)}: port {$port}"->PrintLine();
+      }
+      on(e : ConfigError) {
+        # e is a ConfigError here, so GetLine() is available
+        "line {$(e->GetLine())}: {$(e->GetMessage())}"->PrintLine();
+      }
+      finally {
+        # runs however the block is left: normally, by an error, or by return/break
+        "  checked line {$(i + 1)}"->PrintLine();
+      };
+    };
+
+    # the runtime's own faults are caught the same way
+    values := [1, 2, 3];
+    try {
+      values[10]->PrintLine();
+    }
+    on(e : IndexError) {
+      "caught: {$(e->GetMessage())}"->PrintLine();
+    };
+
+    try {
+      zero := 0;
+      (10 / zero)->PrintLine();
+    }
+    on(e : DivideByZeroError) {
+      "caught: {$(e->GetMessage())}"->PrintLine();
+    }
+    on(e : Error) {
+      "something else: {$(e->GetMessage())}"->PrintLine();
+    };
+  }
+}
