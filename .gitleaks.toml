@@ -71,7 +71,7 @@ regexes = [
 #
 # Allowlisted by COMMIT, deliberately, and not by path. A path entry for
 # programs/examples/job-search would also hide a real key committed there
-# tomorrow -- and test-1.mhtml is still tracked at HEAD. A commit entry can only
+# tomorrow (test-1.mhtml was removed from HEAD, but history still holds it). A commit entry can only
 # ever suppress findings attributed to that exact SHA, so every one of these
 # paths stays watched for all future commits, on pushes, pull requests and the
 # weekly scan alike.

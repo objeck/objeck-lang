@@ -75,6 +75,5 @@ Several things in this directory are **build inputs or shipped artifacts**, not 
 | `style/`, `images/`, `syntax/` | Assets for the above. |
 | `api.zip` | Pre-built API docs, unpacked into the install tree by the ARM64 deploy, which cannot run the doc generator while cross-compiling. |
 | `eula.rtf` | Licence text for the installer. |
-| `website.7z`, `benchmarks.xlsx`, `design.vsd`, `Compiler Design.pptx` | Historical material kept for reference. |
 
 If you want the rendered documentation rather than the sources, use the published site rather than this directory.
