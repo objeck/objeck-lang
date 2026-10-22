@@ -353,21 +353,17 @@ stateDiagram-v2
 ```mermaid
 graph TB
     subgraph "Memory Regions"
-        A[Stack]
-        B[Young Generation Heap]
-        C[Old Generation Heap]
-        D[Large Object Heap]
-        E[JIT Code Cache]
+        A[Operand and Call Stacks]
+        B[Nursery, bump-allocated]
+        C[Old Generation]
     end
 
-    A -->|Local vars, frames| F[Memory Manager]
+    A -->|"Roots: locals, frames"| F[Memory Manager]
     B -->|New objects| F
-    C -->|Survived objects| F
-    D -->|Arrays, strings| F
-    E -->|Native code| F
+    C -->|"Promoted objects, arrays,<br/>native allocations"| F
 
-    F -->|"O(1) Hash Lookup"| G[Object Table]
-    F -->|GC| H[Mark & Sweep]
+    F -->|"O(1) membership"| G[Old-gen address set]
+    F -->|GC| H["Minor: promote survivors<br/>Major: mark and sweep"]
 
     style F fill:#ffe1e1
     style G fill:#e1f5ff
@@ -485,38 +481,6 @@ more falls back to the interpreter whole.
 | **ARM64** | x0-x7, x12-x15 (12 regs) | d0-d15 (16 regs) | x9-x11 (scratch), x19 (safepoint flag's address), x29 (FP), x30 (LR) |
 | **AMD64** | rax, rbx, rcx, rdx, r8-r11 (8 regs; Windows adds rsi, rdi) | xmm10-xmm15 (6 regs) | r12 (safepoint flag's address), r13-r15 (pinned loop locals), rsp (SP), rbp (BP) |
 
-### ARM64 Optimizations (v2026.2.1)
-
-```mermaid
-mindmap
-    root((ARM64 JIT Fixes))
-        Character Arrays
-            STRH/LDRH encoding
-            16-bit operations
-            Array bounds checking
-        Large Immediates
-            Values > 4095
-            Multi-instruction loading
-            MOVZ/MOVK sequences
-        Bitwise Operations
-            64-bit ORN for NOT
-            Register targeting
-            Flag preservation
-        Multiply Constants
-            Constant folding
-            Shift optimization
-            LSL instructions
-        Register Allocation
-            Improved targeting
-            Reduced spills
-            Better liveness analysis
-```
-
-**Performance Improvements:**
-- Character array operations: **3x faster**
-- Large immediate handling: **2x faster**
-- Overall ARM64 performance: **25-30% improvement**
-
 **Source Files:**
 - `core/vm/arch/jit/arm64/jit_arm_a64.h/cpp` - ARM64 JIT
 - `core/vm/arch/jit/amd64/jit_amd_lp64.h/cpp` - AMD64 JIT
@@ -531,44 +495,37 @@ mindmap
 ```mermaid
 mindmap
     root((Objeck Libraries
-    30+))
+    46))
         Core Runtime
-            lang: Language runtime
-            misc: Utilities
-            regex: Regular expressions
-            diags: Diagnostics
-        AI & Machine Learning
-            onnx: Neural network inference
-            ollama: LLM integration
-            openai: OpenAI API
-            gemini: Google Gemini API
-            ml: ML utilities
-            opencv: Computer vision
-            face: Face detection + recognition
-            matrix: Linear algebra
+            lang: runtime, errors, strings
+            gen_collect: Vector, Map, Hash, List
+            concurrent: locks, Condition, Semaphore, Barrier
+            math: Rational, Complex
+            regex · misc · diags
+        Machine Learning
+            ml_core · ml_data
+            ml_linear · ml_tree · ml_bayes
+            ml_neighbors · ml_cluster
+            nlp
+        AI
+            onnx: in-process inference, face detection and recognition
+            inference: model server over HTTP
+            models: shared Tensor and Engine
+            openai · gemini · ollama
+            ai_search · ai_game · ai_optimize · ai_rl
+            opencv: computer vision
         Web & Networking
-            web_server: HTTP server framework
-            json_rpc: JSON-RPC 2.0
-            net_server: TCP/UDP servers
-            net_secure: TLS/SSL
-            net_common: Network utilities
-            rss: RSS feed parsing
+            net · net_common · net_secure
+            net_h2 · net_quic
+            net_server · web_server
+            json_rpc · rss
         Data Processing
-            json: JSON parsing
-            xml: XML parsing
-            csv: CSV handling
-            query: Query language
-            json_stream: Streaming JSON
+            json · json_stream · xml
+            csv · query · odbc
+            cipher: hashing and encryption via mbedTLS
         Media & Gaming
-            sdl2: Graphics, input, audio
-            sdl_game: Game dev framework
+            sdl2 · sdl_game · sdl_gl
             lame: MP3 encoding
-        Database & Security
-            odbc: Database connectivity
-            cipher: Encryption via mbedTLS
-        Collections & Generics
-            gen_collect: Generic collections
-            Vector, Map, Hash, List
 ```
 
 ### Library Dependencies
@@ -580,9 +537,9 @@ graph TB
     end
 
     subgraph "AI/ML Stack"
-        C[onnx.obl] --> D[ONNX Runtime 1.22+]
+        C[onnx.obl] --> D[ONNX Runtime]
         E[opencv.obl] --> F[OpenCV 4.12]
-        G[matrix.obl] --> H[Eigen3]
+        G[ml_*.obl] --> H[matrix module · Eigen3]
         I[ollama.obl] --> J[HTTP Client]
         K[openai.obl] --> J
         L[gemini.obl] --> J
@@ -592,7 +549,7 @@ graph TB
         M[web_server.obl] --> N[net_server.obl]
         O[json_rpc.obl] --> P[json.obl]
         N --> Q[net_secure.obl]
-        Q --> R[mbedTLS 3.6.3]
+        Q --> R[mbedTLS 3.6]
     end
 
     subgraph "Data Stack"
@@ -603,7 +560,7 @@ graph TB
     end
 
     subgraph "Media Stack"
-        W[sdl2.obl] --> X[SDL2 2.30]
+        W[sdl2.obl] --> X[SDL2]
         Y[sdl_game.obl] --> W
         Z[lame.obl] --> AA[LAME 3.100]
     end
@@ -616,34 +573,20 @@ graph TB
 
 ### External Dependencies
 
-| Category | Library | Version | Purpose |
-|----------|---------|---------|---------|
-| **Crypto** | mbedTLS | 3.6.3 | TLS, hashing, encryption |
-| **ML/AI** | ONNX Runtime | 1.22+ | Neural network inference |
-| **Vision** | OpenCV | 4.12+ | Computer vision, image processing |
-| **Math** | Eigen3 | 3.4+ | Linear algebra, matrices |
-| **Graphics** | SDL2 | 2.30+ | Cross-platform graphics/input |
-| **Audio** | LAME | 3.100+ | MP3 encoding |
-| **Database** | ODBC | System | Database connectivity |
+Versions differ by platform (vcpkg, vendored DLLs, apt, Homebrew, static builds); the
+per-platform table, and how to check each one, is in
+[third_party_dependencies.md](third_party_dependencies.md).
 
-### Modern Web Server Example
-
-```objeck
-use Web;
-
-class SimpleServer {
-  function : Main(args : String[]) ~ Nil {
-    # Create HTTP server on port 8080
-    server := HttpServer->New(8080);
-
-    # Register JSON-RPC endpoint
-    server->AddEndpoint("/api", JsonRpcHandler->New());
-
-    # Start server
-    server->Start();
-  }
-}
-```
+| Category | Library | Purpose |
+|----------|---------|---------|
+| **Crypto** | mbedTLS 3.6 LTS | TLS, hashing, encryption |
+| **HTTP** | nghttp2; ngtcp2 + nghttp3 + AWS-LC (POSIX) | HTTP/2, HTTP/3 |
+| **ML/AI** | ONNX Runtime (CPU, DirectML, QNN, CUDA, CoreML) | Neural network inference |
+| **Vision** | OpenCV 4.12 | Computer vision, image processing |
+| **Math** | Eigen 3.4 (vendored) | Linear algebra, matrices |
+| **Graphics** | SDL2, SDL2_image, SDL2_mixer, SDL2_ttf | Cross-platform graphics/input/audio |
+| **Audio** | LAME 3.100 | MP3 encoding |
+| **Database** | ODBC | System driver manager |
 
 ### Face Recognition Example
 
@@ -672,8 +615,8 @@ class FaceDemo {
 Uses SCRFD 10G-KPS detector + ArcFace R50 recognizer from InsightFace buffalo_l. Runs on DirectML (Windows), CPU/CUDA (Linux), CoreML (macOS).
 
 **Source Files:**
-- `core/compiler/lib_src/*.obs` - Library source code (43 files)
-- `core/release/deploy/lib/*.obl` - Compiled libraries
+- `core/compiler/lib_src/*.obs` - Library source code (46 files)
+- `core/lib/*.obl` - Compiled libraries, shipped in a release's `lib/`
 
 ---
 
@@ -751,28 +694,29 @@ sequenceDiagram
 
 ```mermaid
 graph LR
-    subgraph "Editors"
+    subgraph "Editors (tools/lsp/clients)"
         A1[VS Code]
-        A2[Sublime Text]
-        A3[Kate]
-        A4[Textadapt]
-        A5[eCode]
+        A2[Neovim]
+        A3[Vim]
+        A4[Emacs]
+        A5[Helix]
+        A6[Sublime Text]
     end
 
-    subgraph "LSP Server"
+    subgraph "LSP Server (tools/lsp, LSP 3.17)"
         B[Language Server Protocol]
-        C[Parser Integration]
+        C[Analysis, reused until the text changes]
         D[Symbol Table]
-        E[Diagnostics Engine]
+        E[Pull Diagnostics]
     end
 
-    subgraph "Compiler Services"
+    subgraph "Compiler Services (libobjk_diags)"
         F[Scanner]
         G[Parser]
         H[Contextual Analyzer]
     end
 
-    A1 & A2 & A3 & A4 & A5 --> B
+    A1 & A2 & A3 & A4 & A5 & A6 --> B
     B --> C --> F & G & H
     C --> D
     C --> E
@@ -800,7 +744,7 @@ A terminal editor over the REPL buffer, header-only (`core/repl/{term,screen,key
 
 ### Software Updater (`obu`)
 
-`core/utils/updater/obu.cpp` — in-place version upgrades without reinstalling. `obu check` compares the installed version against GitHub releases; `obu update`/`rollback` download the platform archive, **verify a SHA-256 digest against the release's `SHA256SUMS` before touching disk**, then perform an all-or-nothing staged swap with an `obc -v` post-install check and automatic rollback. No shell is used anywhere — curl/tar/obc run via argument vectors (`fork`/`execvp` on POSIX, `CreateProcess` on Windows), including the release-JSON fetch behind `obu check`. The flow is covered by an offline CI test (`test_update.py`) that runs on both Linux and Windows: `check` is exercised on every platform against fake releases, and the update/rollback swap plus a command-injection PoC wherever the swap is implemented. The Windows swap needs no re-exec dance: Windows forbids deleting a running image but allows renaming one, so the running `obu.exe` moves into `.previous` and keeps executing. Still outstanding (`docs/UPDATER_DESIGN.md`): signature verification, reconciling an MSI-managed install's registry entries, and elevation against a real `Program Files` tree.
+`core/utils/updater/obu.cpp` — in-place version upgrades without reinstalling. `obu check` compares the installed version against GitHub releases; `obu update`/`rollback` download the platform archive, **verify a SHA-256 digest against the release's `SHA256SUMS` before touching disk**, then perform an all-or-nothing staged swap with an `obc -v` post-install check and automatic rollback. No shell is used anywhere — curl/tar/obc run via argument vectors (`fork`/`execvp` on POSIX, `CreateProcess` on Windows), including the release-JSON fetch behind `obu check`. The flow is covered by an offline CI test (`test_update.py`) that runs on both Linux and Windows: `check` is exercised on every platform against fake releases, and the update/rollback swap plus a command-injection PoC wherever the swap is implemented. The Windows swap needs no re-exec dance: Windows forbids deleting a running image but allows renaming one, so the running `obu.exe` moves into `.previous` and keeps executing. Since v2026.10.0 a release's `SHA256SUMS` is itself signed with minisign, and `obu` refuses a manifest whose signature does not verify against the release key compiled into it, so a substituted archive cannot pass with a substituted manifest. Still outstanding (`docs/UPDATER_DESIGN.md`): reconciling an MSI-managed install's registry entries, and elevation against a real `Program Files` tree.
 
 ### Debugger Features
 
@@ -878,11 +822,11 @@ graph TB
 
 | Platform | Runner | Architecture | Compiler | Tests |
 |----------|--------|--------------|----------|-------|
-| **Linux** | `ubuntu-latest` | x64 | GCC | 528 regression |
-| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 528 regression |
-| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 528 regression |
-| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 528 regression |
-| **Windows** | `windows-11-arm` | ARM64 | MSVC (v143) | 528 regression |
+| **Linux** | `ubuntu-latest` | x64 | GCC | 529 regression |
+| **Linux** | `ubuntu-24.04-arm` | ARM64 | GCC | 529 regression |
+| **macOS** | `macos-15` | ARM64 (Apple silicon) | Clang | 529 regression |
+| **Windows** | `windows-2025-vs2026` | x64 | MSVC (v145) | 529 regression |
+| **Windows** | `windows-11-arm` | ARM64 | MSVC (v143) | 529 regression |
 
 Every leg builds natively and runs what it builds: the regression suite twice, at the default
 JIT threshold and with every method compiled on its first call (`OBJECK_JIT_THRESHOLD=1`), then
@@ -937,13 +881,13 @@ the ceiling problem for a slower build.
 
 ### Regression Test Suite
 
-528 tests under `programs/regression/`, grouped by the prefix on each filename.
+529 tests under `programs/regression/`, grouped by the prefix on each filename.
 Counts are the file count per prefix, not a sample.
 
 ```mermaid
 mindmap
     root((Regression Tests
-    528 total))
+    529 total))
         Language core (46)
             core_*
                 Arithmetic, arrays, classes, generics, strings
@@ -956,7 +900,7 @@ mindmap
         Machine learning (31)
             ml_*
                 System.ML models and inference
-        Fixed defects (13)
+        Fixed defects (11)
             fix_*
                 Regressions pinned to the bug that caused them
         Collections (12)
@@ -974,9 +918,9 @@ mindmap
         Rosetta Code tasks (99)
             rosetta_*
                 Programs from Rosetta Code, output checked
-        Remainder (162)
+        Remainder (165)
             closure_* try_* vm_* gc_* opt_* dap_* debugger_* onnx_* and others
-                Closures, the VM and its collector, AI bindings, debugger
+                Closures, error handling, the VM and its collector, AI bindings, debugger
 ```
 
 ---
@@ -1107,36 +1051,26 @@ mindmap
         Old-gen sweeping in place
             No old-object copying
             Better cache locality
-        Performance
-            30% faster allocation
-            40% faster GC pause
-            20% less memory overhead
 ```
 
-### Memory Layout Example
+### Where Allocations Go
 
-```
-|-------|---------------|---------------|-----------|-----------|
-| Stack | Young Gen     | Old Gen       | LOH       | JIT Cache |
-|-------|---------------|---------------|-----------|-----------|
-| 1MB   | 16MB          | 64MB          | 128MB     | 32MB      |
-|-------|---------------|---------------|-----------|-----------|
-  Grows    Minor GC       Major GC       No GC       Code only
-  down     frequent       occasional     direct      eviction
-```
+| Region | What lands there | Collected by |
+|--------|------------------|--------------|
+| **Nursery** (young) | Objects, bump-allocated in one contiguous region: 128 MB reserved (`YOUNG_REGION_SIZE`), its usable limit set by `--nursery` / `OBJECK_NURSERY`; on Windows only the limit is committed | Minor GC: survivors promoted to the old generation, references fixed up |
+| **Old generation** | Promoted objects, arrays, objects larger than the nursery limit, and every allocation a native library makes; each tracked in `PtrSet` | Major GC: mark and sweep in place |
+| **Operand and call stacks** | Locals, frames, temporaries | Scanned as roots, never collected |
 
 **Key Characteristics:**
-- **O(1) Object Lookup:** Hash-based, no linear scans
-- **Generational:** Separate young/old generations
-- **Mark & Sweep:** Young generation moves survivors (promote-and-forward with pointer fixup); old generation is swept in place
-- **Large Objects:** Separate heap for > 85KB objects
-- **Stop-the-World:** Brief pauses for GC
-- **Promotion:** Long-lived objects moved to old gen
+- **O(1) Membership:** the old generation is an open-addressed address set; no linear scans
+- **Generational:** a nursery that moves survivors (promote-and-forward with pointer fixup); an old generation swept in place
+- **Write barrier:** a store of a young object into an old one is recorded on a lock-free dirty list, so a minor GC need not scan the whole old generation; C++ code that stores into an old object must call `WriteBarrier`
+- **Stop-the-World:** cooperative, at safepoints (above)
 
 **Source Files:**
-- `core/vm/arch/memory.h/cpp` - Memory manager core
-- `core/vm/arch/mem_gc.cpp` - Garbage collection
-- `core/vm/arch/mem_alloc.cpp` - Object allocation
+- `core/vm/arch/memory.h/cpp` - Memory manager: allocation, collection, write barrier
+- `core/vm/arch/ptr_set.h` - Old-generation address set
+- `core/vm/arch/memory_verify.cpp` - Heap verifier (`OBJECK_GC_VERIFY`)
 
 ---
 
@@ -1322,24 +1256,50 @@ sequenceDiagram
 
 ## 10. Runtime Errors
 
-Objeck has no exceptions: there is no `throw`, `catch` or `finally`, and no exception classes. A
-runtime error ends the program unless a `Try()` region is active, and then the chain it guards
-yields `Nil`.
+Errors are objects. `System.Error` and its subclasses are raised with `Runtime->Raise` and
+caught by type with `try { } on(e : T) { } finally { }`; the runtime's own faults are raised
+the same way, as `NilError`, `IndexError`, `DivideByZeroError`, `CastError` and
+`RuntimeError`. `?->` still recovers from any error in a call chain, yielding `Nil`. An error
+nothing handles ends the program.
+
+```objeck
+try {
+  port := ParsePort(text, line);   # may Runtime->Raise(ConfigError->New(...))
+}
+on(e : ConfigError) {               # clauses are tested in order
+  "line {$(e->GetLine())}: {$(e->GetMessage())}"->PrintLine();
+}
+on(e : Error) {                     # a catch-all goes last
+  e->GetMessage()->PrintLine();
+}
+finally {                           # runs on every way out, return/break/continue included
+  "checked"->PrintLine();
+};
+```
 
 ```mermaid
 flowchart TB
-    A["Runtime error<br/>Nil dereference, index out of bounds,<br/>divide or modulus by zero"] --> B{"Try() handler<br/>on the handler stack?"}
+    A["Error raised<br/>Runtime->Raise, or a runtime fault:<br/>Nil, index, divide by zero, cast"] --> B{"Handler on this<br/>thread's handler stack?"}
     B -->|yes| C["TryErrorRecovery: pop frames back to<br/>the handler's, restore the operand stack"]
-    C --> D["Resume at the handler:<br/>the guarded chain yields Nil"]
-    D --> E["Otherwise() or ?? may supply a default"]
-    B -->|no| F["Message on stderr,<br/>then the methods on the call stack"]
-    F --> G["Exit with status 1<br/>(obd halts instead)"]
+    C --> D{"Which construct?"}
+    D -->|"?-> / Try()"| E["The guarded chain yields Nil<br/>(?? may supply a default)"]
+    D -->|"try / on"| F["First clause whose type matches runs;<br/>no match: the error goes on after finally"]
+    F --> H["finally runs"]
+    B -->|no| G["Message on stderr, the call stack,<br/>exit with status 1 (obd halts instead)"]
 
-    style D fill:#e1ffe1
+    style E fill:#e1ffe1
+    style H fill:#e1ffe1
     style G fill:#ffe1e1
 ```
 
-- **Fatal unless guarded.** The interpreter prints one `>>> ... <<<` line, such as
+- **`try`/`on`/`finally`** (`EmitTry`, design in `docs/ERROR_HANDLING_DESIGN.md`). The words
+  are contextual, so no existing name stops compiling. The body runs in a `TRY_START`/`TRY_END`
+  region; its handler fetches the error with `GetLastError` and tests each clause's type in
+  order. The clauses run in a region of their own, so `finally` runs before an error raised in
+  a clause goes on. An error no clause names is raised again after `finally`, so a typed `try`
+  never swallows what it did not ask for. A `return`, `break` or `continue` that leaves the
+  `try` closes its region and runs `finally` on the way out.
+- **Fatal unless handled.** The interpreter prints one `>>> ... <<<` line, such as
   `>>> Attempting to dereference a 'Nil' memory instance <<<`, `>>> Index out of bounds: <index>,<size> <<<`
   or `>>> Divide by zero <<<`, then lists the methods on the call stack (`StackErrorUnwind`) and
   exits with status 1. An invalid cast (`>>> Invalid object cast ... <<<`) and a full call
@@ -1355,16 +1315,16 @@ flowchart TB
   (`docs/TRY_IN_JIT_DESIGN.md`).
 - **`Try()` and `?->`.** `a?->b()` is `a->Try()->b()`. The compiler brackets the rest of the
   chain with `TRY_START` and `TRY_END` (`EmitTryIntrinsic`); `TRY_START` pushes a handler, with the
-  operand-stack position and call-stack depth to return to, on the interpreter's handler stack
-  (16 deep). On a `Nil` dereference, a bad index or a zero divisor, `TryErrorRecovery` pops frames
+  operand-stack position and call-stack depth to return to, on the thread's handler stack
+  (which grows as needed). On a `Nil` dereference, a bad index or a zero divisor, `TryErrorRecovery` pops frames
   back to that depth, restores the operand stack and resumes at the handler, which stores `Nil`
-  as the chain's value. A compiled callee that returns one of those errors as its status is
-  recovered the same way.
+  as the chain's value, and `Runtime->GetLastError()` says what it was. A compiled callee that
+  returns one of those errors as its status is recovered the same way.
 - **`Otherwise()` and `??`.** `a ?? b` is `a->Otherwise(b)`: a `Nil` test, not a handler, so `b`
   is evaluated only when `a` is `Nil`.
 - **The JIT leaves try regions alone.** `TRY_START` and `TRY_END` are in neither backend's
-  whitelist, so a method that holds one stays interpreted: recovery needs the interpreter's
-  handler stack.
+  whitelist, so a method that holds a `?->` or a `try` stays interpreted: recovery needs the
+  interpreter's handler stack. Errors raised inside a compiled *callee* still reach it.
 - **Under the debugger** (`obd`, built with `_NO_HALT`) an unguarded error halts the program
   instead of exiting, and DAP "uncaught" exception breakpoints stop there first
   (`Debugger::OnRuntimeError`).
@@ -1373,7 +1333,8 @@ flowchart TB
   `>>> virtual machine: ... <<<`.
 
 **Source Files:**
-- `core/compiler/intermediate.cpp` - `EmitTryIntrinsic`, `EmitOtherwiseIntrinsic`
+- `core/compiler/intermediate.cpp` - `EmitTry`, `EmitTryIntrinsic`, `EmitOtherwiseIntrinsic`
+- `core/compiler/lib_src/lang.obs` - `System.Error` and its subclasses, `Runtime->Raise`, `Runtime->GetLastError`
 - `core/vm/interpreter.h` - the handler stack (`PushTryHandler`, `TryErrorRecovery`)
 - `core/vm/dispatch.cpp` - `TRY_START`, `TRY_END`
 - `core/vm/interpreter.cpp` - error messages and `StackErrorUnwind`
@@ -1387,7 +1348,8 @@ This architecture demonstrates a modern, multi-platform language implementation 
 ✅ **Multi-tiered Execution:** Interpreter → call counting → JIT compilation
 ✅ **Platform-Specific JIT:** Optimized ARM64 and x64 code generation
 ✅ **Efficient Memory Management:** O(1) lookups, generational GC
-✅ **Rich Library Ecosystem:** 32 libraries including AI/ML, web servers
+✅ **Structured Errors:** `try`/`on`/`finally` over typed `Error` objects, plus `?->` recovery
+✅ **Rich Library Ecosystem:** 46 libraries including AI/ML, web servers
 ✅ **Modern Development Tools:** REPL, debugger, LSP support
 ✅ **Automated CI/CD:** Multi-platform testing with caching
 ✅ **Cross-Platform:** Linux x64/ARM64, macOS ARM64 (Apple silicon), Windows x64/ARM64
@@ -1405,4 +1367,4 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines on improving this archi
 
 ---
 
-*Last updated: September 2026 | Version: 2026.9.7*
+*Last updated: October 2026 | Version: 2026.10.2*
