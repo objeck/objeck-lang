@@ -1,15 +1,23 @@
 {
 	"version": {
-		"string": "2026.10.1",
+		"string": "2026.10.2",
 		"year": 2026
 	},
-	"title": "try/on/finally, named arguments, method generics, ref parameters and a rebuilt language server",
+	"title": "Debian packages for Ubuntu 24.04, and a try/on/finally example",
 	"files": {
 		"html_template": "readme.in.html",
 		"html_out": "readme.html",
 		"markdown_out": "readme.md"
 	},
 	"features": [
+		{
+			"version": "v2026.10.2",
+			"items": [
+				"Debian packages for Ubuntu 24.04, first published beside v2026.10.1: sudo apt install ./objeck-ubuntu24.04-x64_<version>.deb (or -arm64) installs the toolchain under /usr/lib/objeck with the commands on PATH, and apt installs the system libraries it needs. OpenCV, SDL2, unixODBC and LAME are recommended rather than required, since only the libraries that wrap them load them. Every release now builds, install-tests and publishes them automatically, and adds them to the signed SHA256SUMS (#1281)",
+				"Examples: errors_29.obs shows try, on and finally -- a custom Error subclass raised and caught by type, and the runtime's own IndexError and DivideByZeroError caught the same way. build_examples.py now compiles against the most recently built deploy tree, not the first alphabetically (#1283)",
+				"obc --version reads Copyright (c) 2007-2026 (#1282)"
+			]
+		},
 		{
 			"version": "v2026.10.1",
 			"items": [
