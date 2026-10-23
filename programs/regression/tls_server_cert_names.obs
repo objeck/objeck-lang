@@ -1,0 +1,142 @@
+#~
+# TCPSecureSocketServer->GetIssuer and GetSubject report the server's own
+# certificate
+#
+# The socket and the server share the SOCK_TCP_SSL_ISSUER and _SUBJECT traps,
+# but the server's native handle is its configuration, not a TLS session. The
+# traps read it as a session and asked mbedtls for that "session's" peer
+# certificate -- garbage, a crash, or Nil. A server now reports its own
+# certificate's names; a connected socket still reports its peer's.
+#
+# The certificate is issued by a throwaway CA, so issuer and subject differ and
+# a swap would show.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+class OneTlsAccept from Thread {
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+	@issuer : String;
+	@subject : String;
+
+	New(port : Int) {
+		Parent("one-tls-accept");
+		@port := port;
+		@listening := false;
+		@finished := false;
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetIssuer() ~ String { return @issuer; }
+	method : public : GetSubject() ~ String { return @subject; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client : TCPSecureSocket;
+		server := TCPSecureSocketServer->New("tls-names-cert.pem", "tls-names-key.pem", "", @port);
+		if(server->Listen()) {
+			@issuer := server->GetIssuer();
+			@subject := server->GetSubject();
+			@listening := true;
+			client := server->Accept();
+			if(client <> Nil) {
+				client->WriteString("hello\n");
+				client->ReadLine();
+				client->Close();
+			};
+			server->Close();
+		};
+		@finished := true;
+	}
+}
+
+class TlsServerCertNames {
+	@failed : Int;
+
+	New() {
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		TlsServerCertNames->New()->Run();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		server : OneTlsAccept;
+		waited : Int;
+
+		Cleanup();
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		# a CA, and a server certificate it signs
+		if(Runtime->Command("openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=Objeck Test CA\" -addext \"basicConstraints=critical,CA:TRUE\" -addext \"keyUsage=critical,keyCertSign,cRLSign\" -keyout tls-names-ca-key.pem -out tls-names-ca.pem") <> 0 |
+				Runtime->Command("openssl req -newkey rsa:2048 -sha256 -nodes {$config}-subj \"/CN=localhost\" -keyout tls-names-key.pem -out tls-names.csr") <> 0 |
+				Runtime->Command("openssl x509 -req -sha256 -days 1 -in tls-names.csr -CA tls-names-ca.pem -CAkey tls-names-ca-key.pem -CAcreateserial -out tls-names-cert.pem") <> 0) {
+			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		for(tries := 0; tries < 5 & server = Nil; tries += 1;) {
+			server := OneTlsAccept->New(Int->Random(20000, 31998));
+			server->Execute(Nil);
+			waited := 0;
+			while(<>server->IsListening() & <>server->IsFinished() & waited < 5000) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+			if(<>server->IsListening()) {
+				server := Nil;
+			};
+		};
+		if(server = Nil) {
+			"FAIL: the TLS server never started listening"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		issuer := server->GetIssuer();
+		subject := server->GetSubject();
+		Check("the server's issuer is its CA ('{$issuer}')", issuer <> Nil & issuer->Equals("CN=Objeck Test CA"));
+		Check("the server's subject is its own name ('{$subject}')", subject <> Nil & subject->Equals("CN=localhost"));
+
+		# the client, trusting the CA, still reports its peer's names
+		socket := TCPSecureSocket->New("localhost", server->GetPort(), "tls-names-ca.pem");
+		if(<>socket->IsOpen()) {
+			"FAIL: the client could not connect"->PrintLine();
+			Runtime->Exit(1);
+		};
+		peer_issuer := socket->GetIssuer();
+		peer_subject := socket->GetSubject();
+		socket->ReadLine();
+		socket->WriteString("bye\n");
+		socket->Close();
+		server->Join();
+
+		Check("the client sees the peer's issuer ('{$peer_issuer}')", peer_issuer <> Nil & peer_issuer->Equals("CN=Objeck Test CA"));
+		Check("the client sees the peer's subject ('{$peer_subject}')", peer_subject <> Nil & peer_subject->Equals("CN=localhost"));
+
+		Cleanup();
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: a TLS server reports its own certificate, a socket its peer's"->PrintLine();
+	}
+
+	method : Cleanup() ~ Nil {
+		File->Delete("tls-names-ca.pem");
+		File->Delete("tls-names-ca-key.pem");
+		File->Delete("tls-names-ca.srl");
+		File->Delete("tls-names-key.pem");
+		File->Delete("tls-names.csr");
+		File->Delete("tls-names-cert.pem");
+	}
+}

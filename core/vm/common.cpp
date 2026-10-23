@@ -5171,21 +5171,44 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
   return true;
 }
 
+// TCPSecureSocket and TCPSecureSocketServer both call SOCK_TCP_SSL_ISSUER and
+// SOCK_TCP_SSL_SUBJECT, but instance[0] is a SecureSocketCtx in one and a
+// SecureServerCtx in the other. A server's context was read as a socket's,
+// handing mbedtls_ssl_get_peer_cert a "ssl" that was really the server's
+// configuration: garbage, or a crash. A socket reports its peer's
+// certificate, a server its own, told apart by the instance's class.
+static const mbedtls_x509_name* TlsCertName(size_t* instance, bool subject)
+{
+  if(!instance || !instance[0]) {
+    return nullptr;
+  }
+
+  const mbedtls_x509_crt* cert = nullptr;
+  StackClass* cls = MemoryManager::GetClass(instance);
+  if(cls && cls->GetName() == L"System.IO.Net.TCPSecureSocketServer") {
+    // set only once Listen has parsed the certificate
+    cert = &((SecureServerCtx*)instance[0])->srvcert;
+  }
+  else {
+    cert = mbedtls_ssl_get_peer_cert(&((SecureSocketCtx*)instance[0])->ssl);
+  }
+
+  if(!cert) {
+    return nullptr;
+  }
+
+  return subject ? &cert->subject : &cert->issuer;
+}
+
 bool TrapProcessor::SockTcpSslIssuer(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
-  if(sctx) {
-    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
-    if(peer_cert) {
-      char buffer[LARGE_BUFFER_MAX] = {0};
-      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->issuer);
-      const std::wstring in = BytesToUnicode(buffer);
-      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+  const mbedtls_x509_name* name = TlsCertName(instance, false);
+  if(name) {
+    char buffer[LARGE_BUFFER_MAX] = {0};
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
+    const std::wstring in = BytesToUnicode(buffer);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -5197,18 +5220,12 @@ bool TrapProcessor::SockTcpSslIssuer(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockTcpSslSubject(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
-  if(sctx) {
-    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
-    if(peer_cert) {
-      char buffer[LARGE_BUFFER_MAX] = {0};
-      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->subject);
-      const std::wstring in = BytesToUnicode(buffer);
-      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+  const mbedtls_x509_name* name = TlsCertName(instance, true);
+  if(name) {
+    char buffer[LARGE_BUFFER_MAX] = {0};
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
+    const std::wstring in = BytesToUnicode(buffer);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
