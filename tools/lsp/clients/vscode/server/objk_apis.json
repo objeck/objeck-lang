@@ -8985,6 +8985,9 @@
 				"GetFloatArray": {
 					"descriptions": ["**Gets the values of a FLOAT column, for code that scans the column directly**\n\n```method : public : GetFloatArray() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
+				"GetGmtBits": {
+					"descriptions": ["**Gets the array of 64-row words marking DATE cells stored as GMT dates**\n\n```method : public : GetGmtBits() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
 				"GetGroupCount": {
 					"descriptions": ["**Gets the number of zone-map groups**\n\n```method : public : GetGroupCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -9053,6 +9056,9 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(name:String, type:ColumnType, declared:Bool)```\n\n\n\nname: String\n\ntype: ColumnType\n\ndeclared: Bool"]
+				},
+				"Restore": {
+					"descriptions": ["**Refills a column with stored arrays, as an .otab file holds them. Used by OtabFile.**\n\n```method : public : Restore(type:ColumnType, declared:Bool, n:Int, ints:Int[], floats:Float[], strings:String[], objects:Compare[], nulls:Int[], null_count:Int, gmt:Int[], encoded:Bool, dict:String[]) ~ Nil```\n\n\n\ntype: ColumnType\n\ndeclared: Bool\n\nn: Int\n\nints: Int[]\n\nfloats: Float[]\n\nstrings: String[]\n\nobjects: Compare[]\n\nnulls: Int[]\n\nnull_count: Int\n\ngmt: Int[]\n\nencoded: Bool\n\ndict: String[]\n\nreturn: Nil"]
 				},
 				"Set": {
 					"descriptions": ["**Stores a value. Nil empties the cell.**\n\n```method : public : Set(row:Int, value:Compare) ~ Bool```\n\n\n\nrow: Int\n\nvalue: Compare\n\nreturn: Bool"]
@@ -9256,6 +9262,38 @@
 				}
 			}
 		},
+		"Query.Structured.OtabFile": {
+			"description": "An .otab file, or an .otab image in memory, opened for reading. Opening reads only the footer; Read then takes just the columns asked for, each checked against its CRC32, and GetBytesRead tells how much a read touched.",
+			"functions": {
+				"GetBytesRead": {
+					"descriptions": ["**Gets how many bytes reads have taken so far, the header, trailer and footer included**\n\n```method : public : GetBytesRead() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetColumnNames": {
+					"descriptions": ["**Gets the saved column names, without the key column**\n\n```method : public : GetColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets why opening or the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetGroupCount": {
+					"descriptions": ["**Gets the number of row groups**\n\n```method : public : GetGroupCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the table's name as saved**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the file opened; GetError says why not**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Opens a file, reading only its trailer and footer**\n\n```New(path:String)```\n\n\n\npath: String", "**Opens an .otab image held in memory, as Table->ToBytes makes it**\n\n```New(bytes:Byte[])```\n\n\n\nbytes: Byte[]"]
+				},
+				"Read": {
+					"descriptions": ["**Reads every column**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads only the named columns, and the key column; no other block is read**\n\n```method : public : Read(names:String[]) ~ Table```\n\n\n\nnames: String[]\n\nreturn: Table"]
+				},
+				"Size": {
+					"descriptions": ["**Gets the number of rows**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				}
+			}
+		},
 		"Query.Structured.Predicate": {
 			"description": "A condition on a table's rows, built with Col and combined with AndAlso, OrElse and Negate. A condition names its columns, so the same one can be used on any table that has them. Comparisons are false for an empty cell; numbers compare by value whether Int or Float; a cell that cannot be ordered against the value (text and a number, say) satisfies only NE.",
 			"functions": {
@@ -9392,6 +9430,9 @@
 				"AddColumn": {
 					"descriptions": ["**Adds a column; existing rows hold an empty cell in it**\n\n```method : public : AddColumn(name:String, type:ColumnType) ~ Bool```\n\n\n\nname: String\n\ntype: ColumnType\n\nreturn: Bool"]
 				},
+				"Append": {
+					"descriptions": ["**Adds the table's live rows to an .otab file as new row groups, without decoding or changing the groups already there, and saves it as Save does. The columns must match the file's, in name, order and type. The rows get keys after the file's last key. A file that does not exist yet is saved.**\n\n```method : public : Append(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool", "**Adds the table's live rows to an .otab file as new row groups, compressing them**\n\n```method : public : Append(path:String, compression:Compression) ~ Bool```\n\n\n\npath: String\n\ncompression: Compression\n\nreturn: Bool"]
+				},
 				"AsView": {
 					"descriptions": ["**Gets every live row as a view, without copying**\n\n```method : public : AsView() ~ View```\n\n\n\nreturn: View"]
 				},
@@ -9424,6 +9465,9 @@
 				},
 				"FindRow": {
 					"descriptions": ["**Gets the row slot holding a primary key**\n\n```method : public : FindRow(pk:Int) ~ Int```\n\n\n\npk: Int\n\nreturn: Int"]
+				},
+				"FromBytes": {
+					"descriptions": ["**Reads a table from an .otab image in memory**\n\n```function : FromBytes(bytes:Byte[]) ~ Table```\n\n\n\nbytes: Byte[]\n\nreturn: Table"]
 				},
 				"FromCsv": {
 					"descriptions": ["**Loads a table from a CSV file. The first line names the columns. Each cell is typed on its own, as it always has been: a whole number ('42', '-3', '+3') becomes an IntRef; a decimal or exponent form ('3.5', '.5', '-0.5', '1e3') becomes a FloatRef; '#MM\/dd\/yyyy#' style cells become dates; anything else ('1-2', '3.', 'abc', '') stays a String. A file holding only the header line gives an empty table. CsvSource types each column as a whole instead, and treats an empty cell as empty.**\n\n```function : FromCsv(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"orders\", \"orders.csv\");\nif(table <> Nil) {\n  rs := table->Query(\"select * from orders where total > 100\");\n  rs->ToString()->PrintLine();\n};\n```"]
@@ -9464,6 +9508,9 @@
 				"GetName": {
 					"descriptions": ["**Gets the table name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String\n\n```\ntable := Query.Structured.Table->New(\"products\", [\"sku\", \"price\"]);\ntable->GetName()->PrintLine(); # prints \"products\"\n```"]
 				},
+				"GetNextKey": {
+					"descriptions": ["**Gets the key the next inserted row will have**\n\n```method : public : GetNextKey() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetRowCapacity": {
 					"descriptions": ["**Gets the number of row slots, deleted rows included until Compact**\n\n```method : public : GetRowCapacity() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -9481,6 +9528,9 @@
 				},
 				"LiveRows": {
 					"descriptions": ["**Gets the slots of every live row, in insertion order**\n\n```method : public : LiveRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"Load": {
+					"descriptions": ["**Reads a table from an .otab file**\n\n```function : Load(path:String) ~ Table```\n\n\n\npath: String\n\nreturn: Table", "**Reads only some columns of an .otab file; the other columns' blocks are not read**\n\n```function : Load(path:String, names:String[]) ~ Table```\n\n\n\npath: String\n\nnames: String[]\n\nreturn: Table"]
 				},
 				"Max": {
 					"descriptions": ["**Gets the largest numeric value in a column. Only Int and Float cells take part; when there are none the result is 0.0 (check Count(name)).**\n\n```method : public : Max(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"temps\", [\"deg\"]);\nr1 := table->Insert(); r1->Set(\"deg\", IntRef->New(-4));\nr2 := table->Insert(); r2->Set(\"deg\", FloatRef->New(12.5));\nhigh := table->Max(\"deg\"); # returns 12.5\n\"high={$high}\"->PrintLine();\n```"]
@@ -9500,8 +9550,14 @@
 				"Query": {
 					"descriptions": ["**Query table using SQL-like syntax. Support for 'select', 'from', 'where', 'distinct', 'order by' and logical operators.**\n\n```method : public : Query(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->New(\"emp\", [\"name\", \"dept\"]);\nr := table->Insert(); r->Set(\"name\", \"Carol\"); r->Set(\"dept\", \"Eng\");\nrs := table->Query(\"select name from emp where dept = 'Eng'\");\nrs->ToString()->PrintLine();\n```"]
 				},
+				"Restore": {
+					"descriptions": ["**Makes a table from columns read back from storage. Used by OtabFile.**\n\n```function : Restore(name:String, column_names:String[], columns:Column[], next_key:Int) ~ Table```\n\n\n\nname: String\n\ncolumn_names: String[]\n\ncolumns: Column[]\n\nnext_key: Int\n\nreturn: Table"]
+				},
 				"RowAt": {
 					"descriptions": ["**Gets a cursor over a row slot**\n\n```method : public : RowAt(row:Int) ~ Row```\n\n\n\nrow: Int\n\nreturn: Row"]
+				},
+				"Save": {
+					"descriptions": ["**Saves the table's live rows, with their keys, as an .otab file, written to a temporary file and renamed over 'path', so a crash leaves the old file or the new one**\n\n```method : public : Save(path:String) ~ Bool```\n\n\n\npath: String\n\nreturn: Bool\n\n```\ntable->Save(\"runs.otab\");\nruns := Table->Load(\"runs.otab\");\n```", "**Saves the table's live rows as an .otab file, compressing its blocks**\n\n```method : public : Save(path:String, compression:Compression) ~ Bool```\n\n\n\npath: String\n\ncompression: Compression\n\nreturn: Bool"]
 				},
 				"Select": {
 					"descriptions": ["**Every live row showing only some columns, as a view**\n\n```method : public : Select(names:String[]) ~ View```\n\n\n\nnames: String[]\n\nreturn: View"]
@@ -9511,6 +9567,9 @@
 				},
 				"Sum": {
 					"descriptions": ["**Gets the column sum over its numeric cells (Ints and Floats); other cells are skipped. No numeric cells, or an unknown column, sums to 0.0.**\n\n```method : public : Sum(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"sales\", [\"amount\"]);\nr1 := table->Insert(); r1->Set(\"amount\", FloatRef->New(19.99));\nr2 := table->Insert(); r2->Set(\"amount\", FloatRef->New(5.01));\ntotal := table->Sum(\"amount\"); # returns 25.0\n\"total={$total}\"->PrintLine();\n```"]
+				},
+				"ToBytes": {
+					"descriptions": ["**Gets the table's live rows as an .otab image in memory**\n\n```method : public : ToBytes() ~ Byte[]```\n\n\n\nreturn: Byte[]", "**Gets the table's live rows as an .otab image in memory, compressing its blocks**\n\n```method : public : ToBytes(compression:Compression) ~ Byte[]```\n\n\n\ncompression: Compression\n\nreturn: Byte[]"]
 				},
 				"ToString": {
 					"descriptions": ["**String representation of table**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -14424,7 +14483,7 @@
 					"descriptions": ["**Returns rather time is GMT**\n\n```method : public : IsGmt() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Default constructor**\n\n```New()```\n\n", "**Constructor**\n\n```New(gmt:Bool)```\n\n\n\ngmt: Bool", "**Constructor, set time using Unix time**\n\n```New(unix_time:Int, gmt:Bool)```\n\n\n\nunix_time: Int\n\ngmt: Bool", "**Constructor, sets time to midnight of the given day**\n\n```New(day:Int, month:Int, year:Int, gmt:Bool)```\n\n\n\nday: Int\n\nmonth: Int\n\nyear: Int\n\ngmt: Bool", "**Constructor**\n\n```New(day:Int, month:Int, year:Int, hours:Int, mins:Int, secs:Int, gmt:Bool)```\n\n\n\nday: Int\n\nmonth: Int\n\nyear: Int\n\nhours: Int\n\nmins: Int\n\nsecs: Int\n\ngmt: Bool"]
+					"descriptions": ["**Default constructor**\n\n```New()```\n\n", "**Constructor**\n\n```New(gmt:Bool)```\n\n\n\ngmt: Bool", "**Constructor, set time using Unix time**\n\n```New(unix_time:Int, gmt:Bool)```\n\n\n\nunix_time: Int\n\ngmt: Bool", "**Constructor, sets time to midnight of the given day. Note the order: day, month, year.**\n\n```New(day:Int, month:Int, year:Int, gmt:Bool)```\n\n\n\nday: Int\n\nmonth: Int\n\nyear: Int\n\ngmt: Bool", "**Constructor. Note the order: day, month, year.**\n\n```New(day:Int, month:Int, year:Int, hours:Int, mins:Int, secs:Int, gmt:Bool)```\n\n\n\nday: Int\n\nmonth: Int\n\nyear: Int\n\nhours: Int\n\nmins: Int\n\nsecs: Int\n\ngmt: Bool"]
 				},
 				"ToShortString": {
 					"descriptions": ["**Creates a shortened string representation of the date**\n\n```method : public : ToShortString() ~ String```\n\n\n\nreturn: String"]
@@ -17327,6 +17386,12 @@
 			}
 		],
 		"ObjectSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"OtabFile": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""
