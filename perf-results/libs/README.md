@@ -46,7 +46,7 @@ python perf-results/libs/run_lib_bench.py <bin_dir> [--lib-dir DIR] [--runs N]
 |---|---|
 | `hash_str_{insert,find,remove}_{10k,100k,1m}` | `Hash<String, IntRef>` with prebuilt keys; 10k runs 100 times, 100k 10 times |
 | `hash_int_{insert,find,remove}_{10k,100k,1m}` | `Hash<IntRef, IntRef>` with prebuilt keys |
-| `intmap_{insert,find,remove}_*`, `intset_{add,has,remove}_*` | the unboxed `IntMap` and `IntSet`; 10k runs 1000 times, 100k 100 times, 1M 5 times |
+| `intmap_{insert,find,remove}_*`, `intset_{add,has,remove}_*` | the unboxed `IntMap` and `IntSet`; 10k runs 1000 times, 100k 100 times, 1M 5 times, so their seconds are 10x/10x/5x the work of the Hash rows of the same size and are not comparable to them directly |
 | `intvector_*` / `vector_intref_*` | append, indexed sum and sort of 1M values, unboxed against `Vector<IntRef>` |
 | `bitset_{set,get,ops}_1m` | `BitSet` against `Bool[]` loops |
 
@@ -56,7 +56,8 @@ friends existed, which is how the before/after Hash numbers were taken.
 
 ## Noise
 
-`lib_baseline.json` was measured on a Windows x64 desktop that was running other builds and
+`lib_baseline.json` was measured with `--stat min` (so compare against it with `--stat min`)
+on a Windows x64 desktop that was running other builds and
 test suites at the same time. On that machine two back-to-back 5-run passes of the same
 build disagreed by more than 30% on 2-3 of 46 cases (with either statistic), mostly cases
 whose reference is a few milliseconds against a measured side 50-100 times longer, where

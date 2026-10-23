@@ -2225,7 +2225,6 @@ hash->Find("count")->PrintLine(); # 42
 			};
 
 			h := key->HashID() * -7046029254386353131;
-			cls := key->GetClassID();
 			keys := @keys;
 			hashes := @hashes;
 			mask := @mask;
@@ -2233,8 +2232,9 @@ hash->Find("count")->PrintLine(); # 42
 			i := (h >> @shift) and mask;
 			k := keys[i];
 			while(k <> Nil) {
-				if(hashes[i] = h & k->GetClassID() = cls) {
-					if(k->Compare(key) = 0) {
+				if(hashes[i] = h) {
+					# the same instance needs no Compare; otherwise only keys of one class are compared
+					if(k = key | (k->GetClassID() = key->GetClassID() & k->Compare(key) = 0)) {
 						@values[i] := value;
 						return;
 					};
@@ -2272,7 +2272,6 @@ hash->Find("a")->PrintLine();              # 1
 			};
 
 			h := key->HashID() * -7046029254386353131;
-			cls := key->GetClassID();
 			keys := @keys;
 			hashes := @hashes;
 			mask := @mask;
@@ -2280,8 +2279,9 @@ hash->Find("a")->PrintLine();              # 1
 			i := (h >> @shift) and mask;
 			k := keys[i];
 			while(k <> Nil) {
-				if(hashes[i] = h & k->GetClassID() = cls) {
-					if(k->Compare(key) = 0) {
+				if(hashes[i] = h) {
+					# the same instance needs no Compare; otherwise only keys of one class are compared
+					if(k = key | (k->GetClassID() = key->GetClassID() & k->Compare(key) = 0)) {
 						return false;
 					};
 				};
@@ -2318,7 +2318,6 @@ hash->Find("price")->PrintLine(); # 99
 			};
 
 			h := key->HashID() * -7046029254386353131;
-			cls := key->GetClassID();
 			keys := @keys;
 			hashes := @hashes;
 			mask := @mask;
@@ -2326,8 +2325,9 @@ hash->Find("price")->PrintLine(); # 99
 			i := (h >> @shift) and mask;
 			k := keys[i];
 			while(k <> Nil) {
-				if(hashes[i] = h & k->GetClassID() = cls) {
-					if(k->Compare(key) = 0) {
+				if(hashes[i] = h) {
+					# the same instance needs no Compare; otherwise only keys of one class are compared
+					if(k = key | (k->GetClassID() = key->GetClassID() & k->Compare(key) = 0)) {
 						return @values[i];
 					};
 				};
@@ -2433,7 +2433,6 @@ hash->Has("z")->PrintLine();   # false
 			};
 
 			h := key->HashID() * -7046029254386353131;
-			cls := key->GetClassID();
 			keys := @keys;
 			hashes := @hashes;
 			mask := @mask;
@@ -2441,8 +2440,9 @@ hash->Has("z")->PrintLine();   # false
 			i := (h >> @shift) and mask;
 			k := keys[i];
 			while(k <> Nil) {
-				if(hashes[i] = h & k->GetClassID() = cls) {
-					if(k->Compare(key) = 0) {
+				if(hashes[i] = h) {
+					# the same instance needs no Compare; otherwise only keys of one class are compared
+					if(k = key | (k->GetClassID() = key->GetClassID() & k->Compare(key) = 0)) {
 						return true;
 					};
 				};
@@ -2471,7 +2471,6 @@ hash->Has("del")->PrintLine();    # false
 			};
 
 			h := key->HashID() * -7046029254386353131;
-			cls := key->GetClassID();
 			keys := @keys;
 			values := @values;
 			hashes := @hashes;
@@ -2482,8 +2481,9 @@ hash->Has("del")->PrintLine();    # false
 			k := keys[i];
 			found := false;
 			while(k <> Nil & <>found) {
-				if(hashes[i] = h & k->GetClassID() = cls) {
-					if(k->Compare(key) = 0) {
+				if(hashes[i] = h) {
+					# the same instance needs no Compare; otherwise only keys of one class are compared
+					if(k = key | (k->GetClassID() = key->GetClassID() & k->Compare(key) = 0)) {
 						found := true;
 					};
 				};
