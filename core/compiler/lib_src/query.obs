@@ -4119,18 +4119,14 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			# header and a copy of itself, so quoting follows the CSV rules, and use
 			# only the header
 			line := text->Trim();
-			if(line->IsEmpty() | line->Has('
-') | line->Has('
-')) {
+			if(line->IsEmpty() | line->Has('\n') | line->Has('\r')) {
 				return Nil;
 			};
 
 			doubled := String->New(line);
-			doubled += "
-";
+			doubled += "\n";
 			doubled += line;
-			csv := Data.CSV.CsvTable->New(doubled, "
-", delimiter);
+			csv := Data.CSV.CsvTable->New(doubled, "\n", delimiter);
 			if(<>csv->IsParsed() | csv->Size() < 2) {
 				return Nil;
 			};
