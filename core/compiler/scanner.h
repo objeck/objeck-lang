@@ -436,6 +436,7 @@ enum ScannerTokenType {
   ARY_COPY,
   ARY_FILL_INT,
   ARY_FILL_FLOAT,
+  FLOAT_TO_STR_SHORT,
   // serialization
   SERL_CHAR,
   SERL_INT,

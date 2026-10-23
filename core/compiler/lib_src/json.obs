@@ -1065,11 +1065,13 @@ obj->ToString()->PrintLine();
 
 		#~
 		Constructor
-		@param value Json float value
+		@param value Json float value; written as the shortest text that reads back
+		as the same value ("1.2e-05", "0.1", "3.0"), not ToString's six decimals,
+		which wrote 1.2e-05 as 0.000012 and 1e-07 as 0.000000
 		~#
 		New(value : Float) {
-			@type := JsonElement->JsonType->NUMBER;	
-			@value := value->ToString();
+			@type := JsonElement->JsonType->NUMBER;
+			@value := value->ToShortString();
 		}
 
 		#~

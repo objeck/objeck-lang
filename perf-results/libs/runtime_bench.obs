@@ -5,7 +5,9 @@ replace.
 Prints one line per case:
   BENCH <case> <seconds> <reference_seconds>
 where <seconds> is the native operation and <reference_seconds> is the
-equivalent element-by-element Objeck loop, timed in the same run. Each case
+equivalent element-by-element Objeck loop, timed in the same run. For
+float_format_short the reference is Float->ToString, the six-decimal
+formatter, over the same values. Each case
 repeats its operation enough times to be measurable; both columns cover the
 same number of repetitions.
 
@@ -22,6 +24,7 @@ class RuntimeBench {
 		IntFill(10000000, 20);
 		FloatFill(1000000, 200);
 		FloatFill(10000000, 20);
+		FloatFormat(1000000);
 	}
 
 	function : Report(name : String, size : Int, native_secs : Float, loop_secs : Float, check : Bool) ~ Nil {
@@ -148,5 +151,30 @@ class RuntimeBench {
 		loop_secs := timer->GetElapsedTime();
 
 		Report("float_fill", size, native_secs, loop_secs, a[size - 1] = b[size - 1]);
+	}
+
+	function : FloatFormat(count : Int) ~ Nil {
+		values := Float->New[count];
+		for(i := 0; i < count; i += 1;) {
+			values[i] := (i->As(Float) + 0.5) * 1.0e-3 / 7.0;
+		};
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		short_chars := 0;
+		for(i := 0; i < count; i += 1;) {
+			short_chars += values[i]->ToShortString()->Size();
+		};
+		native_secs := timer->GetElapsedTime();
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		fixed_chars := 0;
+		for(i := 0; i < count; i += 1;) {
+			fixed_chars += Float->ToString(values[i])->Size();
+		};
+		loop_secs := timer->GetElapsedTime();
+
+		Report("float_format_short", count, native_secs, loop_secs, short_chars > 0 & fixed_chars > 0);
 	}
 }

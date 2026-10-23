@@ -318,6 +318,9 @@ namespace instructions {
     // raise an IndexError instead of failing quietly
     ARY_COPY,
     ARY_FILL_INT,
-    ARY_FILL_FLOAT
+    ARY_FILL_FLOAT,
+    // Float->ToShortString(value): the shortest text that reads back as the
+    // same value
+    FLOAT_TO_STR_SHORT
   };
 }

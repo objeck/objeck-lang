@@ -2957,6 +2957,28 @@ bundle System {
 			FLOAT_TO_STR_PREC;
 		}
 
+		#~
+		Returns the shortest string that reads back (String->ToFloat) as exactly the
+		same value. Unlike ToString, which always prints six decimals, nothing is lost:
+		1.2e-05 stays "1.2e-05" rather than "0.000012", and 0.1 + 0.2 shows as
+		"0.30000000000000004". Exponents from -4 to 15 print in fixed notation with at
+		least one decimal ("100.0", "0.0001"), others as "d.ddde+XX"; -0.0, "inf",
+		"-inf" and "nan" keep their sign or name.
+		@param value float value
+		@return shortest round-trip string representation
+		```
+		Float->ToShortString(0.1)->PrintLine();     # 0.1
+		Float->ToShortString(1.0e-7)->PrintLine();  # 1e-07
+		```
+		~#
+		function : ToShortString(value : Float) ~ String {
+			return String->New(FormatShort(value));
+		}
+
+		function : private : FormatShort(value : Float) ~ Char[] {
+			FLOAT_TO_STR_SHORT;
+		}
+
 		function : native : ToString(v : Float[]) ~ String {
 			out := "[";
 			each(i : v) {

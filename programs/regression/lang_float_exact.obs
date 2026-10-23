@@ -1,0 +1,176 @@
+#~
+Float->ToShortString: the shortest text that reads back as the same Float.
+
+Float->ToString prints six fixed decimals, so 1.2e-05 became "0.000012" and
+1e-07 "0.000000"; it is unchanged (programs depend on it). ToShortString lays
+the shortest round-trip digits out as Python's repr does: fixed notation for
+decimal exponents -4 to 15, with at least one fractional digit, and
+"d.ddde+XX" otherwise. Data.JSON writes a Float this way, so JSON built from a
+Float keeps its value.
+
+Subnormal round trips through String->ToFloat are in lang_tofloat_range: the
+parse side raised for them until that fix.
+~#
+use Data.JSON;
+
+class LangFloatExact {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Expect(value : Float, expected : String) ~ Nil {
+		got := value->ToShortString();
+		Check("{$expected} formats as expected (got {$got})", got->Equals(expected));
+	}
+
+	# formats, parses back, and must be the very same value
+	method : RoundTrips(value : Float) ~ Bool {
+		text := Float->ToShortString(value);
+		back := text->ToFloat();
+		return back = value;
+	}
+
+	method : Formats() ~ Nil {
+		Expect(0.1, "0.1");
+		Expect(0.1 + 0.2, "0.30000000000000004");
+		Expect(1.0 / 3.0, "0.3333333333333333");
+		Expect(2.0 / 3.0, "0.6666666666666666");
+		Expect(1.0e-7, "1e-07");
+		Expect(1.2e-5, "1.2e-05");
+		Expect(0.0001, "0.0001");
+		Expect(0.00001, "1e-05");
+		Expect(-1.5, "-1.5");
+		Expect(1.0, "1.0");
+		Expect(42.0, "42.0");
+		Expect(100.0, "100.0");
+		Expect(123.456, "123.456");
+		Expect(1.0e15, "1000000000000000.0");
+		Expect(1.0e16, "1e+16");
+		Expect(123456789012345678.0, "1.2345678901234568e+17");
+		Expect(1.5e300, "1.5e+300");
+		Expect(-2.5e-300, "-2.5e-300");
+		Expect(Float->Pi(), "3.141592653589793");
+		Expect(9007199254740992.0, "9007199254740992.0");
+		Expect(1.7976931348623157e308, "1.7976931348623157e+308");
+		Expect(2.2250738585072014e-308, "2.2250738585072014e-308");
+
+		# the smallest subnormal, 2^-1074, and the largest
+		Expect(Float->Pow(2.0, -1074.0), "5e-324");
+		Expect(2.2250738585072014e-308 - Float->Pow(2.0, -1074.0), "2.225073858507201e-308");
+
+		Expect(0.0, "0.0");
+		Expect(-1.0 * 0.0, "-0.0");
+		Expect(Float->Inf(), "inf");
+		Expect(Float->NegInf(), "-inf");
+		Expect(Float->NaN(), "nan");
+
+		# the instance form is the same function
+		x := 1.2e-5;
+		Check("x->ToShortString()", x->ToShortString()->Equals("1.2e-05"));
+	}
+
+	method : Unchanged() ~ Nil {
+		Check("Float->ToString keeps six decimals", Float->ToString(1.2e-5)->Equals("0.000012"));
+		Check("Float->ToString(v, p) unchanged", Float->ToString(3.14159, 2)->Equals("3.14"));
+	}
+
+	method : RoundTrip() ~ Nil {
+		values := [0.1, 0.2, 0.3, 0.7, 1.1, 2.675, 1.0e-7, 1.2e-5, 3.0e-300, 4.5e300,
+			1.7976931348623157e308, 2.2250738585072014e-308, 9007199254740993.0, 123.456,
+			-0.000123, 6.02214076e23, 1.602176634e-19];
+		all := true;
+		each(i : values) {
+			if(<>RoundTrips(values[i]) | <>RoundTrips(-1.0 * values[i])) {
+				"  no round trip: {$(values[i]->ToShortString())}"->PrintLine();
+				all := false;
+			};
+		};
+		Check("listed values round-trip", all);
+
+		# a sweep across the normal range: many mantissas at every power of ten
+		count := 0;
+		failed := 0;
+		for(e := -307; e <= 307; e += 1;) {
+			scale := Float->Pow(10.0, e->As(Float));
+			for(k := 1; k <= 40; k += 1;) {
+				v := scale * (1.0 + k->As(Float) * 0.0123456789);
+				if(<>RoundTrips(v)) {
+					if(failed < 5) {
+						"  no round trip at 1e{$e}, k={$k}: {$(v->ToShortString())}"->PrintLine();
+					};
+					failed += 1;
+				};
+				count += 1;
+			};
+		};
+		Check("{$count} swept values round-trip", failed = 0);
+
+		# shortest: one digit fewer would not do
+		Check("0.1 needs one digit", Float->ToShortString(0.1)->Size() = 3);
+
+		# whole numbers stay whole and keep a decimal
+		whole := true;
+		for(i := -1000; i <= 1000; i += 7;) {
+			f := i->As(Float);
+			s := f->ToShortString();
+			if(<>s->EndsWith(".0") | s->ToFloat() <> f) {
+				whole := false;
+			};
+		};
+		Check("whole numbers print as n.0", whole);
+	}
+
+	method : Json() ~ Nil {
+		e := JsonElement->New(1.2e-5);
+		Check("JsonElement->New(Float) is exact", e->ToString()->Equals("1.2e-05"));
+		Check("JsonElement->New(1e-7) is not 0", JsonElement->New(1.0e-7)->ToString()->Equals("1e-07"));
+		Check("JsonElement->New(100.0)", JsonElement->New(100.0)->ToString()->Equals("100.0"));
+
+		b := JsonBuilder->New();
+		b->PushObject()->Insert("tiny", 1.0e-7)->Insert("third", 1.0 / 3.0)->Insert("big", 6.02214076e23);
+		text := b->PopAll()->ToString();
+		Check("JsonBuilder text {$text}", text->Equals("{\"big\":6.02214076e+23,\"third\":0.3333333333333333,\"tiny\":1e-07}"));
+
+		parser := JsonParser->New(text);
+		if(parser->Parse()) {
+			root := parser->GetRoot();
+			Check("JSON round trip: tiny", root->Get("tiny")->GetFloat() = 1.0e-7);
+			Check("JSON round trip: third", root->Get("third")->GetFloat() = 1.0 / 3.0);
+			Check("JSON round trip: big", root->Get("big")->GetFloat() = 6.02214076e23);
+		}
+		else {
+			Check("JSON text parses", false);
+		};
+	}
+
+	method : public : Run() ~ Nil {
+		Formats();
+		Unchanged();
+		RoundTrip();
+		Json();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: exact float formatting"->PrintLine();
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		LangFloatExact->New()->Run();
+	}
+}

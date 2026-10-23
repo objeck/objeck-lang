@@ -154,6 +154,16 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #include <csignal>
 #include <cmath>
 #include <filesystem>
+#include <charconv>
+#include <version>
+
+// floating-point std::to_chars (shortest round trip): MSVC 19.24+, libstdc++
+// 11+. libc++ has it from 14 but announces the macro only much later, so
+// Apple builds take the snprintf fallback in ShortestDigits, which gives the
+// same digits.
+#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201611L
+#define OBJECK_HAS_FLOAT_TO_CHARS
+#endif
 
 #ifdef _WIN32
 CRITICAL_SECTION StackProgram::program_cs;
@@ -2720,6 +2730,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case ARY_FILL_FLOAT:
     return AryFillFloat(program, inst, op_stack, stack_pos, frame);
+
+  case FLOAT_TO_STR_SHORT:
+    return FloatToStrShort(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -6541,6 +6554,114 @@ static size_t* NewCharArray(const std::wstring& value, size_t* op_stack, size_t*
   out[size] = L'\0';
 
   return array;
+}
+
+// The shortest decimal digits that read back as 'value' (finite, not zero),
+// as a digit string and the decimal exponent of its first digit:
+// 1.25e-05 gives "125" and -5.
+static void ShortestDigits(FLOAT_VALUE value, std::string& digits, int& exponent)
+{
+  char buffer[64];
+  const char* end = buffer;
+#ifdef OBJECK_HAS_FLOAT_TO_CHARS
+  // no precision argument: the shortest form that round-trips (C++17)
+  const std::to_chars_result result = std::to_chars(buffer, buffer + sizeof(buffer) - 1, value, std::chars_format::scientific);
+  end = result.ptr;
+  // to_chars does not terminate: atoi below must not read the stack's leftovers
+  *result.ptr = '\0';
+#else
+  // the first precision whose correctly rounded %e reads back exactly is the
+  // shortest length, and that rounding is the nearest such decimal: what
+  // to_chars picks
+  for(int precision = 0; precision < 17; ++precision) {
+    const int size = snprintf(buffer, sizeof(buffer), "%.*e", precision, value);
+    if(strtod(buffer, nullptr) == value || precision == 16) {
+      end = buffer + size;
+      break;
+    }
+  }
+#endif
+
+  // "-d.ddde+XX"
+  digits.clear();
+  const char* p = buffer;
+  if(*p == '-') {
+    ++p;
+  }
+  for(; p < end && *p != 'e'; ++p) {
+    if(*p != '.') {
+      digits.push_back(*p);
+    }
+  }
+  exponent = (p < end) ? atoi(p + 1) : 0;
+  while(digits.size() > 1 && digits.back() == '0') {
+    digits.pop_back();
+  }
+}
+
+// Float->ToShortString: the shortest text that reads back as the same value,
+// in Python's repr layout -- fixed notation for exponents -4 to 15 (always
+// with a fractional digit: "100.0"), otherwise "d.ddde-07"
+static std::wstring FormatFloatShortest(FLOAT_VALUE value)
+{
+  if(std::isnan(value)) {
+    return L"nan";
+  }
+  if(std::isinf(value)) {
+    return value < 0.0 ? L"-inf" : L"inf";
+  }
+
+  std::string out;
+  if(std::signbit(value)) {
+    out.push_back('-');
+  }
+  if(value == 0.0) {
+    out += "0.0";
+    return std::wstring(out.begin(), out.end());
+  }
+
+  std::string digits;
+  int exponent;
+  ShortestDigits(value, digits, exponent);
+  const int count = (int)digits.size();
+
+  if(exponent >= -4 && exponent < 16) {
+    if(exponent < 0) {
+      out += "0.";
+      out.append((size_t)(-exponent - 1), '0');
+      out += digits;
+    }
+    else if(count <= exponent + 1) {
+      out += digits;
+      out.append((size_t)(exponent + 1 - count), '0');
+      out += ".0";
+    }
+    else {
+      out.append(digits, 0, (size_t)exponent + 1);
+      out.push_back('.');
+      out.append(digits, (size_t)exponent + 1, std::string::npos);
+    }
+  }
+  else {
+    out.push_back(digits[0]);
+    if(count > 1) {
+      out.push_back('.');
+      out.append(digits, 1, std::string::npos);
+    }
+    char suffix[16];
+    snprintf(suffix, sizeof(suffix), "e%c%02d", exponent < 0 ? '-' : '+', exponent < 0 ? -exponent : exponent);
+    out += suffix;
+  }
+
+  return std::wstring(out.begin(), out.end());
+}
+
+// function : FormatShort(value : Float) ~ Char[]
+bool TrapProcessor::FloatToStrShort(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+  PushInt((size_t)NewCharArray(FormatFloatShortest(value), op_stack, stack_pos), op_stack, stack_pos);
+  return true;
 }
 
 // Float->ToString(value, precision): printf's %.*f, exact at any magnitude.
