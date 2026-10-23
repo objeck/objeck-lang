@@ -1,0 +1,145 @@
+#~
+# An accepted socket is the kind of socket its server makes
+#
+# The VM caches the class ids it allocates accepted sockets with, and the TCP
+# and TLS getters shared one cache slot. Whichever kind of server accepted first
+# fixed the class of every socket accepted after it: a plain TCPSocketServer in
+# a process that had already accepted a TLS connection returned a
+# TCPSecureSocket holding a raw socket, whose first read or Close then treated
+# that socket number as a TLS context. A process serving HTTP and HTTPS side by
+# side does exactly this.
+#
+# A TLS server accepts first, then a plain one; each accepted socket's class is
+# checked. The mis-typed object is only inspected, never used, so the test
+# fails cleanly instead of crashing.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+class OneAccept from Thread {
+	@secure : Bool;
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+	@class_name : String;
+
+	New(secure : Bool, port : Int) {
+		Parent("one-accept");
+		@secure := secure;
+		@port := port;
+		@listening := false;
+		@finished := false;
+	}
+
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : GetClassName() ~ String { return @class_name; }
+
+	method : public : Run(param : Base) ~ Nil {
+		accepted : Base;
+		if(@secure) {
+			tls_server := TCPSecureSocketServer->New("socket-class-cert.pem", "socket-class-key.pem", "", @port);
+			if(tls_server->Listen()) {
+				@listening := true;
+				accepted := tls_server->Accept();
+				if(accepted <> Nil) {
+					@class_name := accepted->GetClass()->GetName();
+					if(@class_name->Equals("System.IO.Net.TCPSecureSocket")) {
+						accepted->As(TCPSecureSocket)->Close();
+					};
+				};
+				tls_server->Close();
+			};
+		}
+		else {
+			server := TCPSocketServer->New(@port);
+			if(server->Listen(4)) {
+				@listening := true;
+				accepted := server->Accept();
+				if(accepted <> Nil) {
+					@class_name := accepted->GetClass()->GetName();
+					if(@class_name->Equals("System.IO.Net.TCPSocket")) {
+						accepted->As(TCPSocket)->Close();
+					};
+				};
+				server->Close();
+			};
+		};
+		@finished := true;
+	}
+}
+
+class SocketAcceptClass {
+	function : Main(args : String[]) ~ Nil {
+		failed := 0;
+
+		File->Delete("socket-class-cert.pem");
+		File->Delete("socket-class-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout socket-class-key.pem -out socket-class-cert.pem";
+		if(Runtime->Command(command) <> 0) {
+			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# TLS first
+		tls := Start(true);
+		if(tls = Nil) {
+			"FAIL: the TLS server never started listening"->PrintLine();
+			Runtime->Exit(1);
+		};
+		tls_client := TCPSecureSocket->New("localhost", tls->GetPort(), "socket-class-cert.pem");
+		tls->Join();
+		tls_client->Close();
+		name := tls->GetClassName();
+		if(name = Nil | <>name->Equals("System.IO.Net.TCPSecureSocket")) {
+			"  FAIL: the TLS server accepted a {$name}"->PrintLine();
+			failed += 1;
+		};
+
+		# then plain
+		plain := Start(false);
+		if(plain = Nil) {
+			"FAIL: the TCP server never started listening"->PrintLine();
+			Runtime->Exit(1);
+		};
+		plain_client := TCPSocket->New("127.0.0.1", plain->GetPort());
+		plain->Join();
+		plain_client->Close();
+		name := plain->GetClassName();
+		if(name = Nil | <>name->Equals("System.IO.Net.TCPSocket")) {
+			"  FAIL: the TCP server accepted a {$name} after a TLS accept"->PrintLine();
+			failed += 1;
+		};
+
+		File->Delete("socket-class-cert.pem");
+		File->Delete("socket-class-key.pem");
+
+		if(failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: each server accepts sockets of its own class"->PrintLine();
+	}
+
+	function : Start(secure : Bool) ~ OneAccept {
+		candidate : OneAccept;
+		waited : Int;
+
+		for(tries := 0; tries < 5; tries += 1;) {
+			candidate := OneAccept->New(secure, Int->Random(20000, 31998));
+			candidate->Execute(Nil);
+			waited := 0;
+			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+			if(candidate->IsListening()) {
+				return candidate;
+			};
+		};
+
+		return Nil;
+	}
+}
