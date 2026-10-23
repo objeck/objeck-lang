@@ -493,7 +493,10 @@ public:
   static char* UncompressZlib(const char* src, unsigned long src_len, unsigned long &out_len, unsigned long hint = 0) {
     // use the stored uncompressed size when available; fall back to heuristic
     unsigned long buffer_max = (hint > 0) ? hint : (src_len << 2);
-    if(buffer_max > COMPRESS_BUFFER_LIMIT) {
+    if(buffer_max < 256) {
+      buffer_max = 256;
+    }
+    else if(buffer_max > COMPRESS_BUFFER_LIMIT) {
       buffer_max = COMPRESS_BUFFER_LIMIT;
     }
     char* buffer = (char*)malloc(buffer_max);
@@ -527,14 +530,86 @@ public:
   }
 
   //
+  // inflates a whole gzip (window_bits = MAX_WBITS | 16) or raw deflate (-MAX_WBITS)
+  // stream; nullptr for damaged, truncated or over-limit input, never partial output
+  //
+  static char* InflateStream(const char* src, unsigned long src_len, int window_bits, unsigned long& out_len) {
+    z_stream stream = {};
+    stream.next_in = (Bytef*)src;
+    stream.avail_in = (uInt)src_len;
+    if(inflateInit2(&stream, window_bits) != Z_OK) {
+      return nullptr;
+    }
+
+    // an empty input gave a zero-byte buffer that could never grow
+    unsigned long buffer_max = src_len << 2;
+    if(buffer_max < 256) {
+      buffer_max = 256;
+    }
+    else if(buffer_max > COMPRESS_BUFFER_LIMIT) {
+      buffer_max = COMPRESS_BUFFER_LIMIT;
+    }
+
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    if(!buffer) {
+      inflateEnd(&stream);
+      return nullptr;
+    }
+
+    while(true) {
+      if(stream.total_out >= buffer_max) {
+        if(buffer_max >= COMPRESS_BUFFER_LIMIT) {
+          break;
+        }
+
+        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
+        if(!temp) {
+          break;
+        }
+
+        memcpy(temp, buffer, buffer_max);
+        buffer_max <<= 1;
+        free(buffer);
+        buffer = temp;
+      }
+
+      stream.next_out = (Bytef*)(buffer + stream.total_out);
+      stream.avail_out = (uInt)(buffer_max - stream.total_out);
+
+      const int status = inflate(&stream, Z_SYNC_FLUSH);
+      if(status == Z_STREAM_END) {
+        inflateEnd(&stream);
+        out_len = stream.total_out;
+        return buffer;
+      }
+      else if(status != Z_OK) {
+        break;
+      }
+    }
+
+    inflateEnd(&stream);
+    free(buffer);
+    return nullptr;
+  }
+
+  //
   // gzip stream compression
   //
   static char* CompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
-    const unsigned long buffer_max = compressBound(src_len);
-    char* buffer = (char*)calloc(buffer_max, sizeof(char));
-
     // setup stream
     z_stream stream = {};
+    if(deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, MAX_WBITS | 16, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK) {
+      return nullptr;
+    }
+
+    // deflateBound() counts the gzip header and trailer (18 bytes); compressBound()
+    // assumes zlib's 6-byte wrapper, which left small inputs without room to finish
+    const unsigned long buffer_max = deflateBound(&stream, src_len);
+    char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    if(!buffer) {
+      deflateEnd(&stream);
+      return nullptr;
+    }
 
     // input
     stream.next_in = (Bytef*)src;
@@ -545,13 +620,8 @@ public:
     stream.avail_out = (uInt)buffer_max;
 
     out_len = buffer_max;
-    if(deflateInit2(&stream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, MAX_WBITS | 16, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) != Z_OK) {
-      free(buffer);
-      buffer = nullptr;
-      return nullptr;
-    }
-
     if(deflate(&stream, Z_FINISH) != Z_STREAM_END) {
+      deflateEnd(&stream);
       free(buffer);
       buffer = nullptr;
       return nullptr;
@@ -568,69 +638,7 @@ public:
   }
 
   static char* UncompressGzip(const char* src, unsigned long src_len, unsigned long& out_len) {
-    // setup stream
-    z_stream stream = {};
-
-    // input
-    stream.next_in = (Bytef*)src;
-    stream.avail_in = (uInt)src_len;
-
-    unsigned long buffer_max = src_len << 2;
-    if(buffer_max > COMPRESS_BUFFER_LIMIT) {
-      buffer_max = COMPRESS_BUFFER_LIMIT;
-    }
-        
-    char* buffer = (char*)calloc(buffer_max, sizeof(char));
-    if(!buffer) {
-      return nullptr;
-    }
-
-    if(inflateInit2(&stream, MAX_WBITS | 16) != Z_OK) {
-      free(buffer);
-      buffer = nullptr;
-      return nullptr;
-    }
-
-    bool success = false;
-    do {
-      if(stream.total_out >= buffer_max) {
-        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
-        if(!temp) {
-          free(buffer);
-          buffer = nullptr;
-          return nullptr;
-        }
-        
-        memcpy(temp, buffer, buffer_max);
-        buffer_max <<= 1;
-
-        free(buffer);
-        buffer = temp;
-      }
-
-      stream.next_out = (Bytef*)(buffer + stream.total_out);
-      stream.avail_out = (uInt)(buffer_max - stream.total_out);
-
-      const int status = inflate(&stream, Z_SYNC_FLUSH);
-      if(status == Z_STREAM_END) {
-        success = true;
-      }
-      else if(status != Z_OK) {
-        free(buffer);
-        buffer = nullptr;
-        return nullptr;
-      }
-    } 
-    while(buffer_max < COMPRESS_BUFFER_LIMIT && !success);
-
-    if(inflateEnd(&stream) != Z_OK) {
-      free(buffer);
-      buffer = nullptr;
-      return nullptr;
-    }
-
-    out_len = stream.total_out;
-    return buffer;
+    return InflateStream(src, src_len, MAX_WBITS | 16, out_len);
   }
 
   //
@@ -659,6 +667,7 @@ public:
     }
 
     if(deflate(&stream, Z_FINISH) != Z_STREAM_END) {
+      deflateEnd(&stream);
       free(buffer);
       buffer = nullptr;
       return nullptr;
@@ -675,69 +684,7 @@ public:
   }
 
   static char* UncompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
-    // setup stream
-    z_stream stream = {};
-
-    // input
-    stream.next_in = (Bytef*)src;
-    stream.avail_in = (uInt)src_len;
-
-    unsigned long buffer_max = src_len << 2;
-    if(buffer_max > COMPRESS_BUFFER_LIMIT) {
-      buffer_max = COMPRESS_BUFFER_LIMIT;
-    }
-
-    char* buffer = (char*)calloc(buffer_max, sizeof(char));
-    if(!buffer) {
-      return nullptr;
-    }
-
-    if(inflateInit2(&stream, -MAX_WBITS) != Z_OK) {
-      free(buffer);
-      buffer = nullptr;
-      return nullptr;
-    }
-
-    bool success = false;
-    do {
-      if(stream.total_out >= buffer_max) {
-        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
-        if(!temp) {
-          free(buffer);
-          buffer = nullptr;
-          return nullptr;
-        }
-
-        memcpy(temp, buffer, buffer_max);
-        buffer_max <<= 1;
-
-        free(buffer);
-        buffer = temp;
-      }
-
-      stream.next_out = (Bytef*)(buffer + stream.total_out);
-      stream.avail_out = (uInt)(buffer_max - stream.total_out);
-
-      const int status = inflate(&stream, Z_SYNC_FLUSH);
-      if(status == Z_STREAM_END) {
-        success = true;
-      }
-      else if(status != Z_OK) {
-        free(buffer);
-        buffer = nullptr;
-        return nullptr;
-      }
-    } 
-    while(buffer_max < COMPRESS_BUFFER_LIMIT && !success);
-
-    if(inflateEnd(&stream) != Z_OK) {
-      free(buffer);
-      buffer = nullptr;
-      return nullptr;
-    }
-
-    out_len = stream.total_out;
-    return buffer;
+    return InflateStream(src, src_len, -MAX_WBITS, out_len);
   }
 };
 
