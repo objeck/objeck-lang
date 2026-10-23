@@ -1,0 +1,220 @@
+#~
+# DTLSSocket and DTLSSocketServer, end to end
+#
+# Until this test, nothing had ever run a DTLS call. The compiler emitted no
+# code for any SOCK_DTLS_* trap (IntermediateEmitter::EmitSystemDirective had
+# no case for them), so every DTLSSocket and DTLSSocketServer method returned
+# whatever lay on the operand stack: a connect never connected, Listen
+# "succeeded" without binding, and on Windows Listen crashed the VM. Behind
+# that the VM's handlers had faults of their own that only running them shows:
+# the server's cookie check had no client transport id, so no handshake could
+# ever complete; a read waited to fill the whole buffer, which a datagram
+# never does; the server's GetIssuer/GetSubject read its context as a client
+# socket's; and GetLastError, a function, popped a caller's operand as an
+# instance.
+#
+# One program, two threads: a server on a random port accepts one client,
+# echoes a buffer, answers a line and closes. The client pins the server's
+# self-signed certificate with verification on, checks the certificate names
+# on both sides, exchanges a buffer and a line, and closes twice; a second
+# client is then served the same way. Then the
+# error paths: a connect nobody answers and a server whose certificate file
+# does not exist both fail, and both report an error through GetLastError.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+class DtlsEchoServer from Thread {
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+	@issuer : String;
+	@subject : String;
+	@peer : String;
+	@read : Int;
+	@line : String;
+	@second_line : String;
+
+	New(port : Int) {
+		Parent("dtls-echo-server");
+		@port := port;
+		@listening := false;
+		@finished := false;
+		@read := -2;
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetIssuer() ~ String { return @issuer; }
+	method : public : GetSubject() ~ String { return @subject; }
+	method : public : GetPeer() ~ String { return @peer; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetLine() ~ String { return @line; }
+	method : public : GetSecondLine() ~ String { return @second_line; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client : DTLSSocket;
+		buffer : Byte[];
+
+		server := DTLSSocketServer->New("dtls-test-cert.pem", "dtls-test-key.pem", "", @port);
+		if(server->Listen()) {
+			@issuer := server->GetIssuer();
+			@subject := server->GetSubject();
+			@listening := true;
+
+			client := server->Accept();
+			if(client <> Nil) {
+				@peer := client->GetAddress();
+				buffer := Byte->New[64];
+				@read := client->ReadBuffer(0, 64, buffer);
+				if(@read > 0) {
+					client->WriteBuffer(0, @read, buffer);
+				};
+				@line := client->ReadLine();
+				client->WriteString("pong\n");
+				client->Close();
+			};
+
+			# a second client: the listener is rebound after each accept, and the
+			# first client's close_notify arriving there must not be taken for
+			# the next client's hello
+			client := server->Accept();
+			if(client <> Nil) {
+				@second_line := client->ReadLine();
+				client->WriteString("pong again\n");
+				client->Close();
+			};
+			server->Close();
+		};
+		@finished := true;
+	}
+}
+
+class DtlsSocketTest {
+	@failed : Int;
+
+	New() {
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		DtlsSocketTest->New()->Run();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	method : StartServer() ~ DtlsEchoServer {
+		candidate : DtlsEchoServer;
+		waited : Int;
+
+		for(tries := 0; tries < 5; tries += 1;) {
+			candidate := DtlsEchoServer->New(Int->Random(20000, 31998));
+			candidate->Execute(Nil);
+			waited := 0;
+			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+			if(candidate->IsListening()) {
+				return candidate;
+			};
+		};
+
+		return Nil;
+	}
+
+	method : Run() ~ Nil {
+		File->Delete("dtls-test-cert.pem");
+		File->Delete("dtls-test-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout dtls-test-key.pem -out dtls-test-cert.pem";
+		if(Runtime->Command(command) <> 0) {
+			"FAIL: openssl could not create the DTLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		server := StartServer();
+		if(server = Nil) {
+			"FAIL: the DTLS server never started listening: {$DTLSSocketServer->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Check("server issuer is its own certificate's", server->GetIssuer() <> Nil & server->GetIssuer()->Equals("CN=localhost"));
+		Check("server subject is its own certificate's", server->GetSubject() <> Nil & server->GetSubject()->Equals("CN=localhost"));
+
+		# client: the server's certificate pinned, verification on
+		socket := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-cert.pem", true);
+		if(<>socket->IsOpen()) {
+			"FAIL: the DTLS handshake failed: {$DTLSSocket->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Check("no error after a good connect", DTLSSocket->GetLastError() = Nil);
+		Check("client sees the peer's issuer", socket->GetIssuer() <> Nil & socket->GetIssuer()->Equals("CN=localhost"));
+		Check("client sees the peer's subject", socket->GetSubject() <> Nil & socket->GetSubject()->Equals("CN=localhost"));
+
+		# a datagram comes back whole, and a read returns one datagram
+		out := Byte->New[5];
+		for(i := 0; i < 5; i += 1;) {
+			out[i] := i * 10 + 1;
+		};
+		Check("WriteBuffer sends the whole buffer", socket->WriteBuffer(out) = 5);
+		back := Byte->New[64];
+		got := socket->ReadBuffer(0, 64, back);
+		Check("ReadBuffer returns one datagram's bytes (got {$got})", got = 5);
+		Check("the echoed bytes match", back[0] = 1 & back[4] = 41);
+
+		socket->WriteString("ping\n");
+		reply := socket->ReadLine();
+		Check("the server's line arrives ('{$reply}')", reply <> Nil & reply->Equals("pong"));
+
+		socket->Close();
+		Check("closed after Close", <>socket->IsOpen());
+		# Close twice must be harmless
+		socket->Close();
+
+		# the server takes a second client after the first
+		again := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-cert.pem", true);
+		if(<>again->IsOpen()) {
+			# the server is still waiting in Accept, so it cannot be joined
+			"FAIL: a second client was not accepted after the first: {$DTLSSocket->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		}
+		else {
+			again->WriteString("ping again\n");
+			reply := again->ReadLine();
+			Check("the second client's line comes back ('{$reply}')", reply <> Nil & reply->Equals("pong again"));
+			again->Close();
+		};
+
+		server->Join();
+		Check("the server read the client's datagram ({$server->GetRead()})", server->GetRead() = 5);
+		Check("the server read the client's line", server->GetLine() <> Nil & server->GetLine()->Equals("ping"));
+		Check("the server saw a peer address", server->GetPeer() <> Nil);
+		Check("the server read the second client's line", server->GetSecondLine() <> Nil & server->GetSecondLine()->Equals("ping again"));
+
+		# error paths: nobody listening, a missing certificate
+		nobody := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-cert.pem", true);
+		Check("a connect nobody answers fails", <>nobody->IsOpen());
+		Check("and reports an error", DTLSSocket->GetLastError() <> Nil);
+		nobody->Close();
+
+		missing := DTLSSocketServer->New("dtls-missing-cert.pem", "dtls-test-key.pem", "", server->GetPort());
+		Check("Listen without a certificate fails", <>missing->Listen());
+		Check("and reports an error", DTLSSocketServer->GetLastError() <> Nil);
+		missing->Close();
+
+		File->Delete("dtls-test-cert.pem");
+		File->Delete("dtls-test-key.pem");
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: DTLS handshake, exchange, close and error paths"->PrintLine();
+	}
+}
