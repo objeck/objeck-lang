@@ -1,0 +1,464 @@
+#~
+# Blocking I/O must park for garbage collection: HTTP/3, UDP, named pipes and
+# Runtime->Command
+#
+# A stop-the-world collection waits until every VM thread is parked. PRs #1300
+# and #1302 parked the TLS and HTTP/2 traps; the HTTP/3 (QUIC), UDP, named-pipe
+# and system-command traps still ran their blocking calls unparked,
+# so a thread waiting in any of them held up every collection in the process --
+# and when the peer it waited for was another thread of the same VM that needed
+# a collection first, neither ever moved again.
+#
+# Each part puts one thread into a blocking call whose peer is this program,
+# then checks from another thread that the blocked thread is counted as parked
+# (runtime.threads.parked) and forces collections while it waits. Only then is
+# the blocked call released. Without the parking the probe never sees the
+# thread parked: the part FAILs and releases the call without forcing a
+# collection, so the test reports instead of hanging. With it, every part
+# finishes in a second or two.
+#
+#   UDP     a reader blocked in UDPSocketServer->ReadBuffer; its result must
+#           be the number of bytes read (it was 0 for every successful read)
+#   HTTP/3  Http3Client->New against a UDP peer that reads the QUIC Initial and
+#           answers with a Version Negotiation packet (POSIX ngtcp2 builds; the
+#           Windows WinHTTP backend does no network I/O in its connect)
+#   pipe    Pipe->New(CREATE) waiting for a client, then ReadLine waiting for
+#           the line
+#   command Runtime->Command running a three-second command
+#
+# The DTLS traps are parked the same way, but nothing here can reach them: the
+# compiler emits none of the SOCK_DTLS_* traps, so every DTLSSocket and
+# DTLSSocketServer method is currently a no-op.
+#
+# Run it with --gc-threshold=64k as well; it must pass there too.
+# EXTRA_LIBS: net,net_quic
+~#
+
+use System.Concurrency, System.IO, System.IO.Net, System.Time;
+
+class Probe {
+	@sink : static : Byte[];
+
+	function : Parked() ~ Int {
+		return Runtime->GetProperty("runtime.threads.parked")->ToInt();
+	}
+
+	function : Collections() ~ Int {
+		return Runtime->GetProperty("runtime.gc.total")->ToInt();
+	}
+
+	# Waits up to window_ms for another thread to be counted as parked.
+	function : WaitParked(window_ms : Int) ~ Bool {
+		waited := 0;
+		while(waited < window_ms) {
+			if(Parked() > 0) {
+				return true;
+			};
+			Thread->Sleep(10);
+			waited += 10;
+		};
+		return Parked() > 0;
+	}
+
+	# Allocates enough to force collections in every GC mode. Returns how many
+	# collections ran meanwhile.
+	function : Churn() ~ Int {
+		before := Collections();
+		for(i := 0; i < 4096; i += 1;) {
+			@sink := Byte->New[65536];
+		};
+		return Collections() - before;
+	}
+
+	function : Port() ~ Int {
+		return Int->Random(20000, 31998);
+	}
+}
+
+#
+# UDP: a reader blocked in recvfrom()
+#
+class UdpReader from Thread {
+	@server : UDPSocketServer;
+	@read : Int;
+	@first : Int;
+	@finished : Bool;
+
+	New(server : UDPSocketServer) {
+		Parent("udp-reader");
+		@server := server;
+		@read := -2;
+		@first := -1;
+		@finished := false;
+	}
+
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetFirst() ~ Int { return @first; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		buffer := Byte->New[64];
+		@read := @server->ReadBuffer(0, 64, buffer);
+		@first := buffer[0];
+		@finished := true;
+	}
+}
+
+#
+# HTTP/3: a peer that reads the QUIC Initial and answers with a Version
+# Negotiation packet, which ends the client's connect at once
+#
+class QuicPeer from Thread {
+	@server : UDPSocketServer;
+	@initial : Int;
+	@saw_parked : Bool;
+	@collections : Int;
+
+	New(server : UDPSocketServer) {
+		Parent("quic-peer");
+		@server := server;
+		@initial := -2;
+		@saw_parked := false;
+		@collections := 0;
+	}
+
+	method : public : GetInitial() ~ Int { return @initial; }
+	method : public : SawParked() ~ Bool { return @saw_parked; }
+	method : public : GetCollections() ~ Int { return @collections; }
+
+	method : public : Run(param : Base) ~ Nil {
+		dcid_len : Int;
+		scid_at : Int;
+		scid_len : Int;
+		at : Int;
+		reply : Byte[];
+
+		packet := Byte->New[4096];
+		@initial := @server->ReadBuffer(0, 4096, packet);
+
+		@saw_parked := Probe->WaitParked(10000);
+		if(@saw_parked) {
+			@collections := Probe->Churn();
+		};
+
+		# Long header: flags(1) version(4) dcid_len(1) dcid scid_len(1) scid
+		if(@initial > 7) {
+			dcid_len := packet[5];
+			scid_at := 6 + dcid_len;
+			scid_len := packet[scid_at];
+
+			# Version Negotiation: version 0, the client's connection IDs swapped,
+			# offering one reserved version the client cannot accept
+			reply := Byte->New[7 + dcid_len + scid_len + 4];
+			reply[0] := 0xC0;
+			at := 5;
+			reply[at] := scid_len;
+			at += 1;
+			for(i := 0; i < scid_len; i += 1;) {
+				reply[at] := packet[scid_at + 1 + i];
+				at += 1;
+			};
+			reply[at] := dcid_len;
+			at += 1;
+			for(j := 0; j < dcid_len; j += 1;) {
+				reply[at] := packet[6 + j];
+				at += 1;
+			};
+			reply[at] := 0x1A;
+			reply[at + 1] := 0x2A;
+			reply[at + 2] := 0x3A;
+			reply[at + 3] := 0x4A;
+			@server->WriteBuffer(0, reply->Size(), reply);
+		};
+	}
+}
+
+#
+# Pipe: a server blocked waiting for its client, then for a line
+#
+class PipeServer from Thread {
+	@name : String;
+	@open : Bool;
+	@line : String;
+	@finished : Bool;
+
+	New(name : String) {
+		Parent("pipe-server");
+		@name := name;
+		@open := false;
+		@finished := false;
+	}
+
+	method : public : IsOpen() ~ Bool { return @open; }
+	method : public : GetLine() ~ String { return @line; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		pipe := Pipe->New(@name, Pipe->Mode->CREATE);
+		@open := pipe->IsOpen();
+		if(@open) {
+			@line := pipe->ReadLine();
+			pipe->Close();
+		};
+		@finished := true;
+	}
+}
+
+#
+# Command: a thread waiting for a child process
+#
+class CommandRunner from Thread {
+	@command : String;
+	@status : Int;
+	@finished : Bool;
+
+	New(command : String) {
+		Parent("command-runner");
+		@command := command;
+		@status := -1;
+		@finished := false;
+	}
+
+	method : public : GetStatus() ~ Int { return @status; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		@status := Runtime->Command(@command);
+		@finished := true;
+	}
+}
+
+class NetIoGcPark {
+	@failed : Int;
+	@windows : Bool;
+	@port : Int;
+
+	New() {
+		@failed := 0;
+		@windows := Runtime->GetPlatform()->Has("Windows");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NetIoGcPark->New()->Run();
+	}
+
+	method : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@failed += 1;
+	}
+
+	# Binds a UDP server on a random port, remembered in @port. Nil if none
+	# could be bound.
+	method : Bind() ~ UDPSocketServer {
+		server : UDPSocketServer;
+		for(tries := 0; tries < 10; tries += 1;) {
+			@port := Probe->Port();
+			server := UDPSocketServer->New(@port);
+			if(server->IsBound()) {
+				return server;
+			};
+		};
+		return Nil;
+	}
+
+	method : Run() ~ Nil {
+		if(Probe->Parked() <> 0) {
+			"FAIL: runtime.threads.parked was {$Probe->Parked()} with one running thread"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: udp"->ErrorLine();
+		TestUdp();
+		"stage: http3"->ErrorLine();
+		TestHttp3();
+		"stage: pipe"->ErrorLine();
+		TestPipe();
+		"stage: command"->ErrorLine();
+		TestCommand();
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: blocking HTTP/3, UDP, pipe and command calls park for collections"->PrintLine();
+	}
+
+	# Sends one byte to the peer on @port, so a peer still waiting for the
+	# client's first datagram returns instead of waiting forever. Harmless when
+	# it has already read one: it reads only once.
+	method : Wake() ~ Nil {
+		wake := UDPSocket->New("127.0.0.1", @port);
+		wake->WriteByte(0);
+		wake->Close();
+	}
+
+	method : TestUdp() ~ Nil {
+		server := Bind();
+		if(server = Nil) {
+			Fail("UDP: no port could be bound");
+			return;
+		};
+
+		reader := UdpReader->New(server);
+		reader->Execute(Nil);
+		if(Probe->WaitParked(10000)) {
+			if(Probe->Churn() < 1) {
+				Fail("UDP: no collection ran while the reader was blocked");
+			};
+		}
+		else {
+			Fail("UDP: a thread blocked in recvfrom() was never counted as parked");
+		};
+
+		# release the reader
+		datagram := Byte->New[3];
+		datagram[0] := 7;
+		datagram[1] := 8;
+		datagram[2] := 9;
+		client := UDPSocket->New("127.0.0.1", @port);
+		sent := client->WriteBuffer(0, 3, datagram);
+		# UDP may drop a datagram; resend for a while rather than wait forever
+		waited := 0;
+		while(<>reader->IsFinished() & waited < 5000) {
+			Thread->Sleep(50);
+			waited += 50;
+			if(<>reader->IsFinished()) {
+				client->WriteBuffer(0, 3, datagram);
+			};
+		};
+		if(<>reader->IsFinished()) {
+			"FAIL: UDP: no datagram reached 127.0.0.1:{$@port} -- is loopback UDP blocked here?"->PrintLine();
+			Runtime->Exit(1);
+		};
+		reader->Join();
+		client->Close();
+		server->Close();
+
+		if(sent <> 3) {
+			Fail("UDP: WriteBuffer returned {$sent}, expected 3");
+		};
+		read := reader->GetRead();
+		if(read <> 3) {
+			Fail("UDP: ReadBuffer returned {$read}, expected 3");
+		};
+		first := reader->GetFirst();
+		if(first <> 7) {
+			Fail("UDP: the first byte read was {$first}, expected 7");
+		};
+	}
+
+	method : TestHttp3() ~ Nil {
+		if(@windows | Runtime->GetProperty("runtime.feature.http3")->ToInt() = 0) {
+			"  HTTP/3: skipped (no ngtcp2 engine in this build)"->PrintLine();
+			return;
+		};
+
+		server := Bind();
+		if(server = Nil) {
+			Fail("HTTP/3: no port could be bound");
+			return;
+		};
+
+		peer := QuicPeer->New(server);
+		peer->Execute(Nil);
+
+		timer := Timer->New(true);
+		client := Web.HTTP.Http3Client->New("127.0.0.1", @port);
+		timer->End();
+		seconds := timer->GetElapsedTime();
+		# A connect that failed before it sent anything leaves the peer waiting
+		Wake();
+		peer->Join();
+		server->Close();
+
+		if(client->IsConnected()) {
+			Fail("HTTP/3: connected to a peer that only sent Version Negotiation");
+		};
+		client->Close();
+
+		if(peer->GetInitial() < 1200) {
+			Fail("HTTP/3: the peer read {$peer->GetInitial()} bytes, expected a QUIC Initial -- nothing was tested");
+		}
+		else if(<>peer->SawParked()) {
+			Fail("HTTP/3: a client blocked in the QUIC handshake was never counted as parked");
+		}
+		else if(peer->GetCollections() < 1) {
+			Fail("HTTP/3: no collection ran while the client was in the handshake");
+		};
+		if(seconds > 20.0) {
+			Fail("HTTP/3: the failed connect took {$seconds} s");
+		};
+	}
+
+	method : TestPipe() ~ Nil {
+		name := "objk_gc_park_{$Probe->Port()}";
+		server := PipeServer->New(name);
+		server->Execute(Nil);
+
+		# blocked waiting for a client
+		if(Probe->WaitParked(10000)) {
+			if(Probe->Churn() < 1) {
+				Fail("pipe: no collection ran while the server waited for a client");
+			};
+		}
+		else {
+			Fail("pipe: a server waiting for a client was never counted as parked");
+		};
+
+		client := Pipe->New(name, Pipe->Mode->OPEN);
+		tries := 0;
+		while(<>client->IsOpen() & tries < 50) {
+			Thread->Sleep(20);
+			client := Pipe->New(name, Pipe->Mode->OPEN);
+			tries += 1;
+		};
+		if(<>client->IsOpen()) {
+			Fail("pipe: the client could not open the pipe");
+			return;
+		};
+
+		# blocked waiting for a line
+		if(Probe->WaitParked(10000)) {
+			if(Probe->Churn() < 1) {
+				Fail("pipe: no collection ran while the server waited for a line");
+			};
+		}
+		else {
+			Fail("pipe: a server waiting for a line was never counted as parked");
+		};
+
+		client->WriteString("parked\n");
+		server->Join();
+		client->Close();
+
+		if(<>server->IsOpen()) {
+			Fail("pipe: the server end never opened");
+		}
+		else {
+			line := server->GetLine();
+			if(line = Nil | <>line->Equals("parked")) {
+				Fail("pipe: the server read '{$line}', expected 'parked'");
+			};
+		};
+	}
+
+	method : TestCommand() ~ Nil {
+		command := @windows ? "ping -n 4 127.0.0.1 > NUL" : "sleep 3";
+		runner := CommandRunner->New(command);
+		runner->Execute(Nil);
+
+		if(Probe->WaitParked(10000)) {
+			if(Probe->Churn() < 1) {
+				Fail("command: no collection ran while the command ran");
+			};
+		}
+		else {
+			Fail("command: a thread waiting for a command was never counted as parked");
+		};
+
+		runner->Join();
+		status := runner->GetStatus();
+		if(status <> 0) {
+			Fail("command: '{$command}' exited {$status}");
+		};
+	}
+}
