@@ -156,7 +156,6 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #include <filesystem>
 #include <charconv>
 #include <version>
-#include <bit>
 
 // floating-point std::to_chars (shortest round trip): MSVC 19.24+, libstdc++
 // 11+. libc++ has it from 14 but announces the macro only much later, so
@@ -7159,7 +7158,13 @@ bool TrapProcessor::AryFillFloat(StackProgram* program, size_t* inst, size_t*& o
 // Int/Float->ToBytes and Byte->ToInts/ToFloats copy element bytes as they lie
 // in memory and document them as little-endian. Every supported target (x64,
 // arm64; Windows, Linux, macOS) is; a big-endian port must byte-swap here.
-static_assert(std::endian::native == std::endian::little, "ARY_TO_BYTES/BYTES_TO_ARY assume a little-endian host");
+// std::endian needs C++20, which not every build here compiles as (macOS's Xcode project), so
+// the check uses the compilers' own byte-order macros; every Windows target is little-endian.
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
+static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "ARY_TO_BYTES/BYTES_TO_ARY assume a little-endian host");
+#elif !defined(_WIN32)
+#error "ARY_TO_BYTES/BYTES_TO_ARY need the host's byte order; add a check for this compiler"
+#endif
 
 // function : ToBytesNative(values : Int[]/Float[], offset : Int, count : Int, kind : Int) ~ Byte[]
 // 'offset' and 'count' are in elements; the bytes are count * 8, little-endian
