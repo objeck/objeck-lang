@@ -1081,7 +1081,9 @@ each(value := values) {
 		@type : Cache->Type;
 		@max : Int;
 		@cache : Map<K, S>;
-		@priority : CompareList<K>;
+		@nodes : Hash<K, CacheNode<K> >;
+		@head : CacheNode<K>;
+		@tail : CacheNode<K>;
 
 		#~
 		Cache type
@@ -1108,7 +1110,7 @@ cache->Find(1)->PrintLine(); # one
 			@type := type;
 			@max := max;
 			@cache := Map->New()<K, S>;
-			@priority := CompareList->New()<K>;
+			@nodes := Hash->New()<K, CacheNode<K> >;
 		}
 
 		#~
@@ -1128,9 +1130,10 @@ cache->ToString()->PrintLine();
 		}
 
 		#~
-		Inserts a value into the hash
+		Inserts a value into the cache. A new key in a full cache first evicts the least (LRU) or most (MRU) recently used entry; an existing key is updated and becomes the most recently used.
 		@param key key
 		@param value value
+		@return true if inserted, false if the key is Nil or the cache size is less than 1
 
 ```
 cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
@@ -1140,38 +1143,34 @@ cache->Size()->PrintLine(); # 2
 ```
 		~#
 		method : public : Insert(key : K, value : S) ~ Bool {
-			if(key = Nil) {
+			if(key = Nil | @max < 1) {
 				return false;
 			};
 
-			if(@priority->Size() < @max) {
-				@priority->Rewind();
-				found := @priority->Find(key);
-				if(found <> Nil) {
-					@priority->Remove();
-					@priority->AddFront(key);
-					@cache->Insert(key, value);
-				}
-				else {
-					@cache->Insert(key, value);
-					@priority->AddFront(key);
-				};
-
-				return true;
-			}
-			else if(Remove()) {
-				@priority->AddFront(key);
+			node := @nodes->Find(key);
+			if(node <> Nil) {
+				Unlink(node);
+				PushFront(node);
 				@cache->Insert(key, value);
-
 				return true;
 			};
 
-			return false;
+			if(@nodes->Size() >= @max) {
+				Evict();
+			};
+
+			node := CacheNode->New(key)<K>;
+			PushFront(node);
+			@nodes->Insert(key, node);
+			@cache->Insert(key, value);
+
+			return true;
 		}
 
 		#~
 		Removes a value from the cache
 		@param key key for value to remove
+		@return true if removed, false otherwise
 
 ```
 cache := Collection.Cache->New(Collection.Cache->Type->LRU, 3)<IntRef, String>;
@@ -1181,35 +1180,69 @@ cache->Has(5)->PrintLine();    # false
 ```
 		~#
 		method : public : Remove(key : K) ~ Bool {
-			if(@cache->Has(key)) {
-				@priority->Find(key);
-				@priority->Remove();
+			node := @nodes->Find(key);
+			if(node <> Nil) {
+				Unlink(node);
+				@nodes->Remove(key);
 				@cache->Remove(key);
-
 				return true;
 			};
 
 			return false;
 		}
 
-		method : Remove() ~ Bool {
-			if(<>@priority->IsEmpty()) {
-				removed : K;
+		method : Evict() ~ Bool {
+			victim : CacheNode<K>;
+			if(@type = Cache->Type->LRU) {
+				victim := @tail;
+			}
+			else {
+				victim := @head;
+			};
 
-				if(@type = Cache->Type->LRU) {
-					removed := @priority->Back();
-					@priority->RemoveBack();
-				}
-				else {
-					removed := @priority->Front();
-					@priority->RemoveFront();
-				};
-				@cache->Remove(removed);
-				
+			if(victim <> Nil) {
+				key := victim->GetKey();
+				Unlink(victim);
+				@nodes->Remove(key);
+				@cache->Remove(key);
 				return true;
 			};
-			
+
 			return false;
+		}
+
+		method : Unlink(node : CacheNode<K>) ~ Nil {
+			prev := node->GetPrevious();
+			next := node->GetNext();
+
+			if(prev <> Nil) {
+				prev->SetNext(next);
+			}
+			else {
+				@head := next;
+			};
+
+			if(next <> Nil) {
+				next->SetPrevious(prev);
+			}
+			else {
+				@tail := prev;
+			};
+
+			node->SetPrevious(Nil);
+			node->SetNext(Nil);
+		}
+
+		method : PushFront(node : CacheNode<K>) ~ Nil {
+			node->SetNext(@head);
+			if(@head <> Nil) {
+				@head->SetPrevious(node);
+			};
+			@head := node;
+
+			if(@tail = Nil) {
+				@tail := node;
+			};
 		}
 
 		#~
@@ -1276,12 +1309,10 @@ cache->Find(99)->PrintLine(); # (Nil — nothing printed)
 		method : public : Find(key : K) ~ S {
 			value := @cache->Find(key);
 			if(value <> Nil) {
-				# Update priority: move accessed key to front for proper LRU/MRU behavior
-				@priority->Rewind();
-				found := @priority->Find(key);
-				if(found <> Nil) {
-					@priority->Remove();
-					@priority->AddFront(key);
+				node := @nodes->Find(key);
+				if(node <> Nil) {
+					Unlink(node);
+					PushFront(node);
 				};
 			};
 			return value;
@@ -1344,7 +1375,39 @@ cache->IsEmpty()->PrintLine(); # true
 		~#
 		method : public : Empty() ~ Nil {
 			@cache->Empty();
-			@priority->Empty();
+			@nodes->Empty();
+			@head := Nil;
+			@tail := Nil;
+		}
+	}
+
+	class : private : CacheNode<K : Compare> {
+		@key : K;
+		@previous : CacheNode<K>;
+		@next : CacheNode<K>;
+
+		New(key : K) {
+			@key := key;
+		}
+
+		method : public : GetKey() ~ K {
+			return @key;
+		}
+
+		method : public : GetPrevious() ~ CacheNode<K> {
+			return @previous;
+		}
+
+		method : public : SetPrevious(previous : CacheNode<K>) ~ Nil {
+			@previous := previous;
+		}
+
+		method : public : GetNext() ~ CacheNode<K> {
+			return @next;
+		}
+
+		method : public : SetNext(next : CacheNode<K>) ~ Nil {
+			@next := next;
 		}
 	}
 
@@ -1923,8 +1986,8 @@ pair->ToString()->PrintLine(); # {5,five}
 	}
 
 	#~
-	Hash unordered table of generics
-	
+	Hash unordered table of generics. Open addressing (linear probing over parallel key, value and hash arrays) that doubles at 70% load with no upper limit. Lookups change nothing, so concurrent readers do not interfere; writers still need a lock. Keys of different classes are never equal, and the iteration order is unspecified.
+
 	```
 # insert elements
 hash := Collection.Hash->New()<IntRef, String>;
@@ -1955,13 +2018,18 @@ hash->Has(408)->PrintLine();
     ```
 	~#
 	class Hash<K : Compare, V> {
-		@buckets : CompareList[]<K>;
+		@keys : K[];
+		@values : V[];
+		@hashes : Int[];
 		@size : Int;
+		@mask : Int;
+		@shift : Int;
+		@initial_slots : Int;
 		@capacity : Int;
 		@auto_resize : Bool;
 
 		#~
-		Hash table capacity. Load factors: SMALL=500, MEDIUM=2k, LARGE=9k, EX_LARGE=36k, HUGE=147k
+		Hash table capacity hints. The table is open-addressed: it starts at the next power of two at or above the hint and doubles whenever it is 70% full, with no upper limit.
 		@class Hash
 		~#
 		consts Capacity {
@@ -1971,10 +2039,10 @@ hash->Has(408)->PrintLine();
 			EX_LARGE := 49157,
 			HUGE := 196613
 		}
-		
+
 		#~
 		Default constructor
-		@param auto_resize if true, automatically resized the hash table
+		@param auto_resize kept for compatibility; the table always grows when it needs to
 
 ```
 hash := Collection.Hash->New()<String, IntRef>;
@@ -1985,16 +2053,15 @@ hash->Size()->PrintLine(); # 2
 		~#
 		New(auto_resize : Bool := true) {
 			@auto_resize := auto_resize;
-
 			@capacity := Capacity->SMALL;
-			@buckets := CompareList->New[@capacity]<K>;
-			@size := 0;
+			@initial_slots := 16;
+			Allocate(@initial_slots);
 		}
-		
+
 		#~
 		Default constructor
-		@param capacity capacity of hash table
-		@param auto_resize if true, automatically resized the hash table
+		@param capacity expected number of slots, rounded up to a power of two
+		@param auto_resize kept for compatibility; the table always grows when it needs to
 
 ```
 hash := Collection.Hash->New(Collection.Hash->Capacity->MEDIUM)<String, IntRef>;
@@ -2005,11 +2072,64 @@ hash->Find("key")->PrintLine(); # 42
 		New(capacity : Hash->Capacity, auto_resize : Bool := true) {
 			@capacity := capacity;
 			@auto_resize := auto_resize;
-
-			@buckets := CompareList->New[@capacity]<K>;
-			@size := 0;
+			@initial_slots := SlotsFor(capacity->As(Int));
+			Allocate(@initial_slots);
 		}
-		
+
+		function : private : SlotsFor(capacity : Int) ~ Int {
+			slots := 16;
+			while(slots < capacity & slots < 1073741824) {
+				slots := slots << 1;
+			};
+			return slots;
+		}
+
+		method : private : Allocate(slots : Int) ~ Nil {
+			@keys := K->New[slots];
+			@values := V->New[slots];
+			@hashes := Int->New[slots];
+			@size := 0;
+			@mask := slots - 1;
+
+			bits := 0;
+			s := slots;
+			while(s > 1) {
+				s := s >> 1;
+				bits += 1;
+			};
+			@shift := 64 - bits;
+		}
+
+		method : private : native : Rehash(slots : Int) ~ Nil {
+			old_keys := @keys;
+			old_values := @values;
+			old_hashes := @hashes;
+			size := @size;
+
+			Allocate(slots);
+			keys := @keys;
+			values := @values;
+			hashes := @hashes;
+			mask := @mask;
+			shift := @shift;
+
+			count := old_keys->Size();
+			for(j := 0; j < count; j += 1;) {
+				k := old_keys[j];
+				if(k <> Nil) {
+					h := old_hashes[j];
+					i := (h >> shift) and mask;
+					while(keys[i] <> Nil) {
+						i := (i + 1) and mask;
+					};
+					keys[i] := k;
+					values[i] := old_values[j];
+					hashes[i] := h;
+				};
+			};
+			@size := size;
+		}
+
 		#~
 		Converts a vector pairs to a hash
 		@param pairs vector of pairs
@@ -2051,42 +2171,36 @@ hash->ToString()->PrintLine();
 			buffer := "[";
 
 			count := 0;
-			for(i := 0; i < @buckets->Size(); i += 1;) {
-				if(@buckets[i] <> Nil) {
-					list := @buckets[i];
-					list->Rewind();
-					while(list->More()) {
-						if(count > 0) {
-							buffer->Append(',');
-						};
-
-						pair : HashPair<V> := list->Get()<V>;
-						key : K := pair->GetKey();
-						buffer->Append('(');
-						if(key->TypeOf(Stringify)) {
-							buffer->Append(key->As(System.Stringify)->ToString());
-						}
-						else {
-							buffer->Append(key->GetInstanceID()->ToHexString());
-						};
-
-						buffer->Append(':');
-
-						value := pair->Get();
-						if(value = Nil) {
-							buffer->Append("<Nil>");
-						}
-						else if(value->TypeOf(Stringify)) {
-							buffer->Append(value->As(System.Stringify)->ToString());
-						}
-						else {
-							buffer->Append(value->GetInstanceID()->ToHexString());
-						};
-						buffer->Append(')');
-
-						count += 1;
-						list->Next();
+			for(i := 0; i < @keys->Size(); i += 1;) {
+				key : K := @keys[i];
+				if(key <> Nil) {
+					if(count > 0) {
+						buffer->Append(',');
 					};
+
+					buffer->Append('(');
+					if(key->TypeOf(Stringify)) {
+						buffer->Append(key->As(System.Stringify)->ToString());
+					}
+					else {
+						buffer->Append(key->GetInstanceID()->ToHexString());
+					};
+
+					buffer->Append(':');
+
+					value := @values[i];
+					if(value = Nil) {
+						buffer->Append("<Nil>");
+					}
+					else if(value->TypeOf(Stringify)) {
+						buffer->Append(value->As(System.Stringify)->ToString());
+					}
+					else {
+						buffer->Append(value->GetInstanceID()->ToHexString());
+					};
+					buffer->Append(')');
+
+					count += 1;
 				};
 			};
 			buffer->Append(']');
@@ -2095,7 +2209,7 @@ hash->ToString()->PrintLine();
 		}
 
 		#~
-		Inserts a value into the hash
+		Inserts a value into the hash, replacing the value of an equal key. Keys of different classes are never equal.
 		@param key key
 		@param value value
 
@@ -2105,95 +2219,90 @@ hash->Insert("count", 42);
 hash->Find("count")->PrintLine(); # 42
 ```
 		~#
-		method : public : Insert(key : K, value : V) ~ Nil {
+		method : public : native : Insert(key : K, value : V) ~ Nil {
 			if(key = Nil) {
 				return;
 			};
 
-			if(@auto_resize & (@size + 1) * 100 / @capacity > 75) {
-				if(@capacity = Capacity->SMALL) {
-					Resize(Hash->Capacity->MEDIUM);
-				}
-				else if(@capacity = Capacity->MEDIUM) {
-					Resize(Hash->Capacity->LARGE);
-				}
-				else if(@capacity = Capacity->LARGE) {
-					Resize(Hash->Capacity->EX_LARGE);
-				}
-				else if(@capacity = Capacity->EX_LARGE) {
-					Resize(Hash->Capacity->HUGE);
+			h := key->HashID() * -7046029254386353131;
+			cls := key->GetClassID();
+			keys := @keys;
+			hashes := @hashes;
+			mask := @mask;
+
+			i := (h >> @shift) and mask;
+			k := keys[i];
+			while(k <> Nil) {
+				if(hashes[i] = h & k->GetClassID() = cls) {
+					if(k->Compare(key) = 0) {
+						@values[i] := value;
+						return;
+					};
 				};
+				i := (i + 1) and mask;
+				k := keys[i];
 			};
 
-			hash := (key->HashID() % @buckets->Size())->Abs();
-			list := @buckets[hash];
-			if(list = Nil) {
-				list := CompareList->New()<K>;
-				@buckets[hash] := list;
-			};
+			keys[i] := key;
+			@values[i] := value;
+			hashes[i] := h;
+			@size += 1;
 
-			# Check if key already exists
-			found := false;
-			list->Rewind();
-			while(list->More() & found = false) {
-				pair : HashPair<V> := list->Get()<V>;
-				if(pair->Compare(key) = 0) {
-					pair->Set(value);
-					found := true;
-				};
-				list->Next();
-			};
-
-			# Only add if key doesn't exist
-			if(found = false) {
-				list->AddBack(HashPair->New(key->As(Compare), value)<V>);
-				@size += 1;
+			if(@size * 10 > (mask + 1) * 7) {
+				Rehash((mask + 1) << 1);
 			};
 		}
 
-		method : public : InsertIfAbsent(key : K, value : V) ~ Bool {
+		#~
+		Inserts a value only when the key is not already in the hash
+		@param key key
+		@param value value
+		@return true if inserted, false if the key was already present (or is Nil)
+
+```
+hash := Collection.Hash->New()<String, IntRef>;
+hash->InsertIfAbsent("a", 1)->PrintLine(); # true
+hash->InsertIfAbsent("a", 2)->PrintLine(); # false
+hash->Find("a")->PrintLine();              # 1
+```
+		~#
+		method : public : native : InsertIfAbsent(key : K, value : V) ~ Bool {
 			if(key = Nil) {
 				return false;
 			};
 
-			if(@auto_resize & (@size + 1) * 100 / @capacity > 75) {
-				if(@capacity = Capacity->SMALL) {
-					Resize(Hash->Capacity->MEDIUM);
-				}
-				else if(@capacity = Capacity->MEDIUM) {
-					Resize(Hash->Capacity->LARGE);
-				}
-				else if(@capacity = Capacity->LARGE) {
-					Resize(Hash->Capacity->EX_LARGE);
-				}
-				else if(@capacity = Capacity->EX_LARGE) {
-					Resize(Hash->Capacity->HUGE);
+			h := key->HashID() * -7046029254386353131;
+			cls := key->GetClassID();
+			keys := @keys;
+			hashes := @hashes;
+			mask := @mask;
+
+			i := (h >> @shift) and mask;
+			k := keys[i];
+			while(k <> Nil) {
+				if(hashes[i] = h & k->GetClassID() = cls) {
+					if(k->Compare(key) = 0) {
+						return false;
+					};
 				};
+				i := (i + 1) and mask;
+				k := keys[i];
 			};
 
-			hash := (key->HashID() % @buckets->Size())->Abs();
-			list := @buckets[hash];
-			if(list = Nil) {
-				list := CompareList->New()<K>;
-				@buckets[hash] := list;
-			};
-
-			list->Rewind();
-			while(list->More()) {
-				pair : HashPair<V> := list->Get()<V>;
-				if(pair->Compare(key) = 0) {
-					return false;
-				};
-				list->Next();
-			};
-
-			list->AddBack(HashPair->New(key->As(Compare), value)<V>);
+			keys[i] := key;
+			@values[i] := value;
+			hashes[i] := h;
 			@size += 1;
+
+			if(@size * 10 > (mask + 1) * 7) {
+				Rehash((mask + 1) << 1);
+			};
+
 			return true;
 		}
 
 		#~
-		Searches for a value in a hash
+		Searches for a value in a hash. A lookup changes nothing in the hash, so concurrent readers do not interfere.
 		@param key search key
 		@return found value, Nil if not found
 
@@ -2204,27 +2313,34 @@ hash->Find("price")->PrintLine(); # 99
 ```
 		~#
 		method : public : native : Find(key : K) ~ V {
-			hash := (key->HashID() % @buckets->Size())->Abs();
-			list := @buckets[hash];
-			if(list <> Nil) {
-				list->Rewind();
-				while(list->More()) {
-					pair : HashPair<V> := list->Get()<V>;
-					if(pair->Compare(key) = 0) {
-						return pair->Get();
-					};
-					list->Next();
-				};
-
+			if(key = Nil) {
 				return Nil;
+			};
+
+			h := key->HashID() * -7046029254386353131;
+			cls := key->GetClassID();
+			keys := @keys;
+			hashes := @hashes;
+			mask := @mask;
+
+			i := (h >> @shift) and mask;
+			k := keys[i];
+			while(k <> Nil) {
+				if(hashes[i] = h & k->GetClassID() = cls) {
+					if(k->Compare(key) = 0) {
+						return @values[i];
+					};
+				};
+				i := (i + 1) and mask;
+				k := keys[i];
 			};
 
 			return Nil;
 		}
 
 		#~
-		Gets the hash table capacity
-		@return hash table capacity
+		Gets the capacity hint the hash was created or last resized with
+		@return hash table capacity hint
 
 ```
 hash := Collection.Hash->New()<String, IntRef>;
@@ -2236,7 +2352,7 @@ hash->GetCapacity()->PrintLine();
 		}
 
 		#~
-		Sets hash table capacity
+		Sets the hash table capacity hint; use Resize to resize the table
 		@param capacity hash table capacity
 
 ```
@@ -2263,7 +2379,7 @@ hash->IsAutoResize()->PrintLine(); # true
 		}
 
 		#~
-		Set auto-resize setting
+		Set auto-resize setting. The table grows whenever it is 70% full either way; the flag is kept for compatibility.
 		@param auto_resize true if auto-resize is enable, false otherwise
 
 ```
@@ -2277,7 +2393,7 @@ hash->IsAutoResize()->PrintLine(); # false
 		}
 
 		#~
-		Resizes the hash table
+		Resizes the hash table to at least the given capacity, and to more if the entries need it
 		@param capacity table capacity
 		@param auto_resize true for hash table auto resizing, false otherwise
 
@@ -2288,37 +2404,17 @@ hash->Resize(Collection.Hash->Capacity->LARGE);
 hash->Find("a")->PrintLine(); # 1
 ```
 		~#
-		method : public : native : Resize(capacity : Hash->Capacity, auto_resize : Bool := true) ~ Nil {
+		method : public : Resize(capacity : Hash->Capacity, auto_resize : Bool := true) ~ Nil {
 			@capacity := capacity;
 			@auto_resize := auto_resize;
 
-			temp_buckets := CompareList->New[@capacity]<K>;
-			for(i := 0; i < @buckets->Size(); i += 1;) {
-				list := @buckets[i];
-				if(list <> Nil) {
-					list->Rewind();
-					while(list->More()) {
-						# get key/value
-						pair : HashPair<V> := list->Get()<V>;
-						
-						# insert key/value
-						hash := (pair->GetKey()->HashID() % temp_buckets->Size())->Abs();
-
-						temp_list := temp_buckets[hash];
-						if(temp_list = Nil) {
-							temp_list := CompareList->New()<K>;
-							temp_buckets[hash] := temp_list;
-						};
-						temp_list->AddBack(pair);
-
-						list->Next();
-					};
-				};
+			slots := SlotsFor(capacity->As(Int));
+			while(@size * 10 > slots * 7) {
+				slots := slots << 1;
 			};
-
-			@buckets := temp_buckets;
+			Rehash(slots);
 		}
-		
+
 		#~
 		Checks for a value in a hash
 		@param key search key
@@ -2331,22 +2427,27 @@ hash->Has("k")->PrintLine();   # true
 hash->Has("z")->PrintLine();   # false
 ```
 		~#
-		method : public : Has(key : K) ~ Bool {
+		method : public : native : Has(key : K) ~ Bool {
 			if(key = Nil) {
 				return false;
 			};
 
-			hash := (key->HashID() % @buckets->Size())->Abs();
-			list := @buckets[hash];
-			if(list <> Nil) {
-				list->Rewind();
-				while(list->More()) {
-					pair : HashPair<V> := list->Get()<V>;
-					if(pair->Compare(key) = 0) {
+			h := key->HashID() * -7046029254386353131;
+			cls := key->GetClassID();
+			keys := @keys;
+			hashes := @hashes;
+			mask := @mask;
+
+			i := (h >> @shift) and mask;
+			k := keys[i];
+			while(k <> Nil) {
+				if(hashes[i] = h & k->GetClassID() = cls) {
+					if(k->Compare(key) = 0) {
 						return true;
 					};
-					list->Next();
 				};
+				i := (i + 1) and mask;
+				k := keys[i];
 			};
 
 			return false;
@@ -2355,6 +2456,7 @@ hash->Has("z")->PrintLine();   # false
 		#~
 		Removes a value from the hash
 		@param key key for value to remove
+		@return true if removed, false if the key was not found
 
 ```
 hash := Collection.Hash->New()<String, IntRef>;
@@ -2364,29 +2466,64 @@ hash->Has("del")->PrintLine();    # false
 ```
 		~#
 		method : public : native : Remove(key : K) ~ Bool {
-			hash := (key->HashID() % @buckets->Size())->Abs();
-			list := @buckets[hash];
-			if(list <> Nil) {
-				list->Rewind();
-				while(list->More()) {
-					pair : HashPair<V> := list->Get()<V>;
-					if(pair->Compare(key) = 0) {
-						list->Remove();
-						@size -= 1;
-						return true;
-					};
-
-					list->Next();
-				};
-
+			if(key = Nil) {
 				return false;
 			};
 
-			return false;
+			h := key->HashID() * -7046029254386353131;
+			cls := key->GetClassID();
+			keys := @keys;
+			values := @values;
+			hashes := @hashes;
+			mask := @mask;
+			shift := @shift;
+
+			i := (h >> shift) and mask;
+			k := keys[i];
+			found := false;
+			while(k <> Nil & <>found) {
+				if(hashes[i] = h & k->GetClassID() = cls) {
+					if(k->Compare(key) = 0) {
+						found := true;
+					};
+				};
+
+				if(<>found) {
+					i := (i + 1) and mask;
+					k := keys[i];
+				};
+			};
+
+			if(<>found) {
+				return false;
+			};
+
+			# backward-shift deletion: pull later entries of the run into the hole
+			j := i;
+			j := (j + 1) and mask;
+			k := keys[j];
+			while(k <> Nil) {
+				ideal := (hashes[j] >> shift) and mask;
+				if(((j - ideal) and mask) >= ((j - i) and mask)) {
+					keys[i] := k;
+					values[i] := values[j];
+					hashes[i] := hashes[j];
+					i := j;
+				};
+				j := (j + 1) and mask;
+				k := keys[j];
+			};
+
+			keys[i] := Nil;
+			values[i] := Nil;
+			hashes[i] := 0;
+			@size -= 1;
+
+			return true;
 		}
-		
+
 		#~
-		Get a collection of keys
+		Get a collection of keys. GetKeys, GetValues and GetKeyValues list the entries in the same order.
 		@return vector of keys
 
 ```
@@ -2402,21 +2539,16 @@ each(k := keys) {
 		method : public : native : GetKeys() ~ Vector<K> {
 			keys := Vector->New()<K>;
 			keys->Reserve(@size);
-			for(i := 0; i < @buckets->Size(); i += 1;) {
-				if(@buckets[i] <> Nil) {
-					list := @buckets[i];
-					list->Rewind();
-					while(list->More()) {
-						pair : HashPair<V> := list->Get()<V>;
-						keys->AddBack(pair->GetKey());
-						list->Next();
-					};
+			for(i := 0; i < @keys->Size(); i += 1;) {
+				key := @keys[i];
+				if(key <> Nil) {
+					keys->AddBack(key);
 				};
 			};
-			
+
 			return keys;
 		}
-		
+
 		#~
 		Gets a collection of values
 		@return vector of values
@@ -2434,18 +2566,12 @@ each(v := vals) {
 		method : public : native : GetValues() ~ Vector<V> {
 			values := Vector->New()<V>;
 			values->Reserve(@size);
-			for(i := 0; i < @buckets->Size(); i += 1;) {
-				if(@buckets[i] <> Nil) {
-					list := @buckets[i];
-					list->Rewind();
-					while(list->More()) {
-						pair : HashPair<V> := list->Get()<V>;
-						values->AddBack(pair->Get());
-						list->Next();
-					};
+			for(i := 0; i < @keys->Size(); i += 1;) {
+				if(@keys[i] <> Nil) {
+					values->AddBack(@values[i]);
 				};
 			};
-			
+
 			return values;
 		}
 
@@ -2466,26 +2592,17 @@ each(kv := kvs) {
 			values := Vector->New()<Pair<K,V>>;
 			values->Reserve(@size);
 
-			for(i := 0; i < @buckets->Size(); i += 1;) {
-				if(@buckets[i] <> Nil) {
-					list := @buckets[i];
-					list->Rewind();
-					while(list->More()) {
-						pair : HashPair<V> := list->Get()<V>;
-
-						k : K := pair->GetKey();
-						v : V := pair->Get();
-
-						values->AddBack(Pair->New(k, v)<K,V>);
-						
-						list->Next();
-					};
+			for(i := 0; i < @keys->Size(); i += 1;) {
+				k : K := @keys[i];
+				if(k <> Nil) {
+					v : V := @values[i];
+					values->AddBack(Pair->New(k, v)<K,V>);
 				};
 			};
-			
+
 			return values;
 		}
-		
+
 		#~
 		Clears the map
 
@@ -2497,8 +2614,7 @@ hash->IsEmpty()->PrintLine(); # true
 ```
 		~#
 		method : public : Empty() ~ Nil {
-			@buckets := CompareList->New[@capacity]<K>;
-			@size := 0;
+			Allocate(@initial_slots);
 		}
 
 		#~
@@ -2619,41 +2735,6 @@ hash->Filter(\(k) => k->Size() > 4)->Size()->PrintLine(); # 1
 				};
 			};
 			return filtered;
-		}
-	}
-
-	class : private : HashPair<V> implements Compare, Clone {
-		@key : Compare;
-		@value : V;
-
-		New(key : Compare, value : V) {
-			Parent();
-			@key := key;
-			@value := value;
-		}
-
-		method : public : Compare(rhs : Compare) ~ Int {		
-			return @key->Compare(rhs);
-		}
-
-		method : public : Clone() ~ Compare {
-			return HashPair->New(@key, @value)<V>;
-		}
-
-		method : public : HashID() ~ Int {
-			return @key->HashID();
-		}
-		
-		method : public : GetKey() ~ Compare {
-			return @key;
-		}
-
-		method : public : Get() ~ V {
-			return @value;
-		}
-
-		method : public : Set(value : V) ~ Nil {
-			@value := value;
 		}
 	}
 	
@@ -8880,6 +8961,2122 @@ mmap->TotalSize()->PrintLine(); # 3
 				total += inner->Size();
 			};
 			return total;
+		}
+	}
+
+	#~
+	Growable array of Int values; nothing is boxed
+
+```
+v := Collection.IntVector->New();
+v->AddBack(3); v->AddBack(1); v->AddBack(2);
+v->Sort();
+v->Get(0)->PrintLine();   # 1
+v->Sum()->PrintLine();    # 6
+v->Size()->PrintLine();   # 3
+```
+	~#
+	class IntVector {
+		@values : Int[];
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+v := Collection.IntVector->New();
+v->AddBack(7);
+v->Size()->PrintLine(); # 1
+```
+		~#
+		New() {
+			@values := Int->New[16];
+			@size := 0;
+		}
+
+		#~
+		Constructor that reserves room for a number of values
+		@param capacity number of values to reserve
+
+```
+v := Collection.IntVector->New(1000);
+v->Size()->PrintLine(); # 0
+```
+		~#
+		New(capacity : Int) {
+			if(capacity < 16) {
+				capacity := 16;
+			};
+			@values := Int->New[capacity];
+			@size := 0;
+		}
+
+		#~
+		Copy constructor
+		@param values values to copy
+
+```
+v := Collection.IntVector->New([5, 6, 7]);
+v->Get(2)->PrintLine(); # 7
+```
+		~#
+		New(values : Int[]) {
+			capacity := values->Size();
+			if(capacity < 16) {
+				capacity := 16;
+			};
+			@values := Int->New[capacity];
+			@size := values->Size();
+			Runtime->Copy(@values, 0, values, 0, @size);
+		}
+
+		method : Grow(capacity : Int) ~ Nil {
+			if(capacity < 16) {
+				capacity := 16;
+			};
+			temp := Int->New[capacity];
+			Runtime->Copy(temp, 0, @values, 0, @size);
+			@values := temp;
+		}
+
+		#~
+		Reserves room for at least a number of values
+		@param capacity number of values
+
+```
+v := Collection.IntVector->New();
+v->Reserve(1000000);
+v->Size()->PrintLine(); # 0
+```
+		~#
+		method : public : Reserve(capacity : Int) ~ Nil {
+			if(capacity > @values->Size()) {
+				Grow(capacity);
+			};
+		}
+
+		#~
+		Adds a value to the end
+		@param value value
+
+```
+v := Collection.IntVector->New();
+v->AddBack(42);
+v->Get(0)->PrintLine(); # 42
+```
+		~#
+		method : public : native : AddBack(value : Int) ~ Nil {
+			if(@size = @values->Size()) {
+				Grow(@size << 1);
+			};
+			@values[@size] := value;
+			@size += 1;
+		}
+
+		#~
+		Gets an indexed value
+		@param index index
+		@return value, or 0 if the index is out of range
+
+```
+v := Collection.IntVector->New([4, 5]);
+v->Get(1)->PrintLine(); # 5
+```
+		~#
+		method : public : native : Get(index : Int) ~ Int {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return 0;
+		}
+
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		@return true if set, false if the index is out of range
+
+```
+v := Collection.IntVector->New([4, 5]);
+v->Set(9, 0)->PrintLine(); # true
+v->Get(0)->PrintLine();    # 9
+```
+		~#
+		method : public : native : Set(value : Int, index : Int) ~ Bool {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Gets the first value
+		@return first value, or 0 if empty
+
+```
+v := Collection.IntVector->New([4, 5]);
+v->First()->PrintLine(); # 4
+```
+		~#
+		method : public : First() ~ Int {
+			if(@size > 0) {
+				return @values[0];
+			};
+			return 0;
+		}
+
+		#~
+		Gets the last value
+		@return last value, or 0 if empty
+
+```
+v := Collection.IntVector->New([4, 5]);
+v->Last()->PrintLine(); # 5
+```
+		~#
+		method : public : Last() ~ Int {
+			if(@size > 0) {
+				return @values[@size - 1];
+			};
+			return 0;
+		}
+
+		#~
+		Removes the last value
+		@return removed value, or 0 if empty
+
+```
+v := Collection.IntVector->New([4, 5]);
+v->RemoveBack()->PrintLine(); # 5
+v->Size()->PrintLine();       # 1
+```
+		~#
+		method : public : RemoveBack() ~ Int {
+			if(@size > 0) {
+				@size -= 1;
+				return @values[@size];
+			};
+			return 0;
+		}
+
+		#~
+		Removes an indexed value, shifting the later values down
+		@param index index
+		@return removed value, or 0 if the index is out of range
+
+```
+v := Collection.IntVector->New([4, 5, 6]);
+v->Remove(1)->PrintLine(); # 5
+v->Get(1)->PrintLine();    # 6
+```
+		~#
+		method : public : Remove(index : Int) ~ Int {
+			if(index > -1 & index < @size) {
+				value := @values[index];
+				@size -= 1;
+				Runtime->Copy(@values, index, @values, index + 1, @size - index);
+				return value;
+			};
+			return 0;
+		}
+
+		#~
+		Size of vector
+		@return number of values
+
+```
+v := Collection.IntVector->New([1, 2]);
+v->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks to see if the vector is empty
+		@return true if empty, false otherwise
+
+```
+v := Collection.IntVector->New();
+v->IsEmpty()->PrintLine(); # true
+```
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every value; the reserved room is kept
+
+```
+v := Collection.IntVector->New([1, 2]);
+v->Clear();
+v->Size()->PrintLine(); # 0
+```
+		~#
+		method : public : Clear() ~ Nil {
+			@size := 0;
+		}
+
+		#~
+		Removes every value; the same as Clear
+
+```
+v := Collection.IntVector->New([1, 2]);
+v->Empty();
+v->IsEmpty()->PrintLine(); # true
+```
+		~#
+		method : public : Empty() ~ Nil {
+			@size := 0;
+		}
+
+		#~
+		Copies the values into an array
+		@return array of values
+
+```
+v := Collection.IntVector->New([1, 2]);
+v->ToArray()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : ToArray() ~ Int[] {
+			array := Int->New[@size];
+			Runtime->Copy(array, 0, @values, 0, @size);
+			return array;
+		}
+
+		#~
+		Sorts the values in ascending order (a stable merge sort, O(n log n))
+
+```
+v := Collection.IntVector->New([3, -1, 2]);
+v->Sort();
+v->ToString()->PrintLine(); # [-1,2,3]
+```
+		~#
+		method : public : Sort() ~ Nil {
+			SortValues(@values, @size);
+		}
+
+		function : private : native : SortValues(a : Int[], n : Int) ~ Nil {
+			if(n < 2) {
+				return;
+			};
+
+			run := 32;
+			for(lo := 0; lo < n; lo += run;) {
+				hi := lo + run;
+				if(hi > n) {
+					hi := n;
+				};
+				for(i := lo + 1; i < hi; i += 1;) {
+					v := a[i];
+					j := i - 1;
+					while(j >= lo & a[j] > v) {
+						a[j + 1] := a[j];
+						j -= 1;
+					};
+					a[j + 1] := v;
+				};
+			};
+
+			if(n <= run) {
+				return;
+			};
+
+			buffer := Int->New[n];
+			src := a;
+			dest := buffer;
+			in_buffer := false;
+			width := run;
+			while(width < n) {
+				for(lo := 0; lo < n; lo += width << 1;) {
+					mid := lo + width;
+					if(mid > n) {
+						mid := n;
+					};
+					hi := lo + (width << 1);
+					if(hi > n) {
+						hi := n;
+					};
+
+					i := lo;
+					j := mid;
+					k := lo;
+					while(i < mid & j < hi) {
+						if(src[j] < src[i]) {
+							dest[k] := src[j];
+							j += 1;
+						}
+						else {
+							dest[k] := src[i];
+							i += 1;
+						};
+						k += 1;
+					};
+					while(i < mid) {
+						dest[k] := src[i];
+						i += 1;
+						k += 1;
+					};
+					while(j < hi) {
+						dest[k] := src[j];
+						j += 1;
+						k += 1;
+					};
+				};
+
+				temp := src;
+				src := dest;
+				dest := temp;
+				in_buffer := <>in_buffer;
+				width := width << 1;
+			};
+
+			if(in_buffer) {
+				Runtime->Copy(a, 0, src, 0, n);
+			};
+		}
+
+		#~
+		Finds the first index of a value
+		@param value value to find
+		@return index, or -1 if not found
+
+```
+v := Collection.IntVector->New([4, 5, 6]);
+v->Find(6)->PrintLine(); # 2
+```
+		~#
+		method : public : native : Find(value : Int) ~ Int {
+			values := @values;
+			size := @size;
+			for(i := 0; i < size; i += 1;) {
+				if(values[i] = value) {
+					return i;
+				};
+			};
+			return -1;
+		}
+
+		#~
+		Checks for a value
+		@param value value to find
+		@return true if found, false otherwise
+
+```
+v := Collection.IntVector->New([4, 5, 6]);
+v->Has(5)->PrintLine(); # true
+```
+		~#
+		method : public : Has(value : Int) ~ Bool {
+			return Find(value) > -1;
+		}
+
+		#~
+		Sums the values
+		@return sum
+
+```
+v := Collection.IntVector->New([4, 5, 6]);
+v->Sum()->PrintLine(); # 15
+```
+		~#
+		method : public : native : Sum() ~ Int {
+			values := @values;
+			size := @size;
+			sum := 0;
+			for(i := 0; i < size; i += 1;) {
+				sum += values[i];
+			};
+			return sum;
+		}
+
+		#~
+		Calls a function for each value
+		@param f function called
+		@return this vector
+
+```
+v := Collection.IntVector->New([4, 5]);
+v->Each(\(i) => { i->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (Int) ~ Nil) ~ IntVector {
+			for(i := 0; i < @size; i += 1;) {
+				f(@values[i]);
+			};
+			return @self;
+		}
+
+		#~
+		Formats the vector into a string
+		@return string representation
+
+```
+v := Collection.IntVector->New([1, 2]);
+v->ToString()->PrintLine(); # [1,2]
+```
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+			for(i := 0; i < @size; i += 1;) {
+				if(i > 0) {
+					buffer->Append(',');
+				};
+				buffer->Append(@values[i]);
+			};
+			buffer->Append(']');
+			return buffer;
+		}
+	}
+
+	#~
+	Growable array of Float values; nothing is boxed
+
+```
+v := Collection.FloatVector->New();
+v->AddBack(2.5); v->AddBack(0.5);
+v->Sort();
+v->Get(0)->PrintLine();   # 0.5
+v->Sum()->PrintLine();    # 3
+```
+	~#
+	class FloatVector {
+		@values : Float[];
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+v := Collection.FloatVector->New();
+v->AddBack(1.5);
+v->Size()->PrintLine(); # 1
+```
+		~#
+		New() {
+			@values := Float->New[16];
+			@size := 0;
+		}
+
+		#~
+		Constructor that reserves room for a number of values
+		@param capacity number of values to reserve
+
+```
+v := Collection.FloatVector->New(1000);
+v->Size()->PrintLine(); # 0
+```
+		~#
+		New(capacity : Int) {
+			if(capacity < 16) {
+				capacity := 16;
+			};
+			@values := Float->New[capacity];
+			@size := 0;
+		}
+
+		#~
+		Copy constructor
+		@param values values to copy
+
+```
+v := Collection.FloatVector->New([1.0, 2.0]);
+v->Get(1)->PrintLine(); # 2
+```
+		~#
+		New(values : Float[]) {
+			capacity := values->Size();
+			if(capacity < 16) {
+				capacity := 16;
+			};
+			@values := Float->New[capacity];
+			@size := values->Size();
+			Runtime->Copy(@values, 0, values, 0, @size);
+		}
+
+		method : Grow(capacity : Int) ~ Nil {
+			if(capacity < 16) {
+				capacity := 16;
+			};
+			temp := Float->New[capacity];
+			Runtime->Copy(temp, 0, @values, 0, @size);
+			@values := temp;
+		}
+
+		#~
+		Reserves room for at least a number of values
+		@param capacity number of values
+
+```
+v := Collection.FloatVector->New();
+v->Reserve(1000000);
+v->Size()->PrintLine(); # 0
+```
+		~#
+		method : public : Reserve(capacity : Int) ~ Nil {
+			if(capacity > @values->Size()) {
+				Grow(capacity);
+			};
+		}
+
+		#~
+		Adds a value to the end
+		@param value value
+
+```
+v := Collection.FloatVector->New();
+v->AddBack(4.25);
+v->Get(0)->PrintLine(); # 4.25
+```
+		~#
+		method : public : native : AddBack(value : Float) ~ Nil {
+			if(@size = @values->Size()) {
+				Grow(@size << 1);
+			};
+			@values[@size] := value;
+			@size += 1;
+		}
+
+		#~
+		Gets an indexed value
+		@param index index
+		@return value, or 0.0 if the index is out of range
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Get(1)->PrintLine(); # 2.5
+```
+		~#
+		method : public : native : Get(index : Int) ~ Float {
+			if(index > -1 & index < @size) {
+				return @values[index];
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Sets an indexed value
+		@param value value
+		@param index index
+		@return true if set, false if the index is out of range
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Set(9.0, 0)->PrintLine(); # true
+```
+		~#
+		method : public : native : Set(value : Float, index : Int) ~ Bool {
+			if(index > -1 & index < @size) {
+				@values[index] := value;
+				return true;
+			};
+
+			return false;
+		}
+
+		#~
+		Gets the first value
+		@return first value, or 0.0 if empty
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->First()->PrintLine(); # 1.5
+```
+		~#
+		method : public : First() ~ Float {
+			if(@size > 0) {
+				return @values[0];
+			};
+			return 0.0;
+		}
+
+		#~
+		Gets the last value
+		@return last value, or 0.0 if empty
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Last()->PrintLine(); # 2.5
+```
+		~#
+		method : public : Last() ~ Float {
+			if(@size > 0) {
+				return @values[@size - 1];
+			};
+			return 0.0;
+		}
+
+		#~
+		Removes the last value
+		@return removed value, or 0.0 if empty
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->RemoveBack()->PrintLine(); # 2.5
+```
+		~#
+		method : public : RemoveBack() ~ Float {
+			if(@size > 0) {
+				@size -= 1;
+				return @values[@size];
+			};
+			return 0.0;
+		}
+
+		#~
+		Removes an indexed value, shifting the later values down
+		@param index index
+		@return removed value, or 0.0 if the index is out of range
+
+```
+v := Collection.FloatVector->New([1.5, 2.5, 3.5]);
+v->Remove(0)->PrintLine(); # 1.5
+```
+		~#
+		method : public : Remove(index : Int) ~ Float {
+			if(index > -1 & index < @size) {
+				value := @values[index];
+				@size -= 1;
+				Runtime->Copy(@values, index, @values, index + 1, @size - index);
+				return value;
+			};
+			return 0.0;
+		}
+
+		#~
+		Size of vector
+		@return number of values
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks to see if the vector is empty
+		@return true if empty, false otherwise
+
+```
+v := Collection.FloatVector->New();
+v->IsEmpty()->PrintLine(); # true
+```
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every value; the reserved room is kept
+
+```
+v := Collection.FloatVector->New([1.5]);
+v->Clear();
+v->Size()->PrintLine(); # 0
+```
+		~#
+		method : public : Clear() ~ Nil {
+			@size := 0;
+		}
+
+		#~
+		Removes every value; the same as Clear
+
+```
+v := Collection.FloatVector->New([1.5]);
+v->Empty();
+v->IsEmpty()->PrintLine(); # true
+```
+		~#
+		method : public : Empty() ~ Nil {
+			@size := 0;
+		}
+
+		#~
+		Copies the values into an array
+		@return array of values
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->ToArray()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : ToArray() ~ Float[] {
+			array := Float->New[@size];
+			Runtime->Copy(array, 0, @values, 0, @size);
+			return array;
+		}
+
+		#~
+		Sorts the values in ascending order (a stable merge sort, O(n log n))
+
+```
+v := Collection.FloatVector->New([3.0, -1.0, 2.0]);
+v->Sort();
+v->First()->PrintLine(); # -1
+```
+		~#
+		method : public : Sort() ~ Nil {
+			SortValues(@values, @size);
+		}
+
+		function : private : native : SortValues(a : Float[], n : Int) ~ Nil {
+			if(n < 2) {
+				return;
+			};
+
+			run := 32;
+			for(lo := 0; lo < n; lo += run;) {
+				hi := lo + run;
+				if(hi > n) {
+					hi := n;
+				};
+				for(i := lo + 1; i < hi; i += 1;) {
+					v := a[i];
+					j := i - 1;
+					while(j >= lo & a[j] > v) {
+						a[j + 1] := a[j];
+						j -= 1;
+					};
+					a[j + 1] := v;
+				};
+			};
+
+			if(n <= run) {
+				return;
+			};
+
+			buffer := Float->New[n];
+			src := a;
+			dest := buffer;
+			in_buffer := false;
+			width := run;
+			while(width < n) {
+				for(lo := 0; lo < n; lo += width << 1;) {
+					mid := lo + width;
+					if(mid > n) {
+						mid := n;
+					};
+					hi := lo + (width << 1);
+					if(hi > n) {
+						hi := n;
+					};
+
+					i := lo;
+					j := mid;
+					k := lo;
+					while(i < mid & j < hi) {
+						if(src[j] < src[i]) {
+							dest[k] := src[j];
+							j += 1;
+						}
+						else {
+							dest[k] := src[i];
+							i += 1;
+						};
+						k += 1;
+					};
+					while(i < mid) {
+						dest[k] := src[i];
+						i += 1;
+						k += 1;
+					};
+					while(j < hi) {
+						dest[k] := src[j];
+						j += 1;
+						k += 1;
+					};
+				};
+
+				temp := src;
+				src := dest;
+				dest := temp;
+				in_buffer := <>in_buffer;
+				width := width << 1;
+			};
+
+			if(in_buffer) {
+				Runtime->Copy(a, 0, src, 0, n);
+			};
+		}
+
+		#~
+		Finds the first index of a value (exact comparison)
+		@param value value to find
+		@return index, or -1 if not found
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Find(2.5)->PrintLine(); # 1
+```
+		~#
+		method : public : native : Find(value : Float) ~ Int {
+			values := @values;
+			size := @size;
+			for(i := 0; i < size; i += 1;) {
+				if(values[i] = value) {
+					return i;
+				};
+			};
+			return -1;
+		}
+
+		#~
+		Checks for a value (exact comparison)
+		@param value value to find
+		@return true if found, false otherwise
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Has(1.5)->PrintLine(); # true
+```
+		~#
+		method : public : Has(value : Float) ~ Bool {
+			return Find(value) > -1;
+		}
+
+		#~
+		Sums the values
+		@return sum
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Sum()->PrintLine(); # 4
+```
+		~#
+		method : public : native : Sum() ~ Float {
+			values := @values;
+			size := @size;
+			sum := 0.0;
+			for(i := 0; i < size; i += 1;) {
+				sum += values[i];
+			};
+			return sum;
+		}
+
+		#~
+		Calls a function for each value
+		@param f function called
+		@return this vector
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->Each(\(f) => { f->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (Float) ~ Nil) ~ FloatVector {
+			for(i := 0; i < @size; i += 1;) {
+				f(@values[i]);
+			};
+			return @self;
+		}
+
+		#~
+		Formats the vector into a string
+		@return string representation
+
+```
+v := Collection.FloatVector->New([1.5, 2.5]);
+v->ToString()->PrintLine(); # [1.5,2.5]
+```
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+			for(i := 0; i < @size; i += 1;) {
+				if(i > 0) {
+					buffer->Append(',');
+				};
+				buffer->Append(@values[i]);
+			};
+			buffer->Append(']');
+			return buffer;
+		}
+	}
+
+	#~
+	Hash table from Int keys to Int values: open addressing over plain arrays, so nothing is boxed. Every Int is a valid key, including 0 and the Int64 extremes.
+
+```
+counts := Collection.IntMap->New();
+counts->Add(7, 1); counts->Add(7, 1); counts->Add(3, 1);
+counts->Find(7)->PrintLine();       # 2
+counts->Find(9, -1)->PrintLine();   # -1
+counts->Has(3)->PrintLine();        # true
+counts->Size()->PrintLine();        # 2
+```
+	~#
+	class IntMap {
+		@keys : Int[];
+		@values : Int[];
+		@used : Bool[];
+		@size : Int;
+		@mask : Int;
+		@shift : Int;
+
+		#~
+		Default constructor
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 100);
+map->Size()->PrintLine(); # 1
+```
+		~#
+		New() {
+			Allocate(16);
+		}
+
+		#~
+		Constructor that reserves room for a number of entries
+		@param capacity number of entries expected
+
+```
+map := Collection.IntMap->New(100000);
+map->Size()->PrintLine(); # 0
+```
+		~#
+		New(capacity : Int) {
+			slots := 16;
+			while(slots * 7 < capacity * 10 & slots < 1073741824) {
+				slots := slots << 1;
+			};
+			Allocate(slots);
+		}
+
+		method : Allocate(slots : Int) ~ Nil {
+			@keys := Int->New[slots];
+			@values := Int->New[slots];
+			@used := Bool->New[slots];
+			@size := 0;
+			@mask := slots - 1;
+
+			bits := 0;
+			s := slots;
+			while(s > 1) {
+				s := s >> 1;
+				bits += 1;
+			};
+			@shift := 64 - bits;
+		}
+
+		method : native : Rehash(slots : Int) ~ Nil {
+			old_keys := @keys;
+			old_values := @values;
+			old_used := @used;
+			size := @size;
+
+			Allocate(slots);
+			keys := @keys;
+			values := @values;
+			used := @used;
+			mask := @mask;
+			shift := @shift;
+
+			count := old_keys->Size();
+			for(j := 0; j < count; j += 1;) {
+				if(old_used[j]) {
+					key := old_keys[j];
+					i := ((key * -7046029254386353131) >> shift) and mask;
+					while(used[i]) {
+						i := (i + 1) and mask;
+					};
+					used[i] := true;
+					keys[i] := key;
+					values[i] := old_values[j];
+				};
+			};
+			@size := size;
+		}
+
+		#~
+		Inserts a value, replacing the value of an existing key
+		@param key key
+		@param value value
+
+```
+map := Collection.IntMap->New();
+map->Insert(-5, 25);
+map->Find(-5)->PrintLine(); # 25
+```
+		~#
+		method : public : native : Insert(key : Int, value : Int) ~ Nil {
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+
+			i := ((key * -7046029254386353131) >> @shift) and mask;
+			while(used[i]) {
+				if(keys[i] = key) {
+					@values[i] := value;
+					return;
+				};
+				i := (i + 1) and mask;
+			};
+
+			used[i] := true;
+			keys[i] := key;
+			@values[i] := value;
+			@size += 1;
+
+			if(@size * 10 > (mask + 1) * 7) {
+				Rehash((mask + 1) << 1);
+			};
+		}
+
+		#~
+		Adds to the value of a key; a missing key starts at 0
+		@param key key
+		@param delta amount to add
+		@return new value
+
+```
+map := Collection.IntMap->New();
+map->Add(1, 5);
+map->Add(1, 2)->PrintLine(); # 7
+```
+		~#
+		method : public : native : Add(key : Int, delta : Int) ~ Int {
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+
+			i := ((key * -7046029254386353131) >> @shift) and mask;
+			while(used[i]) {
+				if(keys[i] = key) {
+					value := @values[i] + delta;
+					@values[i] := value;
+					return value;
+				};
+				i := (i + 1) and mask;
+			};
+
+			used[i] := true;
+			keys[i] := key;
+			@values[i] := delta;
+			@size += 1;
+
+			if(@size * 10 > (mask + 1) * 7) {
+				Rehash((mask + 1) << 1);
+			};
+
+			return delta;
+		}
+
+		#~
+		Finds the value of a key
+		@param key key
+		@return value, or 0 if the key is missing (use Has or Find(key, missing) to tell)
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 10);
+map->Find(1)->PrintLine(); # 10
+map->Find(2)->PrintLine(); # 0
+```
+		~#
+		method : public : Find(key : Int) ~ Int {
+			return Find(key, 0);
+		}
+
+		#~
+		Finds the value of a key
+		@param key key
+		@param missing value returned when the key is missing
+		@return value, or missing
+
+```
+map := Collection.IntMap->New();
+map->Find(2, -1)->PrintLine(); # -1
+```
+		~#
+		method : public : native : Find(key : Int, missing : Int) ~ Int {
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+
+			i := ((key * -7046029254386353131) >> @shift) and mask;
+			while(used[i]) {
+				if(keys[i] = key) {
+					return @values[i];
+				};
+				i := (i + 1) and mask;
+			};
+
+			return missing;
+		}
+
+		#~
+		Checks for a key
+		@param key key
+		@return true if found, false otherwise
+
+```
+map := Collection.IntMap->New();
+map->Insert(0, 0);
+map->Has(0)->PrintLine(); # true
+map->Has(1)->PrintLine(); # false
+```
+		~#
+		method : public : native : Has(key : Int) ~ Bool {
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+
+			i := ((key * -7046029254386353131) >> @shift) and mask;
+			while(used[i]) {
+				if(keys[i] = key) {
+					return true;
+				};
+				i := (i + 1) and mask;
+			};
+
+			return false;
+		}
+
+		#~
+		Removes a key
+		@param key key
+		@return true if removed, false if the key was missing
+
+```
+map := Collection.IntMap->New();
+map->Insert(4, 16);
+map->Remove(4)->PrintLine(); # true
+map->Has(4)->PrintLine();    # false
+```
+		~#
+		method : public : native : Remove(key : Int) ~ Bool {
+			keys := @keys;
+			values := @values;
+			used := @used;
+			mask := @mask;
+			shift := @shift;
+
+			i := ((key * -7046029254386353131) >> shift) and mask;
+			found := false;
+			while(used[i] & <>found) {
+				if(keys[i] = key) {
+					found := true;
+				}
+				else {
+					i := (i + 1) and mask;
+				};
+			};
+
+			if(<>found) {
+				return false;
+			};
+
+			j := (i + 1) and mask;
+			while(used[j]) {
+				ideal := ((keys[j] * -7046029254386353131) >> shift) and mask;
+				if(((j - ideal) and mask) >= ((j - i) and mask)) {
+					keys[i] := keys[j];
+					values[i] := values[j];
+					i := j;
+				};
+				j := (j + 1) and mask;
+			};
+
+			used[i] := false;
+			keys[i] := 0;
+			values[i] := 0;
+			@size -= 1;
+
+			return true;
+		}
+
+		#~
+		Number of entries
+		@return number of entries
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 1);
+map->Size()->PrintLine(); # 1
+```
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks to see if the map is empty
+		@return true if empty, false otherwise
+
+```
+map := Collection.IntMap->New();
+map->IsEmpty()->PrintLine(); # true
+```
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every entry
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 1);
+map->Empty();
+map->Size()->PrintLine(); # 0
+```
+		~#
+		method : public : Empty() ~ Nil {
+			Allocate(16);
+		}
+
+		#~
+		Gets the keys. GetKeys and GetValues list the entries in the same order.
+		@return array of keys
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 10); map->Insert(2, 20);
+map->GetKeys()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : native : GetKeys() ~ Int[] {
+			result := Int->New[@size];
+			n := 0;
+			for(i := 0; i < @used->Size(); i += 1;) {
+				if(@used[i]) {
+					result[n] := @keys[i];
+					n += 1;
+				};
+			};
+			return result;
+		}
+
+		#~
+		Gets the values, in the same order as GetKeys
+		@return array of values
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 10); map->Insert(2, 20);
+map->GetValues()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : native : GetValues() ~ Int[] {
+			result := Int->New[@size];
+			n := 0;
+			for(i := 0; i < @used->Size(); i += 1;) {
+				if(@used[i]) {
+					result[n] := @values[i];
+					n += 1;
+				};
+			};
+			return result;
+		}
+
+		#~
+		Calls a function for each key and value. The function must not change the map.
+		@param f function called
+		@return this map
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 10);
+map->Each(\(k, v) => { "{$k}={$v}"->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (Int, Int) ~ Nil) ~ IntMap {
+			keys := GetKeys();
+			values := GetValues();
+			each(i : keys) {
+				f(keys[i], values[i]);
+			};
+			return @self;
+		}
+
+		#~
+		Formats the map into a string
+		@return string representation
+
+```
+map := Collection.IntMap->New();
+map->Insert(1, 10);
+map->ToString()->PrintLine(); # [(1:10)]
+```
+		~#
+		method : public : ToString() ~ String {
+			buffer := "[";
+			count := 0;
+			for(i := 0; i < @used->Size(); i += 1;) {
+				if(@used[i]) {
+					if(count > 0) {
+						buffer->Append(',');
+					};
+					buffer->Append('(');
+					buffer->Append(@keys[i]);
+					buffer->Append(':');
+					buffer->Append(@values[i]);
+					buffer->Append(')');
+					count += 1;
+				};
+			};
+			buffer->Append(']');
+			return buffer;
+		}
+	}
+
+	#~
+	Hash set of Int values: open addressing over plain arrays, so nothing is boxed. Every Int is a valid member, including 0 and the Int64 extremes.
+
+```
+set := Collection.IntSet->New();
+set->Add(5)->PrintLine();   # true
+set->Add(5)->PrintLine();   # false
+set->Has(5)->PrintLine();   # true
+set->Size()->PrintLine();   # 1
+```
+	~#
+	class IntSet {
+		@keys : Int[];
+		@used : Bool[];
+		@size : Int;
+		@mask : Int;
+		@shift : Int;
+
+		#~
+		Default constructor
+
+```
+set := Collection.IntSet->New();
+set->Insert(1);
+set->Size()->PrintLine(); # 1
+```
+		~#
+		New() {
+			Allocate(16);
+		}
+
+		#~
+		Constructor that reserves room for a number of values
+		@param capacity number of values expected
+
+```
+set := Collection.IntSet->New(100000);
+set->Size()->PrintLine(); # 0
+```
+		~#
+		New(capacity : Int) {
+			slots := 16;
+			while(slots * 7 < capacity * 10 & slots < 1073741824) {
+				slots := slots << 1;
+			};
+			Allocate(slots);
+		}
+
+		method : Allocate(slots : Int) ~ Nil {
+			@keys := Int->New[slots];
+			@used := Bool->New[slots];
+			@size := 0;
+			@mask := slots - 1;
+
+			bits := 0;
+			s := slots;
+			while(s > 1) {
+				s := s >> 1;
+				bits += 1;
+			};
+			@shift := 64 - bits;
+		}
+
+		method : native : Rehash(slots : Int) ~ Nil {
+			old_keys := @keys;
+			old_used := @used;
+			size := @size;
+
+			Allocate(slots);
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+			shift := @shift;
+
+			count := old_keys->Size();
+			for(j := 0; j < count; j += 1;) {
+				if(old_used[j]) {
+					key := old_keys[j];
+					i := ((key * -7046029254386353131) >> shift) and mask;
+					while(used[i]) {
+						i := (i + 1) and mask;
+					};
+					used[i] := true;
+					keys[i] := key;
+				};
+			};
+			@size := size;
+		}
+
+		#~
+		Adds a value
+		@param value value
+		@return true if added, false if it was already in the set
+
+```
+set := Collection.IntSet->New();
+set->Add(-1)->PrintLine(); # true
+```
+		~#
+		method : public : native : Add(value : Int) ~ Bool {
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+
+			i := ((value * -7046029254386353131) >> @shift) and mask;
+			while(used[i]) {
+				if(keys[i] = value) {
+					return false;
+				};
+				i := (i + 1) and mask;
+			};
+
+			used[i] := true;
+			keys[i] := value;
+			@size += 1;
+
+			if(@size * 10 > (mask + 1) * 7) {
+				Rehash((mask + 1) << 1);
+			};
+
+			return true;
+		}
+
+		#~
+		Inserts a value; the same as Add, for the method name the other sets use
+		@param value value
+
+```
+set := Collection.IntSet->New();
+set->Insert(9);
+set->Has(9)->PrintLine(); # true
+```
+		~#
+		method : public : Insert(value : Int) ~ Nil {
+			Add(value);
+		}
+
+		#~
+		Checks for a value
+		@param value value
+		@return true if found, false otherwise
+
+```
+set := Collection.IntSet->New();
+set->Add(3);
+set->Has(3)->PrintLine(); # true
+```
+		~#
+		method : public : native : Has(value : Int) ~ Bool {
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+
+			i := ((value * -7046029254386353131) >> @shift) and mask;
+			while(used[i]) {
+				if(keys[i] = value) {
+					return true;
+				};
+				i := (i + 1) and mask;
+			};
+
+			return false;
+		}
+
+		#~
+		Removes a value
+		@param value value
+		@return true if removed, false if it was not in the set
+
+```
+set := Collection.IntSet->New();
+set->Add(3);
+set->Remove(3)->PrintLine(); # true
+```
+		~#
+		method : public : native : Remove(value : Int) ~ Bool {
+			keys := @keys;
+			used := @used;
+			mask := @mask;
+			shift := @shift;
+
+			i := ((value * -7046029254386353131) >> shift) and mask;
+			found := false;
+			while(used[i] & <>found) {
+				if(keys[i] = value) {
+					found := true;
+				}
+				else {
+					i := (i + 1) and mask;
+				};
+			};
+
+			if(<>found) {
+				return false;
+			};
+
+			j := (i + 1) and mask;
+			while(used[j]) {
+				ideal := ((keys[j] * -7046029254386353131) >> shift) and mask;
+				if(((j - ideal) and mask) >= ((j - i) and mask)) {
+					keys[i] := keys[j];
+					i := j;
+				};
+				j := (j + 1) and mask;
+			};
+
+			used[i] := false;
+			keys[i] := 0;
+			@size -= 1;
+
+			return true;
+		}
+
+		#~
+		Number of values
+		@return number of values
+
+```
+set := Collection.IntSet->New();
+set->Add(1); set->Add(2);
+set->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Checks to see if the set is empty
+		@return true if empty, false otherwise
+
+```
+set := Collection.IntSet->New();
+set->IsEmpty()->PrintLine(); # true
+```
+		~#
+		method : public : IsEmpty() ~ Bool {
+			return @size = 0;
+		}
+
+		#~
+		Removes every value
+
+```
+set := Collection.IntSet->New();
+set->Add(1);
+set->Empty();
+set->Size()->PrintLine(); # 0
+```
+		~#
+		method : public : Empty() ~ Nil {
+			Allocate(16);
+		}
+
+		#~
+		Gets the values as an array
+		@return array of values
+
+```
+set := Collection.IntSet->New();
+set->Add(1); set->Add(2);
+set->ToArray()->Size()->PrintLine(); # 2
+```
+		~#
+		method : public : native : ToArray() ~ Int[] {
+			result := Int->New[@size];
+			n := 0;
+			for(i := 0; i < @used->Size(); i += 1;) {
+				if(@used[i]) {
+					result[n] := @keys[i];
+					n += 1;
+				};
+			};
+			return result;
+		}
+
+		#~
+		Calls a function for each value. The function must not change the set.
+		@param f function called
+		@return this set
+
+```
+set := Collection.IntSet->New();
+set->Add(1);
+set->Each(\(v) => { v->PrintLine(); });
+```
+		~#
+		method : public : Each(f : (Int) ~ Nil) ~ IntSet {
+			values := ToArray();
+			each(i : values) {
+				f(values[i]);
+			};
+			return @self;
+		}
+
+		#~
+		Formats the set into a string
+		@return string representation
+
+```
+set := Collection.IntSet->New();
+set->Add(1);
+set->ToString()->PrintLine(); # {1}
+```
+		~#
+		method : public : ToString() ~ String {
+			buffer := "{";
+			count := 0;
+			for(i := 0; i < @used->Size(); i += 1;) {
+				if(@used[i]) {
+					if(count > 0) {
+						buffer->Append(',');
+					};
+					buffer->Append(@keys[i]);
+					count += 1;
+				};
+			};
+			buffer->Append('}');
+			return buffer;
+		}
+	}
+
+	#~
+	Growable set of bits packed 64 to an Int
+
+```
+bits := Collection.BitSet->New(128);
+bits->Set(3); bits->Set(64); bits->Set(100);
+bits->Get(64)->PrintLine();          # true
+bits->Cardinality()->PrintLine();    # 3
+bits->NextSetBit(4)->PrintLine();    # 64
+```
+	~#
+	class BitSet {
+		@words : Int[];
+		@size : Int;
+
+		#~
+		Default constructor
+
+```
+bits := Collection.BitSet->New();
+bits->Set(10);
+bits->Size()->PrintLine(); # 11
+```
+		~#
+		New() {
+			@words := Int->New[1];
+			@size := 0;
+		}
+
+		#~
+		Constructor for a number of bits, all clear
+		@param size number of bits
+
+```
+bits := Collection.BitSet->New(65);
+bits->Size()->PrintLine(); # 65
+```
+		~#
+		New(size : Int) {
+			if(size < 0) {
+				size := 0;
+			};
+			words := (size + 63) >> 6;
+			if(words < 1) {
+				words := 1;
+			};
+			@words := Int->New[words];
+			@size := size;
+		}
+
+		method : EnsureWords(count : Int) ~ Nil {
+			if(count > @words->Size()) {
+				grow := @words->Size() << 1;
+				if(grow < count) {
+					grow := count;
+				};
+				temp := Int->New[grow];
+				Runtime->Copy(temp, 0, @words, 0, @words->Size());
+				@words := temp;
+			};
+		}
+
+		#~
+		Sets a bit, growing the set when the index is past its size
+		@param index bit index (negative indexes are ignored)
+
+```
+bits := Collection.BitSet->New();
+bits->Set(200);
+bits->Get(200)->PrintLine(); # true
+```
+		~#
+		method : public : native : Set(index : Int) ~ Nil {
+			if(index < 0) {
+				return;
+			};
+
+			word := index >> 6;
+			if(word >= @words->Size()) {
+				EnsureWords(word + 1);
+			};
+			if(index >= @size) {
+				@size := index + 1;
+			};
+
+			@words[word] := @words[word] or (1 << (index and 63));
+		}
+
+		#~
+		Sets or clears a bit
+		@param index bit index (negative indexes are ignored)
+		@param value true to set, false to clear
+
+```
+bits := Collection.BitSet->New(8);
+bits->Set(2, true);
+bits->Get(2)->PrintLine(); # true
+```
+		~#
+		method : public : Set(index : Int, value : Bool) ~ Nil {
+			if(value) {
+				Set(index);
+			}
+			else {
+				Clear(index);
+			};
+		}
+
+		#~
+		Clears a bit
+		@param index bit index (indexes past the size are already clear)
+
+```
+bits := Collection.BitSet->New(8);
+bits->Set(2);
+bits->Clear(2);
+bits->Get(2)->PrintLine(); # false
+```
+		~#
+		method : public : native : Clear(index : Int) ~ Nil {
+			if(index < 0 | index >= @size) {
+				return;
+			};
+
+			word := index >> 6;
+			@words[word] := @words[word] and ((1 << (index and 63)) xor -1);
+		}
+
+		#~
+		Gets a bit
+		@param index bit index
+		@return true if set, false if clear or out of range
+
+```
+bits := Collection.BitSet->New(8);
+bits->Set(5);
+bits->Get(5)->PrintLine(); # true
+bits->Get(6)->PrintLine(); # false
+```
+		~#
+		method : public : native : Get(index : Int) ~ Bool {
+			if(index < 0 | index >= @size) {
+				return false;
+			};
+
+			return ((@words[index >> 6] >> (index and 63)) and 1) = 1;
+		}
+
+		#~
+		Number of bits: the size given to the constructor, or one past the highest bit ever set if that is larger
+		@return number of bits
+
+```
+bits := Collection.BitSet->New(10);
+bits->Size()->PrintLine(); # 10
+```
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Counts the set bits
+		@return number of set bits
+
+```
+bits := Collection.BitSet->New(8);
+bits->Set(1); bits->Set(2);
+bits->Cardinality()->PrintLine(); # 2
+```
+		~#
+		method : public : native : Cardinality() ~ Int {
+			count := 0;
+			words := @words;
+			size := words->Size();
+			for(i := 0; i < size; i += 1;) {
+				count += BitCount(words[i]);
+			};
+			return count;
+		}
+
+		function : private : BitCount(x : Int) ~ Int {
+			if(x = 0) {
+				return 0;
+			};
+			x := x - ((x >> 1) and 0x5555555555555555);
+			x := (x and 0x3333333333333333) + ((x >> 2) and 0x3333333333333333);
+			x := (x + (x >> 4)) and 0x0F0F0F0F0F0F0F0F;
+			return ((x * 0x0101010101010101) >> 56) and 0xFF;
+		}
+
+		#~
+		Finds the next set bit at or after an index
+		@param start index to start at
+		@return index of the next set bit, or -1 if there is none
+
+```
+bits := Collection.BitSet->New(200);
+bits->Set(70); bits->Set(130);
+bits->NextSetBit(0)->PrintLine();   # 70
+bits->NextSetBit(71)->PrintLine();  # 130
+bits->NextSetBit(131)->PrintLine(); # -1
+```
+		~#
+		method : public : native : NextSetBit(start : Int) ~ Int {
+			if(start < 0) {
+				start := 0;
+			};
+			if(start >= @size) {
+				return -1;
+			};
+
+			words := @words;
+			count := words->Size();
+			w := start >> 6;
+			word := words[w] and (-1 << (start and 63));
+			while(true) {
+				if(word <> 0) {
+					# isolate the lowest set bit, then count the bits below it
+					index := (w << 6) + BitCount((word and (0 - word)) - 1);
+					if(index < @size) {
+						return index;
+					};
+					return -1;
+				};
+
+				w += 1;
+				if(w >= count) {
+					return -1;
+				};
+				word := words[w];
+			};
+
+			return -1;
+		}
+
+		#~
+		Keeps only the bits also set in another set (in place)
+		@param that other set (Nil clears every bit)
+		@return this set
+
+```
+a := Collection.BitSet->New(8); a->Set(1); a->Set(2);
+b := Collection.BitSet->New(8); b->Set(2);
+a->And(b)->Cardinality()->PrintLine(); # 1
+```
+		~#
+		method : public : And(that : BitSet) ~ BitSet {
+			words := @words;
+			if(that = Nil) {
+				for(i := 0; i < words->Size(); i += 1;) {
+					words[i] := 0;
+				};
+				return @self;
+			};
+
+			bits := that->GetWords();
+			for(i := 0; i < words->Size(); i += 1;) {
+				if(i < bits->Size()) {
+					words[i] := words[i] and bits[i];
+				}
+				else {
+					words[i] := 0;
+				};
+			};
+			return @self;
+		}
+
+		#~
+		Adds the bits set in another set (in place)
+		@param that other set (Nil changes nothing)
+		@return this set
+
+```
+a := Collection.BitSet->New(8); a->Set(1);
+b := Collection.BitSet->New(8); b->Set(2);
+a->Or(b)->Cardinality()->PrintLine(); # 2
+```
+		~#
+		method : public : Or(that : BitSet) ~ BitSet {
+			if(that = Nil) {
+				return @self;
+			};
+
+			bits := that->GetWords();
+			EnsureWords(bits->Size());
+			words := @words;
+			for(i := 0; i < bits->Size(); i += 1;) {
+				words[i] := words[i] or bits[i];
+			};
+			if(that->Size() > @size) {
+				@size := that->Size();
+			};
+			return @self;
+		}
+
+		#~
+		Flips the bits set in another set (in place)
+		@param that other set (Nil changes nothing)
+		@return this set
+
+```
+a := Collection.BitSet->New(8); a->Set(1); a->Set(2);
+b := Collection.BitSet->New(8); b->Set(2); b->Set(3);
+a->Xor(b)->Cardinality()->PrintLine(); # 2
+```
+		~#
+		method : public : Xor(that : BitSet) ~ BitSet {
+			if(that = Nil) {
+				return @self;
+			};
+
+			bits := that->GetWords();
+			EnsureWords(bits->Size());
+			words := @words;
+			for(i := 0; i < bits->Size(); i += 1;) {
+				words[i] := words[i] xor bits[i];
+			};
+			if(that->Size() > @size) {
+				@size := that->Size();
+			};
+			return @self;
+		}
+
+		#~
+		Clears the bits set in another set (in place)
+		@param that other set (Nil changes nothing)
+		@return this set
+
+```
+a := Collection.BitSet->New(8); a->Set(1); a->Set(2);
+b := Collection.BitSet->New(8); b->Set(2);
+a->AndNot(b)->Get(2)->PrintLine(); # false
+```
+		~#
+		method : public : AndNot(that : BitSet) ~ BitSet {
+			if(that = Nil) {
+				return @self;
+			};
+
+			bits := that->GetWords();
+			words := @words;
+			for(i := 0; i < words->Size(); i += 1;) {
+				if(i < bits->Size()) {
+					words[i] := words[i] and (bits[i] xor -1);
+				};
+			};
+			return @self;
+		}
+
+		#~
+		Gets the backing words; bit i is bit (i and 63) of word (i >> 6). The array is shared, not copied.
+		@return words
+
+```
+bits := Collection.BitSet->New(8);
+bits->Set(0);
+bits->GetWords()[0]->PrintLine(); # 1
+```
+		~#
+		method : public : GetWords() ~ Int[] {
+			return @words;
+		}
+
+		#~
+		Copies the set
+		@return new set with the same bits
+
+```
+a := Collection.BitSet->New(8); a->Set(1);
+b := a->Copy();
+b->Set(2);
+a->Cardinality()->PrintLine(); # 1
+```
+		~#
+		method : public : Copy() ~ BitSet {
+			copy := BitSet->New(@size);
+			copy->Or(@self);
+			return copy;
+		}
+
+		#~
+		Clears every bit; the size is kept
+
+```
+bits := Collection.BitSet->New(8);
+bits->Set(1);
+bits->Empty();
+bits->Cardinality()->PrintLine(); # 0
+```
+		~#
+		method : public : Empty() ~ Nil {
+			words := @words;
+			for(i := 0; i < words->Size(); i += 1;) {
+				words[i] := 0;
+			};
+		}
+
+		#~
+		Formats the set into a string of the indexes of its set bits
+		@return string representation
+
+```
+bits := Collection.BitSet->New(8);
+bits->Set(1); bits->Set(5);
+bits->ToString()->PrintLine(); # {1,5}
+```
+		~#
+		method : public : ToString() ~ String {
+			buffer := "{";
+			count := 0;
+			i := NextSetBit(0);
+			while(i > -1) {
+				if(count > 0) {
+					buffer->Append(',');
+				};
+				buffer->Append(i);
+				count += 1;
+				i := NextSetBit(i + 1);
+			};
+			buffer->Append('}');
+			return buffer;
 		}
 	}
 }
