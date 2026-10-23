@@ -399,6 +399,25 @@ LibraryEnum* Linker::SearchEnumLibraries(const std::wstring& name, const std::ve
     }
   }
 
+  // A bundle-level enum is stored without its bundle (a class with it), so the
+  // qualified 'CbLib.ColumnType' found nothing: look the enum up in a library
+  // that declares the bundle the prefix names. (A library does not record which
+  // of its bundles an enum is in.)
+  const size_t dot = name.find_last_of(L'.');
+  if(dot != std::wstring::npos && name.find(L'#') == std::wstring::npos) {
+    const std::wstring bundle_name = name.substr(0, dot);
+    const std::wstring enum_name = name.substr(dot + 1);
+    std::map<const std::wstring, Library*>::iterator iter;
+    for(iter = libraries.begin(); iter != libraries.end(); ++iter) {
+      if(iter->second->HasBundleName(bundle_name)) {
+        eenum = iter->second->GetEnum(enum_name);
+        if(eenum) {
+          return eenum;
+        }
+      }
+    }
+  }
+
   return nullptr;
 }
 

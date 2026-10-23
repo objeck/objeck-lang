@@ -1,0 +1,124 @@
+#~
+Regression: a cast in a call chain used as a comparison operand.
+
+`x->As(Kid)->Only() <> "only"`, with x typed as the parent class, failed to
+compile with "Invalid cast between classes: 'Kid' and 'System.String'": the
+comparison re-checked the operand's cast (Kid) against the operand's type, which
+is the END of the call chain (String), not the receiver the cast converts.
+Assigning the call to a local first compiled. Checks String and Int returns,
+=, <>, <, >, as either operand, inside if(...), and on a call's result.
+~#
+
+class AsCallMom {
+  New() {}
+}
+
+class AsCallKid from AsCallMom {
+  @name : String;
+
+  New() {
+    Parent();
+    @name := "only";
+  }
+
+  method : public : Only() ~ String {
+    return @name;
+  }
+
+  method : public : Num() ~ Int {
+    return 7;
+  }
+}
+
+class CompileAsCallCompare {
+  @mom : AsCallMom;
+
+  New() {
+    @mom := AsCallKid->New();
+  }
+
+  function : Make() ~ AsCallMom {
+    return AsCallKid->New();
+  }
+
+  method : public : Field() ~ Bool {
+    return @mom->As(AsCallKid)->Num() = 7 & @mom->As(AsCallKid)->Num() <> 8;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    failed := 0;
+
+    x : AsCallMom := AsCallKid->New();
+    same := x->As(AsCallKid)->Only();
+    fresh := "only";
+
+    # String return: '=' and '<>' compare references
+    if(x->As(AsCallKid)->Only() <> same) {
+      "FAIL: String <> on the same object"->PrintLine();
+      failed += 1;
+    };
+
+    if((x->As(AsCallKid)->Only() = fresh) <> (same = fresh)) {
+      "FAIL: String = differs from the same compare through a local"->PrintLine();
+      failed += 1;
+    };
+
+    eq := x->As(AsCallKid)->Only() = same;
+    if(eq = false) {
+      "FAIL: String = assigned"->PrintLine();
+      failed += 1;
+    };
+
+    rhs := same = x->As(AsCallKid)->Only();
+    if(rhs = false) {
+      "FAIL: String = as the right operand"->PrintLine();
+      failed += 1;
+    };
+
+    # Int return
+    if(x->As(AsCallKid)->Num() <> 7) {
+      "FAIL: Int <>"->PrintLine();
+      failed += 1;
+    };
+
+    if((x->As(AsCallKid)->Num() = 7) = false) {
+      "FAIL: Int ="->PrintLine();
+      failed += 1;
+    };
+
+    if((x->As(AsCallKid)->Num() < 9) = false | x->As(AsCallKid)->Num() > 9) {
+      "FAIL: Int < / >"->PrintLine();
+      failed += 1;
+    };
+
+    if((3 < x->As(AsCallKid)->Num()) = false) {
+      "FAIL: Int < as the right operand"->PrintLine();
+      failed += 1;
+    };
+
+    sum := x->As(AsCallKid)->Num() + 1;
+    if(sum <> 8) {
+      "FAIL: Int +"->PrintLine();
+      failed += 1;
+    };
+
+    # a call's result cast in the chain
+    if(Make()->As(AsCallKid)->Num() <> 7 | Make()->As(AsCallKid)->Only()->Size() <> 4) {
+      "FAIL: cast of a call result"->PrintLine();
+      failed += 1;
+    };
+
+    # an instance field
+    if(CompileAsCallCompare->New()->Field() = false) {
+      "FAIL: cast of a field"->PrintLine();
+      failed += 1;
+    };
+
+    if(failed > 0) {
+      "FAIL: {$failed} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: compile_as_call_compare"->PrintLine();
+  }
+}

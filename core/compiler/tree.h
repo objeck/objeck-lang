@@ -4690,6 +4690,23 @@ namespace frontend {
         }
       }
 
+      // A bundle-level enum is named without its bundle (a class is named with
+      // it), so the qualified 'Defs.ColumnType' found nothing: look the enum up
+      // in the bundle the prefix names
+      const size_t dot = n.find_last_of(L'.');
+      if(dot != std::wstring::npos && n.find(L'#') == std::wstring::npos) {
+        const std::wstring bundle_name = n.substr(0, dot);
+        const std::wstring enum_name = n.substr(dot + 1);
+        for(size_t i = 0; i < bundles.size(); ++i) {
+          if(bundles[i]->GetName() == bundle_name) {
+            Enum* e = bundles[i]->GetEnum(enum_name);
+            if(e) {
+              return e;
+            }
+          }
+        }
+      }
+
       return nullptr;
     }
 

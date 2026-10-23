@@ -8151,13 +8151,15 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
     // check operations
     AnalyzeCalculationCast(expression, depth);
 
-    // check for valid operation cast
-    if(left->GetCastType() && left->GetEvalType()) {
+    // check for valid operation cast; an operand whose cast is followed by a call
+    // chain, `x->As(Kid)->Only() <> "only"`, casts the receiver, which AnalyzeCast
+    // already checked: its eval type is the chain's end, not the cast's source
+    if(left->GetCastType() && left->GetEvalType() && !left->GetMethodCall()) {
       AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
     }
 
     // check for valid operation cast
-    if(right->GetCastType() && right->GetEvalType()) {
+    if(right->GetCastType() && right->GetEvalType() && !right->GetMethodCall()) {
       AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
     }
 
@@ -11106,7 +11108,10 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 
    Enum* eenum = SearchProgramEnums(type->GetName());
    if(eenum) {
-      type->SetName(type->GetName());
+      // the enum's own name, as the class and library branches do: 'Defs.ColumnType'
+      // is 'ColumnType', and a class enum found through its class's use,
+      // 'Type', is 'System.Time.DatePart#Type'
+      type->SetName(eenum->GetName());
       type->SetResolved(true);
       return true;
    }
