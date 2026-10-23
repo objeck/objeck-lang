@@ -1,0 +1,390 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Net, System.Time, Web.HTTP.Server;
+
+#~
+# HTTP status codes, end to end
+#
+# The server used to write headers and a body only for a 200. A few other codes
+# (202, 302, 404, 405, 410, 413, 429, 500, 503) went out as an empty response
+# that dropped the handler's headers and body, and every remaining code went out
+# as "400 Bad Request". A handler could not send a 201, 204, 301 or 304, and
+# SetCodeContent(404, "...") lost its body.
+#
+# The client had the matching defect: a 204 or 304 carries no Content-Length,
+# so it fell through to read-until-close, and because the client asks for
+# keep-alive the server held the connection and the client waited out its
+# 30-second receive timeout. The 204 and 304 requests below are timed.
+~#
+class StatusHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		path := request->GetPath();
+		if(path->Equals("/created")) {
+			response->SetHeader("Location", "/items/7");
+			response->SetCodeContent(201, "created-body");
+		}
+		else if(path->Equals("/nocontent")) {
+			# A body set here must not be sent: a 204 has none.
+			response->SetHeader("X-Status-Test", "nocontent");
+			response->SetCodeContent(204, "MUST-NOT-BE-SENT");
+		}
+		else if(path->Equals("/notmodified")) {
+			response->SetHeader("ETag", "\"v1\"");
+			response->SetCodeContent(304, "MUST-NOT-BE-SENT");
+		}
+		else if(path->Equals("/moved")) {
+			response->SetHeader("Location", "/ok");
+			response->SetCode(301);
+		}
+		else if(path->Equals("/found")) {
+			# The older redirect form: the reason string becomes the Location.
+			response->SetCode(302);
+			response->SetReason("/ok");
+		}
+		else if(path->Equals("/missing")) {
+			response->SetHeader("X-Status-Test", "missing");
+			response->SetCodeContent(404, "missing-body");
+		}
+		else if(path->Equals("/teapot")) {
+			response->SetCodeContent(418, "teapot-body");
+		}
+		else if(path->Equals("/boom")) {
+			response->SetCodeContent(500, "boom-body");
+		}
+		else if(path->Equals("/badcode")) {
+			# Cannot go on a status line; answered as a server error.
+			response->SetCodeContent(42, "badcode-body");
+		}
+		else {
+			response->SetHeader("X-Status-Test", "ok");
+			response->SetCodeContent(200, "ok-body");
+		};
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "ok-body");
+		return false;
+	}
+}
+
+class RawResponse {
+	@status : String;
+	@headers : Map<String, String>;
+	@body : String;
+
+	New(status : String, headers : Map<String, String>, body : String) {
+		@status := status;
+		@headers := headers;
+		@body := body;
+	}
+
+	method : public : GetStatus() ~ String { return @status; }
+	method : public : GetHeader(name : String) ~ String { return @headers->Find(name); }
+	method : public : GetBody() ~ String { return @body; }
+}
+
+class HttpStatusCodesTest {
+	@port : static : Int;
+	@passed : static : Bool;
+	@serve_returned : static : Bool;
+
+	function : Port() ~ Int { return @port; }
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	#~
+	# Starts the server on a random port and returns once a client can connect.
+	# Same pattern as http_persistence_test: a random port, because Windows
+	# SO_REUSEADDR lets a second server bind a port with a live listener, and
+	# readiness by a real connect rather than a fixed sleep.
+	~#
+	function : StartServer(host : String) ~ Bool {
+		server_thread : System.Concurrency.Thread;
+		probe : TCPSocket;
+		attempts : Int;
+		tries := 0;
+
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			@serve_returned := false;
+
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(StatusHandler->New()->GetClass(), HttpStatusCodesTest->Port(), false);
+					HttpStatusCodesTest->ServeReturned();
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(<>@serve_returned & attempts < 20) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New(host, @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+
+			tries += 1;
+		};
+
+		return false;
+	}
+
+	# Reads one response. The body is read only as far as Content-Length says,
+	# so bytes a 204 or 304 must not carry would surface as the next status line.
+	function : ReadResponse(socket : TCPSocket, read_body : Bool) ~ RawResponse {
+		headers := Map->New()<String, String>;
+		body := "";
+		name : String;
+		value : String;
+		colon : Int;
+		buffer : Byte[];
+		offset : Int;
+		read : Int;
+
+		status := socket->ReadLine();
+		if(status = Nil) {
+			return RawResponse->New("", headers, body);
+		};
+
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			colon := line->Find(':');
+			if(colon > 0) {
+				name := line->SubString(colon)->ToLower();
+				value := line->SubString(colon + 1, line->Size() - colon - 1)->Trim();
+				headers->Insert(name, value);
+			};
+			line := socket->ReadLine();
+		};
+
+		length_text := headers->Find("content-length");
+		if(read_body & length_text <> Nil & length_text->IsNumeric() & length_text->ToInt() > 0) {
+			buffer := Byte->New[length_text->ToInt()];
+			offset := 0;
+			while(offset < buffer->Size()) {
+				read := socket->ReadBuffer(offset, buffer->Size() - offset, buffer);
+				if(read < 1) {
+					Fail("response body ended before Content-Length");
+					offset := buffer->Size();
+				}
+				else {
+					offset += read;
+				};
+			};
+			body := buffer->ToString();
+		};
+
+		return RawResponse->New(status, headers, body);
+	}
+
+	function : Raw(socket : TCPSocket, verb : String, path : String) ~ RawResponse {
+		socket->WriteString("{$verb} {$path} HTTP/1.1\r\nHost: localhost\r\n\r\n");
+		return ReadResponse(socket, verb->Equals("HEAD") = false);
+	}
+
+	function : ExpectStatus(response : RawResponse, status : String, context : String) ~ Nil {
+		actual := response->GetStatus();
+		if(actual->Equals(status) = false) {
+			Fail("{$context}: status line was '{$actual}', expected '{$status}'");
+		};
+	}
+
+	function : ExpectHeader(response : RawResponse, name : String, value : String, context : String) ~ Nil {
+		actual := response->GetHeader(name);
+		if(value = Nil) {
+			if(actual <> Nil) {
+				Fail("{$context}: unexpected {$name} '{$actual}'");
+			};
+		}
+		else if(actual = Nil) {
+			Fail("{$context}: missing {$name}, expected '{$value}'");
+		}
+		else if(actual->Equals(value) = false) {
+			Fail("{$context}: {$name} was '{$actual}', expected '{$value}'");
+		};
+	}
+
+	function : ExpectBody(response : RawResponse, body : String, context : String) ~ Nil {
+		actual := response->GetBody();
+		if(actual->Equals(body) = false) {
+			Fail("{$context}: body was '{$actual}', expected '{$body}'");
+		};
+	}
+
+	# One request through Web.HTTP.HttpClient. body Nil means no body expected;
+	# header Nil means no header to check.
+	function : CheckClient(path : String, code : Int, body : String, header : String,
+			header_value : String, max_seconds : Float) ~ Nil {
+		port := @port;
+		context := "client GET {$path}";
+		text : String;
+		actual_value : String;
+		content : Byte[];
+
+		client := Web.HTTP.HttpClient->New();
+		timer := Timer->New(true);
+		response := client->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}{$path}"));
+		timer->End();
+		seconds := timer->GetElapsedTime();
+
+		if(seconds > max_seconds) {
+			Fail("{$context}: took {$seconds} s, limit {$max_seconds} s -- waiting for a body that never comes?");
+		};
+
+		if(response = Nil) {
+			Fail("{$context}: no response");
+			return;
+		};
+
+		actual_code := response->GetCode();
+		if(actual_code <> code) {
+			Fail("{$context}: code was {$actual_code}, expected {$code}");
+		};
+
+		content := response->GetContent();
+		if(body = Nil) {
+			if(content <> Nil & content->Size() > 0) {
+				text := content->ToString();
+				Fail("{$context}: expected no body, got '{$text}'");
+			};
+		}
+		else if(content = Nil) {
+			Fail("{$context}: body missing, expected '{$body}'");
+		}
+		else {
+			text := content->ToString();
+			if(text->Equals(body) = false) {
+				Fail("{$context}: body was '{$text}', expected '{$body}'");
+			};
+		};
+
+		if(header <> Nil) {
+			actual_value := client->GetResponseHeaders()->Find(header);
+			if(actual_value = Nil) {
+				Fail("{$context}: header {$header} missing");
+			}
+			else if(actual_value->Equals(header_value) = false) {
+				Fail("{$context}: header {$header} was '{$actual_value}', expected '{$header_value}'");
+			};
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+		host := "127.0.0.1";
+
+		if(StartServer(host) = false) {
+			Fail("test server never started listening");
+			Runtime->Exit(1);
+		};
+
+		# --- HttpClient: every code arrives with its body and headers ---
+		CheckClient("/ok", 200, "ok-body", "x-status-test", "ok", 10.0);
+		CheckClient("/created", 201, "created-body", "location", "/items/7", 10.0);
+		CheckClient("/nocontent", 204, Nil, "x-status-test", "nocontent", 5.0);
+		CheckClient("/notmodified", 304, Nil, "etag", "\"v1\"", 5.0);
+		# Followed: the final response is the redirect target's.
+		CheckClient("/moved", 200, "ok-body", "x-status-test", "ok", 10.0);
+		CheckClient("/found", 200, "ok-body", "x-status-test", "ok", 10.0);
+		CheckClient("/missing", 404, "missing-body", "x-status-test", "missing", 10.0);
+		CheckClient("/teapot", 418, "teapot-body", Nil, Nil, 10.0);
+		CheckClient("/boom", 500, "boom-body", Nil, Nil, 10.0);
+		CheckClient("/badcode", 500, "badcode-body", Nil, Nil, 10.0);
+
+		# --- raw socket: framing on one persistent connection ---
+		socket := TCPSocket->New(host, @port);
+		if(socket->IsOpen() = false) {
+			Fail("could not connect to test server");
+		}
+		else {
+			socket->SetRecvTimeout(5000);
+
+			created := Raw(socket, "GET", "/created");
+			ExpectStatus(created, "HTTP/1.1 201 Created", "raw 201");
+			ExpectHeader(created, "location", "/items/7", "raw 201");
+			ExpectHeader(created, "content-length", "12", "raw 201");
+			ExpectHeader(created, "connection", "keep-alive", "raw 201");
+			ExpectBody(created, "created-body", "raw 201");
+
+			# No Content-Length and no body on a 204 or 304. Had the server sent
+			# the handler's body anyway, it would be read as the next status line.
+			no_content := Raw(socket, "GET", "/nocontent");
+			ExpectStatus(no_content, "HTTP/1.1 204 No Content", "raw 204");
+			ExpectHeader(no_content, "content-length", Nil, "raw 204");
+			ExpectHeader(no_content, "connection", "keep-alive", "raw 204");
+			ExpectHeader(no_content, "x-status-test", "nocontent", "raw 204");
+			after_204 := Raw(socket, "GET", "/ok");
+			ExpectStatus(after_204, "HTTP/1.1 200 OK", "raw request after 204");
+			ExpectBody(after_204, "ok-body", "raw request after 204");
+
+			not_modified := Raw(socket, "GET", "/notmodified");
+			ExpectStatus(not_modified, "HTTP/1.1 304 Not Modified", "raw 304");
+			ExpectHeader(not_modified, "content-length", Nil, "raw 304");
+			ExpectHeader(not_modified, "connection", "keep-alive", "raw 304");
+			ExpectHeader(not_modified, "etag", "\"v1\"", "raw 304");
+			after_304 := Raw(socket, "GET", "/ok");
+			ExpectStatus(after_304, "HTTP/1.1 200 OK", "raw request after 304");
+			ExpectBody(after_304, "ok-body", "raw request after 304");
+
+			moved := Raw(socket, "GET", "/moved");
+			ExpectStatus(moved, "HTTP/1.1 301 Moved Permanently", "raw 301");
+			ExpectHeader(moved, "location", "/ok", "raw 301");
+			ExpectHeader(moved, "content-length", "0", "raw 301");
+
+			found := Raw(socket, "GET", "/found");
+			ExpectStatus(found, "HTTP/1.1 302 Found", "raw 302");
+			ExpectHeader(found, "location", "/ok", "raw 302");
+			ExpectHeader(found, "connection", "keep-alive", "raw 302");
+
+			missing := Raw(socket, "GET", "/missing");
+			ExpectStatus(missing, "HTTP/1.1 404 Not Found", "raw 404");
+			ExpectHeader(missing, "content-length", "12", "raw 404");
+			ExpectBody(missing, "missing-body", "raw 404");
+
+			# HEAD: the GET's headers, Content-Length included, and no body.
+			missing_head := Raw(socket, "HEAD", "/missing");
+			ExpectStatus(missing_head, "HTTP/1.1 404 Not Found", "raw HEAD 404");
+			ExpectHeader(missing_head, "x-status-test", "missing", "raw HEAD 404");
+			ExpectHeader(missing_head, "content-length", "12", "raw HEAD 404");
+			after_head := Raw(socket, "GET", "/ok");
+			ExpectStatus(after_head, "HTTP/1.1 200 OK", "raw request after HEAD");
+			ExpectBody(after_head, "ok-body", "raw request after HEAD");
+
+			teapot := Raw(socket, "GET", "/teapot");
+			ExpectStatus(teapot, "HTTP/1.1 418 Client Error", "raw 418");
+			ExpectBody(teapot, "teapot-body", "raw 418");
+
+			boom := Raw(socket, "GET", "/boom");
+			ExpectStatus(boom, "HTTP/1.1 500 Internal Server Error", "raw 500");
+			ExpectBody(boom, "boom-body", "raw 500");
+
+			bad_code := Raw(socket, "GET", "/badcode");
+			ExpectStatus(bad_code, "HTTP/1.1 500 Internal Server Error", "raw out-of-range code");
+
+			last := Raw(socket, "GET", "/ok");
+			ExpectStatus(last, "HTTP/1.1 200 OK", "raw final request");
+			ExpectBody(last, "ok-body", "raw final request");
+			socket->Close();
+		};
+
+		WebServer->Stop();
+		if(@passed) {
+			"PASS: HTTP status codes"->PrintLine();
+		}
+		else {
+			Runtime->Exit(1);
+		};
+	}
+}

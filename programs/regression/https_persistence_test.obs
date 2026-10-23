@@ -16,6 +16,14 @@ class HttpsPersistenceHandler from HttpsRequestHandler {
 		if(request->GetPath()->Equals("/empty")) {
 			response->SetCode(200);
 		}
+		else if(request->GetPath()->Equals("/notmodified")) {
+			# The body must not be sent: a 304 has none (see http_status_codes).
+			response->SetHeader("ETag", "\"v1\"");
+			response->SetCodeContent(304, "MUST-NOT-BE-SENT");
+		}
+		else if(request->GetPath()->Equals("/missing")) {
+			response->SetCodeContent(404, "missing-body");
+		}
 		else {
 			response->SetCodeContent(200, "ok");
 		};
@@ -168,6 +176,36 @@ class HttpsPersistenceTest {
 			Expect(body, "200", "keep-alive", "TLS GET with body");
 			next := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
 			Expect(next, "200", "keep-alive", "TLS request after body");
+			# A 304 carries no Content-Length and no body; the handler's body would
+			# otherwise be read as the next status line.
+			not_modified := Request(socket, "GET /notmodified HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			if(not_modified->GetFirst()->Equals("HTTP/1.1 304 Not Modified") = false) {
+				Fail("TLS 304: status was '{$not_modified->GetFirst()}'");
+			};
+			not_modified_headers := not_modified->GetSecond();
+			if(not_modified_headers->Find("content-length") <> Nil) {
+				Fail("TLS 304 carried a Content-Length");
+			};
+			not_modified_etag := not_modified_headers->Find("etag");
+			if(not_modified_etag = Nil) {
+				Fail("TLS 304 lost the handler's ETag");
+			}
+			else if(not_modified_etag->Equals("\"v1\"") = false) {
+				Fail("TLS 304 ETag was '{$not_modified_etag}'");
+			};
+			after_304 := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(after_304, "200", "keep-alive", "TLS request after 304");
+
+			missing := Request(socket, "GET /missing HTTP/1.1\r\nHost: localhost\r\n\r\n");
+			Expect(missing, "404", "keep-alive", "TLS 404 with body");
+			missing_length := missing->GetSecond()->Find("content-length");
+			if(missing_length = Nil) {
+				Fail("TLS 404 carried no Content-Length");
+			}
+			else if(missing_length->Equals("12") = false) {
+				Fail("TLS 404 body was dropped: Content-Length '{$missing_length}'");
+			};
+
 			unsupported := Request(socket, "OPTIONS /ok HTTP/1.1\r\nHost: localhost\r\n\r\n");
 			Expect(unsupported, "405", "keep-alive", "TLS unsupported method");
 			closing := Request(socket, "GET /ok HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
@@ -195,6 +233,42 @@ class HttpsPersistenceTest {
 			}
 			else if(client_content->ToString()->Equals("ok") = false) {
 				Fail("HttpsClient GET body was '{$client_content->ToString()}'");
+			};
+		};
+
+		# HttpsClient on a 304: it must not wait for a body. The server holds the
+		# connection (the client asks for keep-alive), so a client that reads until
+		# close sits out its whole receive timeout here.
+		not_modified_client := Web.HTTP.HttpsClient->New();
+		not_modified_timer := System.Time.Timer->New(true);
+		not_modified_response := not_modified_client->Get(Web.HTTP.Url->New("https://localhost:{$@port}/notmodified"), "text/plain", cert);
+		not_modified_timer->End();
+		not_modified_seconds := not_modified_timer->GetElapsedTime();
+		if(not_modified_seconds > 5.0) {
+			Fail("HttpsClient 304 took {$not_modified_seconds} s -- waiting for a body that never comes?");
+		};
+		if(not_modified_response = Nil) {
+			Fail("HttpsClient 304 returned Nil");
+		}
+		else if(not_modified_response->GetCode() <> 304) {
+			Fail("HttpsClient 304 returned status {$not_modified_response->GetCode()}");
+		};
+
+		missing_client := Web.HTTP.HttpsClient->New();
+		missing_response := missing_client->Get(Web.HTTP.Url->New("https://localhost:{$@port}/missing"), "text/plain", cert);
+		if(missing_response = Nil) {
+			Fail("HttpsClient 404 returned Nil");
+		}
+		else {
+			missing_content := missing_response->GetContent();
+			if(missing_response->GetCode() <> 404) {
+				Fail("HttpsClient 404 returned status {$missing_response->GetCode()}");
+			}
+			else if(missing_content = Nil) {
+				Fail("HttpsClient 404 returned no body");
+			}
+			else if(missing_content->ToString()->Equals("missing-body") = false) {
+				Fail("HttpsClient 404 body was '{$missing_content->ToString()}'");
 			};
 		};
 
