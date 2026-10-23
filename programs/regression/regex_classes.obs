@@ -1,0 +1,273 @@
+# EXTRA_LIBS: regex
+#
+# Query.RegEx: character classes (several ranges, negation, punctuation, escapes,
+# literal '-' and ']'), \b and \B word boundaries, empty matches of * ? {0,n},
+# numbered capture groups and (?:...), and '$' followed by more pattern.
+use Query.RegEx;
+
+class RegexClasses {
+	@ok : Int;
+	@bad : Int;
+
+	New() {
+		@ok := 0;
+		@bad := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := RegexClasses->New();
+		t->Run();
+	}
+
+	method : Run() ~ Nil {
+		Classes();
+		Boundaries();
+		EmptyMatches();
+		Groups();
+		Anchors();
+
+		if(@bad > 0) {
+			"FAIL: regex_classes, {$@bad} failed, {$@ok} passed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: regex_classes ({$@ok} checks)"->PrintLine();
+	}
+
+	method : Classes() ~ Nil {
+		# several ranges
+		Exact("[a-zA-Z]+", "HelloWorld", true);
+		Exact("[a-zA-Z]+", "Hello1", false);
+		Exact("[a-z0-9]+", "abc123", true);
+		Exact("[a-z0-9]+", "abc-1", false);
+		Exact("[a-z_]+", "snake_case", true);
+		Exact("[A-Fa-f0-9]+", "DeadBeef42", true);
+		First("[A-Z][a-z]+", "the Quick fox", "Quick", 4);
+
+		# literal punctuation
+		Exact("[.,;]", ",", true);
+		Exact("[.,;]", "a", false);
+		First("[.,;]+", "end.;, next", ".;,", 3);
+		Exact("[$.*+?(){}|]+", "$.*+?(){}|", true);
+		Exact("[$.*+?(){}|]+", "a", false);
+		Exact("[a^]+", "^a^", true);
+
+		# negation
+		Exact("[^abc]+", "xyz", true);
+		Exact("[^abc]+", "xaz", false);
+		First("[^0-9]+", "123abc456", "abc", 3);
+		First("[^\\s]+", "   word   ", "word", 3);
+		Exact("[^a-z]", "", false);
+
+		# escapes inside a class
+		Exact("[\\d.]+", "3.14", true);
+		Exact("[\\w-]+", "foo-bar_1", true);
+		Exact("[\\s,]+", ", \t,", true);
+		Exact("[\\]]", "]", true);
+		Exact("[\\\\]", "\\", true);
+		Exact("[a\\-z]", "-", true);
+		Exact("[a\\-z]", "b", false);
+		Exact("[\\t]", "\t", true);
+		Exact("[\\D]+", "ab-", true);
+		Exact("[\\D]+", "a1", false);
+		Exact("[\\d-z]+", "1-z", true);
+
+		# '-' first or last, ']' first
+		Exact("[-a]+", "-a-", true);
+		Exact("[a-]+", "a-", true);
+		Exact("[a-]", "b", false);
+		Exact("[a-c-]+", "abc-", true);
+		Exact("[]a]+", "]a", true);
+		Exact("[^]a]", "]", false);
+		Exact("[^]a]", "b", true);
+
+		# old forms still work
+		Exact("1[3-5]9", "149", true);
+		Exact("1[3-5]9", "129", false);
+		Exact("[abc]+", "cab", true);
+
+		# malformed classes are rejected
+		Bad("[z-a]");
+		Bad("[abc");
+		Bad("[]");
+		Bad("[^]");
+		Bad("[a\\");
+	}
+
+	method : Boundaries() ~ Nil {
+		First("\\bcat\\b", "concat cat category", "cat", 7);
+		Exact("\\bcat\\b", "cat", true);
+		First("\\Bcat", "concat cat", "cat", 3);
+		FindCount("\\bcat", "concat cat category", 2);
+		FindCount("\\b\\w+\\b", "hi there, you", 3);
+		FindCount("a\\bb", "ab a b", 0);
+		First("\\d+\\b", "x 12a 345 y", "345", 6);
+		Exact("[\\b]", "\b", true);
+	}
+
+	method : EmptyMatches() ~ Nil {
+		Exact("x*", "", true);
+		Exact("x?", "", true);
+		Exact("x{0,2}", "", true);
+		Exact("x{0,2}", "xx", true);
+		Exact("x{0,2}", "xxx", false);
+		Exact("x+", "", false);
+		Exact("(ab)*", "", true);
+		Exact("(ab)*", "abab", true);
+
+		re := RegEx->New("x*");
+		Check(re->Match("")->Equals(""), "Match x* on empty string");
+		r := re->FindFirst("");
+		Check(r <> Nil, "FindFirst x* on empty string");
+		if(r <> Nil) {
+			Check(r->GetStart() = 0 & r->GetLength() = 0, "FindFirst x* empty result");
+		};
+		First("x*", "abc", "", 0);
+		Check(RegEx->New("\\d+")->FindFirst("") = Nil, "FindFirst \\d+ on empty string");
+
+		# Find skips empty matches
+		found := RegEx->New("x*")->Find("axxbx")<Result>;
+		Check(found->Size() = 2, "Find x* count");
+		if(found->Size() = 2) {
+			Check(found->Get(0)->GetValue()->Equals("xx") & found->Get(0)->GetStart() = 1, "Find x* first");
+			Check(found->Get(1)->GetValue()->Equals("x") & found->Get(1)->GetStart() = 4, "Find x* second");
+		};
+	}
+
+	method : Groups() ~ Nil {
+		re := RegEx->New("(\\d+)-(\\d+)");
+		r := re->FindFirst("tel 555-1234 now");
+		Check(r <> Nil, "groups: match");
+		if(r <> Nil) {
+			Check(r->GroupCount() = 2, "groups: count");
+			Group(r, 0, "555-1234");
+			Group(r, 1, "555");
+			Group(r, 2, "1234");
+			Check(r->GetGroupStart(2) = 8, "groups: start of group 2");
+			Check(r->GetGroup(3) = Nil, "groups: out of range");
+		};
+
+		# last iteration of a repeated group
+		r := RegEx->New("(a|b)+")->FindFirst("abba");
+		if(r <> Nil) { Group(r, 1, "a"); } else { Check(false, "repeat group match"); };
+
+		# a group that did not take part
+		r := RegEx->New("(x)?y")->FindFirst("y");
+		if(r <> Nil) {
+			Check(r->GetGroup(1) = Nil & r->GetGroupStart(1) = -1, "groups: absent group is Nil");
+		} else { Check(false, "absent group match"); };
+
+		# non-capturing and nested groups
+		r := RegEx->New("(?:ab)+(c)")->FindFirst("xababc");
+		if(r <> Nil) {
+			Check(r->GroupCount() = 1, "groups: (?:) does not count");
+			Group(r, 0, "ababc");
+			Group(r, 1, "c");
+		} else { Check(false, "non-capturing match"); };
+		Bad("(?=a)");
+
+		r := RegEx->New("((a)(b))")->FindFirst("zab");
+		if(r <> Nil) {
+			Group(r, 1, "ab");
+			Group(r, 2, "a");
+			Group(r, 3, "b");
+		} else { Check(false, "nested group match"); };
+
+		# greedy priority among equal-length paths
+		r := RegEx->New("(a*)(a*)")->FindFirst("aaa");
+		if(r <> Nil) {
+			Group(r, 1, "aaa");
+			Group(r, 2, "");
+		} else { Check(false, "greedy group match"); };
+
+		r := RegEx->New("^(\\w+)@(\\w+)\\.com$")->FindFirst("joe@example.com");
+		if(r <> Nil) {
+			Group(r, 1, "joe");
+			Group(r, 2, "example");
+		} else { Check(false, "email group match"); };
+
+		# groups on every Find result
+		found := RegEx->New("(\\w)(\\d)")->Find("a1 b2 c3")<Result>;
+		Check(found->Size() = 3, "Find groups count");
+		if(found->Size() = 3) {
+			Group(found->Get(1), 1, "b");
+			Group(found->Get(2), 2, "3");
+		};
+
+		# no groups: GroupCount 0, group 0 is still the match
+		r := RegEx->New("\\d+")->FindFirst("ab 42");
+		if(r <> Nil) {
+			Check(r->GroupCount() = 0, "no groups count");
+			Group(r, 0, "42");
+		};
+	}
+
+	method : Anchors() ~ Nil {
+		# '$' must be followed by the end of input, not end the match early
+		Check(RegEx->New("a$b")->FindFirst("a") = Nil, "a$b does not match a");
+		Exact("(x$|y)", "x", true);
+		Exact("ab$", "ab", true);
+		First("ab$", "abab", "ab", 2);
+		Exact("^ab", "ab", true);
+	}
+
+	# ---------- helpers ----------
+
+	method : Check(cond : Bool, name : String) ~ Nil {
+		if(cond) {
+			@ok += 1;
+		}
+		else {
+			"FAIL: {$name}"->PrintLine();
+			@bad += 1;
+		};
+	}
+
+	method : Exact(pattern : String, input : String, expect : Bool) ~ Nil {
+		re := RegEx->New(pattern);
+		if(<>re->IsOk()) {
+			Check(false, "IsOk '{$pattern}'");
+			return;
+		};
+		Check(re->MatchExact(input) = expect, "MatchExact '{$pattern}' on '{$input}' should be {$expect}");
+	}
+
+	method : Bad(pattern : String) ~ Nil {
+		Check(<>RegEx->New(pattern)->IsOk(), "'{$pattern}' should not compile");
+	}
+
+	method : First(pattern : String, input : String, value : String, start : Int) ~ Nil {
+		re := RegEx->New(pattern);
+		if(<>re->IsOk()) {
+			Check(false, "IsOk '{$pattern}'");
+			return;
+		};
+		r := re->FindFirst(input);
+		if(r = Nil) {
+			Check(false, "FindFirst '{$pattern}' on '{$input}' found nothing, expected '{$value}'");
+			return;
+		};
+		got := r->GetValue();
+		got_start := r->GetStart();
+		Check(got->Equals(value) & got_start = start,
+			"FindFirst '{$pattern}' on '{$input}' gave '{$got}' at {$got_start}, expected '{$value}' at {$start}");
+	}
+
+	method : FindCount(pattern : String, input : String, count : Int) ~ Nil {
+		re := RegEx->New(pattern);
+		if(<>re->IsOk()) {
+			Check(false, "IsOk '{$pattern}'");
+			return;
+		};
+		size := re->Find(input)->Size();
+		Check(size = count, "Find '{$pattern}' on '{$input}' gave {$size}, expected {$count}");
+	}
+
+	method : Group(r : Result, index : Int, value : String) ~ Nil {
+		got := r->GetGroup(index);
+		if(got = Nil) {
+			Check(false, "group {$index} is Nil, expected '{$value}'");
+			return;
+		};
+		Check(got->Equals(value), "group {$index} is '{$got}', expected '{$value}'");
+	}
+}

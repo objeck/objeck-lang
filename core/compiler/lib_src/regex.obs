@@ -7,11 +7,12 @@
 use Collection;
 
 #~
-Regular expression matching and replacement. RegEx compiles a pattern once and supports full match, substring search, capture groups, and global replacement. Included in lang.obl.
+Regular expression matching and replacement. RegEx compiles a pattern once and supports full match, substring search, numbered capture groups, and global replacement. Link with -lib regex.
 ~#
 bundle Query.RegEx {
 	#~
-	Regular expression engine.
+	Regular expression engine. A match is the leftmost-longest one; when several paths give that
+	match, capture groups take their values from the greedy (highest-priority) path.
 
 	<p>Support for following patterns:<p>
 	<ul>
@@ -19,10 +20,14 @@ bundle Query.RegEx {
 		<li>optional &#8208; ?</li>
 		<li>zero or more repetitions &#8208; *</li>
 		<li>one or more repetitions &#8208; +</li>
-		<li>first single match &#8208; ^</li>
-		<li>last single match &#8208; $</li>
-		<li> (one|two|three) &#8208; group</li>
-		<li>[start-end] &#8208; range</li>
+		<li>repeat &#8208; {least} or {least, most}</li>
+		<li>start of input &#8208; ^</li>
+		<li>end of input &#8208; $</li>
+		<li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup</li>
+		<li>(?:one|two) &#8208; non-capturing group</li>
+		<li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)</li>
+		<li>[^abc] &#8208; negated character class</li>
+		<li>inside a class: \d \w \s \D \W \S, \] \\ \- and other escaped literals; a leading or trailing '-' and a ']' first are literals</li>
 	</ul>
 
 	<p>Support for following special groups:<p>
@@ -33,7 +38,9 @@ bundle Query.RegEx {
 		<li>not digit &#8208; \D</li>
 		<li>white space &#8208; \s</li>
 		<li>not white space &#8208; \S</li>
-		<li>repeat &#8208; {least, most}
+		<li>word boundary &#8208; \b</li>
+		<li>not a word boundary &#8208; \B</li>
+		<li>newline, carriage return, tab &#8208; \n \r \t</li>
 	</ul>
 
 	```
@@ -60,6 +67,8 @@ each(i : found) {
 		@expressions : Vector<Expression>;
 		@error : String;
 		@starts_anchor : Bool;
+		@group_count : Int;
+		@class_shorthand : Bool;
 
 		# compiled NFA program (parallel simulation)
 		@program : Vector<Instruction>;
@@ -85,6 +94,7 @@ if(re->IsOk()) {
 			@tokens := stream_in->ToCharArray();
 			@expressions := Vector->New()<Expression>;
 			@program := Vector->New()<Instruction>;
+			@group_count := 0;
 
 			Parse();
 			if(@error = Nil) {
@@ -183,7 +193,8 @@ if(result <> Nil) {
 
 			left := 0;
 			input_size := stream_in->Size();
-			while(left < input_size) {
+			# '<=' so a pattern that matches the empty string also matches at the end of the input
+			while(left <= input_size) {
 				if(first_char <> '\0') {
 					while(left < input_size & stream_in->Get(left) <> first_char) {
 						left += 1;
@@ -195,8 +206,7 @@ if(result <> Nil) {
 
 				right := Evaluate(stream_in, left);
 				if(right > -1) {
-					length := right - left;
-					return Result->New(left, length, stream_in->SubString(left, length));
+					return MakeResult(stream_in, left, right);
 				};
 
 				if(is_anchored) {
@@ -209,7 +219,7 @@ if(result <> Nil) {
 		}
 
 		#~
-		Finds all occurrences
+		Finds all non-empty, non-overlapping occurrences
 		@param stream_in string to match against
 		@return vector of string matches
 
@@ -247,8 +257,7 @@ each(r := results) {
 					right := Evaluate(stream_in, left);
 					if(right > -1 & left <> right) {
 						if(left < right) {
-							length := right - left;
-							matches->AddBack(Result->New(left, length, stream_in->SubString(left, length)));
+							matches->AddBack(MakeResult(stream_in, left, right));
 							left := right - 1;
 						};
 					};
@@ -372,11 +381,15 @@ result->PrintLine();
 				}
 
 				label Expression->Type->CHAR_CLASS: {
-					@program->AddBack(Instruction->NewClass(expr->GetClass(), false));
+					@program->AddBack(Instruction->NewClass(expr->GetSet()));
 				}
 
-				label Expression->Type->CHAR_CLASS_RANGE: {
-					@program->AddBack(Instruction->NewClass(expr->GetClass(), true));
+				label Expression->Type->WORD_BOUNDARY: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->WORD_BOUND));
+				}
+
+				label Expression->Type->NOT_WORD_BOUNDARY: {
+					@program->AddBack(Instruction->NewOp(Instruction->Op->NOT_WORD_BOUND));
 				}
 
 				label Expression->Type->STARTS_ANCHOR: {
@@ -508,13 +521,98 @@ result->PrintLine();
 				}
 
 				label Expression->Type->SUB_EXPR: {
+					# a capturing group saves its start and end positions in slots 2g and 2g+1
+					group := expr->GetGroup();
+					if(group > 0) {
+						@program->AddBack(Instruction->NewSave(group * 2));
+					};
 					CompileExprs(expr->GetLeft());
+					if(group > 0) {
+						@program->AddBack(Instruction->NewSave(group * 2 + 1));
+					};
 				}
 			};
 		}
 
+		# Builds a Result for the match [left, right), filling in the capture groups if the pattern has any.
+		method : private : MakeResult(stream_in : String, left : Int, right : Int) ~ Result {
+			length := right - left;
+			value := stream_in->SubString(left, length);
+			if(@group_count = 0) {
+				return Result->New(left, length, value);
+			};
+
+			caps := Captures(stream_in, left, right);
+			starts := Int->New[@group_count + 1];
+			values := String->New[@group_count + 1];
+			starts[0] := left;
+			values[0] := value;
+			for(g := 1; g <= @group_count; g += 1;) {
+				s := caps[g * 2];
+				e := caps[g * 2 + 1];
+				if(s > -1 & e >= s) {
+					starts[g] := s;
+					values[g] := stream_in->SubString(s, e - s);
+				}
+				else {
+					starts[g] := -1;
+				};
+			};
+
+			return Result->New(left, length, value, starts, values);
+		}
+
+		# True if the character at 'pos' exists and is a word character
+		method : private : IsWordAt(stream_in : String, pos : Int, input_size : Int) ~ Bool {
+			if(pos < 0 | pos >= input_size) {
+				return false;
+			};
+			return CharSet->IsWord(stream_in->Get(pos));
+		}
+
+		# True if 'pos' is a word boundary (a word character on exactly one side)
+		method : private : IsBoundary(stream_in : String, pos : Int, input_size : Int) ~ Bool {
+			before := IsWordAt(stream_in, pos - 1, input_size);
+			after := IsWordAt(stream_in, pos, input_size);
+			return before <> after;
+		}
+
+		# True if the char-consuming instruction accepts 'c'
+		method : private : Accepts(instr : Instruction, c : Char) ~ Bool {
+			op := instr->GetOp();
+			if(op = Instruction->Op->CHAR->As(Int)) {
+				return instr->GetChar() = c;
+			}
+			else if(op = Instruction->Op->ANY->As(Int)) {
+				return c <> '\0';
+			}
+			else if(op = Instruction->Op->DIGIT->As(Int)) {
+				return c->IsDigit();
+			}
+			else if(op = Instruction->Op->NOT_DIGIT->As(Int)) {
+				return c <> '\0' & <>c->IsDigit();
+			}
+			else if(op = Instruction->Op->WORD->As(Int)) {
+				return CharSet->IsWord(c);
+			}
+			else if(op = Instruction->Op->NOT_WORD->As(Int)) {
+				return c <> '\0' & <>CharSet->IsWord(c);
+			}
+			else if(op = Instruction->Op->WHITESPACE->As(Int)) {
+				return CharSet->IsSpace(c);
+			}
+			else if(op = Instruction->Op->NOT_WHITESPACE->As(Int)) {
+				return c <> '\0' & <>CharSet->IsSpace(c);
+			}
+			else if(op = Instruction->Op->CLASS->As(Int)) {
+				return c <> '\0' & instr->GetSet()->Contains(c);
+			};
+
+			return false;
+		}
+
 		# Follow epsilon transitions and record char-consuming PCs in threads[0..n_ref-1].
-		method : private : AddThread(pc : Int, threads : Int[], n_ref : IntRef, visited : Int[], gen : Int, pos : Int, input_size : Int, match_end : IntRef) ~ Nil {
+		method : private : AddThread(pc : Int, threads : Int[], n_ref : IntRef, visited : Int[], gen : Int, stream_in : String, pos : Int, input_size : Int, match_end : IntRef) ~ Nil {
 			prog_size := @program->Size();
 			while(pc < prog_size & visited[pc] <> gen) {
 				visited[pc] := gen;
@@ -523,11 +621,15 @@ result->PrintLine();
 				if(op = Instruction->Op->SPLIT->As(Int)) {
 					t1 := @program->Get(pc)->GetTarget1();
 					t2 := @program->Get(pc)->GetTarget2();
-					AddThread(t1, threads, n_ref, visited, gen, pos, input_size, match_end);
+					AddThread(t1, threads, n_ref, visited, gen, stream_in, pos, input_size, match_end);
 					pc := t2;
 				}
 				else if(op = Instruction->Op->JUMP->As(Int)) {
 					pc := @program->Get(pc)->GetTarget1();
+				}
+				else if(op = Instruction->Op->SAVE->As(Int)) {
+					# captures are recovered by a second pass, see Captures()
+					pc += 1;
 				}
 				else if(op = Instruction->Op->MATCH->As(Int)) {
 					match_end->Set(pos);
@@ -543,9 +645,27 @@ result->PrintLine();
 				}
 				else if(op = Instruction->Op->ANC_END->As(Int)) {
 					if(pos = input_size) {
-						match_end->Set(pos);
+						pc += 1;
+					}
+					else {
+						return;
 					};
-					return;
+				}
+				else if(op = Instruction->Op->WORD_BOUND->As(Int)) {
+					if(IsBoundary(stream_in, pos, input_size)) {
+						pc += 1;
+					}
+					else {
+						return;
+					};
+				}
+				else if(op = Instruction->Op->NOT_WORD_BOUND->As(Int)) {
+					if(IsBoundary(stream_in, pos, input_size)) {
+						return;
+					}
+					else {
+						pc += 1;
+					};
 				}
 				else {
 					n := n_ref->Get();
@@ -556,15 +676,16 @@ result->PrintLine();
 			};
 		}
 
-		# Parallel NFA simulation. Returns end position of match, or -1.
-		# Uses two pre-allocated Int[] arrays swapped each step — zero hot-path allocation.
+		# Parallel NFA simulation. Returns end position of the longest match starting at 'offset', or -1.
+		# Uses two pre-allocated Int[] arrays swapped each step â€” zero hot-path allocation.
 		method : Evaluate(stream_in : String, offset : Int) ~ Int {
 			if(@error <> Nil | @program->Size() = 0) {
 				return -1;
 			};
 
+			# offset = input_size is allowed: a pattern such as 'x*' matches the empty string there
 			input_size := stream_in->Size();
-			if(offset >= input_size) {
+			if(offset < 0 | offset > input_size) {
 				return -1;
 			};
 
@@ -579,18 +700,12 @@ result->PrintLine();
 			match_holder := IntRef->New(-1);
 			gen := 1;
 
-			AddThread(0, cur, cur_n, visited, gen, offset, input_size, match_holder);
+			AddThread(0, cur, cur_n, visited, gen, stream_in, offset, input_size, match_holder);
 			match_end := match_holder->Get();
 			pos := offset;
 
-			while(pos <= input_size & cur_n->Get() > 0) {
-				c : Char;
-				if(pos < input_size) {
-					c := stream_in->Get(pos);
-				}
-				else {
-					c := '\0';
-				};
+			while(pos < input_size & cur_n->Get() > 0) {
+				c := stream_in->Get(pos);
 
 				gen += 1;
 				nxt_n->Set(0);
@@ -600,45 +715,9 @@ result->PrintLine();
 				lim := cur_n->Get();
 				while(k < lim) {
 					pc := cur[k];
-					instr := @program->Get(pc);
-					op := instr->GetOp();
-					matched := false;
-
-					if(op = Instruction->Op->CHAR->As(Int)) {
-						matched := instr->GetChar() = c;
-					}
-					else if(op = Instruction->Op->ANY->As(Int)) {
-						matched := c <> '\0';
-					}
-					else if(op = Instruction->Op->DIGIT->As(Int)) {
-						matched := c->IsDigit();
-					}
-					else if(op = Instruction->Op->NOT_DIGIT->As(Int)) {
-						matched := c <> '\0' & <>c->IsDigit();
-					}
-					else if(op = Instruction->Op->WORD->As(Int)) {
-						matched := c->IsDigit() | c->IsChar() | c = '_';
-					}
-					else if(op = Instruction->Op->NOT_WORD->As(Int)) {
-						matched := c <> '\0' & <>c->IsDigit() & <>c->IsChar() & c <> '_';
-					}
-					else if(op = Instruction->Op->WHITESPACE->As(Int)) {
-						matched := c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xB;
-					}
-					else if(op = Instruction->Op->NOT_WHITESPACE->As(Int)) {
-						matched := c <> '\0' & <>c = ' ' & <>c = '\t' & <>c = '\r' & <>c = '\n' & <>c = 0xB;
-					}
-					else if(op = Instruction->Op->CLASS->As(Int)) {
-						matched := c <> '\0' & InClass(instr->GetClass(), c);
-					}
-					else if(op = Instruction->Op->RANGE->As(Int)) {
-						matched := c <> '\0' & InRange(instr->GetClass(), c);
+					if(Accepts(@program->Get(pc), c)) {
+						AddThread(pc + 1, nxt, nxt_n, visited, gen, stream_in, pos + 1, input_size, match_holder);
 					};
-
-					if(matched) {
-						AddThread(pc + 1, nxt, nxt_n, visited, gen, pos + 1, input_size, match_holder);
-					};
-
 					k += 1;
 				};
 
@@ -664,18 +743,123 @@ result->PrintLine();
 			return -1;
 		}
 
-		method : private : InRange(char_class : String, check : Char) ~ Bool {
-			return char_class->Get(0) <= check & char_class->Get(2) >= check;
-		}
+		# Capture-tracking variant of AddThread. 'caps' is a scratch array updated in place by SAVE and
+		# restored afterwards; each recorded thread gets its own copy in thread_caps[slot * ncap ...].
+		method : private : AddThreadCap(pc : Int, caps : Int[], threads : Int[], thread_caps : Int[], n_ref : IntRef, ncap : Int,
+				visited : Int[], gen : Int, stream_in : String, pos : Int, input_size : Int, target : Int, found : Int[], found_ref : IntRef) ~ Nil {
+			prog_size := @program->Size();
+			while(pc < prog_size & visited[pc] <> gen) {
+				visited[pc] := gen;
+				instr := @program->Get(pc);
+				op := instr->GetOp();
 
-		method : private : InClass(char_class : String, check : Char) ~ Bool {
-			for(i := 0; i < char_class->Size(); i += 1;) {
-				if(char_class->Get(i) = check) {
-					return true;
+				if(op = Instruction->Op->SPLIT->As(Int)) {
+					AddThreadCap(instr->GetTarget1(), caps, threads, thread_caps, n_ref, ncap, visited, gen, stream_in, pos, input_size, target, found, found_ref);
+					pc := instr->GetTarget2();
+				}
+				else if(op = Instruction->Op->JUMP->As(Int)) {
+					pc := instr->GetTarget1();
+				}
+				else if(op = Instruction->Op->SAVE->As(Int)) {
+					slot := instr->GetTarget1();
+					old := caps[slot];
+					caps[slot] := pos;
+					AddThreadCap(pc + 1, caps, threads, thread_caps, n_ref, ncap, visited, gen, stream_in, pos, input_size, target, found, found_ref);
+					caps[slot] := old;
+					return;
+				}
+				else if(op = Instruction->Op->MATCH->As(Int)) {
+					# the first thread to match at the target end has the highest priority
+					if(pos = target & found_ref->Get() = 0) {
+						for(i := 0; i < ncap; i += 1;) {
+							found[i] := caps[i];
+						};
+						found_ref->Set(1);
+					};
+					return;
+				}
+				else if(op = Instruction->Op->ANC_START->As(Int)) {
+					if(pos = 0) { pc += 1; } else { return; };
+				}
+				else if(op = Instruction->Op->ANC_END->As(Int)) {
+					if(pos = input_size) { pc += 1; } else { return; };
+				}
+				else if(op = Instruction->Op->WORD_BOUND->As(Int)) {
+					if(IsBoundary(stream_in, pos, input_size)) { pc += 1; } else { return; };
+				}
+				else if(op = Instruction->Op->NOT_WORD_BOUND->As(Int)) {
+					if(IsBoundary(stream_in, pos, input_size)) { return; } else { pc += 1; };
+				}
+				else {
+					n := n_ref->Get();
+					threads[n] := pc;
+					base := n * ncap;
+					for(i := 0; i < ncap; i += 1;) {
+						thread_caps[base + i] := caps[i];
+					};
+					n_ref->Set(n + 1);
+					return;
 				};
 			};
+		}
 
-			return false;
+		# Re-runs the NFA over a known match [left, right) tracking capture positions. Only used when the
+		# pattern has groups, so the plain Evaluate() path stays allocation-free.
+		method : private : Captures(stream_in : String, left : Int, right : Int) ~ Int[] {
+			ncap := (@group_count + 1) * 2;
+			prog_size := @program->Size();
+			input_size := stream_in->Size();
+
+			visited := Int->New[prog_size];
+			cur := Int->New[prog_size];
+			nxt := Int->New[prog_size];
+			cur_caps := Int->New[prog_size * ncap];
+			nxt_caps := Int->New[prog_size * ncap];
+			cur_n := IntRef->New(0);
+			nxt_n := IntRef->New(0);
+			found_ref := IntRef->New(0);
+
+			caps := Int->New[ncap];
+			found := Int->New[ncap];
+			for(i := 0; i < ncap; i += 1;) {
+				caps[i] := -1;
+				found[i] := -1;
+			};
+
+			gen := 1;
+			AddThreadCap(0, caps, cur, cur_caps, cur_n, ncap, visited, gen, stream_in, left, input_size, right, found, found_ref);
+
+			pos := left;
+			while(pos < right & found_ref->Get() = 0 & cur_n->Get() > 0) {
+				c := stream_in->Get(pos);
+				gen += 1;
+				nxt_n->Set(0);
+
+				lim := cur_n->Get();
+				for(k := 0; k < lim; k += 1;) {
+					pc := cur[k];
+					if(Accepts(@program->Get(pc), c)) {
+						base := k * ncap;
+						for(i := 0; i < ncap; i += 1;) {
+							caps[i] := cur_caps[base + i];
+						};
+						AddThreadCap(pc + 1, caps, nxt, nxt_caps, nxt_n, ncap, visited, gen, stream_in, pos + 1, input_size, right, found, found_ref);
+					};
+				};
+
+				tmp := cur;
+				cur := nxt;
+				nxt := tmp;
+				tmp_caps := cur_caps;
+				cur_caps := nxt_caps;
+				nxt_caps := tmp_caps;
+				cur_n->Set(nxt_n->Get());
+				nxt_n->Set(0);
+
+				pos += 1;
+			};
+
+			return found;
 		}
 
 		# ---------- parsing methods ----------
@@ -885,49 +1069,127 @@ result->PrintLine();
 			};
 		}
 
+		# The token after the current one, without consuming it
+		method : private : PeekToken() ~ Char {
+			if(@token_pos < @tokens->Size()) {
+				return @tokens[@token_pos];
+			};
+			return '\0';
+		}
+
+		# Parses '[...]': any mix of literals, ranges and \d \w \s \D \W \S, optionally negated with a
+		# leading '^'. A ']' first, or a '-' first or last, is a literal.
 		method : private : CharacterClass() ~ Nil {
 			NextToken();
 
-			if(@token->IsChar() = false & @token->IsDigit() = false) {
-				@error := "invalid character class";
-			};
-
-			start := @token_pos - 1;
-			hyphen_count := 0;
-			while(@token <> '\0' & @token <> ']' & (@token = '-' | @token->IsChar() | @token->IsDigit())) {
-				if(@token = '-') {
-					hyphen_count += 1;
-				};
+			set := CharSet->New();
+			if(@token = '^') {
+				set->SetNegate(true);
 				NextToken();
 			};
-			end := @token_pos - 1;
-			char_class := String->New(@tokens, start, end - start);
+
+			first := true;
+			while(@token <> '\0' & (first | @token <> ']')) {
+				first := false;
+
+				lo := ClassAtom(set);
+				if(@error <> Nil) {
+					return;
+				};
+
+				if(@class_shorthand) {
+					# shorthand already added; a '-' after it is read as a literal next time round
+				}
+				else if(@token = '-' & PeekToken() <> ']' & PeekToken() <> '\0') {
+					NextToken();
+					hi := ClassAtom(set);
+					if(@error <> Nil) {
+						return;
+					};
+
+					if(@class_shorthand) {
+						# e.g. [a-\d]: no range, so 'a' and '-' are literals
+						set->AddRange(lo, lo);
+						set->AddRange('-', '-');
+					}
+					else if(hi < lo) {
+						@error := "invalid character class range";
+						return;
+					}
+					else {
+						set->AddRange(lo, hi);
+					};
+				}
+				else {
+					set->AddRange(lo, lo);
+				};
+			};
 
 			if(@token <> ']') {
-				@error := "expected ')'";
+				@error := "expected ']'";
 				return;
 			};
 			NextToken();
 
-			if(hyphen_count > 1) {
-				@error := "invalid character class";
-			};
+			@expressions->AddBack(Expression->New(set));
+		}
 
-			is_range := false;
-			if(hyphen_count = 1) {
-				if(char_class->Size() <> 3) {
-					@error := "invalid character class";
-					return;
+		# Reads one class member. Returns the literal character, or sets @class_shorthand after adding
+		# a \d \w \s \D \W \S set to 'set'.
+		method : private : ClassAtom(set : CharSet) ~ Char {
+			@class_shorthand := false;
+
+			if(@token = '\\') {
+				NextToken();
+				escaped := @token;
+				select(escaped) {
+					label 'd':
+					label 'D':
+					label 'w':
+					label 'W':
+					label 's':
+					label 'S': {
+						set->AddShorthand(escaped);
+						@class_shorthand := true;
+						NextToken();
+						return '\0';
+					}
+
+					label 'n': {
+						NextToken();
+						return '\n';
+					}
+
+					label 'r': {
+						NextToken();
+						return '\r';
+					}
+
+					label 't': {
+						NextToken();
+						return '\t';
+					}
+
+					label 'b': {
+						# inside a class \b is a backspace, as in other dialects
+						NextToken();
+						return '\b';
+					}
+
+					label '\0': {
+						@error := "expected ']'";
+						return '\0';
+					}
 				};
 
-				if(char_class->Get(0) >= char_class->Get(2)) {
-					@error := "invalid character class";
-				};
-
-				is_range := true;
+				# any other escaped character is itself: \] \\ \- \^ \[ \. ...
+				NextToken();
+				return escaped;
 			};
 
-			@expressions->AddBack(Expression->New(char_class, is_range));
+			literal := @token;
+			NextToken();
+			return literal;
 		}
 
 		method : private : EscapeCharacter() ~ Nil {
@@ -991,7 +1253,12 @@ result->PrintLine();
 				}
 
 				label 'b': {
-					@expressions->AddBack(Expression->New('\b'));
+					@expressions->AddBack(Expression->New(Expression->Type->WORD_BOUNDARY));
+					NextToken();
+				}
+
+				label 'B': {
+					@expressions->AddBack(Expression->New(Expression->Type->NOT_WORD_BOUNDARY));
 					NextToken();
 				}
 
@@ -1010,6 +1277,21 @@ result->PrintLine();
 		method : private : Parentheses() ~ Nil {
 			NextToken();
 
+			# '(?:' opens a non-capturing group; groups are numbered by their '(' left to right
+			group := 0;
+			if(@token = '?') {
+				if(PeekToken() <> ':') {
+					@error := "unsupported group syntax";
+					return;
+				};
+				NextToken();
+				NextToken();
+			}
+			else {
+				@group_count += 1;
+				group := @group_count;
+			};
+
 			left := @expressions;
 			@expressions := Vector->New()<Expression>;
 
@@ -1024,23 +1306,105 @@ result->PrintLine();
 			};
 			NextToken();
 
-			left->AddBack(Expression->New(@expressions));
+			sub_expr := Expression->New(@expressions);
+			sub_expr->SetGroup(group);
+			left->AddBack(sub_expr);
 			@expressions := left;
 		}
 	}
 
 	#~
-	RegEx result
+	RegEx result: the matched text, its position, and the text of each numbered capture group
 	~#
 	class Result {
 		@start : Int;
 		@length : Int;
 		@value : String;
+		@group_starts : Int[];
+		@group_values : String[];
 
+		#~
+		Creates a result without capture groups
+		@param start starting index of the match
+		@param length length of the match
+		@param value matched string
+		~#
 		New(start : Int, length : Int, value : String) {
 			@start := start;
 			@length := length;
 			@value := value;
+		}
+
+		#~
+		Creates a result with capture groups
+		@param start starting index of the match
+		@param length length of the match
+		@param value matched string
+		@param group_starts start index of each group, index 0 is the whole match, -1 if a group did not take part
+		@param group_values text of each group, index 0 is the whole match, Nil if a group did not take part
+		~#
+		New(start : Int, length : Int, value : String, group_starts : Int[], group_values : String[]) {
+			@start := start;
+			@length := length;
+			@value := value;
+			@group_starts := group_starts;
+			@group_values := group_values;
+		}
+
+		#~
+		Gets the number of capture groups in the pattern, not counting group 0 (the whole match)
+		@return number of capture groups
+		~#
+		method : public : GroupCount() ~ Int {
+			if(@group_values = Nil) {
+				return 0;
+			};
+			return @group_values->Size() - 1;
+		}
+
+		#~
+		Gets the text captured by a group. Groups are numbered from 1 by their opening '(' left to
+		right; '(?:...)' does not capture. Group 0 is the whole match. In a repeated group the last
+		iteration wins.
+		@param index group number
+		@return captured text, or Nil if the group did not take part in the match or does not exist
+
+```
+re := RegEx->New("(\\d+)-(\\d+)");
+r := re->FindFirst("call 555-1234 now");
+if(r <> Nil) {
+  r->GetGroup(1)->PrintLine();
+  r->GetGroup(2)->PrintLine();
+};
+```
+		~#
+		method : public : GetGroup(index : Int) ~ String {
+			if(index = 0) {
+				return @value;
+			};
+
+			if(@group_values = Nil | index < 0 | index >= @group_values->Size()) {
+				return Nil;
+			};
+
+			return @group_values[index];
+		}
+
+		#~
+		Gets the starting index of the text captured by a group
+		@param index group number, 0 is the whole match
+		@return starting index, or -1 if the group did not take part in the match or does not exist
+		~#
+		method : public : GetGroupStart(index : Int) ~ Int {
+			if(index = 0) {
+				return @start;
+			};
+
+			if(@group_starts = Nil | index < 0 | index >= @group_starts->Size()) {
+				return -1;
+			};
+
+			return @group_starts[index];
 		}
 
 		#~
@@ -1120,17 +1484,19 @@ each(r := results) {
 			WHITESPACE,
 			NOT_WHITESPACE,
 			CLASS,
-			RANGE,
 			SPLIT,
 			JUMP,
 			MATCH,
 			ANC_START,
-			ANC_END
+			ANC_END,
+			WORD_BOUND,
+			NOT_WORD_BOUND,
+			SAVE
 		}
 
 		@op : Int;
 		@char_val : Char;
-		@class_str : String;
+		@set : CharSet;
 		@target1 : Int;
 		@target2 : Int;
 
@@ -1143,9 +1509,9 @@ each(r := results) {
 			@char_val := c;
 		}
 
-		New(op : Instruction->Op, class_str : String) {
+		New(op : Instruction->Op, set : CharSet) {
 			@op := op->As(Int);
-			@class_str := class_str;
+			@set := set;
 		}
 
 		New(op : Instruction->Op, t1 : Int, t2 : Int) {
@@ -1162,13 +1528,13 @@ each(r := results) {
 			return Instruction->New(Instruction->Op->CHAR, c);
 		}
 
-		function : NewClass(s : String, is_range : Bool) ~ Instruction {
-			if(is_range) {
-				return Instruction->New(Instruction->Op->RANGE, s);
-			}
-			else {
-				return Instruction->New(Instruction->Op->CLASS, s);
-			};
+		function : NewClass(set : CharSet) ~ Instruction {
+			return Instruction->New(Instruction->Op->CLASS, set);
+		}
+
+		# SAVE keeps its capture slot in target1
+		function : NewSave(slot : Int) ~ Instruction {
+			return Instruction->New(Instruction->Op->SAVE, slot, 0);
 		}
 
 		function : NewSplit(t1 : Int, t2 : Int) ~ Instruction {
@@ -1188,8 +1554,8 @@ each(r := results) {
 			return @char_val;
 		}
 
-		method : public : GetClass() ~ String {
-			return @class_str;
+		method : public : GetSet() ~ CharSet {
+			return @set;
 		}
 
 		method : public : GetTarget1() ~ Int {
@@ -1209,6 +1575,104 @@ each(r := results) {
 		}
 	}
 
+	# ---------- character class: inclusive ranges plus \d \w \s style sets ----------
+	class : private : CharSet {
+		@ranges : Char[];
+		@size : Int;
+		@negate : Bool;
+		@digit : Bool;
+		@not_digit : Bool;
+		@word : Bool;
+		@not_word : Bool;
+		@space : Bool;
+		@not_space : Bool;
+
+		New() {
+			@ranges := Char->New[8];
+			@size := 0;
+		}
+
+		function : IsWord(c : Char) ~ Bool {
+			return c->IsDigit() | c->IsChar() | c = '_';
+		}
+
+		function : IsSpace(c : Char) ~ Bool {
+			return c = ' ' | c = '\t' | c = '\r' | c = '\n' | c = 0xB;
+		}
+
+		method : public : SetNegate(negate : Bool) ~ Nil {
+			@negate := negate;
+		}
+
+		# adds lo..hi inclusive (lo = hi for a single character)
+		method : public : AddRange(lo : Char, hi : Char) ~ Nil {
+			if(@size + 2 > @ranges->Size()) {
+				grown := Char->New[@ranges->Size() * 2];
+				for(i := 0; i < @size; i += 1;) {
+					grown[i] := @ranges[i];
+				};
+				@ranges := grown;
+			};
+
+			@ranges[@size] := lo;
+			@ranges[@size + 1] := hi;
+			@size += 2;
+		}
+
+		# adds the set named by the letter of \d \D \w \W \s \S
+		method : public : AddShorthand(letter : Char) ~ Nil {
+			select(letter) {
+				label 'd': { @digit := true; }
+				label 'D': { @not_digit := true; }
+				label 'w': { @word := true; }
+				label 'W': { @not_word := true; }
+				label 's': { @space := true; }
+				label 'S': { @not_space := true; }
+			};
+		}
+
+		method : public : Contains(c : Char) ~ Bool {
+			if(@negate) {
+				return <>Member(c);
+			};
+			return Member(c);
+		}
+
+		method : private : Member(c : Char) ~ Bool {
+			for(i := 0; i < @size; i += 2;) {
+				if(c >= @ranges[i] & c <= @ranges[i + 1]) {
+					return true;
+				};
+			};
+
+			if(@digit & c->IsDigit()) {
+				return true;
+			};
+
+			if(@not_digit & <>c->IsDigit()) {
+				return true;
+			};
+
+			if(@word & IsWord(c)) {
+				return true;
+			};
+
+			if(@not_word & <>IsWord(c)) {
+				return true;
+			};
+
+			if(@space & IsSpace(c)) {
+				return true;
+			};
+
+			if(@not_space & <>IsSpace(c)) {
+				return true;
+			};
+
+			return false;
+		}
+	}
+
 	# ---------- sub-expression value object ----------
 	class : private : Expression {
 		# expression type
@@ -1223,19 +1687,21 @@ each(r := results) {
 			WHITESPACE,
 			NOT_WHITESPACE,
 			CHAR_CLASS,
-			CHAR_CLASS_RANGE,
 			ENDS_ANCHOR,
 			STARTS_ANCHOR,
 			OR,
 			ZERO_MORE,
 			ONE_MORE,
 			REPEAT,
-			SUB_EXPR
+			SUB_EXPR,
+			WORD_BOUNDARY,
+			NOT_WORD_BOUNDARY
 		}
 
 		@type : Expression->Type;
 		@value : Char;
-		@char_class : String;
+		@set : CharSet;
+		@group : Int;
 		@expression : Expression;
 		@left : Vector<Expression>;
 		@right : Vector<Expression>;
@@ -1258,14 +1724,9 @@ each(r := results) {
 			@expression := expression;
 		}
 
-		New(char_class : String, is_range : Bool) {
-			if(is_range) {
-				@type := Expression->Type->CHAR_CLASS_RANGE;
-			}
-			else {
-				@type := Expression->Type->CHAR_CLASS;
-			};
-			@char_class := char_class;
+		New(set : CharSet) {
+			@type := Expression->Type->CHAR_CLASS;
+			@set := set;
 		}
 
 		New(left : Vector<Expression>) {
@@ -1296,8 +1757,17 @@ each(r := results) {
 			return @value;
 		}
 
-		method : public : GetClass() ~ String {
-			return @char_class;
+		method : public : GetSet() ~ CharSet {
+			return @set;
+		}
+
+		# capture group number of a SUB_EXPR, 0 if it does not capture
+		method : public : GetGroup() ~ Int {
+			return @group;
+		}
+
+		method : public : SetGroup(group : Int) ~ Nil {
+			@group := group;
 		}
 
 		method : public : GetLeft() ~ Vector<Expression> {
