@@ -93,17 +93,14 @@ so `old_allocation_size` climbs past the collection trigger repeatedly during
 parsing alone. At 300k x 80 (a CIC-IDS2017 subsample) the same path implies
 ~24M String objects.
 
-**Partial mitigation exists today and needs no code.** `--gc-threshold` sets that
-trigger, and it defaults to `MEM_START_MAX` = 8 MB:
-
-```
-obr --gc-threshold=1g ids_bench.obe
-```
-
-The adaptive heap does grow on its own (16x after seven zero-dead cycles), but
-starting at 8 MB against millions of allocations means many cycles before it
-catches up. *This has been reasoned from the allocator, not measured* -- it wants
-a benchmark before anyone quotes a number for it.
+**Fixed (fix/gc-heap-sizing).** The trigger used to start at 8 MB and grow only
+after eight major collections in a row freed nothing, which a parse that makes
+temporaries never satisfies, so a large live heap ran a major collection on nearly
+every array allocation. The threshold is now twice the live heap after each major
+collection (never below 8 MB): saving and loading a 70,000-row table went from 137
+majors and 33 s to 77 and 25 s, and binarytrees 18 from 36 majors to 10.
+`--gc-threshold` now sets a fixed threshold, for stress runs or a known working
+set.
 
 The structural fix is an encoder that **streams**: `ReadLine` -> split one row ->
 encode -> discard, never holding more than a row of strings. `FileReader->ReadLine()`
