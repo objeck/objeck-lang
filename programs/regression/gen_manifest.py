@@ -57,7 +57,7 @@ CATS = [
     ('regex', 'Regex'), ('mcp', 'MCP Server'), ('date', 'Date/Time'),
     ('websocket', 'Networking'), ('try_', 'Exceptions'), ('select', 'Control Flow'),
     ('odbc', 'ODBC'), ('oauth', 'Networking'), ('lsp', 'LSP'),
-    ('io_', 'I/O'), ('dap', 'Debugger'), ('debugger', 'Debugger'),
+    ('io_', 'I/O'), ('compress_', 'I/O'), ('dap', 'Debugger'), ('debugger', 'Debugger'),
     ('record', 'Records'), ('nlp_', 'System.NLP'),
 ]
 

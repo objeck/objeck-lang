@@ -6100,7 +6100,7 @@ bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_
   char* out = OutputStream::CompressZlib(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"zlib compression failed");
   }
 
   // create character array
@@ -6136,7 +6136,7 @@ bool TrapProcessor::UncompressZlibBytes(StackProgram* program, size_t* inst, siz
   char* out = OutputStream::UncompressZlib(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid, truncated or oversized zlib data");
   }
 
   // create character array
@@ -6172,7 +6172,7 @@ bool TrapProcessor::CompressGzipBytes(StackProgram* program, size_t* inst, size_
   char* out = OutputStream::CompressGzip(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"gzip compression failed");
   }
 
   // create character array
@@ -6208,7 +6208,7 @@ bool TrapProcessor::UncompressGzipBytes(StackProgram* program, size_t* inst, siz
   char* out = OutputStream::UncompressGzip(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid, truncated or oversized gzip data");
   }
 
   // create character array
@@ -6244,7 +6244,7 @@ bool TrapProcessor::CompressBrBytes(StackProgram* program, size_t* inst, size_t*
   char* out = OutputStream::CompressBr(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"deflate compression failed");
   }
 
   // create character array
@@ -6280,7 +6280,7 @@ bool TrapProcessor::UncompressBrBytes(StackProgram* program, size_t* inst, size_
   char* out = OutputStream::UncompressBr(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
-    return false;
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid, truncated or oversized deflate data");
   }
 
   // create character array
