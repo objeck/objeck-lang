@@ -776,6 +776,17 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	TrueType font rendering styles, for Font->SetStyle; OR them together
+	~#
+	consts FontStyle {
+		TTF_STYLE_NORMAL := 0x00,
+		TTF_STYLE_BOLD := 0x01,
+		TTF_STYLE_ITALIC := 0x02,
+		TTF_STYLE_UNDERLINE := 0x04,
+		TTF_STYLE_STRIKETHROUGH := 0x08
+	}
+
+	#~
 	Image formats 
 	~#
 	consts ImageFlags {
@@ -9350,6 +9361,16 @@ bundle Game.SDL2 {
 		@fn_sdl_font_render_utf8_blended : static : String;
 		@fn_sdl_font_render_utf8_shaded : static : String;
 		@fn_sdl_font_render_utf8_solid : static : String;
+		@fn_sdl_font_render_utf8_blended_wrapped : static : String;
+		@fn_sdl_font_size_utf8 : static : String;
+		@fn_sdl_font_height : static : String;
+		@fn_sdl_font_ascent : static : String;
+		@fn_sdl_font_descent : static : String;
+		@fn_sdl_font_line_skip : static : String;
+		@fn_sdl_font_set_style : static : String;
+		@fn_sdl_font_get_style : static : String;
+		@fn_sdl_font_set_outline : static : String;
+		@fn_sdl_font_get_outline : static : String;
 		@font : Int;
 
 		#~
@@ -9569,6 +9590,150 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
+		}
+
+		#~
+		Render UTF8 text blended, wrapping lines at word boundaries so no line is wider than wrap_length pixels.
+		Lines are also broken at newlines.
+		@param text the text to render
+		@param fg the color to render the text in
+		@param wrap_length the maximum line width in pixels; 0 breaks lines only at newlines
+		@return Surface instance, caller responsible for freeing; IsNull() is true on failure
+		~#
+		method : public : RenderUTF8BlendedWrapped(text : String, fg : Color, wrap_length : Int) ~ Surface {
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@font);
+			array_args[2] := text;
+			array_args[3] := fg;
+			array_args[4] := IntRef->New(wrap_length);
+
+			if(@fn_sdl_font_render_utf8_blended_wrapped = Nil) { @fn_sdl_font_render_utf8_blended_wrapped := "sdl_font_render_utf8_blended_wrapped"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_utf8_blended_wrapped, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return Surface->New(value->Get());
+		}
+
+		#~
+		Measure the size UTF8 text would have if rendered, without rendering it. Use it to
+		center, right-align or fit a label.
+		@param text the text to measure
+		@param w holder filled in with the width in pixels
+		@param h holder filled in with the height in pixels
+		@return 0 on success, or a negative value on failure or for a closed font
+		```
+		w := IntRef->New(); h := IntRef->New();
+		if(font->SizeUTF8("Accuracy: 0.97", w, h) = 0) {
+			x := (640 - w->Get()) / 2;
+		};
+		```
+		~#
+		method : public : SizeUTF8(text : String, w : IntRef, h : IntRef) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@font);
+			array_args[2] := text;
+			array_args[3] := w;
+			array_args[4] := h;
+
+			if(@fn_sdl_font_size_utf8 = Nil) { @fn_sdl_font_size_utf8 := "sdl_font_size_utf8"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_size_utf8, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		# Calls a native that takes the font and returns one Int
+		method : FontInt(name : String) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@font);
+
+			Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Maximum height of the font's glyphs
+		@return height in pixels, or -1 for a closed font
+		~#
+		method : public : GetHeight() ~ Int {
+			if(@fn_sdl_font_height = Nil) { @fn_sdl_font_height := "sdl_font_height"; };
+			return FontInt(@fn_sdl_font_height);
+		}
+
+		#~
+		Maximum distance of the font's glyphs above the baseline
+		@return ascent in pixels, or -1 for a closed font
+		~#
+		method : public : GetAscent() ~ Int {
+			if(@fn_sdl_font_ascent = Nil) { @fn_sdl_font_ascent := "sdl_font_ascent"; };
+			return FontInt(@fn_sdl_font_ascent);
+		}
+
+		#~
+		Maximum distance of the font's glyphs below the baseline
+		@return descent in pixels, negative below the baseline; 0 for a closed font
+		~#
+		method : public : GetDescent() ~ Int {
+			if(@fn_sdl_font_descent = Nil) { @fn_sdl_font_descent := "sdl_font_descent"; };
+			return FontInt(@fn_sdl_font_descent);
+		}
+
+		#~
+		Recommended spacing between lines of text
+		@return line skip in pixels, or -1 for a closed font
+		~#
+		method : public : GetLineSkip() ~ Int {
+			if(@fn_sdl_font_line_skip = Nil) { @fn_sdl_font_line_skip := "sdl_font_line_skip"; };
+			return FontInt(@fn_sdl_font_line_skip);
+		}
+
+		#~
+		Set the rendering style
+		@param style FontStyle values OR'd together, such as FontStyle->TTF_STYLE_BOLD
+		~#
+		method : public : SetStyle(style : Int) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(@font);
+			array_args[1] := IntRef->New(style);
+
+			if(@fn_sdl_font_set_style = Nil) { @fn_sdl_font_set_style := "sdl_font_set_style"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_set_style, array_args);
+		}
+
+		#~
+		Get the rendering style
+		@return FontStyle values OR'd together, or -1 for a closed font
+		~#
+		method : public : GetStyle() ~ Int {
+			if(@fn_sdl_font_get_style = Nil) { @fn_sdl_font_get_style := "sdl_font_get_style"; };
+			return FontInt(@fn_sdl_font_get_style);
+		}
+
+		#~
+		Set the outline width; text is then rendered as an outline of that many pixels
+		@param outline outline width in pixels, 0 for no outline
+		~#
+		method : public : SetOutline(outline : Int) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(@font);
+			array_args[1] := IntRef->New(outline);
+
+			if(@fn_sdl_font_set_outline = Nil) { @fn_sdl_font_set_outline := "sdl_font_set_outline"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_set_outline, array_args);
+		}
+
+		#~
+		Get the outline width
+		@return outline width in pixels, or -1 for a closed font
+		~#
+		method : public : GetOutline() ~ Int {
+			if(@fn_sdl_font_get_outline = Nil) { @fn_sdl_font_get_outline := "sdl_font_get_outline"; };
+			return FontInt(@fn_sdl_font_get_outline);
 		}
 	}
 

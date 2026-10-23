@@ -3234,6 +3234,123 @@ extern "C" {
   }
 
   //
+  // Text measurement and font metrics. SDL_ttf dereferences a NULL font, so
+  // each of these checks for one and reports failure instead.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_size_utf8(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    const wchar_t* w_text = APITools_GetStringValue(context, 2);
+
+    int w = 0, h = 0;
+    if(font && w_text) {
+      const std::string text = UnicodeToBytes(w_text);
+      APITools_SetIntValue(context, 0, TTF_SizeUTF8(font, text.c_str(), &w, &h));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+
+    APITools_SetIntValue(context, 3, w);
+    APITools_SetIntValue(context, 4, h);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_height(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontHeight(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_ascent(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontAscent(font) : -1);
+  }
+
+  // descent is negative (below the baseline), so a NULL font reports 0
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_descent(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontDescent(font) : 0);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_line_skip(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontLineSkip(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_set_style(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 0);
+    const int style = (int)APITools_GetIntValue(context, 1);
+    if(font) {
+      TTF_SetFontStyle(font, style);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_get_style(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_GetFontStyle(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_set_outline(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 0);
+    const int outline = (int)APITools_GetIntValue(context, 1);
+    if(font) {
+      TTF_SetFontOutline(font, outline);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_get_outline(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_GetFontOutline(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_render_utf8_blended_wrapped(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    const wchar_t* w_text = APITools_GetStringValue(context, 2);
+
+    SDL_Color fg = { 0, 0, 0, 255 };
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    const Uint32 wrap_length = (Uint32)APITools_GetIntValue(context, 4);
+
+    if(font && w_text) {
+      const std::string text = UnicodeToBytes(w_text);
+      APITools_SetIntValue(context, 0, (size_t)TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), fg, wrap_length));
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
   // Cursor
   //
 #ifdef _WIN32
