@@ -1,0 +1,369 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Regression tests for Query.Structured (query.obl), which had none:
+- Average, Sum, Min, Max and Count(name) use only numeric cells (IntRef and
+  FloatRef); Average used to divide by every row, string and Nil cells
+  included, and gave 10 for a column whose numbers average 15
+- an aggregate over no numeric cells returns 0.0 and does not divide by zero
+- FromCsv types numbers it used to keep as strings ('-3', '+3', '.5', '-0.5',
+  '1e3') and keeps non-numbers ('1-2', '3.', 'abc', '') as strings
+- FromCsv with one data row used to return Nil; a header alone is an empty table
+- 'where' compares an int column with a float literal (used to abort the VM)
+- 'order by' kept one row per distinct value and dropped Nil cells
+- 'order by' after 'where' was ignored; 'and' now binds tighter than 'or'
+- negative literals, column names with digits, '!=' and 'not' on any operator
+- LIKE treated '.' and other regex characters as patterns
+- Delete of the only row aborted the VM, and Count() ignored deletes
+- GetError before any query aborted the VM
+~#
+use Query.Structured, System.IO.Filesystem, System.Time;
+
+class QueryAggregates {
+	@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		TestAggregates();
+		TestEmptyAggregates();
+		TestCsvNumbers();
+		TestCsvRowCounts();
+		TestWhere();
+		TestOrderBy();
+		TestParser();
+		TestLike();
+		TestDelete();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} query check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query aggregates, CSV typing, where/order by and delete"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Near(name : String, got : Float, want : Float) ~ Nil {
+		diff := got - want;
+		if(diff < 0.0) {
+			diff := diff * -1.0;
+		};
+
+		if(diff > 0.000001) {
+			"  FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# a column holding ints, a float, a string, a date and Nil cells
+	function : MixedTable() ~ Table {
+		t := Table->New("m", ["v", "s"]);
+		r := t->Insert(); r->Set("v", IntRef->New(10)); r->Set("s", "a");
+		r := t->Insert(); r->Set("v", IntRef->New(20)); r->Set("s", "b");
+		r := t->Insert(); r->Set("v", "abc"); r->Set("s", "c");
+		r := t->Insert(); r->Set("v", FloatRef->New(-3.0)); r->Set("s", "d");
+		r := t->Insert(); r->Set("v", Date->New(1, 2, 2020, false));
+		t->Insert();
+		return t;
+	}
+
+	function : TestAggregates() ~ Nil {
+		t := MixedTable();
+
+		# numeric cells: 10, 20, -3.0
+		Near("Sum over numeric cells", t->Sum("v"), 27.0);
+		Near("Average over numeric cells", t->Average("v"), 9.0);
+		Check("Count(name) counts numeric cells", t->Count("v") = 3);
+		Near("Min", t->Min("v"), -3.0);
+		Near("Max", t->Max("v"), 20.0);
+		Check("Count() counts rows", t->Count() = 6);
+		Check("Size() counts rows", t->Size() = 6);
+
+		# the reported case: 10 and 20 with a string cell, then an empty row
+		u := Table->New("u", ["n"]);
+		r := u->Insert(); r->Set("n", IntRef->New(10));
+		r := u->Insert(); r->Set("n", IntRef->New(20));
+		r := u->Insert(); r->Set("n", "abc");
+		Near("Average skips a string cell", u->Average("n"), 15.0);
+		u->Insert();
+		Near("Average skips a Nil cell", u->Average("n"), 15.0);
+	}
+
+	function : TestEmptyAggregates() ~ Nil {
+		empty := Table->New("e", ["n"]);
+		Near("Average of an empty table", empty->Average("n"), 0.0);
+		Near("Sum of an empty table", empty->Sum("n"), 0.0);
+		Near("Min of an empty table", empty->Min("n"), 0.0);
+		Near("Max of an empty table", empty->Max("n"), 0.0);
+		Check("Count(name) of an empty table", empty->Count("n") = 0);
+
+		strings := Table->New("s", ["n"]);
+		r := strings->Insert(); r->Set("n", "x");
+		strings->Insert();
+		Near("Average of a column with no numbers", strings->Average("n"), 0.0);
+		Check("Count(name) of a column with no numbers", strings->Count("n") = 0);
+
+		Near("Average of an unknown column", strings->Average("nope"), 0.0);
+		Check("Count(name) of an unknown column", strings->Count("nope") = 0);
+	}
+
+	function : WriteCsv(path : String, text : String) ~ Nil {
+		if(<>FileWriter->WriteFile(path, text)) {
+			"  FAIL: could not write {$path}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : TestCsvNumbers() ~ Nil {
+		path := "query_aggregates_numbers.tmp.csv";
+		WriteCsv(path, "name,v\r\na,-3\r\nb,+3\r\nc,3.5\r\nd,.5\r\ne,-0.5\r\nf,1e3\r\ng,1-2\r\nh,3.\r\ni,abc\r\nj,\r\nk,42\r\n");
+		t := Table->FromCsv("n", path);
+		File->Delete(path);
+
+		Check("FromCsv numbers parsed", t <> Nil);
+		if(t = Nil) {
+			return;
+		};
+		Check("FromCsv row count", t->Size() = 11);
+
+		ints := ["a", "b", "k"];
+		int_values := [-3, 3, 42];
+		each(i : ints) {
+			value := CellOf(t, ints[i]);
+			name := ints[i];
+			Check("'{$name}' is an IntRef", value <> Nil & value->TypeOf(IntRef));
+			if(value <> Nil & value->TypeOf(IntRef)) {
+				Check("'{$name}' int value", value->As(IntRef)->Get() = int_values[i]);
+			};
+		};
+
+		floats := ["c", "d", "e", "f"];
+		float_values := [3.5, 0.5, -0.5, 1000.0];
+		each(i : floats) {
+			value := CellOf(t, floats[i]);
+			name := floats[i];
+			Check("'{$name}' is a FloatRef", value <> Nil & value->TypeOf(FloatRef));
+			if(value <> Nil & value->TypeOf(FloatRef)) {
+				Near("'{$name}' float value", value->As(FloatRef)->Get(), float_values[i]);
+			};
+		};
+
+		strings := ["g", "h", "i", "j"];
+		string_values := ["1-2", "3.", "abc", ""];
+		each(i : strings) {
+			value := CellOf(t, strings[i]);
+			name := strings[i];
+			Check("'{$name}' stays a String", value <> Nil & value->TypeOf(String));
+			if(value <> Nil & value->TypeOf(String)) {
+				Check("'{$name}' string value", value->As(String)->Equals(string_values[i]));
+			};
+		};
+
+		# -3 + 3 + 3.5 + .5 - 0.5 + 1000 + 42
+		Near("Sum over parsed CSV", t->Sum("v"), 1045.5);
+		Check("Count(name) over parsed CSV", t->Count("v") = 7);
+	}
+
+	function : CellOf(t : Table, name : String) ~ Compare {
+		rows := t->GetAll();
+		each(i : rows) {
+			row := rows->Get(i);
+			if(row->Get("name")->As(String)->Equals(name)) {
+				return row->Get("v");
+			};
+		};
+
+		return Nil;
+	}
+
+	function : TestCsvRowCounts() ~ Nil {
+		path := "query_aggregates_rows.tmp.csv";
+
+		WriteCsv(path, "id,score\r\n7,2.5\r\n");
+		one := Table->FromCsv("one", path);
+		Check("one data row loads", one <> Nil);
+		if(one <> Nil) {
+			Check("one data row size", one->Size() = 1);
+			Near("one data row average", one->Average("score"), 2.5);
+			rs := one->Query("select id from one where score > 2");
+			Check("one data row query", rs <> Nil);
+			if(rs <> Nil) {
+				Check("one data row query size", rs->Size() = 1);
+			};
+		};
+
+		WriteCsv(path, "id,score\r\n");
+		header := Table->FromCsv("header", path);
+		Check("header only loads", header <> Nil);
+		if(header <> Nil) {
+			Check("header only is empty", header->Size() = 0);
+			Check("header only keeps its columns", header->GetIndex("score") = 2);
+			Near("header only average", header->Average("score"), 0.0);
+			rs := header->Query("select * from header");
+			Check("header only query", rs <> Nil & rs->Size() = 0);
+		};
+
+		WriteCsv(path, "id,score");
+		bare := Table->FromCsv("bare", path);
+		Check("header without a line ending loads", bare <> Nil & bare->Size() = 0);
+
+		WriteCsv(path, "id,score\r\n1,2\r\n3,4\r\n");
+		two := Table->FromCsv("two", path);
+		Check("two data rows load", two <> Nil & two->Size() = 2);
+
+		File->Delete(path);
+	}
+
+	function : Size(rs : Table) ~ Int {
+		if(rs = Nil) {
+			return -1;
+		};
+
+		return rs->Size();
+	}
+
+	function : TestWhere() ~ Nil {
+		t := MixedTable();
+
+		# int and float cells against int and float literals
+		Check("int/float column > 1.5", Size(t->Query("select * from m where v > 1.5")) = 2);
+		Check("int/float column > -5", Size(t->Query("select * from m where v > -5")) = 3);
+		Check("int/float column = 10.0", Size(t->Query("select * from m where v = 10.0")) = 1);
+		Check("int/float column <= -3", Size(t->Query("select * from m where v <= -3")) = 1);
+
+		f := Table->New("f", ["x"]);
+		r := f->Insert(); r->Set("x", FloatRef->New(1.5));
+		r := f->Insert(); r->Set("x", FloatRef->New(2.5));
+		Check("float column > int literal", Size(f->Query("select * from f where x > 2")) = 1);
+
+		# a string cell is unequal to a number and has no order against it;
+		# Nil cells match nothing
+		Check("mixed column < 100 skips strings", Size(t->Query("select * from m where v < 100")) = 3);
+		Check("mixed column <> 10", Size(t->Query("select * from m where v <> 10")) = 4);
+		Check("string column = 5", Size(t->Query("select * from m where s = 5")) = 0);
+		Check("string column < 5", Size(t->Query("select * from m where s < 5")) = 0);
+	}
+
+	function : FirstColumn(rs : Table) ~ String {
+		if(rs = Nil) {
+			return "<Nil>";
+		};
+
+		buffer := "";
+		rows := rs->GetAll();
+		each(i : rows) {
+			value := rows->Get(i)->Get(1);
+			if(value = Nil) {
+				buffer += "-";
+			}
+			else if(value->TypeOf(String)) {
+				buffer += value->As(String);
+			}
+			else if(value->TypeOf(IntRef)) {
+				buffer += value->As(IntRef)->Get();
+			}
+			else {
+				buffer += "?";
+			};
+			buffer += ' ';
+		};
+
+		return buffer->Trim();
+	}
+
+	function : TestOrderBy() ~ Nil {
+		t := Table->New("o", ["name", "n"]);
+		r := t->Insert(); r->Set("name", "c"); r->Set("n", IntRef->New(3));
+		r := t->Insert(); r->Set("name", "a"); r->Set("n", IntRef->New(1));
+		r := t->Insert(); r->Set("name", "e");
+		r := t->Insert(); r->Set("name", "d"); r->Set("n", IntRef->New(3));
+		r := t->Insert(); r->Set("name", "b"); r->Set("n", FloatRef->New(2.0));
+		r := t->Insert(); r->Set("name", "f"); r->Set("n", "text");
+
+		# duplicates kept in insertion order, numbers before strings, Nil last
+		order := FirstColumn(t->Query("select name from o order by n"));
+		Check("order by keeps every row: {$order}", order->Equals("a b c d f e"));
+
+		order := FirstColumn(t->Query("select name from o order by name"));
+		Check("order by a string column: {$order}", order->Equals("a b c d e f"));
+
+		order := FirstColumn(t->Query("select name from o where n > 1 order by name"));
+		Check("order by after where: {$order}", order->Equals("b c d"));
+
+		order := FirstColumn(t->Query("from o order by name"));
+		Check("from ... order by: {$order}", order->Equals("a b c d e f"));
+	}
+
+	function : TestParser() ~ Nil {
+		t := Table->New("p", ["col1", "col_2"]);
+		r := t->Insert(); r->Set("col1", IntRef->New(1)); r->Set("col_2", "x");
+		r := t->Insert(); r->Set("col1", IntRef->New(2)); r->Set("col_2", "y");
+		r := t->Insert(); r->Set("col1", IntRef->New(3)); r->Set("col_2", "x");
+
+		Check("column names with digits", Size(t->Query("select col1 from p where col1 >= 2")) = 2);
+		Check("'and' binds tighter than 'or'",
+			Size(t->Query("select * from p where col_2 = 'x' or col1 = 2 and col1 = 3")) = 2);
+		Check("parentheses group 'or'",
+			Size(t->Query("select * from p where (col1 = 1 or col1 = 2) and col_2 = 'x'")) = 1);
+		Check("parentheses after 'and'",
+			Size(t->Query("select * from p where col_2 = 'x' and (col1 = 3 or col1 = 2)")) = 1);
+		Check("'!=' operator", Size(t->Query("select * from p where col_2 != 'x'")) = 1);
+		Check("'not >' operator", Size(t->Query("select * from p where col1 not > 1")) = 1);
+		Check("upper case keywords", Size(t->Query("SELECT * FROM p WHERE col1 = 3")) = 1);
+
+		Check("unterminated string is an error", t->Query("select * from p where col_2 = 'x") = Nil);
+		Check("trailing operator is an error", t->Query("select * from p where col1 <") = Nil);
+		Check("trailing junk is an error", t->Query("select * from p where col1 = 1 junk") = Nil);
+		Check("literal on the left is an error", t->Query("select * from p where 1 = col1") = Nil);
+		Check("unclosed parenthesis is an error", t->Query("select * from p where (col1 = 1") = Nil);
+		Check("GetError after a failed query", t->GetError() <> Nil);
+
+		fresh := Table->New("q", ["a"]);
+		Check("GetError before any query", fresh->GetError() = Nil);
+	}
+
+	function : TestLike() ~ Nil {
+		t := Table->New("l", ["x"]);
+		r := t->Insert(); r->Set("x", "a.c");
+		r := t->Insert(); r->Set("x", "abc");
+		r := t->Insert(); r->Set("x", "a(b)*");
+		r := t->Insert(); r->Set("x", "banana");
+
+		Check("LIKE '.' is literal", Size(t->Query("select * from l where x like 'a.c'")) = 1);
+		Check("LIKE '_' is any character", Size(t->Query("select * from l where x like 'a_c'")) = 2);
+		Check("LIKE '%' run", Size(t->Query("select * from l where x like 'a%'")) = 3);
+		Check("LIKE regex characters are literal", Size(t->Query("select * from l where x like 'a(b)*'")) = 1);
+		Check("LIKE backtracking", Size(t->Query("select * from l where x like '%an%na'")) = 1);
+		Check("NOT LIKE", Size(t->Query("select * from l where x not like 'a%'")) = 1);
+	}
+
+	function : TestDelete() ~ Nil {
+		one := Table->New("d", ["x"]);
+		one->Insert();
+		Check("delete the only row", one->Delete(0));
+		Check("count after deleting the only row", one->Count() = 0);
+		Check("table empty after deleting the only row", one->GetAll()->Size() = 0);
+
+		r := one->Insert();
+		Check("primary keys are not reused", r->Get(0)->As(IntRef)->Get() = 1);
+		Check("insert after emptying", one->GetAll()->Size() = 1);
+
+		t := Table->New("d", ["x"]);
+		each(i : 4) {
+			row := t->Insert();
+			row->Set("x", IntRef->New(i));
+		};
+		Check("delete head", t->Delete(0));
+		Check("delete tail", t->Delete(3));
+		Check("delete middle", t->Delete(1));
+		Check("delete twice fails", <>t->Delete(1));
+		Check("count after deletes", t->Count() = 1);
+		Near("sum after deletes", t->Sum("x"), 2.0);
+	}
+}
