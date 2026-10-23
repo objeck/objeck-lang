@@ -224,6 +224,64 @@ rows' groups after them and writes a new footer listing the old groups and the n
 new rows' keys continue from the old footer's **next key**. Their columns must match the file's
 in name, order and type.
 
+## The change log
+
+A table opened for writing (`TableStore->New(path)` or `Table->Open(path)`) records every change
+in `path.log` beside the file, and reopening replays it over the last save. It uses the same
+primitive values as the file.
+
+**Header (28 bytes):**
+
+| Offset | Field | Value |
+|---|---|---|
+| 0 | magic | `"OLOG"` |
+| 4 | version | Int, `1` |
+| 12 | base CRC32 | Int, the footer CRC32 of the save this log follows |
+| 20 | base size | Int, that file's size in bytes |
+
+A log whose base does not match the file belongs to an earlier save: a checkpoint saved the
+file but crashed before writing the new, empty log. The file already holds those changes, so
+the log is skipped, never replayed twice.
+
+**Records**, one per statement, in order:
+
+| Field | Type | Meaning |
+|---|---|---|
+| length | Int | payload bytes |
+| check | Int | the length with every bit inverted |
+| CRC32 | Int | of the payload |
+| payload | | an Int count of changes, then the changes |
+
+Each change starts with an Int kind:
+
+| Kind | Change | Followed by |
+|---|---|---|
+| 1 | insert | Int key: the row the table's next key creates |
+| 2 | set a cell | Int key, Int column index, the value as an OBJECT cell (tag, then value; tag 0 empties it) |
+| 3 | delete | Int key |
+| 4 | add a column | Text name, Int type code |
+
+A statement is everything one API call or one SQL statement changes; a SQL statement that
+fails is recorded with its rollback, so replay ends in the same state, keys included. The record
+is written and flushed before the call returns.
+
+**Reading.** A crash can only cut the log short, so a last record that ends early (fewer than
+24 bytes left, or a length past the end) is a torn write: it is dropped and cut from the file.
+A length whose check disagrees, or a CRC32 that fails on a record that is not the last, is damage,
+and opening is refused with the byte offset. Replay that does not land on a live key, a known
+column or the expected next key is refused the same way.
+
+**Checkpoint** writes the table as a new save (by `path.part` and rename), then replaces the log
+with an empty one naming that save. `Save` of a durable table's own file is a checkpoint, and
+`Append` onto it is refused.
+
+**The lock**, `path.lock`, is created only if absent (`File->CreateNew`) and holds the writer's
+process id as text. A writer that finds it held by a running process is refused with that id. One
+held by a process that is gone, or left empty for a second (a writer that crashed between
+creating and writing it), is removed and taken. Readers (`Table->Load`) take no lock and see the
+last save or checkpoint. Two processes clearing the same stale lock at the same moment can both
+proceed; stale-lock recovery assumes that does not happen.
+
 ## A worked example
 
 A table `t` with an INT column `n` and a STRING column `s`, and two rows,
@@ -281,4 +339,4 @@ none.
   version 1 reader never meets one in a file it accepts. Inside a version 1 file, an unknown
   code means the file is malformed, and the reader says which column holds it.
 - Not in version 1, though the design leaves room for them: delta and run-length encodings,
-  indexes stored in the file, and a change log beside it (`runs.otab.log`, phase 3b).
+  and indexes stored in the file.

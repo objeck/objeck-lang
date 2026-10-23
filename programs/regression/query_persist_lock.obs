@@ -1,0 +1,99 @@
+# EXTRA_LIBS: net,regex,csv,xml,misc,query
+#~
+Query.Structured's writer lock (QUERY_DESIGN.md, phase 3b): opening a table for writing takes
+'path.lock', created only if absent (File->CreateNew) and holding this process's id. A second
+writer is refused with an error naming the holder; a lock whose process is gone is cleared, as
+is one left empty by a writer that crashed between creating and writing it; Close releases it;
+and Table->Open answers Nil while the lock is held. Readers (Table->Load) take no lock.
+~#
+use Query.Structured, System.IO.Filesystem;
+
+class QueryPersistLock {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# a process that is always running and is not this one
+	function : LiveOther() ~ Int {
+		if(Runtime->GetPlatform()->ToLower()->Has("win")) {
+			return 4;
+		};
+		return 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		path := "query_persist_lock_tmp.otab";
+		lock := "{$path}.lock";
+		File->Delete(path);
+		File->Delete(lock);
+		File->Delete("{$path}.log");
+
+		table := Table->New("t", ["n"], [ColumnType->INT], true);
+		table->Insert()->Set("n", IntRef->New(1));
+		Check("the file is saved", table->Save(path));
+
+		first := TableStore->New(path);
+		Check("the first writer opens", first->IsOpen());
+		Check("it holds the lock", File->Exists(lock));
+		holder := FileReader->ReadFile(lock);
+		Check("the lock names this process", holder <> Nil & holder->Trim()->ToInt() = Runtime->GetProcessId());
+
+		second := TableStore->New(path);
+		Check("a second writer is refused", <>second->IsOpen());
+		Check("and told this process holds it", second->GetError() <> Nil & second->GetError()->Has("this process"));
+		Check("Table->Open answers Nil while it is held", Table->Open(path) = Nil);
+		Check("a reader still loads the file", Table->Load(path) <> Nil);
+		Check("the refused writers leave the lock in place", File->Exists(lock));
+
+		first->Close();
+		Check("Close releases the lock", <>File->Exists(lock));
+		third := TableStore->New(path);
+		Check("after Close another writer opens", third->IsOpen());
+		third->Close();
+
+		# a live process that is not this one
+		alive := LiveOther();
+		FileWriter->WriteFile(lock, "{$alive}");
+		busy := TableStore->New(path);
+		Check("a lock held by another running process refuses the writer", <>busy->IsOpen());
+		Check("and names that process", busy->GetError() <> Nil & busy->GetError()->Has("process {$alive}"));
+		Check("and leaves its lock alone", File->Exists(lock) & FileReader->ReadFile(lock)->Trim()->ToInt() = alive);
+
+		# a process that is gone: the lock is stale, and cleared
+		FileWriter->WriteFile(lock, "2147483000");
+		stale := TableStore->New(path);
+		Check("a lock left by a process that is gone is cleared", stale->IsOpen());
+		Check("and taken by this process", FileReader->ReadFile(lock)->Trim()->ToInt() = Runtime->GetProcessId());
+		stale->Close();
+
+		# empty: a writer that crashed between creating the lock and writing its id
+		FileWriter->WriteFile(lock, "");
+		empty := TableStore->New(path);
+		Check("an empty lock is cleared once it stays empty", empty->IsOpen());
+		empty->Close();
+
+		# Table->Open, and the table's own Close
+		runs := Table->Open(path);
+		Check("Table->Open opens a durable table", runs <> Nil & runs->IsDurable());
+		runs->Close();
+		Check("the table's Close releases the lock", <>File->Exists(lock));
+
+		File->Delete(path);
+		File->Delete("{$path}.log");
+		File->Delete(lock);
+
+		if(@failures = 0) {
+			"PASS: one writer at a time, with stale locks cleared"->PrintLine();
+		}
+		else {
+			"FAIL: the writer lock ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

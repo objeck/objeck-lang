@@ -9439,6 +9439,12 @@
 				"Average": {
 					"descriptions": ["**Gets the column average over its numeric cells (Ints and Floats). String, date and empty cells are skipped: they add nothing to the sum and are not counted in the divisor. A column with no numeric cells, or an unknown column, averages to 0.0; Count(name) tells the cases apart.**\n\n```method : public : Average(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"scores\", [\"score\"]);\nr1 := table->Insert(); r1->Set(\"score\", IntRef->New(80));\nr2 := table->Insert(); r2->Set(\"score\", IntRef->New(90));\navg := table->Average(\"score\"); # returns 85.0\n\"avg={$avg}\"->PrintLine();\n```"]
 				},
+				"Checkpoint": {
+					"descriptions": ["**Folds a durable table's change log into a new save and empties it**\n\n```method : public : Checkpoint() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Close": {
+					"descriptions": ["**Stops recording a durable table's changes and releases its lock. Changes since the last checkpoint stay in the log for the next open.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
 				"Compact": {
 					"descriptions": ["**Removes the space deleted rows still occupy. Primary keys are unchanged; row cursors taken before the call find their rows again by key.**\n\n```method : public : Compact() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
@@ -9520,6 +9526,9 @@
 				"Insert": {
 					"descriptions": ["**Inserts a new row into the table. After the row has been added its values will need to be set.**\n\n```method : public : Insert() ~ Row```\n\n\n\nreturn: Row\n\n```\ntable := Query.Structured.Table->New(\"tasks\", [\"title\", \"done\"]);\nrow := table->Insert(); # add empty row\nrow->Set(\"title\", \"Write tests\");\nrow->Set(\"done\", Row->False());\nrow->ToString()->PrintLine();\n```"]
 				},
+				"IsDurable": {
+					"descriptions": ["**Whether the table records its changes to disk (it was opened with Table->Open or TableStore)**\n\n```method : public : IsDurable() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"IsLive": {
 					"descriptions": ["**Whether a row slot holds a live (not deleted) row**\n\n```method : public : IsLive(row:Int) ~ Bool```\n\n\n\nrow: Int\n\nreturn: Bool"]
 				},
@@ -9540,6 +9549,9 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor. Column types are taken from the first value stored in each.**\n\n```New(name:String, column_names:String[])```\n\n\n\nname: String\n\ncolumn_names: String[]", "**Constructor. Column types are taken from the first value stored in each.**\n\n```New(name:String, column_names:Vector&lt;String&gt;)```\n\n\n\nname: String\n\ncolumn_names: Vector&lt;String&gt;", "**Constructor with declared column types; storing a value of another type is refused**\n\n```New(name:String, column_names:String[], types:ColumnType[])```\n\n\n\nname: String\n\ncolumn_names: String[]\n\ntypes: ColumnType[]", "**Constructor with starting column types**\n\n```New(name:String, column_names:String[], types:ColumnType[], declared:Bool)```\n\n\n\nname: String\n\ncolumn_names: String[]\n\ntypes: ColumnType[]\n\ndeclared: Bool"]
+				},
+				"Open": {
+					"descriptions": ["**Opens a table file for writing (see TableStore): takes its lock, loads it and replays its change log. Every change is then recorded as it happens.**\n\n```function : Open(path:String) ~ Table```\n\n\n\npath: String\n\nreturn: Table\n\n```\nruns := Table->Open(\"runs.otab\");\nif(runs <> Nil) {\n  runs->Execute(\"delete from runs where score < 0.5\");\n  runs->Checkpoint();\n  runs->Close();\n};\n```"]
 				},
 				"OrderBy": {
 					"descriptions": ["**Every live row sorted by a column, as a view; empty cells last**\n\n```method : public : OrderBy(name:String, order:Order) ~ View```\n\n\n\nname: String\n\norder: Order\n\nreturn: View", "**Every live row sorted by a column, ascending, as a view; empty cells last**\n\n```method : public : OrderBy(name:String) ~ View```\n\n\n\nname: String\n\nreturn: View"]
@@ -9599,6 +9611,32 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(name:String, columns:String[], types:ColumnType[])```\n\n\n\nname: String\n\ncolumns: String[]\n\ntypes: ColumnType[]"]
+				}
+			}
+		},
+		"Query.Structured.TableStore": {
+			"description": "A table kept durable on disk: its .otab file, plus a change log beside it ('path.log') that records every insert, change, delete and added column as it happens, one record per statement, flushed before the statement returns. Opening loads the last save and replays the log, so a crash loses at most the statement in progress. Checkpoint folds the log into a new save and empties it.\n\nOne process writes at a time: opening takes a lock file ('path.lock') naming this process. A second writer is refused with an error naming the holder, and a lock whose process is gone (a crash) is cleared. Readers open the file with Table->Load and see the last save or checkpoint. Create the file with Save first, then open it here.",
+			"functions": {
+				"Checkpoint": {
+					"descriptions": ["**Folds the change log into a new save of the table and empties the log**\n\n```method : public : Checkpoint() ~ Bool```\n\n\n\nreturn: Bool", "**Folds the change log into a new save, compressing its blocks, and empties the log**\n\n```method : public : Checkpoint(compression:Compression) ~ Bool```\n\n\n\ncompression: Compression\n\nreturn: Bool"]
+				},
+				"Close": {
+					"descriptions": ["**Stops recording and releases the lock. The changes since the last checkpoint stay in the log, for the next open to replay. The table stays usable in memory.**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"GetError": {
+					"descriptions": ["**Why opening, a checkpoint or a change failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetReplayed": {
+					"descriptions": ["**Gets the number of statements replayed from the change log when the table was opened**\n\n```method : public : GetReplayed() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTable": {
+					"descriptions": ["**Gets the table. Its changes are recorded until Close.**\n\n```method : public : GetTable() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the table is open for writing**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Opens a table file for writing: takes its lock, loads the last save and replays the change log**\n\n```New(path:String)```\n\n\n\npath: String"]
 				}
 			}
 		},
@@ -17434,6 +17472,12 @@
 			}
 		],
 		"TableSpec": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"TableStore": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""
