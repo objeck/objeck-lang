@@ -159,17 +159,31 @@ each(candidate in candidates) {
 		New : private(model_json : JsonElement) {
 			Parent();
 
-			@description := model_json->Get("description")->GetString();
-			@display_name := model_json->Get("displayName")->GetString();
-			@input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
-			@name := model_json->Get("name")->GetString();
-			@output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
+			# 'description' and 'version' are optional in the Model resource and
+			# absent from some listed models; a missing field reads as Nil
+			if(model_json->Has("description")) {
+				@description := model_json->Get("description")->GetString();
+			};
+			if(model_json->Has("displayName")) {
+				@display_name := model_json->Get("displayName")->GetString();
+			};
+			if(model_json->Has("inputTokenLimit")) {
+				@input_token_limit := model_json->Get("inputTokenLimit")->GetInt();
+			};
+			if(model_json->Has("name")) {
+				@name := model_json->Get("name")->GetString();
+			};
+			if(model_json->Has("outputTokenLimit")) {
+				@output_token_limit := model_json->Get("outputTokenLimit")->GetInt();
+			};
 
 			@generation_methods := Vector->New()<String>;
 			generation_methods_json := model_json->Get("supportedGenerationMethods");
-			each(generation_method_json in generation_methods_json) {
-				@generation_methods->AddBack(generation_method_json->GetString());
-			}
+			if(generation_methods_json <> Nil) {
+				each(generation_method_json in generation_methods_json) {
+					@generation_methods->AddBack(generation_method_json->GetString());
+				};
+			};
 
 			@temperature := 0.9;
 			# the key is "temperature"; "@temperature" never matched, so the
@@ -188,7 +202,49 @@ each(candidate in candidates) {
 			if(top_p_json <> Nil) {
 				@top_p := top_p_json->GetFloat();
 			};
-			@version := model_json->Get("version")->GetString();
+
+			if(model_json->Has("version")) {
+				@version := model_json->Get("version")->GetString();
+			};
+		}
+
+		#~
+		Parses a model listing response body (one page)
+		@param body response body
+		@return models, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseModels(body : String) ~ Vector<Model> {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			models := Vector->New()<Model>;
+			AddModels(response_json, models);
+			return models;
+		}
+
+		function : private : AddModels(response_json : JsonElement, models : Vector<Model>) ~ Nil {
+			models_json := response_json->Get("models");
+			if(models_json <> Nil) {
+				each(model_json in models_json) {
+					models->AddBack(Model->New(model_json));
+				};
+			};
+		}
+
+		#~
+		Parses a single model response body
+		@param body response body
+		@return model, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseModel(body : String) ~ Model {
+			model_json := ParseBody(body);
+			if(model_json = Nil) {
+				return Nil;
+			};
+
+			return Model->New(model_json);
 		}
 		
 		#~
@@ -224,12 +280,7 @@ each(model in models) {
 						};
 					};
 
-					models_json := response_json->Get("models");
-					if(models_json <> Nil) {
-						each(model_json in models_json) {
-							models->AddBack(Model->New(model_json));
-						};
-					};
+					AddModels(response_json, models);
 					next_page_json := response_json->Get("nextPageToken");
 				}
 				while(next_page_json <> Nil);
@@ -320,7 +371,7 @@ each(candidate in candidates) {
 		@param funcs map of function callbacks, name must to map to function callback name
 		@param safety_settings key/value safety settings
 		@param resp_schema response format
-		@param config generation configuration, currently unsupported
+		@param config generation configuration (temperature, token limit, etc.), or Nil
 		@param system_instruction system instruction content
 		@param key API key
 		~#
@@ -332,17 +383,16 @@ each(candidate in candidates) {
 		}
 
 		#~
-		Generates a response from the model given an input
-		@param model_name model name
+		Builds the JSON body of a generateContent request
 		@param contents list of content for the model
 		@param funcs map of function callbacks, name must to map to function callback name
-		@param safety_settings key/value safety settings
 		@param resp_schema response format
-		@param config generation configuration, currently unsupported
+		@param safety_settings key/value safety settings
+		@param config generation configuration
 		@param system_instruction system instruction content
-		@param key API key
+		@return request body
 		~#
-		function : GenerateContent(model_name : String, contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, resp_schema : Pair<String, ParameterType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, system_instruction : Content, key : String) ~ Vector<Candidate> {
+		function : BuildGenerateRequest(contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, resp_schema : Pair<String, ParameterType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, system_instruction : Content) ~ JsonElement {
 			# add contents
 			content_array_json := JsonElement->New(JsonElement->JsonType->ARRAY);
 			each(content in contents) {
@@ -407,15 +457,24 @@ each(candidate in candidates) {
 				contents_obj_json->Insert("systemInstruction", sys_content_json);
 			};
 
-			# response schema
+			# generation config, then the response schema, which shares its object
+			gen_config_obj_json : JsonElement;
+			if(config <> Nil) {
+				gen_config_obj_json := config->ToJson();
+			};
+
 			if(resp_schema <> Nil) {
 				schema_json := resp_schema->GetSecond();
 				schema_mime_type := resp_schema->GetFirst();
 
-				gen_config_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				if(gen_config_obj_json = Nil) {
+					gen_config_obj_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				};
 				gen_config_obj_json->Insert("responseMimeType", schema_mime_type);
 				gen_config_obj_json->Insert("responseSchema", schema_json->ToJson());
+			};
 
+			if(gen_config_obj_json <> Nil & gen_config_obj_json->Size() > 0) {
 				contents_obj_json->Insert("generationConfig", gen_config_obj_json);
 			};
 
@@ -454,6 +513,23 @@ each(candidate in candidates) {
 				contents_obj_json->Insert("safetySettings", safety_setting_array_json);
 			};
 
+			return contents_obj_json;
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model_name model name
+		@param contents list of content for the model
+		@param funcs map of function callbacks, name must to map to function callback name
+		@param safety_settings key/value safety settings
+		@param resp_schema response format
+		@param config generation configuration (temperature, token limit, etc.), or Nil
+		@param system_instruction system instruction content
+		@param key API key
+		~#
+		function : GenerateContent(model_name : String, contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, resp_schema : Pair<String, ParameterType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>, config : GenerationConfig, system_instruction : Content, key : String) ~ Vector<Candidate> {
+			contents_obj_json := BuildGenerateRequest(contents, funcs, resp_schema, safety_settings, config, system_instruction);
+			content_array_json := contents_obj_json->Get("contents");
 
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/{$model_name}:generateContent?key={$key}");
 			if(url->GetQueryParameters()->Has("key")) {			
@@ -471,19 +547,48 @@ each(candidate in candidates) {
 				funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, url : Url, is_chat : Bool) ~ Vector<Candidate> {
 			
 			candidates := Vector->New()<Candidate>;
-					
+
+			# a prompt blocked by a safety filter comes back with no 'candidates',
+			# only 'promptFeedback'; iterating the missing array dereferenced Nil
 			candidates_json := response->Get("candidates");
+			if(candidates_json = Nil) {
+				block_reason_json := response->FindElements("promptFeedback/blockReason");
+				if(block_reason_json <> Nil) {
+					block_reason := block_reason_json->GetString();
+					SetLastError("Prompt blocked: {$block_reason}");
+				}
+				else {
+					SetLastError("Response holds no candidates");
+				};
+
+				return candidates;
+			};
+
 			each(candidate_json in candidates_json) {
-				# general attributes
+				# general attributes: a candidate stopped by a safety filter (finishReason
+				# SAFETY, RECITATION, ...) may carry no 'content' at all
 				content_json := candidate_json->Get("content");
-				role := content_json->Get("role")->GetString();
-				finish_reason := candidate_json->Get("finishReason")->GetString();
+				role := "model";
+				if(content_json <> Nil & content_json->Has("role")) {
+					role := content_json->Get("role")->GetString();
+				};
+
+				finish_reason := "FINISH_REASON_UNSPECIFIED";
+				if(candidate_json->Has("finishReason")) {
+					finish_reason := candidate_json->Get("finishReason")->GetString();
+				};
 
 				# parts
 				parts := Vector->New()<Part>;
-				parts_json := content_json->Get("parts");
+				parts_json : JsonElement;
+				if(content_json <> Nil) {
+					parts_json := content_json->Get("parts");
+				};
+				if(parts_json = Nil) {
+					parts_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				};
 
-				if(is_chat) {
+				if(is_chat & content_json <> Nil) {
 					content_array_json->Add(content_json);
 				};
 
@@ -516,7 +621,11 @@ each(candidate in candidates) {
 						func_name := func_call_json->Get("name")->GetString();
 						func_args := func_call_json->Get("args");
 
-						func_callback_mapping := funcs->Find(func_name)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+						func_callback_mapping : Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+						if(funcs <> Nil) {
+							func_callback_mapping := funcs->Find(func_name)<FunctionType, Func2Ref<JsonElement, JsonElement>>;
+						};
+
 						if(func_callback_mapping <> Nil) {
 							func_callback_ref := func_callback_mapping->GetSecond()<Func2Ref<JsonElement, JsonElement>>;
 							func_callback := func_callback_ref->Get();
@@ -564,7 +673,11 @@ each(candidate in candidates) {
 						};
 					};
 
-					parts->AddBack(part);
+					# a function call with no registered callback, or a part kind this
+					# library does not model, left a Nil part that GetAllText() dereferenced
+					if(part <> Nil) {
+						parts->AddBack(part);
+					};
 				};
 
 				# safety ratings
@@ -585,6 +698,21 @@ each(candidate in candidates) {
 			};
 
 			return candidates;
+		}
+
+		#~
+		Parses a generateContent response body. Function calls in the reply are not
+		dispatched (no callbacks are given).
+		@param body response body
+		@return candidates; empty when the prompt was blocked, Nil on an error body (see GetLastError)
+		~#
+		function : ParseCandidates(body : String) ~ Vector<Candidate> {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			return BuildContentResponse(Nil, Nil, response_json, Nil, Nil, false);
 		}
 
 		#~
@@ -659,15 +787,7 @@ embedding := Model->EmbedContent(content, EndPoint->GetApiKey());
 			if(url->GetQueryParameters()->Has("key")) {
 				response_json := PostRequest(embed_obj_json, url);
 				if(response_json <> Nil) {
-					values_array_json := response_json->FindElements("embedding/values");
-
-					values := Float->New[values_array_json->Size()];
-					each(i : values_array_json) {
-						value_json := values_array_json->Get(i);
-						values[i] := value_json->GetFloat();
-					};
-
-					return values;
+					return EmbeddingFromJson(response_json);
 				};
 			};
 						
@@ -751,7 +871,7 @@ count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApi
 			if(url->GetQueryParameters()->Has("key")) {			
 				response := PostRequest(contents_obj_json, url);
 				if(response <> Nil) {
-					return response->Get("totalTokens")->GetInt();
+					return TokenCountFromJson(response);
 				};
 			};
 
@@ -788,23 +908,102 @@ count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApi
 			if(url->GetQueryParameters()->Has("key")) {
 				response_json := PostRequest(body_json, url);
 				if(response_json <> Nil) {
-					embeddings_json := response_json->Get("embeddings");
-					results := Vector->New()<EmbeddingValues>;
-					if(embeddings_json <> Nil) {
-						each(embedding_json in embeddings_json) {
-							values_json := embedding_json->Get("values");
-							values := Float->New[values_json->Size()];
-							each(i : values_json) {
-								values[i] := values_json->Get(i)->GetFloat();
-							};
-							results->AddBack(EmbeddingValues->New(values));
-						};
-					};
-					return results;
+					return BatchEmbeddingsFromJson(response_json);
 				};
 			};
 
 			return Nil;
+		}
+
+		#~
+		Parses an embedContent response body
+		@param body response body
+		@return embedding values, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseEmbedding(body : String) ~ Float[] {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			return EmbeddingFromJson(response_json);
+		}
+
+		# a body with no 'embedding/values' dereferenced Nil
+		function : private : EmbeddingFromJson(response_json : JsonElement) ~ Float[] {
+			values := ValuesFromJson(response_json->FindElements("embedding/values"));
+			if(values = Nil) {
+				SetLastError("Response holds no embedding");
+			};
+
+			return values;
+		}
+
+		function : private : ValuesFromJson(values_json : JsonElement) ~ Float[] {
+			if(values_json = Nil | values_json->GetType() <> JsonElement->JsonType->ARRAY) {
+				return Nil;
+			};
+
+			values := Float->New[values_json->Size()];
+			each(i : values) {
+				values[i] := values_json->Get(i)->GetFloat();
+			};
+
+			return values;
+		}
+
+		#~
+		Parses a batchEmbedContents response body
+		@param body response body
+		@return one embedding per input, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseBatchEmbeddings(body : String) ~ Vector<EmbeddingValues> {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			return BatchEmbeddingsFromJson(response_json);
+		}
+
+		function : private : BatchEmbeddingsFromJson(response_json : JsonElement) ~ Vector<EmbeddingValues> {
+			results := Vector->New()<EmbeddingValues>;
+			embeddings_json := response_json->Get("embeddings");
+			if(embeddings_json <> Nil) {
+				each(embedding_json in embeddings_json) {
+					values := ValuesFromJson(embedding_json->Get("values"));
+					if(values = Nil) {
+						values := Float->New[0];
+					};
+					results->AddBack(EmbeddingValues->New(values));
+				};
+			};
+
+			return results;
+		}
+
+		#~
+		Parses a countTokens response body
+		@param body response body
+		@return token count, or -1 on an error body (see GetLastError)
+		~#
+		function : ParseTokenCount(body : String) ~ Int {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return -1;
+			};
+
+			return TokenCountFromJson(response_json);
+		}
+
+		function : private : TokenCountFromJson(response_json : JsonElement) ~ Int {
+			total_json := response_json->Get("totalTokens");
+			if(total_json = Nil) {
+				SetLastError("Response holds no token count");
+				return -1;
+			};
+
+			return total_json->GetInt();
 		}
 
 		#~
@@ -1109,11 +1308,150 @@ count := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApi
 		method : virtual : public : ToString() ~ String;
 	}
 
-	# TODO: implement comprehensive generation config support
 	# TODO: implement streamGenerateContent for real-time streaming (requires SSE/streaming HTTP support)
+
+	#~
+	Generation configuration: sampling and output limits for a generateContent request.
+	Unset values are left out of the request, so the model's defaults apply.
+
+```
+config := GenerationConfig->New()->SetTemperature(0.2)->SetMaxOutputTokens(256);
+content := Content->New("user")->AddPart(TextPart->New("Name three rivers."));
+candidates := Model->GenerateContent(Model->GEMINI_2_5_FLASH(), content, Nil, Nil, Nil, config, Nil, EndPoint->GetApiKey());
+```
+	~#
 	class GenerationConfig from EndPoint {
+		@temperature : Float;
+		@has_temperature : Bool;
+		@top_p : Float;
+		@has_top_p : Bool;
+		@top_k : Int;
+		@max_output_tokens : Int;
+		@candidate_count : Int;
+		@seed : Int;
+		@has_seed : Bool;
+		@stop_sequences : Vector<String>;
+
 		New() {
 			Parent();
+		}
+
+		#~
+		Sets the sampling temperature
+		@param temperature temperature, typically 0.0 to 2.0
+		@return self reference
+		~#
+		method : public : SetTemperature(temperature : Float) ~ GenerationConfig {
+			@temperature := temperature;
+			@has_temperature := true;
+			return @self;
+		}
+
+		#~
+		Sets the nucleus sampling threshold
+		@param top_p cumulative probability, 0.0 to 1.0
+		@return self reference
+		~#
+		method : public : SetTopP(top_p : Float) ~ GenerationConfig {
+			@top_p := top_p;
+			@has_top_p := true;
+			return @self;
+		}
+
+		#~
+		Sets the top-k sampling limit
+		@param top_k number of most probable tokens considered
+		@return self reference
+		~#
+		method : public : SetTopK(top_k : Int) ~ GenerationConfig {
+			@top_k := top_k;
+			return @self;
+		}
+
+		#~
+		Sets the maximum number of output tokens
+		@param max_output_tokens token limit
+		@return self reference
+		~#
+		method : public : SetMaxOutputTokens(max_output_tokens : Int) ~ GenerationConfig {
+			@max_output_tokens := max_output_tokens;
+			return @self;
+		}
+
+		#~
+		Sets the number of candidates to generate
+		@param candidate_count candidate count
+		@return self reference
+		~#
+		method : public : SetCandidateCount(candidate_count : Int) ~ GenerationConfig {
+			@candidate_count := candidate_count;
+			return @self;
+		}
+
+		#~
+		Sets the decoding seed
+		@param seed seed
+		@return self reference
+		~#
+		method : public : SetSeed(seed : Int) ~ GenerationConfig {
+			@seed := seed;
+			@has_seed := true;
+			return @self;
+		}
+
+		#~
+		Adds a stop sequence; generation stops at the first one produced
+		@param stop_sequence stop sequence
+		@return self reference
+		~#
+		method : public : AddStopSequence(stop_sequence : String) ~ GenerationConfig {
+			if(@stop_sequences = Nil) {
+				@stop_sequences := Vector->New()<String>;
+			};
+			@stop_sequences->AddBack(stop_sequence);
+			return @self;
+		}
+
+		#~
+		Gets the configuration as the 'generationConfig' JSON object
+		@return JSON object holding only the values that were set
+		~#
+		method : public : ToJson() ~ JsonElement {
+			config_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+
+			if(@has_temperature) {
+				config_json->Insert("temperature", @temperature);
+			};
+
+			if(@has_top_p) {
+				config_json->Insert("topP", @top_p);
+			};
+
+			if(@top_k > 0) {
+				config_json->Insert("topK", @top_k);
+			};
+
+			if(@max_output_tokens > 0) {
+				config_json->Insert("maxOutputTokens", @max_output_tokens);
+			};
+
+			if(@candidate_count > 0) {
+				config_json->Insert("candidateCount", @candidate_count);
+			};
+
+			if(@has_seed) {
+				config_json->Insert("seed", @seed);
+			};
+
+			if(@stop_sequences <> Nil) {
+				stops_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(stop_sequence in @stop_sequences) {
+					stops_json->Add(JsonElement->New(stop_sequence));
+				};
+				config_json->Insert("stopSequences", stops_json);
+			};
+
+			return config_json;
 		}
 	}
 
@@ -1516,7 +1854,10 @@ candidate->GetAllText()->PrintLine();
 
 		New(file_json : JsonElement) {
 			Parent();
-			@name := file_json->Get("name")->GetString();
+			name_json := file_json->Get("name");
+			if(name_json <> Nil) {
+				@name := name_json->GetString();
+			};
 
 			display_name_json := file_json->Get("displayName");
 			if(display_name_json <> Nil) {
@@ -1675,17 +2016,35 @@ candidate->GetAllText()->PrintLine();
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/files?key={$key}");
 			response_json := GetRequest(url);
 			if(response_json <> Nil) {
-				results := Vector->New()<GeminiFile>;
-				files_json := response_json->Get("files");
-				if(files_json <> Nil) {
-					each(file_json in files_json) {
-						results->AddBack(GeminiFile->New(file_json));
-					};
-				};
-				return results;
+				return FilesFromJson(response_json);
 			};
 
 			return Nil;
+		}
+
+		#~
+		Parses a file listing response body
+		@param body response body
+		@return file resources, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseList(body : String) ~ Vector<GeminiFile> {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			return FilesFromJson(response_json);
+		}
+
+		function : private : FilesFromJson(response_json : JsonElement) ~ Vector<GeminiFile> {
+			results := Vector->New()<GeminiFile>;
+			files_json := response_json->Get("files");
+			if(files_json <> Nil) {
+				each(file_json in files_json) {
+					results->AddBack(GeminiFile->New(file_json));
+				};
+			};
+			return results;
 		}
 
 		#~
@@ -1890,17 +2249,49 @@ candidate->GetAllText()->PrintLine();
 			url := Url->New("https://generativelanguage.googleapis.com/v1beta/cachedContents?key={$key}");
 			response_json := GetRequest(url);
 			if(response_json <> Nil) {
-				results := Vector->New()<CachedContentItem>;
-				cached_json := response_json->Get("cachedContents");
-				if(cached_json <> Nil) {
-					each(item_json in cached_json) {
-						results->AddBack(CachedContentItem->New(item_json));
-					};
-				};
-				return results;
+				return ItemsFromJson(response_json);
 			};
 
 			return Nil;
+		}
+
+		#~
+		Parses a cachedContents listing response body
+		@param body response body
+		@return cached content items, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseList(body : String) ~ Vector<CachedContentItem> {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			return ItemsFromJson(response_json);
+		}
+
+		#~
+		Parses a single cachedContents response body (create or get)
+		@param body response body
+		@return cached content item, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseItem(body : String) ~ CachedContentItem {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			return CachedContentItem->New(response_json);
+		}
+
+		function : private : ItemsFromJson(response_json : JsonElement) ~ Vector<CachedContentItem> {
+			results := Vector->New()<CachedContentItem>;
+			cached_json := response_json->Get("cachedContents");
+			if(cached_json <> Nil) {
+				each(item_json in cached_json) {
+					results->AddBack(CachedContentItem->New(item_json));
+				};
+			};
+			return results;
 		}
 
 		#~
@@ -1940,25 +2331,62 @@ candidate->GetAllText()->PrintLine();
 
 		New() {}
 
+		#~
+		Parses a response body, recording a failure as the last error (the error was
+		only printed before, so GetLastError() never reported it). A body that is not
+		JSON, or that carries an 'error' object, yields Nil.
+		@param body response body
+		@return parsed JSON, or Nil on failure
+		~#
+		function : ParseBody(body : String) ~ JsonElement {
+			if(body = Nil) {
+				SetLastError("Empty response");
+				return Nil;
+			};
+
+			response_json := JsonParser->TextToElement(body);
+			if(response_json = Nil) {
+				SetLastError("Unable to parse response");
+				"### Error: Unable to parse response ###"->ErrorLine();
+				return Nil;
+			};
+
+			# every one of these endpoints answers with an object; the JSON reader
+			# accepts some bare words (a proxy's plain-text error page) as a value
+			if(response_json->GetType() <> JsonElement->JsonType->OBJECT) {
+				SetLastError("Unexpected response: " + body->SubString(body->Size() < 64 ? body->Size() : 64));
+				return Nil;
+			};
+
+			error_json := response_json->Get("error");
+			if(error_json <> Nil & <>error_json->IsNull()) {
+				error_message : String;
+				message_json := error_json->Get("message");
+				if(message_json <> Nil) {
+					error_message := JsonElement->Decode(message_json->GetString());
+				}
+				else {
+					error_message := error_json->ToString();
+				};
+
+				status_json := error_json->Get("status");
+				if(status_json <> Nil) {
+					status := status_json->GetString();
+					error_message := "{$status}: {$error_message}";
+				};
+
+				SetLastError(error_message);
+				">>> Error: {$error_message} <<<"->ErrorLine();
+				return Nil;
+			};
+
+			return response_json;
+		}
+
 		function : private : GetRequest(url : Url) ~ JsonElement {
 			response := HttpsClient->QuickGet(url, "application/json");
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				
-				
-				if(response_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_json := response_json->FindElements("error/message")
-				if(error_json <> Nil) {
-					error_message := error_json->GetString();
-					">>> Error: {$error_message} <<<"->ErrorLine();
-					return Nil;
-				};
-
-				return response_json;
+				return ParseBody(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -1967,22 +2395,7 @@ candidate->GetAllText()->PrintLine();
 		function : private : PostRequest(request : JsonElement, url : Url, headers : Map<String,String>) ~ JsonElement {
 			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json", headers);
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				
-				
-				if(response_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_json := response_json->FindElements("error/message")
-				if(error_json <> Nil) {
-					error_message := error_json->GetString();
-					">>> Error: {$error_message} <<<"->ErrorLine();
-					return Nil;
-				};
-
-				return response_json;
+				return ParseBody(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -1991,22 +2404,7 @@ candidate->GetAllText()->PrintLine();
 		function : private : PostRequest(request : JsonElement, url : Url) ~ JsonElement {
 			response := HttpsClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				
-				
-				if(response_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_json := response_json->FindElements("error/message")
-				if(error_json <> Nil) {
-					error_message := error_json->GetString();
-					">>> Error: {$error_message} <<<"->ErrorLine();
-					return Nil;
-				};
-
-				return response_json;
+				return ParseBody(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -2395,7 +2793,6 @@ bundle API.Google.Gemini.Tuning {
 		@param content model content
 		@param funcs map of function callbacks, name must to map to function callback name
 		@param safety_settings key/value safety settings
-		@param config generation configuration, currently unsupported
 		~#
 		method : public : GenerateContent(content : Content, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, resp_schema : Pair<String, ParameterType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>) ~ Vector<Candidate> {
 			contents := Vector->New()<Content>;
@@ -2410,7 +2807,6 @@ bundle API.Google.Gemini.Tuning {
 		@param contents list of content for the model
 		@param funcs map of function callbacks, name must to map to function callback name		
 		@param safety_settings key/value safety settings
-		@param config generation configuration, currently unsupported
 		~#
 		method : public : GenerateContent(contents : Vector<Content>, funcs : Map<String, Pair<FunctionType, Func2Ref<JsonElement, JsonElement>>>, resp_schema : Pair<String, ParameterType>, safety_settings : Vector<Collection.Tuple.Pair<String, String>>) ~ Vector<Candidate> {
 			# add contents

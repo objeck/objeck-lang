@@ -1,0 +1,267 @@
+# EXTRA_LIBS: gemini,misc,json,net,net_server,cipher
+#~
+API.Google.Gemini response parsing, tested offline from recorded bodies that
+follow the public API reference (no key, no network). Each Parse* function is
+the half of an API call that turns the HTTP body into objects.
+
+Defects this guards:
+- A prompt blocked by a safety filter returns 'promptFeedback' and no
+  'candidates'; iterating the missing array dereferenced Nil.
+- A candidate stopped for SAFETY may carry no 'content'; reading its role
+  dereferenced Nil.
+- A functionCall part with no registered callback dereferenced the Nil callback
+  map, and an unmodelled part left a Nil part that GetAllText() dereferenced.
+- An API error was printed but never recorded, so GetLastError() returned Nil.
+- A model without 'description' or 'version' (both optional) dereferenced Nil.
+- An embedding body without 'embedding/values' dereferenced Nil.
+- GenerationConfig was an empty class and the 'config' argument was ignored.
+
+Embedding fixtures avoid exponent notation (real bodies often carry values such
+as -4.0583e-05); add such cases once the JSON lexer reads them.
+~#
+
+use Collection, API.Google.Gemini;
+
+class GeminiParseTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Near(a : Float, b : Float) ~ Bool {
+    d := a - b;
+    if(d < 0.0) {
+      d := d * -1.0;
+    };
+    return d < 0.0000001;
+  }
+
+  function : Same(a : String, b : String) ~ Bool {
+    return a <> Nil & a->Equals(b);
+  }
+
+  function : HasError(text : String) ~ Bool {
+    err := EndPoint->GetLastError();
+    return err <> Nil & err->Find(text) > -1;
+  }
+
+  function : ErrorBody() ~ String {
+    return "{\"error\":{\"code\":400,\"message\":\"API key not valid. Please pass a valid API key.\",\"status\":\"INVALID_ARGUMENT\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.ErrorInfo\",\"reason\":\"API_KEY_INVALID\",\"domain\":\"googleapis.com\"}]}}";
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    TestGenerate();
+    TestModels();
+    TestEmbeddings();
+    TestCountTokens();
+    TestFiles();
+    TestCache();
+    TestGenerationConfig();
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: Gemini response parsing"->PrintLine();
+  }
+
+  function : TestGenerate() ~ Nil {
+    "generateContent"->PrintLine();
+
+    body := "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"The Eiffel Tower is a wrought-iron lattice tower in Paris.\"}],\"role\":\"model\"},\"finishReason\":\"STOP\",\"avgLogprobs\":-0.0849,\"safetyRatings\":[{\"category\":\"HARM_CATEGORY_HATE_SPEECH\",\"probability\":\"NEGLIGIBLE\"},{\"category\":\"HARM_CATEGORY_DANGEROUS_CONTENT\",\"probability\":\"NEGLIGIBLE\"}]}],\"usageMetadata\":{\"promptTokenCount\":8,\"candidatesTokenCount\":14,\"totalTokenCount\":22,\"promptTokensDetails\":[{\"modality\":\"TEXT\",\"tokenCount\":8}]},\"modelVersion\":\"gemini-2.0-flash\",\"responseId\":\"mBY0aPr2BJ2vz7IPsdHhgQ0\"}";
+    candidates := Model->ParseCandidates(body);
+    Check("a reply parses", candidates <> Nil & candidates->Size() = 1);
+    if(candidates <> Nil & candidates->Size() = 1) {
+      candidate := candidates->Get(0);
+      Check("text", Same(candidate->GetAllText(), "The Eiffel Tower is a wrought-iron lattice tower in Paris."));
+      Check("role", Same(candidate->GetRole(), "model"));
+      Check("finish reason", Same(candidate->GetFinishReason(), "STOP"));
+      ratings := candidate->GetSafetyRatings();
+      Check("safety ratings", ratings->Size() = 2 & Same(ratings->Get(0)->GetFirst(), "HARM_CATEGORY_HATE_SPEECH"));
+      Check("ToString does not crash", candidate->ToString() <> Nil);
+    };
+
+    # several parts read as one text; a thinking model's reply has no safetyRatings
+    body := "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"First, \"},{\"text\":\"second.\"}],\"role\":\"model\"},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":5,\"candidatesTokenCount\":4,\"totalTokenCount\":40,\"thoughtsTokenCount\":31},\"modelVersion\":\"gemini-2.5-flash\"}";
+    candidates := Model->ParseCandidates(body);
+    Check("a multi-part reply parses", candidates <> Nil & candidates->Size() = 1);
+    if(candidates <> Nil & candidates->Size() = 1) {
+      Check("parts concatenate", Same(candidates->Get(0)->GetAllText(), "First, second."));
+      Check("no safety ratings", candidates->Get(0)->GetSafetyRatings()->Size() = 0);
+    };
+
+    # a blocked prompt: no candidates at all
+    EndPoint->SetLastError(Nil);
+    body := "{\"promptFeedback\":{\"blockReason\":\"SAFETY\",\"safetyRatings\":[{\"category\":\"HARM_CATEGORY_DANGEROUS_CONTENT\",\"probability\":\"HIGH\"}]},\"usageMetadata\":{\"promptTokenCount\":12,\"totalTokenCount\":12},\"modelVersion\":\"gemini-2.0-flash\"}";
+    candidates := Model->ParseCandidates(body);
+    Check("a blocked prompt yields no candidates", candidates <> Nil & candidates->Size() = 0);
+    Check("a blocked prompt sets the last error", HasError("SAFETY"));
+
+    # a candidate stopped by a safety filter: no content
+    body := "{\"candidates\":[{\"finishReason\":\"SAFETY\",\"index\":0,\"safetyRatings\":[{\"category\":\"HARM_CATEGORY_SEXUALLY_EXPLICIT\",\"probability\":\"NEGLIGIBLE\"},{\"category\":\"HARM_CATEGORY_DANGEROUS_CONTENT\",\"probability\":\"HIGH\",\"blocked\":true}]}],\"usageMetadata\":{\"promptTokenCount\":9,\"totalTokenCount\":9},\"modelVersion\":\"gemini-1.5-flash\"}";
+    candidates := Model->ParseCandidates(body);
+    Check("a SAFETY candidate parses", candidates <> Nil & candidates->Size() = 1);
+    if(candidates <> Nil & candidates->Size() = 1) {
+      candidate := candidates->Get(0);
+      Check("a SAFETY candidate has no parts", candidate->GetParts()->Size() = 0 & Same(candidate->GetAllText(), ""));
+      Check("SAFETY finish reason", Same(candidate->GetFinishReason(), "SAFETY"));
+      Check("SAFETY ratings kept", candidate->GetSafetyRatings()->Size() = 2 & Same(candidate->GetSafetyRatings()->Get(1)->GetSecond(), "HIGH"));
+      Check("SAFETY ToString does not crash", candidate->ToString() <> Nil);
+    };
+
+    # a function call with no callbacks registered
+    body := "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"get_current_weather\",\"args\":{\"location\":\"Boston\"}}}]},\"finishReason\":\"STOP\",\"index\":0}],\"usageMetadata\":{\"promptTokenCount\":30,\"candidatesTokenCount\":8,\"totalTokenCount\":38}}";
+    candidates := Model->ParseCandidates(body);
+    Check("a function call reply parses", candidates <> Nil & candidates->Size() = 1);
+    if(candidates <> Nil & candidates->Size() = 1) {
+      Check("a function call has no text", Same(candidates->Get(0)->GetAllText(), ""));
+    };
+
+    # errors
+    EndPoint->SetLastError(Nil);
+    Check("an error body yields Nil", Model->ParseCandidates(ErrorBody()) = Nil);
+    Check("an error body sets the last error", HasError("API key not valid"));
+    Check("the error status is kept", HasError("INVALID_ARGUMENT"));
+    EndPoint->SetLastError(Nil);
+    Check("a non-JSON body yields Nil", Model->ParseCandidates("<html><body>503 Service Unavailable</body></html>") = Nil);
+    Check("a non-JSON body sets the last error", EndPoint->GetLastError() <> Nil);
+    Check("a Nil body yields Nil", Model->ParseCandidates(Nil) = Nil);
+  }
+
+  function : TestModels() ~ Nil {
+    "models"->PrintLine();
+
+    body := "{\"models\":[{\"name\":\"models/gemini-2.5-flash\",\"version\":\"001\",\"displayName\":\"Gemini 2.5 Flash\",\"description\":\"Stable version of Gemini 2.5 Flash.\",\"inputTokenLimit\":1048576,\"outputTokenLimit\":65536,\"supportedGenerationMethods\":[\"generateContent\",\"countTokens\",\"createCachedContent\",\"batchGenerateContent\"],\"temperature\":1,\"topP\":0.95,\"topK\":64,\"maxTemperature\":2,\"thinking\":true},{\"name\":\"models/text-embedding-004\",\"version\":\"004\",\"displayName\":\"Text Embedding 004\",\"inputTokenLimit\":2048,\"outputTokenLimit\":1,\"supportedGenerationMethods\":[\"embedContent\"]}],\"nextPageToken\":\"Ch1tb2RlbHMvZ2VtaW5pLTIuNS1mbGFzaA==\"}";
+    models := Model->ParseModels(body);
+    Check("a model listing parses", models <> Nil & models->Size() = 2);
+    if(models <> Nil & models->Size() = 2) {
+      flash := models->Get(0);
+      Check("model name", Same(flash->GetName(), "models/gemini-2.5-flash"));
+      Check("display name", Same(flash->GetDisplayName(), "Gemini 2.5 Flash"));
+      Check("token limits", flash->GetInputTokenLimit() = 1048576 & flash->GetOutputTokenLimit() = 65536);
+      Check("generation methods", flash->GetGenerationMethods()->Size() = 4 & Same(flash->GetGenerationMethods()->Get(0), "generateContent"));
+      Check("topK", flash->GetTopK() = 64);
+      Check("topP", Near(flash->GetTopP(), 0.95));
+      embed := models->Get(1);
+      Check("a model without a description", embed->GetDescription() = Nil & Same(embed->GetVersion(), "004"));
+    };
+
+    model := Model->ParseModel("{\"name\":\"models/gemini-2.0-flash\",\"version\":\"2.0\",\"displayName\":\"Gemini 2.0 Flash\",\"description\":\"Gemini 2.0 Flash\",\"inputTokenLimit\":1048576,\"outputTokenLimit\":8192,\"supportedGenerationMethods\":[\"generateContent\"]}");
+    Check("a single model parses", model <> Nil & Same(model->GetVersion(), "2.0") & model->GetOutputTokenLimit() = 8192);
+
+    EndPoint->SetLastError(Nil);
+    Check("an error body yields Nil", Model->ParseModels("{\"error\":{\"code\":404,\"message\":\"models/gemini-9 is not found for API version v1.\",\"status\":\"NOT_FOUND\"}}") = Nil);
+    Check("an error body sets the last error", HasError("is not found"));
+  }
+
+  function : TestEmbeddings() ~ Nil {
+    "embeddings"->PrintLine();
+
+    values := Model->ParseEmbedding("{\"embedding\":{\"values\":[0.013168523,-0.008711704,-0.046782672,0.00069968984]}}");
+    Check("an embedding parses", values <> Nil & values->Size() = 4);
+    if(values <> Nil & values->Size() = 4) {
+      Check("first value", Near(values[0], 0.013168523));
+      Check("negative value", Near(values[2], -0.046782672));
+      Check("small value", Near(values[3], 0.00069968984));
+    };
+
+    EndPoint->SetLastError(Nil);
+    Check("an error body yields Nil", Model->ParseEmbedding(ErrorBody()) = Nil);
+    Check("an error body sets the last error", HasError("API key not valid"));
+    EndPoint->SetLastError(Nil);
+    Check("a body without values yields Nil", Model->ParseEmbedding("{\"embedding\":{}}") = Nil);
+    Check("a body without values sets the last error", HasError("no embedding"));
+
+    batch := Model->ParseBatchEmbeddings("{\"embeddings\":[{\"values\":[0.1,0.2,0.3]},{\"values\":[-0.4,0.5,-0.6]}]}");
+    Check("a batch embedding parses", batch <> Nil & batch->Size() = 2);
+    if(batch <> Nil & batch->Size() = 2) {
+      Check("batch dimensions", batch->Get(0)->Size() = 3 & batch->Get(1)->Size() = 3);
+      Check("batch value", Near(batch->Get(1)->Get()[2], -0.6));
+    };
+    Check("a batch error body yields Nil", Model->ParseBatchEmbeddings(ErrorBody()) = Nil);
+  }
+
+  function : TestCountTokens() ~ Nil {
+    "countTokens"->PrintLine();
+
+    Check("a token count parses", Model->ParseTokenCount("{\"totalTokens\":31,\"promptTokensDetails\":[{\"modality\":\"TEXT\",\"tokenCount\":31}]}") = 31);
+    Check("an error body yields -1", Model->ParseTokenCount(ErrorBody()) = -1);
+    Check("a body without a count yields -1", Model->ParseTokenCount("{}") = -1);
+  }
+
+  function : TestFiles() ~ Nil {
+    "files"->PrintLine();
+
+    body := "{\"files\":[{\"name\":\"files/abc-123\",\"displayName\":\"report.pdf\",\"mimeType\":\"application/pdf\",\"sizeBytes\":\"53210\",\"createTime\":\"2026-10-01T12:00:00.000000Z\",\"updateTime\":\"2026-10-01T12:00:00.000000Z\",\"expirationTime\":\"2026-10-03T12:00:00.000000Z\",\"sha256Hash\":\"ZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NQ==\",\"uri\":\"https://generativelanguage.googleapis.com/v1beta/files/abc-123\",\"state\":\"ACTIVE\",\"source\":\"UPLOADED\"},{\"name\":\"files/def-456\",\"mimeType\":\"video/mp4\",\"state\":\"PROCESSING\"}]}";
+    files := FileManager->ParseList(body);
+    Check("a file listing parses", files <> Nil & files->Size() = 2);
+    if(files <> Nil & files->Size() = 2) {
+      Check("file name", Same(files->Get(0)->GetName(), "files/abc-123"));
+      Check("file size", Same(files->Get(0)->GetSizeBytes(), "53210"));
+      Check("file uri", Same(files->Get(0)->GetUri(), "https://generativelanguage.googleapis.com/v1beta/files/abc-123"));
+      Check("active file", files->Get(0)->IsActive());
+      Check("processing file", <>files->Get(1)->IsActive() & files->Get(1)->GetDisplayName() = Nil);
+    };
+
+    Check("an empty listing", FileManager->ParseList("{}") <> Nil & FileManager->ParseList("{}")->Size() = 0);
+    EndPoint->SetLastError(Nil);
+    Check("an error body yields Nil", FileManager->ParseList(ErrorBody()) = Nil);
+    Check("an error body sets the last error", HasError("API key not valid"));
+  }
+
+  function : TestCache() ~ Nil {
+    "cachedContents"->PrintLine();
+
+    item_body := "{\"name\":\"cachedContents/4d2x8x1p5q7r\",\"model\":\"models/gemini-2.0-flash-001\",\"createTime\":\"2026-10-01T12:00:00.000000Z\",\"updateTime\":\"2026-10-01T12:00:00.000000Z\",\"expireTime\":\"2026-10-01T12:05:00.000000Z\",\"displayName\":\"sherlock-jr\",\"usageMetadata\":{\"totalTokenCount\":4512}}";
+    item := CachedContent->ParseItem(item_body);
+    Check("a cache entry parses", item <> Nil);
+    if(item <> Nil) {
+      Check("cache name", Same(item->GetName(), "cachedContents/4d2x8x1p5q7r"));
+      Check("cache model", Same(item->GetModel(), "models/gemini-2.0-flash-001"));
+      Check("cache display name", Same(item->GetDisplayName(), "sherlock-jr"));
+      Check("cache expiry", Same(item->GetExpireTime(), "2026-10-01T12:05:00.000000Z"));
+      Check("cache token count", item->GetTokenCount() = 4512);
+    };
+
+    items := CachedContent->ParseList("{\"cachedContents\":[" + item_body + "," + item_body + "]}");
+    Check("a cache listing parses", items <> Nil & items->Size() = 2);
+
+    EndPoint->SetLastError(Nil);
+    Check("an error body yields Nil", CachedContent->ParseItem("{\"error\":{\"code\":400,\"message\":\"Cached content is too small. total_token_count=12, min_total_token_count=4096\",\"status\":\"INVALID_ARGUMENT\"}}") = Nil);
+    Check("an error body sets the last error", HasError("too small"));
+  }
+
+  function : TestGenerationConfig() ~ Nil {
+    "generationConfig"->PrintLine();
+
+    contents := Vector->New()<Content>;
+    contents->AddBack(Content->New("user")->AddPart(TextPart->New("Name three rivers.")));
+
+    request := Model->BuildGenerateRequest(contents, Nil, Nil, Nil, Nil, Nil);
+    Check("no config, no generationConfig", request <> Nil & <>request->Has("generationConfig"));
+    Check("the prompt is in the request", Same(request->FindElements("contents/[0]/parts/[0]/text")->GetString(), "Name three rivers."));
+
+    config := GenerationConfig->New()->SetTemperature(0.25)->SetTopP(0.9)->SetTopK(40)->SetMaxOutputTokens(256)->AddStopSequence("END");
+    request := Model->BuildGenerateRequest(contents, Nil, Nil, Nil, config, Nil);
+    Check("config is sent", request->Has("generationConfig"));
+    Check("temperature", Near(request->FindElements("generationConfig/temperature")->GetFloat(), 0.25));
+    Check("topP", Near(request->FindElements("generationConfig/topP")->GetFloat(), 0.9));
+    Check("topK", request->FindElements("generationConfig/topK")->GetInt() = 40);
+    Check("maxOutputTokens", request->FindElements("generationConfig/maxOutputTokens")->GetInt() = 256);
+    Check("stopSequences", Same(request->FindElements("generationConfig/stopSequences/[0]")->GetString(), "END"));
+    Check("unset values are left out", <>request->Get("generationConfig")->Has("candidateCount") & <>request->Get("generationConfig")->Has("seed"));
+
+    # a temperature of 0.0 is a real setting, not "unset"
+    request := Model->BuildGenerateRequest(contents, Nil, Nil, Nil, GenerationConfig->New()->SetTemperature(0.0), Nil);
+    Check("a zero temperature is sent", request->FindElements("generationConfig/temperature") <> Nil);
+  }
+}
