@@ -98,9 +98,42 @@ lexicon:
 - **Normalization.** `compound = sum / sqrt(sum² + 15)`, in −1…1. `Classify` returns
   `positive` at compound ≥ 0.05, `negative` at ≤ −0.05, else `neutral` (VADER's thresholds).
 
-`Analyze` keeps returning an `Int`: the summed valence rounded to the nearest integer, so its
-sign is still the label. New: `AnalyzeCompound(text) ~ Float`, and `SentimentResult` gains
-`GetCompound()`.
+`Analyze` keeps returning an `Int`: the summed valence rounded to the nearest integer. New:
+`AnalyzeCompound(text) ~ Float`, and `SentimentResult` gains `GetCompound()`.
+
+**As built**, three departures from the plan above:
+
+- **Inflections, not Porter stems.** Looking words up by stem joined unrelated words:
+  `useful` and `used` both stem to `us`, and `likely` stems to `like`. A word not in the
+  lexicon instead tries its base form with one regular inflection removed (`-s`, `-es`,
+  `-ies`/`-ied` → `-y`, `-ed`, `-ing` with and without a restored `e` or an undoubled
+  consonant, `-ly`, `-ily` → `-y`, `-ably`/`-ibly` → `-able`/`-ible`).
+- **`hardly`, `barely`, `scarcely` dampen** rather than negate, as in VADER. Negators are
+  `not`, `no`, `never`, `none`, `nobody`, `nothing`, `neither`, `nor`, `nowhere`, `without`,
+  `cannot`, `rarely`, `seldom`, `nope`, any word ending in `n't`, and the apostrophe-less
+  `dont`, `cant` and the like.
+- **The lexicon is replaceable.** `LoadLexicon(path)` reads `word<TAB>valence[<TAB>...]`
+  lines, which is VADER's own `vader_lexicon.txt` layout (MIT licence), `ClearLexicon()`
+  empties it first when the program wants only its own, and `GetValence(word)` exposes a
+  lookup. The built-in lexicon is about 600 words.
+
+**Measured** on the 10,662 sentences of Pang and Lee's sentence polarity corpus (NLTK's
+`sentence_polarity`; half positive, half negative movie-review snippets), against NLTK 3.9.1's
+VADER on the same sentences. "Decided" means a compound at or beyond ±0.05:
+
+| Analyzer | Accuracy (neutral counts wrong) | Decided | Accuracy where decided |
+|---|---|---|---|
+| v2026.10.2 (word counts) | not measured; 4 of 10 on the probe sentences | | |
+| This library, built-in lexicon | 0.526 | 0.712 | 0.731 |
+| This library, VADER's lexicon loaded | 0.558 | 0.843 | 0.652 |
+| NLTK VADER | 0.548 | 0.827 | 0.652 |
+
+With VADER's lexicon loaded the two give the same label on 95.5% of sentences, which checks
+the rules independently of the word list. The built-in lexicon is more often right when it
+commits and commits less often. It was written without mining this corpus, but its second
+batch of words was added after the first measurement on it (0.453 / 0.618 / 0.727), so treat
+the built-in row as mildly optimistic. Sentence-level movie snippets are hard for any lexicon
+method; for more, `API.Onnx` can run a fine-tuned transformer.
 
 ### 6. TF-IDF
 

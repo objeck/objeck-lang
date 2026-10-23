@@ -1,0 +1,147 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP sentiment (docs/NLP_DESIGN.md, section 5): each VADER-style rule on its own
+(negation, boosters and dampeners, capitals, '!', "but"), lookups through inflections, the
+lexicon API, and 30 labelled sentences of which at least 27 must be classified correctly.
+~#
+use System.NLP, System.IO.Filesystem, Collection;
+
+class NlpSentimentTest {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : C(text : String) ~ Float {
+		return SentimentAnalyzer->AnalyzeCompound(text);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# --- rules, each against its plain form ---
+		Check(C("The food was good.") > 0.0, "plain positive");
+		Check(C("The food was not good.") < 0.0, "negation flips");
+		Check(C("The food wasn't good.") < 0.0, "n't negates");
+		Check(C("The food was never really good.") < 0.0, "negation two words back");
+		Check(C("Not bad at all.") > 0.0, "negated negative is positive");
+		Check(C("The food was very good.") > C("The food was good."), "booster raises");
+		Check(C("The food was slightly good.") < C("The food was good."), "dampener lowers");
+		Check(C("The food was kind of good.") < C("The food was good."), "'kind of' dampens");
+		Check(C("The food was very bad.") < C("The food was bad."), "booster deepens a negative");
+		Check(C("The food was GOOD.") > C("The food was good."), "capitals emphasize");
+		Check(C("THE FOOD WAS GOOD.") = C("the food was good."), "all-capitals text is not emphasis");
+		Check(C("The food was good!") > C("The food was good."), "'!' emphasizes");
+		Check(C("The food was good!!!!!!!!") = C("The food was good!!!!"), "'!' counts up to four");
+		Check(C("The food was good, but the service was terrible.") < 0.0, "'but' favors the second clause");
+		Check(C("The food was terrible, but the service was good.") > 0.0, "'but' favors the second clause, reversed");
+		Check(C("The table was wooden and square.") < 0.0, "a listed word is scored");
+		Check(Float->Abs(C("The table was square.")) < 0.000001, "no sentiment words is 0");
+		Check(Float->Abs(C("")) < 0.000001, "empty text is 0");
+		nil_text : String;
+		Check(Float->Abs(C(nil_text)) < 0.000001, "Nil text is 0");
+		Check(C("good good good good good good good good good good") <= 1.0, "compound stays within 1");
+
+		# --- inflections find their base form ---
+		Check(SentimentAnalyzer->GetValence("loved") = SentimentAnalyzer->GetValence("love"), "loved -> love");
+		Check(SentimentAnalyzer->GetValence("terribly") = SentimentAnalyzer->GetValence("terrible"), "terribly -> terrible");
+		Check(SentimentAnalyzer->GetValence("disappoints") < 0.0, "disappoints -> disappoint");
+		Check(SentimentAnalyzer->GetValence("used") = 0.0, "used is not useful");
+		Check(SentimentAnalyzer->GetValence("likely") = 0.0, "likely is not like");
+
+		# --- the API around it ---
+		Check(SentimentAnalyzer->Classify("This is wonderful.")->Equals("positive"), "Classify positive");
+		Check(SentimentAnalyzer->Classify("This is awful.")->Equals("negative"), "Classify negative");
+		Check(SentimentAnalyzer->Classify("This is a table.")->Equals("neutral"), "Classify neutral");
+		result := SentimentAnalyzer->AnalyzeDetailed("An excellent, wonderful experience!");
+		Check(result->GetScore() > 0 & result->GetCompound() > 0.5 & result->GetClassification()->Equals("positive"), "AnalyzeDetailed");
+		Check(SentimentAnalyzer->Analyze("An awful, horrible mess.") < 0, "Analyze sign");
+		Check(SentimentResult->New(3, "positive")->GetCompound() > 0.0, "SentimentResult derives a compound");
+
+		Check(SentimentAnalyzer->Classify("Analysts are bullish on the stock.")->Equals("neutral"), "unknown word before AddWord");
+		SentimentAnalyzer->AddWord("Bullish", 2.0);
+		Check(SentimentAnalyzer->Classify("Analysts are bullish on the stock.")->Equals("positive"), "AddWord");
+
+		# --- 30 labelled sentences ---
+		positive := [
+			"An absolutely delightful film from start to finish.",
+			"The service was fast and the staff were friendly.",
+			"I really enjoyed the concert last night.",
+			"This is the best pizza I have ever had!",
+			"The new update is a huge improvement and works perfectly.",
+			"She gave a brilliant, moving performance.",
+			"Honestly not bad for the price.",
+			"The hotel was clean, quiet and very comfortable.",
+			"What a beautiful day for a walk.",
+			"The instructions were clear and the setup was easy.",
+			"I would happily recommend this book to anyone.",
+			"The ending was surprisingly satisfying.",
+			"Great battery life and a gorgeous screen.",
+			"The team did an outstanding job on the launch.",
+			"It was a little slow at first, but ultimately rewarding."
+		];
+		negative := [
+			"The movie was boring and far too long.",
+			"I hated the ending.",
+			"The package arrived broken and customer support was useless.",
+			"This is the worst coffee I have ever tasted.",
+			"The plot made no sense and the acting was wooden.",
+			"I am really disappointed with this purchase.",
+			"The app keeps crashing and it is incredibly frustrating.",
+			"Not good, not worth the money.",
+			"The room was dirty and the bed was uncomfortable.",
+			"A lazy, predictable sequel with nothing new to say.",
+			"The food was cold and tasteless.",
+			"I can't recommend this to anyone.",
+			"The meeting was a complete waste of time.",
+			"It looked nice, but it fell apart after a week and was a total failure.",
+			"The dialogue is painfully awkward."
+		];
+
+		right := 0;
+		each(text := positive) {
+			if(SentimentAnalyzer->Classify(text)->Equals("positive")) {
+				right += 1;
+			}
+			else {
+				"  missed (want positive, {$(C(text))}): {$text}"->PrintLine();
+			};
+		};
+		each(text := negative) {
+			if(SentimentAnalyzer->Classify(text)->Equals("negative")) {
+				right += 1;
+			}
+			else {
+				"  missed (want negative, {$(C(text))}): {$text}"->PrintLine();
+			};
+		};
+		"  labelled sentences: {$right}/30"->PrintLine();
+		Check(right >= 27, "at least 27 of 30 labelled sentences");
+
+		# --- a lexicon of the program's own, last: it replaces the shared one ---
+		path := "nlp_sentiment_lexicon.tmp";
+		writer := FileWriter->New(path);
+		writer->WriteString("# a test lexicon\nzorp\t3.0\textra\tcolumns\nblarg\t-3.0\n\n");
+		writer->Close();
+		Check(SentimentAnalyzer->LoadLexicon("no_such_file.tmp") = -1, "LoadLexicon of a missing file");
+		SentimentAnalyzer->ClearLexicon();
+		Check(SentimentAnalyzer->Classify("This is wonderful.")->Equals("neutral"), "ClearLexicon empties the lexicon");
+		Check(SentimentAnalyzer->LoadLexicon(path) = 2, "LoadLexicon counts its words");
+		Check(SentimentAnalyzer->Classify("What a zorp day.")->Equals("positive"), "a loaded positive word");
+		Check(SentimentAnalyzer->Classify("What a blarg day.")->Equals("negative"), "a loaded negative word");
+		Check(SentimentAnalyzer->Classify("What a day, not zorp.")->Equals("negative"), "rules apply to loaded words");
+		File->Delete(path);
+
+		if(@failures = 0) {
+			"PASS: NLP sentiment"->PrintLine();
+		}
+		else {
+			"FAIL: NLP sentiment ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
