@@ -376,7 +376,9 @@ bundle Game.SDL2 {
 		SDL_AUDIO_U16MSB := 0x1010,
 		SDL_AUDIO_S16MSB := 0x9010,
 		SDL_AUDIO_U16 := 0x0010,
-		SDL_AUDIO_S16 := 0x8010
+		SDL_AUDIO_S16 := 0x8010,
+		SDL_AUDIO_S32 := 0x8020,
+		SDL_AUDIO_F32 := 0x8120
 	}
 	
 	#~
@@ -463,7 +465,32 @@ bundle Game.SDL2 {
 	    SDL_RENDER_DEVICE_RESET := 0x2000,
 	    SDL_USEREVENT := 0x8000
 	}
-	
+
+	#~
+	What happened to a window, as WindowEvent->GetEvent reports it
+	~#
+	consts WindowEventID {
+		SDL_WINDOWEVENT_NONE := 0,
+		SDL_WINDOWEVENT_SHOWN := 1,
+		SDL_WINDOWEVENT_HIDDEN := 2,
+		SDL_WINDOWEVENT_EXPOSED := 3,
+		SDL_WINDOWEVENT_MOVED := 4,
+		SDL_WINDOWEVENT_RESIZED := 5,
+		SDL_WINDOWEVENT_SIZE_CHANGED := 6,
+		SDL_WINDOWEVENT_MINIMIZED := 7,
+		SDL_WINDOWEVENT_MAXIMIZED := 8,
+		SDL_WINDOWEVENT_RESTORED := 9,
+		SDL_WINDOWEVENT_ENTER := 10,
+		SDL_WINDOWEVENT_LEAVE := 11,
+		SDL_WINDOWEVENT_FOCUS_GAINED := 12,
+		SDL_WINDOWEVENT_FOCUS_LOST := 13,
+		SDL_WINDOWEVENT_CLOSE := 14,
+		SDL_WINDOWEVENT_TAKE_FOCUS := 15,
+		SDL_WINDOWEVENT_HIT_TEST := 16,
+		SDL_WINDOWEVENT_ICCPROF_CHANGED := 17,
+		SDL_WINDOWEVENT_DISPLAY_CHANGED := 18
+	}
+
 	#~
 	Keyboard scan codes
 	~#
@@ -746,7 +773,19 @@ bundle Game.SDL2 {
 		SDL_BLENDMODE_NONE := 0x00000000,
 		SDL_BLENDMODE_BLEND := 0x00000001,
 		SDL_BLENDMODE_ADD := 0x00000002,
-		SDL_BLENDMODE_MOD := 0x00000004 
+		SDL_BLENDMODE_MOD := 0x00000004,
+		SDL_BLENDMODE_MUL := 0x00000008
+	}
+
+	#~
+	TrueType font rendering styles, for Font->SetStyle; OR them together
+	~#
+	consts FontStyle {
+		TTF_STYLE_NORMAL := 0x00,
+		TTF_STYLE_BOLD := 0x01,
+		TTF_STYLE_ITALIC := 0x02,
+		TTF_STYLE_UNDERLINE := 0x04,
+		TTF_STYLE_STRIKETHROUGH := 0x08
 	}
 
 	#~
@@ -1117,6 +1156,7 @@ bundle Game.SDL2 {
 		@fn_sdl_window_get_pixel_format : static : String;
 		@fn_sdl_window_get_position : static : String;
 		@fn_sdl_window_get_size : static : String;
+		@fn_sdl_window_get_size_in_pixels : static : String;
 		@fn_sdl_window_get_surface : static : String;
 		@fn_sdl_window_getid : static : String;
 		@fn_sdl_window_gl_create_context : static : String;
@@ -1519,6 +1559,24 @@ bundle Game.SDL2 {
 
 				if(@fn_sdl_window_get_size = Nil) { @fn_sdl_window_get_size := "sdl_window_get_size"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_size, array_args);
+			};
+		}
+
+		#~
+		Get the size of a window's client area in pixels. On a high-DPI display this is
+		larger than GetSize, which is in screen coordinates.
+		@param w holder filled in with the width in pixels
+		@param h holder filled in with the height in pixels
+		~#
+		method : public : GetSizeInPixels(w : IntRef, h : IntRef) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@window);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				if(@fn_sdl_window_get_size_in_pixels = Nil) { @fn_sdl_window_get_size_in_pixels := "sdl_window_get_size_in_pixels"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_size_in_pixels, array_args);
 			};
 		}
 		
@@ -2195,8 +2253,16 @@ bundle Game.SDL2 {
 		@gamecontroller : Int;
 
 		#~
-		Open a game controller for use.
+		Open a game controller for use. When the index names no device, or a device
+		that is not a game controller, the controller is not opened: IsNull() is true
+		and Core->GetError() says why.
 		@param joystick_index the device_index
+		```
+		controller := GameController->New(0);
+		if(controller->IsNull()) {
+			Core->GetError()->PrintLine();
+		};
+		```
 		~#
 		New(joystick_index : Int) {
 			array_args := Base->New[2];
@@ -3012,13 +3078,24 @@ bundle Game.SDL2 {
 		~#
 
 		#~
-		Close a game controller previously opened
+		Determines if the underlying SDL C-struct is NULL, that is, the controller was not opened or has been closed
+		@return true if NULL, false otherwise
+		~#
+		method : public : IsNull() ~ Bool {
+			return @gamecontroller = 0;
+		}
+
+		#~
+		Close a game controller previously opened; closing twice, or closing a controller that was never opened, does nothing
 		~#
 		method : public : Close() ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntRef->New(@gamecontroller);
-			if(@fn_sdl_gamecontroller_close = Nil) { @fn_sdl_gamecontroller_close := "sdl_gamecontroller_close"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_close, array_args);
+			if(@gamecontroller <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@gamecontroller);
+				if(@fn_sdl_gamecontroller_close = Nil) { @fn_sdl_gamecontroller_close := "sdl_gamecontroller_close"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_close, array_args);
+				@gamecontroller := 0;
+			};
 		}
 
 		#~
@@ -3814,6 +3891,466 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	Window state change event: shown, resized, focus gained, close requested and so on
+	~#
+	class WindowEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@event : Int;
+		@data1 : Int;
+		@data2 : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_WINDOWEVENT
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The associated window
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		#~
+		What happened to the window
+		@return a WindowEventID value, such as WindowEventID->SDL_WINDOWEVENT_RESIZED
+		~#
+		method : public : GetEvent() ~ Int {
+			return @event;
+		}
+
+		#~
+		Event dependent data: the new width for a resize or size change, the new x position for a move
+		@return first data value
+		~#
+		method : public : GetData1() ~ Int {
+			return @data1;
+		}
+
+		#~
+		Event dependent data: the new height for a resize or size change, the new y position for a move
+		@return second data value
+		~#
+		method : public : GetData2() ~ Int {
+			return @data2;
+		}
+	}
+
+	#~
+	Game controller axis motion event
+	~#
+	class ControllerAxisEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+		@axis : Int;
+		@value : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_CONTROLLERAXISMOTION
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The joystick instance id of the controller
+		@return instance id
+		~#
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		#~
+		The controller axis that moved
+		@return the axis, a GameControllerAxis value
+		~#
+		method : public : GetAxis() ~ GameControllerAxis {
+			return @axis->As(GameControllerAxis);
+		}
+
+		#~
+		The axis value
+		@return value from -32768 to 32767
+		~#
+		method : public : GetValue() ~ Int {
+			return @value;
+		}
+	}
+
+	#~
+	Game controller button event
+	~#
+	class ControllerButtonEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+		@button : Int;
+		@state : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_CONTROLLERBUTTONDOWN or EventType->SDL_CONTROLLERBUTTONUP
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The joystick instance id of the controller
+		@return instance id
+		~#
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		#~
+		The controller button
+		@return the button, a GameControllerButton value
+		~#
+		method : public : GetButton() ~ GameControllerButton {
+			return @button->As(GameControllerButton);
+		}
+
+		#~
+		Button state
+		@return 1 when pressed, 0 when released
+		~#
+		method : public : GetState() ~ Int {
+			return @state;
+		}
+	}
+
+	#~
+	Game controller added, removed or remapped
+	~#
+	class ControllerDeviceEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED or SDL_CONTROLLERDEVICEREMAPPED
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The device: a joystick device index (pass it to GameController->New) for an added
+		controller, the joystick instance id for a removed or remapped one
+		@return device index or instance id
+		~#
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+	}
+
+	#~
+	File or text dropped onto a window; also the begin and complete markers around a drop
+	~#
+	class DropEvent {
+		@type : Int;
+		@timestamp : Int;
+		@file : String;
+		@windowID : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_DROPFILE, SDL_DROPTEXT, SDL_DROPBEGIN or SDL_DROPCOMPLETE
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The dropped file's path, or the dropped text for SDL_DROPTEXT
+		@return path or text, Nil for SDL_DROPBEGIN and SDL_DROPCOMPLETE
+		~#
+		method : public : GetFile() ~ String {
+			return @file;
+		}
+
+		#~
+		The window that was dropped on, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+	}
+
+	#~
+	Touch finger event
+	~#
+	class TouchFingerEvent {
+		@type : Int;
+		@timestamp : Int;
+		@touch_id : Int;
+		@finger_id : Int;
+		@x : Float;
+		@y : Float;
+		@dx : Float;
+		@dy : Float;
+		@pressure : Float;
+		@windowID : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_FINGERDOWN, SDL_FINGERUP or SDL_FINGERMOTION
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The touch device id
+		@return touch device id
+		~#
+		method : public : GetTouchId() ~ Int {
+			return @touch_id;
+		}
+
+		#~
+		The finger id
+		@return finger id
+		~#
+		method : public : GetFingerId() ~ Int {
+			return @finger_id;
+		}
+
+		#~
+		Normalized x position
+		@return x in the range 0.0 to 1.0
+		~#
+		method : public : GetX() ~ Float {
+			return @x;
+		}
+
+		#~
+		Normalized y position
+		@return y in the range 0.0 to 1.0
+		~#
+		method : public : GetY() ~ Float {
+			return @y;
+		}
+
+		#~
+		Normalized distance moved along x
+		@return x delta in the range -1.0 to 1.0
+		~#
+		method : public : GetDX() ~ Float {
+			return @dx;
+		}
+
+		#~
+		Normalized distance moved along y
+		@return y delta in the range -1.0 to 1.0
+		~#
+		method : public : GetDY() ~ Float {
+			return @dy;
+		}
+
+		#~
+		Normalized pressure
+		@return pressure in the range 0.0 to 1.0
+		~#
+		method : public : GetPressure() ~ Float {
+			return @pressure;
+		}
+
+		#~
+		The window underneath the finger, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+	}
+
+	#~
+	Text editing (IME composition) event
+	~#
+	class TextEditingEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@text : String;
+		@start : Int;
+		@length : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_TEXTEDITING
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The window with keyboard focus, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		#~
+		The text being composed
+		@return composition text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Where to begin editing within the composition
+		@return cursor start
+		~#
+		method : public : GetStart() ~ Int {
+			return @start;
+		}
+
+		#~
+		Number of characters to edit from the start
+		@return selection length
+		~#
+		method : public : GetLength() ~ Int {
+			return @length;
+		}
+	}
+
+	#~
+	Application defined event, with a type from Event->Registers
+	~#
+	class UserEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@code : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return a type from Event->Registers, at least EventType->SDL_USEREVENT
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The associated window, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		#~
+		User defined event code
+		@return event code
+		~#
+		method : public : GetCode() ~ Int {
+			return @code;
+		}
+	}
+
+	#~
 	SDL event
 	~#
 	class Event {
@@ -3844,7 +4381,24 @@ bundle Game.SDL2 {
 		@fn_sdl_mouse_motion : static : String;
 		@fn_sdl_mouse_wheel : static : String;
 		@fn_sdl_text_key : static : String;
+		@fn_sdl_event_window : static : String;
+		@fn_sdl_event_caxis : static : String;
+		@fn_sdl_event_cbutton : static : String;
+		@fn_sdl_event_cdevice : static : String;
+		@fn_sdl_event_drop : static : String;
+		@fn_sdl_event_tfinger : static : String;
+		@fn_sdl_event_edit : static : String;
+		@fn_sdl_event_user : static : String;
+		@fn_sdl_event_set_user : static : String;
 		@event : Int;
+		@window : WindowEvent;
+		@caxis : ControllerAxisEvent;
+		@cbutton : ControllerButtonEvent;
+		@cdevice : ControllerDeviceEvent;
+		@drop : DropEvent;
+		@tfinger : TouchFingerEvent;
+		@edit : TextEditingEvent;
+		@user : UserEvent;
 		@key : KeyboardEvent;
 		@axis : JoyAxisEvent;
 		@text : TextInputEvent;
@@ -4172,10 +4726,198 @@ bundle Game.SDL2 {
 
 				return @mbutton;
 			};
-			
+
 			return Nil;
 		}
-				
+
+		# Fills target from this event through the named native; false when the
+		# event is not of the native's type
+		method : ReadInto(name : String, target : Base) ~ Bool {
+			if(@event = 0) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@event);
+			array_args[2] := target;
+
+			Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0;
+		}
+
+		#~
+		Get window event
+		@return window event, or Nil if this is not an EventType->SDL_WINDOWEVENT
+		~#
+		method : public : GetWindow() ~ WindowEvent {
+			if(@window = Nil) {
+				@window := WindowEvent->New();
+			};
+
+			if(@fn_sdl_event_window = Nil) { @fn_sdl_event_window := "sdl_event_window"; };
+			if(ReadInto(@fn_sdl_event_window, @window)) {
+				return @window;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get game controller axis event
+		@return controller axis event, or Nil if this is not an EventType->SDL_CONTROLLERAXISMOTION
+		~#
+		method : public : GetControllerAxis() ~ ControllerAxisEvent {
+			if(@caxis = Nil) {
+				@caxis := ControllerAxisEvent->New();
+			};
+
+			if(@fn_sdl_event_caxis = Nil) { @fn_sdl_event_caxis := "sdl_event_caxis"; };
+			if(ReadInto(@fn_sdl_event_caxis, @caxis)) {
+				return @caxis;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get game controller button event
+		@return controller button event, or Nil if this is not an EventType->SDL_CONTROLLERBUTTONDOWN or SDL_CONTROLLERBUTTONUP
+		~#
+		method : public : GetControllerButton() ~ ControllerButtonEvent {
+			if(@cbutton = Nil) {
+				@cbutton := ControllerButtonEvent->New();
+			};
+
+			if(@fn_sdl_event_cbutton = Nil) { @fn_sdl_event_cbutton := "sdl_event_cbutton"; };
+			if(ReadInto(@fn_sdl_event_cbutton, @cbutton)) {
+				return @cbutton;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get game controller device event
+		@return controller device event, or Nil if this is not a controller added, removed or remapped event
+		~#
+		method : public : GetControllerDevice() ~ ControllerDeviceEvent {
+			if(@cdevice = Nil) {
+				@cdevice := ControllerDeviceEvent->New();
+			};
+
+			if(@fn_sdl_event_cdevice = Nil) { @fn_sdl_event_cdevice := "sdl_event_cdevice"; };
+			if(ReadInto(@fn_sdl_event_cdevice, @cdevice)) {
+				return @cdevice;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get drop event. The dropped path is released by SDL on the first read; reading
+		the same event again returns the same value.
+		@return drop event, or Nil if this is not a drop event
+		~#
+		method : public : GetDrop() ~ DropEvent {
+			if(@drop = Nil) {
+				@drop := DropEvent->New();
+			};
+
+			if(@fn_sdl_event_drop = Nil) { @fn_sdl_event_drop := "sdl_event_drop"; };
+			if(ReadInto(@fn_sdl_event_drop, @drop)) {
+				return @drop;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get touch finger event
+		@return touch finger event, or Nil if this is not an EventType->SDL_FINGERDOWN, SDL_FINGERUP or SDL_FINGERMOTION
+		~#
+		method : public : GetTouchFinger() ~ TouchFingerEvent {
+			if(@tfinger = Nil) {
+				@tfinger := TouchFingerEvent->New();
+			};
+
+			if(@fn_sdl_event_tfinger = Nil) { @fn_sdl_event_tfinger := "sdl_event_tfinger"; };
+			if(ReadInto(@fn_sdl_event_tfinger, @tfinger)) {
+				return @tfinger;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get text editing (IME composition) event
+		@return text editing event, or Nil if this is not an EventType->SDL_TEXTEDITING
+		~#
+		method : public : GetTextEditing() ~ TextEditingEvent {
+			if(@edit = Nil) {
+				@edit := TextEditingEvent->New();
+			};
+
+			if(@fn_sdl_event_edit = Nil) { @fn_sdl_event_edit := "sdl_event_edit"; };
+			if(ReadInto(@fn_sdl_event_edit, @edit)) {
+				return @edit;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get user event
+		@return user event, or Nil if the type is below EventType->SDL_USEREVENT
+		~#
+		method : public : GetUser() ~ UserEvent {
+			if(@user = Nil) {
+				@user := UserEvent->New();
+			};
+
+			if(@fn_sdl_event_user = Nil) { @fn_sdl_event_user := "sdl_event_user"; };
+			if(ReadInto(@fn_sdl_event_user, @user)) {
+				return @user;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Fill this event in as a user event, ready to Push
+		@param type event type from Event->Registers
+		@param code application defined code
+		@param window_id associated window ID, or 0
+		@return true on success, false if type is not a user event type
+		```
+		type := Event->Registers(1);
+		event := Event->New();
+		if(event->SetUser(type, 42, 0)) {
+			event->Push();
+		};
+		```
+		~#
+		method : public : SetUser(type : Int, code : Int, window_id : Int) ~ Bool {
+			if(@event <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@event);
+				array_args[2] := IntRef->New(type);
+				array_args[3] := IntRef->New(code);
+				array_args[4] := IntRef->New(window_id);
+
+				if(@fn_sdl_event_set_user = Nil) { @fn_sdl_event_set_user := "sdl_event_set_user"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_set_user, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get() = 0;
+			};
+
+			return false;
+		}
+
 		#~
 		Pump the event loop, gathering events from the input devices
 		~#
@@ -6552,6 +7294,7 @@ bundle Game.SDL2 {
 		@fn_sdl_image_init : static : String;
 		@fn_sdl_image_load : static : String;
 		@fn_sdl_image_quit : static : String;
+		@fn_sdl_image_save_png : static : String;
 		#~ 
 		Initialize by loading support as indicated by the flags
 		@param flags OR'd values ImageFlags->IMG_INIT_JPG, ImageFlags->IMG_INIT_PNG and ImageFlags->IMG_INIT_TIF
@@ -6592,6 +7335,33 @@ bundle Game.SDL2 {
 
 	        value := array_args[0]->As(IntRef);
 			return Surface->New(value->Get());
+		}
+
+		#~
+		Save a surface as a PNG file
+		@param surface the surface to save
+		@param file file path to write
+		@return 0 on success or a negative error code on failure; Core->GetError says why
+		~#
+		function : SavePNG(surface : Surface, file : String) ~ Int {
+			if(surface = Nil | file = Nil) {
+				return -1;
+			};
+
+			if(surface->IsNull()) {
+				return -1;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(surface->GetSurface());
+			array_args[2] := file;
+
+			if(@fn_sdl_image_save_png = Nil) { @fn_sdl_image_save_png := "sdl_image_save_png"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_image_save_png, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
 		}
 	}
 
@@ -6647,6 +7417,22 @@ bundle Game.SDL2 {
 		@fn_sdl_renderer_string_color : static : String;
 		@fn_sdl_renderer_thick_line_color : static : String;
 		@fn_sdl_renderer_trigon_color : static : String;
+		@fn_sdl_renderer_set_draw_blend_mode : static : String;
+		@fn_sdl_renderer_get_draw_blend_mode : static : String;
+		@fn_sdl_renderer_render_draw_points : static : String;
+		@fn_sdl_renderer_render_draw_lines : static : String;
+		@fn_sdl_renderer_render_draw_rects : static : String;
+		@fn_sdl_renderer_render_fill_rects : static : String;
+		@fn_sdl_renderer_render_draw_point_f : static : String;
+		@fn_sdl_renderer_render_draw_line_f : static : String;
+		@fn_sdl_renderer_render_draw_rect_f : static : String;
+		@fn_sdl_renderer_render_fill_rect_f : static : String;
+		@fn_sdl_renderer_set_logical_size : static : String;
+		@fn_sdl_renderer_get_logical_size : static : String;
+		@fn_sdl_renderer_set_scale : static : String;
+		@fn_sdl_renderer_get_scale : static : String;
+		@fn_sdl_renderer_get_output_size : static : String;
+		@fn_sdl_renderer_read_pixels : static : String;
 		@renderer : Int;
 		# Pooled boxing buffer for the hot color-draw primitives. The native call ABI
 		# wants a Base[] of IntRef holders, so naively every draw call allocated a
@@ -7047,6 +7833,354 @@ bundle Game.SDL2 {
 			};
 
 			return -1;
+		}
+
+		#~
+		Read the rendering target's pixels back into a new surface, for a screenshot or
+		an exported figure. Call it after drawing and before Present, since the back
+		buffer is undefined after presenting. Slow; not for every frame.
+		@param rect the area to read, or Nil for the whole target
+		@return a new 32-bit ARGB surface the caller must Free; IsNull() is true on failure
+		~#
+		method : public : ReadPixels(rect : Rect) ~ Surface {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := rect;
+
+				if(@fn_sdl_renderer_read_pixels = Nil) { @fn_sdl_renderer_read_pixels := "sdl_renderer_read_pixels"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_read_pixels, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return Surface->New(value->Get());
+			};
+
+			return Surface->New(0);
+		}
+
+		#~
+		Save the whole rendering target as a PNG file: ReadPixels followed by Image->SavePNG.
+		Call it after drawing and before Present.
+		@param file file path to write
+		@return true if the file was written
+		```
+		renderer->Clear();
+		DrawChart(renderer);
+		renderer->SavePNG("figure1.png");
+		renderer->Present();
+		```
+		~#
+		method : public : SavePNG(file : String) ~ Bool {
+			surface := ReadPixels(Nil);
+			if(surface->IsNull()) {
+				return false;
+			};
+
+			result := Image->SavePNG(surface, file);
+			surface->Free();
+
+			return result = 0;
+		}
+
+		#~
+		Set a device independent resolution for rendering. Drawing is then in these
+		logical coordinates, scaled to the output and letterboxed to keep the aspect ratio.
+		@param w the width of the logical resolution
+		@param h the height of the logical resolution
+		@return 0 on success or a negative error code on failure
+		```
+		renderer->SetLogicalSize(320, 240);
+		renderer->FillRect(Rect->New(0, 0, 160, 120)); # the top-left quarter at any window size
+		```
+		~#
+		method : public : SetLogicalSize(w : Int, h : Int) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := IntRef->New(w);
+				array_args[3] := IntRef->New(h);
+
+				if(@fn_sdl_renderer_set_logical_size = Nil) { @fn_sdl_renderer_set_logical_size := "sdl_renderer_set_logical_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_logical_size, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Get the device independent resolution for rendering
+		@param w holder filled in with the logical width, 0 if none is set
+		@param h holder filled in with the logical height, 0 if none is set
+		~#
+		method : public : GetLogicalSize(w : IntRef, h : IntRef) ~ Nil {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@renderer);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				if(@fn_sdl_renderer_get_logical_size = Nil) { @fn_sdl_renderer_get_logical_size := "sdl_renderer_get_logical_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_logical_size, array_args);
+			};
+		}
+
+		#~
+		Set the drawing scale; coordinates are multiplied by it before they reach the target
+		@param scale_x the horizontal scaling factor
+		@param scale_y the vertical scaling factor
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : SetScale(scale_x : Float, scale_y : Float) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := FloatRef->New(scale_x);
+				array_args[3] := FloatRef->New(scale_y);
+
+				if(@fn_sdl_renderer_set_scale = Nil) { @fn_sdl_renderer_set_scale := "sdl_renderer_set_scale"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_scale, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Get the drawing scale
+		@param scale_x holder filled in with the horizontal scaling factor
+		@param scale_y holder filled in with the vertical scaling factor
+		~#
+		method : public : GetScale(scale_x : FloatRef, scale_y : FloatRef) ~ Nil {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@renderer);
+				array_args[1] := scale_x;
+				array_args[2] := scale_y;
+
+				if(@fn_sdl_renderer_get_scale = Nil) { @fn_sdl_renderer_get_scale := "sdl_renderer_get_scale"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_scale, array_args);
+			};
+		}
+
+		#~
+		Get the output size in pixels of the rendering target: the window, the surface
+		of a software renderer, or the texture set with SetTarget
+		@param w holder filled in with the width in pixels
+		@param h holder filled in with the height in pixels
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : GetOutputSize(w : IntRef, h : IntRef) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := w;
+				array_args[3] := h;
+
+				if(@fn_sdl_renderer_get_output_size = Nil) { @fn_sdl_renderer_get_output_size := "sdl_renderer_get_output_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_output_size, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Set the blend mode used for drawing operations (Fill and Line). BlendMode->SDL_BLENDMODE_BLEND
+		makes the alpha of SetDrawColor take effect.
+		@param blendMode the BlendMode to use for blending
+		@return 0 on success or a negative error code on failure
+		```
+		renderer->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_BLEND);
+		renderer->SetDrawColor(255, 0, 0, 128);
+		renderer->FillRect(Rect->New(10, 10, 100, 100));
+		```
+		~#
+		method : public : SetDrawBlendMode(blendMode : BlendMode) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := IntRef->New(blendMode->As(Int));
+
+				if(@fn_sdl_renderer_set_draw_blend_mode = Nil) { @fn_sdl_renderer_set_draw_blend_mode := "sdl_renderer_set_draw_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_draw_blend_mode, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Get the blend mode used for drawing operations
+		@param blendMode holder filled in with the current BlendMode
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : GetDrawBlendMode(blendMode : IntRef) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := blendMode;
+
+				if(@fn_sdl_renderer_get_draw_blend_mode = Nil) { @fn_sdl_renderer_get_draw_blend_mode := "sdl_renderer_get_draw_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_draw_blend_mode, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		# Calls a batch drawing native with one flat coordinate array
+		method : DrawBatch(name : String, values : Int[]) ~ Int {
+			if(@renderer <> 0 & values <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := IntArrayRef->New(values);
+
+				Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Draw many points in one call
+		@param points flat array of x,y pairs: x0, y0, x1, y1, ...
+		@return 0 on success, or a negative value on failure or when the array is empty or holds an odd count
+		```
+		renderer->DrawPoints([10, 10, 20, 20, 30, 30]);
+		```
+		~#
+		method : public : DrawPoints(points : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_draw_points = Nil) { @fn_sdl_renderer_render_draw_points := "sdl_renderer_render_draw_points"; };
+			return DrawBatch(@fn_sdl_renderer_render_draw_points, points);
+		}
+
+		#~
+		Draw a connected series of line segments, a polyline, in one call
+		@param points flat array of x,y pairs: x0, y0, x1, y1, ...; each point joins the next
+		@return 0 on success, or a negative value on failure or when the array is empty or holds an odd count
+		```
+		renderer->DrawLines([0, 100, 50, 20, 100, 60, 150, 10]);
+		```
+		~#
+		method : public : DrawLines(points : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_draw_lines = Nil) { @fn_sdl_renderer_render_draw_lines := "sdl_renderer_render_draw_lines"; };
+			return DrawBatch(@fn_sdl_renderer_render_draw_lines, points);
+		}
+
+		#~
+		Draw the outlines of many rectangles in one call
+		@param rects flat array of x,y,w,h quadruples
+		@return 0 on success, or a negative value on failure or when the array is empty or not a multiple of 4
+		~#
+		method : public : DrawRects(rects : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_draw_rects = Nil) { @fn_sdl_renderer_render_draw_rects := "sdl_renderer_render_draw_rects"; };
+			return DrawBatch(@fn_sdl_renderer_render_draw_rects, rects);
+		}
+
+		#~
+		Fill many rectangles in one call, such as the bars of a chart
+		@param rects flat array of x,y,w,h quadruples
+		@return 0 on success, or a negative value on failure or when the array is empty or not a multiple of 4
+		```
+		renderer->FillRects([10, 50, 20, 100, 40, 80, 20, 70]);
+		```
+		~#
+		method : public : FillRects(rects : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_fill_rects = Nil) { @fn_sdl_renderer_render_fill_rects := "sdl_renderer_render_fill_rects"; };
+			return DrawBatch(@fn_sdl_renderer_render_fill_rects, rects);
+		}
+
+		# Calls a float drawing native with up to four coordinates
+		method : DrawFloats(name : String, count : Int, a : Float, b : Float, c : Float, d : Float) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[count + 2];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := FloatRef->New(a);
+				array_args[3] := FloatRef->New(b);
+				if(count > 2) {
+					array_args[4] := FloatRef->New(c);
+					array_args[5] := FloatRef->New(d);
+				};
+
+				Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Draw a point at sub-pixel precision
+		@param x the x coordinate of the point
+		@param y the y coordinate of the point
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : DrawPointF(x : Float, y : Float) ~ Int {
+			if(@fn_sdl_renderer_render_draw_point_f = Nil) { @fn_sdl_renderer_render_draw_point_f := "sdl_renderer_render_draw_point_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_draw_point_f, 2, x, y, 0.0, 0.0);
+		}
+
+		#~
+		Draw a line at sub-pixel precision
+		@param x1 the x coordinate of the start point
+		@param y1 the y coordinate of the start point
+		@param x2 the x coordinate of the end point
+		@param y2 the y coordinate of the end point
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : DrawLineF(x1 : Float, y1 : Float, x2 : Float, y2 : Float) ~ Int {
+			if(@fn_sdl_renderer_render_draw_line_f = Nil) { @fn_sdl_renderer_render_draw_line_f := "sdl_renderer_render_draw_line_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_draw_line_f, 4, x1, y1, x2, y2);
+		}
+
+		#~
+		Draw a rectangle outline at sub-pixel precision
+		@param x the x coordinate of the top left corner
+		@param y the y coordinate of the top left corner
+		@param w the width
+		@param h the height
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : DrawRectF(x : Float, y : Float, w : Float, h : Float) ~ Int {
+			if(@fn_sdl_renderer_render_draw_rect_f = Nil) { @fn_sdl_renderer_render_draw_rect_f := "sdl_renderer_render_draw_rect_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_draw_rect_f, 4, x, y, w, h);
+		}
+
+		#~
+		Fill a rectangle at sub-pixel precision
+		@param x the x coordinate of the top left corner
+		@param y the y coordinate of the top left corner
+		@param w the width
+		@param h the height
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : FillRectF(x : Float, y : Float, w : Float, h : Float) ~ Int {
+			if(@fn_sdl_renderer_render_fill_rect_f = Nil) { @fn_sdl_renderer_render_fill_rect_f := "sdl_renderer_render_fill_rect_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_fill_rect_f, 4, x, y, w, h);
 		}
 
 		#~
@@ -8076,6 +9210,7 @@ bundle Game.SDL2 {
 		@fn_sdl_texture_set_blend_mode : static : String;
 		@fn_sdl_texture_set_color_mod : static : String;
 		@fn_sdl_texture_unlock : static : String;
+		@fn_sdl_texture_update : static : String;
 		@texture : Int;
 
 		New(texture : Int) {
@@ -8186,6 +9321,39 @@ bundle Game.SDL2 {
 				if(@fn_sdl_texture_unlock = Nil) { @fn_sdl_texture_unlock := "sdl_texture_unlock"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_unlock, array_args);
 			};
+		}
+
+		#~
+		Replace the texture's pixels, or those in a rectangle, from bytes laid out in the
+		texture's own pixel format. Simpler than Lock/Unlock for an image computed in Objeck.
+		@param rect the area to update, or Nil for the whole texture
+		@param pixels the pixel bytes, at least pitch times the number of rows
+		@param pitch the number of bytes in a row of pixel data, including padding
+		@return 0 on success, or a negative value on failure or when pixels is too short
+		```
+		texture := renderer->CreateTexture(PixelValue->SDL_PIXELFORMAT_ABGR8888, TextureAccess->SDL_TEXTUREACCESS_STATIC, 2, 2);
+		pixels := Byte->New[16];
+		pixels[0] := 255; pixels[3] := 255; # first pixel opaque red
+		texture->Update(Nil, pixels, 8);
+		```
+		~#
+		method : public : Update(rect : Rect, pixels : Byte[], pitch : Int) ~ Int {
+			if(@texture <> 0 & pixels <> Nil) {
+				array_args := Base->New[5];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@texture);
+				array_args[2] := rect;
+				array_args[3] := ByteArrayRef->New(pixels);
+				array_args[4] := IntRef->New(pitch);
+
+				if(@fn_sdl_texture_update = Nil) { @fn_sdl_texture_update := "sdl_texture_update"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_update, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
 		}
 
 		#~
@@ -8341,6 +9509,55 @@ bundle Game.SDL2 {
 		@fn_sdl_ticks_passed : static : String;
 		@fn_sdl_timer_delay : static : String;
 		@fn_sdl_timer_get_ticks : static : String;
+		@fn_sdl_timer_get_ticks64 : static : String;
+		@fn_sdl_timer_get_performance_counter : static : String;
+		@fn_sdl_timer_get_performance_frequency : static : String;
+
+		# Calls a timer native that returns one Int
+		function : private : TimerInt(name : String) ~ Int {
+			array_args := Base->New[1];
+			array_args[0] := IntRef->New();
+
+			Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Get the number of milliseconds since the SDL library initialization, as 64 bits so it
+		does not wrap after 49 days as GetTicks does
+		@return milliseconds since SDL was initialized
+		~#
+		function : GetTicks64() ~ Int {
+			if(@fn_sdl_timer_get_ticks64 = Nil) { @fn_sdl_timer_get_ticks64 := "sdl_timer_get_ticks64"; };
+			return TimerInt(@fn_sdl_timer_get_ticks64);
+		}
+
+		#~
+		Get the current value of the high resolution counter, for timing. Only differences
+		between two readings are meaningful; divide by GetPerformanceFrequency for seconds.
+		@return the current counter value
+		```
+		start := Timer->GetPerformanceCounter();
+		Step();
+		elapsed := (Timer->GetPerformanceCounter() - start)->As(Float) / Timer->GetPerformanceFrequency()->As(Float);
+		```
+		~#
+		function : GetPerformanceCounter() ~ Int {
+			if(@fn_sdl_timer_get_performance_counter = Nil) { @fn_sdl_timer_get_performance_counter := "sdl_timer_get_performance_counter"; };
+			return TimerInt(@fn_sdl_timer_get_performance_counter);
+		}
+
+		#~
+		Get the count per second of the high resolution counter
+		@return counts per second
+		~#
+		function : GetPerformanceFrequency() ~ Int {
+			if(@fn_sdl_timer_get_performance_frequency = Nil) { @fn_sdl_timer_get_performance_frequency := "sdl_timer_get_performance_frequency"; };
+			return TimerInt(@fn_sdl_timer_get_performance_frequency);
+		}
+
 		#~
 		Get the number of milliseconds since the SDL library initialization
 		@return value representing the number of milliseconds since the SDL library initialized
@@ -8408,6 +9625,16 @@ bundle Game.SDL2 {
 		@fn_sdl_font_render_utf8_blended : static : String;
 		@fn_sdl_font_render_utf8_shaded : static : String;
 		@fn_sdl_font_render_utf8_solid : static : String;
+		@fn_sdl_font_render_utf8_blended_wrapped : static : String;
+		@fn_sdl_font_size_utf8 : static : String;
+		@fn_sdl_font_height : static : String;
+		@fn_sdl_font_ascent : static : String;
+		@fn_sdl_font_descent : static : String;
+		@fn_sdl_font_line_skip : static : String;
+		@fn_sdl_font_set_style : static : String;
+		@fn_sdl_font_get_style : static : String;
+		@fn_sdl_font_set_outline : static : String;
+		@fn_sdl_font_get_outline : static : String;
 		@font : Int;
 
 		#~
@@ -8628,6 +9855,150 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 	        value := array_args[0]->As(IntRef);
 	        return Surface->New(value->Get());
 		}
+
+		#~
+		Render UTF8 text blended, wrapping lines at word boundaries so no line is wider than wrap_length pixels.
+		Lines are also broken at newlines.
+		@param text the text to render
+		@param fg the color to render the text in
+		@param wrap_length the maximum line width in pixels; 0 breaks lines only at newlines
+		@return Surface instance, caller responsible for freeing; IsNull() is true on failure
+		~#
+		method : public : RenderUTF8BlendedWrapped(text : String, fg : Color, wrap_length : Int) ~ Surface {
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@font);
+			array_args[2] := text;
+			array_args[3] := fg;
+			array_args[4] := IntRef->New(wrap_length);
+
+			if(@fn_sdl_font_render_utf8_blended_wrapped = Nil) { @fn_sdl_font_render_utf8_blended_wrapped := "sdl_font_render_utf8_blended_wrapped"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_render_utf8_blended_wrapped, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return Surface->New(value->Get());
+		}
+
+		#~
+		Measure the size UTF8 text would have if rendered, without rendering it. Use it to
+		center, right-align or fit a label.
+		@param text the text to measure
+		@param w holder filled in with the width in pixels
+		@param h holder filled in with the height in pixels
+		@return 0 on success, or a negative value on failure or for a closed font
+		```
+		w := IntRef->New(); h := IntRef->New();
+		if(font->SizeUTF8("Accuracy: 0.97", w, h) = 0) {
+			x := (640 - w->Get()) / 2;
+		};
+		```
+		~#
+		method : public : SizeUTF8(text : String, w : IntRef, h : IntRef) ~ Int {
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@font);
+			array_args[2] := text;
+			array_args[3] := w;
+			array_args[4] := h;
+
+			if(@fn_sdl_font_size_utf8 = Nil) { @fn_sdl_font_size_utf8 := "sdl_font_size_utf8"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_size_utf8, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		# Calls a native that takes the font and returns one Int
+		method : FontInt(name : String) ~ Int {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@font);
+
+			Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+
+		#~
+		Maximum height of the font's glyphs
+		@return height in pixels, or -1 for a closed font
+		~#
+		method : public : GetHeight() ~ Int {
+			if(@fn_sdl_font_height = Nil) { @fn_sdl_font_height := "sdl_font_height"; };
+			return FontInt(@fn_sdl_font_height);
+		}
+
+		#~
+		Maximum distance of the font's glyphs above the baseline
+		@return ascent in pixels, or -1 for a closed font
+		~#
+		method : public : GetAscent() ~ Int {
+			if(@fn_sdl_font_ascent = Nil) { @fn_sdl_font_ascent := "sdl_font_ascent"; };
+			return FontInt(@fn_sdl_font_ascent);
+		}
+
+		#~
+		Maximum distance of the font's glyphs below the baseline
+		@return descent in pixels, negative below the baseline; 0 for a closed font
+		~#
+		method : public : GetDescent() ~ Int {
+			if(@fn_sdl_font_descent = Nil) { @fn_sdl_font_descent := "sdl_font_descent"; };
+			return FontInt(@fn_sdl_font_descent);
+		}
+
+		#~
+		Recommended spacing between lines of text
+		@return line skip in pixels, or -1 for a closed font
+		~#
+		method : public : GetLineSkip() ~ Int {
+			if(@fn_sdl_font_line_skip = Nil) { @fn_sdl_font_line_skip := "sdl_font_line_skip"; };
+			return FontInt(@fn_sdl_font_line_skip);
+		}
+
+		#~
+		Set the rendering style
+		@param style FontStyle values OR'd together, such as FontStyle->TTF_STYLE_BOLD
+		~#
+		method : public : SetStyle(style : Int) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(@font);
+			array_args[1] := IntRef->New(style);
+
+			if(@fn_sdl_font_set_style = Nil) { @fn_sdl_font_set_style := "sdl_font_set_style"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_set_style, array_args);
+		}
+
+		#~
+		Get the rendering style
+		@return FontStyle values OR'd together, or -1 for a closed font
+		~#
+		method : public : GetStyle() ~ Int {
+			if(@fn_sdl_font_get_style = Nil) { @fn_sdl_font_get_style := "sdl_font_get_style"; };
+			return FontInt(@fn_sdl_font_get_style);
+		}
+
+		#~
+		Set the outline width; text is then rendered as an outline of that many pixels
+		@param outline outline width in pixels, 0 for no outline
+		~#
+		method : public : SetOutline(outline : Int) ~ Nil {
+			array_args := Base->New[2];
+			array_args[0] := IntRef->New(@font);
+			array_args[1] := IntRef->New(outline);
+
+			if(@fn_sdl_font_set_outline = Nil) { @fn_sdl_font_set_outline := "sdl_font_set_outline"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_font_set_outline, array_args);
+		}
+
+		#~
+		Get the outline width
+		@return outline width in pixels, or -1 for a closed font
+		~#
+		method : public : GetOutline() ~ Int {
+			if(@fn_sdl_font_get_outline = Nil) { @fn_sdl_font_get_outline := "sdl_font_get_outline"; };
+			return FontInt(@fn_sdl_font_get_outline);
+		}
 	}
 
 	#~
@@ -8817,6 +10188,7 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		@fn_sdl_mixer_record_id_pcm : static : String;
 		@fn_sdl_mixer_record_pcm : static : String;
 		@fn_sdl_mixer_volume : static : String;
+		@fn_sdl_mixer_set_panning : static : String;
 		consts Flags {
 			MIX_DEFAULT_FORMAT := 0x8010,
 			MIX_DEFAULT_CHANNELS := 2,
@@ -9054,6 +10426,204 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 
 			value := array_args[0]->As(IntRef);
 			return value->Get();
+		}
+
+		#~
+		Set the stereo panning of a channel. 255 on both sides is no panning; 255 left and 0 right is hard left.
+		@param channel the channel, or -1 for every channel
+		@param left the left volume from 0 to 255
+		@param right the right volume from 0 to 255
+		@return non-zero on success, 0 on failure or when a volume is out of range
+		~#
+		function : SetPanning(channel : Int, left : Int, right : Int) ~ Int {
+			array_args := Base->New[4];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(channel);
+			array_args[2] := IntRef->New(left);
+			array_args[3] := IntRef->New(right);
+
+			if(@fn_sdl_mixer_set_panning = Nil) { @fn_sdl_mixer_set_panning := "sdl_mixer_set_panning"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_mixer_set_panning, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
+		}
+	}
+
+	#~
+	An audio playback device fed by queueing samples, for streaming audio generated by
+	the program (synthesis, sonification) rather than loaded from a file. Initialize the
+	audio subsystem first. The device opens paused.
+	~#
+	class AudioDevice {
+		@fn_sdl_audio_device_open : static : String;
+		@fn_sdl_audio_device_close : static : String;
+		@fn_sdl_audio_device_pause : static : String;
+		@fn_sdl_audio_device_queue : static : String;
+		@fn_sdl_audio_device_queue_floats : static : String;
+		@fn_sdl_audio_device_get_queued_size : static : String;
+		@fn_sdl_audio_device_clear : static : String;
+		@device : Int;
+		@format : Int;
+
+		#~
+		Open the default playback device for queued audio
+		@param frequency samples per second, such as 44100
+		@param format sample format, such as AudioFormat->SDL_AUDIO_S16 or AudioFormat->SDL_AUDIO_F32
+		@param channels 1 for mono, 2 for stereo
+		@param samples the device buffer size in sample frames, a power of 2 such as 4096
+		```
+		Core->Init(SubsystemFlags->SDL_INIT_AUDIO);
+		device := AudioDevice->New(44100, AudioFormat->SDL_AUDIO_F32, 1, 4096);
+		if(<>device->IsNull()) {
+			tone := Float->New[44100];
+			each(i : tone) {
+				tone[i] := Float->Sin(2.0 * Float->Pi() * 440.0 * i->As(Float) / 44100.0) * 0.25;
+			};
+			device->QueueFloats(tone);
+			device->Pause(false);
+			Timer->Delay(1000);
+			device->Close();
+		};
+		```
+		~#
+		New(frequency : Int, format : Int, channels : Int, samples : Int) {
+			array_args := Base->New[5];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(frequency);
+			array_args[2] := IntRef->New(format);
+			array_args[3] := IntRef->New(channels);
+			array_args[4] := IntRef->New(samples);
+
+			if(@fn_sdl_audio_device_open = Nil) { @fn_sdl_audio_device_open := "sdl_audio_device_open"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_device_open, array_args);
+
+			value := array_args[0]->As(IntRef);
+			@device := value->Get();
+			@format := format;
+		}
+
+		#~
+		Determines if the device failed to open or has been closed
+		@return true if there is no open device, false otherwise
+		~#
+		method : public : IsNull() ~ Bool {
+			return @device = 0;
+		}
+
+		#~
+		Get the SDL audio device id
+		@return device id, 0 if not open
+		~#
+		method : public : GetId() ~ Int {
+			return @device;
+		}
+
+		#~
+		Pause or resume playback
+		@param pause true to pause, false to play
+		~#
+		method : public : Pause(pause : Bool) ~ Nil {
+			if(@device <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntRef->New(@device);
+				array_args[1] := IntRef->New(pause ? 1 : 0);
+
+				if(@fn_sdl_audio_device_pause = Nil) { @fn_sdl_audio_device_pause := "sdl_audio_device_pause"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_device_pause, array_args);
+			};
+		}
+
+		#~
+		Queue raw sample bytes, laid out in the device's format, for playback
+		@param bytes the sample bytes
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : Queue(bytes : Byte[]) ~ Int {
+			if(@device <> 0 & bytes <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@device);
+				array_args[2] := ByteArrayRef->New(bytes);
+
+				if(@fn_sdl_audio_device_queue = Nil) { @fn_sdl_audio_device_queue := "sdl_audio_device_queue"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_device_queue, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Queue samples given as Float values, normally from -1.0 to 1.0, interleaved by channel.
+		The device must have been opened with AudioFormat->SDL_AUDIO_F32.
+		@param samples the samples
+		@return 0 on success, or a negative value on failure or for a device of another format
+		~#
+		method : public : QueueFloats(samples : Float[]) ~ Int {
+			if(@device <> 0 & samples <> Nil & @format = AudioFormat->SDL_AUDIO_F32) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@device);
+				array_args[2] := FloatArrayRef->New(samples);
+
+				if(@fn_sdl_audio_device_queue_floats = Nil) { @fn_sdl_audio_device_queue_floats := "sdl_audio_device_queue_floats"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_device_queue_floats, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Get the number of bytes still queued for playback
+		@return queued byte count, 0 if not open
+		~#
+		method : public : GetQueuedSize() ~ Int {
+			if(@device <> 0) {
+				array_args := Base->New[2];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@device);
+
+				if(@fn_sdl_audio_device_get_queued_size = Nil) { @fn_sdl_audio_device_get_queued_size := "sdl_audio_device_get_queued_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_device_get_queued_size, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return 0;
+		}
+
+		#~
+		Drop all queued audio that has not played yet
+		~#
+		method : public : Clear() ~ Nil {
+			if(@device <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@device);
+
+				if(@fn_sdl_audio_device_clear = Nil) { @fn_sdl_audio_device_clear := "sdl_audio_device_clear"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_device_clear, array_args);
+			};
+		}
+
+		#~
+		Close the device; safe to call twice
+		~#
+		method : public : Close() ~ Nil {
+			if(@device <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@device);
+
+				if(@fn_sdl_audio_device_close = Nil) { @fn_sdl_audio_device_close := "sdl_audio_device_close"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_audio_device_close, array_args);
+				@device := 0;
+			};
 		}
 	}
 

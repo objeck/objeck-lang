@@ -1,0 +1,199 @@
+#~
+Figure demo: draws a small chart with the Game.SDL2 calls a research program
+needs, and exports it as a PNG.
+
+- a resizable window drawn in fixed 640x400 logical coordinates (SetLogicalSize)
+- bars in one FillRects call and a sine curve in one DrawLines call
+- a translucent band and legend box (SetDrawBlendMode + an alpha draw color)
+- a centred title measured with Font->SizeUTF8 and a wrapped caption
+- frame time from the high-resolution counter
+- S saves figure_demo.png (Renderer->SavePNG); Escape or closing the window quits
+
+Build and run from the deploy tree's bin directory so the bundled font is found:
+  obc -src figure_demo.obs -lib sdl2 -dest figure_demo.obe
+  obr figure_demo.obe
+~#
+use System;
+use Game.SDL2;
+
+class FigureDemo {
+	@window : Window;
+	@renderer : Renderer;
+	@font : Font;
+	@small : Font;
+
+	function : Main(args : String[]) ~ Nil {
+		FigureDemo->New()->Run();
+	}
+
+	New() {
+	}
+
+	method : Run() ~ Nil {
+		if(Core->Init(SubsystemFlags->SDL_INIT_VIDEO) <> 0) {
+			error := Core->GetError();
+			"--- SDL video failed to start: {$error} ---"->ErrorLine();
+			return;
+		};
+		Font->Init();
+
+		@window := Window->New("Objeck figure demo", WindowFlags->SDL_WINDOWPOS_UNDEFINED, WindowFlags->SDL_WINDOWPOS_UNDEFINED,
+			960, 600, WindowFlags->SDL_WINDOW_SHOWN or WindowFlags->SDL_WINDOW_RESIZABLE);
+		@renderer := Renderer->New(@window, -1, RendererFlags->SDL_RENDERER_ACCELERATED or RendererFlags->SDL_RENDERER_PRESENTVSYNC);
+		if(@window->IsNull() | @renderer->IsNull()) {
+			error := Core->GetError();
+			"--- no window or renderer: {$error} ---"->ErrorLine();
+			Core->Quit();
+			return;
+		};
+
+		# all drawing below is in 640x400, whatever the window's size
+		@renderer->SetLogicalSize(640, 400);
+
+		@font := Font->New("../lib/sdl/fonts/lazy.ttf", 28);
+		@small := Font->New("../lib/sdl/fonts/lazy.ttf", 16);
+		if(@font->IsNull() | @small->IsNull()) {
+			"--- font not found; run from the deploy tree's bin directory ---"->ErrorLine();
+		};
+
+		frequency := Timer->GetPerformanceFrequency()->As(Float);
+		event := Event->New();
+		quit := false;
+		save := false;
+		frame_ms := 0.0;
+
+		while(<>quit) {
+			start := Timer->GetPerformanceCounter();
+
+			while(event->Poll() <> 0) {
+				type := event->GetType();
+				if(type = EventType->SDL_QUIT) {
+					quit := true;
+				}
+				else if(type = EventType->SDL_KEYDOWN) {
+					code := event->GetKey()->GetKeysym()->GetScancode();
+					if(code = Scancode->SDL_SCANCODE_ESCAPE) {
+						quit := true;
+					}
+					else if(code = Scancode->SDL_SCANCODE_S) {
+						save := true;
+					};
+				}
+				else if(type = EventType->SDL_WINDOWEVENT) {
+					info := event->GetWindow();
+					if(info <> Nil & info->GetEvent() = WindowEventID->SDL_WINDOWEVENT_SIZE_CHANGED) {
+						w := info->GetData1(); h := info->GetData2();
+						"window is now {$w}x{$h}; the figure keeps its proportions"->PrintLine();
+					};
+				};
+			};
+
+			Draw(frame_ms);
+
+			# read back before Present: the back buffer is undefined afterwards
+			if(save) {
+				if(@renderer->SavePNG("figure_demo.png")) {
+					"saved figure_demo.png"->PrintLine();
+				}
+				else {
+					error := Core->GetError();
+					"--- save failed: {$error} ---"->ErrorLine();
+				};
+				save := false;
+			};
+
+			@renderer->Present();
+			frame_ms := (Timer->GetPerformanceCounter() - start)->As(Float) * 1000.0 / frequency;
+		};
+
+		event->Free();
+		@font->Free();
+		@small->Free();
+		@renderer->Destroy();
+		@window->Destroy();
+		Font->Quit();
+		Core->Quit();
+	}
+
+	method : Draw(frame_ms : Float) ~ Nil {
+		@renderer->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_NONE);
+		@renderer->SetDrawColor(250, 250, 245, 255);
+		@renderer->Clear();
+
+		# axes
+		@renderer->SetDrawColor(40, 40, 40, 255);
+		@renderer->DrawLines([60, 60, 60, 340, 600, 340]);
+
+		# bars: one x,y,w,h quadruple each, drawn in one call
+		values := [120, 200, 90, 260, 180, 230, 150];
+		bars := Int->New[values->Size() * 4];
+		each(i : values) {
+			bars[i * 4] := 80 + i * 72;
+			bars[i * 4 + 1] := 340 - values[i];
+			bars[i * 4 + 2] := 40;
+			bars[i * 4 + 3] := values[i];
+		};
+		@renderer->SetDrawColor(70, 120, 200, 255);
+		@renderer->FillRects(bars);
+
+		# a translucent target band over the bars
+		@renderer->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_BLEND);
+		@renderer->SetDrawColor(230, 80, 60, 70);
+		@renderer->FillRectF(60.0, 140.0, 540.0, 60.0);
+
+		# a sine curve as one polyline
+		count := 109;
+		curve := Int->New[count * 2];
+		for(i := 0; i < count; i += 1;) {
+			x := 60 + i * 5;
+			curve[i * 2] := x;
+			curve[i * 2 + 1] := 200 - (Float->Sin(i->As(Float) / 9.0) * 90.0)->As(Int);
+		};
+		@renderer->SetDrawColor(20, 20, 20, 255);
+		@renderer->DrawLines(curve);
+
+		# legend box, translucent so the plot shows through
+		@renderer->SetDrawColor(255, 255, 255, 200);
+		@renderer->FillRect(Rect->New(430, 70, 160, 60));
+		@renderer->SetDrawColor(40, 40, 40, 255);
+		@renderer->DrawRect(Rect->New(430, 70, 160, 60));
+
+		if(<>@font->IsNull()) {
+			DrawCentered(@font, "Objeck figure demo", 320, 14, Color->New(20, 20, 20));
+		};
+
+		if(<>@small->IsNull()) {
+			DrawText(@small, "bars: FillRects", 440, 78, Color->New(70, 120, 200));
+			DrawText(@small, "curve: DrawLines", 440, 100, Color->New(20, 20, 20));
+
+			caption := "Press S to save this figure as figure_demo.png. Resize the window: the logical size keeps the layout.";
+			wrapped := @small->RenderUTF8BlendedWrapped(caption, Color->New(80, 80, 80), 520);
+			Blit(wrapped, 60, 350);
+
+			ms := frame_ms->ToString();
+			DrawText(@small, "frame {$ms} ms", 520, 380, Color->New(120, 120, 120));
+		};
+	}
+
+	# draws text centred on x, using SizeUTF8 to measure it first
+	method : DrawCentered(font : Font, text : String, x : Int, y : Int, color : Color) ~ Nil {
+		w := IntRef->New();
+		h := IntRef->New();
+		if(font->SizeUTF8(text, w, h) = 0) {
+			DrawText(font, text, x - w->Get() / 2, y, color);
+		};
+	}
+
+	method : DrawText(font : Font, text : String, x : Int, y : Int, color : Color) ~ Nil {
+		Blit(font->RenderUTF8Blended(text, color), x, y);
+	}
+
+	method : Blit(surface : Surface, x : Int, y : Int) ~ Nil {
+		if(<>surface->IsNull()) {
+			texture := surface->CreateTexture(@renderer);
+			@renderer->Copy(texture, Nil, Rect->New(x, y, surface->GetW(), surface->GetH()));
+			texture->Destroy();
+			surface->Free();
+		};
+	}
+}

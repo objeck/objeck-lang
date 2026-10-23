@@ -1460,6 +1460,31 @@ extern "C" {
     APITools_SetIntValue(context, 2, h);
   }
 
+  //
+  // The window's size in PIXELS, which on a high-DPI display is larger than
+  // GetSize's size in screen coordinates. SDL_GetWindowSizeInPixels arrived in
+  // SDL 2.26; an older system SDL (a source build on an older distribution)
+  // falls back to the GL drawable size, which is the same quantity for a GL
+  // window and the window size otherwise.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_window_get_size_in_pixels(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
+
+    int w = 0, h = 0;
+    if(window) {
+#if SDL_VERSION_ATLEAST(2, 26, 0)
+      SDL_GetWindowSizeInPixels(window, &w, &h);
+#else
+      SDL_GL_GetDrawableSize(window, &w, &h);
+#endif
+    }
+    APITools_SetIntValue(context, 1, w);
+    APITools_SetIntValue(context, 2, h);
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -1922,6 +1947,225 @@ extern "C" {
     }
   }
 
+  //
+  // Event fields beyond input devices. Each accessor follows the pattern above:
+  // the Objeck class's instance variables are written in declaration order,
+  // and the call returns -1 when the event is not of the accessor's type.
+  // A Float field is a double in its slot.
+  //
+  static void sdl_event_set_float_field(size_t* obj, int index, double value) {
+    *((double*)&obj[index]) = value;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_window(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* window_obj = APITools_GetObjectValue(context, 2);
+    if(event && window_obj && event->type == SDL_WINDOWEVENT) {
+      window_obj[0] = event->window.type;
+      window_obj[1] = event->window.timestamp;
+      window_obj[2] = event->window.windowID;
+      window_obj[3] = event->window.event;
+      window_obj[4] = event->window.data1;
+      window_obj[5] = event->window.data2;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_caxis(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* axis_obj = APITools_GetObjectValue(context, 2);
+    if(event && axis_obj && event->type == SDL_CONTROLLERAXISMOTION) {
+      axis_obj[0] = event->caxis.type;
+      axis_obj[1] = event->caxis.timestamp;
+      axis_obj[2] = event->caxis.which;
+      axis_obj[3] = event->caxis.axis;
+      axis_obj[4] = event->caxis.value;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_cbutton(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* button_obj = APITools_GetObjectValue(context, 2);
+    if(event && button_obj && (event->type == SDL_CONTROLLERBUTTONDOWN || event->type == SDL_CONTROLLERBUTTONUP)) {
+      button_obj[0] = event->cbutton.type;
+      button_obj[1] = event->cbutton.timestamp;
+      button_obj[2] = event->cbutton.which;
+      button_obj[3] = event->cbutton.button;
+      button_obj[4] = event->cbutton.state;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_cdevice(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* device_obj = APITools_GetObjectValue(context, 2);
+    if(event && device_obj && (event->type == SDL_CONTROLLERDEVICEADDED || event->type == SDL_CONTROLLERDEVICEREMOVED ||
+                               event->type == SDL_CONTROLLERDEVICEREMAPPED)) {
+      device_obj[0] = event->cdevice.type;
+      device_obj[1] = event->cdevice.timestamp;
+      // a joystick device index for ADDED, an instance id otherwise
+      device_obj[2] = event->cdevice.which;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  //
+  // SDL hands the application ownership of drop.file, which must be released
+  // with SDL_free. It is converted and released on the FIRST read, and the
+  // pointer cleared so a second read of the same event cannot free it twice; the
+  // cached Objeck DropEvent keeps the string, so a second read still sees it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_drop(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* drop_obj = APITools_GetObjectValue(context, 2);
+    if(event && drop_obj && (event->type == SDL_DROPFILE || event->type == SDL_DROPTEXT ||
+                             event->type == SDL_DROPBEGIN || event->type == SDL_DROPCOMPLETE)) {
+      drop_obj[0] = event->drop.type;
+      drop_obj[1] = event->drop.timestamp;
+      if(event->drop.file) {
+        const std::wstring w_file = BytesToUnicode(event->drop.file);
+        SDL_free(event->drop.file);
+        event->drop.file = nullptr;
+        drop_obj[2] = (size_t)APITools_CreateStringObject(context, w_file);
+        APITools_WriteBarrier(context, drop_obj);
+      }
+      else if(event->type == SDL_DROPBEGIN || event->type == SDL_DROPCOMPLETE) {
+        drop_obj[2] = 0;
+      }
+      drop_obj[3] = event->drop.windowID;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_tfinger(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* finger_obj = APITools_GetObjectValue(context, 2);
+    if(event && finger_obj && (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERUP || event->type == SDL_FINGERMOTION)) {
+      finger_obj[0] = event->tfinger.type;
+      finger_obj[1] = event->tfinger.timestamp;
+      finger_obj[2] = (size_t)event->tfinger.touchId;
+      finger_obj[3] = (size_t)event->tfinger.fingerId;
+      sdl_event_set_float_field(finger_obj, 4, event->tfinger.x);
+      sdl_event_set_float_field(finger_obj, 5, event->tfinger.y);
+      sdl_event_set_float_field(finger_obj, 6, event->tfinger.dx);
+      sdl_event_set_float_field(finger_obj, 7, event->tfinger.dy);
+      sdl_event_set_float_field(finger_obj, 8, event->tfinger.pressure);
+      finger_obj[9] = event->tfinger.windowID;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_edit(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* edit_obj = APITools_GetObjectValue(context, 2);
+    if(event && edit_obj && event->type == SDL_TEXTEDITING) {
+      edit_obj[0] = event->edit.type;
+      edit_obj[1] = event->edit.timestamp;
+      edit_obj[2] = event->edit.windowID;
+
+      const std::wstring w_text = BytesToUnicode(event->edit.text);
+      edit_obj[3] = (size_t)APITools_CreateStringObject(context, w_text);
+      APITools_WriteBarrier(context, edit_obj);
+
+      edit_obj[4] = event->edit.start;
+      edit_obj[5] = event->edit.length;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_user(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* user_obj = APITools_GetObjectValue(context, 2);
+    if(event && user_obj && event->type >= SDL_USEREVENT && event->type < SDL_LASTEVENT) {
+      user_obj[0] = event->user.type;
+      user_obj[1] = event->user.timestamp;
+      user_obj[2] = event->user.windowID;
+      user_obj[3] = event->user.code;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  // fills the event in as a user event, ready to Push
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_set_user(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    const Uint32 type = (Uint32)APITools_GetIntValue(context, 2);
+    const Sint32 code = (Sint32)APITools_GetIntValue(context, 3);
+    const Uint32 window_id = (Uint32)APITools_GetIntValue(context, 4);
+
+    if(event && type >= SDL_USEREVENT && type < SDL_LASTEVENT) {
+      SDL_zerop(event);
+      event->user.type = type;
+      event->user.timestamp = SDL_GetTicks();
+      event->user.windowID = window_id;
+      event->user.code = code;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -2069,6 +2313,67 @@ extern "C" {
     const std::wstring wfile = APITools_GetStringValue(context, 1);
     const  std::string file = UnicodeToBytes(wfile);
     APITools_SetIntValue(context, 0, (size_t)IMG_Load(file.c_str()));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_image_save_png(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const wchar_t* w_file = APITools_GetStringValue(context, 2);
+    if(surface && w_file) {
+      const std::string file = UnicodeToBytes(w_file);
+      APITools_SetIntValue(context, 0, IMG_SavePNG(surface, file.c_str()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  //
+  // Reads the rendering target's pixels (all of it, or the rect) back into a
+  // new 32-bit ARGB surface, which the caller owns. This is the screenshot and
+  // figure-export path; it is slow by design and not for every frame.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_read_pixels(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    size_t* rect_obj = APITools_GetObjectValue(context, 2);
+
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    int w = 0, h = 0;
+    if(!renderer || SDL_GetRendererOutputSize(renderer, &w, &h) != 0) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    if(rect_obj) {
+      w = rect.w;
+      h = rect.h;
+    }
+
+    if(w <= 0 || h <= 0) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+    if(!surface) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    if(SDL_RenderReadPixels(renderer, rect_obj ? &rect : nullptr, SDL_PIXELFORMAT_ARGB8888, surface->pixels, surface->pitch) != 0) {
+      SDL_FreeSurface(surface);
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)surface);
   }
 
   //
@@ -2398,8 +2703,248 @@ extern "C" {
     APITools_SetIntValue(context, 3, g);
     APITools_SetIntValue(context, 4, b);
     APITools_SetIntValue(context, 5, a);
-    
+
     APITools_SetIntValue(context, 0, return_value);
+  }
+
+  //
+  // Resolution independence: a logical size or scale lets a program draw in
+  // its own coordinates whatever the window's pixel size.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_set_logical_size(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int w = (int)APITools_GetIntValue(context, 2);
+    const int h = (int)APITools_GetIntValue(context, 3);
+    APITools_SetIntValue(context, 0, renderer ? SDL_RenderSetLogicalSize(renderer, w, h) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_logical_size(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
+    int w = 0, h = 0;
+    if(renderer) {
+      SDL_RenderGetLogicalSize(renderer, &w, &h);
+    }
+    APITools_SetIntValue(context, 1, w);
+    APITools_SetIntValue(context, 2, h);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_set_scale(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const float scale_x = (float)APITools_GetFloatValue(context, 2);
+    const float scale_y = (float)APITools_GetFloatValue(context, 3);
+    APITools_SetIntValue(context, 0, renderer ? SDL_RenderSetScale(renderer, scale_x, scale_y) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_scale(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
+    float scale_x = 1.0f, scale_y = 1.0f;
+    if(renderer) {
+      SDL_RenderGetScale(renderer, &scale_x, &scale_y);
+    }
+    APITools_SetFloatValue(context, 1, scale_x);
+    APITools_SetFloatValue(context, 2, scale_y);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_output_size(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    int w = 0, h = 0;
+    APITools_SetIntValue(context, 0, renderer ? SDL_GetRendererOutputSize(renderer, &w, &h) : -1);
+    APITools_SetIntValue(context, 2, w);
+    APITools_SetIntValue(context, 3, h);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_set_draw_blend_mode(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const SDL_BlendMode blend_mode = (SDL_BlendMode)APITools_GetIntValue(context, 2);
+    APITools_SetIntValue(context, 0, SDL_SetRenderDrawBlendMode(renderer, blend_mode));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_draw_blend_mode(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    SDL_BlendMode blend_mode = SDL_BLENDMODE_NONE;
+    const int return_value = SDL_GetRenderDrawBlendMode(renderer, &blend_mode);
+    APITools_SetIntValue(context, 2, blend_mode);
+
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+  //
+  // Batch drawing. The coordinates cross as one flat Int[] held by an
+  // IntArrayRef: x,y pairs for points and lines, x,y,w,h quadruples for rects.
+  // An array that is Nil, empty or not a whole number of tuples is an error
+  // (-1) rather than a partial draw.
+  //
+  static size_t* sdl_array_from_holder(size_t* holder, size_t& count) {
+    count = 0;
+    if(!holder || !holder[0]) {
+      return nullptr;
+    }
+    size_t* array = (size_t*)holder[0];
+    count = array[0];
+    return array + ARRAY_HEADER_OFFSET;
+  }
+
+  static bool sdl_points_from_holder(size_t* holder, std::vector<SDL_Point>& points) {
+    size_t count;
+    const size_t* values = sdl_array_from_holder(holder, count);
+    if(!values || count == 0 || count % 2 != 0) {
+      return false;
+    }
+
+    points.resize(count / 2);
+    for(size_t i = 0; i < points.size(); ++i) {
+      points[i].x = (int)(long long)values[i * 2];
+      points[i].y = (int)(long long)values[i * 2 + 1];
+    }
+
+    return true;
+  }
+
+  static bool sdl_rects_from_holder(size_t* holder, std::vector<SDL_Rect>& rects) {
+    size_t count;
+    const size_t* values = sdl_array_from_holder(holder, count);
+    if(!values || count == 0 || count % 4 != 0) {
+      return false;
+    }
+
+    rects.resize(count / 4);
+    for(size_t i = 0; i < rects.size(); ++i) {
+      rects[i].x = (int)(long long)values[i * 4];
+      rects[i].y = (int)(long long)values[i * 4 + 1];
+      rects[i].w = (int)(long long)values[i * 4 + 2];
+      rects[i].h = (int)(long long)values[i * 4 + 3];
+    }
+
+    return true;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_points(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Point> points;
+    if(sdl_points_from_holder(APITools_GetObjectValue(context, 2), points)) {
+      APITools_SetIntValue(context, 0, SDL_RenderDrawPoints(renderer, points.data(), (int)points.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_lines(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Point> points;
+    if(sdl_points_from_holder(APITools_GetObjectValue(context, 2), points)) {
+      APITools_SetIntValue(context, 0, SDL_RenderDrawLines(renderer, points.data(), (int)points.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_rects(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Rect> rects;
+    if(sdl_rects_from_holder(APITools_GetObjectValue(context, 2), rects)) {
+      APITools_SetIntValue(context, 0, SDL_RenderDrawRects(renderer, rects.data(), (int)rects.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_fill_rects(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Rect> rects;
+    if(sdl_rects_from_holder(APITools_GetObjectValue(context, 2), rects)) {
+      APITools_SetIntValue(context, 0, SDL_RenderFillRects(renderer, rects.data(), (int)rects.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  //
+  // Floating point (sub-pixel) variants
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_point_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const float x = (float)APITools_GetFloatValue(context, 2);
+    const float y = (float)APITools_GetFloatValue(context, 3);
+    APITools_SetIntValue(context, 0, SDL_RenderDrawPointF(renderer, x, y));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_line_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const float x1 = (float)APITools_GetFloatValue(context, 2);
+    const float y1 = (float)APITools_GetFloatValue(context, 3);
+    const float x2 = (float)APITools_GetFloatValue(context, 4);
+    const float y2 = (float)APITools_GetFloatValue(context, 5);
+    APITools_SetIntValue(context, 0, SDL_RenderDrawLineF(renderer, x1, y1, x2, y2));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_rect_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    SDL_FRect rect;
+    rect.x = (float)APITools_GetFloatValue(context, 2);
+    rect.y = (float)APITools_GetFloatValue(context, 3);
+    rect.w = (float)APITools_GetFloatValue(context, 4);
+    rect.h = (float)APITools_GetFloatValue(context, 5);
+    APITools_SetIntValue(context, 0, SDL_RenderDrawRectF(renderer, &rect));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_fill_rect_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    SDL_FRect rect;
+    rect.x = (float)APITools_GetFloatValue(context, 2);
+    rect.y = (float)APITools_GetFloatValue(context, 3);
+    rect.w = (float)APITools_GetFloatValue(context, 4);
+    rect.h = (float)APITools_GetFloatValue(context, 5);
+    APITools_SetIntValue(context, 0, SDL_RenderFillRectF(renderer, &rect));
   }
 
   //
@@ -2537,6 +3082,42 @@ extern "C" {
     }
   }
 
+  //
+  // Replaces a texture's pixels (all of it, or the rect) from a Byte[] laid out in
+  // the texture's own format, pitch bytes per row. The array must hold at least
+  // pitch * rows bytes, or nothing is read and the call fails with -1.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_update(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+
+    size_t* rect_obj = APITools_GetObjectValue(context, 2);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    const size_t* bytes_holder = APITools_GetObjectValue(context, 3);
+    size_t* byte_array = bytes_holder ? (size_t*)bytes_holder[0] : nullptr;
+    const int pitch = (int)APITools_GetIntValue(context, 4);
+
+    int width = 0, height = 0;
+    if(!texture || !byte_array || pitch <= 0 || SDL_QueryTexture(texture, nullptr, nullptr, &width, &height) != 0) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const int rows = rect_obj ? rect.h : height;
+    const size_t byte_count = APITools_GetArraySize(byte_array);
+    if(rows <= 0 || byte_count < (size_t)pitch * (size_t)rows) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const void* pixels = (const void*)APITools_GetArray(byte_array);
+    APITools_SetIntValue(context, 0, SDL_UpdateTexture(texture, rect_obj ? &rect : nullptr, pixels, pitch));
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -2632,6 +3213,28 @@ extern "C" {
 #endif
   void sdl_timer_delay(VMContext& context) {
     SDL_Delay((Uint32)APITools_GetIntValue(context, 0));
+  }
+
+  // milliseconds as 64 bits: SDL_GetTicks wraps after about 49 days
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_get_ticks64(VMContext& context) {
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetTicks64());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_get_performance_counter(VMContext& context) {
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetPerformanceCounter());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_get_performance_frequency(VMContext& context) {
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetPerformanceFrequency());
   }
 
 #ifdef _WIN32
@@ -2800,6 +3403,123 @@ extern "C" {
   }
 
   //
+  // Text measurement and font metrics. SDL_ttf dereferences a NULL font, so
+  // each of these checks for one and reports failure instead.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_size_utf8(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    const wchar_t* w_text = APITools_GetStringValue(context, 2);
+
+    int w = 0, h = 0;
+    if(font && w_text) {
+      const std::string text = UnicodeToBytes(w_text);
+      APITools_SetIntValue(context, 0, TTF_SizeUTF8(font, text.c_str(), &w, &h));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+
+    APITools_SetIntValue(context, 3, w);
+    APITools_SetIntValue(context, 4, h);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_height(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontHeight(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_ascent(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontAscent(font) : -1);
+  }
+
+  // descent is negative (below the baseline), so a NULL font reports 0
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_descent(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontDescent(font) : 0);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_line_skip(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_FontLineSkip(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_set_style(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 0);
+    const int style = (int)APITools_GetIntValue(context, 1);
+    if(font) {
+      TTF_SetFontStyle(font, style);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_get_style(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_GetFontStyle(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_set_outline(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 0);
+    const int outline = (int)APITools_GetIntValue(context, 1);
+    if(font) {
+      TTF_SetFontOutline(font, outline);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_get_outline(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, font ? TTF_GetFontOutline(font) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_font_render_utf8_blended_wrapped(VMContext& context) {
+    TTF_Font* font = (TTF_Font*)APITools_GetIntValue(context, 1);
+    const wchar_t* w_text = APITools_GetStringValue(context, 2);
+
+    SDL_Color fg = { 0, 0, 0, 255 };
+    size_t* fg_obj = APITools_GetObjectValue(context, 3);
+    sdl_color_raw_write(&fg, fg_obj);
+
+    const Uint32 wrap_length = (Uint32)APITools_GetIntValue(context, 4);
+
+    if(font && w_text) {
+      const std::string text = UnicodeToBytes(w_text);
+      APITools_SetIntValue(context, 0, (size_t)TTF_RenderUTF8_Blended_Wrapped(font, text.c_str(), fg, wrap_length));
+    }
+    else {
+      APITools_SetIntValue(context, 0, 0);
+    }
+  }
+
+  //
   // Cursor
   //
 #ifdef _WIN32
@@ -2810,6 +3530,21 @@ extern "C" {
     APITools_SetIntValue(context, 0, SDL_GetGlobalMouseState(&x, &y));
     APITools_SetIntValue(context, 1, x);
     APITools_SetIntValue(context, 2, y);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_cursor_get_global_mouse_state_pt(VMContext& context) {
+    size_t* pt_obj = APITools_GetObjectValue(context, 1);
+
+    int x, y;
+    APITools_SetIntValue(context, 0, SDL_GetGlobalMouseState(&x, &y));
+
+    if(pt_obj) {
+      pt_obj[0] = x;
+      pt_obj[1] = y;
+    }
   }
 
 #ifdef _WIN32
@@ -2969,6 +3704,16 @@ __declspec(dllexport)
   //
   // Game Controller
   //
+
+  // NULL (0) when the index names no device or the device is not a controller;
+  // SDL_GetError() says why
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_open(VMContext& context) {
+    const int joystick_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_GameControllerOpen(joystick_index));
+  }
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3308,7 +4053,6 @@ __declspec(dllexport)
     APITools_SetIntValue(context, 0, SDL_GameControllerGetButton(gamecontroller, button));
   }
 
-  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3316,7 +4060,8 @@ __declspec(dllexport)
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetNumTouchpads(gamecontroller));
   }
-  
+
+  /*
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3992,6 +4737,129 @@ __declspec(dllexport)
     const int volume = (int)APITools_GetIntValue(context, 2);
 
     APITools_SetIntValue(context, 0, Mix_Volume(channel, volume));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_set_panning(VMContext& context) {
+    const int channel = (int)APITools_GetIntValue(context, 1);
+    const int left = (int)APITools_GetIntValue(context, 2);
+    const int right = (int)APITools_GetIntValue(context, 3);
+
+    if(left < 0 || left > 255 || right < 0 || right > 255) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, Mix_SetPanning(channel, (Uint8)left, (Uint8)right));
+  }
+
+  //
+  // Queued (push) audio: open a playback device with no callback, then queue
+  // generated samples onto it. The device opens PAUSED, as SDL opens every
+  // device; nothing plays until Pause(false).
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_open(VMContext& context) {
+    SDL_AudioSpec desired;
+    SDL_zero(desired);
+    desired.freq = (int)APITools_GetIntValue(context, 1);
+    desired.format = (SDL_AudioFormat)APITools_GetIntValue(context, 2);
+    desired.channels = (Uint8)APITools_GetIntValue(context, 3);
+    desired.samples = (Uint16)APITools_GetIntValue(context, 4);
+    desired.callback = nullptr;
+
+    // no allowed changes: SDL converts, so the queued bytes are always in the
+    // format the caller asked for
+    SDL_AudioSpec obtained;
+    const SDL_AudioDeviceID device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
+    APITools_SetIntValue(context, 0, device);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_close(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 0);
+    if(device) {
+      SDL_CloseAudioDevice(device);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_pause(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 0);
+    const int pause_on = (int)APITools_GetIntValue(context, 1);
+    if(device) {
+      SDL_PauseAudioDevice(device, pause_on);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_queue(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 1);
+    const size_t* bytes_holder = APITools_GetObjectValue(context, 2);
+    size_t* byte_array = bytes_holder ? (size_t*)bytes_holder[0] : nullptr;
+
+    if(!device || !byte_array) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const size_t byte_count = APITools_GetArraySize(byte_array);
+    const void* bytes = (const void*)APITools_GetArray(byte_array);
+    APITools_SetIntValue(context, 0, SDL_QueueAudio(device, bytes, (Uint32)byte_count));
+  }
+
+  // Float[] samples (doubles) queued as 32-bit floats, for a device opened with
+  // a 32-bit float format
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_queue_floats(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 1);
+    const size_t* floats_holder = APITools_GetObjectValue(context, 2);
+    size_t* float_array = floats_holder ? (size_t*)floats_holder[0] : nullptr;
+
+    if(!device || !float_array) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const size_t count = APITools_GetArraySize(float_array);
+    const double* source = (const double*)APITools_GetArray(float_array);
+
+    std::vector<float> samples(count);
+    for(size_t i = 0; i < count; ++i) {
+      samples[i] = (float)source[i];
+    }
+
+    APITools_SetIntValue(context, 0, SDL_QueueAudio(device, samples.data(), (Uint32)(count * sizeof(float))));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_get_queued_size(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, device ? SDL_GetQueuedAudioSize(device) : 0);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_clear(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 0);
+    if(device) {
+      SDL_ClearQueuedAudio(device);
+    }
   }
 
 #ifdef _WIN32
