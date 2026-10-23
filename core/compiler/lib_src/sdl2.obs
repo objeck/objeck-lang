@@ -463,7 +463,32 @@ bundle Game.SDL2 {
 	    SDL_RENDER_DEVICE_RESET := 0x2000,
 	    SDL_USEREVENT := 0x8000
 	}
-	
+
+	#~
+	What happened to a window, as WindowEvent->GetEvent reports it
+	~#
+	consts WindowEventID {
+		SDL_WINDOWEVENT_NONE := 0,
+		SDL_WINDOWEVENT_SHOWN := 1,
+		SDL_WINDOWEVENT_HIDDEN := 2,
+		SDL_WINDOWEVENT_EXPOSED := 3,
+		SDL_WINDOWEVENT_MOVED := 4,
+		SDL_WINDOWEVENT_RESIZED := 5,
+		SDL_WINDOWEVENT_SIZE_CHANGED := 6,
+		SDL_WINDOWEVENT_MINIMIZED := 7,
+		SDL_WINDOWEVENT_MAXIMIZED := 8,
+		SDL_WINDOWEVENT_RESTORED := 9,
+		SDL_WINDOWEVENT_ENTER := 10,
+		SDL_WINDOWEVENT_LEAVE := 11,
+		SDL_WINDOWEVENT_FOCUS_GAINED := 12,
+		SDL_WINDOWEVENT_FOCUS_LOST := 13,
+		SDL_WINDOWEVENT_CLOSE := 14,
+		SDL_WINDOWEVENT_TAKE_FOCUS := 15,
+		SDL_WINDOWEVENT_HIT_TEST := 16,
+		SDL_WINDOWEVENT_ICCPROF_CHANGED := 17,
+		SDL_WINDOWEVENT_DISPLAY_CHANGED := 18
+	}
+
 	#~
 	Keyboard scan codes
 	~#
@@ -3833,6 +3858,466 @@ bundle Game.SDL2 {
 	}
 
 	#~
+	Window state change event: shown, resized, focus gained, close requested and so on
+	~#
+	class WindowEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@event : Int;
+		@data1 : Int;
+		@data2 : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_WINDOWEVENT
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The associated window
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		#~
+		What happened to the window
+		@return a WindowEventID value, such as WindowEventID->SDL_WINDOWEVENT_RESIZED
+		~#
+		method : public : GetEvent() ~ Int {
+			return @event;
+		}
+
+		#~
+		Event dependent data: the new width for a resize or size change, the new x position for a move
+		@return first data value
+		~#
+		method : public : GetData1() ~ Int {
+			return @data1;
+		}
+
+		#~
+		Event dependent data: the new height for a resize or size change, the new y position for a move
+		@return second data value
+		~#
+		method : public : GetData2() ~ Int {
+			return @data2;
+		}
+	}
+
+	#~
+	Game controller axis motion event
+	~#
+	class ControllerAxisEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+		@axis : Int;
+		@value : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_CONTROLLERAXISMOTION
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The joystick instance id of the controller
+		@return instance id
+		~#
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		#~
+		The controller axis that moved
+		@return the axis, a GameControllerAxis value
+		~#
+		method : public : GetAxis() ~ GameControllerAxis {
+			return @axis->As(GameControllerAxis);
+		}
+
+		#~
+		The axis value
+		@return value from -32768 to 32767
+		~#
+		method : public : GetValue() ~ Int {
+			return @value;
+		}
+	}
+
+	#~
+	Game controller button event
+	~#
+	class ControllerButtonEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+		@button : Int;
+		@state : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_CONTROLLERBUTTONDOWN or EventType->SDL_CONTROLLERBUTTONUP
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The joystick instance id of the controller
+		@return instance id
+		~#
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+
+		#~
+		The controller button
+		@return the button, a GameControllerButton value
+		~#
+		method : public : GetButton() ~ GameControllerButton {
+			return @button->As(GameControllerButton);
+		}
+
+		#~
+		Button state
+		@return 1 when pressed, 0 when released
+		~#
+		method : public : GetState() ~ Int {
+			return @state;
+		}
+	}
+
+	#~
+	Game controller added, removed or remapped
+	~#
+	class ControllerDeviceEvent {
+		@type : Int;
+		@timestamp : Int;
+		@which : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_CONTROLLERDEVICEADDED, SDL_CONTROLLERDEVICEREMOVED or SDL_CONTROLLERDEVICEREMAPPED
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The device: a joystick device index (pass it to GameController->New) for an added
+		controller, the joystick instance id for a removed or remapped one
+		@return device index or instance id
+		~#
+		method : public : GetWhich() ~ Int {
+			return @which;
+		}
+	}
+
+	#~
+	File or text dropped onto a window; also the begin and complete markers around a drop
+	~#
+	class DropEvent {
+		@type : Int;
+		@timestamp : Int;
+		@file : String;
+		@windowID : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_DROPFILE, SDL_DROPTEXT, SDL_DROPBEGIN or SDL_DROPCOMPLETE
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The dropped file's path, or the dropped text for SDL_DROPTEXT
+		@return path or text, Nil for SDL_DROPBEGIN and SDL_DROPCOMPLETE
+		~#
+		method : public : GetFile() ~ String {
+			return @file;
+		}
+
+		#~
+		The window that was dropped on, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+	}
+
+	#~
+	Touch finger event
+	~#
+	class TouchFingerEvent {
+		@type : Int;
+		@timestamp : Int;
+		@touch_id : Int;
+		@finger_id : Int;
+		@x : Float;
+		@y : Float;
+		@dx : Float;
+		@dy : Float;
+		@pressure : Float;
+		@windowID : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_FINGERDOWN, SDL_FINGERUP or SDL_FINGERMOTION
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The touch device id
+		@return touch device id
+		~#
+		method : public : GetTouchId() ~ Int {
+			return @touch_id;
+		}
+
+		#~
+		The finger id
+		@return finger id
+		~#
+		method : public : GetFingerId() ~ Int {
+			return @finger_id;
+		}
+
+		#~
+		Normalized x position
+		@return x in the range 0.0 to 1.0
+		~#
+		method : public : GetX() ~ Float {
+			return @x;
+		}
+
+		#~
+		Normalized y position
+		@return y in the range 0.0 to 1.0
+		~#
+		method : public : GetY() ~ Float {
+			return @y;
+		}
+
+		#~
+		Normalized distance moved along x
+		@return x delta in the range -1.0 to 1.0
+		~#
+		method : public : GetDX() ~ Float {
+			return @dx;
+		}
+
+		#~
+		Normalized distance moved along y
+		@return y delta in the range -1.0 to 1.0
+		~#
+		method : public : GetDY() ~ Float {
+			return @dy;
+		}
+
+		#~
+		Normalized pressure
+		@return pressure in the range 0.0 to 1.0
+		~#
+		method : public : GetPressure() ~ Float {
+			return @pressure;
+		}
+
+		#~
+		The window underneath the finger, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+	}
+
+	#~
+	Text editing (IME composition) event
+	~#
+	class TextEditingEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@text : String;
+		@start : Int;
+		@length : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return EventType->SDL_TEXTEDITING
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The window with keyboard focus, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		#~
+		The text being composed
+		@return composition text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Where to begin editing within the composition
+		@return cursor start
+		~#
+		method : public : GetStart() ~ Int {
+			return @start;
+		}
+
+		#~
+		Number of characters to edit from the start
+		@return selection length
+		~#
+		method : public : GetLength() ~ Int {
+			return @length;
+		}
+	}
+
+	#~
+	Application defined event, with a type from Event->Registers
+	~#
+	class UserEvent {
+		@type : Int;
+		@timestamp : Int;
+		@windowID : Int;
+		@code : Int;
+
+		New() {
+		}
+
+		#~
+		Event type
+		@return a type from Event->Registers, at least EventType->SDL_USEREVENT
+		~#
+		method : public : GetType() ~ Int {
+			return @type;
+		}
+
+		#~
+		Timestamp of the event
+		@return event timestamp
+		~#
+		method : public : GetTimestamp() ~ Int {
+			return @timestamp;
+		}
+
+		#~
+		The associated window, if any
+		@return window ID
+		~#
+		method : public : GetWindowID() ~ Int {
+			return @windowID;
+		}
+
+		#~
+		User defined event code
+		@return event code
+		~#
+		method : public : GetCode() ~ Int {
+			return @code;
+		}
+	}
+
+	#~
 	SDL event
 	~#
 	class Event {
@@ -3863,7 +4348,24 @@ bundle Game.SDL2 {
 		@fn_sdl_mouse_motion : static : String;
 		@fn_sdl_mouse_wheel : static : String;
 		@fn_sdl_text_key : static : String;
+		@fn_sdl_event_window : static : String;
+		@fn_sdl_event_caxis : static : String;
+		@fn_sdl_event_cbutton : static : String;
+		@fn_sdl_event_cdevice : static : String;
+		@fn_sdl_event_drop : static : String;
+		@fn_sdl_event_tfinger : static : String;
+		@fn_sdl_event_edit : static : String;
+		@fn_sdl_event_user : static : String;
+		@fn_sdl_event_set_user : static : String;
 		@event : Int;
+		@window : WindowEvent;
+		@caxis : ControllerAxisEvent;
+		@cbutton : ControllerButtonEvent;
+		@cdevice : ControllerDeviceEvent;
+		@drop : DropEvent;
+		@tfinger : TouchFingerEvent;
+		@edit : TextEditingEvent;
+		@user : UserEvent;
 		@key : KeyboardEvent;
 		@axis : JoyAxisEvent;
 		@text : TextInputEvent;
@@ -4191,10 +4693,198 @@ bundle Game.SDL2 {
 
 				return @mbutton;
 			};
-			
+
 			return Nil;
 		}
-				
+
+		# Fills target from this event through the named native; false when the
+		# event is not of the native's type
+		method : ReadInto(name : String, target : Base) ~ Bool {
+			if(@event = 0) {
+				return false;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(@event);
+			array_args[2] := target;
+
+			Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get() = 0;
+		}
+
+		#~
+		Get window event
+		@return window event, or Nil if this is not an EventType->SDL_WINDOWEVENT
+		~#
+		method : public : GetWindow() ~ WindowEvent {
+			if(@window = Nil) {
+				@window := WindowEvent->New();
+			};
+
+			if(@fn_sdl_event_window = Nil) { @fn_sdl_event_window := "sdl_event_window"; };
+			if(ReadInto(@fn_sdl_event_window, @window)) {
+				return @window;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get game controller axis event
+		@return controller axis event, or Nil if this is not an EventType->SDL_CONTROLLERAXISMOTION
+		~#
+		method : public : GetControllerAxis() ~ ControllerAxisEvent {
+			if(@caxis = Nil) {
+				@caxis := ControllerAxisEvent->New();
+			};
+
+			if(@fn_sdl_event_caxis = Nil) { @fn_sdl_event_caxis := "sdl_event_caxis"; };
+			if(ReadInto(@fn_sdl_event_caxis, @caxis)) {
+				return @caxis;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get game controller button event
+		@return controller button event, or Nil if this is not an EventType->SDL_CONTROLLERBUTTONDOWN or SDL_CONTROLLERBUTTONUP
+		~#
+		method : public : GetControllerButton() ~ ControllerButtonEvent {
+			if(@cbutton = Nil) {
+				@cbutton := ControllerButtonEvent->New();
+			};
+
+			if(@fn_sdl_event_cbutton = Nil) { @fn_sdl_event_cbutton := "sdl_event_cbutton"; };
+			if(ReadInto(@fn_sdl_event_cbutton, @cbutton)) {
+				return @cbutton;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get game controller device event
+		@return controller device event, or Nil if this is not a controller added, removed or remapped event
+		~#
+		method : public : GetControllerDevice() ~ ControllerDeviceEvent {
+			if(@cdevice = Nil) {
+				@cdevice := ControllerDeviceEvent->New();
+			};
+
+			if(@fn_sdl_event_cdevice = Nil) { @fn_sdl_event_cdevice := "sdl_event_cdevice"; };
+			if(ReadInto(@fn_sdl_event_cdevice, @cdevice)) {
+				return @cdevice;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get drop event. The dropped path is released by SDL on the first read; reading
+		the same event again returns the same value.
+		@return drop event, or Nil if this is not a drop event
+		~#
+		method : public : GetDrop() ~ DropEvent {
+			if(@drop = Nil) {
+				@drop := DropEvent->New();
+			};
+
+			if(@fn_sdl_event_drop = Nil) { @fn_sdl_event_drop := "sdl_event_drop"; };
+			if(ReadInto(@fn_sdl_event_drop, @drop)) {
+				return @drop;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get touch finger event
+		@return touch finger event, or Nil if this is not an EventType->SDL_FINGERDOWN, SDL_FINGERUP or SDL_FINGERMOTION
+		~#
+		method : public : GetTouchFinger() ~ TouchFingerEvent {
+			if(@tfinger = Nil) {
+				@tfinger := TouchFingerEvent->New();
+			};
+
+			if(@fn_sdl_event_tfinger = Nil) { @fn_sdl_event_tfinger := "sdl_event_tfinger"; };
+			if(ReadInto(@fn_sdl_event_tfinger, @tfinger)) {
+				return @tfinger;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get text editing (IME composition) event
+		@return text editing event, or Nil if this is not an EventType->SDL_TEXTEDITING
+		~#
+		method : public : GetTextEditing() ~ TextEditingEvent {
+			if(@edit = Nil) {
+				@edit := TextEditingEvent->New();
+			};
+
+			if(@fn_sdl_event_edit = Nil) { @fn_sdl_event_edit := "sdl_event_edit"; };
+			if(ReadInto(@fn_sdl_event_edit, @edit)) {
+				return @edit;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Get user event
+		@return user event, or Nil if the type is below EventType->SDL_USEREVENT
+		~#
+		method : public : GetUser() ~ UserEvent {
+			if(@user = Nil) {
+				@user := UserEvent->New();
+			};
+
+			if(@fn_sdl_event_user = Nil) { @fn_sdl_event_user := "sdl_event_user"; };
+			if(ReadInto(@fn_sdl_event_user, @user)) {
+				return @user;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Fill this event in as a user event, ready to Push
+		@param type event type from Event->Registers
+		@param code application defined code
+		@param window_id associated window ID, or 0
+		@return true on success, false if type is not a user event type
+		```
+		type := Event->Registers(1);
+		event := Event->New();
+		if(event->SetUser(type, 42, 0)) {
+			event->Push();
+		};
+		```
+		~#
+		method : public : SetUser(type : Int, code : Int, window_id : Int) ~ Bool {
+			if(@event <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@event);
+				array_args[2] := IntRef->New(type);
+				array_args[3] := IntRef->New(code);
+				array_args[4] := IntRef->New(window_id);
+
+				if(@fn_sdl_event_set_user = Nil) { @fn_sdl_event_set_user := "sdl_event_set_user"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_event_set_user, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get() = 0;
+			};
+
+			return false;
+		}
+
 		#~
 		Pump the event loop, gathering events from the input devices
 		~#

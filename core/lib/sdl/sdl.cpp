@@ -1922,6 +1922,225 @@ extern "C" {
     }
   }
 
+  //
+  // Event fields beyond input devices. Each accessor follows the pattern above:
+  // the Objeck class's instance variables are written in declaration order,
+  // and the call returns -1 when the event is not of the accessor's type.
+  // A Float field is a double in its slot.
+  //
+  static void sdl_event_set_float_field(size_t* obj, int index, double value) {
+    *((double*)&obj[index]) = value;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_window(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* window_obj = APITools_GetObjectValue(context, 2);
+    if(event && window_obj && event->type == SDL_WINDOWEVENT) {
+      window_obj[0] = event->window.type;
+      window_obj[1] = event->window.timestamp;
+      window_obj[2] = event->window.windowID;
+      window_obj[3] = event->window.event;
+      window_obj[4] = event->window.data1;
+      window_obj[5] = event->window.data2;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_caxis(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* axis_obj = APITools_GetObjectValue(context, 2);
+    if(event && axis_obj && event->type == SDL_CONTROLLERAXISMOTION) {
+      axis_obj[0] = event->caxis.type;
+      axis_obj[1] = event->caxis.timestamp;
+      axis_obj[2] = event->caxis.which;
+      axis_obj[3] = event->caxis.axis;
+      axis_obj[4] = event->caxis.value;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_cbutton(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* button_obj = APITools_GetObjectValue(context, 2);
+    if(event && button_obj && (event->type == SDL_CONTROLLERBUTTONDOWN || event->type == SDL_CONTROLLERBUTTONUP)) {
+      button_obj[0] = event->cbutton.type;
+      button_obj[1] = event->cbutton.timestamp;
+      button_obj[2] = event->cbutton.which;
+      button_obj[3] = event->cbutton.button;
+      button_obj[4] = event->cbutton.state;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_cdevice(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* device_obj = APITools_GetObjectValue(context, 2);
+    if(event && device_obj && (event->type == SDL_CONTROLLERDEVICEADDED || event->type == SDL_CONTROLLERDEVICEREMOVED ||
+                               event->type == SDL_CONTROLLERDEVICEREMAPPED)) {
+      device_obj[0] = event->cdevice.type;
+      device_obj[1] = event->cdevice.timestamp;
+      // a joystick device index for ADDED, an instance id otherwise
+      device_obj[2] = event->cdevice.which;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  //
+  // SDL hands the application ownership of drop.file, which must be released
+  // with SDL_free. It is converted and released on the FIRST read, and the
+  // pointer cleared so a second read of the same event cannot free it twice; the
+  // cached Objeck DropEvent keeps the string, so a second read still sees it.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_drop(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* drop_obj = APITools_GetObjectValue(context, 2);
+    if(event && drop_obj && (event->type == SDL_DROPFILE || event->type == SDL_DROPTEXT ||
+                             event->type == SDL_DROPBEGIN || event->type == SDL_DROPCOMPLETE)) {
+      drop_obj[0] = event->drop.type;
+      drop_obj[1] = event->drop.timestamp;
+      if(event->drop.file) {
+        const std::wstring w_file = BytesToUnicode(event->drop.file);
+        SDL_free(event->drop.file);
+        event->drop.file = nullptr;
+        drop_obj[2] = (size_t)APITools_CreateStringObject(context, w_file);
+        APITools_WriteBarrier(context, drop_obj);
+      }
+      else if(event->type == SDL_DROPBEGIN || event->type == SDL_DROPCOMPLETE) {
+        drop_obj[2] = 0;
+      }
+      drop_obj[3] = event->drop.windowID;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_tfinger(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* finger_obj = APITools_GetObjectValue(context, 2);
+    if(event && finger_obj && (event->type == SDL_FINGERDOWN || event->type == SDL_FINGERUP || event->type == SDL_FINGERMOTION)) {
+      finger_obj[0] = event->tfinger.type;
+      finger_obj[1] = event->tfinger.timestamp;
+      finger_obj[2] = (size_t)event->tfinger.touchId;
+      finger_obj[3] = (size_t)event->tfinger.fingerId;
+      sdl_event_set_float_field(finger_obj, 4, event->tfinger.x);
+      sdl_event_set_float_field(finger_obj, 5, event->tfinger.y);
+      sdl_event_set_float_field(finger_obj, 6, event->tfinger.dx);
+      sdl_event_set_float_field(finger_obj, 7, event->tfinger.dy);
+      sdl_event_set_float_field(finger_obj, 8, event->tfinger.pressure);
+      finger_obj[9] = event->tfinger.windowID;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_edit(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* edit_obj = APITools_GetObjectValue(context, 2);
+    if(event && edit_obj && event->type == SDL_TEXTEDITING) {
+      edit_obj[0] = event->edit.type;
+      edit_obj[1] = event->edit.timestamp;
+      edit_obj[2] = event->edit.windowID;
+
+      const std::wstring w_text = BytesToUnicode(event->edit.text);
+      edit_obj[3] = (size_t)APITools_CreateStringObject(context, w_text);
+      APITools_WriteBarrier(context, edit_obj);
+
+      edit_obj[4] = event->edit.start;
+      edit_obj[5] = event->edit.length;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_user(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    size_t* user_obj = APITools_GetObjectValue(context, 2);
+    if(event && user_obj && event->type >= SDL_USEREVENT && event->type < SDL_LASTEVENT) {
+      user_obj[0] = event->user.type;
+      user_obj[1] = event->user.timestamp;
+      user_obj[2] = event->user.windowID;
+      user_obj[3] = event->user.code;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  // fills the event in as a user event, ready to Push
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_event_set_user(VMContext& context) {
+    SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
+    const Uint32 type = (Uint32)APITools_GetIntValue(context, 2);
+    const Sint32 code = (Sint32)APITools_GetIntValue(context, 3);
+    const Uint32 window_id = (Uint32)APITools_GetIntValue(context, 4);
+
+    if(event && type >= SDL_USEREVENT && type < SDL_LASTEVENT) {
+      SDL_zerop(event);
+      event->user.type = type;
+      event->user.timestamp = SDL_GetTicks();
+      event->user.windowID = window_id;
+      event->user.code = code;
+
+      APITools_SetIntValue(context, 0, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
