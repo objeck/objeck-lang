@@ -55,6 +55,22 @@
 #define SOCKET int
 
 /****************************
+ * File-system names
+ *
+ * POSIX names are bytes, which Objeck reads and writes as UTF-8; win32.h maps
+ * the same two calls to UTF-16 for the W APIs.
+ ****************************/
+typedef std::string NativePath;
+
+inline NativePath ToNativePath(const wchar_t* name) {
+  return UnicodeToBytes(name);
+}
+
+inline std::wstring FromNativePath(const NativePath& name) {
+  return BytesToUnicode(name);
+}
+
+/****************************
  * File support class
  ****************************/
 class File {
