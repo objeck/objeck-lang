@@ -1,0 +1,246 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured column storage (docs/QUERY_DESIGN.md, section 1, phase 1): typing and
+promotion, declared columns, empty cells, dictionary-encoded text, zone maps, exact dates,
+deletes, Compact with stable keys, row cursors, aggregates and Describe.
+~#
+use Query.Structured, System.Time, Collection;
+
+class QueryStorageTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Near(what : String, got : Float, want : Float) ~ Nil {
+		Check("{$what} (got {$got}, want {$want})", Float->Abs(got - want) < 0.000001);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		TestTyping();
+		TestDeclared();
+		TestNulls();
+		TestDictionary();
+		TestZones();
+		TestDates();
+		TestDeletes();
+		TestAggregates();
+		TestDescribe();
+
+		if(@failures = 0) {
+			"PASS: query storage"->PrintLine();
+		}
+		else {
+			"FAIL: query storage ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : TestTyping() ~ Nil {
+		t := Table->New("t", ["a", "b", "c", "d"]);
+		r := t->Insert();
+		r->Set("a", IntRef->New(3));
+		r->Set("b", "x");
+		r->Set("c", FloatRef->New(1.5));
+		r->Set("d", BoolRef->New(true));
+		Check("an Int makes an INT column", t->GetColumn("a")->GetType() = ColumnType->INT);
+		Check("a String makes a STRING column", t->GetColumn("b")->GetType() = ColumnType->STRING);
+		Check("a Float makes a FLOAT column", t->GetColumn("c")->GetType() = ColumnType->FLOAT);
+		Check("a Bool makes a BOOL column", t->GetColumn("d")->GetType() = ColumnType->BOOL);
+		Check("Get returns an IntRef", r->Get("a")->TypeOf(IntRef) & r->Get("a")->As(IntRef)->Get() = 3);
+		Check("Get returns a BoolRef", r->Get("d")->TypeOf(BoolRef) & r->Get("d")->As(BoolRef)->Get());
+
+		# a Float in an Int column promotes it once; earlier values keep their number
+		r2 := t->Insert();
+		r2->Set("a", FloatRef->New(2.5));
+		Check("a Float promotes an INT column to FLOAT", t->GetColumn("a")->GetType() = ColumnType->FLOAT);
+		Check("the promotion is counted", t->GetColumn("a")->GetPromotions() = 1);
+		Near("the old Int keeps its value", r->Get("a")->As(FloatRef)->Get(), 3.0);
+
+		# an Int into a Float column widens without a promotion
+		r3 := t->Insert();
+		r3->Set("c", IntRef->New(7));
+		Check("an Int widens into a FLOAT column", t->GetColumn("c")->GetType() = ColumnType->FLOAT & t->GetColumn("c")->GetPromotions() = 0);
+		Near("the widened value", r3->Get("c")->As(FloatRef)->Get(), 7.0);
+
+		# text into a numeric column keeps every value, as objects
+		r3->Set("a", "seven");
+		Check("text promotes a numeric column to OBJECT", t->GetColumn("a")->GetType() = ColumnType->OBJECT);
+		Check("the object column keeps the Float", r2->Get("a")->TypeOf(FloatRef));
+		Check("the object column keeps the String", r3->Get("a")->As(String)->Equals("seven"));
+		Check("the pk cannot be set", <>r->Set("pk", IntRef->New(99)) & r->GetKey() = 0);
+		Check("an unknown column is refused", <>r->Set("zzz", IntRef->New(1)));
+	}
+
+	function : TestDeclared() ~ Nil {
+		t := Table->New("d", ["n", "s"], [ColumnType->INT, ColumnType->STRING]);
+		r := t->Insert();
+		Check("a declared column takes its type", r->Set("n", IntRef->New(4)));
+		Check("a declared INT column refuses a Float", <>r->Set("n", FloatRef->New(4.5)));
+		Check("the refusal is explained", t->GetColumn("n")->GetError() <> Nil);
+		Check("a declared STRING column refuses an Int", <>r->Set("s", IntRef->New(1)));
+		Check("the declared column did not change type", t->GetColumn("n")->GetType() = ColumnType->INT);
+
+		f := Table->New("f", ["x"], [ColumnType->FLOAT]);
+		Check("a declared FLOAT column widens an Int", f->Insert()->Set("x", IntRef->New(2)));
+
+		Check("AddColumn adds a typed column", t->AddColumn("when", ColumnType->DATE) & t->GetColumn("when")->GetType() = ColumnType->DATE);
+		Check("AddColumn refuses a duplicate", <>t->AddColumn("n", ColumnType->INT));
+		Check("existing rows hold an empty cell in it", r->Get("when") = Nil);
+	}
+
+	function : TestNulls() ~ Nil {
+		t := Table->New("n", ["v"]);
+		a := t->Insert();
+		b := t->Insert();
+		a->Set("v", IntRef->New(1));
+		Check("an unset cell is empty", b->Get("v") = Nil & t->GetColumn("v")->IsNull(1));
+		Check("one empty cell counted", t->GetColumn("v")->GetNullCount() = 1);
+		a->Set("v", Nil);
+		Check("Nil empties a cell", a->Get("v") = Nil & t->GetColumn("v")->GetNullCount() = 2);
+		a->Set("v", IntRef->New(5));
+		Check("a cell can be filled again", a->Get("v")->As(IntRef)->Get() = 5 & t->GetColumn("v")->GetNullCount() = 1);
+	}
+
+	function : TestDictionary() ~ Nil {
+		t := Table->New("w", ["label"]);
+		labels := ["cat", "dog", "bird"];
+		each(i : 3000) {
+			t->Insert()->Set("label", labels[i % 3]);
+		};
+		column := t->GetColumn("label");
+		Check("a repetitive text column is dictionary encoded", column->IsEncoded() & column->GetDictionarySize() = 3);
+		Check("encoded values read back", t->Get(4)->Get("label")->As(String)->Equals("dog"));
+		Check("equal strings share a code", column->GetCode(0) = column->GetCode(3));
+
+		u := Table->New("u", ["id"]);
+		each(i : 10000) {
+			u->Insert()->Set("id", "id-{$i}");
+		};
+		ids := u->GetColumn("id");
+		Check("a column of distinct strings stops encoding", <>ids->IsEncoded());
+		Check("plain values read back", u->Get(9999)->Get("id")->As(String)->Equals("id-9999") & u->Get(5)->Get("id")->As(String)->Equals("id-5"));
+	}
+
+	function : TestZones() ~ Nil {
+		t := Table->New("z", ["v"]);
+		rows := Column->GroupRows() * 2 + 10;
+		each(i : rows) {
+			t->Insert()->Set("v", IntRef->New(i));
+		};
+		column := t->GetColumn("v");
+		Check("three groups", column->GetGroupCount() = 3);
+		Near("group 0 minimum", column->GetGroupMin(0), 0.0);
+		Near("group 0 maximum", column->GetGroupMax(0), (Column->GroupRows() - 1)->As(Float));
+		Near("group 2 minimum", column->GetGroupMin(2), (Column->GroupRows() * 2)->As(Float));
+
+		# replacing the group's maximum makes it recompute, not keep a stale bound
+		t->Get(Column->GroupRows() - 1)->Set("v", IntRef->New(-5));
+		Near("a replaced maximum is recomputed", column->GetGroupMax(0), (Column->GroupRows() - 2)->As(Float));
+		Near("a new minimum is seen", column->GetGroupMin(0), -5.0);
+
+		s := Table->New("s", ["text"]);
+		s->Insert()->Set("text", "a");
+		Check("text columns keep no zones", <>s->GetColumn("text")->HasZones());
+	}
+
+	function : TestDates() ~ Nil {
+		t := Table->New("d", ["when"]);
+		dates := Vector->New()<Date>;
+		dates->AddBack(Date->New(1, 1, 1970, 0, 0, 0, true));
+		dates->AddBack(Date->New(29, 2, 2024, 23, 59, 58, false));
+		dates->AddBack(Date->New(31, 12, 1969, 12, 30, 1, true));
+		dates->AddBack(Date->New(15, 6, 2001, 6, 7, 8, false));
+		each(i : dates) {
+			t->Insert()->Set("when", dates->Get(i));
+		};
+		Check("Dates make a DATE column", t->GetColumn("when")->GetType() = ColumnType->DATE);
+		each(i : dates) {
+			want := dates->Get(i);
+			got := t->Get(i)->Get("when")->As(Date);
+			Check("date {$i} keeps its fields", got->GetYear() = want->GetYear() & got->GetMonth() = want->GetMonth() & got->GetDay() = want->GetDay() &
+				got->GetHours() = want->GetHours() & got->GetMinutes() = want->GetMinutes() & got->GetSeconds() = want->GetSeconds());
+			Check("date {$i} keeps its GMT flag", got->IsGmt() = want->IsGmt());
+		};
+		Check("1970-01-01 00:00:00 is epoch 0", t->GetColumn("when")->GetInt(0) = 0);
+		Check("a date before 1970 is negative", t->GetColumn("when")->GetInt(2) < 0);
+		Check("dates order by their stored number", t->GetColumn("when")->GetInt(2) < t->GetColumn("when")->GetInt(0) & t->GetColumn("when")->GetInt(3) < t->GetColumn("when")->GetInt(1));
+		rs := t->Query("select when from d order by when");
+		Check("order by a date column", rs <> Nil & rs->Get(0)->Get("when")->As(Date)->GetYear() = 1969 & rs->Get(3)->Get("when")->As(Date)->GetYear() = 2024);
+	}
+
+	function : TestDeletes() ~ Nil {
+		t := Table->New("k", ["v"]);
+		each(i : 10) {
+			t->Insert()->Set("v", IntRef->New(i * 10));
+		};
+		keep := t->Get(7);
+		Check("delete by key", t->Delete(3) & t->Delete(5));
+		Check("a deleted key is gone", t->Get(3) = Nil & <>t->Delete(3));
+		Check("the count drops", t->Count() = 8 & t->Size() = 8);
+		Check("the cursor skips deleted rows", t->Get(2)->Next()->GetKey() = 4 & t->Get(6)->Prev()->GetKey() = 4);
+		Near("Sum skips deleted rows", t->Sum("v"), 450.0 - 30.0 - 50.0);
+
+		t->Compact();
+		Check("Compact keeps every key", t->Get(7) <> Nil & t->Get(7)->Get("v")->As(IntRef)->Get() = 70 & t->Get(9)->Get("v")->As(IntRef)->Get() = 90);
+		Check("Compact frees the slots", t->GetRowCapacity() = 8);
+		Check("a cursor taken before Compact follows its row", keep->Get("v")->As(IntRef)->Get() = 70);
+		Check("keys are never reused", t->Insert()->GetKey() = 10);
+		Check("deleted keys stay deleted", t->Get(3) = Nil & t->Get(5) = Nil);
+		Check("delete after Compact", t->Delete(8) & t->Get(8) = Nil & t->Get(9) <> Nil);
+
+		only := Table->New("one", ["v"]);
+		only->Insert()->Set("v", IntRef->New(1));
+		Check("deleting the only row", only->Delete(0) & only->Count() = 0 & only->GetAll()->Size() = 0);
+	}
+
+	function : TestAggregates() ~ Nil {
+		t := Table->New("a", ["x", "y"]);
+		each(i : 100) {
+			r := t->Insert();
+			r->Set("x", FloatRef->New(i->As(Float) / 2.0));
+			if(i % 4 = 0) {
+				r->Set("y", "n/a");
+			}
+			else {
+				r->Set("y", IntRef->New(i));
+			};
+		};
+		Near("Sum of a FLOAT column", t->Sum("x"), 2475.0);
+		Near("Average of a FLOAT column", t->Average("x"), 24.75);
+		Near("Min", t->Min("x"), 0.0);
+		Near("Max", t->Max("x"), 49.5);
+		Check("Count of a FLOAT column", t->Count("x") = 100);
+		Check("an OBJECT column counts its numbers", t->Count("y") = 75);
+		Near("an OBJECT column sums its numbers", t->Sum("y"), 4950.0 - (0 + 4 + 8 + 12 + 16 + 20 + 24 + 28 + 32 + 36 + 40 + 44 + 48 + 52 + 56 + 60 + 64 + 68 + 72 + 76 + 80 + 84 + 88 + 92 + 96)->As(Float));
+		Check("Unique on an encoded column", t->Unique("y")->Size() = 76);
+		Check("an unknown column sums to 0", t->Sum("nope") = 0.0 & t->Count("nope") = 0);
+	}
+
+	function : TestDescribe() ~ Nil {
+		t := Table->New("m", ["score", "name"]);
+		values := [1.0, 2.0, 3.0, 4.0];
+		each(i : values) {
+			r := t->Insert();
+			r->Set("score", FloatRef->New(values[i]));
+			r->Set("name", i < 2 ? "a" : "b");
+		};
+		t->Insert();
+		d := t->Describe();
+		Check("one row per column", d->Size() = 2);
+		score := d->Get(0);
+		Check("column name", score->Get("column")->As(String)->Equals("score"));
+		Check("type name", score->Get("type")->As(String)->Equals("float"));
+		Check("count and nulls", score->Get("count")->As(IntRef)->Get() = 4 & score->Get("nulls")->As(IntRef)->Get() = 1);
+		Near("mean", score->Get("mean")->As(FloatRef)->Get(), 2.5);
+		Near("population std", score->Get("std")->As(FloatRef)->Get(), Float->Sqrt(1.25));
+		name := d->Get(1);
+		Check("distinct text values", name->Get("distinct")->As(IntRef)->Get() = 2);
+		Check("a text column has no mean", name->Get("mean") = Nil);
+	}
+}

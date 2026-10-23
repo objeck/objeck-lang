@@ -1,0 +1,100 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured ObjectSource (docs/QUERY_DESIGN.md, section 6): the program's own objects as a
+table, one column per reader function, typed by the function's return type; Nil strings and
+dates as empty cells; scan hints; catalog loading; and a query over the result.
+~#
+use Query.Structured, System.Time, Collection;
+
+class Run {
+	@name : String;
+	@score : Float;
+	@epochs : Int;
+	@converged : Bool;
+	@started : Date;
+
+	New(name : String, score : Float, epochs : Int, converged : Bool, started : Date) {
+		@name := name;
+		@score := score;
+		@epochs := epochs;
+		@converged := converged;
+		@started := started;
+	}
+
+	method : public : GetName() ~ String { return @name; }
+	method : public : GetScore() ~ Float { return @score; }
+	method : public : GetEpochs() ~ Int { return @epochs; }
+	method : public : IsConverged() ~ Bool { return @converged; }
+	method : public : GetStarted() ~ Date { return @started; }
+}
+
+class QuerySourceObjectsTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Source(runs : Vector<Run>) ~ ObjectSource<Run> {
+		source := ObjectSource->New("runs", runs)<Run>;
+		source->AddString("name", \(Run) ~ String : (r) => r->GetName());
+		source->AddFloat("score", \(Run) ~ Float : (r) => r->GetScore());
+		source->AddInt("epochs", \(Run) ~ Int : (r) => r->GetEpochs());
+		source->AddBool("converged", \(Run) ~ Bool : (r) => r->IsConverged());
+		source->AddDate("started", \(Run) ~ Date : (r) => r->GetStarted());
+		return source;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		runs := Vector->New()<Run>;
+		runs->AddBack(Run->New("baseline", 0.71, 10, true, Date->New(1, 3, 2026, 9, 0, 0, true)));
+		runs->AddBack(Run->New("wide", 0.78, 20, true, Date->New(2, 3, 2026, 9, 0, 0, true)));
+		runs->AddBack(Run->New(Nil, 0.65, 5, false, Nil));
+		runs->AddBack(Run->New("deep", 0.81, 40, false, Date->New(4, 3, 2026, 9, 0, 0, true)));
+
+		table := Source(runs)->ToTable(Nil);
+		Check("the objects become a table", table <> Nil & table->Size() = 4 & table->GetName()->Equals("runs"));
+		if(table <> Nil) {
+			Check("a String reader makes a STRING column", table->GetColumn("name")->GetType() = ColumnType->STRING);
+			Check("a Float reader makes a FLOAT column", table->GetColumn("score")->GetType() = ColumnType->FLOAT);
+			Check("an Int reader makes an INT column", table->GetColumn("epochs")->GetType() = ColumnType->INT);
+			Check("a Bool reader makes a BOOL column", table->GetColumn("converged")->GetType() = ColumnType->BOOL);
+			Check("a Date reader makes a DATE column", table->GetColumn("started")->GetType() = ColumnType->DATE);
+			Check("values are read", table->Get(1)->Get("epochs")->As(IntRef)->Get() = 20 & table->Get(3)->Get("name")->As(String)->Equals("deep"));
+			Check("a Nil string is an empty cell", table->Get(2)->Get("name") = Nil);
+			Check("a Nil date is an empty cell", table->Get(2)->Get("started") = Nil);
+			Check("a date keeps its fields", table->Get(0)->Get("started")->As(Date)->GetDay() = 1);
+
+			rs := table->Query("select name from runs where score > 0.75 order by score");
+			Check("the table queries", rs <> Nil & rs->Size() = 2 & rs->Get(0)->Get("name")->As(String)->Equals("wide"));
+			Check("aggregates over object columns", Float->Abs(table->Average("score") - 0.7375) < 0.000001);
+		};
+
+		hinted := Source(runs)->ToTable(ScanHint->New(["name", "score"], 2));
+		Check("a hint limits rows", hinted->Size() = 2);
+		Check("a hint skips readers it does not need", hinted->Get(0)->Get("epochs") = Nil & hinted->Get(0)->Get("score") <> Nil);
+
+		specs := Source(runs)->GetTables();
+		Check("GetTables describes the columns", specs->Size() = 1 & specs[0]->GetColumns()->Size() = 5 & specs[0]->GetTypes()[1] = ColumnType->FLOAT);
+
+		catalog := Catalog->New();
+		Check("a catalog loads the objects", catalog->Load(Source(runs)) & catalog->Get("runs")->Size() = 4);
+
+		empty := ObjectSource->New("none", Vector->New()<Run>)<Run>;
+		empty->AddInt("epochs", \(Run) ~ Int : (r) => r->GetEpochs());
+		Check("no objects is an empty table", empty->ToTable(Nil)->Size() = 0);
+
+		if(@failures = 0) {
+			"PASS: query ObjectSource"->PrintLine();
+		}
+		else {
+			"FAIL: query ObjectSource ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

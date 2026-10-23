@@ -1,6 +1,6 @@
 #~~
-Single table in-memory database
-Copyright (c) 2017-2020 Randy Hollines
+Query.Structured: an in-memory, column-oriented query engine
+Copyright (c) 2017-2026 Randy Hollines
 ~~#
 
 use Collection;
@@ -10,11 +10,987 @@ use System.IO.Filesystem;
 use Data.XML;
 
 #~
-In-memory object query engine. Table stores typed records and supports filtering, aggregation (sum, average), and CSV/filesystem import. Finder provides filesystem search. Compile with -lib query.
+In-memory query engine over typed columns. Tables are filled row by row or loaded from sources (CSV files, folders, the program's own objects) and queried with SQL-like statements; aggregates, Describe() and Finder (file search) are included. Compile with -lib query.
 ~#
 bundle Query.Structured {
 	#~
-	Container for semi-structured data
+	The storage type of a column. NONE is a column that has held no value yet; it takes the
+	type of the first value stored in it.
+	~#
+	enum ColumnType {
+		NONE,
+		INT,
+		FLOAT,
+		STRING,
+		DATE,
+		BOOL,
+		OBJECT
+	}
+
+	#~
+	One column of a table, held as a typed array rather than one object per cell. A column is
+	either declared, in which case storing a value of the wrong type is refused, or inferred
+	from its first value, in which case an Int widens into a Float column, a Float promotes an
+	Int column to Float, and any other mix promotes the column to OBJECT so every value is kept
+	as it was given. Empty cells are tracked in a bitmap allocated with the first one. Text
+	columns store each distinct string once while they have few of them. Numeric and date
+	columns keep the minimum and maximum of every 65,536-row group, so a filter can skip groups.
+	~#
+	class Column {
+		@name : String;
+		@type : ColumnType;
+		@declared : Bool;
+		@size : Int;
+		@capacity : Int;
+		@ints : Int[];
+		@floats : Float[];
+		@strings : String[];
+		@objects : Compare[];
+		@nulls : Int[];
+		@null_count : Int;
+		@encoded : Bool;
+		@dict : String[];
+		@dict_size : Int;
+		@dict_index : Hash<String, IntRef>;
+		@gmt : Int[];
+		@zone_min : Float[];
+		@zone_max : Float[];
+		@zone_stale : Bool[];
+		@promotions : Int;
+		@error : String;
+
+		#~
+		Constructor
+		@param name column name
+		@param type storage type; NONE takes the type of the first value stored
+		@param declared true to refuse values of another type
+		~#
+		New(name : String, type : ColumnType, declared : Bool) {
+			@name := name;
+			@type := ColumnType->NONE;
+			@declared := declared;
+			@encoded := true;
+			@capacity := 0;
+			Ensure(16);
+			if(type <> ColumnType->NONE) {
+				Become(type);
+			};
+		}
+
+		#~
+		Rows in a zone-map group
+		@return rows per group
+		~#
+		function : GroupRows() ~ Int {
+			return 65536;
+		}
+
+		#~
+		Distinct strings a text column keeps in its dictionary before it may store plain strings
+		@return dictionary size limit
+		~#
+		function : DictionaryLimit() ~ Int {
+			return 4096;
+		}
+
+		#~
+		Gets the column name
+		@return column name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the storage type
+		@return storage type
+		~#
+		method : public : GetType() ~ ColumnType {
+			return @type;
+		}
+
+		#~
+		Whether the column's type was declared, so mismatched values are refused
+		@return true if declared
+		~#
+		method : public : IsDeclared() ~ Bool {
+			return @declared;
+		}
+
+		#~
+		Gets the number of rows, empty ones included
+		@return number of rows
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Gets the number of empty cells
+		@return number of empty cells
+		~#
+		method : public : GetNullCount() ~ Int {
+			return @null_count;
+		}
+
+		#~
+		Whether a text column stores its values as dictionary codes
+		@return true if dictionary encoded
+		~#
+		method : public : IsEncoded() ~ Bool {
+			return @type = ColumnType->STRING & @encoded;
+		}
+
+		#~
+		Gets the number of distinct strings in a dictionary-encoded column
+		@return dictionary size, 0 if not encoded
+		~#
+		method : public : GetDictionarySize() ~ Int {
+			if(IsEncoded()) {
+				return @dict_size;
+			};
+
+			return 0;
+		}
+
+		#~
+		Gets how many times the column changed type to keep a value
+		@return number of promotions
+		~#
+		method : public : GetPromotions() ~ Int {
+			return @promotions;
+		}
+
+		#~
+		Gets the reason the last value was refused
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Adds an empty cell at the end. Used by Table.
+		~#
+		method : public : Append() ~ Nil {
+			Ensure(@size + 1);
+			@size += 1;
+			SetNullBit(@size - 1, true);
+		}
+
+		#~
+		Whether a cell is empty
+		@param row row number
+		@return true if empty or out of range
+		~#
+		method : public : IsNull(row : Int) ~ Bool {
+			if(row < 0 | row >= @size | @nulls = Nil) {
+				return row < 0 | row >= @size;
+			};
+
+			return (@nulls[row >> 6] and (1 << (row and 63))) <> 0;
+		}
+
+		#~
+		Gets a cell as an object: IntRef, FloatRef, String, Date, BoolRef or the stored object
+		@param row row number
+		@return value, Nil if empty
+		~#
+		method : public : Get(row : Int) ~ Compare {
+			if(IsNull(row)) {
+				return Nil;
+			};
+
+			select(@type) {
+				label ColumnType->INT: {
+					return IntRef->New(@ints[row]);
+				}
+
+				label ColumnType->FLOAT: {
+					return FloatRef->New(@floats[row]);
+				}
+
+				label ColumnType->STRING: {
+					return GetString(row);
+				}
+
+				label ColumnType->DATE: {
+					return DateCodec->ToDate(@ints[row], GmtBit(row));
+				}
+
+				label ColumnType->BOOL: {
+					return BoolRef->New(@ints[row] <> 0);
+				}
+
+				label ColumnType->OBJECT: {
+					return @objects[row];
+				}
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets a cell of an INT, BOOL (0 or 1) or DATE (epoch milliseconds) column
+		@param row row number
+		@return value, 0 if empty
+		~#
+		method : public : GetInt(row : Int) ~ Int {
+			if(@ints = Nil | IsNull(row)) {
+				return 0;
+			};
+
+			return @ints[row];
+		}
+
+		#~
+		Gets a numeric or date cell as a Float
+		@param row row number
+		@return value, 0.0 if empty or not numeric
+		~#
+		method : public : GetFloat(row : Int) ~ Float {
+			if(IsNull(row)) {
+				return 0.0;
+			};
+
+			if(@type = ColumnType->FLOAT) {
+				return @floats[row];
+			}
+			else if(@type = ColumnType->INT | @type = ColumnType->DATE | @type = ColumnType->BOOL) {
+				return @ints[row]->As(Float);
+			}
+			else if(@type = ColumnType->OBJECT) {
+				return Cell->IsNumeric(@objects[row]) ? Cell->ToNumber(@objects[row]) : 0.0;
+			};
+
+			return 0.0;
+		}
+
+		#~
+		Gets a cell of a STRING column
+		@param row row number
+		@return value, Nil if empty or not a text column
+		~#
+		method : public : GetString(row : Int) ~ String {
+			if(@type <> ColumnType->STRING | IsNull(row)) {
+				return Nil;
+			};
+
+			if(@encoded) {
+				return @dict[@ints[row]];
+			};
+
+			return @strings[row];
+		}
+
+		#~
+		Gets the dictionary code of a cell in an encoded text column
+		@param row row number
+		@return code, -1 if empty or not encoded
+		~#
+		method : public : GetCode(row : Int) ~ Int {
+			if(<>IsEncoded() | IsNull(row)) {
+				return -1;
+			};
+
+			return @ints[row];
+		}
+
+		#~
+		Whether a cell holds a number an aggregate can use: an Int or a Float
+		@param row row number
+		@return true if numeric
+		~#
+		method : public : IsNumeric(row : Int) ~ Bool {
+			if(IsNull(row)) {
+				return false;
+			};
+
+			if(@type = ColumnType->INT | @type = ColumnType->FLOAT) {
+				return true;
+			};
+
+			if(@type = ColumnType->OBJECT) {
+				return Cell->IsNumeric(@objects[row]);
+			};
+
+			return false;
+		}
+
+		#~
+		Stores a value. Nil empties the cell.
+		@param row row number
+		@param value value
+		@return true if stored, false if out of range or refused by a declared type (see GetError)
+		~#
+		method : public : Set(row : Int, value : Compare) ~ Bool {
+			if(row < 0 | row >= @size) {
+				@error := "row {$row} is out of range";
+				return false;
+			};
+
+			if(value = Nil) {
+				if(<>IsNull(row)) {
+					SetNullBit(row, true);
+					MarkStale(row);
+				};
+				return true;
+			};
+
+			kind := KindOf(value);
+			if(@type = ColumnType->NONE) {
+				Become(kind);
+			}
+			else if(kind <> @type) {
+				if(@type = ColumnType->FLOAT & kind = ColumnType->INT) {
+					# an Int widens into a Float column
+				}
+				else if(@type = ColumnType->OBJECT) {
+					# an object column keeps anything
+				}
+				else if(@declared) {
+					@error := "column '{$@name}' holds {$(TypeName(@type))}, not {$(TypeName(kind))}";
+					return false;
+				}
+				else if(@type = ColumnType->INT & kind = ColumnType->FLOAT) {
+					Promote(ColumnType->FLOAT);
+				}
+				else {
+					Promote(ColumnType->OBJECT);
+				};
+			};
+
+			was_null := IsNull(row);
+			select(@type) {
+				label ColumnType->INT: {
+					@ints[row] := value->As(IntRef)->Get();
+					NoteValue(row, @ints[row]->As(Float), was_null);
+				}
+
+				label ColumnType->FLOAT: {
+					if(value->TypeOf(IntRef)) {
+						@floats[row] := value->As(IntRef)->Get()->As(Float);
+					}
+					else {
+						@floats[row] := value->As(FloatRef)->Get();
+					};
+					NoteValue(row, @floats[row], was_null);
+				}
+
+				label ColumnType->STRING: {
+					StoreString(row, value->As(String));
+				}
+
+				label ColumnType->DATE: {
+					date := value->As(Date);
+					@ints[row] := DateCodec->ToMillis(date);
+					SetGmtBit(row, date->IsGmt());
+					NoteValue(row, @ints[row]->As(Float), was_null);
+				}
+
+				label ColumnType->BOOL: {
+					@ints[row] := value->As(BoolRef)->Get() ? 1 : 0;
+				}
+
+				label ColumnType->OBJECT: {
+					@objects[row] := value;
+				}
+			};
+
+			if(was_null) {
+				SetNullBit(row, false);
+			};
+
+			return true;
+		}
+
+		#~
+		Copies a cell from another column, converting through Set when the types differ
+		@param src column to copy from
+		@param src_row row in that column
+		@param row row in this column
+		@return true if stored
+		~#
+		method : public : CopyFrom(src : Column, src_row : Int, row : Int) ~ Bool {
+			if(src->IsNull(src_row)) {
+				return Set(row, Nil);
+			};
+
+			if(src->GetType() = @type & @type = ColumnType->FLOAT) {
+				was_null := IsNull(row);
+				@floats[row] := src->GetFloat(src_row);
+				NoteValue(row, @floats[row], was_null);
+				if(was_null) {
+					SetNullBit(row, false);
+				};
+				return true;
+			}
+			else if(src->GetType() = @type & @type = ColumnType->INT) {
+				was_null := IsNull(row);
+				@ints[row] := src->GetInt(src_row);
+				NoteValue(row, @ints[row]->As(Float), was_null);
+				if(was_null) {
+					SetNullBit(row, false);
+				};
+				return true;
+			};
+
+			return Set(row, src->Get(src_row));
+		}
+
+		#~
+		Keeps only the given rows, in order, and trims the arrays to fit. Used by Table->Compact.
+		@param keep rows to keep, ascending
+		~#
+		method : public : Compact(keep : Int[]) ~ Nil {
+			size := keep->Size();
+			type := @type;
+			old_ints := @ints;
+			old_floats := @floats;
+			old_strings := @strings;
+			old_objects := @objects;
+			old_nulls := @nulls;
+			old_gmt := @gmt;
+
+			@ints := Nil;
+			@floats := Nil;
+			@strings := Nil;
+			@objects := Nil;
+			@nulls := Nil;
+			@gmt := Nil;
+			@null_count := 0;
+			@capacity := 0;
+			@size := 0;
+			@type := ColumnType->NONE;
+			Ensure(size > 16 ? size : 16);
+			if(type <> ColumnType->NONE) {
+				# the dictionary is left in place, so the copied codes stay valid
+				Become(type);
+			};
+
+			@size := size;
+			each(i : size) {
+				src := keep[i];
+				is_null := old_nulls <> Nil & (old_nulls[src >> 6] and (1 << (src and 63))) <> 0;
+				if(is_null) {
+					SetNullBit(i, true);
+				}
+				else {
+					if(old_ints <> Nil & @ints <> Nil) {
+						@ints[i] := old_ints[src];
+					};
+					if(old_floats <> Nil & @floats <> Nil) {
+						@floats[i] := old_floats[src];
+					};
+					if(old_strings <> Nil & @strings <> Nil) {
+						@strings[i] := old_strings[src];
+					};
+					if(old_objects <> Nil & @objects <> Nil) {
+						@objects[i] := old_objects[src];
+					};
+					if(old_gmt <> Nil & (old_gmt[src >> 6] and (1 << (src and 63))) <> 0) {
+						SetGmtBit(i, true);
+					};
+				};
+			};
+
+			RecomputeAllZones();
+		}
+
+		#~
+		Gets the number of zone-map groups
+		@return number of groups
+		~#
+		method : public : GetGroupCount() ~ Int {
+			return (@size + GroupRows() - 1) / GroupRows();
+		}
+
+		#~
+		Whether the column keeps zone maps: INT, FLOAT and DATE columns do
+		@return true if zone maps are kept
+		~#
+		method : public : HasZones() ~ Bool {
+			return @type = ColumnType->INT | @type = ColumnType->FLOAT | @type = ColumnType->DATE;
+		}
+
+		#~
+		Gets the smallest value in a group, ignoring empty cells
+		@param group group number
+		@return minimum; for a group with no values the minimum is above the maximum (see GroupHasValues)
+		~#
+		method : public : GetGroupMin(group : Int) ~ Float {
+			FreshenZone(group);
+			return @zone_min[group];
+		}
+
+		#~
+		Gets the largest value in a group, ignoring empty cells
+		@param group group number
+		@return maximum (see GetGroupMin)
+		~#
+		method : public : GetGroupMax(group : Int) ~ Float {
+			FreshenZone(group);
+			return @zone_max[group];
+		}
+
+		#~
+		Whether a group holds any non-empty value
+		@param group group number
+		@return true if the group has values
+		~#
+		method : public : GroupHasValues(group : Int) ~ Bool {
+			FreshenZone(group);
+			return @zone_min[group] <= @zone_max[group];
+		}
+
+		#~
+		Gets the name of a type
+		@param type storage type
+		@return lowercase type name
+		~#
+		function : TypeName(type : ColumnType) ~ String {
+			select(type) {
+				label ColumnType->INT: { return "int"; }
+				label ColumnType->FLOAT: { return "float"; }
+				label ColumnType->STRING: { return "string"; }
+				label ColumnType->DATE: { return "date"; }
+				label ColumnType->BOOL: { return "bool"; }
+				label ColumnType->OBJECT: { return "object"; }
+			};
+
+			return "none";
+		}
+
+		#~
+		Gets the storage type a value calls for
+		@param value value
+		@return storage type
+		~#
+		function : KindOf(value : Compare) ~ ColumnType {
+			if(value->TypeOf(IntRef)) {
+				return ColumnType->INT;
+			}
+			else if(value->TypeOf(FloatRef)) {
+				return ColumnType->FLOAT;
+			}
+			else if(value->TypeOf(String)) {
+				return ColumnType->STRING;
+			}
+			else if(value->TypeOf(Date)) {
+				return ColumnType->DATE;
+			}
+			else if(value->TypeOf(BoolRef)) {
+				return ColumnType->BOOL;
+			};
+
+			return ColumnType->OBJECT;
+		}
+
+		# grows the arrays the column's type uses to hold at least 'needed' rows
+		method : Ensure(needed : Int) ~ Nil {
+			if(needed <= @capacity) {
+				return;
+			};
+
+			capacity := @capacity < 16 ? 16 : @capacity;
+			while(capacity < needed) {
+				capacity *= 2;
+			};
+
+			@ints := GrowInts(@ints, capacity);
+			@floats := GrowFloats(@floats, capacity);
+			@strings := GrowStrings(@strings, capacity);
+			@objects := GrowObjects(@objects, capacity);
+			# the null bitmap exists for every column, typed or not
+			words := (capacity + 63) / 64;
+			@nulls := @nulls = Nil ? Int->New[words] : GrowInts(@nulls, words);
+			@gmt := GrowInts(@gmt, words);
+
+			groups := (capacity + GroupRows() - 1) / GroupRows();
+			if(@zone_min = Nil | @zone_min->Size() < groups) {
+				mins := Float->New[groups];
+				maxs := Float->New[groups];
+				stale := Bool->New[groups];
+				start := 0;
+				if(@zone_min <> Nil) {
+					each(i : @zone_min) {
+						mins[i] := @zone_min[i];
+						maxs[i] := @zone_max[i];
+						stale[i] := @zone_stale[i];
+					};
+					start := @zone_min->Size();
+				};
+				for(i := start; i < groups; i += 1;) {
+					mins[i] := 1.0;
+					maxs[i] := 0.0;
+				};
+				@zone_min := mins;
+				@zone_max := maxs;
+				@zone_stale := stale;
+			};
+
+			@capacity := capacity;
+		}
+
+		function : GrowInts(old : Int[], size : Int) ~ Int[] {
+			if(old = Nil) {
+				return Nil;
+			};
+
+			grown := Int->New[size];
+			each(i : old) {
+				grown[i] := old[i];
+			};
+
+			return grown;
+		}
+
+		function : GrowFloats(old : Float[], size : Int) ~ Float[] {
+			if(old = Nil) {
+				return Nil;
+			};
+
+			grown := Float->New[size];
+			each(i : old) {
+				grown[i] := old[i];
+			};
+
+			return grown;
+		}
+
+		function : GrowStrings(old : String[], size : Int) ~ String[] {
+			if(old = Nil) {
+				return Nil;
+			};
+
+			grown := String->New[size];
+			each(i : old) {
+				grown[i] := old[i];
+			};
+
+			return grown;
+		}
+
+		function : GrowObjects(old : Compare[], size : Int) ~ Compare[] {
+			if(old = Nil) {
+				return Nil;
+			};
+
+			grown := Compare->New[size];
+			each(i : old) {
+				grown[i] := old[i];
+			};
+
+			return grown;
+		}
+
+		# gives a column of no type the arrays for one
+		method : Become(type : ColumnType) ~ Nil {
+			@type := type;
+			if(@nulls = Nil) {
+				@nulls := Int->New[(@capacity + 63) / 64];
+			};
+
+			select(type) {
+				label ColumnType->INT: {
+					@ints := Int->New[@capacity];
+				}
+
+				label ColumnType->FLOAT: {
+					@floats := Float->New[@capacity];
+				}
+
+				label ColumnType->STRING: {
+					if(@encoded) {
+						@ints := Int->New[@capacity];
+						if(@dict = Nil) {
+							@dict := String->New[16];
+							@dict_size := 0;
+							@dict_index := Hash->New()<String, IntRef>;
+						};
+					}
+					else {
+						@strings := String->New[@capacity];
+					};
+				}
+
+				label ColumnType->DATE: {
+					@ints := Int->New[@capacity];
+					@gmt := Int->New[(@capacity + 63) / 64];
+				}
+
+				label ColumnType->BOOL: {
+					@ints := Int->New[@capacity];
+				}
+
+				label ColumnType->OBJECT: {
+					@objects := Compare->New[@capacity];
+				}
+			};
+		}
+
+		# converts the stored values to another type, keeping each one
+		method : Promote(type : ColumnType) ~ Nil {
+			if(type = ColumnType->FLOAT & @type = ColumnType->INT) {
+				floats := Float->New[@capacity];
+				each(i : @size) {
+					if(<>IsNull(i)) {
+						floats[i] := @ints[i]->As(Float);
+					};
+				};
+				@floats := floats;
+				@ints := Nil;
+				@type := ColumnType->FLOAT;
+			}
+			else {
+				objects := Compare->New[@capacity];
+				each(i : @size) {
+					objects[i] := Get(i);
+				};
+				@objects := objects;
+				@ints := Nil;
+				@floats := Nil;
+				@strings := Nil;
+				@dict := Nil;
+				@dict_index := Nil;
+				@dict_size := 0;
+				@gmt := Nil;
+				@type := ColumnType->OBJECT;
+			};
+
+			@promotions += 1;
+		}
+
+		# stores a string as a dictionary code, or plainly once the dictionary is too big
+		method : StoreString(row : Int, value : String) ~ Nil {
+			if(@encoded) {
+				found := @dict_index->Find(value);
+				if(found <> Nil) {
+					@ints[row] := found->Get();
+					return;
+				};
+
+				if(@dict_size >= DictionaryLimit() & @dict_size * 2 > @size - @null_count) {
+					Decode();
+					@strings[row] := value;
+					return;
+				};
+
+				if(@dict_size = @dict->Size()) {
+					grown := String->New[@dict_size * 2];
+					each(i : @dict_size) {
+						grown[i] := @dict[i];
+					};
+					@dict := grown;
+				};
+
+				@dict[@dict_size] := value;
+				@dict_index->Insert(value, IntRef->New(@dict_size));
+				@ints[row] := @dict_size;
+				@dict_size += 1;
+				return;
+			};
+
+			@strings[row] := value;
+		}
+
+		# turns dictionary codes into plain strings, for a column with too many distinct values
+		method : Decode() ~ Nil {
+			strings := String->New[@capacity];
+			each(i : @size) {
+				if(<>IsNull(i)) {
+					strings[i] := @dict[@ints[i]];
+				};
+			};
+			@strings := strings;
+			@ints := Nil;
+			@dict := Nil;
+			@dict_index := Nil;
+			@dict_size := 0;
+			@encoded := false;
+		}
+
+		method : SetNullBit(row : Int, on : Bool) ~ Nil {
+			word := row >> 6;
+			bit := 1 << (row and 63);
+			is_on := (@nulls[word] and bit) <> 0;
+			if(on & <>is_on) {
+				@nulls[word] := @nulls[word] or bit;
+				@null_count += 1;
+			}
+			else if(<>on & is_on) {
+				@nulls[word] := @nulls[word] xor bit;
+				@null_count -= 1;
+			};
+		}
+
+		method : GmtBit(row : Int) ~ Bool {
+			if(@gmt = Nil) {
+				return false;
+			};
+
+			return (@gmt[row >> 6] and (1 << (row and 63))) <> 0;
+		}
+
+		method : SetGmtBit(row : Int, on : Bool) ~ Nil {
+			if(@gmt = Nil) {
+				return;
+			};
+
+			word := row >> 6;
+			bit := 1 << (row and 63);
+			if(on) {
+				@gmt[word] := @gmt[word] or bit;
+			}
+			else if((@gmt[word] and bit) <> 0) {
+				@gmt[word] := @gmt[word] xor bit;
+			};
+		}
+
+		# widens a group's range for a new value; a replaced value may have been the
+		# group's minimum or maximum, so that group is marked to be recomputed
+		method : NoteValue(row : Int, value : Float, was_null : Bool) ~ Nil {
+			group := row / GroupRows();
+			if(<>was_null) {
+				@zone_stale[group] := true;
+				return;
+			};
+
+			if(@zone_stale[group]) {
+				return;
+			};
+
+			if(@zone_min[group] > @zone_max[group]) {
+				@zone_min[group] := value;
+				@zone_max[group] := value;
+			}
+			else {
+				if(value < @zone_min[group]) {
+					@zone_min[group] := value;
+				};
+				if(value > @zone_max[group]) {
+					@zone_max[group] := value;
+				};
+			};
+		}
+
+		method : MarkStale(row : Int) ~ Nil {
+			@zone_stale[row / GroupRows()] := true;
+		}
+
+		method : FreshenZone(group : Int) ~ Nil {
+			if(@zone_stale[group]) {
+				RecomputeZone(group);
+			};
+		}
+
+		method : RecomputeZone(group : Int) ~ Nil {
+			@zone_min[group] := 1.0;
+			@zone_max[group] := 0.0;
+			@zone_stale[group] := false;
+			if(<>HasZones()) {
+				return;
+			};
+
+			start := group * GroupRows();
+			finish := start + GroupRows();
+			if(finish > @size) {
+				finish := @size;
+			};
+
+			found := false;
+			for(row := start; row < finish; row += 1;) {
+				if(<>IsNull(row)) {
+					value := GetFloat(row);
+					if(<>found) {
+						@zone_min[group] := value;
+						@zone_max[group] := value;
+						found := true;
+					}
+					else if(value < @zone_min[group]) {
+						@zone_min[group] := value;
+					}
+					else if(value > @zone_max[group]) {
+						@zone_max[group] := value;
+					};
+				};
+			};
+		}
+
+		method : RecomputeAllZones() ~ Nil {
+			each(i : @zone_min) {
+				RecomputeZone(i);
+			};
+		}
+	}
+
+	# Dates as epoch milliseconds of their calendar fields, read as UTC. No time-zone
+	# conversion is applied, so a date reads back with exactly the fields it was stored with,
+	# and ordering the numbers orders the dates. Days from the civil calendar follow Howard
+	# Hinnant's algorithm.
+	class : private : DateCodec {
+		function : ToMillis(date : Date) ~ Int {
+			days := DaysFromCivil(date->GetYear(), date->GetMonth(), date->GetDay());
+			secs := ((days * 24 + date->GetHours()) * 60 + date->GetMinutes()) * 60 + date->GetSeconds();
+			return secs * 1000;
+		}
+
+		function : ToDate(millis : Int, gmt : Bool) ~ Date {
+			secs := FloorDiv(millis, 1000);
+			days := FloorDiv(secs, 86400);
+			rest := secs - days * 86400;
+			fields := CivilFromDays(days);
+			hours := rest / 3600;
+			mins := (rest - hours * 3600) / 60;
+			s := rest - hours * 3600 - mins * 60;
+			return Date->New(fields[2], fields[1], fields[0], hours, mins, s, gmt);
+		}
+
+		function : FloorDiv(a : Int, b : Int) ~ Int {
+			q := a / b;
+			if((a - q * b) <> 0 & (a < 0) <> (b < 0)) {
+				q -= 1;
+			};
+			return q;
+		}
+
+		function : DaysFromCivil(year : Int, month : Int, day : Int) ~ Int {
+			y := month <= 2 ? year - 1 : year;
+			era := FloorDiv(y, 400);
+			yoe := y - era * 400;
+			mp := month > 2 ? month - 3 : month + 9;
+			doy := (153 * mp + 2) / 5 + day - 1;
+			doe := yoe * 365 + yoe / 4 - yoe / 100 + doy;
+			return era * 146097 + doe - 719468;
+		}
+
+		# [year, month, day]
+		function : CivilFromDays(days : Int) ~ Int[] {
+			z := days + 719468;
+			era := FloorDiv(z, 146097);
+			doe := z - era * 146097;
+			yoe := (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+			doy := doe - (365 * yoe + yoe / 4 - yoe / 100);
+			mp := (5 * doy + 2) / 153;
+			day := doy - (153 * mp + 2) / 5 + 1;
+			month := mp < 10 ? mp + 3 : mp - 9;
+			year := yoe + era * 400;
+			if(month <= 2) {
+				year += 1;
+			};
+
+			fields := Int->New[3];
+			fields[0] := year;
+			fields[1] := month;
+			fields[2] := day;
+			return fields;
+		}
+	}
+
+	#~
+	A table of typed columns. Each row has a primary key in the hidden 'pk' column, assigned in
+	insertion order and never reused. Rows are read and written through Row cursors, and queried
+	with SQL-like statements.
 
 ```
 table := Table->New("users", ["name", "age"]);
@@ -23,55 +999,119 @@ row->Set("name", "Alice");
 row->Set("age", IntRef->New(30));
 
 results := table->Query("select * from users where age > 25");
-each(i : results) {
-   results->Get(i)->ToString()->PrintLine();
-};
+results->ToString()->PrintLine();
 ```
 	~#
 	class Table {
 		@name : String;
-		@keys : Map<IntRef, Row>;
+		@columns : Column[];
 		@column_names : String[];
 		@column_map : Map<String, IntRef>;
-		@head : Row;
-		@tail : Row;
+		@size : Int;
 		@count : Int;
+		@deleted : Int[];
 		@next_pk : Int;
+		@compacted : Bool;
+		@version : Int;
+		@layout : Int;
 		@query : Query;
-		
+
 		#~
-		Constructor
+		Constructor. Column types are taken from the first value stored in each.
 		@param name table name
 		@param column_names column names
 		~#
 		New(name : String, column_names : String[]) {
-			@column_map := Map->New()<String, IntRef>;
-			@keys := Map->New()<IntRef, Row>;
-			@name := name;
-
-			@column_names := String->New[column_names->Size() + 1];
-			@column_names[0] := "pk";
-			@column_map->Insert(@column_names[0], 0);
-			each(i : column_names) {
-				@column_names[i + 1] := column_names[i];
-				@column_map->Insert(@column_names[i + 1], i + 1);
-			};
+			Init(name, column_names, ColumnType->New[0], false);
 		}
 
+		#~
+		Constructor. Column types are taken from the first value stored in each.
+		@param name table name
+		@param column_names column names
+		~#
 		New(name : String, column_names : Vector<String>) {
-			@column_map := Map->New()<String, IntRef>;
-			@keys := Map->New()<IntRef, Row>;
+			names := String->New[column_names->Size()];
+			each(i : names) {
+				names[i] := column_names->Get(i);
+			};
+			Init(name, names, ColumnType->New[0], false);
+		}
+
+		#~
+		Constructor with declared column types; storing a value of another type is refused
+		@param name table name
+		@param column_names column names
+		@param types one type per column; NONE leaves that column inferred
+		~#
+		New(name : String, column_names : String[], types : ColumnType[]) {
+			Init(name, column_names, types, true);
+		}
+
+		#~
+		Constructor with starting column types
+		@param name table name
+		@param column_names column names
+		@param types one type per column; NONE leaves that column inferred
+		@param declared true to refuse values of another type, false to let the columns widen or promote as inferred ones do
+		~#
+		New(name : String, column_names : String[], types : ColumnType[], declared : Bool) {
+			Init(name, column_names, types, declared);
+		}
+
+		method : Init(name : String, column_names : String[], types : ColumnType[], declared : Bool) ~ Nil {
 			@name := name;
-			
+			@column_map := Map->New()<String, IntRef>;
 			@column_names := String->New[column_names->Size() + 1];
+			@columns := Column->New[column_names->Size() + 1];
+
 			@column_names[0] := "pk";
-			@column_map->Insert(@column_names[0], 0);
+			@columns[0] := Column->New("pk", ColumnType->INT, true);
+			@column_map->Insert("pk", 0);
+
 			each(i : column_names) {
-				@column_names[i + 1] := column_names->Get(i);
-				@column_map->Insert(@column_names[i + 1], i + 1);
+				type := ColumnType->NONE;
+				if(types <> Nil & i < types->Size()) {
+					type := types[i];
+				};
+				@column_names[i + 1] := column_names[i];
+				@columns[i + 1] := Column->New(column_names[i], type, declared & type <> ColumnType->NONE);
+				@column_map->Insert(column_names[i], i + 1);
 			};
 		}
-		
+
+		#~
+		Adds a column; existing rows hold an empty cell in it
+		@param name column name
+		@param type storage type; NONE takes the type of the first value stored
+		@return true if added, false if a column has that name
+		~#
+		method : public : AddColumn(name : String, type : ColumnType) ~ Bool {
+			if(name = Nil | @column_map->Has(name)) {
+				return false;
+			};
+
+			column := Column->New(name, type, type <> ColumnType->NONE);
+			each(i : @size) {
+				column->Append();
+			};
+
+			columns := Column->New[@columns->Size() + 1];
+			names := String->New[@columns->Size() + 1];
+			each(i : @columns) {
+				columns[i] := @columns[i];
+				names[i] := @column_names[i];
+			};
+			columns[@columns->Size()] := column;
+			names[@columns->Size()] := name;
+			@column_map->Insert(name, @columns->Size());
+			@columns := columns;
+			@column_names := names;
+			@version += 1;
+
+			return true;
+		}
+
 		#~
 		Gets the table name
 		@return table name
@@ -83,26 +1123,185 @@ each(i : results) {
 		method : public : GetName() ~ String {
 			return @name;
 		}
-		
+
 		#~
 		Get column index by name
 		@param name column name
-		@return column name
+		@return column index, -1 if there is no such column
 		```
 		table := Query.Structured.Table->New("items", ["name", "qty"]);
 		idx := table->GetIndex("qty"); # returns 2 (pk=0, name=1, qty=2)
 		"qty column index={$idx}"->PrintLine();
 		```
 		~#
-		method : public : native : GetIndex(name : String) ~ Int {
+		method : public : GetIndex(name : String) ~ Int {
+			if(name = Nil) {
+				return -1;
+			};
+
 			found := @column_map->Find(name);
 			if(found <> Nil) {
 				return found->As(IntRef)->Get();
 			};
-			
+
 			return -1;
 		}
-		
+
+		#~
+		Gets a column by name
+		@param name column name
+		@return column, Nil if there is no such column
+		~#
+		method : public : GetColumn(name : String) ~ Column {
+			index := GetIndex(name);
+			if(index < 0) {
+				return Nil;
+			};
+
+			return @columns[index];
+		}
+
+		#~
+		Gets a column by index; 0 is the 'pk' column
+		@param index column index
+		@return column, Nil if out of range
+		~#
+		method : public : GetColumn(index : Int) ~ Column {
+			if(index < 0 | index >= @columns->Size()) {
+				return Nil;
+			};
+
+			return @columns[index];
+		}
+
+		#~
+		Gets the number of columns, 'pk' included
+		@return number of columns
+		~#
+		method : public : GetColumnCount() ~ Int {
+			return @columns->Size();
+		}
+
+		#~
+		Gets all column names, 'pk' first
+		@return column names
+		~#
+		method : public : GetColumnNames() ~ String[] {
+			return @column_names;
+		}
+
+		#~
+		Gets a number that changes whenever the table's rows or columns change
+		@return version
+		~#
+		method : public : GetVersion() ~ Int {
+			return @version;
+		}
+
+		#~
+		Gets the number of row slots, deleted rows included until Compact
+		@return number of row slots
+		~#
+		method : public : GetRowCapacity() ~ Int {
+			return @size;
+		}
+
+		#~
+		Whether a row slot holds a live (not deleted) row
+		@param row row slot
+		@return true if live
+		~#
+		method : public : IsLive(row : Int) ~ Bool {
+			if(row < 0 | row >= @size) {
+				return false;
+			};
+
+			if(@deleted = Nil) {
+				return true;
+			};
+
+			return (@deleted[row >> 6] and (1 << (row and 63))) = 0;
+		}
+
+		#~
+		Gets the slots of every live row, in insertion order
+		@return row slots
+		~#
+		method : public : LiveRows() ~ Int[] {
+			rows := Int->New[@count];
+			n := 0;
+			each(i : @size) {
+				if(IsLive(i)) {
+					rows[n] := i;
+					n += 1;
+				};
+			};
+
+			return rows;
+		}
+
+		#~
+		Gets a cursor over a row slot
+		@param row row slot
+		@return row cursor, Nil if the slot is not live
+		~#
+		method : public : RowAt(row : Int) ~ Row {
+			if(<>IsLive(row)) {
+				return Nil;
+			};
+
+			return Row->New(@self, row);
+		}
+
+		#~
+		Gets the layout number, which changes when Compact moves rows. Used by Row.
+		@return layout number
+		~#
+		method : public : GetLayout() ~ Int {
+			return @layout;
+		}
+
+		#~
+		Gets the row slot holding a primary key
+		@param pk primary key
+		@return row slot, -1 if no live row has the key
+		~#
+		method : public : FindRow(pk : Int) ~ Int {
+			if(pk < 0 | pk >= @next_pk) {
+				return -1;
+			};
+
+			row := -1;
+			if(<>@compacted) {
+				row := pk;
+			}
+			else {
+				# keys stay ascending in slot order, so a compacted table is searched
+				low := 0;
+				high := @size - 1;
+				pk_column := @columns[0];
+				while(low <= high & row < 0) {
+					middle := (low + high) / 2;
+					key := pk_column->GetInt(middle);
+					if(key = pk) {
+						row := middle;
+					}
+					else if(key < pk) {
+						low := middle + 1;
+					}
+					else {
+						high := middle - 1;
+					};
+				};
+			};
+
+			if(row < 0 | <>IsLive(row)) {
+				return -1;
+			};
+
+			return row;
+		}
+
 		#~
 		Get all rows
 		@return all rows
@@ -113,22 +1312,21 @@ each(i : results) {
 		each(i : all) { all->Get(i)->ToString()->PrintLine(); };
 		```
 		~#
-		method : public : native : GetAll() ~ Vector<Row> {
+		method : public : GetAll() ~ Vector<Row> {
 			matches := Vector->New()<Row>;
-			
-			row1 := @head;
-			while(row1 <> Nil) {
-				matches->AddBack(row1);
-				row1 := row1->Next();
+			each(i : @size) {
+				if(IsLive(i)) {
+					matches->AddBack(Row->New(@self, i));
+				};
 			};
-			
+
 			return matches;
 		}
-		
+
 		#~
 		Get row by primary key
 		@param pk primary key
-		@return row
+		@return row, Nil if there is no live row with the key
 		```
 		table := Query.Structured.Table->New("items", ["name"]);
 		row := table->Insert(); row->Set("name", "Beta");
@@ -136,20 +1334,18 @@ each(i : results) {
 		found->ToString()->PrintLine();
 		```
 		~#
-		method : public : native : Get(pk : Int) ~ Row {
-			return @keys->Find(pk);
+		method : public : Get(pk : Int) ~ Row {
+			row := FindRow(pk);
+			if(row < 0) {
+				return Nil;
+			};
+
+			return Row->New(@self, row);
 		}
-		
+
 		#~
-		Gets all column names
-		@return column names
-		~#
-		method : public : GetColumnNames() ~ String[] {
-			return @column_names;
-		}
-		
-		#~
-		Gets unique rows by column name
+		Gets unique rows by column name: the first row holding each distinct value. Empty cells
+		are skipped.
 		@param name column name
 		@return unique rows
 		```
@@ -163,36 +1359,63 @@ each(i : results) {
 		~#
 		method : public : Unique(name : String) ~ Vector<Row> {
 			out := Vector->New()<Row>;
-
 			index := GetIndex(name);
 			if(index < 0) {
 				return out;
 			};
 
-			# Use hash for O(n) lookup instead of O(n²) nested loops
-			seen := Hash->New()<Compare, BoolRef>;
-
-			in_row := @head;
-			while(in_row <> Nil) {
-				left := in_row->Get(index);
-
-				if(left <> Nil & <>seen->Has(left)) {
-					seen->Insert(left, true);
-					out->AddBack(in_row);
-				};
-
-				# next
-				in_row := in_row->Next();
+			rows := UniqueRows(index, LiveRows());
+			each(i : rows) {
+				out->AddBack(Row->New(@self, rows[i]));
 			};
 
 			return out;
 		}
-		
+
 		#~
-		Gets the column average over its numeric cells (IntRef and FloatRef).
-		String, Date and Nil cells are skipped: they add nothing to the sum and
-		are not counted in the divisor. A column with no numeric cells, or an
-		unknown column, averages to 0.0; Count(name) tells the cases apart.
+		Gets the first slot holding each distinct value of a column, among the given slots. Used
+		by Query.
+		@param index column index
+		@param rows row slots to consider, in order
+		@return row slots
+		~#
+		method : public : UniqueRows(index : Int, rows : Int[]) ~ Int[] {
+			column := @columns[index];
+			kept := Vector->New()<IntRef>;
+			if(column->IsEncoded()) {
+				seen := Bool->New[column->GetDictionarySize()];
+				each(i : rows) {
+					code := column->GetCode(rows[i]);
+					if(code > -1 & <>seen[code]) {
+						seen[code] := true;
+						kept->AddBack(rows[i]);
+					};
+				};
+			}
+			else {
+				seen := Hash->New()<Compare, BoolRef>;
+				each(i : rows) {
+					value := column->Get(rows[i]);
+					if(value <> Nil & <>seen->Has(value)) {
+						seen->Insert(value, true);
+						kept->AddBack(rows[i]);
+					};
+				};
+			};
+
+			out := Int->New[kept->Size()];
+			each(i : out) {
+				out[i] := kept->Get(i)->Get();
+			};
+
+			return out;
+		}
+
+		#~
+		Gets the column average over its numeric cells (Ints and Floats). String, date and
+		empty cells are skipped: they add nothing to the sum and are not counted in the divisor.
+		A column with no numeric cells, or an unknown column, averages to 0.0; Count(name) tells
+		the cases apart.
 		@param name column name
 		@return column average
 		```
@@ -204,40 +1427,19 @@ each(i : results) {
 		```
 		~#
 		method : public : Average(name : String) ~ Float {
-			index := GetIndex(name);		
-			if(index < 0) {
-				return 0.0;
-			};
-			
-			sum := 0.0;
-			count := 0;
-			row1 := @head;
-			while(row1 <> Nil) {
-				value := row1->Get(index);
-				if(Cell->IsNumeric(value)) {
-					sum += Cell->ToNumber(value);
-					count += 1;
-				};
-				
-				# next
-				row1 := row1->Next();
-			};
-						
-			# Only numeric cells take part: a string or Nil cell is not a zero.
-			# No numeric cells (an empty table, an unknown column, or a column of
-			# strings) has no average; report 0.0 rather than divide by zero.
+			count := Count(name);
 			if(count = 0) {
 				return 0.0;
 			};
 
-			return sum / count->As(Float);
+			return Sum(name) / count->As(Float);
 		}
-		
+
 		#~
-		Gets the number of numeric cells in a column: cells holding an IntRef or a
-		FloatRef. String, Date and Nil cells are not counted. This is the divisor
-		Average uses, so a caller can tell an average of 0.0 from a column with no
-		numbers in it. The row count is Count() with no argument.
+		Gets the number of numeric cells in a column: cells holding an Int or a Float. String,
+		date and empty cells are not counted. This is the divisor Average uses, so a caller can
+		tell an average of 0.0 from a column with no numbers in it. The row count is Count()
+		with no argument.
 		@param name column name
 		@return number of numeric cells, 0 for an unknown column
 		```
@@ -254,21 +1456,25 @@ each(i : results) {
 				return 0;
 			};
 
+			column := @columns[index];
+			type := column->GetType();
+			if((type = ColumnType->INT | type = ColumnType->FLOAT) & @deleted = Nil) {
+				return @size - column->GetNullCount();
+			};
+
 			count := 0;
-			row1 := @head;
-			while(row1 <> Nil) {
-				if(Cell->IsNumeric(row1->Get(index))) {
+			each(row : @size) {
+				if(IsLive(row) & column->IsNumeric(row)) {
 					count += 1;
 				};
-				row1 := row1->Next();
 			};
 
 			return count;
 		}
 
 		#~
-		Gets the smallest numeric value in a column. Only IntRef and FloatRef cells
-		take part; when there are none the result is 0.0 (check Count(name)).
+		Gets the smallest numeric value in a column. Only Int and Float cells take part; when
+		there are none the result is 0.0 (check Count(name)).
 		@param name column name
 		@return column minimum
 		```
@@ -284,8 +1490,8 @@ each(i : results) {
 		}
 
 		#~
-		Gets the largest numeric value in a column. Only IntRef and FloatRef cells
-		take part; when there are none the result is 0.0 (check Count(name)).
+		Gets the largest numeric value in a column. Only Int and Float cells take part; when
+		there are none the result is 0.0 (check Count(name)).
 		@param name column name
 		@return column maximum
 		```
@@ -306,13 +1512,12 @@ each(i : results) {
 				return 0.0;
 			};
 
+			column := @columns[index];
 			found := false;
 			result := 0.0;
-			row1 := @head;
-			while(row1 <> Nil) {
-				value := row1->Get(index);
-				if(Cell->IsNumeric(value)) {
-					number := Cell->ToNumber(value);
+			each(row : @size) {
+				if(IsLive(row) & column->IsNumeric(row)) {
+					number := column->GetFloat(row);
 					if(<>found) {
 						result := number;
 						found := true;
@@ -324,15 +1529,14 @@ each(i : results) {
 						result := number;
 					};
 				};
-				row1 := row1->Next();
 			};
 
 			return result;
 		}
-		
+
 		#~
-		Gets the column sum over its numeric cells (IntRef and FloatRef); other
-		cells are skipped. No numeric cells, or an unknown column, sums to 0.0.
+		Gets the column sum over its numeric cells (Ints and Floats); other cells are skipped.
+		No numeric cells, or an unknown column, sums to 0.0.
 		@param name column name
 		@return column sum
 		```
@@ -344,41 +1548,67 @@ each(i : results) {
 		```
 		~#
 		method : public : Sum(name : String) ~ Float {
-			index := GetIndex(name);		
+			index := GetIndex(name);
 			if(index < 0) {
 				return 0.0;
 			};
-			
+
+			column := @columns[index];
 			sum := 0.0;
-			row1 := @head;
-			while(row1 <> Nil) {
-				value := row1->Get(index);
-				if(Cell->IsNumeric(value)) {
-					sum += Cell->ToNumber(value);
+			if(column->GetType() = ColumnType->FLOAT | column->GetType() = ColumnType->INT) {
+				# a typed column sums straight from its array
+				no_nulls := column->GetNullCount() = 0 & @deleted = Nil;
+				each(row : @size) {
+					if(no_nulls) {
+						sum += column->GetFloat(row);
+					}
+					else if(IsLive(row) & <>column->IsNull(row)) {
+						sum += column->GetFloat(row);
+					};
 				};
-				
-				# next
-				row1 := row1->Next();
+				return sum;
 			};
-			
+
+			each(row : @size) {
+				if(IsLive(row) & column->IsNumeric(row)) {
+					sum += column->GetFloat(row);
+				};
+			};
+
 			return sum;
 		}
-		
+
 		#~
-		Filters table based upon conditional criteria. A Nil cell matches no
-		condition. Numbers compare by value, so an IntRef cell compares with a
-		FloatRef literal and the other way round. Cells that cannot be ordered
-		against the value (a string cell and a number, say) are unequal to it:
-		they match '<>' and no other comparison.
+		Filters table based upon conditional criteria. An empty cell matches no condition.
+		Numbers compare by value, so an Int cell compares with a Float literal and the other way
+		round. Cells that cannot be ordered against the value (a string cell and a number, say)
+		are unequal to it: they match '<>' and no other comparison.
 		@param cond conditional filter
 		@return filtered rows
 		~#
-		method : public : native : Filter(cond : Conditional) ~ Vector<Row> {
+		method : public : Filter(cond : Conditional) ~ Vector<Row> {
 			matches := Vector->New()<Row>;
+			rows := FilterRows(cond, LiveRows());
+			each(i : rows) {
+				matches->AddBack(Row->New(@self, rows[i]));
+			};
+
+			return matches;
+		}
+
+		#~
+		Gets the slots among the given ones whose cell meets a condition. Used by Query.
+		@param cond condition
+		@param rows row slots to test, in order
+		@return matching row slots, in order
+		~#
+		method : public : FilterRows(cond : Conditional, rows : Int[]) ~ Int[] {
+			column := @columns[cond->GetLeft()];
 			right := cond->GetValue();
-			row1 := @head;
-			while(row1 <> Nil) {
-				left := row1->Get(cond->GetLeft());
+			kept := Int->New[rows->Size()];
+			n := 0;
+			each(i : rows) {
+				left := column->Get(rows[i]);
 				if(left <> Nil) {
 					is_match := false;
 					select(cond->GetQualifier()) {
@@ -404,21 +1634,25 @@ each(i : results) {
 					};
 
 					if(is_match) {
-						matches->AddBack(row1);
+						kept[n] := rows[i];
+						n += 1;
 					};
 				};
-				# next
-				row1 := row1->Next();
 			};
-			
-			return matches;
+
+			out := Int->New[n];
+			each(i : n) {
+				out[i] := kept[i];
+			};
+
+			return out;
 		}
-		
+
 		#~
-		Query table using SQL-like syntax. Support for 'select', 'from', 'where',
-		'distinct', 'order by' and logical operators.
+		Query table using SQL-like syntax. Support for 'select', 'from', 'where', 'distinct',
+		'order by' and logical operators.
 		@param statement query statement
-		@return result table
+		@return result table, Nil on error (see GetError)
 		```
 		table := Query.Structured.Table->New("emp", ["name", "dept"]);
 		r := table->Insert(); r->Set("name", "Carol"); r->Set("dept", "Eng");
@@ -430,7 +1664,7 @@ each(i : results) {
 			@query := Query->New(statement, @self);
 			return @query->Query();
 		}
-		
+
 		#~
 		Gets the last query error
 		@return last query error, Nil if the last query succeeded or none has run
@@ -442,10 +1676,10 @@ each(i : results) {
 
 			return @query->GetError();
 		}
-		
+
 		#~
-		Inserts a new row into the table. After the row
-		has been added its values will need to be set.
+		Inserts a new row into the table. After the row has been added its values will need to
+		be set.
 		@return newly inserted row
 		```
 		table := Query.Structured.Table->New("tasks", ["title", "done"]);
@@ -455,30 +1689,26 @@ each(i : results) {
 		row->ToString()->PrintLine();
 		```
 		~#
-		method : public : native : Insert() ~ Row {
-			# primary keys are never reused, so they come from their own counter
-			# rather than the row count, which drops on Delete
-			pk := IntRef->New(@next_pk);
-			values := Compare->New[@column_names->Size()];
-			values[0] := pk;
-			row1 := Row->New(@self, values);
-			@keys->Insert(pk->Get(), row1);
-			@next_pk += 1;
-			@count += 1;
-			
-			if(@head = Nil) {
-				@head := row1;
-				@tail := row1;
-			}
-			else {
-				@tail->Next(row1);
-				row1->Prev(@tail);
-				@tail := row1;
+		method : public : Insert() ~ Row {
+			each(i : @columns) {
+				@columns[i]->Append();
 			};
-			
-			return row1;
+
+			# primary keys are never reused, so they come from their own counter
+			@columns[0]->Set(@size, IntRef->New(@next_pk));
+			if(@deleted <> Nil & @deleted->Size() * 64 <= @size) {
+				@deleted := Column->GrowInts(@deleted, @deleted->Size() * 2);
+			};
+
+			row := @size;
+			@next_pk += 1;
+			@size += 1;
+			@count += 1;
+			@version += 1;
+
+			return Row->New(@self, row);
 		}
-		
+
 		#~
 		Delete row by primary key
 		@param pk primary key
@@ -490,37 +1720,44 @@ each(i : results) {
 		"deleted={$ok}"->PrintLine();
 		```
 		~#
-		method : public : native : Delete(pk : Int) ~ Bool {
-			row1 := @keys->Find(pk);
-			if(row1 <> Nil) {
-				prev := row1->Prev();
-				next := row1->Next();
-
-				if(prev <> Nil) {
-					prev->Next(next);
-				}
-				else {
-					@head := next;
-				};
-				
-				if(next <> Nil) {
-					next->Prev(prev);
-				}
-				else {
-					@tail := prev;
-				};
-
-				row1->Next(Nil);
-				row1->Prev(Nil);
-				
-				@keys->Remove(pk);
-				@count -= 1;
-				return true;
+		method : public : Delete(pk : Int) ~ Bool {
+			row := FindRow(pk);
+			if(row < 0) {
+				return false;
 			};
-			
-			return false;
+
+			if(@deleted = Nil) {
+				@deleted := Int->New[(@size + 64) / 64 + 1];
+			};
+
+			@deleted[row >> 6] := @deleted[row >> 6] or (1 << (row and 63));
+			@count -= 1;
+			@version += 1;
+
+			return true;
 		}
-		
+
+		#~
+		Removes the space deleted rows still occupy. Primary keys are unchanged; row cursors
+		taken before the call find their rows again by key.
+		~#
+		method : public : Compact() ~ Nil {
+			if(@deleted = Nil) {
+				return;
+			};
+
+			keep := LiveRows();
+			each(i : @columns) {
+				@columns[i]->Compact(keep);
+			};
+
+			@size := keep->Size();
+			@deleted := Nil;
+			@compacted := true;
+			@layout += 1;
+			@version += 1;
+		}
+
 		#~
 		Count of rows. Count(name) counts the numeric cells in one column.
 		@return number of rows
@@ -536,30 +1773,102 @@ each(i : results) {
 		method : public : Size() ~ Int {
 			return @count;
 		}
-		
+
+		#~
+		Summarizes every column: its type, how many cells are filled and empty, how many distinct
+		values it holds, and, for numeric columns, the minimum, maximum, mean and standard
+		deviation (population).
+		@return a table with one row per column
+		```
+		table := Query.Structured.Table->FromCsv("runs", "runs.csv");
+		table->Describe()->ToString()->PrintLine();
+		```
+		~#
+		method : public : Describe() ~ Table {
+			summary := Table->New("describe",
+				["column", "type", "count", "nulls", "distinct", "min", "max", "mean", "std"],
+				[ColumnType->STRING, ColumnType->STRING, ColumnType->INT, ColumnType->INT, ColumnType->INT,
+				 ColumnType->FLOAT, ColumnType->FLOAT, ColumnType->FLOAT, ColumnType->FLOAT]);
+
+			rows := LiveRows();
+			for(i := 1; i < @columns->Size(); i += 1;) {
+				column := @columns[i];
+				out := summary->Insert();
+				out->Set("column", column->GetName());
+				out->Set("type", Column->TypeName(column->GetType()));
+
+				filled := 0;
+				numeric := 0;
+				sum := 0.0;
+				low := 0.0;
+				high := 0.0;
+				each(j : rows) {
+					row := rows[j];
+					if(<>column->IsNull(row)) {
+						filled += 1;
+						if(column->IsNumeric(row)) {
+							value := column->GetFloat(row);
+							if(numeric = 0) {
+								low := value;
+								high := value;
+							}
+							else if(value < low) {
+								low := value;
+							}
+							else if(value > high) {
+								high := value;
+							};
+							sum += value;
+							numeric += 1;
+						};
+					};
+				};
+
+				out->Set("count", IntRef->New(filled));
+				out->Set("nulls", IntRef->New(rows->Size() - filled));
+				out->Set("distinct", IntRef->New(UniqueRows(i, rows)->Size()));
+				if(numeric > 0) {
+					mean := sum / numeric->As(Float);
+					squares := 0.0;
+					each(j : rows) {
+						if(column->IsNumeric(rows[j])) {
+							diff := column->GetFloat(rows[j]) - mean;
+							squares += diff * diff;
+						};
+					};
+					out->Set("min", FloatRef->New(low));
+					out->Set("max", FloatRef->New(high));
+					out->Set("mean", FloatRef->New(mean));
+					out->Set("std", FloatRef->New(Float->Sqrt(squares / numeric->As(Float))));
+				};
+			};
+
+			return summary;
+		}
+
 		#~
 		String representation of table
-		@return all row1 as a string
+		@return all rows as a string
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
-			
-			row1 := @head;
-			while(row1 <> Nil) {
-				buffer += row1->ToString();
-				buffer += "\r\n";
-				row1 := row1->Next();
+			each(i : @size) {
+				if(IsLive(i)) {
+					buffer += Row->New(@self, i)->ToString();
+					buffer += "\r\n";
+				};
 			};
-			
+
 			return buffer;
 		}
 
 		#~
-		Loads a table from a CSV file. The first line names the columns. A cell
-		holding a whole number ('42', '-3', '+3') becomes an IntRef; a decimal or
-		exponent form ('3.5', '.5', '-0.5', '1e3') becomes a FloatRef; '#MM/dd/yyyy#'
-		style cells become dates; anything else ('1-2', '3.', 'abc', '') stays a
-		String. A file holding only the header line gives an empty table.
+		Loads a table from a CSV file. The first line names the columns. Each cell is typed on
+		its own, as it always has been: a whole number ('42', '-3', '+3') becomes an IntRef; a
+		decimal or exponent form ('3.5', '.5', '-0.5', '1e3') becomes a FloatRef; '#MM/dd/yyyy#'
+		style cells become dates; anything else ('1-2', '3.', 'abc', '') stays a String. A file
+		holding only the header line gives an empty table. CsvSource types each column as a whole
+		instead, and treats an empty cell as empty.
 		@param table_name table name
 		@param path to CSV
 		@return new table, Nil if the file cannot be read or parsed
@@ -576,64 +1885,45 @@ each(i : results) {
 			if(table = Nil) {
 				"Unable to parse {$path}!"->ErrorLine();
 			};
-			
+
 			return table;
 		}
 
 		function : private : CsvToTable(table_name : String, data : String) ~ Table {
-			if(data = Nil) {
+			parsed := CsvSource->ParseText(data, ',');
+			if(parsed = Nil) {
 				return Nil;
 			};
-
-			has_rows := true;
-			csv := Data.CSV.CsvTable->New(data);
-			if(<>csv->IsParsed()) {
-				# CsvTable wants a header and at least one record, but a header
-				# alone is a valid table with no rows. Parse the lone line as a
-				# header and a copy of itself, so quoting follows the CSV rules,
-				# and then ignore the copy.
-				line := data->Trim();
-				if(line->IsEmpty() | line->Has('\n') | line->Has('\r')) {
-					return Nil;
-				};
-
-				doubled := String->New(line);
-				doubled += "\r\n";
-				doubled += line;
-				csv := Data.CSV.CsvTable->New(doubled, "\r\n");
-				if(<>csv->IsParsed()) {
-					return Nil;
-				};
-				has_rows := false;
-			};
-
-			if(csv->Size() < 1) {
-				return Nil;
-			};
+			csv := parsed->GetTable();
 
 			headers := csv->Get(0);
 			columns := String->New[headers->Size()];
-			each(i : headers) {	
+			each(i : headers) {
 				columns[i] := headers->Get(i);
 			};
 
-			table := Query.Structured.Table->New(table_name, columns);
-			if(has_rows) {
-				for(i := 1; i < csv->Size(); i += 1;) {
-					csv_row := csv->Get(i);
-					row1 := table->Insert();
-					for(j := 0; j < columns->Size(); j += 1;) {
-						# a short row leaves its missing cells Nil
-						row1->Set(j + 1, Cell->FromText(csv_row->Get(j)));
-					};
+			# each cell keeps its own type, so every column holds objects
+			types := ColumnType->New[columns->Size()];
+			each(i : types) {
+				types[i] := ColumnType->OBJECT;
+			};
+			table := Query.Structured.Table->New(table_name, columns, types, false);
+			for(i := 1; i <= parsed->GetRows(); i += 1;) {
+				csv_row := csv->Get(i);
+				row1 := table->Insert();
+				for(j := 0; j < columns->Size(); j += 1;) {
+					# a short row leaves its missing cells Nil
+					row1->Set(j + 1, Cell->FromText(csv_row->Get(j)));
 				};
 			};
-			
+
 			return table;
 		}
 
 		#~
-		Loads a table from a directory file system. Columns are: name, path_name, create_date, owner, is_dir and is_readonly.
+		Loads a table from a directory file system. Columns are: name, path_name, create_date,
+		owner, is_dir and is_readonly, with is_dir and is_readonly as Row->True() and
+		Row->False(). FilesystemSource offers more columns and recursion.
 		@param table_name table name
 		@param path to directory
 		@return new table
@@ -646,33 +1936,31 @@ each(i : results) {
 		function : FromFilesystem(table_name : String, path : String) ~ Table {
 			table := Table->New(table_name, ["name", "path_name", "create_date", "owner", "is_dir", "is_readonly"]);
 
-			if(<>path->EndsWith('/')  <>path->EndsWith('\\')) {
-				path += '/';
+			source := FilesystemSource->New(path, false);
+			listing := source->List(["name", "path", "created", "owner", "is_dir", "is_readonly"]);
+			if(listing = Nil) {
+				return table;
 			};
 
-			files := Directory->List(path);
-			each(i : files) {
-				short_name := files[i];
-				long_name := String->New(path); 
-				long_name += short_name;
-				file_owner := File->Owner(long_name);
-				create_date := File->CreateTime(long_name);
-				is_dir := Directory->Exists(long_name);
-				is_readonly := File->IsReadOnly(long_name);
-				
-				row1 := table->Insert();
-				row1->Set("name", short_name);
-				row1->Set("path_name", long_name);
-				row1->Set("create_date", create_date);
-				row1->Set("owner", file_owner);
-				row1->Set("is_dir", is_dir ? Row->True() : Row->False());
-				row1->Set("is_readonly", is_readonly ? Row->True() : Row->False());
+			each(i : listing->GetRowCapacity()) {
+				if(listing->IsLive(i)) {
+					entry := listing->RowAt(i);
+					row1 := table->Insert();
+					row1->Set("name", entry->Get("name"));
+					row1->Set("path_name", entry->Get("path"));
+					row1->Set("create_date", entry->Get("created"));
+					row1->Set("owner", entry->Get("owner"));
+					is_dir := entry->Get("is_dir")->As(BoolRef)->Get();
+					is_readonly := entry->Get("is_readonly")->As(BoolRef)->Get();
+					row1->Set("is_dir", is_dir ? Row->True() : Row->False());
+					row1->Set("is_readonly", is_readonly ? Row->True() : Row->False());
+				};
 			};
-			
-			return table;	
+
+			return table;
 		}
 	}
-	
+
 	#~
 	Conditional for filtering
 	~#
@@ -1027,22 +2315,48 @@ each(i : results) {
 		}
 	}
 	
+
 	#~
-	Row in table
+	A cursor over one row of a table: reading or writing it reads or writes the table's columns.
 	~#
 	class Row {
-		@values : Compare[];
 		@table : Table;
+		@row : Int;
+		@pk : Int;
+		@layout : Int;
 		@true_token : static : IntRef;
 		@false_token : static : IntRef;
-		@next : Row;
-		@prev : Row;
-		
-		New(table : Table, values : Compare[]) {
+
+		#~
+		Constructor. Use Table->Insert, Get or GetAll rather than this.
+		@param table table
+		@param row row slot
+		~#
+		New(table : Table, row : Int) {
 			@table := table;
-			@values := values;
+			@row := row;
+			@pk := table->GetColumn(0)->GetInt(row);
+			@layout := table->GetLayout();
 		}
-		
+
+		# the row's slot now; Compact may have moved it since the cursor was made
+		method : Slot() ~ Int {
+			if(@layout <> @table->GetLayout()) {
+				@row := @table->FindRow(@pk);
+				@layout := @table->GetLayout();
+			};
+
+			return @row;
+		}
+
+		#~
+		Gets the row's primary key
+		@return primary key
+		~#
+		method : public : GetKey() ~ Int {
+			return @pk;
+		}
+
 		#~
 		Gets value by name
 		@param name column name
@@ -1051,45 +2365,48 @@ each(i : results) {
 		method : public : Get(name : String) ~ Compare {
 			return Get(@table->GetIndex(name));
 		}
-		
+
 		#~
 		Sets value by name
 		@param name column name
 		@param value value
-		@return ture of successful, false otherwise
+		@return true if successful, false otherwise (an unknown column, or a declared column of another type)
 		~#
 		method : public : Set(name : String, value : Compare) ~ Bool {
 			return Set(@table->GetIndex(name), value);
 		}
-		
+
 		#~
 		Gets value by index
 		@param index column index
 		@return value
 		~#
 		method : public : Get(index : Int) ~ Compare {
-			if(index < 0 | index >= @values->Size()) {
+			column := @table->GetColumn(index);
+			row := Slot();
+			if(column = Nil | row < 0) {
 				return Nil;
 			};
-			
-			return @values[index];
+
+			return column->Get(row);
 		}
-		
+
 		#~
 		Sets value by index
-		@param index column index
+		@param index column index; 0, the primary key, cannot be set
 		@param value value
-		@return ture of successful, false otherwise
+		@return true if successful, false otherwise
 		~#
 		method : public : Set(index : Int, value : Compare) ~ Bool {
-			if(index < 0 | index >= @values->Size()) {
+			column := @table->GetColumn(index);
+			row := Slot();
+			if(column = Nil | index = 0 | row < 0) {
 				return false;
 			};
-			
-			@values[index] := value;
-			return true;
+
+			return column->Set(row, value);
 		}
-		
+
 		#~
 		Helper for setting 'true' column value
 		@return 'true' value holder
@@ -1098,10 +2415,10 @@ each(i : results) {
 			if(@true_token = Nil) {
 				@true_token := IntRef->New(1);
 			};
-			
+
 			return @true_token;
 		}
-		
+
 		#~
 		Helper for setting 'false' column value
 		@return 'false' value holder
@@ -1110,44 +2427,73 @@ each(i : results) {
 			if(@false_token = Nil) {
 				@false_token := IntRef->New(0);
 			};
-			
+
 			return @false_token;
 		}
-			
+
+		#~
+		Gets the next live row in insertion order
+		@return next row, Nil at the end
+		~#
 		method : public : Next() ~ Row {
-			return @next;
+			row := Slot() + 1;
+			while(row < @table->GetRowCapacity()) {
+				if(@table->IsLive(row)) {
+					return Row->New(@table, row);
+				};
+				row += 1;
+			};
+
+			return Nil;
 		}
-		
+
+		#~
+		Deprecated: rows follow insertion order, which cannot be changed. Does nothing.
+		@param next ignored
+		~#
 		method : public : Next(next : Row) ~ Nil {
-			@next := next;
 		}
-		
+
+		#~
+		Gets the previous live row in insertion order
+		@return previous row, Nil at the start
+		~#
 		method : public : Prev() ~ Row {
-			return @prev;
+			row := Slot() - 1;
+			while(row >= 0) {
+				if(@table->IsLive(row)) {
+					return Row->New(@table, row);
+				};
+				row -= 1;
+			};
+
+			return Nil;
 		}
-		
+
+		#~
+		Deprecated: rows follow insertion order, which cannot be changed. Does nothing.
+		@param prev ignored
+		~#
 		method : public : Prev(prev : Row) ~ Nil {
-			@prev := prev;
 		}
-		
+
 		#~
 		Gets the number of columns
 		@return number of columns
 		~#
 		method : public : Size() ~ Int {
-			return @values->Size();
+			return @table->GetColumnCount();
 		}
-		
+
 		#~
-		String representation of row1
-		@return row1 as string
+		String representation of the row
+		@return row as string
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
-
-			each(i : @values) {
-				value := @values[i];
-				
+			size := @table->GetColumnCount();
+			each(i : size) {
+				value := Get(i);
 				if(value <> Nil) {
 					if(value->TypeOf(IntRef)) {
 						buffer += value->As(IntRef)->ToString();
@@ -1161,90 +2507,88 @@ each(i : results) {
 					else if(value->TypeOf(String)) {
 						buffer += value->As(String);
 					}
+					else if(value->TypeOf(BoolRef)) {
+						buffer += value->As(BoolRef)->Get() ? "true" : "false";
+					}
 					else {
 						buffer += value->GetClass()->GetName();
 					};
 				}
 				else {
-						buffer += "<Nil>";
-				};	
-					
+					buffer += "<Nil>";
+				};
+
 				buffer += ", ";
 			};
-			
+
 			return buffer;
 		}
 	}
-	
+
+	# Runs one statement against a table. Public for compatibility only: use Table->Query.
 	class Query {
 		@parser : Parser;
-		@terms : Term;
 		@table : Table;
 		@error : String;
-		
+
 		New(line : String, table : Table) {
 			@table := table;
 			@parser := Parser->New(line);
 		}
-		
+
 		method : public : Query() ~ Table {
 			expr := @parser->Parse();
 			if(expr = Nil) {
 				@error := "*** Parse error ***";
 				return Nil;
 			};
-			
-			if(expr->GetType() = Token->Type->SELECT) {
 
+			if(expr->GetType() = Token->Type->SELECT) {
 				results := ProcessSelect(expr);
 				if(results = Nil) {
 					@error := "*** Select error ***";
 					return Nil;
 				};
-				
+
 				return results;
 			}
 			else if(expr->GetType() = Token->Type->FROM) {
-				results := ProcessFrom(expr)<Row>;
-				if(results = Nil) {
+				rows := ProcessFrom(expr);
+				if(rows = Nil) {
 					@error := "*** From error ***";
 					return Nil;
 				};
-				
+
 				names := @table->GetColumnNames();
 				column_names := String->New[names->Size() - 1];
 				each(i : column_names) {
 					column_names[i] := names[i + 1];
 				};
-								
+
 				order_by : String;
 				order := expr->GetRight();
 				if(order <> Nil & order->GetType() = Token->Type->REF) {
 					order_by := order->GetValue()->As(String);
 				};
 
-				return BuildTable("<rs>", column_names, results, order_by);
-			}
-			else {
-				@error := "*** General error ***";
-				return Nil;
+				return BuildTable("<rs>", column_names, rows, order_by);
 			};
-			
+
+			@error := "*** General error ***";
 			return Nil;
 		}
 
 		method : public : GetError() ~ String {
 			return @error;
 		}
-		
+
 		method : ProcessSelect(expr : Term) ~ Table {
-# "== Select =="->PrintLine();
-			results := ProcessFrom(expr->GetLeft());
-			if(results = Nil) {
+			rows := ProcessFrom(expr->GetLeft());
+			if(rows = Nil) {
 				return Nil;
 			};
 			columns := expr->GetTerms();
-						
+
 			column_names : String[];
 			if(columns->Size() = 1 & columns->Get(0)->As(Term)->GetType() = Token->Type->STAR) {
 				names := @table->GetColumnNames();
@@ -1253,13 +2597,19 @@ each(i : results) {
 					column_names[i] := names[i + 1];
 				};
 			}
-			else if(columns->Size() = 2 & 
-					columns->Get(0)->As(Term)->GetType() = Token->Type->DISTINCT & 
+			else if(columns->Size() = 2 &
+					columns->Get(0)->As(Term)->GetType() = Token->Type->DISTINCT &
 					columns->Get(1)->As(Term)->GetType() = Token->Type->REF) {
 				column_names := String->New[1];
 				column_name := columns->Get(1)->As(Term)->GetValue()->As(String);
 				column_names[0] := column_name;
-				results := Unique(column_name, results);
+				index := @table->GetIndex(column_name);
+				if(index < 0) {
+					rows := Int->New[0];
+				}
+				else {
+					rows := @table->UniqueRows(index, rows);
+				};
 			}
 			else {
 				column_names := String->New[columns->Size()];
@@ -1270,68 +2620,61 @@ each(i : results) {
 
 			if(expr->GetRight() <> Nil) {
 				order_by := expr->GetRight()->GetValue()->As(String);
-				return BuildTable("<rs>", column_names, results, order_by);
+				return BuildTable("<rs>", column_names, rows, order_by);
 			};
-						
-			return BuildTable("<rs>", column_names, results, Nil);
+
+			return BuildTable("<rs>", column_names, rows, Nil);
 		}
-		
-		method : Unique(col : String, input : Vector<Row>) ~ Vector<Row> {
-			out := Vector->New()<Row>;
 
-			index := @table->GetIndex(col);
-			if(index < 0) {
-				return out;
-			};
-
-			# Use hash for O(n) lookup instead of O(n²) nested loops
-			seen := Hash->New()<Compare, BoolRef>;
-
-			each(i : input) {
-				in_row := input->Get(i);
-				left := in_row->Get(index);
-
-				if(left <> Nil & <>seen->Has(left)) {
-					seen->Insert(left, true);
-					out->AddBack(in_row);
+		# copies the given rows, in order (sorted first by 'order_by' if given), into a new table
+		# whose columns take the source columns' types
+		method : BuildTable(name : String, column_names : String[], rows : Int[], order_by : String) ~ Table {
+			types := ColumnType->New[column_names->Size()];
+			sources := Column->New[column_names->Size()];
+			each(i : column_names) {
+				source := @table->GetColumn(column_names[i]);
+				sources[i] := source;
+				types[i] := ColumnType->NONE;
+				if(source <> Nil) {
+					types[i] := source->GetType();
 				};
 			};
 
-			return out;
-		}
-		
-		method : BuildTable(name : String, column_names : String[], from_results : Vector<Row>, order_by : String) ~ Table {
-			table := Table->New(name, column_names);
+			table := Table->New(name, column_names, types, false);
 
 			if(order_by <> Nil) {
 				order_index := @table->GetIndex(order_by);
 				if(order_index > -1) {
-					# a stable sort: rows sharing an order value (or holding Nil)
-					# all stay, in their original order
-					from_results := SortRows(from_results, order_index);
+					# a stable sort: rows sharing an order value (or holding Nil) all stay,
+					# in their original order
+					rows := SortRows(rows, order_index);
 				};
 			};
-			
-			each(i : from_results) {
-				row1 := from_results->Get(i);
-				result_row := table->Insert();
-				each(j : column_names) {
-					column_name := column_names[j];
-					result_row->Set(column_name, row1->Get(column_name));
+
+			each(i : rows) {
+				table->Insert();
+				slot := table->GetRowCapacity() - 1;
+				each(j : sources) {
+					if(sources[j] <> Nil) {
+						table->GetColumn(j + 1)->CopyFrom(sources[j], rows[i], slot);
+					};
 				};
 			};
 
 			return table;
 		}
 
-		# bottom-up merge sort of rows by one column, stable
-		method : SortRows(rows : Vector<Row>, index : Int) ~ Vector<Row> {
+		# bottom-up merge sort of row slots by one column, stable
+		method : SortRows(rows : Int[], index : Int) ~ Int[] {
+			column := @table->GetColumn(index);
 			size := rows->Size();
-			src := Row->New[size];
-			each(i : src) {
-				src[i] := rows->Get(i);
+			keys := Compare->New[size];
+			src := Int->New[size];
+			each(i : size) {
+				src[i] := i;
+				keys[i] := column->Get(rows[i]);
 			};
-			dest := Row->New[size];
+			dest := Int->New[size];
 
 			width := 1;
 			while(width < size) {
@@ -1352,9 +2695,9 @@ each(i : results) {
 					while(k < finish) {
 						take_left := l < middle;
 						if(take_left & r < finish) {
-							left_row := src[l];
-							right_row := src[r];
-							take_left := Cell->Order(left_row->Get(index), right_row->Get(index)) <= 0;
+							left_key := keys[src[l]];
+							right_key := keys[src[r]];
+							take_left := Cell->Order(left_key, right_key) <= 0;
 						};
 
 						if(take_left) {
@@ -1377,33 +2720,29 @@ each(i : results) {
 				width *= 2;
 			};
 
-			sorted := Vector->New()<Row>;
-			each(i : src) {
-				sorted->AddBack(src[i]);
+			sorted := Int->New[size];
+			each(i : size) {
+				sorted[i] := rows[src[i]];
 			};
 
 			return sorted;
 		}
-		
-		method : ProcessFrom(expr : Term) ~ Vector<Row> {
-# "== From =="->PrintLine();
-			
+
+		method : ProcessFrom(expr : Term) ~ Int[] {
 			name := expr->GetValue()->As(String);
 			if(<>name->Equals(@table->GetName())) {
 				return Nil;
 			};
-			
-			# where
+
 			left := expr->GetLeft();
 			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
 				return ProcessTerm(left->GetLeft());
-			}
-			else {
-				return @table->GetAll();
 			};
+
+			return @table->LiveRows();
 		}
-		
-		method : ProcessTerm(expr : Term) ~ Vector<Row> {
+
+		method : ProcessTerm(expr : Term) ~ Int[] {
 			if(expr = Nil) {
 				return Nil;
 			};
@@ -1411,12 +2750,11 @@ each(i : results) {
 			left := expr->GetLeft();
 			right := expr->GetRight();
 			if(left = Nil | right = Nil) {
- 				return Nil;
- 			};
-			
+				return Nil;
+			};
+
 			select(expr->GetType()) {
 				label Token->Type->AND: {
-# "== And =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					if(left_result = Nil) {
 						return Nil;
@@ -1429,9 +2767,8 @@ each(i : results) {
 
 					return MergeAnd(left_result, right_result);
 				}
-				
+
 				label Token->Type->OR: {
-# "== Or =="->PrintLine();		
 					left_result := ProcessTerm(left);
 					if(left_result = Nil) {
 						return Nil;
@@ -1444,13 +2781,13 @@ each(i : results) {
 
 					return MergeOr(left_result, right_result);
 				}
-				
+
 				other: {
 					index := @table->GetIndex(left->GetValue()->As(String));
 					if(index > -1) {
 						cond := MakeCondition(index, expr->GetType(), expr->GetNot(), right->GetValue());
 						if(cond <> Nil) {
-							return @table->Filter(cond);
+							return @table->FilterRows(cond, @table->LiveRows());
 						};
 					};
 				}
@@ -1459,87 +2796,102 @@ each(i : results) {
 			return Nil;
 		}
 
-		# A comparison term as a filter. 'not' negates any operator: 'not =' is
-		# '<>', 'not >' is '<=' and so on. Nil if the term is not a comparison.
+		# A comparison term as a filter. 'not' negates any operator: 'not =' is '<>', 'not >'
+		# is '<=' and so on. Nil if the term is not a comparison.
 		method : MakeCondition(index : Int, type : Token->Type, is_not : Bool, value : Compare) ~ Conditional {
 			select(type) {
-				label Token->Type->EQUAL: {	
+				label Token->Type->EQUAL: {
 					return Conditional->New(index, is_not ? Conditional->Qualifier->NOT_EQUAL : Conditional->Qualifier->EQUAL, value);
 				}
-				
+
 				label Token->Type->NOT_EQUAL: {
 					return Conditional->New(index, is_not ? Conditional->Qualifier->EQUAL : Conditional->Qualifier->NOT_EQUAL, value);
 				}
-				
+
 				label Token->Type->GREATER: {
 					return Conditional->New(index, is_not ? Conditional->Qualifier->LESS_EQUAL : Conditional->Qualifier->GREATER, value);
 				}
-				
+
 				label Token->Type->LESS: {
 					return Conditional->New(index, is_not ? Conditional->Qualifier->GREATER_EQUAL : Conditional->Qualifier->LESS, value);
 				}
-				
+
 				label Token->Type->GREATER_EQUAL: {
 					return Conditional->New(index, is_not ? Conditional->Qualifier->LESS : Conditional->Qualifier->GREATER_EQUAL, value);
 				}
-				
+
 				label Token->Type->LESS_EQUAL: {
 					return Conditional->New(index, is_not ? Conditional->Qualifier->GREATER : Conditional->Qualifier->LESS_EQUAL, value);
 				}
-				
+
 				label Token->Type->LIKE: {
 					return Conditional->New(index, is_not ? Conditional->Qualifier->NOT_LIKE : Conditional->Qualifier->LIKE, value);
 				}
 			};
-			
+
 			return Nil;
 		}
-		
-		method : MergeAnd(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {
-			merged := Vector->New()<Row>;
 
-			if(left <> Nil & right <> Nil) {
-				# Build hash from left set for O(1) lookup
-				left_set := Hash->New()<IntRef, Row>;
-				each(i : left) {
-					row := left->Get(i);
-					left_set->Insert(row->GetInstanceID(), row);
-				};
-
-				# Find intersection: items in both sets
-				each(i : right) {
-					right_value := right->Get(i);
-					if(left_set->Has(right_value->GetInstanceID())) {
-						merged->AddBack(right_value);
-					};
+		# the slots in both sorted lists
+		method : MergeAnd(left : Int[], right : Int[]) ~ Int[] {
+			merged := Int->New[left->Size() < right->Size() ? left->Size() : right->Size()];
+			n := 0;
+			l := 0;
+			r := 0;
+			while(l < left->Size() & r < right->Size()) {
+				if(left[l] = right[r]) {
+					merged[n] := left[l];
+					n += 1;
+					l += 1;
+					r += 1;
+				}
+				else if(left[l] < right[r]) {
+					l += 1;
+				}
+				else {
+					r += 1;
 				};
 			};
 
-			return merged;
+			return Trim(merged, n);
 		}
-		
-		method : MergeOr(left : Vector<Row>, right : Vector<Row>) ~ Vector<Row> {
-			if(left <> Nil & right <> Nil) {
-				# Build hash from left set for O(1) lookup
-				left_set := Hash->New()<IntRef, Row>;
-				each(i : left) {
-					row := left->Get(i);
-					left_set->Insert(row->GetInstanceID(), row);
-				};
 
-				# Find union: add items from right that aren't in left
-				each(i : right) {
-					right_value := right->Get(i);
-					if(<>left_set->Has(right_value->GetInstanceID())) {
-						left->AddBack(right_value);
-					};
+		# the slots in either sorted list, once each, in slot order
+		method : MergeOr(left : Int[], right : Int[]) ~ Int[] {
+			merged := Int->New[left->Size() + right->Size()];
+			n := 0;
+			l := 0;
+			r := 0;
+			while(l < left->Size() | r < right->Size()) {
+				if(r >= right->Size() | (l < left->Size() & left[l] < right[r])) {
+					merged[n] := left[l];
+					l += 1;
+				}
+				else if(l >= left->Size() | right[r] < left[l]) {
+					merged[n] := right[r];
+					r += 1;
+				}
+				else {
+					merged[n] := left[l];
+					l += 1;
+					r += 1;
 				};
+				n += 1;
 			};
 
-			return left;
+			return Trim(merged, n);
+		}
+
+		function : Trim(values : Int[], size : Int) ~ Int[] {
+			trimmed := Int->New[size];
+			each(i : size) {
+				trimmed[i] := values[i];
+			};
+
+			return trimmed;
 		}
 	}
-	
+
 	class Parser {
 		@line : String;
 		@tokens : Vector<Token>;
@@ -2331,7 +3683,1065 @@ each(i : results) {
 	}
 
 	#~
-	Supports string data queries
+	The shape of a table a source provides: its name, column names and column types
+	~#
+	class TableSpec {
+		@name : String;
+		@columns : String[];
+		@types : ColumnType[];
+
+		#~
+		Constructor
+		@param name table name
+		@param columns column names
+		@param types column types, one per column
+		~#
+		New(name : String, columns : String[], types : ColumnType[]) {
+			@name := name;
+			@columns := columns;
+			@types := types;
+		}
+
+		#~
+		Gets the table name
+		@return table name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the column names
+		@return column names
+		~#
+		method : public : GetColumns() ~ String[] {
+			return @columns;
+		}
+
+		#~
+		Gets the column types
+		@return column types
+		~#
+		method : public : GetTypes() ~ ColumnType[] {
+			return @types;
+		}
+	}
+
+	#~
+	What a query already knows, passed to a source so it can skip work: the columns the query
+	needs and how many rows it can use. A source may ignore it; the engine still applies the
+	query in full afterwards.
+	~#
+	class ScanHint {
+		@columns : String[];
+		@limit : Int;
+
+		#~
+		Constructor
+		@param columns the columns needed, Nil for all of them
+		@param limit the most rows needed, -1 for no limit
+		~#
+		New(columns : String[], limit : Int) {
+			@columns := columns;
+			@limit := limit;
+		}
+
+		#~
+		Gets the columns needed
+		@return column names, Nil for all
+		~#
+		method : public : GetColumns() ~ String[] {
+			return @columns;
+		}
+
+		#~
+		Gets the most rows needed
+		@return row limit, -1 for none
+		~#
+		method : public : GetLimit() ~ Int {
+			return @limit;
+		}
+
+		#~
+		Whether a column is needed
+		@param name column name
+		@return true if needed
+		~#
+		method : public : Wants(name : String) ~ Bool {
+			if(@columns = Nil) {
+				return true;
+			};
+
+			each(i : @columns) {
+				if(@columns[i]->Equals(name)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+	}
+
+	#~
+	Something that is not a table but can be read as tables: a file, a folder, a document, the
+	program's own objects. A source declares its tables, then loads them into a catalog.
+	~#
+	interface Source {
+		#~
+		Gets the tables the source provides
+		@return table shapes
+		~#
+		method : virtual : public : GetTables() ~ TableSpec[];
+
+		#~
+		Loads the source's tables into a catalog
+		@param catalog catalog to add the tables to
+		@param hint what the query needs, Nil for everything
+		@return true if loaded, false on error (see GetError)
+		~#
+		method : virtual : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool;
+
+		#~
+		Gets the reason the last load failed
+		@return error, Nil if none
+		~#
+		method : virtual : public : GetError() ~ String;
+	}
+
+	#~
+	Named tables that queries can refer to
+
+```
+catalog := Catalog->New();
+catalog->Load(CsvSource->New("runs.csv"));
+runs := catalog->Get("runs");
+```
+	~#
+	class Catalog {
+		@tables : Map<String, Table>;
+		@error : String;
+
+		#~
+		Constructor
+		~#
+		New() {
+			@tables := Map->New()<String, Table>;
+		}
+
+		#~
+		Adds a table under its name, replacing any table of that name
+		@param table table
+		~#
+		method : public : Add(table : Table) ~ Nil {
+			if(table <> Nil) {
+				@tables->Insert(table->GetName(), table);
+			};
+		}
+
+		#~
+		Gets a table by name
+		@param name table name
+		@return table, Nil if there is none
+		~#
+		method : public : Get(name : String) ~ Table {
+			if(name = Nil) {
+				return Nil;
+			};
+
+			return @tables->Find(name);
+		}
+
+		#~
+		Whether a table of that name exists
+		@param name table name
+		@return true if it exists
+		~#
+		method : public : Has(name : String) ~ Bool {
+			return name <> Nil & @tables->Has(name);
+		}
+
+		#~
+		Removes a table
+		@param name table name
+		@return true if removed
+		~#
+		method : public : Remove(name : String) ~ Bool {
+			if(<>Has(name)) {
+				return false;
+			};
+
+			@tables->Remove(name);
+			return true;
+		}
+
+		#~
+		Gets the table names
+		@return table names
+		~#
+		method : public : GetNames() ~ String[] {
+			keys := @tables->GetKeys()<String>;
+			names := String->New[keys->Size()];
+			each(i : names) {
+				names[i] := keys->Get(i);
+			};
+
+			return names;
+		}
+
+		#~
+		Loads every table of a source
+		@param source source
+		@return true if loaded, false on error (see GetError)
+		~#
+		method : public : Load(source : Source) ~ Bool {
+			return Load(source, Nil);
+		}
+
+		#~
+		Loads a source's tables, passing what the caller needs
+		@param source source
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded, false on error (see GetError)
+		~#
+		method : public : Load(source : Source, hint : ScanHint) ~ Bool {
+			@error := Nil;
+			if(source = Nil) {
+				@error := "no source";
+				return false;
+			};
+
+			if(<>source->Load(@self, hint)) {
+				@error := source->GetError();
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Gets the reason the last load failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	A CSV file as a table. Each column is typed by reading all of it: whole numbers make an INT
+	column, numbers with a fraction or exponent a FLOAT column, '#MM/dd/yyyy#' cells a DATE
+	column, and anything else, including any mix of numbers and text, a STRING column. An empty
+	cell is empty, not an empty string. Quoting follows RFC 4180 through Data.CSV.
+
+```
+catalog := Catalog->New();
+if(catalog->Load(CsvSource->New("runs.csv"))) {
+  catalog->Get("runs")->Describe()->ToString()->PrintLine();
+};
+```
+	~#
+	class CsvSource implements Source {
+		@path : String;
+		@name : String;
+		@delimiter : Char;
+		@text : String;
+		@error : String;
+
+		#~
+		Constructor. The table is named after the file, without its directory or extension.
+		@param path CSV file
+		~#
+		New(path : String) {
+			@path := path;
+			@name := BaseName(path);
+			@delimiter := ',';
+		}
+
+		#~
+		Constructor
+		@param path CSV file
+		@param name table name
+		@param delimiter field delimiter, such as ',', ';' or '\t'
+		~#
+		New(path : String, name : String, delimiter : Char) {
+			@path := path;
+			@name := name;
+			@delimiter := delimiter;
+		}
+
+		#~
+		Makes a source over CSV text already in memory
+		@param name table name
+		@param text CSV text
+		@param delimiter field delimiter
+		@return source
+		~#
+		function : FromText(name : String, text : String, delimiter : Char) ~ CsvSource {
+			source := CsvSource->New(Nil, name, delimiter);
+			source->SetText(text);
+			return source;
+		}
+
+		method : public : SetText(text : String) ~ Nil {
+			@text := text;
+		}
+
+		#~
+		Gets the table the file provides; its column types are known only after reading it
+		@return one table shape
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			table := Read(Nil);
+			specs := TableSpec->New[1];
+			if(table = Nil) {
+				specs[0] := TableSpec->New(@name, String->New[0], ColumnType->New[0]);
+				return specs;
+			};
+
+			names := table->GetColumnNames();
+			columns := String->New[names->Size() - 1];
+			types := ColumnType->New[names->Size() - 1];
+			each(i : columns) {
+				columns[i] := names[i + 1];
+				types[i] := table->GetColumn(i + 1)->GetType();
+			};
+			specs[0] := TableSpec->New(@name, columns, types);
+
+			return specs;
+		}
+
+		#~
+		Loads the file into a catalog
+		@param catalog catalog
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			table := Read(hint);
+			if(table = Nil) {
+				return false;
+			};
+
+			catalog->Add(table);
+			return true;
+		}
+
+		#~
+		Reads the file as a table
+		@param hint columns and rows needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			text := @text;
+			if(text = Nil) {
+				if(@path = Nil) {
+					@error := "no file and no text";
+					return Nil;
+				};
+				text := FileReader->ReadFile(@path);
+				if(text = Nil) {
+					@error := "cannot read '{$@path}'";
+					return Nil;
+				};
+			};
+
+			parsed := ParseText(text, @delimiter);
+			if(parsed = Nil) {
+				@error := "'{$@name}': ";
+				error := Data.CSV.CsvTable->New(text, @delimiter)->GetError();
+				@error += error <> Nil ? error : "not a CSV table";
+				return Nil;
+			};
+			csv := parsed->GetTable();
+
+			headers := csv->Get(0);
+			wanted := Vector->New()<IntRef>;
+			each(i : headers) {
+				if(hint = Nil | hint->Wants(headers->Get(i))) {
+					wanted->AddBack(i);
+				};
+			};
+
+			limit := parsed->GetRows();
+			if(hint <> Nil & hint->GetLimit() > -1 & hint->GetLimit() < limit) {
+				limit := hint->GetLimit();
+			};
+
+			names := String->New[wanted->Size()];
+			types := ColumnType->New[wanted->Size()];
+			each(i : names) {
+				column := wanted->Get(i)->Get();
+				names[i] := headers->Get(column);
+				types[i] := ScanType(csv, column, limit);
+			};
+
+			table := Table->New(@name, names, types, false);
+			for(r := 1; r <= limit; r += 1;) {
+				row := table->Insert();
+				csv_row := csv->Get(r);
+				each(i : names) {
+					text_value := csv_row->Get(wanted->Get(i)->Get());
+					if(text_value <> Nil & text_value->Size() > 0) {
+						row->Set(i + 1, Convert(text_value, types[i]));
+					};
+				};
+			};
+
+			return table;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Parses CSV text, accepting a header with no rows as an empty table
+		@param text CSV text
+		@param delimiter field delimiter
+		@return parsed table and its number of data rows, Nil if the text is not CSV
+		~#
+		function : ParseText(text : String, delimiter : Char) ~ ParsedCsv {
+			if(text = Nil) {
+				return Nil;
+			};
+
+			csv := Data.CSV.CsvTable->New(text, delimiter);
+			if(csv->IsParsed()) {
+				return ParsedCsv->New(csv, csv->Size() - 1);
+			};
+
+			# a header alone is a valid table with no rows; parse the lone line as a
+			# header and a copy of itself, so quoting follows the CSV rules, and use
+			# only the header
+			line := text->Trim();
+			if(line->IsEmpty() | line->Has('\n') | line->Has('\r')) {
+				return Nil;
+			};
+
+			doubled := String->New(line);
+			doubled += "\n";
+			doubled += line;
+			csv := Data.CSV.CsvTable->New(doubled, "\n", delimiter);
+			if(<>csv->IsParsed() | csv->Size() < 2) {
+				return Nil;
+			};
+
+			return ParsedCsv->New(csv, 0);
+		}
+
+		# the type a whole column calls for
+		function : ScanType(csv : Data.CSV.CsvTable, column : Int, limit : Int) ~ ColumnType {
+			has_int := false;
+			has_float := false;
+			has_date := false;
+			has_text := false;
+			for(r := 1; r <= limit; r += 1;) {
+				text := csv->Get(r)->Get(column);
+				if(text <> Nil & text->Size() > 0) {
+					kind := Cell->NumberKind(text);
+					if(kind = 1) {
+						has_int := true;
+					}
+					else if(kind = 2) {
+						has_float := true;
+					}
+					else if(IsDate(text)) {
+						has_date := true;
+					}
+					else {
+						has_text := true;
+					};
+				};
+			};
+
+			if(has_text | (has_date & (has_int | has_float))) {
+				return ColumnType->STRING;
+			}
+			else if(has_date) {
+				return ColumnType->DATE;
+			}
+			else if(has_float) {
+				return ColumnType->FLOAT;
+			}
+			else if(has_int) {
+				return ColumnType->INT;
+			};
+
+			return ColumnType->STRING;
+		}
+
+		function : IsDate(text : String) ~ Bool {
+			if(text->Size() < 2 | <>text->StartsWith('#') | <>text->EndsWith('#')) {
+				return false;
+			};
+
+			value := Cell->FromText(text);
+			return value <> Nil & value->TypeOf(Date);
+		}
+
+		function : Convert(text : String, type : ColumnType) ~ Compare {
+			select(type) {
+				label ColumnType->INT: {
+					return IntRef->New(text->ToInt());
+				}
+
+				label ColumnType->FLOAT: {
+					return FloatRef->New(text->ToFloat());
+				}
+
+				label ColumnType->DATE: {
+					return Cell->FromText(text);
+				}
+			};
+
+			return text;
+		}
+
+		function : BaseName(path : String) ~ String {
+			if(path = Nil) {
+				return "csv";
+			};
+
+			start := 0;
+			each(i : path) {
+				c := path->Get(i);
+				if(c = '/' | c = '\\') {
+					start := i + 1;
+				};
+			};
+
+			name := path->SubString(start, path->Size() - start);
+			dot := name->FindLast('.');
+			if(dot > 0) {
+				name := name->SubString(0, dot);
+			};
+
+			return name;
+		}
+	}
+
+	#~
+	A folder as a table named 'files', optionally with everything below it. Columns: id,
+	parent_id (empty at the top), depth (0 at the top), name, path, ext, is_dir, size, modified,
+	created, owner, is_readonly and is_hidden. A name starting with '.' counts as hidden. With a
+	scan hint, the costly columns (size, modified, created, owner, is_readonly) are only read
+	when asked for.
+
+```
+catalog := Catalog->New();
+catalog->Load(FilesystemSource->New("results", true));
+files := catalog->Get("files");
+```
+	~#
+	class FilesystemSource implements Source {
+		@root : String;
+		@recursive : Bool;
+		@max_depth : Int;
+		@include_hidden : Bool;
+		@name : String;
+		@error : String;
+
+		#~
+		Constructor
+		@param root folder
+		@param recursive true to include everything below the folder
+		~#
+		New(root : String, recursive : Bool) {
+			@root := root;
+			@recursive := recursive;
+			@max_depth := -1;
+			@include_hidden := true;
+			@name := "files";
+		}
+
+		#~
+		Constructor
+		@param root folder
+		@param recursive true to include everything below the folder
+		@param max_depth deepest level to include, 0 for the folder's own entries, -1 for no limit
+		@param include_hidden false to leave out, and not descend into, entries whose names start with '.'
+		~#
+		New(root : String, recursive : Bool, max_depth : Int, include_hidden : Bool) {
+			@root := root;
+			@recursive := recursive;
+			@max_depth := max_depth;
+			@include_hidden := include_hidden;
+			@name := "files";
+		}
+
+		#~
+		Sets the table name
+		@param name table name
+		~#
+		method : public : SetName(name : String) ~ Nil {
+			@name := name;
+		}
+
+		#~
+		Gets the column names
+		@return column names
+		~#
+		function : ColumnNames() ~ String[] {
+			return ["id", "parent_id", "depth", "name", "path", "ext", "is_dir", "size", "modified", "created", "owner", "is_readonly", "is_hidden"];
+		}
+
+		function : ColumnTypes() ~ ColumnType[] {
+			types := ColumnType->New[13];
+			types[0] := ColumnType->INT;
+			types[1] := ColumnType->INT;
+			types[2] := ColumnType->INT;
+			types[3] := ColumnType->STRING;
+			types[4] := ColumnType->STRING;
+			types[5] := ColumnType->STRING;
+			types[6] := ColumnType->BOOL;
+			types[7] := ColumnType->INT;
+			types[8] := ColumnType->DATE;
+			types[9] := ColumnType->DATE;
+			types[10] := ColumnType->STRING;
+			types[11] := ColumnType->BOOL;
+			types[12] := ColumnType->BOOL;
+			return types;
+		}
+
+		#~
+		Gets the table the folder provides
+		@return one table shape
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			specs := TableSpec->New[1];
+			specs[0] := TableSpec->New(@name, ColumnNames(), ColumnTypes());
+			return specs;
+		}
+
+		#~
+		Loads the listing into a catalog
+		@param catalog catalog
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			columns : String[];
+			limit := -1;
+			if(hint <> Nil) {
+				columns := hint->GetColumns();
+				limit := hint->GetLimit();
+			};
+
+			table := List(columns, limit);
+			if(table = Nil) {
+				return false;
+			};
+
+			catalog->Add(table);
+			return true;
+		}
+
+		#~
+		Lists the folder as a table, with every column
+		@return table, Nil if the folder cannot be read (see GetError)
+		~#
+		method : public : List() ~ Table {
+			all : String[];
+			return List(all, -1);
+		}
+
+		#~
+		Lists the folder as a table, reading only the given columns' costly values
+		@param columns columns needed
+		@return table, Nil if the folder cannot be read (see GetError)
+		~#
+		method : public : List(columns : String[]) ~ Table {
+			return List(columns, -1);
+		}
+
+		#~
+		Lists the folder as a table, reading only the given columns' costly values
+		@param columns columns needed, Nil for all
+		@param limit the most rows to list, -1 for all
+		@return table, Nil if the folder cannot be read (see GetError)
+		~#
+		method : public : List(columns : String[], limit : Int) ~ Table {
+			@error := Nil;
+			if(@root = Nil | <>Directory->Exists(@root)) {
+				@error := "'{$@root}' is not a folder";
+				return Nil;
+			};
+
+			hint := ScanHint->New(columns, limit);
+			table := Table->New(@name, ColumnNames(), ColumnTypes());
+			Walk(table, hint, Folder(@root), -1, 0);
+
+			return table;
+		}
+
+		#~
+		Gets the reason the last listing failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		# lists one folder, then (when recursive) each subfolder right after its own row
+		method : Walk(table : Table, hint : ScanHint, folder : String, parent : Int, depth : Int) ~ Nil {
+			names := Directory->List(folder);
+			if(names = Nil) {
+				return;
+			};
+
+			each(i : names) {
+				if(hint->GetLimit() > -1 & table->Size() >= hint->GetLimit()) {
+					return;
+				};
+
+				name := names[i];
+				hidden := name->StartsWith('.');
+				# '.' and '..' are the folder and its parent, never entries
+				is_link := name->Equals(".") | name->Equals("..");
+				if(<>is_link & (@include_hidden | <>hidden)) {
+					path := String->New(folder);
+					path += name;
+					is_dir := Directory->Exists(path);
+
+					row := table->Insert();
+					id := row->GetKey();
+					row->Set("id", IntRef->New(id));
+					if(parent > -1) {
+						row->Set("parent_id", IntRef->New(parent));
+					};
+					row->Set("depth", IntRef->New(depth));
+					row->Set("name", name);
+					row->Set("path", path);
+					row->Set("ext", Extension(name, is_dir));
+					row->Set("is_dir", BoolRef->New(is_dir));
+					row->Set("is_hidden", BoolRef->New(hidden));
+					if(hint->Wants("size") & <>is_dir) {
+						row->Set("size", IntRef->New(File->Size(path)));
+					};
+					if(hint->Wants("modified")) {
+						row->Set("modified", File->ModifiedTime(path));
+					};
+					if(hint->Wants("created")) {
+						row->Set("created", File->CreateTime(path));
+					};
+					if(hint->Wants("owner")) {
+						row->Set("owner", File->Owner(path));
+					};
+					if(hint->Wants("is_readonly")) {
+						row->Set("is_readonly", BoolRef->New(File->IsReadOnly(path)));
+					};
+
+					if(is_dir & @recursive & (@max_depth < 0 | depth < @max_depth)) {
+						Walk(table, hint, Folder(path), id, depth + 1);
+					};
+				};
+			};
+		}
+
+		function : Folder(path : String) ~ String {
+			if(path->EndsWith('/') | path->EndsWith('\\')) {
+				return path;
+			};
+
+			folder := String->New(path);
+			folder += '/';
+			return folder;
+		}
+
+		function : Extension(name : String, is_dir : Bool) ~ String {
+			if(is_dir) {
+				return Nil;
+			};
+
+			dot := name->FindLast('.');
+			if(dot < 1 | dot = name->Size() - 1) {
+				return Nil;
+			};
+
+			return name->SubString(dot + 1, name->Size() - dot - 1)->ToLower();
+		}
+	}
+
+	#~
+	The program's own objects as a table: one row per object, one column per function that reads
+	a value from an object. Each function's return type sets its column's type.
+
+```
+source := ObjectSource->New("runs", runs)<Run>;
+source->AddString("name", \(Run) ~ String : (r) => r->GetName());
+source->AddFloat("score", \(Run) ~ Float : (r) => r->GetScore());
+source->AddInt("epochs", \(Run) ~ Int : (r) => r->GetEpochs());
+catalog := Catalog->New();
+catalog->Load(source);
+```
+	~#
+	class ObjectSource<T> implements Source {
+		@name : String;
+		@objects : Vector<T>;
+		@names : Vector<String>;
+		@readers : Vector<ObjectReader<T>>;
+		@error : String;
+
+		#~
+		Constructor
+		@param name table name
+		@param objects objects, one per row
+		~#
+		New(name : String, objects : Vector<T>) {
+			@name := name;
+			@objects := objects;
+			@names := Vector->New()<String>;
+			@readers := Vector->New()<ObjectReader<T>>;
+		}
+
+		#~
+		Adds an Int column
+		@param name column name
+		@param reader reads the value from an object
+		@return this source
+		~#
+		method : public : AddInt(name : String, reader : (T) ~ Int) ~ ObjectSource<T> {
+			@names->AddBack(name);
+			@readers->AddBack(ObjectReader->New()<T>->SetInt(reader));
+			return @self;
+		}
+
+		#~
+		Adds a Float column
+		@param name column name
+		@param reader reads the value from an object
+		@return this source
+		~#
+		method : public : AddFloat(name : String, reader : (T) ~ Float) ~ ObjectSource<T> {
+			@names->AddBack(name);
+			@readers->AddBack(ObjectReader->New()<T>->SetFloat(reader));
+			return @self;
+		}
+
+		#~
+		Adds a String column; a Nil string is an empty cell
+		@param name column name
+		@param reader reads the value from an object
+		@return this source
+		~#
+		method : public : AddString(name : String, reader : (T) ~ String) ~ ObjectSource<T> {
+			@names->AddBack(name);
+			@readers->AddBack(ObjectReader->New()<T>->SetString(reader));
+			return @self;
+		}
+
+		#~
+		Adds a Bool column
+		@param name column name
+		@param reader reads the value from an object
+		@return this source
+		~#
+		method : public : AddBool(name : String, reader : (T) ~ Bool) ~ ObjectSource<T> {
+			@names->AddBack(name);
+			@readers->AddBack(ObjectReader->New()<T>->SetBool(reader));
+			return @self;
+		}
+
+		#~
+		Adds a Date column; a Nil date is an empty cell
+		@param name column name
+		@param reader reads the value from an object
+		@return this source
+		~#
+		method : public : AddDate(name : String, reader : (T) ~ Date) ~ ObjectSource<T> {
+			@names->AddBack(name);
+			@readers->AddBack(ObjectReader->New()<T>->SetDate(reader));
+			return @self;
+		}
+
+		#~
+		Gets the table the objects provide
+		@return one table shape
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			specs := TableSpec->New[1];
+			specs[0] := TableSpec->New(@name, Names(), Types());
+			return specs;
+		}
+
+		#~
+		Loads the objects into a catalog
+		@param catalog catalog
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			table := ToTable(hint);
+			if(table = Nil) {
+				return false;
+			};
+
+			catalog->Add(table);
+			return true;
+		}
+
+		#~
+		Reads the objects into a table
+		@param hint columns and rows needed, Nil for everything
+		@return table
+		~#
+		method : public : ToTable(hint : ScanHint) ~ Table {
+			@error := Nil;
+			if(@objects = Nil) {
+				@error := "no objects";
+				return Nil;
+			};
+
+			names := Names();
+			table := Table->New(@name, names, Types());
+			limit := @objects->Size();
+			if(hint <> Nil & hint->GetLimit() > -1 & hint->GetLimit() < limit) {
+				limit := hint->GetLimit();
+			};
+
+			each(i : limit) {
+				object := @objects->Get(i);
+				row := table->Insert();
+				each(j : names) {
+					if(hint = Nil | hint->Wants(names[j])) {
+						row->Set(j + 1, @readers->Get(j)->Read(object));
+					};
+				};
+			};
+
+			return table;
+		}
+
+		#~
+		Gets the reason the last load failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : Names() ~ String[] {
+			names := String->New[@names->Size()];
+			each(i : names) {
+				names[i] := @names->Get(i);
+			};
+
+			return names;
+		}
+
+		method : Types() ~ ColumnType[] {
+			types := ColumnType->New[@readers->Size()];
+			each(i : types) {
+				types[i] := @readers->Get(i)->GetType();
+			};
+
+			return types;
+		}
+	}
+
+	# one column's reader for ObjectSource; a function per return type, since function
+	# references cannot be told apart by their return type when overloading
+	class : private : ObjectReader<T> {
+		@type : ColumnType;
+		@int_reader : (T) ~ Int;
+		@float_reader : (T) ~ Float;
+		@string_reader : (T) ~ String;
+		@bool_reader : (T) ~ Bool;
+		@date_reader : (T) ~ Date;
+
+		New() {
+			@type := ColumnType->NONE;
+		}
+
+		method : public : SetInt(reader : (T) ~ Int) ~ ObjectReader<T> {
+			@type := ColumnType->INT;
+			@int_reader := reader;
+			return @self;
+		}
+
+		method : public : SetFloat(reader : (T) ~ Float) ~ ObjectReader<T> {
+			@type := ColumnType->FLOAT;
+			@float_reader := reader;
+			return @self;
+		}
+
+		method : public : SetString(reader : (T) ~ String) ~ ObjectReader<T> {
+			@type := ColumnType->STRING;
+			@string_reader := reader;
+			return @self;
+		}
+
+		method : public : SetBool(reader : (T) ~ Bool) ~ ObjectReader<T> {
+			@type := ColumnType->BOOL;
+			@bool_reader := reader;
+			return @self;
+		}
+
+		method : public : SetDate(reader : (T) ~ Date) ~ ObjectReader<T> {
+			@type := ColumnType->DATE;
+			@date_reader := reader;
+			return @self;
+		}
+
+		method : public : GetType() ~ ColumnType {
+			return @type;
+		}
+
+		method : public : Read(object : T) ~ Compare {
+			select(@type) {
+				label ColumnType->INT: {
+					return IntRef->New(@int_reader(object));
+				}
+
+				label ColumnType->FLOAT: {
+					return FloatRef->New(@float_reader(object));
+				}
+
+				label ColumnType->STRING: {
+					return @string_reader(object);
+				}
+
+				label ColumnType->BOOL: {
+					return BoolRef->New(@bool_reader(object));
+				}
+
+				label ColumnType->DATE: {
+					return @date_reader(object);
+				}
+			};
+
+			return Nil;
+		}
+	}
+
+	# a parsed CSV table and how many of its records are data rows (0 for a header alone)
+	class : private : ParsedCsv {
+		@table : Data.CSV.CsvTable;
+		@rows : Int;
+
+		New(table : Data.CSV.CsvTable, rows : Int) {
+			@table := table;
+			@rows := rows;
+		}
+
+		method : public : GetTable() ~ Data.CSV.CsvTable {
+			return @table;
+		}
+
+		method : public : GetRows() ~ Int {
+			return @rows;
+		}
+	}
+
+	#~
+	Finds files whose full path matches a regular expression, searching a folder and everything
+	below it. Entries whose names start with '.' are skipped, and hidden folders are not
+	entered.
 	~#
 	class Finder {
 		@regex : RegEx;
@@ -2352,7 +4762,7 @@ each(i : results) {
 		#~
 		Finds matching files in a given directory
 		@param path root directory to start searching
-		@return matching file names
+		@return matching file names, as full paths
 		```
 		finder := Query.Structured.Finder->New(".*\\.json$"); # find JSON files
 		results := finder->FindFiles("/etc/");
@@ -2363,34 +4773,28 @@ each(i : results) {
 		~#
 		method : public : FindFiles(path : String) ~ Vector<String> {
 			matches := Vector->New()<String>;
-
-			if(@regex->IsOk()) {
-				FindFiles(path, matches);
+			if(<>@regex->IsOk()) {
+				return matches;
 			};
-			
-			return matches;
-		}
 
-		method : FindFiles(path : String, matches : Vector<String>) ~ Nil {
-			files := Directory->List(path);
-			each(i : files) {
-				file := files[i];
-				if(<>file->StartsWith('.')) {
-					dir_path := String->New(path);
-					dir_path += '/';
-					dir_path += file;
-					
-					if(Directory->Exists(dir_path)) {
-						FindFiles(dir_path, matches);
-					}
-					else if(File->Exists(dir_path)) {
-						full_name := File->GetFullName(dir_path);
-						if(@regex->MatchExact(full_name)) {
-							matches->AddBack(full_name);
-						};
+			source := FilesystemSource->New(path, true, -1, false);
+			listing := source->List(["path", "is_dir"]);
+			if(listing = Nil) {
+				return matches;
+			};
+
+			paths := listing->GetColumn("path");
+			dirs := listing->GetColumn("is_dir");
+			each(row : listing->GetRowCapacity()) {
+				if(dirs->GetInt(row) = 0) {
+					full_name := File->GetFullName(paths->GetString(row));
+					if(full_name <> Nil & @regex->MatchExact(full_name)) {
+						matches->AddBack(full_name);
 					};
 				};
 			};
+
+			return matches;
 		}
 	}
 }

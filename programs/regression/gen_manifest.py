@@ -58,7 +58,7 @@ CATS = [
     ('websocket', 'Networking'), ('try_', 'Exceptions'), ('select', 'Control Flow'),
     ('odbc', 'ODBC'), ('oauth', 'Networking'), ('lsp', 'LSP'),
     ('io_', 'I/O'), ('compress_', 'I/O'), ('dap', 'Debugger'), ('debugger', 'Debugger'),
-    ('record', 'Records'), ('nlp_', 'System.NLP'),
+    ('record', 'Records'), ('query_', 'Query.Structured'), ('nlp_', 'System.NLP'),
 ]
 
 
