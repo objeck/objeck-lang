@@ -1206,8 +1206,7 @@ bundle Web.HTTP.Server {
 		enum Compression := 100 {
 			NONE,
 			GZIP,
-			DEFLATE,
-			BR
+			DEFLATE
 		}
 
 		#~
@@ -1353,7 +1352,7 @@ bundle Web.HTTP.Server {
 
 		#~
 		Set the response compression, should be called after the content is set
-		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		@param compression response compression: GZIP (RFC 1952) or DEFLATE (HTTP "deflate" is the zlib format, RFC 1950)
 
 		```
 		response->SetContent("<html>Hello</html>");
@@ -1375,12 +1374,6 @@ bundle Web.HTTP.Server {
 						@response_headers->Insert("Content-Encoding", "deflate");
 						@is_compressed := true;
 					}
-
-					label Compression->BR {
-						@content := @content->CompressBr();
-						@response_headers->Insert("Content-Encoding", "br");
-						@is_compressed := true;
-					}
 				};
 			};
 		}
@@ -1389,7 +1382,7 @@ bundle Web.HTTP.Server {
 		Set response code, content and compression type
 		@param code response code
 		@param content response content
-		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		@param compression response compression: GZIP (RFC 1952) or DEFLATE (HTTP "deflate" is the zlib format, RFC 1950)
 		~#
 		method : public : SetCodeContentCompression(code : Int, content : String, compression : Compression) ~ Nil {
 			SetCodeContentCompression(code, content->ToByteArray(), compression);
@@ -1399,7 +1392,7 @@ bundle Web.HTTP.Server {
 		Set response code, content and compression type
 		@param code response code
 		@param content response content
-		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		@param compression response compression: GZIP (RFC 1952) or DEFLATE (HTTP "deflate" is the zlib format, RFC 1950)
 		~#
 		method : public : SetCodeContentCompression(code : Int, content : Byte[], compression : Compression) ~ Nil {
 			@code := code;
@@ -1410,7 +1403,7 @@ bundle Web.HTTP.Server {
 		#~
 		Set content and compression type
 		@param content response content
-		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		@param compression response compression: GZIP (RFC 1952) or DEFLATE (HTTP "deflate" is the zlib format, RFC 1950)
 		~#
 		method : public : SetContentCompression(content : String, compression : Compression) ~ Nil {
 			SetContentCompression(content->ToByteArray(), compression);
@@ -1419,7 +1412,7 @@ bundle Web.HTTP.Server {
 		#~
 		Set content and compression type
 		@param content response content
-		@param compression response compression (br = Brotli, deflate = zlib, gzip = GNU zip)
+		@param compression response compression: GZIP (RFC 1952) or DEFLATE (HTTP "deflate" is the zlib format, RFC 1950)
 		~#
 		method : public : SetContentCompression(content : Byte[], compression : Compression) ~ Nil {
 			@content := content;

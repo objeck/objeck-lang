@@ -5,7 +5,7 @@ A Byte[] reports one size to Objeck and another to native code.
 Size() reads header word [2]; native libraries read [0] through
 APITools_GetArraySize. The interpreter's Byte->New writes [0] = count, but the
 JIT's NEW_BYTE_ARY and the trap producers (Char[]->ToBytes, the zlib/gzip/
-brotli traps, the HTTP/2 and HTTP/3 response bodies, the serializer's buffer)
+raw-deflate traps, the HTTP/2 and HTTP/3 response bodies, the serializer's buffer)
 wrote [0] = count + 1 for the NUL pad -- so Hash->SHA256("abc"->ToByteArray())
 digested "abc" plus a zero byte, and no hash of a string ever matched another
 implementation. Every producer is exercised here through a native call.

@@ -1,0 +1,136 @@
+# EXTRA_LIBS: net,net_server
+#~
+Byte->CompressDeflate/UncompressDeflate are raw deflate (RFC 1951), and the web server's
+response compression sends only what it can produce.
+
+The raw deflate pair used to be called CompressBr/UncompressBr and was documented as
+Brotli, while the trap behind it was zlib with windowBits -15. Web.HTTP.Server's
+Compression->BR then sent raw deflate under "Content-Encoding: br", which no browser or
+Brotli decoder accepts. The functions are now named for what they do and the server no
+longer offers "br"; its DEFLATE coding is the zlib format that HTTP's "deflate" means
+(RFC 9110, section 8.4.1.2).
+
+The reference vectors come from Python's zlib:
+  zlib.compressobj(-1, zlib.DEFLATED, -15, 9) over the text below,
+and a stored block written by hand (BFINAL=1, BTYPE=00, LEN=5, NLEN=~5, "hello").
+~#
+use Web.HTTP.Server;
+
+class LangCompressDeflate {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Same(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Bytes(values : Int[]) ~ Byte[] {
+		bytes := Byte->New[values->Size()];
+		each(i : values) {
+			bytes[i] := values[i];
+		};
+		return bytes;
+	}
+
+	function : Raises(bytes : Byte[], raw : Bool) ~ Bool {
+		failed := false;
+		try {
+			if(raw) {
+				bytes->UncompressDeflate();
+			}
+			else {
+				bytes->UncompressZlib();
+			};
+		}
+		on(e : Error) {
+			failed := true;
+		};
+		return failed;
+	}
+
+	function : RoundTrip(text : String) ~ Nil {
+		plain := text->ToByteArray();
+		size := plain->Size();
+		packed := plain->CompressDeflate();
+		Check("raw deflate round trip of {$size} bytes", Same(plain, packed->UncompressDeflate()));
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# round trips
+		texts := ["", "a", "hello world hello", "abcdefghijklmnopqrstuvwxyz0123456789"];
+		each(i : texts) {
+			RoundTrip(texts[i]);
+		};
+		big := "";
+		each(j : 20000) {
+			big += "row,{$j},value\n";
+		};
+		RoundTrip(big);
+
+		# interop: a stream from Python's zlib with windowBits -15
+		text := "Objeck raw deflate: hello hello hello hello world";
+		python := Bytes([
+			0xf3, 0x4f, 0xca, 0x4a, 0x4d, 0xce, 0x56, 0x28, 0x4a, 0x2c, 0x57, 0x48,
+			0x49, 0x4d, 0xcb, 0x49, 0x2c, 0x49, 0xb5, 0x52, 0xc8, 0x48, 0xcd, 0xc9,
+			0xc9, 0xc7, 0x42, 0x96, 0xe7, 0x17, 0xe5, 0xa4, 0x00, 0x00]);
+		Check("decodes Python's raw deflate", Same(text->ToByteArray(), python->UncompressDeflate()));
+
+		# interop: a hand-written stored block
+		stored := Bytes([0x01, 0x05, 0x00, 0xfa, 0xff, 0x68, 0x65, 0x6c, 0x6c, 0x6f]);
+		Check("decodes a stored deflate block", Same("hello"->ToByteArray(), stored->UncompressDeflate()));
+
+		# our output is raw: no zlib header, so the zlib reader rejects it and the raw one does not
+		ours := text->ToByteArray()->CompressDeflate();
+		Check("output carries no zlib header", ours->Size() > 0 & ours[0] <> 0x78);
+		Check("zlib reader rejects raw deflate", Raises(ours, false));
+		Check("raw reader rejects zlib-wrapped data", Raises(text->ToByteArray()->CompressZlib(), true));
+		Check("damaged raw deflate raises", Raises(Bytes([0xff, 0xff, 0xff, 0xff]), true));
+
+		# the web server's response codings
+		page := "<html><body>hello hello hello hello</body></html>";
+		response := Response->New(Nil, "/");
+		response->SetContentCompression(page, Response->Compression->DEFLATE);
+		encoding := response->GetHeader("Content-Encoding");
+		body := response->GetContent();
+		Check("DEFLATE response says 'deflate'", encoding <> Nil & encoding->Equals("deflate"));
+		Check("DEFLATE response body is the zlib format", body <> Nil & body->Size() > 2 & body[0] = 0x78);
+		Check("DEFLATE response body decodes as zlib", Same(page->ToByteArray(), body->UncompressZlib()));
+
+		response := Response->New(Nil, "/");
+		response->SetContentCompression(page, Response->Compression->GZIP);
+		encoding := response->GetHeader("Content-Encoding");
+		body := response->GetContent();
+		Check("GZIP response says 'gzip'", encoding <> Nil & encoding->Equals("gzip"));
+		Check("GZIP response body decodes as gzip", Same(page->ToByteArray(), body->UncompressGzip()));
+
+		response := Response->New(Nil, "/");
+		response->SetContentCompression(page, Response->Compression->NONE);
+		Check("NONE response sends no Content-Encoding", response->GetHeader("Content-Encoding") = Nil);
+
+		if(@failures = 0) {
+			"PASS: raw deflate and HTTP response codings"->PrintLine();
+		}
+		else {
+			"FAIL: raw deflate and HTTP response codings ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

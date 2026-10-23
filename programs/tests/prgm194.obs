@@ -15,10 +15,10 @@ class Test {
 		compressed->Size()->PrintLine();
 		Print(compressed->UncompressGzip(), size);
 
-		# br (deflate)
-		compressed := str->ToByteArray()->CompressBr();
+		# raw deflate
+		compressed := str->ToByteArray()->CompressDeflate();
 		compressed->Size()->PrintLine();
-		Print(compressed->UncompressBr(), size);
+		Print(compressed->UncompressDeflate(), size);
 	}
 
 	function : Print(bytes : Byte[], size : Int) ~ Nil {
