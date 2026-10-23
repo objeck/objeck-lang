@@ -1340,6 +1340,7 @@ class StackProgram {
   long cls_cls_id;
   long mthd_cls_id;
   long sock_cls_id;
+  long secure_sock_cls_id;
   long dtls_sock_cls_id;
   long data_type_cls_id;
   long command_output_cls_id;
@@ -1380,7 +1381,7 @@ class StackProgram {
     cls_interfaces = nullptr;
     classes = nullptr;
     char_strings = nullptr;
-    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = dtls_sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
+    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = secure_sock_cls_id = dtls_sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
     InitializeCriticalSection(&prop_cs);
@@ -1593,18 +1594,23 @@ class StackProgram {
     return sock_cls_id;
   }
 
-	 long GetSecureSocketObjectId() {
-		 if(sock_cls_id < 0) {
-			 StackClass* cls = GetClass(L"System.IO.Net.TCPSecureSocket");
-			 if(!cls) {
-				 std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << std::endl;
-				 VmExit(1);
-			 }
-			 sock_cls_id = cls->GetId();
-		 }
+  // Its own cache: this shared sock_cls_id with GetSocketObjectId, so whichever
+  // kind of server accepted first fixed the class of every socket accepted
+  // after it. A plain TCPSocketServer in a process that had already accepted a
+  // TLS connection handed back TCPSecureSocket objects holding raw sockets, and
+  // the other way round.
+  long GetSecureSocketObjectId() {
+    if(secure_sock_cls_id < 0) {
+      StackClass* cls = GetClass(L"System.IO.Net.TCPSecureSocket");
+      if(!cls) {
+        std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << std::endl;
+        VmExit(1);
+      }
+      secure_sock_cls_id = cls->GetId();
+    }
 
-		 return sock_cls_id;
-	 }
+    return secure_sock_cls_id;
+  }
 
   long GetDtlsSocketObjectId() {
     if(dtls_sock_cls_id < 0) {
