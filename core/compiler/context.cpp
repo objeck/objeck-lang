@@ -2771,8 +2771,12 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
     // set eval type with the dimension of the value the branches yield. Zeroing it
     // unconditionally typed a conditional over primitive arrays as a scalar, so a
     // call on it resolved to the scalar helper and returned garbage (#867).
-    conditional->SetEvalType(if_conditional->GetEvalType(), true);
-    conditional->GetEvalType()->SetDimension(if_dimension);
+    // The branch's TYPE, not its eval type: for a call chain the eval type is the
+    // first call's, so 'c ? cols->Get(0)->GetType() : ColumnType->INT' was typed
+    // a Col, and returning it as a ColumnType failed "Invalid cast between enum
+    // and class". A Nil first branch takes the other branch's type.
+    conditional->SetEvalType(if_type->GetType() == NIL_TYPE ? else_type : if_type, true);
+    conditional->GetEvalType()->SetDimension(if_type->GetType() == NIL_TYPE ? value_dimension(else_conditional, else_type) : if_dimension);
     current_method->SetAndOr(true);
   }
   else {

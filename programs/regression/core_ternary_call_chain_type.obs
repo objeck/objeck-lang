@@ -1,0 +1,96 @@
+#~
+Regression: a '?:' whose first branch is a call chain takes the chain's type.
+
+'return c ? cols->Get(0)->GetType() : ColumnType->INT;' in a method declared
+to return a ColumnType failed "Invalid cast between enum and class"; with
+the branches the other way round it compiled. The conditional took the first
+branch's eval type, which for a chain is its FIRST call's (Get's Col), not
+the type of the value the chain yields. A first branch of Nil now takes the
+other branch's type.
+~#
+
+use Collection;
+
+enum ColumnType {
+	INT, FLOAT, STRING
+}
+
+class Col {
+	@t : ColumnType;
+	@name : String;
+
+	New(t : ColumnType, name : String) {
+		@t := t;
+		@name := name;
+	}
+
+	method : public : GetType() ~ ColumnType {
+		return @t;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
+	}
+}
+
+class Tab {
+	@cols : Vector<Col>;
+
+	New() {
+		@cols := Vector->New()<Col>;
+		@cols->AddBack(Col->New(ColumnType->FLOAT, "price"));
+	}
+
+	method : public : First(c : Bool) ~ ColumnType {
+		return c ? @cols->Get(0)->GetType() : ColumnType->INT;
+	}
+
+	method : public : Second(c : Bool) ~ ColumnType {
+		return c ? ColumnType->INT : @cols->Get(0)->GetType();
+	}
+
+	method : public : Local(c : Bool) ~ ColumnType {
+		cs := @cols;
+		t := c ? cs->Get(0)->GetType() : ColumnType->STRING;
+		return t;
+	}
+
+	method : public : Name(c : Bool) ~ String {
+		return c ? @cols->Get(0)->GetName() : "none";
+	}
+
+	method : public : NilFirst(c : Bool) ~ String {
+		s := c ? Nil : @cols->Get(0)->GetName();
+		if(s = Nil) {
+			return "nil";
+		};
+		return s;
+	}
+}
+
+class Test {
+	@failed : static : Int;
+
+	function : Expect(what : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$what}: got {$got}, want {$want}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := Tab->New();
+		Expect("chain first, taken", t->First(true)->As(Int), ColumnType->FLOAT->As(Int));
+		Expect("chain first, not taken", t->First(false)->As(Int), ColumnType->INT->As(Int));
+		Expect("chain second", t->Second(false)->As(Int), ColumnType->FLOAT->As(Int));
+		Expect("through a local", t->Local(true)->As(Int), ColumnType->FLOAT->As(Int));
+		Expect("String chain", t->Name(true)->Size(), 5);
+		Expect("Nil first", t->NilFirst(true)->Size(), 3);
+		Expect("Nil first, not taken", t->NilFirst(false)->Size(), 5);
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: a conditional takes its call-chain branch's type"->PrintLine();
+	}
+}
