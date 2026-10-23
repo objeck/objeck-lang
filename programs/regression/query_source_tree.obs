@@ -1,0 +1,79 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured over a directory tree (docs/QUERY_DESIGN.md, section 6, phase 4): the recursive
+FilesystemSource's parent keys answer parent and child questions with a self-join, MATCHES (a
+whole-value regular expression, in SQL and through Col) selects paths, and Finder->FindTable
+returns the files FindFiles finds as a view that can be filtered and grouped. Inputs are written
+by the test in a folder it removes.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class QuerySourceTree {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		root := "query_tree_tmp";
+		Directory->Delete(root);
+		Directory->Create(root);
+		Directory->Create("{$root}/src");
+		Directory->Create("{$root}/src/lib");
+		Directory->Create("{$root}/docs");
+		FileWriter->WriteFile("{$root}/src/main.obs", "class A {}");
+		FileWriter->WriteFile("{$root}/src/lib/util.obs", "class B {}");
+		FileWriter->WriteFile("{$root}/src/lib/data.json", "[]");
+		FileWriter->WriteFile("{$root}/docs/guide.md", "# guide");
+		FileWriter->WriteFile("{$root}/README.md", "readme");
+
+		catalog := Catalog->New();
+		Check("the tree loads", catalog->Load(FilesystemSource->New("{$root}/", true, -1, false)));
+		names := catalog->GetNames();
+		files := names[0];
+
+		rs := catalog->Query("select c.name from {$files} c join {$files} p on c.parent_id = p.id where p.name = 'lib' order by c.name");
+		Check("a self-join on parent keys finds a folder's children", rs <> Nil & rs->Size() = 2 & rs->Get(0)->Get("name")->As(String)->Equals("data.json"));
+
+		rs := catalog->Query("select p.name, count(*) as n from {$files} c join {$files} p on c.parent_id = p.id where c.is_dir = false group by p.name order by p.name");
+		Check("files per folder", rs <> Nil & rs->Size() = 3 & rs->Get(1)->Get("n")->As(IntRef)->Get() = 2);
+
+		rs := catalog->Query("select name from {$files} where name matches '[a-z]+\\.obs' order by name");
+		Check("MATCHES in SQL", rs <> Nil & rs->Size() = 2 & rs->Get(1)->Get("name")->As(String)->Equals("util.obs"));
+		rs := catalog->Query("select name from {$files} where is_dir = false and name not matches '.*\\.(obs|md)' order by name");
+		Check("NOT MATCHES", rs <> Nil & rs->Size() = 1 & rs->Get(0)->Get("name")->As(String)->Equals("data.json"));
+		rs := catalog->Query("select name from {$files} where name matches 'obs'");
+		Check("MATCHES is a whole-value match", rs <> Nil & rs->Size() = 0);
+		Check("an invalid pattern is an error", catalog->Query("select name from {$files} where name matches '[a-'") = Nil & catalog->GetError()->Has("regular expression"));
+
+		table := catalog->Get(files);
+		view := table->Where(Col->Of("ext")->Matches("obs|md")->AndAlso(Col->Of("depth")->Gt(0)));
+		Check("Col->Matches", view <> Nil & view->Count() = 3);
+
+		finder := Finder->New(".*\\.obs");
+		found := finder->FindFiles(root);
+		found_table := finder->FindTable(root);
+		Check("FindTable finds what FindFiles finds", found_table <> Nil & found_table->Count() = found->Size() & found->Size() = 2);
+		if(found_table <> Nil) {
+			deep := found_table->Where(Col->Of("depth")->Gt(1));
+			Check("FindTable's view can be filtered", deep <> Nil & deep->Count() = 1 & deep->Get(0)->Get("name")->As(String)->Equals("util.obs"));
+			Check("FindTable has the filesystem columns", found_table->GetColumnNames()->Size() > 5);
+		};
+		Check("FindTable with an invalid pattern is Nil", Finder->New("[a-")->FindTable(root) = Nil);
+
+		Directory->Delete(root);
+
+		if(@failures = 0) {
+			"PASS: query directory trees, MATCHES and FindTable"->PrintLine();
+		}
+		else {
+			"FAIL: query directory trees, MATCHES and FindTable ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

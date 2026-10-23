@@ -4226,6 +4226,9 @@
 				"GetAttribute": {
 					"descriptions": ["**Gets an element attribute**\n\n```method : public : GetAttribute(key:String) ~ XmlAttribute```\n\n\n\nkey: String\n\nreturn: XmlAttribute\n\n```\nparser := XmlParser->New(\"<link href=\\\"http:\/\/example.com\\\"\/>\");\nif(parser->Parse()) {\n  href := parser->GetRoot()->GetAttribute(\"href\");\n  href->GetValue()->PrintLine();\n};\n```"]
 				},
+				"GetAttributes": {
+					"descriptions": ["**Gets the element's attributes, in the order they were added (document order for a parsed element); an attribute added again under the same name keeps its first position**\n\n```method : public : GetAttributes() ~ Vector&lt;XmlAttribute&gt;```\n\n\n\nreturn: Vector&lt;XmlAttribute&gt;\n\n```\nparser := XmlParser->New(\"<run id=\\\"7\\\" label=\\\"cat\\\"\/>\");\nif(parser->Parse()) {\n  attribs := parser->GetRoot()->GetAttributes();\n  each(i : attribs) {\n    attribs->Get(i)->GetName()->PrintLine();\n  };\n};\n```"]
+				},
 				"GetChildren": {
 					"descriptions": ["**Get all child elements that matchs the given filter**\n\n```method : public : native : GetChildren(name:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\nname: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<store><item>a<\/item><item>b<\/item><desc>info<\/desc><\/store>\");\nif(parser->Parse()) {\n  items := parser->GetRoot()->GetChildren(\"item\")<XmlElement>;\n  Console->PrintLine(items->Size());\n};\n```", "**Get all child elements that matchs the given filter**\n\n```method : public : native : GetChildren(name:String, attrib:String) ~ Vector&lt;XmlElement&gt;```\n\n\n\nname: String\n\nattrib: String\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<root><item id=\\\"1\\\">a<\/item><item>b<\/item><\/root>\");\nif(parser->Parse()) {\n  tagged := parser->GetRoot()->GetChildren(\"item\", \"id\")<XmlElement>;\n  Console->PrintLine(tagged->Size());\n};\n```", "**Get all child elements that matchs the given filter**\n\n```method : public : native : GetChildren(name:String, max:Int) ~ Vector&lt;XmlElement&gt;```\n\n\n\nname: String\n\nmax: Int\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<root><item>a<\/item><item>b<\/item><item>c<\/item><\/root>\");\nif(parser->Parse()) {\n  first_two := parser->GetRoot()->GetChildren(\"item\", 2)<XmlElement>;\n  Console->PrintLine(first_two->Size());\n};\n```", "**Get all children**\n\n```method : public : GetChildren() ~ Vector&lt;XmlElement&gt;```\n\n\n\nreturn: Vector&lt;XmlElement&gt;\n\n```\nparser := XmlParser->New(\"<root><a\/><b\/><c\/><\/root>\");\nif(parser->Parse()) {\n  each(child := parser->GetRoot()->GetChildren()) {\n    child->GetName()->PrintLine();\n  };\n};\n```"]
 				},
@@ -8846,6 +8849,9 @@
 				"GetError": {
 					"descriptions": ["**Gets the reason the last load, query or statement failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetFileReads": {
+					"descriptions": ["**Gets how many times queries have read a file, for checking that unchanged files come from the cache**\n\n```method : public : GetFileReads() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetNames": {
 					"descriptions": ["**Gets the table names**\n\n```method : public : GetNames() ~ String[]```\n\n\n\nreturn: String[]"]
 				},
@@ -8862,10 +8868,13 @@
 					"descriptions": ["**Parses a statement once, for running many times with different values**\n\n```method : public : Prepare(statement:String) ~ Statement```\n\n\n\nstatement: String\n\nreturn: Statement"]
 				},
 				"Query": {
-					"descriptions": ["**Runs a SELECT over the catalog's tables, which it can join**\n\n```method : public : Query(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\nrs := catalog->Query(\"select dept, count(*) as n from emp group by dept having count(*) > 1\");\n```"]
+					"descriptions": ["**Runs a SELECT over the catalog's tables, which it can join, and over files named in it**\n\n```method : public : Query(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\nrs := catalog->Query(\"select dept, count(*) as n from emp group by dept having count(*) > 1\");\n```"]
 				},
 				"Remove": {
 					"descriptions": ["**Removes a table**\n\n```method : public : Remove(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"Run": {
+					"descriptions": ["**Runs a SELECT that reads files named in it, with no catalog of tables. Each call reads the files again; a program that repeats a query keeps a Catalog and uses its Query, which reads a file again only after it changes.**\n\n```function : Run(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\nrs := Catalog->Run(\"select name, avg(score) from 'results\/run_*.csv' group by name\");\n```"]
 				}
 			}
 		},
@@ -8902,6 +8911,9 @@
 				"Lt": {
 					"descriptions": ["**Less than a value**\n\n```method : public : Lt(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Less than an Int**\n\n```method : public : Lt(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Less than a Float**\n\n```method : public : Lt(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate"]
 				},
+				"Matches": {
+					"descriptions": ["**The whole cell matches a regular expression (Query.RegEx); only text cells take part**\n\n```method : public : Matches(pattern:String) ~ Predicate```\n\n\n\npattern: String\n\nreturn: Predicate"]
+				},
 				"Ne": {
 					"descriptions": ["**Not equal to a value; true for cells that cannot be compared with it**\n\n```method : public : Ne(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Not equal to an Int**\n\n```method : public : Ne(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Not equal to a Float**\n\n```method : public : Ne(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate"]
 				},
@@ -8910,6 +8922,9 @@
 				},
 				"NotLike": {
 					"descriptions": ["**Does not match an SQL LIKE pattern; only text cells take part**\n\n```method : public : NotLike(pattern:String) ~ Predicate```\n\n\n\npattern: String\n\nreturn: Predicate"]
+				},
+				"NotMatches": {
+					"descriptions": ["**The cell does not match a regular expression; only text cells take part**\n\n```method : public : NotMatches(pattern:String) ~ Predicate```\n\n\n\npattern: String\n\nreturn: Predicate"]
 				},
 				"Of": {
 					"descriptions": ["**Starts a condition on a column**\n\n```function : Of(name:String) ~ Col```\n\n\n\nname: String\n\nreturn: Col"]
@@ -9073,6 +9088,9 @@
 				},
 				"Read": {
 					"descriptions": ["**Reads the file as a table**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				},
+				"SetHeader": {
+					"descriptions": ["**Sets whether the first line names the columns (the default). Without a header every line is data and the columns are named c1, c2 and so on.**\n\n```method : public : SetHeader(header:Bool) ~ Nil```\n\n\n\nheader: Bool\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -9108,31 +9126,63 @@
 				"FindFiles": {
 					"descriptions": ["**Finds matching files in a given directory**\n\n```method : public : FindFiles(path:String) ~ Vector&lt;String&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;String&gt;\n\n```\nfinder := Query.Structured.Finder->New(\".*\\\\.json$\"); # find JSON files\nresults := finder->FindFiles(\"\/etc\/\");\neach(i : results) {\n  results->Get(i)->PrintLine();\n};\n```"]
 				},
+				"FindTable": {
+					"descriptions": ["**Finds matching files as a view over the filesystem table, so the result can be filtered, sorted, grouped or joined. The rows are the files FindFiles returns; the columns are FilesystemSource's.**\n\n```method : public : FindTable(path:String) ~ View```\n\n\n\npath: String\n\nreturn: View\n\n```\nfinder := Query.Structured.Finder->New(\".*\\\\.obs$\");\nbig := finder->FindTable(\"src\")->Where(Col->Of(\"size\")->Gt(10000))->OrderBy(\"size\", Order->DESC);\n```"]
+				},
 				"New": {
 					"descriptions": ["**Default constructor**\n\n```New(expr:String)```\n\n\n\nexpr: String\n\n```\nfinder := Query.Structured.Finder->New(\".*\\\\.obs$\"); # match .obs files\nmatches := finder->FindFiles(\"\/home\/user\/src\");\neach(i : matches) { matches->Get(i)->PrintLine(); };\n```"]
 				}
 			}
 		},
 		"Query.Structured.JsonLinesSource": {
-			"description": "A JSON Lines file (one JSON object per line, '.jsonl' or '.ndjson') as a table. Nested objects become dotted column names ('address.city'); arrays are kept as their JSON text for now. Columns are typed by all their values: whole numbers INT, any decimal FLOAT, true and false BOOL, and any mix, or text, STRING. null and a missing key are empty cells. A line that is not a JSON object is an error naming the line. Columns appear in the order keys are first seen, alphabetical within an object. A name ending in '.gz' is decompressed first.",
+			"description": "A JSON Lines file (one JSON object per line, '.jsonl' or '.ndjson') as a table. Nested objects become dotted column names ('address.city'), and each nested array becomes a child table, as JsonSource makes them: an array member 'tags' of table 'runs' is the table 'runs_tags', joined back through '_parent_id' = '_id'. Columns are typed by all their values: whole numbers INT, any decimal FLOAT, true and false BOOL, and any mix, or text, STRING. null and a missing key are empty cells. A line that is not a JSON object is an error naming the line. Columns appear in the order keys are first seen, alphabetical within an object. A name ending in '.gz' is decompressed first.",
 			"functions": {
 				"FromText": {
 					"descriptions": ["**Makes a source over JSON Lines text already in memory**\n\n```function : FromText(name:String, text:String) ~ JsonLinesSource```\n\n\n\nname: String\n\ntext: String\n\nreturn: JsonLinesSource"]
+				},
+				"GetChildTables": {
+					"descriptions": ["**Gets the child tables the last Read made, in the order their arrays were first seen**\n\n```method : public : GetChildTables() ~ Vector&lt;Table&gt;```\n\n\n\nreturn: Vector&lt;Table&gt;"]
 				},
 				"GetError": {
 					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetTables": {
-					"descriptions": ["**Gets the table the file provides; column types are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+					"descriptions": ["**Gets the tables the file provides, the main table first; they are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
 				},
 				"Load": {
-					"descriptions": ["**Loads the file into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+					"descriptions": ["**Loads the file's tables into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
 				},
 				"New": {
 					"descriptions": ["**Constructor; the table is named after the file**\n\n```New(path:String)```\n\n\n\npath: String", "**Constructor**\n\n```New(path:String, name:String)```\n\n\n\npath: String\n\nname: String"]
 				},
 				"Read": {
 					"descriptions": ["**Reads the file as a table**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the file as a table**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				}
+			}
+		},
+		"Query.Structured.JsonSource": {
+			"description": "A JSON document as tables: an array of objects (or one object) becomes a table, nested objects become dotted column names ('address.city'), and each nested array becomes a child table joined back through '_parent_id' = '_id'; an array member 'tags' of table 'runs' is the table 'runs_tags'. Array items that are not objects become a child table with one 'value' column. Columns are typed as JsonLinesSource types them. A name ending in '.gz' is decompressed first.",
+			"functions": {
+				"FromText": {
+					"descriptions": ["**Makes a source over JSON text already in memory**\n\n```function : FromText(name:String, text:String) ~ JsonSource```\n\n\n\nname: String\n\ntext: String\n\nreturn: JsonSource"]
+				},
+				"GetChildTables": {
+					"descriptions": ["**Gets the child tables the last Read made: depth first, in the order their arrays were first seen, an object's members taken alphabetically**\n\n```method : public : GetChildTables() ~ Vector&lt;Table&gt;```\n\n\n\nreturn: Vector&lt;Table&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the tables the document provides, the main table first; they are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the document's tables into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the table is named after the file**\n\n```New(path:String)```\n\n\n\npath: String", "**Constructor**\n\n```New(path:String, name:String)```\n\n\n\npath: String\n\nname: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the document's main table; GetChildTables then has the others**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the document's main table; GetChildTables then has the others**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
 				}
 			}
 		},
@@ -9552,6 +9602,32 @@
 				},
 				"Where": {
 					"descriptions": ["**The rows that also meet a condition**\n\n```method : public : Where(condition:Predicate) ~ View```\n\n\n\ncondition: Predicate\n\nreturn: View"]
+				}
+			}
+		},
+		"Query.Structured.XmlSource": {
+			"description": "An XML document as tables: each element named 'row_element' is a row. Its attributes are columns named '",
+			"functions": {
+				"FromText": {
+					"descriptions": ["**Makes a source over XML text already in memory**\n\n```function : FromText(name:String, text:String, row_element:String) ~ XmlSource```\n\n\n\nname: String\n\ntext: String\n\nrow_element: String\n\nreturn: XmlSource"]
+				},
+				"GetChildTables": {
+					"descriptions": ["**Gets the child tables the last Read made, depth first in the order their elements were first seen**\n\n```method : public : GetChildTables() ~ Vector&lt;Table&gt;```\n\n\n\nreturn: Vector&lt;Table&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the tables the document provides, the main table first; they are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the document's tables into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the table is named after the file**\n\n```New(path:String, row_element:String)```\n\n\n\npath: String\n\nrow_element: String", "**Constructor**\n\n```New(path:String, name:String, row_element:String)```\n\n\n\npath: String\n\nname: String\n\nrow_element: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the document's main table; GetChildTables then has the others**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the document's main table; GetChildTables then has the others**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
 				}
 			}
 		},
@@ -17203,6 +17279,12 @@
 				"file": ""
 			}
 		],
+		"JsonSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
 		"ObjectSource": [
 			{
 				"bundle": "Query.Structured",
@@ -17258,6 +17340,12 @@
 			}
 		],
 		"View": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"XmlSource": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""

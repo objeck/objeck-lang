@@ -3143,7 +3143,9 @@ results->ToString()->PrintLine();
 		NOT_NULL,
 		AND,
 		OR,
-		NOT
+		NOT,
+		MATCHES,
+		NOT_MATCHES
 	}
 
 	#~
@@ -3569,6 +3571,24 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 		}
 
 		#~
+		The whole cell matches a regular expression (Query.RegEx); only text cells take part
+		@param pattern regular expression
+		@return condition
+		~#
+		method : public : Matches(pattern : String) ~ Predicate {
+			return Predicate->New(Op->MATCHES, @name, pattern, 0);
+		}
+
+		#~
+		The cell does not match a regular expression; only text cells take part
+		@param pattern regular expression
+		@return condition
+		~#
+		method : public : NotMatches(pattern : String) ~ Predicate {
+			return Predicate->New(Op->NOT_MATCHES, @name, pattern, 0);
+		}
+
+		#~
 		The cell is empty
 		@return condition
 		~#
@@ -3608,6 +3628,8 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 		@code : Int;
 		@like_codes : Bool[];
 		@never : Bool;
+		@regex : RegEx;
+		@bad_pattern : Bool;
 
 		New(op : Op) {
 			@op := op;
@@ -3657,7 +3679,32 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 
 			filter := Filter->New(op);
 			filter->Prepare(column, value);
+			if(filter->IsBadPattern()) {
+				error->Set("'{$(value->As(String))}' is not a valid regular expression");
+				return Nil;
+			};
 			return filter;
+		}
+
+		method : public : IsBadPattern() ~ Bool {
+			return @bad_pattern;
+		}
+
+		function : IsMatchOp(op : Op) ~ Bool {
+			return op = Op->MATCHES | op = Op->NOT_MATCHES;
+		}
+
+		function : IsTextOp(op : Op) ~ Bool {
+			return op = Op->LIKE | op = Op->NOT_LIKE | op = Op->MATCHES | op = Op->NOT_MATCHES;
+		}
+
+		# whether text passes a LIKE or MATCHES test, before NOT_ is applied
+		method : TextMatches(text : String) ~ Bool {
+			if(@regex <> Nil) {
+				return @regex->MatchExact(text);
+			};
+
+			return Cell->MatchLike(text, @text);
 		}
 
 		method : public : SetLeft(left : Filter) ~ Nil {
@@ -3685,6 +3732,19 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 				# a comparison with NULL is false for every row; only IS [NOT] NULL tests for it
 				@never := @op <> Op->IS_NULL & @op <> Op->NOT_NULL;
 				return;
+			};
+
+			# a LIKE or MATCHES pattern, for STRING and OBJECT columns alike
+			if(IsTextOp(@op) & value->TypeOf(String)) {
+				@text := value->As(String);
+			};
+
+			if(IsMatchOp(@op) & value->TypeOf(String)) {
+				@regex := RegEx->New(value->As(String));
+				if(<>@regex->IsOk()) {
+					@bad_pattern := true;
+					return;
+				};
 			};
 
 			select(@type) {
@@ -3731,11 +3791,11 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 						@text := value->As(String);
 						if(column->IsEncoded()) {
 							@code := column->FindCode(@text);
-							if(@op = Op->LIKE | @op = Op->NOT_LIKE) {
+							if(IsTextOp(@op)) {
 								size := column->GetDictionarySize();
 								@like_codes := Bool->New[size];
 								each(i : size) {
-									@like_codes[i] := Cell->MatchLike(@dict[i], @text);
+									@like_codes[i] := TextMatches(@dict[i]);
 								};
 							};
 						};
@@ -3852,18 +3912,18 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 				return false;
 			};
 
-			if(@op = Op->LIKE | @op = Op->NOT_LIKE) {
-				is_like := @op = Op->LIKE;
+			if(IsTextOp(@op)) {
+				is_like := @op = Op->LIKE | @op = Op->MATCHES;
 				if(@type = ColumnType->STRING & @comparable) {
 					if(@like_codes <> Nil) {
 						return @like_codes[@ints[row]] = is_like;
 					};
-					return Cell->MatchLike(@strings[row], @text) = is_like;
+					return TextMatches(@strings[row]) = is_like;
 				}
 				else if(@type = ColumnType->OBJECT & @value <> Nil & @value->TypeOf(String)) {
 					cell := @objects[row];
 					if(cell->TypeOf(String)) {
-						return Cell->MatchLike(cell->As(String), @value->As(String)) = is_like;
+						return TextMatches(cell->As(String)) = is_like;
 					};
 				};
 				return false;
@@ -4939,8 +4999,12 @@ results := statement->Execute();
 					};
 					tokens->AddBack(SqlToken->New(SqlToken->Kind->DATE, text, date, start));
 				}
-				else if(c->IsChar() | c = '_') {
+				else if(c->IsChar() | c = '_' | (c = '@' & (Peek(i + 1)->IsChar() | Peek(i + 1) = '_'))) {
 					text := "";
+					if(c = '@') {
+						text->Append(c);
+						i += 1;
+					};
 					while(i < size & IsNameChar(@line->Get(i))) {
 						text->Append(@line->Get(i));
 						i += 1;
@@ -4991,6 +5055,10 @@ results := statement->Execute();
 				}
 				else if(c = '<' & (Peek(i + 1) = '>' | Peek(i + 1) = '=')) {
 					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, @line->SubString(i, 2), Nil, start));
+					i += 2;
+				}
+				else if(c = '=' & Peek(i + 1) = '>') {
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, "=>", Nil, start));
 					i += 2;
 				}
 				else if((c = '>' | c = '!') & Peek(i + 1) = '=') {
@@ -5096,10 +5164,12 @@ results := statement->Execute();
 		@alias_name : String;
 		@left_key : String;
 		@right_key : String;
+		@file : SqlFile;
 
-		New(is_left : Bool, table_name : String, alias_name : String, left_key : String, right_key : String) {
+		New(is_left : Bool, table_name : String, file : SqlFile, alias_name : String, left_key : String, right_key : String) {
 			@is_left := is_left;
 			@table_name := table_name;
+			@file := file;
 			@alias_name := alias_name;
 			@left_key := left_key;
 			@right_key := right_key;
@@ -5111,6 +5181,11 @@ results := statement->Execute();
 
 		method : public : GetTableName() ~ String {
 			return @table_name;
+		}
+
+		# the file it reads, Nil for a table of the catalog
+		method : public : GetFile() ~ SqlFile {
+			return @file;
 		}
 
 		method : public : GetAlias() ~ String {
@@ -5204,6 +5279,7 @@ results := statement->Execute();
 		@items : Vector<SqlItem>;
 		@extra : Vector<SqlItem>;
 		@table_name : String;
+		@file : SqlFile;
 		@alias_name : String;
 		@joins : Vector<SqlJoin>;
 		@where : Predicate;
@@ -5240,6 +5316,9 @@ results := statement->Execute();
 		method : public : GetExtra() ~ Vector<SqlItem> { return @extra; }
 		method : public : GetTableName() ~ String { return @table_name; }
 		method : public : SetTableName(name : String) ~ Nil { @table_name := name; }
+		# the file FROM reads, Nil for a table of the catalog
+		method : public : GetFile() ~ SqlFile { return @file; }
+		method : public : SetFile(file : SqlFile) ~ Nil { @file := file; }
 		method : public : GetAlias() ~ String { return @alias_name; }
 		method : public : SetAlias(alias_name : String) ~ Nil { @alias_name := alias_name; }
 		method : public : GetJoins() ~ Vector<SqlJoin> { return @joins; }
@@ -5279,6 +5358,8 @@ results := statement->Execute();
 		@error : String;
 		@statement : SqlStatement;
 		@in_having : Bool;
+		@ref_name : String;
+		@ref_file : SqlFile;
 
 		New() {
 		}
@@ -5477,6 +5558,87 @@ results := statement->Execute();
 				word->Equals("values");
 		}
 
+		function : IsFileFunction(word : String) ~ Bool {
+			lower := word->ToLower();
+			return lower->Equals("csv") | lower->Equals("tsv") | lower->Equals("json") |
+				lower->Equals("jsonl") | lower->Equals("xml");
+		}
+
+		# a table in FROM or JOIN: a catalog table's name, a quoted file path ('runs/*.csv'),
+		# or a file read a given way: csv('f.txt', delimiter => ';', header => false),
+		# tsv(...), json(...), jsonl(...) or xml('f.xml', row => 'item'). Sets @ref_name, and
+		# @ref_file for a file; false with the error set otherwise.
+		method : ParseTable() ~ Bool {
+			@ref_name := Nil;
+			@ref_file := Nil;
+			token := Current();
+			if(token->GetKind() = SqlToken->Kind->TEXT) {
+				Next();
+				@ref_file := SqlFile->New(token->GetText(), "");
+				@ref_name := @ref_file->GetDefaultName();
+				return true;
+			};
+
+			if(token->GetKind() = SqlToken->Kind->WORD & IsFileFunction(token->GetText()) & Ahead(1)->IsSymbol("(")) {
+				format := token->GetText()->ToLower();
+				Next();
+				Next();
+				path := Current();
+				if(path->GetKind() <> SqlToken->Kind->TEXT) {
+					Fail("a quoted file path");
+					return false;
+				};
+				Next();
+				file := SqlFile->New(path->GetText(), format);
+
+				while(Current()->IsSymbol(",")) {
+					Next();
+					option := Current();
+					if(option->GetKind() <> SqlToken->Kind->WORD) {
+						Fail("an option name");
+						return false;
+					};
+					Next();
+					if(<>ExpectSymbol("=>")) {
+						return false;
+					};
+
+					name := option->GetText()->ToLower();
+					value := Current();
+					if(name->Equals("header") & (value->IsWord("true") | value->IsWord("false"))) {
+						file->SetHeader(value->IsWord("true"));
+					}
+					else if(name->Equals("delimiter") & value->GetKind() = SqlToken->Kind->TEXT & (value->GetText()->Size() = 1 | value->GetText()->Equals("\\t"))) {
+						if(value->GetText()->Size() = 1) {
+							file->SetDelimiter(value->GetText()->Get(0));
+						}
+						else {
+							file->SetDelimiter('\t');
+						};
+					}
+					else if(name->Equals("row") & value->GetKind() = SqlToken->Kind->TEXT) {
+						file->SetRow(value->GetText());
+					}
+					else {
+						Fail("an option: delimiter => 'c', header => true or false, row => 'element'");
+						return false;
+					};
+					Next();
+				};
+
+				if(<>ExpectSymbol(")")) {
+					return false;
+				};
+
+				@ref_file := file;
+				@ref_name := file->GetDefaultName();
+				return true;
+			};
+
+			@ref_name := ParseName("a table name or a quoted file path");
+			return @ref_name <> Nil;
+		}
+
 		# [AS] alias, or Nil when there is none
 		method : ParseAlias() ~ String {
 			if(Current()->IsWord("as")) {
@@ -5546,11 +5708,11 @@ results := statement->Execute();
 				return Nil;
 			};
 
-			table_name := ParseName("a table name");
-			if(table_name = Nil) {
+			if(<>ParseTable()) {
 				return Nil;
 			};
-			statement->SetTableName(table_name);
+			statement->SetTableName(@ref_name);
+			statement->SetFile(@ref_file);
 			statement->SetAlias(ParseAlias());
 			if(@error <> Nil) {
 				return Nil;
@@ -5579,10 +5741,11 @@ results := statement->Execute();
 
 				if(Current()->IsWord("join")) {
 					Next();
-					join_table := ParseName("a table name");
-					if(join_table = Nil) {
+					if(<>ParseTable()) {
 						return Nil;
 					};
+					join_table := @ref_name;
+					join_file := @ref_file;
 					join_alias := ParseAlias();
 					if(@error <> Nil | <>ExpectWord("on")) {
 						return Nil;
@@ -5595,7 +5758,7 @@ results := statement->Execute();
 					if(right_key = Nil) {
 						return Nil;
 					};
-					statement->GetJoins()->AddBack(SqlJoin->New(is_left, join_table, join_alias, left_key, right_key));
+					statement->GetJoins()->AddBack(SqlJoin->New(is_left, join_table, join_file, join_alias, left_key, right_key));
 				}
 				else {
 					joining := false;
@@ -5782,7 +5945,7 @@ results := statement->Execute();
 
 		# unary := NOT unary | '(' or ')' | comparison
 		method : ParseUnary() ~ Predicate {
-			if(Current()->IsWord("not") & <>Ahead(1)->IsWord("like") & <>Ahead(1)->IsWord("between") & <>Ahead(1)->IsWord("in")) {
+			if(Current()->IsWord("not") & <>Ahead(1)->IsWord("like") & <>Ahead(1)->IsWord("matches") & <>Ahead(1)->IsWord("between") & <>Ahead(1)->IsWord("in")) {
 				Next();
 				inner := ParseUnary();
 				if(inner = Nil) {
@@ -5893,6 +6056,9 @@ results := statement->Execute();
 			if(token->IsWord("like")) {
 				op := negated ? Op->NOT_LIKE : Op->LIKE;
 			}
+			else if(token->IsWord("matches")) {
+				op := negated ? Op->NOT_MATCHES : Op->MATCHES;
+			}
 			else if(token->IsSymbol("=")) {
 				op := negated ? Op->NE : Op->EQ;
 			}
@@ -5912,7 +6078,7 @@ results := statement->Execute();
 				op := negated ? Op->LT : Op->GE;
 			}
 			else {
-				return FailCondition("a comparison (=, <>, <, <=, >, >=, LIKE, BETWEEN, IN or IS)");
+				return FailCondition("a comparison (=, <>, <, <=, >, >=, LIKE, MATCHES, BETWEEN, IN or IS)");
 			};
 			Next();
 
@@ -6182,6 +6348,324 @@ results := statement->Execute();
 		}
 	}
 
+	# a file named in FROM or JOIN: its path (a glob may match several files), its format
+	# ('' to take it from the extension) and the options a function form gave
+	class : private : SqlFile {
+		@path : String;
+		@format : String;
+		@delimiter : Char;
+		@header : Bool;
+		@row : String;
+
+		New(path : String, format : String) {
+			@path := path;
+			@format := format;
+			@header := true;
+		}
+
+		method : public : GetPath() ~ String { return @path; }
+		method : public : GetFormat() ~ String { return @format; }
+		method : public : GetDelimiter() ~ Char { return @delimiter; }
+		method : public : SetDelimiter(delimiter : Char) ~ Nil { @delimiter := delimiter; }
+		method : public : HasHeader() ~ Bool { return @header; }
+		method : public : SetHeader(header : Bool) ~ Nil { @header := header; }
+		method : public : GetRow() ~ String { return @row; }
+		method : public : SetRow(row : String) ~ Nil { @row := row; }
+
+		# the cache key: the same path read another way is another table
+		method : public : GetKey() ~ String {
+			key := String->New(@format);
+			key += "|";
+			key += @delimiter->As(Int);
+			key += @header ? "|h|" : "|n|";
+			if(@row <> Nil) {
+				key += @row;
+			};
+			key += "|";
+			key += @path;
+			return key;
+		}
+
+		method : public : IsGlob() ~ Bool {
+			return @path->Has('*') | @path->Has('?');
+		}
+
+		# the name a query uses for the table when it gives no alias
+		method : public : GetDefaultName() ~ String {
+			base := SourceText->BaseName(@path, "file");
+			name := "";
+			each(i : base) {
+				c := base->Get(i);
+				if(c <> '*' & c <> '?') {
+					name->Append(c);
+				};
+			};
+
+			return name->Size() > 0 ? name : "files";
+		}
+	}
+
+	# a file table a catalog has read, and the files' state when it read them
+	class : private : FileEntry {
+		@stamp : String;
+		@table : Table;
+
+		New(stamp : String, table : Table) {
+			@stamp := stamp;
+			@table := table;
+		}
+
+		method : public : GetStamp() ~ String {
+			return @stamp;
+		}
+
+		method : public : GetTable() ~ Table {
+			return @table;
+		}
+	}
+
+	# reading files named in SQL: globs, formats by extension, several files as one table
+	class : private : FileTables {
+		# the files a path names, sorted; a glob may match several, in its last part only
+		function : Expand(path : String, error : StringHolder) ~ Vector<String> {
+			files := Vector->New()<String>;
+			if(path->Has('*') | path->Has('?')) {
+				cut := -1;
+				each(i : path) {
+					c := path->Get(i);
+					if(c = '/' | c = '\\') {
+						cut := i;
+					};
+				};
+
+				folder := cut < 0 ? "." : path->SubString(0, cut);
+				pattern := path->SubString(cut + 1, path->Size() - cut - 1);
+				if(folder->Has('*') | folder->Has('?')) {
+					error->Set("'{$path}': a pattern may only be in the file name, not the folder");
+					return Nil;
+				};
+
+				names := Directory->List(folder);
+				if(names = Nil) {
+					error->Set("'{$path}': cannot read folder '{$folder}'");
+					return Nil;
+				};
+
+				matched := Vector->New()<String>;
+				each(i : names) {
+					name := names[i];
+					if(<>name->Equals(".") & <>name->Equals("..") & GlobMatches(pattern, 0, name, 0)) {
+						full := cut < 0 ? String->New(name) : "{$folder}/{$name}";
+						if(<>Directory->Exists(full)) {
+							matched->AddBack(full);
+						};
+					};
+				};
+
+				if(matched->Size() = 0) {
+					error->Set("no files match '{$path}'");
+					return Nil;
+				};
+
+				# in name order, so the rows come in a predictable order
+				sorted := String->New[matched->Size()];
+				each(i : sorted) {
+					sorted[i] := matched->Get(i);
+				};
+				SortTexts(sorted);
+				each(i : sorted) {
+					files->AddBack(sorted[i]);
+				};
+			}
+			else {
+				if(<>File->Exists(path)) {
+					error->Set("no file '{$path}'");
+					return Nil;
+				};
+				files->AddBack(path);
+			};
+
+			return files;
+		}
+
+		# '*' matches any run of characters, '?' any one character
+		function : GlobMatches(pattern : String, p : Int, text : String, t : Int) ~ Bool {
+			while(p < pattern->Size()) {
+				c := pattern->Get(p);
+				if(c = '*') {
+					for(k := t; k <= text->Size(); k += 1;) {
+						if(GlobMatches(pattern, p + 1, text, k)) {
+							return true;
+						};
+					};
+					return false;
+				};
+
+				if(t >= text->Size() | (c <> '?' & c <> text->Get(t))) {
+					return false;
+				};
+				p += 1;
+				t += 1;
+			};
+
+			return t = text->Size();
+		}
+
+		function : SortTexts(values : String[]) ~ Nil {
+			for(i := 1; i < values->Size(); i += 1;) {
+				value := values[i];
+				j := i - 1;
+				while(j >= 0 & values[j]->Compare(value) > 0) {
+					values[j + 1] := values[j];
+					j -= 1;
+				};
+				values[j + 1] := value;
+			};
+		}
+
+		# what a set of files looked like: names, sizes and modification times
+		function : Stamp(files : Vector<String>) ~ String {
+			stamp := "";
+			each(i : files) {
+				name := files->Get(i);
+				size := File->Size(name);
+				modified := File->ModifiedTime(name);
+				when := modified <> Nil ? modified->ToString() : "";
+				stamp += "{$name}|{$size}|{$when};";
+			};
+
+			return stamp;
+		}
+
+		# the format of a file: the function form's, or its extension's (after any '.gz')
+		function : FormatOf(file : SqlFile, path : String) ~ String {
+			if(file->GetFormat()->Size() > 0) {
+				return file->GetFormat();
+			};
+
+			lower := path->ToLower();
+			if(lower->EndsWith(".gz")) {
+				lower := lower->SubString(0, lower->Size() - 3);
+			};
+
+			if(lower->EndsWith(".csv") | lower->EndsWith(".txt")) {
+				return "csv";
+			}
+			else if(lower->EndsWith(".tsv")) {
+				return "tsv";
+			}
+			else if(lower->EndsWith(".jsonl") | lower->EndsWith(".ndjson")) {
+				return "jsonl";
+			}
+			else if(lower->EndsWith(".json")) {
+				return "json";
+			}
+			else if(lower->EndsWith(".xml")) {
+				return "xml";
+			};
+
+			return "";
+		}
+
+		# one file as a table
+		function : ReadOne(file : SqlFile, path : String, name : String, error : StringHolder) ~ Table {
+			format := FormatOf(file, path);
+			table : Table;
+			reason : String;
+			if(format->Equals("csv") | format->Equals("tsv")) {
+				delimiter := file->GetDelimiter();
+				if(delimiter = '\0') {
+					delimiter := format->Equals("tsv") ? '\t' : ',';
+				};
+				source := CsvSource->New(path, name, delimiter);
+				source->SetHeader(file->HasHeader());
+				table := source->Read(Nil);
+				reason := source->GetError();
+			}
+			else if(format->Equals("jsonl")) {
+				source := JsonLinesSource->New(path, name);
+				table := source->Read();
+				reason := source->GetError();
+			}
+			else if(format->Equals("json")) {
+				source := JsonSource->New(path, name);
+				table := source->Read();
+				reason := source->GetError();
+			}
+			else if(format->Equals("xml")) {
+				if(file->GetRow() = Nil) {
+					error->Set("'{$path}': an XML file needs its row element, as xml('{$path}', row => 'item')");
+					return Nil;
+				};
+				source := XmlSource->New(path, name, file->GetRow());
+				table := source->Read();
+				reason := source->GetError();
+			}
+			else {
+				error->Set("'{$path}': unknown file type; name it with csv(), tsv(), json(), jsonl() or xml()");
+				return Nil;
+			};
+
+			if(table = Nil) {
+				error->Set(reason);
+			};
+
+			return table;
+		}
+
+		# the rows of several tables as one, with a '_file' column naming each row's file;
+		# a column some files lack is empty for their rows
+		function : Combine(name : String, tables : Vector<Table>, files : Vector<String>) ~ Table {
+			names := Vector->New()<String>;
+			each(t : tables) {
+				columns := tables->Get(t)->GetColumnNames();
+				for(c := 1; c < columns->Size(); c += 1;) {
+					known := false;
+					each(k : names) {
+						if(names->Get(k)->Equals(columns[c])) {
+							known := true;
+						};
+					};
+					if(<>known) {
+						names->AddBack(columns[c]);
+					};
+				};
+			};
+			names->AddBack("_file");
+
+			column_names := String->New[names->Size()];
+			each(i : column_names) {
+				column_names[i] := names->Get(i);
+			};
+
+			combined := Table->New(name, column_names);
+			file_column := column_names->Size();
+			each(t : tables) {
+				table := tables->Get(t);
+				sources := Int->New[column_names->Size() - 1];
+				each(c : sources) {
+					sources[c] := table->GetIndex(column_names[c]);
+				};
+
+				rows := table->LiveRows();
+				each(r : rows) {
+					row := combined->Insert();
+					each(c : sources) {
+						if(sources[c] > 0) {
+							value := table->GetColumn(sources[c])->Get(rows[r]);
+							if(value <> Nil) {
+								row->Set(c + 1, value);
+							};
+						};
+					};
+					row->Set(file_column, files->Get(t));
+				};
+			};
+
+			return combined;
+		}
+	}
+
 	# a parsed statement, cached by Table and Catalog and run as often as asked
 	class : private : Plan {
 		@statement : SqlStatement;
@@ -6248,6 +6732,11 @@ results := statement->Execute();
 				return Nil;
 			};
 
+			if(@statement->GetFile() <> Nil) {
+				error->Set("a file in FROM is read through a Catalog: Catalog->Run, or a catalog's Query");
+				return Nil;
+			};
+
 			if(<>@statement->GetTableName()->Equals(table->GetName())) {
 				error->Set("the query names table '{$(@statement->GetTableName())}', not '{$(table->GetName())}'");
 				return Nil;
@@ -6267,13 +6756,14 @@ results := statement->Execute();
 
 			joins := @statement->GetJoins();
 			tables := Table->New[joins->Size() + 1];
-			tables[0] := Lookup(catalog, @statement->GetTableName(), error);
+			tables[0] := Source(catalog, @statement->GetTableName(), @statement->GetFile(), error);
 			if(tables[0] = Nil) {
 				return Nil;
 			};
 
 			each(i : joins) {
-				tables[i + 1] := Lookup(catalog, joins->Get(i)->GetTableName(), error);
+				join := joins->Get(i);
+				tables[i + 1] := Source(catalog, join->GetTableName(), join->GetFile(), error);
 				if(tables[i + 1] = Nil) {
 					return Nil;
 				};
@@ -6340,6 +6830,15 @@ results := statement->Execute();
 			};
 
 			return Change(table, params, error);
+		}
+
+		# a table of the catalog, or a file it reads through its cache
+		method : Source(catalog : Catalog, name : String, file : SqlFile, error : StringHolder) ~ Table {
+			if(file <> Nil) {
+				return catalog->ReadFile(file, name, error);
+			};
+
+			return Lookup(catalog, name, error);
 		}
 
 		method : Lookup(catalog : Catalog, name : String, error : StringHolder) ~ Table {
@@ -8920,6 +9419,8 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 	class Catalog {
 		@tables : Map<String, Table>;
 		@plans : Map<String, Plan>;
+		@files : Map<String, FileEntry>;
+		@file_reads : Int;
 		@error : String;
 
 		#~
@@ -9020,7 +9521,78 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		}
 
 		#~
-		Runs a SELECT over the catalog's tables, which it can join
+		Runs a SELECT that reads files named in it, with no catalog of tables. Each call reads
+		the files again; a program that repeats a query keeps a Catalog and uses its Query,
+		which reads a file again only after it changes.
+		@param statement SQL SELECT
+		@return result table, Nil on error (a Catalog's Query and GetError say why)
+		```
+		rs := Catalog->Run("select name, avg(score) from 'results/run_*.csv' group by name");
+		```
+		~#
+		function : Run(statement : String) ~ Table {
+			return Catalog->New()->Query(statement);
+		}
+
+		# a file named in a query, read once and again only when it changes (by name, size
+		# and modification time); a glob's files become one table with a '_file' column
+		method : public : ReadFile(file : SqlFile, name : String, error : StringHolder) ~ Table {
+			files := FileTables->Expand(file->GetPath(), error);
+			if(files = Nil) {
+				return Nil;
+			};
+
+			if(@files = Nil) {
+				@files := Map->New()<String, FileEntry>;
+			};
+
+			key := file->GetKey();
+			stamp := FileTables->Stamp(files);
+			entry := @files->Find(key);
+			if(entry <> Nil & entry->GetStamp()->Equals(stamp)) {
+				return entry->GetTable();
+			};
+
+			table : Table;
+			if(file->IsGlob()) {
+				tables := Vector->New()<Table>;
+				each(i : files) {
+					@file_reads += 1;
+					one := FileTables->ReadOne(file, files->Get(i), name, error);
+					if(one = Nil) {
+						return Nil;
+					};
+					tables->AddBack(one);
+				};
+				table := FileTables->Combine(name, tables, files);
+			}
+			else {
+				@file_reads += 1;
+				table := FileTables->ReadOne(file, files->Get(0), name, error);
+				if(table = Nil) {
+					return Nil;
+				};
+			};
+
+			if(@files->Size() >= 32) {
+				@files := Map->New()<String, FileEntry>;
+			};
+			@files->Insert(key, FileEntry->New(stamp, table));
+
+			return table;
+		}
+
+		#~
+		Gets how many times queries have read a file, for checking that unchanged files come
+		from the cache
+		@return file reads
+		~#
+		method : public : GetFileReads() ~ Int {
+			return @file_reads;
+		}
+
+		#~
+		Runs a SELECT over the catalog's tables, which it can join, and over files named in it
 		@param statement SQL SELECT
 		@return result table, Nil on error (see GetError)
 		```
@@ -9135,6 +9707,7 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 		@path : String;
 		@name : String;
 		@delimiter : Char;
+		@no_header : Bool;
 		@text : String;
 		@error : String;
 
@@ -9158,6 +9731,15 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			@path := path;
 			@name := name;
 			@delimiter := delimiter;
+		}
+
+		#~
+		Sets whether the first line names the columns (the default). Without a header every
+		line is data and the columns are named c1, c2 and so on.
+		@param header true if the first line is a header
+		~#
+		method : public : SetHeader(header : Bool) ~ Nil {
+			@no_header := <>header;
 		}
 
 		#~
@@ -9246,7 +9828,13 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			};
 			csv := parsed->GetTable();
 
-			headers := csv->Get(0);
+			# the column names: the first line's, or c1, c2 ... when every line is data
+			first_line := csv->Get(0);
+			headers := Vector->New()<String>;
+			each(i : first_line) {
+				headers->AddBack(@no_header ? "c{$(i + 1)}" : first_line->Get(i));
+			};
+
 			wanted := Vector->New()<IntRef>;
 			each(i : headers) {
 				if(hint = Nil | hint->Wants(headers->Get(i))) {
@@ -9254,7 +9842,8 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 				};
 			};
 
-			limit := parsed->GetRows();
+			first := @no_header ? 0 : 1;
+			limit := parsed->GetRows() + 1 - first;
 			if(hint <> Nil & hint->GetLimit() > -1 & hint->GetLimit() < limit) {
 				limit := hint->GetLimit();
 			};
@@ -9264,11 +9853,11 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			each(i : names) {
 				column := wanted->Get(i)->Get();
 				names[i] := headers->Get(column);
-				types[i] := ScanType(csv, column, limit);
+				types[i] := ScanType(csv, column, first, limit);
 			};
 
 			table := Table->New(@name, names, types, false);
-			for(r := 1; r <= limit; r += 1;) {
+			for(r := first; r < first + limit; r += 1;) {
 				row := table->Insert();
 				csv_row := csv->Get(r);
 				each(i : names) {
@@ -9325,13 +9914,13 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			return ParsedCsv->New(csv, 0);
 		}
 
-		# the type a whole column calls for
-		function : ScanType(csv : Data.CSV.CsvTable, column : Int, limit : Int) ~ ColumnType {
+		# the type a whole column calls for, over 'count' records from 'first'
+		function : ScanType(csv : Data.CSV.CsvTable, column : Int, first : Int, count : Int) ~ ColumnType {
 			has_int := false;
 			has_float := false;
 			has_date := false;
 			has_text := false;
-			for(r := 1; r <= limit; r += 1;) {
+			for(r := first; r < first + count; r += 1;) {
 				text := csv->Get(r)->Get(column);
 				if(text <> Nil & text->Size() > 0) {
 					kind := Cell->NumberKind(text);
@@ -10331,12 +10920,13 @@ log->Query("select epoch, loss from train where acc > 0.85")->ToString()->PrintL
 
 	#~
 	A JSON Lines file (one JSON object per line, '.jsonl' or '.ndjson') as a table. Nested
-	objects become dotted column names ('address.city'); arrays are kept as their JSON text
-	for now. Columns are typed by all their values: whole numbers INT, any decimal FLOAT,
-	true and false BOOL, and any mix, or text, STRING. null and a missing key are empty cells.
-	A line that is not a JSON object is an error naming the line. Columns appear in the order
-	keys are first seen, alphabetical within an object. A name ending in '.gz' is decompressed
-	first.
+	objects become dotted column names ('address.city'), and each nested array becomes a
+	child table, as JsonSource makes them: an array member 'tags' of table 'runs' is the table
+	'runs_tags', joined back through '_parent_id' = '_id'. Columns are typed by all their
+	values: whole numbers INT, any decimal FLOAT, true and false BOOL, and any mix, or text,
+	STRING. null and a missing key are empty cells. A line that is not a JSON object is an
+	error naming the line. Columns appear in the order keys are first seen, alphabetical
+	within an object. A name ending in '.gz' is decompressed first.
 
 ```
 runs := JsonLinesSource->New("eval.jsonl")->Read();
@@ -10348,6 +10938,7 @@ runs->Describe()->ToString()->PrintLine();
 		@name : String;
 		@text : String;
 		@error : String;
+		@tables : Vector<Table>;
 
 		#~
 		Constructor; the table is named after the file
@@ -10385,42 +10976,45 @@ runs->Describe()->ToString()->PrintLine();
 		}
 
 		#~
-		Gets the table the file provides; column types are known only after reading it
-		@return one table shape
+		Gets the tables the file provides, the main table first; they are known only after
+		reading it
+		@return table shapes
 		~#
 		method : public : GetTables() ~ TableSpec[] {
-			table := Read();
-			specs := TableSpec->New[1];
-			if(table = Nil) {
-				specs[0] := TableSpec->New(@name, String->New[0], ColumnType->New[0]);
-				return specs;
-			};
-
-			names := table->GetColumnNames();
-			columns := String->New[names->Size() - 1];
-			types := ColumnType->New[names->Size() - 1];
-			each(i : columns) {
-				columns[i] := names[i + 1];
-				types[i] := table->GetColumn(i + 1)->GetType();
-			};
-			specs[0] := TableSpec->New(@name, columns, types);
-			return specs;
+			Read();
+			return TableShapes->Of(@tables, @name);
 		}
 
 		#~
-		Loads the file into a catalog
+		Loads the file's tables into a catalog
 		@param catalog catalog
-		@param hint columns and rows needed, Nil for everything
+		@param hint columns and rows of the main table needed, Nil for everything
 		@return true if loaded
 		~#
 		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
-			table := Read(hint);
-			if(table = Nil) {
+			if(Read(hint) = Nil) {
 				return false;
 			};
 
-			catalog->Add(table);
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
 			return true;
+		}
+
+		#~
+		Gets the child tables the last Read made, in the order their arrays were first seen
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
 		}
 
 		#~
@@ -10439,6 +11033,7 @@ runs->Describe()->ToString()->PrintLine();
 		~#
 		method : public : Read(hint : ScanHint) ~ Table {
 			@error := Nil;
+			@tables := Nil;
 			text := @text;
 			if(text = Nil) {
 				text := SourceText->Read(@path);
@@ -10453,58 +11048,119 @@ runs->Describe()->ToString()->PrintLine();
 				limit := hint->GetLimit();
 			};
 
-			# every record's cells by column name, as text with a kind tag
-			order := Vector->New()<String>;
-			positions := Hash->New()<String, IntRef>;
-			records := Vector->New()<Hash<String, JsonCell>>;
+			builder := JsonTableBuilder->New(@name, false);
 			lines := SourceText->Lines(text);
 			each(i : lines) {
 				line := lines->Get(i)->Trim();
-				if(line->Size() > 0 & (limit < 0 | records->Size() < limit)) {
+				if(line->Size() > 0 & (limit < 0 | builder->Size() < limit)) {
 					element := Data.JSON.JsonParser->TextToElement(line);
 					if(element = Nil | element->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
 						@error := "line {$(i + 1)}: not a JSON object";
 						return Nil;
 					};
-
-					cells := Hash->New()<String, JsonCell>;
-					Flatten(element, "", cells, order, positions);
-					records->AddBack(cells);
+					builder->AddObject(element, 0);
 				};
 			};
 
-			wanted := Vector->New()<String>;
-			each(i : order) {
-				if(hint = Nil | hint->Wants(order->Get(i))) {
-					wanted->AddBack(order->Get(i));
-				};
-			};
-
-			names := String->New[wanted->Size()];
-			types := ColumnType->New[wanted->Size()];
-			each(c : names) {
-				names[c] := wanted->Get(c);
-				types[c] := ColumnTypeOf(records, names[c]);
-			};
-
-			table := Table->New(@name, names, types, false);
-			each(r : records) {
-				cells := records->Get(r);
-				row := table->Insert();
-				each(c : names) {
-					cell := cells->Find(names[c]);
-					if(cell <> Nil) {
-						row->Set(c + 1, cell->ToValue(types[c]));
-					};
-				};
-			};
-
-			return table;
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
 		}
 
-		# adds an object's members to 'cells', nested objects under dotted names
-		function : Flatten(element : Data.JSON.JsonElement, prefix : String, cells : Hash<String, JsonCell>,
-				order : Vector<String>, positions : Hash<String, IntRef>) ~ Nil {
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#
+	# Hierarchies as related tables (docs/QUERY_DESIGN.md, section 6): a nested repeated part
+	# of a record becomes a child table whose '_parent_id' is the record's '_id'. A table has
+	# an '_id' column exactly when some child table refers to it, and a child table always
+	# has '_parent_id'. Both count from 1 within their table.
+	#
+
+	# one table of a JSON document and its child tables, built record by record
+	class : private : JsonTableBuilder {
+		@name : String;
+		@is_child : Bool;
+		@order : Vector<String>;
+		@positions : Hash<String, IntRef>;
+		@records : Vector<Hash<String, JsonCell>>;
+		@parents : Vector<IntRef>;
+		@children : Vector<JsonTableBuilder>;
+		@child_index : Hash<String, JsonTableBuilder>;
+
+		New(name : String, is_child : Bool) {
+			@name := name;
+			@is_child := is_child;
+			@order := Vector->New()<String>;
+			@positions := Hash->New()<String, IntRef>;
+			@records := Vector->New()<Hash<String, JsonCell>>;
+			@parents := Vector->New()<IntRef>;
+			@children := Vector->New()<JsonTableBuilder>;
+			@child_index := Hash->New()<String, JsonTableBuilder>;
+		}
+
+		method : public : Size() ~ Int {
+			return @records->Size();
+		}
+
+		# adds an object as a row; its nested arrays go to child tables
+		method : public : AddObject(element : Data.JSON.JsonElement, parent : Int) ~ Nil {
+			id := @records->Size() + 1;
+			cells := Hash->New()<String, JsonCell>;
+			Flatten(element, "", cells, id);
+			@records->AddBack(cells);
+			@parents->AddBack(IntRef->New(parent));
+		}
+
+		# adds a value that is not an object as a row with one 'value' column
+		method : public : AddValue(element : Data.JSON.JsonElement, parent : Int) ~ Nil {
+			cells := Hash->New()<String, JsonCell>;
+			cell := ToCell(element);
+			if(cell <> Nil) {
+				Note("value");
+				cells->Insert("value", cell);
+			};
+			@records->AddBack(cells);
+			@parents->AddBack(IntRef->New(parent));
+		}
+
+		method : Note(name : String) ~ Nil {
+			if(<>@positions->Has(name)) {
+				@positions->Insert(name, IntRef->New(@order->Size()));
+				@order->AddBack(name);
+			};
+		}
+
+		# a scalar as a cell; an array inside an array is kept as its JSON text; Nil for null
+		function : ToCell(element : Data.JSON.JsonElement) ~ JsonCell {
+			type := element->GetType();
+			if(type = Data.JSON.JsonElement->JsonType->STRING) {
+				return JsonCell->New(JsonCell->Kind->TEXT, Data.JSON.JsonElement->Decode(element->GetString()));
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->NUMBER) {
+				return JsonCell->New(JsonCell->Kind->NUMBER, element->GetValue());
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->TRUE) {
+				return JsonCell->New(JsonCell->Kind->BOOL, "true");
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->FALSE) {
+				return JsonCell->New(JsonCell->Kind->BOOL, "false");
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->ARRAY | type = Data.JSON.JsonElement->JsonType->OBJECT) {
+				return JsonCell->New(JsonCell->Kind->TEXT, element->ToString());
+			};
+
+			return Nil;
+		}
+
+		# an object's members as cells, nested objects under dotted names, arrays as child rows
+		method : Flatten(element : Data.JSON.JsonElement, prefix : String, cells : Hash<String, JsonCell>, id : Int) ~ Nil {
 			names := element->GetNames();
 			each(i : names) {
 				key := names->Get(i);
@@ -10515,30 +11171,100 @@ runs->Describe()->ToString()->PrintLine();
 				if(type = Data.JSON.JsonElement->JsonType->OBJECT) {
 					nested := String->New(name);
 					nested += '.';
-					Flatten(child, nested, cells, order, positions);
+					Flatten(child, nested, cells, id);
+				}
+				else if(type = Data.JSON.JsonElement->JsonType->ARRAY) {
+					table := Child(name);
+					count := child->Size();
+					each(j : count) {
+						item := child->Get(j);
+						if(item->GetType() = Data.JSON.JsonElement->JsonType->OBJECT) {
+							table->AddObject(item, id);
+						}
+						else {
+							table->AddValue(item, id);
+						};
+					};
 				}
 				else {
-					if(<>positions->Has(name)) {
-						positions->Insert(name, IntRef->New(order->Size()));
-						order->AddBack(name);
-					};
-
-					if(type = Data.JSON.JsonElement->JsonType->STRING) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->TEXT, Data.JSON.JsonElement->Decode(child->GetString())));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->NUMBER) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->NUMBER, child->GetValue()));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->TRUE) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->BOOL, "true"));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->FALSE) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->BOOL, "false"));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->ARRAY) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->TEXT, child->ToString()));
+					cell := ToCell(child);
+					if(cell <> Nil) {
+						Note(name);
+						cells->Insert(name, cell);
 					};
 				};
+			};
+		}
+
+		# the child table for an array member; 'tags' of table 'runs' is 'runs_tags'
+		method : Child(member : String) ~ JsonTableBuilder {
+			table := @child_index->Find(member);
+			if(table = Nil) {
+				name := String->New(@name);
+				name += '_';
+				each(i : member) {
+					c := member->Get(i);
+					name->Append(c = '.' ? '_' : c);
+				};
+				table := JsonTableBuilder->New(name, true);
+				@child_index->Insert(member, table);
+				@children->AddBack(table);
+			};
+
+			return table;
+		}
+
+		# this table, then its child tables, depth first; the hint applies to this table only
+		method : public : Build(hint : ScanHint, tables : Vector<Table>) ~ Nil {
+			names := Vector->New()<String>;
+			keyed := @children->Size() > 0;
+			if(keyed) {
+				names->AddBack("_id");
+			};
+			if(@is_child) {
+				names->AddBack("_parent_id");
+			};
+
+			first_data := names->Size();
+			each(i : @order) {
+				name := @order->Get(i);
+				if(hint = Nil | hint->Wants(name)) {
+					names->AddBack(name);
+				};
+			};
+
+			column_names := String->New[names->Size()];
+			column_types := ColumnType->New[names->Size()];
+			each(i : column_names) {
+				column_names[i] := names->Get(i);
+				column_types[i] := i < first_data ? ColumnType->INT : ColumnTypeOf(@records, column_names[i]);
+			};
+
+			table := Table->New(@name, column_names, column_types, false);
+			each(r : @records) {
+				cells := @records->Get(r);
+				row := table->Insert();
+				c := 0;
+				if(keyed) {
+					row->Set(c + 1, IntRef->New(r + 1));
+					c += 1;
+				};
+				if(@is_child) {
+					row->Set(c + 1, IntRef->New(@parents->Get(r)->Get()));
+				};
+
+				for(k := first_data; k < column_names->Size(); k += 1;) {
+					cell := cells->Find(column_names[k]);
+					if(cell <> Nil) {
+						row->Set(k + 1, cell->ToValue(column_types[k]));
+					};
+				};
+			};
+			tables->AddBack(table);
+
+			none : ScanHint;
+			each(i : @children) {
+				@children->Get(i)->Build(none, tables);
 			};
 		}
 
@@ -10586,6 +11312,606 @@ runs->Describe()->ToString()->PrintLine();
 			};
 
 			return ColumnType->STRING;
+		}
+	}
+
+	# the shapes of tables, for Source->GetTables
+	class : private : TableShapes {
+		function : Of(tables : Vector<Table>, fallback : String) ~ TableSpec[] {
+			if(tables = Nil | tables->Size() = 0) {
+				specs := TableSpec->New[1];
+				specs[0] := TableSpec->New(fallback, String->New[0], ColumnType->New[0]);
+				return specs;
+			};
+
+			specs := TableSpec->New[tables->Size()];
+			each(t : specs) {
+				table := tables->Get(t);
+				names := table->GetColumnNames();
+				columns := String->New[names->Size() - 1];
+				types := ColumnType->New[names->Size() - 1];
+				each(i : columns) {
+					columns[i] := names[i + 1];
+					types[i] := table->GetColumn(i + 1)->GetType();
+				};
+				specs[t] := TableSpec->New(table->GetName(), columns, types);
+			};
+
+			return specs;
+		}
+	}
+
+	#~
+	A JSON document as tables: an array of objects (or one object) becomes a table, nested
+	objects become dotted column names ('address.city'), and each nested array becomes a child
+	table joined back through '_parent_id' = '_id'; an array member 'tags' of table 'runs' is
+	the table 'runs_tags'. Array items that are not objects become a child table with one
+	'value' column. Columns are typed as JsonLinesSource types them. A name ending in '.gz' is
+	decompressed first.
+
+```
+catalog := Catalog->New();
+catalog->Load(JsonSource->New("runs.json"));
+rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._parent_id = r._id");
+```
+	~#
+	class JsonSource implements Source {
+		@path : String;
+		@name : String;
+		@text : String;
+		@error : String;
+		@tables : Vector<Table>;
+
+		#~
+		Constructor; the table is named after the file
+		@param path JSON file
+		~#
+		New(path : String) {
+			@path := path;
+			@name := SourceText->BaseName(path, "json");
+		}
+
+		#~
+		Constructor
+		@param path JSON file
+		@param name table name
+		~#
+		New(path : String, name : String) {
+			@path := path;
+			@name := name;
+		}
+
+		#~
+		Makes a source over JSON text already in memory
+		@param name table name
+		@param text JSON text
+		@return source
+		~#
+		function : FromText(name : String, text : String) ~ JsonSource {
+			source := JsonSource->New(Nil, name);
+			source->SetText(text);
+			return source;
+		}
+
+		method : public : SetText(text : String) ~ Nil {
+			@text := text;
+		}
+
+		#~
+		Gets the tables the document provides, the main table first; they are known only after
+		reading it
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			Read();
+			return TableShapes->Of(@tables, @name);
+		}
+
+		#~
+		Loads the document's tables into a catalog
+		@param catalog catalog
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			if(Read(hint) = Nil) {
+				return false;
+			};
+
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			@tables := Nil;
+			text := @text;
+			if(text = Nil) {
+				text := SourceText->Read(@path);
+				if(text = Nil) {
+					@error := SourceText->Failure(@path);
+					return Nil;
+				};
+			};
+
+			parser := Data.JSON.JsonParser->New(text);
+			if(<>parser->Parse()) {
+				@error := "'{$@name}' is not valid JSON";
+				reason := parser->GetError();
+				if(reason <> Nil) {
+					@error += ": ";
+					@error += reason->Trim();
+				};
+				return Nil;
+			};
+			root := parser->GetRoot();
+
+			limit := hint <> Nil ? hint->GetLimit() : -1;
+			builder := JsonTableBuilder->New(@name, false);
+			type := root->GetType();
+			if(type = Data.JSON.JsonElement->JsonType->OBJECT) {
+				builder->AddObject(root, 0);
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->ARRAY) {
+				count := root->Size();
+				each(i : count) {
+					if(limit < 0 | builder->Size() < limit) {
+						item := root->Get(i);
+						if(item->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
+							@error := "'{$@name}': element {$(i + 1)} of the array is not an object";
+							return Nil;
+						};
+						builder->AddObject(item, 0);
+					};
+				};
+			}
+			else {
+				@error := "'{$@name}': the document is not an object or an array of objects";
+				return Nil;
+			};
+
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
+		}
+
+		#~
+		Gets the child tables the last Read made: depth first, in the order their arrays were
+		first seen, an object's members taken alphabetically
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	# one table of an XML document and its child tables: the elements that are its rows
+	class : private : XmlTableBuilder {
+		@name : String;
+		@is_child : Bool;
+		@rows : Vector<XmlElement>;
+		@parents : Vector<IntRef>;
+
+		New(name : String, is_child : Bool) {
+			@name := name;
+			@is_child := is_child;
+			@rows := Vector->New()<XmlElement>;
+			@parents := Vector->New()<IntRef>;
+		}
+
+		method : public : Size() ~ Int {
+			return @rows->Size();
+		}
+
+		method : public : Add(element : XmlElement, parent : Int) ~ Nil {
+			@rows->AddBack(element);
+			@parents->AddBack(IntRef->New(parent));
+		}
+
+		function : IsElement(element : XmlElement) ~ Bool {
+			type := element->GetType();
+			return type = XmlElement->Type->ELEMENT | type = XmlElement->Type->UNARY_ELEMENT;
+		}
+
+		# the element children of an element
+		function : Elements(element : XmlElement) ~ Vector<XmlElement> {
+			found := Vector->New()<XmlElement>;
+			children := element->GetChildren();
+			if(children <> Nil) {
+				each(i : children) {
+					child := children->Get(i);
+					if(IsElement(child)) {
+						found->AddBack(child);
+					};
+				};
+			};
+
+			return found;
+		}
+
+		# whether an element is only text: no attributes and no element children
+		function : IsSimple(element : XmlElement) ~ Bool {
+			return element->GetAttributes()->Size() = 0 & Elements(element)->Size() = 0;
+		}
+
+		function : TextOf(element : XmlElement) ~ String {
+			text := element->GetDecodedContent();
+			if(text = Nil) {
+				return Nil;
+			};
+
+			text := text->Trim();
+			return text->Size() > 0 ? text : Nil;
+		}
+
+		# this table, then its child tables, depth first; the hint applies to this table only
+		method : public : Build(hint : ScanHint, tables : Vector<Table>) ~ Nil {
+			# a child element name is a column when, in every row, it appears at most once and
+			# holds only text; otherwise its elements are rows of a child table
+			order := Vector->New()<String>;
+			seen := Hash->New()<String, IntRef>;
+			nested := Hash->New()<String, BoolRef>;
+			each(r : @rows) {
+				row := @rows->Get(r);
+				attributes := row->GetAttributes();
+				each(a : attributes) {
+					attribute_name := attributes->Get(a)->GetName();
+					Remember("@{$attribute_name}", order, seen);
+				};
+
+				counts := Hash->New()<String, IntRef>;
+				elements := Elements(row);
+				each(e : elements) {
+					element := elements->Get(e);
+					name := element->GetName();
+					count := counts->Find(name);
+					if(count = Nil) {
+						counts->Insert(name, IntRef->New(1));
+					}
+					else {
+						count->Set(count->Get() + 1);
+						nested->Insert(name, BoolRef->New(true));
+					};
+
+					if(<>IsSimple(element)) {
+						nested->Insert(name, BoolRef->New(true));
+					};
+					Remember(name, order, seen);
+				};
+
+				if(elements->Size() = 0 & TextOf(row) <> Nil) {
+					Remember("_text", order, seen);
+				};
+			};
+
+			# the child tables, one per nested element name, in the order first seen
+			children := Vector->New()<XmlTableBuilder>;
+			child_index := Hash->New()<String, XmlTableBuilder>;
+			each(i : order) {
+				name := order->Get(i);
+				if(nested->Has(name)) {
+					child := XmlTableBuilder->New("{$@name}_{$name}", true);
+					children->AddBack(child);
+					child_index->Insert(name, child);
+				};
+			};
+
+			names := Vector->New()<String>;
+			keyed := children->Size() > 0;
+			if(keyed) {
+				names->AddBack("_id");
+			};
+			if(@is_child) {
+				names->AddBack("_parent_id");
+			};
+			first_data := names->Size();
+			each(i : order) {
+				name := order->Get(i);
+				if(<>nested->Has(name) & (hint = Nil | hint->Wants(name))) {
+					names->AddBack(name);
+				};
+			};
+
+			# every cell as text, then each column typed by all of its values
+			column_names := String->New[names->Size()];
+			each(i : column_names) {
+				column_names[i] := names->Get(i);
+			};
+
+			cells := Vector->New()<Hash<String, String>>;
+			each(r : @rows) {
+				row := @rows->Get(r);
+				values := Hash->New()<String, String>;
+				attributes := row->GetAttributes();
+				each(a : attributes) {
+					attribute := attributes->Get(a);
+					value := attribute->GetValue();
+					if(value <> Nil) {
+						attribute_name := attribute->GetName();
+						values->Insert("@{$attribute_name}", XmlElement->DecodeString(value));
+					};
+				};
+
+				elements := Elements(row);
+				each(e : elements) {
+					element := elements->Get(e);
+					child := child_index->Find(element->GetName());
+					if(child <> Nil) {
+						child->Add(element, r + 1);
+					}
+					else {
+						text := TextOf(element);
+						if(text <> Nil) {
+							values->Insert(element->GetName(), text);
+						};
+					};
+				};
+
+				if(elements->Size() = 0) {
+					text := TextOf(row);
+					if(text <> Nil) {
+						values->Insert("_text", text);
+					};
+				};
+				cells->AddBack(values);
+			};
+
+			column_types := ColumnType->New[column_names->Size()];
+			each(c : column_names) {
+				if(c < first_data) {
+					column_types[c] := ColumnType->INT;
+				}
+				else {
+					texts := Vector->New()<String>;
+					each(r : cells) {
+						texts->AddBack(cells->Get(r)->Find(column_names[c]));
+					};
+					column_types[c] := SourceText->ScanType(texts);
+				};
+			};
+
+			table := Table->New(@name, column_names, column_types, false);
+			each(r : cells) {
+				values := cells->Get(r);
+				row := table->Insert();
+				c := 0;
+				if(keyed) {
+					row->Set(c + 1, IntRef->New(r + 1));
+					c += 1;
+				};
+				if(@is_child) {
+					row->Set(c + 1, IntRef->New(@parents->Get(r)->Get()));
+				};
+
+				for(k := first_data; k < column_names->Size(); k += 1;) {
+					text := values->Find(column_names[k]);
+					if(text <> Nil) {
+						row->Set(k + 1, CsvSource->Convert(text, column_types[k]));
+					};
+				};
+			};
+			tables->AddBack(table);
+
+			none : ScanHint;
+			each(i : children) {
+				children->Get(i)->Build(none, tables);
+			};
+		}
+
+		function : Remember(name : String, order : Vector<String>, seen : Hash<String, IntRef>) ~ Nil {
+			if(<>seen->Has(name)) {
+				seen->Insert(name, IntRef->New(order->Size()));
+				order->AddBack(name);
+			};
+		}
+	}
+
+	#~
+	An XML document as tables: each element named 'row_element' is a row. Its attributes are
+	columns named '@name', and child elements that hold only text and appear at most once in
+	a row are columns named after the element. A child element that repeats, or has
+	attributes or children of its own, becomes a row of a child table ('runs_tag' for 'tag'
+	elements under rows of table 'runs'), joined back through '_parent_id' = '_id'. An element
+	with no element children keeps its text in a '_text' column. Text is trimmed, entities are
+	decoded, and columns are typed as CSV columns are. Rows inside rows are not searched for.
+	A name ending in '.gz' is decompressed first.
+
+```
+catalog := Catalog->New();
+catalog->Load(XmlSource->New("books.xml", "book"));
+rs := catalog->Query("select title, @lang from books where year > 2000");
+```
+	~#
+	class XmlSource implements Source {
+		@path : String;
+		@name : String;
+		@row_element : String;
+		@text : String;
+		@error : String;
+		@tables : Vector<Table>;
+
+		#~
+		Constructor; the table is named after the file
+		@param path XML file
+		@param row_element name of the elements that are rows
+		~#
+		New(path : String, row_element : String) {
+			@path := path;
+			@name := SourceText->BaseName(path, "xml");
+			@row_element := row_element;
+		}
+
+		#~
+		Constructor
+		@param path XML file
+		@param name table name
+		@param row_element name of the elements that are rows
+		~#
+		New(path : String, name : String, row_element : String) {
+			@path := path;
+			@name := name;
+			@row_element := row_element;
+		}
+
+		#~
+		Makes a source over XML text already in memory
+		@param name table name
+		@param text XML text
+		@param row_element name of the elements that are rows
+		@return source
+		~#
+		function : FromText(name : String, text : String, row_element : String) ~ XmlSource {
+			source := XmlSource->New(Nil, name, row_element);
+			source->SetText(text);
+			return source;
+		}
+
+		method : public : SetText(text : String) ~ Nil {
+			@text := text;
+		}
+
+		#~
+		Gets the tables the document provides, the main table first; they are known only after
+		reading it
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			Read();
+			return TableShapes->Of(@tables, @name);
+		}
+
+		#~
+		Loads the document's tables into a catalog
+		@param catalog catalog
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			if(Read(hint) = Nil) {
+				return false;
+			};
+
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			@tables := Nil;
+			if(@row_element = Nil | @row_element->Size() = 0) {
+				@error := "no row element named";
+				return Nil;
+			};
+
+			text := @text;
+			if(text = Nil) {
+				text := SourceText->Read(@path);
+				if(text = Nil) {
+					@error := SourceText->Failure(@path);
+					return Nil;
+				};
+			};
+
+			parser := XmlParser->New(text);
+			if(<>parser->Parse()) {
+				@error := "'{$@name}' is not well-formed XML";
+				reason := parser->GetError();
+				if(reason <> Nil) {
+					@error += ": ";
+					@error += reason;
+				};
+				return Nil;
+			};
+
+			limit := hint <> Nil ? hint->GetLimit() : -1;
+			builder := XmlTableBuilder->New(@name, false);
+			Collect(parser->GetRoot(), builder, limit);
+
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
+		}
+
+		# the row elements under 'element', in document order, without searching inside a row
+		method : Collect(element : XmlElement, builder : XmlTableBuilder, limit : Int) ~ Nil {
+			if(element = Nil | (limit > -1 & builder->Size() >= limit)) {
+				return;
+			};
+
+			if(XmlTableBuilder->IsElement(element) & element->GetName()->Equals(@row_element)) {
+				builder->Add(element, 0);
+				return;
+			};
+
+			children := element->GetChildren();
+			if(children <> Nil) {
+				each(i : children) {
+					Collect(children->Get(i), builder, limit);
+				};
+			};
+		}
+
+		#~
+		Gets the child tables the last Read made, depth first in the order their elements were
+		first seen
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
 		}
 
 		#~
@@ -10716,6 +12042,51 @@ runs->Describe()->ToString()->PrintLine();
 			};
 
 			return matches;
+		}
+
+		#~
+		Finds matching files as a view over the filesystem table, so the result can be filtered,
+		sorted, grouped or joined. The rows are the files FindFiles returns; the columns are
+		FilesystemSource's.
+		@param path root directory to start searching
+		@return matching files, Nil if the pattern is invalid or the directory cannot be read
+		```
+		finder := Query.Structured.Finder->New(".*\\.obs$");
+		big := finder->FindTable("src")->Where(Col->Of("size")->Gt(10000))->OrderBy("size", Order->DESC);
+		```
+		~#
+		method : public : FindTable(path : String) ~ View {
+			if(<>@regex->IsOk()) {
+				return Nil;
+			};
+
+			files := FilesystemSource->New(path, true, -1, false)->List();
+			if(files = Nil) {
+				return Nil;
+			};
+
+			paths := files->GetColumn("path");
+			dirs := files->GetColumn("is_dir");
+			live := files->LiveRows();
+			rows := Int->New[live->Size()];
+			n := 0;
+			each(i : live) {
+				row := live[i];
+				if(dirs->GetInt(row) = 0) {
+					full_name := File->GetFullName(paths->GetString(row));
+					if(full_name <> Nil & @regex->MatchExact(full_name)) {
+						rows[n] := row;
+						n += 1;
+					};
+				};
+			};
+
+			columns := Int->New[files->GetColumnCount() - 1];
+			each(i : columns) {
+				columns[i] := i + 1;
+			};
+
+			return View->New(files, columns, Filter->Trim(rows, n));
 		}
 	}
 }

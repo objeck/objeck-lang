@@ -3,7 +3,7 @@
 Query.Structured TextSource and JsonLinesSource (docs/QUERY_DESIGN.md, section 6, phase 2):
 a log read with regular-expression capture groups, typed columns, unmatched lines counted and
 kept, multi-line records, scan hints and errors; JSON Lines with nested objects, mixed types,
-null and missing keys, escapes, arrays, and a bad line reported. Inputs are written by the test.
+null and missing keys, escapes, arrays as child tables, and a bad line reported. Inputs are written by the test.
 ~#
 use Query.Structured, System.IO.Filesystem, Collection;
 
@@ -84,7 +84,8 @@ class QuerySourceTextTest {
 		text += "\n";
 		text += "{\"id\": 3, \"score\": null, \"label\": 5, \"tags\": [1, 2], \"extra\": \"new\"}\r\n";
 		FileWriter->WriteFile(path, text);
-		t := JsonLinesSource->New(path)->Read();
+		lines_source := JsonLinesSource->New(path);
+		t := lines_source->Read();
 		Check("JSON Lines read", t <> Nil & t->Size() = 3);
 		if(t <> Nil & t->Size() = 3) {
 			Check("the table is named after the file", t->GetName()->Equals("query_jsonl_tmp"));
@@ -96,7 +97,14 @@ class QuerySourceTextTest {
 			Check("true and false make a BOOL column", t->GetColumn("ok")->GetType() = ColumnType->BOOL & <>t->Get(1)->Get("ok")->As(BoolRef)->Get());
 			Check("a missing key is an empty cell", t->Get(2)->Get("ok") = Nil & t->Get(0)->Get("extra") = Nil);
 			Check("nested objects become dotted columns", t->Get(0)->Get("meta.seed")->As(IntRef)->Get() = 7 & t->Get(1)->Get("meta.tag") = Nil);
-			Check("an array is kept as JSON text", t->Get(2)->Get("tags") <> Nil);
+			Check("an array is not a column", t->GetColumn("tags") = Nil);
+			Check("a table with a child table has '_id'", t->Get(2)->Get("_id")->As(IntRef)->Get() = 3);
+			children := lines_source->GetChildTables();
+			Check("an array is a child table", children->Size() = 1 & children->Get(0)->GetName()->Equals("query_jsonl_tmp_tags"));
+			if(children->Size() = 1) {
+				tags := children->Get(0);
+				Check("the child rows point at their record", tags->Size() = 2 & tags->Get(0)->Get("_parent_id")->As(IntRef)->Get() = 3 & tags->Get(1)->Get("value")->As(IntRef)->Get() = 2);
+			};
 			Check("JSON Lines queries", t->Query("select id from query_jsonl_tmp where ok = true")->Size() = 1);
 		};
 

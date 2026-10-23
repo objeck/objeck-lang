@@ -1,0 +1,111 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured files named in SQL (docs/QUERY_DESIGN.md, section 6, phase 4): a quoted path in
+FROM and JOIN, the format taken from the extension (CSV, TSV, JSON Lines, JSON, gzipped), csv()
+with a delimiter and no header, xml() with its row element, a glob read as one table with a
+'_file' column and the union of the files' columns, files joined to each other and to catalog
+tables, Catalog->Run, the per-catalog cache (an unchanged file is not read again, a changed one
+is), and the errors. Inputs are written by the test in a folder it removes.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class QuerySourceFilesInSql {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		folder := "query_files_tmp";
+		Directory->Delete(folder);
+		Directory->Create(folder);
+
+		FileWriter->WriteFile("{$folder}/run_a.csv", "id,score,label\n1,0.5,cat\n2,0.9,dog\n");
+		FileWriter->WriteFile("{$folder}/run_b.csv", "id,score,extra\n3,2,x\n");
+		FileWriter->WriteFile("{$folder}/meta.tsv", "id\tteam\n1\tred\n3\tblue\n");
+		FileWriter->WriteFile("{$folder}/raw.txt", "7;seven\n8;eight\n");
+		FileWriter->WriteFile("{$folder}/evals.jsonl", "{\"id\": 1, \"ok\": true}\n{\"id\": 2, \"ok\": false}\n");
+		FileWriter->WriteFile("{$folder}/cfg.json", "[{\"id\": 2, \"lr\": 0.1}]");
+		FileWriter->WriteFile("{$folder}/items.xml", "<root><item k=\"1\">one</item><item k=\"2\">two</item></root>");
+		FileWriter->WriteFile("{$folder}/run_a.csv.gz", "id,score,label\n1,0.5,cat\n2,0.9,dog\n"->ToByteArray()->CompressGzip());
+
+		rs := Catalog->Run("select id, label from '{$folder}/run_a.csv' order by id desc");
+		Check("a quoted CSV path in FROM", rs <> Nil & rs->Size() = 2 & rs->Get(0)->Get("label")->As(String)->Equals("dog"));
+
+		rs := Catalog->Run("select id, score, label, extra, _file from '{$folder}/run_*.csv' order by id");
+		Check("a glob reads every match as one table", rs <> Nil & rs->Size() = 3);
+		if(rs <> Nil & rs->Size() = 3) {
+			Check("a glob adds '_file'", rs->Get(0)->Get("_file")->As(String)->EndsWith("run_a.csv") & rs->Get(2)->Get("_file")->As(String)->EndsWith("run_b.csv"));
+			Check("a column one file lacks is empty", rs->Get(0)->Get("extra") = Nil & rs->Get(2)->Get("label") = Nil);
+			Check("an INT column meeting a FLOAT one widens", rs->Get(2)->Get("score")->As(FloatRef)->Get() = 2.0);
+			Check("the glob skips a .gz file whose name does not match", rs->Size() = 3);
+		};
+
+		rs := Catalog->Run("select r.id, m.team from '{$folder}/run_*.csv' r join '{$folder}/meta.tsv' m on m.id = r.id order by r.id");
+		Check("two files joined; TSV by extension", rs <> Nil & rs->Size() = 2 & rs->Get(1)->Get("team")->As(String)->Equals("blue"));
+
+		rs := Catalog->Run("select c1, c2 from csv('{$folder}/raw.txt', delimiter => ';', header => false) where c1 > 7");
+		Check("csv() with a delimiter and no header", rs <> Nil & rs->Size() = 1 & rs->Get(0)->Get("c2")->As(String)->Equals("eight"));
+
+		rs := Catalog->Run("select e.id, c.lr from '{$folder}/evals.jsonl' e left join '{$folder}/cfg.json' c on c.id = e.id where e.ok = false");
+		Check("JSON Lines and JSON by extension", rs <> Nil & rs->Size() = 1 & rs->Get(0)->Get("lr")->As(FloatRef)->Get() = 0.1);
+
+		rs := Catalog->Run("select @k, _text from xml('{$folder}/items.xml', row => 'item') where _text = 'two'");
+		Check("xml() with its row element", rs <> Nil & rs->Size() = 1 & rs->Get(0)->Get("@k")->As(IntRef)->Get() = 2);
+
+		rs := Catalog->Run("select count(*) from '{$folder}/run_a.csv.gz'");
+		Check("a gzipped file by its inner extension", rs <> Nil & rs->Get(0)->Get(1)->As(IntRef)->Get() = 2);
+
+		# a catalog's tables and files in one statement
+		catalog := Catalog->New();
+		catalog->Execute("create table labels (name string, weight float)");
+		catalog->Execute("insert into labels values ('cat', 1.5), ('dog', 2.5)");
+		rs := catalog->Query("select r.id, l.weight from '{$folder}/run_a.csv' r join labels l on l.name = r.label order by r.id");
+		Check("a file joined to a catalog table", rs <> Nil & rs->Size() = 2 & rs->Get(1)->Get("weight")->As(FloatRef)->Get() = 2.5);
+
+		# the cache: the same file again is not read, a changed one is
+		reads := catalog->GetFileReads();
+		catalog->Query("select id from '{$folder}/run_a.csv'");
+		catalog->Query("select label from '{$folder}/run_a.csv' where id = 1");
+		Check("an unchanged file comes from the cache", catalog->GetFileReads() = reads);
+
+		FileWriter->WriteFile("{$folder}/run_a.csv", "id,score,label\n1,0.5,cat\n2,0.9,dog\n5,0.1,eel\n");
+		rs := catalog->Query("select count(*) from '{$folder}/run_a.csv'");
+		Check("a changed file is read again", catalog->GetFileReads() = reads + 1 & rs->Get(0)->Get(1)->As(IntRef)->Get() = 3);
+
+		glob_reads := catalog->GetFileReads();
+		catalog->Query("select id from '{$folder}/run_*.csv'");
+		catalog->Query("select id from '{$folder}/run_*.csv'");
+		Check("a glob is cached as a whole", catalog->GetFileReads() = glob_reads + 2);
+		FileWriter->WriteFile("{$folder}/run_c.csv", "id\n9\n");
+		rs := catalog->Query("select id from '{$folder}/run_*.csv'");
+		Check("a new file matching a glob is picked up", rs <> Nil & rs->Size() = 5);
+
+		# errors
+		Check("no file", Catalog->New()->Query("select * from '{$folder}/none.csv'") = Nil);
+		empty := Catalog->New();
+		Check("no file matches a glob", empty->Query("select * from '{$folder}/zz_*.csv'") = Nil & empty->GetError()->Has("no files match"));
+		Check("a glob in the folder part", empty->Query("select * from 'query_*/run_a.csv'") = Nil & empty->GetError()->Has("folder"));
+		FileWriter->WriteFile("{$folder}/notes.dat", "x");
+		Check("an unknown extension", empty->Query("select * from '{$folder}/notes.dat'") = Nil & empty->GetError()->Has("unknown file type"));
+		Check("xml() needs its row element", empty->Query("select * from '{$folder}/items.xml'") = Nil & empty->GetError()->Has("row element"));
+		Check("an unknown option", empty->Query("select * from csv('{$folder}/raw.txt', quote => 'x')") = Nil);
+		table := Table->New("t", ["a"]);
+		Check("a single table cannot read files", table->Query("select a from '{$folder}/run_a.csv'") = Nil & table->GetError()->Has("Catalog"));
+
+		Directory->Delete(folder);
+
+		if(@failures = 0) {
+			"PASS: query files named in SQL"->PrintLine();
+		}
+		else {
+			"FAIL: query files named in SQL ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
