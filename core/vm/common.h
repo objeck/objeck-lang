@@ -67,6 +67,7 @@
 #include "../shared/sys.h"
 #include "../shared/traps.h"
 #include "../shared/int_ops.h"
+#include "../shared/num_parse.h"
 #include <mbedtls/ssl.h>
 #include <mbedtls/net_sockets.h>
 #include <mbedtls/entropy.h>
@@ -403,41 +404,67 @@ inline double ParseFloatText(const wchar_t* str)
 // or does not fit 64 bits, is 0. The JIT kept its own copy, which knew no
 // signed prefix, so "-0x10" was -16 interpreted and 0 once ToInt compiled.
 //
-inline int64_t ParseIntText(const wchar_t* str, int base)
+// The leading number is read as std::stoll read it -- digits after it are
+// ignored, so "12abc" is 12 -- but with wcstoll, whose failures are values
+// rather than exceptions.
+//
+inline int64_t ParseIntPrefix(const wchar_t* str, int base)
 {
-  try {
-    const size_t size = wcslen(str);
-    if(size > 3 && str[0] == L'-') {
-      switch(str[2]) {
-      case L'b':
-        return -std::stoll(str + 3, nullptr, 2);
-      case L'o':
-        return -std::stoll(str + 3, nullptr, 8);
-      case L'x':
-      case L'X':
-        return -std::stoll(str + 3, nullptr, 16);
-      default:
-        break;
-      }
-    }
-    else if(size > 2) {
-      switch(str[1]) {
-      case L'b':
-        return std::stoll(str + 2, nullptr, 2);
-      case L'o':
-        return std::stoll(str + 2, nullptr, 8);
-      case L'x':
-      case L'X':
-        return std::stoll(str + 2, nullptr, 16);
-      default:
-        break;
-      }
-    }
-    return std::stoll(str, nullptr, base);
-  }
-  catch(const std::exception&) {
+  wchar_t* end = nullptr;
+  errno = 0;
+  const long long value = wcstoll(str, &end, base);
+  if(end == str || errno == ERANGE || errno == EINVAL) {
     return 0;
   }
+  return (int64_t)value;
+}
+
+inline int64_t ParseIntText(const wchar_t* str, int base)
+{
+  const size_t size = wcslen(str);
+  if(size > 3 && str[0] == L'-') {
+    switch(str[2]) {
+    case L'b':
+      return objeck_int::Sub(0, ParseIntPrefix(str + 3, 2));
+    case L'o':
+      return objeck_int::Sub(0, ParseIntPrefix(str + 3, 8));
+    case L'x':
+    case L'X':
+      return objeck_int::Sub(0, ParseIntPrefix(str + 3, 16));
+    default:
+      break;
+    }
+  }
+  else if(size > 2) {
+    switch(str[1]) {
+    case L'b':
+      return ParseIntPrefix(str + 2, 2);
+    case L'o':
+      return ParseIntPrefix(str + 2, 8);
+    case L'x':
+    case L'X':
+      return ParseIntPrefix(str + 2, 16);
+    default:
+      break;
+    }
+  }
+  return ParseIntPrefix(str, base);
+}
+
+//
+// A float-formatting precision -- the "float:string:precision" property that
+// Float->ToString reads, and "precision", which the stderr float writer reads
+// -- as a whole decimal int. Both used to go through std::stoll, uncaught, so
+// Runtime->SetProperty("float:string:precision", "not-a-number") and any later
+// Float->ToString ended the program with ">>> virtual machine: internal
+// error: invalid stoll argument <<<", and a value past 32 bits was truncated
+// by the cast. Runtime->SetProperty now refuses such a value with a
+// recoverable error (common.cpp, SetSysProp), so the property never holds
+// one; a reader that still meets one formats as if no precision were set.
+//
+inline bool ParseFloatPrecision(const std::wstring& text, int& precision)
+{
+  return objeck_parse::ToInt(text, precision);
 }
 
 inline const std::wstring IntToString(int v)

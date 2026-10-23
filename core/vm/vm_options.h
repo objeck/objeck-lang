@@ -34,6 +34,8 @@
 
 #include "../shared/sys.h"
 #include "../shared/version.h"
+#include <climits>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -93,8 +95,14 @@ namespace Runtime {
 
     size_t i = 0;
     size_t value = 0;
+    // A size that does not fit is refused. It used to wrap, so
+    // --gc-threshold=18446744073709551617 ran with a threshold of 1 byte.
     while(i < text.size() && text[i] >= L'0' && text[i] <= L'9') {
-      value = value * 10 + (size_t)(text[i] - L'0');
+      const size_t digit = (size_t)(text[i] - L'0');
+      if(value > (SIZE_MAX - digit) / 10) {
+        return false;
+      }
+      value = value * 10 + digit;
       ++i;
     }
     if(i == 0) {
@@ -102,12 +110,17 @@ namespace Runtime {
     }
 
     if(i < text.size()) {
+      size_t scale = 1;
       switch(text[i]) {
-      case L'k': case L'K': value *= 1024ULL; break;
-      case L'm': case L'M': value *= 1048576ULL; break;
-      case L'g': case L'G': value *= 1073741824ULL; break;
+      case L'k': case L'K': scale = 1024ULL; break;
+      case L'm': case L'M': scale = 1048576ULL; break;
+      case L'g': case L'G': scale = 1073741824ULL; break;
       default: return false;
       }
+      if(value > SIZE_MAX / scale) {
+        return false;
+      }
+      value *= scale;
       ++i;
     }
     if(i != text.size()) {
@@ -218,10 +231,12 @@ namespace Runtime {
           opts.jit_threshold = -1;
         }
         else {
+          // A count past a long (32 bits on Windows) is refused. It used to
+          // overflow: --jit=4294967297 ran as --jit=1 on Windows.
           long calls = 0;
           bool ok = !value.empty();
           for(wchar_t c : value) {
-            if(c < L'0' || c > L'9') { ok = false; break; }
+            if(c < L'0' || c > L'9' || calls > (LONG_MAX - (c - L'0')) / 10) { ok = false; break; }
             calls = calls * 10 + (c - L'0');
           }
           if(!ok || calls < 1) {

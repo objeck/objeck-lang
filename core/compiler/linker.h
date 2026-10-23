@@ -258,8 +258,10 @@ class LibraryMethod {
         }
       }
       else if(path[0] == L'p') {
-        const size_t index = (size_t)std::stoul(path.substr(1, end - 1));
-        if(index < declarations.size() && declarations[index]) {
+        // read from the library file: a damaged mark without an index is
+        // skipped, as an out-of-range index is, instead of std::stoul throwing
+        size_t index = 0;
+        if(objeck_parse::ToIndex(path.substr(1, end - 1), index) && index < declarations.size() && declarations[index]) {
           declarations[index]->SetMethodGenericAt(path.substr(end), m[i].second);
         }
       }

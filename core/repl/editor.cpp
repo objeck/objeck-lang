@@ -37,12 +37,28 @@
 #include "../vm/vm.h"
 #include "../shared/version.h"
 #include "../shared/exe_path.h"
+#include "../shared/num_parse.h"
 #include "../debugger/color.h"
 #include "term.h"
 #include "screen.h"
 #include "tui_editor.h"
+#include <cwctype>
 #include <deque>
 #include <filesystem>
+
+//
+// A line number typed at the prompt ("/g 5", "/r 5", "/d 2-4"). It went
+// through std::stoi, and only std::invalid_argument was caught, so one past an
+// int ("/g 99999999999") threw std::out_of_range out of the REPL. Surrounding
+// whitespace is allowed; trailing text ("5x") is no longer read as 5.
+//
+static bool ParseLineNumber(std::wstring text, int& line)
+{
+  while(!text.empty() && iswspace(text.back())) {
+    text.pop_back();
+  }
+  return objeck_parse::ToInt(text, line);
+}
 
 //
 // Document
@@ -968,21 +984,19 @@ void Editor::DoGotoLine(std::wstring& in)
 {
   if(in.size() > 2) {
     in = in.substr(2);
-    try {
-      const size_t line_pos = std::stoi(in);
-      if(line_pos <= doc.Size()) {
-        cur_pos = line_pos;
-        std::wcout << "=> Cursor at line " << in << L'.' << std::endl;
-      }
-      else {
-        std::wcout << "=> Line number " << in << L" is invalid." << std::endl;
-      }
-    }
-    catch(std::invalid_argument& e) {
-#ifdef _WIN32
-      UNREFERENCED_PARAMETER(e);
-#endif
+    int line_num = 0;
+    if(!ParseLineNumber(in, line_num)) {
       std::wcout << SYNTAX_ERROR << std::endl;
+      return;
+    }
+
+    const size_t line_pos = (size_t)line_num;
+    if(line_pos <= doc.Size()) {
+      cur_pos = line_pos;
+      std::wcout << "=> Cursor at line " << in << L'.' << std::endl;
+    }
+    else {
+      std::wcout << "=> Line number " << in << L" is invalid." << std::endl;
     }
   }
   else {
@@ -994,8 +1008,14 @@ bool Editor::DoReplaceLine(std::wstring& in)
 {
   if(in.size() > 2) {
     in = in.substr(2);
-    try {
-      const size_t line_pos = std::stoi(Trim(in));
+    int line_num = 0;
+    if(!ParseLineNumber(Trim(in), line_num)) {
+      std::wcout << SYNTAX_ERROR << std::endl;
+      return false;
+    }
+
+    {
+      const size_t line_pos = (size_t)line_num;
       if(line_pos <= doc.Size()) {
         // Nothing is asked for that the document would refuse: the read-only
         // shell lines cannot be replaced, and prompting first would eat a line.
@@ -1024,12 +1044,6 @@ bool Editor::DoReplaceLine(std::wstring& in)
       else {
         std::wcout << "=> Line number " << in << L" is invalid or read-only." << std::endl;
       }
-    }
-    catch(std::invalid_argument& e) {
-#ifdef _WIN32
-      UNREFERENCED_PARAMETER(e);
-#endif
-      std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
   else {
@@ -1075,15 +1089,17 @@ bool Editor::DoDeleteLine(std::wstring& in)
 {
   if(in.size() > 2) {
     in = in.substr(2);
-    try {
-    
+    {
       const size_t range_index = in.find('-');
       if(range_index != std::wstring::npos && range_index < in.size()) {
         std::wstring start_range_str(in.substr(0, range_index));
-        const int start_line_pos = std::stoi(Trim(start_range_str));
-
         std::wstring end_range_str = in.substr(range_index + 1);
-        const int end_line_pos = std::stoi(Trim(end_range_str));
+        int start_line_pos = 0;
+        int end_line_pos = 0;
+        if(!ParseLineNumber(Trim(start_range_str), start_line_pos) || !ParseLineNumber(Trim(end_range_str), end_line_pos)) {
+          std::wcout << SYNTAX_ERROR << std::endl;
+          return false;
+        }
 
         if(start_line_pos < end_line_pos) {
           for(int i = start_line_pos; i <= end_line_pos; ++i) {
@@ -1105,8 +1121,12 @@ bool Editor::DoDeleteLine(std::wstring& in)
         }
       }
       else {
-        const int line_pos = std::stoi(Trim(in));
-        if(doc.DeleteLine(line_pos - 1)) {
+        int line_pos = 0;
+        if(!ParseLineNumber(Trim(in), line_pos)) {
+          std::wcout << SYNTAX_ERROR << std::endl;
+          return false;
+        }
+        if(doc.DeleteLine((size_t)line_pos - 1)) {
           std::wcout << L"=> Removed line " << line_pos << L'.' << std::endl;
           if(line_pos < (int)doc.Size()) {
             cur_pos = line_pos - 1;
@@ -1118,12 +1138,6 @@ bool Editor::DoDeleteLine(std::wstring& in)
           std::wcout << "=> Line " << line_pos << L" is read-only." << std::endl;
         }
       }
-    }
-    catch(std::invalid_argument& e) {
-#ifdef _WIN32
-      UNREFERENCED_PARAMETER(e);
-#endif
-      std::wcout << SYNTAX_ERROR << std::endl;
     }
   }
   else {
@@ -1423,18 +1437,16 @@ void Editor::DoTutorial(std::wstring& in)
   std::wstring arg = (in.size() > 2) ? in.substr(2) : L"";
   Trim(arg);
   if(!arg.empty()) {
-    try {
-      const size_t n = (size_t)std::stoul(arg);
-      if(n >= 1 && n <= total) {
-        tutorial_step = n - 1;
-      }
-      else {
-        std::wcout << L"=> Tutorial steps are 1.." << total << L'.' << std::endl;
-        return;
-      }
-    }
-    catch(...) {
+    size_t n = 0;
+    if(!objeck_parse::ToIndex(arg, n)) {
       std::wcout << SYNTAX_ERROR << std::endl;
+      return;
+    }
+    if(n >= 1 && n <= total) {
+      tutorial_step = n - 1;
+    }
+    else {
+      std::wcout << L"=> Tutorial steps are 1.." << total << L'.' << std::endl;
       return;
     }
   }

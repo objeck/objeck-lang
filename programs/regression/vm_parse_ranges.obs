@@ -1,0 +1,163 @@
+#~
+A float-formatting precision that is not an int is refused where it is set,
+with an error a ?-> handler recovers from, and formatting keeps working.
+
+Runtime->SetProperty stored any text under "float:string:precision" (which
+String->SetFloatPrecision and Float->ToString use) and under "precision" (the
+stderr float writer's), and the next float formatted parsed it with
+std::stoll. Text that was not a number threw std::invalid_argument and one
+past 64 bits std::out_of_range; nothing caught either, so the program ended
+with ">>> virtual machine: internal error: invalid stoll argument <<<",
+interpreted and compiled alike. A value past 32 bits was truncated by a cast.
+SetProperty now refuses such a value: under ?-> the error is recorded (kind
+OTHER) and the call is Nil; the property keeps what it held. An empty value
+still clears the setting, and "fixed" and "scientific" are still taken for
+"precision".
+
+String->ToInt reads its leading number as before -- "12abc" is 12, text out
+of range is 0 -- now without the exceptions it used to catch.
+
+Each check runs through helpers called enough times to run compiled too.
+~#
+class Setter {
+	New() {
+	}
+
+	method : public : Set(key : String, value : String) ~ BoolRef {
+		Runtime->SetProperty(key, value);
+		return BoolRef->New(true);
+	}
+}
+
+class VmParseRanges {
+	@failures : Int;
+	@setter : Setter;
+
+	New() {
+		@failures := 0;
+		@setter := Setter->New();
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# true when setting the value was refused with the precision error
+	method : Refused(key : String, value : String) ~ Bool {
+		Runtime->ClearError();
+		r := @setter?->Set(key, value);
+		return r = Nil & Runtime->GetErrorKind() = Runtime->ErrorKind->OTHER &
+			Runtime->GetError() <> Nil & Runtime->GetError()->StartsWith("Invalid float precision");
+	}
+
+	# true when setting the value was accepted
+	method : Accepted(key : String, value : String) ~ Bool {
+		Runtime->ClearError();
+		r := @setter?->Set(key, value);
+		return r <> Nil & <>Runtime->HasError();
+	}
+
+	method : Format(f : Float) ~ String {
+		return f->ToString();
+	}
+
+	method : ParseInt(s : String) ~ Int {
+		return s->ToInt();
+	}
+
+	method : Precision() ~ Nil {
+		pi := 3.14159;
+		String->SetFloatFormat(Number->Format->FIXED);
+
+		for(round := 0; round < 12; round += 1;) {
+			ok := true;
+			String->SetFloatPrecision(2);
+			ok := ok & Format(pi)->Equals("3.14");
+
+			bad := ["not-a-number", "12abc", "99999999999999999999", "2147483648", "-2147483649", "1.5", "-"];
+			each(i : bad) {
+				ok := ok & Refused("float:string:precision", bad[i]);
+				# the old value is kept, so formatting goes on as before
+				ok := ok & Format(pi)->Equals("3.14");
+			};
+
+			ok := ok & Accepted("float:string:precision", "4");
+			ok := ok & Format(pi)->Equals("3.1416");
+			ok := ok & Accepted("float:string:precision", " 3");
+			ok := ok & Format(pi)->Equals("3.142");
+
+			# "precision", the stderr float writer's, also takes two words
+			ok := ok & Accepted("precision", "fixed");
+			ok := ok & Accepted("precision", "scientific");
+			ok := ok & Accepted("precision", "5");
+			ok := ok & Refused("precision", "five");
+			ok := ok & Refused("precision", "99999999999999999999");
+			ok := ok & Runtime->GetProperty("precision")->Equals("5");
+
+			# an empty value still clears the setting
+			ok := ok & Accepted("float:string:precision", "");
+			ok := ok & Accepted("precision", "");
+
+			if(round = 0) {
+				Check("a precision that is not an int is refused, and formatting goes on", ok);
+			}
+			else if(round = 11) {
+				Check("the same, compiled", ok);
+			};
+		};
+		String->SetFloatFormat(Number->Format->DEFAULT);
+	}
+
+	method : Unguarded() ~ Nil {
+		# with no handler the refusal is the program's error; here only the
+		# value is checked, through a property no float formatting reads
+		Runtime->SetProperty("vm_parse_ranges.probe", "not-a-number");
+		Check("an unrelated property still takes any text",
+			Runtime->GetProperty("vm_parse_ranges.probe")->Equals("not-a-number"));
+	}
+
+	method : Ints() ~ Nil {
+		for(round := 0; round < 12; round += 1;) {
+			ok := true;
+			ok := ok & (ParseInt("12abc") = 12);
+			ok := ok & (ParseInt("  42") = 42);
+			ok := ok & (ParseInt("-0x10") = -16);
+			ok := ok & (ParseInt("0x7FFFFFFFFFFFFFFF") = 9223372036854775807);
+			ok := ok & (ParseInt("-0x8000000000000000") = 0);
+			ok := ok & (ParseInt("99999999999999999999") = 0);
+			ok := ok & (ParseInt("") = 0);
+			ok := ok & (ParseInt("-") = 0);
+			ok := ok & (ParseInt("-0b") = 0);
+			if(round = 0) {
+				Check("ToInt reads its leading number as before", ok);
+			}
+			else if(round = 11) {
+				Check("the same, compiled", ok);
+			};
+		};
+	}
+
+	method : public : Run() ~ Nil {
+		Precision();
+		Unguarded();
+		Ints();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: number parsing in the VM refuses or answers, never throws"->PrintLine();
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		VmParseRanges->New()->Run();
+	}
+}

@@ -773,8 +773,11 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
 
 		const std::wstring float_format = program->GetProperty(L"float:string:format");
 		const std::wstring float_precision = program->GetProperty(L"float:string:precision");
+		// not std::stoll, which threw on a value that was not a number (common.h)
+		int precision = 0;
+		const bool has_precision = ParseFloatPrecision(float_precision, precision);
 
-    if(!float_format.empty() && !float_precision.empty()) {
+    if(!float_format.empty() && has_precision) {
       if(float_format == L"fixed") {
         formatter << std::fixed;
       }
@@ -784,7 +787,7 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
       else if(float_format == L"hex") {
         formatter << std::hexfloat;
       }
-      formatter << std::setprecision(static_cast<int>(stoll(float_precision)));
+      formatter << std::setprecision(precision);
       
       formatter << value;
       conv = formatter.str();
@@ -803,8 +806,8 @@ void StackInterpreter::Float2Str(size_t* &op_stack, size_t* &stack_pos)
 			formatter << value;
 			conv = formatter.str();
     }
-    else if(!float_precision.empty()) {
-			formatter << std::setprecision(static_cast<int>(stoll(float_precision)));
+    else if(has_precision) {
+			formatter << std::setprecision(precision);
 
 			formatter << value;
 			conv = formatter.str();

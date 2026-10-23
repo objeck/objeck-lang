@@ -11619,7 +11619,14 @@ namespace {
     // width
     const size_t wstart = i;
     while(i < s.size() && s[i] >= L'0' && s[i] <= L'9') { ++i; }
-    if(i > wstart) { fs.has_width = true; fs.width = std::stoi(s.substr(wstart, i - wstart)); }
+    // A width or precision past an int is an invalid specifier, reported like
+    // any other; std::stoi threw on one and ended obc.
+    if(i > wstart) {
+      fs.has_width = true;
+      if(!objeck_parse::ToInt(s.substr(wstart, i - wstart), fs.width)) {
+        return fs;
+      }
+    }
     // precision
     if(i < s.size() && s[i] == L'.') {
       ++i;
@@ -11627,7 +11634,9 @@ namespace {
       while(i < s.size() && s[i] >= L'0' && s[i] <= L'9') { ++i; }
       if(i == pstart) { return fs; }   // '.' with no digits -> invalid
       fs.has_precision = true;
-      fs.precision = std::stoi(s.substr(pstart, i - pstart));
+      if(!objeck_parse::ToInt(s.substr(pstart, i - pstart), fs.precision)) {
+        return fs;
+      }
     }
 
     // the whole spec must be consumed and carry at least a width or precision
