@@ -42,7 +42,13 @@ extern "C" {
          const int device_id = (int)APITools_GetIntValue(context, 2);
          const int pref_id = (int)APITools_GetIntValue(context, 3);
 
-         APITools_SetIntValue(context, 0, capture->open(device_id, pref_id));
+         // opening a device or stream can block for seconds; park for it
+         bool opened;
+         {
+            APITools_Parked parked(context);
+            opened = capture->open(device_id, pref_id);
+         }
+         APITools_SetIntValue(context, 0, opened);
       }
    }
 
@@ -54,7 +60,12 @@ extern "C" {
       cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
       if(capture) {
          const int device_id = (int)APITools_GetIntValue(context, 2);
-         APITools_SetIntValue(context, 0, capture->open(device_id));
+         bool opened;
+         {
+            APITools_Parked parked(context);
+            opened = capture->open(device_id);
+         }
+         APITools_SetIntValue(context, 0, opened);
       }
    }
 
@@ -68,7 +79,12 @@ extern "C" {
          const std::wstring w_name = APITools_GetStringValue(context, 2);
          const std::string name = UnicodeToBytes(w_name);
 
-         APITools_SetIntValue(context, 0, capture->open(name.c_str()));
+         bool opened;
+         {
+            APITools_Parked parked(context);
+            opened = capture->open(name.c_str());
+         }
+         APITools_SetIntValue(context, 0, opened);
       }
    }
    
@@ -80,7 +96,12 @@ extern "C" {
       cv::VideoCapture* capture = (cv::VideoCapture*)APITools_GetIntValue(context, 1);
       if(capture) {
          cv::Mat image;
-         capture->read(image);
+         {
+            // waits for the next frame from a camera or stream; park meanwhile
+            // (image is C memory until opencv_raw_write copies it out)
+            APITools_Parked parked(context);
+            capture->read(image);
+         }
          
          size_t* image_obj = opencv_raw_write(image, context);                  
          APITools_SetObjectValue(context, 0, image_obj);
@@ -134,7 +155,12 @@ extern "C" {
       const std::wstring w_video_path = APITools_GetStringValue(context, 1);
       const std::string video_path = UnicodeToBytes(w_video_path);
 
-      cv::VideoCapture* capture = new cv::VideoCapture(video_path);
+      cv::VideoCapture* capture;
+      {
+         // opening a device or stream can block for seconds; park for it
+         APITools_Parked parked(context);
+         capture = new cv::VideoCapture(video_path);
+      }
       if(capture->isOpened()) {
          APITools_SetIntValue(context, 0, (size_t)capture);
       }
@@ -150,7 +176,12 @@ extern "C" {
 
       const int prop_id = (int)APITools_GetIntValue(context, 2);
 
-      cv::VideoCapture* capture = new cv::VideoCapture(video_path, prop_id);
+      cv::VideoCapture* capture;
+      {
+         // opening a device or stream can block for seconds; park for it
+         APITools_Parked parked(context);
+         capture = new cv::VideoCapture(video_path, prop_id);
+      }
       APITools_SetIntValue(context, 0, (size_t)capture);
    }
 
@@ -161,7 +192,12 @@ extern "C" {
    void opencv_new_video_capture_id(VMContext& context) {
       const int dev_id = (int)APITools_GetIntValue(context, 1);
 
-      cv::VideoCapture* capture = new cv::VideoCapture(dev_id);
+      cv::VideoCapture* capture;
+      {
+         // opening a device or stream can block for seconds; park for it
+         APITools_Parked parked(context);
+         capture = new cv::VideoCapture(dev_id);
+      }
       if(capture->isOpened()) {
          APITools_SetIntValue(context, 0, (size_t)capture);
       }
@@ -175,7 +211,12 @@ extern "C" {
       const int dev_id = (int)APITools_GetIntValue(context, 1);
       const int prop_id = (int)APITools_GetIntValue(context, 2);
 
-      cv::VideoCapture* capture = new cv::VideoCapture(dev_id, prop_id);
+      cv::VideoCapture* capture;
+      {
+         // opening a device or stream can block for seconds; park for it
+         APITools_Parked parked(context);
+         capture = new cv::VideoCapture(dev_id, prop_id);
+      }
       if(capture->isOpened()) {
          APITools_SetIntValue(context, 0, (size_t)capture);
       }
@@ -249,8 +290,13 @@ extern "C" {
       cv::Mat resized_image;
       cv::resize(image, resized_image, cv::Size(), scaling, scaling, cv::INTER_LINEAR);
 
-      cv::imshow(title, resized_image);
-      cv::waitKey(250);
+      {
+         // waitKey pumps the window for the given time; park meanwhile
+         // (resized_image is C memory)
+         APITools_Parked parked(context);
+         cv::imshow(title, resized_image);
+         cv::waitKey(250);
+      }
    }
 
    // Display image
@@ -273,8 +319,13 @@ extern "C" {
       cv::Mat resized_image;
       cv::resize(image, resized_image, cv::Size(), scaling, scaling, cv::INTER_LINEAR);
 
-      cv::imshow(title, resized_image);
-      cv::waitKey(wait);
+      {
+         // waitKey pumps the window for the given time; park meanwhile
+         // (resized_image is C memory)
+         APITools_Parked parked(context);
+         cv::imshow(title, resized_image);
+         cv::waitKey(wait);
+      }
    }
 
    // Draw a rectangle on image

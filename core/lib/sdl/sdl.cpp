@@ -2213,7 +2213,14 @@ extern "C" {
 #endif
   void sdl_event_wait(VMContext& context) {
     SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
-    APITools_SetIntValue(context, 0, SDL_WaitEvent(event));
+    // waits, possibly forever, for the next event; park meanwhile (event is
+    // C memory)
+    int result;
+    {
+      APITools_Parked parked(context);
+      result = SDL_WaitEvent(event);
+    }
+    APITools_SetIntValue(context, 0, result);
   }
 
 #ifdef _WIN32
@@ -2222,7 +2229,12 @@ extern "C" {
   void sdl_event_wait_timeout(VMContext& context) {
     SDL_Event* event = (SDL_Event*)APITools_GetIntValue(context, 1);
     const int timeout = (int)APITools_GetIntValue(context, 2);
-    APITools_SetIntValue(context, 0, SDL_WaitEventTimeout(event, timeout));
+    int result;
+    {
+      APITools_Parked parked(context);
+      result = SDL_WaitEventTimeout(event, timeout);
+    }
+    APITools_SetIntValue(context, 0, result);
   }
 
 #ifdef _WIN32
@@ -3212,7 +3224,10 @@ extern "C" {
   __declspec(dllexport)
 #endif
   void sdl_timer_delay(VMContext& context) {
-    SDL_Delay((Uint32)APITools_GetIntValue(context, 0));
+    const Uint32 delay = (Uint32)APITools_GetIntValue(context, 0);
+    // a sleep, like Thread->Sleep, which parks too
+    APITools_Parked parked(context);
+    SDL_Delay(delay);
   }
 
   // milliseconds as 64 bits: SDL_GetTicks wraps after about 49 days
@@ -4443,21 +4458,30 @@ __declspec(dllexport)
     Uint8 buffer[BUFFER_SIZE] = { 0 };
     std::vector<Uint8> audio_buffer;
     Uint32 captured = 0;
-    while(captured < total_bytes) {
-      Uint32 available = SDL_GetQueuedAudioSize(dev);
-      if(available >= BUFFER_SIZE) {
-        SDL_DequeueAudio(dev, buffer, BUFFER_SIZE);
-        audio_buffer.insert(audio_buffer.end(), buffer, buffer + BUFFER_SIZE);
-        captured += BUFFER_SIZE;
+    {
+      // recording takes the whole requested time; park for it. Only C
+      // memory is touched until the result is copied out below.
+      APITools_Parked parked(context);
+      while(captured < total_bytes) {
+        Uint32 available = SDL_GetQueuedAudioSize(dev);
+        if(available >= BUFFER_SIZE) {
+          SDL_DequeueAudio(dev, buffer, BUFFER_SIZE);
+          audio_buffer.insert(audio_buffer.end(), buffer, buffer + BUFFER_SIZE);
+          captured += BUFFER_SIZE;
+        }
+        else {
+          SDL_Delay(10);
+        }
       }
-      else {
-        SDL_Delay(10);
-      }
+
+      SDL_CloseAudioDevice(dev);
+      SDL_CloseAudio();
+      SDL_QuitSubSystem(SDL_INIT_AUDIO);
     }
 
-    SDL_CloseAudioDevice(dev);
-    SDL_CloseAudio();
-    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    // re-read: the holder is an object, and a collection while parked may
+    // have moved it
+    output_holder = APITools_GetArray(context, 0);
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
@@ -4508,21 +4532,30 @@ __declspec(dllexport)
     Uint8 buffer[BUFFER_SIZE] = { 0 };
     std::vector<Uint8> audio_buffer;
     Uint32 captured = 0;
-    while(captured < total_bytes) {
-      Uint32 available = SDL_GetQueuedAudioSize(dev);
-      if(available >= BUFFER_SIZE) {
-        SDL_DequeueAudio(dev, buffer, BUFFER_SIZE);        
-        audio_buffer.insert(audio_buffer.end(), buffer, buffer + BUFFER_SIZE);
-        captured += BUFFER_SIZE;
+    {
+      // recording takes the whole requested time; park for it. Only C
+      // memory is touched until the result is copied out below.
+      APITools_Parked parked(context);
+      while(captured < total_bytes) {
+        Uint32 available = SDL_GetQueuedAudioSize(dev);
+        if(available >= BUFFER_SIZE) {
+          SDL_DequeueAudio(dev, buffer, BUFFER_SIZE);        
+          audio_buffer.insert(audio_buffer.end(), buffer, buffer + BUFFER_SIZE);
+          captured += BUFFER_SIZE;
+        }
+        else {
+          SDL_Delay(10);
+        }
       }
-      else {
-        SDL_Delay(10);
-      }
+
+      SDL_CloseAudioDevice(dev);
+      SDL_CloseAudio();
+      SDL_QuitSubSystem(SDL_INIT_AUDIO);
     }
 
-    SDL_CloseAudioDevice(dev);
-    SDL_CloseAudio();
-    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    // re-read: the holder is an object, and a collection while parked may
+    // have moved it
+    output_holder = APITools_GetArray(context, 0);
 
     // copy output
     size_t* output_byte_array = APITools_MakeByteArray(context, audio_buffer.size());
@@ -4564,8 +4597,14 @@ __declspec(dllexport)
     }
 
     SDL_PauseAudio(0);
-    while(audio_buffer_len > 0) {
-      SDL_Delay(100);
+    {
+      // playback takes as long as the sound; park for it. The audio callback
+      // reads the argument Byte[] meanwhile, which is safe: arrays live in the
+      // old generation and never move, and the caller still holds it.
+      APITools_Parked parked(context);
+      while(audio_buffer_len > 0) {
+        SDL_Delay(100);
+      }
     }
 
     SDL_CloseAudio();

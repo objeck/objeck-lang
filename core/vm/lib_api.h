@@ -48,6 +48,12 @@ typedef size_t* (*APITools_AllocateArray_Ptr) (const size_t size, const instruct
 // because that object may be young: a minor GC then moves it and repairs only
 // references inside containers the barrier recorded (#864).
 typedef void(*APITools_WriteBarrier_Ptr) (size_t* target_obj);
+// Parks and unparks the calling thread for the garbage collector (see
+// APITools_Parked below).
+typedef void(*APITools_Blocking_Ptr) ();
+// Set in VMContext::blocking_abi by a VM that provides begin_blocking and
+// end_blocking ("OBJKPARK").
+#define APITOOLS_BLOCKING_ABI ((size_t)0x4B5241504B4A424FULL)
 
 //
 // API calling context
@@ -68,6 +74,59 @@ struct VMContext {
   // a library compiled against an older header reads the fields above at the
   // same offsets, so it keeps working against a newer VM without a rebuild
   APITools_WriteBarrier_Ptr write_barrier;
+  // parking for blocking calls -- appended, as above; use APITools_Parked.
+  // blocking_abi is APITOOLS_BLOCKING_ABI when the two pointers are set. A VM
+  // built before these fields existed passes a shorter struct, so for it these
+  // words are whatever lies beyond on its stack; the marker is what tells a
+  // library not to call through them.
+  size_t blocking_abi;
+  APITools_Blocking_Ptr begin_blocking;
+  APITools_Blocking_Ptr end_blocking;
+};
+
+//
+// Parks the calling thread for the lifetime of the object, so a blocking call
+// -- a database round trip, waiting for an event, a camera frame, a long
+// inference -- does not hold up every garbage collection in the process. The
+// collector is stop-the-world: it waits until every VM thread is parked, and a
+// thread inside a native call is not, unless it says so.
+//
+//   {
+//     APITools_Parked parked(context);
+//     status = SQLExecute(stmt);
+//   }
+//
+// While parked, a collection can run and move young objects, so inside the
+// scope do not touch anything the VM manages: no APITools_Get*/Set* call, no
+// allocation, no method call, and no object reference read before it. Read the
+// arguments into C values first and set results after. Arrays are allocated in
+// the old generation and never move, so a pointer into an argument array's
+// data stays valid; an array the caller still references stays alive.
+//
+// Against a VM that predates parking, this does nothing: the call runs
+// unparked, as it always did.
+//
+class APITools_Parked {
+  VMContext& context;
+  bool parked;
+
+ public:
+  explicit APITools_Parked(VMContext& c) : context(c) {
+    parked = context.blocking_abi == APITOOLS_BLOCKING_ABI &&
+             context.begin_blocking && context.end_blocking;
+    if(parked) {
+      context.begin_blocking();
+    }
+  }
+
+  ~APITools_Parked() {
+    if(parked) {
+      context.end_blocking();
+    }
+  }
+
+  APITools_Parked(const APITools_Parked&) = delete;
+  APITools_Parked& operator=(const APITools_Parked&) = delete;
 };
 
 //

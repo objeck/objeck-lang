@@ -3124,6 +3124,9 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.alloc_managed_array = MemoryManager::AllocateArray;
   context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
   context.write_barrier = MemoryManager::JitWriteBarrier;
+  context.blocking_abi = APITOOLS_BLOCKING_ABI;
+  context.begin_blocking = MemoryManager::BeginBlocking;
+  context.end_blocking = MemoryManager::EndBlocking;
   (*ext_load)(context);
 #else
   void* dll_handle = dlopen(dll_string.c_str(), RTLD_LAZY);
@@ -3158,6 +3161,9 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   context.alloc_managed_array = MemoryManager::AllocateArray;
   context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
   context.write_barrier = MemoryManager::JitWriteBarrier;
+  context.blocking_abi = APITOOLS_BLOCKING_ABI;
+  context.begin_blocking = MemoryManager::BeginBlocking;
+  context.end_blocking = MemoryManager::EndBlocking;
   (*ext_load)(context);
 #endif
 }
@@ -3335,6 +3341,9 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.alloc_managed_array = MemoryManager::AllocateArray;
     context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
     context.write_barrier = MemoryManager::JitWriteBarrier;
+    context.blocking_abi = APITOOLS_BLOCKING_ABI;
+    context.begin_blocking = MemoryManager::BeginBlocking;
+    context.end_blocking = MemoryManager::EndBlocking;
     (*ext_func)(context);
   }
 #else
@@ -3362,6 +3371,9 @@ void StackInterpreter::SharedLibraryCall([[maybe_unused]] StackInstr* instr, siz
     context.alloc_managed_array = MemoryManager::AllocateArray;
     context.alloc_managed_obj = MemoryManager::AllocateObjectNative;
     context.write_barrier = MemoryManager::JitWriteBarrier;
+    context.blocking_abi = APITOOLS_BLOCKING_ABI;
+    context.begin_blocking = MemoryManager::BeginBlocking;
+    context.end_blocking = MemoryManager::EndBlocking;
     (*ext_func)(context);
   }  
 #endif

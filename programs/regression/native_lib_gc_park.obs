@@ -1,0 +1,166 @@
+#~
+# Blocking calls in native libraries must park for garbage collection
+#
+# A stop-the-world collection waits until every VM thread is parked. A thread
+# inside a native library call was never parked: VMContext gave a library no
+# way to say it was about to block, so a thread waiting in SDL_Delay or
+# SDL_WaitEvent, or on a database in SQLExecute, held up every collection in
+# the process until the call returned -- forever, for an event wait nobody
+# answers. VMContext now carries begin_blocking/end_blocking, wrapped by
+# APITools_Parked in lib_api.h, and the blocking calls in the SDL, ODBC and
+# OpenCV libraries use it.
+#
+# Each part puts one thread into a long native call and checks from the main
+# thread that it is counted in runtime.threads.parked, then forces collections
+# while it waits. Unparked, the probe never sees it and the part FAILs.
+#
+#   SDL     Timer->Delay(3000)
+#   ODBC    a SELECT that SQLite takes a while to compute, over the
+#           objeck_sqlite_test data source ci-build.yml sets up on Linux; the
+#           part is skipped where there is no such data source
+# EXTRA_LIBS: sdl2,odbc
+~#
+
+use System.Concurrency, Game.SDL2, Database.ODBC;
+
+class Probe {
+	@sink : static : Byte[];
+
+	function : Parked() ~ Int {
+		return Runtime->GetProperty("runtime.threads.parked")->ToInt();
+	}
+
+	function : WaitParked(window_ms : Int) ~ Bool {
+		waited := 0;
+		while(waited < window_ms) {
+			if(Parked() > 0) {
+				return true;
+			};
+			Thread->Sleep(10);
+			waited += 10;
+		};
+		return Parked() > 0;
+	}
+
+	# Returns how many collections ran while allocating
+	function : Churn() ~ Int {
+		before := Runtime->GetProperty("runtime.gc.total")->ToInt();
+		for(i := 0; i < 4096; i += 1;) {
+			@sink := Byte->New[65536];
+		};
+		return Runtime->GetProperty("runtime.gc.total")->ToInt() - before;
+	}
+}
+
+class SdlSleeper from Thread {
+	@finished : Bool;
+
+	New() {
+		Parent("sdl-sleeper");
+		@finished := false;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+
+	method : public : Run(param : Base) ~ Nil {
+		Timer->Delay(3000);
+		@finished := true;
+	}
+}
+
+class SlowQuery from Thread {
+	@conn : Connection;
+	@count : Int;
+
+	New(conn : Connection) {
+		Parent("slow-query");
+		@conn := conn;
+		@count := -1;
+	}
+
+	method : public : GetCount() ~ Int { return @count; }
+
+	method : public : Run(param : Base) ~ Nil {
+		rows := @conn->Select("WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < 20000000) SELECT count(*) FROM c");
+		if(rows <> Nil) {
+			if(rows->Next()) {
+				@count := rows->GetInt(1);
+			};
+			rows->Close();
+		};
+	}
+}
+
+class NativeLibGcPark {
+	@failed : Int;
+
+	New() {
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		NativeLibGcPark->New()->Run();
+	}
+
+	method : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@failed += 1;
+	}
+
+	method : Run() ~ Nil {
+		if(Probe->Parked() <> 0) {
+			"FAIL: runtime.threads.parked was {$Probe->Parked()} with one running thread"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: sdl"->ErrorLine();
+		TestSdl();
+		"stage: odbc"->ErrorLine();
+		TestOdbc();
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: blocking native library calls park for collections"->PrintLine();
+	}
+
+	method : TestSdl() ~ Nil {
+		sleeper := SdlSleeper->New();
+		sleeper->Execute(Nil);
+		if(Probe->WaitParked(2500)) {
+			if(Probe->Churn() < 1) {
+				Fail("SDL: no collection ran while Timer->Delay waited");
+			};
+		}
+		else {
+			Fail("SDL: a thread in Timer->Delay was never counted as parked");
+		};
+		sleeper->Join();
+	}
+
+	method : TestOdbc() ~ Nil {
+		conn := Connection->New("objeck_sqlite_test", "", "");
+		if(<>conn->IsOpen()) {
+			"  ODBC: skipped (no objeck_sqlite_test data source: {$conn->GetLastError()})"->PrintLine();
+			return;
+		};
+
+		query := SlowQuery->New(conn);
+		query->Execute(Nil);
+		if(Probe->WaitParked(10000)) {
+			if(Probe->Churn() < 1) {
+				Fail("ODBC: no collection ran while the query ran");
+			};
+		}
+		else {
+			Fail("ODBC: a thread waiting on a query was never counted as parked");
+		};
+		query->Join();
+		conn->Close();
+
+		count := query->GetCount();
+		if(count <> 20000000) {
+			Fail("ODBC: the query counted {$count} rows, expected 20000000");
+		};
+	}
+}
