@@ -23,13 +23,18 @@ bigrams := System.NLP.Tokenizer->WordNGrams(words, 2);
 ```
 	~#
 	class Tokenizer {
+		@abbreviations : static : Hash<String, BoolRef>;
+
 		#~
-		Tokenizes text into words using whitespace and punctuation as delimiters
+		Tokenizes text into words. A word is a run of letters and digits, including non-Latin
+		letters; an apostrophe between letters (don't, O'Brien), a hyphen between letters or
+		digits (state-of-the-art, COVID-19) and a '.' or ',' between digits (3.14, 5,000) stay
+		inside it. Whitespace and punctuation separate words and are dropped. Case is kept.
 		@param text input text to tokenize
 		@return array of word tokens
 
 ```
-words := Tokenizer->WordTokenize("Hello, world! How are you?");
+words := Tokenizer->WordTokenize("I don't think 3.14 is state-of-the-art.");
 each(w in words) {
   w->PrintLine();
 };
@@ -40,30 +45,30 @@ each(w in words) {
 				return String->New[0];
 			};
 
-			# Replace punctuation with spaces, then split
-			cleaned := text->ReplaceAll(",", " ")
-				->ReplaceAll(".", " ")
-				->ReplaceAll("!", " ")
-				->ReplaceAll("?", " ")
-				->ReplaceAll(";", " ")
-				->ReplaceAll(":", " ")
-				->ReplaceAll("\"", " ")
-				->ReplaceAll("'", " ")
-				->ReplaceAll("(", " ")
-				->ReplaceAll(")", " ")
-				->ReplaceAll("[", " ")
-				->ReplaceAll("]", " ")
-				->ReplaceAll("{", " ")
-				->ReplaceAll("}", " ");
-
-			# Split on whitespace and filter empty strings
-			parts := cleaned->Split(" ");
 			tokens := Vector->New()<String>;
+			n := text->Size();
+			i := 0;
 
-			each(part := parts) {
-				trimmed := part->Trim();
-				if(<>trimmed->IsEmpty()) {
-					tokens->AddBack(trimmed);
+			while(i < n) {
+				if(IsWordChar(text->Get(i))) {
+					start := i;
+					i += 1;
+					scanning := true;
+					while(scanning & i < n) {
+						if(IsWordChar(text->Get(i))) {
+							i += 1;
+						}
+						else if(i + 1 < n & IsJoiner(text->Get(i - 1), text->Get(i), text->Get(i + 1))) {
+							i += 2;
+						}
+						else {
+							scanning := false;
+						};
+					};
+					tokens->AddBack(text->SubString(start, i - start));
+				}
+				else {
+					i += 1;
 				};
 			};
 
@@ -71,12 +76,15 @@ each(w in words) {
 		}
 
 		#~
-		Tokenizes text into sentences using common sentence delimiters
+		Tokenizes text into sentences. A sentence ends at a run of '.', '!' or '?' (so "..." and
+		"?!" are one boundary), with any closing quotes or brackets, followed by whitespace or the
+		end of the text. A '.' after a known abbreviation (Dr, Mrs, e.g, U.S, Jan ...) or a single
+		capital initial does not end a sentence, and neither does a '.' inside a number (3.50).
 		@param text input text to tokenize
 		@return array of sentence tokens
 
 ```
-sents := Tokenizer->SentenceTokenize("Hello! How are you? I am fine.");
+sents := Tokenizer->SentenceTokenize("Dr. Smith paid $3.50. Wait... really?! Yes.");
 each(s in sents) {
   s->PrintLine();
 };
@@ -87,33 +95,146 @@ each(s in sents) {
 				return String->New[0];
 			};
 
-			# Split on sentence-ending punctuation
+			InitAbbreviations();
+
 			sentences := Vector->New()<String>;
+			n := text->Size();
+			start := 0;
+			i := 0;
 
-			# Simple sentence splitting on . ! ?
-			current := "";
-			text_length := text->Size();
-
-			for(i := 0; i < text_length; i += 1;) {
+			while(i < n) {
 				c := text->Get(i);
-				current->Append(c);
-
-				if(c = '.' | c = '!' | c = '?') {
-					sentence := current->Trim();
-					if(<>sentence->IsEmpty()) {
-						sentences->AddBack(sentence);
+				if(IsTerminator(c)) {
+					# the whole run of terminators, then any closing quotes or brackets
+					j := i;
+					while(j < n & IsTerminator(text->Get(j))) {
+						j += 1;
 					};
-					current := "";
+					while(j < n & IsCloser(text->Get(j))) {
+						j += 1;
+					};
+
+					if(j = n | IsSpace(text->Get(j))) {
+						# a lone '.' after an abbreviation or an initial is not a boundary
+						boundary := true;
+						if(c = '.' & j - i = 1) {
+							boundary := <>IsAbbreviation(text, i);
+						};
+
+						if(boundary) {
+							sentence := text->SubString(start, j - start)->Trim();
+							if(<>sentence->IsEmpty()) {
+								sentences->AddBack(sentence);
+							};
+							start := j;
+						};
+					};
+					i := j;
+				}
+				else {
+					i += 1;
 				};
 			};
 
-			# Add remaining text as final sentence
-			remaining := current->Trim();
-			if(<>remaining->IsEmpty()) {
-				sentences->AddBack(remaining);
+			if(start < n) {
+				remaining := text->SubString(start, n - start)->Trim();
+				if(<>remaining->IsEmpty()) {
+					sentences->AddBack(remaining);
+				};
 			};
 
 			return sentences->ToArray();
+		}
+
+		# the word ending just before the '.' at 'pos', letters and inner periods ("U.S", "e.g")
+		function : private : IsAbbreviation(text : String, pos : Int) ~ Bool {
+			start := pos;
+			while(start > 0 & (IsLetter(text->Get(start - 1)) | text->Get(start - 1) = '.')) {
+				start -= 1;
+			};
+
+			if(start = pos) {
+				return false;
+			};
+
+			word := text->SubString(start, pos - start);
+			# a single capital is an initial ("J. R. R. Tolkien"), except the pronoun
+			if(word->Size() = 1) {
+				letter := word->Get(0);
+				return Char->IsUpper(letter) & letter <> 'I';
+			};
+
+			return @abbreviations->Has(word->ToLower());
+		}
+
+		function : private : InitAbbreviations() ~ Nil {
+			if(@abbreviations = Nil) {
+				@abbreviations := Hash->New()<String, BoolRef>;
+				words := [
+					"mr", "mrs", "ms", "dr", "prof", "sr", "jr", "st", "vs", "etc", "e.g", "i.e",
+					"u.s", "u.k", "inc", "ltd", "co", "corp", "fig", "approx", "dept", "est",
+					"jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct", "nov", "dec"
+				];
+				each(word := words) {
+					@abbreviations->Insert(word, BoolRef->New(true));
+				};
+			};
+		}
+
+		function : private : IsLetter(c : Char) ~ Bool {
+			if(Char->IsLower(c) | Char->IsUpper(c)) {
+				return true;
+			};
+
+			# any other character past ASCII that is not punctuation or space: accented and
+			# non-Latin letters, including scripts without case
+			code := c->As(Int);
+			return code > 127 & <>IsUnicodePunctuation(code) & <>IsSpace(c);
+		}
+
+		function : private : IsWordChar(c : Char) ~ Bool {
+			return Char->IsDigit(c) | IsLetter(c);
+		}
+
+		# a character that joins the two either side of it into one word
+		function : private : IsJoiner(prev : Char, c : Char, next : Char) ~ Bool {
+			if(c = '\'' | c->As(Int) = 0x2019) {
+				return IsLetter(prev) & IsLetter(next);
+			};
+
+			if(c = '-') {
+				return IsWordChar(prev) & IsWordChar(next);
+			};
+
+			if(c = '.' | c = ',') {
+				return Char->IsDigit(prev) & Char->IsDigit(next);
+			};
+
+			return false;
+		}
+
+		function : private : IsUnicodePunctuation(code : Int) ~ Bool {
+			return (code >= 0x00A1 & code <= 0x00BF) | code = 0x00D7 | code = 0x00F7 |
+				(code >= 0x2000 & code <= 0x206F) | (code >= 0x20A0 & code <= 0x20CF) |
+				(code >= 0x2190 & code <= 0x2BFF) | (code >= 0x3000 & code <= 0x303F) |
+				(code >= 0xFF01 & code <= 0xFF0F) | (code >= 0xFF1A & code <= 0xFF20) |
+				(code >= 0xFF3B & code <= 0xFF40) | (code >= 0xFF5B & code <= 0xFF65) |
+				(code >= 0xFE30 & code <= 0xFE4F) | (code >= 0x1F000 & code <= 0x1FAFF);
+		}
+
+		function : private : IsSpace(c : Char) ~ Bool {
+			code := c->As(Int);
+			return code <= 32 | code = 0x00A0 | code = 0x1680 | (code >= 0x2000 & code <= 0x200A) |
+				code = 0x2028 | code = 0x2029 | code = 0x202F | code = 0x205F | code = 0x3000;
+		}
+
+		function : private : IsTerminator(c : Char) ~ Bool {
+			return c = '.' | c = '!' | c = '?' | c->As(Int) = 0x2026;
+		}
+
+		function : private : IsCloser(c : Char) ~ Bool {
+			code := c->As(Int);
+			return c = '"' | c = '\'' | c = ')' | c = ']' | c = '}' | code = 0x2019 | code = 0x201D | code = 0x00BB;
 		}
 
 		#~
@@ -313,46 +434,26 @@ clean->PrintLine();
 		}
 
 		#~
-		Basic Porter stemmer - reduces words to their root form
+		Porter stemmer: reduces an English word to its stem with the Porter (1980) algorithm, as
+		Martin Porter's reference implementation applies it. Stems need not be words
+		("happily" becomes "happili", "relational" becomes "relat"); what matters is that
+		related forms meet ("connected", "connecting" and "connection" all become "connect").
+		The word is lowercased; words of one or two letters, and words holding anything but
+		the letters a-z, are returned lowercased and otherwise unchanged.
 		@param word input word
 		@return stemmed word
 
 ```
 TextPreprocessor->Stem("running")->PrintLine();
-TextPreprocessor->Stem("happily")->PrintLine();
+TextPreprocessor->Stem("connection")->PrintLine();
 ```
 		~#
 		function : Stem(word : String) ~ String {
-			if(word = Nil | word->Size() < 3) {
+			if(word = Nil) {
 				return word;
 			};
 
-			stemmed := word->ToLower();
-
-			# Remove common suffixes (simplified Porter stemmer)
-			if(stemmed->EndsWith("ing") & stemmed->Size() > 5) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 3);
-			}
-			else if(stemmed->EndsWith("ed") & stemmed->Size() > 4) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 2);
-			}
-			else if(stemmed->EndsWith("ly") & stemmed->Size() > 4) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 2);
-			}
-			else if(stemmed->EndsWith("es") & stemmed->Size() > 4) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 2);
-			}
-			else if(stemmed->EndsWith("s") & stemmed->Size() > 3 & <>stemmed->EndsWith("ss")) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 1);
-			}
-			else if(stemmed->EndsWith("tion") & stemmed->Size() > 6) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 4);
-			}
-			else if(stemmed->EndsWith("ment") & stemmed->Size() > 6) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 4);
-			};
-
-			return stemmed;
+			return PorterStemmer->New(word->ToLower())->Stem();
 		}
 
 		#~
@@ -382,34 +483,415 @@ each(s in stemmed) {
 		}
 	}
 
+	#
+	# The Porter (1980) algorithm, step for step as Martin Porter's reference C implementation
+	# (porter.c): the word is held in @b[0..@k], and @j marks the end of the stem under test
+	# after a successful Ends(). Including its two departures from the paper: step 2 maps
+	# "bli" to "ble" (not "abli" to "able") and adds "logi" to "log".
+	#
+	class : private : PorterStemmer {
+		@b : Char[];
+		@k : Int;
+		@j : Int;
+
+		New(word : String) {
+			@b := word->ToCharArray();
+			@k := @b->Size() - 1;
+			@j := 0;
+		}
+
+		method : public : Stem() ~ String {
+			if(@k <= 1) {
+				return String->New(@b);
+			};
+
+			each(i : @b) {
+				if(@b[i] < 'a' | @b[i] > 'z') {
+					return String->New(@b);
+				};
+			};
+
+			Step1ab();
+			if(@k > 0) {
+				Step1c();
+				Step2();
+				Step3();
+				Step4();
+				Step5();
+			};
+
+			return String->New(@b, 0, @k + 1);
+		}
+
+		# is @b[i] a consonant? 'y' is one at the start or after a vowel
+		method : IsCons(i : Int) ~ Bool {
+			c := @b[i];
+			if(c = 'a' | c = 'e' | c = 'i' | c = 'o' | c = 'u') {
+				return false;
+			};
+
+			if(c = 'y') {
+				return i = 0 ? true : <>IsCons(i - 1);
+			};
+
+			return true;
+		}
+
+		# the number of vowel-consonant sequences in @b[0..@j]: [C](VC)^m[V]
+		method : Measure() ~ Int {
+			n := 0;
+			i := 0;
+
+			while(i <= @j & IsCons(i)) {
+				i += 1;
+			};
+
+			while(i <= @j) {
+				while(i <= @j & <>IsCons(i)) {
+					i += 1;
+				};
+				if(i > @j) {
+					return n;
+				};
+
+				n += 1;
+				while(i <= @j & IsCons(i)) {
+					i += 1;
+				};
+			};
+
+			return n;
+		}
+
+		# does @b[0..@j] hold a vowel?
+		method : VowelInStem() ~ Bool {
+			for(i := 0; i <= @j; i += 1;) {
+				if(<>IsCons(i)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# do @b[i-1] and @b[i] hold the same consonant?
+		method : DoubleCons(i : Int) ~ Bool {
+			if(i < 1) {
+				return false;
+			};
+
+			return @b[i] = @b[i - 1] & IsCons(i);
+		}
+
+		# consonant-vowel-consonant ending at i, the last not w, x or y: "hop", not "snow"
+		method : Cvc(i : Int) ~ Bool {
+			if(i < 2 | <>IsCons(i) | IsCons(i - 1) | <>IsCons(i - 2)) {
+				return false;
+			};
+
+			c := @b[i];
+			return c <> 'w' & c <> 'x' & c <> 'y';
+		}
+
+		# does @b[0..@k] end with s? if so, @j marks the stem before it
+		method : Ends(s : String) ~ Bool {
+			length := s->Size();
+			if(length > @k + 1) {
+				return false;
+			};
+
+			offset := @k - length + 1;
+			each(i : length) {
+				if(@b[offset + i] <> s->Get(i)) {
+					return false;
+				};
+			};
+
+			@j := @k - length;
+			return true;
+		}
+
+		# replace @b[@j+1..@k] with s
+		method : SetTo(s : String) ~ Nil {
+			length := s->Size();
+			if(@j + length + 1 > @b->Size()) {
+				grown := Char->New[@j + length + 1];
+				for(i := 0; i <= @j; i += 1;) {
+					grown[i] := @b[i];
+				};
+				@b := grown;
+			};
+
+			each(i : length) {
+				@b[@j + 1 + i] := s->Get(i);
+			};
+			@k := @j + length;
+		}
+
+		method : Replace(s : String) ~ Nil {
+			if(Measure() > 0) {
+				SetTo(s);
+			};
+		}
+
+		# plurals and -ed or -ing: caresses -> caress, ponies -> poni, agreed -> agree,
+		# plastered -> plaster, motoring -> motor, hopping -> hop, filing -> file
+		method : Step1ab() ~ Nil {
+			if(@b[@k] = 's') {
+				if(Ends("sses")) {
+					@k -= 2;
+				}
+				else if(Ends("ies")) {
+					SetTo("i");
+				}
+				else if(@b[@k - 1] <> 's') {
+					@k -= 1;
+				};
+			};
+
+			if(Ends("eed")) {
+				if(Measure() > 0) {
+					@k -= 1;
+				};
+			}
+			else if((Ends("ed") | Ends("ing")) & VowelInStem()) {
+				@k := @j;
+				if(Ends("at")) {
+					SetTo("ate");
+				}
+				else if(Ends("bl")) {
+					SetTo("ble");
+				}
+				else if(Ends("iz")) {
+					SetTo("ize");
+				}
+				else if(DoubleCons(@k)) {
+					c := @b[@k];
+					if(c <> 'l' & c <> 's' & c <> 'z') {
+						@k -= 1;
+					};
+				}
+				else {
+					@j := @k;
+					if(Measure() = 1 & Cvc(@k)) {
+						SetTo("e");
+					};
+				};
+			};
+		}
+
+		# a final y after a vowel in the stem becomes i: happy -> happi, but sky stays
+		method : Step1c() ~ Nil {
+			if(Ends("y") & VowelInStem()) {
+				@b[@k] := 'i';
+			};
+		}
+
+		# double suffixes to single ones, keyed on the penultimate letter
+		method : Step2() ~ Nil {
+			if(@k < 1) {
+				return;
+			};
+
+			select(@b[@k - 1]) {
+				label 'a': {
+					if(Ends("ational")) { Replace("ate"); }
+					else if(Ends("tional")) { Replace("tion"); };
+				}
+
+				label 'c': {
+					if(Ends("enci")) { Replace("ence"); }
+					else if(Ends("anci")) { Replace("ance"); };
+				}
+
+				label 'e': {
+					if(Ends("izer")) { Replace("ize"); };
+				}
+
+				label 'l': {
+					if(Ends("bli")) { Replace("ble"); }
+					else if(Ends("alli")) { Replace("al"); }
+					else if(Ends("entli")) { Replace("ent"); }
+					else if(Ends("eli")) { Replace("e"); }
+					else if(Ends("ousli")) { Replace("ous"); };
+				}
+
+				label 'o': {
+					if(Ends("ization")) { Replace("ize"); }
+					else if(Ends("ation")) { Replace("ate"); }
+					else if(Ends("ator")) { Replace("ate"); };
+				}
+
+				label 's': {
+					if(Ends("alism")) { Replace("al"); }
+					else if(Ends("iveness")) { Replace("ive"); }
+					else if(Ends("fulness")) { Replace("ful"); }
+					else if(Ends("ousness")) { Replace("ous"); };
+				}
+
+				label 't': {
+					if(Ends("aliti")) { Replace("al"); }
+					else if(Ends("iviti")) { Replace("ive"); }
+					else if(Ends("biliti")) { Replace("ble"); };
+				}
+
+				label 'g': {
+					if(Ends("logi")) { Replace("log"); };
+				}
+			};
+		}
+
+		# -ic-, -full, -ness and the like
+		method : Step3() ~ Nil {
+			select(@b[@k]) {
+				label 'e': {
+					if(Ends("icate")) { Replace("ic"); }
+					else if(Ends("ative")) { Replace(""); }
+					else if(Ends("alize")) { Replace("al"); };
+				}
+
+				label 'i': {
+					if(Ends("iciti")) { Replace("ic"); };
+				}
+
+				label 'l': {
+					if(Ends("ical")) { Replace("ic"); }
+					else if(Ends("ful")) { Replace(""); };
+				}
+
+				label 's': {
+					if(Ends("ness")) { Replace(""); };
+				}
+			};
+		}
+
+		# drops -ant, -ence and the like where the measure is above 1
+		method : Step4() ~ Nil {
+			if(@k < 1) {
+				return;
+			};
+
+			found := false;
+			select(@b[@k - 1]) {
+				label 'a': {
+					found := Ends("al");
+				}
+
+				label 'c': {
+					found := Ends("ance") | Ends("ence");
+				}
+
+				label 'e': {
+					found := Ends("er");
+				}
+
+				label 'i': {
+					found := Ends("ic");
+				}
+
+				label 'l': {
+					found := Ends("able") | Ends("ible");
+				}
+
+				label 'n': {
+					found := Ends("ant") | Ends("ement") | Ends("ment") | Ends("ent");
+				}
+
+				label 'o': {
+					if(Ends("ion") & @j >= 0) {
+						found := @b[@j] = 's' | @b[@j] = 't';
+					};
+					if(<>found) {
+						found := Ends("ou");
+					};
+				}
+
+				label 's': {
+					found := Ends("ism");
+				}
+
+				label 't': {
+					found := Ends("ate") | Ends("iti");
+				}
+
+				label 'u': {
+					found := Ends("ous");
+				}
+
+				label 'v': {
+					found := Ends("ive");
+				}
+
+				label 'z': {
+					found := Ends("ize");
+				}
+			};
+
+			if(found & Measure() > 1) {
+				@k := @j;
+			};
+		}
+
+		# a final -e where the measure allows, and -ll to -l: probate -> probat, controll -> control
+		method : Step5() ~ Nil {
+			@j := @k;
+			if(@b[@k] = 'e') {
+				a := Measure();
+				if(a > 1 | (a = 1 & <>Cvc(@k - 1))) {
+					@k -= 1;
+				};
+			};
+
+			# @j still marks the word as it was before a final 'e' went, as in porter.c
+			if(@b[@k] = 'l' & DoubleCons(@k) & Measure() > 1) {
+				@k -= 1;
+			};
+		}
+	}
+
 	#~
-	Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis
+	Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis. By
+	default IDF is smoothed as scikit-learn's is, ln((1 + N) / (1 + df)) + 1, and vectors are
+	scaled to unit length, so the cosine similarity of two of them is their dot product.
 
 ```
 documents := ["The cat sat on the mat", "The dog sat on the log", "Cats and dogs are pets"];
-tfidf := System.NLP.TF_IDF->New();
+tfidf := System.NLP.TF_IDF->New(stem : true);
 tfidf->Fit(documents);
 
-test_doc := "The cat and the dog";
-vector := tfidf->Transform(test_doc);
-vocab := tfidf->GetVocabulary();
+a := tfidf->Transform("The cat and the dog");
+b := tfidf->Transform("cats and dogs");
+System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 ```
 	~#
 	class TF_IDF {
 		@vocabulary : Hash<String, IntRef>;
 		@idf : Float[];
 		@document_count : Int;
+		@smooth_idf : Bool;
+		@l2_normalize : Bool;
+		@remove_stopwords : Bool;
+		@stem : Bool;
 
 		#~
 		Constructor
+		@param smooth_idf smooth IDF as ln((1 + N) / (1 + df)) + 1, so a word in every document still weighs 1; false gives the raw ln(N / df)
+		@param l2_normalize scale each vector to unit length
+		@param remove_stopwords drop common English stopwords before counting
+		@param stem count words by their Porter stem, so "cat" and "cats" share a column
 		~#
-		New() {
+		New(smooth_idf : Bool := true, l2_normalize : Bool := true, remove_stopwords : Bool := false, stem : Bool := false) {
 			@vocabulary := Hash->New()<String, IntRef>;
+			@idf := Float->New[0];
 			@document_count := 0;
+			@smooth_idf := smooth_idf;
+			@l2_normalize := l2_normalize;
+			@remove_stopwords := remove_stopwords;
+			@stem := stem;
 		}
 
 		#~
-		Fits the TF-IDF model on a corpus of documents
+		Fits the TF-IDF model on a corpus of documents, replacing any earlier fit
 		@param documents array of document strings
 
 ```
@@ -420,65 +902,59 @@ tfidf->Fit(docs);
 ```
 		~#
 		method : public : Fit(documents : String[]) ~ Nil {
+			# each Fit starts from nothing: a refit must not keep the last corpus's words
+			@vocabulary := Hash->New()<String, IntRef>;
+			@idf := Float->New[0];
+			@document_count := 0;
+
 			if(documents = Nil | documents->Size() = 0) {
 				return;
 			};
 
 			@document_count := documents->Size();
 
-			# Build vocabulary and document frequencies
+			# vocabulary in first-seen order, and the number of documents holding each term
 			doc_freq := Hash->New()<String, IntRef>;
-
 			each(doc := documents) {
-				tokens := Tokenizer->WordTokenize(doc);
-				unique_tokens := Hash->New()<String, BoolRef>;
-
-				each(token := tokens) {
-					lowercase_token := token->ToLower();
-					unique_tokens->Insert(lowercase_token, BoolRef->New(true));
-
-					if(<>@vocabulary->Has(lowercase_token)) {
-						idx := @vocabulary->Size();
-						@vocabulary->Insert(lowercase_token, IntRef->New(idx));
+				seen := Hash->New()<String, BoolRef>;
+				terms := Terms(doc);
+				each(term := terms) {
+					if(<>@vocabulary->Has(term)) {
+						@vocabulary->Insert(term, IntRef->New(@vocabulary->Size()));
 					};
-				};
 
-				# Count documents containing each unique token
-				keys := unique_tokens->GetKeys()<String>;
-				each(key := keys) {
-					count := doc_freq->Find(key);
-					if(count <> Nil) {
-						doc_freq->Insert(key, IntRef->New(count->Get() + 1));
-					}
-					else {
-						doc_freq->Insert(key, IntRef->New(1));
+					if(<>seen->Has(term)) {
+						seen->Insert(term, BoolRef->New(true));
+						count := doc_freq->Find(term);
+						if(count <> Nil) {
+							count->Set(count->Get() + 1);
+						}
+						else {
+							doc_freq->Insert(term, IntRef->New(1));
+						};
 					};
 				};
 			};
 
-			# Calculate IDF values
-			vocab_size := @vocabulary->Size();
-			@idf := Float->New[vocab_size];
-
+			n := @document_count->As(Float);
+			@idf := Float->New[@vocabulary->Size()];
 			keys := @vocabulary->GetKeys()<String>;
 			each(key := keys) {
-				idx := @vocabulary->Find(key);
-				df := doc_freq->Find(key);
-
-				if(df <> Nil & df->Get() > 0) {
-					# IDF = log(N / df)
-					@idf[idx->Get()] := Float->Log(@document_count->As(Float) / df->Get()->As(Float));
+				df := doc_freq->Find(key)->Get()->As(Float);
+				if(@smooth_idf) {
+					@idf[@vocabulary->Find(key)->Get()] := Float->Log((1.0 + n) / (1.0 + df)) + 1.0;
 				}
 				else {
-					@idf[idx->Get()] := 0.0;
+					@idf[@vocabulary->Find(key)->Get()] := Float->Log(n / df);
 				};
 			};
 		}
 
 		#~
-		Transforms a document into a TF-IDF vector
+		Transforms a document into a TF-IDF vector, one entry per vocabulary word; words the fit
+		did not see are ignored
 		@param document input document string
-		@return TF-IDF vector as float array
+		@return TF-IDF vector as float array (unit length unless l2_normalize is false, or all zero)
 
 ```
 vec := tfidf->Transform("the cat chased the dog");
@@ -486,42 +962,55 @@ vec := tfidf->Transform("the cat chased the dog");
 ```
 		~#
 		method : public : Transform(document : String) ~ Float[] {
-			if(@vocabulary->Size() = 0) {
-				return Float->New[0];
-			};
-
 			vocab_size := @vocabulary->Size();
 			tfidf := Float->New[vocab_size];
-
-			# Calculate term frequencies
-			tokens := Tokenizer->WordTokenize(document);
-			if(tokens->Size() = 0) {
+			if(vocab_size = 0 | document = Nil) {
 				return tfidf;
 			};
 
-			term_freq := Hash->New()<String, IntRef>;
-			each(token := tokens) {
-				lowercase_token := token->ToLower();
-				count := term_freq->Find(lowercase_token);
-				if(count <> Nil) {
-					term_freq->Insert(lowercase_token, IntRef->New(count->Get() + 1));
-				}
-				else {
-					term_freq->Insert(lowercase_token, IntRef->New(1));
+			terms := Terms(document);
+			if(terms->Size() = 0) {
+				return tfidf;
+			};
+
+			# term frequency, as a share of the document's terms
+			share := 1.0 / terms->Size()->As(Float);
+			each(term := terms) {
+				idx := @vocabulary->Find(term);
+				if(idx <> Nil) {
+					tfidf[idx->Get()] += share;
 				};
 			};
 
-			# Calculate TF-IDF
-			keys := term_freq->GetKeys()<String>;
-			each(key := keys) {
-				idx := @vocabulary->Find(key);
-				if(idx <> Nil) {
-					tf := term_freq->Find(key)->Get()->As(Float) / tokens->Size()->As(Float);
-					tfidf[idx->Get()] := tf * @idf[idx->Get()];
+			norm := 0.0;
+			each(i : vocab_size) {
+				tfidf[i] *= @idf[i];
+				norm += tfidf[i] * tfidf[i];
+			};
+
+			if(@l2_normalize & norm > 0.0) {
+				norm := Float->Sqrt(norm);
+				each(i : vocab_size) {
+					tfidf[i] /= norm;
 				};
 			};
 
 			return tfidf;
+		}
+
+		# a document's terms: lowercased words, optionally without stopwords and stemmed
+		method : Terms(document : String) ~ String[] {
+			tokens := Tokenizer->WordTokenize(document);
+			if(@remove_stopwords) {
+				tokens := TextPreprocessor->RemoveStopwords(tokens);
+			};
+
+			terms := String->New[tokens->Size()];
+			each(i : tokens) {
+				terms[i] := @stem ? TextPreprocessor->Stem(tokens[i]) : tokens[i]->ToLower();
+			};
+
+			return terms;
 		}
 
 		#~
@@ -547,6 +1036,25 @@ each(k in keys) {
 		method : public : GetVocabularySize() ~ Int {
 			return @vocabulary->Size();
 		}
+
+		#~
+		Gets the inverse document frequency of each vocabulary word, indexed as the vocabulary is
+		@return a copy of the IDF vector
+
+```
+idf := tfidf->GetIdf();
+idx := tfidf->GetVocabulary()->Find("cat")->Get();
+"IDF of cat: {$(idf[idx])}"->PrintLine();
+```
+		~#
+		method : public : GetIdf() ~ Float[] {
+			copy := Float->New[@idf->Size()];
+			each(i : @idf) {
+				copy[i] := @idf[i];
+			};
+
+			return copy;
+		}
 	}
 
 	#~
@@ -569,7 +1077,7 @@ distance := System.NLP.TextSimilarity->LevenshteinDistance("kitten", "sitting");
 		Calculates cosine similarity between two vectors
 		@param vec1 first vector
 		@param vec2 second vector
-		@return cosine similarity (0.0 to 1.0)
+		@return cosine similarity (-1.0 to 1.0; 0.0 to 1.0 for non-negative vectors such as TF-IDF)
 
 ```
 v1 := [1.0, 0.0, 1.0];
@@ -604,7 +1112,7 @@ sim := TextSimilarity->CosineSimilarity(v1, v2);
 		Calculates Jaccard similarity between two sets of tokens
 		@param tokens1 first token array
 		@param tokens2 second token array
-		@return Jaccard similarity (0.0 to 1.0)
+		@return Jaccard similarity (0.0 to 1.0); two empty sets are identical, 1.0
 
 ```
 t1 := ["cat", "sat", "mat"];
@@ -614,8 +1122,16 @@ jaccard := TextSimilarity->JaccardSimilarity(t1, t2);
 ```
 		~#
 		function : JaccardSimilarity(tokens1 : String[], tokens2 : String[]) ~ Float {
-			if(tokens1 = Nil | tokens2 = Nil | (tokens1->Size() = 0 & tokens2->Size() = 0)) {
-				return 0.0;
+			if(tokens1 = Nil) {
+				tokens1 := String->New[0];
+			};
+
+			if(tokens2 = Nil) {
+				tokens2 := String->New[0];
+			};
+
+			if(tokens1->Size() = 0 & tokens2->Size() = 0) {
+				return 1.0;
 			};
 
 			if(tokens1->Size() = 0 | tokens2->Size() = 0) {
@@ -733,6 +1249,14 @@ nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
 ```
 		~#
 		function : NormalizedEditDistance(str1 : String, str2 : String) ~ Float {
+			if(str1 = Nil) {
+				str1 := "";
+			};
+
+			if(str2 = Nil) {
+				str2 := "";
+			};
+
 			distance := LevenshteinDistance(str1, str2);
 			max_len := str1->Size() > str2->Size() ? str1->Size() : str2->Size();
 
@@ -745,77 +1269,262 @@ nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
 	}
 
 	#~
-	Basic lexicon-based sentiment analysis
+	Rule-based sentiment analysis in the manner of VADER (Hutto and Gilbert, 2014), with its own
+	English lexicon of valences on a -4..+4 scale. Negators ("not", "never", "don't") within
+	three words flip and damp a word's valence, boosters ("very", "extremely") and dampeners
+	("slightly", "kind of") scale it, a word in capitals in mixed-case text and each '!' add
+	emphasis, and "but" shifts weight to the clause after it. Unknown inflections fall back to
+	their base form ("loved" finds "love", "terribly" finds "terrible").
 
 ```
-text := "This is absolutely wonderful and amazing!";
-score := System.NLP.SentimentAnalyzer->Analyze(text);
-classification := System.NLP.SentimentAnalyzer->Classify(text);
+text := "The plot was not bad at all, but the acting was really terrible!";
+score := System.NLP.SentimentAnalyzer->AnalyzeCompound(text);
+label := System.NLP.SentimentAnalyzer->Classify(text);
 result := System.NLP.SentimentAnalyzer->AnalyzeDetailed(text);
 result->ToString()->PrintLine();
 ```
 	~#
 	class SentimentAnalyzer {
-		@positive_words : static : Hash<String, IntRef>;
-		@negative_words : static : Hash<String, IntRef>;
+		@lexicon : static : Hash<String, FloatRef>;
+		@boosters : static : Hash<String, FloatRef>;
+		@negators : static : Hash<String, BoolRef>;
 
 		#~
-		Initializes sentiment lexicons with common positive and negative words
+		Loads the lexicon, boosters and negators; called by every other function, so calling it
+		yourself is never necessary
 		~#
 		function : Init() ~ Nil {
-			if(@positive_words = Nil) {
-				@positive_words := Hash->New()<String, IntRef>;
-				@negative_words := Hash->New()<String, IntRef>;
+			if(@lexicon = Nil) {
+				@lexicon := Hash->New()<String, FloatRef>;
+				@boosters := Hash->New()<String, FloatRef>;
+				@negators := Hash->New()<String, BoolRef>;
 
-				# Positive words (with intensity scores)
-				positive := [
-					"good", "great", "excellent", "amazing", "wonderful", "fantastic", "awesome",
-					"love", "best", "perfect", "beautiful", "happy", "delighted", "thrilled",
-					"joy", "brilliant", "superb", "outstanding", "terrific", "fabulous",
-					"incredible", "magnificent", "marvelous", "spectacular", "splendid",
-					"positive", "success", "win", "winner", "achieve", "accomplished"
+				# word:valence, on VADER's -4..+4 scale
+				lines := [
+					"good:1.9 great:3.1 excellent:2.7 amazing:2.8 wonderful:2.7 fantastic:2.6 awesome:3.1 love:3.2 lovely:2.8 best:3.2",
+					"better:1.9 perfect:2.7 beautiful:2.9 beauty:2.8 happy:2.7 glad:2.0 delighted:2.9 delightful:2.8 thrilled:2.6 joy:2.8",
+					"joyful:2.9 brilliant:2.8 superb:3.1 outstanding:3.0 terrific:2.8 fabulous:2.4 incredible:2.2 magnificent:3.0 marvelous:2.9 spectacular:2.6",
+					"splendid:2.8 positive:2.6 success:2.7 successful:2.8 win:2.8 won:2.7 winner:2.8 achieve:1.9 accomplished:1.8 extraordinary:2.6",
+					"phenomenal:2.9 exceptional:2.5 remarkable:2.2 enjoy:2.2 enjoyable:1.9 fun:2.3 funny:1.9 entertaining:1.8 exciting:2.2 excited:1.9",
+					"interesting:1.7 impressive:2.3 impress:1.9 recommend:1.5 nice:1.8 pleasant:2.3 pleased:1.9 pleasure:2.7 charming:2.4 clever:1.9",
+					"smart:1.7 wise:1.8 gorgeous:3.0 stunning:2.2 masterpiece:3.1 masterful:2.6 gem:2.4 classic:1.4 favorite:2.0 favourite:2.0",
+					"hilarious:1.7 heartwarming:2.4 touching:1.5 compelling:1.8 engaging:1.8 fresh:1.3 original:1.2 inspired:2.2 inspiring:2.4 inspire:2.0",
+					"powerful:1.9 effective:1.8 solid:1.4 satisfying:2.0 satisfied:1.8 worth:1.4 worthy:1.7 valuable:2.1 useful:1.9 helpful:1.9",
+					"help:1.7 thanks:1.9 thank:1.5 grateful:2.3 appreciate:2.0 admire:2.1 adore:2.6 cool:1.3 fine:0.8 okay:0.9",
+					"ok:0.9 decent:1.0 sweet:2.0 warm:0.9 friendly:2.2 kindness:2.4 generous:2.3 honest:2.3 fair:1.3 elegant:2.1",
+					"graceful:2.0 reliable:1.8 efficient:1.8 easy:1.9 comfortable:1.7 clean:1.5 safe:1.9 peaceful:2.2 calm:1.3 relaxing:1.8",
+					"hope:1.9 hopeful:2.3 optimistic:2.2 proud:2.1 confident:2.2 brave:2.4 triumph:2.4 victory:2.6 celebrate:2.7 congratulations:2.9",
+					"blessed:2.0 lucky:1.8 fortunate:1.9 wow:2.8 yay:2.4 thoughtful:1.6 intelligent:2.0 witty:1.7 vivid:1.2 gripping:1.6",
+					"riveting:2.0 thrilling:2.2 breathtaking:2.6 well-made:1.9 well-crafted:2.0 well-written:2.0 well-acted:1.9 laugh:2.6 smile:1.5 charm:2.0",
+					"fascinating:2.3 refreshing:2.0 memorable:1.9 moving:1.3 rewarding:2.2 terrific:2.8 superior:1.9 ideal:2.1 flawless:2.6 polished:1.4",
+					"accessible:1.0 insightful:2.1 informative:1.5 creative:1.9 imaginative:2.0 innovative:2.0 inventive:1.9 ambitious:1.1 heartfelt:2.0 sincere:1.7",
+					"tender:1.4 uplifting:2.4 sublime:2.8 exquisite:2.9 lively:1.7 energetic:1.6 crisp:1.0 rich:1.2 nuanced:1.4 subtle:0.9",
+					"genuine:1.9 authentic:1.6 beloved:2.6 adorable:2.3 cute:2.0 pretty:1.5 handsome:2.0 cheerful:2.5 grand:1.7 glorious:2.8",
+					"bad:-2.5 terrible:-2.8 awful:-2.8 horrible:-2.9 poor:-2.1 worst:-3.1 worse:-2.1 hate:-2.7 hated:-3.2 disappointing:-2.2",
+					"disappointed:-2.0 disappointment:-2.3 disappoint:-2.0 sad:-2.1 angry:-2.3 upset:-1.6 annoyed:-1.6 annoying:-1.9 frustrated:-2.0 frustrating:-1.9",
+					"difficult:-1.0 problem:-1.7 issue:-0.6 fail:-2.5 failed:-2.3 failure:-2.3 wrong:-2.1 error:-1.7 broken:-1.6 ugly:-2.3",
+					"disgusting:-2.4 pathetic:-2.3 useless:-1.8 worthless:-1.9 inferior:-1.7 atrocious:-2.7 abysmal:-2.9 dreadful:-2.7 appalling:-2.6 catastrophic:-2.7",
+					"boring:-1.8 bored:-1.1 dull:-1.7 tedious:-1.9 predictable:-0.9 mediocre:-1.6 bland:-1.4 lame:-1.8 stupid:-2.4 dumb:-2.3",
+					"ridiculous:-1.7 mess:-1.6 messy:-1.4 waste:-1.8 wasted:-1.9 garbage:-2.1 trash:-2.0 crap:-2.4 sucks:-1.5 suck:-1.6",
+					"lousy:-2.5 weak:-1.9 flawed:-1.5 flaw:-1.4 confusing:-1.3 confused:-1.3 pointless:-1.6 unfunny:-1.9 overrated:-1.7 overlong:-1.0",
+					"slow:-0.8 clumsy:-1.4 awkward:-1.3 cliche:-1.0 cliched:-1.2 shallow:-1.4 hollow:-1.2 painful:-2.0 pain:-2.2 hurt:-2.4",
+					"cry:-2.1 sorry:-0.3 fear:-2.2 afraid:-2.2 scary:-1.5 worried:-1.6 worry:-1.9 anxious:-1.0 nervous:-1.1 unhappy:-1.8",
+					"miserable:-2.2 depressing:-2.2 depressed:-2.3 lonely:-1.5 tragic:-1.8 cruel:-2.8 evil:-3.4 nasty:-2.6 rude:-2.0 harsh:-1.9",
+					"violent:-1.6 kill:-2.5 dead:-1.8 death:-2.0 dangerous:-2.1 threat:-2.4 crisis:-2.4 disaster:-3.1 disastrous:-2.9 chaos:-1.9",
+					"hostile:-2.2 unfair:-2.1 unacceptable:-2.0 reject:-1.7 complain:-1.5 complaint:-1.2 regret:-2.0 shame:-2.1 shameful:-2.2 embarrassing:-1.6",
+					"embarrassed:-1.5 guilty:-1.8 liar:-2.6 fake:-2.1 fraud:-2.8 scam:-2.4 cheat:-2.4 steal:-2.2 stolen:-2.2 lose:-1.7",
+					"lost:-1.3 loser:-2.4 sick:-1.5 ill:-1.8 damage:-2.2 dislike:-1.6 ugh:-1.8 meh:-0.8 yikes:-1.2 irritating:-1.8",
+					"horrid:-2.5 hideous:-2.7 gross:-2.1 stinks:-1.9 stink:-1.7 poorly:-2.0 badly:-2.1 unfortunately:-1.5 unfortunate:-1.7 sadly:-1.9",
+					"hopeless:-2.0 uninspired:-1.6 lifeless:-1.9 forgettable:-1.5 unwatchable:-2.3 incoherent:-1.6 preachy:-1.1 pretentious:-1.6 contrived:-1.4 formulaic:-1.2",
+					"derivative:-0.9 tired:-1.0 stale:-1.4 sloppy:-1.6 amateurish:-1.6 cheesy:-1.1 corny:-1.2 laughable:-1.5 insult:-2.1 insulting:-2.2",
+					"offensive:-2.0 unpleasant:-2.0 unbearable:-2.4 nauseating:-2.4 excruciating:-2.4 irritate:-1.7 annoy:-1.7 boredom:-1.6 bore:-1.5 mindless:-1.6",
+					"senseless:-1.6 silly:-0.7 unconvincing:-1.4 implausible:-1.1 numbing:-1.2 tiresome:-1.8 plodding:-1.3 sluggish:-1.2 dreary:-1.7 grim:-1.4",
+					"bleak:-1.4 gloomy:-1.6 nonsense:-1.6 failing:-2.0 fiasco:-2.6 flop:-1.8 unoriginal:-1.5 uneven:-0.9 overwrought:-1.3 bloated:-1.3",
+					"hate:-2.7 horror:-1.9 terrifying:-1.8 sinister:-1.5 problematic:-1.4 inadequate:-1.7 incompetent:-2.2 ineffective:-1.6 inept:-2.0 misguided:-1.3",
+					"unnecessary:-1.0 lacking:-1.3 lacks:-1.3 lack:-1.3 sorely:-1.0 regrettable:-1.8 worthless:-1.9 dismal:-2.3 ugliness:-2.2 sadness:-2.1",
+					"admirable:2.2 affectionate:2.0 agreeable:1.5 amusing:1.9 amused:1.6 appealing:1.8 astonishing:2.0 astounding:2.2 attractive:1.9 believable:1.2",
+					"blissful:2.6 bold:1.3 bright:1.4 capable:1.5 captivating:2.2 celebrated:1.8 cherish:2.2 coherent:1.1 compassionate:2.0 competent:1.3",
+					"cozy:1.6 dazzling:2.3 dedicated:1.4 dependable:1.7 deserving:1.5 dynamic:1.2 eager:1.4 enchanting:2.3 encouraging:1.9 engrossing:2.0",
+					"enlightening:2.0 enthralling:2.3 enthusiastic:2.1 epic:2.0 exhilarating:2.5 faithful:1.6 flourish:1.9 freedom:2.0 generosity:2.3 gentle:1.5",
+					"gifted:2.0 glowing:1.7 gracious:2.0 harmony:1.9 healthy:1.7 heroic:2.1 honor:2.0 humane:1.7 humor:1.7 humour:1.7",
+					"ingenious:2.2 intriguing:1.7 irresistible:2.1 jolly:2.0 lovable:2.4 loyal:2.0 luminous:1.9 meaningful:1.8 mesmerizing:2.2 miracle:2.3",
+					"neat:1.5 noble:1.9 passionate:1.9 perfection:2.9 playful:1.7 poignant:1.4 poetic:1.5 popular:1.4 praise:2.3 precious:2.2",
+					"profound:1.7 promising:1.6 pure:1.4 quality:1.0 refined:1.4 relief:1.6 resonant:1.4 respect:1.9 robust:1.3 romantic:1.6",
+					"sensational:2.4 skilful:1.8 skillful:1.8 sleek:1.4 smooth:1.1 spirited:1.6 stellar:2.6 striking:1.6 strong:1.0 stylish:1.7",
+					"suspenseful:1.5 talented:2.2 tasteful:1.6 timeless:2.0 treasure:2.2 triumphant:2.5 trust:2.0 unforgettable:2.3 unique:1.4 upbeat:1.7",
+					"vibrant:2.0 victorious:2.5 virtuoso:2.2 warmth:1.8 welcome:2.0 whimsical:1.5 winning:2.2 wit:1.6 wonder:1.6 wondrous:2.4",
+					"worthwhile:2.0 likable:1.9 likeable:1.9 liked:1.8 likes:1.4 entertain:1.6 surprising:0.9 delight:2.6 pleasing:2.0 finest:2.6",
+					"greatest:3.0 aggravating:-1.9 aimless:-1.4 annoyance:-1.8 anger:-2.4 appalled:-2.4 arrogant:-2.0 ashamed:-2.1 banal:-1.6 bitter:-1.7",
+					"blah:-1.0 brutal:-2.0 bumbling:-1.5 burden:-1.7 careless:-1.6 chaotic:-1.6 cheap:-1.2 cheated:-2.2 childish:-1.4 clueless:-1.6",
+					"cold:-0.8 confusion:-1.4 contempt:-2.3 crash:-1.7 crude:-1.5 cynical:-1.4 damn:-1.6 defeat:-1.8 deficient:-1.6 desperate:-1.7",
+					"despair:-2.6 destroy:-2.3 destroyed:-2.4 dirty:-1.8 discomfort:-1.6 disgrace:-2.4 dishonest:-2.4 distasteful:-1.9 distracting:-1.2 disturbing:-1.8",
+					"doom:-2.1 drab:-1.5 drag:-1.1 drivel:-2.0 dud:-1.8 egregious:-2.0 empty:-1.0 excessive:-1.1 exhausting:-1.6 faulty:-1.8",
+					"feeble:-1.8 filthy:-2.0 flat:-0.9 foolish:-1.7 frustration:-2.1 futile:-1.9 ghastly:-2.4 gimmicky:-1.3 grating:-1.6 greedy:-1.9",
+					"grief:-2.4 grotesque:-2.0 haphazard:-1.3 heavy-handed:-1.5 horrendous:-2.8 idiotic:-2.4 ignorant:-1.9 illogical:-1.4 incomprehensible:-1.7 inconsistent:-1.2",
+					"insipid:-1.8 interminable:-1.9 irrelevant:-1.1 jarring:-1.2 junk:-1.6 lackluster:-1.6 lacklustre:-1.6 limp:-1.3 listless:-1.5 lumbering:-1.2",
+					"manipulative:-1.7 meandering:-1.3 monotonous:-1.6 muddled:-1.5 murky:-1.0 naive:-0.9 needless:-1.2 nightmare:-2.3 obnoxious:-2.2 overblown:-1.4",
+					"overdone:-1.2 puerile:-1.7 repetitive:-1.4 repellent:-2.0 repugnant:-2.4 repulsive:-2.4 sappy:-1.2 shoddy:-1.9 sickening:-2.3 simplistic:-1.2",
+					"snooze:-1.3 soulless:-1.9 squandered:-1.7 strained:-1.1 stupidity:-2.2 tacky:-1.5 tasteless:-1.8 tepid:-1.3 thin:-0.8 trite:-1.6",
+					"turgid:-1.5 uncomfortable:-1.4 underwhelming:-1.8 uneventful:-1.0 unimaginative:-1.6 uninteresting:-1.7 unlikable:-1.7 unsatisfying:-1.8 vapid:-1.7 vile:-2.7",
+					"wearisome:-1.7 weird:-0.7 woeful:-2.2 wooden:-1.2 wretched:-2.4 cringe:-1.8 cringeworthy:-2.0 headache:-1.4 joyless:-1.9 humorless:-1.7",
+					"charmless:-1.8 witless:-1.8 pedestrian:-1.0 misfire:-1.6 mistake:-1.7 fault:-1.5 hatred:-2.6 sorrow:-2.1 suffer:-2.0 suffering:-2.2",
+					"tragedy:-2.0 victim:-1.8 weakness:-1.6"
 				];
 
-				each(word := positive) {
-					@positive_words->Insert(word, IntRef->New(1));
+				each(line := lines) {
+					entries := line->Split(" ");
+					each(entry := entries) {
+						colon := entry->Find(':');
+						if(colon > 0) {
+							valence := entry->SubString(colon + 1, entry->Size() - colon - 1)->ToFloat();
+							@lexicon->Insert(entry->SubString(0, colon), FloatRef->New(valence));
+						};
+					};
 				};
 
-				# Strong positive words (higher intensity)
-				strong_positive := [
-					"extraordinary", "phenomenal", "exceptional", "remarkable", "outstanding"
+				# words that scale the next sentiment word up or down
+				up := [
+					"absolutely", "amazingly", "awfully", "completely", "considerably", "decidedly", "deeply",
+					"enormously", "entirely", "especially", "exceptionally", "extremely", "fabulously", "greatly",
+					"highly", "hugely", "incredibly", "intensely", "particularly", "purely", "quite", "really",
+					"remarkably", "so", "substantially", "thoroughly", "totally", "tremendously", "truly",
+					"unbelievably", "utterly", "very", "super", "most", "more", "too", "such", "insanely"
 				];
-
-				each(word := strong_positive) {
-					@positive_words->Insert(word, IntRef->New(2));
+				each(word := up) {
+					@boosters->Insert(word, FloatRef->New(0.293));
 				};
 
-				# Negative words (with intensity scores)
-				negative := [
-					"bad", "terrible", "awful", "horrible", "poor", "worst", "hate", "disappointing",
-					"disappointing", "sad", "angry", "upset", "annoyed", "frustrated", "difficult",
-					"problem", "issue", "fail", "failed", "failure", "wrong", "error", "broken",
-					"ugly", "disgusting", "pathetic", "useless", "worthless", "inferior"
+				down := [
+					"almost", "barely", "hardly", "scarcely", "slightly", "somewhat", "kinda", "sorta",
+					"kind_of", "sort_of", "marginally", "occasionally", "partly", "less", "little", "fairly",
+					"rather", "mildly", "moderately", "nearly"
 				];
-
-				each(word := negative) {
-					@negative_words->Insert(word, IntRef->New(1));
+				each(word := down) {
+					@boosters->Insert(word, FloatRef->New(-0.293));
 				};
 
-				# Strong negative words (higher intensity)
-				strong_negative := [
-					"atrocious", "abysmal", "dreadful", "appalling", "catastrophic"
+				negators := [
+					"not", "no", "never", "none", "nobody", "nothing", "neither", "nor", "nowhere", "without",
+					"cannot", "rarely", "seldom", "dont", "doesnt", "didnt", "isnt", "wasnt", "arent", "werent",
+					"wont", "cant", "couldnt", "shouldnt", "wouldnt", "aint", "havent", "hasnt", "hadnt",
+					"neednt", "mustnt", "nope"
 				];
-
-				each(word := strong_negative) {
-					@negative_words->Insert(word, IntRef->New(2));
+				each(word := negators) {
+					@negators->Insert(word, BoolRef->New(true));
 				};
 			};
 		}
 
 		#~
-		Analyzes sentiment of text and returns a sentiment score
+		Adds a word to the lexicon or changes its valence, for a domain's own vocabulary
+		@param word the word (matched case-insensitively)
+		@param valence its sentiment, on the -4.0 to 4.0 scale the built-in words use
+
+```
+SentimentAnalyzer->AddWord("bullish", 2.0);
+SentimentAnalyzer->AddWord("bearish", -2.0);
+SentimentAnalyzer->Classify("Analysts are bullish on the stock")->PrintLine();
+```
+		~#
+		function : AddWord(word : String, valence : Float) ~ Nil {
+			Init();
+			if(word <> Nil & <>word->IsEmpty()) {
+				@lexicon->Insert(word->ToLower(), FloatRef->New(valence));
+			};
+		}
+
+		#~
+		Adds the words in a lexicon file, one per line: the word, a tab, its valence on the
+		-4.0 to 4.0 scale, and anything after a further tab ignored. That is the layout of
+		VADER's own vader_lexicon.txt (MIT licence), so a program can use VADER's full lexicon
+		in place of, or on top of, the built-in one. Lines that are empty or start with '#' are
+		skipped; a listed word replaces the built-in entry.
+		@param path lexicon file
+		@return number of words added, or -1 if the file could not be read
+
+```
+added := SentimentAnalyzer->LoadLexicon("vader_lexicon.txt");
+"Loaded {$added} words"->PrintLine();
+```
+		~#
+		function : LoadLexicon(path : String) ~ Int {
+			return LoadLexiconFile(path);
+		}
+
+		#~
+		Removes every word from the lexicon, built-in ones included, so that LoadLexicon or
+		AddWord can supply a lexicon of the program's own. Boosters and negators are kept.
+
+```
+SentimentAnalyzer->ClearLexicon();
+SentimentAnalyzer->LoadLexicon("vader_lexicon.txt");
+```
+		~#
+		function : ClearLexicon() ~ Nil {
+			Init();
+			@lexicon := Hash->New()<String, FloatRef>;
+		}
+
+		function : private : LoadLexiconFile(path : String) ~ Int {
+			Init();
+			if(path = Nil) {
+				return -1;
+			};
+
+			reader := System.IO.Filesystem.FileReader->New(path);
+			if(<>reader->IsOpen()) {
+				return -1;
+			};
+
+			added := 0;
+			line := reader->ReadLine();
+			while(line <> Nil) {
+				line := line->Trim();
+				if(<>line->IsEmpty() & line->Get(0) <> '#') {
+					fields := line->Split('\t');
+					if(fields->Size() >= 2) {
+						word := fields[0]->Trim()->ToLower();
+						if(<>word->IsEmpty()) {
+							@lexicon->Insert(word, FloatRef->New(fields[1]->Trim()->ToFloat()));
+							added += 1;
+						};
+					};
+				};
+				line := reader->ReadLine();
+			};
+			reader->Close();
+
+			return added;
+		}
+
+		#~
+		Gets a word's valence from the lexicon, trying its base form when the word itself is not
+		listed ("loved" finds "love")
+		@param word the word
+		@return its valence, or 0.0 when neither it nor its base form is listed
+
+```
+SentimentAnalyzer->GetValence("terribly")->PrintLine();
+```
+		~#
+		function : GetValence(word : String) ~ Float {
+			Init();
+			if(word = Nil) {
+				return 0.0;
+			};
+
+			found := Lookup(word->ToLower());
+			if(found = Nil) {
+				return 0.0;
+			};
+
+			return found->Get();
+		}
+
+		#~
+		Analyzes sentiment of text and returns the summed valence of its words, rounded
 		@param text input text to analyze
-		@return sentiment score (positive = positive sentiment, negative = negative sentiment, 0 = neutral)
+		@return summed valence, rounded to the nearest integer: above 0 leans positive, below 0 negative. AnalyzeCompound gives the normalized score Classify uses.
 
 ```
 score := SentimentAnalyzer->Analyze("This product is absolutely wonderful!");
@@ -823,59 +1532,45 @@ score := SentimentAnalyzer->Analyze("This product is absolutely wonderful!");
 ```
 		~#
 		function : Analyze(text : String) ~ Int {
-			Init();
-
-			if(text = Nil | text->IsEmpty()) {
-				return 0;
-			};
-
-			tokens := Tokenizer->WordTokenize(text);
-			score := 0;
-
-			each(token := tokens) {
-				lowercase_token := token->ToLower();
-
-				pos_score := @positive_words->Find(lowercase_token);
-				if(pos_score <> Nil) {
-					score += pos_score->Get();
-				};
-
-				neg_score := @negative_words->Find(lowercase_token);
-				if(neg_score <> Nil) {
-					score -= neg_score->Get();
-				};
-			};
-
-			return score;
+			scores := Score(text);
+			return Round(scores[0]);
 		}
 
 		#~
-		Classifies text sentiment as positive, negative, or neutral
+		Analyzes sentiment of text and returns VADER's normalized compound score
+		@param text input text to analyze
+		@return compound score from -1.0 (most negative) to 1.0 (most positive)
+
+```
+compound := SentimentAnalyzer->AnalyzeCompound("Not bad at all, actually.");
+"Compound: {$compound}"->PrintLine();
+```
+		~#
+		function : AnalyzeCompound(text : String) ~ Float {
+			scores := Score(text);
+			return scores[1];
+		}
+
+		#~
+		Classifies text sentiment as positive (compound score of 0.05 or more), negative (-0.05 or
+		less) or neutral
 		@param text input text to classify
 		@return sentiment label: "positive", "negative", or "neutral"
 
 ```
-label := SentimentAnalyzer->Classify("This is terrible and horrible.");
+label := SentimentAnalyzer->Classify("This is not good.");
 label->PrintLine();
 ```
 		~#
 		function : Classify(text : String) ~ String {
-			score := Analyze(text);
-
-			if(score > 0) {
-				return "positive";
-			}
-			else if(score < 0) {
-				return "negative";
-			};
-
-			return "neutral";
+			scores := Score(text);
+			return Label(scores[1]);
 		}
 
 		#~
 		Gets detailed sentiment analysis with scores
 		@param text input text to analyze
-		@return sentiment result with score and classification
+		@return sentiment result with the rounded score, the compound score and the classification
 
 ```
 result := SentimentAnalyzer->AnalyzeDetailed("Amazing and wonderful experience!");
@@ -883,10 +1578,275 @@ result->ToString()->PrintLine();
 ```
 		~#
 		function : AnalyzeDetailed(text : String) ~ SentimentResult {
-			score := Analyze(text);
-			classification := Classify(text);
+			scores := Score(text);
+			return SentimentResult->New(Round(scores[0]), scores[1], Label(scores[1]));
+		}
 
-			return SentimentResult->New(score, classification);
+		function : private : Label(compound : Float) ~ String {
+			if(compound >= 0.05) {
+				return "positive";
+			}
+			else if(compound <= -0.05) {
+				return "negative";
+			};
+
+			return "neutral";
+		}
+
+		function : private : Round(value : Float) ~ Int {
+			if(value >= 0.0) {
+				return (value + 0.5)->As(Int);
+			};
+
+			return (value - 0.5)->As(Int);
+		}
+
+		# [summed valence, compound]
+		function : private : Score(text : String) ~ Float[] {
+			Init();
+
+			scores := Float->New[2];
+			if(text = Nil | text->IsEmpty()) {
+				return scores;
+			};
+
+			tokens := Tokenizer->WordTokenize(text);
+			n := tokens->Size();
+			if(n = 0) {
+				return scores;
+			};
+
+			# lowercase, with "kind of" and "sort of" joined into one dampener
+			lowered := String->New[n];
+			each(i : n) {
+				lowered[i] := tokens[i]->ToLower();
+			};
+			for(i := 0; i + 1 < n; i += 1;) {
+				if((lowered[i]->Equals("kind") | lowered[i]->Equals("sort")) & lowered[i + 1]->Equals("of")) {
+					lowered[i] := lowered[i]->Equals("kind") ? "kind_of" : "sort_of";
+					lowered[i + 1] := "";
+				};
+			};
+
+			# capitals are emphasis only when the text is not all capitals
+			capitals := 0;
+			each(i : n) {
+				if(IsAllCaps(tokens[i])) {
+					capitals += 1;
+				};
+			};
+			cap_diff := capitals > 0 & capitals < n;
+
+			sentiments := Float->New[n];
+			each(i : n) {
+				word := lowered[i];
+				found : FloatRef;
+				if(<>@boosters->Has(word) & <>word->IsEmpty()) {
+					found := Lookup(word);
+				};
+
+				if(found <> Nil) {
+					valence := found->Get();
+					if(cap_diff & IsAllCaps(tokens[i])) {
+						valence += valence > 0.0 ? 0.733 : -0.733;
+					};
+
+					# the three words before: boosters, decaying with distance, and negators
+					for(distance := 1; distance <= 3; distance += 1;) {
+						p := i - distance;
+						if(p >= 0) {
+							prev := lowered[p];
+							if(Lookup(prev) = Nil) {
+								boost := BoostOf(prev, tokens[p], valence, cap_diff);
+								if(distance = 2) {
+									boost *= 0.95;
+								}
+								else if(distance = 3) {
+									boost *= 0.9;
+								};
+								valence += boost;
+
+								if(IsNegator(prev)) {
+									valence *= -0.74;
+								};
+							};
+						};
+					};
+
+					sentiments[i] := valence;
+				};
+			};
+
+			# "but": the clause before it counts half, the one after it half again as much
+			but_at := -1;
+			each(i : n) {
+				if(but_at < 0 & lowered[i]->Equals("but")) {
+					but_at := i;
+				};
+			};
+			if(but_at >= 0) {
+				each(i : n) {
+					if(i < but_at) {
+						sentiments[i] *= 0.5;
+					}
+					else if(i > but_at) {
+						sentiments[i] *= 1.5;
+					};
+				};
+			};
+
+			sum := 0.0;
+			each(i : n) {
+				sum += sentiments[i];
+			};
+
+			# '!' adds emphasis, up to four; two or more '?' add a little
+			exclamations := 0;
+			questions := 0;
+			text_size := text->Size();
+			each(i : text_size) {
+				c := text->Get(i);
+				if(c = '!') {
+					exclamations += 1;
+				}
+				else if(c = '?') {
+					questions += 1;
+				};
+			};
+			if(exclamations > 4) {
+				exclamations := 4;
+			};
+			emphasis := exclamations->As(Float) * 0.292;
+			if(questions > 1) {
+				emphasis += questions <= 3 ? questions->As(Float) * 0.18 : 0.96;
+			};
+
+			if(sum > 0.0) {
+				sum += emphasis;
+			}
+			else if(sum < 0.0) {
+				sum -= emphasis;
+			};
+
+			compound := sum / Float->Sqrt(sum * sum + 15.0);
+			if(compound > 1.0) {
+				compound := 1.0;
+			}
+			else if(compound < -1.0) {
+				compound := -1.0;
+			};
+
+			scores[0] := sum;
+			scores[1] := compound;
+			return scores;
+		}
+
+		# a booster's push in the direction of the sentiment it precedes
+		function : private : BoostOf(word : String, original : String, valence : Float, cap_diff : Bool) ~ Float {
+			scalar := @boosters->Find(word);
+			if(scalar = Nil) {
+				return 0.0;
+			};
+
+			boost := scalar->Get();
+			if(valence < 0.0) {
+				boost *= -1.0;
+			};
+
+			if(cap_diff & IsAllCaps(original)) {
+				boost += valence > 0.0 ? 0.733 : -0.733;
+			};
+
+			return boost;
+		}
+
+		function : private : IsNegator(word : String) ~ Bool {
+			if(@negators->Has(word)) {
+				return true;
+			};
+
+			return word->EndsWith("n't") | word->EndsWith("n’t");
+		}
+
+		# all capitals, at least two letters, no lower case: "GREAT", not "I"
+		function : private : IsAllCaps(token : String) ~ Bool {
+			letters := 0;
+			size := token->Size();
+			each(i : size) {
+				c := token->Get(i);
+				if(Char->IsLower(c)) {
+					return false;
+				};
+				if(Char->IsUpper(c)) {
+					letters += 1;
+				};
+			};
+
+			return letters > 1;
+		}
+
+		# the word itself, else its base form with a regular inflection removed
+		function : private : Lookup(word : String) ~ FloatRef {
+			found := @lexicon->Find(word);
+			if(found <> Nil) {
+				return found;
+			};
+
+			n := word->Size();
+			if(n < 4) {
+				return Nil;
+			};
+
+			forms := Vector->New()<String>;
+			if(word->EndsWith("ies") | word->EndsWith("ied")) {
+				forms->AddBack(word->SubString(0, n - 3) + "y");
+			};
+
+			if(word->EndsWith("ily")) {
+				forms->AddBack(word->SubString(0, n - 3) + "y");
+			}
+			else if(word->EndsWith("ably") | word->EndsWith("ibly")) {
+				forms->AddBack(word->SubString(0, n - 1) + "e");
+			}
+			else if(word->EndsWith("ly")) {
+				forms->AddBack(word->SubString(0, n - 2));
+			};
+
+			if(word->EndsWith("ing") & n > 5) {
+				AddBaseForms(word->SubString(0, n - 3), forms);
+			};
+
+			if(word->EndsWith("ed") & n > 4) {
+				AddBaseForms(word->SubString(0, n - 2), forms);
+			};
+
+			if(word->EndsWith("es")) {
+				forms->AddBack(word->SubString(0, n - 2));
+			};
+
+			if(word->EndsWith("s") & <>word->EndsWith("ss")) {
+				forms->AddBack(word->SubString(0, n - 1));
+			};
+
+			each(form := forms) {
+				found := @lexicon->Find(form);
+				if(found <> Nil) {
+					return found;
+				};
+			};
+
+			return Nil;
+		}
+
+		# "lov" -> lov, love; "stopp" -> stopp, stoppe, stop
+		function : private : AddBaseForms(base : String, forms : Vector<String>) ~ Nil {
+			forms->AddBack(base);
+			forms->AddBack(base + "e");
+
+			size := base->Size();
+			if(size > 2 & base->Get(size - 1) = base->Get(size - 2)) {
+				forms->AddBack(base->SubString(0, size - 1));
+			};
 		}
 	}
 
@@ -896,26 +1856,41 @@ result->ToString()->PrintLine();
 ```
 result := System.NLP.SentimentAnalyzer->AnalyzeDetailed("Great product!");
 score := result->GetScore();
+compound := result->GetCompound();
 label := result->GetClassification();
 ```
 	~#
 	class SentimentResult {
 		@score : Int;
+		@compound : Float;
 		@classification : String;
 
 		#~
-		Constructor
+		Constructor; the compound score is derived from the integer score
 		@param score sentiment score
 		@param classification sentiment label
 		~#
 		New(score : Int, classification : String) {
 			@score := score;
+			@compound := score->As(Float) / Float->Sqrt((score * score)->As(Float) + 15.0);
+			@classification := classification;
+		}
+
+		#~
+		Constructor
+		@param score sentiment score, the rounded sum of valences
+		@param compound normalized score from -1.0 to 1.0
+		@param classification sentiment label
+		~#
+		New(score : Int, compound : Float, classification : String) {
+			@score := score;
+			@compound := compound;
 			@classification := classification;
 		}
 
 		#~
 		Gets the sentiment score
-		@return sentiment score
+		@return sentiment score, the rounded sum of valences
 
 ```
 result := SentimentAnalyzer->AnalyzeDetailed("Great job!");
@@ -924,6 +1899,19 @@ result := SentimentAnalyzer->AnalyzeDetailed("Great job!");
 		~#
 		method : public : GetScore() ~ Int {
 			return @score;
+		}
+
+		#~
+		Gets the normalized compound score
+		@return compound score from -1.0 to 1.0
+
+```
+result := SentimentAnalyzer->AnalyzeDetailed("Not bad at all.");
+"Compound: {$result->GetCompound()}"->PrintLine();
+```
+		~#
+		method : public : GetCompound() ~ Float {
+			return @compound;
 		}
 
 		#~
@@ -944,7 +1932,7 @@ result->GetClassification()->PrintLine();
 		@return formatted result
 		~#
 		method : public : ToString() ~ String {
-			return "Sentiment: {$@classification}, Score: {$@score}";
+			return "Sentiment: {$@classification}, Score: {$@score}, Compound: {$@compound}";
 		}
 	}
 }

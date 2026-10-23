@@ -1,0 +1,117 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP TF-IDF and similarity (docs/NLP_DESIGN.md, sections 6 and 7): a refit starts
+from an empty vocabulary, Nil and empty inputs are handled, and the edit-distance and set
+metrics give their textbook values.
+~#
+use System.NLP, Collection;
+
+class NlpTfIdfTest {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.000001;
+	}
+
+	function : Dot(a : Float[], b : Float[]) ~ Float {
+		sum := 0.0;
+		each(i : a) {
+			sum += a[i] * b[i];
+		};
+		return sum;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# --- refit starts over ---
+		docs := ["the cat sat on the mat", "the dog sat on the log", "cats and dogs are pets"];
+		t := TF_IDF->New();
+		t->Fit(docs);
+		Check(t->GetVocabularySize() = 12, "vocabulary of the first corpus is 12");
+		t->Fit(["completely different words here"]);
+		Check(t->GetVocabularySize() = 4, "a refit on a 4-word corpus has 4 words");
+		Check(t->GetVocabulary()->Has("completely") & <>t->GetVocabulary()->Has("cat"), "a refit forgets the old corpus");
+		t->Fit(String->New[0]);
+		Check(t->GetVocabularySize() = 0, "fitting an empty corpus empties the vocabulary");
+		Check(t->Transform("cat")->Size() = 0, "transform after an empty fit is empty");
+
+		# --- smoothed IDF and unit vectors, the defaults ---
+		d := TF_IDF->New();
+		d->Fit(docs);
+		idf := d->GetIdf();
+		vocab := d->GetVocabulary();
+		Check(idf->Size() = 12, "one IDF per vocabulary word");
+		Check(Near(idf[vocab->Find("mat")->Get()], Float->Log(4.0 / 2.0) + 1.0), "smoothed IDF of a word in one document");
+		Check(Near(idf[vocab->Find("sat")->Get()], Float->Log(4.0 / 3.0) + 1.0), "smoothed IDF of a word in two documents");
+		idf[0] := 99.0;
+		Check(<>Near(d->GetIdf()[0], 99.0), "GetIdf returns a copy");
+
+		v := d->Transform("the cat sat on the mat");
+		Check(Near(Dot(v, v), 1.0), "vectors are unit length");
+		Check(Near(TextSimilarity->CosineSimilarity(v, d->Transform("the cat sat on the mat")), 1.0), "a document is identical to itself");
+		Check(Near(Dot(d->Transform("unseen words only"), d->Transform("unseen words only")), 0.0), "unseen words give a zero vector");
+		nil_doc : String;
+		Check(d->Transform(nil_doc)->Size() = 12, "Transform(Nil) is a zero vector of vocabulary size");
+
+		single := TF_IDF->New();
+		single->Fit(["only one document here"]);
+		Check(Dot(single->Transform("only one document here"), single->Transform("only one document here")) > 0.5, "a one-document corpus gives a useful vector");
+
+		# --- raw IDF and raw weights ---
+		raw := TF_IDF->New(smooth_idf : false, l2_normalize : false);
+		raw->Fit(docs);
+		raw_idf := raw->GetIdf();
+		raw_vocab := raw->GetVocabulary();
+		Check(Near(raw_idf[raw_vocab->Find("mat")->Get()], Float->Log(3.0)), "raw IDF is ln(N / df)");
+		w := raw->Transform("the mat mat the");
+		Check(Near(w[raw_vocab->Find("mat")->Get()], 0.5 * Float->Log(3.0)), "raw weight is tf * idf");
+
+		# --- stemming and stopwords ---
+		s := TF_IDF->New(stem : true);
+		s->Fit(docs);
+		Check(s->GetVocabulary()->Has("cat") & <>s->GetVocabulary()->Has("cats"), "stemming merges cat and cats");
+		Check(Near(TextSimilarity->CosineSimilarity(s->Transform("cats"), s->Transform("cat")), 1.0), "a stemmed cat is a cat");
+		Check(TextSimilarity->CosineSimilarity(d->Transform("cats"), d->Transform("cat")) < 0.000001, "unstemmed, cats is not cat");
+
+		sw := TF_IDF->New(true, true, true);
+		sw->Fit(docs);
+		Check(<>sw->GetVocabulary()->Has("the") & <>sw->GetVocabulary()->Has("on") & sw->GetVocabulary()->Has("mat"), "stopwords are left out");
+		Check(sw->GetVocabularySize() = 8, "the vocabulary without stopwords");
+
+		# --- similarity ---
+		Check(TextSimilarity->LevenshteinDistance("kitten", "sitting") = 3, "levenshtein kitten/sitting");
+		Check(TextSimilarity->LevenshteinDistance("", "abc") = 3, "levenshtein empty/abc");
+		nil_str : String;
+		Check(TextSimilarity->LevenshteinDistance(nil_str, "ab") = 2, "levenshtein Nil/ab");
+		Check(Near(TextSimilarity->NormalizedEditDistance(nil_str, "abc"), 1.0), "normalized edit distance Nil/abc");
+		Check(Near(TextSimilarity->NormalizedEditDistance(nil_str, nil_str), 0.0), "normalized edit distance Nil/Nil");
+		Check(Near(TextSimilarity->NormalizedEditDistance("kitten", "sitting"), 3.0 / 7.0), "normalized kitten/sitting");
+
+		Check(Near(TextSimilarity->JaccardSimilarity(String->New[0], String->New[0]), 1.0), "jaccard of two empty sets is 1");
+		nil_arr : String[];
+		Check(Near(TextSimilarity->JaccardSimilarity(nil_arr, nil_arr), 1.0), "jaccard of two Nil sets is 1");
+		Check(Near(TextSimilarity->JaccardSimilarity(["a"], String->New[0]), 0.0), "jaccard with one empty set is 0");
+		Check(Near(TextSimilarity->JaccardSimilarity(["cat", "sat", "mat"], ["CAT", "sat", "log"]), 0.5), "jaccard is case-insensitive");
+
+		Check(Near(TextSimilarity->CosineSimilarity([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]), 1.0), "cosine of parallel vectors");
+		Check(Near(TextSimilarity->CosineSimilarity([1.0, 0.0], [-1.0, 0.0]), -1.0), "cosine of opposite vectors");
+		Check(Near(TextSimilarity->CosineSimilarity([0.0, 0.0], [1.0, 0.0]), 0.0), "cosine with a zero vector");
+		Check(Near(TextSimilarity->CosineSimilarity([1.0], [1.0, 2.0]), 0.0), "cosine of mismatched sizes");
+
+		if(@failures = 0) {
+			"PASS: NLP TF-IDF and similarity"->PrintLine();
+		}
+		else {
+			"FAIL: NLP TF-IDF and similarity ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

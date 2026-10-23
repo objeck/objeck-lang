@@ -1,0 +1,93 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP tokenization (docs/NLP_DESIGN.md, sections 2 and 3): contractions, numbers,
+hyphenated words and non-Latin letters stay whole; all whitespace separates words; sentences
+survive abbreviations, initials, decimals, ellipses and closing quotes.
+~#
+use System.NLP, Collection;
+
+class NlpTokenizeTest {
+	@failures : static : Int;
+
+	function : Join(parts : String[]) ~ String {
+		out := "";
+		each(i : parts) {
+			if(i > 0) {
+				out += "|";
+			};
+			out += parts[i];
+		};
+		return out;
+	}
+
+	function : Words(text : String, want : String) ~ Nil {
+		got := Join(Tokenizer->WordTokenize(text));
+		if(<>got->Equals(want)) {
+			@failures += 1;
+			"  FAIL words: '{$text}'\n    got:  {$got}\n    want: {$want}"->PrintLine();
+		};
+	}
+
+	function : Sentences(text : String, want : String) ~ Nil {
+		got := Join(Tokenizer->SentenceTokenize(text));
+		if(<>got->Equals(want)) {
+			@failures += 1;
+			"  FAIL sentences: '{$text}'\n    got:  {$got}\n    want: {$want}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# --- words ---
+		Words("Hello, world! How are you?", "Hello|world|How|are|you");
+		Words("I don't think it's fine.", "I|don't|think|it's|fine");
+		Words("O’Brien won’t go", "O’Brien|won’t|go");
+		Words("'quoted' words", "quoted|words");
+		Words("Pi is 3.14 and costs $5,000.", "Pi|is|3.14|and|costs|5,000");
+		Words("first\nsecond\tthird\r\nfourth", "first|second|third|fourth");
+		Words("state-of-the-art and/or e-mail, COVID-19", "state-of-the-art|and|or|e-mail|COVID-19");
+		Words("a -- b - c", "a|b|c");
+		Words("end. Next", "end|Next");
+		Words("café “quoted” — naïve", "café|quoted|naïve");
+		Words("日本語、テスト。", "日本語|テスト");
+		Words("(parens) [brackets] {braces}", "parens|brackets|braces");
+		Words("", "");
+		Words("   ...!!!   ", "");
+		nil_text : String;
+		Check(Tokenizer->WordTokenize(nil_text)->Size() = 0, "Nil text gives no words");
+
+		# --- sentences ---
+		Sentences("Hello! How are you? I am fine.", "Hello!|How are you?|I am fine.");
+		Sentences("Dr. Smith paid $3.50 in the U.S. today. Then he left.", "Dr. Smith paid $3.50 in the U.S. today.|Then he left.");
+		Sentences("Wait... what?! Really.", "Wait...|what?!|Really.");
+		Sentences("He said \"Stop.\" Then he ran.", "He said \"Stop.\"|Then he ran.");
+		Sentences("J. R. R. Tolkien wrote it. Mrs. Jones read it.", "J. R. R. Tolkien wrote it.|Mrs. Jones read it.");
+		Sentences("So did I. Then we left.", "So did I.|Then we left.");
+		Sentences("See e.g. the appendix. It helps.", "See e.g. the appendix.|It helps.");
+		Sentences("No terminator at the end", "No terminator at the end");
+		Sentences("One.\nTwo.\n\nThree", "One.|Two.|Three");
+		Sentences("Version 2.0 ships in Jan. next year.", "Version 2.0 ships in Jan. next year.");
+		Sentences("Done… maybe.", "Done…|maybe.");
+		Sentences("", "");
+
+		# --- n-grams are unchanged ---
+		Check(Join(Tokenizer->WordNGrams(["the", "quick", "brown"], 2))->Equals("the quick|quick brown"), "word bigrams");
+		Check(Join(Tokenizer->CharNGrams("hello", 3))->Equals("hel|ell|llo"), "char trigrams");
+
+		if(@failures = 0) {
+			"PASS: NLP tokenization"->PrintLine();
+		}
+		else {
+			"FAIL: NLP tokenization ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+}
