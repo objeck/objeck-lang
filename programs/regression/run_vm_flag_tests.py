@@ -47,8 +47,8 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     ">>> virtual machine: internal error: ... <<<" and returns -1 when an
     exception escapes the interpreter, and the POSIX entry point returned 0
     regardless, so on Linux and macOS such a program reported success to
-    whatever ran it. vm_error_exit.obs reaches that catch with
-    "1e999"->ToFloat(); it must print the line and leave obr non-zero both by
+    whatever ran it. vm_error_exit.obs reaches that catch with a float
+    precision property that is not a number (std::stoll throws); it must print the line and leave obr non-zero both by
     default and with --jit=1, where the JIT's bridge reports it the same way
     (since #778). And a command line that is all flags ("obr --jit=off")
     names no program: that is the usage and a non-zero exit, not a silent
@@ -80,9 +80,10 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     obr (SIGABRT) before Execute's catch printed anything; the bridge catches
     it now and reports it as Execute would: the internal-error line, the
     stack, exit status 1. jit_bridge_exception.obs reaches it with
-    "1e999"->ToFloat() from a native method (compiled in every mode), by
-    default through the interpreter the bridge nests and under --jit=1
-    through the bridge's own S2F case. The regression runner cannot tell the
+    Float->ToString under a float precision property that is not a number,
+    from a native method (compiled in every mode), by default through the
+    interpreter the bridge nests and under --jit=1 through the bridge's own
+    F2S case. The regression runner cannot tell the
     abort from the error (an expected runtime error is any non-zero exit with
     output), so the status is named here.
  9. A zero divisor reads the same interpreted and compiled. The interpreter
@@ -324,7 +325,7 @@ def main():
     if rc == 0:
         for label, flags in (("by default", []), ("with --jit=1", ["--jit=1"])):
             rc, out, err = run([obr] + flags + [err_obe], env=env, cwd=bin_dir)
-            check(f'"1e999"->ToFloat() (std::stod out of range) stops the program with an internal error, {label}',
+            check(f"Float->ToString with a non-numeric precision (std::stoll throws) stops the program with an internal error, {label}",
                   b"before" in out and b"after" not in out and b">>> virtual machine: internal error:" in err,
                   f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
             check(f"obr exits non-zero after that internal error, {label} (was 0 on POSIX)", rc != 0, f"rc={rc}")
@@ -337,9 +338,9 @@ def main():
           f"rc={rc} out={out[-80:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
 
     # ---- 8. an exception in a bridge call ends the program, not the process ----
-    # The fixture's Parse is native, so both runs reach the bridge: by default
-    # String->ToFloat, a library method called once, runs in the interpreter the
-    # bridge nests; under --jit=1 it is compiled and the bridge's own S2F case
+    # The fixture's Format is native, so both runs reach the bridge: by default
+    # Float->ToString, a library method called once, runs in the interpreter the
+    # bridge nests; under --jit=1 it is compiled and the bridge's own F2S case
     # throws. On the old VM both aborted (a signal, no line of the VM's), and
     # the regression runner counted the abort as the expected error.
     ex_src = os.path.join(SCRIPT_DIR, "jit_bridge_exception.obs")

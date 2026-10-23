@@ -378,6 +378,68 @@ enum {
 
 class StackClass;
 
+//
+// String->ToFloat (S2F, interpreted and JIT): strtod's answer. Text that is
+// not a number is 0.0, as before. Out-of-range text no longer aborts: it was
+// std::stod, whose std::out_of_range nothing caught, so "1e400", "-1e400" and
+// "1e-400" ended the VM with "internal error: stod argument out of range" (and
+// so may a valid subnormal such as "5e-324" on a C library that sets ERANGE
+// for one; C allows it, the UCRT does not). Now overflow is +/-inf and
+// underflow 0 or the nearest subnormal, with the sign kept.
+//
+inline double ParseFloatText(const wchar_t* str)
+{
+  wchar_t* end = nullptr;
+  const double value = wcstod(str, &end);
+  if(end == str) {
+    return 0.0;
+  }
+  return value;
+}
+
+//
+// String->ToInt(base) (S2I, interpreted and JIT): "0b", "0o" and "0x"
+// prefixes, also after a '-', override the base; text that is not a number,
+// or does not fit 64 bits, is 0. The JIT kept its own copy, which knew no
+// signed prefix, so "-0x10" was -16 interpreted and 0 once ToInt compiled.
+//
+inline int64_t ParseIntText(const wchar_t* str, int base)
+{
+  try {
+    const size_t size = wcslen(str);
+    if(size > 3 && str[0] == L'-') {
+      switch(str[2]) {
+      case L'b':
+        return -std::stoll(str + 3, nullptr, 2);
+      case L'o':
+        return -std::stoll(str + 3, nullptr, 8);
+      case L'x':
+      case L'X':
+        return -std::stoll(str + 3, nullptr, 16);
+      default:
+        break;
+      }
+    }
+    else if(size > 2) {
+      switch(str[1]) {
+      case L'b':
+        return std::stoll(str + 2, nullptr, 2);
+      case L'o':
+        return std::stoll(str + 2, nullptr, 8);
+      case L'x':
+      case L'X':
+        return std::stoll(str + 2, nullptr, 16);
+      default:
+        break;
+      }
+    }
+    return std::stoll(str, nullptr, base);
+  }
+  catch(const std::exception&) {
+    return 0;
+  }
+}
+
 inline const std::wstring IntToString(int v)
 {
   return std::to_wstring(v);
@@ -2404,6 +2466,14 @@ class TrapProcessor {
   static bool RuntimeClearError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool RuntimeRaise(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool RuntimeGetLastError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool AryCopy(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool AryFillInt(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool AryFillFloat(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool FloatToStrShort(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool CompressZlibLevel(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool BytesToAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool AryToBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool DeserlBoolAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool CondWait(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool CondSignal(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool Http3Close(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
@@ -2438,6 +2508,7 @@ class TrapProcessor {
   static bool DeserlObjAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool DeserlFloatAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool CompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
+  static bool CompressZlibArray(size_t* array, int level, size_t* &op_stack, size_t* &stack_pos);
   static bool UncompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool CompressGzipBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool UncompressGzipBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);

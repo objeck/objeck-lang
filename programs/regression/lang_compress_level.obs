@@ -1,0 +1,122 @@
+#~
+Byte->CompressZlib(input, level), and Serializer->Serialize compressing at
+level 1.
+
+Serialize used Byte->CompressZlib(input), which is level 9 (and still is):
+for 1M Ints and 2M Floats nearly all of Serialize's time was deflate.
+Every level is valid zlib, so Deserializer and UncompressZlib read them all.
+~#
+use System.IO;
+
+class LangCompressLevel {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Same(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : public : Run() ~ Nil {
+		input := Byte->New[20000];
+		for(i := 0; i < input->Size(); i += 1;) {
+			input[i] := ((i / 7) % 13 + (i % 5))->As(Byte);
+		};
+
+		Check("CompressZlib(input) is level 9", Same(Byte->CompressZlib(input), Byte->CompressZlib(input, 9)));
+
+		levels := [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 42, -7];
+		all := true;
+		each(l : levels) {
+			c := Byte->CompressZlib(input, levels[l]);
+			if(<>Same(Byte->UncompressZlib(c), input)) {
+				"  level {$(levels[l])} does not round-trip"->PrintLine();
+				all := false;
+			};
+		};
+		Check("every level, and out-of-range ones, round-trip", all);
+
+		Check("an out-of-range level is the default", Same(Byte->CompressZlib(input, 42), Byte->CompressZlib(input, -1)));
+		Check("-1 is level 6", Same(Byte->CompressZlib(input, -1), Byte->CompressZlib(input, 6)));
+		Check("level 0 stores", Byte->CompressZlib(input, 0)->Size() > input->Size());
+		Check("level 1 compresses", Byte->CompressZlib(input, 1)->Size() < input->Size() / 4);
+
+		empty := Byte->New[0];
+		Check("empty input", Byte->UncompressZlib(Byte->CompressZlib(empty, 1))->Size() = 0);
+
+		# Serialize: level 1, and Deserializer reads it
+		ints := Int->New[5000];
+		floats := Float->New[5000];
+		for(i := 0; i < 5000; i += 1;) {
+			ints[i] := i * 31 % 977;
+			floats[i] := i->As(Float) / 3.0;
+		};
+		s := Serializer->New();
+		s->Write(ints);
+		s->Write(floats);
+		s->Write("tail");
+		bytes := s->Serialize();
+		raw := Byte->UncompressZlib(bytes);
+		Check("Serialize compresses at level 1", Same(bytes, Byte->CompressZlib(raw, 1)));
+
+		d := Deserializer->New(bytes);
+		ints2 := d->ReadIntArray();
+		floats2 := d->ReadFloatArray();
+		tail := d->ReadObject()->As(String);
+		ok := ints2->Size() = 5000 & floats2->Size() = 5000 & tail->Equals("tail");
+		if(ok) {
+			for(i := 0; i < 5000; i += 1;) {
+				if(ints2[i] <> ints[i] | floats2[i] <> floats[i]) {
+					ok := false;
+				};
+			};
+		};
+		Check("Deserializer reads it", ok);
+
+		# a level-9 stream, as earlier versions wrote, still deserializes
+		d := Deserializer->New(Byte->CompressZlib(raw));
+		Check("a level-9 stream still deserializes", d->ReadIntArray()->Size() = 5000);
+
+		raised := false;
+		try {
+			n : Byte[];
+			Byte->CompressZlib(n, 1);
+		}
+		on(e : NilError) {
+			raised := true;
+		};
+		Check("Nil input raises NilError", raised);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: zlib compression levels"->PrintLine();
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		LangCompressLevel->New()->Run();
+	}
+}

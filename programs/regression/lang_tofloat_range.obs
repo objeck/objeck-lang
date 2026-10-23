@@ -1,0 +1,144 @@
+#~
+String->ToFloat on out-of-range text, and String->ToInt's prefixes under the JIT.
+
+ToFloat went through std::stod and caught only std::invalid_argument, so
+"1e400", "-1e400" and "1e-400" threw std::out_of_range out of the VM: it
+printed "internal error: stod argument out of range" and exited -1, both
+interpreted and once ToFloat was compiled. It now answers what strtod does:
++/-inf on overflow, 0 (keeping the sign) or the nearest subnormal on
+underflow. Text that is not a number is still 0.0.
+
+ToInt was already safe from out-of-range text (0), but the JIT kept its own
+parser, which knew no signed prefix: "-0x10" was -16 interpreted and 0 once
+ToInt was compiled. Both now share one parser. Each value here is parsed
+through a helper called many times, so it is also compiled with the default
+JIT threshold.
+~#
+class LangToFloatRange {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Parse(s : String) ~ Float {
+		return s->ToFloat();
+	}
+
+	method : ParseInt(s : String) ~ Int {
+		return s->ToInt();
+	}
+
+	# the sign of a zero, without dividing by it
+	method : IsNegZero(v : Float) ~ Bool {
+		return v = 0.0 & Float->ToString(v, 1)->Equals("-0.0");
+	}
+
+	method : Floats() ~ Nil {
+		# twice through, so the second round runs compiled
+		for(round := 0; round < 12; round += 1;) {
+			ok := true;
+			ok := ok & (Parse("1e400") = Float->Inf());
+			ok := ok & (Parse("-1e400") = Float->NegInf());
+			ok := ok & (Parse("1.8e308") = Float->Inf());
+			ok := ok & (Parse("1e-400") = 0.0 & <>IsNegZero(Parse("1e-400")));
+			ok := ok & (IsNegZero(Parse("-1e-400")));
+			ok := ok & (Parse("1.7976931348623157e308") = 1.7976931348623157e308);
+			ok := ok & (Parse("2.2250738585072014e-308") = 2.2250738585072014e-308);
+			ok := ok & (Parse("12.5") = 12.5);
+			ok := ok & (Parse("  -3.25") = -3.25);
+			ok := ok & (Parse("abc") = 0.0);
+			ok := ok & (Parse("") = 0.0);
+			ok := ok & (Parse("-") = 0.0);
+			if(round = 0) {
+				Check("out-of-range text: overflow is inf, underflow is 0", ok);
+			}
+			else if(round = 11) {
+				Check("the same, compiled", ok);
+			};
+		};
+
+		# subnormals: the smallest, the largest, one between, and their text
+		smallest := Float->Pow(2.0, -1074.0);
+		Check("5e-324 is the smallest subnormal", Parse("5e-324") = smallest);
+		Check("4.9406564584124654e-324 too", Parse("4.9406564584124654e-324") = smallest);
+		Check("-5e-324", Parse("-5e-324") = -1.0 * smallest);
+		largest := 2.2250738585072014e-308 - smallest;
+		Check("2.225073858507201e-308 is the largest subnormal", Parse("2.225073858507201e-308") = largest);
+		Check("2.5e-320 parses to a subnormal", Parse("2.5e-320") > 0.0 & Parse("2.5e-320") < 2.2250738585072014e-308);
+		Check("half the smallest subnormal rounds to 0", Parse("2e-324") = 0.0);
+
+		# every subnormal power of two survives ToShortString and back
+		all := true;
+		v := 2.2250738585072014e-308;
+		for(i := 0; i < 52; i += 1;) {
+			v := v / 2.0;
+			if(Parse(v->ToShortString()) <> v | Parse((-1.0 * v)->ToShortString()) <> -1.0 * v) {
+				"  no round trip: {$(v->ToShortString())}"->PrintLine();
+				all := false;
+			};
+		};
+		Check("subnormal powers of two round-trip", all);
+
+		# many subnormals that are not powers of two
+		all := true;
+		for(k := 1; k < 2000; k += 37;) {
+			w := smallest * k->As(Float) * 1234567.0;
+			if(Parse(w->ToShortString()) <> w) {
+				all := false;
+			};
+		};
+		Check("other subnormals round-trip", all);
+
+		# inf and nan text, which strtod reads
+		Check("inf text", Parse("inf") = Float->Inf() & Parse("-inf") = Float->NegInf());
+	}
+
+	method : Ints() ~ Nil {
+		for(round := 0; round < 12; round += 1;) {
+			ok := true;
+			ok := ok & (ParseInt("-0x10") = -16);
+			ok := ok & (ParseInt("-0b101") = -5);
+			ok := ok & (ParseInt("-0o17") = -15);
+			ok := ok & (ParseInt("0x10") = 16);
+			ok := ok & (ParseInt("0b11") = 3);
+			ok := ok & (ParseInt("-12") = -12);
+			ok := ok & (ParseInt("99999999999999999999") = 0);
+			ok := ok & (ParseInt("-99999999999999999999") = 0);
+			ok := ok & (ParseInt("abc") = 0);
+			if(round = 0) {
+				Check("ToInt prefixes and out-of-range text", ok);
+			}
+			else if(round = 11) {
+				Check("the same, compiled", ok);
+			};
+		};
+	}
+
+	method : public : Run() ~ Nil {
+		Floats();
+		Ints();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: ToFloat and ToInt on out-of-range text"->PrintLine();
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		LangToFloatRange->New()->Run();
+	}
+}

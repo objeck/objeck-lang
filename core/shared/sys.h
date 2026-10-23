@@ -475,12 +475,12 @@ public:
   //
   // zlib stream compression
   //
-  static char* CompressZlib(const char* src, unsigned long src_len, unsigned long &out_len) {
+  static char* CompressZlib(const char* src, unsigned long src_len, unsigned long &out_len, int level = Z_BEST_COMPRESSION) {
     const unsigned long buffer_max = compressBound(src_len);
     char* buffer = (char*)malloc(buffer_max);
 
     out_len = buffer_max;
-    const int status = compress2((Bytef*)buffer, &out_len, (Bytef*)src, src_len, Z_BEST_COMPRESSION);
+    const int status = compress2((Bytef*)buffer, &out_len, (Bytef*)src, src_len, level);
     if(status != Z_OK) {
       free(buffer);
       buffer = nullptr;

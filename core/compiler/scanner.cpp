@@ -435,6 +435,14 @@ void Scanner::LoadKeywords()
   ident_map[L"RUNTIME_CLEAR_ERROR"] = RUNTIME_CLEAR_ERROR;
   ident_map[L"RUNTIME_RAISE"] = RUNTIME_RAISE;
   ident_map[L"RUNTIME_GET_LAST_ERROR"] = RUNTIME_GET_LAST_ERROR;
+  ident_map[L"ARY_COPY"] = ARY_COPY;
+  ident_map[L"ARY_FILL_INT"] = ARY_FILL_INT;
+  ident_map[L"ARY_FILL_FLOAT"] = ARY_FILL_FLOAT;
+  ident_map[L"FLOAT_TO_STR_SHORT"] = FLOAT_TO_STR_SHORT;
+  ident_map[L"DESERL_BOOL_ARY"] = DESERL_BOOL_ARY;
+  ident_map[L"ARY_TO_BYTES"] = ARY_TO_BYTES;
+  ident_map[L"BYTES_TO_ARY"] = BYTES_TO_ARY;
+  ident_map[L"COMPRESS_ZLIB_LEVEL"] = COMPRESS_ZLIB_LEVEL;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;

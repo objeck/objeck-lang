@@ -1808,6 +1808,35 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     const std::wstring ident = ParseBundleName();
     statement = ParseIdentifierStatement(ident, line_num, line_pos, file_name, depth);
   }
+  // 'Int->Fill(a, 0);': a function of a basic type's class called as a
+  // statement, as 'Runtime->Copy(..);' is. It used to fall through to the
+  // expression path, which rejected an unchained call as "Invalid statement".
+  else if(IsBasicType(GetToken()) && Match(TOKEN_ASSESSOR, SECOND_INDEX) && Match(TOKEN_IDENT, THIRD_INDEX)) {
+    std::wstring ident;
+    switch(GetToken()) {
+    case TOKEN_BOOLEAN_ID:
+      ident = BOOL_CLASS_ID;
+      break;
+
+    case TOKEN_BYTE_ID:
+      ident = BYTE_CLASS_ID;
+      break;
+
+    case TOKEN_INT_ID:
+      ident = INT_CLASS_ID;
+      break;
+
+    case TOKEN_FLOAT_ID:
+      ident = FLOAT_CLASS_ID;
+      break;
+
+    default:
+      ident = CHAR_CLASS_ID;
+      break;
+    }
+    NextToken();
+    statement = ParseIdentifierStatement(ident, line_num, line_pos, file_name, depth);
+  }
   // other
   else {
     switch(GetToken()) {
@@ -3479,6 +3508,54 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     case RUNTIME_GET_LAST_ERROR:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::RUNTIME_GET_LAST_ERROR);
+      NextToken();
+      break;
+
+    case ARY_COPY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ARY_COPY);
+      NextToken();
+      break;
+
+    case ARY_FILL_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ARY_FILL_INT);
+      NextToken();
+      break;
+
+    case ARY_FILL_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ARY_FILL_FLOAT);
+      NextToken();
+      break;
+
+    case FLOAT_TO_STR_SHORT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::FLOAT_TO_STR_SHORT);
+      NextToken();
+      break;
+
+    case DESERL_BOOL_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::DESERL_BOOL_ARY);
+      NextToken();
+      break;
+
+    case ARY_TO_BYTES:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ARY_TO_BYTES);
+      NextToken();
+      break;
+
+    case BYTES_TO_ARY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::BYTES_TO_ARY);
+      NextToken();
+      break;
+
+    case COMPRESS_ZLIB_LEVEL:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::COMPRESS_ZLIB_LEVEL);
       NextToken();
       break;
 
@@ -5891,6 +5968,54 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case RUNTIME_GET_LAST_ERROR:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::RUNTIME_GET_LAST_ERROR);
+     NextToken();
+     break;
+
+  case ARY_COPY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ARY_COPY);
+     NextToken();
+     break;
+
+  case ARY_FILL_INT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ARY_FILL_INT);
+     NextToken();
+     break;
+
+  case ARY_FILL_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ARY_FILL_FLOAT);
+     NextToken();
+     break;
+
+  case FLOAT_TO_STR_SHORT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::FLOAT_TO_STR_SHORT);
+     NextToken();
+     break;
+
+  case DESERL_BOOL_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::DESERL_BOOL_ARY);
+     NextToken();
+     break;
+
+  case ARY_TO_BYTES:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ARY_TO_BYTES);
+     NextToken();
+     break;
+
+  case BYTES_TO_ARY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::BYTES_TO_ARY);
+     NextToken();
+     break;
+
+  case COMPRESS_ZLIB_LEVEL:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::COMPRESS_ZLIB_LEVEL);
      NextToken();
      break;
 

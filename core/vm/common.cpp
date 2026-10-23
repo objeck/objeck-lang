@@ -154,6 +154,16 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #include <csignal>
 #include <cmath>
 #include <filesystem>
+#include <charconv>
+#include <version>
+
+// floating-point std::to_chars (shortest round trip): MSVC 19.24+, libstdc++
+// 11+. libc++ has it from 14 but announces the macro only much later, so
+// Apple builds take the snprintf fallback in ShortestDigits, which gives the
+// same digits.
+#if defined(__cpp_lib_to_chars) && __cpp_lib_to_chars >= 201611L
+#define OBJECK_HAS_FLOAT_TO_CHARS
+#endif
 
 #ifdef _WIN32
 CRITICAL_SECTION StackProgram::program_cs;
@@ -2711,6 +2721,30 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case RUNTIME_GET_LAST_ERROR:
     return RuntimeGetLastError(program, inst, op_stack, stack_pos, frame);
+
+  case ARY_COPY:
+    return AryCopy(program, inst, op_stack, stack_pos, frame);
+
+  case ARY_FILL_INT:
+    return AryFillInt(program, inst, op_stack, stack_pos, frame);
+
+  case ARY_FILL_FLOAT:
+    return AryFillFloat(program, inst, op_stack, stack_pos, frame);
+
+  case FLOAT_TO_STR_SHORT:
+    return FloatToStrShort(program, inst, op_stack, stack_pos, frame);
+
+  case DESERL_BOOL_ARY:
+    return DeserlBoolAry(program, inst, op_stack, stack_pos, frame);
+
+  case ARY_TO_BYTES:
+    return AryToBytes(program, inst, op_stack, stack_pos, frame);
+
+  case BYTES_TO_ARY:
+    return BytesToAry(program, inst, op_stack, stack_pos, frame);
+
+  case COMPRESS_ZLIB_LEVEL:
+    return CompressZlibLevel(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -6057,6 +6091,44 @@ bool TrapProcessor::DeserlByteAry(StackProgram* program, size_t* inst, size_t* &
   return true;
 }
 
+// method : ReadBoolArray() ~ Bool[]
+//
+// A Bool[] is a byte array (the emitter allocates one with NEW_BYTE_ARY), so
+// Serializer->Write(Bool[]) now writes the byte-array encoding. It used to
+// write the Int[] one -- array_size * 8 bytes from a one-byte-per-element
+// array, a heap over-read into the output -- and ReadBoolArray read that back
+// as an INT array posing as a Bool[]. That legacy encoding is still read: its
+// first n payload bytes are the bools, and the rest (the over-read) is
+// consumed and dropped, so the values after it stay aligned.
+bool TrapProcessor::DeserlBoolAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  const ParamType tag = (ParamType)DeserializeInt(inst);
+  if(tag == BYTE_ARY_PARM) {
+    PushInt((size_t)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    return true;
+  }
+
+  if(tag == INT_ARY_PARM) {
+    // neither allocation collects, so the int array needs no root in between
+    size_t* legacy = DeserializeArray(INT_ARY_PARM, inst, op_stack, stack_pos);
+    if(!legacy) {
+      PushInt(0, op_stack, stack_pos);
+      return true;
+    }
+    const size_t size = legacy[0];
+    size_t* bools = MemoryManager::AllocateArray(size + 1 + ((1 + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+    bools[0] = size;
+    bools[1] = 1;
+    bools[2] = size;
+    memcpy(bools + 3, legacy + 3, size);
+    PushInt((size_t)bools, op_stack, stack_pos);
+    return true;
+  }
+
+  PushInt(0, op_stack, stack_pos);
+  return true;
+}
+
 bool TrapProcessor::DeserlCharAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
 #ifdef _DEBUG
@@ -6120,6 +6192,24 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  return CompressZlibArray(array, Z_BEST_COMPRESSION, op_stack, stack_pos);
+}
+
+// function : CompressZlib(input : Byte[], level : Int) ~ Byte[]: zlib's
+// levels, 0 (store) to 9 (smallest); -1 is zlib's default (6). Byte->CompressZlib
+// without a level keeps level 9.
+bool TrapProcessor::CompressZlibLevel(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  INT64_VALUE level = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(level < Z_DEFAULT_COMPRESSION || level > Z_BEST_COMPRESSION) {
+    level = Z_DEFAULT_COMPRESSION;
+  }
+  return CompressZlibArray(array, (int)level, op_stack, stack_pos);
+}
+
+bool TrapProcessor::CompressZlibArray(size_t* array, int level, size_t* &op_stack, size_t* &stack_pos)
+{
   if(!array) {
     return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
@@ -6127,9 +6217,9 @@ bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_
   // setup buffers
   const char* in = (char*)(array + 3);
   const uLong in_len = (uLong)array[2];
-    
+
   uLong out_len;
-  char* out = OutputStream::CompressZlib(in, in_len, out_len);
+  char* out = OutputStream::CompressZlib(in, in_len, out_len, level);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
     return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"zlib compression failed");
@@ -6534,6 +6624,114 @@ static size_t* NewCharArray(const std::wstring& value, size_t* op_stack, size_t*
   return array;
 }
 
+// The shortest decimal digits that read back as 'value' (finite, not zero),
+// as a digit string and the decimal exponent of its first digit:
+// 1.25e-05 gives "125" and -5.
+static void ShortestDigits(FLOAT_VALUE value, std::string& digits, int& exponent)
+{
+  char buffer[64];
+  const char* end = buffer;
+#ifdef OBJECK_HAS_FLOAT_TO_CHARS
+  // no precision argument: the shortest form that round-trips (C++17)
+  const std::to_chars_result result = std::to_chars(buffer, buffer + sizeof(buffer) - 1, value, std::chars_format::scientific);
+  end = result.ptr;
+  // to_chars does not terminate: atoi below must not read the stack's leftovers
+  *result.ptr = '\0';
+#else
+  // the first precision whose correctly rounded %e reads back exactly is the
+  // shortest length, and that rounding is the nearest such decimal: what
+  // to_chars picks
+  for(int precision = 0; precision < 17; ++precision) {
+    const int size = snprintf(buffer, sizeof(buffer), "%.*e", precision, value);
+    if(strtod(buffer, nullptr) == value || precision == 16) {
+      end = buffer + size;
+      break;
+    }
+  }
+#endif
+
+  // "-d.ddde+XX"
+  digits.clear();
+  const char* p = buffer;
+  if(*p == '-') {
+    ++p;
+  }
+  for(; p < end && *p != 'e'; ++p) {
+    if(*p != '.') {
+      digits.push_back(*p);
+    }
+  }
+  exponent = (p < end) ? atoi(p + 1) : 0;
+  while(digits.size() > 1 && digits.back() == '0') {
+    digits.pop_back();
+  }
+}
+
+// Float->ToShortString: the shortest text that reads back as the same value,
+// in Python's repr layout -- fixed notation for exponents -4 to 15 (always
+// with a fractional digit: "100.0"), otherwise "d.ddde-07"
+static std::wstring FormatFloatShortest(FLOAT_VALUE value)
+{
+  if(std::isnan(value)) {
+    return L"nan";
+  }
+  if(std::isinf(value)) {
+    return value < 0.0 ? L"-inf" : L"inf";
+  }
+
+  std::string out;
+  if(std::signbit(value)) {
+    out.push_back('-');
+  }
+  if(value == 0.0) {
+    out += "0.0";
+    return std::wstring(out.begin(), out.end());
+  }
+
+  std::string digits;
+  int exponent;
+  ShortestDigits(value, digits, exponent);
+  const int count = (int)digits.size();
+
+  if(exponent >= -4 && exponent < 16) {
+    if(exponent < 0) {
+      out += "0.";
+      out.append((size_t)(-exponent - 1), '0');
+      out += digits;
+    }
+    else if(count <= exponent + 1) {
+      out += digits;
+      out.append((size_t)(exponent + 1 - count), '0');
+      out += ".0";
+    }
+    else {
+      out.append(digits, 0, (size_t)exponent + 1);
+      out.push_back('.');
+      out.append(digits, (size_t)exponent + 1, std::string::npos);
+    }
+  }
+  else {
+    out.push_back(digits[0]);
+    if(count > 1) {
+      out.push_back('.');
+      out.append(digits, 1, std::string::npos);
+    }
+    char suffix[16];
+    snprintf(suffix, sizeof(suffix), "e%c%02d", exponent < 0 ? '-' : '+', exponent < 0 ? -exponent : exponent);
+    out += suffix;
+  }
+
+  return std::wstring(out.begin(), out.end());
+}
+
+// function : FormatShort(value : Float) ~ Char[]
+bool TrapProcessor::FloatToStrShort(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+  PushInt((size_t)NewCharArray(FormatFloatShortest(value), op_stack, stack_pos), op_stack, stack_pos);
+  return true;
+}
+
 // Float->ToString(value, precision): printf's %.*f, exact at any magnitude.
 // The library version went through ->As(Int), so above 2^63 it printed
 // "-9223372036854775808.-9223372036854775808", and it lost the sign of -0.0
@@ -6798,6 +6996,258 @@ bool TrapProcessor::RuntimeGetLastError(StackProgram* program, size_t* inst, siz
   }
 
   PushInt((size_t)raised.object, op_stack, stack_pos);
+  return true;
+}
+
+//
+// Bulk primitive array moves: Int/Float/Byte/Char->Copy and ->Fill. The
+// element kind comes from the library wrapper, which knows the static type;
+// no header word is consulted, so an array is never misread.
+//
+enum AryKind : INT64_VALUE {
+  ARY_KIND_BYTE = 1,
+  ARY_KIND_CHAR,
+  ARY_KIND_INT,
+  ARY_KIND_FLOAT
+};
+
+static size_t AryKindWidth(INT64_VALUE kind)
+{
+  switch(kind) {
+  case ARY_KIND_BYTE:
+    return sizeof(char);
+  case ARY_KIND_CHAR:
+    return sizeof(wchar_t);
+  case ARY_KIND_INT:
+    return sizeof(size_t);
+  case ARY_KIND_FLOAT:
+    return sizeof(FLOAT_VALUE);
+  default:
+    return 0;
+  }
+}
+
+// offset and count name a range inside an array of 'size' elements; written
+// so that no sum can overflow
+static bool AryRangeValid(INT64_VALUE offset, INT64_VALUE count, INT64_VALUE size)
+{
+  return offset >= 0 && count >= 0 && offset <= size && count <= size - offset;
+}
+
+static std::wstring AryRangeMessage(const wchar_t* what, INT64_VALUE offset, INT64_VALUE count, INT64_VALUE size)
+{
+  std::wstringstream out;
+  out << L"Index out of bounds: " << what << L" offset " << offset << L" and count " << count
+      << L" do not fit an array of " << size;
+  return out.str();
+}
+
+// function : CopyNative(dest : T[], dest_offset : Int, src : T[], src_offset : Int, count : Int, kind : Int) ~ Nil
+//
+// Overlapping ranges in one array behave like memmove. Runtime->Copy, the old
+// form, answers false for a bad range; this raises an IndexError, so a caller
+// cannot lose a failed copy by ignoring a Bool.
+bool TrapProcessor::AryCopy(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE src_offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* src = (size_t*)PopInt(op_stack, stack_pos);
+  const INT64_VALUE dest_offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* dest = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!src || !dest) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  const size_t width = AryKindWidth(kind);
+  if(!width) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array copy");
+  }
+
+  const INT64_VALUE src_size = (INT64_VALUE)src[0];
+  const INT64_VALUE dest_size = (INT64_VALUE)dest[0];
+  if(!AryRangeValid(src_offset, count, src_size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"source", src_offset, count, src_size));
+  }
+  if(!AryRangeValid(dest_offset, count, dest_size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"destination", dest_offset, count, dest_size));
+  }
+
+  if(count > 0) {
+    char* dest_ptr = (char*)(dest + 3) + (size_t)dest_offset * width;
+    const char* src_ptr = (const char*)(src + 3) + (size_t)src_offset * width;
+    memmove(dest_ptr, src_ptr, (size_t)count * width);
+    // an Int[] slot may hold an object reference (object arrays are Int arrays
+    // of pointers), so record the destination for the minor collector
+    if(kind == ARY_KIND_INT) {
+      MemoryManager::WriteBarrier(dest);
+    }
+  }
+
+  return true;
+}
+
+// function : FillNative(array : Int[]/Byte[]/Char[], value, offset : Int, count : Int, kind : Int) ~ Nil
+bool TrapProcessor::AryFillInt(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const size_t value = PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!array) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  const INT64_VALUE size = (INT64_VALUE)array[0];
+  if(!AryRangeValid(offset, count, size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"fill", offset, count, size));
+  }
+
+  switch(kind) {
+  case ARY_KIND_BYTE: {
+    char* start = (char*)(array + 3) + offset;
+    memset(start, (int)(unsigned char)value, (size_t)count);
+  }
+    break;
+
+  case ARY_KIND_CHAR: {
+    wchar_t* start = (wchar_t*)(array + 3) + offset;
+    std::fill(start, start + count, (wchar_t)value);
+  }
+    break;
+
+  case ARY_KIND_INT: {
+    size_t* start = array + 3 + offset;
+    std::fill(start, start + count, value);
+  }
+    break;
+
+  default:
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array fill");
+  }
+
+  return true;
+}
+
+// function : FillNative(array : Float[], value : Float, offset : Int, count : Int) ~ Nil
+bool TrapProcessor::AryFillFloat(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!array) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  const INT64_VALUE size = (INT64_VALUE)array[0];
+  if(!AryRangeValid(offset, count, size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"fill", offset, count, size));
+  }
+
+  FLOAT_VALUE* start = (FLOAT_VALUE*)(array + 3) + offset;
+  std::fill(start, start + count, value);
+
+  return true;
+}
+
+// Int/Float->ToBytes and Byte->ToInts/ToFloats copy element bytes as they lie
+// in memory and document them as little-endian. Every supported target (x64,
+// arm64; Windows, Linux, macOS) is; a big-endian port must byte-swap here.
+// std::endian needs C++20, which not every build here compiles as (macOS's Xcode project), so
+// the check uses the compilers' own byte-order macros; every Windows target is little-endian.
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__)
+static_assert(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__, "ARY_TO_BYTES/BYTES_TO_ARY assume a little-endian host");
+#elif !defined(_WIN32)
+#error "ARY_TO_BYTES/BYTES_TO_ARY need the host's byte order; add a check for this compiler"
+#endif
+
+// function : ToBytesNative(values : Int[]/Float[], offset : Int, count : Int, kind : Int) ~ Byte[]
+// 'offset' and 'count' are in elements; the bytes are count * 8, little-endian
+bool TrapProcessor::AryToBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* values = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!values) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+  if(kind != ARY_KIND_INT && kind != ARY_KIND_FLOAT) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array conversion");
+  }
+
+  const INT64_VALUE size = (INT64_VALUE)values[0];
+  if(!AryRangeValid(offset, count, size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"ToBytes", offset, count, size));
+  }
+
+  const size_t width = AryKindWidth(kind);
+  const size_t byte_count = (size_t)count * width;
+  size_t* bytes = MemoryManager::AllocateArray(byte_count + 1 + ((1 + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  bytes[0] = byte_count;
+  bytes[1] = 1;
+  bytes[2] = byte_count;
+  if(byte_count) {
+    memcpy(bytes + 3, (const char*)(values + 3) + (size_t)offset * width, byte_count);
+  }
+
+  PushInt((size_t)bytes, op_stack, stack_pos);
+  return true;
+}
+
+// function : IntsNative/FloatsNative(bytes : Byte[], offset : Int, count : Int, kind : Int) ~ Int[]/Float[]
+// 'offset' is in bytes and 'count' in elements; a count of -1 takes every
+// byte from 'offset' on, which must then be a whole number of elements
+bool TrapProcessor::BytesToAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* bytes = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!bytes) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+  if(kind != ARY_KIND_INT && kind != ARY_KIND_FLOAT) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array conversion");
+  }
+
+  const INT64_VALUE width = (INT64_VALUE)AryKindWidth(kind);
+  const INT64_VALUE size = (INT64_VALUE)bytes[0];
+  if(offset < 0 || offset > size) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"byte", offset, count, size));
+  }
+  if(count == -1) {
+    if((size - offset) % width) {
+      std::wstringstream message;
+      message << L"Byte count " << (size - offset) << L" is not a whole number of " << width << L"-byte values";
+      return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, message.str());
+    }
+    count = (size - offset) / width;
+  }
+  if(count < 0 || count > (size - offset) / width) {
+    std::wstringstream message;
+    message << L"Index out of bounds: " << count << L" values of " << width << L" bytes from byte offset " << offset
+            << L" do not fit an array of " << size << L" bytes";
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, message.str());
+  }
+
+  size_t* values = MemoryManager::AllocateArray((size_t)count + 1 + 2, kind == ARY_KIND_INT ? INT_TYPE : FLOAT_TYPE,
+                                                op_stack, *stack_pos, false);
+  values[0] = (size_t)count;
+  values[1] = 1;
+  values[2] = (size_t)count;
+  if(count) {
+    memcpy(values + 3, (const char*)(bytes + 3) + offset, (size_t)(count * width));
+  }
+
+  PushInt((size_t)values, op_stack, stack_pos);
   return true;
 }
 
