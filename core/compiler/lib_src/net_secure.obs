@@ -820,7 +820,14 @@ if(html <> Nil) {
 						};
 
 						encoding : String := @response_headers->Find("transfer-encoding");
-						if(encoding <> Nil & encoding->Equals("chunked")) {
+						# A 1xx, 204 or 304 response never has a body, whatever its headers say
+						# (RFC 9110 sec. 6.4.1, RFC 9112 sec. 6.3). Reading on would fall into
+						# ReadUntilClose, and because this request asked for keep-alive the
+						# server holds the connection: the read would wait out the timeout.
+						if(status_code < 200 | status_code = 204 | status_code = 304) {
+							content := Nil;
+						}
+						else if(encoding <> Nil & encoding->Equals("chunked")) {
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {
@@ -1230,7 +1237,14 @@ if(html <> Nil) {
 						};
 
 						encoding : String := @response_headers->Find("transfer-encoding");
-						if(encoding <> Nil & encoding->Equals("chunked")) {
+						# A 1xx, 204 or 304 response never has a body, whatever its headers say
+						# (RFC 9110 sec. 6.4.1, RFC 9112 sec. 6.3). Reading on would fall into
+						# ReadUntilClose, and because this request asked for keep-alive the
+						# server holds the connection: the read would wait out the timeout.
+						if(status_code < 200 | status_code = 204 | status_code = 304) {
+							content := Nil;
+						}
+						else if(encoding <> Nil & encoding->Equals("chunked")) {
 							content := WebCommon->ReadChunked(socket);
 						}
 						else {

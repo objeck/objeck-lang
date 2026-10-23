@@ -1608,6 +1608,160 @@ bundle Web.HTTP.Server {
 		}
 	}
 
+	# Formats the status line and header block of a server response. Shared by
+	# the HTTP and HTTPS request handlers, so that every status code from 100 to
+	# 599 takes the same path: the handler's headers, cookies and body are sent
+	# whatever the code, not only for a 200.
+	class : private : ResponseFormat {
+		# The code to send. One outside 100-599 cannot be put on a status line
+		# and is a handler defect, so it is answered as a server error.
+		function : public : StatusCode(response : Response) ~ Int {
+			code := response->GetCode();
+			if(code < 100 | code > 599) {
+				return 500;
+			};
+
+			return code;
+		}
+
+		# 1xx, 204 and 304 responses carry neither a body nor a Content-Length
+		# (RFC 9110 sec. 8.6, RFC 9112 sec. 6.3). A peer reads no body after them,
+		# so bytes written there would be parsed as the next response.
+		function : public : HasBody(code : Int) ~ Bool {
+			return code >= 200 & code <> 204 & code <> 304;
+		}
+
+		# The RFC 9110 reason phrase; a code it does not define gets its class name
+		function : public : ReasonPhrase(code : Int) ~ String {
+			select(code) {
+				label 100 { return "Continue"; }
+				label 101 { return "Switching Protocols"; }
+				label 200 { return "OK"; }
+				label 201 { return "Created"; }
+				label 202 { return "Accepted"; }
+				label 203 { return "Non-Authoritative Information"; }
+				label 204 { return "No Content"; }
+				label 205 { return "Reset Content"; }
+				label 206 { return "Partial Content"; }
+				label 300 { return "Multiple Choices"; }
+				label 301 { return "Moved Permanently"; }
+				label 302 { return "Found"; }
+				label 303 { return "See Other"; }
+				label 304 { return "Not Modified"; }
+				label 305 { return "Use Proxy"; }
+				label 307 { return "Temporary Redirect"; }
+				label 308 { return "Permanent Redirect"; }
+				label 400 { return "Bad Request"; }
+				label 401 { return "Unauthorized"; }
+				label 402 { return "Payment Required"; }
+				label 403 { return "Forbidden"; }
+				label 404 { return "Not Found"; }
+				label 405 { return "Method Not Allowed"; }
+				label 406 { return "Not Acceptable"; }
+				label 407 { return "Proxy Authentication Required"; }
+				label 408 { return "Request Timeout"; }
+				label 409 { return "Conflict"; }
+				label 410 { return "Gone"; }
+				label 411 { return "Length Required"; }
+				label 412 { return "Precondition Failed"; }
+				label 413 { return "Content Too Large"; }
+				label 414 { return "URI Too Long"; }
+				label 415 { return "Unsupported Media Type"; }
+				label 416 { return "Range Not Satisfiable"; }
+				label 417 { return "Expectation Failed"; }
+				label 421 { return "Misdirected Request"; }
+				label 422 { return "Unprocessable Content"; }
+				label 426 { return "Upgrade Required"; }
+				label 428 { return "Precondition Required"; }
+				label 429 { return "Too Many Requests"; }
+				label 431 { return "Request Header Fields Too Large"; }
+				label 500 { return "Internal Server Error"; }
+				label 501 { return "Not Implemented"; }
+				label 502 { return "Bad Gateway"; }
+				label 503 { return "Service Unavailable"; }
+				label 504 { return "Gateway Timeout"; }
+				label 505 { return "HTTP Version Not Supported"; }
+			};
+
+			if(code < 200) {
+				return "Informational";
+			}
+			else if(code < 300) {
+				return "Success";
+			}
+			else if(code < 400) {
+				return "Redirection";
+			}
+			else if(code < 500) {
+				return "Client Error";
+			};
+
+			return "Server Error";
+		}
+
+		# Status line plus header block, through the blank line that ends it.
+		# connection_value must agree with what the handler's Run() does next, or
+		# the peer waits for a request that will never be read, or reuses a socket
+		# that is about to close.
+		function : public : Header(response : Response, code : Int, keep_alive : Bool) ~ String {
+			reason := ReasonPhrase(code);
+			header := "HTTP/1.1 ";
+			header += code;
+			header += " {$reason}\r\n";
+
+			has_location := false;
+			key_values := response->GetHeaders()->GetKeyValues()<Pair<String, String>>;
+			each(i : key_values) {
+				key_value := key_values->Get(i);
+				key := key_value->GetFirst();
+				value := key_value->GetSecond();
+				lowered_key := key->ToLower();
+				if(lowered_key->Equals("location")) {
+					has_location := true;
+				};
+				# Framing and persistence are owned by the transport. Allowing an
+				# application value here would emit contradictory duplicate fields.
+				if(<>lowered_key->Equals("connection") &
+					<>lowered_key->Equals("content-length") &
+					<>lowered_key->Equals("transfer-encoding")) {
+					header += "{$key}: {$value}\r\n";
+				};
+			};
+
+			# A 302 takes its target from the reason string (Response->SetReason and
+			# Web.Server's Redirect), unless the handler set a Location itself.
+			if(code = 302 & <>has_location) {
+				location := response->GetReason();
+				if(location <> Nil & <>location->IsEmpty() & Web.HTTP.HeaderCheck->IsValidValue(location)) {
+					header += "Location: {$location}\r\n";
+				};
+			};
+
+			if(HasBody(code)) {
+				content := response->GetContent();
+				content_size := 0;
+				if(content <> Nil) {
+					content_size := content->Size();
+				};
+				header += "Content-Length: {$content_size}\r\n";
+			};
+
+			connection_value := keep_alive ? "keep-alive" : "close";
+			header += "Accept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
+
+			cookies := response->GetCookies()<Cookie>;
+			each(i : cookies) {
+				cookie := cookies->Get(i);
+				header += "Set-Cookie: ";
+				header += cookie->ToString();
+				header += "\r\n";
+			};
+			header += "\r\n";
+
+			return header;
+		}
+	}
+
 	#~
 	Multipart encoder
 	~#
@@ -2208,98 +2362,14 @@ class RequestHandler from HttpsRequestHandler {
 		~#
 		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
 			if(response <> Nil) {
-				response_headers := response->GetHeaders();
-				if(response->GetCode() = 200) {
-					response_header := "";
-					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-					each(i : key_values) {
-						key_value := key_values->Get(i);
-						key := key_value->GetFirst();
-						value := key_value->GetSecond();
-						lowered_key := key->ToLower();
-						# Framing and persistence are owned by this handler. Allowing an
-						# application value here would emit contradictory duplicate fields.
-						if(<>lowered_key->Equals("connection") &
-							<>lowered_key->Equals("content-length") &
-							<>lowered_key->Equals("transfer-encoding")) {
-							response_header += "{$key}: {$value}\r\n";
-						};
-					};
+				# One path for every status code: the handler's headers, cookies and
+				# body are sent whatever the code (see ResponseFormat).
+				code := ResponseFormat->StatusCode(response);
+				@client->WriteString(ResponseFormat->Header(response, code, @keep_alive));
 
-					content := response->GetContent();
-					content_size := 0;
-					if(content <> Nil) {
-						content_size := content->Size();
-					};
-					# Must agree with what Run() does next, or the peer waits for a request we
-					# will never read, or reuses a socket we are about to close.
-					connection_value := @keep_alive ? "keep-alive" : "close";
-					response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
-
-					cookies := response->GetCookies()<Cookie>;
-					each(i : cookies) {
-						cookie := cookies->Get(i);
-						response_header += "Set-Cookie: ";
-						response_header += cookie->ToString();
-						response_header += "\r\n";
-					};
-
-					@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-					if(content <> Nil & <>is_head) {
-						@client->WriteBuffer(content);
-					};
-				}
-				else {
-					select(response->GetCode()) {
-						label 202 {
-							WriteEmptyResponse("202 Accepted");
-						}
-
-						label 302 {
-							reason := response->GetReason();
-							if(reason <> Nil) {
-								# This path writes a whole response by hand with no keep-alive framing,
-								# so the connection ends here.
-								@keep_alive := false;
-								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-							}
-							else {
-								WriteEmptyResponse("400 Bad Request");
-							};
-						}
-
-						label 404 {
-							WriteEmptyResponse("404 Not Found");
-						}
-
-						label 405 {
-							WriteEmptyResponse("405 Method Not Allowed");
-						}
-
-						label 410 {
-							WriteEmptyResponse("410 Gone");
-						}
-
-						label 413 {
-							WriteEmptyResponse("413 Content Too Large");
-						}
-
-						label 429 {
-							WriteEmptyResponse("429 Too Many Requests");
-						}
-
-						label 500 {
-							WriteEmptyResponse("500 Internal Server Error");
-						}
-
-						label 503 {
-							WriteEmptyResponse("503 Service Unavailable");
-						}
-
-						other {
-							WriteEmptyResponse("400 Bad Request");
-						}
-					};
+				content := response->GetContent();
+				if(content <> Nil & <>is_head & ResponseFormat->HasBody(code)) {
+					@client->WriteBuffer(content);
 				};
 			};
 		}
@@ -2644,100 +2714,15 @@ class RequestHandler from HttpsRequestHandler {
 		~#
 		method : ProcessResponse(response : Response, is_head : Bool := false) ~ Nil {
 			if(response <> Nil) {
-				response_headers := response->GetHeaders();
-				if(response->GetCode() = 200) {
-					response_header := "";
-					key_values := response_headers->GetKeyValues()<Pair<String, String>>;
-					each(i : key_values) {
-						key_value := key_values->Get(i);
-						key := key_value->GetFirst();
-						value := key_value->GetSecond();
-						lowered_key := key->ToLower();
-						# Framing and persistence are owned by this handler. Allowing an
-						# application value here would emit contradictory duplicate fields.
-						if(<>lowered_key->Equals("connection") &
-							<>lowered_key->Equals("content-length") &
-							<>lowered_key->Equals("transfer-encoding")) {
-							response_header += "{$key}: {$value}\r\n";
-						};
-					};
+				# One path for every status code: the handler's headers, cookies and
+				# body are sent whatever the code (see ResponseFormat).
+				code := ResponseFormat->StatusCode(response);
+				@client->WriteString(ResponseFormat->Header(response, code, @keep_alive));
+				if(@keep_alive = false) { @wait_for_peer_close := true; };
 
-					content := response->GetContent();
-					content_size := 0;
-					if(content <> Nil) {
-						content_size := content->Size();
-					};
-					# Must agree with what Run() does next, or the peer waits for a request we
-					# will never read, or reuses a socket we are about to close.
-					connection_value := @keep_alive ? "keep-alive" : "close";
-					response_header += "Content-Length: {$content_size}\r\nAccept-Ranges: bytes\r\nConnection: {$connection_value}\r\n";
-
-					cookies := response->GetCookies()<Cookie>;
-					each(i : cookies) {
-						cookie := cookies->Get(i);
-						response_header += "Set-Cookie: ";
-						response_header += cookie->ToString();
-						response_header += "\r\n";
-					};
-
-					@client->WriteString("HTTP/1.1 200 OK\r\n{$response_header}\r\n");
-					if(@keep_alive = false) { @wait_for_peer_close := true; };
-					if(content <> Nil & <>is_head) {
-						@client->WriteBuffer(content);
-					};
-				}
-				else {
-					select(response->GetCode()) {
-						label 202 {
-							WriteEmptyResponse("202 Accepted");
-						}
-
-						label 302 {
-							reason := response->GetReason();
-							if(reason <> Nil) {
-								# This path writes a whole response by hand with no keep-alive framing,
-								# so the connection ends here.
-								@keep_alive := false;
-								@wait_for_peer_close := true;
-								@client->WriteString("HTTP/1.1 302 Found\r\nLocation: {$reason}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-							}
-							else {
-								WriteEmptyResponse("400 Bad Request");
-							};
-						}
-
-						label 404 {
-							WriteEmptyResponse("404 Not Found");
-						}
-
-						label 405 {
-							WriteEmptyResponse("405 Method Not Allowed");
-						}
-
-						label 410 {
-							WriteEmptyResponse("410 Gone");
-						}
-
-						label 413 {
-							WriteEmptyResponse("413 Content Too Large");
-						}
-
-						label 429 {
-							WriteEmptyResponse("429 Too Many Requests");
-						}
-
-						label 500 {
-							WriteEmptyResponse("500 Internal Server Error");
-						}
-
-						label 503 {
-							WriteEmptyResponse("503 Service Unavailable");
-						}
-
-						other {
-							WriteEmptyResponse("400 Bad Request");
-						}
-					};
+				content := response->GetContent();
+				if(content <> Nil & <>is_head & ResponseFormat->HasBody(code)) {
+					@client->WriteBuffer(content);
 				};
 			};
 		}
