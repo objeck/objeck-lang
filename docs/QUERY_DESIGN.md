@@ -251,6 +251,32 @@ become several related tables that join back together.
 | `XmlSource(text or path, row_element)` | each `row_element` becomes a row, its attributes and simple child elements become columns, and repeated child elements become child tables |
 | `MatrixSource(m, names)` | one `FloatColumn` table (the `FromMatrix` bridge below) |
 
+**Query a file by naming it.** CSV is the most common case, so a file path in `FROM` or
+`JOIN` is a table. Nothing has to be loaded or registered first:
+
+```
+rs := Catalog->Run("select name, avg(score) from 'results/run_*.csv' group by name");
+rs := Catalog->Run("select r.id, r.score, m.label from 'runs.csv' r join 'meta.csv' m on r.id = m.id");
+```
+
+`Catalog->Run(sql)` runs a statement against an empty catalog, so file tables are all it can
+see. `catalog->Query(sql)` does the same over a catalog the program has filled, so in-memory
+tables and files can be mixed in one statement.
+
+- **The source follows the extension.** `.csv`, `.tsv` and `.txt` read as delimited text,
+  `.jsonl` and `.ndjson` as JSON Lines, and `.json` as JSON. A trailing `.gz` is decompressed
+  first, with the gzip support already in `lang`.
+- **A glob matches several files with the same columns.** They are read as one table, with an
+  added `_file` column naming each row's file. That is the shape of most experiment output:
+  one CSV per run.
+- **Options when the defaults are wrong:** `from csv('data.txt', delimiter => ';', header =>
+  false)`. Delimiter, header and quoting go through `Data.CSV`, which follows RFC 4180 after
+  #1289.
+- **Loaded once per query, cached by path and modification time,** so repeating a query in a
+  loop does not re-read an unchanged file. A changed file is re-read.
+- **Columns are typed** per section 1, scanning each column rather than each cell.
+- `Table->FromCsv(name, path)` keeps working and is the same source with a name attached.
+
 Further sources fit the same interface without changing the engine, for example HTTP JSON APIs
 through `Web.HTTP`, RSS through `Web.RSS`, or a program's own objects.
 
@@ -333,7 +359,9 @@ index regenerated for new classes.
    `ASC`/`DESC`, `LIMIT`/`OFFSET`, `INSERT`/`UPDATE`/`DELETE`/`CREATE TABLE` in SQL, the bridges
    (`ToMatrix`, `FromMatrix`, CSV, JSON). The hierarchical sources, which need joins to be
    useful: `JsonSource` and `XmlSource` with child tables, the recursive `FilesystemSource` with
-   parent keys, `MATCHES`, `Finder->FindTable`, and scan-hint pushdown.
+   parent keys, `MATCHES`, `Finder->FindTable`, and scan-hint pushdown. Files named in `FROM`
+   and `JOIN` (CSV, TSV, JSON Lines, JSON, gzipped), globs over several files, and the per-path
+   cache.
 4. **Hash and sorted indexes** and the rule-based planner.
 5. **B+ tree index**, only once a benchmark shows a mixed insert and range workload that the sorted
    index serves badly; behind the same interface, so nothing above it changes.
