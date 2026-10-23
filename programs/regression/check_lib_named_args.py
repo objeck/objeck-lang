@@ -16,6 +16,10 @@ and links a program against it. Covered:
 - a function, a constructor and an instance method;
 - a middle default skipped (the mask forwarder), and the arguments reordered
   with nothing skipped (a positional call);
+- a middle default skipped while a later one is left out too ('Train("f",
+  rate: 0.25)'): the library's trailing-default alternate Train(name, epochs,
+  rate) was planned as well, and the call was rejected as matching more than
+  one overload;
 - a method inherited from a library parent, both on a variable and chained --
   the chained form once bound the names by position, silently;
 - a method whose parameters all have defaults, called with none (the zero-
@@ -85,6 +89,7 @@ class User {
     Trainer->Train("b", verbose: true)->PrintLine();
     Trainer->Train("c", rate: 0.1, epochs: 50)->PrintLine();
     Trainer->Train(verbose: true, name: "d")->PrintLine();
+    Trainer->Train("f", rate: 0.25)->PrintLine();
     Trainer->Train("e", rate: Mark("1", 2)->ToFloat(), epochs: Mark("2", 1))->PrintLine();
     @trace->PrintLine();
 
@@ -114,6 +119,7 @@ class User {
 # 1000 * (1 + 3 + 5).
 EXPECTED = ["a e=10 r=0.500000 v=false", "b e=10 r=0.500000 v=true",
             "c e=50 r=0.100000 v=false", "d e=10 r=0.500000 v=true",
+            "f e=10 r=0.250000 v=false",
             "e e=1 r=2.000000 v=false", "12",
             "(1,2,3", "(1,2,9", "[5,2,4",
             "17", "17", "9", "9000"]

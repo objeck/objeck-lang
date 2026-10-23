@@ -5935,11 +5935,49 @@ bool ContextAnalyzer::BindNamedLibraryArguments(LibraryClass* klass, MethodCall*
       chosen = chosen ? chosen : &plans[p];
     }
   }
+  // A library records a method with trailing defaults as the method and one
+  // alternate per default it can drop: F(a, b, c, d) also as F(a, b, c) and
+  // F(a, b). An alternate is a strict prefix of its method, by names and
+  // types, whose remaining parameters all have defaults. Skipping by name goes
+  // through the METHOD's mask forwarder; planned on an alternate as well, a
+  // call that skips a middle default saw two masks and reported
+  // "match more than one overload" ('Make(a: 1, c: 5)'). The program path
+  // skips alternates through Method::IsAlt; a LibraryMethod has no such flag,
+  // and this needs none (no .obl format change).
+  auto is_alternate = [&candidates](LibraryMethod* method) {
+    const std::vector<std::wstring> &names = method->GetParameterNames();
+    const std::vector<frontend::Type*> types = method->GetDeclarationTypes();
+    for(size_t c = 0; c < candidates.size(); ++c) {
+      LibraryMethod* other = candidates[c];
+      const std::vector<std::wstring> &other_names = other->GetParameterNames();
+      const std::vector<bool> &other_defaults = other->GetParameterDefaults();
+      const std::vector<frontend::Type*> other_types = other->GetDeclarationTypes();
+      if(other == method || other->GetLibraryClass() != method->GetLibraryClass() ||
+         other_names.size() <= names.size() || other_types.size() != other_names.size() ||
+         other_defaults.size() != other_names.size()) {
+        continue;
+      }
+
+      bool prefix = true;
+      for(size_t j = 0; prefix && j < names.size(); ++j) {
+        prefix = names[j] == other_names[j] && types[j]->GetType() == other_types[j]->GetType() &&
+          types[j]->GetDimension() == other_types[j]->GetDimension() && types[j]->GetName() == other_types[j]->GetName();
+      }
+      for(size_t j = names.size(); prefix && j < other_names.size(); ++j) {
+        prefix = other_defaults[j];
+      }
+      if(prefix) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   bool use_mask = false;
   if(!chosen) {
     for(size_t p = 0; p < plans.size(); ++p) {
       LibraryClass* owner = plans[p].method->GetLibraryClass();
-      if(owner->GetUnqualifiedMethods(name + L"$m").empty()) {
+      if(owner->GetUnqualifiedMethods(name + L"$m").empty() || is_alternate(plans[p].method)) {
         continue;
       }
       if(chosen && (chosen->order != plans[p].order || chosen->missing != plans[p].missing)) {
