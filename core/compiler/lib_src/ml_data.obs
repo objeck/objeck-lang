@@ -450,7 +450,7 @@ test_z := scaler->Transform(test);
 				# Population deviation, matching the static StandardScaler above. The
 				# two must agree: a caller comparing one against the other on the same
 				# matrix should not see different numbers.
-				@stds[col] := Float->Sqrt(sum_sq / rows->As(Float));
+				@stds[col] := ColumnDeviation(X, col, rows, sum_sq);
 			};
 
 			@fitted := true;
@@ -550,6 +550,10 @@ if(test_z = Nil) {
 			cols := dims[1];
 
 			result := Float->New[rows, cols];
+			# no rows, no statistics: the mean below would divide by zero
+			if(rows < 1) {
+				return result;
+			};
 
 			# Standardize each column
 			each(col : cols) {
@@ -566,7 +570,7 @@ if(test_z = Nil) {
 					diff := data[row, col] - mean;
 					sum_sq += diff * diff;
 				};
-				std := Float->Sqrt(sum_sq / rows->As(Float));
+				std := ColumnDeviation(data, col, rows, sum_sq);
 
 				# Standardize
 				each(row : rows) {
@@ -582,6 +586,22 @@ if(test_z = Nil) {
 			return result;
 		}
 
+		# Population deviation of a column from its summed squared differences. A
+		# column whose values are all equal has a deviation of exactly zero: its mean
+		# can still differ from the values by an ulp (three 0.1s average to
+		# 0.10000000000000002), which left a deviation near 1e-17 that the
+		# standardization then divided by, turning a constant column into -1s.
+		function : private : ColumnDeviation(m : Float[,], col : Int, rows : Int, sum_sq : Float) ~ Float {
+			first := m[0, col];
+			for(row := 1; row < rows; row += 1;) {
+				if(m[row, col] <> first) {
+					return Float->Sqrt(sum_sq / rows->As(Float));
+				};
+			};
+
+			return 0.0;
+		}
+
 		#~
 		Scales features to a [0, 1] range (Min-Max normalization)
 		@param data input matrix
@@ -593,6 +613,10 @@ if(test_z = Nil) {
 			cols := dims[1];
 
 			result := Float->New[rows, cols];
+			# no rows to take a minimum from
+			if(rows < 1) {
+				return result;
+			};
 
 			# Scale each column
 			each(col : cols) {
