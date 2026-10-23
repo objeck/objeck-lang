@@ -8832,16 +8832,19 @@
 			}
 		},
 		"Query.Structured.Catalog": {
-			"description": "Named tables that queries can refer to",
+			"description": "Named tables that queries can refer to. SQL run through a catalog can join its tables, and can create, change and delete them.",
 			"functions": {
 				"Add": {
 					"descriptions": ["**Adds a table under its name, replacing any table of that name**\n\n```method : public : Add(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
+				},
+				"Execute": {
+					"descriptions": ["**Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.**\n\n```method : public : Execute(statement:String) ~ Int```\n\n\n\nstatement: String\n\nreturn: Int\n\n```\ncatalog->Execute(\"create table runs (id int, score float, label string)\");\ncatalog->Execute(\"insert into runs values (1, 0.5, 'cat'), (2, 0.9, 'dog')\");\n```"]
 				},
 				"Get": {
 					"descriptions": ["**Gets a table by name**\n\n```method : public : Get(name:String) ~ Table```\n\n\n\nname: String\n\nreturn: Table"]
 				},
 				"GetError": {
-					"descriptions": ["**Gets the reason the last load failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the reason the last load, query or statement failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetNames": {
 					"descriptions": ["**Gets the table names**\n\n```method : public : GetNames() ~ String[]```\n\n\n\nreturn: String[]"]
@@ -8854,6 +8857,12 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+				},
+				"Prepare": {
+					"descriptions": ["**Parses a statement once, for running many times with different values**\n\n```method : public : Prepare(statement:String) ~ Statement```\n\n\n\nstatement: String\n\nreturn: Statement"]
+				},
+				"Query": {
+					"descriptions": ["**Runs a SELECT over the catalog's tables, which it can join**\n\n```method : public : Query(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\nrs := catalog->Query(\"select dept, count(*) as n from emp group by dept having count(*) > 1\");\n```"]
 				},
 				"Remove": {
 					"descriptions": ["**Removes a table**\n\n```method : public : Remove(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
@@ -8927,6 +8936,9 @@
 				},
 				"FillNulls": {
 					"descriptions": ["**Fills an empty column with n empty cells. Used by Table->Gather.**\n\n```method : public : FillNulls(n:Int) ~ Nil```\n\n\n\nn: Int\n\nreturn: Nil"]
+				},
+				"FillNumbers": {
+					"descriptions": ["**Refills a column with numbers. Used for query aggregates.**\n\n```method : public : FillNumbers(type:ColumnType, ints:Int[], floats:Float[], present:Bool[]) ~ Nil```\n\n\n\ntype: ColumnType\n\nints: Int[]\n\nfloats: Float[]\n\npresent: Bool[]\n\nreturn: Nil"]
 				},
 				"FindCode": {
 					"descriptions": ["**Gets the code of a string in an encoded column**\n\n```method : public : FindCode(value:String) ~ Int```\n\n\n\nvalue: String\n\nreturn: Int"]
@@ -9261,13 +9273,19 @@
 			}
 		},
 		"Query.Structured.Statement": {
-			"description": "A query parsed once and run many times, with '?' placeholders for values bound before each run. Placeholders are numbered from 1, left to right.",
+			"description": "A statement parsed once and run many times, with '?' placeholders for values bound before each run. Placeholders are numbered from 1, left to right. A SELECT runs with Execute; an INSERT, UPDATE, DELETE or CREATE TABLE with ExecuteUpdate.",
 			"functions": {
 				"Bind": {
 					"descriptions": ["**Binds a value to a placeholder**\n\n```method : public : Bind(index:Int, value:Compare) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Compare\n\nreturn: Statement", "**Binds an Int to a placeholder**\n\n```method : public : Bind(index:Int, value:Int) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Int\n\nreturn: Statement", "**Binds a Float to a placeholder**\n\n```method : public : Bind(index:Int, value:Float) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Float\n\nreturn: Statement", "**Binds a Bool to a placeholder**\n\n```method : public : Bind(index:Int, value:Bool) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Bool\n\nreturn: Statement"]
 				},
+				"BindNull": {
+					"descriptions": ["**Binds NULL to a placeholder: an empty cell in INSERT and UPDATE; in a condition, a comparison no row passes, as every comparison with an empty cell is false**\n\n```method : public : BindNull(index:Int) ~ Statement```\n\n\n\nindex: Int\n\nreturn: Statement"]
+				},
 				"Execute": {
 					"descriptions": ["**Runs the query, copying the result into a new table**\n\n```method : public : Execute() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"ExecuteUpdate": {
+					"descriptions": ["**Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.**\n\n```method : public : ExecuteUpdate() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"ExecuteView": {
 					"descriptions": ["**Runs the query without copying the result**\n\n```method : public : ExecuteView() ~ View```\n\n\n\nreturn: View"]
@@ -9279,7 +9297,7 @@
 					"descriptions": ["**Gets the number of placeholders**\n\n```method : public : GetParamCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"New": {
-					"descriptions": ["**Constructor. Use Table->Prepare rather than this.**\n\n```New(table:Table, plan:Plan)```\n\n\n\ntable: Table\n\nplan: Plan"]
+					"descriptions": ["**Constructor. Use Table->Prepare rather than this.**\n\n```New(table:Table, plan:Plan)```\n\n\n\ntable: Table\n\nplan: Plan", "**Constructor. Use Catalog->Prepare rather than this.**\n\n```New(catalog:Catalog, plan:Plan)```\n\n\n\ncatalog: Catalog\n\nplan: Plan"]
 				}
 			}
 		},
@@ -9306,6 +9324,9 @@
 				},
 				"Describe": {
 					"descriptions": ["**Summarizes every column: its type, how many cells are filled and empty, how many distinct values it holds, and, for numeric columns, the minimum, maximum, mean and standard deviation (population).**\n\n```method : public : Describe() ~ Table```\n\n\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"runs\", \"runs.csv\");\ntable->Describe()->ToString()->PrintLine();\n```"]
+				},
+				"Execute": {
+					"descriptions": ["**Runs an INSERT, UPDATE or DELETE on this table. A statement that fails changes nothing.**\n\n```method : public : Execute(statement:String) ~ Int```\n\n\n\nstatement: String\n\nreturn: Int\n\n```\ntable->Execute(\"update emp set dept = 'Ops' where name = 'Carol'\");\n```"]
 				},
 				"Fill": {
 					"descriptions": ["**Gives an empty table n rows with fresh keys and empty cells. Used by Gather.**\n\n```method : public : Fill(n:Int) ~ Nil```\n\n\n\nn: Int\n\nreturn: Nil"]
