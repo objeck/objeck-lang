@@ -2734,6 +2734,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case FLOAT_TO_STR_SHORT:
     return FloatToStrShort(program, inst, op_stack, stack_pos, frame);
 
+  case DESERL_BOOL_ARY:
+    return DeserlBoolAry(program, inst, op_stack, stack_pos, frame);
+
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
 
@@ -6076,6 +6079,44 @@ bool TrapProcessor::DeserlByteAry(StackProgram* program, size_t* inst, size_t* &
     PushInt(0, op_stack, stack_pos);
   }
 
+  return true;
+}
+
+// method : ReadBoolArray() ~ Bool[]
+//
+// A Bool[] is a byte array (the emitter allocates one with NEW_BYTE_ARY), so
+// Serializer->Write(Bool[]) now writes the byte-array encoding. It used to
+// write the Int[] one -- array_size * 8 bytes from a one-byte-per-element
+// array, a heap over-read into the output -- and ReadBoolArray read that back
+// as an INT array posing as a Bool[]. That legacy encoding is still read: its
+// first n payload bytes are the bools, and the rest (the over-read) is
+// consumed and dropped, so the values after it stay aligned.
+bool TrapProcessor::DeserlBoolAry(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  const ParamType tag = (ParamType)DeserializeInt(inst);
+  if(tag == BYTE_ARY_PARM) {
+    PushInt((size_t)DeserializeArray(BYTE_ARY_PARM, inst, op_stack, stack_pos), op_stack, stack_pos);
+    return true;
+  }
+
+  if(tag == INT_ARY_PARM) {
+    // neither allocation collects, so the int array needs no root in between
+    size_t* legacy = DeserializeArray(INT_ARY_PARM, inst, op_stack, stack_pos);
+    if(!legacy) {
+      PushInt(0, op_stack, stack_pos);
+      return true;
+    }
+    const size_t size = legacy[0];
+    size_t* bools = MemoryManager::AllocateArray(size + 1 + ((1 + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+    bools[0] = size;
+    bools[1] = 1;
+    bools[2] = size;
+    memcpy(bools + 3, legacy + 3, size);
+    PushInt((size_t)bools, op_stack, stack_pos);
+    return true;
+  }
+
+  PushInt(0, op_stack, stack_pos);
   return true;
 }
 

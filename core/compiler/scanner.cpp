@@ -439,6 +439,7 @@ void Scanner::LoadKeywords()
   ident_map[L"ARY_FILL_INT"] = ARY_FILL_INT;
   ident_map[L"ARY_FILL_FLOAT"] = ARY_FILL_FLOAT;
   ident_map[L"FLOAT_TO_STR_SHORT"] = FLOAT_TO_STR_SHORT;
+  ident_map[L"DESERL_BOOL_ARY"] = DESERL_BOOL_ARY;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;

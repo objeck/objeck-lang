@@ -1,0 +1,161 @@
+#~
+Serializer->Write(Bool[]) and Deserializer->ReadBoolArray().
+
+A Bool[] is a byte array, one byte per element. Write(Bool[]) used the Int[]
+encoding, which copies 8 bytes per element: for a Bool[n] it read 7n bytes
+past the array into the output (a Bool[3] serialized to the raw size of an
+Int[3]), and ReadBoolArray built an INT array posing as a Bool[]. Write now
+uses the byte-array encoding, so a Bool[n] serializes exactly as a Byte[n]
+of the same values does, and ReadBoolArray returns a real byte array. Data
+in the old encoding still reads: its first n payload bytes are the bools,
+and the rest is skipped, so what follows stays aligned.
+~#
+use System.IO;
+
+class SerializerBoolArray {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Pattern(n : Int) ~ Bool[] {
+		b := Bool->New[n];
+		for(i := 0; i < n; i += 1;) {
+			b[i] := i % 3 = 0 | i % 7 = 1;
+		};
+		return b;
+	}
+
+	method : Same(a : Bool[], b : Bool[]) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return a = Nil & b = Nil;
+		};
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : RawSize(s : Serializer) ~ Int {
+		return Byte->UncompressZlib(s->Serialize())->Size();
+	}
+
+	method : RoundTrip(n : Int) ~ Nil {
+		values := Pattern(n);
+		s := Serializer->New();
+		s->Write(values);
+		s->Write(424242);
+		bytes := s->Serialize();
+
+		d := Deserializer->New(bytes);
+		back := d->ReadBoolArray();
+		after := d->ReadInt();
+		Check("Bool[{$n}] round-trips", Same(values, back));
+		Check("Bool[{$n}]: the value after it reads back", after = 424242);
+
+		# the raw encoding is the byte array's, not the Int array's
+		as_bytes := Byte->New[n];
+		for(i := 0; i < n; i += 1;) {
+			if(values[i]) {
+				as_bytes[i] := 1;
+			};
+		};
+		b := Serializer->New();
+		b->Write(as_bytes);
+		b->Write(424242);
+		bool_raw := Byte->UncompressZlib(bytes);
+		byte_raw := Byte->UncompressZlib(b->Serialize());
+		same_raw := bool_raw->Size() = byte_raw->Size();
+		if(same_raw) {
+			each(i : bool_raw) {
+				if(bool_raw[i] <> byte_raw[i]) {
+					same_raw := false;
+				};
+			};
+		};
+		Check("Bool[{$n}] serializes byte for byte as a Byte[{$n}]", same_raw);
+
+		if(n > 0) {
+			ints := Int->New[n];
+			c := Serializer->New();
+			c->Write(ints);
+			c->Write(424242);
+			int_raw := RawSize(c);
+			size := bool_raw->Size();
+			Check("Bool[{$n}] raw size {$size} is smaller than an Int[{$n}]'s {$int_raw}", size < int_raw);
+		};
+	}
+
+	# the encoding Write(Bool[]) produced before: the Int[] one, whose first n
+	# payload bytes are the bools
+	method : Legacy(n : Int) ~ Nil {
+		values := Pattern(n);
+		words := Int->New[n];
+		for(i := 0; i < n; i += 1;) {
+			if(values[i]) {
+				words[i / 8] := words[i / 8] or (1 << (8 * (i % 8)));
+			};
+		};
+		s := Serializer->New();
+		s->Write(words);
+		s->Write(777);
+		d := Deserializer->New(s->Serialize());
+		back := d->ReadBoolArray();
+		ok := back <> Nil & back->Size() = n;
+		if(ok) {
+			for(i := 0; i < n; i += 1;) {
+				if(back[i] <> values[i]) {
+					ok := false;
+				};
+			};
+		};
+		Check("legacy Int[] encoding of {$n} bools reads back", ok);
+		Check("legacy: the value after it reads back", d->ReadInt() = 777);
+	}
+
+	method : public : Run() ~ Nil {
+		RoundTrip(0);
+		RoundTrip(1);
+		RoundTrip(3);
+		RoundTrip(1000);
+
+		# Nil
+		s := Serializer->New();
+		n : Bool[];
+		s->Write(n);
+		s->Write(5);
+		d := Deserializer->New(s->Serialize());
+		Check("a Nil Bool[] reads back as Nil", d->ReadBoolArray() = Nil & d->ReadInt() = 5);
+
+		Legacy(8);
+		Legacy(64);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Bool[] serialization"->PrintLine();
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		SerializerBoolArray->New()->Run();
+	}
+}

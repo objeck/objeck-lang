@@ -10327,11 +10327,13 @@ bundle System.IO {
 		}
 
 		#~
-		Serializes a base object
+		Serializes an array of values
 		@param b value to serialize
 		~#
 		method : public : Write(b : Bool[]) ~ Nil {
-			SERL_INT_ARY;
+			# a Bool[] is a byte array: SERL_INT_ARY copied 8 bytes per element
+			# out of it, reading past its end
+			SERL_BYTE_ARY;
 		}
 
 		#~
@@ -10454,7 +10456,8 @@ bundle System.IO {
 		@return array of values
 		~#
 		method : public : ReadBoolArray() ~ Bool[] {
-			DESERL_INT_ARY;
+			# a byte array; also reads the Int[] encoding older versions wrote
+			DESERL_BOOL_ARY;
 		}
 
 		#~

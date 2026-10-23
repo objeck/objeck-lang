@@ -321,6 +321,9 @@ namespace instructions {
     ARY_FILL_FLOAT,
     // Float->ToShortString(value): the shortest text that reads back as the
     // same value
-    FLOAT_TO_STR_SHORT
+    FLOAT_TO_STR_SHORT,
+    // Deserializer->ReadBoolArray(): a Bool[] is a byte array; also reads
+    // the Int[] encoding Write(Bool[]) used to produce
+    DESERL_BOOL_ARY
   };
 }
