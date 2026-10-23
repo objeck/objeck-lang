@@ -3556,12 +3556,26 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
   const std::wstring method_name = method_call->GetMethodName();
 
   //
+  // the class's own enum, or its nearest parent's, before a used one: 'Type->R'
+  //
+  const std::wstring scoped_name = SearchScopedEnumName(variable_name, current_class);
+  Enum* scoped_eenum = scoped_name.empty() ? nullptr : program->GetEnum(scoped_name);
+
+  //
   // check library enum reference; fully qualified name
   //
-  LibraryEnum* lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name,
-                                                       program->GetLibUses(current_class->GetFileName()));
-  if(!lib_eenum) {
-    lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetLibUses(current_class->GetFileName()));
+  LibraryEnum* lib_eenum = nullptr;
+  if(!scoped_eenum) {
+    if(!scoped_name.empty()) {
+      lib_eenum = linker->SearchEnumLibraries(scoped_name, program->GetLibUses(current_class->GetFileName()));
+    }
+    if(!lib_eenum) {
+      lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name,
+                                              program->GetLibUses(current_class->GetFileName()));
+    }
+    if(!lib_eenum) {
+      lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetLibUses(current_class->GetFileName()));
+    }
   }
 
   if(lib_eenum && method_call->GetMethodCall()) {
@@ -3586,9 +3600,12 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
     }
 
     // check fully qualified name
-    Enum* eenum = SearchProgramEnums(enum_name + L"#" + item_name);
-    if(eenum && method_call->GetMethodCall()) {
-      item_name = method_call->GetMethodCall()->GetVariableName();
+    Enum* eenum = scoped_eenum;
+    if(!eenum) {
+      eenum = SearchProgramEnums(enum_name + L"#" + item_name);
+      if(eenum && method_call->GetMethodCall()) {
+        item_name = method_call->GetMethodCall()->GetVariableName();
+      }
     }
 
     // local nested reference
@@ -8151,13 +8168,15 @@ void ContextAnalyzer::AnalyzeCalculation(CalculatedExpression* expression, const
     // check operations
     AnalyzeCalculationCast(expression, depth);
 
-    // check for valid operation cast
-    if(left->GetCastType() && left->GetEvalType()) {
+    // check for valid operation cast; an operand whose cast is followed by a call
+    // chain, `x->As(Kid)->Only() <> "only"`, casts the receiver, which AnalyzeCast
+    // already checked: its eval type is the chain's end, not the cast's source
+    if(left->GetCastType() && left->GetEvalType() && !left->GetMethodCall()) {
       AnalyzeRightCast(left->GetCastType(), left->GetEvalType(), left, IsScalar(left), depth);
     }
 
     // check for valid operation cast
-    if(right->GetCastType() && right->GetEvalType()) {
+    if(right->GetCastType() && right->GetEvalType() && !right->GetMethodCall()) {
       AnalyzeRightCast(right->GetCastType(), right->GetEvalType(), right, IsScalar(right), depth);
     }
 
@@ -11104,9 +11123,20 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
       }
    }
 
+   // the class's own enum, or its nearest parent's, before a used one
+   const std::wstring scoped_name = SearchScopedEnumName(type->GetName(), context_klass);
+   if(!scoped_name.empty()) {
+      type->SetName(scoped_name);
+      type->SetResolved(true);
+      return true;
+   }
+
    Enum* eenum = SearchProgramEnums(type->GetName());
    if(eenum) {
-      type->SetName(type->GetName());
+      // the enum's own name, as the class and library branches do: 'Defs.ColumnType'
+      // is 'ColumnType', and a class enum found through its class's use,
+      // 'Type', is 'System.Time.DatePart#Type'
+      type->SetName(eenum->GetName());
       type->SetResolved(true);
       return true;
    }
@@ -12197,6 +12227,46 @@ Enum* ContextAnalyzer::SearchProgramEnums(const std::wstring& eenum_name)
   }
 
   return eenum;
+}
+
+/****************************
+ * A class's own enum, then its parents', in front of the use-prefix search:
+ * the parser adds 'Aa#' as a program-wide use for every class that declares an
+ * enum, so SearchProgramEnums("Type") inside Bb found the first such class's
+ * enum, Aa#Type, before Bb#Type
+ ****************************/
+std::wstring ContextAnalyzer::SearchScopedEnumName(const std::wstring& eenum_name, Class* klass)
+{
+  if(eenum_name.empty() || eenum_name.find(L'#') != std::wstring::npos) {
+    return L"";
+  }
+
+  // program classes
+  LibraryClass* lib_klass = nullptr;
+  for(int guard = 0; klass && guard < 256; ++guard) {
+    const std::wstring scoped_name = klass->GetName() + L'#' + eenum_name;
+    if(program->GetEnum(scoped_name)) {
+      return scoped_name;
+    }
+    lib_klass = klass->GetLibraryParent();
+    klass = klass->GetParent();
+  }
+
+  // library parents
+  const std::vector<std::wstring> uses = program->GetLibUses();
+  for(int guard = 0; lib_klass && guard < 256; ++guard) {
+    const std::wstring scoped_name = lib_klass->GetName() + L'#' + eenum_name;
+    LibraryEnum* lib_eenum = linker->SearchEnumLibraries(scoped_name, uses);
+    if(lib_eenum && lib_eenum->GetName() == scoped_name) {
+      return scoped_name;
+    }
+
+    const std::wstring parent_name = lib_klass->GetParentName();
+    LibraryClass* lib_parent = parent_name.empty() ? nullptr : linker->SearchClassLibraries(parent_name, uses);
+    lib_klass = lib_parent != lib_klass ? lib_parent : nullptr;
+  }
+
+  return L"";
 }
 
 /****************************

@@ -1,0 +1,158 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Regression: bundle-qualified enum names.
+
+A bundle-level enum is named without its bundle (a class is named with it), so
+`Defs.CellKind` -- as a type or as `Defs.CellKind->INT` -- did not resolve
+from another bundle ("Undefined class or enum"), while `CellKind` with
+`use Defs;` did. The same held for a library bundle's enum
+(`Query.Structured.ColumnType`). Checks a program enum and a library enum as a
+local, field, parameter and return type, as values, and as select labels.
+~#
+
+bundle QualDefs {
+  enum CellKind {
+    INT,
+    FLOAT,
+    TEXT
+  }
+
+  class Kinds {
+    function : Next(t : QualDefs.CellKind) ~ QualDefs.CellKind {
+      select(t) {
+        label QualDefs.CellKind->INT: {
+          return QualDefs.CellKind->FLOAT;
+        }
+
+        label CellKind->FLOAT: {
+          return CellKind->TEXT;
+        }
+      };
+
+      return QualDefs.CellKind->INT;
+    }
+  }
+}
+
+bundle QualUser {
+  class CompileBundleQualifiedEnum {
+    @kind : QualDefs.CellKind;
+    @lib_kind : Query.Structured.ColumnType;
+
+    New() {
+      @kind := QualDefs.CellKind->TEXT;
+      @lib_kind := Query.Structured.ColumnType->STRING;
+    }
+
+    method : public : Kind() ~ QualDefs.CellKind {
+      return @kind;
+    }
+
+    method : public : LibKind() ~ Query.Structured.ColumnType {
+      return @lib_kind;
+    }
+
+    function : Same(t : QualDefs.CellKind) ~ QualDefs.CellKind {
+      return t;
+    }
+
+    function : LibSame(t : Query.Structured.ColumnType) ~ Query.Structured.ColumnType {
+      return t;
+    }
+
+    function : Name(t : QualDefs.CellKind) ~ String {
+      select(t) {
+        label QualDefs.CellKind->INT: {
+          return "int";
+        }
+
+        label QualDefs.CellKind->FLOAT: {
+          return "float";
+        }
+
+        label QualDefs.CellKind->TEXT: {
+          return "text";
+        }
+      };
+
+      return "none";
+    }
+
+    function : LibName(t : Query.Structured.ColumnType) ~ String {
+      select(t) {
+        label Query.Structured.ColumnType->INT: {
+          return "int";
+        }
+
+        label Query.Structured.ColumnType->STRING: {
+          return "string";
+        }
+      };
+
+      return "other";
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      failed := 0;
+
+      # program enum
+      c : QualDefs.CellKind := QualDefs.CellKind->INT;
+      if(QualDefs.Kinds->Next(c) <> QualDefs.CellKind->FLOAT) {
+        "FAIL: program enum parameter/return"->PrintLine();
+        failed += 1;
+      };
+
+      if(QualDefs.Kinds->Next(QualDefs.CellKind->FLOAT) <> QualDefs.CellKind->TEXT) {
+        "FAIL: program enum select label"->PrintLine();
+        failed += 1;
+      };
+
+      d := Same(QualDefs.CellKind->TEXT);
+      if(d <> QualDefs.CellKind->TEXT | d->As(Int) <> 2) {
+        "FAIL: program enum value"->PrintLine();
+        failed += 1;
+      };
+
+      if(Name(QualDefs.CellKind->FLOAT)->Equals("float") = false) {
+        "FAIL: program enum select"->PrintLine();
+        failed += 1;
+      };
+
+      if(CompileBundleQualifiedEnum->New()->Kind() <> QualDefs.CellKind->TEXT) {
+        "FAIL: program enum field"->PrintLine();
+        failed += 1;
+      };
+
+      # library enum
+      l : Query.Structured.ColumnType := Query.Structured.ColumnType->FLOAT;
+      if(LibSame(l) <> Query.Structured.ColumnType->FLOAT) {
+        "FAIL: library enum parameter/return"->PrintLine();
+        failed += 1;
+      };
+
+      if(Query.Structured.Column->TypeName(Query.Structured.ColumnType->FLOAT)->Equals("float") = false) {
+        "FAIL: library enum passed to a library function"->PrintLine();
+        failed += 1;
+      };
+
+      kind : Query.Structured.ColumnType := Query.Structured.Column->KindOf(IntRef->New(3));
+      if(kind <> Query.Structured.ColumnType->INT) {
+        "FAIL: library enum returned by a library function"->PrintLine();
+        failed += 1;
+      };
+
+      if(LibName(Query.Structured.ColumnType->INT)->Equals("int") = false |
+         LibName(CompileBundleQualifiedEnum->New()->LibKind())->Equals("string") = false) {
+        "FAIL: library enum select"->PrintLine();
+        failed += 1;
+      };
+
+      if(failed > 0) {
+        "FAIL: {$failed} check(s) failed"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      "PASS: compile_bundle_qualified_enum"->PrintLine();
+    }
+  }
+}
