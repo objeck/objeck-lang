@@ -1,0 +1,27 @@
+# EXPECT_COMPILE_ERROR: Cannot use an array of 'Base2' as an array of 'Kid'
+#~
+An array of a class serves as an array of its parent or an interface it
+implements (core_array_interface_widening.obs), but not the other way: an
+object array records no element type, so nothing at run time could check that
+each element of a Base2[] is a Kid. The narrowing needs an explicit As(Kid[]).
+~#
+class Base2 {
+	New() {}
+}
+
+class Kid from Base2 {
+	New() {
+		Parent();
+	}
+}
+
+class BadArrayNarrowing {
+	function : Take(a : Kid[]) ~ Int {
+		return a->Size();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		b := Base2->New[2];
+		Take(b)->PrintLine();
+	}
+}

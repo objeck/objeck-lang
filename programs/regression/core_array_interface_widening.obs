@@ -1,0 +1,125 @@
+#~
+Regression: an array of a class where an array of an interface it implements
+is wanted.
+
+A String[] was accepted for a Compare[] parameter, and then an array literal
+argument, 'F(["a", "b", "c"])', failed at run time with "Invalid object cast:
+'?' to 'System.Compare'": the compiler emitted an element's class check on the
+array itself. A variable or a call result skipped that check, so the same
+conversion worked or failed by the argument's shape. An object array holds bare
+references and a read dispatches on each element's own class, so an array of a
+class serves as an array of a parent or an interface it implements, and no
+check is emitted for any shape. A narrowing ('Base2[]' for 'Kid[]') cannot be
+checked per element and is refused; see bad_array_narrowing.obs.
+~#
+
+class Base2 {
+	New() {}
+
+	method : public : Name() ~ String {
+		return "base";
+	}
+}
+
+class Kid from Base2 {
+	New() {
+		Parent();
+	}
+
+	method : public : Name() ~ String {
+		return "kid";
+	}
+}
+
+class Holder {
+	@s : String[];
+
+	New() {
+		@s := ["p", "q"];
+	}
+
+	method : public : Get() ~ String[] {
+		return @s;
+	}
+
+	method : public : Count(a : Compare[]) ~ Int {
+		return Test->Ranked(a);
+	}
+
+	method : public : Mine() ~ Int {
+		return Test->Ranked(@s);
+	}
+}
+
+class Test {
+	@failed : static : Int;
+
+	function : Check(what : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$what}: got {$got}, want {$want}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# reads each element as a Compare: 'a' <= every one, so the count is the size
+	function : Ranked(a : Compare[]) ~ Int {
+		s := 0;
+		each(i : a) {
+			c : Compare := a[i];
+			if(c->Compare(a[0]) >= 0) {
+				s += 1;
+			};
+		};
+		return s;
+	}
+
+	# a parent's method (not virtual), and each element is still a Kid
+	function : Names(a : Base2[]) ~ String {
+		out := "";
+		each(i : a) {
+			out += a[i]->Name();
+			if(a[i]->TypeOf(Kid)) {
+				out += "+";
+			};
+		};
+		return out;
+	}
+
+	function : Strings() ~ String[] {
+		return ["m", "n", "o"];
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		x := ["a", "b"];
+		Check("variable", Ranked(x), 2);
+		Check("literal", Ranked(["a", "b", "c"]), 3);
+		Check("call", Ranked(Strings()), 3);
+		h := Holder->New();
+		Check("method result", Ranked(h->Get()), 2);
+		Check("through a method", h->Count(x), 2);
+		Check("field", h->Mine(), 2);
+		y : Compare[] := ["u", "v", "w", "z"];
+		Check("declared from a literal", Ranked(y), 4);
+
+		kids := Kid->New[2];
+		kids[0] := Kid->New();
+		kids[1] := Kid->New();
+		if(<>Names(kids)->Equals("base+base+")) {
+			"FAIL: a subclass array"->PrintLine();
+			@failed += 1;
+		};
+		if(<>Names([Kid->New(), Kid->New()])->Equals("base+base+")) {
+			"FAIL: a subclass array literal"->PrintLine();
+			@failed += 1;
+		};
+
+		# an explicit narrowing is the programmer's to make
+		back : Base2[] := kids;
+		Check("explicit As", back->As(Kid[])->Size(), 2);
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: an array of a class serves as an array of its interface or parent"->PrintLine();
+	}
+}

@@ -9345,7 +9345,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
     }
 
     if(left->GetType() == CLASS_TYPE && right->GetType() == CLASS_TYPE) {
-      AnalyzeClassCast(left, expression, depth + 1);
+      AnalyzeArrayClassCast(left, right, expression, depth + 1);
     }
 
     expression->SetEvalType(left, false);
@@ -9430,6 +9430,70 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
  * Analyzes a class cast. Up
  * casting is resolved a runtime.
  ****************************/
+/****************************
+ * An array of one class where an
+ * array of another is wanted.
+ * An object array holds bare
+ * references, and a read dispatches
+ * on each element's own class, so
+ * an array of a class serves as an
+ * array of a parent or of an
+ * interface the class implements
+ * ('String[]' for 'Compare[]').
+ * There is no element type to check
+ * at run time, so the elements cannot
+ * be checked for a narrowing ('Base[]'
+ * for 'Kid[]'): that takes an
+ * explicit As. The element cast
+ * AnalyzeClassCast sets is never
+ * emitted for an array: on the array
+ * itself it failed, "Invalid object
+ * cast: '?' to 'System.Compare'",
+ * for an array literal argument,
+ * while a variable's was skipped.
+ ****************************/
+void ContextAnalyzer::AnalyzeArrayClassCast(Type* left, Type* right, Expression* expression, const int depth)
+{
+  Class* to_class = expression->GetToClass();
+  LibraryClass* to_lib_class = expression->GetToLibraryClass();
+  AnalyzeClassCast(left, expression, depth);
+  const bool needs_check = expression->GetToClass() != to_class || expression->GetToLibraryClass() != to_lib_class;
+  expression->SetToClass(to_class);
+  expression->SetToLibraryClass(to_lib_class);
+  if(!needs_check) {
+    return;
+  }
+
+  // explicit: 'a->As(Kid[])'
+  Type* cast_type = expression->GetCastType();
+  if(cast_type && cast_type->GetDimension() > 0) {
+    return;
+  }
+
+  // a widening to an interface sets a check too, which an element never needs
+  Type* from_type = GetExpressionType(expression, depth + 1);
+  if(!from_type) {
+    from_type = right;
+  }
+  ResolveClassEnumType(left);
+  ResolveClassEnumType(from_type);
+  Class* from_class = SearchProgramClasses(from_type->GetName());
+  LibraryClass* from_lib_class = from_class ? nullptr :
+    linker->SearchClassLibraries(from_type->GetName(), program->GetLibUses(current_class->GetFileName()));
+  if(!from_class && !from_lib_class) {
+    return;
+  }
+
+  Class* to_klass = SearchProgramClasses(left->GetName());
+  LibraryClass* to_lib_klass = to_klass ? nullptr : linker->SearchClassLibraries(left->GetName(), program->GetLibUses(current_class->GetFileName()));
+  const std::wstring to_name = to_klass ? to_klass->GetName() : (to_lib_klass ? to_lib_klass->GetName() : left->GetName());
+  if(!ValidDownCast(to_name, from_class, from_lib_class)) {
+    ProcessError(expression, L"Cannot use an array of '" + FormatTypeString(from_type->GetName()) + L"' as an array of '" +
+                 FormatTypeString(left->GetName()) + L"': array elements are not checked at run time; use As(" +
+                 FormatTypeString(left->GetName()) + L"[])");
+  }
+}
+
 void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
 {
   if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE || expression->GetEvalType()->GetType() != CLASS_TYPE)) {
