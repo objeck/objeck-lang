@@ -46,14 +46,24 @@ It is also only a single table: no joins, no `GROUP BY`, no `LIMIT`, no descendi
 - Indexes: hash for equality and joins, sorted for ranges and order; a B+ tree as a later upgrade.
 - A method-chaining API as well as SQL strings, and prepared statements.
 - Zero-copy bridges to `System.ML` (`ToMatrix`, `FromMatrix`) and to `Data.CSV`/JSON.
+- **Speed first:** dictionary-encoded strings, row groups with min/max statistics so whole groups
+  are skipped, and batch evaluation (section 8).
+- **Persistence that is fast and safe for one process:** a native columnar file format that saves
+  and loads at near disk speed, reads only the columns and row groups a query needs, appends
+  without rewriting, survives a crash mid-save, and keeps a change log between saves
+  (section 9).
+- **Disk and network alike:** any file source reads from an `https://` URL as well as a path;
+  tables and query results can be served over HTTP and queried from another process
+  (section 10).
 - Existing programs keep compiling and give the same answers.
 
 ## Not goals
 
-- **Persistence beyond import/export.** CSV and JSON in and out, yes; a storage engine with pages,
-  crash safety and concurrent writers, no. That is SQLite's job, and an `API.SQLite` binding
-  (single public-domain C file, a native module like the others) is the better route to a real
-  database. It is a separate design.
+- **A multi-user database.** Several processes writing one table file at once, transactions
+  spanning tables, and a SQL server with users and permissions are SQLite's or a real database
+  server's job. An `API.SQLite` binding (single public-domain C file, a native module like the
+  others) is the route there, as a separate design. One writing process with any number of
+  readers is in scope (section 9).
 - **Full SQL.** No subqueries, no views, no cost-based planner, no transactions.
 - **Concurrency.** A table is not thread-safe; callers lock (`critical`) if they share one. Read-only
   sharing of a table nobody mutates is safe.
@@ -78,8 +88,11 @@ full SQL at once, and removed most of the phases below. It was not chosen, for f
   query-engine bugs. The SQL subset, and the absence of persistence, transactions and
   concurrency, keep the surface small.
 
-SQLite remains the right tool for data that must persist, or that outgrows memory, as a separate
-`API.SQLite` binding (see "Not goals"). It can later be attached as a source like any other.
+Choosing a pure-Objeck engine does not mean giving up persistence. Section 9 adds a native file
+format with fast save and load, partial reads, appends, crash-safe saves and a change log, which
+covers a research program's own data. SQLite remains the right tool where several processes write
+the same data, or where transactions must span tables, as a separate `API.SQLite` binding (see
+"Not goals"). It can later be attached as a source like any other.
 
 ## Design
 
@@ -216,7 +229,7 @@ stale to be rebuilt on the next query that uses them (the choice is per index ki
 |---|---|---|---|
 | **Hash** | value -> row numbers | `=`, `IN`, joins, `DISTINCT`, `GROUP BY` | updated on every insert, update and delete |
 | **Sorted** | `Int[]` of row numbers ordered by the column | `<`, `<=`, `>`, `>=`, `BETWEEN`, `ORDER BY`, `MIN`/`MAX` | rebuilt lazily after mutations (an O(n log n) sort) |
-| **B+ tree** (phase 6) | in-memory B+ tree, leaves are `Int[]` blocks of row numbers in key order | the sorted index's queries, with O(log n) inserts | updated on every mutation |
+| **B+ tree** (phase 8) | in-memory B+ tree, leaves are `Int[]` blocks of row numbers in key order | the sorted index's queries, with O(log n) inserts | updated on every mutation |
 
 The **sorted index** is the right default for research data, which is mostly loaded once and
 queried many times: a binary search finds a range's start and end, and the range is already a
@@ -261,7 +274,7 @@ engine applies the full predicate afterwards. Programs implement `Source` for th
 structures; the library ships the common ones.
 
 **Hierarchies become tables with parent keys.** A tree maps to rows with `id`, `parent_id`,
-`depth` and `path` columns (an adjacency list plus a materialized path). Once phase 3 adds joins,
+`depth` and `path` columns (an adjacency list plus a materialized path). Once phase 4 adds joins,
 parent and child questions become self-joins, and subtree questions become `path LIKE 'a/b/%'`.
 Nested repeated data goes into a child table keyed by its parent's `id`, so one document can
 become several related tables that join back together.
@@ -383,7 +396,137 @@ keeps its six columns and one-directory behaviour, and becomes `FilesystemSource
 - `Describe()`: per-column count, nulls, min, max, mean, std, distinct count; the first thing a
   researcher asks of a new dataset.
 
-### 8. Compatibility
+### 8. Making it fast
+
+Columns, views and compiled predicates remove the structural costs. These go further, in the
+order they pay off:
+
+- **Dictionary-encoded strings.** A `StringColumn` with few distinct values, such as a category,
+  a label or a run name, stores each distinct string once and an `Int[]` of codes per row. An
+  equality filter compares integers, `GROUP BY` and joins hash integers, and memory falls with
+  the number of repeats. The column switches between plain and encoded storage by itself, at a
+  distinct-value ratio fixed in phase 1 and recorded so tests can check it. In the benchmark
+  above, `grp = 'g7'` is a string comparison per row and takes as long as the plain-array
+  loop; on codes it becomes an integer comparison.
+- **Row groups and zone maps.** Columns are stored in groups of 64K rows, each with its minimum,
+  maximum and null count. A filter like `value > 0.9` skips every group whose maximum is below
+  0.9 without reading it, which costs nothing for unsorted data and is decisive for data loaded
+  in time or ID order, the common case for logs and experiment output. The same groups are the
+  unit of the file format (section 9), so a query against a file reads only the groups it
+  needs.
+- **Batch evaluation.** Predicates run over a row group at a time and produce a selection
+  vector, an `Int[]` of the rows that pass. Each predicate node is one tight loop over arrays
+  instead of one call per row, which is the code the JIT compiles best.
+- **No allocation in the hot path.** Selection vectors and scratch arrays are reused across
+  groups. The only allocations during a query are its result arrays.
+- **Parallel scans, later.** Row groups are independent, so a scan can split them across
+  threads. This waits until a single-threaded engine meets its targets, and needs a check that
+  the collector's multithreaded paths hold up under it. The repository's notes record earlier
+  multithreaded-GC defects, so it gets its own stress test.
+
+### 9. Persistence: a native table file
+
+Research programs need to keep what they computed: a cleaned dataset, a feature table, results
+across runs. CSV and JSON stay for interchange, but they are slow to parse and lose types. The
+engine gets its own file format, `.otab`, which stores exactly what the column storage holds.
+
+**Layout.**
+
+```
+header      magic "OTAB", format version, schema (names, types, dictionaries)
+row group   for each column: type, encoding, null bitmap, data block, min, max, CRC32
+row group   ...
+footer      offset of every row group and column block, row count, footer CRC32
+trailer     footer offset, magic
+```
+
+- **Fast save and load.** Numeric columns are written and read as whole arrays through
+  `Serializer`, whose array writes are single VM instructions (`SERL_INT_ARY`,
+  `SERL_FLOAT_ARY`), with no per-cell parsing. The target is save and load at a large fraction of
+  disk speed: one million rows of three numeric columns in well under a second. The first commit
+  of the phase measures the array paths; if they fall short, they are made faster in the VM
+  rather than the target relaxed.
+- **Partial reads.** The footer lets a reader seek straight to the blocks it needs. A query
+  over `runs.otab` reads only the columns it names and only the row groups its zone maps cannot
+  rule out. Opening a large file costs a footer read, not a load.
+- **Compression per block** through `lang`'s zlib: off by default for speed, on for archiving.
+  Dictionary encoding already shrinks the commonest text columns.
+- **Integrity.** Every block and the footer carry a CRC32 (`lang` has one). A truncated or
+  corrupted file is reported with the block it failed on, never loaded as wrong data.
+
+**Saving safely.** `table->Save(path)` writes a temporary file beside the target, flushes it,
+then renames it over the target, so a crash mid-save leaves the old file intact. One
+prerequisite: a rename over an existing file must replace it atomically on every platform.
+POSIX `rename` does; on Windows it needs `MoveFileEx` with `MOVEFILE_REPLACE_EXISTING`, so the
+VM's rename must be checked and fixed there first if it does not.
+
+**Appending.** `table->Append(path)` writes only the new rows as additional row groups and a new
+footer, without rewriting the existing groups. Loading a dataset that grows by a run a day costs
+one row group a day.
+
+**A change log between saves.** A table opened with `Table->Open(path)` records every insert,
+update and delete in a log file beside it (`runs.otab.log`), one length-prefixed and
+checksummed record per change, flushed per statement. Re-opening replays the log over the last
+save, so a crash loses at most the statement in progress. `Checkpoint()` folds the log into a new
+save and empties it. Durability is per statement; there are no multi-statement transactions.
+
+**One writer, many readers.** A process that opens a table for writing takes a lock file. Others
+can open it read-only and see the state of the last save or checkpoint. A second writer is
+refused with an error naming the lock's holder, and a stale lock left by a crash is detected and
+cleared. Exclusive creation of the lock file needs an exclusive-create primitive (`O_EXCL` on
+POSIX, `CREATE_NEW` on Windows), which the file API does not offer today, so it is added as a
+new VM trap first (appended after the existing ones, never by widening one).
+
+**Serialization.** Tables, views and catalogs serialize in two ways, for two jobs:
+
+- **With the language's own serializer.** `Serializer->Write(table)` and
+  `Deserializer->ReadObject()` already handle any object graph, so a table can travel inside
+  another serialized object, such as a model that holds its feature table, or be sent over a
+  socket, with no table-specific code. The design keeps this working on purpose:
+  - no field holds anything the serializer cannot write, such as a native handle, a closure or
+    a lock;
+  - state that can be rebuilt is not trusted after a round trip, because the serializer has no
+    custom hooks. Indexes, the statement cache and view version counters carry a generation
+    number that marks them stale, and they rebuild on first use.
+
+  This form follows the classes' field layout, so it suits data passed between parts of one
+  program, or between processes running the same build, and not files kept across library
+  versions.
+- **As versioned bytes.** `table->ToBytes() ~ Byte[]` and `Table->FromBytes(bytes)` produce and
+  read the `.otab` format in memory, and `Save`/`Load` write and read it to a file or any
+  stream. This form is self-describing and versioned, so it survives library upgrades, reads
+  only what a query needs, and is what to keep on disk or send to another program.
+
+Both round trips are tested: every column type, `Nil` cells, dictionary-encoded columns, deleted
+rows, views and catalogs, and, for the generic form, a table nested inside another object.
+
+**Indexes are rebuilt on load** in the first version, since hash and sorted indexes rebuild in
+one pass. Storing them in the file is a later option if load time shows it matters.
+
+### 10. Network: reading from and serving to other machines
+
+- **Every file source reads URLs.** A path that starts with `https://` or `http://` is fetched
+  through `Web.HTTP` (with TLS verification on, the library's default) and read by the same
+  source as a local file. That covers CSV, JSON Lines and the other formats, `.gz`, and `.otab`.
+  So `from 'https://example.org/data/runs.csv'` works anywhere a path does.
+- **Downloads are cached** under a cache directory, keyed by URL and revalidated with the
+  server's `ETag` or `Last-Modified`, so a query repeated in a loop does not download again.
+  `HttpJsonSource` (section 6) shares the same cache and paging.
+- **Partial reads over the network.** For `.otab` on a server that supports HTTP range
+  requests, the reader fetches the footer and then only the blocks the query needs, as it
+  does on disk. Without range support it downloads the file once and reads it locally.
+- **Serving tables.** `TableServer` publishes tables and a read-only query endpoint through
+  `Web.HTTP.Server`. `GET /tables/runs` returns a table, and `GET /query?sql=...` returns a result,
+  as CSV, JSON or `.otab` by the `Accept` header. It answers only `SELECT` (statements that
+  change data are refused) and only for the tables it was given. It runs a statement with row
+  and time limits, and it can be bound to localhost or put behind the library's existing auth.
+  `RemoteSource(url)` on the client side queries a `TableServer` as if it were a local table,
+  sending simple filters to the server so only matching rows cross the network.
+- **Writing to the network** is export, not shared storage: `ToCsv`, `ToJson` and `Save` accept
+  any stream, so a result can be uploaded or sent as a response. Two processes keeping one
+  remote table in sync is out of scope, as a multi-user database is.
+
+### 11. Compatibility
 
 Almost nothing outside the library uses it today (`programs/tests/prgm193.obs` calls
 `FromFilesystem` and `Query`; two programs use `Finder`), so the cost of keeping old programs
@@ -416,6 +559,11 @@ working is small, and they must keep working:
   with and without indexes, for a fixed seed set that CI runs and a longer run for the nightly job.
 - **Each source has its own test** of schema, round trip, malformed input, edge cases, pushdown,
   compression, globs and caching, with inputs generated at run time (section 6, "Source tests").
+- **Persistence is tested by breaking it** (phase 3): interrupted saves at every step, truncated
+  and corrupted files, log replay after a simulated crash, a refused second writer, and both
+  serialization forms round-tripped, including a table nested inside another object.
+- **Network tests run offline** against an in-process `Web.HTTP.Server` (phase 5), covering
+  caching, revalidation, range and non-range servers, and the server's read-only limits.
 - Unit tests per phase: column typing and promotion, null bitmaps, view invalidation, each
   predicate node, each join and aggregate, each index kind against a linear scan, prepared
   statements and the statement cache, the compatibility API (the #1291 tests must keep passing
@@ -423,7 +571,7 @@ working is small, and they must keep working:
 - **A performance gate.** `programs/regression/query_bench.obs` (the benchmark above, at 100k rows)
   with thresholds as multiples of the plain-array baseline measured in the same run, so it is
   machine-independent: scan and aggregate ≤ 5×, `where` ≤ 5× plus result size, `order by` ≤
-  0.3 s. Whether it gates pull requests or runs only in the nightly job follows the repository's
+  0.3 s, and save and load of one million rows × three numeric columns well under a second. Whether it gates pull requests or runs only in the nightly job follows the repository's
   existing performance gate (`perf-results/PERF_GATE.md`); timing is noisy on shared runners, so
   the nightly job is the likelier home.
 - Every phase passes at `-opt s3`, with `OBJECK_JIT_THRESHOLD=1`, and at `-opt s0` with `--jit=off`.
@@ -433,28 +581,66 @@ working is small, and they must keep working:
 Each phase lands as its own pull request, with its tests, a rebuilt `query.obl`, and the editor
 index regenerated for new classes.
 
-1. **Columnar storage.** `Column` types, null bitmaps, typing and promotion, `Row` as a cursor, O(1)
-   `Get(pk)`, tombstone deletes with `Compact()`, the compatibility API on top, `Describe()`.
-   The `Source` interface with `CsvSource`, `FilesystemSource` (flat) and `ObjectSource`, and
-   `FromCsv`, `FromFilesystem` and `Finder` reimplemented over them. Tests: storage unit tests,
-   `query_source_csv`, `query_source_filesystem`, `query_source_objects`, and the #1291 tests
-   unchanged. Benchmark: insert, scan and aggregates.
+1. **Columnar storage.**
+   - **Storage:** `Column` types, null bitmaps, typing and promotion, dictionary-encoded strings,
+     and row groups with zone maps.
+   - **Table API:** `Row` as a cursor, O(1) `Get(pk)`, tombstone deletes with `Compact()`, the
+     compatibility API on top, `Describe()`.
+   - **Generic serialization:** tables survive a `Serializer`/`Deserializer` round trip.
+   - **Sources:** the `Source` interface with `CsvSource`, `FilesystemSource` (flat) and
+     `ObjectSource`, and `FromCsv`, `FromFilesystem` and `Finder` reimplemented over them.
+
+   Tests: storage unit tests, `query_serialize_generic`, `query_source_csv`,
+   `query_source_filesystem`, `query_source_objects`, and the #1291 tests unchanged.
+   Benchmark: insert, scan and aggregates.
 2. **Views and compiled predicates.** `View`, copy-on-write result tables, the typed predicate
-   nodes, prepared statements and the statement cache, the method-chaining API. The differential
-   test starts here. The single-file text sources, which need no joins: `TextSource`,
-   `JsonLinesSource`, and transparent `.gz`. Tests: `query_source_text`,
-   `query_source_jsonl`, `query_source_gzip`.
-3. **The relational layer.** `Catalog`, hash joins, `GROUP BY`/`HAVING`, multi-key `ORDER BY`
-   `ASC`/`DESC`, `LIMIT`/`OFFSET`, `INSERT`/`UPDATE`/`DELETE`/`CREATE TABLE` in SQL, the bridges
-   (`ToMatrix`, `FromMatrix`, CSV, JSON). The hierarchical sources, which need joins to be
-   useful: `JsonSource` and `XmlSource` with child tables, the recursive `FilesystemSource` with
-   parent keys, `MATCHES`, `Finder->FindTable`, and scan-hint pushdown. Files named in `FROM`
-   and `JOIN` (CSV, TSV, JSON Lines, JSON, gzipped), globs over several files, and the per-path
-   cache. `HttpJsonSource`. Tests: `query_source_json`, `query_source_xml`,
-   `query_source_tree` (the recursive filesystem with parent keys), `query_source_files_in_sql`
-   (globs, `_file`, the cache) and `query_source_http`.
-4. **Hash and sorted indexes** and the rule-based planner.
-5. **Tier 2 sources**, one pull request each, in this order:
+   nodes with batch evaluation over row groups, zone-map skipping, prepared statements and the
+   statement cache, and the method-chaining API. The differential test starts here. Also the
+   single-file text sources, which need no joins: `TextSource`, `JsonLinesSource`, and
+   transparent `.gz`. Tests: `query_source_text`, `query_source_jsonl`, `query_source_gzip`.
+3. **Persistence.**
+   - **Prerequisites,** each its own small VM pull request first: rename that replaces
+     atomically on Windows, and an exclusive-create trap.
+   - **The `.otab` format:** `Save`, `Load`, `ToBytes`, `FromBytes`, stream variants,
+     per-block compression and CRC32s, and partial reads by column and row group.
+   - **Writing:** `Append`, `Open` with the change log, `Checkpoint`, and the writer lock.
+
+   Tests:
+   - `query_persist_roundtrip`: every type, `Nil` cells, dictionaries, deleted rows; bytes and
+     files.
+   - `query_persist_partial`: only the needed blocks are read, counted by an instrumented
+     reader.
+   - `query_persist_crash`: a save interrupted at each step, a truncated file, a corrupted
+     block, a log replayed after a simulated crash.
+   - `query_persist_lock`: a second writer refused, a stale lock cleared, readers unaffected.
+
+   Benchmark: save and load at one million rows.
+4. **The relational layer.**
+   - **SQL:** `Catalog`, hash joins (on dictionary codes where both sides share a dictionary),
+     `GROUP BY`/`HAVING`, multi-key `ORDER BY` `ASC`/`DESC`, `LIMIT`/`OFFSET`, and
+     `INSERT`/`UPDATE`/`DELETE`/`CREATE TABLE`.
+   - **Bridges:** `ToMatrix`, `FromMatrix`, CSV and JSON.
+   - **Hierarchical sources,** which need joins to be useful: `JsonSource` and `XmlSource`
+     with child tables, the recursive `FilesystemSource` with parent keys, `MATCHES`,
+     `Finder->FindTable`, and scan-hint pushdown.
+   - **Files named in SQL:** `FROM` and `JOIN` over CSV, TSV, JSON Lines, JSON, gzipped files
+     and `.otab`, globs over several files, and the per-path cache.
+
+   Tests: `query_source_json`, `query_source_xml`, `query_source_tree` (the recursive
+   filesystem with parent keys), and `query_source_files_in_sql` (globs, `_file`, the cache).
+5. **Network.**
+   - **Reading:** URLs in every file source, the download cache with `ETag` and
+     `Last-Modified` revalidation, range-request reads of `.otab`, and `HttpJsonSource`.
+   - **Serving:** `TableServer` with its read-only query endpoint and limits, and
+     `RemoteSource` with filter pushdown.
+
+   Tests, all against an in-process `Web.HTTP.Server`:
+   - `query_net_read`: CSV and `.otab` by URL, cache hits, a changed file re-fetched, range and
+     non-range servers.
+   - `query_net_serve`: tables and queries in each format, a change refused, limits enforced.
+   - `query_source_http`.
+6. **Hash and sorted indexes** and the rule-based planner.
+7. **Tier 2 sources**, one pull request each, in this order:
    1. `query_ml.obl` with `MlResultSource`
    2. `ArchiveSource` (tar first, then zip, once raw deflate is confirmed)
    3. `XlsxSource`
@@ -464,8 +650,12 @@ index regenerated for new classes.
    Each comes with its own `query_source_<name>` test. Each add-on library also needs a line in
    `core/compiler/build_libs.sh` and in the other hard-coded library lists, all of which
    `tools/cicd/check_doc_lists.py` keeps in step.
-6. **B+ tree index**, only once a benchmark shows a mixed insert and range workload that the sorted
-   index serves badly; behind the same interface, so nothing above it changes.
+8. **Conditional upgrades,** each only when a benchmark shows the need, and behind interfaces
+   that already exist, so nothing above changes:
+   - a **B+ tree index**, for frequent inserts mixed with range queries that the sorted index
+     serves badly;
+   - **parallel scans** across row groups, with a multithreaded GC stress test;
+   - **indexes stored in `.otab`**, if rebuilding them on load proves slow.
 
 ## Open questions
 
