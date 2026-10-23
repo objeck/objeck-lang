@@ -1,0 +1,176 @@
+#~
+# Data.CSV reads RFC 4180 quoting and reports malformed rows.
+#
+# CsvTable used to split the text into rows on the line ending before it
+# looked at quotes, so a quoted field holding a line break cut its record in
+# two and the whole table came back unparsed. A row shorter than the header
+# also left the table unparsed, with nothing to say which row it was, while a
+# longer row was accepted silently. And CsvRow->ToString() did not escape a
+# quote inside a field, so what it wrote could not be read back.
+#
+# Checked here: quoted delimiters, quoted LF and CRLF, doubled quotes, CRLF
+# endings, a missing final ending, empty fields, short and long rows and the
+# error each reports, custom delimiters, and writer round-trips through both
+# CsvRow->ToString() and CsvTable->FormatRow().
+# EXTRA_LIBS: csv,gen_collect
+~#
+
+use Data.CSV;
+
+class CsvQuoting {
+  function : Main(args : String[]) ~ Nil {
+    failures := 0;
+
+    # a quoted field may hold the delimiter, a line break and a doubled quote
+    t := CsvTable->New("name,note\n\"Smith, J\",\"line one\nline two\"\nBob,\"say \"\"hi\"\"\"\n");
+    failures += CheckBool("quoted fields: parsed", t->IsParsed(), true);
+    failures += CheckInt("quoted fields: 3 rows", t->Size(), 3);
+    if(t->IsParsed()) {
+      failures += CheckStr("quoted delimiter", t->Get(1)->Get("name"), "Smith, J");
+      failures += CheckStr("quoted LF", t->Get(1)->Get("note"), "line one\nline two");
+      failures += CheckStr("doubled quotes", t->Get(2)->Get("note"), "say \"hi\"");
+    };
+
+    # CRLF endings, a quoted CRLF, and no ending after the last record
+    t := CsvTable->New("a,b\r\n1,\"x\r\ny\"\r\n3,4");
+    failures += CheckBool("CRLF: parsed", t->IsParsed(), true);
+    failures += CheckInt("CRLF: 3 rows", t->Size(), 3);
+    if(t->IsParsed()) {
+      failures += CheckStr("quoted CRLF", t->Get(1)->Get(1), "x\r\ny");
+      failures += CheckStr("last record without an ending", t->Get(2)->Get("b"), "4");
+      failures += CheckStr("CRLF kept for writing", t->ToString(), "\"a\",\"b\"\r\n\"1\",\"x\r\ny\"\r\n\"3\",\"4\"\r\n");
+    };
+
+    # empty fields: between delimiters, at the end, and quoted
+    t := CsvTable->New("a,b,c\n,2,\n\"\",,\"\"\n");
+    failures += CheckBool("empty fields: parsed", t->IsParsed(), true);
+    if(t->IsParsed()) {
+      failures += CheckStr("leading empty field", t->Get(1)->Get(0), "");
+      failures += CheckStr("middle value", t->Get(1)->Get(1), "2");
+      failures += CheckStr("trailing empty field", t->Get(1)->Get(2), "");
+      failures += CheckInt("all-empty row keeps 3 fields", t->Get(2)->Size(), 3);
+    };
+
+    # well-formed input reads as before: spaces trimmed, blank lines skipped
+    t := CsvTable->New("x, y\n 1 , 2\n\n3,4\n");
+    failures += CheckInt("blank line skipped", t->Size(), 3);
+    if(t->IsParsed()) {
+      failures += CheckStr("unquoted value trimmed", t->Get(1)->Get("y"), "2");
+    };
+
+    # a short row is rejected, and the error names it
+    t := CsvTable->New("a,b,c\n1,2,3\n4,5\n6,7,8\n");
+    failures += CheckBool("short row: not parsed", t->IsParsed(), false);
+    failures += CheckInt("short row: error row", t->GetErrorRow(), 2);
+    failures += CheckHas("short row: message", t->GetError(), "row 2 (line 3)");
+    failures += CheckHas("short row: field counts", t->GetError(), "2 fields, but the header has 3");
+
+    # a long row is rejected the same way (it used to be accepted silently)
+    t := CsvTable->New("a,b\n1,2\n3,4\n5,6,7\n");
+    failures += CheckBool("long row: not parsed", t->IsParsed(), false);
+    failures += CheckInt("long row: error row", t->GetErrorRow(), 3);
+    failures += CheckHas("long row: message", t->GetError(), "row 3 (line 4)");
+
+    # the line number counts the line breaks inside quoted fields
+    t := CsvTable->New("a,b\n\"1\n2\",3\n4\n");
+    failures += CheckHas("line after a quoted break", t->GetError(), "row 2 (line 4)");
+
+    # an unclosed quote, and too few rows
+    t := CsvTable->New("a,b\n1,\"open\n");
+    failures += CheckBool("unclosed quote: not parsed", t->IsParsed(), false);
+    failures += CheckHas("unclosed quote: message", t->GetError(), "no closing quote");
+    t := CsvTable->New("a,b");
+    failures += CheckBool("header only: not parsed", t->IsParsed(), false);
+    failures += CheckInt("header only: error row", t->GetErrorRow(), -1);
+    failures += CheckBool("header only: has an error", t->GetError() <> Nil, true);
+    t := CsvTable->New("a,b\n1,2");
+    failures += CheckBool("parsed table: no error", t->GetError() = Nil, true);
+    failures += CheckInt("parsed table: error row", t->GetErrorRow(), -1);
+
+    # custom delimiters
+    t := CsvTable->New("name;city\n\"Doe; Jane\";Paris\n", ';');
+    failures += CheckBool("semicolon: parsed", t->IsParsed(), true);
+    if(t->IsParsed()) {
+      failures += CheckStr("semicolon: quoted delimiter", t->Get(1)->Get("name"), "Doe; Jane");
+      failures += CheckStr("semicolon: comma is data", CsvTable->New("a;b\n1,5;2", ';')->Get(1)->Get(0), "1,5");
+    };
+    t := CsvTable->New("a\tb\tc\r\n1\t\t3\r\n", "\r\n", '\t');
+    failures += CheckBool("tab: parsed", t->IsParsed(), true);
+    if(t->IsParsed()) {
+      failures += CheckStr("tab: empty middle field", t->Get(1)->Get("b"), "");
+      failures += CheckStr("tab: last field", t->Get(1)->Get("c"), "3");
+      failures += CheckStr("tab: written with tabs", t->Get(1)->ToString(), "\"1\"\t\"\"\t\"3\"");
+    };
+
+    # round trip: a table written by ToString() reads back the same values
+    source := "id,text\n1,\"a, \"\"b\"\"\nc\"\n2,  padded  \n";
+    t := CsvTable->New(source);
+    if(t->IsParsed()) {
+      t->Get(2)->Set("text", " has \"quotes\" ");
+      back := CsvTable->New(t->ToString());
+      failures += CheckBool("ToString round trip: parsed", back->IsParsed(), true);
+      if(back->IsParsed()) {
+        failures += CheckStr("ToString round trip: row 1", back->Get(1)->Get("text"), "a, \"b\"\nc");
+        failures += CheckStr("ToString round trip: Set value", back->Get(2)->Get("text"), " has \"quotes\" ");
+      };
+    }
+    else {
+      "FAIL: round-trip source did not parse"->PrintLine();
+      failures += 1;
+    };
+
+    # FormatRow quotes only what needs it, and the parser reads it back
+    values := ["plain", "has,comma", "say \"hi\"", "two\nlines", " pad ", ""];
+    line := CsvTable->FormatRow(values);
+    failures += CheckStr("FormatRow output", line, "plain,\"has,comma\",\"say \"\"hi\"\"\",\"two\nlines\",\" pad \",");
+    header := CsvTable->FormatRow(["a", "b", "c", "d", "e", "f"]);
+    back := CsvTable->New(header + "\r\n" + line + "\r\n");
+    failures += CheckBool("FormatRow round trip: parsed", back->IsParsed(), true);
+    if(back->IsParsed()) {
+      row := back->Get(1);
+      each(i : values) {
+        failures += CheckStr("FormatRow round trip field", row->Get(i), values[i]);
+      };
+    };
+    failures += CheckStr("FormatRow with a tab", CsvTable->FormatRow(["a", "b\tc"], '\t'), "a\t\"b\tc\"");
+    failures += CheckStr("FormatRow single empty field", CsvTable->FormatRow([""]), "\"\"");
+
+    if(failures > 0) {
+      "FAIL: {$failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: csv_quoting"->PrintLine();
+  }
+
+  function : CheckStr(what : String, actual : String, expected : String) ~ Int {
+    if(actual = Nil | <>actual->Equals(expected)) {
+      "FAIL: {$what}: expected |{$expected}|, got |{$actual}|"->PrintLine();
+      return 1;
+    };
+    return 0;
+  }
+
+  function : CheckHas(what : String, actual : String, part : String) ~ Int {
+    if(actual = Nil | <>actual->Has(part)) {
+      "FAIL: {$what}: expected text containing |{$part}|, got |{$actual}|"->PrintLine();
+      return 1;
+    };
+    return 0;
+  }
+
+  function : CheckInt(what : String, actual : Int, expected : Int) ~ Int {
+    if(actual <> expected) {
+      "FAIL: {$what}: expected {$expected}, got {$actual}"->PrintLine();
+      return 1;
+    };
+    return 0;
+  }
+
+  function : CheckBool(what : String, actual : Bool, expected : Bool) ~ Int {
+    if(actual <> expected) {
+      "FAIL: {$what}: expected {$expected}, got {$actual}"->PrintLine();
+      return 1;
+    };
+    return 0;
+  }
+}

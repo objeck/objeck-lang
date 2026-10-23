@@ -5,7 +5,7 @@
 use Collection;
 
 #~
-CSV parsing and generation. CsvParser reads delimited text into typed rows and columns; CsvWriter builds CSV output. Supports custom delimiters and quoted fields. Compile with -lib csv.
+CSV reading and writing. CsvTable parses delimited text (RFC 4180: quoted fields may hold the delimiter, line breaks and doubled quotes) into CsvRow records and CsvColumn values, reports the first malformed row through GetError(), and writes CSV back out with ToString() or CsvTable->FormatRow(). The delimiter defaults to a comma and can be set per table. Compile with -lib csv.
 ~#
 bundle Data.CSV {
 	#~
@@ -24,8 +24,7 @@ row->Size()->PrintLine();       # column count
 		@id : Int;
 		@columns : CompareVector<String>;
 		@read_only : Bool;
-		@replace_str : static : String;
-		
+
 		#~
 		Constructor
 		@param table table that has row
@@ -38,10 +37,6 @@ row->Size()->PrintLine();       # column count
 			@id := id;
 			@read_only := read_only;
 			@columns := columns;
-
-			if(@replace_str = Nil) {
-				@replace_str := table->GetReplaceStr();
-			};
 		}
 		
 		#~
@@ -114,7 +109,8 @@ row->Get(1)->PrintLine();
 		~#
 		method : public : Set(index : Int, value : String) ~ Bool {
 			if(@read_only = false & index < @columns->Size()) {
-				return @columns->Set(value->ReplaceAll("\"", @replace_str), index);
+				# stored as given: ToString() escapes quotes when the row is written
+				return @columns->Set(value, index);
 			};
 			
 			return false;
@@ -290,7 +286,9 @@ Console->PrintLine(row->Median());
 		}
 		
 		#~
-		Formats the row into a string
+		Formats the row as one CSV record: every field is quoted, a quote inside
+		a field is doubled, and fields are separated by the table's delimiter.
+		CsvTable parses the result back to the same values.
 		@return string representation of the row
 
 ```
@@ -300,19 +298,26 @@ row->ToString()->PrintLine();
 ```
 		~#
 		method : public : ToString() ~ String {
+			delimiter := @table->GetDelimiter();
 			buffer := "";
-			
+
 			each(i : @columns) {
-				buffer->Append("\"");
-				buffer->Append(@columns->Get(i)->ReplaceAll(@replace_str, "\""));
+				value := @columns->Get(i);
+				buffer->Append('"');
+				if(value <> Nil) {
+					if(value->Has('"')) {
+						buffer->Append(value->ReplaceAll("\"", "\"\""));
+					}
+					else {
+						buffer->Append(value);
+					};
+				};
+				buffer->Append('"');
 				if(i + 1 < @columns->Size()) {
-					buffer->Append("\",");
-				}
-				else {			
-					buffer->Append("\"");
+					buffer->Append(delimiter);
 				};
 			};
-			
+
 			return buffer;
 		}
 
@@ -542,13 +547,17 @@ if(csv->IsParsed()) {
 		@is_parsed : Bool;
 		@header_names : Hash<String, IntRef>;
 		@ending : String;
+		@auto_ending : Bool;
+		@delimiter : Char;
+		@error : String;
+		@error_row : Int;
 		@replace_str : static : String;
 
 		#~
-		Constructor. The line ending is read from the data rather than assumed:
-		CRLF if the data contains one, otherwise LF, otherwise CR. A file written
-		on either platform therefore parses without the caller knowing which.
-		Use the two-argument constructor to force a particular ending.
+		Constructor. Fields are separated by commas. A record ends at a CRLF, an
+		LF or a lone CR outside quotes, so a file written on any platform parses
+		without the caller knowing which; ToString() writes back the first ending
+		the data used. Use the two-argument constructor to force one ending.
 		@param data CSV data
 
 ```
@@ -559,11 +568,12 @@ if(csv->IsParsed()) {
 ```
 		~#
 		New(data : String) {
-			Init(data, DetectEnding(data));
+			Init(data, Nil, ',');
 		}
 
 		#~
-		Constructor
+		Constructor that forces the line ending: only this ending ends a record,
+		and any other line break is kept as part of a field.
 		@param data CSV data
 		@param ending line ending
 
@@ -575,66 +585,125 @@ if(csv->IsParsed()) {
 ```
 		~#
 		New(data : String, ending : String) {
-			Init(data, ending);
+			Init(data, ending, ',');
+		}
+
+		#~
+		Constructor with a custom delimiter, such as a tab or a semicolon. The
+		line ending is taken from the data, as for the one-argument constructor.
+		@param data CSV data
+		@param delimiter field delimiter; not a quote, CR or LF
+
+```
+csv := CsvTable->New("name;age\nAlice;30\nBob;25", ';');
+if(csv->IsParsed()) {
+  csv->Get(1)->Get("age")->PrintLine();
+};
+```
+		~#
+		New(data : String, delimiter : Char) {
+			Init(data, Nil, delimiter);
+		}
+
+		#~
+		Constructor with a forced line ending and a custom delimiter
+		@param data CSV data
+		@param ending line ending
+		@param delimiter field delimiter; not a quote, CR or LF
+
+```
+csv := CsvTable->New("name\tage\r\nAlice\t30", "\r\n", '\t');
+if(csv->IsParsed()) {
+  csv->Get(1)->Get("name")->PrintLine();
+};
+```
+		~#
+		New(data : String, ending : String, delimiter : Char) {
+			Init(data, ending, delimiter);
 		}
 
 		method : public : GetReplaceStr() ~ String {
 			return @replace_str;
 		}
-		
-		# The ending a caller did not specify. CRLF is tested first because a CRLF
-		# file also contains LF: testing LF first would split on "\n" and leave a
-		# stray CR on every row. Data with no ending at all keeps the old CRLF
-		# default, so a single-row input still reports IsParsed false as before.
-		function : DetectEnding(data : String) ~ String {
-			ending := "\r\n";
 
-			if(data <> Nil) {
-				if(data->Has("\r\n")) {
-					ending := "\r\n";
-				}
-				else if(data->Has("\n")) {
-					ending := "\n";
-				}
-				else if(data->Has("\r")) {
-					ending := "\r";
-				};
-			};
+		#~
+		Gets the field delimiter
+		@return field delimiter
 
-			return ending;
+```
+csv := CsvTable->New("a;b\n1;2", ';');
+csv->GetDelimiter()->PrintLine();
+```
+		~#
+		method : public : GetDelimiter() ~ Char {
+			return @delimiter;
 		}
 
-		method : Init(data : String, ending : String) ~ Nil {
+		#~
+		Gets why the data could not be parsed: the first malformed row, with its
+		row number (0 is the header) and the line it starts on, or a missing
+		closing quote, or too few rows. A table that parsed returns Nil.
+		@return error message, or Nil if the table parsed
+
+```
+csv := CsvTable->New("a,b,c\n1,2,3\n4,5");
+if(<>csv->IsParsed()) {
+  csv->GetError()->PrintLine();
+};
+```
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the row the parse failed on (0 is the header), or -1 when the table
+		parsed or the failure is not tied to one row
+		@return failing row number, or -1
+
+```
+csv := CsvTable->New("a,b,c\n1,2,3\n4,5");
+Console->PrintLine(csv->GetErrorRow());
+```
+		~#
+		method : public : GetErrorRow() ~ Int {
+			return @error_row;
+		}
+
+		method : Init(data : String, ending : String, delimiter : Char) ~ Nil {
 			if(@replace_str = Nil) {
 				@replace_str := "";
 				@replace_str += 0xfffd->As(Char);
 			};
 
-			@ending := ending;
+			@delimiter := delimiter;
+			@error_row := -1;
 			@is_parsed := true;
+
+			# No ending given (or an empty one): any of CRLF, LF or CR ends a record,
+			# and ToString() reuses the first one the data contains.
+			if(ending = Nil | ending->Size() = 0) {
+				@auto_ending := true;
+				@ending := "\r\n";
+			}
+			else {
+				@auto_ending := false;
+				@ending := ending;
+			};
 
 			# No data at all is an unparsed table, not a fault. FileReader->ReadFile
 			# returns Nil for a file that is not there, and MatrixReader's loaders
 			# hand that result straight to CsvTable->New, so a mistyped filename
-			# used to unwind the VM inside String->Split. This does not return
-			# early: the header map below has to be built in every case (#934).
+			# used to unwind the VM. This does not return early: the header map
+			# below has to be built in every case (#934).
 			if(data = Nil) {
-				@is_parsed := false;
+				SetError(-1, 0, "no data");
+			}
+			else if(delimiter = '"' | delimiter = '\r' | delimiter = '\n') {
+				SetError(-1, 0, "the delimiter cannot be a quote, CR or LF");
 			}
 			else {
-				# Split keeps empty fields now (#1177), so a file ending in a newline
-				# has an empty last row, and a blank line is an empty row: neither
-				# is a record. Both used to be glued onto a neighbouring row.
-				rows := SkipEmptyRows(data->Split(@ending));
-				if(rows->Size() > 1) {
-					@data := ParseColumns(rows);
-					if(@data = Nil) {
-						@is_parsed := false;
-					};
-				}
-				else {
-					@is_parsed := false;
-				};
+				@data := Parse(data);
 			};
 
 			# Always give the table a header map, even when the parse failed.
@@ -649,37 +718,296 @@ if(csv->IsParsed()) {
 				};
 			};
 		}
-		
-		method : SkipEmptyRows(rows : String[]) ~ String[] {
-			count := 0;
-			each(i : rows) {
-				if(<>rows[i]->IsEmpty()) {
-					count += 1;
+
+		method : SetError(row : Int, line : Int, message : String) ~ Nil {
+			@is_parsed := false;
+			@data := Nil;
+			@error_row := row;
+			if(row < 0) {
+				@error := message;
+			}
+			else {
+				@error := "row {$row} (line {$line}): {$message}";
+			};
+		}
+
+		# Length of the record ending at index, or 0 if there is none there
+		method : EndingAt(data : String, index : Int, size : Int) ~ Int {
+			c := data->Get(index);
+			if(@auto_ending) {
+				if(c = '\n') {
+					return 1;
+				};
+
+				if(c = '\r') {
+					if(index + 1 < size & data->Get(index + 1) = '\n') {
+						return 2;
+					};
+					return 1;
+				};
+
+				return 0;
+			};
+
+			ending_size := @ending->Size();
+			if(c <> @ending->Get(0) | index + ending_size > size) {
+				return 0;
+			};
+
+			for(j := 1; j < ending_size; j += 1;) {
+				if(data->Get(index + j) <> @ending->Get(j)) {
+					return 0;
 				};
 			};
 
-			if(count = rows->Size()) {
-				return rows;
-			};
+			return ending_size;
+		}
 
-			kept := String->New[count];
-			count := 0;
-			each(i : rows) {
-				if(<>rows[i]->IsEmpty()) {
-					kept[count] := rows[i];
-					count += 1;
+		# Reads the whole text as RFC 4180 records. Quotes are resolved before
+		# records are split, so a quoted field may hold the delimiter, a line break
+		# or a doubled quote. Leading white space before a field, and white space
+		# around an unquoted field, is dropped (as it always was); a blank line is
+		# not a record. Every record must have the header's field count: the first
+		# that does not leaves the table unparsed, and GetError() names it.
+		method : Parse(data : String) ~ Vector<CsvRow> {
+			rows := Vector->New()<CsvRow>;
+			lines := Vector->New()<IntRef>;
+			fields := CompareVector->New()<String>;
+			any_quoted := false;
+			ending_seen := false;
+			line := 1;
+			record_line := 1;
+			size := data->Size();
+			index := 0;
+
+			while(index < size) {
+				# leading white space, but never the delimiter itself (a tab)
+				skipping := true;
+				while(skipping & index < size) {
+					c := data->Get(index);
+					if(c <> @delimiter & (c = ' ' | c = '\t' | c = '\f' | c = '\v')) {
+						index += 1;
+					}
+					else {
+						skipping := false;
+					};
+				};
+
+				value : String;
+				if(index < size & data->Get(index) = '"') {
+					any_quoted := true;
+					index += 1;
+					buffer := String->New();
+					closed := false;
+					while(<>closed & index < size) {
+						c := data->Get(index);
+						if(c = '"') {
+							if(index + 1 < size & data->Get(index + 1) = '"') {
+								buffer->Append('"');
+								index += 2;
+							}
+							else {
+								closed := true;
+								index += 1;
+							};
+						}
+						else {
+							if(c = '\n') {
+								line += 1;
+							}
+							else if(c = '\r') {
+								if(index + 1 >= size | data->Get(index + 1) <> '\n') {
+									line += 1;
+								};
+							};
+							buffer->Append(c);
+							index += 1;
+						};
+					};
+
+					if(<>closed) {
+						SetError(rows->Size(), record_line, "a quoted field has no closing quote");
+						return Nil;
+					};
+
+					# text between the closing quote and the delimiter is kept
+					start := index;
+					while(index < size & data->Get(index) <> @delimiter & EndingAt(data, index, size) = 0) {
+						index += 1;
+					};
+					if(index > start) {
+						buffer->Append(data->SubString(start, index - start)->Trim());
+					};
+					value := buffer;
+				}
+				else {
+					start := index;
+					while(index < size & data->Get(index) <> @delimiter & EndingAt(data, index, size) = 0) {
+						index += 1;
+					};
+
+					if(index > start) {
+						value := data->SubString(start, index - start)->Trim();
+						# a doubled quote in an unquoted field has always read as one
+						if(value->Has("\"\"")) {
+							value := value->ReplaceAll("\"\"", "\"");
+						};
+					}
+					else {
+						value := "";
+					};
+				};
+				fields->AddBack(value);
+
+				if(index < size & data->Get(index) = @delimiter) {
+					index += 1;
+					# a delimiter at the very end of the data opens one last, empty field
+					if(index = size) {
+						fields->AddBack("");
+					};
+				}
+				else {
+					# a record ending, or the end of the data
+					if(index < size) {
+						length := EndingAt(data, index, size);
+						if(@auto_ending & <>ending_seen) {
+							@ending := data->SubString(index, length);
+						};
+						ending_seen := true;
+						index += length;
+						line += 1;
+					};
+
+					AddRecord(rows, lines, fields, any_quoted, record_line);
+					fields := CompareVector->New()<String>;
+					any_quoted := false;
+					record_line := line;
 				};
 			};
 
-			return kept;
+			# the last record of data that ends in a delimiter, with no final ending
+			if(fields->Size() > 0) {
+				AddRecord(rows, lines, fields, any_quoted, record_line);
+			};
+
+			if(rows->Size() < 2) {
+				SetError(-1, 0, "a header row and at least one record are required");
+				return Nil;
+			};
+
+			# Short and long rows are both rejected: a short one has no value for a
+			# named column, and a long one carries values no column names.
+			column_size := rows->Get(0)->Size();
+			for(i := 1; i < rows->Size(); i += 1;) {
+				row_size := rows->Get(i)->Size();
+				if(row_size <> column_size) {
+					SetError(i, lines->Get(i)->Get(), "{$row_size} fields, but the header has {$column_size}");
+					return Nil;
+				};
+			};
+
+			return rows;
+		}
+
+		# A blank line (one empty, unquoted field) is not a record
+		method : AddRecord(rows : Vector<CsvRow>, lines : Vector<IntRef>, fields : CompareVector<String>, any_quoted : Bool, line : Int) ~ Nil {
+			if(fields->Size() > 1 | any_quoted | <>fields->Get(0)->IsEmpty()) {
+				id := rows->Size();
+				rows->AddBack(CsvRow->New(@self, id, id = 0, fields));
+				lines->AddBack(IntRef->New(line));
+			};
 		}
 
 		New(data : Vector<CsvRow>, header_names : Hash<String, IntRef>) {
 			@is_parsed := true;
 			@data := data;
 			@header_names := header_names;
+			@ending := "\r\n";
+			@delimiter := ',';
+			@error_row := -1;
 		}
-		
+
+		# a query result writes out the way its source table does
+		method : SetFormat(ending : String, delimiter : Char) ~ CsvTable {
+			@ending := ending;
+			@delimiter := delimiter;
+			return @self;
+		}
+
+		#~
+		Formats values as one CSV record with comma delimiters. A field is quoted
+		only when it must be: when it holds the delimiter, a quote, a line break,
+		or white space at either end. A quote inside a field is doubled. Nil is
+		written as an empty field. CsvTable parses the result back to the same
+		values.
+		@param values field values
+		@return CSV record, without a line ending
+
+```
+line := CsvTable->FormatRow(["plain", "has,comma", "say \"hi\""]);
+line->PrintLine();
+```
+		~#
+		function : FormatRow(values : String[]) ~ String {
+			return FormatRow(values, ',');
+		}
+
+		#~
+		Formats values as one CSV record with the given delimiter, quoting a field
+		only when it must be (see the one-argument form)
+		@param values field values
+		@param delimiter field delimiter
+		@return CSV record, without a line ending
+
+```
+line := CsvTable->FormatRow(["a", "b c", "d"], '\t');
+line->PrintLine();
+```
+		~#
+		function : FormatRow(values : String[], delimiter : Char) ~ String {
+			buffer := "";
+			if(values = Nil) {
+				return buffer;
+			};
+
+			each(i : values) {
+				value := values[i];
+				if(value = Nil) {
+					value := "";
+				};
+
+				if(NeedsQuotes(value, delimiter) | (values->Size() = 1 & value->IsEmpty())) {
+					buffer->Append('"');
+					buffer->Append(value->ReplaceAll("\"", "\"\""));
+					buffer->Append('"');
+				}
+				else {
+					buffer->Append(value);
+				};
+
+				if(i + 1 < values->Size()) {
+					buffer->Append(delimiter);
+				};
+			};
+
+			return buffer;
+		}
+
+		function : private : NeedsQuotes(value : String, delimiter : Char) ~ Bool {
+			size := value->Size();
+			if(size = 0) {
+				return false;
+			};
+
+			first := value->Get(0);
+			last := value->Get(size - 1);
+			if(first = ' ' | first = '\t' | first = '\f' | first = '\v' | last = ' ' | last = '\t' | last = '\f' | last = '\v') {
+				return true;
+			};
+
+			return value->Has(delimiter) | value->Has('"') | value->Has('\n') | value->Has('\r');
+		}
+
 		#~
 		Returns rather the file has been successfully parsed
 		@return true if successfully parsed, false otherwise
@@ -794,84 +1122,6 @@ Console->PrintLine(csv->RowSize());
 			return @data->Get(0)->As(CsvRow)->Size();
 		}
 		
-		method : native : ParseColumns(rows : String[]) ~ Vector<CsvRow> {
-			parsed_rows := Vector->New()<CsvRow>;
-			each(i : rows) {
-				parsed_rows->AddBack(CsvRow->New(@self, i, i = 0, ParseRow(rows[i]->ReplaceAll("\"\"", @replace_str))));
-			};
-
-			if(rows->Size() <> parsed_rows->Size()) {		
-# IO.Console->Print("rows: parsed = ")->Print(rows->Size())->Print(", size = ")->PrintLine(parsed_rows->Size());				
-				return Nil;
-			};
-			
-			column_size := parsed_rows->Get(0)->Size();
-			each(i : parsed_rows) {
-				parsed_row := parsed_rows->Get(i)->As(CsvRow);
-				if(parsed_row->Size() < column_size) {
-# IO.Console->Print("columns: parsed = ")->Print(parsed_row->Size())->Print(", size = ")->PrintLine(column_size);
-					return Nil;
-				};
-			};
-			
-			return parsed_rows;
-		}
-		
-		method : native : ParseRow(row : String) ~ CompareVector<String> {
-			columns := CompareVector->New()<String>;
-			
-			index := 0;
-			while(index < row->Size()) {
-				# stripe white space
-				if(index < row->Size()) {
-	                char := row->Get(index);
-					while(index < row->Size() & (char = ' ' | char = '\t' | char = '\f' | char = '\v')) {
-						char := row->Get(++index);
-					};
-				};
-
-				if(row->Get(index) = '"') {
-					index += 1;
-					start := index;
-					while(index < row->Size() & row->Get(index) <> '"') {
-						index += 1;
-					};
-					token := row->SubString(start, index - start);
-					index += 1;
-					if(token <> Nil) {
-						columns->AddBack(token->ReplaceAll(@replace_str, "\""));
-					};
-# IO.Console->Print("quoted = |")->Print(token->ReplaceAll(@replace_str, "\""))->PrintLine("|");
-				}
-				else {
-					start := index;
-					while(index < row->Size() & row->Get(index) <> ',') {
-						index += 1;
-					};
-
-					token := row->SubString(start, index - start);
-					if(token = Nil | token->Equals(@replace_str)) {
-						columns->AddBack("");
-# "normal = ||"->PrintLine();
-					}
-					else {
-						columns->AddBack(token->ReplaceAll(@replace_str, "\"")->Trim());
-# IO.Console->Print("normal = |")->Print(token->ReplaceAll(@replace_str, "\"")->Trim())->PrintLine("|");											
-					};
-				};
-			
-				if(row->Get(index) = ',') {
-					index += 1;
-					if(index = row->Size()) {
-						columns->AddBack("");
-# "normal = ||"->PrintLine();						
-					};
-				};
-			};
-					
-			return columns;
-		}
-		
 		#~
 		Gets an indexed row
 		@param index index
@@ -950,7 +1200,7 @@ Console->PrintLine(results->Size());
 				};
 			};
 			
-			return CsvTable->New(found, @header_names);
+			return CsvTable->New(found, @header_names)->SetFormat(@ending, @delimiter);
 		}
 		
 		#~
@@ -1038,7 +1288,7 @@ Console->PrintLine(results->Size());
 				};
 			};
 			
-			return CsvTable->New(found, @header_names);
+			return CsvTable->New(found, @header_names)->SetFormat(@ending, @delimiter);
 		}
 		
 		#~
@@ -1095,6 +1345,9 @@ csv->ToString()->PrintLine();
 		~#
 		method : public : ToString() ~ String {
 			buffer := "";
+			if(<>@is_parsed) {
+				return buffer;
+			};
 
 			each(i : @data) {
 				row := @data->Get(i)->As(CsvRow);
@@ -1115,7 +1368,12 @@ csv->ToJson()->PrintLine();
 ```
 		~#
 		method : public : ToJson() ~ String {
-			buffer := "["
+			buffer := "[";
+			if(<>@is_parsed) {
+				buffer->Append(']');
+				return buffer;
+			};
+
 			for(i := 1; i < @data->Size(); i += 1;) {
 				row := @data->Get(i);
 				buffer->Append(row->ToJson());
