@@ -1,0 +1,174 @@
+#~
+# TLS and HTTP/2 connects must park for garbage collection
+#
+# A stop-the-world collection waits until every VM thread is parked. The plain
+# TCP socket traps park around their blocking calls; the TLS traps and the
+# HTTP/2 session did not, so a thread blocked in a TLS handshake or read held up
+# every collection in the process. When its peer is another thread of the same
+# VM that needs a collection before it can answer, neither ever moves again.
+# That is how https_persistence_test hung on the POSIX legs of PR #1300.
+#
+# This makes that peer on purpose. A plain TCP server thread accepts the
+# connection, reads the start of the ClientHello -- so the client is now inside
+# its handshake, waiting for a ServerHello -- and then allocates enough to force
+# collections before it hangs up. With the traps parked, the collections run,
+# the server closes, and the handshake fails promptly: the client reports "not
+# connected". Without the parking, the collection waits for the client, the
+# client waits for the server, and the test hangs until the runner's timeout.
+#
+# Deterministic: the collections are triggered only after the client is known
+# to be blocked in the handshake, and enough is allocated to collect in every
+# mode. Run it with --gc-threshold=64k as well; it must pass there too.
+# EXTRA_LIBS: net,net_h2
+~#
+
+use System.Concurrency, System.IO.Net, System.Time;
+
+class HelloThenCollect from Thread {
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+	@hello_bytes : Int;
+	@last : Byte[];
+
+	New(port : Int) {
+		Parent("hello-then-collect");
+		@port := port;
+		@listening := false;
+		@finished := false;
+		@hello_bytes := 0;
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetHelloBytes() ~ Int { return @hello_bytes; }
+
+	method : public : Run(param : Base) ~ Nil {
+		server := TCPSocketServer->New(@port);
+		if(server->Listen(4)) {
+			@listening := true;
+			client := server->Accept();
+			if(client <> Nil & client->IsOpen()) {
+				# A TLS record header: the client has sent its ClientHello and is
+				# now blocked in the handshake, waiting for a ServerHello.
+				header := Byte->New[5];
+				@hello_bytes := client->ReadBuffer(0, 5, header);
+
+				# Force collections while the client is blocked.
+				for(i := 0; i < 4096; i += 1;) {
+					@last := Byte->New[65536];
+				};
+
+				# Never answer: hanging up fails the client's handshake.
+				client->Close();
+			};
+			server->Close();
+		};
+		@finished := true;
+	}
+}
+
+class TlsConnectGcPark {
+	@failed : Int;
+
+	New() {
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		TlsConnectGcPark->New()->Run();
+	}
+
+	method : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@failed += 1;
+	}
+
+	# Starts the peer on a random port and waits until it listens. Nil if no
+	# port could be bound.
+	method : StartPeer() ~ HelloThenCollect {
+		candidate : HelloThenCollect;
+		waited : Int;
+		tries := 0;
+
+		while(tries < 5) {
+			candidate := HelloThenCollect->New(Int->Random(20000, 31998));
+			candidate->Execute(Nil);
+
+			waited := 0;
+			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 2000) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+
+			if(candidate->IsListening()) {
+				return candidate;
+			};
+			tries += 1;
+		};
+
+		return Nil;
+	}
+
+	method : CheckPeer(peer : HelloThenCollect, context : String) ~ Nil {
+		peer->Join();
+		hello := peer->GetHelloBytes();
+		if(hello <> 5) {
+			Fail("{$context}: the peer read {$hello} bytes of ClientHello, expected 5 -- the client never reached its handshake, so nothing was tested");
+		};
+	}
+
+	method : Run() ~ Nil {
+		peer : HelloThenCollect;
+		port : Int;
+		timer : Timer;
+		seconds : Float;
+
+		# --- HTTP/2: Http2Connect (connect, handshake, SETTINGS) ---
+		peer := StartPeer();
+		if(peer = Nil) {
+			"FAIL: the test peer never started listening"->PrintLine();
+			Runtime->Exit(1);
+		};
+		port := peer->GetPort();
+		timer := Timer->New(true);
+		h2 := Web.HTTP.Http2Client->New("127.0.0.1", port);
+		timer->End();
+		seconds := timer->GetElapsedTime();
+		if(h2->IsConnected()) {
+			Fail("HTTP/2: connected to a peer that never answered the handshake");
+		};
+		h2->Close();
+		CheckPeer(peer, "HTTP/2");
+		if(seconds > 20.0) {
+			Fail("HTTP/2: the failed connect took {$seconds} s");
+		};
+
+		# --- TLS: SockTcpSslConnect (connect, handshake) ---
+		peer := StartPeer();
+		if(peer = Nil) {
+			"FAIL: the test peer never started listening"->PrintLine();
+			Runtime->Exit(1);
+		};
+		port := peer->GetPort();
+		timer := Timer->New(true);
+		tls := TCPSecureSocket->New("127.0.0.1", port);
+		timer->End();
+		seconds := timer->GetElapsedTime();
+		if(tls->IsOpen()) {
+			Fail("TLS: open to a peer that never answered the handshake");
+		};
+		# Close after a failed connect must be harmless.
+		tls->Close();
+		CheckPeer(peer, "TLS");
+		if(seconds > 20.0) {
+			Fail("TLS: the failed connect took {$seconds} s");
+		};
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: TLS and HTTP/2 connects park for collections"->PrintLine();
+	}
+}

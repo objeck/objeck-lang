@@ -5027,6 +5027,10 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx);
     MemoryManager::EndBlocking();
     instance = (size_t*)PopInt(op_stack, stack_pos);
+    // The old context is freed whatever happens next. A failed open used to
+    // leave instance[0] pointing at it and instance[3] still claiming open, so
+    // the next read, write or Close used, or freed, the context a second time.
+    instance[0] = instance[1] = instance[2] = instance[3] = 0;
     if(is_open) {
       instance[0] = (size_t)sctx;
       instance[1] = 0;
@@ -7652,17 +7656,28 @@ bool TrapProcessor::Http2Connect(StackProgram* program, size_t* inst, size_t*& o
 
     Http2SessionCtx* ctx = new Http2SessionCtx();
     std::string pem_file;
-    if(!IPSecureSocket::OpenH2(host.c_str(), port, pem_file, ctx->tls)) {
-      delete ctx;
-      instance[0] = 0;
-      return true;
+    // connect(), the TLS handshake and the SETTINGS write block on the peer;
+    // park for the duration, as SockTcpSslConnect does. Unparked, a thread
+    // waiting here stalls every stop-the-world collection, and when the peer
+    // is a thread of this VM that is waiting for that collection, neither
+    // moves again. Only C memory (ctx, host) is touched while parked; the
+    // instance ref is re-rooted on the op_stack and re-read after the wait.
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const bool is_open = IPSecureSocket::OpenH2(host.c_str(), port, pem_file, ctx->tls);
+    if(is_open) {
+      ctx->session = h2_make_session(ctx);
+
+      nghttp2_settings_entry iv[1] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
+      nghttp2_submit_settings(ctx->session, NGHTTP2_FLAG_NONE, iv, 1);
+      nghttp2_session_send(ctx->session);
     }
-
-    ctx->session = h2_make_session(ctx);
-
-    nghttp2_settings_entry iv[1] = {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
-    nghttp2_submit_settings(ctx->session, NGHTTP2_FLAG_NONE, iv, 1);
-    nghttp2_session_send(ctx->session);
+    else {
+      delete ctx;
+      ctx = nullptr;
+    }
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
 
     instance[0] = (size_t)ctx;
   }
@@ -7856,7 +7871,15 @@ bool TrapProcessor::Http2Request(StackProgram* program, size_t* inst, size_t*& o
   }
   ctx->last_stream_id = stream_id;
 
-  if(!h2_run_loop(ctx)) {
+  // The send/recv loop blocks on the peer; park for it (see Http2Connect). Its
+  // callbacks touch only ctx (C heap) and body_data (a C++ copy); the instance
+  // ref is re-rooted on the op_stack and re-read after the wait.
+  PushInt((size_t)instance, op_stack, stack_pos);
+  MemoryManager::BeginBlocking();
+  const bool completed = h2_run_loop(ctx);
+  MemoryManager::EndBlocking();
+  instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(!completed) {
     PushInt(0, op_stack, stack_pos);
     return true;
   }
@@ -7900,7 +7923,10 @@ bool TrapProcessor::Http2Close(StackProgram* program, size_t* inst, size_t*& op_
   if(instance && instance[0]) {
     Http2SessionCtx* ctx = (Http2SessionCtx*)instance[0];
     instance[0] = 0;
+    // the destructor's close_notify is a write that can block; park for it
+    MemoryManager::BeginBlocking();
     delete ctx;
+    MemoryManager::EndBlocking();
   }
   return true;
 }
