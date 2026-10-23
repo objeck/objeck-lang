@@ -46,6 +46,7 @@ Written before the work, and kept afterwards as the record of why it looks the w
 - [ROSETTA_HARDENING.md](ROSETTA_HARDENING.md) — working the Rosetta Code backlog as a hardening vehicle: how to claim a task so sessions do not collide, what to pick and what to skip, the defects it has turned up, and the Rational/Complex/BigInt library questions it raised
 - [SYSTEM_TERMINAL_DESIGN.md](SYSTEM_TERMINAL_DESIGN.md) — `System.Terminal`: styled output, progress bars, interactive controls, and the five VM traps they need
 - [UPDATER_DESIGN.md](UPDATER_DESIGN.md) — auto-updater
+- [QUERY_DESIGN.md](QUERY_DESIGN.md) — `Query.Structured` as a columnar in-memory engine over pluggable sources (filesystem, CSV, JSON, XML trees as related tables): typed columns, zero-copy views, compiled predicates, joins and `GROUP BY`, hash and sorted indexes with a B+ tree as the later upgrade
 - [ONNX_CUDA_PLAN.md](ONNX_CUDA_PLAN.md) — CUDA execution provider for ONNX
 - [web_server_design.md](web_server_design.md) — `Web.Server` reimplemented over `Web.HTTP.Server`, after the native-bridge design proved unusable (#654)
 - [PLAN_2026_10_0_HARDENING.md](PLAN_2026_10_0_HARDENING.md) — the compiler, GC and language hardening plan whose work shipped as v2026.9.5, and what it deferred
