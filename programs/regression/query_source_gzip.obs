@@ -1,0 +1,78 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured reads gzipped sources (docs/QUERY_DESIGN.md, section 6, phase 2): a '.gz' CSV,
+JSON Lines and log file each read exactly as their uncompressed form does, the table name drops
+'.gz', and a damaged file is an error. Inputs are written and compressed by the test.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class QuerySourceGzipTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Pair(plain : String, text : String) ~ Nil {
+		FileWriter->WriteFile(plain, text);
+		FileWriter->WriteFile(plain + ".gz", text->ToByteArray()->CompressGzip());
+	}
+
+	function : Same(a : Table, b : Table) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size() | a->GetColumnCount() <> b->GetColumnCount()) {
+			return false;
+		};
+
+		each(i : a->Size()) {
+			if(<>a->Get(i)->ToString()->Equals(b->Get(i)->ToString())) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		csv := "id,score,label\r\n1,0.5,cat\r\n2,1.5,dog\r\n3,,cow\r\n";
+		Pair("query_gz_tmp.csv", csv);
+		plain := CsvSource->New("query_gz_tmp.csv")->Read(Nil);
+		packed := CsvSource->New("query_gz_tmp.csv.gz")->Read(Nil);
+		Check("a gzipped CSV reads as the plain one does", Same(plain, packed));
+		Check("the table name drops '.gz'", packed <> Nil & packed->GetName()->Equals("query_gz_tmp"));
+
+		lines := "{\"x\": 1, \"y\": \"a\"}\n{\"x\": 2, \"y\": \"b\"}\n";
+		Pair("query_gz_tmp.jsonl", lines);
+		Check("gzipped JSON Lines reads as the plain file does", Same(JsonLinesSource->New("query_gz_tmp.jsonl")->Read(), JsonLinesSource->New("query_gz_tmp.jsonl.gz")->Read()));
+
+		log := "step 1 ok\nstep 2 ok\n";
+		Pair("query_gz_tmp.log", log);
+		a := TextSource->New("query_gz_tmp.log", "step (\\d+) (\\w+)", ["step", "status"])->Read();
+		b := TextSource->New("query_gz_tmp.log.gz", "step (\\d+) (\\w+)", ["step", "status"])->Read();
+		Check("a gzipped log reads as the plain one does", Same(a, b));
+
+		FileWriter->WriteFile("query_gz_bad_tmp.csv.gz", "this is not gzip data");
+		bad := CsvSource->New("query_gz_bad_tmp.csv.gz");
+		Check("a damaged .gz file is an error", bad->Read(Nil) = Nil & bad->GetError() <> Nil);
+
+		File->Delete("query_gz_tmp.csv");
+		File->Delete("query_gz_tmp.csv.gz");
+		File->Delete("query_gz_tmp.jsonl");
+		File->Delete("query_gz_tmp.jsonl.gz");
+		File->Delete("query_gz_tmp.log");
+		File->Delete("query_gz_tmp.log.gz");
+		File->Delete("query_gz_bad_tmp.csv.gz");
+
+		if(@failures = 0) {
+			"PASS: query gzipped sources"->PrintLine();
+		}
+		else {
+			"FAIL: query gzipped sources ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

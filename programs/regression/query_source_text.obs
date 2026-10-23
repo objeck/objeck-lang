@@ -1,0 +1,117 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured TextSource and JsonLinesSource (docs/QUERY_DESIGN.md, section 6, phase 2):
+a log read with regular-expression capture groups, typed columns, unmatched lines counted and
+kept, multi-line records, scan hints and errors; JSON Lines with nested objects, mixed types,
+null and missing keys, escapes, arrays, and a bad line reported. Inputs are written by the test.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class QuerySourceTextTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		TestLog();
+		TestRecords();
+		TestJsonLines();
+
+		if(@failures = 0) {
+			"PASS: query TextSource and JsonLinesSource"->PrintLine();
+		}
+		else {
+			"FAIL: query TextSource and JsonLinesSource ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : TestLog() ~ Nil {
+		path := "query_text_tmp.log";
+		FileWriter->WriteFile(path, "starting run\r\nepoch 1 loss 0.90 acc 0.61\r\nepoch 2 loss 0.55 acc 0.74\r\n\r\nwarning: slow step\r\nepoch 3 loss 0.41 acc 0.80\r\nepoch 4 loss 0.40 acc 0.81");
+		pattern := "epoch (\\d+) loss ([0-9.]+) acc ([0-9.]+)";
+		source := TextSource->New(path, "train", pattern, ["epoch", "loss", "acc"], "", true);
+		t := source->Read();
+		Check("a log reads", t <> Nil);
+		if(t <> Nil) {
+			Check("one row per matching line", t->Size() = 4);
+			Check("digits make an INT column", t->GetColumn("epoch")->GetType() = ColumnType->INT);
+			Check("decimals make a FLOAT column", t->GetColumn("loss")->GetType() = ColumnType->FLOAT);
+			Check("values read", t->Get(2)->Get("epoch")->As(IntRef)->Get() = 3 & t->Get(2)->Get("acc")->As(FloatRef)->Get() = 0.80);
+			rs := t->Query("select epoch from train where acc > 0.75 order by epoch");
+			Check("the log queries", rs <> Nil & rs->Size() = 2);
+			Check("unmatched lines are counted, blank lines skipped", source->GetUnmatchedCount() = 2);
+			unmatched := source->GetUnmatched();
+			Check("unmatched lines are kept with their line numbers", unmatched->Size() = 2 & unmatched->Get(0)->Get("line")->As(IntRef)->Get() = 1 & unmatched->Get(1)->Get("text")->As(String)->Equals("warning: slow step"));
+		};
+
+		hinted := TextSource->New(path, "train", pattern, ["epoch", "loss", "acc"], "", false)->Read(ScanHint->New(["acc"], 2));
+		Check("a hint picks columns and caps rows", hinted <> Nil & hinted->Size() = 2 & hinted->GetColumnCount() = 2 & hinted->GetColumn("loss") = Nil);
+
+		catalog := Catalog->New();
+		Check("a catalog loads both tables", catalog->Load(TextSource->New(path, "train", pattern, ["epoch", "loss", "acc"], "", true)) & catalog->Has("train") & catalog->Has("train_unmatched"));
+
+		few := TextSource->New(path, "train", "epoch (\\d+)", ["epoch", "loss"], "", false);
+		Check("fewer groups than names is an error", few->Read() = Nil & few->GetError() <> Nil);
+		bad := TextSource->New(path, "train", "epoch ([0-9", ["epoch"], "", false);
+		Check("a bad pattern is an error", bad->Read() = Nil & bad->GetError() <> Nil);
+		missing := TextSource->New("no_such_log.tmp", "x (\\d)", ["x"]);
+		Check("a missing file is an error", missing->Read() = Nil & missing->GetError() <> Nil);
+		File->Delete(path);
+	}
+
+	function : TestRecords() ~ Nil {
+		path := "query_text_records_tmp.log";
+		FileWriter->WriteFile(path, "preamble\nERROR 12 disk full\n  at write()\n  at flush()\nERROR 7 timeout\n  at read()\nINFO done\n");
+		source := TextSource->New(path, "errors", "ERROR (\\d+) (\\w+)", ["code", "word"], "(ERROR|INFO) ", true);
+		t := source->Read();
+		Check("multi-line records read", t <> Nil & t->Size() = 2);
+		Check("a record's first match", t <> Nil & t->Get(0)->Get("code")->As(IntRef)->Get() = 12 & t->Get(1)->Get("word")->As(String)->Equals("timeout"));
+		Check("lines before the first record, and records that do not match, are unmatched", source->GetUnmatchedCount() = 2);
+		File->Delete(path);
+	}
+
+	function : TestJsonLines() ~ Nil {
+		path := "query_jsonl_tmp.jsonl";
+		text := "{\"id\": 1, \"score\": 0.5, \"label\": \"cat\", \"ok\": true, \"meta\": {\"seed\": 7, \"tag\": \"a\"}}\n";
+		text += "{\"id\": 2, \"score\": 2, \"label\": \"dog\\nbreed\", \"ok\": false, \"meta\": {\"seed\": 8}}\n";
+		text += "\n";
+		text += "{\"id\": 3, \"score\": null, \"label\": 5, \"tags\": [1, 2], \"extra\": \"new\"}\r\n";
+		FileWriter->WriteFile(path, text);
+		t := JsonLinesSource->New(path)->Read();
+		Check("JSON Lines read", t <> Nil & t->Size() = 3);
+		if(t <> Nil & t->Size() = 3) {
+			Check("the table is named after the file", t->GetName()->Equals("query_jsonl_tmp"));
+			Check("whole numbers make an INT column", t->GetColumn("id")->GetType() = ColumnType->INT);
+			Check("a decimal makes a FLOAT column", t->GetColumn("score")->GetType() = ColumnType->FLOAT & t->Get(1)->Get("score")->As(FloatRef)->Get() = 2.0);
+			Check("null is an empty cell", t->Get(2)->Get("score") = Nil);
+			Check("text mixed with a number makes STRING", t->GetColumn("label")->GetType() = ColumnType->STRING & t->Get(2)->Get("label")->As(String)->Equals("5"));
+			Check("escapes are decoded", t->Get(1)->Get("label")->As(String)->Equals("dog\nbreed"));
+			Check("true and false make a BOOL column", t->GetColumn("ok")->GetType() = ColumnType->BOOL & <>t->Get(1)->Get("ok")->As(BoolRef)->Get());
+			Check("a missing key is an empty cell", t->Get(2)->Get("ok") = Nil & t->Get(0)->Get("extra") = Nil);
+			Check("nested objects become dotted columns", t->Get(0)->Get("meta.seed")->As(IntRef)->Get() = 7 & t->Get(1)->Get("meta.tag") = Nil);
+			Check("an array is kept as JSON text", t->Get(2)->Get("tags") <> Nil);
+			Check("JSON Lines queries", t->Query("select id from query_jsonl_tmp where ok = true")->Size() = 1);
+		};
+
+		hinted := JsonLinesSource->New(path)->Read(ScanHint->New(["id"], 1));
+		Check("a hint picks columns and caps rows", hinted <> Nil & hinted->Size() = 1 & hinted->GetColumnCount() = 2);
+
+		FileWriter->WriteFile(path, "{\"a\": 1}\n[1, 2]\n");
+		bad := JsonLinesSource->New(path);
+		Check("a line that is not an object is an error naming the line", bad->Read() = Nil & bad->GetError()->Has('2'));
+		FileWriter->WriteFile(path, "{\"a\": 1}\n{\"a\": \n");
+		broken := JsonLinesSource->New(path);
+		Check("a truncated line is an error", broken->Read() = Nil & broken->GetError() <> Nil);
+
+		memory := JsonLinesSource->FromText("mem", "{\"x\": 1}\n{\"x\": 2}");
+		Check("JSON Lines from text in memory", memory->Read()->Sum("x") = 3.0);
+		File->Delete(path);
+	}
+}
