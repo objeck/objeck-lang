@@ -1191,6 +1191,16 @@ jobs:
         g++ -O2 -std=c++17 -Wall -Wextra -o /tmp/ptr_set_test core/vm/arch/ptr_set_test.cpp
         /tmp/ptr_set_test
 
+    # The old generation's free-block cache hands out the head of a size class's
+    # list without checking it, so the class rounding rules are its correctness:
+    # a request maps to a class at least its size, a freed block to one at most
+    # its size. A slip in either hands an object a block too small for it.
+    - name: Free-block size class unit tests
+      if: runner.os != 'Windows'
+      run: |
+        g++ -O2 -std=c++17 -Wall -Wextra -o /tmp/size_class_test core/vm/arch/size_class_test.cpp
+        /tmp/size_class_test
+
     # Pure-logic unit test for the phi3 token sampler (no ONNX Runtime/model).
     - name: Run ONNX sampling unit test (POSIX)
       if: matrix.platform == 'linux-x64'
