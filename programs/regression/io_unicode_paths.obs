@@ -1,0 +1,144 @@
+#~
+File and directory names with non-ASCII characters work on every platform. Objeck strings are
+UTF-16 on Windows, but the VM narrowed each name to UTF-8 bytes and handed them to the ANSI
+file APIs (fopen, _stat, CreateDirectoryA, FindFirstFileA, ...), which read the bytes in the
+active code page: 'données.txt' was created on disk as 'donnÃ©es.txt', and a file another
+program named 'données.txt' could not be found. The narrow calls agree with each other, so a
+program that only ever used them round-tripped its own garbled names; the checks that catch it
+are the ones that cross to the calls that already took UTF-16 (Rename, CreateNew) and
+GetFullName, which widened the bytes one by one. Latin accents, CJK and characters outside the
+Basic Multilingual Plane (surrogate pairs in UTF-16) are all exercised.
+~#
+use System.IO.Filesystem;
+
+class IoUnicodePaths {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Listed(dir : String, name : String) ~ Bool {
+		names := Directory->List(dir);
+		if(names = Nil) {
+			return false;
+		};
+
+		each(i : names) {
+			if(names[i]->Equals(name)) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		dir := "io_unicode_données_日本_🙂";
+		name_a := "café_ñandú.txt";
+		name_b := "コピー_😀.csv";
+		name_c := "renamed_Ωμέγα_𝄞.txt";
+		name_d := "nouveau_ü.lock";
+		path_a := "{$dir}/{$name_a}";
+		path_b := "{$dir}/{$name_b}";
+		path_c := "{$dir}/{$name_c}";
+		path_d := "{$dir}/{$name_d}";
+		content := "hello unicode paths";
+
+		# a failed earlier run may have left the directory behind
+		if(Directory->Exists(dir)) {
+			Directory->Delete(dir);
+		};
+
+		# directory create and exists
+		Check("Directory->Create", Directory->Create(dir));
+		Check("Directory->Exists", Directory->Exists(dir));
+
+		# write with the stream class, then the helpers
+		writer := FileWriter->New(path_a);
+		Check("FileWriter opens the file", writer->IsOpen());
+		writer->WriteString(content);
+		writer->Close();
+		Check("File->Exists after write", File->Exists(path_a));
+		Check("File->Size is the byte count", File->Size(path_a) = content->Size());
+		Check("File->IsReadWrite", File->IsReadWrite(path_a));
+
+		# append
+		appender := FileWriter->New(path_a, true);
+		Check("FileWriter opens the file to append", appender->IsOpen());
+		appender->WriteString("!");
+		appender->Close();
+		Check("File->Size after the append", File->Size(path_a) = content->Size() + 1);
+
+		# read back with the stream class and the helper
+		reader := FileReader->New(path_a);
+		Check("FileReader opens the file", reader->IsOpen());
+		line := reader->ReadLine();
+		reader->Close();
+		Check("FileReader reads the content", line <> Nil & line->Equals("{$content}!"));
+		read := FileReader->ReadFile(path_a);
+		Check("FileReader->ReadFile reads the content", read <> Nil & read->Equals("{$content}!"));
+
+		if(File->Exists(path_a)) {
+			Check("File->ModifiedTime", File->ModifiedTime(path_a) <> Nil);
+		};
+
+		# the full name keeps the characters
+		full := File->GetFullName(path_a);
+		Check("File->GetFullName ends with the name", full <> Nil & full->EndsWith(name_a));
+
+		# listing returns the names decoded correctly
+		Check("Directory->List finds the written file", Listed(dir, name_a));
+
+		# copy
+		Check("File->Copy", File->Copy(path_a, path_b));
+		Check("the copy exists", File->Exists(path_b));
+		copied := FileReader->ReadFile(path_b);
+		Check("the copy holds the content", copied <> Nil & copied->Equals("{$content}!"));
+		Check("Directory->List finds the copy", Listed(dir, name_b));
+
+		# rename
+		Check("File->Rename", File->Rename(path_b, path_c));
+		Check("the renamed file exists", File->Exists(path_c));
+		Check("the old name is gone", <>File->Exists(path_b));
+		Check("Directory->List finds the renamed file", Listed(dir, name_c));
+		Check("Directory->List drops the old name", <>Listed(dir, name_b));
+
+		# create-new
+		Check("File->CreateNew", File->CreateNew(path_d));
+		Check("File->CreateNew refuses an existing name", <>File->CreateNew(path_d));
+
+		# the working directory round-trips through the name
+		start := Directory->GetWorking();
+		if(Directory->SetWorking(dir)) {
+			here := Directory->GetWorking();
+			Check("Directory->GetWorking returns the name", here <> Nil & here->EndsWith(dir));
+			Check("a relative name resolves inside it", File->Exists(name_a));
+			Check("Directory->SetWorking back", Directory->SetWorking(start));
+		}
+		else {
+			Check("Directory->SetWorking", false);
+		};
+
+		# delete
+		Check("File->Delete", File->Delete(path_a));
+		Check("the deleted file is gone", <>File->Exists(path_a));
+		Check("File->Delete of the renamed file", File->Delete(path_c));
+		Check("File->Delete of the created file", File->Delete(path_d));
+		Check("Directory->Delete", Directory->Delete(dir) > 0);
+		Check("the directory is gone", <>Directory->Exists(dir));
+
+		if(@failures = 0) {
+			"PASS: non-ASCII file and directory names"->PrintLine();
+		}
+		else {
+			"FAIL: non-ASCII file and directory names ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

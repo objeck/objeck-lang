@@ -45,6 +45,7 @@
 #include <accctrl.h>
 #include <aclapi.h>
 #include <versionhelpers.h>
+#include <filesystem>
 
 #ifndef _MSYS2
 #pragma comment(lib, "Ws2_32.lib")
@@ -57,182 +58,181 @@ typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
 typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
 /****************************
+ * File-system names
+ *
+ * Objeck strings are UTF-16 here, as Windows file-system names are, so a name
+ * goes to the W APIs unchanged. Narrowing it to UTF-8 bytes for the ANSI APIs
+ * (fopen, _stat, FindFirstFileA, ...) had them read the bytes in the active code
+ * page, so any non-ASCII name -- 'données.txt', a user folder with an accent --
+ * missed its file or hit another one. posix.h maps the same two calls to UTF-8.
+ ****************************/
+typedef std::wstring NativePath;
+
+inline NativePath ToNativePath(const wchar_t* name) {
+  return name;
+}
+
+inline std::wstring FromNativePath(const NativePath& name) {
+  return name;
+}
+
+/****************************
  * File support class
  ****************************/
 class File {
-  static bool GetAccountGroupOwner(const char* name, std::wstring &account, std::wstring &group) {
-    std::wstring value;
-
+  static bool GetAccountGroupOwner(const wchar_t* name, std::wstring &account, std::wstring &group) {
     PSID sid_owner = nullptr;
     PSECURITY_DESCRIPTOR security = nullptr;
 
-    HANDLE handle = CreateFile(name, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    HANDLE handle = CreateFileW(name, GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     if(handle == INVALID_HANDLE_VALUE) {
-      CloseHandle(handle);
       return false;
     }
 
-    DWORD flag = GetSecurityInfo(handle, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION,
-               &sid_owner, nullptr, nullptr, nullptr, &security);
-    if (flag != ERROR_SUCCESS) {
-      CloseHandle(handle);
-      return false;
-    }
-
-    DWORD owner_size = 1;
-    LPTSTR account_name = nullptr;
-
-    DWORD domain_size = 1;
-    LPTSTR domain_name = nullptr;
-
-    SID_NAME_USE use;
-
-    LookupAccountSid(nullptr, sid_owner, account_name, (LPDWORD)&owner_size,
-                     domain_name, (LPDWORD)&domain_size, &use);
-
-    account_name = new char[owner_size];
-    domain_name = new char[domain_size];
-
-    flag = LookupAccountSid(nullptr, sid_owner, account_name, (LPDWORD)&owner_size,
-          domain_name, (LPDWORD)&domain_size, &use);
-    if (flag == ERROR_SUCCESS) {
-      // clean up
-      CloseHandle(handle);
-      
-      delete[] account_name;
-      account_name = nullptr;
-
-      delete[] domain_name;
-      domain_name = nullptr;
-
-      return false;
-    }
-
-    account = BytesToUnicode(account_name);
-    group = BytesToUnicode(domain_name);
-
-    // clean up
+    const DWORD flag = GetSecurityInfo(handle, SE_FILE_OBJECT, OWNER_SECURITY_INFORMATION,
+                                       &sid_owner, nullptr, nullptr, nullptr, &security);
     CloseHandle(handle);
+    if(flag != ERROR_SUCCESS) {
+      return false;
+    }
 
-    delete[] account_name;
-    account_name = nullptr;
+    // sizes first, then the names
+    DWORD owner_size = 0;
+    DWORD domain_size = 0;
+    SID_NAME_USE use;
+    LookupAccountSidW(nullptr, sid_owner, nullptr, &owner_size, nullptr, &domain_size, &use);
 
-    delete[] domain_name;
-    domain_name = nullptr;
+    std::vector<wchar_t> account_name(owner_size + 1, L'\0');
+    std::vector<wchar_t> domain_name(domain_size + 1, L'\0');
+    const BOOL found = LookupAccountSidW(nullptr, sid_owner, account_name.data(), &owner_size,
+                                         domain_name.data(), &domain_size, &use);
+    LocalFree(security);
+    if(!found) {
+      return false;
+    }
+
+    account = account_name.data();
+    group = domain_name.data();
 
     return true;
   }
 
  public:
-  static std::string TempName() {
+  static std::wstring TempName() {
     // Create the file, as mkstemp does on POSIX: File->GetTempName() used to
     // name a file here and create one there (#1180). CREATE_NEW also closes
     // the window in which another process could take the name.
-    char buffer[FILENAME_MAX + 1];
+    wchar_t buffer[MAX_PATH + 1];
     for(int attempt = 0; attempt < 8; ++attempt) {
-      if(tmpnam_s(buffer, FILENAME_MAX)) {
-        return "";
+      if(_wtmpnam_s(buffer, MAX_PATH)) {
+        return L"";
       }
 
-      HANDLE handle = CreateFileA(buffer, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+      HANDLE handle = CreateFileW(buffer, GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
       if(handle != INVALID_HANDLE_VALUE) {
         CloseHandle(handle);
-        return std::string(buffer);
+        return std::wstring(buffer);
       }
     }
 
-    return "";
+    return L"";
   }
 
-  static std::string FullPathName(const std::string name) {
-    char buffer[BUFSIZE] = "";
-    char* part = nullptr;
-
-    if(!GetFullPathName(name.c_str(), BUFSIZE, buffer, &part)) {
-      return "";
+  static std::wstring FullPathName(const std::wstring& name) {
+    const DWORD size = GetFullPathNameW(name.c_str(), 0, nullptr, nullptr);
+    if(!size) {
+      return L"";
     }
 
-    return buffer;
+    std::vector<wchar_t> buffer(size + 1, L'\0');
+    const DWORD length = GetFullPathNameW(name.c_str(), (DWORD)buffer.size(), buffer.data(), nullptr);
+    if(!length || length >= buffer.size()) {
+      return L"";
+    }
+
+    return std::wstring(buffer.data(), length);
   }
 
-  static long FileSize(const char* name) {
-    struct _stat buf;
-    if(_stat(name, &buf)) {
+  static int64_t FileSize(const wchar_t* name) {
+    struct _stat64 buf;
+    if(_wstat64(name, &buf)) {
       return -1;
     }
 
     return buf.st_size;
   }
 
-  static time_t FileCreatedTime(const char* name) {
-    struct _stat buf;
-    if(_stat(name, &buf)) {
+  static time_t FileCreatedTime(const wchar_t* name) {
+    struct _stat64 buf;
+    if(_wstat64(name, &buf)) {
       return -1;
     }
 
     return buf.st_ctime;
   }
 
-  static time_t FileModifiedTime(const char* name) {
-    struct _stat buf;
-    if(_stat(name, &buf)) {
+  static time_t FileModifiedTime(const wchar_t* name) {
+    struct _stat64 buf;
+    if(_wstat64(name, &buf)) {
       return -1;
     }
 
     return buf.st_mtime;
   }
 
-  static time_t FileAccessedTime(const char* name) {
-    struct stat buf;
-    if(stat(name, &buf)) {
+  static time_t FileAccessedTime(const wchar_t* name) {
+    struct _stat64 buf;
+    if(_wstat64(name, &buf)) {
       return -1;
     }
 
     return buf.st_atime;
   }
 
-  static bool FileExists(const char* name) {
-    struct _stat buf;
-    if(_stat(name, &buf)) {
+  static bool FileExists(const wchar_t* name) {
+    struct _stat64 buf;
+    if(_wstat64(name, &buf)) {
       return false;
     }
 
     return _S_IFREG & buf.st_mode;
   }
-  
-  static bool FileReadOnly(const char* name) {
-    if(!_access(name, 4)) {
-      return true;
-    }
 
-    return false;
-  }
-  
-  static bool FileWriteOnly(const char* name) {
-    if (!_access(name, 2)) {
+  static bool FileReadOnly(const wchar_t* name) {
+    if(!_waccess(name, 4)) {
       return true;
     }
 
     return false;
   }
 
-  static bool FileReadWrite(const char* name) {
-    if (!_access(name, 6)) {
+  static bool FileWriteOnly(const wchar_t* name) {
+    if (!_waccess(name, 2)) {
       return true;
     }
 
     return false;
   }
 
-  static FILE* FileOpen(const char* name, const char* mode) {
+  static bool FileReadWrite(const wchar_t* name) {
+    if (!_waccess(name, 6)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  static FILE* FileOpen(const wchar_t* name, const char* mode) {
+    // the mode is ASCII ("rb", "w+b", ...)
+    const std::wstring wmode(mode, mode + strlen(mode));
     FILE* file;
 
 #ifdef _MINGW
-    file = fopen(name, mode);
+    file = _wfopen(name, wmode.c_str());
 #else
     // Shared, as files are on POSIX: fopen_s opens them unshared, so a file
     // open for writing could not be read by another handle (#1180)
-    file = _fsopen(name, mode, _SH_DENYNO);
+    file = _wfsopen(name, wmode.c_str(), _SH_DENYNO);
     if(!file) {
       return nullptr;
     }
@@ -241,60 +241,60 @@ class File {
     return file;
   }
 
-  static bool MakeDir(const char* name) {
-    if(CreateDirectory(name, nullptr) == 0) {
+  static bool MakeDir(const wchar_t* name) {
+    if(CreateDirectoryW(name, nullptr) == 0) {
       return false;
     }
 
     return true;
   }
 
-  static std::wstring FileOwner(const char* name, bool is_account) {
+  static std::wstring FileOwner(const wchar_t* name, bool is_account) {
     std::wstring account;  std::wstring group;
 
     if(GetAccountGroupOwner(name, account, group)) {
       if(is_account) {
         return account;
       }
-      
+
       return group;
     }
 
     return L"";
   }
 
-  static bool DirExists(const char* name) {
-    struct _stat buf;
-    if(_stat(name, &buf)) {
+  static bool DirExists(const wchar_t* name) {
+    struct _stat64 buf;
+    if(_wstat64(name, &buf)) {
       return false;
     }
 
     return _S_IFDIR & buf.st_mode;
   }
 
-  static std::vector<std::string> ListDir(const char* p) {
-    std::vector<std::string> files;
+  static std::vector<std::wstring> ListDir(const wchar_t* p) {
+    std::vector<std::wstring> files;
 
-    std::string path = p;
-    if(path.size() > 0 && path[path.size() - 1] == '\\') {
-      path += "*";
+    std::wstring path = p;
+    if(path.size() > 0 && path[path.size() - 1] == L'\\') {
+      path += L"*";
     }
     else {
-      path += "\\*";
+      path += L"\\*";
     }
 
-    WIN32_FIND_DATA file_data;
-    HANDLE find = FindFirstFile(path.c_str(), &file_data);
+    WIN32_FIND_DATAW file_data;
+    HANDLE find = FindFirstFileW(path.c_str(), &file_data);
     if(find == INVALID_HANDLE_VALUE) {
       return files;
     }
     else {
       files.push_back(file_data.cFileName);
 
-      BOOL b = FindNextFile(find, &file_data);
+      BOOL b = FindNextFileW(find, &file_data);
       while(b) {
         files.push_back(file_data.cFileName);
-        b = FindNextFile(find, &file_data);
+        b = FindNextFileW(find, &file_data);
       }
       FindClose(find);
     }
@@ -347,8 +347,8 @@ class Pipe {
   }
 
 public:
-  static bool Create(const char* name, HANDLE& pipe) {
-    pipe = CreateNamedPipe(name,
+  static bool Create(const wchar_t* name, HANDLE& pipe) {
+    pipe = CreateNamedPipeW(name,
                            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
                            PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
                            PIPE_UNLIMITED_INSTANCES,
@@ -393,9 +393,9 @@ public:
     return false;
   }
 
-  static bool Open(const char* name, HANDLE& pipe) {
+  static bool Open(const wchar_t* name, HANDLE& pipe) {
     while(true) {
-      pipe = CreateFile(
+      pipe = CreateFileW(
         name,
         GENERIC_READ | GENERIC_WRITE,
         0,
@@ -409,7 +409,7 @@ public:
       }
 
       // 15 second wait
-      if(GetLastError() != ERROR_PIPE_BUSY || !WaitNamedPipe(name, 15000)) {
+      if(GetLastError() != ERROR_PIPE_BUSY || !WaitNamedPipeW(name, 15000)) {
         CloseHandle(pipe);
         pipe = 0;
         return false;
@@ -1162,20 +1162,22 @@ class System {
    static std::vector<std::string> CommandOutput(const char* c, int &status) {
      std::vector<std::string> output;
 
-     // create temporary file
-     const std::string tmp_file_name = File::TempName();
+     // create temporary file; its name is UTF-16, as is the command once the
+     // caller's UTF-8 is decoded, so _wsystem sees both as written rather than
+     // read through the ANSI code page
+     const std::wstring tmp_file_name = File::TempName();
      FILE* file = File::FileOpen(tmp_file_name.c_str(), "wb");
      if(file) {
        fclose(file);
 
-       std::string str_cmd(c);
-       str_cmd += " > ";
+       std::wstring str_cmd = BytesToUnicode(c);
+       str_cmd += L" > ";
        str_cmd += tmp_file_name;
-       str_cmd += " 2>&1";
-       status = system(str_cmd.c_str());
+       str_cmd += L" 2>&1";
+       status = _wsystem(str_cmd.c_str());
 
        // read file output
-       std::ifstream file_out(tmp_file_name.c_str());
+       std::ifstream file_out{std::filesystem::path(tmp_file_name)};
        if(file_out.is_open()) {
          std::string line_out;
          while(getline(file_out, line_out)) {
@@ -1184,7 +1186,7 @@ class System {
          file_out.close();
 
          // delete file
-         remove(tmp_file_name.c_str());
+         _wremove(tmp_file_name.c_str());
        }
      }
      

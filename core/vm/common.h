@@ -2705,7 +2705,7 @@ class TrapProcessor {
   // 
   // platform string
   //
-  static inline void ProcessFileOwner(const char* name, bool is_account,
+  static inline void ProcessFileOwner(const wchar_t* name, bool is_account,
                                       StackProgram* program, size_t* &op_stack, size_t* &stack_pos);
   
   // 

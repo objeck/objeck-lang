@@ -354,16 +354,17 @@ void StackProgram::InitializeProprieties()
 #endif
 #else
 #ifdef _WIN32  
-  char install_path[MAX_PATH];
-  DWORD status = GetModuleFileNameA(nullptr, install_path, sizeof(install_path));
-  if(status > 0) {
-    std::string exe_path(install_path);
-    size_t install_index = exe_path.find_last_of('\\');
-    if(install_index != std::string::npos) {
+  // the W API: the A one answers in the ANSI code page, which was then decoded as UTF-8
+  wchar_t install_path[MAX_PATH];
+  DWORD status = GetModuleFileNameW(nullptr, install_path, MAX_PATH);
+  if(status > 0 && status < MAX_PATH) {
+    std::wstring exe_path(install_path);
+    size_t install_index = exe_path.find_last_of(L'\\');
+    if(install_index != std::wstring::npos) {
       exe_path = exe_path.substr(0, install_index);
-      install_index = exe_path.find_last_of('\\');
-      if(install_index != std::string::npos) {
-        std::wstring install_dir = BytesToUnicode(exe_path.substr(0, install_index));
+      install_index = exe_path.find_last_of(L'\\');
+      if(install_index != std::wstring::npos) {
+        std::wstring install_dir = exe_path.substr(0, install_index);
         properties_map.insert(std::pair<std::wstring, std::wstring>(L"install_dir", install_dir));
       }
     }
@@ -410,9 +411,9 @@ void StackProgram::InitializeProprieties()
     properties_map.insert(std::pair<std::wstring, std::wstring>(L"user_dir", user_dir_value));
   }
 
-  char tmp_dir[MAX_PATH];
-  if(GetTempPath(MAX_PATH, tmp_dir)) {
-    std::wstring tmp_dir_value = BytesToUnicode(tmp_dir);
+  wchar_t tmp_dir[MAX_PATH + 1];
+  if(GetTempPathW(MAX_PATH + 1, tmp_dir)) {
+    std::wstring tmp_dir_value(tmp_dir);
     if(tmp_dir_value.back() == L'/' || tmp_dir_value.back() == L'\\') {
       tmp_dir_value.pop_back();
     }
@@ -2002,9 +2003,9 @@ void TrapProcessor::ProcessPlatform(StackProgram* program, size_t* &op_stack, si
 /********************************
  * Get file owner string
  ********************************/
-void TrapProcessor::ProcessFileOwner(const char* name, bool is_account,
+void TrapProcessor::ProcessFileOwner(const wchar_t* name, bool is_account,
                                      StackProgram* program, size_t* &op_stack, size_t* &stack_pos) {
-  const std::wstring value_str = File::FileOwner(name, is_account);
+  const std::wstring value_str = File::FileOwner(ToNativePath(name).c_str(), is_account);
   if(value_str.size() > 0) {
     size_t* str_obj = CreateStringObject(value_str, program, op_stack, stack_pos);
     PushInt((size_t)str_obj, op_stack, stack_pos);
@@ -6464,10 +6465,10 @@ bool TrapProcessor::FileOpenRead(StackProgram* program, size_t* inst, size_t* &o
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "rb");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
+    std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     // look ahead one byte, as FileInString does after each line: an empty file
@@ -6491,10 +6492,10 @@ bool TrapProcessor::FileOpenAppend(StackProgram* program, size_t* inst, size_t* 
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "ab");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
+    std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = (size_t)file;
@@ -6509,10 +6510,10 @@ bool TrapProcessor::FileOpenWrite(StackProgram* program, size_t* inst, size_t* &
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "wb");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='" << BytesToUnicode(filename) << L"'; instance=" << instance << L"("
+    std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
 	       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file << L") #" << std::endl;
 #endif
     instance[0] = (size_t)file;
@@ -6527,10 +6528,10 @@ bool TrapProcessor::FileOpenReadWrite(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(array && instance) {
     array = (size_t*)array[0];
-    const std::string filename = UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath filename = ToNativePath((wchar_t*)(array + 3));
     FILE* file = File::FileOpen(filename.c_str(), "w+b");
 #ifdef _DEBUG
-    std::wcout << L"# file open: name='" << filename.c_str() << L"'; instance=" << instance << L"("
+    std::wcout << L"# file open: name='" << FromNativePath(filename) << L"'; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << file << L"(" << (size_t)file
       << L") #" << std::endl;
 #endif
@@ -7377,7 +7378,7 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
     const wchar_t* name = (wchar_t*)(((size_t*)array[0]) + 3);
 
 #ifdef _WIN32
-    const std::string filename = "\\\\.\\pipe\\" + UnicodeToBytes(name);
+    const std::wstring filename = std::wstring(L"\\\\.\\pipe\\") + name;
     HANDLE pipe;
 #else
     const std::string filename = "/tmp/" + UnicodeToBytes(name);
@@ -7404,7 +7405,7 @@ bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_st
     const wchar_t* name = (wchar_t*)(((size_t*)array[0]) + 3);
 
 #ifdef _WIN32
-    const std::string filename = "\\\\.\\pipe\\" + UnicodeToBytes(name);
+    const std::wstring filename = std::wstring(L"\\\\.\\pipe\\") + name;
     HANDLE pipe;
 #else
     const std::string filename = "/tmp/" + UnicodeToBytes(name);
@@ -9886,7 +9887,7 @@ bool TrapProcessor::FileCanWriteOnly(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     PushInt(File::FileWriteOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -9901,7 +9902,7 @@ bool TrapProcessor::FileCanReadOnly(StackProgram* program, size_t* inst, size_t*
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     PushInt(File::FileReadOnly(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -9916,8 +9917,7 @@ bool TrapProcessor::FileCanReadWrite(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::wstring wname((wchar_t*)(array + 3));
-    const std::string name =  UnicodeToBytes(wname);
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     PushInt(File::FileReadWrite(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -9932,7 +9932,7 @@ bool TrapProcessor::FileExists(StackProgram* program, size_t* inst, size_t* &op_
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     PushInt(File::FileExists(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -9947,7 +9947,7 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     PushInt(File::FileSize(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -9959,10 +9959,11 @@ bool TrapProcessor::FileSize(StackProgram* program, size_t* inst, size_t* &op_st
 
 bool TrapProcessor::FileTempName(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) 
 {
-  const std::string full_path = File::TempName();
+  // decoded, not widened byte by byte: a temp directory under a user folder with
+  // an accented name came back as mojibake
+  const std::wstring full_path = FromNativePath(File::TempName());
   if(full_path.size() > 0) {
-    const std::wstring wfull_path(full_path.begin(), full_path.end());
-    const size_t str_obj = (size_t)CreateStringObject(wfull_path, program, op_stack, stack_pos);
+    const size_t str_obj = (size_t)CreateStringObject(full_path, program, op_stack, stack_pos);
     PushInt(str_obj, op_stack, stack_pos);
   }
   else {
@@ -9977,11 +9978,10 @@ bool TrapProcessor::FileFullPath(StackProgram* program, size_t* inst, size_t* &o
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
-    std::string full_path = File::FullPathName(name);
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
+    const std::wstring full_path = FromNativePath(File::FullPathName(name));
     if(full_path.size() > 0) {
-      const std::wstring wfull_path(full_path.begin(), full_path.end());
-      const size_t str_obj = (size_t)CreateStringObject(wfull_path, program, op_stack, stack_pos);
+      const size_t str_obj = (size_t)CreateStringObject(full_path, program, op_stack, stack_pos);
       PushInt(str_obj, op_stack, stack_pos);
     }
     else {
@@ -9997,8 +9997,7 @@ bool TrapProcessor::FileAccountOwner(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
-    ProcessFileOwner(name.c_str(), true, program, op_stack, stack_pos);
+    ProcessFileOwner((wchar_t*)(array + 3), true, program, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -10012,8 +10011,7 @@ bool TrapProcessor::FileGroupOwner(StackProgram* program, size_t* inst, size_t* 
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
-    ProcessFileOwner(name.c_str(), false, program, op_stack, stack_pos);
+    ProcessFileOwner((wchar_t*)(array + 3), false, program, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -10027,7 +10025,7 @@ bool TrapProcessor::FileDelete(StackProgram* program, size_t* inst, size_t* &op_
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     // the error_code overload: the throwing one aborted the VM ("internal error:
     // remove: The process cannot access the file") for an open file on Windows,
     // where Delete is documented to return false (#1180)
@@ -10059,8 +10057,8 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
                                    MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH);
   PushInt(renamed ? 1 : 0, op_stack, stack_pos);
 #else
-  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
-  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
+  const NativePath to_name = ToNativePath((wchar_t*)(to + 3));
+  const NativePath from_name = ToNativePath((wchar_t*)(from + 3));
 
   if(rename(from_name.c_str(), to_name.c_str()) != 0) {
     PushInt(0, op_stack, stack_pos);
@@ -10161,10 +10159,10 @@ bool TrapProcessor::FileCopy(StackProgram* program, size_t* inst, size_t*& op_st
   }
 
   to = (size_t*)to[0];
-  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
+  const NativePath to_name = ToNativePath((wchar_t*)(to + 3));
 
   from = (size_t*)from[0];
-  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
+  const NativePath from_name = ToNativePath((wchar_t*)(from + 3));
 
   std::filesystem::copy_options options = std::filesystem::copy_options::none;
   if(overwrite) {
@@ -10195,10 +10193,10 @@ bool TrapProcessor::DirCopy(StackProgram* program, size_t* inst, size_t*& op_sta
   }
 
   to = (size_t*)to[0];
-  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
+  const NativePath to_name = ToNativePath((wchar_t*)(to + 3));
 
   from = (size_t*)from[0];
-  const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
+  const NativePath from_name = ToNativePath((wchar_t*)(from + 3));
 
   if(File::DirExists(from_name.c_str())) {
     std::filesystem::copy_options copy_options = std::filesystem::copy_options::overwrite_existing;
@@ -10228,7 +10226,7 @@ bool TrapProcessor::FileCreateTime(StackProgram* program, size_t* inst, size_t* 
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileCreatedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -10260,7 +10258,7 @@ bool TrapProcessor::FileModifiedTime(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileModifiedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -10292,7 +10290,7 @@ bool TrapProcessor::FileAccessedTime(StackProgram* program, size_t* inst, size_t
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     time_t raw_time = File::FileAccessedTime(name.c_str());
     if(raw_time > 0) {
       struct tm* curr_time;
@@ -10337,7 +10335,8 @@ bool TrapProcessor::DirGetCur(StackProgram* program, size_t* inst, size_t*& op_s
     PushInt(0, op_stack, stack_pos);
   }
   else {
-    const std::wstring dir_cur_str = BytesToUnicode(dir_cur_path.string());
+    // native(), not string(): on Windows string() narrows to the ANSI code page
+    const std::wstring dir_cur_str = FromNativePath(dir_cur_path.native());
     const size_t* dir_cur_obj = CreateStringObject(dir_cur_str, program, op_stack, stack_pos);
     PushInt((size_t)dir_cur_obj, op_stack, stack_pos);
   }
@@ -10348,11 +10347,11 @@ bool TrapProcessor::DirGetCur(StackProgram* program, size_t* inst, size_t*& op_s
 bool TrapProcessor::DirSetCur(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  array = (size_t*)array[0];
   if(array) {
-    const std::string to_dir_str = UnicodeToBytes((wchar_t*)(array + 3));
+    array = (size_t*)array[0];
+    const NativePath to_dir_str = ToNativePath((wchar_t*)(array + 3));
 #ifdef _WIN32
-    const int status = _chdir(to_dir_str.c_str());
+    const int status = _wchdir(to_dir_str.c_str());
 #else
     const int status = chdir(to_dir_str.c_str());
 #endif
@@ -10375,7 +10374,7 @@ bool TrapProcessor::DirCreate([[maybe_unused]] StackProgram* program, [[maybe_un
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     PushInt(File::MakeDir(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -10390,7 +10389,7 @@ bool TrapProcessor::DirExists([[maybe_unused]] StackProgram* program, [[maybe_un
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
     PushInt(File::DirExists(name.c_str()), op_stack, stack_pos);
   }
   else {
@@ -10403,10 +10402,10 @@ bool TrapProcessor::DirExists([[maybe_unused]] StackProgram* program, [[maybe_un
 bool TrapProcessor::DirList(StackProgram* program, [[maybe_unused]] size_t* inst, size_t* &op_stack, size_t* &stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  array = (size_t*)array[0];
   if(array) {
-    const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
-    std::vector<std::string> files = File::ListDir(name.c_str());
+    array = (size_t*)array[0];
+    const NativePath name = ToNativePath((wchar_t*)(array + 3));
+    const std::vector<NativePath> files = File::ListDir(name.c_str());
 
     // create 'System.String' object array
     const long str_obj_array_size = (long)files.size();
@@ -10420,7 +10419,7 @@ bool TrapProcessor::DirList(StackProgram* program, [[maybe_unused]] size_t* inst
 
     // create and assign 'System.String' instances to array
     for(size_t i = 0; i < files.size(); ++i) {
-      const std::wstring wfile = BytesToUnicode(files[i]);
+      const std::wstring wfile = FromNativePath(files[i]);
       str_obj_array_ptr[i] = (size_t)CreateStringObject(wfile, program, op_stack, stack_pos);
     }
 
@@ -10442,9 +10441,9 @@ bool TrapProcessor::DirList(StackProgram* program, [[maybe_unused]] size_t* inst
 bool TrapProcessor::DirDelete([[maybe_unused]] StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  array = (size_t*)array[0];
   if(array) {
-    const std::string dir_name = UnicodeToBytes((wchar_t*)(array + 3));
+    array = (size_t*)array[0];
+    const NativePath dir_name = ToNativePath((wchar_t*)(array + 3));
     std::error_code remove_error;
     const auto removed = std::filesystem::remove_all(dir_name, remove_error);
     const auto count = remove_error ? 0 : removed;
@@ -10464,10 +10463,10 @@ bool TrapProcessor::SymLinkCreate([[maybe_unused]] StackProgram* program, [[mayb
 
   if(target_obj && link_obj) {
     target_obj = (size_t*)target_obj[0];
-    const std::string target_str = UnicodeToBytes((wchar_t*)(target_obj + 3));
+    const NativePath target_str = ToNativePath((wchar_t*)(target_obj + 3));
 
     link_obj = (size_t*)link_obj[0];
-    const std::string link_str = UnicodeToBytes((wchar_t*)(link_obj + 3));
+    const NativePath link_str = ToNativePath((wchar_t*)(link_obj + 3));
 
     std::error_code error_code;
     std::error_code kind_error;
@@ -10500,10 +10499,10 @@ bool TrapProcessor::SymLinkCopy([[maybe_unused]] StackProgram* program, [[maybe_
 
   if(to && from) {
     to = (size_t*)to[0];
-    const std::string to_str = UnicodeToBytes((wchar_t*)(to + 3));
+    const NativePath to_str = ToNativePath((wchar_t*)(to + 3));
 
     from = (size_t*)from[0];
-    const std::string from_str = UnicodeToBytes((wchar_t*)(from + 3));
+    const NativePath from_str = ToNativePath((wchar_t*)(from + 3));
 
     std::error_code error_code;
     std::filesystem::copy_symlink(from_str, to_str, error_code);
@@ -10524,9 +10523,9 @@ bool TrapProcessor::SymLinkCopy([[maybe_unused]] StackProgram* program, [[maybe_
 bool TrapProcessor::SymLinkLoc(StackProgram* program, [[maybe_unused]] size_t* inst, size_t*& op_stack, size_t*& stack_pos, [[maybe_unused]] StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  array = (size_t*)array[0];
   if(array) {
-    const std::string link_str = UnicodeToBytes((wchar_t*)(array + 3));
+    array = (size_t*)array[0];
+    const NativePath link_str = ToNativePath((wchar_t*)(array + 3));
 
     std::error_code error_code;
     const auto target_path = std::filesystem::read_symlink(link_str, error_code);
@@ -10534,7 +10533,7 @@ bool TrapProcessor::SymLinkLoc(StackProgram* program, [[maybe_unused]] size_t* i
       PushInt(0, op_stack, stack_pos);
     }
     else {
-      PushInt((size_t)CreateStringObject(BytesToUnicode(target_path.string()), program, op_stack, stack_pos), op_stack, stack_pos);
+      PushInt((size_t)CreateStringObject(FromNativePath(target_path.native()), program, op_stack, stack_pos), op_stack, stack_pos);
     }
   }
   else {
@@ -10549,7 +10548,7 @@ bool TrapProcessor::SymLinkExists([[maybe_unused]] StackProgram* program, [[mayb
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
     array = (size_t*)array[0];
-    const std::string path_str = UnicodeToBytes((wchar_t*)(array + 3));
+    const NativePath path_str = ToNativePath((wchar_t*)(array + 3));
     std::error_code link_error;
     PushInt(std::filesystem::is_symlink(path_str, link_error), op_stack, stack_pos);
   }
@@ -10570,10 +10569,10 @@ bool TrapProcessor::HardLinkCreate([[maybe_unused]] StackProgram* program, [[may
 
   if(target_obj && link_obj) {
     target_obj = (size_t*)target_obj[0];
-    const std::string target_str = UnicodeToBytes((wchar_t*)(target_obj + 3));
+    const NativePath target_str = ToNativePath((wchar_t*)(target_obj + 3));
 
     link_obj = (size_t*)link_obj[0];
-    const std::string link_str = UnicodeToBytes((wchar_t*)(link_obj + 3));
+    const NativePath link_str = ToNativePath((wchar_t*)(link_obj + 3));
 
     std::error_code error_code;
     std::filesystem::create_hard_link(link_str, target_str, error_code);
