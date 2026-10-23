@@ -1399,6 +1399,7 @@ results->ToString()->PrintLine();
 		@layout : Int;
 		@plans : Map<String, Plan>;
 		@error : String;
+		@store : TableStore;
 
 		#~
 		Constructor. Column types are taken from the first value stored in each.
@@ -1496,6 +1497,10 @@ results->ToString()->PrintLine();
 			@columns := columns;
 			@column_names := names;
 			@version += 1;
+
+			if(@store <> Nil & <>@store->LogAddColumn(name, type)) {
+				@error := @store->GetError();
+			};
 
 			return true;
 		}
@@ -1784,6 +1789,21 @@ results->ToString()->PrintLine();
 		@return true if saved, false on error (see GetError)
 		~#
 		method : public : Save(path : String, compression : Compression) ~ Bool {
+			# a durable table's own file: saving it without emptying the log would leave the
+			# log naming an older save, and the changes after this one would be skipped
+			if(@store <> Nil & path <> Nil & path->Equals(@store->GetPath())) {
+				if(<>@store->Checkpoint(compression)) {
+					@error := @store->GetError();
+					return false;
+				};
+				return true;
+			};
+
+			return WriteFile(path, compression);
+		}
+
+		# the save itself, for Save and a store's Checkpoint
+		method : public : WriteFile(path : String, compression : Compression) ~ Bool {
 			@error := Nil;
 			holder := StringHolder->New();
 			bytes := Otab->Write(@self, compression, holder);
@@ -1864,6 +1884,10 @@ results->ToString()->PrintLine();
 		~#
 		method : public : Append(path : String, compression : Compression) ~ Bool {
 			@error := Nil;
+			if(@store <> Nil & path <> Nil & path->Equals(@store->GetPath())) {
+				@error := "'{$path}' is this table's own file; its changes are already recorded (use Checkpoint)";
+				return false;
+			};
 			if(path = Nil | <>File->Exists(path)) {
 				return Save(path, compression);
 			};
@@ -2553,8 +2577,15 @@ results->ToString()->PrintLine();
 			};
 
 			holder := StringHolder->New();
+			if(@store <> Nil) {
+				@store->Begin();
+			};
 			changed := plan->Execute(@self, Compare->New[0], holder);
 			@error := holder->Get();
+			if(@store <> Nil & <>@store->End()) {
+				@error := @store->GetError();
+				return -1;
+			};
 			return changed;
 		}
 
@@ -2564,6 +2595,97 @@ results->ToString()->PrintLine();
 		~#
 		method : public : GetError() ~ String {
 			return @error;
+		}
+
+		# Sets one cell, recording it when the table is durable. Row->Set and UPDATE come
+		# here. A durable table refuses a value its change log cannot hold (an OBJECT cell's
+		# value must be an Int, Float, String, Date or Bool), rather than keep it only in memory.
+		method : public : SetCell(row : Int, index : Int, value : Compare) ~ Bool {
+			column := GetColumn(index);
+			if(column = Nil | index = 0 | row < 0 | row >= @size) {
+				return false;
+			};
+
+			if(<>IsLive(row)) {
+				return false;
+			};
+
+			if(@store <> Nil & value <> Nil) {
+				if(<>(value->TypeOf(IntRef) | value->TypeOf(FloatRef) | value->TypeOf(String) |
+						value->TypeOf(Date) | value->TypeOf(BoolRef))) {
+					@error := "a durable table records Int, Float, String, Date and Bool values; '{$(column->GetName())}' was given another kind";
+					return false;
+				};
+			};
+
+			if(<>column->Set(row, value)) {
+				return false;
+			};
+
+			if(@store <> Nil) {
+				if(<>@store->LogSet(@columns[0]->GetInt(row), index, value)) {
+					@error := @store->GetError();
+				};
+			};
+			return true;
+		}
+
+		# set by TableStore while it records this table's changes
+		method : public : SetStore(store : TableStore) ~ Nil {
+			@store := store;
+		}
+
+		#~
+		Whether the table records its changes to disk (it was opened with Table->Open or TableStore)
+		@return true if durable
+		~#
+		method : public : IsDurable() ~ Bool {
+			return @store <> Nil;
+		}
+
+		#~
+		Folds a durable table's change log into a new save and empties it
+		@return true if saved, false if the table is not durable or on error (see GetError)
+		~#
+		method : public : Checkpoint() ~ Bool {
+			if(@store = Nil) {
+				@error := "the table is not durable; open it with Table->Open or TableStore";
+				return false;
+			};
+			if(<>@store->Checkpoint()) {
+				@error := @store->GetError();
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		Stops recording a durable table's changes and releases its lock. Changes since the last
+		checkpoint stay in the log for the next open.
+		~#
+		method : public : Close() ~ Nil {
+			if(@store <> Nil) {
+				@store->Close();
+			};
+		}
+
+		#~
+		Opens a table file for writing (see TableStore): takes its lock, loads it and replays
+		its change log. Every change is then recorded as it happens.
+		@param path .otab file, created earlier with Save
+		@return table, Nil if it cannot be opened (TableStore->New(path)->GetError says why)
+		```
+		runs := Table->Open("runs.otab");
+		if(runs <> Nil) {
+		  runs->Execute("delete from runs where score < 0.5");
+		  runs->Checkpoint();
+		  runs->Close();
+		};
+		```
+		~#
+		function : Open(path : String) ~ Table {
+			store := TableStore->New(path);
+			return store->GetTable();
 		}
 
 		#~
@@ -2590,10 +2712,15 @@ results->ToString()->PrintLine();
 			};
 
 			row := @size;
+			key := @next_pk;
 			@next_pk += 1;
 			@size += 1;
 			@count += 1;
 			@version += 1;
+
+			if(@store <> Nil & <>@store->LogInsert(key)) {
+				@error := @store->GetError();
+			};
 
 			return Row->New(@self, row);
 		}
@@ -2622,6 +2749,10 @@ results->ToString()->PrintLine();
 			@deleted[row >> 6] := @deleted[row >> 6] or (1 << (row and 63));
 			@count -= 1;
 			@version += 1;
+
+			if(@store <> Nil & <>@store->LogDelete(pk)) {
+				@error := @store->GetError();
+			};
 
 			return true;
 		}
@@ -3308,13 +3439,12 @@ results->ToString()->PrintLine();
 		@return true if successful, false otherwise
 		~#
 		method : public : Set(index : Int, value : Compare) ~ Bool {
-			column := @table->GetColumn(index);
 			row := Slot();
-			if(column = Nil | index = 0 | row < 0) {
+			if(index = 0 | row < 0) {
 				return false;
 			};
 
-			return column->Set(row, value);
+			return @table->SetCell(row, index, value);
 		}
 
 		#~
@@ -6092,6 +6222,582 @@ results := statement->Execute();
 		}
 	}
 
+	# A durable table's change log, 'path.log' beside its .otab file (docs/OTAB_FORMAT.md,
+	# "The change log"). It begins with a header naming the save it follows -- that file's
+	# footer CRC32 and size -- so a log left behind by a checkpoint that saved but did not get
+	# to empty the log is recognized as already saved, not replayed twice. Each statement is
+	# one record: its length, the length again with every bit inverted, a CRC32 of the payload,
+	# and the payload, the statement's changes in order. A crash mid-write can only cut the file
+	# short, so it leaves a last record that ends early, which opening drops; a statement is
+	# never half replayed. Two lengths that disagree are damage, not a crash, and are refused:
+	# with one length, a damaged one past the end would read as a torn tail and silently drop
+	# every record after it.
+	class : private : OtabLog {
+		@path : String;
+		@writer : FileWriter;
+		@ops : OtabWriter;
+		@op_count : Int;
+		@depth : Int;
+		@error : String;
+
+		function : Version() ~ Int { return 1; }
+		function : HeaderSize() ~ Int { return 28; }
+		function : InsertOp() ~ Int { return 1; }
+		function : SetOp() ~ Int { return 2; }
+		function : DeleteOp() ~ Int { return 3; }
+		function : AddColumnOp() ~ Int { return 4; }
+
+		New(path : String) {
+			@path := path;
+			@ops := OtabWriter->New();
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		function : Header(base_crc : Int, base_size : Int) ~ Byte[] {
+			out := OtabWriter->New();
+			out->PutBytes("OLOG"->ToByteArray());
+			out->PutInt(Version());
+			out->PutInt(base_crc);
+			out->PutInt(base_size);
+			return out->ToByteArray();
+		}
+
+		# a fresh, empty log for the save named by base_crc and base_size, written to a
+		# temporary name and renamed into place
+		function : Create(path : String, base_crc : Int, base_size : Int, error : StringHolder) ~ Bool {
+			return Otab->Commit(path, Header(base_crc, base_size), error);
+		}
+
+		method : public : Start() ~ Bool {
+			@writer := FileWriter->New(@path, true);
+			if(<>@writer->IsOpen()) {
+				@error := "cannot write the change log '{$@path}'";
+				return false;
+			};
+			return true;
+		}
+
+		method : public : Stop() ~ Nil {
+			if(@writer <> Nil) {
+				@writer->Close();
+				@writer := Nil;
+			};
+		}
+
+		# a statement: changes between Begin and the matching End are one record
+		method : public : Begin() ~ Nil {
+			@depth += 1;
+		}
+
+		method : public : End() ~ Bool {
+			@depth -= 1;
+			if(@depth > 0 | @op_count = 0) {
+				return true;
+			};
+			return Flush();
+		}
+
+		method : public : Insert(key : Int) ~ Bool {
+			@ops->PutInt(InsertOp());
+			@ops->PutInt(key);
+			return Added();
+		}
+
+		method : public : Set(key : Int, column : Int, value : Compare) ~ Bool {
+			@ops->PutInt(SetOp());
+			@ops->PutInt(key);
+			@ops->PutInt(column);
+			OtabBlock->WriteValue(@ops, value);
+			return Added();
+		}
+
+		method : public : Delete(key : Int) ~ Bool {
+			@ops->PutInt(DeleteOp());
+			@ops->PutInt(key);
+			return Added();
+		}
+
+		method : public : AddColumn(name : String, type : ColumnType) ~ Bool {
+			@ops->PutInt(AddColumnOp());
+			@ops->PutText(name);
+			@ops->PutInt(OtabCodes->FromType(type));
+			return Added();
+		}
+
+		# a change outside any statement is a statement of its own
+		method : Added() ~ Bool {
+			@op_count += 1;
+			if(@depth > 0) {
+				return true;
+			};
+			return Flush();
+		}
+
+		# one record, written and flushed to the operating system in one piece
+		method : Flush() ~ Bool {
+			payload := OtabWriter->New();
+			payload->PutInt(@op_count);
+			payload->PutBytes(@ops->ToByteArray());
+			bytes := payload->ToByteArray();
+			@ops := OtabWriter->New();
+			@op_count := 0;
+
+			framed := OtabWriter->New();
+			framed->PutInt(bytes->Size());
+			framed->PutInt(bytes->Size() xor -1);
+			framed->PutInt(bytes->CRC32());
+			framed->PutBytes(bytes);
+			image := framed->ToByteArray();
+			if(@writer = Nil | @writer->WriteBuffer(image) <> image->Size()) {
+				@error := "cannot write to the change log '{$@path}'";
+				return false;
+			};
+			@writer->Flush();
+			return true;
+		}
+
+		# Replays a log over a table loaded from the save named by base_crc and base_size.
+		# Returns the statements applied, 0 for no log or one for an earlier save (stale is
+		# set), or -1 with the error set. A torn last record is cut off the file.
+		function : Replay(path : String, table : Table, base_crc : Int, base_size : Int, stale : BoolRef, error : StringHolder) ~ Int {
+			stale->Set(false);
+			if(<>File->Exists(path)) {
+				stale->Set(true);
+				return 0;
+			};
+
+			bytes := FileReader->ReadBinaryFile(path);
+			if(bytes = Nil) {
+				error->Set("cannot read the change log '{$path}'");
+				return -1;
+			};
+
+			if(bytes->Size() < HeaderSize()) {
+				# a log cut off before its header was whole holds no statements
+				stale->Set(true);
+				return 0;
+			};
+
+			magic := Byte->New[4];
+			Byte->Copy(magic, 0, bytes, 0, 4);
+			if(<>magic->ToString()->Equals("OLOG")) {
+				error->Set("'{$path}' is not a change log");
+				return -1;
+			};
+
+			input := OtabReader->New(bytes);
+			input->Skip(4);
+			version := input->GetInt();
+			if(version < 1 | version > Version()) {
+				error->Set("a change log of format {$version}; this library reads format {$(Version())}");
+				return -1;
+			};
+
+			if(input->GetInt() <> base_crc | input->GetInt() <> base_size) {
+				# written for an earlier save, whose changes the current file already holds
+				stale->Set(true);
+				return 0;
+			};
+
+			applied := 0;
+			good := HeaderSize();
+			pos := good;
+			while(pos < bytes->Size()) {
+				if(bytes->Size() - pos < 24) {
+					return Truncate(path, bytes, good, applied, error);
+				};
+
+				head := OtabReader->New(bytes);
+				head->Skip(pos);
+				size := head->GetInt();
+				check := head->GetInt();
+				crc := head->GetInt();
+				if(size < 0 | check <> (size xor -1)) {
+					error->Set("the change log '{$path}' is damaged at byte {$pos}");
+					return -1;
+				};
+
+				if(size > bytes->Size() - pos - 24) {
+					return Truncate(path, bytes, good, applied, error);
+				};
+
+				payload := Byte->New[size];
+				Byte->Copy(payload, 0, bytes, pos + 24, size);
+				if(payload->CRC32() <> crc) {
+					if(pos + 24 + size = bytes->Size()) {
+						# the last record, torn by a crash while it was written
+						return Truncate(path, bytes, good, applied, error);
+					};
+					error->Set("the change log '{$path}' is damaged at byte {$pos}");
+					return -1;
+				};
+
+				if(<>Apply(payload, table, error)) {
+					error->Set("the change log '{$path}', record at byte {$pos}: {$(error->Get())}");
+					return -1;
+				};
+
+				applied += 1;
+				pos += 24 + size;
+				good := pos;
+			};
+
+			return applied;
+		}
+
+		# keeps the log's whole records and drops a torn tail
+		function : Truncate(path : String, bytes : Byte[], good : Int, applied : Int, error : StringHolder) ~ Int {
+			kept := Byte->New[good];
+			Byte->Copy(kept, 0, bytes, 0, good);
+			if(<>Otab->Commit(path, kept, error)) {
+				return -1;
+			};
+			return applied;
+		}
+
+		# one statement's changes, applied to a table with no log attached
+		function : Apply(payload : Byte[], table : Table, error : StringHolder) ~ Bool {
+			input := OtabReader->New(payload);
+			count := input->GetInt();
+			each(i : count) {
+				op := input->GetInt();
+				if(op = InsertOp()) {
+					key := input->GetInt();
+					row := table->Insert();
+					if(row->GetKey() <> key) {
+						error->Set("an insert logged as key {$key} replays as key {$(row->GetKey())}");
+						return false;
+					};
+				}
+				else if(op = SetOp()) {
+					key := input->GetInt();
+					column := input->GetInt();
+					value := OtabBlock->ReadValue(input);
+					row := table->FindRow(key);
+					if(row < 0 | column < 1 | column >= table->GetColumnCount()) {
+						error->Set("a change to key {$key}, column {$column}, which the table does not have");
+						return false;
+					};
+					if(<>table->GetColumn(column)->Set(row, value)) {
+						error->Set("a change to key {$key} that the column refuses");
+						return false;
+					};
+				}
+				else if(op = DeleteOp()) {
+					key := input->GetInt();
+					if(<>table->Delete(key)) {
+						error->Set("a delete of key {$key}, which the table does not have");
+						return false;
+					};
+				}
+				else if(op = AddColumnOp()) {
+					name := input->GetText();
+					known := BoolRef->New(false);
+					type := OtabCodes->ToType(input->GetInt(), known);
+					if(name = Nil | <>known->Get() | <>table->AddColumn(name, type)) {
+						error->Set("a column the table cannot add");
+						return false;
+					};
+				}
+				else {
+					error->Set("an unknown change, kind {$op}");
+					return false;
+				};
+
+				if(input->IsBad()) {
+					error->Set("a record that ends early");
+					return false;
+				};
+			};
+
+			if(<>input->AtEnd()) {
+				error->Set("a record with bytes left over");
+				return false;
+			};
+			return true;
+		}
+	}
+
+	#~
+	A table kept durable on disk: its .otab file, plus a change log beside it ('path.log')
+	that records every insert, change, delete and added column as it happens, one record per
+	statement, flushed before the statement returns. Opening loads the last save and replays
+	the log, so a crash loses at most the statement in progress. Checkpoint folds the log
+	into a new save and empties it.
+
+	One process writes at a time: opening takes a lock file ('path.lock') naming this process.
+	A second writer is refused with an error naming the holder, and a lock whose process is
+	gone (a crash) is cleared. Readers open the file with Table->Load and see the last save or
+	checkpoint. Create the file with Save first, then open it here.
+
+```
+store := TableStore->New("runs.otab");
+if(store->IsOpen()) {
+  runs := store->GetTable();
+  row := runs->Insert();
+  row->Set("score", FloatRef->New(0.93));
+  store->Checkpoint();
+  store->Close();
+}
+else {
+  store->GetError()->ErrorLine();
+};
+```
+	~#
+	class TableStore {
+		@path : String;
+		@log_path : String;
+		@lock_path : String;
+		@table : Table;
+		@log : OtabLog;
+		@open : Bool;
+		@error : String;
+		@replayed : Int;
+
+		#~
+		Opens a table file for writing: takes its lock, loads the last save and replays the
+		change log
+		@param path .otab file, created earlier with Save
+		~#
+		New(path : String) {
+			@path := path;
+			@log_path := "{$path}.log";
+			@lock_path := "{$path}.lock";
+			@open := Open();
+		}
+
+		#~
+		Whether the table is open for writing
+		@return true if open
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @open;
+		}
+
+		#~
+		Why opening, a checkpoint or a change failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the table. Its changes are recorded until Close.
+		@return table, Nil if not open
+		~#
+		method : public : GetTable() ~ Table {
+			return @open ? @table : Nil;
+		}
+
+		#~
+		Gets the number of statements replayed from the change log when the table was opened
+		@return statements replayed
+		~#
+		method : public : GetReplayed() ~ Int {
+			return @replayed;
+		}
+
+		method : Open() ~ Bool {
+			if(@path = Nil | <>File->Exists(@path)) {
+				@error := "no file '{$@path}'; create it with Save first";
+				return false;
+			};
+
+			if(<>Lock()) {
+				return false;
+			};
+
+			file := OtabFile->New(@path);
+			table := file->IsOpen() ? file->Read() : Nil;
+			if(table = Nil) {
+				@error := "'{$@path}': {$(file->GetError())}";
+				Unlock();
+				return false;
+			};
+
+			holder := StringHolder->New();
+			stale := BoolRef->New(false);
+			@replayed := OtabLog->Replay(@log_path, table, file->GetFooterCrc(), file->GetFileSize(), stale, holder);
+			if(@replayed < 0) {
+				@error := holder->Get();
+				Unlock();
+				return false;
+			};
+
+			if(stale->Get() & <>OtabLog->Create(@log_path, file->GetFooterCrc(), file->GetFileSize(), holder)) {
+				@error := holder->Get();
+				Unlock();
+				return false;
+			};
+
+			@log := OtabLog->New(@log_path);
+			if(<>@log->Start()) {
+				@error := @log->GetError();
+				Unlock();
+				return false;
+			};
+
+			@table := table;
+			@table->SetStore(@self);
+			return true;
+		}
+
+		#~
+		Folds the change log into a new save of the table and empties the log
+		@return true if saved, false on error (see GetError)
+		~#
+		method : public : Checkpoint() ~ Bool {
+			return Checkpoint(Compression->NONE);
+		}
+
+		#~
+		Folds the change log into a new save, compressing its blocks, and empties the log
+		@param compression NONE, FAST or SMALL
+		@return true if saved, false on error (see GetError)
+		~#
+		method : public : Checkpoint(compression : Compression) ~ Bool {
+			if(<>@open) {
+				@error := "the table is not open";
+				return false;
+			};
+
+			# the save first: a crash before the new log is in place leaves a log whose header
+			# names the old save, which opening then knows to skip
+			if(<>@table->WriteFile(@path, compression)) {
+				@error := @table->GetError();
+				return false;
+			};
+
+			file := OtabFile->New(@path);
+			if(<>file->IsOpen()) {
+				@error := "'{$@path}': {$(file->GetError())}";
+				return false;
+			};
+
+			@log->Stop();
+			holder := StringHolder->New();
+			if(<>OtabLog->Create(@log_path, file->GetFooterCrc(), file->GetFileSize(), holder)) {
+				@error := holder->Get();
+				return false;
+			};
+
+			@log := OtabLog->New(@log_path);
+			if(<>@log->Start()) {
+				@error := @log->GetError();
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Stops recording and releases the lock. The changes since the last checkpoint stay in
+		the log, for the next open to replay. The table stays usable in memory.
+		~#
+		method : public : Close() ~ Nil {
+			if(@open) {
+				@log->Stop();
+				@table->SetStore(Nil);
+				Unlock();
+				@open := false;
+			};
+		}
+
+		# the file this store keeps, for Table->Save and Append to recognize
+		method : public : GetPath() ~ String {
+			return @path;
+		}
+
+		# Changes, called by the table. A failure to write closes nothing but is reported:
+		# the change is in memory and not on disk.
+		method : public : Begin() ~ Nil {
+			@log->Begin();
+		}
+
+		method : public : End() ~ Bool {
+			return Logged(@log->End());
+		}
+
+		method : public : LogInsert(key : Int) ~ Bool {
+			return Logged(@log->Insert(key));
+		}
+
+		method : public : LogSet(key : Int, column : Int, value : Compare) ~ Bool {
+			return Logged(@log->Set(key, column, value));
+		}
+
+		method : public : LogDelete(key : Int) ~ Bool {
+			return Logged(@log->Delete(key));
+		}
+
+		method : public : LogAddColumn(name : String, type : ColumnType) ~ Bool {
+			return Logged(@log->AddColumn(name, type));
+		}
+
+		method : Logged(ok : Bool) ~ Bool {
+			if(<>ok) {
+				@error := @log->GetError();
+			};
+			return ok;
+		}
+
+		# The lock: created only if absent, holding this process's id. One left by a process
+		# that is gone is cleared. One just created and not yet written is waited for briefly.
+		method : Lock() ~ Bool {
+			pid := Runtime->GetProcessId();
+			each(attempt : 20) {
+				if(File->CreateNew(@lock_path)) {
+					if(<>FileWriter->WriteFile(@lock_path, "{$pid}")) {
+						File->Delete(@lock_path);
+						@error := "cannot write the lock '{$@lock_path}'";
+						return false;
+					};
+					return true;
+				};
+
+				text := FileReader->ReadFile(@lock_path);
+				holder := 0;
+				if(text <> Nil) {
+					text := text->Trim();
+					if(text->Size() > 0 & text->IsInt()) {
+						holder := text->ToInt();
+					};
+				};
+
+				if(holder > 0) {
+					if(holder = pid) {
+						@error := "'{$@path}' is already open for writing in this process";
+						return false;
+					};
+					if(Runtime->IsProcessAlive(holder)) {
+						@error := "'{$@path}' is open for writing by process {$holder}";
+						return false;
+					};
+					# its writer is gone: a crash left it
+					File->Delete(@lock_path);
+				}
+				else if(attempt >= 10) {
+					# empty for a second: a writer that crashed between creating and writing it
+					File->Delete(@lock_path);
+				}
+				else {
+					System.Concurrency.Thread->Sleep(100);
+				};
+			};
+
+			@error := "cannot take the lock '{$@lock_path}'";
+			return false;
+		}
+
+		method : Unlock() ~ Nil {
+			File->Delete(@lock_path);
+		}
+	}
+
 	#~
 	An .otab file, or an .otab image in memory, opened for reading. Opening reads only the
 	footer; Read then takes just the columns asked for, each checked against its CRC32, and
@@ -6117,6 +6823,8 @@ if(file->IsOpen()) {
 		@blocks : OtabBlockInfo[];
 		@size : Int;
 		@footer_offset : Int;
+		@footer_crc : Int;
+		@file_size : Int;
 		@bytes_read : Int;
 		@error : String;
 
@@ -6204,6 +6912,8 @@ if(file->IsOpen()) {
 				return false;
 			};
 			@footer_offset := footer_offset;
+			@footer_crc := footer_crc;
+			@file_size := size;
 
 			footer := ReadAt(footer_offset, footer_size);
 			if(footer = Nil) {
@@ -6440,6 +7150,8 @@ if(file->IsOpen()) {
 		# Append: the file's bytes before its footer, its groups and blocks, and its schema
 		method : public : GetNextKey() ~ Int { return @next_key; }
 		method : public : GetFooterOffset() ~ Int { return @footer_offset; }
+		method : public : GetFooterCrc() ~ Int { return @footer_crc; }
+		method : public : GetFileSize() ~ Int { return @file_size; }
 		method : public : GetTypes() ~ ColumnType[] { return @types; }
 		method : public : GetDeclared() ~ Bool[] { return @declared; }
 		method : public : GetAllNames() ~ String[] { return @names; }
@@ -8653,11 +9365,11 @@ if(file->IsOpen()) {
 					old_columns->AddBack(indexes[j]);
 					old_rows->AddBack(row);
 					old_values->AddBack(column->Get(row));
-					if(<>column->Set(row, resolved[j])) {
-						error->Set(column->GetError());
+					if(<>table->SetCell(row, indexes[j], resolved[j])) {
+						error->Set(table->GetError() <> Nil ? table->GetError() : column->GetError());
 						k := old_values->Size() - 1;
 						while(k >= 0) {
-							table->GetColumn(old_columns->Get(k)->Get())->Set(old_rows->Get(k)->Get(), old_values->Get(k));
+							table->SetCell(old_rows->Get(k)->Get(), old_columns->Get(k)->Get(), old_values->Get(k));
 							k -= 1;
 						};
 						return -1;

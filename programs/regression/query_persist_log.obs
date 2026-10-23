@@ -1,0 +1,207 @@
+# EXTRA_LIBS: net,regex,csv,xml,misc,query
+#~
+Query.Structured's durable tables (docs/OTAB_FORMAT.md, "The change log"; QUERY_DESIGN.md,
+phase 3b). A table opened with TableStore or Table->Open records every insert, cell change,
+delete and added column in 'path.log', one record per statement, and reopening replays the log
+over the last save. Covered here: API changes and SQL statements, a SQL statement that fails and
+rolls back, an added column, reopening after a close without a checkpoint (as after a crash),
+a torn last record (dropped, and cut from the file), a log left behind by a checkpoint that saved
+but did not get to empty it (recognized and skipped, so nothing replays twice), a damaged record
+before the end (refused), a value the log cannot hold (refused), Save of the table's own file (a
+checkpoint), Append onto it (refused), and readers seeing the last checkpoint.
+~#
+use Query.Structured, System.IO.Filesystem, System.Time, Collection;
+
+class QueryPersistLog {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# two tables hold the same live rows, keys and cells, compared as text
+	function : Same(a : Table, b : Table) ~ Bool {
+		if(a = Nil | b = Nil) {
+			return false;
+		};
+		if(a->Size() <> b->Size() | a->GetColumnCount() <> b->GetColumnCount() | a->GetNextKey() <> b->GetNextKey()) {
+			"    {$(a->Size())} rows, {$(a->GetColumnCount())} columns, next key {$(a->GetNextKey())} against {$(b->Size())}, {$(b->GetColumnCount())}, {$(b->GetNextKey())}"->PrintLine();
+			return false;
+		};
+		rows_a := a->LiveRows();
+		rows_b := b->LiveRows();
+		for(c := 0; c < a->GetColumnCount(); c += 1;) {
+			each(i : rows_a) {
+				x := a->GetColumn(c)->Get(rows_a[i]);
+				y := b->GetColumn(c)->Get(rows_b[i]);
+				tx := x = Nil ? "<empty>" : x->ToString();
+				ty := y = Nil ? "<empty>" : y->ToString();
+				if(<>tx->Equals(ty)) {
+					"    row {$i}, column {$c}: {$tx} against {$ty}"->PrintLine();
+					return false;
+				};
+			};
+		};
+		return true;
+	}
+
+	function : Clean(path : String) ~ Nil {
+		File->Delete(path);
+		File->Delete("{$path}.log");
+		File->Delete("{$path}.lock");
+		File->Delete("{$path}.part");
+		File->Delete("{$path}.log.part");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		path := "query_persist_log_tmp.otab";
+		log := "{$path}.log";
+		Clean(path);
+
+		start := Table->New("runs", ["n", "tag", "score", "extra"],
+			[ColumnType->INT, ColumnType->STRING, ColumnType->FLOAT, ColumnType->OBJECT], true);
+		each(i : 5) {
+			row := start->Insert();
+			row->Set("n", IntRef->New(i));
+			row->Set("tag", "t{$i}");
+			row->Set("score", FloatRef->New(i->As(Float) / 2.0));
+		};
+		Check("the starting file is saved", start->Save(path));
+
+		# changes through the API and through SQL, recorded as they happen
+		store := TableStore->New(path);
+		Check("the store opens", store->IsOpen());
+		runs := store->GetTable();
+		Check("the table is durable", runs <> Nil & runs->IsDurable());
+		Check("a fresh log has nothing to replay", store->GetReplayed() = 0);
+		Check("the log exists", File->Exists(log));
+
+		row := runs->Insert();
+		row->Set("n", IntRef->New(100));
+		row->Set("tag", "added");
+		row->Set("extra", Date->New(3, 4, 2025, true));
+		Check("a delete", runs->Delete(1));
+		Check("an update", runs->Execute("update runs set score = 9.5 where n = 2") = 1);
+		Check("an insert", runs->Execute("insert into runs (n, tag) values (7, 'seven'), (8, 'eight')") = 2);
+		Check("a delete statement", runs->Execute("delete from runs where n = 3") = 1);
+		Check("an added column", runs->AddColumn("note", ColumnType->STRING));
+		runs->Get(0)->Set("note", "first");
+		runs->Get(0)->Set("tag", Nil);
+
+		# a statement that fails changes nothing, and its rollback replays the same way
+		next_before := runs->GetNextKey();
+		Check("a failing insert is refused", runs->Execute("insert into runs (n, tag) values (9, 'nine'), ('bad', 'x')") = -1);
+		Check("and leaves the rows as they were", runs->Get(next_before) = Nil);
+
+		# a value the log cannot hold is refused, not kept only in memory
+		kept := runs->Get(0)->Set("extra", Blob->New());
+		Check("an OBJECT cell refuses a value the log cannot record", <>kept);
+		Check("and says why", runs->GetError() <> Nil & runs->GetError()->Has("durable"));
+
+		expected := runs->ToBytes();
+		Check("Append onto the table's own file is refused", <>runs->Append(path) & runs->GetError()->Has("own file"));
+
+		# readers see the last checkpoint: here, the starting file
+		reader := Table->Load(path);
+		Check("a reader sees the last checkpoint, not the log", reader <> Nil & reader->Size() = 5);
+
+		# no checkpoint: closing (or crashing) leaves the changes in the log
+		store->Close();
+		Check("a closed table is no longer durable", <>runs->IsDurable());
+
+		again := TableStore->New(path);
+		Check("it reopens", again->IsOpen());
+		Check("the log replays its statements", again->GetReplayed() > 5);
+		Check("the replayed table matches the one that was changed", Same(Table->FromBytes(expected), again->GetTable()));
+
+		# a torn last record, as a crash mid-write leaves: dropped, and cut from the file
+		size := File->Size(log);
+		again->Close();
+		tail := Byte->New[11];
+		tail[0] := 200;
+		writer := FileWriter->New(log, true);
+		writer->WriteBuffer(tail);
+		writer->Close();
+		Check("the torn tail is on disk", File->Size(log) = size + 11);
+		torn := TableStore->New(path);
+		Check("a log with a torn tail opens", torn->IsOpen());
+		Check("and replays the whole records", Same(Table->FromBytes(expected), torn->GetTable()));
+		Check("the torn tail is cut from the file", File->Size(log) = size);
+
+		# a checkpoint folds the log into the file and empties it
+		before := FileReader->ReadBinaryFile(log);
+		Check("a checkpoint", torn->Checkpoint());
+		Check("it empties the log", File->Size(log) < size);
+		Check("the file now holds the changes", Same(Table->FromBytes(expected), Table->Load(path)));
+		torn->Close();
+
+		# a crash after the checkpoint's save but before its new log: the old log remains, and
+		# its header names the earlier save, so it is skipped rather than replayed twice
+		FileWriter->WriteFile(log, before);
+		stale := TableStore->New(path);
+		Check("a log for an earlier save opens", stale->IsOpen());
+		Check("and replays nothing", stale->GetReplayed() = 0);
+		Check("so no change is applied twice", Same(Table->FromBytes(expected), stale->GetTable()));
+
+		# Save of the table's own file is a checkpoint, not a save the log knows nothing of
+		table := stale->GetTable();
+		table->Insert()->Set("n", IntRef->New(500));
+		Check("Save of the own file", table->Save(path));
+		stale->Close();
+		after := TableStore->New(path);
+		Check("after Save the log is empty", after->IsOpen() & after->GetReplayed() = 0);
+		Check("and the file has the row", after->GetTable()->Size() = Table->FromBytes(expected)->Size() + 1);
+
+		# a damaged record that is not the last one is refused, not skipped
+		after->GetTable()->Insert();
+		after->GetTable()->Insert();
+		after->Close();
+		good := FileReader->ReadBinaryFile(log);
+
+		# its length field: two copies that disagree, not a torn tail to drop
+		bytes := FileReader->ReadBinaryFile(log);
+		bytes[30] := bytes[30] xor 255;
+		FileWriter->WriteFile(log, bytes);
+		damaged := TableStore->New(path);
+		Check("a damaged record length does not open", <>damaged->IsOpen());
+		Check("and says where", damaged->GetError() <> Nil & damaged->GetError()->Has("damaged"));
+		Check("a refused open leaves no lock", <>File->Exists("{$path}.lock"));
+		Check("nor shortens the log", File->Size(log) = good->Size());
+
+		# its payload, with a record after it: a checksum failure that is not a torn tail
+		bytes := FileReader->ReadBinaryFile(log);
+		Byte->Copy(bytes, 0, good, 0, good->Size());
+		bytes[60] := bytes[60] xor 255;
+		FileWriter->WriteFile(log, bytes);
+		damaged := TableStore->New(path);
+		Check("a damaged record before the last does not open", <>damaged->IsOpen() & damaged->GetError()->Has("damaged"));
+
+		Clean(path);
+
+		if(@failures = 0) {
+			"PASS: durable tables record and replay their changes"->PrintLine();
+		}
+		else {
+			"FAIL: durable tables ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+# a comparable value of a kind the change log cannot record
+class Blob implements Compare {
+	New() {
+	}
+
+	method : public : Compare(rhs : System.Compare) ~ Int {
+		return 0;
+	}
+
+	method : public : HashID() ~ Int {
+		return 1;
+	}
+}
