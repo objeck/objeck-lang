@@ -193,7 +193,7 @@ stale to be rebuilt on the next query that uses them (the choice is per index ki
 |---|---|---|---|
 | **Hash** | value -> row numbers | `=`, `IN`, joins, `DISTINCT`, `GROUP BY` | updated on every insert, update and delete |
 | **Sorted** | `Int[]` of row numbers ordered by the column | `<`, `<=`, `>`, `>=`, `BETWEEN`, `ORDER BY`, `MIN`/`MAX` | rebuilt lazily after mutations (an O(n log n) sort) |
-| **B+ tree** (phase 5) | in-memory B+ tree, leaves are `Int[]` blocks of row numbers in key order | the sorted index's queries, with O(log n) inserts | updated on every mutation |
+| **B+ tree** (phase 6) | in-memory B+ tree, leaves are `Int[]` blocks of row numbers in key order | the sorted index's queries, with O(log n) inserts | updated on every mutation |
 
 The **sorted index** is the right default for research data, which is mostly loaded once and
 queried many times: a binary search finds a range's start and end, and the range is already a
@@ -277,8 +277,69 @@ tables and files can be mixed in one statement.
 - **Columns are typed** per section 1, scanning each column rather than each cell.
 - `Table->FromCsv(name, path)` keeps working and is the same source with a name attached.
 
-Further sources fit the same interface without changing the engine, for example HTTP JSON APIs
-through `Web.HTTP`, RSS through `Web.RSS`, or a program's own objects.
+**More sources.** Beyond the four above, the sources below are chosen for research use, ranked by
+value against the cost of building them on libraries the language already has.
+
+*Tier 1: in `query.obl`, built on libraries it already links or that are in `lang`.*
+
+| Source | What becomes a table | Built on |
+|---|---|---|
+| `TextSource(path, pattern[, record_start])` | Each line, or each multi-line record beginning at `record_start`, matched by a regular expression; named capture groups become columns, and lines that do not match are counted and optionally kept in a `_unmatched` table. Training logs, server logs, instrument output. | `Query.RegEx` capture groups (#1290) |
+| `JsonLinesSource(path)` | One JSON object per line, mapped like `JsonSource`, with a record that fails to parse reported by line number. ML datasets, evaluation outputs, OpenAI batch files. It reads line by line, so it is also the first source that could stream. | `Data.JSON` |
+| Compression | `.gz`, wrapping any file source above, transparently. | `lang`'s gzip and zlib |
+| `HttpJsonSource(url, records_path[, paging])` | The array at `records_path` in a JSON response; paging follows a next-page link or an offset parameter, up to a row limit. Public datasets and REST services. | `Web.HTTP`, `Data.JSON` |
+| `ObjectSource(objects, columns)` | A `Vector<T>` of the program's own objects: one row per object, one column per named field, read through `System.Introspection`. Where reflection cannot reach a value, a column can be given as a function from the object to a value instead. | `System.Introspection` |
+
+*Tier 2: separate add-on libraries, because they need native modules the core should not load.
+A program that only queries CSV files must not need ODBC, ONNX Runtime or OpenCV installed, so
+each of these links `query` plus the library it adapts.*
+
+| Library | Source | What becomes a table |
+|---|---|---|
+| `query_ml.obl` | `MlResultSource` | `System.ML` results: cross-validation folds and per-fold metrics, threshold sweeps, and predictions with their scores and true labels. Comparing runs becomes a `GROUP BY` and `ORDER BY`. |
+| `query_odbc.obl` | `OdbcSource(connection, sql)` | The result of a query against a real database. With a scan hint, simple `where` terms are pushed into the SQL sent, so the database filters before anything is copied. |
+| `query_vision.obl` | `VisionSource(folder, detector)` | Detections across a folder of images, one row each: image, label, score and box, from any `API.Onnx` detector. For example, the images where a person was found with a score above 0.9, grouped by camera. |
+| `query.obl` (no native code) | `ArchiveSource(path)` | Zip and tar contents as a tree, like `FilesystemSource`, and any member readable as a source, such as a CSV inside a zip. Tar and stored zip members need only `lang`; deflated zip members need raw-deflate support, which must be checked in `lang`'s zlib binding first and added there if missing. |
+| `query.obl` | `XlsxSource(path[, sheet])` | Each worksheet as a table, with typed cells and the first row as the header. An `.xlsx` file is a zip of XML parts, so this builds on `ArchiveSource` and `XmlSource`. |
+
+Further sources fit the same interface without changing the engine, for example RSS through
+`Web.RSS`.
+
+**Source tests.** Every source has its own regression test,
+`programs/regression/query_source_<name>.obs`, and every test builds its input files at run time
+in a temporary directory and deletes them afterwards. No dataset is committed, so there are no
+fixture files to drift or to fall foul of ignore rules, and every edge case is visible in the test
+itself. Each source's test covers:
+
+- **Schema and typing:** the declared tables and columns, and column types as section 1 infers
+  them, including a column that is numeric except for one cell.
+- **Round trip:** a random in-memory table, written out in the source's format and read back,
+  equals the original, cell for cell, including `Nil` cells and Unicode text. This extends the
+  differential test to sources, for every writable format (CSV, TSV, JSON, JSON Lines, XML).
+- **Malformed input:** each kind of bad record is rejected with an error naming the file and
+  line, or row, and is never silently skipped. Examples: a CSV row with too many fields, a JSON
+  Lines record that does not parse, an XML file that is not well formed.
+- **Edge cases:** an empty file, a header-only file, CRLF line endings, a missing final newline,
+  a byte-order mark, and very long lines.
+- **Pushdown equivalence:** the same query with and without the scan hint returns the same rows.
+  Pushdown may only ever change speed.
+- **Compression and globs:** a gzipped file returns exactly what the uncompressed one does, and a
+  glob over N files returns their rows with `_file` set.
+- **Caching:** an unchanged file is not re-read on a second query, and a file changed between
+  queries is re-read.
+
+Sources that reach outside the process are tested without the outside world:
+
+- `HttpJsonSource` runs against an in-process `Web.HTTP.Server` serving canned pages, including
+  pagination, an error status and a truncated body. Windows loopback has dropped data when the
+  sender tears down first, so the server must keep the connection until the client finishes.
+- `OdbcSource` runs against SQLite through its ODBC driver, which the CI images already install.
+  It prints `SKIP:` where no driver is present.
+- `VisionSource` takes the detector as an interface, so its test supplies a fake detector with
+  scripted boxes. A second, optional test runs a real model and skips when none is present, as
+  the regression tree carries no models.
+- `MlResultSource` runs a small, seeded cross-validation from `System.ML` and checks that the rows
+  match the metrics read directly from the result objects.
 
 **Finder keeps its API and gains a table.** `Finder->New(regex)->FindFiles(path)` keeps its
 signature and results, but becomes a query over `FilesystemSource`:
@@ -330,6 +391,8 @@ working is small, and they must keep working:
   grammar, and runs each through the engine and through a deliberately simple reference
   evaluator kept in the test (row-at-a-time, no indexes, no views). Results must match exactly,
   with and without indexes, for a fixed seed set that CI runs and a longer run for the nightly job.
+- **Each source has its own test** of schema, round trip, malformed input, edge cases, pushdown,
+  compression, globs and caching, with inputs generated at run time (section 6, "Source tests").
 - Unit tests per phase: column typing and promotion, null bitmaps, view invalidation, each
   predicate node, each join and aggregate, each index kind against a linear scan, prepared
   statements and the statement cache, the compatibility API (the #1291 tests must keep passing
@@ -349,21 +412,36 @@ index regenerated for new classes.
 
 1. **Columnar storage.** `Column` types, null bitmaps, typing and promotion, `Row` as a cursor, O(1)
    `Get(pk)`, tombstone deletes with `Compact()`, the compatibility API on top, `Describe()`.
-   The `Source` interface with `CsvSource` and `FilesystemSource`, and `FromCsv`,
-   `FromFilesystem` and `Finder` reimplemented over them. Existing tests unchanged; benchmark:
-   insert, scan and aggregates.
+   The `Source` interface with `CsvSource`, `FilesystemSource` (flat) and `ObjectSource`, and
+   `FromCsv`, `FromFilesystem` and `Finder` reimplemented over them. Tests: storage unit tests,
+   `query_source_csv`, `query_source_filesystem`, `query_source_objects`, and the #1291 tests
+   unchanged. Benchmark: insert, scan and aggregates.
 2. **Views and compiled predicates.** `View`, copy-on-write result tables, the typed predicate
    nodes, prepared statements and the statement cache, the method-chaining API. The differential
-   test starts here.
+   test starts here. The single-file text sources, which need no joins: `TextSource`,
+   `JsonLinesSource`, and transparent `.gz`. Tests: `query_source_text`,
+   `query_source_jsonl`, `query_source_gzip`.
 3. **The relational layer.** `Catalog`, hash joins, `GROUP BY`/`HAVING`, multi-key `ORDER BY`
    `ASC`/`DESC`, `LIMIT`/`OFFSET`, `INSERT`/`UPDATE`/`DELETE`/`CREATE TABLE` in SQL, the bridges
    (`ToMatrix`, `FromMatrix`, CSV, JSON). The hierarchical sources, which need joins to be
    useful: `JsonSource` and `XmlSource` with child tables, the recursive `FilesystemSource` with
    parent keys, `MATCHES`, `Finder->FindTable`, and scan-hint pushdown. Files named in `FROM`
    and `JOIN` (CSV, TSV, JSON Lines, JSON, gzipped), globs over several files, and the per-path
-   cache.
+   cache. `HttpJsonSource`. Tests: `query_source_json`, `query_source_xml`,
+   `query_source_tree` (the recursive filesystem with parent keys), `query_source_files_in_sql`
+   (globs, `_file`, the cache) and `query_source_http`.
 4. **Hash and sorted indexes** and the rule-based planner.
-5. **B+ tree index**, only once a benchmark shows a mixed insert and range workload that the sorted
+5. **Tier 2 sources**, one pull request each, in this order:
+   1. `query_ml.obl` with `MlResultSource`
+   2. `ArchiveSource` (tar first, then zip, once raw deflate is confirmed)
+   3. `XlsxSource`
+   4. `query_odbc.obl` with `OdbcSource` and its pushdown
+   5. `query_vision.obl` with `VisionSource`
+
+   Each comes with its own `query_source_<name>` test. Each add-on library also needs a line in
+   `core/compiler/build_libs.sh` and in the other hard-coded library lists, all of which
+   `tools/cicd/check_doc_lists.py` keeps in step.
+6. **B+ tree index**, only once a benchmark shows a mixed insert and range workload that the sorted
    index serves badly; behind the same interface, so nothing above it changes.
 
 ## Open questions
@@ -378,5 +456,8 @@ index regenerated for new classes.
   or also offer a streaming scan for structures too large to hold, such as a whole drive or a
   multi-gigabyte log. Eager loading with pushdown covers most research use; streaming would need
   a cursor-based plan and is left until a workload needs it.
+- Whether `ObjectSource` can read every field through `System.Introspection`, or only public ones,
+  needs checking against the reflection API before phase 1; the function-per-column form covers
+  whatever it cannot.
 - How a JSON or XML document with irregular structure (the same key holding an object in one
   record and a string in another) should map: promote the column to `ObjectColumn`, or split it.
