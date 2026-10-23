@@ -157,8 +157,8 @@ class RosettaAlignColumns {
 	}
 }
 
-# One line's fields. A wrapper because Vector->New()<String[]> is accepted at the
-# declaration and then rejects every AddBack(String[]) as an undefined call.
+# One line's fields. A wrapper because a type argument cannot be an array type:
+# Vector->New()<String[]> is a compile error.
 class Row {
 	@fields : String[];
 

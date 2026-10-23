@@ -1,0 +1,17 @@
+# EXPECT_COMPILE_ERROR: A type argument cannot be an array type
+#~
+'Vector->New()<String[]>' was accepted at the declaration, and then every
+AddBack(String[]) failed as an undefined call: a type argument is bound,
+checked against its bounds and erased as a class, and an array is none (a
+primitive one, 'Vector<Int[]>', was already refused as a basic type). The
+declaration is now the error, naming the remedy: hold the array in a class,
+or use a jagged array.
+~#
+use Collection;
+
+class BadGenericArrayTypeArgument {
+	function : Main(args : String[]) ~ Nil {
+		rows := Vector->New()<String[]>;
+		rows->Size()->PrintLine();
+	}
+}
