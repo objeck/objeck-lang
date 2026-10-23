@@ -2316,24 +2316,23 @@ bool Runtime::Debugger::AssignSlot(size_t* slot, int slot_type, const std::wstri
     return false;
   }
 
-  try {
-    const std::string narrow = UnicodeToBytes(value_str);
-    size_t consumed = 0;
-    const bool is_float = narrow.find_first_of(".eE") != std::string::npos && narrow.compare(0, 2, "0x") != 0;
-    if(is_float) {
-      const double fv = std::stod(narrow, &consumed);
-      if(consumed == narrow.size()) {
-        return StoreNumber(slot, slot_type, true, fv, 0, shown);
-      }
-    }
-    else {
-      const long long iv = std::stoll(narrow, &consumed, 0);
-      if(consumed == narrow.size()) {
-        return StoreNumber(slot, slot_type, false, 0.0, (INT64_VALUE)iv, shown);
-      }
+  // strtod and strtoll rather than std::stod and std::stoll, whose throws this
+  // caught; the rules are theirs: the whole text, in range
+  const std::string narrow = UnicodeToBytes(value_str);
+  const bool is_float = narrow.find_first_of(".eE") != std::string::npos && narrow.compare(0, 2, "0x") != 0;
+  if(is_float) {
+    char* end = nullptr;
+    errno = 0;
+    const double fv = strtod(narrow.c_str(), &end);
+    if(end != narrow.c_str() && errno != ERANGE && *end == '\0') {
+      return StoreNumber(slot, slot_type, true, fv, 0, shown);
     }
   }
-  catch(...) {
+  else {
+    int64_t iv = 0;
+    if(objeck_parse::ToInt64(narrow.c_str(), 0, iv)) {
+      return StoreNumber(slot, slot_type, false, 0.0, (INT64_VALUE)iv, shown);
+    }
   }
 
   error = L"invalid value expression";

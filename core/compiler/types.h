@@ -45,6 +45,7 @@
 #include "../shared/instrs.h"
 #include "../shared/sys.h"
 #include "../shared/traps.h"
+#include "../shared/num_parse.h"
 
 #ifdef _DEBUG
 #include "../shared/logger.h"
@@ -291,7 +292,12 @@ namespace frontend {
       if(kind == L'r') {
         return func_rtrn && func_rtrn->SetMethodGenericAt(rest, mark);
       }
-      const size_t index = (size_t)std::stoul(path.substr(2, end - 2));
+      // The path comes from a library's generic marks; a damaged one has no
+      // index here, and std::stoul's throw ended obc. It is not a mark.
+      size_t index = 0;
+      if(!objeck_parse::ToIndex(path.substr(2, end - 2), index)) {
+        return false;
+      }
       if(kind == L'g') {
         return index < generic_types.size() && generic_types[index] && generic_types[index]->SetMethodGenericAt(rest, mark);
       }

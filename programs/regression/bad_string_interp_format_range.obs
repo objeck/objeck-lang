@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Invalid format specifier in string interpolation: '.99999999999'
+#~
+An interpolation width or precision too large for an int is an invalid
+format specifier, reported with its position like any other. obc read both
+with std::stoi, and its std::out_of_range ended the compilation with
+"internal error: stoi argument out of range" and no file or line.
+~#
+class BadStringInterpFormatRange {
+	function : Main(args : String[]) ~ Nil {
+		f := 1.5;
+		"{$f:.99999999999}"->PrintLine();
+	}
+}

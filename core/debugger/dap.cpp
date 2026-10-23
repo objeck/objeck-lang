@@ -81,6 +81,10 @@ DapAdapter::~DapAdapter()
 // JSON-RPC Transport
 // ============================================
 
+// No editor sends a request anywhere near this; it keeps a damaged length from
+// allocating gigabytes before the read fails.
+static const size_t MAX_DAP_MESSAGE_SIZE = 64 * 1024 * 1024;
+
 std::string DapAdapter::ReadMessage()
 {
   // Read Content-Length header from the saved DAP input fd. We must
@@ -105,7 +109,20 @@ std::string DapAdapter::ReadMessage()
   if(pos == std::string::npos) {
     return "";
   }
-  int length = std::stoi(header.substr(pos + 16));
+  // The value runs to the end of its line. It went through std::stoi, which
+  // threw out of obd on text that was not a number or did not fit an int, and
+  // a negative one reached std::string's size. A frame that cannot be read is
+  // the end of the session, as a closed channel is.
+  const size_t value_end = header.find('\r', pos + 16);
+  std::string value = header.substr(pos + 16, value_end == std::string::npos ? std::string::npos : value_end - (pos + 16));
+  while(!value.empty() && value.back() == ' ') {
+    value.pop_back();
+  }
+  size_t declared = 0;
+  if(!objeck_parse::ToIndex(value, declared) || declared > MAX_DAP_MESSAGE_SIZE) {
+    return "";
+  }
+  const int length = (int)declared;
 
   // Read body
   std::string body(length, '\0');
@@ -600,15 +617,15 @@ void DapAdapter::HandleSetBreakpoints(int request_seq, const json& args)
         if(added && !hit_condition_str.empty()) {
           // DAP leaves the syntax open; VS Code's own UI produces a bare count
           // meaning "stop on the Nth hit", which is our ignore_count + 1.
-          try {
-            const int hits = std::stoi(hit_condition_str);
-            if(hits > 1) {
-              debugger->SetIgnoreCountForDap(line, wfile_name, hits - 1);
-            }
+          // An expression form we do not implement (">= 5") is not a count:
+          // leave it unconditional rather than guessing at one.
+          std::string count_text = hit_condition_str;
+          while(!count_text.empty() && count_text.back() == ' ') {
+            count_text.pop_back();
           }
-          catch(const std::exception&) {
-            // An expression form we do not implement: leave it unconditional
-            // rather than guessing at a count.
+          int hits = 0;
+          if(objeck_parse::ToInt(count_text, hits) && hits > 1) {
+            debugger->SetIgnoreCountForDap(line, wfile_name, hits - 1);
           }
         }
       }
@@ -1902,13 +1919,10 @@ void DapAdapter::HandleSetVariable(int request_seq, const json& args)
     case VAR_ARRAY: {
       // element names are "[7]", as ElementName() renders them
       long index = -1;
-      if(name.size() > 2 && name.front() == L'[' && name.back() == L']') {
-        try {
-          index = std::stol(name.substr(1, name.size() - 2));
-        }
-        catch(...) {
-          index = -1;
-        }
+      size_t element = 0;
+      if(name.size() > 2 && name.front() == L'[' && name.back() == L']' &&
+         objeck_parse::ToIndex(name.substr(1, name.size() - 2), element) && element <= (size_t)LONG_MAX) {
+        index = (long)element;
       }
       if(index < 0) {
         error = L"'" + name + L"' is not an array element";

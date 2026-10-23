@@ -16,31 +16,28 @@ stack, exit(1).
 The regression runner passes an expected runtime error on any non-zero exit
 with output, so it cannot tell the abort from the error; run_vm_flag_tests.py
 (section 8) names the status and the message, and this file keeps the shape
-in both regression passes. Format is native, so it is compiled in the plain
-pass too, and Float->ToString runs under the bridge either way: in the plain
-pass inside the interpreter the bridge nests (a library method called once
-stays interpreted), and with every method compiled in the bridge's own F2S
-case. Both routes end in the same catch.
+in both regression passes. Throw is native, so it is compiled in the plain
+pass too, and Runtime->SetProperty runs under the bridge either way: in the
+plain pass inside the interpreter the bridge nests (a library function called
+once stays interpreted), and with every method compiled through the bridge's
+trap callback. Both routes end in the same catch.
 
-The way in is a float-formatting precision that is not a number
-(Runtime->SetProperty("float:string:precision", "not-a-number")): Float2Str
-and the bridge's F2S parse it with std::stoll, which throws
-std::invalid_argument, on every platform. This file used "1e999"->ToFloat()
-until String->ToFloat stopped throwing (it answers inf now). Nothing in the
-VM throws on purpose, so a fixture for this catch rides on an unguarded
-throw; guard that one and this file needs another way in, which the runner
-reports as "should have failed at runtime".
+The way in is Runtime->SetProperty("runtime.test.throw", ...), a key the VM
+reserves so that these catches have a trigger: SetSysProp throws a
+std::runtime_error carrying the value. Nothing else in the VM throws on
+purpose. This file used "1e999"->ToFloat(), then a float precision property
+that was not a number; both were defects, and fixing each took the trigger
+away (vm_parse_ranges.obs).
 ~#
 
 class JitBridgeException {
 	function : Main(args : String[]) ~ Nil {
 		"before"->PrintLine();
-		Runtime->SetProperty("float:string:precision", "not-a-number");
-		Format(1.5)->PrintLine();
+		Throw();
 		"after"->PrintLine();
 	}
 
-	function : native : Format(f : Float) ~ String {
-		return Float->ToString(f);
+	function : native : Throw() ~ Nil {
+		Runtime->SetProperty("runtime.test.throw", "deliberate test exception");
 	}
 }

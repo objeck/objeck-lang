@@ -3981,7 +3981,11 @@ bool TrapProcessor::StdErrFloat(StackProgram* program, size_t* inst, size_t* &op
       std::wcerr << std::scientific;
     }
     else {
-      std::wcerr << std::setprecision(static_cast<int>(stoll(precision)));
+      // SetSysProp refuses a value that is not one; this was an uncaught stoll
+      int digits = 0;
+      if(ParseFloatPrecision(precision, digits)) {
+        std::wcerr << std::setprecision(digits);
+      }
     }
 
     std::wcerr << value;
@@ -4701,6 +4705,33 @@ bool TrapProcessor::SetSysProp(StackProgram* program, size_t* inst, size_t* &op_
     // a name the system cannot supply is refused, and the property not stored
     if(!wcscmp(key, L"locale") && !SetProgramLocale(UnicodeToBytes(value))) {
       return true;
+    }
+
+    // A float-formatting precision must be a whole int: Float->ToString reads
+    // "float:string:precision", and the stderr float writer "precision", which
+    // also takes "fixed" or "scientific". Anything else was stored, and the
+    // next float formatted died on std::stoll's uncaught exception. Now the
+    // program is told here, where the bad value came from, with an error a ?->
+    // handler recovers from; the property keeps its old value. An empty value
+    // still clears the setting, as it always has.
+    const bool is_float_precision = !wcscmp(key, L"float:string:precision");
+    const bool is_err_precision = !wcscmp(key, L"precision") && wcscmp(value, L"fixed") && wcscmp(value, L"scientific");
+    if((is_float_precision || is_err_precision) && value[0] != L'\0') {
+      int precision = 0;
+      if(!ParseFloatPrecision(value, precision)) {
+        return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER,
+                         std::wstring(L"Invalid float precision for '") + key + L"': '" + value + L"'");
+      }
+    }
+
+    // The fixtures for the VM's last-resort catches (vm_error_exit.obs and
+    // jit_bridge_exception.obs) need a C++ exception to leave a trap, and no
+    // correct trap throws one. They rode on unguarded parses -- std::stod in
+    // String->ToFloat, then std::stoll here -- and each fix took their trigger
+    // away. This key throws on purpose, under the VM's own reserved "runtime."
+    // namespace, so those catches stay tested without keeping a defect alive.
+    if(!wcscmp(key, L"runtime.test.throw")) {
+      throw std::runtime_error(UnicodeToBytes(value));
     }
 
     program->SetProperty(key, value);
@@ -8019,6 +8050,25 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
   return true;
 }
 
+// A response's :status pseudo-header, which RFC 9110 makes three digits. The
+// HTTP/2 callback read it with an unguarded std::stoi, so a server that sent
+// anything else threw through nghttp2's C frames and ended the VM; the HTTP/3
+// one caught the throw but kept a partial parse ("2xx" was 2). Text that is not
+// a status is 0, the value a response without one has always reported.
+static inline int ParseHttpStatus(const std::string& v) {
+  if(v.size() != 3) {
+    return 0;
+  }
+  int status = 0;
+  for(const char c : v) {
+    if(c < '0' || c > '9') {
+      return 0;
+    }
+    status = status * 10 + (c - '0');
+  }
+  return status;
+}
+
 // --- HTTP/2 trap implementations ---
 
 #ifdef OBJECK_HAS_NGHTTP2
@@ -8051,7 +8101,7 @@ static int h2_on_header_cb(nghttp2_session*, const nghttp2_frame* frame,
     std::string k(reinterpret_cast<const char*>(name), namelen);
     std::string v(reinterpret_cast<const char*>(value), valuelen);
     if(k == ":status") {
-      ctx->response_status = std::stoi(v);
+      ctx->response_status = ParseHttpStatus(v);
     }
     else {
       ctx->response_headers[k] = std::move(v);
@@ -8489,7 +8539,7 @@ static int h3ng_recv_header_cb(nghttp3_conn*, int64_t, int32_t,
   std::string k((const char*)nv.base, nv.len);
   std::string v((const char*)vv.base, vv.len);
   if(k == ":status") {
-    try { ctx->response_status = std::stoi(v); } catch(...) {}
+    ctx->response_status = ParseHttpStatus(v);
   } else {
     ctx->response_headers[k] = std::move(v);
   }
