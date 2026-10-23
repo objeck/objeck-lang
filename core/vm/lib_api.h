@@ -51,6 +51,9 @@ typedef void(*APITools_WriteBarrier_Ptr) (size_t* target_obj);
 // Parks and unparks the calling thread for the garbage collector (see
 // APITools_Parked below).
 typedef void(*APITools_Blocking_Ptr) ();
+// Set in VMContext::blocking_abi by a VM that provides begin_blocking and
+// end_blocking ("OBJKPARK").
+#define APITOOLS_BLOCKING_ABI ((size_t)0x4B5241504B4A424FULL)
 
 //
 // API calling context
@@ -71,7 +74,12 @@ struct VMContext {
   // a library compiled against an older header reads the fields above at the
   // same offsets, so it keeps working against a newer VM without a rebuild
   APITools_WriteBarrier_Ptr write_barrier;
-  // parking for blocking calls -- appended, as above; use APITools_Parked
+  // parking for blocking calls -- appended, as above; use APITools_Parked.
+  // blocking_abi is APITOOLS_BLOCKING_ABI when the two pointers are set. A VM
+  // built before these fields existed passes a shorter struct, so for it these
+  // words are whatever lies beyond on its stack; the marker is what tells a
+  // library not to call through them.
+  size_t blocking_abi;
   APITools_Blocking_Ptr begin_blocking;
   APITools_Blocking_Ptr end_blocking;
 };
@@ -95,18 +103,24 @@ struct VMContext {
 // the old generation and never move, so a pointer into an argument array's
 // data stays valid; an array the caller still references stays alive.
 //
+// Against a VM that predates parking, this does nothing: the call runs
+// unparked, as it always did.
+//
 class APITools_Parked {
   VMContext& context;
+  bool parked;
 
  public:
   explicit APITools_Parked(VMContext& c) : context(c) {
-    if(context.begin_blocking) {
+    parked = context.blocking_abi == APITOOLS_BLOCKING_ABI &&
+             context.begin_blocking && context.end_blocking;
+    if(parked) {
       context.begin_blocking();
     }
   }
 
   ~APITools_Parked() {
-    if(context.end_blocking) {
+    if(parked) {
       context.end_blocking();
     }
   }
