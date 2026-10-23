@@ -518,9 +518,8 @@ bundle Web.Server {
 				return false;
 			};
 
-			# The server takes the Location value from GetReason on a 302, not from a
-			# Location header: see ProcessResponse's 302 label in net_server.obs. A
-			# header here would be dropped, because the non-200 path emits none.
+			# On a 302 with no Location header the server takes the Location value
+			# from GetReason: see ResponseFormat->Header in net_server.obs.
 			@http_response->SetCode(302);
 			@http_response->SetReason(url);
 
