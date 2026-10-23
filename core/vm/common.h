@@ -173,6 +173,13 @@ struct SecureSocketCtx {
   }
 };
 
+// The calling thread's last DTLS failure, for DTLSSocket->GetLastError() and
+// DTLSSocketServer->GetLastError(), which are functions: a failed connect or
+// accept frees its context, so the error cannot live only there.
+// (defined in common.cpp; not an inline variable, which native libraries
+// built as C++14 cannot compile)
+extern thread_local int dtls_last_error;
+
 struct DtlsSocketCtx {
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
@@ -185,6 +192,11 @@ struct DtlsSocketCtx {
   // set_delay before get_delay, so this is defensive rather than a live fault.
   mbedtls_timing_delay_context timer{};
   int last_error;
+
+  void SetError(int error) {
+    last_error = error;
+    dtls_last_error = error;
+  }
 
   DtlsSocketCtx() : last_error(0) {
     mbedtls_ssl_init(&ssl);
@@ -242,8 +254,10 @@ struct DtlsServerCtx {
   mbedtls_net_context listen_fd;
   mbedtls_ssl_cookie_ctx cookie_ctx;
   int last_error;
+  // the listening port, to bind a fresh listener after each accept
+  int port;
 
-  DtlsServerCtx() : last_error(0) {
+  DtlsServerCtx() : last_error(0), port(0) {
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
     mbedtls_pk_init(&pkey);
@@ -1340,6 +1354,7 @@ class StackProgram {
   long cls_cls_id;
   long mthd_cls_id;
   long sock_cls_id;
+  long secure_sock_cls_id;
   long dtls_sock_cls_id;
   long data_type_cls_id;
   long command_output_cls_id;
@@ -1380,7 +1395,7 @@ class StackProgram {
     cls_interfaces = nullptr;
     classes = nullptr;
     char_strings = nullptr;
-    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = dtls_sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
+    string_cls_id = cls_cls_id = mthd_cls_id = sock_cls_id = secure_sock_cls_id = dtls_sock_cls_id = data_type_cls_id = command_output_cls_id = -1;
 #ifdef _WIN32
     InitializeCriticalSection(&program_cs);
     InitializeCriticalSection(&prop_cs);
@@ -1593,18 +1608,23 @@ class StackProgram {
     return sock_cls_id;
   }
 
-	 long GetSecureSocketObjectId() {
-		 if(sock_cls_id < 0) {
-			 StackClass* cls = GetClass(L"System.IO.Net.TCPSecureSocket");
-			 if(!cls) {
-				 std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << std::endl;
-				 VmExit(1);
-			 }
-			 sock_cls_id = cls->GetId();
-		 }
+  // Its own cache: this shared sock_cls_id with GetSocketObjectId, so whichever
+  // kind of server accepted first fixed the class of every socket accepted
+  // after it. A plain TCPSocketServer in a process that had already accepted a
+  // TLS connection handed back TCPSecureSocket objects holding raw sockets, and
+  // the other way round.
+  long GetSecureSocketObjectId() {
+    if(secure_sock_cls_id < 0) {
+      StackClass* cls = GetClass(L"System.IO.Net.TCPSecureSocket");
+      if(!cls) {
+        std::wcerr << L">>> Internal error: unable to find class: System.IO.Net.TCPSecureSocket <<<" << std::endl;
+        VmExit(1);
+      }
+      secure_sock_cls_id = cls->GetId();
+    }
 
-		 return sock_cls_id;
-	 }
+    return secure_sock_cls_id;
+  }
 
   long GetDtlsSocketObjectId() {
     if(dtls_sock_cls_id < 0) {

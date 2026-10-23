@@ -5310,6 +5310,166 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
   return true;
 }
 
+//
+// Binds a server's listening socket for mbedtls: a wildcard socket that takes
+// IPv4 and IPv6 clients (IPSocket::BindAny), listening when it is TCP.
+// mbedtls_net_bind(nullptr, ...) bound whichever passive address getaddrinfo
+// offered first -- [::] with IPV6_V6ONLY on, so IPv6 only, on Windows; 0.0.0.0
+// on Linux -- so a TLS or DTLS server was reachable over one family, and
+// which one depended on the platform. A client of "localhost" went wherever
+// its resolver listed first and, on a mismatch, found nothing there.
+//
+static int BindServerSocket(mbedtls_net_context& ctx, int port, int type)
+{
+  const SOCKET sock = IPSocket::BindAny(port, type);
+#ifdef _WIN32
+  if(sock == INVALID_SOCKET) {
+#else
+  if(sock < 0) {
+#endif
+    return MBEDTLS_ERR_NET_BIND_FAILED;
+  }
+
+  if(type == SOCK_STREAM && listen(sock, MBEDTLS_NET_LISTEN_BACKLOG) != 0) {
+#ifdef _WIN32
+    closesocket(sock);
+#else
+    close(sock);
+#endif
+    return MBEDTLS_ERR_NET_LISTEN_FAILED;
+  }
+
+  ctx.fd = (int)sock;
+  return 0;
+}
+
+//
+// mbedtls_net_accept for a DTLS server. A datagram "accept" connects the
+// listening socket to the client that sent the first datagram, hands it to the
+// client, and binds a new listener. mbedtls binds that listener to the local
+// address the first client happened to use, so after one IPv4 client the
+// server stopped hearing IPv6 ones (and the reverse); on Windows, an IPv4
+// client of the dual-stack socket failed the accept outright, since the
+// mapped local address cannot be bound by a new IPv6-only socket. This binds
+// the new listener to the wildcard, dual-stack, every time.
+//
+// client_ip receives the client's address bytes (4 or 16), the transport id
+// DTLS cookies are bound to.
+//
+static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned char* client_ip,
+                      size_t buffer_size, size_t* ip_len)
+{
+  const int fd = srv->listen_fd.fd;
+  if(fd < 0) {
+    return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+  }
+
+  // Wait for a ClientHello, leaving it queued for the handshake. Anything else
+  // arriving here -- typically the close_notify of a client that was just
+  // served, landing after its own socket closed -- is discarded: connecting
+  // to its sender made the next handshake wait out its timeout for a hello
+  // that sender never sends, while the real next client went unheard.
+  struct sockaddr_storage client_addr;
+  socklen_t addr_len;
+  for(;;) {
+    memset(&client_addr, 0, sizeof(client_addr));
+    addr_len = sizeof(client_addr);
+    unsigned char peek[16] = {0};
+    int ret = (int)recvfrom(fd, (char*)peek, sizeof(peek), MSG_PEEK, (struct sockaddr*)&client_addr, &addr_len);
+#ifdef _WIN32
+    // a datagram longer than the peek buffer is still a datagram, peeked in part
+    if(ret == SOCKET_ERROR && WSAGetLastError() == WSAEMSGSIZE) {
+      ret = (int)sizeof(peek);
+    }
+#endif
+    if(ret < 0) {
+      return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+    }
+
+    // DTLS record header: content type 22 (handshake), version, epoch 0, ...;
+    // then the handshake message type, 1 (ClientHello), at offset 13
+    if(ret >= 14 && peek[0] == 22 && peek[3] == 0 && peek[4] == 0 && peek[13] == 1) {
+      break;
+    }
+
+    // not a hello: consume it and keep waiting
+    char discard[1];
+    recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+  }
+
+  if(connect(fd, (struct sockaddr*)&client_addr, addr_len) != 0) {
+    return MBEDTLS_ERR_NET_ACCEPT_FAILED;
+  }
+
+  // connect() filters what arrives from now on, but not what is already
+  // queued: a datagram another peer sent before it -- the close_notify of the
+  // client served last, landing after its socket closed -- would be read as
+  // this client's next handshake flight, failing it ("processing of the
+  // ClientHello failed"). Drop every queued datagram that is not this client's.
+  for(;;) {
+    fd_set readable;
+    FD_ZERO(&readable);
+    FD_SET(fd, &readable);
+    struct timeval no_wait = { 0, 0 };
+    if(select(fd + 1, &readable, nullptr, nullptr, &no_wait) <= 0) {
+      break;
+    }
+
+    struct sockaddr_storage from;
+    memset(&from, 0, sizeof(from));
+    socklen_t from_len = sizeof(from);
+    char head[1];
+    const int peeked = (int)recvfrom(fd, head, sizeof(head), MSG_PEEK, (struct sockaddr*)&from, &from_len);
+#ifdef _WIN32
+    if(peeked == SOCKET_ERROR && WSAGetLastError() != WSAEMSGSIZE) {
+#else
+    if(peeked < 0) {
+#endif
+      break;
+    }
+
+    if(from_len == addr_len && !memcmp(&from, &client_addr, addr_len)) {
+      // this client's: everything after it is filtered by connect()
+      break;
+    }
+
+    char discard[1];
+    recvfrom(fd, discard, sizeof(discard), 0, nullptr, nullptr);
+  }
+
+  // the connected socket is the client's now; listen again on a fresh one
+  client->fd = fd;
+  srv->listen_fd.fd = -1;
+  const SOCKET next = IPSocket::BindAny(srv->port, SOCK_DGRAM);
+#ifdef _WIN32
+  if(next != INVALID_SOCKET) {
+#else
+  if(next >= 0) {
+#endif
+    srv->listen_fd.fd = (int)next;
+  }
+  // else the next Accept fails; this client is served regardless
+
+  if(client_addr.ss_family == AF_INET6) {
+    const struct sockaddr_in6* addr6 = (const struct sockaddr_in6*)&client_addr;
+    *ip_len = sizeof(addr6->sin6_addr);
+    if(*ip_len > buffer_size) {
+      return MBEDTLS_ERR_NET_BUFFER_TOO_SMALL;
+    }
+    memcpy(client_ip, &addr6->sin6_addr, *ip_len);
+  }
+  else {
+    const struct sockaddr_in* addr4 = (const struct sockaddr_in*)&client_addr;
+    *ip_len = sizeof(addr4->sin_addr);
+    if(*ip_len > buffer_size) {
+      return MBEDTLS_ERR_NET_BUFFER_TOO_SMALL;
+    }
+    memcpy(client_ip, &addr4->sin_addr, *ip_len);
+  }
+
+  return 0;
+}
+
 bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -5368,9 +5528,8 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
-      // Bind to port
-      const std::string port_str = std::to_string(port);
-      ret = mbedtls_net_bind(&srv->listen_fd, nullptr, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
+      // Bind to port: IPv4 and IPv6 alike (see BindServerSocket)
+      ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM);
       if(ret != 0) {
         delete srv;
         PushInt(0, op_stack, stack_pos);
@@ -5472,15 +5631,11 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
+      // numeric; an IPv4 client of the dual-stack listener arrives as
+      // ::ffff:a.b.c.d and is reported as a.b.c.d
       char host_name[NI_MAXHOST] = {0};
-      char port[NI_MAXSERV] = {0};
-      status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,
-                           sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
-      if(status < 0) {
-        delete client;
-        PushInt(0, op_stack, stack_pos);
-        return true;
-      }
+      int peer_port;
+      IPSocket::FormatAddress((struct sockaddr*)&pin, host_name, sizeof(host_name), peer_port);
 
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
       sock_obj[0] = (size_t)client;
@@ -9354,6 +9509,9 @@ bool TrapProcessor::Http3Close(StackProgram* program, size_t* inst, size_t*& op_
 
 // --- DTLS trap implementations ---
 
+// the calling thread's last DTLS failure (see common.h)
+thread_local int dtls_last_error = 0;
+
 bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const bool verify = (bool)PopInt(op_stack, stack_pos);
@@ -9380,6 +9538,7 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
     // re-rooted on the op_stack so GC promotion fixup relocates it, then re-read.
     DtlsSocketCtx* old_sctx = (DtlsSocketCtx*)instance[0];
     DtlsSocketCtx* sctx = nullptr;
+    dtls_last_error = 0;
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
@@ -9408,21 +9567,42 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
   return true;
 }
 
+// DTLSSocket and DTLSSocketServer both call SOCK_DTLS_ISSUER and
+// SOCK_DTLS_SUBJECT, but instance[0] is a DtlsSocketCtx in one and a
+// DtlsServerCtx in the other. Reading a server's context as a socket's handed
+// mbedtls a garbage ssl context. A socket reports its peer's certificate, a
+// server its own.
+static const mbedtls_x509_name* DtlsCertName(StackProgram* program, size_t* instance, bool subject)
+{
+  if(!instance || !instance[0]) {
+    return nullptr;
+  }
+
+  const mbedtls_x509_crt* cert = nullptr;
+  if(MemoryManager::GetObjectID(instance) == program->GetDtlsSocketObjectId()) {
+    cert = mbedtls_ssl_get_peer_cert(&((DtlsSocketCtx*)instance[0])->ssl);
+  }
+  else {
+    // set only once Listen has parsed the certificate
+    cert = &((DtlsServerCtx*)instance[0])->srvcert;
+  }
+
+  if(!cert) {
+    return nullptr;
+  }
+
+  return subject ? &cert->subject : &cert->issuer;
+}
+
 bool TrapProcessor::SockDtlsIssuer(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
-  if(sctx) {
-    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
-    if(peer_cert) {
-      char buffer[LARGE_BUFFER_MAX] = {0};
-      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->issuer);
-      const std::wstring in = BytesToUnicode(buffer);
-      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+  const mbedtls_x509_name* name = DtlsCertName(program, instance, false);
+  if(name) {
+    char buffer[LARGE_BUFFER_MAX] = {0};
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
+    const std::wstring in = BytesToUnicode(buffer);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -9434,18 +9614,12 @@ bool TrapProcessor::SockDtlsIssuer(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::SockDtlsSubject(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
-  if(sctx) {
-    const mbedtls_x509_crt* peer_cert = mbedtls_ssl_get_peer_cert(&sctx->ssl);
-    if(peer_cert) {
-      char buffer[LARGE_BUFFER_MAX] = {0};
-      mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, &peer_cert->subject);
-      const std::wstring in = BytesToUnicode(buffer);
-      PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+  const mbedtls_x509_name* name = DtlsCertName(program, instance, true);
+  if(name) {
+    char buffer[LARGE_BUFFER_MAX] = {0};
+    mbedtls_x509_dn_gets(buffer, LARGE_BUFFER_MAX - 1, name);
+    const std::wstring in = BytesToUnicode(buffer);
+    PushInt((size_t)CreateStringObject(in, program, op_stack, stack_pos), op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -9457,6 +9631,9 @@ bool TrapProcessor::SockDtlsSubject(StackProgram* program, size_t* inst, size_t*
 bool TrapProcessor::SockDtlsClose(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(!instance) {
+    return true;
+  }
   DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
 
 #ifdef _DEBUG
@@ -9555,6 +9732,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
     const long port = (long)instance[6];
 
     if(cert_obj && key_obj) {
+      dtls_last_error = 0;
       DtlsServerCtx* srv = new DtlsServerCtx();
 
       // Seed the random number generator
@@ -9562,6 +9740,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
       int ret = mbedtls_ctr_drbg_seed(&srv->ctr_drbg, mbedtls_entropy_func, &srv->entropy,
                                        (const unsigned char*)pers, strlen(pers));
       if(ret != 0) {
+        dtls_last_error = ret;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -9572,6 +9751,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
       const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
       ret = mbedtls_x509_crt_parse_file(&srv->srvcert, cert_path.c_str());
       if(ret != 0) {
+        dtls_last_error = ret;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -9597,16 +9777,18 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
       ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr);
 #endif
       if(ret != 0) {
+        dtls_last_error = ret;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
         return true;
       }
 
-      // Bind to port
-      const std::string port_str = std::to_string(port);
-      ret = mbedtls_net_bind(&srv->listen_fd, nullptr, port_str.c_str(), MBEDTLS_NET_PROTO_UDP);
+      // Bind to port: IPv4 and IPv6 alike (see IPSocket::BindAny and DtlsAccept)
+      srv->port = (int)port;
+      ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM);
       if(ret != 0) {
+        dtls_last_error = ret;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -9617,6 +9799,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
       ret = mbedtls_ssl_config_defaults(&srv->conf, MBEDTLS_SSL_IS_SERVER,
                                          MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
       if(ret != 0) {
+        dtls_last_error = ret;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -9629,9 +9812,12 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
       // Setup DTLS cookies
       ret = mbedtls_ssl_cookie_setup(&srv->cookie_ctx, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
       if(ret != 0) {
-        srv->last_error = ret;
+        // this path pushed no result, leaving Listen's caller to read whatever
+        // lay on the operand stack
+        dtls_last_error = ret;
         delete srv;
-        srv = nullptr;
+        PushInt(0, op_stack, stack_pos);
+        instance[0] = instance[1] = instance[2] = 0;
         return true;
       }
       mbedtls_ssl_conf_dtls_cookies(&srv->conf, mbedtls_ssl_cookie_write, mbedtls_ssl_cookie_check, &srv->cookie_ctx);
@@ -9664,12 +9850,22 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       // inside the parked region: a peer that is a thread of this VM may need a
       // collection to finish before it can send its next flight. Only srv and
       // client_sctx (C heap) are touched while parked.
+      // The server verifies cookies (HelloVerifyRequest), and a cookie is bound
+      // to the client's transport id -- its address. Without one set, every
+      // cookie check failed, so no client could ever complete a handshake.
+      unsigned char client_ip[16] = {0};
+      size_t client_ip_len = 0;
+      dtls_last_error = 0;
+
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
-      int ret = mbedtls_net_accept(&srv->listen_fd, &client_sctx->net, nullptr, 0, nullptr);
+      int ret = DtlsAccept(srv, &client_sctx->net, client_ip, sizeof(client_ip), &client_ip_len);
       if(ret == 0) {
         // Setup SSL session for this client (uses server's config)
         ret = mbedtls_ssl_setup(&client_sctx->ssl, &srv->conf);
+        if(ret == 0) {
+          ret = mbedtls_ssl_set_client_transport_id(&client_sctx->ssl, client_ip, client_ip_len);
+        }
         if(ret == 0) {
           mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
           mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
@@ -9682,7 +9878,10 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
               if(++retries > max_retries) {
                 break;
               }
+              // the client answers the HelloVerifyRequest with a new
+              // ClientHello carrying the cookie; a reset clears the transport id
               mbedtls_ssl_session_reset(&client_sctx->ssl);
+              mbedtls_ssl_set_client_transport_id(&client_sctx->ssl, client_ip, client_ip_len);
               mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
               mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
               continue;
@@ -9699,6 +9898,9 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
         }
       }
       MemoryManager::EndBlocking();
+      if(ret != 0) {
+        dtls_last_error = ret;
+      }
       instance = (size_t*)PopInt(op_stack, stack_pos);
       if(ret != 0) {
         // nullptr when the failed handshake already closed it
@@ -9720,15 +9922,11 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
         return true;
       }
 
+      // numeric; an IPv4 client of the dual-stack listener arrives as
+      // ::ffff:a.b.c.d and is reported as a.b.c.d
       char host_name[NI_MAXHOST] = {0};
-      char port[NI_MAXSERV] = {0};
-      status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,
-                           sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
-      if(status < 0) {
-        delete client_sctx;
-        PushInt(0, op_stack, stack_pos);
-        return true;
-      }
+      int peer_port;
+      IPSocket::FormatAddress((struct sockaddr*)&pin, host_name, sizeof(host_name), peer_port);
 
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetDtlsSocketObjectId(), op_stack, *stack_pos, false);
       sock_obj[0] = (size_t)client_sctx;
@@ -9780,16 +9978,16 @@ bool TrapProcessor::SockDtlsCertSrv(StackProgram* program, size_t* inst, size_t*
 
 bool TrapProcessor::SockDtlsError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
-  if(instance) {
-    DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
-    if(sctx && sctx->last_error != 0) {
-      char error_buf[256] = {0};
-      mbedtls_strerror(sctx->last_error, error_buf, sizeof(error_buf) - 1);
-      const std::wstring error_msg = BytesToUnicode(error_buf);
-      PushInt((size_t)CreateStringObject(error_msg, program, op_stack, stack_pos), op_stack, stack_pos);
-      return true;
-    }
+  // GetLastError() is a function: nothing is pushed for it, and popping an
+  // "instance" took the caller's operand. The error is the calling thread's
+  // last DTLS failure, which also covers a connect or accept that failed and
+  // freed its context.
+  if(dtls_last_error != 0) {
+    char error_buf[256] = {0};
+    mbedtls_strerror(dtls_last_error, error_buf, sizeof(error_buf) - 1);
+    const std::wstring error_msg = BytesToUnicode(error_buf);
+    PushInt((size_t)CreateStringObject(error_msg, program, op_stack, stack_pos), op_stack, stack_pos);
+    return true;
   }
 
   PushInt(0, op_stack, stack_pos);

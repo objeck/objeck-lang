@@ -1,0 +1,239 @@
+#~
+# Servers are reachable over IPv4 and IPv6 alike
+#
+# A wildcard server should take clients of either family. It did not, and what
+# it took depended on the server's kind and the platform: the plain TCP server
+# bound 0.0.0.0, so IPv4 only, everywhere; the TLS and DTLS servers bound the
+# first passive address getaddrinfo offered -- [::] with IPV6_V6ONLY on, so
+# IPv6 only, on Windows, and 0.0.0.0, IPv4 only, on Linux. A DTLS server also
+# re-bound its listener after each accept to the local address the client had
+# used, so after one IPv4 client it no longer heard IPv6 ones.
+#
+# Each server here accepts two clients, one over 127.0.0.1 and one over ::1,
+# and reports the address each came from: an IPv4 client of the dual-stack
+# listener is reported as 127.0.0.1, not ::ffff:127.0.0.1. Certificate checks
+# are turned off (OBJECK_TLS_INSECURE_SKIP_VERIFY) because the clients connect
+# by address, and what is under test is reachability, not verification.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+class TwoAccepts from Thread {
+	@kind : Int;
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+	@first : String;
+	@second : String;
+
+	New(kind : Int, port : Int) {
+		Parent("two-accepts");
+		@kind := kind;
+		@port := port;
+		@listening := false;
+		@finished := false;
+	}
+
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : GetFirst() ~ String { return @first; }
+	method : public : GetSecond() ~ String { return @second; }
+
+	method : public : Run(param : Base) ~ Nil {
+		if(@kind = 0) {
+			RunPlain();
+		}
+		else if(@kind = 1) {
+			RunTls();
+		}
+		else {
+			RunDtls();
+		};
+		@finished := true;
+	}
+
+	method : RunPlain() ~ Nil {
+		client : TCPSocket;
+		server := TCPSocketServer->New(@port);
+		if(server->Listen(4)) {
+			@listening := true;
+			client := server->Accept();
+			if(client <> Nil) {
+				@first := client->GetAddress();
+				client->Close();
+			};
+			client := server->Accept();
+			if(client <> Nil) {
+				@second := client->GetAddress();
+				client->Close();
+			};
+			server->Close();
+		};
+	}
+
+	method : RunTls() ~ Nil {
+		client : TCPSecureSocket;
+		server := TCPSecureSocketServer->New("dual-stack-cert.pem", "dual-stack-key.pem", "", @port);
+		if(server->Listen()) {
+			@listening := true;
+			# each client waits for a line before it closes, so it cannot close
+			# while the server is still finishing the handshake
+			client := server->Accept();
+			if(client <> Nil) {
+				@first := client->GetAddress();
+				client->WriteString("hello
+");
+				client->ReadLine();
+				client->Close();
+			};
+			client := server->Accept();
+			if(client <> Nil) {
+				@second := client->GetAddress();
+				client->WriteString("hello
+");
+				client->ReadLine();
+				client->Close();
+			};
+			server->Close();
+		};
+	}
+
+	method : RunDtls() ~ Nil {
+		client : DTLSSocket;
+		server := DTLSSocketServer->New("dual-stack-cert.pem", "dual-stack-key.pem", "", @port);
+		if(server->Listen()) {
+			@listening := true;
+			client := server->Accept();
+			if(client <> Nil) {
+				@first := client->GetAddress();
+				client->Close();
+			};
+			client := server->Accept();
+			if(client <> Nil) {
+				@second := client->GetAddress();
+				client->Close();
+			};
+			server->Close();
+		};
+	}
+}
+
+class DualStackServers {
+	@failed : Int;
+
+	New() {
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		DualStackServers->New()->Run();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	method : Start(kind : Int) ~ TwoAccepts {
+		candidate : TwoAccepts;
+		waited : Int;
+
+		for(tries := 0; tries < 5; tries += 1;) {
+			candidate := TwoAccepts->New(kind, Int->Random(20000, 31998));
+			candidate->Execute(Nil);
+			waited := 0;
+			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+			if(candidate->IsListening()) {
+				return candidate;
+			};
+		};
+
+		return Nil;
+	}
+
+	method : TlsClient(address : String, port : Int) ~ Nil {
+		socket := TCPSecureSocket->New(address, port);
+		if(socket->IsOpen()) {
+			socket->ReadLine();
+			socket->WriteString("bye
+");
+		};
+		socket->Close();
+	}
+
+	# Joins the server, unless a client never arrived: then it is still in Accept
+	method : Finish(server : TwoAccepts, name : String) ~ Nil {
+		waited := 0;
+		while(<>server->IsFinished() & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(server->IsFinished()) {
+			server->Join();
+		};
+
+		first := server->GetFirst();
+		second := server->GetSecond();
+		Check("{$name}: an IPv4 client reaches it (reported as '{$first}')", first <> Nil & first->Equals("127.0.0.1"));
+		Check("{$name}: an IPv6 client reaches it (reported as '{$second}')", second <> Nil & second->Equals("::1"));
+	}
+
+	method : Run() ~ Nil {
+		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
+
+		File->Delete("dual-stack-cert.pem");
+		File->Delete("dual-stack-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout dual-stack-key.pem -out dual-stack-cert.pem";
+		if(Runtime->Command(command) <> 0) {
+			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# plain TCP
+		"stage: tcp"->ErrorLine();
+		server := Start(0);
+		Check("TCP: the server listens", server <> Nil);
+		if(server <> Nil) {
+			TCPSocket->New("127.0.0.1", server->GetPort())->Close();
+			TCPSocket->New("::1", server->GetPort())->Close();
+			Finish(server, "TCP");
+		};
+
+		# TLS
+		"stage: tls"->ErrorLine();
+		server := Start(1);
+		Check("TLS: the server listens", server <> Nil);
+		if(server <> Nil) {
+			TlsClient("127.0.0.1", server->GetPort());
+			TlsClient("::1", server->GetPort());
+			Finish(server, "TLS");
+		};
+
+		# DTLS: the second client also proves the listener came back after an
+		# accept, and on both families
+		"stage: dtls"->ErrorLine();
+		server := Start(2);
+		Check("DTLS: the server listens", server <> Nil);
+		if(server <> Nil) {
+			DTLSSocket->New("127.0.0.1", server->GetPort())->Close();
+			DTLSSocket->New("::1", server->GetPort())->Close();
+			Finish(server, "DTLS");
+		};
+
+		File->Delete("dual-stack-cert.pem");
+		File->Delete("dual-stack-key.pem");
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: TCP, TLS and DTLS servers take IPv4 and IPv6 clients"->PrintLine();
+	}
+}
