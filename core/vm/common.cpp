@@ -5315,9 +5315,9 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 // IPv4 and IPv6 clients (IPSocket::BindAny), listening when it is TCP.
 // mbedtls_net_bind(nullptr, ...) bound whichever passive address getaddrinfo
 // offered first -- [::] with IPV6_V6ONLY on, so IPv6 only, on Windows; 0.0.0.0
-// on Linux -- so a server was reachable over one family, and which one
-// depended on the platform. A DTLS client of "localhost" then went wherever
-// the resolver listed first and found nothing there.
+// on Linux -- so a TLS or DTLS server was reachable over one family, and
+// which one depended on the platform. A client of "localhost" went wherever
+// its resolver listed first and, on a mismatch, found nothing there.
 //
 static int BindServerSocket(mbedtls_net_context& ctx, int port, int type)
 {
@@ -5528,9 +5528,8 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
-      // Bind to port
-      const std::string port_str = std::to_string(port);
-      ret = mbedtls_net_bind(&srv->listen_fd, nullptr, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
+      // Bind to port: IPv4 and IPv6 alike (see BindServerSocket)
+      ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM);
       if(ret != 0) {
         delete srv;
         PushInt(0, op_stack, stack_pos);
@@ -5632,15 +5631,11 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
         return true;
       }
 
+      // numeric; an IPv4 client of the dual-stack listener arrives as
+      // ::ffff:a.b.c.d and is reported as a.b.c.d
       char host_name[NI_MAXHOST] = {0};
-      char port[NI_MAXSERV] = {0};
-      status = getnameinfo((struct sockaddr*)&pin, pen_len, host_name, sizeof(host_name), port,
-                           sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
-      if(status < 0) {
-        delete client;
-        PushInt(0, op_stack, stack_pos);
-        return true;
-      }
+      int peer_port;
+      IPSocket::FormatAddress((struct sockaddr*)&pin, host_name, sizeof(host_name), peer_port);
 
       size_t* sock_obj = MemoryManager::AllocateObject(program->GetSecureSocketObjectId(), op_stack, *stack_pos, false);
       sock_obj[0] = (size_t)client;

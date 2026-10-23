@@ -517,32 +517,7 @@ public:
   }
 
   static SOCKET Bind(int port) {
-    SOCKET server = socket(AF_INET, SOCK_STREAM, 0);
-    if(server < 0) {
-      return -1;
-    }
-
-    int reuse = 1;
-    // Deliberately non-fatal: the only consequence of SO_REUSEADDR not applying is
-    // that a restart inside the TIME_WAIT window fails at the bind() below, which
-    // is checked and reported. Tearing down an otherwise usable socket here would
-    // be worse. errno is cleared so a later strerror() is not misled by it.
-    if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-      errno = 0;
-    }
-
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
-    sin.sin_port = htons(port);
-
-    if(::bind(server, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-      close(server);
-      return -1;
-    }
-
-    return server;
+    return BindAny(port, SOCK_STREAM);
   }
 
   static bool Listen(SOCKET server, int backlog) {
@@ -554,7 +529,7 @@ public:
   }
   
   static SOCKET Accept(SOCKET server, char* client_address, int &client_port) {
-    struct sockaddr_in pin;
+    struct sockaddr_storage pin;
     socklen_t addrlen = sizeof(pin);
 
     SOCKET client = accept(server, (struct sockaddr*)&pin, &addrlen);
@@ -576,10 +551,8 @@ public:
       errno = 0;
     }
 
-    char buffer[INET_ADDRSTRLEN] = { 0 };
-    inet_ntop(AF_INET, &(pin.sin_addr), buffer, INET_ADDRSTRLEN);
-    strncpy(client_address, buffer, INET_ADDRSTRLEN);
-    client_port = ntohs(pin.sin_port);
+    // client_address holds INET6_ADDRSTRLEN (see SockTcpAccept)
+    FormatAddress((struct sockaddr*)&pin, client_address, INET6_ADDRSTRLEN, client_port);
 
     return client;
   }

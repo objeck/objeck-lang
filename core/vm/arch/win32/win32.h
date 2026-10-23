@@ -618,33 +618,7 @@ class IPSocket {
   static void FormatAddress(const struct sockaddr* addr, char* buffer, size_t buffer_size, int& port);
 
   static SOCKET Bind(int port) {
-    SOCKET server = socket(AF_INET, SOCK_STREAM, 0);
-    if(server == INVALID_SOCKET) {
-      return -1;
-    }
-
-    int reuse = 1;
-    // Deliberately non-fatal: the only consequence of SO_REUSEADDR not applying is
-    // that a restart inside the TIME_WAIT window fails at the bind() below, which
-    // is checked and reported. Tearing down an otherwise usable socket here would
-    // be worse. The WSA error is cleared so a later WSAGetLastError() is not
-    // misled by it.
-    if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
-      WSASetLastError(0);
-    }
-
-    struct sockaddr_in sin;
-    memset(&sin, 0, sizeof(sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = INADDR_ANY;
-    sin.sin_port = htons(port);
-
-    if(::bind(server, (SOCKADDR*)&sin, sizeof(sin)) ==  SOCKET_ERROR) {
-      closesocket(server);
-      return -1;
-    }
-
-    return server;
+    return BindAny(port, SOCK_STREAM);
   }
 
   static bool Listen(SOCKET server, int backlog) {
