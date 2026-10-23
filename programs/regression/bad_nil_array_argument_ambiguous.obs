@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: Undefined function/method call: 'F(..)'
+#~
+A literal Nil matches an array parameter as it matches an object one
+(core_nil_array_argument.obs), so with one overload taking a String[] and one
+a Compare, F(Nil) names neither: ambiguous, as between two class parameters.
+~#
+class BadNilArrayArgumentAmbiguous {
+	function : F(a : String[]) ~ Int {
+		return 1;
+	}
+
+	function : F(a : Compare) ~ Int {
+		return 2;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		F(Nil)->PrintLine();
+	}
+}

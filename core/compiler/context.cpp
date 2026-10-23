@@ -4652,6 +4652,13 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
         return 0;
       }
 
+      // Nil is a value of every array type, as it is of every class: a relative
+      // match, so 'F(Nil)' with F(String[]) and F(Compare) is ambiguous, as it
+      // is between two class parameters. Only a typed Nil variable bound before.
+      if(calling_type->GetType() == NIL_TYPE && method_type->GetDimension() > 0) {
+        return 1;
+      }
+
       // looks for a relative match
       if(method_type->GetDimension() == 0) {
         switch(calling_type->GetType()) {
