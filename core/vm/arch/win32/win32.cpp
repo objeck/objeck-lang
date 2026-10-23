@@ -279,7 +279,7 @@ void IPSocket::FormatAddress(const struct sockaddr* addr, char* buffer, size_t b
 }
 
 SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
-	struct sockaddr_in pin;
+	struct sockaddr_storage pin;
 	int addrlen = sizeof(pin);
 
 	SOCKET client = accept(server, (struct sockaddr*)&pin, &addrlen);
@@ -299,10 +299,8 @@ SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
 		WSASetLastError(0);
 	}
 
-	char buffer[INET_ADDRSTRLEN] = { 0 };
-	inet_ntop(AF_INET, &(pin.sin_addr), buffer, INET_ADDRSTRLEN);
-	strncpy_s(client_address, INET_ADDRSTRLEN - 1, buffer, INET_ADDRSTRLEN);
-	client_port = ntohs(pin.sin_port);
+	// client_address holds INET6_ADDRSTRLEN (see SockTcpAccept)
+	FormatAddress((struct sockaddr*)&pin, client_address, INET6_ADDRSTRLEN, client_port);
 
 	return client;
 }
