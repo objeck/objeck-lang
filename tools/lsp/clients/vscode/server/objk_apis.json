@@ -48,6 +48,12 @@
 				},
 				"List": {
 					"descriptions": ["**List all cached content resources**\n\n```function : List(key:String) ~ Vector&lt;CachedContentItem&gt;```\n\n\n\nkey: String\n\nreturn: Vector&lt;CachedContentItem&gt;"]
+				},
+				"ParseItem": {
+					"descriptions": ["**Parses a single cachedContents response body (create or get)**\n\n```function : ParseItem(body:String) ~ CachedContentItem```\n\n\n\nbody: String\n\nreturn: CachedContentItem"]
+				},
+				"ParseList": {
+					"descriptions": ["**Parses a cachedContents listing response body**\n\n```function : ParseList(body:String) ~ Vector&lt;CachedContentItem&gt;```\n\n\n\nbody: String\n\nreturn: Vector&lt;CachedContentItem&gt;"]
 				}
 			}
 		},
@@ -151,6 +157,9 @@
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"ParseBody": {
+					"descriptions": ["**Parses a response body, recording a failure as the last error (the error was only printed before, so GetLastError() never reported it). A body that is not JSON, or that carries an 'error' object, yields Nil.**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
+				},
 				"SetApiKey": {
 					"descriptions": ["**Set the API file key path**\n\n```function : SetApiKey(api_key:String) ~ Nil```\n\n\n\napi_key: String\n\nreturn: Nil"]
 				}
@@ -167,6 +176,9 @@
 				},
 				"List": {
 					"descriptions": ["**List all uploaded files**\n\n```function : List(key:String) ~ Vector&lt;GeminiFile&gt;```\n\n\n\nkey: String\n\nreturn: Vector&lt;GeminiFile&gt;"]
+				},
+				"ParseList": {
+					"descriptions": ["**Parses a file listing response body**\n\n```function : ParseList(body:String) ~ Vector&lt;GeminiFile&gt;```\n\n\n\nbody: String\n\nreturn: Vector&lt;GeminiFile&gt;"]
 				},
 				"Upload": {
 					"descriptions": ["**Upload a file using multipart upload**\n\n```function : Upload(display_name:String, data:Byte[], mime_type:String, key:String) ~ GeminiFile```\n\n\n\ndisplay_name: String\n\ndata: Byte[]\n\nmime_type: String\n\nkey: String\n\nreturn: GeminiFile"]
@@ -202,11 +214,43 @@
 				}
 			}
 		},
+		"API.Google.Gemini.GenerationConfig": {
+			"description": "Generation configuration: sampling and output limits for a generateContent request. Unset values are left out of the request, so the model's defaults apply.",
+			"functions": {
+				"AddStopSequence": {
+					"descriptions": ["**Adds a stop sequence; generation stops at the first one produced**\n\n```method : public : AddStopSequence(stop_sequence:String) ~ GenerationConfig```\n\n\n\nstop_sequence: String\n\nreturn: GenerationConfig"]
+				},
+				"SetCandidateCount": {
+					"descriptions": ["**Sets the number of candidates to generate**\n\n```method : public : SetCandidateCount(candidate_count:Int) ~ GenerationConfig```\n\n\n\ncandidate_count: Int\n\nreturn: GenerationConfig"]
+				},
+				"SetMaxOutputTokens": {
+					"descriptions": ["**Sets the maximum number of output tokens**\n\n```method : public : SetMaxOutputTokens(max_output_tokens:Int) ~ GenerationConfig```\n\n\n\nmax_output_tokens: Int\n\nreturn: GenerationConfig"]
+				},
+				"SetSeed": {
+					"descriptions": ["**Sets the decoding seed**\n\n```method : public : SetSeed(seed:Int) ~ GenerationConfig```\n\n\n\nseed: Int\n\nreturn: GenerationConfig"]
+				},
+				"SetTemperature": {
+					"descriptions": ["**Sets the sampling temperature**\n\n```method : public : SetTemperature(temperature:Float) ~ GenerationConfig```\n\n\n\ntemperature: Float\n\nreturn: GenerationConfig"]
+				},
+				"SetTopK": {
+					"descriptions": ["**Sets the top-k sampling limit**\n\n```method : public : SetTopK(top_k:Int) ~ GenerationConfig```\n\n\n\ntop_k: Int\n\nreturn: GenerationConfig"]
+				},
+				"SetTopP": {
+					"descriptions": ["**Sets the nucleus sampling threshold**\n\n```method : public : SetTopP(top_p:Float) ~ GenerationConfig```\n\n\n\ntop_p: Float\n\nreturn: GenerationConfig"]
+				},
+				"ToJson": {
+					"descriptions": ["**Gets the configuration as the 'generationConfig' JSON object**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
 		"API.Google.Gemini.Model": {
 			"description": "Gemini model interactions",
 			"functions": {
 				"BatchEmbedContent": {
 					"descriptions": ["**Generates embeddings for multiple text strings in a single request**\n\n```function : BatchEmbedContent(model_name:String, texts:Vector&lt;String&gt;, key:String) ~ Vector&lt;EmbeddingValues&gt;```\n\n\n\nmodel_name: String\n\ntexts: Vector&lt;String&gt;\n\nkey: String\n\nreturn: Vector&lt;EmbeddingValues&gt;"]
+				},
+				"BuildGenerateRequest": {
+					"descriptions": ["**Builds the JSON body of a generateContent request**\n\n```function : BuildGenerateRequest(contents:Vector&lt;Content&gt;, funcs:Map&lt;String,Pair&lt;FunctionType,Func2Ref&lt;JsonElement,JsonElement&gt;&gt;&gt;) ~ JsonElement```\n\n\n\ncontents: Vector&lt;Content&gt;\n\nfuncs: Map&lt;String,Pair&lt;FunctionType,Func2Ref&lt;JsonElement,JsonElement&gt;&gt;&gt;\n\nreturn: JsonElement"]
 				},
 				"CountTokens": {
 					"descriptions": ["**Runs a model's tokenizer on input content and returns the token count**\n\n```function : CountTokens(model_name:String, content:Content, key:String) ~ Int```\n\n\n\nmodel_name: String\n\ncontent: Content\n\nkey: String\n\nreturn: Int\n\n```\ncontent := Content->New(\"user\")->AddPart(TextPart->New(\"Hello, world!\"));\ncount := Model->CountTokens(Model->GEMINI_2_0_FLASH(), content, EndPoint->GetApiKey());\n\"Token count: {$count}\"->PrintLine();\n```", "**Runs a model's tokenizer on input content and returns the token count**\n\n```function : CountTokens(model_name:String, contents:Vector&lt;Content&gt;, key:String) ~ Int```\n\n\n\nmodel_name: String\n\ncontents: Vector&lt;Content&gt;\n\nkey: String\n\nreturn: Int"]
@@ -267,6 +311,24 @@
 				},
 				"List": {
 					"descriptions": ["**Lists available models**\n\n```function : List(key:String) ~ Vector&lt;Model&gt;```\n\n\n\nkey: String\n\nreturn: Vector&lt;Model&gt;\n\n```\nmodels := Model->List(EndPoint->GetApiKey());\neach(model in models) {\n  model->GetName()->PrintLine();\n};\n```"]
+				},
+				"ParseBatchEmbeddings": {
+					"descriptions": ["**Parses a batchEmbedContents response body**\n\n```function : ParseBatchEmbeddings(body:String) ~ Vector&lt;EmbeddingValues&gt;```\n\n\n\nbody: String\n\nreturn: Vector&lt;EmbeddingValues&gt;"]
+				},
+				"ParseCandidates": {
+					"descriptions": ["**Parses a generateContent response body. Function calls in the reply are not dispatched (no callbacks are given).**\n\n```function : ParseCandidates(body:String) ~ Vector&lt;Candidate&gt;```\n\n\n\nbody: String\n\nreturn: Vector&lt;Candidate&gt;"]
+				},
+				"ParseEmbedding": {
+					"descriptions": ["**Parses an embedContent response body**\n\n```function : ParseEmbedding(body:String) ~ Float[]```\n\n\n\nbody: String\n\nreturn: Float[]"]
+				},
+				"ParseModel": {
+					"descriptions": ["**Parses a single model response body**\n\n```function : ParseModel(body:String) ~ Model```\n\n\n\nbody: String\n\nreturn: Model"]
+				},
+				"ParseModels": {
+					"descriptions": ["**Parses a model listing response body (one page)**\n\n```function : ParseModels(body:String) ~ Vector&lt;Model&gt;```\n\n\n\nbody: String\n\nreturn: Vector&lt;Model&gt;"]
+				},
+				"ParseTokenCount": {
+					"descriptions": ["**Parses a countTokens response body**\n\n```function : ParseTokenCount(body:String) ~ Int```\n\n\n\nbody: String\n\nreturn: Int"]
 				},
 				"ToString": {
 					"descriptions": ["**String representation of the object**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -1406,6 +1468,12 @@
 				},
 				"List": {
 					"descriptions": ["**List recent batch jobs (up to 20)**\n\n```function : List(token:String) ~ Vector&lt;BatchJob&gt;```\n\n\n\ntoken: String\n\nreturn: Vector&lt;BatchJob&gt;", "**List batch jobs with a result limit**\n\n```function : List(limit:Int, token:String) ~ Vector&lt;BatchJob&gt;```\n\n\n\nlimit: Int\n\ntoken: String\n\nreturn: Vector&lt;BatchJob&gt;"]
+				},
+				"ParseBatchJob": {
+					"descriptions": ["**Parses a batch object response body**\n\n```function : ParseBatchJob(body:String) ~ BatchJob```\n\n\n\nbody: String\n\nreturn: BatchJob"]
+				},
+				"ParseBatchList": {
+					"descriptions": ["**Parses a batch listing response body**\n\n```function : ParseBatchList(body:String) ~ Vector&lt;BatchJob&gt;```\n\n\n\nbody: String\n\nreturn: Vector&lt;BatchJob&gt;"]
 				}
 			}
 		},
@@ -1466,6 +1534,9 @@
 			"functions": {
 				"Create": {
 					"descriptions": ["**Creates an embedding for a single input string.**\n\n```function : Create(input:String, model:String, token:String) ~ Float[]```\n\n\n\ninput: String\n\nmodel: String\n\ntoken: String\n\nreturn: Float[]", "**Creates an embedding with custom dimensions.**\n\n```function : Create(input:String, model:String, dimensions:Int, token:String) ~ Float[]```\n\n\n\ninput: String\n\nmodel: String\n\ndimensions: Int\n\ntoken: String\n\nreturn: Float[]"]
+				},
+				"ParseEmbedding": {
+					"descriptions": ["**Parses an embeddings response body, returning the first embedding**\n\n```function : ParseEmbedding(body:String) ~ Float[]```\n\n\n\nbody: String\n\nreturn: Float[]"]
 				}
 			}
 		},
@@ -1480,6 +1551,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ParseBody": {
+					"descriptions": ["**Parses a response body, recording a failure as the last error. A body that is not JSON, or that carries an 'error' object, yields Nil; an 'error' that is null (the Responses API sends one on success) is not a failure.**\n\n```function : ParseBody(body:String) ~ JsonElement```\n\n\n\nbody: String\n\nreturn: JsonElement"]
 				},
 				"SetApiKey": {
 					"descriptions": ["**Set the API file key path**\n\n```function : SetApiKey(api_key:String) ~ Nil```\n\n\n\napi_key: String\n\nreturn: Nil"]
@@ -1528,6 +1602,9 @@
 				"LoadOrCreate": {
 					"descriptions": ["**Loads or creates an OpenAI file from the local filesystem**\n\n```function : LoadOrCreate(filename:String, token:String) ~ API.OpenAI.File```\n\n\n\nfilename: String\n\ntoken: String\n\nreturn: API.OpenAI.File", "**Loads or creates an OpenAI file from the local filesystem**\n\n```function : LoadOrCreate(filename:String, purpose:String, token:String) ~ API.OpenAI.File```\n\n\n\nfilename: String\n\npurpose: String\n\ntoken: String\n\nreturn: API.OpenAI.File"]
 				},
+				"ParseFileList": {
+					"descriptions": ["**Parses a file listing response body**\n\n```function : ParseFileList(body:String, token:String) ~ Vector&lt;API.OpenAI.File&gt;```\n\n\n\nbody: String\n\ntoken: String\n\nreturn: Vector&lt;API.OpenAI.File&gt;"]
+				},
 				"Retrieve": {
 					"descriptions": ["**Returns the contents of the specified file**\n\n```function : Retrieve(id:String, token:String) ~ Byte[]```\n\n\n\nid: String\n\ntoken: String\n\nreturn: Byte[]"]
 				},
@@ -1565,11 +1642,17 @@
 				"Edit": {
 					"descriptions": ["**Creates an edited or extended image given an original image and a prompt**\n\n```function : Edit(image_name:String, image_content:Byte[], prompt:String, token:String) ~ API.OpenAI.Image```\n\n\n\nimage_name: String\n\nimage_content: Byte[]\n\nprompt: String\n\ntoken: String\n\nreturn: API.OpenAI.Image", "**Creates an edited or extended image given an original image and a prompt**\n\n```function : Edit(image_name:String, image_content:Byte[], prompt:String, mask_name:String, mask_content:Byte[], model:String, n:Int, size:Image-&gt;Size, response_format:String, user:String, token:String) ~ API.OpenAI.Image```\n\n\n\nimage_name: String\n\nimage_content: Byte[]\n\nprompt: String\n\nmask_name: String\n\nmask_content: Byte[]\n\nmodel: String\n\nn: Int\n\nsize: Image-&gt;Size\n\nresponse_format: String\n\nuser: String\n\ntoken: String\n\nreturn: API.OpenAI.Image"]
 				},
+				"GetBase64Images": {
+					"descriptions": ["**Get the generated images as Base64 strings, for response_format 'b64_json'**\n\n```method : public : GetBase64Images() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
 				"GetCreatedAt": {
 					"descriptions": ["**Unix timestamp (in seconds) of when the object instance was created**\n\n```method : public : GetCreatedAt() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetUrls": {
 					"descriptions": ["**Get the generated images URLs**\n\n```method : public : GetUrls() ~ Url[]```\n\n\n\nreturn: Url[]"]
+				},
+				"ParseImage": {
+					"descriptions": ["**Parses an images API response body**\n\n```function : ParseImage(body:String) ~ API.OpenAI.Image```\n\n\n\nbody: String\n\nreturn: API.OpenAI.Image"]
 				},
 				"Variation": {
 					"descriptions": ["**Creates a variation of a given image**\n\n```function : Variation(image_name:String, image_content:Byte[], token:String) ~ API.OpenAI.Image```\n\n\n\nimage_name: String\n\nimage_content: Byte[]\n\ntoken: String\n\nreturn: API.OpenAI.Image", "**Creates a variation of a given image**\n\n```function : Variation(image_name:String, image_content:Byte[], model:String, n:Int, response_format:String, size:Image-&gt;Size, user:String, token:String) ~ API.OpenAI.Image```\n\n\n\nimage_name: String\n\nimage_content: Byte[]\n\nmodel: String\n\nn: Int\n\nresponse_format: String\n\nsize: Image-&gt;Size\n\nuser: String\n\ntoken: String\n\nreturn: API.OpenAI.Image"]
@@ -1645,6 +1728,9 @@
 			"functions": {
 				"Check": {
 					"descriptions": ["**Check content with the default model (omni-moderation-latest)**\n\n```function : Check(input:String, token:String) ~ ModerationResult```\n\n\n\ninput: String\n\ntoken: String\n\nreturn: ModerationResult", "**Check content with a specific model**\n\n```function : Check(input:String, model:String, token:String) ~ ModerationResult```\n\n\n\ninput: String\n\nmodel: String\n\ntoken: String\n\nreturn: ModerationResult"]
+				},
+				"ParseModeration": {
+					"descriptions": ["**Parses a moderation response body**\n\n```function : ParseModeration(body:String, model:String) ~ ModerationResult```\n\n\n\nbody: String\n\nmodel: String\n\nreturn: ModerationResult"]
 				}
 			}
 		},
@@ -1888,6 +1974,9 @@
 				"GetObject": {
 					"descriptions": ["**Get the object type**\n\n```method : public : GetObject() ~ String```\n\n\n\nreturn: String"]
 				},
+				"ParseCompletion": {
+					"descriptions": ["**Parses a chat completions response body**\n\n```function : ParseCompletion(body:String) ~ Completion```\n\n\n\nbody: String\n\nreturn: Completion"]
+				},
 				"ToString": {
 					"descriptions": ["**String representation of the object**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
@@ -1970,6 +2059,9 @@
 				},
 				"GetText": {
 					"descriptions": ["**Get response text**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String\n\n```\ntoken := \"sk-...\";\r\nmsg := Pair->New(\"user\", \"Describe the water cycle.\")<String, String>;\r\nresp := Response->Respond(\"gpt-4o-mini\", msg, token);\r\nresp->GetText()->PrintLine();\n```"]
+				},
+				"ParseResponse": {
+					"descriptions": ["**Parses a Responses API response body**\n\n```function : ParseResponse(body:String) ~ Response```\n\n\n\nbody: String\n\nreturn: Response"]
 				},
 				"Respond": {
 					"descriptions": ["**Model response for the given query**\n\n```function : Respond(model:String, message:Pair&lt;String,String&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given query**\n\n```function : Respond(model:String, message:Pair&lt;String,String&gt;, reasoning_effort:ReasoningEffort, verbosity:Verbosity, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given query**\n\n```function : Respond(model:String, message:Pair&lt;String,String&gt;, schema:ParameterType, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\nschema: ParameterType\n\ntoken: String\n\nreturn: Response", "**Model response for the given query**\n\n```function : Respond(model:String, message:Pair&lt;String,String&gt;, schema:ParameterType, reasoning_effort:ReasoningEffort, verbosity:Verbosity, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\nschema: ParameterType\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given query**\n\n```function : Respond(model:String, message:Pair&lt;String,String&gt;, max_tokens:Int, temperature:Float, top_p:Float, reasoning_effort:ReasoningEffort, verbosity:Verbosity, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given query**\n\n```function : Respond(model:String, message:Pair&lt;String,String&gt;, max_tokens:Int, temperature:Float, top_p:Float, reasoning_effort:ReasoningEffort, verbosity:Verbosity, schema:ParameterType, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,String&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\nschema: ParameterType\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given query**\n\n```function : Respond(model:String, messages:Vector&lt;Pair&lt;String,String&gt;&gt;) ~ Response```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,String&gt;&gt;\n\nreturn: Response", "**Model response for the given query**\n\n```function : Respond(model:String, messages:Vector&lt;Pair&lt;String,String&gt;&gt;) ~ Response```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,String&gt;&gt;\n\nreturn: Response", "**Model response for the given file and query**\n\n```function : Respond(model:String, message:API.OpenAI.FileQuery, schema:ParameterType, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: API.OpenAI.FileQuery\n\nschema: ParameterType\n\ntoken: String\n\nreturn: Response", "**Model response for the given file and query**\n\n```function : Respond(model:String, message:API.OpenAI.FileQuery, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: API.OpenAI.FileQuery\n\ntoken: String\n\nreturn: Response", "**Model response for the given file and query**\n\n```function : Respond(model:String, message:API.OpenAI.FileQuery, max_tokens:Int, temperature:Float, top_p:Float, reasoning_effort:ReasoningEffort, verbosity:Verbosity, schema:ParameterType, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: API.OpenAI.FileQuery\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\nschema: ParameterType\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given file and query**\n\n```function : Respond(model:String, message:API.OpenAI.FileQuery, max_tokens:Int, temperature:Float, top_p:Float, reasoning_effort:ReasoningEffort, verbosity:Verbosity, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: API.OpenAI.FileQuery\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given file and query**\n\n```function : Respond(model:String, messages:Vector&lt;FileQuery&gt;, schema:ParameterType, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessages: Vector&lt;FileQuery&gt;\n\nschema: ParameterType\n\ntoken: String\n\nreturn: Response", "**Model response for the given file and query**\n\n```function : Respond(model:String, messages:Vector&lt;FileQuery&gt;, max_tokens:Int, temperature:Float, top_p:Float, reasoning_effort:ReasoningEffort, verbosity:Verbosity, schema:ParameterType, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessages: Vector&lt;FileQuery&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\nschema: ParameterType\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given image and query**\n\n```function : Respond(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, schema:ParameterType, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\nschema: ParameterType\n\ntoken: String\n\nreturn: Response", "**Model response for the given image and query**\n\n```function : Respond(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given image and query**\n\n```function : Respond(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, max_tokens:Int, temperature:Float, top_p:Float, reasoning_effort:ReasoningEffort, verbosity:Verbosity, schema:ParameterType, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\nschema: ParameterType\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given image and query**\n\n```function : Respond(model:String, message:Pair&lt;String,API.OpenAI.ImageQuery&gt;, max_tokens:Int, temperature:Float, top_p:Float, reasoning_effort:ReasoningEffort, verbosity:Verbosity, tools:Vector&lt;Tool&gt;, token:String) ~ Response```\n\n\n\nmodel: String\n\nmessage: Pair&lt;String,API.OpenAI.ImageQuery&gt;\n\nmax_tokens: Int\n\ntemperature: Float\n\ntop_p: Float\n\nreasoning_effort: ReasoningEffort\n\nverbosity: Verbosity\n\ntools: Vector&lt;Tool&gt;\n\ntoken: String\n\nreturn: Response", "**Model response for the given image and query**\n\n```function : Respond(model:String, messages:Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;) ~ Response```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;\n\nreturn: Response", "**Model response for the given image and query**\n\n```function : Respond(model:String, messages:Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;) ~ Response```\n\n\n\nmodel: String\n\nmessages: Vector&lt;Pair&lt;String,API.OpenAI.ImageQuery&gt;&gt;\n\nreturn: Response"]
@@ -14402,6 +14494,12 @@
 			}
 		],
 		"GeminiFile": [
+			{
+				"bundle": "API.Google.Gemini",
+				"file": ""
+			}
+		],
+		"GenerationConfig": [
 			{
 				"bundle": "API.Google.Gemini",
 				"file": ""
