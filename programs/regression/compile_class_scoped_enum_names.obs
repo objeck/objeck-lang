@@ -1,0 +1,134 @@
+#~
+Regression: class-scoped enums with the same name in two classes.
+
+The parser adds 'ScopedAa#' as a program-wide use for each class that declares
+an enum, and the use-prefix search ran before a class's own scope, so inside
+ScopedBb the unqualified `Type` (as a value, `Type->R`, and as a field,
+parameter or return type) resolved to ScopedAa#Type: "Undefined enum item: 'R'".
+A class's own enum, then its parents', now wins: innermost scope first. Also
+checks a subclass using its parent's enum and a third class naming each enum
+qualified, `ScopedAa->Type->Y`.
+~#
+
+class ScopedAa {
+  @t : Type;
+
+  enum Type {
+    X,
+    Y
+  }
+
+  New() {
+    @t := Type->Y;
+  }
+
+  method : public : Get() ~ Type {
+    return @t;
+  }
+
+  method : public : Is(t : Type) ~ Bool {
+    return @t = t;
+  }
+}
+
+class ScopedBb {
+  @t : Type;
+
+  enum Type {
+    P,
+    Q,
+    R
+  }
+
+  New() {
+    @t := Type->R;
+  }
+
+  method : public : Get() ~ Type {
+    return @t;
+  }
+
+  method : public : Is(t : Type) ~ Bool {
+    return @t = t;
+  }
+
+  method : public : Label() ~ String {
+    select(@t) {
+      label Type->P: {
+        return "p";
+      }
+
+      label Type->R: {
+        return "r";
+      }
+    };
+
+    return "other";
+  }
+}
+
+# inherits ScopedBb's Type
+class ScopedKid from ScopedBb {
+  @own : Type;
+
+  New() {
+    Parent();
+    @own := Type->Q;
+  }
+
+  method : public : Own() ~ Type {
+    return @own;
+  }
+
+  method : public : IsOwnQ() ~ Bool {
+    return @own = Type->Q;
+  }
+}
+
+class CompileClassScopedEnumNames {
+  function : Main(args : String[]) ~ Nil {
+    failed := 0;
+
+    a := ScopedAa->New();
+    b := ScopedBb->New();
+
+    if(a->Get() <> ScopedAa->Type->Y | a->Get()->As(Int) <> 1) {
+      "FAIL: first class's own enum"->PrintLine();
+      failed += 1;
+    };
+
+    if(b->Get() <> ScopedBb->Type->R | b->Get()->As(Int) <> 2) {
+      "FAIL: second class's own enum"->PrintLine();
+      failed += 1;
+    };
+
+    if(a->Is(ScopedAa->Type->Y) = false | b->Is(ScopedBb->Type->R) = false | b->Is(ScopedBb->Type->P)) {
+      "FAIL: own enum as a parameter type"->PrintLine();
+      failed += 1;
+    };
+
+    if(b->Label()->Equals("r") = false) {
+      "FAIL: own enum as a select label"->PrintLine();
+      failed += 1;
+    };
+
+    k := ScopedKid->New();
+    if(k->Own() <> ScopedBb->Type->Q | k->IsOwnQ() = false | k->Get() <> ScopedBb->Type->R) {
+      "FAIL: parent's enum in a subclass"->PrintLine();
+      failed += 1;
+    };
+
+    bt : ScopedBb->Type := k->Own();
+    if(bt->As(Int) <> 1) {
+      "FAIL: qualified enum type"->PrintLine();
+      failed += 1;
+    };
+
+    if(failed > 0) {
+      "FAIL: {$failed} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: compile_class_scoped_enum_names"->PrintLine();
+  }
+}

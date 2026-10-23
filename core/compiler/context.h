@@ -448,6 +448,10 @@ class ContextAnalyzer {
   // finds the first enum match; note multiple matches may exist
   Enum* SearchProgramEnums(const std::wstring &eenum_name);
 
+  // the full name of the enum 'eenum_name' declared in 'klass' or the nearest
+  // of its parents ('Bb#Type'), or empty; innermost scope first
+  std::wstring SearchScopedEnumName(const std::wstring &eenum_name, Class* klass);
+
   inline std::vector<Type*> GetConcreteTypes(MethodCall* method_call) {
     if(!method_call->GetConcreteTypes().empty()) {
       return method_call->GetConcreteTypes();
