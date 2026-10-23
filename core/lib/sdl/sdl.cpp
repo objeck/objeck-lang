@@ -2815,6 +2815,21 @@ extern "C" {
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
+  void sdl_cursor_get_global_mouse_state_pt(VMContext& context) {
+    size_t* pt_obj = APITools_GetObjectValue(context, 1);
+
+    int x, y;
+    APITools_SetIntValue(context, 0, SDL_GetGlobalMouseState(&x, &y));
+
+    if(pt_obj) {
+      pt_obj[0] = x;
+      pt_obj[1] = y;
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
   void sdl_cursor_get_mouse_state(VMContext& context) {
     int x, y;
     APITools_SetIntValue(context, 0, SDL_GetMouseState(&x, &y));
@@ -2969,6 +2984,16 @@ __declspec(dllexport)
   //
   // Game Controller
   //
+
+  // NULL (0) when the index names no device or the device is not a controller;
+  // SDL_GetError() says why
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_gamecontroller_open(VMContext& context) {
+    const int joystick_index = (int)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, (size_t)SDL_GameControllerOpen(joystick_index));
+  }
 
 #ifdef _WIN32
   __declspec(dllexport)
@@ -3308,7 +3333,6 @@ __declspec(dllexport)
     APITools_SetIntValue(context, 0, SDL_GameControllerGetButton(gamecontroller, button));
   }
 
-  /*
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -3316,7 +3340,8 @@ __declspec(dllexport)
     SDL_GameController* gamecontroller = (SDL_GameController*)APITools_GetIntValue(context, 1);
     APITools_SetIntValue(context, 0, SDL_GameControllerGetNumTouchpads(gamecontroller));
   }
-  
+
+  /*
 
 #ifdef _WIN32
   __declspec(dllexport)

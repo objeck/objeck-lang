@@ -2195,8 +2195,16 @@ bundle Game.SDL2 {
 		@gamecontroller : Int;
 
 		#~
-		Open a game controller for use.
+		Open a game controller for use. When the index names no device, or a device
+		that is not a game controller, the controller is not opened: IsNull() is true
+		and Core->GetError() says why.
 		@param joystick_index the device_index
+		```
+		controller := GameController->New(0);
+		if(controller->IsNull()) {
+			Core->GetError()->PrintLine();
+		};
+		```
 		~#
 		New(joystick_index : Int) {
 			array_args := Base->New[2];
@@ -3012,13 +3020,24 @@ bundle Game.SDL2 {
 		~#
 
 		#~
-		Close a game controller previously opened
+		Determines if the underlying SDL C-struct is NULL, that is, the controller was not opened or has been closed
+		@return true if NULL, false otherwise
+		~#
+		method : public : IsNull() ~ Bool {
+			return @gamecontroller = 0;
+		}
+
+		#~
+		Close a game controller previously opened; closing twice, or closing a controller that was never opened, does nothing
 		~#
 		method : public : Close() ~ Nil {
-			array_args := Base->New[1];
-			array_args[0] := IntRef->New(@gamecontroller);
-			if(@fn_sdl_gamecontroller_close = Nil) { @fn_sdl_gamecontroller_close := "sdl_gamecontroller_close"; };
-			Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_close, array_args);
+			if(@gamecontroller <> 0) {
+				array_args := Base->New[1];
+				array_args[0] := IntRef->New(@gamecontroller);
+				if(@fn_sdl_gamecontroller_close = Nil) { @fn_sdl_gamecontroller_close := "sdl_gamecontroller_close"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_gamecontroller_close, array_args);
+				@gamecontroller := 0;
+			};
 		}
 
 		#~
