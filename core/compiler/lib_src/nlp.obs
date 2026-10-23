@@ -434,46 +434,26 @@ clean->PrintLine();
 		}
 
 		#~
-		Basic Porter stemmer - reduces words to their root form
+		Porter stemmer: reduces an English word to its stem with the Porter (1980) algorithm, as
+		Martin Porter's reference implementation applies it. Stems need not be words
+		("happily" becomes "happili", "relational" becomes "relat"); what matters is that
+		related forms meet ("connected", "connecting" and "connection" all become "connect").
+		The word is lowercased; words of one or two letters, and words holding anything but
+		the letters a-z, are returned lowercased and otherwise unchanged.
 		@param word input word
 		@return stemmed word
 
 ```
 TextPreprocessor->Stem("running")->PrintLine();
-TextPreprocessor->Stem("happily")->PrintLine();
+TextPreprocessor->Stem("connection")->PrintLine();
 ```
 		~#
 		function : Stem(word : String) ~ String {
-			if(word = Nil | word->Size() < 3) {
+			if(word = Nil) {
 				return word;
 			};
 
-			stemmed := word->ToLower();
-
-			# Remove common suffixes (simplified Porter stemmer)
-			if(stemmed->EndsWith("ing") & stemmed->Size() > 5) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 3);
-			}
-			else if(stemmed->EndsWith("ed") & stemmed->Size() > 4) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 2);
-			}
-			else if(stemmed->EndsWith("ly") & stemmed->Size() > 4) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 2);
-			}
-			else if(stemmed->EndsWith("es") & stemmed->Size() > 4) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 2);
-			}
-			else if(stemmed->EndsWith("s") & stemmed->Size() > 3 & <>stemmed->EndsWith("ss")) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 1);
-			}
-			else if(stemmed->EndsWith("tion") & stemmed->Size() > 6) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 4);
-			}
-			else if(stemmed->EndsWith("ment") & stemmed->Size() > 6) {
-				stemmed := stemmed->SubString(0, stemmed->Size() - 4);
-			};
-
-			return stemmed;
+			return PorterStemmer->New(word->ToLower())->Stem();
 		}
 
 		#~
@@ -500,6 +480,372 @@ each(s in stemmed) {
 			};
 
 			return stemmed;
+		}
+	}
+
+	#
+	# The Porter (1980) algorithm, step for step as Martin Porter's reference C implementation
+	# (porter.c): the word is held in @b[0..@k], and @j marks the end of the stem under test
+	# after a successful Ends(). Including its two departures from the paper: step 2 maps
+	# "bli" to "ble" (not "abli" to "able") and adds "logi" to "log".
+	#
+	class : private : PorterStemmer {
+		@b : Char[];
+		@k : Int;
+		@j : Int;
+
+		New(word : String) {
+			@b := word->ToCharArray();
+			@k := @b->Size() - 1;
+			@j := 0;
+		}
+
+		method : public : Stem() ~ String {
+			if(@k <= 1) {
+				return String->New(@b);
+			};
+
+			each(i : @b) {
+				if(@b[i] < 'a' | @b[i] > 'z') {
+					return String->New(@b);
+				};
+			};
+
+			Step1ab();
+			if(@k > 0) {
+				Step1c();
+				Step2();
+				Step3();
+				Step4();
+				Step5();
+			};
+
+			return String->New(@b, 0, @k + 1);
+		}
+
+		# is @b[i] a consonant? 'y' is one at the start or after a vowel
+		method : IsCons(i : Int) ~ Bool {
+			c := @b[i];
+			if(c = 'a' | c = 'e' | c = 'i' | c = 'o' | c = 'u') {
+				return false;
+			};
+
+			if(c = 'y') {
+				return i = 0 ? true : <>IsCons(i - 1);
+			};
+
+			return true;
+		}
+
+		# the number of vowel-consonant sequences in @b[0..@j]: [C](VC)^m[V]
+		method : Measure() ~ Int {
+			n := 0;
+			i := 0;
+
+			while(i <= @j & IsCons(i)) {
+				i += 1;
+			};
+
+			while(i <= @j) {
+				while(i <= @j & <>IsCons(i)) {
+					i += 1;
+				};
+				if(i > @j) {
+					return n;
+				};
+
+				n += 1;
+				while(i <= @j & IsCons(i)) {
+					i += 1;
+				};
+			};
+
+			return n;
+		}
+
+		# does @b[0..@j] hold a vowel?
+		method : VowelInStem() ~ Bool {
+			for(i := 0; i <= @j; i += 1;) {
+				if(<>IsCons(i)) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# do @b[i-1] and @b[i] hold the same consonant?
+		method : DoubleCons(i : Int) ~ Bool {
+			if(i < 1) {
+				return false;
+			};
+
+			return @b[i] = @b[i - 1] & IsCons(i);
+		}
+
+		# consonant-vowel-consonant ending at i, the last not w, x or y: "hop", not "snow"
+		method : Cvc(i : Int) ~ Bool {
+			if(i < 2 | <>IsCons(i) | IsCons(i - 1) | <>IsCons(i - 2)) {
+				return false;
+			};
+
+			c := @b[i];
+			return c <> 'w' & c <> 'x' & c <> 'y';
+		}
+
+		# does @b[0..@k] end with s? if so, @j marks the stem before it
+		method : Ends(s : String) ~ Bool {
+			length := s->Size();
+			if(length > @k + 1) {
+				return false;
+			};
+
+			offset := @k - length + 1;
+			each(i : length) {
+				if(@b[offset + i] <> s->Get(i)) {
+					return false;
+				};
+			};
+
+			@j := @k - length;
+			return true;
+		}
+
+		# replace @b[@j+1..@k] with s
+		method : SetTo(s : String) ~ Nil {
+			length := s->Size();
+			if(@j + length + 1 > @b->Size()) {
+				grown := Char->New[@j + length + 1];
+				for(i := 0; i <= @j; i += 1;) {
+					grown[i] := @b[i];
+				};
+				@b := grown;
+			};
+
+			each(i : length) {
+				@b[@j + 1 + i] := s->Get(i);
+			};
+			@k := @j + length;
+		}
+
+		method : Replace(s : String) ~ Nil {
+			if(Measure() > 0) {
+				SetTo(s);
+			};
+		}
+
+		# plurals and -ed or -ing: caresses -> caress, ponies -> poni, agreed -> agree,
+		# plastered -> plaster, motoring -> motor, hopping -> hop, filing -> file
+		method : Step1ab() ~ Nil {
+			if(@b[@k] = 's') {
+				if(Ends("sses")) {
+					@k -= 2;
+				}
+				else if(Ends("ies")) {
+					SetTo("i");
+				}
+				else if(@b[@k - 1] <> 's') {
+					@k -= 1;
+				};
+			};
+
+			if(Ends("eed")) {
+				if(Measure() > 0) {
+					@k -= 1;
+				};
+			}
+			else if((Ends("ed") | Ends("ing")) & VowelInStem()) {
+				@k := @j;
+				if(Ends("at")) {
+					SetTo("ate");
+				}
+				else if(Ends("bl")) {
+					SetTo("ble");
+				}
+				else if(Ends("iz")) {
+					SetTo("ize");
+				}
+				else if(DoubleCons(@k)) {
+					c := @b[@k];
+					if(c <> 'l' & c <> 's' & c <> 'z') {
+						@k -= 1;
+					};
+				}
+				else {
+					@j := @k;
+					if(Measure() = 1 & Cvc(@k)) {
+						SetTo("e");
+					};
+				};
+			};
+		}
+
+		# a final y after a vowel in the stem becomes i: happy -> happi, but sky stays
+		method : Step1c() ~ Nil {
+			if(Ends("y") & VowelInStem()) {
+				@b[@k] := 'i';
+			};
+		}
+
+		# double suffixes to single ones, keyed on the penultimate letter
+		method : Step2() ~ Nil {
+			if(@k < 1) {
+				return;
+			};
+
+			select(@b[@k - 1]) {
+				label 'a': {
+					if(Ends("ational")) { Replace("ate"); }
+					else if(Ends("tional")) { Replace("tion"); };
+				}
+
+				label 'c': {
+					if(Ends("enci")) { Replace("ence"); }
+					else if(Ends("anci")) { Replace("ance"); };
+				}
+
+				label 'e': {
+					if(Ends("izer")) { Replace("ize"); };
+				}
+
+				label 'l': {
+					if(Ends("bli")) { Replace("ble"); }
+					else if(Ends("alli")) { Replace("al"); }
+					else if(Ends("entli")) { Replace("ent"); }
+					else if(Ends("eli")) { Replace("e"); }
+					else if(Ends("ousli")) { Replace("ous"); };
+				}
+
+				label 'o': {
+					if(Ends("ization")) { Replace("ize"); }
+					else if(Ends("ation")) { Replace("ate"); }
+					else if(Ends("ator")) { Replace("ate"); };
+				}
+
+				label 's': {
+					if(Ends("alism")) { Replace("al"); }
+					else if(Ends("iveness")) { Replace("ive"); }
+					else if(Ends("fulness")) { Replace("ful"); }
+					else if(Ends("ousness")) { Replace("ous"); };
+				}
+
+				label 't': {
+					if(Ends("aliti")) { Replace("al"); }
+					else if(Ends("iviti")) { Replace("ive"); }
+					else if(Ends("biliti")) { Replace("ble"); };
+				}
+
+				label 'g': {
+					if(Ends("logi")) { Replace("log"); };
+				}
+			};
+		}
+
+		# -ic-, -full, -ness and the like
+		method : Step3() ~ Nil {
+			select(@b[@k]) {
+				label 'e': {
+					if(Ends("icate")) { Replace("ic"); }
+					else if(Ends("ative")) { Replace(""); }
+					else if(Ends("alize")) { Replace("al"); };
+				}
+
+				label 'i': {
+					if(Ends("iciti")) { Replace("ic"); };
+				}
+
+				label 'l': {
+					if(Ends("ical")) { Replace("ic"); }
+					else if(Ends("ful")) { Replace(""); };
+				}
+
+				label 's': {
+					if(Ends("ness")) { Replace(""); };
+				}
+			};
+		}
+
+		# drops -ant, -ence and the like where the measure is above 1
+		method : Step4() ~ Nil {
+			if(@k < 1) {
+				return;
+			};
+
+			found := false;
+			select(@b[@k - 1]) {
+				label 'a': {
+					found := Ends("al");
+				}
+
+				label 'c': {
+					found := Ends("ance") | Ends("ence");
+				}
+
+				label 'e': {
+					found := Ends("er");
+				}
+
+				label 'i': {
+					found := Ends("ic");
+				}
+
+				label 'l': {
+					found := Ends("able") | Ends("ible");
+				}
+
+				label 'n': {
+					found := Ends("ant") | Ends("ement") | Ends("ment") | Ends("ent");
+				}
+
+				label 'o': {
+					if(Ends("ion") & @j >= 0) {
+						found := @b[@j] = 's' | @b[@j] = 't';
+					};
+					if(<>found) {
+						found := Ends("ou");
+					};
+				}
+
+				label 's': {
+					found := Ends("ism");
+				}
+
+				label 't': {
+					found := Ends("ate") | Ends("iti");
+				}
+
+				label 'u': {
+					found := Ends("ous");
+				}
+
+				label 'v': {
+					found := Ends("ive");
+				}
+
+				label 'z': {
+					found := Ends("ize");
+				}
+			};
+
+			if(found & Measure() > 1) {
+				@k := @j;
+			};
+		}
+
+		# a final -e where the measure allows, and -ll to -l: probate -> probat, controll -> control
+		method : Step5() ~ Nil {
+			@j := @k;
+			if(@b[@k] = 'e') {
+				a := Measure();
+				if(a > 1 | (a = 1 & <>Cvc(@k - 1))) {
+					@k -= 1;
+				};
+			};
+
+			# @j still marks the word as it was before a final 'e' went, as in porter.c
+			if(@b[@k] = 'l' & DoubleCons(@k) & Measure() > 1) {
+				@k -= 1;
+			};
 		}
 	}
 

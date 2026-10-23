@@ -67,7 +67,14 @@ stays one sentence); that is the accepted trade-off of every list-based splitter
 two departures Martin Porter's own reference implementation makes (`bli`→`ble` and
 `logi`→`log` in step 2), so its output matches the published vocabulary/output pairs. Stems
 are not words (`happi`, `relat`); that is how Porter works and what every Porter-based tool
-returns. Input is lowercased; words of one or two letters are returned unchanged.
+returns. Input is lowercased; words of one or two letters, and words holding anything but
+`a`–`z`, are returned lowercased and otherwise unchanged.
+
+**As built:** checked against NLTK 3.9.1's `PorterStemmer(mode=MARTIN_EXTENSIONS)`, which
+is Porter's reference implementation, on the 8,559 distinct words in the repository's docs
+and Rosetta programs: all 8,559 agree. Against `ORIGINAL_ALGORITHM` the 21 differences are
+the `bli`/`logi` departures and two-letter words, which the paper stems (`as` → `a`) and the
+reference does not.
 
 ### 5. Sentiment: a valence lexicon with VADER's rules
 

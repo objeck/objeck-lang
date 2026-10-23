@@ -1,0 +1,80 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP Porter stemmer (docs/NLP_DESIGN.md, section 4): the worked examples from Porter's
+1980 paper for every step, as the reference implementation stems them all the way through,
+plus everyday words where the old suffix-stripper went wrong.
+~#
+use System.NLP, Collection;
+
+class NlpPorterTest {
+	function : Main(args : String[]) ~ Nil {
+		pairs := [
+			# step 1a
+			"caresses", "caress", "ponies", "poni", "ties", "ti", "caress", "caress", "cats", "cat",
+			# step 1b
+			"feed", "feed", "agreed", "agre", "plastered", "plaster", "bled", "bled", "motoring", "motor",
+			"sing", "sing", "conflated", "conflat", "troubled", "troubl", "sized", "size", "hopping", "hop",
+			"tanned", "tan", "falling", "fall", "hissing", "hiss", "fizzed", "fizz", "failing", "fail",
+			"filing", "file",
+			# step 1c
+			"happy", "happi", "sky", "sky",
+			# step 2
+			"relational", "relat", "conditional", "condit", "rational", "ration", "valenci", "valenc",
+			"hesitanci", "hesit", "digitizer", "digit", "conformabli", "conform", "radicalli", "radic",
+			"differentli", "differ", "vileli", "vile", "analogousli", "analog", "vietnamization", "vietnam",
+			"predication", "predic", "operator", "oper", "feudalism", "feudal", "decisiveness", "decis",
+			"hopefulness", "hope", "callousness", "callous", "formaliti", "formal", "sensitiviti", "sensit",
+			"sensibiliti", "sensibl",
+			# step 3
+			"triplicate", "triplic", "formative", "form", "formalize", "formal", "electriciti", "electr",
+			"electrical", "electr", "hopeful", "hope", "goodness", "good",
+			# step 4
+			"revival", "reviv", "allowance", "allow", "inference", "infer", "airliner", "airlin",
+			"gyroscopic", "gyroscop", "adjustable", "adjust", "defensible", "defens", "irritant", "irrit",
+			"replacement", "replac", "adjustment", "adjust", "dependent", "depend", "adoption", "adopt",
+			"homologou", "homolog", "communism", "commun", "activate", "activ", "angulariti", "angular",
+			"homologous", "homolog", "effective", "effect", "bowdlerize", "bowdler",
+			# step 5
+			"probate", "probat", "rate", "rate", "cease", "ceas", "controll", "control", "roll", "roll",
+			# all the way through
+			"generalizations", "gener", "oscillators", "oscil",
+			# everyday words the old stemmer got wrong, and related forms that must meet
+			"running", "run", "runs", "run", "speed", "speed", "makes", "make", "goes", "goe",
+			"national", "nation", "nations", "nation", "happily", "happili", "family", "famili",
+			"connected", "connect", "connecting", "connect", "connection", "connect", "connections", "connect",
+			"government", "govern", "loved", "love", "loving", "love", "loves", "love",
+			# case, short words, and anything that is not a-z
+			"Running", "run", "CATS", "cat", "is", "is", "a", "a", "don't", "don't", "covid19", "covid19",
+			"", ""
+		];
+
+		failures := 0;
+		for(i := 0; i < pairs->Size(); i += 2;) {
+			got := TextPreprocessor->Stem(pairs[i]);
+			if(<>got->Equals(pairs[i + 1])) {
+				failures += 1;
+				"  FAIL: {$(pairs[i])} -> {$got}, want {$(pairs[i + 1])}"->PrintLine();
+			};
+		};
+
+		nil_word : String;
+		if(TextPreprocessor->Stem(nil_word) <> Nil) {
+			failures += 1;
+			"  FAIL: Stem(Nil) is not Nil"->PrintLine();
+		};
+
+		stemmed := TextPreprocessor->StemAll(["connected", "Connecting", "connection"]);
+		if(stemmed->Size() <> 3 | <>stemmed[0]->Equals("connect") | <>stemmed[1]->Equals("connect") | <>stemmed[2]->Equals("connect")) {
+			failures += 1;
+			"  FAIL: StemAll"->PrintLine();
+		};
+
+		if(failures = 0) {
+			"PASS: NLP Porter stemmer ({$(pairs->Size() / 2)} words)"->PrintLine();
+		}
+		else {
+			"FAIL: NLP Porter stemmer ({$failures} words)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
