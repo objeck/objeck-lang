@@ -1,0 +1,62 @@
+#~
+Regression: an array literal mixing string literals with other expressions.
+
+'v := "xyz"; texts := ["a", "b", v];' crashed (0xC0000005) at every -opt
+level, while ["a", v], [v, "a"] and ["", "a"] worked. A literal with a
+non-literal element is built element by element (#1245), each element a whole
+expression of its own, but the emitter's count of string literals -- which
+pairs the two string operands of one operation and swaps the second under the
+first -- ran on across elements. The second string literal got a SWAP_INT with
+one value on the stack. Covered: literal and variable orders, more than two
+literals, the literal as an argument beside a string literal, and inside a
+concatenation.
+~#
+
+class Test {
+	@failed : static : Int;
+
+	function : Expect(what : String, got : String, want : String) ~ Nil {
+		if(<>got->Equals(want)) {
+			"FAIL: {$what}: got '{$got}', want '{$want}'"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Join(a : String[]) ~ String {
+		out := "";
+		each(i : a) {
+			out += a[i];
+			out += ",";
+		};
+		return out;
+	}
+
+	function : Two(a : String, b : String) ~ String {
+		return a + "|" + b;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		v := "xyz";
+		texts := ["a", "b", v];
+		Expect("two literals, then a variable", Join(texts), "a,b,xyz,");
+		Expect("literal, variable, literals", Join(["a", v, "b", "c"]), "a,xyz,b,c,");
+		Expect("variable first", Join([v, "a", "b"]), "xyz,a,b,");
+		Expect("variable last of four", Join(["a", "b", "c", v]), "a,b,c,xyz,");
+		Expect("after a literal argument", Two("q", Join(["a", "b", v])), "q|a,b,xyz,");
+		Expect("before a literal argument", Two(Join(["a", "b", v]), "q"), "a,b,xyz,|q");
+		Expect("in a concatenation", "p" + Join(["a", "b", v]), "pa,b,xyz,");
+		Expect("nested", Join([Join(["a", "b", v]), "c", "d"]), "a,b,xyz,,c,d,");
+
+		each(i : texts) {
+			if(texts[i] = Nil) {
+				"FAIL: a Nil element"->PrintLine();
+				@failed += 1;
+			};
+		};
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: an array literal mixing string literals and expressions"->PrintLine();
+	}
+}

@@ -5115,12 +5115,21 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, new_instr, 1L));
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, STOR_INT_VAR, tmp_id, LOCL));
 
+    // Each element is a whole expression of its own. 'new_char_str_count' pairs
+    // string literals that are the two operands of one operation (EmitCharacter
+    // String swaps the second under the first); counted across elements, the
+    // second string literal in '["a", "b", v]' got a SWAP_INT with one value
+    // on the stack, and the program crashed (0xC0000005) at every -opt level.
+    // Saved and restored as for a string interpolation's segments.
+    const int saved_char_str_count = new_char_str_count;
     for(size_t i = 0; i < elements.size(); ++i) {
+      new_char_str_count = 0;
       EmitExpression(elements[i]);
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, (long)i));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_VAR, tmp_id, LOCL));
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, store_instr, 1L, LOCL));
     }
+    new_char_str_count = saved_char_str_count;
 
     imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, array, cur_line_num, LOAD_INT_VAR, tmp_id, LOCL));
     return;
