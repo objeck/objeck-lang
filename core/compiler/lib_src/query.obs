@@ -36,6 +36,7 @@ each(i : results) {
 		@head : Row;
 		@tail : Row;
 		@count : Int;
+		@next_pk : Int;
 		@query : Query;
 		
 		#~
@@ -188,7 +189,10 @@ each(i : results) {
 		}
 		
 		#~
-		Gets the column average
+		Gets the column average over its numeric cells (IntRef and FloatRef).
+		String, Date and Nil cells are skipped: they add nothing to the sum and
+		are not counted in the divisor. A column with no numeric cells, or an
+		unknown column, averages to 0.0; Count(name) tells the cases apart.
 		@param name column name
 		@return column average
 		```
@@ -206,35 +210,129 @@ each(i : results) {
 			};
 			
 			sum := 0.0;
-			count := 0.0;
+			count := 0;
 			row1 := @head;
 			while(row1 <> Nil) {
 				value := row1->Get(index);
-				
-				if(value->TypeOf(IntRef)) {
-					sum += value->As(IntRef)->Get();
-				}
-				else if(value->TypeOf(FloatRef)) {
-					sum += value->As(FloatRef)->Get();
+				if(Cell->IsNumeric(value)) {
+					sum += Cell->ToNumber(value);
+					count += 1;
 				};
 				
 				# next
-				count += 1.0;
 				row1 := row1->Next();
 			};
 						
-			# Nothing matched, so there is no average to report. count is the
-			# number of rows that contributed, and a query matching no rows is
-			# ordinary rather than exceptional -- without this it aborts the VM.
-			if(count = 0.0) {
+			# Only numeric cells take part: a string or Nil cell is not a zero.
+			# No numeric cells (an empty table, an unknown column, or a column of
+			# strings) has no average; report 0.0 rather than divide by zero.
+			if(count = 0) {
 				return 0.0;
 			};
 
-			return sum / count;
+			return sum / count->As(Float);
 		}
 		
 		#~
-		Gets the column sum
+		Gets the number of numeric cells in a column: cells holding an IntRef or a
+		FloatRef. String, Date and Nil cells are not counted. This is the divisor
+		Average uses, so a caller can tell an average of 0.0 from a column with no
+		numbers in it. The row count is Count() with no argument.
+		@param name column name
+		@return number of numeric cells, 0 for an unknown column
+		```
+		table := Query.Structured.Table->New("scores", ["score"]);
+		r1 := table->Insert(); r1->Set("score", IntRef->New(80));
+		r2 := table->Insert(); r2->Set("score", "absent");
+		n := table->Count("score"); # returns 1
+		"numeric cells={$n}"->PrintLine();
+		```
+		~#
+		method : public : Count(name : String) ~ Int {
+			index := GetIndex(name);
+			if(index < 0) {
+				return 0;
+			};
+
+			count := 0;
+			row1 := @head;
+			while(row1 <> Nil) {
+				if(Cell->IsNumeric(row1->Get(index))) {
+					count += 1;
+				};
+				row1 := row1->Next();
+			};
+
+			return count;
+		}
+
+		#~
+		Gets the smallest numeric value in a column. Only IntRef and FloatRef cells
+		take part; when there are none the result is 0.0 (check Count(name)).
+		@param name column name
+		@return column minimum
+		```
+		table := Query.Structured.Table->New("temps", ["deg"]);
+		r1 := table->Insert(); r1->Set("deg", IntRef->New(-4));
+		r2 := table->Insert(); r2->Set("deg", FloatRef->New(12.5));
+		low := table->Min("deg"); # returns -4.0
+		"low={$low}"->PrintLine();
+		```
+		~#
+		method : public : Min(name : String) ~ Float {
+			return MinMax(name, true);
+		}
+
+		#~
+		Gets the largest numeric value in a column. Only IntRef and FloatRef cells
+		take part; when there are none the result is 0.0 (check Count(name)).
+		@param name column name
+		@return column maximum
+		```
+		table := Query.Structured.Table->New("temps", ["deg"]);
+		r1 := table->Insert(); r1->Set("deg", IntRef->New(-4));
+		r2 := table->Insert(); r2->Set("deg", FloatRef->New(12.5));
+		high := table->Max("deg"); # returns 12.5
+		"high={$high}"->PrintLine();
+		```
+		~#
+		method : public : Max(name : String) ~ Float {
+			return MinMax(name, false);
+		}
+
+		method : MinMax(name : String, is_min : Bool) ~ Float {
+			index := GetIndex(name);
+			if(index < 0) {
+				return 0.0;
+			};
+
+			found := false;
+			result := 0.0;
+			row1 := @head;
+			while(row1 <> Nil) {
+				value := row1->Get(index);
+				if(Cell->IsNumeric(value)) {
+					number := Cell->ToNumber(value);
+					if(<>found) {
+						result := number;
+						found := true;
+					}
+					else if(is_min & number < result) {
+						result := number;
+					}
+					else if(<>is_min & number > result) {
+						result := number;
+					};
+				};
+				row1 := row1->Next();
+			};
+
+			return result;
+		}
+		
+		#~
+		Gets the column sum over its numeric cells (IntRef and FloatRef); other
+		cells are skipped. No numeric cells, or an unknown column, sums to 0.0.
 		@param name column name
 		@return column sum
 		```
@@ -255,12 +353,8 @@ each(i : results) {
 			row1 := @head;
 			while(row1 <> Nil) {
 				value := row1->Get(index);
-				
-				if(value->TypeOf(IntRef)) {
-					sum += value->As(IntRef)->Get();
-				}
-				else if(value->TypeOf(FloatRef)) {
-					sum += value->As(FloatRef)->Get();
+				if(Cell->IsNumeric(value)) {
+					sum += Cell->ToNumber(value);
 				};
 				
 				# next
@@ -271,69 +365,46 @@ each(i : results) {
 		}
 		
 		#~
-		Filters table based upon conditional criteria
+		Filters table based upon conditional criteria. A Nil cell matches no
+		condition. Numbers compare by value, so an IntRef cell compares with a
+		FloatRef literal and the other way round. Cells that cannot be ordered
+		against the value (a string cell and a number, say) are unequal to it:
+		they match '<>' and no other comparison.
 		@param cond conditional filter
 		@return filtered rows
 		~#
 		method : public : native : Filter(cond : Conditional) ~ Vector<Row> {
 			matches := Vector->New()<Row>;
+			right := cond->GetValue();
 			row1 := @head;
 			while(row1 <> Nil) {
 				left := row1->Get(cond->GetLeft());
 				if(left <> Nil) {
-					right := cond->GetValue();
+					is_match := false;
 					select(cond->GetQualifier()) {
-						label Conditional->Qualifier->EQUAL: {
-							if(left->Compare(right) = 0) {
-								matches->AddBack(row1);
-							};
-						}
-						
-						label Conditional->Qualifier->NOT_EQUAL: {
-							if(left->Compare(right) <> 0) {
-								matches->AddBack(row1);
-							};
-						}
-						
-						label Conditional->Qualifier->GREATER: {
-							if(left->Compare(right) > 0) {
-								matches->AddBack(row1);
-							};
-						}
-						
-						label Conditional->Qualifier->LESS: {
-							if(left->Compare(right) < 0) {
-								matches->AddBack(row1);
-							};
-						}
-						
-						label Conditional->Qualifier->GREATER_EQUAL: {
-							if(left->Compare(right) >= 0) {
-								matches->AddBack(row1);
-							};
-						}
-						
-						label Conditional->Qualifier->LESS_EQUAL: {
-							if(left->Compare(right) <= 0) {
-								matches->AddBack(row1);
-							};
-						}
-						
 						label Conditional->Qualifier->LIKE: {
-							if(left->TypeOf(String) & right->TypeOf(String)) {
-								if(MatchLike(left->As(String), right->As(String))) {
-									matches->AddBack(row1);
+							if(left->TypeOf(String) & right <> Nil) {
+								if(right->TypeOf(String)) {
+									is_match := Cell->MatchLike(left->As(String), right->As(String));
 								};
 							};
 						}
 
 						label Conditional->Qualifier->NOT_LIKE: {
-							if(left->TypeOf(String) & right->TypeOf(String)) {
-								if(<>MatchLike(left->As(String), right->As(String))) {
-									matches->AddBack(row1);
+							if(left->TypeOf(String) & right <> Nil) {
+								if(right->TypeOf(String)) {
+									is_match := <>Cell->MatchLike(left->As(String), right->As(String));
 								};
 							};
 						}
+
+						other: {
+							is_match := Cell->Test(Cell->Compare(left, right), cond->GetQualifier());
+						}
+					};
+
+					if(is_match) {
+						matches->AddBack(row1);
 					};
 				};
 				# next
@@ -362,31 +433,14 @@ each(i : results) {
 		
 		#~
 		Gets the last query error
-		@return last query error
+		@return last query error, Nil if the last query succeeded or none has run
 		~#
 		method : public : GetError() ~ String {
-			return @query->GetError();
-		}
-		
-		method : native : MatchLike(check : String, cond : String) ~ Bool {
-			pattern := "";
-			
-			each(i : cond) {
-				c := cond->Get(i);
-				
-				if(c =  '%') {
-					pattern += ".*";
-				}
-				else if(c =  '_') {
-					pattern += '.';
-				}
-				else {
-					pattern += c;
-				};
+			if(@query = Nil) {
+				return Nil;
 			};
-			regex := RegEx->New(pattern);
-			
-			return regex->MatchExact(check);
+
+			return @query->GetError();
 		}
 		
 		#~
@@ -402,11 +456,14 @@ each(i : results) {
 		```
 		~#
 		method : public : native : Insert() ~ Row {
-			pk := IntRef->New(@count);
+			# primary keys are never reused, so they come from their own counter
+			# rather than the row count, which drops on Delete
+			pk := IntRef->New(@next_pk);
 			values := Compare->New[@column_names->Size()];
 			values[0] := pk;
 			row1 := Row->New(@self, values);
 			@keys->Insert(pk->Get(), row1);
+			@next_pk += 1;
 			@count += 1;
 			
 			if(@head = Nil) {
@@ -436,24 +493,28 @@ each(i : results) {
 		method : public : native : Delete(pk : Int) ~ Bool {
 			row1 := @keys->Find(pk);
 			if(row1 <> Nil) {
-				if(row1 = @head) {
-					@head := row1->Next();
-					row1->Next(Nil);
-					@head->Prev(Nil);
-				}
-				else if(row1 = @tail) {
-					@tail := row1->Prev();
-					row1->Prev(Nil);
-					@tail->Next(Nil);
+				prev := row1->Prev();
+				next := row1->Next();
+
+				if(prev <> Nil) {
+					prev->Next(next);
 				}
 				else {
-					row1->Prev()->Next(row1->Next());
-					row1->Next()->Prev(row1->Prev());
-					row1->Next(Nil);
-					row1->Prev(Nil);					
+					@head := next;
 				};
 				
+				if(next <> Nil) {
+					next->Prev(prev);
+				}
+				else {
+					@tail := prev;
+				};
+
+				row1->Next(Nil);
+				row1->Prev(Nil);
+				
 				@keys->Remove(pk);
+				@count -= 1;
 				return true;
 			};
 			
@@ -461,7 +522,7 @@ each(i : results) {
 		}
 		
 		#~
-		Count of rows
+		Count of rows. Count(name) counts the numeric cells in one column.
 		@return number of rows
 		~#
 		method : public : Count() ~ Int {
@@ -494,10 +555,14 @@ each(i : results) {
 		}
 
 		#~
-		Loads a table from a CSV file
+		Loads a table from a CSV file. The first line names the columns. A cell
+		holding a whole number ('42', '-3', '+3') becomes an IntRef; a decimal or
+		exponent form ('3.5', '.5', '-0.5', '1e3') becomes a FloatRef; '#MM/dd/yyyy#'
+		style cells become dates; anything else ('1-2', '3.', 'abc', '') stays a
+		String. A file holding only the header line gives an empty table.
 		@param table_name table name
 		@param path to CSV
-		@return new table
+		@return new table, Nil if the file cannot be read or parsed
 		```
 		table := Query.Structured.Table->FromCsv("orders", "orders.csv");
 		if(table <> Nil) {
@@ -507,75 +572,64 @@ each(i : results) {
 		```
 		~#
 		function : FromCsv(table_name : String, path : String) ~ Table {
-			csv := Data.CSV.CsvTable->New(FileReader->ReadFile(path));
-			
-			if(csv->IsParsed() & csv->Size() > 1) {
-				headers := csv->Get(0);
-				columns := String->New[headers->Size()];
-				each(i : headers) {	
-					columns[i] := headers->Get(i);
-				};
-
-				table := Query.Structured.Table->New(table_name, columns);
-				for(i := 1; i < csv->Size(); i += 1;) {
-					column := csv->Get(i);
-					row1 := table->Insert();
-					for(j := 0; j < columns->Size(); j += 1;) {
-						# clean up value
-						str_value := column->Get(j);
-
-						# digit
-						if(str_value->Size() > 0 & str_value->Get(0)->IsDigit()) {
-							# float
-							if(str_value->Has('.')) {
-								row1->Set(j + 1, FloatRef->New(str_value->ToFloat()));
-							}
-							# int
-							else {
-								row1->Set(j + 1, IntRef->New(str_value->ToInt()));
-							};
-						}
-						# date
-						else if(str_value->StartsWith('#') & str_value->EndsWith('#')) {
-							str_value := str_value->SubString(1, str_value->Size() - 2);
-							select(str_value->Size()) {
-								label 8: {
-									date := DateUtility->Parse(str_value, "MM/dd/yy", false);
-									row1->Set(j + 1, date);
-								}
-								
-								label 10: {						
-									date := DateUtility->Parse(str_value, "MM/dd/yyyy", false);	
-									row1->Set(j + 1, date);
-								}
-								
-								label 17: {
-									date := DateUtility->Parse(str_value, "MM/dd/yy hh:mm:ss", false);
-									row1->Set(j + 1, date);
-								}
-								
-								label 19: {
-									date := DateUtility->Parse(str_value, "MM/dd/yyyy hh:mm:ss", false);
-									row1->Set(j + 1, date);
-								}
-								
-								other: {
-									row1->Set(j + 1, str_value);
-								}
-							};
-						}
-						# string
-						else {
-							row1->Set(j + 1, str_value);
-						};
-					};
-				};
-
-				return table->Size() > 1 ? table : Nil;
+			table := CsvToTable(table_name, FileReader->ReadFile(path));
+			if(table = Nil) {
+				"Unable to parse {$path}!"->ErrorLine();
 			};
 			
-			"Unable to parse {$path}!"->ErrorLine();
-			return Nil;
+			return table;
+		}
+
+		function : private : CsvToTable(table_name : String, data : String) ~ Table {
+			if(data = Nil) {
+				return Nil;
+			};
+
+			has_rows := true;
+			csv := Data.CSV.CsvTable->New(data);
+			if(<>csv->IsParsed()) {
+				# CsvTable wants a header and at least one record, but a header
+				# alone is a valid table with no rows. Parse the lone line as a
+				# header and a copy of itself, so quoting follows the CSV rules,
+				# and then ignore the copy.
+				line := data->Trim();
+				if(line->IsEmpty() | line->Has('\n') | line->Has('\r')) {
+					return Nil;
+				};
+
+				doubled := String->New(line);
+				doubled += "\r\n";
+				doubled += line;
+				csv := Data.CSV.CsvTable->New(doubled, "\r\n");
+				if(<>csv->IsParsed()) {
+					return Nil;
+				};
+				has_rows := false;
+			};
+
+			if(csv->Size() < 1) {
+				return Nil;
+			};
+
+			headers := csv->Get(0);
+			columns := String->New[headers->Size()];
+			each(i : headers) {	
+				columns[i] := headers->Get(i);
+			};
+
+			table := Query.Structured.Table->New(table_name, columns);
+			if(has_rows) {
+				for(i := 1; i < csv->Size(); i += 1;) {
+					csv_row := csv->Get(i);
+					row1 := table->Insert();
+					for(j := 0; j < columns->Size(); j += 1;) {
+						# a short row leaves its missing cells Nil
+						row1->Set(j + 1, Cell->FromText(csv_row->Get(j)));
+					};
+				};
+			};
+			
+			return table;
 		}
 
 		#~
@@ -675,6 +729,301 @@ each(i : results) {
 		~#
 		method : public : GetLeft() ~ Int {
 			return @left;
+		}
+	}
+	
+	# Cell value helpers shared by Table and Query: numeric tests for the
+	# aggregates, type-aware comparison for 'where' and 'order by', LIKE
+	# matching and CSV text conversion.
+	class : private : Cell {
+		# Compare's result for two cells that cannot be ordered against each
+		# other; the ordered results are only ever -1, 0 and 1
+		function : NotComparable() ~ Int {
+			return 2;
+		}
+
+		# true if the cell holds a number an aggregate can use
+		function : IsNumeric(value : Compare) ~ Bool {
+			if(value = Nil) {
+				return false;
+			};
+
+			return value->TypeOf(IntRef) | value->TypeOf(FloatRef);
+		}
+
+		# a numeric cell as a Float; call IsNumeric first
+		function : ToNumber(value : Compare) ~ Float {
+			if(value->TypeOf(IntRef)) {
+				return value->As(IntRef)->Get()->As(Float);
+			};
+
+			return value->As(FloatRef)->Get();
+		}
+
+		# Orders two cells: -1, 0 or 1, or NotComparable() when they cannot be
+		# ordered against each other (a string and a number, a Nil cell). An
+		# IntRef and a FloatRef compare by value; two cells of the same class use
+		# that class's Compare, which casts its argument to its own class and so
+		# must never see a different one.
+		function : Compare(left : Compare, right : Compare) ~ Int {
+			if(left = Nil | right = Nil) {
+				return NotComparable();
+			};
+
+			if(left->TypeOf(IntRef) & right->TypeOf(IntRef)) {
+				l := left->As(IntRef)->Get();
+				r := right->As(IntRef)->Get();
+				if(l < r) {
+					return -1;
+				}
+				else if(l > r) {
+					return 1;
+				};
+				return 0;
+			};
+
+			if(IsNumeric(left) & IsNumeric(right)) {
+				l := ToNumber(left);
+				r := ToNumber(right);
+				if(l < r) {
+					return -1;
+				}
+				else if(l > r) {
+					return 1;
+				};
+				return 0;
+			};
+
+			if(left->GetClassID() = right->GetClassID()) {
+				result := left->Compare(right);
+				if(result < 0) {
+					return -1;
+				}
+				else if(result > 0) {
+					return 1;
+				};
+				return 0;
+			};
+
+			return NotComparable();
+		}
+
+		# applies a comparison qualifier to a Compare result; cells that cannot
+		# be compared are unequal, and satisfy no ordering
+		function : Test(result : Int, qualifier : Conditional->Qualifier) ~ Bool {
+			if(result = NotComparable()) {
+				return qualifier = Conditional->Qualifier->NOT_EQUAL;
+			};
+
+			select(qualifier) {
+				label Conditional->Qualifier->EQUAL: {
+					return result = 0;
+				}
+
+				label Conditional->Qualifier->NOT_EQUAL: {
+					return result <> 0;
+				}
+
+				label Conditional->Qualifier->GREATER: {
+					return result > 0;
+				}
+
+				label Conditional->Qualifier->LESS: {
+					return result < 0;
+				}
+
+				label Conditional->Qualifier->GREATER_EQUAL: {
+					return result >= 0;
+				}
+
+				label Conditional->Qualifier->LESS_EQUAL: {
+					return result <= 0;
+				}
+			};
+
+			return false;
+		}
+
+		# Total order for 'order by': numbers, then strings, then dates, then
+		# anything else (by class name), with Nil cells last. Within a kind the
+		# cells compare as in Compare.
+		function : Order(left : Compare, right : Compare) ~ Int {
+			left_rank := Rank(left);
+			right_rank := Rank(right);
+			if(left_rank <> right_rank) {
+				return left_rank < right_rank ? -1 : 1;
+			};
+
+			if(left = Nil) {
+				return 0;
+			};
+
+			result := Compare(left, right);
+			if(result = NotComparable()) {
+				return left->GetClass()->GetName()->Compare(right->GetClass()->GetName());
+			};
+
+			return result;
+		}
+
+		function : Rank(value : Compare) ~ Int {
+			if(value = Nil) {
+				return 4;
+			}
+			else if(IsNumeric(value)) {
+				return 0;
+			}
+			else if(value->TypeOf(String)) {
+				return 1;
+			}
+			else if(value->TypeOf(Date)) {
+				return 2;
+			};
+
+			return 3;
+		}
+
+		# SQL LIKE: '%' matches any run of characters, '_' any one character,
+		# everything else itself. Matched directly, not through a regex, so a
+		# '.', '(' or '*' in the pattern is literal.
+		function : MatchLike(check : String, pattern : String) ~ Bool {
+			c := 0;
+			p := 0;
+			star_p := -1;
+			star_c := 0;
+
+			while(c < check->Size()) {
+				if(p < pattern->Size() & pattern->Get(p) = '%') {
+					star_p := p;
+					star_c := c;
+					p += 1;
+				}
+				else if(p < pattern->Size() & (pattern->Get(p) = '_' | pattern->Get(p) = check->Get(c))) {
+					p += 1;
+					c += 1;
+				}
+				else if(star_p > -1) {
+					# let the last '%' absorb one more character and retry
+					star_c += 1;
+					c := star_c;
+					p := star_p + 1;
+				}
+				else {
+					return false;
+				};
+			};
+
+			while(p < pattern->Size() & pattern->Get(p) = '%') {
+				p += 1;
+			};
+
+			return p = pattern->Size();
+		}
+
+		# Classifies text as a number: 0 not a number, 1 a whole number, 2 a
+		# decimal. Accepted: an optional sign, digits with an optional fraction
+		# or a fraction alone ('.5'), then an optional exponent ('1e3', '2E-4').
+		# A '.' must be followed by a digit, so '3.' is not a number.
+		function : NumberKind(text : String) ~ Int {
+			size := text->Size();
+			i := 0;
+			if(i < size & (text->Get(i) = '-' | text->Get(i) = '+')) {
+				i += 1;
+			};
+
+			int_digits := 0;
+			while(i < size & text->Get(i)->IsDigit()) {
+				int_digits += 1;
+				i += 1;
+			};
+
+			is_decimal := false;
+			if(i < size & text->Get(i) = '.') {
+				i += 1;
+				frac_digits := 0;
+				while(i < size & text->Get(i)->IsDigit()) {
+					frac_digits += 1;
+					i += 1;
+				};
+
+				if(frac_digits = 0) {
+					return 0;
+				};
+				is_decimal := true;
+			}
+			else if(int_digits = 0) {
+				return 0;
+			};
+
+			if(i < size & (text->Get(i) = 'e' | text->Get(i) = 'E')) {
+				i += 1;
+				if(i < size & (text->Get(i) = '-' | text->Get(i) = '+')) {
+					i += 1;
+				};
+
+				exp_digits := 0;
+				while(i < size & text->Get(i)->IsDigit()) {
+					exp_digits += 1;
+					i += 1;
+				};
+
+				if(exp_digits = 0) {
+					return 0;
+				};
+				is_decimal := true;
+			};
+
+			if(i <> size) {
+				return 0;
+			};
+
+			# more digits than an Int holds is kept as an approximate Float
+			if(is_decimal | int_digits > 18) {
+				return 2;
+			};
+
+			return 1;
+		}
+
+		# a CSV cell's text as a table value
+		function : FromText(text : String) ~ Compare {
+			if(text = Nil) {
+				return Nil;
+			};
+
+			kind := NumberKind(text);
+			if(kind = 1) {
+				return IntRef->New(text->ToInt());
+			}
+			else if(kind = 2) {
+				return FloatRef->New(text->ToFloat());
+			};
+
+			# date
+			if(text->Size() > 1 & text->StartsWith('#') & text->EndsWith('#')) {
+				str_value := text->SubString(1, text->Size() - 2);
+				select(str_value->Size()) {
+					label 8: {
+						return DateUtility->Parse(str_value, "MM/dd/yy", false);
+					}
+
+					label 10: {
+						return DateUtility->Parse(str_value, "MM/dd/yyyy", false);
+					}
+
+					label 17: {
+						return DateUtility->Parse(str_value, "MM/dd/yy hh:mm:ss", false);
+					}
+
+					label 19: {
+						return DateUtility->Parse(str_value, "MM/dd/yyyy hh:mm:ss", false);
+					}
+				};
+
+				return str_value;
+			};
+
+			return text;
 		}
 	}
 	
@@ -868,7 +1217,13 @@ each(i : results) {
 					column_names[i] := names[i + 1];
 				};
 								
-				return BuildTable("<rs>", column_names, results, Nil);				
+				order_by : String;
+				order := expr->GetRight();
+				if(order <> Nil & order->GetType() = Token->Type->REF) {
+					order_by := order->GetValue()->As(String);
+				};
+
+				return BuildTable("<rs>", column_names, results, order_by);
 			}
 			else {
 				@error := "*** General error ***";
@@ -951,12 +1306,9 @@ each(i : results) {
 			if(order_by <> Nil) {
 				order_index := @table->GetIndex(order_by);
 				if(order_index > -1) {
-					ordered_values := Map->New()<Compare, Row>;
-					each(i : from_results) {
-						row1 := from_results->Get(i);
-						ordered_values->Insert(row1->Get(order_index), row1);
-					};
-					from_results := ordered_values->GetValues()<Row>;
+					# a stable sort: rows sharing an order value (or holding Nil)
+					# all stay, in their original order
+					from_results := SortRows(from_results, order_index);
 				};
 			};
 			
@@ -970,6 +1322,67 @@ each(i : results) {
 			};
 
 			return table;
+		}
+
+		# bottom-up merge sort of rows by one column, stable
+		method : SortRows(rows : Vector<Row>, index : Int) ~ Vector<Row> {
+			size := rows->Size();
+			src := Row->New[size];
+			each(i : src) {
+				src[i] := rows->Get(i);
+			};
+			dest := Row->New[size];
+
+			width := 1;
+			while(width < size) {
+				start := 0;
+				while(start < size) {
+					middle := start + width;
+					if(middle > size) {
+						middle := size;
+					};
+					finish := start + width * 2;
+					if(finish > size) {
+						finish := size;
+					};
+
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						take_left := l < middle;
+						if(take_left & r < finish) {
+							left_row := src[l];
+							right_row := src[r];
+							take_left := Cell->Order(left_row->Get(index), right_row->Get(index)) <= 0;
+						};
+
+						if(take_left) {
+							dest[k] := src[l];
+							l += 1;
+						}
+						else {
+							dest[k] := src[r];
+							r += 1;
+						};
+						k += 1;
+					};
+
+					start := finish;
+				};
+
+				swap := src;
+				src := dest;
+				dest := swap;
+				width *= 2;
+			};
+
+			sorted := Vector->New()<Row>;
+			each(i : src) {
+				sorted->AddBack(src[i]);
+			};
+
+			return sorted;
 		}
 		
 		method : ProcessFrom(expr : Term) ~ Vector<Row> {
@@ -1032,72 +1445,50 @@ each(i : results) {
 					return MergeOr(left_result, right_result);
 				}
 				
-				label Token->Type->EQUAL: {	
+				other: {
 					index := @table->GetIndex(left->GetValue()->As(String));
-# "== Equal =="->PrintLine();
- 					if(index > -1) {
- 						if(expr->GetNot()) {
- 							return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
- 						}
- 						else {
-							return @table->Filter(Conditional->New(index, Conditional->Qualifier->EQUAL, right->GetValue()));
+					if(index > -1) {
+						cond := MakeCondition(index, expr->GetType(), expr->GetNot(), right->GetValue());
+						if(cond <> Nil) {
+							return @table->Filter(cond);
 						};
- 					};
+					};
+				}
+			};
+
+			return Nil;
+		}
+
+		# A comparison term as a filter. 'not' negates any operator: 'not =' is
+		# '<>', 'not >' is '<=' and so on. Nil if the term is not a comparison.
+		method : MakeCondition(index : Int, type : Token->Type, is_not : Bool, value : Compare) ~ Conditional {
+			select(type) {
+				label Token->Type->EQUAL: {	
+					return Conditional->New(index, is_not ? Conditional->Qualifier->NOT_EQUAL : Conditional->Qualifier->EQUAL, value);
 				}
 				
 				label Token->Type->NOT_EQUAL: {
-# "== Not equal =="->PrintLine();
-					index := @table->GetIndex(left->GetValue()->As(String));
- 					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_EQUAL, right->GetValue()));
-					};
+					return Conditional->New(index, is_not ? Conditional->Qualifier->EQUAL : Conditional->Qualifier->NOT_EQUAL, value);
 				}
 				
 				label Token->Type->GREATER: {
-# "== Greater =="->PrintLine();
-					index := @table->GetIndex(left->GetValue()->As(String));
- 					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->GREATER, right->GetValue()));
-					};
+					return Conditional->New(index, is_not ? Conditional->Qualifier->LESS_EQUAL : Conditional->Qualifier->GREATER, value);
 				}
 				
 				label Token->Type->LESS: {
-# "== Less =="->PrintLine();
-					index := @table->GetIndex(left->GetValue()->As(String));
- 					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LESS, right->GetValue()));
-					};
+					return Conditional->New(index, is_not ? Conditional->Qualifier->GREATER_EQUAL : Conditional->Qualifier->LESS, value);
 				}
 				
 				label Token->Type->GREATER_EQUAL: {
-# "== Greater =="->PrintLine();
-					index := @table->GetIndex(left->GetValue()->As(String));
- 					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->GREATER_EQUAL, right->GetValue()));
-					};
+					return Conditional->New(index, is_not ? Conditional->Qualifier->LESS : Conditional->Qualifier->GREATER_EQUAL, value);
 				}
 				
 				label Token->Type->LESS_EQUAL: {
-# "== Less =="->PrintLine();
-					index := @table->GetIndex(left->GetValue()->As(String));
- 					if(index > -1) {
-						return @table->Filter(Conditional->New(index, Conditional->Qualifier->LESS_EQUAL, right->GetValue()));
-					};
+					return Conditional->New(index, is_not ? Conditional->Qualifier->GREATER : Conditional->Qualifier->LESS_EQUAL, value);
 				}
 				
 				label Token->Type->LIKE: {
-					is_not := expr->GetNot();
-# "== Like: is_not={$is_not} =="->PrintLine();
-
-					index := @table->GetIndex(left->GetValue()->As(String));
- 					if(index > -1) {
- 						if(is_not) {
- 							return @table->Filter(Conditional->New(index, Conditional->Qualifier->NOT_LIKE, right->GetValue()));
- 						}
- 						else {
-							return @table->Filter(Conditional->New(index, Conditional->Qualifier->LIKE, right->GetValue()));
-						};
-					};
+					return Conditional->New(index, is_not ? Conditional->Qualifier->NOT_LIKE : Conditional->Qualifier->LIKE, value);
 				}
 			};
 			
@@ -1209,6 +1600,12 @@ each(i : results) {
 				right := Term->New(TokenType());
 				right->SetValue(TokenValue());
 				term->SetRight(right);
+				NextToken();
+			};
+
+			# anything left over is an error, not something to skip past
+			if(TokenType() <> Token->Type->EOS) {
+				return Nil;
 			};
 			
 			return term;
@@ -1290,112 +1687,95 @@ each(i : results) {
 			return term;
 		}
 
+		# where := or_expr
+		# or_expr := and_expr ('or' and_expr)*
+		# and_expr := primary ('and' primary)*
+		# primary := '(' or_expr ')' | comparison
+		# 'and' binds tighter than 'or', as in SQL.
 		method : public : ParseWhere() ~ Term {
-# "--- Where ---"->PrintLine();
-			
-			where := Term->New(Token->Type->WHERE);
-			
-			left := ParseLogic();
-			do {
-				type := TokenType();
-				if(type = Token->Type->AND | type = Token->Type->OR) {
-					term := Term->New(type);
-					term->SetValue(TokenValue());
-					NextToken();
-					
-					right := ParseTerm();
-					if(right = Nil) {
-						return Nil;
-					};
-					
-					term->SetLeft(left);
-					term->SetRight(right);
-					left := term;
-				}
-				else {
-					NextToken();
-				};
-			}
-			while(TokenType() <> Token->Type->EOS);
-			
-			where->SetLeft(left);
-			return where;
-		}
-		
-		method : ParseLogic() ~ Term {
-			left := ParseTerm();
+			left := ParseOr();
 			if(left = Nil) {
 				return Nil;
 			};
 			
-			type := TokenType();
-			if(type = Token->Type->AND | type = Token->Type->OR) {
-# "--- Logic ---"->PrintLine();
+			where := Term->New(Token->Type->WHERE);
+			where->SetLeft(left);
+			return where;
+		}
+		
+		method : ParseOr() ~ Term {
+			left := ParseAnd();
+			if(left = Nil) {
+				return Nil;
+			};
 			
-				term := Term->New(type);
+			while(TokenType() = Token->Type->OR) {
+				term := Term->New(TokenType());
 				term->SetValue(TokenValue());
 				NextToken();
 				
-				right := ParseTerm();
+				right := ParseAnd();
 				if(right = Nil) {
 					return Nil;
 				};
 				
 				term->SetLeft(left);
 				term->SetRight(right);
-				return term;
+				left := term;
 			};
 
 			return left;
 		}
 		
-		method : ParseTerm() ~ Term {
-# "--- Term ---"->PrintLine();
-			
-			left : Term;
-			select(TokenType()) {
-				label Token->Type->REF:
-				label Token->Type->DATE:
-				label Token->Type->INT:
-				label Token->Type->FLOAT: {				
-					left := Term->New(TokenType());
-					left->SetValue(TokenValue());
-					NextToken();
-				}
-				
-				label Token->Type->OPRN: {
-					NextToken();
-					
-					left := ParseLogic();
-					do {
-						type := TokenType();
-						if(type = Token->Type->AND | type = Token->Type->OR) {
-							term := Term->New(type);
-							term->SetValue(TokenValue());
-							NextToken();
-							
-							right := ParseTerm();
-							if(right = Nil) {
-								return Nil;
-							};
-							
-							term->SetLeft(left);
-							term->SetRight(right);
-							left := term;
-						}
-						else {
-							NextToken();
-						};
-					}
-					while(TokenType() <> Token->Type->EOS);
-
-					return left;
-				}
-				
-				other: {
-					return Nil;
-				}
+		method : ParseAnd() ~ Term {
+			left := ParsePrimary();
+			if(left = Nil) {
+				return Nil;
 			};
+
+			while(TokenType() = Token->Type->AND) {
+				term := Term->New(TokenType());
+				term->SetValue(TokenValue());
+				NextToken();
+
+				right := ParsePrimary();
+				if(right = Nil) {
+					return Nil;
+				};
+
+				term->SetLeft(left);
+				term->SetRight(right);
+				left := term;
+			};
+
+			return left;
+		}
+
+		method : ParsePrimary() ~ Term {
+			if(TokenType() = Token->Type->OPRN) {
+				NextToken();
+
+				expr := ParseOr();
+				if(expr = Nil | TokenType() <> Token->Type->CPRN) {
+					return Nil;
+				};
+				NextToken();
+
+				return expr;
+			};
+
+			return ParseTerm();
+		}
+		
+		# column [not] operator value; the left side must name a column
+		method : ParseTerm() ~ Term {
+			if(TokenType() <> Token->Type->REF) {
+				return Nil;
+			};
+			
+			left := Term->New(TokenType());
+			left->SetValue(TokenValue());
+			NextToken();
 
 			is_not := false;
 			if(TokenType() = Token->Type->NOT) {
@@ -1472,6 +1852,33 @@ each(i : results) {
 			return "";
 		}
 		
+		# the character at index, or '\0' past the end of the line
+		method : Peek(index : Int) ~ Char {
+			if(index < @line->Size()) {
+				return @line->Get(index);
+			};
+
+			return '\0';
+		}
+
+		# a number starts with a digit, or a '-' or '.' that leads to one
+		method : IsNumberStart(index : Int) ~ Bool {
+			c := Peek(index);
+			if(c->IsDigit()) {
+				return true;
+			};
+
+			if(c = '-') {
+				index += 1;
+				c := Peek(index);
+				if(c->IsDigit()) {
+					return true;
+				};
+			};
+
+			return c = '.' & Peek(index + 1)->IsDigit();
+		}
+
 		method : native : Scan() ~ Vector<Token> {
 			i := 0;
 			tokens := Vector->New()<Token>;
@@ -1492,7 +1899,8 @@ each(i : results) {
 							i += 1;
 						};
 						
-						if(@line->Get(i) <> '\'') {
+						# unterminated
+						if(i >= @line->Size()) {
 							return Nil;
 						};
 						i += 1;
@@ -1508,41 +1916,40 @@ each(i : results) {
 							i += 1;
 						};
 					
-						if(@line->Get(i) <> '#') {
+						# unterminated
+						if(i >= @line->Size()) {
 							return Nil;
 						};
 						i += 1;
 						
+						date : Date;
 						select(string->Size()) {
 							label 8: {
 								date := DateUtility->Parse(string, "MM/dd/yy", false);
-								tokens->AddBack(Token->New(date));
 							}
 							
 							label 10: {						
 								date := DateUtility->Parse(string, "MM/dd/yyyy", false);	
-								tokens->AddBack(Token->New(date));
 							}
 							
 							label 17: {
 								date := DateUtility->Parse(string, "MM/dd/yy hh:mm:ss", false);
-								tokens->AddBack(Token->New(date));
 							}
 							
 							label 19: {
 								date := DateUtility->Parse(string, "MM/dd/yyyy hh:mm:ss", false);
-								tokens->AddBack(Token->New(date));
-							}
-							
-							other: {
-								return Nil;
 							}
 						};
+
+						if(date = Nil) {
+							return Nil;
+						};
+						tokens->AddBack(Token->New(date));
 					}
-					# word
-					else if(@line->Get(i)->IsChar() = true) {
+					# word: a letter or '_', then letters, digits and '_'
+					else if(@line->Get(i)->IsChar() | @line->Get(i) = '_') {
 						string := "";
-						while(i < @line->Size() & @line->Get(i)->IsChar() | @line->Get(i) = '_') {
+						while(i < @line->Size() & (@line->Get(i)->IsChar() | @line->Get(i)->IsDigit() | @line->Get(i) = '_')) {
 							string->Append(@line->Get(i));
 							i += 1;
 						};
@@ -1555,29 +1962,43 @@ each(i : results) {
 							tokens->AddBack(Token->New(string));
 						};
 					}
-					# number
-					else if(@line->Get(i)->IsDigit() = true) {
+					# number: optional '-', digits and '.', optional exponent
+					else if(IsNumberStart(i)) {
 						number := "";
-						is_dec := 0;
-						while(i < @line->Size() & @line->Get(i)->IsDigit() = true | @line->Get(i) = '.') {
-							if(@line->Get(i) = '.') {
-								is_dec += 1;
-							};
+						if(@line->Get(i) = '-') {
+							number->Append('-');
+							i += 1;
+						};
+
+						while(i < @line->Size() & (@line->Get(i)->IsDigit() | @line->Get(i) = '.')) {
 							number->Append(@line->Get(i));
 							i += 1;
 						};
 
-						if(is_dec = 1) {
-							tokens->AddBack(Token->New(number->ToFloat()));
-						}
-						else if(is_dec = 0) {
+						if(i < @line->Size() & (@line->Get(i) = 'e' | @line->Get(i) = 'E')) {
+							number->Append(@line->Get(i));
+							i += 1;
+							if(i < @line->Size() & (@line->Get(i) = '-' | @line->Get(i) = '+')) {
+								number->Append(@line->Get(i));
+								i += 1;
+							};
+							while(i < @line->Size() & @line->Get(i)->IsDigit()) {
+								number->Append(@line->Get(i));
+								i += 1;
+							};
+						};
+
+						kind := Cell->NumberKind(number);
+						if(kind = 1) {
 							tokens->AddBack(Token->New(number->ToInt()));
+						}
+						else if(kind = 2) {
+							tokens->AddBack(Token->New(number->ToFloat()));
 						}
 						else {
 							return Nil;
 						};
 					}
-					# other
 					else {
 						select(@line->Get(i)) {
 							label '*': {
@@ -1601,11 +2022,11 @@ each(i : results) {
 							}
 							
 							label '<': {
-								if(@line->Get(i + 1) = '>') {
+								if(Peek(i + 1) = '>') {
 									i += 1;
 									tokens->AddBack(Token->New(Token->Type->NOT_EQUAL));
 								}
-								else if(@line->Get(i + 1) = '=') {
+								else if(Peek(i + 1) = '=') {
 									i += 1;
 									tokens->AddBack(Token->New(Token->Type->LESS_EQUAL));
 								}
@@ -1614,8 +2035,16 @@ each(i : results) {
 								};
 							}
 							
+							label '!': {
+								if(Peek(i + 1) <> '=') {
+									return Nil;
+								};
+								i += 1;
+								tokens->AddBack(Token->New(Token->Type->NOT_EQUAL));
+							}
+
 							label '>': {
-								if(@line->Get(i + 1) = '=') {
+								if(Peek(i + 1) = '=') {
 									i += 1;
 									tokens->AddBack(Token->New(Token->Type->GREATER_EQUAL));
 								}
