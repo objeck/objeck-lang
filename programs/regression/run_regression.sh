@@ -82,9 +82,9 @@ fi
 #   # GC_STRESS_SKIP   a tiny heap threshold is forced (--gc-threshold in
 #                      OBJECK_VM_ARGS). Measured at --gc-threshold=64k without
 #                      the verifier: discarded_call_result_pop 598 s and
-#                      jit_float_compare_store 637 s, against 2-3 s unforced;
-#                      tls_verify_test and https_persistence_test lose their
-#                      loopback peer to their own socket timeouts.
+#                      jit_float_compare_store 637 s, against 2-3 s unforced.
+#                      (tls_verify_test and https_persistence_test carried it
+#                      until TLS socket I/O parked for collections.)
 # A reason must name the run that showed the failure, so neither marker can be
 # taken on a theory.
 VERIFY_ON=0

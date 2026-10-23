@@ -5012,11 +5012,21 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
       pem_file = UnicodeToBytes((wchar_t*)(pem_file_array + 3));
     }
 
-    // Close existing connection if any
-    IPSecureSocket::Close((SecureSocketCtx*)instance[0]);
-
+    // connect() and the TLS handshake block on the peer; park for the duration,
+    // as SockTcpConnect does. A thread blocked here unparked holds up every
+    // stop-the-world collection, and when the peer is a thread of this VM that
+    // is waiting for that collection, nothing moves again. Only C locals are
+    // touched while parked; the instance ref is re-rooted on the op_stack so GC
+    // promotion fixup relocates it, then re-read after the wait.
+    SecureSocketCtx* old_sctx = (SecureSocketCtx*)instance[0];
     SecureSocketCtx* sctx = nullptr;
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    // Close existing connection if any
+    IPSecureSocket::Close(old_sctx);
     const bool is_open = IPSecureSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx);
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
     if(is_open) {
       instance[0] = (size_t)sctx;
       instance[1] = 0;
@@ -5089,7 +5099,13 @@ bool TrapProcessor::SockTcpSslClose(StackProgram* program, size_t* inst, size_t*
   std::wcout << L"# socket close: sctx=" << sctx << L"("
     << (size_t)sctx << L") #" << std::endl;
 #endif
+  // the close_notify alert is a write, which can block on a full send buffer;
+  // park for it (sctx is C heap, the instance ref is re-rooted)
+  PushInt((size_t)instance, op_stack, stack_pos);
+  MemoryManager::BeginBlocking();
   IPSecureSocket::Close(sctx);
+  MemoryManager::EndBlocking();
+  instance = (size_t*)PopInt(op_stack, stack_pos);
   instance[0] = instance[1] = instance[2] = instance[3] = 0;
 
   return true;
@@ -5103,7 +5119,10 @@ bool TrapProcessor::SockTcpSslOutString(StackProgram* program, size_t* inst, siz
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     if(instance[3] && sctx) {
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
+      // a TLS write can block on a full send buffer; park (out is C heap)
+      MemoryManager::BeginBlocking();
       IPSecureSocket::WriteBytes(out.c_str(), (int)out.size(), sctx);
+      MemoryManager::EndBlocking();
     }
   }
 
@@ -5119,9 +5138,18 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     int status;
     if(instance[3] && sctx) {
+      const size_t capacity = array[0];
       size_t index = 0;
       char value;
       bool end_line = false;
+      // the read loop blocks on the peer; park for its duration, as
+      // SockTcpInString does. Unparked, a thread waiting here for a response
+      // stalls every stop-the-world collection, and when the responder is a
+      // thread of this VM that triggered one, both wait forever. Only C locals
+      // are touched while parked; the array ref is re-rooted on the op_stack so
+      // GC promotion fixup relocates it, then re-read after the wait.
+      PushInt((size_t)array, op_stack, stack_pos);
+      MemoryManager::BeginBlocking();
       do {
         value = IPSecureSocket::ReadByte(sctx, status);
         if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
@@ -5131,13 +5159,15 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
           end_line = true;
         }
       }
-      while(!end_line && index < array[0] - 1);
+      while(!end_line && index < capacity - 1);
       buffer[index] = '\0';
 
       // assume LF
       if(value == '\r') {
         IPSecureSocket::ReadByte(sctx, status);
       }
+      MemoryManager::EndBlocking();
+      array = (size_t*)PopInt(op_stack, stack_pos);
 
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
@@ -5274,34 +5304,32 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       // Accept raw TCP connection. accept() blocks indefinitely; park so STW GC
       // elsewhere can proceed. The instance ref is re-rooted on the op_stack so
       // promotion fixup relocates it (srv/client are C heap, safe across a park).
+      // The handshake blocks on the peer just as accept() does, so it stays
+      // inside the parked region: a peer that is a thread of this VM may need a
+      // collection to finish before it can send its next flight.
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
       int ret = mbedtls_net_accept(&srv->listen_fd, &client->net, nullptr, 0, nullptr);
+      if(ret == 0) {
+        // Setup SSL session for this client (uses server's config)
+        ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
+        if(ret == 0) {
+          mbedtls_ssl_set_bio(&client->ssl, &client->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
+
+          // Perform handshake
+          while((ret = mbedtls_ssl_handshake(&client->ssl)) != 0) {
+            if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+              break;
+            }
+          }
+        }
+      }
       MemoryManager::EndBlocking();
       instance = (size_t*)PopInt(op_stack, stack_pos);
       if(ret != 0) {
         delete client;
         PushInt(0, op_stack, stack_pos);
         return true;
-      }
-
-      // Setup SSL session for this client (uses server's config)
-      ret = mbedtls_ssl_setup(&client->ssl, &srv->conf);
-      if(ret != 0) {
-        delete client;
-        PushInt(0, op_stack, stack_pos);
-        return true;
-      }
-
-      mbedtls_ssl_set_bio(&client->ssl, &client->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
-
-      // Perform handshake
-      while((ret = mbedtls_ssl_handshake(&client->ssl)) != 0) {
-        if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-          delete client;
-          PushInt(0, op_stack, stack_pos);
-          return true;
-        }
       }
 
       // Get peer address info
@@ -7343,7 +7371,11 @@ bool TrapProcessor::SockTcpSslInByte(StackProgram* program, size_t* inst, size_t
   if(instance) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
     int status;
-    PushInt(IPSecureSocket::ReadByte(sctx, status), op_stack, stack_pos);
+    // blocking read; park so a stop-the-world collection elsewhere can proceed
+    MemoryManager::BeginBlocking();
+    const char value = IPSecureSocket::ReadByte(sctx, status);
+    MemoryManager::EndBlocking();
+    PushInt(value, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -7361,24 +7393,37 @@ bool TrapProcessor::SockTcpSslInByteAry(StackProgram* program, size_t* inst, siz
 
   if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
-    char* buffer = (char*)(array + 3);
 
+    // blocking read; park for the duration. Bytes land in a temp C buffer (a
+    // parked thread's GC array can be moved by promotion mid-read), and the
+    // array ref is re-rooted on the op_stack so fixup relocates it.
+    char* temp = new char[num > 0 ? num : 1];
     int status; int read = 0;
-    char* temp = buffer + offset;
     bool done = false;
+    bool failed = false;
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     for(long i = 0; !done && i < num; ++i) {
       temp[i] = IPSecureSocket::ReadByte(sctx, status);
       if(!status) {
         done = true;
       }
       else if(status < 0) {
-        PushInt(-1, op_stack, stack_pos);
-        return true;
+        done = failed = true;
       }
       ++read;
     }
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
 
-    PushInt(read, op_stack, stack_pos);
+    if(failed) {
+      PushInt(-1, op_stack, stack_pos);
+    }
+    else {
+      memcpy((char*)(array + 3) + offset, temp, read);
+      PushInt(read, op_stack, stack_pos);
+    }
+    delete[] temp;
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7396,10 +7441,16 @@ bool TrapProcessor::SockTcpSslInCharAry(StackProgram* program, size_t* inst, siz
 
   if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
-    wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
+    // Blocking read: park for the duration, with the array ref re-rooted on the
+    // op_stack so GC promotion fixup relocates it while we wait.
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     int read = IPSecureSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    wchar_t* buffer = (wchar_t*)(array + 3);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -7430,7 +7481,10 @@ bool TrapProcessor::SockTcpSslOutByte(StackProgram* program, size_t* inst, size_
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
+    // a TLS write can block on a full send buffer; park so STW GC can proceed
+    MemoryManager::BeginBlocking();
     IPSecureSocket::WriteByte((char)value, sctx);
+    MemoryManager::EndBlocking();
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -7449,8 +7503,16 @@ bool TrapProcessor::SockTcpSslOutByteAry(StackProgram* program, size_t* inst, si
 
   if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SecureSocketCtx* sctx = (SecureSocketCtx*)instance[0];
-    char* buffer = (char*)(array + 3);
-    PushInt(IPSecureSocket::WriteBytes(buffer + offset, static_cast<int>(num), sctx), op_stack, stack_pos);
+    // a TLS write can block on a full send buffer; park for the duration. Data
+    // is staged in a temp C buffer first -- a parked thread's GC array can be
+    // moved (and its young-gen slot reused) by promotion mid-send.
+    char* temp = new char[num > 0 ? num : 1];
+    memcpy(temp, (char*)(array + 3) + offset, num);
+    MemoryManager::BeginBlocking();
+    const int sent = IPSecureSocket::WriteBytes(temp, static_cast<int>(num), sctx);
+    MemoryManager::EndBlocking();
+    delete[] temp;
+    PushInt(sent, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7473,7 +7535,11 @@ bool TrapProcessor::SockTcpSslOutCharAry(StackProgram* program, size_t* inst, si
     const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(IPSecureSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx), op_stack, stack_pos);
+    // a TLS write can block on a full send buffer; park (buffer_out is C heap)
+    MemoryManager::BeginBlocking();
+    const int sent = IPSecureSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx);
+    MemoryManager::EndBlocking();
+    PushInt(sent, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
