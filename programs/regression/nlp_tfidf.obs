@@ -1,0 +1,66 @@
+# EXTRA_LIBS: nlp,gen_collect
+#~
+System.NLP TF-IDF and similarity (docs/NLP_DESIGN.md, sections 6 and 7): a refit starts
+from an empty vocabulary, Nil and empty inputs are handled, and the edit-distance and set
+metrics give their textbook values.
+~#
+use System.NLP, Collection;
+
+class NlpTfIdfTest {
+	@failures : static : Int;
+
+	function : Check(ok : Bool, what : String) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return Float->Abs(a - b) < 0.000001;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# --- refit starts over ---
+		docs := ["the cat sat on the mat", "the dog sat on the log", "cats and dogs are pets"];
+		t := TF_IDF->New();
+		t->Fit(docs);
+		Check(t->GetVocabularySize() = 12, "vocabulary of the first corpus is 12");
+		t->Fit(["completely different words here"]);
+		Check(t->GetVocabularySize() = 4, "a refit on a 4-word corpus has 4 words");
+		Check(t->GetVocabulary()->Has("completely") & <>t->GetVocabulary()->Has("cat"), "a refit forgets the old corpus");
+		t->Fit(String->New[0]);
+		Check(t->GetVocabularySize() = 0, "fitting an empty corpus empties the vocabulary");
+		Check(t->Transform("cat")->Size() = 0, "transform after an empty fit is empty");
+
+		# --- similarity ---
+		Check(TextSimilarity->LevenshteinDistance("kitten", "sitting") = 3, "levenshtein kitten/sitting");
+		Check(TextSimilarity->LevenshteinDistance("", "abc") = 3, "levenshtein empty/abc");
+		nil_str : String;
+		Check(TextSimilarity->LevenshteinDistance(nil_str, "ab") = 2, "levenshtein Nil/ab");
+		Check(Near(TextSimilarity->NormalizedEditDistance(nil_str, "abc"), 1.0), "normalized edit distance Nil/abc");
+		Check(Near(TextSimilarity->NormalizedEditDistance(nil_str, nil_str), 0.0), "normalized edit distance Nil/Nil");
+		Check(Near(TextSimilarity->NormalizedEditDistance("kitten", "sitting"), 3.0 / 7.0), "normalized kitten/sitting");
+
+		Check(Near(TextSimilarity->JaccardSimilarity(String->New[0], String->New[0]), 1.0), "jaccard of two empty sets is 1");
+		nil_arr : String[];
+		Check(Near(TextSimilarity->JaccardSimilarity(nil_arr, nil_arr), 1.0), "jaccard of two Nil sets is 1");
+		Check(Near(TextSimilarity->JaccardSimilarity(["a"], String->New[0]), 0.0), "jaccard with one empty set is 0");
+		Check(Near(TextSimilarity->JaccardSimilarity(["cat", "sat", "mat"], ["CAT", "sat", "log"]), 0.5), "jaccard is case-insensitive");
+
+		Check(Near(TextSimilarity->CosineSimilarity([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]), 1.0), "cosine of parallel vectors");
+		Check(Near(TextSimilarity->CosineSimilarity([1.0, 0.0], [-1.0, 0.0]), -1.0), "cosine of opposite vectors");
+		Check(Near(TextSimilarity->CosineSimilarity([0.0, 0.0], [1.0, 0.0]), 0.0), "cosine with a zero vector");
+		Check(Near(TextSimilarity->CosineSimilarity([1.0], [1.0, 2.0]), 0.0), "cosine of mismatched sizes");
+
+		if(@failures = 0) {
+			"PASS: NLP TF-IDF and similarity"->PrintLine();
+		}
+		else {
+			"FAIL: NLP TF-IDF and similarity ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

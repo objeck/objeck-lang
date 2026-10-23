@@ -420,6 +420,11 @@ tfidf->Fit(docs);
 ```
 		~#
 		method : public : Fit(documents : String[]) ~ Nil {
+			# each Fit starts from nothing: a refit must not keep the last corpus's words
+			@vocabulary := Hash->New()<String, IntRef>;
+			@idf := Float->New[0];
+			@document_count := 0;
+
 			if(documents = Nil | documents->Size() = 0) {
 				return;
 			};
@@ -569,7 +574,7 @@ distance := System.NLP.TextSimilarity->LevenshteinDistance("kitten", "sitting");
 		Calculates cosine similarity between two vectors
 		@param vec1 first vector
 		@param vec2 second vector
-		@return cosine similarity (0.0 to 1.0)
+		@return cosine similarity (-1.0 to 1.0; 0.0 to 1.0 for non-negative vectors such as TF-IDF)
 
 ```
 v1 := [1.0, 0.0, 1.0];
@@ -604,7 +609,7 @@ sim := TextSimilarity->CosineSimilarity(v1, v2);
 		Calculates Jaccard similarity between two sets of tokens
 		@param tokens1 first token array
 		@param tokens2 second token array
-		@return Jaccard similarity (0.0 to 1.0)
+		@return Jaccard similarity (0.0 to 1.0); two empty sets are identical, 1.0
 
 ```
 t1 := ["cat", "sat", "mat"];
@@ -614,8 +619,16 @@ jaccard := TextSimilarity->JaccardSimilarity(t1, t2);
 ```
 		~#
 		function : JaccardSimilarity(tokens1 : String[], tokens2 : String[]) ~ Float {
-			if(tokens1 = Nil | tokens2 = Nil | (tokens1->Size() = 0 & tokens2->Size() = 0)) {
-				return 0.0;
+			if(tokens1 = Nil) {
+				tokens1 := String->New[0];
+			};
+
+			if(tokens2 = Nil) {
+				tokens2 := String->New[0];
+			};
+
+			if(tokens1->Size() = 0 & tokens2->Size() = 0) {
+				return 1.0;
 			};
 
 			if(tokens1->Size() = 0 | tokens2->Size() = 0) {
@@ -733,6 +746,14 @@ nd := TextSimilarity->NormalizedEditDistance("kitten", "sitting");
 ```
 		~#
 		function : NormalizedEditDistance(str1 : String, str2 : String) ~ Float {
+			if(str1 = Nil) {
+				str1 := "";
+			};
+
+			if(str2 = Nil) {
+				str2 := "";
+			};
+
 			distance := LevenshteinDistance(str1, str2);
 			max_len := str1->Size() > str2->Size() ? str1->Size() : str2->Size();
 
