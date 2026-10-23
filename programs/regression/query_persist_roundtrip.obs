@@ -3,8 +3,8 @@
 Query.Structured's .otab file (docs/QUERY_DESIGN.md, section 9, phase 3): a table with every
 column type, empty cells in each, Unicode text, a plain-text column (more distinct values than
 a dictionary keeps), GMT and local dates, mixed OBJECT values, a column never set and deleted
-rows, across two row groups, saved and loaded, and as bytes in memory, under each compression
-setting, cell for cell with its keys. Also: a read of some columns touches less of the file,
+rows, saved and loaded, and as bytes in memory, under each compression setting, cell for cell with
+its keys; and a narrow table of more than 65,536 rows, so files with several row groups. Also: a read of some columns touches less of the file,
 Append adds row groups after the existing keys and merges dictionaries, a mismatched Append is
 refused, and a damaged, truncated or foreign file is reported rather than loaded.
 ~#
@@ -112,6 +112,40 @@ class QueryPersistRoundtrip {
 		return Text(a->Get(ra))->Equals(Text(b->Get(rb)));
 	}
 
+	function : Tall() ~ Nil {
+		path := "query_persist_tall_tmp.otab";
+		File->Delete(path);
+
+		rows := Column->GroupRows() + 5000;
+		tall := Table->New("tall", ["id", "note"], [ColumnType->INT, ColumnType->STRING], true);
+		each(i : rows) {
+			row := tall->Insert();
+			if(i % 7 <> 0) {
+				row->Set("id", IntRef->New(i * 2));
+			};
+			row->Set("note", "tall-{$i}");
+		};
+		tall->Delete(70000);
+		Check("the tall table spans two row groups", tall->GetRowCapacity() > Column->GroupRows());
+
+		Check("Save of two row groups", tall->Save(path));
+		file := OtabFile->New(path);
+		Check("the file has two row groups", file->IsOpen() & file->GetGroupCount() = 2);
+		Check("Load of two row groups matches", Same("tall file", tall, Table->Load(path)));
+		Check("bytes of two row groups match, FAST", Same("tall FAST", tall, Table->FromBytes(tall->ToBytes(Compression->FAST))));
+		notes := OtabFile->New(path)->Read(["note"]);
+		Check("a partial read spans both groups", notes <> Nil & notes->Size() = tall->Size());
+
+		more := Table->New("tall", ["id", "note"], [ColumnType->INT, ColumnType->STRING], true);
+		more->Insert()->Set("note", "after");
+		Check("Append after two row groups", more->Append(path));
+		appended := Table->Load(path);
+		Check("it adds a third row group", OtabFile->New(path)->GetGroupCount() = 3);
+		Check("and its row takes the next key", appended <> Nil & appended->Get(tall->GetNextKey())->Get("note")->As(String)->Equals("after"));
+
+		File->Delete(path);
+	}
+
 	function : Build(rows : Int) ~ Table {
 		names := ["id", "score", "label", "note", "seen", "ok", "mixed", "never"];
 		types := [ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->STRING, ColumnType->DATE, ColumnType->BOOL, ColumnType->OBJECT, ColumnType->NONE];
@@ -162,8 +196,8 @@ class QueryPersistRoundtrip {
 		path := "query_persist_tmp.otab";
 		File->Delete(path);
 
-		table := Build(70500);
-		Check("the test table spans two row groups", table->GetRowCapacity() > Column->GroupRows());
+		# every type at 6,000 rows: past the 4,096 distinct texts that make a column plain
+		table := Build(6000);
 		Check("the plain-text column is not dictionary encoded", <>table->GetColumn("note")->IsEncoded());
 
 		Check("Save", table->Save(path));
@@ -257,6 +291,9 @@ class QueryPersistRoundtrip {
 
 		File->Delete(path);
 		File->Delete("query_persist_tmp.txt");
+
+		# more than one row group needs more than 65,536 rows; two columns are enough for it
+		Tall();
 
 		if(@failures = 0) {
 			"PASS: query .otab persistence"->PrintLine();
