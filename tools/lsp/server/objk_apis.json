@@ -12753,19 +12753,34 @@
 			}
 		},
 		"System.NLP.SentimentAnalyzer": {
-			"description": "Basic lexicon-based sentiment analysis",
+			"description": "Rule-based sentiment analysis in the manner of VADER (Hutto and Gilbert, 2014), with its own English lexicon of valences on a -4..+4 scale. Negators (\"not\", \"never\", \"don't\") within three words flip and damp a word's valence, boosters (\"very\", \"extremely\") and dampeners (\"slightly\", \"kind of\") scale it, a word in capitals in mixed-case text and each '!' add emphasis, and \"but\" shifts weight to the clause after it. Unknown inflections fall back to their base form (\"loved\" finds \"love\", \"terribly\" finds \"terrible\").",
 			"functions": {
+				"AddWord": {
+					"descriptions": ["**Adds a word to the lexicon or changes its valence, for a domain's own vocabulary**\n\n```function : AddWord(word:String, valence:Float) ~ Nil```\n\n\n\nword: String\n\nvalence: Float\n\nreturn: Nil\n\n```\nSentimentAnalyzer->AddWord(\"bullish\", 2.0);\nSentimentAnalyzer->AddWord(\"bearish\", -2.0);\nSentimentAnalyzer->Classify(\"Analysts are bullish on the stock\")->PrintLine();\n```"]
+				},
 				"Analyze": {
-					"descriptions": ["**Analyzes sentiment of text and returns a sentiment score**\n\n```function : Analyze(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int\n\n```\nscore := SentimentAnalyzer->Analyze(\"This product is absolutely wonderful!\");\n\"Score: {$score}\"->PrintLine();\n```"]
+					"descriptions": ["**Analyzes sentiment of text and returns the summed valence of its words, rounded**\n\n```function : Analyze(text:String) ~ Int```\n\n\n\ntext: String\n\nreturn: Int\n\n```\nscore := SentimentAnalyzer->Analyze(\"This product is absolutely wonderful!\");\n\"Score: {$score}\"->PrintLine();\n```"]
+				},
+				"AnalyzeCompound": {
+					"descriptions": ["**Analyzes sentiment of text and returns VADER's normalized compound score**\n\n```function : AnalyzeCompound(text:String) ~ Float```\n\n\n\ntext: String\n\nreturn: Float\n\n```\ncompound := SentimentAnalyzer->AnalyzeCompound(\"Not bad at all, actually.\");\n\"Compound: {$compound}\"->PrintLine();\n```"]
 				},
 				"AnalyzeDetailed": {
 					"descriptions": ["**Gets detailed sentiment analysis with scores**\n\n```function : AnalyzeDetailed(text:String) ~ SentimentResult```\n\n\n\ntext: String\n\nreturn: SentimentResult\n\n```\nresult := SentimentAnalyzer->AnalyzeDetailed(\"Amazing and wonderful experience!\");\nresult->ToString()->PrintLine();\n```"]
 				},
 				"Classify": {
-					"descriptions": ["**Classifies text sentiment as positive, negative, or neutral**\n\n```function : Classify(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String\n\n```\nlabel := SentimentAnalyzer->Classify(\"This is terrible and horrible.\");\nlabel->PrintLine();\n```"]
+					"descriptions": ["**Classifies text sentiment as positive (compound score of 0.05 or more), negative (-0.05 or less) or neutral**\n\n```function : Classify(text:String) ~ String```\n\n\n\ntext: String\n\nreturn: String\n\n```\nlabel := SentimentAnalyzer->Classify(\"This is not good.\");\nlabel->PrintLine();\n```"]
+				},
+				"ClearLexicon": {
+					"descriptions": ["**Removes every word from the lexicon, built-in ones included, so that LoadLexicon or AddWord can supply a lexicon of the program's own. Boosters and negators are kept.**\n\n```function : ClearLexicon() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nSentimentAnalyzer->ClearLexicon();\nSentimentAnalyzer->LoadLexicon(\"vader_lexicon.txt\");\n```"]
+				},
+				"GetValence": {
+					"descriptions": ["**Gets a word's valence from the lexicon, trying its base form when the word itself is not listed (\"loved\" finds \"love\")**\n\n```function : GetValence(word:String) ~ Float```\n\n\n\nword: String\n\nreturn: Float\n\n```\nSentimentAnalyzer->GetValence(\"terribly\")->PrintLine();\n```"]
 				},
 				"Init": {
-					"descriptions": ["**Initializes sentiment lexicons with common positive and negative words**\n\n```function : Init() ~ Nil```\n\n\n\nreturn: Nil"]
+					"descriptions": ["**Loads the lexicon, boosters and negators; called by every other function, so calling it yourself is never necessary**\n\n```function : Init() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"LoadLexicon": {
+					"descriptions": ["**Adds the words in a lexicon file, one per line: the word, a tab, its valence on the\n-4.0 to 4.0 scale, and anything after a further tab ignored. That is the layout of VADER's own vader_lexicon.txt (MIT licence), so a program can use VADER's full lexicon in place of, or on top of, the built-in one. Lines that are empty or start with '#' are skipped; a listed word replaces the built-in entry.**\n\n```function : LoadLexicon(path:String) ~ Int```\n\n\n\npath: String\n\nreturn: Int\n\n```\nadded := SentimentAnalyzer->LoadLexicon(\"vader_lexicon.txt\");\n\"Loaded {$added} words\"->PrintLine();\n```"]
 				}
 			}
 		},
@@ -12775,11 +12790,14 @@
 				"GetClassification": {
 					"descriptions": ["**Gets the classification label**\n\n```method : public : GetClassification() ~ String```\n\n\n\nreturn: String\n\n```\nresult := SentimentAnalyzer->AnalyzeDetailed(\"Awful product!\");\nresult->GetClassification()->PrintLine();\n```"]
 				},
+				"GetCompound": {
+					"descriptions": ["**Gets the normalized compound score**\n\n```method : public : GetCompound() ~ Float```\n\n\n\nreturn: Float\n\n```\nresult := SentimentAnalyzer->AnalyzeDetailed(\"Not bad at all.\");\n\"Compound: {$result->GetCompound()}\"->PrintLine();\n```"]
+				},
 				"GetScore": {
 					"descriptions": ["**Gets the sentiment score**\n\n```method : public : GetScore() ~ Int```\n\n\n\nreturn: Int\n\n```\nresult := SentimentAnalyzer->AnalyzeDetailed(\"Great job!\");\n\"Score: {$result->GetScore()}\"->PrintLine();\n```"]
 				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New(score:Int, classification:String)```\n\n\n\nscore: Int\n\nclassification: String"]
+					"descriptions": ["**Constructor; the compound score is derived from the integer score**\n\n```New(score:Int, classification:String)```\n\n\n\nscore: Int\n\nclassification: String", "**Constructor**\n\n```New(score:Int, compound:Float, classification:String)```\n\n\n\nscore: Int\n\ncompound: Float\n\nclassification: String"]
 				},
 				"ToString": {
 					"descriptions": ["**String representation**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
@@ -12787,10 +12805,13 @@
 			}
 		},
 		"System.NLP.TF_IDF": {
-			"description": "Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis",
+			"description": "Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis. By default IDF is smoothed as scikit-learn's is, ln((1 + N) \/ (1 + df)) + 1, and vectors are scaled to unit length, so the cosine similarity of two of them is their dot product.",
 			"functions": {
 				"Fit": {
-					"descriptions": ["**Fits the TF-IDF model on a corpus of documents**\n\n```method : public : Fit(documents:String[]) ~ Nil```\n\n\n\ndocuments: String[]\n\nreturn: Nil\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\ntfidf->Fit(docs);\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n```"]
+					"descriptions": ["**Fits the TF-IDF model on a corpus of documents, replacing any earlier fit**\n\n```method : public : Fit(documents:String[]) ~ Nil```\n\n\n\ndocuments: String[]\n\nreturn: Nil\n\n```\ndocs := [\"the cat sat on the mat\", \"the dog ran in the park\", \"cats and dogs are pets\"];\ntfidf := TF_IDF->New();\ntfidf->Fit(docs);\n\"Vocabulary size: {$tfidf->GetVocabularySize()}\"->PrintLine();\n```"]
+				},
+				"GetIdf": {
+					"descriptions": ["**Gets the inverse document frequency of each vocabulary word, indexed as the vocabulary is**\n\n```method : public : GetIdf() ~ Float[]```\n\n\n\nreturn: Float[]\n\n```\nidf := tfidf->GetIdf();\nidx := tfidf->GetVocabulary()->Find(\"cat\")->Get();\n\"IDF of cat: {$(idf[idx])}\"->PrintLine();\n```"]
 				},
 				"GetVocabulary": {
 					"descriptions": ["**Gets the vocabulary (word to index mapping)**\n\n```method : public : GetVocabulary() ~ Hash&lt;String,IntRef&gt;```\n\n\n\nreturn: Hash&lt;String,IntRef&gt;\n\n```\nvocab := tfidf->GetVocabulary();\nkeys := vocab->GetKeys()<String>;\neach(k in keys) {\n  k->PrintLine();\n};\n```"]
@@ -12799,10 +12820,10 @@
 					"descriptions": ["**Gets the size of the vocabulary**\n\n```method : public : GetVocabularySize() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+					"descriptions": ["**Constructor**\n\n```New(smooth_idf:Bool, l2_normalize:Bool, remove_stopwords:Bool, stem:Bool)```\n\n\n\nsmooth_idf: Bool\n\nl2_normalize: Bool\n\nremove_stopwords: Bool\n\nstem: Bool"]
 				},
 				"Transform": {
-					"descriptions": ["**Transforms a document into a TF-IDF vector**\n\n```method : public : Transform(document:String) ~ Float[]```\n\n\n\ndocument: String\n\nreturn: Float[]\n\n```\nvec := tfidf->Transform(\"the cat chased the dog\");\n\"Vector length: {$vec->Size()}\"->PrintLine();\n```"]
+					"descriptions": ["**Transforms a document into a TF-IDF vector, one entry per vocabulary word; words the fit did not see are ignored**\n\n```method : public : Transform(document:String) ~ Float[]```\n\n\n\ndocument: String\n\nreturn: Float[]\n\n```\nvec := tfidf->Transform(\"the cat chased the dog\");\n\"Vector length: {$vec->Size()}\"->PrintLine();\n```"]
 				}
 			}
 		},
@@ -12822,7 +12843,7 @@
 					"descriptions": ["**Removes common English stopwords from token array**\n\n```function : RemoveStopwords(tokens:String[]) ~ String[]```\n\n\n\ntokens: String[]\n\nreturn: String[]\n\n```\nwords := Tokenizer->WordTokenize(\"The cat sat on the mat\");\nfiltered := TextPreprocessor->RemoveStopwords(words);\neach(w in filtered) {\n  w->PrintLine();\n};\n```"]
 				},
 				"Stem": {
-					"descriptions": ["**Basic Porter stemmer - reduces words to their root form**\n\n```function : Stem(word:String) ~ String```\n\n\n\nword: String\n\nreturn: String\n\n```\nTextPreprocessor->Stem(\"running\")->PrintLine();\nTextPreprocessor->Stem(\"happily\")->PrintLine();\n```"]
+					"descriptions": ["**Porter stemmer: reduces an English word to its stem with the Porter (1980) algorithm, as Martin Porter's reference implementation applies it. Stems need not be words (\"happily\" becomes \"happili\", \"relational\" becomes \"relat\"); what matters is that related forms meet (\"connected\", \"connecting\" and \"connection\" all become \"connect\"). The word is lowercased; words of one or two letters, and words holding anything but the letters a-z, are returned lowercased and otherwise unchanged.**\n\n```function : Stem(word:String) ~ String```\n\n\n\nword: String\n\nreturn: String\n\n```\nTextPreprocessor->Stem(\"running\")->PrintLine();\nTextPreprocessor->Stem(\"connection\")->PrintLine();\n```"]
 				},
 				"StemAll": {
 					"descriptions": ["**Applies stemming to all tokens in array**\n\n```function : StemAll(tokens:String[]) ~ String[]```\n\n\n\ntokens: String[]\n\nreturn: String[]\n\n```\nwords := Tokenizer->WordTokenize(\"running quickly and happily\");\nstemmed := TextPreprocessor->StemAll(words);\neach(s in stemmed) {\n  s->PrintLine();\n};\n```"]
@@ -12853,13 +12874,13 @@
 					"descriptions": ["**Generates character-level n-grams from text**\n\n```function : CharNGrams(text:String, n:Int) ~ String[]```\n\n\n\ntext: String\n\nn: Int\n\nreturn: String[]\n\n```\ntrigrams := Tokenizer->CharNGrams(\"hello\", 3);\neach(g in trigrams) {\n  g->PrintLine();\n};\n```"]
 				},
 				"SentenceTokenize": {
-					"descriptions": ["**Tokenizes text into sentences using common sentence delimiters**\n\n```function : SentenceTokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\nsents := Tokenizer->SentenceTokenize(\"Hello! How are you? I am fine.\");\neach(s in sents) {\n  s->PrintLine();\n};\n```"]
+					"descriptions": ["**Tokenizes text into sentences. A sentence ends at a run of '.', '!' or '?' (so \"...\" and \"?!\" are one boundary), with any closing quotes or brackets, followed by whitespace or the end of the text. A '.' after a known abbreviation (Dr, Mrs, e.g, U.S, Jan ...) or a single capital initial does not end a sentence, and neither does a '.' inside a number (3.50).**\n\n```function : SentenceTokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\nsents := Tokenizer->SentenceTokenize(\"Dr. Smith paid $3.50. Wait... really?! Yes.\");\neach(s in sents) {\n  s->PrintLine();\n};\n```"]
 				},
 				"WordNGrams": {
 					"descriptions": ["**Generates word-level n-grams from tokenized text**\n\n```function : WordNGrams(tokens:String[], n:Int) ~ String[]```\n\n\n\ntokens: String[]\n\nn: Int\n\nreturn: String[]\n\n```\nwords := Tokenizer->WordTokenize(\"the quick brown fox\");\nbigrams := Tokenizer->WordNGrams(words, 2);\neach(g in bigrams) {\n  g->PrintLine();\n};\n```"]
 				},
 				"WordTokenize": {
-					"descriptions": ["**Tokenizes text into words using whitespace and punctuation as delimiters**\n\n```function : WordTokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\nwords := Tokenizer->WordTokenize(\"Hello, world! How are you?\");\neach(w in words) {\n  w->PrintLine();\n};\n```"]
+					"descriptions": ["**Tokenizes text into words. A word is a run of letters and digits, including non-Latin letters; an apostrophe between letters (don't, O'Brien), a hyphen between letters or digits (state-of-the-art, COVID-19) and a '.' or ',' between digits (3.14, 5,000) stay inside it. Whitespace and punctuation separate words and are dropped. Case is kept.**\n\n```function : WordTokenize(text:String) ~ String[]```\n\n\n\ntext: String\n\nreturn: String[]\n\n```\nwords := Tokenizer->WordTokenize(\"I don't think 3.14 is state-of-the-art.\");\neach(w in words) {\n  w->PrintLine();\n};\n```"]
 				}
 			}
 		},

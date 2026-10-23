@@ -20,6 +20,14 @@ class NlpTfIdfTest {
 		return Float->Abs(a - b) < 0.000001;
 	}
 
+	function : Dot(a : Float[], b : Float[]) ~ Float {
+		sum := 0.0;
+		each(i : a) {
+			sum += a[i] * b[i];
+		};
+		return sum;
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		@failures := 0;
 
@@ -34,6 +42,49 @@ class NlpTfIdfTest {
 		t->Fit(String->New[0]);
 		Check(t->GetVocabularySize() = 0, "fitting an empty corpus empties the vocabulary");
 		Check(t->Transform("cat")->Size() = 0, "transform after an empty fit is empty");
+
+		# --- smoothed IDF and unit vectors, the defaults ---
+		d := TF_IDF->New();
+		d->Fit(docs);
+		idf := d->GetIdf();
+		vocab := d->GetVocabulary();
+		Check(idf->Size() = 12, "one IDF per vocabulary word");
+		Check(Near(idf[vocab->Find("mat")->Get()], Float->Log(4.0 / 2.0) + 1.0), "smoothed IDF of a word in one document");
+		Check(Near(idf[vocab->Find("sat")->Get()], Float->Log(4.0 / 3.0) + 1.0), "smoothed IDF of a word in two documents");
+		idf[0] := 99.0;
+		Check(<>Near(d->GetIdf()[0], 99.0), "GetIdf returns a copy");
+
+		v := d->Transform("the cat sat on the mat");
+		Check(Near(Dot(v, v), 1.0), "vectors are unit length");
+		Check(Near(TextSimilarity->CosineSimilarity(v, d->Transform("the cat sat on the mat")), 1.0), "a document is identical to itself");
+		Check(Near(Dot(d->Transform("unseen words only"), d->Transform("unseen words only")), 0.0), "unseen words give a zero vector");
+		nil_doc : String;
+		Check(d->Transform(nil_doc)->Size() = 12, "Transform(Nil) is a zero vector of vocabulary size");
+
+		single := TF_IDF->New();
+		single->Fit(["only one document here"]);
+		Check(Dot(single->Transform("only one document here"), single->Transform("only one document here")) > 0.5, "a one-document corpus gives a useful vector");
+
+		# --- raw IDF and raw weights ---
+		raw := TF_IDF->New(smooth_idf : false, l2_normalize : false);
+		raw->Fit(docs);
+		raw_idf := raw->GetIdf();
+		raw_vocab := raw->GetVocabulary();
+		Check(Near(raw_idf[raw_vocab->Find("mat")->Get()], Float->Log(3.0)), "raw IDF is ln(N / df)");
+		w := raw->Transform("the mat mat the");
+		Check(Near(w[raw_vocab->Find("mat")->Get()], 0.5 * Float->Log(3.0)), "raw weight is tf * idf");
+
+		# --- stemming and stopwords ---
+		s := TF_IDF->New(stem : true);
+		s->Fit(docs);
+		Check(s->GetVocabulary()->Has("cat") & <>s->GetVocabulary()->Has("cats"), "stemming merges cat and cats");
+		Check(Near(TextSimilarity->CosineSimilarity(s->Transform("cats"), s->Transform("cat")), 1.0), "a stemmed cat is a cat");
+		Check(TextSimilarity->CosineSimilarity(d->Transform("cats"), d->Transform("cat")) < 0.000001, "unstemmed, cats is not cat");
+
+		sw := TF_IDF->New(true, true, true);
+		sw->Fit(docs);
+		Check(<>sw->GetVocabulary()->Has("the") & <>sw->GetVocabulary()->Has("on") & sw->GetVocabulary()->Has("mat"), "stopwords are left out");
+		Check(sw->GetVocabularySize() = 8, "the vocabulary without stopwords");
 
 		# --- similarity ---
 		Check(TextSimilarity->LevenshteinDistance("kitten", "sitting") = 3, "levenshtein kitten/sitting");

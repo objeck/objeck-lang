@@ -27,7 +27,7 @@ fails, and it is not in the regression suite.
 Every existing class and method keeps its name and signature. Additions are new methods.
 Where the old output was simply wrong (the stemmer, tokenization, an all-zero TF-IDF vector,
 "not good" as positive) the new output replaces it without a flag: keeping a wrong answer
-available is not a feature anyone would choose. The changes are listed in the changelog.
+available is not a feature anyone would choose. The changes go in the next release's notes.
 
 ### 2. Word tokenizer: a character scanner
 
@@ -146,6 +146,15 @@ method; for more, `API.Onnx` can run a fine-tuned transformer.
   l2_normalize : Bool := true, remove_stopwords : Bool := false, stem : Bool := false)`.
   With `stem`, `cat` and `cats` share a column.
 - `GetIdf()` returns the IDF vector, indexed like the vocabulary.
+
+**As built:** found on the way, naming one of these options from a program fails to compile
+when the option is not the last one (`TF_IDF->New(remove_stopwords : true)`: "Named
+arguments match more than one overload of 'New'"), while `New(stem : true)` and passing them
+positionally work. It is a compiler defect, not this library's: `BindNamedLibraryArguments`
+(`core/compiler/context.cpp`) also considers the trailing-default alternates a library
+records, and the alternate ending in the named parameter competes with the original. The
+in-program path skips alternates (`IsAlt()`); the library path has no such flag. It affects
+every library method with two or more defaulted parameters and is fixed separately.
 
 ### 7. Smaller fixes
 

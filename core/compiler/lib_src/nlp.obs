@@ -850,33 +850,48 @@ each(s in stemmed) {
 	}
 
 	#~
-	Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis
+	Term Frequency-Inverse Document Frequency (TF-IDF) vectorizer for document analysis. By
+	default IDF is smoothed as scikit-learn's is, ln((1 + N) / (1 + df)) + 1, and vectors are
+	scaled to unit length, so the cosine similarity of two of them is their dot product.
 
 ```
 documents := ["The cat sat on the mat", "The dog sat on the log", "Cats and dogs are pets"];
-tfidf := System.NLP.TF_IDF->New();
+tfidf := System.NLP.TF_IDF->New(stem : true);
 tfidf->Fit(documents);
 
-test_doc := "The cat and the dog";
-vector := tfidf->Transform(test_doc);
-vocab := tfidf->GetVocabulary();
+a := tfidf->Transform("The cat and the dog");
+b := tfidf->Transform("cats and dogs");
+System.NLP.TextSimilarity->CosineSimilarity(a, b)->PrintLine();
 ```
 	~#
 	class TF_IDF {
 		@vocabulary : Hash<String, IntRef>;
 		@idf : Float[];
 		@document_count : Int;
+		@smooth_idf : Bool;
+		@l2_normalize : Bool;
+		@remove_stopwords : Bool;
+		@stem : Bool;
 
 		#~
 		Constructor
+		@param smooth_idf smooth IDF as ln((1 + N) / (1 + df)) + 1, so a word in every document still weighs 1; false gives the raw ln(N / df)
+		@param l2_normalize scale each vector to unit length
+		@param remove_stopwords drop common English stopwords before counting
+		@param stem count words by their Porter stem, so "cat" and "cats" share a column
 		~#
-		New() {
+		New(smooth_idf : Bool := true, l2_normalize : Bool := true, remove_stopwords : Bool := false, stem : Bool := false) {
 			@vocabulary := Hash->New()<String, IntRef>;
+			@idf := Float->New[0];
 			@document_count := 0;
+			@smooth_idf := smooth_idf;
+			@l2_normalize := l2_normalize;
+			@remove_stopwords := remove_stopwords;
+			@stem := stem;
 		}
 
 		#~
-		Fits the TF-IDF model on a corpus of documents
+		Fits the TF-IDF model on a corpus of documents, replacing any earlier fit
 		@param documents array of document strings
 
 ```
@@ -898,59 +913,48 @@ tfidf->Fit(docs);
 
 			@document_count := documents->Size();
 
-			# Build vocabulary and document frequencies
+			# vocabulary in first-seen order, and the number of documents holding each term
 			doc_freq := Hash->New()<String, IntRef>;
-
 			each(doc := documents) {
-				tokens := Tokenizer->WordTokenize(doc);
-				unique_tokens := Hash->New()<String, BoolRef>;
-
-				each(token := tokens) {
-					lowercase_token := token->ToLower();
-					unique_tokens->Insert(lowercase_token, BoolRef->New(true));
-
-					if(<>@vocabulary->Has(lowercase_token)) {
-						idx := @vocabulary->Size();
-						@vocabulary->Insert(lowercase_token, IntRef->New(idx));
+				seen := Hash->New()<String, BoolRef>;
+				terms := Terms(doc);
+				each(term := terms) {
+					if(<>@vocabulary->Has(term)) {
+						@vocabulary->Insert(term, IntRef->New(@vocabulary->Size()));
 					};
-				};
 
-				# Count documents containing each unique token
-				keys := unique_tokens->GetKeys()<String>;
-				each(key := keys) {
-					count := doc_freq->Find(key);
-					if(count <> Nil) {
-						doc_freq->Insert(key, IntRef->New(count->Get() + 1));
-					}
-					else {
-						doc_freq->Insert(key, IntRef->New(1));
+					if(<>seen->Has(term)) {
+						seen->Insert(term, BoolRef->New(true));
+						count := doc_freq->Find(term);
+						if(count <> Nil) {
+							count->Set(count->Get() + 1);
+						}
+						else {
+							doc_freq->Insert(term, IntRef->New(1));
+						};
 					};
 				};
 			};
 
-			# Calculate IDF values
-			vocab_size := @vocabulary->Size();
-			@idf := Float->New[vocab_size];
-
+			n := @document_count->As(Float);
+			@idf := Float->New[@vocabulary->Size()];
 			keys := @vocabulary->GetKeys()<String>;
 			each(key := keys) {
-				idx := @vocabulary->Find(key);
-				df := doc_freq->Find(key);
-
-				if(df <> Nil & df->Get() > 0) {
-					# IDF = log(N / df)
-					@idf[idx->Get()] := Float->Log(@document_count->As(Float) / df->Get()->As(Float));
+				df := doc_freq->Find(key)->Get()->As(Float);
+				if(@smooth_idf) {
+					@idf[@vocabulary->Find(key)->Get()] := Float->Log((1.0 + n) / (1.0 + df)) + 1.0;
 				}
 				else {
-					@idf[idx->Get()] := 0.0;
+					@idf[@vocabulary->Find(key)->Get()] := Float->Log(n / df);
 				};
 			};
 		}
 
 		#~
-		Transforms a document into a TF-IDF vector
+		Transforms a document into a TF-IDF vector, one entry per vocabulary word; words the fit
+		did not see are ignored
 		@param document input document string
-		@return TF-IDF vector as float array
+		@return TF-IDF vector as float array (unit length unless l2_normalize is false, or all zero)
 
 ```
 vec := tfidf->Transform("the cat chased the dog");
@@ -958,42 +962,55 @@ vec := tfidf->Transform("the cat chased the dog");
 ```
 		~#
 		method : public : Transform(document : String) ~ Float[] {
-			if(@vocabulary->Size() = 0) {
-				return Float->New[0];
-			};
-
 			vocab_size := @vocabulary->Size();
 			tfidf := Float->New[vocab_size];
-
-			# Calculate term frequencies
-			tokens := Tokenizer->WordTokenize(document);
-			if(tokens->Size() = 0) {
+			if(vocab_size = 0 | document = Nil) {
 				return tfidf;
 			};
 
-			term_freq := Hash->New()<String, IntRef>;
-			each(token := tokens) {
-				lowercase_token := token->ToLower();
-				count := term_freq->Find(lowercase_token);
-				if(count <> Nil) {
-					term_freq->Insert(lowercase_token, IntRef->New(count->Get() + 1));
-				}
-				else {
-					term_freq->Insert(lowercase_token, IntRef->New(1));
+			terms := Terms(document);
+			if(terms->Size() = 0) {
+				return tfidf;
+			};
+
+			# term frequency, as a share of the document's terms
+			share := 1.0 / terms->Size()->As(Float);
+			each(term := terms) {
+				idx := @vocabulary->Find(term);
+				if(idx <> Nil) {
+					tfidf[idx->Get()] += share;
 				};
 			};
 
-			# Calculate TF-IDF
-			keys := term_freq->GetKeys()<String>;
-			each(key := keys) {
-				idx := @vocabulary->Find(key);
-				if(idx <> Nil) {
-					tf := term_freq->Find(key)->Get()->As(Float) / tokens->Size()->As(Float);
-					tfidf[idx->Get()] := tf * @idf[idx->Get()];
+			norm := 0.0;
+			each(i : vocab_size) {
+				tfidf[i] *= @idf[i];
+				norm += tfidf[i] * tfidf[i];
+			};
+
+			if(@l2_normalize & norm > 0.0) {
+				norm := Float->Sqrt(norm);
+				each(i : vocab_size) {
+					tfidf[i] /= norm;
 				};
 			};
 
 			return tfidf;
+		}
+
+		# a document's terms: lowercased words, optionally without stopwords and stemmed
+		method : Terms(document : String) ~ String[] {
+			tokens := Tokenizer->WordTokenize(document);
+			if(@remove_stopwords) {
+				tokens := TextPreprocessor->RemoveStopwords(tokens);
+			};
+
+			terms := String->New[tokens->Size()];
+			each(i : tokens) {
+				terms[i] := @stem ? TextPreprocessor->Stem(tokens[i]) : tokens[i]->ToLower();
+			};
+
+			return terms;
 		}
 
 		#~
@@ -1018,6 +1035,25 @@ each(k in keys) {
 		~#
 		method : public : GetVocabularySize() ~ Int {
 			return @vocabulary->Size();
+		}
+
+		#~
+		Gets the inverse document frequency of each vocabulary word, indexed as the vocabulary is
+		@return a copy of the IDF vector
+
+```
+idf := tfidf->GetIdf();
+idx := tfidf->GetVocabulary()->Find("cat")->Get();
+"IDF of cat: {$(idf[idx])}"->PrintLine();
+```
+		~#
+		method : public : GetIdf() ~ Float[] {
+			copy := Float->New[@idf->Size()];
+			each(i : @idf) {
+				copy[i] := @idf[i];
+			};
+
+			return copy;
 		}
 	}
 
