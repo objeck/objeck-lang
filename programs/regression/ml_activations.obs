@@ -1,0 +1,221 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+Numerical correctness of the System.ML activation functions and scalers.
+
+Softmax normalized over the whole matrix, so a batch (one sample per row) came
+back as one distribution spread across every row instead of one per row. Tanh was
+a ratio of Pow calls that became Inf / Inf, a NaN, once |x| passed about 710. A
+constant feature column standardized to -1s instead of 0s, because its mean
+differs from its values by an ulp and the resulting ~1e-17 deviation passed the
+zero-deviation guard. Each check below uses inputs that hit those paths, plus
+large and small inputs for every activation touched.
+~#
+use System.ML;
+
+class MlActivations {
+	@failures : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		SoftmaxRows();
+		SoftmaxLarge();
+		SoftmaxColumnVector();
+		SoftmaxColumnsWise();
+		TanhRange();
+		SigmoidRange();
+		ReLUFamily();
+		ConstantColumns();
+		EmptyScalers();
+		RandomNormalFinite();
+
+		if(@failures > 0) {
+			"FAIL: ml_activations, {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: ml_activations"->PrintLine();
+	}
+
+	# a batch: each row is normalized on its own
+	function : SoftmaxRows() ~ Nil {
+		p := Matrix2D->Softmax([[1.0, 2.0, 3.0][1.0, 2.0, 3.0][4.0, 1.0, 1.0]]);
+		Check(p <> Nil, "Softmax batch result");
+		if(p = Nil) {
+			return;
+		};
+
+		dims := p->Size();
+		Check(dims[0] = 3 & dims[1] = 3, "Softmax keeps the shape");
+
+		each(i : 2) {
+			Near(p[i,0], 0.09003057317038046, 0.000000001, "Softmax row {$i} col 0");
+			Near(p[i,1], 0.24472847105479764, 0.000000001, "Softmax row {$i} col 1");
+			Near(p[i,2], 0.6652409557748218, 0.000000001, "Softmax row {$i} col 2");
+		};
+
+		each(i : 3) {
+			sum := p[i,0] + p[i,1] + p[i,2];
+			Near(sum, 1.0, 0.000000000001, "Softmax row {$i} sums to 1");
+		};
+
+		# a single row is unaffected by the per-row change
+		one := Matrix2D->Softmax([[1.0, 2.0, 3.0]]);
+		Near(one[0,2], 0.6652409557748218, 0.000000001, "Softmax single row");
+
+		none : Float[,] := Nil;
+		Check(Matrix2D->Softmax(none) = Nil, "Softmax(Nil) is Nil");
+	}
+
+	# max subtraction: huge logits neither overflow nor lose the distribution
+	function : SoftmaxLarge() ~ Nil {
+		p := Matrix2D->Softmax([[1000.0, 1001.0][-1000.0, -999.0][-1000.0, 1000.0]]);
+		Near(p[0,0], 0.2689414213699951, 0.000000001, "Softmax([1000,1001])[0]");
+		Near(p[0,1], 0.7310585786300049, 0.000000001, "Softmax([1000,1001])[1]");
+		Near(p[1,0], 0.2689414213699951, 0.000000001, "Softmax([-1000,-999])[0]");
+		Near(p[1,1], 0.7310585786300049, 0.000000001, "Softmax([-1000,-999])[1]");
+		Near(p[2,0], 0.0, 0.000000001, "Softmax([-1000,1000])[0]");
+		Near(p[2,1], 1.0, 0.000000001, "Softmax([-1000,1000])[1]");
+	}
+
+	# an n x 1 column (the NeuralNetwork layout) is normalized down the column
+	function : SoftmaxColumnVector() ~ Nil {
+		p := Matrix2D->Softmax([[1.0][2.0][3.0]]);
+		Near(p[0,0], 0.09003057317038046, 0.000000001, "Softmax column vector [0]");
+		Near(p[1,0], 0.24472847105479764, 0.000000001, "Softmax column vector [1]");
+		Near(p[2,0], 0.6652409557748218, 0.000000001, "Softmax column vector [2]");
+	}
+
+	# one sample per column
+	function : SoftmaxColumnsWise() ~ Nil {
+		p := Matrix2D->SoftmaxColumns([[1.0, 1000.0][2.0, 1001.0][3.0, 1000.0]]);
+		Near(p[0,0], 0.09003057317038046, 0.000000001, "SoftmaxColumns col 0 [0]");
+		Near(p[2,0], 0.6652409557748218, 0.000000001, "SoftmaxColumns col 0 [2]");
+
+		sum := p[0,1] + p[1,1] + p[2,1];
+		Near(sum, 1.0, 0.000000000001, "SoftmaxColumns col 1 sums to 1");
+		Near(p[0,1], p[2,1], 0.000000000001, "SoftmaxColumns col 1 symmetric");
+		Check(p[1,1] > p[0,1], "SoftmaxColumns col 1 peak");
+
+		none : Float[,] := Nil;
+		Check(Matrix2D->SoftmaxColumns(none) = Nil, "SoftmaxColumns(Nil) is Nil");
+	}
+
+	function : TanhRange() ~ Nil {
+		Check(Matrix2D->Tanh(1000.0) = 1.0, "Tanh(1000) = 1");
+		Check(Matrix2D->Tanh(-1000.0) = -1.0, "Tanh(-1000) = -1");
+		Check(Matrix2D->Tanh(711.0) = 1.0, "Tanh(711) = 1");
+		Check(Matrix2D->Tanh(0.0) = 0.0, "Tanh(0) = 0");
+		Near(Matrix2D->Tanh(0.5), 0.46211715726000974, 0.000000001, "Tanh(0.5)");
+		Near(Matrix2D->Tanh(-3.0), -0.9950547536867305, 0.000000001, "Tanh(-3)");
+
+		m := Matrix2D->Tanh([[-1000.0, 0.5][800.0, -3.0]]);
+		Check(m[0,0] = -1.0, "Tanh matrix -1000");
+		Check(m[1,0] = 1.0, "Tanh matrix 800");
+		Near(m[0,1], 0.46211715726000974, 0.000000001, "Tanh matrix 0.5");
+	}
+
+	function : SigmoidRange() ~ Nil {
+		Check(Matrix2D->Sigmoid(1000.0) = 1.0, "Sigmoid(1000) = 1");
+		Check(Matrix2D->Sigmoid(-1000.0) = 0.0, "Sigmoid(-1000) = 0");
+		Check(Matrix2D->Sigmoid(0.0) = 0.5, "Sigmoid(0) = 0.5");
+		Near(Matrix2D->Sigmoid(2.0), 0.8807970779778823, 0.000000001, "Sigmoid(2)");
+
+		# small results keep their relative precision
+		s := Matrix2D->Sigmoid(-30.0);
+		Near(s / 0.000000000000093576229688393, 1.0, 0.000000001, "Sigmoid(-30) relative");
+		tiny := Matrix2D->Sigmoid(-700.0);
+		Check(tiny > 0.0, "Sigmoid(-700) > 0");
+		Near(tiny / Float->Exp(-700.0), 1.0, 0.000000001, "Sigmoid(-700) relative");
+
+		# symmetry: sigmoid(x) + sigmoid(-x) = 1
+		each(i : 5) {
+			x := i->As(Float) * 7.5;
+			Near(Matrix2D->Sigmoid(x) + Matrix2D->Sigmoid(-1.0 * x), 1.0, 0.000000000001, "Sigmoid symmetry at {$x}");
+		};
+
+		m := Matrix2D->Sigmoid([[-1000.0, 1000.0]]);
+		Check(m[0,0] = 0.0 & m[0,1] = 1.0, "Sigmoid matrix extremes");
+
+		d := Matrix2D->DotSigmoid([[1000.0, -1000.0]], [[1.0][1.0]]);
+		Check(d[0,0] = 0.5, "DotSigmoid");
+	}
+
+	function : ReLUFamily() ~ Nil {
+		Check(Matrix2D->ReLU(-1000000.0) = 0.0, "ReLU large negative");
+		Check(Matrix2D->ReLU(1000000.0) = 1000000.0, "ReLU large positive");
+		Near(Matrix2D->LeakyReLU(-1000000.0, 0.01), -10000.0, 0.000000001, "LeakyReLU large negative");
+		Check(Matrix2D->LeakyReLU(3.5, 0.01) = 3.5, "LeakyReLU positive");
+
+		m := Matrix2D->LeakyReLU([[-2.0, 2.0]], 0.5);
+		Check(m[0,0] = -1.0 & m[0,1] = 2.0, "LeakyReLU matrix");
+	}
+
+	# zero-variance columns standardize to 0, not to +-1 rounding noise
+	function : ConstantColumns() ~ Nil {
+		data := [[0.1, 1.0][0.1, 2.0][0.1, 3.0]];
+
+		z := FeatureScaler->StandardScaler(data);
+		each(i : 3) {
+			Check(z[i,0] = 0.0, "StandardScaler constant column row {$i}");
+		};
+		Near(z[0,1], -1.224744871391589, 0.000000001, "StandardScaler varying column");
+		Near(z[2,1], 1.224744871391589, 0.000000001, "StandardScaler varying column end");
+
+		scaler := FeatureScaler->New();
+		Check(scaler->Fit(data), "FeatureScaler Fit");
+		Check(scaler->GetStandardDeviations()[0] = 0.0, "Fit constant column deviation is 0");
+		t := scaler->Transform([[0.1, 2.0][0.3, 2.0]]);
+		Check(t[0,0] = 0.0 & t[1,0] = 0.0, "Transform constant column");
+		Near(t[0,1], 0.0, 0.000000001, "Transform varying column at mean");
+
+		mm := FeatureScaler->MinMaxScaler(data);
+		Check(mm[0,0] = 0.0 & mm[2,1] = 1.0, "MinMaxScaler constant column");
+
+		n := FeatureScaler->Normalize([[0.0, 0.0][3.0, 4.0]]);
+		Check(n[0,0] = 0.0 & n[0,1] = 0.0, "Normalize zero row");
+		Near(n[1,0], 0.6, 0.000000001, "Normalize row");
+	}
+
+	# no rows: no statistics, and no division by a zero row count
+	function : EmptyScalers() ~ Nil {
+		empty := Float->New[0, 2];
+		z := FeatureScaler->StandardScaler(empty);
+		Check(z <> Nil & z->Size()[0] = 0, "StandardScaler on no rows");
+		mm := FeatureScaler->MinMaxScaler(empty);
+		Check(mm <> Nil & mm->Size()[0] = 0, "MinMaxScaler on no rows");
+	}
+
+	function : RandomNormalFinite() ~ Nil {
+		samples := Matrix2D->RandomNormal(0.0, 1.0, 200, 50);
+		finite := true;
+		each(i : 200) {
+			each(j : 50) {
+				v := samples[i,j];
+				if(v <> v | v > 1000.0 | v < -1000.0) {
+					finite := false;
+				};
+			};
+		};
+		Check(finite, "RandomNormal samples are finite");
+	}
+
+	function : Check(ok : Bool, name : String) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	function : Near(got : Float, want : Float, tol : Float, name : String) ~ Nil {
+		diff := got - want;
+		if(diff < 0.0) {
+			diff := -1.0 * diff;
+		};
+		# NaN fails every comparison, so test for closeness rather than distance
+		if((diff <= tol) = false) {
+			"  FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			@failures += 1;
+		};
+	}
+}

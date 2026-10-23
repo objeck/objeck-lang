@@ -787,7 +787,15 @@ val := Matrix2D->Sigmoid(2.0);
 ```
 		~#
 		function : native : Sigmoid(x : Float) ~ Float {
-			return 1.0 / (1.0 + Float->Pow(Float->E(), -1.0 * x));
+			# Branch on the sign so Exp only ever sees a non-positive argument: it
+			# then lies in (0, 1] and never overflows, and the result keeps its
+			# precision for large negative x instead of passing through 1 / Inf.
+			if(x >= 0.0) {
+				return 1.0 / (1.0 + Float->Exp(-1.0 * x));
+			};
+
+			ex := Float->Exp(x);
+			return ex / (1.0 + ex);
 		}
 
 		#~
@@ -918,8 +926,9 @@ val := Matrix2D->Sigmoid(2.0);
 ```
 		~#
 		function : native : Tanh(x : Float) ~ Float {
-			return (Float->Pow(Float->E(), x) - Float->Pow(Float->E(), -x)) /
-			       (Float->Pow(Float->E(), x) + Float->Pow(Float->E(), -x));
+			# The C library's tanh. The ratio (e^x - e^-x) / (e^x + e^-x) this used
+			# was Inf / Inf, a NaN, once |x| passed about 710.
+			return Float->Tanh(x);
 		}
 
 		#~
@@ -943,46 +952,109 @@ val := Matrix2D->Sigmoid(2.0);
 		}
 
 		#~
-		Softmax activation function for classification
-		@param b matrix (single row or column vector)
-		@return normalized probability distribution
+		Softmax activation function for classification. Each row is one sample's
+		logits and is normalized on its own, so a batch (one sample per row) gives one
+		probability distribution per row. A single column (an n x 1 matrix, the column
+		vector the NeuralNetwork class uses) is normalized down that column instead,
+		since a one-element softmax is always 1.0. Use SoftmaxColumns to normalize
+		every column of a wider matrix.
+		@param b matrix of logits, one sample per row, or a single column vector
+		@return matrix of the same shape holding the probabilities, or Nil for Nil input
+
+```
+batch := [[1.0, 2.0, 3.0][1000.0, 1001.0, 1002.0]];
+probs := Matrix2D->Softmax(batch);
+each(i : probs->Size()[0]) {
+  "{$probs[i,0]} {$probs[i,1]} {$probs[i,2]}"->PrintLine();
+};
+```
+		~#
+		function : native : Softmax(b : Float[,]) ~ Float[,] {
+			if(b = Nil) {
+				return Nil;
+			};
+
+			b_dims := b->Size();
+			b_rows := b_dims[0];
+			b_cols := b_dims[1];
+
+			if(b_cols = 1) {
+				return SoftmaxColumns(b);
+			};
+
+			c := Float->New[b_rows, b_cols];
+			if(b_cols < 1) {
+				return c;
+			};
+
+			for(i := 0; i < b_rows; i += 1;) {
+				# subtract the row's maximum so Exp never overflows: the largest
+				# term becomes exp(0) = 1, which also keeps the sum at least 1
+				max_val := b[i,0];
+				for(j := 1; j < b_cols; j += 1;) {
+					if(b[i,j] > max_val) {
+						max_val := b[i,j];
+					};
+				};
+
+				exp_sum := 0.0;
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := Float->Exp(b[i,j] - max_val);
+					exp_sum += c[i,j];
+				};
+
+				for(j := 0; j < b_cols; j += 1;) {
+					c[i,j] := SafeDiv(c[i,j], exp_sum);
+				};
+			};
+
+			return c;
+		}
+
+		#~
+		Softmax applied down each column: every column is one sample's logits and is
+		normalized on its own. Softmax normalizes rows; this is its column-wise twin,
+		for data laid out one sample per column.
+		@param b matrix of logits, one sample per column
+		@return matrix of the same shape holding the probabilities, or Nil for Nil input
 
 ```
 logits := [[1.0], [2.0], [3.0]];
-probs := Matrix2D->Softmax(logits);
+probs := Matrix2D->SoftmaxColumns(logits);
 each(i : probs->Size()[0]) {
   probs[i,0]->PrintLine();
 };
 ```
 		~#
-		function : native : Softmax(b : Float[,]) ~ Float[,] {
+		function : native : SoftmaxColumns(b : Float[,]) ~ Float[,] {
+			if(b = Nil) {
+				return Nil;
+			};
+
 			b_dims := b->Size();
 			b_rows := b_dims[0];
 			b_cols := b_dims[1];
 
-			# Find max for numerical stability
-			max_val := b[0,0];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+			c := Float->New[b_rows, b_cols];
+			if(b_rows < 1) {
+				return c;
+			};
+
+			for(j := 0; j < b_cols; j += 1;) {
+				max_val := b[0,j];
+				for(i := 1; i < b_rows; i += 1;) {
 					if(b[i,j] > max_val) {
 						max_val := b[i,j];
 					};
 				};
-			};
 
-			# Compute exp(x - max) and sum
-			exp_sum := 0.0;
-			c := Float->New[b_rows, b_cols];
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
-					c[i,j] := Float->Pow(Float->E(), b[i,j] - max_val);
+				exp_sum := 0.0;
+				for(i := 0; i < b_rows; i += 1;) {
+					c[i,j] := Float->Exp(b[i,j] - max_val);
 					exp_sum += c[i,j];
 				};
-			};
 
-			# Normalize
-			for(i := 0; i < b_rows; i += 1;) {
-				for(j := 0; j < b_cols; j += 1;) {
+				for(i := 0; i < b_rows; i += 1;) {
 					c[i,j] := SafeDiv(c[i,j], exp_sum);
 				};
 			};
@@ -1035,7 +1107,9 @@ each(i : probs->Size()[0]) {
 		@return updated matrix
 		~#
 		function : RandomNormal(mean : Float, variance : Float) ~ Float {
-			return  (-2.0 * variance * Float->Random()->Log())->Sqrt() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
+			# Box-Muller. Float->Random() is in [0, 1), so 1 - Random() is in (0, 1]
+			# and the logarithm never sees 0 (Log(0) is -Inf, and the sample Inf/NaN).
+			return  (-2.0 * variance * (1.0 - Float->Random())->Log())->Sqrt() * (2.0 * Float->Pi() * Float->Random())->Cos() + mean;
 		}
 
 		#~
