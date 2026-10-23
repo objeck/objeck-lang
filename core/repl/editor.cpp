@@ -42,6 +42,7 @@
 #include "term.h"
 #include "screen.h"
 #include "tui_editor.h"
+#include <cwctype>
 #include <deque>
 #include <filesystem>
 
