@@ -1,0 +1,135 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured CsvSource (docs/QUERY_DESIGN.md, section 6): whole-column typing, empty cells,
+dates, delimiters, RFC 4180 quoting, CRLF and a missing final newline, a header-only file,
+malformed rows reported, scan hints, a write-then-read round trip, and catalog loading. Every
+input is written by the test itself.
+~#
+use Query.Structured, System.IO.Filesystem, System.Time, Collection;
+
+class QuerySourceCsvTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Write(path : String, text : String) ~ Nil {
+		writer := FileWriter->New(path);
+		writer->WriteString(text);
+		writer->Close();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		path := "query_source_csv.tmp.csv";
+
+		# --- whole-column typing ---
+		Write(path, "id,score,label,mixed,when,blank\r\n1,0.5,cat,3,#01/02/2020#,\r\n2,1e3,dog,x,#12/31/1999#,\r\n3,-2,,4.5,,\r\n");
+		source := CsvSource->New(path);
+		t := source->Read(Nil);
+		Check("the CSV reads", t <> Nil);
+		if(t <> Nil) {
+			Check("the table is named after the file", t->GetName()->Equals("query_source_csv.tmp"));
+			Check("whole numbers make an INT column", t->GetColumn("id")->GetType() = ColumnType->INT);
+			Check("any decimal makes a FLOAT column", t->GetColumn("score")->GetType() = ColumnType->FLOAT);
+			Check("text makes a STRING column", t->GetColumn("label")->GetType() = ColumnType->STRING);
+			Check("numbers mixed with text make a STRING column", t->GetColumn("mixed")->GetType() = ColumnType->STRING);
+			Check("the mixed column keeps the text of its numbers", t->Get(0)->Get("mixed")->As(String)->Equals("3"));
+			Check("'#..#' cells make a DATE column", t->GetColumn("when")->GetType() = ColumnType->DATE);
+			Check("a date reads back", t->Get(1)->Get("when")->As(Date)->GetYear() = 1999);
+			Check("an empty cell is empty, not an empty string", t->Get(2)->Get("label") = Nil & t->Get(2)->Get("when") = Nil);
+			Check("an all-empty column holds nothing", t->GetColumn("blank")->GetNullCount() = 3);
+			Check("a negative Int in a FLOAT column", t->Get(2)->Get("score")->As(FloatRef)->Get() = -2.0);
+			Check("Sum over a typed CSV column", t->Sum("score") = 998.5);
+		};
+
+		# --- delimiters, quoting, line endings ---
+		Write(path, "name;note\n\"Smith; J\";\"said \"\"hi\"\"\"\nLee;\"two\nlines\"");
+		t := CsvSource->New(path, "people", ';')->Read(Nil);
+		Check("a ';' delimited file reads", t <> Nil & t->GetName()->Equals("people") & t->Size() = 2);
+		if(t <> Nil & t->Size() = 2) {
+			Check("a quoted delimiter stays in its field", t->Get(0)->Get("name")->As(String)->Equals("Smith; J"));
+			Check("doubled quotes", t->Get(0)->Get("note")->As(String)->Equals("said \"hi\""));
+			Check("a quoted newline, and no final newline", t->Get(1)->Get("note")->As(String)->Equals("two\nlines"));
+		};
+
+		# --- header only, malformed, missing ---
+		Write(path, "a,b\r\n");
+		t := CsvSource->New(path)->Read(Nil);
+		Check("a header-only file is an empty table with its columns", t <> Nil & t->Size() = 0 & t->GetColumn("b") <> Nil);
+
+		Write(path, "a,b\r\n1,2\r\n3,4,5\r\n");
+		bad := CsvSource->New(path);
+		Check("a row with too many fields is refused", bad->Read(Nil) = Nil);
+		Check("the error names the row", bad->GetError() <> Nil & bad->GetError()->Has('2'));
+
+		missing := CsvSource->New("no_such_file.tmp.csv");
+		Check("a missing file is an error", missing->Read(Nil) = Nil & missing->GetError() <> Nil);
+
+		# --- scan hints ---
+		Write(path, "a,b,c\r\n1,2,3\r\n4,5,6\r\n7,8,9\r\n");
+		hint := ScanHint->New(["c", "a"], 2);
+		t := CsvSource->New(path)->Read(hint);
+		Check("a hint loads only the columns asked for", t <> Nil & t->GetColumnCount() = 3 & t->GetColumn("b") = Nil);
+		Check("a hint's limit caps the rows", t <> Nil & t->Size() = 2);
+		full := CsvSource->New(path)->Read(Nil);
+		Check("hinted values match the full read", t <> Nil & t->Get(1)->Get("c")->As(IntRef)->Get() = full->Get(1)->Get("c")->As(IntRef)->Get());
+
+		# --- round trip: a table written as CSV and read back ---
+		original := Table->New("rt", ["n", "x", "s"]);
+		each(i : 20) {
+			r := original->Insert();
+			r->Set("n", IntRef->New(i - 10));
+			r->Set("x", FloatRef->New(i->As(Float) / 4.0));
+			r->Set("s", i % 5 = 0 ? "comma, quote \" and\nnewline" : "plain {$i}");
+		};
+		text := "n,x,s\r\n";
+		each(i : 20) {
+			row := original->Get(i);
+			text += Data.CSV.CsvTable->FormatRow([row->Get("n")->As(IntRef)->ToString(), row->Get("x")->As(FloatRef)->ToString(), row->Get("s")->As(String)]);
+			text += "\r\n";
+		};
+		Write(path, text);
+		back := CsvSource->New(path)->Read(Nil);
+		same := back <> Nil & back->Size() = 20;
+		if(same) {
+			each(i : 20) {
+				a := original->Get(i);
+				b := back->Get(i);
+				if(a->Get("n")->As(IntRef)->Get() <> b->Get("n")->As(IntRef)->Get() |
+					Float->Abs(a->Get("x")->As(FloatRef)->Get() - b->Get("x")->As(FloatRef)->Get()) > 0.000001 |
+					<>a->Get("s")->As(String)->Equals(b->Get("s")->As(String))) {
+					same := false;
+				};
+			};
+		};
+		Check("a table written as CSV reads back cell for cell", same);
+
+		# --- catalog ---
+		catalog := Catalog->New();
+		Check("a catalog loads a source", catalog->Load(CsvSource->New(path, "rt", ',')) & catalog->Has("rt"));
+		Check("the catalog's table is the source's", catalog->Get("rt")->Size() = 20);
+		Check("a failed load reports why", <>catalog->Load(CsvSource->New("no_such_file.tmp.csv")) & catalog->GetError() <> Nil);
+		specs := CsvSource->New(path, "rt", ',')->GetTables();
+		Check("GetTables describes the file", specs->Size() = 1 & specs[0]->GetColumns()->Size() = 3 & specs[0]->GetTypes()[0] = ColumnType->INT);
+
+		# --- legacy FromCsv keeps per-cell typing ---
+		Write(path, "v\r\n3\r\nabc\r\n2.5\r\n");
+		legacy := Table->FromCsv("legacy", path);
+		Check("FromCsv keeps each cell's own type", legacy->Get(0)->Get("v")->TypeOf(IntRef) & legacy->Get(1)->Get("v")->TypeOf(String) & legacy->Get(2)->Get("v")->TypeOf(FloatRef));
+
+		File->Delete(path);
+
+		if(@failures = 0) {
+			"PASS: query CsvSource"->PrintLine();
+		}
+		else {
+			"FAIL: query CsvSource ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

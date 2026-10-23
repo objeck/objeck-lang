@@ -1,0 +1,140 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured FilesystemSource and Finder (docs/QUERY_DESIGN.md, section 6): a flat and a
+recursive listing with parent keys and depths, extensions and hidden entries, scan hints that
+skip costly columns, depth and row limits, the legacy FromFilesystem columns, and Finder over
+the same source. The folder tree is built by the test.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class QuerySourceFilesystemTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Touch(path : String, text : String) ~ Nil {
+		writer := FileWriter->New(path);
+		writer->WriteString(text);
+		writer->Close();
+	}
+
+	function : Find(table : Table, name : String) ~ Row {
+		rows := table->GetAll();
+		each(i : rows) {
+			row := rows->Get(i);
+			value := row->Get("name");
+			if(value <> Nil & value->As(String)->Equals(name)) {
+				return row;
+			};
+		};
+
+		return Nil;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		root := "query_fs_tmp";
+		Directory->Create(root);
+		Directory->Create("query_fs_tmp/sub");
+		Directory->Create("query_fs_tmp/sub/deep");
+		Directory->Create("query_fs_tmp/.secret");
+		Touch("query_fs_tmp/a.TXT", "hello");
+		Touch("query_fs_tmp/b.csv", "x\r\n1\r\n");
+		Touch("query_fs_tmp/.hidden", "h");
+		Touch("query_fs_tmp/sub/c.obs", "class C {}");
+		Touch("query_fs_tmp/sub/deep/d.txt", "deep");
+		Touch("query_fs_tmp/.secret/e.obs", "secret");
+
+		# --- flat ---
+		flat := FilesystemSource->New(root, false)->List();
+		Check("a flat listing reads", flat <> Nil);
+		if(flat <> Nil) {
+			Check("a flat listing holds the folder's own entries", flat->Size() = 5);
+			a := Find(flat, "a.TXT");
+			Check("a file's row", a <> Nil & <>a->Get("is_dir")->As(BoolRef)->Get() & a->Get("depth")->As(IntRef)->Get() = 0);
+			Check("extensions are lowercase", a <> Nil & a->Get("ext")->As(String)->Equals("txt"));
+			Check("a file's size", a <> Nil & a->Get("size")->As(IntRef)->Get() = 5);
+			Check("top-level entries have no parent", a <> Nil & a->Get("parent_id") = Nil);
+			sub := Find(flat, "sub");
+			Check("a folder's row", sub <> Nil & sub->Get("is_dir")->As(BoolRef)->Get() & sub->Get("ext") = Nil & sub->Get("size") = Nil);
+			hidden := Find(flat, ".hidden");
+			Check("a dot name is hidden, and has no extension", hidden <> Nil & hidden->Get("is_hidden")->As(BoolRef)->Get() & hidden->Get("ext") = Nil);
+			Check("modified and created are dates", a <> Nil & a->Get("modified") <> Nil & a->Get("created") <> Nil);
+			Check("the flat listing does not descend", Find(flat, "c.obs") = Nil);
+		};
+
+		# --- recursive, with parent keys ---
+		tree := FilesystemSource->New(root, true)->List();
+		Check("a recursive listing holds everything", tree <> Nil & tree->Size() = 9);
+		if(tree <> Nil) {
+			c := Find(tree, "c.obs");
+			sub := Find(tree, "sub");
+			d := Find(tree, "d.txt");
+			deep := Find(tree, "deep");
+			Check("a child points at its folder", c <> Nil & sub <> Nil & c->Get("parent_id")->As(IntRef)->Get() = sub->Get("id")->As(IntRef)->Get());
+			Check("depth counts levels", d <> Nil & d->Get("depth")->As(IntRef)->Get() = 2);
+			Check("a grandchild points at its own folder", d <> Nil & deep <> Nil & d->Get("parent_id")->As(IntRef)->Get() = deep->Get("id")->As(IntRef)->Get());
+			Check("ids are the row keys", c <> Nil & c->Get("id")->As(IntRef)->Get() = c->GetKey());
+			rs := tree->Query("select name from files where ext = 'obs'");
+			Check("a recursive listing can be queried", rs <> Nil & rs->Size() = 2);
+		};
+
+		# --- limits and hidden entries ---
+		shallow := FilesystemSource->New(root, true, 0, true)->List();
+		Check("max_depth 0 lists only the top level", shallow <> Nil & shallow->Size() = 5);
+		visible := FilesystemSource->New(root, true, -1, false)->List();
+		Check("hidden entries can be left out, and not entered", visible <> Nil & visible->Size() = 6 & Find(visible, "e.obs") = Nil);
+		capped := FilesystemSource->New(root, true)->List(FilesystemSource->ColumnNames(), 3);
+		Check("a row limit stops the walk", capped <> Nil & capped->Size() = 3);
+
+		# --- scan hints ---
+		lean := FilesystemSource->New(root, false)->List(["name", "path"]);
+		a := Find(lean, "a.TXT");
+		Check("a hint leaves costly columns empty", a <> Nil & a->Get("size") = Nil & a->Get("owner") = Nil & a->Get("modified") = Nil);
+		Check("a hint keeps the cheap columns", a <> Nil & a->Get("path") <> Nil);
+
+		catalog := Catalog->New();
+		Check("a catalog loads the listing", catalog->Load(FilesystemSource->New(root, true)) & catalog->Get("files")->Size() = 9);
+		Check("a missing folder is an error", <>catalog->Load(FilesystemSource->New("no_such_folder_tmp", false)) & catalog->GetError() <> Nil);
+
+		# --- legacy FromFilesystem ---
+		legacy := Table->FromFilesystem("files", root);
+		Check("FromFilesystem keeps its six columns", legacy->GetColumnCount() = 7 & legacy->GetColumn("path_name") <> Nil & legacy->GetColumn("create_date") <> Nil);
+		b := Find(legacy, "b.csv");
+		Check("FromFilesystem flags are IntRefs", b <> Nil & b->Get("is_dir")->TypeOf(IntRef) & b->Get("is_dir")->As(IntRef)->Get() = 0);
+		Check("FromFilesystem queries as before", legacy->Query("select name from files where is_dir = true")->Size() = 2);
+		Check("FromFilesystem accepts a trailing separator", Table->FromFilesystem("files", "query_fs_tmp/")->Size() = 5);
+
+		# --- Finder ---
+		found := Finder->New(".*\\.obs$")->FindFiles(root);
+		Check("Finder finds files below the folder", found->Size() = 1);
+		Check("Finder skips hidden folders", found->Size() = 1 & found->Get(0)->EndsWith("c.obs"));
+		Check("Finder returns full paths", found->Size() = 1 & File->Exists(found->Get(0)));
+		all := Finder->New(".*")->FindFiles(root);
+		Check("Finder skips hidden files and returns no folders", all->Size() = 4);
+
+		File->Delete("query_fs_tmp/.secret/e.obs");
+		File->Delete("query_fs_tmp/sub/deep/d.txt");
+		File->Delete("query_fs_tmp/sub/c.obs");
+		File->Delete("query_fs_tmp/.hidden");
+		File->Delete("query_fs_tmp/b.csv");
+		File->Delete("query_fs_tmp/a.TXT");
+		Directory->Delete("query_fs_tmp/.secret");
+		Directory->Delete("query_fs_tmp/sub/deep");
+		Directory->Delete("query_fs_tmp/sub");
+		Directory->Delete(root);
+
+		if(@failures = 0) {
+			"PASS: query FilesystemSource and Finder"->PrintLine();
+		}
+		else {
+			"FAIL: query FilesystemSource and Finder ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

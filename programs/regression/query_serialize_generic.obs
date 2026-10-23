@@ -1,0 +1,117 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured tables through the language's own Serializer and Deserializer
+(docs/QUERY_DESIGN.md, section 9): every column type, empty cells, a dictionary-encoded column,
+an object column, deleted rows, a compacted table, and a table nested inside another object.
+~#
+use Query.Structured, System.Time, Collection;
+
+class Experiment {
+	@title : String;
+	@results : Table;
+
+	New(title : String, results : Table) {
+		@title := title;
+		@results := results;
+	}
+
+	method : public : GetTitle() ~ String {
+		return @title;
+	}
+
+	method : public : GetResults() ~ Table {
+		return @results;
+	}
+}
+
+class QuerySerializeTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Build() ~ Table {
+		t := Table->New("runs", ["id", "score", "label", "when", "ok", "misc"]);
+		labels := ["cat", "dog"];
+		each(i : 50) {
+			r := t->Insert();
+			r->Set("id", IntRef->New(i));
+			if(i % 7 <> 0) {
+				r->Set("score", FloatRef->New(i->As(Float) * 0.25));
+			};
+			r->Set("label", labels[i % 2]);
+			r->Set("when", Date->New(1 + i % 28, 1 + i % 12, 2000 + i, i % 24, i % 60, i % 60, i % 2 = 0));
+			r->Set("ok", BoolRef->New(i % 3 = 0));
+			r->Set("misc", i % 2 = 0 ? IntRef->New(i)->As(Compare) : "text {$i}"->As(Compare));
+		};
+		t->Delete(10);
+		t->Delete(11);
+		return t;
+	}
+
+	function : Same(a : Table, b : Table) ~ Bool {
+		if(b = Nil | a->Count() <> b->Count() | a->GetColumnCount() <> b->GetColumnCount()) {
+			return false;
+		};
+
+		left := a->GetAll();
+		right := b->GetAll();
+		each(i : left) {
+			l := left->Get(i);
+			r := right->Get(i);
+			if(l->GetKey() <> r->GetKey() | <>l->ToString()->Equals(r->ToString())) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : RoundTrip(table : Table) ~ Table {
+		writer := Serializer->New();
+		writer->Write(table);
+		reader := Deserializer->New(writer->Serialize());
+		return reader->ReadObject()->As(Table);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		t := Build();
+		back := RoundTrip(t);
+		Check("a table round-trips", Same(t, back));
+		Check("column types survive", back->GetColumn("score")->GetType() = ColumnType->FLOAT & back->GetColumn("when")->GetType() = ColumnType->DATE &
+			back->GetColumn("ok")->GetType() = ColumnType->BOOL & back->GetColumn("misc")->GetType() = ColumnType->OBJECT);
+		Check("the dictionary survives", back->GetColumn("label")->IsEncoded() & back->GetColumn("label")->GetDictionarySize() = 2);
+		Check("empty cells survive", back->GetColumn("score")->GetNullCount() = t->GetColumn("score")->GetNullCount());
+		Check("deleted rows stay deleted", back->Get(10) = Nil & back->Get(12) <> Nil);
+		Check("a round-tripped table still queries", back->Query("select id from runs where score > 10.0")->Size() = t->Query("select id from runs where score > 10.0")->Size());
+		Check("a round-tripped table still takes rows", back->Insert()->GetKey() = 50);
+		Check("a new value joins the dictionary", back->Get(50)->Set("label", "cat") & back->GetColumn("label")->GetCode(back->GetRowCapacity() - 1) = back->GetColumn("label")->GetCode(0));
+
+		t->Compact();
+		Check("a compacted table round-trips", Same(t, RoundTrip(t)));
+		Check("keys still resolve after Compact and a round trip", RoundTrip(t)->Get(49)->Get("id")->As(IntRef)->Get() = 49);
+
+		nested := Experiment->New("sweep", Build());
+		writer := Serializer->New();
+		writer->Write(nested);
+		copy := Deserializer->New(writer->Serialize())->ReadObject()->As(Experiment);
+		Check("a table inside another object round-trips", copy->GetTitle()->Equals("sweep") & Same(nested->GetResults(), copy->GetResults()));
+
+		empty := Table->New("empty", ["a"]);
+		Check("an empty table round-trips", RoundTrip(empty)->Count() = 0 & RoundTrip(empty)->GetColumnCount() = 2);
+
+		if(@failures = 0) {
+			"PASS: query generic serialization"->PrintLine();
+		}
+		else {
+			"FAIL: query generic serialization ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

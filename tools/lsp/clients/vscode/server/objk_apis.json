@@ -3816,7 +3816,7 @@
 					"descriptions": ["**Formats the row into a JSON object string**\n\n```method : public : ToJson() ~ String```\n\n\n\nreturn: String\n\n```\ncsv := CsvTable->New(\"name,age\\r\\nAlice,30\");\nrow := csv->Get(1);\nrow->ToJson()->PrintLine();\n```"]
 				},
 				"ToString": {
-					"descriptions": ["**Formats the row into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ncsv := CsvTable->New(\"name,age\\r\\nAlice,30\");\nrow := csv->Get(1);\nrow->ToString()->PrintLine();\n```"]
+					"descriptions": ["**Formats the row as one CSV record: every field is quoted, a quote inside a field is doubled, and fields are separated by the table's delimiter. CsvTable parses the result back to the same values.**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ncsv := CsvTable->New(\"name,age\\r\\nAlice,30\");\nrow := csv->Get(1);\nrow->ToString()->PrintLine();\n```"]
 				}
 			}
 		},
@@ -3841,8 +3841,20 @@
 				"Delete": {
 					"descriptions": ["**Removes a row from the table**\n\n```method : public : Delete(id:Int) ~ Bool```\n\n\n\nid: Int\n\nreturn: Bool\n\n```\ncsv := CsvTable->New(\"name,age\\r\\nAlice,30\\r\\nBob,25\");\ncsv->Delete(1);\nConsole->PrintLine(csv->Size());\n```"]
 				},
+				"FormatRow": {
+					"descriptions": ["**Formats values as one CSV record with comma delimiters. A field is quoted only when it must be: when it holds the delimiter, a quote, a line break, or white space at either end. A quote inside a field is doubled. Nil is written as an empty field. CsvTable parses the result back to the same values.**\n\n```function : FormatRow(values:String[]) ~ String```\n\n\n\nvalues: String[]\n\nreturn: String\n\n```\nline := CsvTable->FormatRow([\"plain\", \"has,comma\", \"say \\\"hi\\\"\"]);\nline->PrintLine();\n```", "**Formats values as one CSV record with the given delimiter, quoting a field only when it must be (see the one-argument form)**\n\n```function : FormatRow(values:String[], delimiter:Char) ~ String```\n\n\n\nvalues: String[]\n\ndelimiter: Char\n\nreturn: String\n\n```\nline := CsvTable->FormatRow([\"a\", \"b c\", \"d\"], '\\t');\nline->PrintLine();\n```"]
+				},
 				"Get": {
 					"descriptions": ["**Gets an indexed row**\n\n```method : public : Get(index:Int) ~ CsvRow```\n\n\n\nindex: Int\n\nreturn: CsvRow\n\n```\ncsv := CsvTable->New(\"name,age\\r\\nAlice,30\\r\\nBob,25\");\nrow := csv->Get(1);\nrow->Get(\"name\")->PrintLine();\n```"]
+				},
+				"GetDelimiter": {
+					"descriptions": ["**Gets the field delimiter**\n\n```method : public : GetDelimiter() ~ Char```\n\n\n\nreturn: Char\n\n```\ncsv := CsvTable->New(\"a;b\\n1;2\", ';');\ncsv->GetDelimiter()->PrintLine();\n```"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets why the data could not be parsed: the first malformed row, with its row number (0 is the header) and the line it starts on, or a missing closing quote, or too few rows. A table that parsed returns Nil.**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String\n\n```\ncsv := CsvTable->New(\"a,b,c\\n1,2,3\\n4,5\");\nif(<>csv->IsParsed()) {\n  csv->GetError()->PrintLine();\n};\n```"]
+				},
+				"GetErrorRow": {
+					"descriptions": ["**Gets the row the parse failed on (0 is the header), or -1 when the table parsed or the failure is not tied to one row**\n\n```method : public : GetErrorRow() ~ Int```\n\n\n\nreturn: Int\n\n```\ncsv := CsvTable->New(\"a,b,c\\n1,2,3\\n4,5\");\nConsole->PrintLine(csv->GetErrorRow());\n```"]
 				},
 				"GetHeaders": {
 					"descriptions": ["**Gets header names**\n\n```method : public : GetHeaders() ~ CsvRow```\n\n\n\nreturn: CsvRow\n\n```\ncsv := CsvTable->New(\"name,age,city\\r\\nAlice,30,NY\");\nheaders := csv->GetHeaders();\nheaders->Get(0)->PrintLine();\nheaders->Get(1)->PrintLine();\n```"]
@@ -3857,7 +3869,7 @@
 					"descriptions": ["**Searches a given column for matching values**\n\n```method : public : Matches(name:String, value:String) ~ CsvTable```\n\n\n\nname: String\n\nvalue: String\n\nreturn: CsvTable\n\n```\ncsv := CsvTable->New(\"name,dept\\r\\nAlice,Eng\\r\\nBob,HR\\r\\nCarol,Eng\");\nresults := csv->Matches(\"dept\", \"Eng\");\nConsole->PrintLine(results->Size());\n```", "**Searches a given column for matching values**\n\n```method : public : Matches(index:Int, value:String) ~ CsvTable```\n\n\n\nindex: Int\n\nvalue: String\n\nreturn: CsvTable"]
 				},
 				"New": {
-					"descriptions": ["**Constructor. The line ending is read from the data rather than assumed: CRLF if the data contains one, otherwise LF, otherwise CR. A file written on either platform therefore parses without the caller knowing which. Use the two-argument constructor to force a particular ending.**\n\n```New(data:String)```\n\n\n\ndata: String\n\n```\ncsv := CsvTable->New(\"name,age\\nAlice,30\\nBob,25\");\nif(csv->IsParsed()) {\n  Console->PrintLine(csv->Size());\n};\n```", "**Constructor**\n\n```New(data:String, ending:String)```\n\n\n\ndata: String\n\nending: String\n\n```\ncsv := CsvTable->New(\"name,age\\nAlice,30\\nBob,25\", \"\\n\");\nif(csv->IsParsed()) {\n  Console->PrintLine(csv->Size());\n};\n```"]
+					"descriptions": ["**Constructor. Fields are separated by commas. A record ends at a CRLF, an LF or a lone CR outside quotes, so a file written on any platform parses without the caller knowing which; ToString() writes back the first ending the data used. Use the two-argument constructor to force one ending.**\n\n```New(data:String)```\n\n\n\ndata: String\n\n```\ncsv := CsvTable->New(\"name,age\\nAlice,30\\nBob,25\");\nif(csv->IsParsed()) {\n  Console->PrintLine(csv->Size());\n};\n```", "**Constructor that forces the line ending: only this ending ends a record, and any other line break is kept as part of a field.**\n\n```New(data:String, ending:String)```\n\n\n\ndata: String\n\nending: String\n\n```\ncsv := CsvTable->New(\"name,age\\nAlice,30\\nBob,25\", \"\\n\");\nif(csv->IsParsed()) {\n  Console->PrintLine(csv->Size());\n};\n```", "**Constructor with a custom delimiter, such as a tab or a semicolon. The line ending is taken from the data, as for the one-argument constructor.**\n\n```New(data:String, delimiter:Char)```\n\n\n\ndata: String\n\ndelimiter: Char\n\n```\ncsv := CsvTable->New(\"name;age\\nAlice;30\\nBob;25\", ';');\nif(csv->IsParsed()) {\n  csv->Get(1)->Get(\"age\")->PrintLine();\n};\n```", "**Constructor with a forced line ending and a custom delimiter**\n\n```New(data:String, ending:String, delimiter:Char)```\n\n\n\ndata: String\n\nending: String\n\ndelimiter: Char\n\n```\ncsv := CsvTable->New(\"name\\tage\\r\\nAlice\\t30\", \"\\r\\n\", '\\t');\nif(csv->IsParsed()) {\n  csv->Get(1)->Get(\"name\")->PrintLine();\n};\n```"]
 				},
 				"RowSize": {
 					"descriptions": ["**Gets the size of rows**\n\n```method : public : RowSize() ~ Int```\n\n\n\nreturn: Int\n\n```\ncsv := CsvTable->New(\"a,b,c\\r\\n1,2,3\");\nConsole->PrintLine(csv->RowSize());\n```"]
@@ -3936,7 +3948,7 @@
 					"descriptions": ["**Gets the float value**\n\n```method : public : GetFloat() ~ Float```\n\n\n\nreturn: Float\n\n```\nroot := Data.JSON.JsonParser->TextToElement(\"{\\\"pi\\\":3.14}\");\nroot->Get(\"pi\")->GetFloat()->PrintLine();  # 3.14\n```"]
 				},
 				"GetInt": {
-					"descriptions": ["**Gets the integer value**\n\n```method : public : GetInt() ~ Int```\n\n\n\nreturn: Int\n\n```\nroot := Data.JSON.JsonParser->TextToElement(\"{\\\"port\\\":8080}\");\nroot->Get(\"port\")->GetInt()->PrintLine();  # 8080\n```"]
+					"descriptions": ["**Gets the integer value. A number written with a fraction or an exponent (2.5, 1e5) is truncated toward zero.**\n\n```method : public : GetInt() ~ Int```\n\n\n\nreturn: Int\n\n```\nroot := Data.JSON.JsonParser->TextToElement(\"{\\\"port\\\":8080}\");\nroot->Get(\"port\")->GetInt()->PrintLine();  # 8080\n```"]
 				},
 				"GetNames": {
 					"descriptions": ["**Gets the names of object attributes**\n\n```method : public : GetNames() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
@@ -8762,10 +8774,10 @@
 			}
 		},
 		"Query.RegEx.RegEx": {
-			"description": "Regular expression engine.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .<\/li> <li>optional &#8208; ?<\/li> <li>zero or more repetitions &#8208; *<\/li> <li>one or more repetitions &#8208; +<\/li> <li>first single match &#8208; ^<\/li> <li>last single match &#8208; $<\/li> <li> (one|two|three) &#8208; group<\/li> <li>[start-end] &#8208; range<\/li> <\/ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w<\/li> <li>not word &#8208; \\W<\/li> <li>digit &#8208; \\d<\/li> <li>not digit &#8208; \\D<\/li> <li>white space &#8208; \\s<\/li> <li>not white space &#8208; \\S<\/li> <li>repeat &#8208; {least, most} <\/ul>",
+			"description": "Regular expression engine. A match is the leftmost-longest one; when several paths give that match, capture groups take their values from the greedy (highest-priority) path.\n\n<p>Support for following patterns:<p> <ul> <li>any &#8208; .<\/li> <li>optional &#8208; ?<\/li> <li>zero or more repetitions &#8208; *<\/li> <li>one or more repetitions &#8208; +<\/li> <li>repeat &#8208; {least} or {least, most}<\/li> <li>start of input &#8208; ^<\/li> <li>end of input &#8208; $<\/li> <li>(one|two|three) &#8208; numbered capture group, see Result-&gt;GetGroup<\/li> <li>(?:one|two) &#8208; non-capturing group<\/li> <li>[abc], [a-zA-Z0-9_], [.,;] &#8208; character class (several ranges and literal punctuation)<\/li> <li>[^abc] &#8208; negated character class<\/li> <li>inside a class: \\d \\w \\s \\D \\W \\S, \\] \\\\ \\- and other escaped literals; a leading or trailing '-' and a ']' first are literals<\/li> <\/ul>\n\n<p>Support for following special groups:<p> <ul> <li>word &#8208; \\w<\/li> <li>not word &#8208; \\W<\/li> <li>digit &#8208; \\d<\/li> <li>not digit &#8208; \\D<\/li> <li>white space &#8208; \\s<\/li> <li>not white space &#8208; \\S<\/li> <li>word boundary &#8208; \\b<\/li> <li>not a word boundary &#8208; \\B<\/li> <li>newline, carriage return, tab &#8208; \\n \\r \\t<\/li> <\/ul>",
 			"functions": {
 				"Find": {
-					"descriptions": ["**Finds all occurrences**\n\n```method : public : Find(stream_in:String) ~ Vector&lt;Result&gt;```\n\n\n\nstream_in: String\n\nreturn: Vector&lt;Result&gt;\n\n```\nre := RegEx->New(\"\\\\d+\");\nresults := re->Find(\"1 cat, 2 dogs, 3 birds\")<Result>;\neach(r := results) {\n  r->GetValue()->PrintLine();\n};\n```"]
+					"descriptions": ["**Finds all non-empty, non-overlapping occurrences**\n\n```method : public : Find(stream_in:String) ~ Vector&lt;Result&gt;```\n\n\n\nstream_in: String\n\nreturn: Vector&lt;Result&gt;\n\n```\nre := RegEx->New(\"\\\\d+\");\nresults := re->Find(\"1 cat, 2 dogs, 3 birds\")<Result>;\neach(r := results) {\n  r->GetValue()->PrintLine();\n};\n```"]
 				},
 				"FindFirst": {
 					"descriptions": ["**Matches the first occurrence**\n\n```method : public : FindFirst(stream_in:String) ~ Result```\n\n\n\nstream_in: String\n\nreturn: Result\n\n```\nre := RegEx->New(\"[A-Z][a-z]+\");\nresult := re->FindFirst(\"Hello World\");\nif(result <> Nil) {\n  result->GetValue()->PrintLine();\n  Console->PrintLine(result->GetStart());\n};\n```"]
@@ -8791,8 +8803,14 @@
 			}
 		},
 		"Query.RegEx.Result": {
-			"description": "RegEx result",
+			"description": "RegEx result: the matched text, its position, and the text of each numbered capture group",
 			"functions": {
+				"GetGroup": {
+					"descriptions": ["**Gets the text captured by a group. Groups are numbered from 1 by their opening '(' left to right; '(?:...)' does not capture. Group 0 is the whole match. In a repeated group the last iteration wins.**\n\n```method : public : GetGroup(index:Int) ~ String```\n\n\n\nindex: Int\n\nreturn: String\n\n```\nre := RegEx->New(\"(\\\\d+)-(\\\\d+)\");\nr := re->FindFirst(\"call 555-1234 now\");\nif(r <> Nil) {\n  r->GetGroup(1)->PrintLine();\n  r->GetGroup(2)->PrintLine();\n};\n```"]
+				},
+				"GetGroupStart": {
+					"descriptions": ["**Gets the starting index of the text captured by a group**\n\n```method : public : GetGroupStart(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int"]
+				},
 				"GetLength": {
 					"descriptions": ["**Gets the string length of the match**\n\n```method : public : GetLength() ~ Int```\n\n\n\nreturn: Int\n\n```\nre := RegEx->New(\"\\\\w+\");\nr := re->FindFirst(\"hello world\");\nif(r <> Nil) {\n  Console->PrintLine(r->GetLength());\n};\n```"]
 				},
@@ -8802,13 +8820,195 @@
 				"GetValue": {
 					"descriptions": ["**Gets the string value**\n\n```method : public : GetValue() ~ String```\n\n\n\nreturn: String\n\n```\nre := RegEx->New(\"[A-Z][a-z]+\");\nr := re->FindFirst(\"The Quick Brown Fox\");\nif(r <> Nil) {\n  r->GetValue()->PrintLine();\n};\n```"]
 				},
+				"GroupCount": {
+					"descriptions": ["**Gets the number of capture groups in the pattern, not counting group 0 (the whole match)**\n\n```method : public : GroupCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Creates a result without capture groups**\n\n```New(start:Int, length:Int, value:String)```\n\n\n\nstart: Int\n\nlength: Int\n\nvalue: String", "**Creates a result with capture groups**\n\n```New(start:Int, length:Int, value:String, group_starts:Int[], group_values:String[])```\n\n\n\nstart: Int\n\nlength: Int\n\nvalue: String\n\ngroup_starts: Int[]\n\ngroup_values: String[]"]
+				},
 				"ToString": {
 					"descriptions": ["**Gets the string representation**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nre := RegEx->New(\"\\\\d+\");\nresults := re->Find(\"a1 b22 c333\")<Result>;\neach(r := results) {\n  r->ToString()->PrintLine();\n};\n```"]
 				}
 			}
 		},
+		"Query.Structured.Catalog": {
+			"description": "Named tables that queries can refer to",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a table under its name, replacing any table of that name**\n\n```method : public : Add(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
+				},
+				"Get": {
+					"descriptions": ["**Gets a table by name**\n\n```method : public : Get(name:String) ~ Table```\n\n\n\nname: String\n\nreturn: Table"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last load failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetNames": {
+					"descriptions": ["**Gets the table names**\n\n```method : public : GetNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"Has": {
+					"descriptions": ["**Whether a table of that name exists**\n\n```method : public : Has(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Loads every table of a source**\n\n```method : public : Load(source:Source) ~ Bool```\n\n\n\nsource: Source\n\nreturn: Bool", "**Loads a source's tables, passing what the caller needs**\n\n```method : public : Load(source:Source, hint:ScanHint) ~ Bool```\n\n\n\nsource: Source\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New()```\n\n"]
+				},
+				"Remove": {
+					"descriptions": ["**Removes a table**\n\n```method : public : Remove(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"Query.Structured.Column": {
+			"description": "One column of a table, held as a typed array rather than one object per cell. A column is either declared, in which case storing a value of the wrong type is refused, or inferred from its first value, in which case an Int widens into a Float column, a Float promotes an Int column to Float, and any other mix promotes the column to OBJECT so every value is kept as it was given. Empty cells are tracked in a bitmap allocated with the first one. Text columns store each distinct string once while they have few of them. Numeric and date columns keep the minimum and maximum of every 65,536-row group, so a filter can skip groups.",
+			"functions": {
+				"Append": {
+					"descriptions": ["**Adds an empty cell at the end. Used by Table.**\n\n```method : public : Append() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Compact": {
+					"descriptions": ["**Keeps only the given rows, in order, and trims the arrays to fit. Used by Table->Compact.**\n\n```method : public : Compact(keep:Int[]) ~ Nil```\n\n\n\nkeep: Int[]\n\nreturn: Nil"]
+				},
+				"CopyFrom": {
+					"descriptions": ["**Copies a cell from another column, converting through Set when the types differ**\n\n```method : public : CopyFrom(src:Column, src_row:Int, row:Int) ~ Bool```\n\n\n\nsrc: Column\n\nsrc_row: Int\n\nrow: Int\n\nreturn: Bool"]
+				},
+				"DictionaryLimit": {
+					"descriptions": ["**Distinct strings a text column keeps in its dictionary before it may store plain strings**\n\n```function : DictionaryLimit() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Get": {
+					"descriptions": ["**Gets a cell as an object: IntRef, FloatRef, String, Date, BoolRef or the stored object**\n\n```method : public : Get(row:Int) ~ Compare```\n\n\n\nrow: Int\n\nreturn: Compare"]
+				},
+				"GetCode": {
+					"descriptions": ["**Gets the dictionary code of a cell in an encoded text column**\n\n```method : public : GetCode(row:Int) ~ Int```\n\n\n\nrow: Int\n\nreturn: Int"]
+				},
+				"GetDictionarySize": {
+					"descriptions": ["**Gets the number of distinct strings in a dictionary-encoded column**\n\n```method : public : GetDictionarySize() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last value was refused**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFloat": {
+					"descriptions": ["**Gets a numeric or date cell as a Float**\n\n```method : public : GetFloat(row:Int) ~ Float```\n\n\n\nrow: Int\n\nreturn: Float"]
+				},
+				"GetGroupCount": {
+					"descriptions": ["**Gets the number of zone-map groups**\n\n```method : public : GetGroupCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetGroupMax": {
+					"descriptions": ["**Gets the largest value in a group, ignoring empty cells**\n\n```method : public : GetGroupMax(group:Int) ~ Float```\n\n\n\ngroup: Int\n\nreturn: Float"]
+				},
+				"GetGroupMin": {
+					"descriptions": ["**Gets the smallest value in a group, ignoring empty cells**\n\n```method : public : GetGroupMin(group:Int) ~ Float```\n\n\n\ngroup: Int\n\nreturn: Float"]
+				},
+				"GetInt": {
+					"descriptions": ["**Gets a cell of an INT, BOOL (0 or 1) or DATE (epoch milliseconds) column**\n\n```method : public : GetInt(row:Int) ~ Int```\n\n\n\nrow: Int\n\nreturn: Int"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the column name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetNullCount": {
+					"descriptions": ["**Gets the number of empty cells**\n\n```method : public : GetNullCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPromotions": {
+					"descriptions": ["**Gets how many times the column changed type to keep a value**\n\n```method : public : GetPromotions() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetString": {
+					"descriptions": ["**Gets a cell of a STRING column**\n\n```method : public : GetString(row:Int) ~ String```\n\n\n\nrow: Int\n\nreturn: String"]
+				},
+				"GetType": {
+					"descriptions": ["**Gets the storage type**\n\n```method : public : GetType() ~ ColumnType```\n\n\n\nreturn: ColumnType"]
+				},
+				"GroupHasValues": {
+					"descriptions": ["**Whether a group holds any non-empty value**\n\n```method : public : GroupHasValues(group:Int) ~ Bool```\n\n\n\ngroup: Int\n\nreturn: Bool"]
+				},
+				"GroupRows": {
+					"descriptions": ["**Rows in a zone-map group**\n\n```function : GroupRows() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"HasZones": {
+					"descriptions": ["**Whether the column keeps zone maps: INT, FLOAT and DATE columns do**\n\n```method : public : HasZones() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsDeclared": {
+					"descriptions": ["**Whether the column's type was declared, so mismatched values are refused**\n\n```method : public : IsDeclared() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsEncoded": {
+					"descriptions": ["**Whether a text column stores its values as dictionary codes**\n\n```method : public : IsEncoded() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsNull": {
+					"descriptions": ["**Whether a cell is empty**\n\n```method : public : IsNull(row:Int) ~ Bool```\n\n\n\nrow: Int\n\nreturn: Bool"]
+				},
+				"IsNumeric": {
+					"descriptions": ["**Whether a cell holds a number an aggregate can use: an Int or a Float**\n\n```method : public : IsNumeric(row:Int) ~ Bool```\n\n\n\nrow: Int\n\nreturn: Bool"]
+				},
+				"KindOf": {
+					"descriptions": ["**Gets the storage type a value calls for**\n\n```function : KindOf(value:Compare) ~ ColumnType```\n\n\n\nvalue: Compare\n\nreturn: ColumnType"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, type:ColumnType, declared:Bool)```\n\n\n\nname: String\n\ntype: ColumnType\n\ndeclared: Bool"]
+				},
+				"Set": {
+					"descriptions": ["**Stores a value. Nil empties the cell.**\n\n```method : public : Set(row:Int, value:Compare) ~ Bool```\n\n\n\nrow: Int\n\nvalue: Compare\n\nreturn: Bool"]
+				},
+				"Size": {
+					"descriptions": ["**Gets the number of rows, empty ones included**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"TypeName": {
+					"descriptions": ["**Gets the name of a type**\n\n```function : TypeName(type:ColumnType) ~ String```\n\n\n\ntype: ColumnType\n\nreturn: String"]
+				}
+			}
+		},
+		"Query.Structured.CsvSource": {
+			"description": "A CSV file as a table. Each column is typed by reading all of it: whole numbers make an INT column, numbers with a fraction or exponent a FLOAT column, '#MM\/dd\/yyyy#' cells a DATE column, and anything else, including any mix of numbers and text, a STRING column. An empty cell is empty, not an empty string. Quoting follows RFC 4180 through Data.CSV.",
+			"functions": {
+				"FromText": {
+					"descriptions": ["**Makes a source over CSV text already in memory**\n\n```function : FromText(name:String, text:String, delimiter:Char) ~ CsvSource```\n\n\n\nname: String\n\ntext: String\n\ndelimiter: Char\n\nreturn: CsvSource"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the table the file provides; its column types are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the file into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor. The table is named after the file, without its directory or extension.**\n\n```New(path:String)```\n\n\n\npath: String", "**Constructor**\n\n```New(path:String, name:String, delimiter:Char)```\n\n\n\npath: String\n\nname: String\n\ndelimiter: Char"]
+				},
+				"ParseText": {
+					"descriptions": ["**Parses CSV text, accepting a header with no rows as an empty table**\n\n```function : ParseText(text:String, delimiter:Char) ~ ParsedCsv```\n\n\n\ntext: String\n\ndelimiter: Char\n\nreturn: ParsedCsv"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the file as a table**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				}
+			}
+		},
+		"Query.Structured.FilesystemSource": {
+			"description": "A folder as a table named 'files', optionally with everything below it. Columns: id, parent_id (empty at the top), depth (0 at the top), name, path, ext, is_dir, size, modified, created, owner, is_readonly and is_hidden. A name starting with '.' counts as hidden. With a scan hint, the costly columns (size, modified, created, owner, is_readonly) are only read when asked for.",
+			"functions": {
+				"ColumnNames": {
+					"descriptions": ["**Gets the column names**\n\n```function : ColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last listing failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the table the folder provides**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"List": {
+					"descriptions": ["**Lists the folder as a table, with every column**\n\n```method : public : List() ~ Table```\n\n\n\nreturn: Table", "**Lists the folder as a table, reading only the given columns' costly values**\n\n```method : public : List(columns:String[]) ~ Table```\n\n\n\ncolumns: String[]\n\nreturn: Table", "**Lists the folder as a table, reading only the given columns' costly values**\n\n```method : public : List(columns:String[], limit:Int) ~ Table```\n\n\n\ncolumns: String[]\n\nlimit: Int\n\nreturn: Table"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the listing into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(root:String, recursive:Bool)```\n\n\n\nroot: String\n\nrecursive: Bool", "**Constructor**\n\n```New(root:String, recursive:Bool, max_depth:Int, include_hidden:Bool)```\n\n\n\nroot: String\n\nrecursive: Bool\n\nmax_depth: Int\n\ninclude_hidden: Bool"]
+				},
+				"SetName": {
+					"descriptions": ["**Sets the table name**\n\n```method : public : SetName(name:String) ~ Nil```\n\n\n\nname: String\n\nreturn: Nil"]
+				}
+			}
+		},
 		"Query.Structured.Finder": {
-			"description": "Supports string data queries",
+			"description": "Finds files whose full path matches a regular expression, searching a folder and everything below it. Entries whose names start with '.' are skipped, and hidden folders are not entered.",
 			"functions": {
 				"FindFiles": {
 					"descriptions": ["**Finds matching files in a given directory**\n\n```method : public : FindFiles(path:String) ~ Vector&lt;String&gt;```\n\n\n\npath: String\n\nreturn: Vector&lt;String&gt;\n\n```\nfinder := Query.Structured.Finder->New(\".*\\\\.json$\"); # find JSON files\nresults := finder->FindFiles(\"\/etc\/\");\neach(i : results) {\n  results->Get(i)->PrintLine();\n};\n```"]
@@ -8818,14 +9018,61 @@
 				}
 			}
 		},
+		"Query.Structured.ObjectSource": {
+			"description": "The program's own objects as a table: one row per object, one column per function that reads a value from an object. Each function's return type sets its column's type.",
+			"functions": {
+				"AddBool": {
+					"descriptions": ["**Adds a Bool column**\n\n```method : public : AddBool(name:String, reader:(T)~Bool) ~ ObjectSource&lt;T&gt;```\n\n\n\nname: String\n\nreader: (T)~Bool\n\nreturn: ObjectSource&lt;T&gt;"]
+				},
+				"AddDate": {
+					"descriptions": ["**Adds a Date column; a Nil date is an empty cell**\n\n```method : public : AddDate(name:String, reader:(T)~Date) ~ ObjectSource&lt;T&gt;```\n\n\n\nname: String\n\nreader: (T)~Date\n\nreturn: ObjectSource&lt;T&gt;"]
+				},
+				"AddFloat": {
+					"descriptions": ["**Adds a Float column**\n\n```method : public : AddFloat(name:String, reader:(T)~Float) ~ ObjectSource&lt;T&gt;```\n\n\n\nname: String\n\nreader: (T)~Float\n\nreturn: ObjectSource&lt;T&gt;"]
+				},
+				"AddInt": {
+					"descriptions": ["**Adds an Int column**\n\n```method : public : AddInt(name:String, reader:(T)~Int) ~ ObjectSource&lt;T&gt;```\n\n\n\nname: String\n\nreader: (T)~Int\n\nreturn: ObjectSource&lt;T&gt;"]
+				},
+				"AddString": {
+					"descriptions": ["**Adds a String column; a Nil string is an empty cell**\n\n```method : public : AddString(name:String, reader:(T)~String) ~ ObjectSource&lt;T&gt;```\n\n\n\nname: String\n\nreader: (T)~String\n\nreturn: ObjectSource&lt;T&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last load failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the table the objects provide**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the objects into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, objects:Vector&lt;T&gt;)```\n\n\n\nname: String\n\nobjects: Vector&lt;T&gt;"]
+				},
+				"ToTable": {
+					"descriptions": ["**Reads the objects into a table**\n\n```method : public : ToTable(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				}
+			}
+		},
 		"Query.Structured.Row": {
-			"description": "Row in table",
+			"description": "A cursor over one row of a table: reading or writing it reads or writes the table's columns.",
 			"functions": {
 				"False": {
 					"descriptions": ["**Helper for setting 'false' column value**\n\n```function : False() ~ IntRef```\n\n\n\nreturn: IntRef"]
 				},
 				"Get": {
 					"descriptions": ["**Gets value by name**\n\n```method : public : Get(name:String) ~ Compare```\n\n\n\nname: String\n\nreturn: Compare", "**Gets value by index**\n\n```method : public : Get(index:Int) ~ Compare```\n\n\n\nindex: Int\n\nreturn: Compare"]
+				},
+				"GetKey": {
+					"descriptions": ["**Gets the row's primary key**\n\n```method : public : GetKey() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor. Use Table->Insert, Get or GetAll rather than this.**\n\n```New(table:Table, row:Int)```\n\n\n\ntable: Table\n\nrow: Int"]
+				},
+				"Next": {
+					"descriptions": ["**Gets the next live row in insertion order**\n\n```method : public : Next() ~ Row```\n\n\n\nreturn: Row", "**Deprecated: rows follow insertion order, which cannot be changed. Does nothing.**\n\n```method : public : Next(next:Row) ~ Nil```\n\n\n\nnext: Row\n\nreturn: Nil"]
+				},
+				"Prev": {
+					"descriptions": ["**Gets the previous live row in insertion order**\n\n```method : public : Prev() ~ Row```\n\n\n\nreturn: Row", "**Deprecated: rows follow insertion order, which cannot be changed. Does nothing.**\n\n```method : public : Prev(prev:Row) ~ Nil```\n\n\n\nprev: Row\n\nreturn: Nil"]
 				},
 				"Set": {
 					"descriptions": ["**Sets value by name**\n\n```method : public : Set(name:String, value:Compare) ~ Bool```\n\n\n\nname: String\n\nvalue: Compare\n\nreturn: Bool", "**Sets value by index**\n\n```method : public : Set(index:Int, value:Compare) ~ Bool```\n\n\n\nindex: Int\n\nvalue: Compare\n\nreturn: Bool"]
@@ -8834,72 +9081,168 @@
 					"descriptions": ["**Gets the number of columns**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"ToString": {
-					"descriptions": ["**String representation of row1**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**String representation of the row**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				},
 				"True": {
 					"descriptions": ["**Helper for setting 'true' column value**\n\n```function : True() ~ IntRef```\n\n\n\nreturn: IntRef"]
 				}
 			}
 		},
-		"Query.Structured.Table": {
-			"description": "Container for semi-structured data",
+		"Query.Structured.ScanHint": {
+			"description": "What a query already knows, passed to a source so it can skip work: the columns the query needs and how many rows it can use. A source may ignore it; the engine still applies the query in full afterwards.",
 			"functions": {
+				"GetColumns": {
+					"descriptions": ["**Gets the columns needed**\n\n```method : public : GetColumns() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetLimit": {
+					"descriptions": ["**Gets the most rows needed**\n\n```method : public : GetLimit() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(columns:String[], limit:Int)```\n\n\n\ncolumns: String[]\n\nlimit: Int"]
+				},
+				"Wants": {
+					"descriptions": ["**Whether a column is needed**\n\n```method : public : Wants(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				}
+			}
+		},
+		"Query.Structured.Source": {
+			"description": "Something that is not a table but can be read as tables: a file, a folder, a document, the program's own objects. A source declares its tables, then loads them into a catalog.",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Gets the reason the last load failed**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the tables the source provides**\n\n```method : public : virutal : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the source's tables into a catalog**\n\n```method : public : virutal : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				}
+			}
+		},
+		"Query.Structured.Table": {
+			"description": "A table of typed columns. Each row has a primary key in the hidden 'pk' column, assigned in insertion order and never reused. Rows are read and written through Row cursors, and queried with SQL-like statements.",
+			"functions": {
+				"AddColumn": {
+					"descriptions": ["**Adds a column; existing rows hold an empty cell in it**\n\n```method : public : AddColumn(name:String, type:ColumnType) ~ Bool```\n\n\n\nname: String\n\ntype: ColumnType\n\nreturn: Bool"]
+				},
 				"Average": {
-					"descriptions": ["**Gets the column average**\n\n```method : public : Average(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"scores\", [\"score\"]);\nr1 := table->Insert(); r1->Set(\"score\", IntRef->New(80));\nr2 := table->Insert(); r2->Set(\"score\", IntRef->New(90));\navg := table->Average(\"score\"); # returns 85.0\n\"avg={$avg}\"->PrintLine();\n```"]
+					"descriptions": ["**Gets the column average over its numeric cells (Ints and Floats). String, date and empty cells are skipped: they add nothing to the sum and are not counted in the divisor. A column with no numeric cells, or an unknown column, averages to 0.0; Count(name) tells the cases apart.**\n\n```method : public : Average(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"scores\", [\"score\"]);\nr1 := table->Insert(); r1->Set(\"score\", IntRef->New(80));\nr2 := table->Insert(); r2->Set(\"score\", IntRef->New(90));\navg := table->Average(\"score\"); # returns 85.0\n\"avg={$avg}\"->PrintLine();\n```"]
+				},
+				"Compact": {
+					"descriptions": ["**Removes the space deleted rows still occupy. Primary keys are unchanged; row cursors taken before the call find their rows again by key.**\n\n```method : public : Compact() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"Count": {
-					"descriptions": ["**Count of rows**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
+					"descriptions": ["**Gets the number of numeric cells in a column: cells holding an Int or a Float. String, date and empty cells are not counted. This is the divisor Average uses, so a caller can tell an average of 0.0 from a column with no numbers in it. The row count is Count() with no argument.**\n\n```method : public : Count(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int\n\n```\ntable := Query.Structured.Table->New(\"scores\", [\"score\"]);\nr1 := table->Insert(); r1->Set(\"score\", IntRef->New(80));\nr2 := table->Insert(); r2->Set(\"score\", \"absent\");\nn := table->Count(\"score\"); # returns 1\n\"numeric cells={$n}\"->PrintLine();\n```", "**Count of rows. Count(name) counts the numeric cells in one column.**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"Delete": {
-					"descriptions": ["**Delete row by primary key**\n\n```method : public : native : Delete(pk:Int) ~ Bool```\n\n\n\npk: Int\n\nreturn: Bool\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Temp\");\nok := table->Delete(0); # remove row with pk=0\n\"deleted={$ok}\"->PrintLine();\n```"]
+					"descriptions": ["**Delete row by primary key**\n\n```method : public : Delete(pk:Int) ~ Bool```\n\n\n\npk: Int\n\nreturn: Bool\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Temp\");\nok := table->Delete(0); # remove row with pk=0\n\"deleted={$ok}\"->PrintLine();\n```"]
+				},
+				"Describe": {
+					"descriptions": ["**Summarizes every column: its type, how many cells are filled and empty, how many distinct values it holds, and, for numeric columns, the minimum, maximum, mean and standard deviation (population).**\n\n```method : public : Describe() ~ Table```\n\n\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"runs\", \"runs.csv\");\ntable->Describe()->ToString()->PrintLine();\n```"]
 				},
 				"Filter": {
-					"descriptions": ["**Filters table based upon conditional criteria**\n\n```method : public : native : Filter(cond:Conditional) ~ Vector&lt;Row&gt;```\n\n\n\ncond: Conditional\n\nreturn: Vector&lt;Row&gt;"]
+					"descriptions": ["**Filters table based upon conditional criteria. An empty cell matches no condition. Numbers compare by value, so an Int cell compares with a Float literal and the other way round. Cells that cannot be ordered against the value (a string cell and a number, say) are unequal to it: they match '<>' and no other comparison.**\n\n```method : public : Filter(cond:Conditional) ~ Vector&lt;Row&gt;```\n\n\n\ncond: Conditional\n\nreturn: Vector&lt;Row&gt;"]
+				},
+				"FilterRows": {
+					"descriptions": ["**Gets the slots among the given ones whose cell meets a condition. Used by Query.**\n\n```method : public : FilterRows(cond:Conditional, rows:Int[]) ~ Int[]```\n\n\n\ncond: Conditional\n\nrows: Int[]\n\nreturn: Int[]"]
+				},
+				"FindRow": {
+					"descriptions": ["**Gets the row slot holding a primary key**\n\n```method : public : FindRow(pk:Int) ~ Int```\n\n\n\npk: Int\n\nreturn: Int"]
 				},
 				"FromCsv": {
-					"descriptions": ["**Loads a table from a CSV file**\n\n```function : FromCsv(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"orders\", \"orders.csv\");\nif(table <> Nil) {\n  rs := table->Query(\"select * from orders where total > 100\");\n  rs->ToString()->PrintLine();\n};\n```"]
+					"descriptions": ["**Loads a table from a CSV file. The first line names the columns. Each cell is typed on its own, as it always has been: a whole number ('42', '-3', '+3') becomes an IntRef; a decimal or exponent form ('3.5', '.5', '-0.5', '1e3') becomes a FloatRef; '#MM\/dd\/yyyy#' style cells become dates; anything else ('1-2', '3.', 'abc', '') stays a String. A file holding only the header line gives an empty table. CsvSource types each column as a whole instead, and treats an empty cell as empty.**\n\n```function : FromCsv(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"orders\", \"orders.csv\");\nif(table <> Nil) {\n  rs := table->Query(\"select * from orders where total > 100\");\n  rs->ToString()->PrintLine();\n};\n```"]
 				},
 				"FromFilesystem": {
-					"descriptions": ["**Loads a table from a directory file system. Columns are: name, path_name, create_date, owner, is_dir and is_readonly.**\n\n```function : FromFilesystem(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromFilesystem(\"files\", \"\/tmp\/\");\nrs := table->Query(\"select name from files where is_dir = false\");\nrs->ToString()->PrintLine(); # list only files, not directories\n```"]
+					"descriptions": ["**Loads a table from a directory file system. Columns are: name, path_name, create_date, owner, is_dir and is_readonly, with is_dir and is_readonly as Row->True() and Row->False(). FilesystemSource offers more columns and recursion.**\n\n```function : FromFilesystem(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromFilesystem(\"files\", \"\/tmp\/\");\nrs := table->Query(\"select name from files where is_dir = false\");\nrs->ToString()->PrintLine(); # list only files, not directories\n```"]
 				},
 				"Get": {
-					"descriptions": ["**Get row by primary key**\n\n```method : public : native : Get(pk:Int) ~ Row```\n\n\n\npk: Int\n\nreturn: Row\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Beta\");\nfound := table->Get(0); # fetch row with pk=0\nfound->ToString()->PrintLine();\n```"]
+					"descriptions": ["**Get row by primary key**\n\n```method : public : Get(pk:Int) ~ Row```\n\n\n\npk: Int\n\nreturn: Row\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Beta\");\nfound := table->Get(0); # fetch row with pk=0\nfound->ToString()->PrintLine();\n```"]
 				},
 				"GetAll": {
-					"descriptions": ["**Get all rows**\n\n```method : public : native : GetAll() ~ Vector&lt;Row&gt;```\n\n\n\nreturn: Vector&lt;Row&gt;\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Alpha\");\nall := table->GetAll(); # retrieve every row\neach(i : all) { all->Get(i)->ToString()->PrintLine(); };\n```"]
+					"descriptions": ["**Get all rows**\n\n```method : public : GetAll() ~ Vector&lt;Row&gt;```\n\n\n\nreturn: Vector&lt;Row&gt;\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Alpha\");\nall := table->GetAll(); # retrieve every row\neach(i : all) { all->Get(i)->ToString()->PrintLine(); };\n```"]
+				},
+				"GetColumn": {
+					"descriptions": ["**Gets a column by name**\n\n```method : public : GetColumn(name:String) ~ Column```\n\n\n\nname: String\n\nreturn: Column", "**Gets a column by index; 0 is the 'pk' column**\n\n```method : public : GetColumn(index:Int) ~ Column```\n\n\n\nindex: Int\n\nreturn: Column"]
+				},
+				"GetColumnCount": {
+					"descriptions": ["**Gets the number of columns, 'pk' included**\n\n```method : public : GetColumnCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetColumnNames": {
-					"descriptions": ["**Gets all column names**\n\n```method : public : GetColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
+					"descriptions": ["**Gets all column names, 'pk' first**\n\n```method : public : GetColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
 				},
 				"GetError": {
 					"descriptions": ["**Gets the last query error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetIndex": {
-					"descriptions": ["**Get column index by name**\n\n```method : public : native : GetIndex(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\", \"qty\"]);\nidx := table->GetIndex(\"qty\"); # returns 2 (pk=0, name=1, qty=2)\n\"qty column index={$idx}\"->PrintLine();\n```"]
+					"descriptions": ["**Get column index by name**\n\n```method : public : GetIndex(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\", \"qty\"]);\nidx := table->GetIndex(\"qty\"); # returns 2 (pk=0, name=1, qty=2)\n\"qty column index={$idx}\"->PrintLine();\n```"]
+				},
+				"GetLayout": {
+					"descriptions": ["**Gets the layout number, which changes when Compact moves rows. Used by Row.**\n\n```method : public : GetLayout() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetName": {
 					"descriptions": ["**Gets the table name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String\n\n```\ntable := Query.Structured.Table->New(\"products\", [\"sku\", \"price\"]);\ntable->GetName()->PrintLine(); # prints \"products\"\n```"]
 				},
+				"GetRowCapacity": {
+					"descriptions": ["**Gets the number of row slots, deleted rows included until Compact**\n\n```method : public : GetRowCapacity() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetVersion": {
+					"descriptions": ["**Gets a number that changes whenever the table's rows or columns change**\n\n```method : public : GetVersion() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"Insert": {
-					"descriptions": ["**Inserts a new row into the table. After the row has been added its values will need to be set.**\n\n```method : public : native : Insert() ~ Row```\n\n\n\nreturn: Row\n\n```\ntable := Query.Structured.Table->New(\"tasks\", [\"title\", \"done\"]);\nrow := table->Insert(); # add empty row\nrow->Set(\"title\", \"Write tests\");\nrow->Set(\"done\", Row->False());\nrow->ToString()->PrintLine();\n```"]
+					"descriptions": ["**Inserts a new row into the table. After the row has been added its values will need to be set.**\n\n```method : public : Insert() ~ Row```\n\n\n\nreturn: Row\n\n```\ntable := Query.Structured.Table->New(\"tasks\", [\"title\", \"done\"]);\nrow := table->Insert(); # add empty row\nrow->Set(\"title\", \"Write tests\");\nrow->Set(\"done\", Row->False());\nrow->ToString()->PrintLine();\n```"]
+				},
+				"IsLive": {
+					"descriptions": ["**Whether a row slot holds a live (not deleted) row**\n\n```method : public : IsLive(row:Int) ~ Bool```\n\n\n\nrow: Int\n\nreturn: Bool"]
+				},
+				"LiveRows": {
+					"descriptions": ["**Gets the slots of every live row, in insertion order**\n\n```method : public : LiveRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"Max": {
+					"descriptions": ["**Gets the largest numeric value in a column. Only Int and Float cells take part; when there are none the result is 0.0 (check Count(name)).**\n\n```method : public : Max(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"temps\", [\"deg\"]);\nr1 := table->Insert(); r1->Set(\"deg\", IntRef->New(-4));\nr2 := table->Insert(); r2->Set(\"deg\", FloatRef->New(12.5));\nhigh := table->Max(\"deg\"); # returns 12.5\n\"high={$high}\"->PrintLine();\n```"]
+				},
+				"Min": {
+					"descriptions": ["**Gets the smallest numeric value in a column. Only Int and Float cells take part; when there are none the result is 0.0 (check Count(name)).**\n\n```method : public : Min(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"temps\", [\"deg\"]);\nr1 := table->Insert(); r1->Set(\"deg\", IntRef->New(-4));\nr2 := table->Insert(); r2->Set(\"deg\", FloatRef->New(12.5));\nlow := table->Min(\"deg\"); # returns -4.0\n\"low={$low}\"->PrintLine();\n```"]
 				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New(name:String, column_names:String[])```\n\n\n\nname: String\n\ncolumn_names: String[]"]
+					"descriptions": ["**Constructor. Column types are taken from the first value stored in each.**\n\n```New(name:String, column_names:String[])```\n\n\n\nname: String\n\ncolumn_names: String[]", "**Constructor. Column types are taken from the first value stored in each.**\n\n```New(name:String, column_names:Vector&lt;String&gt;)```\n\n\n\nname: String\n\ncolumn_names: Vector&lt;String&gt;", "**Constructor with declared column types; storing a value of another type is refused**\n\n```New(name:String, column_names:String[], types:ColumnType[])```\n\n\n\nname: String\n\ncolumn_names: String[]\n\ntypes: ColumnType[]", "**Constructor with starting column types**\n\n```New(name:String, column_names:String[], types:ColumnType[], declared:Bool)```\n\n\n\nname: String\n\ncolumn_names: String[]\n\ntypes: ColumnType[]\n\ndeclared: Bool"]
 				},
 				"Query": {
 					"descriptions": ["**Query table using SQL-like syntax. Support for 'select', 'from', 'where', 'distinct', 'order by' and logical operators.**\n\n```method : public : Query(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->New(\"emp\", [\"name\", \"dept\"]);\nr := table->Insert(); r->Set(\"name\", \"Carol\"); r->Set(\"dept\", \"Eng\");\nrs := table->Query(\"select name from emp where dept = 'Eng'\");\nrs->ToString()->PrintLine();\n```"]
+				},
+				"RowAt": {
+					"descriptions": ["**Gets a cursor over a row slot**\n\n```method : public : RowAt(row:Int) ~ Row```\n\n\n\nrow: Int\n\nreturn: Row"]
 				},
 				"Size": {
 					"descriptions": ["**Count of rows**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"Sum": {
-					"descriptions": ["**Gets the column sum**\n\n```method : public : Sum(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"sales\", [\"amount\"]);\nr1 := table->Insert(); r1->Set(\"amount\", FloatRef->New(19.99));\nr2 := table->Insert(); r2->Set(\"amount\", FloatRef->New(5.01));\ntotal := table->Sum(\"amount\"); # returns 25.0\n\"total={$total}\"->PrintLine();\n```"]
+					"descriptions": ["**Gets the column sum over its numeric cells (Ints and Floats); other cells are skipped. No numeric cells, or an unknown column, sums to 0.0.**\n\n```method : public : Sum(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"sales\", [\"amount\"]);\nr1 := table->Insert(); r1->Set(\"amount\", FloatRef->New(19.99));\nr2 := table->Insert(); r2->Set(\"amount\", FloatRef->New(5.01));\ntotal := table->Sum(\"amount\"); # returns 25.0\n\"total={$total}\"->PrintLine();\n```"]
 				},
 				"ToString": {
 					"descriptions": ["**String representation of table**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				},
 				"Unique": {
-					"descriptions": ["**Gets unique rows by column name**\n\n```method : public : Unique(name:String) ~ Vector&lt;Row&gt;```\n\n\n\nname: String\n\nreturn: Vector&lt;Row&gt;\n\n```\ntable := Query.Structured.Table->New(\"sales\", [\"region\"]);\nr1 := table->Insert(); r1->Set(\"region\", \"East\");\nr2 := table->Insert(); r2->Set(\"region\", \"East\"); # duplicate\nr3 := table->Insert(); r3->Set(\"region\", \"West\");\nunique := table->Unique(\"region\"); # 2 rows: East, West\n\"unique regions: {$unique->Size()}\"->PrintLine();\n```"]
+					"descriptions": ["**Gets unique rows by column name: the first row holding each distinct value. Empty cells are skipped.**\n\n```method : public : Unique(name:String) ~ Vector&lt;Row&gt;```\n\n\n\nname: String\n\nreturn: Vector&lt;Row&gt;\n\n```\ntable := Query.Structured.Table->New(\"sales\", [\"region\"]);\nr1 := table->Insert(); r1->Set(\"region\", \"East\");\nr2 := table->Insert(); r2->Set(\"region\", \"East\"); # duplicate\nr3 := table->Insert(); r3->Set(\"region\", \"West\");\nunique := table->Unique(\"region\"); # 2 rows: East, West\n\"unique regions: {$unique->Size()}\"->PrintLine();\n```"]
+				},
+				"UniqueRows": {
+					"descriptions": ["**Gets the first slot holding each distinct value of a column, among the given slots. Used by Query.**\n\n```method : public : UniqueRows(index:Int, rows:Int[]) ~ Int[]```\n\n\n\nindex: Int\n\nrows: Int[]\n\nreturn: Int[]"]
+				}
+			}
+		},
+		"Query.Structured.TableSpec": {
+			"description": "The shape of a table a source provides: its name, column names and column types",
+			"functions": {
+				"GetColumns": {
+					"descriptions": ["**Gets the column names**\n\n```method : public : GetColumns() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetName": {
+					"descriptions": ["**Gets the table name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTypes": {
+					"descriptions": ["**Gets the column types**\n\n```method : public : GetTypes() ~ ColumnType[]```\n\n\n\nreturn: ColumnType[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, columns:String[], types:ColumnType[])```\n\n\n\nname: String\n\ncolumns: String[]\n\ntypes: ColumnType[]"]
 				}
 			}
 		},
@@ -12655,7 +12998,10 @@
 					"descriptions": ["**Sigmoid 'S' function**\n\n```function : native : Sigmoid(x:Float) ~ Float```\n\n\n\nx: Float\n\nreturn: Float\n\n```\nval := Matrix2D->Sigmoid(2.0);\n\"Sigmoid(2.0)={$val}\"->PrintLine();\n```", "**Applies the Sigmoid function to all elements**\n\n```function : native : Sigmoid(b:Float[,]) ~ Float[,]```\n\n\n\nb: Float[,]\n\nreturn: Float[,]"]
 				},
 				"Softmax": {
-					"descriptions": ["**Softmax activation function for classification**\n\n```function : native : Softmax(b:Float[,]) ~ Float[,]```\n\n\n\nb: Float[,]\n\nreturn: Float[,]\n\n```\nlogits := [[1.0], [2.0], [3.0]];\nprobs := Matrix2D->Softmax(logits);\neach(i : probs->Size()[0]) {\n  probs[i,0]->PrintLine();\n};\n```"]
+					"descriptions": ["**Softmax activation function for classification. Each row is one sample's logits and is normalized on its own, so a batch (one sample per row) gives one probability distribution per row. A single column (an n x 1 matrix, the column vector the NeuralNetwork class uses) is normalized down that column instead, since a one-element softmax is always 1.0. Use SoftmaxColumns to normalize every column of a wider matrix.**\n\n```function : native : Softmax(b:Float[,]) ~ Float[,]```\n\n\n\nb: Float[,]\n\nreturn: Float[,]\n\n```\nbatch := [[1.0, 2.0, 3.0][1000.0, 1001.0, 1002.0]];\nprobs := Matrix2D->Softmax(batch);\neach(i : probs->Size()[0]) {\n  \"{$probs[i,0]} {$probs[i,1]} {$probs[i,2]}\"->PrintLine();\n};\n```"]
+				},
+				"SoftmaxColumns": {
+					"descriptions": ["**Softmax applied down each column: every column is one sample's logits and is normalized on its own. Softmax normalizes rows; this is its column-wise twin, for data laid out one sample per column.**\n\n```function : native : SoftmaxColumns(b:Float[,]) ~ Float[,]```\n\n\n\nb: Float[,]\n\nreturn: Float[,]\n\n```\nlogits := [[1.0], [2.0], [3.0]];\nprobs := Matrix2D->SoftmaxColumns(logits);\neach(i : probs->Size()[0]) {\n  probs[i,0]->PrintLine();\n};\n```"]
 				},
 				"Solve": {
 					"descriptions": ["**Solves a unit of equations**\n\n```function : native : Solve(m1:Float[,], m2:Float[,]) ~ Float[]```\n\n\n\nm1: Float[,]\n\nm2: Float[,]\n\nreturn: Float[]\n\n```\nA := [[1.0, 0.0], [0.0, 1.0], [1.0, 1.0]];\nb := [[1.0], [2.0], [3.0]];\ncoeffs := Matrix2D->Solve(A, b);\neach(c in coeffs) {\n  c->PrintLine();\n};\n```"]
@@ -15240,6 +15586,12 @@
 				"file": ""
 			}
 		],
+		"Reply": [
+			{
+				"bundle": "API.Ollama",
+				"file": ""
+			}
+		],
 		"Tool": [
 			{
 				"bundle": "API.Ollama",
@@ -16372,12 +16724,6 @@
 				"file": ""
 			}
 		],
-		"Reply": [
-			{
-				"bundle": "API.Ollama",
-				"file": ""
-			}
-		],
 		"Surface": [
 			{
 				"bundle": "Game.SDL2",
@@ -16458,7 +16804,37 @@
 				"file": ""
 			}
 		],
+		"Catalog": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"Column": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"CsvSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"FilesystemSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
 		"Finder": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"ObjectSource": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""
@@ -16470,7 +16846,25 @@
 				"file": ""
 			}
 		],
+		"ScanHint": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"Source": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
 		"Table": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"TableSpec": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""
