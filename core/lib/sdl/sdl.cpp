@@ -1460,6 +1460,31 @@ extern "C" {
     APITools_SetIntValue(context, 2, h);
   }
 
+  //
+  // The window's size in PIXELS, which on a high-DPI display is larger than
+  // GetSize's size in screen coordinates. SDL_GetWindowSizeInPixels arrived in
+  // SDL 2.26; an older system SDL (a source build on an older distribution)
+  // falls back to the GL drawable size, which is the same quantity for a GL
+  // window and the window size otherwise.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_window_get_size_in_pixels(VMContext& context) {
+    SDL_Window* window = (SDL_Window*)APITools_GetIntValue(context, 0);
+
+    int w = 0, h = 0;
+    if(window) {
+#if SDL_VERSION_ATLEAST(2, 26, 0)
+      SDL_GetWindowSizeInPixels(window, &w, &h);
+#else
+      SDL_GL_GetDrawableSize(window, &w, &h);
+#endif
+    }
+    APITools_SetIntValue(context, 1, w);
+    APITools_SetIntValue(context, 2, h);
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -2290,6 +2315,67 @@ extern "C" {
     APITools_SetIntValue(context, 0, (size_t)IMG_Load(file.c_str()));
   }
 
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_image_save_png(VMContext& context) {
+    SDL_Surface* surface = (SDL_Surface*)APITools_GetIntValue(context, 1);
+    const wchar_t* w_file = APITools_GetStringValue(context, 2);
+    if(surface && w_file) {
+      const std::string file = UnicodeToBytes(w_file);
+      APITools_SetIntValue(context, 0, IMG_SavePNG(surface, file.c_str()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  //
+  // Reads the rendering target's pixels (all of it, or the rect) back into a
+  // new 32-bit ARGB surface, which the caller owns. This is the screenshot and
+  // figure-export path; it is slow by design and not for every frame.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_read_pixels(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    size_t* rect_obj = APITools_GetObjectValue(context, 2);
+
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    int w = 0, h = 0;
+    if(!renderer || SDL_GetRendererOutputSize(renderer, &w, &h) != 0) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    if(rect_obj) {
+      w = rect.w;
+      h = rect.h;
+    }
+
+    if(w <= 0 || h <= 0) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+    if(!surface) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    if(SDL_RenderReadPixels(renderer, rect_obj ? &rect : nullptr, SDL_PIXELFORMAT_ARGB8888, surface->pixels, surface->pitch) != 0) {
+      SDL_FreeSurface(surface);
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, (size_t)surface);
+  }
+
   //
   // Renderer
   //
@@ -2619,6 +2705,67 @@ extern "C" {
     APITools_SetIntValue(context, 5, a);
 
     APITools_SetIntValue(context, 0, return_value);
+  }
+
+  //
+  // Resolution independence: a logical size or scale lets a program draw in
+  // its own coordinates whatever the window's pixel size.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_set_logical_size(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const int w = (int)APITools_GetIntValue(context, 2);
+    const int h = (int)APITools_GetIntValue(context, 3);
+    APITools_SetIntValue(context, 0, renderer ? SDL_RenderSetLogicalSize(renderer, w, h) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_logical_size(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
+    int w = 0, h = 0;
+    if(renderer) {
+      SDL_RenderGetLogicalSize(renderer, &w, &h);
+    }
+    APITools_SetIntValue(context, 1, w);
+    APITools_SetIntValue(context, 2, h);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_set_scale(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const float scale_x = (float)APITools_GetFloatValue(context, 2);
+    const float scale_y = (float)APITools_GetFloatValue(context, 3);
+    APITools_SetIntValue(context, 0, renderer ? SDL_RenderSetScale(renderer, scale_x, scale_y) : -1);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_scale(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 0);
+    float scale_x = 1.0f, scale_y = 1.0f;
+    if(renderer) {
+      SDL_RenderGetScale(renderer, &scale_x, &scale_y);
+    }
+    APITools_SetFloatValue(context, 1, scale_x);
+    APITools_SetFloatValue(context, 2, scale_y);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_output_size(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    int w = 0, h = 0;
+    APITools_SetIntValue(context, 0, renderer ? SDL_GetRendererOutputSize(renderer, &w, &h) : -1);
+    APITools_SetIntValue(context, 2, w);
+    APITools_SetIntValue(context, 3, h);
   }
 
 #ifdef _WIN32

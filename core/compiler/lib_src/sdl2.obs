@@ -1154,6 +1154,7 @@ bundle Game.SDL2 {
 		@fn_sdl_window_get_pixel_format : static : String;
 		@fn_sdl_window_get_position : static : String;
 		@fn_sdl_window_get_size : static : String;
+		@fn_sdl_window_get_size_in_pixels : static : String;
 		@fn_sdl_window_get_surface : static : String;
 		@fn_sdl_window_getid : static : String;
 		@fn_sdl_window_gl_create_context : static : String;
@@ -1556,6 +1557,24 @@ bundle Game.SDL2 {
 
 				if(@fn_sdl_window_get_size = Nil) { @fn_sdl_window_get_size := "sdl_window_get_size"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_size, array_args);
+			};
+		}
+
+		#~
+		Get the size of a window's client area in pixels. On a high-DPI display this is
+		larger than GetSize, which is in screen coordinates.
+		@param w holder filled in with the width in pixels
+		@param h holder filled in with the height in pixels
+		~#
+		method : public : GetSizeInPixels(w : IntRef, h : IntRef) ~ Nil {
+			if(@window <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@window);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				if(@fn_sdl_window_get_size_in_pixels = Nil) { @fn_sdl_window_get_size_in_pixels := "sdl_window_get_size_in_pixels"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_window_get_size_in_pixels, array_args);
 			};
 		}
 		
@@ -7273,6 +7292,7 @@ bundle Game.SDL2 {
 		@fn_sdl_image_init : static : String;
 		@fn_sdl_image_load : static : String;
 		@fn_sdl_image_quit : static : String;
+		@fn_sdl_image_save_png : static : String;
 		#~ 
 		Initialize by loading support as indicated by the flags
 		@param flags OR'd values ImageFlags->IMG_INIT_JPG, ImageFlags->IMG_INIT_PNG and ImageFlags->IMG_INIT_TIF
@@ -7313,6 +7333,33 @@ bundle Game.SDL2 {
 
 	        value := array_args[0]->As(IntRef);
 			return Surface->New(value->Get());
+		}
+
+		#~
+		Save a surface as a PNG file
+		@param surface the surface to save
+		@param file file path to write
+		@return 0 on success or a negative error code on failure; Core->GetError says why
+		~#
+		function : SavePNG(surface : Surface, file : String) ~ Int {
+			if(surface = Nil | file = Nil) {
+				return -1;
+			};
+
+			if(surface->IsNull()) {
+				return -1;
+			};
+
+			array_args := Base->New[3];
+			array_args[0] := IntRef->New();
+			array_args[1] := IntRef->New(surface->GetSurface());
+			array_args[2] := file;
+
+			if(@fn_sdl_image_save_png = Nil) { @fn_sdl_image_save_png := "sdl_image_save_png"; };
+			Proxy->GetDllProxy()->CallFunction(@fn_sdl_image_save_png, array_args);
+
+			value := array_args[0]->As(IntRef);
+			return value->Get();
 		}
 	}
 
@@ -7378,6 +7425,12 @@ bundle Game.SDL2 {
 		@fn_sdl_renderer_render_draw_line_f : static : String;
 		@fn_sdl_renderer_render_draw_rect_f : static : String;
 		@fn_sdl_renderer_render_fill_rect_f : static : String;
+		@fn_sdl_renderer_set_logical_size : static : String;
+		@fn_sdl_renderer_get_logical_size : static : String;
+		@fn_sdl_renderer_set_scale : static : String;
+		@fn_sdl_renderer_get_scale : static : String;
+		@fn_sdl_renderer_get_output_size : static : String;
+		@fn_sdl_renderer_read_pixels : static : String;
 		@renderer : Int;
 		# Pooled boxing buffer for the hot color-draw primitives. The native call ABI
 		# wants a Base[] of IntRef holders, so naively every draw call allocated a
@@ -7772,6 +7825,166 @@ bundle Game.SDL2 {
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_sdl_renderer_render_draw_rect = Nil) { @fn_sdl_renderer_render_draw_rect := "sdl_renderer_render_draw_rect"; };
 				lib_proxy->CallFunction(@fn_sdl_renderer_render_draw_rect, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Read the rendering target's pixels back into a new surface, for a screenshot or
+		an exported figure. Call it after drawing and before Present, since the back
+		buffer is undefined after presenting. Slow; not for every frame.
+		@param rect the area to read, or Nil for the whole target
+		@return a new 32-bit ARGB surface the caller must Free; IsNull() is true on failure
+		~#
+		method : public : ReadPixels(rect : Rect) ~ Surface {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := rect;
+
+				if(@fn_sdl_renderer_read_pixels = Nil) { @fn_sdl_renderer_read_pixels := "sdl_renderer_read_pixels"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_read_pixels, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return Surface->New(value->Get());
+			};
+
+			return Surface->New(0);
+		}
+
+		#~
+		Save the whole rendering target as a PNG file: ReadPixels followed by Image->SavePNG.
+		Call it after drawing and before Present.
+		@param file file path to write
+		@return true if the file was written
+		```
+		renderer->Clear();
+		DrawChart(renderer);
+		renderer->SavePNG("figure1.png");
+		renderer->Present();
+		```
+		~#
+		method : public : SavePNG(file : String) ~ Bool {
+			surface := ReadPixels(Nil);
+			if(surface->IsNull()) {
+				return false;
+			};
+
+			result := Image->SavePNG(surface, file);
+			surface->Free();
+
+			return result = 0;
+		}
+
+		#~
+		Set a device independent resolution for rendering. Drawing is then in these
+		logical coordinates, scaled to the output and letterboxed to keep the aspect ratio.
+		@param w the width of the logical resolution
+		@param h the height of the logical resolution
+		@return 0 on success or a negative error code on failure
+		```
+		renderer->SetLogicalSize(320, 240);
+		renderer->FillRect(Rect->New(0, 0, 160, 120)); # the top-left quarter at any window size
+		```
+		~#
+		method : public : SetLogicalSize(w : Int, h : Int) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := IntRef->New(w);
+				array_args[3] := IntRef->New(h);
+
+				if(@fn_sdl_renderer_set_logical_size = Nil) { @fn_sdl_renderer_set_logical_size := "sdl_renderer_set_logical_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_logical_size, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Get the device independent resolution for rendering
+		@param w holder filled in with the logical width, 0 if none is set
+		@param h holder filled in with the logical height, 0 if none is set
+		~#
+		method : public : GetLogicalSize(w : IntRef, h : IntRef) ~ Nil {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@renderer);
+				array_args[1] := w;
+				array_args[2] := h;
+
+				if(@fn_sdl_renderer_get_logical_size = Nil) { @fn_sdl_renderer_get_logical_size := "sdl_renderer_get_logical_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_logical_size, array_args);
+			};
+		}
+
+		#~
+		Set the drawing scale; coordinates are multiplied by it before they reach the target
+		@param scale_x the horizontal scaling factor
+		@param scale_y the vertical scaling factor
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : SetScale(scale_x : Float, scale_y : Float) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := FloatRef->New(scale_x);
+				array_args[3] := FloatRef->New(scale_y);
+
+				if(@fn_sdl_renderer_set_scale = Nil) { @fn_sdl_renderer_set_scale := "sdl_renderer_set_scale"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_scale, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Get the drawing scale
+		@param scale_x holder filled in with the horizontal scaling factor
+		@param scale_y holder filled in with the vertical scaling factor
+		~#
+		method : public : GetScale(scale_x : FloatRef, scale_y : FloatRef) ~ Nil {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New(@renderer);
+				array_args[1] := scale_x;
+				array_args[2] := scale_y;
+
+				if(@fn_sdl_renderer_get_scale = Nil) { @fn_sdl_renderer_get_scale := "sdl_renderer_get_scale"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_scale, array_args);
+			};
+		}
+
+		#~
+		Get the output size in pixels of the rendering target: the window, the surface
+		of a software renderer, or the texture set with SetTarget
+		@param w holder filled in with the width in pixels
+		@param h holder filled in with the height in pixels
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : GetOutputSize(w : IntRef, h : IntRef) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[4];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := w;
+				array_args[3] := h;
+
+				if(@fn_sdl_renderer_get_output_size = Nil) { @fn_sdl_renderer_get_output_size := "sdl_renderer_get_output_size"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_output_size, array_args);
 
 				value := array_args[0]->As(IntRef);
 				return value->Get();
