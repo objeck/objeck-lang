@@ -10842,7 +10842,9 @@ bundle System.IO.Filesystem {
 		}
 		
 		#~
-		Renames a file
+		Renames a file. An existing file named 'n' is replaced, atomically when both names are on the
+		same volume, on every platform: a program can write a new version beside a file and rename it
+		into place, and a crash leaves either the old file or the new one.
 		@param o original filename
 		@param n new filename
 		@return true if file was renamed
