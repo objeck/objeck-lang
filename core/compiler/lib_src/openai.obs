@@ -345,16 +345,45 @@ bundle API.OpenAI.Responses {
 		New(json_elem : JsonElement) {
 			Parent();
 
-			@id := json_elem->Get("id")->GetString();
-			@object := json_elem->Get("object")->GetString();
-			@created_at := json_elem->Get("created_at")->GetInt();
-			@model := json_elem->Get("model")->GetString();
+			@id := StringField(json_elem, "id");
+			@object := StringField(json_elem, "object");
+			created_at_json := json_elem->Get("created_at");
+			if(created_at_json <> Nil) {
+				@created_at := created_at_json->GetInt();
+			};
+			@model := StringField(json_elem, "model");
 
 			@outputs := Vector->New()<Output>;
 			outputs_json := json_elem->Get("output");
-			each(output_json in outputs_json) {
-				@outputs->AddBack(Output->New(output_json));
+			if(outputs_json <> Nil) {
+				each(output_json in outputs_json) {
+					@outputs->AddBack(Output->New(output_json));
+				};
 			};
+		}
+
+		# a missing field reads as Nil rather than dereferencing Nil
+		function : private : StringField(json : JsonElement, name : String) ~ String {
+			field_json := json->Get(name);
+			if(field_json <> Nil & <>field_json->IsNull()) {
+				return field_json->GetString();
+			};
+
+			return Nil;
+		}
+
+		#~
+		Parses a Responses API response body
+		@param body response body
+		@return response, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseResponse(body : String) ~ Response {
+			body_json := ParseBody(body);
+			if(body_json = Nil) {
+				return Nil;
+			};
+
+			return Response->New(body_json);
 		}
 
 		#~
@@ -401,16 +430,28 @@ resp->GetText()->PrintLine();
 ```
 		~#
 		method : public : GetText() ~ String {
-			if(@outputs->Size() = 1) {
-				output := @outputs->Get(0);
+			# the text of every 'output_text' part of every 'message' output, in
+			# order; reasoning models put a 'reasoning' output first, and a reply
+			# may hold several parts, so this does not assume a single output
+			buffer : String;
+			each(output in @outputs) {
 				contents := output->GetContents();
-				if(contents->Size() = 1) {
-					content := contents->Get(0);
-					return content->GetText();
-				}
+				type := output->GetType();
+				if(contents <> Nil & type <> Nil & type->Equals("message")) {
+					each(content in contents) {
+						content_type := content->GetType();
+						text := content->GetText();
+						if(content_type <> Nil & content_type->Equals("output_text") & text <> Nil) {
+							if(buffer = Nil) {
+								buffer := "";
+							};
+							buffer += text;
+						};
+					};
+				};
 			};
 
-			return Nil;
+			return buffer;
 		}
 
 		#~
@@ -427,7 +468,9 @@ resp->GetText()->PrintLine();
 		~#
 		method : public : ToString() ~ String {			
 			buffer := "Response: [short_id='";
-			buffer += @id->SubString(10);
+			if(@id <> Nil) {
+				buffer += @id->Size() > 10 ? @id->SubString(10) : @id;
+			};
 
 			buffer += "', object='"
 			buffer += @object;
@@ -679,19 +722,7 @@ resp->GetText()->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
-				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(chat_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_str := chat_json->FindElements("error/message");
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return Response->New(chat_json);
+				return ParseResponse(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -867,19 +898,7 @@ resp->GetText()->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
-				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(chat_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_str := chat_json->FindElements("error/message");
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return Response->New(chat_json);
+				return ParseResponse(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -1082,19 +1101,7 @@ resp->GetText()->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
-				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(chat_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_str := chat_json->FindElements("error/message");
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return Response->New(chat_json);
+				return ParseResponse(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -1115,8 +1122,15 @@ resp->GetText()->PrintLine();
 		New(json_elem : JsonElement) {
 			Parent();
 			
-			@id := json_elem->Get("id")->GetString();
-			@type := json_elem->Get("type")->GetString();
+			# a function_call output has no 'content'; a reasoning output may
+			# carry neither 'id' nor 'status' on some deployments
+			if(json_elem->Has("id")) {
+				@id := json_elem->Get("id")->GetString();
+			};
+
+			if(json_elem->Has("type")) {
+				@type := json_elem->Get("type")->GetString();
+			};
 
 			if(json_elem->Has("status")) {
 				@status := json_elem->Get("status")->GetString();
@@ -1138,11 +1152,10 @@ resp->GetText()->PrintLine();
 				@summaries := Vector->New()<Pair<String, String>>;
 				summaries_json := json_elem->Get("summary");
 				each(summary_json in summaries_json) {
-					role := summary_json->Get("type")->GetString();
-					text := summary_json->Get("text")->GetString();
-
-					if(role <> Nil & text <> Nil) {
-						@summaries->AddBack(Pair->New(role, text)<String, String>);
+					role_json := summary_json->Get("type");
+					text_json := summary_json->Get("text");
+					if(role_json <> Nil & text_json <> Nil) {
+						@summaries->AddBack(Pair->New(role_json->GetString(), text_json->GetString())<String, String>);
 					};
 				};
 			};
@@ -1201,7 +1214,10 @@ resp->GetText()->PrintLine();
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
-			short_id := @id->SubString(10);
+			short_id := "";
+			if(@id <> Nil) {
+				short_id := @id->Size() > 10 ? @id->SubString(10) : @id;
+			};
 			buffer := "Output: [short_id='{$short_id}', type='{$@type}'";
 
 			if(@status <> Nil) {
@@ -1235,8 +1251,18 @@ resp->GetText()->PrintLine();
 		New(json_elem : JsonElement) {
 			Parent();
 			
-			@type := json_elem->Get("type")->GetString();
-			@text := json_elem->Get("text")->GetString();
+			if(json_elem->Has("type")) {
+				@type := json_elem->Get("type")->GetString();
+			};
+
+			# an 'output_text' part carries 'text'; a 'refusal' part carries
+			# 'refusal' instead, and reading 'text' from it dereferenced Nil
+			if(json_elem->Has("text")) {
+				@text := json_elem->Get("text")->GetString();
+			}
+			else if(json_elem->Has("refusal")) {
+				@text := json_elem->Get("refusal")->GetString();
+			};
 		}
 
 		#~
@@ -1260,6 +1286,9 @@ resp->GetText()->PrintLine();
 		@return string representation
 		~#
 		method : public : ToString() ~ String {
+			if(@text = Nil) {
+				return "Content: [type='{$@type}', text_len=0]";
+			};
 			text_len := @text->Size();
 			short_text := @text->SubString(64);
 			return "Content: [type='{$@type}', short_text='{$short_text}', text_len={$text_len}]"; 
@@ -1284,16 +1313,40 @@ bundle API.OpenAI.Chat {
 		New(chat_json : JsonElement) {
 			Parent();
 
-			@id := chat_json->Get("id")->GetString();
-			@object := chat_json->Get("object")->GetString();
-			@created_at := chat_json->Get("created")->GetInt();
-			@model := chat_json->Get("model")->GetString();
+			if(chat_json->Has("id")) {
+				@id := chat_json->Get("id")->GetString();
+			};
+			if(chat_json->Has("object")) {
+				@object := chat_json->Get("object")->GetString();
+			};
+			if(chat_json->Has("created")) {
+				@created_at := chat_json->Get("created")->GetInt();
+			};
+			if(chat_json->Has("model")) {
+				@model := chat_json->Get("model")->GetString();
+			};
 
 			@choices := Vector->New()<API.OpenAI.Chat.Choice>;
 			choices_json := chat_json->Get("choices");
-			each(choice_json in choices_json) {
-				@choices->AddBack(Choice->New(choice_json));
+			if(choices_json <> Nil) {
+				each(choice_json in choices_json) {
+					@choices->AddBack(Choice->New(choice_json));
+				};
 			};
+		}
+
+		#~
+		Parses a chat completions response body
+		@param body response body
+		@return completion, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseCompletion(body : String) ~ Completion {
+			body_json := ParseBody(body);
+			if(body_json = Nil) {
+				return Nil;
+			};
+
+			return Completion->New(body_json);
 		}
 
 		#~
@@ -1495,19 +1548,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
-				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(chat_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_str := chat_json->FindElements("error/message");
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return Completion->New(chat_json);
+				return ParseCompletion(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -1659,19 +1700,7 @@ choice->GetMessage()->GetSecond()->PrintLine();
 					response->GetContent()->ToString()->PrintLine();				
 				};
 
-				chat_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(chat_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-				
-				error_str := chat_json->FindElements("error/message");
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return Completion->New(chat_json);
+				return ParseCompletion(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -1688,12 +1717,25 @@ choice->GetMessage()->GetSecond()->PrintLine();
 
 		New(chat_json : JsonElement) {
 			Parent();
-			@index := chat_json->Get("index")->GetInt();
-			@finish_reason := chat_json->Get("finish_reason")->GetString();
-			message_json := chat_json->Get("message");
+			if(chat_json->Has("index")) {
+				@index := chat_json->Get("index")->GetInt();
+			};
+			if(chat_json->Has("finish_reason")) {
+				@finish_reason := chat_json->Get("finish_reason")->GetString();
+			};
 
-			role := message_json->Get("role")->GetString();
-			content := message_json->Get("content")->GetString();
+			# 'content' is null on a tool call or a refusal, and reads as ""
+			role := "assistant";
+			content := "";
+			message_json := chat_json->Get("message");
+			if(message_json <> Nil) {
+				if(message_json->Has("role")) {
+					role := message_json->Get("role")->GetString();
+				};
+				if(message_json->Has("content")) {
+					content := message_json->Get("content")->GetString();
+				};
+			};
 			@message := Pair->New(role, content)<String, String>;
 		}
 
@@ -3025,6 +3067,7 @@ bundle API.OpenAI {
 	class Image from EndPoint {
 		@created_at : Int;
 		@urls : Url[];
+		@b64_images : String[];
 
 		enum Size {
 			DALLE2_256_256, 
@@ -3039,15 +3082,51 @@ bundle API.OpenAI {
 		New(image_json : JsonElement) {
 			Parent();
 
-			@created_at := image_json->Get("created")->GetInt();
-
-			urls_json := image_json->Get("data");
-			@urls := Url->New[urls_json->Size()];
-			each(i : urls_json) {
-				url_json := urls_json->Get(i);
-				url := url_json->Get("url")->GetString();
-				@urls[i] := Url->New(url);
+			if(image_json->Has("created")) {
+				@created_at := image_json->Get("created")->GetInt();
 			};
+
+			# each item carries 'url' or, for response_format 'b64_json' (and
+			# always for gpt-image-1), 'b64_json'; reading 'url' from a b64_json
+			# item dereferenced Nil
+			urls_json := image_json->Get("data");
+			size := 0;
+			if(urls_json <> Nil) {
+				size := urls_json->Size();
+			};
+			@urls := Url->New[size];
+			@b64_images := String->New[size];
+			for(i := 0; i < size; i += 1;) {
+				url_json := urls_json->Get(i);
+				if(url_json->Has("url")) {
+					@urls[i] := Url->New(url_json->Get("url")->GetString());
+				};
+				if(url_json->Has("b64_json")) {
+					@b64_images[i] := url_json->Get("b64_json")->GetString();
+				};
+			};
+		}
+
+		#~
+		Parses an images API response body
+		@param body response body
+		@return image result, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseImage(body : String) ~ API.OpenAI.Image {
+			body_json := ParseBody(body);
+			if(body_json = Nil) {
+				return Nil;
+			};
+
+			return API.OpenAI.Image->New(body_json);
+		}
+
+		#~
+		Get the generated images as Base64 strings, for response_format 'b64_json'
+		@return Base64 image data, one entry per image (Nil where an image came back as a URL)
+		~#
+		method : public : GetBase64Images() ~ String[] {
+			return @b64_images;
 		}
 
 		#~
@@ -3136,9 +3215,12 @@ bundle API.OpenAI {
 					image_json->Insert("size", "1024x1024");
 				}
 
-				label Image->Size->DALLE3_1792_1024:
-				label Image->Size->DALLE3_1024_1792 {					
+				label Image->Size->DALLE3_1792_1024 {
 					image_json->Insert("size", "1792x1024");
+				}
+
+				label Image->Size->DALLE3_1024_1792 {
+					image_json->Insert("size", "1024x1792");
 				}
 			};
 
@@ -3156,20 +3238,7 @@ bundle API.OpenAI {
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/generations"), data, "application/json", headers);
 			if(response <> Nil) {
-				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
-
-				if(image_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-
-				error_str := image_json->FindElements("error/message");				
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return API.OpenAI.Image->New(image_json);
+				return ParseImage(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -3261,11 +3330,16 @@ bundle API.OpenAI {
 					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1024x1024"->ToByteArray()));
 				}
 
-				label Image->Size->DALLE3_1792_1024:
-				label Image->Size->DALLE3_1024_1792 {					
+				label Image->Size->DALLE3_1792_1024 {
 					size_headers := Map->New()<String, String>;
 					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
 					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1792x1024"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE3_1024_1792 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1024x1792"->ToByteArray()));
 				}
 			};
 
@@ -3291,20 +3365,7 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/edits"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
-
-				if(image_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-
-				error_str := image_json->FindElements("error/message");				
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return API.OpenAI.Image->New(image_json);					
+				return ParseImage(response->GetContent()->ToString());					
 			};
 
 			return Nil;
@@ -3385,11 +3446,16 @@ bundle API.OpenAI {
 					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1024x1024"->ToByteArray()));
 				}
 
-				label Image->Size->DALLE3_1792_1024:
-				label Image->Size->DALLE3_1024_1792 {					
+				label Image->Size->DALLE3_1792_1024 {
 					size_headers := Map->New()<String, String>;
 					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
 					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1792x1024"->ToByteArray()));
+				}
+
+				label Image->Size->DALLE3_1024_1792 {
+					size_headers := Map->New()<String, String>;
+					size_headers->Insert("Content-Disposition", "form-data; name=\"size\"");
+					encoder->Add(Web.HTTP.Server.MultipartContent->New(size_headers, "1024x1792"->ToByteArray()));
 				}
 			};
 
@@ -3408,20 +3474,7 @@ bundle API.OpenAI {
 			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/images/variations"), data, 
 				"multipart/form-data; boundary={$boundary}", headers);
 			if(response <> Nil) {
-				image_json := JsonParser->TextToElement(response->GetContent()->ToString());
-
-				if(image_json = Nil) {
-					"### Error: Unable to parse response ###"->ErrorLine();
-					return Nil;
-				};
-
-				error_str := image_json->FindElements("error/message");				
-				if(error_str <> Nil) {
-					SetLastError(error_str->GetString());
-					return Nil;
-				};
-
-				return API.OpenAI.Image->New(image_json);					
+				return ParseImage(response->GetContent()->ToString());					
 			};
 
 			return Nil;
@@ -4096,12 +4149,24 @@ session->Close();
 		New(file_json : JsonElement, token : String) {
 			Parent();
 
-			@id := file_json->Get("id")->GetString();
-			@object := file_json->Get("object")->GetString();
-			@bytes := file_json->Get("bytes")->GetInt();
-			@created_at := file_json->Get("created_at")->GetInt();
-			@filename := file_json->Get("filename")->GetString();
-			@purpose := file_json->Get("purpose")->GetString();
+			if(file_json->Has("id")) {
+				@id := file_json->Get("id")->GetString();
+			};
+			if(file_json->Has("object")) {
+				@object := file_json->Get("object")->GetString();
+			};
+			if(file_json->Has("bytes")) {
+				@bytes := file_json->Get("bytes")->GetInt();
+			};
+			if(file_json->Has("created_at")) {
+				@created_at := file_json->Get("created_at")->GetInt();
+			};
+			if(file_json->Has("filename")) {
+				@filename := file_json->Get("filename")->GetString();
+			};
+			if(file_json->Has("purpose")) {
+				@purpose := file_json->Get("purpose")->GetString();
+			};
 		}
 
 		#~
@@ -4331,19 +4396,27 @@ session->Close();
 			headers->Insert("Authorization", "Bearer {$token}");
 			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/files"), "application/json", headers);
 			if(response <> Nil) {
-				root_json := JsonParser->TextToElement(response->GetContent()->ToString());
+				return ParseFileList(response->GetContent()->ToString(), token);
+			};
 
-				if(root_json = Nil) {
-					return Nil;
-				};
+			return files;
+		}
 
-				if(root_json->Has("error")) {
-					error_str := root_json->FindElements("error/message")->GetString();
-					SetLastError(error_str);
-					return Nil;
-				};
+		#~
+		Parses a file listing response body
+		@param body response body
+		@param token API token
+		@return files, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseFileList(body : String, token : String) ~ Vector<API.OpenAI.File> {
+			root_json := ParseBody(body);
+			if(root_json = Nil) {
+				return Nil;
+			};
 
-				files_json := root_json->Get("data");
+			files := Vector->New()<API.OpenAI.File>;
+			files_json := root_json->Get("data");
+			if(files_json <> Nil) {
 				each(file_json in files_json) {
 					files->AddBack(API.OpenAI.File->New(file_json, token));
 				};
@@ -5767,35 +5840,40 @@ embedding := Embedding->Create("Hello world", Models->TEXT_EMBEDDING_3_SMALL(), 
 
 			response := HttpsClient->QuickPost(Url->New(EndPoint->GetBaseUrl() + "/embeddings"), data, "application/json", headers);
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(response_json <> Nil) {
-					data_json := response_json->Get("data");
-					if(data_json <> Nil) {
-						first := data_json->Get(0);
-						if(first <> Nil) {
-							embedding_json := first->Get("embedding");
-							if(embedding_json <> Nil) {
-								size := embedding_json->Size();
-								result := Float->New[size];
-								each(i : size) {
-									result[i] := embedding_json->Get(i)->GetFloat();
-								};
-								return result;
-							};
+				return ParseEmbedding(response->GetContent()->ToString());
+			};
+
+			return Nil;
+		}
+
+		#~
+		Parses an embeddings response body, returning the first embedding
+		@param body response body
+		@return float array of embedding values, or Nil on an error body (see EndPoint->GetLastError)
+		~#
+		function : ParseEmbedding(body : String) ~ Float[] {
+			response_json := EndPoint->ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			data_json := response_json->Get("data");
+			if(data_json <> Nil) {
+				first := data_json->Get(0);
+				if(first <> Nil) {
+					embedding_json := first->Get("embedding");
+					if(embedding_json <> Nil & embedding_json->GetType() = JsonElement->JsonType->ARRAY) {
+						size := embedding_json->Size();
+						result := Float->New[size];
+						each(i : size) {
+							result[i] := embedding_json->Get(i)->GetFloat();
 						};
-					}
-					else if(response_json->Has("error")) {
-						error_json := response_json->Get("error");
-						if(error_json <> Nil) {
-							msg_json := error_json->Get("message");
-							if(msg_json <> Nil) {
-								EndPoint->SetLastError(msg_json->GetString());
-							};
-						};
+						return result;
 					};
 				};
 			};
 
+			EndPoint->SetLastError("Response holds no embedding");
 			return Nil;
 		}
 	}
@@ -5928,15 +6006,21 @@ if(result->IsFlagged()) {
 				query_json->ToString()->ToByteArray(), "application/json", headers);
 
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(response_json = Nil) {
-					SetLastError("Unable to parse moderation response");
-					return Nil;
-				};
-				if(response_json->Has("error")) {
-					SetLastError(response_json->FindElements("error/message")->GetString());
-					return Nil;
-				};
+				return ParseModeration(response->GetContent()->ToString(), model);
+			};
+
+			return Nil;
+		}
+
+		#~
+		Parses a moderation response body
+		@param body response body
+		@param model model requested, used when the body does not name one
+		@return moderation result, or Nil on an error body (see GetLastError)
+		~#
+		function : ParseModeration(body : String, model : String) ~ ModerationResult {
+			response_json := ParseBody(body);
+			if(response_json <> Nil) {
 				id := "";
 				id_json := response_json->Get("id");
 				if(id_json <> Nil) {
@@ -6079,20 +6163,11 @@ job = Batch->Get(job->GetId(), token);
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/batch"),
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/batches"),
 				query_json->ToString()->ToByteArray(), "application/json", headers);
 
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(response_json = Nil) {
-					SetLastError("Unable to parse batch response");
-					return Nil;
-				};
-				if(response_json->Has("error")) {
-					SetLastError(response_json->FindElements("error/message")->GetString());
-					return Nil;
-				};
-				return BatchJob->New(response_json);
+				return ParseBatchJob(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -6108,20 +6183,11 @@ job = Batch->Get(job->GetId(), token);
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 
-			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/batch/{$batch_id}"),
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/batches/{$batch_id}"),
 				"application/json", headers);
 
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(response_json = Nil) {
-					SetLastError("Unable to parse batch response");
-					return Nil;
-				};
-				if(response_json->Has("error")) {
-					SetLastError(response_json->FindElements("error/message")->GetString());
-					return Nil;
-				};
-				return BatchJob->New(response_json);
+				return ParseBatchJob(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -6137,20 +6203,11 @@ job = Batch->Get(job->GetId(), token);
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 
-			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/batch/{$batch_id}/cancel"),
+			response := HttpsClient->QuickPost(Url->New(GetBaseUrl() + "/batches/{$batch_id}/cancel"),
 				""->ToByteArray(), "application/json", headers);
 
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(response_json = Nil) {
-					SetLastError("Unable to parse batch cancel response");
-					return Nil;
-				};
-				if(response_json->Has("error")) {
-					SetLastError(response_json->FindElements("error/message")->GetString());
-					return Nil;
-				};
-				return BatchJob->New(response_json);
+				return ParseBatchJob(response->GetContent()->ToString());
 			};
 
 			return Nil;
@@ -6175,30 +6232,49 @@ job = Batch->Get(job->GetId(), token);
 			headers := Map->New()<String, String>;
 			headers->Insert("Authorization", "Bearer {$token}");
 
-			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/batch?limit={$limit}"),
+			response := HttpsClient->QuickGet(Url->New(GetBaseUrl() + "/batches?limit={$limit}"),
 				"application/json", headers);
 
 			if(response <> Nil) {
-				response_json := JsonParser->TextToElement(response->GetContent()->ToString());
-				if(response_json = Nil) {
-					SetLastError("Unable to parse batch list response");
-					return Nil;
-				};
-				if(response_json->Has("error")) {
-					SetLastError(response_json->FindElements("error/message")->GetString());
-					return Nil;
-				};
-				jobs := Vector->New()<BatchJob>;
-				data_json := response_json->Get("data");
-				if(data_json <> Nil) {
-					each(job_json in data_json) {
-						jobs->AddBack(BatchJob->New(job_json));
-					};
-				};
-				return jobs;
+				return ParseBatchList(response->GetContent()->ToString());
 			};
 
 			return Nil;
+		}
+
+		#~
+		Parses a batch object response body
+		@param body response body
+		@return batch job, Nil on an error body (see GetLastError)
+		~#
+		function : ParseBatchJob(body : String) ~ BatchJob {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			return BatchJob->New(response_json);
+		}
+
+		#~
+		Parses a batch listing response body
+		@param body response body
+		@return list of batch jobs, Nil on an error body (see GetLastError)
+		~#
+		function : ParseBatchList(body : String) ~ Vector<BatchJob> {
+			response_json := ParseBody(body);
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			jobs := Vector->New()<BatchJob>;
+			data_json := response_json->Get("data");
+			if(data_json <> Nil) {
+				each(job_json in data_json) {
+					jobs->AddBack(BatchJob->New(job_json));
+				};
+			};
+			return jobs;
 		}
 	}
 
@@ -6242,6 +6318,50 @@ job = Batch->Get(job->GetId(), token);
 
 		function : SetLastError(last_message : String) ~ Nil {
 			@last_message := last_message;
+		}
+
+		#~
+		Parses a response body, recording a failure as the last error. A body that
+		is not JSON, or that carries an 'error' object, yields Nil; an 'error' that
+		is null (the Responses API sends one on success) is not a failure.
+		@param body response body
+		@return parsed JSON, or Nil on failure
+		~#
+		function : ParseBody(body : String) ~ JsonElement {
+			if(body = Nil) {
+				SetLastError("Empty response");
+				return Nil;
+			};
+
+			body_json := JsonParser->TextToElement(body);
+			if(body_json = Nil) {
+				SetLastError("Unable to parse response");
+				return Nil;
+			};
+
+			# every one of these endpoints answers with an object; the JSON reader
+			# accepts some bare words (a proxy's plain-text error page) as a value
+			if(body_json->GetType() <> JsonElement->JsonType->OBJECT) {
+				SetLastError("Unexpected response: " + body->SubString(body->Size() < 64 ? body->Size() : 64));
+				return Nil;
+			};
+
+			error_json := body_json->Get("error");
+			if(error_json <> Nil & <>error_json->IsNull()) {
+				message_json := error_json->Get("message");
+				if(message_json <> Nil) {
+					SetLastError(JsonElement->Decode(message_json->GetString()));
+				}
+				else if(error_json->GetType() = JsonElement->JsonType->STRING) {
+					SetLastError(JsonElement->Decode(error_json->GetString()));
+				}
+				else {
+					SetLastError(error_json->ToString());
+				};
+				return Nil;
+			};
+
+			return body_json;
 		}
 
 		#~
