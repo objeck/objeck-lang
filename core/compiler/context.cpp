@@ -6239,7 +6239,15 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     const bool same_cls_return = ClassEquals(lib_method->GetReturn()->GetName(), nullptr, lib_klass);
     if((is_new || same_cls_return) && lib_klass->HasGenerics()) {
       const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
-      const std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
+      // A call on the previous call's result -- 'source->AddString(..)->AddInt(..)'
+      // -- has no entry or variable of its own. Its eval type is the raw return
+      // that SetLibraryMethod put there, 'ObjectSource<T>', so its arguments were
+      // the class's own parameter, and 'T' was checked as a concrete class:
+      // "Undefined class or interface: 'T'". The previous call handed over the
+      // receiver's arguments, as ResolveGenericType already reads them.
+      const std::vector<Type*> concrete_types = !is_new && method_call->GetConcreteTypes().empty() && !method_call->GetEntry() &&
+        !method_call->GetVariable() && !method_call->GetReceiverGenerics().empty() ?
+        method_call->GetReceiverGenerics() : GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + lib_klass->GetName() +
                      L"': expected " + ToString(class_generics.size()) +

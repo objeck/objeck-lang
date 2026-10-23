@@ -1041,6 +1041,28 @@ jobs:
         if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
         python check_lib_generic_methods.py "%BIN%"
 
+    # A chain of calls on a library generic class ('source->AddString(..)->
+    # AddInt(..)', each returning ObjectSource<T>) keeps the receiver's type
+    # arguments; the second call was checked against the raw 'T'. Only a
+    # library build shows it, so this builds one.
+    - name: a library generic class's call chain keeps its type arguments (POSIX)
+      if: runner.os != 'Windows'
+      working-directory: ./programs/regression
+      run: |
+        ARCH="${{ matrix.arch }}"
+        BIN="../../core/release/deploy-$ARCH/bin"
+        if [ ! -d "$BIN" ]; then BIN="../../core/release/deploy/bin"; fi
+        python3 check_lib_generic_chain.py "$BIN"
+
+    - name: a library generic class's call chain keeps its type arguments (Windows)
+      if: runner.os == 'Windows'
+      working-directory: ./programs/regression
+      shell: cmd
+      run: |
+        set BIN=..\..\core\release\deploy-${{ matrix.arch }}\bin
+        if not exist "%BIN%" set BIN=..\..\core\release\deploy\bin
+        python check_lib_generic_chain.py "%BIN%"
+
     # `Vector[]<T>` as a parameter built fine inside a library and resolved for
     # callers inside it, but a program that linked the library was told the method
     # did not exist: the signature came back out of the .obl with its array
