@@ -58,6 +58,29 @@ It is also only a single table: no joins, no `GROUP BY`, no `LIMIT`, no descendi
 - **Concurrency.** A table is not thread-safe; callers lock (`critical`) if they share one. Read-only
   sharing of a table nobody mutates is safe.
 
+## Decision: a pure-Objeck engine, not one backed by SQLite
+
+Running SQLite underneath the `Query.Structured` front end was considered and rejected
+(2026-10-23). It would have brought joins, grouping, B-tree indexes, transactions, persistence and
+full SQL at once, and removed most of the phases below. It was not chosen, for four reasons:
+
+- **The use case is in-memory analytics that feeds `System.ML`.** That is scans, filters and
+  aggregates over loaded data. Typed column arrays do this faster than SQLite's row storage, and
+  `ToMatrix` over a `FloatColumn` is nearly free, whereas every SQLite value crosses the native
+  boundary twice: once loading the data in, once reading the result back.
+- **No native dependency.** The engine runs wherever Objeck runs, with nothing to compile or
+  ship for five platforms, and it is Objeck code the language server, debugger and JIT all see.
+- **Sources stay natural.** SQLite's virtual-table interface, its fit for "sources", works by
+  calling back from C into the program, which the native interface cannot do, so every source
+  would have had to load into a SQLite table first.
+- **The cost of building an engine is contained.** The differential test against a simple
+  reference evaluator, the per-source tests and the performance gate catch the classic
+  query-engine bugs. The SQL subset, and the absence of persistence, transactions and
+  concurrency, keep the surface small.
+
+SQLite remains the right tool for data that must persist, or that outgrows memory, as a separate
+`API.SQLite` binding (see "Not goals"). It can later be attached as a source like any other.
+
 ## Design
 
 ### 1. Storage: one typed column per field
