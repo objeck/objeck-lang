@@ -10032,9 +10032,17 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
   }
 
   to = (size_t*)to[0];
-  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
-
   from = (size_t*)from[0];
+
+#ifdef _WIN32
+  // The CRT's rename() refuses an existing target on Windows, so a save could not
+  // replace its file the way POSIX rename() does. MoveFileExW replaces it, atomically
+  // on one volume, and takes the names as UTF-16 rather than narrowed to bytes.
+  const BOOL renamed = MoveFileExW((const wchar_t*)(from + 3), (const wchar_t*)(to + 3),
+                                   MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH);
+  PushInt(renamed ? 1 : 0, op_stack, stack_pos);
+#else
+  const std::string to_name = UnicodeToBytes((wchar_t*)(to + 3));
   const std::string from_name = UnicodeToBytes((wchar_t*)(from + 3));
 
   if(rename(from_name.c_str(), to_name.c_str()) != 0) {
@@ -10043,6 +10051,7 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
   else {
     PushInt(1, op_stack, stack_pos);
   }
+#endif
 
   return true;
 }

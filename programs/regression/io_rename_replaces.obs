@@ -1,0 +1,46 @@
+#~
+File->Rename replaces an existing target on every platform, as POSIX rename() does. On Windows
+the VM used the CRT's rename(), which refuses an existing target, so a program could not write a
+new version of a file beside it and rename it into place: the save failed and left both files.
+~#
+use System.IO.Filesystem;
+
+class IoRenameReplaces {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		target := "io_rename_target.tmp";
+		fresh := "io_rename_fresh.tmp";
+		FileWriter->WriteFile(target, "old version");
+		FileWriter->WriteFile(fresh, "new version");
+
+		Check("rename onto an existing file succeeds", File->Rename(fresh, target));
+		Check("the target holds the new content", FileReader->ReadFile(target)->Equals("new version"));
+		Check("the source is gone", <>File->Exists(fresh));
+
+		Check("rename to a new name succeeds", File->Rename(target, fresh));
+		Check("the old name is gone", <>File->Exists(target) & FileReader->ReadFile(fresh)->Equals("new version"));
+
+		Check("renaming a missing file fails", <>File->Rename("io_rename_missing.tmp", target));
+
+		File->Delete(fresh);
+		File->Delete(target);
+
+		if(@failures = 0) {
+			"PASS: File->Rename replaces"->PrintLine();
+		}
+		else {
+			"FAIL: File->Rename replaces ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
