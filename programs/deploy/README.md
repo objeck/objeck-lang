@@ -27,7 +27,7 @@ install): two of them read files from `data/`, which ships alongside.
 | [`http_regex_9.obs`](http_regex_9.obs) | `-lib net,json,regex,cipher` | pull fields out of a fetched page |
 | [`calc_life_10.obs`](calc_life_10.obs) | none | a genetic algorithm evolving toward a target |
 | [`odbc_select_11.obs`](odbc_select_11.obs) | `-lib odbc` | query a database through ODBC |
-| [`fs_query_12.obs`](fs_query_12.obs) | `-lib query,regex,misc,net,json,csv,cipher` | structured queries over the filesystem |
+| [`fs_query_12.obs`](fs_query_12.obs) | `-lib query,regex,misc,net,json,csv,xml,cipher` | structured queries over the filesystem |
 | [`2d_game_13.obs`](2d_game_13.obs) | `-lib gen_collect,sdl2,sdl_game,json` | a side-scrolling platformer drawn with SDL2 |
 | [`serial_14.obs`](serial_14.obs) | `-lib gen_collect` | write objects to a file and read them back |
 | [`rss_https_xml_15.obs`](rss_https_xml_15.obs) | `-lib net,rss,gen_collect,xml,cipher` | fetch and parse an RSS feed |
