@@ -51,9 +51,11 @@ is dropped, as before. Case is preserved, as before.
 A sentence ends at a run of `.`, `!` or `?` (so `...` and `?!` are one boundary), optionally
 followed by closing quotes or brackets, then whitespace or the end of the text. A `.` does
 not end a sentence when the word before it is a known abbreviation (`Mr`, `Mrs`, `Ms`, `Dr`,
-`Prof`, `Sr`, `Jr`, `St`, `vs`, `etc`, `e.g`, `i.e`, `U.S`, `Inc`, `Ltd`, `Co`, `No`, `Fig`,
-`approx`, `Jan` … `Dec`) or a single capital letter (an initial, `J. R. R. Tolkien`). A `.` with
-no whitespace after it (`3.50`, `U.S.A`) never ends one.
+`Prof`, `Sr`, `Jr`, `St`, `vs`, `etc`, `e.g`, `i.e`, `U.S`, `U.K`, `Inc`, `Ltd`, `Co`, `Corp`,
+`Fig`, `approx`, `Dept`, `est`, `Jan` … `Dec` without `May`) or a single capital letter other
+than `I` (an initial, `J. R. R. Tolkien`). `No` is left out because "the answer is no." ends a
+sentence far more often than "No. 5" continues one. A `.` with no whitespace after it
+(`3.50`, `U.S.A`) never ends one, and `…` (U+2026) counts as a terminator.
 
 This is a rule-based splitter, the same family as the Punkt defaults with a fixed list. It
 does not split after an abbreviation that really does end a sentence (`… in the U.S. Then …`
