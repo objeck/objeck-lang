@@ -337,7 +337,7 @@ These are the `arm64_*` tests. Beyond them, the whole suite runs natively on the
 2. Name format: `category_feature.obs`
 3. Include PASS/FAIL output, and exit non-zero on failure (`Runtime->Exit(1)`): the runners go by the exit code, so a test that only prints FAIL is scored a pass
 4. Test locally
-5. Regenerate TESTS.md: `python gen_manifest.py` in `programs/regression/`
+5. Leave TESTS.md alone: a workflow regenerates it on master after the merge
 
 The directives a test can carry (`# EXTRA_LIBS:`, `# EXPECT_COMPILE_ERROR:`, `# JIT_DISABLE` and others) are listed in [regression/README.md](regression/README.md).
 

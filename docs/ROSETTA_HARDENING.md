@@ -243,8 +243,8 @@ keeping it out of the documentation are the same edit.
 
 Tests go in `programs/regression/` as **self-asserting** programs -- exit
 non-zero on failure, per `tools/cicd/check_test_exit_codes.py`, which rejects a
-test that prints `FAIL` and then returns normally -- and `TESTS.md` is
-regenerated with `python gen_manifest.py`.
+test that prints `FAIL` and then returns normally. `TESTS.md` is regenerated on
+master after the merge; a pull request does not commit it.
 
 Assert **values**, not survival. A test that only checks a program did not crash
 passes against one that computes a plausible wrong answer, and for anything
