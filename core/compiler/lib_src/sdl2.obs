@@ -771,7 +771,8 @@ bundle Game.SDL2 {
 		SDL_BLENDMODE_NONE := 0x00000000,
 		SDL_BLENDMODE_BLEND := 0x00000001,
 		SDL_BLENDMODE_ADD := 0x00000002,
-		SDL_BLENDMODE_MOD := 0x00000004 
+		SDL_BLENDMODE_MOD := 0x00000004,
+		SDL_BLENDMODE_MUL := 0x00000008
 	}
 
 	#~
@@ -7356,6 +7357,16 @@ bundle Game.SDL2 {
 		@fn_sdl_renderer_string_color : static : String;
 		@fn_sdl_renderer_thick_line_color : static : String;
 		@fn_sdl_renderer_trigon_color : static : String;
+		@fn_sdl_renderer_set_draw_blend_mode : static : String;
+		@fn_sdl_renderer_get_draw_blend_mode : static : String;
+		@fn_sdl_renderer_render_draw_points : static : String;
+		@fn_sdl_renderer_render_draw_lines : static : String;
+		@fn_sdl_renderer_render_draw_rects : static : String;
+		@fn_sdl_renderer_render_fill_rects : static : String;
+		@fn_sdl_renderer_render_draw_point_f : static : String;
+		@fn_sdl_renderer_render_draw_line_f : static : String;
+		@fn_sdl_renderer_render_draw_rect_f : static : String;
+		@fn_sdl_renderer_render_fill_rect_f : static : String;
 		@renderer : Int;
 		# Pooled boxing buffer for the hot color-draw primitives. The native call ABI
 		# wants a Base[] of IntRef holders, so naively every draw call allocated a
@@ -7756,6 +7767,194 @@ bundle Game.SDL2 {
 			};
 
 			return -1;
+		}
+
+		#~
+		Set the blend mode used for drawing operations (Fill and Line). BlendMode->SDL_BLENDMODE_BLEND
+		makes the alpha of SetDrawColor take effect.
+		@param blendMode the BlendMode to use for blending
+		@return 0 on success or a negative error code on failure
+		```
+		renderer->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_BLEND);
+		renderer->SetDrawColor(255, 0, 0, 128);
+		renderer->FillRect(Rect->New(10, 10, 100, 100));
+		```
+		~#
+		method : public : SetDrawBlendMode(blendMode : BlendMode) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := IntRef->New(blendMode->As(Int));
+
+				if(@fn_sdl_renderer_set_draw_blend_mode = Nil) { @fn_sdl_renderer_set_draw_blend_mode := "sdl_renderer_set_draw_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_set_draw_blend_mode, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Get the blend mode used for drawing operations
+		@param blendMode holder filled in with the current BlendMode
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : GetDrawBlendMode(blendMode : IntRef) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := blendMode;
+
+				if(@fn_sdl_renderer_get_draw_blend_mode = Nil) { @fn_sdl_renderer_get_draw_blend_mode := "sdl_renderer_get_draw_blend_mode"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_renderer_get_draw_blend_mode, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		# Calls a batch drawing native with one flat coordinate array
+		method : DrawBatch(name : String, values : Int[]) ~ Int {
+			if(@renderer <> 0 & values <> Nil) {
+				array_args := Base->New[3];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := IntArrayRef->New(values);
+
+				Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Draw many points in one call
+		@param points flat array of x,y pairs: x0, y0, x1, y1, ...
+		@return 0 on success, or a negative value on failure or when the array is empty or holds an odd count
+		```
+		renderer->DrawPoints([10, 10, 20, 20, 30, 30]);
+		```
+		~#
+		method : public : DrawPoints(points : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_draw_points = Nil) { @fn_sdl_renderer_render_draw_points := "sdl_renderer_render_draw_points"; };
+			return DrawBatch(@fn_sdl_renderer_render_draw_points, points);
+		}
+
+		#~
+		Draw a connected series of line segments, a polyline, in one call
+		@param points flat array of x,y pairs: x0, y0, x1, y1, ...; each point joins the next
+		@return 0 on success, or a negative value on failure or when the array is empty or holds an odd count
+		```
+		renderer->DrawLines([0, 100, 50, 20, 100, 60, 150, 10]);
+		```
+		~#
+		method : public : DrawLines(points : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_draw_lines = Nil) { @fn_sdl_renderer_render_draw_lines := "sdl_renderer_render_draw_lines"; };
+			return DrawBatch(@fn_sdl_renderer_render_draw_lines, points);
+		}
+
+		#~
+		Draw the outlines of many rectangles in one call
+		@param rects flat array of x,y,w,h quadruples
+		@return 0 on success, or a negative value on failure or when the array is empty or not a multiple of 4
+		~#
+		method : public : DrawRects(rects : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_draw_rects = Nil) { @fn_sdl_renderer_render_draw_rects := "sdl_renderer_render_draw_rects"; };
+			return DrawBatch(@fn_sdl_renderer_render_draw_rects, rects);
+		}
+
+		#~
+		Fill many rectangles in one call, such as the bars of a chart
+		@param rects flat array of x,y,w,h quadruples
+		@return 0 on success, or a negative value on failure or when the array is empty or not a multiple of 4
+		```
+		renderer->FillRects([10, 50, 20, 100, 40, 80, 20, 70]);
+		```
+		~#
+		method : public : FillRects(rects : Int[]) ~ Int {
+			if(@fn_sdl_renderer_render_fill_rects = Nil) { @fn_sdl_renderer_render_fill_rects := "sdl_renderer_render_fill_rects"; };
+			return DrawBatch(@fn_sdl_renderer_render_fill_rects, rects);
+		}
+
+		# Calls a float drawing native with up to four coordinates
+		method : DrawFloats(name : String, count : Int, a : Float, b : Float, c : Float, d : Float) ~ Int {
+			if(@renderer <> 0) {
+				array_args := Base->New[count + 2];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@renderer);
+				array_args[2] := FloatRef->New(a);
+				array_args[3] := FloatRef->New(b);
+				if(count > 2) {
+					array_args[4] := FloatRef->New(c);
+					array_args[5] := FloatRef->New(d);
+				};
+
+				Proxy->GetDllProxy()->CallFunction(name, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
+		}
+
+		#~
+		Draw a point at sub-pixel precision
+		@param x the x coordinate of the point
+		@param y the y coordinate of the point
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : DrawPointF(x : Float, y : Float) ~ Int {
+			if(@fn_sdl_renderer_render_draw_point_f = Nil) { @fn_sdl_renderer_render_draw_point_f := "sdl_renderer_render_draw_point_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_draw_point_f, 2, x, y, 0.0, 0.0);
+		}
+
+		#~
+		Draw a line at sub-pixel precision
+		@param x1 the x coordinate of the start point
+		@param y1 the y coordinate of the start point
+		@param x2 the x coordinate of the end point
+		@param y2 the y coordinate of the end point
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : DrawLineF(x1 : Float, y1 : Float, x2 : Float, y2 : Float) ~ Int {
+			if(@fn_sdl_renderer_render_draw_line_f = Nil) { @fn_sdl_renderer_render_draw_line_f := "sdl_renderer_render_draw_line_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_draw_line_f, 4, x1, y1, x2, y2);
+		}
+
+		#~
+		Draw a rectangle outline at sub-pixel precision
+		@param x the x coordinate of the top left corner
+		@param y the y coordinate of the top left corner
+		@param w the width
+		@param h the height
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : DrawRectF(x : Float, y : Float, w : Float, h : Float) ~ Int {
+			if(@fn_sdl_renderer_render_draw_rect_f = Nil) { @fn_sdl_renderer_render_draw_rect_f := "sdl_renderer_render_draw_rect_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_draw_rect_f, 4, x, y, w, h);
+		}
+
+		#~
+		Fill a rectangle at sub-pixel precision
+		@param x the x coordinate of the top left corner
+		@param y the y coordinate of the top left corner
+		@param w the width
+		@param h the height
+		@return 0 on success or a negative error code on failure
+		~#
+		method : public : FillRectF(x : Float, y : Float, w : Float, h : Float) ~ Int {
+			if(@fn_sdl_renderer_render_fill_rect_f = Nil) { @fn_sdl_renderer_render_fill_rect_f := "sdl_renderer_render_fill_rect_f"; };
+			return DrawFloats(@fn_sdl_renderer_render_fill_rect_f, 4, x, y, w, h);
 		}
 
 		#~
@@ -8785,6 +8984,7 @@ bundle Game.SDL2 {
 		@fn_sdl_texture_set_blend_mode : static : String;
 		@fn_sdl_texture_set_color_mod : static : String;
 		@fn_sdl_texture_unlock : static : String;
+		@fn_sdl_texture_update : static : String;
 		@texture : Int;
 
 		New(texture : Int) {
@@ -8895,6 +9095,39 @@ bundle Game.SDL2 {
 				if(@fn_sdl_texture_unlock = Nil) { @fn_sdl_texture_unlock := "sdl_texture_unlock"; };
 				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_unlock, array_args);
 			};
+		}
+
+		#~
+		Replace the texture's pixels, or those in a rectangle, from bytes laid out in the
+		texture's own pixel format. Simpler than Lock/Unlock for an image computed in Objeck.
+		@param rect the area to update, or Nil for the whole texture
+		@param pixels the pixel bytes, at least pitch times the number of rows
+		@param pitch the number of bytes in a row of pixel data, including padding
+		@return 0 on success, or a negative value on failure or when pixels is too short
+		```
+		texture := renderer->CreateTexture(PixelValue->SDL_PIXELFORMAT_ABGR8888, TextureAccess->SDL_TEXTUREACCESS_STATIC, 2, 2);
+		pixels := Byte->New[16];
+		pixels[0] := 255; pixels[3] := 255; # first pixel opaque red
+		texture->Update(Nil, pixels, 8);
+		```
+		~#
+		method : public : Update(rect : Rect, pixels : Byte[], pitch : Int) ~ Int {
+			if(@texture <> 0 & pixels <> Nil) {
+				array_args := Base->New[5];
+				array_args[0] := IntRef->New();
+				array_args[1] := IntRef->New(@texture);
+				array_args[2] := rect;
+				array_args[3] := ByteArrayRef->New(pixels);
+				array_args[4] := IntRef->New(pitch);
+
+				if(@fn_sdl_texture_update = Nil) { @fn_sdl_texture_update := "sdl_texture_update"; };
+				Proxy->GetDllProxy()->CallFunction(@fn_sdl_texture_update, array_args);
+
+				value := array_args[0]->As(IntRef);
+				return value->Get();
+			};
+
+			return -1;
 		}
 
 		#~

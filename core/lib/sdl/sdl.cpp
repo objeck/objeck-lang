@@ -2617,8 +2617,187 @@ extern "C" {
     APITools_SetIntValue(context, 3, g);
     APITools_SetIntValue(context, 4, b);
     APITools_SetIntValue(context, 5, a);
-    
+
     APITools_SetIntValue(context, 0, return_value);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_set_draw_blend_mode(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const SDL_BlendMode blend_mode = (SDL_BlendMode)APITools_GetIntValue(context, 2);
+    APITools_SetIntValue(context, 0, SDL_SetRenderDrawBlendMode(renderer, blend_mode));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_get_draw_blend_mode(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+
+    SDL_BlendMode blend_mode = SDL_BLENDMODE_NONE;
+    const int return_value = SDL_GetRenderDrawBlendMode(renderer, &blend_mode);
+    APITools_SetIntValue(context, 2, blend_mode);
+
+    APITools_SetIntValue(context, 0, return_value);
+  }
+
+  //
+  // Batch drawing. The coordinates cross as one flat Int[] held by an
+  // IntArrayRef: x,y pairs for points and lines, x,y,w,h quadruples for rects.
+  // An array that is Nil, empty or not a whole number of tuples is an error
+  // (-1) rather than a partial draw.
+  //
+  static size_t* sdl_array_from_holder(size_t* holder, size_t& count) {
+    count = 0;
+    if(!holder || !holder[0]) {
+      return nullptr;
+    }
+    size_t* array = (size_t*)holder[0];
+    count = array[0];
+    return array + ARRAY_HEADER_OFFSET;
+  }
+
+  static bool sdl_points_from_holder(size_t* holder, std::vector<SDL_Point>& points) {
+    size_t count;
+    const size_t* values = sdl_array_from_holder(holder, count);
+    if(!values || count == 0 || count % 2 != 0) {
+      return false;
+    }
+
+    points.resize(count / 2);
+    for(size_t i = 0; i < points.size(); ++i) {
+      points[i].x = (int)(long long)values[i * 2];
+      points[i].y = (int)(long long)values[i * 2 + 1];
+    }
+
+    return true;
+  }
+
+  static bool sdl_rects_from_holder(size_t* holder, std::vector<SDL_Rect>& rects) {
+    size_t count;
+    const size_t* values = sdl_array_from_holder(holder, count);
+    if(!values || count == 0 || count % 4 != 0) {
+      return false;
+    }
+
+    rects.resize(count / 4);
+    for(size_t i = 0; i < rects.size(); ++i) {
+      rects[i].x = (int)(long long)values[i * 4];
+      rects[i].y = (int)(long long)values[i * 4 + 1];
+      rects[i].w = (int)(long long)values[i * 4 + 2];
+      rects[i].h = (int)(long long)values[i * 4 + 3];
+    }
+
+    return true;
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_points(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Point> points;
+    if(sdl_points_from_holder(APITools_GetObjectValue(context, 2), points)) {
+      APITools_SetIntValue(context, 0, SDL_RenderDrawPoints(renderer, points.data(), (int)points.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_lines(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Point> points;
+    if(sdl_points_from_holder(APITools_GetObjectValue(context, 2), points)) {
+      APITools_SetIntValue(context, 0, SDL_RenderDrawLines(renderer, points.data(), (int)points.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_rects(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Rect> rects;
+    if(sdl_rects_from_holder(APITools_GetObjectValue(context, 2), rects)) {
+      APITools_SetIntValue(context, 0, SDL_RenderDrawRects(renderer, rects.data(), (int)rects.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_fill_rects(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    std::vector<SDL_Rect> rects;
+    if(sdl_rects_from_holder(APITools_GetObjectValue(context, 2), rects)) {
+      APITools_SetIntValue(context, 0, SDL_RenderFillRects(renderer, rects.data(), (int)rects.size()));
+    }
+    else {
+      APITools_SetIntValue(context, 0, -1);
+    }
+  }
+
+  //
+  // Floating point (sub-pixel) variants
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_point_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const float x = (float)APITools_GetFloatValue(context, 2);
+    const float y = (float)APITools_GetFloatValue(context, 3);
+    APITools_SetIntValue(context, 0, SDL_RenderDrawPointF(renderer, x, y));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_line_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    const float x1 = (float)APITools_GetFloatValue(context, 2);
+    const float y1 = (float)APITools_GetFloatValue(context, 3);
+    const float x2 = (float)APITools_GetFloatValue(context, 4);
+    const float y2 = (float)APITools_GetFloatValue(context, 5);
+    APITools_SetIntValue(context, 0, SDL_RenderDrawLineF(renderer, x1, y1, x2, y2));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_draw_rect_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    SDL_FRect rect;
+    rect.x = (float)APITools_GetFloatValue(context, 2);
+    rect.y = (float)APITools_GetFloatValue(context, 3);
+    rect.w = (float)APITools_GetFloatValue(context, 4);
+    rect.h = (float)APITools_GetFloatValue(context, 5);
+    APITools_SetIntValue(context, 0, SDL_RenderDrawRectF(renderer, &rect));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_renderer_render_fill_rect_f(VMContext& context) {
+    SDL_Renderer* renderer = (SDL_Renderer*)APITools_GetIntValue(context, 1);
+    SDL_FRect rect;
+    rect.x = (float)APITools_GetFloatValue(context, 2);
+    rect.y = (float)APITools_GetFloatValue(context, 3);
+    rect.w = (float)APITools_GetFloatValue(context, 4);
+    rect.h = (float)APITools_GetFloatValue(context, 5);
+    APITools_SetIntValue(context, 0, SDL_RenderFillRectF(renderer, &rect));
   }
 
   //
@@ -2754,6 +2933,42 @@ extern "C" {
       pixel_obj[2] = (size_t)height;
       APITools_SetObjectValue(context, 0, pixel_obj);
     }
+  }
+
+  //
+  // Replaces a texture's pixels (all of it, or the rect) from a Byte[] laid out in
+  // the texture's own format, pitch bytes per row. The array must hold at least
+  // pitch * rows bytes, or nothing is read and the call fails with -1.
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_texture_update(VMContext& context) {
+    SDL_Texture* texture = (SDL_Texture*)APITools_GetIntValue(context, 1);
+
+    size_t* rect_obj = APITools_GetObjectValue(context, 2);
+    SDL_Rect rect;
+    sdl_rect_raw_write(&rect, rect_obj);
+
+    const size_t* bytes_holder = APITools_GetObjectValue(context, 3);
+    size_t* byte_array = bytes_holder ? (size_t*)bytes_holder[0] : nullptr;
+    const int pitch = (int)APITools_GetIntValue(context, 4);
+
+    int width = 0, height = 0;
+    if(!texture || !byte_array || pitch <= 0 || SDL_QueryTexture(texture, nullptr, nullptr, &width, &height) != 0) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const int rows = rect_obj ? rect.h : height;
+    const size_t byte_count = APITools_GetArraySize(byte_array);
+    if(rows <= 0 || byte_count < (size_t)pitch * (size_t)rows) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const void* pixels = (const void*)APITools_GetArray(byte_array);
+    APITools_SetIntValue(context, 0, SDL_UpdateTexture(texture, rect_obj ? &rect : nullptr, pixels, pitch));
   }
 
 #ifdef _WIN32
