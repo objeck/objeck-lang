@@ -324,6 +324,10 @@ namespace instructions {
     FLOAT_TO_STR_SHORT,
     // Deserializer->ReadBoolArray(): a Bool[] is a byte array; also reads
     // the Int[] encoding Write(Bool[]) used to produce
-    DESERL_BOOL_ARY
+    DESERL_BOOL_ARY,
+    // Int/Float->ToBytes and Byte->ToInts/ToFloats: raw little-endian
+    // conversion between numeric arrays and bytes
+    ARY_TO_BYTES,
+    BYTES_TO_ARY
   };
 }

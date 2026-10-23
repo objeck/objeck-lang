@@ -156,6 +156,7 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #include <filesystem>
 #include <charconv>
 #include <version>
+#include <bit>
 
 // floating-point std::to_chars (shortest round trip): MSVC 19.24+, libstdc++
 // 11+. libc++ has it from 14 but announces the macro only much later, so
@@ -2736,6 +2737,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case DESERL_BOOL_ARY:
     return DeserlBoolAry(program, inst, op_stack, stack_pos, frame);
+
+  case ARY_TO_BYTES:
+    return AryToBytes(program, inst, op_stack, stack_pos, frame);
+
+  case BYTES_TO_ARY:
+    return BytesToAry(program, inst, op_stack, stack_pos, frame);
 
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
@@ -7125,6 +7132,96 @@ bool TrapProcessor::AryFillFloat(StackProgram* program, size_t* inst, size_t*& o
   FLOAT_VALUE* start = (FLOAT_VALUE*)(array + 3) + offset;
   std::fill(start, start + count, value);
 
+  return true;
+}
+
+// Int/Float->ToBytes and Byte->ToInts/ToFloats copy element bytes as they lie
+// in memory and document them as little-endian. Every supported target (x64,
+// arm64; Windows, Linux, macOS) is; a big-endian port must byte-swap here.
+static_assert(std::endian::native == std::endian::little, "ARY_TO_BYTES/BYTES_TO_ARY assume a little-endian host");
+
+// function : ToBytesNative(values : Int[]/Float[], offset : Int, count : Int, kind : Int) ~ Byte[]
+// 'offset' and 'count' are in elements; the bytes are count * 8, little-endian
+bool TrapProcessor::AryToBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* values = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!values) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+  if(kind != ARY_KIND_INT && kind != ARY_KIND_FLOAT) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array conversion");
+  }
+
+  const INT64_VALUE size = (INT64_VALUE)values[0];
+  if(!AryRangeValid(offset, count, size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"ToBytes", offset, count, size));
+  }
+
+  const size_t width = AryKindWidth(kind);
+  const size_t byte_count = (size_t)count * width;
+  size_t* bytes = MemoryManager::AllocateArray(byte_count + 1 + ((1 + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  bytes[0] = byte_count;
+  bytes[1] = 1;
+  bytes[2] = byte_count;
+  if(byte_count) {
+    memcpy(bytes + 3, (const char*)(values + 3) + (size_t)offset * width, byte_count);
+  }
+
+  PushInt((size_t)bytes, op_stack, stack_pos);
+  return true;
+}
+
+// function : IntsNative/FloatsNative(bytes : Byte[], offset : Int, count : Int, kind : Int) ~ Int[]/Float[]
+// 'offset' is in bytes and 'count' in elements; a count of -1 takes every
+// byte from 'offset' on, which must then be a whole number of elements
+bool TrapProcessor::BytesToAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* bytes = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!bytes) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+  if(kind != ARY_KIND_INT && kind != ARY_KIND_FLOAT) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array conversion");
+  }
+
+  const INT64_VALUE width = (INT64_VALUE)AryKindWidth(kind);
+  const INT64_VALUE size = (INT64_VALUE)bytes[0];
+  if(offset < 0 || offset > size) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"byte", offset, count, size));
+  }
+  if(count == -1) {
+    if((size - offset) % width) {
+      std::wstringstream message;
+      message << L"Byte count " << (size - offset) << L" is not a whole number of " << width << L"-byte values";
+      return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, message.str());
+    }
+    count = (size - offset) / width;
+  }
+  if(count < 0 || count > (size - offset) / width) {
+    std::wstringstream message;
+    message << L"Index out of bounds: " << count << L" values of " << width << L" bytes from byte offset " << offset
+            << L" do not fit an array of " << size << L" bytes";
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, message.str());
+  }
+
+  size_t* values = MemoryManager::AllocateArray((size_t)count + 1 + 2, kind == ARY_KIND_INT ? INT_TYPE : FLOAT_TYPE,
+                                                op_stack, *stack_pos, false);
+  values[0] = (size_t)count;
+  values[1] = 1;
+  values[2] = (size_t)count;
+  if(count) {
+    memcpy(values + 3, (const char*)(bytes + 3) + offset, (size_t)(count * width));
+  }
+
+  PushInt((size_t)values, op_stack, stack_pos);
   return true;
 }
 

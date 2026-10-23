@@ -521,6 +521,70 @@ bundle System {
 		function : private : FillNative(array : Byte[], value : Byte, offset : Int, count : Int, kind : Int) ~ Nil {
 			ARY_FILL_INT;
 		}
+
+		#~
+		Reads integers from raw bytes, 8 per value, little-endian (Int->ToBytes
+		writes them). Raises a RuntimeError, which a try/on or ?-> region can
+		recover from, when the size is not a multiple of 8.
+		@param bytes bytes
+		@return bytes->Size() / 8 values
+		~#
+		function : ToInts(bytes : Byte[]) ~ Int[] {
+			return IntsNative(bytes, 0, -1, 3);
+		}
+
+		#~
+		Reads integers from raw bytes, 8 per value, little-endian, starting at a
+		byte offset. Raises an IndexError, which a try/on or ?-> region can
+		recover from, when count * 8 bytes from the offset do not fit.
+		@param bytes bytes
+		@param offset first byte's index
+		@param count number of values
+		@return count values
+		~#
+		function : ToInts(bytes : Byte[], offset : Int, count : Int) ~ Int[] {
+			if(count < 0) {
+				# -1 means 'to the end' to the native call
+				return IntsNative(bytes, offset, Int->MinSize(), 3);
+			};
+			return IntsNative(bytes, offset, count, 3);
+		}
+
+		function : private : IntsNative(bytes : Byte[], offset : Int, count : Int, kind : Int) ~ Int[] {
+			BYTES_TO_ARY;
+		}
+
+		#~
+		Reads floats from raw bytes, 8 per value, little-endian (Float->ToBytes
+		writes them). Raises a RuntimeError, which a try/on or ?-> region can
+		recover from, when the size is not a multiple of 8.
+		@param bytes bytes
+		@return bytes->Size() / 8 values
+		~#
+		function : ToFloats(bytes : Byte[]) ~ Float[] {
+			return FloatsNative(bytes, 0, -1, 4);
+		}
+
+		#~
+		Reads floats from raw bytes, 8 per value, little-endian, starting at a
+		byte offset. Raises an IndexError, which a try/on or ?-> region can
+		recover from, when count * 8 bytes from the offset do not fit.
+		@param bytes bytes
+		@param offset first byte's index
+		@param count number of values
+		@return count values
+		~#
+		function : ToFloats(bytes : Byte[], offset : Int, count : Int) ~ Float[] {
+			if(count < 0) {
+				# -1 means 'to the end' to the native call
+				return FloatsNative(bytes, offset, Int->MinSize(), 4);
+			};
+			return FloatsNative(bytes, offset, count, 4);
+		}
+
+		function : private : FloatsNative(bytes : Byte[], offset : Int, count : Int, kind : Int) ~ Float[] {
+			BYTES_TO_ARY;
+		}
 		
 		#~
 		Converts the byte array to a character array
@@ -1834,6 +1898,36 @@ bundle System {
 			ARY_FILL_INT;
 		}
 
+		#~
+		Returns the raw bytes of an array's values: 8 per value, little-endian, as
+		they lie in memory. Byte->ToInts reads them back.
+		@param values values
+		@return values->Size() * 8 bytes
+		~#
+		function : ToBytes(values : Int[]) ~ Byte[] {
+			return ToBytesNative(values, 0, values->Size(), 3);
+		}
+
+		#~
+		Returns the raw bytes of a range of an array's values: 8 per value,
+		little-endian. Raises an IndexError, which a try/on or ?-> region can
+		recover from, when the range does not fit the array.
+		@param values values
+		@param offset first value's index
+		@param count number of values
+		@return count * 8 bytes
+		```
+		bytes := Int->ToBytes([1, 2, 3], 1, 2);  # 16 bytes
+		```
+		~#
+		function : ToBytes(values : Int[], offset : Int, count : Int) ~ Byte[] {
+			return ToBytesNative(values, offset, count, 3);
+		}
+
+		function : private : ToBytesNative(values : Int[], offset : Int, count : Int, kind : Int) ~ Byte[] {
+			ARY_TO_BYTES;
+		}
+
 		function : Size(i : Int[,]) ~ Int[] {
 			LOAD_MULTI_ARY_SIZE;
 		}
@@ -2894,6 +2988,36 @@ bundle System {
 
 		function : private : FillNative(array : Float[], value : Float, offset : Int, count : Int) ~ Nil {
 			ARY_FILL_FLOAT;
+		}
+
+		#~
+		Returns the raw bytes of an array's values: 8 per value, little-endian, as
+		they lie in memory. Byte->ToFloats reads them back.
+		@param values values
+		@return values->Size() * 8 bytes
+		~#
+		function : ToBytes(values : Float[]) ~ Byte[] {
+			return ToBytesNative(values, 0, values->Size(), 4);
+		}
+
+		#~
+		Returns the raw bytes of a range of an array's values: 8 per value,
+		little-endian. Raises an IndexError, which a try/on or ?-> region can
+		recover from, when the range does not fit the array.
+		@param values values
+		@param offset first value's index
+		@param count number of values
+		@return count * 8 bytes
+		```
+		bytes := Float->ToBytes([1.5, 2.5, 3.5], 1, 2);  # 16 bytes
+		```
+		~#
+		function : ToBytes(values : Float[], offset : Int, count : Int) ~ Byte[] {
+			return ToBytesNative(values, offset, count, 4);
+		}
+
+		function : private : ToBytesNative(values : Float[], offset : Int, count : Int, kind : Int) ~ Byte[] {
+			ARY_TO_BYTES;
 		}
 
 		function : Size(f : Float[,]) ~ Int[] {
