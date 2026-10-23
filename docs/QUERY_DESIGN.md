@@ -700,9 +700,44 @@ design above. Each phase adds its notes here.
 - JSON Lines arrays are kept as their JSON text until phase 4 makes them child tables.
 - `.gz` files are decompressed whole before reading, through `lang`'s gzip.
 
+**Phase 4.**
+- The SQL front end is a new recursive-descent parser. Keywords are contextual, so a column
+  named `left` or `values` still works where a column is expected. The public `Parser`, `Term`
+  and `Token` classes are kept, and every old statement form still works, including the old
+  engine's quirks: `from t where ...` with no SELECT, an unquoted word compared as a string, an
+  unknown select column read as empty cells.
+- Joins are not hash joins: the right side's keyed rows are sorted once and probed by binary
+  search, on whole numbers, numbers or text (an encoded column's dictionary is looked up once
+  per code). This gives the same complexity as a hash join, with output in a fixed order: left
+  rows in order, each with its matches in the right side's order. The result is a working
+  table of only the columns the query reads, rather than a `JoinView`. A WHERE condition on
+  one table is applied before the join, except on the right of a LEFT JOIN.
+- GROUP BY sorts the rows by the grouping columns (stable, typed) instead of hashing them, so
+  groups come out in key order with empty keys last. Aggregates read numbers only. COUNT is
+  INT; SUM, MIN and MAX of an INT column stay INT; the rest are FLOAT.
+- INSERT, UPDATE and DELETE apply in full or not at all. A bound Nil is NULL, and an unbound
+  placeholder is an error.
+- A hierarchy's keys are `_id` and `_parent_id` rather than `id` and `parent_id`, so they cannot
+  clobber a field of the same name in the data. A table has `_id` only when a child table
+  refers to it. JSON object members come out alphabetically, as the JSON parser gives them.
+- XML attributes are `@name` columns and an element's own text is `_text`; the SQL lexer reads
+  `@name` as a name.
+- `MATCHES` is a whole-value match, as `Finder` has always used.
+- Files named in SQL are cached per `Catalog`, not process-wide, so the cache needs no lock and
+  holds no global state. `Catalog->Run` is the stateless one-off form. Scan hints are not
+  pushed into files named in SQL, because the cached table must serve later queries that need
+  other columns.
+
+**Phase 5 (reading).**
+- Downloads are kept under the system temporary folder in `objeck_query_cache`, revalidated
+  with `If-None-Match` and `If-Modified-Since`. A new copy is written beside the old and renamed
+  into place. Without a validator, the content's size and CRC32 tell versions apart.
+- Range reads of `.otab` over HTTP wait for phase 3, and serving (`TableServer`,
+  `RemoteSource`) waits for the CSV/JSON writers.
+
 Toolchain defects found while building these phases were fixed at the source rather than worked
 around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
-(#1299), and HTTP status codes (#1300).
+(#1299), HTTP status codes and a TLS/collector deadlock (#1300), and `XmlElement` attribute order.
 
 ## Open questions
 
