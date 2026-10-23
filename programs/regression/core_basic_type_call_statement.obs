@@ -1,0 +1,65 @@
+#~
+A function of a basic type's class called as a statement: 'Int->Clear(a);'.
+
+'Runtime->Copy(..);' was always a valid statement, but the same shape on Bool,
+Byte, Char, Int or Float went down the expression path, which accepts only a
+chained call, and was rejected as "Invalid statement". 'Int->Clear(a)->...'
+never type-checked either, so a Nil-returning function of these classes could
+not be called at all outside an expression. A discarded non-Nil result must be
+popped, as for any call statement.
+~#
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		a := [1, 2, 3];
+		Int->Clear(a);
+		if(a[0] <> 0 | a[2] <> 0) {
+			"FAIL: Int->Clear as a statement"->PrintLine();
+			failures += 1;
+		};
+
+		f := [1.5, 2.5];
+		Float->Clear(f);
+		if(f[1] <> 0.0) {
+			"FAIL: Float->Clear as a statement"->PrintLine();
+			failures += 1;
+		};
+
+		b := Byte->New[2];
+		b[1] := 7;
+		Byte->Clear(b);
+		if(b[1] <> 0) {
+			"FAIL: Byte->Clear as a statement"->PrintLine();
+			failures += 1;
+		};
+
+		c := "ab"->ToCharArray();
+		Char->Clear(c);
+		if(c[0] <> '\0') {
+			"FAIL: Char->Clear as a statement"->PrintLine();
+			failures += 1;
+		};
+
+		# discarded results, many times over: a stack left unpopped would show
+		total := 0;
+		for(i := 0; i < 100000; i += 1;) {
+			Int->Abs(-i);
+			Float->Sqrt(4.0);
+			Int->Copy(a);
+			total += 1;
+		};
+		if(total <> 100000) {
+			"FAIL: discarded results"->PrintLine();
+			failures += 1;
+		};
+
+		# the chained form still works
+		Int->ToString(a)->Size();
+
+		if(failures > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: basic type function calls as statements"->PrintLine();
+	}
+}

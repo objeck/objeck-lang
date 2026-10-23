@@ -1808,6 +1808,35 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
     const std::wstring ident = ParseBundleName();
     statement = ParseIdentifierStatement(ident, line_num, line_pos, file_name, depth);
   }
+  // 'Int->Fill(a, 0);': a function of a basic type's class called as a
+  // statement, as 'Runtime->Copy(..);' is. It used to fall through to the
+  // expression path, which rejected an unchained call as "Invalid statement".
+  else if(IsBasicType(GetToken()) && Match(TOKEN_ASSESSOR, SECOND_INDEX) && Match(TOKEN_IDENT, THIRD_INDEX)) {
+    std::wstring ident;
+    switch(GetToken()) {
+    case TOKEN_BOOLEAN_ID:
+      ident = BOOL_CLASS_ID;
+      break;
+
+    case TOKEN_BYTE_ID:
+      ident = BYTE_CLASS_ID;
+      break;
+
+    case TOKEN_INT_ID:
+      ident = INT_CLASS_ID;
+      break;
+
+    case TOKEN_FLOAT_ID:
+      ident = FLOAT_CLASS_ID;
+      break;
+
+    default:
+      ident = CHAR_CLASS_ID;
+      break;
+    }
+    NextToken();
+    statement = ParseIdentifierStatement(ident, line_num, line_pos, file_name, depth);
+  }
   // other
   else {
     switch(GetToken()) {
