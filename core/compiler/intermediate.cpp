@@ -5780,37 +5780,13 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       new_char_str_count = 0;
       break;
 
-    case frontend::CLASS_TYPE:
-      // process string instance
-      if(var_entry->GetType()->GetName() == L"System.String" || var_entry->GetType()->GetName() == L"String") {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR,
-          var_entry->GetId(), mem_context));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR,
-          concat_entry->GetId(), LOCL));
-        if(is_lib) {
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LIB_MTHD_CALL, 0,
-            L"System.String",
-            L"System.String:Append:o.System.String,"));
-        }
-        else {
-          LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
-#ifdef _DEBUG
-          assert(string_append_method);
-#endif
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, MTHD_CALL,
-            (INT_VALUE)string_cls->GetId(),
-            string_append_method->GetId(), 0L));
-        }
-      }
-      // process object instance
-      else {
-        // call object's 'ToString' method
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR, var_entry->GetId(), mem_context));
-        Method* inst_mthd = segment->GetMethod();
-        LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
-        EmitConcatToString(concat_entry, inst_mthd, inst_lib_mthd);
-      }
+    case frontend::CLASS_TYPE: {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR,
+        var_entry->GetId(), mem_context));
+      const bool is_string = var_entry->GetType()->GetName() == L"System.String" || var_entry->GetType()->GetName() == L"String";
+      EmitInterpolatedObject(char_str, is_string, segment->GetMethod(), segment->GetLibraryMethod());
       new_char_str_count = 0;
+    }
       break;
 
     default:
@@ -5909,33 +5885,91 @@ void IntermediateEmitter::EmitAppendCharacterStringSegment(CharacterStringSegmen
       }
       break;
 
-    case frontend::CLASS_TYPE:
-      // String type - direct append
-      if(eval_type->GetName() == L"System.String" || eval_type->GetName() == L"String") {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR,
-          concat_entry->GetId(), LOCL));
-        if(is_lib) {
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LIB_MTHD_CALL, 0,
-            L"System.String", L"System.String:Append:o.System.String,"));
-        }
-        else {
-          LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
-          imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, MTHD_CALL,
-            (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
-        }
-      }
-      // Other class type - call ToString then append
-      else {
-        Method* inst_mthd = segment->GetMethod();
-        LibraryMethod* inst_lib_mthd = segment->GetLibraryMethod();
-        EmitConcatToString(concat_entry, inst_mthd, inst_lib_mthd);
-      }
+    case frontend::CLASS_TYPE: {
+      const bool is_string = eval_type->GetName() == L"System.String" || eval_type->GetName() == L"String";
+      EmitInterpolatedObject(char_str, is_string, segment->GetMethod(), segment->GetLibraryMethod());
+    }
       break;
 
     default:
       break;
     }
     new_char_str_count = 0;
+  }
+}
+
+/****************************
+ * Appends an interpolated object, which is on the stack, to the string being built: a String
+ * directly, anything else through its ToString. A Nil reads as "Nil" rather than stopping the
+ * program (String->Append(Nil) itself still raises). The value goes through a temporary and
+ * the branches join on an empty working stack, as the JIT requires at a label. A value with
+ * no ToString is an enum or consts Int, for which 0 is a value, so it is never tested.
+ ****************************/
+void IntermediateEmitter::EmitInterpolatedObject(CharacterString* char_str, bool is_string, Method* inst_mthd, LibraryMethod* inst_lib_mthd)
+{
+  SymbolEntry* concat_entry = char_str->GetConcat();
+  SymbolEntry* nil_temp = char_str->GetNilTemp();
+  const bool is_object = is_string || inst_mthd || inst_lib_mthd;
+  if(!nil_temp || !is_object) {
+    EmitAppendObject(concat_entry, is_string, inst_mthd, inst_lib_mthd);
+    return;
+  }
+
+  const long nil_label = ++conditional_label;
+  const long end_label = ++unconditional_label;
+
+  // test the value for Nil
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, STOR_INT_VAR, nil_temp->GetId(), LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, char_str, cur_line_num, 0));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR, nil_temp->GetId(), LOCL));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, EQL_INT));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, JMP, nil_label, 1L));
+
+  // a value: append it as before
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LOAD_INT_VAR, nil_temp->GetId(), LOCL));
+  EmitAppendObject(concat_entry, is_string, inst_mthd, inst_lib_mthd);
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, JMP, end_label, -1L));
+
+  // Nil: append the literal "Nil"
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LBL, nil_label));
+  const std::wstring nil_text = L"Nil";
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, char_str, cur_line_num, (INT_VALUE)nil_text.size()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, NEW_CHAR_ARY, 1L));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, char_str, cur_line_num, char_str->GetNilStringId()));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, char_str, cur_line_num, instructions::CPY_CHAR_STR_ARY));
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, TRAP_RTRN, 3L));
+  if(is_lib) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LIB_NEW_OBJ_INST, L"System.String"));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LIB_MTHD_CALL, 0L,
+                                                                               L"System.String", L"System.String:New:c*,"));
+  }
+  else {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, NEW_OBJ_INST, string_cls_id));
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, MTHD_CALL, string_cls_id, 2L, 0L));
+  }
+  EmitAppendObject(concat_entry, true, nullptr, nullptr);
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, char_str, cur_line_num, LBL, end_label));
+}
+
+// appends the String or object on the stack to the string being built
+void IntermediateEmitter::EmitAppendObject(SymbolEntry* concat_entry, bool is_string, Method* inst_mthd, LibraryMethod* inst_lib_mthd)
+{
+  if(!is_string) {
+    EmitConcatToString(concat_entry, inst_mthd, inst_lib_mthd);
+    return;
+  }
+
+  imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LOAD_INT_VAR, concat_entry->GetId(), LOCL));
+  if(is_lib) {
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, LIB_MTHD_CALL, 0, L"System.String", L"System.String:Append:o.System.String,"));
+  }
+  else {
+    LibraryMethod* string_append_method = string_cls->GetMethod(L"System.String:Append:o.System.String,");
+#ifdef _DEBUG
+    assert(string_append_method);
+#endif
+    imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(cur_line_num, MTHD_CALL, (INT_VALUE)string_cls->GetId(), string_append_method->GetId(), 0L));
   }
 }
 

@@ -107,6 +107,8 @@ class IntermediateEmitter {
   void EmitStaticArray(StaticArray* array);
   void EmitStringConcat(StringConcat* str_concat);
   void EmitConcatToString(SymbolEntry* concat_entry, Method* inst_mthd, LibraryMethod* inst_lib_mthd);
+  void EmitInterpolatedObject(CharacterString* char_str, bool is_string, Method* inst_mthd, LibraryMethod* inst_lib_mthd);
+  void EmitAppendObject(SymbolEntry* concat_entry, bool is_string, Method* inst_mthd, LibraryMethod* inst_lib_mthd);
   void EmitCharacterString(CharacterString* char_str);
   void EmitCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);
   void EmitAppendCharacterStringSegment(CharacterStringSegment* segment, CharacterString* char_str);

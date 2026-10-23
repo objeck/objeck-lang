@@ -1,0 +1,140 @@
+#~
+An interpolated String or object that is Nil reads as "Nil" instead of stopping the program:
+"x={$s}" with s Nil is "x=Nil". It holds for a local, an instance field, a class field and
+the result of a call, alone or among other text, inside an argument list (other values sit on
+the stack across the branch) and in a loop the JIT compiles. An enum or consts value of 0 and
+an Int 0 still read as 0, and String->Append(Nil) itself still raises.
+~#
+enum Shade {
+	DARK,
+	LIGHT
+}
+
+class Box {
+	@tag : String;
+
+	New(tag : String) {
+		@tag := tag;
+	}
+
+	method : public : ToString() ~ String {
+		return "Box({$@tag})";
+	}
+
+	method : public : GetTag() ~ String {
+		return @tag;
+	}
+}
+
+class CoreInterpolateNil {
+	@failures : static : Int;
+	@shared : static : String;
+	@field : String;
+	@box : Box;
+
+	New() {
+	}
+
+	function : Check(what : String, got : String, expected : String) ~ Nil {
+		if(got = Nil | <>got->Equals(expected)) {
+			@failures += 1;
+			shown := got <> Nil ? got : "<no string>";
+			"  FAIL: {$what}: got '{$shown}', expected '{$expected}'"->PrintLine();
+		};
+	}
+
+	function : Join(a : Int, text : String, b : Int) ~ String {
+		return "{$a}|{$text}|{$b}";
+	}
+
+	function : NoBox() ~ Box {
+		return Nil;
+	}
+
+	method : public : Run() ~ Nil {
+		Check("an instance String field", "f={$@field}", "f=Nil");
+		Check("an instance object field", "b={$@box}", "b=Nil");
+		@box := Box->New("x");
+		Check("an instance object field with a value", "b={$@box}", "b=Box(x)");
+		Check("a call on a field whose result is Nil", "l={$@box->GetTag()->ToUpper()}", "l=X");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		s : String;
+		Check("a Nil String among text", "x={$s}!", "x=Nil!");
+		Check("a Nil String alone", "{$s}", "Nil");
+		Check("two Nil Strings", "{$s}{$s}", "NilNil");
+		s := "set";
+		Check("a String with a value", "x={$s}", "x=set");
+
+		b : Box;
+		Check("a Nil object with ToString", "box={$b}", "box=Nil");
+		b := Box->New("a");
+		Check("an object with a value", "box={$b}", "box=Box(a)");
+		inner : Box := Box->New(Nil);
+		Check("a Nil String inside ToString", "{$inner}", "Box(Nil)");
+
+		Check("a call returning Nil", "r={$NoBox()}", "r=Nil");
+		Check("a String-returning call that returns Nil", "g={$inner->GetTag()}", "g=Nil");
+
+		Check("a class field", "c={$@shared}", "c=Nil");
+
+		Check("inside an argument list", Join(1, "m{$s}n{$@shared}o", 2), "1|msetnNilo|2");
+
+		shade := Shade->DARK;
+		Check("an enum of 0 is still 0", "e={$shade}", "e=0");
+		zero := 0;
+		Check("an Int 0 is still 0", "i={$zero}", "i=0");
+
+		# in a loop, so the method is compiled
+		text := "";
+		maybe : String;
+		for(i := 0; i < 2000; i += 1;) {
+			maybe := i % 2 = 0 ? Nil : "y";
+			text := "{$maybe}";
+		};
+		Check("in a compiled loop", text, "y");
+		Check("in a compiled loop, Nil last", "{$maybe->ToUpper()}", "Y");
+
+		CoreInterpolateNil->New()->Run();
+
+		# Append itself still refuses Nil
+		raised := false;
+		try {
+			nothing : String;
+			"start"->Append(nothing);
+		}
+		on(e : Error) {
+			raised := true;
+		};
+		if(<>raised) {
+			@failures += 1;
+			"  FAIL: String->Append(Nil) no longer raises"->PrintLine();
+		};
+
+		# so does '+' with a Nil operand
+		raised := false;
+		try {
+			missing : String;
+			joined := "start" + missing;
+			joined->PrintLine();
+		}
+		on(e : Error) {
+			raised := true;
+		};
+		if(<>raised) {
+			@failures += 1;
+			"  FAIL: '+' with a Nil String no longer raises"->PrintLine();
+		};
+
+		if(@failures = 0) {
+			"PASS: interpolating Nil"->PrintLine();
+		}
+		else {
+			"FAIL: interpolating Nil ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

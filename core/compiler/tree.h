@@ -975,13 +975,17 @@ namespace frontend {
     std::wstring char_string;
     std::vector<CharacterStringSegment*> segments;
     SymbolEntry* concat;
+    SymbolEntry* nil_temp;
+    int nil_string_id;
     bool is_lit;
 
-    CharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &c, const bool l) : 
+    CharacterString(const std::wstring &file_name, const int line_num, const int line_pos, const std::wstring &c, const bool l) :
         Expression(file_name, line_num, line_pos, Type::CharStringType()) {
       char_string = c;
       is_processed = false;
       concat = nullptr;
+      nil_temp = nullptr;
+      nil_string_id = -1;
       is_lit = l;
     }
 
@@ -1010,6 +1014,21 @@ namespace frontend {
 
     SymbolEntry* GetConcat() {
       return concat;
+    }
+
+    // An interpolated object that is Nil reads as "Nil": the emitter keeps the value in this
+    // temporary to test it, and appends the literal with this id instead.
+    void SetNilCheck(SymbolEntry* t, int id) {
+      nil_temp = t;
+      nil_string_id = id;
+    }
+
+    SymbolEntry* GetNilTemp() {
+      return nil_temp;
+    }
+
+    int GetNilStringId() {
+      return nil_string_id;
     }
 
     const std::wstring GetString() const {
