@@ -1,0 +1,168 @@
+# EXTRA_LIBS: net,net_server,regex,csv,misc,query
+#~
+Query.Structured HttpJsonSource (docs/QUERY_DESIGN.md, sections 6 and 10, phase 5), against an
+in-process Web.HTTP.Server serving canned pages: records at a dotted path, paging by next link
+and by offset, a link that loops back, a row limit, nested arrays as child tables, and an
+error status, a body that is not JSON and a missing records path.
+~#
+use Collection, System.IO.Net, Web.HTTP.Server, Query.Structured;
+
+class HttpJsonHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		QuerySourceHttp->Serve(request, response);
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCode(405);
+		return false;
+	}
+}
+
+class QuerySourceHttp {
+	@port : static : Int;
+	@serve_returned : static : Bool;
+	@failures : static : Int;
+
+	function : Port() ~ Int { return @port; }
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Base() ~ String {
+		return "http://127.0.0.1:{$@port}";
+	}
+
+	function : Serve(request : Request, response : Response) ~ Nil {
+		path := request->GetPath();
+		query := request->GetQuery();
+		base := Base();
+		if(path->Equals("/api/page1")) {
+			response->SetCodeContent(200, "{\"data\": {\"items\": [{\"id\": 1, \"tags\": [\"a\"]}, {\"id\": 2, \"tags\": []}]}, \"links\": {\"next\": \"{$base}/api/page2\"}}");
+		}
+		else if(path->Equals("/api/page2")) {
+			response->SetCodeContent(200, "{\"data\": {\"items\": [{\"id\": 3, \"tags\": [\"b\", \"c\"]}]}, \"links\": {\"next\": null}}");
+		}
+		else if(path->Equals("/api/loop")) {
+			response->SetCodeContent(200, "{\"items\": [{\"id\": 9}], \"next\": \"{$base}/api/loop\"}");
+		}
+		else if(path->Equals("/api/list")) {
+			offset := 0;
+			if(query <> Nil & query->StartsWith("offset=")) {
+				offset := query->SubString(7, query->Size() - 7)->ToInt();
+			};
+			# five records, two per page
+			items := "";
+			for(i := offset; i < offset + 2 & i < 5; i += 1;) {
+				if(items->Size() > 0) {
+					items += ",";
+				};
+				items += "{\"n\": {$i}}";
+			};
+			response->SetCodeContent(200, "[{$items}]");
+		}
+		else if(path->Equals("/api/broken")) {
+			response->SetCodeContent(200, "{\"items\": [");
+		}
+		else if(path->Equals("/api/fails")) {
+			response->SetCodeContent(500, "oops");
+		}
+		else {
+			response->SetCode(404);
+		};
+	}
+
+	function : StartServer() ~ Bool {
+		tries := 0;
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			@serve_returned := false;
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(HttpJsonHandler->New()->GetClass(), QuerySourceHttp->Port(), false);
+					QuerySourceHttp->ServeReturned();
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(<>@serve_returned & attempts < 20) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New("127.0.0.1", @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+			tries += 1;
+		};
+
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		if(<>StartServer()) {
+			"FAIL: query HttpJsonSource (the test server did not start)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		base := Base();
+
+		linked := HttpJsonSource->New("{$base}/api/page1", "items", "data.items");
+		linked->SetNextLink("links.next");
+		items := linked->Read();
+		Check("records at a dotted path, across a next link", items <> Nil & items->Size() = 3 & linked->GetPageCount() = 2);
+		if(items = Nil) {
+			linked->GetError()->PrintLine();
+		}
+		else {
+			Check("records in page order", items->Get(2)->Get("id")->As(IntRef)->Get() = 3);
+			tags := linked->GetChildTables();
+			Check("nested arrays become child tables", tags->Size() = 1 & tags->Get(0)->Size() = 3 & tags->Get(0)->Get(2)->Get("_parent_id")->As(IntRef)->Get() = 3);
+		};
+
+		offsets := HttpJsonSource->New("{$base}/api/list", "list", "");
+		offsets->SetOffsetPaging("offset", 2);
+		list := offsets->Read();
+		Check("offset paging until a short page", list <> Nil & list->Size() = 5 & offsets->GetPageCount() = 3 & list->Get(4)->Get("n")->As(IntRef)->Get() = 4);
+
+		limited := HttpJsonSource->New("{$base}/api/list", "list", "");
+		limited->SetOffsetPaging("offset", 2);
+		limited->SetLimit(3);
+		few := limited->Read();
+		Check("a row limit stops paging", few <> Nil & few->Size() = 3 & limited->GetPageCount() = 2);
+
+		looping := HttpJsonSource->New("{$base}/api/loop", "loop", "items");
+		looping->SetNextLink("next");
+		once := looping->Read();
+		Check("a link back to a page read ends paging", once <> Nil & once->Size() = 1 & looping->GetPageCount() = 1);
+
+		catalog := Catalog->New();
+		Check("a catalog loads it", catalog->Load(linked) & catalog->Has("items_tags"));
+
+		broken := HttpJsonSource->New("{$base}/api/broken", "b", "items");
+		Check("a body that is not JSON", broken->Read() = Nil & broken->GetError()->Has("not valid JSON"));
+		fails := HttpJsonSource->New("{$base}/api/fails", "f", "items");
+		Check("an error status", fails->Read() = Nil & fails->GetError()->Has("500"));
+		lost := HttpJsonSource->New("{$base}/api/page2", "l", "data.missing");
+		Check("a records path that is not there", lost->Read() = Nil & lost->GetError()->Has("no array"));
+
+		WebServer->Stop();
+		if(@failures = 0) {
+			"PASS: query HttpJsonSource"->PrintLine();
+		}
+		else {
+			"FAIL: query HttpJsonSource ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

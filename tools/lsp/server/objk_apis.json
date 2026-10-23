@@ -9134,6 +9134,41 @@
 				}
 			}
 		},
+		"Query.Structured.HttpJsonSource": {
+			"description": "A JSON web service as tables: the array of objects at 'records_path' in each response becomes rows, mapped as JsonSource maps them (nested arrays become child tables). Paging follows a next-page link found in each response, or adds an offset to the URL, until a page is short, the link is missing or repeats, or the row limit is reached. Responses go through the same download cache as files named in SQL, so an unchanged page is not downloaded again.",
+			"functions": {
+				"GetChildTables": {
+					"descriptions": ["**Gets the child tables the last Read made**\n\n```method : public : GetChildTables() ~ Vector&lt;Table&gt;```\n\n\n\nreturn: Vector&lt;Table&gt;"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetPageCount": {
+					"descriptions": ["**Gets how many pages the last Read fetched**\n\n```method : public : GetPageCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the tables the service provides, the main table first; they are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the service's tables into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(url:String, name:String, records_path:String)```\n\n\n\nurl: String\n\nname: String\n\nrecords_path: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads every page into the main table; GetChildTables then has the others**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads every page into the main table; GetChildTables then has the others**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				},
+				"SetLimit": {
+					"descriptions": ["**Stops after this many rows**\n\n```method : public : SetLimit(rows:Int) ~ Nil```\n\n\n\nrows: Int\n\nreturn: Nil"]
+				},
+				"SetNextLink": {
+					"descriptions": ["**Follows a next-page URL found at a dotted path in each response; a missing or null value ends paging**\n\n```method : public : SetNextLink(path:String) ~ Nil```\n\n\n\npath: String\n\nreturn: Nil"]
+				},
+				"SetOffsetPaging": {
+					"descriptions": ["**Pages by adding an offset parameter to the URL (offset 0 first); a page with fewer than 'page_size' records is the last**\n\n```method : public : SetOffsetPaging(param:String, page_size:Int) ~ Nil```\n\n\n\nparam: String\n\npage_size: Int\n\nreturn: Nil"]
+				}
+			}
+		},
 		"Query.Structured.JsonLinesSource": {
 			"description": "A JSON Lines file (one JSON object per line, '.jsonl' or '.ndjson') as a table. Nested objects become dotted column names ('address.city'), and each nested array becomes a child table, as JsonSource makes them: an array member 'tags' of table 'runs' is the table 'runs_tags', joined back through '_parent_id' = '_id'. Columns are typed by all their values: whole numbers INT, any decimal FLOAT, true and false BOOL, and any mix, or text, STRING. null and a missing key are empty cells. A line that is not a JSON object is an error naming the line. Columns appear in the order keys are first seen, alphabetical within an object. A name ending in '.gz' is decompressed first.",
 			"functions": {
@@ -17268,6 +17303,12 @@
 			}
 		],
 		"Finder": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"HttpJsonSource": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""

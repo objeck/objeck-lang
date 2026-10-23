@@ -1486,15 +1486,13 @@ results->ToString()->PrintLine();
 		method : public : Where(condition : Predicate) ~ View {
 			@error := Nil;
 			holder := StringHolder->New();
-			no_params : Compare[];
-			filter := Filter->Bind(condition, @self, no_params, holder);
+			filter := Filter->Bind(condition, @self, Nil, holder);
 			if(filter = Nil) {
 				@error := holder->Get();
 				return Nil;
 			};
 
-			all_rows : Int[];
-			return View->New(@self, DataColumns(), filter->Apply(@self, all_rows));
+			return View->New(@self, DataColumns(), filter->Apply(@self, Nil));
 		}
 
 		#~
@@ -4377,8 +4375,7 @@ each(i : view->Count()) {
 			};
 
 			error := StringHolder->New();
-			no_params : Compare[];
-			filter := Filter->Bind(condition, @table, no_params, error);
+			filter := Filter->Bind(condition, @table, Nil, error);
 			if(filter = Nil) {
 				@error := error->Get();
 				return Nil;
@@ -6386,7 +6383,12 @@ results := statement->Execute();
 			return key;
 		}
 
+		# a '?' in a URL starts its query string, so only a '*' in its path is a pattern
 		method : public : IsGlob() ~ Bool {
+			if(UrlCache->IsUrl(@path)) {
+				return UrlCache->PathPart(@path)->Has('*');
+			};
+
 			return @path->Has('*') | @path->Has('?');
 		}
 
@@ -6544,6 +6546,9 @@ results := statement->Execute();
 			};
 
 			lower := path->ToLower();
+			if(UrlCache->IsUrl(lower)) {
+				lower := UrlCache->PathPart(lower);
+			};
 			if(lower->EndsWith(".gz")) {
 				lower := lower->SubString(0, lower->Size() - 3);
 			};
@@ -6881,8 +6886,7 @@ results := statement->Execute();
 				return Nil;
 			};
 
-			all_rows : Int[];
-			return filter->Apply(table, all_rows);
+			return filter->Apply(table, Nil);
 		}
 
 		# column indexes for names, refusing unknown names and the key column; Nil on error
@@ -7239,8 +7243,7 @@ results := statement->Execute();
 					return Nil;
 				};
 
-				all_rows : Int[];
-				rows := filter->Apply(@work, all_rows);
+				rows := filter->Apply(@work, Nil);
 			}
 			else {
 				rows := @work->LiveRows();
@@ -7298,8 +7301,7 @@ results := statement->Execute();
 					if(filter = Nil) {
 						return Nil;
 					};
-					all_rows : Int[];
-					base[s] := SqlRows->New(filter->Apply(@tables[s], all_rows));
+					base[s] := SqlRows->New(filter->Apply(@tables[s], Nil));
 				}
 				else {
 					base[s] := SqlRows->New(@tables[s]->LiveRows());
@@ -9537,16 +9539,45 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		# a file named in a query, read once and again only when it changes (by name, size
 		# and modification time); a glob's files become one table with a '_file' column
 		method : public : ReadFile(file : SqlFile, name : String, error : StringHolder) ~ Table {
-			files := FileTables->Expand(file->GetPath(), error);
-			if(files = Nil) {
-				return Nil;
-			};
-
 			if(@files = Nil) {
 				@files := Map->New()<String, FileEntry>;
 			};
 
 			key := file->GetKey();
+			if(UrlCache->IsUrl(file->GetPath())) {
+				if(file->IsGlob()) {
+					error->Set("'{$(file->GetPath())}': a URL cannot be a pattern");
+					return Nil;
+				};
+
+				fetched := UrlCache->Fetch(file->GetPath(), error);
+				if(fetched = Nil) {
+					return Nil;
+				};
+
+				known := @files->Find(key);
+				if(known <> Nil & known->GetStamp()->Equals(fetched->GetStamp())) {
+					return known->GetTable();
+				};
+
+				@file_reads += 1;
+				downloaded := FileTables->ReadOne(file, fetched->GetPath(), name, error);
+				if(downloaded = Nil) {
+					return Nil;
+				};
+
+				if(@files->Size() >= 32) {
+					@files := Map->New()<String, FileEntry>;
+				};
+				@files->Insert(key, FileEntry->New(fetched->GetStamp(), downloaded));
+				return downloaded;
+			};
+
+			files := FileTables->Expand(file->GetPath(), error);
+			if(files = Nil) {
+				return Nil;
+			};
+
 			stamp := FileTables->Stamp(files);
 			entry := @files->Find(key);
 			if(entry <> Nil & entry->GetStamp()->Equals(stamp)) {
@@ -9812,9 +9843,10 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 					@error := "no file and no text";
 					return Nil;
 				};
-				text := SourceText->Read(@path);
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
 				if(text = Nil) {
-					@error := SourceText->Failure(@path);
+					@error := reason->Get();
 					return Nil;
 				};
 			};
@@ -10500,11 +10532,488 @@ catalog->Load(source);
 	}
 
 	# Reads a source file's text; a name ending in '.gz' is decompressed first
-	class : private : SourceText {
-		function : Read(path : String) ~ String {
+	# a downloaded file: where its copy is, and what identifies this version of it
+	class : private : UrlFile {
+		@path : String;
+		@stamp : String;
+
+		New(path : String, stamp : String) {
+			@path := path;
+			@stamp := stamp;
+		}
+
+		method : public : GetPath() ~ String {
+			return @path;
+		}
+
+		method : public : GetStamp() ~ String {
+			return @stamp;
+		}
+	}
+
+	#
+	# Reading files over HTTP (docs/QUERY_DESIGN.md, section 10). A download is kept in a
+	# cache folder under the system's temporary folder, keyed by URL, beside a note of the
+	# server's ETag and Last-Modified. A later fetch asks the server whether it changed
+	# (If-None-Match, If-Modified-Since); a 304 answer reuses the copy. A new copy is written
+	# to a temporary file and renamed into place, so a reader never sees half a file.
+	#
+	class : private : UrlCache {
+		function : IsUrl(path : String) ~ Bool {
 			if(path = Nil) {
+				return false;
+			};
+
+			lower := path->ToLower();
+			return lower->StartsWith("http://") | lower->StartsWith("https://");
+		}
+
+		# the URL without its query string or fragment, for its file name and extension
+		function : PathPart(url : String) ~ String {
+			end := url->Size();
+			each(i : url) {
+				c := url->Get(i);
+				if((c = '?' | c = '#') & i < end) {
+					end := i;
+				};
+			};
+
+			return url->SubString(0, end);
+		}
+
+		function : Folder() ~ String {
+			folder := Runtime->GetTempDir();
+			if(folder = Nil) {
+				folder := ".";
+			};
+
+			last := folder->Size() > 0 ? folder->Get(folder->Size() - 1) : ' ';
+			folder := String->New(folder);
+			if(last <> '/' & last <> '\\') {
+				folder += "/";
+			};
+			folder += "objeck_query_cache";
+			if(<>Directory->Exists(folder)) {
+				Directory->Create(folder);
+			};
+
+			return folder;
+		}
+
+		# a 64-bit FNV-1a hash of the URL, as hex, so different URLs get different files
+		function : Hash(text : String) ~ String {
+			hash := -3750763034362895579;
+			each(i : text) {
+				hash := hash xor text->Get(i)->As(Int);
+				hash := hash * 1099511628211;
+			};
+
+			digits := "0123456789abcdef";
+			out := "";
+			each(i : 16) {
+				out->Append(digits->Get((hash >> (60 - i * 4)) and 15));
+			};
+
+			return out;
+		}
+
+		# the local copy's file name: the hash, then the URL's own file name, so the
+		# extension (and a '.gz') still says how to read it
+		function : LocalPath(url : String) ~ String {
+			path := PathPart(url);
+			start := 0;
+			each(i : path) {
+				if(path->Get(i) = '/') {
+					start := i + 1;
+				};
+			};
+
+			base := path->SubString(start, path->Size() - start);
+			if(base->Size() = 0) {
+				base := "index";
+			};
+
+			name := Folder();
+			name += "/";
+			name += Hash(url);
+			name += "_";
+			name += base;
+			return name;
+		}
+
+		# the current copy of a URL, fetched or revalidated; Nil with the error set
+		function : Fetch(url : String, error : StringHolder) ~ UrlFile {
+			local := LocalPath(url);
+			meta := String->New(local);
+			meta += ".meta";
+
+			etag := "";
+			modified := "";
+			if(File->Exists(local) & File->Exists(meta)) {
+				notes := FileReader->ReadFile(meta);
+				if(notes <> Nil) {
+					lines := SourceText->Lines(notes);
+					if(lines->Size() > 1) {
+						etag := lines->Get(0)->Trim();
+						modified := lines->Get(1)->Trim();
+					};
+				};
+			};
+
+			client := Web.HTTP.HttpClient->New();
+			if(etag <> Nil & etag->Size() > 0) {
+				client->AddHeader("If-None-Match", etag);
+			};
+			if(modified <> Nil & modified->Size() > 0) {
+				client->AddHeader("If-Modified-Since", modified);
+			};
+
+			response := client->Get(Web.HTTP.Url->New(url));
+			code := response <> Nil ? response->GetCode() : 0;
+			if(code = 304 & File->Exists(local)) {
+				return UrlFile->New(local, "{$etag}|{$modified}");
+			};
+
+			if(code < 200 | code > 299) {
+				if(code = 0) {
+					error->Set("'{$url}': no response from the server");
+				}
+				else {
+					error->Set("'{$url}': the server answered HTTP {$code}");
+				};
 				return Nil;
 			};
+
+			body := response->GetContent();
+			if(body = Nil) {
+				body := Byte->New[0];
+			};
+
+			headers := client->GetResponseHeaders();
+			etag := headers->Find("etag");
+			modified := headers->Find("last-modified");
+			# trimmed, as they are when read back from the note beside the copy
+			etag := etag = Nil ? "" : etag->Trim();
+			modified := modified = Nil ? "" : modified->Trim();
+
+			# a new copy beside the old, then renamed over it
+			partial := String->New(local);
+			partial += ".part";
+			if(<>FileWriter->WriteFile(partial, body) | <>File->Rename(partial, local)) {
+				error->Set("'{$url}': cannot write its copy to '{$local}'");
+				return Nil;
+			};
+			FileWriter->WriteFile(meta, "{$etag}\n{$modified}\n");
+
+			# without a validator the content itself tells versions apart
+			if(etag->Size() = 0 & modified->Size() = 0) {
+				size := body->Size();
+				check := body->CRC32();
+				return UrlFile->New(local, "{$size}|{$check}");
+			};
+
+			return UrlFile->New(local, "{$etag}|{$modified}");
+		}
+	}
+
+	#~
+	A JSON web service as tables: the array of objects at 'records_path' in each response
+	becomes rows, mapped as JsonSource maps them (nested arrays become child tables). Paging
+	follows a next-page link found in each response, or adds an offset to the URL, until a
+	page is short, the link is missing or repeats, or the row limit is reached. Responses go
+	through the same download cache as files named in SQL, so an unchanged page is not
+	downloaded again.
+
+```
+source := HttpJsonSource->New("https://api.example.org/runs", "runs", "data.items");
+source->SetNextLink("links.next");
+runs := source->Read();
+```
+	~#
+	class HttpJsonSource implements Source {
+		@url : String;
+		@name : String;
+		@records_path : String;
+		@next_path : String;
+		@offset_param : String;
+		@page_size : Int;
+		@limit : Int;
+		@pages : Int;
+		@error : String;
+		@tables : Vector<Table>;
+
+		#~
+		Constructor
+		@param url first page's URL
+		@param name table name
+		@param records_path dotted path to the array of records in a response ('data.items');
+		an empty path means the response itself is the array
+		~#
+		New(url : String, name : String, records_path : String) {
+			@url := url;
+			@name := name;
+			@records_path := records_path;
+			@limit := -1;
+		}
+
+		#~
+		Follows a next-page URL found at a dotted path in each response; a missing or null
+		value ends paging
+		@param path dotted path to the next page's URL
+		~#
+		method : public : SetNextLink(path : String) ~ Nil {
+			@next_path := path;
+		}
+
+		#~
+		Pages by adding an offset parameter to the URL (offset 0 first); a page with fewer
+		than 'page_size' records is the last
+		@param param query parameter name, such as 'offset'
+		@param page_size records per page
+		~#
+		method : public : SetOffsetPaging(param : String, page_size : Int) ~ Nil {
+			@offset_param := param;
+			@page_size := page_size;
+		}
+
+		#~
+		Stops after this many rows
+		@param rows row limit, -1 for none
+		~#
+		method : public : SetLimit(rows : Int) ~ Nil {
+			@limit := rows;
+		}
+
+		#~
+		Gets how many pages the last Read fetched
+		@return pages
+		~#
+		method : public : GetPageCount() ~ Int {
+			return @pages;
+		}
+
+		#~
+		Gets the tables the service provides, the main table first; they are known only after
+		reading it
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			Read();
+			return TableShapes->Of(@tables, @name);
+		}
+
+		#~
+		Loads the service's tables into a catalog
+		@param catalog catalog
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			if(Read(hint) = Nil) {
+				return false;
+			};
+
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Reads every page into the main table; GetChildTables then has the others
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads every page into the main table; GetChildTables then has the others
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			@tables := Nil;
+			@pages := 0;
+			limit := @limit;
+			if(hint <> Nil & hint->GetLimit() > -1 & (limit < 0 | hint->GetLimit() < limit)) {
+				limit := hint->GetLimit();
+			};
+
+			builder := JsonTableBuilder->New(@name, false);
+			seen := Hash->New()<String, BoolRef>;
+			offset := 0;
+			url := @offset_param <> Nil ? WithParam(@url, @offset_param, 0) : @url;
+			while(url <> Nil & (limit < 0 | builder->Size() < limit)) {
+				seen->Insert(url, BoolRef->New(true));
+				error := StringHolder->New();
+				fetched := UrlCache->Fetch(url, error);
+				if(fetched = Nil) {
+					@error := error->Get();
+					return Nil;
+				};
+
+				text := SourceText->Read(fetched->GetPath());
+				parser := Data.JSON.JsonParser->New(text <> Nil ? text : "");
+				if(text = Nil | <>parser->Parse()) {
+					@error := "'{$url}': the response is not valid JSON";
+					return Nil;
+				};
+				@pages += 1;
+
+				root := parser->GetRoot();
+				records := Navigate(root, @records_path);
+				if(records = Nil | records->GetType() <> Data.JSON.JsonElement->JsonType->ARRAY) {
+					@error := "'{$url}': no array at '{$@records_path}'";
+					return Nil;
+				};
+
+				count := records->Size();
+				each(i : count) {
+					if(limit < 0 | builder->Size() < limit) {
+						item := records->Get(i);
+						if(item->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
+							@error := "'{$url}': record {$(i + 1)} is not an object";
+							return Nil;
+						};
+						builder->AddObject(item, 0);
+					};
+				};
+
+				next_url : String;
+				if(@next_path <> Nil) {
+					link := Navigate(root, @next_path);
+					if(link <> Nil & link->GetType() = Data.JSON.JsonElement->JsonType->STRING) {
+						next_url := Data.JSON.JsonElement->Decode(link->GetString());
+					};
+				}
+				else if(@offset_param <> Nil & count >= @page_size & @page_size > 0) {
+					offset += @page_size;
+					next_url := WithParam(@url, @offset_param, offset);
+				};
+
+				# a link back to a page already read ends paging rather than looping
+				if(next_url <> Nil & seen->Has(next_url)) {
+					next_url := Nil;
+				};
+				url := next_url;
+			};
+
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
+		}
+
+		# the value at a dotted path, Nil if a step is missing; an empty path is the root
+		function : Navigate(root : Data.JSON.JsonElement, path : String) ~ Data.JSON.JsonElement {
+			if(path = Nil | path->Size() = 0) {
+				return root;
+			};
+
+			node := root;
+			part := "";
+			each(i : path) {
+				c := path->Get(i);
+				if(c = '.') {
+					node := Step(node, part);
+					if(node = Nil) {
+						return Nil;
+					};
+					part := "";
+				}
+				else {
+					part->Append(c);
+				};
+			};
+
+			return Step(node, part);
+		}
+
+		function : Step(node : Data.JSON.JsonElement, name : String) ~ Data.JSON.JsonElement {
+			if(node = Nil | node->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			child := node->Get(name);
+			if(child = Nil | child->GetType() = Data.JSON.JsonElement->JsonType->NULL) {
+				return Nil;
+			};
+
+			return child;
+		}
+
+		# the URL with a query parameter added
+		function : WithParam(url : String, param : String, value : Int) ~ String {
+			separator := url->Has('?') ? "&" : "?";
+			return "{$url}{$separator}{$param}={$value}";
+		}
+
+		#~
+		Gets the child tables the last Read made
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	class : private : SourceText {
+		function : Read(path : String) ~ String {
+			reason := StringHolder->New();
+			return Read(path, reason);
+		}
+
+		# a file's text, or a URL's through the download cache; '.gz' is decompressed. Nil
+		# with 'error' set when it cannot be read.
+		function : Read(path : String, error : StringHolder) ~ String {
+			if(path = Nil) {
+				error->Set("no file and no text");
+				return Nil;
+			};
+
+			if(UrlCache->IsUrl(path)) {
+				fetched := UrlCache->Fetch(path, error);
+				if(fetched = Nil) {
+					return Nil;
+				};
+
+				text := ReadLocal(fetched->GetPath());
+				if(text = Nil) {
+					if(UrlCache->PathPart(path)->EndsWith(".gz")) {
+						error->Set("'{$path}' is not valid gzip data, or is truncated");
+					}
+					else {
+						error->Set("'{$path}': its downloaded copy cannot be read");
+					};
+				};
+				return text;
+			};
+
+			text := ReadLocal(path);
+			if(text = Nil) {
+				error->Set(Failure(path));
+			};
+			return text;
+		}
+
+		function : ReadLocal(path : String) ~ String {
 
 			if(path->EndsWith(".gz")) {
 				bytes := FileReader->ReadBinaryFile(path);
@@ -10539,10 +11048,14 @@ catalog->Load(source);
 			return "cannot read '{$path}'";
 		}
 
-		# a file's name without its folder, '.gz' or extension
+		# a file's name without its folder, '.gz' or extension; a URL's without its query
 		function : BaseName(path : String, fallback : String) ~ String {
 			if(path = Nil) {
 				return fallback;
+			};
+
+			if(UrlCache->IsUrl(path)) {
+				path := UrlCache->PathPart(path);
 			};
 
 			start := 0;
@@ -10755,9 +11268,10 @@ log->Query("select epoch, loss from train where acc > 0.85")->ToString()->PrintL
 			@unmatched_count := 0;
 			@unmatched := Table->New(@name + "_unmatched", ["line", "text"], UnmatchedTypes());
 
-			text := SourceText->Read(@path);
+			reason := StringHolder->New();
+			text := SourceText->Read(@path, reason);
 			if(text = Nil) {
-				@error := SourceText->Failure(@path);
+				@error := reason->Get();
 				return Nil;
 			};
 
@@ -11036,9 +11550,10 @@ runs->Describe()->ToString()->PrintLine();
 			@tables := Nil;
 			text := @text;
 			if(text = Nil) {
-				text := SourceText->Read(@path);
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
 				if(text = Nil) {
-					@error := SourceText->Failure(@path);
+					@error := reason->Get();
 					return Nil;
 				};
 			};
@@ -11443,9 +11958,10 @@ rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._
 			@tables := Nil;
 			text := @text;
 			if(text = Nil) {
-				text := SourceText->Read(@path);
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
 				if(text = Nil) {
-					@error := SourceText->Failure(@path);
+					@error := reason->Get();
 					return Nil;
 				};
 			};
@@ -11852,9 +12368,10 @@ rs := catalog->Query("select title, @lang from books where year > 2000");
 
 			text := @text;
 			if(text = Nil) {
-				text := SourceText->Read(@path);
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
 				if(text = Nil) {
-					@error := SourceText->Failure(@path);
+					@error := reason->Get();
 					return Nil;
 				};
 			};
