@@ -1,5 +1,5 @@
 #~
-# compile: obc -src fs_query_12.obs -lib query,regex,misc,net,json,csv
+# compile: obc -src fs_query_12.obs -lib query,regex,misc,net,json,csv,xml,cipher
 # run: obr fs_query_12.obe
 ~#
 
