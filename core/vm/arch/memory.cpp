@@ -904,13 +904,18 @@ size_t* MemoryManager::AllocateArray(const size_t size, const MemoryType type, s
 }
 
 size_t* MemoryManager::GetMemory(size_t size) {
-  size_t* mem = GetFreeMemory(size);
-  if(mem) {
-    return mem;
+  // A cacheable size is rounded up to its class, so the block returns to the same
+  // class when it is freed and can serve any request that maps there.
+  if(size <= ALIGN_POOL_MAX) {
+    const size_t index = size_class::Ceil(size);
+    size_t* mem = GetFreeMemory(index);
+    if(mem) {
+      return mem;
+    }
+    size = size_class::Size(index);
   }
 
-  size_t alloc_size = size + sizeof(size_t);
-  size_t* raw_mem = (size_t*)calloc(alloc_size, sizeof(char));
+  size_t* raw_mem = (size_t*)calloc(size + sizeof(size_t), sizeof(char));
   if(!raw_mem) {
     return nullptr;
   }
@@ -923,83 +928,47 @@ size_t* MemoryManager::GetMemory(size_t size) {
 }
 
 void MemoryManager::AddFreeMemory(size_t* raw_mem) {
-  const size_t size = AlignMemorySize(raw_mem[0]);
-  if(size) {
-    AddFreeCache(size, raw_mem);
-  }
-  else {
+  const size_t size = raw_mem[0];
+  if(size < size_class::MIN_SIZE || size > ALIGN_POOL_MAX) {
     free(raw_mem);
-    raw_mem = nullptr;
+    return;
   }
-}
 
-void MemoryManager::AddFreeCache(size_t pool, size_t* raw_mem) {
 #ifndef _GC_SERIAL
   MUTEX_LOCK(&free_memory_cache_lock);
 #endif
-  free_memory_cache_size.fetch_add(raw_mem[0], std::memory_order_relaxed);
+  free_memory_cache_size.fetch_add(size, std::memory_order_relaxed);
 
-  // Push onto the bucket's intrusive list: word [0] holds the block's actual
-  // size (kept), word [1] becomes the next-free link. No node allocation.
-  const size_t idx = PoolIndex(pool);
-  raw_mem[1] = (size_t)free_buckets[idx];
-  free_buckets[idx] = raw_mem;
+  // Push onto the list of the largest class the block can serve: word [0] keeps
+  // the block's usable size, word [1] becomes the next-free link.
+  const size_t index = size_class::Floor(size);
+  raw_mem[1] = (size_t)free_buckets[index];
+  free_buckets[index] = raw_mem;
 #ifndef _GC_SERIAL
   MUTEX_UNLOCK(&free_memory_cache_lock);
 #endif
 }
 
-size_t* MemoryManager::GetFreeMemory(size_t size) {
-  size_t cache_size = AlignMemorySize(size);
-  if(!cache_size) {
+// Pops a cached block of class 'index', or nullptr. Every block on the list is at
+// least the class's size, so the head always fits.
+size_t* MemoryManager::GetFreeMemory(size_t index) {
+#ifndef _GC_SERIAL
+  MUTEX_LOCK(&free_memory_cache_lock);
+#endif
+  size_t* raw_mem = free_buckets[index];
+  if(raw_mem) {
+    free_buckets[index] = (size_t*)raw_mem[1];
+    free_memory_cache_size.fetch_sub(raw_mem[0], std::memory_order_relaxed);
+  }
+#ifndef _GC_SERIAL
+  MUTEX_UNLOCK(&free_memory_cache_lock);
+#endif
+
+  if(!raw_mem) {
     return nullptr;
   }
-
-#ifndef _GC_SERIAL
-  MUTEX_LOCK(&free_memory_cache_lock);
-#endif
-  // Find first block with actual size >= requested (blocks in the same aligned
-  // bucket may have different actual sizes), unlinking it from the list.
-  const size_t idx = PoolIndex(cache_size);
-  size_t* prev = nullptr;
-  size_t* check_mem = free_buckets[idx];
-  while(check_mem) {
-    size_t* next = (size_t*)check_mem[1];
-    if(check_mem[0] >= size) {
-      if(prev) {
-        prev[1] = (size_t)next;
-      }
-      else {
-        free_buckets[idx] = next;
-      }
-      free_memory_cache_size.fetch_sub(check_mem[0], std::memory_order_relaxed);
-      memset(check_mem + 1, 0, check_mem[0]);   // also clears the next link
-#ifndef _GC_SERIAL
-      MUTEX_UNLOCK(&free_memory_cache_lock);
-#endif
-      return check_mem + 1;
-    }
-    prev = check_mem;
-    check_mem = next;
-  }
-#ifndef _GC_SERIAL
-  MUTEX_UNLOCK(&free_memory_cache_lock);
-#endif
-
-  return nullptr;
-}
-
-size_t MemoryManager::AlignMemorySize(size_t size) {
-  --size;
-  size |= size >> 1;
-  size |= size >> 2;
-  size |= size >> 4;
-  size |= size >> 8;
-  size |= size >> 16;
-  size |= size >> 32;
-  ++size;
-
-  return size > ALIGN_POOL_MAX ? 0 : size;
+  memset(raw_mem + 1, 0, raw_mem[0]);   // also clears the next link
+  return raw_mem + 1;
 }
 
 void MemoryManager::ClearFreeMemory() {
