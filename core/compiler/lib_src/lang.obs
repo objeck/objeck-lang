@@ -253,6 +253,19 @@ bundle System {
 		}
 
 		#~
+		Compresses a byte stream using zlib at a given level: 1 is fastest, 9
+		smallest (what CompressZlib(input) uses), 0 stores without compressing, and
+		-1, or any value out of range, is zlib's default (6). UncompressZlib reads
+		every level.
+		@param input bytes to compress
+		@param level compression level, -1 to 9
+		@return compressed bytes
+		~#
+		function : CompressZlib(input : Byte[], level : Int) ~ Byte[] {
+			COMPRESS_ZLIB_LEVEL;
+		}
+
+		#~
 		Uncompresses a byte stream using zlib
 		@ignore-params
 		@return uncompressed bytes
@@ -10506,7 +10519,10 @@ bundle System.IO {
 		@return byte stream of the objects that have been serialized
 		~#
 		method : public : Serialize() ~ Byte[] {
-			return Byte->CompressZlib(@buffer);
+			# zlib level 1. Level 9 (Byte->CompressZlib's) spent all of Serialize's
+			# time in deflate: for 1M Ints and 2M Floats (32 MB raw), 5.8 s at level
+			# 9, 1.55 s at 6, 0.28 s at 1, for 8.21, 8.28 and 9.34 MB of output.
+			return Byte->CompressZlib(@buffer, 1);
 		}
 	}
 	

@@ -440,6 +440,7 @@ enum ScannerTokenType {
   DESERL_BOOL_ARY,
   ARY_TO_BYTES,
   BYTES_TO_ARY,
+  COMPRESS_ZLIB_LEVEL,
   // serialization
   SERL_CHAR,
   SERL_INT,

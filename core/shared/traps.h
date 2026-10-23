@@ -328,6 +328,9 @@ namespace instructions {
     // Int/Float->ToBytes and Byte->ToInts/ToFloats: raw little-endian
     // conversion between numeric arrays and bytes
     ARY_TO_BYTES,
-    BYTES_TO_ARY
+    BYTES_TO_ARY,
+    // Byte->CompressZlib(input, level), and Serializer->Serialize at the
+    // default level: COMPRESS_ZLIB_BYTES always used level 9
+    COMPRESS_ZLIB_LEVEL
   };
 }

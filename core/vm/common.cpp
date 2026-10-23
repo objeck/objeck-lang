@@ -2744,6 +2744,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case BYTES_TO_ARY:
     return BytesToAry(program, inst, op_stack, stack_pos, frame);
 
+  case COMPRESS_ZLIB_LEVEL:
+    return CompressZlibLevel(program, inst, op_stack, stack_pos, frame);
+
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
 
@@ -6190,6 +6193,24 @@ bool TrapProcessor::DeserlFloatAry(StackProgram* program, size_t* inst, size_t* 
 bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  return CompressZlibArray(array, Z_BEST_COMPRESSION, op_stack, stack_pos);
+}
+
+// function : CompressZlib(input : Byte[], level : Int) ~ Byte[]: zlib's
+// levels, 0 (store) to 9 (smallest); -1 is zlib's default (6). Byte->CompressZlib
+// without a level keeps level 9.
+bool TrapProcessor::CompressZlibLevel(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
+{
+  INT64_VALUE level = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(level < Z_DEFAULT_COMPRESSION || level > Z_BEST_COMPRESSION) {
+    level = Z_DEFAULT_COMPRESSION;
+  }
+  return CompressZlibArray(array, (int)level, op_stack, stack_pos);
+}
+
+bool TrapProcessor::CompressZlibArray(size_t* array, int level, size_t* &op_stack, size_t* &stack_pos)
+{
   if(!array) {
     return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
   }
@@ -6197,9 +6218,9 @@ bool TrapProcessor::CompressZlibBytes(StackProgram* program, size_t* inst, size_
   // setup buffers
   const char* in = (char*)(array + 3);
   const uLong in_len = (uLong)array[2];
-    
+
   uLong out_len;
-  char* out = OutputStream::CompressZlib(in, in_len, out_len);
+  char* out = OutputStream::CompressZlib(in, in_len, out_len, level);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
     return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"zlib compression failed");
