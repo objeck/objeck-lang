@@ -5,7 +5,7 @@ Copyright (c) 2024 Randy Hollines
 use Web.HTTP, Collection, Data.JSON, Data.JSON.Scheme, System.IO.Filesystem;
 
 #~
-Ollama local LLM client. Runs models (Llama, Mistral, Phi, etc.) locally via the Ollama server. Supports chat sessions, embeddings, and model management. Every request completes before returning -- responses are not streamed, so a long generation produces nothing until it finishes. Compile with -lib ollama.
+Ollama local LLM client. Runs models (Llama, Mistral, Phi, Qwen, etc.) locally via the Ollama server. Supports text generation, chat sessions with tool calling, structured (JSON schema) output, thinking models, images, batch embeddings and model management. Every request completes before returning -- responses are not streamed, so a long generation produces nothing until it finishes. Compile with -lib ollama.
 ~#
 bundle API.Ollama {
 	#~
@@ -54,7 +54,7 @@ bundle API.Ollama {
 		~#
 		function : ReportError(json : JsonElement) ~ Nil {
 			if(json <> Nil & json->Has("error")) {
-				SetLastError(json->Get("error")->ToString());
+				SetLastError(Field->Text(json->Get("error")));
 			}
 			else {
 				SetLastError("response did not contain the expected field");
@@ -79,29 +79,206 @@ bundle API.Ollama {
 			};
 			return @host;
 		}
+
+		# POST a JSON body to an /api path; the response text, or Nil with the last error set
+		function : private : Post(path : String, request : JsonElement) ~ String {
+			SetLastError(Nil);
+			host := GetHost();
+			url := Url->New("{$host}{$path}");
+			response := Web.HTTP.HttpClient->QuickPost(url, request->ToString()->ToByteArray(), "application/json");
+			return Content(response, url);
+		}
+
+		# GET an /api path; the response text, or Nil with the last error set
+		function : private : Fetch(path : String) ~ String {
+			SetLastError(Nil);
+			host := GetHost();
+			url := Url->New("{$host}{$path}");
+			response := Web.HTTP.HttpClient->QuickGet(url, "application/json");
+			return Content(response, url);
+		}
+
+		function : private : Content(response : Web.HTTP.Response, url : Url) ~ String {
+			if(response = Nil) {
+				url_str := url->ToString();
+				SetLastError("no response from {$url_str}");
+				return Nil;
+			};
+
+			content := response->GetContent();
+			if(content = Nil) {
+				code := response->GetCode();
+				SetLastError("empty response (HTTP {$code})");
+				return Nil;
+			};
+
+			return content->ToString();
+		}
+
+		# True for an HTTP 200; otherwise the last error is set from the body, if it has one
+		function : private : Succeeded(response : Web.HTTP.Response) ~ Bool {
+			if(response = Nil) {
+				SetLastError("no response from server");
+				return false;
+			};
+
+			code := response->GetCode();
+			if(code = 200) {
+				return true;
+			};
+
+			content := response->GetContent();
+			if(content <> Nil) {
+				json := JsonParser->TextToElement(content->ToString());
+				if(json <> Nil & json->Has("error")) {
+					ReportError(json);
+					return false;
+				};
+			};
+			SetLastError("request failed (HTTP {$code})");
+
+			return false;
+		}
+
+		# Base64 encodes image files for an 'images' field; Nil, with the last error set, if one cannot be read
+		function : private : EncodeImages(images : File[]) ~ JsonElement {
+			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(file in images) {
+				if(file = Nil | <>file->Exists()) {
+					SetLastError("image file not found");
+					return Nil;
+				};
+
+				file_data := System.IO.Filesystem.FileReader->ReadBinaryFile(file->GetFullName());
+				if(file_data = Nil) {
+					name := file->GetFullName();
+					SetLastError("unable to read image file: {$name}");
+					return Nil;
+				};
+
+				images_json->Add(Cipher.Encrypt->Base64(file_data));
+			};
+
+			return images_json;
+		}
+	}
+
+	# Reads fields out of parsed responses. The JSON parser keeps string values
+	# in their escaped form (serializing escapes them again), so every string
+	# read from a response is decoded here and every element that is sent back
+	# to the server is rebuilt from decoded values.
+	class : private : Field {
+		# decoded string value, or Nil when absent or null
+		function : Text(elem : JsonElement) ~ String {
+			if(elem = Nil | elem->IsNull()) {
+				return Nil;
+			};
+
+			if(elem->GetType() = JsonElement->JsonType->STRING) {
+				return JsonElement->Decode(elem->GetString());
+			};
+
+			return elem->ToString();
+		}
+
+		function : Text(json : JsonElement, name : String) ~ String {
+			if(json = Nil) {
+				return Nil;
+			};
+			return Text(json->Get(name));
+		}
+
+		function : IntOf(json : JsonElement, name : String) ~ Int {
+			if(json = Nil) {
+				return 0;
+			};
+
+			elem := json->Get(name);
+			if(elem = Nil | elem->GetType() <> JsonElement->JsonType->NUMBER) {
+				return 0;
+			};
+			return elem->GetInt();
+		}
+
+		function : BoolOf(json : JsonElement, name : String) ~ Bool {
+			if(json = Nil) {
+				return false;
+			};
+
+			elem := json->Get(name);
+			return elem <> Nil & elem->GetType() = JsonElement->JsonType->TRUE;
+		}
+
+		function : Strings(elem : JsonElement) ~ Vector<String> {
+			values := Vector->New()<String>;
+			if(elem <> Nil & elem->GetType() = JsonElement->JsonType->ARRAY) {
+				each(i : elem) {
+					value := Text(elem->Get(i));
+					if(value <> Nil) {
+						values->AddBack(value);
+					};
+				};
+			};
+			return values;
+		}
+
+		# appends text that may be Nil
+		function : Add(buffer : String, value : String) ~ Nil {
+			if(value <> Nil) {
+				buffer->Append(value);
+			};
+		}
+
+		# a copy of a parsed element with every string and key decoded, safe to serialize again
+		function : Decoded(elem : JsonElement) ~ JsonElement {
+			if(elem = Nil) {
+				return Nil;
+			};
+
+			type := elem->GetType();
+			if(type = JsonElement->JsonType->STRING) {
+				return JsonElement->New(JsonElement->Decode(elem->GetString()));
+			}
+			else if(type = JsonElement->JsonType->ARRAY) {
+				array_copy := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(i : elem) {
+					array_copy->Add(Decoded(elem->Get(i)));
+				};
+				return array_copy;
+			}
+			else if(type = JsonElement->JsonType->OBJECT) {
+				object_copy := JsonElement->New(JsonElement->JsonType->OBJECT);
+				names := elem->GetNames();
+				each(name in names) {
+					object_copy->Insert(JsonElement->Decode(name), Decoded(elem->Get(name)));
+				};
+				return object_copy;
+			};
+
+			return elem;
+		}
 	}
 
 	#~
-	Generation options for controlling model behavior.
+	Generation options and request settings. Model parameters (temperature, top_p,
+	num_ctx, seed, stop, ...) are sent in the request's 'options' object; request
+	settings (format, think, keep_alive, and for Completion system, template,
+	suffix and raw) are sent as top-level request fields.
 
 ```
+schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"integer\"}},\"required\":[\"answer\"]}");
 options := Options->New();
-options->SetTemperature(0.7);
-options->SetTopP(0.9);
+options->SetTemperature(0.0)->SetSeed(42)->SetNumCtx(8192);
+options->SetFormat(schema)->SetKeepAlive("10m");
 ```
 	~#
 	class Options {
-		@temperature : Float;
-		@top_p : Float;
-		@top_k : Int;
-		@has_temperature : Bool;
-		@has_top_p : Bool;
-		@has_top_k : Bool;
+		@values : JsonElement;
+		@fields : JsonElement;
 
 		New() {
-			@has_temperature := false;
-			@has_top_p := false;
-			@has_top_k := false;
+			@values := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@fields := JsonElement->New(JsonElement->JsonType->OBJECT);
 		}
 
 		#~
@@ -110,8 +287,7 @@ options->SetTopP(0.9);
 		@return self for chaining
 		~#
 		method : public : SetTemperature(t : Float) ~ Options {
-			@temperature := t;
-			@has_temperature := true;
+			@values->Insert("temperature", t);
 			return @self;
 		}
 
@@ -121,8 +297,7 @@ options->SetTopP(0.9);
 		@return self for chaining
 		~#
 		method : public : SetTopP(p : Float) ~ Options {
-			@top_p := p;
-			@has_top_p := true;
+			@values->Insert("top_p", p);
 			return @self;
 		}
 
@@ -132,32 +307,214 @@ options->SetTopP(0.9);
 		@return self for chaining
 		~#
 		method : public : SetTopK(k : Int) ~ Options {
-			@top_k := k;
-			@has_top_k := true;
+			@values->Insert("top_k", k);
 			return @self;
 		}
 
 		#~
-		Converts options to JSON for the request.
-		@return JSON element, or Nil if no options set
+		Sets the min-p sampling value.
+		@param p min-p value (0.0 to 1.0)
+		@return self for chaining
+		~#
+		method : public : SetMinP(p : Float) ~ Options {
+			@values->Insert("min_p", p);
+			return @self;
+		}
+
+		#~
+		Sets the context window size in tokens.
+		@param n context size
+		@return self for chaining
+		~#
+		method : public : SetNumCtx(n : Int) ~ Options {
+			@values->Insert("num_ctx", n);
+			return @self;
+		}
+
+		#~
+		Sets the maximum number of tokens to generate (-1 for no limit).
+		@param n token limit
+		@return self for chaining
+		~#
+		method : public : SetNumPredict(n : Int) ~ Options {
+			@values->Insert("num_predict", n);
+			return @self;
+		}
+
+		#~
+		Sets the random seed, for reproducible output.
+		@param seed seed value
+		@return self for chaining
+		~#
+		method : public : SetSeed(seed : Int) ~ Options {
+			@values->Insert("seed", seed);
+			return @self;
+		}
+
+		#~
+		Sets the repeat penalty.
+		@param penalty penalty value (1.0 is no penalty)
+		@return self for chaining
+		~#
+		method : public : SetRepeatPenalty(penalty : Float) ~ Options {
+			@values->Insert("repeat_penalty", penalty);
+			return @self;
+		}
+
+		#~
+		Sets the stop sequences; generation ends when one is produced.
+		@param stops stop sequences
+		@return self for chaining
+		~#
+		method : public : SetStop(stops : String[]) ~ Options {
+			stops_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+			each(stop in stops) {
+				stops_json->Add(stop);
+			};
+			@values->Insert("stop", stops_json);
+			return @self;
+		}
+
+		#~
+		Sets any numeric model parameter by name (see the Modelfile parameter list).
+		@param name parameter name
+		@param value parameter value
+		@return self for chaining
+		~#
+		method : public : Set(name : String, value : Float) ~ Options {
+			@values->Insert(name, value);
+			return @self;
+		}
+
+		#~
+		Sets any integer model parameter by name (see the Modelfile parameter list).
+		@param name parameter name
+		@param value parameter value
+		@return self for chaining
+		~#
+		method : public : Set(name : String, value : Int) ~ Options {
+			@values->Insert(name, value);
+			return @self;
+		}
+
+		#~
+		Sets the output format to "json" (any JSON value).
+		@param format "json"
+		@return self for chaining
+		~#
+		method : public : SetFormat(format : String) ~ Options {
+			@fields->Insert("format", format);
+			return @self;
+		}
+
+		#~
+		Sets the output format to a JSON schema (structured output); the reply text is JSON matching the schema.
+		@param schema JSON schema
+		@return self for chaining
+		~#
+		method : public : SetFormat(schema : JsonElement) ~ Options {
+			@fields->Insert("format", schema);
+			return @self;
+		}
+
+		#~
+		Enables or disables thinking for thinking models; the reasoning is returned separately (see Reply->GetThinking).
+		@param think true to think
+		@return self for chaining
+		~#
+		method : public : SetThink(think : Bool) ~ Options {
+			@fields->Insert("think", think);
+			return @self;
+		}
+
+		#~
+		Sets the thinking level for models that support levels ("low", "medium" or "high").
+		@param level thinking level
+		@return self for chaining
+		~#
+		method : public : SetThink(level : String) ~ Options {
+			@fields->Insert("think", level);
+			return @self;
+		}
+
+		#~
+		Sets how long the model stays loaded after the request (e.g. "5m", "1h", "0" to unload).
+		@param duration keep-alive duration
+		@return self for chaining
+		~#
+		method : public : SetKeepAlive(duration : String) ~ Options {
+			@fields->Insert("keep_alive", duration);
+			return @self;
+		}
+
+		#~
+		Sets the system prompt, overriding the Modelfile's (Completion only; a Chat takes a "system" message instead).
+		@param system system prompt
+		@return self for chaining
+		~#
+		method : public : SetSystem(system : String) ~ Options {
+			@fields->Insert("system", system);
+			return @self;
+		}
+
+		#~
+		Sets the prompt template, overriding the Modelfile's (Completion only).
+		@param template prompt template
+		@return self for chaining
+		~#
+		method : public : SetTemplate(template : String) ~ Options {
+			@fields->Insert("template", template);
+			return @self;
+		}
+
+		#~
+		Sets the text that follows the generated text, for fill-in-the-middle (Completion only).
+		@param suffix suffix text
+		@return self for chaining
+		~#
+		method : public : SetSuffix(suffix : String) ~ Options {
+			@fields->Insert("suffix", suffix);
+			return @self;
+		}
+
+		#~
+		Sends the prompt without applying the prompt template (Completion only).
+		@param raw true for a raw prompt
+		@return self for chaining
+		~#
+		method : public : SetRaw(raw : Bool) ~ Options {
+			@fields->Insert("raw", raw);
+			return @self;
+		}
+
+		#~
+		Converts the model parameters to JSON for the request's 'options' object.
+		@return JSON element, or Nil if no model parameters are set
 		~#
 		method : public : ToJson() ~ JsonElement {
-			if(<>@has_temperature & <>@has_top_p & <>@has_top_k) {
+			if(@values->Size() = 0) {
 				return Nil;
 			};
 
-			options_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			if(@has_temperature) {
-				options_json->Insert("temperature", @temperature);
-			};
-			if(@has_top_p) {
-				options_json->Insert("top_p", @top_p);
-			};
-			if(@has_top_k) {
-				options_json->Insert("top_k", @top_k);
+			return @values;
+		}
+
+		#~
+		Adds the model parameters and request settings to a request body.
+		@param request request body
+		@param generate true for an /api/generate request; system, template, suffix and raw are sent only then
+		~#
+		method : public : ApplyTo(request : JsonElement, generate : Bool) ~ Nil {
+			if(@values->Size() > 0) {
+				request->Insert("options", @values);
 			};
 
-			return options_json;
+			names := @fields->GetNames();
+			each(name in names) {
+				if(generate | (<>name->Equals("system") & <>name->Equals("template") & <>name->Equals("suffix") & <>name->Equals("raw"))) {
+					request->Insert(name, @fields->Get(name));
+				};
+			};
 		}
 	}
 
@@ -165,7 +522,7 @@ options->SetTopP(0.9);
 	Tool definition for function calling in chat.
 
 ```
-params := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\"}}}");
+params := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"location\":{\"type\":\"string\"}},\"required\":[\"location\"]}");
 tool := Tool->New("get_weather", "Get the weather for a location", params);
 ```
 	~#
@@ -187,6 +544,32 @@ tool := Tool->New("get_weather", "Get the weather for a location", params);
 		}
 
 		#~
+		Constructor from a function definition, the form the other AI client libraries use
+		@param func function definition
+		~#
+		New(func : FunctionType) {
+			@name := func->GetName();
+			@description := func->GetDesc();
+
+			func_json := func->ToJson();
+			@parameters := JsonElement->New(JsonElement->JsonType->OBJECT);
+			@parameters->Insert("type", "object");
+			@parameters->Insert("properties", func_json->Get("properties"));
+			required_json := func_json->Get("required");
+			if(required_json <> Nil) {
+				@parameters->Insert("required", required_json);
+			};
+		}
+
+		#~
+		Get the function name
+		@return function name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
 		Converts tool to JSON for the request.
 		@return JSON element
 		~#
@@ -196,7 +579,9 @@ tool := Tool->New("get_weather", "Get the weather for a location", params);
 
 			func_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			func_json->Insert("name", @name);
-			func_json->Insert("description", @description);
+			if(@description <> Nil) {
+				func_json->Insert("description", @description);
+			};
 			if(@parameters <> Nil) {
 				func_json->Insert("parameters", @parameters);
 			};
@@ -207,8 +592,283 @@ tool := Tool->New("get_weather", "Get the weather for a location", params);
 	}
 
 	#~
+	A function call the model asked for. Run it, then return the result with Chat->AddToolResult.
+	~#
+	class ToolCall {
+		@name : String;
+		@arguments : JsonElement;
+
+		New(call_json : JsonElement) {
+			func_json := call_json->Get("function");
+			if(func_json <> Nil) {
+				@name := Field->Text(func_json, "name");
+				@arguments := Field->Decoded(func_json->Get("arguments"));
+			};
+
+			if(@arguments = Nil) {
+				@arguments := JsonElement->New(JsonElement->JsonType->OBJECT);
+			};
+		}
+
+		#~
+		Get the name of the function to call
+		@return function name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Get the call's arguments, an object keyed by parameter name
+		@return arguments
+		~#
+		method : public : GetArguments() ~ JsonElement {
+			return @arguments;
+		}
+
+		#~
+		Get one argument as text (a number or boolean in its JSON form)
+		@param name parameter name
+		@return argument text, or Nil if absent
+		~#
+		method : public : GetArgument(name : String) ~ String {
+			elem := @arguments->Get(name);
+			if(elem = Nil | elem->IsNull()) {
+				return Nil;
+			};
+
+			if(elem->GetType() = JsonElement->JsonType->STRING) {
+				return elem->GetString();
+			};
+
+			return elem->ToString();
+		}
+
+		#~
+		Converts the call to JSON, as it appears in an assistant message
+		@return JSON element
+		~#
+		method : public : ToJson() ~ JsonElement {
+			func_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			func_json->Insert("name", @name);
+			func_json->Insert("arguments", @arguments);
+
+			call_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			call_json->Insert("function", func_json);
+			return call_json;
+		}
+	}
+
+	#~
+	A complete reply from /api/generate or /api/chat: the text, any thinking and tool calls, and the timing and token counts. Durations are in nanoseconds.
+
+```
+reply := Completion->GenerateReply("llama3", "Why is the sky blue?", Nil);
+if(reply <> Nil) {
+  reply->GetText()->PrintLine();
+  "tokens: {$reply->GetEvalCount()}, done: {$reply->GetDoneReason()}"->PrintLine();
+};
+```
+	~#
+	class Reply {
+		@model : String;
+		@role : String;
+		@text : String;
+		@thinking : String;
+		@done : Bool;
+		@done_reason : String;
+		@tool_calls : Vector<ToolCall>;
+		@total_duration : Int;
+		@load_duration : Int;
+		@prompt_eval_count : Int;
+		@prompt_eval_duration : Int;
+		@eval_count : Int;
+		@eval_duration : Int;
+
+		New(json : JsonElement) {
+			@model := Field->Text(json, "model");
+			@done := Field->BoolOf(json, "done");
+			@done_reason := Field->Text(json, "done_reason");
+			@total_duration := Field->IntOf(json, "total_duration");
+			@load_duration := Field->IntOf(json, "load_duration");
+			@prompt_eval_count := Field->IntOf(json, "prompt_eval_count");
+			@prompt_eval_duration := Field->IntOf(json, "prompt_eval_duration");
+			@eval_count := Field->IntOf(json, "eval_count");
+			@eval_duration := Field->IntOf(json, "eval_duration");
+			@tool_calls := Vector->New()<ToolCall>;
+
+			message_json := json->Get("message");
+			if(message_json <> Nil) {
+				# /api/chat
+				@role := Field->Text(message_json, "role");
+				@text := Field->Text(message_json, "content");
+				@thinking := Field->Text(message_json, "thinking");
+
+				calls_json := message_json->Get("tool_calls");
+				if(calls_json <> Nil & calls_json->GetType() = JsonElement->JsonType->ARRAY) {
+					each(i : calls_json) {
+						@tool_calls->AddBack(ToolCall->New(calls_json->Get(i)));
+					};
+				};
+			}
+			else {
+				# /api/generate
+				@role := "assistant";
+				@text := Field->Text(json, "response");
+				@thinking := Field->Text(json, "thinking");
+			};
+
+			if(@text = Nil) {
+				@text := "";
+			};
+		}
+
+		#~
+		Parses a /api/generate or /api/chat response body.
+		@param body response text
+		@return reply, or Nil with the last error set (EndPoint->GetLastError) for an error body or one that is not a reply
+		~#
+		function : Parse(body : String) ~ Reply {
+			json := EndPoint->ParseResponse(body);
+			if(json = Nil) {
+				return Nil;
+			};
+
+			if(<>json->Has("error") & (json->Has("message") | json->Has("response"))) {
+				return Reply->New(json);
+			};
+
+			EndPoint->ReportError(json);
+			return Nil;
+		}
+
+		#~
+		Get the generated text (empty when the model only called tools)
+		@return text
+		~#
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		#~
+		Get the model's reasoning, for thinking models with think enabled
+		@return thinking text, or Nil
+		~#
+		method : public : GetThinking() ~ String {
+			return @thinking;
+		}
+
+		#~
+		Get the role of the reply message
+		@return role (normally "assistant")
+		~#
+		method : public : GetRole() ~ String {
+			return @role;
+		}
+
+		#~
+		Get the model that replied
+		@return model name
+		~#
+		method : public : GetModel() ~ String {
+			return @model;
+		}
+
+		#~
+		Get the tool calls the model made (chat with tools only)
+		@return tool calls, empty if none
+		~#
+		method : public : GetToolCalls() ~ Vector<ToolCall> {
+			return @tool_calls;
+		}
+
+		#~
+		Checks for tool calls
+		@return true if the model called one or more tools
+		~#
+		method : public : HasToolCalls() ~ Bool {
+			return @tool_calls->Size() > 0;
+		}
+
+		#~
+		Checks whether generation finished
+		@return true if done
+		~#
+		method : public : IsDone() ~ Bool {
+			return @done;
+		}
+
+		#~
+		Get why generation stopped (e.g. "stop", "length", "load")
+		@return done reason, or Nil
+		~#
+		method : public : GetDoneReason() ~ String {
+			return @done_reason;
+		}
+
+		#~
+		Get the total request time
+		@return nanoseconds
+		~#
+		method : public : GetTotalDuration() ~ Int {
+			return @total_duration;
+		}
+
+		#~
+		Get the time spent loading the model
+		@return nanoseconds
+		~#
+		method : public : GetLoadDuration() ~ Int {
+			return @load_duration;
+		}
+
+		#~
+		Get the number of prompt tokens evaluated
+		@return token count
+		~#
+		method : public : GetPromptEvalCount() ~ Int {
+			return @prompt_eval_count;
+		}
+
+		#~
+		Get the time spent evaluating the prompt
+		@return nanoseconds
+		~#
+		method : public : GetPromptEvalDuration() ~ Int {
+			return @prompt_eval_duration;
+		}
+
+		#~
+		Get the number of tokens generated
+		@return token count
+		~#
+		method : public : GetEvalCount() ~ Int {
+			return @eval_count;
+		}
+
+		#~
+		Get the time spent generating
+		@return nanoseconds
+		~#
+		method : public : GetEvalDuration() ~ Int {
+			return @eval_duration;
+		}
+
+		#~
+		Get the generation speed
+		@return tokens per second, or 0.0 if no timing was reported
+		~#
+		method : public : GetTokensPerSecond() ~ Float {
+			if(@eval_duration <= 0) {
+				return 0.0;
+			};
+			return @eval_count->As(Float) * 1000000000.0 / @eval_duration->As(Float);
+		}
+	}
+
+	#~
 	Ollama model interactions
-	
+
 ```
 prompt := "What number is this?";
 file := System.IO.Filesystem.File->New("../gemini/thirteen.png");
@@ -217,47 +877,107 @@ Completion->Generate("llava", prompt, file)->PrintLine();
 	~#
 	class Completion from EndPoint {
 		#~
-		Generates a response from the model given an input
-		@param model model name (i.e. llama3, llava)
-		@param prompt prompt
-		@return query response
-
-```
-response := Completion->Generate("llama3", "What is the capital of France?");
-response->PrintLine();
-```
-		~#
-		#~
 		The response handling behind every Generate overload, as a function of the
 		body text so it can be tested without a server.
 		@param body response text from /api/generate
 		@return the generated text, or Nil with the last error set
 		~#
 		function : ParseGenerateResponse(body : String) ~ String {
-			json := ParseResponse(body);
-			if(json = Nil) {
+			reply := Reply->Parse(body);
+			if(reply = Nil) {
 				return Nil;
 			};
-			response_json := json->Get("response");
-			if(response_json <> Nil) {
-				return JsonElement->Decode(response_json->GetString());
-			};
-			ReportError(json);
-			return Nil;
+			return reply->GetText();
 		}
 
+		#~
+		Builds the /api/generate request body every Generate overload sends.
+		@param model model name
+		@param prompt prompt
+		@param format output format ("json"), or Nil
+		@param options options and request settings, or Nil
+		@param images image files, or Nil
+		@return request body, or Nil with the last error set if an image cannot be read
+		~#
+		function : BuildGenerateRequest(model : String, prompt : String, format : String, options : Options, images : File[]) ~ JsonElement {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("model", model);
+			query_json->Insert("prompt", prompt);
+			if(options <> Nil) {
+				options->ApplyTo(query_json, true);
+			};
+			if(format <> Nil) {
+				query_json->Insert("format", format);
+			};
+			if(images <> Nil) {
+				images_json := EncodeImages(images);
+				if(images_json = Nil) {
+					return Nil;
+				};
+				query_json->Insert("images", images_json);
+			};
+			query_json->Insert("stream", false);
+
+			return query_json;
+		}
+
+		#~
+		Generates a reply with its metadata (thinking, done reason, token counts, timings)
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		@param options options and request settings, or Nil
+		@return reply, or Nil with the last error set
+		~#
+		function : GenerateReply(model : String, prompt : String, options : Options) ~ Reply {
+			images : File[];
+			return GenerateReply(model, prompt, images, options);
+		}
+
+		#~
+		Generates a reply about images, with its metadata
+		@param model model name (i.e. llava)
+		@param prompt prompt
+		@param images image files, or Nil
+		@param options options and request settings, or Nil
+		@return reply, or Nil with the last error set
+		~#
+		function : GenerateReply(model : String, prompt : String, images : File[], options : Options) ~ Reply {
+			format : String;
+			request := BuildGenerateRequest(model, prompt, format, options, images);
+			if(request = Nil) {
+				return Nil;
+			};
+
+			body := Post("/api/generate", request);
+			if(body = Nil) {
+				return Nil;
+			};
+
+			return Reply->Parse(body);
+		}
+
+		#~
+		Generates a response from the model given an input
+		@param model model name (i.e. llama3, llava)
+		@param prompt prompt
+		@return query response, or Nil with the last error set
+
+```
+response := Completion->Generate("llama3", "What is the capital of France?");
+response->PrintLine();
+```
+		~#
 		function : Generate(model : String, prompt : String) ~ String {
-			# already decoded by ParseGenerateResponse; decoding twice mangled
-			# any reply that legitimately contained a backslash
-			return Generate(model, prompt, Nil);
+			format : String;
+			return Generate(model, prompt, format, Nil);
 		}
 
 		#~
 		Generates a response from the model given an input with options
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
-		@param options generation options (temperature, top_p, etc.)
-		@return query response
+		@param options options and request settings (temperature, top_p, format, think, etc.)
+		@return query response, or Nil with the last error set
 
 ```
 opts := Options->New()->SetTemperature(0.3)->SetTopP(0.85);
@@ -266,15 +986,16 @@ response->PrintLine();
 ```
 		~#
 		function : Generate(model : String, prompt : String, options : Options) ~ String {
-			return Generate(model, prompt, Nil, options);
+			format : String;
+			return Generate(model, prompt, format, options);
 		}
 
 		#~
 		Generates a response from the model given an input
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
-		@param format output format
-		@return query response
+		@param format output format ("json")
+		@return query response, or Nil with the last error set
 		~#
 		function : Generate(model : String, prompt : String, format : String) ~ String {
 			return Generate(model, prompt, format, Nil);
@@ -284,44 +1005,19 @@ response->PrintLine();
 		Generates a response from the model given an input
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
-		@param format output format
-		@param options generation options (temperature, top_p, etc.)
-		@return query response
+		@param format output format ("json"); for a JSON schema use Options->SetFormat
+		@param options options and request settings, or Nil
+		@return query response, or Nil with the last error set
 		~#
 		function : Generate(model : String, prompt : String, format : String, options : Options) ~ String {
-			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			query_json->Insert("model", model);
-			query_json->Insert("prompt", prompt);
-			if(format <> Nil) {
-				query_json->Insert("format", format);
-			};
-			if(options <> Nil) {
-				options_json := options->ToJson();
-				if(options_json <> Nil) {
-					query_json->Insert("options", options_json);
-				};
-			};
-			query_json->Insert("stream", false);
-
-			host := EndPoint->GetHost();
-			url := Url->New("{$host}/api/generate");
-			post_request := query_json->ToString();
-			
-			# post_request->PrintLine();
-
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return Nil; };
-				post_response_str := post_response_content->ToString();
-
-				# post_response_str->PrintLine();
-				# "---"->PrintLine();
-
-				return ParseGenerateResponse(post_response_str);
+			images : File[];
+			request := BuildGenerateRequest(model, prompt, format, options, images);
+			body := Post("/api/generate", request);
+			if(body = Nil) {
+				return Nil;
 			};
 
-			return Nil;
+			return ParseGenerateResponse(body);
 		}
 
 		#~
@@ -329,7 +1025,7 @@ response->PrintLine();
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
 		@param image image file
-		@return query response
+		@return query response, or Nil with the last error set
 
 ```
 image := System.IO.Filesystem.File->New("photo.png");
@@ -348,188 +1044,149 @@ response->PrintLine();
 		Generates a response from the model given an input
 		@param model model name (i.e. llama3, llava)
 		@param prompt prompt
-		@param images image images
-		@return query response
+		@param images image files
+		@return query response, or Nil with the last error set
 		~#
 		function : Generate(model : String, prompt : String, images : File[]) ~ String {
-			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			
-			each(file in images) {
-				if(<>file->Exists()) {
-					return Nil;
-				};
-
-				# file->GetFullName()->PrintLine();
-
-				file_data := System.IO.Filesystem.FileReader->ReadBinaryFile(file->GetFullName());
-				if(file_data = Nil) {
-					return Nil;
-				};
-
-				images_json->Add(Cipher.Encrypt->Base64(file_data));
+			reply := GenerateReply(model, prompt, images, Nil);
+			if(reply = Nil) {
+				return Nil;
 			};
-
-			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			query_json->Insert("model", model);
-			query_json->Insert("prompt", prompt);
-			query_json->Insert("images", images_json);
-			query_json->Insert("stream", false);
-
-			host := EndPoint->GetHost();
-			url := Url->New("{$host}/api/generate");
-			post_request := query_json->ToString();
-			
-			# post_request->PrintLine();
-
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return Nil; };
-				post_response_str := post_response_content->ToString();
-
-				# post_response_str->PrintLine();
-				# "---"->PrintLine();
-
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					response_json := post_response_json->Get("response")
-					if(response_json <> Nil) {
-						return JsonElement->Decode(response_json->GetString());
-					}
-					else {
-						ReportError(post_response_json);
-					};
-				}
-			};
-
-			return Nil;
+			return reply->GetText();
 		}
 	}
 
 	#~
-	Ollama chat client
-	
+	Ollama chat client. The session keeps the message history, including tool calls and tool results.
+
 ```
 chat := Chat->New("llama3");
-chat->Send("How many people like in San Pablo, CA?")->PrintLine();
-chat->Send("How of the population identify as Latino??")->PrintLine();
-chat->Send("Thanks, what are the major landmarks?")->PrintLine();
-chat->Send("Goodbye?")->PrintLine();
+chat->AddMessage("system", "Answer in one sentence.");
+chat->Send("How many people live in San Pablo, CA?")->PrintLine();
+chat->Send("What are the major landmarks?")->PrintLine();
 ```
 	~#
 	class Chat from EndPoint {
 		@model : String;
-		@messages_json : JsonElement;
-		@url : Url;
+		@messages : Vector<JsonElement>;
+		@last_reply : Reply;
 
 		#~
-		Constructor
+		Constructor; asks the server to load the model
 		@param model model name (i.e. llama3, llava)
 		~#
 		New(model : String) {
 			Parent();
+			Init(model, true);
+		}
 
-			@messages_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+		#~
+		Constructor
+		@param model model name (i.e. llama3, llava)
+		@param preload true to ask the server to load the model now
+		~#
+		New(model : String, preload : Bool) {
+			Parent();
+			Init(model, preload);
+		}
 
-			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			query_json->Insert("model", model);
-			query_json->Insert("stream", false);
+		method : Init(model : String, preload : Bool) ~ Nil {
+			@model := model;
+			@messages := Vector->New()<JsonElement>;
 
-			host := EndPoint->GetHost();
-			@url := Url->New("{$host}/api/chat");
-			# @url->ToString()->PrintLine();
-			
-			post_request := query_json->ToString();
-			# post_request->PrintLine();
+			if(preload) {
+				query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				query_json->Insert("model", model);
+				query_json->Insert("stream", false);
 
-			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return Nil; };
-				post_response_str := post_response_content->ToString();
-				# "---"->PrintLine();
-				# post_response_str->PrintLine();
-
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					model_json := post_response_json->Get("model");
-					if(model_json <> Nil) {
-						@model := model_json->GetString();
-					}
-					else {
-						ReportError(post_response_json);
+				body := Post("/api/chat", query_json);
+				if(body <> Nil) {
+					json := ParseResponse(body);
+					if(json <> Nil) {
+						model_name := Field->Text(json, "model");
+						if(model_name <> Nil & <>json->Has("error")) {
+							@model := model_name;
+						}
+						else {
+							ReportError(json);
+						};
 					};
 				};
 			};
 		}
 
 		#~
-		Chat response from the model given an input
-		@param message chat message
-		@return chat response
-
-```
-chat := Chat->New("llama3");
-chat->Send("What year did the Berlin Wall fall?")->PrintLine();
-chat->Send("Who was the US president at the time?")->PrintLine();
-```
+		Get the model name
+		@return model name
 		~#
-		method : public : Send(message : String) ~ String {
-			return Send(message, Nil, Nil, Nil);
+		method : public : GetModel() ~ String {
+			return @model;
 		}
 
 		#~
-		Chat response with options
-		@param message chat message
-		@param options generation options
-		@return chat response
-
-```
-opts := Options->New()->SetTemperature(0.5);
-chat := Chat->New("llama3");
-chat->Send("Write a haiku about mountains.", opts)->PrintLine();
-```
+		Adds a message to the history without sending it (e.g. a "system" prompt)
+		@param role "system", "user", "assistant" or "tool"
+		@param content message text
+		@return self for chaining
 		~#
-		method : public : Send(message : String, options : Options) ~ String {
-			return Send(message, Nil, options, Nil);
-		}
-
-		#~
-		Chat response with format and options
-		@param message chat message
-		@param format output format ("json" or Nil)
-		@param options generation options
-		@param tools tool definitions for function calling
-		@return chat response
-
-```
-opts := Options->New()->SetTemperature(0.0);
-chat := Chat->New("llama3");
-json_reply := chat->Send("List three colors as JSON.", "json", opts, Nil);
-json_reply->PrintLine();
-```
-		~#
-		method : public : Send(message : String, format : String, options : Options, tools : Vector<Tool>) ~ String {
-			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-
+		method : public : AddMessage(role : String, content : String) ~ Chat {
 			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			message_json->Insert("role", "user");
-			message_json->Insert("content", message);
-			@messages_json->Add(message_json);
+			message_json->Insert("role", role);
+			message_json->Insert("content", content);
+			@messages->AddBack(message_json);
+			return @self;
+		}
 
+		#~
+		Adds the result of a tool call to the history, as a "tool" message. Send it with SendReply(Nil, ...).
+		@param tool_name name of the function that was called
+		@param content the function's result
+		@return self for chaining
+		~#
+		method : public : AddToolResult(tool_name : String, content : String) ~ Chat {
+			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message_json->Insert("role", "tool");
+			message_json->Insert("tool_name", tool_name);
+			message_json->Insert("content", content);
+			@messages->AddBack(message_json);
+			return @self;
+		}
+
+		#~
+		Get the message history
+		@return messages, as sent in the request
+		~#
+		method : public : GetMessages() ~ JsonElement {
+			return JsonElement->New(@messages);
+		}
+
+		#~
+		Get the last reply received, with its tool calls, thinking and metadata
+		@return last reply, or Nil
+		~#
+		method : public : GetLastReply() ~ Reply {
+			return @last_reply;
+		}
+
+		#~
+		Builds the /api/chat request body for the current history.
+		@param format output format ("json"), or Nil
+		@param options options and request settings, or Nil
+		@param tools tool definitions, or Nil
+		@return request body
+		~#
+		method : public : BuildRequest(format : String, options : Options, tools : Vector<Tool>) ~ JsonElement {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
 			query_json->Insert("model", @model);
-			query_json->Insert("messages", @messages_json);
+			query_json->Insert("messages", GetMessages());
 			query_json->Insert("stream", false);
+
+			if(options <> Nil) {
+				options->ApplyTo(query_json, false);
+			};
 
 			if(format <> Nil) {
 				query_json->Insert("format", format);
-			};
-
-			if(options <> Nil) {
-				options_json := options->ToJson();
-				if(options_json <> Nil) {
-					query_json->Insert("options", options_json);
-				};
 			};
 
 			if(tools <> Nil) {
@@ -540,40 +1197,173 @@ json_reply->PrintLine();
 				query_json->Insert("tools", tools_json);
 			};
 
-			post_request := query_json->ToString();
+			return query_json;
+		}
 
-			# post_request->PrintLine();
+		#~
+		Records a reply in the history: an assistant message with its text and tool calls.
+		@param reply reply to record
+		~#
+		method : public : AddReply(reply : Reply) ~ Nil {
+			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			message_json->Insert("role", "assistant");
+			message_json->Insert("content", reply->GetText());
 
-			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return Nil; };
-				post_response_str := post_response_content->ToString();
-
-				# "---"->PrintLine();
-				# post_response_str->PrintLine();
-
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					message_json := post_response_json->Get("message");
-					if(message_json <> Nil) {
-						@messages_json->Add(message_json);
-						return JsonElement->Decode(message_json->Get("content")->GetString());
-					}
-					else {
-						ReportError(post_response_json);
-					};
+			tool_calls := reply->GetToolCalls();
+			if(tool_calls->Size() > 0) {
+				calls_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(tool_call in tool_calls) {
+					calls_json->Add(tool_call->ToJson());
 				};
+				message_json->Insert("tool_calls", calls_json);
 			};
 
-			return Nil;
+			@messages->AddBack(message_json);
+			@last_reply := reply;
+		}
+
+		#~
+		Sends a message and returns the full reply, including tool calls. When the
+		reply has tool calls, run them, add each result with AddToolResult and call
+		SendReply(Nil, ...) to get the model's answer.
+		@param message user message, or Nil to send the history as it stands
+		@param options options and request settings, or Nil
+		@param tools tool definitions, or Nil
+		@return reply, or Nil with the last error set (the message is then not kept in the history)
+
+```
+params := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+tools := Vector->New()<Tool>;
+tools->AddBack(Tool->New("get_weather", "Get the weather for a city", params));
+
+chat := Chat->New("qwen3");
+reply := chat->SendReply("What is the weather in Paris?", Nil, tools);
+while(reply <> Nil & reply->HasToolCalls()) {
+  each(call in reply->GetToolCalls()) {
+    city := call->GetArgument("city");
+    chat->AddToolResult(call->GetName(), "18C and sunny in {$city}");
+  };
+  reply := chat->SendReply(Nil, Nil, tools);
+};
+reply->GetText()->PrintLine();
+```
+		~#
+		method : public : SendReply(message : String, options : Options, tools : Vector<Tool>) ~ Reply {
+			images : File[];
+			format : String;
+			return SendReply(message, images, format, options, tools);
+		}
+
+		#~
+		Sends a message with images and returns the full reply
+		@param message user message
+		@param images image files, or Nil
+		@param options options and request settings, or Nil
+		@param tools tool definitions, or Nil
+		@return reply, or Nil with the last error set
+		~#
+		method : public : SendReply(message : String, images : File[], options : Options, tools : Vector<Tool>) ~ Reply {
+			format : String;
+			return SendReply(message, images, format, options, tools);
+		}
+
+		method : SendReply(message : String, images : File[], format : String, options : Options, tools : Vector<Tool>) ~ Reply {
+			added := false;
+			if(message <> Nil) {
+				message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+				message_json->Insert("role", "user");
+				message_json->Insert("content", message);
+				if(images <> Nil) {
+					images_json := EncodeImages(images);
+					if(images_json = Nil) {
+						return Nil;
+					};
+					message_json->Insert("images", images_json);
+				};
+				@messages->AddBack(message_json);
+				added := true;
+			};
+
+			body := Post("/api/chat", BuildRequest(format, options, tools));
+			reply : Reply;
+			if(body <> Nil) {
+				reply := Reply->Parse(body);
+			};
+
+			if(reply = Nil) {
+				if(added) {
+					@messages->RemoveBack();
+				};
+				return Nil;
+			};
+
+			AddReply(reply);
+			return reply;
+		}
+
+		#~
+		Chat response from the model given an input
+		@param message chat message
+		@return chat response, or Nil with the last error set
+
+```
+chat := Chat->New("llama3");
+chat->Send("What year did the Berlin Wall fall?")->PrintLine();
+chat->Send("Who was the US president at the time?")->PrintLine();
+```
+		~#
+		method : public : Send(message : String) ~ String {
+			format : String;
+			return Send(message, format, Nil, Nil);
+		}
+
+		#~
+		Chat response with options
+		@param message chat message
+		@param options options and request settings
+		@return chat response, or Nil with the last error set
+
+```
+opts := Options->New()->SetTemperature(0.5);
+chat := Chat->New("llama3");
+chat->Send("Write a haiku about mountains.", opts)->PrintLine();
+```
+		~#
+		method : public : Send(message : String, options : Options) ~ String {
+			format : String;
+			return Send(message, format, options, Nil);
+		}
+
+		#~
+		Chat response with format, options and tools. When the model calls a tool the
+		text is empty; GetLastReply()->GetToolCalls() has the calls.
+		@param message chat message
+		@param format output format ("json" or Nil); for a JSON schema use Options->SetFormat
+		@param options options and request settings
+		@param tools tool definitions for function calling
+		@return chat response, or Nil with the last error set
+
+```
+opts := Options->New()->SetTemperature(0.0);
+chat := Chat->New("llama3");
+json_reply := chat->Send("List three colors as JSON.", "json", opts, Nil);
+json_reply->PrintLine();
+```
+		~#
+		method : public : Send(message : String, format : String, options : Options, tools : Vector<Tool>) ~ String {
+			images : File[];
+			reply := SendReply(message, images, format, options, tools);
+			if(reply = Nil) {
+				return Nil;
+			};
+			return reply->GetText();
 		}
 
 		#~
 		Chat response from the model given an input
 		@param message chat message
 		@param image image file
-		@return chat response
+		@return chat response, or Nil with the last error set
 
 ```
 chat := Chat->New("llava");
@@ -592,64 +1382,15 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		Chat response from the model given an input
 		@param message chat query
 		@param images image files
-		@return chat response
+		@return chat response, or Nil with the last error set
 		~#
 		method : public : Send(message : String, images : File[]) ~ String {
-			images_json := JsonElement->New(JsonElement->JsonType->ARRAY);
-			
-			each(file in images) {
-				if(<>file->Exists()) {
-					return Nil;
-				};
-
-				# file->GetFullName()->PrintLine();
-
-				file_data := System.IO.Filesystem.FileReader->ReadBinaryFile(file->GetFullName());
-				if(file_data = Nil) {
-					return Nil;
-				};
-
-				images_json->Add(Cipher.Encrypt->Base64(file_data));
+			format : String;
+			reply := SendReply(message, images, format, Nil, Nil);
+			if(reply = Nil) {
+				return Nil;
 			};
-
-			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-
-			message_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			message_json->Insert("role", "user");
-			message_json->Insert("content", message);
-			@messages_json->Add(message_json);
-
-			query_json->Insert("model", @model);
-			query_json->Insert("messages", @messages_json);
-			query_json->Insert("images", images_json);
-			query_json->Insert("stream", false);
-
-			post_request := query_json->ToString();
-			# post_request->PrintLine();
-
-			post_response := Web.HTTP.HttpClient->QuickPost(@url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return Nil; };
-				post_response_str := post_response_content->ToString();
-
-				# "---"->PrintLine();
-				# post_response_str->PrintLine();
-
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					message_json := post_response_json->Get("message")
-					if(message_json <> Nil) {
-						@messages_json->Add(message_json);
-						return JsonElement->Decode(message_json->Get("content")->GetString());
-					}
-					else {
-						ReportError(post_response_json);
-					};
-				};
-			};
-
-			return Nil;
+			return reply->GetText();
 		}
 	}
 
@@ -660,15 +1401,65 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		@parent_model : String;
 		@format : String;
 		@family : String;
+		@families : Vector<String>;
 		@parameter_size : String;
 		@quantization_level : String;
 
 		New(details_json : JsonElement) {
-			@parent_model := details_json->Get("parent_model")->GetString();
-			@format := details_json->Get("format")->GetString();
-			@family := details_json->Get("family")->GetString();
-			@parameter_size := details_json->Get("parameter_size")->GetString();
-			@quantization_level := details_json->Get("quantization_level")->GetString();
+			@parent_model := Field->Text(details_json, "parent_model");
+			@format := Field->Text(details_json, "format");
+			@family := Field->Text(details_json, "family");
+			@families := Field->Strings(details_json->Get("families"));
+			@parameter_size := Field->Text(details_json, "parameter_size");
+			@quantization_level := Field->Text(details_json, "quantization_level");
+		}
+
+		#~
+		Get the parent model
+		@return parent model, or Nil
+		~#
+		method : public : GetParentModel() ~ String {
+			return @parent_model;
+		}
+
+		#~
+		Get the file format (e.g. "gguf")
+		@return format, or Nil
+		~#
+		method : public : GetFormat() ~ String {
+			return @format;
+		}
+
+		#~
+		Get the model family (e.g. "llama")
+		@return family, or Nil
+		~#
+		method : public : GetFamily() ~ String {
+			return @family;
+		}
+
+		#~
+		Get the model families
+		@return families, empty if none
+		~#
+		method : public : GetFamilies() ~ Vector<String> {
+			return @families;
+		}
+
+		#~
+		Get the parameter size (e.g. "8.0B")
+		@return parameter size, or Nil
+		~#
+		method : public : GetParameterSize() ~ String {
+			return @parameter_size;
+		}
+
+		#~
+		Get the quantization level (e.g. "Q4_0")
+		@return quantization level, or Nil
+		~#
+		method : public : GetQuantizationLevel() ~ String {
+			return @quantization_level;
 		}
 
 		#~
@@ -677,29 +1468,27 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		~#
 		method : public : ToString() ~ String {
 			buffer := "parent_model='";
-			buffer->Append(@parent_model);
+			Field->Add(buffer, @parent_model);
 
 			buffer->Append("', format='");
-			buffer->Append(@format);
+			Field->Add(buffer, @format);
 
 			buffer->Append("', family='");
-			buffer->Append(@family);
+			Field->Add(buffer, @family);
 
 			buffer->Append("', parameter_size='");
-			buffer->Append(@parameter_size);
+			Field->Add(buffer, @parameter_size);
 
 			buffer->Append("', quantization_level='");
-			buffer->Append(@quantization_level);
+			Field->Add(buffer, @quantization_level);
 
 			buffer->Append('\'');
 			return buffer;
 		}
-
-		# TOO: getters
 	}
 
 	#~
-	Ollama model information
+	Ollama model information, from Model->Show
 	~#
 	class ModelInfo {
 		@modelfile : String;
@@ -707,17 +1496,17 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		@system : String;
 		@template : String;
 		@license : String;
+		@capabilities : Vector<String>;
+		@model_info : JsonElement;
 
 		New(model_json : JsonElement) {
-			@modelfile := model_json->Get("modelfile")->GetString();
-			@parameters := model_json->Get("parameters")->GetString();
-			@template := model_json->Get("template")->GetString();
-			@license := model_json->Get("license")->GetString();
-
-			system_json := model_json->Get("system");
-			if(system_json <> Nil) {
-				@system := system_json->GetString();
-			};
+			@modelfile := Field->Text(model_json, "modelfile");
+			@parameters := Field->Text(model_json, "parameters");
+			@template := Field->Text(model_json, "template");
+			@license := Field->Text(model_json, "license");
+			@system := Field->Text(model_json, "system");
+			@capabilities := Field->Strings(model_json->Get("capabilities"));
+			@model_info := Field->Decoded(model_json->Get("model_info"));
 		}
 
 		#~
@@ -726,20 +1515,32 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		~#
 		method : public : ToString() ~ String {
 			buffer := "=> modelfile='";
-			buffer->Append(@modelfile->Size());
+			if(@modelfile <> Nil) {
+				buffer->Append(@modelfile->Size());
+			};
 
 			buffer->Append("'\n\t=> parameters='");
-			buffer->Append(@parameters);
+			Field->Add(buffer, @parameters);
 
 			buffer->Append("'\n\t=> template='");
-			buffer->Append(@template);
+			Field->Add(buffer, @template);
 
 			buffer->Append("'\n\t=> license='");
-			buffer->Append(@license->Size());
+			if(@license <> Nil) {
+				buffer->Append(@license->Size());
+			};
 
 			if(@system <> Nil) {
 				buffer->Append("'\n\t=> system='");
-				buffer->Append(@system);
+				Field->Add(buffer, @system);
+			};
+
+			buffer->Append("'\n\t=> capabilities='");
+			each(i : @capabilities) {
+				if(i > 0) {
+					buffer->Append(',');
+				};
+				buffer->Append(@capabilities->Get(i));
 			};
 
 			buffer->Append('\'');
@@ -748,7 +1549,7 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 
 		#~
 		Get the model file
-		@return model file
+		@return model file, or Nil
 		~#
 		method : public : GetModelFile() ~ String {
 			return @modelfile;
@@ -756,15 +1557,15 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 
 		#~
 		Get the parameters
-		@return parameters
+		@return parameters, or Nil
 		~#
 		method : public : GetParameters() ~ String {
 			return @parameters;
 		}
-		
+
 		#~
 		Get the template
-		@return template
+		@return template, or Nil
 		~#
 		method : public : GetTemplate() ~ String {
 			return @template;
@@ -772,7 +1573,7 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 
 		#~
 		Get the license
-		@return license
+		@return license, or Nil
 		~#
 		method : public : GetLicense() ~ String {
 			return @license;
@@ -780,29 +1581,63 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 
 		#~
 		Get the system
-		@return system
+		@return system, or Nil
 		~#
 		method : public : GetSystem() ~ String {
 			return @system;
 		}
+
+		#~
+		Get the model's capabilities (e.g. "completion", "tools", "vision", "thinking", "embedding")
+		@return capabilities, empty if the server did not report them
+		~#
+		method : public : GetCapabilities() ~ Vector<String> {
+			return @capabilities;
+		}
+
+		#~
+		Checks for a capability
+		@param capability capability name (e.g. "tools")
+		@return true if the model has it
+		~#
+		method : public : HasCapability(capability : String) ~ Bool {
+			each(value in @capabilities) {
+				if(value->Equals(capability)) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		#~
+		Get the architecture metadata (e.g. "general.architecture", "llama.context_length")
+		@return metadata object, or Nil
+		~#
+		method : public : GetModelInfo() ~ JsonElement {
+			return @model_info;
+		}
 	}
 
 	#~
-	Ollama pulled model data
+	Ollama model listing entry, from Model->List (/api/tags) or Model->Running (/api/ps)
 	~#
 	class ModelPulled {
 		@name : String;
 		@model : String;
 		@modified_at_str : String;
+		@expires_at_str : String;
 		@size : Int;
+		@size_vram : Int;
 		@digest : String;
 
 		New(model_json : JsonElement) {
-			@name := model_json->Get("name")->GetString();
-			@model := model_json->Get("model")->GetString();
-			@modified_at_str := model_json->Get("modified_at")->GetString();
-			@size := model_json->Get("size")->GetInt();
-			@digest := model_json->Get("digest")->GetString();
+			@name := Field->Text(model_json, "name");
+			@model := Field->Text(model_json, "model");
+			@modified_at_str := Field->Text(model_json, "modified_at");
+			@expires_at_str := Field->Text(model_json, "expires_at");
+			@size := Field->IntOf(model_json, "size");
+			@size_vram := Field->IntOf(model_json, "size_vram");
+			@digest := Field->Text(model_json, "digest");
 		}
 
 		#~
@@ -811,19 +1646,19 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		~#
 		method : public : ToString() ~ String {
 			buffer := "name='";
-			buffer->Append(@name);
+			Field->Add(buffer, @name);
 
 			buffer->Append("', model='");
-			buffer->Append(@model);
+			Field->Add(buffer, @model);
 
 			buffer->Append("', modified_at_str='");
-			buffer->Append(@modified_at_str);
+			Field->Add(buffer, @modified_at_str);
 
 			buffer->Append("', size='");
 			buffer->Append(@size);
 
 			buffer->Append("', digest='");
-			buffer->Append(@digest);
+			Field->Add(buffer, @digest);
 
 			buffer->Append('\'');
 			return buffer;
@@ -846,19 +1681,38 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		}
 
 		#~
-		Get modified time
-		@return modified time
+		Get modified time (Model->List only)
+		@return modified time, or Nil
 		~#
 		method : public : GetModifiedTime() ~ System.Time.Date {
+			if(@modified_at_str = Nil) {
+				return Nil;
+			};
 			return System.Time.DateUtility->Parse(@modified_at_str, "yyyy-MM-ddThh:mm:ss", false);
 		}
 
 		#~
+		Get when a running model will be unloaded, as the server's timestamp text (Model->Running only)
+		@return expiry timestamp, or Nil
+		~#
+		method : public : GetExpiresAt() ~ String {
+			return @expires_at_str;
+		}
+
+		#~
 		Get the model size
-		@return model size
+		@return model size in bytes
 		~#
 		method : public : GetSize() ~ Int {
 			return @size;
+		}
+
+		#~
+		Get the memory a running model uses on the GPU (Model->Running only)
+		@return size in bytes, 0 if not reported
+		~#
+		method : public : GetSizeVram() ~ Int {
+			return @size_vram;
 		}
 
 		#~
@@ -868,17 +1722,18 @@ chat->Send("What does this diagram show?", image)->PrintLine();
 		method : public : GetDigest() ~ String {
 			return @digest;
 		}
-	} 
+	}
 
 	#~
-	Ollama model operation
-	
+	Ollama model operations: listing, details, pull, copy, delete, create and embeddings
+
 ```
-chat := Chat->New("llama3");
-chat->Send("How many people like in San Pablo, CA?")->PrintLine();
-chat->Send("How of the population identify as Latino??")->PrintLine();
-chat->Send("Thanks, what are the major landmarks?")->PrintLine();
-chat->Send("Goodbye?")->PrintLine();
+models := Model->List();
+if(models <> Nil) {
+  each(m in models) {
+    m->GetPulled()->GetName()->PrintLine();
+  };
+};
 ```
 	~#
 	class Model from EndPoint {
@@ -889,7 +1744,7 @@ chat->Send("Goodbye?")->PrintLine();
 		New(model_json : JsonElement) {
 			Parent();
 
-			if(model_json->Has("modelfile")) {
+			if(model_json->Has("modelfile") | model_json->Has("capabilities") | model_json->Has("model_info")) {
 				@model_info := ModelInfo->New(model_json);
 			}
 			else {
@@ -897,25 +1752,33 @@ chat->Send("Goodbye?")->PrintLine();
 			};
 
 			details_json := model_json->Get("details");
-			if(details_json <> Nil) {
+			if(details_json <> Nil & details_json->GetType() = JsonElement->JsonType->OBJECT) {
 				@model_details := ModelDetails->New(details_json);
 			};
 		}
 
 		#~
 		Get the model details
-		@return model details
+		@return model details, or Nil
 		~#
 		method : public : GetDetails() ~ ModelDetails {
 			return @model_details;
 		}
 
 		#~
-		Get the model pulled
-		@return model pulled
+		Get the listing entry (Model->List and Model->Running)
+		@return listing entry, or Nil
 		~#
 		method : public : GetPulled() ~ ModelPulled {
 			return @model_pulled;
+		}
+
+		#~
+		Get the model information (Model->Show)
+		@return model information, or Nil
+		~#
+		method : public : GetInfo() ~ ModelInfo {
+			return @model_info;
 		}
 
 		#~
@@ -947,8 +1810,98 @@ chat->Send("Goodbye?")->PrintLine();
 		}
 
 		#~
-		List the models available
-		@return list of models available
+		Parses a /api/tags or /api/ps response body.
+		@param body response text
+		@return models, or Nil with the last error set
+		~#
+		function : ParseModelList(body : String) ~ Vector<Model> {
+			json := ParseResponse(body);
+			if(json = Nil) {
+				return Nil;
+			};
+
+			models_json := json->Get("models");
+			if(models_json = Nil | models_json->GetType() <> JsonElement->JsonType->ARRAY) {
+				ReportError(json);
+				return Nil;
+			};
+
+			models := Vector->New()<Model>;
+			each(i : models_json) {
+				model_json := models_json->Get(i);
+				if(model_json->GetType() = JsonElement->JsonType->OBJECT) {
+					models->AddBack(Model->New(model_json));
+				};
+			};
+
+			return models;
+		}
+
+		#~
+		Parses a /api/show response body.
+		@param body response text
+		@return model, or Nil with the last error set
+		~#
+		function : ParseShowResponse(body : String) ~ Model {
+			json := ParseResponse(body);
+			if(json = Nil) {
+				return Nil;
+			};
+
+			if(json->Has("error") | json->GetType() <> JsonElement->JsonType->OBJECT) {
+				ReportError(json);
+				return Nil;
+			};
+
+			return Model->New(json);
+		}
+
+		#~
+		Parses a /api/version response body.
+		@param body response text
+		@return version, or Nil with the last error set
+		~#
+		function : ParseVersionResponse(body : String) ~ String {
+			json := ParseResponse(body);
+			if(json = Nil) {
+				return Nil;
+			};
+
+			version := Field->Text(json, "version");
+			if(version = Nil) {
+				ReportError(json);
+			};
+			return version;
+		}
+
+		#~
+		Parses a {"status": ...} response body (pull, create).
+		@param body response text
+		@return true if the status is "success"; otherwise false with the last error set
+		~#
+		function : ParseStatusResponse(body : String) ~ Bool {
+			json := ParseResponse(body);
+			if(json = Nil) {
+				return false;
+			};
+
+			status := Field->Text(json, "status");
+			if(status = Nil | json->Has("error")) {
+				ReportError(json);
+				return false;
+			};
+
+			if(<>status->Equals("success")) {
+				SetLastError("status: {$status}");
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		List the models available locally
+		@return list of models, or Nil with the last error set
 
 ```
 models := Model->List();
@@ -960,44 +1913,52 @@ if(models <> Nil) {
 ```
 		~#
 		function : List() ~ Vector<Model> {
-			host := EndPoint->GetHost();
-			url := Url->New("{$host}/api/tags");
-
-			get_response := Web.HTTP.HttpClient->QuickGet(url, "application/json");
-			if(get_response <> Nil) {
-				get_response_str := get_response->GetContent()->ToString();
-				# "---"->PrintLine();
-				# get_response_str->PrintLine();
-	
-				get_response_json := ParseResponse(get_response_str);
-				if(get_response_json <> Nil) {
-					response_json := get_response_json->Get("models")
-					if(response_json <> Nil) {
-						models := Vector->New()<Model>;
-
-						each(model_json in response_json) {
-							# "==="->PrintLine();
-							# model_json->ToString()->PrintLine();						
-							# "==="->PrintLine();
-							models->AddBack(Model->New(model_json));
-						};
-
-						return models;
-					}
-					else {
-						ReportError(get_response_json);
-					};
-				};
-
+			body := Fetch("/api/tags");
+			if(body = Nil) {
+				return Nil;
 			};
-
-			return Nil;
+			return ParseModelList(body);
 		}
 
 		#~
-		Download a model from the ollama library
+		List the models currently loaded in memory
+		@return list of models (see ModelPulled->GetSizeVram and GetExpiresAt), or Nil with the last error set
+
+```
+running := Model->Running();
+if(running <> Nil) {
+  each(m in running) {
+    pulled := m->GetPulled();
+    name := pulled->GetName(); vram := pulled->GetSizeVram();
+    "{$name}: {$vram} bytes VRAM"->PrintLine();
+  };
+};
+```
+		~#
+		function : Running() ~ Vector<Model> {
+			body := Fetch("/api/ps");
+			if(body = Nil) {
+				return Nil;
+			};
+			return ParseModelList(body);
+		}
+
+		#~
+		Get the Ollama server version
+		@return version (e.g. "0.12.6"), or Nil with the last error set
+		~#
+		function : Version() ~ String {
+			body := Fetch("/api/version");
+			if(body = Nil) {
+				return Nil;
+			};
+			return ParseVersionResponse(body);
+		}
+
+		#~
+		Download a model from the ollama library. Waits for the download to finish; no progress is reported.
 		@param name name of the model to pull
-		@return true if successful, false otherwise
+		@return true if successful, false otherwise (see EndPoint->GetLastError)
 
 ```
 if(Model->Pull("llama3")) {
@@ -1007,94 +1968,44 @@ if(Model->Pull("llama3")) {
 		~#
 		function : Pull(name : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			query_json->Insert("name", name);
+			query_json->Insert("model", name);
 			query_json->Insert("stream", false);
 
-			host := EndPoint->GetHost();
-			url := Url->New("{$host}/api/pull");
-			post_request := query_json->ToString();
-	
-			# post_request->PrintLine();
-	
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return false; };
-				post_response_str := post_response_content->ToString();
-				# "---"->PrintLine();
-				# post_response_str->PrintLine();
-
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					status_json := post_response_json->Get("status")
-					if(status_json <> Nil) {
-						return status_json->GetString()->Equals("success");
-					}
-					else {
-						ReportError(post_response_json);
-					};
-				};
-
+			body := Post("/api/pull", query_json);
+			if(body = Nil) {
+				return false;
 			};
-
-			return false;
+			return ParseStatusResponse(body);
 		}
 
 		#~
 		Show information about a model
 		@param name name of the model to show
-		@return model
+		@return model (see GetInfo and GetDetails), or Nil with the last error set
 
 ```
-info := Model->Show("llama3");
-if(info <> Nil) {
-  info->GetPulled()->GetName()->PrintLine();
-  info->GetDetails()->ToString()->PrintLine();
+model := Model->Show("llama3");
+if(model <> Nil) {
+  model->GetDetails()->GetParameterSize()->PrintLine();
+  model->GetInfo()->HasCapability("tools")->PrintLine();
 };
 ```
 		~#
 		function : Show(name : String) ~ Model {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			query_json->Insert("name", name);
-			query_json->Insert("stream", false);
+			query_json->Insert("model", name);
 
-			host := EndPoint->GetHost();
-			url := Url->New("{$host}/api/show");
-			post_request := query_json->ToString();
-	
-			# post_request->PrintLine();
-	
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return Nil; };
-				post_response_str := post_response_content->ToString();
-				# "---"->PrintLine();
-				# post_response_str->Size()->PrintLine();
-	
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					if(post_response_json->Has("error")) {
-						ReportError(post_response_json);
-					}
-					else {
-						# "==="->PrintLine();
-						# post_response_json->ToString()->PrintLine();						
-						# "==="->PrintLine();
-
-						return Model->New(post_response_json);
-					};
-				};
-
+			body := Post("/api/show", query_json);
+			if(body = Nil) {
+				return Nil;
 			};
-
-			return Nil;
+			return ParseShowResponse(body);
 		}
 
 		#~
 		Delete a model and its data.
 		@param name name of the model to delete
-		@return true if successful, false otherwise
+		@return true if successful, false otherwise (see EndPoint->GetLastError)
 
 ```
 if(Model->Delete("llama3")) {
@@ -1104,26 +2015,20 @@ if(Model->Delete("llama3")) {
 		~#
 		function : Delete(name : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
-			query_json->Insert("name", name);
+			query_json->Insert("model", name);
 
+			SetLastError(Nil);
 			host := EndPoint->GetHost();
 			url := Url->New("{$host}/api/delete");
-			post_request := query_json->ToString();
-			# post_request->PrintLine();
-				
-			delete_response := Web.HTTP.HttpClient->QuickDelete(url, post_request->ToByteArray(), "application/json");
-			if(delete_response <> Nil) {
-				return delete_response->GetCode() = 200;
-			};
-
-			return false;
+			response := Web.HTTP.HttpClient->QuickDelete(url, query_json->ToString()->ToByteArray(), "application/json");
+			return Succeeded(response);
 		}
 
 		#~
 		Copy a model
 		@param src source name of the model to copy
 		@param dest destination name of the model to copy
-		@return true if successful, false otherwise
+		@return true if successful, false otherwise (see EndPoint->GetLastError)
 
 ```
 if(Model->Copy("llama3", "llama3-backup")) {
@@ -1136,25 +2041,165 @@ if(Model->Copy("llama3", "llama3-backup")) {
 			query_json->Insert("source", src);
 			query_json->Insert("destination", dest);
 
+			SetLastError(Nil);
 			host := EndPoint->GetHost();
 			url := Url->New("{$host}/api/copy");
-			post_request := query_json->ToString();
-			# post_request->PrintLine();
-				
-			delete_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-			if(delete_response <> Nil) {
-				# delete_response->GetCode()->PrintLine();				
-				return delete_response->GetCode() = 200;
-			};
-
-			return false;
+			response := Web.HTTP.HttpClient->QuickPost(url, query_json->ToString()->ToByteArray(), "application/json");
+			return Succeeded(response);
 		}
 
 		#~
-		Generate embeddings from a model
+		Builds the /api/embed request body.
+		@param model embedding model name
+		@param inputs texts to embed
+		@param truncate true to truncate inputs that exceed the context; false makes the server return an error instead
+		@param dimensions embedding size for models that support it, or 0 for the model's own
+		@param options options and request settings (e.g. keep_alive), or Nil
+		@return request body
+		~#
+		function : BuildEmbedRequest(model : String, inputs : String[], truncate : Bool, dimensions : Int, options : Options) ~ JsonElement {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("model", model);
+
+			if(inputs->Size() = 1) {
+				query_json->Insert("input", inputs[0]);
+			}
+			else {
+				inputs_json := JsonElement->New(JsonElement->JsonType->ARRAY);
+				each(input in inputs) {
+					inputs_json->Add(input);
+				};
+				query_json->Insert("input", inputs_json);
+			};
+
+			query_json->Insert("truncate", truncate);
+			if(dimensions > 0) {
+				query_json->Insert("dimensions", dimensions);
+			};
+
+			if(options <> Nil) {
+				options->ApplyTo(query_json, false);
+			};
+
+			return query_json;
+		}
+
+		#~
+		Parses a /api/embed response body.
+		@param body response text
+		@return one row per input, or Nil with the last error set
+		~#
+		function : ParseEmbedResponse(body : String) ~ Float[,] {
+			json := ParseResponse(body);
+			if(json = Nil) {
+				return Nil;
+			};
+
+			rows_json := json->Get("embeddings");
+			if(rows_json = Nil | rows_json->GetType() <> JsonElement->JsonType->ARRAY | json->Has("error")) {
+				ReportError(json);
+				return Nil;
+			};
+
+			rows := rows_json->Size();
+			if(rows = 0) {
+				SetLastError("response contained no embeddings");
+				return Nil;
+			};
+
+			cols := rows_json->Get(0)->Size();
+			embeddings := Float->New[rows, cols];
+			for(i := 0; i < rows; i += 1;) {
+				row_json := rows_json->Get(i);
+				if(row_json->GetType() <> JsonElement->JsonType->ARRAY | row_json->Size() <> cols) {
+					SetLastError("embeddings differ in size");
+					return Nil;
+				};
+
+				for(j := 0; j < cols; j += 1;) {
+					embeddings[i, j] := row_json->Get(j)->GetFloat();
+				};
+			};
+
+			return embeddings;
+		}
+
+		#~
+		Embeds one text with /api/embed
+		@param model embedding model name
+		@param input text to embed
+		@return embedding vector, or Nil with the last error set
+
+```
+vector := Model->Embed("nomic-embed-text", "The sky is blue.");
+if(vector <> Nil) {
+  "Dimensions: {$vector->Size()}"->PrintLine();
+};
+```
+		~#
+		function : Embed(model : String, input : String) ~ Float[] {
+			inputs := String->New[1];
+			inputs[0] := input;
+
+			embeddings := Embed(model, inputs, true, 0, Nil);
+			if(embeddings = Nil) {
+				return Nil;
+			};
+
+			dims := embeddings->Size();
+			vector := Float->New[dims[1]];
+			each(j : vector) {
+				vector[j] := embeddings[0, j];
+			};
+			return vector;
+		}
+
+		#~
+		Embeds a batch of texts with /api/embed in one request
+		@param model embedding model name
+		@param inputs texts to embed
+		@return one row per input, or Nil with the last error set
+		~#
+		function : Embed(model : String, inputs : String[]) ~ Float[,] {
+			return Embed(model, inputs, true, 0, Nil);
+		}
+
+		#~
+		Embeds a batch of texts with /api/embed in one request
+		@param model embedding model name
+		@param inputs texts to embed
+		@param truncate true to truncate inputs that exceed the context; false makes the server return an error instead
+		@param dimensions embedding size for models that support it, or 0 for the model's own
+		@param options options and request settings (e.g. keep_alive), or Nil
+		@return one row per input, or Nil with the last error set
+
+```
+texts := ["The sky is blue.", "Grass is green."];
+embeddings := Model->Embed("nomic-embed-text", texts, true, 0, Nil);
+if(embeddings <> Nil) {
+  dims := embeddings->Size();
+  "{$dims[0]} vectors of {$dims[1]}"->PrintLine();
+};
+```
+		~#
+		function : Embed(model : String, inputs : String[], truncate : Bool, dimensions : Int, options : Options) ~ Float[,] {
+			if(inputs = Nil | inputs->Size() = 0) {
+				SetLastError("no inputs to embed");
+				return Nil;
+			};
+
+			body := Post("/api/embed", BuildEmbedRequest(model, inputs, truncate, dimensions, options));
+			if(body = Nil) {
+				return Nil;
+			};
+			return ParseEmbedResponse(body);
+		}
+
+		#~
+		Generate embeddings from a model with the older /api/embeddings endpoint (superseded by Embed)
 		@param model name of model to generate embeddings from
 		@param prompt text to generate embeddings for
-		@return embedding vector as Float array
+		@return embedding vector as Float array, or Nil with the last error set
 
 ```
 embeddings := Model->Embeddings("nomic-embed-text", "The sky is blue.");
@@ -1168,55 +2213,65 @@ if(embeddings <> Nil) {
 			query_json->Insert("model", model);
 			query_json->Insert("prompt", prompt);
 
-			host := EndPoint->GetHost();
-			url := Url->New("{$host}/api/embeddings");
-			post_request := query_json->ToString();
-	
-			# post_request->Size()->PrintLine();
-	
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return Nil; };
-				post_response_str := post_response_content->ToString();
-				# "---"->PrintLine();
-				# post_response_str->Size()->PrintLine();
-	
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					embeddings_json := post_response_json->Get("embedding")
-					if(embeddings_json <> Nil) {
-						embeddings := Float->New[embeddings_json->Size()];
-
-						each(i : embeddings_json) {
-							embedding_json := embeddings_json->Get(i);
-							embeddings[i] := embedding_json->GetFloat();
-						};
-
-						return embeddings;
-					}
-					else {
-						ReportError(post_response_json);
-					};
-				};
-
+			body := Post("/api/embeddings", query_json);
+			if(body = Nil) {
+				return Nil;
 			};
 
-			return Nil;
+			json := ParseResponse(body);
+			if(json = Nil) {
+				return Nil;
+			};
+
+			embedding_json := json->Get("embedding");
+			if(embedding_json = Nil | embedding_json->GetType() <> JsonElement->JsonType->ARRAY) {
+				ReportError(json);
+				return Nil;
+			};
+
+			embedding := Float->New[embedding_json->Size()];
+			each(i : embedding) {
+				embedding[i] := embedding_json->Get(i)->GetFloat();
+			};
+			return embedding;
 		}
 
 		#~
-		Create a model from a Modelfile description
+		Create a model from an existing one with a new system prompt
 		@param name name of the model to create
-		@param modelfile contents of the Modelfile
-		@return true if successful, false otherwise
+		@param base name of the model to start from
+		@param system system prompt, or Nil
+		@return true if successful, false otherwise (see EndPoint->GetLastError)
 
 ```
-modelfile := "FROM llama3\nSYSTEM \"You are a helpful assistant.\"";
-if(Model->Create("my-assistant", modelfile)) {
+if(Model->Create("my-assistant", "llama3", "You are a helpful assistant.")) {
   "Custom model created."->PrintLine();
 };
 ```
+		~#
+		function : Create(name : String, base : String, system : String) ~ Bool {
+			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			query_json->Insert("model", name);
+			query_json->Insert("from", base);
+			if(system <> Nil) {
+				query_json->Insert("system", system);
+			};
+			query_json->Insert("stream", false);
+
+			body := Post("/api/create", query_json);
+			if(body = Nil) {
+				return false;
+			};
+			return ParseStatusResponse(body);
+		}
+
+		#~
+		Create a model from a Modelfile description. Only servers older than Ollama 0.5.5
+		accept a Modelfile; newer ones reject the request (see EndPoint->GetLastError), so
+		use Create(name, from, system) with them.
+		@param name name of the model to create
+		@param modelfile contents of the Modelfile
+		@return true if successful, false otherwise
 		~#
 		function : Create(name : String, modelfile  : String) ~ Bool {
 			query_json := JsonElement->New(JsonElement->JsonType->OBJECT);
@@ -1224,34 +2279,11 @@ if(Model->Create("my-assistant", modelfile)) {
 			query_json->Insert("modelfile", modelfile);
 			query_json->Insert("stream", false);
 
-			host := EndPoint->GetHost();
-			url := Url->New("{$host}/api/create");
-			post_request := query_json->ToString();
-	
-			# post_request->PrintLine();
-	
-			post_response := Web.HTTP.HttpClient->QuickPost(url, post_request->ToByteArray(), "application/json");
-			if(post_response <> Nil) {
-				post_response_content := post_response->GetContent();
-				if(post_response_content = Nil) { return false; };
-				post_response_str := post_response_content->ToString();
-				# "---"->PrintLine();
-				# post_response_str->PrintLine();
-
-				post_response_json := ParseResponse(post_response_str);
-				if(post_response_json <> Nil) {
-					status_json := post_response_json->Get("status")
-					if(status_json <> Nil) {
-						return status_json->GetString()->Equals("success");
-					}
-					else {
-						ReportError(post_response_json);
-					};
-				};
-
+			body := Post("/api/create", query_json);
+			if(body = Nil) {
+				return false;
 			};
-
-			return false;
+			return ParseStatusResponse(body);
 		}
 	}
 }

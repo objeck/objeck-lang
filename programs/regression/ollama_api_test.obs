@@ -1,0 +1,364 @@
+# EXTRA_LIBS: ollama,net,json,cipher,misc
+#~
+API.Ollama against recorded payloads, no server needed: chat tool calling (the
+tool_calls reply, the assistant and 'tool' messages sent back), structured
+output (format as a JSON schema), request settings (options, think,
+keep_alive), /api/embed single and batch, /api/tags, /api/show, /api/ps,
+/api/version, and error bodies. The fixtures follow the shapes in Ollama's
+API reference (docs/api.md).
+
+Defects this covers in the previous library: the chat history re-sent the
+parsed reply element, so an assistant reply holding a newline or a quote went
+back to the server escaped twice; chat images were sent at the top level of
+the request, where /api/chat ignores them, instead of in the user message; a
+/api/show reply without a 'license' field and every /api/ps entry (which has
+no 'modified_at') dereferenced Nil; tool calls in a reply were unreachable.
+~#
+
+use API.Ollama, Collection, Data.JSON, Data.JSON.Scheme;
+
+class OllamaApiTest {
+  @failures : static : Int;
+
+  function : Check(name : String, ok : Bool) ~ Nil {
+    if(ok) {
+      "  [PASS] {$name}"->PrintLine();
+    }
+    else {
+      "  [FAIL] {$name}"->PrintLine();
+      @failures += 1;
+    };
+  }
+
+  function : Near(a : Float, b : Float) ~ Bool {
+    d := a - b;
+    if(d < 0.0) {
+      d := d * -1.0;
+    };
+    return d < 0.000001;
+  }
+
+  function : Has(text : String, part : String) ~ Bool {
+    return text <> Nil & text->Find(part) > -1;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    @failures := 0;
+
+    ToolCalling();
+    StructuredOutput();
+    GenerateMetadata();
+    Embed();
+    Listings();
+    Errors();
+
+    # compile-only: the documented call forms resolve (never run; they need a server)
+    if(args->Size() > 99) {
+      reply := Completion->GenerateReply("llama3", "hi", Nil);
+      chat := Chat->New("llama3");
+      reply := chat->SendReply("hi", Nil, Nil);
+      reply := chat->SendReply(Nil, Nil, Nil);
+      vector := Model->Embed("nomic-embed-text", "hi");
+      texts := ["a", "b"];
+      matrix := Model->Embed("nomic-embed-text", texts);
+      running := Model->Running();
+      version := Model->Version();
+      Check("compile-only forms", vector <> Nil & matrix <> Nil & running <> Nil & version <> Nil);
+    };
+
+    if(@failures > 0) {
+      "FAIL: {$@failures} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+    "PASS: Ollama API tests"->PrintLine();
+  }
+
+  function : ToolCalling() ~ Nil {
+    "-- tool calling --"->PrintLine();
+
+    params := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"city\":{\"type\":\"string\"}},\"required\":[\"city\"]}");
+    tools := Vector->New()<Tool>;
+    tools->AddBack(Tool->New("get_weather", "Get the weather for a city", params));
+
+    # a function definition, as the other AI client libraries build them
+    props := Map->New()<String, ParameterType>;
+    props->Insert("query", ParameterType->New(ParameterType->Type->STRING, "search text"));
+    func := FunctionType->New("search", props, ["query"], "Search the web");
+    tools->AddBack(Tool->New(func));
+
+    # the model asks for a tool; 'note' carries an escaped quote
+    body := "{\"model\":\"qwen3\",\"created_at\":\"2025-07-07T20:22:19.184789Z\",";
+    body += "\"message\":{\"role\":\"assistant\",\"content\":\"\",";
+    body += "\"tool_calls\":[{\"function\":{\"name\":\"get_weather\",\"arguments\":{\"city\":\"Paris\",\"days\":3,\"note\":\"say \\\"hi\\\"\"}}}]},";
+    body += "\"done_reason\":\"stop\",\"done\":true,\"total_duration\":3244883583,\"load_duration\":2969184542,";
+    body += "\"prompt_eval_count\":169,\"prompt_eval_duration\":141656333,\"eval_count\":18,\"eval_duration\":133293625}";
+
+    reply := Reply->Parse(body);
+    Check("a tool-call reply parses", reply <> Nil);
+    if(reply = Nil) {
+      return;
+    };
+
+    Check("the reply has tool calls", reply->HasToolCalls() & reply->GetToolCalls()->Size() = 1);
+    Check("the reply text is empty, not Nil", reply->GetText() <> Nil & reply->GetText()->IsEmpty());
+    call := reply->GetToolCalls()->Get(0);
+    Check("tool call name", call->GetName()->Equals("get_weather"));
+    Check("string argument", call->GetArgument("city")->Equals("Paris"));
+    Check("number argument", call->GetArgument("days")->Equals("3"));
+    Check("escaped argument is decoded", call->GetArgument("note")->Equals("say \"hi\""));
+    Check("absent argument is Nil", call->GetArgument("country") = Nil);
+    Check("done reason", reply->GetDoneReason()->Equals("stop") & reply->IsDone());
+    Check("prompt eval count", reply->GetPromptEvalCount() = 169);
+    Check("eval duration", reply->GetEvalDuration() = 133293625);
+    Check("total duration beyond 32 bits", reply->GetTotalDuration() = 3244883583);
+
+    # the conversation as it goes back to the server
+    chat := Chat->New("qwen3", false);
+    chat->AddMessage("system", "Be brief.");
+    chat->AddMessage("user", "What is the weather in Paris?");
+    chat->AddReply(reply);
+    chat->AddToolResult("get_weather", "18C and sunny");
+    Check("last reply is kept", chat->GetLastReply() = reply);
+
+    request := chat->BuildRequest(Nil, Nil, tools)->ToString();
+    Check("request names the model", Has(request, "\"model\":\"qwen3\""));
+    Check("request is not streamed", Has(request, "\"stream\":false"));
+    Check("request carries the system message", Has(request, "\"role\":\"system\""));
+    Check("request carries the tools", Has(request, "\"tools\":[") & Has(request, "\"type\":\"function\""));
+    Check("tool schema is sent as parameters", Has(request, "\"parameters\":{") & Has(request, "\"required\":[\"city\"]"));
+    Check("function-definition tool is converted", Has(request, "\"name\":\"search\"") & Has(request, "\"required\":[\"query\"]") & Has(request, "\"description\":\"Search the web\""));
+    Check("assistant message carries the tool call", Has(request, "\"tool_calls\":[{\"function\":{"));
+    Check("tool call argument escaped once", Has(request, "say \\\"hi\\\"") & <>Has(request, "say \\\\"));
+    Check("tool result message", Has(request, "\"role\":\"tool\"") & Has(request, "\"tool_name\":\"get_weather\"") & Has(request, "18C and sunny"));
+    Check("history has four messages", chat->GetMessages()->Size() = 4);
+
+    # a text reply with a newline and a quote goes back escaped exactly once
+    body := "{\"model\":\"qwen3\",\"message\":{\"role\":\"assistant\",\"content\":\"line one\\nsaid \\\"two\\\"\"},\"done\":true}";
+    reply := Reply->Parse(body);
+    Check("reply text is decoded", reply <> Nil & reply->GetText()->Equals("line one\nsaid \"two\""));
+    chat->AddReply(reply);
+    request := chat->BuildRequest(Nil, Nil, Nil)->ToString();
+    Check("re-sent reply is escaped once", Has(request, "line one\\nsaid \\\"two\\\"") & <>Has(request, "line one\\\\n"));
+    Check("no tools field without tools", <>Has(request, "\"tools\""));
+  }
+
+  function : StructuredOutput() ~ Nil {
+    "-- structured output and settings --"->PrintLine();
+
+    schema := JsonParser->TextToElement("{\"type\":\"object\",\"properties\":{\"answer\":{\"type\":\"integer\"}},\"required\":[\"answer\"]}");
+    options := Options->New();
+    options->SetTemperature(0.5)->SetSeed(42)->SetNumCtx(8192)->SetNumPredict(128)->SetTopK(40);
+    options->SetStop(["###", "END"]);
+    options->Set("repeat_last_n", 64);
+    options->SetFormat(schema)->SetKeepAlive("10m")->SetThink(true)->SetSystem("You are terse.");
+
+    images : System.IO.Filesystem.File[];
+    format : String;
+    request_json := Completion->BuildGenerateRequest("llama3", "What is 2+2?", format, options, images);
+    request := request_json->ToString();
+    Check("generate request names model and prompt", Has(request, "\"model\":\"llama3\"") & Has(request, "\"prompt\":\"What is 2+2?\""));
+    Check("format is the schema object", Has(request, "\"format\":{") & Has(request, "\"required\":[\"answer\"]"));
+    Check("options object", Has(request, "\"options\":{") & Has(request, "\"seed\":42") & Has(request, "\"num_ctx\":8192") & Has(request, "\"num_predict\":128") & Has(request, "\"top_k\":40") & Has(request, "\"repeat_last_n\":64"));
+    Check("temperature is a number", request_json->Get("options")->Get("temperature")->GetType() = JsonElement->JsonType->NUMBER & Near(request_json->Get("options")->Get("temperature")->GetFloat(), 0.5));
+    Check("stop sequences", Has(request, "\"stop\":[\"###\",\"END\"]"));
+    Check("keep_alive and think are top-level", Has(request, "\"keep_alive\":\"10m\"") & Has(request, "\"think\":true"));
+    Check("system is sent to generate", Has(request, "\"system\":\"You are terse.\""));
+    Check("generate is not streamed", Has(request, "\"stream\":false"));
+    Check("no images field without images", <>Has(request, "\"images\""));
+
+    chat := Chat->New("llama3", false);
+    chat->AddMessage("user", "What is 2+2?");
+    request := chat->BuildRequest(Nil, options, Nil)->ToString();
+    Check("chat request has the schema format", Has(request, "\"format\":{"));
+    Check("chat request has options and think", Has(request, "\"options\":{") & Has(request, "\"think\":true") & Has(request, "\"keep_alive\":\"10m\""));
+    Check("system field is not sent to chat", <>Has(request, "You are terse."));
+
+    request := chat->BuildRequest("json", Nil, Nil)->ToString();
+    Check("format json string", Has(request, "\"format\":\"json\""));
+
+    level := Options->New()->SetThink("high");
+    request := chat->BuildRequest(Nil, level, Nil)->ToString();
+    Check("think level", Has(request, "\"think\":\"high\"") & <>Has(request, "\"options\""));
+
+    Check("empty options give no options object", Options->New()->ToJson() = Nil);
+
+    # the structured reply: content is JSON text matching the schema
+    body := "{\"model\":\"llama3\",\"message\":{\"role\":\"assistant\",\"content\":\"{\\\"answer\\\": 4}\"},\"done_reason\":\"stop\",\"done\":true}";
+    reply := Reply->Parse(body);
+    Check("structured reply parses", reply <> Nil);
+    if(reply <> Nil) {
+      answer_json := JsonParser->TextToElement(reply->GetText());
+      Check("structured reply text is JSON", answer_json <> Nil & answer_json->Get("answer")->GetInt() = 4);
+    };
+  }
+
+  function : GenerateMetadata() ~ Nil {
+    "-- generate metadata --"->PrintLine();
+
+    body := "{\"model\":\"deepseek-r1\",\"created_at\":\"2023-08-04T19:22:45.499127Z\",\"response\":\"The sky is blue.\",";
+    body += "\"thinking\":\"Rayleigh scattering.\",\"done\":true,\"done_reason\":\"stop\",\"context\":[1,2,3],";
+    body += "\"total_duration\":10706818083,\"load_duration\":6338219291,\"prompt_eval_count\":26,";
+    body += "\"prompt_eval_duration\":130079000,\"eval_count\":259,\"eval_duration\":4232710000}";
+    reply := Reply->Parse(body);
+    Check("generate reply parses", reply <> Nil);
+    if(reply = Nil) {
+      return;
+    };
+    Check("generate text", reply->GetText()->Equals("The sky is blue."));
+    Check("thinking", reply->GetThinking()->Equals("Rayleigh scattering."));
+    Check("model", reply->GetModel()->Equals("deepseek-r1"));
+    Check("no tool calls", <>reply->HasToolCalls());
+    Check("load duration", reply->GetLoadDuration() = 6338219291);
+    Check("eval count", reply->GetEvalCount() = 259);
+    Check("tokens per second", Near(reply->GetTokensPerSecond(), 259.0 * 1000000000.0 / 4232710000.0));
+    Check("ParseGenerateResponse agrees", Completion->ParseGenerateResponse(body)->Equals("The sky is blue."));
+
+    body := "{\"model\":\"llama3\",\"response\":\"\",\"done\":true,\"done_reason\":\"load\"}";
+    reply := Reply->Parse(body);
+    Check("load reply has no timing", reply <> Nil & reply->GetDoneReason()->Equals("load") & reply->GetTokensPerSecond() = 0.0 & reply->GetThinking() = Nil);
+  }
+
+  function : Embed() ~ Nil {
+    "-- embed --"->PrintLine();
+
+    single := Model->BuildEmbedRequest("all-minilm", ["Why is the sky blue?"], true, 0, Nil)->ToString();
+    Check("single input is a string", Has(single, "\"input\":\"Why is the sky blue?\"") & Has(single, "\"truncate\":true"));
+    Check("no dimensions by default", <>Has(single, "\"dimensions\""));
+
+    options := Options->New()->SetKeepAlive("1m");
+    batch := Model->BuildEmbedRequest("all-minilm", ["Why is the sky blue?", "Why is the grass green?"], false, 256, options)->ToString();
+    Check("batch input is an array", Has(batch, "\"input\":[\"Why is the sky blue?\",\"Why is the grass green?\"]"));
+    Check("truncate false and dimensions", Has(batch, "\"truncate\":false") & Has(batch, "\"dimensions\":256"));
+    Check("embed keep_alive", Has(batch, "\"keep_alive\":\"1m\""));
+
+    body := "{\"model\":\"all-minilm\",\"embeddings\":[[0.010071029,-0.0017594862,0.05007221,0.04692972]],";
+    body += "\"total_duration\":14143917,\"load_duration\":1019500,\"prompt_eval_count\":8}";
+    vectors := Model->ParseEmbedResponse(body);
+    Check("single embed parses", vectors <> Nil);
+    if(vectors <> Nil) {
+      dims := vectors->Size();
+      Check("single embed is 1 x 4", dims[0] = 1 & dims[1] = 4);
+      Check("single embed values", Near(vectors[0, 0], 0.010071029) & Near(vectors[0, 1], -0.0017594862) & Near(vectors[0, 3], 0.04692972));
+    };
+
+    body := "{\"model\":\"all-minilm\",\"embeddings\":[[0.010071029,-0.0017594862,0.05007221],[-0.0098027075,0.06042469,0.025257962]]}";
+    vectors := Model->ParseEmbedResponse(body);
+    Check("batch embed parses", vectors <> Nil);
+    if(vectors <> Nil) {
+      dims := vectors->Size();
+      Check("batch embed is 2 x 3", dims[0] = 2 & dims[1] = 3);
+      Check("batch embed second row", Near(vectors[1, 0], -0.0098027075) & Near(vectors[1, 2], 0.025257962));
+    };
+
+    EndPoint->SetLastError(Nil);
+    vectors := Model->ParseEmbedResponse("{\"embeddings\":[[0.1,0.2],[0.3]]}");
+    Check("ragged embeddings are rejected", vectors = Nil & EndPoint->GetLastError() <> Nil);
+
+    vectors := Model->ParseEmbedResponse("{\"embeddings\":[]}");
+    Check("no embeddings is an error", vectors = Nil & Has(EndPoint->GetLastError(), "no embeddings"));
+
+    vectors := Model->ParseEmbedResponse("{\"error\":\"input length exceeds the context length\"}");
+    Check("embed error body", vectors = Nil & Has(EndPoint->GetLastError(), "exceeds the context length"));
+  }
+
+  function : Listings() ~ Nil {
+    "-- tags / ps / show / version --"->PrintLine();
+
+    body := "{\"models\":[";
+    body += "{\"name\":\"deepseek-r1:latest\",\"model\":\"deepseek-r1:latest\",\"modified_at\":\"2025-05-10T08:06:48.639712648-07:00\",";
+    body += "\"size\":4683075271,\"digest\":\"0a8c266910232fd3291e71e5ba1e058cc5af9d411192cf88b6d30e92b6e73163\",";
+    body += "\"details\":{\"parent_model\":\"\",\"format\":\"gguf\",\"family\":\"qwen2\",\"families\":[\"qwen2\"],\"parameter_size\":\"7.6B\",\"quantization_level\":\"Q4_K_M\"}},";
+    body += "{\"name\":\"llama3.2:latest\",\"model\":\"llama3.2:latest\",\"modified_at\":\"2025-05-04T17:37:44.706015396-07:00\",";
+    body += "\"size\":2019393189,\"digest\":\"a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72\",";
+    body += "\"details\":{\"parent_model\":\"\",\"format\":\"gguf\",\"family\":\"llama\",\"families\":[\"llama\"],\"parameter_size\":\"3.2B\",\"quantization_level\":\"Q4_K_M\"}}]}";
+    models := Model->ParseModelList(body);
+    Check("tags parse", models <> Nil & models->Size() = 2);
+    if(models <> Nil & models->Size() = 2) {
+      first := models->Get(0);
+      Check("tags name", first->GetPulled()->GetName()->Equals("deepseek-r1:latest"));
+      Check("tags size beyond 32 bits", first->GetPulled()->GetSize() = 4683075271);
+      Check("tags details", first->GetDetails()->GetFamily()->Equals("qwen2") & first->GetDetails()->GetParameterSize()->Equals("7.6B") & first->GetDetails()->GetQuantizationLevel()->Equals("Q4_K_M"));
+      Check("tags families", first->GetDetails()->GetFamilies()->Size() = 1 & first->GetDetails()->GetFamilies()->Get(0)->Equals("qwen2"));
+      Check("tags has no show info", first->GetInfo() = Nil);
+      Check("second model", models->Get(1)->GetPulled()->GetModel()->Equals("llama3.2:latest"));
+    };
+
+    body := "{\"models\":[{\"name\":\"mistral:latest\",\"model\":\"mistral:latest\",\"size\":5137025024,";
+    body += "\"digest\":\"2ae6f6dd7a3dd734790bbbf58b8909a606e0e7e97e94b7604e0aa7ae4490e6d8\",";
+    body += "\"details\":{\"parent_model\":\"\",\"format\":\"gguf\",\"family\":\"llama\",\"families\":[\"llama\"],\"parameter_size\":\"7.2B\",\"quantization_level\":\"Q4_0\"},";
+    body += "\"expires_at\":\"2024-06-04T14:38:31.83753-07:00\",\"size_vram\":5137025024}]}";
+    running := Model->ParseModelList(body);
+    Check("ps parses (entries have no modified_at)", running <> Nil & running->Size() = 1);
+    if(running <> Nil & running->Size() = 1) {
+      pulled := running->Get(0)->GetPulled();
+      Check("ps size_vram", pulled->GetSizeVram() = 5137025024);
+      Check("ps expires_at", pulled->GetExpiresAt()->Equals("2024-06-04T14:38:31.83753-07:00"));
+      Check("ps has no modified time", pulled->GetModifiedTime() = Nil);
+      Check("ps ToString does not crash", running->Get(0)->ToString()->Size() > 0);
+    };
+
+    empty := Model->ParseModelList("{\"models\":[]}");
+    Check("empty listing", empty <> Nil & empty->Size() = 0);
+
+    # a show reply as current servers send it: no 'license', no 'system'
+    body := "{\"modelfile\":\"# Modelfile generated by ollama show\\nFROM llama3.2\",";
+    body += "\"parameters\":\"num_keep 24\\nstop \\\"<|start_header_id|>\\\"\",";
+    body += "\"template\":\"{{ .Prompt }}\",";
+    body += "\"details\":{\"parent_model\":\"\",\"format\":\"gguf\",\"family\":\"llama\",\"families\":[\"llama\"],\"parameter_size\":\"8.0B\",\"quantization_level\":\"Q4_0\"},";
+    body += "\"model_info\":{\"general.architecture\":\"llama\",\"general.parameter_count\":8030261248,\"llama.context_length\":8192},";
+    body += "\"capabilities\":[\"completion\",\"tools\",\"vision\"]}";
+    model := Model->ParseShowResponse(body);
+    Check("show parses without a license field", model <> Nil);
+    if(model <> Nil) {
+      info := model->GetInfo();
+      Check("show info", info <> Nil);
+      if(info <> Nil) {
+        Check("show license is Nil", info->GetLicense() = Nil & info->GetSystem() = Nil);
+        Check("show modelfile decoded", info->GetModelFile()->Equals("# Modelfile generated by ollama show\nFROM llama3.2"));
+        Check("show parameters decoded", info->GetParameters()->Equals("num_keep 24\nstop \"<|start_header_id|>\""));
+        Check("show capabilities", info->GetCapabilities()->Size() = 3 & info->HasCapability("tools") & info->HasCapability("vision") & <>info->HasCapability("thinking"));
+        Check("show model_info", info->GetModelInfo()->Get("llama.context_length")->GetInt() = 8192 & info->GetModelInfo()->Get("general.architecture")->GetString()->Equals("llama"));
+        Check("show ToString does not crash", model->ToString()->Size() > 0);
+      };
+      Check("show details", model->GetDetails() <> Nil & model->GetDetails()->GetParameterSize()->Equals("8.0B"));
+    };
+
+    Check("version", Model->ParseVersionResponse("{\"version\":\"0.12.6\"}")->Equals("0.12.6"));
+    Check("pull success status", Model->ParseStatusResponse("{\"status\":\"success\"}"));
+  }
+
+  function : Errors() ~ Nil {
+    "-- error bodies --"->PrintLine();
+
+    error_body := "{\"error\":\"model 'llama9' not found\"}";
+
+    EndPoint->SetLastError(Nil);
+    Check("chat error body gives Nil", Reply->Parse(error_body) = Nil);
+    Check("chat error is readable", Has(EndPoint->GetLastError(), "model 'llama9' not found"));
+
+    EndPoint->SetLastError(Nil);
+    Check("generate error body gives Nil", Completion->ParseGenerateResponse(error_body) = Nil & Has(EndPoint->GetLastError(), "not found"));
+
+    EndPoint->SetLastError(Nil);
+    Check("tags error body gives Nil", Model->ParseModelList(error_body) = Nil & Has(EndPoint->GetLastError(), "not found"));
+
+    EndPoint->SetLastError(Nil);
+    Check("show error body gives Nil", Model->ParseShowResponse(error_body) = Nil & Has(EndPoint->GetLastError(), "not found"));
+
+    EndPoint->SetLastError(Nil);
+    Check("version error body gives Nil", Model->ParseVersionResponse(error_body) = Nil & Has(EndPoint->GetLastError(), "not found"));
+
+    EndPoint->SetLastError(Nil);
+    Check("pull error body gives false", <>Model->ParseStatusResponse("{\"error\":\"pull model manifest: file does not exist\"}") & Has(EndPoint->GetLastError(), "manifest"));
+
+    # an error that carries an escaped quote is decoded for the caller
+    EndPoint->SetLastError(Nil);
+    Check("escaped error parses to Nil", Reply->Parse("{\"error\":\"invalid \\\"format\\\"\"}") = Nil);
+    Check("escaped error is decoded", EndPoint->GetLastError()->Equals("invalid \"format\""));
+
+    Check("non-JSON body gives Nil", Reply->Parse("<html>502 Bad Gateway</html>") = Nil & EndPoint->GetLastError() <> Nil);
+    Check("Nil body gives Nil", Reply->Parse(Nil) = Nil & Model->ParseModelList(Nil) = Nil & Model->ParseEmbedResponse(Nil) = Nil);
+    Check("unexpected JSON gives Nil", Reply->Parse("{\"status\":\"ok\"}") = Nil & Has(EndPoint->GetLastError(), "expected field"));
+    Check("non-object listing entries are skipped", Model->ParseModelList("{\"models\":[1,\"x\"]}")->Size() = 0);
+  }
+}

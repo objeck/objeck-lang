@@ -776,21 +776,51 @@
 			}
 		},
 		"API.Ollama.Chat": {
-			"description": "Ollama chat client",
+			"description": "Ollama chat client. The session keeps the message history, including tool calls and tool results.",
 			"functions": {
+				"AddMessage": {
+					"descriptions": ["**Adds a message to the history without sending it (e.g. a \"system\" prompt)**\n\n```method : public : AddMessage(role:String, content:String) ~ Chat```\n\n\n\nrole: String\n\ncontent: String\n\nreturn: Chat"]
+				},
+				"AddReply": {
+					"descriptions": ["**Records a reply in the history: an assistant message with its text and tool calls.**\n\n```method : public : AddReply(reply:Reply) ~ Nil```\n\n\n\nreply: Reply\n\nreturn: Nil"]
+				},
+				"AddToolResult": {
+					"descriptions": ["**Adds the result of a tool call to the history, as a \"tool\" message. Send it with SendReply(Nil, ...).**\n\n```method : public : AddToolResult(tool_name:String, content:String) ~ Chat```\n\n\n\ntool_name: String\n\ncontent: String\n\nreturn: Chat"]
+				},
+				"BuildRequest": {
+					"descriptions": ["**Builds the \/api\/chat request body for the current history.**\n\n```method : public : BuildRequest(format:String, options:Options, tools:Vector&lt;Tool&gt;) ~ JsonElement```\n\n\n\nformat: String\n\noptions: Options\n\ntools: Vector&lt;Tool&gt;\n\nreturn: JsonElement"]
+				},
+				"GetLastReply": {
+					"descriptions": ["**Get the last reply received, with its tool calls, thinking and metadata**\n\n```method : public : GetLastReply() ~ Reply```\n\n\n\nreturn: Reply"]
+				},
+				"GetMessages": {
+					"descriptions": ["**Get the message history**\n\n```method : public : GetMessages() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetModel": {
+					"descriptions": ["**Get the model name**\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New(model:String)```\n\n\n\nmodel: String"]
+					"descriptions": ["**Constructor; asks the server to load the model**\n\n```New(model:String)```\n\n\n\nmodel: String", "**Constructor**\n\n```New(model:String, preload:Bool)```\n\n\n\nmodel: String\n\npreload: Bool"]
 				},
 				"Send": {
-					"descriptions": ["**Chat response from the model given an input**\n\n```method : public : Send(message:String) ~ String```\n\n\n\nmessage: String\n\nreturn: String\n\n```\nchat := Chat->New(\"llama3\");\nchat->Send(\"What year did the Berlin Wall fall?\")->PrintLine();\nchat->Send(\"Who was the US president at the time?\")->PrintLine();\n```", "**Chat response with options**\n\n```method : public : Send(message:String, options:Options) ~ String```\n\n\n\nmessage: String\n\noptions: Options\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.5);\nchat := Chat->New(\"llama3\");\nchat->Send(\"Write a haiku about mountains.\", opts)->PrintLine();\n```", "**Chat response with format and options**\n\n```method : public : Send(message:String, format:String, options:Options, tools:Vector&lt;Tool&gt;) ~ String```\n\n\n\nmessage: String\n\nformat: String\n\noptions: Options\n\ntools: Vector&lt;Tool&gt;\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.0);\nchat := Chat->New(\"llama3\");\njson_reply := chat->Send(\"List three colors as JSON.\", \"json\", opts, Nil);\njson_reply->PrintLine();\n```", "**Chat response from the model given an input**\n\n```method : public : Send(message:String, image:File) ~ String```\n\n\n\nmessage: String\n\nimage: File\n\nreturn: String\n\n```\nchat := Chat->New(\"llava\");\nimage := System.IO.Filesystem.File->New(\"diagram.png\");\nchat->Send(\"What does this diagram show?\", image)->PrintLine();\n```", "**Chat response from the model given an input**\n\n```method : public : Send(message:String, images:File[]) ~ String```\n\n\n\nmessage: String\n\nimages: File[]\n\nreturn: String"]
+					"descriptions": ["**Chat response from the model given an input**\n\n```method : public : Send(message:String) ~ String```\n\n\n\nmessage: String\n\nreturn: String\n\n```\nchat := Chat->New(\"llama3\");\nchat->Send(\"What year did the Berlin Wall fall?\")->PrintLine();\nchat->Send(\"Who was the US president at the time?\")->PrintLine();\n```", "**Chat response with options**\n\n```method : public : Send(message:String, options:Options) ~ String```\n\n\n\nmessage: String\n\noptions: Options\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.5);\nchat := Chat->New(\"llama3\");\nchat->Send(\"Write a haiku about mountains.\", opts)->PrintLine();\n```", "**Chat response with format, options and tools. When the model calls a tool the text is empty; GetLastReply()->GetToolCalls() has the calls.**\n\n```method : public : Send(message:String, format:String, options:Options, tools:Vector&lt;Tool&gt;) ~ String```\n\n\n\nmessage: String\n\nformat: String\n\noptions: Options\n\ntools: Vector&lt;Tool&gt;\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.0);\nchat := Chat->New(\"llama3\");\njson_reply := chat->Send(\"List three colors as JSON.\", \"json\", opts, Nil);\njson_reply->PrintLine();\n```", "**Chat response from the model given an input**\n\n```method : public : Send(message:String, image:File) ~ String```\n\n\n\nmessage: String\n\nimage: File\n\nreturn: String\n\n```\nchat := Chat->New(\"llava\");\nimage := System.IO.Filesystem.File->New(\"diagram.png\");\nchat->Send(\"What does this diagram show?\", image)->PrintLine();\n```", "**Chat response from the model given an input**\n\n```method : public : Send(message:String, images:File[]) ~ String```\n\n\n\nmessage: String\n\nimages: File[]\n\nreturn: String"]
+				},
+				"SendReply": {
+					"descriptions": ["**Sends a message and returns the full reply, including tool calls. When the reply has tool calls, run them, add each result with AddToolResult and call SendReply(Nil, ...) to get the model's answer.**\n\n```method : public : SendReply(message:String, options:Options, tools:Vector&lt;Tool&gt;) ~ Reply```\n\n\n\nmessage: String\n\noptions: Options\n\ntools: Vector&lt;Tool&gt;\n\nreturn: Reply\n\n```\nparams := JsonParser->TextToElement(\"{\\\"type\\\":\\\"object\\\",\\\"properties\\\":{\\\"city\\\":{\\\"type\\\":\\\"string\\\"}},\\\"required\\\":[\\\"city\\\"]}\");\ntools := Vector->New()<Tool>;\ntools->AddBack(Tool->New(\"get_weather\", \"Get the weather for a city\", params));\n\nchat := Chat->New(\"qwen3\");\nreply := chat->SendReply(\"What is the weather in Paris?\", Nil, tools);\nwhile(reply <> Nil & reply->HasToolCalls()) {\n  each(call in reply->GetToolCalls()) {\n    city := call->GetArgument(\"city\");\n    chat->AddToolResult(call->GetName(), \"18C and sunny in {$city}\");\n  };\n  reply := chat->SendReply(Nil, Nil, tools);\n};\nreply->GetText()->PrintLine();\n```", "**Sends a message with images and returns the full reply**\n\n```method : public : SendReply(message:String, images:File[], options:Options, tools:Vector&lt;Tool&gt;) ~ Reply```\n\n\n\nmessage: String\n\nimages: File[]\n\noptions: Options\n\ntools: Vector&lt;Tool&gt;\n\nreturn: Reply"]
 				}
 			}
 		},
 		"API.Ollama.Completion": {
 			"description": "Ollama model interactions",
 			"functions": {
+				"BuildGenerateRequest": {
+					"descriptions": ["**Builds the \/api\/generate request body every Generate overload sends.**\n\n```function : BuildGenerateRequest(model:String, prompt:String, format:String, options:Options, images:File[]) ~ JsonElement```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\noptions: Options\n\nimages: File[]\n\nreturn: JsonElement"]
+				},
 				"Generate": {
-					"descriptions": ["**Generates a response from the model given an input with options**\n\n```function : Generate(model:String, prompt:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\noptions: Options\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.3)->SetTopP(0.85);\nresponse := Completion->Generate(\"llama3\", \"Summarize quantum entanglement briefly.\", opts);\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\noptions: Options\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, image:File) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimage: File\n\nreturn: String\n\n```\nimage := System.IO.Filesystem.File->New(\"photo.png\");\nresponse := Completion->Generate(\"llava\", \"Describe what you see in this image.\", image);\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, images:File[]) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimages: File[]\n\nreturn: String"]
+					"descriptions": ["**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nreturn: String\n\n```\nresponse := Completion->Generate(\"llama3\", \"What is the capital of France?\");\nresponse->PrintLine();\n```", "**Generates a response from the model given an input with options**\n\n```function : Generate(model:String, prompt:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\noptions: Options\n\nreturn: String\n\n```\nopts := Options->New()->SetTemperature(0.3)->SetTopP(0.85);\nresponse := Completion->Generate(\"llama3\", \"Summarize quantum entanglement briefly.\", opts);\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, format:String, options:Options) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nformat: String\n\noptions: Options\n\nreturn: String", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, image:File) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimage: File\n\nreturn: String\n\n```\nimage := System.IO.Filesystem.File->New(\"photo.png\");\nresponse := Completion->Generate(\"llava\", \"Describe what you see in this image.\", image);\nresponse->PrintLine();\n```", "**Generates a response from the model given an input**\n\n```function : Generate(model:String, prompt:String, images:File[]) ~ String```\n\n\n\nmodel: String\n\nprompt: String\n\nimages: File[]\n\nreturn: String"]
+				},
+				"GenerateReply": {
+					"descriptions": ["**Generates a reply with its metadata (thinking, done reason, token counts, timings)**\n\n```function : GenerateReply(model:String, prompt:String, options:Options) ~ Reply```\n\n\n\nmodel: String\n\nprompt: String\n\noptions: Options\n\nreturn: Reply", "**Generates a reply about images, with its metadata**\n\n```function : GenerateReply(model:String, prompt:String, images:File[], options:Options) ~ Reply```\n\n\n\nmodel: String\n\nprompt: String\n\nimages: File[]\n\noptions: Options\n\nreturn: Reply"]
 				},
 				"ParseGenerateResponse": {
 					"descriptions": ["**The response handling behind every Generate overload, as a function of the body text so it can be tested without a server.**\n\n```function : ParseGenerateResponse(body:String) ~ String```\n\n\n\nbody: String\n\nreturn: String"]
@@ -818,56 +848,110 @@
 			}
 		},
 		"API.Ollama.Model": {
-			"description": "Ollama model operation",
+			"description": "Ollama model operations: listing, details, pull, copy, delete, create and embeddings",
 			"functions": {
+				"BuildEmbedRequest": {
+					"descriptions": ["**Builds the \/api\/embed request body.**\n\n```function : BuildEmbedRequest(model:String, inputs:String[], truncate:Bool, dimensions:Int, options:Options) ~ JsonElement```\n\n\n\nmodel: String\n\ninputs: String[]\n\ntruncate: Bool\n\ndimensions: Int\n\noptions: Options\n\nreturn: JsonElement"]
+				},
 				"Copy": {
 					"descriptions": ["**Copy a model**\n\n```function : Copy(src:String, dest:String) ~ Bool```\n\n\n\nsrc: String\n\ndest: String\n\nreturn: Bool\n\n```\nif(Model->Copy(\"llama3\", \"llama3-backup\")) {\n  \"Model copied.\"->PrintLine();\n};\n```"]
 				},
 				"Create": {
-					"descriptions": ["**Create a model from a Modelfile description**\n\n```function : Create(name:String, modelfile:String) ~ Bool```\n\n\n\nname: String\n\nmodelfile: String\n\nreturn: Bool\n\n```\nmodelfile := \"FROM llama3\\nSYSTEM \\\"You are a helpful assistant.\\\"\";\nif(Model->Create(\"my-assistant\", modelfile)) {\n  \"Custom model created.\"->PrintLine();\n};\n```"]
+					"descriptions": ["**Create a model from an existing one with a new system prompt**\n\n```function : Create(name:String, base:String, system:String) ~ Bool```\n\n\n\nname: String\n\nbase: String\n\nsystem: String\n\nreturn: Bool\n\n```\nif(Model->Create(\"my-assistant\", \"llama3\", \"You are a helpful assistant.\")) {\n  \"Custom model created.\"->PrintLine();\n};\n```", "**Create a model from a Modelfile description. Only servers older than Ollama 0.5.5 accept a Modelfile; newer ones reject the request (see EndPoint->GetLastError), so use Create(name, from, system) with them.**\n\n```function : Create(name:String, modelfile:String) ~ Bool```\n\n\n\nname: String\n\nmodelfile: String\n\nreturn: Bool"]
 				},
 				"Delete": {
 					"descriptions": ["**Delete a model and its data.**\n\n```function : Delete(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool\n\n```\nif(Model->Delete(\"llama3\")) {\n  \"Model deleted.\"->PrintLine();\n};\n```"]
 				},
+				"Embed": {
+					"descriptions": ["**Embeds one text with \/api\/embed**\n\n```function : Embed(model:String, input:String) ~ Float[]```\n\n\n\nmodel: String\n\ninput: String\n\nreturn: Float[]\n\n```\nvector := Model->Embed(\"nomic-embed-text\", \"The sky is blue.\");\nif(vector <> Nil) {\n  \"Dimensions: {$vector->Size()}\"->PrintLine();\n};\n```", "**Embeds a batch of texts with \/api\/embed in one request**\n\n```function : Embed(model:String, inputs:String[]) ~ Float[,]```\n\n\n\nmodel: String\n\ninputs: String[]\n\nreturn: Float[,]", "**Embeds a batch of texts with \/api\/embed in one request**\n\n```function : Embed(model:String, inputs:String[], truncate:Bool, dimensions:Int, options:Options) ~ Float[,]```\n\n\n\nmodel: String\n\ninputs: String[]\n\ntruncate: Bool\n\ndimensions: Int\n\noptions: Options\n\nreturn: Float[,]\n\n```\ntexts := [\"The sky is blue.\", \"Grass is green.\"];\nembeddings := Model->Embed(\"nomic-embed-text\", texts, true, 0, Nil);\nif(embeddings <> Nil) {\n  dims := embeddings->Size();\n  \"{$dims[0]} vectors of {$dims[1]}\"->PrintLine();\n};\n```"]
+				},
 				"Embeddings": {
-					"descriptions": ["**Generate embeddings from a model**\n\n```function : Embeddings(model:String, prompt:String) ~ Float[]```\n\n\n\nmodel: String\n\nprompt: String\n\nreturn: Float[]\n\n```\nembeddings := Model->Embeddings(\"nomic-embed-text\", \"The sky is blue.\");\nif(embeddings <> Nil) {\n  \"Dimensions: {$embeddings->Size()}\"->PrintLine();\n};\n```"]
+					"descriptions": ["**Generate embeddings from a model with the older \/api\/embeddings endpoint (superseded by Embed)**\n\n```function : Embeddings(model:String, prompt:String) ~ Float[]```\n\n\n\nmodel: String\n\nprompt: String\n\nreturn: Float[]\n\n```\nembeddings := Model->Embeddings(\"nomic-embed-text\", \"The sky is blue.\");\nif(embeddings <> Nil) {\n  \"Dimensions: {$embeddings->Size()}\"->PrintLine();\n};\n```"]
 				},
 				"GetDetails": {
 					"descriptions": ["**Get the model details**\n\n```method : public : GetDetails() ~ ModelDetails```\n\n\n\nreturn: ModelDetails"]
 				},
+				"GetInfo": {
+					"descriptions": ["**Get the model information (Model->Show)**\n\n```method : public : GetInfo() ~ ModelInfo```\n\n\n\nreturn: ModelInfo"]
+				},
 				"GetPulled": {
-					"descriptions": ["**Get the model pulled**\n\n```method : public : GetPulled() ~ ModelPulled```\n\n\n\nreturn: ModelPulled"]
+					"descriptions": ["**Get the listing entry (Model->List and Model->Running)**\n\n```method : public : GetPulled() ~ ModelPulled```\n\n\n\nreturn: ModelPulled"]
 				},
 				"List": {
-					"descriptions": ["**List the models available**\n\n```function : List() ~ Vector&lt;Model&gt;```\n\n\n\nreturn: Vector&lt;Model&gt;\n\n```\nmodels := Model->List();\nif(models <> Nil) {\n  each(m in models) {\n    m->GetPulled()->GetName()->PrintLine();\n  };\n};\n```"]
+					"descriptions": ["**List the models available locally**\n\n```function : List() ~ Vector&lt;Model&gt;```\n\n\n\nreturn: Vector&lt;Model&gt;\n\n```\nmodels := Model->List();\nif(models <> Nil) {\n  each(m in models) {\n    m->GetPulled()->GetName()->PrintLine();\n  };\n};\n```"]
+				},
+				"ParseEmbedResponse": {
+					"descriptions": ["**Parses a \/api\/embed response body.**\n\n```function : ParseEmbedResponse(body:String) ~ Float[,]```\n\n\n\nbody: String\n\nreturn: Float[,]"]
+				},
+				"ParseModelList": {
+					"descriptions": ["**Parses a \/api\/tags or \/api\/ps response body.**\n\n```function : ParseModelList(body:String) ~ Vector&lt;Model&gt;```\n\n\n\nbody: String\n\nreturn: Vector&lt;Model&gt;"]
+				},
+				"ParseShowResponse": {
+					"descriptions": ["**Parses a \/api\/show response body.**\n\n```function : ParseShowResponse(body:String) ~ Model```\n\n\n\nbody: String\n\nreturn: Model"]
+				},
+				"ParseStatusResponse": {
+					"descriptions": ["**Parses a {\"status\": ...} response body (pull, create).**\n\n```function : ParseStatusResponse(body:String) ~ Bool```\n\n\n\nbody: String\n\nreturn: Bool"]
+				},
+				"ParseVersionResponse": {
+					"descriptions": ["**Parses a \/api\/version response body.**\n\n```function : ParseVersionResponse(body:String) ~ String```\n\n\n\nbody: String\n\nreturn: String"]
 				},
 				"Pull": {
-					"descriptions": ["**Download a model from the ollama library**\n\n```function : Pull(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool\n\n```\nif(Model->Pull(\"llama3\")) {\n  \"Model downloaded successfully.\"->PrintLine();\n};\n```"]
+					"descriptions": ["**Download a model from the ollama library. Waits for the download to finish; no progress is reported.**\n\n```function : Pull(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool\n\n```\nif(Model->Pull(\"llama3\")) {\n  \"Model downloaded successfully.\"->PrintLine();\n};\n```"]
+				},
+				"Running": {
+					"descriptions": ["**List the models currently loaded in memory**\n\n```function : Running() ~ Vector&lt;Model&gt;```\n\n\n\nreturn: Vector&lt;Model&gt;\n\n```\nrunning := Model->Running();\nif(running <> Nil) {\n  each(m in running) {\n    pulled := m->GetPulled();\n    name := pulled->GetName(); vram := pulled->GetSizeVram();\n    \"{$name}: {$vram} bytes VRAM\"->PrintLine();\n  };\n};\n```"]
 				},
 				"Show": {
-					"descriptions": ["**Show information about a model**\n\n```function : Show(name:String) ~ Model```\n\n\n\nname: String\n\nreturn: Model\n\n```\ninfo := Model->Show(\"llama3\");\nif(info <> Nil) {\n  info->GetPulled()->GetName()->PrintLine();\n  info->GetDetails()->ToString()->PrintLine();\n};\n```"]
+					"descriptions": ["**Show information about a model**\n\n```function : Show(name:String) ~ Model```\n\n\n\nname: String\n\nreturn: Model\n\n```\nmodel := Model->Show(\"llama3\");\nif(model <> Nil) {\n  model->GetDetails()->GetParameterSize()->PrintLine();\n  model->GetInfo()->HasCapability(\"tools\")->PrintLine();\n};\n```"]
 				},
 				"ToString": {
 					"descriptions": ["**String representation of the instance**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Version": {
+					"descriptions": ["**Get the Ollama server version**\n\n```function : Version() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
 		"API.Ollama.ModelDetails": {
 			"description": "Ollama detailed model data",
 			"functions": {
+				"GetFamilies": {
+					"descriptions": ["**Get the model families**\n\n```method : public : GetFamilies() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
+				"GetFamily": {
+					"descriptions": ["**Get the model family (e.g. \"llama\")**\n\n```method : public : GetFamily() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetFormat": {
+					"descriptions": ["**Get the file format (e.g. \"gguf\")**\n\n```method : public : GetFormat() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetParameterSize": {
+					"descriptions": ["**Get the parameter size (e.g. \"8.0B\")**\n\n```method : public : GetParameterSize() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetParentModel": {
+					"descriptions": ["**Get the parent model**\n\n```method : public : GetParentModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetQuantizationLevel": {
+					"descriptions": ["**Get the quantization level (e.g. \"Q4_0\")**\n\n```method : public : GetQuantizationLevel() ~ String```\n\n\n\nreturn: String"]
+				},
 				"ToString": {
 					"descriptions": ["**String representation of the instance**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
 		"API.Ollama.ModelInfo": {
-			"description": "Ollama model information",
+			"description": "Ollama model information, from Model->Show",
 			"functions": {
+				"GetCapabilities": {
+					"descriptions": ["**Get the model's capabilities (e.g. \"completion\", \"tools\", \"vision\", \"thinking\", \"embedding\")**\n\n```method : public : GetCapabilities() ~ Vector&lt;String&gt;```\n\n\n\nreturn: Vector&lt;String&gt;"]
+				},
 				"GetLicense": {
 					"descriptions": ["**Get the license**\n\n```method : public : GetLicense() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetModelFile": {
 					"descriptions": ["**Get the model file**\n\n```method : public : GetModelFile() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetModelInfo": {
+					"descriptions": ["**Get the architecture metadata (e.g. \"general.architecture\", \"llama.context_length\")**\n\n```method : public : GetModelInfo() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
 				},
 				"GetParameters": {
 					"descriptions": ["**Get the parameters**\n\n```method : public : GetParameters() ~ String```\n\n\n\nreturn: String"]
@@ -878,22 +962,28 @@
 				"GetTemplate": {
 					"descriptions": ["**Get the template**\n\n```method : public : GetTemplate() ~ String```\n\n\n\nreturn: String"]
 				},
+				"HasCapability": {
+					"descriptions": ["**Checks for a capability**\n\n```method : public : HasCapability(capability:String) ~ Bool```\n\n\n\ncapability: String\n\nreturn: Bool"]
+				},
 				"ToString": {
 					"descriptions": ["**String representation of the instance**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
 		"API.Ollama.ModelPulled": {
-			"description": "Ollama pulled model data",
+			"description": "Ollama model listing entry, from Model->List (\/api\/tags) or Model->Running (\/api\/ps)",
 			"functions": {
 				"GetDigest": {
 					"descriptions": ["**Get the model digest**\n\n```method : public : GetDigest() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetExpiresAt": {
+					"descriptions": ["**Get when a running model will be unloaded, as the server's timestamp text (Model->Running only)**\n\n```method : public : GetExpiresAt() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetModel": {
 					"descriptions": ["**Get the model**\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetModifiedTime": {
-					"descriptions": ["**Get modified time**\n\n```method : public : GetModifiedTime() ~ System.Time.Date```\n\n\n\nreturn: System.Time.Date"]
+					"descriptions": ["**Get modified time (Model->List only)**\n\n```method : public : GetModifiedTime() ~ System.Time.Date```\n\n\n\nreturn: System.Time.Date"]
 				},
 				"GetName": {
 					"descriptions": ["**Get the name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
@@ -901,16 +991,64 @@
 				"GetSize": {
 					"descriptions": ["**Get the model size**\n\n```method : public : GetSize() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"GetSizeVram": {
+					"descriptions": ["**Get the memory a running model uses on the GPU (Model->Running only)**\n\n```method : public : GetSizeVram() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"ToString": {
 					"descriptions": ["**String representation of the instance**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				}
 			}
 		},
 		"API.Ollama.Options": {
-			"description": "Generation options for controlling model behavior.",
+			"description": "Generation options and request settings. Model parameters (temperature, top_p, num_ctx, seed, stop, ...) are sent in the request's 'options' object; request settings (format, think, keep_alive, and for Completion system, template, suffix and raw) are sent as top-level request fields.",
 			"functions": {
+				"ApplyTo": {
+					"descriptions": ["**Adds the model parameters and request settings to a request body.**\n\n```method : public : ApplyTo(request:JsonElement, generate:Bool) ~ Nil```\n\n\n\nrequest: JsonElement\n\ngenerate: Bool\n\nreturn: Nil"]
+				},
+				"Set": {
+					"descriptions": ["**Sets any numeric model parameter by name (see the Modelfile parameter list).**\n\n```method : public : Set(name:String, value:Float) ~ Options```\n\n\n\nname: String\n\nvalue: Float\n\nreturn: Options", "**Sets any integer model parameter by name (see the Modelfile parameter list).**\n\n```method : public : Set(name:String, value:Int) ~ Options```\n\n\n\nname: String\n\nvalue: Int\n\nreturn: Options"]
+				},
+				"SetFormat": {
+					"descriptions": ["**Sets the output format to \"json\" (any JSON value).**\n\n```method : public : SetFormat(format:String) ~ Options```\n\n\n\nformat: String\n\nreturn: Options", "**Sets the output format to a JSON schema (structured output); the reply text is JSON matching the schema.**\n\n```method : public : SetFormat(schema:JsonElement) ~ Options```\n\n\n\nschema: JsonElement\n\nreturn: Options"]
+				},
+				"SetKeepAlive": {
+					"descriptions": ["**Sets how long the model stays loaded after the request (e.g. \"5m\", \"1h\", \"0\" to unload).**\n\n```method : public : SetKeepAlive(duration:String) ~ Options```\n\n\n\nduration: String\n\nreturn: Options"]
+				},
+				"SetMinP": {
+					"descriptions": ["**Sets the min-p sampling value.**\n\n```method : public : SetMinP(p:Float) ~ Options```\n\n\n\np: Float\n\nreturn: Options"]
+				},
+				"SetNumCtx": {
+					"descriptions": ["**Sets the context window size in tokens.**\n\n```method : public : SetNumCtx(n:Int) ~ Options```\n\n\n\nn: Int\n\nreturn: Options"]
+				},
+				"SetNumPredict": {
+					"descriptions": ["**Sets the maximum number of tokens to generate (-1 for no limit).**\n\n```method : public : SetNumPredict(n:Int) ~ Options```\n\n\n\nn: Int\n\nreturn: Options"]
+				},
+				"SetRaw": {
+					"descriptions": ["**Sends the prompt without applying the prompt template (Completion only).**\n\n```method : public : SetRaw(raw:Bool) ~ Options```\n\n\n\nraw: Bool\n\nreturn: Options"]
+				},
+				"SetRepeatPenalty": {
+					"descriptions": ["**Sets the repeat penalty.**\n\n```method : public : SetRepeatPenalty(penalty:Float) ~ Options```\n\n\n\npenalty: Float\n\nreturn: Options"]
+				},
+				"SetSeed": {
+					"descriptions": ["**Sets the random seed, for reproducible output.**\n\n```method : public : SetSeed(seed:Int) ~ Options```\n\n\n\nseed: Int\n\nreturn: Options"]
+				},
+				"SetStop": {
+					"descriptions": ["**Sets the stop sequences; generation ends when one is produced.**\n\n```method : public : SetStop(stops:String[]) ~ Options```\n\n\n\nstops: String[]\n\nreturn: Options"]
+				},
+				"SetSuffix": {
+					"descriptions": ["**Sets the text that follows the generated text, for fill-in-the-middle (Completion only).**\n\n```method : public : SetSuffix(suffix:String) ~ Options```\n\n\n\nsuffix: String\n\nreturn: Options"]
+				},
+				"SetSystem": {
+					"descriptions": ["**Sets the system prompt, overriding the Modelfile's (Completion only; a Chat takes a \"system\" message instead).**\n\n```method : public : SetSystem(system:String) ~ Options```\n\n\n\nsystem: String\n\nreturn: Options"]
+				},
 				"SetTemperature": {
 					"descriptions": ["**Sets the temperature (0.0 to 2.0). Lower is more deterministic.**\n\n```method : public : SetTemperature(t:Float) ~ Options```\n\n\n\nt: Float\n\nreturn: Options"]
+				},
+				"SetTemplate": {
+					"descriptions": ["**Sets the prompt template, overriding the Modelfile's (Completion only).**\n\n```method : public : SetTemplate(template:String) ~ Options```\n\n\n\ntemplate: String\n\nreturn: Options"]
+				},
+				"SetThink": {
+					"descriptions": ["**Enables or disables thinking for thinking models; the reasoning is returned separately (see Reply->GetThinking).**\n\n```method : public : SetThink(think:Bool) ~ Options```\n\n\n\nthink: Bool\n\nreturn: Options", "**Sets the thinking level for models that support levels (\"low\", \"medium\" or \"high\").**\n\n```method : public : SetThink(level:String) ~ Options```\n\n\n\nlevel: String\n\nreturn: Options"]
 				},
 				"SetTopK": {
 					"descriptions": ["**Sets the top-k sampling value.**\n\n```method : public : SetTopK(k:Int) ~ Options```\n\n\n\nk: Int\n\nreturn: Options"]
@@ -919,18 +1057,91 @@
 					"descriptions": ["**Sets the top-p (nucleus sampling) value.**\n\n```method : public : SetTopP(p:Float) ~ Options```\n\n\n\np: Float\n\nreturn: Options"]
 				},
 				"ToJson": {
-					"descriptions": ["**Converts options to JSON for the request.**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+					"descriptions": ["**Converts the model parameters to JSON for the request's 'options' object.**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.Ollama.Reply": {
+			"description": "A complete reply from \/api\/generate or \/api\/chat: the text, any thinking and tool calls, and the timing and token counts. Durations are in nanoseconds.",
+			"functions": {
+				"GetDoneReason": {
+					"descriptions": ["**Get why generation stopped (e.g. \"stop\", \"length\", \"load\")**\n\n```method : public : GetDoneReason() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetEvalCount": {
+					"descriptions": ["**Get the number of tokens generated**\n\n```method : public : GetEvalCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetEvalDuration": {
+					"descriptions": ["**Get the time spent generating**\n\n```method : public : GetEvalDuration() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLoadDuration": {
+					"descriptions": ["**Get the time spent loading the model**\n\n```method : public : GetLoadDuration() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetModel": {
+					"descriptions": ["**Get the model that replied**\n\n```method : public : GetModel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetPromptEvalCount": {
+					"descriptions": ["**Get the number of prompt tokens evaluated**\n\n```method : public : GetPromptEvalCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetPromptEvalDuration": {
+					"descriptions": ["**Get the time spent evaluating the prompt**\n\n```method : public : GetPromptEvalDuration() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRole": {
+					"descriptions": ["**Get the role of the reply message**\n\n```method : public : GetRole() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetText": {
+					"descriptions": ["**Get the generated text (empty when the model only called tools)**\n\n```method : public : GetText() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetThinking": {
+					"descriptions": ["**Get the model's reasoning, for thinking models with think enabled**\n\n```method : public : GetThinking() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTokensPerSecond": {
+					"descriptions": ["**Get the generation speed**\n\n```method : public : GetTokensPerSecond() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetToolCalls": {
+					"descriptions": ["**Get the tool calls the model made (chat with tools only)**\n\n```method : public : GetToolCalls() ~ Vector&lt;ToolCall&gt;```\n\n\n\nreturn: Vector&lt;ToolCall&gt;"]
+				},
+				"GetTotalDuration": {
+					"descriptions": ["**Get the total request time**\n\n```method : public : GetTotalDuration() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"HasToolCalls": {
+					"descriptions": ["**Checks for tool calls**\n\n```method : public : HasToolCalls() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsDone": {
+					"descriptions": ["**Checks whether generation finished**\n\n```method : public : IsDone() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Parse": {
+					"descriptions": ["**Parses a \/api\/generate or \/api\/chat response body.**\n\n```function : Parse(body:String) ~ Reply```\n\n\n\nbody: String\n\nreturn: Reply"]
 				}
 			}
 		},
 		"API.Ollama.Tool": {
 			"description": "Tool definition for function calling in chat.",
 			"functions": {
+				"GetName": {
+					"descriptions": ["**Get the function name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
 				"New": {
-					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, parameters:JsonElement)```\n\n\n\nname: String\n\ndescription: String\n\nparameters: JsonElement"]
+					"descriptions": ["**Constructor**\n\n```New(name:String, description:String, parameters:JsonElement)```\n\n\n\nname: String\n\ndescription: String\n\nparameters: JsonElement", "**Constructor from a function definition, the form the other AI client libraries use**\n\n```New(func:FunctionType)```\n\n\n\nfunc: FunctionType"]
 				},
 				"ToJson": {
 					"descriptions": ["**Converts tool to JSON for the request.**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				}
+			}
+		},
+		"API.Ollama.ToolCall": {
+			"description": "A function call the model asked for. Run it, then return the result with Chat->AddToolResult.",
+			"functions": {
+				"GetArgument": {
+					"descriptions": ["**Get one argument as text (a number or boolean in its JSON form)**\n\n```method : public : GetArgument(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
+				},
+				"GetArguments": {
+					"descriptions": ["**Get the call's arguments, an object keyed by parameter name**\n\n```method : public : GetArguments() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
+				},
+				"GetName": {
+					"descriptions": ["**Get the name of the function to call**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToJson": {
+					"descriptions": ["**Converts the call to JSON, as it appears in an assistant message**\n\n```method : public : ToJson() ~ JsonElement```\n\n\n\nreturn: JsonElement"]
 				}
 			}
 		},
@@ -14706,6 +14917,12 @@
 				"file": ""
 			}
 		],
+		"ToolCall": [
+			{
+				"bundle": "API.Ollama",
+				"file": ""
+			}
+		],
 		"DeepLabClassification": [
 			{
 				"bundle": "API.Onnx",
@@ -15789,6 +16006,12 @@
 		"RendererInfo": [
 			{
 				"bundle": "Game.SDL2",
+				"file": ""
+			}
+		],
+		"Reply": [
+			{
+				"bundle": "API.Ollama",
 				"file": ""
 			}
 		],
