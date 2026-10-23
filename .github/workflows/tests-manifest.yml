@@ -1,0 +1,66 @@
+# Keeps programs/regression/TESTS.md current on master.
+#
+# TESTS.md is generated from the regression tests' headers by gen_manifest.py. When every pull
+# request regenerated and committed it, each merge changed it and every other open pull request
+# then conflicted on it, needed a rebase and ran CI again. Pull requests no longer touch it;
+# after a push to master that adds, removes or changes a test, this job regenerates it and
+# commits the result. A push made with GITHUB_TOKEN starts no other workflow, so the commit
+# triggers no CI run of its own.
+name: Regression test manifest
+
+on:
+  push:
+    branches: ["master"]
+    paths:
+      - "programs/regression/*.obs"
+      - "programs/regression/gen_manifest.py"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# merges in quick succession: one regeneration at a time, each from the latest master
+concurrency:
+  group: tests-manifest
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Regenerate TESTS.md
+        working-directory: programs/regression
+        run: python3 gen_manifest.py
+
+      - name: Commit if it changed
+        run: |
+          if git diff --quiet -- programs/regression/TESTS.md; then
+            echo "TESTS.md is current"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add programs/regression/TESTS.md
+          git commit -m "TESTS.md: regenerated after ${GITHUB_SHA::10}"
+          # master may have moved while this ran: replay onto it, regenerating if it conflicts
+          for attempt in 1 2 3; do
+            if git push origin HEAD:master; then
+              exit 0
+            fi
+            git fetch origin master
+            if ! git rebase origin/master; then
+              git checkout --theirs programs/regression/TESTS.md || true
+              (cd programs/regression && python3 gen_manifest.py)
+              git add programs/regression/TESTS.md
+              GIT_EDITOR=true git rebase --continue
+            fi
+          done
+          echo "::error::could not push the regenerated TESTS.md after 3 attempts"
+          exit 1

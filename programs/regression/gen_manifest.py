@@ -3,6 +3,10 @@
 
 Run:  python gen_manifest.py   (writes TESTS.md in place)
 
+Pull requests do not commit TESTS.md: .github/workflows/tests-manifest.yml runs
+this on master after each merge that changes a test, so open pull requests do
+not all conflict on it.
+
 Each test's "what it validates" is taken from its header doc comment
 (`#~ ... ~#` block or leading `# ...` lines); negative tests are detected via
 the `# EXPECT_COMPILE_ERROR` / `# EXPECT_RUNTIME_ERROR` markers.
