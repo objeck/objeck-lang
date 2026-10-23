@@ -18,12 +18,14 @@ class QueryPersistLock {
 		};
 	}
 
-	# a process that is always running and is not this one
+	# a process that is always running and is not this one: init or launchd (1) on POSIX,
+	# System (4) on Windows, where there is no process 1. Asked directly rather than by
+	# platform name, which matched "win" in "darwin" and sent macOS to process 4.
 	function : LiveOther() ~ Int {
-		if(Runtime->GetPlatform()->ToLower()->Has("win")) {
-			return 4;
+		if(Runtime->IsProcessAlive(1)) {
+			return 1;
 		};
-		return 1;
+		return 4;
 	}
 
 	function : Main(args : String[]) ~ Nil {
