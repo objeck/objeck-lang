@@ -449,9 +449,28 @@ trailer     footer offset, magic
 - **Partial reads.** The footer lets a reader seek straight to the blocks it needs. A query
   over `runs.otab` reads only the columns it names and only the row groups its zone maps cannot
   rule out. Opening a large file costs a footer read, not a load.
-- **Compression per block** through `lang`'s zlib: off by default for speed, on for archiving.
-  Dictionary encoding already shrinks the commonest text columns.
-- **Integrity.** Every block and the footer carry a CRC32 (`lang` has one). A truncated or
+- **Compression per block, never per file.**
+  - **Codecs:** `lang` provides zlib, gzip and Brotli, each compressing a `Byte[]` in memory
+    (with no level setting, so the trade-off is made by choosing the codec). Each column block
+    in each row group is compressed on its own and records its codec, so partial reads and
+    HTTP range reads keep working.
+  - **Choosing one:** `Save(path)` stores blocks uncompressed, for speed;
+    `Save(path, Compression->ZLIB)` is balanced; `Compression->BROTLI` gives the smallest
+    files, for archives and network transfer. Reading needs no option, since every block
+    names its codec.
+  - **Only when it helps:** a block whose compressed form is not smaller is stored raw, as
+    dense data such as random floats often is.
+  - **Whole-file compression is transport only:** a `runs.otab.gz` still opens through the
+    general `.gz` handling, but is decompressed in full before reading.
+- **Light encodings before compression,** recorded per block:
+  - dictionary codes for repetitive text;
+  - delta encoding for sorted or nearly sorted integers and timestamps, so IDs and log times
+    become small numbers that compress very well;
+  - run-length encoding for long runs of one value.
+
+  Each is used only where it shrinks the block, and the format version allows more later.
+- **Integrity.** Every block and the footer carry a CRC32 (`lang` has one), computed over the
+  bytes as stored, after compression, so corruption is caught before anything is decompressed. A truncated or
   corrupted file is reported with the block it failed on, never loaded as wrong data.
 
 **Saving safely.** `table->Save(path)` writes a temporary file beside the target, flushes it,
