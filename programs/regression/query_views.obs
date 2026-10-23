@@ -1,0 +1,168 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured predicates, views and prepared statements (docs/QUERY_DESIGN.md, sections 2
+and 3, phase 2): the Col builder over every column type, empty cells and values of another
+type, LIKE on encoded, plain and object text, true and false on Bool columns, AndAlso, OrElse
+and Negate, zone-map skipping, view chaining, stale views, and '?' placeholders.
+~#
+use Query.Structured, System.Time, Collection;
+
+class QueryViewsTest {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Keys(view : View) ~ String {
+		if(view = Nil) {
+			return "<nil>";
+		};
+
+		out := "";
+		each(i : view->Count()) {
+			if(i > 0) {
+				out += ",";
+			};
+			out += view->Get(i)->GetKey();
+		};
+		return out;
+	}
+
+	function : Build() ~ Table {
+		t := Table->New("t", ["n", "x", "label", "note", "flag", "when", "mixed"]);
+		labels := ["cat", "dog", "cow", "dog", "", "cat"];
+		notes := ["a.b", "a%b", "plain", "", "dot.", "x"];
+		each(i : 6) {
+			r := t->Insert();
+			if(i <> 4) {
+				r->Set("n", IntRef->New(i * 10));
+			};
+			r->Set("x", FloatRef->New(i->As(Float) / 2.0));
+			# an empty string here stands for an empty cell
+			if(labels[i]->Size() > 0) {
+				r->Set("label", labels[i]);
+			};
+			if(notes[i]->Size() > 0) {
+				r->Set("note", notes[i]);
+			};
+			r->Set("flag", BoolRef->New(i % 2 = 0));
+			r->Set("when", Date->New(1 + i, 1, 2020, 0, 0, 0, true));
+			if(i % 2 = 0) {
+				r->Set("mixed", IntRef->New(i));
+			}
+			else {
+				r->Set("mixed", "s{$i}");
+			};
+		};
+		return t;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		t := Build();
+
+		# --- comparisons by type ---
+		Check("Int Gt", Keys(t->Where(Col->Of("n")->Gt(20)))->Equals("3,5"));
+		Check("Int Eq with a Float value", Keys(t->Where(Col->Of("n")->Eq(30.0)))->Equals("3"));
+		Check("an empty cell matches nothing, not even Ne", Keys(t->Where(Col->Of("n")->Ne(0)))->Equals("1,2,3,5"));
+		Check("Float Le", Keys(t->Where(Col->Of("x")->Le(1.0)))->Equals("0,1,2"));
+		Check("Float Lt with an Int value", Keys(t->Where(Col->Of("x")->Lt(1)))->Equals("0,1"));
+		Check("text Eq on an encoded column", Keys(t->Where(Col->Of("label")->Eq("dog")))->Equals("1,3"));
+		Check("text Eq on a value it never holds", Keys(t->Where(Col->Of("label")->Eq("emu")))->Equals(""));
+		Check("text Ne skips empty cells", Keys(t->Where(Col->Of("label")->Ne("dog")))->Equals("0,2,5"));
+		Check("text ordering", Keys(t->Where(Col->Of("label")->Ge("cow")))->Equals("1,2,3"));
+		Check("text against a number: only Ne", Keys(t->Where(Col->Of("label")->Eq(5)))->Equals("") & Keys(t->Where(Col->Of("label")->Ne(5)))->Equals("0,1,2,3,5"));
+		Check("a number against text: only Ne", Keys(t->Where(Col->Of("n")->Lt("z")))->Equals("") & Keys(t->Where(Col->Of("n")->Ne("z")))->Equals("0,1,2,3,5"));
+		Check("Bool Eq true", Keys(t->Where(Col->Of("flag")->Eq(true)))->Equals("0,2,4"));
+		Check("Date Gt", Keys(t->Where(Col->Of("when")->Gt(Date->New(4, 1, 2020, 0, 0, 0, true))))->Equals("4,5"));
+		Check("an object column compares cell by cell", Keys(t->Where(Col->Of("mixed")->Ge(2)))->Equals("2,4") & Keys(t->Where(Col->Of("mixed")->Eq("s3")))->Equals("3"));
+		Check("an object column against another type: only Ne", Keys(t->Where(Col->Of("mixed")->Ne(4)))->Equals("0,1,2,3,5"));
+
+		# --- LIKE ---
+		Check("LIKE on an encoded column", Keys(t->Where(Col->Of("label")->Like("c%")))->Equals("0,2,5"));
+		Check("'.' and '%' in a LIKE pattern", Keys(t->Where(Col->Of("note")->Like("a.%")))->Equals("0") & Keys(t->Where(Col->Of("note")->Like("_%b")))->Equals("0,1"));
+		Check("NOT LIKE skips empty cells", Keys(t->Where(Col->Of("label")->NotLike("c%")))->Equals("1,3"));
+		Check("LIKE on an object column takes only text", Keys(t->Where(Col->Of("mixed")->Like("s%")))->Equals("1,3,5"));
+		Check("LIKE on a number column matches nothing", Keys(t->Where(Col->Of("n")->Like("%")))->Equals(""));
+
+		# --- empty cells, combinations ---
+		Check("IsNull", Keys(t->Where(Col->Of("label")->IsNull()))->Equals("4"));
+		Check("IsNotNull", Keys(t->Where(Col->Of("n")->IsNotNull()))->Equals("0,1,2,3,5"));
+		Check("AndAlso", Keys(t->Where(Col->Of("label")->Eq("cat")->AndAlso(Col->Of("n")->Gt(0))))->Equals("5"));
+		Check("OrElse", Keys(t->Where(Col->Of("label")->Eq("cow")->OrElse(Col->Of("n")->Gt(40))))->Equals("2,5"));
+		Check("Negate includes empty cells", Keys(t->Where(Col->Of("label")->Eq("dog")->Negate()))->Equals("0,2,4,5"));
+		Check("Between", Keys(t->Where(Col->Of("x")->Between(0.5, 1.5)))->Equals("1,2,3"));
+		wanted := Compare->New[3];
+		wanted[0] := "cow";
+		wanted[1] := "emu";
+		wanted[2] := "dog";
+		Check("In", Keys(t->Where(Col->Of("label")->In(wanted)))->Equals("1,2,3"));
+		Check("an unknown column is an error", t->Where(Col->Of("nope")->Eq(1)) = Nil & t->GetError() <> Nil);
+
+		# --- views ---
+		v := t->Where(Col->Of("n")->Ge(10))->OrderBy("n", Order->DESC);
+		Check("OrderBy DESC", Keys(v)->Equals("5,3,2,1"));
+		Check("Limit and Offset", Keys(v->Limit(2))->Equals("5,3") & Keys(v->Offset(3))->Equals("1") & Keys(v->Offset(9))->Equals(""));
+		Check("OrderBy ASC keeps empty cells last", Keys(t->OrderBy("label"))->Equals("0,5,2,1,3,4"));
+		Check("OrderBy DESC keeps empty cells last too", Keys(t->OrderBy("n", Order->DESC))->Equals("5,3,2,1,0,4"));
+		Check("equal values keep their order", Keys(t->OrderBy("flag"))->Equals("1,3,5,0,2,4"));
+		Check("Distinct", Keys(t->AsView()->Distinct("label"))->Equals("0,1,2"));
+		s := v->Select(["label", "x"]);
+		Check("Select keeps the rows", s->Count() = 4 & s->GetColumnNames()->Size() = 2);
+		Check("Select of an unknown column", v->Select(["nope"]) = Nil);
+		Check("view aggregates", v->Sum("n") = 110.0 & v->Count("n") = 4 & v->Min("x") = 0.5 & v->Max("x") = 2.5);
+		copy := s->ToTable("copy");
+		Check("ToTable copies the rows and columns", copy->Size() = 4 & copy->GetColumnCount() = 3 & copy->Get(0)->Get("label")->As(String)->Equals("cat"));
+		Check("a copy keeps column types", copy->GetColumn("x")->GetType() = ColumnType->FLOAT & copy->GetColumn("label")->IsEncoded());
+		copy->Get(1)->Set("label", "emu");
+		Check("a copy is independent", t->Get(3)->Get("label")->As(String)->Equals("dog") & copy->Get(1)->Get("label")->As(String)->Equals("emu"));
+		Check("a view reads before the table changes", v->Count() = 4 & v->IsCurrent());
+		t->Insert();
+		Check("a view refuses to read after its table changes", <>v->IsCurrent() & v->Get(0) = Nil & v->GetError() <> Nil);
+
+		# --- zone maps: groups are skipped, and the answer is the same as a scan ---
+		big := Table->New("big", ["v"]);
+		size := Column->GroupRows() * 3;
+		each(i : size) {
+			big->Insert()->Set("v", IntRef->New(i));
+		};
+		last := size - 5;
+		Check("a filter over sorted data", big->Where(Col->Of("v")->Ge(last))->Count() = 5);
+		Check("an equality in the middle group", big->Where(Col->Of("v")->Eq(Column->GroupRows() + 7))->Count() = 1);
+		Check("nothing above the maximum", big->Where(Col->Of("v")->Gt(size))->Count() = 0);
+		big->Get(10)->Set("v", IntRef->New(size * 2));
+		Check("a changed cell is found after its group's range grew", big->Where(Col->Of("v")->Gt(size))->Count() = 1);
+
+		# --- SQL and placeholders ---
+		u := Build();
+		rs := u->Query("select n, label from t where label = 'dog' or n >= 50 order by n");
+		Check("SQL through the compiled filters", rs <> Nil & rs->Size() = 3 & rs->GetColumnCount() = 3);
+		Check("an unknown column in the select list reads empty", u->Query("select n, nope from t where n = 10")->Get(0)->Get("nope") = Nil);
+		Check("true and false in SQL", u->Query("select n from t where flag = true")->Size() = 3);
+		statement := u->Prepare("select n from t where n > ? and label = ?");
+		Check("a statement counts its placeholders", statement <> Nil & statement->GetParamCount() = 2);
+		statement->Bind(1, 5)->Bind(2, "dog");
+		first := statement->Execute();
+		Check("a bound statement runs", first <> Nil & first->Size() = 2);
+		statement->Bind(1, 15);
+		Check("a statement rebinds", statement->Execute()->Size() = 1);
+		Check("a statement's view", statement->ExecuteView()->Count() = 1);
+		unbound := u->Prepare("select n from t where n > ?");
+		Check("an unbound placeholder is an error", unbound->Execute() = Nil & unbound->GetError() <> Nil);
+		Check("a statement that does not parse", u->Prepare("select from where") = Nil & u->GetError() <> Nil);
+		Check("a query naming another table", u->Query("select * from other") = Nil & u->GetError() <> Nil);
+		Check("the plan cache gives the same answer", u->Query("select n from t where n > 5")->Size() = u->Query("select n from t where n > 5")->Size());
+
+		if(@failures = 0) {
+			"PASS: query predicates, views and statements"->PrintLine();
+		}
+		else {
+			"FAIL: query predicates, views and statements ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

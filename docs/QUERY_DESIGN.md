@@ -676,6 +676,34 @@ index regenerated for new classes.
    - **parallel scans** across row groups, with a multithreaded GC stress test;
    - **indexes stored in `.otab`**, if rebuilding them on load proves slow.
 
+## As built
+
+What the implementation does where it differs from, or settles something left open in, the
+design above. Each phase adds its notes here.
+
+**Phase 1 (#1298).**
+- `Table->FromCsv` keeps its per-cell typing by storing OBJECT columns, so its results are
+  unchanged; `CsvSource` is the typed path.
+- An inferred INT column widens to FLOAT when a Float arrives; any other mix promotes to OBJECT,
+  keeping every value. A declared column refuses the mismatch instead.
+- Dates are stored as epoch milliseconds of their calendar fields, read as UTC, which round-trips
+  exactly and orders correctly.
+
+**Phase 2.**
+- The predicate combinators are `AndAlso`, `OrElse` and `Negate`: `And`, `Or` and `Not` are
+  reserved words in Objeck.
+- `Table->Query` copies its result into a table with one bulk gather per column; `Where`,
+  `OrderBy`, `Limit` and `Statement->ExecuteView` return views without copying.
+- Empty cells sort last in both directions.
+- A comparison with an empty cell is false; only `IS NULL` and `IS NOT NULL` test for one.
+  There is no three-valued logic.
+- JSON Lines arrays are kept as their JSON text until phase 4 makes them child tables.
+- `.gz` files are decompressed whole before reading, through `lang`'s gzip.
+
+Toolchain defects found while building these phases were fixed at the source rather than worked
+around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
+(#1299), and HTTP status codes (#1300).
+
 ## Open questions
 
 - Whether `Date` should be a first-class column type in phase 1 or start as an `ObjectColumn`; the

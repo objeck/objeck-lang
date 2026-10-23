@@ -498,6 +498,257 @@ bundle Query.Structured {
 		}
 
 		#~
+		Gets the array of 64-row words marking empty cells, for code that scans the column
+		directly. Valid until the column next grows or changes type.
+		@return null bitmap
+		~#
+		method : public : GetNullBits() ~ Int[] {
+			return @nulls;
+		}
+
+		#~
+		Gets the values of an INT, DATE or BOOL column, or the codes of an encoded STRING
+		column, for code that scans the column directly
+		@return values, Nil for other types
+		~#
+		method : public : GetIntArray() ~ Int[] {
+			return @ints;
+		}
+
+		#~
+		Gets the values of a FLOAT column, for code that scans the column directly
+		@return values, Nil for other types
+		~#
+		method : public : GetFloatArray() ~ Float[] {
+			return @floats;
+		}
+
+		#~
+		Gets the values of a plain (not encoded) STRING column
+		@return values, Nil for other columns
+		~#
+		method : public : GetStringArray() ~ String[] {
+			return @strings;
+		}
+
+		#~
+		Gets the values of an OBJECT column
+		@return values, Nil for other types
+		~#
+		method : public : GetObjectArray() ~ Compare[] {
+			return @objects;
+		}
+
+		#~
+		Gets the strings of an encoded STRING column, indexed by code
+		@return dictionary, Nil if not encoded
+		~#
+		method : public : GetDictionary() ~ String[] {
+			if(IsEncoded()) {
+				return @dict;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets the code of a string in an encoded column
+		@param value string
+		@return code, -1 if the column does not hold it or is not encoded
+		~#
+		method : public : FindCode(value : String) ~ Int {
+			if(<>IsEncoded() | value = Nil) {
+				return -1;
+			};
+
+			found := @dict_index->Find(value);
+			if(found = Nil) {
+				return -1;
+			};
+
+			return found->Get();
+		}
+
+		#~
+		Gets each dictionary code's position in sorted order, so encoded text sorts by number
+		@return rank per code, Nil if not encoded
+		~#
+		method : public : GetDictionaryRanks() ~ Int[] {
+			if(<>IsEncoded()) {
+				return Nil;
+			};
+
+			size := @dict_size;
+			src := Int->New[size];
+			each(i : size) {
+				src[i] := i;
+			};
+
+			# a merge sort of the codes by their strings
+			dest := Int->New[size];
+			width := 1;
+			while(width < size) {
+				start := 0;
+				while(start < size) {
+					middle := start + width;
+					if(middle > size) {
+						middle := size;
+					};
+					finish := start + width * 2;
+					if(finish > size) {
+						finish := size;
+					};
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						take_left := l < middle;
+						if(take_left & r < finish) {
+							take_left := @dict[src[l]]->Compare(@dict[src[r]]) <= 0;
+						};
+						if(take_left) {
+							dest[k] := src[l];
+							l += 1;
+						}
+						else {
+							dest[k] := src[r];
+							r += 1;
+						};
+						k += 1;
+					};
+					start := finish;
+				};
+				swap := src;
+				src := dest;
+				dest := swap;
+				width *= 2;
+			};
+
+			ranks := Int->New[size];
+			each(i : size) {
+				ranks[src[i]] := i;
+			};
+
+			return ranks;
+		}
+
+		#~
+		Fills an empty column with copies of another column's cells, in the given order. The
+		column takes the other's type. Used to copy query results.
+		@param src column to copy from
+		@param rows its row slots to copy
+		~#
+		method : public : Gather(src : Column, rows : Int[]) ~ Nil {
+			count := rows->Size();
+			@size := 0;
+			@capacity := 0;
+			@ints := Nil;
+			@floats := Nil;
+			@strings := Nil;
+			@objects := Nil;
+			@nulls := Nil;
+			@gmt := Nil;
+			@dict := Nil;
+			@dict_index := Nil;
+			@dict_size := 0;
+			@null_count := 0;
+			@zone_min := Nil;
+			@type := ColumnType->NONE;
+			@encoded := src->IsEncoded() | src->GetType() <> ColumnType->STRING;
+			Ensure(count > 16 ? count : 16);
+			src_type := src->GetType();
+			if(src_type <> ColumnType->NONE) {
+				if(src->IsEncoded()) {
+					# a private copy of the dictionary, so this column can grow its own
+					dict := src->GetDictionary();
+					dict_size := src->GetDictionarySize();
+					@dict := String->New[dict_size > 16 ? dict_size : 16];
+					@dict_index := Hash->New()<String, IntRef>;
+					each(i : dict_size) {
+						@dict[i] := dict[i];
+						@dict_index->Insert(dict[i], IntRef->New(i));
+					};
+					@dict_size := dict_size;
+				};
+				Become(src_type);
+			};
+
+			@size := count;
+			src_nulls := src->GetNullBits();
+			src_ints := src->GetIntArray();
+			src_floats := src->GetFloatArray();
+			src_strings := src->GetStringArray();
+			src_objects := src->GetObjectArray();
+			type := @type;
+			plain := type = ColumnType->STRING & <>@encoded;
+			each(i : count) {
+				row := rows[i];
+				if((src_nulls[row >> 6] and (1 << (row and 63))) <> 0) {
+					@nulls[i >> 6] := @nulls[i >> 6] or (1 << (i and 63));
+					@null_count += 1;
+				}
+				else if(type = ColumnType->FLOAT) {
+					@floats[i] := src_floats[row];
+				}
+				else if(type = ColumnType->OBJECT) {
+					@objects[i] := src_objects[row];
+				}
+				else if(plain) {
+					@strings[i] := src_strings[row];
+				}
+				else if(type <> ColumnType->NONE) {
+					@ints[i] := src_ints[row];
+					if(type = ColumnType->DATE) {
+						if(src->GmtAt(row)) {
+							SetGmtBit(i, true);
+						};
+					};
+				};
+			};
+
+			RecomputeAllZones();
+		}
+
+		#~
+		Fills an empty INT column with values, none empty. Used by Table->Gather.
+		@param values values
+		~#
+		method : public : FillInts(values : Int[]) ~ Nil {
+			count := values->Size();
+			Ensure(count > 16 ? count : 16);
+			if(@type = ColumnType->NONE) {
+				Become(ColumnType->INT);
+			};
+			each(i : count) {
+				@ints[i] := values[i];
+			};
+			@size := count;
+			RecomputeAllZones();
+		}
+
+		#~
+		Fills an empty column with n empty cells. Used by Table->Gather.
+		@param n number of rows
+		~#
+		method : public : FillNulls(n : Int) ~ Nil {
+			Ensure(n > 16 ? n : 16);
+			each(i : n) {
+				@nulls[i >> 6] := @nulls[i >> 6] or (1 << (i and 63));
+			};
+			@size := n;
+			@null_count := n;
+		}
+
+		#~
+		Whether a DATE cell was stored as a GMT date
+		@param row row number
+		@return true if GMT
+		~#
+		method : public : GmtAt(row : Int) ~ Bool {
+			return GmtBit(row);
+		}
+
+		#~
 		Gets the number of zone-map groups
 		@return number of groups
 		~#
@@ -1014,7 +1265,8 @@ results->ToString()->PrintLine();
 		@compacted : Bool;
 		@version : Int;
 		@layout : Int;
-		@query : Query;
+		@plans : Map<String, Plan>;
+		@error : String;
 
 		#~
 		Constructor. Column types are taken from the first value stored in each.
@@ -1074,9 +1326,12 @@ results->ToString()->PrintLine();
 				if(types <> Nil & i < types->Size()) {
 					type := types[i];
 				};
-				@column_names[i + 1] := column_names[i];
-				@columns[i + 1] := Column->New(column_names[i], type, declared & type <> ColumnType->NONE);
-				@column_map->Insert(column_names[i], i + 1);
+				# a copy of the caller's name: Strings change in place with '+=', and the
+				# map below is keyed by this one
+				name := String->New(column_names[i]);
+				@column_names[i + 1] := name;
+				@columns[i + 1] := Column->New(name, type, declared & type <> ColumnType->NONE);
+				@column_map->Insert(name, i + 1);
 			};
 		}
 
@@ -1091,6 +1346,7 @@ results->ToString()->PrintLine();
 				return false;
 			};
 
+			name := String->New(name);
 			column := Column->New(name, type, type <> ColumnType->NONE);
 			each(i : @size) {
 				column->Append();
@@ -1145,6 +1401,186 @@ results->ToString()->PrintLine();
 			};
 
 			return -1;
+		}
+
+		#~
+		Gets the array of 64-row words marking deleted rows, for code that scans the table
+		directly
+		@return deleted-row bitmap, Nil if no row has been deleted since the last Compact
+		~#
+		method : public : GetDeletedBits() ~ Int[] {
+			return @deleted;
+		}
+
+		#~
+		Gets every live row as a view, without copying
+		@return view
+		~#
+		method : public : AsView() ~ View {
+			return View->New(@self, DataColumns(), LiveRows());
+		}
+
+		# the indexes of every column but 'pk'
+		method : DataColumns() ~ Int[] {
+			columns := Int->New[@columns->Size() - 1];
+			each(i : columns) {
+				columns[i] := i + 1;
+			};
+
+			return columns;
+		}
+
+		#~
+		The rows that meet a condition, as a view. Whole row groups the zone maps rule out are
+		skipped.
+		@param condition condition
+		@return view, Nil if the condition names an unknown column (see GetError)
+		```
+		rs := table->Where(Col->Of("score")->Gt(0.5)->AndAlso(Col->Of("label")->Eq("cat")));
+		```
+		~#
+		method : public : Where(condition : Predicate) ~ View {
+			@error := Nil;
+			holder := StringHolder->New();
+			no_params : Compare[];
+			filter := Filter->Bind(condition, @self, no_params, holder);
+			if(filter = Nil) {
+				@error := holder->Get();
+				return Nil;
+			};
+
+			all_rows : Int[];
+			return View->New(@self, DataColumns(), filter->Apply(@self, all_rows));
+		}
+
+		#~
+		Every live row showing only some columns, as a view
+		@param names column names
+		@return view, Nil if a name is unknown
+		~#
+		method : public : Select(names : String[]) ~ View {
+			return AsView()->Select(names);
+		}
+
+		#~
+		Every live row sorted by a column, as a view; empty cells last
+		@param name column name
+		@param order ASC or DESC
+		@return view, Nil if the column is unknown
+		~#
+		method : public : OrderBy(name : String, order : Order) ~ View {
+			return AsView()->OrderBy(name, order);
+		}
+
+		#~
+		Every live row sorted by a column, ascending, as a view; empty cells last
+		@param name column name
+		@return view, Nil if the column is unknown
+		~#
+		method : public : OrderBy(name : String) ~ View {
+			return AsView()->OrderBy(name, Order->ASC);
+		}
+
+		#~
+		At most the first n live rows, as a view
+		@param n row limit
+		@return view
+		~#
+		method : public : Limit(n : Int) ~ View {
+			return AsView()->Limit(n);
+		}
+
+		#~
+		Parses a query once, to run many times with values bound to its '?' placeholders
+		@param statement query statement
+		@return prepared statement, Nil if it does not parse (see GetError)
+		```
+		s := table->Prepare("select id from runs where score > ?");
+		s->Bind(1, 0.9);
+		rs := s->Execute();
+		```
+		~#
+		method : public : Prepare(statement : String) ~ Statement {
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return Nil;
+			};
+
+			return Statement->New(@self, plan);
+		}
+
+		# a parsed plan for a statement, from a small cache of recent ones
+		method : FindPlan(statement : String) ~ Plan {
+			if(statement = Nil) {
+				@error := "*** Parse error ***";
+				return Nil;
+			};
+
+			if(@plans = Nil) {
+				@plans := Map->New()<String, Plan>;
+			};
+
+			plan := @plans->Find(statement);
+			if(plan = Nil) {
+				holder := StringHolder->New();
+				plan := Plan->Parse(statement, holder);
+				if(plan = Nil) {
+					@error := holder->Get();
+					return Nil;
+				};
+
+				if(@plans->Size() >= 64) {
+					@plans := Map->New()<String, Plan>;
+				};
+				@plans->Insert(statement, plan);
+			};
+
+			return plan;
+		}
+
+		#~
+		Copies chosen rows and columns of a table into a new table
+		@param name new table's name
+		@param source table to copy from
+		@param columns its column indexes, -1 for a name it does not have (an empty column)
+		@param names the new table's column names
+		@param rows its row slots, in order
+		@return new table
+		~#
+		function : Gather(name : String, source : Table, columns : Int[], names : String[], rows : Int[]) ~ Table {
+			table := Table->New(name, names);
+			table->Fill(rows->Size());
+			each(i : columns) {
+				if(columns[i] > -1) {
+					table->GetColumn(i + 1)->Gather(source->GetColumn(columns[i]), rows);
+				};
+			};
+
+			return table;
+		}
+
+		#~
+		Gives an empty table n rows with fresh keys and empty cells. Used by Gather.
+		@param n number of rows
+		~#
+		method : public : Fill(n : Int) ~ Nil {
+			keys := Int->New[n];
+			each(i : n) {
+				keys[i] := i;
+			};
+
+			key_column := Column->New("pk", ColumnType->INT, true);
+			key_column->FillInts(keys);
+			@columns[0] := key_column;
+			for(i := 1; i < @columns->Size(); i += 1;) {
+				@columns[i]->FillNulls(n);
+			};
+
+			@size := n;
+			@count := n;
+			@next_pk := n;
+			@version += 1;
 		}
 
 		#~
@@ -1393,12 +1829,45 @@ results->ToString()->PrintLine();
 				};
 			}
 			else {
-				seen := Hash->New()<Compare, BoolRef>;
+				# one set per kind of value: a Hash compares keys with the first key's own
+				# Compare, which casts its argument, so mixed kinds must never meet in one.
+				# A whole-number Float joins the Ints, so 3 and 3.0 are one value, as '='
+				# treats them.
+				whole := Hash->New()<IntRef, BoolRef>;
+				fractions := Hash->New()<FloatRef, BoolRef>;
+				by_class := Hash->New()<String, Hash<Compare, BoolRef>>;
 				each(i : rows) {
 					value := column->Get(rows[i]);
-					if(value <> Nil & <>seen->Has(value)) {
-						seen->Insert(value, true);
-						kept->AddBack(rows[i]);
+					if(value <> Nil) {
+						is_new := false;
+						if(value->TypeOf(IntRef)) {
+							is_new := Remember(whole, value->As(IntRef));
+						}
+						else if(value->TypeOf(FloatRef)) {
+							number := value->As(FloatRef)->Get();
+							if(number = number->Floor() & number->Abs() < 9.0e15) {
+								is_new := Remember(whole, IntRef->New(number->As(Int)));
+							}
+							else {
+								is_new := Remember(fractions, value->As(FloatRef));
+							};
+						}
+						else {
+							name := value->GetClass()->GetName();
+							seen := by_class->Find(name);
+							if(seen = Nil) {
+								seen := Hash->New()<Compare, BoolRef>;
+								by_class->Insert(name, seen);
+							};
+							if(<>seen->Has(value)) {
+								seen->Insert(value, true);
+								is_new := true;
+							};
+						};
+
+						if(is_new) {
+							kept->AddBack(rows[i]);
+						};
 					};
 				};
 			};
@@ -1409,6 +1878,22 @@ results->ToString()->PrintLine();
 			};
 
 			return out;
+		}
+
+		function : Remember(seen : Hash<IntRef, BoolRef>, key : IntRef) ~ Bool {
+			if(seen->Has(key)) {
+				return false;
+			};
+			seen->Insert(key, true);
+			return true;
+		}
+
+		function : Remember(seen : Hash<FloatRef, BoolRef>, key : FloatRef) ~ Bool {
+			if(seen->Has(key)) {
+				return false;
+			};
+			seen->Insert(key, true);
+			return true;
 		}
 
 		#~
@@ -1661,8 +2146,20 @@ results->ToString()->PrintLine();
 		```
 		~#
 		method : public : Query(statement : String) ~ Table {
-			@query := Query->New(statement, @self);
-			return @query->Query();
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return Nil;
+			};
+
+			holder := StringHolder->New();
+			view := plan->Run(@self, Compare->New[0], holder);
+			if(view = Nil) {
+				@error := holder->Get();
+				return Nil;
+			};
+
+			return view->ToTable("<rs>");
 		}
 
 		#~
@@ -1670,11 +2167,7 @@ results->ToString()->PrintLine();
 		@return last query error, Nil if the last query succeeded or none has run
 		~#
 		method : public : GetError() ~ String {
-			if(@query = Nil) {
-				return Nil;
-			};
-
-			return @query->GetError();
+			return @error;
 		}
 
 		#~
@@ -2024,6 +2517,27 @@ results->ToString()->PrintLine();
 	# aggregates, type-aware comparison for 'where' and 'order by', LIKE
 	# matching and CSV text conversion.
 	class : private : Cell {
+		# a cell's text as Row->ToString shows it
+		function : Text(value : Compare) ~ String {
+			if(value->TypeOf(IntRef)) {
+				return value->As(IntRef)->ToString();
+			}
+			else if(value->TypeOf(FloatRef)) {
+				return value->As(FloatRef)->ToString();
+			}
+			else if(value->TypeOf(Date)) {
+				return value->As(Date)->ToString();
+			}
+			else if(value->TypeOf(String)) {
+				return value->As(String);
+			}
+			else if(value->TypeOf(BoolRef)) {
+				return value->As(BoolRef)->Get() ? "true" : "false";
+			};
+
+			return value->GetClass()->GetName();
+		}
+
 		# Compare's result for two cells that cannot be ordered against each
 		# other; the ordered results are only ever -1, 0 and 1
 		function : NotComparable() ~ Int {
@@ -2525,154 +3039,978 @@ results->ToString()->PrintLine();
 		}
 	}
 
-	# Runs one statement against a table. Public for compatibility only: use Table->Query.
+	# Runs one statement against a table. Public for compatibility only: use Table->Query or
+	# Table->Prepare.
 	class Query {
-		@parser : Parser;
+		@line : String;
 		@table : Table;
 		@error : String;
 
 		New(line : String, table : Table) {
+			@line := line;
 			@table := table;
-			@parser := Parser->New(line);
 		}
 
 		method : public : Query() ~ Table {
-			expr := @parser->Parse();
-			if(expr = Nil) {
-				@error := "*** Parse error ***";
-				return Nil;
-			};
-
-			if(expr->GetType() = Token->Type->SELECT) {
-				results := ProcessSelect(expr);
-				if(results = Nil) {
-					@error := "*** Select error ***";
-					return Nil;
-				};
-
-				return results;
-			}
-			else if(expr->GetType() = Token->Type->FROM) {
-				rows := ProcessFrom(expr);
-				if(rows = Nil) {
-					@error := "*** From error ***";
-					return Nil;
-				};
-
-				names := @table->GetColumnNames();
-				column_names := String->New[names->Size() - 1];
-				each(i : column_names) {
-					column_names[i] := names[i + 1];
-				};
-
-				order_by : String;
-				order := expr->GetRight();
-				if(order <> Nil & order->GetType() = Token->Type->REF) {
-					order_by := order->GetValue()->As(String);
-				};
-
-				return BuildTable("<rs>", column_names, rows, order_by);
-			};
-
-			@error := "*** General error ***";
-			return Nil;
+			result := @table->Query(@line);
+			@error := @table->GetError();
+			return result;
 		}
 
 		method : public : GetError() ~ String {
 			return @error;
 		}
+	}
 
-		method : ProcessSelect(expr : Term) ~ Table {
-			rows := ProcessFrom(expr->GetLeft());
-			if(rows = Nil) {
-				return Nil;
-			};
-			columns := expr->GetTerms();
+	#~
+	A comparison or a way of combining conditions in a Predicate
+	~#
+	enum Op {
+		EQ,
+		NE,
+		LT,
+		LE,
+		GT,
+		GE,
+		LIKE,
+		NOT_LIKE,
+		IS_NULL,
+		NOT_NULL,
+		AND,
+		OR,
+		NOT
+	}
 
-			column_names : String[];
-			if(columns->Size() = 1 & columns->Get(0)->As(Term)->GetType() = Token->Type->STAR) {
-				names := @table->GetColumnNames();
-				column_names := String->New[names->Size() - 1];
-				each(i : column_names) {
-					column_names[i] := names[i + 1];
-				};
-			}
-			else if(columns->Size() = 2 &
-					columns->Get(0)->As(Term)->GetType() = Token->Type->DISTINCT &
-					columns->Get(1)->As(Term)->GetType() = Token->Type->REF) {
-				column_names := String->New[1];
-				column_name := columns->Get(1)->As(Term)->GetValue()->As(String);
-				column_names[0] := column_name;
-				index := @table->GetIndex(column_name);
-				if(index < 0) {
-					rows := Int->New[0];
-				}
-				else {
-					rows := @table->UniqueRows(index, rows);
-				};
-			}
-			else {
-				column_names := String->New[columns->Size()];
-				each(i : columns) {
-					column_names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
-				};
-			};
+	#~
+	Sort direction
+	~#
+	enum Order {
+		ASC,
+		DESC
+	}
 
-			if(expr->GetRight() <> Nil) {
-				order_by := expr->GetRight()->GetValue()->As(String);
-				return BuildTable("<rs>", column_names, rows, order_by);
-			};
+	#~
+	A condition on a table's rows, built with Col and combined with AndAlso, OrElse and Negate. A
+	condition names its columns, so the same one can be used on any table that has them.
+	Comparisons are false for an empty cell; numbers compare by value whether Int or Float; a
+	cell that cannot be ordered against the value (text and a number, say) satisfies only NE.
 
-			return BuildTable("<rs>", column_names, rows, Nil);
+```
+p := Col->Of("score")->Gt(0.5)->AndAlso(Col->Of("label")->Eq("cat"));
+rs := table->Where(p)->OrderBy("score", Order->DESC)->Limit(10);
+```
+	~#
+	class Predicate {
+		@op : Op;
+		@column : String;
+		@value : Compare;
+		@param : Int;
+		@left : Predicate;
+		@right : Predicate;
+
+		#~
+		Constructor for a comparison. Col builds these.
+		@param op comparison
+		@param column column name
+		@param value value compared against, Nil for IS_NULL and NOT_NULL
+		@param param placeholder number (1 based) whose bound value replaces 'value', 0 for none
+		~#
+		New(op : Op, column : String, value : Compare, param : Int) {
+			@op := op;
+			@column := column;
+			@value := value;
+			@param := param;
 		}
 
-		# copies the given rows, in order (sorted first by 'order_by' if given), into a new table
-		# whose columns take the source columns' types
-		method : BuildTable(name : String, column_names : String[], rows : Int[], order_by : String) ~ Table {
-			types := ColumnType->New[column_names->Size()];
-			sources := Column->New[column_names->Size()];
-			each(i : column_names) {
-				source := @table->GetColumn(column_names[i]);
-				sources[i] := source;
-				types[i] := ColumnType->NONE;
-				if(source <> Nil) {
-					types[i] := source->GetType();
+		#~
+		Constructor for AND, OR and NOT; NOT takes 'right' as Nil
+		@param op AND, OR or NOT
+		@param left first condition
+		@param right second condition
+		~#
+		New(op : Op, left : Predicate, right : Predicate) {
+			@op := op;
+			@left := left;
+			@right := right;
+		}
+
+		#~
+		Both this condition and another
+		@param condition other condition
+		@return combined condition
+		~#
+		method : public : AndAlso(condition : Predicate) ~ Predicate {
+			return Predicate->New(Op->AND, @self, condition);
+		}
+
+		#~
+		Either this condition or another
+		@param condition other condition
+		@return combined condition
+		~#
+		method : public : OrElse(condition : Predicate) ~ Predicate {
+			return Predicate->New(Op->OR, @self, condition);
+		}
+
+		#~
+		The rows this condition does not select, empty cells included
+		@return negated condition
+		~#
+		method : public : Negate() ~ Predicate {
+			return Predicate->New(Op->NOT, @self, Nil);
+		}
+
+		#~
+		Gets the operation
+		@return operation
+		~#
+		method : public : GetOp() ~ Op {
+			return @op;
+		}
+
+		#~
+		Gets the column a comparison names
+		@return column name, Nil for AND, OR and NOT
+		~#
+		method : public : GetColumn() ~ String {
+			return @column;
+		}
+
+		#~
+		Gets the value a comparison uses
+		@return value
+		~#
+		method : public : GetValue() ~ Compare {
+			return @value;
+		}
+
+		#~
+		Gets the placeholder number a comparison takes its value from
+		@return placeholder number (1 based), 0 for none
+		~#
+		method : public : GetParam() ~ Int {
+			return @param;
+		}
+
+		#~
+		Gets the first condition of AND, OR or NOT
+		@return condition
+		~#
+		method : public : GetLeft() ~ Predicate {
+			return @left;
+		}
+
+		#~
+		Gets the second condition of AND or OR
+		@return condition
+		~#
+		method : public : GetRight() ~ Predicate {
+			return @right;
+		}
+	}
+
+	#~
+	Starts a condition on a column
+
+```
+p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
+```
+	~#
+	class Col {
+		@name : String;
+
+		#~
+		Constructor
+		@param name column name
+		~#
+		New(name : String) {
+			@name := name;
+		}
+
+		#~
+		Starts a condition on a column
+		@param name column name
+		@return column reference
+		~#
+		function : Of(name : String) ~ Col {
+			return Col->New(name);
+		}
+
+		#~
+		Equal to a value
+		@param value value
+		@return condition
+		~#
+		method : public : Eq(value : Compare) ~ Predicate {
+			return Predicate->New(Op->EQ, @name, value, 0);
+		}
+
+		#~
+		Equal to an Int
+		@param value value
+		@return condition
+		~#
+		method : public : Eq(value : Int) ~ Predicate {
+			return Eq(IntRef->New(value));
+		}
+
+		#~
+		Equal to a Float
+		@param value value
+		@return condition
+		~#
+		method : public : Eq(value : Float) ~ Predicate {
+			return Eq(FloatRef->New(value));
+		}
+
+		#~
+		Equal to a Bool
+		@param value value
+		@return condition
+		~#
+		method : public : Eq(value : Bool) ~ Predicate {
+			return Eq(BoolRef->New(value));
+		}
+
+		#~
+		Not equal to a value; true for cells that cannot be compared with it
+		@param value value
+		@return condition
+		~#
+		method : public : Ne(value : Compare) ~ Predicate {
+			return Predicate->New(Op->NE, @name, value, 0);
+		}
+
+		#~
+		Not equal to an Int
+		@param value value
+		@return condition
+		~#
+		method : public : Ne(value : Int) ~ Predicate {
+			return Ne(IntRef->New(value));
+		}
+
+		#~
+		Not equal to a Float
+		@param value value
+		@return condition
+		~#
+		method : public : Ne(value : Float) ~ Predicate {
+			return Ne(FloatRef->New(value));
+		}
+
+		#~
+		Less than a value
+		@param value value
+		@return condition
+		~#
+		method : public : Lt(value : Compare) ~ Predicate {
+			return Predicate->New(Op->LT, @name, value, 0);
+		}
+
+		#~
+		Less than an Int
+		@param value value
+		@return condition
+		~#
+		method : public : Lt(value : Int) ~ Predicate {
+			return Lt(IntRef->New(value));
+		}
+
+		#~
+		Less than a Float
+		@param value value
+		@return condition
+		~#
+		method : public : Lt(value : Float) ~ Predicate {
+			return Lt(FloatRef->New(value));
+		}
+
+		#~
+		Less than or equal to a value
+		@param value value
+		@return condition
+		~#
+		method : public : Le(value : Compare) ~ Predicate {
+			return Predicate->New(Op->LE, @name, value, 0);
+		}
+
+		#~
+		Less than or equal to an Int
+		@param value value
+		@return condition
+		~#
+		method : public : Le(value : Int) ~ Predicate {
+			return Le(IntRef->New(value));
+		}
+
+		#~
+		Less than or equal to a Float
+		@param value value
+		@return condition
+		~#
+		method : public : Le(value : Float) ~ Predicate {
+			return Le(FloatRef->New(value));
+		}
+
+		#~
+		Greater than a value
+		@param value value
+		@return condition
+		~#
+		method : public : Gt(value : Compare) ~ Predicate {
+			return Predicate->New(Op->GT, @name, value, 0);
+		}
+
+		#~
+		Greater than an Int
+		@param value value
+		@return condition
+		~#
+		method : public : Gt(value : Int) ~ Predicate {
+			return Gt(IntRef->New(value));
+		}
+
+		#~
+		Greater than a Float
+		@param value value
+		@return condition
+		~#
+		method : public : Gt(value : Float) ~ Predicate {
+			return Gt(FloatRef->New(value));
+		}
+
+		#~
+		Greater than or equal to a value
+		@param value value
+		@return condition
+		~#
+		method : public : Ge(value : Compare) ~ Predicate {
+			return Predicate->New(Op->GE, @name, value, 0);
+		}
+
+		#~
+		Greater than or equal to an Int
+		@param value value
+		@return condition
+		~#
+		method : public : Ge(value : Int) ~ Predicate {
+			return Ge(IntRef->New(value));
+		}
+
+		#~
+		Greater than or equal to a Float
+		@param value value
+		@return condition
+		~#
+		method : public : Ge(value : Float) ~ Predicate {
+			return Ge(FloatRef->New(value));
+		}
+
+		#~
+		Between two values, both included
+		@param low lowest value
+		@param high highest value
+		@return condition
+		~#
+		method : public : Between(low : Compare, high : Compare) ~ Predicate {
+			return Ge(low)->AndAlso(Le(high));
+		}
+
+		#~
+		Between two Floats, both included
+		@param low lowest value
+		@param high highest value
+		@return condition
+		~#
+		method : public : Between(low : Float, high : Float) ~ Predicate {
+			return Ge(low)->AndAlso(Le(high));
+		}
+
+		#~
+		Equal to any of the values
+		@param values values
+		@return condition
+		~#
+		method : public : In(values : Compare[]) ~ Predicate {
+			if(values->Size() = 0) {
+				# nothing equals no value: a test that no cell passes
+				return IsNull()->AndAlso(IsNotNull());
+			};
+
+			result := Eq(values[0]);
+			for(i := 1; i < values->Size(); i += 1;) {
+				result := result->OrElse(Eq(values[i]));
+			};
+
+			return result;
+		}
+
+		#~
+		Equal to any of the strings
+		@param values values
+		@return condition
+		~#
+		method : public : In(values : String[]) ~ Predicate {
+			boxed := Compare->New[values->Size()];
+			each(i : values) {
+				boxed[i] := values[i];
+			};
+			return In(boxed);
+		}
+
+		#~
+		Equal to any of the Ints
+		@param values values
+		@return condition
+		~#
+		method : public : In(values : Int[]) ~ Predicate {
+			boxed := Compare->New[values->Size()];
+			each(i : values) {
+				boxed[i] := IntRef->New(values[i]);
+			};
+			return In(boxed);
+		}
+
+		#~
+		Equal to any of the Floats
+		@param values values
+		@return condition
+		~#
+		method : public : In(values : Float[]) ~ Predicate {
+			boxed := Compare->New[values->Size()];
+			each(i : values) {
+				boxed[i] := FloatRef->New(values[i]);
+			};
+			return In(boxed);
+		}
+
+		#~
+		Matches an SQL LIKE pattern: '%' any run of characters, '_' any one character
+		@param pattern pattern
+		@return condition
+		~#
+		method : public : Like(pattern : String) ~ Predicate {
+			return Predicate->New(Op->LIKE, @name, pattern, 0);
+		}
+
+		#~
+		Does not match an SQL LIKE pattern; only text cells take part
+		@param pattern pattern
+		@return condition
+		~#
+		method : public : NotLike(pattern : String) ~ Predicate {
+			return Predicate->New(Op->NOT_LIKE, @name, pattern, 0);
+		}
+
+		#~
+		The cell is empty
+		@return condition
+		~#
+		method : public : IsNull() ~ Predicate {
+			return Predicate->New(Op->IS_NULL, @name, Nil, 0);
+		}
+
+		#~
+		The cell is not empty
+		@return condition
+		~#
+		method : public : IsNotNull() ~ Predicate {
+			return Predicate->New(Op->NOT_NULL, @name, Nil, 0);
+		}
+	}
+
+	# A Predicate bound to one table: column names resolved to arrays, constants converted
+	# once to the column's type. Apply returns the matching row slots, ascending.
+	class : private : Filter {
+		@op : Op;
+		@left : Filter;
+		@right : Filter;
+		@column : Column;
+		@type : ColumnType;
+		@nulls : Int[];
+		@ints : Int[];
+		@floats : Float[];
+		@strings : String[];
+		@objects : Compare[];
+		@dict : String[];
+		@value : Compare;
+		@comparable : Bool;
+		@int_value : Int;
+		@float_value : Float;
+		@exact_int : Bool;
+		@text : String;
+		@code : Int;
+		@like_codes : Bool[];
+
+		New(op : Op) {
+			@op := op;
+		}
+
+		# binds a predicate to a table; Nil with 'error' set if a column is unknown or a
+		# placeholder has no value
+		function : Bind(pred : Predicate, table : Table, params : Compare[], error : StringHolder) ~ Filter {
+			if(pred = Nil) {
+				error->Set("no condition");
+				return Nil;
+			};
+
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR | op = Op->NOT) {
+				filter := Filter->New(op);
+				left := Bind(pred->GetLeft(), table, params, error);
+				if(left = Nil) {
+					return Nil;
+				};
+				filter->SetLeft(left);
+				if(op <> Op->NOT) {
+					right := Bind(pred->GetRight(), table, params, error);
+					if(right = Nil) {
+						return Nil;
+					};
+					filter->SetRight(right);
+				};
+				return filter;
+			};
+
+			column := table->GetColumn(pred->GetColumn());
+			if(column = Nil) {
+				error->Set("unknown column '{$(pred->GetColumn())}'");
+				return Nil;
+			};
+
+			value := pred->GetValue();
+			if(pred->GetParam() > 0) {
+				if(params = Nil | pred->GetParam() > params->Size()) {
+					error->Set("no value bound for placeholder {$(pred->GetParam())}");
+					return Nil;
+				};
+				value := params[pred->GetParam() - 1];
+				if(value = Nil) {
+					error->Set("no value bound for placeholder {$(pred->GetParam())}");
+					return Nil;
 				};
 			};
 
-			table := Table->New(name, column_names, types, false);
+			filter := Filter->New(op);
+			filter->Prepare(column, value);
+			return filter;
+		}
 
-			if(order_by <> Nil) {
-				order_index := @table->GetIndex(order_by);
-				if(order_index > -1) {
-					# a stable sort: rows sharing an order value (or holding Nil) all stay,
-					# in their original order
-					rows := SortRows(rows, order_index);
-				};
+		method : public : SetLeft(left : Filter) ~ Nil {
+			@left := left;
+		}
+
+		method : public : SetRight(right : Filter) ~ Nil {
+			@right := right;
+		}
+
+		# resolves the column's arrays and converts the constant to the column's type
+		method : public : Prepare(column : Column, value : Compare) ~ Nil {
+			@column := column;
+			@type := column->GetType();
+			@nulls := column->GetNullBits();
+			@ints := column->GetIntArray();
+			@floats := column->GetFloatArray();
+			@strings := column->GetStringArray();
+			@objects := column->GetObjectArray();
+			@dict := column->GetDictionary();
+			@value := value;
+			@comparable := false;
+			@code := -1;
+			if(value = Nil) {
+				return;
 			};
 
-			each(i : rows) {
-				table->Insert();
-				slot := table->GetRowCapacity() - 1;
-				each(j : sources) {
-					if(sources[j] <> Nil) {
-						table->GetColumn(j + 1)->CopyFrom(sources[j], rows[i], slot);
+			select(@type) {
+				label ColumnType->INT:
+				label ColumnType->FLOAT: {
+					if(value->TypeOf(IntRef)) {
+						@comparable := true;
+						@int_value := value->As(IntRef)->Get();
+						@float_value := @int_value->As(Float);
+						@exact_int := @type = ColumnType->INT;
+					}
+					else if(value->TypeOf(FloatRef)) {
+						@comparable := true;
+						@float_value := value->As(FloatRef)->Get();
+					};
+				}
+
+				label ColumnType->DATE: {
+					if(value->TypeOf(Date)) {
+						@comparable := true;
+						@int_value := DateCodec->ToMillis(value->As(Date));
+						@float_value := @int_value->As(Float);
+					};
+				}
+
+				label ColumnType->BOOL: {
+					if(value->TypeOf(BoolRef)) {
+						@comparable := true;
+						@int_value := value->As(BoolRef)->Get() ? 1 : 0;
+					}
+					else if(value->TypeOf(IntRef)) {
+						# the query words 'true' and 'false' arrive as 1 and 0
+						number := value->As(IntRef)->Get();
+						if(number = 0 | number = 1) {
+							@comparable := true;
+							@int_value := number;
+						};
+					};
+				}
+
+				label ColumnType->STRING: {
+					if(value->TypeOf(String)) {
+						@comparable := true;
+						@text := value->As(String);
+						if(column->IsEncoded()) {
+							@code := column->FindCode(@text);
+							if(@op = Op->LIKE | @op = Op->NOT_LIKE) {
+								size := column->GetDictionarySize();
+								@like_codes := Bool->New[size];
+								each(i : size) {
+									@like_codes[i] := Cell->MatchLike(@dict[i], @text);
+								};
+							};
+						};
+					};
+				}
+			};
+		}
+
+		# the matching slots among 'rows', or among all live rows when 'rows' is Nil
+		method : public : Apply(table : Table, rows : Int[]) ~ Int[] {
+			select(@op) {
+				label Op->AND: {
+					return @right->Apply(table, @left->Apply(table, rows));
+				}
+
+				label Op->OR: {
+					return Union(@left->Apply(table, rows), @right->Apply(table, rows));
+				}
+
+				label Op->NOT: {
+					all := rows <> Nil ? rows : table->LiveRows();
+					return Difference(all, @left->Apply(table, all));
+				}
+			};
+
+			if(rows <> Nil) {
+				kept := Int->New[rows->Size()];
+				n := 0;
+				each(i : rows) {
+					row := rows[i];
+					if(Test(row)) {
+						kept[n] := row;
+						n += 1;
+					};
+				};
+				return Trim(kept, n);
+			};
+
+			# a scan of the whole table, skipping row groups the zone maps rule out
+			size := table->GetRowCapacity();
+			deleted := table->GetDeletedBits();
+			kept := Int->New[size];
+			n := 0;
+			group_rows := Column->GroupRows();
+			groups := (size + group_rows - 1) / group_rows;
+			for(group := 0; group < groups; group += 1;) {
+				if(GroupMayMatch(group)) {
+					start := group * group_rows;
+					finish := start + group_rows;
+					if(finish > size) {
+						finish := size;
+					};
+					for(row := start; row < finish; row += 1;) {
+						live := deleted = Nil;
+						if(<>live) {
+							live := (deleted[row >> 6] and (1 << (row and 63))) = 0;
+						};
+						if(live & Test(row)) {
+							kept[n] := row;
+							n += 1;
+						};
 					};
 				};
 			};
 
-			return table;
+			return Trim(kept, n);
 		}
 
-		# bottom-up merge sort of row slots by one column, stable
-		method : SortRows(rows : Int[], index : Int) ~ Int[] {
-			column := @table->GetColumn(index);
+		# whether any row in a group could match, by the group's minimum and maximum
+		method : GroupMayMatch(group : Int) ~ Bool {
+			if(<>@comparable | <>@column->HasZones()) {
+				return true;
+			};
+
+			select(@op) {
+				label Op->EQ:
+				label Op->LT:
+				label Op->LE:
+				label Op->GT:
+				label Op->GE: {
+					if(<>@column->GroupHasValues(group)) {
+						return false;
+					};
+
+					low := @column->GetGroupMin(group);
+					high := @column->GetGroupMax(group);
+					select(@op) {
+						label Op->EQ: { return @float_value >= low & @float_value <= high; }
+						label Op->LT: { return low < @float_value; }
+						label Op->LE: { return low <= @float_value; }
+						label Op->GT: { return high > @float_value; }
+						label Op->GE: { return high >= @float_value; }
+					};
+				}
+			};
+
+			return true;
+		}
+
+		method : IsNullRow(row : Int) ~ Bool {
+			return (@nulls[row >> 6] and (1 << (row and 63))) <> 0;
+		}
+
+		# whether one row's cell passes
+		method : Test(row : Int) ~ Bool {
+			if(@op = Op->IS_NULL) {
+				return IsNullRow(row);
+			}
+			else if(@op = Op->NOT_NULL) {
+				return <>IsNullRow(row);
+			};
+
+			if(IsNullRow(row)) {
+				return false;
+			};
+
+			if(@op = Op->LIKE | @op = Op->NOT_LIKE) {
+				is_like := @op = Op->LIKE;
+				if(@type = ColumnType->STRING & @comparable) {
+					if(@like_codes <> Nil) {
+						return @like_codes[@ints[row]] = is_like;
+					};
+					return Cell->MatchLike(@strings[row], @text) = is_like;
+				}
+				else if(@type = ColumnType->OBJECT & @value <> Nil & @value->TypeOf(String)) {
+					cell := @objects[row];
+					if(cell->TypeOf(String)) {
+						return Cell->MatchLike(cell->As(String), @value->As(String)) = is_like;
+					};
+				};
+				return false;
+			};
+
+			result := 0;
+			select(@type) {
+				label ColumnType->INT: {
+					if(<>@comparable) {
+						return @op = Op->NE;
+					};
+					if(@exact_int) {
+						result := Order3(@ints[row], @int_value);
+					}
+					else {
+						result := Order3F(@ints[row]->As(Float), @float_value);
+					};
+				}
+
+				label ColumnType->FLOAT: {
+					if(<>@comparable) {
+						return @op = Op->NE;
+					};
+					result := Order3F(@floats[row], @float_value);
+				}
+
+				label ColumnType->DATE:
+				label ColumnType->BOOL: {
+					if(<>@comparable) {
+						return @op = Op->NE;
+					};
+					result := Order3(@ints[row], @int_value);
+				}
+
+				label ColumnType->STRING: {
+					if(<>@comparable) {
+						return @op = Op->NE;
+					};
+					if(@dict <> Nil) {
+						if(@op = Op->EQ) {
+							return @ints[row] = @code;
+						}
+						else if(@op = Op->NE) {
+							return @ints[row] <> @code;
+						};
+						result := Sign(@dict[@ints[row]]->Compare(@text));
+					}
+					else {
+						result := Sign(@strings[row]->Compare(@text));
+					};
+				}
+
+				label ColumnType->OBJECT: {
+					result := Cell->Compare(@objects[row], @value);
+					if(result = Cell->NotComparable()) {
+						return @op = Op->NE;
+					};
+				}
+
+				other: {
+					return false;
+				}
+			};
+
+			select(@op) {
+				label Op->EQ: { return result = 0; }
+				label Op->NE: { return result <> 0; }
+				label Op->LT: { return result < 0; }
+				label Op->LE: { return result <= 0; }
+				label Op->GT: { return result > 0; }
+				label Op->GE: { return result >= 0; }
+			};
+
+			return false;
+		}
+
+		function : Order3(a : Int, b : Int) ~ Int {
+			if(a < b) {
+				return -1;
+			}
+			else if(a > b) {
+				return 1;
+			};
+			return 0;
+		}
+
+		function : Order3F(a : Float, b : Float) ~ Int {
+			if(a < b) {
+				return -1;
+			}
+			else if(a > b) {
+				return 1;
+			};
+			return 0;
+		}
+
+		function : Sign(value : Int) ~ Int {
+			if(value < 0) {
+				return -1;
+			}
+			else if(value > 0) {
+				return 1;
+			};
+			return 0;
+		}
+
+		function : Trim(values : Int[], size : Int) ~ Int[] {
+			trimmed := Int->New[size];
+			each(i : size) {
+				trimmed[i] := values[i];
+			};
+			return trimmed;
+		}
+
+		# the slots in either ascending list, once each
+		function : Union(left : Int[], right : Int[]) ~ Int[] {
+			merged := Int->New[left->Size() + right->Size()];
+			n := 0;
+			l := 0;
+			r := 0;
+			while(l < left->Size() | r < right->Size()) {
+				if(r >= right->Size()) {
+					merged[n] := left[l];
+					l += 1;
+				}
+				else if(l >= left->Size()) {
+					merged[n] := right[r];
+					r += 1;
+				}
+				else if(left[l] < right[r]) {
+					merged[n] := left[l];
+					l += 1;
+				}
+				else if(right[r] < left[l]) {
+					merged[n] := right[r];
+					r += 1;
+				}
+				else {
+					merged[n] := left[l];
+					l += 1;
+					r += 1;
+				};
+				n += 1;
+			};
+			return Trim(merged, n);
+		}
+
+		# the slots in the first ascending list and not the second
+		function : Difference(all : Int[], remove : Int[]) ~ Int[] {
+			kept := Int->New[all->Size()];
+			n := 0;
+			r := 0;
+			each(i : all) {
+				while(r < remove->Size() & remove[r] < all[i]) {
+					r += 1;
+				};
+				if(r >= remove->Size() | remove[r] <> all[i]) {
+					kept[n] := all[i];
+					n += 1;
+				};
+			};
+			return Trim(kept, n);
+		}
+	}
+
+	# a String a function can set for its caller
+	class : private : StringHolder {
+		@value : String;
+
+		New() {
+		}
+
+		method : public : Set(value : String) ~ Nil {
+			@value := value;
+		}
+
+		method : public : Get() ~ String {
+			return @value;
+		}
+	}
+
+	# Sorts row slots by one column with typed keys: numbers and dates as numbers, encoded text
+	# by each code's rank in the sorted dictionary, objects by Cell->Order. Stable; empty
+	# cells last in either direction.
+	class : private : Sorter {
+		@type : ColumnType;
+		@descending : Bool;
+		@nulls : Int[];
+		@ints : Int[];
+		@floats : Float[];
+		@strings : String[];
+		@objects : Compare[];
+		@ranks : Int[];
+
+		New(column : Column, descending : Bool) {
+			@type := column->GetType();
+			@descending := descending;
+			@nulls := column->GetNullBits();
+			@ints := column->GetIntArray();
+			@floats := column->GetFloatArray();
+			@strings := column->GetStringArray();
+			@objects := column->GetObjectArray();
+			if(column->IsEncoded()) {
+				@ranks := column->GetDictionaryRanks();
+			};
+		}
+
+		method : public : Sort(rows : Int[]) ~ Int[] {
 			size := rows->Size();
-			keys := Compare->New[size];
 			src := Int->New[size];
 			each(i : size) {
-				src[i] := i;
-				keys[i] := column->Get(rows[i]);
+				src[i] := rows[i];
 			};
 			dest := Int->New[size];
 
@@ -2695,9 +4033,7 @@ results->ToString()->PrintLine();
 					while(k < finish) {
 						take_left := l < middle;
 						if(take_left & r < finish) {
-							left_key := keys[src[l]];
-							right_key := keys[src[r]];
-							take_left := Cell->Order(left_key, right_key) <= 0;
+							take_left := Compare(src[l], src[r]) <= 0;
 						};
 
 						if(take_left) {
@@ -2720,177 +4056,764 @@ results->ToString()->PrintLine();
 				width *= 2;
 			};
 
-			sorted := Int->New[size];
-			each(i : size) {
-				sorted[i] := rows[src[i]];
-			};
-
-			return sorted;
+			return src;
 		}
 
-		method : ProcessFrom(expr : Term) ~ Int[] {
-			name := expr->GetValue()->As(String);
-			if(<>name->Equals(@table->GetName())) {
+		method : Compare(a : Int, b : Int) ~ Int {
+			a_null := (@nulls[a >> 6] and (1 << (a and 63))) <> 0;
+			b_null := (@nulls[b >> 6] and (1 << (b and 63))) <> 0;
+			if(a_null | b_null) {
+				if(a_null & b_null) {
+					return 0;
+				};
+				return a_null ? 1 : -1;
+			};
+
+			result := 0;
+			select(@type) {
+				label ColumnType->INT:
+				label ColumnType->DATE:
+				label ColumnType->BOOL: {
+					result := Filter->Order3(@ints[a], @ints[b]);
+				}
+
+				label ColumnType->FLOAT: {
+					result := Filter->Order3F(@floats[a], @floats[b]);
+				}
+
+				label ColumnType->STRING: {
+					if(@ranks <> Nil) {
+						result := Filter->Order3(@ranks[@ints[a]], @ranks[@ints[b]]);
+					}
+					else {
+						result := Filter->Sign(@strings[a]->Compare(@strings[b]));
+					};
+				}
+
+				label ColumnType->OBJECT: {
+					result := Cell->Order(@objects[a], @objects[b]);
+				}
+			};
+
+			return @descending ? -1 * result : result;
+		}
+	}
+
+	#~
+	Rows of a table, chosen and ordered without copying: the table, the columns to show and
+	the row slots in order. Chaining Where, OrderBy, Limit and Select only makes new lists of
+	slots. A view made before its table changes refuses to read it afterwards (see IsCurrent).
+
+```
+view := table->Where(Col->Of("score")->Gt(0.5))->OrderBy("score", Order->DESC)->Limit(10);
+each(i : view->Count()) {
+  view->Get(i)->ToString()->PrintLine();
+};
+```
+	~#
+	class View {
+		@table : Table;
+		@columns : Int[];
+		@names : String[];
+		@rows : Int[];
+		@version : Int;
+		@error : String;
+
+		#~
+		Constructor. Use Table->AsView, Where, Select or OrderBy rather than this.
+		@param table table
+		@param columns column indexes shown, 'pk' excluded
+		@param rows row slots, in order
+		~#
+		New(table : Table, columns : Int[], rows : Int[]) {
+			@table := table;
+			@columns := columns;
+			@rows := rows;
+			@version := table->GetVersion();
+			all := table->GetColumnNames();
+			@names := String->New[columns->Size()];
+			each(i : columns) {
+				@names[i] := columns[i] > -1 ? all[columns[i]] : "";
+			};
+		}
+
+		#~
+		Constructor for a view whose columns may include names the table does not have; those
+		read as empty cells. Use Table->Prepare rather than this.
+		@param table table
+		@param columns column indexes shown, -1 for an unknown name
+		@param names column names shown
+		@param rows row slots, in order
+		~#
+		New(table : Table, columns : Int[], names : String[], rows : Int[]) {
+			@table := table;
+			@columns := columns;
+			@names := names;
+			@rows := rows;
+			@version := table->GetVersion();
+		}
+
+		#~
+		Whether the table is unchanged since the view was made
+		@return true if the view can be read
+		~#
+		method : public : IsCurrent() ~ Bool {
+			if(@version <> @table->GetVersion()) {
+				@error := "the table '{$(@table->GetName())}' changed after this view was made";
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Gets the reason the last operation failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the table the view reads
+		@return table
+		~#
+		method : public : GetTable() ~ Table {
+			return @table;
+		}
+
+		#~
+		Gets the row slots, in view order
+		@return row slots
+		~#
+		method : public : GetRows() ~ Int[] {
+			return @rows;
+		}
+
+		#~
+		Gets the names of the columns shown
+		@return column names
+		~#
+		method : public : GetColumnNames() ~ String[] {
+			return @names;
+		}
+
+		#~
+		Gets the number of rows
+		@return number of rows
+		~#
+		method : public : Count() ~ Int {
+			return @rows->Size();
+		}
+
+		#~
+		Gets the number of rows
+		@return number of rows
+		~#
+		method : public : Size() ~ Int {
+			return @rows->Size();
+		}
+
+		#~
+		Gets a row by its position in the view
+		@param index position, 0 based
+		@return row, Nil if out of range or the view is stale
+		~#
+		method : public : Get(index : Int) ~ Row {
+			if(index < 0 | index >= @rows->Size() | <>IsCurrent()) {
 				return Nil;
 			};
 
-			left := expr->GetLeft();
-			if(left <> Nil & left->GetType() = Token->Type->WHERE) {
-				return ProcessTerm(left->GetLeft());
-			};
-
-			return @table->LiveRows();
+			return Row->New(@table, @rows[index]);
 		}
 
-		method : ProcessTerm(expr : Term) ~ Int[] {
+		#~
+		Gets every row, in view order
+		@return rows, empty if the view is stale
+		~#
+		method : public : GetAll() ~ Vector<Row> {
+			rows := Vector->New()<Row>;
+			if(IsCurrent()) {
+				each(i : @rows) {
+					rows->AddBack(Row->New(@table, @rows[i]));
+				};
+			};
+			return rows;
+		}
+
+		#~
+		The rows that also meet a condition
+		@param condition condition
+		@return new view, Nil if the condition names an unknown column (see GetError)
+		~#
+		method : public : Where(condition : Predicate) ~ View {
+			if(<>IsCurrent()) {
+				return Nil;
+			};
+
+			error := StringHolder->New();
+			no_params : Compare[];
+			filter := Filter->Bind(condition, @table, no_params, error);
+			if(filter = Nil) {
+				@error := error->Get();
+				return Nil;
+			};
+
+			return View->New(@table, @columns, @names, filter->Apply(@table, @rows));
+		}
+
+		#~
+		The same rows showing only some columns
+		@param names column names
+		@return new view, Nil if a name is unknown (see GetError)
+		~#
+		method : public : Select(names : String[]) ~ View {
+			columns := Int->New[names->Size()];
+			each(i : names) {
+				index := @table->GetIndex(names[i]);
+				if(index < 1) {
+					@error := "unknown column '{$(names[i])}'";
+					return Nil;
+				};
+				columns[i] := index;
+			};
+
+			return View->New(@table, columns, @rows);
+		}
+
+		#~
+		The rows sorted by a column, ascending; empty cells last
+		@param name column name
+		@return new view, Nil if the column is unknown (see GetError)
+		~#
+		method : public : OrderBy(name : String) ~ View {
+			return OrderBy(name, Order->ASC);
+		}
+
+		#~
+		The rows sorted by a column; empty cells last in either direction. Rows with equal
+		values keep their order.
+		@param name column name
+		@param order ASC or DESC
+		@return new view, Nil if the column is unknown (see GetError)
+		~#
+		method : public : OrderBy(name : String, order : Order) ~ View {
+			if(<>IsCurrent()) {
+				return Nil;
+			};
+
+			column := @table->GetColumn(name);
+			if(column = Nil) {
+				@error := "unknown column '{$name}'";
+				return Nil;
+			};
+
+			sorter := Sorter->New(column, order = Order->DESC);
+			return View->New(@table, @columns, @names, sorter->Sort(@rows));
+		}
+
+		#~
+		At most the first n rows
+		@param n row limit
+		@return new view
+		~#
+		method : public : Limit(n : Int) ~ View {
+			return Slice(0, n);
+		}
+
+		#~
+		The rows after the first n
+		@param n rows to skip
+		@return new view
+		~#
+		method : public : Offset(n : Int) ~ View {
+			return Slice(n, @rows->Size());
+		}
+
+		method : Slice(start : Int, count : Int) ~ View {
+			if(start < 0) {
+				start := 0;
+			};
+			if(start > @rows->Size()) {
+				start := @rows->Size();
+			};
+			if(count < 0 | start + count > @rows->Size()) {
+				count := @rows->Size() - start;
+			};
+
+			rows := Int->New[count];
+			each(i : count) {
+				rows[i] := @rows[start + i];
+			};
+
+			return View->New(@table, @columns, @names, rows);
+		}
+
+		#~
+		The first row holding each distinct value of a column; empty cells are left out
+		@param name column name
+		@return new view, Nil if the column is unknown (see GetError)
+		~#
+		method : public : Distinct(name : String) ~ View {
+			index := @table->GetIndex(name);
+			if(index < 1) {
+				@error := "unknown column '{$name}'";
+				return Nil;
+			};
+
+			return View->New(@table, @columns, @names, @table->UniqueRows(index, @rows));
+		}
+
+		#~
+		Sums a column's numeric cells over the view's rows
+		@param name column name
+		@return sum, 0.0 if there are none
+		~#
+		method : public : Sum(name : String) ~ Float {
+			column := @table->GetColumn(name);
+			if(column = Nil | <>IsCurrent()) {
+				return 0.0;
+			};
+
+			sum := 0.0;
+			each(i : @rows) {
+				if(column->IsNumeric(@rows[i])) {
+					sum += column->GetFloat(@rows[i]);
+				};
+			};
+			return sum;
+		}
+
+		#~
+		Counts a column's numeric cells over the view's rows
+		@param name column name
+		@return count
+		~#
+		method : public : Count(name : String) ~ Int {
+			column := @table->GetColumn(name);
+			if(column = Nil | <>IsCurrent()) {
+				return 0;
+			};
+
+			count := 0;
+			each(i : @rows) {
+				if(column->IsNumeric(@rows[i])) {
+					count += 1;
+				};
+			};
+			return count;
+		}
+
+		#~
+		Averages a column's numeric cells over the view's rows
+		@param name column name
+		@return average, 0.0 if there are none
+		~#
+		method : public : Average(name : String) ~ Float {
+			count := Count(name);
+			if(count = 0) {
+				return 0.0;
+			};
+			return Sum(name) / count->As(Float);
+		}
+
+		#~
+		Gets the smallest numeric cell of a column over the view's rows
+		@param name column name
+		@return minimum, 0.0 if there are none
+		~#
+		method : public : Min(name : String) ~ Float {
+			return MinMax(name, true);
+		}
+
+		#~
+		Gets the largest numeric cell of a column over the view's rows
+		@param name column name
+		@return maximum, 0.0 if there are none
+		~#
+		method : public : Max(name : String) ~ Float {
+			return MinMax(name, false);
+		}
+
+		method : MinMax(name : String, is_min : Bool) ~ Float {
+			column := @table->GetColumn(name);
+			if(column = Nil | <>IsCurrent()) {
+				return 0.0;
+			};
+
+			found := false;
+			result := 0.0;
+			each(i : @rows) {
+				if(column->IsNumeric(@rows[i])) {
+					value := column->GetFloat(@rows[i]);
+					if(<>found | (is_min & value < result) | (<>is_min & value > result)) {
+						result := value;
+						found := true;
+					};
+				};
+			};
+			return result;
+		}
+
+		#~
+		Copies the view into a new, independent table
+		@param name new table's name
+		@return table, Nil if the view is stale
+		~#
+		method : public : ToTable(name : String) ~ Table {
+			if(<>IsCurrent()) {
+				return Nil;
+			};
+
+			return Table->Gather(name, @table, @columns, @names, @rows);
+		}
+
+		#~
+		String representation of the view's rows
+		@return rows as a string
+		~#
+		method : public : ToString() ~ String {
+			buffer := "";
+			if(IsCurrent()) {
+				each(i : @rows) {
+					row := Row->New(@table, @rows[i]);
+					each(j : @columns) {
+						value := @columns[j] > -1 ? row->Get(@columns[j]) : Nil;
+						buffer += value <> Nil ? Cell->Text(value) : "<Nil>";
+						buffer += ", ";
+					};
+					buffer += "\r\n";
+				};
+			};
+			return buffer;
+		}
+	}
+
+	#~
+	A query parsed once and run many times, with '?' placeholders for values bound before each
+	run. Placeholders are numbered from 1, left to right.
+
+```
+statement := table->Prepare("select id, score from runs where score > ? and label = ?");
+statement->Bind(1, 0.5)->Bind(2, "cat");
+results := statement->Execute();
+```
+	~#
+	class Statement {
+		@table : Table;
+		@plan : Plan;
+		@params : Compare[];
+		@error : String;
+
+		#~
+		Constructor. Use Table->Prepare rather than this.
+		@param table table
+		@param plan parsed query
+		~#
+		New(table : Table, plan : Plan) {
+			@table := table;
+			@plan := plan;
+			@params := Compare->New[plan->GetParamCount()];
+		}
+
+		#~
+		Gets the number of placeholders
+		@return placeholder count
+		~#
+		method : public : GetParamCount() ~ Int {
+			return @params->Size();
+		}
+
+		#~
+		Binds a value to a placeholder
+		@param index placeholder number, from 1
+		@param value value
+		@return this statement
+		~#
+		method : public : Bind(index : Int, value : Compare) ~ Statement {
+			if(index >= 1 & index <= @params->Size()) {
+				@params[index - 1] := value;
+			};
+			return @self;
+		}
+
+		#~
+		Binds an Int to a placeholder
+		@param index placeholder number, from 1
+		@param value value
+		@return this statement
+		~#
+		method : public : Bind(index : Int, value : Int) ~ Statement {
+			return Bind(index, IntRef->New(value)->As(Compare));
+		}
+
+		#~
+		Binds a Float to a placeholder
+		@param index placeholder number, from 1
+		@param value value
+		@return this statement
+		~#
+		method : public : Bind(index : Int, value : Float) ~ Statement {
+			return Bind(index, FloatRef->New(value)->As(Compare));
+		}
+
+		#~
+		Binds a Bool to a placeholder
+		@param index placeholder number, from 1
+		@param value value
+		@return this statement
+		~#
+		method : public : Bind(index : Int, value : Bool) ~ Statement {
+			return Bind(index, BoolRef->New(value)->As(Compare));
+		}
+
+		#~
+		Runs the query, copying the result into a new table
+		@return result table, Nil on error (see GetError)
+		~#
+		method : public : Execute() ~ Table {
+			view := ExecuteView();
+			if(view = Nil) {
+				return Nil;
+			};
+			return view->ToTable("<rs>");
+		}
+
+		#~
+		Runs the query without copying the result
+		@return result view, Nil on error (see GetError)
+		~#
+		method : public : ExecuteView() ~ View {
+			error := StringHolder->New();
+			view := @plan->Run(@table, @params, error);
+			@error := error->Get();
+			return view;
+		}
+
+		#~
+		Gets the reason the last run failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	# A parsed query: the table it names, its columns (Nil for '*'), an optional 'distinct'
+	# column, its condition and its 'order by' column.
+	class : private : Plan {
+		@table_name : String;
+		@columns : String[];
+		@distinct : String;
+		@condition : Predicate;
+		@order_by : String;
+		@params : Int;
+		@is_select : Bool;
+
+		New() {
+		}
+
+		# parses a statement; Nil with the old engine's messages on error
+		function : Parse(statement : String, error : StringHolder) ~ Plan {
+			parser := Parser->New(statement);
+			expr := parser->Parse();
 			if(expr = Nil) {
+				error->Set("*** Parse error ***");
 				return Nil;
 			};
 
-			left := expr->GetLeft();
-			right := expr->GetRight();
+			plan := Plan->New();
+			source_term : Term;
+			if(expr->GetType() = Token->Type->SELECT) {
+				plan->SetSelect();
+				source_term := expr->GetLeft();
+				columns := expr->GetTerms();
+				if(columns->Size() = 2 &
+						columns->Get(0)->As(Term)->GetType() = Token->Type->DISTINCT &
+						columns->Get(1)->As(Term)->GetType() = Token->Type->REF) {
+					name := columns->Get(1)->As(Term)->GetValue()->As(String);
+					plan->SetColumns([name]);
+					plan->SetDistinct(name);
+				}
+				else if(<>(columns->Size() = 1 & columns->Get(0)->As(Term)->GetType() = Token->Type->STAR)) {
+					names := String->New[columns->Size()];
+					each(i : columns) {
+						names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
+					};
+					plan->SetColumns(names);
+				};
+
+				if(expr->GetRight() <> Nil) {
+					plan->SetOrderBy(expr->GetRight()->GetValue()->As(String));
+				};
+			}
+			else if(expr->GetType() = Token->Type->FROM) {
+				source_term := expr;
+				order := expr->GetRight();
+				if(order <> Nil & order->GetType() = Token->Type->REF) {
+					plan->SetOrderBy(order->GetValue()->As(String));
+				};
+			}
+			else {
+				error->Set("*** General error ***");
+				return Nil;
+			};
+
+			plan->SetTableName(source_term->GetValue()->As(String));
+			where := source_term->GetLeft();
+			if(where <> Nil & where->GetType() = Token->Type->WHERE) {
+				condition := plan->Convert(where->GetLeft());
+				if(condition = Nil) {
+					error->Set(expr->GetType() = Token->Type->SELECT ? "*** Select error ***" : "*** From error ***");
+					return Nil;
+				};
+				plan->SetCondition(condition);
+			};
+
+			return plan;
+		}
+
+		method : public : SetSelect() ~ Nil {
+			@is_select := true;
+		}
+
+		method : public : SetColumns(columns : String[]) ~ Nil {
+			@columns := columns;
+		}
+
+		method : public : SetDistinct(name : String) ~ Nil {
+			@distinct := name;
+		}
+
+		method : public : SetOrderBy(name : String) ~ Nil {
+			@order_by := name;
+		}
+
+		method : public : SetTableName(name : String) ~ Nil {
+			@table_name := name;
+		}
+
+		method : public : SetCondition(condition : Predicate) ~ Nil {
+			@condition := condition;
+		}
+
+		method : public : GetParamCount() ~ Int {
+			return @params;
+		}
+
+		# a parsed 'where' term as a Predicate
+		method : public : Convert(term : Term) ~ Predicate {
+			if(term = Nil) {
+				return Nil;
+			};
+
+			left := term->GetLeft();
+			right := term->GetRight();
 			if(left = Nil | right = Nil) {
 				return Nil;
 			};
 
-			select(expr->GetType()) {
+			select(term->GetType()) {
 				label Token->Type->AND: {
-					left_result := ProcessTerm(left);
-					if(left_result = Nil) {
+					l := Convert(left);
+					r := Convert(right);
+					if(l = Nil | r = Nil) {
 						return Nil;
 					};
-
-					right_result := ProcessTerm(right);
-					if(right_result = Nil) {
-						return Nil;
-					};
-
-					return MergeAnd(left_result, right_result);
+					return l->AndAlso(r);
 				}
 
 				label Token->Type->OR: {
-					left_result := ProcessTerm(left);
-					if(left_result = Nil) {
+					l := Convert(left);
+					r := Convert(right);
+					if(l = Nil | r = Nil) {
 						return Nil;
 					};
-
-					right_result := ProcessTerm(right);
-					if(right_result = Nil) {
-						return Nil;
-					};
-
-					return MergeOr(left_result, right_result);
-				}
-
-				other: {
-					index := @table->GetIndex(left->GetValue()->As(String));
-					if(index > -1) {
-						cond := MakeCondition(index, expr->GetType(), expr->GetNot(), right->GetValue());
-						if(cond <> Nil) {
-							return @table->FilterRows(cond, @table->LiveRows());
-						};
-					};
+					return l->OrElse(r);
 				}
 			};
 
-			return Nil;
+			op := ToOp(term->GetType(), term->GetNot());
+			if(op = Op->AND) {
+				return Nil;
+			};
+
+			name := left->GetValue()->As(String);
+			if(right->GetType() = Token->Type->PARAM) {
+				@params += 1;
+				return Predicate->New(op, name, Nil, @params);
+			};
+
+			return Predicate->New(op, name, right->GetValue(), 0);
 		}
 
-		# A comparison term as a filter. 'not' negates any operator: 'not =' is '<>', 'not >'
-		# is '<=' and so on. Nil if the term is not a comparison.
-		method : MakeCondition(index : Int, type : Token->Type, is_not : Bool, value : Compare) ~ Conditional {
+		# 'not' negates any operator: 'not =' is '<>', 'not >' is '<=' and so on; AND for a
+		# term that is not a comparison
+		function : ToOp(type : Token->Type, is_not : Bool) ~ Op {
 			select(type) {
-				label Token->Type->EQUAL: {
-					return Conditional->New(index, is_not ? Conditional->Qualifier->NOT_EQUAL : Conditional->Qualifier->EQUAL, value);
-				}
-
-				label Token->Type->NOT_EQUAL: {
-					return Conditional->New(index, is_not ? Conditional->Qualifier->EQUAL : Conditional->Qualifier->NOT_EQUAL, value);
-				}
-
-				label Token->Type->GREATER: {
-					return Conditional->New(index, is_not ? Conditional->Qualifier->LESS_EQUAL : Conditional->Qualifier->GREATER, value);
-				}
-
-				label Token->Type->LESS: {
-					return Conditional->New(index, is_not ? Conditional->Qualifier->GREATER_EQUAL : Conditional->Qualifier->LESS, value);
-				}
-
-				label Token->Type->GREATER_EQUAL: {
-					return Conditional->New(index, is_not ? Conditional->Qualifier->LESS : Conditional->Qualifier->GREATER_EQUAL, value);
-				}
-
-				label Token->Type->LESS_EQUAL: {
-					return Conditional->New(index, is_not ? Conditional->Qualifier->GREATER : Conditional->Qualifier->LESS_EQUAL, value);
-				}
-
-				label Token->Type->LIKE: {
-					return Conditional->New(index, is_not ? Conditional->Qualifier->NOT_LIKE : Conditional->Qualifier->LIKE, value);
-				}
+				label Token->Type->EQUAL: { return is_not ? Op->NE : Op->EQ; }
+				label Token->Type->NOT_EQUAL: { return is_not ? Op->EQ : Op->NE; }
+				label Token->Type->GREATER: { return is_not ? Op->LE : Op->GT; }
+				label Token->Type->LESS: { return is_not ? Op->GE : Op->LT; }
+				label Token->Type->GREATER_EQUAL: { return is_not ? Op->LT : Op->GE; }
+				label Token->Type->LESS_EQUAL: { return is_not ? Op->GT : Op->LE; }
+				label Token->Type->LIKE: { return is_not ? Op->NOT_LIKE : Op->LIKE; }
 			};
 
-			return Nil;
+			return Op->AND;
 		}
 
-		# the slots in both sorted lists
-		method : MergeAnd(left : Int[], right : Int[]) ~ Int[] {
-			merged := Int->New[left->Size() < right->Size() ? left->Size() : right->Size()];
-			n := 0;
-			l := 0;
-			r := 0;
-			while(l < left->Size() & r < right->Size()) {
-				if(left[l] = right[r]) {
-					merged[n] := left[l];
-					n += 1;
-					l += 1;
-					r += 1;
-				}
-				else if(left[l] < right[r]) {
-					l += 1;
-				}
-				else {
-					r += 1;
+		# runs the plan against a table; Nil with 'error' set on failure
+		method : public : Run(table : Table, params : Compare[], error : StringHolder) ~ View {
+			if(@table_name = Nil | <>@table_name->Equals(table->GetName())) {
+				error->Set("the query names table '{$@table_name}', not '{$(table->GetName())}'");
+				return Nil;
+			};
+
+			rows : Int[];
+			if(@condition <> Nil) {
+				filter := Filter->Bind(@condition, table, params, error);
+				if(filter = Nil) {
+					return Nil;
+				};
+				all_rows : Int[];
+				rows := filter->Apply(table, all_rows);
+			}
+			else {
+				rows := table->LiveRows();
+			};
+
+			if(@distinct <> Nil) {
+				index := table->GetIndex(@distinct);
+				rows := index < 1 ? Int->New[0] : table->UniqueRows(index, rows);
+			};
+
+			if(@order_by <> Nil) {
+				column := table->GetColumn(@order_by);
+				if(column <> Nil) {
+					rows := Sorter->New(column, false)->Sort(rows);
 				};
 			};
 
-			return Trim(merged, n);
-		}
-
-		# the slots in either sorted list, once each, in slot order
-		method : MergeOr(left : Int[], right : Int[]) ~ Int[] {
-			merged := Int->New[left->Size() + right->Size()];
-			n := 0;
-			l := 0;
-			r := 0;
-			while(l < left->Size() | r < right->Size()) {
-				if(r >= right->Size() | (l < left->Size() & left[l] < right[r])) {
-					merged[n] := left[l];
-					l += 1;
-				}
-				else if(l >= left->Size() | right[r] < left[l]) {
-					merged[n] := right[r];
-					r += 1;
-				}
-				else {
-					merged[n] := left[l];
-					l += 1;
-					r += 1;
+			names := @columns;
+			if(names = Nil) {
+				all := table->GetColumnNames();
+				names := String->New[all->Size() - 1];
+				each(i : names) {
+					names[i] := all[i + 1];
 				};
-				n += 1;
 			};
 
-			return Trim(merged, n);
-		}
-
-		function : Trim(values : Int[], size : Int) ~ Int[] {
-			trimmed := Int->New[size];
-			each(i : size) {
-				trimmed[i] := values[i];
+			# an unknown column in the list reads as empty cells, as it always has
+			columns := Int->New[names->Size()];
+			each(i : names) {
+				columns[i] := table->GetIndex(names[i]);
 			};
 
-			return trimmed;
+			return View->New(table, columns, names, rows);
 		}
 	}
+
 
 	class Parser {
 		@line : String;
@@ -3160,6 +5083,7 @@ results->ToString()->PrintLine();
 				label Token->Type->REF:
 				label Token->Type->DATE:
 				label Token->Type->INT:
+				label Token->Type->PARAM:
 				label Token->Type->FLOAT: {			
 					right := Term->New(TokenType());					
 					right->SetValue(TokenValue());
@@ -3233,6 +5157,7 @@ results->ToString()->PrintLine();
 
 		method : native : Scan() ~ Vector<Token> {
 			i := 0;
+			params := 0;
 			tokens := Vector->New()<Token>;
 			while(i < @line->Size()) { 			 			  
 				# skip whitespace
@@ -3355,6 +5280,10 @@ results->ToString()->PrintLine();
 						select(@line->Get(i)) {
 							label '*': {
 								tokens->AddBack(Token->New(Token->Type->STAR));
+							}
+							label '?': {
+								params += 1;
+								tokens->AddBack(Token->New(Token->Type->PARAM, IntRef->New(params)));
 							}
 
 							label ',': {
@@ -3528,7 +5457,8 @@ results->ToString()->PrintLine();
 			DATE,
 			TRUE,
 			FASLE,
-			EOS
+			EOS,
+			PARAM
 		}
 		
 		New(value : String) {
@@ -3544,6 +5474,11 @@ results->ToString()->PrintLine();
 		New(type : Type) {
 			@type := type;
 			@value := "";
+		}
+
+		New(type : Type, value : Compare) {
+			@type := type;
+			@value := value;
 		}
 		
 		New(value : Float) {
@@ -3953,7 +5888,7 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 		~#
 		New(path : String) {
 			@path := path;
-			@name := BaseName(path);
+			@name := SourceText->BaseName(path, "csv");
 			@delimiter := ',';
 		}
 
@@ -4039,9 +5974,9 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 					@error := "no file and no text";
 					return Nil;
 				};
-				text := FileReader->ReadFile(@path);
+				text := SourceText->Read(@path);
 				if(text = Nil) {
-					@error := "cannot read '{$@path}'";
+					@error := SourceText->Failure(@path);
 					return Nil;
 				};
 			};
@@ -4716,6 +6651,736 @@ catalog->Load(source);
 			};
 
 			return Nil;
+		}
+	}
+
+	# Reads a source file's text; a name ending in '.gz' is decompressed first
+	class : private : SourceText {
+		function : Read(path : String) ~ String {
+			if(path = Nil) {
+				return Nil;
+			};
+
+			if(path->EndsWith(".gz")) {
+				bytes := FileReader->ReadBinaryFile(path);
+				if(bytes = Nil) {
+					return Nil;
+				};
+
+				raw : Byte[];
+				try {
+					raw := bytes->UncompressGzip();
+				}
+				on(e : Error) {
+					return Nil;
+				};
+
+				if(raw = Nil) {
+					return Nil;
+				};
+
+				return raw->ToString();
+			};
+
+			return FileReader->ReadFile(path);
+		}
+
+		# why Read() gave Nil
+		function : Failure(path : String) ~ String {
+			if(path <> Nil & path->EndsWith(".gz") & File->Exists(path)) {
+				return "'{$path}' is not valid gzip data, or is truncated";
+			};
+
+			return "cannot read '{$path}'";
+		}
+
+		# a file's name without its folder, '.gz' or extension
+		function : BaseName(path : String, fallback : String) ~ String {
+			if(path = Nil) {
+				return fallback;
+			};
+
+			start := 0;
+			each(i : path) {
+				c := path->Get(i);
+				if(c = '/' | c = '\\') {
+					start := i + 1;
+				};
+			};
+
+			name := path->SubString(start, path->Size() - start);
+			if(name->EndsWith(".gz")) {
+				name := name->SubString(0, name->Size() - 3);
+			};
+
+			dot := name->FindLast('.');
+			if(dot > 0) {
+				name := name->SubString(0, dot);
+			};
+
+			return name;
+		}
+
+		# the text split into lines, without their line endings
+		function : Lines(text : String) ~ Vector<String> {
+			lines := Vector->New()<String>;
+			start := 0;
+			size := text->Size();
+			i := 0;
+			while(i < size) {
+				c := text->Get(i);
+				if(c = '\n' | c = '\r') {
+					lines->AddBack(text->SubString(start, i - start));
+					if(c = '\r' & i + 1 < size) {
+						if(text->Get(i + 1) = '\n') {
+							i += 1;
+						};
+					};
+					start := i + 1;
+				};
+				i += 1;
+			};
+
+			if(start < size) {
+				lines->AddBack(text->SubString(start, size - start));
+			};
+
+			return lines;
+		}
+
+		# the column type a list of text values calls for: INT, FLOAT, DATE or STRING
+		function : ScanType(values : Vector<String>) ~ ColumnType {
+			has_int := false;
+			has_float := false;
+			has_date := false;
+			has_text := false;
+			each(i : values) {
+				text := values->Get(i);
+				if(text <> Nil & text->Size() > 0) {
+					kind := Cell->NumberKind(text);
+					if(kind = 1) {
+						has_int := true;
+					}
+					else if(kind = 2) {
+						has_float := true;
+					}
+					else if(CsvSource->IsDate(text)) {
+						has_date := true;
+					}
+					else {
+						has_text := true;
+					};
+				};
+			};
+
+			if(has_text | (has_date & (has_int | has_float))) {
+				return ColumnType->STRING;
+			}
+			else if(has_date) {
+				return ColumnType->DATE;
+			}
+			else if(has_float) {
+				return ColumnType->FLOAT;
+			}
+			else if(has_int) {
+				return ColumnType->INT;
+			};
+
+			return ColumnType->STRING;
+		}
+	}
+
+	#~
+	A text file read with a regular expression: each line (or each multi-line record) is
+	searched for the pattern, and its numbered capture groups become the named columns. Columns
+	are typed by reading all their values, as CsvSource types CSV columns. Lines that do not
+	match are counted, and can be kept in a second table '<name>_unmatched' with the line number
+	and text. Training logs, server logs and instrument output are the usual inputs. A name
+	ending in '.gz' is decompressed first.
+
+```
+# epoch 3 loss 0.4123 acc 0.871
+source := TextSource->New("train.log", "epoch (\\d+) loss ([0-9.]+) acc ([0-9.]+)", ["epoch", "loss", "acc"]);
+log := source->Read();
+log->Query("select epoch, loss from train where acc > 0.85")->ToString()->PrintLine();
+```
+	~#
+	class TextSource implements Source {
+		@path : String;
+		@name : String;
+		@pattern : String;
+		@names : String[];
+		@record_start : String;
+		@keep_unmatched : Bool;
+		@unmatched : Table;
+		@unmatched_count : Int;
+		@error : String;
+
+		#~
+		Constructor; the table is named after the file
+		@param path text file
+		@param pattern regular expression with one capture group per column
+		@param names column names, one per capture group in order
+		~#
+		New(path : String, pattern : String, names : String[]) {
+			@path := path;
+			@name := SourceText->BaseName(path, "text");
+			@pattern := pattern;
+			@names := names;
+		}
+
+		#~
+		Constructor
+		@param path text file
+		@param name table name
+		@param pattern regular expression with one capture group per column
+		@param names column names, one per capture group in order
+		@param record_start a regular expression a line matches at its start when it begins a new record; lines up to the next such line are joined with '\n'. Empty for one record per line.
+		@param keep_unmatched true to keep lines that do not match in a second table
+		~#
+		New(path : String, name : String, pattern : String, names : String[], record_start : String, keep_unmatched : Bool) {
+			@path := path;
+			@name := name;
+			@pattern := pattern;
+			@names := names;
+			if(record_start <> Nil & record_start->Size() > 0) {
+				@record_start := record_start;
+			};
+			@keep_unmatched := keep_unmatched;
+		}
+
+		#~
+		Gets the tables the file provides; column types are known only after reading it
+		@return the table, and the unmatched-lines table when kept
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			table := Read();
+			specs := TableSpec->New[@keep_unmatched ? 2 : 1];
+			types := ColumnType->New[@names->Size()];
+			each(i : types) {
+				types[i] := ColumnType->NONE;
+				if(table <> Nil) {
+					types[i] := table->GetColumn(i + 1)->GetType();
+				};
+			};
+			specs[0] := TableSpec->New(@name, @names, types);
+			if(@keep_unmatched) {
+				specs[1] := TableSpec->New(@name + "_unmatched", ["line", "text"], UnmatchedTypes());
+			};
+
+			return specs;
+		}
+
+		#~
+		Loads the file into a catalog, with the unmatched-lines table when kept
+		@param catalog catalog
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			table := Read(hint);
+			if(table = Nil) {
+				return false;
+			};
+
+			catalog->Add(table);
+			if(@keep_unmatched) {
+				catalog->Add(@unmatched);
+			};
+
+			return true;
+		}
+
+		#~
+		Reads the file as a table
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads the file as a table
+		@param hint columns and rows needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			@unmatched_count := 0;
+			@unmatched := Table->New(@name + "_unmatched", ["line", "text"], UnmatchedTypes());
+
+			text := SourceText->Read(@path);
+			if(text = Nil) {
+				@error := SourceText->Failure(@path);
+				return Nil;
+			};
+
+			regex := RegEx->New(@pattern);
+			if(<>regex->IsOk()) {
+				@error := "the pattern '{$@pattern}' is not a valid regular expression";
+				return Nil;
+			};
+
+			start_regex : RegEx;
+			if(@record_start <> Nil) {
+				start_regex := RegEx->New(@record_start);
+				if(<>start_regex->IsOk()) {
+					@error := "the record start '{$@record_start}' is not a valid regular expression";
+					return Nil;
+				};
+			};
+
+			# records, with the line each began on
+			records := Vector->New()<String>;
+			record_lines := Vector->New()<IntRef>;
+			lines := SourceText->Lines(text);
+			current : String;
+			current_line := 0;
+			each(i : lines) {
+				line := lines->Get(i);
+				if(start_regex = Nil) {
+					if(line->Size() > 0) {
+						records->AddBack(line);
+						record_lines->AddBack(i + 1);
+					};
+				}
+				else {
+					found := start_regex->FindFirst(line);
+					if(found <> Nil & found->GetStart() = 0) {
+						if(current <> Nil) {
+							records->AddBack(current);
+							record_lines->AddBack(current_line);
+						};
+						current := String->New(line);
+						current_line := i + 1;
+					}
+					else if(current <> Nil) {
+						current += '\n';
+						current += line;
+					}
+					else if(line->Size() > 0) {
+						NoteUnmatched(i + 1, line);
+					};
+				};
+			};
+			if(current <> Nil) {
+				records->AddBack(current);
+				record_lines->AddBack(current_line);
+			};
+
+			limit := -1;
+			if(hint <> Nil) {
+				limit := hint->GetLimit();
+			};
+
+			# the capture groups of every matching record
+			width := @names->Size();
+			matched := Vector->New()<String>;
+			matched_rows := 0;
+			each(i : records) {
+				if(limit < 0 | matched_rows < limit) {
+					text_value := records->Get(i);
+					result := regex->FindFirst(text_value);
+					if(result = Nil) {
+						NoteUnmatched(record_lines->Get(i)->Get(), text_value);
+					}
+					else {
+						if(result->GroupCount() < @names->Size()) {
+							@error := "the pattern has {$(result->GroupCount())} capture groups but {$(@names->Size())} column names";
+							return Nil;
+						};
+						each(j : width) {
+							matched->AddBack(result->GetGroup(j + 1));
+						};
+						matched_rows += 1;
+					};
+				};
+			};
+
+			# columns typed by all their values
+			wanted := Vector->New()<IntRef>;
+			each(j : @names) {
+				if(hint = Nil | hint->Wants(@names[j])) {
+					wanted->AddBack(j);
+				};
+			};
+
+			names := String->New[wanted->Size()];
+			types := ColumnType->New[wanted->Size()];
+			each(k : names) {
+				j := wanted->Get(k)->Get();
+				names[k] := @names[j];
+				column_values := Vector->New()<String>;
+				each(r : matched_rows) {
+					column_values->AddBack(matched->Get(r * width + j));
+				};
+				types[k] := SourceText->ScanType(column_values);
+			};
+
+			table := Table->New(@name, names, types, false);
+			each(r : matched_rows) {
+				row := table->Insert();
+				each(k : names) {
+					value := matched->Get(r * width + wanted->Get(k)->Get());
+					if(value <> Nil & value->Size() > 0) {
+						row->Set(k + 1, CsvSource->Convert(value, types[k]));
+					};
+				};
+			};
+
+			return table;
+		}
+
+		function : UnmatchedTypes() ~ ColumnType[] {
+			types := ColumnType->New[2];
+			types[0] := ColumnType->INT;
+			types[1] := ColumnType->STRING;
+			return types;
+		}
+
+		method : NoteUnmatched(line : Int, text : String) ~ Nil {
+			@unmatched_count += 1;
+			if(@keep_unmatched) {
+				row := @unmatched->Insert();
+				row->Set("line", IntRef->New(line));
+				row->Set("text", text);
+			};
+		}
+
+		#~
+		Gets the lines that did not match, when they are kept
+		@return table of line numbers and text
+		~#
+		method : public : GetUnmatched() ~ Table {
+			return @unmatched;
+		}
+
+		#~
+		Gets how many lines or records did not match in the last read
+		@return count
+		~#
+		method : public : GetUnmatchedCount() ~ Int {
+			return @unmatched_count;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#~
+	A JSON Lines file (one JSON object per line, '.jsonl' or '.ndjson') as a table. Nested
+	objects become dotted column names ('address.city'); arrays are kept as their JSON text
+	for now. Columns are typed by all their values: whole numbers INT, any decimal FLOAT,
+	true and false BOOL, and any mix, or text, STRING. null and a missing key are empty cells.
+	A line that is not a JSON object is an error naming the line. Columns appear in the order
+	keys are first seen, alphabetical within an object. A name ending in '.gz' is decompressed
+	first.
+
+```
+runs := JsonLinesSource->New("eval.jsonl")->Read();
+runs->Describe()->ToString()->PrintLine();
+```
+	~#
+	class JsonLinesSource implements Source {
+		@path : String;
+		@name : String;
+		@text : String;
+		@error : String;
+
+		#~
+		Constructor; the table is named after the file
+		@param path JSON Lines file
+		~#
+		New(path : String) {
+			@path := path;
+			@name := SourceText->BaseName(path, "jsonl");
+		}
+
+		#~
+		Constructor
+		@param path JSON Lines file
+		@param name table name
+		~#
+		New(path : String, name : String) {
+			@path := path;
+			@name := name;
+		}
+
+		#~
+		Makes a source over JSON Lines text already in memory
+		@param name table name
+		@param text JSON Lines text
+		@return source
+		~#
+		function : FromText(name : String, text : String) ~ JsonLinesSource {
+			source := JsonLinesSource->New(Nil, name);
+			source->SetText(text);
+			return source;
+		}
+
+		method : public : SetText(text : String) ~ Nil {
+			@text := text;
+		}
+
+		#~
+		Gets the table the file provides; column types are known only after reading it
+		@return one table shape
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			table := Read();
+			specs := TableSpec->New[1];
+			if(table = Nil) {
+				specs[0] := TableSpec->New(@name, String->New[0], ColumnType->New[0]);
+				return specs;
+			};
+
+			names := table->GetColumnNames();
+			columns := String->New[names->Size() - 1];
+			types := ColumnType->New[names->Size() - 1];
+			each(i : columns) {
+				columns[i] := names[i + 1];
+				types[i] := table->GetColumn(i + 1)->GetType();
+			};
+			specs[0] := TableSpec->New(@name, columns, types);
+			return specs;
+		}
+
+		#~
+		Loads the file into a catalog
+		@param catalog catalog
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			table := Read(hint);
+			if(table = Nil) {
+				return false;
+			};
+
+			catalog->Add(table);
+			return true;
+		}
+
+		#~
+		Reads the file as a table
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads the file as a table
+		@param hint columns and rows needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			text := @text;
+			if(text = Nil) {
+				text := SourceText->Read(@path);
+				if(text = Nil) {
+					@error := SourceText->Failure(@path);
+					return Nil;
+				};
+			};
+
+			limit := -1;
+			if(hint <> Nil) {
+				limit := hint->GetLimit();
+			};
+
+			# every record's cells by column name, as text with a kind tag
+			order := Vector->New()<String>;
+			positions := Hash->New()<String, IntRef>;
+			records := Vector->New()<Hash<String, JsonCell>>;
+			lines := SourceText->Lines(text);
+			each(i : lines) {
+				line := lines->Get(i)->Trim();
+				if(line->Size() > 0 & (limit < 0 | records->Size() < limit)) {
+					element := Data.JSON.JsonParser->TextToElement(line);
+					if(element = Nil | element->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
+						@error := "line {$(i + 1)}: not a JSON object";
+						return Nil;
+					};
+
+					cells := Hash->New()<String, JsonCell>;
+					Flatten(element, "", cells, order, positions);
+					records->AddBack(cells);
+				};
+			};
+
+			wanted := Vector->New()<String>;
+			each(i : order) {
+				if(hint = Nil | hint->Wants(order->Get(i))) {
+					wanted->AddBack(order->Get(i));
+				};
+			};
+
+			names := String->New[wanted->Size()];
+			types := ColumnType->New[wanted->Size()];
+			each(c : names) {
+				names[c] := wanted->Get(c);
+				types[c] := ColumnTypeOf(records, names[c]);
+			};
+
+			table := Table->New(@name, names, types, false);
+			each(r : records) {
+				cells := records->Get(r);
+				row := table->Insert();
+				each(c : names) {
+					cell := cells->Find(names[c]);
+					if(cell <> Nil) {
+						row->Set(c + 1, cell->ToValue(types[c]));
+					};
+				};
+			};
+
+			return table;
+		}
+
+		# adds an object's members to 'cells', nested objects under dotted names
+		function : Flatten(element : Data.JSON.JsonElement, prefix : String, cells : Hash<String, JsonCell>,
+				order : Vector<String>, positions : Hash<String, IntRef>) ~ Nil {
+			names := element->GetNames();
+			each(i : names) {
+				key := names->Get(i);
+				name := String->New(prefix);
+				name += key;
+				child := element->Get(key);
+				type := child->GetType();
+				if(type = Data.JSON.JsonElement->JsonType->OBJECT) {
+					nested := String->New(name);
+					nested += '.';
+					Flatten(child, nested, cells, order, positions);
+				}
+				else {
+					if(<>positions->Has(name)) {
+						positions->Insert(name, IntRef->New(order->Size()));
+						order->AddBack(name);
+					};
+
+					if(type = Data.JSON.JsonElement->JsonType->STRING) {
+						cells->Insert(name, JsonCell->New(JsonCell->Kind->TEXT, Data.JSON.JsonElement->Decode(child->GetString())));
+					}
+					else if(type = Data.JSON.JsonElement->JsonType->NUMBER) {
+						cells->Insert(name, JsonCell->New(JsonCell->Kind->NUMBER, child->GetValue()));
+					}
+					else if(type = Data.JSON.JsonElement->JsonType->TRUE) {
+						cells->Insert(name, JsonCell->New(JsonCell->Kind->BOOL, "true"));
+					}
+					else if(type = Data.JSON.JsonElement->JsonType->FALSE) {
+						cells->Insert(name, JsonCell->New(JsonCell->Kind->BOOL, "false"));
+					}
+					else if(type = Data.JSON.JsonElement->JsonType->ARRAY) {
+						cells->Insert(name, JsonCell->New(JsonCell->Kind->TEXT, child->ToString()));
+					};
+				};
+			};
+		}
+
+		# the type a column calls for over every record
+		function : ColumnTypeOf(records : Vector<Hash<String, JsonCell>>, name : String) ~ ColumnType {
+			has_int := false;
+			has_float := false;
+			has_bool := false;
+			has_text := false;
+			each(r : records) {
+				cell := records->Get(r)->Find(name);
+				if(cell <> Nil) {
+					select(cell->GetKind()) {
+						label JsonCell->Kind->NUMBER: {
+							if(Cell->NumberKind(cell->GetText()) = 1) {
+								has_int := true;
+							}
+							else {
+								has_float := true;
+							};
+						}
+
+						label JsonCell->Kind->BOOL: {
+							has_bool := true;
+						}
+
+						label JsonCell->Kind->TEXT: {
+							has_text := true;
+						}
+					};
+				};
+			};
+
+			if(has_text | (has_bool & (has_int | has_float))) {
+				return ColumnType->STRING;
+			}
+			else if(has_bool) {
+				return ColumnType->BOOL;
+			}
+			else if(has_float) {
+				return ColumnType->FLOAT;
+			}
+			else if(has_int) {
+				return ColumnType->INT;
+			};
+
+			return ColumnType->STRING;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	# one JSON value as its text and kind, converted when the column's type is known
+	class : private : JsonCell {
+		@kind : JsonCell->Kind;
+		@text : String;
+
+		enum Kind {
+			TEXT,
+			NUMBER,
+			BOOL
+		}
+
+		New(kind : JsonCell->Kind, text : String) {
+			@kind := kind;
+			@text := text;
+		}
+
+		method : public : GetKind() ~ JsonCell->Kind {
+			return @kind;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		method : public : ToValue(type : ColumnType) ~ Compare {
+			select(type) {
+				label ColumnType->INT: {
+					return IntRef->New(@text->ToInt());
+				}
+
+				label ColumnType->FLOAT: {
+					return FloatRef->New(@text->ToFloat());
+				}
+
+				label ColumnType->BOOL: {
+					return BoolRef->New(@text->Equals("true"));
+				}
+			};
+
+			return @text;
 		}
 	}
 

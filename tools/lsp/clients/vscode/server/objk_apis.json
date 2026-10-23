@@ -8860,6 +8860,53 @@
 				}
 			}
 		},
+		"Query.Structured.Col": {
+			"description": "Starts a condition on a column",
+			"functions": {
+				"Between": {
+					"descriptions": ["**Between two values, both included**\n\n```method : public : Between(low:Compare, high:Compare) ~ Predicate```\n\n\n\nlow: Compare\n\nhigh: Compare\n\nreturn: Predicate", "**Between two Floats, both included**\n\n```method : public : Between(low:Float, high:Float) ~ Predicate```\n\n\n\nlow: Float\n\nhigh: Float\n\nreturn: Predicate"]
+				},
+				"Eq": {
+					"descriptions": ["**Equal to a value**\n\n```method : public : Eq(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Equal to an Int**\n\n```method : public : Eq(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Equal to a Float**\n\n```method : public : Eq(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate", "**Equal to a Bool**\n\n```method : public : Eq(value:Bool) ~ Predicate```\n\n\n\nvalue: Bool\n\nreturn: Predicate"]
+				},
+				"Ge": {
+					"descriptions": ["**Greater than or equal to a value**\n\n```method : public : Ge(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Greater than or equal to an Int**\n\n```method : public : Ge(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Greater than or equal to a Float**\n\n```method : public : Ge(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate"]
+				},
+				"Gt": {
+					"descriptions": ["**Greater than a value**\n\n```method : public : Gt(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Greater than an Int**\n\n```method : public : Gt(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Greater than a Float**\n\n```method : public : Gt(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate"]
+				},
+				"In": {
+					"descriptions": ["**Equal to any of the values**\n\n```method : public : In(values:Compare[]) ~ Predicate```\n\n\n\nvalues: Compare[]\n\nreturn: Predicate", "**Equal to any of the strings**\n\n```method : public : In(values:String[]) ~ Predicate```\n\n\n\nvalues: String[]\n\nreturn: Predicate", "**Equal to any of the Ints**\n\n```method : public : In(values:Int[]) ~ Predicate```\n\n\n\nvalues: Int[]\n\nreturn: Predicate", "**Equal to any of the Floats**\n\n```method : public : In(values:Float[]) ~ Predicate```\n\n\n\nvalues: Float[]\n\nreturn: Predicate"]
+				},
+				"IsNotNull": {
+					"descriptions": ["**The cell is not empty**\n\n```method : public : IsNotNull() ~ Predicate```\n\n\n\nreturn: Predicate"]
+				},
+				"IsNull": {
+					"descriptions": ["**The cell is empty**\n\n```method : public : IsNull() ~ Predicate```\n\n\n\nreturn: Predicate"]
+				},
+				"Le": {
+					"descriptions": ["**Less than or equal to a value**\n\n```method : public : Le(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Less than or equal to an Int**\n\n```method : public : Le(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Less than or equal to a Float**\n\n```method : public : Le(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate"]
+				},
+				"Like": {
+					"descriptions": ["**Matches an SQL LIKE pattern: '%' any run of characters, '_' any one character**\n\n```method : public : Like(pattern:String) ~ Predicate```\n\n\n\npattern: String\n\nreturn: Predicate"]
+				},
+				"Lt": {
+					"descriptions": ["**Less than a value**\n\n```method : public : Lt(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Less than an Int**\n\n```method : public : Lt(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Less than a Float**\n\n```method : public : Lt(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate"]
+				},
+				"Ne": {
+					"descriptions": ["**Not equal to a value; true for cells that cannot be compared with it**\n\n```method : public : Ne(value:Compare) ~ Predicate```\n\n\n\nvalue: Compare\n\nreturn: Predicate", "**Not equal to an Int**\n\n```method : public : Ne(value:Int) ~ Predicate```\n\n\n\nvalue: Int\n\nreturn: Predicate", "**Not equal to a Float**\n\n```method : public : Ne(value:Float) ~ Predicate```\n\n\n\nvalue: Float\n\nreturn: Predicate"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String)```\n\n\n\nname: String"]
+				},
+				"NotLike": {
+					"descriptions": ["**Does not match an SQL LIKE pattern; only text cells take part**\n\n```method : public : NotLike(pattern:String) ~ Predicate```\n\n\n\npattern: String\n\nreturn: Predicate"]
+				},
+				"Of": {
+					"descriptions": ["**Starts a condition on a column**\n\n```function : Of(name:String) ~ Col```\n\n\n\nname: String\n\nreturn: Col"]
+				}
+			}
+		},
 		"Query.Structured.Column": {
 			"description": "One column of a table, held as a typed array rather than one object per cell. A column is either declared, in which case storing a value of the wrong type is refused, or inferred from its first value, in which case an Int widens into a Float column, a Float promotes an Int column to Float, and any other mix promotes the column to OBJECT so every value is kept as it was given. Empty cells are tracked in a bitmap allocated with the first one. Text columns store each distinct string once while they have few of them. Numeric and date columns keep the minimum and maximum of every 65,536-row group, so a filter can skip groups.",
 			"functions": {
@@ -8875,11 +8922,29 @@
 				"DictionaryLimit": {
 					"descriptions": ["**Distinct strings a text column keeps in its dictionary before it may store plain strings**\n\n```function : DictionaryLimit() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"FillInts": {
+					"descriptions": ["**Fills an empty INT column with values, none empty. Used by Table->Gather.**\n\n```method : public : FillInts(values:Int[]) ~ Nil```\n\n\n\nvalues: Int[]\n\nreturn: Nil"]
+				},
+				"FillNulls": {
+					"descriptions": ["**Fills an empty column with n empty cells. Used by Table->Gather.**\n\n```method : public : FillNulls(n:Int) ~ Nil```\n\n\n\nn: Int\n\nreturn: Nil"]
+				},
+				"FindCode": {
+					"descriptions": ["**Gets the code of a string in an encoded column**\n\n```method : public : FindCode(value:String) ~ Int```\n\n\n\nvalue: String\n\nreturn: Int"]
+				},
+				"Gather": {
+					"descriptions": ["**Fills an empty column with copies of another column's cells, in the given order. The column takes the other's type. Used to copy query results.**\n\n```method : public : Gather(src:Column, rows:Int[]) ~ Nil```\n\n\n\nsrc: Column\n\nrows: Int[]\n\nreturn: Nil"]
+				},
 				"Get": {
 					"descriptions": ["**Gets a cell as an object: IntRef, FloatRef, String, Date, BoolRef or the stored object**\n\n```method : public : Get(row:Int) ~ Compare```\n\n\n\nrow: Int\n\nreturn: Compare"]
 				},
 				"GetCode": {
 					"descriptions": ["**Gets the dictionary code of a cell in an encoded text column**\n\n```method : public : GetCode(row:Int) ~ Int```\n\n\n\nrow: Int\n\nreturn: Int"]
+				},
+				"GetDictionary": {
+					"descriptions": ["**Gets the strings of an encoded STRING column, indexed by code**\n\n```method : public : GetDictionary() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetDictionaryRanks": {
+					"descriptions": ["**Gets each dictionary code's position in sorted order, so encoded text sorts by number**\n\n```method : public : GetDictionaryRanks() ~ Int[]```\n\n\n\nreturn: Int[]"]
 				},
 				"GetDictionarySize": {
 					"descriptions": ["**Gets the number of distinct strings in a dictionary-encoded column**\n\n```method : public : GetDictionarySize() ~ Int```\n\n\n\nreturn: Int"]
@@ -8889,6 +8954,9 @@
 				},
 				"GetFloat": {
 					"descriptions": ["**Gets a numeric or date cell as a Float**\n\n```method : public : GetFloat(row:Int) ~ Float```\n\n\n\nrow: Int\n\nreturn: Float"]
+				},
+				"GetFloatArray": {
+					"descriptions": ["**Gets the values of a FLOAT column, for code that scans the column directly**\n\n```method : public : GetFloatArray() ~ Float[]```\n\n\n\nreturn: Float[]"]
 				},
 				"GetGroupCount": {
 					"descriptions": ["**Gets the number of zone-map groups**\n\n```method : public : GetGroupCount() ~ Int```\n\n\n\nreturn: Int"]
@@ -8902,11 +8970,20 @@
 				"GetInt": {
 					"descriptions": ["**Gets a cell of an INT, BOOL (0 or 1) or DATE (epoch milliseconds) column**\n\n```method : public : GetInt(row:Int) ~ Int```\n\n\n\nrow: Int\n\nreturn: Int"]
 				},
+				"GetIntArray": {
+					"descriptions": ["**Gets the values of an INT, DATE or BOOL column, or the codes of an encoded STRING column, for code that scans the column directly**\n\n```method : public : GetIntArray() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
 				"GetName": {
 					"descriptions": ["**Gets the column name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetNullBits": {
+					"descriptions": ["**Gets the array of 64-row words marking empty cells, for code that scans the column directly. Valid until the column next grows or changes type.**\n\n```method : public : GetNullBits() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
 				"GetNullCount": {
 					"descriptions": ["**Gets the number of empty cells**\n\n```method : public : GetNullCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetObjectArray": {
+					"descriptions": ["**Gets the values of an OBJECT column**\n\n```method : public : GetObjectArray() ~ Compare[]```\n\n\n\nreturn: Compare[]"]
 				},
 				"GetPromotions": {
 					"descriptions": ["**Gets how many times the column changed type to keep a value**\n\n```method : public : GetPromotions() ~ Int```\n\n\n\nreturn: Int"]
@@ -8914,8 +8991,14 @@
 				"GetString": {
 					"descriptions": ["**Gets a cell of a STRING column**\n\n```method : public : GetString(row:Int) ~ String```\n\n\n\nrow: Int\n\nreturn: String"]
 				},
+				"GetStringArray": {
+					"descriptions": ["**Gets the values of a plain (not encoded) STRING column**\n\n```method : public : GetStringArray() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
 				"GetType": {
 					"descriptions": ["**Gets the storage type**\n\n```method : public : GetType() ~ ColumnType```\n\n\n\nreturn: ColumnType"]
+				},
+				"GmtAt": {
+					"descriptions": ["**Whether a DATE cell was stored as a GMT date**\n\n```method : public : GmtAt(row:Int) ~ Bool```\n\n\n\nrow: Int\n\nreturn: Bool"]
 				},
 				"GroupHasValues": {
 					"descriptions": ["**Whether a group holds any non-empty value**\n\n```method : public : GroupHasValues(group:Int) ~ Bool```\n\n\n\ngroup: Int\n\nreturn: Bool"]
@@ -9018,6 +9101,29 @@
 				}
 			}
 		},
+		"Query.Structured.JsonLinesSource": {
+			"description": "A JSON Lines file (one JSON object per line, '.jsonl' or '.ndjson') as a table. Nested objects become dotted column names ('address.city'); arrays are kept as their JSON text for now. Columns are typed by all their values: whole numbers INT, any decimal FLOAT, true and false BOOL, and any mix, or text, STRING. null and a missing key are empty cells. A line that is not a JSON object is an error naming the line. Columns appear in the order keys are first seen, alphabetical within an object. A name ending in '.gz' is decompressed first.",
+			"functions": {
+				"FromText": {
+					"descriptions": ["**Makes a source over JSON Lines text already in memory**\n\n```function : FromText(name:String, text:String) ~ JsonLinesSource```\n\n\n\nname: String\n\ntext: String\n\nreturn: JsonLinesSource"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the table the file provides; column types are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the file into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the table is named after the file**\n\n```New(path:String)```\n\n\n\npath: String", "**Constructor**\n\n```New(path:String, name:String)```\n\n\n\npath: String\n\nname: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the file as a table**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the file as a table**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				}
+			}
+		},
 		"Query.Structured.ObjectSource": {
 			"description": "The program's own objects as a table: one row per object, one column per function that reads a value from an object. Each function's return type sets its column's type.",
 			"functions": {
@@ -9050,6 +9156,41 @@
 				},
 				"ToTable": {
 					"descriptions": ["**Reads the objects into a table**\n\n```method : public : ToTable(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				}
+			}
+		},
+		"Query.Structured.Predicate": {
+			"description": "A condition on a table's rows, built with Col and combined with AndAlso, OrElse and Negate. A condition names its columns, so the same one can be used on any table that has them. Comparisons are false for an empty cell; numbers compare by value whether Int or Float; a cell that cannot be ordered against the value (text and a number, say) satisfies only NE.",
+			"functions": {
+				"AndAlso": {
+					"descriptions": ["**Both this condition and another**\n\n```method : public : AndAlso(condition:Predicate) ~ Predicate```\n\n\n\ncondition: Predicate\n\nreturn: Predicate"]
+				},
+				"GetColumn": {
+					"descriptions": ["**Gets the column a comparison names**\n\n```method : public : GetColumn() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetLeft": {
+					"descriptions": ["**Gets the first condition of AND, OR or NOT**\n\n```method : public : GetLeft() ~ Predicate```\n\n\n\nreturn: Predicate"]
+				},
+				"GetOp": {
+					"descriptions": ["**Gets the operation**\n\n```method : public : GetOp() ~ Op```\n\n\n\nreturn: Op"]
+				},
+				"GetParam": {
+					"descriptions": ["**Gets the placeholder number a comparison takes its value from**\n\n```method : public : GetParam() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetRight": {
+					"descriptions": ["**Gets the second condition of AND or OR**\n\n```method : public : GetRight() ~ Predicate```\n\n\n\nreturn: Predicate"]
+				},
+				"GetValue": {
+					"descriptions": ["**Gets the value a comparison uses**\n\n```method : public : GetValue() ~ Compare```\n\n\n\nreturn: Compare"]
+				},
+				"Negate": {
+					"descriptions": ["**The rows this condition does not select, empty cells included**\n\n```method : public : Negate() ~ Predicate```\n\n\n\nreturn: Predicate"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for a comparison. Col builds these.**\n\n```New(op:Op, column:String, value:Compare, param:Int)```\n\n\n\nop: Op\n\ncolumn: String\n\nvalue: Compare\n\nparam: Int", "**Constructor for AND, OR and NOT; NOT takes 'right' as Nil**\n\n```New(op:Op, left:Predicate, right:Predicate)```\n\n\n\nop: Op\n\nleft: Predicate\n\nright: Predicate"]
+				},
+				"OrElse": {
+					"descriptions": ["**Either this condition or another**\n\n```method : public : OrElse(condition:Predicate) ~ Predicate```\n\n\n\ncondition: Predicate\n\nreturn: Predicate"]
 				}
 			}
 		},
@@ -9119,11 +9260,37 @@
 				}
 			}
 		},
+		"Query.Structured.Statement": {
+			"description": "A query parsed once and run many times, with '?' placeholders for values bound before each run. Placeholders are numbered from 1, left to right.",
+			"functions": {
+				"Bind": {
+					"descriptions": ["**Binds a value to a placeholder**\n\n```method : public : Bind(index:Int, value:Compare) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Compare\n\nreturn: Statement", "**Binds an Int to a placeholder**\n\n```method : public : Bind(index:Int, value:Int) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Int\n\nreturn: Statement", "**Binds a Float to a placeholder**\n\n```method : public : Bind(index:Int, value:Float) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Float\n\nreturn: Statement", "**Binds a Bool to a placeholder**\n\n```method : public : Bind(index:Int, value:Bool) ~ Statement```\n\n\n\nindex: Int\n\nvalue: Bool\n\nreturn: Statement"]
+				},
+				"Execute": {
+					"descriptions": ["**Runs the query, copying the result into a new table**\n\n```method : public : Execute() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"ExecuteView": {
+					"descriptions": ["**Runs the query without copying the result**\n\n```method : public : ExecuteView() ~ View```\n\n\n\nreturn: View"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last run failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetParamCount": {
+					"descriptions": ["**Gets the number of placeholders**\n\n```method : public : GetParamCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor. Use Table->Prepare rather than this.**\n\n```New(table:Table, plan:Plan)```\n\n\n\ntable: Table\n\nplan: Plan"]
+				}
+			}
+		},
 		"Query.Structured.Table": {
 			"description": "A table of typed columns. Each row has a primary key in the hidden 'pk' column, assigned in insertion order and never reused. Rows are read and written through Row cursors, and queried with SQL-like statements.",
 			"functions": {
 				"AddColumn": {
 					"descriptions": ["**Adds a column; existing rows hold an empty cell in it**\n\n```method : public : AddColumn(name:String, type:ColumnType) ~ Bool```\n\n\n\nname: String\n\ntype: ColumnType\n\nreturn: Bool"]
+				},
+				"AsView": {
+					"descriptions": ["**Gets every live row as a view, without copying**\n\n```method : public : AsView() ~ View```\n\n\n\nreturn: View"]
 				},
 				"Average": {
 					"descriptions": ["**Gets the column average over its numeric cells (Ints and Floats). String, date and empty cells are skipped: they add nothing to the sum and are not counted in the divisor. A column with no numeric cells, or an unknown column, averages to 0.0; Count(name) tells the cases apart.**\n\n```method : public : Average(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float\n\n```\ntable := Query.Structured.Table->New(\"scores\", [\"score\"]);\nr1 := table->Insert(); r1->Set(\"score\", IntRef->New(80));\nr2 := table->Insert(); r2->Set(\"score\", IntRef->New(90));\navg := table->Average(\"score\"); # returns 85.0\n\"avg={$avg}\"->PrintLine();\n```"]
@@ -9140,6 +9307,9 @@
 				"Describe": {
 					"descriptions": ["**Summarizes every column: its type, how many cells are filled and empty, how many distinct values it holds, and, for numeric columns, the minimum, maximum, mean and standard deviation (population).**\n\n```method : public : Describe() ~ Table```\n\n\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"runs\", \"runs.csv\");\ntable->Describe()->ToString()->PrintLine();\n```"]
 				},
+				"Fill": {
+					"descriptions": ["**Gives an empty table n rows with fresh keys and empty cells. Used by Gather.**\n\n```method : public : Fill(n:Int) ~ Nil```\n\n\n\nn: Int\n\nreturn: Nil"]
+				},
 				"Filter": {
 					"descriptions": ["**Filters table based upon conditional criteria. An empty cell matches no condition. Numbers compare by value, so an Int cell compares with a Float literal and the other way round. Cells that cannot be ordered against the value (a string cell and a number, say) are unequal to it: they match '<>' and no other comparison.**\n\n```method : public : Filter(cond:Conditional) ~ Vector&lt;Row&gt;```\n\n\n\ncond: Conditional\n\nreturn: Vector&lt;Row&gt;"]
 				},
@@ -9155,6 +9325,9 @@
 				"FromFilesystem": {
 					"descriptions": ["**Loads a table from a directory file system. Columns are: name, path_name, create_date, owner, is_dir and is_readonly, with is_dir and is_readonly as Row->True() and Row->False(). FilesystemSource offers more columns and recursion.**\n\n```function : FromFilesystem(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromFilesystem(\"files\", \"\/tmp\/\");\nrs := table->Query(\"select name from files where is_dir = false\");\nrs->ToString()->PrintLine(); # list only files, not directories\n```"]
 				},
+				"Gather": {
+					"descriptions": ["**Copies chosen rows and columns of a table into a new table**\n\n```function : Gather(name:String, source:Table, columns:Int[], names:String[], rows:Int[]) ~ Table```\n\n\n\nname: String\n\nsource: Table\n\ncolumns: Int[]\n\nnames: String[]\n\nrows: Int[]\n\nreturn: Table"]
+				},
 				"Get": {
 					"descriptions": ["**Get row by primary key**\n\n```method : public : Get(pk:Int) ~ Row```\n\n\n\npk: Int\n\nreturn: Row\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Beta\");\nfound := table->Get(0); # fetch row with pk=0\nfound->ToString()->PrintLine();\n```"]
 				},
@@ -9169,6 +9342,9 @@
 				},
 				"GetColumnNames": {
 					"descriptions": ["**Gets all column names, 'pk' first**\n\n```method : public : GetColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetDeletedBits": {
+					"descriptions": ["**Gets the array of 64-row words marking deleted rows, for code that scans the table directly**\n\n```method : public : GetDeletedBits() ~ Int[]```\n\n\n\nreturn: Int[]"]
 				},
 				"GetError": {
 					"descriptions": ["**Gets the last query error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
@@ -9194,6 +9370,9 @@
 				"IsLive": {
 					"descriptions": ["**Whether a row slot holds a live (not deleted) row**\n\n```method : public : IsLive(row:Int) ~ Bool```\n\n\n\nrow: Int\n\nreturn: Bool"]
 				},
+				"Limit": {
+					"descriptions": ["**At most the first n live rows, as a view**\n\n```method : public : Limit(n:Int) ~ View```\n\n\n\nn: Int\n\nreturn: View"]
+				},
 				"LiveRows": {
 					"descriptions": ["**Gets the slots of every live row, in insertion order**\n\n```method : public : LiveRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
 				},
@@ -9206,11 +9385,20 @@
 				"New": {
 					"descriptions": ["**Constructor. Column types are taken from the first value stored in each.**\n\n```New(name:String, column_names:String[])```\n\n\n\nname: String\n\ncolumn_names: String[]", "**Constructor. Column types are taken from the first value stored in each.**\n\n```New(name:String, column_names:Vector&lt;String&gt;)```\n\n\n\nname: String\n\ncolumn_names: Vector&lt;String&gt;", "**Constructor with declared column types; storing a value of another type is refused**\n\n```New(name:String, column_names:String[], types:ColumnType[])```\n\n\n\nname: String\n\ncolumn_names: String[]\n\ntypes: ColumnType[]", "**Constructor with starting column types**\n\n```New(name:String, column_names:String[], types:ColumnType[], declared:Bool)```\n\n\n\nname: String\n\ncolumn_names: String[]\n\ntypes: ColumnType[]\n\ndeclared: Bool"]
 				},
+				"OrderBy": {
+					"descriptions": ["**Every live row sorted by a column, as a view; empty cells last**\n\n```method : public : OrderBy(name:String, order:Order) ~ View```\n\n\n\nname: String\n\norder: Order\n\nreturn: View", "**Every live row sorted by a column, ascending, as a view; empty cells last**\n\n```method : public : OrderBy(name:String) ~ View```\n\n\n\nname: String\n\nreturn: View"]
+				},
+				"Prepare": {
+					"descriptions": ["**Parses a query once, to run many times with values bound to its '?' placeholders**\n\n```method : public : Prepare(statement:String) ~ Statement```\n\n\n\nstatement: String\n\nreturn: Statement\n\n```\ns := table->Prepare(\"select id from runs where score > ?\");\ns->Bind(1, 0.9);\nrs := s->Execute();\n```"]
+				},
 				"Query": {
 					"descriptions": ["**Query table using SQL-like syntax. Support for 'select', 'from', 'where', 'distinct', 'order by' and logical operators.**\n\n```method : public : Query(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->New(\"emp\", [\"name\", \"dept\"]);\nr := table->Insert(); r->Set(\"name\", \"Carol\"); r->Set(\"dept\", \"Eng\");\nrs := table->Query(\"select name from emp where dept = 'Eng'\");\nrs->ToString()->PrintLine();\n```"]
 				},
 				"RowAt": {
 					"descriptions": ["**Gets a cursor over a row slot**\n\n```method : public : RowAt(row:Int) ~ Row```\n\n\n\nrow: Int\n\nreturn: Row"]
+				},
+				"Select": {
+					"descriptions": ["**Every live row showing only some columns, as a view**\n\n```method : public : Select(names:String[]) ~ View```\n\n\n\nnames: String[]\n\nreturn: View"]
 				},
 				"Size": {
 					"descriptions": ["**Count of rows**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -9226,6 +9414,9 @@
 				},
 				"UniqueRows": {
 					"descriptions": ["**Gets the first slot holding each distinct value of a column, among the given slots. Used by Query.**\n\n```method : public : UniqueRows(index:Int, rows:Int[]) ~ Int[]```\n\n\n\nindex: Int\n\nrows: Int[]\n\nreturn: Int[]"]
+				},
+				"Where": {
+					"descriptions": ["**The rows that meet a condition, as a view. Whole row groups the zone maps rule out are skipped.**\n\n```method : public : Where(condition:Predicate) ~ View```\n\n\n\ncondition: Predicate\n\nreturn: View\n\n```\nrs := table->Where(Col->Of(\"score\")->Gt(0.5)->AndAlso(Col->Of(\"label\")->Eq(\"cat\")));\n```"]
 				}
 			}
 		},
@@ -9243,6 +9434,103 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor**\n\n```New(name:String, columns:String[], types:ColumnType[])```\n\n\n\nname: String\n\ncolumns: String[]\n\ntypes: ColumnType[]"]
+				}
+			}
+		},
+		"Query.Structured.TextSource": {
+			"description": "A text file read with a regular expression: each line (or each multi-line record) is searched for the pattern, and its numbered capture groups become the named columns. Columns are typed by reading all their values, as CsvSource types CSV columns. Lines that do not match are counted, and can be kept in a second table '<name>_unmatched' with the line number and text. Training logs, server logs and instrument output are the usual inputs. A name ending in '.gz' is decompressed first.",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the tables the file provides; column types are known only after reading it**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"GetUnmatched": {
+					"descriptions": ["**Gets the lines that did not match, when they are kept**\n\n```method : public : GetUnmatched() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"GetUnmatchedCount": {
+					"descriptions": ["**Gets how many lines or records did not match in the last read**\n\n```method : public : GetUnmatchedCount() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the file into a catalog, with the unmatched-lines table when kept**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the table is named after the file**\n\n```New(path:String, pattern:String, names:String[])```\n\n\n\npath: String\n\npattern: String\n\nnames: String[]", "**Constructor**\n\n```New(path:String, name:String, pattern:String, names:String[], record_start:String, keep_unmatched:Bool)```\n\n\n\npath: String\n\nname: String\n\npattern: String\n\nnames: String[]\n\nrecord_start: String\n\nkeep_unmatched: Bool"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the file as a table**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the file as a table**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				}
+			}
+		},
+		"Query.Structured.View": {
+			"description": "Rows of a table, chosen and ordered without copying: the table, the columns to show and the row slots in order. Chaining Where, OrderBy, Limit and Select only makes new lists of slots. A view made before its table changes refuses to read it afterwards (see IsCurrent).",
+			"functions": {
+				"Average": {
+					"descriptions": ["**Averages a column's numeric cells over the view's rows**\n\n```method : public : Average(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
+				},
+				"Count": {
+					"descriptions": ["**Gets the number of rows**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int", "**Counts a column's numeric cells over the view's rows**\n\n```method : public : Count(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int"]
+				},
+				"Distinct": {
+					"descriptions": ["**The first row holding each distinct value of a column; empty cells are left out**\n\n```method : public : Distinct(name:String) ~ View```\n\n\n\nname: String\n\nreturn: View"]
+				},
+				"Get": {
+					"descriptions": ["**Gets a row by its position in the view**\n\n```method : public : Get(index:Int) ~ Row```\n\n\n\nindex: Int\n\nreturn: Row"]
+				},
+				"GetAll": {
+					"descriptions": ["**Gets every row, in view order**\n\n```method : public : GetAll() ~ Vector&lt;Row&gt;```\n\n\n\nreturn: Vector&lt;Row&gt;"]
+				},
+				"GetColumnNames": {
+					"descriptions": ["**Gets the names of the columns shown**\n\n```method : public : GetColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last operation failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetRows": {
+					"descriptions": ["**Gets the row slots, in view order**\n\n```method : public : GetRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
+				},
+				"GetTable": {
+					"descriptions": ["**Gets the table the view reads**\n\n```method : public : GetTable() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"IsCurrent": {
+					"descriptions": ["**Whether the table is unchanged since the view was made**\n\n```method : public : IsCurrent() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"Limit": {
+					"descriptions": ["**At most the first n rows**\n\n```method : public : Limit(n:Int) ~ View```\n\n\n\nn: Int\n\nreturn: View"]
+				},
+				"Max": {
+					"descriptions": ["**Gets the largest numeric cell of a column over the view's rows**\n\n```method : public : Max(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
+				},
+				"Min": {
+					"descriptions": ["**Gets the smallest numeric cell of a column over the view's rows**\n\n```method : public : Min(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
+				},
+				"New": {
+					"descriptions": ["**Constructor. Use Table->AsView, Where, Select or OrderBy rather than this.**\n\n```New(table:Table, columns:Int[], rows:Int[])```\n\n\n\ntable: Table\n\ncolumns: Int[]\n\nrows: Int[]", "**Constructor for a view whose columns may include names the table does not have; those read as empty cells. Use Table->Prepare rather than this.**\n\n```New(table:Table, columns:Int[], names:String[], rows:Int[])```\n\n\n\ntable: Table\n\ncolumns: Int[]\n\nnames: String[]\n\nrows: Int[]"]
+				},
+				"Offset": {
+					"descriptions": ["**The rows after the first n**\n\n```method : public : Offset(n:Int) ~ View```\n\n\n\nn: Int\n\nreturn: View"]
+				},
+				"OrderBy": {
+					"descriptions": ["**The rows sorted by a column, ascending; empty cells last**\n\n```method : public : OrderBy(name:String) ~ View```\n\n\n\nname: String\n\nreturn: View", "**The rows sorted by a column; empty cells last in either direction. Rows with equal values keep their order.**\n\n```method : public : OrderBy(name:String, order:Order) ~ View```\n\n\n\nname: String\n\norder: Order\n\nreturn: View"]
+				},
+				"Select": {
+					"descriptions": ["**The same rows showing only some columns**\n\n```method : public : Select(names:String[]) ~ View```\n\n\n\nnames: String[]\n\nreturn: View"]
+				},
+				"Size": {
+					"descriptions": ["**Gets the number of rows**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Sum": {
+					"descriptions": ["**Sums a column's numeric cells over the view's rows**\n\n```method : public : Sum(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
+				},
+				"ToString": {
+					"descriptions": ["**String representation of the view's rows**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToTable": {
+					"descriptions": ["**Copies the view into a new, independent table**\n\n```method : public : ToTable(name:String) ~ Table```\n\n\n\nname: String\n\nreturn: Table"]
+				},
+				"Where": {
+					"descriptions": ["**The rows that also meet a condition**\n\n```method : public : Where(condition:Predicate) ~ View```\n\n\n\ncondition: Predicate\n\nreturn: View"]
 				}
 			}
 		},
@@ -16810,6 +17098,12 @@
 				"file": ""
 			}
 		],
+		"Col": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
 		"Column": [
 			{
 				"bundle": "Query.Structured",
@@ -16834,7 +17128,19 @@
 				"file": ""
 			}
 		],
+		"JsonLinesSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
 		"ObjectSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"Predicate": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""
@@ -16858,6 +17164,12 @@
 				"file": ""
 			}
 		],
+		"Statement": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
 		"Table": [
 			{
 				"bundle": "Query.Structured",
@@ -16865,6 +17177,18 @@
 			}
 		],
 		"TableSpec": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"TextSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"View": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""
