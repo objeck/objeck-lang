@@ -1,0 +1,97 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured JsonSource (docs/QUERY_DESIGN.md, section 6, phase 4): an array of objects as
+a table, nested objects as dotted columns, nested arrays as child tables joined through
+'_parent_id' = '_id' (two levels deep), arrays of plain values as a 'value' column, typing over
+every record, a single object as one row, scan hints on the main table, a gzipped document, and
+the errors. Inputs are written by the test.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class QuerySourceJson {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		text := "[";
+		text += "{\"name\": \"Ann\", \"score\": 0.5, \"meta\": {\"seed\": 7, \"lab\": \"x\"}, \"tags\": [\"a\", \"b\"], \"runs\": [{\"step\": 1, \"loss\": 0.9, \"notes\": [\"warm\"]}, {\"step\": 2, \"loss\": 0.4}]},";
+		text += "{\"name\": \"Bo\\u00e9\", \"score\": 2, \"meta\": {\"seed\": 8}, \"tags\": [], \"runs\": [{\"step\": 1, \"loss\": null}]},";
+		text += "{\"name\": \"Cy\", \"score\": null, \"ok\": true, \"tags\": [3, \"c\"]}";
+		text += "]";
+		path := "query_json_tmp.json";
+		FileWriter->WriteFile(path, text);
+
+		source := JsonSource->New(path);
+		main := source->Read();
+		Check("a document reads", main <> Nil);
+		if(main <> Nil) {
+			Check("named after the file", main->GetName()->Equals("query_json_tmp"));
+			Check("one row per object", main->Size() = 3);
+			Check("a table with child tables has '_id' from 1", main->Get(2)->Get("_id")->As(IntRef)->Get() = 3);
+			Check("nested objects are dotted columns", main->Get(0)->Get("meta.seed")->As(IntRef)->Get() = 7 & main->Get(1)->Get("meta.lab") = Nil);
+			Check("a whole number and a decimal make FLOAT", main->GetColumn("score")->GetType() = ColumnType->FLOAT & main->Get(1)->Get("score")->As(FloatRef)->Get() = 2.0);
+			Check("null and a missing key are empty", main->Get(2)->Get("score") = Nil & main->Get(0)->Get("ok") = Nil);
+			Check("a unicode escape is decoded", main->Get(1)->Get("name")->As(String)->Equals("Boé"));
+			Check("arrays are not columns", main->GetColumn("tags") = Nil & main->GetColumn("runs") = Nil);
+
+			children := source->GetChildTables();
+			# depth first, members alphabetical within an object as the JSON parser gives them
+			Check("three child tables, depth first", children->Size() = 3);
+			if(children->Size() = 3) {
+				runs := children->Get(0);
+				notes := children->Get(1);
+				tags := children->Get(2);
+				Check("child tables are named after their arrays", tags->GetName()->Equals("query_json_tmp_tags") & runs->GetName()->Equals("query_json_tmp_runs") & notes->GetName()->Equals("query_json_tmp_runs_notes"));
+				Check("plain values are a 'value' column, typed over all of them", tags->Size() = 4 & tags->GetColumn("value")->GetType() = ColumnType->STRING & tags->Get(2)->Get("_parent_id")->As(IntRef)->Get() = 3);
+				Check("an empty array adds no rows", tags->Get(1)->Get("_parent_id")->As(IntRef)->Get() = 1);
+				Check("child objects are rows with their own columns", runs->Size() = 3 & runs->Get(2)->Get("_parent_id")->As(IntRef)->Get() = 2 & runs->Get(2)->Get("loss") = Nil);
+				Check("a child table with children has '_id'", runs->Get(0)->Get("_id")->As(IntRef)->Get() = 1 & notes->Get(0)->Get("_parent_id")->As(IntRef)->Get() = 1);
+				Check("a child table without children has no '_id'", tags->GetColumn("_id") = Nil);
+			};
+		};
+
+		catalog := Catalog->New();
+		Check("a catalog loads every table", catalog->Load(JsonSource->New(path)) & catalog->Has("query_json_tmp") & catalog->Has("query_json_tmp_runs_notes"));
+		rs := catalog->Query("select m.name, count(*) as n, avg(r.loss) as loss from query_json_tmp m join query_json_tmp_runs r on r._parent_id = m._id group by m.name order by m.name");
+		Check("child tables join back to their parents", rs <> Nil & rs->Size() = 2 & rs->Get(0)->Get("n")->As(IntRef)->Get() = 2 & rs->Get(1)->Get("loss") = Nil);
+
+		hinted := JsonSource->New(path)->Read(ScanHint->New(["name"], 2));
+		Check("a hint picks the main table's columns and rows", hinted <> Nil & hinted->Size() = 2 & hinted->GetColumn("score") = Nil & hinted->GetColumn("name") <> Nil);
+
+		one := JsonSource->FromText("cfg", "{\"lr\": 0.01, \"layers\": [64, 32]}");
+		single := one->Read();
+		Check("a single object is one row", single <> Nil & single->Size() = 1 & one->GetChildTables()->Get(0)->Size() = 2);
+
+		FileWriter->WriteFile("query_json_tmp.json.gz", text->ToByteArray()->CompressGzip());
+		packed := JsonSource->New("query_json_tmp.json.gz")->Read();
+		Check("a gzipped document reads the same", packed <> Nil & packed->GetName()->Equals("query_json_tmp") & packed->Size() = 3 & packed->Get(0)->Get("meta.seed")->As(IntRef)->Get() = 7);
+
+		bad := JsonSource->FromText("bad", "[{\"a\": 1}, 5]");
+		Check("an element that is not an object names its position", bad->Read() = Nil & bad->GetError()->Has("element 2"));
+		broken := JsonSource->FromText("broken", "[{\"a\": 1},");
+		Check("text that is not JSON is an error", broken->Read() = Nil & broken->GetError()->Has("not valid JSON"));
+		scalar := JsonSource->FromText("scalar", "42");
+		Check("a document that is a plain value is an error", scalar->Read() = Nil & scalar->GetError() <> Nil);
+		missing := JsonSource->New("no_such_file.json");
+		Check("a missing file is an error", missing->Read() = Nil & missing->GetError() <> Nil);
+
+		File->Delete(path);
+		File->Delete("query_json_tmp.json.gz");
+
+		if(@failures = 0) {
+			"PASS: query JsonSource"->PrintLine();
+		}
+		else {
+			"FAIL: query JsonSource ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

@@ -1,0 +1,91 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured XmlSource (docs/QUERY_DESIGN.md, section 6, phase 4): row elements found at any
+depth, attributes as '@name' columns (and in SQL), simple child elements as typed columns,
+repeated or structured children as child tables two levels deep, element text as '_text',
+entities decoded, an empty element as an empty cell, scan hints, and the errors. Inputs are
+written by the test.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+class QuerySourceXml {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		xml := "<?xml version=\"1.0\"?>";
+		xml += "<library><shelf name=\"A\">";
+		xml += "<book id=\"1\" lang=\"en\"><title>Dune</title><year>1965</year><price>9.5</price><tag>scifi</tag><tag>classic</tag>";
+		xml += "<chapter n=\"1\"><title>Prophecy</title><page>1</page><page>40</page></chapter></book>";
+		xml += "<book id=\"2\" lang=\"fr\"><title>Tom &amp; Jerry</title><year>2001</year><price/><tag>kids</tag></book>";
+		xml += "</shelf><shelf name=\"B\">";
+		xml += "<book id=\"3\"><title>  Spaced  </title><year>1999</year><price>12</price></book>";
+		xml += "</shelf></library>";
+		path := "query_xml_tmp.xml";
+		FileWriter->WriteFile(path, xml);
+
+		source := XmlSource->New(path, "book");
+		books := source->Read();
+		Check("a document reads", books <> Nil);
+		if(books <> Nil) {
+			Check("row elements are found at any depth", books->Size() = 3 & books->GetName()->Equals("query_xml_tmp"));
+			Check("attributes are '@' columns, typed", books->GetColumn("@id")->GetType() = ColumnType->INT & books->Get(1)->Get("@lang")->As(String)->Equals("fr"));
+			Check("a missing attribute is empty", books->Get(2)->Get("@lang") = Nil);
+			Check("simple children are typed columns", books->GetColumn("year")->GetType() = ColumnType->INT & books->GetColumn("price")->GetType() = ColumnType->FLOAT);
+			Check("entities are decoded and text trimmed", books->Get(1)->Get("title")->As(String)->Equals("Tom & Jerry") & books->Get(2)->Get("title")->As(String)->Equals("Spaced"));
+			Check("an empty element is an empty cell", books->Get(1)->Get("price") = Nil);
+			Check("repeated and structured children are not columns", books->GetColumn("tag") = Nil & books->GetColumn("chapter") = Nil);
+
+			children := source->GetChildTables();
+			Check("child tables for each nested element, depth first", children->Size() = 3);
+			if(children->Size() = 3) {
+				tags := children->Get(0);
+				chapters := children->Get(1);
+				pages := children->Get(2);
+				Check("child tables are named after their elements", tags->GetName()->Equals("query_xml_tmp_tag") & chapters->GetName()->Equals("query_xml_tmp_chapter") & pages->GetName()->Equals("query_xml_tmp_chapter_page"));
+				Check("a repeated text element is a '_text' column", tags->Size() = 3 & tags->Get(2)->Get("_text")->As(String)->Equals("kids") & tags->Get(2)->Get("_parent_id")->As(IntRef)->Get() = 2);
+				Check("a structured child has its own columns", chapters->Size() = 1 & chapters->Get(0)->Get("@n")->As(IntRef)->Get() = 1 & chapters->Get(0)->Get("title")->As(String)->Equals("Prophecy"));
+				Check("two levels deep", pages->Size() = 2 & pages->Get(1)->Get("_text")->As(IntRef)->Get() = 40 & pages->Get(1)->Get("_parent_id")->As(IntRef)->Get() = 1);
+			};
+		};
+
+		catalog := Catalog->New();
+		Check("a catalog loads every table", catalog->Load(XmlSource->New(path, "book")) & catalog->Has("query_xml_tmp_chapter_page"));
+		rs := catalog->Query("select title, @lang from query_xml_tmp where @id >= 2 order by @id");
+		Check("'@' names work in SQL", rs <> Nil & rs->Size() = 2 & rs->Get(0)->Get("@lang")->As(String)->Equals("fr"));
+		rs := catalog->Query("select b.title, count(*) as tags from query_xml_tmp b join query_xml_tmp_tag t on t._parent_id = b._id group by b.title order by tags desc");
+		Check("child tables join back", rs <> Nil & rs->Size() = 2 & rs->Get(0)->Get("tags")->As(IntRef)->Get() = 2);
+
+		hinted := XmlSource->New(path, "book")->Read(ScanHint->New(["title"], 1));
+		Check("a hint picks the main table's columns and rows", hinted <> Nil & hinted->Size() = 1 & hinted->GetColumn("year") = Nil);
+
+		shelves := XmlSource->FromText("shelves", xml, "shelf")->Read();
+		Check("a row element can contain the others as a child table", shelves <> Nil & shelves->Size() = 2 & shelves->Get(1)->Get("@name")->As(String)->Equals("B"));
+
+		bad := XmlSource->FromText("bad", "<a><b></a>", "b");
+		Check("XML that is not well formed is an error", bad->Read() = Nil & bad->GetError()->Has("not well-formed"));
+		none := XmlSource->FromText("none", "<a><c/></a>", "b");
+		empty := none->Read();
+		Check("no row elements is an empty table", empty <> Nil & empty->Size() = 0);
+		unnamed := XmlSource->FromText("unnamed", "<a/>", "");
+		Check("a row element must be named", unnamed->Read() = Nil);
+
+		File->Delete(path);
+
+		if(@failures = 0) {
+			"PASS: query XmlSource"->PrintLine();
+		}
+		else {
+			"FAIL: query XmlSource ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

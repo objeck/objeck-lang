@@ -636,7 +636,7 @@ bundle Query.Structured {
 		Fills an empty column with copies of another column's cells, in the given order. The
 		column takes the other's type. Used to copy query results.
 		@param src column to copy from
-		@param rows its row slots to copy
+		@param rows its row slots to copy; -1 gives an empty cell
 		~#
 		method : public : Gather(src : Column, rows : Int[]) ~ Nil {
 			count := rows->Size();
@@ -683,7 +683,7 @@ bundle Query.Structured {
 			plain := type = ColumnType->STRING & <>@encoded;
 			each(i : count) {
 				row := rows[i];
-				if((src_nulls[row >> 6] and (1 << (row and 63))) <> 0) {
+				if(row < 0 | (src_nulls[row >> 6] and (1 << (row and 63))) <> 0) {
 					@nulls[i >> 6] := @nulls[i >> 6] or (1 << (i and 63));
 					@null_count += 1;
 				}
@@ -737,6 +737,50 @@ bundle Query.Structured {
 			};
 			@size := n;
 			@null_count := n;
+		}
+
+		#~
+		Refills a column with numbers. Used for query aggregates.
+		@param type INT or FLOAT
+		@param ints values for an INT column
+		@param floats values for a FLOAT column
+		@param present false where a cell is empty
+		~#
+		method : public : FillNumbers(type : ColumnType, ints : Int[], floats : Float[], present : Bool[]) ~ Nil {
+			count := present->Size();
+			@size := 0;
+			@capacity := 0;
+			@ints := Nil;
+			@floats := Nil;
+			@strings := Nil;
+			@objects := Nil;
+			@nulls := Nil;
+			@gmt := Nil;
+			@dict := Nil;
+			@dict_index := Nil;
+			@dict_size := 0;
+			@null_count := 0;
+			@zone_min := Nil;
+			@type := ColumnType->NONE;
+			Ensure(count > 16 ? count : 16);
+			Become(type);
+			@size := count;
+			each(i : count) {
+				if(present[i]) {
+					if(type = ColumnType->INT) {
+						@ints[i] := ints[i];
+					}
+					else {
+						@floats[i] := floats[i];
+					};
+				}
+				else {
+					@nulls[i >> 6] := @nulls[i >> 6] or (1 << (i and 63));
+					@null_count += 1;
+				};
+			};
+
+			RecomputeAllZones();
 		}
 
 		#~
@@ -1442,15 +1486,13 @@ results->ToString()->PrintLine();
 		method : public : Where(condition : Predicate) ~ View {
 			@error := Nil;
 			holder := StringHolder->New();
-			no_params : Compare[];
-			filter := Filter->Bind(condition, @self, no_params, holder);
+			filter := Filter->Bind(condition, @self, Nil, holder);
 			if(filter = Nil) {
 				@error := holder->Get();
 				return Nil;
 			};
 
-			all_rows : Int[];
-			return View->New(@self, DataColumns(), filter->Apply(@self, all_rows));
+			return View->New(@self, DataColumns(), filter->Apply(@self, Nil));
 		}
 
 		#~
@@ -2160,6 +2202,27 @@ results->ToString()->PrintLine();
 			};
 
 			return view->ToTable("<rs>");
+		}
+
+		#~
+		Runs an INSERT, UPDATE or DELETE on this table. A statement that fails changes nothing.
+		@param statement SQL statement naming this table
+		@return rows inserted, updated or deleted, -1 on error (see GetError)
+		```
+		table->Execute("update emp set dept = 'Ops' where name = 'Carol'");
+		```
+		~#
+		method : public : Execute(statement : String) ~ Int {
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return -1;
+			};
+
+			holder := StringHolder->New();
+			changed := plan->Execute(@self, Compare->New[0], holder);
+			@error := holder->Get();
+			return changed;
 		}
 
 		#~
@@ -3078,7 +3141,9 @@ results->ToString()->PrintLine();
 		NOT_NULL,
 		AND,
 		OR,
-		NOT
+		NOT,
+		MATCHES,
+		NOT_MATCHES
 	}
 
 	#~
@@ -3504,6 +3569,24 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 		}
 
 		#~
+		The whole cell matches a regular expression (Query.RegEx); only text cells take part
+		@param pattern regular expression
+		@return condition
+		~#
+		method : public : Matches(pattern : String) ~ Predicate {
+			return Predicate->New(Op->MATCHES, @name, pattern, 0);
+		}
+
+		#~
+		The cell does not match a regular expression; only text cells take part
+		@param pattern regular expression
+		@return condition
+		~#
+		method : public : NotMatches(pattern : String) ~ Predicate {
+			return Predicate->New(Op->NOT_MATCHES, @name, pattern, 0);
+		}
+
+		#~
 		The cell is empty
 		@return condition
 		~#
@@ -3542,6 +3625,9 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 		@text : String;
 		@code : Int;
 		@like_codes : Bool[];
+		@never : Bool;
+		@regex : RegEx;
+		@bad_pattern : Bool;
 
 		New(op : Op) {
 			@op := op;
@@ -3585,16 +3671,38 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 					error->Set("no value bound for placeholder {$(pred->GetParam())}");
 					return Nil;
 				};
+				# a bound NULL: a comparison no row passes
 				value := params[pred->GetParam() - 1];
-				if(value = Nil) {
-					error->Set("no value bound for placeholder {$(pred->GetParam())}");
-					return Nil;
-				};
 			};
 
 			filter := Filter->New(op);
 			filter->Prepare(column, value);
+			if(filter->IsBadPattern()) {
+				error->Set("'{$(value->As(String))}' is not a valid regular expression");
+				return Nil;
+			};
 			return filter;
+		}
+
+		method : public : IsBadPattern() ~ Bool {
+			return @bad_pattern;
+		}
+
+		function : IsMatchOp(op : Op) ~ Bool {
+			return op = Op->MATCHES | op = Op->NOT_MATCHES;
+		}
+
+		function : IsTextOp(op : Op) ~ Bool {
+			return op = Op->LIKE | op = Op->NOT_LIKE | op = Op->MATCHES | op = Op->NOT_MATCHES;
+		}
+
+		# whether text passes a LIKE or MATCHES test, before NOT_ is applied
+		method : TextMatches(text : String) ~ Bool {
+			if(@regex <> Nil) {
+				return @regex->MatchExact(text);
+			};
+
+			return Cell->MatchLike(text, @text);
 		}
 
 		method : public : SetLeft(left : Filter) ~ Nil {
@@ -3619,7 +3727,22 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 			@comparable := false;
 			@code := -1;
 			if(value = Nil) {
+				# a comparison with NULL is false for every row; only IS [NOT] NULL tests for it
+				@never := @op <> Op->IS_NULL & @op <> Op->NOT_NULL;
 				return;
+			};
+
+			# a LIKE or MATCHES pattern, for STRING and OBJECT columns alike
+			if(IsTextOp(@op) & value->TypeOf(String)) {
+				@text := value->As(String);
+			};
+
+			if(IsMatchOp(@op) & value->TypeOf(String)) {
+				@regex := RegEx->New(value->As(String));
+				if(<>@regex->IsOk()) {
+					@bad_pattern := true;
+					return;
+				};
 			};
 
 			select(@type) {
@@ -3666,11 +3789,11 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 						@text := value->As(String);
 						if(column->IsEncoded()) {
 							@code := column->FindCode(@text);
-							if(@op = Op->LIKE | @op = Op->NOT_LIKE) {
+							if(IsTextOp(@op)) {
 								size := column->GetDictionarySize();
 								@like_codes := Bool->New[size];
 								each(i : size) {
-									@like_codes[i] := Cell->MatchLike(@dict[i], @text);
+									@like_codes[i] := TextMatches(@dict[i]);
 								};
 							};
 						};
@@ -3783,22 +3906,22 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 				return <>IsNullRow(row);
 			};
 
-			if(IsNullRow(row)) {
+			if(@never | IsNullRow(row)) {
 				return false;
 			};
 
-			if(@op = Op->LIKE | @op = Op->NOT_LIKE) {
-				is_like := @op = Op->LIKE;
+			if(IsTextOp(@op)) {
+				is_like := @op = Op->LIKE | @op = Op->MATCHES;
 				if(@type = ColumnType->STRING & @comparable) {
 					if(@like_codes <> Nil) {
 						return @like_codes[@ints[row]] = is_like;
 					};
-					return Cell->MatchLike(@strings[row], @text) = is_like;
+					return TextMatches(@strings[row]) = is_like;
 				}
 				else if(@type = ColumnType->OBJECT & @value <> Nil & @value->TypeOf(String)) {
 					cell := @objects[row];
 					if(cell->TypeOf(String)) {
-						return Cell->MatchLike(cell->As(String), @value->As(String)) = is_like;
+						return TextMatches(cell->As(String)) = is_like;
 					};
 				};
 				return false;
@@ -4059,7 +4182,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 			return src;
 		}
 
-		method : Compare(a : Int, b : Int) ~ Int {
+		method : public : Compare(a : Int, b : Int) ~ Int {
 			a_null := (@nulls[a >> 6] and (1 << (a and 63))) <> 0;
 			b_null := (@nulls[b >> 6] and (1 << (b and 63))) <> 0;
 			if(a_null | b_null) {
@@ -4252,8 +4375,7 @@ each(i : view->Count()) {
 			};
 
 			error := StringHolder->New();
-			no_params : Compare[];
-			filter := Filter->Bind(condition, @table, no_params, error);
+			filter := Filter->Bind(condition, @table, Nil, error);
 			if(filter = Nil) {
 				@error := error->Get();
 				return Nil;
@@ -4490,8 +4612,9 @@ each(i : view->Count()) {
 	}
 
 	#~
-	A query parsed once and run many times, with '?' placeholders for values bound before each
-	run. Placeholders are numbered from 1, left to right.
+	A statement parsed once and run many times, with '?' placeholders for values bound before
+	each run. Placeholders are numbered from 1, left to right. A SELECT runs with Execute; an
+	INSERT, UPDATE, DELETE or CREATE TABLE with ExecuteUpdate.
 
 ```
 statement := table->Prepare("select id, score from runs where score > ? and label = ?");
@@ -4501,19 +4624,34 @@ results := statement->Execute();
 	~#
 	class Statement {
 		@table : Table;
+		@catalog : Catalog;
 		@plan : Plan;
 		@params : Compare[];
+		@bound : Bool[];
 		@error : String;
 
 		#~
 		Constructor. Use Table->Prepare rather than this.
 		@param table table
-		@param plan parsed query
+		@param plan parsed statement
 		~#
 		New(table : Table, plan : Plan) {
 			@table := table;
 			@plan := plan;
 			@params := Compare->New[plan->GetParamCount()];
+			@bound := Bool->New[plan->GetParamCount()];
+		}
+
+		#~
+		Constructor. Use Catalog->Prepare rather than this.
+		@param catalog catalog
+		@param plan parsed statement
+		~#
+		New(catalog : Catalog, plan : Plan) {
+			@catalog := catalog;
+			@plan := plan;
+			@params := Compare->New[plan->GetParamCount()];
+			@bound := Bool->New[plan->GetParamCount()];
 		}
 
 		#~
@@ -4533,8 +4671,31 @@ results := statement->Execute();
 		method : public : Bind(index : Int, value : Compare) ~ Statement {
 			if(index >= 1 & index <= @params->Size()) {
 				@params[index - 1] := value;
+				@bound[index - 1] := true;
 			};
 			return @self;
+		}
+
+		#~
+		Binds NULL to a placeholder: an empty cell in INSERT and UPDATE; in a condition, a
+		comparison no row passes, as every comparison with an empty cell is false
+		@param index placeholder number, from 1
+		@return this statement
+		~#
+		method : public : BindNull(index : Int) ~ Statement {
+			value : Compare;
+			return Bind(index, value);
+		}
+
+		# the reason the statement cannot run yet, Nil if every placeholder has a value
+		method : Unbound() ~ String {
+			each(i : @bound) {
+				if(<>@bound[i]) {
+					return "no value bound for placeholder {$(i + 1)}";
+				};
+			};
+
+			return Nil;
 		}
 
 		#~
@@ -4584,10 +4745,43 @@ results := statement->Execute();
 		@return result view, Nil on error (see GetError)
 		~#
 		method : public : ExecuteView() ~ View {
+			@error := Unbound();
+			if(@error <> Nil) {
+				return Nil;
+			};
+
 			error := StringHolder->New();
-			view := @plan->Run(@table, @params, error);
+			view : View;
+			if(@catalog <> Nil) {
+				view := @plan->RunIn(@catalog, @params, error);
+			}
+			else {
+				view := @plan->Run(@table, @params, error);
+			};
 			@error := error->Get();
 			return view;
+		}
+
+		#~
+		Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.
+		@return rows inserted, updated or deleted (0 for CREATE TABLE), -1 on error (see GetError)
+		~#
+		method : public : ExecuteUpdate() ~ Int {
+			@error := Unbound();
+			if(@error <> Nil) {
+				return -1;
+			};
+
+			error := StringHolder->New();
+			changed := 0;
+			if(@catalog <> Nil) {
+				changed := @plan->ExecuteIn(@catalog, @params, error);
+			}
+			else {
+				changed := @plan->Execute(@table, @params, error);
+			};
+			@error := error->Get();
+			return changed;
 		}
 
 		#~
@@ -4601,216 +4795,3686 @@ results := statement->Execute();
 
 	# A parsed query: the table it names, its columns (Nil for '*'), an optional 'distinct'
 	# column, its condition and its 'order by' column.
-	class : private : Plan {
+	#
+	# SQL front end (docs/QUERY_DESIGN.md, section 4): a lexer, a statement tree and a
+	# recursive-descent parser for the whole subset. Keywords are contextual: a word is a
+	# keyword only where the grammar expects one, so a column named 'left' or 'values' still
+	# works where a column is expected. A double-quoted name is never a keyword.
+	#
+	class : private : SqlToken {
+		enum Kind {
+			WORD,
+			NAME,
+			TEXT,
+			NUMBER,
+			DATE,
+			PARAM,
+			SYMBOL,
+			EOS
+		}
+
+		@kind : SqlToken->Kind;
+		@text : String;
+		@value : Compare;
+		@position : Int;
+
+		New(kind : SqlToken->Kind, text : String, value : Compare, position : Int) {
+			@kind := kind;
+			@text := text;
+			@value := value;
+			@position := position;
+		}
+
+		method : public : GetKind() ~ SqlToken->Kind {
+			return @kind;
+		}
+
+		method : public : GetText() ~ String {
+			return @text;
+		}
+
+		method : public : GetValue() ~ Compare {
+			return @value;
+		}
+
+		method : public : GetPosition() ~ Int {
+			return @position;
+		}
+
+		# whether this is the given word, ignoring case
+		method : public : IsWord(word : String) ~ Bool {
+			return @kind = SqlToken->Kind->WORD & @text->ToLower()->Equals(word);
+		}
+
+		method : public : IsSymbol(symbol : String) ~ Bool {
+			return @kind = SqlToken->Kind->SYMBOL & @text->Equals(symbol);
+		}
+
+		# a WORD or a quoted NAME: something that can name a column or a table
+		method : public : IsName() ~ Bool {
+			return @kind = SqlToken->Kind->WORD | @kind = SqlToken->Kind->NAME;
+		}
+
+		# how the token reads in an error message
+		method : public : Describe() ~ String {
+			select(@kind) {
+				label SqlToken->Kind->EOS: {
+					return "the end of the statement";
+				}
+
+				label SqlToken->Kind->TEXT: {
+					return "'{$@text}'";
+				}
+
+				label SqlToken->Kind->NAME: {
+					return "\"{$@text}\"";
+				}
+
+				label SqlToken->Kind->PARAM: {
+					return "'?'";
+				}
+			};
+
+			return "'{$@text}'";
+		}
+	}
+
+	class : private : SqlLexer {
+		@line : String;
+		@error : String;
+
+		New(line : String) {
+			@line := line;
+		}
+
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : Peek(index : Int) ~ Char {
+			if(index < @line->Size()) {
+				return @line->Get(index);
+			};
+
+			return '\0';
+		}
+
+		method : IsNameChar(c : Char) ~ Bool {
+			return c->IsChar() | c->IsDigit() | c = '_' | c = '.' | c = '$';
+		}
+
+		# a number starts with a digit, or a '-' or '.' that leads to one
+		method : IsNumberStart(index : Int) ~ Bool {
+			c := Peek(index);
+			if(c->IsDigit()) {
+				return true;
+			};
+
+			if(c = '-') {
+				index += 1;
+				c := Peek(index);
+				if(c->IsDigit()) {
+					return true;
+				};
+			};
+
+			return c = '.' & Peek(index + 1)->IsDigit();
+		}
+
+		# the tokens, ending with EOS; Nil with GetError set
+		method : public : Scan() ~ Vector<SqlToken> {
+			tokens := Vector->New()<SqlToken>;
+			params := 0;
+			i := 0;
+			size := @line->Size();
+			while(i < size) {
+				c := @line->Get(i);
+				start := i;
+				if(c = ' ' | c = '\t' | c = '\r' | c = '\n') {
+					i += 1;
+				}
+				else if(c = '\'') {
+					# a string; '' inside it is one quote
+					text := "";
+					i += 1;
+					done := false;
+					while(<>done) {
+						if(i >= size) {
+							@error := "unterminated string starting at position {$start}";
+							return Nil;
+						};
+
+						if(@line->Get(i) = '\'') {
+							if(Peek(i + 1) = '\'') {
+								text->Append('\'');
+								i += 2;
+							}
+							else {
+								i += 1;
+								done := true;
+							};
+						}
+						else {
+							text->Append(@line->Get(i));
+							i += 1;
+						};
+					};
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->TEXT, text, text, start));
+				}
+				else if(c = '"') {
+					# a quoted name, never a keyword
+					text := "";
+					i += 1;
+					while(i < size & @line->Get(i) <> '"') {
+						text->Append(@line->Get(i));
+						i += 1;
+					};
+					if(i >= size) {
+						@error := "unterminated quoted name starting at position {$start}";
+						return Nil;
+					};
+					i += 1;
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->NAME, text, Nil, start));
+				}
+				else if(c = '#') {
+					text := "";
+					i += 1;
+					while(i < size & @line->Get(i) <> '#') {
+						text->Append(@line->Get(i));
+						i += 1;
+					};
+					if(i >= size) {
+						@error := "unterminated date starting at position {$start}";
+						return Nil;
+					};
+					i += 1;
+
+					date := ParseDate(text);
+					if(date = Nil) {
+						@error := "'#{$text}#' at position {$start} is not a date (MM/dd/yyyy, MM/dd/yyyy hh:mm:ss or yyyy-MM-dd)";
+						return Nil;
+					};
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->DATE, text, date, start));
+				}
+				else if(c->IsChar() | c = '_' | (c = '@' & (Peek(i + 1)->IsChar() | Peek(i + 1) = '_'))) {
+					text := "";
+					if(c = '@') {
+						text->Append(c);
+						i += 1;
+					};
+					while(i < size & IsNameChar(@line->Get(i))) {
+						text->Append(@line->Get(i));
+						i += 1;
+					};
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->WORD, text, Nil, start));
+				}
+				else if(IsNumberStart(i)) {
+					number := "";
+					if(c = '-') {
+						number->Append('-');
+						i += 1;
+					};
+
+					while(i < size & (@line->Get(i)->IsDigit() | @line->Get(i) = '.')) {
+						number->Append(@line->Get(i));
+						i += 1;
+					};
+
+					if(i < size & (@line->Get(i) = 'e' | @line->Get(i) = 'E')) {
+						number->Append(@line->Get(i));
+						i += 1;
+						if(i < size & (@line->Get(i) = '-' | @line->Get(i) = '+')) {
+							number->Append(@line->Get(i));
+							i += 1;
+						};
+						while(i < size & @line->Get(i)->IsDigit()) {
+							number->Append(@line->Get(i));
+							i += 1;
+						};
+					};
+
+					kind := Cell->NumberKind(number);
+					if(kind = 1) {
+						tokens->AddBack(SqlToken->New(SqlToken->Kind->NUMBER, number, IntRef->New(number->ToInt()), start));
+					}
+					else if(kind = 2) {
+						tokens->AddBack(SqlToken->New(SqlToken->Kind->NUMBER, number, FloatRef->New(number->ToFloat()), start));
+					}
+					else {
+						@error := "'{$number}' at position {$start} is not a number";
+						return Nil;
+					};
+				}
+				else if(c = '?') {
+					params += 1;
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->PARAM, "?", IntRef->New(params), start));
+					i += 1;
+				}
+				else if(c = '<' & (Peek(i + 1) = '>' | Peek(i + 1) = '=')) {
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, @line->SubString(i, 2), Nil, start));
+					i += 2;
+				}
+				else if(c = '=' & Peek(i + 1) = '>') {
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, "=>", Nil, start));
+					i += 2;
+				}
+				else if((c = '>' | c = '!') & Peek(i + 1) = '=') {
+					symbol := c = '!' ? "<>" : ">=";
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, symbol, Nil, start));
+					i += 2;
+				}
+				else if(c = '*' | c = ',' | c = '(' | c = ')' | c = '=' | c = '<' | c = '>' | c = ';') {
+					text := "";
+					text->Append(c);
+					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, text, Nil, start));
+					i += 1;
+				}
+				else {
+					@error := "unexpected character '{$c}' at position {$i}";
+					return Nil;
+				};
+			};
+			tokens->AddBack(SqlToken->New(SqlToken->Kind->EOS, "", Nil, size));
+
+			return tokens;
+		}
+
+		function : ParseDate(text : String) ~ Date {
+			if(text->Size() = 10 & text->Get(4) = '-') {
+				return DateUtility->Parse(text, "yyyy-MM-dd", false);
+			};
+
+			select(text->Size()) {
+				label 8: {
+					return DateUtility->Parse(text, "MM/dd/yy", false);
+				}
+
+				label 10: {
+					return DateUtility->Parse(text, "MM/dd/yyyy", false);
+				}
+
+				label 17: {
+					return DateUtility->Parse(text, "MM/dd/yy hh:mm:ss", false);
+				}
+
+				label 19: {
+					return DateUtility->Parse(text, "MM/dd/yyyy hh:mm:ss", false);
+				}
+			};
+
+			return Nil;
+		}
+	}
+
+	# one entry of a select list, or an aggregate named in HAVING or ORDER BY
+	class : private : SqlItem {
+		@is_aggregate : Bool;
+		@name : String;
+		@func : String;
+		@alias_name : String;
+
+		New(name : String, func : String) {
+			@name := name;
+			@func := func;
+			@is_aggregate := func <> Nil;
+		}
+
+		method : public : IsAggregate() ~ Bool {
+			return @is_aggregate;
+		}
+
+		# the column it reads; '*' for count(*)
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : GetFunc() ~ String {
+			return @func;
+		}
+
+		method : public : SetAlias(alias_name : String) ~ Nil {
+			@alias_name := alias_name;
+		}
+
+		method : public : GetAlias() ~ String {
+			return @alias_name;
+		}
+
+		# how an aggregate is written in HAVING and ORDER BY, and its default column name
+		method : public : GetCall() ~ String {
+			return "{$@func}({$@name})";
+		}
+
+		# the result column's name
+		method : public : GetLabel() ~ String {
+			if(@alias_name <> Nil) {
+				return @alias_name;
+			};
+
+			return @is_aggregate ? GetCall() : @name;
+		}
+	}
+
+	class : private : SqlJoin {
+		@is_left : Bool;
 		@table_name : String;
-		@columns : String[];
-		@distinct : String;
-		@condition : Predicate;
-		@order_by : String;
+		@alias_name : String;
+		@left_key : String;
+		@right_key : String;
+		@file : SqlFile;
+
+		New(is_left : Bool, table_name : String, file : SqlFile, alias_name : String, left_key : String, right_key : String) {
+			@is_left := is_left;
+			@table_name := table_name;
+			@file := file;
+			@alias_name := alias_name;
+			@left_key := left_key;
+			@right_key := right_key;
+		}
+
+		method : public : IsLeft() ~ Bool {
+			return @is_left;
+		}
+
+		method : public : GetTableName() ~ String {
+			return @table_name;
+		}
+
+		# the file it reads, Nil for a table of the catalog
+		method : public : GetFile() ~ SqlFile {
+			return @file;
+		}
+
+		method : public : GetAlias() ~ String {
+			return @alias_name;
+		}
+
+		method : public : GetLeftKey() ~ String {
+			return @left_key;
+		}
+
+		method : public : GetRightKey() ~ String {
+			return @right_key;
+		}
+	}
+
+	class : private : SqlOrder {
+		@name : String;
+		@position : Int;
+		@descending : Bool;
+
+		New(name : String, position : Int, descending : Bool) {
+			@name := name;
+			@position := position;
+			@descending := descending;
+		}
+
+		# a column name, an alias or an aggregate call; Nil when a position is given
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : SetName(name : String) ~ Nil {
+			@name := name;
+		}
+
+		# a select-list position from 1, or 0
+		method : public : GetPosition() ~ Int {
+			return @position;
+		}
+
+		method : public : IsDescending() ~ Bool {
+			return @descending;
+		}
+	}
+
+	# a literal or a placeholder in VALUES or SET
+	class : private : SqlValue {
+		@value : Compare;
+		@param : Int;
+
+		New(value : Compare, param : Int) {
+			@value := value;
+			@param := param;
+		}
+
+		# the value, or the bound value of its placeholder; 'ok' false if that is unbound
+		method : public : Resolve(params : Compare[], ok : BoolRef) ~ Compare {
+			if(@param > 0) {
+				if(params = Nil | @param > params->Size()) {
+					ok->Set(false);
+					return Nil;
+				};
+				return params[@param - 1];
+			};
+
+			return @value;
+		}
+
+		method : public : GetParam() ~ Int {
+			return @param;
+		}
+
+		# the literal; Nil for a placeholder or NULL
+		method : public : GetValue() ~ Compare {
+			return @value;
+		}
+	}
+
+	class : private : SqlStatement {
+		enum Kind {
+			QUERY,
+			INSERT,
+			UPDATE,
+			DELETE,
+			CREATE
+		}
+
+		@kind : SqlStatement->Kind;
+		@distinct : Bool;
+		@star : Bool;
+		@items : Vector<SqlItem>;
+		@extra : Vector<SqlItem>;
+		@table_name : String;
+		@file : SqlFile;
+		@alias_name : String;
+		@joins : Vector<SqlJoin>;
+		@where : Predicate;
+		@group : Vector<String>;
+		@having : Predicate;
+		@order : Vector<SqlOrder>;
+		@limit : Int;
+		@offset : Int;
+		@columns : Vector<String>;
+		@values : Vector<Vector<SqlValue>>;
+		@types : Vector<String>;
 		@params : Int;
-		@is_select : Bool;
+
+		New(kind : SqlStatement->Kind) {
+			@kind := kind;
+			@items := Vector->New()<SqlItem>;
+			@extra := Vector->New()<SqlItem>;
+			@joins := Vector->New()<SqlJoin>;
+			@group := Vector->New()<String>;
+			@order := Vector->New()<SqlOrder>;
+			@columns := Vector->New()<String>;
+			@values := Vector->New()<Vector<SqlValue>>;
+			@types := Vector->New()<String>;
+			@limit := -1;
+		}
+
+		method : public : GetKind() ~ SqlStatement->Kind { return @kind; }
+		method : public : IsDistinct() ~ Bool { return @distinct; }
+		method : public : SetDistinct() ~ Nil { @distinct := true; }
+		method : public : IsStar() ~ Bool { return @star; }
+		method : public : SetStar() ~ Nil { @star := true; }
+		method : public : GetItems() ~ Vector<SqlItem> { return @items; }
+		# aggregates named only in HAVING or ORDER BY
+		method : public : GetExtra() ~ Vector<SqlItem> { return @extra; }
+		method : public : GetTableName() ~ String { return @table_name; }
+		method : public : SetTableName(name : String) ~ Nil { @table_name := name; }
+		# the file FROM reads, Nil for a table of the catalog
+		method : public : GetFile() ~ SqlFile { return @file; }
+		method : public : SetFile(file : SqlFile) ~ Nil { @file := file; }
+		method : public : GetAlias() ~ String { return @alias_name; }
+		method : public : SetAlias(alias_name : String) ~ Nil { @alias_name := alias_name; }
+		method : public : GetJoins() ~ Vector<SqlJoin> { return @joins; }
+		method : public : GetWhere() ~ Predicate { return @where; }
+		method : public : SetWhere(where : Predicate) ~ Nil { @where := where; }
+		method : public : GetGroup() ~ Vector<String> { return @group; }
+		method : public : GetHaving() ~ Predicate { return @having; }
+		method : public : SetHaving(having : Predicate) ~ Nil { @having := having; }
+		method : public : GetOrder() ~ Vector<SqlOrder> { return @order; }
+		method : public : GetLimit() ~ Int { return @limit; }
+		method : public : SetLimit(limit : Int) ~ Nil { @limit := limit; }
+		method : public : GetOffset() ~ Int { return @offset; }
+		method : public : SetOffset(offset : Int) ~ Nil { @offset := offset; }
+		# INSERT's column list, UPDATE's assigned columns, CREATE's column names
+		method : public : GetColumns() ~ Vector<String> { return @columns; }
+		# INSERT's rows; UPDATE's values, one row
+		method : public : GetValues() ~ Vector<Vector<SqlValue>> { return @values; }
+		method : public : GetTypes() ~ Vector<String> { return @types; }
+		method : public : GetParamCount() ~ Int { return @params; }
+		method : public : SetParamCount(params : Int) ~ Nil { @params := params; }
+
+		# whether the select list or HAVING uses an aggregate
+		method : public : HasAggregates() ~ Bool {
+			each(i : @items) {
+				if(@items->Get(i)->IsAggregate()) {
+					return true;
+				};
+			};
+
+			return @extra->Size() > 0;
+		}
+	}
+
+	class : private : SqlParser {
+		@tokens : Vector<SqlToken>;
+		@index : Int;
+		@error : String;
+		@statement : SqlStatement;
+		@in_having : Bool;
+		@ref_name : String;
+		@ref_file : SqlFile;
 
 		New() {
 		}
 
-		# parses a statement; Nil with the old engine's messages on error
-		function : Parse(statement : String, error : StringHolder) ~ Plan {
-			parser := Parser->New(statement);
-			expr := parser->Parse();
-			if(expr = Nil) {
-				error->Set("*** Parse error ***");
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		# a statement, or Nil with GetError set
+		method : public : Parse(line : String) ~ SqlStatement {
+			if(line = Nil) {
+				@error := "no statement";
 				return Nil;
 			};
 
-			plan := Plan->New();
-			source_term : Term;
-			if(expr->GetType() = Token->Type->SELECT) {
-				plan->SetSelect();
-				source_term := expr->GetLeft();
-				columns := expr->GetTerms();
-				if(columns->Size() = 2 &
-						columns->Get(0)->As(Term)->GetType() = Token->Type->DISTINCT &
-						columns->Get(1)->As(Term)->GetType() = Token->Type->REF) {
-					name := columns->Get(1)->As(Term)->GetValue()->As(String);
-					plan->SetColumns([name]);
-					plan->SetDistinct(name);
-				}
-				else if(<>(columns->Size() = 1 & columns->Get(0)->As(Term)->GetType() = Token->Type->STAR)) {
-					names := String->New[columns->Size()];
-					each(i : columns) {
-						names[i] := columns->Get(i)->As(Term)->GetValue()->As(String);
+			lexer := SqlLexer->New(line);
+			@tokens := lexer->Scan();
+			if(@tokens = Nil) {
+				@error := lexer->GetError();
+				return Nil;
+			};
+			@index := 0;
+
+			statement : SqlStatement;
+			if(Current()->IsWord("select")) {
+				Next();
+				statement := ParseSelect(false);
+			}
+			else if(Current()->IsWord("from")) {
+				# the old engine's short form, 'from t where ...', is 'select * from t where ...'
+				statement := ParseSelect(true);
+			}
+			else if(Current()->IsWord("insert")) {
+				Next();
+				statement := ParseInsert();
+			}
+			else if(Current()->IsWord("update")) {
+				Next();
+				statement := ParseUpdate();
+			}
+			else if(Current()->IsWord("delete")) {
+				Next();
+				statement := ParseDelete();
+			}
+			else if(Current()->IsWord("create")) {
+				Next();
+				statement := ParseCreate();
+			}
+			else {
+				return Fail("SELECT, INSERT, UPDATE, DELETE or CREATE");
+			};
+
+			if(statement = Nil) {
+				return Nil;
+			};
+
+			if(Current()->IsSymbol(";")) {
+				Next();
+			};
+
+			if(Current()->GetKind() <> SqlToken->Kind->EOS) {
+				return Fail("the end of the statement");
+			};
+
+			params := 0;
+			each(i : @tokens) {
+				if(@tokens->Get(i)->GetKind() = SqlToken->Kind->PARAM) {
+					params += 1;
+				};
+			};
+			statement->SetParamCount(params);
+
+			return statement;
+		}
+
+		method : Current() ~ SqlToken {
+			return @tokens->Get(@index);
+		}
+
+		method : Ahead(n : Int) ~ SqlToken {
+			i := @index + n;
+			if(i >= @tokens->Size()) {
+				return @tokens->Get(@tokens->Size() - 1);
+			};
+
+			return @tokens->Get(i);
+		}
+
+		method : Next() ~ Nil {
+			if(@index < @tokens->Size() - 1) {
+				@index += 1;
+			};
+		}
+
+		# records a syntax error at the current token; always Nil
+		method : Fail(expected : String) ~ SqlStatement {
+			if(@error = Nil) {
+				token := Current();
+				@error := "syntax error at position {$(token->GetPosition())}: expected {$expected}, found {$(token->Describe())}";
+			};
+
+			return Nil;
+		}
+
+		method : FailCondition(expected : String) ~ Predicate {
+			Fail(expected);
+			return Nil;
+		}
+
+		method : ExpectWord(word : String) ~ Bool {
+			if(<>Current()->IsWord(word)) {
+				Fail(word->ToUpper());
+				return false;
+			};
+			Next();
+
+			return true;
+		}
+
+		method : ExpectSymbol(symbol : String) ~ Bool {
+			if(<>Current()->IsSymbol(symbol)) {
+				Fail("'{$symbol}'");
+				return false;
+			};
+			Next();
+
+			return true;
+		}
+
+		# a column or table name; Nil (with the error set) if the token is not one
+		method : ParseName(what : String) ~ String {
+			token := Current();
+			if(<>token->IsName()) {
+				Fail(what);
+				return Nil;
+			};
+			Next();
+
+			return token->GetText();
+		}
+
+		function : IsAggregateName(word : String) ~ Bool {
+			lower := word->ToLower();
+			return lower->Equals("count") | lower->Equals("sum") | lower->Equals("avg") |
+				lower->Equals("min") | lower->Equals("max") | lower->Equals("median") |
+				lower->Equals("stddev");
+		}
+
+		# whether the current token starts an aggregate call: a function word then '('
+		method : AtAggregate() ~ Bool {
+			token := Current();
+			return token->GetKind() = SqlToken->Kind->WORD & IsAggregateName(token->GetText()) & Ahead(1)->IsSymbol("(");
+		}
+
+		# func '(' ('*' | name) ')'; only COUNT takes '*'
+		method : ParseAggregate() ~ SqlItem {
+			func := Current()->GetText()->ToLower();
+			Next();
+			Next();
+
+			name : String;
+			if(Current()->IsSymbol("*")) {
+				if(<>func->Equals("count")) {
+					Fail("a column name ({$func}(*) is not allowed)");
+					return Nil;
+				};
+				name := "*";
+				Next();
+			}
+			else {
+				name := ParseName("a column name");
+				if(name = Nil) {
+					return Nil;
+				};
+			};
+
+			if(<>ExpectSymbol(")")) {
+				return Nil;
+			};
+
+			return SqlItem->New(name, func);
+		}
+
+		# the words that end a select item or a table reference, so they are never read as an
+		# alias without AS
+		function : IsClauseWord(token : SqlToken) ~ Bool {
+			if(token->GetKind() <> SqlToken->Kind->WORD) {
+				return false;
+			};
+
+			word := token->GetText()->ToLower();
+			return word->Equals("from") | word->Equals("where") | word->Equals("group") |
+				word->Equals("having") | word->Equals("order") | word->Equals("limit") |
+				word->Equals("offset") | word->Equals("join") | word->Equals("inner") |
+				word->Equals("left") | word->Equals("on") | word->Equals("set") |
+				word->Equals("values");
+		}
+
+		function : IsFileFunction(word : String) ~ Bool {
+			lower := word->ToLower();
+			return lower->Equals("csv") | lower->Equals("tsv") | lower->Equals("json") |
+				lower->Equals("jsonl") | lower->Equals("xml");
+		}
+
+		# a table in FROM or JOIN: a catalog table's name, a quoted file path ('runs/*.csv'),
+		# or a file read a given way: csv('f.txt', delimiter => ';', header => false),
+		# tsv(...), json(...), jsonl(...) or xml('f.xml', row => 'item'). Sets @ref_name, and
+		# @ref_file for a file; false with the error set otherwise.
+		method : ParseTable() ~ Bool {
+			@ref_name := Nil;
+			@ref_file := Nil;
+			token := Current();
+			if(token->GetKind() = SqlToken->Kind->TEXT) {
+				Next();
+				@ref_file := SqlFile->New(token->GetText(), "");
+				@ref_name := @ref_file->GetDefaultName();
+				return true;
+			};
+
+			if(token->GetKind() = SqlToken->Kind->WORD & IsFileFunction(token->GetText()) & Ahead(1)->IsSymbol("(")) {
+				format := token->GetText()->ToLower();
+				Next();
+				Next();
+				path := Current();
+				if(path->GetKind() <> SqlToken->Kind->TEXT) {
+					Fail("a quoted file path");
+					return false;
+				};
+				Next();
+				file := SqlFile->New(path->GetText(), format);
+
+				while(Current()->IsSymbol(",")) {
+					Next();
+					option := Current();
+					if(option->GetKind() <> SqlToken->Kind->WORD) {
+						Fail("an option name");
+						return false;
 					};
-					plan->SetColumns(names);
+					Next();
+					if(<>ExpectSymbol("=>")) {
+						return false;
+					};
+
+					name := option->GetText()->ToLower();
+					value := Current();
+					if(name->Equals("header") & (value->IsWord("true") | value->IsWord("false"))) {
+						file->SetHeader(value->IsWord("true"));
+					}
+					else if(name->Equals("delimiter") & value->GetKind() = SqlToken->Kind->TEXT & (value->GetText()->Size() = 1 | value->GetText()->Equals("\\t"))) {
+						if(value->GetText()->Size() = 1) {
+							file->SetDelimiter(value->GetText()->Get(0));
+						}
+						else {
+							file->SetDelimiter('\t');
+						};
+					}
+					else if(name->Equals("row") & value->GetKind() = SqlToken->Kind->TEXT) {
+						file->SetRow(value->GetText());
+					}
+					else {
+						Fail("an option: delimiter => 'c', header => true or false, row => 'element'");
+						return false;
+					};
+					Next();
 				};
 
-				if(expr->GetRight() <> Nil) {
-					plan->SetOrderBy(expr->GetRight()->GetValue()->As(String));
+				if(<>ExpectSymbol(")")) {
+					return false;
 				};
+
+				@ref_file := file;
+				@ref_name := file->GetDefaultName();
+				return true;
+			};
+
+			@ref_name := ParseName("a table name or a quoted file path");
+			return @ref_name <> Nil;
+		}
+
+		# [AS] alias, or Nil when there is none
+		method : ParseAlias() ~ String {
+			if(Current()->IsWord("as")) {
+				Next();
+				return ParseName("an alias");
+			};
+
+			if(Current()->IsName() & <>IsClauseWord(Current())) {
+				return ParseName("an alias");
+			};
+
+			return Nil;
+		}
+
+		method : ParseSelect(short_form : Bool) ~ SqlStatement {
+			statement := SqlStatement->New(SqlStatement->Kind->QUERY);
+			@statement := statement;
+			if(short_form) {
+				statement->SetStar();
 			}
-			else if(expr->GetType() = Token->Type->FROM) {
-				source_term := expr;
-				order := expr->GetRight();
-				if(order <> Nil & order->GetType() = Token->Type->REF) {
-					plan->SetOrderBy(order->GetValue()->As(String));
+			else {
+				if(Current()->IsWord("distinct")) {
+					statement->SetDistinct();
+					Next();
+				};
+
+				if(Current()->IsSymbol("*")) {
+					statement->SetStar();
+					Next();
+				}
+				else {
+					done := false;
+					while(<>done) {
+						item : SqlItem;
+						if(AtAggregate()) {
+							item := ParseAggregate();
+						}
+						else {
+							name := ParseName("a column name, an aggregate or '*'");
+							if(name <> Nil) {
+								item := SqlItem->New(name, Nil);
+							};
+						};
+
+						if(item = Nil) {
+							return Nil;
+						};
+
+						alias_name := ParseAlias();
+						if(@error <> Nil) {
+							return Nil;
+						};
+						item->SetAlias(alias_name);
+						statement->GetItems()->AddBack(item);
+
+						if(Current()->IsSymbol(",")) {
+							Next();
+						}
+						else {
+							done := true;
+						};
+					};
+				};
+			};
+
+			if(<>ExpectWord("from")) {
+				return Nil;
+			};
+
+			if(<>ParseTable()) {
+				return Nil;
+			};
+			statement->SetTableName(@ref_name);
+			statement->SetFile(@ref_file);
+			statement->SetAlias(ParseAlias());
+			if(@error <> Nil) {
+				return Nil;
+			};
+
+			# [INNER | LEFT [OUTER]] JOIN table [alias] ON a = b
+			joining := true;
+			while(joining) {
+				is_left := false;
+				if(Current()->IsWord("inner")) {
+					Next();
+					if(<>Current()->IsWord("join")) {
+						return Fail("JOIN");
+					};
+				}
+				else if(Current()->IsWord("left")) {
+					is_left := true;
+					Next();
+					if(Current()->IsWord("outer")) {
+						Next();
+					};
+					if(<>Current()->IsWord("join")) {
+						return Fail("JOIN");
+					};
+				};
+
+				if(Current()->IsWord("join")) {
+					Next();
+					if(<>ParseTable()) {
+						return Nil;
+					};
+					join_table := @ref_name;
+					join_file := @ref_file;
+					join_alias := ParseAlias();
+					if(@error <> Nil | <>ExpectWord("on")) {
+						return Nil;
+					};
+					left_key := ParseName("a column name");
+					if(left_key = Nil | <>ExpectSymbol("=")) {
+						return Nil;
+					};
+					right_key := ParseName("a column name");
+					if(right_key = Nil) {
+						return Nil;
+					};
+					statement->GetJoins()->AddBack(SqlJoin->New(is_left, join_table, join_file, join_alias, left_key, right_key));
+				}
+				else {
+					joining := false;
+				};
+			};
+
+			if(Current()->IsWord("where")) {
+				Next();
+				where := ParseOr();
+				if(where = Nil) {
+					return Nil;
+				};
+				statement->SetWhere(where);
+			};
+
+			if(Current()->IsWord("group")) {
+				Next();
+				if(<>ExpectWord("by")) {
+					return Nil;
+				};
+
+				grouping := true;
+				while(grouping) {
+					name := ParseName("a column name");
+					if(name = Nil) {
+						return Nil;
+					};
+					statement->GetGroup()->AddBack(name);
+
+					if(Current()->IsSymbol(",")) {
+						Next();
+					}
+					else {
+						grouping := false;
+					};
+				};
+
+				if(Current()->IsWord("having")) {
+					Next();
+					@in_having := true;
+					having := ParseOr();
+					@in_having := false;
+					if(having = Nil) {
+						return Nil;
+					};
+					statement->SetHaving(having);
+				};
+			};
+
+			if(Current()->IsWord("order")) {
+				Next();
+				if(<>ExpectWord("by")) {
+					return Nil;
+				};
+
+				ordering := true;
+				while(ordering) {
+					order_name : String;
+					position := 0;
+					if(Current()->GetKind() = SqlToken->Kind->NUMBER & Current()->GetValue()->TypeOf(IntRef)) {
+						position := Current()->GetValue()->As(IntRef)->Get();
+						if(position < 1) {
+							return Fail("a select-list position from 1");
+						};
+						Next();
+					}
+					else if(AtAggregate()) {
+						item := ParseAggregate();
+						if(item = Nil) {
+							return Nil;
+						};
+						NoteAggregate(item);
+						order_name := item->GetCall();
+					}
+					else {
+						order_name := ParseName("a column name, an aggregate or a position");
+						if(order_name = Nil) {
+							return Nil;
+						};
+					};
+
+					descending := false;
+					if(Current()->IsWord("desc")) {
+						descending := true;
+						Next();
+					}
+					else if(Current()->IsWord("asc")) {
+						Next();
+					};
+					statement->GetOrder()->AddBack(SqlOrder->New(order_name, position, descending));
+
+					if(Current()->IsSymbol(",")) {
+						Next();
+					}
+					else {
+						ordering := false;
+					};
+				};
+			};
+
+			if(Current()->IsWord("limit")) {
+				Next();
+				limit := ParseCount("a row count after LIMIT");
+				if(limit < 0) {
+					return Nil;
+				};
+				statement->SetLimit(limit);
+
+				if(Current()->IsWord("offset")) {
+					Next();
+					offset := ParseCount("a row count after OFFSET");
+					if(offset < 0) {
+						return Nil;
+					};
+					statement->SetOffset(offset);
+				};
+			};
+
+			return statement;
+		}
+
+		# a whole number of zero or more; -1 with the error set otherwise
+		method : ParseCount(what : String) ~ Int {
+			token := Current();
+			if(token->GetKind() <> SqlToken->Kind->NUMBER | <>token->GetValue()->TypeOf(IntRef) | token->GetValue()->As(IntRef)->Get() < 0) {
+				Fail(what);
+				return -1;
+			};
+			Next();
+
+			return token->GetValue()->As(IntRef)->Get();
+		}
+
+		# an aggregate named in HAVING or ORDER BY, remembered so it is computed even when the
+		# select list does not show it
+		method : NoteAggregate(item : SqlItem) ~ Nil {
+			call := item->GetCall();
+			extra := @statement->GetExtra();
+			each(i : extra) {
+				if(extra->Get(i)->GetCall()->Equals(call)) {
+					return;
+				};
+			};
+			extra->AddBack(item);
+		}
+
+		# or := and (OR and)*
+		method : ParseOr() ~ Predicate {
+			left := ParseAnd();
+			if(left = Nil) {
+				return Nil;
+			};
+
+			while(Current()->IsWord("or")) {
+				Next();
+				right := ParseAnd();
+				if(right = Nil) {
+					return Nil;
+				};
+				left := left->OrElse(right);
+			};
+
+			return left;
+		}
+
+		# and := unary (AND unary)*
+		method : ParseAnd() ~ Predicate {
+			left := ParseUnary();
+			if(left = Nil) {
+				return Nil;
+			};
+
+			while(Current()->IsWord("and")) {
+				Next();
+				right := ParseUnary();
+				if(right = Nil) {
+					return Nil;
+				};
+				left := left->AndAlso(right);
+			};
+
+			return left;
+		}
+
+		# unary := NOT unary | '(' or ')' | comparison
+		method : ParseUnary() ~ Predicate {
+			if(Current()->IsWord("not") & <>Ahead(1)->IsWord("like") & <>Ahead(1)->IsWord("matches") & <>Ahead(1)->IsWord("between") & <>Ahead(1)->IsWord("in")) {
+				Next();
+				inner := ParseUnary();
+				if(inner = Nil) {
+					return Nil;
+				};
+				return inner->Negate();
+			};
+
+			if(Current()->IsSymbol("(")) {
+				Next();
+				inner := ParseOr();
+				if(inner = Nil | <>ExpectSymbol(")")) {
+					return Nil;
+				};
+				return inner;
+			};
+
+			return ParseComparison();
+		}
+
+		# operand ([NOT] op value | [NOT] BETWEEN v AND v | [NOT] IN (v, ...) | IS [NOT] NULL)
+		method : ParseComparison() ~ Predicate {
+			name : String;
+			if(AtAggregate()) {
+				if(<>@in_having) {
+					return FailCondition("a column name (aggregates belong in HAVING, not WHERE)");
+				};
+				item := ParseAggregate();
+				if(item = Nil) {
+					return Nil;
+				};
+				NoteAggregate(item);
+				name := item->GetCall();
+			}
+			else {
+				name := ParseName("a column name");
+				if(name = Nil) {
+					return Nil;
+				};
+			};
+
+			if(Current()->IsWord("is")) {
+				Next();
+				negated := false;
+				if(Current()->IsWord("not")) {
+					negated := true;
+					Next();
+				};
+				if(<>Current()->IsWord("null")) {
+					return FailCondition("NULL");
+				};
+				Next();
+				return Predicate->New(negated ? Op->NOT_NULL : Op->IS_NULL, name, Nil, 0);
+			};
+
+			negated := false;
+			if(Current()->IsWord("not")) {
+				negated := true;
+				Next();
+			};
+
+			if(Current()->IsWord("between")) {
+				Next();
+				low := ParseConditionValue();
+				if(low = Nil | <>ExpectWord("and")) {
+					return Nil;
+				};
+				high := ParseConditionValue();
+				if(high = Nil) {
+					return Nil;
+				};
+				range := Predicate->New(Op->GE, name, low->GetValue(), low->GetParam())->AndAlso(Predicate->New(Op->LE, name, high->GetValue(), high->GetParam()));
+				return negated ? range->Negate() : range;
+			};
+
+			if(Current()->IsWord("in")) {
+				Next();
+				if(<>ExpectSymbol("(")) {
+					return Nil;
+				};
+
+				any : Predicate;
+				listing := true;
+				while(listing) {
+					entry := ParseConditionValue();
+					if(entry = Nil) {
+						return Nil;
+					};
+					equal := Predicate->New(Op->EQ, name, entry->GetValue(), entry->GetParam());
+					any := any = Nil ? equal : any->OrElse(equal);
+
+					if(Current()->IsSymbol(",")) {
+						Next();
+					}
+					else {
+						listing := false;
+					};
+				};
+
+				if(<>ExpectSymbol(")")) {
+					return Nil;
+				};
+				return negated ? any->Negate() : any;
+			};
+
+			op := Op->AND;
+			token := Current();
+			if(token->IsWord("like")) {
+				op := negated ? Op->NOT_LIKE : Op->LIKE;
+			}
+			else if(token->IsWord("matches")) {
+				op := negated ? Op->NOT_MATCHES : Op->MATCHES;
+			}
+			else if(token->IsSymbol("=")) {
+				op := negated ? Op->NE : Op->EQ;
+			}
+			else if(token->IsSymbol("<>")) {
+				op := negated ? Op->EQ : Op->NE;
+			}
+			else if(token->IsSymbol("<")) {
+				op := negated ? Op->GE : Op->LT;
+			}
+			else if(token->IsSymbol("<=")) {
+				op := negated ? Op->GT : Op->LE;
+			}
+			else if(token->IsSymbol(">")) {
+				op := negated ? Op->LE : Op->GT;
+			}
+			else if(token->IsSymbol(">=")) {
+				op := negated ? Op->LT : Op->GE;
+			}
+			else {
+				return FailCondition("a comparison (=, <>, <, <=, >, >=, LIKE, MATCHES, BETWEEN, IN or IS)");
+			};
+			Next();
+
+			value := ParseConditionValue();
+			if(value = Nil) {
+				return Nil;
+			};
+
+			return Predicate->New(op, name, value->GetValue(), value->GetParam());
+		}
+
+		# a value in a condition. 'true' and 'false' read as 1 and 0, as the old engine read
+		# them, so they match BOOL and INT columns; a bare word is a string, as it always was.
+		method : ParseConditionValue() ~ SqlValue {
+			token := Current();
+			if(token->IsWord("true") | token->IsWord("false")) {
+				Next();
+				return SqlValue->New(IntRef->New(token->IsWord("true") ? 1 : 0), 0);
+			};
+
+			if(token->IsWord("null")) {
+				Next();
+				return SqlValue->New(Nil, 0);
+			};
+
+			if(token->GetKind() = SqlToken->Kind->WORD) {
+				Next();
+				return SqlValue->New(token->GetText(), 0);
+			};
+
+			return ParseLiteral();
+		}
+
+		# a value in VALUES or SET: 'true' and 'false' are Bool values, NULL is an empty cell
+		method : ParseDataValue() ~ SqlValue {
+			token := Current();
+			if(token->IsWord("true") | token->IsWord("false")) {
+				Next();
+				return SqlValue->New(BoolRef->New(token->IsWord("true")), 0);
+			};
+
+			if(token->IsWord("null")) {
+				Next();
+				return SqlValue->New(Nil, 0);
+			};
+
+			return ParseLiteral();
+		}
+
+		method : ParseLiteral() ~ SqlValue {
+			token := Current();
+			select(token->GetKind()) {
+				label SqlToken->Kind->TEXT:
+				label SqlToken->Kind->NUMBER:
+				label SqlToken->Kind->DATE: {
+					Next();
+					return SqlValue->New(token->GetValue(), 0);
+				}
+
+				label SqlToken->Kind->PARAM: {
+					Next();
+					return SqlValue->New(Nil, token->GetValue()->As(IntRef)->Get());
+				}
+			};
+
+			Fail("a value");
+			return Nil;
+		}
+
+		# INSERT INTO t [(cols)] VALUES (v, ...), ...
+		method : ParseInsert() ~ SqlStatement {
+			statement := SqlStatement->New(SqlStatement->Kind->INSERT);
+			if(<>ExpectWord("into")) {
+				return Nil;
+			};
+
+			table_name := ParseName("a table name");
+			if(table_name = Nil) {
+				return Nil;
+			};
+			statement->SetTableName(table_name);
+
+			if(Current()->IsSymbol("(")) {
+				Next();
+				listing := true;
+				while(listing) {
+					name := ParseName("a column name");
+					if(name = Nil) {
+						return Nil;
+					};
+					statement->GetColumns()->AddBack(name);
+
+					if(Current()->IsSymbol(",")) {
+						Next();
+					}
+					else {
+						listing := false;
+					};
+				};
+				if(<>ExpectSymbol(")")) {
+					return Nil;
+				};
+			};
+
+			if(<>ExpectWord("values")) {
+				return Nil;
+			};
+
+			rows := true;
+			while(rows) {
+				if(<>ExpectSymbol("(")) {
+					return Nil;
+				};
+
+				row := Vector->New()<SqlValue>;
+				listing := true;
+				while(listing) {
+					value := ParseDataValue();
+					if(value = Nil) {
+						return Nil;
+					};
+					row->AddBack(value);
+
+					if(Current()->IsSymbol(",")) {
+						Next();
+					}
+					else {
+						listing := false;
+					};
+				};
+
+				if(<>ExpectSymbol(")")) {
+					return Nil;
+				};
+				statement->GetValues()->AddBack(row);
+
+				if(Current()->IsSymbol(",")) {
+					Next();
+				}
+				else {
+					rows := false;
+				};
+			};
+
+			return statement;
+		}
+
+		# UPDATE t SET c = v, ... [WHERE ...]
+		method : ParseUpdate() ~ SqlStatement {
+			statement := SqlStatement->New(SqlStatement->Kind->UPDATE);
+			table_name := ParseName("a table name");
+			if(table_name = Nil | <>ExpectWord("set")) {
+				return Nil;
+			};
+			statement->SetTableName(table_name);
+
+			row := Vector->New()<SqlValue>;
+			listing := true;
+			while(listing) {
+				name := ParseName("a column name");
+				if(name = Nil | <>ExpectSymbol("=")) {
+					return Nil;
+				};
+				value := ParseDataValue();
+				if(value = Nil) {
+					return Nil;
+				};
+				statement->GetColumns()->AddBack(name);
+				row->AddBack(value);
+
+				if(Current()->IsSymbol(",")) {
+					Next();
+				}
+				else {
+					listing := false;
+				};
+			};
+			statement->GetValues()->AddBack(row);
+
+			if(Current()->IsWord("where")) {
+				Next();
+				where := ParseOr();
+				if(where = Nil) {
+					return Nil;
+				};
+				statement->SetWhere(where);
+			};
+
+			return statement;
+		}
+
+		# DELETE FROM t [WHERE ...]
+		method : ParseDelete() ~ SqlStatement {
+			statement := SqlStatement->New(SqlStatement->Kind->DELETE);
+			if(<>ExpectWord("from")) {
+				return Nil;
+			};
+
+			table_name := ParseName("a table name");
+			if(table_name = Nil) {
+				return Nil;
+			};
+			statement->SetTableName(table_name);
+
+			if(Current()->IsWord("where")) {
+				Next();
+				where := ParseOr();
+				if(where = Nil) {
+					return Nil;
+				};
+				statement->SetWhere(where);
+			};
+
+			return statement;
+		}
+
+		# CREATE TABLE t (name type, ...)
+		method : ParseCreate() ~ SqlStatement {
+			statement := SqlStatement->New(SqlStatement->Kind->CREATE);
+			if(<>ExpectWord("table")) {
+				return Nil;
+			};
+
+			table_name := ParseName("a table name");
+			if(table_name = Nil | <>ExpectSymbol("(")) {
+				return Nil;
+			};
+			statement->SetTableName(table_name);
+
+			listing := true;
+			while(listing) {
+				name := ParseName("a column name");
+				if(name = Nil) {
+					return Nil;
+				};
+
+				type_token := Current();
+				if(type_token->GetKind() <> SqlToken->Kind->WORD | Plan->TypeFromName(type_token->GetText()) = ColumnType->NONE) {
+					return Fail("a column type (INT, FLOAT, STRING, BOOL, DATE or OBJECT)");
+				};
+				Next();
+
+				# VARCHAR(40) and the like: the length is accepted and ignored
+				if(Current()->IsSymbol("(")) {
+					Next();
+					if(ParseCount("a length") < 0 | <>ExpectSymbol(")")) {
+						return Nil;
+					};
+				};
+
+				statement->GetColumns()->AddBack(name);
+				statement->GetTypes()->AddBack(type_token->GetText());
+
+				if(Current()->IsSymbol(",")) {
+					Next();
+				}
+				else {
+					listing := false;
+				};
+			};
+
+			if(<>ExpectSymbol(")")) {
+				return Nil;
+			};
+
+			return statement;
+		}
+	}
+
+	# a file named in FROM or JOIN: its path (a glob may match several files), its format
+	# ('' to take it from the extension) and the options a function form gave
+	class : private : SqlFile {
+		@path : String;
+		@format : String;
+		@delimiter : Char;
+		@header : Bool;
+		@row : String;
+
+		New(path : String, format : String) {
+			@path := path;
+			@format := format;
+			@header := true;
+		}
+
+		method : public : GetPath() ~ String { return @path; }
+		method : public : GetFormat() ~ String { return @format; }
+		method : public : GetDelimiter() ~ Char { return @delimiter; }
+		method : public : SetDelimiter(delimiter : Char) ~ Nil { @delimiter := delimiter; }
+		method : public : HasHeader() ~ Bool { return @header; }
+		method : public : SetHeader(header : Bool) ~ Nil { @header := header; }
+		method : public : GetRow() ~ String { return @row; }
+		method : public : SetRow(row : String) ~ Nil { @row := row; }
+
+		# the cache key: the same path read another way is another table
+		method : public : GetKey() ~ String {
+			key := String->New(@format);
+			key += "|";
+			key += @delimiter->As(Int);
+			key += @header ? "|h|" : "|n|";
+			if(@row <> Nil) {
+				key += @row;
+			};
+			key += "|";
+			key += @path;
+			return key;
+		}
+
+		# a '?' in a URL starts its query string, so only a '*' in its path is a pattern
+		method : public : IsGlob() ~ Bool {
+			if(UrlCache->IsUrl(@path)) {
+				return UrlCache->PathPart(@path)->Has('*');
+			};
+
+			return @path->Has('*') | @path->Has('?');
+		}
+
+		# the name a query uses for the table when it gives no alias
+		method : public : GetDefaultName() ~ String {
+			base := SourceText->BaseName(@path, "file");
+			name := "";
+			each(i : base) {
+				c := base->Get(i);
+				if(c <> '*' & c <> '?') {
+					name->Append(c);
+				};
+			};
+
+			return name->Size() > 0 ? name : "files";
+		}
+	}
+
+	# a file table a catalog has read, and the files' state when it read them
+	class : private : FileEntry {
+		@stamp : String;
+		@table : Table;
+
+		New(stamp : String, table : Table) {
+			@stamp := stamp;
+			@table := table;
+		}
+
+		method : public : GetStamp() ~ String {
+			return @stamp;
+		}
+
+		method : public : GetTable() ~ Table {
+			return @table;
+		}
+	}
+
+	# reading files named in SQL: globs, formats by extension, several files as one table
+	class : private : FileTables {
+		# the files a path names, sorted; a glob may match several, in its last part only
+		function : Expand(path : String, error : StringHolder) ~ Vector<String> {
+			files := Vector->New()<String>;
+			if(path->Has('*') | path->Has('?')) {
+				cut := -1;
+				each(i : path) {
+					c := path->Get(i);
+					if(c = '/' | c = '\\') {
+						cut := i;
+					};
+				};
+
+				folder := cut < 0 ? "." : path->SubString(0, cut);
+				pattern := path->SubString(cut + 1, path->Size() - cut - 1);
+				if(folder->Has('*') | folder->Has('?')) {
+					error->Set("'{$path}': a pattern may only be in the file name, not the folder");
+					return Nil;
+				};
+
+				names := Directory->List(folder);
+				if(names = Nil) {
+					error->Set("'{$path}': cannot read folder '{$folder}'");
+					return Nil;
+				};
+
+				matched := Vector->New()<String>;
+				each(i : names) {
+					name := names[i];
+					if(<>name->Equals(".") & <>name->Equals("..") & GlobMatches(pattern, 0, name, 0)) {
+						full := cut < 0 ? String->New(name) : "{$folder}/{$name}";
+						if(<>Directory->Exists(full)) {
+							matched->AddBack(full);
+						};
+					};
+				};
+
+				if(matched->Size() = 0) {
+					error->Set("no files match '{$path}'");
+					return Nil;
+				};
+
+				# in name order, so the rows come in a predictable order
+				sorted := String->New[matched->Size()];
+				each(i : sorted) {
+					sorted[i] := matched->Get(i);
+				};
+				SortTexts(sorted);
+				each(i : sorted) {
+					files->AddBack(sorted[i]);
 				};
 			}
 			else {
-				error->Set("*** General error ***");
+				if(<>File->Exists(path)) {
+					error->Set("no file '{$path}'");
+					return Nil;
+				};
+				files->AddBack(path);
+			};
+
+			return files;
+		}
+
+		# '*' matches any run of characters, '?' any one character
+		function : GlobMatches(pattern : String, p : Int, text : String, t : Int) ~ Bool {
+			while(p < pattern->Size()) {
+				c := pattern->Get(p);
+				if(c = '*') {
+					for(k := t; k <= text->Size(); k += 1;) {
+						if(GlobMatches(pattern, p + 1, text, k)) {
+							return true;
+						};
+					};
+					return false;
+				};
+
+				if(t >= text->Size() | (c <> '?' & c <> text->Get(t))) {
+					return false;
+				};
+				p += 1;
+				t += 1;
+			};
+
+			return t = text->Size();
+		}
+
+		function : SortTexts(values : String[]) ~ Nil {
+			for(i := 1; i < values->Size(); i += 1;) {
+				value := values[i];
+				j := i - 1;
+				while(j >= 0 & values[j]->Compare(value) > 0) {
+					values[j + 1] := values[j];
+					j -= 1;
+				};
+				values[j + 1] := value;
+			};
+		}
+
+		# what a set of files looked like: names, sizes and modification times
+		function : Stamp(files : Vector<String>) ~ String {
+			stamp := "";
+			each(i : files) {
+				name := files->Get(i);
+				size := File->Size(name);
+				modified := File->ModifiedTime(name);
+				when := modified <> Nil ? modified->ToString() : "";
+				stamp += "{$name}|{$size}|{$when};";
+			};
+
+			return stamp;
+		}
+
+		# the format of a file: the function form's, or its extension's (after any '.gz')
+		function : FormatOf(file : SqlFile, path : String) ~ String {
+			if(file->GetFormat()->Size() > 0) {
+				return file->GetFormat();
+			};
+
+			lower := path->ToLower();
+			if(UrlCache->IsUrl(lower)) {
+				lower := UrlCache->PathPart(lower);
+			};
+			if(lower->EndsWith(".gz")) {
+				lower := lower->SubString(0, lower->Size() - 3);
+			};
+
+			if(lower->EndsWith(".csv") | lower->EndsWith(".txt")) {
+				return "csv";
+			}
+			else if(lower->EndsWith(".tsv")) {
+				return "tsv";
+			}
+			else if(lower->EndsWith(".jsonl") | lower->EndsWith(".ndjson")) {
+				return "jsonl";
+			}
+			else if(lower->EndsWith(".json")) {
+				return "json";
+			}
+			else if(lower->EndsWith(".xml")) {
+				return "xml";
+			};
+
+			return "";
+		}
+
+		# one file as a table
+		function : ReadOne(file : SqlFile, path : String, name : String, error : StringHolder) ~ Table {
+			format := FormatOf(file, path);
+			table : Table;
+			reason : String;
+			if(format->Equals("csv") | format->Equals("tsv")) {
+				delimiter := file->GetDelimiter();
+				if(delimiter = '\0') {
+					delimiter := format->Equals("tsv") ? '\t' : ',';
+				};
+				source := CsvSource->New(path, name, delimiter);
+				source->SetHeader(file->HasHeader());
+				table := source->Read(Nil);
+				reason := source->GetError();
+			}
+			else if(format->Equals("jsonl")) {
+				source := JsonLinesSource->New(path, name);
+				table := source->Read();
+				reason := source->GetError();
+			}
+			else if(format->Equals("json")) {
+				source := JsonSource->New(path, name);
+				table := source->Read();
+				reason := source->GetError();
+			}
+			else if(format->Equals("xml")) {
+				if(file->GetRow() = Nil) {
+					error->Set("'{$path}': an XML file needs its row element, as xml('{$path}', row => 'item')");
+					return Nil;
+				};
+				source := XmlSource->New(path, name, file->GetRow());
+				table := source->Read();
+				reason := source->GetError();
+			}
+			else {
+				error->Set("'{$path}': unknown file type; name it with csv(), tsv(), json(), jsonl() or xml()");
 				return Nil;
 			};
 
-			plan->SetTableName(source_term->GetValue()->As(String));
-			where := source_term->GetLeft();
-			if(where <> Nil & where->GetType() = Token->Type->WHERE) {
-				condition := plan->Convert(where->GetLeft());
-				if(condition = Nil) {
-					error->Set(expr->GetType() = Token->Type->SELECT ? "*** Select error ***" : "*** From error ***");
-					return Nil;
-				};
-				plan->SetCondition(condition);
+			if(table = Nil) {
+				error->Set(reason);
 			};
 
-			return plan;
+			return table;
 		}
 
-		method : public : SetSelect() ~ Nil {
-			@is_select := true;
+		# the rows of several tables as one, with a '_file' column naming each row's file;
+		# a column some files lack is empty for their rows
+		function : Combine(name : String, tables : Vector<Table>, files : Vector<String>) ~ Table {
+			names := Vector->New()<String>;
+			each(t : tables) {
+				columns := tables->Get(t)->GetColumnNames();
+				for(c := 1; c < columns->Size(); c += 1;) {
+					known := false;
+					each(k : names) {
+						if(names->Get(k)->Equals(columns[c])) {
+							known := true;
+						};
+					};
+					if(<>known) {
+						names->AddBack(columns[c]);
+					};
+				};
+			};
+			names->AddBack("_file");
+
+			column_names := String->New[names->Size()];
+			each(i : column_names) {
+				column_names[i] := names->Get(i);
+			};
+
+			combined := Table->New(name, column_names);
+			file_column := column_names->Size();
+			each(t : tables) {
+				table := tables->Get(t);
+				sources := Int->New[column_names->Size() - 1];
+				each(c : sources) {
+					sources[c] := table->GetIndex(column_names[c]);
+				};
+
+				rows := table->LiveRows();
+				each(r : rows) {
+					row := combined->Insert();
+					each(c : sources) {
+						if(sources[c] > 0) {
+							value := table->GetColumn(sources[c])->Get(rows[r]);
+							if(value <> Nil) {
+								row->Set(c + 1, value);
+							};
+						};
+					};
+					row->Set(file_column, files->Get(t));
+				};
+			};
+
+			return combined;
+		}
+	}
+
+	# a parsed statement, cached by Table and Catalog and run as often as asked
+	class : private : Plan {
+		@statement : SqlStatement;
+
+		New(statement : SqlStatement) {
+			@statement := statement;
 		}
 
-		method : public : SetColumns(columns : String[]) ~ Nil {
-			@columns := columns;
-		}
+		# parses a statement; Nil with 'error' set on a syntax error
+		function : Parse(text : String, error : StringHolder) ~ Plan {
+			parser := SqlParser->New();
+			statement := parser->Parse(text);
+			if(statement = Nil) {
+				error->Set(parser->GetError());
+				return Nil;
+			};
 
-		method : public : SetDistinct(name : String) ~ Nil {
-			@distinct := name;
-		}
-
-		method : public : SetOrderBy(name : String) ~ Nil {
-			@order_by := name;
-		}
-
-		method : public : SetTableName(name : String) ~ Nil {
-			@table_name := name;
-		}
-
-		method : public : SetCondition(condition : Predicate) ~ Nil {
-			@condition := condition;
+			return Plan->New(statement);
 		}
 
 		method : public : GetParamCount() ~ Int {
-			return @params;
+			return @statement->GetParamCount();
 		}
 
-		# a parsed 'where' term as a Predicate
-		method : public : Convert(term : Term) ~ Predicate {
-			if(term = Nil) {
-				return Nil;
-			};
-
-			left := term->GetLeft();
-			right := term->GetRight();
-			if(left = Nil | right = Nil) {
-				return Nil;
-			};
-
-			select(term->GetType()) {
-				label Token->Type->AND: {
-					l := Convert(left);
-					r := Convert(right);
-					if(l = Nil | r = Nil) {
-						return Nil;
-					};
-					return l->AndAlso(r);
-				}
-
-				label Token->Type->OR: {
-					l := Convert(left);
-					r := Convert(right);
-					if(l = Nil | r = Nil) {
-						return Nil;
-					};
-					return l->OrElse(r);
-				}
-			};
-
-			op := ToOp(term->GetType(), term->GetNot());
-			if(op = Op->AND) {
-				return Nil;
-			};
-
-			name := left->GetValue()->As(String);
-			if(right->GetType() = Token->Type->PARAM) {
-				@params += 1;
-				return Predicate->New(op, name, Nil, @params);
-			};
-
-			return Predicate->New(op, name, right->GetValue(), 0);
+		# whether the statement is a SELECT, which returns rows
+		method : public : IsQuery() ~ Bool {
+			return @statement->GetKind() = SqlStatement->Kind->QUERY;
 		}
 
-		# 'not' negates any operator: 'not =' is '<>', 'not >' is '<=' and so on; AND for a
-		# term that is not a comparison
-		function : ToOp(type : Token->Type, is_not : Bool) ~ Op {
-			select(type) {
-				label Token->Type->EQUAL: { return is_not ? Op->NE : Op->EQ; }
-				label Token->Type->NOT_EQUAL: { return is_not ? Op->EQ : Op->NE; }
-				label Token->Type->GREATER: { return is_not ? Op->LE : Op->GT; }
-				label Token->Type->LESS: { return is_not ? Op->GE : Op->LT; }
-				label Token->Type->GREATER_EQUAL: { return is_not ? Op->LT : Op->GE; }
-				label Token->Type->LESS_EQUAL: { return is_not ? Op->GT : Op->LE; }
-				label Token->Type->LIKE: { return is_not ? Op->NOT_LIKE : Op->LIKE; }
+		# a CREATE TABLE type name as a column type; NONE if it is not one
+		function : TypeFromName(name : String) ~ ColumnType {
+			lower := name->ToLower();
+			if(lower->Equals("int") | lower->Equals("integer") | lower->Equals("bigint")) {
+				return ColumnType->INT;
+			}
+			else if(lower->Equals("float") | lower->Equals("real") | lower->Equals("double")) {
+				return ColumnType->FLOAT;
+			}
+			else if(lower->Equals("string") | lower->Equals("text") | lower->Equals("varchar") | lower->Equals("char")) {
+				return ColumnType->STRING;
+			}
+			else if(lower->Equals("bool") | lower->Equals("boolean")) {
+				return ColumnType->BOOL;
+			}
+			else if(lower->Equals("date") | lower->Equals("datetime") | lower->Equals("timestamp")) {
+				return ColumnType->DATE;
+			}
+			else if(lower->Equals("object")) {
+				return ColumnType->OBJECT;
 			};
 
-			return Op->AND;
+			return ColumnType->NONE;
 		}
 
-		# runs the plan against a table; Nil with 'error' set on failure
+		# a SELECT over one table; a join needs a Catalog
 		method : public : Run(table : Table, params : Compare[], error : StringHolder) ~ View {
-			if(@table_name = Nil | <>@table_name->Equals(table->GetName())) {
-				error->Set("the query names table '{$@table_name}', not '{$(table->GetName())}'");
+			if(<>IsQuery()) {
+				error->Set("only SELECT returns rows; run INSERT, UPDATE, DELETE and CREATE with Execute");
 				return Nil;
 			};
 
+			if(@statement->GetJoins()->Size() > 0) {
+				error->Set("a join reads more than one table; run it through a Catalog");
+				return Nil;
+			};
+
+			if(@statement->GetFile() <> Nil) {
+				error->Set("a file in FROM is read through a Catalog: Catalog->Run, or a catalog's Query");
+				return Nil;
+			};
+
+			if(<>@statement->GetTableName()->Equals(table->GetName())) {
+				error->Set("the query names table '{$(@statement->GetTableName())}', not '{$(table->GetName())}'");
+				return Nil;
+			};
+
+			tables := Table->New[1];
+			tables[0] := table;
+			return SqlRun->New(@statement, tables, params, error)->Select();
+		}
+
+		# a SELECT over the tables of a catalog
+		method : public : RunIn(catalog : Catalog, params : Compare[], error : StringHolder) ~ View {
+			if(<>IsQuery()) {
+				error->Set("only SELECT returns rows; run INSERT, UPDATE, DELETE and CREATE with Execute");
+				return Nil;
+			};
+
+			joins := @statement->GetJoins();
+			tables := Table->New[joins->Size() + 1];
+			tables[0] := Source(catalog, @statement->GetTableName(), @statement->GetFile(), error);
+			if(tables[0] = Nil) {
+				return Nil;
+			};
+
+			each(i : joins) {
+				join := joins->Get(i);
+				tables[i + 1] := Source(catalog, join->GetTableName(), join->GetFile(), error);
+				if(tables[i + 1] = Nil) {
+					return Nil;
+				};
+			};
+
+			return SqlRun->New(@statement, tables, params, error)->Select();
+		}
+
+		# INSERT, UPDATE or DELETE on one table: the number of rows changed, -1 on error
+		method : public : Execute(table : Table, params : Compare[], error : StringHolder) ~ Int {
+			if(IsQuery()) {
+				error->Set("SELECT returns rows; run it with Query");
+				return -1;
+			};
+
+			if(@statement->GetKind() = SqlStatement->Kind->CREATE) {
+				error->Set("CREATE TABLE adds a table to a Catalog; run it through one");
+				return -1;
+			};
+
+			if(<>@statement->GetTableName()->Equals(table->GetName())) {
+				error->Set("the statement names table '{$(@statement->GetTableName())}', not '{$(table->GetName())}'");
+				return -1;
+			};
+
+			return Change(table, params, error);
+		}
+
+		# INSERT, UPDATE, DELETE or CREATE against a catalog
+		method : public : ExecuteIn(catalog : Catalog, params : Compare[], error : StringHolder) ~ Int {
+			if(IsQuery()) {
+				error->Set("SELECT returns rows; run it with Query");
+				return -1;
+			};
+
+			name := @statement->GetTableName();
+			if(@statement->GetKind() = SqlStatement->Kind->CREATE) {
+				if(catalog->Has(name)) {
+					error->Set("a table named '{$name}' already exists");
+					return -1;
+				};
+
+				columns := @statement->GetColumns();
+				type_names := @statement->GetTypes();
+				names := String->New[columns->Size()];
+				types := ColumnType->New[columns->Size()];
+				each(i : names) {
+					names[i] := columns->Get(i);
+					each(j : i) {
+						if(names[j]->Equals(names[i])) {
+							error->Set("column '{$(names[i])}' is named twice");
+							return -1;
+						};
+					};
+					types[i] := TypeFromName(type_names->Get(i));
+				};
+				catalog->Add(Table->New(name, names, types));
+				return 0;
+			};
+
+			table := Lookup(catalog, name, error);
+			if(table = Nil) {
+				return -1;
+			};
+
+			return Change(table, params, error);
+		}
+
+		# a table of the catalog, or a file it reads through its cache
+		method : Source(catalog : Catalog, name : String, file : SqlFile, error : StringHolder) ~ Table {
+			if(file <> Nil) {
+				return catalog->ReadFile(file, name, error);
+			};
+
+			return Lookup(catalog, name, error);
+		}
+
+		method : Lookup(catalog : Catalog, name : String, error : StringHolder) ~ Table {
+			table := catalog->Get(name);
+			if(table = Nil) {
+				error->Set("no table named '{$name}'");
+			};
+
+			return table;
+		}
+
+		method : Change(table : Table, params : Compare[], error : StringHolder) ~ Int {
+			select(@statement->GetKind()) {
+				label SqlStatement->Kind->INSERT: {
+					return Insert(table, params, error);
+				}
+
+				label SqlStatement->Kind->UPDATE: {
+					return Update(table, params, error);
+				}
+
+				label SqlStatement->Kind->DELETE: {
+					return Delete(table, params, error);
+				}
+			};
+
+			error->Set("not a statement that changes a table");
+			return -1;
+		}
+
+		# the rows a WHERE clause picks, or every live row; Nil on error
+		method : Matching(table : Table, params : Compare[], error : StringHolder) ~ Int[] {
+			where := @statement->GetWhere();
+			if(where = Nil) {
+				return table->LiveRows();
+			};
+
+			filter := Filter->Bind(where, table, params, error);
+			if(filter = Nil) {
+				return Nil;
+			};
+
+			return filter->Apply(table, Nil);
+		}
+
+		# column indexes for names, refusing unknown names and the key column; Nil on error
+		method : Targets(table : Table, names : Vector<String>, error : StringHolder) ~ Int[] {
+			indexes := Int->New[names->Size()];
+			each(i : indexes) {
+				index := table->GetIndex(names->Get(i));
+				if(index < 0) {
+					error->Set("unknown column '{$(names->Get(i))}'");
+					return Nil;
+				};
+
+				if(index = 0) {
+					error->Set("the key column 'pk' is assigned by the table and cannot be set");
+					return Nil;
+				};
+				indexes[i] := index;
+			};
+
+			return indexes;
+		}
+
+		# all rows or none: a value a column refuses removes the rows already added
+		method : Insert(table : Table, params : Compare[], error : StringHolder) ~ Int {
+			names := @statement->GetColumns();
+			if(names->Size() = 0) {
+				all := table->GetColumnNames();
+				for(i := 1; i < all->Size(); i += 1;) {
+					names->AddBack(all[i]);
+				};
+			};
+
+			indexes := Targets(table, names, error);
+			if(indexes = Nil) {
+				return -1;
+			};
+
+			rows := @statement->GetValues();
+			each(i : rows) {
+				if(rows->Get(i)->Size() <> indexes->Size()) {
+					error->Set("row {$(i + 1)} has {$(rows->Get(i)->Size())} values for {$(indexes->Size())} columns");
+					return -1;
+				};
+			};
+
+			added := Vector->New()<IntRef>;
+			ok := BoolRef->New(true);
+			each(i : rows) {
+				values := rows->Get(i);
+				row := table->Insert();
+				added->AddBack(row->GetKey());
+				each(j : indexes) {
+					value := values->Get(j)->Resolve(params, ok);
+					if(<>ok->Get()) {
+						error->Set("no value bound for placeholder {$(values->Get(j)->GetParam())}");
+						Undo(table, added);
+						return -1;
+					};
+
+					if(<>row->Set(indexes[j], value)) {
+						error->Set(table->GetColumn(indexes[j])->GetError());
+						Undo(table, added);
+						return -1;
+					};
+				};
+			};
+
+			return rows->Size();
+		}
+
+		method : Undo(table : Table, added : Vector<IntRef>) ~ Nil {
+			each(i : added) {
+				table->Delete(added->Get(i)->Get());
+			};
+		}
+
+		# all cells or none: a value a column refuses puts back the cells already changed
+		method : Update(table : Table, params : Compare[], error : StringHolder) ~ Int {
+			indexes := Targets(table, @statement->GetColumns(), error);
+			if(indexes = Nil) {
+				return -1;
+			};
+
+			values := @statement->GetValues()->Get(0);
+			resolved := Compare->New[indexes->Size()];
+			ok := BoolRef->New(true);
+			each(i : indexes) {
+				resolved[i] := values->Get(i)->Resolve(params, ok);
+				if(<>ok->Get()) {
+					error->Set("no value bound for placeholder {$(values->Get(i)->GetParam())}");
+					return -1;
+				};
+			};
+
+			rows := Matching(table, params, error);
+			if(rows = Nil) {
+				return -1;
+			};
+
+			# the cells as they were, to put back if a later one is refused
+			old_columns := Vector->New()<IntRef>;
+			old_rows := Vector->New()<IntRef>;
+			old_values := Vector->New()<Compare>;
+			each(i : rows) {
+				row := rows[i];
+				each(j : indexes) {
+					column := table->GetColumn(indexes[j]);
+					old_columns->AddBack(indexes[j]);
+					old_rows->AddBack(row);
+					old_values->AddBack(column->Get(row));
+					if(<>column->Set(row, resolved[j])) {
+						error->Set(column->GetError());
+						k := old_values->Size() - 1;
+						while(k >= 0) {
+							table->GetColumn(old_columns->Get(k)->Get())->Set(old_rows->Get(k)->Get(), old_values->Get(k));
+							k -= 1;
+						};
+						return -1;
+					};
+				};
+			};
+
+			return rows->Size();
+		}
+
+		method : Delete(table : Table, params : Compare[], error : StringHolder) ~ Int {
+			rows := Matching(table, params, error);
+			if(rows = Nil) {
+				return -1;
+			};
+
+			keys := table->GetColumn(0);
+			each(i : rows) {
+				table->Delete(keys->GetInt(rows[i]));
+			};
+
+			return rows->Size();
+		}
+	}
+
+	# a list of row numbers, for code that needs an array of them
+	class : private : SqlRows {
+		@values : Int[];
+
+		New(values : Int[]) {
+			@values := values;
+		}
+
+		method : public : Get() ~ Int[] {
+			return @values;
+		}
+
+		method : public : Set(values : Int[]) ~ Nil {
+			@values := values;
+		}
+	}
+
+	# a column a query names, found in one of the tables it reads
+	class : private : SqlRef {
+		@source : Int;
+		@column : String;
+
+		New(source : Int, column : String) {
+			@source := source;
+			@column := column;
+		}
+
+		method : public : GetSource() ~ Int {
+			return @source;
+		}
+
+		method : public : GetColumn() ~ String {
+			return @column;
+		}
+	}
+
+	# one run of a SELECT: the pipeline is join, WHERE, GROUP BY and HAVING (or DISTINCT),
+	# ORDER BY, LIMIT and OFFSET, then the select list
+	class : private : SqlRun {
+		@statement : SqlStatement;
+		@tables : Table[];
+		@aliases : String[];
+		@params : Compare[];
+		@error : StringHolder;
+		@work : Table;
+		@joined : Bool;
+
+		New(statement : SqlStatement, tables : Table[], params : Compare[], error : StringHolder) {
+			@statement := statement;
+			@tables := tables;
+			@params := params;
+			@error := error;
+			@joined := tables->Size() > 1;
+
+			joins := statement->GetJoins();
+			@aliases := String->New[tables->Size()];
+			@aliases[0] := statement->GetAlias() <> Nil ? statement->GetAlias() : statement->GetTableName();
+			each(i : joins) {
+				join := joins->Get(i);
+				@aliases[i + 1] := join->GetAlias() <> Nil ? join->GetAlias() : join->GetTableName();
+			};
+		}
+
+		method : Fail(message : String) ~ View {
+			@error->Set(message);
+			return Nil;
+		}
+
+		# a name as a table and column: 'alias.column' when the alias is one of the query's
+		# tables, otherwise a column name that exactly one table has (a dotted name such as a
+		# flattened JSON field is a plain column name); Nil with the error set otherwise
+		method : Resolve(name : String) ~ SqlRef {
+			dot := name->Find('.');
+			if(dot > 0) {
+				prefix := name->SubString(0, dot);
+				rest := name->SubString(dot + 1, name->Size() - dot - 1);
+				each(s : @aliases) {
+					if(@aliases[s]->Equals(prefix) & @tables[s]->GetIndex(rest) > -1) {
+						return SqlRef->New(s, rest);
+					};
+				};
+			};
+
+			found : SqlRef;
+			each(s : @tables) {
+				if(@tables[s]->GetIndex(name) > -1) {
+					if(found <> Nil) {
+						@error->Set("column '{$name}' is in more than one table; name it as table.{$name}");
+						return Nil;
+					};
+					found := SqlRef->New(s, name);
+				};
+			};
+
+			if(found = Nil) {
+				@error->Set("unknown column '{$name}'");
+			};
+
+			return found;
+		}
+
+		# the name a resolved column has in the working table
+		method : WorkName(ref : SqlRef) ~ String {
+			if(@joined) {
+				return "{$(@aliases[ref->GetSource()])}.{$(ref->GetColumn())}";
+			};
+
+			return ref->GetColumn();
+		}
+
+		# a query's name for a column as its working-table index; -1 with the error set
+		method : WorkIndex(name : String) ~ Int {
+			ref := Resolve(name);
+			if(ref = Nil) {
+				return -1;
+			};
+
+			return @work->GetIndex(WorkName(ref));
+		}
+
+		# a condition with its column names replaced: by working-table names, or, for a
+		# condition pushed below a join, by the plain names of that one table
+		method : Rename(pred : Predicate, plain : Bool) ~ Predicate {
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				left := Rename(pred->GetLeft(), plain);
+				right := Rename(pred->GetRight(), plain);
+				if(left = Nil | right = Nil) {
+					return Nil;
+				};
+				return Predicate->New(op, left, right);
+			}
+			else if(op = Op->NOT) {
+				inner := Rename(pred->GetLeft(), plain);
+				if(inner = Nil) {
+					return Nil;
+				};
+				return inner->Negate();
+			};
+
+			ref := Resolve(pred->GetColumn());
+			if(ref = Nil) {
+				return Nil;
+			};
+
+			name := plain ? ref->GetColumn() : WorkName(ref);
+			return Predicate->New(op, name, pred->GetValue(), pred->GetParam());
+		}
+
+		# the one table every column in a condition comes from; -1 for several, -2 on error
+		method : SourceOf(pred : Predicate) ~ Int {
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				left := SourceOf(pred->GetLeft());
+				right := SourceOf(pred->GetRight());
+				if(left = -2 | right = -2) {
+					return -2;
+				};
+				return left = right ? left : -1;
+			}
+			else if(op = Op->NOT) {
+				return SourceOf(pred->GetLeft());
+			};
+
+			ref := Resolve(pred->GetColumn());
+			if(ref = Nil) {
+				return -2;
+			};
+
+			return ref->GetSource();
+		}
+
+		# the parts of a condition joined by AND
+		function : Conjuncts(pred : Predicate, parts : Vector<Predicate>) ~ Nil {
+			if(pred->GetOp() = Op->AND) {
+				Conjuncts(pred->GetLeft(), parts);
+				Conjuncts(pred->GetRight(), parts);
+			}
+			else {
+				parts->AddBack(pred);
+			};
+		}
+
+		method : public : Select() ~ View {
+			# the tables need distinct names before columns can be told apart
+			each(i : @aliases) {
+				each(j : i) {
+					if(@aliases[j]->Equals(@aliases[i])) {
+						return Fail("table '{$(@aliases[i])}' appears twice; give each an alias");
+					};
+				};
+			};
+
+			where := @statement->GetWhere();
 			rows : Int[];
-			if(@condition <> Nil) {
-				filter := Filter->Bind(@condition, table, params, error);
+			if(@joined) {
+				where := Join(where);
+				if(@work = Nil) {
+					return Nil;
+				};
+			}
+			else {
+				@work := @tables[0];
+			};
+
+			if(where <> Nil) {
+				renamed := Rename(where, false);
+				if(renamed = Nil) {
+					return Nil;
+				};
+
+				filter := Filter->Bind(renamed, @work, @params, @error);
 				if(filter = Nil) {
 					return Nil;
 				};
-				all_rows : Int[];
-				rows := filter->Apply(table, all_rows);
+
+				rows := filter->Apply(@work, Nil);
 			}
 			else {
-				rows := table->LiveRows();
+				rows := @work->LiveRows();
 			};
 
-			if(@distinct <> Nil) {
-				index := table->GetIndex(@distinct);
-				rows := index < 1 ? Int->New[0] : table->UniqueRows(index, rows);
+			if(@statement->GetGroup()->Size() > 0 | @statement->HasAggregates()) {
+				return Group(rows);
 			};
 
-			if(@order_by <> Nil) {
-				column := table->GetColumn(@order_by);
-				if(column <> Nil) {
-					rows := Sorter->New(column, false)->Sort(rows);
+			return Plain(rows);
+		}
+
+		#
+		# Joins
+		#
+
+		# joins the tables into a working table of the columns the query uses, and returns the
+		# part of the WHERE clause still to apply; @work stays Nil on error. A condition on one
+		# table is applied to that table before the join, except on the right of a LEFT JOIN,
+		# where an unmatched row must still reach the WHERE clause as empty cells.
+		method : Join(where : Predicate) ~ Predicate {
+			count := @tables->Size();
+			joins := @statement->GetJoins();
+			pushed := Predicate->New[count];
+			remaining : Predicate;
+			if(where <> Nil) {
+				parts := Vector->New()<Predicate>;
+				Conjuncts(where, parts);
+				each(i : parts) {
+					part := parts->Get(i);
+					source := SourceOf(part);
+					if(source = -2) {
+						return Nil;
+					};
+
+					movable := source = 0 | (source > 0 & <>joins->Get(source - 1)->IsLeft());
+					if(movable) {
+						renamed := Rename(part, true);
+						if(renamed = Nil) {
+							return Nil;
+						};
+						pushed[source] := pushed[source] = Nil ? renamed : pushed[source]->AndAlso(renamed);
+					}
+					else {
+						remaining := remaining = Nil ? part : remaining->AndAlso(part);
+					};
 				};
 			};
 
-			names := @columns;
-			if(names = Nil) {
-				all := table->GetColumnNames();
-				names := String->New[all->Size() - 1];
-				each(i : names) {
-					names[i] := all[i + 1];
+			# each table's rows, after its own conditions
+			base := SqlRows->New[count];
+			each(s : base) {
+				if(pushed[s] <> Nil) {
+					filter := Filter->Bind(pushed[s], @tables[s], @params, @error);
+					if(filter = Nil) {
+						return Nil;
+					};
+					base[s] := SqlRows->New(filter->Apply(@tables[s], Nil));
+				}
+				else {
+					base[s] := SqlRows->New(@tables[s]->LiveRows());
 				};
 			};
 
-			# an unknown column in the list reads as empty cells, as it always has
-			columns := Int->New[names->Size()];
+			# positions: one row number per table, -1 where a LEFT JOIN found no match
+			positions := SqlRows->New[count];
+			positions[0] := base[0];
+			size := base[0]->Get()->Size();
+			each(k : joins) {
+				join := joins->Get(k);
+				right := k + 1;
+				first := Resolve(join->GetLeftKey());
+				second := Resolve(join->GetRightKey());
+				if(first = Nil | second = Nil) {
+					return Nil;
+				};
+
+				right_ref : SqlRef;
+				left_ref : SqlRef;
+				if(second->GetSource() = right & first->GetSource() < right) {
+					left_ref := first;
+					right_ref := second;
+				}
+				else if(first->GetSource() = right & second->GetSource() < right) {
+					left_ref := second;
+					right_ref := first;
+				}
+				else {
+					@error->Set("the ON condition of the join with '{$(@aliases[right])}' must compare one of its columns with a column of an earlier table");
+					return Nil;
+				};
+
+				matcher := SqlKeyMatcher->New(@tables[right]->GetColumn(right_ref->GetColumn()), base[right]->Get(),
+					@tables[left_ref->GetSource()]->GetColumn(left_ref->GetColumn()));
+				left_rows := positions[left_ref->GetSource()]->Get();
+
+				# the matches of each position, kept in the left side's order, then the right's
+				capacity := size > 16 ? size : 16;
+				joined_rows := SqlRows->New[right + 1];
+				each(s : joined_rows) {
+					joined_rows[s] := SqlRows->New(Int->New[capacity]);
+				};
+				n := 0;
+				for(i := 0; i < size; i += 1;) {
+					start := -1;
+					finish := -1;
+					if(left_rows[i] > -1) {
+						range := matcher->Find(left_rows[i]);
+						if(range <> Nil) {
+							start := range[0];
+							finish := range[1];
+						};
+					};
+
+					emit := finish - start;
+					if(start < 0) {
+						emit := join->IsLeft() ? 1 : 0;
+					};
+
+					if(n + emit > capacity) {
+						while(n + emit > capacity) {
+							capacity *= 2;
+						};
+						each(s : joined_rows) {
+							joined_rows[s]->Set(Column->GrowInts(joined_rows[s]->Get(), capacity));
+						};
+					};
+
+					for(e := 0; e < emit; e += 1;) {
+						for(s := 0; s < right; s += 1;) {
+							target := joined_rows[s]->Get();
+							earlier := positions[s]->Get();
+							target[n] := earlier[i];
+						};
+						target := joined_rows[right]->Get();
+						target[n] := start < 0 ? -1 : matcher->RowAt(start + e);
+						n += 1;
+					};
+				};
+
+				each(s : joined_rows) {
+					positions[s] := SqlRows->New(Filter->Trim(joined_rows[s]->Get(), n));
+				};
+				size := n;
+			};
+
+			# the working table holds only the columns the query reads
+			wanted := Vector->New()<SqlRef>;
+			if(<>Wanted(wanted, remaining)) {
+				return Nil;
+			};
+
+			names := String->New[wanted->Size()];
 			each(i : names) {
-				columns[i] := table->GetIndex(names[i]);
+				names[i] := WorkName(wanted->Get(i));
 			};
 
-			return View->New(table, columns, names, rows);
+			work := Table->New("<join>", names);
+			work->Fill(size);
+			each(i : names) {
+				ref := wanted->Get(i);
+				source := @tables[ref->GetSource()];
+				work->GetColumn(i + 1)->Gather(source->GetColumn(ref->GetColumn()), positions[ref->GetSource()]->Get());
+			};
+			@work := work;
+
+			return remaining;
+		}
+
+		# adds a column to the working set once
+		method : Want(wanted : Vector<SqlRef>, ref : SqlRef) ~ Nil {
+			each(i : wanted) {
+				known := wanted->Get(i);
+				if(known->GetSource() = ref->GetSource() & known->GetColumn()->Equals(ref->GetColumn())) {
+					return;
+				};
+			};
+			wanted->AddBack(ref);
+		}
+
+		method : WantName(wanted : Vector<SqlRef>, name : String) ~ Bool {
+			ref := Resolve(name);
+			if(ref = Nil) {
+				return false;
+			};
+			Want(wanted, ref);
+
+			return true;
+		}
+
+		method : WantCondition(wanted : Vector<SqlRef>, pred : Predicate) ~ Bool {
+			if(pred = Nil) {
+				return true;
+			};
+
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				return WantCondition(wanted, pred->GetLeft()) & WantCondition(wanted, pred->GetRight());
+			}
+			else if(op = Op->NOT) {
+				return WantCondition(wanted, pred->GetLeft());
+			};
+
+			return WantName(wanted, pred->GetColumn());
+		}
+
+		# every column the rest of the query reads, in the order it shows them
+		method : Wanted(wanted : Vector<SqlRef>, remaining : Predicate) ~ Bool {
+			items := @statement->GetItems();
+			if(@statement->IsStar()) {
+				each(s : @tables) {
+					names := @tables[s]->GetColumnNames();
+					for(c := 1; c < names->Size(); c += 1;) {
+						Want(wanted, SqlRef->New(s, names[c]));
+					};
+				};
+			}
+			else {
+				each(i : items) {
+					item := items->Get(i);
+					if(<>item->GetName()->Equals("*") & <>WantName(wanted, item->GetName())) {
+						return false;
+					};
+				};
+			};
+
+			extra := @statement->GetExtra();
+			each(i : extra) {
+				if(<>extra->Get(i)->GetName()->Equals("*") & <>WantName(wanted, extra->Get(i)->GetName())) {
+					return false;
+				};
+			};
+
+			group := @statement->GetGroup();
+			each(i : group) {
+				if(<>WantName(wanted, group->Get(i))) {
+					return false;
+				};
+			};
+
+			# an ORDER BY name may be a select-list label rather than a column
+			order := @statement->GetOrder();
+			each(i : order) {
+				name := order->Get(i)->GetName();
+				if(name <> Nil & ItemByLabel(name) < 0 & ItemByCall(name) < 0 & <>WantName(wanted, name)) {
+					return false;
+				};
+			};
+
+			return WantCondition(wanted, remaining);
+		}
+
+		# the select-list position whose label is 'name', or -1
+		method : ItemByLabel(name : String) ~ Int {
+			items := @statement->GetItems();
+			each(i : items) {
+				if(items->Get(i)->GetLabel()->Equals(name)) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+
+		# the select-list position of the aggregate written as 'call', or -1
+		method : ItemByCall(call : String) ~ Int {
+			items := @statement->GetItems();
+			each(i : items) {
+				item := items->Get(i);
+				if(item->IsAggregate() & item->GetCall()->Equals(call)) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+
+		#
+		# Results without grouping
+		#
+
+		method : Plain(rows : Int[]) ~ View {
+			# the shown columns: working-table indexes and their labels
+			columns : Int[];
+			labels : String[];
+			if(@statement->IsStar()) {
+				if(@joined) {
+					names := @work->GetColumnNames();
+					columns := Int->New[names->Size() - 1];
+					labels := String->New[columns->Size()];
+					each(i : columns) {
+						columns[i] := i + 1;
+						labels[i] := names[i + 1];
+					};
+					Shorten(labels);
+				}
+				else {
+					names := @work->GetColumnNames();
+					columns := Int->New[names->Size() - 1];
+					labels := String->New[columns->Size()];
+					each(i : columns) {
+						columns[i] := i + 1;
+						labels[i] := names[i + 1];
+					};
+				};
+			}
+			else {
+				items := @statement->GetItems();
+				columns := Int->New[items->Size()];
+				labels := String->New[items->Size()];
+				each(i : items) {
+					item := items->Get(i);
+					if(@joined) {
+						columns[i] := WorkIndex(item->GetName());
+						if(columns[i] < 0) {
+							return Nil;
+						};
+					}
+					else {
+						# an unknown column reads as empty cells, as it always has
+						columns[i] := @work->GetIndex(Strip(item->GetName()));
+					};
+					labels[i] := item->GetAlias() <> Nil ? item->GetAlias() : item->GetName();
+				};
+
+				if(@joined) {
+					Shorten(labels);
+				};
+			};
+
+			if(@statement->IsDistinct()) {
+				if(<>@joined & columns->Size() = 1 & columns[0] > -1) {
+					rows := @work->UniqueRows(columns[0], rows);
+				}
+				else {
+					rows := Distinct(columns, rows);
+				};
+			};
+
+			order := @statement->GetOrder();
+			k := order->Size() - 1;
+			while(k >= 0) {
+				entry := order->Get(k);
+				index := -1;
+				if(entry->GetPosition() > 0) {
+					if(entry->GetPosition() > columns->Size()) {
+						return Fail("ORDER BY {$(entry->GetPosition())} is past the {$(columns->Size())} columns of the select list");
+					};
+					index := columns[entry->GetPosition() - 1];
+				}
+				else {
+					position := LabelIndex(labels, entry->GetName());
+					if(position > -1) {
+						index := columns[position];
+					}
+					else if(@joined) {
+						index := WorkIndex(entry->GetName());
+						if(index < 0) {
+							return Nil;
+						};
+					}
+					else {
+						# the old engine skipped an unknown ORDER BY column
+						index := @work->GetIndex(Strip(entry->GetName()));
+					};
+				};
+
+				if(index > -1) {
+					rows := Sorter->New(@work->GetColumn(index), entry->IsDescending())->Sort(rows);
+				};
+				k -= 1;
+			};
+
+			return View->New(@work, columns, labels, Slice(rows));
+		}
+
+		# 'alias.column' as 'column' when the alias names the one table, for a single table
+		method : Strip(name : String) ~ String {
+			if(@work->GetIndex(name) > -1) {
+				return name;
+			};
+
+			ref := Resolve(name);
+			if(ref = Nil) {
+				# an unknown name stays as written; the caller decides what that means
+				@error->Set(Nil);
+				return name;
+			};
+
+			return ref->GetColumn();
+		}
+
+		function : LabelIndex(labels : String[], name : String) ~ Int {
+			if(name = Nil) {
+				return -1;
+			};
+
+			each(i : labels) {
+				if(labels[i]->Equals(name)) {
+					return i;
+				};
+			};
+
+			return -1;
+		}
+
+		# 'alias.column' labels as 'column' where no other label has that column name
+		method : Shorten(labels : String[]) ~ Nil {
+			short := String->New[labels->Size()];
+			each(i : labels) {
+				short[i] := labels[i];
+				ref := Resolve(labels[i]);
+				if(ref <> Nil) {
+					short[i] := ref->GetColumn();
+				}
+				else {
+					@error->Set(Nil);
+					dot := labels[i]->Find('.');
+					if(dot > 0) {
+						prefix := labels[i]->SubString(0, dot);
+						each(s : @aliases) {
+							if(@aliases[s]->Equals(prefix)) {
+								short[i] := labels[i]->SubString(dot + 1, labels[i]->Size() - dot - 1);
+							};
+						};
+					};
+				};
+			};
+
+			each(i : labels) {
+				clash := false;
+				each(j : labels) {
+					if(i <> j & short[i]->Equals(short[j])) {
+						clash := true;
+					};
+				};
+
+				if(<>clash) {
+					labels[i] := short[i];
+				};
+			};
+		}
+
+		# LIMIT and OFFSET
+		method : Slice(rows : Int[]) ~ Int[] {
+			offset := @statement->GetOffset();
+			limit := @statement->GetLimit();
+			if(offset = 0 & (limit < 0 | limit >= rows->Size())) {
+				return rows;
+			};
+
+			start := offset < rows->Size() ? offset : rows->Size();
+			count := rows->Size() - start;
+			if(limit > -1 & limit < count) {
+				count := limit;
+			};
+
+			sliced := Int->New[count];
+			each(i : count) {
+				sliced[i] := rows[start + i];
+			};
+
+			return sliced;
+		}
+
+		# the first row of each distinct combination of the shown columns, in first-seen order
+		method : Distinct(columns : Int[], rows : Int[]) ~ Int[] {
+			sorters := Vector->New()<Sorter>;
+			each(i : columns) {
+				if(columns[i] > -1) {
+					sorters->AddBack(Sorter->New(@work->GetColumn(columns[i]), false));
+				};
+			};
+
+			ordered := rows;
+			k := sorters->Size() - 1;
+			while(k >= 0) {
+				ordered := sorters->Get(k)->Sort(ordered);
+				k -= 1;
+			};
+
+			firsts := Int->New[ordered->Size()];
+			n := 0;
+			each(i : ordered) {
+				if(i = 0 | Differs(sorters, ordered[i - 1], ordered[i])) {
+					firsts[n] := ordered[i];
+					n += 1;
+				};
+			};
+
+			# back to the order the rows came in
+			return SortInts(Filter->Trim(firsts, n));
+		}
+
+		function : Differs(sorters : Vector<Sorter>, a : Int, b : Int) ~ Bool {
+			each(i : sorters) {
+				if(sorters->Get(i)->Compare(a, b) <> 0) {
+					return true;
+				};
+			};
+
+			return false;
+		}
+
+		# a stable merge sort of row numbers, smallest first
+		function : SortInts(values : Int[]) ~ Int[] {
+			size := values->Size();
+			src := Int->New[size];
+			each(i : size) {
+				src[i] := values[i];
+			};
+			dest := Int->New[size];
+
+			width := 1;
+			while(width < size) {
+				start := 0;
+				while(start < size) {
+					middle := start + width;
+					if(middle > size) {
+						middle := size;
+					};
+					finish := start + width * 2;
+					if(finish > size) {
+						finish := size;
+					};
+
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						if(l < middle & (r >= finish | src[l] <= src[r])) {
+							dest[k] := src[l];
+							l += 1;
+						}
+						else {
+							dest[k] := src[r];
+							r += 1;
+						};
+						k += 1;
+					};
+					start := finish;
+				};
+
+				swap := src;
+				src := dest;
+				dest := swap;
+				width *= 2;
+			};
+
+			return src;
+		}
+
+		#
+		# GROUP BY, aggregates and HAVING
+		#
+
+		method : Group(rows : Int[]) ~ View {
+			if(@statement->IsStar()) {
+				return Fail("SELECT * cannot be grouped; name the columns");
+			};
+
+			# the grouping columns
+			group := @statement->GetGroup();
+			keys := Int->New[group->Size()];
+			each(i : keys) {
+				keys[i] := WorkIndex(group->Get(i));
+				if(keys[i] < 0) {
+					return Nil;
+				};
+			};
+
+			# a plain column in the select list must be one of them
+			items := @statement->GetItems();
+			each(i : items) {
+				item := items->Get(i);
+				if(<>item->IsAggregate()) {
+					index := WorkIndex(item->GetName());
+					if(index < 0) {
+						return Nil;
+					};
+
+					grouped := false;
+					each(j : keys) {
+						if(keys[j] = index) {
+							grouped := true;
+						};
+					};
+
+					if(<>grouped) {
+						return Fail("column '{$(item->GetName())}' must be in GROUP BY or inside an aggregate");
+					};
+				};
+			};
+
+			# rows sorted by the grouping columns, so each group is a run
+			sorters := Vector->New()<Sorter>;
+			each(i : keys) {
+				sorters->AddBack(Sorter->New(@work->GetColumn(keys[i]), false));
+			};
+
+			ordered := rows;
+			k := sorters->Size() - 1;
+			while(k >= 0) {
+				ordered := sorters->Get(k)->Sort(ordered);
+				k -= 1;
+			};
+
+			# a start per group and an end; with no rows there is still one group
+			starts := Int->New[ordered->Size() + 2];
+			groups := 0;
+			each(i : ordered) {
+				if(i = 0 | Differs(sorters, ordered[i - 1], ordered[i])) {
+					starts[groups] := i;
+					groups += 1;
+				};
+			};
+
+			# without GROUP BY every row is one group, even no rows at all
+			if(keys->Size() = 0) {
+				groups := 1;
+				starts[0] := 0;
+			};
+			starts[groups] := ordered->Size();
+
+			# the result: the select list, then aggregates only HAVING or ORDER BY name
+			extra := @statement->GetExtra();
+			hidden := Vector->New()<SqlItem>;
+			each(i : extra) {
+				if(ItemByCall(extra->Get(i)->GetCall()) < 0) {
+					hidden->AddBack(extra->Get(i));
+				};
+			};
+
+			all := Vector->New()<SqlItem>;
+			each(i : items) {
+				all->AddBack(items->Get(i));
+			};
+			each(i : hidden) {
+				all->AddBack(hidden->Get(i));
+			};
+
+			labels := String->New[all->Size()];
+			each(i : labels) {
+				labels[i] := all->Get(i)->GetLabel();
+				if(<>@joined & <>all->Get(i)->IsAggregate() & all->Get(i)->GetAlias() = Nil) {
+					labels[i] := Strip(labels[i]);
+				};
+			};
+			if(@joined) {
+				Shorten(labels);
+			};
+
+			out := Table->New("<rs>", labels);
+			out->Fill(groups);
+			firsts := Int->New[groups];
+			each(g : groups) {
+				firsts[g] := starts[g] < ordered->Size() ? ordered[starts[g]] : -1;
+			};
+
+			each(i : all) {
+				item := all->Get(i);
+				column := out->GetColumn(i + 1);
+				if(item->IsAggregate()) {
+					source : Column;
+					if(<>item->GetName()->Equals("*")) {
+						index := WorkIndex(item->GetName());
+						if(index < 0) {
+							return Nil;
+						};
+						source := @work->GetColumn(index);
+					};
+					Aggregate(column, item->GetFunc(), source, ordered, starts, groups);
+				}
+				else {
+					column->Gather(@work->GetColumn(WorkIndex(item->GetName())), firsts);
+				};
+			};
+
+			result := out->LiveRows();
+			having := @statement->GetHaving();
+			if(having <> Nil) {
+				renamed := Relabel(having, labels);
+				if(renamed = Nil) {
+					return Nil;
+				};
+
+				filter := Filter->Bind(renamed, out, @params, @error);
+				if(filter = Nil) {
+					return Nil;
+				};
+				result := filter->Apply(out, result);
+			};
+
+			order := @statement->GetOrder();
+			k := order->Size() - 1;
+			while(k >= 0) {
+				entry := order->Get(k);
+				index := -1;
+				if(entry->GetPosition() > 0) {
+					if(entry->GetPosition() > items->Size()) {
+						return Fail("ORDER BY {$(entry->GetPosition())} is past the {$(items->Size())} columns of the select list");
+					};
+					index := entry->GetPosition();
+				}
+				else {
+					position := ResultIndex(entry->GetName(), labels);
+					if(position < 0) {
+						return Fail("ORDER BY '{$(entry->GetName())}' is not a column of the grouped result");
+					};
+					index := position + 1;
+				};
+
+				result := Sorter->New(out->GetColumn(index), entry->IsDescending())->Sort(result);
+				k -= 1;
+			};
+
+			shown := Int->New[items->Size()];
+			shown_labels := String->New[items->Size()];
+			each(i : shown) {
+				shown[i] := i + 1;
+				shown_labels[i] := labels[i];
+			};
+
+			return View->New(out, shown, shown_labels, Slice(result));
+		}
+
+		# where a HAVING or ORDER BY name is in the grouped result: a label, an aggregate call,
+		# or a grouping column however it was written; -1 if none
+		method : ResultIndex(name : String, labels : String[]) ~ Int {
+			position := LabelIndex(labels, name);
+			if(position > -1) {
+				return position;
+			};
+
+			position := ItemByCall(name);
+			if(position > -1) {
+				return position;
+			};
+
+			extras := @statement->GetExtra();
+			each(i : extras) {
+				extra := extras->Get(i);
+				if(extra->GetCall()->Equals(name)) {
+					return LabelIndex(labels, extra->GetLabel());
+				};
+			};
+
+			ref := Resolve(name);
+			if(ref = Nil) {
+				@error->Set(Nil);
+				return -1;
+			};
+
+			items := @statement->GetItems();
+			each(i : items) {
+				item := items->Get(i);
+				if(<>item->IsAggregate()) {
+					other_ref := Resolve(item->GetName());
+					if(other_ref <> Nil & other_ref->GetSource() = ref->GetSource() & other_ref->GetColumn()->Equals(ref->GetColumn())) {
+						return i;
+					};
+				};
+			};
+			@error->Set(Nil);
+
+			return -1;
+		}
+
+		# a HAVING condition with its names as result-column labels
+		method : Relabel(pred : Predicate, labels : String[]) ~ Predicate {
+			op := pred->GetOp();
+			if(op = Op->AND | op = Op->OR) {
+				left := Relabel(pred->GetLeft(), labels);
+				right := Relabel(pred->GetRight(), labels);
+				if(left = Nil | right = Nil) {
+					return Nil;
+				};
+				return Predicate->New(op, left, right);
+			}
+			else if(op = Op->NOT) {
+				inner := Relabel(pred->GetLeft(), labels);
+				if(inner = Nil) {
+					return Nil;
+				};
+				return inner->Negate();
+			};
+
+			position := ResultIndex(pred->GetColumn(), labels);
+			if(position < 0) {
+				@error->Set("HAVING names '{$(pred->GetColumn())}', which is not a column of the grouped result");
+				return Nil;
+			};
+
+			return Predicate->New(op, labels[position], pred->GetValue(), pred->GetParam());
+		}
+
+		# one aggregate per group, into a result column. COUNT counts; the others read numbers
+		# only and skip empty and non-numeric cells, so a group with none gets an empty cell.
+		method : Aggregate(column : Column, func : String, source : Column, ordered : Int[], starts : Int[], groups : Int) ~ Nil {
+			ints := Int->New[groups];
+			floats := Float->New[groups];
+			present := Bool->New[groups];
+
+			if(func->Equals("count")) {
+				each(g : groups) {
+					if(source = Nil) {
+						ints[g] := starts[g + 1] - starts[g];
+					}
+					else {
+						n := 0;
+						for(i := starts[g]; i < starts[g + 1]; i += 1;) {
+							if(<>source->IsNull(ordered[i])) {
+								n += 1;
+							};
+						};
+						ints[g] := n;
+					};
+					present[g] := true;
+				};
+				column->FillNumbers(ColumnType->INT, ints, floats, present);
+				return;
+			};
+
+			whole := source->GetType() = ColumnType->INT;
+			integral := whole & (func->Equals("sum") | func->Equals("min") | func->Equals("max"));
+			each(g : groups) {
+				values := Float->New[starts[g + 1] - starts[g]];
+				int_sum := 0;
+				int_min := 0;
+				int_max := 0;
+				n := 0;
+				for(i := starts[g]; i < starts[g + 1]; i += 1;) {
+					row := ordered[i];
+					if(source->IsNumeric(row)) {
+						if(whole) {
+							value := source->GetInt(row);
+							if(n = 0 | value < int_min) {
+								int_min := value;
+							};
+							if(n = 0 | value > int_max) {
+								int_max := value;
+							};
+							int_sum += value;
+						};
+						values[n] := source->GetFloat(row);
+						n += 1;
+					};
+				};
+
+				if(n > 0) {
+					if(integral) {
+						present[g] := true;
+						if(func->Equals("sum")) {
+							ints[g] := int_sum;
+						}
+						else if(func->Equals("min")) {
+							ints[g] := int_min;
+						}
+						else {
+							ints[g] := int_max;
+						};
+					}
+					else {
+						result := Summarize(func, values, n);
+						if(result <> Nil) {
+							present[g] := true;
+							floats[g] := result->Get();
+						};
+					};
+				};
+			};
+
+			column->FillNumbers(integral ? ColumnType->INT : ColumnType->FLOAT, ints, floats, present);
+		}
+
+		# sum, avg, min, max, median or stddev (the sample deviation, which needs two values)
+		# of the first n values; Nil when there is no answer
+		function : Summarize(func : String, values : Float[], n : Int) ~ FloatRef {
+			if(func->Equals("sum") | func->Equals("avg")) {
+				total := 0.0;
+				each(i : n) {
+					total += values[i];
+				};
+				return FloatRef->New(func->Equals("sum") ? total : total / n->As(Float));
+			}
+			else if(func->Equals("min") | func->Equals("max")) {
+				best := values[0];
+				for(i := 1; i < n; i += 1;) {
+					if(func->Equals("min") ? values[i] < best : values[i] > best) {
+						best := values[i];
+					};
+				};
+				return FloatRef->New(best);
+			}
+			else if(func->Equals("median")) {
+				sorted := SortFloats(values, n);
+				middle := n / 2;
+				if(n % 2 = 1) {
+					return FloatRef->New(sorted[middle]);
+				};
+				return FloatRef->New((sorted[middle - 1] + sorted[middle]) / 2.0);
+			}
+			else if(func->Equals("stddev")) {
+				if(n < 2) {
+					return Nil;
+				};
+
+				# Welford's running mean and squared deviation
+				mean := 0.0;
+				squares := 0.0;
+				each(i : n) {
+					delta := values[i] - mean;
+					mean += delta / (i + 1)->As(Float);
+					squares += delta * (values[i] - mean);
+				};
+				return FloatRef->New((squares / (n - 1)->As(Float))->Sqrt());
+			};
+
+			return Nil;
+		}
+
+		# the first n values, smallest first
+		function : SortFloats(values : Float[], n : Int) ~ Float[] {
+			src := Float->New[n];
+			each(i : n) {
+				src[i] := values[i];
+			};
+			dest := Float->New[n];
+
+			width := 1;
+			while(width < n) {
+				start := 0;
+				while(start < n) {
+					middle := start + width;
+					if(middle > n) {
+						middle := n;
+					};
+					finish := start + width * 2;
+					if(finish > n) {
+						finish := n;
+					};
+
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						if(l < middle & (r >= finish | src[l] <= src[r])) {
+							dest[k] := src[l];
+							l += 1;
+						}
+						else {
+							dest[k] := src[r];
+							r += 1;
+						};
+						k += 1;
+					};
+					start := finish;
+				};
+
+				swap := src;
+				src := dest;
+				dest := swap;
+				width *= 2;
+			};
+
+			return src;
+		}
+	}
+
+	# equality matching for a join: the right side's rows sorted by key, found by binary search.
+	# Keys compare as whole numbers when both sides hold INT, BOOL or DATE values, as numbers
+	# when one side holds FLOAT, and as text otherwise. Empty cells never match.
+	class : private : SqlKeyMatcher {
+		enum Domain {
+			WHOLE,
+			NUMBER,
+			TEXT
+		}
+
+		@domain : SqlKeyMatcher->Domain;
+		@left : Column;
+		@rows : Int[];
+		@int_keys : Int[];
+		@float_keys : Float[];
+		@size : Int;
+		@ids : Hash<String, IntRef>;
+		@code_ids : Int[];
+
+		New(right : Column, right_rows : Int[], left : Column) {
+			@left := left;
+			right_type := right->GetType();
+			left_type := left->GetType();
+			if(IsWhole(right_type) & IsWhole(left_type)) {
+				@domain := SqlKeyMatcher->Domain->WHOLE;
+			}
+			else if(IsNumber(right_type) & IsNumber(left_type)) {
+				@domain := SqlKeyMatcher->Domain->NUMBER;
+			}
+			else {
+				@domain := SqlKeyMatcher->Domain->TEXT;
+				@ids := Hash->New()<String, IntRef>;
+			};
+
+			# the right side's keyed rows
+			count := right_rows->Size();
+			rows := Int->New[count];
+			ints := Int->New[count];
+			floats := Float->New[count];
+			n := 0;
+			each(i : count) {
+				row := right_rows[i];
+				if(<>right->IsNull(row)) {
+					select(@domain) {
+						label SqlKeyMatcher->Domain->WHOLE: {
+							rows[n] := row;
+							ints[n] := right->GetInt(row);
+							n += 1;
+						}
+
+						label SqlKeyMatcher->Domain->NUMBER: {
+							value := right->GetFloat(row);
+							# NaN equals nothing, and would break the ordering
+							if(value = value) {
+								rows[n] := row;
+								floats[n] := value;
+								n += 1;
+							};
+						}
+
+						label SqlKeyMatcher->Domain->TEXT: {
+							text := KeyText(right, row);
+							id := @ids->Find(text);
+							if(id = Nil) {
+								id := IntRef->New(@ids->Size());
+								@ids->Insert(text, id);
+							};
+							rows[n] := row;
+							ints[n] := id->Get();
+							n += 1;
+						}
+					};
+				};
+			};
+			@size := n;
+
+			order := Order(ints, floats, n);
+			@rows := Int->New[n];
+			@int_keys := Int->New[n];
+			@float_keys := Float->New[n];
+			each(i : n) {
+				@rows[i] := rows[order[i]];
+				@int_keys[i] := ints[order[i]];
+				@float_keys[i] := floats[order[i]];
+			};
+
+			if(@domain = SqlKeyMatcher->Domain->TEXT & left->IsEncoded()) {
+				# a dictionary code's id, looked up once per code
+				@code_ids := Int->New[left->GetDictionarySize()];
+				each(i : @code_ids) {
+					@code_ids[i] := -2;
+				};
+			};
+		}
+
+		function : IsWhole(type : ColumnType) ~ Bool {
+			return type = ColumnType->INT | type = ColumnType->BOOL | type = ColumnType->DATE;
+		}
+
+		function : IsNumber(type : ColumnType) ~ Bool {
+			return type = ColumnType->INT | type = ColumnType->FLOAT;
+		}
+
+		function : KeyText(column : Column, row : Int) ~ String {
+			if(column->GetType() = ColumnType->STRING) {
+				return column->GetString(row);
+			};
+
+			return Cell->Text(column->Get(row));
+		}
+
+		# positions 0..n-1 in key order, keeping row order among equal keys
+		method : Order(ints : Int[], floats : Float[], n : Int) ~ Int[] {
+			src := Int->New[n];
+			each(i : n) {
+				src[i] := i;
+			};
+			dest := Int->New[n];
+			by_float := @domain = SqlKeyMatcher->Domain->NUMBER;
+
+			width := 1;
+			while(width < n) {
+				start := 0;
+				while(start < n) {
+					middle := start + width;
+					if(middle > n) {
+						middle := n;
+					};
+					finish := start + width * 2;
+					if(finish > n) {
+						finish := n;
+					};
+
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						take_left := l < middle;
+						if(take_left & r < finish) {
+							if(by_float) {
+								take_left := floats[src[l]] <= floats[src[r]];
+							}
+							else {
+								take_left := ints[src[l]] <= ints[src[r]];
+							};
+						};
+
+						if(take_left) {
+							dest[k] := src[l];
+							l += 1;
+						}
+						else {
+							dest[k] := src[r];
+							r += 1;
+						};
+						k += 1;
+					};
+					start := finish;
+				};
+
+				swap := src;
+				src := dest;
+				dest := swap;
+				width *= 2;
+			};
+
+			return src;
+		}
+
+		# the right row at a position Find returned
+		method : public : RowAt(position : Int) ~ Int {
+			return @rows[position];
+		}
+
+		# the [start, end) positions whose key equals the left row's, or Nil for none
+		method : public : Find(left_row : Int) ~ Int[] {
+			if(@left->IsNull(left_row) | @size = 0) {
+				return Nil;
+			};
+
+			select(@domain) {
+				label SqlKeyMatcher->Domain->WHOLE: {
+					return RangeOf(@left->GetInt(left_row));
+				}
+
+				label SqlKeyMatcher->Domain->NUMBER: {
+					key := @left->GetFloat(left_row);
+					if(key <> key) {
+						return Nil;
+					};
+
+					low := 0;
+					high := @size;
+					while(low < high) {
+						middle := (low + high) / 2;
+						if(@float_keys[middle] < key) {
+							low := middle + 1;
+						}
+						else {
+							high := middle;
+						};
+					};
+
+					finish := low;
+					while(finish < @size & @float_keys[finish] = key) {
+						finish += 1;
+					};
+
+					if(finish = low) {
+						return Nil;
+					};
+					return [low, finish];
+				}
+			};
+
+			# text: the left value's id among the right side's texts
+			id := -1;
+			if(@code_ids <> Nil) {
+				code := @left->GetCode(left_row);
+				if(@code_ids[code] = -2) {
+					found := @ids->Find(@left->GetString(left_row));
+					@code_ids[code] := found = Nil ? -1 : found->Get();
+				};
+				id := @code_ids[code];
+			}
+			else {
+				found := @ids->Find(KeyText(@left, left_row));
+				if(found <> Nil) {
+					id := found->Get();
+				};
+			};
+
+			if(id < 0) {
+				return Nil;
+			};
+
+			return RangeOf(id);
+		}
+
+		method : RangeOf(key : Int) ~ Int[] {
+			low := 0;
+			high := @size;
+			while(low < high) {
+				middle := (low + high) / 2;
+				if(@int_keys[middle] < key) {
+					low := middle + 1;
+				}
+				else {
+					high := middle;
+				};
+			};
+
+			finish := low;
+			while(finish < @size & @int_keys[finish] = key) {
+				finish += 1;
+			};
+
+			if(finish = low) {
+				return Nil;
+			};
+
+			return [low, finish];
 		}
 	}
 
@@ -5744,16 +9408,21 @@ results := statement->Execute();
 	}
 
 	#~
-	Named tables that queries can refer to
+	Named tables that queries can refer to. SQL run through a catalog can join its tables, and
+	can create, change and delete them.
 
 ```
 catalog := Catalog->New();
 catalog->Load(CsvSource->New("runs.csv"));
-runs := catalog->Get("runs");
+catalog->Load(CsvSource->New("labels.csv"));
+rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on r.id = l.id");
 ```
 	~#
 	class Catalog {
 		@tables : Map<String, Table>;
+		@plans : Map<String, Plan>;
+		@files : Map<String, FileEntry>;
+		@file_reads : Int;
 		@error : String;
 
 		#~
@@ -5854,7 +9523,197 @@ runs := catalog->Get("runs");
 		}
 
 		#~
-		Gets the reason the last load failed
+		Runs a SELECT that reads files named in it, with no catalog of tables. Each call reads
+		the files again; a program that repeats a query keeps a Catalog and uses its Query,
+		which reads a file again only after it changes.
+		@param statement SQL SELECT
+		@return result table, Nil on error (a Catalog's Query and GetError say why)
+		```
+		rs := Catalog->Run("select name, avg(score) from 'results/run_*.csv' group by name");
+		```
+		~#
+		function : Run(statement : String) ~ Table {
+			return Catalog->New()->Query(statement);
+		}
+
+		# a file named in a query, read once and again only when it changes (by name, size
+		# and modification time); a glob's files become one table with a '_file' column
+		method : public : ReadFile(file : SqlFile, name : String, error : StringHolder) ~ Table {
+			if(@files = Nil) {
+				@files := Map->New()<String, FileEntry>;
+			};
+
+			key := file->GetKey();
+			if(UrlCache->IsUrl(file->GetPath())) {
+				if(file->IsGlob()) {
+					error->Set("'{$(file->GetPath())}': a URL cannot be a pattern");
+					return Nil;
+				};
+
+				fetched := UrlCache->Fetch(file->GetPath(), error);
+				if(fetched = Nil) {
+					return Nil;
+				};
+
+				known := @files->Find(key);
+				if(known <> Nil & known->GetStamp()->Equals(fetched->GetStamp())) {
+					return known->GetTable();
+				};
+
+				@file_reads += 1;
+				downloaded := FileTables->ReadOne(file, fetched->GetPath(), name, error);
+				if(downloaded = Nil) {
+					return Nil;
+				};
+
+				if(@files->Size() >= 32) {
+					@files := Map->New()<String, FileEntry>;
+				};
+				@files->Insert(key, FileEntry->New(fetched->GetStamp(), downloaded));
+				return downloaded;
+			};
+
+			files := FileTables->Expand(file->GetPath(), error);
+			if(files = Nil) {
+				return Nil;
+			};
+
+			stamp := FileTables->Stamp(files);
+			entry := @files->Find(key);
+			if(entry <> Nil & entry->GetStamp()->Equals(stamp)) {
+				return entry->GetTable();
+			};
+
+			table : Table;
+			if(file->IsGlob()) {
+				tables := Vector->New()<Table>;
+				each(i : files) {
+					@file_reads += 1;
+					one := FileTables->ReadOne(file, files->Get(i), name, error);
+					if(one = Nil) {
+						return Nil;
+					};
+					tables->AddBack(one);
+				};
+				table := FileTables->Combine(name, tables, files);
+			}
+			else {
+				@file_reads += 1;
+				table := FileTables->ReadOne(file, files->Get(0), name, error);
+				if(table = Nil) {
+					return Nil;
+				};
+			};
+
+			if(@files->Size() >= 32) {
+				@files := Map->New()<String, FileEntry>;
+			};
+			@files->Insert(key, FileEntry->New(stamp, table));
+
+			return table;
+		}
+
+		#~
+		Gets how many times queries have read a file, for checking that unchanged files come
+		from the cache
+		@return file reads
+		~#
+		method : public : GetFileReads() ~ Int {
+			return @file_reads;
+		}
+
+		#~
+		Runs a SELECT over the catalog's tables, which it can join, and over files named in it
+		@param statement SQL SELECT
+		@return result table, Nil on error (see GetError)
+		```
+		rs := catalog->Query("select dept, count(*) as n from emp group by dept having count(*) > 1");
+		```
+		~#
+		method : public : Query(statement : String) ~ Table {
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return Nil;
+			};
+
+			error := StringHolder->New();
+			view := plan->RunIn(@self, Compare->New[0], error);
+			if(view = Nil) {
+				@error := error->Get();
+				return Nil;
+			};
+
+			return view->ToTable("<rs>");
+		}
+
+		#~
+		Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.
+		@param statement SQL statement
+		@return rows inserted, updated or deleted (0 for CREATE TABLE), -1 on error (see GetError)
+		```
+		catalog->Execute("create table runs (id int, score float, label string)");
+		catalog->Execute("insert into runs values (1, 0.5, 'cat'), (2, 0.9, 'dog')");
+		```
+		~#
+		method : public : Execute(statement : String) ~ Int {
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return -1;
+			};
+
+			error := StringHolder->New();
+			changed := plan->ExecuteIn(@self, Compare->New[0], error);
+			@error := error->Get();
+			return changed;
+		}
+
+		#~
+		Parses a statement once, for running many times with different values
+		@param statement SQL with '?' placeholders
+		@return statement, Nil on a syntax error (see GetError)
+		~#
+		method : public : Prepare(statement : String) ~ Statement {
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return Nil;
+			};
+
+			return Statement->New(@self, plan);
+		}
+
+		# a parsed plan for a statement, from a small cache of recent ones
+		method : FindPlan(statement : String) ~ Plan {
+			if(@plans = Nil) {
+				@plans := Map->New()<String, Plan>;
+			};
+
+			if(statement <> Nil) {
+				plan := @plans->Find(statement);
+				if(plan <> Nil) {
+					return plan;
+				};
+			};
+
+			holder := StringHolder->New();
+			plan := Plan->Parse(statement, holder);
+			if(plan = Nil) {
+				@error := holder->Get();
+				return Nil;
+			};
+
+			if(@plans->Size() >= 64) {
+				@plans := Map->New()<String, Plan>;
+			};
+			@plans->Insert(statement, plan);
+
+			return plan;
+		}
+
+		#~
+		Gets the reason the last load, query or statement failed
 		@return error, Nil if none
 		~#
 		method : public : GetError() ~ String {
@@ -5879,6 +9738,7 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 		@path : String;
 		@name : String;
 		@delimiter : Char;
+		@no_header : Bool;
 		@text : String;
 		@error : String;
 
@@ -5902,6 +9762,15 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			@path := path;
 			@name := name;
 			@delimiter := delimiter;
+		}
+
+		#~
+		Sets whether the first line names the columns (the default). Without a header every
+		line is data and the columns are named c1, c2 and so on.
+		@param header true if the first line is a header
+		~#
+		method : public : SetHeader(header : Bool) ~ Nil {
+			@no_header := <>header;
 		}
 
 		#~
@@ -5974,9 +9843,10 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 					@error := "no file and no text";
 					return Nil;
 				};
-				text := SourceText->Read(@path);
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
 				if(text = Nil) {
-					@error := SourceText->Failure(@path);
+					@error := reason->Get();
 					return Nil;
 				};
 			};
@@ -5990,7 +9860,13 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			};
 			csv := parsed->GetTable();
 
-			headers := csv->Get(0);
+			# the column names: the first line's, or c1, c2 ... when every line is data
+			first_line := csv->Get(0);
+			headers := Vector->New()<String>;
+			each(i : first_line) {
+				headers->AddBack(@no_header ? "c{$(i + 1)}" : first_line->Get(i));
+			};
+
 			wanted := Vector->New()<IntRef>;
 			each(i : headers) {
 				if(hint = Nil | hint->Wants(headers->Get(i))) {
@@ -5998,7 +9874,8 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 				};
 			};
 
-			limit := parsed->GetRows();
+			first := @no_header ? 0 : 1;
+			limit := parsed->GetRows() + 1 - first;
 			if(hint <> Nil & hint->GetLimit() > -1 & hint->GetLimit() < limit) {
 				limit := hint->GetLimit();
 			};
@@ -6008,11 +9885,11 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			each(i : names) {
 				column := wanted->Get(i)->Get();
 				names[i] := headers->Get(column);
-				types[i] := ScanType(csv, column, limit);
+				types[i] := ScanType(csv, column, first, limit);
 			};
 
 			table := Table->New(@name, names, types, false);
-			for(r := 1; r <= limit; r += 1;) {
+			for(r := first; r < first + limit; r += 1;) {
 				row := table->Insert();
 				csv_row := csv->Get(r);
 				each(i : names) {
@@ -6069,13 +9946,13 @@ if(catalog->Load(CsvSource->New("runs.csv"))) {
 			return ParsedCsv->New(csv, 0);
 		}
 
-		# the type a whole column calls for
-		function : ScanType(csv : Data.CSV.CsvTable, column : Int, limit : Int) ~ ColumnType {
+		# the type a whole column calls for, over 'count' records from 'first'
+		function : ScanType(csv : Data.CSV.CsvTable, column : Int, first : Int, count : Int) ~ ColumnType {
 			has_int := false;
 			has_float := false;
 			has_date := false;
 			has_text := false;
-			for(r := 1; r <= limit; r += 1;) {
+			for(r := first; r < first + count; r += 1;) {
 				text := csv->Get(r)->Get(column);
 				if(text <> Nil & text->Size() > 0) {
 					kind := Cell->NumberKind(text);
@@ -6655,11 +10532,488 @@ catalog->Load(source);
 	}
 
 	# Reads a source file's text; a name ending in '.gz' is decompressed first
-	class : private : SourceText {
-		function : Read(path : String) ~ String {
+	# a downloaded file: where its copy is, and what identifies this version of it
+	class : private : UrlFile {
+		@path : String;
+		@stamp : String;
+
+		New(path : String, stamp : String) {
+			@path := path;
+			@stamp := stamp;
+		}
+
+		method : public : GetPath() ~ String {
+			return @path;
+		}
+
+		method : public : GetStamp() ~ String {
+			return @stamp;
+		}
+	}
+
+	#
+	# Reading files over HTTP (docs/QUERY_DESIGN.md, section 10). A download is kept in a
+	# cache folder under the system's temporary folder, keyed by URL, beside a note of the
+	# server's ETag and Last-Modified. A later fetch asks the server whether it changed
+	# (If-None-Match, If-Modified-Since); a 304 answer reuses the copy. A new copy is written
+	# to a temporary file and renamed into place, so a reader never sees half a file.
+	#
+	class : private : UrlCache {
+		function : IsUrl(path : String) ~ Bool {
 			if(path = Nil) {
+				return false;
+			};
+
+			lower := path->ToLower();
+			return lower->StartsWith("http://") | lower->StartsWith("https://");
+		}
+
+		# the URL without its query string or fragment, for its file name and extension
+		function : PathPart(url : String) ~ String {
+			end := url->Size();
+			each(i : url) {
+				c := url->Get(i);
+				if((c = '?' | c = '#') & i < end) {
+					end := i;
+				};
+			};
+
+			return url->SubString(0, end);
+		}
+
+		function : Folder() ~ String {
+			folder := Runtime->GetTempDir();
+			if(folder = Nil) {
+				folder := ".";
+			};
+
+			last := folder->Size() > 0 ? folder->Get(folder->Size() - 1) : ' ';
+			folder := String->New(folder);
+			if(last <> '/' & last <> '\\') {
+				folder += "/";
+			};
+			folder += "objeck_query_cache";
+			if(<>Directory->Exists(folder)) {
+				Directory->Create(folder);
+			};
+
+			return folder;
+		}
+
+		# a 64-bit FNV-1a hash of the URL, as hex, so different URLs get different files
+		function : Hash(text : String) ~ String {
+			hash := -3750763034362895579;
+			each(i : text) {
+				hash := hash xor text->Get(i)->As(Int);
+				hash := hash * 1099511628211;
+			};
+
+			digits := "0123456789abcdef";
+			out := "";
+			each(i : 16) {
+				out->Append(digits->Get((hash >> (60 - i * 4)) and 15));
+			};
+
+			return out;
+		}
+
+		# the local copy's file name: the hash, then the URL's own file name, so the
+		# extension (and a '.gz') still says how to read it
+		function : LocalPath(url : String) ~ String {
+			path := PathPart(url);
+			start := 0;
+			each(i : path) {
+				if(path->Get(i) = '/') {
+					start := i + 1;
+				};
+			};
+
+			base := path->SubString(start, path->Size() - start);
+			if(base->Size() = 0) {
+				base := "index";
+			};
+
+			name := Folder();
+			name += "/";
+			name += Hash(url);
+			name += "_";
+			name += base;
+			return name;
+		}
+
+		# the current copy of a URL, fetched or revalidated; Nil with the error set
+		function : Fetch(url : String, error : StringHolder) ~ UrlFile {
+			local := LocalPath(url);
+			meta := String->New(local);
+			meta += ".meta";
+
+			etag := "";
+			modified := "";
+			if(File->Exists(local) & File->Exists(meta)) {
+				notes := FileReader->ReadFile(meta);
+				if(notes <> Nil) {
+					lines := SourceText->Lines(notes);
+					if(lines->Size() > 1) {
+						etag := lines->Get(0)->Trim();
+						modified := lines->Get(1)->Trim();
+					};
+				};
+			};
+
+			client := Web.HTTP.HttpClient->New();
+			if(etag <> Nil & etag->Size() > 0) {
+				client->AddHeader("If-None-Match", etag);
+			};
+			if(modified <> Nil & modified->Size() > 0) {
+				client->AddHeader("If-Modified-Since", modified);
+			};
+
+			response := client->Get(Web.HTTP.Url->New(url));
+			code := response <> Nil ? response->GetCode() : 0;
+			if(code = 304 & File->Exists(local)) {
+				return UrlFile->New(local, "{$etag}|{$modified}");
+			};
+
+			if(code < 200 | code > 299) {
+				if(code = 0) {
+					error->Set("'{$url}': no response from the server");
+				}
+				else {
+					error->Set("'{$url}': the server answered HTTP {$code}");
+				};
 				return Nil;
 			};
+
+			body := response->GetContent();
+			if(body = Nil) {
+				body := Byte->New[0];
+			};
+
+			headers := client->GetResponseHeaders();
+			etag := headers->Find("etag");
+			modified := headers->Find("last-modified");
+			# trimmed, as they are when read back from the note beside the copy
+			etag := etag = Nil ? "" : etag->Trim();
+			modified := modified = Nil ? "" : modified->Trim();
+
+			# a new copy beside the old, then renamed over it
+			partial := String->New(local);
+			partial += ".part";
+			if(<>FileWriter->WriteFile(partial, body) | <>File->Rename(partial, local)) {
+				error->Set("'{$url}': cannot write its copy to '{$local}'");
+				return Nil;
+			};
+			FileWriter->WriteFile(meta, "{$etag}\n{$modified}\n");
+
+			# without a validator the content itself tells versions apart
+			if(etag->Size() = 0 & modified->Size() = 0) {
+				size := body->Size();
+				check := body->CRC32();
+				return UrlFile->New(local, "{$size}|{$check}");
+			};
+
+			return UrlFile->New(local, "{$etag}|{$modified}");
+		}
+	}
+
+	#~
+	A JSON web service as tables: the array of objects at 'records_path' in each response
+	becomes rows, mapped as JsonSource maps them (nested arrays become child tables). Paging
+	follows a next-page link found in each response, or adds an offset to the URL, until a
+	page is short, the link is missing or repeats, or the row limit is reached. Responses go
+	through the same download cache as files named in SQL, so an unchanged page is not
+	downloaded again.
+
+```
+source := HttpJsonSource->New("https://api.example.org/runs", "runs", "data.items");
+source->SetNextLink("links.next");
+runs := source->Read();
+```
+	~#
+	class HttpJsonSource implements Source {
+		@url : String;
+		@name : String;
+		@records_path : String;
+		@next_path : String;
+		@offset_param : String;
+		@page_size : Int;
+		@limit : Int;
+		@pages : Int;
+		@error : String;
+		@tables : Vector<Table>;
+
+		#~
+		Constructor
+		@param url first page's URL
+		@param name table name
+		@param records_path dotted path to the array of records in a response ('data.items');
+		an empty path means the response itself is the array
+		~#
+		New(url : String, name : String, records_path : String) {
+			@url := url;
+			@name := name;
+			@records_path := records_path;
+			@limit := -1;
+		}
+
+		#~
+		Follows a next-page URL found at a dotted path in each response; a missing or null
+		value ends paging
+		@param path dotted path to the next page's URL
+		~#
+		method : public : SetNextLink(path : String) ~ Nil {
+			@next_path := path;
+		}
+
+		#~
+		Pages by adding an offset parameter to the URL (offset 0 first); a page with fewer
+		than 'page_size' records is the last
+		@param param query parameter name, such as 'offset'
+		@param page_size records per page
+		~#
+		method : public : SetOffsetPaging(param : String, page_size : Int) ~ Nil {
+			@offset_param := param;
+			@page_size := page_size;
+		}
+
+		#~
+		Stops after this many rows
+		@param rows row limit, -1 for none
+		~#
+		method : public : SetLimit(rows : Int) ~ Nil {
+			@limit := rows;
+		}
+
+		#~
+		Gets how many pages the last Read fetched
+		@return pages
+		~#
+		method : public : GetPageCount() ~ Int {
+			return @pages;
+		}
+
+		#~
+		Gets the tables the service provides, the main table first; they are known only after
+		reading it
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			Read();
+			return TableShapes->Of(@tables, @name);
+		}
+
+		#~
+		Loads the service's tables into a catalog
+		@param catalog catalog
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			if(Read(hint) = Nil) {
+				return false;
+			};
+
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Reads every page into the main table; GetChildTables then has the others
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads every page into the main table; GetChildTables then has the others
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			@tables := Nil;
+			@pages := 0;
+			limit := @limit;
+			if(hint <> Nil & hint->GetLimit() > -1 & (limit < 0 | hint->GetLimit() < limit)) {
+				limit := hint->GetLimit();
+			};
+
+			builder := JsonTableBuilder->New(@name, false);
+			seen := Hash->New()<String, BoolRef>;
+			offset := 0;
+			url := @offset_param <> Nil ? WithParam(@url, @offset_param, 0) : @url;
+			while(url <> Nil & (limit < 0 | builder->Size() < limit)) {
+				seen->Insert(url, BoolRef->New(true));
+				error := StringHolder->New();
+				fetched := UrlCache->Fetch(url, error);
+				if(fetched = Nil) {
+					@error := error->Get();
+					return Nil;
+				};
+
+				text := SourceText->Read(fetched->GetPath());
+				parser := Data.JSON.JsonParser->New(text <> Nil ? text : "");
+				if(text = Nil | <>parser->Parse()) {
+					@error := "'{$url}': the response is not valid JSON";
+					return Nil;
+				};
+				@pages += 1;
+
+				root := parser->GetRoot();
+				records := Navigate(root, @records_path);
+				if(records = Nil | records->GetType() <> Data.JSON.JsonElement->JsonType->ARRAY) {
+					@error := "'{$url}': no array at '{$@records_path}'";
+					return Nil;
+				};
+
+				count := records->Size();
+				each(i : count) {
+					if(limit < 0 | builder->Size() < limit) {
+						item := records->Get(i);
+						if(item->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
+							@error := "'{$url}': record {$(i + 1)} is not an object";
+							return Nil;
+						};
+						builder->AddObject(item, 0);
+					};
+				};
+
+				next_url : String;
+				if(@next_path <> Nil) {
+					link := Navigate(root, @next_path);
+					if(link <> Nil & link->GetType() = Data.JSON.JsonElement->JsonType->STRING) {
+						next_url := Data.JSON.JsonElement->Decode(link->GetString());
+					};
+				}
+				else if(@offset_param <> Nil & count >= @page_size & @page_size > 0) {
+					offset += @page_size;
+					next_url := WithParam(@url, @offset_param, offset);
+				};
+
+				# a link back to a page already read ends paging rather than looping
+				if(next_url <> Nil & seen->Has(next_url)) {
+					next_url := Nil;
+				};
+				url := next_url;
+			};
+
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
+		}
+
+		# the value at a dotted path, Nil if a step is missing; an empty path is the root
+		function : Navigate(root : Data.JSON.JsonElement, path : String) ~ Data.JSON.JsonElement {
+			if(path = Nil | path->Size() = 0) {
+				return root;
+			};
+
+			node := root;
+			part := "";
+			each(i : path) {
+				c := path->Get(i);
+				if(c = '.') {
+					node := Step(node, part);
+					if(node = Nil) {
+						return Nil;
+					};
+					part := "";
+				}
+				else {
+					part->Append(c);
+				};
+			};
+
+			return Step(node, part);
+		}
+
+		function : Step(node : Data.JSON.JsonElement, name : String) ~ Data.JSON.JsonElement {
+			if(node = Nil | node->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
+				return Nil;
+			};
+
+			child := node->Get(name);
+			if(child = Nil | child->GetType() = Data.JSON.JsonElement->JsonType->NULL) {
+				return Nil;
+			};
+
+			return child;
+		}
+
+		# the URL with a query parameter added
+		function : WithParam(url : String, param : String, value : Int) ~ String {
+			separator := url->Has('?') ? "&" : "?";
+			return "{$url}{$separator}{$param}={$value}";
+		}
+
+		#~
+		Gets the child tables the last Read made
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	class : private : SourceText {
+		function : Read(path : String) ~ String {
+			reason := StringHolder->New();
+			return Read(path, reason);
+		}
+
+		# a file's text, or a URL's through the download cache; '.gz' is decompressed. Nil
+		# with 'error' set when it cannot be read.
+		function : Read(path : String, error : StringHolder) ~ String {
+			if(path = Nil) {
+				error->Set("no file and no text");
+				return Nil;
+			};
+
+			if(UrlCache->IsUrl(path)) {
+				fetched := UrlCache->Fetch(path, error);
+				if(fetched = Nil) {
+					return Nil;
+				};
+
+				text := ReadLocal(fetched->GetPath());
+				if(text = Nil) {
+					if(UrlCache->PathPart(path)->EndsWith(".gz")) {
+						error->Set("'{$path}' is not valid gzip data, or is truncated");
+					}
+					else {
+						error->Set("'{$path}': its downloaded copy cannot be read");
+					};
+				};
+				return text;
+			};
+
+			text := ReadLocal(path);
+			if(text = Nil) {
+				error->Set(Failure(path));
+			};
+			return text;
+		}
+
+		function : ReadLocal(path : String) ~ String {
 
 			if(path->EndsWith(".gz")) {
 				bytes := FileReader->ReadBinaryFile(path);
@@ -6694,10 +11048,14 @@ catalog->Load(source);
 			return "cannot read '{$path}'";
 		}
 
-		# a file's name without its folder, '.gz' or extension
+		# a file's name without its folder, '.gz' or extension; a URL's without its query
 		function : BaseName(path : String, fallback : String) ~ String {
 			if(path = Nil) {
 				return fallback;
+			};
+
+			if(UrlCache->IsUrl(path)) {
+				path := UrlCache->PathPart(path);
 			};
 
 			start := 0;
@@ -6910,9 +11268,10 @@ log->Query("select epoch, loss from train where acc > 0.85")->ToString()->PrintL
 			@unmatched_count := 0;
 			@unmatched := Table->New(@name + "_unmatched", ["line", "text"], UnmatchedTypes());
 
-			text := SourceText->Read(@path);
+			reason := StringHolder->New();
+			text := SourceText->Read(@path, reason);
 			if(text = Nil) {
-				@error := SourceText->Failure(@path);
+				@error := reason->Get();
 				return Nil;
 			};
 
@@ -7075,12 +11434,13 @@ log->Query("select epoch, loss from train where acc > 0.85")->ToString()->PrintL
 
 	#~
 	A JSON Lines file (one JSON object per line, '.jsonl' or '.ndjson') as a table. Nested
-	objects become dotted column names ('address.city'); arrays are kept as their JSON text
-	for now. Columns are typed by all their values: whole numbers INT, any decimal FLOAT,
-	true and false BOOL, and any mix, or text, STRING. null and a missing key are empty cells.
-	A line that is not a JSON object is an error naming the line. Columns appear in the order
-	keys are first seen, alphabetical within an object. A name ending in '.gz' is decompressed
-	first.
+	objects become dotted column names ('address.city'), and each nested array becomes a
+	child table, as JsonSource makes them: an array member 'tags' of table 'runs' is the table
+	'runs_tags', joined back through '_parent_id' = '_id'. Columns are typed by all their
+	values: whole numbers INT, any decimal FLOAT, true and false BOOL, and any mix, or text,
+	STRING. null and a missing key are empty cells. A line that is not a JSON object is an
+	error naming the line. Columns appear in the order keys are first seen, alphabetical
+	within an object. A name ending in '.gz' is decompressed first.
 
 ```
 runs := JsonLinesSource->New("eval.jsonl")->Read();
@@ -7092,6 +11452,7 @@ runs->Describe()->ToString()->PrintLine();
 		@name : String;
 		@text : String;
 		@error : String;
+		@tables : Vector<Table>;
 
 		#~
 		Constructor; the table is named after the file
@@ -7129,42 +11490,45 @@ runs->Describe()->ToString()->PrintLine();
 		}
 
 		#~
-		Gets the table the file provides; column types are known only after reading it
-		@return one table shape
+		Gets the tables the file provides, the main table first; they are known only after
+		reading it
+		@return table shapes
 		~#
 		method : public : GetTables() ~ TableSpec[] {
-			table := Read();
-			specs := TableSpec->New[1];
-			if(table = Nil) {
-				specs[0] := TableSpec->New(@name, String->New[0], ColumnType->New[0]);
-				return specs;
-			};
-
-			names := table->GetColumnNames();
-			columns := String->New[names->Size() - 1];
-			types := ColumnType->New[names->Size() - 1];
-			each(i : columns) {
-				columns[i] := names[i + 1];
-				types[i] := table->GetColumn(i + 1)->GetType();
-			};
-			specs[0] := TableSpec->New(@name, columns, types);
-			return specs;
+			Read();
+			return TableShapes->Of(@tables, @name);
 		}
 
 		#~
-		Loads the file into a catalog
+		Loads the file's tables into a catalog
 		@param catalog catalog
-		@param hint columns and rows needed, Nil for everything
+		@param hint columns and rows of the main table needed, Nil for everything
 		@return true if loaded
 		~#
 		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
-			table := Read(hint);
-			if(table = Nil) {
+			if(Read(hint) = Nil) {
 				return false;
 			};
 
-			catalog->Add(table);
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
 			return true;
+		}
+
+		#~
+		Gets the child tables the last Read made, in the order their arrays were first seen
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
 		}
 
 		#~
@@ -7183,11 +11547,13 @@ runs->Describe()->ToString()->PrintLine();
 		~#
 		method : public : Read(hint : ScanHint) ~ Table {
 			@error := Nil;
+			@tables := Nil;
 			text := @text;
 			if(text = Nil) {
-				text := SourceText->Read(@path);
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
 				if(text = Nil) {
-					@error := SourceText->Failure(@path);
+					@error := reason->Get();
 					return Nil;
 				};
 			};
@@ -7197,58 +11563,119 @@ runs->Describe()->ToString()->PrintLine();
 				limit := hint->GetLimit();
 			};
 
-			# every record's cells by column name, as text with a kind tag
-			order := Vector->New()<String>;
-			positions := Hash->New()<String, IntRef>;
-			records := Vector->New()<Hash<String, JsonCell>>;
+			builder := JsonTableBuilder->New(@name, false);
 			lines := SourceText->Lines(text);
 			each(i : lines) {
 				line := lines->Get(i)->Trim();
-				if(line->Size() > 0 & (limit < 0 | records->Size() < limit)) {
+				if(line->Size() > 0 & (limit < 0 | builder->Size() < limit)) {
 					element := Data.JSON.JsonParser->TextToElement(line);
 					if(element = Nil | element->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
 						@error := "line {$(i + 1)}: not a JSON object";
 						return Nil;
 					};
-
-					cells := Hash->New()<String, JsonCell>;
-					Flatten(element, "", cells, order, positions);
-					records->AddBack(cells);
+					builder->AddObject(element, 0);
 				};
 			};
 
-			wanted := Vector->New()<String>;
-			each(i : order) {
-				if(hint = Nil | hint->Wants(order->Get(i))) {
-					wanted->AddBack(order->Get(i));
-				};
-			};
-
-			names := String->New[wanted->Size()];
-			types := ColumnType->New[wanted->Size()];
-			each(c : names) {
-				names[c] := wanted->Get(c);
-				types[c] := ColumnTypeOf(records, names[c]);
-			};
-
-			table := Table->New(@name, names, types, false);
-			each(r : records) {
-				cells := records->Get(r);
-				row := table->Insert();
-				each(c : names) {
-					cell := cells->Find(names[c]);
-					if(cell <> Nil) {
-						row->Set(c + 1, cell->ToValue(types[c]));
-					};
-				};
-			};
-
-			return table;
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
 		}
 
-		# adds an object's members to 'cells', nested objects under dotted names
-		function : Flatten(element : Data.JSON.JsonElement, prefix : String, cells : Hash<String, JsonCell>,
-				order : Vector<String>, positions : Hash<String, IntRef>) ~ Nil {
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	#
+	# Hierarchies as related tables (docs/QUERY_DESIGN.md, section 6): a nested repeated part
+	# of a record becomes a child table whose '_parent_id' is the record's '_id'. A table has
+	# an '_id' column exactly when some child table refers to it, and a child table always
+	# has '_parent_id'. Both count from 1 within their table.
+	#
+
+	# one table of a JSON document and its child tables, built record by record
+	class : private : JsonTableBuilder {
+		@name : String;
+		@is_child : Bool;
+		@order : Vector<String>;
+		@positions : Hash<String, IntRef>;
+		@records : Vector<Hash<String, JsonCell>>;
+		@parents : Vector<IntRef>;
+		@children : Vector<JsonTableBuilder>;
+		@child_index : Hash<String, JsonTableBuilder>;
+
+		New(name : String, is_child : Bool) {
+			@name := name;
+			@is_child := is_child;
+			@order := Vector->New()<String>;
+			@positions := Hash->New()<String, IntRef>;
+			@records := Vector->New()<Hash<String, JsonCell>>;
+			@parents := Vector->New()<IntRef>;
+			@children := Vector->New()<JsonTableBuilder>;
+			@child_index := Hash->New()<String, JsonTableBuilder>;
+		}
+
+		method : public : Size() ~ Int {
+			return @records->Size();
+		}
+
+		# adds an object as a row; its nested arrays go to child tables
+		method : public : AddObject(element : Data.JSON.JsonElement, parent : Int) ~ Nil {
+			id := @records->Size() + 1;
+			cells := Hash->New()<String, JsonCell>;
+			Flatten(element, "", cells, id);
+			@records->AddBack(cells);
+			@parents->AddBack(IntRef->New(parent));
+		}
+
+		# adds a value that is not an object as a row with one 'value' column
+		method : public : AddValue(element : Data.JSON.JsonElement, parent : Int) ~ Nil {
+			cells := Hash->New()<String, JsonCell>;
+			cell := ToCell(element);
+			if(cell <> Nil) {
+				Note("value");
+				cells->Insert("value", cell);
+			};
+			@records->AddBack(cells);
+			@parents->AddBack(IntRef->New(parent));
+		}
+
+		method : Note(name : String) ~ Nil {
+			if(<>@positions->Has(name)) {
+				@positions->Insert(name, IntRef->New(@order->Size()));
+				@order->AddBack(name);
+			};
+		}
+
+		# a scalar as a cell; an array inside an array is kept as its JSON text; Nil for null
+		function : ToCell(element : Data.JSON.JsonElement) ~ JsonCell {
+			type := element->GetType();
+			if(type = Data.JSON.JsonElement->JsonType->STRING) {
+				return JsonCell->New(JsonCell->Kind->TEXT, Data.JSON.JsonElement->Decode(element->GetString()));
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->NUMBER) {
+				return JsonCell->New(JsonCell->Kind->NUMBER, element->GetValue());
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->TRUE) {
+				return JsonCell->New(JsonCell->Kind->BOOL, "true");
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->FALSE) {
+				return JsonCell->New(JsonCell->Kind->BOOL, "false");
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->ARRAY | type = Data.JSON.JsonElement->JsonType->OBJECT) {
+				return JsonCell->New(JsonCell->Kind->TEXT, element->ToString());
+			};
+
+			return Nil;
+		}
+
+		# an object's members as cells, nested objects under dotted names, arrays as child rows
+		method : Flatten(element : Data.JSON.JsonElement, prefix : String, cells : Hash<String, JsonCell>, id : Int) ~ Nil {
 			names := element->GetNames();
 			each(i : names) {
 				key := names->Get(i);
@@ -7259,30 +11686,100 @@ runs->Describe()->ToString()->PrintLine();
 				if(type = Data.JSON.JsonElement->JsonType->OBJECT) {
 					nested := String->New(name);
 					nested += '.';
-					Flatten(child, nested, cells, order, positions);
+					Flatten(child, nested, cells, id);
+				}
+				else if(type = Data.JSON.JsonElement->JsonType->ARRAY) {
+					table := Child(name);
+					count := child->Size();
+					each(j : count) {
+						item := child->Get(j);
+						if(item->GetType() = Data.JSON.JsonElement->JsonType->OBJECT) {
+							table->AddObject(item, id);
+						}
+						else {
+							table->AddValue(item, id);
+						};
+					};
 				}
 				else {
-					if(<>positions->Has(name)) {
-						positions->Insert(name, IntRef->New(order->Size()));
-						order->AddBack(name);
-					};
-
-					if(type = Data.JSON.JsonElement->JsonType->STRING) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->TEXT, Data.JSON.JsonElement->Decode(child->GetString())));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->NUMBER) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->NUMBER, child->GetValue()));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->TRUE) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->BOOL, "true"));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->FALSE) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->BOOL, "false"));
-					}
-					else if(type = Data.JSON.JsonElement->JsonType->ARRAY) {
-						cells->Insert(name, JsonCell->New(JsonCell->Kind->TEXT, child->ToString()));
+					cell := ToCell(child);
+					if(cell <> Nil) {
+						Note(name);
+						cells->Insert(name, cell);
 					};
 				};
+			};
+		}
+
+		# the child table for an array member; 'tags' of table 'runs' is 'runs_tags'
+		method : Child(member : String) ~ JsonTableBuilder {
+			table := @child_index->Find(member);
+			if(table = Nil) {
+				name := String->New(@name);
+				name += '_';
+				each(i : member) {
+					c := member->Get(i);
+					name->Append(c = '.' ? '_' : c);
+				};
+				table := JsonTableBuilder->New(name, true);
+				@child_index->Insert(member, table);
+				@children->AddBack(table);
+			};
+
+			return table;
+		}
+
+		# this table, then its child tables, depth first; the hint applies to this table only
+		method : public : Build(hint : ScanHint, tables : Vector<Table>) ~ Nil {
+			names := Vector->New()<String>;
+			keyed := @children->Size() > 0;
+			if(keyed) {
+				names->AddBack("_id");
+			};
+			if(@is_child) {
+				names->AddBack("_parent_id");
+			};
+
+			first_data := names->Size();
+			each(i : @order) {
+				name := @order->Get(i);
+				if(hint = Nil | hint->Wants(name)) {
+					names->AddBack(name);
+				};
+			};
+
+			column_names := String->New[names->Size()];
+			column_types := ColumnType->New[names->Size()];
+			each(i : column_names) {
+				column_names[i] := names->Get(i);
+				column_types[i] := i < first_data ? ColumnType->INT : ColumnTypeOf(@records, column_names[i]);
+			};
+
+			table := Table->New(@name, column_names, column_types, false);
+			each(r : @records) {
+				cells := @records->Get(r);
+				row := table->Insert();
+				c := 0;
+				if(keyed) {
+					row->Set(c + 1, IntRef->New(r + 1));
+					c += 1;
+				};
+				if(@is_child) {
+					row->Set(c + 1, IntRef->New(@parents->Get(r)->Get()));
+				};
+
+				for(k := first_data; k < column_names->Size(); k += 1;) {
+					cell := cells->Find(column_names[k]);
+					if(cell <> Nil) {
+						row->Set(k + 1, cell->ToValue(column_types[k]));
+					};
+				};
+			};
+			tables->AddBack(table);
+
+			none : ScanHint;
+			each(i : @children) {
+				@children->Get(i)->Build(none, tables);
 			};
 		}
 
@@ -7330,6 +11827,608 @@ runs->Describe()->ToString()->PrintLine();
 			};
 
 			return ColumnType->STRING;
+		}
+	}
+
+	# the shapes of tables, for Source->GetTables
+	class : private : TableShapes {
+		function : Of(tables : Vector<Table>, fallback : String) ~ TableSpec[] {
+			if(tables = Nil | tables->Size() = 0) {
+				specs := TableSpec->New[1];
+				specs[0] := TableSpec->New(fallback, String->New[0], ColumnType->New[0]);
+				return specs;
+			};
+
+			specs := TableSpec->New[tables->Size()];
+			each(t : specs) {
+				table := tables->Get(t);
+				names := table->GetColumnNames();
+				columns := String->New[names->Size() - 1];
+				types := ColumnType->New[names->Size() - 1];
+				each(i : columns) {
+					columns[i] := names[i + 1];
+					types[i] := table->GetColumn(i + 1)->GetType();
+				};
+				specs[t] := TableSpec->New(table->GetName(), columns, types);
+			};
+
+			return specs;
+		}
+	}
+
+	#~
+	A JSON document as tables: an array of objects (or one object) becomes a table, nested
+	objects become dotted column names ('address.city'), and each nested array becomes a child
+	table joined back through '_parent_id' = '_id'; an array member 'tags' of table 'runs' is
+	the table 'runs_tags'. Array items that are not objects become a child table with one
+	'value' column. Columns are typed as JsonLinesSource types them. A name ending in '.gz' is
+	decompressed first.
+
+```
+catalog := Catalog->New();
+catalog->Load(JsonSource->New("runs.json"));
+rs := catalog->Query("select r.name, t.value from runs r join runs_tags t on t._parent_id = r._id");
+```
+	~#
+	class JsonSource implements Source {
+		@path : String;
+		@name : String;
+		@text : String;
+		@error : String;
+		@tables : Vector<Table>;
+
+		#~
+		Constructor; the table is named after the file
+		@param path JSON file
+		~#
+		New(path : String) {
+			@path := path;
+			@name := SourceText->BaseName(path, "json");
+		}
+
+		#~
+		Constructor
+		@param path JSON file
+		@param name table name
+		~#
+		New(path : String, name : String) {
+			@path := path;
+			@name := name;
+		}
+
+		#~
+		Makes a source over JSON text already in memory
+		@param name table name
+		@param text JSON text
+		@return source
+		~#
+		function : FromText(name : String, text : String) ~ JsonSource {
+			source := JsonSource->New(Nil, name);
+			source->SetText(text);
+			return source;
+		}
+
+		method : public : SetText(text : String) ~ Nil {
+			@text := text;
+		}
+
+		#~
+		Gets the tables the document provides, the main table first; they are known only after
+		reading it
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			Read();
+			return TableShapes->Of(@tables, @name);
+		}
+
+		#~
+		Loads the document's tables into a catalog
+		@param catalog catalog
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			if(Read(hint) = Nil) {
+				return false;
+			};
+
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			@tables := Nil;
+			text := @text;
+			if(text = Nil) {
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
+				if(text = Nil) {
+					@error := reason->Get();
+					return Nil;
+				};
+			};
+
+			parser := Data.JSON.JsonParser->New(text);
+			if(<>parser->Parse()) {
+				@error := "'{$@name}' is not valid JSON";
+				reason := parser->GetError();
+				if(reason <> Nil) {
+					@error += ": ";
+					@error += reason->Trim();
+				};
+				return Nil;
+			};
+			root := parser->GetRoot();
+
+			limit := hint <> Nil ? hint->GetLimit() : -1;
+			builder := JsonTableBuilder->New(@name, false);
+			type := root->GetType();
+			if(type = Data.JSON.JsonElement->JsonType->OBJECT) {
+				builder->AddObject(root, 0);
+			}
+			else if(type = Data.JSON.JsonElement->JsonType->ARRAY) {
+				count := root->Size();
+				each(i : count) {
+					if(limit < 0 | builder->Size() < limit) {
+						item := root->Get(i);
+						if(item->GetType() <> Data.JSON.JsonElement->JsonType->OBJECT) {
+							@error := "'{$@name}': element {$(i + 1)} of the array is not an object";
+							return Nil;
+						};
+						builder->AddObject(item, 0);
+					};
+				};
+			}
+			else {
+				@error := "'{$@name}': the document is not an object or an array of objects";
+				return Nil;
+			};
+
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
+		}
+
+		#~
+		Gets the child tables the last Read made: depth first, in the order their arrays were
+		first seen, an object's members taken alphabetically
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+	}
+
+	# one table of an XML document and its child tables: the elements that are its rows
+	class : private : XmlTableBuilder {
+		@name : String;
+		@is_child : Bool;
+		@rows : Vector<XmlElement>;
+		@parents : Vector<IntRef>;
+
+		New(name : String, is_child : Bool) {
+			@name := name;
+			@is_child := is_child;
+			@rows := Vector->New()<XmlElement>;
+			@parents := Vector->New()<IntRef>;
+		}
+
+		method : public : Size() ~ Int {
+			return @rows->Size();
+		}
+
+		method : public : Add(element : XmlElement, parent : Int) ~ Nil {
+			@rows->AddBack(element);
+			@parents->AddBack(IntRef->New(parent));
+		}
+
+		function : IsElement(element : XmlElement) ~ Bool {
+			type := element->GetType();
+			return type = XmlElement->Type->ELEMENT | type = XmlElement->Type->UNARY_ELEMENT;
+		}
+
+		# the element children of an element
+		function : Elements(element : XmlElement) ~ Vector<XmlElement> {
+			found := Vector->New()<XmlElement>;
+			children := element->GetChildren();
+			if(children <> Nil) {
+				each(i : children) {
+					child := children->Get(i);
+					if(IsElement(child)) {
+						found->AddBack(child);
+					};
+				};
+			};
+
+			return found;
+		}
+
+		# whether an element is only text: no attributes and no element children
+		function : IsSimple(element : XmlElement) ~ Bool {
+			return element->GetAttributes()->Size() = 0 & Elements(element)->Size() = 0;
+		}
+
+		function : TextOf(element : XmlElement) ~ String {
+			text := element->GetDecodedContent();
+			if(text = Nil) {
+				return Nil;
+			};
+
+			text := text->Trim();
+			return text->Size() > 0 ? text : Nil;
+		}
+
+		# this table, then its child tables, depth first; the hint applies to this table only
+		method : public : Build(hint : ScanHint, tables : Vector<Table>) ~ Nil {
+			# a child element name is a column when, in every row, it appears at most once and
+			# holds only text; otherwise its elements are rows of a child table
+			order := Vector->New()<String>;
+			seen := Hash->New()<String, IntRef>;
+			nested := Hash->New()<String, BoolRef>;
+			each(r : @rows) {
+				row := @rows->Get(r);
+				attributes := row->GetAttributes();
+				each(a : attributes) {
+					attribute_name := attributes->Get(a)->GetName();
+					Remember("@{$attribute_name}", order, seen);
+				};
+
+				counts := Hash->New()<String, IntRef>;
+				elements := Elements(row);
+				each(e : elements) {
+					element := elements->Get(e);
+					name := element->GetName();
+					count := counts->Find(name);
+					if(count = Nil) {
+						counts->Insert(name, IntRef->New(1));
+					}
+					else {
+						count->Set(count->Get() + 1);
+						nested->Insert(name, BoolRef->New(true));
+					};
+
+					if(<>IsSimple(element)) {
+						nested->Insert(name, BoolRef->New(true));
+					};
+					Remember(name, order, seen);
+				};
+
+				if(elements->Size() = 0 & TextOf(row) <> Nil) {
+					Remember("_text", order, seen);
+				};
+			};
+
+			# the child tables, one per nested element name, in the order first seen
+			children := Vector->New()<XmlTableBuilder>;
+			child_index := Hash->New()<String, XmlTableBuilder>;
+			each(i : order) {
+				name := order->Get(i);
+				if(nested->Has(name)) {
+					child := XmlTableBuilder->New("{$@name}_{$name}", true);
+					children->AddBack(child);
+					child_index->Insert(name, child);
+				};
+			};
+
+			names := Vector->New()<String>;
+			keyed := children->Size() > 0;
+			if(keyed) {
+				names->AddBack("_id");
+			};
+			if(@is_child) {
+				names->AddBack("_parent_id");
+			};
+			first_data := names->Size();
+			each(i : order) {
+				name := order->Get(i);
+				if(<>nested->Has(name) & (hint = Nil | hint->Wants(name))) {
+					names->AddBack(name);
+				};
+			};
+
+			# every cell as text, then each column typed by all of its values
+			column_names := String->New[names->Size()];
+			each(i : column_names) {
+				column_names[i] := names->Get(i);
+			};
+
+			cells := Vector->New()<Hash<String, String>>;
+			each(r : @rows) {
+				row := @rows->Get(r);
+				values := Hash->New()<String, String>;
+				attributes := row->GetAttributes();
+				each(a : attributes) {
+					attribute := attributes->Get(a);
+					value := attribute->GetValue();
+					if(value <> Nil) {
+						attribute_name := attribute->GetName();
+						values->Insert("@{$attribute_name}", XmlElement->DecodeString(value));
+					};
+				};
+
+				elements := Elements(row);
+				each(e : elements) {
+					element := elements->Get(e);
+					child := child_index->Find(element->GetName());
+					if(child <> Nil) {
+						child->Add(element, r + 1);
+					}
+					else {
+						text := TextOf(element);
+						if(text <> Nil) {
+							values->Insert(element->GetName(), text);
+						};
+					};
+				};
+
+				if(elements->Size() = 0) {
+					text := TextOf(row);
+					if(text <> Nil) {
+						values->Insert("_text", text);
+					};
+				};
+				cells->AddBack(values);
+			};
+
+			column_types := ColumnType->New[column_names->Size()];
+			each(c : column_names) {
+				if(c < first_data) {
+					column_types[c] := ColumnType->INT;
+				}
+				else {
+					texts := Vector->New()<String>;
+					each(r : cells) {
+						texts->AddBack(cells->Get(r)->Find(column_names[c]));
+					};
+					column_types[c] := SourceText->ScanType(texts);
+				};
+			};
+
+			table := Table->New(@name, column_names, column_types, false);
+			each(r : cells) {
+				values := cells->Get(r);
+				row := table->Insert();
+				c := 0;
+				if(keyed) {
+					row->Set(c + 1, IntRef->New(r + 1));
+					c += 1;
+				};
+				if(@is_child) {
+					row->Set(c + 1, IntRef->New(@parents->Get(r)->Get()));
+				};
+
+				for(k := first_data; k < column_names->Size(); k += 1;) {
+					text := values->Find(column_names[k]);
+					if(text <> Nil) {
+						row->Set(k + 1, CsvSource->Convert(text, column_types[k]));
+					};
+				};
+			};
+			tables->AddBack(table);
+
+			none : ScanHint;
+			each(i : children) {
+				children->Get(i)->Build(none, tables);
+			};
+		}
+
+		function : Remember(name : String, order : Vector<String>, seen : Hash<String, IntRef>) ~ Nil {
+			if(<>seen->Has(name)) {
+				seen->Insert(name, IntRef->New(order->Size()));
+				order->AddBack(name);
+			};
+		}
+	}
+
+	#~
+	An XML document as tables: each element named 'row_element' is a row. Its attributes are
+	columns named '@name', and child elements that hold only text and appear at most once in
+	a row are columns named after the element. A child element that repeats, or has
+	attributes or children of its own, becomes a row of a child table ('runs_tag' for 'tag'
+	elements under rows of table 'runs'), joined back through '_parent_id' = '_id'. An element
+	with no element children keeps its text in a '_text' column. Text is trimmed, entities are
+	decoded, and columns are typed as CSV columns are. Rows inside rows are not searched for.
+	A name ending in '.gz' is decompressed first.
+
+```
+catalog := Catalog->New();
+catalog->Load(XmlSource->New("books.xml", "book"));
+rs := catalog->Query("select title, @lang from books where year > 2000");
+```
+	~#
+	class XmlSource implements Source {
+		@path : String;
+		@name : String;
+		@row_element : String;
+		@text : String;
+		@error : String;
+		@tables : Vector<Table>;
+
+		#~
+		Constructor; the table is named after the file
+		@param path XML file
+		@param row_element name of the elements that are rows
+		~#
+		New(path : String, row_element : String) {
+			@path := path;
+			@name := SourceText->BaseName(path, "xml");
+			@row_element := row_element;
+		}
+
+		#~
+		Constructor
+		@param path XML file
+		@param name table name
+		@param row_element name of the elements that are rows
+		~#
+		New(path : String, name : String, row_element : String) {
+			@path := path;
+			@name := name;
+			@row_element := row_element;
+		}
+
+		#~
+		Makes a source over XML text already in memory
+		@param name table name
+		@param text XML text
+		@param row_element name of the elements that are rows
+		@return source
+		~#
+		function : FromText(name : String, text : String, row_element : String) ~ XmlSource {
+			source := XmlSource->New(Nil, name, row_element);
+			source->SetText(text);
+			return source;
+		}
+
+		method : public : SetText(text : String) ~ Nil {
+			@text := text;
+		}
+
+		#~
+		Gets the tables the document provides, the main table first; they are known only after
+		reading it
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			Read();
+			return TableShapes->Of(@tables, @name);
+		}
+
+		#~
+		Loads the document's tables into a catalog
+		@param catalog catalog
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			if(Read(hint) = Nil) {
+				return false;
+			};
+
+			each(i : @tables) {
+				catalog->Add(@tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			none : ScanHint;
+			return Read(none);
+		}
+
+		#~
+		Reads the document's main table; GetChildTables then has the others
+		@param hint columns and rows of the main table needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			@tables := Nil;
+			if(@row_element = Nil | @row_element->Size() = 0) {
+				@error := "no row element named";
+				return Nil;
+			};
+
+			text := @text;
+			if(text = Nil) {
+				reason := StringHolder->New();
+				text := SourceText->Read(@path, reason);
+				if(text = Nil) {
+					@error := reason->Get();
+					return Nil;
+				};
+			};
+
+			parser := XmlParser->New(text);
+			if(<>parser->Parse()) {
+				@error := "'{$@name}' is not well-formed XML";
+				reason := parser->GetError();
+				if(reason <> Nil) {
+					@error += ": ";
+					@error += reason;
+				};
+				return Nil;
+			};
+
+			limit := hint <> Nil ? hint->GetLimit() : -1;
+			builder := XmlTableBuilder->New(@name, false);
+			Collect(parser->GetRoot(), builder, limit);
+
+			@tables := Vector->New()<Table>;
+			builder->Build(hint, @tables);
+			return @tables->Get(0);
+		}
+
+		# the row elements under 'element', in document order, without searching inside a row
+		method : Collect(element : XmlElement, builder : XmlTableBuilder, limit : Int) ~ Nil {
+			if(element = Nil | (limit > -1 & builder->Size() >= limit)) {
+				return;
+			};
+
+			if(XmlTableBuilder->IsElement(element) & element->GetName()->Equals(@row_element)) {
+				builder->Add(element, 0);
+				return;
+			};
+
+			children := element->GetChildren();
+			if(children <> Nil) {
+				each(i : children) {
+					Collect(children->Get(i), builder, limit);
+				};
+			};
+		}
+
+		#~
+		Gets the child tables the last Read made, depth first in the order their elements were
+		first seen
+		@return child tables, empty if there are none
+		~#
+		method : public : GetChildTables() ~ Vector<Table> {
+			children := Vector->New()<Table>;
+			if(@tables <> Nil) {
+				for(i := 1; i < @tables->Size(); i += 1;) {
+					children->AddBack(@tables->Get(i));
+				};
+			};
+
+			return children;
 		}
 
 		#~
@@ -7460,6 +12559,51 @@ runs->Describe()->ToString()->PrintLine();
 			};
 
 			return matches;
+		}
+
+		#~
+		Finds matching files as a view over the filesystem table, so the result can be filtered,
+		sorted, grouped or joined. The rows are the files FindFiles returns; the columns are
+		FilesystemSource's.
+		@param path root directory to start searching
+		@return matching files, Nil if the pattern is invalid or the directory cannot be read
+		```
+		finder := Query.Structured.Finder->New(".*\\.obs$");
+		big := finder->FindTable("src")->Where(Col->Of("size")->Gt(10000))->OrderBy("size", Order->DESC);
+		```
+		~#
+		method : public : FindTable(path : String) ~ View {
+			if(<>@regex->IsOk()) {
+				return Nil;
+			};
+
+			files := FilesystemSource->New(path, true, -1, false)->List();
+			if(files = Nil) {
+				return Nil;
+			};
+
+			paths := files->GetColumn("path");
+			dirs := files->GetColumn("is_dir");
+			live := files->LiveRows();
+			rows := Int->New[live->Size()];
+			n := 0;
+			each(i : live) {
+				row := live[i];
+				if(dirs->GetInt(row) = 0) {
+					full_name := File->GetFullName(paths->GetString(row));
+					if(full_name <> Nil & @regex->MatchExact(full_name)) {
+						rows[n] := row;
+						n += 1;
+					};
+				};
+			};
+
+			columns := Int->New[files->GetColumnCount() - 1];
+			each(i : columns) {
+				columns[i] := i + 1;
+			};
+
+			return View->New(files, columns, Filter->Trim(rows, n));
 		}
 	}
 }

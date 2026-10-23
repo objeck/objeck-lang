@@ -923,9 +923,9 @@ if(parser->Parse()) {
 				return Nil;
 			};
 		  
-			attribs : Hash<String, XmlAttribute> := Nil; 
+			# in document order, so GetAttributes() can return them that way
+			attribs := Vector->New()<XmlAttribute>;
 			if(attrib_key <> Nil) {
-				attribs := Hash->New()<String, XmlAttribute>;
 				while(attrib_key <> Nil) {	
 			
 # IO.Console->Print("key: ")->PrintLine(attrib_key);    
@@ -947,8 +947,7 @@ if(parser->Parse()) {
 			
 # IO.Console->Print("value: ")->PrintLine(attrib_value);    
 			
-					attrib := XmlAttribute->New(attrib_key, attrib_value);
-					attribs->Insert(attrib->GetName(), attrib);
+					attribs->AddBack(XmlAttribute->New(attrib_key, attrib_value));
 			
 					# update
 					IgnoreWhiteSpace();
@@ -1009,7 +1008,13 @@ if(parser->Parse()) {
 				type := XmlElement->Type->ELEMENT;
 			};
 			
-			return XmlElement->New(type, tag_name, attribs, tag_contents);
+			no_attribs : Hash<String, XmlAttribute>;
+			element := XmlElement->New(type, tag_name, no_attribs, tag_contents);
+			each(i : attribs) {
+				element->AddAttribute(attribs->Get(i));
+			};
+
+			return element;
 		}
 			
 		#~
@@ -1200,6 +1205,7 @@ if(parser->Parse()) {
 		@namespace : String;
 		@type : XmlElement->Type;
 		@attribs : Hash<String, XmlAttribute>;
+		@attrib_names : Vector<String>;
 		@content : String;
 		@elem_parent : XmlElement;
 		@children : Vector<XmlElement>;
@@ -1242,13 +1248,20 @@ if(parser->Parse()) {
 		Constructor
 		@param type element type
 		@param name element name 
-		@param attribs element name/value pairs
+		@param attribs element name/value pairs; GetAttributes returns them in the hash's order
 		@param content content type
 		~#
 		New(type : XmlElement->Type, name : String, attribs : Hash<String, XmlAttribute>, content : String) {
 			@type := type;
 			@attribs := attribs;
 			@content := content;
+			if(attribs <> Nil) {
+				@attrib_names := Vector->New()<String>;
+				keys := attribs->GetKeys()<String>;
+				each(i : keys) {
+					@attrib_names->AddBack(keys->Get(i));
+				};
+			};
 
 			if(type = XmlElement->Type->CDATA) {
 				SetNames("[cdata]");
@@ -1454,8 +1467,39 @@ elem->GetAttribute("src")->GetValue()->PrintLine();
 		method : public : AddAttribute(attrib : XmlAttribute) ~ Nil {
 			if(@attribs = Nil) {
 				@attribs := Hash->New()<String, XmlAttribute>;
+				@attrib_names := Vector->New()<String>;
+			};
+
+			if(<>@attribs->Has(attrib->GetName())) {
+				@attrib_names->AddBack(attrib->GetName());
 			};
 			@attribs->Insert(attrib->GetName(), attrib);
+		}
+
+		#~
+		Gets the element's attributes, in the order they were added (document order for a parsed
+		element); an attribute added again under the same name keeps its first position
+		@return attributes, empty if there are none
+
+```
+parser := XmlParser->New("<run id=\"7\" label=\"cat\"/>");
+if(parser->Parse()) {
+  attribs := parser->GetRoot()->GetAttributes();
+  each(i : attribs) {
+    attribs->Get(i)->GetName()->PrintLine();
+  };
+};
+```
+		~#
+		method : public : GetAttributes() ~ Vector<XmlAttribute> {
+			attribs := Vector->New()<XmlAttribute>;
+			if(@attrib_names <> Nil) {
+				each(i : @attrib_names) {
+					attribs->AddBack(@attribs->Find(@attrib_names->Get(i)));
+				};
+			};
+
+			return attribs;
 		}
 		
 		#~

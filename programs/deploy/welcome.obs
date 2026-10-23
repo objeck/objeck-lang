@@ -31,7 +31,7 @@ class Welcome {
 			"", "gen_collect,net,json,cipher", "xml,gen_collect", "json,net,cipher",
 			"regex", "", "", "cipher",
 			"net,regex,gen_collect,json,cipher", "net,json,regex,cipher", "",
-			"odbc", "query,regex,misc,net,json,csv,cipher", "gen_collect,sdl2,sdl_game,json",
+			"odbc", "query,regex,misc,net,json,csv,xml,cipher", "gen_collect,sdl2,sdl_game,json",
 			"gen_collect", "net,rss,gen_collect,xml,cipher", "",
 			"gen_collect", "gen_collect", "gen_collect",
 			"", "", "gen_collect,ml,csv", "gemini,net,json,misc,cipher,net_server",

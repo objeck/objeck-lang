@@ -1,0 +1,471 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured's relational SQL (docs/QUERY_DESIGN.md, sections 4 and 6, phase 4): GROUP BY
+with every aggregate, HAVING (on aggregates the select list does not show), multi-key ORDER BY
+by name, alias, aggregate or position, LIMIT and OFFSET, multi-column DISTINCT, INNER and LEFT
+joins through a Catalog (aliases, qualified names, keys of different types, three tables, a
+WHERE clause on either side), INSERT/UPDATE/DELETE/CREATE TABLE with placeholders and
+all-or-nothing failure, and the errors. A randomized cross-check compares joins and grouped
+aggregates with nested-loop answers computed here.
+~#
+use Query.Structured, Collection;
+
+class QuerySqlRelational {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# a cell as text: 'null' for empty, two decimals for a Float
+	function : Text(value : Compare) ~ String {
+		if(value = Nil) {
+			return "null";
+		}
+		else if(value->TypeOf(IntRef)) {
+			return value->As(IntRef)->Get()->ToString();
+		}
+		else if(value->TypeOf(FloatRef)) {
+			scaled := (value->As(FloatRef)->Get() * 100.0)->Round() / 100.0;
+			whole := scaled->ToInt();
+			cents := ((scaled - whole->As(Float)) * 100.0)->Abs()->Round()->ToInt();
+			sign := scaled < 0.0 & whole = 0 ? "-" : "";
+			pad := cents < 10 ? "0" : "";
+			return "{$sign}{$whole}.{$pad}{$cents}";
+		}
+		else if(value->TypeOf(BoolRef)) {
+			return value->As(BoolRef)->Get() ? "true" : "false";
+		};
+
+		return value->As(String);
+	}
+
+	# a result as lines of comma-separated cells, in row order
+	function : Lines(rs : Table) ~ String {
+		if(rs = Nil) {
+			return "<nil>";
+		};
+
+		out := "";
+		names := rs->GetColumnNames();
+		rows := rs->LiveRows();
+		each(r : rows) {
+			row := rs->RowAt(rows[r]);
+			line := "";
+			for(c := 1; c < names->Size(); c += 1;) {
+				if(c > 1) {
+					line += ",";
+				};
+				line += Text(row->Get(c));
+			};
+			if(r > 0) {
+				out += "|";
+			};
+			out += line;
+		};
+
+		return out;
+	}
+
+	function : Header(rs : Table) ~ String {
+		if(rs = Nil) {
+			return "<nil>";
+		};
+
+		names := rs->GetColumnNames();
+		out := "";
+		for(c := 1; c < names->Size(); c += 1;) {
+			if(c > 1) {
+				out += ",";
+			};
+			out += names[c];
+		};
+
+		return out;
+	}
+
+	function : Expect(what : String, rs : Table, expected : String) ~ Nil {
+		got := Lines(rs);
+		if(<>got->Equals(expected)) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+			"    expected: {$expected}"->PrintLine();
+			"    got:      {$got}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		catalog := Catalog->New();
+		Setup(catalog);
+
+		TestGrouping(catalog);
+		TestOrderingAndSlicing(catalog);
+		TestJoins(catalog);
+		TestChanges(catalog);
+		TestErrors(catalog);
+		TestLegacy();
+		CrossCheck();
+
+		if(@failures = 0) {
+			"PASS: query relational SQL"->PrintLine();
+		}
+		else {
+			"FAIL: query relational SQL ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Setup(catalog : Catalog) ~ Nil {
+		Check("create emp", catalog->Execute("create table emp (id int, name string, dept string, salary float, age int)") = 0);
+		inserted := catalog->Execute("insert into emp values (1, 'Ann', 'eng', 120.0, 30), (2, 'Bob', 'eng', 100.0, 40), (3, 'Cid', 'ops', 80.0, 50), (4, 'Dee', 'ops', 90.0, null), (5, 'Eve', 'eng', 110.0, 30), (6, 'Fay', null, 70.0, 20)");
+		Check("insert six employees", inserted = 6);
+
+		Check("create dept", catalog->Execute("CREATE TABLE dept (code VARCHAR(8), title TEXT, floor INTEGER)") = 0);
+		Check("insert departments", catalog->Execute("insert into dept (code, title, floor) values ('eng', 'Engineering', 3), ('ops', 'Operations', 1), ('hr', 'People', 2)") = 3);
+	}
+
+	function : TestGrouping(catalog : Catalog) ~ Nil {
+		rs := catalog->Query("select dept, count(*), count(age), sum(age), avg(salary), min(salary), max(age) from emp group by dept");
+		Check("grouped columns are named by their calls", Header(rs)->Equals("dept,count(*),count(age),sum(age),avg(salary),min(salary),max(age)"));
+		Expect("every aggregate per group; empty group key last", rs,
+			"eng,3,3,100,110.00,100.00,40|ops,2,1,50,85.00,80.00,50|null,1,1,20,70.00,70.00,20");
+
+		rs := catalog->Query("select dept, median(salary) as mid, stddev(salary) as sd from emp group by dept");
+		Expect("median and sample standard deviation; one value has none", rs, "eng,110.00,10.00|ops,85.00,7.07|null,70.00,null");
+
+		rs := catalog->Query("select count(*), sum(salary), max(age) from emp");
+		Expect("aggregates without GROUP BY are one row", rs, "6,570.00,50");
+
+		rs := catalog->Query("select count(*), sum(salary), avg(age) from emp where salary > 1000");
+		Expect("no rows: COUNT is 0 and the others are empty", rs, "0,null,null");
+
+		rs := catalog->Query("select dept, count(*) from emp where salary > 1000 group by dept");
+		Expect("no rows with GROUP BY: no groups", rs, "");
+
+		rs := catalog->Query("select dept, count(*) as n from emp group by dept having count(*) > 1");
+		Expect("HAVING on an aggregate the select list renames", rs, "eng,3|ops,2");
+
+		rs := catalog->Query("select dept from emp group by dept having avg(salary) < 100");
+		Expect("HAVING on an aggregate the select list does not show", rs, "ops|null");
+		Check("a hidden aggregate is not a result column", Header(rs)->Equals("dept"));
+
+		rs := catalog->Query("select dept, sum(salary) as total from emp group by dept having total >= 170 and dept <> 'eng'");
+		Expect("HAVING on an alias and a grouping column", rs, "ops,170.00");
+
+		rs := catalog->Query("select dept, age, count(*) from emp group by dept, age");
+		Expect("two grouping columns", rs, "eng,30,2|eng,40,1|ops,50,1|ops,null,1|null,20,1");
+
+		rs := catalog->Query("select distinct dept, age from emp");
+		Expect("DISTINCT over two columns keeps first-seen order", rs, "eng,30|eng,40|ops,50|ops,null|null,20");
+	}
+
+	function : TestOrderingAndSlicing(catalog : Catalog) ~ Nil {
+		rs := catalog->Query("select name from emp order by dept desc, salary");
+		Expect("two ORDER BY keys, one descending; empty cells last either way", rs, "Cid|Dee|Bob|Eve|Ann|Fay");
+
+		rs := catalog->Query("select name, salary as pay from emp order by pay desc limit 2");
+		Expect("ORDER BY an alias, then LIMIT", rs, "Ann,120.00|Eve,110.00");
+
+		rs := catalog->Query("select name, age from emp order by 2, 1 limit 3 offset 1");
+		Expect("ORDER BY positions, LIMIT with OFFSET", rs, "Ann,30|Eve,30|Bob,40");
+
+		rs := catalog->Query("select name from emp order by id limit 10 offset 5");
+		Expect("OFFSET near the end", rs, "Fay");
+
+		rs := catalog->Query("select name from emp order by id limit 0");
+		Expect("LIMIT 0", rs, "");
+
+		rs := catalog->Query("select dept, sum(salary) from emp group by dept order by sum(salary) desc");
+		Expect("ORDER BY an aggregate", rs, "eng,330.00|ops,170.00|null,70.00");
+
+		rs := catalog->Query("select dept, count(*) from emp group by dept order by max(age)");
+		Expect("ORDER BY an aggregate only ORDER BY names", rs, "null,1|eng,3|ops,2");
+	}
+
+	function : TestJoins(catalog : Catalog) ~ Nil {
+		rs := catalog->Query("select e.name, d.title from emp e join dept d on e.dept = d.code order by e.id");
+		Expect("an inner join with aliases", rs, "Ann,Engineering|Bob,Engineering|Cid,Operations|Dee,Operations|Eve,Engineering");
+		Check("join labels drop unneeded qualifiers", Header(rs)->Equals("name,title"));
+
+		rs := catalog->Query("select name, title, floor from emp left join dept on dept = code order by id");
+		Expect("a LEFT JOIN keeps the unmatched row; unqualified names", rs,
+			"Ann,Engineering,3|Bob,Engineering,3|Cid,Operations,1|Dee,Operations,1|Eve,Engineering,3|Fay,null,null");
+
+		rs := catalog->Query("select d.code, e.name from dept d left join emp e on e.dept = d.code where e.name is null");
+		Expect("WHERE on the right of a LEFT JOIN sees unmatched rows as empty", rs, "hr,null");
+
+		rs := catalog->Query("select e.name from emp e join dept d on d.code = e.dept where d.floor = 3 and e.age < 35 order by e.name");
+		Expect("WHERE conditions on each side of an inner join", rs, "Ann|Eve");
+
+		rs := catalog->Query("select d.title, count(*) as people, avg(e.salary) from emp e join dept d on e.dept = d.code group by d.title order by people desc");
+		Expect("a join, then GROUP BY", rs, "Engineering,3,110.00|Operations,2,85.00");
+
+		rs := catalog->Query("select * from dept d join emp e on e.dept = d.code where e.id = 3");
+		Check("SELECT * over a join qualifies only the clashing names", Header(rs)->Equals("code,title,floor,id,name,dept,salary,age"));
+		Expect("SELECT * over a join", rs, "ops,Operations,1,3,Cid,ops,80.00,50");
+
+		# keys of different types: INT against FLOAT compare as numbers
+		catalog->Execute("create table bonus (emp_id float, amount int)");
+		catalog->Execute("insert into bonus values (1.0, 5), (3.0, 7), (3.0, 1), (9.5, 2)");
+		rs := catalog->Query("select e.name, b.amount from emp e join bonus b on e.id = b.emp_id order by e.id, b.amount");
+		Expect("an INT key against a FLOAT key; a key matched twice", rs, "Ann,5|Cid,1|Cid,7");
+
+		# three tables, keys found in an earlier table of the chain
+		catalog->Execute("create table site (floor int, building string)");
+		catalog->Execute("insert into site values (1, 'North'), (3, 'South')");
+		rs := catalog->Query("select e.name, s.building from emp e join dept d on e.dept = d.code join site s on s.floor = d.floor where e.salary >= 100 order by e.name");
+		Expect("three tables", rs, "Ann,South|Bob,South|Eve,South");
+
+		# strings in separately encoded columns
+		catalog->Execute("create table tag (who string, tag string)");
+		catalog->Execute("insert into tag values ('Eve', 'lead'), ('Ann', 'new'), ('Zed', 'gone'), ('Ann', 'mentor')");
+		rs := catalog->Query("select t.tag from emp e join tag t on t.who = e.name order by t.tag");
+		Expect("text keys from different dictionaries", rs, "lead|mentor|new");
+	}
+
+	function : TestChanges(catalog : Catalog) ~ Nil {
+		catalog->Execute("create table t (k int, v string, ok bool)");
+		Check("insert with a column list and NULL", catalog->Execute("insert into t (k, v) values (1, 'a'), (2, null)") = 2);
+		Expect("inserted rows", catalog->Query("select k, v, ok from t order by k"), "1,a,null|2,null,null");
+
+		Check("update with WHERE", catalog->Execute("update t set v = 'b', ok = true where k = 2") = 1);
+		Expect("updated row", catalog->Query("select k, v, ok from t order by k"), "1,a,null|2,b,true");
+
+		before := Lines(catalog->Query("select k, v, ok from t order by k"));
+		Check("an insert a column refuses fails", catalog->Execute("insert into t values (3, 'c', false), ('x', 'd', true)") = -1);
+		Check("the refusal names the column", catalog->GetError() <> Nil & catalog->GetError()->Has("'k'"));
+		Expect("a failed insert adds no rows", catalog->Query("select k, v, ok from t order by k"), before);
+
+		Check("an update a column refuses fails", catalog->Execute("update t set v = 'z', k = 'bad'") = -1);
+		Expect("a failed update changes no cells", catalog->Query("select k, v, ok from t order by k"), before);
+
+		statement := catalog->Prepare("insert into t values (?, ?, ?)");
+		Check("a prepared insert has its placeholders", statement <> Nil & statement->GetParamCount() = 3);
+		statement->Bind(1, 7)->Bind(2, "q")->Bind(3, false);
+		Check("a prepared insert runs", statement->ExecuteUpdate() = 1);
+		statement->Bind(1, 8)->Bind(2, "r")->Bind(3, true);
+		Check("and runs again", statement->ExecuteUpdate() = 1);
+
+		missing := catalog->Prepare("insert into t values (?, ?, ?)");
+		missing->Bind(1, 9);
+		Check("an unbound placeholder is an error", missing->ExecuteUpdate() = -1 & missing->GetError()->Has("placeholder"));
+
+		nulls := catalog->Prepare("insert into t values (?, ?, ?)");
+		Check("BindNull inserts an empty cell", nulls->Bind(1, 9)->BindNull(2)->BindNull(3)->ExecuteUpdate() = 1);
+		Expect("the empty cells", catalog->Query("select v, ok from t where k = 9"), "null,null");
+		Check("a comparison with NULL matches no row", catalog->Query("select k from t where v <> null")->Size() = 0);
+		probe := catalog->Prepare("select k from t where v = ?");
+		Check("a bound NULL in a condition matches no row", probe->BindNull(1)->Execute()->Size() = 0);
+		Check("IS NULL finds it", catalog->Query("select k from t where v is null")->Size() = 1);
+		Check("delete the NULL row", catalog->Execute("delete from t where k = 9") = 1);
+
+		Check("delete with WHERE", catalog->Execute("delete from t where ok = true") = 2);
+		Expect("rows left", catalog->Query("select k from t order by k"), "1|7");
+
+		Check("the key column cannot be set", catalog->Execute("update t set pk = 5") = -1);
+		Check("an unknown column cannot be set", catalog->Execute("update t set nope = 5") = -1);
+		Check("too few values", catalog->Execute("insert into t values (1, 'a')") = -1);
+
+		table := catalog->Get("t");
+		Check("Table->Execute changes its own table", table->Execute("update t set v = 'w' where k = 7") = 1);
+		Check("Table->Execute refuses another table", table->Execute("delete from emp") = -1);
+		Check("Table->Query refuses a change", table->Query("delete from t") = Nil & table->GetError()->Has("Execute"));
+		Check("Table->Execute refuses a SELECT", table->Execute("select k from t") = -1);
+
+		Check("delete everything", catalog->Execute("delete from t") = 2);
+		Expect("an empty table", catalog->Query("select k from t"), "");
+	}
+
+	function : TestErrors(catalog : Catalog) ~ Nil {
+		Check("a syntax error gives its position", catalog->Query("select name emp") = Nil & catalog->GetError()->Has("position"));
+		Check("an unknown table", catalog->Query("select x from nowhere") = Nil & catalog->GetError()->Has("nowhere"));
+		Check("an aggregate in WHERE", catalog->Query("select name from emp where count(*) > 1") = Nil & catalog->GetError()->Has("HAVING"));
+		Check("a column neither grouped nor aggregated", catalog->Query("select name, count(*) from emp group by dept") = Nil & catalog->GetError()->Has("GROUP BY"));
+		Check("SELECT * with GROUP BY", catalog->Query("select * from emp group by dept") = Nil);
+		Check("an ambiguous column in a join", catalog->Query("select floor from dept d join site s on s.floor = d.floor") = Nil & catalog->GetError()->Has("more than one table"));
+		Check("a table joined to itself needs aliases", catalog->Query("select * from emp join emp on id = id") = Nil);
+		Check("an ON condition must link the new table", catalog->Query("select * from emp e join dept d on e.dept = e.name") = Nil);
+		Check("CREATE of an existing table", catalog->Execute("create table emp (x int)") = -1);
+		Check("an unknown type in CREATE", catalog->Execute("create table u (x blob)") = -1);
+		Check("SUM(*) is refused", catalog->Query("select sum(*) from emp") = Nil);
+		Check("ORDER BY a position past the list", catalog->Query("select name from emp order by 3") = Nil);
+		Check("HAVING on something not in the result", catalog->Query("select dept from emp group by dept having salary > 1") = Nil);
+		Check("text after the statement", catalog->Query("select name from emp limit 1 2") = Nil);
+	}
+
+	# the old engine's forms still work on a single table
+	function : TestLegacy() ~ Nil {
+		table := Table->New("people", ["name", "city", "age"]);
+		row := table->Insert(); row->Set("name", "Ann"); row->Set("city", "Oslo"); row->Set("age", IntRef->New(30));
+		row := table->Insert(); row->Set("name", "Bob"); row->Set("city", "Rome"); row->Set("age", IntRef->New(41));
+		row := table->Insert(); row->Set("name", "Cid"); row->Set("city", "Oslo"); row->Set("age", IntRef->New(25));
+
+		Expect("FROM with no SELECT", table->Query("from people where city = 'Oslo' order by age"), "Cid,Oslo,25|Ann,Oslo,30");
+		Expect("an unquoted word is a string", table->Query("select name from people where city = Rome"), "Bob");
+		Expect("an unknown select column is empty", table->Query("select name, nope from people where age > 40"), "Bob,null");
+		Expect("a table's own alias", table->Query("select p.name from people p where p.age < 30"), "Cid");
+		Expect("BETWEEN, IN and NOT", table->Query("select name from people where age between 26 and 45 and not city in ('Rome')"), "Ann");
+		Expect("GROUP BY on one table", table->Query("select city, count(*) from people group by city"), "Oslo,2|Rome,1");
+		Expect("quoted strings with an escaped quote", table->Query("select name from people where name <> 'O''Brien' order by name desc limit 1"), "Cid");
+		Expect("a quoted name", table->Query("select \"name\" from people where \"age\" = 41"), "Bob");
+	}
+
+	#
+	# Randomized cross-check against nested loops
+	#
+
+	function : CrossCheck() ~ Nil {
+		seed := 17;
+		each(round : 6) {
+			catalog := Catalog->New();
+			catalog->Execute("create table a (k int, g string, x float)");
+			catalog->Execute("create table b (k int, y int)");
+			a_size := 30 + round * 7;
+			b_size := 20 + round * 5;
+
+			a_keys := Int->New[a_size];
+			a_null := Bool->New[a_size];
+			a_groups := String->New[a_size];
+			a_x := Float->New[a_size];
+			insert_a := catalog->Prepare("insert into a values (?, ?, ?)");
+			each(i : a_size) {
+				seed := Next(seed);
+				a_null[i] := seed % 9 = 0;
+				a_keys[i] := seed % 12;
+				seed := Next(seed);
+				a_groups[i] := "g{$(seed % 4)}";
+				seed := Next(seed);
+				a_x[i] := (seed % 1000)->As(Float) / 10.0;
+				if(a_null[i]) {
+					insert_a->BindNull(1);
+				}
+				else {
+					insert_a->Bind(1, a_keys[i]);
+				};
+				insert_a->Bind(2, a_groups[i])->Bind(3, a_x[i]);
+				insert_a->ExecuteUpdate();
+			};
+
+			b_keys := Int->New[b_size];
+			b_y := Int->New[b_size];
+			insert_b := catalog->Prepare("insert into b values (?, ?)");
+			each(i : b_size) {
+				seed := Next(seed);
+				b_keys[i] := seed % 15;
+				seed := Next(seed);
+				b_y[i] := seed % 50;
+				insert_b->Bind(1, b_keys[i])->Bind(2, b_y[i])->ExecuteUpdate();
+			};
+
+			# inner join: count, sum of y, and the pair order
+			inner := catalog->Query("select a.x, b.y from a join b on a.k = b.k");
+			expected_pairs := 0;
+			expected_sum := 0;
+			order_ok := true;
+			n := 0;
+			each(i : a_size) {
+				if(<>a_null[i]) {
+					each(j : b_size) {
+						if(a_keys[i] = b_keys[j]) {
+							if(n < inner->Size()) {
+								got := inner->RowAt(n)->Get(2)->As(IntRef)->Get();
+								if(got <> b_y[j]) {
+									order_ok := false;
+								};
+							};
+							expected_pairs += 1;
+							expected_sum += b_y[j];
+							n += 1;
+						};
+					};
+				};
+			};
+			Check("round {$round}: inner join row count", inner->Size() = expected_pairs);
+			Check("round {$round}: inner join pairs in left-then-right order", order_ok);
+
+			# left join: every unmatched left row once, with an empty right side
+			left := catalog->Query("select a.k, b.y from a left join b on a.k = b.k");
+			expected_left := 0;
+			each(i : a_size) {
+				matches := 0;
+				if(<>a_null[i]) {
+					each(j : b_size) {
+						if(a_keys[i] = b_keys[j]) {
+							matches += 1;
+						};
+					};
+				};
+				expected_left += matches = 0 ? 1 : matches;
+			};
+			Check("round {$round}: left join row count", left->Size() = expected_left);
+
+			# grouped aggregates over the join
+			grouped := catalog->Query("select a.g, count(*) as n, sum(b.y) as s from a join b on a.k = b.k group by a.g");
+			each(g : 4) {
+				name := "g{$g}";
+				count := 0;
+				sum := 0;
+				each(i : a_size) {
+					if(<>a_null[i] & a_groups[i]->Equals(name)) {
+						each(j : b_size) {
+							if(a_keys[i] = b_keys[j]) {
+								count += 1;
+								sum += b_y[j];
+							};
+						};
+					};
+				};
+
+				found := false;
+				each(r : grouped->Size()) {
+					row := grouped->RowAt(r);
+					if(row->Get(1)->As(String)->Equals(name)) {
+						found := true;
+						Check("round {$round}: {$name} count", row->Get(2)->As(IntRef)->Get() = count);
+						Check("round {$round}: {$name} sum", row->Get(3)->As(IntRef)->Get() = sum);
+					};
+				};
+				Check("round {$round}: {$name} present exactly when it has rows", found = (count > 0));
+			};
+
+			# a WHERE condition pushed below the join gives the same rows as one after it
+			pushed := catalog->Query("select a.x, b.y from a join b on a.k = b.k where b.y > 25 and a.x < 50");
+			expected_where := 0;
+			each(i : a_size) {
+				if(<>a_null[i] & a_x[i] < 50.0) {
+					each(j : b_size) {
+						if(a_keys[i] = b_keys[j] & b_y[j] > 25) {
+							expected_where += 1;
+						};
+					};
+				};
+			};
+			Check("round {$round}: WHERE on both sides of a join", pushed->Size() = expected_where);
+
+			# grouped average on one table
+			averages := catalog->Query("select g, avg(x) as m from a group by g");
+			each(r : averages->Size()) {
+				row := averages->RowAt(r);
+				name := row->Get(1)->As(String);
+				total := 0.0;
+				count := 0;
+				each(i : a_size) {
+					if(a_groups[i]->Equals(name)) {
+						total += a_x[i];
+						count += 1;
+					};
+				};
+				Check("round {$round}: avg for {$name}", (row->Get(2)->As(FloatRef)->Get() - total / count->As(Float))->Abs() < 0.000001);
+			};
+		};
+	}
+
+	# a small linear congruential generator, so every run sees the same tables
+	function : Next(seed : Int) ~ Int {
+		return (seed * 1103515245 + 12345) % 2147483648;
+	}
+}

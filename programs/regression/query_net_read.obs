@@ -1,0 +1,206 @@
+# EXTRA_LIBS: net,net_server,regex,csv,misc,query
+#~
+Query.Structured reading files over HTTP (docs/QUERY_DESIGN.md, section 10, phase 5), against an
+in-process Web.HTTP.Server: a URL in FROM and in a source's constructor, the format from the URL's
+path (a query string ignored, '.gz' honoured), the download cache revalidated by ETag and by
+Last-Modified (an unchanged file answers 304 and is not read again, a changed one is), a server
+with neither validator, and an error status.
+~#
+use Collection, System.IO.Net, Web.HTTP.Server, Query.Structured;
+
+class NetReadHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		QueryNetRead->Serve(request, response);
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCode(405);
+		return false;
+	}
+}
+
+class QueryNetRead {
+	@port : static : Int;
+	@serve_returned : static : Bool;
+	@failures : static : Int;
+	@bodies : static : Map<String, String>;
+	@etags : static : Map<String, String>;
+	@dates : static : Map<String, String>;
+	@full : static : Int;
+	@not_modified : static : Int;
+
+	function : Port() ~ Int { return @port; }
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Header(request : Request, name : String) ~ String {
+		value := request->GetHeader(name);
+		if(value = Nil) {
+			value := request->GetHeader(name->ToLower());
+		};
+		return value;
+	}
+
+	# canned files, with whatever validators the test set for each
+	function : Serve(request : Request, response : Response) ~ Nil {
+		path := request->GetPath();
+		body := @bodies->Find(path);
+		if(body = Nil) {
+			response->SetCode(404);
+			return;
+		};
+
+		etag := @etags->Find(path);
+		date := @dates->Find(path);
+		match := Header(request, "If-None-Match");
+		since := Header(request, "If-Modified-Since");
+		if((etag <> Nil & match <> Nil & match->Equals(etag)) | (etag = Nil & date <> Nil & since <> Nil & since->Equals(date))) {
+			@not_modified += 1;
+			response->SetCode(304);
+			return;
+		};
+
+		@full += 1;
+		if(etag <> Nil) {
+			response->SetHeader("ETag", etag);
+		};
+		if(date <> Nil) {
+			response->SetHeader("Last-Modified", date);
+		};
+
+		if(path->EndsWith(".gz")) {
+			response->SetCodeContent(200, body->ToByteArray()->CompressGzip());
+		}
+		else {
+			response->SetCodeContent(200, body);
+		};
+	}
+
+	function : Put(path : String, body : String, etag : String, date : String) ~ Nil {
+		@bodies->Insert(path, body);
+		if(etag <> Nil) {
+			@etags->Insert(path, etag);
+		}
+		else {
+			@etags->Remove(path);
+		};
+		if(date <> Nil) {
+			@dates->Insert(path, date);
+		}
+		else {
+			@dates->Remove(path);
+		};
+	}
+
+	function : StartServer() ~ Bool {
+		tries := 0;
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			@serve_returned := false;
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(NetReadHandler->New()->GetClass(), QueryNetRead->Port(), false);
+					QueryNetRead->ServeReturned();
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(<>@serve_returned & attempts < 20) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New("127.0.0.1", @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+			tries += 1;
+		};
+
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@bodies := Map->New()<String, String>;
+		@etags := Map->New()<String, String>;
+		@dates := Map->New()<String, String>;
+
+		# a fresh cache folder name per run would leave files behind; the URL's port is random,
+		# so each run's URLs are new to the cache anyway
+		Put("/data/runs.csv", "id,score\n1,0.5\n2,0.75\n", "\"v1\"", Nil);
+		Put("/data/dated.csv", "id\n1\n", Nil, "Wed, 21 Oct 2026 07:28:00 GMT");
+		Put("/data/plain.csv", "id\n7\n", Nil, Nil);
+		Put("/data/runs.csv.gz", "id,score\n3,1.5\n", "\"g1\"", Nil);
+		Put("/data/evals.jsonl", "{\"id\": 1}\n{\"id\": 2}\n", "\"j1\"", Nil);
+
+		if(<>StartServer()) {
+			"FAIL: query over HTTP (the test server did not start)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		base := "http://127.0.0.1:{$@port}";
+
+		catalog := Catalog->New();
+		rs := catalog->Query("select id, score from '{$base}/data/runs.csv' order by id");
+		Check("a URL in FROM", rs <> Nil & rs->Size() = 2 & rs->Get(1)->Get("score")->As(FloatRef)->Get() = 0.75);
+		if(rs = Nil) {
+			catalog->GetError()->PrintLine();
+		};
+
+		reads := catalog->GetFileReads();
+		full := @full;
+		rs := catalog->Query("select count(*) from '{$base}/data/runs.csv'");
+		Check("an unchanged URL is revalidated, not downloaded", @not_modified = 1 & @full = full);
+		Check("and not read again", catalog->GetFileReads() = reads & rs <> Nil & rs->Get(0)->Get(1)->As(IntRef)->Get() = 2);
+
+		Put("/data/runs.csv", "id,score\n1,0.5\n2,0.75\n3,0.9\n", "\"v2\"", Nil);
+		rs := catalog->Query("select count(*) from '{$base}/data/runs.csv'");
+		Check("a changed URL is downloaded and read again", catalog->GetFileReads() = reads + 1 & rs <> Nil & rs->Get(0)->Get(1)->As(IntRef)->Get() = 3);
+
+		catalog->Query("select id from '{$base}/data/dated.csv'");
+		not_modified := @not_modified;
+		catalog->Query("select id from '{$base}/data/dated.csv'");
+		Check("Last-Modified revalidates too", @not_modified = not_modified + 1);
+
+		full := @full;
+		plain_reads := catalog->GetFileReads();
+		catalog->Query("select id from '{$base}/data/plain.csv'");
+		catalog->Query("select id from '{$base}/data/plain.csv'");
+		Check("without validators each query downloads", @full = full + 2);
+		Check("but unchanged content is not read again", catalog->GetFileReads() = plain_reads + 1);
+
+		rs := catalog->Query("select score from '{$base}/data/runs.csv.gz?token=abc'");
+		Check("'.gz' and a query string in a URL", rs <> Nil & rs->Size() = 1 & rs->Get(0)->Get("score")->As(FloatRef)->Get() = 1.5);
+
+		direct := CsvSource->New("{$base}/data/runs.csv");
+		table := direct->Read(Nil);
+		Check("a source given a URL", table <> Nil & table->GetName()->Equals("runs") & table->Size() = 3);
+		lines := JsonLinesSource->New("{$base}/data/evals.jsonl")->Read();
+		Check("JSON Lines by URL", lines <> Nil & lines->Size() = 2);
+
+		missing := CsvSource->New("{$base}/data/none.csv");
+		Check("an error status names it", missing->Read(Nil) = Nil & missing->GetError()->Has("404"));
+		Check("an error status in SQL", catalog->Query("select * from '{$base}/data/none.csv'") = Nil & catalog->GetError()->Has("404"));
+		Check("a URL cannot be a pattern", catalog->Query("select * from '{$base}/data/*.csv'") = Nil & catalog->GetError()->Has("pattern"));
+
+		WebServer->Stop();
+		if(@failures = 0) {
+			"PASS: query over HTTP"->PrintLine();
+		}
+		else {
+			"FAIL: query over HTTP ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
