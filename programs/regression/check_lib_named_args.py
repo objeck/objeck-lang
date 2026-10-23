@@ -20,6 +20,9 @@ and links a program against it. Covered:
   rate: 0.25)'): the library's trailing-default alternate Train(name, epochs,
   rate) was planned as well, and the call was rejected as matching more than
   one overload;
+- the same shape on a constructor and on a function whose parameters all have
+  defaults ('Opts->New(c: true)', the four-flag shape of TF_IDF->New): the
+  alternates New(a, b, c) and New(a, b) were planned too;
 - a method inherited from a library parent, both on a variable and chained --
   the chained form once bound the names by position, silently;
 - a method whose parameters all have defaults, called with none (the zero-
@@ -62,6 +65,22 @@ LIBRARY = """bundle NamedLib {
     }
   }
 
+  class Opts {
+    @a : Bool; @b : Bool; @c : Bool; @d : Bool;
+
+    New(a : Bool := true, b : Bool := true, c : Bool := false, d : Bool := false) {
+      @a := a; @b := b; @c := c; @d := d;
+    }
+
+    method : public : Show() ~ String {
+      return "{$@a} {$@b} {$@c} {$@d}";
+    }
+
+    function : Make(a : Bool := true, b : Bool := true, c : Bool := false, d : Bool := false) ~ String {
+      return "{$a} {$b} {$c} {$d}";
+    }
+  }
+
   class Cube from Box {
     New(s : Int) {
       Parent(s, s, s);
@@ -97,6 +116,12 @@ class User {
     Box->New(1, d: 9)->Show()->PrintLine();
     Box->New(d: 4, w: 5)->Show(open: "[")->PrintLine();
 
+    Opts->New(c: true)->Show()->PrintLine();
+    Opts->New(b: false, c: true)->Show()->PrintLine();
+    Opts->New(d: true)->Show()->PrintLine();
+    Opts->Make(c: true)->PrintLine();
+    Opts->Make(b: false)->PrintLine();
+
     c := Cube->New(2);
     c->Scale(extra: 1, k: 2)->PrintLine();
     Cube->New(2)->Scale(extra: 1, k: 2)->PrintLine();
@@ -122,6 +147,8 @@ EXPECTED = ["a e=10 r=0.500000 v=false", "b e=10 r=0.500000 v=true",
             "f e=10 r=0.250000 v=false",
             "e e=1 r=2.000000 v=false", "12",
             "(1,2,3", "(1,2,9", "[5,2,4",
+            "true true true false", "true false true false", "true true false true",
+            "true true true false", "true false false false",
             "17", "17", "9", "9000"]
 
 BAD_PROGRAM = """use NamedLib;
