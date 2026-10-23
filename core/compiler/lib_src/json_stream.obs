@@ -220,10 +220,8 @@ stream->Close();
 				}
 				else if(@cur_char = '}' ) {
 					if(num_buffer <> Nil) {
-						@type := StreamParser->Type->NUMBER;
-						@value := String->New(num_buffer);
+						EndNumber(num_buffer);
 						num_buffer := Nil;
-						@is_delim := true;		
 
 						@skip_next := true;
 					}
@@ -237,10 +235,8 @@ stream->Close();
 				}
 				else if(@cur_char = ']') {
 					if(num_buffer <> Nil) {
-						@type := StreamParser->Type->NUMBER;
-						@value := String->New(num_buffer);
+						EndNumber(num_buffer);
 						num_buffer := Nil;
-						@is_delim := true;		
 
 						@skip_next := true;
 					}
@@ -367,10 +363,8 @@ stream->Close();
 				}
 				else {
 					if(num_buffer <> Nil) {
-						@type := StreamParser->Type->NUMBER;
-						@value := String->New(num_buffer);
+						EndNumber(num_buffer);
 						num_buffer := Nil;
-						@is_delim := true;				
 					};
 				};
 				
@@ -601,6 +595,67 @@ stream->Close();
 			@cur_char := '\0';
 			@skip_next := true;
 			@has_error := true;
+		}
+
+		# Ends a number token. The scanner collects any run of digits, '-', '+',
+		# '.', 'e' and 'E', so "1-2", "01" and "1." reached the caller as numbers;
+		# check the text against the RFC 8259 grammar before handing it out.
+		method : EndNumber(num_buffer : String) ~ Nil {
+			if(IsNumber(num_buffer)) {
+				@type := StreamParser->Type->NUMBER;
+				@value := String->New(num_buffer);
+				@is_delim := true;
+			}
+			else {
+				SetError("invalid number '{$num_buffer}'");
+			};
+		}
+
+		# RFC 8259: -? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?
+		function : IsNumber(str : String) ~ Bool {
+			size := str->Size();
+			i := 0;
+
+			if(i < size & str->Get(i) = '-') {
+				i += 1;
+			};
+
+			if(i < size & str->Get(i) = '0') {
+				i += 1;
+			}
+			else if(i < size & str->Get(i)->IsDigit()) {
+				while(i < size & str->Get(i)->IsDigit()) {
+					i += 1;
+				};
+			}
+			else {
+				return false;
+			};
+
+			if(i < size & str->Get(i) = '.') {
+				i += 1;
+				if(i >= size | <>str->Get(i)->IsDigit()) {
+					return false;
+				};
+				while(i < size & str->Get(i)->IsDigit()) {
+					i += 1;
+				};
+			};
+
+			if(i < size & (str->Get(i) = 'e' | str->Get(i) = 'E')) {
+				i += 1;
+				if(i < size & (str->Get(i) = '+' | str->Get(i) = '-')) {
+					i += 1;
+				};
+				if(i >= size | <>str->Get(i)->IsDigit()) {
+					return false;
+				};
+				while(i < size & str->Get(i)->IsDigit()) {
+					i += 1;
+				};
+			};
+
+			return i = size;
 		}
 
 		method : Whitespace() ~ Nil {

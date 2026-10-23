@@ -781,38 +781,81 @@ if(doc <> Nil) {
 							}
 							# parse number
 							else if(@input_index < @input->Size() & (@input[@input_index]->IsDigit() | @input[@input_index] = '-' | @input[@input_index] = '.')) {
+								# RFC 8259: -? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?
+								# This used to count '-' and '.' over a run of digits/-/./e/E, so
+								# "-1.5e-3" (two minus signs) failed the whole document, "2.5E+2"
+								# stopped at the '+', and "1-2" or "01" were accepted.
 								offset := @input_index;
-								minus_token_count := 0;
-								dot_token_count := 0;
+								size := @input->Size();
+								is_valid := true;
+								is_float := false;
 
-								# TODO: e digits
-								while(@input_index < @input->Size() & 
-									(@input[@input_index]->IsDigit() | @input[@input_index] = '-' | @input[@input_index] = '.' | @input[@input_index] = 'e' | @input[@input_index] = 'E')) {
-									if(@input[@input_index] = '-') {
-										minus_token_count += 1;
-									}
-									else if(@input[@input_index] = '.') {
-										dot_token_count += 1;
-									};
-									# update
+								# sign
+								if(@input[@input_index] = '-') {
 									@input_index += 1;
 								};
-								len := @input_index - offset;
 
-								if(len > 0) {
-									string := String->New(@input, offset, len);
-									if(dot_token_count = 1 & minus_token_count <= 1) {
-										AddToken(Token->New(Token->Type->FLOAT_NUM, string));
-									}
-									else if(dot_token_count = 0 & minus_token_count <= 1) {
-										AddToken(Token->New(Token->Type->INT_NUM, string));
-									}
-									else {
-										AddToken(Token->New(Token->Type->BAD_NUM, string));
+								# integer part: a lone zero, or no leading zero
+								if(@input_index < size & @input[@input_index] = '0') {
+									@input_index += 1;
+								}
+								else if(@input_index < size & @input[@input_index]->IsDigit()) {
+									while(@input_index < size & @input[@input_index]->IsDigit()) {
+										@input_index += 1;
 									};
 								}
 								else {
-									AddToken(Token->New(Token->Type->BAD_NUM, ""));
+									is_valid := false;
+								};
+
+								# fraction: at least one digit after the '.'
+								if(is_valid & @input_index < size & @input[@input_index] = '.') {
+									is_float := true;
+									@input_index += 1;
+									if(@input_index < size & @input[@input_index]->IsDigit()) {
+										while(@input_index < size & @input[@input_index]->IsDigit()) {
+											@input_index += 1;
+										};
+									}
+									else {
+										is_valid := false;
+									};
+								};
+
+								# exponent: e|E, optional sign, at least one digit
+								if(is_valid & @input_index < size & (@input[@input_index] = 'e' | @input[@input_index] = 'E')) {
+									is_float := true;
+									@input_index += 1;
+									if(@input_index < size & (@input[@input_index] = '+' | @input[@input_index] = '-')) {
+										@input_index += 1;
+									};
+									if(@input_index < size & @input[@input_index]->IsDigit()) {
+										while(@input_index < size & @input[@input_index]->IsDigit()) {
+											@input_index += 1;
+										};
+									}
+									else {
+										is_valid := false;
+									};
+								};
+
+								# anything number-like left over ("01", "1-2", "1.2.3") makes the
+								# whole run one bad token rather than two good ones
+								while(@input_index < size & (@input[@input_index]->IsDigit() | @input[@input_index] = '-' | @input[@input_index] = '+' |
+										@input[@input_index] = '.' | @input[@input_index] = 'e' | @input[@input_index] = 'E')) {
+									is_valid := false;
+									@input_index += 1;
+								};
+
+								string := String->New(@input, offset, @input_index - offset);
+								if(<>is_valid) {
+									AddToken(Token->New(Token->Type->BAD_NUM, string));
+								}
+								else if(is_float) {
+									AddToken(Token->New(Token->Type->FLOAT_NUM, string));
+								}
+								else {
+									AddToken(Token->New(Token->Type->INT_NUM, string));
 								};
 							}
 							# parse character
@@ -1121,7 +1164,7 @@ obj->ToString()->PrintLine();
 		}
 
 		#~
-		Gets the integer value
+		Gets the integer value. A number written with a fraction or an exponent (2.5, 1e5) is truncated toward zero.
 		@return integer value
 
 		```
@@ -1131,6 +1174,12 @@ obj->ToString()->PrintLine();
 		~#
 		method : public : GetInt() ~ Int {
 			if(@value <> Nil) {
+				# a number written with a fraction or an exponent ("1e5", "2.5E+2")
+				# goes through the float parse and truncates toward zero; ToInt()
+				# stopped at the 'e' and gave 1 for 1e5
+				if(@type = JsonType->NUMBER & (@value->Has('.') | @value->Has('e') | @value->Has('E'))) {
+					return @value->ToFloat()->As(Int);
+				};
 				return @value->ToInt();
 			};
 			
