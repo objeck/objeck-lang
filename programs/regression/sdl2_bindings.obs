@@ -1,0 +1,453 @@
+# EXTRA_LIBS: sdl2
+#~
+Regression test for the Game.SDL2 bindings added to close the 2026-10 gap
+survey: proves each new native resolves AND does what it says, headless.
+
+Why this exists: sdl2.obs called two natives that libobjk_sdl never exported
+(GameController->New and Cursor->GetGlobalMouseState(Point)), so a controller
+could never be opened, and nothing noticed because nothing ran them. Every check
+here CALLS a binding and asserts on its result, so a missing or misnamed native
+fails the run instead of shipping. tools/cicd/check_sdl_natives.py is the static
+half of the same guard.
+
+## Headless
+
+SDL_VIDEODRIVER and SDL_AUDIODRIVER are set to "dummy" before SDL starts, so no
+display, GPU, sound card or controller is needed and every platform runs the
+same code. Drawing goes through a SOFTWARE renderer on a plain surface, and is
+asserted by reading pixels back, not by completing without a crash.
+
+If SDL cannot initialise video even with the dummy driver this prints SKIP and
+exits 0. Audio is checked only when the dummy audio driver opens, and text only
+when the bundled font is found; either absence is reported, not failed.
+~#
+use System;
+use System.IO.Filesystem;
+use Game.SDL2;
+
+class Sdl2Bindings {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		Sdl2Bindings->New()->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Run() ~ Nil {
+		# SDL reads these when the subsystems start, so they go first
+		Runtime->SetEnvironmentVariable("SDL_VIDEODRIVER", "dummy");
+		Runtime->SetEnvironmentVariable("SDL_AUDIODRIVER", "dummy");
+
+		if(Core->Init(SubsystemFlags->SDL_INIT_VIDEO or SubsystemFlags->SDL_INIT_EVENTS) <> 0) {
+			error := Core->GetError();
+			"SKIP: SDL video could not start with the dummy driver: {$error}"->PrintLine();
+			return;
+		};
+
+		CheckGameController();
+		CheckCursor();
+		CheckTimers();
+		CheckEvents();
+		CheckWindowEvents();
+		CheckBlendAndBatch();
+		CheckFloatDrawing();
+		CheckTextureUpdate();
+		CheckLogicalSizeAndScale();
+		CheckReadPixelsAndPng();
+		CheckFonts();
+		CheckAudio();
+
+		Core->Quit();
+
+		if(@failures > 0) {
+			count := @failures;
+			"FAIL: {$count} SDL2 binding check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: SDL2 bindings (controllers, events, rendering, text, readback, timers, audio)"->PrintLine();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Bool {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			@failures += 1;
+			"  FAILED: {$name}"->PrintLine();
+		};
+
+		return ok;
+	}
+
+	# A 40x20 ARGB surface with a software renderer on it, cleared to opaque black
+	method : NewTarget(surface : Surface) ~ Renderer {
+		renderer := Renderer->CreateSoftwareRenderer(surface);
+		renderer->SetDrawColor(0, 0, 0, 255);
+		renderer->Clear();
+		return renderer;
+	}
+
+	method : Pixel(surface : Surface, x : Int, y : Int) ~ Int {
+		return surface->GetPixels()->Get(y * (surface->GetPitch() / 4) + x);
+	}
+
+	method : Channel(pixel : Int, shift : Int) ~ Int {
+		return (pixel >> shift) and 0xff;
+	}
+
+	#~
+	The original defect: 'sdl_gamecontroller_open' was not exported, so New
+	failed on its first call. A bad index must now give a clean null handle.
+	~#
+	method : CheckGameController() ~ Nil {
+		Core->InitSubSystem(SubsystemFlags->SDL_INIT_GAMECONTROLLER);
+
+		controller := GameController->New(99);
+		Check("GameController->New on an absent device returns a null controller", controller->IsNull());
+		error := Core->GetError();
+		Check("and SDL says why", error <> Nil & error->Size() > 0);
+		controller->Close();
+		controller->Close();
+		Check("Close on a never-opened controller is harmless, twice", controller->IsNull());
+	}
+
+	#~
+	The second missing native: GetGlobalMouseState(Point).
+	~#
+	method : CheckCursor() ~ Nil {
+		point := Point->New(-7, -7);
+		buttons := Cursor->GetGlobalMouseState(point);
+		Check("Cursor->GetGlobalMouseState(Point) resolves and returns a button mask", buttons >= 0);
+		Check("and writes the point", point->GetX() <> -7 & point->GetY() <> -7);
+	}
+
+	method : CheckTimers() ~ Nil {
+		first := Timer->GetPerformanceCounter();
+		frequency := Timer->GetPerformanceFrequency();
+		ticks := Timer->GetTicks64();
+		Timer->Delay(5);
+		second := Timer->GetPerformanceCounter();
+		later := Timer->GetTicks64();
+
+		Check("performance counter is positive", first > 0);
+		Check("performance counter increases", second > first);
+		Check("performance frequency is positive", frequency > 0);
+		elapsed := (second - first)->As(Float) / frequency->As(Float);
+		Check("a 5 ms delay measures between 1 ms and 1 s", elapsed > 0.001 & elapsed < 1.0);
+		Check("GetTicks64 advances across a delay", later > ticks);
+	}
+
+	method : CheckEvents() ~ Nil {
+		type := Event->Registers(1);
+		event := Event->New();
+
+		Check("SetUser refuses a non-user event type", <>event->SetUser(EventType->SDL_KEYDOWN, 1, 0));
+		Check("SetUser accepts a registered type", event->SetUser(type, -42, 7));
+		Check("the user event is pushed", event->Push() = 1);
+
+		polled := false;
+		while(<>polled & event->Poll() = 1) {
+			if(event->GetType() = type) {
+				polled := true;
+			};
+		};
+		Check("and polled back", polled);
+
+		user := event->GetUser();
+		Check("GetUser reads it", user <> Nil);
+		if(user <> Nil) {
+			Check("with its type", user->GetType() = type);
+			Check("its signed code", user->GetCode() = -42);
+			Check("and its window id", user->GetWindowID() = 7);
+		};
+
+		Check("accessors for other event types return Nil", event->GetWindow() = Nil & event->GetDrop() = Nil &
+			event->GetTouchFinger() = Nil & event->GetTextEditing() = Nil & event->GetControllerAxis() = Nil &
+			event->GetControllerButton() = Nil & event->GetControllerDevice() = Nil & event->GetKey() = Nil);
+
+		event->Free();
+	}
+
+	#~
+	A window resize under the dummy driver raises SDL_WINDOWEVENT_SIZE_CHANGED
+	carrying the new size, which is what GetWindow exists to read.
+	~#
+	method : CheckWindowEvents() ~ Nil {
+		window := Window->New("sdl2 bindings", 0, 0, 64, 48, WindowFlags->SDL_WINDOW_HIDDEN);
+		if(<>Check("a hidden window opens under the dummy driver", <>window->IsNull())) {
+			return;
+		};
+
+		w := IntRef->New();
+		h := IntRef->New();
+		window->GetSizeInPixels(w, h);
+		Check("Window->GetSizeInPixels reports the pixel size", w->Get() = 64 & h->Get() = 48);
+
+		event := Event->New();
+		while(event->Poll() = 1) {};
+
+		window->SetSize(100, 80);
+
+		found := false;
+		while(event->Poll() = 1) {
+			if(event->GetType() = EventType->SDL_WINDOWEVENT) {
+				info := event->GetWindow();
+				if(info <> Nil & info->GetEvent() = WindowEventID->SDL_WINDOWEVENT_SIZE_CHANGED) {
+					found := info->GetData1() = 100 & info->GetData2() = 80 & info->GetWindowID() > 0;
+				};
+			};
+		};
+		Check("a resize is read back as SIZE_CHANGED with data1 x data2 = 100 x 80", found);
+
+		event->Free();
+		window->Destroy();
+	}
+
+	method : CheckBlendAndBatch() ~ Nil {
+		surface := Surface->New(0, 40, 20, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+		renderer := NewTarget(surface);
+
+		Check("SetDrawBlendMode succeeds", renderer->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_BLEND) = 0);
+		mode := IntRef->New(-1);
+		renderer->GetDrawBlendMode(mode);
+		Check("GetDrawBlendMode reads it back", mode->Get() = BlendMode->SDL_BLENDMODE_BLEND);
+
+		# half-transparent red over black blends to half red
+		renderer->SetDrawColor(255, 0, 0, 128);
+		Check("FillRects draws a flat array of rects", renderer->FillRects([0, 0, 4, 4, 30, 10, 4, 4]) = 0);
+		blended := Pixel(surface, 1, 1);
+		red := Channel(blended, 16);
+		Check("blended red is about half (got {$red})", red >= 0x7e & red <= 0x82);
+		Check("the second rect is drawn too", Channel(Pixel(surface, 31, 11), 16) >= 0x7e);
+		Check("outside the rects stays black", Pixel(surface, 10, 10) = 0xff000000);
+
+		renderer->SetDrawBlendMode(BlendMode->SDL_BLENDMODE_NONE);
+		renderer->SetDrawColor(0, 255, 0, 255);
+		Check("DrawPoints draws each pair", renderer->DrawPoints([20, 2, 22, 2]) = 0);
+		Check("both points are green", Pixel(surface, 20, 2) = 0xff00ff00 & Pixel(surface, 22, 2) = 0xff00ff00);
+		Check("DrawLines draws a polyline", renderer->DrawLines([0, 18, 9, 18, 9, 15]) = 0);
+		Check("its segments are drawn", Pixel(surface, 5, 18) = 0xff00ff00 & Pixel(surface, 9, 16) = 0xff00ff00);
+		Check("DrawRects outlines", renderer->DrawRects([12, 12, 5, 5]) = 0);
+		Check("an outline's edge is drawn and its middle is not", Pixel(surface, 12, 14) = 0xff00ff00 & Pixel(surface, 14, 14) = 0xff000000);
+
+		Check("a ragged point array is refused", renderer->DrawPoints([1, 2, 3]) < 0);
+		Check("a ragged rect array is refused", renderer->FillRects([1, 2, 3]) < 0);
+		Check("an empty array is refused", renderer->DrawLines(Int->New[0]) < 0);
+
+		renderer->Destroy();
+		surface->Free();
+	}
+
+	method : CheckFloatDrawing() ~ Nil {
+		surface := Surface->New(0, 40, 20, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+		renderer := NewTarget(surface);
+		renderer->SetDrawColor(0, 0, 255, 255);
+
+		Check("FillRectF", renderer->FillRectF(2.0, 2.0, 3.0, 3.0) = 0);
+		Check("FillRectF fills", Pixel(surface, 3, 3) = 0xff0000ff);
+		Check("DrawPointF", renderer->DrawPointF(30.2, 5.2) = 0);
+		Check("DrawPointF lands on the pixel it rounds to", Pixel(surface, 30, 5) = 0xff0000ff);
+		Check("DrawLineF", renderer->DrawLineF(10.0, 15.0, 20.0, 15.0) = 0);
+		Check("DrawLineF draws", Pixel(surface, 15, 15) = 0xff0000ff);
+		Check("DrawRectF", renderer->DrawRectF(25.0, 10.0, 6.0, 6.0) = 0);
+		Check("DrawRectF outlines", Pixel(surface, 25, 12) = 0xff0000ff & Pixel(surface, 27, 12) = 0xff000000);
+
+		renderer->Destroy();
+		surface->Free();
+	}
+
+	method : CheckTextureUpdate() ~ Nil {
+		surface := Surface->New(0, 40, 20, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+		renderer := NewTarget(surface);
+
+		texture := renderer->CreateTexture(PixelValue->SDL_PIXELFORMAT_ABGR8888, TextureAccess->SDL_TEXTUREACCESS_STATIC, 2, 2);
+		Check("a 2x2 static texture is created", <>texture->IsNull());
+
+		# ABGR8888 is R,G,B,A in memory: red top-left, blue bottom-right
+		pixels := Byte->New[16];
+		pixels[0] := 255; pixels[3] := 255;
+		pixels[14] := 255; pixels[15] := 255;
+		Check("Texture->Update from a Byte[]", texture->Update(Nil, pixels, 8) = 0);
+		Check("a Byte[] shorter than pitch * rows is refused", texture->Update(Nil, Byte->New[4], 8) < 0);
+
+		renderer->Copy(texture, Nil, Rect->New(0, 0, 2, 2));
+		Check("the updated texture draws red at its top-left", Pixel(surface, 0, 0) = 0xffff0000);
+		Check("and blue at its bottom-right", Pixel(surface, 1, 1) = 0xff0000ff);
+
+		texture->Destroy();
+		renderer->Destroy();
+		surface->Free();
+	}
+
+	method : CheckLogicalSizeAndScale() ~ Nil {
+		surface := Surface->New(0, 40, 20, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+		renderer := NewTarget(surface);
+
+		w := IntRef->New();
+		h := IntRef->New();
+		Check("GetOutputSize", renderer->GetOutputSize(w, h) = 0);
+		Check("is the surface size", w->Get() = 40 & h->Get() = 20);
+
+		Check("SetLogicalSize", renderer->SetLogicalSize(20, 10) = 0);
+		renderer->GetLogicalSize(w, h);
+		Check("GetLogicalSize reads it back", w->Get() = 20 & h->Get() = 10);
+
+		renderer->SetDrawColor(0, 255, 0, 255);
+		renderer->FillRect(Rect->New(0, 0, 10, 5));
+		Check("a logical quarter covers the physical quarter", Pixel(surface, 19, 9) = 0xff00ff00);
+		Check("and no more", Pixel(surface, 20, 10) = 0xff000000);
+		renderer->Destroy();
+
+		scaled := NewTarget(surface);
+		Check("SetScale", scaled->SetScale(2.0, 0.5) = 0);
+		sx := FloatRef->New();
+		sy := FloatRef->New();
+		scaled->GetScale(sx, sy);
+		Check("GetScale reads it back", sx->Get() = 2.0 & sy->Get() = 0.5);
+		scaled->SetDrawColor(255, 255, 255, 255);
+		scaled->FillRect(Rect->New(5, 10, 1, 2));
+		Check("drawing is scaled", Pixel(surface, 11, 5) = 0xffffffff & Pixel(surface, 12, 5) = 0xff000000);
+
+		scaled->Destroy();
+		surface->Free();
+	}
+
+	method : CheckReadPixelsAndPng() ~ Nil {
+		surface := Surface->New(0, 40, 20, 32, PixelValue->SDL_PIXELFORMAT_ARGB8888);
+		renderer := NewTarget(surface);
+		renderer->SetDrawColor(255, 255, 0, 255);
+		renderer->FillRect(Rect->New(0, 0, 20, 10));
+
+		shot := renderer->ReadPixels(Nil);
+		if(Check("ReadPixels returns a surface", <>shot->IsNull())) {
+			Check("of the whole target", shot->GetW() = 40 & shot->GetH() = 20);
+			Check("with the drawn pixels", Pixel(shot, 0, 0) = 0xffffff00 & Pixel(shot, 39, 19) = 0xff000000);
+			shot->Free();
+		};
+
+		part := renderer->ReadPixels(Rect->New(15, 5, 10, 10));
+		if(Check("ReadPixels of a rect", <>part->IsNull())) {
+			Check("is the rect's size", part->GetW() = 10 & part->GetH() = 10);
+			Check("and its origin is the rect's", Pixel(part, 0, 0) = 0xffffff00 & Pixel(part, 9, 9) = 0xff000000);
+			part->Free();
+		};
+
+		directory := System.Runtime->GetTempDir();
+		if(directory = Nil | directory->Size() = 0) {
+			"  note: no temp directory, so PNG export is not exercised"->PrintLine();
+		}
+		else {
+			path := "{$directory}/objeck_sdl2_bindings.png";
+			File->Delete(path);
+			Check("Renderer->SavePNG writes a file", renderer->SavePNG(path) & File->Exists(path));
+
+			loaded := Image->Load(path);
+			if(Check("the PNG loads back", <>loaded->IsNull())) {
+				Check("at the target's size", loaded->GetW() = 40 & loaded->GetH() = 20);
+				loaded->Free();
+			};
+			File->Delete(path);
+		};
+
+		Check("Image->SavePNG refuses a Nil surface", Image->SavePNG(Nil, "unused.png") < 0);
+
+		renderer->Destroy();
+		surface->Free();
+	}
+
+	method : CheckFonts() ~ Nil {
+		Font->Init();
+
+		# the regression runner runs from the deploy tree's bin directory
+		font := Font->New("../lib/sdl/fonts/lazy.ttf", 24);
+		if(font->IsNull()) {
+			"  note: the bundled font was not found, so text is not exercised"->PrintLine();
+			Font->Quit();
+			return;
+		};
+
+		w := IntRef->New();
+		h := IntRef->New();
+		Check("SizeUTF8", font->SizeUTF8("MMMM", w, h) = 0);
+		wide := w->Get();
+		Check("measures a positive size", wide > 0 & h->Get() > 0);
+		font->SizeUTF8("i", w, h);
+		Check("a wide string measures wider than a narrow one", wide > w->Get());
+
+		height := font->GetHeight();
+		ascent := font->GetAscent();
+		descent := font->GetDescent();
+		skip := font->GetLineSkip();
+		Check("GetHeight is positive", height > 0);
+		Check("GetAscent is positive and at most the height", ascent > 0 & ascent <= height);
+		Check("GetDescent is at or below the baseline", descent <= 0);
+		Check("GetLineSkip is positive", skip > 0);
+
+		font->SetStyle(FontStyle->TTF_STYLE_BOLD or FontStyle->TTF_STYLE_ITALIC);
+		Check("SetStyle / GetStyle round-trip", font->GetStyle() = (FontStyle->TTF_STYLE_BOLD or FontStyle->TTF_STYLE_ITALIC));
+		font->SetStyle(FontStyle->TTF_STYLE_NORMAL);
+
+		font->SetOutline(2);
+		Check("SetOutline / GetOutline round-trip", font->GetOutline() = 2);
+		font->SetOutline(0);
+
+		wrapped := font->RenderUTF8BlendedWrapped("one two three four five six", Color->New(255, 255, 255), 80);
+		if(Check("RenderUTF8BlendedWrapped renders", <>wrapped->IsNull())) {
+			Check("no wider than the wrap length", wrapped->GetW() <= 80);
+			Check("over several lines", wrapped->GetH() >= skip * 2);
+			wrapped->Free();
+		};
+
+		font->Free();
+		Check("a closed font measures as a failure, not a crash", font->SizeUTF8("x", w, h) < 0 & font->GetHeight() < 0);
+
+		Font->Quit();
+	}
+
+	method : CheckAudio() ~ Nil {
+		if(Core->InitSubSystem(SubsystemFlags->SDL_INIT_AUDIO) <> 0) {
+			"  note: the dummy audio driver is unavailable, so audio is not exercised"->PrintLine();
+			return;
+		};
+
+		device := AudioDevice->New(44100, AudioFormat->SDL_AUDIO_F32, 1, 4096);
+		if(Check("AudioDevice opens a queued playback device", <>device->IsNull())) {
+			tone := Float->New[441];
+			each(i : tone) {
+				tone[i] := Float->Sin(2.0 * Float->Pi() * 440.0 * i->As(Float) / 44100.0) * 0.25;
+			};
+
+			# opened paused, so nothing drains while this runs
+			Check("QueueFloats", device->QueueFloats(tone) = 0);
+			Check("queues 4 bytes per sample", device->GetQueuedSize() = 441 * 4);
+			Check("Queue(Byte[])", device->Queue(Byte->New[16]) = 0);
+			Check("adds its bytes", device->GetQueuedSize() = 441 * 4 + 16);
+			device->Clear();
+			Check("Clear empties the queue", device->GetQueuedSize() = 0);
+			device->Close();
+			device->Close();
+			Check("Close is safe twice", device->IsNull());
+		};
+
+		s16 := AudioDevice->New(22050, AudioFormat->SDL_AUDIO_S16, 2, 1024);
+		if(<>s16->IsNull()) {
+			Check("QueueFloats refuses a non-float device", s16->QueueFloats(Float->New[4]) < 0);
+			s16->Close();
+		};
+
+		if(Mixer->OpenAudio(44100, AudioFormat->SDL_AUDIO_S16, 2, 1024)) {
+			Check("Mixer->SetPanning", Mixer->SetPanning(0, 255, 64) <> 0);
+			Check("Mixer->SetPanning refuses a volume above 255", Mixer->SetPanning(0, 300, 64) = 0);
+			Mixer->Close();
+		}
+		else {
+			"  note: the mixer did not open on the dummy driver, so panning is not exercised"->PrintLine();
+		};
+
+		Core->QuitSubSystem(SubsystemFlags->SDL_INIT_AUDIO);
+	}
+}
