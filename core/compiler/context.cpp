@@ -4905,17 +4905,42 @@ bool ContextAnalyzer::ResolveConcatToString(const std::wstring &cls_name, Method
 }
 
 /****************************
- * The receiver of a call on a
- * primitive ('v->Pow(2)'): the
- * type its encoding names, or
- * nullptr for any other call
+ * The receiver of a call that
+ * passes it as parameter 0 of a
+ * '$' class function -- a
+ * primitive ('v->Pow(2)') or a
+ * whole array ('a->Fill(0)'):
+ * the type its encoding names,
+ * or nullptr for any other call
  ****************************/
-Type* ContextAnalyzer::PrimitiveReceiverType(const std::wstring &encoding)
+Type* ContextAnalyzer::ReceiverParameterType(const std::wstring &encoding)
 {
   // AnalyzeExpressionMethodCall: "i," for an Int, "b**," for a Byte[,], and
-  // "o.System.Base*," for an object array, which is not a primitive
+  // "o.System.Base*," for an object array
   if(encoding.size() < 2 || encoding.back() != L',') {
     return nullptr;
+  }
+
+  // An object array's functions are on '$BaseArray' and take it as Base[]. Like a
+  // primitive, it must match only functions that take it: matched on the written
+  // arguments alone, 'names->ToString()' found nothing on $BaseArray, walked up to
+  // its implicit parent and bound Base's instance ToString() to a static call.
+  const std::wstring object_array = L"o.System.Base";
+  if(encoding.compare(0, object_array.size(), object_array) == 0) {
+    int dimension = 0;
+    for(size_t i = object_array.size(); i + 1 < encoding.size(); ++i) {
+      if(encoding[i] != L'*') {
+        return nullptr;
+      }
+      ++dimension;
+    }
+    if(dimension == 0) {
+      return nullptr;
+    }
+
+    Type* receiver = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base");
+    receiver->SetDimension(dimension);
+    return receiver;
   }
 
   EntryType type;
@@ -5440,7 +5465,7 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
   // takes it can match: resolving the written arguments alone bound
   // 255->ToHexString(4) to ToHexString(4), and an instance method of an ancestor
   // (Base) to an Int 'self'.
-  Type* receiver = PrimitiveReceiverType(encoding);
+  Type* receiver = ReceiverParameterType(encoding);
   Method* method = ResolveMethodCall(klass, method_call, depth, receiver);
   if(!method) {
     const std::wstring encoded_name = klass->GetName() + L':' + method_call->GetMethodName() + L':' + encoding +
@@ -6165,8 +6190,8 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
     // a call to none of them is left to its own path
     if(!found) {
     }
-    else if(PrimitiveReceiverType(encoding)) {
-      ProcessError(static_cast<Expression*>(method_call), L"Named arguments are not supported for calls on a primitive value");
+    else if(ReceiverParameterType(encoding)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Named arguments are not supported for calls on a primitive value or an array");
       call_params->ClearNames();
     }
     else if(!BindNamedLibraryArguments(klass, method_call, depth)) {
@@ -6178,7 +6203,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   // alone bound 255->ToHexString(4) to ToHexString(4) (the receiver was pushed
   // as well, and the stack went wrong) and an ancestor's instance method, such
   // as one on Base, to an Int 'self'.
-  Type* receiver = PrimitiveReceiverType(encoding);
+  Type* receiver = ReceiverParameterType(encoding);
   LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth, receiver);
   if(!lib_method) {
     LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetLibUses(current_class->GetFileName()));

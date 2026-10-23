@@ -1,0 +1,140 @@
+#~
+A call written on a whole array, 'a->Fill(7)', is a static function on the element type's
+hidden class with the array as its first parameter: Int->Fill(a, 7). The resolver bound it that
+way, but the emitter pushed the array AFTER the written arguments, so every multi-argument call
+on an array received its arguments in the wrong slots. 'block->CompressZlib(1)' passed 1 as
+the array and crashed the VM; single-argument calls such as 'a->Size()' hid it, since there was
+nothing to swap. Each check below compares the receiver form with the static form it stands for.
+
+An object array's functions are on the hidden $BaseArray class, and 'names->ToString()' bound to
+Base's instance ToString() rather than $BaseArray->ToString(names), so it raised on a Nil 'self'.
+~#
+class ArrayReceiverOrder {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Same(a : Int[], b : Int[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Five() ~ Int {
+		return 5;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# Byte[]: the call that crashed
+		block := "hello hello hello hello hello"->ToByteArray();
+		packed := block->CompressZlib(1);
+		Check("Byte[]->CompressZlib(level) compresses the receiver", packed <> Nil & packed->Size() < block->Size());
+		back := packed->UncompressZlib();
+		Check("and it round-trips", back->ToString()->Equals("hello hello hello hello hello"));
+
+		bytes := Byte->New[6];
+		bytes->Fill(9, 1, 3);
+		Check("Byte[]->Fill(value, offset, count)", bytes[0] = 0 & bytes[1] = 9 & bytes[3] = 9 & bytes[4] = 0);
+
+		raw := Int->ToBytes([11, 22, 33]);
+		ints := raw->ToInts(8, 2);
+		Check("Byte[]->ToInts(offset, count) reads from the receiver", ints->Size() = 2 & ints[0] = 22 & ints[1] = 33);
+
+		# Int[]: offset and count of different values, so a swap shows
+		values := [1, 2, 3, 4, 5, 6];
+		Check("Int[]->ToBytes(offset, count) matches the static call",
+			values->ToBytes(1, 3)->ToInts()->Size() = 3 & values->ToBytes(1, 3)->ToInts()[0] = 2);
+
+		filled := Int->New[5];
+		filled->Fill(4, 2, 2);
+		Check("Int[]->Fill(value, offset, count)", Same(filled, [0, 0, 4, 4, 0]));
+
+		whole := Int->New[3];
+		whole->Fill(8);
+		Check("Int[]->Fill(value)", Same(whole, [8, 8, 8]));
+
+		# arguments that are themselves calls and expressions
+		dest := Int->New[6];
+		dest->Copy(Five() - 4, values, 2, Five() - 2);
+		Check("Int[]->Copy(dest_offset, src, src_offset, count) with computed arguments", Same(dest, [0, 3, 4, 5, 0, 0]));
+
+		# Float[] and Char[]
+		floats := Float->New[4];
+		floats->Fill(2.5, 1, 2);
+		Check("Float[]->Fill(value, offset, count)", floats[0] = 0.0 & floats[1] = 2.5 & floats[2] = 2.5 & floats[3] = 0.0);
+
+		chars := Char->New[4];
+		chars->Fill('x', 0, 2);
+		Check("Char[]->Fill(value, offset, count)", chars[0] = 'x' & chars[1] = 'x' & chars[2] = '\0');
+
+		hits := "abcabc"->ToCharArray()->FindAll("bc"->ToCharArray());
+		Check("Char[]->FindAll(search) searches the receiver", hits->Size() = 2 & hits[0] = 1 & hits[1] = 4);
+
+		# a call's array result as the receiver
+		chained := "abcd"->ToCharArray();
+		chained->Fill('z', 1, 2);
+		Check("a local array receiver after a chained call", chained[0] = 'a' & chained[1] = 'z' & chained[3] = 'd');
+		tail := Int->ToBytes([7, 8, 9])->ToInts(8, 2);
+		Check("a previous call's array result as the receiver", tail->Size() = 2 & tail[0] = 8 & tail[1] = 9);
+		Check("an array literal as the receiver", [1, 2, 3, 4]->ToBytes(2, 2)->ToInts()[1] = 4);
+
+		# a jagged array's row as the receiver
+		rows := Int[]->New[2];
+		rows[0] := Int->New[3];
+		rows[1] := Int->New[4];
+		rows[1]->Fill(5, 1, 2);
+		Check("a jagged row receiver", Same(rows[1], [0, 5, 5, 0]) & Same(rows[0], [0, 0, 0]));
+
+		# an object array, whose functions are on the hidden $BaseArray class. ToString()
+		# resolved to Base's instance ToString() instead, and raised on a Nil 'self'.
+		names := ["c", "a", "b"];
+		Check("an object array's Size()", names->Size() = 3);
+		Check("an object array's ToString() is $BaseArray's", names->ToString()->Equals("[c,a,b]"));
+		Check("an object array's Copy()", names->Copy()->Size() = 3);
+		# the library's own '@values->ToString()' had the same binding
+		Check("StringArrayRef->ToString() lists its strings", StringArrayRef->New(["p", "q"])->ToString()->Equals("[p,q]"));
+		Check("BaseArrayRef->ToString() lists its values", BaseArrayRef->New(["r"])->ToString()->Equals("[r]"));
+
+		# an instance field as the receiver
+		holder := ArrayHolder->New();
+		holder->Fill();
+		Check("an instance-field receiver", Same(holder->Get(), [0, 6, 6, 0]));
+
+		if(@failures = 0) {
+			"PASS: calls on whole arrays pass the array as the first argument"->PrintLine();
+		}
+		else {
+			"FAIL: calls on whole arrays ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+class ArrayHolder {
+	@values : Int[];
+
+	New() {
+		@values := Int->New[4];
+	}
+
+	method : public : Fill() ~ Nil {
+		@values->Fill(6, 1, 2);
+	}
+
+	method : public : Get() ~ Int[] {
+		return @values;
+	}
+}

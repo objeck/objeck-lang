@@ -7368,6 +7368,13 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
   // stack before those arguments. Object receivers are passed as the instance
   // instead, so their arguments are still emitted first.
   //
+  // A whole array is such a receiver too, whatever its element type: 'a->Fill(7)'
+  // on an Int[] is Int->Fill(a, 7), and on an object array the function is on
+  // '$BaseArray' (ContextAnalyzer's receiver encoding: 'i*,', 'o.System.Base*').
+  // Treating arrays as objects put the array after its arguments, so every
+  // multi-argument call on one swapped them: 'block->CompressZlib(1)' passed 1 as
+  // the array.
+  //
   if(!method_call) {
     return false;
   }
@@ -7377,9 +7384,8 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
     return true;
   }
 
-  // A Variable receiver reaches this point for shapes like 'arr[i]->Pow(n)',
-  // where the value is one element of an array. The array itself is a different
-  // receiver, so it is excluded -- only a scalar primitive is parameter 0.
+  // A Variable receiver: a whole array ('arr->Fill(n)'), a jagged array's row
+  // ('rows[i]->Fill(n)'), or one element ('arr[i]->Pow(n)', a scalar primitive).
   Variable* variable = method_call->GetVariable();
   if(variable) {
     if(method_call->GetCallType() != METHOD_CALL || !variable->GetBaseType()) {
@@ -7388,12 +7394,12 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
 
     SymbolEntry* var_entry = variable->GetEntry();
     if(!variable->GetIndices() && var_entry && var_entry->GetType()->GetDimension() > 0) {
-      return false;
+      return true;
     }
 
-    // a jagged array's row is an array; its element is of the last array's type (#1246)
+    // a jagged array's row is an array (#1246)
     if(variable->IsRowValue()) {
-      return false;
+      return true;
     }
     frontend::Type* element_type = variable->GetChainedTypes().empty() ? variable->GetBaseType() : variable->GetChainedTypes().back();
 
@@ -7436,6 +7442,11 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
       prev_type = prev_call->GetFunctionalEntry()->GetType()->GetFunctionReturn();
     }
 
+    // an array result is parameter 0 as any whole array is
+    if(prev_type && prev_type->GetDimension() > 0) {
+      return true;
+    }
+
     if(prev_type && prev_type->GetDimension() == 0) {
       switch(prev_type->GetType()) {
       case frontend::BOOLEAN_TYPE:
@@ -7457,8 +7468,12 @@ bool IntermediateEmitter::ReceiverIsFirstParameter(MethodCall* method_call)
   }
 
   SymbolEntry* entry = method_call->GetEntry();
-  if(entry->IsSelf() || entry->GetType()->GetDimension() > 0) {
+  if(entry->IsSelf()) {
     return false;
+  }
+
+  if(entry->GetType()->GetDimension() > 0) {
+    return true;
   }
 
   switch(entry->GetType()->GetType()) {
@@ -7847,7 +7862,8 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     SymbolEntry* entry = method_call->GetEntry();
 
     bool is_index_size = false;
-    // set when an array entry receiver is loaded below, together with its instance memory
+    // set when an array receiver is loaded below; its instance word is pushed once
+    // the receiver's arguments are on the stack, since the array is parameter 0
     bool array_receiver_loaded = false;
     if(variable && variable->IsInternalVariable()) {
       entry = variable->GetEntry();
@@ -7870,12 +7886,10 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
         (variable->GetEntry() ? variable->GetEntry()->GetType() : nullptr);
       if(!variable->GetIndices() && receiver_type &&
          receiver_type->GetType() == CLASS_TYPE && receiver_type->GetDimension() > 0) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         array_receiver_loaded = true;
       }
       // a jagged array's row, 'rows[i]->Size()', is an array receiver too (#1246)
       else if(variable->IsRowValue()) {
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         array_receiver_loaded = true;
       }
     }
@@ -7903,7 +7917,6 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
           imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_CLS_MEM));
         }
         imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INT_VAR, entry->GetId(), mem_context));
-        imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
         array_receiver_loaded = true;
       }
       else if(!entry->IsSelf()) {
@@ -7962,6 +7975,11 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
       emitting_deferred_params = true;
       EmitMethodCallParameters(method_call);
       emitting_deferred_params = false;
+    }
+
+    // then an array receiver's instance word, last, as for any static '$' call
+    if(array_receiver_loaded) {
+      imm_block->AddInstruction(IntermediateFactory::Instance()->MakeInstruction(current_statement, static_cast<Expression*>(method_call), cur_line_num, LOAD_INST_MEM));
     }
 
     // A jagged array's element, 'rows[i][j]->PrintLine()' (#1246), has the last
