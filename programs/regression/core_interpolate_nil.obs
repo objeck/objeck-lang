@@ -2,7 +2,8 @@
 An interpolated String or object that is Nil reads as "Nil" instead of stopping the program:
 "x={$s}" with s Nil is "x=Nil". It holds for a local, an instance field, a class field and
 the result of a call, alone or among other text, inside an argument list (other values sit on
-the stack across the branch) and in a loop the JIT compiles. An enum or consts value of 0 and
+the stack across the branch), in a call made from another interpolation, and in a loop the JIT
+compiles. An enum or consts value of 0 and
 an Int 0 still read as 0, and String->Append(Nil) itself still raises.
 ~#
 enum Shade {
@@ -47,6 +48,10 @@ class CoreInterpolateNil {
 		return "{$a}|{$text}|{$b}";
 	}
 
+	function : Wrap(text : String) ~ String {
+		return "b{$text}c";
+	}
+
 	function : NoBox() ~ Box {
 		return Nil;
 	}
@@ -82,6 +87,8 @@ class CoreInterpolateNil {
 		Check("a class field", "c={$@shared}", "c=Nil");
 
 		Check("inside an argument list", Join(1, "m{$s}n{$@shared}o", 2), "1|msetnNilo|2");
+		absent : String;
+		Check("an interpolated call that interpolates a Nil itself", "a{$Wrap(absent)}d{$absent}", "abNilcdNil");
 
 		shade := Shade->DARK;
 		Check("an enum of 0 is still 0", "e={$shade}", "e=0");

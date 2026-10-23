@@ -2888,7 +2888,8 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
     char_str->SetConcat(entry);
 
     // An object interpolated as Nil reads as "Nil" rather than stopping the program: the
-    // emitter tests it through a temporary of its own and appends this literal instead.
+    // emitter tests it through the method's interpolation temporary and appends this
+    // literal instead.
     // Expressions are included because their type is final only when emitted.
     bool has_object = false;
     for(size_t i = 0; i < segments.size(); ++i) {
@@ -2911,16 +2912,17 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
         char_str_index++;
       }
 
-      Type* nil_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base");
-      std::wstring nil_name;
-      int nil_index = 0;
-      do {
-        nil_name = current_method->GetName() + L":#_var_interp_#" + std::to_wstring(nil_index++);
+      // One temporary per method: an interpolation holds it only between storing a value and
+      // loading it back, and a nested one finishes inside the outer value's expression, so
+      // they never overlap. One per interpolation ran a long method out of local space.
+      SymbolEntry* nil_entry = current_method->GetInterpTemp();
+      if(!nil_entry) {
+        Type* nil_type = TypeFactory::Instance()->MakeType(CLASS_TYPE, L"System.Base");
+        const std::wstring nil_name = current_method->GetName() + L":#_var_interp_#";
+        nil_entry = TreeFactory::Instance()->MakeSymbolEntry(nil_name, nil_type, false, true);
+        current_table->AddEntry(nil_entry, true);
+        current_method->SetInterpTemp(nil_entry);
       }
-      while(current_table->GetEntry(nil_name));
-
-      SymbolEntry* nil_entry = TreeFactory::Instance()->MakeSymbolEntry(nil_name, nil_type, false, true);
-      current_table->AddEntry(nil_entry, true);
       char_str->SetNilCheck(nil_entry, nil_id);
     }
   }

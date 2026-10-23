@@ -2354,6 +2354,7 @@ namespace frontend {
     std::vector<Assignment*> forwarded_defaults;
     SymbolTable* symbol_table;
     Class* klass;
+    SymbolEntry* interp_temp;
 #ifdef _DIAG_LIB
     std::vector<Expression*> diagnostic_expressions;
     std::vector<MethodCall*> diagnostic_method_calls;
@@ -2376,6 +2377,7 @@ namespace frontend {
       id = -1;
       has_and_or = false;
       original = nullptr;
+      interp_temp = nullptr;
     }
 
     Method(const std::wstring& f, const int l, const int p, const int ml, const int mp, const std::wstring& n) : ParseNode(f, l, p) {
@@ -2394,6 +2396,7 @@ namespace frontend {
       id = -1;
       has_and_or = false;
       original = nullptr;
+      interp_temp = nullptr;
     }
 
     ~Method() {
@@ -2419,6 +2422,16 @@ namespace frontend {
     }
     
   public:
+    // the one temporary the method's interpolations use to test an object for Nil: each
+    // holds it only between storing a value and loading it back
+    SymbolEntry* GetInterpTemp() {
+      return interp_temp;
+    }
+
+    void SetInterpTemp(SymbolEntry* t) {
+      interp_temp = t;
+    }
+
     void SetId();
 
     int GetId() {
