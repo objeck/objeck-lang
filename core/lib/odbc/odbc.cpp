@@ -117,8 +117,13 @@ extern "C" {
       return;
     }
 
-    status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(),
-                        SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);
+    {
+      // a network round trip to the data source; park so a collection on
+      // another thread need not wait for it (only C memory is touched)
+      APITools_Parked parked(context);
+      status = SQLConnect(conn, (SQLCHAR*)ds.c_str(), SQL_NTS, (SQLCHAR*)username.c_str(),
+                          SQL_NTS, (SQLCHAR*)password.c_str(), SQL_NTS);
+    }
     if(SQL_FAIL) {
       set_connect_error(conn);
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
@@ -159,9 +164,12 @@ extern "C" {
 
     SQLCHAR out_conn_str[1024];
     SQLSMALLINT out_conn_str_len;
-    status = SQLDriverConnect(conn, NULL, (SQLCHAR*)conn_str.c_str(), SQL_NTS,
-                              out_conn_str, sizeof(out_conn_str), &out_conn_str_len,
-                              SQL_DRIVER_NOPROMPT);
+    {
+      APITools_Parked parked(context);
+      status = SQLDriverConnect(conn, NULL, (SQLCHAR*)conn_str.c_str(), SQL_NTS,
+                                out_conn_str, sizeof(out_conn_str), &out_conn_str_len,
+                                SQL_DRIVER_NOPROMPT);
+    }
     if(SQL_FAIL) {
       set_connect_error(conn);
       SQLFreeHandle(SQL_HANDLE_DBC, conn);
@@ -225,7 +233,11 @@ extern "C" {
     }
 
     const std::string sql = UnicodeToBytes(wsql);
-    status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+    {
+      // the statement runs on the data source; park for it (sql is C memory)
+      APITools_Parked parked(context);
+      status = SQLExecDirect(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
+    }
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
@@ -262,6 +274,9 @@ extern "C" {
     std::wcout << L"### stmt_select_update: stmt=" << stmt << L" ###" << std::endl;
 #endif
     if(stmt) {
+      // Parameters bound to argument arrays stay valid while parked: arrays
+      // are allocated in the old generation and never move.
+      APITools_Parked parked(context);
       SQLExecute(stmt);
     }
   }
@@ -360,7 +375,10 @@ extern "C" {
     }
 
     // execute query
-    status = SQLExecute(stmt);
+    {
+      APITools_Parked parked(context);
+      status = SQLExecute(stmt);
+    }
     if(SQL_FAIL) {
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
@@ -598,7 +616,12 @@ extern "C" {
       return;
     }
 		
-    SQLRETURN status = SQLFetch(stmt);
+    SQLRETURN status;
+    {
+      // a fetch can wait on the data source for the next block of rows
+      APITools_Parked parked(context);
+      status = SQLFetch(stmt);
+    }
     if(SQL_OK) {
       APITools_SetIntValue(context, 0, 1);
     }
@@ -623,7 +646,11 @@ extern "C" {
     std::wcout << L"### stmt_update: stmt=" << stmt << L" ###" << std::endl;
 #endif
 
-    SQLRETURN status = SQLExecute(stmt);
+    SQLRETURN status;
+    {
+      APITools_Parked parked(context);
+      status = SQLExecute(stmt);
+    }
     PTR param_id;
     
     if(status == SQL_NEED_DATA) {
@@ -2379,7 +2406,10 @@ extern "C" {
       return;
     }
 
-    status = SQLTables(stmt, NULL, 0, NULL, 0, NULL, 0, (SQLCHAR*)"TABLE", SQL_NTS);
+    {
+      APITools_Parked parked(context);
+      status = SQLTables(stmt, NULL, 0, NULL, 0, NULL, 0, (SQLCHAR*)"TABLE", SQL_NTS);
+    }
     if(SQL_FAIL) {
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -2443,7 +2473,10 @@ extern "C" {
       return;
     }
 
-    status = SQLColumns(stmt, NULL, 0, NULL, 0, (SQLCHAR*)table_name.c_str(), SQL_NTS, NULL, 0);
+    {
+      APITools_Parked parked(context);
+      status = SQLColumns(stmt, NULL, 0, NULL, 0, (SQLCHAR*)table_name.c_str(), SQL_NTS, NULL, 0);
+    }
     if(SQL_FAIL) {
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);

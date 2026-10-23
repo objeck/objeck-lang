@@ -48,6 +48,9 @@ typedef size_t* (*APITools_AllocateArray_Ptr) (const size_t size, const instruct
 // because that object may be young: a minor GC then moves it and repairs only
 // references inside containers the barrier recorded (#864).
 typedef void(*APITools_WriteBarrier_Ptr) (size_t* target_obj);
+// Parks and unparks the calling thread for the garbage collector (see
+// APITools_Parked below).
+typedef void(*APITools_Blocking_Ptr) ();
 
 //
 // API calling context
@@ -68,6 +71,48 @@ struct VMContext {
   // a library compiled against an older header reads the fields above at the
   // same offsets, so it keeps working against a newer VM without a rebuild
   APITools_WriteBarrier_Ptr write_barrier;
+  // parking for blocking calls -- appended, as above; use APITools_Parked
+  APITools_Blocking_Ptr begin_blocking;
+  APITools_Blocking_Ptr end_blocking;
+};
+
+//
+// Parks the calling thread for the lifetime of the object, so a blocking call
+// -- a database round trip, waiting for an event, a camera frame, a long
+// inference -- does not hold up every garbage collection in the process. The
+// collector is stop-the-world: it waits until every VM thread is parked, and a
+// thread inside a native call is not, unless it says so.
+//
+//   {
+//     APITools_Parked parked(context);
+//     status = SQLExecute(stmt);
+//   }
+//
+// While parked, a collection can run and move young objects, so inside the
+// scope do not touch anything the VM manages: no APITools_Get*/Set* call, no
+// allocation, no method call, and no object reference read before it. Read the
+// arguments into C values first and set results after. Arrays are allocated in
+// the old generation and never move, so a pointer into an argument array's
+// data stays valid; an array the caller still references stays alive.
+//
+class APITools_Parked {
+  VMContext& context;
+
+ public:
+  explicit APITools_Parked(VMContext& c) : context(c) {
+    if(context.begin_blocking) {
+      context.begin_blocking();
+    }
+  }
+
+  ~APITools_Parked() {
+    if(context.end_blocking) {
+      context.end_blocking();
+    }
+  }
+
+  APITools_Parked(const APITools_Parked&) = delete;
+  APITools_Parked& operator=(const APITools_Parked&) = delete;
 };
 
 //
