@@ -723,17 +723,9 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     if(str_ptr) {
       wchar_t* str = (wchar_t*)(str_ptr + 3);
-      // as the interpreter's Str2Float: text that is not a number is 0.0. This
-      // ran std::stod bare, so once String->ToFloat was compiled (its tenth
-      // call, by default) the first such string threw std::invalid_argument
-      // into compiled code and ended the process.
-      try {
-        const FLOAT_VALUE value = std::stod(str);
-        PushFloat(value, op_stack, stack_pos);
-      }
-      catch(const std::invalid_argument&) {
-        PushFloat(0.0, op_stack, stack_pos);
-      }
+      // as the interpreter's Str2Float: text that is not a number is 0.0, and
+      // out-of-range text is strtod's +/-inf, 0 or subnormal (common.h)
+      PushFloat(ParseFloatText(str), op_stack, stack_pos);
     }
     else {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;
@@ -750,37 +742,8 @@ int64_t JitCompiler::StackCallbackBody(const long instr_id, StackInstr* instr, c
     size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
     const long base = (long)PopInt(op_stack, stack_pos);
     if(str_ptr) {
-      wchar_t* str = (wchar_t*)(str_ptr + 3);
-      try {
-        if(wcslen(str) > 2) {
-          switch(str[1]) {
-            // binary
-          case 'b':
-            PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 2));
-            return 0;   // parsed, not an error
-
-            // octal
-          case 'o':
-            PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 8));
-            return 0;   // parsed, not an error
-
-            // hexadecimal
-          case 'x':
-          case 'X':
-            PushInt(op_stack, stack_pos, std::stoll(str + 2, nullptr, 16));
-            return 0;   // parsed, not an error
-
-          default:
-      break;
-          }
-        }
-        PushInt(op_stack, stack_pos, std::stoll(str, nullptr, static_cast<int>(base)));
-      }
-      catch(const std::exception&) {
-        // as the interpreter's Str2Int: 0 for text that is not a number and
-        // for one that does not fit (std::out_of_range, which this let through)
-        PushInt(op_stack, stack_pos, 0);
-      }
+      // the interpreter's rules, signed prefixes included (common.h)
+      PushInt(op_stack, stack_pos, (size_t)ParseIntText((wchar_t*)(str_ptr + 3), static_cast<int>(base)));
     }
     else {
       std::wcerr << L">>> Attempting to dereference a 'Nil' memory instance <<<" << std::endl;

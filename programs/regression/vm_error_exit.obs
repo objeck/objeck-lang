@@ -9,22 +9,26 @@ POSIX entry point (core/vm/posix_main.cpp) discarded that result and returned
 a shell, a Makefile, a CI step -- and only a reader of stderr knew. Windows
 returned the -1.
 
-The way in is "1e999"->ToFloat(): std::stod throws out_of_range, which the
-interpreter's Str2Float and the JIT bridge's S2F both let through (they catch
-invalid_argument only), so the exception reaches Execute's catch, or under
-compiled code the bridge's, on every platform and in every VM mode.
+The way in is a float-formatting precision that is not a number:
+Runtime->SetProperty("float:string:precision", "not-a-number") and then any
+Float->ToString. Float2Str (interpreter.cpp) and the bridge's F2S case
+(jit_common.cpp) read the property with std::stoll, which throws
+std::invalid_argument, and neither catches it, so the exception reaches
+Execute's catch, or under compiled code the bridge's, on every platform and
+in every VM mode.
 
-THE TRIGGER IS ITSELF A KNOWN BUG. ToFloat on an out-of-range literal should
-yield a value, not kill the program; its fix is tracked as a task of its own.
-Nothing in the VM raises an exception on purpose, so any fixture for this
-catch rides on an unguarded one. Whoever fixes ToFloat must give this file
-another trigger that escapes Execute as a std::exception (anything that lands
-in the catch printing "internal error"); otherwise this file exits 0 and fails
-as # EXPECT_RUNTIME_ERROR -- the regression runner will say "should have
-failed at runtime" and run_vm_flag_tests.py (section 7) will name the missing
-message. The case first seen, on macOS, was Runtime->SetProperty("locale",
-"xx_YY.bogus") dying with "locale constructed with null"; #774 makes that call
-survive, so it is not used here.
+THE TRIGGER IS ITSELF A KNOWN DEFECT. A bad precision should be refused, not
+kill the program. Nothing in the VM raises an exception on purpose, so any
+fixture for this catch rides on an unguarded one. This file used
+"1e999"->ToFloat() until String->ToFloat stopped throwing
+std::out_of_range (it answers inf now); whoever guards the precision parse
+must give this file another trigger that escapes Execute as a
+std::exception, or it exits 0 and fails as # EXPECT_RUNTIME_ERROR -- the
+regression runner will say "should have failed at runtime" and
+run_vm_flag_tests.py (section 7) will name the missing message. The case
+first seen, on macOS, was Runtime->SetProperty("locale", "xx_YY.bogus")
+dying with "locale constructed with null"; #774 makes that call survive, so
+it is not used here.
 
 The regression runner passes this file only on a non-zero exit WITH output,
 which is exactly the fix: the old obr printed the line and exited 0.
@@ -42,7 +46,8 @@ and run_vm_flag_tests.py (section 7) checks the status under --jit=1 as well.
 class VmErrorExit {
 	function : Main(args : String[]) ~ Nil {
 		"before"->PrintLine();
-		"1e999"->ToFloat()->PrintLine();
+		Runtime->SetProperty("float:string:precision", "not-a-number");
+		Float->ToString(1.5)->PrintLine();
 		"after"->PrintLine();
 	}
 }

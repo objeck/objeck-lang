@@ -16,27 +16,31 @@ stack, exit(1).
 The regression runner passes an expected runtime error on any non-zero exit
 with output, so it cannot tell the abort from the error; run_vm_flag_tests.py
 (section 8) names the status and the message, and this file keeps the shape
-in both regression passes. Parse is native, so it is compiled in the plain
-pass too, and String->ToFloat runs under the bridge either way: in the plain
+in both regression passes. Format is native, so it is compiled in the plain
+pass too, and Float->ToString runs under the bridge either way: in the plain
 pass inside the interpreter the bridge nests (a library method called once
-stays interpreted), and with every method compiled in the bridge's own S2F
+stays interpreted), and with every method compiled in the bridge's own F2S
 case. Both routes end in the same catch.
 
-The way in is "1e999"->ToFloat(): std::stod throws std::out_of_range, which
-neither the interpreter's Str2Float nor the bridge's S2F catches, on every
-platform. Nothing in the VM throws on purpose, so a fixture for this catch
-rides on an unguarded throw; guard that one and this file needs another way
-in, which the runner reports as "should have failed at runtime".
+The way in is a float-formatting precision that is not a number
+(Runtime->SetProperty("float:string:precision", "not-a-number")): Float2Str
+and the bridge's F2S parse it with std::stoll, which throws
+std::invalid_argument, on every platform. This file used "1e999"->ToFloat()
+until String->ToFloat stopped throwing (it answers inf now). Nothing in the
+VM throws on purpose, so a fixture for this catch rides on an unguarded
+throw; guard that one and this file needs another way in, which the runner
+reports as "should have failed at runtime".
 ~#
 
 class JitBridgeException {
 	function : Main(args : String[]) ~ Nil {
 		"before"->PrintLine();
-		Parse("1e999")->PrintLine();
+		Runtime->SetProperty("float:string:precision", "not-a-number");
+		Format(1.5)->PrintLine();
 		"after"->PrintLine();
 	}
 
-	function : native : Parse(s : String) ~ Float {
-		return s->ToFloat();
+	function : native : Format(f : Float) ~ String {
+		return Float->ToString(f);
 	}
 }

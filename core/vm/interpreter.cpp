@@ -652,84 +652,7 @@ void StackInterpreter::Str2Int(size_t* &op_stack, size_t* &stack_pos)
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   long base = (long)PopInt(op_stack, stack_pos);
   if(str_ptr) {
-    const wchar_t* str = (wchar_t*)(str_ptr + 3);
-    try {
-      if(wcslen(str) > 3) {
-        if(str[0] == L'-') {
-          switch(str[2]) {
-            // binary
-          case L'b':
-            PushInt(-std::stoll(str + 3, nullptr, 2), op_stack, stack_pos);
-            return;
-
-            // octal
-          case L'o':
-            PushInt(-std::stoll(str + 3, nullptr, 8), op_stack, stack_pos);
-            return;
-
-            // hexadecimal
-          case L'x':
-          case L'X':
-            PushInt(-std::stoll(str + 3, nullptr, 16), op_stack, stack_pos);
-            return;
-
-          default:
-            break;
-          }
-        }
-        else {
-          switch(str[1]) {
-            // binary
-          case L'b':
-            PushInt(std::stoll(str + 2, nullptr, 2), op_stack, stack_pos);
-            return;
-
-            // octal
-          case L'o':
-            PushInt(std::stoll(str + 2, nullptr, 8), op_stack, stack_pos);
-            return;
-
-            // hexadecimal
-          case L'x':
-          case L'X':
-            PushInt(std::stoll(str + 2, nullptr, 16), op_stack, stack_pos);
-            return;
-
-          default:
-            break;
-          }
-        }
-      }
-      else if(wcslen(str) > 2) {
-        switch(str[1]) {
-          // binary
-        case L'b':
-          PushInt(std::stoll(str + 2, nullptr, 2), op_stack, stack_pos);
-          return;
-
-          // octal
-        case L'o':
-          PushInt(std::stoll(str + 2, nullptr, 8), op_stack, stack_pos);
-          return;
-
-          // hexadecimal
-        case L'x':
-        case L'X':
-          PushInt(std::stoll(str + 2, nullptr, 16), op_stack, stack_pos);
-          return;
-
-        default:
-          break;
-        }
-      }
-      PushInt(std::stoll(str, nullptr, static_cast<int>(base)), op_stack, stack_pos);
-    }
-    catch(std::exception &e) {
-#ifdef _WIN32    
-      UNREFERENCED_PARAMETER(e);
-#endif
-      PushInt(0, op_stack, stack_pos);
-    }
+    PushInt((size_t)ParseIntText((wchar_t*)(str_ptr + 3), static_cast<int>(base)), op_stack, stack_pos);
   }
   else {
     if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
@@ -754,17 +677,8 @@ void StackInterpreter::Str2Float(size_t* &op_stack, size_t* &stack_pos)
   
   size_t* str_ptr = (size_t*)PopInt(op_stack, stack_pos);
   if(str_ptr) {
-    wchar_t* str = (wchar_t*)(str_ptr + 3);
-    try {
-      const FLOAT_VALUE value = std::stod(str);
-      PushFloat(value, op_stack, stack_pos);
-    }
-    catch (std::invalid_argument& e) {
-#ifdef _WIN32    
-      UNREFERENCED_PARAMETER(e);
-#endif
-      PushFloat(0.0, op_stack, stack_pos);
-    }
+    const wchar_t* str = (wchar_t*)(str_ptr + 3);
+    PushFloat(ParseFloatText(str), op_stack, stack_pos);
   }
   else {
     if(TryErrorRecovery(stack_pos, RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance")) {
