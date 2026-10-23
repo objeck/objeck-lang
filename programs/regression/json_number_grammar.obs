@@ -1,0 +1,249 @@
+# EXTRA_LIBS: json_stream
+#
+# Data.JSON and Data.JSON.Stream number grammar (RFC 8259):
+#   -? (0 | [1-9][0-9]*) (. [0-9]+)? ([eE] [+-]? [0-9]+)?
+# The JsonParser lexer counted '-' and '.' over any run of digits/-/./e/E, so
+# "-1.5e-3" (two minus signs) failed the whole document, "2.5E+2" stopped at
+# the '+', "1e5"->GetInt() gave 1, and "1-2" or "01" were accepted. Every AI
+# client parses responses through it; ollama embeddings arrive as -1.2e-05.
+# The stream parser read exponents but accepted "1-2", "01" and "1." as numbers.
+
+use Data.JSON;
+use Data.JSON.Stream;
+
+class JsonNumberGrammar {
+	@failures : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		test := JsonNumberGrammar->New();
+		test->Run();
+	}
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Run() ~ Nil {
+		Valid();
+		Containers();
+		Invalid();
+		RoundTrip();
+		Extremes();
+		Stream();
+
+		if(@failures = 0) {
+			"PASS: JSON number grammar"->PrintLine();
+		}
+		else {
+			"FAIL: JSON number grammar ({$@failures} failures)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	method : Check(cond : Bool, what : String) ~ Nil {
+		if(<>cond) {
+			"  FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : Near(a : Float, b : Float) ~ Bool {
+		diff := (a - b)->Abs();
+		scale := b->Abs();
+		if(scale < 1.0) {
+			scale := 1.0;
+		};
+		return diff <= scale * 0.000000001;
+	}
+
+	# top-level numbers: text, expected GetInt, expected GetFloat
+	method : Valid() ~ Nil {
+		texts := ["0", "-0", "42", "-17", "3.25", "-1.5e-3", "2.5E+2", "1e5", "1E2", "1e+0",
+			"0.5e1", "-2.5e-1", "1e-7", "-1.2e-05", "123456789012", "0.0", "10e-1", "7E0"];
+		ints := [0, 0, 42, -17, 3, 0, 250, 100000, 100, 1,
+			5, 0, 0, 0, 123456789012, 0, 1, 7];
+		floats := [0.0, 0.0, 42.0, -17.0, 3.25, -0.0015, 250.0, 100000.0, 100.0, 1.0,
+			5.0, -0.25, 0.0000001, -0.000012, 123456789012.0, 0.0, 1.0, 7.0];
+
+		each(i : texts) {
+			text := texts[i];
+			elem := JsonParser->TextToElement(text);
+			if(elem = Nil) {
+				Check(false, "'{$text}' did not parse");
+			}
+			else {
+				Check(elem->GetType() = JsonElement->JsonType->NUMBER, "'{$text}' is not a NUMBER");
+				got_int := elem->GetInt();
+				want_int := ints[i];
+				Check(got_int = want_int, "'{$text}'->GetInt() = {$got_int}, expected {$want_int}");
+				got_float := elem->GetFloat();
+				want_float := floats[i];
+				Check(Near(got_float, want_float), "'{$text}'->GetFloat() = {$got_float}, expected {$want_float}");
+			};
+		};
+
+		# the magnitude survives even where GetInt() would overflow
+		big := JsonParser->TextToElement("6.02e23");
+		Check(big <> Nil, "'6.02e23' did not parse");
+		if(big <> Nil) {
+			Check(Near(big->GetFloat(), 6.02e23), "'6.02e23'->GetFloat()");
+		};
+	}
+
+	method : Containers() ~ Nil {
+		obj := JsonParser->TextToElement("{\"v\":-1.2e-05}");
+		Check(obj <> Nil, "{\"v\":-1.2e-05} did not parse");
+		if(obj <> Nil) {
+			Check(Near(obj->Get("v")->GetFloat(), -0.000012), "v = -1.2e-05");
+		};
+
+		arr := JsonParser->TextToElement("[1e2,2.5E+2]");
+		Check(arr <> Nil, "[1e2,2.5E+2] did not parse");
+		if(arr <> Nil) {
+			Check(arr->Size() = 2, "[1e2,2.5E+2] size");
+			Check(arr->Get(0)->GetInt() = 100, "[0] = 1e2 as Int");
+			Check(Near(arr->Get(1)->GetFloat(), 250.0), "[1] = 2.5E+2 as Float");
+		};
+
+		# an embeddings-shaped response
+		emb := JsonParser->TextToElement("{\"embedding\":[-1.2e-05, 3.4E-2, 0, -0.5, 1e+1],\"n\":5}");
+		Check(emb <> Nil, "embedding document did not parse");
+		if(emb <> Nil) {
+			vec := emb->Get("embedding");
+			expected := [-0.000012, 0.034, 0.0, -0.5, 10.0];
+			Check(vec->Size() = 5, "embedding size");
+			if(vec->Size() = 5) {
+				each(i : expected) {
+					got := vec->Get(i)->GetFloat();
+					Check(Near(got, expected[i]), "embedding[{$i}] = {$got}");
+				};
+			};
+			Check(emb->Get("n")->GetInt() = 5, "n after the array");
+		};
+
+		nested := JsonParser->TextToElement("{\"a\":{\"b\":[0.1e1,{\"c\":-2E-2}]},\"d\":-0}");
+		Check(nested <> Nil, "nested document did not parse");
+		if(nested <> Nil) {
+			Check(nested->Get("a")->Get("b")->Get(0)->GetInt() = 1, "a.b[0] = 0.1e1");
+			Check(Near(nested->Get("a")->Get("b")->Get(1)->Get("c")->GetFloat(), -0.02), "a.b[1].c = -2E-2");
+			Check(nested->Get("d")->GetInt() = 0, "d = -0");
+		};
+	}
+
+	# malformed numbers fail the parse, alone and inside containers
+	method : Invalid() ~ Nil {
+		texts := ["1-2", "01", "1.", ".5", "1e", "+1", "--1", "-", "1e+", "1E-", "1.2.3", "00",
+			"-01", "1ee2", "1e2e3", "1.e5", "-.5", "1e2.5",
+			"[1,01]", "{\"v\":1.}", "[.5]", "{\"v\":1-2}", "[1e]", "{\"v\":+1}", "[--1]"];
+		each(i : texts) {
+			text := texts[i];
+			elem := JsonParser->TextToElement(text);
+			Check(elem = Nil, "'{$text}' should not parse");
+
+			parser := JsonParser->New(text);
+			Check(<>parser->Parse(), "'{$text}': Parse() should be false");
+		};
+	}
+
+	# a number keeps its text, so it serializes as written and reparses to the same value
+	method : RoundTrip() ~ Nil {
+		texts := ["-1.5e-3", "2.5E+2", "1e5", "-1.2e-05", "6.02e23", "0", "-0.5"];
+		each(i : texts) {
+			text := texts[i];
+			doc := "{\"v\":{$text}}";
+			elem := JsonParser->TextToElement(doc);
+			if(elem = Nil) {
+				Check(false, "'{$doc}' did not parse");
+			}
+			else {
+				out := elem->ToString();
+				Check(out->Equals(doc), "'{$doc}' serialized as '{$out}'");
+				again := JsonParser->TextToElement(out);
+				Check(again <> Nil, "'{$out}' did not reparse");
+				if(again <> Nil) {
+					Check(again->Get("v")->GetFloat() = elem->Get("v")->GetFloat(), "'{$text}' changed value on reparse");
+				};
+			};
+		};
+	}
+
+	# huge and tiny exponents parse and serialize. GetFloat() is not called on
+	# them: String->ToFloat() aborts the VM when the value is out of double range.
+	method : Extremes() ~ Nil {
+		texts := ["1e400", "-1e400", "1e-400", "1E+99999", "[1e308,-1e-324]"];
+		each(i : texts) {
+			text := texts[i];
+			elem := JsonParser->TextToElement(text);
+			Check(elem <> Nil, "'{$text}' did not parse");
+			if(elem <> Nil) {
+				out := elem->ToString();
+				Check(out->Equals(text), "'{$text}' serialized as '{$out}'");
+			};
+		};
+
+		max := JsonParser->TextToElement("1.7976931348623157e308");
+		Check(max <> Nil, "max double did not parse");
+		if(max <> Nil) {
+			Check(max->GetFloat() > 1.0e308, "max double value");
+		};
+	}
+
+	method : Stream() ~ Nil {
+		# valid: every number comes out with its text, and no error
+		parser := StreamParser->New(LineStream->New("{\"v\":-1.2e-05,\"w\":[1e2,2.5E+2,0,-0.5,3.25]}"));
+		expected := ["-1.2e-05", "1e2", "2.5E+2", "0", "-0.5", "3.25"];
+		found := 0;
+		while(parser->Next()) {
+			if(parser->GetType() = StreamParser->Type->NUMBER) {
+				value := parser->GetTypeValue();
+				if(found < expected->Size()) {
+					want := expected[found];
+					Check(value->Equals(want), "stream number {$found} = '{$value}', expected '{$want}'");
+				};
+				found += 1;
+			};
+		};
+		count := expected->Size();
+		Check(found = count, "stream found {$found} numbers, expected {$count}");
+		Check(<>parser->HasError(), "stream reported an error on valid numbers");
+
+		# invalid: the parser reports an error
+		bad := ["[1-2]", "[01]", "[1.]", "{\"v\":1e}", "[.5]", "[--1]", "{\"v\":1.2.3}", "[1e+]"];
+		each(i : bad) {
+			text := bad[i];
+			bad_parser := StreamParser->New(LineStream->New(text));
+			while(bad_parser->Next()) {};
+			Check(bad_parser->HasError(), "stream accepted '{$text}'");
+		};
+	}
+}
+
+# a one-line InputStream over a string
+class LineStream implements System.IO.InputStream {
+	@line : String;
+
+	New(line : String) {
+		@line := line;
+	}
+
+	method : public : ReadByte() ~ Byte {
+		return 0;
+	}
+
+	method : public : ReadBuffer(offset : Int, num : Int, buffer : Byte[]) ~ Int {
+		return 0;
+	}
+
+	method : public : ReadBuffer(offset : Int, num : Int, buffer : Char[]) ~ Int {
+		return 0;
+	}
+
+	method : public : ReadLine() ~ String {
+		line := @line;
+		@line := Nil;
+		return line;
+	}
+
+	method : public : Close() ~ Nil {
+	}
+}
