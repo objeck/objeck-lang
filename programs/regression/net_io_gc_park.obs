@@ -1,10 +1,10 @@
 #~
-# Blocking I/O must park for garbage collection: HTTP/3, UDP, named pipes and
-# Runtime->Command
+# Blocking I/O must park for garbage collection: DTLS, HTTP/3, UDP, named
+# pipes and Runtime->Command
 #
 # A stop-the-world collection waits until every VM thread is parked. PRs #1300
-# and #1302 parked the TLS and HTTP/2 traps; the HTTP/3 (QUIC), UDP, named-pipe
-# and system-command traps still ran their blocking calls unparked,
+# and #1302 parked the TLS and HTTP/2 traps; the DTLS, HTTP/3 (QUIC), UDP,
+# named-pipe and system-command traps still ran their blocking calls unparked,
 # so a thread waiting in any of them held up every collection in the process --
 # and when the peer it waited for was another thread of the same VM that needed
 # a collection first, neither ever moved again.
@@ -19,16 +19,14 @@
 #
 #   UDP     a reader blocked in UDPSocketServer->ReadBuffer; its result must
 #           be the number of bytes read (it was 0 for every successful read)
+#   DTLS    DTLSSocket->New against a UDP peer that reads the ClientHello and
+#           answers, once collections have run, with a fatal alert
 #   HTTP/3  Http3Client->New against a UDP peer that reads the QUIC Initial and
 #           answers with a Version Negotiation packet (POSIX ngtcp2 builds; the
 #           Windows WinHTTP backend does no network I/O in its connect)
 #   pipe    Pipe->New(CREATE) waiting for a client, then ReadLine waiting for
 #           the line
 #   command Runtime->Command running a three-second command
-#
-# The DTLS traps are parked the same way, but nothing here can reach them: the
-# compiler emits none of the SOCK_DTLS_* traps, so every DTLSSocket and
-# DTLSSocketServer method is currently a no-op.
 #
 # Run it with --gc-threshold=64k as well; it must pass there too.
 # EXTRA_LIBS: net,net_quic
@@ -101,6 +99,55 @@ class UdpReader from Thread {
 		@read := @server->ReadBuffer(0, 64, buffer);
 		@first := buffer[0];
 		@finished := true;
+	}
+}
+
+#
+# DTLS: a peer that reads the ClientHello, and answers with a fatal alert once
+# collections have run
+#
+class DtlsPeer from Thread {
+	@server : UDPSocketServer;
+	@hello : Int;
+	@record_type : Int;
+	@saw_parked : Bool;
+	@collections : Int;
+
+	New(server : UDPSocketServer) {
+		Parent("dtls-peer");
+		@server := server;
+		@hello := -2;
+		@record_type := -1;
+		@saw_parked := false;
+		@collections := 0;
+	}
+
+	method : public : GetHello() ~ Int { return @hello; }
+	method : public : GetRecordType() ~ Int { return @record_type; }
+	method : public : SawParked() ~ Bool { return @saw_parked; }
+	method : public : GetCollections() ~ Int { return @collections; }
+
+	method : public : Run(param : Base) ~ Nil {
+		datagram := Byte->New[2048];
+		@hello := @server->ReadBuffer(0, 2048, datagram);
+		@record_type := datagram[0];
+
+		# The client has sent its ClientHello and now waits in the handshake.
+		@saw_parked := Probe->WaitParked(10000);
+		if(@saw_parked) {
+			@collections := Probe->Churn();
+		};
+
+		# A plaintext DTLS 1.2 record, epoch 0: alert, fatal, handshake_failure.
+		# Sent to the address the ClientHello came from.
+		alert := Byte->New[15];
+		alert[0] := 21;
+		alert[1] := 0xFE;
+		alert[2] := 0xFD;
+		alert[12] := 2;
+		alert[13] := 2;
+		alert[14] := 40;
+		@server->WriteBuffer(0, 15, alert);
 	}
 }
 
@@ -269,6 +316,8 @@ class NetIoGcPark {
 
 		"stage: udp"->ErrorLine();
 		TestUdp();
+		"stage: dtls"->ErrorLine();
+		TestDtls();
 		"stage: http3"->ErrorLine();
 		TestHttp3();
 		"stage: pipe"->ErrorLine();
@@ -279,7 +328,7 @@ class NetIoGcPark {
 		if(@failed > 0) {
 			Runtime->Exit(1);
 		};
-		"PASS: blocking HTTP/3, UDP, pipe and command calls park for collections"->PrintLine();
+		"PASS: blocking DTLS, HTTP/3, UDP, pipe and command calls park for collections"->PrintLine();
 	}
 
 	# Sends one byte to the peer on @port, so a peer still waiting for the
@@ -343,6 +392,45 @@ class NetIoGcPark {
 		first := reader->GetFirst();
 		if(first <> 7) {
 			Fail("UDP: the first byte read was {$first}, expected 7");
+		};
+	}
+
+	method : TestDtls() ~ Nil {
+		server := Bind();
+		if(server = Nil) {
+			Fail("DTLS: no port could be bound");
+			return;
+		};
+
+		peer := DtlsPeer->New(server);
+		peer->Execute(Nil);
+
+		timer := Timer->New(true);
+		dtls := DTLSSocket->New("127.0.0.1", @port);
+		timer->End();
+		seconds := timer->GetElapsedTime();
+		# A connect that failed before it sent anything leaves the peer waiting
+		Wake();
+		peer->Join();
+		server->Close();
+
+		if(dtls->IsOpen()) {
+			Fail("DTLS: open to a peer that never answered the handshake");
+		};
+		# Close after a failed connect must be harmless.
+		dtls->Close();
+
+		if(peer->GetHello() < 1 | peer->GetRecordType() <> 22) {
+			Fail("DTLS: the peer read {$peer->GetHello()} bytes, record type {$peer->GetRecordType()}, expected a ClientHello -- nothing was tested");
+		}
+		else if(<>peer->SawParked()) {
+			Fail("DTLS: a client blocked in the handshake was never counted as parked");
+		}
+		else if(peer->GetCollections() < 1) {
+			Fail("DTLS: no collection ran while the client was in the handshake");
+		};
+		if(seconds > 20.0) {
+			Fail("DTLS: the failed connect took {$seconds} s");
 		};
 	}
 

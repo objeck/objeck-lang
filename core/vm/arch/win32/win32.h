@@ -599,6 +599,24 @@ class IPSocket {
 
   static SOCKET OpenWithTimeout(const char* address, int port, int timeout_ms);
 
+  //
+  // A wildcard server socket that takes IPv4 and IPv6 clients alike: an IPv6
+  // socket on [::] with IPV6_V6ONLY off, so IPv4 clients arrive as mapped
+  // addresses. Falls back to IPv4 0.0.0.0 where there is no IPv6 stack. This is
+  // what every server binds, plain, TLS and DTLS, on every platform: the plain
+  // server was IPv4 only everywhere, while the TLS and DTLS servers took the
+  // first passive address getaddrinfo offered -- [::] with IPV6_V6ONLY on, so
+  // IPv6 only, on Windows, and 0.0.0.0 on Linux -- so which clients could
+  // reach a server depended on its kind and the platform.
+  //
+  static SOCKET BindAny(int port, int type);
+
+  //
+  // A peer's numeric address and port. An IPv4 client of a dual-stack server
+  // arrives as ::ffff:a.b.c.d and is reported as a.b.c.d, as it always was.
+  //
+  static void FormatAddress(const struct sockaddr* addr, char* buffer, size_t buffer_size, int& port);
+
   static SOCKET Bind(int port) {
     SOCKET server = socket(AF_INET, SOCK_STREAM, 0);
     if(server == INVALID_SOCKET) {
@@ -999,7 +1017,7 @@ class IPDtlsSocket {
     int ret = mbedtls_ctr_drbg_seed(&sctx->ctr_drbg, mbedtls_entropy_func, &sctx->entropy,
                                      (const unsigned char*)pers, strlen(pers));
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1015,7 +1033,7 @@ class IPDtlsSocket {
 
     ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
     if(ret < 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
       delete sctx;
       sctx = nullptr;
@@ -1032,7 +1050,7 @@ class IPDtlsSocket {
     std::string port_str = std::to_string(port);
     ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_UDP);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1041,7 +1059,7 @@ class IPDtlsSocket {
     ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
                                        MBEDTLS_SSL_TRANSPORT_DATAGRAM, MBEDTLS_SSL_PRESET_DEFAULT);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1058,7 +1076,7 @@ class IPDtlsSocket {
 
     ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1066,7 +1084,7 @@ class IPDtlsSocket {
 
     ret = mbedtls_ssl_set_hostname(&sctx->ssl, address);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1077,7 +1095,7 @@ class IPDtlsSocket {
 
     while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
       if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-        sctx->last_error = ret;
+        sctx->SetError(ret);
         delete sctx;
         sctx = nullptr;
         return false;
@@ -1086,7 +1104,7 @@ class IPDtlsSocket {
 
     uint32_t flags = mbedtls_ssl_get_verify_result(&sctx->ssl);
     if(require_cert && flags != 0) {
-      sctx->last_error = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+      sctx->SetError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -1098,7 +1116,7 @@ class IPDtlsSocket {
   static void WriteByte(char value, DtlsSocketCtx* sctx) {
     int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
     if(ret < 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
     }
   }
 
@@ -1110,7 +1128,7 @@ class IPDtlsSocket {
         if(ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
           continue;
         }
-        sctx->last_error = ret;
+        sctx->SetError(ret);
         return -1;
       }
       written += ret;
@@ -1123,27 +1141,31 @@ class IPDtlsSocket {
     status = mbedtls_ssl_read(&sctx->ssl, &value, 1);
     if(status <= 0) {
       if(status < 0) {
-        sctx->last_error = status;
+        sctx->SetError(status);
       }
       return '\0';
     }
     return (char)value;
   }
 
+  // One datagram's worth. DTLS keeps message boundaries, so a read returns
+  // what one record carried, as a UDP read does: looping to fill 'len', the
+  // way the TLS stream does, waited forever for records the peer never sent.
   static int ReadBytes(char* values, int len, DtlsSocketCtx* sctx) {
-    int total = 0;
-    while(total < len) {
-      int status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values + total, len - total);
-      if(status < 0) {
-        sctx->last_error = status;
-        return total > 0 ? total : -1;
-      }
-      if(status == 0) {
-        break;
-      }
-      total += status;
+    int status;
+    do {
+      status = mbedtls_ssl_read(&sctx->ssl, (unsigned char*)values, len);
     }
-    return total;
+    while(status == MBEDTLS_ERR_SSL_WANT_READ || status == MBEDTLS_ERR_SSL_WANT_WRITE);
+
+    if(status == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+      return 0;
+    }
+    if(status < 0) {
+      sctx->SetError(status);
+      return -1;
+    }
+    return status;
   }
 
   static void Close(DtlsSocketCtx* sctx) {
