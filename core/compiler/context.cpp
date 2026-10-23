@@ -2952,6 +2952,7 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
   Type* mismatched_primitive = nullptr;
   Type* row_type = nullptr;
   bool mixed_classes = false;
+  bool has_nil = false;
   std::vector<Expression*> elements = array->GetElements()->GetExpressions();
   std::vector<Type*> types;
   for(size_t i = 0; i < elements.size(); ++i) {
@@ -2962,6 +2963,14 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
     if(!type) {
       return;
     }
+    // Nil: an empty slot of an object array, or a missing row; the type comes
+    // from the other elements, and a literal of nothing else is refused below
+    if(type->GetType() == NIL_TYPE) {
+      has_nil = true;
+      types.push_back(type);
+      continue;
+    }
+
     // a subscripted element, '[a[i]]', is a single value: its eval type keeps the
     // array's dimension, which callers take the subscripts from
     if(type->GetDimension() > 0 && IsScalar(element)) {
@@ -3003,21 +3012,48 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
       break;
 
     case CLASS_TYPE:
+      // compared by full name: an enum value's type is written as the code
+      // names it, 'ColumnType', a method's return in full, 'QLib.ColumnType'.
+      // Unresolved, '[c->GetType(), ColumnType->INT]' was a mix, so a Base[],
+      // and then "Invalid cast between enum and class" where a ColumnType[]
+      // was wanted.
+      type = TypeFactory::Instance()->MakeType(type);
+      ResolveClassEnumType(type);
       if(class_type && class_type->GetName() != type->GetName()) {
         mixed_classes = true;
       }
       class_type = type;
       break;
 
-    case NIL_TYPE:
-      ProcessError(element, L"An array literal element cannot be Nil alone; give the array a type with ->New[..]");
-      return;
-
     default:
       ProcessError(element, L"Invalid array literal element");
       return;
     }
     types.push_back(type);
+  }
+
+  // an enum value is an Int at run time: it neither boxes into a Base[] nor
+  // has a Nil
+  const bool is_enum = class_type && HasProgramOrLibraryEnum(class_type->GetName());
+  if(is_enum && (primitive_type || mixed_classes)) {
+    ProcessError(array, L"Array element types do not match: an enum array literal holds values of one enum");
+    return;
+  }
+
+  if(has_nil) {
+    if(is_enum) {
+      ProcessError(array, L"An enum array literal cannot hold Nil");
+      return;
+    }
+    if(!row_type && !class_type) {
+      if(primitive_type) {
+        ProcessError(array, L"An array literal of '" + ElementTypeName(primitive_type) + L"' values cannot hold Nil");
+      }
+      else {
+        ProcessError(array, L"An array literal element cannot be Nil alone; give the array a type with ->New[..]");
+      }
+      return;
+    }
   }
 
   if(row_type) {

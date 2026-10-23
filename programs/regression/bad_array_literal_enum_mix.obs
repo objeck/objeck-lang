@@ -1,0 +1,19 @@
+# EXPECT_COMPILE_ERROR: an enum array literal holds values of one enum
+#~
+An enum value is an Int at run time. Mixed with a primitive in an array
+literal, it was taken for an object and the literal became a Base[] with the
+enum's raw Int stored where an object reference belongs; mixed with another
+class or enum, a Base[] of the same. An enum array literal holds one enum's
+values.
+~#
+enum ColumnType {
+	INT, FLOAT
+}
+
+class BadArrayLiteralEnumMix {
+	function : Main(args : String[]) ~ Nil {
+		v := 1;
+		x := [ColumnType->FLOAT, v];
+		x->Size()->PrintLine();
+	}
+}
