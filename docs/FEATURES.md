@@ -594,6 +594,10 @@ i := 41;
 "upper = {$name->ToUpper()}"->PrintLine();  # upper = WORLD
 ```
 
+A String or object that is `Nil` interpolates as `Nil`, so a message can show a value
+that is missing: `s : String; "s={$s}"->PrintLine();` prints `s=Nil`. Only interpolation
+does this; `String->Append(Nil)` and `+` with a `Nil` operand still raise a Nil error.
+
 Any object can be interpolated or concatenated. It prints through the nearest
 `ToString` in its class chain, ending at `System.Base->ToString`. That method
 prints a `Stringify` instance's own `ToString`, and for any other object the
