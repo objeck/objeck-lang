@@ -9693,13 +9693,19 @@
 					"descriptions": ["**Compresses a byte stream using gzip**\n\n```function : CompressGzip() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
 				},
 				"CompressZlib": {
-					"descriptions": ["**Compresses a byte stream using zlib**\n\n```function : CompressZlib() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
+					"descriptions": ["**Compresses a byte stream using zlib**\n\n```function : CompressZlib() ~ Byte[]```\n\n\n\nreturn: Byte[]", "**Compresses a byte stream using zlib at a given level: 1 is fastest, 9 smallest (what CompressZlib(input) uses), 0 stores without compressing, and\n-1, or any value out of range, is zlib's default (6). UncompressZlib reads every level.**\n\n```function : CompressZlib(input:Byte[], level:Int) ~ Byte[]```\n\n\n\ninput: Byte[]\n\nlevel: Int\n\nreturn: Byte[]"]
+				},
+				"Copy": {
+					"descriptions": ["**Copies elements between two bytes arrays, or within one: overlapping ranges copy as if through a temporary array. Raises an IndexError, which a try\/on or ?-> region can recover from, when a range does not fit its array; nothing is copied then.**\n\n```function : Copy(dest:Byte[], dest_offset:Int, src:Byte[], src_offset:Int, count:Int) ~ Nil```\n\n\n\ndest: Byte[]\n\ndest_offset: Int\n\nsrc: Byte[]\n\nsrc_offset: Int\n\ncount: Int\n\nreturn: Nil\n\n```\na := Byte->New[4]\nByte->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one\n```"]
 				},
 				"Error": {
 					"descriptions": ["**Prints error value**\n\n```function : Error() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"ErrorLine": {
 					"descriptions": ["**Prints error value with newline**\n\n```function : ErrorLine() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Fill": {
+					"descriptions": ["**Sets every element of an array to a value**\n\n```function : Fill(array:Byte[], value:Byte) ~ Nil```\n\n\n\narray: Byte[]\n\nvalue: Byte\n\nreturn: Nil", "**Sets a range of array elements to a value. Raises an IndexError, which a try\/on or ?-> region can recover from, when the range does not fit the array; nothing is set then.**\n\n```function : Fill(array:Byte[], value:Byte, offset:Int, count:Int) ~ Nil```\n\n\n\narray: Byte[]\n\nvalue: Byte\n\noffset: Int\n\ncount: Int\n\nreturn: Nil"]
 				},
 				"Find": {
 					"descriptions": ["**Searches for the first occurrence of a byte**\n\n```function : native : Find(bytes:Byte[], search:Byte) ~ Int```\n\n\n\nbytes: Byte[]\n\nsearch: Byte\n\nreturn: Int", "**Searches for the first occurrence of a byte**\n\n```function : native : Find(bytes:Byte[], offset:Int, search:Byte) ~ Int```\n\n\n\nbytes: Byte[]\n\noffset: Int\n\nsearch: Byte\n\nreturn: Int", "**Searches for the first occurrence of a byte array**\n\n```function : native : Find(bytes:Byte[], search:Byte[]) ~ Int```\n\n\n\nbytes: Byte[]\n\nsearch: Byte[]\n\nreturn: Int", "**Searches for the first occurrence of a byte array**\n\n```function : native : Find(bytes:Byte[], offset:Int, search:Byte[]) ~ Int```\n\n\n\nbytes: Byte[]\n\noffset: Int\n\nsearch: Byte[]\n\nreturn: Int"]
@@ -9731,6 +9737,9 @@
 				"ToFloat": {
 					"descriptions": ["**Returns the Float value**\n\n```function : ToFloat() ~ Float```\n\n\n\nreturn: Float"]
 				},
+				"ToFloats": {
+					"descriptions": ["**Reads floats from raw bytes, 8 per value, little-endian (Float->ToBytes writes them). Raises a RuntimeError, which a try\/on or ?-> region can recover from, when the size is not a multiple of 8.**\n\n```function : ToFloats(bytes:Byte[]) ~ Float[]```\n\n\n\nbytes: Byte[]\n\nreturn: Float[]", "**Reads floats from raw bytes, 8 per value, little-endian, starting at a byte offset. Raises an IndexError, which a try\/on or ?-> region can recover from, when count * 8 bytes from the offset do not fit.**\n\n```function : ToFloats(bytes:Byte[], offset:Int, count:Int) ~ Float[]```\n\n\n\nbytes: Byte[]\n\noffset: Int\n\ncount: Int\n\nreturn: Float[]"]
+				},
 				"ToHexDigits": {
 					"descriptions": ["**Returns the value's hex digits without the 0x prefix, padded with zeros to a minimum width (ToHexString keeps the prefix)**\n\n```function : ToHexDigits() ~ String```\n\n\n\nreturn: String\n\n```\n255->As(Byte)->ToHexDigits(4)->PrintLine(); # 00ff\n```"]
 				},
@@ -9739,6 +9748,9 @@
 				},
 				"ToInt": {
 					"descriptions": ["**Returns the Int value**\n\n```function : ToInt() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"ToInts": {
+					"descriptions": ["**Reads integers from raw bytes, 8 per value, little-endian (Int->ToBytes writes them). Raises a RuntimeError, which a try\/on or ?-> region can recover from, when the size is not a multiple of 8.**\n\n```function : ToInts(bytes:Byte[]) ~ Int[]```\n\n\n\nbytes: Byte[]\n\nreturn: Int[]", "**Reads integers from raw bytes, 8 per value, little-endian, starting at a byte offset. Raises an IndexError, which a try\/on or ?-> region can recover from, when count * 8 bytes from the offset do not fit.**\n\n```function : ToInts(bytes:Byte[], offset:Int, count:Int) ~ Int[]```\n\n\n\nbytes: Byte[]\n\noffset: Int\n\ncount: Int\n\nreturn: Int[]"]
 				},
 				"ToString": {
 					"descriptions": ["**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String", "**Returns a string representation of the byte array**\n\n```function : native : ToString(v:Byte[]) ~ String```\n\n\n\nv: Byte[]\n\nreturn: String", "**Returns a string representation of the byte array**\n\n```function : ToString(v:Byte[,]) ~ String```\n\n\n\nv: Byte[,]\n\nreturn: String"]
@@ -9858,11 +9870,17 @@
 				"Compare": {
 					"descriptions": ["**Compares two values**\n\n```function : native : Compare(l:Char, r:Char) ~ Int```\n\n\n\nl: Char\n\nr: Char\n\nreturn: Int"]
 				},
+				"Copy": {
+					"descriptions": ["**Copies elements between two character arrays, or within one: overlapping ranges copy as if through a temporary array. Raises an IndexError, which a try\/on or ?-> region can recover from, when a range does not fit its array; nothing is copied then.**\n\n```function : Copy(dest:Char[], dest_offset:Int, src:Char[], src_offset:Int, count:Int) ~ Nil```\n\n\n\ndest: Char[]\n\ndest_offset: Int\n\nsrc: Char[]\n\nsrc_offset: Int\n\ncount: Int\n\nreturn: Nil\n\n```\na := ['a', 'b', 'c', 'd']\nChar->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one\n```"]
+				},
 				"Error": {
 					"descriptions": ["**Prints error value**\n\n```function : Error() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
 				"ErrorLine": {
 					"descriptions": ["**Prints error value with newline**\n\n```function : ErrorLine() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Fill": {
+					"descriptions": ["**Sets every element of an array to a value**\n\n```function : Fill(array:Char[], value:Char) ~ Nil```\n\n\n\narray: Char[]\n\nvalue: Char\n\nreturn: Nil", "**Sets a range of array elements to a value. Raises an IndexError, which a try\/on or ?-> region can recover from, when the range does not fit the array; nothing is set then.**\n\n```function : Fill(array:Char[], value:Char, offset:Int, count:Int) ~ Nil```\n\n\n\narray: Char[]\n\nvalue: Char\n\noffset: Int\n\ncount: Int\n\nreturn: Nil"]
 				},
 				"Find": {
 					"descriptions": ["**Searches for the first occurrence of a byte**\n\n```function : native : Find(chars:Char[], search:Char) ~ Int```\n\n\n\nchars: Char[]\n\nsearch: Char\n\nreturn: Int", "**Searches for the first occurrence of a byte**\n\n```function : native : Find(chars:Char[], offset:Int, search:Char) ~ Int```\n\n\n\nchars: Char[]\n\noffset: Int\n\nsearch: Char\n\nreturn: Int", "**Searches for the first occurrence of a character array**\n\n```function : native : Find(chars:Char[], search:Char[]) ~ Int```\n\n\n\nchars: Char[]\n\nsearch: Char[]\n\nreturn: Int", "**Searches for the first occurrence of a character array**\n\n```function : native : Find(chars:Char[], offset:Int, search:Char[]) ~ Int```\n\n\n\nchars: Char[]\n\noffset: Int\n\nsearch: Char[]\n\nreturn: Int"]
@@ -10109,6 +10127,9 @@
 				"Compare": {
 					"descriptions": ["**Compares two value**\n\n```function : Compare(l:Float, r:Float) ~ Int```\n\n\n\nl: Float\n\nr: Float\n\nreturn: Int"]
 				},
+				"Copy": {
+					"descriptions": ["**Copies elements between two float arrays, or within one: overlapping ranges copy as if through a temporary array. Raises an IndexError, which a try\/on or ?-> region can recover from, when a range does not fit its array; nothing is copied then.**\n\n```function : Copy(dest:Float[], dest_offset:Int, src:Float[], src_offset:Int, count:Int) ~ Nil```\n\n\n\ndest: Float[]\n\ndest_offset: Int\n\nsrc: Float[]\n\nsrc_offset: Int\n\ncount: Int\n\nreturn: Nil\n\n```\na := [1.0, 2.0, 3.0, 4.0]\nFloat->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one\n```"]
+				},
 				"Cos": {
 					"descriptions": ["**Calculates the cosine value**\n\n```function : Cos() ~ Float```\n\n\n\nreturn: Float\n\n```\nangle := Float->Pi() \/ 3.0;\nFloat->Cos(angle)->PrintLine();  # 0.5\n```"]
 				},
@@ -10132,6 +10153,9 @@
 				},
 				"Factorial": {
 					"descriptions": ["**Calculates the factorial value**\n\n```function : Factorial(n:Float) ~ Float```\n\n\n\nn: Float\n\nreturn: Float"]
+				},
+				"Fill": {
+					"descriptions": ["**Sets every element of an array to a value**\n\n```function : Fill(array:Float[], value:Float) ~ Nil```\n\n\n\narray: Float[]\n\nvalue: Float\n\nreturn: Nil", "**Sets a range of array elements to a value. Raises an IndexError, which a try\/on or ?-> region can recover from, when the range does not fit the array; nothing is set then.**\n\n```function : Fill(array:Float[], value:Float, offset:Int, count:Int) ~ Nil```\n\n\n\narray: Float[]\n\nvalue: Float\n\noffset: Int\n\ncount: Int\n\nreturn: Nil"]
 				},
 				"Floor": {
 					"descriptions": ["**Calculates the floor value**\n\n```function : Floor() ~ Float```\n\n\n\nreturn: Float\n\n```\nFloat->Floor(3.9)->PrintLine();  # 3.0\n```"]
@@ -10208,6 +10232,9 @@
 				"ToByte": {
 					"descriptions": ["**Returns the Character value**\n\n```function : ToByte() ~ Byte```\n\n\n\nreturn: Byte"]
 				},
+				"ToBytes": {
+					"descriptions": ["**Returns the raw bytes of an array's values: 8 per value, little-endian, as they lie in memory. Byte->ToFloats reads them back.**\n\n```function : ToBytes(values:Float[]) ~ Byte[]```\n\n\n\nvalues: Float[]\n\nreturn: Byte[]", "**Returns the raw bytes of a range of an array's values: 8 per value, little-endian. Raises an IndexError, which a try\/on or ?-> region can recover from, when the range does not fit the array.**\n\n```function : ToBytes(values:Float[], offset:Int, count:Int) ~ Byte[]```\n\n\n\nvalues: Float[]\n\noffset: Int\n\ncount: Int\n\nreturn: Byte[]\n\n```\nbytes := Float->ToBytes([1.5, 2.5, 3.5], 1, 2);  # 16 bytes\n```"]
+				},
 				"ToChar": {
 					"descriptions": ["**Returns the Int value**\n\n```function : ToChar() ~ Char```\n\n\n\nreturn: Char"]
 				},
@@ -10219,6 +10246,9 @@
 				},
 				"ToRadians": {
 					"descriptions": ["**Converts the value into radians**\n\n```function : ToRadians() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"ToShortString": {
+					"descriptions": ["**Returns the shortest string that reads back (String->ToFloat) as exactly the same value. Unlike ToString, which always prints six decimals, nothing is lost: 1.2e-05 stays \"1.2e-05\" rather than \"0.000012\", and 0.1 + 0.2 shows as \"0.30000000000000004\". Exponents from -4 to 15 print in fixed notation with at least one decimal (\"100.0\", \"0.0001\"), others as \"d.ddde+XX\"; -0.0, \"inf\", \"-inf\" and \"nan\" keep their sign or name.**\n\n```function : ToShortString(value:Float) ~ String```\n\n\n\nvalue: Float\n\nreturn: String\n\n```\nFloat->ToShortString(0.1)->PrintLine();     # 0.1\nFloat->ToShortString(1.0e-7)->PrintLine();  # 1e-07\n```"]
 				},
 				"ToString": {
 					"descriptions": ["**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Float->ToString(3.14);\ns->PrintLine();  # 3.14\n```", "**Returns a fixed-point string representation of the float with a given number of decimal places (rounded). Used by string-interpolation format specifiers, e.g. \"{$pi:.2}\".**\n\n```function : ToString(value:Float, precision:Int) ~ String```\n\n\n\nvalue: Float\n\nprecision: Int\n\nreturn: String\n\n```\nFloat->ToString(3.14159, 2)->PrintLine();  # 3.14\n```", "**Returns a string representation of the float array**\n\n```function : ToString(v:Float[,]) ~ String```\n\n\n\nv: Float[,]\n\nreturn: String"]
@@ -10397,6 +10427,9 @@
 				"CompareUnsigned": {
 					"descriptions": ["**Compares two values as unsigned 64-bit quantities**\n\n```function : native : CompareUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
 				},
+				"Copy": {
+					"descriptions": ["**Copies elements between two integer arrays, or within one: overlapping ranges copy as if through a temporary array. Raises an IndexError, which a try\/on or ?-> region can recover from, when a range does not fit its array; nothing is copied then.**\n\n```function : Copy(dest:Int[], dest_offset:Int, src:Int[], src_offset:Int, count:Int) ~ Nil```\n\n\n\ndest: Int[]\n\ndest_offset: Int\n\nsrc: Int[]\n\nsrc_offset: Int\n\ncount: Int\n\nreturn: Nil\n\n```\na := [1, 2, 3, 4]\nInt->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one\n```"]
+				},
 				"DivideUnsigned": {
 					"descriptions": ["**Divides two values, treating both as unsigned 64-bit quantities**\n\n```function : native : DivideUnsigned(a:Int, b:Int) ~ Int```\n\n\n\na: Int\n\nb: Int\n\nreturn: Int"]
 				},
@@ -10411,6 +10444,9 @@
 				},
 				"Factorial": {
 					"descriptions": ["**Calculates the factorial of the value**\n\n```function : native : Factorial(n:Int) ~ Int```\n\n\n\nn: Int\n\nreturn: Int"]
+				},
+				"Fill": {
+					"descriptions": ["**Sets every element of an array to a value**\n\n```function : Fill(array:Int[], value:Int) ~ Nil```\n\n\n\narray: Int[]\n\nvalue: Int\n\nreturn: Nil", "**Sets a range of array elements to a value. Raises an IndexError, which a try\/on or ?-> region can recover from, when the range does not fit the array; nothing is set then.**\n\n```function : Fill(array:Int[], value:Int, offset:Int, count:Int) ~ Nil```\n\n\n\narray: Int[]\n\nvalue: Int\n\noffset: Int\n\ncount: Int\n\nreturn: Nil"]
 				},
 				"Inf": {
 					"descriptions": ["**Returns a positive infinity value**\n\n```function : Inf() ~ Int```\n\n\n\nreturn: Int"]
@@ -10465,6 +10501,9 @@
 				},
 				"ToByte": {
 					"descriptions": ["**Returns the Byte value**\n\n```function : ToByte() ~ Byte```\n\n\n\nreturn: Byte"]
+				},
+				"ToBytes": {
+					"descriptions": ["**Returns the raw bytes of an array's values: 8 per value, little-endian, as they lie in memory. Byte->ToInts reads them back.**\n\n```function : ToBytes(values:Int[]) ~ Byte[]```\n\n\n\nvalues: Int[]\n\nreturn: Byte[]", "**Returns the raw bytes of a range of an array's values: 8 per value, little-endian. Raises an IndexError, which a try\/on or ?-> region can recover from, when the range does not fit the array.**\n\n```function : ToBytes(values:Int[], offset:Int, count:Int) ~ Byte[]```\n\n\n\nvalues: Int[]\n\noffset: Int\n\ncount: Int\n\nreturn: Byte[]\n\n```\nbytes := Int->ToBytes([1, 2, 3], 1, 2);  # 16 bytes\n```"]
 				},
 				"ToChar": {
 					"descriptions": ["**Returns the Character value**\n\n```function : ToChar() ~ Char```\n\n\n\nreturn: Char"]
@@ -10644,6 +10683,9 @@
 				"GetPlatform": {
 					"descriptions": ["**Returns an OS platform string**\n\n```function : GetPlatform() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetProcessId": {
+					"descriptions": ["**Gets this process's id, as the operating system knows it**\n\n```function : GetProcessId() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetProperty": {
 					"descriptions": ["**Fetches a runtime property. System properties include: 'user_dir', temp_dir and 'install_dir'.**\n\n```function : GetProperty(key:String) ~ String```\n\n\n\nkey: String\n\nreturn: String"]
 				},
@@ -10670,6 +10712,9 @@
 				},
 				"HasProperty": {
 					"descriptions": ["**Checks if a property exists**\n\n```function : HasProperty(key:String) ~ Bool```\n\n\n\nkey: String\n\nreturn: Bool"]
+				},
+				"IsProcessAlive": {
+					"descriptions": ["**Whether a process with an id is running on this machine. A process this one may not inspect still counts as running.**\n\n```function : IsProcessAlive(pid:Int) ~ Bool```\n\n\n\npid: Int\n\nreturn: Bool"]
 				},
 				"Raise": {
 					"descriptions": ["**Raises an error. A ?-> region on this thread recovers from it, as from a runtime error; with none, the program reports it and ends. Raising the error a handler recovered from passes it on.**\n\n```function : Raise(e:Error) ~ Nil```\n\n\n\ne: Error\n\nreturn: Nil"]
@@ -11691,7 +11736,7 @@
 					"descriptions": ["**Create a byte stream of the objects that have been serialized**\n\n```method : public : Serialize() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
 				},
 				"Write": {
-					"descriptions": ["**Serializes a value**\n\n```method : public : Write(b:Bool) ~ Nil```\n\n\n\nb: Bool\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(c:Char) ~ Nil```\n\n\n\nc: Char\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(i:Int) ~ Nil```\n\n\n\ni: Int\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(f:Float) ~ Nil```\n\n\n\nf: Float\n\nreturn: Nil", "**Serializes a base object**\n\n```method : public : Write(o:Base) ~ Nil```\n\n\n\no: Base\n\nreturn: Nil", "**Serializes a base object**\n\n```method : public : Write(b:Bool[]) ~ Nil```\n\n\n\nb: Bool[]\n\nreturn: Nil", "**Serializes base objects**\n\n```method : public : Write(o:Base[]) ~ Nil```\n\n\n\no: Base[]\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(b:Byte[]) ~ Nil```\n\n\n\nb: Byte[]\n\nreturn: Nil", "**Serializes an array of values**\n\n```method : public : Write(c:Char[]) ~ Nil```\n\n\n\nc: Char[]\n\nreturn: Nil", "**Serializes an array of values**\n\n```method : public : Write(i:Int[]) ~ Nil```\n\n\n\ni: Int[]\n\nreturn: Nil", "**Serializes an array of values**\n\n```method : public : Write(f:Float[]) ~ Nil```\n\n\n\nf: Float[]\n\nreturn: Nil"]
+					"descriptions": ["**Serializes a value**\n\n```method : public : Write(b:Bool) ~ Nil```\n\n\n\nb: Bool\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(c:Char) ~ Nil```\n\n\n\nc: Char\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(i:Int) ~ Nil```\n\n\n\ni: Int\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(f:Float) ~ Nil```\n\n\n\nf: Float\n\nreturn: Nil", "**Serializes a base object**\n\n```method : public : Write(o:Base) ~ Nil```\n\n\n\no: Base\n\nreturn: Nil", "**Serializes an array of values**\n\n```method : public : Write(b:Bool[]) ~ Nil```\n\n\n\nb: Bool[]\n\nreturn: Nil", "**Serializes base objects**\n\n```method : public : Write(o:Base[]) ~ Nil```\n\n\n\no: Base[]\n\nreturn: Nil", "**Serializes a value**\n\n```method : public : Write(b:Byte[]) ~ Nil```\n\n\n\nb: Byte[]\n\nreturn: Nil", "**Serializes an array of values**\n\n```method : public : Write(c:Char[]) ~ Nil```\n\n\n\nc: Char[]\n\nreturn: Nil", "**Serializes an array of values**\n\n```method : public : Write(i:Int[]) ~ Nil```\n\n\n\ni: Int[]\n\nreturn: Nil", "**Serializes an array of values**\n\n```method : public : Write(f:Float[]) ~ Nil```\n\n\n\nf: Float[]\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -11748,6 +11793,9 @@
 				"Copy": {
 					"descriptions": ["**Copies a file**\n\n```function : Copy(s:System.String, d:System.String) ~ Bool```\n\n\n\ns: System.String\n\nd: System.String\n\nreturn: Bool\n\n```\nSystem.IO.File->Copy(\"source.txt\", \"backup.txt\");\n```", "**Copies a file**\n\n```function : Copy(s:System.String, d:System.String, o:Bool) ~ Bool```\n\n\n\ns: System.String\n\nd: System.String\n\no: Bool\n\nreturn: Bool"]
 				},
+				"CreateNew": {
+					"descriptions": ["**Creates an empty file, but only if no file of that name exists, as one step: when two processes race to create the same file, exactly one succeeds. This is what a lock file needs.**\n\n```function : CreateNew(n:System.String) ~ Bool```\n\n\n\nn: System.String\n\nreturn: Bool\n\n```\nif(System.IO.Filesystem.File->CreateNew(\"data.lock\")) {\n  # this process holds the lock\n};\n```"]
+				},
 				"CreateTime": {
 					"descriptions": ["**Returns the time in which the file was created**\n\n```function : CreateTime(n:System.String) ~ Date```\n\n\n\nn: System.String\n\nreturn: Date", "**Returns the time in which the file was created**\n\n```method : public : CreateTime() ~ Date```\n\n\n\nreturn: Date", "**Returns the time in which the file was created**\n\n```function : CreateTime(n:System.String, gmt:Bool) ~ Date```\n\n\n\nn: System.String\n\ngmt: Bool\n\nreturn: Date", "**Returns the time in which the file was created**\n\n```method : public : CreateTime(gmt:Bool) ~ Date```\n\n\n\ngmt: Bool\n\nreturn: Date"]
 				},
@@ -11797,7 +11845,7 @@
 					"descriptions": ["**Gets the file owner name**\n\n```function : Owner(n:System.String) ~ System.String```\n\n\n\nn: System.String\n\nreturn: System.String", "**Gets the file owner name**\n\n```method : public : Owner() ~ System.String```\n\n\n\nreturn: System.String"]
 				},
 				"Rename": {
-					"descriptions": ["**Renames a file**\n\n```function : Rename(o:System.String, n:System.String) ~ Bool```\n\n\n\no: System.String\n\nn: System.String\n\nreturn: Bool\n\n```\nSystem.IO.File->Rename(\"old.txt\", \"new.txt\");\n```"]
+					"descriptions": ["**Renames a file. An existing file named 'n' is replaced, atomically when both names are on the same volume, on every platform: a program can write a new version beside a file and rename it into place, and a crash leaves either the old file or the new one.**\n\n```function : Rename(o:System.String, n:System.String) ~ Bool```\n\n\n\no: System.String\n\nn: System.String\n\nreturn: Bool\n\n```\nSystem.IO.File->Rename(\"old.txt\", \"new.txt\");\n```"]
 				},
 				"Rewind": {
 					"descriptions": ["**Rewinds the seek pointer**\n\n```method : public : Rewind() ~ Nil```\n\n\n\nreturn: Nil"]
