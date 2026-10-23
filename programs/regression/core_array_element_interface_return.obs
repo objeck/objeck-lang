@@ -1,0 +1,120 @@
+#~
+Regression: a call on an array element whose result needs a class cast.
+
+'c : Compare := rows[i]->Get(n)', with Get declared to return the interface
+Compare, failed at run time with "Invalid object cast: 'Row' to
+'System.Compare'" at every optimization level, while 'r := rows[i];
+r->Get(n)' worked. A call on an indexed receiver carries the receiver's own
+'As' cast, emitted before the call; the emitter put every class cast on such a
+call there, so the conversion of the RESULT was applied to the Row element.
+A result that really is a narrowing (Base2 returned, Kid wanted) was checked
+on the receiver too, and its own check never ran.
+~#
+
+class Base2 {
+	New() {}
+
+	method : public : Name() ~ String {
+		return "base";
+	}
+}
+
+class Kid from Base2 {
+	New() {
+		Parent();
+	}
+
+	method : public : Name() ~ String {
+		return "kid";
+	}
+
+	method : public : Only() ~ String {
+		return "only";
+	}
+}
+
+class Row {
+	@v : IntRef;
+	@k : Base2;
+
+	New(v : Int) {
+		@v := IntRef->New(v);
+		@k := Kid->New();
+	}
+
+	method : public : Get(name : String) ~ Compare {
+		return @v;
+	}
+
+	method : public : Child() ~ Base2 {
+		return @k;
+	}
+
+	method : public : Me() ~ Row {
+		return @self;
+	}
+}
+
+class Holder {
+	@rows : Row[];
+
+	New(rows : Row[]) {
+		@rows := rows;
+	}
+
+	method : public : At(i : Int, name : String) ~ Compare {
+		return @rows[i]->Get(name);
+	}
+}
+
+class Test {
+	@failed : static : Int;
+
+	function : Check(what : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$what}: got {$got}, want {$want}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Value(c : Compare) ~ Int {
+		return c->As(IntRef)->Get();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		rows := Row->New[2];
+		rows[0] := Row->New(3);
+		rows[1] := Row->New(4);
+
+		# inferred, declared, as an argument, through a chain, returned
+		c := rows[1]->Get("x");
+		Check("inferred local", c->As(IntRef)->Get(), 4);
+		d : Compare := rows[0]->Get("x");
+		Check("declared local", d->As(IntRef)->Get(), 3);
+		Check("argument", Value(rows[1]->Get("x")), 4);
+		e := rows[0]->Me()->Get("y");
+		Check("chained", e->As(IntRef)->Get(), 3);
+		Check("returned", Holder->New(rows)->At(1, "q")->As(IntRef)->Get(), 4);
+		Check("compared", rows[0]->Get("x")->Compare(rows[1]->Get("x")), -1);
+
+		# a narrowing of the result is checked on the result
+		k : Kid := rows[0]->Child();
+		if(<>k->Only()->Equals("only")) {
+			"FAIL: narrowed result"->PrintLine();
+			@failed += 1;
+		};
+
+		# the receiver's own As cast still goes before the call
+		ks := Base2->New[1];
+		ks[0] := Kid->New();
+		if(<>ks[0]->As(Kid)->Only()->Equals("only")) {
+			"FAIL: receiver cast"->PrintLine();
+			@failed += 1;
+		};
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: a call on an array element converts its result, not the element"->PrintLine();
+	}
+}

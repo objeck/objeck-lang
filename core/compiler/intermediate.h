@@ -146,6 +146,7 @@ class IntermediateEmitter {
   // emits class cast checks
   // whole_expression: the expression, call chain included, has already been emitted
   void EmitClassCast(Expression* expression, bool whole_expression = false);
+  bool CastsCallResult(MethodCall* method_call);
 
   Class* SearchProgramClasses(const std::wstring &klass_name);
 

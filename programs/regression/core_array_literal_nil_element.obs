@@ -1,0 +1,70 @@
+#~
+Regression: Nil as an element of an array literal.
+
+'row := ["a", Nil, "c"];' was refused, "An array literal element cannot be
+Nil alone" (#1245): a bare Nil has no type of its own. The other elements
+give the literal its type, as they do for any mix of objects, and Nil is an
+empty slot of an object array (or a missing row of a jagged one). A literal
+of nothing but Nil, or a Nil among primitive values or enum values, still has
+no object type and is refused (bad_array_literal_nil_element.obs).
+~#
+
+class Test {
+	@failed : static : Int;
+
+	function : Expect(what : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$what}: got {$got}, want {$want}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Join(a : String[]) ~ String {
+		out := "";
+		each(i : a) {
+			out += a[i] = Nil ? "-" : a[i];
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		row := ["a", Nil, "c"];
+		Expect("size", row->Size(), 3);
+		if(row[1] <> Nil) {
+			"FAIL: the middle element is not Nil"->PrintLine();
+			@failed += 1;
+		};
+		if(<>Join(row)->Equals("a-c")) {
+			"FAIL: a String[] with a Nil element"->PrintLine();
+			@failed += 1;
+		};
+
+		v := "v";
+		if(<>Join([Nil, v, Nil])->Equals("-v-")) {
+			"FAIL: Nil around a variable"->PrintLine();
+			@failed += 1;
+		};
+
+		# boxed primitives and objects: a Base[]
+		mixed := ["x", Nil, 3];
+		Expect("mixed size", mixed->Size(), 3);
+		if(mixed[1] <> Nil | <>mixed[2]->TypeOf(IntRef)) {
+			"FAIL: a mixed literal with Nil"->PrintLine();
+			@failed += 1;
+		};
+
+		# a missing row of a jagged array
+		a := [1, 2];
+		rows := [a, Nil];
+		Expect("rows", rows->Size(), 2);
+		if(rows[1] <> Nil) {
+			"FAIL: a Nil row"->PrintLine();
+			@failed += 1;
+		};
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: Nil is an element of an object array literal"->PrintLine();
+	}
+}

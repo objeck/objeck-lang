@@ -1,0 +1,101 @@
+#~
+Regression: a literal Nil passed for an array parameter.
+
+With 'function : F(a : String[]) ~ Int', the call F(Nil) failed to compile,
+"Undefined function/method call: 'F(..)'", and so did Nil for an Int[], a
+Float[] or an enum-array parameter, while a Nil-valued typed variable was
+accepted. Overload resolution matched a literal Nil only against scalar class
+parameters. Nil now matches any array parameter as it matches a class one: a
+relative match, the rule the overload selector already applies to it, so Nil
+against two object overloads stays ambiguous (see
+bad_nil_array_argument_ambiguous.obs).
+~#
+
+class Test {
+	enum Color {
+		Red, Green
+	}
+
+	@failed : static : Int;
+
+	function : Check(what : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$what}: got {$got}, want {$want}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Strings(a : String[]) ~ Int {
+		if(a = Nil) {
+			return -1;
+		};
+		return a->Size();
+	}
+
+	function : Ints(a : Int[]) ~ Int {
+		if(a = Nil) {
+			return -2;
+		};
+		return a->Size();
+	}
+
+	function : Floats(a : Float[,]) ~ Int {
+		if(a = Nil) {
+			return -3;
+		};
+		return 0;
+	}
+
+	function : Colors(a : Color[]) ~ Int {
+		if(a = Nil) {
+			return -4;
+		};
+		return a->Size();
+	}
+
+	# overloads that differ in arity still resolve
+	function : G(a : String[], n : Int) ~ Int {
+		if(a = Nil) {
+			return n;
+		};
+		return a->Size();
+	}
+
+	function : G(a : String[]) ~ Int {
+		return 99;
+	}
+
+	method : Size(a : Int[], b : String[]) ~ Int {
+		r := 0;
+		if(a = Nil) {
+			r += 10;
+		};
+		if(b = Nil) {
+			r += 1;
+		};
+		return r;
+	}
+
+	New() {}
+
+	function : Main(args : String[]) ~ Nil {
+		Check("String[]", Strings(Nil), -1);
+		Check("Int[]", Ints(Nil), -2);
+		Check("Float[,]", Floats(Nil), -3);
+		Check("enum[]", Colors(Nil), -4);
+		Check("non-Nil", Strings(["a", "b"]), 2);
+		Check("overload", G(Nil, 7), 7);
+		Check("overload, one parameter", G(Nil), 99);
+		Check("method", Test->New()->Size(Nil, Nil), 11);
+
+		# a library function binds the same way (compiled, not run: it hashes)
+		if(args->Size() > 1000) {
+			Cipher.Hash->SHA256(Nil)->Size()->PrintLine();
+		};
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: a literal Nil binds to an array parameter"->PrintLine();
+	}
+}

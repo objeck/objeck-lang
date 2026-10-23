@@ -6223,6 +6223,14 @@ std::vector<Type*> Parser::ParseGenericTypes(int depth)
           ProcessError(L"Generic cannot be a basic type");
           return generic_types;
         }
+        // A type argument is bound, checked against its bounds and erased as a
+        // class; an array is none. 'Vector->New()<String[]>' was accepted here
+        // and every AddBack(String[]) then failed as an undefined call.
+        else if(type->GetDimension() > 0) {
+          ProcessError(L"A type argument cannot be an array type ('" + type->GetName() +
+                       L"[]'); hold the array in a class, or use a jagged array");
+          return generic_types;
+        }
         else {
           generic_types.push_back(type);
 

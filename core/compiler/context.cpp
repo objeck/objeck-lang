@@ -2771,8 +2771,12 @@ void ContextAnalyzer::AnalyzeConditional(Cond* conditional, const int depth)
     // set eval type with the dimension of the value the branches yield. Zeroing it
     // unconditionally typed a conditional over primitive arrays as a scalar, so a
     // call on it resolved to the scalar helper and returned garbage (#867).
-    conditional->SetEvalType(if_conditional->GetEvalType(), true);
-    conditional->GetEvalType()->SetDimension(if_dimension);
+    // The branch's TYPE, not its eval type: for a call chain the eval type is the
+    // first call's, so 'c ? cols->Get(0)->GetType() : ColumnType->INT' was typed
+    // a Col, and returning it as a ColumnType failed "Invalid cast between enum
+    // and class". A Nil first branch takes the other branch's type.
+    conditional->SetEvalType(if_type->GetType() == NIL_TYPE ? else_type : if_type, true);
+    conditional->GetEvalType()->SetDimension(if_type->GetType() == NIL_TYPE ? value_dimension(else_conditional, else_type) : if_dimension);
     current_method->SetAndOr(true);
   }
   else {
@@ -2948,6 +2952,7 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
   Type* mismatched_primitive = nullptr;
   Type* row_type = nullptr;
   bool mixed_classes = false;
+  bool has_nil = false;
   std::vector<Expression*> elements = array->GetElements()->GetExpressions();
   std::vector<Type*> types;
   for(size_t i = 0; i < elements.size(); ++i) {
@@ -2958,6 +2963,14 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
     if(!type) {
       return;
     }
+    // Nil: an empty slot of an object array, or a missing row; the type comes
+    // from the other elements, and a literal of nothing else is refused below
+    if(type->GetType() == NIL_TYPE) {
+      has_nil = true;
+      types.push_back(type);
+      continue;
+    }
+
     // a subscripted element, '[a[i]]', is a single value: its eval type keeps the
     // array's dimension, which callers take the subscripts from
     if(type->GetDimension() > 0 && IsScalar(element)) {
@@ -2999,21 +3012,48 @@ void ContextAnalyzer::AnalyzeDynamicArray(StaticArray* array, const int depth)
       break;
 
     case CLASS_TYPE:
+      // compared by full name: an enum value's type is written as the code
+      // names it, 'ColumnType', a method's return in full, 'QLib.ColumnType'.
+      // Unresolved, '[c->GetType(), ColumnType->INT]' was a mix, so a Base[],
+      // and then "Invalid cast between enum and class" where a ColumnType[]
+      // was wanted.
+      type = TypeFactory::Instance()->MakeType(type);
+      ResolveClassEnumType(type);
       if(class_type && class_type->GetName() != type->GetName()) {
         mixed_classes = true;
       }
       class_type = type;
       break;
 
-    case NIL_TYPE:
-      ProcessError(element, L"An array literal element cannot be Nil alone; give the array a type with ->New[..]");
-      return;
-
     default:
       ProcessError(element, L"Invalid array literal element");
       return;
     }
     types.push_back(type);
+  }
+
+  // an enum value is an Int at run time: it neither boxes into a Base[] nor
+  // has a Nil
+  const bool is_enum = class_type && HasProgramOrLibraryEnum(class_type->GetName());
+  if(is_enum && (primitive_type || mixed_classes)) {
+    ProcessError(array, L"Array element types do not match: an enum array literal holds values of one enum");
+    return;
+  }
+
+  if(has_nil) {
+    if(is_enum) {
+      ProcessError(array, L"An enum array literal cannot hold Nil");
+      return;
+    }
+    if(!row_type && !class_type) {
+      if(primitive_type) {
+        ProcessError(array, L"An array literal of '" + ElementTypeName(primitive_type) + L"' values cannot hold Nil");
+      }
+      else {
+        ProcessError(array, L"An array literal element cannot be Nil alone; give the array a type with ->New[..]");
+      }
+      return;
+    }
   }
 
   if(row_type) {
@@ -4652,6 +4692,13 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
         return 0;
       }
 
+      // Nil is a value of every array type, as it is of every class: a relative
+      // match, so 'F(Nil)' with F(String[]) and F(Compare) is ambiguous, as it
+      // is between two class parameters. Only a typed Nil variable bound before.
+      if(calling_type->GetType() == NIL_TYPE && method_type->GetDimension() > 0) {
+        return 1;
+      }
+
       // looks for a relative match
       if(method_type->GetDimension() == 0) {
         switch(calling_type->GetType()) {
@@ -5928,11 +5975,49 @@ bool ContextAnalyzer::BindNamedLibraryArguments(LibraryClass* klass, MethodCall*
       chosen = chosen ? chosen : &plans[p];
     }
   }
+  // A library records a method with trailing defaults as the method and one
+  // alternate per default it can drop: F(a, b, c, d) also as F(a, b, c) and
+  // F(a, b). An alternate is a strict prefix of its method, by names and
+  // types, whose remaining parameters all have defaults. Skipping by name goes
+  // through the METHOD's mask forwarder; planned on an alternate as well, a
+  // call that skips a middle default saw two masks and reported
+  // "match more than one overload" ('Make(a: 1, c: 5)'). The program path
+  // skips alternates through Method::IsAlt; a LibraryMethod has no such flag,
+  // and this needs none (no .obl format change).
+  auto is_alternate = [&candidates](LibraryMethod* method) {
+    const std::vector<std::wstring> &names = method->GetParameterNames();
+    const std::vector<frontend::Type*> types = method->GetDeclarationTypes();
+    for(size_t c = 0; c < candidates.size(); ++c) {
+      LibraryMethod* other = candidates[c];
+      const std::vector<std::wstring> &other_names = other->GetParameterNames();
+      const std::vector<bool> &other_defaults = other->GetParameterDefaults();
+      const std::vector<frontend::Type*> other_types = other->GetDeclarationTypes();
+      if(other == method || other->GetLibraryClass() != method->GetLibraryClass() ||
+         other_names.size() <= names.size() || other_types.size() != other_names.size() ||
+         other_defaults.size() != other_names.size()) {
+        continue;
+      }
+
+      bool prefix = true;
+      for(size_t j = 0; prefix && j < names.size(); ++j) {
+        prefix = names[j] == other_names[j] && types[j]->GetType() == other_types[j]->GetType() &&
+          types[j]->GetDimension() == other_types[j]->GetDimension() && types[j]->GetName() == other_types[j]->GetName();
+      }
+      for(size_t j = names.size(); prefix && j < other_names.size(); ++j) {
+        prefix = other_defaults[j];
+      }
+      if(prefix) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   bool use_mask = false;
   if(!chosen) {
     for(size_t p = 0; p < plans.size(); ++p) {
       LibraryClass* owner = plans[p].method->GetLibraryClass();
-      if(owner->GetUnqualifiedMethods(name + L"$m").empty()) {
+      if(owner->GetUnqualifiedMethods(name + L"$m").empty() || is_alternate(plans[p].method)) {
         continue;
       }
       if(chosen && (chosen->order != plans[p].order || chosen->missing != plans[p].missing)) {
@@ -6194,7 +6279,15 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryMethod* lib_method, MethodCall* m
     const bool same_cls_return = ClassEquals(lib_method->GetReturn()->GetName(), nullptr, lib_klass);
     if((is_new || same_cls_return) && lib_klass->HasGenerics()) {
       const std::vector<LibraryClass*> class_generics = lib_klass->GetGenericClasses();
-      const std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
+      // A call on the previous call's result -- 'source->AddString(..)->AddInt(..)'
+      // -- has no entry or variable of its own. Its eval type is the raw return
+      // that SetLibraryMethod put there, 'ObjectSource<T>', so its arguments were
+      // the class's own parameter, and 'T' was checked as a concrete class:
+      // "Undefined class or interface: 'T'". The previous call handed over the
+      // receiver's arguments, as ResolveGenericType already reads them.
+      const std::vector<Type*> concrete_types = !is_new && method_call->GetConcreteTypes().empty() && !method_call->GetEntry() &&
+        !method_call->GetVariable() && !method_call->GetReceiverGenerics().empty() ?
+        method_call->GetReceiverGenerics() : GetConcreteTypes(method_call);
       if(class_generics.size() != concrete_types.size()) {
         ProcessError(static_cast<Expression*>(method_call), L"Generic type mismatch for class '" + lib_klass->GetName() +
                      L"': expected " + ToString(class_generics.size()) +
@@ -9292,7 +9385,7 @@ Expression* ContextAnalyzer::AnalyzeRightCast(Type* left, Type* right, Expressio
     }
 
     if(left->GetType() == CLASS_TYPE && right->GetType() == CLASS_TYPE) {
-      AnalyzeClassCast(left, expression, depth + 1);
+      AnalyzeArrayClassCast(left, right, expression, depth + 1);
     }
 
     expression->SetEvalType(left, false);
@@ -9377,6 +9470,70 @@ Expression* ContextAnalyzer::BoxExpression(Type* to_type, Expression* from_expr,
  * Analyzes a class cast. Up
  * casting is resolved a runtime.
  ****************************/
+/****************************
+ * An array of one class where an
+ * array of another is wanted.
+ * An object array holds bare
+ * references, and a read dispatches
+ * on each element's own class, so
+ * an array of a class serves as an
+ * array of a parent or of an
+ * interface the class implements
+ * ('String[]' for 'Compare[]').
+ * There is no element type to check
+ * at run time, so the elements cannot
+ * be checked for a narrowing ('Base[]'
+ * for 'Kid[]'): that takes an
+ * explicit As. The element cast
+ * AnalyzeClassCast sets is never
+ * emitted for an array: on the array
+ * itself it failed, "Invalid object
+ * cast: '?' to 'System.Compare'",
+ * for an array literal argument,
+ * while a variable's was skipped.
+ ****************************/
+void ContextAnalyzer::AnalyzeArrayClassCast(Type* left, Type* right, Expression* expression, const int depth)
+{
+  Class* to_class = expression->GetToClass();
+  LibraryClass* to_lib_class = expression->GetToLibraryClass();
+  AnalyzeClassCast(left, expression, depth);
+  const bool needs_check = expression->GetToClass() != to_class || expression->GetToLibraryClass() != to_lib_class;
+  expression->SetToClass(to_class);
+  expression->SetToLibraryClass(to_lib_class);
+  if(!needs_check) {
+    return;
+  }
+
+  // explicit: 'a->As(Kid[])'
+  Type* cast_type = expression->GetCastType();
+  if(cast_type && cast_type->GetDimension() > 0) {
+    return;
+  }
+
+  // a widening to an interface sets a check too, which an element never needs
+  Type* from_type = GetExpressionType(expression, depth + 1);
+  if(!from_type) {
+    from_type = right;
+  }
+  ResolveClassEnumType(left);
+  ResolveClassEnumType(from_type);
+  Class* from_class = SearchProgramClasses(from_type->GetName());
+  LibraryClass* from_lib_class = from_class ? nullptr :
+    linker->SearchClassLibraries(from_type->GetName(), program->GetLibUses(current_class->GetFileName()));
+  if(!from_class && !from_lib_class) {
+    return;
+  }
+
+  Class* to_klass = SearchProgramClasses(left->GetName());
+  LibraryClass* to_lib_klass = to_klass ? nullptr : linker->SearchClassLibraries(left->GetName(), program->GetLibUses(current_class->GetFileName()));
+  const std::wstring to_name = to_klass ? to_klass->GetName() : (to_lib_klass ? to_lib_klass->GetName() : left->GetName());
+  if(!ValidDownCast(to_name, from_class, from_lib_class)) {
+    ProcessError(expression, L"Cannot use an array of '" + FormatTypeString(from_type->GetName()) + L"' as an array of '" +
+                 FormatTypeString(left->GetName()) + L"': array elements are not checked at run time; use As(" +
+                 FormatTypeString(left->GetName()) + L"[])");
+  }
+}
+
 void ContextAnalyzer::AnalyzeClassCast(Type* left, Expression* expression, const int depth)
 {
   if(expression->GetCastType() && expression->GetEvalType() && (expression->GetCastType()->GetType() != CLASS_TYPE || expression->GetEvalType()->GetType() != CLASS_TYPE)) {
