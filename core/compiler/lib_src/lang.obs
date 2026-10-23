@@ -8713,9 +8713,9 @@ bundle System.Time {
 		}
 		
 		#~
-		Constructor, sets time to midnight of the given day
+		Constructor, sets time to midnight of the given day. Note the order: day, month, year.
 		@param day day of month
-		@param month day of year
+		@param month month of year
 		@param year year
 		@param gmt true of time is in GMT, false for local time zone
 		~#
@@ -8725,7 +8725,7 @@ bundle System.Time {
 		}
 
 		#~
-		Constructor 
+		Constructor. Note the order: day, month, year.
 		@param day day of month
 		@param month month of year
 		@param year year

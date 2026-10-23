@@ -1,0 +1,269 @@
+# EXTRA_LIBS: net,regex,csv,xml,misc,query
+#~
+Query.Structured's .otab file (docs/QUERY_DESIGN.md, section 9, phase 3): a table with every
+column type, empty cells in each, Unicode text, a plain-text column (more distinct values than
+a dictionary keeps), GMT and local dates, mixed OBJECT values, a column never set and deleted
+rows, across two row groups, saved and loaded, and as bytes in memory, under each compression
+setting, cell for cell with its keys. Also: a read of some columns touches less of the file,
+Append adds row groups after the existing keys and merges dictionaries, a mismatched Append is
+refused, and a damaged, truncated or foreign file is reported rather than loaded.
+~#
+use Query.Structured, System.IO.Filesystem, System.Time, Collection;
+
+class QueryPersistRoundtrip {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Text(value : Compare) ~ String {
+		if(value = Nil) {
+			return "<empty>";
+		}
+		else if(value->TypeOf(IntRef)) {
+			return "i{$(value->As(IntRef)->Get())}";
+		}
+		else if(value->TypeOf(FloatRef)) {
+			return "f{$(Float->ToShortString(value->As(FloatRef)->Get()))}";
+		}
+		else if(value->TypeOf(BoolRef)) {
+			return value->As(BoolRef)->Get() ? "true" : "false";
+		}
+		else if(value->TypeOf(Date)) {
+			date := value->As(Date);
+			gmt := date->IsGmt() ? "Z" : "L";
+			return "d{$(date->GetYear())}-{$(date->GetMonth())}-{$(date->GetDay())}T{$(date->GetHours())}:{$(date->GetMinutes())}:{$(date->GetSeconds())}{$gmt}";
+		};
+
+		return "s{$(value->As(String))}";
+	}
+
+	# every live row of two tables, column by column, keys included
+	function : Same(what : String, a : Table, b : Table) ~ Bool {
+		if(a = Nil | b = Nil) {
+			"  {$what}: a table is missing"->PrintLine();
+			return false;
+		};
+
+		if(a->Size() <> b->Size() | a->GetColumnCount() <> b->GetColumnCount()) {
+			"  {$what}: {$(a->Size())} x {$(a->GetColumnCount())} against {$(b->Size())} x {$(b->GetColumnCount())}"->PrintLine();
+			return false;
+		};
+
+		names := a->GetColumnNames();
+		for(c := 1; c < names->Size(); c += 1;) {
+			if(<>names[c]->Equals(b->GetColumnNames()[c])) {
+				return false;
+			};
+			if(a->GetColumn(c)->GetType() <> b->GetColumn(c)->GetType()) {
+				"  {$what}: column '{$(names[c])}' changed type"->PrintLine();
+				return false;
+			};
+		};
+
+		# column by column with each type's own getter: exact, and cheap enough for 70,000 rows
+		a_rows := a->LiveRows();
+		b_rows := b->LiveRows();
+		for(c := 0; c < names->Size(); c += 1;) {
+			col_a := a->GetColumn(c);
+			col_b := b->GetColumn(c);
+			each(i : a_rows) {
+				ra := a_rows[i];
+				rb := b_rows[i];
+				if(<>SameCell(col_a, ra, col_b, rb)) {
+					key_a := a->GetColumn(0)->GetInt(ra);
+					"  {$what}: row {$i} (key {$key_a}), '{$(names[c])}': {$(Text(col_a->Get(ra)))} against {$(Text(col_b->Get(rb)))}"->PrintLine();
+					return false;
+				};
+			};
+		};
+
+		return true;
+	}
+
+	function : SameCell(a : Column, ra : Int, b : Column, rb : Int) ~ Bool {
+		if(a->IsNull(ra) | b->IsNull(rb)) {
+			return a->IsNull(ra) = b->IsNull(rb);
+		};
+
+		select(a->GetType()) {
+			label ColumnType->INT:
+			label ColumnType->BOOL: {
+				return a->GetInt(ra) = b->GetInt(rb);
+			}
+
+			label ColumnType->DATE: {
+				return a->GetInt(ra) = b->GetInt(rb) & a->GmtAt(ra) = b->GmtAt(rb);
+			}
+
+			label ColumnType->FLOAT: {
+				return a->GetFloat(ra) = b->GetFloat(rb);
+			}
+
+			label ColumnType->STRING: {
+				return a->GetString(ra)->Equals(b->GetString(rb));
+			}
+		};
+
+		return Text(a->Get(ra))->Equals(Text(b->Get(rb)));
+	}
+
+	function : Build(rows : Int) ~ Table {
+		names := ["id", "score", "label", "note", "seen", "ok", "mixed", "never"];
+		types := [ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->STRING, ColumnType->DATE, ColumnType->BOOL, ColumnType->OBJECT, ColumnType->NONE];
+		table := Table->New("runs", names, types, false);
+		labels := ["cat", "dog", "café", "日本", "x,y \"q\""];
+		each(i : rows) {
+			row := table->Insert();
+			if(i % 11 <> 0) {
+				row->Set("id", IntRef->New(i * 3 - 7));
+			};
+			if(i % 13 <> 0) {
+				row->Set("score", FloatRef->New(i->As(Float) / 7.0));
+			};
+			if(i % 17 <> 0) {
+				row->Set("label", labels[i % labels->Size()]);
+			};
+			if(i % 19 <> 0) {
+				# unique text: more distinct values than a dictionary keeps
+				row->Set("note", "note-{$i}-é");
+			};
+			if(i % 23 <> 0) {
+				row->Set("seen", Date->New(1 + i % 28, 1 + i % 12, 2020 + i % 5, i % 24, i % 60, i % 60, i % 2 = 0));
+			};
+			if(i % 29 <> 0) {
+				row->Set("ok", BoolRef->New(i % 3 = 0));
+			};
+			select(i % 6) {
+				label 0: { row->Set("mixed", IntRef->New(i)); }
+				label 1: { row->Set("mixed", FloatRef->New(0.25)); }
+				label 2: { row->Set("mixed", "m{$i}"); }
+				label 3: { row->Set("mixed", Date->New(3, 2, 2001, true)); }
+				label 4: { row->Set("mixed", BoolRef->New(true)); }
+			};
+		};
+
+		# deleted rows leave gaps in the keys
+		k := 5;
+		while(k < rows) {
+			table->Delete(k);
+			k += 97;
+		};
+
+		return table;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		path := "query_persist_tmp.otab";
+		File->Delete(path);
+
+		table := Build(70500);
+		Check("the test table spans two row groups", table->GetRowCapacity() > Column->GroupRows());
+		Check("the plain-text column is not dictionary encoded", <>table->GetColumn("note")->IsEncoded());
+
+		Check("Save", table->Save(path));
+		Check("Save leaves no temporary file", <>File->Exists("{$path}.part"));
+		loaded := Table->Load(path);
+		Check("Load matches cell for cell, keys included", Same("file round trip", table, loaded));
+		Check("the next key survives", loaded <> Nil & loaded->GetNextKey() = table->GetNextKey());
+		if(loaded <> Nil) {
+			row := loaded->Insert();
+			Check("a row inserted after Load takes the next key", row->GetKey() = table->GetNextKey());
+			Check("a deleted key stays gone", loaded->Get(5) = Nil & loaded->Get(6) <> Nil);
+			rs := loaded->Query("select count(*) from runs where label = 'café'");
+			Check("a loaded table answers queries", rs <> Nil & rs->Get(0)->Get(1)->As(IntRef)->Get() > 0);
+		};
+
+		plain := table->ToBytes();
+		fast := table->ToBytes(Compression->FAST);
+		small := table->ToBytes(Compression->SMALL);
+		Check("bytes round trip, uncompressed", Same("bytes, NONE", table, Table->FromBytes(plain)));
+		Check("bytes round trip, FAST", Same("bytes, FAST", table, Table->FromBytes(fast)));
+		Check("bytes round trip, SMALL", Same("bytes, SMALL", table, Table->FromBytes(small)));
+		Check("compression shrinks repetitive data", small->Size() < plain->Size() & fast->Size() < plain->Size());
+
+		# the comparison itself must notice a difference, or every check above proves nothing
+		changed := Table->FromBytes(plain);
+		changed->Get(6)->Set("note", "different");
+		Check("the comparison notices one changed cell", <>Same("one changed cell (expected)", table, changed));
+		changed := Table->FromBytes(plain);
+		changed->Get(7)->Set("seen", Nil);
+		Check("the comparison notices one emptied cell", <>Same("one emptied cell (expected)", table, changed));
+
+		empty := Table->New("nothing", ["a", "b"]);
+		Check("an empty table round trips", Same("empty", empty, Table->FromBytes(empty->ToBytes())));
+
+		# a partial read takes only the blocks it needs
+		whole := OtabFile->New(path);
+		whole->Read();
+		part := OtabFile->New(path);
+		scores := part->Read(["score"]);
+		Check("a partial read has just its columns", scores <> Nil & scores->GetColumnCount() = 2 & scores->Size() = table->Size());
+		Check("a partial read touches less of the file", part->GetBytesRead() * 3 < whole->GetBytesRead());
+		Check("Load with names", Table->Load(path, ["ok", "id"]) <> Nil);
+		Check("an unknown column is an error", part->Read(["nope"]) = Nil & part->GetError()->Has("nope"));
+
+		# Append: new row groups after the file's keys
+		more := Table->New("runs", ["id", "score", "label", "note", "seen", "ok", "mixed", "never"],
+			[ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->STRING, ColumnType->DATE, ColumnType->BOOL, ColumnType->OBJECT, ColumnType->NONE], false);
+		extra := more->Insert();
+		extra->Set("id", IntRef->New(-1));
+		extra->Set("label", "brand new");
+		extra->Set("note", "n");
+		extra->Set("score", FloatRef->New(0.1));
+		extra->Set("seen", Date->New(31, 12, 1999, false));
+		extra->Set("ok", BoolRef->New(true));
+		extra->Set("mixed", "z");
+		Check("Append", more->Append(path));
+		appended := Table->Load(path);
+		Check("Append adds the rows", appended <> Nil & appended->Size() = table->Size() + 1);
+		if(appended <> Nil) {
+			last := appended->Get(table->GetNextKey());
+			Check("appended rows take keys after the file's", last <> Nil & last->Get("label")->As(String)->Equals("brand new"));
+			Check("the earlier rows are unchanged", appended->Get(6)->Get("note")->As(String)->Equals(table->Get(6)->Get("note")->As(String)));
+		};
+
+		wrong := Table->New("runs", ["id", "score"]);
+		wrong->Insert()->Set("id", IntRef->New(1));
+		Check("an Append with other columns is refused", <>wrong->Append(path) & wrong->GetError()->Has("columns"));
+
+		# damage is reported, never loaded
+		bytes := FileReader->ReadBinaryFile(path);
+		damaged := Byte->New[bytes->Size()];
+		Byte->Copy(damaged, 0, bytes, 0, bytes->Size());
+		damaged[100] := damaged[100] + 1;
+		broken := OtabFile->New(damaged);
+		Check("a damaged block is found by its checksum", broken->IsOpen() & broken->Read() = Nil & broken->GetError()->Has("checksum"));
+
+		truncated := Byte->New[bytes->Size() - 10];
+		Byte->Copy(truncated, 0, bytes, 0, truncated->Size());
+		Check("a truncated file does not open", <>OtabFile->New(truncated)->IsOpen());
+
+		footer := Byte->New[bytes->Size()];
+		Byte->Copy(footer, 0, bytes, 0, bytes->Size());
+		footer[bytes->Size() - 40] := footer[bytes->Size() - 40] + 1;
+		Check("a damaged footer does not open", <>OtabFile->New(footer)->IsOpen());
+
+		FileWriter->WriteFile("query_persist_tmp.txt", "id,name\n1,a\n");
+		foreign := OtabFile->New("query_persist_tmp.txt");
+		Check("a file that is not .otab is refused", <>foreign->IsOpen() & foreign->GetError() <> Nil);
+		Check("a missing file is refused", <>OtabFile->New("no_such_file.otab")->IsOpen());
+		Check("Load of a missing file is Nil", Table->Load("no_such_file.otab") = Nil);
+
+		File->Delete(path);
+		File->Delete("query_persist_tmp.txt");
+
+		if(@failures = 0) {
+			"PASS: query .otab persistence"->PrintLine();
+		}
+		else {
+			"FAIL: query .otab persistence ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

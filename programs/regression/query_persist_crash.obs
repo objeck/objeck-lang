@@ -1,0 +1,85 @@
+# EXTRA_LIBS: net,regex,csv,xml,misc,query
+#~
+Query.Structured's .otab saves are crash safe (docs/OTAB_FORMAT.md, "Writing a file"): Save and
+Append write the whole new file to 'path.part' and rename it over 'path'. A crash before the
+rename leaves the old file whole and a stray 'path.part' beside it. Here that crash is staged by
+writing such a leftover by hand: loading still reads the old file, the next Save replaces the
+leftover and the file, and nothing reads a half-written '.part' as the table. A save that cannot
+complete reports an error and leaves the old file as it was.
+~#
+use Query.Structured, System.IO.Filesystem;
+
+class QueryPersistCrash {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Make(rows : Int, tag : String) ~ Table {
+		table := Table->New("runs", ["n", "tag"], [ColumnType->INT, ColumnType->STRING], true);
+		each(i : rows) {
+			row := table->Insert();
+			row->Set("n", IntRef->New(i));
+			row->Set("tag", tag);
+		};
+		return table;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		path := "query_persist_crash_tmp.otab";
+		part := "{$path}.part";
+		File->Delete(path);
+		File->Delete(part);
+
+		Check("the first save", Make(10, "old")->Save(path));
+		size := File->Size(path);
+
+		# a save that died before its rename: half a file under the temporary name
+		image := Make(500, "new")->ToBytes();
+		half := Byte->New[image->Size() / 2];
+		Byte->Copy(half, 0, image, 0, half->Size());
+		Check("the staged leftover is written", FileWriter->WriteFile(part, half));
+
+		old := Table->Load(path);
+		Check("Load reads the old file, not the leftover", old <> Nil & old->Size() = 10 &
+			old->Get(0)->Get("tag")->As(String)->Equals("old"));
+		Check("the old file is unchanged", File->Size(path) = size);
+		Check("the leftover itself is not a table", <>OtabFile->New(part)->IsOpen());
+
+		# the next save goes through, and leaves no leftover behind
+		Check("a save after a crash", Make(20, "next")->Save(path));
+		Check("it replaced the leftover", <>File->Exists(part));
+		next := Table->Load(path);
+		Check("the file holds the new table", next <> Nil & next->Size() = 20 &
+			next->Get(19)->Get("tag")->As(String)->Equals("next"));
+
+		# Append after a crash, too
+		Check("the second leftover is written", FileWriter->WriteFile(part, half));
+		Check("an Append after a crash", Make(5, "more")->Append(path));
+		Check("it replaced that leftover", <>File->Exists(part));
+		appended := Table->Load(path);
+		Check("the appended file has both parts", appended <> Nil & appended->Size() = 25);
+
+		# a save that cannot complete (its folder does not exist) reports it
+		missing := Make(3, "x");
+		Check("a save into a missing folder fails", <>missing->Save("no_such_folder_tmp/t.otab"));
+		Check("and says why", missing->GetError() <> Nil);
+		Check("the earlier file is untouched by that", Table->Load(path)->Size() = 25);
+
+		File->Delete(path);
+		File->Delete(part);
+
+		if(@failures = 0) {
+			"PASS: .otab saves survive a crash before the rename"->PrintLine();
+		}
+		else {
+			"FAIL: .otab crash safety ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
