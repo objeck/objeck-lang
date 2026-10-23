@@ -51,8 +51,9 @@
 
 #define MEM_START_MAX 4096 * 2048
 
-#define UNCOLLECTED_COUNT 7
-#define COLLECTED_COUNT 23
+// after a major collection the next one waits until the heap reaches this many
+// times its live size (see CollectMemory)
+#define GC_HEAP_GROWTH 2
 
 #define EXTRA_BUF_SIZE 3
 #define MARKED_FLAG -1
@@ -205,8 +206,8 @@ class MemoryManager {
   static std::atomic<size_t> allocation_size;
   // note: protected by 'allocated_lock'
   static size_t mem_max_size;
-  static size_t uncollected_count;
-  static size_t collected_count;
+  // true when --gc-threshold set mem_max_size, which then stays as given
+  static bool mem_fixed_size;
 
   // always-on GC cycle counters (exposed via Get*GcCount for runtime diagnostics).
   // Unlike mem_cycle these exist in every build, not just under _MEM_LOGGING.

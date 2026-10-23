@@ -102,8 +102,7 @@ std::atomic<size_t> MemoryManager::free_memory_cache_size;
 bool MemoryManager::initialized;
 std::atomic<size_t> MemoryManager::allocation_size;
 size_t MemoryManager::mem_max_size;
-size_t MemoryManager::uncollected_count;
-size_t MemoryManager::collected_count;
+bool MemoryManager::mem_fixed_size;
 std::atomic<long> MemoryManager::minor_gc_count(0);
 std::atomic<long> MemoryManager::major_gc_count(0);
 std::atomic<long> MemoryManager::gc_pause_last_us(0);
@@ -190,14 +189,9 @@ void MemoryManager::Initialize(StackProgram* p, size_t m)
   class_ptrs.assign(clss, clss + cls_num);
   std::sort(class_ptrs.begin(), class_ptrs.end());
 
-  if(m <= 0) {
-    mem_max_size = MEM_START_MAX;
-  }
-  else {
-    mem_max_size = m;
-  }
+  mem_fixed_size = m > 0;
+  mem_max_size = mem_fixed_size ? m : MEM_START_MAX;
   allocation_size = 0;
-  uncollected_count = 0;
   free_memory_cache_size.store(0, std::memory_order_relaxed);
   memset(free_buckets, 0, sizeof(free_buckets));
 
@@ -1465,33 +1459,23 @@ void* MemoryManager::CollectMemory(void* arg)
     dirty_count.store(0, std::memory_order_release);
   }
 
-  // Adjust GC constraints based on collection effectiveness. Only major GCs drive
-  // this: a minor GC's dead count reflects only dead young objects (it never sweeps
-  // old gen), so letting it grow/shrink mem_max_size would mis-tune the heap and
-  // skew the minor-vs-major trigger.
-  if(!minor_gc_mode.load(std::memory_order_acquire)) {
-    size_t total_dead = dead_young_size + dead_old_count;
-    if(total_dead == 0) {
-      if(uncollected_count < UNCOLLECTED_COUNT) {
-        uncollected_count++;
-      }
-      else {
-        mem_max_size <<= 4;
-        uncollected_count = 0;
-      }
-    }
-    else if(mem_max_size != MEM_START_MAX) {
-      if(collected_count < COLLECTED_COUNT) {
-        collected_count++;
-      }
-      else {
-        mem_max_size >>= 2;
-        if(mem_max_size <= 0) {
-          mem_max_size = MEM_START_MAX;
-        }
-        collected_count = 0;
-      }
-    }
+  // The next major collection runs once the heap has grown by as much again as
+  // survived this one: the threshold is GC_HEAP_GROWTH times the live heap, and
+  // never below MEM_START_MAX. Only a major GC sets it, since only a major GC
+  // measures the old generation. A threshold given with --gc-threshold is fixed:
+  // that is how stress runs force frequent collections, and how a program that
+  // knows its working set asks for exactly that.
+  //
+  // The old policy grew the threshold only after eight majors in a row freed
+  // NOTHING, and shrank it after 24 that freed anything. A program that keeps a
+  // large data set while making temporaries -- any table or model -- never met
+  // the first condition, so once its live data passed the 8 MB start, nearly
+  // every array allocation ran a full collection: saving and loading a 70,000-row
+  // table ran 137 majors, each scanning hundreds of megabytes. Sized to the live
+  // heap, collection work stays proportional to allocation.
+  if(!minor_gc_mode.load(std::memory_order_acquire) && !mem_fixed_size) {
+    const size_t live = allocation_size.load(std::memory_order_relaxed);
+    mem_max_size = live > MEM_START_MAX / GC_HEAP_GROWTH ? live * GC_HEAP_GROWTH : MEM_START_MAX;
   }
 
   // clear free memory cache if oversized. Read unlocked on purpose -- see the

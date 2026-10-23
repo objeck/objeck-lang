@@ -1,0 +1,92 @@
+#~
+The threshold for a major collection follows the live heap. After each major collection the
+next one waits until the heap has grown to twice what survived (and never below the start
+size), so the number of collections is proportional to what a program allocates, not to how
+much it keeps.
+
+It used to grow only after eight majors in a row freed nothing, and to shrink after 24 that freed
+anything. A program that keeps a large data set while making temporaries -- a table, a model --
+never met the first condition: once its live data passed the 8 MB start, every array it
+allocated ran a full collection: building this test's data ran 121 majors.
+
+A threshold given with --gc-threshold stays fixed instead (stress runs use a small one to force
+collections), so under one this test checks that the threshold does not move.
+~#
+class GcHeapSizing {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Majors() ~ Int {
+		return Runtime->GetProperty("runtime.gc.major")->ToInt();
+	}
+
+	function : Threshold() ~ Int {
+		return Runtime->GetProperty("runtime.memory.max")->ToInt();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# 8 MB unless --gc-threshold fixed it. A fixed threshold under this test's 64 MB would
+		# collect on every array allocation, which is that setting's purpose, so under one
+		# the test checks only that the threshold does not move, with a few MB of data.
+		initial := Threshold();
+		if(initial <> 8388608) {
+			small := Int[]->New[4];
+			each(i : small) {
+				small[i] := Int->New[131072];
+			};
+			Check("a threshold set with --gc-threshold stays as given", Threshold() = initial);
+		}
+		else {
+			Sized();
+		};
+
+		if(@failures = 0) {
+			"PASS: the major-collection threshold follows the live heap"->PrintLine();
+		}
+		else {
+			"FAIL: the major-collection threshold follows the live heap ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Sized() ~ Nil {
+		start := Majors();
+
+		# about 64 MB kept alive for the whole run, well past the 8 MB start, built the way
+		# real data is: with temporaries along the way, so every collection frees something
+		kept := Int[]->New[64];
+		each(i : kept) {
+			kept[i] := Int->New[131072];
+			kept[i][0] := i;
+			each(j : 16) {
+				scratch := Int->New[256];
+				scratch[0] := j;
+			};
+		};
+
+		# 4,000 short-lived arrays: 16 MB in all, a quarter of what is live
+		before := Majors();
+		total := 0;
+		each(i : 4000) {
+			temp := Int->New[512];
+			temp[0] := i;
+			total += temp[0];
+		};
+		ran := Majors() - before;
+		all := Majors() - start;
+
+		Check("the kept data survives", kept[63][0] = 63 & total = 4000 * 3999 / 2);
+		# 64 MB built from an 8 MB start doubles about four times; the old policy ran 121
+		Check("building the data runs a few majors, one per doubling ({$all} ran)", all <= 10);
+		Check("temporaries a fraction of the live heap cause a few majors, not one each ({$ran} ran)", ran <= 3);
+		Check("the threshold is above the live heap", Threshold() > Runtime->GetProperty("runtime.memory.allocated")->ToInt());
+	}
+}
