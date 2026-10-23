@@ -1,0 +1,152 @@
+#~
+Runtime primitives: bulk array copy and fill against the element loop they
+replace.
+
+Prints one line per case:
+  BENCH <case> <seconds> <reference_seconds>
+where <seconds> is the native operation and <reference_seconds> is the
+equivalent element-by-element Objeck loop, timed in the same run. Each case
+repeats its operation enough times to be measurable; both columns cover the
+same number of repetitions.
+
+  obc -src runtime_bench.obs -dest runtime_bench.obe
+  obr runtime_bench.obe
+~#
+class RuntimeBench {
+	function : Main(args : String[]) ~ Nil {
+		IntCopy(1000000, 200);
+		IntCopy(10000000, 20);
+		FloatCopy(1000000, 200);
+		FloatCopy(10000000, 20);
+		IntFill(1000000, 200);
+		IntFill(10000000, 20);
+		FloatFill(1000000, 200);
+		FloatFill(10000000, 20);
+	}
+
+	function : Report(name : String, size : Int, native_secs : Float, loop_secs : Float, check : Bool) ~ Nil {
+		if(check = false) {
+			"FAIL: {$name} results differ"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		n := Float->ToString(native_secs, 6);
+		l := Float->ToString(loop_secs, 6);
+		"BENCH {$name}_{$size} {$n} {$l}"->PrintLine();
+	}
+
+	# first touches of a fresh array are page faults; take them before timing
+	function : Warm(a : Int[], b : Int[]) ~ Nil {
+		Int->Fill(a, 1);
+		Int->Fill(b, 1);
+	}
+
+	function : Warm(a : Float[], b : Float[]) ~ Nil {
+		Float->Fill(a, 1.0);
+		Float->Fill(b, 1.0);
+	}
+
+	function : IntCopy(size : Int, reps : Int) ~ Nil {
+		src := Int->New[size];
+		for(i := 0; i < size; i += 1;) {
+			src[i] := i;
+		};
+		a := Int->New[size];
+		b := Int->New[size];
+		Warm(a, b);
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			Int->Copy(a, 0, src, 0, size);
+		};
+		native_secs := timer->GetElapsedTime();
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < size; i += 1;) {
+				b[i] := src[i];
+			};
+		};
+		loop_secs := timer->GetElapsedTime();
+
+		Report("int_copy", size, native_secs, loop_secs, a[size - 1] = b[size - 1] & a[size / 2] = size / 2);
+	}
+
+	function : FloatCopy(size : Int, reps : Int) ~ Nil {
+		src := Float->New[size];
+		for(i := 0; i < size; i += 1;) {
+			src[i] := i->As(Float) * 0.5;
+		};
+		a := Float->New[size];
+		b := Float->New[size];
+		Warm(a, b);
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			Float->Copy(a, 0, src, 0, size);
+		};
+		native_secs := timer->GetElapsedTime();
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < size; i += 1;) {
+				b[i] := src[i];
+			};
+		};
+		loop_secs := timer->GetElapsedTime();
+
+		Report("float_copy", size, native_secs, loop_secs, a[size - 1] = b[size - 1]);
+	}
+
+	function : IntFill(size : Int, reps : Int) ~ Nil {
+		a := Int->New[size];
+		b := Int->New[size];
+		Warm(a, b);
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			Int->Fill(a, r);
+		};
+		native_secs := timer->GetElapsedTime();
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < size; i += 1;) {
+				b[i] := r;
+			};
+		};
+		loop_secs := timer->GetElapsedTime();
+
+		Report("int_fill", size, native_secs, loop_secs, a[size - 1] = b[size - 1]);
+	}
+
+	function : FloatFill(size : Int, reps : Int) ~ Nil {
+		a := Float->New[size];
+		b := Float->New[size];
+		Warm(a, b);
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			Float->Fill(a, r->As(Float) + 0.25);
+		};
+		native_secs := timer->GetElapsedTime();
+
+		timer := System.Time.Timer->New();
+		timer->Start();
+		for(r := 0; r < reps; r += 1;) {
+			v := r->As(Float) + 0.25;
+			for(i := 0; i < size; i += 1;) {
+				b[i] := v;
+			};
+		};
+		loop_secs := timer->GetElapsedTime();
+
+		Report("float_fill", size, native_secs, loop_secs, a[size - 1] = b[size - 1]);
+	}
+}

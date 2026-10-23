@@ -472,6 +472,55 @@ bundle System {
 		function : Clear(b : Byte[]) ~ Nil {
 			ZERO_BYTE_ARY;
 		}
+
+		#~
+		Copies elements between two bytes arrays, or within one: overlapping
+		ranges copy as if through a temporary array. Raises an IndexError, which
+		a try/on or ?-> region can recover from, when a range does not fit its
+		array; nothing is copied then.
+		@param dest destination array
+		@param dest_offset first destination index
+		@param src source array
+		@param src_offset first source index
+		@param count number of elements to copy; zero copies nothing
+		```
+		a := Byte->New[4]
+		Byte->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one
+		```
+		~#
+		function : Copy(dest : Byte[], dest_offset : Int, src : Byte[], src_offset : Int, count : Int) ~ Nil {
+			CopyNative(dest, dest_offset, src, src_offset, count, 1);
+		}
+
+		function : private : CopyNative(dest : Byte[], dest_offset : Int, src : Byte[], src_offset : Int, count : Int, kind : Int) ~ Nil {
+			ARY_COPY;
+		}
+
+		#~
+		Sets every element of an array to a value
+		@param array array
+		@param value value
+		~#
+		function : Fill(array : Byte[], value : Byte) ~ Nil {
+			FillNative(array, value, 0, array->Size(), 1);
+		}
+
+		#~
+		Sets a range of array elements to a value. Raises an IndexError, which a
+		try/on or ?-> region can recover from, when the range does not fit the
+		array; nothing is set then.
+		@param array array
+		@param value value
+		@param offset first index
+		@param count number of elements to set; zero sets nothing
+		~#
+		function : Fill(array : Byte[], value : Byte, offset : Int, count : Int) ~ Nil {
+			FillNative(array, value, offset, count, 1);
+		}
+
+		function : private : FillNative(array : Byte[], value : Byte, offset : Int, count : Int, kind : Int) ~ Nil {
+			ARY_FILL_INT;
+		}
 		
 		#~
 		Converts the byte array to a character array
@@ -664,9 +713,7 @@ bundle System {
 			while(offset > -1);
 			
 			results := Int->New[count];
-			each(i : results) {
-				results[i] := buffer[i];
-			};
+			Int->Copy(results, 0, buffer, 0, count);
 
 			return results;
 		}
@@ -1081,6 +1128,55 @@ bundle System {
 		function : Clear(c : Char[]) ~ Nil {
 			ZERO_CHAR_ARY;
 		}
+
+		#~
+		Copies elements between two character arrays, or within one: overlapping
+		ranges copy as if through a temporary array. Raises an IndexError, which
+		a try/on or ?-> region can recover from, when a range does not fit its
+		array; nothing is copied then.
+		@param dest destination array
+		@param dest_offset first destination index
+		@param src source array
+		@param src_offset first source index
+		@param count number of elements to copy; zero copies nothing
+		```
+		a := ['a', 'b', 'c', 'd']
+		Char->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one
+		```
+		~#
+		function : Copy(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, count : Int) ~ Nil {
+			CopyNative(dest, dest_offset, src, src_offset, count, 2);
+		}
+
+		function : private : CopyNative(dest : Char[], dest_offset : Int, src : Char[], src_offset : Int, count : Int, kind : Int) ~ Nil {
+			ARY_COPY;
+		}
+
+		#~
+		Sets every element of an array to a value
+		@param array array
+		@param value value
+		~#
+		function : Fill(array : Char[], value : Char) ~ Nil {
+			FillNative(array, value, 0, array->Size(), 2);
+		}
+
+		#~
+		Sets a range of array elements to a value. Raises an IndexError, which a
+		try/on or ?-> region can recover from, when the range does not fit the
+		array; nothing is set then.
+		@param array array
+		@param value value
+		@param offset first index
+		@param count number of elements to set; zero sets nothing
+		~#
+		function : Fill(array : Char[], value : Char, offset : Int, count : Int) ~ Nil {
+			FillNative(array, value, offset, count, 2);
+		}
+
+		function : private : FillNative(array : Char[], value : Char, offset : Int, count : Int, kind : Int) ~ Nil {
+			ARY_FILL_INT;
+		}
 		
 		#~
 		Converts the character array to a byte array
@@ -1155,9 +1251,7 @@ bundle System {
 			while(offset > -1);
 			
 			results := Int->New[count];
-			each(i : results) {
-				results[i] := buffer[i];
-			};
+			Int->Copy(results, 0, buffer, 0, count);
 
 			return results;
 		}
@@ -1689,6 +1783,55 @@ bundle System {
 		~#
 		function : Clear(a : Int[]) ~ Nil {
 			ZERO_INT_ARY;
+		}
+
+		#~
+		Copies elements between two integer arrays, or within one: overlapping
+		ranges copy as if through a temporary array. Raises an IndexError, which
+		a try/on or ?-> region can recover from, when a range does not fit its
+		array; nothing is copied then.
+		@param dest destination array
+		@param dest_offset first destination index
+		@param src source array
+		@param src_offset first source index
+		@param count number of elements to copy; zero copies nothing
+		```
+		a := [1, 2, 3, 4]
+		Int->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one
+		```
+		~#
+		function : Copy(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, count : Int) ~ Nil {
+			CopyNative(dest, dest_offset, src, src_offset, count, 3);
+		}
+
+		function : private : CopyNative(dest : Int[], dest_offset : Int, src : Int[], src_offset : Int, count : Int, kind : Int) ~ Nil {
+			ARY_COPY;
+		}
+
+		#~
+		Sets every element of an array to a value
+		@param array array
+		@param value value
+		~#
+		function : Fill(array : Int[], value : Int) ~ Nil {
+			FillNative(array, value, 0, array->Size(), 3);
+		}
+
+		#~
+		Sets a range of array elements to a value. Raises an IndexError, which a
+		try/on or ?-> region can recover from, when the range does not fit the
+		array; nothing is set then.
+		@param array array
+		@param value value
+		@param offset first index
+		@param count number of elements to set; zero sets nothing
+		~#
+		function : Fill(array : Int[], value : Int, offset : Int, count : Int) ~ Nil {
+			FillNative(array, value, offset, count, 3);
+		}
+
+		function : private : FillNative(array : Int[], value : Int, offset : Int, count : Int, kind : Int) ~ Nil {
+			ARY_FILL_INT;
 		}
 
 		function : Size(i : Int[,]) ~ Int[] {
@@ -2702,6 +2845,55 @@ bundle System {
 		~#
 		function : Clear(f : Float[]) ~ Nil {
 			ZERO_FLOAT_ARY;
+		}
+
+		#~
+		Copies elements between two float arrays, or within one: overlapping
+		ranges copy as if through a temporary array. Raises an IndexError, which
+		a try/on or ?-> region can recover from, when a range does not fit its
+		array; nothing is copied then.
+		@param dest destination array
+		@param dest_offset first destination index
+		@param src source array
+		@param src_offset first source index
+		@param count number of elements to copy; zero copies nothing
+		```
+		a := [1.0, 2.0, 3.0, 4.0]
+		Float->Copy(a, 1, a, 0, 3);  # shifts the first three elements right by one
+		```
+		~#
+		function : Copy(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, count : Int) ~ Nil {
+			CopyNative(dest, dest_offset, src, src_offset, count, 4);
+		}
+
+		function : private : CopyNative(dest : Float[], dest_offset : Int, src : Float[], src_offset : Int, count : Int, kind : Int) ~ Nil {
+			ARY_COPY;
+		}
+
+		#~
+		Sets every element of an array to a value
+		@param array array
+		@param value value
+		~#
+		function : Fill(array : Float[], value : Float) ~ Nil {
+			FillNative(array, value, 0, array->Size());
+		}
+
+		#~
+		Sets a range of array elements to a value. Raises an IndexError, which a
+		try/on or ?-> region can recover from, when the range does not fit the
+		array; nothing is set then.
+		@param array array
+		@param value value
+		@param offset first index
+		@param count number of elements to set; zero sets nothing
+		~#
+		function : Fill(array : Float[], value : Float, offset : Int, count : Int) ~ Nil {
+			FillNative(array, value, offset, count);
+		}
+
+		function : private : FillNative(array : Float[], value : Float, offset : Int, count : Int) ~ Nil {
+			ARY_FILL_FLOAT;
 		}
 
 		function : Size(f : Float[,]) ~ Int[] {
@@ -5222,10 +5414,7 @@ each(i : cities) {
 		method : public : native : ToByteArray() ~ Byte[] {
 			bytes := @string->ToBytes(); #  Unicode conversion 
 			out := Byte->New[bytes->Size()];
-
-			each(i : bytes) {
-				out[i] := bytes[i];
-			};
+			Byte->Copy(out, 0, bytes, 0, bytes->Size());
 
 			return out;
 		}
@@ -5919,9 +6108,7 @@ each(i : cities) {
 			while(offset > -1);
 			
 			results := Int->New[count];
-			each(i : results) {
-				results[i] := buffer[i];
-			};
+			Int->Copy(results, 0, buffer, 0, count);
 
 			return results;
 		}

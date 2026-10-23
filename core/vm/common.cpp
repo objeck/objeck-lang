@@ -2712,6 +2712,15 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case RUNTIME_GET_LAST_ERROR:
     return RuntimeGetLastError(program, inst, op_stack, stack_pos, frame);
 
+  case ARY_COPY:
+    return AryCopy(program, inst, op_stack, stack_pos, frame);
+
+  case ARY_FILL_INT:
+    return AryFillInt(program, inst, op_stack, stack_pos, frame);
+
+  case ARY_FILL_FLOAT:
+    return AryFillFloat(program, inst, op_stack, stack_pos, frame);
+
   case HTTP3_CLOSE:
     return Http3Close(program, inst, op_stack, stack_pos, frame);
 
@@ -6798,6 +6807,162 @@ bool TrapProcessor::RuntimeGetLastError(StackProgram* program, size_t* inst, siz
   }
 
   PushInt((size_t)raised.object, op_stack, stack_pos);
+  return true;
+}
+
+//
+// Bulk primitive array moves: Int/Float/Byte/Char->Copy and ->Fill. The
+// element kind comes from the library wrapper, which knows the static type;
+// no header word is consulted, so an array is never misread.
+//
+enum AryKind : INT64_VALUE {
+  ARY_KIND_BYTE = 1,
+  ARY_KIND_CHAR,
+  ARY_KIND_INT,
+  ARY_KIND_FLOAT
+};
+
+static size_t AryKindWidth(INT64_VALUE kind)
+{
+  switch(kind) {
+  case ARY_KIND_BYTE:
+    return sizeof(char);
+  case ARY_KIND_CHAR:
+    return sizeof(wchar_t);
+  case ARY_KIND_INT:
+    return sizeof(size_t);
+  case ARY_KIND_FLOAT:
+    return sizeof(FLOAT_VALUE);
+  default:
+    return 0;
+  }
+}
+
+// offset and count name a range inside an array of 'size' elements; written
+// so that no sum can overflow
+static bool AryRangeValid(INT64_VALUE offset, INT64_VALUE count, INT64_VALUE size)
+{
+  return offset >= 0 && count >= 0 && offset <= size && count <= size - offset;
+}
+
+static std::wstring AryRangeMessage(const wchar_t* what, INT64_VALUE offset, INT64_VALUE count, INT64_VALUE size)
+{
+  std::wstringstream out;
+  out << L"Index out of bounds: " << what << L" offset " << offset << L" and count " << count
+      << L" do not fit an array of " << size;
+  return out.str();
+}
+
+// function : CopyNative(dest : T[], dest_offset : Int, src : T[], src_offset : Int, count : Int, kind : Int) ~ Nil
+//
+// Overlapping ranges in one array behave like memmove. Runtime->Copy, the old
+// form, answers false for a bad range; this raises an IndexError, so a caller
+// cannot lose a failed copy by ignoring a Bool.
+bool TrapProcessor::AryCopy(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE src_offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* src = (size_t*)PopInt(op_stack, stack_pos);
+  const INT64_VALUE dest_offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* dest = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!src || !dest) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  const size_t width = AryKindWidth(kind);
+  if(!width) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array copy");
+  }
+
+  const INT64_VALUE src_size = (INT64_VALUE)src[0];
+  const INT64_VALUE dest_size = (INT64_VALUE)dest[0];
+  if(!AryRangeValid(src_offset, count, src_size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"source", src_offset, count, src_size));
+  }
+  if(!AryRangeValid(dest_offset, count, dest_size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"destination", dest_offset, count, dest_size));
+  }
+
+  if(count > 0) {
+    char* dest_ptr = (char*)(dest + 3) + (size_t)dest_offset * width;
+    const char* src_ptr = (const char*)(src + 3) + (size_t)src_offset * width;
+    memmove(dest_ptr, src_ptr, (size_t)count * width);
+    // an Int[] slot may hold an object reference (object arrays are Int arrays
+    // of pointers), so record the destination for the minor collector
+    if(kind == ARY_KIND_INT) {
+      MemoryManager::WriteBarrier(dest);
+    }
+  }
+
+  return true;
+}
+
+// function : FillNative(array : Int[]/Byte[]/Char[], value, offset : Int, count : Int, kind : Int) ~ Nil
+bool TrapProcessor::AryFillInt(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE kind = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const size_t value = PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!array) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  const INT64_VALUE size = (INT64_VALUE)array[0];
+  if(!AryRangeValid(offset, count, size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"fill", offset, count, size));
+  }
+
+  switch(kind) {
+  case ARY_KIND_BYTE: {
+    char* start = (char*)(array + 3) + offset;
+    memset(start, (int)(unsigned char)value, (size_t)count);
+  }
+    break;
+
+  case ARY_KIND_CHAR: {
+    wchar_t* start = (wchar_t*)(array + 3) + offset;
+    std::fill(start, start + count, (wchar_t)value);
+  }
+    break;
+
+  case ARY_KIND_INT: {
+    size_t* start = array + 3 + offset;
+    std::fill(start, start + count, value);
+  }
+    break;
+
+  default:
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid array fill");
+  }
+
+  return true;
+}
+
+// function : FillNative(array : Float[], value : Float, offset : Int, count : Int) ~ Nil
+bool TrapProcessor::AryFillFloat(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE count = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  const FLOAT_VALUE value = PopFloat(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+
+  if(!array) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  const INT64_VALUE size = (INT64_VALUE)array[0];
+  if(!AryRangeValid(offset, count, size)) {
+    return TrapError(Runtime::StackInterpreter::RECOVERED_INDEX_OUT_OF_BOUNDS, AryRangeMessage(L"fill", offset, count, size));
+  }
+
+  FLOAT_VALUE* start = (FLOAT_VALUE*)(array + 3) + offset;
+  std::fill(start, start + count, value);
+
   return true;
 }
 

@@ -433,6 +433,9 @@ enum ScannerTokenType {
   RUNTIME_CLEAR_ERROR,
   RUNTIME_RAISE,
   RUNTIME_GET_LAST_ERROR,
+  ARY_COPY,
+  ARY_FILL_INT,
+  ARY_FILL_FLOAT,
   // serialization
   SERL_CHAR,
   SERL_INT,

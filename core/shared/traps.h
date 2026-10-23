@@ -312,6 +312,12 @@ namespace instructions {
     RUNTIME_CLEAR_ERROR,
     // raising an Error, and the Error last recovered from (#1247, phase 1)
     RUNTIME_RAISE,
-    RUNTIME_GET_LAST_ERROR
+    RUNTIME_GET_LAST_ERROR,
+    // Int/Float/Byte/Char->Copy(dest, dest_offset, src, src_offset, count)
+    // and ->Fill(array, value, offset, count): bounds-checked bulk moves that
+    // raise an IndexError instead of failing quietly
+    ARY_COPY,
+    ARY_FILL_INT,
+    ARY_FILL_FLOAT
   };
 }

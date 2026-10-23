@@ -1,0 +1,343 @@
+#~
+Bulk primitive array moves: Int/Float/Byte/Char->Copy(dest, dest_offset, src,
+src_offset, count) and ->Fill(array, value[, offset, count]).
+
+These are VM traps (memmove/fill), not element loops. The argument order is
+Runtime->Copy's (destination first). A range that does not fit its array raises
+an IndexError that try/on recovers from, and leaves the arrays untouched;
+Runtime->Copy, the older form, still answers false instead. Overlapping ranges
+in one array copy as if through a temporary array, in both directions.
+~#
+class LangArrayCopy {
+	@failures : Int;
+
+	New() {
+		@failures := 0;
+	}
+
+	method : Check(what : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"PASS: {$what}"->PrintLine();
+		}
+		else {
+			"FAIL: {$what}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	method : SameInts(a : Int[], b : Int[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : SameFloats(a : Float[], b : Float[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : SameBytes(a : Byte[], b : Byte[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	method : SameChars(a : Char[], b : Char[]) ~ Bool {
+		if(a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	# a copy that must raise an IndexError and change nothing
+	method : IntCopyFails(what : String, dest_offset : Int, src_offset : Int, count : Int) ~ Nil {
+		src := [1, 2, 3, 4, 5];
+		dest := [10, 20, 30];
+		raised := false;
+		message := "";
+		try {
+			Int->Copy(dest, dest_offset, src, src_offset, count);
+		}
+		on(e : IndexError) {
+			raised := true;
+			message := e->GetMessage();
+		};
+		Check("Int->Copy {$what} raises IndexError", raised & message->StartsWith("Index out of bounds"));
+		Check("Int->Copy {$what} leaves dest alone", SameInts(dest, [10, 20, 30]));
+	}
+
+	method : IntFillFails(what : String, offset : Int, count : Int) ~ Nil {
+		a := [1, 2, 3];
+		raised := false;
+		try {
+			Int->Fill(a, 9, offset, count);
+		}
+		on(e : IndexError) {
+			raised := true;
+		};
+		Check("Int->Fill {$what} raises IndexError", raised & SameInts(a, [1, 2, 3]));
+	}
+
+	method : Ints() ~ Nil {
+		src := [1, 2, 3, 4, 5];
+		dest := Int->New[5];
+		Int->Copy(dest, 0, src, 0, 5);
+		Check("Int->Copy whole array", SameInts(dest, [1, 2, 3, 4, 5]));
+
+		dest := Int->New[6];
+		Int->Copy(dest, 2, src, 1, 3);
+		Check("Int->Copy with offsets", SameInts(dest, [0, 0, 2, 3, 4, 0]));
+
+		Int->Copy(dest, 0, src, 0, 0);
+		Int->Copy(dest, 6, src, 5, 0);
+		Check("Int->Copy count 0, also at the very end, is a no-op", SameInts(dest, [0, 0, 2, 3, 4, 0]));
+
+		# overlap within one array: right shift and left shift
+		a := [1, 2, 3, 4, 5, 6];
+		Int->Copy(a, 1, a, 0, 5);
+		Check("Int->Copy overlapping, moving right", SameInts(a, [1, 1, 2, 3, 4, 5]));
+		a := [1, 2, 3, 4, 5, 6];
+		Int->Copy(a, 0, a, 1, 5);
+		Check("Int->Copy overlapping, moving left", SameInts(a, [2, 3, 4, 5, 6, 6]));
+		a := [1, 2, 3];
+		Int->Copy(a, 0, a, 0, 3);
+		Check("Int->Copy onto itself", SameInts(a, [1, 2, 3]));
+
+		# extremes survive
+		a := [Int->MaxSize(), Int->MinSize(), -1];
+		b := Int->New[3];
+		Int->Copy(b, 0, a, 0, 3);
+		Check("Int->Copy keeps Max, Min, -1", b[0] = Int->MaxSize() & b[1] = Int->MinSize() & b[2] = -1);
+
+		# bounds: source and destination, negative values, overflow-sized values
+		IntCopyFails("source past the end", 0, 3, 3);
+		IntCopyFails("destination past the end", 1, 0, 3);
+		IntCopyFails("negative source offset", 0, -1, 1);
+		IntCopyFails("negative destination offset", -1, 0, 1);
+		IntCopyFails("negative count", 0, 0, -1);
+		IntCopyFails("source offset beyond size with count 0", 0, 6, 0);
+		IntCopyFails("count that would overflow", 0, 1, Int->MaxSize());
+		IntCopyFails("offset that would overflow", 0, Int->MaxSize(), 2);
+
+		# Nil arrays
+		raised := false;
+		try {
+			n : Int[];
+			Int->Copy(n, 0, src, 0, 1);
+		}
+		on(e : NilError) {
+			raised := true;
+		};
+		Check("Int->Copy into Nil raises NilError", raised);
+
+		# fill
+		a := Int->New[5];
+		Int->Fill(a, 7);
+		Check("Int->Fill whole array", SameInts(a, [7, 7, 7, 7, 7]));
+		Int->Fill(a, -3, 1, 3);
+		Check("Int->Fill range", SameInts(a, [7, -3, -3, -3, 7]));
+		Int->Fill(a, 99, 5, 0);
+		Check("Int->Fill count 0 at the end is a no-op", SameInts(a, [7, -3, -3, -3, 7]));
+		IntFillFails("past the end", 2, 2);
+		IntFillFails("negative offset", -1, 1);
+		IntFillFails("negative count", 0, -2);
+		IntFillFails("overflowing count", 1, Int->MaxSize());
+
+		e := Int->New[0];
+		Int->Fill(e, 1);
+		Int->Copy(e, 0, e, 0, 0);
+		Check("empty arrays copy and fill", e->Size() = 0);
+
+		# a larger array against an element loop
+		big := Int->New[10000];
+		for(i := 0; i < big->Size(); i += 1;) {
+			big[i] := i * 7 - 3;
+		};
+		copy := Int->New[10000];
+		Int->Copy(copy, 0, big, 0, big->Size());
+		Check("Int->Copy 10000 elements", SameInts(copy, big));
+	}
+
+	method : Floats() ~ Nil {
+		src := [1.5, -2.25, 3.0e-300, 4.0e300, -0.0];
+		dest := Float->New[5];
+		Float->Copy(dest, 0, src, 0, 5);
+		Check("Float->Copy whole array", SameFloats(dest, src));
+		Check("Float->Copy keeps the sign of -0.0", Float->ToString(dest[4], 1)->Equals("-0.0"));
+
+		dest := Float->New[4];
+		Float->Copy(dest, 1, src, 2, 2);
+		Check("Float->Copy with offsets", SameFloats(dest, [0.0, 3.0e-300, 4.0e300, 0.0]));
+
+		a := [1.0, 2.0, 3.0, 4.0];
+		Float->Copy(a, 1, a, 0, 3);
+		Check("Float->Copy overlapping, moving right", SameFloats(a, [1.0, 1.0, 2.0, 3.0]));
+		a := [1.0, 2.0, 3.0, 4.0];
+		Float->Copy(a, 0, a, 1, 3);
+		Check("Float->Copy overlapping, moving left", SameFloats(a, [2.0, 3.0, 4.0, 4.0]));
+
+		raised := false;
+		try {
+			Float->Copy(a, 2, src, 0, 3);
+		}
+		on(e : IndexError) {
+			raised := true;
+		};
+		Check("Float->Copy past the end raises IndexError", raised & SameFloats(a, [2.0, 3.0, 4.0, 4.0]));
+
+		f := Float->New[4];
+		Float->Fill(f, 2.5);
+		Check("Float->Fill whole array", SameFloats(f, [2.5, 2.5, 2.5, 2.5]));
+		Float->Fill(f, -1.0e-310, 1, 2);
+		Check("Float->Fill range with a subnormal", SameFloats(f, [2.5, -1.0e-310, -1.0e-310, 2.5]));
+		Float->Fill(f, 9.0, 0, 0);
+		Check("Float->Fill count 0", SameFloats(f, [2.5, -1.0e-310, -1.0e-310, 2.5]));
+
+		raised := false;
+		try {
+			Float->Fill(f, 1.0, 3, 2);
+		}
+		on(e : IndexError) {
+			raised := true;
+		};
+		Check("Float->Fill past the end raises IndexError", raised & f[3] = 2.5);
+	}
+
+	method : Bytes() ~ Nil {
+		src := Byte->New[5];
+		for(i := 0; i < 5; i += 1;) {
+			src[i] := (i + 1)->As(Byte);
+		};
+		dest := Byte->New[5];
+		Byte->Copy(dest, 0, src, 0, 5);
+		Check("Byte->Copy whole array", SameBytes(dest, src));
+
+		a := Byte->Copy(src);
+		Byte->Copy(a, 1, a, 0, 4);
+		Check("Byte->Copy overlapping, moving right", a[0] = 1 & a[1] = 1 & a[2] = 2 & a[3] = 3 & a[4] = 4);
+		a := Byte->Copy(src);
+		Byte->Copy(a, 0, a, 1, 4);
+		Check("Byte->Copy overlapping, moving left", a[0] = 2 & a[1] = 3 & a[2] = 4 & a[3] = 5 & a[4] = 5);
+
+		raised := false;
+		try {
+			Byte->Copy(dest, 4, src, 0, 2);
+		}
+		on(e : IndexError) {
+			raised := true;
+		};
+		Check("Byte->Copy past the end raises IndexError", raised & SameBytes(dest, src));
+
+		b := Byte->New[6];
+		v := 200->As(Byte);
+		Byte->Fill(b, v);
+		all := true;
+		each(i : b) {
+			if(b[i] <> v) {
+				all := false;
+			};
+		};
+		Check("Byte->Fill whole array with 200", all);
+		Byte->Fill(b, 0x11->As(Byte), 2, 3);
+		Check("Byte->Fill range", b[1] = v & b[2] = 0x11 & b[4] = 0x11 & b[5] = v);
+
+		raised := false;
+		try {
+			Byte->Fill(b, 1->As(Byte), 6, 1);
+		}
+		on(e : IndexError) {
+			raised := true;
+		};
+		Check("Byte->Fill past the end raises IndexError", raised & b[5] = v);
+	}
+
+	method : Chars() ~ Nil {
+		src := "héllo中"->ToCharArray();
+		dest := Char->New[src->Size()];
+		Char->Copy(dest, 0, src, 0, src->Size());
+		Check("Char->Copy whole array, non-ASCII too", SameChars(dest, src));
+
+		a := "abcdef"->ToCharArray();
+		Char->Copy(a, 2, a, 0, 4);
+		Check("Char->Copy overlapping, moving right", String->New(a)->Equals("ababcd"));
+		a := "abcdef"->ToCharArray();
+		Char->Copy(a, 0, a, 2, 4);
+		Check("Char->Copy overlapping, moving left", String->New(a)->Equals("cdefef"));
+
+		raised := false;
+		try {
+			Char->Copy(a, 0, src, 3, 5);
+		}
+		on(e : IndexError) {
+			raised := true;
+		};
+		Check("Char->Copy past the end raises IndexError", raised & String->New(a)->Equals("cdefef"));
+
+		c := Char->New[5];
+		Char->Fill(c, '中');
+		Check("Char->Fill whole array", String->New(c)->Equals("中中中中中"));
+		Char->Fill(c, 'x', 1, 3);
+		Check("Char->Fill range", String->New(c)->Equals("中xxx中"));
+
+		raised := false;
+		try {
+			Char->Fill(c, 'y', -1, 1);
+		}
+		on(e : IndexError) {
+			raised := true;
+		};
+		Check("Char->Fill negative offset raises IndexError", raised & String->New(c)->Equals("中xxx中"));
+	}
+
+	# the older Bool-returning form is unchanged
+	method : RuntimeCopy() ~ Nil {
+		a := [1, 2, 3];
+		b := Int->New[3];
+		Check("Runtime->Copy still answers true", Runtime->Copy(b, 0, a, 0, 3) & SameInts(a, b));
+		Check("Runtime->Copy still answers false out of bounds", Runtime->Copy(b, 2, a, 0, 3) = false);
+	}
+
+	method : public : Run() ~ Nil {
+		Ints();
+		Floats();
+		Bytes();
+		Chars();
+		RuntimeCopy();
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: bulk array copy and fill"->PrintLine();
+	}
+}
+
+class Test {
+	function : Main(args : String[]) ~ Nil {
+		LangArrayCopy->New()->Run();
+	}
+}

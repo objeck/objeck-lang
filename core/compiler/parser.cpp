@@ -3511,6 +3511,24 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case ARY_COPY:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ARY_COPY);
+      NextToken();
+      break;
+
+    case ARY_FILL_INT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ARY_FILL_INT);
+      NextToken();
+      break;
+
+    case ARY_FILL_FLOAT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::ARY_FILL_FLOAT);
+      NextToken();
+      break;
+
     case HTTP3_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_CLOSE);
@@ -5920,6 +5938,24 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case RUNTIME_GET_LAST_ERROR:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::RUNTIME_GET_LAST_ERROR);
+     NextToken();
+     break;
+
+  case ARY_COPY:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ARY_COPY);
+     NextToken();
+     break;
+
+  case ARY_FILL_INT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ARY_FILL_INT);
+     NextToken();
+     break;
+
+  case ARY_FILL_FLOAT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::ARY_FILL_FLOAT);
      NextToken();
      break;
 
