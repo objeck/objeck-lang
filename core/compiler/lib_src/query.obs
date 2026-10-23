@@ -784,6 +784,94 @@ bundle Query.Structured {
 		}
 
 		#~
+		Gets the array of 64-row words marking DATE cells stored as GMT dates
+		@return GMT bitmap
+		~#
+		method : public : GetGmtBits() ~ Int[] {
+			return @gmt;
+		}
+
+		#~
+		Refills a column with stored arrays, as an .otab file holds them. Used by OtabFile.
+		@param type column type
+		@param declared true to refuse values of another type afterwards
+		@param n rows
+		@param ints INT, BOOL and DATE values, or dictionary codes of an encoded STRING column
+		@param floats FLOAT values
+		@param strings plain STRING values
+		@param objects OBJECT values
+		@param nulls null bitmap
+		@param null_count empty cells
+		@param gmt DATE GMT bitmap
+		@param encoded true if a STRING column is dictionary encoded
+		@param dict dictionary of an encoded STRING column
+		~#
+		method : public : Restore(type : ColumnType, declared : Bool, n : Int, ints : Int[], floats : Float[], strings : String[],
+				objects : Compare[], nulls : Int[], null_count : Int, gmt : Int[], encoded : Bool, dict : String[]) ~ Nil {
+			@size := 0;
+			@capacity := 0;
+			@ints := Nil;
+			@floats := Nil;
+			@strings := Nil;
+			@objects := Nil;
+			@nulls := Nil;
+			@gmt := Nil;
+			@dict := Nil;
+			@dict_index := Nil;
+			@dict_size := 0;
+			@null_count := 0;
+			@zone_min := Nil;
+			@type := ColumnType->NONE;
+			@declared := declared & type <> ColumnType->NONE;
+			@encoded := type <> ColumnType->STRING | encoded;
+			Ensure(n > 16 ? n : 16);
+
+			if(type = ColumnType->STRING & encoded & dict <> Nil) {
+				size := dict->Size();
+				@dict := String->New[size > 16 ? size : 16];
+				@dict_index := Hash->New()<String, IntRef>;
+				each(i : size) {
+					@dict[i] := dict[i];
+					@dict_index->Insert(dict[i], IntRef->New(i));
+				};
+				@dict_size := size;
+			};
+
+			if(type <> ColumnType->NONE) {
+				Become(type);
+			};
+
+			if(ints <> Nil & @ints <> Nil) {
+				Int->Copy(@ints, 0, ints, 0, n);
+			};
+			if(floats <> Nil & @floats <> Nil) {
+				Float->Copy(@floats, 0, floats, 0, n);
+			};
+			if(strings <> Nil) {
+				each(i : n) {
+					@strings[i] := strings[i];
+				};
+			};
+			if(objects <> Nil) {
+				each(i : n) {
+					@objects[i] := objects[i];
+				};
+			};
+
+			words := (n + 63) / 64;
+			if(nulls <> Nil) {
+				Int->Copy(@nulls, 0, nulls, 0, words);
+			};
+			if(gmt <> Nil & type = ColumnType->DATE) {
+				Int->Copy(@gmt, 0, gmt, 0, words);
+			};
+
+			@size := n;
+			@null_count := null_count;
+			RecomputeAllZones();
+		}
+
+		#~
 		Whether a DATE cell was stored as a GMT date
 		@param row row number
 		@return true if GMT
@@ -1600,6 +1688,251 @@ results->ToString()->PrintLine();
 			};
 
 			return table;
+		}
+
+		#~
+		Gets the key the next inserted row will have
+		@return next key
+		~#
+		method : public : GetNextKey() ~ Int {
+			return @next_pk;
+		}
+
+		# after a Gather of 'rows' from 'source': the rows keep the keys they had there
+		method : public : KeepKeys(source : Table, rows : Int[]) ~ Nil {
+			keys := Int->New[rows->Size()];
+			source_keys := source->GetColumn(0);
+			each(i : keys) {
+				keys[i] := source_keys->GetInt(rows[i]);
+			};
+			key_column := Column->New("pk", ColumnType->INT, true);
+			key_column->FillInts(keys);
+			@columns[0] := key_column;
+			@next_pk := source->GetNextKey();
+			@compacted := true;
+			@layout += 1;
+		}
+
+		# the rows numbered again from 'first'
+		method : public : RenumberKeys(first : Int) ~ Nil {
+			keys := Int->New[@size];
+			each(i : keys) {
+				keys[i] := first + i;
+			};
+			key_column := Column->New("pk", ColumnType->INT, true);
+			key_column->FillInts(keys);
+			@columns[0] := key_column;
+			@next_pk := first + @size;
+			@compacted := first <> 0;
+			@layout += 1;
+		}
+
+		#~
+		Makes a table from columns read back from storage. Used by OtabFile.
+		@param name table name
+		@param column_names data column names
+		@param columns the key column, then the data columns
+		@param next_key key the next inserted row will have
+		@return table
+		~#
+		function : Restore(name : String, column_names : String[], columns : Column[], next_key : Int) ~ Table {
+			table := Table->New(name, column_names);
+			table->Adopt(columns, next_key);
+			return table;
+		}
+
+		method : public : Adopt(columns : Column[], next_key : Int) ~ Nil {
+			each(i : columns) {
+				@columns[i] := columns[i];
+			};
+
+			@size := columns[0]->Size();
+			@count := @size;
+			@deleted := Nil;
+			@next_pk := next_key;
+
+			# keys 0, 1, 2 ... map straight to slots; anything else is found by search
+			keys := columns[0];
+			@compacted := false;
+			each(i : @size) {
+				if(keys->GetInt(i) <> i) {
+					@compacted := true;
+				};
+			};
+			@version += 1;
+			@layout += 1;
+		}
+
+		#~
+		Saves the table's live rows, with their keys, as an .otab file, written to a temporary
+		file and renamed over 'path', so a crash leaves the old file or the new one
+		@param path file
+		@return true if saved, false on error (see GetError)
+		```
+		table->Save("runs.otab");
+		runs := Table->Load("runs.otab");
+		```
+		~#
+		method : public : Save(path : String) ~ Bool {
+			return Save(path, Compression->NONE);
+		}
+
+		#~
+		Saves the table's live rows as an .otab file, compressing its blocks
+		@param path file
+		@param compression NONE, FAST or SMALL
+		@return true if saved, false on error (see GetError)
+		~#
+		method : public : Save(path : String, compression : Compression) ~ Bool {
+			@error := Nil;
+			holder := StringHolder->New();
+			bytes := Otab->Write(@self, compression, holder);
+			if(bytes = Nil | <>Otab->Commit(path, bytes, holder)) {
+				@error := holder->Get();
+				return false;
+			};
+
+			return true;
+		}
+
+		#~
+		Gets the table's live rows as an .otab image in memory
+		@return image, Nil on error (see GetError)
+		~#
+		method : public : ToBytes() ~ Byte[] {
+			return ToBytes(Compression->NONE);
+		}
+
+		#~
+		Gets the table's live rows as an .otab image in memory, compressing its blocks
+		@param compression NONE, FAST or SMALL
+		@return image, Nil on error (see GetError)
+		~#
+		method : public : ToBytes(compression : Compression) ~ Byte[] {
+			@error := Nil;
+			holder := StringHolder->New();
+			bytes := Otab->Write(@self, compression, holder);
+			@error := holder->Get();
+			return bytes;
+		}
+
+		#~
+		Reads a table from an .otab image in memory
+		@param bytes image, as ToBytes makes it
+		@return table, Nil if the image is damaged or not an .otab image (OtabFile says why)
+		~#
+		function : FromBytes(bytes : Byte[]) ~ Table {
+			return OtabFile->New(bytes)->Read();
+		}
+
+		#~
+		Reads a table from an .otab file
+		@param path file
+		@return table, Nil if the file is missing, damaged or not an .otab file (OtabFile says why)
+		~#
+		function : Load(path : String) ~ Table {
+			return OtabFile->New(path)->Read();
+		}
+
+		#~
+		Reads only some columns of an .otab file; the other columns' blocks are not read
+		@param path file
+		@param names column names
+		@return table, Nil on error (OtabFile says why)
+		~#
+		function : Load(path : String, names : String[]) ~ Table {
+			return OtabFile->New(path)->Read(names);
+		}
+
+		#~
+		Adds the table's live rows to an .otab file as new row groups, without decoding or
+		changing the groups already there, and saves it as Save does. The columns must match the
+		file's, in name, order and type. The rows get keys after the file's last key. A file that
+		does not exist yet is saved.
+		@param path file
+		@return true if added, false on error (see GetError)
+		~#
+		method : public : Append(path : String) ~ Bool {
+			return Append(path, Compression->NONE);
+		}
+
+		#~
+		Adds the table's live rows to an .otab file as new row groups, compressing them
+		@param path file
+		@param compression NONE, FAST or SMALL
+		@return true if added, false on error (see GetError)
+		~#
+		method : public : Append(path : String, compression : Compression) ~ Bool {
+			@error := Nil;
+			if(path = Nil | <>File->Exists(path)) {
+				return Save(path, compression);
+			};
+
+			file := OtabFile->New(path);
+			if(<>file->IsOpen()) {
+				@error := "'{$path}': {$(file->GetError())}";
+				return false;
+			};
+
+			names := file->GetAllNames();
+			types := file->GetTypes();
+			if(names->Size() <> @columns->Size()) {
+				@error := "'{$path}' has {$(names->Size() - 1)} columns; this table has {$(@columns->Size() - 1)}";
+				return false;
+			};
+
+			for(c := 1; c < names->Size(); c += 1;) {
+				column := @columns[c];
+				if(<>names[c]->Equals(column->GetName())) {
+					@error := "column {$c} is '{$(names[c])}' in '{$path}' and '{$(column->GetName())}' here";
+					return false;
+				};
+
+				if(types[c] <> column->GetType()) {
+					file_type := Column->TypeName(types[c]);
+					this_type := Column->TypeName(column->GetType());
+					@error := "column '{$(names[c])}' is {$file_type} in '{$path}' and {$this_type} here";
+					return false;
+				};
+			};
+
+			# the rows to add, numbered after the file's last key
+			rows := LiveRows();
+			copy := Table->Gather(@name, @self, Otab->DataColumns(@self), Otab->DataNames(@self), rows);
+			copy->RenumberKeys(file->GetNextKey());
+
+			prefix := file->ReadPrefix();
+			if(prefix = Nil) {
+				@error := "'{$path}': {$(file->GetError())}";
+				return false;
+			};
+
+			out := OtabWriter->New();
+			out->PutBytes(prefix);
+			counts := Vector->New()<IntRef>;
+			file_counts := file->GetCounts();
+			each(g : file_counts) {
+				counts->AddBack(IntRef->New(file_counts[g]));
+			};
+			blocks := Vector->New()<OtabBlockInfo>;
+			file_blocks := file->GetBlocks();
+			each(b : file_blocks) {
+				blocks->AddBack(file_blocks[b]);
+			};
+
+			holder := StringHolder->New();
+			if(<>Otab->WriteGroups(out, copy, Otab->CodecOf(compression), counts, blocks, holder)) {
+				@error := holder->Get();
+				return false;
+			};
+
+			Otab->WriteFooter(out, file->GetName(), copy->GetNextKey(), names, types, file->GetDeclared(), counts, blocks);
+			if(<>Otab->Commit(path, out->ToByteArray(), holder)) {
+				@error := holder->Get();
+				return false;
+			};
+
+			return true;
 		}
 
 		#~
@@ -4795,6 +5128,1329 @@ results := statement->Execute();
 
 	# A parsed query: the table it names, its columns (Nil for '*'), an optional 'distinct'
 	# column, its condition and its 'order by' column.
+	#~
+	How Save and ToBytes compress the blocks of an .otab file: NONE stores them as they are,
+	FAST uses zlib at its quickest level and SMALL at its smallest. Each block keeps the codec it
+	was written with, so a reader needs no option, and a block that compression would not
+	shrink is stored as it is.
+	~#
+	enum Compression {
+		NONE,
+		FAST,
+		SMALL
+	}
+
+	#
+	# The .otab format (docs/QUERY_DESIGN.md, section 9). Numbers are little-endian 64-bit Ints
+	# and Floats; text is a byte length (-1 for none) then its bytes.
+	#
+	#   header:  "OTAB", format version
+	#   blocks:  for each row group, one block per column (the key column first), each stored
+	#            as it is or zlib-compressed
+	#   footer:  table name, next key, column count, then per column its name, type and whether
+	#            it is declared; row group count, then per group its row count and per column
+	#            the block's offset, stored and raw size, codec, CRC32 of the stored bytes, null
+	#            count and zone (whether it has one, minimum, maximum)
+	#   trailer: footer offset, footer size, footer CRC32, "OTAB"
+	#
+	# A block holds its rows' null bitmap, then the values: Ints for INT and BOOL, Ints and GMT
+	# bits for DATE, Floats for FLOAT, a dictionary and Int codes (or plain texts) for STRING,
+	# and tagged values for OBJECT. Each block stands alone, so a reader takes only the columns
+	# it needs, and appended row groups need no shared dictionary.
+	#
+
+	# little-endian fields onto a byte buffer
+	class : private : OtabWriter {
+		@buffer : ByteBuffer;
+
+		New() {
+			@buffer := ByteBuffer->New();
+		}
+
+		method : public : PutInt(value : Int) ~ Nil {
+			values := Int->New[1];
+			values[0] := value;
+			@buffer->Append(Int->ToBytes(values));
+		}
+
+		method : public : PutFloat(value : Float) ~ Nil {
+			values := Float->New[1];
+			values[0] := value;
+			@buffer->Append(Float->ToBytes(values));
+		}
+
+		method : public : PutInts(values : Int[], offset : Int, count : Int) ~ Nil {
+			if(count > 0) {
+				@buffer->Append(Int->ToBytes(values, offset, count));
+			};
+		}
+
+		method : public : PutFloats(values : Float[], offset : Int, count : Int) ~ Nil {
+			if(count > 0) {
+				@buffer->Append(Float->ToBytes(values, offset, count));
+			};
+		}
+
+		method : public : PutText(value : String) ~ Nil {
+			if(value = Nil) {
+				PutInt(-1);
+				return;
+			};
+
+			bytes := value->ToByteArray();
+			PutInt(bytes->Size());
+			@buffer->Append(bytes);
+		}
+
+		method : public : PutBytes(bytes : Byte[]) ~ Nil {
+			@buffer->Append(bytes);
+		}
+
+		method : public : Magic() ~ Nil {
+			@buffer->Append("OTAB"->ToByteArray());
+		}
+
+		method : public : Size() ~ Int {
+			return @buffer->Size();
+		}
+
+		method : public : ToByteArray() ~ Byte[] {
+			return @buffer->ToByteArray();
+		}
+	}
+
+	# fields read back from bytes; a read past the end sets IsBad and never runs off
+	class : private : OtabReader {
+		@bytes : Byte[];
+		@pos : Int;
+		@bad : Bool;
+
+		New(bytes : Byte[]) {
+			@bytes := bytes;
+		}
+
+		method : public : IsBad() ~ Bool {
+			return @bad;
+		}
+
+		method : public : AtEnd() ~ Bool {
+			return @pos = @bytes->Size();
+		}
+
+		method : Has(count : Int) ~ Bool {
+			if(@bad | count < 0 | @pos + count > @bytes->Size()) {
+				@bad := true;
+				return false;
+			};
+
+			return true;
+		}
+
+		method : public : Skip(count : Int) ~ Nil {
+			if(Has(count)) {
+				@pos += count;
+			};
+		}
+
+		method : public : GetInt() ~ Int {
+			if(<>Has(8)) {
+				return 0;
+			};
+
+			values := Byte->ToInts(@bytes, @pos, 1);
+			@pos += 8;
+			return values[0];
+		}
+
+		method : public : GetFloat() ~ Float {
+			if(<>Has(8)) {
+				return 0.0;
+			};
+
+			values := Byte->ToFloats(@bytes, @pos, 1);
+			@pos += 8;
+			return values[0];
+		}
+
+		method : public : GetInts(count : Int) ~ Int[] {
+			if(count = 0) {
+				return Int->New[0];
+			};
+
+			if(count < 0 | count > @bytes->Size() | <>Has(count * 8)) {
+				@bad := true;
+				return Int->New[0];
+			};
+
+			values := Byte->ToInts(@bytes, @pos, count);
+			@pos += count * 8;
+			return values;
+		}
+
+		method : public : GetFloats(count : Int) ~ Float[] {
+			if(count = 0) {
+				return Float->New[0];
+			};
+
+			if(count < 0 | count > @bytes->Size() | <>Has(count * 8)) {
+				@bad := true;
+				return Float->New[0];
+			};
+
+			values := Byte->ToFloats(@bytes, @pos, count);
+			@pos += count * 8;
+			return values;
+		}
+
+		method : public : GetText() ~ String {
+			size := GetInt();
+			if(size < 0 | @bad) {
+				return Nil;
+			};
+
+			if(<>Has(size)) {
+				return Nil;
+			};
+
+			part := Byte->New[size];
+			Byte->Copy(part, 0, @bytes, @pos, size);
+			@pos += size;
+			return part->ToString();
+		}
+	}
+
+	# column types and OBJECT cell kinds as the numbers the format stores
+	class : private : OtabCodes {
+		function : FromType(type : ColumnType) ~ Int {
+			select(type) {
+				label ColumnType->INT: { return 1; }
+				label ColumnType->FLOAT: { return 2; }
+				label ColumnType->STRING: { return 3; }
+				label ColumnType->DATE: { return 4; }
+				label ColumnType->BOOL: { return 5; }
+				label ColumnType->OBJECT: { return 6; }
+			};
+
+			return 0;
+		}
+
+		# NONE for a code this version does not know
+		function : ToType(code : Int, known : BoolRef) ~ ColumnType {
+			known->Set(code >= 0 & code <= 6);
+			select(code) {
+				label 1: { return ColumnType->INT; }
+				label 2: { return ColumnType->FLOAT; }
+				label 3: { return ColumnType->STRING; }
+				label 4: { return ColumnType->DATE; }
+				label 5: { return ColumnType->BOOL; }
+				label 6: { return ColumnType->OBJECT; }
+			};
+
+			return ColumnType->NONE;
+		}
+
+		# OBJECT cell kinds
+		function : Empty() ~ Int { return 0; }
+		function : Whole() ~ Int { return 1; }
+		function : Number() ~ Int { return 2; }
+		function : Text() ~ Int { return 3; }
+		function : When() ~ Int { return 4; }
+		function : Flag() ~ Int { return 5; }
+	}
+
+	# one column's values for one row group, as stored in a block
+	class : private : OtabBlock {
+		# the bytes of rows [start, start + count) of a column; Nil with the error set
+		function : Encode(column : Column, start : Int, count : Int, error : StringHolder) ~ Byte[] {
+			out := OtabWriter->New();
+
+			# the null bitmap: groups start on a multiple of 64 rows, so whole words line up
+			words := (count + 63) / 64;
+			nulls := GroupBits(column->GetNullBits(), start, count, Nil);
+			out->PutInt(words);
+			out->PutInts(nulls, 0, words);
+
+			# An emptied cell keeps whatever its slot last held, so every slot of an empty
+			# cell is written as 0: a saved file never carries a value the user cleared, and
+			# equal tables save to equal bytes.
+			select(column->GetType()) {
+				label ColumnType->INT:
+				label ColumnType->BOOL: {
+					out->PutInts(GroupInts(column->GetIntArray(), start, count, nulls), 0, count);
+				}
+
+				label ColumnType->DATE: {
+					out->PutInts(GroupInts(column->GetIntArray(), start, count, nulls), 0, count);
+					out->PutInts(GroupBits(column->GetGmtBits(), start, count, nulls), 0, words);
+				}
+
+				label ColumnType->FLOAT: {
+					values := Float->New[count];
+					Float->Copy(values, 0, column->GetFloatArray(), start, count);
+					each(i : count) {
+						if(IsSet(nulls, i)) {
+							values[i] := 0.0;
+						};
+					};
+					out->PutFloats(values, 0, count);
+				}
+
+				label ColumnType->STRING: {
+					if(column->IsEncoded()) {
+						# the block's own dictionary: just the texts its cells use, in order of first
+						# use. The column's dictionary can hold texts no live row uses any more, and
+						# a block should neither carry them nor repeat every other group's texts.
+						dict := column->GetDictionary();
+						codes := GroupInts(column->GetIntArray(), start, count, nulls);
+						remap := Int->New[column->GetDictionarySize()];
+						Int->Fill(remap, -1);
+						used := Vector->New()<String>;
+						each(i : count) {
+							if(<>IsSet(nulls, i)) {
+								code := codes[i];
+								if(remap[code] < 0) {
+									remap[code] := used->Size();
+									used->AddBack(dict[code]);
+								};
+								codes[i] := remap[code];
+							};
+						};
+
+						out->PutInt(1);
+						out->PutInt(used->Size());
+						each(i : used) {
+							out->PutText(used->Get(i));
+						};
+						out->PutInts(codes, 0, count);
+					}
+					else {
+						out->PutInt(0);
+						strings := column->GetStringArray();
+						for(i := start; i < start + count; i += 1;) {
+							text : String;
+							if(<>column->IsNull(i)) {
+								text := strings[i];
+							};
+							out->PutText(text);
+						};
+					};
+				}
+
+				label ColumnType->OBJECT: {
+					objects := column->GetObjectArray();
+					for(i := start; i < start + count; i += 1;) {
+						value : Compare;
+						if(<>column->IsNull(i)) {
+							value := objects[i];
+						};
+						if(<>WriteValue(out, value)) {
+							error->Set("column '{$(column->GetName())}' holds a value that is not an Int, Float, String, Date or Bool, which an .otab file cannot store");
+							return Nil;
+						};
+					};
+				}
+			};
+
+			return out->ToByteArray();
+		}
+
+		# a group's words of a column bitmap, without the bits past its last row, and without
+		# the bits of empty cells when 'nulls' is given
+		function : GroupBits(bits : Int[], start : Int, count : Int, nulls : Int[]) ~ Int[] {
+			words := (count + 63) / 64;
+			group := Int->New[words];
+			if(bits <> Nil & words > 0) {
+				Int->Copy(group, 0, bits, start / 64, words);
+				if(count % 64 <> 0) {
+					group[words - 1] := group[words - 1] and ((1 << (count % 64)) - 1);
+				};
+				if(nulls <> Nil) {
+					each(w : words) {
+						group[w] := group[w] and (nulls[w] xor -1);
+					};
+				};
+			};
+			return group;
+		}
+
+		# a group's Int values, 0 in each empty cell
+		function : GroupInts(values : Int[], start : Int, count : Int, nulls : Int[]) ~ Int[] {
+			group := Int->New[count];
+			Int->Copy(group, 0, values, start, count);
+			each(i : count) {
+				if(IsSet(nulls, i)) {
+					group[i] := 0;
+				};
+			};
+			return group;
+		}
+
+		function : IsSet(bits : Int[], i : Int) ~ Bool {
+			return (bits[i >> 6] and (1 << (i and 63))) <> 0;
+		}
+
+		# one OBJECT cell, tagged by its kind; false for a kind the format cannot hold
+		function : WriteValue(out : OtabWriter, value : Compare) ~ Bool {
+			if(value = Nil) {
+				out->PutInt(OtabCodes->Empty());
+			}
+			else if(value->TypeOf(IntRef)) {
+				out->PutInt(OtabCodes->Whole());
+				out->PutInt(value->As(IntRef)->Get());
+			}
+			else if(value->TypeOf(FloatRef)) {
+				out->PutInt(OtabCodes->Number());
+				out->PutFloat(value->As(FloatRef)->Get());
+			}
+			else if(value->TypeOf(String)) {
+				out->PutInt(OtabCodes->Text());
+				out->PutText(value->As(String));
+			}
+			else if(value->TypeOf(Date)) {
+				date := value->As(Date);
+				out->PutInt(OtabCodes->When());
+				out->PutInt(DateCodec->ToMillis(date));
+				out->PutInt(date->IsGmt() ? 1 : 0);
+			}
+			else if(value->TypeOf(BoolRef)) {
+				out->PutInt(OtabCodes->Flag());
+				out->PutInt(value->As(BoolRef)->Get() ? 1 : 0);
+			}
+			else {
+				return false;
+			};
+
+			return true;
+		}
+
+		function : ReadValue(input : OtabReader) ~ Compare {
+			tag := input->GetInt();
+			if(tag = OtabCodes->Whole()) {
+				return IntRef->New(input->GetInt());
+			}
+			else if(tag = OtabCodes->Number()) {
+				return FloatRef->New(input->GetFloat());
+			}
+			else if(tag = OtabCodes->Text()) {
+				return input->GetText();
+			}
+			else if(tag = OtabCodes->When()) {
+				millis := input->GetInt();
+				gmt := input->GetInt() = 1;
+				return DateCodec->ToDate(millis, gmt);
+			}
+			else if(tag = OtabCodes->Flag()) {
+				return BoolRef->New(input->GetInt() = 1);
+			};
+
+			return Nil;
+		}
+
+		# a block's rows added to a column being rebuilt; false if the bytes are malformed
+		function : Decode(bytes : Byte[], type : ColumnType, count : Int, parts : OtabParts) ~ Bool {
+			input := OtabReader->New(bytes);
+			words := input->GetInt();
+			if(words <> (count + 63) / 64) {
+				return false;
+			};
+			nulls := input->GetInts(words);
+
+			select(type) {
+				label ColumnType->INT:
+				label ColumnType->BOOL: {
+					parts->AddInts(input->GetInts(count), nulls, Nil, count);
+				}
+
+				label ColumnType->DATE: {
+					values := input->GetInts(count);
+					gmt := input->GetInts(words);
+					parts->AddInts(values, nulls, gmt, count);
+				}
+
+				label ColumnType->FLOAT: {
+					parts->AddFloats(input->GetFloats(count), nulls, count);
+				}
+
+				label ColumnType->STRING: {
+					if(input->GetInt() = 1) {
+						size := input->GetInt();
+						if(size < 0 | size > bytes->Size()) {
+							return false;
+						};
+						dict := String->New[size];
+						each(i : size) {
+							dict[i] := input->GetText();
+						};
+						parts->AddCodes(dict, input->GetInts(count), nulls, count);
+					}
+					else {
+						texts := String->New[count];
+						each(i : count) {
+							texts[i] := input->GetText();
+						};
+						parts->AddTexts(texts, nulls, count);
+					};
+				}
+
+				label ColumnType->OBJECT: {
+					values := Compare->New[count];
+					each(i : count) {
+						values[i] := ReadValue(input);
+					};
+					parts->AddObjects(values, nulls, count);
+				}
+
+				other: {
+					parts->AddEmpty(nulls, count);
+				}
+			};
+
+			return <>input->IsBad() & input->AtEnd();
+		}
+	}
+
+	# an Int[] or Float[] held in a Vector
+	class : private : IntArrayRef {
+		@values : Int[];
+
+		New(values : Int[]) {
+			@values := values;
+		}
+
+		method : public : Get() ~ Int[] {
+			return @values;
+		}
+	}
+
+	class : private : FloatArrayRef {
+		@values : Float[];
+
+		New(values : Float[]) {
+			@values := values;
+		}
+
+		method : public : Get() ~ Float[] {
+			return @values;
+		}
+	}
+
+	# a column rebuilt from its blocks in several row groups
+	class : private : OtabParts {
+		@type : ColumnType;
+		@size : Int;
+		@ints : Vector<IntArrayRef>;
+		@floats : Vector<FloatArrayRef>;
+		@nulls : Vector<IntArrayRef>;
+		@gmt : Vector<IntArrayRef>;
+		@counts : Vector<IntRef>;
+		@objects : Vector<Compare>;
+		@texts : Vector<String>;
+		@codes : Vector<IntRef>;
+		@dict : Vector<String>;
+		@dict_index : Hash<String, IntRef>;
+		@encoded : Bool;
+		@plain : Bool;
+
+		New(type : ColumnType) {
+			@type := type;
+			@ints := Vector->New()<IntArrayRef>;
+			@floats := Vector->New()<FloatArrayRef>;
+			@nulls := Vector->New()<IntArrayRef>;
+			@gmt := Vector->New()<IntArrayRef>;
+			@counts := Vector->New()<IntRef>;
+			@objects := Vector->New()<Compare>;
+			@texts := Vector->New()<String>;
+			@codes := Vector->New()<IntRef>;
+			@dict := Vector->New()<String>;
+			@dict_index := Hash->New()<String, IntRef>;
+		}
+
+		method : Note(nulls : Int[], count : Int) ~ Nil {
+			@nulls->AddBack(IntArrayRef->New(nulls));
+			@counts->AddBack(IntRef->New(count));
+			@size += count;
+		}
+
+		method : public : AddEmpty(nulls : Int[], count : Int) ~ Nil {
+			Note(nulls, count);
+		}
+
+		method : public : AddInts(values : Int[], nulls : Int[], gmt : Int[], count : Int) ~ Nil {
+			@ints->AddBack(IntArrayRef->New(values));
+			if(gmt <> Nil) {
+				@gmt->AddBack(IntArrayRef->New(gmt));
+			};
+			Note(nulls, count);
+		}
+
+		method : public : AddFloats(values : Float[], nulls : Int[], count : Int) ~ Nil {
+			@floats->AddBack(FloatArrayRef->New(values));
+			Note(nulls, count);
+		}
+
+		# codes against a block's own dictionary, mapped onto one dictionary for the column
+		method : public : AddCodes(dict : String[], codes : Int[], nulls : Int[], count : Int) ~ Nil {
+			@encoded := true;
+			map := Int->New[dict->Size()];
+			each(i : dict) {
+				known := @dict_index->Find(dict[i]);
+				if(known = Nil) {
+					known := IntRef->New(@dict->Size());
+					@dict_index->Insert(dict[i], known);
+					@dict->AddBack(dict[i]);
+				};
+				map[i] := known->Get();
+			};
+
+			each(i : count) {
+				code := 0;
+				if((nulls[i >> 6] and (1 << (i and 63))) = 0 & codes[i] >= 0 & codes[i] < map->Size()) {
+					code := map[codes[i]];
+				};
+				@codes->AddBack(IntRef->New(code));
+				@texts->AddBack(Nil);
+			};
+			Note(nulls, count);
+		}
+
+		method : public : AddTexts(texts : String[], nulls : Int[], count : Int) ~ Nil {
+			@plain := true;
+			each(i : count) {
+				@texts->AddBack(texts[i]);
+				@codes->AddBack(IntRef->New(-1));
+			};
+			Note(nulls, count);
+		}
+
+		method : public : AddObjects(values : Compare[], nulls : Int[], count : Int) ~ Nil {
+			each(i : count) {
+				@objects->AddBack(values[i]);
+			};
+			Note(nulls, count);
+		}
+
+		# the rebuilt column
+		method : public : Build(name : String, declared : Bool) ~ Column {
+			n := @size;
+			words := (n + 63) / 64 + 1;
+			nulls := Int->New[words];
+			gmt := Int->New[words];
+			null_count := 0;
+
+			# the null and GMT bits, group after group
+			row := 0;
+			each(g : @counts) {
+				count := @counts->Get(g)->Get();
+				group_nulls := @nulls->Get(g)->Get();
+				group_gmt : Int[];
+				if(g < @gmt->Size()) {
+					group_gmt := @gmt->Get(g)->Get();
+				};
+				each(i : count) {
+					r := row + i;
+					if((group_nulls[i >> 6] and (1 << (i and 63))) <> 0) {
+						nulls[r >> 6] := nulls[r >> 6] or (1 << (r and 63));
+						null_count += 1;
+					};
+					if(group_gmt <> Nil) {
+						if((group_gmt[i >> 6] and (1 << (i and 63))) <> 0) {
+							gmt[r >> 6] := gmt[r >> 6] or (1 << (r and 63));
+						};
+					};
+				};
+				row += count;
+			};
+
+			ints : Int[];
+			floats : Float[];
+			strings : String[];
+			objects : Compare[];
+			dict : String[];
+			encoded := false;
+
+			select(@type) {
+				label ColumnType->INT:
+				label ColumnType->BOOL:
+				label ColumnType->DATE: {
+					ints := Int->New[n];
+					offset := 0;
+					each(g : @ints) {
+						part := @ints->Get(g)->Get();
+						Int->Copy(ints, offset, part, 0, part->Size());
+						offset += part->Size();
+					};
+				}
+
+				label ColumnType->FLOAT: {
+					floats := Float->New[n];
+					offset := 0;
+					each(g : @floats) {
+						part := @floats->Get(g)->Get();
+						Float->Copy(floats, offset, part, 0, part->Size());
+						offset += part->Size();
+					};
+				}
+
+				label ColumnType->STRING: {
+					if(@encoded & <>@plain) {
+						encoded := true;
+						ints := Int->New[n];
+						each(i : n) {
+							ints[i] := @codes->Get(i)->Get();
+						};
+						dict := String->New[@dict->Size()];
+						each(i : dict) {
+							dict[i] := @dict->Get(i);
+						};
+					}
+					else {
+						# groups written plain, or a mix of both: every cell as its text
+						strings := String->New[n];
+						each(i : n) {
+							text := @texts->Get(i);
+							code := @codes->Get(i)->Get();
+							if(text = Nil & code > -1 & (nulls[i >> 6] and (1 << (i and 63))) = 0) {
+								text := @dict->Get(code);
+							};
+							strings[i] := text;
+						};
+					};
+				}
+
+				label ColumnType->OBJECT: {
+					objects := Compare->New[n];
+					each(i : n) {
+						objects[i] := @objects->Get(i);
+					};
+				}
+			};
+
+			column := Column->New(name, ColumnType->NONE, false);
+			column->Restore(@type, declared, n, ints, floats, strings, objects, nulls, null_count, gmt, encoded, dict);
+			return column;
+		}
+	}
+
+	# where a block is and how it was stored
+	class : private : OtabBlockInfo {
+		@offset : Int;
+		@stored : Int;
+		@raw : Int;
+		@codec : Int;
+		@crc : Int;
+		@null_count : Int;
+		@has_zone : Bool;
+		@low : Float;
+		@high : Float;
+
+		New(offset : Int, stored : Int, raw : Int, codec : Int, crc : Int, null_count : Int, has_zone : Bool, low : Float, high : Float) {
+			@offset := offset;
+			@stored := stored;
+			@raw := raw;
+			@codec := codec;
+			@crc := crc;
+			@null_count := null_count;
+			@has_zone := has_zone;
+			@low := low;
+			@high := high;
+		}
+
+		method : public : GetOffset() ~ Int { return @offset; }
+		method : public : GetStored() ~ Int { return @stored; }
+		method : public : GetRaw() ~ Int { return @raw; }
+		method : public : GetCodec() ~ Int { return @codec; }
+		method : public : GetCrc() ~ Int { return @crc; }
+
+		method : public : Write(out : OtabWriter) ~ Nil {
+			out->PutInt(@offset);
+			out->PutInt(@stored);
+			out->PutInt(@raw);
+			out->PutInt(@codec);
+			out->PutInt(@crc);
+			out->PutInt(@null_count);
+			out->PutInt(@has_zone ? 1 : 0);
+			out->PutFloat(@low);
+			out->PutFloat(@high);
+		}
+
+		function : Read(input : OtabReader) ~ OtabBlockInfo {
+			offset := input->GetInt();
+			stored := input->GetInt();
+			raw := input->GetInt();
+			codec := input->GetInt();
+			crc := input->GetInt();
+			null_count := input->GetInt();
+			has_zone := input->GetInt() = 1;
+			low := input->GetFloat();
+			high := input->GetFloat();
+			return OtabBlockInfo->New(offset, stored, raw, codec, crc, null_count, has_zone, low, high);
+		}
+	}
+
+	# writing .otab images
+	class : private : Otab {
+		function : Version() ~ Int {
+			return 1;
+		}
+
+		function : HeaderSize() ~ Int {
+			return 12;
+		}
+
+		function : TrailerSize() ~ Int {
+			return 28;
+		}
+
+		function : CodecOf(compression : Compression) ~ Int {
+			select(compression) {
+				label Compression->FAST: { return 1; }
+				label Compression->SMALL: { return 2; }
+			};
+
+			return 0;
+		}
+
+		# a block compressed with a codec, or as it is when that would not shrink it
+		function : Pack(raw : Byte[], codec : Int, chosen : IntRef) ~ Byte[] {
+			chosen->Set(0);
+			if(codec = 0 | raw->Size() < 64) {
+				return raw;
+			};
+
+			level := codec = 1 ? 1 : 9;
+			packed := Byte->CompressZlib(raw, level);
+			if(packed = Nil | packed->Size() >= raw->Size()) {
+				return raw;
+			};
+
+			chosen->Set(codec);
+			return packed;
+		}
+
+		# a stored block as it was before compression; Nil if it cannot be
+		function : Unpack(stored : Byte[], codec : Int) ~ Byte[] {
+			if(codec = 0) {
+				return stored;
+			};
+
+			raw : Byte[];
+			try {
+				raw := stored->UncompressZlib();
+			}
+			on(e : Error) {
+				return Nil;
+			};
+
+			return raw;
+		}
+
+		# a table's live rows, with their keys, as a table with no deleted rows
+		function : Live(table : Table) ~ Table {
+			if(table->Size() = table->GetRowCapacity()) {
+				return table;
+			};
+
+			rows := table->LiveRows();
+			copy := Table->Gather(table->GetName(), table, DataColumns(table), DataNames(table), rows);
+			copy->KeepKeys(table, rows);
+			return copy;
+		}
+
+		function : DataColumns(table : Table) ~ Int[] {
+			columns := Int->New[table->GetColumnCount() - 1];
+			each(i : columns) {
+				columns[i] := i + 1;
+			};
+			return columns;
+		}
+
+		function : DataNames(table : Table) ~ String[] {
+			all := table->GetColumnNames();
+			names := String->New[all->Size() - 1];
+			each(i : names) {
+				names[i] := all[i + 1];
+			};
+			return names;
+		}
+
+		# a table's rows as row groups of blocks written to 'out'; false with the error set
+		function : WriteGroups(out : OtabWriter, table : Table, codec : Int, counts : Vector<IntRef>,
+				blocks : Vector<OtabBlockInfo>, error : StringHolder) ~ Bool {
+			rows := table->GetRowCapacity();
+			columns := table->GetColumnCount();
+			group_rows := Column->GroupRows();
+			groups := (rows + group_rows - 1) / group_rows;
+			each(g : groups) {
+				start := g * group_rows;
+				count := rows - start < group_rows ? rows - start : group_rows;
+				counts->AddBack(IntRef->New(count));
+				each(c : columns) {
+					column := table->GetColumn(c);
+					raw := OtabBlock->Encode(column, start, count, error);
+					if(raw = Nil) {
+						return false;
+					};
+
+					chosen := IntRef->New(0);
+					stored := Pack(raw, codec, chosen);
+					has_zone := column->HasZones() & column->GroupHasValues(g);
+					low := 0.0;
+					high := 0.0;
+					if(has_zone) {
+						low := column->GetGroupMin(g);
+						high := column->GetGroupMax(g);
+					};
+					nulls := 0;
+					for(i := start; i < start + count; i += 1;) {
+						if(column->IsNull(i)) {
+							nulls += 1;
+						};
+					};
+					blocks->AddBack(OtabBlockInfo->New(out->Size(), stored->Size(), raw->Size(), chosen->Get(), stored->CRC32(), nulls, has_zone, low, high));
+					out->PutBytes(stored);
+				};
+			};
+
+			return true;
+		}
+
+		# the footer and trailer after the blocks
+		function : WriteFooter(out : OtabWriter, name : String, next_key : Int, names : String[], types : ColumnType[],
+				declared : Bool[], counts : Vector<IntRef>, blocks : Vector<OtabBlockInfo>) ~ Nil {
+			footer := OtabWriter->New();
+			footer->PutText(name);
+			footer->PutInt(next_key);
+			columns := names->Size();
+			footer->PutInt(columns);
+			each(c : columns) {
+				footer->PutText(names[c]);
+				footer->PutInt(OtabCodes->FromType(types[c]));
+				footer->PutInt(declared[c] ? 1 : 0);
+			};
+
+			footer->PutInt(counts->Size());
+			each(g : counts) {
+				footer->PutInt(counts->Get(g)->Get());
+				each(c : columns) {
+					blocks->Get(g * columns + c)->Write(footer);
+				};
+			};
+
+			bytes := footer->ToByteArray();
+			footer_offset := out->Size();
+			out->PutBytes(bytes);
+			out->PutInt(footer_offset);
+			out->PutInt(bytes->Size());
+			out->PutInt(bytes->CRC32());
+			out->Magic();
+		}
+
+		# a table's live rows as an .otab image; Nil with the error set
+		function : Write(table : Table, compression : Compression, error : StringHolder) ~ Byte[] {
+			source := Live(table);
+			out := OtabWriter->New();
+			out->Magic();
+			out->PutInt(Version());
+
+			counts := Vector->New()<IntRef>;
+			blocks := Vector->New()<OtabBlockInfo>;
+			if(<>WriteGroups(out, source, CodecOf(compression), counts, blocks, error)) {
+				return Nil;
+			};
+
+			columns := source->GetColumnCount();
+			names := String->New[columns];
+			types := ColumnType->New[columns];
+			declared := Bool->New[columns];
+			each(c : columns) {
+				column := source->GetColumn(c);
+				names[c] := column->GetName();
+				types[c] := column->GetType();
+				declared[c] := column->IsDeclared();
+			};
+
+			WriteFooter(out, source->GetName(), source->GetNextKey(), names, types, declared, counts, blocks);
+			return out->ToByteArray();
+		}
+
+		# a file's bytes rewritten whole to a temporary name, then renamed over it, so a reader
+		# sees the old file or the new one and never part of either
+		function : Commit(path : String, bytes : Byte[], error : StringHolder) ~ Bool {
+			temp := "{$path}.part";
+			if(<>FileWriter->WriteFile(temp, bytes)) {
+				error->Set("cannot write '{$temp}'");
+				return false;
+			};
+
+			if(<>File->Rename(temp, path)) {
+				File->Delete(temp);
+				error->Set("cannot replace '{$path}'");
+				return false;
+			};
+
+			return true;
+		}
+	}
+
+	#~
+	An .otab file, or an .otab image in memory, opened for reading. Opening reads only the
+	footer; Read then takes just the columns asked for, each checked against its CRC32, and
+	GetBytesRead tells how much a read touched.
+
+```
+file := OtabFile->New("runs.otab");
+if(file->IsOpen()) {
+  scores := file->Read(["id", "score"]);
+};
+```
+	~#
+	class OtabFile {
+		@path : String;
+		@image : Byte[];
+		@open : Bool;
+		@name : String;
+		@next_key : Int;
+		@names : String[];
+		@types : ColumnType[];
+		@declared : Bool[];
+		@counts : Int[];
+		@blocks : OtabBlockInfo[];
+		@size : Int;
+		@footer_offset : Int;
+		@bytes_read : Int;
+		@error : String;
+
+		#~
+		Opens a file, reading only its trailer and footer
+		@param path .otab file
+		~#
+		New(path : String) {
+			@path := path;
+			@open := OpenPath();
+		}
+
+		#~
+		Opens an .otab image held in memory, as Table->ToBytes makes it
+		@param bytes image
+		~#
+		New(bytes : Byte[]) {
+			@image := bytes;
+			@open := OpenImage();
+		}
+
+		#~
+		Whether the file opened; GetError says why not
+		@return true if open
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @open;
+		}
+
+		method : OpenPath() ~ Bool {
+			if(@path = Nil | <>File->Exists(@path)) {
+				@error := "no file '{$@path}'";
+				return false;
+			};
+
+			return ParseEnds(File->Size(@path));
+		}
+
+		method : OpenImage() ~ Bool {
+			if(@image = Nil) {
+				@error := "no image";
+				return false;
+			};
+
+			return ParseEnds(@image->Size());
+		}
+
+		# the header, trailer and footer of a file or image of 'size' bytes
+		method : ParseEnds(size : Int) ~ Bool {
+			if(size < Otab->HeaderSize() + Otab->TrailerSize()) {
+				@error := "too short to be an .otab file";
+				return false;
+			};
+
+			header := ReadAt(0, Otab->HeaderSize());
+			if(header = Nil) {
+				return false;
+			};
+
+			if(<>IsMagic(header, 0)) {
+				@error := "not an .otab file";
+				return false;
+			};
+
+			header_in := OtabReader->New(header);
+			header_in->Skip(4);
+			version := header_in->GetInt();
+			if(version < 1 | version > Otab->Version()) {
+				@error := "an .otab file of format {$version}; this library reads format {$(Otab->Version())}";
+				return false;
+			};
+
+			trailer := ReadAt(size - Otab->TrailerSize(), Otab->TrailerSize());
+			if(trailer = Nil) {
+				return false;
+			};
+
+			input := OtabReader->New(trailer);
+			footer_offset := input->GetInt();
+			footer_size := input->GetInt();
+			footer_crc := input->GetInt();
+			if(<>IsMagic(trailer, 24) | footer_offset < Otab->HeaderSize() | footer_size < 0 |
+					footer_offset + footer_size + Otab->TrailerSize() <> size) {
+				@error := "the end of the file is damaged or missing; it may be truncated";
+				return false;
+			};
+			@footer_offset := footer_offset;
+
+			footer := ReadAt(footer_offset, footer_size);
+			if(footer = Nil) {
+				return false;
+			};
+
+			if(footer->CRC32() <> footer_crc) {
+				@error := "the footer is damaged (checksum mismatch)";
+				return false;
+			};
+
+			return ParseFooter(footer);
+		}
+
+		function : IsMagic(bytes : Byte[], at : Int) ~ Bool {
+			magic := "OTAB"->ToByteArray();
+			each(i : 4) {
+				if(bytes[at + i] <> magic[i]) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		method : ParseFooter(footer : Byte[]) ~ Bool {
+			input := OtabReader->New(footer);
+			@name := input->GetText();
+			@next_key := input->GetInt();
+			columns := input->GetInt();
+			if(input->IsBad() | columns < 1 | columns > footer->Size()) {
+				@error := "the footer is malformed";
+				return false;
+			};
+
+			@names := String->New[columns];
+			@types := ColumnType->New[columns];
+			@declared := Bool->New[columns];
+			each(c : columns) {
+				@names[c] := input->GetText();
+				known := BoolRef->New(false);
+				@types[c] := OtabCodes->ToType(input->GetInt(), known);
+				@declared[c] := input->GetInt() = 1;
+				if(<>known->Get()) {
+					@error := "column '{$(@names[c])}' has a type this library does not know";
+					return false;
+				};
+			};
+
+			groups := input->GetInt();
+			if(input->IsBad() | groups < 0 | groups > footer->Size()) {
+				@error := "the footer is malformed";
+				return false;
+			};
+
+			@counts := Int->New[groups];
+			@blocks := OtabBlockInfo->New[groups * columns];
+			@size := 0;
+			each(g : groups) {
+				@counts[g] := input->GetInt();
+				@size += @counts[g];
+				each(c : columns) {
+					@blocks[g * columns + c] := OtabBlockInfo->Read(input);
+				};
+			};
+
+			if(input->IsBad() | <>input->AtEnd()) {
+				@error := "the footer is malformed";
+				return false;
+			};
+
+			return true;
+		}
+
+		# bytes at an offset; Nil with the error set
+		method : ReadAt(offset : Int, count : Int) ~ Byte[] {
+			part := Byte->New[count];
+			if(@image <> Nil) {
+				if(offset < 0 | offset + count > @image->Size()) {
+					@error := "the image ends early; it is truncated";
+					return Nil;
+				};
+				Byte->Copy(part, 0, @image, offset, count);
+				@bytes_read += count;
+				return part;
+			};
+
+			reader := FileReader->New(@path);
+			if(<>reader->IsOpen()) {
+				@error := "cannot read '{$@path}'";
+				return Nil;
+			};
+
+			reader->Seek(offset);
+			done := count > 0 ? reader->ReadBuffer(0, count, part) : 0;
+			reader->Close();
+			if(done <> count) {
+				@error := "'{$@path}' ends early; it is truncated";
+				return Nil;
+			};
+
+			@bytes_read += count;
+			return part;
+		}
+
+		#~
+		Gets the table's name as saved
+		@return name
+		~#
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		#~
+		Gets the saved column names, without the key column
+		@return names
+		~#
+		method : public : GetColumnNames() ~ String[] {
+			if(@names = Nil) {
+				return String->New[0];
+			};
+
+			names := String->New[@names->Size() - 1];
+			each(i : names) {
+				names[i] := @names[i + 1];
+			};
+			return names;
+		}
+
+		#~
+		Gets the number of rows
+		@return rows
+		~#
+		method : public : Size() ~ Int {
+			return @size;
+		}
+
+		#~
+		Gets the number of row groups
+		@return row groups
+		~#
+		method : public : GetGroupCount() ~ Int {
+			return @counts = Nil ? 0 : @counts->Size();
+		}
+
+		#~
+		Gets how many bytes reads have taken so far, the header, trailer and footer included
+		@return bytes read
+		~#
+		method : public : GetBytesRead() ~ Int {
+			return @bytes_read;
+		}
+
+		#~
+		Gets why opening or the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Reads every column
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			return Read(GetColumnNames());
+		}
+
+		#~
+		Reads only the named columns, and the key column; no other block is read
+		@param names column names
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(names : String[]) ~ Table {
+			if(<>@open) {
+				return Nil;
+			};
+
+			@error := Nil;
+			wanted := Int->New[names->Size() + 1];
+			each(i : names) {
+				index := -1;
+				for(c := 1; c < @names->Size(); c += 1;) {
+					if(@names[c]->Equals(names[i])) {
+						index := c;
+					};
+				};
+				if(index < 0) {
+					@error := "the file has no column '{$(names[i])}'";
+					return Nil;
+				};
+				wanted[i + 1] := index;
+			};
+
+			total := @names->Size();
+			columns := Column->New[wanted->Size()];
+			each(w : wanted) {
+				c := wanted[w];
+				parts := OtabParts->New(@types[c]);
+				each(g : @counts) {
+					info := @blocks[g * total + c];
+					stored := ReadAt(info->GetOffset(), info->GetStored());
+					if(stored = Nil) {
+						return Nil;
+					};
+
+					if(stored->CRC32() <> info->GetCrc()) {
+						@error := "column '{$(@names[c])}', row group {$(g + 1)}: the block is damaged (checksum mismatch)";
+						return Nil;
+					};
+
+					raw := Otab->Unpack(stored, info->GetCodec());
+					if(raw = Nil) {
+						@error := "column '{$(@names[c])}', row group {$(g + 1)}: the block cannot be decompressed";
+						return Nil;
+					};
+
+					if(raw->Size() <> info->GetRaw() | <>OtabBlock->Decode(raw, @types[c], @counts[g], parts)) {
+						@error := "column '{$(@names[c])}', row group {$(g + 1)}: the block is malformed";
+						return Nil;
+					};
+				};
+				columns[w] := parts->Build(@names[c], @declared[c]);
+			};
+
+			column_names := String->New[names->Size()];
+			each(i : column_names) {
+				column_names[i] := @names[wanted[i + 1]];
+			};
+
+			return Table->Restore(@name, column_names, columns, @next_key);
+		}
+
+		# Append: the file's bytes before its footer, its groups and blocks, and its schema
+		method : public : GetNextKey() ~ Int { return @next_key; }
+		method : public : GetFooterOffset() ~ Int { return @footer_offset; }
+		method : public : GetTypes() ~ ColumnType[] { return @types; }
+		method : public : GetDeclared() ~ Bool[] { return @declared; }
+		method : public : GetAllNames() ~ String[] { return @names; }
+		method : public : GetCounts() ~ Int[] { return @counts; }
+		method : public : GetBlocks() ~ OtabBlockInfo[] { return @blocks; }
+
+		method : public : ReadPrefix() ~ Byte[] {
+			return ReadAt(0, @footer_offset);
+		}
+	}
+
 	#
 	# SQL front end (docs/QUERY_DESIGN.md, section 4): a lexer, a statement tree and a
 	# recursive-descent parser for the whole subset. Keywords are contextual: a word is a

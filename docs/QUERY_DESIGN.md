@@ -430,6 +430,13 @@ Research programs need to keep what they computed: a cleaned dataset, a feature 
 across runs. CSV and JSON stay for interchange, but they are slow to parse and lose types. The
 engine gets its own file format, `.otab`, which stores exactly what the column storage holds.
 
+> **As built:** [OTAB_FORMAT.md](OTAB_FORMAT.md) is the byte-exact specification of version 1,
+> and it differs from the plan below in four ways. The schema sits in the footer, not the
+> header, so opening a file is one read at its end. The codecs are zlib at level 1 (`FAST`) and
+> level 9 (`SMALL`); `lang`'s Brotli entry point turned out to be raw deflate. Each block carries
+> its own dictionary of just the texts it uses. Delta and run-length encodings are not in
+> version 1.
+
 **Layout.**
 
 ```

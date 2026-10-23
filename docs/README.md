@@ -20,6 +20,7 @@
 | [AI.md](AI.md) | AI and ML developer guide |
 | [MODELS.md](MODELS.md) | Models the AI bindings expect |
 | [opengl.md](opengl.md) | `Game.OpenGL` |
+| [OTAB_FORMAT.md](OTAB_FORMAT.md) | The `.otab` table file format, byte by byte |
 | [third_party_dependencies.md](third_party_dependencies.md) | Where each platform gets mbedTLS, nghttp2, SDL2, OpenCV, ONNX Runtime — and how to read the version a build used |
 
 ## Platform notes
