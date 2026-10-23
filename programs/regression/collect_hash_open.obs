@@ -1,0 +1,450 @@
+#~
+Collection.Hash on open addressing: every public method, growth past one million
+entries (the old chained table stopped growing at 196,613 buckets), deletes in
+collision runs followed by reinserts, keys of different classes with the same
+HashID (the old table cast one key to the other's class and aborted the VM),
+Nil keys, and the classes built on Hash: HashSet, SetHash, MultiHash and the LRU/MRU
+Cache (whose update of an existing key in a full cache used to evict another entry).
+~#
+use Collection;
+
+class CollectHashOpen {
+	function : Check(name : String, ok : Bool) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  FAIL: {$name}"->PrintLine();
+		return 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		failures += Api();
+		failures += Growth();
+		failures += Deletes();
+		failures += MixedClasses();
+		failures += Sets();
+		failures += Multi();
+		failures += Caches();
+
+		if(failures > 0) {
+			"FAIL: collect_hash_open, {$failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: collect_hash_open"->PrintLine();
+	}
+
+	function : Api() ~ Int {
+		failures := 0;
+
+		hash := Hash->New()<String, IntRef>;
+		failures += Check("new is empty", hash->IsEmpty() & hash->Size() = 0);
+		failures += Check("auto resize default", hash->IsAutoResize());
+		failures += Check("capacity default", hash->GetCapacity() = Hash->Capacity->SMALL);
+
+		hash->Insert("apple", 1);
+		hash->Insert("banana", 2);
+		hash->Insert("cherry", 3);
+		failures += Check("size 3", hash->Size() = 3);
+		failures += Check("find apple", hash->Find("apple")->Get() = 1);
+		failures += Check("find missing", hash->Find("durian") = Nil);
+		failures += Check("find Nil key", hash->Find(Nil) = Nil);
+		failures += Check("has banana", hash->Has("banana"));
+		failures += Check("has Nil", <>hash->Has(Nil));
+
+		hash->Insert("apple", 10);
+		failures += Check("overwrite keeps size", hash->Size() = 3);
+		failures += Check("overwrite value", hash->Find("apple")->Get() = 10);
+
+		hash->Insert(Nil, 5);
+		failures += Check("Nil insert ignored", hash->Size() = 3);
+
+		failures += Check("insert if absent new", hash->InsertIfAbsent("durian", 4));
+		failures += Check("insert if absent existing", <>hash->InsertIfAbsent("durian", 40));
+		failures += Check("insert if absent kept value", hash->Find("durian")->Get() = 4);
+		failures += Check("insert if absent Nil", <>hash->InsertIfAbsent(Nil, 4));
+
+		keys := hash->GetKeys()<String>;
+		values := hash->GetValues()<IntRef>;
+		pairs := hash->GetKeyValues()<Pair<String, IntRef>>;
+		failures += Check("keys size", keys->Size() = 4);
+		failures += Check("values size", values->Size() = 4);
+		failures += Check("pairs size", pairs->Size() = 4);
+		order_ok := true;
+		each(i : keys) {
+			key := keys->Get(i);
+			if(hash->Find(key)->Get() <> values->Get(i)->Get()) {
+				order_ok := false;
+			};
+			if(<>pairs->Get(i)->GetFirst()->Equals(key) | pairs->Get(i)->GetSecond()->Get() <> values->Get(i)->Get()) {
+				order_ok := false;
+			};
+		};
+		failures += Check("keys, values and pairs in one order", order_ok);
+
+		text := hash->ToString();
+		failures += Check("to string", text->StartsWith("[") & text->EndsWith("]") & text->Has("(apple:10)") & text->Has("(durian:4)"));
+
+		failures += Check("remove", hash->Remove("banana"));
+		failures += Check("remove again", <>hash->Remove("banana"));
+		failures += Check("remove Nil", <>hash->Remove(Nil));
+		failures += Check("size after remove", hash->Size() = 3);
+		failures += Check("removed gone", <>hash->Has("banana"));
+
+		copy := hash->Copy();
+		copy->Insert("elder", 5);
+		failures += Check("copy independent", hash->Size() = 3 & copy->Size() = 4);
+		failures += Check("copy has entries", copy->Find("cherry")->Get() = 3);
+
+		other_hash := Hash->New()<String, IntRef>;
+		other_hash->Insert("cherry", 30);
+		other_hash->Insert("fig", 6);
+		hash->Merge(other_hash);
+		failures += Check("merge size", hash->Size() = 4);
+		failures += Check("merge wins", hash->Find("cherry")->Get() = 30);
+		hash->Merge(Nil);
+		failures += Check("merge Nil", hash->Size() = 4);
+
+		total := IntRef->New(0);
+		hash->Each(\(k, v) => { total->Set(total->Get() + v->Get()); });
+		failures += Check("each", total->Get() = 10 + 4 + 30 + 6);
+
+		long_keys := hash->Filter(\(k) => k->Size() > 4);
+		failures += Check("filter", long_keys->Size() = 3 & <>long_keys->Has("fig") & hash->Size() = 4);
+
+		hash->SetAutoResize(false);
+		failures += Check("set auto resize", <>hash->IsAutoResize());
+		hash->SetCapacity(Hash->Capacity->MEDIUM);
+		failures += Check("set capacity", hash->GetCapacity() = Hash->Capacity->MEDIUM);
+		hash->Resize(Hash->Capacity->LARGE);
+		failures += Check("resize keeps entries", hash->Size() = 4 & hash->Find("fig")->Get() = 6);
+		failures += Check("resize capacity", hash->GetCapacity() = Hash->Capacity->LARGE & hash->IsAutoResize());
+
+		# auto resize off must still take any number of entries
+		fixed := Hash->New(false)<IntRef, IntRef>;
+		for(i := 0; i < 5000; i += 1;) {
+			fixed->Insert(i, i);
+		};
+		failures += Check("auto resize off grows", fixed->Size() = 5000 & fixed->Find(4999)->Get() = 4999);
+
+		hash->Empty();
+		failures += Check("empty", hash->IsEmpty() & hash->Find("fig") = Nil);
+		hash->Insert("again", 1);
+		failures += Check("insert after empty", hash->Size() = 1);
+
+		sized := Hash->New(Hash->Capacity->HUGE)<String, IntRef>;
+		sized->Insert("k", 1);
+		failures += Check("capacity constructor", sized->Find("k")->Get() = 1 & sized->GetCapacity() = Hash->Capacity->HUGE);
+
+		tuples := Vector->New()<Collection.Tuple.Pair<String, IntRef>>;
+		tuples->AddBack(Collection.Tuple.Pair->New("a", IntRef->New(1))<String, IntRef>);
+		tuples->AddBack(Collection.Tuple.Pair->New("b", IntRef->New(2))<String, IntRef>);
+		dict := Hash->Dict(tuples)<String, IntRef>;
+		failures += Check("dict", dict->Size() = 2 & dict->Find("b")->Get() = 2);
+
+		# a Nil value is stored and listed
+		nils := Hash->New()<String, IntRef>;
+		nils->Insert("n", Nil);
+		failures += Check("Nil value", nils->Has("n") & nils->Find("n") = Nil & nils->Size() = 1);
+		failures += Check("Nil value to string", nils->ToString()->Equals("[(n:<Nil>)]"));
+
+		return failures;
+	}
+
+	function : Growth() ~ Int {
+		failures := 0;
+
+		count := 1200000;
+		hash := Hash->New()<IntRef, IntRef>;
+		for(i := 0; i < count; i += 1;) {
+			hash->Insert(i, i * 2);
+		};
+		failures += Check("1.2M size", hash->Size() = count);
+
+		bad := 0;
+		for(i := 0; i < count; i += 1;) {
+			value := hash->Find(i);
+			if(value = Nil) {
+				bad += 1;
+			}
+			else if(value->Get() <> i * 2) {
+				bad += 1;
+			};
+		};
+		failures += Check("1.2M finds", bad = 0);
+		failures += Check("1.2M misses", hash->Find(-1) = Nil & hash->Find(count) = Nil);
+		failures += Check("1.2M keys", hash->GetKeys()->Size() = count);
+		# drop the big table: every collection marks what is live, and the string part allocates a lot
+		hash := Nil;
+
+		# patterned keys (multiples of 4096) must not pile into one probe run
+		strided := Hash->New()<IntRef, IntRef>;
+		for(i := 0; i < 50000; i += 1;) {
+			strided->Insert(i * 4096, i);
+		};
+		failures += Check("strided size", strided->Size() = 50000 & strided->Find(4096 * 49999)->Get() = 49999);
+
+		names := String->New[200000];
+		for(i := 0; i < 200000; i += 1;) {
+			names[i] := "w{$i}";
+		};
+		words := Hash->New()<String, IntRef>;
+		for(i := 0; i < 200000; i += 1;) {
+			words->Insert(names[i], i);
+		};
+		bad := 0;
+		for(i := 0; i < 200000; i += 1;) {
+			value := words->Find(names[i]);
+			if(value = Nil) {
+				bad += 1;
+			}
+			else if(value->Get() <> i) {
+				bad += 1;
+			};
+		};
+		failures += Check("200k string keys", bad = 0 & words->Size() = 200000);
+
+		return failures;
+	}
+
+	function : Deletes() ~ Int {
+		failures := 0;
+
+		count := 100000;
+		hash := Hash->New()<IntRef, IntRef>;
+		for(i := 0; i < count; i += 1;) {
+			hash->Insert(i, i);
+		};
+
+		removed := 0;
+		for(i := 0; i < count; i += 2;) {
+			if(hash->Remove(i)) {
+				removed += 1;
+			};
+		};
+		failures += Check("removed evens", removed = count / 2 & hash->Size() = count / 2);
+
+		bad := 0;
+		for(i := 0; i < count; i += 1;) {
+			if(i % 2 = 0) {
+				if(hash->Has(i)) {
+					bad += 1;
+				};
+			}
+			else if(<>hash->Has(i)) {
+				bad += 1;
+			};
+		};
+		failures += Check("odds kept, evens gone", bad = 0);
+
+		for(i := 0; i < count; i += 2;) {
+			hash->Insert(i, i + 7);
+		};
+		bad := 0;
+		for(i := 0; i < count; i += 1;) {
+			value := hash->Find(i);
+			if(value = Nil) {
+				bad += 1;
+			}
+			else if(i % 2 = 0 & value->Get() <> i + 7) {
+				bad += 1;
+			}
+			else if(i % 2 = 1 & value->Get() <> i) {
+				bad += 1;
+			};
+		};
+		failures += Check("reinserted", bad = 0 & hash->Size() = count);
+
+		# delete inside long probe runs: many keys with an equal HashID
+		clash := Hash->New()<Clash, IntRef>;
+		for(i := 0; i < 300; i += 1;) {
+			clash->Insert(Clash->New(i, i % 3), i);
+		};
+		for(i := 0; i < 300; i += 3;) {
+			clash->Remove(Clash->New(i, 0));
+		};
+		bad := 0;
+		for(i := 0; i < 300; i += 1;) {
+			value := clash->Find(Clash->New(i, 0));
+			if(i % 3 = 0) {
+				if(value <> Nil) {
+					bad += 1;
+				};
+			}
+			else if(value = Nil) {
+				bad += 1;
+			}
+			else if(value->Get() <> i) {
+				bad += 1;
+			};
+		};
+		failures += Check("deletes in collision runs", bad = 0 & clash->Size() = 200);
+
+		# remove everything, then reuse
+		keys := hash->GetKeys();
+		each(i : keys) {
+			hash->Remove(keys->Get(i));
+		};
+		failures += Check("all removed", hash->IsEmpty());
+		hash->Insert(5, 5);
+		failures += Check("reuse after removing all", hash->Find(5)->Get() = 5 & hash->Size() = 1);
+
+		return failures;
+	}
+
+	function : MixedClasses() ~ Int {
+		failures := 0;
+
+		# IntRef 50000 and FloatRef 5.0 both have HashID 50000; IntRef 7 and CharRef 7 both 7
+		mixed := Hash->New()<Compare, String>;
+		mixed->Insert(IntRef->New(50000), "int");
+		mixed->Insert(FloatRef->New(5.0), "float");
+		mixed->Insert(IntRef->New(7), "int7");
+		mixed->Insert(CharRef->New(7->As(Char)), "char7");
+		mixed->Insert("seven", "string");
+		failures += Check("mixed size", mixed->Size() = 5);
+		failures += Check("mixed int", mixed->Find(IntRef->New(50000))->Equals("int"));
+		failures += Check("mixed float", mixed->Find(FloatRef->New(5.0))->Equals("float"));
+		failures += Check("mixed char", mixed->Find(CharRef->New(7->As(Char)))->Equals("char7"));
+		failures += Check("mixed int7", mixed->Find(IntRef->New(7))->Equals("int7"));
+		failures += Check("mixed miss", mixed->Find(FloatRef->New(7.0)) = Nil);
+		failures += Check("mixed remove", mixed->Remove(FloatRef->New(5.0)) & mixed->Find(IntRef->New(50000))->Equals("int"));
+		failures += Check("mixed remove miss", <>mixed->Remove(BoolRef->New(true)));
+
+		return failures;
+	}
+
+	function : Sets() ~ Int {
+		failures := 0;
+
+		set := HashSet->New()<IntRef>;
+		failures += Check("hashset add", set->Add(1) & set->Add(2) & set->Add(3) & <>set->Add(3));
+		failures += Check("hashset has", set->Has(2) & <>set->Has(9));
+		failures += Check("hashset remove", set->Remove(2) & <>set->Has(2) & set->Size() = 2);
+		failures += Check("hashset array", set->ToArray()->Size() = 2);
+		other_set := HashSet->New()<IntRef>;
+		other_set->Insert(3);
+		other_set->Insert(4);
+		failures += Check("hashset union", set->Union(other_set)->Size() = 3);
+		failures += Check("hashset intersect", set->Intersect(other_set)->Size() = 1);
+		failures += Check("hashset difference", set->Difference(other_set)->Has(1));
+		failures += Check("hashset symmetric", set->SymmetricDifference(other_set)->Size() = 2);
+
+		big := HashSet->New()<String>;
+		for(i := 0; i < 100000; i += 1;) {
+			big->Add("s{$i}");
+		};
+		failures += Check("hashset 100k", big->Size() = 100000 & big->Has("s99999") & <>big->Has("s100000"));
+
+		sh := SetHash->New()<String>;
+		sh->Insert("x");
+		sh->Insert("y");
+		sh->Insert("x");
+		failures += Check("sethash", sh->Size() = 2 & sh->Has("y") & sh->Remove("y") & <>sh->Has("y"));
+		failures += Check("sethash keys", sh->GetKeys()->Size() = 1);
+
+		return failures;
+	}
+
+	function : Multi() ~ Int {
+		failures := 0;
+
+		multi := MultiHash->New()<String, IntRef>;
+		multi->Insert("a", 1);
+		multi->Insert("a", 2);
+		multi->Insert("b", 3);
+		failures += Check("multihash size", multi->Size() = 2 & multi->TotalSize() = 3);
+		failures += Check("multihash find", multi->Find("a")->Size() = 2);
+		failures += Check("multihash values", multi->GetValues()->Size() = 3);
+		failures += Check("multihash remove", multi->Remove("a") & multi->Size() = 1 & <>multi->Has("a"));
+
+		return failures;
+	}
+
+	function : Caches() ~ Int {
+		failures := 0;
+
+		lru := Cache->New(Cache->Type->LRU, 3)<IntRef, String>;
+		lru->Insert(1, "one");
+		lru->Insert(2, "two");
+		lru->Insert(3, "three");
+		lru->Find(1);
+		lru->Insert(4, "four");
+		failures += Check("lru evicts least recent", <>lru->Has(2) & lru->Has(1) & lru->Has(3) & lru->Has(4));
+		failures += Check("lru size", lru->Size() = 3);
+
+		# updating a key in a full cache must not evict anything
+		lru->Insert(3, "THREE");
+		failures += Check("lru update keeps entries", lru->Size() = 3 & lru->Has(1) & lru->Has(4));
+		failures += Check("lru update value", lru->Find(3)->Equals("THREE"));
+
+		# 3 was used last; then 1 and 4 again: 3 is now the least recent
+		lru->Find(1);
+		lru->Find(4);
+		lru->Insert(5, "five");
+		failures += Check("lru order after update", <>lru->Has(3) & lru->Has(1) & lru->Has(4) & lru->Has(5));
+
+		keys := lru->GetKeys();
+		failures += Check("lru keys sorted", keys->Size() = 3 & keys->Get(0)->Get() = 1 & keys->Get(2)->Get() = 5);
+		failures += Check("lru remove", lru->Remove(4) & <>lru->Has(4) & lru->Size() = 2 & <>lru->Remove(4));
+		lru->Insert(6, "six");
+		lru->Insert(7, "seven");
+		failures += Check("lru after remove", lru->Size() = 3 & <>lru->Has(1) & lru->Has(5));
+
+		mru := Cache->New(Cache->Type->MRU, 2)<IntRef, String>;
+		mru->Insert(1, "one");
+		mru->Insert(2, "two");
+		mru->Find(1);
+		mru->Insert(3, "three");
+		failures += Check("mru evicts most recent", <>mru->Has(1) & mru->Has(2) & mru->Has(3));
+
+		mru->Empty();
+		failures += Check("cache empty", mru->IsEmpty());
+		mru->Insert(8, "eight");
+		failures += Check("cache reuse", mru->Size() = 1 & mru->Find(8)->Equals("eight"));
+
+		none := Cache->New(Cache->Type->LRU, 0)<IntRef, String>;
+		failures += Check("zero-size cache", <>none->Insert(1, "one") & none->Size() = 0);
+
+		big := Cache->New(Cache->Type->LRU, 1000)<IntRef, IntRef>;
+		for(i := 0; i < 20000; i += 1;) {
+			big->Insert(i, i);
+		};
+		failures += Check("cache churn", big->Size() = 1000 & big->Has(19999) & <>big->Has(18999));
+
+		return failures;
+	}
+}
+
+#~
+Key whose HashID is chosen by the test, so many keys share one
+~#
+class Clash implements Compare {
+	@id : Int;
+	@hash : Int;
+
+	New(id : Int, hash : Int) {
+		@id := id;
+		@hash := hash;
+	}
+
+	method : public : GetId() ~ Int {
+		return @id;
+	}
+
+	method : public : Compare(rhs : Compare) ~ Int {
+		that := rhs->As(Clash);
+		if(@id = that->GetId()) {
+			return 0;
+		};
+		if(@id < that->GetId()) {
+			return -1;
+		};
+		return 1;
+	}
+
+	method : public : HashID() ~ Int {
+		return 0;
+	}
+}
