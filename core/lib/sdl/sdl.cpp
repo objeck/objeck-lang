@@ -3215,6 +3215,28 @@ extern "C" {
     SDL_Delay((Uint32)APITools_GetIntValue(context, 0));
   }
 
+  // milliseconds as 64 bits: SDL_GetTicks wraps after about 49 days
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_get_ticks64(VMContext& context) {
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetTicks64());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_get_performance_counter(VMContext& context) {
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetPerformanceCounter());
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_timer_get_performance_frequency(VMContext& context) {
+    APITools_SetIntValue(context, 0, (size_t)SDL_GetPerformanceFrequency());
+  }
+
 #ifdef _WIN32
   __declspec(dllexport)
 #endif
@@ -4715,6 +4737,129 @@ __declspec(dllexport)
     const int volume = (int)APITools_GetIntValue(context, 2);
 
     APITools_SetIntValue(context, 0, Mix_Volume(channel, volume));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_mixer_set_panning(VMContext& context) {
+    const int channel = (int)APITools_GetIntValue(context, 1);
+    const int left = (int)APITools_GetIntValue(context, 2);
+    const int right = (int)APITools_GetIntValue(context, 3);
+
+    if(left < 0 || left > 255 || right < 0 || right > 255) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
+
+    APITools_SetIntValue(context, 0, Mix_SetPanning(channel, (Uint8)left, (Uint8)right));
+  }
+
+  //
+  // Queued (push) audio: open a playback device with no callback, then queue
+  // generated samples onto it. The device opens PAUSED, as SDL opens every
+  // device; nothing plays until Pause(false).
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_open(VMContext& context) {
+    SDL_AudioSpec desired;
+    SDL_zero(desired);
+    desired.freq = (int)APITools_GetIntValue(context, 1);
+    desired.format = (SDL_AudioFormat)APITools_GetIntValue(context, 2);
+    desired.channels = (Uint8)APITools_GetIntValue(context, 3);
+    desired.samples = (Uint16)APITools_GetIntValue(context, 4);
+    desired.callback = nullptr;
+
+    // no allowed changes: SDL converts, so the queued bytes are always in the
+    // format the caller asked for
+    SDL_AudioSpec obtained;
+    const SDL_AudioDeviceID device = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained, 0);
+    APITools_SetIntValue(context, 0, device);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_close(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 0);
+    if(device) {
+      SDL_CloseAudioDevice(device);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_pause(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 0);
+    const int pause_on = (int)APITools_GetIntValue(context, 1);
+    if(device) {
+      SDL_PauseAudioDevice(device, pause_on);
+    }
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_queue(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 1);
+    const size_t* bytes_holder = APITools_GetObjectValue(context, 2);
+    size_t* byte_array = bytes_holder ? (size_t*)bytes_holder[0] : nullptr;
+
+    if(!device || !byte_array) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const size_t byte_count = APITools_GetArraySize(byte_array);
+    const void* bytes = (const void*)APITools_GetArray(byte_array);
+    APITools_SetIntValue(context, 0, SDL_QueueAudio(device, bytes, (Uint32)byte_count));
+  }
+
+  // Float[] samples (doubles) queued as 32-bit floats, for a device opened with
+  // a 32-bit float format
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_queue_floats(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 1);
+    const size_t* floats_holder = APITools_GetObjectValue(context, 2);
+    size_t* float_array = floats_holder ? (size_t*)floats_holder[0] : nullptr;
+
+    if(!device || !float_array) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    const size_t count = APITools_GetArraySize(float_array);
+    const double* source = (const double*)APITools_GetArray(float_array);
+
+    std::vector<float> samples(count);
+    for(size_t i = 0; i < count; ++i) {
+      samples[i] = (float)source[i];
+    }
+
+    APITools_SetIntValue(context, 0, SDL_QueueAudio(device, samples.data(), (Uint32)(count * sizeof(float))));
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_get_queued_size(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 1);
+    APITools_SetIntValue(context, 0, device ? SDL_GetQueuedAudioSize(device) : 0);
+  }
+
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void sdl_audio_device_clear(VMContext& context) {
+    const SDL_AudioDeviceID device = (SDL_AudioDeviceID)APITools_GetIntValue(context, 0);
+    if(device) {
+      SDL_ClearQueuedAudio(device);
+    }
   }
 
 #ifdef _WIN32
