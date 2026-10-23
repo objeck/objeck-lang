@@ -1,0 +1,58 @@
+#~
+File->CreateNew creates a file only when none of that name exists, as one step (O_EXCL on POSIX,
+CREATE_NEW on Windows): the second call fails while the file is there, and succeeds again once
+it is deleted. Runtime->GetProcessId names this process and Runtime->IsProcessAlive reports it
+running, and reports no process for ids that cannot be one. A lock file needs all three: the
+first to take the lock, the others to name its holder and to tell a stale lock from a live one.
+~#
+use System.IO.Filesystem;
+
+class IoCreateNewProcess {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		name := "io_create_new_tmp.lock";
+		File->Delete(name);
+
+		Check("CreateNew makes a missing file", File->CreateNew(name));
+		Check("the file exists", File->Exists(name));
+		Check("the file is empty", File->Size(name) = 0);
+		Check("CreateNew refuses an existing file", <>File->CreateNew(name));
+		Check("and leaves it in place", File->Exists(name));
+
+		FileWriter->WriteFile(name, "holder");
+		Check("CreateNew refuses a file with content", <>File->CreateNew(name));
+		Check("and does not empty it", FileReader->ReadFile(name)->Equals("holder"));
+
+		File->Delete(name);
+		Check("CreateNew works again once the file is gone", File->CreateNew(name));
+		File->Delete(name);
+
+		Check("CreateNew fails in a folder that does not exist", <>File->CreateNew("no_such_folder_tmp/x.lock"));
+		missing : String;
+		Check("CreateNew of Nil is false", <>File->CreateNew(missing));
+
+		pid := Runtime->GetProcessId();
+		Check("this process has an id", pid > 0);
+		Check("this process is alive", Runtime->IsProcessAlive(pid));
+		Check("id 0 is not a process", <>Runtime->IsProcessAlive(0));
+		Check("a negative id is not a process", <>Runtime->IsProcessAlive(-5));
+		Check("an id far past any real one is not a process", <>Runtime->IsProcessAlive(2147483000));
+
+		if(@failures = 0) {
+			"PASS: File->CreateNew and process ids"->PrintLine();
+		}
+		else {
+			"FAIL: File->CreateNew and process ids ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

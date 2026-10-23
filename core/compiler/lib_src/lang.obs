@@ -8361,6 +8361,24 @@ Runtime->Raise(ParseError->New("row 12: expected a number"));
 		}
 
 		#~
+		Gets this process's id, as the operating system knows it
+		@return process id
+		~#
+		function : GetProcessId() ~ Int {
+			PROCESS_ID;
+		}
+
+		#~
+		Whether a process with an id is running on this machine. A process this one may not
+		inspect still counts as running.
+		@param pid process id
+		@return true if it is running
+		~#
+		function : IsProcessAlive(pid : Int) ~ Bool {
+			PROCESS_ALIVE;
+		}
+
+		#~
 		Returns the current user's working directory
 		@return current user's working directory
 		~#
@@ -11019,6 +11037,22 @@ bundle System.IO.Filesystem {
 		~#
 		function : Rename(o : System.String, n : System.String) ~ Bool {
 			FILE_RENAME;
+		}
+
+		#~
+		Creates an empty file, but only if no file of that name exists, as one step: when two
+		processes race to create the same file, exactly one succeeds. This is what a lock file
+		needs.
+		@param n filename
+		@return true if this call created the file, false if it already existed or could not be created
+		```
+		if(System.IO.Filesystem.File->CreateNew("data.lock")) {
+		  # this process holds the lock
+		};
+		```
+		~#
+		function : CreateNew(n : System.String) ~ Bool {
+			FILE_CREATE_NEW;
 		}
 
 		#~

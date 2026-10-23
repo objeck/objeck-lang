@@ -443,6 +443,9 @@ void Scanner::LoadKeywords()
   ident_map[L"ARY_TO_BYTES"] = ARY_TO_BYTES;
   ident_map[L"BYTES_TO_ARY"] = BYTES_TO_ARY;
   ident_map[L"COMPRESS_ZLIB_LEVEL"] = COMPRESS_ZLIB_LEVEL;
+  ident_map[L"FILE_CREATE_NEW"] = FILE_CREATE_NEW;
+  ident_map[L"PROCESS_ID"] = PROCESS_ID;
+  ident_map[L"PROCESS_ALIVE"] = PROCESS_ALIVE;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;

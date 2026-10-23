@@ -331,6 +331,13 @@ namespace instructions {
     BYTES_TO_ARY,
     // Byte->CompressZlib(input, level), and Serializer->Serialize at the
     // default level: COMPRESS_ZLIB_BYTES always used level 9
-    COMPRESS_ZLIB_LEVEL
+    COMPRESS_ZLIB_LEVEL,
+    // File->CreateNew(name): creates a file only if none exists, atomically
+    // (O_EXCL, CREATE_NEW), the primitive a lock file needs
+    FILE_CREATE_NEW,
+    // Runtime->GetProcessId() and Runtime->IsProcessAlive(pid): a lock names
+    // its holder, and a lock whose holder has gone is stale
+    PROCESS_ID,
+    PROCESS_ALIVE
   };
 }

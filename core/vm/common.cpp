@@ -134,6 +134,14 @@ static bool h3_valid_header_name(const std::string& n)
 #include <sys/resource.h>
 #endif
 
+// FILE_CREATE_NEW (open with O_EXCL) and PROCESS_ALIVE (kill with signal 0)
+#ifndef _WIN32
+#include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
+#include <unistd.h>
+#endif
+
 #ifdef _WIN32
 // Write a wide string to a Windows handle. Uses WriteConsoleW for live
 // console handles so surrogate pairs arrive intact; falls back to wcout/wcerr
@@ -3069,6 +3077,15 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
 
   case FILE_RENAME:
     return FileRename(program, inst, op_stack, stack_pos, frame);
+
+  case FILE_CREATE_NEW:
+    return FileCreateNew(program, inst, op_stack, stack_pos, frame);
+
+  case PROCESS_ID:
+    return ProcessId(program, inst, op_stack, stack_pos, frame);
+
+  case PROCESS_ALIVE:
+    return ProcessAlive(program, inst, op_stack, stack_pos, frame);
 
   case FILE_COPY:
     return FileCopy(program, inst, op_stack, stack_pos, frame);
@@ -10043,6 +10060,82 @@ bool TrapProcessor::FileRename(StackProgram* program, size_t* inst, size_t* &op_
   else {
     PushInt(1, op_stack, stack_pos);
   }
+
+  return true;
+}
+
+// function : CreateNew(name : String) ~ Bool: creates an empty file only if no file of that
+// name exists, as one step, so two processes racing for a lock file cannot both win
+bool TrapProcessor::FileCreateNew(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* name = (size_t*)PopInt(op_stack, stack_pos);
+  if(!name) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+  name = (size_t*)name[0];
+
+#ifdef _WIN32
+  HANDLE handle = CreateFileW((const wchar_t*)(name + 3), GENERIC_WRITE, 0, nullptr, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, nullptr);
+  if(handle == INVALID_HANDLE_VALUE) {
+    PushInt(0, op_stack, stack_pos);
+  }
+  else {
+    CloseHandle(handle);
+    PushInt(1, op_stack, stack_pos);
+  }
+#else
+  const std::string name_str = UnicodeToBytes((wchar_t*)(name + 3));
+  const int fd = open(name_str.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
+  if(fd < 0) {
+    PushInt(0, op_stack, stack_pos);
+  }
+  else {
+    close(fd);
+    PushInt(1, op_stack, stack_pos);
+  }
+#endif
+
+  return true;
+}
+
+// function : GetProcessId() ~ Int
+bool TrapProcessor::ProcessId(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+#ifdef _WIN32
+  PushInt((size_t)GetCurrentProcessId(), op_stack, stack_pos);
+#else
+  PushInt((size_t)getpid(), op_stack, stack_pos);
+#endif
+  return true;
+}
+
+// function : IsProcessAlive(pid : Int) ~ Bool: whether a process with that id is running on
+// this machine; one this process may not inspect still counts as running
+bool TrapProcessor::ProcessAlive(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE pid = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  if(pid <= 0) {
+    PushInt(0, op_stack, stack_pos);
+    return true;
+  }
+
+#ifdef _WIN32
+  bool alive = false;
+  HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)pid);
+  if(process) {
+    DWORD code = 0;
+    alive = GetExitCodeProcess(process, &code) && code == STILL_ACTIVE;
+    CloseHandle(process);
+  }
+  else {
+    alive = GetLastError() == ERROR_ACCESS_DENIED;
+  }
+  PushInt(alive ? 1 : 0, op_stack, stack_pos);
+#else
+  const bool alive = kill((pid_t)pid, 0) == 0 || errno == EPERM;
+  PushInt(alive ? 1 : 0, op_stack, stack_pos);
+#endif
 
   return true;
 }

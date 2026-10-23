@@ -441,6 +441,9 @@ enum ScannerTokenType {
   ARY_TO_BYTES,
   BYTES_TO_ARY,
   COMPRESS_ZLIB_LEVEL,
+  FILE_CREATE_NEW,
+  PROCESS_ID,
+  PROCESS_ALIVE,
   // serialization
   SERL_CHAR,
   SERL_INT,
