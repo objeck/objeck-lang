@@ -1752,7 +1752,7 @@ void IntermediateEmitter::EmitMethodCallStatement(MethodCall* method_call)
       }
       
       // class cast
-      if(!method_call->GetVariable()) {
+      if(CastsCallResult(method_call)) {
         EmitClassCast(method_call);
       }
       
@@ -4541,7 +4541,7 @@ void IntermediateEmitter::EmitExpression(Expression* expression)
 
 
       EmitCast(method_call);
-      if(!method_call->GetVariable()) {
+      if(CastsCallResult(method_call)) {
         EmitClassCast(method_call);
       }
 
@@ -4747,7 +4747,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       // subscript on the call result: GetItems()[0]
       EmitCallIndices(method_call);
       EmitCast(method_call);
-      if(!method_call->GetVariable()) {
+      if(CastsCallResult(method_call)) {
         EmitClassCast(method_call);
       }
       
@@ -4875,7 +4875,7 @@ void IntermediateEmitter::EmitMethodCallExpression(MethodCall* method_call, bool
       // subscript on the call result: GetItems()[0]
       EmitCallIndices(method_call);
       EmitCast(method_call);
-      if(!method_call->GetVariable()) {
+      if(CastsCallResult(method_call)) {
         EmitClassCast(method_call);
       }
 
@@ -5330,7 +5330,7 @@ void IntermediateEmitter::EmitTryIntrinsic(MethodCall* method_call, Expression* 
     }
     EmitMethodCall(method_call, is_nested);
     EmitCast(method_call);
-    if(!method_call->GetVariable()) {
+    if(CastsCallResult(method_call)) {
       EmitClassCast(method_call);
     }
 
@@ -5487,7 +5487,7 @@ void IntermediateEmitter::EmitOtherwiseIntrinsic(MethodCall* method_call, Expres
 
     EmitMethodCall(tail_call, is_nested);
     EmitCast(tail_call);
-    if(!tail_call->GetVariable()) {
+    if(CastsCallResult(tail_call)) {
       EmitClassCast(tail_call);
     }
 
@@ -7718,9 +7718,12 @@ void IntermediateEmitter::EmitMethodCall(MethodCall* method_call, bool is_nested
     }
     
     if(variable && method_call->GetCallType() == METHOD_CALL) {
-      // emit variable
+      // emit variable, then the receiver's own 'As' cast; any other class cast
+      // on the call converts its result and follows the call (CastsCallResult)
       EmitVariable(variable);
-      EmitClassCast(method_call);
+      if(!CastsCallResult(method_call)) {
+        EmitClassCast(method_call);
+      }
 
       // An unindexed object array receiver reached through a variable (e.g. an
       // array captured by a lambda, which is resolved as a closure-copy variable)
@@ -8273,6 +8276,38 @@ int IntermediateEmitter::CalculateEntrySpace(IntermediateDeclarations* declarati
   }
 
   return size;
+}
+
+/****************************
+ * Whether a call's class cast
+ * converts its result, emitted
+ * after the call. A call on a
+ * variable receiver
+ * ('x->As(T)->M()', 'rows[i]->M()')
+ * also carries the receiver's
+ * 'As' cast, which the parser
+ * copies to it; that one converts
+ * the receiver and goes before.
+ * Every cast on such a call used
+ * to go before, so a result
+ * conversion -- 'c : Compare :=
+ * rows[i]->Get(n)', Get returning
+ * an interface -- cast the Row
+ * element instead: 'Invalid object
+ * cast: Row to System.Compare'.
+ ****************************/
+bool IntermediateEmitter::CastsCallResult(MethodCall* method_call)
+{
+  Variable* variable = method_call->GetVariable();
+  if(!variable) {
+    return true;
+  }
+  if(method_call->GetCallType() != METHOD_CALL) {
+    return false;
+  }
+
+  frontend::Type* receiver_cast = variable->GetCastType();
+  return !(receiver_cast && receiver_cast->GetType() == frontend::CLASS_TYPE && method_call->GetCastType());
 }
 
 void IntermediateEmitter::EmitClassCast(Expression* expression, bool whole_expression)
