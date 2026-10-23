@@ -6,7 +6,10 @@ module. This builds on the correctness fixes in #1291 (numeric aggregates, CSV t
 
 ## Why
 
-Research code loads a CSV or two, filters, joins, groups, aggregates and hands a matrix to
+`Query.Structured` exists to make structures that are not tables queryable as tables: a
+filesystem through `FromFilesystem` and `Finder`, a CSV file through `FromCsv`, and in intent
+other hierarchical or relational data (section 6). Research code needs the same thing: load a CSV
+or two, or a tree of result files, then filter, join, group, aggregate and hand a matrix to
 `System.ML`. Nothing in the standard library does that well. `Query.Structured` is the closest,
 and on 2026-10-22 it was timed at 100,000 rows × 3 columns (Windows x64, `-opt s3`, after the
 #1291 fixes), against the same data in plain arrays:
@@ -207,7 +210,60 @@ The planner is rule-based: for an `And` of terms, use the index of the most sele
 index-backed term (equality on a hash index, then a range on a sorted or B+ tree index), then
 filter the remaining terms over that candidate set. Without a usable index, scan.
 
-### 6. Bridges
+### 6. Sources: making other structures queryable
+
+This is the library's original purpose, and `Finder` and `FromFilesystem` are its first two
+instances: take a structure that is not a table, such as a directory tree, a document or a data
+file, and present it as tables the engine can query. Today they are two unrelated pieces.
+`FromFilesystem` lists one directory, without recursing, into six columns. `Finder` walks a tree
+matching a regular expression against full paths, but returns a `Vector<String>` instead of a
+table, so its results cannot be queried. `use Data.XML` is imported with no code behind it. The
+redesign makes sources one concept.
+
+**The interface.** A `Source` declares its tables and columns, then fills them:
+
+```
+interface Source {
+  method : virtual : public : GetTables() ~ TableSpec[];          # names, columns, types
+  method : virtual : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool;
+}
+```
+
+`ScanHint` carries what the query already knows, so a source can push work down instead of
+materializing everything. Examples: the columns it needs (a filesystem source skips the
+owner lookup no query asked for), a filter it can apply cheaply (skip descending into
+directories a `path LIKE 'src/%'` excludes, or test the file name before calling `stat`), and a
+row limit. Pushdown is optional: a source that ignores the hint is still correct, because the
+engine applies the full predicate afterwards. Programs implement `Source` for their own
+structures; the library ships the common ones.
+
+**Hierarchies become tables with parent keys.** A tree maps to rows with `id`, `parent_id`,
+`depth` and `path` columns (an adjacency list plus a materialized path). Once phase 3 adds joins,
+parent and child questions become self-joins, and subtree questions become `path LIKE 'a/b/%'`.
+Nested repeated data goes into a child table keyed by its parent's `id`, so one document can
+become several related tables that join back together.
+
+| Source | Tables and columns |
+|---|---|
+| `FilesystemSource(root, recursive, max_depth)` | `files`: id, parent_id, depth, name, path, ext, is_dir, size, modified, created, owner, is_readonly, is_hidden |
+| `CsvSource(path[, delimiter])` | one table, columns typed per section 1 |
+| `JsonSource(text or path)` | an array of objects becomes one table, with nested objects flattened to dotted column names (`address.city`); nested arrays become child tables with `parent_id` |
+| `XmlSource(text or path, row_element)` | each `row_element` becomes a row, its attributes and simple child elements become columns, and repeated child elements become child tables |
+| `MatrixSource(m, names)` | one `FloatColumn` table (the `FromMatrix` bridge below) |
+
+Further sources fit the same interface without changing the engine, for example HTTP JSON APIs
+through `Web.HTTP`, RSS through `Web.RSS`, or a program's own objects.
+
+**Finder keeps its API and gains a table.** `Finder->New(regex)->FindFiles(path)` keeps its
+signature and results, but becomes a query over `FilesystemSource`:
+`select path from files where is_dir = false and path MATCHES regex`. `MATCHES` is a new SQL
+operator backed by `Query.RegEx`, which gained character classes and capture groups in #1290.
+`Finder->FindTable(path)` returns the result as a `View`, so a file search can be filtered,
+sorted, grouped by extension or joined like any other table. `Table->FromFilesystem(name, path)`
+keeps its six columns and one-directory behaviour, and becomes `FilesystemSource` with
+`recursive` false.
+
+### 7. Bridges
 
 - `View->ToMatrix(cols) ~ Float[,]` and `Table->FromMatrix(m, names)`: copies between `FloatColumn`
   arrays and `System.ML`'s matrices, with `Nil` cells reported (an error, or a fill value the caller
@@ -217,7 +273,7 @@ filter the remaining terms over that candidate set. Without a usable index, scan
 - `Describe()`: per-column count, nulls, min, max, mean, std, distinct count; the first thing a
   researcher asks of a new dataset.
 
-### 7. Compatibility
+### 8. Compatibility
 
 Almost nothing outside the library uses it today (`programs/tests/prgm193.obs` calls
 `FromFilesystem` and `Query`; two programs use `Finder`), so the cost of keeping old programs
@@ -235,8 +291,11 @@ working is small, and they must keep working:
 - `Query`, `Parser`, `Term` and `Token` are public classes today although they are implementation
   details. They stay for one release as deprecated shims over the new parser (their doc comments
   say so), then become private.
-- `Finder` (filesystem search) is unrelated to the query engine; it stays in this bundle and is
-  untouched.
+- `Finder` and `FromFilesystem` keep their signatures and results and are reimplemented over
+  `FilesystemSource` (section 6). One latent oddity goes with the rewrite: `FromFilesystem`'s
+  trailing-separator test reads `<>path->EndsWith('/')  <>path->EndsWith('\\')` with no operator
+  between the two halves, and parses as a not-equal comparison that happens to give the right
+  answer.
 
 ## Testing
 
@@ -264,13 +323,17 @@ index regenerated for new classes.
 
 1. **Columnar storage.** `Column` types, null bitmaps, typing and promotion, `Row` as a cursor, O(1)
    `Get(pk)`, tombstone deletes with `Compact()`, the compatibility API on top, `Describe()`.
-   Existing tests unchanged; benchmark: insert, scan and aggregates.
+   The `Source` interface with `CsvSource` and `FilesystemSource`, and `FromCsv`,
+   `FromFilesystem` and `Finder` reimplemented over them. Existing tests unchanged; benchmark:
+   insert, scan and aggregates.
 2. **Views and compiled predicates.** `View`, copy-on-write result tables, the typed predicate
    nodes, prepared statements and the statement cache, the method-chaining API. The differential
    test starts here.
 3. **The relational layer.** `Catalog`, hash joins, `GROUP BY`/`HAVING`, multi-key `ORDER BY`
    `ASC`/`DESC`, `LIMIT`/`OFFSET`, `INSERT`/`UPDATE`/`DELETE`/`CREATE TABLE` in SQL, the bridges
-   (`ToMatrix`, `FromMatrix`, CSV, JSON).
+   (`ToMatrix`, `FromMatrix`, CSV, JSON). The hierarchical sources, which need joins to be
+   useful: `JsonSource` and `XmlSource` with child tables, the recursive `FilesystemSource` with
+   parent keys, `MATCHES`, `Finder->FindTable`, and scan-hint pushdown.
 4. **Hash and sorted indexes** and the rule-based planner.
 5. **B+ tree index**, only once a benchmark shows a mixed insert and range workload that the sorted
    index serves badly; behind the same interface, so nothing above it changes.
@@ -283,3 +346,9 @@ index regenerated for new classes.
   an error. It keeps today's "any `Compare`" behaviour, at the cost of a slow path.
 - Whether the SQL `Catalog` should be global (one per program) or explicit. Explicit is assumed
   above; it is simpler to test and has no hidden state.
+- Whether sources should load eagerly into columns (assumed above: simple, and fast once loaded)
+  or also offer a streaming scan for structures too large to hold, such as a whole drive or a
+  multi-gigabyte log. Eager loading with pushdown covers most research use; streaming would need
+  a cursor-based plan and is left until a workload needs it.
+- How a JSON or XML document with irregular structure (the same key holding an object in one
+  record and a string in another) should map: promote the column to `ObjectColumn`, or split it.
