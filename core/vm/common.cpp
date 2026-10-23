@@ -3723,8 +3723,20 @@ bool TrapProcessor::StdInByteAryLen(StackProgram* program, size_t* inst, size_t*
 #endif
 
   if(array && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    char* buffer = (char*)(array + 3);
-    PushInt(fread(buffer + offset, num, 1, stdin), op_stack, stack_pos);
+    // A console read waits for input; park for it, as the socket reads do. The
+    // bytes land in a C buffer (the collector can move a parked thread's young
+    // array) and the array ref is re-rooted on the op_stack, then re-read.
+    char* temp = new char[num > 0 ? num : 1];
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const size_t read = fread(temp, num, 1, stdin);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    if(read) {
+      memcpy((char*)(array + 3) + offset, temp, num);
+    }
+    delete[] temp;
+    PushInt(read, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -3744,13 +3756,18 @@ bool TrapProcessor::StdInCharAryLen(StackProgram* program, size_t* inst, size_t*
 #endif
 
   if(array && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    wchar_t* buffer = (wchar_t*)(array + 3);
     // allocate temporary buffer
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry): the temp
     // is sized for 'num' and offset was checked against the destination, so a
-    // large offset overflowed the heap allocation.
+    // large offset overflowed the heap allocation. A console read waits for
+    // input; park for it, with the array ref re-rooted on the op_stack.
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     size_t read = fread(byte_buffer, 1, num, stdin);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    wchar_t* buffer = (wchar_t*)(array + 3);
     if(read) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -3779,6 +3796,12 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(array) {
+    // A line read waits for input, indefinitely on an interactive console or a
+    // pipe (the LSP reads stdin on one thread while others allocate); park for
+    // it. Only C++ locals are touched while parked; the array ref is re-rooted
+    // on the op_stack so GC promotion fixup relocates it, then re-read.
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     std::wstring wbuffer;
 #ifdef _WIN32
     if(Runtime::StackInterpreter::IsBinaryStdio()) {
@@ -3809,6 +3832,8 @@ bool TrapProcessor::StdInString(StackProgram* program, size_t* inst, size_t*& op
     }
     wbuffer = BytesToUnicode(buffer);
 #endif
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
 
     // copy to dest, bounded by its size: an unbounded copy of a long line ran
     // past the array
@@ -4084,7 +4109,12 @@ bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stac
   array = (size_t*)array[0];
   if(array) {
     const std::string cmd = UnicodeToBytes((wchar_t*)(array + 3));
-    PushInt(system(cmd.c_str()), op_stack, stack_pos);
+    // system() waits for the child to exit; park for it, so a collection on
+    // another thread is not held up for the length of the command (cmd is C heap)
+    MemoryManager::BeginBlocking();
+    const int status = system(cmd.c_str());
+    MemoryManager::EndBlocking();
+    PushInt(status, op_stack, stack_pos);
   }
 
   return true;
@@ -4187,8 +4217,14 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
   if(str_array) {
     const std::string cmd = UnicodeToBytes((wchar_t*)(str_array + 3));
 
+    // The command runs to completion; park for it (cmd and the output lines are
+    // C heap). command_obj is re-rooted on the op_stack, and stays there through
+    // the allocations below -- any of them can move it -- until it is stored.
     int status = 0;
+    PushInt((size_t)command_obj, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     std::vector<std::string> output_lines = System::CommandOutput(cmd.c_str(), status);
+    MemoryManager::EndBlocking();
     
     // create 'System.String' object array
     const long str_obj_array_size = (long)output_lines.size();
@@ -4213,6 +4249,7 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
 
 
     size_t* command_output_obj = MemoryManager::AllocateObject(program->GetCommandOutputObjectId(), op_stack, *stack_pos, false);
+    command_obj = (size_t*)PopInt(op_stack, stack_pos);
     command_output_obj[0] = (size_t)command_obj;
     command_output_obj[1] = status;
     command_output_obj[2] = (size_t)str_obj_array;
@@ -4796,7 +4833,10 @@ bool TrapProcessor::SockTcpResolveName(StackProgram* program, size_t* inst, size
   array = (size_t*)array[0];
   if(array) {
     const std::string name =  UnicodeToBytes((wchar_t*)(array + 3));
+    // DNS resolution can block for seconds; park for it (name is C heap)
+    MemoryManager::BeginBlocking();
     std::vector<std::string> addrs = IPSocket::Resolve(name.c_str());
+    MemoryManager::EndBlocking();
 
     // create 'System.String' object array
     const long str_obj_array_size = (long)addrs.size();
@@ -5761,20 +5801,30 @@ bool TrapProcessor::SockUdpClose(StackProgram* program, size_t* inst, size_t*& o
   return true;
 }
 
+//
+// UDP traps. recvfrom() blocks until a datagram arrives and sendto() can block
+// on a full send buffer, so each call is parked: unparked, a thread waiting here
+// stalls every stop-the-world collection, and when the sender is a thread of
+// this VM that needs a collection first, neither moves again. The socket and
+// its address are C values read from the instance before parking; a GC array
+// is never handed to the kernel while parked (the collector can move a parked
+// thread's young objects) -- reads land in a C buffer and are copied in after,
+// with the array ref re-rooted on the op_stack so promotion fixup relocates it.
+//
 bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance && instance[0]) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
-    char value;
+    char value = '\0';
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    if(recvfrom(sock, &value, 1, 0, (struct sockaddr*)addr_in, &addr_in_size) < 0) {
-      PushInt(value, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+    MemoryManager::BeginBlocking();
+    const int read = static_cast<int>(recvfrom(sock, &value, 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
+    MemoryManager::EndBlocking();
+    // the byte read, or 0 when nothing was (this was inverted: it pushed an
+    // uninitialised byte on failure and 0 on success)
+    PushInt(read > 0 ? (unsigned char)value : 0, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -5784,7 +5834,7 @@ bool TrapProcessor::SockUdpInByte(StackProgram* program, size_t* inst, size_t*& 
 }
 
 bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) {
-  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const int num = (int)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -5792,16 +5842,21 @@ bool TrapProcessor::SockUdpInByteAry(StackProgram* program, size_t* inst, size_t
   if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
-    char* buffer = (char*)(array + 3);
 
+    char* temp = new char[num > 0 ? num : 1];
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int read = static_cast<int>(recvfrom(sock, buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
-    if(read < 0) {
-      PushInt(read, op_stack, stack_pos);
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const int read = static_cast<int>(recvfrom(sock, temp, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    if(read > 0) {
+      memcpy((char*)(array + 3) + offset, temp, read);
     }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+    delete[] temp;
+    // the number of bytes read, or -1 on error (this was inverted: it pushed 0
+    // for every successful read and the error code for a failed one)
+    PushInt(read < 0 ? -1 : read, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -5820,11 +5875,15 @@ bool TrapProcessor::SockUdpInCharAry(StackProgram* program, size_t* inst, size_t
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
-    wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
 
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     const int read = static_cast<int>(recvfrom(sock, byte_buffer, num, 0, (struct sockaddr*)addr_in, &addr_in_size));
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    wchar_t* buffer = (wchar_t*)(array + 3);
     // recvfrom returns -1 on error; only terminate/decode when bytes were read
     if(read > -1) {
       byte_buffer[read] = '\0';
@@ -5870,7 +5929,10 @@ bool TrapProcessor::SockUdpOutCharAry(StackProgram* program, size_t* inst, size_
     const wchar_t* buffer = (wchar_t*)(array + 3);
     std::string buffer_out = UnicodeToBytes(buffer);
 
+    // buffer_out is C heap
+    MemoryManager::BeginBlocking();
     const int sent = static_cast<int>(sendto(sock, buffer_out.c_str(), (int)buffer_out.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
+    MemoryManager::EndBlocking();
     PushInt(sent, op_stack, stack_pos);
   }
   else {
@@ -5888,13 +5950,11 @@ bool TrapProcessor::SockUdpOutByte(StackProgram* program, size_t* inst, size_t*&
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
 
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
+    MemoryManager::BeginBlocking();
     const int sent = static_cast<int>(sendto(sock, &value, 1, 0, (struct sockaddr*)addr_in, addr_in_size));
-    if(sent < 0) {
-      PushInt(sent > -1, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+    MemoryManager::EndBlocking();
+    // true when the byte was sent (this pushed false whatever happened)
+    PushInt(sent > 0, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -5909,20 +5969,23 @@ bool TrapProcessor::SockUdpOutByteAry(StackProgram* program, size_t* inst, size_
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
-  if(instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
+  if(array && instance && instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
 
     SOCKET sock = static_cast<int>(inst[0]);
     struct sockaddr_in* addr_in = (struct sockaddr_in*)inst[1];
-    const char* buffer = (char*)(array + 3);
+
+    // staged in a C buffer: the GC array can move while this thread is parked
+    char* temp = new char[num > 0 ? num : 1];
+    memcpy(temp, (const char*)(array + 3) + offset, num);
 
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int sent = static_cast<int>(sendto(sock, buffer, num, 0, (struct sockaddr*)addr_in, addr_in_size));
-    if(sent < 0) {
-      PushInt(sent, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+    MemoryManager::BeginBlocking();
+    const int sent = static_cast<int>(sendto(sock, temp, num, 0, (struct sockaddr*)addr_in, addr_in_size));
+    MemoryManager::EndBlocking();
+    delete[] temp;
+    // the number of bytes sent, or -1 on error (this pushed 0 for every
+    // successful send, and sent from the start of the buffer, ignoring offset)
+    PushInt(sent < 0 ? -1 : sent, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -5943,7 +6006,11 @@ bool TrapProcessor::SockUdpInString(StackProgram* program, size_t* inst, size_t*
     socklen_t addr_in_size = sizeof(struct sockaddr_in);
 
     if((long)sock > -1) {
+      PushInt((size_t)array, op_stack, stack_pos);
+      MemoryManager::BeginBlocking();
       const int read = static_cast<int>(recvfrom(sock, buffer, MID_BUFFER_MAX - 1, 0, (struct sockaddr*)addr_in, &addr_in_size));
+      MemoryManager::EndBlocking();
+      array = (size_t*)PopInt(op_stack, stack_pos);
       if(read > -1) {
         buffer[read] = '\0';
 
@@ -5974,16 +6041,14 @@ bool TrapProcessor::SockUdpOutString(StackProgram* program, size_t* inst, size_t
 
 #ifdef _DEBUG
     std::wcout << L"# udp write std::string: instance=" << instance << L"(" << (size_t)instance << L")" << L"; array=" << array << L"(" << (size_t)array << L")" << std::endl;
-#endif        
+#endif
     const std::string data = UnicodeToBytes((wchar_t*)(array + 3));
     const socklen_t addr_in_size = sizeof(struct sockaddr_in);
-    const int sent = static_cast<int>(sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size));
-    if(sent < 0) {
-      PushInt(sent, op_stack, stack_pos);
-    }
-    else {
-      PushInt(0, op_stack, stack_pos);
-    }
+    // data is C heap. WriteString returns Nil, so nothing is pushed, as in
+    // SockTcpOutString: this pushed a result the caller never pops.
+    MemoryManager::BeginBlocking();
+    sendto(sock, data.c_str(), (int)data.size(), 0, (struct sockaddr*)addr_in, addr_in_size);
+    MemoryManager::EndBlocking();
   }
 
   return true;
@@ -7416,8 +7481,14 @@ bool TrapProcessor::PipeCreate(StackProgram* program, size_t* inst, size_t*& op_
     int pipe;
 #endif
 
-    // create
-    if(Pipe::Create(filename.c_str(), pipe)) {
+    // Creating the pipe waits for a client to connect; park for it, as accept()
+    // does. The instance ref is re-rooted on the op_stack and re-read after.
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const bool created = Pipe::Create(filename.c_str(), pipe);
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
+    if(created) {
       instance[0] = (size_t)pipe;
     }
   }
@@ -7443,8 +7514,14 @@ bool TrapProcessor::PipeOpen(StackProgram* program, size_t* inst, size_t*& op_st
     int pipe;
 #endif
 
-    // create
-    if(Pipe::Open(filename.c_str(), pipe)) {
+    // Opening can wait for a busy server (WaitNamedPipe); park for it. The
+    // instance ref is re-rooted on the op_stack and re-read after.
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const bool opened = Pipe::Open(filename.c_str(), pipe);
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
+    if(opened) {
       instance[0] = (size_t)pipe;
     }
     else {
@@ -7484,7 +7561,11 @@ bool TrapProcessor::PipeInByte(StackProgram* program, size_t* inst, size_t*& op_
     
     char value = '\0';
 
-    if(Pipe::ReadByte(value, pipe)) {
+    // blocking read; park so a stop-the-world collection elsewhere can proceed
+    MemoryManager::BeginBlocking();
+    const bool read = Pipe::ReadByte(value, pipe);
+    MemoryManager::EndBlocking();
+    if(read) {
       PushInt(value, op_stack, stack_pos);
     }
     else {
@@ -7506,11 +7587,14 @@ bool TrapProcessor::PipeOutByte(StackProgram* program, size_t* inst, size_t*& op
   if(instance && (FILE*)instance[0]) {
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
-    PushInt(Pipe::WriteByte(value, pipe), op_stack, stack_pos);
 #else
     int pipe = (int)instance[0];
-    PushInt(Pipe::WriteByte(value, pipe), op_stack, stack_pos);
 #endif
+    // a write blocks while the pipe is full; park for it
+    MemoryManager::BeginBlocking();
+    const bool written = Pipe::WriteByte(value, pipe);
+    MemoryManager::EndBlocking();
+    PushInt(written, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -7521,7 +7605,7 @@ bool TrapProcessor::PipeOutByte(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
@@ -7532,8 +7616,21 @@ bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& 
 #else
     int pipe = (int)instance[0];
 #endif
-    char* buffer = (char*)(array + 3);
-    PushInt(Pipe::ReadByteArray(buffer, offset, num, pipe), op_stack, stack_pos);
+    // blocking read; park for the duration. Bytes land in a temp C buffer (a
+    // parked thread's GC array can be moved by promotion mid-read), and the
+    // array ref is re-rooted on the op_stack so fixup relocates it.
+    char* temp = new char[num > 0 ? num : 1];
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const size_t read = Pipe::ReadByteArray(temp, 0, num, pipe);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    // a failed POSIX recv() comes back as (size_t)-1
+    if(read <= (size_t)num) {
+      memcpy((char*)(array + 3) + offset, temp, read);
+    }
+    delete[] temp;
+    PushInt(read, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7544,13 +7641,12 @@ bool TrapProcessor::PipeInByteAry(StackProgram* program, size_t* inst, size_t*& 
 
 bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const INT64_VALUE num = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const INT64_VALUE offset = (INT64_VALUE)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && (FILE*)instance[0] && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
-    wchar_t* out = (wchar_t*)(array + 3);
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
 #else
@@ -7561,7 +7657,19 @@ bool TrapProcessor::PipeInCharAry(StackProgram* program, size_t* inst, size_t*& 
     char* byte_buffer = new char[num * 2 + 1];
     // offset 0: the temp buffer is sized for 'num'; offset belongs to the
     // destination, not this buffer (see FileInCharAry heap-overflow fix).
-    const size_t read = Pipe::ReadByteArray(byte_buffer, 0, num, pipe);
+    // Blocking read: park for the duration, with the array ref re-rooted on the
+    // op_stack so GC promotion fixup relocates it while we wait.
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    size_t read = Pipe::ReadByteArray(byte_buffer, 0, num, pipe);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    wchar_t* out = (wchar_t*)(array + 3);
+    // a failed POSIX recv() comes back as (size_t)-1, which indexed far past
+    // the buffer here; read nothing instead
+    if(read > (size_t)num) {
+      read = 0;
+    }
     byte_buffer[read] = '\0';
     std::wstring in(BytesToUnicode(byte_buffer));
 
@@ -7603,8 +7711,15 @@ bool TrapProcessor::PipeOutByteAry(StackProgram* program, size_t* inst, size_t*&
 #else
     int pipe = (int)instance[0];
 #endif
-    const char* buffer = (char*)(array + 3);
-    PushInt(Pipe::WriteByteArray(buffer, offset, num, pipe), op_stack, stack_pos);
+    // a write blocks while the pipe is full; park for it. Data is staged in a
+    // temp C buffer first -- a parked thread's GC array can be moved.
+    char* temp = new char[num > 0 ? num : 1];
+    memcpy(temp, (const char*)(array + 3) + offset, num);
+    MemoryManager::BeginBlocking();
+    const size_t written = Pipe::WriteByteArray(temp, 0, num, pipe);
+    MemoryManager::EndBlocking();
+    delete[] temp;
+    PushInt(written, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7631,7 +7746,11 @@ bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*&
     const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
-    PushInt(Pipe::WriteByteArray(buffer_out.c_str(), 0, buffer_out.size(), pipe), op_stack, stack_pos);
+    // a write blocks while the pipe is full; park (buffer_out is C heap)
+    MemoryManager::BeginBlocking();
+    const size_t written = Pipe::WriteByteArray(buffer_out.c_str(), 0, buffer_out.size(), pipe);
+    MemoryManager::EndBlocking();
+    PushInt(written, op_stack, stack_pos);
   }
   else {
     PushInt(-1, op_stack, stack_pos);
@@ -7642,17 +7761,22 @@ bool TrapProcessor::PipeOutCharAry(StackProgram* program, size_t* inst, size_t*&
 
 bool TrapProcessor::PipeInString(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame) 
 {
-  const size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   const size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
 
   if(array && instance && instance[0]) {
 #ifdef _WIN32
     HANDLE pipe = (HANDLE)instance[0];
-    std::string buffer = Pipe::ReadString(pipe);
 #else
     int pipe = (int)instance[0];
-    std::string buffer = Pipe::ReadString(pipe);
 #endif
+    // the line read blocks on the peer; park for it, with the array ref
+    // re-rooted on the op_stack and re-read after the wait
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    std::string buffer = Pipe::ReadString(pipe);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
     
     if(!buffer.empty()) {
       // copy content
@@ -7683,7 +7807,10 @@ bool TrapProcessor::PipeOutString(StackProgram* program, size_t* inst, size_t*& 
 #else
     int pipe = (int)instance[0];
 #endif
+    // a write blocks while the pipe is full; park (output is C heap)
+    MemoryManager::BeginBlocking();
     Pipe::WriteString(output, pipe);
+    MemoryManager::EndBlocking();
   }
 
   return true;
@@ -8751,21 +8878,11 @@ static bool h3_run_loop(Http3SessionCtx* ctx) {
   return true;
 }
 
-#endif // OBJECK_HAS_NGTCP2
-
-bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
-{
-  // Stack: port(Int), host(String), instance
-  [[maybe_unused]] const int port = (int)PopInt(op_stack, stack_pos);
-  [[maybe_unused]] size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
-  size_t* instance   = (size_t*)PopInt(op_stack, stack_pos);
-
-#ifdef OBJECK_HAS_NGTCP2
-  if(!host_array || !instance) { if(instance) instance[0] = 0; return true; }
-
-  host_array = (size_t*)host_array[0];
-  const std::string host = UnicodeToBytes((wchar_t*)(host_array + 3));
-
+// Opens a QUIC connection and drives the handshake until the HTTP/3 session
+// is ready. Returns nullptr on any failure. Touches only C memory: the caller
+// runs it parked, so the resolver, the handshake and its waits never hold up a
+// stop-the-world collection.
+static Http3SessionCtx* h3_open_session(const std::string& host, const int port) {
   Http3SessionCtx* ctx = new Http3SessionCtx();
   ctx->host = host;
 
@@ -8776,19 +8893,19 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   hints.ai_family   = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   if(getaddrinfo(host.c_str(), portstr, &hints, &res) != 0) {
-    delete ctx; instance[0] = 0; return true;
+    delete ctx; return nullptr;
   }
 
   ctx->udp_fd = (int)socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if(ctx->udp_fd < 0) {
-    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+    freeaddrinfo(res); delete ctx; return nullptr;
   }
   // The read/write loop below assumes a non-blocking socket; a blocking one
   // would park the VM thread in recvfrom instead of driving the QUIC timers,
   // so a failure here fails the connect like the socket() call above.
   const int fflags = fcntl(ctx->udp_fd, F_GETFL, 0);
   if(fflags < 0 || fcntl(ctx->udp_fd, F_SETFL, fflags | O_NONBLOCK) < 0) {
-    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+    freeaddrinfo(res); delete ctx; return nullptr;
   }
 
   // Bind to ephemeral local address
@@ -8807,13 +8924,13 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
     ctx->local_addrlen  = sizeof(*la);
   }
   if(bind(ctx->udp_fd, (struct sockaddr*)&local_ss, ctx->local_addrlen) < 0) {
-    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+    freeaddrinfo(res); delete ctx; return nullptr;
   }
   // The bound ephemeral address becomes the local end of the ngtcp2 path; if
   // it cannot be read back there is no path to build, so fail like bind().
   socklen_t actual_local = sizeof(ctx->local_addr);
   if(getsockname(ctx->udp_fd, (struct sockaddr*)&ctx->local_addr, &actual_local) < 0) {
-    freeaddrinfo(res); delete ctx; instance[0] = 0; return true;
+    freeaddrinfo(res); delete ctx; return nullptr;
   }
   ctx->local_addrlen = actual_local;
 
@@ -8827,7 +8944,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   // start on a user's Mac.
   ctx->ssl_ctx = SSL_CTX_new(TLS_client_method());
   if(!ctx->ssl_ctx || ngtcp2_crypto_boringssl_configure_client_context(ctx->ssl_ctx) != 0) {
-    delete ctx; instance[0] = 0; return true;
+    delete ctx; return nullptr;
   }
   SSL_CTX_set_min_proto_version(ctx->ssl_ctx, TLS1_3_VERSION);
 
@@ -8842,21 +8959,21 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
     if(SSL_CTX_load_verify_locations(ctx->ssl_ctx, cert_path.c_str(), nullptr) != 1) {
       std::wcerr << L">>> Unable to load HTTP/3 CA certificates from '"
                  << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
-      delete ctx; instance[0] = 0; return true;
+      delete ctx; return nullptr;
     }
     SSL_CTX_set_verify(ctx->ssl_ctx, SSL_VERIFY_PEER, nullptr);
   }
 
   ctx->ssl = SSL_new(ctx->ssl_ctx);
   if(!ctx->ssl) {
-    delete ctx; instance[0] = 0; return true;
+    delete ctx; return nullptr;
   }
   SSL_set_connect_state(ctx->ssl);
   static const uint8_t alpn_h3[] = { 2, 'h', '3' };
   SSL_set_alpn_protos(ctx->ssl, alpn_h3, sizeof(alpn_h3));
   SSL_set_tlsext_host_name(ctx->ssl, host.c_str());
   if(verify_peer && SSL_set1_host(ctx->ssl, host.c_str()) != 1) {
-    delete ctx; instance[0] = 0; return true;
+    delete ctx; return nullptr;
   }
 
   // Link the TLS session to ngtcp2 via conn_ref
@@ -8872,7 +8989,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
   if(!h3_random_bytes(dcid.data, dcid.datalen) ||
      !h3_random_bytes(scid.data, scid.datalen)) {
     std::wcerr << L">>> Unable to generate QUIC connection IDs <<<" << std::endl;
-    delete ctx; instance[0] = 0; return true;
+    delete ctx; return nullptr;
   }
 
   // Build the QUIC path
@@ -8920,7 +9037,7 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
                               NGTCP2_PROTO_VER_V1, &cbs, &settings, &params,
                               nullptr, ctx);
   if(conn_ret != 0) {
-    delete ctx; instance[0] = 0; return true;
+    delete ctx; return nullptr;
   }
   ngtcp2_conn_set_tls_native_handle(ctx->conn, ctx->ssl);
 
@@ -8935,10 +9052,40 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
       std::wcerr << L">>> HTTP/3 certificate verification failed for '" << BytesToUnicode(host)
                  << L"': " << BytesToUnicode(X509_verify_cert_error_string(verify_result)) << L" <<<" << std::endl;
     }
-    delete ctx; instance[0] = 0; return true;
+    delete ctx; return nullptr;
   }
 
-  instance[0] = (size_t)ctx;
+  return ctx;
+}
+
+#endif // OBJECK_HAS_NGTCP2
+
+bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  // Stack: port(Int), host(String), instance
+  [[maybe_unused]] const int port = (int)PopInt(op_stack, stack_pos);
+  [[maybe_unused]] size_t* host_array = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance   = (size_t*)PopInt(op_stack, stack_pos);
+
+#ifdef OBJECK_HAS_NGTCP2
+  if(!host_array || !instance) { if(instance) instance[0] = 0; return true; }
+
+  host_array = (size_t*)host_array[0];
+  const std::string host = UnicodeToBytes((wchar_t*)(host_array + 3));
+
+  // getaddrinfo() and the QUIC handshake block on the network; park for the
+  // duration, as Http2Connect does. Unparked, a thread waiting here stalls
+  // every stop-the-world collection, and when the peer is a thread of this VM
+  // that needs a collection before it can answer, neither moves again. Only C
+  // memory is touched while parked; the instance ref is re-rooted on the
+  // op_stack and re-read after the wait.
+  PushInt((size_t)instance, op_stack, stack_pos);
+  MemoryManager::BeginBlocking();
+  Http3SessionCtx* ctx = h3_open_session(host, port);
+  MemoryManager::EndBlocking();
+  instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  instance[0] = (size_t)ctx;   // nullptr on failure
 #elif defined(OBJECK_HAS_WINHTTP_H3)
   if(!host_array || !instance) { if(instance) { instance[0] = 0; } return true; }
 
@@ -8947,7 +9094,13 @@ bool TrapProcessor::Http3Connect(StackProgram* program, size_t* inst, size_t*& o
 
   // h3win_connect fails closed when this Windows build has no HTTP/3, rather
   // than connecting and silently delivering HTTP/2 on the first request.
+  // WinHttpOpen can block resolving the proxy configuration; park for it, with
+  // the instance ref re-rooted on the op_stack and re-read after.
+  PushInt((size_t)instance, op_stack, stack_pos);
+  MemoryManager::BeginBlocking();
   Http3WinCtx* wctx = h3win_connect(host, port);
+  MemoryManager::EndBlocking();
+  instance = (size_t*)PopInt(op_stack, stack_pos);
   instance[0] = (size_t)wctx;   // nullptr on failure -- same contract as POSIX
 #else
   if(instance) instance[0] = 0;
@@ -9072,7 +9225,15 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
     PushInt(0, op_stack, stack_pos); return true;
   }
 
-  if(!h3_run_loop(ctx)) {
+  // The QUIC send/poll/recv loop blocks on the peer; park for it (see
+  // Http3Connect). Its callbacks touch only ctx (C heap) and body_data (a C++
+  // copy); the instance ref is re-rooted on the op_stack and re-read after.
+  PushInt((size_t)instance, op_stack, stack_pos);
+  MemoryManager::BeginBlocking();
+  const bool completed = h3_run_loop(ctx);
+  MemoryManager::EndBlocking();
+  instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(!completed) {
     PushInt(0, op_stack, stack_pos); return true;
   }
 
@@ -9135,9 +9296,17 @@ bool TrapProcessor::Http3Request(StackProgram* program, size_t* inst, size_t*& o
   }
 
   // Returns false if the exchange was not actually HTTP/3 -- see win_http3.h.
-  if(!h3win_request(ctx, method, path, ctype,
-                    body_data.empty() ? nullptr : body_data.data(),
-                    body_data.size())) {
+  // WinHTTP's send, receive and read calls block on the network; park for them
+  // (only ctx and the C++ copies above are touched), with the instance ref
+  // re-rooted on the op_stack and re-read after the wait.
+  PushInt((size_t)instance, op_stack, stack_pos);
+  MemoryManager::BeginBlocking();
+  const bool completed = h3win_request(ctx, method, path, ctype,
+                                       body_data.empty() ? nullptr : body_data.data(),
+                                       body_data.size());
+  MemoryManager::EndBlocking();
+  instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(!completed) {
     PushInt(0, op_stack, stack_pos); return true;
   }
 
@@ -9203,11 +9372,25 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
       pem_file = UnicodeToBytes((wchar_t*)(pem_file_array + 3));
     }
 
-    // Close existing connection if any
-    IPDtlsSocket::Close((DtlsSocketCtx*)instance[0]);
-
+    // The DTLS handshake blocks on the peer (with retransmissions, for up to a
+    // minute); park for it, as SockTcpSslConnect does. Unparked, a thread waiting
+    // here stalls every stop-the-world collection, and when the peer is a thread
+    // of this VM that needs a collection before it can answer, neither moves
+    // again. Only C locals are touched while parked; the instance ref is
+    // re-rooted on the op_stack so GC promotion fixup relocates it, then re-read.
+    DtlsSocketCtx* old_sctx = (DtlsSocketCtx*)instance[0];
     DtlsSocketCtx* sctx = nullptr;
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    // Close existing connection if any
+    IPDtlsSocket::Close(old_sctx);
     const bool is_open = IPDtlsSocket::Open(addr.c_str(), static_cast<int>(port), pem_file, sctx, verify);
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
+    // The old context is freed whatever happens next. A failed open used to
+    // leave instance[0] pointing at it and instance[3] still claiming open, so
+    // the next read, write or Close used, or freed, the context a second time.
+    instance[0] = instance[1] = instance[2] = instance[3] = 0;
     if(is_open) {
       instance[0] = (size_t)sctx;
       instance[1] = 0;
@@ -9280,7 +9463,13 @@ bool TrapProcessor::SockDtlsClose(StackProgram* program, size_t* inst, size_t* &
   std::wcout << L"# dtls socket close: sctx=" << sctx << L"("
     << (size_t)sctx << L") #" << std::endl;
 #endif
+  // the close_notify alert is a send, which can block; park for it (sctx is C
+  // heap, the instance ref is re-rooted)
+  PushInt((size_t)instance, op_stack, stack_pos);
+  MemoryManager::BeginBlocking();
   IPDtlsSocket::Close(sctx);
+  MemoryManager::EndBlocking();
+  instance = (size_t*)PopInt(op_stack, stack_pos);
   instance[0] = instance[1] = instance[2] = instance[3] = 0;
 
   return true;
@@ -9294,7 +9483,10 @@ bool TrapProcessor::SockDtlsOutString(StackProgram* program, size_t* inst, size_
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     if(instance[3] && sctx) {
       const std::string out = UnicodeToBytes((wchar_t*)(array + 3));
+      // a DTLS write can block; park (out is C heap)
+      MemoryManager::BeginBlocking();
       IPDtlsSocket::WriteBytes(out.c_str(), (int)out.size(), sctx);
+      MemoryManager::EndBlocking();
     }
   }
 
@@ -9310,9 +9502,16 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     int status;
     if(instance[3] && sctx) {
+      const size_t capacity = array[0];
       size_t index = 0;
       char value;
       bool end_line = false;
+      // the read loop blocks on the peer; park for its duration, as
+      // SockTcpSslInString does. Only C locals are touched while parked; the
+      // array ref is re-rooted on the op_stack so GC promotion fixup relocates
+      // it, then re-read after the wait.
+      PushInt((size_t)array, op_stack, stack_pos);
+      MemoryManager::BeginBlocking();
       do {
         value = IPDtlsSocket::ReadByte(sctx, status);
         if(value != '\0' && value != '\r' && value != '\n' && index < MID_BUFFER_MAX - 1 && status > 0) {
@@ -9322,13 +9521,15 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
           end_line = true;
         }
       }
-      while(!end_line && index < array[0] - 1);
+      while(!end_line && index < capacity - 1);
       buffer[index] = '\0';
 
       // assume LF
       if(value == '\r') {
         IPDtlsSocket::ReadByte(sctx, status);
       }
+      MemoryManager::EndBlocking();
+      array = (size_t*)PopInt(op_stack, stack_pos);
 
       // copy content
       const std::wstring in = BytesToUnicode(buffer);
@@ -9458,49 +9659,52 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       DtlsSocketCtx* client_sctx = new DtlsSocketCtx();
 
       // Accept raw connection. accept() blocks indefinitely; park so STW GC
-      // elsewhere can proceed (see SockTcpSslAccept for the re-rooting rationale)
+      // elsewhere can proceed (see SockTcpSslAccept for the re-rooting rationale).
+      // The handshake blocks on the peer just as accept() does, so it stays
+      // inside the parked region: a peer that is a thread of this VM may need a
+      // collection to finish before it can send its next flight. Only srv and
+      // client_sctx (C heap) are touched while parked.
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
       int ret = mbedtls_net_accept(&srv->listen_fd, &client_sctx->net, nullptr, 0, nullptr);
+      if(ret == 0) {
+        // Setup SSL session for this client (uses server's config)
+        ret = mbedtls_ssl_setup(&client_sctx->ssl, &srv->conf);
+        if(ret == 0) {
+          mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+          mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+
+          // Perform DTLS handshake with cookie verification
+          int retries = 0;
+          const int max_retries = 10;
+          while((ret = mbedtls_ssl_handshake(&client_sctx->ssl)) != 0) {
+            if(ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED) {
+              if(++retries > max_retries) {
+                break;
+              }
+              mbedtls_ssl_session_reset(&client_sctx->ssl);
+              mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+              mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
+              continue;
+            }
+            if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+              break;
+            }
+          }
+          if(ret != 0) {
+            // a failed handshake sends close_notify, still parked
+            IPDtlsSocket::Close(client_sctx);
+            client_sctx = nullptr;
+          }
+        }
+      }
       MemoryManager::EndBlocking();
       instance = (size_t*)PopInt(op_stack, stack_pos);
       if(ret != 0) {
+        // nullptr when the failed handshake already closed it
         delete client_sctx;
         PushInt(0, op_stack, stack_pos);
         return true;
-      }
-
-      // Setup SSL session for this client (uses server's config)
-      ret = mbedtls_ssl_setup(&client_sctx->ssl, &srv->conf);
-      if(ret != 0) {
-        delete client_sctx;
-        PushInt(0, op_stack, stack_pos);
-        return true;
-      }
-
-      mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
-      mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
-
-      // Perform DTLS handshake with cookie verification
-      int retries = 0;
-      const int max_retries = 10;
-      while((ret = mbedtls_ssl_handshake(&client_sctx->ssl)) != 0) {
-        if(ret == MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED) {
-          if(++retries > max_retries) {
-            IPDtlsSocket::Close(client_sctx);
-            PushInt(0, op_stack, stack_pos);
-            return true;
-          }
-          mbedtls_ssl_session_reset(&client_sctx->ssl);
-          mbedtls_ssl_set_bio(&client_sctx->ssl, &client_sctx->net, mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
-          mbedtls_ssl_set_timer_cb(&client_sctx->ssl, &client_sctx->timer, mbedtls_timing_set_delay, mbedtls_timing_get_delay);
-          continue;
-        }
-        if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-          IPDtlsSocket::Close(client_sctx);
-          PushInt(0, op_stack, stack_pos);
-          return true;
-        }
       }
 
       // Get peer address info
@@ -9612,7 +9816,11 @@ bool TrapProcessor::SockDtlsInByte(StackProgram* program, size_t* inst, size_t* 
   if(instance) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
     int status;
-    PushInt(IPDtlsSocket::ReadByte(sctx, status), op_stack, stack_pos);
+    // blocking read; park so a stop-the-world collection elsewhere can proceed
+    MemoryManager::BeginBlocking();
+    const char value = IPDtlsSocket::ReadByte(sctx, status);
+    MemoryManager::EndBlocking();
+    PushInt(value, op_stack, stack_pos);
   }
   else {
     PushInt(0, op_stack, stack_pos);
@@ -9630,8 +9838,19 @@ bool TrapProcessor::SockDtlsInByteAry(StackProgram* program, size_t* inst, size_
 
   if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
-    char* buffer = (char*)(array + 3);
-    int read = IPDtlsSocket::ReadBytes(buffer + offset, static_cast<int>(num), sctx);
+    // blocking read; park for the duration. Bytes land in a temp C buffer (a
+    // parked thread's GC array can be moved by promotion mid-read), and the
+    // array ref is re-rooted on the op_stack so fixup relocates it.
+    char* temp = new char[num > 0 ? num : 1];
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const int read = IPDtlsSocket::ReadBytes(temp, static_cast<int>(num), sctx);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    if(read > 0) {
+      memcpy((char*)(array + 3) + offset, temp, read);
+    }
+    delete[] temp;
     PushInt(read, op_stack, stack_pos);
   }
   else {
@@ -9650,10 +9869,16 @@ bool TrapProcessor::SockDtlsInCharAry(StackProgram* program, size_t* inst, size_
 
   if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
-    wchar_t* buffer = (wchar_t*)(array + 3);
     char* byte_buffer = new char[num * 2 + 1];
     // Read into the temp buffer at 0, not +offset (see FileInCharAry heap-overflow fix).
+    // Blocking read: park for the duration, with the array ref re-rooted on the
+    // op_stack so GC promotion fixup relocates it while we wait.
+    PushInt((size_t)array, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
     int read = IPDtlsSocket::ReadBytes(byte_buffer, static_cast<int>(num), sctx);
+    MemoryManager::EndBlocking();
+    array = (size_t*)PopInt(op_stack, stack_pos);
+    wchar_t* buffer = (wchar_t*)(array + 3);
     if(read > -1) {
       byte_buffer[read] = '\0';
       std::wstring in = BytesToUnicode(byte_buffer);
@@ -9684,7 +9909,10 @@ bool TrapProcessor::SockDtlsOutByte(StackProgram* program, size_t* inst, size_t*
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
+    // a DTLS write can block; park so a stop-the-world collection can proceed
+    MemoryManager::BeginBlocking();
     IPDtlsSocket::WriteByte((char)value, sctx);
+    MemoryManager::EndBlocking();
     PushInt(1, op_stack, stack_pos);
   }
   else {
@@ -9703,11 +9931,18 @@ bool TrapProcessor::SockDtlsOutByteAry(StackProgram* program, size_t* inst, size
 
   if(array && instance && offset >= 0 && num >= 0 && offset <= (INT64_VALUE)array[0] && num <= (INT64_VALUE)array[0] - offset) {
     DtlsSocketCtx* sctx = (DtlsSocketCtx*)instance[0];
-    char* buffer = (char*)(array + 3);
+    // a DTLS write can block; park for the duration. Data is staged in a temp C
+    // buffer first -- a parked thread's GC array can be moved (and its young-gen
+    // slot reused) by promotion mid-send.
+    char* temp = new char[num > 0 ? num : 1];
+    memcpy(temp, (char*)(array + 3) + offset, num);
     // WriteBytes reports failure as -1 and leaves the mbedtls/OpenSSL code in the
     // socket context, so fold any error onto the same -1 the guarded path pushes
     // rather than converting a negative int into PushInt's size_t.
-    const int sent = IPDtlsSocket::WriteBytes(buffer + offset, static_cast<int>(num), sctx);
+    MemoryManager::BeginBlocking();
+    const int sent = IPDtlsSocket::WriteBytes(temp, static_cast<int>(num), sctx);
+    MemoryManager::EndBlocking();
+    delete[] temp;
     PushInt(sent < 0 ? -1 : sent, op_stack, stack_pos);
   }
   else {
@@ -9731,7 +9966,10 @@ bool TrapProcessor::SockDtlsOutCharAry(StackProgram* program, size_t* inst, size
     const std::wstring sub_buffer(buffer + offset, num);
     // convert to bytes and write out
     std::string buffer_out = UnicodeToBytes(sub_buffer);
+    // a DTLS write can block; park (buffer_out is C heap)
+    MemoryManager::BeginBlocking();
     const int sent = IPDtlsSocket::WriteBytes(buffer_out.c_str(), (int)buffer_out.size(), sctx);
+    MemoryManager::EndBlocking();
     PushInt(sent < 0 ? -1 : sent, op_stack, stack_pos);
   }
   else {
