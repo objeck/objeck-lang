@@ -642,11 +642,17 @@ public:
   }
 
   //
-  // br (deflate) stream compression
+  // raw deflate (RFC 1951): no zlib header or Adler-32 trailer, windowBits -15.
+  // This is not Brotli (RFC 7932) and not HTTP's "deflate" coding, which is the
+  // zlib format (RFC 1950, CompressZlib).
   //
-  static char* CompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
+  static char* CompressDeflate(const char* src, unsigned long src_len, unsigned long& out_len) {
+    // compressBound() counts zlib's 6-byte wrapper, which raw deflate does not write
     const unsigned long buffer_max = compressBound(src_len);
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
+    if(!buffer) {
+      return nullptr;
+    }
 
     // setup stream
     z_stream stream = {};
@@ -683,7 +689,7 @@ public:
     return buffer;
   }
 
-  static char* UncompressBr(const char* src, unsigned long src_len, unsigned long& out_len) {
+  static char* UncompressDeflate(const char* src, unsigned long src_len, unsigned long& out_len) {
     return InflateStream(src, src_len, -MAX_WBITS, out_len);
   }
 };

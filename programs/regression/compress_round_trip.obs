@@ -1,5 +1,5 @@
 #~
-Byte[] compression round trips: zlib, gzip and raw deflate ('Br') on empty, one-byte, short
+Byte[] compression round trips: zlib, gzip and raw deflate on empty, one-byte, short
 and large inputs, and damaged or truncated input raising an error a 'try' recovers from.
 
 CompressGzip failed on every small input: it sized its buffer with compressBound(), which
@@ -36,7 +36,7 @@ class CompressRoundTrip {
 		size := plain->Size();
 		Check("gzip round trip of {$size} bytes", Same(plain, plain->CompressGzip()->UncompressGzip()));
 		Check("zlib round trip of {$size} bytes", Same(plain, plain->CompressZlib()->UncompressZlib()));
-		Check("deflate round trip of {$size} bytes", Same(plain, plain->CompressBr()->UncompressBr()));
+		Check("deflate round trip of {$size} bytes", Same(plain, plain->CompressDeflate()->UncompressDeflate()));
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -82,7 +82,7 @@ class CompressRoundTrip {
 
 		failed := false;
 		try {
-			damaged->UncompressBr();
+			damaged->UncompressDeflate();
 		}
 		on(e : Error) {
 			failed := true;

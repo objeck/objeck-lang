@@ -104,8 +104,11 @@ namespace instructions {
     UNCOMPRESS_ZLIB_BYTES,
     COMPRESS_GZIP_BYTES,
     UNCOMPRESS_GZIP_BYTES,
-    COMPRESS_BR_BYTES,
-    UNCOMPRESS_BR_BYTES,
+    // raw deflate (RFC 1951); named COMPRESS_BR_BYTES/UNCOMPRESS_BR_BYTES before
+    // 2026-10, although it was never Brotli. The values are unchanged, so compiled
+    // programs keep working.
+    COMPRESS_DEFLATE_BYTES,
+    UNCOMPRESS_DEFLATE_BYTES,
     CRC32_BYTES,
     // file i/o
     FILE_OPEN_READ,

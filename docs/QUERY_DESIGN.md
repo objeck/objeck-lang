@@ -335,7 +335,7 @@ each of these links `query` plus the library it adapts.*
 | `query_ml.obl` | `MlResultSource` | `System.ML` results: cross-validation folds and per-fold metrics, threshold sweeps, and predictions with their scores and true labels. Comparing runs becomes a `GROUP BY` and `ORDER BY`. |
 | `query_odbc.obl` | `OdbcSource(connection, sql)` | The result of a query against a real database. With a scan hint, simple `where` terms are pushed into the SQL sent, so the database filters before anything is copied. |
 | `query_vision.obl` | `VisionSource(folder, detector)` | Detections across a folder of images, one row each: image, label, score and box, from any `API.Onnx` detector. For example, the images where a person was found with a score above 0.9, grouped by camera. |
-| `query.obl` (no native code) | `ArchiveSource(path)` | Zip and tar contents as a tree, like `FilesystemSource`, and any member readable as a source, such as a CSV inside a zip. Tar and stored zip members need only `lang`; deflated zip members need raw-deflate support, which must be checked in `lang`'s zlib binding first and added there if missing. |
+| `query.obl` (no native code) | `ArchiveSource(path)` | Zip and tar contents as a tree, like `FilesystemSource`, and any member readable as a source, such as a CSV inside a zip. Tar and stored zip members need only `lang`; deflated zip members use `Byte->UncompressDeflate` (raw deflate, RFC 1951) from `lang`. |
 | `query.obl` | `XlsxSource(path[, sheet])` | Each worksheet as a table, with typed cells and the first row as the header. An `.xlsx` file is a zip of XML parts, so this builds on `ArchiveSource` and `XmlSource`. |
 
 Further sources fit the same interface without changing the engine, for example RSS through
@@ -450,14 +450,16 @@ trailer     footer offset, magic
   over `runs.otab` reads only the columns it names and only the row groups its zone maps cannot
   rule out. Opening a large file costs a footer read, not a load.
 - **Compression per block, never per file.**
-  - **Codecs:** `lang` provides zlib, gzip and Brotli, each compressing a `Byte[]` in memory
-    (with no level setting, so the trade-off is made by choosing the codec). Each column block
-    in each row group is compressed on its own and records its codec, so partial reads and
-    HTTP range reads keep working.
+  - **Codecs:** `lang` provides zlib (`CompressZlib`, with levels 0 to 9), gzip and raw
+    deflate (`CompressDeflate`), each compressing a `Byte[]` in memory. All three are zlib's
+    deflate underneath; there is no Brotli (the trap once named `CompressBr` was raw deflate,
+    and a real Brotli codec would be a new native dependency). Each column block in each row
+    group is compressed on its own and records its codec, so partial reads and HTTP range
+    reads keep working.
   - **Choosing one:** `Save(path)` stores blocks uncompressed, for speed;
-    `Save(path, Compression->ZLIB)` is balanced; `Compression->BROTLI` gives the smallest
-    files, for archives and network transfer. Reading needs no option, since every block
-    names its codec.
+    `Save(path, Compression->ZLIB)` is balanced, and a higher zlib level gives smaller files
+    for archives and network transfer. Reading needs no option, since every block names its
+    codec.
   - **Only when it helps:** a block whose compressed form is not smaller is stored raw, as
     dense data such as random floats often is.
   - **Whole-file compression is transport only:** a `runs.otab.gz` still opens through the
@@ -661,7 +663,7 @@ index regenerated for new classes.
 6. **Hash and sorted indexes** and the rule-based planner.
 7. **Tier 2 sources**, one pull request each, in this order:
    1. `query_ml.obl` with `MlResultSource`
-   2. `ArchiveSource` (tar first, then zip, once raw deflate is confirmed)
+   2. `ArchiveSource` (tar first, then zip; raw deflate is `Byte->UncompressDeflate`)
    3. `XlsxSource`
    4. `query_odbc.obl` with `OdbcSource` and its pushdown
    5. `query_vision.obl` with `VisionSource`

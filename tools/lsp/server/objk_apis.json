@@ -9818,8 +9818,8 @@
 				"Compare": {
 					"descriptions": ["**Compares two values**\n\n```function : native : Compare(l:Byte, r:Byte) ~ Int```\n\n\n\nl: Byte\n\nr: Byte\n\nreturn: Int"]
 				},
-				"CompressBr": {
-					"descriptions": ["**Compresses a byte stream using Brotli**\n\n```function : CompressBr() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
+				"CompressDeflate": {
+					"descriptions": ["**Compresses a byte stream as raw deflate (RFC 1951): the compressed blocks alone, with no zlib header or checksum (CompressZlib) and no gzip framing (CompressGzip). This is the format of zip members and of zlib\/Python with windowBits -15. It is not Brotli, and not HTTP's \"deflate\" content coding, which is the zlib format.**\n\n```function : CompressDeflate() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
 				},
 				"CompressGzip": {
 					"descriptions": ["**Compresses a byte stream using gzip**\n\n```function : CompressGzip() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
@@ -9890,8 +9890,8 @@
 				"ToUnicode": {
 					"descriptions": ["**Converts the byte array to a character array**\n\n```function : ToUnicode(b:Byte[]) ~ Char[]```\n\n\n\nb: Byte[]\n\nreturn: Char[]"]
 				},
-				"UncompressBr": {
-					"descriptions": ["**Uncompresses a byte stream using Brotli**\n\n```function : UncompressBr() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
+				"UncompressDeflate": {
+					"descriptions": ["**Uncompresses a raw deflate (RFC 1951) byte stream, as written by CompressDeflate, a zip member or zlib with windowBits -15. Raises on damaged or truncated input.**\n\n```function : UncompressDeflate() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
 				},
 				"UncompressGzip": {
 					"descriptions": ["**Uncompresses a byte stream using gzip**\n\n```function : UncompressGzip() ~ Byte[]```\n\n\n\nreturn: Byte[]"]

@@ -2893,11 +2893,11 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case UNCOMPRESS_GZIP_BYTES:
     return UncompressGzipBytes (program, inst, op_stack, stack_pos, frame);
 
-  case COMPRESS_BR_BYTES:
-    return CompressBrBytes (program, inst, op_stack, stack_pos, frame);
+  case COMPRESS_DEFLATE_BYTES:
+    return CompressDeflateBytes (program, inst, op_stack, stack_pos, frame);
 
-  case UNCOMPRESS_BR_BYTES:
-    return UncompressBrBytes (program, inst, op_stack, stack_pos, frame);
+  case UNCOMPRESS_DEFLATE_BYTES:
+    return UncompressDeflateBytes (program, inst, op_stack, stack_pos, frame);
 
   case CRC32_BYTES:
     return CRC32Bytes(program, inst, op_stack, stack_pos, frame);
@@ -6369,7 +6369,7 @@ bool TrapProcessor::UncompressGzipBytes(StackProgram* program, size_t* inst, siz
   return true;
 }
 
-bool TrapProcessor::CompressBrBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::CompressDeflateBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
@@ -6381,7 +6381,7 @@ bool TrapProcessor::CompressBrBytes(StackProgram* program, size_t* inst, size_t*
   const uLong in_len = (uLong)array[2];
 
   uLong out_len;
-  char* out = OutputStream::CompressBr(in, in_len, out_len);
+  char* out = OutputStream::CompressDeflate(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
     return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"deflate compression failed");
@@ -6405,7 +6405,7 @@ bool TrapProcessor::CompressBrBytes(StackProgram* program, size_t* inst, size_t*
   return true;
 }
 
-bool TrapProcessor::UncompressBrBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+bool TrapProcessor::UncompressDeflateBytes(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
   if(!array) {
@@ -6417,7 +6417,7 @@ bool TrapProcessor::UncompressBrBytes(StackProgram* program, size_t* inst, size_
   const uLong in_len = (uLong)array[2];
 
   uLong out_len;
-  char* out = OutputStream::UncompressBr(in, in_len, out_len);
+  char* out = OutputStream::UncompressDeflate(in, in_len, out_len);
   if(!out) {
     PushInt(0, op_stack, stack_pos);
     return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid, truncated or oversized deflate data");

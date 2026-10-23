@@ -2598,15 +2598,15 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
-    case COMPRESS_BR_BYTES:
+    case COMPRESS_DEFLATE_BYTES:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::COMPRESS_BR_BYTES);
+                                                               instructions::COMPRESS_DEFLATE_BYTES);
       NextToken();
       break;
 
-    case UNCOMPRESS_BR_BYTES:
+    case UNCOMPRESS_DEFLATE_BYTES:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                               instructions::UNCOMPRESS_BR_BYTES);
+                                                               instructions::UNCOMPRESS_DEFLATE_BYTES);
       NextToken();
       break;
 
@@ -5076,15 +5076,15 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
      NextToken();
      break;
 
-  case COMPRESS_BR_BYTES:
+  case COMPRESS_DEFLATE_BYTES:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                              instructions::COMPRESS_BR_BYTES);
+                                                              instructions::COMPRESS_DEFLATE_BYTES);
      NextToken();
      break;
 
-  case UNCOMPRESS_BR_BYTES:
+  case UNCOMPRESS_DEFLATE_BYTES:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
-                                                              instructions::UNCOMPRESS_BR_BYTES);
+                                                              instructions::UNCOMPRESS_DEFLATE_BYTES);
      NextToken();
      break;
 
