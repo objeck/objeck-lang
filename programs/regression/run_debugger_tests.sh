@@ -657,6 +657,40 @@ run_test "print_collections" '
     expect eof
 ' "type=Collection.Vector, size=5|type=Collection.Map, size=4|type=Collection.Hash, size=3|type=Collection.List, size=6" "$COLL_BIN"
 
+# The unboxed collections: element counts, and for a BitSet its bit count and
+# how many bits are set.
+run_test "print_primitive_collections" '
+    expect ">"
+    send "b debugger_coll_test.obs:53
+"
+    expect ">"
+    send "r
+"
+    expect "break:"
+    expect ">"
+    send "p ints
+"
+    expect ">"
+    send "p reals
+"
+    expect ">"
+    send "p int_map
+"
+    expect ">"
+    send "p int_set
+"
+    expect ">"
+    send "p bits
+"
+    expect ">"
+    send "c
+"
+    expect ">"
+    send "q
+"
+    expect eof
+' "type=Collection.IntVector, size=4|type=Collection.FloatVector, size=2|type=Collection.IntMap, size=2|type=Collection.IntSet, size=3|type=Collection.BitSet, size=100, set=2" "$COLL_BIN"
+
 # ===========================================================================
 # Expression evaluator and breakpoint bookkeeping.
 #
