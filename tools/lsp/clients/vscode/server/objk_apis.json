@@ -9939,6 +9939,118 @@
 				}
 			}
 		},
+		"Query.Structured.Vision.Detection": {
+			"description": "One object a detector found in an image: its label, the model's class number, its score and its bounding box in the image's pixels, from the top left corner",
+			"functions": {
+				"GetClassId": {
+					"descriptions": ["**Gets the model's class number**\n\n```method : public : GetClassId() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetHeight": {
+					"descriptions": ["**Gets the box's height**\n\n```method : public : GetHeight() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetLabel": {
+					"descriptions": ["**Gets the class name**\n\n```method : public : GetLabel() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetScore": {
+					"descriptions": ["**Gets the confidence**\n\n```method : public : GetScore() ~ Float```\n\n\n\nreturn: Float"]
+				},
+				"GetWidth": {
+					"descriptions": ["**Gets the box's width**\n\n```method : public : GetWidth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetX": {
+					"descriptions": ["**Gets the box's left edge**\n\n```method : public : GetX() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetY": {
+					"descriptions": ["**Gets the box's top edge**\n\n```method : public : GetY() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(name:String, class_id:Int, score:Float, x:Int, y:Int, width:Int, height:Int)```\n\n\n\nname: String\n\nclass_id: Int\n\nscore: Float\n\nx: Int\n\ny: Int\n\nwidth: Int\n\nheight: Int"]
+				}
+			}
+		},
+		"Query.Structured.Vision.Detector": {
+			"description": "Finds objects in an image. YoloDetector runs any YOLO model through API.Onnx; a program wraps another model, or a service, by implementing this.",
+			"functions": {
+				"Detect": {
+					"descriptions": ["**Finds the objects in one image**\n\n```method : public : virutal : Detect(path:String, image:Byte[], width:Int, height:Int) ~ Detection[]```\n\n\n\npath: String\n\nimage: Byte[]\n\nwidth: Int\n\nheight: Int\n\nreturn: Detection[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets why the last Detect failed**\n\n```method : public : virutal : GetError() ~ String```\n\n\n\nreturn: String"]
+				}
+			}
+		},
+		"Query.Structured.Vision.ImageHeader": {
+			"description": "An image's format and size, read from the first bytes of its file without decoding it: PNG, JPEG, BMP, GIF and WebP",
+			"functions": {
+				"GetChannels": {
+					"descriptions": ["**Gets the color channels: 1 grey, 2 grey and alpha, 3 color (also for a palette), 4 color and alpha**\n\n```method : public : GetChannels() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetFormat": {
+					"descriptions": ["**Gets the format: 'png', 'jpeg', 'bmp', 'gif' or 'webp'**\n\n```method : public : GetFormat() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetHeight": {
+					"descriptions": ["**Gets the height in pixels**\n\n```method : public : GetHeight() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"GetWidth": {
+					"descriptions": ["**Gets the width in pixels**\n\n```method : public : GetWidth() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"Read": {
+					"descriptions": ["**Reads an image's header**\n\n```function : Read(bytes:Byte[]) ~ ImageHeader```\n\n\n\nbytes: Byte[]\n\nreturn: ImageHeader\n\n```\nheader := ImageHeader->Read(FileReader->ReadBinaryFile(\"photo.jpg\"));\n\"{$(header->GetWidth())} x {$(header->GetHeight())}\"->PrintLine();\n```"]
+				}
+			}
+		},
+		"Query.Structured.Vision.VisionSource": {
+			"description": "A folder of images as two tables. Image files are those named .png, .jpg, .jpeg, .bmp, .gif or .webp, in name order, with every subfolder's after its own folder's when recursive.\n\n- 'images': id, path, name, folder (the subfolder below the root, '' at the top), format, width, height, channels, bytes (file size), modified, detections (how many objects were found; empty with no detector) and error (why the file could not be read or the detector failed; empty otherwise). Format, size and channels come from the file's header, without decoding the image.\n- 'detections': id, image_id (the image's id), path, label, class_id, score, x, y, width, height and area, one row per object found, with the box in the image's pixels.\n\nA file that is not the image its name says is a row with an error, not a failure of the whole load, and so is an image the detector could not process. A scan hint's row limit caps how many images are read.",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Gets the reason the last load failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the two tables' shapes**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"IsImageName": {
+					"descriptions": ["**Whether a file name is an image this source reads, by its extension**\n\n```function : IsImageName(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
+				},
+				"Load": {
+					"descriptions": ["**Reads the folder and adds both tables to a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for the 'images' table alone ('detections' is empty)**\n\n```New(folder:String)```\n\n\n\nfolder: String", "**Constructor**\n\n```New(folder:String, detector:Detector)```\n\n\n\nfolder: String\n\ndetector: Detector"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the folder into its two tables**\n\n```method : public : Read(hint:ScanHint) ~ Table[]```\n\n\n\nhint: ScanHint\n\nreturn: Table[]", "**Reads the folder into its two tables**\n\n```method : public : Read() ~ Table[]```\n\n\n\nreturn: Table[]"]
+				},
+				"SetNames": {
+					"descriptions": ["**Sets the two tables' names, for a catalog that already has an 'images' table**\n\n```method : public : SetNames(images:String, detections:String) ~ Nil```\n\n\n\nimages: String\n\ndetections: String\n\nreturn: Nil"]
+				},
+				"SetRecursive": {
+					"descriptions": ["**Sets whether to read the folders below the root too**\n\n```method : public : SetRecursive(recursive:Bool) ~ Nil```\n\n\n\nrecursive: Bool\n\nreturn: Nil"]
+				}
+			}
+		},
+		"Query.Structured.Vision.YoloDetector": {
+			"description": "A YOLO model (version 8 and later, exported to ONNX) as a Detector, through API.Onnx's YoloSession. The image is letterboxed to the model's input size and the boxes come back in the image's own pixels; boxes below the score threshold are dropped, and overlapping boxes of one class are merged.",
+			"functions": {
+				"Close": {
+					"descriptions": ["**Releases the model**\n\n```method : public : Close() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Detect": {
+					"descriptions": ["**Finds the objects in one image**\n\n```method : public : Detect(path:String, image:Byte[], width:Int, height:Int) ~ Detection[]```\n\n\n\npath: String\n\nimage: Byte[]\n\nwidth: Int\n\nheight: Int\n\nreturn: Detection[]"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets why the last Detect, or loading the model, failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the model loaded**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor, for a model taking 640 x 640 images, keeping boxes scoring 0.5 or more**\n\n```New(model:String, labels:String[])```\n\n\n\nmodel: String\n\nlabels: String[]", "**Constructor**\n\n```New(model:String, labels:String[], size:Int, threshold:Float)```\n\n\n\nmodel: String\n\nlabels: String[]\n\nsize: Int\n\nthreshold: Float"]
+				},
+				"ReadLabels": {
+					"descriptions": ["**Reads class names, one per line, skipping blank lines**\n\n```function : ReadLabels(path:String) ~ String[]```\n\n\n\npath: String\n\nreturn: String[]"]
+				}
+			}
+		},
 		"System.ArraySort": {
 			"description": "Sorts primitive arrays in place\n\n'Int->Sort(v)' and its Byte, Char and Float counterparts return a sorted copy; these sort the array they are handed. Both share this implementation.",
 			"functions": {
@@ -17707,6 +17819,36 @@
 		"TableServer": [
 			{
 				"bundle": "Query.Structured.Server",
+				"file": ""
+			}
+		],
+		"Detection": [
+			{
+				"bundle": "Query.Structured.Vision",
+				"file": ""
+			}
+		],
+		"Detector": [
+			{
+				"bundle": "Query.Structured.Vision",
+				"file": ""
+			}
+		],
+		"ImageHeader": [
+			{
+				"bundle": "Query.Structured.Vision",
+				"file": ""
+			}
+		],
+		"VisionSource": [
+			{
+				"bundle": "Query.Structured.Vision",
+				"file": ""
+			}
+		],
+		"YoloDetector": [
+			{
+				"bundle": "Query.Structured.Vision",
 				"file": ""
 			}
 		],

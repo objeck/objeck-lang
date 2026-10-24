@@ -1,0 +1,820 @@
+# Query.Structured's vision source (docs/QUERY_DESIGN.md, section 6, tier 2): a folder of images
+# as tables, their sizes and formats and what a detector found in each. A library of its own so
+# that a program that only queries CSV files does not need ONNX Runtime or OpenCV.
+
+use Collection;
+use System.IO.Filesystem;
+use Query.Structured;
+
+bundle Query.Structured.Vision {
+	#~
+	One object a detector found in an image: its label, the model's class number, its score and
+	its bounding box in the image's pixels, from the top left corner
+	~#
+	class Detection {
+		@label : String;
+		@class_id : Int;
+		@score : Float;
+		@x : Int;
+		@y : Int;
+		@width : Int;
+		@height : Int;
+
+		#~
+		Constructor
+		@param name class name
+		@param class_id the model's class number
+		@param score confidence, usually 0.0 to 1.0
+		@param x left edge
+		@param y top edge
+		@param width box width
+		@param height box height
+		~#
+		New(name : String, class_id : Int, score : Float, x : Int, y : Int, width : Int, height : Int) {
+			@label := name;
+			@class_id := class_id;
+			@score := score;
+			@x := x;
+			@y := y;
+			@width := width;
+			@height := height;
+		}
+
+		#~
+		Gets the class name
+		@return class name
+		~#
+		method : public : GetLabel() ~ String {
+			return @label;
+		}
+
+		#~
+		Gets the model's class number
+		@return class number
+		~#
+		method : public : GetClassId() ~ Int {
+			return @class_id;
+		}
+
+		#~
+		Gets the confidence
+		@return score
+		~#
+		method : public : GetScore() ~ Float {
+			return @score;
+		}
+
+		#~
+		Gets the box's left edge
+		@return x
+		~#
+		method : public : GetX() ~ Int {
+			return @x;
+		}
+
+		#~
+		Gets the box's top edge
+		@return y
+		~#
+		method : public : GetY() ~ Int {
+			return @y;
+		}
+
+		#~
+		Gets the box's width
+		@return width
+		~#
+		method : public : GetWidth() ~ Int {
+			return @width;
+		}
+
+		#~
+		Gets the box's height
+		@return height
+		~#
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+	}
+
+	#~
+	Finds objects in an image. YoloDetector runs any YOLO model through API.Onnx; a program
+	wraps another model, or a service, by implementing this.
+	~#
+	interface Detector {
+		#~
+		Finds the objects in one image
+		@param path the image's file
+		@param image the file's bytes, as encoded on disk
+		@param width image width, from its header
+		@param height image height, from its header
+		@return what was found, an empty array for nothing, Nil on failure (see GetError)
+		~#
+		method : virtual : public : Detect(path : String, image : Byte[], width : Int, height : Int) ~ Detection[];
+
+		#~
+		Gets why the last Detect failed
+		@return error, Nil if none
+		~#
+		method : virtual : public : GetError() ~ String;
+	}
+
+	#~
+	A YOLO model (version 8 and later, exported to ONNX) as a Detector, through API.Onnx's
+	YoloSession. The image is letterboxed to the model's input size and the boxes come back in
+	the image's own pixels; boxes below the score threshold are dropped, and overlapping boxes
+	of one class are merged.
+
+```
+labels := YoloDetector->ReadLabels("models/yolo_labels.txt");
+detector := YoloDetector->New("models/yolo11n.onnx", labels, 640, 0.5);
+source := VisionSource->New("camera_dumps", detector);
+source->SetRecursive(true);
+catalog := Catalog->New();
+catalog->Load(source);
+detector->Close();
+```
+	~#
+	class YoloDetector implements Detector {
+		@session : API.Onnx.YoloSession;
+		@labels : String[];
+		@size : Int;
+		@threshold : Float;
+		@error : String;
+
+		#~
+		Constructor, for a model taking 640 x 640 images, keeping boxes scoring 0.5 or more
+		@param model ONNX model file
+		@param labels class names, in the model's order
+		~#
+		New(model : String, labels : String[]) {
+			Init(model, labels, 640, 0.5);
+		}
+
+		#~
+		Constructor
+		@param model ONNX model file
+		@param labels class names, in the model's order
+		@param size the model's square input size, such as 640
+		@param threshold the lowest score kept
+		~#
+		New(model : String, labels : String[], size : Int, threshold : Float) {
+			Init(model, labels, size, threshold);
+		}
+
+		method : Init(model : String, labels : String[], size : Int, threshold : Float) ~ Nil {
+			@labels := labels;
+			@size := size;
+			@threshold := threshold;
+			if(model = Nil | <>File->Exists(model)) {
+				@error := "no model file '{$model}'";
+				return;
+			};
+			@session := API.Onnx.YoloSession->New(model);
+		}
+
+		#~
+		Whether the model loaded
+		@return true if it can detect
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @session <> Nil & @session->IsOpen();
+		}
+
+		#~
+		Finds the objects in one image
+		@param path the image's file
+		@param image the file's bytes
+		@param width image width
+		@param height image height
+		@return what was found, Nil on failure (see GetError)
+		~#
+		method : public : Detect(path : String, image : Byte[], width : Int, height : Int) ~ Detection[] {
+			if(<>IsOpen()) {
+				if(@error = Nil) {
+					@error := "the model is not loaded";
+				};
+				return Nil;
+			};
+			if(@labels = Nil | @labels->Size() = 0) {
+				@error := "no class labels";
+				return Nil;
+			};
+
+			@error := Nil;
+			result := @session->Inference(image, @size, @size, @threshold, @labels);
+			if(result = Nil) {
+				@error := "the model could not run on '{$path}'";
+				return Nil;
+			};
+
+			found := result->GetClassifications();
+			if(found = Nil) {
+				return Detection->New[0];
+			};
+
+			detections := Detection->New[found->Size()];
+			each(i : found) {
+				item := found[i];
+				box := item->GetBounds();
+				detections[i] := Detection->New(item->GetName(), item->GetId(), item->GetConfidence(),
+					box->GetX(), box->GetY(), box->GetWidth(), box->GetHeight());
+			};
+			return detections;
+		}
+
+		#~
+		Gets why the last Detect, or loading the model, failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Releases the model
+		~#
+		method : public : Close() ~ Nil {
+			if(@session <> Nil) {
+				@session->Close();
+				@session := Nil;
+			};
+		}
+
+		#~
+		Reads class names, one per line, skipping blank lines
+		@param path labels file
+		@return names, Nil if the file cannot be read
+		~#
+		function : ReadLabels(path : String) ~ String[] {
+			text := FileReader->ReadFile(path);
+			if(text = Nil) {
+				return Nil;
+			};
+
+			names := Vector->New()<String>;
+			lines := text->Split("\n");
+			each(i : lines) {
+				line := lines[i]->Trim();
+				if(line->Size() > 0) {
+					names->AddBack(line);
+				};
+			};
+
+			labels := String->New[names->Size()];
+			each(i : labels) {
+				labels[i] := names->Get(i);
+			};
+			return labels;
+		}
+	}
+
+	#~
+	An image's format and size, read from the first bytes of its file without decoding it: PNG,
+	JPEG, BMP, GIF and WebP
+	~#
+	class ImageHeader {
+		@format : String;
+		@width : Int;
+		@height : Int;
+		@channels : Int;
+
+		New : private(format : String, width : Int, height : Int, channels : Int) {
+			@format := format;
+			@width := width;
+			@height := height;
+			@channels := channels;
+		}
+
+		#~
+		Gets the format: 'png', 'jpeg', 'bmp', 'gif' or 'webp'
+		@return format
+		~#
+		method : public : GetFormat() ~ String {
+			return @format;
+		}
+
+		#~
+		Gets the width in pixels
+		@return width
+		~#
+		method : public : GetWidth() ~ Int {
+			return @width;
+		}
+
+		#~
+		Gets the height in pixels
+		@return height
+		~#
+		method : public : GetHeight() ~ Int {
+			return @height;
+		}
+
+		#~
+		Gets the color channels: 1 grey, 2 grey and alpha, 3 color (also for a palette), 4
+		color and alpha
+		@return channels
+		~#
+		method : public : GetChannels() ~ Int {
+			return @channels;
+		}
+
+		#~
+		Reads an image's header
+		@param bytes the file's bytes, or at least its first part
+		@return header, Nil if the bytes are not a known image format
+		```
+		header := ImageHeader->Read(FileReader->ReadBinaryFile("photo.jpg"));
+		"{$(header->GetWidth())} x {$(header->GetHeight())}"->PrintLine();
+		```
+		~#
+		function : Read(bytes : Byte[]) ~ ImageHeader {
+			if(bytes = Nil | bytes->Size() < 10) {
+				return Nil;
+			};
+
+			if(At(bytes, 0) = 0x89 & At(bytes, 1) = 'P' & At(bytes, 2) = 'N' & At(bytes, 3) = 'G') {
+				return Png(bytes);
+			}
+			else if(At(bytes, 0) = 0xFF & At(bytes, 1) = 0xD8) {
+				return Jpeg(bytes);
+			}
+			else if(At(bytes, 0) = 'B' & At(bytes, 1) = 'M') {
+				return Bmp(bytes);
+			}
+			else if(At(bytes, 0) = 'G' & At(bytes, 1) = 'I' & At(bytes, 2) = 'F') {
+				return ImageHeader->New("gif", Little16(bytes, 6), Little16(bytes, 8), 3);
+			}
+			else if(bytes->Size() >= 30 & At(bytes, 0) = 'R' & At(bytes, 1) = 'I' & At(bytes, 2) = 'F' & At(bytes, 3) = 'F' &
+					At(bytes, 8) = 'W' & At(bytes, 9) = 'E' & At(bytes, 10) = 'B' & At(bytes, 11) = 'P') {
+				return WebP(bytes);
+			};
+
+			return Nil;
+		}
+
+		function : Png(bytes : Byte[]) ~ ImageHeader {
+			if(bytes->Size() < 26 | At(bytes, 12) <> 'I' | At(bytes, 13) <> 'H' | At(bytes, 14) <> 'D' | At(bytes, 15) <> 'R') {
+				return Nil;
+			};
+
+			color := At(bytes, 25);
+			channels := 3;
+			if(color = 0) {
+				channels := 1;
+			}
+			else if(color = 4) {
+				channels := 2;
+			}
+			else if(color = 6) {
+				channels := 4;
+			};
+			return ImageHeader->New("png", Big32(bytes, 16), Big32(bytes, 20), channels);
+		}
+
+		# the first start-of-frame segment holds the size; markers before it are skipped by
+		# their lengths
+		function : Jpeg(bytes : Byte[]) ~ ImageHeader {
+			i := 2;
+			while(i + 3 < bytes->Size()) {
+				if(At(bytes, i) <> 0xFF) {
+					return Nil;
+				};
+				marker := At(bytes, i + 1);
+				if(marker = 0xFF) {
+					# fill byte
+					i += 1;
+				}
+				else if(marker = 0x01 | (marker >= 0xD0 & marker <= 0xD7)) {
+					# markers with no length
+					i += 2;
+				}
+				else if(marker = 0xD9 | marker = 0xDA) {
+					# end of image or start of scan before any frame
+					return Nil;
+				}
+				else {
+					length := Big16(bytes, i + 2);
+					if(length < 2) {
+						return Nil;
+					};
+					is_frame := marker >= 0xC0 & marker <= 0xCF & marker <> 0xC4 & marker <> 0xC8 & marker <> 0xCC;
+					if(is_frame) {
+						if(i + 9 >= bytes->Size()) {
+							return Nil;
+						};
+						return ImageHeader->New("jpeg", Big16(bytes, i + 7), Big16(bytes, i + 5), At(bytes, i + 9));
+					};
+					i += 2 + length;
+				};
+			};
+
+			return Nil;
+		}
+
+		function : Bmp(bytes : Byte[]) ~ ImageHeader {
+			if(bytes->Size() < 26) {
+				return Nil;
+			};
+
+			size := Little32(bytes, 14);
+			width := 0;
+			height := 0;
+			bits := 0;
+			if(size = 12) {
+				width := Little16(bytes, 18);
+				height := Little16(bytes, 20);
+				bits := Little16(bytes, 24);
+			}
+			else {
+				if(bytes->Size() < 30) {
+					return Nil;
+				};
+				width := Little32(bytes, 18);
+				height := Little32(bytes, 22);
+				# a negative height means rows run top down
+				if(height > 0x7FFFFFFF) {
+					height := 0x100000000 - height;
+				};
+				bits := Little16(bytes, 28);
+			};
+
+			channels := bits = 32 ? 4 : 3;
+			return ImageHeader->New("bmp", width, height, channels);
+		}
+
+		function : WebP(bytes : Byte[]) ~ ImageHeader {
+			if(At(bytes, 12) = 'V' & At(bytes, 13) = 'P' & At(bytes, 14) = '8') {
+				kind := At(bytes, 15);
+				if(kind = ' ') {
+					# lossy: a key frame's start code, then 14-bit sizes
+					if(At(bytes, 23) <> 0x9D | At(bytes, 24) <> 0x01 | At(bytes, 25) <> 0x2A) {
+						return Nil;
+					};
+					return ImageHeader->New("webp", Little16(bytes, 26) and 0x3FFF, Little16(bytes, 28) and 0x3FFF, 3);
+				}
+				else if(kind = 'L') {
+					# lossless: a signature byte, then 14-bit sizes less one and an alpha bit
+					if(At(bytes, 20) <> 0x2F) {
+						return Nil;
+					};
+					bits := Little32(bytes, 21);
+					width := (bits and 0x3FFF) + 1;
+					height := ((bits >> 14) and 0x3FFF) + 1;
+					channels := ((bits >> 28) and 1) = 1 ? 4 : 3;
+					return ImageHeader->New("webp", width, height, channels);
+				}
+				else if(kind = 'X') {
+					# extended: flags (bit 4 is alpha), then 24-bit canvas sizes less one
+					channels := (At(bytes, 20) and 0x10) <> 0 ? 4 : 3;
+					return ImageHeader->New("webp", Little24(bytes, 24) + 1, Little24(bytes, 27) + 1, channels);
+				};
+			};
+
+			return Nil;
+		}
+
+		function : At(bytes : Byte[], i : Int) ~ Int {
+			if(i < 0 | i >= bytes->Size()) {
+				return -1;
+			};
+			return bytes[i]->As(Int) and 0xFF;
+		}
+
+		function : Big16(bytes : Byte[], i : Int) ~ Int {
+			return (At(bytes, i) << 8) or At(bytes, i + 1);
+		}
+
+		function : Big32(bytes : Byte[], i : Int) ~ Int {
+			return (At(bytes, i) << 24) or (At(bytes, i + 1) << 16) or (At(bytes, i + 2) << 8) or At(bytes, i + 3);
+		}
+
+		function : Little16(bytes : Byte[], i : Int) ~ Int {
+			return At(bytes, i) or (At(bytes, i + 1) << 8);
+		}
+
+		function : Little24(bytes : Byte[], i : Int) ~ Int {
+			return At(bytes, i) or (At(bytes, i + 1) << 8) or (At(bytes, i + 2) << 16);
+		}
+
+		function : Little32(bytes : Byte[], i : Int) ~ Int {
+			return At(bytes, i) or (At(bytes, i + 1) << 8) or (At(bytes, i + 2) << 16) or (At(bytes, i + 3) << 24);
+		}
+	}
+
+	#~
+	A folder of images as two tables. Image files are those named .png, .jpg, .jpeg, .bmp, .gif
+	or .webp, in name order, with every subfolder's after its own folder's when recursive.
+
+	- 'images': id, path, name, folder (the subfolder below the root, '' at the top), format,
+	  width, height, channels, bytes (file size), modified, detections (how many objects were
+	  found; empty with no detector) and error (why the file could not be read or the detector
+	  failed; empty otherwise). Format, size and channels come from the file's header, without
+	  decoding the image.
+	- 'detections': id, image_id (the image's id), path, label, class_id, score, x, y, width,
+	  height and area, one row per object found, with the box in the image's pixels.
+
+	A file that is not the image its name says is a row with an error, not a failure of the
+	whole load, and so is an image the detector could not process. A scan hint's row limit
+	caps how many images are read.
+
+```
+source := VisionSource->New("camera_dumps", YoloDetector->New("yolo11n.onnx", labels));
+source->SetRecursive(true);
+catalog := Catalog->New();
+catalog->Load(source);
+# images with a person found at above 0.9, by camera (the subfolder)
+catalog->Query("select i.folder, count(*) as n from detections d join images i on d.image_id = i.id where d.label = 'person' and d.score > 0.9 group by i.folder")->ToCsv()->PrintLine();
+```
+	~#
+	class VisionSource implements Source {
+		@root : String;
+		@detector : Detector;
+		@recursive : Bool;
+		@images_name : String;
+		@detections_name : String;
+		@error : String;
+
+		#~
+		Constructor for the 'images' table alone ('detections' is empty)
+		@param folder the folder to read
+		~#
+		New(folder : String) {
+			@root := folder;
+			@images_name := "images";
+			@detections_name := "detections";
+		}
+
+		#~
+		Constructor
+		@param folder the folder to read
+		@param detector finds the objects in each image
+		~#
+		New(folder : String, detector : Detector) {
+			@root := folder;
+			@detector := detector;
+			@images_name := "images";
+			@detections_name := "detections";
+		}
+
+		#~
+		Sets whether to read the folders below the root too
+		@param recursive true to read subfolders
+		~#
+		method : public : SetRecursive(recursive : Bool) ~ Nil {
+			@recursive := recursive;
+		}
+
+		#~
+		Sets the two tables' names, for a catalog that already has an 'images' table
+		@param images the images table's name
+		@param detections the detections table's name
+		~#
+		method : public : SetNames(images : String, detections : String) ~ Nil {
+			@images_name := images;
+			@detections_name := detections;
+		}
+
+		#~
+		Gets the two tables' shapes
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			specs := TableSpec->New[2];
+			specs[0] := TableSpec->New(@images_name, ImageColumns(), ImageTypes());
+			specs[1] := TableSpec->New(@detections_name, DetectionColumns(), DetectionTypes());
+			return specs;
+		}
+
+		#~
+		Gets the reason the last load failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Reads the folder and adds both tables to a catalog
+		@param catalog catalog
+		@param hint a row limit caps the images read; Nil for all
+		@return true if loaded, false if the folder cannot be read (see GetError)
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			tables := Read(hint);
+			if(tables = Nil) {
+				return false;
+			};
+
+			catalog->Add(tables[0]);
+			catalog->Add(tables[1]);
+			return true;
+		}
+
+		#~
+		Reads the folder into its two tables
+		@param hint a row limit caps the images read; Nil for all
+		@return the images and detections tables, Nil if the folder cannot be read (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table[] {
+			@error := Nil;
+			if(@root = Nil | <>Directory->Exists(@root)) {
+				@error := "'{$@root}': no such folder";
+				return Nil;
+			};
+
+			images := Table->New(@images_name, ImageColumns(), ImageTypes(), true);
+			detections := Table->New(@detections_name, DetectionColumns(), DetectionTypes(), true);
+			limit := -1;
+			if(hint <> Nil) {
+				limit := hint->GetLimit();
+			};
+
+			files := Vector->New()<String>;
+			folders := Vector->New()<String>;
+			Collect(Folder(@root), "", files, folders);
+			each(f : files) {
+				if(limit > -1 & images->Size() >= limit) {
+					break;
+				};
+				AddImage(images, detections, files->Get(f), folders->Get(f));
+			};
+
+			tables := Table->New[2];
+			tables[0] := images;
+			tables[1] := detections;
+			return tables;
+		}
+
+		#~
+		Reads the folder into its two tables
+		@return the images and detections tables, Nil if the folder cannot be read (see GetError)
+		~#
+		method : public : Read() ~ Table[] {
+			return Read(Nil);
+		}
+
+		# image files in name order, then each subfolder's, also in name order
+		method : Collect(folder : String, below : String, files : Vector<String>, folders : Vector<String>) ~ Nil {
+			names := Directory->List(folder);
+			if(names = Nil) {
+				return;
+			};
+			Sort(names);
+
+			each(i : names) {
+				name := names[i];
+				if(<>name->Equals(".") & <>name->Equals("..")) {
+					path := String->New(folder);
+					path += name;
+					if(<>Directory->Exists(path) & IsImageName(name)) {
+						files->AddBack(path);
+						folders->AddBack(below);
+					};
+				};
+			};
+
+			if(@recursive) {
+				each(i : names) {
+					name := names[i];
+					if(<>name->Equals(".") & <>name->Equals("..") & <>name->StartsWith('.')) {
+						path := String->New(folder);
+						path += name;
+						if(Directory->Exists(path)) {
+							sub := below->Size() > 0 ? "{$below}/{$name}" : name;
+							Collect(Folder(path), sub, files, folders);
+						};
+					};
+				};
+			};
+		}
+
+		method : AddImage(images : Table, detections : Table, path : String, folder : String) ~ Nil {
+			row := images->Insert();
+			id := images->Size() - 1;
+			row->Set("id", IntRef->New(id));
+			row->Set("path", path);
+			row->Set("name", BaseName(path));
+			row->Set("folder", folder);
+			row->Set("bytes", IntRef->New(File->Size(path)));
+			row->Set("modified", File->ModifiedTime(path));
+
+			bytes := FileReader->ReadBinaryFile(path);
+			if(bytes = Nil) {
+				row->Set("error", "the file cannot be read");
+				return;
+			};
+
+			header := ImageHeader->Read(bytes);
+			if(header = Nil) {
+				row->Set("error", "not a PNG, JPEG, BMP, GIF or WebP image");
+				return;
+			};
+			row->Set("format", header->GetFormat());
+			row->Set("width", IntRef->New(header->GetWidth()));
+			row->Set("height", IntRef->New(header->GetHeight()));
+			row->Set("channels", IntRef->New(header->GetChannels()));
+
+			if(@detector = Nil) {
+				return;
+			};
+
+			found := @detector->Detect(path, bytes, header->GetWidth(), header->GetHeight());
+			if(found = Nil) {
+				reason := @detector->GetError();
+				row->Set("error", reason <> Nil ? "detector: {$reason}" : "the detector failed");
+				return;
+			};
+
+			row->Set("detections", IntRef->New(found->Size()));
+			each(d : found) {
+				item := found[d];
+				if(item <> Nil) {
+					hit := detections->Insert();
+					hit->Set("id", IntRef->New(detections->Size() - 1));
+					hit->Set("image_id", IntRef->New(id));
+					hit->Set("path", path);
+					if(item->GetLabel() <> Nil) {
+						hit->Set("label", item->GetLabel());
+					};
+					hit->Set("class_id", IntRef->New(item->GetClassId()));
+					hit->Set("score", FloatRef->New(item->GetScore()));
+					hit->Set("x", IntRef->New(item->GetX()));
+					hit->Set("y", IntRef->New(item->GetY()));
+					hit->Set("width", IntRef->New(item->GetWidth()));
+					hit->Set("height", IntRef->New(item->GetHeight()));
+					hit->Set("area", IntRef->New(item->GetWidth() * item->GetHeight()));
+				};
+			};
+		}
+
+		function : ImageColumns() ~ String[] {
+			return ["id", "path", "name", "folder", "format", "width", "height", "channels", "bytes", "modified", "detections", "error"];
+		}
+
+		function : ImageTypes() ~ ColumnType[] {
+			return [ColumnType->INT, ColumnType->STRING, ColumnType->STRING, ColumnType->STRING, ColumnType->STRING,
+				ColumnType->INT, ColumnType->INT, ColumnType->INT, ColumnType->INT, ColumnType->DATE, ColumnType->INT, ColumnType->STRING];
+		}
+
+		function : DetectionColumns() ~ String[] {
+			return ["id", "image_id", "path", "label", "class_id", "score", "x", "y", "width", "height", "area"];
+		}
+
+		function : DetectionTypes() ~ ColumnType[] {
+			return [ColumnType->INT, ColumnType->INT, ColumnType->STRING, ColumnType->STRING, ColumnType->INT, ColumnType->FLOAT,
+				ColumnType->INT, ColumnType->INT, ColumnType->INT, ColumnType->INT, ColumnType->INT];
+		}
+
+		#~
+		Whether a file name is an image this source reads, by its extension
+		@param name file name
+		@return true for .png, .jpg, .jpeg, .bmp, .gif and .webp, in any case
+		~#
+		function : IsImageName(name : String) ~ Bool {
+			dot := name->FindLast('.');
+			if(dot < 1) {
+				return false;
+			};
+
+			ext := name->SubString(dot + 1, name->Size() - dot - 1)->ToLower();
+			return ext->Equals("png") | ext->Equals("jpg") | ext->Equals("jpeg") | ext->Equals("bmp") |
+				ext->Equals("gif") | ext->Equals("webp");
+		}
+
+		function : BaseName(path : String) ~ String {
+			start := 0;
+			each(i : path) {
+				c := path->Get(i);
+				if(c = '/' | c = '\\') {
+					start := i + 1;
+				};
+			};
+			return path->SubString(start, path->Size() - start);
+		}
+
+		function : Folder(path : String) ~ String {
+			if(path->EndsWith('/') | path->EndsWith('\\')) {
+				return path;
+			};
+
+			folder := String->New(path);
+			folder += '/';
+			return folder;
+		}
+
+		# an insertion sort: a folder's names, for an order that does not depend on the
+		# filesystem
+		function : Sort(names : String[]) ~ Nil {
+			for(i := 1; i < names->Size(); i += 1;) {
+				name := names[i];
+				j := i - 1;
+				while(j >= 0 & names[j]->Compare(name) > 0) {
+					names[j + 1] := names[j];
+					j -= 1;
+				};
+				names[j + 1] := name;
+			};
+		}
+	}
+}

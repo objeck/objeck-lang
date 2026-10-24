@@ -1449,6 +1449,7 @@ jobs:
           ../../../compiler/lib_src/query.obs \
           ../../../compiler/lib_src/query_server.obs \
           ../../../compiler/lib_src/query_ml.obs \
+          ../../../compiler/lib_src/query_vision.obs \
           ../../../compiler/lib_src/sdl2.obs \
           ../../../compiler/lib_src/sdl_game.obs \
           ../../../compiler/lib_src/sdl_gl.obs \

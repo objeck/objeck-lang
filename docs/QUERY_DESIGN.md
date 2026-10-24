@@ -810,6 +810,31 @@ design above. Each phase adds its notes here.
   every caller hand-writing the same glue: `Float[]` against `Bool[]` labels, and no way to
   pick a fold's rows (now `where fold = 2`).
 
+**Phase 7 (`query_vision.obl`).**
+- `VisionSource` lives in its own library, `query_vision.obl` (bundle
+  `Query.Structured.Vision`), so a program that only queries files needs neither ONNX
+  Runtime nor OpenCV. Linking it loads neither: a native module loads on the first call into
+  it, so a folder can be listed with no model and no OpenCV installed.
+- Two tables. `images`: id, path, name, folder (the subfolder below the root, which is how a
+  per-camera folder layout becomes a GROUP BY), format, width, height, channels, bytes,
+  modified, detections (a count, empty with no detector) and error. `detections`: id,
+  image_id, path, label, class_id, score, x, y, width, height and area, with the box in the
+  image's own pixels. Files are taken by extension (.png, .jpg, .jpeg, .bmp, .gif, .webp),
+  in name order, subfolders after their parent's files, hidden folders skipped.
+- Format, size and channels come from `ImageHeader`, a pure-Objeck reader of PNG, JPEG (the
+  first start-of-frame segment), BMP (either row order), GIF and WebP (lossy, lossless and
+  extended) headers, so metadata needs no decoder. A file whose bytes are not the image its
+  name says, or that a detector fails on, is a row with an `error`, not a failed load.
+- The detector is the `Detector` interface, as the design says, so the test drives the
+  source with a scripted detector. `YoloDetector` adapts `API.Onnx.YoloSession` (YOLO 8
+  and later); boxes come back in image pixels because the native code undoes its letterbox.
+  The test runs it on the repository's sample photos when `OBJECK_YOLO_MODEL` and
+  `OBJECK_YOLO_LABELS` name a model, and checks every box lies inside its image; where
+  OpenCV is deployed it decodes the generated PNG and BMP and writes a JPEG and a WebP whose
+  headers must agree.
+- A scan hint's row limit caps the images read; its columns are not used, since the two
+  tables share column names.
+
 Toolchain defects found while building these phases were fixed at the source rather than worked
 around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
 (#1299), HTTP status codes and a TLS/collector deadlock (#1300), and `XmlElement` attribute order.
