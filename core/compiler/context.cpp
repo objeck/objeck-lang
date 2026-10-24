@@ -12427,6 +12427,13 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
 
   std::set<std::wstring> unique_names;
 
+  // an enum's items after its '->', typed prefix or not. This lived inside the
+  // instance-variable loop, so it ran once per field (never in a class without
+  // one), only with a prefix, and only for a program enum declared in a class.
+  if(!var_str.empty()) {
+    GetCompletionEnumItems(program, context_klass, var_str, mthd_str, unique_names, found_completion);
+  }
+
   if(var_str.empty() && !mthd_str.empty()) {
     // local variables
     for(size_t i = 0; i < entries.size(); ++i) {
@@ -12545,29 +12552,6 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
         }
       }
 
-      // find enums
-      const std::vector<ParsedBundle*> bundles = program->GetBundles();
-      for(size_t j = 0; j < bundles.size(); ++j) {
-        ParsedBundle* bundle = bundles[j];
-        const std::vector<Enum*> eenums = bundle->GetEnums();
-        for(size_t k = 0; k < eenums.size(); ++k) {
-          Enum* eenum = eenums[k];
-          const std::wstring var_str_check =  L'#' + var_str;
-          if(EndsWith(eenum->GetName(), var_str_check)) {
-            std::map<const std::wstring, EnumItem*> eenum_items = eenum->GetItems();
-            for(std::map<const std::wstring, EnumItem*>::iterator iter = eenum_items.begin(); iter != eenum_items.end(); ++iter) {
-              if(iter->first.rfind(mthd_str, 0) == 0) {
-                std::set<std::wstring>::iterator found = unique_names.find(iter->first);
-                if(found == unique_names.end()) {
-                  unique_names.insert(iter->first);
-                  found_completion.push_back(std::pair<int, std::wstring>(2, iter->first));
-                }
-              }
-            }
-          }
-        }
-      }
-
       // find unique signatures
       if(!found_methods.empty()) {
         for(size_t j = 0; j < found_methods.size(); ++j) {
@@ -12605,6 +12589,119 @@ bool ContextAnalyzer::GetCompletion(ParsedProgram* program, Method* method, cons
   }
 
   return !found_completion.empty();
+}
+
+/****************************
+ * The items of the enum 'var_str' names, for completion after its '->'. The
+ * receiver is resolved as AnalyzeEnumCall resolves it: the class's own enum or
+ * an ancestor's, then a program enum, then a library one. An enum declared in
+ * some other class ('Number->Format->', where only 'Format' reaches here) is
+ * taken when exactly one candidate fits, rather than mixing several enums'
+ * items. Items are CompletionItemKind.EnumMember (20).
+ ****************************/
+void ContextAnalyzer::GetCompletionEnumItems(ParsedProgram* program, Class* context_klass, const std::wstring& var_str, const std::wstring& mthd_str,
+                                             std::set<std::wstring>& unique_names, std::vector<std::pair<int, std::wstring> >& found_completion)
+{
+  // a literal receiver, or a qualified one the caller already cut down
+  if(var_str.empty() || !(iswalpha(var_str[0]) || var_str[0] == L'_')) {
+    return;
+  }
+
+  const std::wstring file_name = context_klass ? context_klass->GetFileName() : L"";
+  const std::vector<std::wstring> uses = program->GetLibUses(file_name);
+  const std::wstring nested_suffix = L'#' + var_str;
+
+  Enum* eenum = nullptr;
+  LibraryEnum* lib_eenum = nullptr;
+
+  // the class's own enum, or an ancestor's (program or library)
+  const std::wstring scoped_name = SearchScopedEnumName(var_str, context_klass);
+  if(!scoped_name.empty()) {
+    eenum = program->GetEnum(scoped_name);
+    if(!eenum && linker) {
+      lib_eenum = linker->SearchEnumLibraries(scoped_name, uses);
+    }
+  }
+
+  // a program enum at bundle level: unqualified, in this class's bundle, or a used one
+  if(!eenum && !lib_eenum) {
+    eenum = program->GetEnum(var_str);
+    if(!eenum && context_klass) {
+      eenum = program->GetEnum(context_klass->GetBundleName() + L'.' + var_str);
+    }
+    for(size_t i = 0; !eenum && i < uses.size(); ++i) {
+      eenum = program->GetEnum(uses[i] + L'.' + var_str);
+    }
+  }
+
+  // a program enum declared in another class
+  if(!eenum && !lib_eenum) {
+    Enum* candidate = nullptr; bool ambiguous = false;
+    const std::vector<ParsedBundle*> bundles = program->GetBundles();
+    for(size_t i = 0; i < bundles.size(); ++i) {
+      const std::vector<Enum*> eenums = bundles[i]->GetEnums();
+      for(size_t j = 0; j < eenums.size(); ++j) {
+        if(EndsWith(eenums[j]->GetName(), nested_suffix)) {
+          ambiguous = ambiguous || (candidate && candidate != eenums[j]);
+          candidate = eenums[j];
+        }
+      }
+    }
+    if(!ambiguous) {
+      eenum = candidate;
+    }
+  }
+
+  // a library enum at bundle level, by its full name or through a 'use'
+  if(!eenum && !lib_eenum && linker) {
+    lib_eenum = linker->SearchEnumLibraries(var_str, uses);
+  }
+
+  // a library enum declared in a class whose bundle is used
+  if(!eenum && !lib_eenum && linker) {
+    LibraryEnum* candidate = nullptr; bool ambiguous = false;
+    const std::unordered_map<std::wstring, LibraryEnum*>& enum_map = linker->GetAllEnumsMap();
+    for(std::unordered_map<std::wstring, LibraryEnum*>::const_iterator iter = enum_map.begin(); iter != enum_map.end(); ++iter) {
+      const std::wstring& name = iter->first;
+      if(!EndsWith(name, nested_suffix)) {
+        continue;
+      }
+
+      // 'Bundle.Klass#Name': the bundle is what precedes the class's last '.'
+      const std::wstring klass_name = name.substr(0, name.size() - nested_suffix.size());
+      const size_t dot = klass_name.find_last_of(L'.');
+      const std::wstring bundle_name = dot == std::wstring::npos ? L"" : klass_name.substr(0, dot);
+      if(std::find(uses.begin(), uses.end(), bundle_name) != uses.end()) {
+        ambiguous = ambiguous || (candidate && candidate != iter->second);
+        candidate = iter->second;
+      }
+    }
+    if(!ambiguous) {
+      lib_eenum = candidate;
+    }
+  }
+
+  std::vector<std::wstring> item_names;
+  if(eenum) {
+    std::map<const std::wstring, EnumItem*> items = eenum->GetItems();
+    for(std::map<const std::wstring, EnumItem*>::iterator iter = items.begin(); iter != items.end(); ++iter) {
+      item_names.push_back(iter->first);
+    }
+  }
+  else if(lib_eenum) {
+    std::map<const std::wstring, LibraryEnumItem*> items = lib_eenum->GetItems();
+    for(std::map<const std::wstring, LibraryEnumItem*>::iterator iter = items.begin(); iter != items.end(); ++iter) {
+      item_names.push_back(iter->first);
+    }
+  }
+
+  for(size_t i = 0; i < item_names.size(); ++i) {
+    const std::wstring& item_name = item_names[i];
+    if(item_name.rfind(mthd_str, 0) == 0 && unique_names.find(item_name) == unique_names.end()) {
+      unique_names.insert(item_name);
+      found_completion.push_back(std::pair<int, std::wstring>(20, item_name));
+    }
+  }
 }
 
 void ContextAnalyzer::GetCompletionMethods(MethodCall* mthd_call, const std::wstring mthd_str, std::set<std::wstring> unique_names, std::vector<std::pair<int, std::wstring> >& found_completion)

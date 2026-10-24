@@ -18837,6 +18837,21 @@
 		]
 	},
 	"enum-details": {
+		"API.Google.Gemini.Model#TaskType": {
+			"name": "TaskType",
+			"bundle": "API.Google.Gemini",
+			"class": "API.Google.Gemini.Model",
+			"kind": "enum",
+			"description": "What an embedding will be used for, which Gemini uses to tune it.",
+			"items": [
+				{ "name": "TASK_TYPE_UNSPECIFIED", "value": "0", "description": "No task type is sent." },
+				{ "name": "RETRIEVAL_QUERY", "value": "1", "description": "A search query." },
+				{ "name": "RETRIEVAL_DOCUMENT", "value": "2", "description": "A document to be searched; it may carry a title." },
+				{ "name": "SEMANTIC_SIMILARITY", "value": "3", "description": "Text to compare for similarity." },
+				{ "name": "CLASSIFICATION", "value": "4", "description": "Text to classify." },
+				{ "name": "CLUSTERING", "value": "5", "description": "Text to cluster." }
+			]
+		},
 		"API.Inference.Client#Protocol": {
 			"name": "Protocol",
 			"bundle": "API.Inference",
@@ -18846,6 +18861,48 @@
 			"items": [
 				{ "name": "OPEN_INFERENCE", "value": "0", "description": "KServe v2, the Open Inference Protocol. Triton, KServe, OpenVINO Model Server and Seldon MLServer. Flat data with an explicit shape and datatype in both directions, which is why it is the default." },
 				{ "name": "TF_SERVING", "value": "1", "description": "TensorFlow Serving's own REST API. It does not implement KServe v2, so it needs its own request shape: the tensor is nested to express its shape rather than carrying one, and the datatype is inferred." }
+			]
+		},
+		"API.Onnx.OpenPoseClassification#Type": {
+			"name": "Type",
+			"bundle": "API.Onnx",
+			"class": "API.Onnx.OpenPoseClassification",
+			"kind": "enum",
+			"description": "A body keypoint, in the order of the COCO keypoint set the OpenPose model reports.",
+			"items": [
+				{ "name": "NOSE", "value": "0", "description": "" },
+				{ "name": "LEFT_EYE", "value": "1", "description": "" },
+				{ "name": "RIGHT_EYE", "value": "2", "description": "" },
+				{ "name": "LEFT_EAR", "value": "3", "description": "" },
+				{ "name": "RIGHT_EAR", "value": "4", "description": "" },
+				{ "name": "LEFT_SHOULDER", "value": "5", "description": "" },
+				{ "name": "RIGHT_SHOULDER", "value": "6", "description": "" },
+				{ "name": "LEFT_ELBOW", "value": "7", "description": "" },
+				{ "name": "RIGHT_ELBOW", "value": "8", "description": "" },
+				{ "name": "LEFT_WRIST", "value": "9", "description": "" },
+				{ "name": "RIGHT_WRIST", "value": "10", "description": "" },
+				{ "name": "LEFT_HIP", "value": "11", "description": "" },
+				{ "name": "RIGHT_HIP", "value": "12", "description": "" },
+				{ "name": "LEFT_KNEE", "value": "13", "description": "" },
+				{ "name": "RIGHT_KNEE", "value": "14", "description": "" },
+				{ "name": "LEFT_ANKLE", "value": "15", "description": "" },
+				{ "name": "RIGHT_ANKLE", "value": "16", "description": "" }
+			]
+		},
+		"API.OpenAI.Image#Size": {
+			"name": "Size",
+			"bundle": "API.OpenAI",
+			"class": "API.OpenAI.Image",
+			"kind": "enum",
+			"description": "The size of an image to generate or edit; each DALL-E model accepts its own.",
+			"items": [
+				{ "name": "DALLE2_256_256", "value": "0", "description": "256x256 (DALL-E 2)" },
+				{ "name": "DALLE2_512_512", "value": "1", "description": "512x512 (DALL-E 2)" },
+				{ "name": "DALLE2_1024_1024", "value": "2", "description": "1024x1024 (DALL-E 2)" },
+				{ "name": "DALLE3_1024_1024", "value": "3", "description": "1024x1024 (DALL-E 3)" },
+				{ "name": "DALLE3_1792_1024", "value": "4", "description": "1792x1024 (DALL-E 3)" },
+				{ "name": "DALLE3_1024_1792", "value": "5", "description": "1024x1792 (DALL-E 3)" },
+				{ "name": "DALLE_DEFAULT", "value": "6", "description": "No size is sent; the model uses its default." }
 			]
 		},
 		"API.OpenAI.ImageQuery#MimeType": {
@@ -19031,6 +19088,107 @@
 				{ "name": "OTSU", "value": "8", "description": "" }
 			]
 		},
+		"API.OpenCV.VideoCapture#Api": {
+			"name": "Api",
+			"bundle": "API.OpenCV",
+			"class": "API.OpenCV.VideoCapture",
+			"kind": "consts",
+			"description": "The capture backend VideoCapture prefers, as OpenCV's cv::VideoCaptureAPIs. CAP_ANY lets OpenCV choose.",
+			"items": [
+				{ "name": "CAP_ANY", "value": "0", "description": "" },
+				{ "name": "CAP_VFW", "value": "200", "description": "" },
+				{ "name": "CAP_V4L", "value": "200", "description": "" },
+				{ "name": "CAP_V4L2", "value": "200", "description": "" },
+				{ "name": "CAP_FIREWIRE", "value": "300", "description": "" },
+				{ "name": "CAP_FIREWARE", "value": "300", "description": "" },
+				{ "name": "CAP_IEEE1394", "value": "300", "description": "" },
+				{ "name": "CAP_DC1394", "value": "300", "description": "" },
+				{ "name": "CAP_CMU1394", "value": "300", "description": "" },
+				{ "name": "CAP_QT", "value": "500", "description": "" },
+				{ "name": "CAP_UNICAP", "value": "600", "description": "" },
+				{ "name": "CAP_DSHOW", "value": "700", "description": "" },
+				{ "name": "CAP_PVApi", "value": "800", "description": "" },
+				{ "name": "CAP_OPENNI", "value": "900", "description": "" },
+				{ "name": "CAP_OPENNI_ASUS", "value": "910", "description": "" },
+				{ "name": "CAP_ANDROID", "value": "1000", "description": "" },
+				{ "name": "CAP_XIApi", "value": "1100", "description": "" },
+				{ "name": "CAP_AVFOUNDATION", "value": "1200", "description": "" },
+				{ "name": "CAP_GIGANETIX", "value": "1300", "description": "" },
+				{ "name": "CAP_MSMF", "value": "1400", "description": "" },
+				{ "name": "CAP_WINRT", "value": "1410", "description": "" },
+				{ "name": "CAP_INTELPERC", "value": "1500", "description": "" },
+				{ "name": "CAP_OPENNI2", "value": "1600", "description": "" },
+				{ "name": "CAP_OPENNI2_ASUS", "value": "1610", "description": "" },
+				{ "name": "CAP_GPHOTO2", "value": "1700", "description": "" },
+				{ "name": "CAP_GSTREAMER", "value": "1800", "description": "" },
+				{ "name": "CAP_FFMPEG", "value": "1900", "description": "" },
+				{ "name": "CAP_IMAGES", "value": "2000", "description": "" },
+				{ "name": "CAP_ARAVIS", "value": "2100", "description": "" },
+				{ "name": "CAP_OPENCV_MJPEG", "value": "2200", "description": "" },
+				{ "name": "CAP_INTEL_MFX", "value": "2300", "description": "" },
+				{ "name": "CAP_XINE", "value": "2400", "description": "" }
+			]
+		},
+		"API.OpenCV.VideoCapture#Property": {
+			"name": "Property",
+			"bundle": "API.OpenCV",
+			"class": "API.OpenCV.VideoCapture",
+			"kind": "consts",
+			"description": "A capture property to read with Get or write with Set, as OpenCV's cv::VideoCaptureProperties. A backend may not support every property.",
+			"items": [
+				{ "name": "CAP_PROP_POS_MSEC", "value": "0", "description": "" },
+				{ "name": "CAP_PROP_POS_FRAMES", "value": "1", "description": "" },
+				{ "name": "CAP_PROP_POS_AVI_RATIO", "value": "2", "description": "" },
+				{ "name": "CAP_PROP_FRAME_WIDTH", "value": "3", "description": "" },
+				{ "name": "CAP_PROP_FRAME_HEIGHT", "value": "4", "description": "" },
+				{ "name": "CAP_PROP_FPS", "value": "5", "description": "" },
+				{ "name": "CAP_PROP_FOURCC", "value": "6", "description": "" },
+				{ "name": "CAP_PROP_FRAME_COUNT", "value": "7", "description": "" },
+				{ "name": "CAP_PROP_FORMAT", "value": "8", "description": "" },
+				{ "name": "CAP_PROP_MODE", "value": "9", "description": "" },
+				{ "name": "CAP_PROP_BRIGHTNESS", "value": "10", "description": "" },
+				{ "name": "CAP_PROP_CONTRAST", "value": "11", "description": "" },
+				{ "name": "CAP_PROP_SATURATION", "value": "12", "description": "" },
+				{ "name": "CAP_PROP_HUE", "value": "13", "description": "" },
+				{ "name": "CAP_PROP_GAIN", "value": "14", "description": "" },
+				{ "name": "CAP_PROP_EXPOSURE", "value": "15", "description": "" },
+				{ "name": "CAP_PROP_CONVERT_RGB", "value": "16", "description": "" },
+				{ "name": "CAP_PROP_WHITE_BALANCE_BLUE_U", "value": "17", "description": "" },
+				{ "name": "CAP_PROP_RECTIFICATION", "value": "18", "description": "" },
+				{ "name": "CAP_PROP_MONOCHROME", "value": "19", "description": "" },
+				{ "name": "CAP_PROP_SHARPNESS", "value": "20", "description": "" },
+				{ "name": "CAP_PROP_AUTO_EXPOSURE", "value": "21", "description": "" },
+				{ "name": "CAP_PROP_GAMMA", "value": "22", "description": "" },
+				{ "name": "CAP_PROP_TEMPERATURE", "value": "23", "description": "" },
+				{ "name": "CAP_PROP_TRIGGER", "value": "24", "description": "" },
+				{ "name": "CAP_PROP_TRIGGER_DELAY", "value": "25", "description": "" },
+				{ "name": "CAP_PROP_WHITE_BALANCE_RED_V", "value": "26", "description": "" },
+				{ "name": "CAP_PROP_ZOOM", "value": "27", "description": "" },
+				{ "name": "CAP_PROP_FOCUS", "value": "28", "description": "" },
+				{ "name": "CAP_PROP_GUID", "value": "29", "description": "" },
+				{ "name": "CAP_PROP_ISO_SPEED", "value": "30", "description": "" },
+				{ "name": "CAP_PROP_BACKLIGHT", "value": "32", "description": "" },
+				{ "name": "CAP_PROP_PAN", "value": "33", "description": "" },
+				{ "name": "CAP_PROP_TILT", "value": "34", "description": "" },
+				{ "name": "CAP_PROP_ROLL", "value": "35", "description": "" },
+				{ "name": "CAP_PROP_IRIS", "value": "36", "description": "" },
+				{ "name": "CAP_PROP_SETTINGS", "value": "37", "description": "" },
+				{ "name": "CAP_PROP_BUFFERSIZE", "value": "38", "description": "" },
+				{ "name": "CAP_PROP_AUTOFOCUS", "value": "39", "description": "" },
+				{ "name": "CAP_PROP_SAR_NUM", "value": "40", "description": "" },
+				{ "name": "CAP_PROP_SAR_DEN", "value": "41", "description": "" },
+				{ "name": "CAP_PROP_BACKEND", "value": "42", "description": "" },
+				{ "name": "CAP_PROP_CHANNEL", "value": "43", "description": "" },
+				{ "name": "CAP_PROP_AUTO_WB", "value": "44", "description": "" },
+				{ "name": "CAP_PROP_WB_TEMPERATURE", "value": "45", "description": "" },
+				{ "name": "CAP_PROP_CODEC_PIXEL_FORMAT", "value": "46", "description": "" },
+				{ "name": "CAP_PROP_BITRATE", "value": "47", "description": "" },
+				{ "name": "CAP_PROP_ORIENTATION_META", "value": "48", "description": "" },
+				{ "name": "CAP_PROP_ORIENTATION_AUTO", "value": "49", "description": "" },
+				{ "name": "CAP_PROP_OPEN_TIMEOUT_MSEC", "value": "53", "description": "" },
+				{ "name": "CAP_PROP_READ_TIMEOUT_MSEC", "value": "54", "description": "" }
+			]
+		},
 		"Collection.Cache#Type": {
 			"name": "Type",
 			"bundle": "Collection",
@@ -19082,6 +19240,31 @@
 				{ "name": "ARRAY", "value": "5", "description": "" },
 				{ "name": "OBJECT", "value": "6", "description": "" },
 				{ "name": "OTHER", "value": "7", "description": "" }
+			]
+		},
+		"Data.JSON.Token#Type": {
+			"name": "Type",
+			"bundle": "Data.JSON",
+			"class": "Data.JSON.Token",
+			"kind": "enum",
+			"description": "The kind of a token read by the JSON scanner.",
+			"items": [
+				{ "name": "IDENT", "value": "0", "description": "A quoted string; the value is its text." },
+				{ "name": "INT_NUM", "value": "1", "description": "An integer number." },
+				{ "name": "FLOAT_NUM", "value": "2", "description": "A number with a fraction or exponent." },
+				{ "name": "BAD_NUM", "value": "3", "description": "Text that starts like a number but is not a valid one." },
+				{ "name": "TRUE", "value": "4", "description": "The literal true." },
+				{ "name": "FALSE", "value": "5", "description": "The literal false." },
+				{ "name": "NULL", "value": "6", "description": "The literal null." },
+				{ "name": "COMMA", "value": "7", "description": "A comma." },
+				{ "name": "OBR", "value": "8", "description": "An opening bracket." },
+				{ "name": "CBR", "value": "9", "description": "A closing bracket." },
+				{ "name": "OCBR", "value": "10", "description": "An opening brace." },
+				{ "name": "CCBR", "value": "11", "description": "A closing brace." },
+				{ "name": "PREN", "value": "12", "description": "Not produced by the scanner." },
+				{ "name": "COLON", "value": "13", "description": "A colon." },
+				{ "name": "OTHER", "value": "14", "description": "Any other character." },
+				{ "name": "EOS", "value": "15", "description": "The end of the input." }
 			]
 		},
 		"Data.JSON.Scheme.ParameterType#Type": {
@@ -19732,6 +19915,18 @@
 				{ "name": "SDL_MESSAGEBOX_BUTTONS_RIGHT_TO_LEFT", "value": "0x00000100", "description": "" }
 			]
 		},
+		"Game.SDL2.Mixer#Flags": {
+			"name": "Flags",
+			"bundle": "Game.SDL2",
+			"class": "Game.SDL2.Mixer",
+			"kind": "consts",
+			"description": "Mixer defaults, as SDL_mixer defines them.",
+			"items": [
+				{ "name": "MIX_DEFAULT_FORMAT", "value": "0x8010", "description": "The default sample format, signed 16-bit in the system's byte order." },
+				{ "name": "MIX_DEFAULT_CHANNELS", "value": "2", "description": "The default channel count: stereo." },
+				{ "name": "MIX_MAX_VOLUME", "value": "128", "description": "The loudest volume Volume and VolumeMusic accept." }
+			]
+		},
 		"Game.SDL2.MixerInitFlags": {
 			"name": "MixerInitFlags",
 			"bundle": "Game.SDL2",
@@ -20240,23 +20435,6 @@
 				{ "name": "SMALL", "value": "2", "description": "" }
 			]
 		},
-		"Query.Structured.Conditional#Qualifier": {
-			"name": "Qualifier",
-			"bundle": "Query.Structured",
-			"class": "Query.Structured.Conditional",
-			"kind": "enum",
-			"description": "Conditional comparisons",
-			"items": [
-				{ "name": "EQUAL", "value": "0", "description": "" },
-				{ "name": "NOT_EQUAL", "value": "1", "description": "" },
-				{ "name": "GREATER", "value": "2", "description": "" },
-				{ "name": "LESS", "value": "3", "description": "" },
-				{ "name": "GREATER_EQUAL", "value": "4", "description": "" },
-				{ "name": "LESS_EQUAL", "value": "5", "description": "" },
-				{ "name": "LIKE", "value": "6", "description": "" },
-				{ "name": "NOT_LIKE", "value": "7", "description": "" }
-			]
-		},
 		"Query.Structured.Op": {
 			"name": "Op",
 			"bundle": "Query.Structured",
@@ -20290,6 +20468,46 @@
 			"items": [
 				{ "name": "ASC", "value": "0", "description": "" },
 				{ "name": "DESC", "value": "1", "description": "" }
+			]
+		},
+		"Query.Structured.Token#Type": {
+			"name": "Type",
+			"bundle": "Query.Structured",
+			"class": "Query.Structured.Token",
+			"kind": "enum",
+			"description": "The kind of a token read by the filter Parser's scanner. Keywords are recognized without regard to case; 'true' and 'false' scan as the integers 1 and 0.",
+			"items": [
+				{ "name": "SELECT", "value": "0", "description": "" },
+				{ "name": "DISTINCT", "value": "1", "description": "" },
+				{ "name": "FROM", "value": "2", "description": "" },
+				{ "name": "WHERE", "value": "3", "description": "" },
+				{ "name": "LIKE", "value": "4", "description": "" },
+				{ "name": "NOT", "value": "5", "description": "" },
+				{ "name": "BETWEEN", "value": "6", "description": "" },
+				{ "name": "IN", "value": "7", "description": "" },
+				{ "name": "AND", "value": "8", "description": "" },
+				{ "name": "OR", "value": "9", "description": "" },
+				{ "name": "ORDER", "value": "10", "description": "" },
+				{ "name": "BY", "value": "11", "description": "" },
+				{ "name": "STAR", "value": "12", "description": "" },
+				{ "name": "COMMA", "value": "13", "description": "" },
+				{ "name": "OPRN", "value": "14", "description": "" },
+				{ "name": "CPRN", "value": "15", "description": "" },
+				{ "name": "EQUAL", "value": "16", "description": "" },
+				{ "name": "NOT_EQUAL", "value": "17", "description": "" },
+				{ "name": "LESS_EQUAL", "value": "18", "description": "" },
+				{ "name": "LESS", "value": "19", "description": "" },
+				{ "name": "GREATER_EQUAL", "value": "20", "description": "" },
+				{ "name": "GREATER", "value": "21", "description": "" },
+				{ "name": "REF", "value": "22", "description": "A column name or a quoted string." },
+				{ "name": "OPER", "value": "23", "description": "Not produced by the scanner." },
+				{ "name": "INT", "value": "24", "description": "" },
+				{ "name": "FLOAT", "value": "25", "description": "" },
+				{ "name": "DATE", "value": "26", "description": "" },
+				{ "name": "TRUE", "value": "27", "description": "Not produced by the scanner." },
+				{ "name": "FASLE", "value": "28", "description": "Not produced by the scanner." },
+				{ "name": "EOS", "value": "29", "description": "The end of the input." },
+				{ "name": "PARAM", "value": "30", "description": "A '?' placeholder, numbered in order." }
 			]
 		},
 		"System.Number#Format": {
@@ -20381,6 +20599,46 @@
 				{ "name": "FLOAT", "value": "-56", "description": "" },
 				{ "name": "CLASS", "value": "-55", "description": "" },
 				{ "name": "FUNC", "value": "-54", "description": "" }
+			]
+		},
+		"Web.HTTP.HttpClient#Task": {
+			"name": "Task",
+			"bundle": "Web.HTTP",
+			"class": "Web.HTTP.HttpClient",
+			"kind": "enum",
+			"description": "The HTTP method of a request.",
+			"items": [
+				{ "name": "GET", "value": "0", "description": "GET" },
+				{ "name": "DELETE", "value": "1", "description": "DELETE" },
+				{ "name": "POST", "value": "2", "description": "POST" },
+				{ "name": "PUT", "value": "3", "description": "PUT" },
+				{ "name": "PATCH", "value": "4", "description": "PATCH" }
+			]
+		},
+		"Web.HTTP.HttpsClient#Task": {
+			"name": "Task",
+			"bundle": "Web.HTTP",
+			"class": "Web.HTTP.HttpsClient",
+			"kind": "enum",
+			"description": "The HTTP method of a request.",
+			"items": [
+				{ "name": "GET", "value": "0", "description": "GET" },
+				{ "name": "DELETE", "value": "1", "description": "DELETE" },
+				{ "name": "POST", "value": "2", "description": "POST" },
+				{ "name": "PUT", "value": "3", "description": "PUT" },
+				{ "name": "PATCH", "value": "4", "description": "PATCH" }
+			]
+		},
+		"Web.HTTP.Server.Response#Compression": {
+			"name": "Compression",
+			"bundle": "Web.HTTP.Server",
+			"class": "Web.HTTP.Server.Response",
+			"kind": "enum",
+			"description": "How SetCompression encodes a response's content.",
+			"items": [
+				{ "name": "NONE", "value": "100", "description": "Not compressed." },
+				{ "name": "GZIP", "value": "101", "description": "gzip (RFC 1952), sent as Content-Encoding: gzip." },
+				{ "name": "DEFLATE", "value": "102", "description": "The zlib format (RFC 1950), which is what HTTP calls deflate." }
 			]
 		},
 		"Web.Server.Request#Method": {

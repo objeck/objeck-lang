@@ -1474,23 +1474,77 @@ each(r := results) {
 
 	# ---------- flat NFA instruction ----------
 	class : private : Instruction {
+		#~
+		An instruction of the compiled matcher. A pattern compiles to a flat program of these, which a Pike VM runs over the input, following every thread at once.
+		~#
 		enum Op := 0 {
+			#~
+			Matches one given character.
+			~#
 			CHAR,
+			#~
+			Matches any one character.
+			~#
 			ANY,
+			#~
+			Matches a digit (\d).
+			~#
 			DIGIT,
+			#~
+			Matches a non-digit (\D).
+			~#
 			NOT_DIGIT,
+			#~
+			Matches a word character (\w).
+			~#
 			WORD,
+			#~
+			Matches a non-word character (\W).
+			~#
 			NOT_WORD,
+			#~
+			Matches whitespace (\s).
+			~#
 			WHITESPACE,
+			#~
+			Matches non-whitespace (\S).
+			~#
 			NOT_WHITESPACE,
+			#~
+			Matches one character of a character set ([...]).
+			~#
 			CLASS,
+			#~
+			Continues at both targets: the first is preferred.
+			~#
 			SPLIT,
+			#~
+			Continues at the target.
+			~#
 			JUMP,
+			#~
+			The pattern has matched.
+			~#
 			MATCH,
+			#~
+			Matches at the start of the input (^).
+			~#
 			ANC_START,
+			#~
+			Matches at the end of the input ($).
+			~#
 			ANC_END,
+			#~
+			Matches at a word boundary (\b).
+			~#
 			WORD_BOUND,
+			#~
+			Matches where there is no word boundary (\B).
+			~#
 			NOT_WORD_BOUND,
+			#~
+			Marks a capture group's start or end; captures are recovered by a second pass.
+			~#
 			SAVE
 		}
 
@@ -1676,6 +1730,9 @@ each(r := results) {
 	# ---------- sub-expression value object ----------
 	class : private : Expression {
 		# expression type
+		#~
+		The kind of a parsed regular expression node, before it is compiled to instructions.
+		~#
 		enum Type := -100 {
 			CHAR,
 			ANY,

@@ -44,6 +44,9 @@ bundle API.OpenCV {
 		@fn_opencv_video_set : static : String;
 		@capture : Int;
 
+		#~
+		The capture backend VideoCapture prefers, as OpenCV's cv::VideoCaptureAPIs. CAP_ANY lets OpenCV choose.
+		~#
 		consts Api {
 			CAP_ANY := 0,
 			CAP_VFW := 200,
@@ -79,6 +82,9 @@ bundle API.OpenCV {
 			CAP_XINE := 2400
 		}
 
+		#~
+		A capture property to read with Get or write with Set, as OpenCV's cv::VideoCaptureProperties. A backend may not support every property.
+		~#
 		consts Property {
 		  CAP_PROP_POS_MSEC := 0,
 		  CAP_PROP_POS_FRAMES := 1,

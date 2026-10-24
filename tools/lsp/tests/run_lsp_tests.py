@@ -594,7 +594,13 @@ def check_enum_docs(c, apis_json):
 
     items = complete("Mine->RED", len("Mine->"))
     log_result("a program's own enum is not taken for a library one",
-               not any(i.get("kind") == 20 for i in items), f"got: {[i.get('label') for i in items][:8]}")
+               [i.get("label") for i in items if i.get("kind") == 20] == ["GREEN", "RED"]
+               and not any("detail" in i for i in items if i.get("kind") == 20),
+               f"got: {[(i.get('label'), i.get('detail')) for i in items][:8]}")
+
+    labels = [i.get("label") for i in complete("ColumnType->INT", len("ColumnType->"))]
+    log_result("index and analyzer items are merged without duplicates",
+               len(labels) == len(set(labels)), f"got: {labels}")
 
     value = hover("ColumnType->INT", 2)
     log_result("hover on a library enum shows its documentation and items",
@@ -1072,6 +1078,81 @@ def check_clamped_positions(c):
     log_result("positions past a line, or past the document, are clamped",
                end == document_end(expected), f"server's end {end}, editor's {document_end(expected)}")
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
+def check_analyzer_enum_items(obr, server_obe, apis_json, bin_dir):
+    """The analyzer's own enum-item completion, with the index's enums removed.
+
+    ContextAnalyzer::GetCompletion looked for enum items inside its loop over
+    the class's instance variables, so a class without one got none; it needed
+    a typed prefix, and it found only a program enum declared in a class. A
+    bundle-level enum, a library enum, or 'Enum->' with nothing typed after it
+    offered only keywords.
+    """
+    with open(apis_json, encoding="utf-8") as f:
+        index = json.load(f)
+    index.pop("enum-details", None)
+    tmp_dir = tempfile.mkdtemp(prefix="objk-lsp-")
+    stripped = os.path.join(tmp_dir, "objk_apis.json")
+    with open(stripped, "w", encoding="utf-8") as f:
+        json.dump(index, f)
+
+    c = LspClient(obr, server_obe, stripped, bin_dir)
+    try:
+        c.request("initialize", {"processId": os.getpid(), "rootUri": None, "capabilities": {}}, timeout=90)
+        c.notify("initialized", {})
+
+        text = ("class Holder {\n"
+                "  enum Shade {\n"
+                "    LIGHT,\n"
+                "    DARK\n"
+                "  }\n"
+                "\n"
+                "  function : Pick() ~ Int {\n"
+                "    return Shade->DARK->As(Int);\n"
+                "  }\n"
+                "}\n"
+                "\n"
+                "class Analyzer {\n"
+                "  function : Main(args : String[]) ~ Nil {\n"
+                "    m := Mine->GREEN;\n"
+                "    s := Holder->Shade->LIGHT;\n"
+                "    f := Number->Format->HEX;\n"
+                "  }\n"
+                "}\n"
+                "\n"
+                "enum Mine {\n"
+                "  RED,\n"
+                "  GREEN\n"
+                "}\n")
+        uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_analyzer_enums.obs"))
+        c.notify("textDocument/didOpen", {"textDocument": {
+            "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+        c.diagnostics_for(uri, timeout=60)
+
+        def enum_items(needle, offset):
+            found = completion_items(c.request("textDocument/completion", dict(
+                position_in(text, uri, needle, 1, offset), context={"triggerKind": 1})))
+            return [i.get("label") for i in found if i.get("kind") == 20]
+
+        got = enum_items("Mine->GREEN", len("Mine->"))
+        log_result("analyzer: a program enum at bundle level, nothing typed after '->'",
+                   got == ["GREEN", "RED"], f"got: {got}")
+        got = enum_items("Mine->GREEN", len("Mine->G"))
+        log_result("analyzer: enum items filter by the typed prefix", got == ["GREEN"], f"got: {got}")
+        got = enum_items("Holder->Shade->LIGHT", len("Holder->Shade->"))
+        log_result("analyzer: a program enum declared in another class",
+                   got == ["DARK", "LIGHT"], f"got: {got}")
+        got = enum_items("Shade->DARK", len("Shade->"))
+        log_result("analyzer: a class's own enum, in a class with no fields",
+                   got == ["DARK", "LIGHT"], f"got: {got}")
+        got = enum_items("Format->HEX", len("Format->"))
+        log_result("analyzer: a library enum declared in a class, through the linker",
+                   sorted(got) == ["DEC", "DEFAULT", "FIXED", "HEX", "OCT", "SCIENTIFIC"], f"got: {got}")
+        c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+    finally:
+        c.close()
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 def check_utf16_only_client(obr, server_obe, apis_json, bin_dir):
@@ -2454,6 +2535,7 @@ def main():
     check_progress_and_log(obr, server_obe, apis_json, bin_dir)
     check_pull_diagnostics(obr, server_obe, apis_json, bin_dir)
     check_utf16_only_client(obr, server_obe, apis_json, bin_dir)
+    check_analyzer_enum_items(obr, server_obe, apis_json, bin_dir)
 
     # --- rootUri-only session (Kate/ecode-style clients) -----------------------
     # No workspaceFolders at all: the rootUri fallback must configure the

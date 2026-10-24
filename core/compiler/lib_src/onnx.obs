@@ -2083,6 +2083,9 @@ text->PrintLine();
 		@norm_y : Float;
 		@confidence : Float;
 
+		#~
+		A body keypoint, in the order of the COCO keypoint set the OpenPose model reports.
+		~#
 		enum Type {
 			NOSE, 
 			LEFT_EYE,

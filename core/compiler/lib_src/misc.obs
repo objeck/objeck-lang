@@ -295,12 +295,33 @@ if(triplet <> Nil) {
 		@index : Int;
 		@type : Type;
 
+		#~
+		Which field of a date a part of a DateUtility format string reads.
+		~#
 		enum Type {
+			#~
+			MM
+			~#
 			Month,
+			#~
+			dd
+			~#
 			Day,
+			#~
+			yy or yyyy
+			~#
 			Year,
+			#~
+			hh
+			~#
 			Hour,
+			#~
+			mm
+			~#
 			Min,
+			#~
+			ss
+			~#
 			Sec
 		}
 
@@ -2286,6 +2307,9 @@ formatter->Format(src, false)->PrintLine();
 		@type : Token->Type;
 		@value : String;
 
+		#~
+		The kind of a token read by CodeFormatter's scanner: a keyword (the _ID items), a literal, an operator or punctuation, a comment, or the end of the input.
+		~#
 		enum Type := -128 {
 			AND_ID,
 			OR_ID,
