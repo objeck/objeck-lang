@@ -341,6 +341,11 @@ namespace instructions {
     // Runtime->GetProcessId() and Runtime->IsProcessAlive(pid): a lock names
     // its holder, and a lock whose holder has gone is stale
     PROCESS_ID,
-    PROCESS_ALIVE
+    PROCESS_ALIVE,
+    // Byte->UncompressDeflate(input, limit) and UncompressGzip(input, limit):
+    // inflate at most 'limit' bytes, answering Nil past it, so a zip bomb is
+    // stopped at the caller's bound rather than the VM's 512 MB buffer limit
+    UNCOMPRESS_DEFLATE_LIMIT,
+    UNCOMPRESS_GZIP_LIMIT
   };
 }

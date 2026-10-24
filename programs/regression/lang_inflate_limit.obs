@@ -1,0 +1,106 @@
+#~
+Byte->UncompressDeflate(input, limit) and Byte->UncompressGzip(input, limit) inflate at most
+'limit' bytes and answer Nil past it, so a reader of untrusted archives can bound what a member
+expands to. Before them, the only bound was the VM's 512 MB buffer limit: a few kilobytes of
+deflate data could make a zip reader allocate half a gigabyte before failing, and a member
+whose header understated its size could not be told from a damaged one.
+
+Checked: output exactly at the limit is returned, one byte over is Nil (not an error), a
+"bomb" (32 MB of zeros, about 32 KB compressed) under a 1 MB limit is Nil, damaged and
+truncated data still raise, a negative limit raises, and the empty stream works with a
+limit of 0.
+~#
+class LangInflateLimit {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Same(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+
+		return true;
+	}
+
+	function : Raises(bytes : Byte[], limit : Int, gzip : Bool) ~ Bool {
+		failed := false;
+		try {
+			if(gzip) {
+				Byte->UncompressGzip(bytes, limit);
+			}
+			else {
+				Byte->UncompressDeflate(bytes, limit);
+			};
+		}
+		on(e : Error) {
+			failed := true;
+		};
+		return failed;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		text := "";
+		each(i : 2000) {
+			text += "row {$i}, value {$(i * 7)}\n";
+		};
+		plain := text->ToByteArray();
+		size := plain->Size();
+
+		raw := plain->CompressDeflate();
+		Check("deflate: output at the limit is returned", Same(plain, Byte->UncompressDeflate(raw, size)));
+		Check("deflate: a larger limit returns it all", Same(plain, Byte->UncompressDeflate(raw, size * 10)));
+		Check("deflate: one byte over the limit is Nil", Byte->UncompressDeflate(raw, size - 1) = Nil);
+		Check("deflate: a tiny limit is Nil", Byte->UncompressDeflate(raw, 1) = Nil);
+
+		gz := plain->CompressGzip();
+		Check("gzip: output at the limit is returned", Same(plain, Byte->UncompressGzip(gz, size)));
+		Check("gzip: one byte over the limit is Nil", Byte->UncompressGzip(gz, size - 1) = Nil);
+
+		# a bomb: 32 MB of zeros compresses to about 32 KB
+		zeros := Byte->New[32 * 1024 * 1024];
+		bomb := zeros->CompressDeflate();
+		Check("the bomb is small", bomb->Size() < 64 * 1024);
+		Check("deflate: a bomb stops at the limit", Byte->UncompressDeflate(bomb, 1024 * 1024) = Nil);
+		Check("gzip: a bomb stops at the limit", Byte->UncompressGzip(zeros->CompressGzip(), 1024 * 1024) = Nil);
+		whole := Byte->UncompressDeflate(bomb, zeros->Size());
+		Check("deflate: the bomb within its size inflates", whole <> Nil & whole->Size() = zeros->Size());
+
+		# damage is still an error, not Nil
+		damaged := Byte->New[4];
+		each(i : damaged) {
+			damaged[i] := 0xff;
+		};
+		Check("deflate: damaged data raises", Raises(damaged, 1000, false));
+		Check("gzip: damaged data raises", Raises(damaged, 1000, true));
+		truncated := Byte->New[raw->Size() / 2];
+		Runtime->Copy(truncated, 0, raw, 0, truncated->Size());
+		Check("deflate: truncated data raises", Raises(truncated, size, false));
+		Check("a negative limit raises", Raises(raw, -1, false));
+
+		empty := Byte->New[0]->CompressDeflate();
+		nothing := Byte->UncompressDeflate(empty, 0);
+		Check("the empty stream inflates under a limit of 0", nothing <> Nil & nothing->Size() = 0);
+
+		if(@failures = 0) {
+			"PASS: bounded inflate"->PrintLine();
+		}
+		else {
+			"FAIL: bounded inflate ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

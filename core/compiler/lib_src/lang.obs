@@ -293,6 +293,25 @@ bundle System {
 		}
 
 		#~
+		Uncompresses a gzip stream to at most 'limit' bytes. Use it on data from outside the
+		program: a few kilobytes of gzip can expand to gigabytes, and this stops at the bound
+		instead of allocating them. Raises on damaged or truncated input, as
+		UncompressGzip(input) does.
+		@param input gzip bytes
+		@param limit most bytes the output may hold
+		@return uncompressed bytes, Nil if the output would be larger than the limit
+		```
+		raw := Byte->UncompressGzip(packed, 64 * 1024 * 1024);
+		if(raw = Nil) {
+		  "larger than 64 MB uncompressed"->ErrorLine();
+		};
+		```
+		~#
+		function : UncompressGzip(input : Byte[], limit : Int) ~ Byte[] {
+			UNCOMPRESS_GZIP_LIMIT;
+		}
+
+		#~
 		Compresses a byte stream as raw deflate (RFC 1951): the compressed blocks alone,
 		with no zlib header or checksum (CompressZlib) and no gzip framing (CompressGzip).
 		This is the format of zip members and of zlib/Python with windowBits -15. It is not
@@ -312,6 +331,25 @@ bundle System {
 		~#
 		function : UncompressDeflate(input : Byte[]) ~ Byte[] {
 			UNCOMPRESS_DEFLATE_BYTES;
+		}
+
+		#~
+		Uncompresses a raw deflate (RFC 1951) stream to at most 'limit' bytes. A zip member
+		names its uncompressed size, so passing that size as the limit both bounds the memory
+		used and catches a member that expands past what it claims (a zip bomb). Raises on
+		damaged or truncated input, as UncompressDeflate(input) does.
+		@param input raw deflate bytes
+		@param limit most bytes the output may hold
+		@return uncompressed bytes, Nil if the output would be larger than the limit
+		```
+		raw := Byte->UncompressDeflate(member, declared_size);
+		if(raw = Nil | raw->Size() <> declared_size) {
+		  "the member does not match its stated size"->ErrorLine();
+		};
+		```
+		~#
+		function : UncompressDeflate(input : Byte[], limit : Int) ~ Byte[] {
+			UNCOMPRESS_DEFLATE_LIMIT;
 		}
 
 		#~

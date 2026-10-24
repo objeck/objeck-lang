@@ -531,9 +531,22 @@ public:
 
   //
   // inflates a whole gzip (window_bits = MAX_WBITS | 16) or raw deflate (-MAX_WBITS)
-  // stream; nullptr for damaged, truncated or over-limit input, never partial output
+  // stream; nullptr for damaged, truncated or over-limit input, never partial output.
+  // 'limit' bounds the output (at most COMPRESS_BUFFER_LIMIT); when it is passed,
+  // 'over_limit' tells a stream that would inflate past it from a damaged one, and the
+  // buffer never grows beyond limit + 1 bytes, so a zip bomb costs the caller's bound
+  // and not the VM's.
   //
-  static char* InflateStream(const char* src, unsigned long src_len, int window_bits, unsigned long& out_len) {
+  static char* InflateStream(const char* src, unsigned long src_len, int window_bits, unsigned long& out_len,
+                             unsigned long limit = (COMPRESS_BUFFER_LIMIT), bool* over_limit = nullptr) {
+    if(over_limit) {
+      *over_limit = false;
+    }
+
+    // one byte of room past the limit, so output beyond it is seen
+    const bool has_limit = limit < (unsigned long)(COMPRESS_BUFFER_LIMIT);
+    const unsigned long cap = has_limit ? limit + 1 : (unsigned long)(COMPRESS_BUFFER_LIMIT);
+
     z_stream stream = {};
     stream.next_in = (Bytef*)src;
     stream.avail_in = (uInt)src_len;
@@ -546,8 +559,8 @@ public:
     if(buffer_max < 256) {
       buffer_max = 256;
     }
-    else if(buffer_max > COMPRESS_BUFFER_LIMIT) {
-      buffer_max = COMPRESS_BUFFER_LIMIT;
+    if(buffer_max > cap) {
+      buffer_max = cap;
     }
 
     char* buffer = (char*)calloc(buffer_max, sizeof(char));
@@ -558,17 +571,25 @@ public:
 
     while(true) {
       if(stream.total_out >= buffer_max) {
-        if(buffer_max >= COMPRESS_BUFFER_LIMIT) {
+        if(buffer_max >= cap) {
+          if(has_limit && over_limit) {
+            *over_limit = true;
+          }
           break;
         }
 
-        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(buffer_max) << 1);
+        unsigned long next_max = buffer_max << 1;
+        if(next_max > cap || next_max < buffer_max) {
+          next_max = cap;
+        }
+
+        char* temp = (char*)calloc(sizeof(char), static_cast<size_t>(next_max));
         if(!temp) {
           break;
         }
 
         memcpy(temp, buffer, buffer_max);
-        buffer_max <<= 1;
+        buffer_max = next_max;
         free(buffer);
         buffer = temp;
       }
@@ -579,6 +600,14 @@ public:
       const int status = inflate(&stream, Z_SYNC_FLUSH);
       if(status == Z_STREAM_END) {
         inflateEnd(&stream);
+        if(has_limit && stream.total_out > limit) {
+          if(over_limit) {
+            *over_limit = true;
+          }
+          free(buffer);
+          return nullptr;
+        }
+
         out_len = stream.total_out;
         return buffer;
       }

@@ -448,6 +448,8 @@ void Scanner::LoadKeywords()
   ident_map[L"FILE_CREATE_NEW"] = FILE_CREATE_NEW;
   ident_map[L"PROCESS_ID"] = PROCESS_ID;
   ident_map[L"PROCESS_ALIVE"] = PROCESS_ALIVE;
+  ident_map[L"UNCOMPRESS_DEFLATE_LIMIT"] = UNCOMPRESS_DEFLATE_LIMIT;
+  ident_map[L"UNCOMPRESS_GZIP_LIMIT"] = UNCOMPRESS_GZIP_LIMIT;
   ident_map[L"SERL_INT"] = SERL_INT;
   ident_map[L"SERL_FLOAT"] = SERL_FLOAT;
   ident_map[L"SERL_OBJ_INST"] = SERL_OBJ_INST;
