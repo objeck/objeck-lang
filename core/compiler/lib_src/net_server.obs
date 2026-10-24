@@ -223,14 +223,14 @@ bundle Web.HTTP.Server {
 		IPv4 address (else the first IPv6 one) is bound, so "localhost" binds
 		127.0.0.1; an empty address binds every interface. An address that
 		cannot be bound is reported on standard error and the call returns.
+		@param callback class inherited from 'HttpRequestHandler'
+		@param address local address to bind
+		@param port server port
 
 		```
 		# an HTTP server on port 8080 that only this machine can reach
 		Web.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), "127.0.0.1", 8080);
 		```
-		@param callback class inherited from 'HttpRequestHandler'
-		@param address local address to bind
-		@param port server port
 		~#
 		function : Serve(callback : Class, address : String, port : Int) ~ Nil {
 			ServeAt(callback, address, port, false);
