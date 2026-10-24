@@ -1634,7 +1634,9 @@ elem->ToString()->PrintLine();
 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~# 
 		method : ToString(input : String) ~ Nil {
 			# element
-			if(@name <> Nil & @type = XmlElement->Type->ELEMENT) {
+			# a parsed self-closing tag is a UNARY_ELEMENT; it used to serialize to nothing,
+			# so '<a><b x="1"/></a>' lost its child on a round trip
+			if(@name <> Nil & (@type = XmlElement->Type->ELEMENT | @type = XmlElement->Type->UNARY_ELEMENT)) {
 				input->Append('<');
 				# name and namespace
 				if(@namespace <> Nil & @namespace->Size() > 0) {
@@ -1643,9 +1645,10 @@ elem->ToString()->PrintLine();
 				};				
 				input->Append(@name);
 				
-				# attribs
-				if(@attribs <> Nil) {
-					keys := @attribs->GetKeys()<String>;
+				# attribs, in the order they were added (document order for a parsed element),
+				# so a document round-trips; the hash's own order is unspecified
+				if(@attribs <> Nil & @attrib_names <> Nil) {
+					keys := @attrib_names;
 					each(i : keys) {
 						key : String := keys->Get(i)->As(String);
 						attrib := @attribs->Find(key);
@@ -1662,8 +1665,18 @@ elem->ToString()->PrintLine();
 						input->Append('"');
 					};
 				};
+
+				# the parser files the text that follows a self-closing tag as that tag's
+				# content, so it is written after the tag, where it came from
+				if(@type = XmlElement->Type->UNARY_ELEMENT & (@children = Nil | @children->Size() = 0)) {
+					input->Append("/>");
+					if(@content <> Nil) {
+						input->Append(@content);
+					};
+					return;
+				};
 				input->Append('>');
-				
+
 				# process content
 				if(@content <> Nil) {
 					input->Append(@content);
