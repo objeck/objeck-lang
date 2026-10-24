@@ -4514,6 +4514,9 @@
 				"GetBlob": {
 					"descriptions": ["**Gets a blob value**\n\n```method : public : GetBlob(column:Int, buffer:Byte[]) ~ Nil```\n\n\n\ncolumn: Int\n\nbuffer: Byte[]\n\nreturn: Nil", "**Gets a blob value**\n\n```method : public : GetBlob(column:String, buffer:Byte[]) ~ Nil```\n\n\n\ncolumn: String\n\nbuffer: Byte[]\n\nreturn: Nil"]
 				},
+				"GetBytes": {
+					"descriptions": ["**Gets a whole binary value, however long, as a new array of exactly its length. GetBlob fills a buffer the caller sized and cannot say how much of it the value used, or that the value was longer.**\n\n```method : public : GetBytes(column:Int) ~ Byte[]```\n\n\n\ncolumn: Int\n\nreturn: Byte[]\n\n```\nrs := conn->Select(\"SELECT id, thumbnail FROM images\");\nwhile(rs->Next()) {\n  bytes := rs->GetBytes(2);\n  if(bytes <> Nil) { \"{$(bytes->Size())} bytes\"->PrintLine(); };\n};\nrs->Close();\n```"]
+				},
 				"GetColumnInfo": {
 					"descriptions": ["**Get the metadata for a given column**\n\n```method : public : GetColumnInfo() ~ ColumnInfo[]```\n\n\n\nreturn: ColumnInfo[]"]
 				},
@@ -4527,7 +4530,7 @@
 					"descriptions": ["**Gets an integer value**\n\n```method : public : GetInt(column:Int) ~ Int```\n\n\n\ncolumn: Int\n\nreturn: Int\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\nrs := conn->Select(\"SELECT id, age FROM users\");\nwhile(rs->Next()) {\n  age := rs->GetInt(2); # column 2 = age\n  \"age={$age}\"->PrintLine();\n};\nrs->Close();\nconn->Close();\n```", "**Gets an integer value**\n\n```method : public : GetInt(column:String) ~ Int```\n\n\n\ncolumn: String\n\nreturn: Int"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Gets the last error message from the result set statement.**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the last error message from the result set statement, or, for a result set that is not open, why the statement failed**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetReal": {
 					"descriptions": ["**Gets a real value**\n\n```method : public : GetReal(column:Int) ~ Float```\n\n\n\ncolumn: Int\n\nreturn: Float", "**Gets a real value**\n\n```method : public : GetReal(column:String) ~ Float```\n\n\n\ncolumn: String\n\nreturn: Float"]
@@ -4543,6 +4546,9 @@
 				},
 				"IsNull": {
 					"descriptions": ["**Checks to see if the value fetched is NUL. This method should be called after a value is fetched using GetX(column).**\n\n```method : public : IsNull() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the statement ran and its rows can be read. A Select whose SQL the database refused gives a result set that is not open; GetLastError says why.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nrs := conn->Select(\"SELECT name FROM users\");\nif(<>rs->IsOpen()) {\n  rs->GetLastError()->ErrorLine();\n};\n```"]
 				},
 				"Next": {
 					"descriptions": ["**Moves the cursor to the next row in the result set**\n\n```method : public : Next() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\nrs := conn->Select(\"SELECT name FROM users\");\nwhile(rs->Next()) { # advance row by row\n  rs->GetVarchar(\"name\")->PrintLine();\n};\nrs->Close();\nconn->Close();\n```"]
@@ -10010,6 +10016,50 @@
 				},
 				"New": {
 					"descriptions": ["**Constructor; the tables start empty**\n\n```New()```\n\n", "**Constructor for tables whose names start with a prefix, such as 'cv_' for 'cv_folds'**\n\n```New(prefix:String)```\n\n\n\nprefix: String"]
+				}
+			}
+		},
+		"Query.Structured.Odbc.OdbcSource": {
+			"description": "A table or a query in a database, through ODBC, read as a table.\n\nColumns are typed from the driver's description of the result: whole numbers (INTEGER, SMALLINT, TINYINT, BIGINT, and NUMERIC or DECIMAL with no fraction digits and at most 18 digits) are INT; REAL, FLOAT, DOUBLE and other NUMERIC and DECIMAL columns are FLOAT, so a decimal with more precision than a Float holds loses it; BIT and BOOLEAN are BOOL; DATE and TIMESTAMP are DATE, to the second; TIME is STRING ('13:14:15'); binary columns (BINARY, VARBINARY, BLOB) are STRING holding the bytes as lowercase hexadecimal, which FromHex turns back into bytes; everything else is STRING, of any length. A NULL is an empty cell. A column the driver describes as text holds text even when it holds numbers, so a computed column in a query is cast in its SQL when its type matters.\n\nLoad sends the work a scan hint and SetWhere describe to the database: only the columns the hint names (those the table has, matched by name, then ignoring case), a WHERE with the condition, and the row limit, so the database filters before anything is copied. A condition is SQL written by the program, not text from a user; values from elsewhere go in as parameters ('?' in the condition, bound with SetWhere's second form), which the database never parses as SQL. Table, schema and column names are always quoted, with any quote character in a name doubled, so no name can end the identifier and add SQL. A query run afterwards applies its own WHERE again, so pushing a condition down never changes an answer.",
+			"functions": {
+				"FromHex": {
+					"descriptions": ["**Turns a binary cell's hexadecimal text back into bytes**\n\n```function : FromHex(hex:String) ~ Byte[]```\n\n\n\nhex: String\n\nreturn: Byte[]\n\n```\nthumbnail := OdbcSource->FromHex(table->GetColumn(\"thumbnail\")->GetString(0));\n```"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSql": {
+					"descriptions": ["**Gets the SQL the last read sent to the database**\n\n```method : public : GetSql() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the table's shape, by asking the database for none of its rows**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the table into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for a table, which the table keeps the name of**\n\n```New(connection:Connection, table:String)```\n\n\n\nconnection: Connection\n\ntable: String", "**Constructor for the result of a query, as a table of a given name. Pushed-down columns, conditions and limits wrap the query, 'SELECT ... FROM (query) q WHERE ...'; with nothing to push down it is sent as it is, keeping its ORDER BY. A database may rename a repeated column name when the query is wrapped (SQLite's second 'label' becomes 'label:1'); unwrapped, a repeated name gets a suffix here ('label_2').**\n\n```New(connection:Connection, name:String, query:String)```\n\n\n\nconnection: Connection\n\nname: String\n\nquery: String"]
+				},
+				"Quote": {
+					"descriptions": ["**Quotes a name as this source sends it: in its quote characters, with the closing one doubled inside it**\n\n```method : public : Quote(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String", "**Quotes a name in given quote characters, doubling the closing one inside it, so the name cannot end the identifier**\n\n```function : Quote(name:String, open:Char, close:Char) ~ String```\n\n\n\nname: String\n\nopen: Char\n\nclose: Char\n\nreturn: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the whole table, or the part SetWhere asks for**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the table, or the part the hint and SetWhere ask for**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				},
+				"SetLimitSyntax": {
+					"descriptions": ["**Sets how the row limit is written into the SQL**\n\n```method : public : SetLimitSyntax(syntax:LimitSyntax) ~ Nil```\n\n\n\nsyntax: LimitSyntax\n\nreturn: Nil"]
+				},
+				"SetQuotes": {
+					"descriptions": ["**Sets the characters that quote a name: '\"' and '\"' by default (standard SQL), '`' and '`' for MySQL without ANSI_QUOTES, '[' and ']' for SQL Server's own style**\n\n```method : public : SetQuotes(open:Char, close:Char) ~ Nil```\n\n\n\nopen: Char\n\nclose: Char\n\nreturn: Nil"]
+				},
+				"SetSchema": {
+					"descriptions": ["**Sets the schema a table is in, sent as '\"schema\".\"table\"'**\n\n```method : public : SetSchema(schema:String) ~ Nil```\n\n\n\nschema: String\n\nreturn: Nil"]
+				},
+				"SetWhere": {
+					"descriptions": ["**Sets a condition for the database to apply, as SQL after WHERE**\n\n```method : public : SetWhere(condition:String) ~ Nil```\n\n\n\ncondition: String\n\nreturn: Nil", "**Sets a condition with '?' placeholders and the values bound to them, in order: an Int (IntRef), Float (FloatRef), Bool (BoolRef), String or Date. Values never pass through the SQL text, so they need no quoting and cannot change the statement.**\n\n```method : public : SetWhere(condition:String, values:Compare[]) ~ Nil```\n\n\n\ncondition: String\n\nvalues: Compare[]\n\nreturn: Nil"]
+				},
+				"ToHex": {
+					"descriptions": ["**Writes bytes as lowercase hexadecimal, the form binary cells take**\n\n```function : ToHex(bytes:Byte[]) ~ String```\n\n\n\nbytes: Byte[]\n\nreturn: String"]
 				}
 			}
 		},
@@ -18193,6 +18243,12 @@
 				"file": ""
 			}
 		],
+		"OdbcSource": [
+			{
+				"bundle": "Query.Structured.Odbc",
+				"file": ""
+			}
+		],
 		"TableServer": [
 			{
 				"bundle": "Query.Structured.Server",
@@ -21154,6 +21210,19 @@
 				{ "name": "FASLE", "value": "28", "description": "Not produced by the scanner." },
 				{ "name": "EOS", "value": "29", "description": "The end of the input." },
 				{ "name": "PARAM", "value": "30", "description": "A '?' placeholder, numbered in order." }
+			]
+		},
+		"Query.Structured.Odbc.LimitSyntax": {
+			"name": "LimitSyntax",
+			"bundle": "Query.Structured.Odbc",
+			"class": "",
+			"kind": "enum",
+			"description": "How a database spells a row limit in a SELECT. LIMIT (SQLite, PostgreSQL, MySQL) is the default; TOP is SQL Server's; FETCH is the SQL standard's 'FETCH FIRST n ROWS ONLY' (Oracle 12c and later, DB2, PostgreSQL); NONE sends no limit and stops reading after the limit's rows instead.",
+			"items": [
+				{ "name": "LIMIT", "value": "0", "description": "" },
+				{ "name": "TOP", "value": "1", "description": "" },
+				{ "name": "FETCH", "value": "2", "description": "" },
+				{ "name": "NONE", "value": "3", "description": "" }
 			]
 		},
 		"System.Number#Format": {
