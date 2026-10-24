@@ -1,0 +1,195 @@
+#~
+Loops whose condition is a Bool literal, a Bool variable or a call. A 'for'
+whose condition was anything other than a '<' comparison crashed obc: the
+analyzer read the condition as a binary expression while looking for a range
+loop. 'for(i := 1001; true; i += 1;)' segfaulted the compiler at every
+optimization level.
+
+Covers 'for', 'while' and 'do/while' with literal true and false conditions,
+with break, return and continue in the body and code after the loop. A false
+condition must not run a 'for' or 'while' body; a 'do/while' body runs once.
+~#
+class LoopLiteralCondition {
+	@failures : static : Int;
+	@more_calls : static : Int;
+
+	function : Check(name : String, got : Int, want : Int) ~ Nil {
+		if(got <> want) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			@failures += 1;
+		};
+	}
+
+	# 'for' with a literal true condition, left with break; code after the loop runs
+	function : ForTrueBreak() ~ Int {
+		found := 0;
+		for(i := 1001; true; i += 1;) {
+			if(i % 7 = 0) {
+				found := i;
+				break;
+			};
+		};
+		after := found + 1;
+		return after;
+	}
+
+	# 'for' with a literal true condition, left with return
+	function : ForTrueReturn() ~ Int {
+		for(i := 10; true; i += 1;) {
+			if(i * i > 200) {
+				return i;
+			};
+		};
+		return -1;
+	}
+
+	# 'for' with a literal true condition and continue: the update still runs
+	function : ForTrueContinue() ~ Int {
+		sum := 0;
+		for(i := 0; true; i += 1;) {
+			if(i > 10) {
+				break;
+			};
+			if(i % 2 = 0) {
+				continue;
+			};
+			sum += i;
+		};
+		return sum;
+	}
+
+	# 'for' with a literal false condition: the body never runs, the pre-statement does
+	function : ForFalse() ~ Int {
+		count := 0;
+		for(i := 5; false; i += 1;) {
+			count += 100;
+			break;
+		};
+		count += 1;
+		return count;
+	}
+
+	function : WhileTrue() ~ Int {
+		n := 0;
+		sum := 0;
+		while(true) {
+			n += 1;
+			if(n % 3 = 0) {
+				continue;
+			};
+			if(n > 10) {
+				break;
+			};
+			sum += n;
+		};
+		return sum;
+	}
+
+	function : WhileTrueReturn() ~ Int {
+		n := 0;
+		while(true) {
+			n += 2;
+			if(n >= 8) {
+				return n;
+			};
+		};
+		return -1;
+	}
+
+	function : WhileFalse() ~ Int {
+		count := 0;
+		while(false) {
+			count += 100;
+		};
+		count += 1;
+		return count;
+	}
+
+	function : DoWhileTrue() ~ Int {
+		n := 0;
+		do {
+			n += 1;
+			if(n = 2) {
+				continue;
+			};
+			if(n >= 5) {
+				break;
+			};
+		}
+		while(true);
+		return n;
+	}
+
+	function : DoWhileTrueReturn() ~ Int {
+		n := 0;
+		do {
+			n += 3;
+			if(n > 10) {
+				return n;
+			};
+		}
+		while(true);
+		return -1;
+	}
+
+	function : DoWhileFalse() ~ Int {
+		count := 0;
+		do {
+			count += 1;
+		}
+		while(false);
+		count += 10;
+		return count;
+	}
+
+	# 'for' conditions that are a Bool variable or a call took the same bad path
+	function : ForBoolVariable() ~ Int {
+		go := true;
+		count := 0;
+		for(i := 0; go; i += 1;) {
+			count += 1;
+			if(i = 3) {
+				go := false;
+			};
+		};
+		return count;
+	}
+
+	function : More() ~ Bool {
+		@more_calls += 1;
+		return @more_calls <= 4;
+	}
+
+	function : ForCall() ~ Int {
+		@more_calls := 0;
+		count := 0;
+		for(i := 0; More(); i += 1;) {
+			count += 1;
+		};
+		return count;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		Check("for true break", ForTrueBreak(), 1002);
+		Check("for true return", ForTrueReturn(), 15);
+		Check("for true continue", ForTrueContinue(), 25);
+		Check("for false", ForFalse(), 1);
+		Check("while true", WhileTrue(), 37);
+		Check("while true return", WhileTrueReturn(), 8);
+		Check("while false", WhileFalse(), 1);
+		Check("do/while true", DoWhileTrue(), 5);
+		Check("do/while true return", DoWhileTrueReturn(), 12);
+		Check("do/while false", DoWhileFalse(), 11);
+		Check("for Bool variable", ForBoolVariable(), 4);
+		Check("for call", ForCall(), 4);
+
+		if(@failures > 0) {
+			"FAIL: {$@failures} loop check(s) failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: loops with literal, variable and call conditions"->PrintLine();
+	}
+}
