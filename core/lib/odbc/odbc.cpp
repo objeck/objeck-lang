@@ -30,8 +30,68 @@
  ***************************************************************************/
 
 #include "odbc.h"
+#include <mutex>
 
 extern "C" {
+
+  //
+  // Parameter values, owned by the statement they are bound to. ODBC reads a bound
+  // parameter's buffer and length indicator when the statement runs, not when it is
+  // bound, so both must live as long as the binding. They used to point into the
+  // Objeck objects passed to the setter: an IntRef or a FloatRef young enough to be
+  // moved or collected before the statement ran, and buffers a caller dropped between
+  // runs of a reused statement. Each value is now copied here, keyed by statement
+  // handle and position, and freed when the statement is.
+  //
+  struct BoundParam {
+    std::vector<unsigned char> data;
+    SQLLEN length;
+  };
+
+  static std::mutex bound_params_lock;
+  static std::map<SQLHSTMT, std::map<int, BoundParam> > bound_params;
+
+  // copies a value for a position and returns its stable storage
+  static BoundParam* keep_param(SQLHSTMT stmt, int i, const void* value, size_t size)
+  {
+    std::lock_guard<std::mutex> guard(bound_params_lock);
+    BoundParam& param = bound_params[stmt][i];
+    const unsigned char* bytes = (const unsigned char*)value;
+    param.data.assign(bytes, bytes + size);
+    // a zero-length value still needs an address to bind
+    if(param.data.empty()) {
+      param.data.push_back(0);
+    }
+    param.length = (SQLLEN)size;
+    return &param;
+  }
+
+  static BoundParam* find_param(SQLHSTMT stmt, int i)
+  {
+    std::lock_guard<std::mutex> guard(bound_params_lock);
+    std::map<SQLHSTMT, std::map<int, BoundParam> >::iterator found = bound_params.find(stmt);
+    if(found == bound_params.end()) {
+      return nullptr;
+    }
+    std::map<int, BoundParam>::iterator param = found->second.find(i);
+    return param == found->second.end() ? nullptr : &param->second;
+  }
+
+  static void drop_params(SQLHSTMT stmt)
+  {
+    std::lock_guard<std::mutex> guard(bound_params_lock);
+    bound_params.erase(stmt);
+  }
+
+  // binds a fixed-size value of a C type
+  static void bind_value(VMContext& context, SQLHSTMT stmt, SQLUSMALLINT i, SQLSMALLINT c_type, SQLSMALLINT sql_type,
+                         const void* value, size_t size)
+  {
+    BoundParam* param = keep_param(stmt, i, value, size);
+    const SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, c_type, sql_type, 0, 0,
+                                              (SQLPOINTER)param->data.data(), (SQLLEN)size, &param->length);
+    APITools_SetIntValue(context, 0, (status == SQL_SUCCESS || status == SQL_SUCCESS_WITH_INFO) ? 1 : 0);
+  }
   SQLLEN sql_null;
 
   // Why the last connect on this thread failed. A failed connect frees its
@@ -268,14 +328,14 @@ extern "C" {
 #endif
     void odbc_stmt_select_statement(VMContext& context)
   {
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
 
-#ifdef _DEBUG
-    std::wcout << L"### stmt_select_update: stmt=" << stmt << L" ###" << std::endl;
-#endif
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(stmt) {
-      // Parameters bound to argument arrays stay valid while parked: arrays
-      // are allocated in the old generation and never move.
+      // a cursor left open by the last run must be closed before the next
+      SQLFreeStmt(stmt, SQL_CLOSE);
+
+      // Parameters are copies the statement owns (keep_param), so they stay valid
+      // while parked.
       APITools_Parked parked(context);
       SQLExecute(stmt);
     }
@@ -638,106 +698,64 @@ extern "C" {
 #endif
   void odbc_stmt_update(VMContext& context) 
   {
-    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);    
-    std::map<size_t, std::pair<void*, SQLLEN> >* exec_data = (std::map<size_t, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 2);
-    std::map<const std::wstring, int>* column_names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 3);
-		
-#ifdef _DEBUG
-    std::wcout << L"### stmt_update: stmt=" << stmt << L" ###" << std::endl;
-#endif
+
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 1);
+    if(!stmt) {
+      APITools_SetIntValue(context, 0, -1);
+      return;
+    }
+
+    // The statement, its column names and its execution data belong to the
+    // ParameterStatement, which runs it as often as it likes and frees them all in
+    // Close. This used to free the two maps after every run, and the statement too
+    // on a failure, while the caller kept their addresses: a second run read freed
+    // memory, and Close freed the statement twice.
+    SQLFreeStmt(stmt, SQL_CLOSE);
 
     SQLRETURN status;
     {
       APITools_Parked parked(context);
       status = SQLExecute(stmt);
     }
-    PTR param_id;
-    
-    if(status == SQL_NEED_DATA) {
+
+    while(status == SQL_NEED_DATA) {
+      PTR param_id = nullptr;
       status = SQLParamData(stmt, &param_id);
-      do {
-        std::map<size_t, std::pair<void*, SQLLEN> >::iterator found = exec_data->find((size_t)param_id);
-        if(found != exec_data->end()) {
-          status = SQLPutData(stmt, found->second.first, found->second.second);
-          if(SQL_FAIL) {
-            // ShowError(SQL_HANDLE_STMT, stmt);
-            SQLFreeStmt(stmt, SQL_UNBIND);
-            SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-            APITools_SetIntValue(context, 0, -1);
-            if(exec_data) {
-              delete exec_data;
-              exec_data = NULL;
-            }
-            if(column_names) {
-              delete column_names;
-              column_names = NULL;
-            }            
-            return;
-          }
-        }
-        else {
-          // ShowError(SQL_HANDLE_STMT, stmt);
-          SQLFreeStmt(stmt, SQL_UNBIND);
-          SQLFreeHandle(SQL_HANDLE_STMT, stmt);
-          APITools_SetIntValue(context, 0, -1);
-          if(exec_data) {
-            delete exec_data;
-            exec_data = NULL;
-          }
-          if(column_names) {
-            delete column_names;
-            column_names = NULL;
-          }
-          return;
-        }
-        status = SQLParamData(stmt, &param_id);
-      } 
-      while(status == SQL_NEED_DATA);
+      if(status != SQL_NEED_DATA) {
+        break;
+      }
+
+      // set_bytes binds the position as the token
+      BoundParam* param = find_param(stmt, (int)(size_t)param_id);
+      if(!param) {
+        SQLCancel(stmt);
+        APITools_SetIntValue(context, 0, -1);
+        return;
+      }
+
+      const SQLLEN size = SQL_LEN_DATA_AT_EXEC(0) - param->length;
+      status = SQLPutData(stmt, (SQLPOINTER)param->data.data(), size);
+      if(SQL_FAIL) {
+        SQLCancel(stmt);
+        APITools_SetIntValue(context, 0, -1);
+        return;
+      }
+      status = SQL_NEED_DATA;
     }
-    
-    if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+
+    if(SQL_FAIL && status != SQL_NO_DATA) {
       APITools_SetIntValue(context, 0, -1);
-      if(exec_data) {
-        delete exec_data;
-        exec_data = NULL;
-      }
-      if(column_names) {
-        delete column_names;
-        column_names = NULL;
-      }
       return;
     }
-		
-    SQLLEN count;
+
+    SQLLEN count = 0;
     status = SQLRowCount(stmt, &count);
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
-      SQLFreeStmt(stmt, SQL_UNBIND);
-      SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, -1);
-      if(exec_data) {
-        delete exec_data;
-        exec_data = NULL;
-      }
-      if(column_names) {
-        delete column_names;
-        column_names = NULL;
-      }
       return;
     }
-		
+
     APITools_SetIntValue(context, 0, count);
-    if(exec_data) {
-      delete exec_data;
-      exec_data = NULL;
-    }
-    if(column_names) {
-      delete column_names;
-      column_names = NULL;
-    }
   }
 
   //
@@ -773,23 +791,11 @@ extern "C" {
 #endif
   void odbc_stmt_set_smallint(VMContext& context) 
   {
-    size_t* value = APITools_GetArray(context, 1);
+
+    const SQLSMALLINT value = (SQLSMALLINT)APITools_GetIntValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-
-#ifdef _DEBUG
-    std::wcout << L"### set_smallint: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << std::endl;
-#endif  
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SSHORT, 
-                                        SQL_SMALLINT, 0, 0, value, 0, NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    bind_value(context, stmt, i, SQL_C_SSHORT, SQL_SMALLINT, &value, sizeof(value));
   }
 	
   //
@@ -825,23 +831,11 @@ extern "C" {
 #endif
   void odbc_stmt_set_bit(VMContext& context) 
   {
-    size_t* value = APITools_GetArray(context, 1);
+
+    const unsigned char value = APITools_GetIntValue(context, 1) ? 1 : 0;
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-
-#ifdef _DEBUG
-    std::wcout << L"### set_bit: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << std::endl;
-#endif  
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BIT, 
-                                        SQL_BIT, 0, 0, value, 0, NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    bind_value(context, stmt, i, SQL_C_BIT, SQL_BIT, &value, sizeof(value));
   }
 
   //
@@ -877,23 +871,11 @@ extern "C" {
 #endif
   void odbc_stmt_set_int(VMContext& context) 
   {
-    size_t* value = APITools_GetArray(context, 1);
+
+    const SQLINTEGER value = (SQLINTEGER)APITools_GetIntValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-
-#ifdef _DEBUG
-    std::wcout << L"### set_int: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << std::endl;
-#endif  
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_LONG, 
-                                        SQL_INTEGER, 0, 0, value, 0, NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    bind_value(context, stmt, i, SQL_C_LONG, SQL_INTEGER, &value, sizeof(value));
   }
 
   //
@@ -929,23 +911,11 @@ extern "C" {
 #endif
   void odbc_stmt_set_bigint(VMContext& context)
   {
-    size_t* value = APITools_GetArray(context, 1);
+
+    const SQLBIGINT value = (SQLBIGINT)APITools_GetIntValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-
-#ifdef _DEBUG
-    std::wcout << L"### set_bigint: stmt=" << stmt << L", column=" << i
-          << L", value=" << *value << L" ###" << std::endl;
-#endif
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_SBIGINT,
-                                        SQL_BIGINT, 0, 0, value, 0, NULL);
-    if(SQL_OK) {
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    bind_value(context, stmt, i, SQL_C_SBIGINT, SQL_BIGINT, &value, sizeof(value));
   }
 
   //
@@ -982,23 +952,11 @@ extern "C" {
 #endif
   void odbc_stmt_set_double(VMContext& context) 
   {
-    size_t* value = APITools_GetArray(context, 1);
+
+    const SQLDOUBLE value = APITools_GetFloatValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-
-#ifdef _DEBUG
-    std::wcout << L"### set_double: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << std::endl;
-#endif  
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_DOUBLE, 
-                                        SQL_DOUBLE, 0, 0, value, 0, NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    bind_value(context, stmt, i, SQL_C_DOUBLE, SQL_DOUBLE, &value, sizeof(value));
   }
 
   //
@@ -1035,23 +993,11 @@ extern "C" {
 #endif
   void odbc_stmt_set_real(VMContext& context) 
   {
-    size_t* value = APITools_GetArray(context, 1);
+
+    const SQLREAL value = (SQLREAL)APITools_GetFloatValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-
-#ifdef _DEBUG
-    std::wcout << L"### set_real: stmt=" << stmt << L", column=" << i 
-          << L", value=" << *value << L" ###" << std::endl;
-#endif  
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_FLOAT,
-                                        SQL_REAL, 0, 0, value, 0, NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    bind_value(context, stmt, i, SQL_C_FLOAT, SQL_REAL, &value, sizeof(value));
   }
 
   //
@@ -1602,24 +1548,17 @@ extern "C" {
 #endif
   void odbc_stmt_set_varchar(VMContext& context) 
   {
+
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
-    char* value = (char*)APITools_GetArray(byte_array);
+    const char* value = (const char*)APITools_GetArray(byte_array);
+    const size_t value_size = value ? strlen(value) : 0;
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-		
-#ifdef _DEBUG
-    std::wcout << L"### set_varchar: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << std::endl;
-#endif  
-		
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, 
-                                        SQL_LONGVARCHAR, 0, 0, (SQLPOINTER)value, strlen(value), NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+
+    BoundParam* param = keep_param(stmt, i, value, value_size);
+    const SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_LONGVARCHAR, value_size > 0 ? value_size : 1, 0,
+                                              (SQLPOINTER)param->data.data(), (SQLLEN)value_size, &param->length);
+    APITools_SetIntValue(context, 0, SQL_OK ? 1 : 0);
   }
 
   //
@@ -1656,25 +1595,19 @@ extern "C" {
 #endif
   void odbc_stmt_set_blob(VMContext& context) 
   {
+
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
-    char* value = (char*)APITools_GetArray(byte_array);
+    const char* value = (const char*)APITools_GetArray(byte_array);
     const size_t value_size = APITools_GetArraySize(byte_array);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-		
-#ifdef _DEBUG
-    std::wcout << L"### set_blob: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << std::endl;
-#endif  
-    
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
-                                        value_size, 0, (SQLPOINTER)value, value_size, 0);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+
+    // the length goes in an indicator: bound without one, ODBC reads binary data as
+    // NUL-terminated and stores a blob only up to its first zero byte
+    BoundParam* param = keep_param(stmt, i, value, value_size);
+    const SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, value_size > 0 ? value_size : 1, 0,
+                                              (SQLPOINTER)param->data.data(), (SQLLEN)value_size, &param->length);
+    APITools_SetIntValue(context, 0, SQL_OK ? 1 : 0);
   }
 
   //
@@ -1685,29 +1618,22 @@ extern "C" {
 #endif
   void odbc_stmt_set_bytes(VMContext& context) 
   {
+
     size_t* byte_array = (size_t*)APITools_GetIntValue(context, 1);
-    char* value = (char*)APITools_GetArray(byte_array);
-    SQLLEN* value_size = (SQLLEN*)APITools_GetArray(context, 2);
+    const char* value = (const char*)APITools_GetArray(byte_array);
+    size_t value_size = (size_t)APITools_GetIntValue(context, 2);
+    const size_t array_size = APITools_GetArraySize(byte_array);
+    if(value_size > array_size) {
+      value_size = array_size;
+    }
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 3);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 4);
-    std::map<int, std::pair<void*, SQLLEN> >* exec_data = (std::map<int, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 5);
-    
-#ifdef _DEBUG
-    std::wcout << L"### set_bytes: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << std::endl;
-#endif
-    
-    std::pair<void*, SQLLEN> data(value, *value_size);
-    *value_size = SQL_LEN_DATA_AT_EXEC(*value_size);
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, 
-                                        *value_size, 0, (SQLPOINTER)i, 0, value_size);
-    exec_data->insert(std::pair<int, std::pair<void*, SQLLEN> >(i, data));
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+
+    BoundParam* param = keep_param(stmt, i, value, value_size);
+    param->length = SQL_LEN_DATA_AT_EXEC((SQLLEN)value_size);
+    const SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_BINARY, SQL_LONGVARBINARY, value_size > 0 ? value_size : 1, 0,
+                                              (SQLPOINTER)(size_t)i, 0, &param->length);
+    APITools_SetIntValue(context, 0, SQL_OK ? 1 : 0);
   }
   
   //
@@ -1743,38 +1669,24 @@ extern "C" {
 #endif
   void odbc_stmt_set_timestamp(VMContext& context) 
   {
+
     size_t* value = APITools_GetObjectValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    if(!value) {
+      APITools_SetIntValue(context, 0, 0);
+      return;
+    }
 
-#ifdef _DEBUG
-    std::wcout << L"### set_timestamp: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value[1] << L"-" << value[2] << L"-" << value[2] << L" " 
-          << value[4] << L":" <<  value[5] << L":" <<  value[5] << value[6] << L"." 
-          << value[7] << L" ###" << std::endl;
-#endif
-
-    SQL_TIMESTAMP_STRUCT time_stamp;    
-    time_stamp.year = (SQLUSMALLINT)value[1];
+    SQL_TIMESTAMP_STRUCT time_stamp;
+    time_stamp.year = (SQLSMALLINT)value[1];
     time_stamp.month = (SQLUSMALLINT)value[2];
     time_stamp.day = (SQLUSMALLINT)value[3];
     time_stamp.hour = (SQLUSMALLINT)value[4];
     time_stamp.minute = (SQLUSMALLINT)value[5];
     time_stamp.second = (SQLUSMALLINT)value[6];
-    time_stamp.fraction = (SQLUSMALLINT)value[7];
-
-    size_t* data = (size_t*)value[0];
-    data += 3;
-    memcpy(data, &time_stamp, sizeof(time_stamp));
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP, 
-                                        SQL_TYPE_TIMESTAMP, 0, 0, data, sizeof(time_stamp), NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-    }
+    time_stamp.fraction = (SQLUINTEGER)value[7];
+    bind_value(context, stmt, i, SQL_C_TYPE_TIMESTAMP, SQL_TYPE_TIMESTAMP, &time_stamp, sizeof(time_stamp));
   }
 
   //
@@ -1811,32 +1723,20 @@ extern "C" {
 #endif
   void odbc_stmt_set_date(VMContext& context) 
   {
+
     size_t* value = APITools_GetObjectValue(context, 1);
     SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
-
-#ifdef _DEBUG
-    std::wcout << L"### set_date: stmt=" << stmt << L", column=" << i 
-          << L", value=" << value << L" ###" << std::endl;
-#endif
-
-    SQL_DATE_STRUCT time_stamp;    
-    time_stamp.year = (SQLUSMALLINT)value[1];
-    time_stamp.month = (SQLUSMALLINT)value[2];
-    time_stamp.day = (SQLUSMALLINT)value[3];
-
-    size_t* data = (size_t*)value[0];
-    data += 3;
-    memcpy(data, &time_stamp, sizeof(time_stamp));
-
-    SQLRETURN status = SQLBindParameter(stmt, i, SQL_PARAM_INPUT, SQL_C_TYPE_DATE, 
-                                        SQL_TYPE_DATE, 0, 0, data, sizeof(time_stamp), NULL);
-    if(SQL_OK) { 
-      APITools_SetIntValue(context, 0, 1);
-    }
-    else {
+    if(!value) {
       APITools_SetIntValue(context, 0, 0);
+      return;
     }
+
+    SQL_DATE_STRUCT date;
+    date.year = (SQLSMALLINT)value[1];
+    date.month = (SQLUSMALLINT)value[2];
+    date.day = (SQLUSMALLINT)value[3];
+    bind_value(context, stmt, i, SQL_C_TYPE_DATE, SQL_TYPE_DATE, &date, sizeof(date));
   }
 
   //
@@ -2541,6 +2441,7 @@ extern "C" {
 
     SQLHSTMT stmt = (SQLHSTMT)APITools_GetIntValue(context, 2);
     if(stmt) {
+      drop_params(stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
@@ -2548,6 +2449,21 @@ extern "C" {
 #ifdef _DEBUG
     std::wcout << L"### closed result set ###" << std::endl;
 #endif
+  }
+
+  //
+  // closes the cursor of a prepared statement's result set, leaving the statement,
+  // which its ParameterStatement owns, ready to run again
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_result_close_cursor(VMContext& context)
+  {
+    SQLHSTMT stmt = (SQLHSTMT)APITools_GetIntValue(context, 0);
+    if(stmt) {
+      SQLFreeStmt(stmt, SQL_CLOSE);
+    }
   }
 	
   //
@@ -2558,14 +2474,26 @@ extern "C" {
 #endif
   void odbc_stmt_close(VMContext& context) 
   {
+
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
     if(stmt) {
+      drop_params(stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
     }
-		
-#ifdef _DEBUG
-    std::wcout << L"### closed prepared statement ###" << std::endl;
-#endif
+
+    // [1] and [2], when the caller passes them, are the statement's column names and
+    // execution data, which it owns; a library built before they were passed leaks
+    // them rather than freeing what it may still use
+    if(context.data_array && context.data_array[0] > 2) {
+      std::map<const std::wstring, int>* column_names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 1);
+      if(column_names) {
+        delete column_names;
+      }
+      std::map<int, std::pair<void*, SQLLEN> >* exec_data = (std::map<int, std::pair<void*, SQLLEN> >*)APITools_GetIntValue(context, 2);
+      if(exec_data) {
+        delete exec_data;
+      }
+    }
   }
 }

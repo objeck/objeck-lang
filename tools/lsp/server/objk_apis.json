@@ -4483,7 +4483,7 @@
 					"descriptions": ["**Sets varchar type to NULL**\n\n```method : public : SetVarchar(pos:Int) ~ Bool```\n\n\n\npos: Int\n\nreturn: Bool", "**Sets varchar type**\n\n```method : public : SetVarchar(pos:Int, value:String) ~ Bool```\n\n\n\npos: Int\n\nvalue: String\n\nreturn: Bool\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\nstmt := conn->CreateParameterStatement(\"INSERT INTO users(name) VALUES(?)\");\nstmt->SetVarchar(1, \"Bob\"); # bind string to first parameter\nstmt->Update();\nconn->Close();\n```"]
 				},
 				"Update": {
-					"descriptions": ["**Executes a SQL update statement. Statement is closed after calling.**\n\n```method : public : Update() ~ Int```\n\n\n\nreturn: Int\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\nstmt := conn->CreateParameterStatement(\"UPDATE users SET age=? WHERE name=?\");\nstmt->SetInt(1, 31);\nstmt->SetVarchar(2, \"Alice\");\nrc := stmt->Update(); # execute and close statement\n\"rows={$rc}\"->PrintLine();\nconn->Close();\n```"]
+					"descriptions": ["**Executes a SQL update statement. Statement is closed after calling.**\n\n```method : public : Update() ~ Int```\n\n\n\nreturn: Int\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\nstmt := conn->CreateParameterStatement(\"UPDATE users SET age=? WHERE name=?\");\nstmt->SetInt(1, 31);\nstmt->SetVarchar(2, \"Alice\");\nrc := stmt->Update(); # run; the statement can run again with new values\n\"rows={$rc}\"->PrintLine();\nconn->Close();\n```"]
 				}
 			}
 		},
