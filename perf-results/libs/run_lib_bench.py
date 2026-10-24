@@ -197,7 +197,7 @@ def main():
                 cases[f"{row['bench']}/{row['case']}"] = {"ratio": round(row["ratio"], 4),
                                                          "seconds": round(row["seconds"], 4)}
         data = {
-            "about": "Median ratio of each case's time to its in-run plain-array reference; "
+            "about": "Ratio (per the stat field) of each case's time to its in-run plain-array reference; "
                      "written by run_lib_bench.py --update-baseline",
             "measured": datetime.date.today().isoformat(),
             "platform": f"{platform.system()} {platform.machine()}",
