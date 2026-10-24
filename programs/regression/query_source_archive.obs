@@ -1,0 +1,617 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured ArchiveSource (docs/QUERY_DESIGN.md, section 6, phase 7): a zip, a tar and a
+gzipped tar as a listing tree plus one table per readable member (CSV, TSV, JSON Lines, JSON
+with a child table, XML, .otab and a gzipped CSV), named by member path and usable in SQL;
+stored, deflate and ZIP64 members, a self-extracting prefix, DOS and UTC modification times;
+ustar prefixes, GNU long names, pax headers, links, a repeated tar member, the './' root; and
+every refusal: path traversal, absolute paths, duplicate and overlapping zip members, a CRC
+mismatch, a zip bomb (inflating past the stated size), the member and total limits, a gzip
+bomb, encryption, an unsupported method, a mismatched local header, truncation, a damaged tar
+checksum, split archives, and a member that does not parse. Every archive is written byte for
+byte by the test.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+# a growing byte buffer
+class Sink {
+	@bytes : Byte[];
+	@size : Int;
+
+	New() {
+		@bytes := Byte->New[1024];
+	}
+
+	method : public : Put(value : Int) ~ Nil {
+		if(@size = @bytes->Size()) {
+			grown := Byte->New[@bytes->Size() * 2];
+			Byte->Copy(grown, 0, @bytes, 0, @size);
+			@bytes := grown;
+		};
+		@bytes[@size] := value;
+		@size += 1;
+	}
+
+	method : public : PutBytes(values : Byte[]) ~ Nil {
+		each(i : values) {
+			Put(values[i]->As(Int));
+		};
+	}
+
+	method : public : PutText(text : String) ~ Nil {
+		PutBytes(text->ToByteArray());
+	}
+
+	method : public : U16(value : Int) ~ Nil {
+		Put(value and 0xFF);
+		Put((value >> 8) and 0xFF);
+	}
+
+	method : public : U32(value : Int) ~ Nil {
+		U16(value and 0xFFFF);
+		U16((value >> 16) and 0xFFFF);
+	}
+
+	method : public : U64(value : Int) ~ Nil {
+		U32(value and 0xFFFFFFFF);
+		U32((value >> 32) and 0xFFFFFFFF);
+	}
+
+	method : public : Size() ~ Int {
+		return @size;
+	}
+
+	method : public : ToBytes() ~ Byte[] {
+		out := Byte->New[@size];
+		Byte->Copy(out, 0, @bytes, 0, @size);
+		return out;
+	}
+}
+
+# writes a zip: local headers and data, then the central directory and end record
+class ZipBuilder {
+	@out : Sink;
+	@central : Sink;
+	@count : Int;
+	@zip64 : Bool;
+	@base : Int;
+
+	New() {
+		@out := Sink->New();
+		@central := Sink->New();
+	}
+
+	# junk before the archive, as a self-extracting stub has; offsets stay archive-relative
+	method : public : Prefix(text : String) ~ Nil {
+		@out->PutText(text);
+		@base := @out->Size();
+	}
+
+	method : public : SetZip64() ~ Nil {
+		@zip64 := true;
+	}
+
+	method : public : Add(name : String, data : Byte[], deflate : Bool) ~ Nil {
+		Add(name, data, deflate, data->Size(), Byte->CRC32(data), 0, -1, name, -1);
+	}
+
+	method : public : AddDir(name : String) ~ Nil {
+		Add(name, Byte->New[0], false);
+	}
+
+	# every field can be wrong on purpose: the stated size, the CRC32, the flags, the method
+	# (-1 to follow 'deflate'), the local header's name, and the offset (-1 for where it is)
+	method : public : Add(name : String, data : Byte[], deflate : Bool, size : Int, crc : Int, flags : Int, codec : Int, local_name : String, offset : Int) ~ Nil {
+		packed := deflate ? data->CompressDeflate() : data;
+		if(codec < 0) {
+			codec := deflate ? 8 : 0;
+		};
+		at := offset < 0 ? @out->Size() - @base : offset;
+		time := (10 << 11) or (20 << 5) or 15;
+		date := ((2026 - 1980) << 9) or (3 << 5) or 15;
+
+		if(offset < 0) {
+			local_bytes := local_name->ToByteArray();
+			@out->U32(0x04034b50);
+			@out->U16(20);
+			@out->U16(flags);
+			@out->U16(codec);
+			@out->U16(time);
+			@out->U16(date);
+			@out->U32(crc);
+			@out->U32(packed->Size());
+			@out->U32(size);
+			@out->U16(local_bytes->Size());
+			@out->U16(0);
+			@out->PutBytes(local_bytes);
+			@out->PutBytes(packed);
+		};
+
+		name_bytes := name->ToByteArray();
+		@central->U32(0x02014b50);
+		@central->U16((3 << 8) or 20);
+		@central->U16(20);
+		@central->U16(flags);
+		@central->U16(codec);
+		@central->U16(time);
+		@central->U16(date);
+		@central->U32(crc);
+		if(@zip64) {
+			@central->U32(0xFFFFFFFF);
+			@central->U32(0xFFFFFFFF);
+		}
+		else {
+			@central->U32(packed->Size());
+			@central->U32(size);
+		};
+		@central->U16(name_bytes->Size());
+		@central->U16(@zip64 ? 28 : 0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U32(name->EndsWith('/') ? (0x41ED << 16) or 0x10 : 0x81A4 << 16);
+		@central->U32(@zip64 ? 0xFFFFFFFF : at);
+		@central->PutBytes(name_bytes);
+		if(@zip64) {
+			@central->U16(0x0001);
+			@central->U16(24);
+			@central->U64(size);
+			@central->U64(packed->Size());
+			@central->U64(at);
+		};
+		@count += 1;
+	}
+
+	# a UTC modification time in an extended timestamp field, on a stored member
+	method : public : AddTimed(name : String, data : Byte[], seconds : Int) ~ Nil {
+		at := @out->Size() - @base;
+		name_bytes := name->ToByteArray();
+		@out->U32(0x04034b50);
+		@out->U16(10);
+		@out->U16(0);
+		@out->U16(0);
+		@out->U16(0);
+		@out->U16(0);
+		@out->U32(Byte->CRC32(data));
+		@out->U32(data->Size());
+		@out->U32(data->Size());
+		@out->U16(name_bytes->Size());
+		@out->U16(0);
+		@out->PutBytes(name_bytes);
+		@out->PutBytes(data);
+
+		@central->U32(0x02014b50);
+		@central->U16(20);
+		@central->U16(10);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U32(Byte->CRC32(data));
+		@central->U32(data->Size());
+		@central->U32(data->Size());
+		@central->U16(name_bytes->Size());
+		@central->U16(9);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U32(0);
+		@central->U32(at);
+		@central->PutBytes(name_bytes);
+		@central->U16(0x5455);
+		@central->U16(5);
+		@central->Put(1);
+		@central->U32(seconds);
+		@count += 1;
+	}
+
+	method : public : Finish() ~ Byte[] {
+		return Finish(0, false);
+	}
+
+	# 'disk' marks the archive split; 'lie' claims ZIP64 offsets with no ZIP64 record
+	method : public : Finish(disk : Int, lie : Bool) ~ Byte[] {
+		cd_offset := @out->Size() - @base;
+		cd := @central->ToBytes();
+		@out->PutBytes(cd);
+		if(@zip64) {
+			record_at := @out->Size() - @base;
+			@out->U32(0x06064b50);
+			@out->U64(44);
+			@out->U16(45);
+			@out->U16(45);
+			@out->U32(0);
+			@out->U32(0);
+			@out->U64(@count);
+			@out->U64(@count);
+			@out->U64(cd->Size());
+			@out->U64(cd_offset);
+			@out->U32(0x07064b50);
+			@out->U32(0);
+			@out->U64(record_at);
+			@out->U32(1);
+		};
+
+		@out->U32(0x06054b50);
+		@out->U16(disk);
+		@out->U16(disk);
+		@out->U16(@zip64 ? 0xFFFF : @count);
+		@out->U16(@zip64 ? 0xFFFF : @count);
+		@out->U32(@zip64 ? 0xFFFFFFFF : cd->Size());
+		@out->U32((@zip64 | lie) ? 0xFFFFFFFF : cd_offset);
+		@out->U16(0);
+		return @out->ToBytes();
+	}
+}
+
+# writes a tar: 512-byte ustar headers, data padded to 512, two zero blocks
+class TarBuilder {
+	@out : Sink;
+
+	New() {
+		@out := Sink->New();
+	}
+
+	function : Octal(value : Int, width : Int) ~ String {
+		digits := "";
+		while(value > 0) {
+			digits := "{$(value % 8)}{$digits}";
+			value := value / 8;
+		};
+		while(digits->Size() < width) {
+			digits := "0{$digits}";
+		};
+		return digits;
+	}
+
+	function : Field(block : Byte[], at : Int, text : String) ~ Nil {
+		bytes := text->ToByteArray();
+		Byte->Copy(block, at, bytes, 0, bytes->Size());
+	}
+
+	method : public : Add(name : String, data : Byte[], type : Char) ~ Nil {
+		Add(name, "", data, type, 1700000000, "", false);
+	}
+
+	method : public : Add(name : String, prefix : String, data : Byte[], type : Char, mtime : Int, link : String, bad_sum : Bool) ~ Nil {
+		block := Byte->New[512];
+		Field(block, 0, name);
+		Field(block, 100, "0000644");
+		Field(block, 108, "0000000");
+		Field(block, 116, "0000000");
+		Field(block, 124, Octal(data->Size(), 11));
+		Field(block, 136, Octal(mtime, 11));
+		Field(block, 148, "        ");
+		block[156] := type->As(Int);
+		Field(block, 157, link);
+		Field(block, 257, "ustar");
+		Field(block, 263, "00");
+		Field(block, 345, prefix);
+		sum := 0;
+		each(i : block) {
+			sum += block[i]->As(Int);
+		};
+		if(bad_sum) {
+			sum += 1;
+		};
+		Field(block, 148, Octal(sum, 6));
+		block[154] := 0;
+		@out->PutBytes(block);
+		@out->PutBytes(data);
+		while(@out->Size() % 512 <> 0) {
+			@out->Put(0);
+		};
+	}
+
+	# one pax record, 'LENGTH key=value' and a newline, LENGTH counting itself
+	function : PaxRecord(key : String, value : String) ~ String {
+		body := " {$key}={$value}\n";
+		length := body->Size() + 1;
+		while("{$length}"->Size() + body->Size() <> length) {
+			length += 1;
+		};
+		return "{$length}{$body}";
+	}
+
+	# a pax extended header for the next member
+	method : public : Pax(records : String) ~ Nil {
+		Add("PaxHeader", records->ToByteArray(), 'x');
+	}
+
+	method : public : Finish() ~ Byte[] {
+		each(i : 1024) {
+			@out->Put(0);
+		};
+		return @out->ToBytes();
+	}
+
+	method : public : Unfinished() ~ Byte[] {
+		return @out->ToBytes();
+	}
+}
+
+class QuerySourceArchive {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Bytes(text : String) ~ Byte[] {
+		return text->ToByteArray();
+	}
+
+	# the archive is refused, with an error saying why, and nothing reaches the catalog
+	function : Refused(what : String, bytes : Byte[], expected : String) ~ Nil {
+		Refused(what, ArchiveSource->FromBytes("bad", bytes), expected);
+	}
+
+	function : Refused(what : String, source : ArchiveSource, expected : String) ~ Nil {
+		catalog := Catalog->New();
+		loaded := catalog->Load(source);
+		error := catalog->GetError();
+		ok := <>loaded & error <> Nil & error->Has(expected) & catalog->GetNames()->Size() = 0;
+		if(<>ok) {
+			shown := error <> Nil ? error : "no error";
+			"  ({$what}: {$shown})"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	function : TextOf(table : Table, row : Int, column : String) ~ String {
+		value := table->Get(row)->Get(column);
+		return value <> Nil ? value->As(String) : "";
+	}
+
+	function : IntOf(table : Table, row : Int, column : String) ~ Int {
+		value := table->Get(row)->Get(column);
+		return value <> Nil ? value->As(IntRef)->Get() : -999;
+	}
+
+	# the listing row of a path, -1 if none
+	function : RowOf(listing : Table, path : String) ~ Int {
+		each(r : listing->Size()) {
+			if(TextOf(listing, r, "path")->Equals(path)) {
+				return r;
+			};
+		};
+		return -1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		saved := Table->New("saved", ["k", "v"]);
+		row := saved->Insert();
+		row->Set("k", IntRef->New(7));
+		row->Set("v", "seven");
+
+		csv := "id,score,label\n1,0.5,cat\n2,1.5,dog\n";
+		zip := ZipBuilder->New();
+		zip->AddDir("data/");
+		zip->Add("data/runs.csv", Bytes(csv), true);
+		zip->Add("data/runs.tsv", Bytes("id\tname\n1\tx\n2\ty\n"), false);
+		zip->Add("logs/events.jsonl", Bytes("{\"step\": 1, \"ok\": true}\n{\"step\": 2, \"ok\": false}\n"), true);
+		zip->Add("meta.json", Bytes("[{\"run\": \"a\", \"tags\": [\"x\", \"y\"]}]"), true);
+		zip->Add("books.xml", Bytes("<shelf><book id=\"1\"><title>Dune</title></book></shelf>"), true);
+		zip->Add("saved/t.otab", saved->ToBytes(), true);
+		zip->Add("packed/p.csv.gz", Bytes("a,b\n1,2\n")->CompressGzip(), false);
+		zip->Add("README.txt", Bytes("not a table"), true);
+		zip->AddTimed("stamp.csv", Bytes("x\n1\n"), 1700000000);
+		bytes := zip->Finish();
+		path := "query_arch_tmp.zip";
+		FileWriter->WriteFile(path, bytes);
+
+		# the listing: a tree with implied folders
+		source := ArchiveSource->New(path);
+		listing := source->List();
+		Check("a zip lists", listing <> Nil);
+		if(listing <> Nil) {
+			Check("the listing is named after the archive", listing->GetName()->Equals("query_arch_tmp"));
+			Check("every member and implied folder has a row", listing->Size() = 13);
+			data_row := RowOf(listing, "data");
+			runs_row := RowOf(listing, "data/runs.csv");
+			logs_row := RowOf(listing, "logs");
+			Check("a listed folder is a folder at depth 0", data_row > -1 & listing->Get(data_row)->Get("is_dir")->As(BoolRef)->Get() & IntOf(listing, data_row, "depth") = 0 & listing->Get(data_row)->Get("parent_id") = Nil);
+			Check("an implied folder gets a row", logs_row > -1 & TextOf(listing, logs_row, "type")->Equals("dir"));
+			Check("a member names its parent", runs_row > -1 & IntOf(listing, runs_row, "parent_id") = IntOf(listing, data_row, "id") & IntOf(listing, runs_row, "depth") = 1);
+			Check("name, ext, type, size", TextOf(listing, runs_row, "name")->Equals("runs.csv") & TextOf(listing, runs_row, "ext")->Equals("csv") & TextOf(listing, runs_row, "type")->Equals("file") & IntOf(listing, runs_row, "size") = csv->Size());
+			Check("method, compressed size and CRC32", TextOf(listing, runs_row, "method")->Equals("deflate") & IntOf(listing, runs_row, "compressed_size") = Bytes(csv)->CompressDeflate()->Size() & IntOf(listing, runs_row, "crc32") = Byte->CRC32(Bytes(csv)));
+			Check("a stored member says so", TextOf(listing, RowOf(listing, "data/runs.tsv"), "method")->Equals("stored"));
+			when := listing->Get(runs_row)->Get("modified")->As(System.Time.Date);
+			Check("the DOS time, as local time", when->GetYear() = 2026 & when->GetMonth() = 3 & when->GetDay() = 15 & when->GetHours() = 10 & when->GetMinutes() = 20 & when->GetSeconds() = 30 & <>when->IsGmt());
+			stamp := listing->Get(RowOf(listing, "stamp.csv"))->Get("modified")->As(System.Time.Date);
+			Check("an extended timestamp, in UTC", stamp->GetYear() = 2023 & stamp->GetMonth() = 11 & stamp->GetDay() = 14 & stamp->GetHours() = 22 & stamp->GetMinutes() = 13 & stamp->IsGmt());
+		};
+		members := source->GetMembers();
+		Check("GetMembers lists files only, in order", members <> Nil & members->Size() = 9 & members[0]->Equals("data/runs.csv"));
+
+		# the members as tables
+		catalog := Catalog->New();
+		Check("a zip loads", catalog->Load(source));
+		runs := catalog->Get("data/runs.csv");
+		Check("a CSV member is a typed table named by its path", runs <> Nil & runs->Size() = 2 & runs->GetColumn("score")->GetType() = ColumnType->FLOAT & runs->GetColumn("id")->GetType() = ColumnType->INT);
+		tsv := catalog->Get("data/runs.tsv");
+		Check("a stored TSV member", tsv <> Nil & tsv->Size() = 2 & TextOf(tsv, 1, "name")->Equals("y"));
+		events := catalog->Get("logs/events.jsonl");
+		Check("a JSON Lines member", events <> Nil & events->Size() = 2 & events->GetColumn("ok")->GetType() = ColumnType->BOOL);
+		Check("a JSON member and its child table", catalog->Get("meta.json") <> Nil & catalog->Get("meta.json_tags") <> Nil & catalog->Get("meta.json_tags")->Size() = 2);
+		otab := catalog->Get("saved/t.otab");
+		Check("an .otab member, under its path", otab <> Nil & otab->Size() = 1 & TextOf(otab, 0, "v")->Equals("seven"));
+		Check("a gzipped member", catalog->Get("packed/p.csv.gz") <> Nil & IntOf(catalog->Get("packed/p.csv.gz"), 0, "b") = 2);
+		Check("XML without a row element and text are listed only", catalog->Get("books.xml") = Nil & catalog->Get("README.txt") = Nil);
+		rs := catalog->Query("select label from \"data/runs.csv\" where score > 1");
+		Check("a member in SQL, by its quoted path", rs <> Nil & rs->Size() = 1 & TextOf(rs, 0, "label")->Equals("dog"));
+		rs := catalog->Query("select f.name from query_arch_tmp f join query_arch_tmp d on f.parent_id = d.id where d.name = 'data' order by f.name");
+		Check("the listing joins to itself through parent_id", rs <> Nil & rs->Size() = 2 & TextOf(rs, 0, "name")->Equals("runs.csv"));
+		Check("ReadText reads any member", source->ReadText("README.txt")->Equals("not a table"));
+		Check("ReadTable reads one member", source->ReadTable("data/runs.tsv") <> Nil & source->ReadTable("README.txt") = Nil & source->GetError()->Has("not in a format"));
+		Check("a missing member is an error", source->ReadBytes("nope.csv") = Nil & source->GetError()->Has("no member 'nope.csv'"));
+
+		with_xml := ArchiveSource->New(path);
+		with_xml->SetRowElement("book");
+		with_xml->SetPattern("*.xml");
+		catalog := Catalog->New();
+		Check("a pattern and a row element", catalog->Load(with_xml) & catalog->Get("books.xml") <> Nil & catalog->Get("data/runs.csv") = Nil & TextOf(catalog->Get("books.xml"), 0, "title")->Equals("Dune"));
+		specs := ArchiveSource->FromBytes("mem", bytes)->GetTables();
+		Check("bytes in memory read as the file does; GetTables lists the listing first", specs->Size() = 9 & specs[0]->GetName()->Equals("mem") & specs[1]->GetName()->Equals("data/runs.csv"));
+
+		# ZIP64 and a self-extracting prefix
+		zip := ZipBuilder->New();
+		zip->SetZip64();
+		zip->Add("big/runs.csv", Bytes(csv), true);
+		zip->Add("small.csv", Bytes("q\n5\n"), false);
+		catalog := Catalog->New();
+		Check("a ZIP64 archive reads", catalog->Load(ArchiveSource->FromBytes("z64", zip->Finish())) & catalog->Get("big/runs.csv")->Size() = 2 & IntOf(catalog->Get("small.csv"), 0, "q") = 5);
+		zip := ZipBuilder->New();
+		zip->Prefix("MZ this stands for a self-extracting stub");
+		zip->Add("in.csv", Bytes(csv), true);
+		catalog := Catalog->New();
+		Check("a zip after a prefix reads", catalog->Load(ArchiveSource->FromBytes("sfx", zip->Finish())) & catalog->Get("in.csv")->Size() = 2);
+		empty := ZipBuilder->New()->Finish();
+		empty_list := ArchiveSource->FromBytes("none", empty)->List();
+		Check("an empty zip is an empty listing", empty_list <> Nil & empty_list->Size() = 0);
+
+		# a tar, then the same tar gzipped
+		long := "top/a_very_long_folder_name_that_goes_on/and_on_past_the_hundred_bytes_a_ustar_name_field_holds/long.csv";
+		tar := TarBuilder->New();
+		tar->Add("./", Byte->New[0], '5');
+		tar->Add("./top/", Byte->New[0], '5');
+		tar->Add("top/a.csv", Bytes("n\n1\n"), '0');
+		tar->Add("b.csv", "top/deep", Bytes("n\n2\n"), '0', 1600000000, "", false);
+		tar->Add("././@LongLink", Bytes(long), 'L');
+		tar->Add("ignored", Bytes("n\n3\n"), '0');
+		tar->Pax(TarBuilder->PaxRecord("path", "top/pax name.csv") + TarBuilder->PaxRecord("mtime", "1500000000.25"));
+		tar->Add("short", Bytes("n\n4\n"), '0');
+		tar->Add("top/link", "", Byte->New[0], '2', 1700000000, "a.csv", false);
+		tar->Add("top/a.csv", Bytes("n\n5\n"), '0');
+		tar_bytes := tar->Finish();
+
+		catalog := Catalog->New();
+		tar_source := ArchiveSource->FromBytes("t", tar_bytes);
+		Check("a tar loads", catalog->Load(tar_source));
+		tar_list := catalog->Get("t");
+		if(tar_list <> Nil) {
+			Check("the './' root is not a row; repeated members are", RowOf(tar_list, "") = -1 & tar_list->Size() = 10);
+			Check("a ustar prefix joins the name", RowOf(tar_list, "top/deep/b.csv") > -1 & RowOf(tar_list, "top/deep") > -1);
+			Check("a GNU long name", RowOf(tar_list, long) > -1 & RowOf(tar_list, "ignored") = -1);
+			pax_row := RowOf(tar_list, "top/pax name.csv");
+			Check("a pax path and mtime", pax_row > -1 & tar_list->Get(pax_row)->Get("modified")->As(System.Time.Date)->GetYear() = 2017);
+			link_row := RowOf(tar_list, "top/link");
+			Check("a symlink is listed with its target", link_row > -1 & TextOf(tar_list, link_row, "type")->Equals("symlink") & TextOf(tar_list, link_row, "link")->Equals("a.csv"));
+			a_row := RowOf(tar_list, "top/a.csv");
+			when := tar_list->Get(a_row)->Get("modified")->As(System.Time.Date);
+			Check("tar times are UTC; tar has no method or CRC", when->GetYear() = 2023 & when->IsGmt() & tar_list->Get(a_row)->Get("method") = Nil & tar_list->Get(a_row)->Get("crc32") = Nil);
+		};
+		Check("the last copy of a repeated member is the table", IntOf(catalog->Get("top/a.csv"), 0, "n") = 5);
+		Check("prefixed, long and pax members are tables", IntOf(catalog->Get("top/deep/b.csv"), 0, "n") = 2 & IntOf(catalog->Get(long), 0, "n") = 3 & IntOf(catalog->Get("top/pax name.csv"), 0, "n") = 4);
+		Check("a link is not followed", tar_source->ReadBytes("top/link") = Nil & tar_source->GetError()->Has("links are not followed"));
+
+		gz_catalog := Catalog->New();
+		FileWriter->WriteFile("query_arch_tmp.tar.gz", tar_bytes->CompressGzip());
+		Check("a gzipped tar reads as the tar does", gz_catalog->Load(ArchiveSource->New("query_arch_tmp.tar.gz")) & gz_catalog->Get("query_arch_tmp")->Size() = 10 & IntOf(gz_catalog->Get("top/a.csv"), 0, "n") = 5);
+		empty_tar := ArchiveSource->FromBytes("et", TarBuilder->New()->Finish())->List();
+		Check("an empty tar is an empty listing", empty_tar <> Nil & empty_tar->Size() = 0);
+
+		# refusals
+		zip := ZipBuilder->New();
+		zip->Add("../evil.csv", Bytes(csv), true);
+		Refused("a zip member climbing out with '..'", zip->Finish(), "climbs out");
+		zip := ZipBuilder->New();
+		zip->Add("/etc/evil.csv", Bytes(csv), true);
+		Refused("an absolute zip member", zip->Finish(), "absolute path");
+		zip := ZipBuilder->New();
+		zip->Add("C:\\evil.csv", Bytes(csv), true);
+		Refused("a drive-letter zip member", zip->Finish(), "absolute path");
+		tar := TarBuilder->New();
+		tar->Add("a/../../evil.csv", Bytes(csv), '0');
+		Refused("a tar member climbing out with '..'", tar->Finish(), "climbs out");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true);
+		zip->Add("./x.csv", Bytes(csv), true);
+		Refused("duplicate zip names", zip->Finish(), "appears twice");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true, csv->Size(), Byte->CRC32(Bytes(csv)) + 1, 0, -1, "x.csv", -1);
+		Refused("a CRC32 mismatch", zip->Finish(), "CRC32");
+
+		zeros := Byte->New[4 * 1024 * 1024];
+		zip := ZipBuilder->New();
+		zip->Add("bomb.csv", zeros, true, 1000, Byte->CRC32(zeros), 0, -1, "bomb.csv", -1);
+		bomb := zip->Finish();
+		Check("the bomb is small", bomb->Size() < 16 * 1024);
+		Refused("a zip bomb (inflating past its stated size)", bomb, "expands past the 1000 bytes");
+		zip := ZipBuilder->New();
+		zip->Add("big.csv", zeros, true);
+		limited := ArchiveSource->FromBytes("lim", zip->Finish());
+		limited->SetLimits(1024 * 1024, 8 * 1024 * 1024);
+		Refused("a member over the member limit", limited, "over the limit of 1048576");
+		zip := ZipBuilder->New();
+		zip->Add("one.csv", Bytes(csv), true);
+		zip->Add("two.csv", Bytes(csv), true);
+		limited := ArchiveSource->FromBytes("lim", zip->Finish());
+		limited->SetLimits(1000, csv->Size() + 10);
+		Refused("members over the total limit", limited, "past its limit of");
+		gz_bomb := ArchiveSource->FromBytes("gzb", zeros->CompressGzip());
+		gz_bomb->SetLimits(1024, 1024 * 1024);
+		Refused("a gzip bomb", gz_bomb, "inflates past the limit");
+
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true, csv->Size(), Byte->CRC32(Bytes(csv)), 1, -1, "x.csv", -1);
+		Refused("an encrypted member", zip->Finish(), "encrypted");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true, csv->Size(), Byte->CRC32(Bytes(csv)), 0, 12, "x.csv", -1);
+		Refused("an unsupported method", zip->Finish(), "bzip2");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true, csv->Size(), Byte->CRC32(Bytes(csv)), 0, -1, "other.csv", -1);
+		Refused("a local header naming another member", zip->Finish(), "names a different member");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true);
+		zip->Add("y.csv", Bytes(csv), true, csv->Size(), Byte->CRC32(Bytes(csv)), 0, -1, "y.csv", 0);
+		Refused("two members sharing data", zip->Finish(), "overlap");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true);
+		whole := zip->Finish();
+		cut := Byte->New[whole->Size() - 30];
+		Byte->Copy(cut, 0, whole, 0, cut->Size());
+		Refused("a truncated zip", cut, "not a zip, tar or gzipped tar archive");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true);
+		Refused("a split zip", zip->Finish(1, false), "split across");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes(csv), true);
+		Refused("ZIP64 values with no ZIP64 record", zip->Finish(0, true), "needs ZIP64");
+		zip := ZipBuilder->New();
+		zip->Add("x.csv", Bytes("a,b\n1,2,3,4\n\"open"), true);
+		Refused("a member that does not parse", zip->Finish(), "member 'x.csv'");
+
+		tar := TarBuilder->New();
+		tar->Add("x.csv", "", Bytes(csv), '0', 1700000000, "", true);
+		Refused("a damaged tar checksum", tar->Finish(), "at byte 0 is damaged");
+		tar := TarBuilder->New();
+		tar->Add("x.csv", Bytes(csv), '0');
+		tar->Add("y.csv", "", Bytes(csv), '0', 1700000000, "", true);
+		Refused("a damaged checksum on a later header", tar->Finish(), "at byte 1024 is damaged");
+		tar := TarBuilder->New();
+		tar->Add("x.csv", Bytes(csv), '0');
+		cut_tar := tar->Unfinished();
+		short := Byte->New[512 + 10];
+		Byte->Copy(short, 0, cut_tar, 0, short->Size());
+		Refused("a truncated tar", short, "runs past the end");
+		Refused("text that is no archive", Bytes("this is not an archive at all, not even close"), "not a zip, tar or gzipped tar archive");
+		Refused("a missing file", ArchiveSource->New("query_arch_missing_tmp.zip"), "no file");
+
+		File->Delete(path);
+		File->Delete("query_arch_tmp.tar.gz");
+
+		if(@failures = 0) {
+			"PASS: query archive source"->PrintLine();
+		}
+		else {
+			"FAIL: query archive source ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

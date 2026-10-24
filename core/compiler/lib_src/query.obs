@@ -15703,6 +15703,1577 @@ rs := catalog->Query("select title, @lang from books where year > 2000");
 		}
 	}
 
+	#~
+	A zip or tar archive as tables, without extracting it: a listing of its members as a tree
+	(like FilesystemSource's), and each member in a format the library reads as a table of its
+	own, named by the member's path ('data/runs.csv'; in SQL, "data/runs.csv" in double
+	quotes). Members are read by extension: '.csv', '.tsv', '.jsonl' and '.ndjson', '.json',
+	'.otab', and '.xml' once SetRowElement names the row element, each also with '.gz'. Other
+	members, '.txt' included, are listed only; ReadBytes and ReadText read any of them.
+
+	The archive is a '.zip' (stored and deflate members, ZIP64, a self-extracting prefix), a
+	'.tar' (POSIX ustar, pax and GNU long names) or a gzipped tar ('.tar.gz', '.tgz'), told
+	apart by content rather than name, from a file, an https:// URL or bytes in memory.
+
+	Untrusted archives are safe to read. Nothing is written to disk. A member whose path is
+	absolute or climbs out with '..' is refused, as are duplicate names in a zip and members
+	whose data overlap. Each zip member is inflated to at most the size its header states and
+	checked against its CRC32, so a zip bomb or a damaged member is an error naming it, never
+	wrong data. Reading stops at 256 MB for one member and 1 GB for the whole archive unless
+	SetLimits says otherwise. Encrypted members, compression other than deflate, and archives
+	split across disks are reported as unsupported. Links are listed but never followed.
+
+	The listing table is named after the archive ('results' for 'results.zip'), with columns
+	id, parent_id (empty at the top), depth (0 at the top), name, path, ext, is_dir, type
+	('file', 'dir', 'symlink', 'hardlink' or 'other'), size, compressed_size and method (zip
+	only; method is 'stored', 'deflate' or the name of another), crc32 (zip only), modified
+	and link (a link's target). Folders that the archive implies but does not list get rows
+	too, so every member has a parent. A tar member repeated later in the archive replaces
+	the earlier one's table, as extracting would.
+
+```
+catalog := Catalog->New();
+if(catalog->Load(ArchiveSource->New("results.zip"))) {
+  rs := catalog->Query("select path, size from results where ext = 'csv' order by size desc");
+  runs := catalog->Query("select name, avg(score) from \"2026/runs.csv\" group by name");
+};
+```
+	~#
+	class ArchiveSource implements Source {
+		@path : String;
+		@image : Byte[];
+		@title : String;
+		@name : String;
+		@pattern : String;
+		@row_element : String;
+		@member_limit : Int;
+		@total_limit : Int;
+		@error : String;
+
+		#~
+		Constructor; the listing table is named after the archive
+		@param path archive file or URL ('.zip', '.tar', '.tar.gz' or '.tgz')
+		~#
+		New(path : String) {
+			@path := path;
+			@title := path;
+			@name := SourceText->BaseName(path, "archive");
+			@pattern := "*";
+			@member_limit := 256 * 1024 * 1024;
+			@total_limit := 1024 * 1024 * 1024;
+		}
+
+		#~
+		Makes a source over an archive already in memory
+		@param name the listing table's name
+		@param bytes archive bytes
+		@return source
+		~#
+		function : FromBytes(name : String, bytes : Byte[]) ~ ArchiveSource {
+			source := ArchiveSource->New(Nil);
+			source->SetBytes(name, bytes);
+			return source;
+		}
+
+		method : public : SetBytes(name : String, bytes : Byte[]) ~ Nil {
+			@image := bytes;
+			@title := name;
+			@name := name;
+		}
+
+		#~
+		Sets the listing table's name
+		@param name table name
+		~#
+		method : public : SetName(name : String) ~ Nil {
+			@name := name;
+		}
+
+		#~
+		Sets which members become tables: a pattern over member paths, where '*' matches any
+		run of characters (slashes included) and '?' any one. All readable members by default.
+		@param pattern pattern, such as 'runs/*.csv'
+		~#
+		method : public : SetPattern(pattern : String) ~ Nil {
+			@pattern := pattern <> Nil ? pattern : "*";
+		}
+
+		#~
+		Names the element that is a row in XML members; without it XML members are listed only
+		@param row_element element name
+		~#
+		method : public : SetRowElement(row_element : String) ~ Nil {
+			@row_element := row_element;
+		}
+
+		#~
+		Sets how much may be decompressed: a member larger than 'member_bytes' is refused, and
+		so is a read that would take the archive's total past 'total_bytes'. The defaults are
+		256 MB and 1 GB.
+		@param member_bytes most bytes one member may hold uncompressed
+		@param total_bytes most bytes all members read together may hold uncompressed
+		~#
+		method : public : SetLimits(member_bytes : Int, total_bytes : Int) ~ Nil {
+			@member_limit := member_bytes;
+			@total_limit := total_bytes;
+		}
+
+		#~
+		Gets the listing's column names
+		@return column names
+		~#
+		function : ColumnNames() ~ String[] {
+			return ["id", "parent_id", "depth", "name", "path", "ext", "is_dir", "type", "size", "compressed_size", "method", "crc32", "modified", "link"];
+		}
+
+		function : ColumnTypes() ~ ColumnType[] {
+			types := ColumnType->New[14];
+			types[0] := ColumnType->INT;
+			types[1] := ColumnType->INT;
+			types[2] := ColumnType->INT;
+			types[3] := ColumnType->STRING;
+			types[4] := ColumnType->STRING;
+			types[5] := ColumnType->STRING;
+			types[6] := ColumnType->BOOL;
+			types[7] := ColumnType->STRING;
+			types[8] := ColumnType->INT;
+			types[9] := ColumnType->INT;
+			types[10] := ColumnType->STRING;
+			types[11] := ColumnType->INT;
+			types[12] := ColumnType->DATE;
+			types[13] := ColumnType->STRING;
+			return types;
+		}
+
+		#~
+		Gets the tables the archive provides, the listing first; the members' columns are
+		known only after reading them
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			return TableShapes->Of(ReadAll(), @name);
+		}
+
+		#~
+		Loads the listing and every member readable as a table into a catalog. Nothing is
+		added unless every member reads. The scan hint is not pushed into members.
+		@param catalog catalog
+		@param hint ignored; the engine applies the query afterwards
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			tables := ReadAll();
+			if(tables = Nil) {
+				return false;
+			};
+
+			each(i : tables) {
+				catalog->Add(tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Lists the archive's members as a table
+		@return listing, Nil if the archive cannot be read (see GetError)
+		~#
+		method : public : List() ~ Table {
+			@error := Nil;
+			reader := Open();
+			if(reader = Nil) {
+				return Nil;
+			};
+
+			return Listing(reader);
+		}
+
+		#~
+		Gets the paths of the archive's files, in archive order
+		@return member paths, Nil if the archive cannot be read (see GetError)
+		~#
+		method : public : GetMembers() ~ String[] {
+			@error := Nil;
+			reader := Open();
+			if(reader = Nil) {
+				return Nil;
+			};
+
+			files := Vector->New()<String>;
+			entries := reader->GetEntries();
+			each(i : entries) {
+				entry := entries->Get(i);
+				if(entry->GetType()->Equals("file")) {
+					files->AddBack(entry->GetPath());
+				};
+			};
+
+			paths := String->New[files->Size()];
+			each(i : paths) {
+				paths[i] := files->Get(i);
+			};
+			return paths;
+		}
+
+		#~
+		Reads one member's bytes, checked against its CRC32 and limits
+		@param member member path, as the listing gives it
+		@return bytes, Nil if missing or unreadable (see GetError)
+		~#
+		method : public : ReadBytes(member : String) ~ Byte[] {
+			@error := Nil;
+			reader := Open();
+			if(reader = Nil) {
+				return Nil;
+			};
+
+			entry := reader->Find(member);
+			if(entry = Nil) {
+				@error := "'{$@title}' has no member '{$member}'";
+				return Nil;
+			};
+
+			error := StringHolder->New();
+			bytes := reader->Read(entry, error);
+			if(bytes = Nil) {
+				@error := error->Get();
+			};
+			return bytes;
+		}
+
+		#~
+		Reads one member as UTF-8 text
+		@param member member path, as the listing gives it
+		@return text, Nil if missing or unreadable (see GetError)
+		~#
+		method : public : ReadText(member : String) ~ String {
+			bytes := ReadBytes(member);
+			if(bytes = Nil) {
+				return Nil;
+			};
+
+			return bytes->ToString();
+		}
+
+		#~
+		Reads one member as a table, by its extension, whether or not it matches the pattern
+		@param member member path, as the listing gives it
+		@return the member's table (a JSON or XML member's child tables are left out), Nil if
+		it cannot be read as one (see GetError)
+		~#
+		method : public : ReadTable(member : String) ~ Table {
+			@error := Nil;
+			reader := Open();
+			if(reader = Nil) {
+				return Nil;
+			};
+
+			entry := reader->Find(member);
+			if(entry = Nil) {
+				@error := "'{$@title}' has no member '{$member}'";
+				return Nil;
+			};
+
+			if(FormatOf(member)->Size() = 0 | (FormatOf(member)->Equals("xml") & @row_element = Nil)) {
+				@error := "'{$@title}': member '{$member}' is not in a format read as a table";
+				return Nil;
+			};
+
+			error := StringHolder->New();
+			tables := ReadMember(reader, entry, error);
+			if(tables = Nil) {
+				@error := error->Get();
+				return Nil;
+			};
+
+			return tables->Get(0);
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		# the listing, then every matching readable member's tables; Nil with @error set
+		method : ReadAll() ~ Vector<Table> {
+			@error := Nil;
+			reader := Open();
+			if(reader = Nil) {
+				return Nil;
+			};
+
+			tables := Vector->New()<Table>;
+			tables->AddBack(Listing(reader));
+
+			# a tar may hold a path more than once; the last copy is the one extracting keeps
+			entries := reader->GetEntries();
+			last := Map->New()<String, IntRef>;
+			each(i : entries) {
+				entry := entries->Get(i);
+				if(entry->GetType()->Equals("file")) {
+					if(last->Has(entry->GetPath())) {
+						last->Remove(entry->GetPath());
+					};
+					last->Insert(entry->GetPath(), IntRef->New(i));
+				};
+			};
+
+			error := StringHolder->New();
+			each(i : entries) {
+				entry := entries->Get(i);
+				path := entry->GetPath();
+				if(entry->GetType()->Equals("file") & last->Find(path)->Get() = i & IsTable(path)) {
+					member_tables := ReadMember(reader, entry, error);
+					if(member_tables = Nil) {
+						@error := error->Get();
+						return Nil;
+					};
+
+					each(t : member_tables) {
+						tables->AddBack(member_tables->Get(t));
+					};
+				};
+			};
+
+			return tables;
+		}
+
+		# whether a member becomes a table: a known format, matching the pattern
+		method : IsTable(path : String) ~ Bool {
+			format := FormatOf(path);
+			if(format->Size() = 0 | (format->Equals("xml") & @row_element = Nil)) {
+				return false;
+			};
+
+			return FileTables->GlobMatches(@pattern, 0, path, 0);
+		}
+
+		# the archive opened and its directory read; Nil with @error set
+		method : Open() ~ ArchiveReader {
+			error := StringHolder->New();
+			path := @path;
+			if(@image = Nil) {
+				if(path = Nil) {
+					@error := "no archive and no bytes";
+					return Nil;
+				};
+
+				if(UrlCache->IsUrl(path)) {
+					fetched := UrlCache->Fetch(path, error);
+					if(fetched = Nil) {
+						@error := error->Get();
+						return Nil;
+					};
+					path := fetched->GetPath();
+				};
+			};
+
+			reader := ArchiveReader->Open(@title, path, @image, @member_limit, @total_limit, error);
+			if(reader = Nil) {
+				@error := error->Get();
+			};
+			return reader;
+		}
+
+		# a member's tables: its own, then any child tables a JSON or XML member makes
+		method : ReadMember(reader : ArchiveReader, entry : ArchiveEntry, error : StringHolder) ~ Vector<Table> {
+			bytes := reader->Read(entry, error);
+			if(bytes = Nil) {
+				return Nil;
+			};
+
+			path := entry->GetPath();
+			where := "'{$@title}', member '{$path}'";
+			if(path->ToLower()->EndsWith(".gz")) {
+				packed := bytes;
+				bytes := Nil;
+				try {
+					bytes := Byte->UncompressGzip(packed, reader->GetRemaining());
+				}
+				on(e : Error) {
+					error->Set("{$where} is not valid gzip data, or is truncated");
+					return Nil;
+				};
+
+				if(bytes = Nil) {
+					error->Set("{$where} inflates past the archive's limit of {$@total_limit} bytes");
+					return Nil;
+				};
+				reader->Count(bytes->Size());
+			};
+
+			tables := Vector->New()<Table>;
+			format := FormatOf(path);
+			if(format->Equals("otab")) {
+				file := OtabFile->New(bytes);
+				table := file->Read();
+				if(table = Nil) {
+					error->Set("{$where}: {$(file->GetError())}");
+					return Nil;
+				};
+				tables->AddBack(Renamed(table, path));
+				return tables;
+			};
+
+			text := bytes->ToString();
+			table : Table;
+			reason : String;
+			if(format->Equals("csv") | format->Equals("tsv")) {
+				csv := CsvSource->FromText(path, text, format->Equals("tsv") ? '\t' : ',');
+				table := csv->Read(Nil);
+				reason := csv->GetError();
+				if(table <> Nil) {
+					tables->AddBack(table);
+				};
+			}
+			else if(format->Equals("jsonl")) {
+				lines := JsonLinesSource->FromText(path, text);
+				table := lines->Read();
+				reason := lines->GetError();
+				if(table <> Nil) {
+					tables->AddBack(table);
+					AddAll(tables, lines->GetChildTables());
+				};
+			}
+			else if(format->Equals("json")) {
+				json := JsonSource->FromText(path, text);
+				table := json->Read();
+				reason := json->GetError();
+				if(table <> Nil) {
+					tables->AddBack(table);
+					AddAll(tables, json->GetChildTables());
+				};
+			}
+			else if(format->Equals("xml")) {
+				xml := XmlSource->FromText(path, text, @row_element);
+				table := xml->Read();
+				reason := xml->GetError();
+				if(table <> Nil) {
+					tables->AddBack(table);
+					AddAll(tables, xml->GetChildTables());
+				};
+			};
+
+			if(table = Nil) {
+				error->Set(reason <> Nil ? "{$where}: {$reason}" : "{$where} cannot be read as a table");
+				return Nil;
+			};
+
+			return tables;
+		}
+
+		function : AddAll(tables : Vector<Table>, more : Vector<Table>) ~ Nil {
+			each(i : more) {
+				tables->AddBack(more->Get(i));
+			};
+		}
+
+		# a table under another name, sharing its columns
+		function : Renamed(table : Table, name : String) ~ Table {
+			names := table->GetColumnNames();
+			data_names := String->New[names->Size() - 1];
+			parts := Column->New[names->Size()];
+			each(c : names) {
+				parts[c] := table->GetColumn(c);
+				if(c > 0) {
+					data_names[c - 1] := names[c];
+				};
+			};
+
+			return Table->Restore(name, data_names, parts, table->GetNextKey());
+		}
+
+		# the table format a member's extension names, after any '.gz'; empty for none
+		function : FormatOf(path : String) ~ String {
+			lower := path->ToLower();
+			if(lower->EndsWith(".gz")) {
+				lower := lower->SubString(0, lower->Size() - 3);
+			};
+
+			if(lower->EndsWith(".csv")) {
+				return "csv";
+			}
+			else if(lower->EndsWith(".tsv")) {
+				return "tsv";
+			}
+			else if(lower->EndsWith(".jsonl") | lower->EndsWith(".ndjson")) {
+				return "jsonl";
+			}
+			else if(lower->EndsWith(".json")) {
+				return "json";
+			}
+			else if(lower->EndsWith(".xml")) {
+				return "xml";
+			}
+			else if(lower->EndsWith(".otab")) {
+				return "otab";
+			};
+
+			return "";
+		}
+
+		# the members as a tree: implied folders get rows, and each row names its parent
+		method : Listing(reader : ArchiveReader) ~ Table {
+			table := Table->New(@name, ColumnNames(), ColumnTypes());
+			folders := Map->New()<String, IntRef>;
+			entries := reader->GetEntries();
+			row : Row := Nil;
+			each(i : entries) {
+				entry := entries->Get(i);
+				path := entry->GetPath();
+				is_dir := entry->GetType()->Equals("dir");
+				parent := AddFolders(table, folders, path);
+				known := folders->Find(path);
+				if(is_dir & known <> Nil) {
+					# a folder listed after a member inside it already gave it a row
+					row := table->Get(known->Get());
+				}
+				else {
+					row := table->Insert();
+					row->Set("id", IntRef->New(row->GetKey()));
+					if(parent > -1) {
+						row->Set("parent_id", IntRef->New(parent));
+					};
+					row->Set("depth", IntRef->New(Depth(path)));
+					row->Set("name", LastPart(path));
+					row->Set("path", path);
+					row->Set("ext", FilesystemSource->Extension(LastPart(path), is_dir));
+					row->Set("is_dir", BoolRef->New(is_dir));
+					if(is_dir) {
+						folders->Insert(path, IntRef->New(row->GetKey()));
+					};
+				};
+
+				row->Set("type", entry->GetType());
+				row->Set("size", IntRef->New(entry->GetSize()));
+				if(entry->GetPacked() > -1) {
+					row->Set("compressed_size", IntRef->New(entry->GetPacked()));
+				};
+				if(entry->GetMethod() > -1) {
+					row->Set("method", ArchiveReader->MethodName(entry->GetMethod()));
+				};
+				if(entry->GetCrc() > -1) {
+					row->Set("crc32", IntRef->New(entry->GetCrc()));
+				};
+				if(entry->GetModified() <> Nil) {
+					row->Set("modified", entry->GetModified());
+				};
+				if(entry->GetLink() <> Nil & entry->GetLink()->Size() > 0) {
+					row->Set("link", entry->GetLink());
+				};
+			};
+
+			return table;
+		}
+
+		# rows for the folders above a path that have none yet; the parent's id, -1 at the top
+		function : AddFolders(table : Table, folders : Map<String, IntRef>, path : String) ~ Int {
+			parent := -1;
+			depth := 0;
+			each(i : path) {
+				if(path->Get(i) = '/') {
+					folder := path->SubString(0, i);
+					known := folders->Find(folder);
+					if(known = Nil) {
+						row := table->Insert();
+						id := row->GetKey();
+						row->Set("id", IntRef->New(id));
+						if(parent > -1) {
+							row->Set("parent_id", IntRef->New(parent));
+						};
+						row->Set("depth", IntRef->New(depth));
+						row->Set("name", LastPart(folder));
+						row->Set("path", folder);
+						row->Set("is_dir", BoolRef->New(true));
+						row->Set("type", "dir");
+						folders->Insert(folder, IntRef->New(id));
+						parent := id;
+					}
+					else {
+						parent := known->Get();
+					};
+					depth += 1;
+				};
+			};
+
+			return parent;
+		}
+
+		function : Depth(path : String) ~ Int {
+			depth := 0;
+			each(i : path) {
+				if(path->Get(i) = '/') {
+					depth += 1;
+				};
+			};
+			return depth;
+		}
+
+		function : LastPart(path : String) ~ String {
+			slash := path->FindLast('/');
+			if(slash < 0) {
+				return path;
+			};
+
+			return path->SubString(slash + 1, path->Size() - slash - 1);
+		}
+	}
+
+	# one member of an archive, as a zip's central directory or a tar header describes it
+	class : private : ArchiveEntry {
+		@raw_name : String;
+		@path : String;
+		@type : String;
+		@size : Int;
+		@packed : Int;
+		@codec : Int;
+		@flags : Int;
+		@crc : Int;
+		@modified : Date;
+		@offset : Int;
+		@link : String;
+
+		New(raw_name : String, path : String, type : String, size : Int, offset : Int) {
+			@raw_name := raw_name;
+			@path := path;
+			@type := type;
+			@size := size;
+			@offset := offset;
+			@packed := -1;
+			@codec := -1;
+			@crc := -1;
+		}
+
+		method : public : SetZip(packed : Int, codec : Int, flags : Int, crc : Int) ~ Nil {
+			@packed := packed;
+			@codec := codec;
+			@flags := flags;
+			@crc := crc;
+		}
+
+		method : public : SetModified(modified : Date) ~ Nil { @modified := modified; }
+		method : public : SetLink(link : String) ~ Nil { @link := link; }
+		method : public : GetRawName() ~ String { return @raw_name; }
+		method : public : GetPath() ~ String { return @path; }
+		method : public : GetType() ~ String { return @type; }
+		method : public : GetSize() ~ Int { return @size; }
+		method : public : GetPacked() ~ Int { return @packed; }
+		method : public : GetMethod() ~ Int { return @codec; }
+		method : public : GetFlags() ~ Int { return @flags; }
+		method : public : GetCrc() ~ Int { return @crc; }
+		method : public : GetModified() ~ Date { return @modified; }
+		method : public : GetOffset() ~ Int { return @offset; }
+		method : public : GetLink() ~ String { return @link; }
+	}
+
+	# reads a zip, tar or gzipped tar: its directory when opened, then members on request,
+	# each checked and within the limits. A file is read in pieces; bytes are read in place.
+	class : private : ArchiveReader {
+		@title : String;
+		@path : String;
+		@image : Byte[];
+		@file_size : Int;
+		@is_zip : Bool;
+		@data_end : Int;
+		@entries : Vector<ArchiveEntry>;
+		@member_limit : Int;
+		@total_limit : Int;
+		@total_read : Int;
+
+		New(title : String, path : String, image : Byte[], member_limit : Int, total_limit : Int) {
+			@title := title;
+			@path := path;
+			@image := image;
+			@member_limit := member_limit;
+			@total_limit := total_limit;
+		}
+
+		# the archive with its directory read, Nil with 'error' set
+		function : Open(title : String, path : String, image : Byte[], member_limit : Int, total_limit : Int, error : StringHolder) ~ ArchiveReader {
+			reader := ArchiveReader->New(title, path, image, member_limit, total_limit);
+			if(reader->Scan(error)) {
+				return reader;
+			};
+
+			return Nil;
+		}
+
+		method : public : GetEntries() ~ Vector<ArchiveEntry> {
+			return @entries;
+		}
+
+		# the last entry with a path, Nil if there is none
+		method : public : Find(path : String) ~ ArchiveEntry {
+			found : ArchiveEntry := Nil;
+			if(path <> Nil) {
+				each(i : @entries) {
+					entry := @entries->Get(i);
+					if(entry->GetPath()->Equals(path)) {
+						found := entry;
+					};
+				};
+			};
+
+			return found;
+		}
+
+		# how many more bytes reads may produce
+		method : public : GetRemaining() ~ Int {
+			remaining := @total_limit - @total_read;
+			return remaining > 0 ? remaining : 0;
+		}
+
+		method : public : Count(bytes : Int) ~ Nil {
+			@total_read += bytes;
+		}
+
+		method : Scan(error : StringHolder) ~ Bool {
+			raw : Byte[] := Nil;
+			if(@image = Nil) {
+				if(@path = Nil | <>File->Exists(@path)) {
+					error->Set("no file '{$@title}'");
+					return false;
+				};
+				@file_size := File->Size(@path);
+			}
+			else {
+				@file_size := @image->Size();
+			};
+
+			head := Bytes(0, @file_size < 512 ? @file_size : 512);
+			if(head = Nil) {
+				error->Set("cannot read '{$@title}'");
+				return false;
+			};
+
+			# a gzipped tar is inflated whole, within the archive's total limit
+			if(head->Size() >= 2 & head[0] = 0x1f & head[1] = 0x8b) {
+				packed := Bytes(0, @file_size);
+				if(packed = Nil) {
+					error->Set("cannot read '{$@title}'");
+					return false;
+				};
+
+				try {
+					raw := Byte->UncompressGzip(packed, @total_limit);
+				}
+				on(e : Error) {
+					error->Set("'{$@title}' is not valid gzip data, or is truncated");
+					return false;
+				};
+
+				if(raw = Nil) {
+					error->Set("'{$@title}' inflates past the limit of {$@total_limit} bytes (SetLimits raises it)");
+					return false;
+				};
+
+				@image := raw;
+				@path := Nil;
+				@file_size := raw->Size();
+				head := Bytes(0, @file_size < 512 ? @file_size : 512);
+				if(<>IsTarHeader(head)) {
+					error->Set("'{$@title}' is gzipped, but what it holds is not a tar archive");
+					return false;
+				};
+				return ScanTar(error);
+			};
+
+			if(IsTarHeader(head)) {
+				return ScanTar(error);
+			};
+
+			if(head->Size() = 512 & IsUstar(head)) {
+				error->Set("'{$@title}': the tar header at byte 0 is damaged (its checksum does not match)");
+				return false;
+			};
+
+			return ScanZip(error);
+		}
+
+		# 'count' bytes from 'offset', Nil past the end or when the file cannot be read
+		method : Bytes(offset : Int, count : Int) ~ Byte[] {
+			if(offset < 0 | count < 0 | offset + count > @file_size) {
+				return Nil;
+			};
+
+			part := Byte->New[count];
+			if(count = 0) {
+				return part;
+			};
+
+			if(@image <> Nil) {
+				Byte->Copy(part, 0, @image, offset, count);
+				return part;
+			};
+
+			reader := FileReader->New(@path);
+			if(<>reader->IsOpen()) {
+				return Nil;
+			};
+
+			reader->Seek(offset);
+			done := reader->ReadBuffer(0, count, part);
+			reader->Close();
+			if(done <> count) {
+				return Nil;
+			};
+
+			return part;
+		}
+
+		function : U16(b : Byte[], at : Int) ~ Int {
+			return b[at]->As(Int) + (b[at + 1]->As(Int) << 8);
+		}
+
+		function : U32(b : Byte[], at : Int) ~ Int {
+			return U16(b, at) + (U16(b, at + 2) << 16);
+		}
+
+		function : U64(b : Byte[], at : Int) ~ Int {
+			return U32(b, at) + (U32(b, at + 4) << 32);
+		}
+
+		function : MethodName(codec : Int) ~ String {
+			select(codec) {
+				label 0: { return "stored"; }
+				label 8: { return "deflate"; }
+				label 9: { return "deflate64"; }
+				label 12: { return "bzip2"; }
+				label 14: { return "lzma"; }
+				label 93: { return "zstd"; }
+				label 95: { return "xz"; }
+				label 98: { return "ppmd"; }
+				label 99: { return "aes"; }
+			};
+
+			return "method {$codec}";
+		}
+
+		# a member's path with '\' as '/', no '.' or empty parts and no trailing '/'; "" for
+		# the archive's own folder ('./'); Nil, with 'error' set, for an absolute path or one
+		# that climbs out of the archive
+		method : Normalize(raw : String, error : StringHolder) ~ String {
+			if(raw = Nil | raw->Size() = 0) {
+				error->Set("'{$@title}' has a member with no name");
+				return Nil;
+			};
+
+			text := "";
+			each(i : raw) {
+				c := raw->Get(i);
+				if(c = '\0') {
+					error->Set("'{$@title}' has a member whose name holds a NUL character; refused");
+					return Nil;
+				};
+				text->Append(c = '\\' ? '/' : c);
+			};
+
+			if(text->StartsWith('/') | (text->Size() > 1 & text->Get(1) = ':' & text->Get(0)->IsChar())) {
+				error->Set("'{$@title}': member '{$raw}' has an absolute path; refused");
+				return Nil;
+			};
+
+			path := "";
+			start := 0;
+			for(i := 0; i <= text->Size(); i += 1;) {
+				if(i = text->Size() | text->Get(i) = '/') {
+					part := text->SubString(start, i - start);
+					if(part->Equals("..")) {
+						error->Set("'{$@title}': member '{$raw}' climbs out of the archive with '..'; refused");
+						return Nil;
+					};
+
+					if(part->Size() > 0 & <>part->Equals(".")) {
+						if(path->Size() > 0) {
+							path->Append('/');
+						};
+						path += part;
+					};
+					start := i + 1;
+				};
+			};
+
+			return path;
+		}
+
+		#
+		# zip
+		#
+
+		method : ScanZip(error : StringHolder) ~ Bool {
+			@is_zip := true;
+			not_archive := "'{$@title}' is not a zip, tar or gzipped tar archive";
+			if(@file_size < 22) {
+				error->Set(not_archive);
+				return false;
+			};
+
+			# the end record is the last 22 bytes, before a comment of up to 64K
+			tail_size := @file_size < 22 + 65535 ? @file_size : 22 + 65535;
+			tail_start := @file_size - tail_size;
+			tail := Bytes(tail_start, tail_size);
+			if(tail = Nil) {
+				error->Set("cannot read '{$@title}'");
+				return false;
+			};
+
+			at := -1;
+			for(i := tail_size - 22; i >= 0 & at < 0; i -= 1;) {
+				if(tail[i] = 0x50 & tail[i + 1] = 0x4b & tail[i + 2] = 0x05 & tail[i + 3] = 0x06) {
+					if(i + 22 + U16(tail, i + 20) <= tail_size) {
+						at := i;
+					};
+				};
+			};
+
+			if(at < 0) {
+				error->Set(not_archive);
+				return false;
+			};
+
+			disk := U16(tail, at + 4);
+			cd_disk := U16(tail, at + 6);
+			count := U16(tail, at + 10);
+			cd_size := U32(tail, at + 12);
+			cd_offset := U32(tail, at + 16);
+			end := tail_start + at;
+
+			# ZIP64: a locator just before the end record points at a 64-bit end record
+			locator : Byte[] := Nil;
+			if(end >= 20) {
+				locator := Bytes(end - 20, 20);
+			};
+			if(locator <> Nil & U32(locator, 0) = 0x07064b50) {
+				record_at := U64(locator, 8);
+				zip64_end := Bytes(record_at, 56);
+				if(zip64_end = Nil | U32(zip64_end, 0) <> 0x06064b50) {
+					error->Set("'{$@title}': its ZIP64 end record is missing or damaged");
+					return false;
+				};
+
+				disk := U32(zip64_end, 16);
+				cd_disk := U32(zip64_end, 20);
+				count := U64(zip64_end, 32);
+				cd_size := U64(zip64_end, 40);
+				cd_offset := U64(zip64_end, 48);
+				end := record_at;
+			}
+			else if(cd_size = 0xFFFFFFFF | cd_offset = 0xFFFFFFFF) {
+				error->Set("'{$@title}' needs ZIP64 but has no ZIP64 end record; it is damaged");
+				return false;
+			};
+
+			if(disk <> 0 | cd_disk <> 0) {
+				error->Set("'{$@title}' is split across several disks, which is not supported");
+				return false;
+			};
+
+			# offsets count from the archive's start, which a self-extracting prefix moves
+			base := end - cd_size - cd_offset;
+			if(cd_size < 0 | cd_offset < 0 | base < 0) {
+				error->Set("'{$@title}': its central directory is out of place; the archive is damaged or truncated");
+				return false;
+			};
+
+			if(count < 0 | count * 46 > cd_size) {
+				error->Set("'{$@title}' claims {$count} members in a central directory of {$cd_size} bytes; it is damaged");
+				return false;
+			};
+
+			cd := Bytes(base + cd_offset, cd_size);
+			if(cd = Nil) {
+				error->Set("'{$@title}': its central directory cannot be read; the archive is truncated");
+				return false;
+			};
+
+			@data_end := base + cd_offset;
+			@entries := Vector->New()<ArchiveEntry>;
+			seen := Map->New()<String, IntRef>;
+			spans := Map->New()<IntRef, IntRef>;
+			pos := 0;
+			for(n := 0; n < count; n += 1;) {
+				if(pos + 46 > cd_size) {
+					error->Set("'{$@title}': its central directory is damaged at member {$(n + 1)}");
+					return false;
+				};
+				if(U32(cd, pos) <> 0x02014b50) {
+					error->Set("'{$@title}': its central directory is damaged at member {$(n + 1)}");
+					return false;
+				};
+
+				made := U16(cd, pos + 4);
+				flags := U16(cd, pos + 8);
+				codec := U16(cd, pos + 10);
+				modified := DosDate(U16(cd, pos + 14), U16(cd, pos + 12));
+				crc := U32(cd, pos + 16);
+				packed := U32(cd, pos + 20);
+				size := U32(cd, pos + 24);
+				name_size := U16(cd, pos + 28);
+				extra_size := U16(cd, pos + 30);
+				comment_size := U16(cd, pos + 32);
+				attributes := U32(cd, pos + 38);
+				offset := U32(cd, pos + 42);
+				next := pos + 46 + name_size + extra_size + comment_size;
+				if(next > cd_size) {
+					error->Set("'{$@title}': its central directory is damaged at member {$(n + 1)}");
+					return false;
+				};
+
+				name_bytes := Byte->New[name_size];
+				Byte->Copy(name_bytes, 0, cd, pos + 46, name_size);
+				raw := name_bytes->ToString();
+
+				# extra fields: ZIP64 sizes and offset, and a UTC modification time
+				e := pos + 46 + name_size;
+				e_end := e + extra_size;
+				while(e + 4 <= e_end) {
+					id := U16(cd, e);
+					length := U16(cd, e + 2);
+					f := e + 4;
+					f_end := f + length;
+					if(f_end <= e_end) {
+						if(id = 0x0001) {
+							if(size = 0xFFFFFFFF & f + 8 <= f_end) {
+								size := U64(cd, f);
+								f += 8;
+							};
+							if(packed = 0xFFFFFFFF & f + 8 <= f_end) {
+								packed := U64(cd, f);
+								f += 8;
+							};
+							if(offset = 0xFFFFFFFF & f + 8 <= f_end) {
+								offset := U64(cd, f);
+							};
+						}
+						else if(id = 0x5455 & length >= 5) {
+							if((cd[f]->As(Int) and 1) = 1) {
+								seconds := U32(cd, f + 1);
+								if(seconds >= 0x80000000) {
+									seconds -= 0x100000000;
+								};
+								modified := DateCodec->ToDate(seconds * 1000, true);
+							};
+						};
+					};
+					e := f_end;
+				};
+
+				if(size = 0xFFFFFFFF | packed = 0xFFFFFFFF | offset = 0xFFFFFFFF | size < 0 | packed < 0) {
+					error->Set("'{$@title}': member '{$raw}' needs ZIP64 sizes it does not have; the archive is damaged");
+					return false;
+				};
+
+				path := Normalize(raw, error);
+				if(path = Nil) {
+					return false;
+				};
+
+				type := "file";
+				host := made >> 8;
+				if(raw->EndsWith('/') | raw->EndsWith('\\') | (host = 0 & (attributes and 0x10) <> 0)) {
+					type := "dir";
+				}
+				else if(host = 3 & ((attributes >> 16) and 0xF000) = 0xA000) {
+					type := "symlink";
+				};
+
+				if(path->Size() = 0) {
+					if(<>type->Equals("dir")) {
+						error->Set("'{$@title}' has a member with no name");
+						return false;
+					};
+				}
+				else {
+					if(seen->Has(path)) {
+						error->Set("'{$@title}': member '{$path}' appears twice; a zip with duplicate names is ambiguous, so it is refused");
+						return false;
+					};
+					seen->Insert(path, IntRef->New(n));
+
+					# the least room a member takes: its local header, name and data
+					start := base + offset;
+					span_end := start + 30 + name_size + packed;
+					if(span_end > @data_end) {
+						error->Set("'{$@title}': member '{$path}' runs past the central directory; the archive is damaged or truncated");
+						return false;
+					};
+					if(spans->Has(IntRef->New(start))) {
+						error->Set("'{$@title}': members overlap at byte {$start}; refused");
+						return false;
+					};
+					spans->Insert(IntRef->New(start), IntRef->New(span_end));
+
+					entry := ArchiveEntry->New(raw, path, type, size, start);
+					entry->SetZip(packed, codec, flags, crc);
+					entry->SetModified(modified);
+					@entries->AddBack(entry);
+				};
+
+				pos := next;
+			};
+
+			# members' data must not overlap, or a few bytes could be read as many members
+			starts := spans->GetKeys();
+			previous_end := 0;
+			each(i : starts) {
+				start := starts->Get(i);
+				if(start->Get() < previous_end) {
+					error->Set("'{$@title}': members overlap at byte {$(start->Get())}; refused");
+					return false;
+				};
+				previous_end := spans->Find(start)->Get();
+			};
+
+			return true;
+		}
+
+		# an MS-DOS date and time (local time, two-second steps), Nil if not a real one
+		function : DosDate(date : Int, time : Int) ~ Date {
+			day := date and 0x1F;
+			month := (date >> 5) and 0xF;
+			year := (date >> 9) + 1980;
+			hours := time >> 11;
+			mins := (time >> 5) and 0x3F;
+			secs := (time and 0x1F) * 2;
+			if(day < 1 | month < 1 | month > 12 | hours > 23 | mins > 59 | secs > 59) {
+				return Nil;
+			};
+
+			return Date->New(day, month, year, hours, mins, secs, false);
+		}
+
+		# a member's contents: within the limits, inflated to no more than its stated size,
+		# and matching its CRC32; Nil with 'error' set
+		method : public : Read(entry : ArchiveEntry, error : StringHolder) ~ Byte[] {
+			where := "'{$@title}', member '{$(entry->GetPath())}'";
+			type := entry->GetType();
+			if(type->Equals("dir")) {
+				error->Set("{$where} is a folder");
+				return Nil;
+			};
+
+			if(type->Equals("symlink") | type->Equals("hardlink")) {
+				error->Set("{$where} is a link; links are not followed");
+				return Nil;
+			};
+
+			if(<>type->Equals("file")) {
+				error->Set("{$where} is not a regular file");
+				return Nil;
+			};
+
+			size := entry->GetSize();
+			if(size > @member_limit) {
+				error->Set("{$where} is {$size} bytes uncompressed, over the limit of {$@member_limit} (SetLimits raises it)");
+				return Nil;
+			};
+
+			if(@total_read + size > @total_limit) {
+				error->Set("{$where}: reading it would take the archive past its limit of {$@total_limit} bytes uncompressed (SetLimits raises it)");
+				return Nil;
+			};
+
+			if(<>@is_zip) {
+				bytes := Bytes(entry->GetOffset(), size);
+				if(bytes = Nil) {
+					error->Set("{$where} cannot be read");
+					return Nil;
+				};
+				@total_read += size;
+				return bytes;
+			};
+
+			if((entry->GetFlags() and 1) <> 0) {
+				error->Set("{$where} is encrypted; encrypted members are not supported");
+				return Nil;
+			};
+
+			codec := entry->GetMethod();
+			if(codec <> 0 & codec <> 8) {
+				error->Set("{$where} is compressed with {$(MethodName(codec))}, which is not supported (only stored and deflate are)");
+				return Nil;
+			};
+
+			offset := entry->GetOffset();
+			local := Bytes(offset, 30);
+			if(local = Nil) {
+				error->Set("{$where}: its local header is missing; the archive is truncated");
+				return Nil;
+			};
+			if(U32(local, 0) <> 0x04034b50) {
+				error->Set("{$where}: its local header is missing or damaged");
+				return Nil;
+			};
+
+			name_size := U16(local, 26);
+			extra_size := U16(local, 28);
+			local_name := Bytes(offset + 30, name_size);
+			if(local_name = Nil | <>local_name->ToString()->Equals(entry->GetRawName())) {
+				error->Set("{$where}: its local header names a different member; the archive is damaged or crafted");
+				return Nil;
+			};
+
+			start := offset + 30 + name_size + extra_size;
+			packed := entry->GetPacked();
+			if(start + packed > @data_end) {
+				error->Set("{$where}: its data runs into the central directory; the archive is damaged");
+				return Nil;
+			};
+
+			data := Bytes(start, packed);
+			if(data = Nil) {
+				error->Set("{$where} cannot be read");
+				return Nil;
+			};
+
+			raw : Byte[];
+			if(codec = 0) {
+				if(packed <> size) {
+					error->Set("{$where} is stored, but its stored size ({$packed}) is not its size ({$size})");
+					return Nil;
+				};
+				raw := data;
+			}
+			else {
+				try {
+					raw := Byte->UncompressDeflate(data, size);
+				}
+				on(e : Error) {
+					error->Set("{$where}: its deflate data is damaged or truncated");
+					return Nil;
+				};
+
+				if(raw = Nil) {
+					error->Set("{$where} expands past the {$size} bytes its header states (a zip bomb, or a damaged header); refused");
+					return Nil;
+				};
+
+				if(raw->Size() <> size) {
+					error->Set("{$where} inflates to {$(raw->Size())} bytes, not the {$size} its header states");
+					return Nil;
+				};
+			};
+
+			if(Byte->CRC32(raw) <> entry->GetCrc()) {
+				error->Set("{$where} fails its CRC32 check; the data is damaged");
+				return Nil;
+			};
+
+			@total_read += size;
+			return raw;
+		}
+
+		#
+		# tar
+		#
+
+		# a tar header block: its checksum holds, or it is the zero block of an empty archive
+		function : IsTarHeader(head : Byte[]) ~ Bool {
+			if(head = Nil | head->Size() < 512) {
+				return false;
+			};
+
+			return IsZero(head) | ChecksumHolds(head);
+		}
+
+		# the ustar magic ('ustar' and a NUL, or GNU's 'ustar' and a space)
+		function : IsUstar(header : Byte[]) ~ Bool {
+			return header[257] = 0x75 & header[258] = 0x73 & header[259] = 0x74 & header[260] = 0x61 & header[261] = 0x72 & (header[262] = 0 | header[262] = 0x20);
+		}
+
+		function : IsZero(block : Byte[]) ~ Bool {
+			each(i : block) {
+				if(block[i] <> 0) {
+					return false;
+				};
+			};
+			return true;
+		}
+
+		# the header's sum with its checksum field read as spaces, unsigned or (as old tars
+		# wrote it) signed
+		function : ChecksumHolds(header : Byte[]) ~ Bool {
+			stored := TarNumber(header, 148, 8);
+			if(stored < 0) {
+				return false;
+			};
+
+			unsigned := 0;
+			signed := 0;
+			for(i := 0; i < 512; i += 1;) {
+				value := (i >= 148 & i < 156) ? 32 : header[i]->As(Int);
+				unsigned += value;
+				signed += value > 127 ? value - 256 : value;
+			};
+
+			return stored = unsigned | stored = signed;
+		}
+
+		# an octal number field (NUL or space ended), or base-256 when its top bit is set;
+		# -1 if malformed
+		function : TarNumber(header : Byte[], at : Int, size : Int) ~ Int {
+			first := header[at]->As(Int);
+			if((first and 0x80) <> 0) {
+				if((first and 0x40) <> 0) {
+					return -1;
+				};
+
+				value := first and 0x3F;
+				for(i := 1; i < size; i += 1;) {
+					value := (value << 8) + header[at + i]->As(Int);
+				};
+				return value;
+			};
+
+			value := 0;
+			digits := 0;
+			done := false;
+			for(i := 0; i < size & <>done; i += 1;) {
+				c := header[at + i]->As(Int);
+				if(c >= 0x30 & c <= 0x37) {
+					value := value * 8 + (c - 0x30);
+					digits += 1;
+				}
+				else if(c = 0 | c = 0x20) {
+					if(digits > 0) {
+						done := true;
+					};
+				}
+				else {
+					return -1;
+				};
+			};
+
+			return value;
+		}
+
+		# NUL-ended text in a field
+		function : FieldText(bytes : Byte[], at : Int, size : Int) ~ String {
+			length := 0;
+			while(length < size & bytes[at + length] <> 0) {
+				length += 1;
+			};
+
+			part := Byte->New[length];
+			Byte->Copy(part, 0, bytes, at, length);
+			return part->ToString();
+		}
+
+		method : ScanTar(error : StringHolder) ~ Bool {
+			@is_zip := false;
+			@entries := Vector->New()<ArchiveEntry>;
+			long_name : String := Nil;
+			long_link : String := Nil;
+			pax : Map<String, String> := Nil;
+			pos := 0;
+			done := false;
+			while(<>done) {
+				if(pos + 512 > @file_size) {
+					# an archive cut at a block boundary has lost only its end marker
+					if(pos <> @file_size) {
+						error->Set("'{$@title}' ends inside a header; it is truncated");
+						return false;
+					};
+					done := true;
+				}
+				else {
+					header := Bytes(pos, 512);
+					if(header = Nil) {
+						error->Set("cannot read '{$@title}'");
+						return false;
+					};
+
+					if(IsZero(header)) {
+						done := true;
+					}
+					else {
+						if(<>ChecksumHolds(header)) {
+							error->Set("'{$@title}': the tar header at byte {$pos} is damaged (its checksum does not match)");
+							return false;
+						};
+
+						type := header[156]->As(Int);
+						size := TarNumber(header, 124, 12);
+						if(size < 0) {
+							error->Set("'{$@title}': the tar header at byte {$pos} has a malformed size");
+							return false;
+						};
+
+						data := pos + 512;
+						if(type = 0x78 | type = 0x67) {
+							# pax extended headers: 'x' for the next member, 'g' for all after
+							if(size > 1024 * 1024 | data + size > @file_size) {
+								error->Set("'{$@title}': the extended header at byte {$pos} is too large or truncated");
+								return false;
+							};
+
+							records := PaxRecords(Bytes(data, size));
+							if(records = Nil) {
+								error->Set("'{$@title}': the extended header at byte {$pos} is malformed");
+								return false;
+							};
+							if(type = 0x78) {
+								pax := records;
+							};
+						}
+						else if(type = 0x4c | type = 0x4b) {
+							# GNU long name ('L') or long link target ('K') for the next member
+							if(size > 64 * 1024 | data + size > @file_size) {
+								error->Set("'{$@title}': the long name at byte {$pos} is too large or truncated");
+								return false;
+							};
+
+							text := FieldText(Bytes(data, size), 0, size);
+							if(type = 0x4c) {
+								long_name := text;
+							}
+							else {
+								long_link := text;
+							};
+						}
+						else {
+							raw := FieldText(header, 0, 100);
+							if(header[257] = 0x75 & header[258] = 0x73 & header[259] = 0x74 & header[260] = 0x61 & header[261] = 0x72 & header[262] = 0) {
+								prefix := FieldText(header, 345, 155);
+								if(prefix->Size() > 0) {
+									raw := "{$prefix}/{$raw}";
+								};
+							};
+							link := FieldText(header, 157, 100);
+							mtime := TarNumber(header, 136, 12);
+							if(long_name <> Nil) {
+								raw := long_name;
+							};
+							if(long_link <> Nil) {
+								link := long_link;
+							};
+							if(pax <> Nil) {
+								value := pax->Find("path");
+								if(value <> Nil) {
+									raw := value;
+								};
+								value := pax->Find("linkpath");
+								if(value <> Nil) {
+									link := value;
+								};
+								value := pax->Find("size");
+								if(value <> Nil) {
+									size := Cell->NumberKind(value) = 1 ? value->ToInt() : -1;
+								};
+								value := pax->Find("mtime");
+								if(value <> Nil) {
+									dot := value->Find('.');
+									whole := dot < 0 ? value : value->SubString(0, dot);
+									mtime := Cell->NumberKind(whole) = 1 ? whole->ToInt() : -1;
+								};
+							};
+
+							if(size < 0) {
+								error->Set("'{$@title}': member '{$raw}' has a malformed size");
+								return false;
+							};
+
+							kind := "other";
+							if(type = 0x35) {
+								kind := "dir";
+							}
+							else if(type = 0x32) {
+								kind := "symlink";
+							}
+							else if(type = 0x31) {
+								kind := "hardlink";
+							}
+							else if(type = 0x30 | type = 0 | type = 0x37) {
+								kind := raw->EndsWith('/') ? "dir" : "file";
+							};
+
+							# links and folders hold no data whatever the size says
+							if(<>kind->Equals("file") & <>kind->Equals("other")) {
+								size := 0;
+							};
+
+							path := Normalize(raw, error);
+							if(path = Nil) {
+								return false;
+							};
+
+							if(data + size > @file_size) {
+								error->Set("'{$@title}': member '{$path}' runs past the end of the archive; it is truncated");
+								return false;
+							};
+
+							if(path->Size() = 0) {
+								if(<>kind->Equals("dir")) {
+									error->Set("'{$@title}' has a member with no name");
+									return false;
+								};
+							}
+							else {
+								entry := ArchiveEntry->New(raw, path, kind, size, data);
+								if(mtime > -1) {
+									entry->SetModified(DateCodec->ToDate(mtime * 1000, true));
+								};
+								entry->SetLink(link);
+								@entries->AddBack(entry);
+							};
+
+							long_name := Nil;
+							long_link := Nil;
+							pax := Nil;
+						};
+
+						pos := data + ((size + 511) / 512) * 512;
+					};
+				};
+			};
+
+			@data_end := @file_size;
+			return true;
+		}
+
+		# pax records, each 'LENGTH key=value\n' with LENGTH counting the whole record;
+		# Nil if malformed
+		function : PaxRecords(bytes : Byte[]) ~ Map<String, String> {
+			if(bytes = Nil) {
+				return Nil;
+			};
+
+			records := Map->New()<String, String>;
+			pos := 0;
+			while(pos < bytes->Size()) {
+				length := 0;
+				digits := 0;
+				while(pos + digits < bytes->Size() & bytes[pos + digits] >= 0x30 & bytes[pos + digits] <= 0x39) {
+					length := length * 10 + (bytes[pos + digits]->As(Int) - 0x30);
+					digits += 1;
+				};
+
+				if(digits = 0 | length <= digits + 1 | pos + length > bytes->Size() | bytes[pos + digits] <> 0x20 | bytes[pos + length - 1] <> 0x0a) {
+					return Nil;
+				};
+
+				text := Byte->New[length - digits - 2];
+				Byte->Copy(text, 0, bytes, pos + digits + 1, text->Size());
+				pax_text := text->ToString();
+				equals := pax_text->Find('=');
+				if(equals < 1) {
+					return Nil;
+				};
+
+				key := pax_text->SubString(0, equals);
+				if(records->Has(key)) {
+					records->Remove(key);
+				};
+				records->Insert(key, pax_text->SubString(equals + 1, pax_text->Size() - equals - 1));
+				pos += length;
+			};
+
+			return records;
+		}
+	}
+
 	# one JSON value as its text and kind, converted when the column's type is known
 	class : private : JsonCell {
 		@kind : JsonCell->Kind;
