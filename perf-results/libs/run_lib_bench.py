@@ -47,8 +47,19 @@ def exe(bin_dir, name):
     return path
 
 
+def extra_libs(src):
+    """Libraries a '# EXTRA_LIBS: a,b' line at the start of a line asks for, as in the regression suite."""
+    with open(src, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith("# EXTRA_LIBS:"):
+                return [lib.strip() for lib in line.split(":", 1)[1].split(",") if lib.strip()]
+    return []
+
+
 def compile_bench(obc, src, dest, env):
-    cmd = [obc, "-src", src, "-lib", "cipher,collect,xml,json", "-opt", "s3", "-dest", dest]
+    libs = ["cipher", "collect", "xml", "json"]
+    libs += [lib for lib in extra_libs(src) if lib not in libs]
+    cmd = [obc, "-src", src, "-lib", ",".join(libs), "-opt", "s3", "-dest", dest]
     proc = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=600)
     if proc.returncode != 0 or not os.path.exists(dest):
         return proc.stdout + proc.stderr

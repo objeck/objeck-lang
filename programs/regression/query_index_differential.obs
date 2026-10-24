@@ -1,0 +1,546 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured indexes, differentially (docs/QUERY_DESIGN.md, sections 5 and "Testing").
+For a fixed set of seeds, two tables receive the same random rows and the same random changes
+(inserts, cell writes, emptied cells, deletes, Compact, SQL UPDATE and DELETE); one of them
+has a random hash or sorted index on random columns, changed between rounds. Random
+conditions (AND, OR, NOT, every comparison, IN, BETWEEN, IS [NOT] NULL, LIKE, values of the
+column's type and of others, NaN, -0.0) then run on both through Where, through SQL with
+ORDER BY, LIMIT and OFFSET, GROUP BY, and through prepared statements. Rows and their order
+must be identical with and without the indexes.
+~#
+use Query.Structured, System.Time, Collection;
+
+# one generated condition: a comparison, or AND / OR / NOT over others
+class Cond {
+	@kind : Int;
+	@column : String;
+	@op : Int;
+	@value : Compare;
+	@high : Compare;
+	@values : Compare[];
+	@text : String;
+	@left : Cond;
+	@right : Cond;
+
+	New(column : String, op : Int, value : Compare, high : Compare, values : Compare[], text : String) {
+		@kind := 0;
+		@column := column;
+		@op := op;
+		@value := value;
+		@high := high;
+		@values := values;
+		@text := text;
+	}
+
+	New(kind : Int, left : Cond, right : Cond) {
+		@kind := kind;
+		@left := left;
+		@right := right;
+	}
+
+	# ops: 0 =, 1 <>, 2 <, 3 <=, 4 >, 5 >=, 6 IN, 7 BETWEEN, 8 IS NULL, 9 IS NOT NULL, 10 LIKE
+	method : public : ToPredicate() ~ Predicate {
+		if(@kind = 1) {
+			return @left->ToPredicate()->AndAlso(@right->ToPredicate());
+		}
+		else if(@kind = 2) {
+			return @left->ToPredicate()->OrElse(@right->ToPredicate());
+		}
+		else if(@kind = 3) {
+			return @left->ToPredicate()->Negate();
+		};
+
+		col := Col->Of(@column);
+		select(@op) {
+			label 0: { return col->Eq(@value); }
+			label 1: { return col->Ne(@value); }
+			label 2: { return col->Lt(@value); }
+			label 3: { return col->Le(@value); }
+			label 4: { return col->Gt(@value); }
+			label 5: { return col->Ge(@value); }
+			label 6: { return col->In(@values); }
+			label 7: { return col->Between(@value, @high); }
+			label 8: { return col->IsNull(); }
+			label 9: { return col->IsNotNull(); }
+		};
+
+		return col->Like(@value->As(String));
+	}
+
+	# the SQL form, Nil if a value has no SQL literal (NaN, infinities)
+	method : public : ToSql() ~ String {
+		if(@kind = 1 | @kind = 2) {
+			left := @left->ToSql();
+			right := @right->ToSql();
+			if(left = Nil | right = Nil) {
+				return Nil;
+			};
+			return "(" + left + (@kind = 1 ? " and " : " or ") + right + ")";
+		}
+		else if(@kind = 3) {
+			inner := @left->ToSql();
+			if(inner = Nil) {
+				return Nil;
+			};
+			return "not (" + inner + ")";
+		};
+
+		if(@text = Nil) {
+			return Nil;
+		};
+
+		sql := String->New(@column);
+		select(@op) {
+			label 0: { sql += " = "; }
+			label 1: { sql += " <> "; }
+			label 2: { sql += " < "; }
+			label 3: { sql += " <= "; }
+			label 4: { sql += " > "; }
+			label 5: { sql += " >= "; }
+			label 6: { sql += " in "; }
+			label 7: { sql += " between "; }
+			label 8: { return sql + " is null"; }
+			label 9: { return sql + " is not null"; }
+			label 10: { sql += " like "; }
+		};
+		sql += @text;
+		return sql;
+	}
+
+	# a leaf comparison with one value, for a prepared statement
+	method : public : IsSimple() ~ Bool {
+		return @kind = 0 & @op <= 5;
+	}
+
+	method : public : GetColumn() ~ String { return @column; }
+	method : public : GetOp() ~ Int { return @op; }
+	method : public : GetValue() ~ Compare { return @value; }
+}
+
+class QueryIndexDifferential {
+	@seed : static : Int;
+	@failures : static : Int;
+	@compared : static : Int;
+	@indexed_plans : static : Int;
+	@columns : static : String[];
+	@words : static : String[];
+
+	function : Next(bound : Int) ~ Int {
+		@seed := (@seed * 6364136223846793005 + 1442695040888963407) and 0x7FFFFFFFFFFFFFFF;
+		return (@seed >> 33) % bound;
+	}
+
+	function : Fail(what : String) ~ Nil {
+		@failures += 1;
+		if(@failures < 20) {
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Pad(n : Int) ~ String {
+		if(n < 10) {
+			return "0" + n->ToString();
+		};
+		return n->ToString();
+	}
+
+	# a value for a column: mostly of its type from a small domain, so values repeat
+	function : IntValue() ~ Int {
+		if(Next(20) = 0) {
+			return 9007199254740993 - Next(3);
+		};
+		return Next(31) - 15;
+	}
+
+	function : FloatValue() ~ Float {
+		pick := Next(30);
+		if(pick = 0) {
+			return Float->NaN();
+		}
+		else if(pick = 1) {
+			return -0.0;
+		}
+		else if(pick = 2) {
+			return Float->Inf();
+		}
+		else if(pick = 3) {
+			return 1.0e-15 * (Next(5) - 2)->As(Float);
+		};
+		return (Next(41) - 20)->As(Float) / 4.0;
+	}
+
+	function : Word(wide : Bool) ~ String {
+		if(wide) {
+			return "w{$(Next(6000))}";
+		};
+		return @words[Next(@words->Size())];
+	}
+
+	function : DayValue() ~ Date {
+		return Date->New(1 + Next(28), 1 + Next(3), 2020 + Next(2), 0, 0, 0, false);
+	}
+
+	# the value a cell of a column gets, Nil for an empty cell
+	function : CellValue(column : String, wide : Bool) ~ Compare {
+		if(Next(7) = 0) {
+			return Nil;
+		};
+
+		if(column->Equals("i")) {
+			return IntRef->New(IntValue());
+		}
+		else if(column->Equals("f")) {
+			return FloatRef->New(FloatValue());
+		}
+		else if(column->Equals("s")) {
+			return Word(false);
+		}
+		else if(column->Equals("t")) {
+			return Word(wide);
+		}
+		else if(column->Equals("d")) {
+			return DayValue();
+		};
+
+		return BoolRef->New(Next(2) = 0);
+	}
+
+	function : AddRow(a : Table, b : Table, wide : Bool) ~ Nil {
+		ra := a->Insert();
+		rb := b->Insert();
+		each(c : @columns) {
+			value := CellValue(@columns[c], wide);
+			ra->Set(@columns[c], value);
+			rb->Set(@columns[c], value);
+		};
+	}
+
+	# a random live key, -1 if none
+	function : AnyKey(a : Table) ~ Int {
+		live := a->LiveRows();
+		if(live->Size() = 0) {
+			return -1;
+		};
+		return a->RowAt(live[Next(live->Size())])->GetKey();
+	}
+
+	# the same random changes to both tables
+	function : Change(a : Table, b : Table, wide : Bool) ~ Nil {
+		count := 5 + Next(40);
+		each(k : count) {
+			pick := Next(10);
+			if(pick < 3) {
+				AddRow(a, b, wide);
+			}
+			else if(pick < 7) {
+				key := AnyKey(a);
+				if(key > -1) {
+					column := @columns[Next(@columns->Size())];
+					value := CellValue(column, wide);
+					a->Get(key)->Set(column, value);
+					b->Get(key)->Set(column, value);
+				};
+			}
+			else if(pick < 9) {
+				key := AnyKey(a);
+				if(key > -1) {
+					a->Delete(key);
+					b->Delete(key);
+				};
+			}
+			else if(Next(3) = 0) {
+				a->Compact();
+				b->Compact();
+			};
+		};
+
+		# a statement that changes rows, finding them through the index
+		if(Next(3) = 0) {
+			cond := MakeCond(1, false);
+			where := cond->ToSql();
+			if(where <> Nil) {
+				column := @columns[Next(@columns->Size())];
+				sql : String;
+				if(Next(2) = 0) {
+					sql := "delete from t where " + where;
+				}
+				else if(column->Equals("i")) {
+					sql := "update t set i = " + IntValue()->ToString() + " where " + where;
+				}
+				else if(column->Equals("s")) {
+					sql := "update t set s = '" + Word(false) + "' where " + where;
+				}
+				else {
+					sql := "update t set " + column + " = null where " + where;
+				};
+				changed_a := a->Execute(sql);
+				changed_b := b->Execute(sql);
+				@compared += 1;
+				if(changed_a <> changed_b) {
+					Fail("'{$sql}' changed {$changed_a} rows, and {$changed_b} with indexes");
+				};
+			};
+		};
+	}
+
+	# a comparison value: usually of the column's type, sometimes of another
+	function : MakeLeaf(column : String) ~ Cond {
+		op := Next(11);
+		if(op = 8 | op = 9) {
+			return Cond->New(column, op, Nil, Nil, Nil, "");
+		};
+
+		foreign := Next(10) = 0;
+		if(op = 10) {
+			patterns := ["a%", "%e%", "c_t", "w1%", "%"];
+			p := patterns[Next(patterns->Size())];
+			return Cond->New(column, op, p, Nil, Nil, "'" + p + "'");
+		};
+
+		if(op = 6) {
+			n := 1 + Next(4);
+			values := Compare->New[n];
+			text := "(";
+			sql_ok := true;
+			each(i : n) {
+				pair := Value(column, foreign);
+				values[i] := pair->GetFirst();
+				if(pair->GetSecond() = Nil) {
+					sql_ok := false;
+				}
+				else {
+					if(i > 0) {
+						text += ", ";
+					};
+					text += pair->GetSecond()->As(String);
+				};
+			};
+			text += ")";
+			return Cond->New(column, op, Nil, Nil, values, sql_ok ? text : Nil);
+		};
+
+		if(op = 7) {
+			low := Value(column, foreign);
+			high := Value(column, foreign);
+			text : String;
+			if(low->GetSecond() <> Nil & high->GetSecond() <> Nil) {
+				text := low->GetSecond()->As(String) + " and " + high->GetSecond()->As(String);
+			};
+			return Cond->New(column, op, low->GetFirst(), high->GetFirst(), Nil, text);
+		};
+
+		pair := Value(column, foreign);
+		text : String;
+		if(pair->GetSecond() <> Nil) {
+			text := pair->GetSecond()->As(String);
+		};
+		return Cond->New(column, op, pair->GetFirst(), Nil, Nil, text);
+	}
+
+	# a value and its SQL literal (Nil when it has none)
+	function : Value(column : String, foreign : Bool) ~ Pair<Compare, Compare> {
+		kind := column;
+		if(foreign) {
+			kinds := ["i", "f", "s", "d", "b"];
+			kind := kinds[Next(kinds->Size())];
+		};
+
+		if(kind->Equals("i")) {
+			v := IntValue();
+			return Pair->New(IntRef->New(v)->As(Compare), v->ToString()->As(Compare))<Compare, Compare>;
+		}
+		else if(kind->Equals("f")) {
+			v := FloatValue();
+			literal : Compare;
+			# SQL has no NaN or infinity, and a tiny or negative zero literal may not read back the same
+			if(v = v & v < 1.0e300 & v > -1.0e300 & (v = 0.0 | v->Abs() > 0.001)) {
+				literal := v->ToString();
+				if(v = 0.0) {
+					literal := "0.0";
+				};
+			};
+			return Pair->New(FloatRef->New(v)->As(Compare), literal)<Compare, Compare>;
+		}
+		else if(kind->Equals("s") | kind->Equals("t")) {
+			w := Word(Next(3) = 0);
+			return Pair->New(w->As(Compare), "'{$w}'"->As(Compare))<Compare, Compare>;
+		}
+		else if(kind->Equals("d")) {
+			day := 1 + Next(28);
+			month := 1 + Next(3);
+			year := 2020 + Next(2);
+			date := Date->New(day, month, year, 0, 0, 0, false);
+			return Pair->New(date->As(Compare), "#{$(Pad(month))}/{$(Pad(day))}/{$year}#"->As(Compare))<Compare, Compare>;
+		};
+
+		truth := Next(2) = 0;
+		return Pair->New(BoolRef->New(truth)->As(Compare), (truth ? "true" : "false")->As(Compare))<Compare, Compare>;
+	}
+
+	function : MakeCond(depth : Int, top : Bool) ~ Cond {
+		# a comparison AND anything: the shape the planner reads through an index most
+		if(top & Next(3) = 0) {
+			return Cond->New(1, MakeLeaf(@columns[Next(@columns->Size())]), MakeCond(depth + 1, false));
+		};
+
+		if(depth < 4 & Next(top ? 2 : 3) = 0) {
+			kind := 1 + Next(3);
+			if(kind = 3) {
+				return Cond->New(3, MakeCond(depth + 1, false), Nil);
+			};
+			return Cond->New(kind, MakeCond(depth + 1, false), MakeCond(depth + 1, false));
+		};
+
+		return MakeLeaf(@columns[Next(@columns->Size())]);
+	}
+
+	function : Keys(view : View) ~ String {
+		if(view = Nil) {
+			return "<nil>";
+		};
+
+		out := "";
+		rows := view->GetRows();
+		each(i : rows) {
+			if(i > 0) {
+				out += ",";
+			};
+			out += rows[i];
+		};
+		return out;
+	}
+
+	function : Text(table : Table) ~ String {
+		if(table = Nil) {
+			return "<nil>";
+		};
+		return table->ToCsv();
+	}
+
+	# one condition on both tables, every way it can be run
+	function : Compare(a : Table, b : Table, cond : Cond) ~ Nil {
+		predicate := cond->ToPredicate();
+		va := a->Where(predicate);
+		vb := b->Where(predicate);
+		@compared += 1;
+		if(<>Keys(va)->Equals(Keys(vb))) {
+			Fail("Where differs; plan '{$(vb->GetPlan())}'\n    {$(Keys(va))}\n    {$(Keys(vb))}");
+		};
+		if(vb <> Nil & vb->GetPlan() <> Nil & vb->GetPlan()->Find("index") > -1) {
+			@indexed_plans += 1;
+		};
+
+		# ordered both ways, then limited
+		column := @columns[Next(@columns->Size())];
+		order := Next(2) = 0 ? Order->ASC : Order->DESC;
+		oa := va->OrderBy(column, order);
+		ob := vb->OrderBy(column, order);
+		@compared += 1;
+		if(<>Keys(oa)->Equals(Keys(ob))) {
+			Fail("OrderBy({$column}) differs");
+		};
+
+		where := cond->ToSql();
+		if(where <> Nil) {
+			sql := "select * from t where " + where;
+			pick := Next(4);
+			if(pick = 0) {
+				sql += " order by " + column + (Next(2) = 0 ? " desc" : "");
+			}
+			else if(pick = 1) {
+				second := @columns[Next(@columns->Size())];
+				sql += " order by " + column + " desc, " + second + " limit " + Next(20)->ToString() + " offset " + Next(5)->ToString();
+			}
+			else if(pick = 2) {
+				sql := "select " + column + ", count(*) as n from t where " + where + " group by " + column;
+			};
+
+			ra := a->Query(sql);
+			rb := b->Query(sql);
+			@compared += 1;
+			if(<>Text(ra)->Equals(Text(rb))) {
+				Fail("'{$sql}' differs; plan '{$(b->Explain(sql))}'");
+			};
+		};
+
+		# a prepared statement with the value bound
+		if(cond->IsSimple()) {
+			ops := ["=", "<>", "<", "<=", ">", ">="];
+			sql := "select * from t where " + cond->GetColumn() + " " + ops[cond->GetOp()] + " ?";
+			pa := a->Prepare(sql);
+			pb := b->Prepare(sql);
+			pa->Bind(1, cond->GetValue());
+			pb->Bind(1, cond->GetValue());
+			ea := pa->ExecuteView();
+			eb := pb->ExecuteView();
+			@compared += 1;
+			if(<>Keys(ea)->Equals(Keys(eb))) {
+				Fail("prepared '{$sql}' differs; plan '{$(eb->GetPlan())}'");
+			};
+		};
+	}
+
+	# a random index, or none, on each column of b
+	function : Reindex(b : Table) ~ Nil {
+		each(c : @columns) {
+			pick := Next(3);
+			if(pick = 0) {
+				b->DropIndex(@columns[c]);
+			}
+			else {
+				b->CreateIndex(@columns[c], pick = 1 ? IndexKind->HASH : IndexKind->SORTED);
+			};
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@compared := 0;
+		@indexed_plans := 0;
+		@columns := ["i", "f", "s", "t", "d", "b"];
+		@words := ["ant", "bee", "cat", "cow", "dog", "eel", "emu", "yak", "zebra", "a", "Cat"];
+
+		seeds := [3, 17, 256, 4099, 65537, 900001, 31337, 8];
+		each(k : seeds) {
+			@seed := seeds[k];
+			# one seed fills 't' with thousands of texts, so its dictionary turns into plain
+			# strings part way through
+			wide := k = 1;
+			a := Table->New("t", @columns);
+			b := Table->New("t", @columns);
+			rows := 50 + Next(250);
+			each(r : rows) {
+				AddRow(a, b, wide);
+			};
+			Reindex(b);
+
+			each(round : 5) {
+				queries := wide ? 25 : 50;
+				each(q : queries) {
+					Compare(a, b, MakeCond(0, true));
+				};
+				Change(a, b, wide);
+				if(wide & round < 3) {
+					each(r : 1500) {
+						AddRow(a, b, wide);
+					};
+				};
+				if(Next(2) = 0) {
+					Reindex(b);
+				};
+			};
+		};
+
+		if(@indexed_plans < 200) {
+			Fail("only {$@indexed_plans} conditions were read through an index");
+		};
+
+		if(@failures > 0) {
+			"FAIL: query_index_differential, {$@failures} of {$@compared} comparisons differ"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query_index_differential ({$@compared} comparisons, {$@indexed_plans} through an index)"->PrintLine();
+	}
+}

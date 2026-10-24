@@ -58,6 +58,7 @@ bundle Query.Structured {
 		@zone_stale : Bool[];
 		@promotions : Int;
 		@error : String;
+		@col_index : ColumnIndex;
 
 		#~
 		Constructor
@@ -167,6 +168,70 @@ bundle Query.Structured {
 		~#
 		method : public : GetError() ~ String {
 			return @error;
+		}
+
+		#~
+		Gets the kind of index the column has (see Table->CreateIndex)
+		@return HASH, SORTED, or NONE if it has none
+		~#
+		method : public : GetIndexKind() ~ IndexKind {
+			if(@col_index = Nil) {
+				return IndexKind->NONE;
+			};
+
+			return @col_index->GetKind();
+		}
+
+		#~
+		Gets the name of the column's index
+		@return index name, Nil if it has none
+		~#
+		method : public : GetIndexName() ~ String {
+			if(@col_index = Nil) {
+				return Nil;
+			};
+
+			return @col_index->GetName();
+		}
+
+		#~
+		Gets the column's index. Used by Table and the query planner.
+		@return index, Nil if none
+		~#
+		method : public : GetColumnIndex() ~ ColumnIndex {
+			return @col_index;
+		}
+
+		#~
+		Gives the column an index, or takes it away. Used by Table->CreateIndex and DropIndex.
+		@param index index, Nil for none
+		~#
+		method : public : SetColumnIndex(index : ColumnIndex) ~ Nil {
+			@col_index := index;
+		}
+
+		#~
+		Tells the column's index that a row was deleted from its table. Used by Table->Delete.
+		@param row row slot
+		~#
+		method : public : IndexDeleted(row : Int) ~ Nil {
+			if(@col_index <> Nil) {
+				@col_index->Deleted(row);
+			};
+		}
+
+		# every write of one cell ends here, so the index sees each change
+		method : IndexChanged(row : Int) ~ Nil {
+			if(@col_index <> Nil) {
+				@col_index->Changed(@self, row);
+			};
+		}
+
+		# the column's arrays were rewritten as a whole: the index is rebuilt when next used
+		method : IndexStale() ~ Nil {
+			if(@col_index <> Nil) {
+				@col_index->SetStale();
+			};
 		}
 
 		#~
@@ -333,6 +398,7 @@ bundle Query.Structured {
 				if(<>IsNull(row)) {
 					SetNullBit(row, true);
 					MarkStale(row);
+					IndexChanged(row);
 				};
 				return true;
 			};
@@ -400,6 +466,7 @@ bundle Query.Structured {
 			if(was_null) {
 				SetNullBit(row, false);
 			};
+			IndexChanged(row);
 
 			return true;
 		}
@@ -423,6 +490,7 @@ bundle Query.Structured {
 				if(was_null) {
 					SetNullBit(row, false);
 				};
+				IndexChanged(row);
 				return true;
 			}
 			else if(src->GetType() = @type & @type = ColumnType->INT) {
@@ -432,6 +500,7 @@ bundle Query.Structured {
 				if(was_null) {
 					SetNullBit(row, false);
 				};
+				IndexChanged(row);
 				return true;
 			};
 
@@ -495,6 +564,7 @@ bundle Query.Structured {
 			};
 
 			RecomputeAllZones();
+			IndexStale();
 		}
 
 		#~
@@ -707,6 +777,7 @@ bundle Query.Structured {
 			};
 
 			RecomputeAllZones();
+			IndexStale();
 		}
 
 		#~
@@ -724,6 +795,7 @@ bundle Query.Structured {
 			};
 			@size := count;
 			RecomputeAllZones();
+			IndexStale();
 		}
 
 		#~
@@ -737,6 +809,7 @@ bundle Query.Structured {
 			};
 			@size := n;
 			@null_count := n;
+			IndexStale();
 		}
 
 		#~
@@ -781,6 +854,7 @@ bundle Query.Structured {
 			};
 
 			RecomputeAllZones();
+			IndexStale();
 		}
 
 		#~
@@ -869,6 +943,7 @@ bundle Query.Structured {
 			@size := n;
 			@null_count := null_count;
 			RecomputeAllZones();
+			IndexStale();
 		}
 
 		#~
@@ -1142,6 +1217,7 @@ bundle Query.Structured {
 			};
 
 			@promotions += 1;
+			IndexStale();
 		}
 
 		# stores a string as a dictionary code, or plainly once the dictionary is too big
@@ -1191,6 +1267,7 @@ bundle Query.Structured {
 			@dict_index := Nil;
 			@dict_size := 0;
 			@encoded := false;
+			IndexStale();
 		}
 
 		method : SetNullBit(row : Int, on : Bool) ~ Nil {
@@ -1239,6 +1316,11 @@ bundle Query.Structured {
 				return;
 			};
 
+			# NaN matches no comparison a zone map rules on, and has no place between bounds
+			if(value <> value) {
+				return;
+			};
+
 			if(@zone_stale[group]) {
 				return;
 			};
@@ -1283,8 +1365,8 @@ bundle Query.Structured {
 
 			found := false;
 			for(row := start; row < finish; row += 1;) {
-				if(<>IsNull(row)) {
-					value := GetFloat(row);
+				value := GetFloat(row);
+				if(<>IsNull(row) & value = value) {
 					if(<>found) {
 						@zone_min[group] := value;
 						@zone_max[group] := value;
@@ -1304,6 +1386,1002 @@ bundle Query.Structured {
 			each(i : @zone_min) {
 				RecomputeZone(i);
 			};
+		}
+	}
+
+	#~
+	The kind of index a column has (see Table->CreateIndex). A HASH index serves '=' and IN. A
+	SORTED index serves '<', '<=', '>', '>=', BETWEEN, '=' and IN, and gives ORDER BY, GROUP BY,
+	Min and Max their order without sorting.
+	~#
+	enum IndexKind {
+		NONE,
+		HASH,
+		SORTED
+	}
+
+	# An index on one column (docs/QUERY_DESIGN.md, section 5). The column holds it, so every
+	# path that writes a cell reaches it. A hash index is updated in place by each cell write and
+	# each delete; a sorted index is marked stale by a write and rebuilt by the next query that
+	# uses it. Writes that replace a column's arrays as a whole (Compact, Gather, Restore, a type
+	# promotion, a dictionary turning into plain text) mark either kind stale. A lookup gives
+	# candidate slots: every live slot whose cell can match, and perhaps some that cannot (two
+	# values sharing a hash key, NaN cells), which the caller tests again. An index can make a
+	# query faster but cannot change its answer.
+	class : private : ColumnIndex {
+		@kind : IndexKind;
+		@name : String;
+		@stale : Bool;
+		@type : ColumnType;
+		@encoded : Bool;
+		@hash : HashState;
+		@sorted : SortedState;
+
+		New(kind : IndexKind, name : String) {
+			@kind := kind;
+			@name := name;
+			@stale := true;
+			@type := ColumnType->NONE;
+		}
+
+		method : public : GetKind() ~ IndexKind {
+			return @kind;
+		}
+
+		method : public : GetName() ~ String {
+			return @name;
+		}
+
+		method : public : SetStale() ~ Nil {
+			@stale := true;
+		}
+
+		method : public : GetHash() ~ HashState {
+			return @hash;
+		}
+
+		method : public : GetSorted() ~ SortedState {
+			return @sorted;
+		}
+
+		# the column types an index serves; an OBJECT column's cells have no one order or key
+		function : CanServe(type : ColumnType) ~ Bool {
+			return type = ColumnType->INT | type = ColumnType->FLOAT | type = ColumnType->STRING |
+				type = ColumnType->DATE | type = ColumnType->BOOL;
+		}
+
+		# one cell was written
+		method : public : Changed(column : Column, row : Int) ~ Nil {
+			if(@stale) {
+				return;
+			};
+
+			if(@kind = IndexKind->SORTED | @type <> column->GetType() | @encoded <> column->IsEncoded()) {
+				@stale := true;
+				return;
+			};
+
+			@hash->Remove(row);
+			if(<>column->IsNull(row)) {
+				AddRow(@hash, column, row);
+			};
+		}
+
+		# a row was deleted; a sorted index keeps the slot, and lookups skip it
+		method : public : Deleted(row : Int) ~ Nil {
+			if(<>@stale & @kind = IndexKind->HASH) {
+				@hash->Remove(row);
+			};
+		}
+
+		# brings the index up to date with its column; false if the column's type cannot be
+		# indexed (OBJECT, or no type yet), so the caller scans
+		method : public : Freshen(column : Column, deleted : Int[]) ~ Bool {
+			type := column->GetType();
+			if(<>CanServe(type)) {
+				return false;
+			};
+
+			encoded := column->IsEncoded();
+			if(<>@stale & @type = type & @encoded = encoded) {
+				return true;
+			};
+
+			# built aside and then put in place
+			if(@kind = IndexKind->HASH) {
+				@hash := BuildHash(column, deleted);
+				@sorted := Nil;
+			}
+			else {
+				@sorted := BuildSorted(column, deleted);
+				@hash := Nil;
+			};
+			@type := type;
+			@encoded := encoded;
+			@stale := false;
+
+			return true;
+		}
+
+		function : Live(deleted : Int[], row : Int) ~ Bool {
+			if(deleted = Nil) {
+				return true;
+			};
+
+			word := row >> 6;
+			if(word >= deleted->Size()) {
+				return true;
+			};
+
+			return (deleted[word] and (1 << (row and 63))) = 0;
+		}
+
+		# A hash key for a Float: equal numbers get equal keys (0.0 and -0.0 both 0), and
+		# different numbers usually get different ones. Two that share a key are told apart when
+		# the candidates are tested again. NaN has no key; it is kept apart.
+		function : FloatKey(value : Float) ~ Int {
+			if(value = 0.0) {
+				return 0;
+			};
+
+			magnitude := value < 0.0 ? 0.0 - value : value;
+			if(magnitude < 1.0) {
+				return (value * 1.0e18)->As(Int);
+			}
+			else if(magnitude < 9.0e9) {
+				return (value * 1.0e9)->As(Int);
+			}
+			else if(magnitude < 9.0e18) {
+				return value->As(Int);
+			};
+
+			return value > 0.0 ? 1 : -1;
+		}
+
+		function : AddRow(state : HashState, column : Column, row : Int) ~ Nil {
+			type := column->GetType();
+			if(type = ColumnType->FLOAT) {
+				floats := column->GetFloatArray();
+				value := floats[row];
+				if(value <> value) {
+					state->AddNan(row);
+				}
+				else {
+					state->Add(row, FloatKey(value));
+				};
+			}
+			else if(type = ColumnType->STRING & <>column->IsEncoded()) {
+				strings := column->GetStringArray();
+				state->Add(row, strings[row]->HashID());
+			}
+			else {
+				ints := column->GetIntArray();
+				state->Add(row, ints[row]);
+			};
+		}
+
+		function : BuildHash(column : Column, deleted : Int[]) ~ HashState {
+			size := column->Size();
+			state := HashState->New(size);
+			nulls := column->GetNullBits();
+			type := column->GetType();
+			ints := column->GetIntArray();
+			floats := column->GetFloatArray();
+			strings := column->GetStringArray();
+			plain := type = ColumnType->STRING & <>column->IsEncoded();
+			for(row := 0; row < size; row += 1;) {
+				if((nulls[row >> 6] and (1 << (row and 63))) = 0 & Live(deleted, row)) {
+					if(type = ColumnType->FLOAT) {
+						value := floats[row];
+						if(value <> value) {
+							state->AddNan(row);
+						}
+						else {
+							state->Add(row, FloatKey(value));
+						};
+					}
+					else if(plain) {
+						state->Add(row, strings[row]->HashID());
+					}
+					else {
+						state->Add(row, ints[row]);
+					};
+				};
+			};
+
+			return state;
+		}
+
+		# the live, non-empty slots in the order Sorter gives them: by value, and by slot
+		# among equal values; NaN cells are kept apart, since they have no place in the order
+		function : BuildSorted(column : Column, deleted : Int[]) ~ SortedState {
+			size := column->Size();
+			nulls := column->GetNullBits();
+			type := column->GetType();
+			ints := column->GetIntArray();
+			floats := column->GetFloatArray();
+			strings := column->GetStringArray();
+			plain := type = ColumnType->STRING & <>column->IsEncoded();
+
+			slots := Int->New[size];
+			n := 0;
+			nans := IntVector->New();
+			for(row := 0; row < size; row += 1;) {
+				if((nulls[row >> 6] and (1 << (row and 63))) = 0 & Live(deleted, row)) {
+					if(type = ColumnType->FLOAT) {
+						value := floats[row];
+						if(value <> value) {
+							nans->AddBack(row);
+						}
+						else {
+							slots[n] := row;
+							n += 1;
+						};
+					}
+					else {
+						slots[n] := row;
+						n += 1;
+					};
+				};
+			};
+
+			state := SortedState->New(n, nans->ToArray());
+			if(type = ColumnType->FLOAT) {
+				keys := Float->New[n];
+				each(i : n) {
+					keys[i] := floats[slots[i]];
+				};
+				state->SetFloats(SortByFloats(slots, keys, n), keys);
+			}
+			else if(plain) {
+				keys := String->New[n];
+				each(i : n) {
+					keys[i] := strings[slots[i]];
+				};
+				state->SetStrings(SortByStrings(slots, keys, n), keys);
+			}
+			else {
+				keys := Int->New[n];
+				if(type = ColumnType->STRING) {
+					# encoded text sorts by each code's place in the sorted dictionary
+					ranks := column->GetDictionaryRanks();
+					each(i : n) {
+						keys[i] := ranks[ints[slots[i]]];
+					};
+				}
+				else {
+					each(i : n) {
+						keys[i] := ints[slots[i]];
+					};
+				};
+				state->SetInts(SortByInts(slots, keys, n), keys);
+			};
+
+			return state;
+		}
+
+		# Stable merge sorts of slots by keys, both arrays reordered together: the slots come in
+		# ascending, so equal keys keep slot order. Each starts by checking for keys already in
+		# order, which data loaded in time or id order often is.
+		function : SortByInts(slots : Int[], keys : Int[], n : Int) ~ Int[] {
+			sorted := true;
+			for(i := 1; i < n & sorted; i += 1;) {
+				if(keys[i - 1] > keys[i]) {
+					sorted := false;
+				};
+			};
+			if(sorted) {
+				return slots;
+			};
+
+			src_slots := slots;
+			src_keys := keys;
+			dest_slots := Int->New[n];
+			dest_keys := Int->New[n];
+			width := 1;
+			while(width < n) {
+				start := 0;
+				while(start < n) {
+					middle := start + width;
+					if(middle > n) {
+						middle := n;
+					};
+					finish := middle + width;
+					if(finish > n) {
+						finish := n;
+					};
+
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						if(l < middle & (r >= finish | src_keys[l] <= src_keys[r])) {
+							dest_keys[k] := src_keys[l];
+							dest_slots[k] := src_slots[l];
+							l += 1;
+						}
+						else {
+							dest_keys[k] := src_keys[r];
+							dest_slots[k] := src_slots[r];
+							r += 1;
+						};
+						k += 1;
+					};
+					start := finish;
+				};
+
+				swap_slots := src_slots;
+				src_slots := dest_slots;
+				dest_slots := swap_slots;
+				swap_keys := src_keys;
+				src_keys := dest_keys;
+				dest_keys := swap_keys;
+				width *= 2;
+			};
+
+			# the keys go back in the caller's array, in sorted order
+			if(src_keys <> keys) {
+				Int->Copy(keys, 0, src_keys, 0, n);
+			};
+			return src_slots;
+		}
+
+		function : SortByFloats(slots : Int[], keys : Float[], n : Int) ~ Int[] {
+			sorted := true;
+			for(i := 1; i < n & sorted; i += 1;) {
+				if(keys[i - 1] > keys[i]) {
+					sorted := false;
+				};
+			};
+			if(sorted) {
+				return slots;
+			};
+
+			src_slots := slots;
+			src_keys := keys;
+			dest_slots := Int->New[n];
+			dest_keys := Float->New[n];
+			width := 1;
+			while(width < n) {
+				start := 0;
+				while(start < n) {
+					middle := start + width;
+					if(middle > n) {
+						middle := n;
+					};
+					finish := middle + width;
+					if(finish > n) {
+						finish := n;
+					};
+
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						if(l < middle & (r >= finish | src_keys[l] <= src_keys[r])) {
+							dest_keys[k] := src_keys[l];
+							dest_slots[k] := src_slots[l];
+							l += 1;
+						}
+						else {
+							dest_keys[k] := src_keys[r];
+							dest_slots[k] := src_slots[r];
+							r += 1;
+						};
+						k += 1;
+					};
+					start := finish;
+				};
+
+				swap_slots := src_slots;
+				src_slots := dest_slots;
+				dest_slots := swap_slots;
+				swap_keys := src_keys;
+				src_keys := dest_keys;
+				dest_keys := swap_keys;
+				width *= 2;
+			};
+
+			if(src_keys <> keys) {
+				Float->Copy(keys, 0, src_keys, 0, n);
+			};
+			return src_slots;
+		}
+
+		function : SortByStrings(slots : Int[], keys : String[], n : Int) ~ Int[] {
+			sorted := true;
+			for(i := 1; i < n & sorted; i += 1;) {
+				if(keys[i - 1]->Compare(keys[i]) > 0) {
+					sorted := false;
+				};
+			};
+			if(sorted) {
+				return slots;
+			};
+
+			src_slots := slots;
+			src_keys := keys;
+			dest_slots := Int->New[n];
+			dest_keys := String->New[n];
+			width := 1;
+			while(width < n) {
+				start := 0;
+				while(start < n) {
+					middle := start + width;
+					if(middle > n) {
+						middle := n;
+					};
+					finish := middle + width;
+					if(finish > n) {
+						finish := n;
+					};
+
+					l := start;
+					r := middle;
+					k := start;
+					while(k < finish) {
+						if(l < middle & (r >= finish | src_keys[l]->Compare(src_keys[r]) <= 0)) {
+							dest_keys[k] := src_keys[l];
+							dest_slots[k] := src_slots[l];
+							l += 1;
+						}
+						else {
+							dest_keys[k] := src_keys[r];
+							dest_slots[k] := src_slots[r];
+							r += 1;
+						};
+						k += 1;
+					};
+					start := finish;
+				};
+
+				swap_slots := src_slots;
+				src_slots := dest_slots;
+				dest_slots := swap_slots;
+				swap_keys := src_keys;
+				src_keys := dest_keys;
+				dest_keys := swap_keys;
+				width *= 2;
+			};
+
+			if(src_keys <> keys) {
+				each(i : n) {
+					keys[i] := src_keys[i];
+				};
+			};
+			return src_slots;
+		}
+
+		# Live rows, ascending, put in the order Sorter gives them: by value, NaN after every
+		# number, equal values in row order, empty cells last. Nil when the rows are not
+		# ascending.
+		method : public : Order(rows : Int[], capacity : Int, descending : Bool, nulls : Int[]) ~ Int[] {
+			sorted := @sorted;
+			if(sorted = Nil) {
+				return Nil;
+			};
+
+			size := rows->Size();
+			words := Int->New[(capacity + 63) / 64 + 1];
+			last := -1;
+			each(i : size) {
+				row := rows[i];
+				if(row <= last | row >= capacity) {
+					return Nil;
+				};
+				words[row >> 6] := words[row >> 6] or (1 << (row and 63));
+				last := row;
+			};
+
+			out := Int->New[size];
+			n := 0;
+			order := sorted->GetOrder();
+			count := sorted->GetSize();
+			nans := sorted->GetNans();
+			if(<>descending) {
+				each(p : count) {
+					slot := order[p];
+					if((words[slot >> 6] and (1 << (slot and 63))) <> 0) {
+						out[n] := slot;
+						n += 1;
+					};
+				};
+				n := Marked(nans, words, out, n);
+			}
+			else {
+				n := Marked(nans, words, out, n);
+				# runs of equal values from the largest down, each run in slot order
+				finish := count;
+				while(finish > 0) {
+					start := finish - 1;
+					while(start > 0 & sorted->SameKey(start - 1, start)) {
+						start -= 1;
+					};
+					for(p := start; p < finish; p += 1;) {
+						slot := order[p];
+						if((words[slot >> 6] and (1 << (slot and 63))) <> 0) {
+							out[n] := slot;
+							n += 1;
+						};
+					};
+					finish := start;
+				};
+			};
+
+			# empty cells last, in the order they came
+			each(i : size) {
+				row := rows[i];
+				if((nulls[row >> 6] and (1 << (row and 63))) <> 0) {
+					out[n] := row;
+					n += 1;
+				};
+			};
+
+			# every row must be placed exactly once; anything else falls back to a sort
+			if(n <> size) {
+				return Nil;
+			};
+
+			return out;
+		}
+
+		# appends the marked slots of a list, in its order
+		function : Marked(slots : Int[], words : Int[], out : Int[], n : Int) ~ Int {
+			each(i : slots) {
+				slot := slots[i];
+				if((words[slot >> 6] and (1 << (slot and 63))) <> 0) {
+					out[n] := slot;
+					n += 1;
+				};
+			};
+			return n;
+		}
+	}
+
+	# A hash index's entries: an IntMap from a key to its chain's first slot, and the chains
+	# linked through per-slot arrays, so adding or removing a slot touches only its neighbours.
+	# Links hold slot + 1, with 0 for none. NaN cells have their own chain.
+	class : private : HashState {
+		@heads : IntMap;
+		@next : Int[];
+		@prev : Int[];
+		@keys : Int[];
+		@state : Int[];
+		@nan_head : Int;
+		@nan_count : Int;
+
+		New(capacity : Int) {
+			@heads := IntMap->New();
+			size := capacity < 16 ? 16 : capacity;
+			@next := Int->New[size];
+			@prev := Int->New[size];
+			@keys := Int->New[size];
+			@state := Int->New[size];
+		}
+
+		method : Ensure(slot : Int) ~ Nil {
+			if(slot < @state->Size()) {
+				return;
+			};
+
+			size := @state->Size();
+			while(size <= slot) {
+				size *= 2;
+			};
+			@next := Column->GrowInts(@next, size);
+			@prev := Column->GrowInts(@prev, size);
+			@keys := Column->GrowInts(@keys, size);
+			@state := Column->GrowInts(@state, size);
+		}
+
+		method : public : Add(slot : Int, key : Int) ~ Nil {
+			Ensure(slot);
+			head := @heads->Find(key, 0);
+			@next[slot] := head;
+			@prev[slot] := 0;
+			if(head > 0) {
+				@prev[head - 1] := slot + 1;
+			};
+			@heads->Insert(key, slot + 1);
+			@keys[slot] := key;
+			@state[slot] := 1;
+		}
+
+		method : public : AddNan(slot : Int) ~ Nil {
+			Ensure(slot);
+			@next[slot] := @nan_head;
+			@prev[slot] := 0;
+			if(@nan_head > 0) {
+				@prev[@nan_head - 1] := slot + 1;
+			};
+			@nan_head := slot + 1;
+			@nan_count += 1;
+			@state[slot] := 2;
+		}
+
+		method : public : Remove(slot : Int) ~ Nil {
+			if(slot >= @state->Size()) {
+				return;
+			};
+
+			state := @state[slot];
+			if(state = 0) {
+				return;
+			};
+
+			before := @prev[slot];
+			after := @next[slot];
+			if(state = 2) {
+				if(before = 0) {
+					@nan_head := after;
+				}
+				else {
+					@next[before - 1] := after;
+				};
+				@nan_count -= 1;
+			}
+			else {
+				key := @keys[slot];
+				if(before = 0) {
+					if(after = 0) {
+						@heads->Remove(key);
+					}
+					else {
+						@heads->Insert(key, after);
+					};
+				}
+				else {
+					@next[before - 1] := after;
+				};
+			};
+
+			if(after > 0) {
+				@prev[after - 1] := before;
+			};
+			@state[slot] := 0;
+		}
+
+		# entries under a key, NaN cells not included: a walk of its chain, which costs what
+		# reading them would
+		method : public : Count(key : Int) ~ Int {
+			count := 0;
+			link := @heads->Find(key, 0);
+			while(link > 0) {
+				count += 1;
+				link := @next[link - 1];
+			};
+			return count;
+		}
+
+		method : public : GetNanCount() ~ Int {
+			return @nan_count;
+		}
+
+		# adds the slots under a key
+		method : public : Collect(key : Int, out : IntVector) ~ Nil {
+			link := @heads->Find(key, 0);
+			while(link > 0) {
+				out->AddBack(link - 1);
+				link := @next[link - 1];
+			};
+		}
+
+		# adds the NaN slots
+		method : public : CollectNans(out : IntVector) ~ Nil {
+			link := @nan_head;
+			while(link > 0) {
+				out->AddBack(link - 1);
+				link := @next[link - 1];
+			};
+		}
+	}
+
+	# A sorted index's entries: the slots in value order, with their keys (numbers, dictionary
+	# ranks or text) beside them, and the NaN slots apart
+	class : private : SortedState {
+		@order : Int[];
+		@size : Int;
+		@nans : Int[];
+		@int_keys : Int[];
+		@float_keys : Float[];
+		@text_keys : String[];
+
+		New(size : Int, nans : Int[]) {
+			@size := size;
+			@nans := nans;
+		}
+
+		method : public : SetInts(order : Int[], keys : Int[]) ~ Nil {
+			@order := order;
+			@int_keys := keys;
+		}
+
+		method : public : SetFloats(order : Int[], keys : Float[]) ~ Nil {
+			@order := order;
+			@float_keys := keys;
+		}
+
+		method : public : SetStrings(order : Int[], keys : String[]) ~ Nil {
+			@order := order;
+			@text_keys := keys;
+		}
+
+		method : public : GetOrder() ~ Int[] {
+			return @order;
+		}
+
+		method : public : GetSize() ~ Int {
+			return @size;
+		}
+
+		method : public : GetNans() ~ Int[] {
+			return @nans;
+		}
+
+		method : public : GetNanCount() ~ Int {
+			return @nans->Size();
+		}
+
+		# whether two positions hold equal values, as Sorter compares them
+		method : public : SameKey(a : Int, b : Int) ~ Bool {
+			if(@float_keys <> Nil) {
+				return Filter->Order3F(@float_keys[a], @float_keys[b]) = 0;
+			}
+			else if(@text_keys <> Nil) {
+				return @text_keys[a]->Compare(@text_keys[b]) = 0;
+			};
+
+			return @int_keys[a] = @int_keys[b];
+		}
+	}
+
+	# How the planner reads candidate slots: through one index (a list of hash keys, or a range
+	# of a sorted index's positions), or as the union of several, for OR and IN
+	class : private : IndexProbe {
+		@index : ColumnIndex;
+		@column : String;
+		@ops : String;
+		@keys : IntVector;
+		@low : Int;
+		@high : Int;
+		@empty : Bool;
+		@parts : Vector<IndexProbe>;
+
+		New(index : ColumnIndex, column : String, ops : String) {
+			@index := index;
+			@column := column;
+			@ops := ops;
+		}
+
+		New(parts : Vector<IndexProbe>) {
+			@parts := parts;
+		}
+
+		function : Hash(index : ColumnIndex, column : String, op : String, key : Int) ~ IndexProbe {
+			probe := IndexProbe->New(index, column, op);
+			probe->SetKey(key);
+			return probe;
+		}
+
+		function : Range(index : ColumnIndex, column : String, op : String, low : Int, high : Int) ~ IndexProbe {
+			probe := IndexProbe->New(index, column, op);
+			probe->SetRange(low, high);
+			return probe;
+		}
+
+		function : Empty(index : ColumnIndex, column : String, op : String) ~ IndexProbe {
+			probe := IndexProbe->New(index, column, op);
+			probe->SetEmpty();
+			return probe;
+		}
+
+		method : public : SetKey(key : Int) ~ Nil {
+			@keys := IntVector->New();
+			@keys->AddBack(key);
+		}
+
+		method : public : SetRange(low : Int, high : Int) ~ Nil {
+			@low := low;
+			@high := high;
+			if(@high < @low) {
+				@high := @low;
+			};
+		}
+
+		method : public : SetEmpty() ~ Nil {
+			@empty := true;
+		}
+
+		method : public : GetIndex() ~ ColumnIndex {
+			return @index;
+		}
+
+		method : public : IsEmpty() ~ Bool {
+			if(@parts <> Nil) {
+				each(i : @parts) {
+					if(<>@parts->Get(i)->IsEmpty()) {
+						return false;
+					};
+				};
+				return true;
+			};
+
+			return @empty;
+		}
+
+		# whether every index read is a hash index's
+		method : public : IsHash() ~ Bool {
+			if(@parts <> Nil) {
+				each(i : @parts) {
+					if(<>@parts->Get(i)->IsHash()) {
+						return false;
+					};
+				};
+				return true;
+			};
+
+			return @index->GetKind() = IndexKind->HASH;
+		}
+
+		# a range of a sorted index
+		method : public : IsRange() ~ Bool {
+			return @parts = Nil & <>@empty & @keys = Nil;
+		}
+
+		# narrows a range by another range of the same sorted index: both conditions hold
+		method : public : Intersect(narrower : IndexProbe) ~ Nil {
+			if(narrower->GetLow() > @low) {
+				@low := narrower->GetLow();
+			};
+			if(narrower->GetHigh() < @high) {
+				@high := narrower->GetHigh();
+			};
+			if(@high < @low) {
+				@high := @low;
+			};
+			@ops := "{$@ops} {$(narrower->GetOps())}";
+		}
+
+		method : public : GetLow() ~ Int {
+			return @low;
+		}
+
+		method : public : GetHigh() ~ Int {
+			return @high;
+		}
+
+		method : public : GetOps() ~ String {
+			return @ops;
+		}
+
+		# the number of slots the probe reads, an estimate of its cost
+		method : public : Count() ~ Int {
+			if(@parts <> Nil) {
+				total := 0;
+				each(i : @parts) {
+					total += @parts->Get(i)->Count();
+				};
+				return total;
+			};
+
+			if(@empty) {
+				return 0;
+			};
+
+			if(@keys <> Nil) {
+				hash := @index->GetHash();
+				total := hash->GetNanCount();
+				each(i : @keys) {
+					total += hash->Count(@keys->Get(i));
+				};
+				return total;
+			};
+
+			return @high - @low + @index->GetSorted()->GetNanCount();
+		}
+
+		method : public : Describe() ~ String {
+			if(@parts <> Nil) {
+				text := "union(";
+				each(i : @parts) {
+					if(i > 0) {
+						text += " | ";
+					};
+					text += @parts->Get(i)->Describe();
+				};
+				text += ")";
+				return text;
+			};
+
+			kind := @index->GetKind() = IndexKind->HASH ? "HASH" : "SORTED";
+			text := "{$kind} index {$(@index->GetName())} on {$@column} ({$@ops})";
+			if(@empty) {
+				text += " matches nothing";
+			};
+			return text;
+		}
+
+		# adds the slots read, in no particular order
+		method : public : Collect(out : IntVector) ~ Nil {
+			if(@parts <> Nil) {
+				each(i : @parts) {
+					@parts->Get(i)->Collect(out);
+				};
+				return;
+			};
+
+			if(@empty) {
+				return;
+			};
+
+			if(@keys <> Nil) {
+				hash := @index->GetHash();
+				each(i : @keys) {
+					hash->Collect(@keys->Get(i), out);
+				};
+				hash->CollectNans(out);
+				return;
+			};
+
+			sorted := @index->GetSorted();
+			order := sorted->GetOrder();
+			for(p := @low; p < @high; p += 1;) {
+				out->AddBack(order[p]);
+			};
+			nans := sorted->GetNans();
+			each(i : nans) {
+				out->AddBack(nans[i]);
+			};
+		}
+
+		# the live slots read, ascending and each once: the order a scan visits them in
+		method : public : Slots(table : Table) ~ Int[] {
+			found := IntVector->New();
+			Collect(found);
+
+			capacity := table->GetRowCapacity();
+			deleted := table->GetDeletedBits();
+			count := found->Size();
+			if(count * 64 >= capacity) {
+				# many slots: mark them, then read the marks in order
+				words := Int->New[(capacity + 63) / 64 + 1];
+				each(i : count) {
+					slot := found->Get(i);
+					if(slot < capacity & ColumnIndex->Live(deleted, slot)) {
+						words[slot >> 6] := words[slot >> 6] or (1 << (slot and 63));
+					};
+				};
+
+				out := Int->New[count];
+				n := 0;
+				each(w : words) {
+					word := words[w];
+					if(word <> 0) {
+						base := w << 6;
+						each(b : 64) {
+							if((word and (1 << b)) <> 0) {
+								out[n] := base + b;
+								n += 1;
+							};
+						};
+					};
+				};
+				return Filter->Trim(out, n);
+			};
+
+			# few slots: sort them
+			values := found->ToArray();
+			ArraySort->Sort(values);
+			out := Int->New[count];
+			n := 0;
+			each(i : count) {
+				slot := values[i];
+				if((n = 0 | out[n - 1] <> slot) & slot < capacity & ColumnIndex->Live(deleted, slot)) {
+					out[n] := slot;
+					n += 1;
+				};
+			};
+			return Filter->Trim(out, n);
 		}
 	}
 
@@ -1585,7 +2663,216 @@ results->ToString()->PrintLine();
 				return Nil;
 			};
 
-			return View->New(@self, DataColumns(), filter->Apply(@self, Nil));
+			view := View->New(@self, DataColumns(), filter->Apply(@self, Nil));
+			view->SetPlan(filter->GetPlan());
+			return view;
+		}
+
+		#~
+		Indexes a column, so that conditions on it read only the rows that can match instead of
+		scanning the table. A HASH index serves '=' and IN; a SORTED index serves '<', '<=', '>',
+		'>=', BETWEEN, '=' and IN, and gives ORDER BY, GROUP BY, Min and Max their order without
+		sorting. A column has at most one index; creating another replaces it. An index never
+		changes a query's answer or its row order, only how fast it comes: every insert, update,
+		delete and Compact keeps it correct (a sorted index is rebuilt by the first query after a
+		change). Indexes are not saved in .otab files; create them again after Load or Open.
+		Columns holding objects (OBJECT) cannot be indexed, and neither can 'pk', which Get finds
+		directly. SQL's CREATE INDEX does the same.
+		@param column column name
+		@param kind HASH or SORTED
+		@return true if created, false if the column is unknown or cannot be indexed (see GetError)
+		```
+		table->CreateIndex("label", IndexKind->HASH);
+		table->CreateIndex("score", IndexKind->SORTED);
+		rs := table->Where(Col->Of("label")->Eq("cat")->AndAlso(Col->Of("score")->Gt(0.9)));
+		rs->GetPlan()->PrintLine(); # where runs: HASH index runs_label on label (=)
+		```
+		~#
+		method : public : CreateIndex(column : String, kind : IndexKind) ~ Bool {
+			return CreateIndex(Nil, column, kind);
+		}
+
+		#~
+		Indexes a column under a name (see CreateIndex(column, kind)); DROP INDEX finds it by
+		that name
+		@param name index name, unique among this table's indexes; Nil names it table_column
+		@param column column name
+		@param kind HASH or SORTED
+		@return true if created, false on error (see GetError)
+		```
+		table->CreateIndex("by_score", "score", IndexKind->SORTED);
+		table->Execute("drop index by_score");
+		```
+		~#
+		method : public : CreateIndex(name : String, column : String, kind : IndexKind) ~ Bool {
+			@error := Nil;
+			index := GetIndex(column);
+			if(index < 0) {
+				@error := "unknown column '{$column}'";
+				return false;
+			};
+
+			if(index = 0) {
+				@error := "the key column 'pk' needs no index: Get finds a key directly";
+				return false;
+			};
+
+			if(kind <> IndexKind->HASH & kind <> IndexKind->SORTED) {
+				@error := "an index is HASH or SORTED";
+				return false;
+			};
+
+			target := @columns[index];
+			if(target->GetType() = ColumnType->OBJECT) {
+				@error := "column '{$column}' holds objects, which have no one order or key to index";
+				return false;
+			};
+
+			if(name = Nil) {
+				name := "{$@name}_{$column}";
+			};
+
+			for(i := 1; i < @columns->Size(); i += 1;) {
+				other_name := @columns[i]->GetIndexName();
+				if(i <> index & other_name <> Nil) {
+					if(other_name->Equals(name)) {
+						@error := "an index named '{$name}' is on column '{$(@columns[i]->GetName())}'";
+						return false;
+					};
+				};
+			};
+
+			created := ColumnIndex->New(kind, String->New(name));
+			target->SetColumnIndex(created);
+			# built now, so the first query pays nothing for it
+			created->Freshen(target, @deleted);
+			return true;
+		}
+
+		#~
+		Removes a column's index
+		@param column column name
+		@return true if removed, false if the column has no index
+		~#
+		method : public : DropIndex(column : String) ~ Bool {
+			target := GetColumn(column);
+			if(target = Nil | target->GetColumnIndex() = Nil) {
+				@error := "column '{$column}' has no index";
+				return false;
+			};
+
+			target->SetColumnIndex(Nil);
+			return true;
+		}
+
+		#~
+		Whether a column has an index
+		@param column column name
+		@return true if it has one
+		~#
+		method : public : HasIndex(column : String) ~ Bool {
+			return GetIndexKind(column) <> IndexKind->NONE;
+		}
+
+		#~
+		Gets the kind of a column's index
+		@param column column name
+		@return HASH, SORTED, or NONE if the column has no index or is unknown
+		~#
+		method : public : GetIndexKind(column : String) ~ IndexKind {
+			target := GetColumn(column);
+			if(target = Nil) {
+				return IndexKind->NONE;
+			};
+
+			return target->GetIndexKind();
+		}
+
+		#~
+		Gets the name of a column's index
+		@param column column name
+		@return index name, Nil if the column has no index
+		~#
+		method : public : GetIndexName(column : String) ~ String {
+			target := GetColumn(column);
+			if(target = Nil) {
+				return Nil;
+			};
+
+			return target->GetIndexName();
+		}
+
+		#~
+		Gets the column an index is on
+		@param name index name
+		@return column name, Nil if the table has no index of that name
+		~#
+		method : public : FindIndex(name : String) ~ String {
+			if(name = Nil) {
+				return Nil;
+			};
+
+			for(i := 1; i < @columns->Size(); i += 1;) {
+				index_name := @columns[i]->GetIndexName();
+				if(index_name <> Nil) {
+					if(index_name->Equals(name)) {
+						return @columns[i]->GetName();
+					};
+				};
+			};
+
+			return Nil;
+		}
+
+		#~
+		Tells how a statement reads its rows: for each table, whether its WHERE clause scans or
+		reads through an index (naming it), and whether ORDER BY or GROUP BY took its order from
+		a sorted index. A SELECT is run to find out; an UPDATE or DELETE is not.
+		@param statement SQL statement naming this table
+		@return the plan, Nil on error (see GetError)
+		```
+		table->CreateIndex("grp", IndexKind->HASH);
+		table->Explain("select * from runs where grp = 'g7'")->PrintLine();
+		# where runs: HASH index runs_grp on grp (=)
+		```
+		~#
+		method : public : Explain(statement : String) ~ String {
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return Nil;
+			};
+
+			holder := StringHolder->New();
+			text := plan->Explain(@self, Compare->New[0], holder);
+			@error := holder->Get();
+			return text;
+		}
+
+		#~
+		Orders live row slots, given in ascending order, the way Sorter orders them by a column,
+		through the column's sorted index. Used by queries.
+		@param index column index
+		@param rows row slots, ascending
+		@param descending true for descending order
+		@return the slots in order, Nil if the column has no sorted index that can give it
+		~#
+		method : public : IndexOrder(index : Int, rows : Int[], descending : Bool) ~ Int[] {
+			column := GetColumn(index);
+			if(column = Nil | index = 0 | rows = Nil) {
+				return Nil;
+			};
+
+			found := column->GetColumnIndex();
+			if(found = Nil) {
+				return Nil;
+			};
+
+			if(found->GetKind() <> IndexKind->SORTED | <>found->Freshen(column, @deleted)) {
+				return Nil;
+			};
+
+			return found->Order(rows, @size, descending, column->GetNullBits());
 		}
 
 		#~
@@ -2397,6 +3684,11 @@ results->ToString()->PrintLine();
 			};
 
 			column := @columns[index];
+			ends := IndexEnd(column, is_min);
+			if(ends <> Nil) {
+				return ends->Get();
+			};
+
 			found := false;
 			result := 0.0;
 			each(row : @size) {
@@ -2416,6 +3708,58 @@ results->ToString()->PrintLine();
 			};
 
 			return result;
+		}
+
+		# Min or Max of an INT or FLOAT column read from its sorted index: the first live cell
+		# of the smallest (or largest) value, which is the cell a scan settles on. Nil when the
+		# column has no such index, holds NaN (which a scan's comparisons treat specially) or
+		# holds no live value.
+		method : IndexEnd(column : Column, is_min : Bool) ~ FloatRef {
+			type := column->GetType();
+			found := column->GetColumnIndex();
+			if(found = Nil | (type <> ColumnType->INT & type <> ColumnType->FLOAT)) {
+				return Nil;
+			};
+
+			if(found->GetKind() <> IndexKind->SORTED | <>found->Freshen(column, @deleted)) {
+				return Nil;
+			};
+
+			sorted := found->GetSorted();
+			if(sorted->GetNanCount() > 0) {
+				return Nil;
+			};
+
+			order := sorted->GetOrder();
+			size := sorted->GetSize();
+			if(is_min) {
+				each(p : size) {
+					if(IsLive(order[p])) {
+						return FloatRef->New(column->GetFloat(order[p]));
+					};
+				};
+				return Nil;
+			};
+
+			# the largest value's first live cell: back to the start of its run of equal values
+			last := size - 1;
+			while(last >= 0 & <>IsLive(order[last])) {
+				last -= 1;
+			};
+			if(last < 0) {
+				return Nil;
+			};
+
+			first := last;
+			p := last - 1;
+			while(p >= 0 & sorted->SameKey(p, last)) {
+				if(IsLive(order[p])) {
+					first := p;
+				};
+				p -= 1;
+			};
+
+			return FloatRef->New(column->GetFloat(order[first]));
 		}
 
 		#~
@@ -2562,11 +3906,15 @@ results->ToString()->PrintLine();
 		}
 
 		#~
-		Runs an INSERT, UPDATE or DELETE on this table. A statement that fails changes nothing.
+		Runs an INSERT, UPDATE or DELETE on this table, or a CREATE INDEX or DROP INDEX:
+		'CREATE INDEX [name] ON table (column) [USING HASH | SORTED]' (SORTED when USING is left
+		out) and 'DROP INDEX name [ON table]' (see CreateIndex). A statement that fails changes
+		nothing.
 		@param statement SQL statement naming this table
-		@return rows inserted, updated or deleted, -1 on error (see GetError)
+		@return rows inserted, updated or deleted (0 for an index), -1 on error (see GetError)
 		```
 		table->Execute("update emp set dept = 'Ops' where name = 'Carol'");
+		table->Execute("create index by_dept on emp (dept) using hash");
 		```
 		~#
 		method : public : Execute(statement : String) ~ Int {
@@ -2749,6 +4097,9 @@ results->ToString()->PrintLine();
 			@deleted[row >> 6] := @deleted[row >> 6] or (1 << (row and 63));
 			@count -= 1;
 			@version += 1;
+			for(i := 1; i < @columns->Size(); i += 1;) {
+				@columns[i]->IndexDeleted(row);
+			};
 
 			if(@store <> Nil & <>@store->LogDelete(pk)) {
 				@error := @store->GetError();
@@ -3300,6 +4651,10 @@ results->ToString()->PrintLine();
 			if(IsNumeric(left) & IsNumeric(right)) {
 				l := ToNumber(left);
 				r := ToNumber(right);
+				# NaN cannot be ordered against any number
+				if(l <> l | r <> r) {
+					return NotComparable();
+				};
 				if(l < r) {
 					return -1;
 				}
@@ -3373,12 +4728,32 @@ results->ToString()->PrintLine();
 				return 0;
 			};
 
+			# NaN after every other number, and equal to itself
+			if(left_rank = 0) {
+				left_nan := IsNaN(left);
+				right_nan := IsNaN(right);
+				if(left_nan | right_nan) {
+					if(left_nan & right_nan) {
+						return 0;
+					};
+					return left_nan ? 1 : -1;
+				};
+			};
+
 			result := Compare(left, right);
 			if(result = NotComparable()) {
 				return left->GetClass()->GetName()->Compare(right->GetClass()->GetName());
 			};
 
 			return result;
+		}
+
+		function : IsNaN(value : Compare) ~ Bool {
+			if(value->TypeOf(FloatRef)) {
+				number := value->As(FloatRef)->Get();
+				return number <> number;
+			};
+			return false;
 		}
 
 		function : Rank(value : Compare) ~ Int {
@@ -4277,9 +5652,15 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 		@never : Bool;
 		@regex : RegEx;
 		@bad_pattern : Bool;
+		@plan : String;
 
 		New(op : Op) {
 			@op := op;
+		}
+
+		# how the last Apply over a whole table found its rows
+		method : public : GetPlan() ~ String {
+			return @plan;
 		}
 
 		# binds a predicate to a table; Nil with 'error' set if a column is unknown or a
@@ -4404,8 +5785,9 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 						@exact_int := @type = ColumnType->INT;
 					}
 					else if(value->TypeOf(FloatRef)) {
-						@comparable := true;
+						# NaN cannot be ordered against any number: only '<>' holds
 						@float_value := value->As(FloatRef)->Get();
+						@comparable := @float_value = @float_value;
 					};
 				}
 
@@ -4451,20 +5833,311 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 			};
 		}
 
-		# the matching slots among 'rows', or among all live rows when 'rows' is Nil
+		# The matching slots among 'rows', or among all live rows when 'rows' is Nil. For a whole
+		# table the planner may read candidate slots through an index (see Choose); the whole
+		# condition is then tested on those candidates, so the answer, and its order, is the one
+		# a scan gives.
 		method : public : Apply(table : Table, rows : Int[]) ~ Int[] {
+			if(rows = Nil) {
+				probe := Choose(table);
+				if(probe <> Nil) {
+					@plan := "where {$(table->GetName())}: {$(probe->Describe())}";
+					return Eval(table, probe->Slots(table));
+				};
+				@plan := "where {$(table->GetName())}: scan";
+			};
+
+			return Eval(table, rows);
+		}
+
+		# how Apply would find the rows of a whole table, without finding them
+		method : public : Describe(table : Table) ~ String {
+			probe := Choose(table);
+			if(probe = Nil) {
+				return "where {$(table->GetName())}: scan";
+			};
+
+			return "where {$(table->GetName())}: {$(probe->Describe())}";
+		}
+
+		#
+		# The planner, rule based (docs/QUERY_DESIGN.md, section 5). For an AND, the index-backed
+		# term that reads fewest slots, preferring equality on a hash index; ranges on the same
+		# sorted index are narrowed together, so BETWEEN reads one range. For an OR (and IN),
+		# indexes only if every alternative has one. NOT, LIKE, MATCHES, '<>' and IS [NOT] NULL
+		# are never read through an index. Nil means scan.
+		#
+		method : Choose(table : Table) ~ IndexProbe {
+			if(@op = Op->AND) {
+				parts := Vector->New()<Filter>;
+				Flatten(Op->AND, parts);
+				probes := Vector->New()<IndexProbe>;
+				each(i : parts) {
+					probe := parts->Get(i)->Choose(table);
+					if(probe <> Nil) {
+						merged := false;
+						if(probe->IsRange()) {
+							each(j : probes) {
+								earlier := probes->Get(j);
+								if(<>merged & earlier->IsRange() & earlier->GetIndex() = probe->GetIndex()) {
+									earlier->Intersect(probe);
+									merged := true;
+								};
+							};
+						};
+
+						if(<>merged) {
+							probes->AddBack(probe);
+						};
+					};
+				};
+
+				return Best(probes);
+			}
+			else if(@op = Op->OR) {
+				parts := Vector->New()<Filter>;
+				Flatten(Op->OR, parts);
+				probes := Vector->New()<IndexProbe>;
+				each(i : parts) {
+					probe := parts->Get(i)->Choose(table);
+					if(probe = Nil) {
+						return Nil;
+					};
+					probes->AddBack(probe);
+				};
+
+				return IndexProbe->New(probes);
+			}
+			else if(@op = Op->NOT) {
+				return Nil;
+			};
+
+			return LeafProbe(table);
+		}
+
+		# the operands of a run of one operator: a AND (b AND c) gives a, b, c
+		method : public : Flatten(op : Op, parts : Vector<Filter>) ~ Nil {
+			if(@op = op) {
+				@left->Flatten(op, parts);
+				@right->Flatten(op, parts);
+			}
+			else {
+				parts->AddBack(@self);
+			};
+		}
+
+		# a probe that reads nothing, then hash probes, then the one reading fewest slots
+		function : Best(probes : Vector<IndexProbe>) ~ IndexProbe {
+			if(probes->Size() = 1) {
+				return probes->Get(0);
+			};
+
+			best : IndexProbe;
+			best_count := 0;
+			each(i : probes) {
+				probe := probes->Get(i);
+				if(probe->IsEmpty()) {
+					return probe;
+				};
+
+				count := probe->Count();
+				better := best = Nil;
+				if(<>better) {
+					if(probe->IsHash() <> best->IsHash()) {
+						better := probe->IsHash();
+					}
+					else {
+						better := count < best_count;
+					};
+				};
+
+				if(better) {
+					best := probe;
+					best_count := count;
+				};
+			};
+
+			return best;
+		}
+
+		function : OpText(op : Op) ~ String {
+			select(op) {
+				label Op->EQ: { return "="; }
+				label Op->LT: { return "<"; }
+				label Op->LE: { return "<="; }
+				label Op->GT: { return ">"; }
+				label Op->GE: { return ">="; }
+			};
+
+			return "?";
+		}
+
+		# a comparison read through its column's index, or Nil
+		method : LeafProbe(table : Table) ~ IndexProbe {
+			if(@column = Nil) {
+				return Nil;
+			};
+
+			index := @column->GetColumnIndex();
+			if(index = Nil) {
+				return Nil;
+			};
+
+			op := @op;
+			is_range := op = Op->LT | op = Op->LE | op = Op->GT | op = Op->GE;
+			if(op <> Op->EQ & <>(is_range & index->GetKind() = IndexKind->SORTED)) {
+				return Nil;
+			};
+
+			if(<>index->Freshen(@column, table->GetDeletedBits())) {
+				return Nil;
+			};
+
+			name := @column->GetName();
+			text := OpText(op);
+			if(@never) {
+				return IndexProbe->Empty(index, name, text);
+			};
+
+			# bound to the column as it is now, or the arrays this filter reads are not the index's
+			if(<>@comparable | @type <> @column->GetType() | (@dict <> Nil) <> @column->IsEncoded()) {
+				return Nil;
+			};
+
+			# a NaN value is not comparable (only '<>' holds), so this is only a guard
+			if((@type = ColumnType->FLOAT | (@type = ColumnType->INT & <>@exact_int)) & @float_value <> @float_value) {
+				return Nil;
+			};
+
+			if(index->GetKind() = IndexKind->HASH) {
+				key := 0;
+				select(@type) {
+					label ColumnType->INT: {
+						if(@exact_int) {
+							key := @int_value;
+						}
+						else {
+							# a whole number Int cells can equal, or none can
+							number := @float_value;
+							if(number <> number->Floor()) {
+								return IndexProbe->Empty(index, name, text);
+							};
+							if(number->Abs() >= 9.0e15) {
+								return Nil;
+							};
+							key := number->As(Int);
+						};
+					}
+
+					label ColumnType->FLOAT: {
+						key := ColumnIndex->FloatKey(@float_value);
+					}
+
+					label ColumnType->STRING: {
+						if(@dict <> Nil) {
+							if(@code < 0) {
+								return IndexProbe->Empty(index, name, text);
+							};
+							key := @code;
+						}
+						else {
+							key := @text->HashID();
+						};
+					}
+
+					other: {
+						key := @int_value;
+					}
+				};
+
+				return IndexProbe->Hash(index, name, text, key);
+			};
+
+			# a sorted index: the positions where the cell compares below, equal to and above
+			# the value, by the comparison Test makes
+			sorted := index->GetSorted();
+			order := sorted->GetOrder();
+			size := sorted->GetSize();
+			low := Bound(order, size, false);
+			high := Bound(order, size, true);
+			select(op) {
+				label Op->EQ: {
+					return IndexProbe->Range(index, name, text, low, high);
+				}
+
+				label Op->LT: {
+					return IndexProbe->Range(index, name, text, 0, low);
+				}
+
+				label Op->LE: {
+					return IndexProbe->Range(index, name, text, 0, high);
+				}
+
+				label Op->GT: {
+					return IndexProbe->Range(index, name, text, high, size);
+				}
+			};
+
+			return IndexProbe->Range(index, name, text, low, size);
+		}
+
+		# the first position whose cell compares at or above the value (above, if 'after')
+		method : Bound(order : Int[], size : Int, after : Bool) ~ Int {
+			low := 0;
+			high := size;
+			while(low < high) {
+				middle := (low + high) / 2;
+				result := Order(order[middle]);
+				if(result < 0 | (after & result = 0)) {
+					low := middle + 1;
+				}
+				else {
+					high := middle;
+				};
+			};
+
+			return low;
+		}
+
+		# how a non-empty cell compares with the value: -1, 0 or 1, as Test compares them
+		method : Order(row : Int) ~ Int {
+			select(@type) {
+				label ColumnType->INT: {
+					if(@exact_int) {
+						return Order3(@ints[row], @int_value);
+					};
+					return Order3F(@ints[row]->As(Float), @float_value);
+				}
+
+				label ColumnType->FLOAT: {
+					return Order3F(@floats[row], @float_value);
+				}
+
+				label ColumnType->STRING: {
+					if(@dict <> Nil) {
+						return Sign(@dict[@ints[row]]->Compare(@text));
+					};
+					return Sign(@strings[row]->Compare(@text));
+				}
+			};
+
+			return Order3(@ints[row], @int_value);
+		}
+
+		# the matching slots among 'rows', or among all live rows when 'rows' is Nil, by scanning
+		method : Eval(table : Table, rows : Int[]) ~ Int[] {
 			select(@op) {
 				label Op->AND: {
-					return @right->Apply(table, @left->Apply(table, rows));
+					return @right->Eval(table, @left->Eval(table, rows));
 				}
 
 				label Op->OR: {
-					return Union(@left->Apply(table, rows), @right->Apply(table, rows));
+					return Union(@left->Eval(table, rows), @right->Eval(table, rows));
 				}
 
 				label Op->NOT: {
 					all := rows <> Nil ? rows : table->LiveRows();
-					return Difference(all, @left->Apply(table, all));
+					return Difference(all, @left->Eval(table, all));
 				}
 			};
 
@@ -4527,13 +6200,17 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 						return false;
 					};
 
+					# The group's bounds are Floats. A whole number past 2^53 rounds when converted,
+					# so 2^53 + 1 is kept as 2^53: where cells compare as whole numbers (INT against
+					# an Int, DATE) the bounds can only rule a group out non-strictly.
 					low := @column->GetGroupMin(group);
 					high := @column->GetGroupMax(group);
+					whole := @exact_int | @type = ColumnType->DATE;
 					select(@op) {
 						label Op->EQ: { return @float_value >= low & @float_value <= high; }
-						label Op->LT: { return low < @float_value; }
+						label Op->LT: { return whole ? low <= @float_value : low < @float_value; }
 						label Op->LE: { return low <= @float_value; }
-						label Op->GT: { return high > @float_value; }
+						label Op->GT: { return whole ? high >= @float_value : high > @float_value; }
 						label Op->GE: { return high >= @float_value; }
 					};
 				}
@@ -4591,10 +6268,11 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 				}
 
 				label ColumnType->FLOAT: {
-					if(<>@comparable) {
+					cell := @floats[row];
+					if(<>@comparable | cell <> cell) {
 						return @op = Op->NE;
 					};
-					result := Order3F(@floats[row], @float_value);
+					result := Order3F(cell, @float_value);
 				}
 
 				label ColumnType->DATE:
@@ -4655,6 +6333,20 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 				return 1;
 			};
 			return 0;
+		}
+
+		# a total order of Floats for sorting: NaN after every number, equal to itself
+		function : OrderNaNLast(a : Float, b : Float) ~ Int {
+			a_nan := a <> a;
+			b_nan := b <> b;
+			if(a_nan | b_nan) {
+				if(a_nan & b_nan) {
+					return 0;
+				};
+				return a_nan ? 1 : -1;
+			};
+
+			return Order3F(a, b);
 		}
 
 		function : Order3F(a : Float, b : Float) ~ Int {
@@ -4850,7 +6542,7 @@ p := Col->Of("value")->Gt(0.5)->AndAlso(Col->Of("grp")->Eq("g7"));
 				}
 
 				label ColumnType->FLOAT: {
-					result := Filter->Order3F(@floats[a], @floats[b]);
+					result := Filter->OrderNaNLast(@floats[a], @floats[b]);
 				}
 
 				label ColumnType->STRING: {
@@ -4890,6 +6582,7 @@ each(i : view->Count()) {
 		@rows : Int[];
 		@version : Int;
 		@error : String;
+		@plan : String;
 
 		#~
 		Constructor. Use Table->AsView, Where, Select or OrderBy rather than this.
@@ -4944,6 +6637,43 @@ each(i : view->Count()) {
 		~#
 		method : public : GetError() ~ String {
 			return @error;
+		}
+
+		#~
+		Tells how the view's rows were found: for each table, whether its condition scanned it or
+		read it through an index (naming the index), and which orderings came from a sorted index.
+		Steps are separated by '; '.
+		@return plan, Nil for a view made without a condition or a query
+		```
+		rs := table->Where(Col->Of("grp")->Eq("g7"));
+		rs->GetPlan()->PrintLine(); # where runs: HASH index runs_grp on grp (=)
+		```
+		~#
+		method : public : GetPlan() ~ String {
+			return @plan;
+		}
+
+		#~
+		Sets the plan GetPlan reports. Used by the query engine.
+		@param plan plan text
+		~#
+		method : public : SetPlan(plan : String) ~ Nil {
+			@plan := plan;
+		}
+
+		# a view of other rows of the same table, keeping the plan so far
+		method : Derived(columns : Int[], names : String[], rows : Int[], step : String) ~ View {
+			view := View->New(@table, columns, names, rows);
+			if(step = Nil) {
+				view->SetPlan(@plan);
+			}
+			else if(@plan = Nil) {
+				view->SetPlan(step);
+			}
+			else {
+				view->SetPlan("{$@plan}; {$step}");
+			};
+			return view;
 		}
 
 		#~
@@ -5030,7 +6760,7 @@ each(i : view->Count()) {
 				return Nil;
 			};
 
-			return View->New(@table, @columns, @names, filter->Apply(@table, @rows));
+			return Derived(@columns, @names, filter->Apply(@table, @rows), Nil);
 		}
 
 		#~
@@ -5049,7 +6779,9 @@ each(i : view->Count()) {
 				columns[i] := index;
 			};
 
-			return View->New(@table, columns, @rows);
+			view := View->New(@table, columns, @rows);
+			view->SetPlan(@plan);
+			return view;
 		}
 
 		#~
@@ -5079,8 +6811,14 @@ each(i : view->Count()) {
 				return Nil;
 			};
 
-			sorter := Sorter->New(column, order = Order->DESC);
-			return View->New(@table, @columns, @names, sorter->Sort(@rows));
+			descending := order = Order->DESC;
+			ordered := @table->IndexOrder(@table->GetIndex(name), @rows, descending);
+			if(ordered <> Nil) {
+				return Derived(@columns, @names, ordered, "order {$(@table->GetName())}.{$name}: SORTED index {$(column->GetIndexName())}");
+			};
+
+			sorter := Sorter->New(column, descending);
+			return Derived(@columns, @names, sorter->Sort(@rows), Nil);
 		}
 
 		#~
@@ -5117,7 +6855,7 @@ each(i : view->Count()) {
 				rows[i] := @rows[start + i];
 			};
 
-			return View->New(@table, @columns, @names, rows);
+			return Derived(@columns, @names, rows, Nil);
 		}
 
 		#~
@@ -5132,7 +6870,7 @@ each(i : view->Count()) {
 				return Nil;
 			};
 
-			return View->New(@table, @columns, @names, @table->UniqueRows(index, @rows));
+			return Derived(@columns, @names, @table->UniqueRows(index, @rows), Nil);
 		}
 
 		#~
@@ -5725,7 +7463,7 @@ results := statement->Execute();
 		}
 
 		#~
-		Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.
+		Runs an INSERT, UPDATE, DELETE, CREATE TABLE, CREATE INDEX or DROP INDEX (see Table->Execute). A statement that fails changes nothing.
 		@return rows inserted, updated or deleted (0 for CREATE TABLE), -1 on error (see GetError)
 		~#
 		method : public : ExecuteUpdate() ~ Int {
@@ -5744,6 +7482,34 @@ results := statement->Execute();
 			};
 			@error := error->Get();
 			return changed;
+		}
+
+		#~
+		Tells how the statement reads its rows with the values bound now (see Table->Explain);
+		a SELECT is run to find out, an UPDATE or DELETE is not
+		@return plan, Nil on error (see GetError)
+		```
+		s := table->Prepare("select * from runs where score > ?");
+		s->Bind(1, 0.9);
+		s->Explain()->PrintLine(); # where runs: SORTED index runs_score on score (>)
+		```
+		~#
+		method : public : Explain() ~ String {
+			@error := Unbound();
+			if(@error <> Nil) {
+				return Nil;
+			};
+
+			error := StringHolder->New();
+			text : String;
+			if(@catalog <> Nil) {
+				text := @plan->ExplainIn(@catalog, @params, error);
+			}
+			else {
+				text := @plan->Explain(@table, @params, error);
+			};
+			@error := error->Get();
+			return text;
 		}
 
 		#~
@@ -8277,7 +10043,15 @@ if(file->IsOpen()) {
 			#~
 			CREATE TABLE
 			~#
-			CREATE
+			CREATE,
+			#~
+			CREATE INDEX
+			~#
+			CREATE_INDEX,
+			#~
+			DROP INDEX
+			~#
+			DROP_INDEX
 		}
 
 		@kind : SqlStatement->Kind;
@@ -8299,6 +10073,7 @@ if(file->IsOpen()) {
 		@values : Vector<Vector<SqlValue>>;
 		@types : Vector<String>;
 		@params : Int;
+		@index_name : String;
 
 		New(kind : SqlStatement->Kind) {
 			@kind := kind;
@@ -8346,6 +10121,9 @@ if(file->IsOpen()) {
 		method : public : GetTypes() ~ Vector<String> { return @types; }
 		method : public : GetParamCount() ~ Int { return @params; }
 		method : public : SetParamCount(params : Int) ~ Nil { @params := params; }
+		# CREATE INDEX's and DROP INDEX's index name, Nil if CREATE INDEX gave none
+		method : public : GetIndexName() ~ String { return @index_name; }
+		method : public : SetIndexName(index_name : String) ~ Nil { @index_name := index_name; }
 
 		# whether the select list or HAVING uses an aggregate
 		method : public : HasAggregates() ~ Bool {
@@ -8415,8 +10193,12 @@ if(file->IsOpen()) {
 				Next();
 				statement := ParseCreate();
 			}
+			else if(Current()->IsWord("drop")) {
+				Next();
+				statement := ParseDrop();
+			}
 			else {
-				return Fail("SELECT, INSERT, UPDATE, DELETE or CREATE");
+				return Fail("SELECT, INSERT, UPDATE, DELETE, CREATE or DROP");
 			};
 
 			if(statement = Nil) {
@@ -9302,12 +11084,18 @@ if(file->IsOpen()) {
 			return statement;
 		}
 
-		# CREATE TABLE t (name type, ...)
+		# CREATE TABLE t (name type, ...) or CREATE INDEX
 		method : ParseCreate() ~ SqlStatement {
-			statement := SqlStatement->New(SqlStatement->Kind->CREATE);
-			if(<>ExpectWord("table")) {
-				return Nil;
+			if(Current()->IsWord("index")) {
+				Next();
+				return ParseCreateIndex();
 			};
+
+			statement := SqlStatement->New(SqlStatement->Kind->CREATE);
+			if(<>Current()->IsWord("table")) {
+				return Fail("TABLE or INDEX");
+			};
+			Next();
 
 			table_name := ParseName("a table name");
 			if(table_name = Nil | <>ExpectSymbol("(")) {
@@ -9349,6 +11137,81 @@ if(file->IsOpen()) {
 
 			if(<>ExpectSymbol(")")) {
 				return Nil;
+			};
+
+			return statement;
+		}
+
+		# CREATE INDEX [name] ON t (column) [USING HASH | SORTED]; SORTED when USING is left out
+		method : ParseCreateIndex() ~ SqlStatement {
+			statement := SqlStatement->New(SqlStatement->Kind->CREATE_INDEX);
+			if(<>Current()->IsWord("on")) {
+				index_name := ParseName("an index name or ON");
+				if(index_name = Nil) {
+					return Nil;
+				};
+				statement->SetIndexName(index_name);
+			};
+
+			if(<>ExpectWord("on")) {
+				return Nil;
+			};
+
+			table_name := ParseName("a table name");
+			if(table_name = Nil | <>ExpectSymbol("(")) {
+				return Nil;
+			};
+			statement->SetTableName(table_name);
+
+			column := ParseName("a column name");
+			if(column = Nil | <>ExpectSymbol(")")) {
+				return Nil;
+			};
+			statement->GetColumns()->AddBack(column);
+
+			kind := "sorted";
+			if(Current()->IsWord("using")) {
+				Next();
+				token := Current();
+				if(token->IsWord("hash")) {
+					kind := "hash";
+				}
+				else if(token->IsWord("sorted")) {
+					kind := "sorted";
+				}
+				else if(token->IsWord("btree")) {
+					return Fail("HASH or SORTED (a B+ tree index is not built yet; SORTED serves the same queries)");
+				}
+				else {
+					return Fail("HASH or SORTED");
+				};
+				Next();
+			};
+			statement->GetTypes()->AddBack(kind);
+
+			return statement;
+		}
+
+		# DROP INDEX name [ON t]
+		method : ParseDrop() ~ SqlStatement {
+			if(<>ExpectWord("index")) {
+				return Nil;
+			};
+
+			statement := SqlStatement->New(SqlStatement->Kind->DROP_INDEX);
+			index_name := ParseName("an index name");
+			if(index_name = Nil) {
+				return Nil;
+			};
+			statement->SetIndexName(index_name);
+
+			if(Current()->IsWord("on")) {
+				Next();
+				table_name := ParseName("a table name");
+				if(table_name = Nil) {
+					return Nil;
+				};
+				statement->SetTableName(table_name);
 			};
 
 			return statement;
@@ -9799,12 +11662,68 @@ if(file->IsOpen()) {
 				return -1;
 			};
 
-			if(<>@statement->GetTableName()->Equals(table->GetName())) {
-				error->Set("the statement names table '{$(@statement->GetTableName())}', not '{$(table->GetName())}'");
+			# DROP INDEX may leave out the table
+			name := @statement->GetTableName();
+			if(name <> Nil & <>name->Equals(table->GetName())) {
+				error->Set("the statement names table '{$name}', not '{$(table->GetName())}'");
 				return -1;
 			};
 
 			return Change(table, params, error);
+		}
+
+		# how the statement reads its rows (see Table->Explain): a SELECT is run to find out; for
+		# an UPDATE or DELETE the WHERE clause is planned but nothing changes
+		method : public : Explain(table : Table, params : Compare[], error : StringHolder) ~ String {
+			if(IsQuery()) {
+				view := Run(table, params, error);
+				if(view = Nil) {
+					return Nil;
+				};
+				return view->GetPlan();
+			};
+
+			return ExplainChange(table, params, error);
+		}
+
+		# Explain, against a catalog's tables
+		method : public : ExplainIn(catalog : Catalog, params : Compare[], error : StringHolder) ~ String {
+			if(IsQuery()) {
+				view := RunIn(catalog, params, error);
+				if(view = Nil) {
+					return Nil;
+				};
+				return view->GetPlan();
+			};
+
+			kind := @statement->GetKind();
+			if(kind = SqlStatement->Kind->UPDATE | kind = SqlStatement->Kind->DELETE) {
+				table := Lookup(catalog, @statement->GetTableName(), error);
+				if(table = Nil) {
+					return Nil;
+				};
+				return ExplainChange(table, params, error);
+			};
+
+			return ExplainChange(Nil, params, error);
+		}
+
+		method : ExplainChange(table : Table, params : Compare[], error : StringHolder) ~ String {
+			kind := @statement->GetKind();
+			if(kind = SqlStatement->Kind->UPDATE | kind = SqlStatement->Kind->DELETE) {
+				where := @statement->GetWhere();
+				if(where = Nil) {
+					return "read {$(table->GetName())}: every row";
+				};
+
+				filter := Filter->Bind(where, table, params, error);
+				if(filter = Nil) {
+					return Nil;
+				};
+				return filter->Describe(table);
+			};
+
+			return "reads no rows";
 		}
 
 		# INSERT, UPDATE, DELETE or CREATE against a catalog
@@ -9837,6 +11756,30 @@ if(file->IsOpen()) {
 				};
 				catalog->Add(Table->New(name, names, types));
 				return 0;
+			};
+
+			# DROP INDEX without ON: the one table that has an index of that name
+			if(@statement->GetKind() = SqlStatement->Kind->DROP_INDEX & name = Nil) {
+				index_name := @statement->GetIndexName();
+				found : Table;
+				tables := catalog->GetNames();
+				each(i : tables) {
+					candidate := catalog->Get(tables[i]);
+					if(candidate->FindIndex(index_name) <> Nil) {
+						if(found <> Nil) {
+							error->Set("tables '{$(found->GetName())}' and '{$(candidate->GetName())}' both have an index named '{$index_name}'; name the table with ON");
+							return -1;
+						};
+						found := candidate;
+					};
+				};
+
+				if(found = Nil) {
+					error->Set("no index named '{$index_name}'");
+					return -1;
+				};
+
+				return Change(found, params, error);
 			};
 
 			table := Lookup(catalog, name, error);
@@ -9877,6 +11820,25 @@ if(file->IsOpen()) {
 
 				label SqlStatement->Kind->DELETE: {
 					return Delete(table, params, error);
+				}
+
+				label SqlStatement->Kind->CREATE_INDEX: {
+					kind := @statement->GetTypes()->Get(0)->Equals("hash") ? IndexKind->HASH : IndexKind->SORTED;
+					if(<>table->CreateIndex(@statement->GetIndexName(), @statement->GetColumns()->Get(0), kind)) {
+						error->Set(table->GetError());
+						return -1;
+					};
+					return 0;
+				}
+
+				label SqlStatement->Kind->DROP_INDEX: {
+					column := table->FindIndex(@statement->GetIndexName());
+					if(column = Nil) {
+						error->Set("table '{$(table->GetName())}' has no index named '{$(@statement->GetIndexName())}'");
+						return -1;
+					};
+					table->DropIndex(column);
+					return 0;
 				}
 			};
 
@@ -10083,6 +12045,7 @@ if(file->IsOpen()) {
 		@error : StringHolder;
 		@work : Table;
 		@joined : Bool;
+		@steps : Vector<String>;
 
 		New(statement : SqlStatement, tables : Table[], params : Compare[], error : StringHolder) {
 			@statement := statement;
@@ -10090,6 +12053,7 @@ if(file->IsOpen()) {
 			@params := params;
 			@error := error;
 			@joined := tables->Size() > 1;
+			@steps := Vector->New()<String>;
 
 			joins := statement->GetJoins();
 			@aliases := String->New[tables->Size()];
@@ -10103,6 +12067,36 @@ if(file->IsOpen()) {
 		method : Fail(message : String) ~ View {
 			@error->Set(message);
 			return Nil;
+		}
+
+		# a step of the plan View->GetPlan reports
+		method : Note(step : String) ~ Nil {
+			if(step <> Nil) {
+				@steps->AddBack(step);
+			};
+		}
+
+		method : PlanText() ~ String {
+			text := "";
+			each(i : @steps) {
+				if(i > 0) {
+					text += "; ";
+				};
+				text += @steps->Get(i);
+			};
+			return text;
+		}
+
+		# rows in a column's order, through its sorted index when it has one, else by sorting
+		method : SortBy(index : Int, rows : Int[], descending : Bool) ~ Int[] {
+			column := @work->GetColumn(index);
+			ordered := @work->IndexOrder(index, rows, descending);
+			if(ordered <> Nil) {
+				Note("order {$(@work->GetName())}.{$(column->GetName())}: SORTED index {$(column->GetIndexName())}");
+				return ordered;
+			};
+
+			return Sorter->New(column, descending)->Sort(rows);
 		}
 
 		# a name as a table and column: 'alias.column' when the alias is one of the query's
@@ -10254,9 +12248,13 @@ if(file->IsOpen()) {
 				};
 
 				rows := filter->Apply(@work, Nil);
+				Note(filter->GetPlan());
 			}
 			else {
 				rows := @work->LiveRows();
+				if(<>@joined) {
+					Note("read {$(@work->GetName())}: every row");
+				};
 			};
 
 			if(@statement->GetGroup()->Size() > 0 | @statement->HasAggregates()) {
@@ -10312,8 +12310,10 @@ if(file->IsOpen()) {
 						return Nil;
 					};
 					base[s] := SqlRows->New(filter->Apply(@tables[s], Nil));
+					Note(filter->GetPlan());
 				}
 				else {
+					Note("read {$(@tables[s]->GetName())}: every row");
 					base[s] := SqlRows->New(@tables[s]->LiveRows());
 				};
 			};
@@ -10622,12 +12622,14 @@ if(file->IsOpen()) {
 				};
 
 				if(index > -1) {
-					rows := Sorter->New(@work->GetColumn(index), entry->IsDescending())->Sort(rows);
+					rows := SortBy(index, rows, entry->IsDescending());
 				};
 				k -= 1;
 			};
 
-			return View->New(@work, columns, labels, Slice(rows));
+			view := View->New(@work, columns, labels, Slice(rows));
+			view->SetPlan(PlanText());
+			return view;
 		}
 
 		# 'alias.column' as 'column' when the alias names the one table, for a single table
@@ -10857,7 +12859,7 @@ if(file->IsOpen()) {
 			ordered := rows;
 			k := sorters->Size() - 1;
 			while(k >= 0) {
-				ordered := sorters->Get(k)->Sort(ordered);
+				ordered := SortBy(keys[k], ordered, false);
 				k -= 1;
 			};
 
@@ -10977,7 +12979,9 @@ if(file->IsOpen()) {
 				shown_labels[i] := labels[i];
 			};
 
-			return View->New(out, shown, shown_labels, Slice(result));
+			view := View->New(out, shown, shown_labels, Slice(result));
+			view->SetPlan(PlanText());
+			return view;
 		}
 
 		# where a HAVING or ORDER BY name is in the grouped result: a label, an aggregate call,
@@ -12708,7 +14712,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		}
 
 		#~
-		Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.
+		Runs an INSERT, UPDATE, DELETE, CREATE TABLE, CREATE INDEX or DROP INDEX (see Table->Execute). A statement that fails changes nothing.
 		@param statement SQL statement
 		@return rows inserted, updated or deleted (0 for CREATE TABLE), -1 on error (see GetError)
 		```
@@ -12742,6 +14746,27 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 			};
 
 			return Statement->New(@self, plan);
+		}
+
+		#~
+		Tells how a statement reads its rows (see Table->Explain); a SELECT is run to find out
+		@param statement SQL statement
+		@return plan, Nil on error (see GetError)
+		```
+		catalog->Explain("select * from runs r join meta m on r.id = m.id where r.score > 0.9")->PrintLine();
+		```
+		~#
+		method : public : Explain(statement : String) ~ String {
+			@error := Nil;
+			plan := FindPlan(statement);
+			if(plan = Nil) {
+				return Nil;
+			};
+
+			error := StringHolder->New();
+			text := plan->ExplainIn(@self, Compare->New[0], error);
+			@error := error->Get();
+			return text;
 		}
 
 		# a parsed plan for a statement, from a small cache of recent ones

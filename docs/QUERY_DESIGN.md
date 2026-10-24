@@ -786,6 +786,70 @@ design above. Each phase adds its notes here.
 - Found on the way and fixed at the source: `Web.HTTP.Server`'s POST requests had no path or
   query string (`GetPath()` was Nil), so a POST handler could not route.
 
+**Phase 6 (indexes and the planner).**
+- The API is `table->CreateIndex(column, IndexKind->HASH | SORTED)` (or with a name first),
+  `DropIndex`, `HasIndex`, `GetIndexKind`, `GetIndexName` and `FindIndex(name)`; in SQL,
+  `CREATE INDEX [name] ON t (col) [USING HASH | SORTED]` (SORTED when `USING` is left out, as
+  section 5 recommends; `USING BTREE` is refused until phase 8 builds one) and
+  `DROP INDEX name [ON t]`. An unnamed index is called `table_column`. A column has at most
+  one index; creating another replaces it. `pk` needs none (`Get` finds a key directly).
+- The **plan** is reported, not just chosen: `View->GetPlan()`, `Statement->Explain()`,
+  `Table->Explain(sql)` and `Catalog->Explain(sql)` give steps such as
+  `where runs: HASH index runs_grp on grp (=)`, `where runs: SORTED index runs_value on value
+  (>= <=)`, `where runs: union(...)`, `where runs: scan` and `order runs.value: SORTED index
+  runs_value`. Explain runs a SELECT to find out; for UPDATE and DELETE it plans the WHERE
+  clause and changes nothing.
+- The index lives in its `Column`, not the `Table`, so every path that writes a cell reaches
+  it: `Column->Set` (the one cell-write path, used by `SetCell`, UPDATE, INSERT, `Row->Set` and
+  log replay) and `CopyFrom` report each write; `Table->Delete` reports each delete. A **hash**
+  index is updated in place (an `IntMap` from key to the first slot of a chain, linked through
+  per-slot arrays, so adding or removing a slot touches only its neighbours). A **sorted**
+  index is marked stale by any write and rebuilt by the next query that uses it; a delete does
+  not make it stale, since lookups skip deleted slots. Anything that rewrites a column whole
+  (Compact, Gather, Restore, the Fill paths, a promotion to FLOAT or OBJECT, a dictionary
+  turning into plain text) marks either kind stale. `CreateIndex` builds at once.
+- Keys: INT, BOOL and DATE by value; an encoded STRING by dictionary code (codes are per
+  column, and Compact keeps the dictionary, so they stay valid); a plain STRING by its hash;
+  a FLOAT by a key under which equal numbers meet (`0.0` and `-0.0` together). Keys may
+  collide: **a lookup gives candidate slots, a superset of the matches, and the whole
+  condition is then tested on the candidates in slot order.** That is why results, and their
+  order, are identical to a scan's by construction, and why an index can only change speed.
+  The differential test (`query_index_differential`) checks it.
+- OBJECT columns are **not indexable**: their cells mix kinds with no one order or key.
+  `CreateIndex` refuses one; a column promoted to OBJECT keeps its index, which serves
+  nothing (the plan says scan) until it is dropped.
+- The planner, as section 5 says: for an AND, a term that reads no rows (a value no cell holds,
+  a NULL value), then equality on a hash index, then the index probe reading fewest slots
+  (exact for a sorted range: the binary search gives it); ranges on one sorted index are
+  narrowed together, so `BETWEEN` is one range. An OR (so IN) uses indexes only when every
+  alternative has one, as a union. NOT, `<>`, LIKE, MATCHES, IS [NOT] NULL, a value of another
+  type and NaN always scan. Index probes are made only over a whole table; a view's `Where`
+  filters its own rows. Prepared statements plan with the bound values.
+- A sorted index also gives **ORDER BY** (`View->OrderBy` and SQL, one key or the last-applied
+  key of several), **GROUP BY**'s grouping order on one table, and `Table->Min`/`Max` of an
+  INT or FLOAT column. Equal values keep row order and empty cells come last, as Sorter does.
+  Joins, DISTINCT and SQL aggregates do not use indexes: the join's key matcher builds its own
+  order across mixed key domains, and DISTINCT and grouping by hash would not keep the order
+  the engine gives, so none of them is a clean fit yet.
+- Indexes are not stored in `.otab` files: a loaded, `FromBytes` or `Open`ed table has none,
+  and a durable table's log replays before any exists. Query results and other copies have
+  none. The generic `Serializer` carries them with the table (they hold only arrays and an
+  `IntMap`, and string hashes are computed from the text, so they stay valid).
+- A lazy rebuild writes the index, so a table shared between threads must not be queried
+  concurrently right after a change; create the indexes, or run one query, first.
+- Measured at 1,000,000 rows (`perf-results/libs/query_index_bench.obs`, Windows x64,
+  `-opt s3`), per query, scan against index: equality on an Int with one row per value
+  73 ms against 0.02 ms; equality on text with 1,000 rows per value 47 ms against 0.7 ms; a
+  0.1% range 109 ms against 0.7 ms; a 10% range 54 ms against 16 ms; `ORDER BY value LIMIT
+  10` 2.8 s against 0.08 s. Building an index takes 0.2-0.6 s.
+- Defects found by the differential test and fixed at the source: zone maps kept Int bounds
+  as Floats and skipped groups strictly, so `n > 2^53` missed `2^53 + 1`
+  (`query_zone_map_wide_ints`); and NaN compared equal to every number, so a NaN cell matched
+  `=`, `<=` and `>=` against anything, or not, depending on zone-map skipping, a group whose
+  first value was NaN was skipped for every comparison, and where NaN sorted depended on the
+  sort's steps. NaN now satisfies only `<>`, like any value that cannot be ordered, zone maps
+  ignore it, and it sorts after every number (`query_nan_compare`).
+
 **Phase 7 (`query_ml.obl`).**
 - `MlResultSource` lives in its own library, `query_ml.obl` (bundle `Query.Structured.ML`), so
   a program that only queries files does not load `System.ML`'s native module. It is filled

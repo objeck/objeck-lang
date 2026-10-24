@@ -1,0 +1,162 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured indexes benchmark for run_lib_bench.py (docs/QUERY_DESIGN.md, section 5).
+Prints 'BENCH <case> <seconds> <reference_seconds>' per case. Here the reference is the same
+condition answered by a scan of the same table with no index, so the ratio is the index's
+time as a fraction of the scan's: below 1.0 is a speed-up. One table of 1,000,000 rows: k, a
+random Int (about one row per value); grp, text with 1,000 values (dictionary encoded);
+value, a random Float in [0, 1). Each case answers its conditions once untimed first, so JIT
+compilation and the index's first build are not in the timings. The build cases time
+CreateIndex itself against one scan.
+~#
+use Query.Structured, Collection;
+
+class QueryIndexBench {
+	@seed : static : Int;
+
+	function : Next(bound : Int) ~ Int {
+		@seed := (@seed * 6364136223846793005 + 1442695040888963407) and 0x7FFFFFFFFFFFFFFF;
+		return (@seed >> 33) % bound;
+	}
+
+	function : Report(name : String, seconds : Float, reference : Float) ~ Nil {
+		"BENCH {$name} {$seconds} {$reference}"->PrintLine();
+	}
+
+	# runs the conditions once, returning the seconds taken and adding the row counts to 'rows'
+	function : Run(t : Table, conditions : Vector<Predicate>, rows : IntRef) ~ Float {
+		timer := System.Time.Timer->New(true);
+		each(i : conditions) {
+			rows->Set(rows->Get() + t->Where(conditions->Get(i))->Count());
+		};
+		timer->End();
+		return timer->GetElapsedTime();
+	}
+
+	# the conditions with and without an index on a column; the two answers must agree. The
+	# indexed side repeats 'repeat' times, divided back down, so a fast case spans enough
+	# clock ticks to time.
+	function : Case(name : String, t : Table, column : String, kind : IndexKind, conditions : Vector<Predicate>, repeat : Int) ~ Nil {
+		t->DropIndex(column);
+		scanned := IntRef->New(0);
+		Run(t, conditions, scanned);
+		scanned->Set(0);
+		scan := Run(t, conditions, scanned);
+
+		t->CreateIndex(column, kind);
+		indexed := IntRef->New(0);
+		Run(t, conditions, indexed);
+		indexed->Set(0);
+		seconds := Run(t, conditions, indexed);
+		ignored := IntRef->New(0);
+		for(r := 1; r < repeat; r += 1;) {
+			seconds += Run(t, conditions, ignored);
+		};
+		seconds /= repeat->As(Float);
+		t->DropIndex(column);
+
+		if(scanned->Get() <> indexed->Get()) {
+			"ERROR {$name}: {$(scanned->Get())} rows scanned, {$(indexed->Get())} through the index"->ErrorLine();
+			Runtime->Exit(1);
+		};
+		Report(name, seconds, scan);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@seed := 20261024;
+		n := 1000000;
+		t := Table->New("t", ["k", "grp", "value"], [ColumnType->INT, ColumnType->STRING, ColumnType->FLOAT]);
+		each(i : n) {
+			r := t->Insert();
+			r->Set(1, IntRef->New(Next(n)));
+			r->Set(2, "g{$(Next(1000))}");
+			r->Set(3, FloatRef->New(Next(1000000000)->As(Float) / 1000000000.0));
+		};
+
+		# equality: about one row per Int, 1,000 per text
+		equal_k := Vector->New()<Predicate>;
+		each(i : 20) {
+			equal_k->AddBack(Col->Of("k")->Eq(Next(n)));
+		};
+		Case("eq_int_hash_1m", t, "k", IndexKind->HASH, equal_k, 500);
+		Case("eq_int_sorted_1m", t, "k", IndexKind->SORTED, equal_k, 500);
+
+		equal_grp := Vector->New()<Predicate>;
+		each(i : 20) {
+			equal_grp->AddBack(Col->Of("grp")->Eq("g{$(Next(1000))}"));
+		};
+		Case("eq_text_hash_1m", t, "grp", IndexKind->HASH, equal_grp, 20);
+		Case("eq_text_sorted_1m", t, "grp", IndexKind->SORTED, equal_grp, 20);
+
+		in_grp := Vector->New()<Predicate>;
+		each(i : 20) {
+			in_grp->AddBack(Col->Of("grp")->In(["g{$(Next(1000))}", "g{$(Next(1000))}", "g{$(Next(1000))}"]));
+		};
+		Case("in_text_hash_1m", t, "grp", IndexKind->HASH, in_grp, 10);
+
+		# ranges: 0.1% of the rows (BETWEEN), 1%, and 10%
+		narrow := Vector->New()<Predicate>;
+		each(i : 20) {
+			low := Next(999)->As(Float) / 1000.0;
+			narrow->AddBack(Col->Of("value")->Between(low, low + 0.001));
+		};
+		Case("range_0.1pct_sorted_1m", t, "value", IndexKind->SORTED, narrow, 20);
+
+		medium := Vector->New()<Predicate>;
+		each(i : 10) {
+			medium->AddBack(Col->Of("value")->Lt(Next(100)->As(Float) / 10000.0 + 0.0001));
+		};
+		Case("range_1pct_sorted_1m", t, "value", IndexKind->SORTED, medium, 10);
+
+		wide := Vector->New()<Predicate>;
+		each(i : 5) {
+			wide->AddBack(Col->Of("value")->Gt(0.9));
+		};
+		Case("range_10pct_sorted_1m", t, "value", IndexKind->SORTED, wide, 5);
+
+		# an indexed equality beside a range the index does not cover
+		mixed := Vector->New()<Predicate>;
+		each(i : 20) {
+			mixed->AddBack(Col->Of("grp")->Eq("g{$(Next(1000))}")->AndAlso(Col->Of("value")->Gt(0.5)));
+		};
+		Case("eq_and_range_hash_1m", t, "grp", IndexKind->HASH, mixed, 20);
+
+		# ORDER BY ... LIMIT 10, sorted against taking the order from the index
+		timer := System.Time.Timer->New(true);
+		top := t->OrderBy("value")->Limit(10);
+		timer->End();
+		sort := timer->GetElapsedTime();
+		t->CreateIndex("value", IndexKind->SORTED);
+		timer := System.Time.Timer->New(true);
+		indexed_top := t->OrderBy("value")->Limit(10);
+		timer->End();
+		sorted_rows := top->GetRows();
+		index_rows := indexed_top->GetRows();
+		each(i : sorted_rows) {
+			if(sorted_rows[i] <> index_rows[i]) {
+				"ERROR order_by_limit: the index's order differs"->ErrorLine();
+				Runtime->Exit(1);
+			};
+		};
+		Report("order_by_limit_sorted_1m", timer->GetElapsedTime(), sort);
+		t->DropIndex("value");
+
+		# building: CreateIndex against one scan of the column
+		scan_timer := System.Time.Timer->New(true);
+		t->Where(Col->Of("k")->Ne(-1));
+		scan_timer->End();
+		names := ["k", "grp", "value"];
+		each(i : names) {
+			timer := System.Time.Timer->New(true);
+			t->CreateIndex(names[i], IndexKind->HASH);
+			timer->End();
+			Report("build_hash_{$(names[i])}_1m", timer->GetElapsedTime(), scan_timer->GetElapsedTime());
+			t->DropIndex(names[i]);
+			timer := System.Time.Timer->New(true);
+			t->CreateIndex(names[i], IndexKind->SORTED);
+			timer->End();
+			Report("build_sorted_{$(names[i])}_1m", timer->GetElapsedTime(), scan_timer->GetElapsedTime());
+			t->DropIndex(names[i]);
+		};
+	}
+}

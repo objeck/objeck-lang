@@ -1,0 +1,216 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured's rule-based planner (docs/QUERY_DESIGN.md, section 5, phase 6): the plan a
+view, a statement or Explain reports names the index a condition was read through, or says
+the table was scanned. Equality on a hash index is preferred, then the index range reading
+fewest rows; BETWEEN reads one range; IN and OR use indexes only when every alternative has
+one; NOT, LIKE, '<>', IS NULL, NaN and object columns scan. Prepared statements plan with the
+values bound. ORDER BY, GROUP BY and View->OrderBy take their order from a sorted index.
+~#
+use Query.Structured, Collection;
+
+class QueryIndexPlan {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Has(text : String, part : String) ~ Bool {
+		return text <> Nil & text->Find(part) > -1;
+	}
+
+	function : Plan(what : String, view : View, part : String) ~ Nil {
+		plan := view <> Nil ? view->GetPlan() : Nil;
+		ok := Has(plan, part);
+		if(<>ok) {
+			"    plan: '{$plan}', wanted '{$part}'"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	function : Text(what : String, plan : String, part : String) ~ Nil {
+		ok := Has(plan, part);
+		if(<>ok) {
+			"    plan: '{$plan}', wanted '{$part}'"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	function : Keys(view : View) ~ String {
+		out := "";
+		each(i : view->Count()) {
+			if(i > 0) {
+				out += ",";
+			};
+			out += view->Get(i)->GetKey();
+		};
+		return out;
+	}
+
+	# 1,000 rows: grp has 10 values, value runs 0..999, flag alternates, note is text
+	function : Build(name : String) ~ Table {
+		t := Table->New(name, ["grp", "value", "rank", "flag", "note"]);
+		each(i : 1000) {
+			r := t->Insert();
+			r->Set("grp", "g{$(i % 10)}");
+			r->Set("value", FloatRef->New(i->As(Float)));
+			r->Set("rank", IntRef->New(i % 100));
+			r->Set("flag", BoolRef->New(i % 2 = 0));
+			if(i % 50 <> 0) {
+				r->Set("note", "n{$i}");
+			};
+		};
+		return t;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		t := Build("runs");
+		Plan("no index: scan", t->Where(Col->Of("grp")->Eq("g7")), "where runs: scan");
+
+		t->CreateIndex("grp", IndexKind->HASH);
+		t->CreateIndex("value", IndexKind->SORTED);
+		t->CreateIndex("rank", IndexKind->SORTED);
+
+		# what each kind serves
+		Plan("hash equality", t->Where(Col->Of("grp")->Eq("g7")), "where runs: HASH index runs_grp on grp (=)");
+		Check("hash equality rows", t->Where(Col->Of("grp")->Eq("g7"))->Count() = 100);
+		Plan("hash does not serve a range", t->Where(Col->Of("grp")->Gt("g7")), "where runs: scan");
+		Plan("sorted range", t->Where(Col->Of("value")->Gt(990.0)), "SORTED index runs_value on value (>)");
+		Plan("sorted equality", t->Where(Col->Of("value")->Eq(5)), "SORTED index runs_value on value (=)");
+		Plan("between reads one range", t->Where(Col->Of("value")->Between(10.0, 20.0)), "SORTED index runs_value on value (>= <=)");
+		Check("between rows", Keys(t->Where(Col->Of("value")->Between(10.0, 12.0)))->Equals("10,11,12"));
+		Plan("in reads each value", t->Where(Col->Of("grp")->In(["g1", "g2"])), "union(HASH index runs_grp on grp (=) | HASH index runs_grp on grp (=))");
+		Plan("a value no row holds", t->Where(Col->Of("grp")->Eq("zz")), "matches nothing");
+
+		# choosing among terms
+		Plan("hash before sorted", t->Where(Col->Of("value")->Lt(5.0)->AndAlso(Col->Of("grp")->Eq("g1"))), "HASH index runs_grp");
+		Plan("the narrower range", t->Where(Col->Of("value")->Gt(10.0)->AndAlso(Col->Of("rank")->Eq(3))), "SORTED index runs_rank on rank (=)");
+		Plan("the narrower range, other way", t->Where(Col->Of("value")->Lt(4.0)->AndAlso(Col->Of("rank")->Gt(2))), "SORTED index runs_value on value (<)");
+		Plan("an indexed term beside one that scans", t->Where(Col->Of("note")->Like("n1%")->AndAlso(Col->Of("value")->Lt(100.0))), "SORTED index runs_value");
+		Check("and rows", Keys(t->Where(Col->Of("value")->Lt(25.0)->AndAlso(Col->Of("grp")->Eq("g1"))))->Equals("1,11,21"));
+
+		# what scans
+		Plan("or with an unindexed side", t->Where(Col->Of("grp")->Eq("g1")->OrElse(Col->Of("note")->Eq("n5"))), "where runs: scan");
+		Plan("or of indexed sides", t->Where(Col->Of("grp")->Eq("g1")->OrElse(Col->Of("value")->Lt(3.0))), "union(HASH index runs_grp on grp (=) | SORTED index runs_value on value (<))");
+		Plan("not", t->Where(Col->Of("grp")->Eq("g1")->Negate()), "where runs: scan");
+		Plan("not equal", t->Where(Col->Of("grp")->Ne("g1")), "where runs: scan");
+		Plan("like", t->Where(Col->Of("grp")->Like("g%")), "where runs: scan");
+		Plan("is null", t->Where(Col->Of("value")->IsNull()), "where runs: scan");
+		Plan("is not null", t->Where(Col->Of("value")->IsNotNull()), "where runs: scan");
+		Plan("NaN", t->Where(Col->Of("value")->Eq(Float->NaN())), "where runs: scan");
+		Plan("a value of another type", t->Where(Col->Of("value")->Eq("text")), "where runs: scan");
+		Plan("no index on the column", t->Where(Col->Of("flag")->Eq(true)), "where runs: scan");
+
+		# SQL: Explain, the view's plan, prepared statements with bound values
+		Text("explain select", t->Explain("select * from runs where grp = 'g3' and value < 100"), "where runs: HASH index runs_grp on grp (=)");
+		Text("explain without where", t->Explain("select * from runs"), "read runs: every row");
+		Text("explain order by", t->Explain("select * from runs order by value desc"), "order runs.value: SORTED index runs_value");
+		Text("explain order by a hash column", t->Explain("select * from runs where rank = 4 order by grp"), "where runs: SORTED index runs_rank on rank (=)");
+		Check("no order step for a hash column", <>Has(t->Explain("select * from runs order by grp"), "order runs"));
+		Text("explain group by", t->Explain("select rank, count(*) from runs group by rank"), "order runs.rank: SORTED index runs_rank");
+		Text("explain in", t->Explain("select * from runs where grp in ('g1', 'g9')"), "union(HASH index runs_grp");
+		Text("explain between", t->Explain("select * from runs where value between 5 and 9"), "(>= <=)");
+		Text("explain not between", t->Explain("select * from runs where value not between 5 and 9"), "where runs: scan");
+
+		before := t->Count();
+		Text("explain update", t->Explain("update runs set note = 'x' where grp = 'g2'"), "where runs: HASH index runs_grp on grp (=)");
+		Text("explain delete", t->Explain("delete from runs where value >= 998"), "where runs: SORTED index runs_value on value (>=)");
+		Text("explain delete everything", t->Explain("delete from runs"), "read runs: every row");
+		Text("explain insert", t->Explain("insert into runs (grp) values ('g1')"), "reads no rows");
+		Check("explain changes nothing", t->Count() = before & t->Where(Col->Of("note")->Eq("x"))->Count() = 0);
+
+		statement := t->Prepare("select * from runs where grp = ? and value > ?");
+		statement->Bind(1, "g4")->Bind(2, 900.0);
+		Text("prepared, bound", statement->Explain(), "HASH index runs_grp on grp (=)");
+		view := statement->ExecuteView();
+		Plan("prepared, run", view, "HASH index runs_grp on grp (=)");
+		Check("prepared rows", Keys(view)->Equals("904,914,924,934,944,954,964,974,984,994"));
+		statement->Bind(1, "nope");
+		Text("prepared, a value no row holds", statement->Explain(), "matches nothing");
+		Check("prepared, no rows", statement->ExecuteView()->Count() = 0);
+		statement->BindNull(1);
+		Check("prepared, NULL", statement->ExecuteView()->Count() = 0);
+		range := t->Prepare("select * from runs where value between ? and ?");
+		range->Bind(1, 3)->Bind(2, 5);
+		Text("prepared range", range->Explain(), "SORTED index runs_value on value (>= <=)");
+		Check("prepared range rows", range->ExecuteView()->Count() = 3);
+		updates := t->Prepare("update runs set note = 'y' where rank = ?");
+		updates->Bind(1, 7);
+		Text("prepared update", updates->Explain(), "SORTED index runs_rank on rank (=)");
+		Check("prepared update rows", updates->ExecuteUpdate() = 10);
+
+		# the view API
+		Plan("view order by", t->OrderBy("value", Order->DESC), "order runs.value: SORTED index runs_value");
+		Plan("where then order by", t->Where(Col->Of("grp")->Eq("g5"))->OrderBy("rank"), "where runs: HASH index runs_grp on grp (=); order runs.rank: SORTED index runs_rank");
+		Check("view order by rows", Keys(t->OrderBy("value", Order->DESC)->Limit(3))->Equals("999,998,997"));
+
+		# a NaN cell matches no comparison but '<>', and sorts after every number
+		t->Get(500)->Set("value", FloatRef->New(Float->NaN()));
+		Plan("NaN cell, range", t->Where(Col->Of("value")->Gt(995.0)), "SORTED index runs_value");
+		Check("NaN cell, range rows", Keys(t->Where(Col->Of("value")->Gt(997.0)))->Equals("998,999"));
+		Check("NaN cell, <> holds", t->Where(Col->Of("value")->Ne(1.0))->Count() = 999);
+		Plan("NaN cell, order from the index", t->OrderBy("value", Order->DESC), "order runs.value: SORTED index runs_value");
+		Check("NaN cell, first descending", Keys(t->OrderBy("value", Order->DESC)->Limit(2))->Equals("500,999"));
+		Check("NaN cell, last ascending", t->OrderBy("value")->Get(999)->GetKey() = 500);
+		t->Get(500)->Set("value", FloatRef->New(500.0));
+		Text("NaN gone, order from the index", t->Explain("select * from runs order by value"), "order runs.value: SORTED index runs_value");
+
+		# a column promoted to OBJECT keeps its index, which serves nothing until dropped
+		t->Get(3)->Set("rank", "three");
+		Check("promoted", t->GetColumn("rank")->GetType() = ColumnType->OBJECT);
+		Plan("object column scans", t->Where(Col->Of("rank")->Eq(3)), "where runs: scan");
+
+		# joins: each table's own condition is planned on its own
+		meta := Table->New("meta", ["grp", "label"]);
+		each(i : 10) {
+			r := meta->Insert();
+			r->Set("grp", "g{$i}");
+			r->Set("label", i < 5 ? "low" : "high");
+		};
+		meta->CreateIndex("label", IndexKind->HASH);
+		catalog := Catalog->New();
+		catalog->Add(t);
+		catalog->Add(meta);
+		joined := catalog->Explain("select r.value, m.label from runs r join meta m on r.grp = m.grp where m.label = 'low' and r.value < 30");
+		Text("join, left table", joined, "where runs: SORTED index runs_value on value (<)");
+		Text("join, right table", joined, "where meta: HASH index meta_label on label (=)");
+		result := catalog->Query("select r.value, m.label from runs r join meta m on r.grp = m.grp where m.label = 'low' and r.value < 30");
+		Check("join rows", result <> Nil & result->Count() = 15);
+
+		# Min and Max read a sorted index's ends; equal values give the first row's cell
+		z := Table->New("z", ["v"]);
+		w := Table->New("z", ["v"]);
+		values := [0.0, 3.5, -0.0, 3.5, 2.0, -1.25, -1.25, 0.0, 3.5];
+		each(i : values) {
+			z->Insert()->Set("v", FloatRef->New(values[i]));
+			w->Insert()->Set("v", FloatRef->New(values[i]));
+		};
+		z->CreateIndex("v", IndexKind->SORTED);
+		Check("min", z->Min("v") = -1.25 & z->Min("v") = w->Min("v"));
+		Check("max", z->Max("v") = 3.5 & z->Max("v") = w->Max("v"));
+		z->Delete(5);
+		w->Delete(5);
+		z->Delete(6);
+		w->Delete(6);
+		z->Delete(1);
+		w->Delete(1);
+		# 0.0 and -0.0 are equal: the first row's cell is the answer, as a scan gives it
+		Check("min after deletes", z->Min("v")->ToString()->Equals(w->Min("v")->ToString()));
+		Check("max after deletes", z->Max("v") = 3.5);
+		z->Get(0)->Set("v", Nil);
+		w->Get(0)->Set("v", Nil);
+		Check("min after emptying a cell", z->Min("v")->ToString()->Equals(w->Min("v")->ToString()));
+
+		if(@failures > 0) {
+			"FAIL: query_index_plan, {$@failures} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query_index_plan"->PrintLine();
+	}
+}

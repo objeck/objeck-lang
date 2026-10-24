@@ -1,0 +1,50 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Zone maps keep each row group's minimum and maximum as Floats. An Int above 2^53 rounds when
+converted, so 9007199254740993 is kept as 9007199254740992.0; a strict test against the
+rounded maximum then skipped the group, and 'n > 9007199254740992' missed the row holding
+9007199254740993 (found by query_index_differential, where the index gave the right answer
+and the scan did not). The skip test is now non-strict where the conversion can round.
+~#
+use Query.Structured, System.Time, Collection;
+
+class QueryZoneMapWideInts {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+		t := Table->New("t", ["n", "d"]);
+		values := [9007199254740993, 9007199254740991, -9007199254740993, 5];
+		each(i : values) {
+			r := t->Insert();
+			r->Set("n", IntRef->New(values[i]));
+		};
+
+		if(t->Where(Col->Of("n")->Gt(9007199254740992))->Count() <> 1) {
+			"  FAIL: n > 2^53 missed 2^53 + 1"->PrintLine();
+			failures += 1;
+		};
+		if(t->Where(Col->Of("n")->Lt(-9007199254740992))->Count() <> 1) {
+			"  FAIL: n < -2^53 missed -2^53 - 1"->PrintLine();
+			failures += 1;
+		};
+		if(t->Where(Col->Of("n")->Ge(9007199254740993))->Count() <> 1) {
+			"  FAIL: n >= 2^53 + 1"->PrintLine();
+			failures += 1;
+		};
+		if(t->Where(Col->Of("n")->Eq(9007199254740993))->Count() <> 1) {
+			"  FAIL: n = 2^53 + 1"->PrintLine();
+			failures += 1;
+		};
+		rs := t->Query("select * from t where n > 9007199254740992");
+		if(rs = Nil | rs->Count() <> 1) {
+			"  FAIL: SQL n > 2^53 missed 2^53 + 1"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			"FAIL: query_zone_map_wide_ints"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query_zone_map_wide_ints"->PrintLine();
+	}
+}
