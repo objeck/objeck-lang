@@ -92,6 +92,18 @@ class XmlParseOpsTest {
             };
         };
 
+        # GetDecodedText keeps the whitespace GetDecodedContent trims (xml:space="preserve")
+        p5 := XmlParser->New("<t xml:space=\"preserve\">  a &amp; b </t>");
+        if(<>p5->Parse() | <>p5->GetRoot()->GetDecodedText()->Equals("  a & b ") | <>p5->GetRoot()->GetDecodedContent()->Equals("a & b")) {
+            pass := false;
+            "  FAIL: GetDecodedText keeps whitespace"->PrintLine();
+        };
+        p6 := XmlParser->New("<t></t>");
+        if(<>p6->Parse() | <>p6->GetRoot()->GetDecodedText()->Equals("")) {
+            pass := false;
+            "  FAIL: GetDecodedText of an empty element"->PrintLine();
+        };
+
         if(pass) {
             "PASS: XML parse operations"->PrintLine();
         } else {

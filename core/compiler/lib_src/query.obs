@@ -17274,6 +17274,1142 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 		}
 	}
 
+	#~
+	An Excel workbook (.xlsx) as tables, one per worksheet, named after the sheet. Cells keep
+	their types: numbers, text (shared or inline, rich text joined, whitespace kept), booleans,
+	dates, and error values (as their text, such as '#DIV/0!'). A formula cell is its last
+	calculated value. A column is typed by reading all of it, as CsvSource types CSV columns:
+	whole numbers make an INT column, other numbers a FLOAT column, dates a DATE column,
+	booleans a BOOL column, and any mix, or text, a STRING column holding each cell as it
+	would display ('1.5', 'TRUE', '2026-03-15'). An empty cell is empty.
+
+	Dates are numbers in a date or time format, built in or custom ('yyyy-mm-dd', 'h:mm'),
+	counted from 1900 or, when the workbook says so, 1904. In the 1900 system Excel counts a 29
+	February 1900 that never was (Lotus 1-2-3's leap-year bug): serials below 60 are moved a day
+	so they read as Excel shows them, and 60 itself reads as 28 February 1900. Elapsed-time
+	formats ('[h]:mm') stay numbers, in days. Times are wall-clock, read to the second.
+
+	The table is the sheet's used range: its columns run from the first used column to the
+	last, and its rows from the first row holding a value (the header, by default) to the last.
+	Rows and cells a sheet leaves out are empty, so the table's rows line up with the sheet's.
+	Header cells name the columns; an empty one takes its column letter ('C'), and a repeated
+	name gets '_2', '_3'. Without a header the columns are named by letter.
+
+	A merged range keeps its value in its top-left cell and leaves the rest empty, as Excel
+	stores it; SetFillMerged copies the value into every cell of the range instead.
+
+	The workbook is read with ArchiveSource's zip reader, so the same limits and checks apply:
+	every part is checked against its CRC32 and inflated no further than it says, within 256 MB
+	a part and 1 GB in all unless SetLimits says otherwise.
+
+```
+catalog := Catalog->New();
+if(catalog->Load(XlsxSource->New("budget.xlsx"))) {
+  rs := catalog->Query("select dept, sum(amount) as total from \"Q1 2026\" group by dept");
+};
+```
+	~#
+	class XlsxSource implements Source {
+		@path : String;
+		@image : Byte[];
+		@title : String;
+		@sheet : String;
+		@prefix : String;
+		@no_header : Bool;
+		@first_row : Int;
+		@fill_merged : Bool;
+		@member_limit : Int;
+		@total_limit : Int;
+		@error : String;
+
+		#~
+		Constructor; every worksheet becomes a table
+		@param path workbook file or URL
+		~#
+		New(path : String) {
+			@path := path;
+			@title := path;
+			@prefix := "";
+			@member_limit := 256 * 1024 * 1024;
+			@total_limit := 1024 * 1024 * 1024;
+		}
+
+		#~
+		Constructor for one worksheet
+		@param path workbook file or URL
+		@param sheet worksheet name
+		~#
+		New(path : String, sheet : String) {
+			@path := path;
+			@title := path;
+			@sheet := sheet;
+			@prefix := "";
+			@member_limit := 256 * 1024 * 1024;
+			@total_limit := 1024 * 1024 * 1024;
+		}
+
+		#~
+		Makes a source over a workbook already in memory
+		@param bytes .xlsx bytes
+		@return source
+		~#
+		function : FromBytes(bytes : Byte[]) ~ XlsxSource {
+			source := XlsxSource->New(Nil->As(String));
+			source->SetBytes(bytes);
+			return source;
+		}
+
+		method : public : SetBytes(bytes : Byte[]) ~ Nil {
+			@image := bytes;
+			@title := "workbook";
+		}
+
+		#~
+		Sets whether the first row names the columns (the default). Without a header every row
+		is data and the columns are named by letter: A, B, C ...
+		@param header true if the first row is a header
+		~#
+		method : public : SetHeader(header : Bool) ~ Nil {
+			@no_header := <>header;
+		}
+
+		#~
+		Sets the sheet row the table starts at (the header, if there is one), for sheets with
+		a title or notes above the data. By default the table starts at the first row holding
+		a value.
+		@param row sheet row number, from 1; 0 for the default
+		~#
+		method : public : SetFirstRow(row : Int) ~ Nil {
+			@first_row := row;
+		}
+
+		#~
+		Sets whether a merged range's value fills every cell of the range, rather than only its
+		top-left cell (the default, which is how Excel stores it)
+		@param fill true to fill merged ranges
+		~#
+		method : public : SetFillMerged(fill : Bool) ~ Nil {
+			@fill_merged := fill;
+		}
+
+		#~
+		Sets a prefix for the table names, so two workbooks' 'Sheet1' can share a catalog
+		@param prefix prefix, such as 'budget.'
+		~#
+		method : public : SetPrefix(prefix : String) ~ Nil {
+			@prefix := prefix <> Nil ? prefix : "";
+		}
+
+		#~
+		Sets how much may be decompressed: a part of the workbook larger than 'member_bytes' is
+		refused, and so is a read that takes the total past 'total_bytes'. The defaults are 256
+		MB and 1 GB.
+		@param member_bytes most bytes one part may hold uncompressed
+		@param total_bytes most bytes all parts read may hold uncompressed
+		~#
+		method : public : SetLimits(member_bytes : Int, total_bytes : Int) ~ Nil {
+			@member_limit := member_bytes;
+			@total_limit := total_bytes;
+		}
+
+		#~
+		Gets the workbook's worksheet names, in workbook order
+		@return sheet names, Nil if the workbook cannot be read (see GetError)
+		~#
+		method : public : GetSheets() ~ String[] {
+			@error := Nil;
+			workbook := Open();
+			if(workbook = Nil) {
+				return Nil;
+			};
+
+			names := workbook->GetSheetNames();
+			sheets := String->New[names->Size()];
+			each(i : sheets) {
+				sheets[i] := names->Get(i);
+			};
+			return sheets;
+		}
+
+		#~
+		Gets the tables the workbook provides; their columns are known only after reading them
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			return TableShapes->Of(ReadAll(), @prefix);
+		}
+
+		#~
+		Loads the worksheets into a catalog; nothing is added unless every sheet reads. The scan
+		hint is not used.
+		@param catalog catalog
+		@param hint ignored; the engine applies the query afterwards
+		@return true if loaded
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			tables := ReadAll();
+			if(tables = Nil) {
+				return false;
+			};
+
+			each(i : tables) {
+				catalog->Add(tables->Get(i));
+			};
+			return true;
+		}
+
+		#~
+		Reads one worksheet: the one named in the constructor, or else the first
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			tables := ReadAll();
+			if(tables = Nil | tables->Size() = 0) {
+				return Nil;
+			};
+
+			return tables->Get(0);
+		}
+
+		#~
+		Reads every worksheet, or the one named in the constructor
+		@return tables in workbook order, Nil on error (see GetError)
+		~#
+		method : public : ReadAll() ~ Vector<Table> {
+			@error := Nil;
+			workbook := Open();
+			if(workbook = Nil) {
+				return Nil;
+			};
+
+			names := workbook->GetSheetNames();
+			tables := Vector->New()<Table>;
+			error := StringHolder->New();
+			each(i : names) {
+				name := names->Get(i);
+				if(@sheet = Nil | @sheet->Equals(name)) {
+					table := workbook->ReadSheet(i, @prefix + name, <>@no_header, @first_row, @fill_merged, error);
+					if(table = Nil) {
+						@error := error->Get();
+						return Nil;
+					};
+					tables->AddBack(table);
+				};
+			};
+
+			if(@sheet <> Nil & tables->Size() = 0) {
+				@error := "'{$@title}' has no worksheet '{$@sheet}'";
+				return Nil;
+			};
+
+			return tables;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : Open() ~ XlsxWorkbook {
+			error := StringHolder->New();
+			path := @path;
+			if(@image = Nil) {
+				if(path = Nil) {
+					@error := "no workbook and no bytes";
+					return Nil;
+				};
+
+				if(UrlCache->IsUrl(path)) {
+					fetched := UrlCache->Fetch(path, error);
+					if(fetched = Nil) {
+						@error := error->Get();
+						return Nil;
+					};
+					path := fetched->GetPath();
+				};
+			};
+
+			reader := ArchiveReader->Open(@title, path, @image, @member_limit, @total_limit, error);
+			if(reader = Nil) {
+				@error := error->Get();
+				return Nil;
+			};
+
+			workbook := XlsxWorkbook->Open(@title, reader, error);
+			if(workbook = Nil) {
+				@error := error->Get();
+			};
+			return workbook;
+		}
+	}
+
+	# one cell of a worksheet as read: where it is, its kind and its text
+	class : private : XlsxCell {
+		@row : Int;
+		@column : Int;
+		@kind : Int;
+		@text : String;
+		@date : Date;
+
+		New(row : Int, column : Int, kind : Int, text : String, date : Date) {
+			@row := row;
+			@column := column;
+			@kind := kind;
+			@text := text;
+			@date := date;
+		}
+
+		method : public : GetRow() ~ Int { return @row; }
+		method : public : GetColumn() ~ Int { return @column; }
+		method : public : GetKind() ~ Int { return @kind; }
+		method : public : GetText() ~ String { return @text; }
+		method : public : GetDate() ~ Date { return @date; }
+
+		method : public : At(row : Int, column : Int) ~ XlsxCell {
+			return XlsxCell->New(row, column, @kind, @text, @date);
+		}
+	}
+
+	# a workbook's parts: sheet names and where they are, shared strings, which styles are
+	# dates, and its date system
+	class : private : XlsxWorkbook {
+		@title : String;
+		@reader : ArchiveReader;
+		@names : Vector<String>;
+		@parts : Vector<String>;
+		@strings : Vector<String>;
+		@date_styles : Vector<BoolRef>;
+		@date1904 : Bool;
+
+		# cell kinds
+		function : KindText() ~ Int { return 0; }
+		function : KindNumber() ~ Int { return 1; }
+		function : KindBool() ~ Int { return 2; }
+		function : KindDate() ~ Int { return 3; }
+		function : KindError() ~ Int { return 4; }
+
+		New(title : String, reader : ArchiveReader) {
+			@title := title;
+			@reader := reader;
+			@names := Vector->New()<String>;
+			@parts := Vector->New()<String>;
+			@strings := Vector->New()<String>;
+			@date_styles := Vector->New()<BoolRef>;
+		}
+
+		function : Open(title : String, reader : ArchiveReader, error : StringHolder) ~ XlsxWorkbook {
+			workbook := XlsxWorkbook->New(title, reader);
+			if(workbook->ReadParts(error)) {
+				return workbook;
+			};
+
+			return Nil;
+		}
+
+		method : public : GetSheetNames() ~ Vector<String> {
+			return @names;
+		}
+
+		# a part's XML, parsed; Nil with 'error' set. A missing optional part is Nil with no error.
+		method : Part(path : String, required : Bool, error : StringHolder) ~ XmlElement {
+			entry := @reader->Find(path);
+			if(entry = Nil) {
+				if(required) {
+					error->Set("'{$@title}' is not an .xlsx workbook: it has no part '{$path}'");
+				};
+				return Nil;
+			};
+
+			bytes := @reader->Read(entry, error);
+			if(bytes = Nil) {
+				return Nil;
+			};
+
+			parser := XmlParser->New(bytes->ToString());
+			if(<>parser->Parse()) {
+				reason := parser->GetError();
+				error->Set("'{$@title}': part '{$path}' is not well-formed XML" + (reason <> Nil ? ": {$reason}" : ""));
+				return Nil;
+			};
+
+			return parser->GetRoot();
+		}
+
+		# the relationships of a part: Id to [Type, resolved Target]
+		method : Relations(rels_path : String, base : String, error : StringHolder) ~ Map<String, Vector<String>> {
+			relations := Map->New()<String, Vector<String>>;
+			root := Part(rels_path, false, error);
+			if(root = Nil) {
+				return relations;
+			};
+
+			children := XmlTableBuilder->Elements(root);
+			each(i : children) {
+				child := children->Get(i);
+				if(child->GetName()->Equals("Relationship")) {
+					id := Attribute(child, "Id");
+					type := Attribute(child, "Type");
+					target := Attribute(child, "Target");
+					mode := Attribute(child, "TargetMode");
+					if(id <> Nil & target <> Nil & (mode = Nil | <>mode->Equals("External"))) {
+						pair := Vector->New()<String>;
+						pair->AddBack(type <> Nil ? type : "");
+						pair->AddBack(Resolve(base, target));
+						relations->Insert(id, pair);
+					};
+				};
+			};
+
+			return relations;
+		}
+
+		# a relationship target as a path from the package root: '/x' is absolute, and
+		# anything else is relative to 'base', a folder ('' or 'xl/')
+		function : Resolve(base : String, target : String) ~ String {
+			path := String->New(base);
+			path += target;
+			if(target->StartsWith('/')) {
+				path := target->SubString(1, target->Size() - 1);
+			};
+			parts := Vector->New()<String>;
+			start := 0;
+			for(i := 0; i <= path->Size(); i += 1;) {
+				if(i = path->Size() | path->Get(i) = '/') {
+					part := path->SubString(start, i - start);
+					if(part->Equals("..")) {
+						if(parts->Size() > 0) {
+							parts->RemoveBack();
+						};
+					}
+					else if(part->Size() > 0 & <>part->Equals(".")) {
+						parts->AddBack(part);
+					};
+					start := i + 1;
+				};
+			};
+
+			out := "";
+			each(i : parts) {
+				if(i > 0) {
+					out += "/";
+				};
+				out += parts->Get(i);
+			};
+			return out;
+		}
+
+		function : Attribute(element : XmlElement, name : String) ~ String {
+			attribute := element->GetAttribute(name);
+			if(attribute = Nil) {
+				return Nil;
+			};
+
+			return attribute->GetDecodedValue();
+		}
+
+		function : Child(element : XmlElement, name : String) ~ XmlElement {
+			children := XmlTableBuilder->Elements(element);
+			each(i : children) {
+				if(children->Get(i)->GetName()->Equals(name)) {
+					return children->Get(i);
+				};
+			};
+
+			return Nil;
+		}
+
+		# the text of a string item: its <t>, or its runs' <t> joined; phonetic runs are skipped
+		function : ItemText(item : XmlElement) ~ String {
+			text := "";
+			children := XmlTableBuilder->Elements(item);
+			each(i : children) {
+				child := children->Get(i);
+				name := child->GetName();
+				if(name->Equals("t")) {
+					text += Text(child);
+				}
+				else if(name->Equals("r")) {
+					t := Child(child, "t");
+					if(t <> Nil) {
+						text += Text(t);
+					};
+				};
+			};
+
+			return text;
+		}
+
+		# an element's text, whitespace kept, with any CDATA sections
+		function : Text(element : XmlElement) ~ String {
+			text := element->GetDecodedText();
+			children := element->GetChildren();
+			each(i : children) {
+				child := children->Get(i);
+				if(child->GetType() = XmlElement->Type->CDATA) {
+					text += child->GetContent();
+				};
+			};
+
+			return text;
+		}
+
+		method : ReadParts(error : StringHolder) ~ Bool {
+			# the workbook part, from the package relationships
+			workbook_path := "xl/workbook.xml";
+			package := Relations("_rels/.rels", "", error);
+			if(error->Get() <> Nil) {
+				return false;
+			};
+			keys := package->GetKeys();
+			each(i : keys) {
+				pair := package->Find(keys->Get(i));
+				if(pair->Get(0)->EndsWith("/officeDocument")) {
+					workbook_path := pair->Get(1);
+				};
+			};
+
+			root := Part(workbook_path, true, error);
+			if(root = Nil) {
+				return false;
+			};
+
+			slash := workbook_path->FindLast('/');
+			base := slash < 0 ? "" : workbook_path->SubString(0, slash + 1);
+			cut := workbook_path->Size() - slash - 1;
+			rels_path := base + "_rels/" + workbook_path->SubString(slash + 1, cut) + ".rels";
+			relations := Relations(rels_path, base, error);
+			if(error->Get() <> Nil) {
+				return false;
+			};
+
+			properties := Child(root, "workbookPr");
+			if(properties <> Nil) {
+				system := Attribute(properties, "date1904");
+				@date1904 := system <> Nil & (system->Equals("1") | system->Equals("true"));
+			};
+
+			# worksheets, in workbook order; chart sheets and the like are left out
+			sheets := Child(root, "sheets");
+			if(sheets <> Nil) {
+				children := XmlTableBuilder->Elements(sheets);
+				each(i : children) {
+					sheet := children->Get(i);
+					name := Attribute(sheet, "name");
+					id := Attribute(sheet, "id");
+					if(name <> Nil & id <> Nil) {
+						pair := relations->Find(id);
+						if(pair = Nil) {
+							error->Set("'{$@title}': sheet '{$name}' names a part the workbook does not list");
+							return false;
+						};
+						if(pair->Get(0)->EndsWith("/worksheet")) {
+							@names->AddBack(name);
+							@parts->AddBack(pair->Get(1));
+						};
+					};
+				};
+			};
+
+			strings_path := base + "sharedStrings.xml";
+			styles_path := base + "styles.xml";
+			keys := relations->GetKeys();
+			each(i : keys) {
+				pair := relations->Find(keys->Get(i));
+				if(pair->Get(0)->EndsWith("/sharedStrings")) {
+					strings_path := pair->Get(1);
+				}
+				else if(pair->Get(0)->EndsWith("/styles")) {
+					styles_path := pair->Get(1);
+				};
+			};
+
+			strings := Part(strings_path, false, error);
+			if(error->Get() <> Nil) {
+				return false;
+			};
+			if(strings <> Nil) {
+				items := XmlTableBuilder->Elements(strings);
+				each(i : items) {
+					if(items->Get(i)->GetName()->Equals("si")) {
+						@strings->AddBack(ItemText(items->Get(i)));
+					};
+				};
+			};
+
+			styles := Part(styles_path, false, error);
+			if(error->Get() <> Nil) {
+				return false;
+			};
+			if(styles <> Nil) {
+				ReadStyles(styles);
+			};
+
+			return true;
+		}
+
+		# which cell formats (the 's' index of a cell) show a date or time
+		method : ReadStyles(styles : XmlElement) ~ Nil {
+			custom := Map->New()<IntRef, BoolRef>;
+			formats := Child(styles, "numFmts");
+			if(formats <> Nil) {
+				children := XmlTableBuilder->Elements(formats);
+				each(i : children) {
+					format := children->Get(i);
+					id := Attribute(format, "numFmtId");
+					code := Attribute(format, "formatCode");
+					if(id <> Nil & code <> Nil & Cell->NumberKind(id) = 1) {
+						custom->Insert(IntRef->New(id->ToInt()), BoolRef->New(IsDateCode(code)));
+					};
+				};
+			};
+
+			cell_formats := Child(styles, "cellXfs");
+			if(cell_formats <> Nil) {
+				children := XmlTableBuilder->Elements(cell_formats);
+				each(i : children) {
+					xf := children->Get(i);
+					if(xf->GetName()->Equals("xf")) {
+						id_text := Attribute(xf, "numFmtId");
+						id := id_text <> Nil & Cell->NumberKind(id_text) = 1 ? id_text->ToInt() : 0;
+						is_date := false;
+						known := custom->Find(IntRef->New(id));
+						if(known <> Nil) {
+							is_date := known->Get();
+						}
+						else {
+							is_date := IsDateFormat(id);
+						};
+						@date_styles->AddBack(BoolRef->New(is_date));
+					};
+				};
+			};
+		}
+
+		# Excel's built-in date and time formats (46, '[h]:mm:ss', is elapsed time)
+		function : IsDateFormat(id : Int) ~ Bool {
+			return (id >= 14 & id <= 22) | (id >= 27 & id <= 36) | id = 45 | id = 47 | (id >= 50 & id <= 58);
+		}
+
+		# whether a custom format code shows a date or time: a d, m, y, h or s outside quotes,
+		# escapes and brackets; an elapsed-time bracket ('[h]') makes it a number
+		function : IsDateCode(code : String) ~ Bool {
+			i := 0;
+			size := code->Size();
+			while(i < size) {
+				c := code->Get(i);
+				if(c = '"') {
+					i += 1;
+					while(i < size & code->Get(i) <> '"') {
+						i += 1;
+					};
+				}
+				else if(c = '\\' | c = '_' | c = '*') {
+					i += 1;
+				}
+				else if(c = '[') {
+					close := i + 1;
+					while(close < size & code->Get(close) <> ']') {
+						close += 1;
+					};
+					inside := code->SubString(i + 1, close - i - 1)->ToLower();
+					if(inside->Size() > 0 & (inside->Get(0) = 'h' | inside->Get(0) = 'm' | inside->Get(0) = 's')) {
+						return false;
+					};
+					i := close;
+				}
+				else if(c = ';') {
+					# only the first section, for positive numbers, decides
+					return false;
+				}
+				else {
+					lower := c->ToLower();
+					if(lower = 'd' | lower = 'm' | lower = 'y' | lower = 'h' | lower = 's') {
+						return true;
+					};
+				};
+				i += 1;
+			};
+
+			return false;
+		}
+
+		# a cell reference's column ('C7' is 3) and row (7); Nil if malformed
+		function : ParseReference(reference : String) ~ Int[] {
+			column := 0;
+			i := 0;
+			while(i < reference->Size() & reference->Get(i)->ToUpper() >= 'A' & reference->Get(i)->ToUpper() <= 'Z') {
+				column := column * 26 + (reference->Get(i)->ToUpper()->As(Int) - 'A'->As(Int) + 1);
+				i += 1;
+			};
+
+			row := 0;
+			digits := 0;
+			while(i < reference->Size() & reference->Get(i)->IsDigit()) {
+				row := row * 10 + (reference->Get(i)->As(Int) - '0'->As(Int));
+				digits += 1;
+				i += 1;
+				if(row > 1048576) {
+					return Nil;
+				};
+			};
+
+			if(i <> reference->Size() | column < 1 | column > 16384 | (digits > 0 & row < 1)) {
+				return Nil;
+			};
+
+			position := Int->New[2];
+			position[0] := column;
+			position[1] := digits > 0 ? row : 0;
+			return position;
+		}
+
+		# a column's letters: 1 is A, 27 is AA
+		function : Letters(column : Int) ~ String {
+			letters := "";
+			while(column > 0) {
+				column -= 1;
+				letters := "{$(('A'->As(Int) + column % 26)->As(Char))}{$letters}";
+				column := column / 26;
+			};
+			return letters;
+		}
+
+		# an Excel serial date as a date, in the 1900 or 1904 system, to the second
+		function : SerialToDate(serial : Float, date1904 : Bool) ~ Date {
+			days := Float->Floor(serial)->As(Int);
+			seconds := Float->Floor((serial - days) * 86400.0 + 0.5)->As(Int);
+			if(seconds >= 86400) {
+				days += 1;
+				seconds -= 86400;
+			};
+
+			base := 0;
+			if(date1904) {
+				base := DateCodec->DaysFromCivil(1904, 1, 1);
+			}
+			else {
+				base := DateCodec->DaysFromCivil(1899, 12, 30);
+				# serials before 1 March 1900 are a day behind Excel's phantom 29 February
+				if(days >= 0 & days < 60) {
+					days += 1;
+				};
+			};
+
+			return DateCodec->ToDate(((base + days) * 86400 + seconds) * 1000, false);
+		}
+
+		# an ISO 8601 date as a 'd' cell holds it ('2026-03-15', '2026-03-15T10:20:30'); Nil if
+		# it is not one
+		function : IsoDate(text : String) ~ Date {
+			if(text->Size() < 10 | text->Get(4) <> '-' | text->Get(7) <> '-') {
+				return Nil;
+			};
+
+			year := text->SubString(0, 4);
+			month := text->SubString(5, 2);
+			day := text->SubString(8, 2);
+			if(Cell->NumberKind(year) <> 1 | Cell->NumberKind(month) <> 1 | Cell->NumberKind(day) <> 1) {
+				return Nil;
+			};
+
+			hours := 0;
+			mins := 0;
+			secs := 0;
+			if(text->Size() >= 19 & text->Get(10) = 'T' & text->Get(13) = ':' & text->Get(16) = ':') {
+				hours := text->SubString(11, 2)->ToInt();
+				mins := text->SubString(14, 2)->ToInt();
+				secs := text->SubString(17, 2)->ToInt();
+			};
+
+			days := DateCodec->DaysFromCivil(year->ToInt(), month->ToInt(), day->ToInt());
+			return DateCodec->ToDate(((days * 24 + hours) * 60 + mins) * 60 * 1000 + secs * 1000, false);
+		}
+
+		# a date as a STRING column shows it
+		function : DateText(date : Date) ~ String {
+			text := "{$(date->GetYear())}-{$(Two(date->GetMonth()))}-{$(Two(date->GetDay()))}";
+			if(date->GetHours() <> 0 | date->GetMinutes() <> 0 | date->GetSeconds() <> 0) {
+				text += " {$(Two(date->GetHours()))}:{$(Two(date->GetMinutes()))}:{$(Two(date->GetSeconds()))}";
+			};
+			return text;
+		}
+
+		function : Two(value : Int) ~ String {
+			return value < 10 ? "0{$value}" : "{$value}";
+		}
+
+		# one worksheet as a table; Nil with 'error' set
+		method : public : ReadSheet(index : Int, name : String, header : Bool, first_row : Int, fill_merged : Bool, error : StringHolder) ~ Table {
+			sheet_name := @names->Get(index);
+			where := "'{$@title}', sheet '{$sheet_name}'";
+			root := Part(@parts->Get(index), true, error);
+			if(root = Nil) {
+				return Nil;
+			};
+
+			cells := Vector->New()<XlsxCell>;
+			data := Child(root, "sheetData");
+			if(data <> Nil) {
+				rows := XmlTableBuilder->Elements(data);
+				row_number := 0;
+				each(r : rows) {
+					row := rows->Get(r);
+					if(row->GetName()->Equals("row")) {
+						number := Attribute(row, "r");
+						if(number <> Nil) {
+							if(Cell->NumberKind(number) <> 1 | number->ToInt() < 1 | number->ToInt() > 1048576) {
+								error->Set("{$where}: row number '{$number}' is not one");
+								return Nil;
+							};
+							row_number := number->ToInt();
+						}
+						else {
+							row_number += 1;
+						};
+
+						column := 0;
+						row_cells := XmlTableBuilder->Elements(row);
+						each(c : row_cells) {
+							element := row_cells->Get(c);
+							if(element->GetName()->Equals("c")) {
+								reference := Attribute(element, "r");
+								if(reference <> Nil) {
+									position := ParseReference(reference);
+									if(position = Nil | (position[1] > 0 & position[1] <> row_number)) {
+										error->Set("{$where}: cell reference '{$reference}' is not a cell of row {$row_number}");
+										return Nil;
+									};
+									column := position[0];
+								}
+								else {
+									column += 1;
+									if(column > 16384) {
+										error->Set("{$where}: row {$row_number} has more than 16,384 cells");
+										return Nil;
+									};
+								};
+
+								cell := ReadCell(element, row_number, column, where, error);
+								if(error->Get() <> Nil) {
+									return Nil;
+								};
+								if(cell <> Nil) {
+									cells->AddBack(cell);
+								};
+							};
+						};
+					};
+				};
+			};
+
+			if(fill_merged) {
+				merged := Child(root, "mergeCells");
+				if(merged <> Nil) {
+					cells := FillMerged(cells, XmlTableBuilder->Elements(merged), where, error);
+					if(cells = Nil) {
+						return Nil;
+					};
+				};
+			};
+
+			return Build(name, cells, header, first_row, where, error);
+		}
+
+		# a cell's kind and value; Nil for a cell with no value
+		method : ReadCell(element : XmlElement, row : Int, column : Int, where : String, error : StringHolder) ~ XlsxCell {
+			type := Attribute(element, "t");
+			if(type = Nil) {
+				type := "n";
+			};
+
+			if(type->Equals("inlineStr")) {
+				inline := Child(element, "is");
+				if(inline = Nil) {
+					return Nil;
+				};
+				return XlsxCell->New(row, column, KindText(), ItemText(inline), Nil);
+			};
+
+			value_element := Child(element, "v");
+			if(value_element = Nil) {
+				return Nil;
+			};
+			# a formula not yet calculated may carry an empty value
+			value := Text(value_element);
+			if(value->Size() = 0) {
+				return Nil;
+			};
+			reference := "{$(Letters(column))}{$row}";
+
+			if(type->Equals("s")) {
+				if(Cell->NumberKind(value->Trim()) <> 1 | value->Trim()->ToInt() < 0 | value->Trim()->ToInt() >= @strings->Size()) {
+					error->Set("{$where}, cell {$reference}: shared string '{$value}' does not exist");
+					return Nil;
+				};
+				return XlsxCell->New(row, column, KindText(), @strings->Get(value->Trim()->ToInt()), Nil);
+			}
+			else if(type->Equals("str")) {
+				return XlsxCell->New(row, column, KindText(), value, Nil);
+			}
+			else if(type->Equals("b")) {
+				flag := value->Trim();
+				if(<>flag->Equals("0") & <>flag->Equals("1")) {
+					error->Set("{$where}, cell {$reference}: '{$value}' is not a boolean");
+					return Nil;
+				};
+				return XlsxCell->New(row, column, KindBool(), flag, Nil);
+			}
+			else if(type->Equals("e")) {
+				return XlsxCell->New(row, column, KindError(), value, Nil);
+			}
+			else if(type->Equals("d")) {
+				date := IsoDate(value->Trim());
+				if(date = Nil) {
+					error->Set("{$where}, cell {$reference}: '{$value}' is not an ISO 8601 date");
+					return Nil;
+				};
+				return XlsxCell->New(row, column, KindDate(), DateText(date), date);
+			};
+
+			# a number, or a date when its style is a date format
+			number := value->Trim();
+			if(Cell->NumberKind(number) = 0) {
+				error->Set("{$where}, cell {$reference}: '{$value}' is not a number");
+				return Nil;
+			};
+
+			style_text := Attribute(element, "s");
+			style := style_text <> Nil & Cell->NumberKind(style_text) = 1 ? style_text->ToInt() : 0;
+			if(style >= 0 & style < @date_styles->Size()) {
+				if(@date_styles->Get(style)->Get()) {
+					date := SerialToDate(number->ToFloat(), @date1904);
+					return XlsxCell->New(row, column, KindDate(), DateText(date), date);
+				};
+			};
+
+			return XlsxCell->New(row, column, KindNumber(), number, Nil);
+		}
+
+		# the cells with each merged range's top-left value copied into the rest of the range
+		method : FillMerged(cells : Vector<XlsxCell>, ranges : Vector<XmlElement>, where : String, error : StringHolder) ~ Vector<XlsxCell> {
+			at := Map->New()<IntRef, XlsxCell>;
+			each(i : cells) {
+				cell := cells->Get(i);
+				at->Insert(IntRef->New(cell->GetRow() * 16385 + cell->GetColumn()), cell);
+			};
+
+			added := 0;
+			each(i : ranges) {
+				range := Attribute(ranges->Get(i), "ref");
+				colon := range <> Nil ? range->Find(':') : -1;
+				if(colon > 0) {
+					corner_at := ParseReference(range->SubString(0, colon));
+					end_at := ParseReference(range->SubString(colon + 1, range->Size() - colon - 1));
+					if(corner_at = Nil | end_at = Nil | corner_at[1] < 1 | end_at[1] < corner_at[1] | end_at[0] < corner_at[0]) {
+						error->Set("{$where}: merged range '{$range}' is not a range");
+						return Nil;
+					};
+
+					added += (end_at[1] - corner_at[1] + 1) * (end_at[0] - corner_at[0] + 1);
+					if(added > 10000000) {
+						error->Set("{$where}: merged ranges cover more than 10,000,000 cells");
+						return Nil;
+					};
+
+					corner := at->Find(IntRef->New(corner_at[1] * 16385 + corner_at[0]));
+					if(corner <> Nil) {
+						for(r := corner_at[1]; r <= end_at[1]; r += 1;) {
+							for(c := corner_at[0]; c <= end_at[0]; c += 1;) {
+								key := IntRef->New(r * 16385 + c);
+								if(r <> corner_at[1] | c <> corner_at[0]) {
+									if(at->Has(key)) {
+										at->Remove(key);
+									};
+									at->Insert(key, corner->At(r, c));
+								};
+							};
+						};
+					};
+				};
+			};
+
+			filled := Vector->New()<XlsxCell>;
+			keys := at->GetKeys();
+			each(i : keys) {
+				filled->AddBack(at->Find(keys->Get(i)));
+			};
+			return filled;
+		}
+
+		# the used range as a typed table
+		method : Build(name : String, cells : Vector<XlsxCell>, header : Bool, first_row : Int, where : String, error : StringHolder) ~ Table {
+			# the rows and columns in use, from the first row
+			top := first_row > 0 ? first_row : -1;
+			if(top < 0) {
+				each(i : cells) {
+					row := cells->Get(i)->GetRow();
+					if(top < 0 | row < top) {
+						top := row;
+					};
+				};
+			};
+
+			bottom := -1;
+			left := -1;
+			right := -1;
+			each(i : cells) {
+				cell := cells->Get(i);
+				if(cell->GetRow() >= top) {
+					if(cell->GetRow() > bottom) {
+						bottom := cell->GetRow();
+					};
+					if(left < 0 | cell->GetColumn() < left) {
+						left := cell->GetColumn();
+					};
+					if(cell->GetColumn() > right) {
+						right := cell->GetColumn();
+					};
+				};
+			};
+
+			if(bottom < 0) {
+				return Table->New(name, String->New[0]);
+			};
+
+			width := right - left + 1;
+			data_top := header ? top + 1 : top;
+			height := bottom - data_top + 1;
+			if(height < 0) {
+				height := 0;
+			};
+			if(height * width > 50000000) {
+				error->Set("{$where}: its used range ({$width} columns by {$height} rows) is too large to read; SetFirstRow can skip rows above the data");
+				return Nil;
+			};
+
+			# column names: the header row's cells, or the column letters
+			names := String->New[width];
+			each(c : names) {
+				names[c] := Letters(left + c);
+			};
+			if(header) {
+				each(i : cells) {
+					cell := cells->Get(i);
+					if(cell->GetRow() = top) {
+						text := Value(cell, ColumnType->STRING)->As(String)->Trim();
+						if(text->Size() > 0) {
+							names[cell->GetColumn() - left] := text;
+						};
+					};
+				};
+				Unique(names);
+			};
+
+			# each column's type, from all its data cells
+			kinds := Int->New[width * 5];
+			whole := Bool->New[width];
+			each(c : whole) {
+				whole[c] := true;
+			};
+			each(i : cells) {
+				cell := cells->Get(i);
+				if(cell->GetRow() >= data_top) {
+					c := cell->GetColumn() - left;
+					kinds[c * 5 + cell->GetKind()] += 1;
+					if(cell->GetKind() = KindNumber() & Cell->NumberKind(cell->GetText()) <> 1) {
+						whole[c] := false;
+					};
+				};
+			};
+
+			types := ColumnType->New[width];
+			each(c : types) {
+				texts := kinds[c * 5 + KindText()] + kinds[c * 5 + KindError()];
+				numbers := kinds[c * 5 + KindNumber()];
+				bools := kinds[c * 5 + KindBool()];
+				dates := kinds[c * 5 + KindDate()];
+				types[c] := ColumnType->STRING;
+				if(texts = 0) {
+					if(numbers > 0 & bools = 0 & dates = 0) {
+						types[c] := whole[c] ? ColumnType->INT : ColumnType->FLOAT;
+					}
+					else if(bools > 0 & numbers = 0 & dates = 0) {
+						types[c] := ColumnType->BOOL;
+					}
+					else if(dates > 0 & numbers = 0 & bools = 0) {
+						types[c] := ColumnType->DATE;
+					};
+				};
+			};
+
+			table := Table->New(name, names, types, false);
+			each(r : height) {
+				table->Insert();
+			};
+
+			each(i : cells) {
+				cell := cells->Get(i);
+				if(cell->GetRow() >= data_top) {
+					c := cell->GetColumn() - left;
+					table->Get(cell->GetRow() - data_top)->Set(c + 1, Value(cell, types[c]));
+				};
+			};
+
+			return table;
+		}
+
+		# a cell's value in a column of a type
+		function : Value(cell : XlsxCell, type : ColumnType) ~ Compare {
+			select(type) {
+				label ColumnType->INT: {
+					return IntRef->New(cell->GetText()->ToInt());
+				}
+
+				label ColumnType->FLOAT: {
+					return FloatRef->New(cell->GetText()->ToFloat());
+				}
+
+				label ColumnType->BOOL: {
+					return BoolRef->New(cell->GetText()->Equals("1"));
+				}
+
+				label ColumnType->DATE: {
+					return cell->GetDate();
+				}
+			};
+
+			if(cell->GetKind() = KindBool()) {
+				return cell->GetText()->Equals("1") ? "TRUE" : "FALSE";
+			};
+
+			return cell->GetText();
+		}
+
+		# names made unique: a repeat gets '_2', '_3' ...
+		function : Unique(names : String[]) ~ Nil {
+			seen := Map->New()<String, IntRef>;
+			each(i : names) {
+				seen->Insert(names[i], IntRef->New(1));
+			};
+
+			used := Map->New()<String, IntRef>;
+			each(i : names) {
+				name := names[i];
+				if(used->Has(name)) {
+					n := 2;
+					while(seen->Has("{$name}_{$n}") | used->Has("{$name}_{$n}")) {
+						n += 1;
+					};
+					names[i] := "{$name}_{$n}";
+				};
+				used->Insert(names[i], IntRef->New(1));
+			};
+		}
+	}
+
 	# one JSON value as its text and kind, converted when the column's type is known
 	class : private : JsonCell {
 		@kind : JsonCell->Kind;
