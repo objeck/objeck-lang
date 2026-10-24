@@ -1058,7 +1058,7 @@ bundle Web.HTTP.Server {
 					each(i : param_names_values) {
 						param_name_value := param_names_values[i]->Split('=');
 						if(param_name_value->Size() = 2) {
-							name := param_name_value[0];
+							name := Url->Decode(param_name_value[0]);
 							value := Url->Decode(param_name_value[1]);
 							@request_params->Insert(name, value);
 						};

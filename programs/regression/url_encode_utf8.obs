@@ -1,0 +1,218 @@
+# EXTRA_LIBS: net,net_server
+use Collection, System.IO.Net, Web.HTTP.Server;
+
+#~
+# Web.HTTP.Url->Encode/Decode as RFC 3986 percent-encoding over UTF-8.
+#
+# Encode used to escape a fixed list of ASCII punctuation and pass everything
+# else through raw, so 'café', a newline or a tab went into a URL unescaped.
+# Decode turned each %XX into one character, so 'caf%C3%A9' came back as two
+# Latin-1 characters instead of one 'é'. The end-to-end half sends such a value
+# through Web.HTTP.Server and reads it back with Request->GetParam.
+~#
+class EchoHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		UrlEncodeUtf8->Received(request->GetParam("q"), request->GetParam("café"));
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(405, "no");
+		return false;
+	}
+}
+
+class UrlEncodeUtf8 {
+	@port : static : Int;
+	@passed : static : Bool;
+	@serve_returned : static : Bool;
+	@received_q : static : String;
+	@received_named : static : String;
+
+	function : Port() ~ Int { return @port; }
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Received(q : String, named : String) ~ Nil {
+		@received_q := q;
+		@received_named := named;
+	}
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	# Code points, so a mismatch reports what was actually produced
+	function : Show(s : String) ~ String {
+		if(s = Nil) {
+			return "Nil";
+		};
+
+		out := "[";
+		points := s->CodePoints();
+		each(i : points) {
+			if(i > 0) { out += " "; };
+			out += points[i]->ToHexString();
+		};
+		out += "]";
+		return out;
+	}
+
+	function : CheckStr(what : String, actual : String, expected : String) ~ Nil {
+		if(actual = Nil | <>actual->Equals(expected)) {
+			Fail("{$what}: got {$Show(actual)} '{$actual}', expected {$Show(expected)} '{$expected}'");
+		};
+	}
+
+	function : RoundTrip(what : String, raw : String, encoded : String) ~ Nil {
+		CheckStr("encode {$what}", Web.HTTP.Url->Encode(raw), encoded);
+		CheckStr("decode {$what}", Web.HTTP.Url->Decode(encoded), raw);
+	}
+
+	function : CheckEncoding() ~ Nil {
+		RoundTrip("unreserved", "AZaz09-._~", "AZaz09-._~");
+		RoundTrip("ascii punctuation", " !\"#$%&'()*+,/:;<=>?@[\\]^`{|}",
+			"%20%21%22%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3C%3D%3E%3F%40%5B%5C%5D%5E%60%7B%7C%7D");
+		RoundTrip("query text", "hello world & foo=bar", "hello%20world%20%26%20foo%3Dbar");
+		RoundTrip("latin-1", "café", "caf%C3%A9");
+		RoundTrip("cjk", "日本語", "%E6%97%A5%E6%9C%AC%E8%AA%9E");
+		RoundTrip("emoji", String->FromCodePoint(0x1F600), "%F0%9F%98%80");
+		RoundTrip("music symbol", "a" + String->FromCodePoint(0x1D11E) + "b", "a%F0%9D%84%9Eb");
+		RoundTrip("newline and tab", "line1\nline2\tend\r", "line1%0Aline2%09end%0D");
+
+		nul := "a";
+		nul->Append(0->As(Char));
+		nul->Append('b');
+		RoundTrip("nul", nul, "a%00b");
+
+		# hex digits are read in either case
+		CheckStr("decode lower-case hex", Web.HTTP.Url->Decode("caf%c3%a9%f0%9f%98%80%2f"), "café" + String->FromCodePoint(0x1F600) + "/");
+
+		# a path keeps its separators; a component does not
+		CheckStr("encode path", Web.HTTP.Url->EncodePath("/docs/my file/café.txt"), "/docs/my%20file/caf%C3%A9.txt");
+		CheckStr("encode component slash", Web.HTTP.Url->Encode("a/b"), "a%2Fb");
+
+		# '+' is a space in a form value and a plus sign in a path
+		CheckStr("decode plus", Web.HTTP.Url->Decode("a+b%2Bc"), "a b+c");
+		CheckStr("decode path plus", Web.HTTP.Url->DecodePath("/c++/a%20b+c"), "/c++/a b+c");
+
+		# literal non-ASCII is kept as it is
+		CheckStr("decode literal non-ascii", Web.HTTP.Url->Decode("café"), "café");
+
+		if(Web.HTTP.Url->Encode(Nil) <> Nil | Web.HTTP.Url->Decode(Nil) <> Nil) {
+			Fail("Nil input should give Nil");
+		};
+	}
+
+	function : CheckMalformed() ~ Nil {
+		fffd := String->FromCodePoint(0xFFFD);
+
+		# a '%' not followed by two hex digits is kept literally
+		CheckStr("bare percent", Web.HTTP.Url->Decode("100%"), "100%");
+		CheckStr("truncated escape", Web.HTTP.Url->Decode("a%4"), "a%4");
+		CheckStr("bad hex", Web.HTTP.Url->Decode("%zz%4g"), "%zz%4g");
+		CheckStr("percent before escape", Web.HTTP.Url->Decode("%%41"), "%A");
+
+		# invalid UTF-8 becomes U+FFFD, one per maximal invalid subpart
+		CheckStr("lone continuation", Web.HTTP.Url->Decode("a%80b"), "a" + fffd + "b");
+		CheckStr("truncated sequence", Web.HTTP.Url->Decode("caf%C3"), "caf" + fffd);
+		CheckStr("truncated then ascii", Web.HTTP.Url->Decode("%E6%97x"), fffd + "x");
+		CheckStr("lead then lead", Web.HTTP.Url->Decode("%C3%C3%A9"), fffd + "é");
+		CheckStr("overlong", Web.HTTP.Url->Decode("%C0%AF"), fffd + fffd);
+		CheckStr("surrogate", Web.HTTP.Url->Decode("%ED%A0%80"), fffd + fffd + fffd);
+		CheckStr("beyond U+10FFFF", Web.HTTP.Url->Decode("%F4%90%80%80"), fffd + fffd + fffd + fffd);
+		CheckStr("invalid byte", Web.HTTP.Url->Decode("%FF"), fffd);
+		CheckStr("escape interrupted by literal", Web.HTTP.Url->Decode("%C3+%A9"), fffd + " " + fffd);
+	}
+
+	#~
+	# Starts the server on a random port and returns once a client can connect
+	# (the http_persistence_test pattern: a fixed port can be answered by a
+	# leftover listener on Windows, and Serve has no ready signal).
+	~#
+	function : StartServer(host : String) ~ Bool {
+		tries := 0;
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			@serve_returned := false;
+
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(EchoHandler->New()->GetClass(), UrlEncodeUtf8->Port(), false);
+					UrlEncodeUtf8->ServeReturned();
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(<>@serve_returned & attempts < 20) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New(host, @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+
+			tries += 1;
+		};
+
+		return false;
+	}
+
+	function : CheckServer() ~ Nil {
+		host := "127.0.0.1";
+		if(<>StartServer(host)) {
+			Fail("test server never started listening");
+			return;
+		};
+
+		value := "café 日本 " + String->FromCodePoint(0x1F600) + "\nline\t+&=/%";
+		path := "/echo?q=" + Web.HTTP.Url->Encode(value) + "&" + Web.HTTP.Url->Encode("café") + "=" + Web.HTTP.Url->Encode("ok+1");
+
+		socket := TCPSocket->New(host, @port);
+		if(<>socket->IsOpen()) {
+			Fail("could not connect to test server");
+			return;
+		};
+
+		# keep-alive, and the client closes first: Windows loopback can drop a
+		# response whose sender tears the connection down first (#669)
+		socket->WriteString("GET {$path} HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\n");
+		status := socket->ReadLine();
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			line := socket->ReadLine();
+		};
+		body := Byte->New[2];
+		socket->ReadBuffer(0, 2, body);
+		socket->Close();
+
+		if(status = Nil | <>status->Has("200")) {
+			Fail("GET status was '{$status}'");
+		};
+		CheckStr("server GetParam(q)", @received_q, value);
+		CheckStr("server GetParam(encoded name)", @received_named, "ok+1");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+
+		CheckEncoding();
+		CheckMalformed();
+		CheckServer();
+
+		if(@passed) {
+			"PASS: url_encode_utf8"->PrintLine();
+			Runtime->Exit(0);
+		};
+
+		"FAIL: url_encode_utf8"->PrintLine();
+		Runtime->Exit(1);
+	}
+}

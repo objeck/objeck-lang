@@ -1644,7 +1644,7 @@ bundle LSP {
 
 		# 'file:///c%3A/dir' -> 'c:/dir', 'file:///home/dir' -> '/home/dir'
 		function : LocalPath(uri : String) ~ String {
-			path := Web.HTTP.Url->Decode(uri);
+			path := Web.HTTP.Url->DecodePath(uri);
 			if(path->StartsWith("file:///")) {
 				offset : Int;
 				if(Query.RegEx.RegEx->New("file:///([a-z]|[A-Z]):.*")->MatchExact(path)) {
