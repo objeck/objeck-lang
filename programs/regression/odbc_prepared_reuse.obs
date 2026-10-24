@@ -1,0 +1,169 @@
+#~
+# A Database.ODBC ParameterStatement runs as many times as its caller likes.
+#
+# The statement's column-name and execution-data maps belong to it, but
+# odbc_stmt_update freed both after every run, and the statement handle too
+# when a run failed, while ParameterStatement kept their addresses: a second
+# run, or a result set read by column name, used freed memory, and Close freed
+# the handle a second time. A prepared SELECT's result set freed them all on
+# Close as well.
+#
+# Bound parameters had the same flaw in time rather than ownership: ODBC reads
+# a bound buffer when the statement runs, and the buffers were the Objeck
+# objects handed to the setter, which a collection may move or free before
+# then. They are now copies the statement owns. Copying fixed two value bugs
+# on the way: SetReal bound a double where ODBC reads a float, and SetBlob
+# bound no length, so a blob stopped at its first zero byte.
+#
+# Runs one INSERT, one UPDATE and one SELECT many times each with different
+# values, collecting between runs, plus a failed run, a run that changes no
+# rows, and a re-run that keeps the last values. Needs the SQLite ODBC driver
+# and the objeck_sqlite_test data source (ci-build.yml sets it up on Linux);
+# skips without them, as odbc_sqlite_test does.
+# EXTRA_LIBS: odbc
+~#
+
+use Database.ODBC;
+
+class OdbcPreparedReuse {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# garbage, so collections run between a statement's runs
+	function : Churn() ~ Nil {
+		each(i : 2000) {
+			text := "churn {$i}";
+			text += "!";
+		};
+	}
+
+	function : Count(conn : Connection, sql : String) ~ Int {
+		rs := conn->Select(sql);
+		count := -1;
+		if(rs->Next()) {
+			count := rs->GetInt(1);
+		};
+		rs->Close();
+		return count;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		conn := Connection->New("objeck_sqlite_test", "", "");
+		if(<>conn->IsOpen()) {
+			err := conn->GetLastError();
+			if(err->Has("IM002")) {
+				"SKIP: no objeck_sqlite_test data source ({$err})"->PrintLine();
+				return;
+			};
+			"FAIL: cannot open a connection: {$err}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		conn->Update("CREATE TABLE runs (id INTEGER PRIMARY KEY, name VARCHAR(40), score REAL, mean DOUBLE, big BIGINT, flag BIT, data BLOB)");
+
+		# --- one INSERT, run 40 times with new values, collecting between runs ---
+		insert := conn->CreateParameterStatement("INSERT INTO runs VALUES (?, ?, ?, ?, ?, ?, ?)");
+		Check("the INSERT prepares", insert <> Nil);
+		all_ran := true;
+		each(i : 40) {
+			blob := Byte->New[i + 3];
+			each(k : blob) {
+				blob[k] := ((i + k) % 3)->As(Byte);
+			};
+			insert->SetInt(1, i);
+			insert->SetVarchar(2, "run {$i}");
+			insert->SetReal(3, i->As(Float) + 0.5);
+			insert->SetDouble(4, i->As(Float) / 4.0);
+			insert->SetBigInt(5, 5000000000 + i);
+			insert->SetBit(6, i % 2 = 0);
+			insert->SetBlob(7, blob);
+			Churn();
+			all_ran := all_ran & insert->Update() = 1;
+		};
+		Check("40 runs of one prepared INSERT each insert a row", all_ran);
+
+		# a failed run (a duplicate key) leaves the statement usable
+		insert->SetInt(1, 7);
+		Check("a duplicate key fails", insert->Update() = -1);
+		insert->SetInt(1, 40);
+		insert->SetVarchar(2, "after the failure");
+		Check("and the next run works", insert->Update() = 1);
+		# a run that sets nothing new reuses the last values
+		insert->SetInt(1, 41);
+		Churn();
+		Check("unchanged parameters are kept between runs", insert->Update() = 1);
+		insert->Close();
+		Check("42 rows", Count(conn, "SELECT count(*) FROM runs") = 42);
+
+		check := conn->Select("SELECT id, name, score, mean, big, flag, length(data), hex(data) FROM runs ORDER BY id");
+		values := true;
+		while(check->Next()) {
+			id := check->GetInt(1);
+			if(id < 40) {
+				expected := "";
+				for(k := 0; k < id + 3; k += 1;) {
+					digit := (id + k) % 3;
+					expected += "0{$digit}";
+				};
+				values := values & check->GetVarchar(2)->Equals("run {$id}") & check->GetDouble(3) = id->As(Float) + 0.5 &
+					check->GetDouble(4) = id->As(Float) / 4.0 & check->GetBigInt(5) = 5000000000 + id &
+					check->GetInt(6) = (id % 2 = 0 ? 1 : 0) & check->GetInt(7) = id + 3 & check->GetVarchar(8)->Equals(expected);
+			}
+			else {
+				values := values & check->GetVarchar(2)->Equals("after the failure") & check->GetDouble(3) = 39.5;
+			};
+		};
+		check->Close();
+		Check("every run stored its own values: text, REAL, DOUBLE, BIGINT, BIT, a blob with zero bytes", values);
+
+		# --- one UPDATE, run many times, including one that matches no row ---
+		update := conn->CreateParameterStatement("UPDATE runs SET name = ? WHERE id = ?");
+		changed := 0;
+		each(i : 10) {
+			update->SetVarchar(1, "renamed {$i}");
+			update->SetInt(2, i);
+			Churn();
+			changed += update->Update();
+		};
+		Check("ten UPDATE runs change ten rows", changed = 10);
+		update->SetInt(2, 999);
+		Check("an UPDATE that matches no row changes none, which is not a failure", update->Update() = 0);
+		update->Close();
+
+		# --- one SELECT, run many times, read by column name ---
+		finder := conn->CreateParameterStatement("SELECT id, name FROM runs WHERE id >= ? AND id < ? ORDER BY id");
+		read_back := true;
+		each(i : 8) {
+			finder->SetInt(1, i * 5);
+			finder->SetInt(2, i * 5 + 5);
+			Churn();
+			rs := finder->Select();
+			rows := 0;
+			while(rs->Next()) {
+				id := rs->GetInt("id");
+				name := rs->GetVarchar("name");
+				read_back := read_back & id = i * 5 + rows & name <> Nil;
+				rows += 1;
+			};
+			rs->Close();
+			read_back := read_back & rows = 5;
+		};
+		Check("eight runs of one prepared SELECT read their rows by name", read_back);
+		finder->Close();
+
+		conn->Close();
+		if(@failures = 0) {
+			"PASS: one prepared statement runs many times"->PrintLine();
+		}
+		else {
+			"FAIL: ODBC prepared statement reuse ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

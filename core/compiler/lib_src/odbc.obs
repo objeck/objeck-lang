@@ -971,7 +971,7 @@ bundle Database.ODBC {
 		stmt := conn->CreateParameterStatement("UPDATE users SET age=? WHERE name=?");
 		stmt->SetInt(1, 31);
 		stmt->SetVarchar(2, "Alice");
-		rc := stmt->Update(); # execute and close statement
+		rc := stmt->Update(); # run; the statement can run again with new values
 		"rows={$rc}"->PrintLine();
 		conn->Close();
 		```
@@ -988,14 +988,9 @@ bundle Database.ODBC {
 				lib_proxy->CallFunction(@fn_odbc_stmt_update, array_args);
 				@params->Empty();
 
+				# a failed run leaves the statement open, to run again or to Close
 				value := array_args[0]->As(IntRef);
-				status := value->Get();
-				if(status < 0) {
-					@native_stmt := 0;
-					@exec_data := 0;
-					@native_names := 0;
-				};
-				return status;
+				return value->Get();
       		};
       		
       		return -1;
@@ -1023,8 +1018,10 @@ bundle Database.ODBC {
 				if(@fn_odbc_stmt_select_statement = Nil) { @fn_odbc_stmt_select_statement := "odbc_stmt_select_statement"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_select_statement, array_args);
 				@params->Empty();
-				
-				return ResultSet->New(@native_stmt, @native_names, @exec_data);
+
+				# the result set reads this statement's cursor; closing it leaves the
+				# statement, which Close frees, ready to run again
+				return ResultSet->New(@native_stmt, @native_names, @exec_data, true);
 			};
 			
 			return Nil;
@@ -1054,13 +1051,18 @@ bundle Database.ODBC {
 		~#
 		method : public : Close() ~ Nil {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-      			array_args := Base->New[1];
+				# the statement owns its column names and execution data: free them with it
+      			array_args := Base->New[3];
 				array_args[0] := IntRef->New(@native_stmt);
+				array_args[1] := IntRef->New(@native_names);
+				array_args[2] := IntRef->New(@exec_data);
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_close = Nil) { @fn_odbc_stmt_close := "odbc_stmt_close"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_close, array_args);
 				@params->Empty();
 				@native_stmt := 0;
+				@native_names := 0;
+				@exec_data := 0;
       		};
       	}
 	}
@@ -1076,6 +1078,7 @@ bundle Database.ODBC {
 		# static function cannot read an instance field.
 		@fn_odbc_get_error : static : String;
 		@fn_odbc_result_close : static : String;
+		@fn_odbc_result_close_cursor : static : String;
 		@fn_odbc_result_get_bigint_by_id : static : String;
 		@fn_odbc_result_get_bigint_by_name : static : String;
 		@fn_odbc_result_get_bit_by_id : static : String;
@@ -1102,11 +1105,20 @@ bundle Database.ODBC {
 		@native_names : Int;
 		@exec_data : Int;
 		@is_null : Bool;
+		@borrowed : Bool;
 
 		New(native_stmt : Int, native_names : Int, exec_data : Int) {
 			@native_stmt := native_stmt;
 			@native_names := native_names;
 			@exec_data := exec_data;
+		}
+
+		# a prepared statement's result: the statement and its maps stay that statement's
+		New(native_stmt : Int, native_names : Int, exec_data : Int, borrowed : Bool) {
+			@native_stmt := native_stmt;
+			@native_names := native_names;
+			@exec_data := exec_data;
+			@borrowed := borrowed;
 		}
 		
 
@@ -1756,6 +1768,19 @@ bundle Database.ODBC {
 		Closes a result set
 		~#
 		method : public : Close() ~ Nil {
+			if(@borrowed) {
+				if(@native_stmt <> 0) {
+					cursor_args := Base->New[1];
+					cursor_args[0] := IntRef->New(@native_stmt);
+					if(@fn_odbc_result_close_cursor = Nil) { @fn_odbc_result_close_cursor := "odbc_result_close_cursor"; };
+					Proxy->GetDllProxy()->CallFunction(@fn_odbc_result_close_cursor, cursor_args);
+				};
+				@native_names := 0;
+				@exec_data := 0;
+				@native_stmt := 0;
+				return;
+			};
+
 			if(@native_stmt <> 0 & @native_names <> 0) {
       			array_args := Base->New[3];
 				array_args[0] := IntRef->New(@native_names);
