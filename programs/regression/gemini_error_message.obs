@@ -1,0 +1,63 @@
+# EXTRA_LIBS: net,net_server,misc,gemini
+use Collection, Data.JSON, API.Google.Gemini;
+
+#~
+# Gemini error messages are JSON-unescaped.
+#
+# The tuning, corpus and document endpoints read an error response's message
+# with FindElements("error/message")->GetString(). The parser keeps a JSON
+# string's escapes, so GetLastError returned '\"', '\\', '\n' and '\u00e9' as
+# escape text, and an error without a message dereferenced Nil. They now all
+# go through OAuthEndPoint->ParseErrorMessage, which a canned response can test
+# without the network.
+~#
+class GeminiErrorMessage {
+	@passed : static : Bool;
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : Check(what : String, actual : String, expected : String) ~ Nil {
+		if(actual = Nil | <>actual->Equals(expected)) {
+			Fail("{$what}: got '{$actual}', expected '{$expected}'");
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+
+		response := "{\"error\":{\"code\":400,\"message\":\"Field \\\"name\\\" in C:\\\\data is invalid\\nretry caf\\u00e9\",\"status\":\"INVALID_ARGUMENT\"}}";
+		json := JsonParser->TextToElement(response);
+		if(json = Nil) {
+			Fail("canned response did not parse");
+			Runtime->Exit(1);
+		};
+
+		Check("error message", OAuthEndPoint->ParseErrorMessage(json),
+			"Field \"name\" in C:\\data is invalid\nretry café");
+
+		no_message := JsonParser->TextToElement("{\"error\":{\"code\":500}}");
+		fallback := OAuthEndPoint->ParseErrorMessage(no_message);
+		if(fallback = Nil | <>fallback->Has("500")) {
+			Fail("an error without a message should give the error's JSON, got '{$fallback}'");
+		};
+
+		if(OAuthEndPoint->ParseErrorMessage(JsonParser->TextToElement("{\"name\":\"ok\"}")) <> Nil) {
+			Fail("a response without an error should give Nil");
+		};
+
+		if(OAuthEndPoint->ParseErrorMessage(Nil) <> Nil) {
+			Fail("Nil should give Nil");
+		};
+
+		if(@passed) {
+			"PASS: gemini_error_message"->PrintLine();
+			Runtime->Exit(0);
+		};
+
+		"FAIL: gemini_error_message"->PrintLine();
+		Runtime->Exit(1);
+	}
+}

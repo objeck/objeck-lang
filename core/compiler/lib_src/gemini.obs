@@ -47,6 +47,31 @@ bundle API.Google.Gemini {
 		}
 
 		#~
+		Reads the message of an error response. The parser keeps a JSON string's
+		escapes, so the message is JSON-unescaped here; an error without a message
+		gives the error element's JSON text.
+		@param response_json parsed response
+		@return error message, or Nil if the response holds no error
+		~#
+		function : ParseErrorMessage(response_json : JsonElement) ~ String {
+			if(response_json = Nil) {
+				return Nil;
+			};
+
+			error_json := response_json->Get("error");
+			if(error_json = Nil) {
+				return Nil;
+			};
+
+			message_json := error_json->Get("message");
+			if(message_json = Nil) {
+				return error_json->ToString();
+			};
+
+			return JsonElement->Decode(message_json->GetString());
+		}
+
+		#~
 		Get the last error
 		@return last error
 		~#
@@ -2528,7 +2553,7 @@ bundle API.Google.Gemini.Tuning {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -2560,7 +2585,7 @@ bundle API.Google.Gemini.Tuning {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -2605,7 +2630,7 @@ bundle API.Google.Gemini.Tuning {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -2632,7 +2657,7 @@ bundle API.Google.Gemini.Tuning {
 							};
 							
 							if(response_json->Has("error")) {
-								error_str := response_json->FindElements("error/message")->GetString();
+								error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 								SetLastError(error_str);
 								return Nil;
 							};
@@ -2679,7 +2704,7 @@ bundle API.Google.Gemini.Tuning {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -2962,7 +2987,7 @@ bundle API.Google.Gemini.Tuning {
 						};
 						
 						if(response_json->Has("error")) {
-							error_str := response_json->FindElements("error/message")->GetString();
+							error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 							SetLastError(error_str);
 							return Nil;
 						};
@@ -3002,7 +3027,7 @@ bundle API.Google.Gemini.Tuning {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -3573,7 +3598,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3606,7 +3631,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3636,7 +3661,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -3673,35 +3698,69 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
 
-				# process results
-				relevance_results := Vector->New()<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>>;
-				chunks_array_json := response_json->Get("relevantChunks");;
-				each(chunk_json in chunks_array_json) {
-					relevance_score := chunk_json->Get("chunkRelevanceScore")->GetFloat();
-					relevance_data := Url->Decode(chunk_json->FindElements("chunk/data/stringValue")->ToString());
-
-					relevance_metadata := Map->New()<String, String>;
-					metadata_array_json := chunk_json->FindElements("chunk/customMetadata");
-					each(metadata_obj_json in metadata_array_json) {
-						key := metadata_obj_json->Get("key")->GetString();
-						value := metadata_obj_json->Get("stringValue")->GetString();
-
-						relevance_metadata->Insert(key, value);
-					}
-
-					result := Collection.Tuple.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
-					relevance_results->AddBack(result);
-				};
-
-				return relevance_results;
+				return Corpus->ParseQueryResults(response_json);
 			};
 
 			return Nil;	
+		}
+
+		#~
+		Parses the body of a corpus or document query response. Each relevant
+		chunk's text and metadata strings are JSON-unescaped and otherwise kept as
+		the API sent them; a chunk without text gives an empty string.
+		@param response_json parsed query response
+		@return query results as triple, 1) relevance, 2) string content, 3) content metadata
+		~#
+		function : ParseQueryResults(response_json : JsonElement) ~ Vector<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>> {
+			relevance_results := Vector->New()<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>>;
+			if(response_json = Nil) {
+				return relevance_results;
+			};
+
+			chunks_array_json := response_json->Get("relevantChunks");
+			if(chunks_array_json = Nil) {
+				return relevance_results;
+			};
+
+			each(chunk_json in chunks_array_json) {
+				relevance_score := 0.0;
+				score_json := chunk_json->Get("chunkRelevanceScore");
+				if(score_json <> Nil) {
+					relevance_score := score_json->GetFloat();
+				};
+
+				# The parser keeps a string's JSON escapes, so JsonElement->Decode is
+				# the only decoding the text needs; it is not URL-encoded. This used to
+				# run Url->Decode over the element's serialized form, which kept the
+				# surrounding quotes and the escapes and turned every '+' into a space.
+				relevance_data := "";
+				data_json := chunk_json->FindElements("chunk/data/stringValue");
+				if(data_json <> Nil) {
+					relevance_data := JsonElement->Decode(data_json->GetString());
+				};
+
+				relevance_metadata := Map->New()<String, String>;
+				metadata_array_json := chunk_json->FindElements("chunk/customMetadata");
+				if(metadata_array_json <> Nil) {
+					each(metadata_obj_json in metadata_array_json) {
+						key_json := metadata_obj_json->Get("key");
+						value_json := metadata_obj_json->Get("stringValue");
+						if(key_json <> Nil & value_json <> Nil) {
+							relevance_metadata->Insert(JsonElement->Decode(key_json->GetString()), JsonElement->Decode(value_json->GetString()));
+						};
+					};
+				};
+
+				result := Collection.Tuple.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
+				relevance_results->AddBack(result);
+			};
+
+			return relevance_results;
 		}
 
 		#~
@@ -3802,32 +3861,12 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
 
-				# process results
-				relevance_results := Vector->New()<Collection.Tuple.Triplet<FloatRef, String, Map<String, String>>>;
-				chunks_array_json := response_json->Get("relevantChunks");;
-				each(chunk_json in chunks_array_json) {
-					relevance_score := chunk_json->Get("chunkRelevanceScore")->GetFloat();
-					relevance_data := Url->Decode(chunk_json->FindElements("chunk/data/stringValue")->ToString());
-
-					relevance_metadata := Map->New()<String, String>;
-					metadata_array_json := chunk_json->FindElements("chunk/customMetadata");
-					each(metadata_obj_json in metadata_array_json) {
-						key := metadata_obj_json->Get("key")->GetString();
-						value := metadata_obj_json->Get("stringValue")->GetString();
-
-						relevance_metadata->Insert(key, value);
-					}
-
-					result := Collection.Tuple.Triplet->New(relevance_score, relevance_data, relevance_metadata)<FloatRef, String, Map<String, String>>;
-					relevance_results->AddBack(result);
-				};
-
-				return relevance_results;
+				return Corpus->ParseQueryResults(response_json);
 			};
 
 			return Nil;	
@@ -3874,7 +3913,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3907,7 +3946,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3942,7 +3981,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -3969,7 +4008,7 @@ each(result in results) {
 							};
 							
 							if(response_json->Has("error")) {
-								error_str := response_json->FindElements("error/message")->GetString();
+								error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 								SetLastError(error_str);
 								return Nil;
 							};
@@ -4013,7 +4052,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -4158,7 +4197,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -4191,7 +4230,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -4222,7 +4261,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return false;
 				};
@@ -4254,7 +4293,7 @@ each(result in results) {
 				};
 				
 				if(response_json->Has("error")) {
-					error_str := response_json->FindElements("error/message")->GetString();
+					error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 					SetLastError(error_str);
 					return Nil;
 				};
@@ -4281,7 +4320,7 @@ each(result in results) {
 							};
 							
 							if(response_json->Has("error")) {
-								error_str := response_json->FindElements("error/message")->GetString();
+								error_str := API.Google.Gemini.OAuthEndPoint->ParseErrorMessage(response_json);
 								SetLastError(error_str);
 								return Nil;
 							};

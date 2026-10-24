@@ -185,7 +185,9 @@ bundle Web.Server {
 		}
 
 		#~
-		Parses URL encoding
+		Parses URL encoding, by the rules of Web.HTTP.Server.Request->ParseQuery:
+		split at the first '=', empty and flag values kept as "", empty segments
+		skipped
 		@param encoded encoded bytes
 		@return name value pairs
 
@@ -197,22 +199,8 @@ bundle Web.Server {
 		```
 		~#
 		function : ParseUrlEncoding(encoded : String) ~ Map<String, String> {
-	        decodings := Map->New()<String, String>;
-
-	        pairs :=  encoded->Split('&');
-	        if(pairs <> Nil) {
-	            each(i : pairs) {
-	                key_value := pairs[i]->Split('=');
-	                if(key_value <> Nil & key_value->Size() = 2) {
-	                    key := Web.HTTP.Url->Decode(key_value[0]);
-	                    value := Web.HTTP.Url->Decode(key_value[1]);
-	                    decodings->Insert(key, value);
-	                };
-	            };
-	        };
-
-	        return decodings;
-	    }
+			return Web.HTTP.Server.Request->ParseQuery(encoded);
+		}
 
 	    #~
 		Parses multipart encoding

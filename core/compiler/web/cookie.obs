@@ -44,7 +44,7 @@ class FastCgiModule {
 		name := req->GetQueryValue("dog");
 		if(name <> Nil) {
 			res->AddBody("<pre>");
-			res->AddBody(UrlUtility->Decode(name));
+			res->AddBody(Web.HTTP.Url->Decode(name));
 			res->AddBody("</pre>");
 		};	
 
