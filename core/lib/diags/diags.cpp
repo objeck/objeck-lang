@@ -1869,7 +1869,8 @@ extern "C" {
         t.start_char = safe_pos(en->GetLinePosition());
 
         std::wstring ename = en->GetName();
-        size_t dot_pos = ename.rfind(L'.');
+        // 'Bundle.Name' or 'Bundle.Klass#Name'
+        size_t dot_pos = ename.find_last_of(L".#");
         std::wstring short_name = dot_pos != std::wstring::npos ? ename.substr(dot_pos + 1) : ename;
         t.length = (int)short_name.size();
         t.token_type = 3; // enum

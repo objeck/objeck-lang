@@ -67,11 +67,14 @@ const std::wstring Parser::GetScopeName(const std::wstring& ident)
   return scope_name;
 }
 
-const std::wstring Parser::GetEnumScopeName(const std::wstring& ident)
+const std::wstring Parser::GetEnumScopeName(const std::wstring& ident, bool in_bundle)
 {
   std::wstring scope_name;
   if(current_class) {
     scope_name = current_class->GetName() + L"#" + ident;
+  }
+  else if(in_bundle && current_bundle && !current_bundle->GetName().empty()) {
+    scope_name = current_bundle->GetName() + L'.' + ident;
   }
   else {
     scope_name = ident;
@@ -603,11 +606,11 @@ Enum* Parser::ParseEnum(int depth)
   }
   // identifier
   const std::wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetEnum(GetEnumScopeName(enum_name, true)) || current_bundle->GetAlias(enum_name)) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
-  const std::wstring enum_scope_name = GetEnumScopeName(enum_name);
+  const std::wstring enum_scope_name = GetEnumScopeName(enum_name, true);
 
   size_t index = enum_scope_name.find('#');
   if(index != std::wstring::npos) {
@@ -768,11 +771,11 @@ Enum* Parser::ParseConsts(int depth)
   }
   // identifier
   const std::wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetAlias(enum_name)) {
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetEnum(GetEnumScopeName(enum_name, true)) || current_bundle->GetAlias(enum_name)) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
-  const std::wstring enum_scope_name = GetEnumScopeName(enum_name);
+  const std::wstring enum_scope_name = GetEnumScopeName(enum_name, true);
 
   if(!Match(TOKEN_OPEN_BRACE)) {
     ProcessError(L"Expected '{'", TOKEN_OPEN_BRACE);

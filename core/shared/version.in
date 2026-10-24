@@ -39,7 +39,10 @@
 // a caller can name a library method's arguments (#1244). An .obl written
 // before that carries the old signature and must be rebuilt. Since 0xffb8 it
 // also records where a method's own type parameters stand in its signature (#1242).
-#define MAGIC_NUM_LIB 0xffb8
+// Since 0xffb9 a bundle-level enum is named with its bundle, as a class is
+// ('Query.Structured.ColumnType'), in its own entry and in every signature.
+#define MAGIC_NUM_LIB 0xffb9
+#define MAGIC_NUM_LIB_UNQUALIFIED_ENUMS 0xffb8
 #define MAGIC_NUM_LIB_NO_GENERIC_MARKS 0xffb7
 #define MAGIC_NUM_LIB_NO_PARAM_NAMES 0xffb6 // bitmask 'k'
 
