@@ -7767,14 +7767,41 @@ if(file->IsOpen()) {
 	# works where a column is expected. A double-quoted name is never a keyword.
 	#
 	class : private : SqlToken {
+		#~
+		The kind of a token read by the SQL lexer.
+		~#
 		enum Kind {
+			#~
+			An unquoted word: a keyword where the grammar expects one, otherwise a name.
+			~#
 			WORD,
+			#~
+			A double-quoted name, never a keyword.
+			~#
 			NAME,
+			#~
+			A single-quoted string.
+			~#
 			TEXT,
+			#~
+			A number.
+			~#
 			NUMBER,
+			#~
+			A date between '#' marks.
+			~#
 			DATE,
+			#~
+			A '?' placeholder.
+			~#
 			PARAM,
+			#~
+			An operator or punctuation.
+			~#
 			SYMBOL,
+			#~
+			The end of the statement.
+			~#
 			EOS
 		}
 
@@ -8227,11 +8254,29 @@ if(file->IsOpen()) {
 	}
 
 	class : private : SqlStatement {
+		#~
+		The kind of a parsed SQL statement.
+		~#
 		enum Kind {
+			#~
+			SELECT
+			~#
 			QUERY,
+			#~
+			INSERT
+			~#
 			INSERT,
+			#~
+			UPDATE
+			~#
 			UPDATE,
+			#~
+			DELETE
+			~#
 			DELETE,
+			#~
+			CREATE TABLE
+			~#
 			CREATE
 		}
 
@@ -11182,9 +11227,21 @@ if(file->IsOpen()) {
 	# Keys compare as whole numbers when both sides hold INT, BOOL or DATE values, as numbers
 	# when one side holds FLOAT, and as text otherwise. Empty cells never match.
 	class : private : SqlKeyMatcher {
+		#~
+		How a join compares its keys.
+		~#
 		enum Domain {
+			#~
+			As whole numbers: both sides hold INT, BOOL or DATE values.
+			~#
 			WHOLE,
+			#~
+			As numbers: one side holds FLOAT values.
+			~#
 			NUMBER,
+			#~
+			As text, otherwise.
+			~#
 			TEXT
 		}
 
@@ -12056,6 +12113,9 @@ if(file->IsOpen()) {
 		@type : Type;
 		@value : Compare;
 
+		#~
+		The kind of a token read by the filter Parser's scanner. Keywords are recognized without regard to case; 'true' and 'false' scan as the integers 1 and 0.
+		~#
 		enum Type {
 			SELECT,
 			DISTINCT,
@@ -12079,14 +12139,32 @@ if(file->IsOpen()) {
 			LESS,
 			GREATER_EQUAL,
 			GREATER,
+			#~
+			A column name or a quoted string.
+			~#
 			REF,
+			#~
+			Not produced by the scanner.
+			~#
 			OPER,
 			INT,
 			FLOAT,
 			DATE,
+			#~
+			Not produced by the scanner.
+			~#
 			TRUE,
+			#~
+			Not produced by the scanner.
+			~#
 			FASLE,
+			#~
+			The end of the input.
+			~#
 			EOS,
+			#~
+			A '?' placeholder, numbered in order.
+			~#
 			PARAM
 		}
 		
@@ -15630,9 +15708,21 @@ rs := catalog->Query("select title, @lang from books where year > 2000");
 		@kind : JsonCell->Kind;
 		@text : String;
 
+		#~
+		The kind of a JSON value read into a table cell.
+		~#
 		enum Kind {
+			#~
+			A string.
+			~#
 			TEXT,
+			#~
+			A number.
+			~#
 			NUMBER,
+			#~
+			true or false.
+			~#
 			BOOL
 		}
 

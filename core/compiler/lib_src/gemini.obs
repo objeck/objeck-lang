@@ -104,12 +104,33 @@ each(candidate in candidates) {
 		@top_p : Float;
 		@version : String;
 
+		#~
+		What an embedding will be used for, which Gemini uses to tune it.
+		~#
 		enum TaskType {
+			#~
+			No task type is sent.
+			~#
 			TASK_TYPE_UNSPECIFIED,
+			#~
+			A search query.
+			~#
 			RETRIEVAL_QUERY,
+			#~
+			A document to be searched; it may carry a title.
+			~#
 			RETRIEVAL_DOCUMENT,
+			#~
+			Text to compare for similarity.
+			~#
 			SEMANTIC_SIMILARITY,
+			#~
+			Text to classify.
+			~#
 			CLASSIFICATION,
+			#~
+			Text to cluster.
+			~#
 			CLUSTERING
 		}
 

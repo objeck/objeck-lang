@@ -3069,13 +3069,37 @@ bundle API.OpenAI {
 		@urls : Url[];
 		@b64_images : String[];
 
+		#~
+		The size of an image to generate or edit; each DALL-E model accepts its own.
+		~#
 		enum Size {
+			#~
+			256x256 (DALL-E 2)
+			~#
 			DALLE2_256_256, 
+			#~
+			512x512 (DALL-E 2)
+			~#
 			DALLE2_512_512,
+			#~
+			1024x1024 (DALL-E 2)
+			~#
 			DALLE2_1024_1024,
+			#~
+			1024x1024 (DALL-E 3)
+			~#
 			DALLE3_1024_1024,
+			#~
+			1792x1024 (DALL-E 3)
+			~#
 			DALLE3_1792_1024,
+			#~
+			1024x1792 (DALL-E 3)
+			~#
 			DALLE3_1024_1792,
+			#~
+			No size is sent; the model uses its default.
+			~#
 			DALLE_DEFAULT
 		}
 

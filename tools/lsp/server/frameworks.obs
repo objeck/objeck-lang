@@ -2368,20 +2368,53 @@ bundle LSP {
 			
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
-				# a library enum's items after its '->': the analyzer only knows the
-				# program's own enums
+				# A documented library enum's items after its '->', with their values,
+				# from the API index. The analyzer answers for enums too (the program's
+				# own, and libraries' through the linker), so the two are merged.
 				enum_completion := EnumCompletion(index);
-				if(enum_completion <> Nil) {
-					return enum_completion;
-				};
 
+				completion : JsonElement;
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
-					return proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri));
+					completion := proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri));
 				};
+
+				if(enum_completion <> Nil) {
+					return MergeEnumCompletion(enum_completion, completion);
+				};
+
+				return completion;
 			};
 
 			return Nil;
+		}
+
+		#
+		# The index's enum items, then the analyzer's other items, minus keywords
+		# (nothing after an enum's '->' is one) and any name the index already gave.
+		#
+		function : MergeEnumCompletion(enum_items : JsonElement, others : JsonElement) ~ JsonElement {
+			if(others = Nil | others->GetType() <> JsonElement->JsonType->ARRAY) {
+				return enum_items;
+			};
+
+			labels := Set->New()<String>;
+			each(i : enum_items) {
+				labels->Insert(enum_items->Get(i)->Get("label")->GetString());
+			};
+
+			each(i : others) {
+				item := others->Get(i);
+				label_json := item->Get("label");
+				kind_json := item->Get("kind");
+				if(label_json <> Nil & kind_json <> Nil & kind_json->GetInt() <> 14 &
+						<>labels->Has(label_json->GetString())) {
+					labels->Insert(label_json->GetString());
+					enum_items->Add(item);
+				};
+			};
+
+			return enum_items;
 		}
 
 		# the items of the enum named before the '->' that precedes the cursor

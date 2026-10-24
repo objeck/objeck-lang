@@ -222,11 +222,18 @@ class SnippetParser {
 				"\tProcessed enum: name='{$block_name}'"->PrintLine();
 			};
 			enum_block->SetBundleName(@bundle_block->GetName());
-			owner := FindOwnerClass(@buffer_index);
-			if(owner <> Nil) {
-				enum_block->SetOwnerClass(owner);
+			owner := FindOwnerScope(@buffer_index);
+			if(owner <> Nil & owner->IsPrivate()) {
+				# not API: neither the reference nor the editor index lists a private
+				# class, so its enum would be an entry with no class to belong to
+				"\tSkipped enum in private class: name='{$block_name}'"->PrintLine();
+			}
+			else {
+				if(owner <> Nil) {
+					enum_block->SetOwnerClass(owner->GetName());
+				};
+				@bundle_block->AddEnum(enum_block);
 			};
-			@bundle_block->AddEnum(enum_block);
 		}
 		else {
 			"*** Unable to parse enum/consts block. Text='{$block}' ***"->ErrorLine();
@@ -300,12 +307,12 @@ class SnippetParser {
 	#~
 	The class whose body holds a buffer position, or Nil at bundle level.
 	~#
-	method : FindOwnerClass(index : Int) ~ String {
+	method : FindOwnerScope(index : Int) ~ ClassScope {
 		if(@class_scopes <> Nil) {
 			each(i : @class_scopes) {
 				scope := @class_scopes->Get(i);
 				if(scope->Holds(index)) {
-					return scope->GetName();
+					return scope;
 				};
 			};
 		};
@@ -327,7 +334,9 @@ class SnippetParser {
 
 		depth := 0;
 		pending : String;
+		pending_private := false;
 		current : String;
+		current_private := false;
 		current_depth := 0;
 		current_start := 0;
 
@@ -378,6 +387,7 @@ class SnippetParser {
 				if(prev_ok & (word->Equals("class") | word->Equals("interface"))) {
 					# 'class : private : Name' -- skip the modifiers to the name
 					name : String;
+					is_private := false;
 					done := false;
 					while(<>done & i < size) {
 						nc := buffer->Get(i);
@@ -390,7 +400,10 @@ class SnippetParser {
 								i += 1;
 							};
 							name := buffer->SubString(name_start, i - name_start);
-							if(<>name->Equals("private") & <>name->Equals("public")) {
+							if(name->Equals("private")) {
+								is_private := true;
+							}
+							else if(<>name->Equals("public")) {
 								done := true;
 							};
 						}
@@ -400,6 +413,7 @@ class SnippetParser {
 						};
 					};
 					pending := name;
+					pending_private := is_private;
 				};
 			}
 			else {
@@ -407,6 +421,7 @@ class SnippetParser {
 					depth += 1;
 					if(pending <> Nil & current = Nil) {
 						current := pending;
+						current_private := pending_private;
 						current_depth := depth;
 						current_start := i;
 					};
@@ -414,7 +429,7 @@ class SnippetParser {
 				}
 				else if(c = '}') {
 					if(current <> Nil & depth = current_depth) {
-						scopes->AddBack(ClassScope->New(current_start, i, current));
+						scopes->AddBack(ClassScope->New(current_start, i, current, current_private));
 						current := Nil;
 					};
 					depth -= 1;
@@ -1018,6 +1033,13 @@ class EnumConstSnippet from Snippet {
 
 	method : public : SetOwnerClass(owner_class : String) ~ Nil {
 		@owner_class := owner_class;
+
+		# GetName is what the reference lists and links: 'Klass-&gt;Name', as the
+		# '@class' tag already wrote it. Without it, a class's enum was listed at
+		# bundle level by its short name, and two classes' 'Type' were one page.
+		if(@klass = Nil) {
+			@name := owner_class + "-&gt;" + @short_name;
+		};
 	}
 
 	#~
@@ -1980,11 +2002,17 @@ class ClassScope {
 	@start : Int;
 	@end : Int;
 	@name : String;
+	@is_private : Bool;
 
-	New(start : Int, end : Int, name : String) {
+	New(start : Int, end : Int, name : String, is_private : Bool) {
 		@start := start;
 		@end := end;
 		@name := name;
+		@is_private := is_private;
+	}
+
+	method : public : IsPrivate() ~ Bool {
+		return @is_private;
 	}
 
 	method : public : Holds(index : Int) ~ Bool {

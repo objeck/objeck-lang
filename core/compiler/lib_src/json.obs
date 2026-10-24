@@ -1940,22 +1940,73 @@ obj->ToString()->PrintLine();
 		@type : Token->Type;
 		@value : String;
 		
+		#~
+		The kind of a token read by the JSON scanner.
+		~#
 		enum Type {
+			#~
+			A quoted string; the value is its text.
+			~#
 			IDENT,
+			#~
+			An integer number.
+			~#
 			INT_NUM,
+			#~
+			A number with a fraction or exponent.
+			~#
 			FLOAT_NUM,
+			#~
+			Text that starts like a number but is not a valid one.
+			~#
 			BAD_NUM,
+			#~
+			The literal true.
+			~#
 			TRUE,
+			#~
+			The literal false.
+			~#
 			FALSE,
+			#~
+			The literal null.
+			~#
 			NULL,
+			#~
+			A comma.
+			~#
 			COMMA,
+			#~
+			An opening bracket.
+			~#
 			OBR,
+			#~
+			A closing bracket.
+			~#
 			CBR,
+			#~
+			An opening brace.
+			~#
 			OCBR,
+			#~
+			A closing brace.
+			~#
 			CCBR,
+			#~
+			Not produced by the scanner.
+			~#
 			PREN,
+			#~
+			A colon.
+			~#
 			COLON,
+			#~
+			Any other character.
+			~#
 			OTHER,
+			#~
+			The end of the input.
+			~#
 			EOS
 		}
 		

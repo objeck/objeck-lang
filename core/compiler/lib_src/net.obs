@@ -152,11 +152,29 @@ if(html <> Nil) {
 ```
 	~#
 	class HttpClient {
+		#~
+		The HTTP method of a request.
+		~#
 		enum Task {
+			#~
+			GET
+			~#
 			GET,
+			#~
+			DELETE
+			~#
 			DELETE,
+			#~
+			POST
+			~#
 			POST,
+			#~
+			PUT
+			~#
 			PUT,
+			#~
+			PATCH
+			~#
 			PATCH
 		}
 

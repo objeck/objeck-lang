@@ -468,10 +468,19 @@ class HtmlMaker {
 		main_html += RenderDesc(enum_block->GetDesc());
 		main_html += "<h3>Items</h3><ul>";
 
+		# an item's own doc comment follows it
 		enum_items := enum_block->GetItems();
-		each(enum_item in enum_items) {
+		item_descs := enum_block->GetItemDescs();
+		each(i : enum_items) {
 			main_html += "<li>";
-			main_html += enum_item;
+			main_html += enum_items->Get(i);
+			if(i < item_descs->Size()) {
+				item_desc := item_descs->Get(i);
+				if(item_desc <> Nil & <>item_desc->IsEmpty()) {
+					main_html += " &mdash; ";
+					main_html += item_desc;
+				};
+			};
 			main_html += "</li>";
 		};
 		main_html += "</ul>";
@@ -690,11 +699,46 @@ class HtmlMaker {
 						enum_link += class_enum_str;
 						enum_link += "</a>";
 
-						# "enum_link=\"{$enum_link}\""->PrintLine();							
+						# "enum_link=\"{$enum_link}\""->PrintLine();
 						return enum_link;
 					};
 				};
 			};
+		};
+
+		# A class's own enum named bare inside it ('Compression' in Response):
+		# its page is 'Klass->Name', so link it when only one used enum has
+		# that short name.
+		found_block : EnumConstSnippet;
+		ambiguous := false;
+		each(bundle_key in bundle_keys) {
+			if(file_uses->Has(bundle_key)) {
+				bundle_snippit := bundles->Find(bundle_key);
+				enums := bundle_snippit->GetEnums();
+				enum_keys := enums->GetKeys()<String>;
+				each(enum_key in enum_keys) {
+					enum_block := enums->Find(enum_key);
+					if(enum_block <> Nil & enum_block->GetOwnerClass() <> Nil & enum_block->GetShortName()->Equals(class_enum_str)) {
+						if(found_block <> Nil) {
+							ambiguous := true;
+						};
+						found_block := enum_block;
+					};
+				};
+			};
+		};
+
+		if(found_block <> Nil & <>ambiguous) {
+			enum_link := "<a href='"
+			enum_link += GetEnumLink(found_block);
+
+			link_target := found_block->GetBundleName()->ToLower();
+			enum_link += "?scrollTo={$link_target}'>";
+
+			enum_link += class_enum_str;
+			enum_link += "</a>";
+
+			return enum_link;
 		};
 
 		return Nil;

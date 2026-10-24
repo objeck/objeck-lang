@@ -1254,9 +1254,21 @@ bundle Web.HTTP.Server {
 		@request_path : String;
 		@forward_alias_name : String;
 
+		#~
+		How SetCompression encodes a response's content.
+		~#
 		enum Compression := 100 {
+			#~
+			Not compressed.
+			~#
 			NONE,
+			#~
+			gzip (RFC 1952), sent as Content-Encoding: gzip.
+			~#
 			GZIP,
+			#~
+			The zlib format (RFC 1950), which is what HTTP calls deflate.
+			~#
 			DEFLATE
 		}
 

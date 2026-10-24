@@ -10189,9 +10189,21 @@ if(@fn_sdl_font_quit = Nil) { @fn_sdl_font_quit := "sdl_font_quit"; };
 		@fn_sdl_mixer_record_pcm : static : String;
 		@fn_sdl_mixer_volume : static : String;
 		@fn_sdl_mixer_set_panning : static : String;
+		#~
+		Mixer defaults, as SDL_mixer defines them.
+		~#
 		consts Flags {
+			#~
+			The default sample format, signed 16-bit in the system's byte order.
+			~#
 			MIX_DEFAULT_FORMAT := 0x8010,
+			#~
+			The default channel count: stereo.
+			~#
 			MIX_DEFAULT_CHANNELS := 2,
+			#~
+			The loudest volume Volume and VolumeMusic accept.
+			~#
 			MIX_MAX_VOLUME := 128
 		}
 

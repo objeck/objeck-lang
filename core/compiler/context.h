@@ -786,6 +786,9 @@ class ContextAnalyzer {
 
   void GetCompletionMethods(MethodCall* mthd_call, const std::wstring mthd_str, std::set<std::wstring> unique_names, std::vector<std::pair<int, std::wstring> >& found_completion);
 
+  void GetCompletionEnumItems(ParsedProgram* program, Class* context_klass, const std::wstring& var_str, const std::wstring& mthd_str,
+                              std::set<std::wstring>& unique_names, std::vector<std::pair<int, std::wstring> >& found_completion);
+
   void FindCompletionMethods(Class* klass, LibraryClass* lib_klass, const std::wstring mthd_str, std::vector<Method*>& found_methods, std::vector<LibraryMethod*>& found_lib_methods);
 
   bool GetSignature(Method* method, const std::wstring var_str, const std::wstring mthd_str, std::vector<Method*>& found_methods, std::vector<LibraryMethod*>& found_lib_methods);
