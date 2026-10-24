@@ -193,6 +193,25 @@ void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
 }
 
 /****************************
+ * The fix-it for a decimal
+ * literal with a leading zero:
+ * '010' suggests 0o10 (octal 8)
+ * or 10; '09' has no octal
+ * reading, so it suggests 9.
+ ****************************/
+static std::wstring LeadingZeroAdvice(const std::wstring &digits)
+{
+  size_t start = digits.find_first_not_of(L'0');
+  const std::wstring trimmed = start == std::wstring::npos ? L"0" : digits.substr(start);
+  if(trimmed.find_first_of(L"89") == std::wstring::npos) {
+    const unsigned long long octal = wcstoull(trimmed.c_str(), nullptr, 8);
+    return L"write '0o" + trimmed + L"' for octal (" + std::to_wstring(octal) +
+      L") or '" + trimmed + L"' for decimal";
+  }
+  return L"write '" + trimmed + L"' for decimal; octal literals take a '0o' prefix";
+}
+
+/****************************
  * An integer or float literal
  * outside its type's range (the
  * scanner's TOKEN_BAD_INT_LIT and
@@ -219,6 +238,12 @@ Expression* Parser::ParseBadNumericLiteral(bool negate, const std::wstring &file
     ProcessError(L"Float literal out of range: '" + literal +
                  L"'\n\tFloat is a 64-bit double: a nonzero magnitude must be from 4.9406564584124654e-324 to 1.7976931348623157e308");
     expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, 0.0);
+  }
+  else if(token->GetType() == TOKEN_LEADING_ZERO_INT_LIT) {
+    std::wstring advice = LeadingZeroAdvice(token->GetIdentifier());
+    advice[0] = L'W';
+    ProcessError(L"Integer literal with a leading zero: '" + literal + L"'\n\t" + advice);
+    expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
   }
   else if(negate && token->GetInt64Lit() == INT64_MIN) {
     expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, INT64_MIN);
@@ -7679,6 +7704,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_BAD_INT_LIT:
+    case TOKEN_LEADING_ZERO_INT_LIT:
     case TOKEN_BAD_FLOAT_LIT:
       expression = ParseBadNumericLiteral(true, file_name, line_num, line_pos);
       break;
@@ -7728,6 +7754,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
       break;
 
     case TOKEN_BAD_INT_LIT:
+    case TOKEN_LEADING_ZERO_INT_LIT:
     case TOKEN_BAD_FLOAT_LIT:
       expression = ParseBadNumericLiteral(false, file_name, line_num, line_pos);
       break;

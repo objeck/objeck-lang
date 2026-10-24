@@ -119,6 +119,9 @@ enum ScannerTokenType {
   TOKEN_BAD_CHAR_STRING_LIT,
   // an integer literal outside its range (#1184)
   TOKEN_BAD_INT_LIT,
+  // a multi-digit integer literal with a leading zero ('010', '09'): once
+  // read as octal, so '010' was silently 8; octal is written '0o10'
+  TOKEN_LEADING_ZERO_INT_LIT,
   // a float literal that overflows to infinity or underflows to zero
   TOKEN_BAD_FLOAT_LIT,
   // reserved words
@@ -679,7 +682,7 @@ class Scanner {
   // parsers a character string
   void CheckString(int index, bool is_lit, bool is_valid);
   // parse an integer
-  void ParseInteger(int index, int base = 0);
+  void ParseInteger(int index, int base = 10);
   // parse a double
   void ParseDouble(int index);
   // true if a float literal's mantissa has a nonzero digit

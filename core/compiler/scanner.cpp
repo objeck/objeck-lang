@@ -30,6 +30,7 @@
  ***************************************************************************/
 
 #include "scanner.h"
+#include <algorithm>
 #include <cerrno>
 #include <cmath>
 #include <cstdint>
@@ -547,8 +548,22 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
     ident.pop_back();
   }
 
-  if(ident.back() == L'_') {
+  // the digits after a '0b' or '0o' prefix; a bare prefix has none
+  const bool is_prefixed = base == 2 || base == 8;
+
+  if(ident.back() == L'_' || (is_prefixed && ident.size() < 3)) {
     tokens[index]->SetType(TOKEN_UNKNOWN);
+  }
+  // A decimal literal with a leading zero ('010', '09'). It was read as
+  // octal, so '010' compiled silently as 8 and '09' was an unknown token. It
+  // is an error, as in Python 3: octal is written '0o10'. '0' alone, and
+  // floats such as '0.5', are unaffected.
+  else if(base == 10 && ident.size() > 1 && ident[0] == L'0' &&
+          std::all_of(ident.begin(), ident.end(), [](wchar_t c) { return iswdigit(c) || c == L'_'; })) {
+    ident.erase(std::remove(ident.begin(), ident.end(), L'_'), ident.end());
+    tokens[index]->SetType(TOKEN_LEADING_ZERO_INT_LIT);
+    tokens[index]->SetIdentifier(ident);
+    tokens[index]->SetInt64Lit(0);
   }
   else {
     ident.erase(std::remove(ident.begin(), ident.end(), L'_'), ident.end());
@@ -557,11 +572,11 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
     wchar_t* ending = nullptr;
     errno = 0;
 
-    // Hex and binary are bit-pattern notation, so they are read as unsigned:
-    // 0xFFFFFFFFFFFFFFFF is every bit set, not a saturated maximum.
-    if(is_unsigned || base == 16 || base == 2) {
-      const unsigned long long value = (base == 2)
-        ? wcstoull(ident.c_str() + 2, &ending, 2)
+    // Hex, octal and binary are bit-pattern notation, so they are read as
+    // unsigned: 0xFFFFFFFFFFFFFFFF is every bit set, not a saturated maximum.
+    if(is_unsigned || base == 16 || is_prefixed) {
+      const unsigned long long value = is_prefixed
+        ? wcstoull(ident.c_str() + 2, &ending, base)
         : wcstoull(ident.c_str(), &ending, base);
       tokens[index]->SetInt64Lit((INT64_VALUE)value);
     }
@@ -580,7 +595,7 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
       // '-9223372036854775808' and still reject the bare literal, as Java
       // does. Every other out-of-range literal carries 0.
       INT64_VALUE magnitude_marker = 0;
-      if(!is_unsigned && base != 16 && base != 2) {
+      if(!is_unsigned && base != 16 && !is_prefixed) {
         errno = 0;
         wchar_t* unsigned_ending = nullptr;
         const unsigned long long magnitude = wcstoull(ident.c_str(), &unsigned_ending, base);
@@ -1175,9 +1190,20 @@ void Scanner::ParseToken(int index)
     int double_state = 0;
     int hex_state = 0;
     int bin_state = 0;
+    bool oct_state = false;
 
     // mark
     start_pos = buffer_pos - 1;
+
+    // test octal state: '0o17' (or '0O17'). The prefix is taken only when a
+    // digit or '_' follows, so '0' next to a name starting with 'o' still
+    // scans as 0 and that name.
+    if(cur_char == L'0' && (nxt_char == L'o' || nxt_char == L'O') &&
+       (iswdigit(nxt_nxt_char) || nxt_nxt_char == L'_')) {
+      oct_state = true;
+      NextChar();
+      NextChar();
+    }
 
     // test hex state
     if(cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X')) {
@@ -1211,7 +1237,7 @@ void Scanner::ParseToken(int index)
       // decimal double
       else if(cur_char == L'.') {
         // error
-        if(double_state || hex_state || bin_state) {
+        if(double_state || hex_state || bin_state || oct_state) {
           tokens[index]->SetType(TOKEN_UNKNOWN);
           NextChar();
           break;
@@ -1269,9 +1295,13 @@ void Scanner::ParseToken(int index)
     // mark
     end_pos = buffer_pos - 1;
     // state 1, 2 or 3
-    if(double_state > 0 && double_state < 4) {
+    if(oct_state) {
+      // any stray letter or '.' is left for ParseInteger to reject
+      ParseInteger(index, 8);
+    }
+    else if(double_state > 0 && double_state < 4) {
       ParseDouble(index);
-    } 
+    }
     else if(hex_state == 2) {
       ParseInteger(index, 16);
     }

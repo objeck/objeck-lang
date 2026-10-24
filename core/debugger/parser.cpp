@@ -77,6 +77,25 @@ void Parser::ProcessError(const std::wstring &msg)
 }
 
 /****************************
+ * The fix-it for a decimal
+ * literal with a leading zero:
+ * '010' suggests 0o10 (octal 8)
+ * or 10; '09' has no octal
+ * reading, so it suggests 9.
+ ****************************/
+static std::wstring LeadingZeroAdvice(const std::wstring &digits)
+{
+  size_t start = digits.find_first_not_of(L'0');
+  const std::wstring trimmed = start == std::wstring::npos ? L"0" : digits.substr(start);
+  if(trimmed.find_first_of(L"89") == std::wstring::npos) {
+    const unsigned long long octal = wcstoull(trimmed.c_str(), nullptr, 8);
+    return L"write '0o" + trimmed + L"' for octal (" + std::to_wstring(octal) +
+      L") or '" + trimmed + L"' for decimal";
+  }
+  return L"write '" + trimmed + L"' for decimal; octal literals take a '0o' prefix";
+}
+
+/****************************
  * A number outside its type's
  * range, reported with the
  * compiler's wording. The token
@@ -96,6 +115,10 @@ Expression* Parser::ParseBadNumericLiteral(bool negate)
     ProcessError(L"Float literal out of range: '" + literal +
                  L"'; Float is a 64-bit double: a nonzero magnitude must be from 4.9406564584124654e-324 to 1.7976931348623157e308");
     expression = TreeFactory::Instance()->MakeFloatLiteral(0.0);
+  }
+  else if(token->GetType() == TOKEN_LEADING_ZERO_INT_LIT) {
+    ProcessError(L"Integer literal with a leading zero: '" + literal + L"'; " + LeadingZeroAdvice(token->GetIdentifier()));
+    expression = TreeFactory::Instance()->MakeIntegerLiteral(0);
   }
   else if(negate && token->GetIntLit() == INT64_MIN) {
     expression = TreeFactory::Instance()->MakeIntegerLiteral(INT64_MIN);
@@ -946,6 +969,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
         break;
 
       case TOKEN_BAD_INT_LIT:
+      case TOKEN_LEADING_ZERO_INT_LIT:
       case TOKEN_BAD_FLOAT_LIT:
         expression = ParseBadNumericLiteral(true);
         break;
@@ -987,6 +1011,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
         break;
 
       case TOKEN_BAD_INT_LIT:
+      case TOKEN_LEADING_ZERO_INT_LIT:
       case TOKEN_BAD_FLOAT_LIT:
         expression = ParseBadNumericLiteral(false);
         break;

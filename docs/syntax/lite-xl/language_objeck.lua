@@ -13,6 +13,7 @@ syntax.add {
     { pattern = "'\\?.'",                   type = "string"   }, -- character literal
     { pattern = "-?0x%x+",                  type = "number"   },
     { pattern = "-?0b[0-1]+",               type = "number"   },
+    { pattern = "-?0o[0-7]+",               type = "number"   },
     { pattern = "-?%d+[%d%.eE]*f?",         type = "number"   },
     { pattern = "-?%.?%d+f?",               type = "number"   },
     { pattern = "[%+%-=/%*%^%%<>!~|&]",     type = "operator" },

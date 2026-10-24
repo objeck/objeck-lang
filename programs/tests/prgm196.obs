@@ -4,7 +4,7 @@ class Test {
 		1023->PrintLine(); # dec
 		0XCB0->PrintLine(); # hex
 		-0b1101->PrintLine(); # bin
-		052->PrintLine(); # oct
+		0o52->PrintLine(); # oct
 		(0B101 + 8)->PrintLine(); # bin
 	}
 }

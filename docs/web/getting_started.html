@@ -656,10 +656,17 @@
 3.89-&gt;Sin()-&gt;PrintLine();
 0xCB0-&gt;PrintLine(); # hex
 -0b1101-&gt;PrintLine(); # bin
-052-&gt;PrintLine(); # oct
+0o52-&gt;PrintLine(); # oct
 1_000_000-&gt;PrintLine(); # underscores are ignored
 "Hello World"-&gt;Size()-&gt;PrintLine();
 </code></pre>
+       <p>
+        Octal literals take a <code>0o</code> prefix, as hexadecimal takes <code>0x</code> and
+        binary <code>0b</code>. An integer literal of more than one digit may not start with
+        <code>0</code>: <code>010</code> is a compile error that suggests <code>0o10</code> (octal 8)
+        or <code>10</code>, so a leading zero can never silently change a value. <code>0</code> on
+        its own and floats such as <code>0.5</code> are unaffected.
+       </p>
        <p>
         A <code>u</code> (or <code>U</code>) suffix reads an integer literal across the whole
         unsigned range and keeps its bit pattern, which is how values above the signed maximum
