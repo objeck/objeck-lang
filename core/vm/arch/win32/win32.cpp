@@ -258,6 +258,76 @@ SOCKET IPSocket::BindAny(int port, int type) {
   return server;
 }
 
+// see the declarations in win32.h
+SOCKET IPSocket::BindAddress(const char* host, int port, int type) {
+  if(!host || !*host) {
+    return BindAny(port, type);
+  }
+
+  struct addrinfo hints;
+  ZeroMemory(&hints, sizeof(hints));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = type;
+  hints.ai_protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
+  hints.ai_flags = AI_PASSIVE;
+
+  struct addrinfo* result = nullptr;
+  const std::string port_str = std::to_string(port);
+  const int status = getaddrinfo(host, port_str.c_str(), &hints, &result);
+  if(status != 0) {
+    // the EAI_* codes are WSA error codes on Windows
+    WSASetLastError(status);
+    return INVALID_SOCKET;
+  }
+
+  SOCKET server = INVALID_SOCKET;
+  int last_error = WSAEADDRNOTAVAIL;
+  const int families[] = { AF_INET, AF_INET6 };
+  for(int i = 0; i < 2 && server == INVALID_SOCKET; ++i) {
+    for(struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+      if(ptr->ai_family != families[i]) {
+        continue;
+      }
+
+      SOCKET sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+      if(sock == INVALID_SOCKET) {
+        last_error = WSAGetLastError();
+        continue;
+      }
+
+      if(ptr->ai_family == AF_INET6) {
+        // already the Windows default; set so the meaning does not rest on it
+        int v6_only = 1;
+        if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&v6_only, sizeof(v6_only)) == SOCKET_ERROR) {
+          WSASetLastError(0);
+        }
+      }
+
+      // non-fatal, as in BindAny
+      int reuse = 1;
+      if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+        WSASetLastError(0);
+      }
+
+      if(::bind(sock, ptr->ai_addr, (int)ptr->ai_addrlen) == SOCKET_ERROR) {
+        last_error = WSAGetLastError();
+        closesocket(sock);
+        continue;
+      }
+
+      server = sock;
+      break;
+    }
+  }
+  freeaddrinfo(result);
+
+  if(server == INVALID_SOCKET) {
+    WSASetLastError(last_error);
+  }
+
+  return server;
+}
+
 void IPSocket::FormatAddress(const struct sockaddr* addr, char* buffer, size_t buffer_size, int& port) {
   buffer[0] = '\0';
   port = -1;

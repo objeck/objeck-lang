@@ -493,6 +493,88 @@ public:
   }
 
   //
+  // A server socket bound to one local address: a literal ("127.0.0.1",
+  // "::1") or a name resolved with getaddrinfo. An empty or null host is the
+  // dual-stack wildcard (BindAny). A name can resolve to several addresses
+  // and one socket binds one, so this binds the first IPv4 address that
+  // binds, else the first IPv6 one: "localhost" is 127.0.0.1 on every
+  // platform, whatever order the resolver lists its addresses in. An IPv6
+  // address is bound IPv6-only, so "::1" takes ::1 clients and nothing else.
+  // On failure returns -1 with the reason in errno (EADDRNOTAVAIL when the
+  // name does not resolve). A name lookup can block: the caller parks around it.
+  //
+  static SOCKET BindAddress(const char* host, int port, int type) {
+    if(!host || !*host) {
+      return BindAny(port, type);
+    }
+
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = type;
+    hints.ai_protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+
+    struct addrinfo* result = nullptr;
+    const std::string port_str = std::to_string(port);
+    const int status = getaddrinfo(host, port_str.c_str(), &hints, &result);
+    if(status != 0) {
+      // the EAI_* codes are not errno values; keep errno only for EAI_SYSTEM
+      if(status != EAI_SYSTEM || errno == 0) {
+        errno = EADDRNOTAVAIL;
+      }
+      return -1;
+    }
+
+    SOCKET server = -1;
+    int last_error = EADDRNOTAVAIL;
+    const int families[] = { AF_INET, AF_INET6 };
+    for(int i = 0; i < 2 && server < 0; ++i) {
+      for(struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
+        if(ptr->ai_family != families[i]) {
+          continue;
+        }
+
+        SOCKET sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+        if(sock < 0) {
+          last_error = errno;
+          continue;
+        }
+
+        if(ptr->ai_family == AF_INET6) {
+          // Linux defaults to off: then "::" would take IPv4 clients too
+          int v6_only = 1;
+          if(setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &v6_only, sizeof(v6_only)) < 0) {
+            errno = 0;
+          }
+        }
+
+        // non-fatal, as in BindAny
+        int reuse = 1;
+        if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+          errno = 0;
+        }
+
+        if(::bind(sock, ptr->ai_addr, ptr->ai_addrlen) < 0) {
+          last_error = errno;
+          close(sock);
+          continue;
+        }
+
+        server = sock;
+        break;
+      }
+    }
+    freeaddrinfo(result);
+
+    if(server < 0) {
+      errno = last_error;
+    }
+
+    return server;
+  }
+
+  //
   // A peer's numeric address and port. An IPv4 client of a dual-stack server
   // arrives as ::ffff:a.b.c.d and is reported as a.b.c.d, as it always was.
   //

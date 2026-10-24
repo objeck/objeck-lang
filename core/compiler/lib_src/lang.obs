@@ -12994,6 +12994,25 @@ bundle System.IO.Net {
 		  @port := port;
 		  SOCK_TCP_BIND;
 		}
+
+		#~
+		Constructor that binds one local address instead of every interface.
+		The address is a literal, such as "127.0.0.1" or "::1", or a host name
+		such as "localhost". A name that resolves to several addresses binds
+		one: its first IPv4 address, else its first IPv6 one, so "localhost"
+		binds 127.0.0.1 on every platform. An IPv6 address takes IPv6 clients
+		only. An empty or Nil address binds every interface, IPv4 and IPv6,
+		as New(port) does. If the address cannot be bound (an unknown name, an
+		address this machine does not have, a port in use), Listen() returns
+		false and GetLastError() says why.
+		@param address local address to bind
+		@param port server port
+		~#
+		New(address : String, port : Int) {
+		  Parent();
+		  @port := port;
+		  SOCK_TCP_BIND_ADDR;
+		}
 	
 		#~
 		Listens for incoming client connections
@@ -13039,6 +13058,7 @@ bundle System.IO.Net {
 		@key : String;
 		@passwd : String;
 		@port : Int;
+		@address : String;
 
 		#~
 		Default constructor
@@ -13054,13 +13074,46 @@ bundle System.IO.Net {
 		  @passwd := passwd;
 		  @port := port;
 		}
+
+		#~
+		Constructor that binds one local address instead of every interface.
+		The address is read as by TCPSocketServer->New(address, port): a
+		literal such as "127.0.0.1" or "::1", or a host name, of which the
+		first IPv4 address (else the first IPv6 one) is bound; an empty or Nil
+		address binds every interface. A bad address makes Listen() return false.
+		@param cert path to ssl cert
+		@param key path to ssl key
+		@param passwd private key password
+		@param address local address to bind
+		@param port server port
+		~#
+		New(cert : String, key : String, passwd : String, address : String, port : Int) {
+		  Parent();
+		  @cert := cert;
+		  @key := key;
+		  @passwd := passwd;
+		  @port := port;
+		  @address := address;
+		}
 	
 		#~
 		Listens for incoming client connections
 		@return true if client successfully connects, false otherwise
 		~#
 		method : public : Listen() ~ Bool {
+			if(@address <> Nil) {
+				return ListenAddress(@address);
+			};
+
+			return ListenAny();
+		}
+
+		method : private : ListenAny() ~ Bool {
 			SOCK_TCP_SSL_LISTEN;
+		}
+
+		method : private : ListenAddress(address : String) ~ Bool {
+			SOCK_TCP_SSL_LISTEN_ADDR;
 		}
 	
 		#~

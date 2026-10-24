@@ -346,6 +346,10 @@ namespace instructions {
     // inflate at most 'limit' bytes, answering Nil past it, so a zip bomb is
     // stopped at the caller's bound rather than the VM's 512 MB buffer limit
     UNCOMPRESS_DEFLATE_LIMIT,
-    UNCOMPRESS_GZIP_LIMIT
+    UNCOMPRESS_GZIP_LIMIT,
+    // TCPSocketServer->New(address, port) and a TCPSecureSocketServer given
+    // an address: bind one local address instead of the wildcard
+    SOCK_TCP_BIND_ADDR,
+    SOCK_TCP_SSL_LISTEN_ADDR
   };
 }

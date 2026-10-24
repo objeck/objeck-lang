@@ -3094,6 +3094,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case UNCOMPRESS_GZIP_LIMIT:
     return UncompressLimit(MAX_WBITS | 16, program, inst, op_stack, stack_pos, frame);
 
+  case SOCK_TCP_BIND_ADDR:
+    return SockTcpBindAddress(program, inst, op_stack, stack_pos, frame);
+
+  case SOCK_TCP_SSL_LISTEN_ADDR:
+    return SockTcpSslListenAddress(program, inst, op_stack, stack_pos, frame);
+
   case FILE_COPY:
     return FileCopy(program, inst, op_stack, stack_pos, frame);
 
@@ -4990,6 +4996,54 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
   return true;
 }
 
+//
+// TCPSocketServer->New(address : String, port : Int): binds one local address
+// (IPSocket::BindAddress); a Nil or empty address is the dual-stack wildcard,
+// as New(port) binds. A failed bind leaves the handle at -1, so Listen()
+// answers false and GetLastError() says why.
+//
+bool TrapProcessor::SockTcpBindAddress(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const long port = (long)PopInt(op_stack, stack_pos);
+  size_t* str_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  if(instance) {
+    std::string host;
+    if(str_obj && str_obj[0]) {
+      host = UnicodeToBytes((wchar_t*)((size_t*)str_obj[0] + 3));
+    }
+
+    // a name lookup can block: park, with only C locals touched while parked.
+    // The instance is re-rooted on the op_stack so a collection that moves it
+    // fixes the reference, and is re-read after (#874).
+    PushInt((size_t)instance, op_stack, stack_pos);
+    MemoryManager::BeginBlocking();
+    const SOCKET server = IPSocket::BindAddress(host.c_str(), static_cast<int>(port), SOCK_STREAM);
+#ifdef _WIN32
+    const int bind_error = WSAGetLastError();
+#else
+    const int bind_error = errno;
+#endif
+    MemoryManager::EndBlocking();
+    instance = (size_t*)PopInt(op_stack, stack_pos);
+
+    // GetLastError() reports the bind's failure, not whatever the park did
+#ifdef _WIN32
+    WSASetLastError(bind_error);
+#else
+    errno = bind_error;
+#endif
+
+#ifdef _DEBUG
+    std::wcout << L"# socket bind: address='" << BytesToUnicode(host) << L"'; port=" << port
+      << L"; addr=" << server << L"(" << (long)server << L") #" << std::endl;
+#endif
+    instance[0] = (long)server;
+  }
+
+  return true;
+}
+
 bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   long backlog = (long)PopInt(op_stack, stack_pos);
@@ -5377,9 +5431,11 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 // which one depended on the platform. A client of "localhost" went wherever
 // its resolver listed first and, on a mismatch, found nothing there.
 //
-static int BindServerSocket(mbedtls_net_context& ctx, int port, int type)
+// A non-empty host binds that one address instead (IPSocket::BindAddress).
+//
+static int BindServerSocket(mbedtls_net_context& ctx, int port, int type, const char* host = nullptr)
 {
-  const SOCKET sock = IPSocket::BindAny(port, type);
+  const SOCKET sock = IPSocket::BindAddress(host, port, type);
 #ifdef _WIN32
   if(sock == INVALID_SOCKET) {
 #else
@@ -5531,6 +5587,35 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
 bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  SecureServerListen(instance, std::string(), op_stack, stack_pos);
+  return true;
+}
+
+//
+// TCPSecureSocketServer->Listen() for a server given an address: as
+// SockTcpSslListen, but the listener binds that one address. Called as
+// method : ListenAddress(address : String) ~ Bool.
+//
+bool TrapProcessor::SockTcpSslListenAddress(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* str_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  std::string host;
+  if(str_obj && str_obj[0]) {
+    host = UnicodeToBytes((wchar_t*)((size_t*)str_obj[0] + 3));
+  }
+  SecureServerListen(instance, host, op_stack, stack_pos);
+
+  return true;
+}
+
+//
+// Sets up a TLS server and binds its listener: the wildcard when host is
+// empty, else that address. Pushes true on success, false otherwise.
+//
+void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host, size_t*& op_stack, size_t*& stack_pos)
+{
   if(instance) {
     size_t* cert_obj = (size_t*)instance[3];
     size_t* key_obj = (size_t*)instance[4];
@@ -5548,7 +5633,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       // Load server certificate
@@ -5558,7 +5643,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       // Load private key (with optional password)
@@ -5578,16 +5663,29 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
-      // Bind to port: IPv4 and IPv6 alike (see BindServerSocket)
-      ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM);
+      // Bind to port: IPv4 and IPv6 alike (see BindServerSocket), or the
+      // one address asked for
+      if(host.empty()) {
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM);
+      }
+      else {
+        // a name lookup can block: park, touching only C locals and srv (C
+        // heap). The instance is re-rooted on the op_stack so a collection
+        // that moves it fixes the reference, and is re-read after (#874).
+        PushInt((size_t)instance, op_stack, stack_pos);
+        MemoryManager::BeginBlocking();
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_STREAM, host.c_str());
+        MemoryManager::EndBlocking();
+        instance = (size_t*)PopInt(op_stack, stack_pos);
+      }
       if(ret != 0) {
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       // Configure SSL for server
@@ -5597,7 +5695,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       mbedtls_ssl_conf_rng(&srv->conf, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
@@ -5608,12 +5706,12 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
       instance[2] = 0;
 
       PushInt(1, op_stack, stack_pos);
-      return true;
+      return;
     }
   }
 
   PushInt(0, op_stack, stack_pos);
-  return true;
+  return;
 }
 
 bool TrapProcessor::SockTcpSslSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
@@ -5728,9 +5826,10 @@ bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& o
 #ifdef _WIN32
   char error_msg[SMALL_BUFFER_MAX] = {0};
   FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,	0, WSAGetLastError(), 0, error_msg, SMALL_BUFFER_MAX, 0);
-  char* newline = strrchr(error_msg, '\n');
-  if(newline) {
-    *newline = '\0';
+  // the system message ends in CRLF: dropping only the LF left a stray CR
+  size_t msg_len = strlen(error_msg);
+  while(msg_len > 0 && (error_msg[msg_len - 1] == '\n' || error_msg[msg_len - 1] == '\r')) {
+    error_msg[--msg_len] = '\0';
   }
   const std::wstring err_msg = BytesToUnicode(error_msg);
   PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
