@@ -105,9 +105,9 @@ class QuerySourceOdbc {
 		Check("real numbers", table->GetColumn("r")->GetFloat(0) = 1.5 & table->GetColumn("d")->GetFloat(0) = -2.25 & table->GetColumn("n")->GetFloat(0) = 12.34);
 		Check("text in any script", Text(table, "v", 0)->Equals("héllo, 世界") & Text(table, "tx", 0)->Equals("it's"));
 		Check("binary as hexadecimal, zero bytes kept", Text(table, "bl", 0)->Equals("00ff1000"));
-		date := table->GetColumn("dt")->Get(0)->As(Date);
+		date := table->GetColumn("dt")->Get(0)->As(System.Time.Date);
 		Check("a date", date->GetYear() = 2026 & date->GetMonth() = 10 & date->GetDay() = 24);
-		stamp := table->GetColumn("ts")->Get(0)->As(Date);
+		stamp := table->GetColumn("ts")->Get(0)->As(System.Time.Date);
 		Check("a timestamp, to the second", stamp->GetYear() = 2026 & stamp->GetMonth() = 10 & stamp->GetDay() = 24 &
 			stamp->GetHours() = 13 & stamp->GetMinutes() = 14 & stamp->GetSeconds() = 15);
 		Check("a time is text", Text(table, "tm", 0)->Equals("13:14:15"));
@@ -177,7 +177,7 @@ class QuerySourceOdbc {
 		flagged := flag->Read();
 		Check("a Bool parameter binds", flagged <> Nil & flagged->Size() = 1 & flagged->GetColumn("i")->GetInt(0) = -7);
 		dated := OdbcSource->New(conn, "kinds");
-		dated->SetWhere("ts >= ?", [Date->New(1, 1, 2026, false)]->As(Compare[]));
+		dated->SetWhere("ts >= ?", [System.Time.Date->New(1, 1, 2026, false)]->As(Compare[]));
 		since := dated->Read();
 		Check("a Date parameter binds", since <> Nil & since->Size() = 1);
 		nil_source := OdbcSource->New(conn, "runs");

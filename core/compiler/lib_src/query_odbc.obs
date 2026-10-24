@@ -48,7 +48,7 @@ bundle Query.Structured.Odbc {
 ```
 conn := Connection->New("lab", "reader", password);
 runs := OdbcSource->New(conn, "runs");
-runs->SetWhere("finished >= ? and status = ?", [Date->New(1, 10, 2026, false), "ok"]->As(Compare[]));
+runs->SetWhere("finished >= ? and status = ?", [System.Time.Date->New(1, 10, 2026, false), "ok"]->As(Compare[]));
 
 catalog := Catalog->New();
 if(catalog->Load(runs, ScanHint->New(["model", "score"], -1))) {
