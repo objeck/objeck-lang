@@ -34,6 +34,58 @@
 #include "parser.h"
 #include "../shared/instrs.h"
 
+namespace {
+  // sets a pointer for a scope (when given one) and restores it on every
+  // return: the node being analyzed, where a name it resolves is written
+  // (ContextAnalyzer::CheckAmbiguousUse), or the bundle a name resolves in
+  template<class T> struct PointerScope {
+    T*& slot;
+    T* saved;
+
+    PointerScope(T*& s, T* n) : slot(s), saved(s) {
+      if(n) {
+        slot = n;
+      }
+    }
+
+    ~PointerScope() {
+      slot = saved;
+    }
+  };
+  typedef PointerScope<ParseNode> ResolveSiteScope;
+
+  // counts a scope in, and out on every return
+  struct CountScope {
+    int& count;
+    const bool on;
+
+    CountScope(int& c, bool o) : count(c), on(o) {
+      if(on) {
+        ++count;
+      }
+    }
+
+    ~CountScope() {
+      if(on) {
+        --count;
+      }
+    }
+  };
+
+  // A name written in a class other than the one being analyzed -- a callee's
+  // declared parameter or return type, an interface's return type -- resolves
+  // in that class's bundle, where a name the bundle declares wins. Its
+  // ambiguity check is left to that class's own analysis, in its own file.
+  struct OtherClassScope {
+    CountScope skip;
+    PointerScope<ParsedBundle> bundle;
+
+    OtherClassScope(int& skip_count, ParsedBundle*& bundle_slot, ParsedBundle* other_bundle) :
+      skip(skip_count, other_bundle != nullptr), bundle(bundle_slot, other_bundle) {
+    }
+  };
+}
+
 /****************************
  * Maps expression type to
  * operator symbol string
@@ -491,13 +543,17 @@ bool ContextAnalyzer::Analyze(bool is_lib)
       }
 
       if(parent_name.size()) {
+        // 'from Base' is written in this class: its scope decides an ambiguous name
+        ResolveSiteScope site_scope(resolve_site, klass);
+        current_class = klass;
         Class* parent = SearchProgramClasses(parent_name);
+        current_class = nullptr;
         if(parent) {
           klass->SetParent(parent);
           parent->AddChild(klass);
         }
         else {
-          LibraryClass* lib_parent = linker->SearchClassLibraries(parent_name, program->GetLibUses(klass->GetFileName()));
+          LibraryClass* lib_parent = SearchLibraryClasses(parent_name, program->GetLibUses(klass->GetFileName()));
           if(lib_parent) {
             klass->SetLibraryParent(lib_parent);
             lib_parent->AddChild(klass);
@@ -558,6 +614,7 @@ bool ContextAnalyzer::Analyze(bool is_lib)
  ****************************/
 void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, eenum);
 #ifdef _DEBUG
   std::wstring msg = L"[enum: name='" + eenum->GetName() + L"']";
   Debug(msg, eenum->GetLineNumber(), depth);
@@ -568,8 +625,8 @@ void ContextAnalyzer::AnalyzeEnum(Enum* eenum, const int depth)
                  L"\n\tEnsure the enum is declared or add a 'use' statement for external bundles.");
   }
 
-  if(linker->SearchClassLibraries(eenum->GetName(), program->GetLibUses(eenum->GetFileName())) ||
-     linker->SearchEnumLibraries(eenum->GetName(), program->GetLibUses(eenum->GetFileName()))) {
+  if(SearchLibraryClasses(eenum->GetName(), program->GetLibUses(eenum->GetFileName())) ||
+     SearchLibraryEnums(eenum->GetName(), program->GetLibUses(eenum->GetFileName()))) {
     ProcessError(eenum, L"Enum '" + FormatTypeString(eenum->GetName()) + L"' defined in program and shared libraries");
   }
 }
@@ -1087,6 +1144,7 @@ bool ContextAnalyzer::BindNamedArguments(Class* klass, MethodCall* method_call)
  ****************************/
 void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, klass);
 #ifdef _DEBUG
   std::wstring msg = L"[class: name='" + klass->GetName() + L"'; id=" + ToString(id) +
     L"; virtual=" + (klass->IsVirtual() ? L"true" : L"false") + L"]";
@@ -1102,8 +1160,8 @@ void ContextAnalyzer::AnalyzeClass(Class* klass, const int id, const int depth)
     undefined_classes.insert(klass->GetName());
   }
 
-  if(linker->SearchClassLibraries(klass->GetName(), program->GetLibUses(klass->GetFileName())) ||
-     linker->SearchEnumLibraries(klass->GetName(), program->GetLibUses(klass->GetFileName()))) {
+  if(SearchLibraryClasses(klass->GetName(), program->GetLibUses(klass->GetFileName())) ||
+     SearchLibraryEnums(klass->GetName(), program->GetLibUses(klass->GetFileName()))) {
     ProcessError(klass, L"Class '" + klass->GetName() + L"' defined in shared libraries");
   }
 
@@ -1148,6 +1206,7 @@ void ContextAnalyzer::CheckParent(Class* klass, [[maybe_unused]] const int depth
  ****************************/
 void ContextAnalyzer::AnalyzeMethods(Class* klass, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, klass);
 #ifdef _DEBUG
   std::wstring msg = L"[class: name='" + klass->GetName() + L"]";
   Debug(msg, klass->GetLineNumber(), depth);
@@ -1258,6 +1317,7 @@ bool ContextAnalyzer::AnalyzeVirtualMethods(Class* impl_class, Class* virtual_cl
  ****************************/
 void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, klass);
   const std::vector<std::wstring> interface_names = klass->GetInterfaceNames();
   std::vector<Class*> interfaces;
   std::vector<LibraryClass*> lib_interfaces;
@@ -1289,7 +1349,7 @@ void ContextAnalyzer::AnalyzeInterfaces(Class* klass, const int depth)
       }
     }
     else {
-      LibraryClass* inf_lib_klass = linker->SearchClassLibraries(interface_name, program->GetLibUses(current_class->GetFileName()));
+      LibraryClass* inf_lib_klass = SearchLibraryClasses(interface_name, program->GetLibUses(current_class->GetFileName()));
       if(inf_lib_klass) {
         if(!inf_lib_klass->IsInterface()) {
           ProcessError(klass, L"Expected an interface type");
@@ -1353,11 +1413,16 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
   else if(impl_return->GetType() == CLASS_TYPE &&
           impl_return->GetName() != virtual_return->GetName()) {
     Class* impl_cls = SearchProgramClasses(impl_return->GetName());
-    Class* virtual_cls = SearchProgramClasses(virtual_return->GetName());
+    Class* virtual_cls = nullptr;
+    {
+      // the interface's return type, in the interface's bundle
+      OtherClassScope other_scope(skip_use_check, bundle, OtherClassBundle(virtual_method->GetClass()));
+      virtual_cls = SearchProgramClasses(virtual_return->GetName());
+    }
     if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetName(),
+      LibraryClass* impl_lib_cls = SearchLibraryClasses(impl_return->GetName(),
                                                                 program->GetLibUses(current_class->GetFileName()));
-      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetName(),
+      LibraryClass* virtual_lib_cls = SearchLibraryClasses(virtual_return->GetName(),
                                                                    program->GetLibUses(current_class->GetFileName()));
       if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
         ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
@@ -1438,9 +1503,9 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
     Class* impl_cls = SearchProgramClasses(impl_return->GetName());
     Class* virtual_cls = SearchProgramClasses(virtual_return->GetName());
     if(impl_cls && virtual_cls && impl_cls != virtual_cls) {
-      LibraryClass* impl_lib_cls = linker->SearchClassLibraries(impl_return->GetName(),
+      LibraryClass* impl_lib_cls = SearchLibraryClasses(impl_return->GetName(),
                                                                 program->GetLibUses(current_class->GetFileName()));
-      LibraryClass* virtual_lib_cls = linker->SearchClassLibraries(virtual_return->GetName(),
+      LibraryClass* virtual_lib_cls = SearchLibraryClasses(virtual_return->GetName(),
                                                                    program->GetLibUses(current_class->GetFileName()));
       if(impl_lib_cls && virtual_lib_cls && impl_lib_cls != virtual_lib_cls) {
         ProcessError(impl_class, L"Not all virtual methods have been defined for class/interface: " +
@@ -1464,6 +1529,7 @@ void ContextAnalyzer::AnalyzeVirtualMethod(Class* impl_class, MethodType impl_mt
  ****************************/
 void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, method);
 #ifdef _DEBUG
   std::wstring msg = L"(method: name='" + method->GetName() + L"; parsed='" + method->GetParsedName() + L"')";
   Debug(msg, method->GetLineNumber(), depth);
@@ -1618,6 +1684,7 @@ Expression* ContextAnalyzer::WrapBareLambdaInFuncRef(Expression* expression, Typ
  ****************************/
 void ContextAnalyzer::AnalyzeLambda(Lambda* lambda, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, lambda);
   // already been checked
   if(lambda->GetMethodCall()) {
     return;
@@ -2331,6 +2398,7 @@ void ContextAnalyzer::AnalyzeStatements(StatementList* statement_list, const int
  ****************************/
 void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, statement);
   if(statement) {
    switch(statement->GetStatementType()) {
     case EMPTY_STMT:
@@ -2466,6 +2534,7 @@ void ContextAnalyzer::AnalyzeStatement(Statement* statement, const int depth)
  ****************************/
 void ContextAnalyzer::AnalyzeExpression(Expression* expression, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, expression);
   if(expression) {
     // Already lowered to a concatenation that carries the call chain: a second
     // visit (AnalyzeStringConcat probes an operand before AnalyzeCalculation
@@ -2928,7 +2997,7 @@ void ContextAnalyzer::AnalyzeCharacterString(CharacterString* char_str, const in
   }
 
 #ifndef _SYSTEM
-  LibraryClass* lib_klass = linker->SearchClassLibraries(L"System.String", program->GetLibUses(current_class->GetFileName()));
+  LibraryClass* lib_klass = SearchLibraryClasses(L"System.String", program->GetLibUses(current_class->GetFileName()));
   if(lib_klass) {
     lib_klass->SetCalled(true);
   }
@@ -3552,6 +3621,7 @@ void ContextAnalyzer::AnalyzeVariable(Variable* variable, SymbolEntry* entry, co
  * Analyzes an enum call
  ****************************/
 void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, const int depth) {
+  ResolveSiteScope site_scope(resolve_site, static_cast<Expression*>(method_call));
   const std::wstring variable_name = method_call->GetVariableName();
   const std::wstring method_name = method_call->GetMethodName();
 
@@ -3573,14 +3643,14 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
   LibraryEnum* lib_eenum = nullptr;
   if(!scoped_eenum) {
     if(!scoped_name.empty()) {
-      lib_eenum = linker->SearchEnumLibraries(scoped_name, program->GetLibUses(current_class->GetFileName()));
+      lib_eenum = SearchLibraryEnums(scoped_name, program->GetLibUses(current_class->GetFileName()));
     }
     if(!lib_eenum) {
-      lib_eenum = linker->SearchEnumLibraries(variable_name + L"#" + method_name,
+      lib_eenum = SearchLibraryEnums(variable_name + L"#" + method_name,
                                               program->GetLibUses(current_class->GetFileName()));
     }
     if(!lib_eenum) {
-      lib_eenum = linker->SearchEnumLibraries(variable_name, program->GetLibUses(current_class->GetFileName()));
+      lib_eenum = SearchLibraryEnums(variable_name, program->GetLibUses(current_class->GetFileName()));
     }
   }
 
@@ -3707,8 +3777,8 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
         klass->SetCalled(true);
         type_of->SetName(klass->GetName());
       }
-      else if(linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()))) {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()));
+      else if(SearchLibraryClasses(type_of->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+        LibraryClass* lib_klass = SearchLibraryClasses(type_of->GetName(), program->GetLibUses(current_class->GetFileName()));
         lib_klass->SetCalled(true);
         type_of->SetName(lib_klass->GetName());
       }
@@ -3733,6 +3803,7 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
  ****************************/
 void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, static_cast<Expression*>(method_call));
 #ifdef _DEBUG
   std::wstring msg = L"method/function call: class=" + method_call->GetVariableName() +
     L"; method=" + method_call->GetMethodName() + L"; call_type=" +
@@ -4243,7 +4314,7 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
   switch(type->GetType()) {
   case BOOLEAN_TYPE:
     klass = program->GetClass(BOOL_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+    lib_klass = SearchLibraryClasses(BOOL_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"l";
     break;
 
@@ -4253,43 +4324,43 @@ bool ContextAnalyzer::AnalyzeExpressionMethodCall(Type* type, const int dimensio
 
   case BYTE_TYPE:
     klass = program->GetClass(BYTE_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+    lib_klass = SearchLibraryClasses(BYTE_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"b";
     break;
 
   case CHAR_TYPE:
     klass = program->GetClass(CHAR_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+    lib_klass = SearchLibraryClasses(CHAR_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"c";
     break;
 
   case INT_TYPE:
     klass = program->GetClass(INT_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+    lib_klass = SearchLibraryClasses(INT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"i";
     break;
 
   case FLOAT_TYPE:
     klass = program->GetClass(FLOAT_CLASS_ID);
-    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+    lib_klass = SearchLibraryClasses(FLOAT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
     encoding = L"f";
     break;
 
   case CLASS_TYPE: {
     if(dimension > 0 && type->GetDimension() > 0) {
       klass = program->GetClass(BASE_ARRAY_CLASS_ID);
-      lib_klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+      lib_klass = SearchLibraryClasses(BASE_ARRAY_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
       encoding = L"o.System.Base";
     }
     else {
       const std::wstring &cls_name = type->GetName();
       klass = SearchProgramClasses(cls_name);
-      lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses(current_class->GetFileName()));
+      lib_klass = SearchLibraryClasses(cls_name, program->GetLibUses(current_class->GetFileName()));
 
       if(!klass && !lib_klass) {
         if(HasProgramOrLibraryEnum(cls_name)) {
           klass = program->GetClass(INT_CLASS_ID);
-          lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+          lib_klass = SearchLibraryClasses(INT_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
           encoding = L"i,";
           is_enum_call = true;
         }
@@ -4683,7 +4754,7 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
       (!method_call->GetVariable() ||
        !method_call->GetVariable()->GetIndices())) {
 
-      klass = linker->SearchClassLibraries(BASE_ARRAY_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
+      klass = SearchLibraryClasses(BASE_ARRAY_CLASS_ID, program->GetLibUses(current_class->GetFileName()));
       encoding = L"o.System.Base";
       for(int i = 0; i < entry->GetType()->GetDimension(); ++i) {
         encoding += L"*";
@@ -4693,23 +4764,23 @@ LibraryClass* ContextAnalyzer::AnalyzeLibraryMethodCall(MethodCall* method_call,
     // cast type
     else if(method_call->GetVariable() && method_call->GetVariable()->GetCastType() &&
             method_call->GetVariable()->GetCastType()->GetType() == CLASS_TYPE) {
-      klass = linker->SearchClassLibraries(method_call->GetVariable()->GetCastType()->GetName(),
+      klass = SearchLibraryClasses(method_call->GetVariable()->GetCastType()->GetName(),
                                            program->GetLibUses(current_class->GetFileName()));
       method_call->SetTypes(entry->GetType());
     }
     else {
-      klass = linker->SearchClassLibraries(entry->GetType()->GetName(), program->GetLibUses(current_class->GetFileName()));
+      klass = SearchLibraryClasses(entry->GetType()->GetName(), program->GetLibUses(current_class->GetFileName()));
       if(!klass && current_class->HasGenerics()) {
         Class* generic_class = current_class->GetGenericClass(entry->GetType()->GetName());
         if(generic_class) {
-          return linker->SearchClassLibraries(L"System.Base", program->GetLibUses(current_class->GetFileName()));
+          return SearchLibraryClasses(L"System.Base", program->GetLibUses(current_class->GetFileName()));
         }
       }
     }
   }
   // static method call
   if(!klass) {
-    klass = linker->SearchClassLibraries(variable_name, program->GetLibUses(current_class->GetFileName()));
+    klass = SearchLibraryClasses(variable_name, program->GetLibUses(current_class->GetFileName()));
   }
 
   if(method_call->GetCastType() && method_call->GetCastType()->GetType() == CLASS_TYPE) {
@@ -4806,7 +4877,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
             // calculate relative match
             const std::wstring &from_klass_name = calling_type->GetName();
             Class* from_klass = SearchProgramClasses(from_klass_name);
-            LibraryClass* from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetLibUses(current_class->GetFileName()));
+            LibraryClass* from_lib_klass = SearchLibraryClasses(from_klass_name, program->GetLibUses(current_class->GetFileName()));
 
             const std::wstring &to_klass_name = method_type->GetName();
             Class* to_klass = SearchProgramClasses(to_klass_name);
@@ -4814,7 +4885,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
               return ValidDownCast(to_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
             }
 
-            LibraryClass* to_lib_klass = linker->SearchClassLibraries(to_klass_name, program->GetLibUses(current_class->GetFileName()));
+            LibraryClass* to_lib_klass = SearchLibraryClasses(to_klass_name, program->GetLibUses(current_class->GetFileName()));
             if(to_lib_klass) {
               return ValidDownCast(to_lib_klass->GetName(), from_klass, from_lib_klass) ? 1 : -1;
             }
@@ -4822,7 +4893,7 @@ int ContextAnalyzer::MatchCallingParameter(Expression* calling_param, Type* meth
           else if(method_type->GetType() == INT_TYPE) {
             // program
             if(program->GetEnum(calling_type->GetName()) ||
-               linker->SearchEnumLibraries(calling_type->GetName(), program->GetLibUses())) {
+               SearchLibraryEnums(calling_type->GetName(), program->GetLibUses())) {
               return 1;
             }
           }
@@ -4887,7 +4958,7 @@ bool ContextAnalyzer::ResolveConcatToString(const std::wstring &cls_name, Method
       continue;
     }
 
-    LibraryClass* lib_klass = linker->SearchClassLibraries(name, program->GetLibUses());
+    LibraryClass* lib_klass = SearchLibraryClasses(name, program->GetLibUses());
     if(lib_klass) {
       found_class = true;
       LibraryMethod* candidate = lib_klass->GetMethod(lib_klass->GetName() + L":ToString:");
@@ -4909,7 +4980,7 @@ bool ContextAnalyzer::ResolveConcatToString(const std::wstring &cls_name, Method
   }
 
   // every class ends at System.Base, whatever its declared chain says
-  LibraryClass* base_klass = linker->SearchClassLibraries(L"System.Base", program->GetLibUses());
+  LibraryClass* base_klass = SearchLibraryClasses(L"System.Base", program->GetLibUses());
   if(base_klass) {
     LibraryMethod* candidate = base_klass->GetMethod(L"System.Base:ToString:");
     if(candidate && candidate->GetMethodType() != PRIVATE_METHOD) {
@@ -5684,7 +5755,13 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
     
     // map Generic to concrete types
     const bool is_new = method->GetMethodType() == NEW_PUBLIC_METHOD || method->GetMethodType() == NEW_PRIVATE_METHOD;
-    const bool same_cls_return = ClassEquals(method->GetReturn()->GetName(), klass, nullptr);
+    // the return type is written in the callee's class, so it is resolved in
+    // that class's bundle (see ResolveClassEnumType)
+    bool same_cls_return = false;
+    {
+      OtherClassScope other_scope(skip_use_check, bundle, OtherClassBundle(klass));
+      same_cls_return = ClassEquals(method->GetReturn()->GetName(), klass, nullptr);
+    }
     if((is_new || same_cls_return) && klass->HasGenerics()) {
       const std::vector<Class*> class_generics = klass->GetGenericClasses();      
       std::vector<Type*> concrete_types = GetConcreteTypes(method_call);
@@ -5977,7 +6054,7 @@ bool ContextAnalyzer::BindNamedLibraryArguments(LibraryClass* klass, MethodCall*
     const std::vector<LibraryMethod*> methods = search->GetUnqualifiedMethods(name);
     candidates.insert(candidates.end(), methods.begin(), methods.end());
     search = search->GetParentName().empty() ? nullptr :
-      linker->SearchClassLibraries(search->GetParentName(), program->GetLibUses(current_class->GetFileName()));
+      SearchLibraryClasses(search->GetParentName(), program->GetLibUses(current_class->GetFileName()));
   }
 
   for(size_t c = 0; c < candidates.size(); ++c) {
@@ -6208,7 +6285,7 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
     for(LibraryClass* search = klass; search && !found; ) {
       found = !search->GetUnqualifiedMethods(method_call->GetMethodName()).empty();
       search = search->GetParentName().empty() ? nullptr :
-        linker->SearchClassLibraries(search->GetParentName(), program->GetLibUses(current_class->GetFileName()));
+        SearchLibraryClasses(search->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     }
 
     // a call to none of them is left to its own path
@@ -6230,10 +6307,10 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   Type* receiver = ReceiverParameterType(encoding);
   LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth, receiver);
   if(!lib_method) {
-    LibraryClass* parent = linker->SearchClassLibraries(klass->GetParentName(), program->GetLibUses(current_class->GetFileName()));
+    LibraryClass* parent = SearchLibraryClasses(klass->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     while(!lib_method && parent) {
       lib_method = ResolveMethodCall(parent, method_call, depth, receiver);
-      parent = linker->SearchClassLibraries(parent->GetParentName(), program->GetLibUses(current_class->GetFileName()));
+      parent = SearchLibraryClasses(parent->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     }
   }
 
@@ -6858,6 +6935,7 @@ void ContextAnalyzer::AnalyzeFunctionReference(LibraryClass* klass, MethodCall* 
  ****************************/
 void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, expression);
   // type cast
   if(expression->GetCastType()) {
     // the receiver's cast, already checked on the variable
@@ -6898,7 +6976,7 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
       expression->ClearMethodCall();
       if(root_type && root_type->GetType() == CLASS_TYPE && cast_type->GetDimension() == root_type->GetDimension() &&
          (SearchProgramClasses(root_type->GetName()) ||
-          linker->SearchClassLibraries(root_type->GetName(), program->GetLibUses(current_class->GetFileName())))) {
+          SearchLibraryClasses(root_type->GetName(), program->GetLibUses(current_class->GetFileName())))) {
         AnalyzeClassCast(cast_type, root_type, expression, false, depth + 1);
       }
       else {
@@ -6927,8 +7005,8 @@ void ContextAnalyzer::AnalyzeCast(Expression* expression, const int depth)
       klass->SetCalled(true);
       type_of->SetName(klass->GetName());
     }
-    else if(linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()))) {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(type_of->GetName(), program->GetLibUses(current_class->GetFileName()));
+    else if(SearchLibraryClasses(type_of->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryClass* lib_klass = SearchLibraryClasses(type_of->GetName(), program->GetLibUses(current_class->GetFileName()));
       lib_klass->SetCalled(true);
       type_of->SetName(lib_klass->GetName());
     }
@@ -7246,7 +7324,7 @@ void ContextAnalyzer::AnalyzeTry(Try* try_stmt, const int depth)
     Type* type = handler->type;
     bool valid = type->GetType() == CLASS_TYPE && type->GetDimension() == 0 && ResolveClassEnumType(type);
     Class* klass = valid ? SearchProgramClasses(type->GetName()) : nullptr;
-    LibraryClass* lib_klass = valid && !klass ? linker->SearchClassLibraries(type->GetName(), program->GetLibUses(current_class->GetFileName())) : nullptr;
+    LibraryClass* lib_klass = valid && !klass ? SearchLibraryClasses(type->GetName(), program->GetLibUses(current_class->GetFileName())) : nullptr;
     if(!valid || (!klass && !lib_klass) || !ValidDownCast(L"System.Error", klass, lib_klass)) {
       ProcessError(try_stmt, L"An 'on' clause takes System.Error or a subclass of it");
     }
@@ -7954,7 +8032,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
     bool check_right_cast = true;
     if(left_type && left_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-      LibraryClass* left_class = linker->SearchClassLibraries(left_type->GetName(), program->GetLibUses(current_class->GetFileName()));
+      LibraryClass* left_class = SearchLibraryClasses(left_type->GetName(), program->GetLibUses(current_class->GetFileName()));
 #else
       Class* left_class = SearchProgramClasses(left_type->GetName());
 #endif
@@ -7967,7 +8045,7 @@ void ContextAnalyzer::AnalyzeAssignment(Assignment* assignment, StatementType ty
           Type* right_type = GetExpressionType(expression, depth + 1);
           if(right_type && right_type->GetType() == CLASS_TYPE) {
 #ifndef _SYSTEM
-            LibraryClass* right_class = linker->SearchClassLibraries(right_type->GetName(), program->GetLibUses(current_class->GetFileName()));
+            LibraryClass* right_class = SearchLibraryClasses(right_type->GetName(), program->GetLibUses(current_class->GetFileName()));
 #else
             Class* right_class = SearchProgramClasses(right_type->GetName());
 #endif
@@ -9609,13 +9687,13 @@ void ContextAnalyzer::AnalyzeArrayClassCast(Type* left, Type* right, Expression*
   ResolveClassEnumType(from_type);
   Class* from_class = SearchProgramClasses(from_type->GetName());
   LibraryClass* from_lib_class = from_class ? nullptr :
-    linker->SearchClassLibraries(from_type->GetName(), program->GetLibUses(current_class->GetFileName()));
+    SearchLibraryClasses(from_type->GetName(), program->GetLibUses(current_class->GetFileName()));
   if(!from_class && !from_lib_class) {
     return;
   }
 
   Class* to_klass = SearchProgramClasses(left->GetName());
-  LibraryClass* to_lib_klass = to_klass ? nullptr : linker->SearchClassLibraries(left->GetName(), program->GetLibUses(current_class->GetFileName()));
+  LibraryClass* to_lib_klass = to_klass ? nullptr : SearchLibraryClasses(left->GetName(), program->GetLibUses(current_class->GetFileName()));
   const std::wstring to_name = to_klass ? to_klass->GetName() : (to_lib_klass ? to_lib_klass->GetName() : left->GetName());
   if(!ValidDownCast(to_name, from_class, from_lib_class)) {
     ProcessError(expression, L"Cannot use an array of '" + FormatTypeString(from_type->GetName()) + L"' as an array of '" +
@@ -9692,8 +9770,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(right && linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
-      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
+    else if(right && SearchLibraryEnums(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = SearchLibraryEnums(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       if(right_lib_enum && (left_enum->GetName() != right_lib_enum->GetName())) {
         const std::wstring left_str = FormatTypeString(left->GetName());
         const std::wstring right_str = FormatTypeString(right->GetName());
@@ -9739,8 +9817,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
-      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
+    else if(SearchLibraryClasses(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = SearchLibraryClasses(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       // downcast
       if(ValidDownCast(left_class->GetName(), nullptr, right_lib_class)) {
         if(left_class->IsInterface() && !generic_check) {
@@ -9790,7 +9868,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // enum library
   //
-  else if(left && right && (left_lib_enum = linker->SearchEnumLibraries(left->GetName(), program->GetLibUses(current_class->GetFileName())))) {
+  else if(left && right && (left_lib_enum = SearchLibraryEnums(left->GetName(), program->GetLibUses(current_class->GetFileName())))) {
     // program
     Enum* right_enum = SearchProgramEnums(right->GetName());
     if(right_enum) {
@@ -9801,8 +9879,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
-      LibraryEnum* right_lib_enum = linker->SearchEnumLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
+    else if(SearchLibraryEnums(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryEnum* right_lib_enum = SearchLibraryEnums(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       if(left_lib_enum->GetName() != right_lib_enum->GetName()) {
         const std::wstring left_str = FormatTypeString(left_lib_enum->GetName());
         const std::wstring right_str = FormatTypeString(right_lib_enum->GetName());
@@ -9816,7 +9894,7 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
   //
   // class library
   //
-  else if(left && right && (left_lib_class = linker->SearchClassLibraries(left->GetName(), program->GetLibUses(current_class->GetFileName())))) {
+  else if(left && right && (left_lib_class = SearchLibraryClasses(left->GetName(), program->GetLibUses(current_class->GetFileName())))) {
     // program and generic
     Class* right_class = SearchProgramClasses(right->GetName());
     if(!right_class) {
@@ -9846,8 +9924,8 @@ void ContextAnalyzer::AnalyzeClassCast(Type* left, Type* right, Expression* expr
       }
     }
     // library
-    else if(linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
-      LibraryClass* right_lib_class = linker->SearchClassLibraries(right->GetName(), program->GetLibUses(current_class->GetFileName()));
+    else if(SearchLibraryClasses(right->GetName(), program->GetLibUses(current_class->GetFileName()))) {
+      LibraryClass* right_lib_class = SearchLibraryClasses(right->GetName(), program->GetLibUses(current_class->GetFileName()));
       // downcast
       if(ValidDownCast(left_lib_class->GetName(), nullptr, right_lib_class)) {
         left_lib_class->SetCalled(true);
@@ -10046,6 +10124,7 @@ bool ContextAnalyzer::CheckGenericEqualTypes(Type* left, Type* right, Expression
  ****************************/
 void ContextAnalyzer::AnalyzeDeclaration(Declaration * declaration, Class* klass, const int depth)
 {
+  ResolveSiteScope site_scope(resolve_site, declaration);
   SymbolEntry* entry = declaration->GetEntry();
   if(entry) {
     // load entry
@@ -10192,7 +10271,7 @@ std::wstring ContextAnalyzer::EncodeFunctionReference(ExpressionList* calling_pa
         }
         // search libraries
         else {
-          LibraryClass* lib_klass = linker->SearchClassLibraries(klass_name, program->GetLibUses(current_class->GetFileName()));
+          LibraryClass* lib_klass = SearchLibraryClasses(klass_name, program->GetLibUses(current_class->GetFileName()));
           if(lib_klass) {
             encoded_name += lib_klass->GetName();
             variable->SetEvalType(TypeFactory::Instance()->MakeType(CLASS_TYPE, lib_klass->GetName()), true);
@@ -10396,7 +10475,7 @@ bool ContextAnalyzer::IsEnumExpression(Expression* expression)
         return true;
       }
       // library
-      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetLibUses())) {
+      if(SearchLibraryEnums(eval_type->GetName(), program->GetLibUses())) {
         return true;
       }
     }
@@ -10443,7 +10522,7 @@ bool ContextAnalyzer::IsIntegerExpression(Expression* expression)
         return true;
       }
       // library
-      if(linker->SearchEnumLibraries(eval_type->GetName(), program->GetLibUses())) {
+      if(SearchLibraryEnums(eval_type->GetName(), program->GetLibUses())) {
         return true;
       }
     }
@@ -10752,7 +10831,7 @@ bool ContextAnalyzer::ValidDownCast(const std::wstring& cls_name, Class* class_t
         return true;
       }
       else {
-        LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetLibUses());
+        LibraryClass* lib_klass = SearchLibraryClasses(interface_names[i], program->GetLibUses());
         if(lib_klass && lib_klass->GetName() == cls_name) {
           return true;
         }
@@ -10773,7 +10852,7 @@ bool ContextAnalyzer::ValidDownCast(const std::wstring& cls_name, Class* class_t
     }
     // library parent
     else {
-      lib_class_tmp = linker->SearchClassLibraries(lib_class_tmp->GetParentName(), program->GetLibUses());
+      lib_class_tmp = SearchLibraryClasses(lib_class_tmp->GetParentName(), program->GetLibUses());
       class_tmp = nullptr;
     }
   }
@@ -10800,7 +10879,7 @@ bool ContextAnalyzer::ValidUpCast(const std::wstring& to, Class* from_klass)
       return true;
     }
     else {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetLibUses());
+      LibraryClass* lib_klass = SearchLibraryClasses(interface_names[i], program->GetLibUses());
       if(lib_klass && lib_klass->GetName() == to) {
         return true;
       }
@@ -10837,7 +10916,7 @@ bool ContextAnalyzer::ValidUpCast(const std::wstring& to, LibraryClass* from_kla
       return true;
     }
     else {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(interface_names[i], program->GetLibUses());
+      LibraryClass* lib_klass = SearchLibraryClasses(interface_names[i], program->GetLibUses());
       if(lib_klass && lib_klass->GetName() == to) {
         return true;
       }
@@ -10870,7 +10949,7 @@ bool ContextAnalyzer::GetProgramOrLibraryClass(const std::wstring &cls_name, Cla
     return true;
   }
 
-  lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses(current_class->GetFileName()));
+  lib_klass = SearchLibraryClasses(cls_name, program->GetLibUses(current_class->GetFileName()));
   if(lib_klass) {
     return true;
   }
@@ -11034,6 +11113,10 @@ const std::wstring ContextAnalyzer::EncodeType(Type* type)
 
 bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
 {
+   // a callee's declarations, checked from its caller, resolve in the callee's
+   // bundle. In the caller's, a callee's 'Take(s : Shape)' in bundle B became
+   // the 'Shape' of whichever bundle the program's uses listed first.
+   OtherClassScope other_scope(skip_use_check, bundle, OtherClassBundle(context_klass));
    // a jagged array's row type, '$String[]': resolve the class it is built on,
    // so '$String[]' and '$System.String[]' are one type (#1246)
    if(IsRowTypeName(type->GetName())) {
@@ -11089,7 +11172,7 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
       return true;
    }
 
-   LibraryClass* lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetLibUses());
+   LibraryClass* lib_klass = SearchLibraryClasses(type->GetName(), program->GetLibUses());
    if(lib_klass) {
       // concreate generic types
       auto generic_types = type->GetGenerics();
@@ -11156,14 +11239,14 @@ bool ContextAnalyzer::ResolveClassEnumType(Type* type, Class* context_klass)
       }
    }
 
-   LibraryEnum* lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
+   LibraryEnum* lib_eenum = SearchLibraryEnums(type->GetName(), program->GetLibUses());
    if(lib_eenum) {
       type->SetName(lib_eenum->GetName());
       type->SetResolved(true);
       return true;
    }
    else {
-      lib_eenum = linker->SearchEnumLibraries(type->GetName(), program->GetLibUses());
+      lib_eenum = SearchLibraryEnums(type->GetName(), program->GetLibUses());
       if(lib_eenum) {
          type->SetName(lib_eenum->GetName());
          type->SetResolved(true);
@@ -11202,7 +11285,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   }
 
   if(!from_klass) {
-    from_lib_klass = linker->SearchClassLibraries(from_klass_name, program->GetLibUses());
+    from_lib_klass = SearchLibraryClasses(from_klass_name, program->GetLibUses());
   }
 
   // resolve to class name
@@ -11216,7 +11299,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   }
 
   if(!to_klass) {
-    LibraryClass* to_lib_klass = linker->SearchClassLibraries(method_type->GetName(), program->GetLibUses());
+    LibraryClass* to_lib_klass = SearchLibraryClasses(method_type->GetName(), program->GetLibUses());
     if(to_lib_klass) {
       to_klass_name = to_lib_klass->GetName();
     }
@@ -11225,7 +11308,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
   // check enum types
   if(!from_klass && !from_lib_klass) {
     Enum* from_enum = SearchProgramEnums(from_klass_name);
-    LibraryEnum* from_lib_enum = linker->SearchEnumLibraries(from_klass_name, program->GetLibUses());
+    LibraryEnum* from_lib_enum = SearchLibraryEnums(from_klass_name, program->GetLibUses());
 
     std::wstring to_enum_name;
     Enum* to_enum = SearchProgramEnums(method_type->GetName());
@@ -11233,7 +11316,7 @@ bool ContextAnalyzer::IsClassEnumParameterMatch(Type* calling_type, Type* method
       to_enum_name = to_enum->GetName();
     }
     else {
-      LibraryEnum* to_lib_enum = linker->SearchEnumLibraries(method_type->GetName(), program->GetLibUses());
+      LibraryEnum* to_lib_enum = SearchLibraryEnums(method_type->GetName(), program->GetLibUses());
       if(to_lib_enum) {
         to_enum_name = to_lib_enum->GetName();
       }
@@ -11570,7 +11653,7 @@ void ContextAnalyzer::AnalyzeCharacterStringExpression(const std::wstring& expr_
       }
     }
     else {
-      LibraryClass* lib_klass = linker->SearchClassLibraries(cls_name, program->GetLibUses());
+      LibraryClass* lib_klass = SearchLibraryClasses(cls_name, program->GetLibUses());
       if(lib_klass) {
         to_string_lib_method = lib_klass->GetMethod(cls_name + L":ToString:");
         if(!to_string_lib_method || to_string_lib_method->GetMethodType() == PRIVATE_METHOD) {
@@ -11847,7 +11930,7 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
      to_type->GetName() != L"System.Base" && to_type->GetName() != L"Base") {
     const std::wstring to_class_name = to_type->GetName();
     if(SearchProgramEnums(to_class_name) ||
-       linker->SearchEnumLibraries(to_class_name, program->GetLibUses(current_class->GetFileName()))) {
+       SearchLibraryEnums(to_class_name, program->GetLibUses(current_class->GetFileName()))) {
       return;
     }
 
@@ -11856,7 +11939,7 @@ void ContextAnalyzer::AnalyzeVariableCast(Type* to_type, Expression* expression)
       expression->SetToClass(to_class);
     }
     else {
-      LibraryClass* to_lib_class = linker->SearchClassLibraries(to_class_name, program->GetLibUses());
+      LibraryClass* to_lib_class = SearchLibraryClasses(to_class_name, program->GetLibUses());
       if(to_lib_class) {
         expression->SetToLibraryClass(to_lib_class);
       }
@@ -11985,7 +12068,8 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
     else {
       // find concrete index
       int concrete_index = -1;
-      ResolveClassEnumType(candidate_type);
+      // a callee's declared type, in the callee's scope (see below)
+      ResolveClassEnumType(candidate_type, DeclaredTypeContext(candidate_type, klass));
       const std::wstring generic_name = candidate_type->GetName();
       if(klass) {
         concrete_index = klass->GenericIndex(generic_name);
@@ -12120,8 +12204,12 @@ Type* ContextAnalyzer::ResolveGenericType(Type* candidate_type, MethodCall* meth
     }
   }
 
+  // A callee's declared type resolves in the callee's scope. In the caller's,
+  // a callee's 'Take(s : Shape)' in bundle B became the 'Shape' of whichever
+  // bundle the program's uses listed first, and its 'Level(t : Tint)' missed
+  // the callee's own enum.
   if(!candidate_type->IsResolved()) {
-    ResolveClassEnumType(candidate_type);
+    ResolveClassEnumType(candidate_type, DeclaredTypeContext(candidate_type, klass));
   }
 
   return candidate_type;
@@ -12178,7 +12266,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Cl
   int concrete_index = -1;
   const std::wstring left_type_name = type->GetName();
 
-  if(program->GetEnum(left_type_name) || linker->SearchEnumLibraries(left_type_name, program->GetLibUses())) {
+  if(program->GetEnum(left_type_name) || SearchLibraryEnums(left_type_name, program->GetLibUses())) {
     ProcessError(expression, L"Generic must be a class type");
   }
 
@@ -12212,6 +12300,7 @@ Type* ContextAnalyzer::ResolveGenericType(Type* type, Expression* expression, Cl
 
 Class* ContextAnalyzer::SearchProgramClasses(const std::wstring& klass_name)
 {
+  CheckAmbiguousUse(klass_name);
   Class* klass = program->GetClass(klass_name);
   if(!klass) {
     klass = program->GetClass(bundle->GetName() + L"." + klass_name);
@@ -12228,6 +12317,7 @@ Class* ContextAnalyzer::SearchProgramClasses(const std::wstring& klass_name)
 
 Enum* ContextAnalyzer::SearchProgramEnums(const std::wstring& eenum_name)
 {
+  CheckAmbiguousUse(eenum_name);
   Enum* eenum = program->GetEnum(eenum_name);
   if(!eenum) {
     eenum = program->GetEnum(bundle->GetName() + L"." + eenum_name);
@@ -12283,6 +12373,123 @@ std::wstring ContextAnalyzer::SearchScopedEnumName(const std::wstring& eenum_nam
   }
 
   return L"";
+}
+
+/****************************
+ * The bundle a program class is declared in
+ ****************************/
+ParsedBundle* ContextAnalyzer::GetClassBundle(Class* klass)
+{
+  const std::wstring name = klass->GetName();
+  const size_t dot = name.find_last_of(L'.');
+  return program->GetBundle(dot == std::wstring::npos ? L"" : name.substr(0, dot));
+}
+
+/****************************
+ * The distinct classes and enums an unqualified name reaches through the
+ * 'use's of a file, each as "'Bundle.Name' (where)", in 'use' order. A bundle
+ * listed twice is one candidate. A class's 'Klass#' use (its enums, added for
+ * every class that declares one) is not a bundle and is not searched here.
+ ****************************/
+const std::vector<std::wstring>& ContextAnalyzer::UseCandidates(const std::wstring& name, const std::wstring& file_name)
+{
+  const std::wstring key = file_name + L'\n' + name;
+  std::unordered_map<std::wstring, std::vector<std::wstring>>::iterator cached = use_candidates.find(key);
+  if(cached != use_candidates.end()) {
+    return cached->second;
+  }
+
+  std::vector<std::wstring> candidates;
+  std::set<std::wstring> seen;
+  const std::unordered_map<std::wstring, LibraryClass*>& lib_classes = linker->GetAllClassesMap();
+  const std::unordered_map<std::wstring, LibraryEnum*>& lib_enums = linker->GetAllEnumsMap();
+  const std::vector<std::wstring> uses = program->GetLibUses(file_name);
+  for(size_t i = 0; i < uses.size(); ++i) {
+    const std::wstring& use = uses[i];
+    if(use.empty() || use.back() == L'#') {
+      continue;
+    }
+
+    const std::wstring full_name = use + L'.' + name;
+    if(!seen.insert(full_name).second) {
+      continue;
+    }
+
+    ParseNode* node = program->GetClass(full_name);
+    if(!node) {
+      node = program->GetEnum(full_name);
+    }
+
+    if(node) {
+      candidates.push_back(L"'" + full_name + L"' (" + node->GetFileName() + L':' + ToString(node->GetLineNumber()) + L')');
+    }
+    else if(lib_classes.find(full_name) != lib_classes.end() || lib_enums.find(full_name) != lib_enums.end()) {
+      candidates.push_back(L"'" + full_name + L"' (library)");
+    }
+  }
+
+  return use_candidates[key] = candidates;
+}
+
+/****************************
+ * An unqualified class or enum name that two 'use'd bundles both declare is
+ * ambiguous. Every search took the first 'use' that declared it, so 'Foo' with
+ * 'use A, B' quietly meant A.Foo. A name the current bundle or class declares
+ * wins without a check; so does an exact match (a qualified name, or a class
+ * in the unnamed bundle).
+ ****************************/
+void ContextAnalyzer::CheckAmbiguousUse(const std::wstring& name)
+{
+  if(in_use_check || skip_use_check > 0 || !linker || !program) {
+    return;
+  }
+
+  // qualified, class-scoped, a row type or a primitive holder: not a short name
+  if(name.empty() || name.find_first_of(L".#$|<[ ") != std::wstring::npos) {
+    return;
+  }
+
+  ParseNode* site = resolve_site;
+  if(!site) {
+    site = current_method ? static_cast<ParseNode*>(current_method) : static_cast<ParseNode*>(current_class);
+  }
+
+  if(!site || site->GetFileName().empty()) {
+    return;
+  }
+
+  in_use_check = true;
+  bool exempt = program->GetClass(name) || program->GetEnum(name) ||
+    linker->GetAllClassesMap().count(name) || linker->GetAllEnumsMap().count(name);
+
+  // the current bundle's own
+  if(!exempt && bundle && !bundle->GetName().empty()) {
+    const std::wstring own_name = bundle->GetName() + L'.' + name;
+    exempt = program->GetClass(own_name) || program->GetEnum(own_name);
+  }
+
+  // the current class's own type parameter or enum, or a parent's enum
+  if(!exempt && current_class) {
+    exempt = (current_class->HasGenerics() && current_class->GetGenericClass(name)) ||
+      !SearchScopedEnumName(name, current_class).empty();
+  }
+
+  if(!exempt) {
+    const std::vector<std::wstring>& candidates = UseCandidates(name, site->GetFileName());
+    if(candidates.size() > 1) {
+      std::wstring listed;
+      for(size_t i = 0; i < candidates.size(); ++i) {
+        if(i > 0) {
+          listed += i + 1 == candidates.size() ? L" and " : L", ";
+        }
+        listed += candidates[i];
+      }
+
+      ProcessError(site, L"Ambiguous name '" + name + L"': " + listed +
+                   L" are each in scope through 'use'\n\tQualify the name with its bundle.");
+    }
+  }
+  in_use_check = false;
 }
 
 /****************************
@@ -12723,30 +12930,30 @@ void ContextAnalyzer::FindSignatureClass(Type* type, const std::wstring mthd_str
     break;
 
   case BOOLEAN_TYPE:
-    lib_klass = linker->SearchClassLibraries(BOOL_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
+    lib_klass = SearchLibraryClasses(BOOL_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case BYTE_TYPE:
-    lib_klass = linker->SearchClassLibraries(BYTE_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
+    lib_klass = SearchLibraryClasses(BYTE_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
 
     break;
 
   case CHAR_TYPE:
-    lib_klass = linker->SearchClassLibraries(CHAR_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
+    lib_klass = SearchLibraryClasses(CHAR_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case INT_TYPE:
-    lib_klass = linker->SearchClassLibraries(INT_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
+    lib_klass = SearchLibraryClasses(INT_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case FLOAT_TYPE:
-    lib_klass = linker->SearchClassLibraries(FLOAT_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
+    lib_klass = SearchLibraryClasses(FLOAT_CLASS_ID, program->GetLibUses(context_klass->GetFileName()));
     break;
 
   case CLASS_TYPE:
     klass = SearchProgramClasses(type->GetName());
     if(!klass) {
-      lib_klass = linker->SearchClassLibraries(type->GetName(), program->GetLibUses(context_klass->GetFileName()));
+      lib_klass = SearchLibraryClasses(type->GetName(), program->GetLibUses(context_klass->GetFileName()));
     }
     break;
 

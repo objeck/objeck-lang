@@ -1,0 +1,44 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'Root': 'AmbParentA.Root'
+#~
+A class inherits 'from Root' while two bundles in scope both declare
+'class Root'. The parent silently became whichever bundle came first. It is
+now a compile error naming both candidates.
+~#
+
+use AmbParentA, AmbParentB;
+
+bundle AmbParentA {
+  class Root {
+    New() {
+    }
+
+    method : public : Name() ~ String {
+      return "A";
+    }
+  }
+}
+
+bundle AmbParentB {
+  class Root {
+    New() {
+    }
+
+    method : public : Name() ~ String {
+      return "B";
+    }
+  }
+}
+
+bundle AmbParentUser {
+  class Kid from Root {
+    New() {
+      Parent();
+    }
+  }
+
+  class BadAmbiguousUseParent {
+    function : Main(args : String[]) ~ Nil {
+      Kid->New()->Name()->PrintLine();
+    }
+  }
+}

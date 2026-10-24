@@ -253,6 +253,16 @@ class ContextAnalyzer {
   std::vector<CaptureFrame> capture_frames;
   std::pair<Lambda*, MethodCall*> lambda_inferred;
   std::multimap<int, std::wstring> errors;
+  // the statement, expression or declaration being analyzed: where a name it
+  // resolves is written (see CheckAmbiguousUse)
+  ParseNode* resolve_site;
+  // >0 while a name is resolved in a class other than the one being analyzed
+  // (a callee's declarations checked from its caller): that class's own
+  // analysis checks the name, in its own scope
+  int skip_use_check;
+  bool in_use_check;
+  // file + '\n' + name -> its candidates through that file's uses
+  std::unordered_map<std::wstring, std::vector<std::wstring>> use_candidates;
   std::wstring BundleSuggestion(const std::wstring& name);
   // names already reported as undefined classes, so dependent
   // diagnostics about the same name can be suppressed
@@ -442,6 +452,41 @@ class ContextAnalyzer {
   // caller (#1182)
   void ValidateConcrete(Type* cls_type, Type* concrete_type, ParseNode* node, const int depth, Class* scope = nullptr);
 
+  // An unqualified name that two 'use'd bundles both declare -- two different
+  // classes or enums, program or library -- is a compile error at the site
+  // being analyzed (resolve_site); every search below checks for it, so no
+  // resolution path can quietly take the first 'use'. A name the current
+  // bundle or class declares, or one already qualified, is not checked.
+  void CheckAmbiguousUse(const std::wstring &name);
+  // the bundle a program class is declared in
+  ParsedBundle* GetClassBundle(Class* klass);
+  // ... when that class is not the one being analyzed; otherwise null
+  ParsedBundle* OtherClassBundle(Class* klass) {
+    return klass && klass != current_class ? GetClassBundle(klass) : nullptr;
+  }
+  // the class whose scope a type declared in 'klass' (a callee) resolves in:
+  // 'klass', except for one of its type parameters, which resolved as the
+  // callee's would be renamed to its bound on the callee's own declaration
+  Class* DeclaredTypeContext(Type* type, Class* klass) {
+    if(klass && !(klass->HasGenerics() && klass->GetGenericClass(type->GetName()))) {
+      return klass;
+    }
+    return current_class;
+  }
+  // the distinct classes and enums 'name' reaches through the uses of 'file_name'
+  const std::vector<std::wstring>& UseCandidates(const std::wstring &name, const std::wstring &file_name);
+
+  // the linker's class and enum searches, with the check above
+  LibraryClass* SearchLibraryClasses(const std::wstring &name, const std::vector<std::wstring> &uses) {
+    CheckAmbiguousUse(name);
+    return linker->SearchClassLibraries(name, uses);
+  }
+
+  LibraryEnum* SearchLibraryEnums(const std::wstring &name, const std::vector<std::wstring> &uses) {
+    CheckAmbiguousUse(name);
+    return linker->SearchEnumLibraries(name, uses);
+  }
+
   // finds the first class match; note multiple matches may exist
   Class* SearchProgramClasses(const std::wstring &klass_name);
 
@@ -487,12 +532,12 @@ class ContextAnalyzer {
   
   // helper function for program enum searches
   inline bool HasProgramOrLibraryEnum(const std::wstring &n) {
-    return SearchProgramEnums(n) || linker->SearchEnumLibraries(n, program->GetLibUses(current_class->GetFileName()));
+    return SearchProgramEnums(n) || SearchLibraryEnums(n, program->GetLibUses(current_class->GetFileName()));
   }
 
   // helper function for program class searches
   inline bool HasProgramOrLibraryClass(const std::wstring &n) {
-    return SearchProgramClasses(n) || linker->SearchClassLibraries(n, program->GetLibUses(current_class->GetFileName()));
+    return SearchProgramClasses(n) || SearchLibraryClasses(n, program->GetLibUses(current_class->GetFileName()));
   }
 
   // class query by name
@@ -675,6 +720,12 @@ class ContextAnalyzer {
     program = p;
     is_lib = l;
     main_found = false;
+    bundle = nullptr;
+    current_class = nullptr;
+    current_method = nullptr;
+    resolve_site = nullptr;
+    skip_use_check = 0;
+    in_use_check = false;
     // initialize linker
     linker = new Linker(lib_path);
     program->SetLinker(linker);

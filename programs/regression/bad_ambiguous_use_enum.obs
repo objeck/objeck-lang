@@ -1,0 +1,32 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'Tint': 'AmbEnumA.Tint'
+#~
+Two bundles in scope both declare 'enum Tint'. The unqualified name silently
+resolved to whichever bundle came first. It is now a compile error naming both
+candidates; the qualified names keep working (compile_ambiguous_use_names.obs).
+~#
+
+use AmbEnumA, AmbEnumB;
+
+bundle AmbEnumA {
+  enum Tint {
+    RED,
+    GREEN
+  }
+}
+
+bundle AmbEnumB {
+  enum Tint {
+    CYAN,
+    MAGENTA,
+    YELLOW
+  }
+}
+
+bundle AmbEnumUser {
+  class BadAmbiguousUseEnum {
+    function : Main(args : String[]) ~ Nil {
+      t : Tint := AmbEnumA.Tint->GREEN;
+      t->As(Int)->PrintLine();
+    }
+  }
+}

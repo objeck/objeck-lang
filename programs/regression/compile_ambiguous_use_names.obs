@@ -1,0 +1,162 @@
+#~
+Regression: an unqualified name that two 'use'd bundles both declare is a
+compile error (bad_ambiguous_use_*.obs). This checks what must still compile:
+both candidates by their qualified names; a class or enum the current bundle
+declares, which wins over one of the same name through 'use' (program and
+library alike: AmbPosOwn.JsonElement next to Data.JSON.JsonElement); a class's
+own enum, which wins over two used bundles' enums of the same name; and a
+bundle reached twice, which is one candidate, not two.
+~#
+
+use Data.JSON, AmbPosA, AmbPosB, AmbPosSolo, AmbPosSolo;
+
+bundle AmbPosA {
+  enum Tint {
+    RED,
+    GREEN
+  }
+
+  class Shape {
+    New() {
+    }
+
+    function : Name() ~ String {
+      return "A";
+    }
+
+    # its own bundle's Shape and Tint, unqualified
+    function : Self() ~ Shape {
+      return Shape->New();
+    }
+
+    function : Pick() ~ Tint {
+      return Tint->GREEN;
+    }
+  }
+}
+
+bundle AmbPosB {
+  enum Tint {
+    CYAN,
+    MAGENTA,
+    YELLOW
+  }
+
+  class Shape {
+    New() {
+    }
+
+    function : Name() ~ String {
+      return "B";
+    }
+
+    function : Self() ~ Shape {
+      return Shape->New();
+    }
+
+    function : Pick() ~ Tint {
+      return Tint->YELLOW;
+    }
+  }
+
+  class Square from Shape {
+    New() {
+      Parent();
+    }
+  }
+}
+
+bundle AmbPosSolo {
+  class Solo {
+    function : Name() ~ String {
+      return "solo";
+    }
+  }
+}
+
+bundle AmbPosOwn {
+  # the same name as the library's Data.JSON.JsonElement
+  class JsonElement {
+    @value : Int;
+
+    New(value : Int) {
+      @value := value;
+    }
+
+    method : public : Value() ~ Int {
+      return @value;
+    }
+  }
+
+  class CompileAmbiguousUseNames {
+    # a class's own enum, though AmbPosA and AmbPosB both declare one
+    enum Tint {
+      ONE,
+      TWO,
+      THREE,
+      FOUR
+    }
+
+    function : Own(e : JsonElement) ~ JsonElement {
+      return JsonElement->New(e->Value() + 1);
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      failed := 0;
+
+      # both candidates by their qualified names
+      if(AmbPosA.Shape->Name()->Equals("A") = false | AmbPosB.Shape->Name()->Equals("B") = false) {
+        "FAIL: qualified class names"->PrintLine();
+        failed += 1;
+      };
+
+      a : AmbPosA.Shape := AmbPosA.Shape->Self();
+      b : AmbPosB.Shape := AmbPosB.Square->New();
+      if(a = Nil | b = Nil) {
+        "FAIL: qualified class declarations"->PrintLine();
+        failed += 1;
+      };
+
+      ta : AmbPosA.Tint := AmbPosA.Shape->Pick();
+      tb : AmbPosB.Tint := AmbPosB.Shape->Pick();
+      if(ta <> AmbPosA.Tint->GREEN | ta->As(Int) <> 1 | tb <> AmbPosB.Tint->YELLOW | tb->As(Int) <> 2) {
+        "FAIL: qualified enum names"->PrintLine();
+        failed += 1;
+      };
+
+      # the current class's own enum
+      t : Tint := Tint->FOUR;
+      if(t->As(Int) <> 3) {
+        "FAIL: the class's own enum"->PrintLine();
+        failed += 1;
+      };
+
+      # the current bundle's JsonElement, not the library's
+      e := Own(JsonElement->New(41));
+      if(e->Value() <> 42) {
+        "FAIL: the current bundle's class"->PrintLine();
+        failed += 1;
+      };
+
+      # the library's, qualified
+      lib : Data.JSON.JsonElement := Data.JSON.JsonParser->TextToElement("[1, 2]");
+      if(lib = Nil | lib->Size() <> 2) {
+        "FAIL: the library's class, qualified"->PrintLine();
+        failed += 1;
+      };
+
+      # a bundle reached twice is one candidate
+      if(Solo->Name()->Equals("solo") = false) {
+        "FAIL: a bundle used twice"->PrintLine();
+        failed += 1;
+      };
+
+      if(failed > 0) {
+        "FAIL: {$failed} check(s) failed"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      "PASS: compile_ambiguous_use_names"->PrintLine();
+    }
+  }
+}

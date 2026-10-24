@@ -1,0 +1,130 @@
+#~
+Regression: a class's declarations resolve in the class's own bundle, wherever
+they are checked from.
+
+AmbCalleeB.Taker's 'Take(s : Shape)' means AmbCalleeB.Shape. Checked from a
+caller analyzed first -- AmbCalleeCaller, whose file also reaches
+AmbCalleeA.Shape -- the parameter and return types were resolved in the
+caller's bundle and became AmbCalleeA's (the first use), so
+'Take(AmbCalleeB.Shape->New())' found no method and 'Pick() ~ Tint' did not
+match AmbCalleeB.Tint. The same for an interface's return type checked from
+the bundle that implements it, and a parameter of a class's own enum, whose
+signature encoded a used bundle's enum of the same name.
+~#
+
+use AmbCalleeA, AmbCalleeB;
+
+bundle AmbCalleeCaller {
+  class Impl implements AmbCalleeB.Maker {
+    New() {
+    }
+
+    method : public : Make() ~ AmbCalleeB.Shape {
+      return AmbCalleeB.Shape->New();
+    }
+  }
+
+  class CompileAmbiguousUseCalleeScope {
+    function : Main(args : String[]) ~ Nil {
+      failed := 0;
+
+      s := AmbCalleeB.Taker->Make();
+      if(AmbCalleeB.Taker->Take(s)->Equals("B") = false |
+         AmbCalleeB.Taker->Take(AmbCalleeB.Shape->New())->Equals("B") = false) {
+        "FAIL: a callee's own-bundle parameter and return types"->PrintLine();
+        failed += 1;
+      };
+
+      t : AmbCalleeB.Tint := AmbCalleeB.Picker->Pick();
+      if(t <> AmbCalleeB.Tint->YELLOW | AmbCalleeB.Picker->Name(t)->Equals("1") = false |
+         AmbCalleeB.Taker->Name(AmbCalleeB.Taker->Pick())->Equals("1") = false) {
+        "FAIL: a callee's own-bundle enum types"->PrintLine();
+        failed += 1;
+      };
+
+      m : AmbCalleeB.Maker := Impl->New();
+      if(m->Make() = Nil | AmbCalleeB.Taker->Take(m->Make())->Equals("B") = false) {
+        "FAIL: an interface's own-bundle return type"->PrintLine();
+        failed += 1;
+      };
+
+      if(AmbCalleeB.Taker->Level(AmbCalleeB.Taker->Tint->HIGH) <> 2) {
+        "FAIL: a parameter of the class's own enum"->PrintLine();
+        failed += 1;
+      };
+
+      if(failed > 0) {
+        "FAIL: {$failed} check(s) failed"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      "PASS: compile_ambiguous_use_callee_scope"->PrintLine();
+    }
+  }
+}
+
+bundle AmbCalleeA {
+  enum Tint {
+    RED
+  }
+
+  class Shape {
+    New() {
+    }
+  }
+}
+
+bundle AmbCalleeB {
+  enum Tint {
+    CYAN,
+    YELLOW
+  }
+
+  class Shape {
+    New() {
+    }
+  }
+
+  interface Maker {
+    method : virtual : public : Make() ~ Shape;
+  }
+
+  class Picker {
+    function : Pick() ~ Tint {
+      return Tint->YELLOW;
+    }
+
+    function : Name(t : Tint) ~ String {
+      return t->As(Int)->ToString();
+    }
+  }
+
+  class Taker {
+    # the class's own Tint, though both bundles declare one
+    enum Tint {
+      LOW,
+      MID,
+      HIGH
+    }
+
+    function : Make() ~ Shape {
+      return Shape->New();
+    }
+
+    function : Take(s : Shape) ~ String {
+      return "B";
+    }
+
+    function : Pick() ~ AmbCalleeB.Tint {
+      return AmbCalleeB.Tint->YELLOW;
+    }
+
+    function : Name(t : AmbCalleeB.Tint) ~ String {
+      return t->As(Int)->ToString();
+    }
+
+    function : Level(t : Tint) ~ Int {
+      return t->As(Int);
+    }
+  }
+}
