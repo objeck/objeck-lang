@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Integer literal out of range: '-99999999999999999999'
+# EXPECT_ERROR_COUNT: 1
+#~
+A negated integer literal past Int's range names the problem, with its sign.
+The negation path had no case for the out-of-range token and reported
+"Expected expression".
+~#
+class BadIntLiteralNegativeRange {
+	function : Main(args : String[]) ~ Nil {
+		x := -99999999999999999999;
+		x->PrintLine();
+	}
+}

@@ -1,0 +1,16 @@
+# EXPECT_COMPILE_ERROR: Float literal out of range: '1.0e999'
+# EXPECT_ERROR_COUNT: 1
+#~
+An out-of-range literal in the middle of an expression is the only error.
+Recovery used to skip to the next ';' and then swallow it, so the rest of
+the expression and the statements after it reported "Expected expression",
+"Expected ')'" and "Expected '}'" as well. The literal is now taken as a
+Float and the parse continues.
+~#
+class BadNumericLiteralMidExpression {
+	function : Main(args : String[]) ~ Nil {
+		y := 2.0 * 1.0e999 + Float->Abs(-3.0);
+		z := y + 1.0;
+		z->PrintLine();
+	}
+}

@@ -33,6 +33,9 @@
 
 #include "../vm/common.h"
 #include <unordered_map>
+#include <cerrno>
+#include <cmath>
+#include <cstdint>
 #include "../shared/sys.h"
 
 // comment
@@ -84,6 +87,9 @@ enum TokenType {
   TOKEN_FLOAT_LIT,
   TOKEN_CHAR_LIT,
   TOKEN_CHAR_STRING_LIT,
+  // a number outside its type's range, as the compiler's scanner marks one
+  TOKEN_BAD_INT_LIT,
+  TOKEN_BAD_FLOAT_LIT,
   // reserved words
   TOKEN_RUN_ID,
   TOKEN_CLEAR_ID,
@@ -244,12 +250,39 @@ class Scanner {
     int length = end_pos - start_pos;
     std::wstring ident(buffer, start_pos, length);
 
-    // set token
-    wchar_t* end;
-    tokens[index]->SetType(TOKEN_INT_LIT);
-    // wcstoll: 'long' is 32-bit on Windows, so 0x100000000 and any
-    // ten-digit literal came back clamped
-    tokens[index]->SetIntLit(wcstoll(ident.c_str(), &end, base));
+    // set token. wcstoll: 'long' is 32-bit on Windows, so 0x100000000 and
+    // any ten-digit literal came back clamped. Hex is bit-pattern notation
+    // and reads unsigned, as the compiler reads it: 0xFFFFFFFFFFFFFFFF is
+    // -1, not a saturated maximum.
+    wchar_t* end = nullptr;
+    errno = 0;
+    if(base == 16) {
+      tokens[index]->SetIntLit((INT64_VALUE)wcstoull(ident.c_str(), &end, base));
+    }
+    else {
+      tokens[index]->SetIntLit(wcstoll(ident.c_str(), &end, base));
+    }
+
+    // A literal past Int's range saturated silently. It is an error, as in
+    // the compiler, except that 9223372036854775808 (2^63) is Int's minimum
+    // once negated: the value INT64_MIN marks it for the parser.
+    if(errno == ERANGE) {
+      tokens[index]->SetType(TOKEN_BAD_INT_LIT);
+      tokens[index]->SetIdentifier(ident);
+      INT64_VALUE magnitude_marker = 0;
+      if(base != 16) {
+        errno = 0;
+        wchar_t* unsigned_end = nullptr;
+        const unsigned long long magnitude = wcstoull(ident.c_str(), &unsigned_end, base);
+        if(errno != ERANGE && magnitude == 0x8000000000000000ULL) {
+          magnitude_marker = INT64_MIN;
+        }
+      }
+      tokens[index]->SetIntLit(magnitude_marker);
+    }
+    else {
+      tokens[index]->SetType(TOKEN_INT_LIT);
+    }
   }
 
   // parse a double
@@ -258,9 +291,32 @@ class Scanner {
     const int length = end_pos - start_pos;
     std::wstring wident(buffer, start_pos, length);
     // set token
-    tokens[index]->SetType(TOKEN_FLOAT_LIT);
-    const std::string ident = UnicodeToBytes(wident);
-    tokens[index]->SetFloatLit(atof(ident.c_str()));
+    wchar_t* end = nullptr;
+    const double value = wcstod(wident.c_str(), &end);
+    tokens[index]->SetFloatLit(value);
+
+    // A literal past the double range (1.0e999) or a nonzero one below it
+    // (1.0e-999) is an error, as in the compiler. The value decides, not
+    // errno: C libraries differ on whether a subnormal result sets ERANGE,
+    // and a subnormal is a valid double.
+    bool nonzero_mantissa = false;
+    for(const wchar_t c : wident) {
+      if(c == L'e' || c == L'E') {
+        break;
+      }
+      if(c >= L'1' && c <= L'9') {
+        nonzero_mantissa = true;
+        break;
+      }
+    }
+
+    if(std::isinf(value) || (value == 0.0 && nonzero_mantissa)) {
+      tokens[index]->SetType(TOKEN_BAD_FLOAT_LIT);
+      tokens[index]->SetIdentifier(wident);
+    }
+    else {
+      tokens[index]->SetType(TOKEN_FLOAT_LIT);
+    }
   }
 
   // parsers an unicode character

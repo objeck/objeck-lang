@@ -457,6 +457,18 @@ void Scanner::ParseToken(int index)
       // next character
       NextChar();
     }
+    // a decimal exponent, as the compiler scans one: digits '.' digits, then
+    // 'e' or 'E', an optional sign and digits ('p 1.5e3')
+    if(is_double && (cur_char == L'e' || cur_char == L'E') &&
+       (iswdigit(nxt_char) || ((nxt_char == L'+' || nxt_char == L'-') && iswdigit(nxt_nxt_char)))) {
+      NextChar();
+      if(cur_char == L'+' || cur_char == L'-') {
+        NextChar();
+      }
+      while(iswdigit(cur_char)) {
+        NextChar();
+      }
+    }
     // mark
     end_pos = buffer_pos - 1;
     if(is_double) {
