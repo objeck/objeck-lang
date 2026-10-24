@@ -1,0 +1,187 @@
+# EXTRA_LIBS: net,regex,csv,xml,misc,query
+#~
+Query.Structured's bridges (docs/QUERY_DESIGN.md section 7, phase 4c): a table or a view out to
+CSV and JSON text or a stream, and back with Table->FromCsvText and Table->FromJson; numeric
+columns out to a System.ML matrix with ToMatrix and back with Table->FromMatrix. Round trips are
+exact: whole numbers, Floats written as their shortest exact text (0.1, 1e300, -2.5e-310), text
+with commas, quotes, line breaks and non-ASCII characters, dates, and empty cells. What a format
+cannot carry is checked as documented rather than lost silently: CSV has no Bool or GMT flag,
+JSON no NaN, and ToMatrix refuses an empty cell unless given a fill value.
+~#
+use Query.Structured, System.IO.Filesystem, System.Time;
+
+class QueryBridges {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Text(value : Compare) ~ String {
+		if(value = Nil) {
+			return "<empty>";
+		}
+		else if(value->TypeOf(FloatRef)) {
+			return "f{$(Float->ToShortString(value->As(FloatRef)->Get()))}";
+		}
+		else if(value->TypeOf(IntRef)) {
+			return "i{$(value->As(IntRef)->Get())}";
+		}
+		else if(value->TypeOf(Date)) {
+			date := value->As(Date);
+			return "d{$(date->GetYear())}-{$(date->GetMonth())}-{$(date->GetDay())}T{$(date->GetHours())}:{$(date->GetMinutes())}:{$(date->GetSeconds())}";
+		};
+		return "s{$(value->ToString())}";
+	}
+
+	# one column of two tables, cell by cell, as text
+	function : SameColumn(what : String, a : Table, b : Table, name : String) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			"    {$what}: the tables differ in size"->PrintLine();
+			return false;
+		};
+		ra := a->LiveRows();
+		rb := b->LiveRows();
+		ca := a->GetColumn(a->GetIndex(name));
+		cb := b->GetColumn(b->GetIndex(name));
+		if(ca = Nil | cb = Nil) {
+			"    {$what}: no column '{$name}'"->PrintLine();
+			return false;
+		};
+		each(i : ra) {
+			x := Text(ca->Get(ra[i]));
+			y := Text(cb->Get(rb[i]));
+			if(<>x->Equals(y)) {
+				"    {$what}: '{$name}', row {$i}: {$x} against {$y}"->PrintLine();
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Sample() ~ Table {
+		table := Table->New("runs", ["id", "score", "label", "seen", "ok"],
+			[ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->DATE, ColumnType->BOOL], true);
+		scores := [0.1, 1.0e300, -2.5e-310, 3.0, 0.3333333333333333];
+		labels := ["plain", "with, comma", "with \"quotes\"", "two\nlines", "café 日本"];
+		each(i : 5) {
+			row := table->Insert();
+			row->Set("id", IntRef->New(i * 1000000007 - 3));
+			if(i <> 2) {
+				row->Set("score", FloatRef->New(scores[i]));
+			};
+			row->Set("label", labels[i]);
+			if(i <> 4) {
+				row->Set("seen", Date->New(1 + i, 2 + i, 2020 + i, i, 10 + i, 20 + i, false));
+			};
+			row->Set("ok", BoolRef->New(i % 2 = 0));
+		};
+		return table;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		table := Sample();
+
+		# CSV out and back
+		csv := table->ToCsv();
+		Check("ToCsv writes a header", csv <> Nil & csv->StartsWith("id,score,label,seen,ok"));
+		back := Table->FromCsvText("runs", csv);
+		Check("FromCsvText reads it", back <> Nil & back->Size() = 5);
+		Check("whole numbers round trip through CSV", SameColumn("csv", table, back, "id"));
+		Check("Floats round trip exactly through CSV", SameColumn("csv", table, back, "score"));
+		Check("text with commas, quotes, line breaks and Unicode round trips", SameColumn("csv", table, back, "label"));
+		Check("dates round trip through CSV", SameColumn("csv", table, back, "seen"));
+		Check("an empty cell stays empty", back->Get(2)->Get("score") = Nil & back->Get(4)->Get("seen") = Nil);
+		Check("a Bool comes back as its text, as documented", back->Get(0)->Get("ok")->As(String)->Equals("true"));
+		Check("columns keep their types", back->GetColumn(back->GetIndex("id"))->GetType() = ColumnType->INT &
+			back->GetColumn(back->GetIndex("score"))->GetType() = ColumnType->FLOAT &
+			back->GetColumn(back->GetIndex("seen"))->GetType() = ColumnType->DATE);
+
+		tabbed := table->ToCsv('\t');
+		Check("a delimiter", tabbed <> Nil & tabbed->StartsWith("id\tscore\tlabel"));
+
+		# a stream gets exactly the same text
+		path := "query_bridges_tmp.csv";
+		writer := FileWriter->New(path);
+		Check("WriteCsv to a file", table->WriteCsv(writer));
+		writer->Close();
+		Check("the file holds what ToCsv returns", FileReader->ReadFile(path)->Equals(csv));
+		File->Delete(path);
+
+		# a view writes only its rows and columns
+		view := table->AsView()->Where(Predicate->New(Op->GT, "id", IntRef->New(1000000000), 0))->Select(["label", "id"]);
+		part := view->ToCsv();
+		Check("a view's CSV has its columns, in its order", part->StartsWith("label,id"));
+		Check("and only its rows", Table->FromCsvText("part", part)->Size() = 4);
+
+		# JSON out and back
+		json := table->ToJson();
+		Check("ToJson writes an array", json <> Nil & json->StartsWith("[{\"id\":-3,"));
+		Check("an empty cell is null", json->Has("\"score\":null"));
+		Check("a date is ISO 8601", json->Has("\"seen\":\"2020-02-01T00:10:20\""));
+		Check("a Bool is a JSON Bool", json->Has("\"ok\":true") & json->Has("\"ok\":false"));
+		read := Table->FromJson("runs", json, ["id", "score", "label", "seen", "ok"]);
+		Check("FromJson reads it", read <> Nil & read->Size() = 5);
+		Check("whole numbers round trip through JSON", SameColumn("json", table, read, "id"));
+		Check("Floats round trip exactly through JSON", SameColumn("json", table, read, "score"));
+		Check("text round trips through JSON", SameColumn("json", table, read, "label"));
+		Check("FromJson with names keeps their order", read->GetColumnNames()[1]->Equals("id") & read->GetColumnNames()[5]->Equals("ok"));
+
+		path := "query_bridges_tmp.json";
+		writer := FileWriter->New(path);
+		Check("WriteJson to a file", table->WriteJson(writer));
+		writer->Close();
+		Check("the file holds what ToJson returns", FileReader->ReadFile(path)->Equals(json));
+		File->Delete(path);
+
+		odd := Table->New("odd", ["x"], [ColumnType->FLOAT], true);
+		odd->Insert()->Set("x", FloatRef->New(Float->Sqrt(-1.0)));
+		Check("a NaN is written as null, which JSON has, not as NaN, which it has not", odd->ToJson()->Equals("[{\"x\":null}]"));
+
+		# ToMatrix and FromMatrix
+		m := table->ToMatrix(["id", "score"], -1.0);
+		dims := m <> Nil ? m->Size() : Int->New[2];
+		Check("ToMatrix has a row per row and a column per name", dims[0] = 5 & dims[1] = 2);
+		Check("it copies the numbers", m <> Nil & m[1, 0] = 1000000004.0 & m[0, 1] = 0.1);
+		Check("a fill value replaces an empty cell", m <> Nil & m[2, 1] = -1.0);
+		Check("an empty cell without a fill value is an error", table->ToMatrix(["score"]) = Nil & table->GetError()->Has("row 3"));
+		Check("an unknown column is an error", table->ToMatrix(["nope"]) = Nil & table->GetError()->Has("nope"));
+		flags := table->ToMatrix(["ok"]);
+		Check("a Bool is 1 or 0", flags <> Nil & flags[0, 0] = 1.0 & flags[1, 0] = 0.0);
+		Check("a view's matrix has its rows", view->ToMatrix(["id"])->Size()[0] = 4);
+
+		grid := Float->New[3, 2];
+		each(i : 3) {
+			grid[i, 0] := i->As(Float) / 3.0;
+			grid[i, 1] := 1.0e-300 * (i + 1)->As(Float);
+		};
+		built := Table->FromMatrix("grid", grid, ["a", "b"]);
+		Check("FromMatrix makes a table", built <> Nil & built->Size() = 3 & built->GetColumnCount() = 3);
+		again := built->ToMatrix(["a", "b"]);
+		same := again <> Nil;
+		if(same) {
+			each(i : 3) {
+				same := same & again[i, 0] = grid[i, 0] & again[i, 1] = grid[i, 1];
+			};
+		};
+		Check("a matrix round trips exactly", same);
+		Check("FromMatrix refuses names that do not match the columns", Table->FromMatrix("g", grid, ["a"]) = Nil);
+
+		# a view made before a change refuses
+		stale := table->AsView();
+		table->Insert();
+		Check("a stale view writes nothing", stale->ToCsv() = Nil & stale->ToJson() = Nil & stale->GetError() <> Nil);
+
+		if(@failures = 0) {
+			"PASS: tables and views to and from CSV, JSON and matrices"->PrintLine();
+		}
+		else {
+			"FAIL: query bridges ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

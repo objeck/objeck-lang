@@ -931,6 +931,18 @@ bundle Web.HTTP.Server {
 			@request_line := request_line;
 			@request_headers := request_headers;
 			@content := content;
+
+			# the path and query string, as the bodiless form takes them; without this a POST
+			# handler's GetPath() and GetQuery() were Nil, so it could not route by path
+			query_index := @request_line->Find('?');
+			if(query_index > 0) {
+				@request_path := @request_line->SubString(query_index);
+				query_index += 1;
+				@request_query := @request_line->SubString(query_index, @request_line->Size() - query_index);
+			}
+			else {
+				@request_path := request_line;
+			};
 		}
 
 		#~

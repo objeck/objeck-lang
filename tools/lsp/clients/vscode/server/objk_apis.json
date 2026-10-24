@@ -8875,6 +8875,9 @@
 				},
 				"Run": {
 					"descriptions": ["**Runs a SELECT that reads files named in it, with no catalog of tables. Each call reads the files again; a program that repeats a query keeps a Catalog and uses its Query, which reads a file again only after it changes.**\n\n```function : Run(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\nrs := Catalog->Run(\"select name, avg(score) from 'results\/run_*.csv' group by name\");\n```"]
+				},
+				"SetFileAccess": {
+					"descriptions": ["**Whether queries may name files and URLs ('from 'runs.csv'', 'from 'https:\/\/...''), which they may by default. A catalog that answers queries from other people, as TableServer's does, turns this off: otherwise a query could read any file the process can, or make it fetch any URL.**\n\n```method : public : SetFileAccess(allowed:Bool) ~ Nil```\n\n\n\nallowed: Bool\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -9280,11 +9283,14 @@
 				"GetName": {
 					"descriptions": ["**Gets the table's name as saved**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetRequests": {
+					"descriptions": ["**Gets the number of HTTP requests made for a file read by URL**\n\n```method : public : GetRequests() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"IsOpen": {
 					"descriptions": ["**Whether the file opened; GetError says why not**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Opens a file, reading only its trailer and footer**\n\n```New(path:String)```\n\n\n\npath: String", "**Opens an .otab image held in memory, as Table->ToBytes makes it**\n\n```New(bytes:Byte[])```\n\n\n\nbytes: Byte[]"]
+					"descriptions": ["**Opens a file, reading only its trailer and footer. A path that starts with http:\/\/ or https:\/\/ is read over HTTP: with range requests when the server supports them, so only the footer and the blocks a Read asks for cross the network, and otherwise by downloading the file once.**\n\n```New(path:String)```\n\n\n\npath: String", "**Opens an .otab image held in memory, as Table->ToBytes makes it**\n\n```New(bytes:Byte[])```\n\n\n\nbytes: Byte[]"]
 				},
 				"Read": {
 					"descriptions": ["**Reads every column**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads only the named columns, and the key column; no other block is read**\n\n```method : public : Read(names:String[]) ~ Table```\n\n\n\nnames: String[]\n\nreturn: Table"]
@@ -9326,6 +9332,32 @@
 				},
 				"OrElse": {
 					"descriptions": ["**Either this condition or another**\n\n```method : public : OrElse(condition:Predicate) ~ Predicate```\n\n\n\ncondition: Predicate\n\nreturn: Predicate"]
+				}
+			}
+		},
+		"Query.Structured.RemoteSource": {
+			"description": "A table published by a TableServer (in the query_server library) on another machine, read as if it were local. Queries go to the server's \/query endpoint as SQL, and results come back as .otab, so every type and empty cell arrives exactly. Load sends only the columns and row limit the scan hint asks for, and the condition given to SetWhere, so only the rows a query needs cross the network; the server applies them, and the local query applies its own WHERE again, so pushing a condition down never changes an answer.",
+			"functions": {
+				"GetError": {
+					"descriptions": ["**Gets the reason the last request failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the table's shape, by asking the server for none of its rows**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the table into a catalog under its name**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(base:String, name:String)```\n\n\n\nbase: String\n\nname: String"]
+				},
+				"Query": {
+					"descriptions": ["**Runs a SELECT on the server, over any of the tables it publishes**\n\n```method : public : Query(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the table, or the part of it the hint and SetWhere ask for**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table", "**Reads the whole table, or the part SetWhere asks for**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"SetWhere": {
+					"descriptions": ["**Sets a condition for the server to apply before sending rows, as SQL after WHERE**\n\n```method : public : SetWhere(condition:String) ~ Nil```\n\n\n\ncondition: String\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -9419,6 +9451,9 @@
 				"GetParamCount": {
 					"descriptions": ["**Gets the number of placeholders**\n\n```method : public : GetParamCount() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"IsQuery": {
+					"descriptions": ["**Whether the statement is a SELECT, which Execute runs; INSERT, UPDATE, DELETE and CREATE TABLE run with ExecuteUpdate**\n\n```method : public : IsQuery() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
 				"New": {
 					"descriptions": ["**Constructor. Use Table->Prepare rather than this.**\n\n```New(table:Table, plan:Plan)```\n\n\n\ntable: Table\n\nplan: Plan", "**Constructor. Use Catalog->Prepare rather than this.**\n\n```New(catalog:Catalog, plan:Plan)```\n\n\n\ncatalog: Catalog\n\nplan: Plan"]
 				}
@@ -9478,8 +9513,17 @@
 				"FromCsv": {
 					"descriptions": ["**Loads a table from a CSV file. The first line names the columns. Each cell is typed on its own, as it always has been: a whole number ('42', '-3', '+3') becomes an IntRef; a decimal or exponent form ('3.5', '.5', '-0.5', '1e3') becomes a FloatRef; '#MM\/dd\/yyyy#' style cells become dates; anything else ('1-2', '3.', 'abc', '') stays a String. A file holding only the header line gives an empty table. CsvSource types each column as a whole instead, and treats an empty cell as empty.**\n\n```function : FromCsv(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"orders\", \"orders.csv\");\nif(table <> Nil) {\n  rs := table->Query(\"select * from orders where total > 100\");\n  rs->ToString()->PrintLine();\n};\n```"]
 				},
+				"FromCsvText": {
+					"descriptions": ["**Reads CSV text into a table, typing each column as a whole the way CsvSource does: a column of whole numbers is INT, one with decimals FLOAT, one of '#MM\/dd\/yyyy#' dates DATE, and anything else STRING; an empty field is an empty cell. The first line names the columns. ToCsv's output reads back with the same values, except that Bools come back as the text 'true' and 'false' and a date loses its GMT flag.**\n\n```function : FromCsvText(name:String, text:String) ~ Table```\n\n\n\nname: String\n\ntext: String\n\nreturn: Table\n\n```\ncopy := Table->FromCsvText(\"runs\", table->ToCsv());\n```"]
+				},
 				"FromFilesystem": {
 					"descriptions": ["**Loads a table from a directory file system. Columns are: name, path_name, create_date, owner, is_dir and is_readonly, with is_dir and is_readonly as Row->True() and Row->False(). FilesystemSource offers more columns and recursion.**\n\n```function : FromFilesystem(table_name:String, path:String) ~ Table```\n\n\n\ntable_name: String\n\npath: String\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromFilesystem(\"files\", \"\/tmp\/\");\nrs := table->Query(\"select name from files where is_dir = false\");\nrs->ToString()->PrintLine(); # list only files, not directories\n```"]
+				},
+				"FromJson": {
+					"descriptions": ["**Reads JSON text, an array of objects, into a table, as JsonSource does: one row per object and one column per member, numbers typed by column, and a nested array or object becoming a child table (see JsonSource). JSON objects have no member order, so columns come out in name order; FromJson(name, text, names) puts them in a given order.**\n\n```function : FromJson(name:String, text:String) ~ Table```\n\n\n\nname: String\n\ntext: String\n\nreturn: Table", "**Reads JSON text into a table with its columns in a given order (see FromJson(name, text))**\n\n```function : FromJson(name:String, text:String, names:String[]) ~ Table```\n\n\n\nname: String\n\ntext: String\n\nnames: String[]\n\nreturn: Table"]
+				},
+				"FromMatrix": {
+					"descriptions": ["**Makes a table of FLOAT columns from a matrix, one row per matrix row**\n\n```function : FromMatrix(name:String, matrix:Float[,], names:String[]) ~ Table```\n\n\n\nname: String\n\nmatrix: Float[,]\n\nnames: String[]\n\nreturn: Table\n\n```\ntable := Table->FromMatrix(\"features\", model_input, [\"x\", \"y\"]);\n```"]
 				},
 				"Gather": {
 					"descriptions": ["**Copies chosen rows and columns of a table into a new table**\n\n```function : Gather(name:String, source:Table, columns:Int[], names:String[], rows:Int[]) ~ Table```\n\n\n\nname: String\n\nsource: Table\n\ncolumns: Int[]\n\nnames: String[]\n\nrows: Int[]\n\nreturn: Table"]
@@ -9583,6 +9627,15 @@
 				"ToBytes": {
 					"descriptions": ["**Gets the table's live rows as an .otab image in memory**\n\n```method : public : ToBytes() ~ Byte[]```\n\n\n\nreturn: Byte[]", "**Gets the table's live rows as an .otab image in memory, compressing its blocks**\n\n```method : public : ToBytes(compression:Compression) ~ Byte[]```\n\n\n\ncompression: Compression\n\nreturn: Byte[]"]
 				},
+				"ToCsv": {
+					"descriptions": ["**Writes the table's live rows as CSV (see View->ToCsv)**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String\n\n```\ntable->ToCsv()->PrintLine();\n```", "**Writes the table's live rows as delimited text (see View->ToCsv)**\n\n```method : public : ToCsv(delimiter:Char) ~ String```\n\n\n\ndelimiter: Char\n\nreturn: String"]
+				},
+				"ToJson": {
+					"descriptions": ["**Writes the table's live rows as JSON, an array of objects (see View->ToJson)**\n\n```method : public : ToJson() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ToMatrix": {
+					"descriptions": ["**Copies numeric columns into a matrix for System.ML (see View->ToMatrix); an empty cell is an error**\n\n```method : public : ToMatrix(names:String[]) ~ Float[,]```\n\n\n\nnames: String[]\n\nreturn: Float[,]", "**Copies numeric columns into a matrix, putting a fill value in empty cells (see View->ToMatrix)**\n\n```method : public : ToMatrix(names:String[], fill:Float) ~ Float[,]```\n\n\n\nnames: String[]\n\nfill: Float\n\nreturn: Float[,]"]
+				},
 				"ToString": {
 					"descriptions": ["**String representation of table**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -9594,6 +9647,12 @@
 				},
 				"Where": {
 					"descriptions": ["**The rows that meet a condition, as a view. Whole row groups the zone maps rule out are skipped.**\n\n```method : public : Where(condition:Predicate) ~ View```\n\n\n\ncondition: Predicate\n\nreturn: View\n\n```\nrs := table->Where(Col->Of(\"score\")->Gt(0.5)->AndAlso(Col->Of(\"label\")->Eq(\"cat\")));\n```"]
+				},
+				"WriteCsv": {
+					"descriptions": ["**Writes the table's live rows as CSV to a stream, a line at a time (see View->WriteCsv)**\n\n```method : public : WriteCsv(out:System.IO.OutputStream) ~ Bool```\n\n\n\nout: System.IO.OutputStream\n\nreturn: Bool"]
+				},
+				"WriteJson": {
+					"descriptions": ["**Writes the table's live rows as JSON to a stream, an object at a time (see View->WriteJson)**\n\n```method : public : WriteJson(out:System.IO.OutputStream) ~ Bool```\n\n\n\nout: System.IO.OutputStream\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -9726,6 +9785,15 @@
 				"Sum": {
 					"descriptions": ["**Sums a column's numeric cells over the view's rows**\n\n```method : public : Sum(name:String) ~ Float```\n\n\n\nname: String\n\nreturn: Float"]
 				},
+				"ToCsv": {
+					"descriptions": ["**Writes the view as CSV: a header line of column names, then one line per row, quoted only where RFC 4180 needs it. Empty cells are empty fields; numbers are written exactly (a Float as the shortest text that reads back as the same value); dates as '#MM\/dd\/yyyy hh:mm:ss#', the form CsvSource reads back as dates; Bools as true and false.**\n\n```method : public : ToCsv() ~ String```\n\n\n\nreturn: String\n\n```\nresults := table->Query(\"select id, score from runs where score > 0.5\");\nresults->ToCsv()->PrintLine();\n```", "**Writes the view as delimited text (see ToCsv())**\n\n```method : public : ToCsv(delimiter:Char) ~ String```\n\n\n\ndelimiter: Char\n\nreturn: String"]
+				},
+				"ToJson": {
+					"descriptions": ["**Writes the view as JSON: an array with one object per row, members in column order. Numbers are written exactly; an empty cell is null, as is a Float that is not a finite number (JSON has none); a date is its ISO 8601 text, 'yyyy-MM-ddTHH:mm:ss', with a trailing 'Z' for a GMT date.**\n\n```method : public : ToJson() ~ String```\n\n\n\nreturn: String\n\n```\nresults := table->Query(\"select id, label from runs limit 3\");\nresults->ToJson()->PrintLine(); # [{\"id\":1,\"label\":\"cat\"},...]\n```"]
+				},
+				"ToMatrix": {
+					"descriptions": ["**Copies numeric columns into a matrix for System.ML, one row per view row, one column per name, in the order named. INT, FLOAT and BOOL cells are read as numbers (a Bool as 1 or 0), and so are numbers in an OBJECT column. An empty cell, or one that is not a number, is an error: no value is invented without being asked for (see ToMatrix(names, fill)).**\n\n```method : public : ToMatrix(names:String[]) ~ Float[,]```\n\n\n\nnames: String[]\n\nreturn: Float[,]\n\n```\nfeatures := table->AsView()->ToMatrix([\"height\", \"weight\"]);\n```", "**Copies numeric columns into a matrix, putting a fill value where a cell is empty or not a number (see ToMatrix(names))**\n\n```method : public : ToMatrix(names:String[], fill:Float) ~ Float[,]```\n\n\n\nnames: String[]\n\nfill: Float\n\nreturn: Float[,]"]
+				},
 				"ToString": {
 					"descriptions": ["**String representation of the view's rows**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -9734,6 +9802,12 @@
 				},
 				"Where": {
 					"descriptions": ["**The rows that also meet a condition**\n\n```method : public : Where(condition:Predicate) ~ View```\n\n\n\ncondition: Predicate\n\nreturn: View"]
+				},
+				"WriteCsv": {
+					"descriptions": ["**Writes the view as CSV to a stream, a line at a time, so a large result never has to be held as one string (see ToCsv())**\n\n```method : public : WriteCsv(out:System.IO.OutputStream) ~ Bool```\n\n\n\nout: System.IO.OutputStream\n\nreturn: Bool", "**Writes the view as delimited text to a stream (see ToCsv())**\n\n```method : public : WriteCsv(out:System.IO.OutputStream, delimiter:Char) ~ Bool```\n\n\n\nout: System.IO.OutputStream\n\ndelimiter: Char\n\nreturn: Bool"]
+				},
+				"WriteJson": {
+					"descriptions": ["**Writes the view as JSON to a stream, an object at a time (see ToJson())**\n\n```method : public : WriteJson(out:System.IO.OutputStream) ~ Bool```\n\n\n\nout: System.IO.OutputStream\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -9760,6 +9834,32 @@
 				},
 				"Read": {
 					"descriptions": ["**Reads the document's main table; GetChildTables then has the others**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the document's main table; GetChildTables then has the others**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				}
+			}
+		},
+		"Query.Structured.Server.TableServer": {
+			"description": "Publishes tables over HTTP, read-only:\n\n- 'GET \/tables' lists the tables, their columns and row counts, as JSON.\n- 'GET \/tables\/NAME' returns a table.\n- 'GET \/query?sql=...' or 'POST \/query' (the statement as the UTF-8 body) runs a SELECT over the published tables and returns the result.\n\nResults are CSV, JSON or .otab by the request's Accept header ('text\/csv', 'application\/json', 'application\/x-otab'), or a 'format=csv|json|otab' parameter; CSV is the default. Only SELECT is answered: a statement that would change data is refused (403), and so is a query that names a file or a URL, which would let a client read the server's disk or make it fetch an address. A result larger than the row limit is refused (413) rather than cut short. Queries run one at a time, since tables are not shared between threads. RemoteSource reads a published table from another program.\n\nWeb.HTTP.Server runs one server per process, so one TableServer serves at a time.",
+			"functions": {
+				"GetAnswered": {
+					"descriptions": ["**Gets the number of requests answered, successfully or not**\n\n```method : public : GetAnswered() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; publishes nothing until Publish**\n\n```New()```\n\n"]
+				},
+				"Publish": {
+					"descriptions": ["**Publishes a table under its name, replacing one of the same name**\n\n```method : public : Publish(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
+				},
+				"Serve": {
+					"descriptions": ["**Serves on a port until Stop; this call blocks**\n\n```method : public : Serve(port:Int) ~ Nil```\n\n\n\nport: Int\n\nreturn: Nil"]
+				},
+				"SetRowLimit": {
+					"descriptions": ["**Sets the most rows one answer may hold; a larger result is refused with 413**\n\n```method : public : SetRowLimit(rows:Int) ~ Nil```\n\n\n\nrows: Int\n\nreturn: Nil"]
+				},
+				"Stop": {
+					"descriptions": ["**Stops serving**\n\n```method : public : Stop() ~ Nil```\n\n\n\nreturn: Nil"]
+				},
+				"Unpublish": {
+					"descriptions": ["**Stops publishing a table**\n\n```method : public : Unpublish(name:String) ~ Bool```\n\n\n\nname: String\n\nreturn: Bool"]
 				}
 			}
 		},
@@ -17441,6 +17541,12 @@
 				"file": ""
 			}
 		],
+		"RemoteSource": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
 		"Row": [
 			{
 				"bundle": "Query.Structured",
@@ -17498,6 +17604,12 @@
 		"XmlSource": [
 			{
 				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"TableServer": [
+			{
+				"bundle": "Query.Structured.Server",
 				"file": ""
 			}
 		],

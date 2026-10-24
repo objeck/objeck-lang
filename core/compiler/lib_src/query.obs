@@ -2867,6 +2867,192 @@ results->ToString()->PrintLine();
 		}
 
 		#~
+		Writes the table's live rows as CSV (see View->ToCsv)
+		@return CSV text
+		```
+		table->ToCsv()->PrintLine();
+		```
+		~#
+		method : public : ToCsv() ~ String {
+			return AsView()->ToCsv();
+		}
+
+		#~
+		Writes the table's live rows as delimited text (see View->ToCsv)
+		@param delimiter field delimiter, such as '\t'
+		@return delimited text
+		~#
+		method : public : ToCsv(delimiter : Char) ~ String {
+			return AsView()->ToCsv(delimiter);
+		}
+
+		#~
+		Writes the table's live rows as CSV to a stream, a line at a time (see View->WriteCsv)
+		@param out stream, such as a FileWriter or an HTTP response body
+		@return true if written, false on error (see GetError)
+		~#
+		method : public : WriteCsv(out : System.IO.OutputStream) ~ Bool {
+			view := AsView();
+			if(<>view->WriteCsv(out)) {
+				@error := view->GetError();
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		Writes the table's live rows as JSON, an array of objects (see View->ToJson)
+		@return JSON text
+		~#
+		method : public : ToJson() ~ String {
+			return AsView()->ToJson();
+		}
+
+		#~
+		Writes the table's live rows as JSON to a stream, an object at a time (see View->WriteJson)
+		@param out stream
+		@return true if written, false on error (see GetError)
+		~#
+		method : public : WriteJson(out : System.IO.OutputStream) ~ Bool {
+			view := AsView();
+			if(<>view->WriteJson(out)) {
+				@error := view->GetError();
+				return false;
+			};
+			return true;
+		}
+
+		#~
+		Copies numeric columns into a matrix for System.ML (see View->ToMatrix); an empty cell
+		is an error
+		@param names columns to copy
+		@return matrix, Nil on error (see GetError)
+		~#
+		method : public : ToMatrix(names : String[]) ~ Float[,] {
+			view := AsView();
+			matrix := view->ToMatrix(names);
+			if(matrix = Nil) {
+				@error := view->GetError();
+			};
+			return matrix;
+		}
+
+		#~
+		Copies numeric columns into a matrix, putting a fill value in empty cells (see
+		View->ToMatrix)
+		@param names columns to copy
+		@param fill value for a missing cell
+		@return matrix, Nil on error (see GetError)
+		~#
+		method : public : ToMatrix(names : String[], fill : Float) ~ Float[,] {
+			view := AsView();
+			matrix := view->ToMatrix(names, fill);
+			if(matrix = Nil) {
+				@error := view->GetError();
+			};
+			return matrix;
+		}
+
+		#~
+		Makes a table of FLOAT columns from a matrix, one row per matrix row
+		@param name table name
+		@param matrix values
+		@param names one name per matrix column
+		@return table, Nil if the names do not match the matrix's columns
+		```
+		table := Table->FromMatrix("features", model_input, ["x", "y"]);
+		```
+		~#
+		function : FromMatrix(name : String, matrix : Float[,], names : String[]) ~ Table {
+			if(matrix = Nil | names = Nil) {
+				return Nil;
+			};
+
+			dims := matrix->Size();
+			rows := dims[0];
+			count := dims[1];
+			if(names->Size() <> count) {
+				return Nil;
+			};
+
+			types := ColumnType->New[count];
+			each(j : count) {
+				types[j] := ColumnType->FLOAT;
+			};
+			table := Table->New(name, names, types, true);
+			table->Fill(rows);
+
+			present := Bool->New[rows];
+			each(i : rows) {
+				present[i] := true;
+			};
+			each(j : count) {
+				values := Float->New[rows];
+				each(i : rows) {
+					values[i] := matrix[i, j];
+				};
+				table->GetColumn(j + 1)->FillNumbers(ColumnType->FLOAT, Nil, values, present);
+			};
+			return table;
+		}
+
+		#~
+		Reads CSV text into a table, typing each column as a whole the way CsvSource does: a
+		column of whole numbers is INT, one with decimals FLOAT, one of '#MM/dd/yyyy#' dates
+		DATE, and anything else STRING; an empty field is an empty cell. The first line names the
+		columns. ToCsv's output reads back with the same values, except that Bools come back as
+		the text 'true' and 'false' and a date loses its GMT flag.
+		@param name table name
+		@param text CSV text
+		@return table, Nil if the text cannot be parsed
+		```
+		copy := Table->FromCsvText("runs", table->ToCsv());
+		```
+		~#
+		function : FromCsvText(name : String, text : String) ~ Table {
+			if(text = Nil) {
+				return Nil;
+			};
+			return CsvSource->FromText(name, text, ',')->Read(Nil);
+		}
+
+		#~
+		Reads JSON text, an array of objects, into a table, as JsonSource does: one row per
+		object and one column per member, numbers typed by column, and a nested array or object
+		becoming a child table (see JsonSource). JSON objects have no member order, so columns come
+		out in name order; FromJson(name, text, names) puts them in a given order.
+		@param name table name
+		@param text JSON text
+		@return table, Nil if the text is not JSON
+		~#
+		function : FromJson(name : String, text : String) ~ Table {
+			if(text = Nil) {
+				return Nil;
+			};
+			return JsonSource->FromText(name, text)->Read(Nil);
+		}
+
+		#~
+		Reads JSON text into a table with its columns in a given order (see FromJson(name, text))
+		@param name table name
+		@param text JSON text
+		@param names the columns, in order; a name the objects lack gives an empty column
+		@return table, Nil if the text is not JSON
+		~#
+		function : FromJson(name : String, text : String, names : String[]) ~ Table {
+			read := FromJson(name, text);
+			if(read = Nil | names = Nil) {
+				return read;
+			};
+
+			indexes := Int->New[names->Size()];
+			each(i : names) {
+				indexes[i] := read->GetIndex(names[i]);
+			};
+			return Table->Gather(name, read, indexes, names, read->LiveRows());
+		}
+
+		#~
 		String representation of table
 		@return all rows as a string
 		~#
@@ -5054,6 +5240,230 @@ each(i : view->Count()) {
 		}
 
 		#~
+		Writes the view as CSV: a header line of column names, then one line per row, quoted
+		only where RFC 4180 needs it. Empty cells are empty fields; numbers are written exactly
+		(a Float as the shortest text that reads back as the same value); dates as
+		'#MM/dd/yyyy hh:mm:ss#', the form CsvSource reads back as dates; Bools as true and false.
+		@return CSV text, Nil if the view is stale
+		```
+		results := table->Query("select id, score from runs where score > 0.5");
+		results->ToCsv()->PrintLine();
+		```
+		~#
+		method : public : ToCsv() ~ String {
+			return ToCsv(',');
+		}
+
+		#~
+		Writes the view as delimited text (see ToCsv())
+		@param delimiter field delimiter, such as '\t'
+		@return delimited text, Nil if the view is stale
+		~#
+		method : public : ToCsv(delimiter : Char) ~ String {
+			if(<>IsCurrent()) {
+				return Nil;
+			};
+
+			buffer := "";
+			buffer->Append(Data.CSV.CsvTable->FormatRow(@names, delimiter));
+			buffer->Append("\r\n");
+			each(i : @rows) {
+				buffer->Append(CsvLine(@rows[i], delimiter));
+				buffer->Append("\r\n");
+			};
+			return buffer;
+		}
+
+		#~
+		Writes the view as CSV to a stream, a line at a time, so a large result never has to be
+		held as one string (see ToCsv())
+		@param out stream, such as a FileWriter or an HTTP response body
+		@return true if every line was written, false on error (see GetError)
+		~#
+		method : public : WriteCsv(out : System.IO.OutputStream) ~ Bool {
+			return WriteCsv(out, ',');
+		}
+
+		#~
+		Writes the view as delimited text to a stream (see ToCsv())
+		@param out stream
+		@param delimiter field delimiter
+		@return true if every line was written, false on error (see GetError)
+		~#
+		method : public : WriteCsv(out : System.IO.OutputStream, delimiter : Char) ~ Bool {
+			if(<>IsCurrent()) {
+				return false;
+			};
+
+			if(<>Export->Write(out, Data.CSV.CsvTable->FormatRow(@names, delimiter) + "\r\n")) {
+				@error := "the stream refused the CSV header";
+				return false;
+			};
+
+			each(i : @rows) {
+				if(<>Export->Write(out, CsvLine(@rows[i], delimiter) + "\r\n")) {
+					@error := "the stream refused row {$(i + 1)}";
+					return false;
+				};
+			};
+			return true;
+		}
+
+		method : CsvLine(row : Int, delimiter : Char) ~ String {
+			fields := String->New[@columns->Size()];
+			each(j : @columns) {
+				fields[j] := @columns[j] > -1 ? Export->CsvText(@table->GetColumn(@columns[j])->Get(row)) : "";
+			};
+			return Data.CSV.CsvTable->FormatRow(fields, delimiter);
+		}
+
+		#~
+		Writes the view as JSON: an array with one object per row, members in column order.
+		Numbers are written exactly; an empty cell is null, as is a Float that is not a finite
+		number (JSON has none); a date is its ISO 8601 text, 'yyyy-MM-ddTHH:mm:ss', with a
+		trailing 'Z' for a GMT date.
+		@return JSON text, Nil if the view is stale
+		```
+		results := table->Query("select id, label from runs limit 3");
+		results->ToJson()->PrintLine(); # [{"id":1,"label":"cat"},...]
+		```
+		~#
+		method : public : ToJson() ~ String {
+			if(<>IsCurrent()) {
+				return Nil;
+			};
+
+			buffer := "[";
+			each(i : @rows) {
+				if(i > 0) {
+					buffer->Append(',');
+				};
+				buffer->Append(JsonObject(@rows[i]));
+			};
+			buffer->Append(']');
+			return buffer;
+		}
+
+		#~
+		Writes the view as JSON to a stream, an object at a time (see ToJson())
+		@param out stream
+		@return true if everything was written, false on error (see GetError)
+		~#
+		method : public : WriteJson(out : System.IO.OutputStream) ~ Bool {
+			if(<>IsCurrent()) {
+				return false;
+			};
+
+			if(<>Export->Write(out, "[")) {
+				@error := "the stream refused the JSON array";
+				return false;
+			};
+
+			each(i : @rows) {
+				text := JsonObject(@rows[i]);
+				if(i > 0) {
+					text := ",{$text}";
+				};
+				if(<>Export->Write(out, text)) {
+					@error := "the stream refused row {$(i + 1)}";
+					return false;
+				};
+			};
+
+			if(<>Export->Write(out, "]")) {
+				@error := "the stream refused the end of the JSON array";
+				return false;
+			};
+			return true;
+		}
+
+		method : JsonObject(row : Int) ~ String {
+			buffer := "{";
+			each(j : @columns) {
+				if(j > 0) {
+					buffer->Append(',');
+				};
+				buffer->Append('"');
+				buffer->Append(Data.JSON.JsonElement->Encode(@names[j]));
+				buffer->Append("\":");
+				value : Compare;
+				if(@columns[j] > -1) {
+					value := @table->GetColumn(@columns[j])->Get(row);
+				};
+				buffer->Append(Export->JsonText(value));
+			};
+			buffer->Append('}');
+			return buffer;
+		}
+
+		#~
+		Copies numeric columns into a matrix for System.ML, one row per view row, one column per
+		name, in the order named. INT, FLOAT and BOOL cells are read as numbers (a Bool as 1 or
+		0), and so are numbers in an OBJECT column. An empty cell, or one that is not a number,
+		is an error: no value is invented without being asked for (see ToMatrix(names, fill)).
+		@param names columns to copy
+		@return matrix, Nil on error (see GetError)
+		```
+		features := table->AsView()->ToMatrix(["height", "weight"]);
+		```
+		~#
+		method : public : ToMatrix(names : String[]) ~ Float[,] {
+			return Matrix(names, false, 0.0);
+		}
+
+		#~
+		Copies numeric columns into a matrix, putting a fill value where a cell is empty or not
+		a number (see ToMatrix(names))
+		@param names columns to copy
+		@param fill value for a missing cell, such as 0.0 or a column mean
+		@return matrix, Nil on error (see GetError)
+		~#
+		method : public : ToMatrix(names : String[], fill : Float) ~ Float[,] {
+			return Matrix(names, true, fill);
+		}
+
+		method : Matrix(names : String[], filled : Bool, fill : Float) ~ Float[,] {
+			if(<>IsCurrent()) {
+				return Nil;
+			};
+
+			if(names = Nil | names->Size() = 0) {
+				@error := "ToMatrix needs at least one column name";
+				return Nil;
+			};
+
+			columns := Column->New[names->Size()];
+			each(j : names) {
+				index := @table->GetIndex(names[j]);
+				if(index < 1) {
+					@error := "no column '{$(names[j])}'";
+					return Nil;
+				};
+				columns[j] := @table->GetColumn(index);
+			};
+
+			matrix := Float->New[@rows->Size(), names->Size()];
+			each(i : @rows) {
+				row := @rows[i];
+				each(j : columns) {
+					column := columns[j];
+					if(<>column->IsNull(row) & (column->IsNumeric(row) | column->GetType() = ColumnType->BOOL)) {
+						matrix[i, j] := column->GetFloat(row);
+					}
+					else if(filled) {
+						matrix[i, j] := fill;
+					}
+					else {
+						why := column->IsNull(row) ? "is empty" : "is not a number";
+						@error := "column '{$(names[j])}', row {$(i + 1)} {$why}; pass a fill value to ToMatrix to replace such cells";
+						return Nil;
+					};
+				};
+			};
+			return matrix;
+		}
+
+		#~
 		String representation of the view's rows
 		@return rows as a string
 		~#
@@ -5071,6 +5481,86 @@ each(i : view->Count()) {
 				};
 			};
 			return buffer;
+		}
+	}
+
+	# one cell as CSV or JSON text, and writing text to a stream
+	class : private : Export {
+		function : CsvText(value : Compare) ~ String {
+			if(value = Nil) {
+				return "";
+			}
+			else if(value->TypeOf(IntRef)) {
+				return value->As(IntRef)->Get()->ToString();
+			}
+			else if(value->TypeOf(FloatRef)) {
+				return Number(value->As(FloatRef)->Get());
+			}
+			else if(value->TypeOf(BoolRef)) {
+				return value->As(BoolRef)->Get() ? "true" : "false";
+			}
+			else if(value->TypeOf(Date)) {
+				date := value->As(Date);
+				return "#{$(Pad(date->GetMonth(), 2))}/{$(Pad(date->GetDay(), 2))}/{$(Pad(date->GetYear(), 4))} {$(Pad(date->GetHours(), 2))}:{$(Pad(date->GetMinutes(), 2))}:{$(Pad(date->GetSeconds(), 2))}#";
+			}
+			else if(value->TypeOf(String)) {
+				return value->As(String);
+			};
+
+			return Cell->Text(value);
+		}
+
+		function : JsonText(value : Compare) ~ String {
+			if(value = Nil) {
+				return "null";
+			}
+			else if(value->TypeOf(IntRef)) {
+				return value->As(IntRef)->Get()->ToString();
+			}
+			else if(value->TypeOf(FloatRef)) {
+				number := value->As(FloatRef)->Get();
+				# JSON has no NaN or infinity
+				if(number - number <> 0.0) {
+					return "null";
+				};
+				return Number(number);
+			}
+			else if(value->TypeOf(BoolRef)) {
+				return value->As(BoolRef)->Get() ? "true" : "false";
+			}
+			else if(value->TypeOf(Date)) {
+				date := value->As(Date);
+				zone := date->IsGmt() ? "Z" : "";
+				return "\"{$(Pad(date->GetYear(), 4))}-{$(Pad(date->GetMonth(), 2))}-{$(Pad(date->GetDay(), 2))}T{$(Pad(date->GetHours(), 2))}:{$(Pad(date->GetMinutes(), 2))}:{$(Pad(date->GetSeconds(), 2))}{$zone}\"";
+			};
+
+			text := value->TypeOf(String) ? value->As(String) : Cell->Text(value);
+			return "\"" + Data.JSON.JsonElement->Encode(text) + "\"";
+		}
+
+		# a Float as the shortest text that reads back as the same value
+		function : Number(value : Float) ~ String {
+			return Float->ToShortString(value);
+		}
+
+		function : Pad(value : Int, width : Int) ~ String {
+			text := value->ToString();
+			while(text->Size() < width) {
+				text := "0" + text;
+			};
+			return text;
+		}
+
+		# text as UTF-8; true only if the stream took every byte
+		function : Write(out : System.IO.OutputStream, text : String) ~ Bool {
+			if(out = Nil) {
+				return false;
+			};
+			bytes := text->ToByteArray();
+			if(bytes->Size() = 0) {
+				return true;
+			};
+			return out->WriteBuffer(0, bytes->Size(), bytes) = bytes->Size();
 		}
 	}
 
@@ -5123,6 +5613,15 @@ results := statement->Execute();
 		~#
 		method : public : GetParamCount() ~ Int {
 			return @params->Size();
+		}
+
+		#~
+		Whether the statement is a SELECT, which Execute runs; INSERT, UPDATE, DELETE and CREATE
+		TABLE run with ExecuteUpdate
+		@return true for a SELECT
+		~#
+		method : public : IsQuery() ~ Bool {
+			return @plan->IsQuery();
 		}
 
 		#~
@@ -6826,15 +7325,26 @@ if(file->IsOpen()) {
 		@footer_crc : Int;
 		@file_size : Int;
 		@bytes_read : Int;
+		@requests : Int;
+		@url : String;
 		@error : String;
 
 		#~
-		Opens a file, reading only its trailer and footer
-		@param path .otab file
+		Opens a file, reading only its trailer and footer. A path that starts with http:// or
+		https:// is read over HTTP: with range requests when the server supports them, so only
+		the footer and the blocks a Read asks for cross the network, and otherwise by
+		downloading the file once.
+		@param path .otab file, or its URL
 		~#
 		New(path : String) {
 			@path := path;
-			@open := OpenPath();
+			if(path <> Nil & UrlCache->IsUrl(path)) {
+				@url := path;
+				@open := OpenUrl();
+			}
+			else {
+				@open := OpenPath();
+			};
 		}
 
 		#~
@@ -6861,6 +7371,86 @@ if(file->IsOpen()) {
 			};
 
 			return ParseEnds(File->Size(@path));
+		}
+
+		# The header by a range request. A server that answers 206 is read the same way from then
+		# on; one that answers 200 sent the whole file, which is then read in memory.
+		method : OpenUrl() ~ Bool {
+			total := IntRef->New(0);
+			header := Fetch(0, Otab->HeaderSize(), total);
+			if(header = Nil) {
+				return false;
+			};
+
+			if(@image <> Nil) {
+				return ParseEnds(@image->Size());
+			};
+			return ParseEnds(total->Get());
+		}
+
+		# bytes [offset, offset + count) of the URL; on a whole-file answer, keeps the file as
+		# the image and returns the part asked for. total gets the size Content-Range reports.
+		method : Fetch(offset : Int, count : Int, total : IntRef) ~ Byte[] {
+			client := Web.HTTP.HttpClient->New();
+			client->AddHeader("Range", "bytes={$offset}-{$(offset + count - 1)}");
+			response := client->Get(Web.HTTP.Url->New(@url));
+			@requests += 1;
+			code := 0;
+			body := Byte->New[0];
+			if(response <> Nil) {
+				code := response->GetCode();
+				if(response->GetContent() <> Nil) {
+					body := response->GetContent();
+				};
+			};
+
+			if(code = 200) {
+				@image := body;
+				if(offset < 0 | offset + count > body->Size()) {
+					@error := "'{$@url}' ends early; it is truncated";
+					return Nil;
+				};
+				part := Byte->New[count];
+				Byte->Copy(part, 0, body, offset, count);
+				@bytes_read += count;
+				return part;
+			};
+
+			if(code <> 206) {
+				if(code = 0) {
+					@error := "'{$@url}': no response from the server";
+				}
+				else {
+					@error := "'{$@url}': the server answered HTTP {$code}";
+				};
+				return Nil;
+			};
+
+			if(body->Size() <> count) {
+				@error := "'{$@url}': a range request for {$count} bytes returned {$(body->Size())}";
+				return Nil;
+			};
+
+			if(total <> Nil) {
+				range := client->GetResponseHeaders()->Find("content-range");
+				slash := range <> Nil ? range->FindLast('/') : -1;
+				if(slash < 0 | <>range->SubString(slash + 1, range->Size() - slash - 1)->Trim()->IsInt()) {
+					@error := "'{$@url}': the server's range answer gives no total size";
+					return Nil;
+				};
+				total->Set(range->SubString(slash + 1, range->Size() - slash - 1)->Trim()->ToInt());
+			};
+
+			@bytes_read += count;
+			return body;
+		}
+
+		#~
+		Gets the number of HTTP requests made for a file read by URL
+		@return requests, 0 for a local file or image
+		~#
+		method : public : GetRequests() ~ Int {
+			return @requests;
 		}
 
 		method : OpenImage() ~ Bool {
@@ -6989,6 +7579,13 @@ if(file->IsOpen()) {
 
 		# bytes at an offset; Nil with the error set
 		method : ReadAt(offset : Int, count : Int) ~ Byte[] {
+			if(@url <> Nil & @image = Nil) {
+				if(count = 0) {
+					return Byte->New[0];
+				};
+				return Fetch(offset, count, Nil);
+			};
+
 			part := Byte->New[count];
 			if(@image <> Nil) {
 				if(offset < 0 | offset + count > @image->Size()) {
@@ -11791,6 +12388,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@plans : Map<String, Plan>;
 		@files : Map<String, FileEntry>;
 		@file_reads : Int;
+		@no_files : Bool;
 		@error : String;
 
 		#~
@@ -11798,6 +12396,17 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		~#
 		New() {
 			@tables := Map->New()<String, Table>;
+		}
+
+		#~
+		Whether queries may name files and URLs ('from 'runs.csv'', 'from 'https://...''), which
+		they may by default. A catalog that answers queries from other people, as TableServer's
+		does, turns this off: otherwise a query could read any file the process can, or make
+		it fetch any URL.
+		@param allowed false to refuse files and URLs in queries
+		~#
+		method : public : SetFileAccess(allowed : Bool) ~ Nil {
+			@no_files := <>allowed;
 		}
 
 		#~
@@ -11907,6 +12516,11 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		# a file named in a query, read once and again only when it changes (by name, size
 		# and modification time); a glob's files become one table with a '_file' column
 		method : public : ReadFile(file : SqlFile, name : String, error : StringHolder) ~ Table {
+			if(@no_files) {
+				error->Set("'{$(file->GetPath())}': this catalog does not read files or URLs named in a query");
+				return Nil;
+			};
+
 			if(@files = Nil) {
 				@files := Map->New()<String, FileEntry>;
 			};
@@ -13081,6 +13695,209 @@ catalog->Load(source);
 			};
 
 			return UrlFile->New(local, "{$etag}|{$modified}");
+		}
+	}
+
+	#~
+	A table published by a TableServer (in the query_server library) on another machine, read as
+	if it were local. Queries go to the server's /query endpoint as SQL, and results come back
+	as .otab, so every type and empty cell arrives exactly. Load sends only the columns and row
+	limit the scan hint asks for, and the condition given to SetWhere, so only the rows a query
+	needs cross the network; the server applies them, and the local query applies its own WHERE
+	again, so pushing a condition down never changes an answer.
+
+```
+runs := RemoteSource->New("http://lab-server:8090", "runs");
+runs->SetWhere("score > 0.9");
+catalog := Catalog->New();
+if(catalog->Load(runs)) {
+  catalog->Query("select label, count(*) from runs group by label")->ToCsv()->PrintLine();
+};
+```
+	~#
+	class RemoteSource implements Source {
+		@base : String;
+		@name : String;
+		@where : String;
+		@error : String;
+
+		#~
+		Constructor
+		@param base server address, such as 'http://localhost:8090'
+		@param name published table's name
+		~#
+		New(base : String, name : String) {
+			@base := base;
+			while(@base <> Nil & @base->EndsWith('/')) {
+				@base := @base->SubString(0, @base->Size() - 1);
+			};
+			@name := name;
+		}
+
+		#~
+		Sets a condition for the server to apply before sending rows, as SQL after WHERE
+		@param condition condition, such as "score > 0.9 and label = 'cat'"; Nil for none
+		~#
+		method : public : SetWhere(condition : String) ~ Nil {
+			@where := condition;
+		}
+
+		#~
+		Gets the table's shape, by asking the server for none of its rows
+		@return table shapes, Nil on error (see GetError)
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			empty := Run("select * from {$(Quoted(@name))} limit 0");
+			if(empty = Nil) {
+				return Nil;
+			};
+
+			names := empty->GetColumnNames();
+			data_names := String->New[names->Size() - 1];
+			types := ColumnType->New[names->Size() - 1];
+			for(c := 1; c < names->Size(); c += 1;) {
+				data_names[c - 1] := names[c];
+				types[c - 1] := empty->GetColumn(c)->GetType();
+			};
+
+			specs := TableSpec->New[1];
+			specs[0] := TableSpec->New(@name, data_names, types);
+			return specs;
+		}
+
+		#~
+		Loads the table into a catalog under its name
+		@param catalog catalog
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded, false on error (see GetError)
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			table := Read(hint);
+			if(table = Nil) {
+				return false;
+			};
+
+			catalog->Add(table);
+			return true;
+		}
+
+		#~
+		Reads the table, or the part of it the hint and SetWhere ask for
+		@param hint columns and rows needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			columns := "*";
+			limit := -1;
+			if(hint <> Nil) {
+				if(hint->GetColumns() <> Nil & hint->GetColumns()->Size() > 0) {
+					wanted := hint->GetColumns();
+					columns := "";
+					each(i : wanted) {
+						if(i > 0) {
+							columns += ", ";
+						};
+						columns += Quoted(wanted[i]);
+					};
+				};
+				limit := hint->GetLimit();
+			};
+
+			sql := "select {$columns} from {$(Quoted(@name))}";
+			if(@where <> Nil & @where->Size() > 0) {
+				sql += " where {$@where}";
+			};
+			if(limit > -1) {
+				sql += " limit {$limit}";
+			};
+
+			table := Run(sql);
+			if(table = Nil) {
+				return Nil;
+			};
+
+			# under the published name, without copying the columns
+			names := table->GetColumnNames();
+			data_names := String->New[names->Size() - 1];
+			parts := Column->New[names->Size()];
+			each(c : names) {
+				parts[c] := table->GetColumn(c);
+				if(c > 0) {
+					data_names[c - 1] := names[c];
+				};
+			};
+			return Table->Restore(@name, data_names, parts, table->GetNextKey());
+		}
+
+		#~
+		Reads the whole table, or the part SetWhere asks for
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			return Read(Nil);
+		}
+
+		#~
+		Runs a SELECT on the server, over any of the tables it publishes
+		@param statement SQL SELECT
+		@return result, Nil on error (see GetError)
+		~#
+		method : public : Query(statement : String) ~ Table {
+			return Run(statement);
+		}
+
+		#~
+		Gets the reason the last request failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		# a name as SQL, quoted so any column or table name works
+		function : Quoted(name : String) ~ String {
+			return "\"" + name->ReplaceAll("\"", "\"\"") + "\"";
+		}
+
+		# the statement as a UTF-8 POST body, so any text survives; the answer as .otab
+		method : Run(statement : String) ~ Table {
+			@error := Nil;
+			if(@base = Nil) {
+				@error := "no server address";
+				return Nil;
+			};
+
+			client := Web.HTTP.HttpClient->New();
+			client->AddHeader("Accept", "application/x-otab");
+			response := client->Post(Web.HTTP.Url->New("{$@base}/query"), statement->ToByteArray(), "text/plain; charset=utf-8");
+			code := 0;
+			body : Byte[];
+			if(response <> Nil) {
+				code := response->GetCode();
+				body := response->GetContent();
+			};
+			if(code <> 200) {
+				if(code = 0) {
+					@error := "'{$@base}': no response from the server";
+				}
+				else {
+					text := "HTTP {$code}";
+					if(body <> Nil & body->Size() > 0) {
+						text := body->ToString();
+					};
+					@error := "'{$@base}': {$text}";
+				};
+				return Nil;
+			};
+
+			table : Table;
+			if(body <> Nil) {
+				table := Table->FromBytes(body);
+			};
+			if(table = Nil) {
+				@error := "'{$@base}': the answer is not an .otab table";
+			};
+			return table;
 		}
 	}
 
