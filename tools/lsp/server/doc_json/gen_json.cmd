@@ -58,6 +58,7 @@ if %ERRORLEVEL% NEQ 0 (
 	%LIB_SRC%\query.obs ^
 	%LIB_SRC%\query_server.obs ^
 	%LIB_SRC%\query_ml.obs ^
+	%LIB_SRC%\query_odbc.obs ^
 	%LIB_SRC%\query_vision.obs ^
 	%LIB_SRC%\sdl2.obs ^
 	%LIB_SRC%\sdl_game.obs ^

@@ -1,0 +1,263 @@
+# EXTRA_LIBS: gen_collect,odbc,net,regex,csv,misc,query,query_odbc
+#~
+Query.Structured's ODBC source, OdbcSource (docs/QUERY_DESIGN.md section 6, tier 2,
+query_odbc.obl), against SQLite through its ODBC driver and the objeck_sqlite_test data source
+ci-build.yml sets up on Linux; skips where there is no such data source, as odbc_sqlite_test
+does.
+
+Covers the column types the driver describes (whole numbers to 9e9, reals, text of any length
+and in any script, binary as hexadecimal with zero bytes intact, dates, timestamps, times,
+booleans) and NULLs in every one; pushdown of a scan hint's columns and row limit and of a
+condition, raw or with bound parameters, checked in the SQL sent and by equivalence with the
+same query run without pushdown; a query as a source, wrapped as a derived table; names that
+contain quotes and SQL, which reach the database only as quoted identifiers; the limit
+syntaxes; and errors reported with the database's reason.
+~#
+use Collection, System.Time, Database.ODBC, Query.Structured, Query.Structured.Odbc;
+
+class QuerySourceOdbc {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Text(table : Table, column : String, row : Int) ~ String {
+		return table->GetColumn(column)->GetString(row);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		conn := Connection->New("objeck_sqlite_test", "", "");
+		if(<>conn->IsOpen()) {
+			err := conn->GetLastError();
+			if(err->Has("IM002")) {
+				"SKIP: no objeck_sqlite_test data source ({$err})"->PrintLine();
+				return;
+			};
+			"FAIL: cannot open a connection: {$err}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		Types(conn);
+		Pushdown(conn);
+		Names(conn);
+		Errors(conn);
+		conn->Close();
+
+		if(@failures = 0) {
+			"PASS: ODBC tables and queries as tables, with pushdown"->PrintLine();
+		}
+		else {
+			"FAIL: query ODBC source ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	# every column type, and NULL in each
+	function : Types(conn : Connection) ~ Nil {
+		conn->Update("CREATE TABLE kinds (i INTEGER, b BIGINT, s SMALLINT, r REAL, d DOUBLE, n NUMERIC(10,2), v VARCHAR(20), tx TEXT, bl BLOB, dt DATE, ts TIMESTAMP, tm TIME, bo BOOLEAN)");
+		conn->Update("INSERT INTO kinds VALUES (-7, 9000000000, 3, 1.5, -2.25, 12.34, 'héllo, 世界', 'it''s', X'00FF1000', '2026-10-24', '2026-10-24 13:14:15', '13:14:15', 1)");
+		conn->Update("INSERT INTO kinds VALUES (NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)");
+		long := String->New();
+		each(k : 12000) {
+			long->Append(('a' + (k % 26))->As(Char));
+		};
+		blob := Byte->New[300];
+		each(k : blob) {
+			blob[k] := (k % 7 = 0 ? 0 : k % 256)->As(Byte);
+		};
+		insert := conn->CreateParameterStatement("INSERT INTO kinds (i, tx, bl, bo) VALUES (3, ?, ?, 0)");
+		insert->SetVarchar(1, long);
+		insert->SetBlob(2, blob);
+		Check("a long text and a blob are inserted", insert->Update() = 1);
+		insert->Close();
+
+		source := OdbcSource->New(conn, "kinds");
+		specs := source->GetTables();
+		Check("the table's shape", specs <> Nil & specs->Size() = 1 & specs[0]->GetName()->Equals("kinds") & specs[0]->GetColumns()->Size() = 13);
+		if(specs = Nil) {
+			source->GetError()->PrintLine();
+			return;
+		};
+		types := specs[0]->GetTypes();
+		expected := [ColumnType->INT, ColumnType->INT, ColumnType->INT, ColumnType->FLOAT, ColumnType->FLOAT, ColumnType->FLOAT,
+			ColumnType->STRING, ColumnType->STRING, ColumnType->STRING, ColumnType->DATE, ColumnType->DATE, ColumnType->STRING, ColumnType->BOOL];
+		same := types->Size() = expected->Size();
+		each(i : expected) {
+			if(same & types[i] <> expected[i]) {
+				"  column {$i}: {$(types[i]->As(Int))}"->PrintLine();
+				same := false;
+			};
+		};
+		Check("columns are typed from the driver's description", same);
+
+		table := source->Read();
+		Check("the table reads", table <> Nil & table->Size() = 3);
+		if(table = Nil) {
+			source->GetError()->PrintLine();
+			return;
+		};
+		Check("SELECT * was sent", source->GetSql()->Equals("SELECT * FROM \"kinds\""));
+		Check("whole numbers", table->GetColumn("i")->GetInt(0) = -7 & table->GetColumn("b")->GetInt(0) = 9000000000 & table->GetColumn("s")->GetInt(0) = 3);
+		Check("real numbers", table->GetColumn("r")->GetFloat(0) = 1.5 & table->GetColumn("d")->GetFloat(0) = -2.25 & table->GetColumn("n")->GetFloat(0) = 12.34);
+		Check("text in any script", Text(table, "v", 0)->Equals("héllo, 世界") & Text(table, "tx", 0)->Equals("it's"));
+		Check("binary as hexadecimal, zero bytes kept", Text(table, "bl", 0)->Equals("00ff1000"));
+		date := table->GetColumn("dt")->Get(0)->As(Date);
+		Check("a date", date->GetYear() = 2026 & date->GetMonth() = 10 & date->GetDay() = 24);
+		stamp := table->GetColumn("ts")->Get(0)->As(Date);
+		Check("a timestamp, to the second", stamp->GetYear() = 2026 & stamp->GetMonth() = 10 & stamp->GetDay() = 24 &
+			stamp->GetHours() = 13 & stamp->GetMinutes() = 14 & stamp->GetSeconds() = 15);
+		Check("a time is text", Text(table, "tm", 0)->Equals("13:14:15"));
+		Check("a boolean", table->GetColumn("bo")->Get(0)->As(BoolRef)->Get() & <>table->GetColumn("bo")->Get(2)->As(BoolRef)->Get());
+		nulls := true;
+		each(c : 13) {
+			nulls := nulls & table->GetColumn(c + 1)->IsNull(1);
+		};
+		Check("NULL is an empty cell in every type", nulls);
+		Check("text longer than a read buffer", Text(table, "tx", 2)->Equals(long));
+		back := OdbcSource->FromHex(Text(table, "bl", 2));
+		same := back <> Nil & back->Size() = blob->Size();
+		if(same) {
+			each(k : blob) {
+				same := same & back[k] = blob[k];
+			};
+		};
+		Check("binary round trips through FromHex", same);
+		Check("ToHex and FromHex agree", OdbcSource->ToHex(OdbcSource->FromHex("00A0fF"))->Equals("00a0ff") & OdbcSource->FromHex("0g") = Nil & OdbcSource->FromHex("abc") = Nil);
+	}
+
+	function : Pushdown(conn : Connection) ~ Nil {
+		conn->Update("CREATE TABLE runs (id INTEGER, label VARCHAR(10), score REAL, note TEXT)");
+		each(i : 40) {
+			name := "'cat'";
+			if(i % 3 = 1) {
+				name := "'dog'";
+			}
+			else if(i % 3 = 2) {
+				name := "'o''brien'";
+			};
+			score := (i % 10)->As(Float) / 10.0;
+			conn->Update("INSERT INTO runs VALUES ({$i}, {$name}, {$score}, 'n{$i}')");
+		};
+
+		# columns and limit
+		source := OdbcSource->New(conn, "runs");
+		catalog := Catalog->New();
+		Check("loads with a hint", catalog->Load(source, ScanHint->New(["SCORE", "id", "missing"], 5)));
+		Check("only the hinted columns and the limit are sent", source->GetSql()->Equals("SELECT \"score\", \"id\" FROM \"runs\" LIMIT 5"));
+		runs := catalog->Get("runs");
+		Check("the table holds those columns and rows", runs <> Nil & runs->Size() = 5 & runs->GetColumnCount() = 3 & runs->GetColumn("note") = Nil);
+
+		# a condition, and the same answer as no pushdown at all
+		filtered := OdbcSource->New(conn, "runs");
+		filtered->SetWhere("score >= 0.5 and label <> 'dog'");
+		pushed := Catalog->New();
+		pushed->Load(filtered);
+		Check("the condition is sent", filtered->GetSql()->Equals("SELECT * FROM \"runs\" WHERE score >= 0.5 and label <> 'dog'"));
+		whole := Catalog->New();
+		whole->Load(OdbcSource->New(conn, "runs"));
+		sql := "select id, label, score from runs where score >= 0.5 and label <> 'dog' order by id";
+		a := pushed->Query(sql);
+		b := whole->Query(sql);
+		Check("the database filtered", pushed->Get("runs")->Size() = a->Size() & whole->Get("runs")->Size() = 40);
+		Check("pushdown changes no answer", a <> Nil & b <> Nil & a->Size() > 0 & a->ToCsv()->Equals(b->ToCsv()));
+
+		# bound parameters, with a quote in a value
+		bound := OdbcSource->New(conn, "runs");
+		bound->SetWhere("label = ? and score > ? and id < ?", ["o'brien", FloatRef->New(0.25), IntRef->New(30)]->As(Compare[]));
+		rows := bound->Read(ScanHint->New(["id", "label"], -1));
+		Check("parameters are bound, not written into the SQL", rows <> Nil & bound->GetSql()->Equals("SELECT \"id\", \"label\" FROM \"runs\" WHERE label = ? and score > ? and id < ?"));
+		expect := whole->Query("select id from runs where label = 'o''brien' and score > 0.25 and id < 30");
+		Check("and select the same rows", rows <> Nil & expect <> Nil & rows->Size() = expect->Size() & rows->Size() > 0);
+		flag := OdbcSource->New(conn, "kinds");
+		flag->SetWhere("bo = ?", [BoolRef->New(true)]->As(Compare[]));
+		flagged := flag->Read();
+		Check("a Bool parameter binds", flagged <> Nil & flagged->Size() = 1 & flagged->GetColumn("i")->GetInt(0) = -7);
+		dated := OdbcSource->New(conn, "kinds");
+		dated->SetWhere("ts >= ?", [Date->New(1, 1, 2026, false)]->As(Compare[]));
+		since := dated->Read();
+		Check("a Date parameter binds", since <> Nil & since->Size() = 1);
+		nil_source := OdbcSource->New(conn, "runs");
+		values := Compare->New[1];
+		nil_source->SetWhere("note = ?", values);
+		Check("a Nil parameter is refused, naming IS NULL", nil_source->Read() = Nil & nil_source->GetError()->Has("IS NULL"));
+
+		# a query as a source: wrapped, so the hint and condition still apply
+		summary := OdbcSource->New(conn, "summary", "select label, count(*) as n, avg(score) as mean from runs group by label");
+		summary->SetWhere("n > 13");
+		groups := summary->Read(ScanHint->New(["label", "n"], 10));
+		Check("a query is wrapped as a derived table", summary->GetSql()->Equals("SELECT \"label\", \"n\" FROM (select label, count(*) as n, avg(score) as mean from runs group by label) q WHERE n > 13 LIMIT 10"));
+		Check("and filtered by the database", groups <> Nil & groups->Size() = 1 & Text(groups, "label", 0)->Equals("cat") & groups->GetColumn("n")->GetInt(0) = 14);
+
+		# a join of two sources in one catalog
+		conn->Update("CREATE TABLE labels (label VARCHAR(10), kind VARCHAR(10))");
+		conn->Update("INSERT INTO labels VALUES ('cat', 'pet'), ('dog', 'pet'), ('o''brien', 'person')");
+		both := Catalog->New();
+		both->Load(OdbcSource->New(conn, "runs"));
+		both->Load(OdbcSource->New(conn, "labels"));
+		joined := both->Query("select l.kind, count(*) as n from runs r join labels l on r.label = l.label group by l.kind order by l.kind");
+		Check("two sources join", joined <> Nil & joined->Size() = 2 & Text(joined, "kind", 1)->Equals("pet") & joined->GetColumn("n")->GetInt(1) = 27);
+
+		# the other limit syntaxes are written as their databases spell them
+		top := OdbcSource->New(conn, "runs");
+		top->SetLimitSyntax(LimitSyntax->TOP);
+		top->Read(ScanHint->New(Nil, 3));
+		Check("TOP", top->GetSql()->Equals("SELECT TOP 3 * FROM \"runs\""));
+		fetch := OdbcSource->New(conn, "runs");
+		fetch->SetLimitSyntax(LimitSyntax->FETCH);
+		fetch->Read(ScanHint->New(Nil, 3));
+		Check("FETCH FIRST", fetch->GetSql()->Equals("SELECT * FROM \"runs\" FETCH FIRST 3 ROWS ONLY"));
+		none := OdbcSource->New(conn, "runs");
+		none->SetLimitSyntax(LimitSyntax->NONE);
+		capped := none->Read(ScanHint->New(Nil, 3));
+		Check("no limit sent, but only the limit's rows read", none->GetSql()->Equals("SELECT * FROM \"runs\"") & capped <> Nil & capped->Size() = 3);
+	}
+
+	# names with quotes and SQL in them reach the database only as identifiers
+	function : Names(conn : Connection) ~ Nil {
+		conn->Update("CREATE TABLE \"we\"\"ird; drop table runs; --\" (\"sel\"\"ect\" INTEGER, \"x y\" VARCHAR(5))");
+		conn->Update("INSERT INTO \"we\"\"ird; drop table runs; --\" VALUES (1, 'a')");
+		odd := OdbcSource->New(conn, "we\"ird; drop table runs; --");
+		table := odd->Read(ScanHint->New(["sel\"ect", "x y", "id\" from runs; drop table labels; --"], -1));
+		Check("a name with a quote and SQL in it reads as one identifier", table <> Nil & table->Size() = 1 & table->GetColumn("sel\"ect")->GetInt(0) = 1 & Text(table, "x y", 0)->Equals("a"));
+		Check("its quote is doubled", odd->GetSql()->Equals("SELECT \"sel\"\"ect\", \"x y\" FROM \"we\"\"ird; drop table runs; --\""));
+		still := conn->Select("SELECT count(*) FROM runs");
+		Check("no table was dropped", still->IsOpen() & still->Next() & still->GetInt(1) = 40);
+		still->Close();
+		labels := conn->Select("SELECT count(*) FROM labels");
+		Check("not by a column name either", labels->IsOpen() & labels->Next() & labels->GetInt(1) = 3);
+		labels->Close();
+		Check("other quote styles double their closing quote", OdbcSource->Quote("a]b", '[', ']')->Equals("[a]]b]") & OdbcSource->Quote("a`b", '`', '`')->Equals("`a``b`"));
+		schema := OdbcSource->New(conn, "runs");
+		schema->SetSchema("main");
+		Check("a schema is quoted apart from the table", schema->Read() <> Nil & schema->GetSql()->Equals("SELECT * FROM \"main\".\"runs\""));
+
+		# a query that repeats a column name, and an unnamed expression
+		dup := OdbcSource->New(conn, "dup", "select r.id, l.label, r.label, 1 + 1 from runs r join labels l on r.label = l.label where r.id < 2");
+		rows := dup->Read();
+		names := rows <> Nil ? rows->GetColumnNames() : Nil;
+		Check("a query with nothing to push down is sent as it is", dup->GetSql()->StartsWith("select r.id"));
+		Check("repeated names are told apart", names <> Nil & names->Size() = 5 & names[2]->Equals("label") & names[3]->Equals("label_2"));
+		ordered := OdbcSource->New(conn, "ordered", "select id from runs order by id desc");
+		top := ordered->Read();
+		Check("so its ORDER BY holds", top <> Nil & top->Size() = 40 & top->GetColumn("id")->GetInt(0) = 39);
+	}
+
+	function : Errors(conn : Connection) ~ Nil {
+		missing := OdbcSource->New(conn, "no_such_table");
+		catalog := Catalog->New();
+		Check("an unknown table does not load", <>catalog->Load(missing));
+		Check("and the database's reason is given", catalog->GetError() <> Nil & catalog->GetError()->Has("no_such_table") & catalog->GetError()->StartsWith("'no_such_table': "));
+		Check("GetTables reports it too", missing->GetTables() = Nil & missing->GetError()->Has("no_such_table"));
+		bad := OdbcSource->New(conn, "runs");
+		bad->SetWhere("score >>> 1");
+		Check("a bad condition is the database's error", bad->Read() = Nil & bad->GetError() <> Nil & bad->GetError()->Size() > 10);
+		closed := Connection->New("objeck_sqlite_test", "", "");
+		closed->Close();
+		gone := OdbcSource->New(closed, "runs");
+		Check("a closed connection is refused", gone->Read() = Nil & gone->GetError()->Has("not open"));
+	}
+}

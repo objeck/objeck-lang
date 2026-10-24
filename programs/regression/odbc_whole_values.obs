@@ -1,0 +1,134 @@
+#~
+# Database.ODBC reads and writes whole values, and says why a SELECT failed.
+#
+# Four defects in the ODBC native library, each found building OdbcSource:
+#
+# - Text was read into one 8,192-byte buffer, so a longer value came back cut
+#   short with no sign of it, and a NULL was converted from that buffer before
+#   anything was written to it.
+# - SetBlob bound its bytes with no length indicator, which ODBC reads as
+#   "NUL-terminated": a blob was stored up to its first zero byte, and one
+#   starting with zero was stored empty.
+# - GetBlob fills a buffer the caller sized and cannot say how long the value
+#   was. GetBytes returns a new array of exactly the value's length.
+# - A SELECT the database refused freed its statement and its diagnostic with
+#   it: the result set read as empty and GetLastError said nothing. A result
+#   set now says whether it is open, and a closed one gives the reason.
+#
+# Needs the SQLite ODBC driver and the objeck_sqlite_test data source, which
+# ci-build.yml sets up on Linux; skips where there is no such data source, as
+# odbc_sqlite_test does.
+# EXTRA_LIBS: odbc
+~#
+
+use Database.ODBC;
+
+class OdbcWholeValues {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		conn := Connection->New("objeck_sqlite_test", "", "");
+		if(<>conn->IsOpen()) {
+			err := conn->GetLastError();
+			if(err->Has("IM002")) {
+				"SKIP: no objeck_sqlite_test data source ({$err})"->PrintLine();
+				return;
+			};
+			"FAIL: cannot open a connection: {$err}"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# --- text longer than one read buffer, and NULL text ---
+		long := String->New();
+		each(k : 20000) {
+			long->Append(('a' + (k % 26))->As(Char));
+		};
+		long->Append("é世");
+		conn->Update("CREATE TABLE notes (id INTEGER, body TEXT)");
+		insert := conn->CreateParameterStatement("INSERT INTO notes VALUES (?, ?)");
+		insert->SetInt(1, 1);
+		insert->SetVarchar(2, long);
+		Check("long text is inserted", insert->Update() = 1);
+		insert->Close();
+		conn->Update("INSERT INTO notes VALUES (2, NULL)");
+
+		rs := conn->Select("SELECT body FROM notes ORDER BY id");
+		Check("the SELECT ran", rs->IsOpen());
+		Check("a first row", rs->Next());
+		text := rs->GetVarchar(1);
+		Check("20,002 characters read whole", text <> Nil & text->Size() = long->Size() & text->Equals(long) & <>rs->IsNull());
+		Check("a second row", rs->Next());
+		Check("NULL text is Nil", rs->GetVarchar(1) = Nil & rs->IsNull());
+		rs->Close();
+
+		by_name := conn->Select("SELECT body FROM notes WHERE id = 1");
+		Check("by name too", by_name->Next() & by_name->GetVarchar("body")->Equals(long));
+		by_name->Close();
+
+		# --- binary values with zero bytes, written and read whole ---
+		blob := Byte->New[50000];
+		each(k : blob) {
+			blob[k] := (k % 251)->As(Byte);
+		};
+		conn->Update("CREATE TABLE files (id INTEGER, data BLOB)");
+		put := conn->CreateParameterStatement("INSERT INTO files VALUES (?, ?)");
+		put->SetInt(1, 1);
+		put->SetBlob(2, blob);
+		Check("a blob starting with a zero byte is inserted", put->Update() = 1);
+		put->Close();
+		conn->Update("INSERT INTO files VALUES (2, NULL)");
+		conn->Update("INSERT INTO files VALUES (3, X'')");
+
+		sizes := conn->Select("SELECT length(data) FROM files WHERE id = 1");
+		Check("the database holds all 50,000 bytes", sizes->Next() & sizes->GetInt(1) = blob->Size());
+		sizes->Close();
+
+		files := conn->Select("SELECT data FROM files ORDER BY id");
+		Check("blob row", files->Next());
+		read := files->GetBytes(1);
+		same := read <> Nil & read->Size() = blob->Size() & <>files->IsNull();
+		if(same) {
+			each(k : blob) {
+				if(read[k] <> blob[k]) {
+					same := false;
+				};
+			};
+		};
+		Check("GetBytes returns exactly the bytes written", same);
+		Check("NULL row", files->Next());
+		Check("a NULL blob is Nil", files->GetBytes(1) = Nil & files->IsNull());
+		Check("empty row", files->Next());
+		empty := files->GetBytes(1);
+		Check("an empty blob is no bytes, not NULL", empty <> Nil & empty->Size() = 0 & <>files->IsNull());
+		files->Close();
+
+		# --- a refused SELECT says why ---
+		bad := conn->Select("SELECT * FROM no_such_table");
+		Check("a refused SELECT gives a result set", bad <> Nil);
+		if(bad <> Nil) {
+			Check("that is not open", <>bad->IsOpen() & <>bad->Next());
+			Check("and says why", bad->GetLastError()->Has("no_such_table"));
+		};
+
+		good := conn->Select("SELECT id FROM notes");
+		Check("a later SELECT is open", good->IsOpen() & good->Next() & good->GetLastError()->Size() = 0);
+		good->Close();
+
+		conn->Close();
+
+		if(@failures = 0) {
+			"PASS: ODBC values read and written whole; refused statements explained"->PrintLine();
+		}
+		else {
+			"FAIL: ODBC whole values ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
