@@ -1,0 +1,402 @@
+# EXTRA_LIBS: gen_collect,models,opencv,onnx,net,regex,csv,misc,query,query_vision
+#~
+Query.Structured's vision source, VisionSource (docs/QUERY_DESIGN.md section 6, tier 2,
+query_vision.obl). Every image is generated here, in a temporary folder deleted afterwards:
+PNGs (grey, color, color with alpha) that decode, a 24-bit BMP stored bottom up and one stored
+top down, a GIF, a JPEG header, WebP headers of all three kinds, a file named .png that is not
+an image, a text file that is not listed, a camera subfolder and a hidden folder. A scripted
+detector stands in for a model, as the design says, with boxes per file and a failure for one.
+
+Checks the two tables' shapes, every header field against the dimensions written, the
+detections and their join back to the images, a GROUP BY over cameras, a row limit, and errors
+kept per image rather than failing the load. Where libobjk_opencv is deployed, OpenCV decodes
+the generated PNG and BMP and writes a real JPEG, and the header reader must agree with it.
+Where libobjk_onnx is deployed and OBJECK_YOLO_MODEL and OBJECK_YOLO_LABELS name a YOLO model
+and its labels, YoloDetector runs on the repository's sample photos; otherwise that part is
+skipped, as the regression tree carries no models. A native library is probed for as a file:
+loading a missing one ends the program.
+~#
+use Collection, System.IO.Filesystem, Query.Structured, Query.Structured.Vision;
+
+class Bytes {
+	@buf : Byte[];
+	@n : Int;
+
+	New() {
+		@buf := Byte->New[64];
+	}
+
+	method : public : Add(v : Int) ~ Bytes {
+		if(@n = @buf->Size()) {
+			grown := Byte->New[@buf->Size() * 2];
+			each(i : @buf) {
+				grown[i] := @buf[i];
+			};
+			@buf := grown;
+		};
+		@buf[@n] := (v and 255)->As(Byte);
+		@n += 1;
+		return @self;
+	}
+
+	method : public : Text(s : String) ~ Bytes {
+		each(i : s) {
+			Add(s->Get(i)->As(Int));
+		};
+		return @self;
+	}
+
+	method : public : All(b : Byte[]) ~ Bytes {
+		each(i : b) {
+			Add(b[i]->As(Int));
+		};
+		return @self;
+	}
+
+	method : public : Le16(v : Int) ~ Bytes {
+		Add(v); Add(v >> 8);
+		return @self;
+	}
+
+	method : public : Le24(v : Int) ~ Bytes {
+		Add(v); Add(v >> 8); Add(v >> 16);
+		return @self;
+	}
+
+	method : public : Le32(v : Int) ~ Bytes {
+		Add(v); Add(v >> 8); Add(v >> 16); Add(v >> 24);
+		return @self;
+	}
+
+	method : public : Be16(v : Int) ~ Bytes {
+		Add(v >> 8); Add(v);
+		return @self;
+	}
+
+	method : public : Be32(v : Int) ~ Bytes {
+		Add(v >> 24); Add(v >> 16); Add(v >> 8); Add(v);
+		return @self;
+	}
+
+	method : public : Get() ~ Byte[] {
+		out := Byte->New[@n];
+		each(i : out) {
+			out[i] := @buf[i];
+		};
+		return out;
+	}
+}
+
+# boxes per file name, and a failure for one
+class Scripted implements Detector {
+	@calls : Int;
+	@error : String;
+
+	New() {
+	}
+
+	method : public : Detect(path : String, image : Byte[], width : Int, height : Int) ~ Detection[] {
+		@calls += 1;
+		@error := Nil;
+		if(path->EndsWith("street.png")) {
+			found := Detection->New[3];
+			found[0] := Detection->New("person", 0, 0.95, 1, 2, 10, 20);
+			found[1] := Detection->New("person", 0, 0.62, 30, 4, 8, 16);
+			found[2] := Detection->New("car", 2, 0.91, 0, 0, width, height);
+			return found;
+		}
+		else if(path->EndsWith("door.png")) {
+			found := Detection->New[1];
+			found[0] := Detection->New("person", 0, 0.97, 5, 5, 4, 4);
+			return found;
+		}
+		else if(path->EndsWith("broken.bmp")) {
+			@error := "scripted failure";
+			return Nil;
+		};
+		return Detection->New[0];
+	}
+
+	method : public : GetError() ~ String {
+		return @error;
+	}
+
+	method : public : GetCalls() ~ Int {
+		return @calls;
+	}
+}
+
+class QuerySourceVision {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# a PNG that decodes: color type 0 grey, 2 color, 6 color and alpha
+	function : Png(width : Int, height : Int, color : Int) ~ Byte[] {
+		channels := 3;
+		if(color = 0) {
+			channels := 1;
+		}
+		else if(color = 6) {
+			channels := 4;
+		};
+
+		raw := Bytes->New();
+		each(y : height) {
+			raw->Add(0);
+			each(x : width) {
+				each(c : channels) {
+					raw->Add((x * 17 + y * 31 + c * 50) % 256);
+				};
+			};
+		};
+
+		ihdr := Bytes->New()->Be32(width)->Be32(height)->Add(8)->Add(color)->Add(0)->Add(0)->Add(0)->Get();
+		png := Bytes->New()->Add(0x89)->Text("PNG")->Add(13)->Add(10)->Add(26)->Add(10);
+		Chunk(png, "IHDR", ihdr);
+		Chunk(png, "IDAT", Byte->CompressZlib(raw->Get()));
+		Chunk(png, "IEND", Byte->New[0]);
+		return png->Get();
+	}
+
+	function : Chunk(png : Bytes, kind : String, data : Byte[]) ~ Nil {
+		png->Be32(data->Size());
+		body := Bytes->New()->Text(kind)->All(data)->Get();
+		png->All(body);
+		png->Be32(Byte->CRC32(body) and 0xFFFFFFFF);
+	}
+
+	# a 24-bit BMP; a negative height stores the rows top down
+	function : Bmp(width : Int, height : Int, top_down : Bool) ~ Byte[] {
+		row := (width * 3 + 3) / 4 * 4;
+		size := 54 + row * height;
+		bmp := Bytes->New()->Text("BM")->Le32(size)->Le32(0)->Le32(54);
+		bmp->Le32(40)->Le32(width)->Le32(top_down ? 0x100000000 - height : height)->Le16(1)->Le16(24)->Le32(0)->Le32(row * height);
+		bmp->Le32(2835)->Le32(2835)->Le32(0)->Le32(0);
+		each(y : height) {
+			each(x : row) {
+				bmp->Add((x + y) % 256);
+			};
+		};
+		return bmp->Get();
+	}
+
+	function : Write(path : String, bytes : Byte[]) ~ Nil {
+		FileWriter->WriteFile(path, bytes);
+	}
+
+	function : Present(name : String) ~ Bool {
+		dir := Runtime->GetProperty("lib_dir");
+		if(dir = Nil) {
+			return false;
+		};
+		base := "{$dir}native/{$name}";
+		return File->Exists("{$base}.dll") | File->Exists("{$base}.so") | File->Exists("{$base}.dylib");
+	}
+
+	function : Find(table : Table, name : String) ~ Int {
+		names := table->GetColumn("name");
+		each(r : table->Size()) {
+			if(names->GetString(r)->Equals(name)) {
+				return r;
+			};
+		};
+		return -1;
+	}
+
+	function : CellI(table : Table, column : String, row : Int) ~ Int {
+		return table->GetColumn(column)->GetInt(row);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		root := "query_vision_tmp";
+		Directory->Create(root);
+		Directory->Create("query_vision_tmp/cam2");
+		Directory->Create("query_vision_tmp/.cache");
+
+		Write("query_vision_tmp/street.png", Png(40, 30, 2));
+		Write("query_vision_tmp/grey.png", Png(7, 5, 0));
+		Write("query_vision_tmp/alpha.PNG", Png(3, 9, 6));
+		Write("query_vision_tmp/up.bmp", Bmp(13, 11, false));
+		Write("query_vision_tmp/broken.bmp", Bmp(6, 4, true));
+		Write("query_vision_tmp/anim.gif", Bytes->New()->Text("GIF89a")->Le16(321)->Le16(123)->Add(0)->Add(0)->Add(0)->Add(0x3B)->Get());
+		jpeg := Bytes->New()->Add(0xFF)->Add(0xD8);
+		jpeg->Add(0xFF)->Add(0xE0)->Be16(16)->Text("JFIF")->Add(0)->Add(1)->Add(1)->Add(0)->Be16(1)->Be16(1)->Add(0)->Add(0);
+		jpeg->Add(0xFF)->Add(0xC0)->Be16(17)->Add(8)->Be16(480)->Be16(640)->Add(3);
+		each(c : 9) {
+			jpeg->Add(0);
+		};
+		jpeg->Add(0xFF)->Add(0xD9);
+		Write("query_vision_tmp/photo.jpeg", jpeg->Get());
+		Write("query_vision_tmp/lossy.webp", Bytes->New()->Text("RIFF")->Le32(30)->Text("WEBPVP8 ")->Le32(10)->Add(0)->Add(0)->Add(0)->Add(0x9D)->Add(0x01)->Add(0x2A)->Le16(1000)->Le16(700)->Get());
+		Write("query_vision_tmp/lossless.webp", Bytes->New()->Text("RIFF")->Le32(30)->Text("WEBPVP8L")->Le32(10)->Add(0x2F)->Le32((99 - 1) or ((77 - 1) << 14) or (1 << 28))->Add(0)->Add(0)->Add(0)->Add(0)->Add(0)->Add(0)->Get());
+		Write("query_vision_tmp/extended.webp", Bytes->New()->Text("RIFF")->Le32(30)->Text("WEBPVP8X")->Le32(10)->Add(0x10)->Add(0)->Add(0)->Add(0)->Le24(4095)->Le24(2047)->Get());
+		Write("query_vision_tmp/fake.png", Bytes->New()->Text("this is not an image at all")->Get());
+		Write("query_vision_tmp/notes.txt", Bytes->New()->Text("not listed")->Get());
+		Write("query_vision_tmp/cam2/door.png", Png(16, 8, 2));
+		Write("query_vision_tmp/.cache/hidden.png", Png(2, 2, 2));
+
+		Run(root);
+
+		files := ["street.png", "grey.png", "alpha.PNG", "up.bmp", "broken.bmp", "anim.gif", "photo.jpeg", "lossy.webp",
+			"lossless.webp", "extended.webp", "fake.png", "notes.txt", "cam2/door.png", ".cache/hidden.png"];
+		each(i : files) {
+			File->Delete("query_vision_tmp/{$(files[i])}");
+		};
+		Directory->Delete("query_vision_tmp/cam2");
+		Directory->Delete("query_vision_tmp/.cache");
+		Directory->Delete(root);
+		Check("the temporary folder is removed", <>Directory->Exists(root));
+
+		if(@failures = 0) {
+			"PASS: a folder of images and their detections as tables"->PrintLine();
+		}
+		else {
+			"FAIL: query vision source ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Run(root : String) ~ Nil {
+		# --- metadata alone, top folder only ---
+		plain := VisionSource->New(root);
+		specs := plain->GetTables();
+		Check("two tables", specs->Size() = 2 & specs[0]->GetName()->Equals("images") & specs[1]->GetName()->Equals("detections"));
+		Check("images columns", specs[0]->GetColumns()->Size() = 12 & specs[0]->GetTypes()[5] = ColumnType->INT & specs[0]->GetTypes()[9] = ColumnType->DATE);
+		Check("detections columns", specs[1]->GetColumns()->Size() = 11 & specs[1]->GetTypes()[5] = ColumnType->FLOAT);
+		tables := plain->Read();
+		Check("the folder reads", tables <> Nil);
+		if(tables = Nil) {
+			plain->GetError()->PrintLine();
+			return;
+		};
+		images := tables[0];
+		Check("eleven images, the text file not among them, nor the subfolders", images->Size() = 11);
+		Check("in name order", images->GetColumn("name")->GetString(0)->Equals("alpha.PNG") & images->GetColumn("name")->GetString(10)->Equals("up.bmp"));
+		Check("no detector, no detections", tables[1]->Size() = 0 & images->GetColumn("detections")->IsNull(0));
+
+		expect := ["street.png", "png", "40", "30", "3", "grey.png", "png", "7", "5", "1", "alpha.PNG", "png", "3", "9", "4",
+			"up.bmp", "bmp", "13", "11", "3", "broken.bmp", "bmp", "6", "4", "3", "anim.gif", "gif", "321", "123", "3",
+			"photo.jpeg", "jpeg", "640", "480", "3", "lossy.webp", "webp", "1000", "700", "3",
+			"lossless.webp", "webp", "99", "77", "4", "extended.webp", "webp", "4096", "2048", "4"];
+		count := expect->Size() / 5;
+		each(e : count) {
+			r := Find(images, expect[5 * e + 0]);
+			ok := r > -1;
+			if(ok) {
+				ok := images->GetColumn("format")->GetString(r)->Equals(expect[5 * e + 1]) & CellI(images, "width", r) = expect[5 * e + 2]->ToInt() &
+					CellI(images, "height", r) = expect[5 * e + 3]->ToInt() & CellI(images, "channels", r) = expect[5 * e + 4]->ToInt() &
+					images->GetColumn("error")->IsNull(r) & CellI(images, "bytes", r) = File->Size(images->GetColumn("path")->GetString(r));
+			};
+			Check("header of {$(expect[5 * e + 0])}", ok);
+		};
+		fake := Find(images, "fake.png");
+		Check("a file that is not an image is a row with an error", fake > -1 & images->GetColumn("width")->IsNull(fake) &
+			images->GetColumn("error")->GetString(fake)->Has("not a PNG"));
+		Check("ImageHeader refuses short or unknown bytes", ImageHeader->Read(Byte->New[3]) = Nil & ImageHeader->Read(Nil) = Nil);
+
+		# --- a detector, recursive ---
+		detector := Scripted->New();
+		source := VisionSource->New(root, detector);
+		source->SetRecursive(true);
+		catalog := Catalog->New();
+		Check("loads into a catalog", catalog->Load(source));
+		images := catalog->Get("images");
+		detections := catalog->Get("detections");
+		Check("the camera subfolder is read, the hidden folder is not", images->Size() = 12 & Find(images, "hidden.png") = -1);
+		Check("the detector saw every image it could read", detector->GetCalls() = 11);
+		door := Find(images, "door.png");
+		Check("a subfolder is named in 'folder'", door = 11 & images->GetColumn("folder")->GetString(door)->Equals("cam2") & images->GetColumn("folder")->GetString(0)->Size() = 0);
+		Check("four detections", detections->Size() = 4);
+		street := Find(images, "street.png");
+		Check("an image counts its detections", CellI(images, "detections", street) = 3 & CellI(images, "detections", Find(images, "grey.png")) = 0);
+		Check("a detection's cells", CellI(detections, "image_id", 0) = street & detections->GetColumn("label")->GetString(0)->Equals("person") &
+			detections->GetColumn("score")->GetFloat(0) = 0.95 & CellI(detections, "x", 0) = 1 & CellI(detections, "y", 0) = 2 &
+			CellI(detections, "width", 0) = 10 & CellI(detections, "height", 0) = 20 & CellI(detections, "area", 0) = 200 & CellI(detections, "class_id", 2) = 2);
+		Check("the detector gets the header's size", CellI(detections, "width", 2) = 40 & CellI(detections, "height", 2) = 30);
+		broken := Find(images, "broken.bmp");
+		Check("a detector failure is that image's error", images->GetColumn("error")->GetString(broken)->Equals("detector: scripted failure") &
+			images->GetColumn("detections")->IsNull(broken) & CellI(images, "width", broken) = 6);
+
+		confident := catalog->Query("select i.name, d.label, d.score from detections d join images i on d.image_id = i.id where d.label = 'person' and d.score > 0.9 order by i.name");
+		Check("people found above 0.9, joined to their images", confident <> Nil & confident->Size() = 2 &
+			confident->GetColumn("name")->GetString(0)->Equals("door.png") & confident->GetColumn("name")->GetString(1)->Equals("street.png"));
+		cameras := catalog->Query("select i.folder, count(*) as n from detections d join images i on d.image_id = i.id group by i.folder order by i.folder");
+		Check("detections grouped by camera", cameras <> Nil & cameras->Size() = 2 & CellI(cameras, "n", 0) = 3 & CellI(cameras, "n", 1) = 1);
+		sizes := catalog->Query("select format, count(*) as n from images where error is null group by format order by format");
+		Check("images grouped by format", sizes <> Nil & sizes->Size() = 5);
+
+		# --- a row limit, names, a missing folder ---
+		capped := VisionSource->New(root, Scripted->New());
+		capped->SetNames("frames", "boxes");
+		few := Catalog->New();
+		Check("a hint's limit caps the images", few->Load(capped, ScanHint->New(Nil, 3)) & few->Get("frames")->Size() = 3 & few->Has("boxes"));
+		missing := VisionSource->New("no_such_vision_folder");
+		Check("a missing folder is an error", missing->Read() = Nil & missing->GetError()->Has("no such folder"));
+
+		OpenCv(root);
+		Yolo();
+	}
+
+	# OpenCV decodes what was written, and writes a real JPEG the header reader must agree with
+	function : OpenCv(root : String) ~ Nil {
+		if(<>Present("libobjk_opencv")) {
+			"SKIP: libobjk_opencv is not deployed; OpenCV cross-checks not run"->PrintLine();
+			return;
+		};
+
+		png := API.OpenCV.Image->Load("query_vision_tmp/street.png");
+		Check("OpenCV decodes the generated PNG at the header's size", png <> Nil & <>png->IsEmpty() & png->Columns() = 40 & png->Rows() = 30);
+		bmp := API.OpenCV.Image->Load("query_vision_tmp/broken.bmp");
+		Check("and the top-down BMP", bmp <> Nil & <>bmp->IsEmpty() & bmp->Columns() = 6 & bmp->Rows() = 4);
+		if(png <> Nil & <>png->IsEmpty()) {
+			Check("OpenCV writes a JPEG", png->Save("query_vision_tmp/real.jpg"));
+			header := ImageHeader->Read(FileReader->ReadBinaryFile("query_vision_tmp/real.jpg"));
+			Check("whose header reads back at its size", header <> Nil & header->GetFormat()->Equals("jpeg") & header->GetWidth() = 40 & header->GetHeight() = 30 & header->GetChannels() = 3);
+			webp := png->Convert(API.OpenCV.Image->Format->WEBP);
+			webp_header := ImageHeader->Read(webp);
+			Check("and a WebP", webp = Nil | webp->Size() = 0 | (webp_header <> Nil & webp_header->GetWidth() = 40 & webp_header->GetHeight() = 30));
+			File->Delete("query_vision_tmp/real.jpg");
+		};
+	}
+
+	# a real model on the repository's sample photos, when one is named
+	function : Yolo() ~ Nil {
+		model := Runtime->GetEnvironmentVariable("OBJECK_YOLO_MODEL");
+		labels_path := Runtime->GetEnvironmentVariable("OBJECK_YOLO_LABELS");
+		media := "../frameworks/opencv_onnx/data/media";
+		if(model = Nil | labels_path = Nil | model->Size() = 0 | <>File->Exists(model) | <>Present("libobjk_onnx") | <>Directory->Exists(media)) {
+			"SKIP: no YOLO model named by OBJECK_YOLO_MODEL and OBJECK_YOLO_LABELS, or no ONNX runtime; YoloDetector not run"->PrintLine();
+			return;
+		};
+
+		labels := YoloDetector->ReadLabels(labels_path);
+		detector := YoloDetector->New(model, labels, 768, 0.5);
+		Check("the model loads", detector->IsOpen());
+		catalog := Catalog->New();
+		Check("the sample photos load", catalog->Load(VisionSource->New(media, detector)));
+		detector->Close();
+		images := catalog->Get("images");
+		errors := catalog->Query("select name, error from images where error is not null");
+		Check("every photo was read and scored", images <> Nil & images->Size() > 0 & errors <> Nil & errors->Size() = 0);
+		found := catalog->Query("select label, count(*) as n from detections group by label order by n desc");
+		Check("the model found something", found <> Nil & found->Size() > 0);
+		if(found <> Nil) {
+			found->ToCsv()->PrintLine();
+		};
+		boxes := catalog->Query("select d.x, d.y, d.width, d.height, i.width as iw, i.height as ih from detections d join images i on d.image_id = i.id");
+		inside := boxes <> Nil;
+		if(inside) {
+			each(r : boxes->Size()) {
+				inside := inside & CellI(boxes, "x", r) >= 0 & CellI(boxes, "y", r) >= 0 &
+					CellI(boxes, "x", r) + CellI(boxes, "width", r) <= CellI(boxes, "iw", r) & CellI(boxes, "y", r) + CellI(boxes, "height", r) <= CellI(boxes, "ih", r);
+			};
+		};
+		Check("every box is inside its image", inside);
+	}
+}
