@@ -77,11 +77,20 @@ class TlsServerCertNames {
 		waited : Int;
 
 		Cleanup();
-		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		# The extensions are written out, not left to openssl's defaults: without
+		# basicConstraints CA:TRUE, mbedTLS does not accept the CA as one, and the
+		# defaults differ by build -- LibreSSL (macOS) adds none -- so the client
+		# could not connect there. -addext is not in every build either.
+		cnf := FileWriter->New("tls-names.cnf");
+		cnf->WriteString("[req]\ndistinguished_name = dn\nprompt = no\n[dn]\nCN = Objeck Test CA\n");
+		cnf->WriteString("[v3_ca]\nbasicConstraints = critical,CA:TRUE\nkeyUsage = critical,keyCertSign,cRLSign\nsubjectKeyIdentifier = hash\n");
+		cnf->WriteString("[v3_leaf]\nbasicConstraints = CA:FALSE\nkeyUsage = critical,digitalSignature,keyEncipherment\nextendedKeyUsage = serverAuth\nsubjectAltName = DNS:localhost\n");
+		cnf->Close();
+
 		# a CA, and a server certificate it signs
-		if(Runtime->Command("openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=Objeck Test CA\" -addext \"basicConstraints=critical,CA:TRUE\" -addext \"keyUsage=critical,keyCertSign,cRLSign\" -keyout tls-names-ca-key.pem -out tls-names-ca.pem") <> 0 |
-				Runtime->Command("openssl req -newkey rsa:2048 -sha256 -nodes {$config}-subj \"/CN=localhost\" -keyout tls-names-key.pem -out tls-names.csr") <> 0 |
-				Runtime->Command("openssl x509 -req -sha256 -days 1 -in tls-names.csr -CA tls-names-ca.pem -CAkey tls-names-ca-key.pem -CAcreateserial -out tls-names-cert.pem") <> 0) {
+		if(Runtime->Command("openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 -config tls-names.cnf -extensions v3_ca -keyout tls-names-ca-key.pem -out tls-names-ca.pem") <> 0 |
+				Runtime->Command("openssl req -newkey rsa:2048 -sha256 -nodes -config tls-names.cnf -subj \"/CN=localhost\" -keyout tls-names-key.pem -out tls-names.csr") <> 0 |
+				Runtime->Command("openssl x509 -req -sha256 -days 1 -in tls-names.csr -CA tls-names-ca.pem -CAkey tls-names-ca-key.pem -CAcreateserial -extfile tls-names.cnf -extensions v3_leaf -out tls-names-cert.pem") <> 0) {
 			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
@@ -138,5 +147,6 @@ class TlsServerCertNames {
 		File->Delete("tls-names-key.pem");
 		File->Delete("tls-names.csr");
 		File->Delete("tls-names-cert.pem");
+		File->Delete("tls-names.cnf");
 	}
 }
