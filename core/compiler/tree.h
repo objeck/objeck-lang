@@ -1681,8 +1681,12 @@ namespace frontend {
       if(result != aliases.end()) {
         return result->second;
       }
-      
+
       return nullptr;
+    }
+
+    const std::map<const std::wstring, Type*>& GetTypes() const {
+      return aliases;
     }
   };
 
@@ -2355,11 +2359,24 @@ namespace frontend {
     SymbolTable* symbol_table;
     Class* klass;
     SymbolEntry* interp_temp;
+    // its own type parameters' names, 'Max<T : Compare>' (#1242); the parser
+    // erases each to its bound, and a name of one is not a class
+    std::set<std::wstring> generic_names;
 #ifdef _DIAG_LIB
     std::vector<Expression*> diagnostic_expressions;
     std::vector<MethodCall*> diagnostic_method_calls;
 #endif
-    
+
+  public:
+    void AddGenericName(const std::wstring& n) {
+      generic_names.insert(n);
+    }
+
+    bool HasGenericName(const std::wstring& n) const {
+      return generic_names.find(n) != generic_names.end();
+    }
+
+  private:
     Method(const std::wstring& f, const int l, const int p, const int ml, const int mp, const std::wstring& n,
            MethodType m, bool s, bool c) : ParseNode(f, l, p) {
       mid_line_num = ml;

@@ -1,0 +1,35 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'Funcs': 'AmbAliasA.Funcs'
+#~
+Two bundles in scope both declare 'alias Funcs'. An alias was named without
+its bundle, so the two were one name and the first bundle's won with no
+diagnostic. A bundle's alias is now named with its bundle, and an unqualified
+alias two used bundles declare is an error naming both (the qualified names
+work: compile_alias_bundle_scope.obs).
+~#
+
+use AmbAliasA, AmbAliasB;
+
+bundle AmbAliasA {
+  alias Funcs {
+    Op : (Int) ~ Int
+  }
+}
+
+bundle AmbAliasB {
+  alias Funcs {
+    Op : (String) ~ String
+  }
+}
+
+bundle AmbAliasUser {
+  class BadAmbiguousUseAlias {
+    function : Twice(i : Int) ~ Int {
+      return i * 2;
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      f : \Funcs->Op := Twice(Int) ~ Int;
+      f(4)->PrintLine();
+    }
+  }
+}

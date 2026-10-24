@@ -1,0 +1,27 @@
+# EXPECT_COMPILE_ERROR: Type parameter 'T' is not a class; it has no constructor or functions of its own
+#~
+A method's own type parameter (#1242) is not a class. 'T->New()' in 'Id<T>'
+named whatever class 'T' the file's uses reached -- here MgCallA.T, so the
+method built one of those whatever T was bound to. It is now a compile error.
+~#
+
+use MgCallA;
+
+bundle MgCallA {
+  class T {
+    New() {
+    }
+  }
+}
+
+bundle MgCallUser {
+  class BadMethodGenericCall {
+    function : Fresh<T>(x : T) ~ T {
+      return T->New();
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      Fresh(IntRef->New(1))->PrintLine();
+    }
+  }
+}

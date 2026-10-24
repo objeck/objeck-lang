@@ -1,0 +1,90 @@
+#~
+Regression: a class's enum is in scope in its class, its children and the
+other classes of its bundle (Data.JSON's JsonBuilder writes JsonElement's
+'JsonType'), not program-wide (bad_class_enum_other_bundle.obs). Checks the
+class's own enum, which wins over a sibling class's of the same name; a
+sibling class's, unqualified, in the bundle; a child's use of its parent's;
+and the qualified name from another bundle.
+~#
+
+bundle EnumScopeHome {
+  class Holder {
+    enum Mood {
+      HAPPY,
+      SAD
+    }
+
+    New() {
+    }
+
+    function : Pick() ~ Mood {
+      return Mood->SAD;
+    }
+  }
+
+  class Other {
+    # its own Level, though Leveled declares one too
+    enum Level {
+      LOW,
+      HIGH
+    }
+
+    function : Top() ~ Level {
+      return Level->HIGH;
+    }
+
+    # Holder's Mood, unqualified
+    function : Read(m : Mood) ~ Int {
+      return m->As(Int);
+    }
+  }
+
+  class Leveled {
+    enum Level {
+      ONE,
+      TWO,
+      THREE
+    }
+  }
+
+  class Child from Holder {
+    New() {
+      Parent();
+    }
+
+    function : Again() ~ Mood {
+      return Mood->HAPPY;
+    }
+  }
+}
+
+bundle EnumScopeAway {
+  class CompileBundleClassEnumScope {
+    function : Main(args : String[]) ~ Nil {
+      failed := 0;
+
+      m : EnumScopeHome.Holder->Mood := EnumScopeHome.Holder->Pick();
+      if(m <> EnumScopeHome.Holder->Mood->SAD | EnumScopeHome.Other->Read(m) <> 1) {
+        "FAIL: a sibling class's enum in its bundle"->PrintLine();
+        failed += 1;
+      };
+
+      if(EnumScopeHome.Other->Top()->As(Int) <> 1) {
+        "FAIL: the class's own enum"->PrintLine();
+        failed += 1;
+      };
+
+      if(EnumScopeHome.Child->Again() <> EnumScopeHome.Holder->Mood->HAPPY) {
+        "FAIL: a parent's enum in a child"->PrintLine();
+        failed += 1;
+      };
+
+      if(failed > 0) {
+        "FAIL: {$failed} check(s) failed"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      "PASS: compile_bundle_class_enum_scope"->PrintLine();
+    }
+  }
+}

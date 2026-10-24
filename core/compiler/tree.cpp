@@ -277,7 +277,11 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
         int levels = 0;
         std::wstring base = RowTypeBase(type->GetName(), levels);
         if(base != L"Bool" && base != L"Byte" && base != L"Char" && base != L"Int" && base != L"Float") {
+          // as written, the class's own bundle's, then each use's (see below)
           Class* base_klass = program->GetClass(base);
+          if(!base_klass && klass->GetName().find(L'.') != std::wstring::npos) {
+            base_klass = program->GetClass(klass->GetBundleName() + L"." + base);
+          }
           for(size_t k = 0; !base_klass && k < uses.size(); ++k) {
             base_klass = program->GetClass(uses[k] + L"." + base);
           }
@@ -1127,15 +1131,19 @@ const std::vector<std::wstring> ParsedProgram::GetLibUses() {
       if(use_name.rfind(L"System", 0) == 0) {
         top_level.push_back(use_name);
       }
+      // each use once: it went into a tier once per program bundle compared
+      // with it (the library tier once per bundle it did not start with)
       else {
-        for(size_t j = 0; j < bundle_names.size(); ++j) {
-          const std::wstring bundle_name = bundle_names[j];
-          if(use_name.rfind(bundle_name, 0) == 0) {
-            mid_level.push_back(use_name);
-          }
-          else {
-            bottom_level.push_back(use_name);
-          }
+        bool is_program = false;
+        for(size_t j = 0; !is_program && j < bundle_names.size(); ++j) {
+          is_program = use_name.rfind(bundle_names[j], 0) == 0;
+        }
+
+        if(is_program) {
+          mid_level.push_back(use_name);
+        }
+        else {
+          bottom_level.push_back(use_name);
         }
       }
     }

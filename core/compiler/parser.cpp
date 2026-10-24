@@ -619,17 +619,16 @@ Enum* Parser::ParseEnum(int depth)
   }
   // identifier
   const std::wstring enum_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetEnum(GetEnumScopeName(enum_name, true)) || current_bundle->GetAlias(enum_name)) {
+  if(current_bundle->GetClass(enum_name) || current_bundle->GetEnum(enum_name) || current_bundle->GetEnum(GetEnumScopeName(enum_name, true)) ||
+     current_bundle->GetAlias(enum_name) || current_bundle->GetAlias(GetEnumScopeName(enum_name, true))) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
   const std::wstring enum_scope_name = GetEnumScopeName(enum_name, true);
-
-  size_t index = enum_scope_name.find('#');
-  if(index != std::wstring::npos) {
-    const std::wstring use_name = enum_scope_name.substr(0, index + 1);
-    program->AddUse(use_name, file_name);
-  }
+  // A class's enum, 'Klass#Name', is in scope in the class and its children
+  // (ContextAnalyzer::SearchScopedEnumName). It was also added as a use of
+  // 'Klass#' program-wide, so an unqualified 'Name' anywhere found the first
+  // such class's enum.
 
 #ifdef _DEBUG
   Debug(L"[Enum: name='" + enum_scope_name + L"']", depth);
@@ -710,17 +709,14 @@ Alias* Parser::ParseLambdas(int depth)
   }
   // identifier
   const std::wstring alias_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(alias_name) || current_bundle->GetEnum(alias_name) || current_bundle->GetAlias(alias_name)) {
+  // a bundle's alias is named with its bundle, as a class and an enum are
+  // ('Bundle.Funcs'): two bundles' 'Funcs' were one name, and the first won
+  const std::wstring alias_scope_name = GetEnumScopeName(alias_name, true);
+  if(current_bundle->GetClass(alias_name) || current_bundle->GetEnum(alias_name) || current_bundle->GetEnum(alias_scope_name) ||
+     current_bundle->GetAlias(alias_name) || current_bundle->GetAlias(alias_scope_name)) {
     ProcessError(L"Class, interface or alias name already defined in this bundle");
   }
   NextToken();
-  const std::wstring alias_scope_name = GetEnumScopeName(alias_name);
-
-  size_t index = alias_scope_name.find('#');
-  if(index != std::wstring::npos) {
-    const std::wstring use_name = alias_scope_name.substr(0, index + 1);
-    program->AddUse(use_name, file_name);
-  }
 
 #ifdef _DEBUG
   Debug(L"[Alias: name='" + alias_scope_name + L"']", depth);
@@ -986,7 +982,7 @@ Class* Parser::ParseClass(const std::wstring &bundle_name, int depth)
   }
   // identifier
   std::wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name) || current_bundle->GetAlias(GetEnumScopeName(cls_name, true))) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
@@ -1309,7 +1305,7 @@ Class* Parser::ParseInterface(const std::wstring &bundle_name, int depth)
   }
   // identifier
   std::wstring cls_name = scanner->GetToken()->GetIdentifier();
-  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name)) {
+  if(current_bundle->GetClass(cls_name) || current_bundle->GetEnum(cls_name) || current_bundle->GetAlias(cls_name) || current_bundle->GetAlias(GetEnumScopeName(cls_name, true))) {
     ProcessError(L"Class, interface, enum or alias name already defined in this bundle");
   }
   NextToken();
@@ -1709,6 +1705,9 @@ Method* Parser::ParseMethod(bool is_function, bool virtual_requried, int depth)
 #endif
 
   Method* method = TreeFactory::Instance()->MakeMethod(file_name, line_num, line_pos, mid_line_num, mid_line_pos, method_name, method_type, is_function, is_native);
+  for(std::map<std::wstring, std::wstring>::iterator generic = method_generic_bounds.begin(); generic != method_generic_bounds.end(); ++generic) {
+    method->AddGenericName(generic->first);
+  }
   current_method = method;
 
   // declarations
@@ -7848,8 +7847,12 @@ MethodCall* Parser::ParseMethodCall(IdentifierContext& context, int depth)
         int end_pos = 0;
         ExpressionList* expressions = ParseExpressionList(end_pos, depth + 1, TOKEN_OPEN_BRACKET, TOKEN_CLOSED_BRACKET);
 
+        // 'T->New[n]' of a method's own type parameter is an array of its bound,
+        // as a 'T' the type parser reads is (#1242); the name is not a class
+        std::map<std::wstring, std::wstring>::iterator method_generic = method_generic_bounds.find(ident);
+        const std::wstring array_ident = method_generic != method_generic_bounds.end() ? method_generic->second : ident;
         method_call = TreeFactory::Instance()->MakeMethodCall(file_name, line_num, line_pos,
-                                                              GetLineNumber(), end_pos, NEW_ARRAY_CALL, ident, expressions);
+                                                              GetLineNumber(), end_pos, NEW_ARRAY_CALL, array_ident, expressions);
         method_call->SetMidLinePosition(new_mid_line_num, new_mid_line_pos);
         // array of generics
         if(Match(TOKEN_LES)) {

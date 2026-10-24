@@ -458,6 +458,15 @@ class ContextAnalyzer {
   // resolution path can quietly take the first 'use'. A name the current
   // bundle or class declares, or one already qualified, is not checked.
   void CheckAmbiguousUse(const std::wstring &name);
+  // an enum another class of the current bundle declares, by its short name
+  Enum* SearchBundleClassEnums(const std::wstring &eenum_name);
+  // the error for an ambiguous name and its "'Bundle.Name' (where)" candidates
+  std::wstring AmbiguousUseMessage(const std::wstring &name, const std::vector<std::wstring> &candidates);
+  // the named bundle declared in 'file_name' around 'line_num', or null
+  ParsedBundle* GetBundleAt(const std::wstring &file_name, int line_num);
+  // an alias's member types, resolved in the alias's bundle and file
+  void ResolveAliasTypes(Alias* alias);
+  void ResolveAliasType(Type* type, const std::wstring &file_name);
   // the bundle a program class is declared in
   ParsedBundle* GetClassBundle(Class* klass);
   // ... when that class is not the one being analyzed; otherwise null

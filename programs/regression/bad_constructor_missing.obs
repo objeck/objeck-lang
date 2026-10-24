@@ -1,0 +1,22 @@
+# EXPECT_COMPILE_ERROR: Class 'Shapeless' declares no constructor; constructors are not inherited
+#~
+'Shapeless->New()' on a class with no constructor at all resolved to
+System.Base's New: it built a Base, which then failed at run time as an
+"Invalid object cast: 'System.Base' to 'Shapeless'". A class with no
+constructor cannot be instantiated; this is now a compile error.
+~#
+class Shapeless {
+  method : public : Name() ~ String {
+    return "shapeless";
+  }
+}
+
+class BadConstructorMissing {
+  function : Make() ~ Shapeless {
+    return Shapeless->New();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    Make()->Name()->PrintLine();
+  }
+}

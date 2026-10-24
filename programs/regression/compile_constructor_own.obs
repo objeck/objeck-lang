@@ -1,0 +1,76 @@
+#~
+Regression: a constructor is not inherited (bad_constructor_not_inherited.obs),
+so each class instantiates through its own. Checks a class with its own New
+calling its parent's through Parent(), overloaded constructors, a record's
+generated constructor and an anonymous class's.
+~#
+class CtorRoot {
+  @tag : String;
+
+  New() {
+    @tag := "root";
+  }
+
+  New(tag : String) {
+    @tag := tag;
+  }
+
+  method : public : Tag() ~ String {
+    return @tag;
+  }
+}
+
+class CtorKid from CtorRoot {
+  New() {
+    Parent("kid");
+  }
+
+  New(n : Int) {
+    Parent("kid{$n}");
+  }
+}
+
+record CtorPoint {
+  @x : Int;
+  @y : Int;
+}
+
+class CompileConstructorOwn {
+  function : Main(args : String[]) ~ Nil {
+    failed := 0;
+
+    if(CtorRoot->New()->Tag()->Equals("root") = false | CtorRoot->New("x")->Tag()->Equals("x") = false) {
+      "FAIL: the class's own constructors"->PrintLine();
+      failed += 1;
+    };
+
+    k : CtorKid := CtorKid->New(7);
+    if(CtorKid->New()->Tag()->Equals("kid") = false | k->Tag()->Equals("kid7") = false) {
+      "FAIL: a child's own constructors, through Parent()"->PrintLine();
+      failed += 1;
+    };
+
+    p := CtorPoint->New(3, 4);
+    if(p->GetX() + p->GetY() <> 7) {
+      "FAIL: a record's constructor"->PrintLine();
+      failed += 1;
+    };
+
+    f := CtorRoot->New() {
+      New() {
+        Parent("anon");
+      }
+    };
+    if(f->Tag()->Equals("anon") = false) {
+      "FAIL: an anonymous class's constructor"->PrintLine();
+      failed += 1;
+    };
+
+    if(failed > 0) {
+      "FAIL: {$failed} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: compile_constructor_own"->PrintLine();
+  }
+}

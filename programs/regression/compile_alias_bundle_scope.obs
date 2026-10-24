@@ -1,0 +1,111 @@
+#~
+Regression: a bundle's alias is named with its bundle (bad_ambiguous_use_alias.obs).
+Checks two bundles' 'Funcs' by qualified name; the current bundle's own
+'Funcs', unqualified, though both others are in scope; an alias in the
+unnamed bundle; and an alias member type that names its own bundle's class,
+used from a bundle whose uses also reach another class of that name.
+~#
+
+use AliasScopeA, AliasScopeB;
+
+bundle Default {
+  alias Plain {
+    Op : (Int) ~ Int
+  }
+}
+
+bundle AliasScopeA {
+  class Shape {
+    New() {
+    }
+
+    method : public : Name() ~ String {
+      return "A";
+    }
+  }
+
+  alias Funcs {
+    Op : (Int) ~ Int
+  }
+}
+
+bundle AliasScopeB {
+  class Shape {
+    New() {
+    }
+
+    method : public : Name() ~ String {
+      return "B";
+    }
+  }
+
+  alias Funcs {
+    Op : (String) ~ String,
+    Make : () ~ Shape
+  }
+
+  class Maker {
+    function : Make() ~ Shape {
+      return Shape->New();
+    }
+  }
+}
+
+bundle AliasScopeUser {
+  alias Funcs {
+    Op : (Float) ~ Float
+  }
+
+  class CompileAliasBundleScope {
+    function : Twice(i : Int) ~ Int {
+      return i * 2;
+    }
+
+    function : Shout(s : String) ~ String {
+      return s + "!";
+    }
+
+    function : Half(f : Float) ~ Float {
+      return f / 2.0;
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      failed := 0;
+
+      a : \AliasScopeA.Funcs->Op := Twice(Int) ~ Int;
+      b : \AliasScopeB.Funcs->Op := Shout(String) ~ String;
+      if(a(4) <> 8 | b("hi")->Equals("hi!") = false) {
+        "FAIL: two bundles' aliases, qualified"->PrintLine();
+        failed += 1;
+      };
+
+      # the current bundle's own Funcs
+      c : \Funcs->Op := Half(Float) ~ Float;
+      if(c(3.0) <> 1.5) {
+        "FAIL: the current bundle's alias"->PrintLine();
+        failed += 1;
+      };
+
+      # the unnamed bundle's
+      p : \Plain->Op := Twice(Int) ~ Int;
+      if(p(5) <> 10) {
+        "FAIL: the unnamed bundle's alias"->PrintLine();
+        failed += 1;
+      };
+
+      # 'Shape' in AliasScopeB's alias is AliasScopeB.Shape
+      m : \AliasScopeB.Funcs->Make := AliasScopeB.Maker->Make() ~ AliasScopeB.Shape;
+      if(m()->Name()->Equals("B") = false) {
+        "FAIL: an alias member type in the alias's bundle"->PrintLine();
+        failed += 1;
+      };
+
+      if(failed > 0) {
+        "FAIL: {$failed} check(s) failed"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      "PASS: compile_alias_bundle_scope"->PrintLine();
+    }
+  }
+}
