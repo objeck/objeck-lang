@@ -1,38 +1,65 @@
-use HTTP;
-use XML;
+use Web.HTTP, Data.JSON, Collection;
 
+#~
+Rosetta Code "Count examples": lists each programming task with the number of
+language solutions on its page. An optional argument limits how many tasks are
+counted.
+~#
 class RosettaCount {
 	function : Main(args : String[]) ~ Nil {
-		taks_xml := HttpGet("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Tasks&cmlimit=500&format=xml");
-		parser := XmlParser->New(taks_xml);		
-		if(parser->Parse()) {
-			task_names := parser->FindElements("/api/query/categorymembers/cm");
-			if(task_names <> Nil) {
-				each(i : task_names) {					
-					task_name := task_names->Get(i)->As(XmlElement)->GetAttribute("title")->GetValue();
-					task_url := "http://rosettacode.org/mw/index.php?title=";
-					task_url->Append(task_name);
-					task_url->Append("&action=raw");
-					
-					count := HttpGet(task_url)->FindAll("=={{header|")->Size();
-					
-					if(count > 0) {
-						IO.Console->Print(UrlUtility->Decode(task_name))->Print(": ")->PrintLine(count);
+		limit := -1;
+		if(args->Size() > 0) {
+			limit := args[0]->ToInt();
+		};
+
+		tasks := GetTasks(limit);
+		total := 0;
+		each(task in tasks) {
+			# a title is plain text ('100 doors'); encode it for the query string
+			url := "https://rosettacode.org/w/index.php?action=raw&title=" + Url->Encode(task);
+			response := HttpsClient->QuickGet(Url->New(url));
+			if(response <> Nil & response->GetContent() <> Nil) {
+				count := response->GetContent()->ToString()->FindAll("=={{header|")->Size();
+				"{$task}: {$count}"->PrintLine();
+				total += count;
+			};
+		};
+		"Total: {$total}"->PrintLine();
+	}
+
+	function : GetTasks(limit : Int) ~ Vector<String> {
+		tasks := Vector->New()<String>;
+		base_url := "https://rosettacode.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Tasks&cmlimit=500&format=json";
+
+		next := "";
+		while(next <> Nil) {
+			url := base_url;
+			if(next->Size() > 0) {
+				url += "&cmcontinue=" + Url->Encode(next);
+			};
+			next := Nil;
+
+			response := HttpsClient->QuickGet(Url->New(url), "application/json");
+			if(response <> Nil & response->GetContent() <> Nil) {
+				json := JsonParser->TextToElement(response->GetContent()->ToString());
+				if(json <> Nil) {
+					members := json->FindElements("query/categorymembers");
+					if(members <> Nil) {
+						each(member in members) {
+							if(limit < 0 | tasks->Size() < limit) {
+								tasks->AddBack(JsonElement->Decode(member->Get("title")->GetString()));
+							};
+						};
+					};
+
+					cont := json->FindElements("continue/cmcontinue");
+					if(cont <> Nil & (limit < 0 | tasks->Size() < limit)) {
+						next := cont->GetString();
 					};
 				};
 			};
 		};
-	}
-	
-	function : HttpGet(url : String) ~ String {
-		xml := "";
-		
-		client := HttpClient->New();
-		lines := client->Get(url);
-		each(i : lines) {
-			xml->Append(lines->Get(i)->As(String));
-		};
-		
-		return xml;
+
+		return tasks;
 	}
 }

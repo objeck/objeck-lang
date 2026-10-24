@@ -1,10 +1,12 @@
-use HTTP;
+use Web.HTTP;
 
 bundle Default {
 	class UrlEncodeDecode {
 		function : Main(args : String[]) ~ Nil {
-			UrlUtility->Encode("http://foo bar/")->PrintLine();
-			UrlUtility->Decode("http%3A%2F%2Ffoo%20bar%2F")->PrintLine();
+			Url->Encode("http://foo bar/")->PrintLine();  # http%3A%2F%2Ffoo%20bar%2F
+			Url->Decode("http%3A%2F%2Ffoo%20bar%2F")->PrintLine();  # http://foo bar/
+			Url->Encode("café")->PrintLine();  # caf%C3%A9
+			Url->EncodePath("/my docs/café.txt")->PrintLine();  # /my%20docs/caf%C3%A9.txt
 		}
 	}
 }

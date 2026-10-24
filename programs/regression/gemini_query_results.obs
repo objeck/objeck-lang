@@ -1,0 +1,86 @@
+# EXTRA_LIBS: net,net_server,misc,gemini
+use Collection, Data.JSON, API.Google.Gemini.Corpus;
+
+#~
+# Gemini corpus/document query results keep the chunk text the API sent.
+#
+# Corpus->Query and Document->Query read each chunk's text with
+# Url->Decode(element->ToString()). ToString serializes the element, so the
+# text came back wrapped in quotes with its JSON escapes doubled, and
+# Url->Decode then turned every '+' into a space. The text is JSON, not
+# URL-encoded: JsonElement->Decode of the parsed string is all it needs. The
+# parsing now lives in Corpus->ParseQueryResults, so a canned response can test
+# it without the network.
+~#
+class GeminiQueryResults {
+	@passed : static : Bool;
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+
+		response := "{\"relevantChunks\":["
+			+ "{\"chunkRelevanceScore\":0.75,\"chunk\":{\"data\":{\"stringValue\":\"50% off: a+b = c, \\\"quoted\\\"\\nnext line caf\\u00e9 %41\"},"
+			+ "\"customMetadata\":[{\"key\":\"source+id\",\"stringValue\":\"100% a+b\"}]}},"
+			+ "{\"chunkRelevanceScore\":0.25,\"chunk\":{\"data\":{\"stringValue\":\"plain\"}}},"
+			+ "{\"chunkRelevanceScore\":0.1,\"chunk\":{}}"
+			+ "]}";
+
+		json := JsonParser->TextToElement(response);
+		if(json = Nil) {
+			Fail("canned response did not parse");
+			Runtime->Exit(1);
+		};
+
+		results := Corpus->ParseQueryResults(json);
+		if(results = Nil | results->Size() <> 3) {
+			Fail("expected 3 results");
+			Runtime->Exit(1);
+		};
+
+		first := results->Get(0);
+		expected := "50% off: a+b = c, \"quoted\"\nnext line café %41";
+		text := first->GetSecond();
+		if(text = Nil | <>text->Equals(expected)) {
+			Fail("chunk text was '{$text}', expected '{$expected}'");
+		};
+
+		score := first->GetFirst()->Get();
+		if(score < 0.7499 | score > 0.7501) {
+			Fail("score was {$score}, expected 0.75");
+		};
+
+		metadata := first->GetThird();
+		value := metadata->Find("source+id");
+		if(value = Nil | <>value->Equals("100% a+b")) {
+			Fail("metadata 'source+id' was '{$value}', expected '100% a+b'");
+		};
+
+		plain := results->Get(1)->GetSecond();
+		if(plain = Nil | <>plain->Equals("plain")) {
+			Fail("second chunk text was '{$plain}'");
+		};
+
+		missing := results->Get(2)->GetSecond();
+		if(missing = Nil | missing->Size() <> 0) {
+			Fail("a chunk without text should give an empty string, got '{$missing}'");
+		};
+
+		empty := Corpus->ParseQueryResults(JsonParser->TextToElement("{}"));
+		if(empty = Nil | empty->Size() <> 0) {
+			Fail("a response without relevantChunks should give no results");
+		};
+
+		if(@passed) {
+			"PASS: gemini_query_results"->PrintLine();
+			Runtime->Exit(0);
+		};
+
+		"FAIL: gemini_query_results"->PrintLine();
+		Runtime->Exit(1);
+	}
+}

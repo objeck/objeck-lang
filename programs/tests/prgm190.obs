@@ -208,11 +208,15 @@ class Test {
         pairs :=  encoded->Split('&');
         if(pairs <> Nil) {
             each(i : pairs) {
-                key_value := pairs[i]->Split('=');
-                if(key_value <> Nil & key_value->Size() = 2) {
-                    marker_bytes := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
-                    value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
-                    decodings->Insert(marker_bytes, value);
+                # Url->Decode already reads '+' as a space; a second pass would turn
+                # an escaped %2B into a space too. Split at the first '=' only.
+                pair := pairs[i];
+                equals_index := pair->Find('=');
+                if(equals_index > 0) {
+                    value_start := equals_index + 1;
+                    key := Web.HTTP.Url->Decode(pair->SubString(equals_index));
+                    value := Web.HTTP.Url->Decode(pair->SubString(value_start, pair->Size() - value_start));
+                    decodings->Insert(key, value);
                 };
             };
         };

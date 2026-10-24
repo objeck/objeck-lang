@@ -1050,27 +1050,66 @@ bundle Web.HTTP.Server {
 		~#
 		method : ParseParams() ~ Nil {
 			if(@content <> Nil & @request_params = Nil) {
-				@request_params := Map->New()<String, String>;
-				
-				params_str := @content->ToString();
-				param_names_values := params_str->Split('&');
-				if(param_names_values->Size() > 0) {
-					each(i : param_names_values) {
-						param_name_value := param_names_values[i]->Split('=');
-						if(param_name_value->Size() = 2) {
-							name := Url->Decode(param_name_value[0]);
-							value := Url->Decode(param_name_value[1]);
-							@request_params->Insert(name, value);
-						};
+				@request_params := ParseQuery(@content->ToString());
+			};
+		}
+
+		#~
+		Parses a query string or an application/x-www-form-urlencoded body into
+		names and values. Pairs are separated by '&' and split at the FIRST '=',
+		so a value may itself hold '='. Names and values are decoded with
+		Web.HTTP.Url->Decode ('+' is a space, %XX runs are UTF-8). A pair with
+		nothing after its '=' has an empty value, and a bare name with no '=' (a
+		flag) also has an empty value. Empty segments ('a=1&&b=2', a trailing
+		'&') and pairs with an empty name are skipped. When a name repeats, the
+		last value wins.
+		@param query encoded query string, without the leading '?'
+		@return names and values; empty if query is Nil
+
+		```
+		params := Web.HTTP.Server.Request->ParseQuery("q=a%3Db+c&flag&empty=");
+		params->Find("q")->PrintLine();  # a=b c
+		params->Has("flag")->PrintLine();  # true
+		```
+		~#
+		function : ParseQuery(query : String) ~ Map<String, String> {
+			params := Map->New()<String, String>;
+			if(query = Nil) {
+				return params;
+			};
+
+			segments := query->Split('&');
+			if(segments = Nil) {
+				return params;
+			};
+
+			each(i : segments) {
+				segment := segments[i];
+				if(segment <> Nil & segment->Size() > 0) {
+					name : String;
+					value : String;
+
+					equals_index := segment->Find('=');
+					if(equals_index < 0) {
+						name := segment;
+						value := "";
+					}
+					else {
+						name := segment->SubString(equals_index);
+						value_start := equals_index + 1;
+						value := segment->SubString(value_start, segment->Size() - value_start);
 					};
-				}
-				else {
-					param_name_value := params_str->Split('=');
-					if(param_name_value->Size() = 2) {
-						@request_params->Insert(param_name_value[0], param_name_value[1]);
+
+					if(name <> Nil & name->Size() > 0) {
+						if(value = Nil) {
+							value := "";
+						};
+						params->Insert(Url->Decode(name), Url->Decode(value));
 					};
 				};
 			};
+
+			return params;
 		}
 
 		#~

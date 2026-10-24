@@ -1,0 +1,166 @@
+# EXTRA_LIBS: net,net_server,web_server
+use Collection, System.IO.Net, Web.HTTP.Server;
+
+#~
+# Request parameters with empty values, a raw '=' in a value, bare flags and
+# empty segments.
+#
+# Request->ParseParams split each pair on every '=' and kept it only when that
+# gave exactly two parts, so 'a=' (empty value), 'c=x=y' (a raw '=' in the
+# value) and a bare 'flag' were all dropped, and GetParam returned Nil for them.
+# Pairs now split at the first '='; the rules live in Request->ParseQuery, which
+# Web.Server's ParseUrlEncoding shares.
+~#
+class QueryHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		HttpQueryParams->Received(request->GetParams());
+		response->SetCodeContent(200, "ok");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(405, "no");
+		return false;
+	}
+}
+
+class HttpQueryParams {
+	@port : static : Int;
+	@passed : static : Bool;
+	@serve_returned : static : Bool;
+	@received : static : Map<String, String>;
+
+	function : Port() ~ Int { return @port; }
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+	function : Received(params : Map<String, String>) ~ Nil { @received := params; }
+
+	function : Fail(message : String) ~ Nil {
+		"  FAIL: {$message}"->PrintLine();
+		@passed := false;
+	}
+
+	function : Expect(where : String, params : Map<String, String>, name : String, expected : String) ~ Nil {
+		if(params = Nil) {
+			Fail("{$where}: no parameters");
+			return;
+		};
+
+		if(<>params->Has(name)) {
+			Fail("{$where}: '{$name}' missing, expected '{$expected}'");
+			return;
+		};
+
+		actual := params->Find(name);
+		if(actual = Nil | <>actual->Equals(expected)) {
+			Fail("{$where}: '{$name}' was '{$actual}', expected '{$expected}'");
+		};
+	}
+
+	# the query every check uses, and what it must parse to
+	function : Query() ~ String {
+		return "empty=&eq=x=y&enc=a%3Db&flag&&plus=a+b%2Bc&caf%C3%A9=1&=noname&rep=1&rep=2&";
+	}
+
+	function : CheckParams(where : String, params : Map<String, String>) ~ Nil {
+		Expect(where, params, "empty", "");
+		Expect(where, params, "eq", "x=y");
+		Expect(where, params, "enc", "a=b");
+		Expect(where, params, "flag", "");
+		Expect(where, params, "plus", "a b+c");
+		Expect(where, params, "café", "1");
+		Expect(where, params, "rep", "2");
+
+		if(params <> Nil) {
+			if(params->Has("")) {
+				Fail("{$where}: a pair with an empty name was kept");
+			};
+			if(params->Size() <> 7) {
+				Fail("{$where}: {$params->Size()} parameters, expected 7");
+			};
+		};
+	}
+
+	function : StartServer(host : String) ~ Bool {
+		tries := 0;
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			@serve_returned := false;
+
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(QueryHandler->New()->GetClass(), HttpQueryParams->Port(), false);
+					HttpQueryParams->ServeReturned();
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(<>@serve_returned & attempts < 20) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New(host, @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+
+			tries += 1;
+		};
+
+		return false;
+	}
+
+	function : CheckServer() ~ Nil {
+		host := "127.0.0.1";
+		if(<>StartServer(host)) {
+			Fail("test server never started listening");
+			return;
+		};
+
+		socket := TCPSocket->New(host, @port);
+		if(<>socket->IsOpen()) {
+			Fail("could not connect to test server");
+			return;
+		};
+
+		# keep-alive, and the client closes first: Windows loopback can drop a
+		# response whose sender tears the connection down first (#669)
+		socket->WriteString("GET /params?{$Query()} HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\n");
+		status := socket->ReadLine();
+		line := socket->ReadLine();
+		while(line <> Nil & line->Size() > 0) {
+			line := socket->ReadLine();
+		};
+		body := Byte->New[2];
+		socket->ReadBuffer(0, 2, body);
+		socket->Close();
+
+		if(status = Nil | <>status->Has("200")) {
+			Fail("GET status was '{$status}'");
+		};
+		CheckParams("server GET", @received);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@passed := true;
+
+		CheckServer();
+		CheckParams("Web.Server ParseUrlEncoding", Web.Server.Request->ParseUrlEncoding(Query()));
+
+		if(Request->ParseQuery(Nil)->Size() <> 0 | Request->ParseQuery("")->Size() <> 0) {
+			Fail("ParseQuery of Nil or empty text should give no parameters");
+		};
+
+		if(@passed) {
+			"PASS: http_query_params"->PrintLine();
+			Runtime->Exit(0);
+		};
+
+		"FAIL: http_query_params"->PrintLine();
+		Runtime->Exit(1);
+	}
+}

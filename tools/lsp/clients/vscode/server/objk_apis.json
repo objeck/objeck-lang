@@ -416,6 +416,9 @@
 				"GetUpdateTime": {
 					"descriptions": ["**Get update time**\n\n```method : public : GetUpdateTime() ~ System.Time.Date```\n\n\n\nreturn: System.Time.Date"]
 				},
+				"ParseQueryResults": {
+					"descriptions": ["**Parses the body of a corpus or document query response. Each relevant chunk's text and metadata strings are JSON-unescaped and otherwise kept as the API sent them; a chunk without text gives an empty string.**\n\n```function : ParseQueryResults(response_json:JsonElement) ~ Vector&lt;Collection.Tuple.Triplet&lt;FloatRef,String,Map&lt;String,String&gt;&gt;&gt;```\n\n\n\nresponse_json: JsonElement\n\nreturn: Vector&lt;Collection.Tuple.Triplet&lt;FloatRef,String,Map&lt;String,String&gt;&gt;&gt;"]
+				},
 				"Query": {
 					"descriptions": ["**Query the corpus**\n\n```method : public : Query(query:String) ~ Vector&lt;Collection.Tuple.Triplet&lt;FloatRef,String,Map&lt;String,String&gt;&gt;&gt;```\n\n\n\nquery: String\n\nreturn: Vector&lt;Collection.Tuple.Triplet&lt;FloatRef,String,Map&lt;String,String&gt;&gt;&gt;"]
 				},
@@ -15430,6 +15433,9 @@
 				"ParseParams": {
 					"descriptions": ["**Parses request parameters from content**\n\n```method : private : ParseParams() ~ Nil```\n\n\n\nreturn: Nil"]
 				},
+				"ParseQuery": {
+					"descriptions": ["**Parses a query string or an application\/x-www-form-urlencoded body into names and values. Pairs are separated by '&' and split at the FIRST '=', so a value may itself hold '='. Names and values are decoded with Web.HTTP.Url->Decode ('+' is a space, %XX runs are UTF-8). A pair with nothing after its '=' has an empty value, and a bare name with no '=' (a flag) also has an empty value. Empty segments ('a=1&&b=2', a trailing '&') and pairs with an empty name are skipped. When a name repeats, the last value wins.**\n\n```function : ParseQuery(query:String) ~ Map&lt;String,String&gt;```\n\n\n\nquery: String\n\nreturn: Map&lt;String,String&gt;\n\n```\nparams := Web.HTTP.Server.Request->ParseQuery(\"q=a%3Db+c&flag&empty=\");\nparams->Find(\"q\")->PrintLine();  # a=b c\nparams->Has(\"flag\")->PrintLine();  # true\n```"]
+				},
 				"SetConnectionInfo": {
 					"descriptions": ["**Sets connection metadata. Called by the server immediately after the request is constructed; handlers should treat these as read-only.**\n\n```method : public : SetConnectionInfo(request_verb:String, remote_address:String, local_port:Int) ~ Nil```\n\n\n\nrequest_verb: String\n\nremote_address: String\n\nlocal_port: Int\n\nreturn: Nil"]
 				}
@@ -15957,7 +15963,7 @@
 					"descriptions": ["**Parses multipart encoding**\n\n```function : native : ParseMultipartEncoding(encoded:Byte[]) ~ Vector&lt;ContentType&gt;```\n\n\n\nencoded: Byte[]\n\nreturn: Vector&lt;ContentType&gt;"]
 				},
 				"ParseUrlEncoding": {
-					"descriptions": ["**Parses URL encoding**\n\n```function : ParseUrlEncoding(encoded:String) ~ Map&lt;String,String&gt;```\n\n\n\nencoded: String\n\nreturn: Map&lt;String,String&gt;\n\n```\nbody := String->New(request->ReadBody());\nparams := Web.Server.Request->ParseUrlEncoding(body);\nparams->Find(\"username\")->PrintLine();  # e.g. alice\nparams->Find(\"password\")->PrintLine();  # e.g. secret\n```"]
+					"descriptions": ["**Parses URL encoding, by the rules of Web.HTTP.Server.Request->ParseQuery: split at the first '=', empty and flag values kept as \"\", empty segments skipped**\n\n```function : ParseUrlEncoding(encoded:String) ~ Map&lt;String,String&gt;```\n\n\n\nencoded: String\n\nreturn: Map&lt;String,String&gt;\n\n```\nbody := String->New(request->ReadBody());\nparams := Web.Server.Request->ParseUrlEncoding(body);\nparams->Find(\"username\")->PrintLine();  # e.g. alice\nparams->Find(\"password\")->PrintLine();  # e.g. secret\n```"]
 				},
 				"ReadBody": {
 					"descriptions": ["**Reads the request body (i.e. POST)**\n\n```method : public : ReadBody() ~ Byte[]```\n\n\n\nreturn: Byte[]\n\n```\nif(request->GetMethod() = Web.Server.Request->Method->POST) {\n  body := request->ReadBody();\n  text := String->New(body);\n  text->PrintLine();\n};\n```"]
