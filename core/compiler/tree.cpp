@@ -662,9 +662,7 @@ void StaticArray::Validate(StaticArray* array) {
   for(size_t i = 0; i < static_array.size(); ++i) {
     if(static_array[i]) {
       if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-        if(i == 0) {
-          dim++;
-        }
+        // the dimension count is the shape's, set by ComputeShape
         Validate(static_cast<StaticArray*>(static_array[i]));
       }
       else {
@@ -702,69 +700,99 @@ void StaticArray::Validate(StaticArray* array) {
   }
 }
 
+// The extent of each dimension, following the first element down, then a check that
+// every sub-array at each depth has that extent and the same kind of elements. This
+// replaces counting a dimension each time a first element was a sub-array, which
+// counted one per row below the top: a 3-D literal of two planes was "4-D".
+void StaticArray::ComputeShape() {
+  shape.clear();
+  StaticArray* level = this;
+  while(level) {
+    std::vector<Expression*> items = level->GetElements()->GetExpressions();
+    shape.push_back((int)items.size());
+    if(!items.empty() && items[0] && items[0]->GetExpressionType() == STAT_ARY_EXPR) {
+      level = static_cast<StaticArray*>(items[0]);
+    }
+    else {
+      level = nullptr;
+    }
+  }
+
+  dim = (int)shape.size();
+  if(!IsRectangular(this, 0)) {
+    matching_lengths = false;
+  }
+}
+
+bool StaticArray::IsRectangular(StaticArray* array, size_t depth) {
+  std::vector<Expression*> items = array->GetElements()->GetExpressions();
+  if(depth >= shape.size() || (int)items.size() != shape[depth]) {
+    return false;
+  }
+
+  const bool nested = depth + 1 < shape.size();
+  for(size_t i = 0; i < items.size(); ++i) {
+    const bool is_array = items[i] && items[i]->GetExpressionType() == STAT_ARY_EXPR;
+    if(is_array != nested) {
+      return false;
+    }
+    if(nested && !IsRectangular(static_cast<StaticArray*>(items[i]), depth + 1)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// the element at one index per dimension, outermost first
+Expression* StaticArray::ElementAt(const std::vector<int>& index) {
+  StaticArray* level = this;
+  for(size_t d = 0; d < index.size(); ++d) {
+    Expression* item = level->GetElements()->GetExpressions()[index[d]];
+    if(d + 1 == index.size()) {
+      return item;
+    }
+    level = static_cast<StaticArray*>(item);
+  }
+
+  return nullptr;
+}
+
+// The elements in the order the VM stores a multi-dimensional array: the first
+// index varies fastest, so a[i, j] of an n x m array is at i + j * n. Only 2-D
+// literals used to be reordered (by hand, as rows and columns); a 3-D one was refused.
 ExpressionList* StaticArray::GetAllElements() {
   if(!all_elements) {
     all_elements = TreeFactory::Instance()->MakeExpressionList();
-    GetAllElements(this, all_elements);
 
-    // change row/column order    
-    if(dim == 2) {
-      ExpressionList* temp = TreeFactory::Instance()->MakeExpressionList();
-      std::vector<Expression*> elements = all_elements->GetExpressions();
-      // update indices
-      for(int i = 0; i < cur_width; ++i) {
-        for(int j = 0; j < cur_height; ++j) {
-          const int index = j * cur_width + i;
-          temp->AddExpression(elements[index]);
-        }
+    int total = 1;
+    for(size_t d = 0; d < shape.size(); ++d) {
+      total *= shape[d];
+    }
+
+    std::vector<int> index(shape.size(), 0);
+    for(int k = 0; k < total; ++k) {
+      int rest = k;
+      for(size_t d = 0; d < shape.size(); ++d) {
+        index[d] = rest % shape[d];
+        rest /= shape[d];
       }
-      all_elements = temp;
+      all_elements->AddExpression(ElementAt(index));
     }
   }
 
   return all_elements;
 }
 
-void StaticArray::GetAllElements(StaticArray* array, ExpressionList* elems)
-{
-  std::vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(size_t i = 0; i < static_array.size(); ++i) {
-    if(static_array[i]) {
-      if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-        GetAllElements(static_cast<StaticArray*>(static_array[i]), all_elements);
-        cur_height++;
-      }
-      else {
-        elems->AddExpression(static_array[i]);
-      }
-    }
-  }
-}
-
-void StaticArray::GetSizes(StaticArray* array, int& count)
-{
-  std::vector<Expression*> static_array = array->GetElements()->GetExpressions();
-  for(size_t i = 0; i < static_array.size(); ++i) {
-    if(static_array[i]) {
-      if(static_array[i]->GetExpressionType() == STAT_ARY_EXPR) {
-        count++;
-        GetSizes(static_cast<StaticArray*>(static_array[i]), count);
-      }
-    }
-  }
-}
-
+// The extents innermost first, the order the emitter pushes them in reverse so the
+// array instruction pops them outermost first
 std::vector<int> StaticArray::GetSizes() {
   if(!sizes.size()) {
-    int count = 0;
-    GetSizes(this, count);
-    
-    sizes.push_back(cur_width);
-    if(count) {
-      sizes.push_back(count);
+    for(int d = (int)shape.size() - 1; d > -1; --d) {
+      sizes.push_back(shape[d]);
     }
   }
-  
+
   return sizes;
 }
 
