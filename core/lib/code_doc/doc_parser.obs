@@ -286,8 +286,10 @@ class SnippetParser {
 		else if(name->Equals("interface")) {
 			@class_inf_block := ClassSnippet->New(block, true);
 			if(@class_inf_block->IsParsed()) {
-				class_inf_name := @bundle_block->GetName();
-				@class_inf_block->SetBundleName(class_inf_name);
+				# the interface's own name, as a class's is logged; this printed the
+				# bundle's, so every interface in a bundle read as the bundle
+				class_inf_name := @class_inf_block->GetShortName();
+				@class_inf_block->SetBundleName(@bundle_block->GetName());
 				"\tProcessed interface: name='{$class_inf_name}'"->PrintLine();
 				@bundle_block->AddInterface(@class_inf_block);
 			}
@@ -890,7 +892,8 @@ class BundleSnippet from Snippet {
 	}
 
 	method: public : AddInterface(inf_block : ClassSnippet) ~ Nil {
-		@classes->Insert(inf_block->GetName(), inf_block);
+		# keyed as AddClass keys a class, by its short name
+		@classes->Insert(inf_block->GetShortName(), inf_block);
 	}
 
 	method : native : Parse() ~ Bool {
