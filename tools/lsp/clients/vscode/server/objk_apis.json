@@ -343,6 +343,9 @@
 				},
 				"GetToken": {
 					"descriptions": ["**Get OAuth token**\n\n```function : GetToken() ~ String```\n\n\n\nreturn: String"]
+				},
+				"ParseErrorMessage": {
+					"descriptions": ["**Reads the message of an error response. The parser keeps a JSON string's escapes, so the message is JSON-unescaped here; an error without a message gives the error element's JSON text.**\n\n```function : ParseErrorMessage(response_json:JsonElement) ~ String```\n\n\n\nresponse_json: JsonElement\n\nreturn: String"]
 				}
 			}
 		},
