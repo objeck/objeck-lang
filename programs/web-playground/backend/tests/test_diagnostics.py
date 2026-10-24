@@ -93,7 +93,9 @@ def test_container_command_exit_codes(tmp_path, obc, obr, expected_exit, expecte
     src.write_text("x")
     work = tmp_path / "work"
     work.mkdir()
-    cmd = container_command(["json"], 5).replace("/input/program.obs", str(src)).replace("/tmp/", str(work) + "/")
+    # Substitute /tmp/ FIRST: on Linux pytest's tmp_path itself lives under /tmp/,
+    # so replacing it after the source path went in would mangle that path.
+    cmd = container_command(["json"], 5).replace("/tmp/", str(work) + "/").replace("/input/program.obs", str(src))
     result = subprocess.run(["sh", "-c", cmd], capture_output=True, text=True,
                             env={**os.environ, "PATH": f"{bindir}:{os.environ['PATH']}"})
     assert result.returncode == expected_exit
