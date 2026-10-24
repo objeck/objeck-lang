@@ -1,0 +1,290 @@
+# Query.Structured's table server (docs/QUERY_DESIGN.md, section 10, phase 5): publishes tables
+# and a read-only SQL endpoint over Web.HTTP.Server. A library of its own so that programs that
+# only query do not link the HTTP server.
+
+use Collection;
+use System.Concurrency;
+use Web.HTTP.Server;
+use Query.Structured;
+
+bundle Query.Structured.Server {
+	#~
+	Publishes tables over HTTP, read-only:
+
+	- 'GET /tables' lists the tables, their columns and row counts, as JSON.
+	- 'GET /tables/NAME' returns a table.
+	- 'GET /query?sql=...' or 'POST /query' (the statement as the UTF-8 body) runs a SELECT over
+	  the published tables and returns the result.
+
+	Results are CSV, JSON or .otab by the request's Accept header ('text/csv',
+	'application/json', 'application/x-otab'), or a 'format=csv|json|otab' parameter; CSV is
+	the default. Only SELECT is answered: a statement that would change data is refused (403),
+	and so is a query that names a file or a URL, which would let a client read the server's
+	disk or make it fetch an address. A result larger than the row limit is refused (413)
+	rather than cut short. Queries run one at a time, since tables are not shared between
+	threads. RemoteSource reads a published table from another program.
+
+	Web.HTTP.Server runs one server per process, so one TableServer serves at a time.
+
+```
+server := TableServer->New();
+server->Publish(runs);
+server->SetRowLimit(50000);
+server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
+```
+	~#
+	class TableServer {
+		@catalog : Catalog;
+		@row_limit : Int;
+		@mutex : ThreadMutex;
+		@answered : Int;
+		@active : static : TableServer;
+
+		#~
+		Constructor; publishes nothing until Publish
+		~#
+		New() {
+			@catalog := Catalog->New();
+			@catalog->SetFileAccess(false);
+			@row_limit := 100000;
+			@mutex := ThreadMutex->New("table_server");
+		}
+
+		#~
+		Publishes a table under its name, replacing one of the same name
+		@param table table
+		~#
+		method : public : Publish(table : Table) ~ Nil {
+			critical(@mutex) {
+				@catalog->Add(table);
+			};
+		}
+
+		#~
+		Stops publishing a table
+		@param name table name
+		@return true if it was published
+		~#
+		method : public : Unpublish(name : String) ~ Bool {
+			removed := false;
+			critical(@mutex) {
+				removed := @catalog->Remove(name);
+			};
+			return removed;
+		}
+
+		#~
+		Sets the most rows one answer may hold; a larger result is refused with 413
+		@param rows row limit, 100000 by default
+		~#
+		method : public : SetRowLimit(rows : Int) ~ Nil {
+			@row_limit := rows;
+		}
+
+		#~
+		Gets the number of requests answered, successfully or not
+		@return requests answered
+		~#
+		method : public : GetAnswered() ~ Int {
+			return @answered;
+		}
+
+		#~
+		Serves on a port until Stop; this call blocks
+		@param port port
+		~#
+		method : public : Serve(port : Int) ~ Nil {
+			@active := @self;
+			WebServer->Serve(TableRequestHandler->New()->GetClass(), port);
+		}
+
+		#~
+		Stops serving
+		~#
+		method : public : Stop() ~ Nil {
+			WebServer->Stop();
+		}
+
+		# the server requests are answered by
+		function : Active() ~ TableServer {
+			return @active;
+		}
+
+		# one request, under the lock: Catalog keeps plan caches that two threads must not
+		# change at once
+		method : public : Answer(request : Request, response : Response, body : String) ~ Nil {
+			critical(@mutex) {
+				Handle(request, response, body);
+				@answered += 1;
+			};
+		}
+
+		method : Handle(request : Request, response : Response, body : String) ~ Nil {
+			path := request->GetPath();
+			while(path->Size() > 1 & path->EndsWith('/')) {
+				path := path->SubString(0, path->Size() - 1);
+			};
+
+			if(path->Equals("/tables")) {
+				List(response);
+			}
+			else if(path->StartsWith("/tables/")) {
+				name := path->SubString(8, path->Size() - 8);
+				table := @catalog->Get(name);
+				if(table = Nil) {
+					Fail(response, 404, "no table '{$name}'");
+					return;
+				};
+				Send(request, response, table);
+			}
+			else if(path->Equals("/query")) {
+				sql := body;
+				if(sql = Nil | sql->Size() = 0) {
+					sql := request->GetParam("sql");
+				};
+				if(sql = Nil | sql->Trim()->Size() = 0) {
+					Fail(response, 400, "no statement: send it as 'sql=' or as the request body");
+					return;
+				};
+
+				statement := @catalog->Prepare(sql);
+				if(statement = Nil) {
+					Fail(response, 400, @catalog->GetError());
+					return;
+				};
+				if(<>statement->IsQuery()) {
+					Fail(response, 403, "only SELECT is answered here");
+					return;
+				};
+
+				result := @catalog->Query(sql);
+				if(result = Nil) {
+					error := @catalog->GetError();
+					code := error <> Nil & error->Has("does not read files") ? 403 : 400;
+					Fail(response, code, error);
+					return;
+				};
+				Send(request, response, result);
+			}
+			else {
+				Fail(response, 404, "no such endpoint; try /tables, /tables/NAME or /query");
+			};
+		}
+
+		method : List(response : Response) ~ Nil {
+			text := "[";
+			names := @catalog->GetNames();
+			each(i : names) {
+				table := @catalog->Get(names[i]);
+				if(i > 0) {
+					text += ",";
+				};
+				text += "{\"name\":\"" + Data.JSON.JsonElement->Encode(names[i]) + "\",\"rows\":{$(table->Size())},\"columns\":[";
+				columns := table->GetColumnNames();
+				for(c := 1; c < columns->Size(); c += 1;) {
+					if(c > 1) {
+						text += ",";
+					};
+					type := Column->TypeName(table->GetColumn(c)->GetType());
+					text += "{\"name\":\"" + Data.JSON.JsonElement->Encode(columns[c]) + "\",\"type\":\"{$type}\"}";
+				};
+				text += "]}";
+			};
+			text += "]";
+			response->SetHeader("Content-Type", "application/json; charset=utf-8");
+			response->SetCodeContent(200, text->ToByteArray());
+		}
+
+		# a table in the format the client asked for
+		method : Send(request : Request, response : Response, table : Table) ~ Nil {
+			if(table->Size() > @row_limit) {
+				Fail(response, 413, "{$(table->Size())} rows; this server answers at most {$@row_limit}");
+				return;
+			};
+
+			format := Format(request);
+			if(format->Equals("otab")) {
+				image := table->ToBytes();
+				if(image = Nil) {
+					Fail(response, 500, table->GetError());
+					return;
+				};
+				response->SetHeader("Content-Type", "application/x-otab");
+				response->SetCodeContent(200, image);
+			}
+			else if(format->Equals("json")) {
+				response->SetHeader("Content-Type", "application/json; charset=utf-8");
+				response->SetCodeContent(200, table->ToJson()->ToByteArray());
+			}
+			else {
+				response->SetHeader("Content-Type", "text/csv; charset=utf-8");
+				response->SetCodeContent(200, table->ToCsv()->ToByteArray());
+			};
+		}
+
+		# 'format=' wins, then the Accept header, then CSV
+		function : Format(request : Request) ~ String {
+			format := request->GetParam("format");
+			if(format <> Nil) {
+				format := format->ToLower();
+				if(format->Equals("csv") | format->Equals("json") | format->Equals("otab")) {
+					return format;
+				};
+			};
+
+			accept := request->GetHeader("Accept");
+			if(accept = Nil) {
+				accept := request->GetHeader("accept");
+			};
+			if(accept <> Nil) {
+				accept := accept->ToLower();
+				if(accept->Has("application/x-otab")) {
+					return "otab";
+				}
+				else if(accept->Has("application/json")) {
+					return "json";
+				};
+			};
+			return "csv";
+		}
+
+		function : Fail(response : Response, code : Int, message : String) ~ Nil {
+			if(message = Nil) {
+				message := "error";
+			};
+			response->SetHeader("Content-Type", "text/plain; charset=utf-8");
+			response->SetCodeContent(code, message->ToByteArray());
+		}
+	}
+
+	# each request: the web server makes one of these per connection
+	class TableRequestHandler from HttpRequestHandler {
+		New() {
+			Parent();
+		}
+
+		method : ProcessGet(request : Request, response : Response) ~ Bool {
+			Dispatch(request, response, Nil);
+			return false;
+		}
+
+		method : ProcessPost(request : Request, response : Response) ~ Bool {
+			body : String;
+			bytes := request->GetContentBytes();
+			if(bytes <> Nil) {
+				body := bytes->ToString();
+			};
+			Dispatch(request, response, body);
+			return false;
+		}
+
+		method : Dispatch(request : Request, response : Response, body : String) ~ Nil {
+			server := TableServer->Active();
+			if(server = Nil) {
+				response->SetCodeContent(503, "no table server");
+				return;
+			};
+			server->Answer(request, response, body);
+		}
+	}
+}

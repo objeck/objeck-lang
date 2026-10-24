@@ -1,0 +1,180 @@
+# EXTRA_LIBS: net,net_server,regex,csv,misc,query,query_server
+#~
+Query.Structured serving tables (docs/QUERY_DESIGN.md, section 10, phase 5), against an
+in-process TableServer: the table list; a table as CSV, JSON and .otab, chosen by Accept or by
+'format='; a SELECT by GET and by POST (the POST body carries non-ASCII text intact); and what is
+refused -- a statement that changes data (403), a query that names a file or a URL (403, so a
+client cannot read the server's disk or make it fetch an address), an unknown table (404), bad
+SQL (400) and a result over the row limit (413). RemoteSource reads a published table: its
+shape, the columns and row limit a hint asks for, a condition pushed to the server, and a join
+run on the server.
+~#
+use Collection, System.IO.Net, Web.HTTP, Web.HTTP.Server, Query.Structured, Query.Structured.Server;
+
+class QueryNetServe {
+	@port : static : Int;
+	@failures : static : Int;
+	@server : static : TableServer;
+
+	function : Port() ~ Int { return @port; }
+	function : Server() ~ TableServer { return @server; }
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : StartServer() ~ Bool {
+		tries := 0;
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					QueryNetServe->Server()->Serve(QueryNetServe->Port());
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(attempts < 40) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New("127.0.0.1", @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+			tries += 1;
+		};
+		return false;
+	}
+
+	# a GET: the status code and the body as text
+	function : Get(path : String, accept : String, body : TextHolder) ~ Int {
+		client := HttpClient->New();
+		if(accept <> Nil) {
+			client->AddHeader("Accept", accept);
+		};
+		response := client->Get(Url->New("http://127.0.0.1:{$@port}{$path}"));
+		if(response = Nil) {
+			return 0;
+		};
+		content := response->GetContent();
+		body->Set(content <> Nil ? content->ToString() : "");
+		return response->GetCode();
+	}
+
+	function : Post(path : String, sql : String, accept : String, bytes : ByteHolder) ~ Int {
+		client := HttpClient->New();
+		client->AddHeader("Accept", accept);
+		response := client->Post(Url->New("http://127.0.0.1:{$@port}{$path}"), sql->ToByteArray(), "text/plain; charset=utf-8");
+		if(response = Nil) {
+			return 0;
+		};
+		bytes->Set(response->GetContent());
+		return response->GetCode();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		runs := Table->New("runs", ["id", "score", "label"], [ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING], true);
+		labels := ["cat", "dog", "café", "日本"];
+		each(i : 40) {
+			row := runs->Insert();
+			row->Set("id", IntRef->New(i));
+			row->Set("score", FloatRef->New(i->As(Float) / 40.0));
+			row->Set("label", labels[i % 4]);
+		};
+		names := Table->New("names", ["label", "kind"], [ColumnType->STRING, ColumnType->STRING], true);
+		pair := names->Insert();
+		pair->Set("label", "café");
+		pair->Set("kind", "drink");
+		pair := names->Insert();
+		pair->Set("label", "cat");
+		pair->Set("kind", "animal");
+
+		@server := TableServer->New();
+		@server->Publish(runs);
+		@server->Publish(names);
+		@server->SetRowLimit(30);
+
+		if(<>StartServer()) {
+			"FAIL: serving tables (the server did not start)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		body := TextHolder->New();
+		Check("the table list", Get("/tables", Nil, body) = 200 & body->Get()->Has("\"name\":\"runs\"") & body->Get()->Has("\"rows\":40"));
+
+		# a table over the row limit is refused, a smaller one is sent
+		Check("a table over the row limit is refused with 413", Get("/tables/runs", Nil, body) = 413 & body->Get()->Has("at most 30"));
+		Check("a table as CSV by default", Get("/tables/names", Nil, body) = 200 & body->Get()->StartsWith("label,kind"));
+		Check("a table as JSON by Accept", Get("/tables/names", "application/json", body) = 200 & body->Get()->StartsWith("[{\"label\":"));
+		Check("a table as JSON by format=", Get("/tables/names?format=json", Nil, body) = 200 & body->Get()->StartsWith("[{"));
+		Check("an unknown table is 404", Get("/tables/nope", Nil, body) = 404);
+
+		# queries
+		Check("a SELECT by GET", Get("/query?sql=select%20count(*)%20from%20runs", Nil, body) = 200 & body->Get()->Has("40"));
+		bytes := ByteHolder->New();
+		code := Post("/query", "select id, label from runs where label = 'café' order by id", "application/x-otab", bytes);
+		result := code = 200 ? Table->FromBytes(bytes->Get()) : Nil;
+		Check("a SELECT by POST as .otab, with non-ASCII text intact", result <> Nil & result->Size() = 10 &
+			result->Get(0)->Get("label")->As(String)->Equals("café"));
+		Check("a statement that changes data is refused with 403", Post("/query", "delete from runs", "text/csv", bytes) = 403);
+		Check("and changed nothing", runs->Size() = 40);
+		Check("a query naming a file is refused with 403", Post("/query", "select * from 'secret.csv'", "text/csv", bytes) = 403);
+		Check("as is one naming a URL", Post("/query", "select * from 'http://127.0.0.1:1/x.csv'", "text/csv", bytes) = 403);
+		Check("bad SQL is 400", Post("/query", "select from where", "text/csv", bytes) = 400);
+		Check("an unknown endpoint is 404", Get("/nothing", Nil, body) = 404);
+
+		# RemoteSource
+		base := "http://127.0.0.1:{$@port}";
+		remote := RemoteSource->New(base, "runs");
+		specs := remote->GetTables();
+		Check("a remote table's shape", specs <> Nil & specs->Size() = 1 & specs[0]->GetColumns()->Size() = 3);
+		remote->SetWhere("score >= 0.5");
+		catalog := Catalog->New();
+		Check("a remote table loads with a condition pushed to the server", catalog->Load(remote));
+		loaded := catalog->Get("runs");
+		Check("only the matching rows came across", loaded <> Nil & loaded->Size() = 20);
+		rs := catalog->Query("select count(*) from runs where label = 'dog'");
+		Check("and answer local queries", rs <> Nil & rs->Get(0)->Get(1)->As(IntRef)->Get() = 5);
+
+		hinted := RemoteSource->New(base, "runs");
+		part := hinted->Read(ScanHint->New(["id"], 7));
+		Check("a hint's columns and limit are sent too", part <> Nil & part->Size() = 7 & part->GetColumnCount() = 2);
+
+		joined := hinted->Query("select r.id, n.kind from runs r join names n on r.label = n.label where r.id < 8 order by r.id");
+		Check("a join runs on the server", joined <> Nil & joined->Size() = 4 & joined->Get(0)->Get("kind")->As(String)->Equals("animal"));
+		Check("a refused query reports the server's reason", hinted->Query("delete from runs") = Nil & hinted->GetError()->Has("only SELECT"));
+
+		@server->Stop();
+
+		if(@failures = 0) {
+			"PASS: tables served read-only over HTTP and read back with RemoteSource"->PrintLine();
+		}
+		else {
+			"FAIL: query serving ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
+
+class ByteHolder {
+	@value : Byte[];
+	New() {}
+	method : public : Set(value : Byte[]) ~ Nil { @value := value; }
+	method : public : Get() ~ Byte[] { return @value; }
+}
+
+class TextHolder {
+	@value : String;
+	New() {}
+	method : public : Set(value : String) ~ Nil { @value := value; }
+	method : public : Get() ~ String { return @value; }
+}

@@ -1,0 +1,159 @@
+# EXTRA_LIBS: net,net_server,regex,csv,misc,query
+#~
+Query.Structured reading an .otab file over HTTP (docs/QUERY_DESIGN.md, section 10, phase 5),
+against an in-process Web.HTTP.Server that answers range requests: opening the file fetches its
+header and its footer, and reading two columns fetches only their blocks, so the bytes sent are
+a fraction of the file; a server that ignores Range (answering 200 with the whole file) is read
+from that one download; and a missing file is an error, not a table.
+~#
+use Collection, System.IO.Net, Web.HTTP.Server, Query.Structured;
+
+class RangeHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		QueryNetRange->Serve(request, response);
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCode(405);
+		return false;
+	}
+}
+
+class QueryNetRange {
+	@port : static : Int;
+	@failures : static : Int;
+	@image : static : Byte[];
+	@ranges : static : Bool;
+	@sent : static : Int;
+	@requests : static : Int;
+
+	function : Port() ~ Int { return @port; }
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# 'bytes=a-b' answered with 206 and Content-Range, when ranges are on
+	function : Serve(request : Request, response : Response) ~ Nil {
+		@requests += 1;
+		if(<>request->GetPath()->Equals("/data/runs.otab")) {
+			response->SetCodeContent(404, "no such file");
+			return;
+		};
+
+		range := request->GetHeader("Range");
+		if(range = Nil) {
+			range := request->GetHeader("range");
+		};
+		if(@ranges & range <> Nil & range->StartsWith("bytes=")) {
+			spec := range->SubString(6, range->Size() - 6);
+			dash := spec->Find('-');
+			first := spec->SubString(dash)->ToInt();
+			last := spec->SubString(dash + 1, spec->Size() - dash - 1)->ToInt();
+			count := last - first + 1;
+			part := Byte->New[count];
+			Byte->Copy(part, 0, @image, first, count);
+			response->SetHeader("Content-Range", "bytes {$first}-{$last}/{$(@image->Size())}");
+			response->SetCodeContent(206, part);
+			@sent += count;
+			return;
+		};
+
+		response->SetCodeContent(200, @image);
+		@sent += @image->Size();
+	}
+
+	function : StartServer() ~ Bool {
+		tries := 0;
+		while(tries < 5) {
+			@port := Int->Random(20000, 31998);
+			server_thread := System.Concurrency.Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(RangeHandler->New()->GetClass(), QueryNetRange->Port(), false);
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(attempts < 40) {
+				System.Concurrency.Thread->Sleep(25);
+				probe := TCPSocket->New("127.0.0.1", @port);
+				if(probe->IsOpen()) {
+					probe->Close();
+					return true;
+				};
+				attempts += 1;
+			};
+			tries += 1;
+		};
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		table := Table->New("runs", ["id", "score", "label", "note"],
+			[ColumnType->INT, ColumnType->FLOAT, ColumnType->STRING, ColumnType->STRING], true);
+		each(i : 3000) {
+			row := table->Insert();
+			row->Set("id", IntRef->New(i));
+			row->Set("score", FloatRef->New(i->As(Float) / 7.0));
+			row->Set("label", i % 2 = 0 ? "even" : "odd");
+			row->Set("note", "a longer note that makes this column the bulk of the file, row {$i}");
+		};
+		@image := table->ToBytes();
+		@ranges := true;
+
+		if(<>StartServer()) {
+			"FAIL: reading .otab over HTTP (the test server did not start)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		url := "http://127.0.0.1:{$@port}/data/runs.otab";
+
+		# with range requests: the header, the trailer, the footer, then only two columns
+		@sent := 0;
+		@requests := 0;
+		file := OtabFile->New(url);
+		Check("an .otab URL opens", file->IsOpen());
+		Check("it knows the table's shape from the footer alone", file->Size() = 3000 & file->GetColumnNames()->Size() = 4);
+		opened := @sent;
+		part := file->Read(["id", "score"]);
+		Check("a column read returns its columns", part <> Nil & part->Size() = 3000 & part->GetColumnCount() = 3);
+		Check("with the right values", part <> Nil & part->Get(2999)->Get("score")->As(FloatRef)->Get() = 2999.0 / 7.0);
+		Check("opening fetched little of the file", opened * 10 < @image->Size());
+		Check("and the column read fetched only its blocks", @sent * 2 < @image->Size());
+		Check("in a handful of requests", file->GetRequests() = @requests & @requests < 10);
+
+		whole := OtabFile->New(url)->Read();
+		Check("a whole read over ranges matches the table", whole <> Nil & whole->Size() = 3000 &
+			whole->Get(17)->Get("note")->As(String)->Equals(table->Get(17)->Get("note")->As(String)));
+
+		# a server that ignores Range sends the whole file once, and it is read from that
+		@ranges := false;
+		@requests := 0;
+		plain := OtabFile->New(url);
+		read := plain->IsOpen() ? plain->Read(["label"]) : Nil;
+		Check("a server without ranges still serves the file", read <> Nil & read->Size() = 3000);
+		Check("from one download", @requests = 1);
+
+		missing := OtabFile->New("http://127.0.0.1:{$@port}/data/nothing.otab");
+		Check("a missing file does not open", <>missing->IsOpen() & missing->GetError()->Has("404"));
+
+		WebServer->Stop();
+
+		if(@failures = 0) {
+			"PASS: .otab read over HTTP with range requests"->PrintLine();
+		}
+		else {
+			"FAIL: .otab over HTTP ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

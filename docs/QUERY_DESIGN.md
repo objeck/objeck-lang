@@ -396,6 +396,19 @@ keeps its six columns and one-directory behaviour, and becomes `FilesystemSource
 - `Describe()`: per-column count, nulls, min, max, mean, std, distinct count; the first thing a
   researcher asks of a new dataset.
 
+> **As built (phase 4c):** `ToCsv([delimiter])`, `WriteCsv(stream[, delimiter])`, `ToJson()`,
+> `WriteJson(stream)` and `ToMatrix(names[, fill])` on both `View` and `Table`;
+> `Table->FromCsvText(name, text)`, `Table->FromJson(name, text[, names])` and
+> `Table->FromMatrix(name, matrix, names)`. Writers stream a line or an object at a time and
+> check every write. Numbers are exact (a Float as its shortest round-trip text, via
+> `Float->ToShortString`). CSV dates are `#MM/dd/yyyy hh:mm:ss#`, the form `CsvSource` reads
+> back as dates; JSON dates are ISO 8601 with `Z` for GMT. What a format cannot carry is
+> documented rather than invented: CSV has no Bool (it reads back as the text `true`/`false`)
+> and no GMT flag; JSON has no NaN or infinity (written as `null`) and no member order (so
+> `FromJson` takes the column order as an optional argument). `ToMatrix` reads INT, FLOAT and
+> BOOL cells (and numbers in OBJECT columns); an empty or non-numeric cell is an error naming
+> the column and row unless a fill value is given. `Describe()` already existed.
+
 ### 8. Making it fast
 
 Columns, views and compiled predicates remove the structural costs. These go further, in the
@@ -749,8 +762,29 @@ design above. Each phase adds its notes here.
 - Downloads are kept under the system temporary folder in `objeck_query_cache`, revalidated
   with `If-None-Match` and `If-Modified-Since`. A new copy is written beside the old and renamed
   into place. Without a validator, the content's size and CRC32 tell versions apart.
-- Range reads of `.otab` over HTTP wait for phase 3, and serving (`TableServer`,
-  `RemoteSource`) waits for the CSV/JSON writers.
+
+**Phase 5 (serving).**
+- `TableServer` lives in its own library, `query_server.obl` (bundle
+  `Query.Structured.Server`), so a program that only queries does not link `Web.HTTP.Server`.
+  It answers `GET /tables` (names, columns, row counts as JSON), `GET /tables/NAME`, and
+  `GET /query?sql=` or `POST /query` with the statement as a UTF-8 body. The POST form exists
+  because `Web.HTTP.Url`'s percent-encoding does not carry non-ASCII text intact.
+- Only a SELECT is answered (403 otherwise). Its catalog has file access turned off
+  (`Catalog->SetFileAccess(false)`), so a query naming a file or a URL is refused (403): it
+  would otherwise read the server's disk or make the server fetch an address for the client.
+  A result over the row limit is refused (413) rather than cut short. Queries run one at a time
+  under a mutex, since a catalog's plan cache is not shared between threads. There is no time
+  limit yet: the engine has no cancellation point to stop a running query at.
+- `Web.HTTP.Server` runs one server per process, so one `TableServer` serves at a time.
+  Binding to localhost only needs a listen address, which the server does not take yet.
+- `RemoteSource` sends the scan hint's columns and limit and a condition given with
+  `SetWhere`; it does not infer the condition from the local query, because sources are loaded
+  before a query runs. The server applies the condition and the local query applies its own
+  WHERE again, so pushdown never changes an answer. Results travel as `.otab`.
+- `OtabFile->New(url)` reads with range requests: the header, then the footer, then only the
+  blocks a `Read` names. A server that answers 200 instead is read from that one download.
+- Found on the way and fixed at the source: `Web.HTTP.Server`'s POST requests had no path or
+  query string (`GetPath()` was Nil), so a POST handler could not route.
 
 Toolchain defects found while building these phases were fixed at the source rather than worked
 around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
