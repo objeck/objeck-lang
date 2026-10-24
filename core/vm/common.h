@@ -374,6 +374,18 @@ inline int TlsParseKeyFile(mbedtls_pk_context* pk, const std::string& name, cons
 #endif
 }
 
+// The calling thread's last socket failure from a server bind, listen or
+// accept: WSAGetLastError() on Windows, errno elsewhere, captured as the call
+// failed. Read later, as TCPSocketServer->GetLastError() is, the live value
+// had been reset by the cleanup closesocket() ("The operation completed
+// successfully.") or replaced by whatever ran in between.
+// (defined in common.cpp; see dtls_last_error below for why not inline)
+extern thread_local int socket_last_error;
+
+// the OS error behind an MBEDTLS_ERR_NET_BIND_FAILED / _LISTEN_FAILED in
+// tls_last_error or dtls_last_error, for the text of GetLastError()
+extern thread_local int tls_socket_error;
+
 //
 // mbedTLS context wrappers for SSL/TLS connections
 //

@@ -716,20 +716,22 @@ bundle System {
 			return String->New(buffer, false);
 		}
 		
+		#~
+		Returns the bytes as a hex digest: two lower-case hex digits per byte, in order, with no prefix or separators. For one byte's value with a 0x prefix, see ToHexString(Byte); for its digits at a given width, ToHexDigits.
+		@ignore-params
+		@return hex digits, two per byte; empty for an empty array
+		```
+		Cipher.Hash->SHA256("Rosetta code"->ToByteArray())->ToHexString()->PrintLine(); # 764faf5c...
+		```
+		~#
 		function : native : ToHexString(b : Byte[]) ~ String {
-			out := "["
-
-			if(b->Size() > 0) {
-				each(i : b) {
-					buffer := Char->New[32];
-					Number->IntToString(b[i]->As(Int), 16, buffer);
-					out->Append(buffer);
-					out->Append(',');
-				};
-				out->Pop();
+			digits := "0123456789abcdef";
+			out := "";
+			each(i : b) {
+				v := b[i]->As(Int) and 255;
+				out->Append(digits->Get(v >> 4));
+				out->Append(digits->Get(v and 15));
 			};
-
-			out->Append(']');
 
 			return out;
 		}
@@ -2036,19 +2038,22 @@ bundle System {
 			return String->New(buffer, false);
 		}
 		
+		#~
+		Returns the values as a bracketed list of hex strings, each as ToHexString(Int) gives it
+		@ignore-params
+		@return hex list, such as [0xff,0x10]; [] for an empty array
+		~#
 		function : native : ToHexString(v : Int[]) ~ String {
-			out := "]";
+			out := "[";
 
 			if(v->Size() > 0) {
 				each(i : v) {
-					buffer := Char->New[32];
-					n := v[i]->As(Int);
-					Number->IntToString(n->Abs(), 16, buffer);
+					out->Append(ToHexString(v[i]));
 					out->Append(',');
 				};
 				out->Pop();
 			};
-			
+
 			out->Append(']');
 			return out;
 		}

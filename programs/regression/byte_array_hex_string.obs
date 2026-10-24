@@ -1,0 +1,67 @@
+#~
+# Byte[]->ToHexString is a hex digest
+#
+# It returned a bracketed list, "[0x76,0x4f,...]", while the examples and doc
+# comments that call it on a hash expect a digest -- the SHA-256 example
+# compared it with "764faf5c..." and printed false. It now gives two
+# lower-case hex digits per byte with no prefix or separators. Int[]'s
+# ToHexString, a bracketed list by design, started with ']' and never
+# appended a digit, so [255, 16] came back as "],]".
+# EXTRA_LIBS: cipher
+~#
+
+class ByteArrayHexString {
+	@failed : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		ByteArrayHexString->New()->Run();
+	}
+
+	New() {
+		@failed := false;
+	}
+
+	method : Check(name : String, got : String, expected : String) ~ Nil {
+		if(got <> Nil & got->Equals(expected)) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAILED: {$name}: got '{$got}', expected '{$expected}'"->PrintLine();
+			@failed := true;
+		};
+	}
+
+	method : Run() ~ Nil {
+		bytes := Byte->New[4];
+		bytes[0] := 0xDE; bytes[1] := 0xAD; bytes[2] := 0xBE; bytes[3] := 0xEF;
+		Check("four bytes", bytes->ToHexString(), "deadbeef");
+
+		# zero padding: one-digit values keep their leading zero
+		small := Byte->New[3];
+		small[0] := 0x00; small[1] := 0x01; small[2] := 0x0f;
+		Check("small values are zero-padded", small->ToHexString(), "00010f");
+
+		Check("empty array", Byte->New[0]->ToHexString(), "");
+
+		# the documented use: a hash digest
+		hash := Cipher.Hash->SHA256("Rosetta code"->ToByteArray());
+		Check("SHA-256 digest", hash->ToHexString(),
+			"764faf5c61ac315f1497f9dfa542713965b785e5cc2f707d6468d7d1124cdfcf");
+
+		# the scalar forms are unchanged
+		Check("Byte ToHexString", Byte->ToHexString(0xAB), "0xab");
+		Check("Int ToHexString", 255->ToHexString(), "0xff");
+
+		# Int[] is a bracketed list of the scalar form
+		ints := Int->New[2];
+		ints[0] := 255; ints[1] := 16;
+		Check("Int[] ToHexString", ints->ToHexString(), "[0xff,0x10]");
+		Check("empty Int[]", Int->New[0]->ToHexString(), "[]");
+
+		if(@failed) {
+			"FAIL: ToHexString on arrays"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: Byte[]->ToHexString is a hex digest"->PrintLine();
+	}
+}

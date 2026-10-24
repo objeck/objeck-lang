@@ -203,6 +203,15 @@ SOCKET IPSocket::OpenWithTimeout(const char* address, int port, int timeout_ms) 
   return sock == INVALID_SOCKET ? -1 : sock;
 }
 
+// Closes a socket that failed to bind or listen without losing why: a
+// successful closesocket() resets WSAGetLastError() to 0, so the caller read
+// "The operation completed successfully." for a port that was already in use.
+static void CloseKeepingError(SOCKET sock) {
+  const int error = WSAGetLastError();
+  closesocket(sock);
+  WSASetLastError(error);
+}
+
 // see the declarations in win32.h
 SOCKET IPSocket::BindAny(int port, int type) {
   const int protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
@@ -218,8 +227,15 @@ SOCKET IPSocket::BindAny(int port, int type) {
   }
 
   if(server != INVALID_SOCKET) {
-    // non-fatal, as in Bind: a restart inside TIME_WAIT then fails at bind()
-    if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+    // Datagram servers only. On Windows SO_REUSEADDR does not mean what it
+    // does on POSIX: it lets a second socket bind, and listen on, a port that
+    // a server is already listening on, so a second TCP server "started" on a
+    // taken port and the two split its clients. A TCP server needs no option
+    // here to restart inside TIME_WAIT -- Windows only refuses a bind while
+    // another socket is still bound to the port. A DTLS server does need it:
+    // after each accept it binds a fresh listener on its port while the
+    // accepted client keeps the old socket (see DtlsAccept).
+    if(type == SOCK_DGRAM && setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
       WSASetLastError(0);
     }
 
@@ -229,7 +245,7 @@ SOCKET IPSocket::BindAny(int port, int type) {
     sin6.sin6_addr = in6addr_any;
     sin6.sin6_port = htons(port);
     if(::bind(server, (SOCKADDR*)&sin6, sizeof(sin6)) == SOCKET_ERROR) {
-      closesocket(server);
+      CloseKeepingError(server);
       return INVALID_SOCKET;
     }
 
@@ -241,7 +257,8 @@ SOCKET IPSocket::BindAny(int port, int type) {
   if(server == INVALID_SOCKET) {
     return INVALID_SOCKET;
   }
-  if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+  // datagram servers only, as above
+  if(type == SOCK_DGRAM && setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
     WSASetLastError(0);
   }
 
@@ -251,7 +268,7 @@ SOCKET IPSocket::BindAny(int port, int type) {
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons(port);
   if(::bind(server, (SOCKADDR*)&sin, sizeof(sin)) == SOCKET_ERROR) {
-    closesocket(server);
+    CloseKeepingError(server);
     return INVALID_SOCKET;
   }
 
@@ -303,9 +320,10 @@ SOCKET IPSocket::BindAddress(const char* host, int port, int type) {
         }
       }
 
-      // non-fatal, as in BindAny
+      // datagram servers only, as in BindAny: on Windows SO_REUSEADDR would let
+      // a second TCP server listen on a port already taken
       int reuse = 1;
-      if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+      if(type == SOCK_DGRAM && setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
         WSASetLastError(0);
       }
 

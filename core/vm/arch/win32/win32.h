@@ -660,7 +660,9 @@ public:
       addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
 
       if(bind(sock, (SOCKADDR*)addr_in, sizeof(SOCKADDR_IN)) == SOCKET_ERROR) {
+        const int error = WSAGetLastError();
         closesocket(sock);
+        WSASetLastError(error);
         sock = INVALID_SOCKET;
 
         delete addr_in;
