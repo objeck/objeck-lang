@@ -2,7 +2,7 @@ use Collection;
 
 class Reverselines {
 	function : Main(args : String[]) ~ Nil {
-		lines := CompareList->New();
+		lines := CompareList->New()<String>;
 		lines->AddBack("---------- Ice and Fire ------------");
 		lines ->AddBack("");
 		lines->AddBack("fire, in end will world the say Some");
@@ -16,7 +16,7 @@ class Reverselines {
 	
 		lines->Rewind();	
 		each(i : lines) {
-			words := lines->Get()->As(String)->Split(" ");
+			words := lines->Get()->Split(" ");
 			if(words <> Nil) {			
 				for(j := words->Size() - 1; j > -1; j-=1;) {
 					IO.Console->Print(words[j])->Print(" ");

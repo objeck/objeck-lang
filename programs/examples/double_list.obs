@@ -1,6 +1,6 @@
 ﻿class Traverse {
 	function : Main(args : String[]) ~ Nil {
-		list := Collection.IntList->New();
+		list := Collection.List->New()<IntRef>;
 		list->Insert(100);
 		list->Insert(50);
 		list->Insert(25);

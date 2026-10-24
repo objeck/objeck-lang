@@ -1,4 +1,4 @@
-﻿use RegEx;
+﻿use Query.RegEx;
 
 class RunLengthEncoding {
 	function : Main(args : String[]) ~ Nil {
@@ -36,10 +36,10 @@ class RunLengthEncoding {
 		count : Int;
 		each(i : found) {
 			if(i % 2 = 0) {
-				count := found->Get(i)->As(String)->ToInt();
+				count := found->Get(i)->GetValue()->ToInt();
 			}
 			else {
-				letter := found->Get(i)->As(String);
+				letter := found->Get(i)->GetValue();
 				while(count <> 0) {
 					output->Append(letter);
 					count -= 1;

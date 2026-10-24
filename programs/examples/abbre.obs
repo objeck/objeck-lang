@@ -14,8 +14,8 @@ class Abbreviations  {
 			reader->Close();
 		};
 
-		cache := StringMap->New();
-		line := reader->ReadString();
+		cache := Map->New()<String, IntRef>;
+		line := reader->ReadLine();
 		while(line <> Nil) {
 			if(line->Size() > 0) {
 				days := line->Split(" ");
@@ -43,7 +43,7 @@ class Abbreviations  {
 							sd := day->SubString(len);
 						};
 
-						count := cache->Find(sd)->As(IntRef);
+						count := cache->Find(sd);
 						if(count = Nil) {
 							cache->Insert(sd, IntRef->New(1));
 						}
@@ -60,7 +60,7 @@ class Abbreviations  {
 				};
 			};
 
-			line := reader->ReadString();
+			line := reader->ReadLine();
 		};
 	}
 }

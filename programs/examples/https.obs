@@ -1,12 +1,10 @@
-use HTTP;
+use Web.HTTP;
 
 class HttpsTest {
 	function : Main(args : String[]) ~ Nil {
-		client := HttpsClient->New();
-		lines := client->Get("https://www.google.com");
-		each(i : lines) {
-			lines->Get(i)->As(String)->Print();
+		response := HttpsClient->QuickGet(Url->New("https://www.google.com"));
+		if(response <> Nil & response->GetContent() <> Nil) {
+			response->GetContent()->ToString()->PrintLine();
 		};
-		IO.Console->PrintLine();
 	}
 }

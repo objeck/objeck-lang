@@ -2,7 +2,7 @@
 
 class Mode {
 	function : Main(args : String[]) ~ Nil {
-		input := Vector->New();
+		input := Vector->New()<IntRef>;
 		input->AddBack(IntRef->New(1)); input->AddBack(IntRef->New(3));
 		input->AddBack(IntRef->New(6)); input->AddBack(IntRef->New(6));
 		input->AddBack(IntRef->New(6)); input->AddBack(IntRef->New(6));
@@ -11,22 +11,22 @@ class Mode {
 		input->AddBack(IntRef->New(17));
 		Print(Mode(input));
 
-		input := Vector->New();
+		input := Vector->New()<IntRef>;
 		input->AddBack(IntRef->New(1)); input->AddBack(IntRef->New(2));
 		input->AddBack(IntRef->New(4)); input->AddBack(IntRef->New(4));
 		input->AddBack(IntRef->New(1));
 		Print(Mode(input));
 	}
 	
-	function : Mode(coll : Vector) ~ Vector {
-		seen := Map->New();
+	function : Mode(coll : Vector<IntRef>) ~ Vector<IntRef> {
+		seen := Map->New()<IntRef, IntRef>;
 		max := 0;
-		maxElems := Vector->New();
+		maxElems := Vector->New()<IntRef>;
 		
 		each(i : coll) {
-			value := coll->Get(i)->As(Compare);
+			value := coll->Get(i);
 
-			featched := seen->Find(value)->As(IntRef);
+			featched := seen->Find(value);
 			if(featched <> Nil) {
 				seen->Remove(value);
 				seen->Insert(value, IntRef->New(featched->Get() + 1));
@@ -35,7 +35,7 @@ class Mode {
 				seen->Insert(value, IntRef->New(1));
 			};
 
-			featched := seen->Find(value)->As(IntRef);
+			featched := seen->Find(value);
 			if(featched->Get() > max) {
 				max := featched->Get();
 				maxElems->Empty();
@@ -49,10 +49,10 @@ class Mode {
 		return maxElems;
 	}
 
-	function : Print(out : Vector) ~ Nil {
+	function : Print(out : Vector<IntRef>) ~ Nil {
 		'['->Print();
 		each(i : out) {
-			out->Get(i)->As(IntRef)->Get()->Print();
+			out->Get(i)->Get()->Print();
 			if(i + 1 < out->Size()) {
 				", "->Print();
 			};

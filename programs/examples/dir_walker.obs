@@ -7,13 +7,13 @@ class Test {
 		if(args->Size() = 2) {
 			matches := GetFiles(args[0], args[1]);
 			each(i : matches) {
-				matches->Get(i)->As(String)->PrintLine();
+				matches->Get(i)->PrintLine();
 			};
 		};
 	}
 
-	function : GetFiles(path : String, expr : String) ~ Vector {
-		matches := Vector->New();
+	function : GetFiles(path : String, expr : String) ~ Vector<String> {
+		matches := Vector->New()<String>;
 
 		regex := RegEx->New(expr);
 		GetFiles(path, regex, matches);
@@ -21,7 +21,7 @@ class Test {
 		return matches;
 	}
 
-	function : GetFiles(path : String, regex : RegEx, matches : Vector) ~ Nil {
+	function : GetFiles(path : String, regex : RegEx, matches : Vector<String>) ~ Nil {
 		files := Directory->List(path);
 		each(i : files) {
 			file := files[i];

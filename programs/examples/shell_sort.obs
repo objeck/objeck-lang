@@ -13,8 +13,8 @@ bundle Default {
 			swapped : Bool;
 			do {
 				swapped := false;
-				continue := true;
-				for (i := 0; i <= a->Size()  - 2 & continue; i += 1;) {
+				keep_going := true;
+				for (i := 0; i <= a->Size()  - 2 & keep_going; i += 1;) {
 					if(a[i] > a[i + 1]) {
 						temp := a[i];
 						a[i] := a[i+1];
@@ -24,7 +24,7 @@ bundle Default {
 				};
 								
 				if(swapped <> true) {
-					continue := false;
+					keep_going := false;
 				};
 				
 				swapped := false;

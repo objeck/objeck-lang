@@ -30,8 +30,8 @@ class Hailstone {
 		"longest sequence: {$highestNumber} length of {$highestCount}"->PrintLine();
 	}
 
-	function : GetHailstoneSequence(n : Int) ~ IntList {
-		list := IntList->New();
+	function : GetHailstoneSequence(n : Int) ~ List<IntRef> {
+		list := List->New()<IntRef>;
 		list->AddBack(n);
 
 		while (n <> 1) {
@@ -47,7 +47,7 @@ class Hailstone {
 		return list;
 	}
 
-	function : ShowSequence(num : Int, sequence : IntList) ~ Nil {
+	function : ShowSequence(num : Int, sequence : List<IntRef>) ~ Nil {
 		size := sequence->Size();
 		"Sequence for {$num} has {$size}: ["->Print();
 		each(i : sequence) {

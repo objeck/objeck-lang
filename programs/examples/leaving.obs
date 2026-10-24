@@ -6,10 +6,10 @@ class Leaving {
 
 		if(args->Size() = 1) {
 			f := FileReader->New(args[0]);
-			l := f->ReadString();
+			l := f->ReadLine();
 			while(f->IsEoF() = false) {
 				l->PrintLine();
-				l := f->ReadString();
+				l := f->ReadLine();
 			};
 		};
 		

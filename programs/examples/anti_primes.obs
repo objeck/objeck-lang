@@ -2,7 +2,7 @@ class AntiPrimes {
 	function : Main(args : String[]) ~ Nil {
 		maxDiv := 0; count := 0;
 		"The first 20 anti-primes are:"->PrintLine();
-		for(n := 1; count < 20; ++n;) {
+		for(n := 1; count < 20; n += 1;) {
 			d := CountDivisors(n);
 			if(d > maxDiv) {
 				"{$n} "->Print();
@@ -16,8 +16,8 @@ class AntiPrimes {
 	function : native : CountDivisors(n : Int) ~ Int {
 		if (n < 2) { return 1; };
 		count := 2;
-		for(i := 2; i <= n/2; ++i;) {
-			if(n%i = 0) { ++count; };
+		for(i := 2; i <= n/2; i += 1;) {
+			if(n%i = 0) { count += 1; };
 		};
 		return count;
 	}

@@ -13,7 +13,7 @@ class Test {
 		freqs := Int->New[26];
 		reader := FileReader->New(filename);
 		while(reader->IsEoF() <> true) {
-		line := reader->ReadString()->ToUpper();
+		line := reader->ReadLine()->ToUpper();
 			each(i : line) {
 				ch := line->Get(i);
 				if(ch->IsChar()){

@@ -7,14 +7,17 @@ class Test {
 
 	function : native : Run() ~ Nil {
 		"Print roots..."->PrintLine();
-		values := IntVector->New([1, 2, 3, 4, 5, 100]);
-		squares := values->Apply(Square(Int) ~ Int);
+		values := CompareVector->New()<IntRef>;
+		each(v in [1, 2, 3, 4, 5, 100]) {
+			values->AddBack(v);
+		};
+		squares := values->Map(Square(IntRef) ~ IntRef);
 		each(i : squares) {
 		  squares->Get(i)->PrintLine();
 	  };
 	}
 	
-	function : Square(value : Int) ~ Int {
+	function : Square(value : IntRef) ~ IntRef {
 		return value * value;
 	}
 }

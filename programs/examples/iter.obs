@@ -1,6 +1,6 @@
 ﻿class Iteration {
 	function : Main(args : String[]) ~ Nil {
-		assoc_array := Collection.StringMap->New();
+		assoc_array := Collection.Map->New()<String, IntRef>;
 		assoc_array->Insert("Hello", IntRef->New(1));
 		assoc_array->Insert("World", IntRef->New(2));
 		assoc_array->Insert("!", IntRef->New(3));
@@ -9,16 +9,16 @@
 		values := assoc_array->GetValues();
 
 		each(i : keys) {
-			key := keys->Get(i)->As(String);
-			value := assoc_array->Find(key)->As(IntRef)->Get();
+			key := keys->Get(i);
+			value := assoc_array->Find(key)->Get();
 			"key={$key}, value={$value}"->PrintLine();
 		};
 
 		"-------------"->PrintLine();
 
 		each(i : keys) {
-			key := keys->Get(i)->As(String);
-			value := values->Get(i)->As(IntRef)->Get();
+			key := keys->Get(i);
+			value := values->Get(i)->Get();
 			"key={$key}, value={$value}"->PrintLine();
 		};
 	}

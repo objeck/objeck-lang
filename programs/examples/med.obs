@@ -3,29 +3,37 @@ use Collection;
 bundle Default {
 	class Median {
 		function : Main(args : String[]) ~ Nil {
-			numbers := FloatVector->New([4.1, 5.6, 7.2, 1.7, 9.3, 4.4, 3.2]);
+			numbers := ToVector([4.1, 5.6, 7.2, 1.7, 9.3, 4.4, 3.2]);
 			DoMedian(numbers)->PrintLine();
 
-			numbers := FloatVector->New([4.1, 7.2, 1.7, 9.3, 4.4, 3.2]);
+			numbers := ToVector([4.1, 7.2, 1.7, 9.3, 4.4, 3.2]);
 			DoMedian(numbers)->PrintLine();
 		}
 
-		function : native : DoMedian(numbers : FloatVector) ~ Float {
+		function : ToVector(values : Float[]) ~ CompareVector<FloatRef> {
+			numbers := CompareVector->New()<FloatRef>;
+			each(value in values) {
+				numbers->AddBack(value);
+			};
+			return numbers;
+		}
+
+		function : native : DoMedian(numbers : CompareVector<FloatRef>) ~ Float {
 			if(numbers->Size() = 0) {
 				return 0.0;
 			}
 			else if(numbers->Size() = 1) {
-				return numbers->Get(0);
+				return numbers->Get(0)->Get();
 			};
 			
 			numbers->Sort();
 
 			i := numbers->Size() / 2;
 			if(numbers->Size() % 2 = 0) {
-				return (numbers->Get(i - 1) + numbers->Get(i)) / 2.0;							
+				return (numbers->Get(i - 1)->Get() + numbers->Get(i)->Get()) / 2.0;							
 			};
 			
-			return numbers->Get(i);
+			return numbers->Get(i)->Get();
 		}
 	}
 }

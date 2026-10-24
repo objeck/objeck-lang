@@ -16,7 +16,7 @@ class RPNParser {
 		'\n'->Print();
 
 		parser := RPNParser->New();
-		if(parser->Parse(System.IO.Console->ReadString(), digits)) {
+		if(parser->Parse(System.IO.Console->ReadLine(), digits)) {
 			result := parser->GetResult();
 			if(result = 24) {
 				"Good job!"->PrintLine();

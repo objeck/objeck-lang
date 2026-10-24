@@ -31,8 +31,12 @@ class Program {
 		header_regex := RegEx->New("==\\{\\{header\\|(\\w|/|-|_)+\\}\\}==");
 		lang_regex := RegEx->New("<(\\s)*lang(\\s)*>");
 
-		url := "http://rosettacode.org/mw/index.php?action=raw&title={$task}";
-		lines := HttpClient->New()->QuickGet(url)->Split("\n");
+		url := "https://rosettacode.org/w/index.php?action=raw&title={$task}";
+		response := HttpsClient->QuickGet(Url->New(url));
+		if(response = Nil | response->GetContent() = Nil) {
+			return langs;
+		};
+		lines := response->GetContent()->ToString()->Split("\n");
 
 		last_header : String;
 		each(i : lines) {
@@ -40,13 +44,13 @@ class Program {
 			
 			# get header
 			header := header_regex->FindFirst(line);
-			if(<>header->IsEmpty()) {
-				last_header := HeaderName(header);
+			if(header <> Nil) {
+				last_header := HeaderName(header->GetValue());
 			};
 
 			# get language			
 			lang := lang_regex->FindFirst(line);
-			if(lang->Size() > 0) {
+			if(lang <> Nil) {
 				if(last_header <> Nil) {
 					langs->Insert("{$last_header}");
 				}

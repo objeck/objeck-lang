@@ -7,7 +7,7 @@ class Test {
 			if(factors->Size() > 1) {
 				sum := SumDigits(n);
 				each(i : factors) {
-					sum -= SumDigits(factors->Get(i));
+					sum -= SumDigits(factors->Get(i)->Get());
 				};
 				
 				if(sum = 0) {
@@ -17,8 +17,8 @@ class Test {
 		};
 	}
 	
-	function : PrimeFactors(n : Int) ~ IntVector {
-		result := IntVector->New();
+	function : PrimeFactors(n : Int) ~ Vector<IntRef> {
+		result := Vector->New()<IntRef>;
  
 		for(i := 2; n % i = 0; n /= i;) {
 			result->AddBack(i);

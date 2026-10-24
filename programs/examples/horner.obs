@@ -1,6 +1,6 @@
 ﻿class Horner {
 	function : Main(args : String[]) ~ Nil {
-		coeffs := Collection.FloatVector->New();	
+		coeffs := Collection.Vector->New()<FloatRef>;	
         coeffs->AddBack(-19.0);
         coeffs->AddBack(7.0);
         coeffs->AddBack(-4.0);
@@ -8,10 +8,10 @@
 		PolyEval(coeffs, 3)->PrintLine();
 	}
 	
-	function : PolyEval(coefficients : Collection.FloatVector , x : Float) ~ Float {
-		accumulator := coefficients->Get(coefficients->Size() - 1);
+	function : PolyEval(coefficients : Collection.Vector<FloatRef>, x : Float) ~ Float {
+		accumulator := coefficients->Get(coefficients->Size() - 1)->Get();
 		for(i := coefficients->Size() - 2; i > -1; i -= 1;) {
-			 accumulator := (accumulator * x) + coefficients->Get(i);
+			 accumulator := (accumulator * x) + coefficients->Get(i)->Get();
 		};
 		
 		return accumulator;

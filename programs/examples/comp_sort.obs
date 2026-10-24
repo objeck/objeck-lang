@@ -28,7 +28,7 @@ class Entry implements Compare {
 
 class Sorter {
 	function : Main(args : String[]) ~ Nil {
-		entries := CompareVector->New();
+		entries := CompareVector->New()<Entry>;
 		entries->AddBack(Entry->New("Krypton", 83.798));
 		entries->AddBack(Entry->New("Beryllium", 9.012182));
 		entries->AddBack(Entry->New("Silicon", 28.0855));
@@ -38,7 +38,7 @@ class Sorter {
 
 		entries->Sort();
 		each(i : entries) {
-			entries->Get(i)->As(Entry)->ToString()->PrintLine();
+			entries->Get(i)->ToString()->PrintLine();
 		};
 	}
 }
