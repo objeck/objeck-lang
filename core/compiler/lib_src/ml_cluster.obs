@@ -104,7 +104,7 @@ each(group in groups) {
 				groups := Assign(group_labels, records, centroids);
 			};
 
-			return KMeansGrouping->New(groups);
+			return KMeansGrouping->New(group_labels, groups);
 		}
 
 		# Files every record under the label of its nearest centroid, in fresh groups.
@@ -870,20 +870,45 @@ resp := gmm->Predict(X);                # soft responsibilities
 
 		@debug : static : Bool;
 
+		#~
+		Constructor; the groups are ordered by name, since a hash's own order is unspecified
+		@param groups records by group name
+		~#
 		New(groups : Hash<String, Vector<FloatArrayRef>>) {
-			group_key_values := groups->GetKeyValues()<Pair<String, Vector<FloatArrayRef>>>;
-			@groups := Hash->New()<String, KMeansGroup>;
-			@group_names := String->New[group_key_values->Size()];			
-			@dunn_index := -1.0;
-			
-			each(i : group_key_values) {
-				group_key_value := group_key_values->Get(i);
-
-				group := group_key_value->GetSecond();
-				group_name := group_key_value->GetFirst();
-				@group_names[i] := group_name->Copy();
-				@groups->Insert(group_name, KMeansGroup->New(group_name, group));
+			names := CompareVector->New()<String>;
+			keys := groups->GetKeys()<String>;
+			each(i : keys) {
+				names->AddBack(keys->Get(i));
 			};
+			names->Sort();
+			Build(names->ToArray(), groups);
+		}
+
+		#~
+		Constructor; the groups keep the order of their labels, so group i is cluster i
+		@param group_labels group labels in cluster order (labels with no group are skipped, repeats are listed once)
+		@param groups records by group name
+		~#
+		New(group_labels : String[], groups : Hash<String, Vector<FloatArrayRef>>) {
+			Build(group_labels, groups);
+		}
+
+		method : Build(group_labels : String[], groups : Hash<String, Vector<FloatArrayRef>>) ~ Nil {
+			@groups := Hash->New()<String, KMeansGroup>;
+			@dunn_index := -1.0;
+
+			names := Vector->New()<String>;
+			each(i : group_labels) {
+				group_name := group_labels[i];
+				if(group_name <> Nil) {
+					group := groups->Find(group_name);
+					if(group <> Nil & <>@groups->Has(group_name)) {
+						names->AddBack(group_name->Copy());
+						@groups->Insert(group_name, KMeansGroup->New(group_name, group));
+					};
+				};
+			};
+			@group_names := names->ToArray();
 		}
 
 		#~
@@ -1009,11 +1034,10 @@ resp := gmm->Predict(X);                # soft responsibilities
 			buffer := "";
 
 			buffer->Append('[');
-			group_key_values := @groups->GetKeyValues()<Pair<String, KMeansGroup>>;			
-			each(i : group_key_values) {
-				group_key_value := group_key_values->Get(i);
-				group := group_key_value->GetSecond();
-				group_name := group_key_value->GetFirst();
+			# in group order (cluster order for KMeans->Group), not the hash's
+			each(i : @group_names) {
+				group_name := @group_names[i];
+				group := @groups->Find(group_name);
 
 				buffer->Append("{\"name\": \"");
 				buffer->Append(group_name);
@@ -1021,7 +1045,7 @@ resp := gmm->Predict(X);                # soft responsibilities
 				buffer->Append(group->ToString());
 				buffer->Append("]}");
 
-				if(i + 1 < group_key_values->Size()) {
+				if(i + 1 < @group_names->Size()) {
 					buffer->Append(',');
 				};
 			};
