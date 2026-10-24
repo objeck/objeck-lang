@@ -1,0 +1,40 @@
+use Collection;
+
+class ProbeHashGrowth {
+	function : Main(args : String[]) ~ Nil {
+		count := 1200000;
+		boxed := true;
+		if(args->Size() > 0) {
+			count := args[0]->ToInt();
+		};
+		if(args->Size() > 1) {
+			boxed := args[1]->Equals("boxed");
+		};
+
+		refs : IntRef[];
+		if(<>boxed) {
+			refs := IntRef->New[count];
+			for(i := 0; i < count; i += 1;) {
+				refs[i] := IntRef->New(i);
+			};
+			"prebuilt {$count} keys"->ErrorLine();
+		};
+
+		hash := Hash->New()<IntRef, IntRef>;
+		t := System.Time.Timer->New(true);
+		for(i := 0; i < count; i += 1;) {
+			if(boxed) {
+				hash->Insert(i, i * 2);
+			}
+			else {
+				hash->Insert(refs[i], refs[i]);
+			};
+			if(i % 50000 = 0) {
+				t->End();
+				"  {$i} inserted, {$t}s since last"->ErrorLine();
+				t := System.Time.Timer->New(true);
+			};
+		};
+		"done: size={$hash->Size()}"->ErrorLine();
+	}
+}
