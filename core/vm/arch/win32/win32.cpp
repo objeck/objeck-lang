@@ -203,6 +203,81 @@ SOCKET IPSocket::OpenWithTimeout(const char* address, int port, int timeout_ms) 
   return sock == INVALID_SOCKET ? -1 : sock;
 }
 
+// see the declarations in win32.h
+SOCKET IPSocket::BindAny(int port, int type) {
+  const int protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
+  int reuse = 1;
+
+  SOCKET server = socket(AF_INET6, type, protocol);
+  if(server != INVALID_SOCKET) {
+    int v6_only = 0;
+    if(setsockopt(server, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&v6_only, sizeof(v6_only)) == SOCKET_ERROR) {
+      closesocket(server);
+      server = INVALID_SOCKET;
+    }
+  }
+
+  if(server != INVALID_SOCKET) {
+    // non-fatal, as in Bind: a restart inside TIME_WAIT then fails at bind()
+    if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+      WSASetLastError(0);
+    }
+
+    struct sockaddr_in6 sin6;
+    memset(&sin6, 0, sizeof(sin6));
+    sin6.sin6_family = AF_INET6;
+    sin6.sin6_addr = in6addr_any;
+    sin6.sin6_port = htons(port);
+    if(::bind(server, (SOCKADDR*)&sin6, sizeof(sin6)) == SOCKET_ERROR) {
+      closesocket(server);
+      return INVALID_SOCKET;
+    }
+
+    return server;
+  }
+
+  // no IPv6 stack
+  server = socket(AF_INET, type, protocol);
+  if(server == INVALID_SOCKET) {
+    return INVALID_SOCKET;
+  }
+  if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+    WSASetLastError(0);
+  }
+
+  struct sockaddr_in sin;
+  memset(&sin, 0, sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = INADDR_ANY;
+  sin.sin_port = htons(port);
+  if(::bind(server, (SOCKADDR*)&sin, sizeof(sin)) == SOCKET_ERROR) {
+    closesocket(server);
+    return INVALID_SOCKET;
+  }
+
+  return server;
+}
+
+void IPSocket::FormatAddress(const struct sockaddr* addr, char* buffer, size_t buffer_size, int& port) {
+  buffer[0] = '\0';
+  port = -1;
+  if(addr->sa_family == AF_INET6) {
+    const struct sockaddr_in6* addr6 = (const struct sockaddr_in6*)addr;
+    if(IN6_IS_ADDR_V4MAPPED(&addr6->sin6_addr)) {
+      inet_ntop(AF_INET, (const void*)&addr6->sin6_addr.s6_addr[12], buffer, buffer_size);
+    }
+    else {
+      inet_ntop(AF_INET6, (const void*)&addr6->sin6_addr, buffer, buffer_size);
+    }
+    port = ntohs(addr6->sin6_port);
+  }
+  else if(addr->sa_family == AF_INET) {
+    const struct sockaddr_in* addr4 = (const struct sockaddr_in*)addr;
+    inet_ntop(AF_INET, (const void*)&addr4->sin_addr, buffer, buffer_size);
+    port = ntohs(addr4->sin_port);
+  }
+}
+
 SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
 	struct sockaddr_in pin;
 	int addrlen = sizeof(pin);

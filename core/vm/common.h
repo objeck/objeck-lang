@@ -173,6 +173,13 @@ struct SecureSocketCtx {
   }
 };
 
+// The calling thread's last DTLS failure, for DTLSSocket->GetLastError() and
+// DTLSSocketServer->GetLastError(), which are functions: a failed connect or
+// accept frees its context, so the error cannot live only there.
+// (defined in common.cpp; not an inline variable, which native libraries
+// built as C++14 cannot compile)
+extern thread_local int dtls_last_error;
+
 struct DtlsSocketCtx {
   mbedtls_ssl_context ssl;
   mbedtls_ssl_config conf;
@@ -185,6 +192,11 @@ struct DtlsSocketCtx {
   // set_delay before get_delay, so this is defensive rather than a live fault.
   mbedtls_timing_delay_context timer{};
   int last_error;
+
+  void SetError(int error) {
+    last_error = error;
+    dtls_last_error = error;
+  }
 
   DtlsSocketCtx() : last_error(0) {
     mbedtls_ssl_init(&ssl);
@@ -242,8 +254,10 @@ struct DtlsServerCtx {
   mbedtls_net_context listen_fd;
   mbedtls_ssl_cookie_ctx cookie_ctx;
   int last_error;
+  // the listening port, to bind a fresh listener after each accept
+  int port;
 
-  DtlsServerCtx() : last_error(0) {
+  DtlsServerCtx() : last_error(0), port(0) {
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
     mbedtls_pk_init(&pkey);
