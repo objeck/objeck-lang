@@ -33,6 +33,12 @@
 
 #define EOB L'\0'
 
+// a letter of an identifier or file name: alphabetic, or anything outside ASCII
+static inline bool IsLetter(wchar_t c)
+{
+  return c > 0x7F || iswalpha(c);
+}
+
  /****************************
   * Scanner constructor
   ****************************/
@@ -409,15 +415,20 @@ void Scanner::ParseToken(int index)
   // always had), which used to claim every hex literal: '0x2a' scanned as the
   // identifier "0x2a" and printed 'unknown variable'. The hex prefix is a
   // number.
-  else if(isalpha(cur_char) || cur_char == L'@' || cur_char == L'_' || cur_char == L'?' ||
-          (iswdigit(cur_char) && (isalpha(nxt_char) || nxt_char == L'_') &&
+  //
+  // A letter is any alphabetic character or anything outside ASCII: isalpha()
+  // took a wchar_t and knew only ASCII letters (beyond 255 it was undefined),
+  // so 'b données.obs:4' was an unknown token. File names may hold any
+  // character, and the compiler accepts non-ASCII identifiers.
+  else if(IsLetter(cur_char) || cur_char == L'@' || cur_char == L'_' || cur_char == L'?' ||
+          (iswdigit(cur_char) && (IsLetter(nxt_char) || nxt_char == L'_') &&
            !(cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X' ||
                                   ((nxt_char == L'b' || nxt_char == L'B' || nxt_char == L'o' || nxt_char == L'O') &&
                                    iswdigit(nxt_nxt_char)))))) {
     // mark
     start_pos = buffer_pos - 1;
 
-    while((isalpha(cur_char) || isdigit(cur_char) || cur_char == L'_' ||
+    while((IsLetter(cur_char) || iswdigit(cur_char) || cur_char == L'_' ||
           cur_char == L'@' || cur_char == L'?' || cur_char == L'.') && cur_char != EOB) {
       NextChar();
     }

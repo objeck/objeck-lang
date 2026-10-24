@@ -4,7 +4,9 @@ DAP (Debug Adapter Protocol) regression tests for the Objeck debugger (obd --dap
 
 Drives `obd --dap` over stdio with framed JSON-RPC and asserts the editor-facing
 features work: breakpoints, variables, setVariable, function breakpoints,
-logpoints, restart, and exception breakpoints.
+logpoints, restart, and exception breakpoints -- and that a program, source
+and output named with non-ASCII text still come through as frames of valid
+UTF-8 JSON (the interactive debugger's console mode must not reach them).
 
 Usage:
   python3 run_dap_tests.py <bin_dir>
@@ -16,8 +18,10 @@ Exit code 0 = all passed, 1 = at least one failed.
 import json
 import os
 import queue
+import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -58,6 +62,7 @@ class DapClient:
                                      stdout=subprocess.PIPE, cwd=bin_dir,
                                      env=make_env(bin_dir))
         self.q = queue.Queue()
+        self.bad_frames = []
         self.seq = 0
         self.source_dir = source_dir
         threading.Thread(target=self._reader, daemon=True).start()
@@ -80,9 +85,10 @@ class DapClient:
                     break
                 body, buf = rest[:n], rest[n:]
                 try:
-                    self.q.put(json.loads(body))
-                except json.JSONDecodeError:
-                    pass
+                    self.q.put(json.loads(body.decode("utf-8")))
+                except ValueError:
+                    # not UTF-8, or not JSON: an editor would drop it too
+                    self.bad_frames.append(body[:200])
 
     def send(self, command, args=None):
         self.seq += 1
@@ -264,6 +270,70 @@ def run_exception_breakpoint(obd, obe, source_dir, bin_dir):
     c.close()
 
 
+# A program, its source and its output named with Latin accents, CJK and a
+# character outside the BMP
+UNI_DIR = "donn\u00e9es_\u65e5\u672c_\U0001F642"
+UNI_TEXT = "texte_\u00e9_\u65e5\u672c_\U0001F642"
+
+
+def run_unicode_scenario(obc, obd, bin_dir):
+    """A breakpoint in, and output from, a program under a non-ASCII directory."""
+    work = tempfile.mkdtemp(prefix="dap-unicode-")
+    try:
+        root = os.path.join(work, UNI_DIR)
+        os.makedirs(root)
+        src = os.path.join(root, "debogue_\u00e9.obs")
+        obe = os.path.join(root, "debogue_\u00e9.obe")
+        with open(src, "w", encoding="utf-8", newline="\n") as f:
+            f.write("class DapUnicodeText {\n"
+                    "  function : Main(args : String[]) ~ Nil {\n"
+                    f"    text := \"{UNI_TEXT}\";\n"
+                    "    text->PrintLine();\n"
+                    "  }\n"
+                    "}\n")
+        if not compile_test(obc, src, obe, bin_dir):
+            log_result("compile the non-ASCII fixture", False)
+            return
+
+        c = DapClient(obd, root, bin_dir)
+        c.send("initialize", {"adapterID": "objeck"})
+        c.wait_response("initialize")
+        c.send("launch", {"program": obe, "sourceDir": root})
+        launched = c.wait_response("launch")
+        log_result("launch a program at a non-ASCII path", bool(launched) and launched.get("success"),
+                   str(launched))
+        c.send("setBreakpoints", {"source": {"path": src}, "breakpoints": [{"line": 4}]})
+        bp = c.wait_response("setBreakpoints")
+        verified = (bp or {}).get("body", {}).get("breakpoints", [{}])
+        log_result("breakpoint in a non-ASCII source verified",
+                   bool(verified) and verified[0].get("verified") is True, str(bp))
+        c.send("configurationDone")
+        st = c.wait_stopped()
+        log_result("stop in a non-ASCII source", bool(st) and st["body"]["reason"] == "breakpoint")
+        c.send("stackTrace", {"threadId": 1})
+        stk = c.wait_response("stackTrace")
+        frames = (stk or {}).get("body", {}).get("stackFrames", [{}])
+        path = frames[0].get("source", {}).get("path", "") if frames else ""
+        log_result("stack frame names the non-ASCII source as written",
+                   os.path.normcase(os.path.normpath(path)) == os.path.normcase(src), f"got {path!r}")
+
+        outputs = []
+        c.send("continue", {"threadId": 1})
+        end = time.time() + 10
+        while time.time() < end:
+            m = c.wait_for(lambda x: x.get("event") in ("output", "terminated"), 10)
+            if not m or m.get("event") == "terminated":
+                break
+            outputs.append(m["body"].get("output", ""))
+        log_result("program's non-ASCII output arrives in an output event",
+                   any(UNI_TEXT in s for s in outputs), f"{outputs[:4]!r}")
+        code = c.close()
+        log_result("every frame was valid UTF-8 JSON", not c.bad_frames, f"{c.bad_frames[:2]!r}")
+        log_result("clean exit after the non-ASCII session", code == 0, f"exit={code}")
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
 def run_standalone_tests(bin_dir):
     """Run the self-contained dap_*_test.py suites.
 
@@ -326,6 +396,10 @@ def run_standalone_tests(bin_dir):
 
 
 def main():
+    # the non-ASCII scenario's failure details quote non-ASCII paths, and
+    # stdout may be a pipe in the ANSI code page (it is on the hosted Windows
+    # runners): escape what it cannot hold rather than die mid-report
+    sys.stdout.reconfigure(errors="backslashreplace")
     if len(sys.argv) < 2:
         print("usage: run_dap_tests.py <bin_dir>")
         return 2
@@ -360,6 +434,8 @@ def main():
     run_function_breakpoint(obd, core_obe, REG_DIR, bin_dir)
     print("\nException breakpoints:")
     run_exception_breakpoint(obd, exc_obe, REG_DIR, bin_dir)
+    print("\nNon-ASCII program, source and output:")
+    run_unicode_scenario(obc, obd, bin_dir)
     print("")
     print("Standalone suites (drill-down, protocol, data breakpoints, teardown):")
     run_standalone_tests(bin_dir)
