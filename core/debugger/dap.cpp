@@ -724,11 +724,12 @@ std::string DapAdapter::ResolveSourcePath(const std::wstring& file_name)
   std::string candidate = UnicodeToBytes(combined);
 
 #ifdef _WIN32
-  char resolved[_MAX_PATH];
-  if(_fullpath(resolved, candidate.c_str(), _MAX_PATH)) {
+  // the W calls: the A ones read the UTF-8 name in the ANSI code page
+  wchar_t resolved[_MAX_PATH];
+  if(_wfullpath(resolved, combined.c_str(), _MAX_PATH)) {
     // Verify file exists
-    if(GetFileAttributesA(resolved) != INVALID_FILE_ATTRIBUTES) {
-      return std::string(resolved);
+    if(GetFileAttributesW(resolved) != INVALID_FILE_ATTRIBUTES) {
+      return UnicodeToBytes(resolved);
     }
   }
 #else

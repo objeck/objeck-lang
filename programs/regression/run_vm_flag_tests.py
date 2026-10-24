@@ -108,6 +108,19 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     unwinding lines must match exactly at -opt s0 and s3 under --jit=off, the
     default and --jit=1. MethodFormatter used to print a function-typed parameter
     as '(a:Int, , , b:Int, ...)~Int' and a mid-list Float[] as 'Float[,]'.
+ 14. Non-ASCII names end to end. Copies of obc and obr, a library directory
+    and the sources sit under a directory named with Latin accents, CJK and a
+    character outside the BMP. obc compiles a source there (the argument, the
+    library path from OBJECK_LIB_PATH, the libraries it lists and reads, the
+    .obe it writes); obr runs the result and loads a native library from that
+    library directory, by OBJECK_LIB_PATH and by --lib-path; the program gets a
+    non-ASCII argument, reads a non-ASCII variable this script set, sets one a
+    child process checks (directly and through CommandOutput's variables), and
+    runs CommandOutput with the temp directory on a path with a space. On
+    Windows the tools took the CRT's ANSI argv, read the environment through
+    getenv_s, loaded libraries with LoadLibraryA and opened files with narrow
+    names, so all of it failed there; on Linux and macOS the program's
+    arguments were widened byte by byte.
 """
 import concurrent.futures
 import os
@@ -389,7 +402,140 @@ def main():
 
     check_binary_stdio_utf8(obc, obr, env, bin_dir)
 
+    check_unicode_names(obc, obr, bin_dir, lib_dir)
+
     return finish()
+
+
+# non-ASCII text used by section 14, spelled with escapes so this file's own
+# encoding cannot matter
+UNI_DIR = "donn\u00e9es_\u65e5\u672c_\U0001F642"
+UNI_ARG = "arg_\u00f1_\u65e5\u672c_\U0001F642"
+UNI_VALUE = "valeur_\u00e9_\u65e5\u672c_\U0001F642"
+UNI_GET_NAME = "OBJK_GET_\u00dcN\u00cf_\u65e5\u672c"
+
+# The child the fixture runs: exits 0 when the variable named by its last
+# argument holds UNI_VALUE. (The fixture names an ASCII variable on POSIX:
+# system() runs /bin/sh, and dash drops from the environment any name that is
+# not a shell identifier, so a non-ASCII name never reaches the child there.)
+UNI_CHILD = (
+    "import os, sys\n"
+    f"sys.exit(0 if os.environ.get(sys.argv[-1]) == {UNI_VALUE!r} else 1)\n"
+)
+
+
+def check_unicode_names(obc, obr, bin_dir, lib_dir):
+    """14. Non-ASCII names end to end (see the module docstring)."""
+    scratch = tempfile.mkdtemp(prefix="objeck-unicode-")
+    child_dir = tempfile.mkdtemp(prefix="objeck-unicode-child-")
+    try:
+        root = os.path.join(scratch, UNI_DIR)
+        uni_bin = os.path.join(root, "bin_é")
+        uni_lib = os.path.join(root, "lib_ñ_日本")
+        os.makedirs(uni_bin)
+        os.makedirs(uni_lib)
+
+        # the tools, with the runtime DLLs they load on Windows (not the large
+        # optional ones), and no lib beside them
+        for tool in (obc, obr):
+            shutil.copy2(tool, uni_bin)
+        for entry in os.listdir(bin_dir):
+            path = os.path.join(bin_dir, entry)
+            if entry.lower().endswith(".dll") and os.path.getsize(path) < 8 * 1024 * 1024:
+                shutil.copy2(path, uni_bin)
+        uni_obc = os.path.join(uni_bin, os.path.basename(obc))
+        uni_obr = os.path.join(uni_bin, os.path.basename(obr))
+
+        # the libraries, their index and the native libraries
+        for entry in os.listdir(lib_dir):
+            path = os.path.join(lib_dir, entry)
+            if entry.endswith(".obl") or entry in ("configobjk.ini", "cacert.pem"):
+                shutil.copy2(path, uni_lib)
+        if os.path.isdir(os.path.join(lib_dir, "native")):
+            shutil.copytree(os.path.join(lib_dir, "native"), os.path.join(uni_lib, "native"))
+
+        bare = {k: v for k, v in os.environ.items() if k != "OBJECK_LIB_PATH"}
+        uni_env = dict(bare)
+        uni_env["OBJECK_LIB_PATH"] = uni_lib
+
+        # obc: a source, a library path and a target, all named with non-ASCII text
+        program_src = os.path.join(root, "programme_é.obs")
+        program_obe = os.path.join(root, "programme_é.obe")
+        native_src = os.path.join(root, "natif_ü.obs")
+        native_obe = os.path.join(root, "natif_ü.obe")
+        shutil.copy2(os.path.join(SCRIPT_DIR, "vm_unicode_args_env.obs"), program_src)
+        shutil.copy2(os.path.join(SCRIPT_DIR, "vm_lib_path_native.obs"), native_src)
+
+        rc, out, err = run([uni_obc, "-src", program_src, "-dest", program_obe], env=uni_env, cwd=uni_bin)
+        check("obc compiles a non-ASCII source with a non-ASCII OBJECK_LIB_PATH into a non-ASCII target",
+              rc == 0 and os.path.exists(program_obe),
+              f"rc={rc} out={(out + err).decode(errors='replace')[-300:]!r}")
+        rc, out, err = run([uni_obc, "-src", native_src, "-lib", "cipher", "-dest", native_obe],
+                           env=uni_env, cwd=uni_bin)
+        check("obc links a library from the non-ASCII library directory",
+              rc == 0 and os.path.exists(native_obe),
+              f"rc={rc} out={(out + err).decode(errors='replace')[-300:]!r}")
+
+        # obr's checks do not depend on obc's: where obc failed, the programs
+        # are compiled in an ASCII directory and copied to the non-ASCII names
+        ascii_env = dict(bare)
+        ascii_env["OBJECK_LIB_PATH"] = lib_dir + os.sep
+        for src, obe, libs in ((program_src, program_obe, []), (native_src, native_obe, ["-lib", "cipher"])):
+            if not os.path.exists(obe):
+                ascii_src = os.path.join(child_dir, "fixture.obs")
+                ascii_obe = os.path.join(child_dir, "fixture.obe")
+                shutil.copy2(src, ascii_src)
+                run([obc, "-src", ascii_src] + libs + ["-dest", ascii_obe], env=ascii_env, cwd=bin_dir)
+                if os.path.exists(ascii_obe):
+                    shutil.move(ascii_obe, obe)
+
+        # obr: the native library loads from the non-ASCII library directory
+        if os.path.exists(native_obe):
+            rc, out, err = run([uni_obr, native_obe], env=uni_env, cwd=uni_bin)
+            check("obr loads a native library from a non-ASCII OBJECK_LIB_PATH",
+                  rc == 0 and b"native lib loaded" in out,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+            rc, out, err = run([uni_obr, "--lib-path=" + uni_lib, native_obe], env=bare, cwd=uni_bin)
+            check("obr loads a native library from a non-ASCII --lib-path",
+                  rc == 0 and b"native lib loaded" in out,
+                  f"rc={rc} out={out[-120:]!r} stderr={err.decode(errors='replace')[-200:]!r}")
+
+        # the program: its argument, the environment both ways, and command
+        # output with a temp directory whose path has a space
+        if os.path.exists(program_obe):
+            run_env = dict(uni_env)
+            run_env[UNI_GET_NAME] = UNI_VALUE
+            if os.name == "nt":
+                spaced_tmp = os.path.join(scratch, "temp dir")
+                os.makedirs(spaced_tmp)
+                run_env["TMP"] = spaced_tmp
+                run_env["TEMP"] = spaced_tmp
+
+            child_script = os.path.join(child_dir, "check_env.py")
+            with open(child_script, "w", encoding="utf-8") as f:
+                f.write(UNI_CHILD)
+            child_cmd = f"{sys.executable} {child_script}"
+            # unquoted, so neither path may have a space (cmd /c's quote rules)
+            has_child = " " not in sys.executable and " " not in child_script
+
+            args = [UNI_ARG] + ([child_cmd] if has_child else [])
+            rc, out, err = run([uni_obr, program_obe] + args, env=run_env, cwd=uni_bin)
+            text = out.decode(errors="replace")
+            detail = f"rc={rc} out={text[-300:]!r} stderr={err.decode(errors='replace')[-200:]!r}"
+            check("the program's non-ASCII argument arrives as written", "arg ok" in text, detail)
+            check("a non-ASCII variable set for obr reads back as written", "env ok" in text, detail)
+            what = "with the temp directory on a path with a space" if os.name == "nt" else "through its temp file"
+            check(f"CommandOutput returns the command's output {what}", "command output ok" in text, detail)
+            if has_child:
+                check("a variable with a non-ASCII value the program sets reaches a child process as written",
+                      "child env ok" in text, detail)
+                check("a variable with a non-ASCII value passed with CommandOutput reaches the command as written",
+                      "command env ok" in text, detail)
+            else:
+                print("  [SKIP] child-process variable checks: the Python path has a space")
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+        shutil.rmtree(child_dir, ignore_errors=True)
 
 
 def check_binary_stdio_utf8(obc, obr, env, bin_dir):

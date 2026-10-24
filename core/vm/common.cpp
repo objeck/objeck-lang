@@ -4117,15 +4117,28 @@ bool TrapProcessor::AssertTrue(StackProgram* program, size_t* inst, size_t* &op_
 bool TrapProcessor::SysCmd(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* array = (size_t*)PopInt(op_stack, stack_pos);
-  array = (size_t*)array[0];
   if(array) {
+    array = (size_t*)array[0];
+#ifdef _WIN32
+    // UTF-16, as System::CommandOutput runs its command: system() read the
+    // UTF-8 bytes in the ANSI code page
+    const std::wstring cmd((wchar_t*)(array + 3));
+#else
     const std::string cmd = UnicodeToBytes((wchar_t*)(array + 3));
+#endif
     // system() waits for the child to exit; park for it, so a collection on
     // another thread is not held up for the length of the command (cmd is C heap)
     MemoryManager::BeginBlocking();
+#ifdef _WIN32
+    const int status = _wsystem(cmd.c_str());
+#else
     const int status = system(cmd.c_str());
+#endif
     MemoryManager::EndBlocking();
     PushInt(status, op_stack, stack_pos);
+  }
+  else {
+    PushInt(-1, op_stack, stack_pos);
   }
 
   return true;
@@ -4185,39 +4198,44 @@ bool TrapProcessor::RaiseSignal(StackProgram* program, size_t* inst, size_t*& op
 
 bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  std::map<std::string, std::string> prev_env_variables;
+  // name -> (was it set, its value): restored once the command has run
+  std::map<std::wstring, std::pair<bool, std::wstring>> prev_env_variables;
 
-  // save existing environment variables
+  // Set the command's environment variables, saving what they replace. A
+  // variable that was already set kept its old value: only unset ones were
+  // assigned. On Windows the names and values are UTF-16 (_wgetenv_s and
+  // _wputenv_s); the narrow calls took the UTF-8 bytes as ANSI.
   size_t* env_array = (size_t*)PopInt(op_stack, stack_pos);
   if(env_array) {
     const size_t env_str_count = env_array[2];
     for(size_t i = 0; i < env_str_count; ++i) {
       size_t* env_str_obj = (size_t*)env_array[i + 3];
+      if(!env_str_obj) {
+        continue;
+      }
       env_str_obj = (size_t*)*env_str_obj;
-      const std::string env_str = UnicodeToBytes((wchar_t*)(env_str_obj + 3));
-      const size_t index = env_str.find('=');
-      if(index != std::string::npos) {
-        const std::string name = env_str.substr(0, index);
-        const std::string value = env_str.substr(index + 1);
+      const std::wstring env_str((wchar_t*)(env_str_obj + 3));
+      const size_t index = env_str.find(L'=');
+      if(index != std::wstring::npos && index > 0) {
+        const std::wstring name = env_str.substr(0, index);
+        const std::wstring value = env_str.substr(index + 1);
+
+        if(prev_env_variables.find(name) == prev_env_variables.end()) {
+#ifdef _WIN32
+          std::wstring prev_value;
+          const bool was_set = GetEnvironmentValue(name, prev_value);
+#else
+          const char* prev_chars = getenv(UnicodeToBytes(name).c_str());
+          const bool was_set = prev_chars != nullptr;
+          const std::wstring prev_value = was_set ? BytesToUnicode(prev_chars) : L"";
+#endif
+          prev_env_variables[name] = std::make_pair(was_set, prev_value);
+        }
 
 #ifdef _WIN32
-        size_t prev_value_len; char prev_value[SMALL_BUFFER_MAX];
-        if(!getenv_s(&prev_value_len, prev_value, SMALL_BUFFER_MAX, name.c_str()) && strlen(prev_value) > 0) {
-          prev_env_variables[name] = prev_value;
-        }
-        else {
-          prev_env_variables[name] = "";
-          _putenv_s(name.c_str(), value.c_str());
-        }
+        _wputenv_s(name.c_str(), value.c_str());
 #else
-        const char* prev_value = getenv(name.c_str());
-        if(prev_value) {
-          prev_env_variables[name] = prev_value;
-        }
-        else {
-          prev_env_variables[name] = "";
-          setenv(name.c_str(), value.c_str(), 1);
-        }
+        setenv(UnicodeToBytes(name).c_str(), UnicodeToBytes(value).c_str(), 1);
 #endif
       }
     }
@@ -4271,13 +4289,21 @@ bool TrapProcessor::SysCmdOut(StackProgram* program, size_t* inst, size_t*& op_s
     PushInt(0, op_stack, stack_pos);
   }
 
-  // restore existing environment variables 
-  std::map<std::string, std::string>::iterator iter;
-  for(iter = prev_env_variables.begin(); iter != prev_env_variables.end(); ++iter) {
+  // restore the environment: a variable that was unset is unset again, rather
+  // than left set to "" (POSIX) or to the command's value
+  for(const auto& prev : prev_env_variables) {
+    const bool was_set = prev.second.first;
 #ifdef _WIN32
-    _putenv_s(iter->first.c_str(), iter->second.c_str());
+    // an empty value removes the variable
+    _wputenv_s(prev.first.c_str(), was_set ? prev.second.second.c_str() : L"");
 #else
-    setenv(iter->first.c_str(), iter->second.c_str(), 1);
+    const std::string name = UnicodeToBytes(prev.first);
+    if(was_set) {
+      setenv(name.c_str(), UnicodeToBytes(prev.second.second).c_str(), 1);
+    }
+    else {
+      unsetenv(name.c_str());
+    }
 #endif
   }
 
@@ -4794,17 +4820,20 @@ bool TrapProcessor::GetSysEnv(StackProgram* program, size_t* inst, size_t*& op_s
   size_t* key_array = (size_t*)PopInt(op_stack, stack_pos);
   if(key_array) {
     key_array = (size_t*)key_array[0];
-    std::string key = UnicodeToBytes((wchar_t*)(key_array + 3));
 #ifdef _WIN32
-    size_t value_len; 
-    char value[SMALL_BUFFER_MAX];
-    if(!getenv_s(&value_len, value, SMALL_BUFFER_MAX, key.c_str()) && strlen(value) > 0) {
+    // UTF-16 both ways: getenv_s answered in the ANSI code page, which was then
+    // decoded as UTF-8, and a value longer than its 1 KB buffer read as unset
+    std::wstring value;
+    if(GetEnvironmentValue((wchar_t*)(key_array + 3), value) && !value.empty()) {
+      PushInt((size_t)CreateStringObject(value, program, op_stack, stack_pos), op_stack, stack_pos);
+    }
 #else
+    const std::string key = UnicodeToBytes((wchar_t*)(key_array + 3));
     const char* value = getenv(key.c_str());
     if(value) {
-#endif
       PushInt((size_t)CreateStringObject(BytesToUnicode(value), program, op_stack, stack_pos), op_stack, stack_pos);
     }
+#endif
     else {
       PushInt((size_t)CreateStringObject(L"", program, op_stack, stack_pos), op_stack, stack_pos);
     }
@@ -4825,12 +4854,13 @@ bool TrapProcessor::SetSysEnv(StackProgram* program, size_t* inst, size_t*& op_s
     value_array = (size_t*)value_array[0];
     key_array = (size_t*)key_array[0];
 
+#ifdef _WIN32
+    // _wputenv_s updates the CRT's wide and narrow tables and the process
+    // environment that children inherit; _putenv_s took the UTF-8 bytes as ANSI
+    _wputenv_s((wchar_t*)(key_array + 3), (wchar_t*)(value_array + 3));
+#else
     const std::string key = UnicodeToBytes((wchar_t*)(key_array + 3));
     const std::string value = UnicodeToBytes((wchar_t*)(value_array + 3));
-
-#ifdef _WIN32
-    _putenv_s(key.c_str(), value.c_str());
-#else
     setenv(key.c_str(), value.c_str(), 1);
 #endif
   }
@@ -5523,7 +5553,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
 
       // Load server certificate
       const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
-      ret = mbedtls_x509_crt_parse_file(&srv->srvcert, cert_path.c_str());
+      ret = TlsParseCertFile(&srv->srvcert, cert_path);
       if(ret != 0) {
         delete srv;
         PushInt(0, op_stack, stack_pos);
@@ -5543,12 +5573,7 @@ bool TrapProcessor::SockTcpSslListen(StackProgram* program, size_t* inst, size_t
         }
       }
 
-#if MBEDTLS_VERSION_MAJOR >= 3
-      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr,
-                                      mbedtls_ctr_drbg_random, &srv->ctr_drbg);
-#else
-      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr);
-#endif
+      ret = TlsParseKeyFile(&srv->pkey, key_path, passwd_cstr, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
       if(ret != 0) {
         delete srv;
         PushInt(0, op_stack, stack_pos);
@@ -9777,7 +9802,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
 
       // Load server certificate
       const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
-      ret = mbedtls_x509_crt_parse_file(&srv->srvcert, cert_path.c_str());
+      ret = TlsParseCertFile(&srv->srvcert, cert_path);
       if(ret != 0) {
         dtls_last_error = ret;
         delete srv;
@@ -9798,12 +9823,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
         }
       }
 
-#if MBEDTLS_VERSION_MAJOR >= 3
-      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr,
-                                      mbedtls_ctr_drbg_random, &srv->ctr_drbg);
-#else
-      ret = mbedtls_pk_parse_keyfile(&srv->pkey, key_path.c_str(), passwd_cstr);
-#endif
+      ret = TlsParseKeyFile(&srv->pkey, key_path, passwd_cstr, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
       if(ret != 0) {
         dtls_last_error = ret;
         delete srv;

@@ -276,7 +276,7 @@ class File {
     std::vector<std::wstring> files;
 
     std::wstring path = p;
-    if(path.size() > 0 && path[path.size() - 1] == L'\\') {
+    if(path.size() > 0 && (path[path.size() - 1] == L'\\' || path[path.size() - 1] == L'/')) {
       path += L"*";
     }
     else {
@@ -288,16 +288,17 @@ class File {
     if(find == INVALID_HANDLE_VALUE) {
       return files;
     }
-    else {
-      files.push_back(file_data.cFileName);
 
-      BOOL b = FindNextFileW(find, &file_data);
-      while(b) {
+    // '.' and '..' are not entries; POSIX's ListDir has always left them out,
+    // so Directory->List gave a different answer on each platform
+    do {
+      if(wcscmp(file_data.cFileName, L".") != 0 && wcscmp(file_data.cFileName, L"..") != 0) {
         files.push_back(file_data.cFileName);
-        b = FindNextFileW(find, &file_data);
       }
-      FindClose(find);
     }
+    while(FindNextFileW(find, &file_data));
+    FindClose(find);
+
     return files;
   }
 };
@@ -699,7 +700,7 @@ class IPSecureSocket {
 
     std::string cert_path = pem_file.empty()
       ? UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE : pem_file;
-    ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
+    ret = TlsParseCertFile(&sctx->cacert, cert_path);
     if(ret < 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
 
     std::string port_str = std::to_string(port);
@@ -770,7 +771,7 @@ class IPSecureSocket {
       cert_path = UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE;
     }
 
-    ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
+    ret = TlsParseCertFile(&sctx->cacert, cert_path);
     if(ret < 0) {
       sctx->last_error = ret;
       std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
@@ -1007,7 +1008,7 @@ class IPDtlsSocket {
       cert_path = UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE;
     }
 
-    ret = mbedtls_x509_crt_parse_file(&sctx->cacert, cert_path.c_str());
+    ret = TlsParseCertFile(&sctx->cacert, cert_path);
     if(ret < 0) {
       sctx->SetError(ret);
       std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
@@ -1169,10 +1170,16 @@ class System {
      if(file) {
        fclose(file);
 
-       std::wstring str_cmd = BytesToUnicode(c);
-       str_cmd += L" > ";
+       // The temp path is quoted, so a temp directory with a space (a user
+       // folder such as 'C:\Users\Ana Lima') stays one word. Then the whole
+       // line is quoted once more: cmd /c drops a line's first and last quote
+       // whenever it has more than two, so without the outer pair a command
+       // that began with a quoted program path lost its opening quote.
+       std::wstring str_cmd = L"\"";
+       str_cmd += BytesToUnicode(c);
+       str_cmd += L" > \"";
        str_cmd += tmp_file_name;
-       str_cmd += L" 2>&1";
+       str_cmd += L"\" 2>&1\"";
        status = _wsystem(str_cmd.c_str());
 
        // read file output

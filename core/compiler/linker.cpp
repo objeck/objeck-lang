@@ -445,10 +445,9 @@ std::vector<std::wstring> Linker::LibrariesDefining(const std::wstring& cls_name
   std::vector<std::wstring> hits;
 
   const std::wstring lib_path = GetLibraryPath();
-  const std::vector<std::string> entries = ListDir(UnicodeToBytes(lib_path).c_str());
+  const std::vector<std::wstring> entries = ListDir(lib_path);
 
-  for(const std::string& entry : entries) {
-    const std::wstring name = BytesToUnicode(entry);
+  for(const std::wstring& name : entries) {
     if(!frontend::EndsWith(name, L".obl")) {
       continue;
     }
@@ -615,7 +614,7 @@ void Linker::Load([[maybe_unused]] bool is_lib)
 std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linker::ParseIni(const std::wstring& filename) {
   std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> values;
 
-  std::wifstream file_reader(UnicodeToBytes(filename));
+  std::wifstream file_reader(ToFsPath(filename));
   if(file_reader.good()) {
     std::wstring section_title;
     std::vector <std::pair<std::wstring, std::wstring>> section_names_values;
@@ -850,8 +849,7 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 {
   char* buffer = nullptr;
   // open file
-  const std::string open_filename = UnicodeToBytes(filename);
-  std::ifstream in(open_filename.c_str(), std::ifstream::binary);
+  std::ifstream in(ToFsPath(filename), std::ifstream::binary);
   if(in.good()) {
     // get file size
     in.seekg(0, std::ios::end);

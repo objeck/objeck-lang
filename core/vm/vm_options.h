@@ -278,11 +278,11 @@ namespace Runtime {
   // when the interpreter initializes the collector).
   inline void ApplyVmOptions(const VmOptions& opts) {
     if(!opts.lib_path.empty()) {
-      const std::string narrow = UnicodeToBytes(opts.lib_path);
 #ifdef _WIN32
-      _putenv_s("OBJECK_LIB_PATH", narrow.c_str());
+      // UTF-16, as GetLibraryPath reads it back: _putenv_s took UTF-8 as ANSI
+      _wputenv_s(L"OBJECK_LIB_PATH", opts.lib_path.c_str());
 #else
-      setenv("OBJECK_LIB_PATH", narrow.c_str(), 1);
+      setenv("OBJECK_LIB_PATH", UnicodeToBytes(opts.lib_path).c_str(), 1);
 #endif
     }
     if(opts.jit_threshold != 0) {

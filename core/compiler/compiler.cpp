@@ -197,9 +197,9 @@ int OptionsCompile(std::map<const std::wstring, std::wstring>& arguments, std::l
       if(src_files.empty()) {
         src_files = L"./";
       }
-      std::vector<std::string> file_names = ListDir(UnicodeToBytes(src_files).c_str());
+      const std::vector<std::wstring> file_names = ListDir(src_files);
       for(size_t i = 0; i < file_names.size(); ++i) {
-        const std::wstring file_name = BytesToUnicode(file_names[i]);
+        const std::wstring& file_name = file_names[i];
         if(frontend::EndsWith(file_name, L".obs")) {
           files_paths += src_files + file_name + L',';
         }

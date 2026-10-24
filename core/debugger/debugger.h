@@ -104,8 +104,7 @@ namespace Runtime {
       cur_line_num = l;
       debugger = d;
 
-      const std::string name = UnicodeToBytes(fn);
-      std::ifstream file_in (name.c_str());
+      std::ifstream file_in(ToFsPath(fn));
       while(file_in.good()) {
         std::string line;
         std::getline(file_in, line);

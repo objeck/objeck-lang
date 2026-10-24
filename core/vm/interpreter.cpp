@@ -3063,7 +3063,9 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
   // load shared library
 #ifdef _WIN32
   // Load shared library file
-  HINSTANCE dll_handle = LoadLibrary(dll_string.c_str());
+  // by the UTF-16 name: LoadLibraryA read the UTF-8 bytes in the ANSI code page,
+  // so an install directory with a non-ASCII name could load no native library
+  HINSTANCE dll_handle = LoadLibraryW((path_str + L".dll").c_str());
   if(!dll_handle) {
     // Report WHY. The POSIX branch below has always printed dlerror(); this
     // one printed only the path, so every Windows load failure looked
@@ -3088,7 +3090,7 @@ void StackInterpreter::SharedLibraryLoad([[maybe_unused]] StackInstr* instr)
       LocalFree(error_text);
     }
 
-    std::wcerr << L">>> Runtime error loading shared library: " << dll_string.c_str()
+    std::wcerr << L">>> Runtime error loading shared library: " << path_str << L".dll"
                << L" (error " << load_error;
     if(!error_str.empty()) {
       std::wcerr << L": " << error_str;

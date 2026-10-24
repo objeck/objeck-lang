@@ -1,0 +1,79 @@
+#~
+Runtime->CommandOutput(command, variables) runs the command with the variables set and puts the
+environment back afterwards. The VM assigned a variable only when it was not set already, so a
+variable the program had set kept its old value in the command; and afterwards a variable that
+had been unset was left set to "" on Linux and macOS instead of unset. Environment names and
+values with non-ASCII characters also round-trip (on Windows the VM read and wrote them
+through the ANSI code page; run_vm_flag_tests.py checks them against another process).
+~#
+class SysEnvCommandVars {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# the command that prints one variable's value, in this platform's shell
+	function : EchoCommand(name : String) ~ String {
+		if(System.IO.Filesystem.Directory->GetSlash() = '\\') {
+			return "echo %" + name + "%";
+		};
+
+		return "echo $" + name;
+	}
+
+	function : FirstLine(output : CommandOutput) ~ String {
+		if(output = Nil) {
+			return Nil;
+		};
+
+		lines := output->GetOutput();
+		if(lines = Nil | lines->Size() = 0) {
+			return Nil;
+		};
+
+		return lines[0]->Trim();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# the one-argument form returns the command's output (it had no return
+		# statement, and its caller crashed on the value it never left)
+		line := FirstLine(Runtime->CommandOutput("echo plain"));
+		Check("CommandOutput(command) returns the output (got '{$line}')", line <> Nil & line->Equals("plain"));
+
+		# a variable already set takes the command's value, and gets its own back after
+		Runtime->SetEnvironmentVariable("OBJK_CMD_SET", "old_value");
+		vars := String->New[1];
+		vars[0] := "OBJK_CMD_SET=new_value";
+		line := FirstLine(Runtime->CommandOutput(EchoCommand("OBJK_CMD_SET"), vars));
+		Check("a set variable has the command's value in the command (got '{$line}')", line <> Nil & line->Equals("new_value"));
+		after := Runtime->GetEnvironmentVariable("OBJK_CMD_SET");
+		Check("the set variable has its own value again (got '{$after}')", after <> Nil & after->Equals("old_value"));
+
+		# an unset variable is set for the command and unset after
+		vars[0] := "OBJK_CMD_UNSET=only_in_command";
+		line := FirstLine(Runtime->CommandOutput(EchoCommand("OBJK_CMD_UNSET"), vars));
+		Check("an unset variable has the command's value in the command (got '{$line}')", line <> Nil & line->Equals("only_in_command"));
+		Check("the unset variable is not set after the command", <>Runtime->HasEnvironmentVariable("OBJK_CMD_UNSET"));
+
+		# non-ASCII names and values round-trip in this process
+		name := "OBJK_ÜNÏ_日本";
+		value := "valeur_é_日本_🙂";
+		Runtime->SetEnvironmentVariable(name, value);
+		read := Runtime->GetEnvironmentVariable(name);
+		Check("a non-ASCII variable reads back as written", read <> Nil & read->Equals(value));
+
+		if(@failures = 0) {
+			"PASS: command environment variables"->PrintLine();
+		}
+		else {
+			"FAIL: command environment variables ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

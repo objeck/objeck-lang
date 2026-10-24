@@ -148,8 +148,19 @@ static int objeck_main(const int argc, const char* argv[])
   return 1;
 }
 
+#if defined(_WIN32) && defined(_MSC_VER)
+// UTF-16 arguments, converted to UTF-8 once (Utf8Args in sys.h): the narrow
+// argv the CRT hands main is in the ANSI code page, so a path argument with a
+// character outside it never reached the tool intact
+int wmain(int wargc, wchar_t* wargv[])
+{
+  Utf8Args utf8_args(wargc, wargv);
+  const int argc = utf8_args.Count();
+  const char** argv = utf8_args.Values();
+#else
 int main(const int argc, const char* argv[])
 {
+#endif
   try {
     return objeck_main(argc, argv);
   }
