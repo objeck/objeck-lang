@@ -9171,7 +9171,10 @@
 					"descriptions": ["**Adds a table under its name, replacing any table of that name**\n\n```method : public : Add(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
 				},
 				"Execute": {
-					"descriptions": ["**Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.**\n\n```method : public : Execute(statement:String) ~ Int```\n\n\n\nstatement: String\n\nreturn: Int\n\n```\ncatalog->Execute(\"create table runs (id int, score float, label string)\");\ncatalog->Execute(\"insert into runs values (1, 0.5, 'cat'), (2, 0.9, 'dog')\");\n```"]
+					"descriptions": ["**Runs an INSERT, UPDATE, DELETE, CREATE TABLE, CREATE INDEX or DROP INDEX (see Table->Execute). A statement that fails changes nothing.**\n\n```method : public : Execute(statement:String) ~ Int```\n\n\n\nstatement: String\n\nreturn: Int\n\n```\ncatalog->Execute(\"create table runs (id int, score float, label string)\");\ncatalog->Execute(\"insert into runs values (1, 0.5, 'cat'), (2, 0.9, 'dog')\");\n```"]
+				},
+				"Explain": {
+					"descriptions": ["**Tells how a statement reads its rows (see Table->Explain); a SELECT is run to find out**\n\n```method : public : Explain(statement:String) ~ String```\n\n\n\nstatement: String\n\nreturn: String\n\n```\ncatalog->Explain(\"select * from runs r join meta m on r.id = m.id where r.score > 0.9\")->PrintLine();\n```"]
 				},
 				"Get": {
 					"descriptions": ["**Gets a table by name**\n\n```method : public : Get(name:String) ~ Table```\n\n\n\nname: String\n\nreturn: Table"]
@@ -9300,6 +9303,9 @@
 				"GetCode": {
 					"descriptions": ["**Gets the dictionary code of a cell in an encoded text column**\n\n```method : public : GetCode(row:Int) ~ Int```\n\n\n\nrow: Int\n\nreturn: Int"]
 				},
+				"GetColumnIndex": {
+					"descriptions": ["**Gets the column's index. Used by Table and the query planner.**\n\n```method : public : GetColumnIndex() ~ ColumnIndex```\n\n\n\nreturn: ColumnIndex"]
+				},
 				"GetDictionary": {
 					"descriptions": ["**Gets the strings of an encoded STRING column, indexed by code**\n\n```method : public : GetDictionary() ~ String[]```\n\n\n\nreturn: String[]"]
 				},
@@ -9329,6 +9335,12 @@
 				},
 				"GetGroupMin": {
 					"descriptions": ["**Gets the smallest value in a group, ignoring empty cells**\n\n```method : public : GetGroupMin(group:Int) ~ Float```\n\n\n\ngroup: Int\n\nreturn: Float"]
+				},
+				"GetIndexKind": {
+					"descriptions": ["**Gets the kind of index the column has (see Table->CreateIndex)**\n\n```method : public : GetIndexKind() ~ IndexKind```\n\n\n\nreturn: IndexKind"]
+				},
+				"GetIndexName": {
+					"descriptions": ["**Gets the name of the column's index**\n\n```method : public : GetIndexName() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetInt": {
 					"descriptions": ["**Gets a cell of an INT, BOOL (0 or 1) or DATE (epoch milliseconds) column**\n\n```method : public : GetInt(row:Int) ~ Int```\n\n\n\nrow: Int\n\nreturn: Int"]
@@ -9372,6 +9384,9 @@
 				"HasZones": {
 					"descriptions": ["**Whether the column keeps zone maps: INT, FLOAT and DATE columns do**\n\n```method : public : HasZones() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
+				"IndexDeleted": {
+					"descriptions": ["**Tells the column's index that a row was deleted from its table. Used by Table->Delete.**\n\n```method : public : IndexDeleted(row:Int) ~ Nil```\n\n\n\nrow: Int\n\nreturn: Nil"]
+				},
 				"IsDeclared": {
 					"descriptions": ["**Whether the column's type was declared, so mismatched values are refused**\n\n```method : public : IsDeclared() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
@@ -9395,6 +9410,9 @@
 				},
 				"Set": {
 					"descriptions": ["**Stores a value. Nil empties the cell.**\n\n```method : public : Set(row:Int, value:Compare) ~ Bool```\n\n\n\nrow: Int\n\nvalue: Compare\n\nreturn: Bool"]
+				},
+				"SetColumnIndex": {
+					"descriptions": ["**Gives the column an index, or takes it away. Used by Table->CreateIndex and DropIndex.**\n\n```method : public : SetColumnIndex(index:ColumnIndex) ~ Nil```\n\n\n\nindex: ColumnIndex\n\nreturn: Nil"]
 				},
 				"Size": {
 					"descriptions": ["**Gets the number of rows, empty ones included**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -9770,10 +9788,13 @@
 					"descriptions": ["**Runs the query, copying the result into a new table**\n\n```method : public : Execute() ~ Table```\n\n\n\nreturn: Table"]
 				},
 				"ExecuteUpdate": {
-					"descriptions": ["**Runs an INSERT, UPDATE, DELETE or CREATE TABLE. A statement that fails changes nothing.**\n\n```method : public : ExecuteUpdate() ~ Int```\n\n\n\nreturn: Int"]
+					"descriptions": ["**Runs an INSERT, UPDATE, DELETE, CREATE TABLE, CREATE INDEX or DROP INDEX (see Table->Execute). A statement that fails changes nothing.**\n\n```method : public : ExecuteUpdate() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"ExecuteView": {
 					"descriptions": ["**Runs the query without copying the result**\n\n```method : public : ExecuteView() ~ View```\n\n\n\nreturn: View"]
+				},
+				"Explain": {
+					"descriptions": ["**Tells how the statement reads its rows with the values bound now (see Table->Explain); a SELECT is run to find out, an UPDATE or DELETE is not**\n\n```method : public : Explain() ~ String```\n\n\n\nreturn: String\n\n```\ns := table->Prepare(\"select * from runs where score > ?\");\ns->Bind(1, 0.9);\ns->Explain()->PrintLine(); # where runs: SORTED index runs_score on score (>)\n```"]
 				},
 				"GetError": {
 					"descriptions": ["**Gets the reason the last run failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
@@ -9816,14 +9837,23 @@
 				"Count": {
 					"descriptions": ["**Gets the number of numeric cells in a column: cells holding an Int or a Float. String, date and empty cells are not counted. This is the divisor Average uses, so a caller can tell an average of 0.0 from a column with no numbers in it. The row count is Count() with no argument.**\n\n```method : public : Count(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int\n\n```\ntable := Query.Structured.Table->New(\"scores\", [\"score\"]);\nr1 := table->Insert(); r1->Set(\"score\", IntRef->New(80));\nr2 := table->Insert(); r2->Set(\"score\", \"absent\");\nn := table->Count(\"score\"); # returns 1\n\"numeric cells={$n}\"->PrintLine();\n```", "**Count of rows. Count(name) counts the numeric cells in one column.**\n\n```method : public : Count() ~ Int```\n\n\n\nreturn: Int"]
 				},
+				"CreateIndex": {
+					"descriptions": ["**Indexes a column, so that conditions on it read only the rows that can match instead of scanning the table. A HASH index serves '=' and IN; a SORTED index serves '<', '<=', '>', '>=', BETWEEN, '=' and IN, and gives ORDER BY, GROUP BY, Min and Max their order without sorting. A column has at most one index; creating another replaces it. An index never changes a query's answer or its row order, only how fast it comes: every insert, update, delete and Compact keeps it correct (a sorted index is rebuilt by the first query after a change). Indexes are not saved in .otab files; create them again after Load or Open. Columns holding objects (OBJECT) cannot be indexed, and neither can 'pk', which Get finds directly. SQL's CREATE INDEX does the same.**\n\n```method : public : CreateIndex(column:String, kind:IndexKind) ~ Bool```\n\n\n\ncolumn: String\n\nkind: IndexKind\n\nreturn: Bool\n\n```\ntable->CreateIndex(\"label\", IndexKind->HASH);\ntable->CreateIndex(\"score\", IndexKind->SORTED);\nrs := table->Where(Col->Of(\"label\")->Eq(\"cat\")->AndAlso(Col->Of(\"score\")->Gt(0.9)));\nrs->GetPlan()->PrintLine(); # where runs: HASH index runs_label on label (=)\n```", "**Indexes a column under a name (see CreateIndex(column, kind)); DROP INDEX finds it by that name**\n\n```method : public : CreateIndex(name:String, column:String, kind:IndexKind) ~ Bool```\n\n\n\nname: String\n\ncolumn: String\n\nkind: IndexKind\n\nreturn: Bool\n\n```\ntable->CreateIndex(\"by_score\", \"score\", IndexKind->SORTED);\ntable->Execute(\"drop index by_score\");\n```"]
+				},
 				"Delete": {
 					"descriptions": ["**Delete row by primary key**\n\n```method : public : Delete(pk:Int) ~ Bool```\n\n\n\npk: Int\n\nreturn: Bool\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\"]);\nrow := table->Insert(); row->Set(\"name\", \"Temp\");\nok := table->Delete(0); # remove row with pk=0\n\"deleted={$ok}\"->PrintLine();\n```"]
 				},
 				"Describe": {
 					"descriptions": ["**Summarizes every column: its type, how many cells are filled and empty, how many distinct values it holds, and, for numeric columns, the minimum, maximum, mean and standard deviation (population).**\n\n```method : public : Describe() ~ Table```\n\n\n\nreturn: Table\n\n```\ntable := Query.Structured.Table->FromCsv(\"runs\", \"runs.csv\");\ntable->Describe()->ToString()->PrintLine();\n```"]
 				},
+				"DropIndex": {
+					"descriptions": ["**Removes a column's index**\n\n```method : public : DropIndex(column:String) ~ Bool```\n\n\n\ncolumn: String\n\nreturn: Bool"]
+				},
 				"Execute": {
-					"descriptions": ["**Runs an INSERT, UPDATE or DELETE on this table. A statement that fails changes nothing.**\n\n```method : public : Execute(statement:String) ~ Int```\n\n\n\nstatement: String\n\nreturn: Int\n\n```\ntable->Execute(\"update emp set dept = 'Ops' where name = 'Carol'\");\n```"]
+					"descriptions": ["**Runs an INSERT, UPDATE or DELETE on this table, or a CREATE INDEX or DROP INDEX: 'CREATE INDEX [name] ON table (column) [USING HASH | SORTED]' (SORTED when USING is left out) and 'DROP INDEX name [ON table]' (see CreateIndex). A statement that fails changes nothing.**\n\n```method : public : Execute(statement:String) ~ Int```\n\n\n\nstatement: String\n\nreturn: Int\n\n```\ntable->Execute(\"update emp set dept = 'Ops' where name = 'Carol'\");\ntable->Execute(\"create index by_dept on emp (dept) using hash\");\n```"]
+				},
+				"Explain": {
+					"descriptions": ["**Tells how a statement reads its rows: for each table, whether its WHERE clause scans or reads through an index (naming it), and whether ORDER BY or GROUP BY took its order from a sorted index. A SELECT is run to find out; an UPDATE or DELETE is not.**\n\n```method : public : Explain(statement:String) ~ String```\n\n\n\nstatement: String\n\nreturn: String\n\n```\ntable->CreateIndex(\"grp\", IndexKind->HASH);\ntable->Explain(\"select * from runs where grp = 'g7'\")->PrintLine();\n# where runs: HASH index runs_grp on grp (=)\n```"]
 				},
 				"Fill": {
 					"descriptions": ["**Gives an empty table n rows with fresh keys and empty cells. Used by Gather.**\n\n```method : public : Fill(n:Int) ~ Nil```\n\n\n\nn: Int\n\nreturn: Nil"]
@@ -9833,6 +9863,9 @@
 				},
 				"FilterRows": {
 					"descriptions": ["**Gets the slots among the given ones whose cell meets a condition. Used by Query.**\n\n```method : public : FilterRows(cond:Conditional, rows:Int[]) ~ Int[]```\n\n\n\ncond: Conditional\n\nrows: Int[]\n\nreturn: Int[]"]
+				},
+				"FindIndex": {
+					"descriptions": ["**Gets the column an index is on**\n\n```method : public : FindIndex(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String"]
 				},
 				"FindRow": {
 					"descriptions": ["**Gets the row slot holding a primary key**\n\n```method : public : FindRow(pk:Int) ~ Int```\n\n\n\npk: Int\n\nreturn: Int"]
@@ -9882,6 +9915,12 @@
 				"GetIndex": {
 					"descriptions": ["**Get column index by name**\n\n```method : public : GetIndex(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\", \"qty\"]);\nidx := table->GetIndex(\"qty\"); # returns 2 (pk=0, name=1, qty=2)\n\"qty column index={$idx}\"->PrintLine();\n```"]
 				},
+				"GetIndexKind": {
+					"descriptions": ["**Gets the kind of a column's index**\n\n```method : public : GetIndexKind(column:String) ~ IndexKind```\n\n\n\ncolumn: String\n\nreturn: IndexKind"]
+				},
+				"GetIndexName": {
+					"descriptions": ["**Gets the name of a column's index**\n\n```method : public : GetIndexName(column:String) ~ String```\n\n\n\ncolumn: String\n\nreturn: String"]
+				},
 				"GetLayout": {
 					"descriptions": ["**Gets the layout number, which changes when Compact moves rows. Used by Row.**\n\n```method : public : GetLayout() ~ Int```\n\n\n\nreturn: Int"]
 				},
@@ -9896,6 +9935,12 @@
 				},
 				"GetVersion": {
 					"descriptions": ["**Gets a number that changes whenever the table's rows or columns change**\n\n```method : public : GetVersion() ~ Int```\n\n\n\nreturn: Int"]
+				},
+				"HasIndex": {
+					"descriptions": ["**Whether a column has an index**\n\n```method : public : HasIndex(column:String) ~ Bool```\n\n\n\ncolumn: String\n\nreturn: Bool"]
+				},
+				"IndexOrder": {
+					"descriptions": ["**Orders live row slots, given in ascending order, the way Sorter orders them by a column, through the column's sorted index. Used by queries.**\n\n```method : public : IndexOrder(index:Int, rows:Int[], descending:Bool) ~ Int[]```\n\n\n\nindex: Int\n\nrows: Int[]\n\ndescending: Bool\n\nreturn: Int[]"]
 				},
 				"Insert": {
 					"descriptions": ["**Inserts a new row into the table. After the row has been added its values will need to be set.**\n\n```method : public : Insert() ~ Row```\n\n\n\nreturn: Row\n\n```\ntable := Query.Structured.Table->New(\"tasks\", [\"title\", \"done\"]);\nrow := table->Insert(); # add empty row\nrow->Set(\"title\", \"Write tests\");\nrow->Set(\"done\", Row->False());\nrow->ToString()->PrintLine();\n```"]
@@ -10079,6 +10124,9 @@
 				"GetError": {
 					"descriptions": ["**Gets the reason the last operation failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetPlan": {
+					"descriptions": ["**Tells how the view's rows were found: for each table, whether its condition scanned it or read it through an index (naming the index), and which orderings came from a sorted index. Steps are separated by '; '.**\n\n```method : public : GetPlan() ~ String```\n\n\n\nreturn: String\n\n```\nrs := table->Where(Col->Of(\"grp\")->Eq(\"g7\"));\nrs->GetPlan()->PrintLine(); # where runs: HASH index runs_grp on grp (=)\n```"]
+				},
 				"GetRows": {
 					"descriptions": ["**Gets the row slots, in view order**\n\n```method : public : GetRows() ~ Int[]```\n\n\n\nreturn: Int[]"]
 				},
@@ -10108,6 +10156,9 @@
 				},
 				"Select": {
 					"descriptions": ["**The same rows showing only some columns**\n\n```method : public : Select(names:String[]) ~ View```\n\n\n\nnames: String[]\n\nreturn: View"]
+				},
+				"SetPlan": {
+					"descriptions": ["**Sets the plan GetPlan reports. Used by the query engine.**\n\n```method : public : SetPlan(plan:String) ~ Nil```\n\n\n\nplan: String\n\nreturn: Nil"]
 				},
 				"Size": {
 					"descriptions": ["**Gets the number of rows**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
@@ -21135,6 +21186,18 @@
 				{ "name": "NONE", "value": "0", "description": "" },
 				{ "name": "FAST", "value": "1", "description": "" },
 				{ "name": "SMALL", "value": "2", "description": "" }
+			]
+		},
+		"Query.Structured.IndexKind": {
+			"name": "IndexKind",
+			"bundle": "Query.Structured",
+			"class": "",
+			"kind": "enum",
+			"description": "The kind of index a column has (see Table->CreateIndex). A HASH index serves '=' and IN. A SORTED index serves '<', '<=', '>', '>=', BETWEEN, '=' and IN, and gives ORDER BY, GROUP BY, Min and Max their order without sorting.",
+			"items": [
+				{ "name": "NONE", "value": "0", "description": "" },
+				{ "name": "HASH", "value": "1", "description": "" },
+				{ "name": "SORTED", "value": "2", "description": "" }
 			]
 		},
 		"Query.Structured.Op": {

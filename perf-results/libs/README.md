@@ -23,7 +23,8 @@ python perf-results/libs/run_lib_bench.py <bin_dir> [--lib-dir DIR] [--runs N]
 - `bin_dir` holds `obc` and `obr`, e.g. `core/release/deploy-x64/bin`.
 - `--lib-dir` is the library directory to test (`OBJECK_LIB_PATH`); it defaults to
   `<bin_dir>/../lib`. Point it at a scratch directory to measure a rebuilt `.obl`.
-- Every benchmark is compiled once (`-opt s3`, the regression suite's libraries) and run
+- Every benchmark is compiled once (`-opt s3`, the regression suite's libraries plus any a
+  `# EXTRA_LIBS: a,b` line names, as in the regression suite) and run
   `--runs` times (default 5). The table shows median seconds, median reference seconds and
   the median of the per-run ratios, and a CSV goes to `results/` (ignored by git).
 - Ratios are compared with `lib_baseline.json`: more than 15% slower warns, more than 30%
@@ -53,6 +54,12 @@ python perf-results/libs/run_lib_bench.py <bin_dir> [--lib-dir DIR] [--runs N]
 `runtime_bench.obs` (lang.obl) times bulk `Int[]`/`Float[]` Copy and Fill against the
 element loop they replace, and shortest round-trip float formatting against
 `Float->ToString`.
+
+`query_index_bench.obs` (Query.Structured, `query.obl`) times conditions over a 1,000,000-row
+table read through a hash or sorted index, against the same conditions scanned in the same run
+(so a ratio below 1.0 is the speed-up): equality on Ints and on encoded text, IN, ranges of
+0.1%, 1% and 10% of the rows, an indexed equality beside an unindexed range, and
+`ORDER BY ... LIMIT 10`. The `build_*` cases time `CreateIndex` against one full scan.
 
 The primitive cases sit between `# PRIMITIVE-BEGIN` and `# PRIMITIVE-END`; deleting those
 lines gives a program that compiles against a `gen_collect.obl` from before `IntMap` and

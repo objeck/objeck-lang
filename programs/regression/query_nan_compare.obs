@@ -1,0 +1,78 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+NaN in Query.Structured conditions and sorts (found by query_index_differential). The
+comparison under every condition counted NaN equal to every number, so a NaN cell matched '=',
+'<=' and '>=' against anything, and 'x = NaN' matched every row; whether such a row came back
+then depended on zone maps, which skip groups by their bounds and so dropped the same rows in
+one group and not another. A group whose first value was NaN got NaN bounds and was skipped
+for every comparison, losing the rows in it that did match. And ORDER BY counted NaN equal to
+every number, so where NaN cells ended up depended on the sort's steps.
+
+Now NaN, like any value that cannot be ordered against the other, satisfies only '<>'; zone
+maps ignore NaN; and sorting puts NaN after every number, before empty cells.
+~#
+use Query.Structured, Collection;
+
+class QueryNanCompare {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Keys(view : View) ~ String {
+		out := "";
+		each(i : view->Count()) {
+			if(i > 0) {
+				out += ",";
+			};
+			out += view->Get(i)->GetKey();
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		# a group whose first value is NaN still holds the 5.0 after it
+		t := Table->New("t", ["x"]);
+		values := [Float->NaN(), 5.0, -7.0, Float->NaN(), 2.5];
+		each(i : values) {
+			t->Insert()->Set("x", FloatRef->New(values[i]));
+		};
+		Check("= finds a value in a group that starts with NaN", Keys(t->Where(Col->Of("x")->Eq(5.0)))->Equals("1"));
+		Check("<= does not match NaN", Keys(t->Where(Col->Of("x")->Le(-5.0)))->Equals("2"));
+		Check(">= does not match NaN", Keys(t->Where(Col->Of("x")->Ge(2.5)))->Equals("1,4"));
+		Check("<> matches NaN", Keys(t->Where(Col->Of("x")->Ne(5.0)))->Equals("0,2,3,4"));
+		Check("= NaN matches nothing", Keys(t->Where(Col->Of("x")->Eq(Float->NaN())))->Equals(""));
+		Check("<> NaN matches every number", Keys(t->Where(Col->Of("x")->Ne(Float->NaN())))->Equals("0,1,2,3,4"));
+		Check("an Int column against NaN", Keys(Table->New("u", ["n"])->Where(Col->Of("n")->Eq(Float->NaN())))->Equals(""));
+		rs := t->Query("select * from t where x <= 2.5");
+		Check("SQL <= does not match NaN", rs <> Nil & rs->Count() = 2);
+
+		# sorting: NaN after every number, in row order, empty cells last
+		t->Insert();
+		Check("ascending", Keys(t->OrderBy("x"))->Equals("2,4,1,0,3,5"));
+		Check("descending", Keys(t->OrderBy("x", Order->DESC))->Equals("0,3,1,4,2,5"));
+
+		# an OBJECT column holds a NaN FloatRef among other values
+		o := Table->New("o", ["v"], [ColumnType->OBJECT], false);
+		o->Insert()->Set("v", FloatRef->New(Float->NaN()));
+		o->Insert()->Set("v", IntRef->New(3));
+		o->Insert()->Set("v", FloatRef->New(1.5));
+		o->Insert()->Set("v", "text");
+		Check("object = does not match NaN", Keys(o->Where(Col->Of("v")->Le(3)))->Equals("1,2"));
+		Check("object <> matches NaN", Keys(o->Where(Col->Of("v")->Ne(3)))->Equals("0,2,3"));
+		Check("object order", Keys(o->OrderBy("v"))->Equals("2,1,0,3"));
+
+		if(@failures > 0) {
+			"FAIL: query_nan_compare, {$@failures} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query_nan_compare"->PrintLine();
+	}
+}

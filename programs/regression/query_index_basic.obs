@@ -1,0 +1,533 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured indexes (docs/QUERY_DESIGN.md, section 5, phase 6): hash and sorted indexes
+on every indexable column type (INT, FLOAT, STRING encoded and plain, DATE, BOOL), every
+comparison, and the index kept correct through every way a table changes: inserts, cell
+writes, empty cells, deletes, Compact, AddColumn, a column promoted to FLOAT or to OBJECT, a
+text dictionary turning into plain text, UPDATE and DELETE (and their roll-backs), a refused
+INSERT, Column->CopyFrom, .otab images, a durable table's change log, query copies and the
+generic Serializer. Each check runs the same query on a twin table that has no index: the rows
+and their order must be the same, and the plan must name the index where one serves.
+~#
+use Query.Structured, System.Time, System.IO.Filesystem, Collection;
+
+class QueryIndexBasic {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Keys(view : View) ~ String {
+		if(view = Nil) {
+			return "<nil>";
+		};
+
+		out := "";
+		each(i : view->Count()) {
+			if(i > 0) {
+				out += ",";
+			};
+			out += view->Get(i)->GetKey();
+		};
+		return out;
+	}
+
+	function : Has(text : String, part : String) ~ Bool {
+		return text <> Nil & text->Find(part) > -1;
+	}
+
+	# the same condition on both twins: same rows in the same order; 'uses' is the text the
+	# indexed twin's plan must hold ('scan' when no index may serve)
+	function : Same(what : String, plain : Table, indexed : Table, condition : Predicate, uses : String) ~ Nil {
+		a := plain->Where(condition);
+		b := indexed->Where(condition);
+		ok := a <> Nil & b <> Nil;
+		if(ok) {
+			ok := Keys(a)->Equals(Keys(b));
+		};
+		if(<>ok) {
+			"    plain:   {$(Keys(a))}"->PrintLine();
+			"    indexed: {$(Keys(b))}"->PrintLine();
+		};
+		Check("{$what}: same rows", ok);
+
+		if(uses <> Nil & b <> Nil) {
+			plan_ok := Has(b->GetPlan(), uses);
+			if(<>plan_ok) {
+				"    plan: {$(b->GetPlan())}, wanted {$uses}"->PrintLine();
+			};
+			Check("{$what}: plan", plan_ok);
+		};
+	}
+
+	function : SameSql(what : String, plain : Table, indexed : Table, sql : String) ~ Nil {
+		a := plain->Query(sql);
+		b := indexed->Query(sql);
+		ok := a <> Nil & b <> Nil;
+		if(ok) {
+			ok := a->ToString()->Equals(b->ToString());
+		};
+		Check("{$what}: '{$sql}'", ok);
+	}
+
+	function : NewTwin(name : String) ~ Table {
+		return Table->New(name, ["n", "x", "s", "d", "b"]);
+	}
+
+	function : Day(day : Int) ~ Date {
+		return Date->New(day, 3, 2024, 12, 0, 0, false);
+	}
+
+	# rows with duplicates and empty cells of every type
+	function : Fill(t : Table) ~ Nil {
+		ints := [5, -3, 0, 7, 0, 5, 12, -3, 5, 9, 9007199254740993, -1, 0, 4, 5];
+		floats := [1.5, -0.0, 0.0, 2.25, 1.5, Float->NaN(), -7.0, 1.0e-12, 3.0, Float->Inf(), 1.5, -1.0e300, 0.5, Float->NegInf(), 2.25];
+		texts := ["cat", "dog", "", "cow", "dog", "cat", "emu", "", "ant", "dog", "cow", "cat", "yak", "ant", "dog"];
+		days := [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9];
+		each(i : 15) {
+			r := t->Insert();
+			if(i % 6 <> 2) {
+				r->Set("n", IntRef->New(ints[i]));
+			};
+			if(i % 7 <> 4) {
+				r->Set("x", FloatRef->New(floats[i]));
+			};
+			if(texts[i]->Size() > 0) {
+				r->Set("s", texts[i]);
+			};
+			if(i % 5 <> 1) {
+				r->Set("d", Day(days[i]));
+			};
+			if(i % 4 <> 3) {
+				r->Set("b", BoolRef->New(i % 3 = 0));
+			};
+		};
+	}
+
+	# every comparison on every column; 'kind' is the index the indexed twin has on each
+	function : CompareAll(tag : String, plain : Table, indexed : Table, kind : IndexKind) ~ Nil {
+		hash := kind = IndexKind->HASH;
+		sorted := kind = IndexKind->SORTED;
+		eq_use := hash ? "HASH index" : (sorted ? "SORTED index" : "scan");
+		range_use := sorted ? "SORTED index" : "scan";
+
+		# INT, against Ints, Floats, NaN, a huge Int, text
+		values := Compare->New[9];
+		values[0] := IntRef->New(5);
+		values[1] := IntRef->New(-3);
+		values[2] := IntRef->New(100);
+		values[3] := FloatRef->New(5.0);
+		values[4] := FloatRef->New(4.5);
+		values[5] := IntRef->New(9007199254740993);
+		values[6] := FloatRef->New(9007199254740992.0);
+		values[7] := IntRef->New(0);
+		values[8] := FloatRef->New(-0.0);
+		each(v : values) {
+			value := values[v];
+			text := "{$tag} n {$v}";
+			huge := v = 6;
+			Same("{$text} =", plain, indexed, Col->Of("n")->Eq(value), huge & hash ? "scan" : eq_use);
+			Same("{$text} <>", plain, indexed, Col->Of("n")->Ne(value), "scan");
+			Same("{$text} <", plain, indexed, Col->Of("n")->Lt(value), range_use);
+			Same("{$text} <=", plain, indexed, Col->Of("n")->Le(value), range_use);
+			Same("{$text} >", plain, indexed, Col->Of("n")->Gt(value), range_use);
+			Same("{$text} >=", plain, indexed, Col->Of("n")->Ge(value), range_use);
+		};
+		Same("{$tag} n = NaN", plain, indexed, Col->Of("n")->Eq(Float->NaN()), "scan");
+		Same("{$tag} n < NaN", plain, indexed, Col->Of("n")->Lt(Float->NaN()), "scan");
+		Same("{$tag} n = text", plain, indexed, Col->Of("n")->Eq("5"), "scan");
+		Same("{$tag} n between", plain, indexed, Col->Of("n")->Between(IntRef->New(-3), IntRef->New(5)), range_use);
+		Same("{$tag} n in", plain, indexed, Col->Of("n")->In([5, 12, 99]), eq_use);
+		Same("{$tag} n is null", plain, indexed, Col->Of("n")->IsNull(), "scan");
+		Same("{$tag} n is not null", plain, indexed, Col->Of("n")->IsNotNull(), "scan");
+		Same("{$tag} n not in", plain, indexed, Col->Of("n")->In([5, 0])->Negate(), "scan");
+		none : Compare;
+		Same("{$tag} n = Nil", plain, indexed, Col->Of("n")->Eq(none), Nil);
+
+		# FLOAT: -0.0 and 0.0 are equal, NaN cells, infinities, an Int value
+		fvalues := Compare->New[9];
+		fvalues[0] := FloatRef->New(1.5);
+		fvalues[1] := FloatRef->New(0.0);
+		fvalues[2] := FloatRef->New(-0.0);
+		fvalues[3] := IntRef->New(3);
+		fvalues[4] := FloatRef->New(Float->Inf());
+		fvalues[5] := FloatRef->New(Float->NegInf());
+		fvalues[6] := FloatRef->New(1.0e-12);
+		fvalues[7] := FloatRef->New(2.0);
+		fvalues[8] := FloatRef->New(-1.0e300);
+		each(v : fvalues) {
+			value := fvalues[v];
+			text := "{$tag} x {$v}";
+			Same("{$text} =", plain, indexed, Col->Of("x")->Eq(value), eq_use);
+			Same("{$text} <>", plain, indexed, Col->Of("x")->Ne(value), "scan");
+			Same("{$text} <", plain, indexed, Col->Of("x")->Lt(value), range_use);
+			Same("{$text} <=", plain, indexed, Col->Of("x")->Le(value), range_use);
+			Same("{$text} >", plain, indexed, Col->Of("x")->Gt(value), range_use);
+			Same("{$text} >=", plain, indexed, Col->Of("x")->Ge(value), range_use);
+		};
+		Same("{$tag} x = NaN", plain, indexed, Col->Of("x")->Eq(Float->NaN()), "scan");
+		Same("{$tag} x <= NaN", plain, indexed, Col->Of("x")->Le(Float->NaN()), "scan");
+		Same("{$tag} x between", plain, indexed, Col->Of("x")->Between(-0.0, 2.25), range_use);
+		Same("{$tag} x in", plain, indexed, Col->Of("x")->In([1.5, -0.0, 7.5]), eq_use);
+
+		# STRING (dictionary encoded here)
+		svalues := ["cat", "dog", "zebra", "", "a", "dogs"];
+		each(v : svalues) {
+			value := svalues[v];
+			text := "{$tag} s '{$value}'";
+			Same("{$text} =", plain, indexed, Col->Of("s")->Eq(value), eq_use);
+			Same("{$text} <>", plain, indexed, Col->Of("s")->Ne(value), "scan");
+			Same("{$text} <", plain, indexed, Col->Of("s")->Lt(value), range_use);
+			Same("{$text} <=", plain, indexed, Col->Of("s")->Le(value), range_use);
+			Same("{$text} >", plain, indexed, Col->Of("s")->Gt(value), range_use);
+			Same("{$text} >=", plain, indexed, Col->Of("s")->Ge(value), range_use);
+		};
+		Same("{$tag} s = number", plain, indexed, Col->Of("s")->Eq(5), "scan");
+		Same("{$tag} s like", plain, indexed, Col->Of("s")->Like("c%"), "scan");
+		Same("{$tag} s in", plain, indexed, Col->Of("s")->In(["cow", "yak", "gnu"]), eq_use);
+
+		# DATE
+		dvalues := [1, 5, 9, 10, 28];
+		each(v : dvalues) {
+			value := Day(dvalues[v]);
+			text := "{$tag} d {$(dvalues[v])}";
+			Same("{$text} =", plain, indexed, Col->Of("d")->Eq(value), eq_use);
+			Same("{$text} <", plain, indexed, Col->Of("d")->Lt(value), range_use);
+			Same("{$text} >=", plain, indexed, Col->Of("d")->Ge(value), range_use);
+		};
+		Same("{$tag} d = text", plain, indexed, Col->Of("d")->Eq("x"), "scan");
+
+		# BOOL, against Bools and the 1 and 0 SQL reads true and false as
+		Same("{$tag} b = true", plain, indexed, Col->Of("b")->Eq(true), eq_use);
+		Same("{$tag} b = false", plain, indexed, Col->Of("b")->Eq(false), eq_use);
+		Same("{$tag} b = 1", plain, indexed, Col->Of("b")->Eq(1), eq_use);
+		Same("{$tag} b = 2", plain, indexed, Col->Of("b")->Eq(2), "scan");
+		Same("{$tag} b > false", plain, indexed, Col->Of("b")->Gt(BoolRef->New(false)), range_use);
+
+		# combinations
+		Same("{$tag} and", plain, indexed, Col->Of("n")->Eq(5)->AndAlso(Col->Of("s")->Ne("dog")), eq_use);
+		Same("{$tag} or", plain, indexed, Col->Of("n")->Eq(5)->OrElse(Col->Of("s")->Eq("dog")), eq_use);
+		Same("{$tag} or with a scan", plain, indexed, Col->Of("n")->Eq(5)->OrElse(Col->Of("s")->Like("d%")), "scan");
+		Same("{$tag} not", plain, indexed, Col->Of("n")->Eq(5)->Negate(), "scan");
+		Same("{$tag} nested", plain, indexed,
+			Col->Of("x")->Gt(0.0)->AndAlso(Col->Of("n")->Eq(5)->OrElse(Col->Of("n")->Eq(0)))->AndAlso(Col->Of("b")->IsNotNull()), Nil);
+
+		# SQL, with ORDER BY both ways (empty cells last, equal values in row order), LIMIT,
+		# GROUP BY and DISTINCT
+		SameSql(tag, plain, indexed, "select * from t where n = 5");
+		SameSql(tag, plain, indexed, "select * from t where x between -0.0 and 2.25 order by x");
+		SameSql(tag, plain, indexed, "select * from t order by x desc");
+		SameSql(tag, plain, indexed, "select * from t order by n desc, s");
+		SameSql(tag, plain, indexed, "select * from t order by s desc limit 4 offset 1");
+		SameSql(tag, plain, indexed, "select * from t order by d, b desc");
+		SameSql(tag, plain, indexed, "select n, count(*) as c from t group by n order by c desc");
+		SameSql(tag, plain, indexed, "select s, b, count(*) as c from t group by s, b");
+		SameSql(tag, plain, indexed, "select distinct s from t where s >= 'cow' order by s desc");
+		SameSql(tag, plain, indexed, "select * from t where n in (5, 0, 12) and s <> 'cat' order by n");
+		SameSql(tag, plain, indexed, "select * from t where b = true or n < 0 order by b");
+
+		Check("{$tag} min n", plain->Min("n") = indexed->Min("n"));
+		Check("{$tag} max n", plain->Max("n") = indexed->Max("n"));
+	}
+
+	# both twins see the same changes
+	function : Insert(a : Table, b : Table, n : Compare, x : Compare, s : String) ~ Nil {
+		ra := a->Insert();
+		rb := b->Insert();
+		ra->Set("n", n);
+		rb->Set("n", n);
+		ra->Set("x", x);
+		rb->Set("x", x);
+		ra->Set("s", s);
+		rb->Set("s", s);
+	}
+
+	function : SetBoth(a : Table, b : Table, key : Int, name : String, value : Compare) ~ Nil {
+		a->Get(key)->Set(name, value);
+		b->Get(key)->Set(name, value);
+	}
+
+	# every probe kind over the maintained twins
+	function : Probe(tag : String, a : Table, b : Table) ~ Nil {
+		Same("{$tag} n = 5", a, b, Col->Of("n")->Eq(5), Nil);
+		Same("{$tag} n = 0", a, b, Col->Of("n")->Eq(0), Nil);
+		Same("{$tag} n > 3", a, b, Col->Of("n")->Gt(3), Nil);
+		Same("{$tag} n in", a, b, Col->Of("n")->In([0, 5, 77, 78]), Nil);
+		Same("{$tag} x = 1.5", a, b, Col->Of("x")->Eq(1.5), Nil);
+		Same("{$tag} x <= 1.0", a, b, Col->Of("x")->Le(1.0), Nil);
+		Same("{$tag} s = dog", a, b, Col->Of("s")->Eq("dog"), Nil);
+		Same("{$tag} s < d", a, b, Col->Of("s")->Lt("d"), Nil);
+		Same("{$tag} s in", a, b, Col->Of("s")->In(["cat", "new", "w4100"]), Nil);
+		SameSql(tag, a, b, "select * from t order by x desc");
+		SameSql(tag, a, b, "select * from t order by s");
+		Check("{$tag} min x", a->Min("x")->ToString()->Equals(b->Min("x")->ToString()));
+		Check("{$tag} max x", a->Max("x")->ToString()->Equals(b->Max("x")->ToString()));
+	}
+
+	# indexes kept correct as the table changes, for one kind on every column
+	function : Maintain(kind : IndexKind) ~ Nil {
+		tag := kind = IndexKind->HASH ? "hash" : "sorted";
+		a := NewTwin("t");
+		b := NewTwin("t");
+		Fill(a);
+		Fill(b);
+		b->CreateIndex("n", kind);
+		b->CreateIndex("x", kind);
+		b->CreateIndex("s", kind);
+		Probe("{$tag} start", a, b);
+
+		# inserts, including values new to the dictionary
+		each(i : 6) {
+			Insert(a, b, IntRef->New(i % 3 = 0 ? 5 : 70 + i), FloatRef->New(i->As(Float) / 4.0), i % 2 = 0 ? "dog" : "new{$i}");
+		};
+		Probe("{$tag} after inserts", a, b);
+
+		# cell writes, emptying cells, and filling empty ones
+		SetBoth(a, b, 0, "n", IntRef->New(0));
+		SetBoth(a, b, 1, "n", Nil);
+		SetBoth(a, b, 2, "n", IntRef->New(5));
+		SetBoth(a, b, 3, "x", FloatRef->New(1.5));
+		SetBoth(a, b, 4, "x", FloatRef->New(-0.0));
+		SetBoth(a, b, 5, "s", Nil);
+		SetBoth(a, b, 7, "s", "dog");
+		Probe("{$tag} after writes", a, b);
+
+		# deletes, then a stale view must refuse
+		a->Delete(0);
+		b->Delete(0);
+		a->Delete(8);
+		b->Delete(8);
+		a->Delete(15);
+		b->Delete(15);
+		Probe("{$tag} after deletes", a, b);
+
+		# Compact renumbers the slots
+		a->Compact();
+		b->Compact();
+		Probe("{$tag} after compact", a, b);
+
+		# UPDATE and DELETE through SQL, reading their rows through the index
+		Check("{$tag} update count", a->Execute("update t set s = 'cow', n = 3 where n = 5") = b->Execute("update t set s = 'cow', n = 3 where n = 5"));
+		Probe("{$tag} after update", a, b);
+		Check("{$tag} delete count", a->Execute("delete from t where s = 'cow' and x > 1.0") = b->Execute("delete from t where s = 'cow' and x > 1.0"));
+		Probe("{$tag} after delete", a, b);
+		Check("{$tag} insert count", a->Execute("insert into t (n, x, s) values (5, 1.5, 'dog'), (6, null, 'emu')") = b->Execute("insert into t (n, x, s) values (5, 1.5, 'dog'), (6, null, 'emu')"));
+		Probe("{$tag} after insert", a, b);
+
+		# an UPDATE a declared column refuses puts back what it changed
+		a->AddColumn("k", ColumnType->INT);
+		b->AddColumn("k", ColumnType->INT);
+		b->CreateIndex("k", kind);
+		Check("{$tag} refused update", a->Execute("update t set n = 99, k = 'text' where n is not null") = -1 & b->Execute("update t set n = 99, k = 'text' where n is not null") = -1);
+		Probe("{$tag} after a refused update", a, b);
+		Check("{$tag} refused insert", a->Execute("insert into t (n, k) values (5, 1), (5, 'no')") = -1 & b->Execute("insert into t (n, k) values (5, 1), (5, 'no')") = -1);
+		Probe("{$tag} after a refused insert", a, b);
+
+		# AddColumn: the new column is indexed after it is filled
+		each(i : a->GetRowCapacity()) {
+			ra := a->RowAt(i);
+			rb := b->RowAt(i);
+			if(ra <> Nil) {
+				ra->Set("k", IntRef->New(i % 4));
+				rb->Set("k", IntRef->New(i % 4));
+			};
+		};
+		Same("{$tag} added column", a, b, Col->Of("k")->Eq(2), kind = IndexKind->HASH ? "HASH index t_k" : "SORTED index t_k");
+
+		# Column->CopyFrom writes a cell directly
+		a->GetColumn("x")->CopyFrom(a->GetColumn("x"), 1, 2);
+		b->GetColumn("x")->CopyFrom(b->GetColumn("x"), 1, 2);
+		a->GetColumn("n")->CopyFrom(a->GetColumn("n"), 3, 1);
+		b->GetColumn("n")->CopyFrom(b->GetColumn("n"), 3, 1);
+		Probe("{$tag} after CopyFrom", a, b);
+
+		# so many distinct texts that the dictionary turns into plain strings
+		Check("{$tag} encoded before", b->GetColumn("s")->IsEncoded());
+		each(i : 4200) {
+			Insert(a, b, IntRef->New(i % 50), FloatRef->New((i % 300)->As(Float)), "w{$i}");
+		};
+		Check("{$tag} plain after", <>b->GetColumn("s")->IsEncoded());
+		Probe("{$tag} after decoding", a, b);
+		Same("{$tag} plain text =", a, b, Col->Of("s")->Eq("w4100"), kind = IndexKind->HASH ? "HASH index" : "SORTED index");
+		Same("{$tag} plain text range", a, b, Col->Of("s")->Between("w40", "w41"), kind = IndexKind->HASH ? "scan" : "SORTED index");
+		SetBoth(a, b, 20, "s", "w4100");
+		Same("{$tag} plain text after a write", a, b, Col->Of("s")->Eq("w4100"), Nil);
+
+		# a copy made by a query has no index; neither has an .otab image read back
+		copy := b->Query("select * from t where n = 5");
+		Check("{$tag} a query result has no index", copy <> Nil & <>copy->HasIndex("n"));
+		image := Table->FromBytes(b->ToBytes());
+		Check("{$tag} an .otab image has no index", image <> Nil & <>image->HasIndex("n"));
+		image_plain := Table->FromBytes(a->ToBytes());
+		image->CreateIndex("n", kind);
+		Same("{$tag} .otab image indexed again", image_plain, image, Col->Of("n")->Eq(5), Nil);
+
+		# an inferred INT column widened to FLOAT
+		a->AddColumn("p", ColumnType->NONE);
+		b->AddColumn("p", ColumnType->NONE);
+		b->CreateIndex("p", kind);
+		live := a->LiveRows();
+		each(i : 40) {
+			SetBoth(a, b, a->RowAt(live[i])->GetKey(), "p", IntRef->New(i % 6));
+		};
+		Same("{$tag} int column", a, b, Col->Of("p")->Eq(3), Nil);
+		SetBoth(a, b, a->RowAt(live[3])->GetKey(), "p", FloatRef->New(3.0));
+		Check("{$tag} promoted to FLOAT", b->GetColumn("p")->GetType() = ColumnType->FLOAT);
+		Same("{$tag} after promotion to FLOAT", a, b, Col->Of("p")->Eq(3), kind = IndexKind->HASH ? "HASH index" : "SORTED index");
+		Same("{$tag} after promotion to FLOAT, range", a, b, Col->Of("p")->Le(2.5), Nil);
+
+		# and promoted again to OBJECT, which no index serves: the plan scans
+		SetBoth(a, b, a->RowAt(live[4])->GetKey(), "p", "text");
+		Check("{$tag} promoted to OBJECT", b->GetColumn("p")->GetType() = ColumnType->OBJECT);
+		Same("{$tag} OBJECT column scans", a, b, Col->Of("p")->Eq(3), "scan");
+		Check("{$tag} OBJECT column keeps its index", b->HasIndex("p"));
+
+		# dropped: back to a scan
+		Check("{$tag} drop", b->DropIndex("n") & <>b->HasIndex("n") & <>b->DropIndex("n"));
+		Same("{$tag} dropped", a, b, Col->Of("n")->Eq(5), "scan");
+	}
+
+	# a durable table's changes go to its log; the index follows them, and a table opened
+	# again replays them before an index is created over it
+	function : Durable() ~ Nil {
+		path := "query_index_basic_tmp.otab";
+		File->Delete(path);
+		File->Delete("{$path}.log");
+		File->Delete("{$path}.lock");
+		seed := NewTwin("t");
+		Fill(seed);
+		Check("durable save", seed->Save(path));
+
+		plain := NewTwin("t");
+		Fill(plain);
+		durable := Table->Open(path);
+		Check("durable open", durable <> Nil);
+		if(durable = Nil) {
+			return;
+		};
+		durable->CreateIndex("n", IndexKind->HASH);
+		durable->CreateIndex("x", IndexKind->SORTED);
+		Check("durable update", plain->Execute("update t set n = 5 where x > 1.0") = durable->Execute("update t set n = 5 where x > 1.0"));
+		Check("durable delete", plain->Execute("delete from t where n = 0") = durable->Execute("delete from t where n = 0"));
+		Same("durable hash", plain, durable, Col->Of("n")->Eq(5), "HASH index");
+		Same("durable sorted", plain, durable, Col->Of("x")->Gt(0.0), "SORTED index");
+		durable->Close();
+
+		reopened := Table->Open(path);
+		Check("durable reopen", reopened <> Nil);
+		if(reopened <> Nil) {
+			Check("durable replayed without an index", <>reopened->HasIndex("n"));
+			reopened->CreateIndex("n", IndexKind->SORTED);
+			Same("durable replayed, indexed again", plain, reopened, Col->Of("n")->Eq(5), "SORTED index");
+			reopened->Close();
+		};
+
+		File->Delete(path);
+		File->Delete("{$path}.log");
+		File->Delete("{$path}.lock");
+	}
+
+	# the generic Serializer carries the index with the table, and it stays correct
+	function : Serialized() ~ Nil {
+		a := NewTwin("t");
+		Fill(a);
+		b := NewTwin("t");
+		Fill(b);
+		b->CreateIndex("s", IndexKind->HASH);
+		b->CreateIndex("x", IndexKind->SORTED);
+		writer := Serializer->New();
+		writer->Write(b);
+		copy := Deserializer->New(writer->Serialize())->ReadObject()->As(Table);
+		Check("serialized index kind", copy->GetIndexKind("s") = IndexKind->HASH & copy->GetIndexKind("x") = IndexKind->SORTED);
+		Same("serialized hash", a, copy, Col->Of("s")->Eq("dog"), "HASH index");
+		Same("serialized sorted", a, copy, Col->Of("x")->Le(1.5), "SORTED index");
+		Insert(a, copy, IntRef->New(1), FloatRef->New(0.25), "dog");
+		SetBoth(a, copy, 2, "s", "dog");
+		a->Delete(5);
+		copy->Delete(5);
+		Same("serialized hash, changed", a, copy, Col->Of("s")->Eq("dog"), "HASH index");
+		Same("serialized sorted, changed", a, copy, Col->Of("x")->Le(1.5), "SORTED index");
+	}
+
+	# the API's refusals, and SQL's CREATE INDEX and DROP INDEX
+	function : Api() ~ Nil {
+		t := NewTwin("t");
+		Fill(t);
+		Check("unknown column", <>t->CreateIndex("zz", IndexKind->HASH) & t->GetError() <> Nil);
+		Check("the key column", <>t->CreateIndex("pk", IndexKind->HASH));
+		Check("no kind", <>t->CreateIndex("n", IndexKind->NONE));
+		t->AddColumn("o", ColumnType->OBJECT);
+		Check("an OBJECT column", <>t->CreateIndex("o", IndexKind->HASH));
+		Check("named", t->CreateIndex("by_n", "n", IndexKind->HASH) & t->GetIndexName("n")->Equals("by_n"));
+		Check("a name used twice", <>t->CreateIndex("by_n", "x", IndexKind->SORTED));
+		Check("replaced", t->CreateIndex("n", IndexKind->SORTED) & t->GetIndexKind("n") = IndexKind->SORTED & t->GetIndexName("n")->Equals("t_n"));
+		Check("find by name", t->FindIndex("t_n")->Equals("n") & t->FindIndex("by_n") = Nil);
+		Check("no index", t->GetIndexKind("x") = IndexKind->NONE & <>t->HasIndex("x") & t->GetIndexName("x") = Nil);
+		Check("unknown column's kind", t->GetIndexKind("zz") = IndexKind->NONE);
+
+		Check("sql create hash", t->Execute("create index sx on t (s) using hash") = 0 & t->GetIndexKind("s") = IndexKind->HASH);
+		Check("sql create sorted by default", t->Execute("CREATE INDEX ON t (x)") = 0 & t->GetIndexKind("x") = IndexKind->SORTED & t->GetIndexName("x")->Equals("t_x"));
+		Check("sql create sorted", t->Execute("create index dx on t (d) using sorted;") = 0 & t->GetIndexKind("d") = IndexKind->SORTED);
+		Check("sql btree refused", t->Execute("create index bx on t (b) using btree") = -1 & Has(t->GetError(), "HASH or SORTED"));
+		Check("sql unknown column", t->Execute("create index q on t (nope)") = -1 & Has(t->GetError(), "unknown column"));
+		Check("sql another table", t->Execute("create index q on other (n)") = -1);
+		Check("sql drop", t->Execute("drop index sx") = 0 & <>t->HasIndex("s"));
+		Check("sql drop on table", t->Execute("drop index dx on t") = 0 & <>t->HasIndex("d"));
+		Check("sql drop unknown", t->Execute("drop index sx") = -1 & Has(t->GetError(), "no index named"));
+		Check("sql drop syntax", t->Execute("drop table t") = -1);
+
+		catalog := Catalog->New();
+		catalog->Add(t);
+		u := NewTwin("u");
+		Fill(u);
+		catalog->Add(u);
+		Check("catalog create", catalog->Execute("create index ux on u (n) using hash") = 0 & u->GetIndexKind("n") = IndexKind->HASH);
+		Check("catalog explain", Has(catalog->Explain("select * from u where n = 5"), "HASH index ux"));
+		Check("catalog drop", catalog->Execute("drop index ux") = 0 & <>u->HasIndex("n"));
+		Check("catalog drop unknown", catalog->Execute("drop index ux") = -1);
+		u->CreateIndex("t_n", "x", IndexKind->HASH);
+		Check("catalog drop ambiguous", catalog->Execute("drop index t_n") = -1 & Has(catalog->GetError(), "ON"));
+		Check("catalog drop with on", catalog->Execute("drop index t_n on u") = 0 & <>u->HasIndex("x") & t->HasIndex("n"));
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+		@checks := 0;
+
+		kinds := [IndexKind->NONE, IndexKind->HASH, IndexKind->SORTED];
+		each(k : kinds) {
+			kind := kinds[k];
+			tag := kind = IndexKind->HASH ? "hash" : (kind = IndexKind->SORTED ? "sorted" : "none");
+			plain := NewTwin("t");
+			Fill(plain);
+			indexed := NewTwin("t");
+			Fill(indexed);
+			if(kind <> IndexKind->NONE) {
+				names := ["n", "x", "s", "d", "b"];
+				each(i : names) {
+					Check("{$tag} create {$(names[i])}", indexed->CreateIndex(names[i], kind));
+				};
+			};
+			CompareAll(tag, plain, indexed, kind);
+		};
+
+		Maintain(IndexKind->HASH);
+		Maintain(IndexKind->SORTED);
+		Durable();
+		Serialized();
+		Api();
+
+		if(@failures > 0) {
+			"FAIL: query_index_basic, {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: query_index_basic ({$@checks} checks)"->PrintLine();
+	}
+}
