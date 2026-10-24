@@ -10,27 +10,22 @@ OBC=$DEPLOY/bin/obc
 OBR=$DEPLOY/bin/obr
 "$OBC" -src probe_hash_growth.obs -lib collect -opt s3 -dest probe_hash_growth.obe | tail -1
 
-run() {
-  label="$1"; shift
-  echo "===== $label"
-  "$@" &
-  pid=$!
-  for s in $(seq 1 90); do
-    if ! kill -0 $pid 2>/dev/null; then break; fi
-    sleep 1
-  done
-  if kill -0 $pid 2>/dev/null; then
-    echo "----- still running after 90 s; sampling pid $pid"
-    sample $pid 3 -file /tmp/sample_$pid.txt >/dev/null 2>&1
-    grep -E "Call graph|Thread_|^ +[0-9]+ " /tmp/sample_$pid.txt | head -80
-    kill -9 $pid
-  fi
-  wait $pid 2>/dev/null
-  echo "exit: $?"
-}
+echo "===== boxed 1.2M with GC stats, sampled during the 700k-750k pause"
+OBJECK_GC_STATS=1 "$OBR" probe_hash_growth.obe 1200000 boxed > /tmp/probe_out.txt 2>&1 &
+pid=$!
+for s in $(seq 1 600); do
+  if grep -q "700000 inserted" /tmp/probe_out.txt 2>/dev/null; then break; fi
+  sleep 0.1
+done
+sleep 1
+sample $pid 5 -file /tmp/sample.txt >/dev/null 2>&1
+wait $pid
+cat /tmp/probe_out.txt
+echo "----- sample (heaviest frames)"
+sed -n '/Call graph:/,/Total number in stack/p' /tmp/sample.txt | head -120
+echo "----- sorted by top of stack"
+sed -n '/Sort by top of stack/,$p' /tmp/sample.txt | head -40
 
-run "boxed 1.2M, JIT default" "$OBR" probe_hash_growth.obe 1200000 boxed
-run "prebuilt 1.2M, JIT default" "$OBR" probe_hash_growth.obe 1200000 prebuilt
-run "boxed 1.2M, JIT off" env OBJECK_JIT_DISABLE=1 "$OBR" probe_hash_growth.obe 1200000 boxed
-run "boxed 300k, JIT default" "$OBR" probe_hash_growth.obe 300000 boxed
+echo "===== prebuilt 1.2M with GC stats"
+OBJECK_GC_STATS=1 "$OBR" probe_hash_growth.obe 1200000 prebuilt 2>&1 | tail -6
 exit 1
