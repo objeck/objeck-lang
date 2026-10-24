@@ -1,0 +1,155 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured: arithmetic in the select list (docs/QUERY_DESIGN.md, section 4, "Expressions
+in the select list"). 'select n + 1 from t' used to fail at the lexer, so Query returned Nil
+(with an error), and a caller that went on to call ToCsv on that Nil stopped the program.
+Covered: + - * / % with precedence, parentheses and unary minus; 'n -1' (a name then a
+negative number) as a subtraction; whole numbers staying whole except under '/'; empty,
+non-numeric and zero-divisor cells giving empty cells; aliases, ORDER BY by alias and by
+position, DISTINCT, LIMIT and WHERE with expressions; a join with an expression over both
+tables; Table->Query, Catalog->Query and a prepared statement; and the refusals (an expression
+in a grouped or aggregate query, an unknown column, a dangling operator), each with an error
+message rather than a silent Nil. Also checked: a Nil result's method call is the normal
+NilError, which a ?-> region recovers from, in every mode.
+~#
+use Query.Structured, Collection;
+
+class Helper {
+	New() {}
+
+	method : public : Csv(rs : Table) ~ String {
+		return rs->ToCsv();
+	}
+}
+
+class QuerySelectExpressions {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Csv(rs : Table) ~ String {
+		if(rs = Nil) {
+			return "<nil>";
+		};
+		return rs->ToCsv()->ReplaceAll("\r\n", "\n");
+	}
+
+	function : Same(what : String, t : Table, sql : String, expected : String) ~ Nil {
+		got := Csv(t->Query(sql));
+		if(got->Equals("<nil>")) {
+			got := "<nil: {$(t->GetError())}>";
+		};
+		ok := got->Equals(expected);
+		if(<>ok) {
+			shown_got := got->ReplaceAll("\n", "|");
+			shown_expected := expected->ReplaceAll("\n", "|");
+			"    {$sql}"->PrintLine();
+			"    got:      {$shown_got}"->PrintLine();
+			"    expected: {$shown_expected}"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	function : Refused(what : String, t : Table, sql : String, reason : String) ~ Nil {
+		rs := t->Query(sql);
+		error := t->GetError();
+		ok := rs = Nil & error <> Nil & error->Has(reason);
+		if(<>ok) {
+			shown := error <> Nil ? error : "no error";
+			"    {$sql}: {$shown}, wanted '{$reason}'"->PrintLine();
+		};
+		Check("refused: {$what}", ok);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		t := Table->New("t", ["n", "x", "s", "k"]);
+		ns := [4, 7, -3, 0, 10];
+		xs := [1.5, 0.5, 2.0, -4.0, 3.0];
+		each(i : 5) {
+			r := t->Insert();
+			if(i <> 4) {
+				r->Set("n", IntRef->New(ns[i]));
+			};
+			r->Set("x", FloatRef->New(xs[i]));
+			r->Set("s", i = 1 ? "seven" : "{$i}");
+			r->Set("k", i % 2 = 0 ? "even" : "odd");
+		};
+
+		# arithmetic, precedence, parentheses, unary minus
+		Same("n + 1", t, "select n + 1 from t", "n + 1\n5\n8\n-2\n1\n\"\"\n");
+		Same("precedence", t, "select n + 2 * 3 from t where n = 4", "n + 2 * 3\n10\n");
+		Same("parentheses", t, "select (n + 2) * 3 as m from t where n = 4", "m\n18\n");
+		Same("unary minus", t, "select -n as m from t where n = 7", "m\n-7\n");
+		Same("a name then a negative number subtracts", t, "select n -1 as m from t where n = 7", "m\n6\n");
+		Same("minus a negative number", t, "select n - -1 as m from t where n = 7", "m\n8\n");
+		Same("a number times a negative number", t, "select n * -2 as m from t where n = 7", "m\n-14\n");
+		Same("whole numbers stay whole", t, "select n * 2 as a, n % 3 as b from t where n = 7", "a,b\n14,1\n");
+		Same("'/' gives a Float", t, "select n / 2 as m from t where n = 7", "m\n3.5\n");
+		Same("Int and Float mix", t, "select n + x as m from t where n = 4", "m\n5.5\n");
+		Same("Float remainder", t, "select x % 1.0 as m from t where n = 4", "m\n0.5\n");
+		Same("a constant", t, "select 2 * 21 as answer from t limit 1", "answer\n42\n");
+
+		# empty cells (CSV writes a row of one empty cell as "", so it is not a blank line)
+		Same("an empty operand", t, "select n + 1 as m from t where s = '4'", "m\n\"\"\n");
+		Same("a text operand", t, "select s + 1 as m from t where n = 7", "m\n\"\"\n");
+		Same("division by zero", t, "select n / 0 as m, n % 0 as r from t where n = 4", "m,r\n,\n");
+		Same("division by a zero cell", t, "select x / n as m from t where n = 0", "m\n\"\"\n");
+
+		# with the rest of SELECT
+		Same("expressions and columns", t, "select k, n * 10 as tens, x from t where n > 0 order by tens desc", "k,tens,x\nodd,70,0.5\neven,40,1.5\n");
+		Same("ORDER BY position", t, "select n, 0 - n as m from t where n <> 0 order by 2", "n,m\n7,-7\n4,-4\n-3,3\n");
+		Same("DISTINCT", t, "select distinct n % 2 as p from t where n > 0 order by p", "p\n0\n1\n");
+		Same("LIMIT", t, "select n + 100 as m from t order by n limit 2", "m\n97\n100\n");
+
+		# a join, through a catalog
+		u := Table->New("u", ["k", "w"]);
+		r := u->Insert(); r->Set("k", "even"); r->Set("w", IntRef->New(100));
+		r := u->Insert(); r->Set("k", "odd"); r->Set("w", IntRef->New(1000));
+		catalog := Catalog->New();
+		catalog->Add(t);
+		catalog->Add(u);
+		joined := catalog->Query("select t.n, t.n * u.w as scaled from t join u on t.k = u.k where t.n > 0 order by scaled");
+		Check("a join with an expression over both tables", Csv(joined)->Equals("n,scaled\n4,400\n7,7000\n"));
+		if(joined = Nil) {
+			"    {$(catalog->GetError())}"->PrintLine();
+		};
+		Check("Catalog->Query", Csv(catalog->Query("select n + 1 as m from t where n = 4"))->Equals("m\n5\n"));
+
+		# a prepared statement: the expression is computed for each run
+		statement := t->Prepare("select n * 3 as m from t where n = ?");
+		statement->Bind(1, 4);
+		first := Csv(statement->Execute());
+		statement->Bind(1, 7);
+		second := Csv(statement->Execute());
+		Check("a prepared statement, run twice", first->Equals("m\n12\n") & second->Equals("m\n21\n"));
+		Check("the same text again from the plan cache", Csv(t->Query("select n + 1 from t where n = 7"))->Equals("n + 1\n8\n"));
+
+		# refusals: an error to read, not a silent Nil
+		Refused("an expression in a grouped query", t, "select k, n + 1 from t group by k", "grouped or aggregate");
+		Refused("an expression beside an aggregate", t, "select count(*), n + 1 from t", "grouped or aggregate");
+		Refused("an unknown column", t, "select zz + 1 from t", "unknown column 'zz'");
+		Refused("a dangling operator", t, "select n + from t", "syntax error");
+		Refused("an unclosed parenthesis", t, "select (n + 1 from t", "expected ')'");
+
+		# a Nil result's method call is the normal NilError: a ?-> region recovers from it
+		missing := t->Query("select n + from t");
+		text := Helper->New()?->Csv(missing);
+		e := Runtime->GetLastError();
+		Check("a method call on a Nil result is a NilError a ?-> region recovers from", missing = Nil & text = Nil & e <> Nil & e->TypeOf(NilError));
+
+		if(@failures = 0) {
+			"PASS: query_select_expressions ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: query_select_expressions: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
