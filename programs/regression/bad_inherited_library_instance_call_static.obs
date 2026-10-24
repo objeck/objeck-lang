@@ -1,0 +1,25 @@
+# EXPECT_COMPILE_ERROR: Cannot reference an instance method from this context
+#~
+A function has no instance, so an unqualified call of an instance method the
+class inherits from a library class ('GetName()' in a Thread subclass) is
+still rejected; from an instance method it is a call on self and compiles
+(compile_inherited_library_instance_call.obs).
+~#
+use System.Concurrency;
+
+class BadInheritedLibraryInstanceCallStatic from Thread {
+  New(name : String) {
+    Parent(name);
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+  }
+
+  function : Name() ~ String {
+    return GetName();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    Name()->PrintLine();
+  }
+}

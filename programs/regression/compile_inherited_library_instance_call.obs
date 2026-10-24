@@ -1,0 +1,89 @@
+#~
+Regression: an instance method calls an instance method its class inherits
+from a library class with no receiver -- a call on self, 'GetName()' in a
+Thread subclass. The library overload of ContextAnalyzer::InvalidStatic never
+looked at the calling method, so every such call was rejected with "Cannot
+reference an instance method from this context"; the program-class overload
+has always allowed it. Checks System.Base's GetClassID() from a plain class, a
+direct child of a library class, a child two program classes down, and the
+call from a thread's Run().
+~#
+use System.Concurrency;
+
+class InheritedWorker from Thread {
+  @seen : String;
+
+  New(name : String) {
+    Parent(name);
+  }
+
+  method : public : Label() ~ String {
+    return "worker:" + GetName();
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+    @seen := GetName();
+  }
+
+  method : public : Seen() ~ String {
+    return @seen;
+  }
+}
+
+class InheritedGrandchild from InheritedWorker {
+  New(name : String) {
+    Parent(name);
+  }
+
+  method : public : Shout() ~ String {
+    return GetName()->ToUpper() + "/" + Label();
+  }
+}
+
+class InheritedPlain {
+  New() {
+  }
+
+  # System.Base's, which every class inherits
+  method : public : SameKind(rhs : Base) ~ Bool {
+    return GetClassID() = rhs->GetClassID();
+  }
+}
+
+class CompileInheritedLibraryInstanceCall {
+  function : Main(args : String[]) ~ Nil {
+    failed := 0;
+
+    p := InheritedPlain->New();
+    if(p->SameKind(InheritedPlain->New()) = false | p->SameKind("text")) {
+      "FAIL: System.Base's instance method, unqualified"->PrintLine();
+      failed += 1;
+    };
+
+    w := InheritedWorker->New("alpha");
+    if(w->Label()->Equals("worker:alpha") = false) {
+      "FAIL: an inherited library method, unqualified, from an instance method"->PrintLine();
+      failed += 1;
+    };
+
+    g := InheritedGrandchild->New("beta");
+    if(g->Shout()->Equals("BETA/worker:beta") = false) {
+      "FAIL: two program classes below the library class"->PrintLine();
+      failed += 1;
+    };
+
+    w->Execute(Nil);
+    w->Join();
+    if(w->Seen() = Nil | w->Seen()->Equals("alpha") = false) {
+      "FAIL: from a thread's Run()"->PrintLine();
+      failed += 1;
+    };
+
+    if(failed > 0) {
+      "FAIL: {$failed} check(s) failed"->PrintLine();
+      Runtime->Exit(1);
+    };
+
+    "PASS: compile_inherited_library_instance_call"->PrintLine();
+  }
+}
