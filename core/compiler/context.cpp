@@ -86,6 +86,29 @@ namespace {
   };
 }
 
+#ifdef _SYSTEM
+/****************************
+ * Whether a system-library body
+ * runs a trap (a trap leaves the
+ * method's return value itself)
+ ****************************/
+static bool HasSystemStatement(StatementList* statement_list)
+{
+  if(!statement_list) {
+    return false;
+  }
+
+  const std::vector<Statement*> statements = statement_list->GetStatements();
+  for(Statement* statement : statements) {
+    if(statement->GetStatementType() == SYSTEM_STMT) {
+      return true;
+    }
+  }
+
+  return false;
+}
+#endif
+
 /****************************
  * Maps expression type to
  * operator symbol string
@@ -1584,19 +1607,31 @@ void ContextAnalyzer::AnalyzeMethod(Method* method, const int depth)
       }
     }
 
-#ifndef _SYSTEM
     // check for return
     if(method->GetMethodType() != NEW_PUBLIC_METHOD && method->GetMethodType() != NEW_PRIVATE_METHOD &&
        method->GetReturn() && method->GetReturn()->GetType() != NIL_TYPE) {
+#ifdef _SYSTEM
+      // The system library is exempt only where the check cannot see the
+      // return: a trap leaves the method's value itself, and a compiler
+      // intrinsic (Base->Try) has no body. It used to be exempt outright, so
+      // lang.obs shipped Runtime->CommandOutput(c), Alarm->GetInterval() and
+      // UDPSocketServer->Bind() with a return type and no return, and a call
+      // to the first crashed.
+      const bool exempt = method->GetStatements()->GetStatements().empty() ||
+        HasSystemStatement(method->GetStatements());
+#else
+      const bool exempt = false;
+#endif
       // an alternate forwards to the original, which returns; a named-argument
       // forwarder that only reorders has no statements at all (#1244)
-      if(!method->IsAlt() && !AnalyzeReturnPaths(method->GetStatements(), depth + 1)) {
+      if(!exempt && !method->IsAlt() && !AnalyzeReturnPaths(method->GetStatements(), depth + 1)) {
         ProcessError(method, L"All method/function paths must return a value");
       }
 
+#ifndef _SYSTEM
       AnalyzeDeadReturns(method->GetStatements(), depth + 1);
-    }
 #endif
+    }
 
     // check program main
     const std::wstring main_str = current_class->GetName() + L":Main:o.System.String*,";

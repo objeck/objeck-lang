@@ -1,0 +1,75 @@
+#~
+Directory->List returns the same entries on every platform: the files and directories in the
+directory, never '.' or '..'. The POSIX VM always left those two out; the Windows VM returned
+them as entries, so a program that walked a tree recursed into the directory itself and its
+parent, and one that counted files counted two too many.
+~#
+use System.IO.Filesystem;
+
+class DirListNoDotEntries {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Has(names : String[], name : String) ~ Bool {
+		each(i : names) {
+			if(names[i]->Equals(name)) {
+				return true;
+			};
+		};
+
+		return false;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		dir := "dir_list_no_dot_entries.tmp";
+		if(Directory->Exists(dir)) {
+			Directory->Delete(dir);
+		};
+
+		Check("the directory is created", Directory->Create(dir));
+
+		# an empty directory has no entries
+		empty := Directory->List(dir);
+		Check("an empty directory lists as an empty array", empty <> Nil & empty->Size() = 0);
+
+		FileWriter->WriteFile("{$dir}/first.txt", "1");
+		FileWriter->WriteFile("{$dir}/second.txt", "2");
+		Check("the subdirectory is created", Directory->Create("{$dir}/inner"));
+
+		names := Directory->List(dir);
+		Check("List returns an array", names <> Nil);
+		if(names <> Nil) {
+			Check("exactly the three entries are listed (got {$names->Size()})", names->Size() = 3);
+			Check("'.' is not an entry", <>Has(names, "."));
+			Check("'..' is not an entry", <>Has(names, ".."));
+			Check("the files are listed", Has(names, "first.txt") & Has(names, "second.txt"));
+			Check("the subdirectory is listed", Has(names, "inner"));
+		};
+
+		# a trailing separator lists the same entries
+		slashed := Directory->List("{$dir}/");
+		Check("a trailing '/' lists the same three entries", slashed <> Nil & slashed->Size() = 3);
+
+		# a directory that does not exist lists as an empty array
+		missing := Directory->List("{$dir}/no_such_directory");
+		Check("a missing directory lists as an empty array", missing <> Nil & missing->Size() = 0);
+
+		Check("the directory is deleted", Directory->Delete(dir) > 0);
+
+		if(@failures = 0) {
+			"PASS: Directory->List has no '.' or '..' entries"->PrintLine();
+		}
+		else {
+			"FAIL: Directory->List has no '.' or '..' entries ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

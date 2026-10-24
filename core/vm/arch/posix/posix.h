@@ -1314,8 +1314,11 @@ class System {
        fclose(file);
 
        std::string str_cmd(c);
-       str_cmd += " > ";
+       // quoted, so a temp path with a space stays one word (mkstemp's
+       // template has no quote of its own)
+       str_cmd += " > '";
        str_cmd += tmp_file_name;
+       str_cmd += "'";
        // Windows appends 2>&1, so Runtime->Command() captured stderr there and
        // silently dropped it on Linux/macOS.
        str_cmd += " 2>&1";

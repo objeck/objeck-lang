@@ -1,0 +1,57 @@
+#~
+Library methods with a return type return a value. lang.obs is compiled by the bootstrap
+compiler, which skipped the "all paths must return a value" check for the whole library, so
+three methods shipped without a return: Runtime->CommandOutput(command) (its caller crashed on
+the value it never left), Alarm->GetInterval() and UDPSocketServer->Bind(), whose trap leaves
+no value. The bootstrap compiler now checks every method except one whose body runs a trap at
+its top level or has no body (a compiler intrinsic).
+~#
+use System.IO.Net;
+use System.Time;
+
+class TrapMethodAlarm from Alarm {
+	New(time : Int) {
+		Parent(time);
+	}
+
+	method : public : Ring(param : System.Base) ~ Nil {}
+}
+
+class LangTrapMethodReturns {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		output := Runtime->CommandOutput("echo returned");
+		lines := output <> Nil ? output->GetOutput() : Nil;
+		Check("CommandOutput(command) returns the command's output",
+			lines <> Nil & lines->Size() > 0 & lines[0]->Trim()->Equals("returned"));
+
+		alarm := TrapMethodAlarm->New(250);
+		Check("Alarm->GetInterval() returns the interval", alarm->GetInterval() = 250);
+		alarm->SetInterval(125);
+		Check("Alarm->GetInterval() returns the new interval", alarm->GetInterval() = 125);
+
+		# port 0: any free port, so the test never collides with another
+		server := UDPSocketServer->New(0, false);
+		Check("UDPSocketServer->Bind() reports a bind", server->Bind());
+		Check("UDPSocketServer->Bind() on a bound socket reports it bound", server->Bind());
+		server->Close();
+
+		if(@failures = 0) {
+			"PASS: library methods with a return type return a value"->PrintLine();
+		}
+		else {
+			"FAIL: library methods with a return type return a value ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

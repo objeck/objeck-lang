@@ -172,12 +172,13 @@ wchar_t** ProcessCommandLine(int &argc, const char* argv[])
 
   wchar_t** wide_args = new wchar_t* [argc];
   for(int i = 0; i < argc; ++i) {
-    const char* arg = argv[i];
-    const int len = (int)strlen(arg);
+    // decoded as UTF-8, not widened byte by byte: each byte of a non-ASCII
+    // argument (the program's path, or one of its args) became a character of
+    // its own, sign-extended through a signed char
+    const std::wstring arg = ArgumentToUnicode(argv[i]);
+    const size_t len = arg.size();
     wchar_t* wide_arg = new wchar_t[len + 1];
-    for(int j = 0; j < len; ++j) {
-      wide_arg[j] = arg[j];
-    }
+    std::char_traits<wchar_t>::copy(wide_arg, arg.c_str(), len);
     wide_arg[len] = L'\0';
 
     if(argc == 3 && wcslen(wide_arg) > 0 && wide_arg[0] == L'@') {
@@ -188,7 +189,7 @@ wchar_t** ProcessCommandLine(int &argc, const char* argv[])
 
   if(is_response_file) {
     // skip '@'
-    std::ifstream file_in(UnicodeToBytes(wide_args[2] + 1));
+    std::ifstream file_in(ToFsPath(wide_args[2] + 1));
     if(file_in.is_open()) {
       constexpr int ARG_OFFSET = 2;
 

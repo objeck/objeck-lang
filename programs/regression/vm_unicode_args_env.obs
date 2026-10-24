@@ -1,0 +1,92 @@
+#~
+Fixture for run_vm_flag_tests.py (section 14): arguments, environment variables and command
+output with non-ASCII text, which only another process can check. The harness runs it from a
+directory with a non-ASCII name, passes the argument below, sets OBJK_GET_ÜNÏ_日本, points the
+temp directory at a path with a space, and names a child process that checks the variable this
+program sets. Run on its own (as the regression runner does), it has nothing to check.
+~#
+class VmUnicodeArgsEnv {
+	function : Codes(text : String) ~ String {
+		if(text = Nil) {
+			return "Nil";
+		};
+
+		codes := "";
+		each(i : text) {
+			code := text->Get(i)->As(Int);
+			codes += "{$code} ";
+		};
+
+		return codes;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 0) {
+			"PASS: nothing to check without the harness's arguments"->PrintLine();
+			return;
+		};
+
+		expected := "valeur_é_日本_🙂";
+
+		# the argument arrives as written
+		if(args[0]->Equals("arg_ñ_日本_🙂")) {
+			"arg ok"->PrintLine();
+		}
+		else {
+			"arg wrong: {$Codes(args[0])}"->PrintLine();
+		};
+
+		# a variable the harness set reads back as written
+		value := Runtime->GetEnvironmentVariable("OBJK_GET_ÜNÏ_日本");
+		if(value <> Nil & value->Equals(expected)) {
+			"env ok"->PrintLine();
+		}
+		else {
+			"env wrong: {$Codes(value)}"->PrintLine();
+		};
+
+		# command output comes back through the temp file, wherever the temp directory is
+		# (the two-argument form: sys_env_command_vars.obs covers the one-argument one)
+		output := Runtime->CommandOutput("echo hello", String->New[0]);
+		lines := output->GetOutput();
+		if(lines <> Nil & lines->Size() > 0 & lines[0]->Trim()->Equals("hello")) {
+			"command output ok"->PrintLine();
+		}
+		else {
+			"command output wrong: status={$output->GetStatus()}"->PrintLine();
+		};
+
+		if(args->Size() > 1) {
+			# Non-ASCII names on Windows. POSIX runs commands through /bin/sh, and
+			# dash drops any variable whose name is not a shell identifier, so
+			# there the names are ASCII and only the values are not.
+			set_name := "OBJK_SET_UNI";
+			cmd_name := "OBJK_CMD_UNI";
+			if(System.IO.Filesystem.Directory->GetSlash() = '\\') {
+				set_name := "OBJK_SET_ÜNÏ_日本";
+				cmd_name := "OBJK_CMD_ÜNÏ_日本";
+			};
+
+			# a variable this program sets reaches a child process as written
+			Runtime->SetEnvironmentVariable(set_name, expected);
+			status := Runtime->Command(args[1] + " " + set_name);
+			if(status = 0) {
+				"child env ok"->PrintLine();
+			}
+			else {
+				"child env wrong: status={$status}"->PrintLine();
+			};
+
+			# and one passed with the command
+			vars := String->New[1];
+			vars[0] := cmd_name + "=" + expected;
+			child := Runtime->CommandOutput(args[1] + " " + cmd_name, vars);
+			if(child->GetStatus() = 0) {
+				"command env ok"->PrintLine();
+			}
+			else {
+				"command env wrong: status={$child->GetStatus()}"->PrintLine();
+			};
+		};
+	}
+}

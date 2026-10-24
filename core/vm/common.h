@@ -47,6 +47,7 @@
 #include <iomanip>
 #include <sstream>
 #include <fstream>
+#include <iterator>
 #include <stack>
 #include <vector>
 #include <list>
@@ -288,6 +289,70 @@ inline void TlsVerifyIpSan(mbedtls_ssl_config* conf, TlsIpName* name, const char
   (void)address;
 }
 #endif
+
+//
+// Certificate and key files, by a UTF-8 name. mbedtls opens them with fopen,
+// which on Windows reads the name in the ANSI code page: the CA bundle in a
+// library directory with a non-ASCII name, or a server certificate or key
+// named that way, could not be loaded. On Windows the file is read here by its
+// UTF-16 name and the bytes parsed, as the *_file calls do: with a NUL after
+// them that the length counts, which PEM parsing requires.
+//
+#ifdef _WIN32
+inline bool ReadTlsFile(const std::string& name, std::vector<unsigned char>& data) {
+  std::ifstream in(ToFsPath(BytesToUnicode(name)), std::ios::binary);
+  if(!in.good()) {
+    return false;
+  }
+
+  data.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+  data.push_back('\0');
+  return true;
+}
+#endif
+
+inline int TlsParseCertFile(mbedtls_x509_crt* crt, const std::string& name) {
+#ifdef _WIN32
+  std::vector<unsigned char> data;
+  if(!ReadTlsFile(name, data)) {
+    return MBEDTLS_ERR_X509_FILE_IO_ERROR;
+  }
+  return mbedtls_x509_crt_parse(crt, data.data(), data.size());
+#else
+  return mbedtls_x509_crt_parse_file(crt, name.c_str());
+#endif
+}
+
+inline int TlsParseKeyFile(mbedtls_pk_context* pk, const std::string& name, const char* passwd,
+                           int (*f_rng)(void*, unsigned char*, size_t), void* p_rng) {
+#ifdef _WIN32
+  std::vector<unsigned char> data;
+  if(!ReadTlsFile(name, data)) {
+    return MBEDTLS_ERR_PK_FILE_IO_ERROR;
+  }
+  const unsigned char* pwd = (const unsigned char*)passwd;
+  const size_t pwd_len = passwd ? strlen(passwd) : 0;
+#if MBEDTLS_VERSION_MAJOR >= 3
+  const int ret = mbedtls_pk_parse_key(pk, data.data(), data.size(), pwd, pwd_len, f_rng, p_rng);
+#else
+  (void)f_rng; (void)p_rng;
+  const int ret = mbedtls_pk_parse_key(pk, data.data(), data.size(), pwd, pwd_len);
+#endif
+  // the key material does not outlive the parse
+  volatile unsigned char* wipe = data.data();
+  for(size_t i = 0; i < data.size(); ++i) {
+    wipe[i] = 0;
+  }
+  return ret;
+#else
+#if MBEDTLS_VERSION_MAJOR >= 3
+  return mbedtls_pk_parse_keyfile(pk, name.c_str(), passwd, f_rng, p_rng);
+#else
+  (void)f_rng; (void)p_rng;
+  return mbedtls_pk_parse_keyfile(pk, name.c_str(), passwd);
+#endif
+#endif
+}
 
 //
 // mbedTLS context wrappers for SSL/TLS connections

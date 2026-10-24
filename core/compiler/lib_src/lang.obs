@@ -8348,7 +8348,7 @@ Runtime->Raise(ParseError->New("row 12: expected a number"));
 		@return output from command
 		~#
 		function : CommandOutput(c : System.String) ~ CommandOutput {
-			CommandOutput(c, Nil->As(String[]));
+			return CommandOutput(c, Nil->As(String[]));
 		}
 		
 		#~
@@ -9206,7 +9206,7 @@ bundle System.Time {
 		Get the current timer interval
 		~#
 		method : public : GetInterval() ~ Int {
-			@timer->GetTime();
+			return @timer->GetTime();
 		}
 		
 		#~
@@ -12061,9 +12061,10 @@ bundle System.IO.Filesystem {
 		}
 		
 		#~
-		List of directory content
+		List of directory content: the names of the files and directories in it, without
+		the directory's path. The '.' and '..' entries are never included, on any platform.
 		@param n directory name
-		@return list of directory content
+		@return list of directory content, or an empty list if the directory cannot be read
 		~#
 		function : List(n : System.String) ~ System.String[] {
 			DIR_LIST;
@@ -13132,6 +13133,9 @@ bundle System.IO.Net {
 			if(<>IsBound()) {
 				SOCK_UDP_BIND;
 			};
+
+			# the trap leaves no value; the socket's state is the answer
+			return IsBound();
 		}
 
 		#~

@@ -215,8 +215,19 @@ static int objeck_main(int argc, const char* argv[])
   return 1;
 }
 
+#if defined(_WIN32) && defined(_MSC_VER)
+// UTF-16 arguments, converted to UTF-8 once (Utf8Args in sys.h): the narrow
+// argv the CRT hands main is in the ANSI code page, so a path argument with a
+// character outside it never reached the tool intact
+int wmain(int wargc, wchar_t* wargv[])
+{
+  Utf8Args utf8_args(wargc, wargv);
+  const int argc = utf8_args.Count();
+  const char** argv = utf8_args.Values();
+#else
 int main(int argc, const char* argv[])
 {
+#endif
   try {
     return objeck_main(argc, argv);
   }
@@ -2112,7 +2123,7 @@ bool Runtime::Debugger::FileExists(const std::wstring&file_name, bool is_exe /*=
     return false;
   }
 
-  std::ifstream touch(name.c_str(), std::ios::binary);
+  std::ifstream touch(ToFsPath(file_name), std::ios::binary);
   if(touch.is_open()) {
     touch.close();
     return true;
@@ -2123,9 +2134,8 @@ bool Runtime::Debugger::FileExists(const std::wstring&file_name, bool is_exe /*=
 
 bool Runtime::Debugger::DirectoryExists(const std::wstring& wdir_name)
 {
-  const std::string dir_name = UnicodeToBytes(wdir_name);
 #ifdef _WIN32
-  HANDLE file = CreateFile(dir_name.c_str(), GENERIC_READ,
+  HANDLE file = CreateFileW(wdir_name.c_str(), GENERIC_READ,
                            FILE_SHARE_READ, nullptr, OPEN_EXISTING,
                            FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 
@@ -2136,6 +2146,7 @@ bool Runtime::Debugger::DirectoryExists(const std::wstring& wdir_name)
 
   return true;
 #else
+  const std::string dir_name = UnicodeToBytes(wdir_name);
   DIR* dir = opendir(dir_name.c_str());
   if(dir) {
     closedir(dir);

@@ -350,9 +350,106 @@ inline bool CharacterToBytes(wchar_t in, std::string &out) {
   if(!UnicodeToBytes(buffer, out)) {
     return false;
   }
-  
+
   return true;
 }
+
+/**
+ * A file name as the file streams take it. Under MSVC, Windows names are UTF-16
+ * and go through as they are (its streams take a wide name): the narrow
+ * overloads read bytes in the ANSI code page, so a UTF-8 name with any
+ * non-ASCII character missed its file. POSIX names are bytes, which the tools
+ * write as UTF-8. Not std::filesystem::path: native libraries include this
+ * header and several build below C++17.
+ */
+#if defined(_WIN32) && defined(_MSC_VER)
+inline std::wstring ToFsPath(const std::wstring &name) {
+  return name;
+}
+#else
+inline std::string ToFsPath(const std::wstring &name) {
+  return UnicodeToBytes(name);
+}
+#endif
+
+/**
+ * Converts a program argument to a wide string. Arguments are UTF-8 (on Windows
+ * the tools convert the CRT's UTF-16 argv once, at entry; see Utf8Args). Bytes
+ * that are not UTF-8 are taken one by one, as unsigned values, rather than lost.
+ */
+inline std::wstring ArgumentToUnicode(const char* arg) {
+  const std::string bytes(arg);
+  std::wstring out;
+#ifdef _WIN32
+  const bool valid = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, bytes.c_str(), -1, nullptr, 0) > 0 &&
+    BytesToUnicode(bytes, out);
+#else
+  const bool valid = BytesToUnicode(bytes, out);
+#endif
+  if(!valid) {
+    out.clear();
+    for(const char c : bytes) {
+      out += (wchar_t)(unsigned char)c;
+    }
+  }
+
+  return out;
+}
+
+#ifdef _WIN32
+/**
+ * The program arguments as UTF-8, the form every tool's argv has on POSIX and
+ * the form ParseCommandLine decodes. The CRT's narrow argv is in the ANSI code
+ * page: a path with a character outside it reached the tools as '?', and one
+ * inside it as bytes the UTF-8 decoding replaced. Each tool enters at wmain and
+ * converts the UTF-16 arguments here, once.
+ */
+class Utf8Args {
+  std::vector<std::string> values;
+  std::vector<const char*> pointers;
+
+public:
+  Utf8Args(int argc, wchar_t* wargv[]) {
+    for(int i = 0; i < argc; ++i) {
+      values.push_back(UnicodeToBytes(wargv[i] ? wargv[i] : L""));
+    }
+    for(const std::string& value : values) {
+      pointers.push_back(value.c_str());
+    }
+    pointers.push_back(nullptr);
+  }
+
+  Utf8Args(const Utf8Args&) = delete;
+  Utf8Args& operator=(const Utf8Args&) = delete;
+
+  int Count() const {
+    return (int)values.size();
+  }
+
+  const char** Values() {
+    return pointers.data();
+  }
+};
+
+/**
+ * Reads an environment variable as UTF-16; false if it is not set. The narrow
+ * getenv_s answers in the ANSI code page.
+ */
+inline bool GetEnvironmentValue(const std::wstring &name, std::wstring &value) {
+  size_t size = 0;
+  if(_wgetenv_s(&size, nullptr, 0, name.c_str()) || size == 0) {
+    return false;
+  }
+
+  std::vector<wchar_t> buffer(size + 1, L'\0');
+  if(_wgetenv_s(&size, buffer.data(), buffer.size(), name.c_str())) {
+    return false;
+  }
+
+  value = buffer.data();
+  return true;
+}
+#endif
 
 /**
  * Byte output stream buffer
@@ -370,8 +467,7 @@ public:
   }
 
   bool WriteFile() {
-    const std::string open_filename = UnicodeToBytes(file_name);
-    std::ofstream file_out(open_filename.c_str(), std::ofstream::binary);
+    std::ofstream file_out(ToFsPath(file_name), std::ofstream::binary);
     if(!file_out.is_open()) {
       std::wcerr << L"Unable to write file: '" << file_name << L"'" << std::endl;
       return false;
@@ -942,15 +1038,19 @@ inline std::wstring GetLibraryPath() {
   std::wstring path;
 
 #ifdef _WIN32
-  size_t value_len;
-  char path_str[SMALL_BUFFER_MAX];
-  if(!getenv_s(&value_len, path_str, SMALL_BUFFER_MAX, "OBJECK_LIB_PATH") && strlen(path_str) > 0) {
+  // UTF-16: getenv_s answers in the ANSI code page, which BytesToUnicode then
+  // read as UTF-8, so an install directory with a non-ASCII name was lost
+  std::wstring env_path;
+  if(GetEnvironmentValue(L"OBJECK_LIB_PATH", env_path) && !env_path.empty()) {
+    path = env_path;
 #else
   const char* path_str = getenv("OBJECK_LIB_PATH");
-  if(path_str) {
-#endif    
-    const std::string temp_str(path_str);
-    path = BytesToUnicode(temp_str);
+  if(path_str && *path_str) {
+    path = BytesToUnicode(path_str);
+#endif
+  }
+
+  if(!path.empty()) {
 #ifdef _WIN32
     if(path[path.size() - 1] != '\\') {
       path += L"\\";
@@ -978,9 +1078,7 @@ inline std::wstring GetLibraryPath() {
 inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size)
 {
   char* buffer;
-  const std::string open_filename = UnicodeToBytes(filename);
-
-  std::ifstream in(open_filename.c_str(), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
+  std::ifstream in(ToFsPath(filename), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
   if(in.good()) {
     // get file size
     in.seekg(0, std::ios::end);
@@ -1049,51 +1147,50 @@ inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size
  * the POSIX legs, which is a red CI leg for a diagnostic.
  ****************************/
 #ifdef _WIN32
-inline std::vector<std::string> ListDir(const char* p)
+inline std::vector<std::wstring> ListDir(const std::wstring& p)
 {
-  std::vector<std::string> files;
+  std::vector<std::wstring> files;
 
-  std::string path = p;
-  if(path.size() > 0 && path[path.size() - 1] == '\\') {
-    path += "*";
+  std::wstring path = p;
+  if(path.size() > 0 && (path[path.size() - 1] == L'\\' || path[path.size() - 1] == L'/')) {
+    path += L"*";
   }
   else {
-    path += "\\*";
+    path += L"\\*";
   }
 
-  // The ANSI variants explicitly, never the FindFirstFile/WIN32_FIND_DATA
-  // macros: those follow UNICODE, which this header cannot assume. compiler.cpp
-  // built without it and got the char* form; vm, module and diags define it and
-  // got FindFirstFileW, so the macros stopped compiling the moment this moved
-  // into a shared header.
-  WIN32_FIND_DATAA file_data;
-  HANDLE find = FindFirstFileA(path.c_str(), &file_data);
+  // The W variants explicitly, never the FindFirstFile/WIN32_FIND_DATA macros:
+  // those follow UNICODE, which this header cannot assume (compiler.cpp builds
+  // without it; vm, module and diags define it). The A variants read the name
+  // in the ANSI code page, so a directory with a non-ASCII name was not found.
+  WIN32_FIND_DATAW file_data;
+  HANDLE find = FindFirstFileW(path.c_str(), &file_data);
   if(find == INVALID_HANDLE_VALUE) {
     return files;
   }
-  else {
-    files.push_back(file_data.cFileName);
 
-    BOOL b = FindNextFileA(find, &file_data);
-    while(b) {
+  do {
+    // '.' and '..' are not entries, as on POSIX
+    if(wcscmp(file_data.cFileName, L".") != 0 && wcscmp(file_data.cFileName, L"..") != 0) {
       files.push_back(file_data.cFileName);
-      b = FindNextFileA(find, &file_data);
     }
-    FindClose(find);
   }
+  while(FindNextFileW(find, &file_data));
+  FindClose(find);
 
   return files;
 }
 #else
-inline std::vector<std::string> ListDir(const char* path) {
-  std::vector<std::string> files;
+inline std::vector<std::wstring> ListDir(const std::wstring& p) {
+  std::vector<std::wstring> files;
 
+  const std::string path = UnicodeToBytes(p);
   struct dirent** names = nullptr;
-  int n = scandir(path, &names, 0, alphasort);
+  int n = scandir(path.c_str(), &names, 0, alphasort);
   if(n > 0) {
     while(n--) {
       if((strcmp(names[n]->d_name, "..") != 0) && (strcmp(names[n]->d_name, ".") != 0)) {
-        files.push_back(names[n]->d_name);
+        files.push_back(BytesToUnicode(names[n]->d_name));
       }
       free(names[n]);
     }
