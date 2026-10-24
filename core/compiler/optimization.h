@@ -144,6 +144,7 @@ class ItermediateOptimizer {
 
   // tail call optimization
   std::vector<IntermediateBlock*> TailCallOpt(std::vector<IntermediateBlock*> inputs);
+  int MaxLabel(std::vector<IntermediateBlock*>& inputs, int floor);
 
   // loop-invariant code motion
   IntermediateBlock* LICM(IntermediateBlock* input);
