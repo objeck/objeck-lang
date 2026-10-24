@@ -252,7 +252,7 @@ void Loader::Load()
 char* Loader::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 {
   char* buffer;
-  std::ifstream in(ToFsPath(filename), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
+  std::ifstream in(ToFsPath(filename).c_str(), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
   if(in.good()) {
     // get file size
     in.seekg(0, std::ios::end);

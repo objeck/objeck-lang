@@ -85,7 +85,7 @@ bool Document::LoadFile(const std::wstring& file)
   ++version;
   lines.clear();
 
-  std::ifstream read_file(ToFsPath(file));
+  std::ifstream read_file(ToFsPath(file).c_str());
   if(read_file.good()) {
     std::string line;
     while(std::getline(read_file, line)) {
@@ -102,7 +102,7 @@ bool Document::LoadFile(const std::wstring& file)
 
 bool Document::Save(std::wstring filename)
 {
-  std::ofstream write_file(ToFsPath(filename));
+  std::ofstream write_file(ToFsPath(filename).c_str());
   if(write_file.good()) {
     // list code
     std::wstringstream buffer;

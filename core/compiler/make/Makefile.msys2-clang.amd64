@@ -5,8 +5,11 @@ OBJ_LIBS=sys.a objeck.res
 LOGGER_PATH=../shared
 EXE=obc
 
+# -municode: the entry point is wmain, which takes the arguments as UTF-16
+# (see shared/utf8_args.h). Link step only: at compile time it would also
+# define UNICODE and switch every unsuffixed Win32 call to its W form.
 $(EXE): $(SRC) $(OBJ_LIBS) 
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
+	$(CXX) -m64 -municode -o $(EXE) $(SRC) $(OBJ_LIBS) -lz
 
 % : %.mod
 %.o : %.mod

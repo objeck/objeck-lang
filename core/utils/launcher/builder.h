@@ -43,6 +43,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <fcntl.h>
+#include <io.h>
 #elif _OSX
 #include <mach-o/dyld.h>
 #else

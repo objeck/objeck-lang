@@ -104,7 +104,7 @@ namespace Runtime {
       cur_line_num = l;
       debugger = d;
 
-      std::ifstream file_in(ToFsPath(fn));
+      std::ifstream file_in(ToFsPath(fn).c_str());
       while(file_in.good()) {
         std::string line;
         std::getline(file_in, line);

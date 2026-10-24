@@ -3,8 +3,11 @@ ARGS=-O3 -D_MSYS2 -Wall -D_MSYS2 -Wno-unused-function -std=c++20 -mavx2 -MMD -MP
 SRC=launcher.o
 EXE=obn
 
+# -municode: the entry point is wmain, which takes the arguments as UTF-16
+# (see shared/utf8_args.h). Link step only: at compile time it would also
+# define UNICODE and switch every unsuffixed Win32 call to its W form.
 $(EXE): $(OBJ_LIBS) $(SRC) 
-	$(CXX) -m64 -o $(EXE) $(SRC) -lz
+	$(CXX) -m64 -municode -o $(EXE) $(SRC) -lz
 
 %.o: %.cpp
 	$(CXX) -m64 $(ARGS) -c $< 

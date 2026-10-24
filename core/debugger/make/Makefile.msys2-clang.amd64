@@ -8,8 +8,11 @@ WIN32_PATH=../vm/arch/win32
 JIT_PATH=../vm/arch/jit/amd64
 EXE=obd
 
+# -municode: the entry point is wmain, which takes the arguments as UTF-16
+# (see shared/utf8_args.h). Link step only: at compile time it would also
+# define UNICODE and switch every unsuffixed Win32 call to its W form.
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -lmbedtls -lmbedx509 -lmbedcrypto -lnghttp2 -lz -pthread -lwsock32 -luserenv -lws2_32 -lbcrypt
+	$(CXX) -m64 -municode -o $(EXE) $(SRC) $(OBJ_LIBS) -Wunused-function -lmbedtls -lmbedx509 -lmbedcrypto -lnghttp2 -lz -pthread -lwsock32 -luserenv -lws2_32 -lbcrypt
 
 ../vm/vm.a:
 	# clean first: core/vm's objects are shared with the plain and the

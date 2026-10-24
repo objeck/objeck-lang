@@ -7,8 +7,11 @@ JIT_PATH=arch/jit/amd64
 WIN32_PATH=arch/win32
 EXE=obr
 
+# -municode: the entry point is wmain, which takes the arguments as UTF-16
+# (see shared/utf8_args.h). Link step only: at compile time it would also
+# define UNICODE and switch every unsuffixed Win32 call to its W form.
 $(EXE): $(SRC) $(OBJ_LIBS)
-	$(CXX) -m64 -o $(EXE) $(SRC) $(OBJ_LIBS) -lmbedtls -lmbedx509 -lmbedcrypto -lnghttp2 -lz -pthread -lwsock32 -luserenv -lws2_32 -lbcrypt
+	$(CXX) -m64 -municode -o $(EXE) $(SRC) $(OBJ_LIBS) -lmbedtls -lmbedx509 -lmbedcrypto -lnghttp2 -lz -pthread -lwsock32 -luserenv -lws2_32 -lbcrypt
 
 memory.a:
 	cd $(MEM_PATH); $(MAKE) -f make/Makefile.msys2-ucrt.amd64

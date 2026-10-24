@@ -52,6 +52,7 @@
 #include <stdint.h>
 
 #include "logger.h"
+#include "utf8_args.h"
 
 // memory size for local stack frames: the locals a method may declare, in
 // bytes (the compiler's limit on mem_size)
@@ -355,14 +356,16 @@ inline bool CharacterToBytes(wchar_t in, std::string &out) {
 }
 
 /**
- * A file name as the file streams take it. Under MSVC, Windows names are UTF-16
- * and go through as they are (its streams take a wide name): the narrow
- * overloads read bytes in the ANSI code page, so a UTF-8 name with any
- * non-ASCII character missed its file. POSIX names are bytes, which the tools
- * write as UTF-8. Not std::filesystem::path: native libraries include this
- * header and several build below C++17.
+ * A file name as the file streams take it; pass its c_str() to the stream. On
+ * Windows names are UTF-16 and go through as they are: the narrow overloads
+ * read bytes in the ANSI code page, so a UTF-8 name with any non-ASCII
+ * character missed its file. MSVC's streams take a wide name, and so do
+ * MinGW's (libstdc++ and libc++ both take a const wchar_t* there, though
+ * neither takes a std::wstring -- hence c_str()). POSIX names are bytes, which
+ * the tools write as UTF-8. Not std::filesystem::path: native libraries include
+ * this header and several build below C++17.
  */
-#if defined(_WIN32) && defined(_MSC_VER)
+#ifdef _WIN32
 inline std::wstring ToFsPath(const std::wstring &name) {
   return name;
 }
@@ -397,40 +400,6 @@ inline std::wstring ArgumentToUnicode(const char* arg) {
 }
 
 #ifdef _WIN32
-/**
- * The program arguments as UTF-8, the form every tool's argv has on POSIX and
- * the form ParseCommandLine decodes. The CRT's narrow argv is in the ANSI code
- * page: a path with a character outside it reached the tools as '?', and one
- * inside it as bytes the UTF-8 decoding replaced. Each tool enters at wmain and
- * converts the UTF-16 arguments here, once.
- */
-class Utf8Args {
-  std::vector<std::string> values;
-  std::vector<const char*> pointers;
-
-public:
-  Utf8Args(int argc, wchar_t* wargv[]) {
-    for(int i = 0; i < argc; ++i) {
-      values.push_back(UnicodeToBytes(wargv[i] ? wargv[i] : L""));
-    }
-    for(const std::string& value : values) {
-      pointers.push_back(value.c_str());
-    }
-    pointers.push_back(nullptr);
-  }
-
-  Utf8Args(const Utf8Args&) = delete;
-  Utf8Args& operator=(const Utf8Args&) = delete;
-
-  int Count() const {
-    return (int)values.size();
-  }
-
-  const char** Values() {
-    return pointers.data();
-  }
-};
-
 /**
  * Reads an environment variable as UTF-16; false if it is not set. The narrow
  * getenv_s answers in the ANSI code page.
@@ -467,7 +436,7 @@ public:
   }
 
   bool WriteFile() {
-    std::ofstream file_out(ToFsPath(file_name), std::ofstream::binary);
+    std::ofstream file_out(ToFsPath(file_name).c_str(), std::ofstream::binary);
     if(!file_out.is_open()) {
       std::wcerr << L"Unable to write file: '" << file_name << L"'" << std::endl;
       return false;
@@ -1078,7 +1047,7 @@ inline std::wstring GetLibraryPath() {
 inline wchar_t* LoadFileBuffer(const std::wstring &filename, size_t& buffer_size)
 {
   char* buffer;
-  std::ifstream in(ToFsPath(filename), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
+  std::ifstream in(ToFsPath(filename).c_str(), std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
   if(in.good()) {
     // get file size
     in.seekg(0, std::ios::end);

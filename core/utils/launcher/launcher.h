@@ -53,6 +53,35 @@
 
 using namespace std;
 
+#ifdef _WIN32
+/*
+ * Windows works in UTF-16 throughout. The launcher used to take the CRT's
+ * narrow argv and envp and spawn obr with _spawnve, all in the ANSI code page:
+ * an argument or variable with a character outside it reached the program as
+ * '?', and an application installed under such a directory could not start.
+ * It runs obr with CreateProcessW now.
+ */
+
+/**
+ * The directory holding this executable, made the current directory
+ */
+static const wstring GetWorkingDirectory();
+
+/**
+ * Quotes one argument per the CommandLineToArgvW rules
+ */
+static wstring QuoteArgument(const wstring& arg);
+
+/**
+ * Whether an environment entry ('NAME=value') sets the named variable
+ */
+static bool IsVariable(const wchar_t* entry, const wchar_t* name);
+
+/**
+ * Reads an environment variable; empty if it is not set
+ */
+static wstring GetVariable(const wchar_t* name);
+#else
 /**
  * Build the environment variables
  */
@@ -99,5 +128,6 @@ bool StartWith(const char* str_ptr, const char* check_ptr) {
  * Execute
  */
 static int Spawn(const char* spawn_path, char** spawn_args, char** spawn_env);
+#endif
 
 #endif

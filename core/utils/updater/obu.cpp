@@ -36,6 +36,7 @@
 
 #include "../../shared/version.h"
 #include "../../shared/exe_path.h"
+#include "../../shared/utf8_args.h"
 
 #include <cctype>
 #include <cstdint>
@@ -64,6 +65,64 @@
 #endif
 
 namespace fs = std::filesystem;
+
+/****************************
+* Text and paths. obu's strings are UTF-8 on every platform: its arguments
+* (wmain converts them on Windows; see main), the paths it prints and the
+* argument vectors it hands to curl, tar and obc. A Windows path is UTF-16,
+* and fs::path's std::string constructor and string() convert through the
+* ANSI code page -- a name outside it became '?', and string() threw outright,
+* which ended 'update' and 'rollback' in an install directory named with such
+* a character before they did anything. These two convert explicitly.
+****************************/
+static fs::path PathFromUtf8(const std::string& text)
+{
+#ifdef _WIN32
+  return fs::path(WideFromUtf8(text));
+#else
+  return fs::path(text);
+#endif
+}
+
+static std::string PathToUtf8(const fs::path& path)
+{
+#ifdef _WIN32
+  return Utf8FromWide(path.native());
+#else
+  return path.string();
+#endif
+}
+
+#ifdef OBU_TEST_HOOKS
+/****************************
+* A path from an environment variable; false if it is not set. UTF-16 on
+* Windows, where getenv answers in the ANSI code page.
+****************************/
+static bool GetEnvPath(const char* name, fs::path& value)
+{
+#ifdef _WIN32
+  const std::wstring wide_name = WideFromUtf8(name);
+  const DWORD size = GetEnvironmentVariableW(wide_name.c_str(), nullptr, 0);
+  if(size == 0) {
+    return false;
+  }
+  std::vector<wchar_t> buffer(size);
+  const DWORD length = GetEnvironmentVariableW(wide_name.c_str(), buffer.data(), size);
+  if(length >= size) {
+    return false;
+  }
+  value = fs::path(std::wstring(buffer.data(), length));
+  return true;
+#else
+  const char* text = std::getenv(name);
+  if(!text) {
+    return false;
+  }
+  value = fs::path(text);
+  return true;
+#endif
+}
+#endif
 
 #define EXIT_UPDATE_AVAILABLE 0
 #define EXIT_UP_TO_DATE 1
@@ -245,13 +304,34 @@ static std::string QuoteWindowsArg(const std::string& arg)
 }
 
 /****************************
+* The command line CreateProcessW takes for an argument vector: each UTF-8
+* argument quoted, then the whole line as writable UTF-16.
+****************************/
+static std::vector<wchar_t> WindowsCommandLine(const std::vector<std::string>& args)
+{
+  std::string command_line;
+  for(size_t i = 0; i < args.size(); ++i) {
+    if(i > 0) { command_line += ' '; }
+    command_line += QuoteWindowsArg(args[i]);
+  }
+  const std::wstring wide = WideFromUtf8(command_line);
+  std::vector<wchar_t> writable(wide.begin(), wide.end());
+  writable.push_back(L'\0');
+  return writable;
+}
+
+/****************************
 * Runs a program with an explicit argument vector and captures its stdout.
 * CreateProcess with a null lpApplicationName searches PATH but never spawns a
 * shell, so nothing in args is interpreted. Returns true only if the child
-* launched and exited 0; *exit_code gets the status, or OBU_SPAWN_FAILED.
+* launched and exited 0; *exit_code gets the status, or OBU_SPAWN_FAILED. The
+* child runs in 'cwd' when one is given. The arguments are UTF-8 and reach the
+* child as UTF-16 (CreateProcessW); CreateProcessA read them in the ANSI code
+* page.
 ****************************/
 static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out,
-                           bool quiet = false, int* exit_code = nullptr)
+                           bool quiet = false, int* exit_code = nullptr,
+                           const fs::path& cwd = fs::path())
 {
   out.clear();
   if(exit_code) { *exit_code = OBU_SPAWN_FAILED; }
@@ -273,19 +353,13 @@ static bool RunArgvCapture(const std::vector<std::string>& args, std::string& ou
 
   HANDLE null_out = INVALID_HANDLE_VALUE;
   if(quiet) {
-    null_out = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
+    null_out = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
                            &attrs, OPEN_EXISTING, 0, nullptr);
   }
 
-  std::string command_line;
-  for(size_t i = 0; i < args.size(); ++i) {
-    if(i > 0) { command_line += ' '; }
-    command_line += QuoteWindowsArg(args[i]);
-  }
-  std::vector<char> writable(command_line.begin(), command_line.end());
-  writable.push_back('\0');
+  std::vector<wchar_t> writable = WindowsCommandLine(args);
 
-  STARTUPINFOA start;
+  STARTUPINFOW start;
   ZeroMemory(&start, sizeof(start));
   start.cb = sizeof(start);
   start.dwFlags = STARTF_USESTDHANDLES;
@@ -296,8 +370,9 @@ static bool RunArgvCapture(const std::vector<std::string>& args, std::string& ou
   PROCESS_INFORMATION proc;
   ZeroMemory(&proc, sizeof(proc));
 
-  const BOOL launched = CreateProcessA(nullptr, writable.data(), nullptr, nullptr,
-                                       TRUE, 0, nullptr, nullptr, &start, &proc);
+  const BOOL launched = CreateProcessW(nullptr, writable.data(), nullptr, nullptr,
+                                       TRUE, 0, nullptr, cwd.empty() ? nullptr : cwd.c_str(),
+                                       &start, &proc);
   // drop our copies of the child's ends so the pipe can reach EOF
   CloseHandle(write_end);
   if(null_out != INVALID_HANDLE_VALUE) { CloseHandle(null_out); }
@@ -331,10 +406,11 @@ static bool RunArgvCapture(const std::vector<std::string>& args, std::string& ou
 * Runs a program with an explicit argument vector and captures its stdout.
 * execvp takes the vector directly, so no shell exists to interpret anything
 * in it. Returns true only if the child launched and exited 0; *exit_code gets
-* the status, or OBU_SPAWN_FAILED.
+* the status, or OBU_SPAWN_FAILED. The child runs in 'cwd' when one is given.
 ****************************/
 static bool RunArgvCapture(const std::vector<std::string>& args, std::string& out,
-                           bool quiet = false, int* exit_code = nullptr)
+                           bool quiet = false, int* exit_code = nullptr,
+                           const fs::path& cwd = fs::path())
 {
   out.clear();
   if(exit_code) { *exit_code = OBU_SPAWN_FAILED; }
@@ -370,6 +446,9 @@ static bool RunArgvCapture(const std::vector<std::string>& args, std::string& ou
         dup2(devnull, STDERR_FILENO);
         close(devnull);
       }
+    }
+    if(!cwd.empty() && chdir(cwd.c_str()) != 0) {
+      _exit(OBU_SPAWN_FAILED);
     }
     execvp(argv[0], argv.data());
     _exit(OBU_SPAWN_FAILED);
@@ -531,14 +610,15 @@ static bool FetchReleaseJson(const std::string& channel, bool is_quiet, std::str
   }
 
 #ifdef OBU_TEST_HOOKS
-  if(const char* json_file = std::getenv("OBU_RELEASE_JSON_FILE")) {
+  fs::path json_file;
+  if(GetEnvPath("OBU_RELEASE_JSON_FILE", json_file)) {
     std::ifstream in(json_file, std::ios::binary);
     if(!in) {
-      error = std::string("Unable to read OBU_RELEASE_JSON_FILE: ") + json_file;
+      error = "Unable to read OBU_RELEASE_JSON_FILE: " + PathToUtf8(json_file);
       return false;
     }
     json.assign((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    if(source) { *source = json_file; }
+    if(source) { *source = PathToUtf8(json_file); }
     return true;
   }
 #endif
@@ -999,8 +1079,9 @@ static std::string Sha256File(const fs::path& path)
 static fs::path InstallRoot()
 {
 #ifdef OBU_TEST_HOOKS
-  if(const char* override_root = std::getenv("OBU_INSTALL_ROOT")) {
-    return fs::path(override_root);
+  fs::path override_root;
+  if(GetEnvPath("OBU_INSTALL_ROOT", override_root)) {
+    return override_root;
   }
 #endif
   const fs::path bin = ExecutableDir();
@@ -1017,19 +1098,13 @@ static fs::path InstallRoot()
 * Returns the child exit code, or OBU_SPAWN_FAILED if it could not be launched.
 ****************************/
 #ifdef _WIN32
-static int RunArgv(const std::vector<std::string>& args, bool quiet)
+static int RunArgv(const std::vector<std::string>& args, bool quiet, const fs::path& cwd = fs::path())
 {
   if(args.empty()) {
     return OBU_SPAWN_FAILED;
   }
 
-  std::string command_line;
-  for(size_t i = 0; i < args.size(); ++i) {
-    if(i > 0) { command_line += ' '; }
-    command_line += QuoteWindowsArg(args[i]);
-  }
-  std::vector<char> writable(command_line.begin(), command_line.end());
-  writable.push_back('\0');
+  std::vector<wchar_t> writable = WindowsCommandLine(args);
 
   SECURITY_ATTRIBUTES attrs;
   attrs.nLength = sizeof(attrs);
@@ -1038,11 +1113,11 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
 
   HANDLE null_out = INVALID_HANDLE_VALUE;
   if(quiet) {
-    null_out = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
+    null_out = CreateFileW(L"NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ,
                            &attrs, OPEN_EXISTING, 0, nullptr);
   }
 
-  STARTUPINFOA start;
+  STARTUPINFOW start;
   ZeroMemory(&start, sizeof(start));
   start.cb = sizeof(start);
   if(null_out != INVALID_HANDLE_VALUE) {
@@ -1056,8 +1131,9 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
   ZeroMemory(&proc, sizeof(proc));
 
   // lpApplicationName is null so PATH is searched, but no shell is spawned
-  const BOOL launched = CreateProcessA(nullptr, writable.data(), nullptr, nullptr,
-                                       TRUE, 0, nullptr, nullptr, &start, &proc);
+  const BOOL launched = CreateProcessW(nullptr, writable.data(), nullptr, nullptr,
+                                       TRUE, 0, nullptr, cwd.empty() ? nullptr : cwd.c_str(),
+                                       &start, &proc);
   if(null_out != INVALID_HANDLE_VALUE) { CloseHandle(null_out); }
   if(!launched) {
     return OBU_SPAWN_FAILED;
@@ -1074,7 +1150,7 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
   return static_cast<int>(status);
 }
 #else
-static int RunArgv(const std::vector<std::string>& args, bool quiet)
+static int RunArgv(const std::vector<std::string>& args, bool quiet, const fs::path& cwd = fs::path())
 {
   std::vector<char*> argv;
   argv.reserve(args.size() + 1);
@@ -1096,6 +1172,9 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
         close(devnull);
       }
     }
+    if(!cwd.empty() && chdir(cwd.c_str()) != 0) {
+      _exit(OBU_SPAWN_FAILED);
+    }
     execvp(argv[0], argv.data());
     _exit(OBU_SPAWN_FAILED);
   }
@@ -1116,13 +1195,13 @@ static int RunArgv(const std::vector<std::string>& args, bool quiet)
 static std::string ArchiveTool()
 {
 #ifdef _WIN32
-  char system_dir[MAX_PATH];
-  const UINT length = GetSystemDirectoryA(system_dir, MAX_PATH);
+  wchar_t system_dir[MAX_PATH];
+  const UINT length = GetSystemDirectoryW(system_dir, MAX_PATH);
   if(length > 0 && length < MAX_PATH) {
     std::error_code ec;
-    const fs::path candidate = fs::path(system_dir) / "tar.exe";
+    const fs::path candidate = fs::path(std::wstring(system_dir, length)) / "tar.exe";
     if(fs::exists(candidate, ec)) {
-      return candidate.string();
+      return PathToUtf8(candidate);
     }
   }
 #endif
@@ -1269,9 +1348,10 @@ static bool DownloadAsset(const std::string& url, const std::string& name,
                           const fs::path& dest, bool is_quiet, std::string& error)
 {
 #ifdef OBU_TEST_HOOKS
-  if(const char* asset_dir = std::getenv("OBU_ASSET_DIR")) {
+  fs::path asset_dir;
+  if(GetEnvPath("OBU_ASSET_DIR", asset_dir)) {
     std::error_code ec;
-    fs::copy_file(fs::path(asset_dir) / name, dest, fs::copy_options::overwrite_existing, ec);
+    fs::copy_file(asset_dir / name, dest, fs::copy_options::overwrite_existing, ec);
     if(ec) {
       error = "Unable to stage local asset '" + name + "': " + ec.message();
       return false;
@@ -1282,8 +1362,12 @@ static bool DownloadAsset(const std::string& url, const std::string& name,
   (void)name;   // used only by the offline copy path above
 
 #if OBU_UPDATE_SUPPORTED
-  // argv, not a command string: the url and dest are passed literally to curl
-  if(RunArgv({"curl", "-fsSL", "--max-time", "300", "-o", dest.string(), url}, is_quiet) != 0) {
+  // argv, not a command string: the url and dest are passed literally to curl.
+  // curl runs in the destination's directory and is given the bare file name
+  // (an ASCII name obu chose), so the install path never has to survive
+  // another program's argument decoding.
+  if(RunArgv({"curl", "-fsSL", "--max-time", "300", "-o", PathToUtf8(dest.filename()), url},
+             is_quiet, dest.parent_path()) != 0) {
     error = "Download failed: " + url;
     return false;
   }
@@ -1316,7 +1400,7 @@ static bool VerifyManifestSignature(const std::string& sums, const fs::path& sig
   if(!fs::is_regular_file(sig_path, ec)) {
     if(!is_quiet) {
       std::cerr << "No signature beside the manifest ("
-                << sig_path.filename().string() << ")." << std::endl
+                << PathToUtf8(sig_path.filename()) << ")." << std::endl
                 << "SHA256SUMS is served from the same place as the assets it describes, so"
                 << std::endl
                 << "without a signature it shows only that the download was not corrupted --"
@@ -1329,7 +1413,7 @@ static bool VerifyManifestSignature(const std::string& sums, const fs::path& sig
   std::ifstream sig_in(sig_path, std::ios::binary);
   if(!sig_in) {
     if(!is_quiet) {
-      std::cerr << "Could not read " << sig_path.string() << std::endl;
+      std::cerr << "Could not read " << PathToUtf8(sig_path) << std::endl;
     }
     return false;
   }
@@ -1477,17 +1561,17 @@ static bool MoveTreeEntries(const fs::path& from, const fs::path& to, std::strin
     entries.push_back(it->path());
   }
   if(ec) {
-    error = "Unable to read '" + from.string() + "': " + ec.message();
+    error = "Unable to read '" + PathToUtf8(from) + "': " + ec.message();
     return false;
   }
 
   fs::create_directories(to, ec);
   for(const fs::path& path : entries) {
-    const std::string name = path.filename().string();
+    const std::string name = PathToUtf8(path.filename());
     if(IsObuScratchEntry(name)) {
       continue;
     }
-    RenameWithRetry(path, to / name, ec);
+    RenameWithRetry(path, to / path.filename(), ec);
     if(ec) {
       error = "Unable to move '" + name + "': " + ec.message();
       return false;
@@ -1506,7 +1590,7 @@ static void RemoveManagedEntries(const fs::path& root)
     entries.push_back(it->path());
   }
   for(const fs::path& path : entries) {
-    if(!IsObuScratchEntry(path.filename().string())) {
+    if(!IsObuScratchEntry(PathToUtf8(path.filename()))) {
       fs::remove_all(path, ec);
     }
   }
@@ -1544,18 +1628,20 @@ static fs::path DetectPayloadRoot(const fs::path& staging)
 ****************************/
 static int AcquireLock(const fs::path& root)
 {
-  const std::string lock_path = (root / ".obu.lock").string();
 #ifdef _WIN32
   // _SH_DENYRW gives the same semantics flock(LOCK_EX | LOCK_NB) does below:
   // a second obu fails to open it at all rather than waiting. Windows has no
-  // flock, and _locking() would need the region locked separately.
+  // flock, and _locking() would need the region locked separately. The wide
+  // name: string() threw for an install root named outside the ANSI code page.
+  const fs::path lock_path = root / ".obu.lock";
   int fd = -1;
-  if(_sopen_s(&fd, lock_path.c_str(), _O_CREAT | _O_RDWR, _SH_DENYRW,
-              _S_IREAD | _S_IWRITE) != 0) {
+  if(_wsopen_s(&fd, lock_path.c_str(), _O_CREAT | _O_RDWR, _SH_DENYRW,
+               _S_IREAD | _S_IWRITE) != 0) {
     return -1;
   }
   return fd;
 #else
+  const std::string lock_path = (root / ".obu.lock").string();
   // ReleaseLock unlinks the file, which makes the naive open+flock unsafe: a
   // second obu can open the inode, the holder can then unlink it, and the
   // second obu's flock succeeds on a file that is no longer at lock_path --
@@ -1827,19 +1913,25 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   // reject an archive with an absolute or traversing member before extracting.
   // Windows ships .zip, so the flags differ: bsdtar infers zip without -z, and
   // --no-same-owner is a POSIX ownership concern that does not apply.
+  //
+  // tar runs in the work directory and is given the archive and staging names
+  // relative to it -- names obu chose, in ASCII -- so the install path never
+  // has to survive tar's own argument decoding (bsdtar on Windows reads its
+  // arguments in the ANSI code page).
   const std::string tar = ArchiveTool();
+  const std::string asset_name_local = PathToUtf8(asset_path.filename());
+  const std::string staging_name = PathToUtf8(staging.filename());
 #ifdef _WIN32
-  const std::vector<std::string> list_args = {tar, "-tf", asset_path.string()};
-  const std::vector<std::string> extract_args = {tar, "-xf", asset_path.string(),
-                                                 "-C", staging.string()};
+  const std::vector<std::string> list_args = {tar, "-tf", asset_name_local};
+  const std::vector<std::string> extract_args = {tar, "-xf", asset_name_local, "-C", staging_name};
 #else
-  const std::vector<std::string> list_args = {tar, "-tzf", asset_path.string()};
+  const std::vector<std::string> list_args = {tar, "-tzf", asset_name_local};
   const std::vector<std::string> extract_args = {tar, "--no-same-owner", "-xzf",
-                                                 asset_path.string(), "-C", staging.string()};
+                                                 asset_name_local, "-C", staging_name};
 #endif
 
   std::string listing;
-  if(!RunArgvCapture(list_args, listing)) {
+  if(!RunArgvCapture(list_args, listing, false, nullptr, work)) {
     std::cerr << "Unable to read the archive " << asset_name << "." << std::endl;
     return EXIT_CHECK_ERROR;
   }
@@ -1859,7 +1951,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 
   // extract into a fresh staging dir (never into the live tree)
   fs::create_directories(staging, ec);
-  if(RunArgv(extract_args, is_quiet) != 0) {
+  if(RunArgv(extract_args, is_quiet, work) != 0) {
     std::cerr << "Unable to unpack " << asset_name << "." << std::endl;
     return EXIT_CHECK_ERROR;
   }
@@ -1876,7 +1968,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
               << ". Attempting to restore." << std::endl;
     if(!MoveTreeEntries(previous, root, error)) {
       std::cerr << "RESTORE ALSO FAILED. Your install is split between the root and "
-                << previous << "; move the contents of that directory back by hand." << std::endl;
+                << PathToUtf8(previous) << "; move the contents of that directory back by hand." << std::endl;
       guard.armed = false;   // leave staging in place for diagnosis
       return EXIT_CHECK_ERROR;
     }
@@ -1888,7 +1980,7 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
     RemoveManagedEntries(root);
     if(!MoveTreeEntries(previous, root, error)) {
       std::cerr << "RESTORE ALSO FAILED: " << error << ". Your install is split between the root and "
-                << previous << "; move the contents of that directory back by hand." << std::endl;
+                << PathToUtf8(previous) << "; move the contents of that directory back by hand." << std::endl;
       return EXIT_CHECK_ERROR;   // keep .previous: it holds the only copy
     }
     fs::remove_all(previous, ec);
@@ -1898,13 +1990,13 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
   // POST-CHECK: the design names 'obc -v' as authoritative for what is
   // installed. On failure, roll back automatically. ('obr' has no version
   // flag, so it must not be used here.)
-  const int health = RunArgv({(root / "bin" / ("obc" OBU_EXE_SUFFIX)).string(), "-v"}, is_quiet);
+  const int health = RunArgv({PathToUtf8(root / "bin" / ("obc" OBU_EXE_SUFFIX)), "-v"}, is_quiet);
   if(health != 0) {
     std::cerr << "The updated Objeck failed its post-install check; rolling back." << std::endl;
     RemoveManagedEntries(root);
     if(!MoveTreeEntries(previous, root, error)) {
       std::cerr << "RESTORE ALSO FAILED: " << error << ". Your install is split between the root and "
-                << previous << "; move the contents of that directory back by hand." << std::endl;
+                << PathToUtf8(previous) << "; move the contents of that directory back by hand." << std::endl;
       return EXIT_CHECK_ERROR;   // keep .previous: it holds the only copy
     }
     fs::remove_all(previous, ec);
@@ -1941,8 +2033,8 @@ static int DoUpdate(bool is_quiet, const std::string& channel, bool force)
 ****************************/
 static int DoVerify(const std::string& archive_arg, const std::string& sums_arg, bool is_quiet)
 {
-  const fs::path archive(archive_arg);
-  const fs::path sums_path(sums_arg);
+  const fs::path archive = PathFromUtf8(archive_arg);
+  const fs::path sums_path = PathFromUtf8(sums_arg);
 
   std::error_code ec;
   if(!fs::is_regular_file(archive, ec)) {
@@ -1974,13 +2066,13 @@ static int DoVerify(const std::string& archive_arg, const std::string& sums_arg,
   // beside the manifest, which is where minisign writes it and where a release
   // publishes it.
   std::string trusted_comment;
-  if(!VerifyManifestSignature(sums, fs::path(sums_arg + ".minisig"), is_quiet, trusted_comment)) {
+  if(!VerifyManifestSignature(sums, PathFromUtf8(sums_arg + ".minisig"), is_quiet, trusted_comment)) {
     return EXIT_CHECK_ERROR;
   }
 
   // The manifest lists bare names, so look the archive up by its file name and
   // not by whatever path the caller typed.
-  const std::string name = archive.filename().string();
+  const std::string name = PathToUtf8(archive.filename());
   std::string expected;
   if(!ExpectedHash(sums, name, expected)) {
     if(!is_quiet) {
@@ -2070,7 +2162,7 @@ static int DoRollback(bool is_quiet)
   }
   fs::remove_all(previous, ec);
 
-  const int health = RunArgv({(root / "bin" / ("obc" OBU_EXE_SUFFIX)).string(), "-v"}, is_quiet);
+  const int health = RunArgv({PathToUtf8(root / "bin" / ("obc" OBU_EXE_SUFFIX)), "-v"}, is_quiet);
   ReleaseLock(lock_fd, root);
   if(health != 0) {
     std::cerr << "Warning: the restored version did not pass its health check." << std::endl;
@@ -2084,9 +2176,9 @@ static int DoRollback(bool is_quiet)
 }
 
 /****************************
-* Program start
+* Program start. The arguments are UTF-8 here on every platform.
 ****************************/
-int main(int argc, const char* argv[])
+static int ObuMain(int argc, const char* argv[])
 {
   if(argc < 2) {
     Usage();
@@ -2177,3 +2269,20 @@ int main(int argc, const char* argv[])
 
   return command == "update" ? DoUpdate(is_quiet, channel, force) : DoCheck(is_quiet, channel);
 }
+
+#ifdef _WIN32
+// UTF-16 arguments, converted to UTF-8 once (Utf8Args, shared/utf8_args.h):
+// the narrow argv the CRT hands main is in the ANSI code page, so a file named
+// outside it never reached 'obu verify' intact. MinGW builds enter here too;
+// the makefile links with -municode there.
+int wmain(int wargc, wchar_t* wargv[])
+{
+  Utf8Args utf8_args(wargc, wargv);
+  return ObuMain(utf8_args.Count(), utf8_args.Values());
+}
+#else
+int main(int argc, const char* argv[])
+{
+  return ObuMain(argc, argv);
+}
+#endif
