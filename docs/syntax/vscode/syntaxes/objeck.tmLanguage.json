@@ -76,7 +76,7 @@
 					"name": "constant.numeric.objeck"
 				},
 				{
-					"match": "\\b(?<!\\$)0[0-7]([0-7_]*[0-7])?[Ll]?\\b(?!\\$)",
+					"match": "\\b(?<!\\$)0[oO][0-7]([0-7_]*[0-7])?[Ll]?\\b(?!\\$)",
 					"name": "constant.numeric.octal.objeck"
 				},
 				{

@@ -221,6 +221,22 @@ if s.run_to_breakpoint():
           resp is not None and resp.get("body", {}).get("variablesReference", -1) == 0,
           f"got: {resp.get('body') if resp else None}")
 
+    # Integer literal prefixes, as the compiler reads them: '0o' is octal, and
+    # a decimal literal with a leading zero is an error. The debugger's
+    # scanner read '010' as octal 8 and stopped '09' at the '9', answering 0.
+    for expr, want in (("0o17", "15"), ("0O10 + 1", "9"), ("0b101", "5"),
+                       ("0x1f", "31"), ("0", "0"), ("10", "10")):
+        resp = s.request("evaluate", {"expression": expr, "context": "watch"})
+        check(f"evaluate {expr}",
+              resp.get("body", {}).get("result") == want if resp else False,
+              f"got: {resp.get('body') if resp else None}")
+    for expr in ("010", "09"):
+        resp = s.request("evaluate", {"expression": expr, "context": "watch"})
+        # a parse error answers '<error>', as any other evaluate parse error does
+        check(f"evaluate {expr} is an error, not a value",
+              resp.get("body", {}).get("result") == "<error>" if resp else False,
+              f"got: {resp.get('body') if resp else None}")
+
     resp = s.request("evaluate", {"expression": 'label_text = "inner"', "context": "watch"})
     check("evaluate compares a string",
           resp.get("body", {}).get("result") == "true" if resp else False,

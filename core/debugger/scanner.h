@@ -89,6 +89,9 @@ enum TokenType {
   TOKEN_CHAR_STRING_LIT,
   // a number outside its type's range, as the compiler's scanner marks one
   TOKEN_BAD_INT_LIT,
+  // a multi-digit integer literal with a leading zero ('010'), as the
+  // compiler's scanner marks one
+  TOKEN_LEADING_ZERO_INT_LIT,
   TOKEN_BAD_FLOAT_LIT,
   // reserved words
   TOKEN_RUN_ID,
@@ -245,22 +248,42 @@ class Scanner {
   }
 
   // parse an integer
-  inline void ParseInteger(int index, int base = 0) {
+  inline void ParseInteger(int index, int base = 10) {
     // copy std::wstring
     int length = end_pos - start_pos;
     std::wstring ident(buffer, start_pos, length);
 
+    // A decimal literal with a leading zero ('010', '09') is an error, as in
+    // the compiler. It was read as octal: 'p 010' printed 8, and 'p 09'
+    // printed 0, since the scan stopped at the '9' and nothing checked.
+    if(base == 10 && ident.size() > 1 && ident[0] == L'0') {
+      tokens[index]->SetType(TOKEN_LEADING_ZERO_INT_LIT);
+      tokens[index]->SetIdentifier(ident);
+      tokens[index]->SetIntLit(0);
+      return;
+    }
+
+    // '0b' and '0o' prefixes: the digits follow them
+    const bool is_prefixed = base == 2 || base == 8;
+    const wchar_t* digits = is_prefixed ? ident.c_str() + 2 : ident.c_str();
+
     // set token. wcstoll: 'long' is 32-bit on Windows, so 0x100000000 and
-    // any ten-digit literal came back clamped. Hex is bit-pattern notation
-    // and reads unsigned, as the compiler reads it: 0xFFFFFFFFFFFFFFFF is
-    // -1, not a saturated maximum.
+    // any ten-digit literal came back clamped. Hex, octal and binary are
+    // bit-pattern notation and read unsigned, as the compiler reads them:
+    // 0xFFFFFFFFFFFFFFFF is -1, not a saturated maximum.
     wchar_t* end = nullptr;
     errno = 0;
-    if(base == 16) {
-      tokens[index]->SetIntLit((INT64_VALUE)wcstoull(ident.c_str(), &end, base));
+    if(base == 16 || is_prefixed) {
+      tokens[index]->SetIntLit((INT64_VALUE)wcstoull(digits, &end, base));
     }
     else {
-      tokens[index]->SetIntLit(wcstoll(ident.c_str(), &end, base));
+      tokens[index]->SetIntLit(wcstoll(digits, &end, base));
+    }
+
+    // a digit outside the base ('0o8', '0b2'), or a bare prefix
+    if(end == digits || (end && *end)) {
+      tokens[index]->SetType(TOKEN_UNKNOWN);
+      return;
     }
 
     // A literal past Int's range saturated silently. It is an error, as in
@@ -270,7 +293,7 @@ class Scanner {
       tokens[index]->SetType(TOKEN_BAD_INT_LIT);
       tokens[index]->SetIdentifier(ident);
       INT64_VALUE magnitude_marker = 0;
-      if(base != 16) {
+      if(base == 10) {
         errno = 0;
         wchar_t* unsigned_end = nullptr;
         const unsigned long long magnitude = wcstoull(ident.c_str(), &unsigned_end, base);

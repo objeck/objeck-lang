@@ -62,9 +62,10 @@
       (,(regexp-opt constants 'words) . font-lock-constant-face)
       ;; Operators
       (,(regexp-opt operators 'words) . font-lock-keyword-face)
-      ;; Numbers (hex, binary, decimal, float)
+      ;; Numbers (hex, binary, octal, decimal, float)
       ("\\<0[xX][0-9a-fA-F]+\\>" . font-lock-constant-face)
       ("\\<0[bB][01]+\\>" . font-lock-constant-face)
+      ("\\<0[oO][0-7]+\\>" . font-lock-constant-face)
       ("\\<[0-9]+\\(\\.[0-9]*\\)?\\([eE][+-]?[0-9]+\\)?\\>" . font-lock-constant-face)
       ;; Assignment operators
       (":=\\|+=\\|-=\\|\\*=\\|/=" . font-lock-keyword-face)

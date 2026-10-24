@@ -61,9 +61,10 @@
       (":=" . font-lock-keyword-face)
       ;; shifts; the unsigned one first so '>>>' is not matched as '>>' plus '>'
       (">>>\|<<\|>>" . font-lock-keyword-face)
-      ;; numbers (hex, binary, decimal, float)
+      ;; numbers (hex, binary, octal, decimal, float)
       ("\\<0[xX][0-9a-fA-F]+[uU]?\\>" . font-lock-constant-face)
       ("\\<0[bB][01]+[uU]?\\>" . font-lock-constant-face)
+      ("\\<0[oO][0-7]+[uU]?\\>" . font-lock-constant-face)
       ("\\<[0-9]+\\(\\.[0-9]*\\)?\\([eE][+-]?[0-9]+\\)?[uU]?\\>" . font-lock-constant-face)
       ;; instance variables (@name)
       ("@[a-zA-Z_][a-zA-Z0-9_]*" . font-lock-variable-name-face)

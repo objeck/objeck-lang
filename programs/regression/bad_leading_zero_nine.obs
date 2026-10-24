@@ -1,0 +1,14 @@
+# EXPECT_COMPILE_ERROR: Integer literal with a leading zero: '09'
+# EXPECT_ERROR_COUNT: 1
+#~
+'09' has no octal reading. It was an unknown token, reported as an
+unexpected token with follow-on errors; it is now one error that suggests
+'9'.
+~#
+
+class BadLeadingZeroNine {
+	function : Main(args : String[]) ~ Nil {
+		value := 09 + 1;
+		value->PrintLine();
+	}
+}

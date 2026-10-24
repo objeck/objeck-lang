@@ -411,7 +411,9 @@ void Scanner::ParseToken(int index)
   // number.
   else if(isalpha(cur_char) || cur_char == L'@' || cur_char == L'_' || cur_char == L'?' ||
           (iswdigit(cur_char) && (isalpha(nxt_char) || nxt_char == L'_') &&
-           !(cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X')))) {
+           !(cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X' ||
+                                  ((nxt_char == L'b' || nxt_char == L'B' || nxt_char == L'o' || nxt_char == L'O') &&
+                                   iswdigit(nxt_nxt_char)))))) {
     // mark
     start_pos = buffer_pos - 1;
 
@@ -437,12 +439,15 @@ void Scanner::ParseToken(int index)
     // '0' -- so no hex literal ever reached wcstol with base 16: 'print 0x2a'
     // answered 'unknown variable' and 'set x := 0x10' was 'invalid'.
     const bool is_hex = cur_char == L'0' && (nxt_char == L'x' || nxt_char == L'X');
-    if(is_hex) {
+    // binary '0b101' and octal '0o17', as the compiler scans them
+    const bool is_bin = cur_char == L'0' && (nxt_char == L'b' || nxt_char == L'B') && iswdigit(nxt_nxt_char);
+    const bool is_oct = cur_char == L'0' && (nxt_char == L'o' || nxt_char == L'O') && iswdigit(nxt_nxt_char);
+    if(is_hex || is_bin || is_oct) {
       NextChar();
       NextChar();
     }
 
-    while(iswdigit(cur_char) || (!is_hex && cur_char == L'.' && iswdigit(nxt_char)) ||
+    while(iswdigit(cur_char) || (!is_hex && !is_bin && !is_oct && cur_char == L'.' && iswdigit(nxt_char)) ||
           (is_hex && ((cur_char >= L'a' && cur_char <= L'f') || (cur_char >= L'A' && cur_char <= L'F')))) {
       // decimal double
       if(cur_char == L'.') {
@@ -482,6 +487,12 @@ void Scanner::ParseToken(int index)
       else {
         ParseInteger(index, 16);
       }
+    }
+    else if(is_bin) {
+      ParseInteger(index, 2);
+    }
+    else if(is_oct) {
+      ParseInteger(index, 8);
     }
     else {
       ParseInteger(index);

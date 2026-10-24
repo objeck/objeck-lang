@@ -221,7 +221,7 @@ class Scanner {
 					NextChar();
 				};
 
-				while(@cur_char = '.' | @cur_char->IsDigit() | @cur_char = 'x' | @cur_char = 'X' | 
+				while(@cur_char = '.' | @cur_char->IsDigit() | @cur_char = 'x' | @cur_char = 'X' | @cur_char = 'o' | @cur_char = 'O' | 
 						(@cur_char >= 'a' & @cur_char <= 'f') | (@cur_char >= 'A' & @cur_char <= 'F')) {
 					NextChar();
 				};

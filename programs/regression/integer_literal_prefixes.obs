@@ -1,0 +1,77 @@
+#~
+Integer literal prefixes. Octal is written with a '0o' prefix, as hex takes
+'0x' and binary '0b'. A decimal literal with a leading zero used to be read
+as octal, so '010' compiled silently as 8 and '09' was an unknown token; it
+is now a compile error (see bad_leading_zero_octal.obs and
+bad_leading_zero_nine.obs). '0' alone, and floats such as '0.5', are
+unaffected.
+~#
+
+class IntegerLiteralPrefixes {
+	function : Check(name : String, got : Int, want : Int) ~ Int {
+		if(got <> want) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+
+	function : CheckFloat(name : String, got : Float, want : Float) ~ Int {
+		if(got <> want) {
+			"FAIL: {$name}: got {$got}, want {$want}"->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		# octal
+		failures += Check("0o10", 0o10, 8);
+		failures += Check("0O17", 0O17, 15);
+		failures += Check("0o0", 0o0, 0);
+		failures += Check("0o777", 0o777, 511);
+		failures += Check("0o7_7", 0o7_7, 63);
+		failures += Check("-0o10", -0o10, -8);
+		failures += Check("0o10u", 0o10u, 8);
+		# 2^64 - 1 is every bit set, as 0xFFFFFFFFFFFFFFFF is
+		failures += Check("0o1777777777777777777777", 0o1777777777777777777777, -1);
+		failures += Check("0o52->Min", 0o52->Min(100), 42);
+
+		# zero and floats with a leading zero are unaffected
+		failures += Check("0", 0, 0);
+		failures += Check("-0", -0, 0);
+		failures += Check("0u", 0u, 0);
+		failures += CheckFloat("0.5", 0.5, 0.5);
+		failures += CheckFloat("00.5", 00.5, 0.5);
+		failures += CheckFloat("0.0e3", 0.0e3, 0.0);
+		failures += CheckFloat("0.5e1", 0.5e1, 5.0);
+
+		# decimal, hex and binary still work
+		failures += Check("10", 10, 10);
+		failures += Check("1_000", 1_000, 1000);
+		failures += Check("0x1F", 0x1F, 31);
+		failures += Check("0X0a", 0X0a, 10);
+		failures += Check("0b101", 0b101, 5);
+		failures += Check("0B0011", 0B0011, 3);
+		failures += Check("-0b1101", -0b1101, -13);
+
+		# in an array literal and in an expression
+		values := [0o1, 0o2, 0o10, 0x10, 0b10, 10];
+		sum := 0;
+		each(i : values) {
+			sum += values[i];
+		};
+		failures += Check("array sum", sum, 1 + 2 + 8 + 16 + 2 + 10);
+		failures += Check("expression", 0o100 / 0o10 + 0b1, 9);
+
+		if(failures = 0) {
+			"PASS: integer literal prefixes"->PrintLine();
+		}
+		else {
+			"FAIL: {$failures} integer literal check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
