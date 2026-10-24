@@ -158,6 +158,11 @@ for test in *.obs; do
         esac
     fi
 
+    # '# EXPECT_ERROR_COUNT: <n>' (with a message marker) also requires exactly
+    # <n> errors: lines naming a .obs position that are not warnings. It holds a
+    # test to the first error alone, with no follow-on errors after it.
+    EXPECT_COUNT=$(grep -m1 '^# EXPECT_ERROR_COUNT:' "$ABS_TEST" 2>/dev/null | tr -d '\r' | sed -e 's/^# EXPECT_ERROR_COUNT:[[:space:]]*//' -e 's/[[:space:]]*$//')
+
     EXPECT_RT_ERR=0
     grep -q '^# EXPECT_RUNTIME_ERROR' "$ABS_TEST" 2>/dev/null && EXPECT_RT_ERR=1
 
@@ -173,12 +178,21 @@ for test in *.obs; do
                 echo "  [WARN] marker names no message; write '# EXPECT_COMPILE_ERROR: <expected message>'"
                 echo "  [PASS] (compile error as expected)"
                 ((PASS_COUNT++))
-            elif grep -qF -- "$EXPECT_MSG" "${RESULTS_DIR}/${NAME}_compile.log"; then
-                echo "  [PASS] (compile error as expected)"
-                ((PASS_COUNT++))
-            else
+            elif ! grep -qF -- "$EXPECT_MSG" "${RESULTS_DIR}/${NAME}_compile.log"; then
                 record_fail "compile error does not contain expected message: ${EXPECT_MSG}"
                 head -10 "${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null
+            else
+                ERROR_COUNT="$EXPECT_COUNT"
+                if [ -n "$EXPECT_COUNT" ]; then
+                    ERROR_COUNT=$(tr -d '\r' < "${RESULTS_DIR}/${NAME}_compile.log" | grep -F '.obs:(' | grep -vcF '): Warning:')
+                fi
+                if [ "$ERROR_COUNT" = "$EXPECT_COUNT" ]; then
+                    echo "  [PASS] (compile error as expected)"
+                    ((PASS_COUNT++))
+                else
+                    record_fail "expected ${EXPECT_COUNT} compile errors, got ${ERROR_COUNT}"
+                    head -20 "${RESULTS_DIR}/${NAME}_compile.log" 2>/dev/null
+                fi
             fi
         else
             record_fail "compilation error"

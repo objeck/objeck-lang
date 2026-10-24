@@ -1,4 +1,5 @@
 # EXPECT_COMPILE_ERROR: Float literal out of range: '2.4e-324'
+# EXPECT_ERROR_COUNT: 1
 #~
 2.4e-324 is below half the smallest subnormal double (4.9e-324), so it rounds
 to zero and is rejected; 2.5e-324 rounds up to the subnormal and compiles

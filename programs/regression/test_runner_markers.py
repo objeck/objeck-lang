@@ -9,6 +9,9 @@ it and checks the verdict it gives each file:
   * `# EXPECT_COMPILE_ERROR: <message>` passes only when <message> is in the
     compiler output, case-sensitively; the plain marker still passes but
     prints a WARN line;
+  * `# EXPECT_ERROR_COUNT: <n>` beside it also requires exactly <n> errors
+    (non-warning lines naming a .obs position), so a test can rule out
+    follow-on errors;
   * a marker in the middle of a comment line is ignored (issue #729's shape);
   * OBJECK_VM_ARGS reaches obr, before the .obe, split on blanks.
 
@@ -66,6 +69,14 @@ HANG = """class {name} {{
 }}
 """
 
+TWO_BAD_TYPES = """class {name} {{
+  function : Main(args : String[]) ~ Nil {{
+    x : NoSuchTypeAnywhere;
+    y : NoSuchOtherType;
+  }}
+}}
+"""
+
 TIMEOUT_SECONDS = 8
 
 NAMED = "# EXPECT_COMPILE_ERROR: Undefined class or enum: 'NoSuchTypeAnywhere'\n"
@@ -83,6 +94,11 @@ FIXTURES = {
                     "and # EXPECT_RUNTIME_ERROR in the middle of a line.\n~#\n" + HELLO, "PASS", False),
     "rt_expected": ("# EXPECT_RUNTIME_ERROR\n" + BOUNDS, "PASS", False),
     "rt_mid_marker": ("# this comment mentions # EXPECT_RUNTIME_ERROR mid-line\n" + BOUNDS, "FAIL", False),
+    "ec_one": (NAMED + "# EXPECT_ERROR_COUNT: 1\n" + BAD_TYPE, "PASS", False),
+    "ec_crlf": ((NAMED + "# EXPECT_ERROR_COUNT: 1\n" + BAD_TYPE).replace("\n", "\r\n"), "PASS", False),
+    "ec_two": (NAMED + "# EXPECT_ERROR_COUNT: 2\n" + TWO_BAD_TYPES, "PASS", False),
+    "ec_extra": (NAMED + "# EXPECT_ERROR_COUNT: 1\n" + TWO_BAD_TYPES, "FAIL", False),
+    "ec_uncounted": (NAMED + TWO_BAD_TYPES, "PASS", False),
 }
 
 RESULTS_RE = re.compile(r"Results: (\d+) passed, (\d+) skipped, (\d+) failed")
@@ -261,6 +277,19 @@ class RunnerMarkerTests(object):
     def test_named_marker_on_clean_compile_fails(self):
         verdict = self.assertVerdict("ce_compiles")
         self.assertIn("should have failed to compile", verdict["text"])
+
+    # -- '# EXPECT_ERROR_COUNT: <n>' -----------------------------------------
+    def test_error_count_matches_passes(self):
+        self.assertVerdict("ec_one")
+        self.assertVerdict("ec_crlf")
+        self.assertVerdict("ec_two")
+
+    def test_extra_errors_fail(self):
+        verdict = self.assertVerdict("ec_extra")
+        self.assertIn("expected 1 compile errors, got 2", verdict["text"])
+
+    def test_no_count_marker_allows_any_count(self):
+        self.assertVerdict("ec_uncounted")
 
     # -- anchoring ------------------------------------------------------------
     def test_mid_line_markers_are_ignored(self):

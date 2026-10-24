@@ -110,6 +110,13 @@ for %%f in (*.obs) do (
     if defined EXPECT_MSG for /f "tokens=*" %%m in ("!EXPECT_MSG!") do set "EXPECT_MSG=%%m"
     if defined EXPECT_MSG if "!EXPECT_MSG: =!"=="" set EXPECT_MSG=
 
+    REM '# EXPECT_ERROR_COUNT: <n>' (with a message marker) also requires exactly
+    REM <n> errors: lines naming a .obs position that are not warnings. It holds
+    REM a test to the first error alone, with no follow-on errors after it.
+    set EXPECT_COUNT=
+    for /f "tokens=1* delims=:" %%a in ('findstr /B /C:"# EXPECT_ERROR_COUNT:" "%REGRESSION_DIR%\%%f" 2^>nul') do if not defined EXPECT_COUNT set "EXPECT_COUNT=%%b"
+    if defined EXPECT_COUNT for /f "tokens=*" %%m in ("!EXPECT_COUNT!") do set "EXPECT_COUNT=%%m"
+
     REM Check for expected-runtime-error tests
     set EXPECT_RT_ERR=
     findstr /B /C:"# EXPECT_RUNTIME_ERROR" "%REGRESSION_DIR%\%%f" >nul 2>&1
@@ -135,8 +142,23 @@ for %%f in (*.obs) do (
                 if defined EXPECT_MSG (
                     findstr /L /C:"!EXPECT_MSG!" "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log" >nul 2>&1
                     if !errorlevel! equ 0 (
-                        echo   PASS ^(compile error as expected^)
-                        set /a PASS_COUNT+=1
+                        set ERROR_COUNT=!EXPECT_COUNT!
+                        REM Counted without 'find': from Git Bash, PATH can name
+                        REM GNU find first, which then walks the disk.
+                        if defined EXPECT_COUNT (
+                            set /a ERROR_COUNT=0
+                            for /f "delims=" %%c in ('findstr /L /C:".obs:(" "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log"') do set /a ERROR_COUNT+=1
+                            for /f "delims=" %%c in ('findstr /L /C:"): Warning:" "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log"') do set /a ERROR_COUNT-=1
+                        )
+                        if "!ERROR_COUNT!"=="!EXPECT_COUNT!" (
+                            echo   PASS ^(compile error as expected^)
+                            set /a PASS_COUNT+=1
+                        ) else (
+                            echo   FAIL ^(expected !EXPECT_COUNT! compile errors, got !ERROR_COUNT!^)
+                            >>"%FAILED_FILE%" echo %%~nf - expected !EXPECT_COUNT! compile errors, got !ERROR_COUNT!
+                            type "%REGRESSION_DIR%\%RESULTS_DIR%\%%~nf_compile.log" 2>nul
+                            set /a FAIL_COUNT+=1
+                        )
                     ) else (
                         echo   FAIL ^(compile error does not contain expected message: !EXPECT_MSG!^)
                         >>"%FAILED_FILE%" echo %%~nf - compile error does not contain expected message: !EXPECT_MSG!

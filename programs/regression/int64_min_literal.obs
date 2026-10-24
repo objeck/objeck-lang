@@ -1,0 +1,65 @@
+#~
+Int's minimum is writable as a literal. 9223372036854775808 is out of range
+on its own, so '-9223372036854775808' used to be rejected as an out-of-range
+literal; it is accepted when negated, as Java accepts it, and the bare
+literal stays an error (bad_int64_min_unnegated). The hex form already read
+as a bit pattern; negating it is now done without signed overflow.
+~#
+
+class Int64MinLiteral {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		min := -9223372036854775808;
+		if(min <> Int->MinSize()) {
+			"FAIL: -9223372036854775808 is not Int->MinSize()"->PrintLine();
+			failures += 1;
+		};
+
+		if(min <> -9223372036854775807 - 1) {
+			"FAIL: -9223372036854775808 is not -9223372036854775807 - 1"->PrintLine();
+			failures += 1;
+		};
+
+		bits := Byte->ToInts(Int->ToBytes([min]))[0];
+		if(bits <> 0x8000000000000000) {
+			"FAIL: -9223372036854775808 has bits {$bits}"->PrintLine();
+			failures += 1;
+		};
+
+		if(min->ToString()->Equals("-9223372036854775808") = false) {
+			"FAIL: -9223372036854775808 prints as {$min}"->PrintLine();
+			failures += 1;
+		};
+
+		# with digit separators, in an array literal, and in an expression
+		if(-9_223_372_036_854_775_808 <> min) {
+			"FAIL: -9_223_372_036_854_775_808"->PrintLine();
+			failures += 1;
+		};
+
+		values := [-9223372036854775808, 9223372036854775807];
+		if(values[0] <> min | values[1] <> Int->MaxSize()) {
+			"FAIL: [-9223372036854775808, 9223372036854775807]"->PrintLine();
+			failures += 1;
+		};
+
+		if(-9223372036854775808 + 1 <> -9223372036854775807) {
+			"FAIL: -9223372036854775808 + 1"->PrintLine();
+			failures += 1;
+		};
+
+		# negated hex: 0x8000000000000000 is already Int's minimum
+		if(-0x8000000000000000 <> min | 0x8000000000000000 <> min) {
+			"FAIL: -0x8000000000000000"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			"FAIL: {$failures} check(s) of Int's minimum literal"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: -9223372036854775808 compiles as Int's minimum"->PrintLine();
+	}
+}

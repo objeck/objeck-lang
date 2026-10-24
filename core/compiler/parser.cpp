@@ -193,16 +193,57 @@ void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
 }
 
 /****************************
- * Emits the error for a float
- * literal outside the double
- * range: one that overflows to
- * infinity, or a nonzero one that
- * underflows to zero.
+ * An integer or float literal
+ * outside its type's range (the
+ * scanner's TOKEN_BAD_INT_LIT and
+ * TOKEN_BAD_FLOAT_LIT). The error
+ * names the literal, and the token
+ * is then taken as a literal of
+ * its type, so the parse goes on
+ * as if the value were valid: the
+ * one error is the only error. The
+ * old recovery skipped to the next
+ * ';', and the skipped half of the
+ * expression (or array literal)
+ * reported more errors after it.
+ * '-9223372036854775808' is Int's
+ * minimum and is no error.
  ****************************/
-void Parser::ProcessBadFloatLiteral(const std::wstring &literal)
+Expression* Parser::ParseBadNumericLiteral(bool negate, const std::wstring &file_name, const int line_num, const int line_pos)
 {
-  ProcessError(L"Float literal out of range: '" + literal +
-               L"'\n\tFloat is a 64-bit double: a nonzero magnitude must be from 4.9406564584124654e-324 to 1.7976931348623157e308", TOKEN_SEMI_COLON);
+  Token* token = scanner->GetToken();
+  const std::wstring literal = (negate ? L"-" : L"") + token->GetIdentifier();
+
+  Expression* expression = nullptr;
+  if(token->GetType() == TOKEN_BAD_FLOAT_LIT) {
+    ProcessError(L"Float literal out of range: '" + literal +
+                 L"'\n\tFloat is a 64-bit double: a nonzero magnitude must be from 4.9406564584124654e-324 to 1.7976931348623157e308");
+    expression = TreeFactory::Instance()->MakeFloatLiteral(file_name, line_num, line_pos, 0.0);
+  }
+  else if(negate && token->GetInt64Lit() == INT64_MIN) {
+    expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, INT64_MIN);
+  }
+  else {
+    ProcessError(L"Integer literal out of range: '" + literal +
+                 L"'\n\tInt is 64 bits: -9223372036854775808 to 9223372036854775807, or up to 18446744073709551615 with a 'u' suffix");
+    expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, 0);
+  }
+  NextToken();
+
+  return expression;
+}
+
+/****************************
+ * Negates an integer literal's
+ * value. Through unsigned
+ * arithmetic: negating
+ * 0x8000000000000000 (Int's
+ * minimum) is itself, where a
+ * signed negation overflows.
+ ****************************/
+static INT64_VALUE NegateIntLiteral(INT64_VALUE value)
+{
+  return (INT64_VALUE)(0ULL - (unsigned long long)value);
 }
 
 /****************************
@@ -6260,7 +6301,7 @@ StaticArray* Parser::ParseStaticArray(int depth) {
         switch(GetToken()) {
         case TOKEN_INT_LIT:
           expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos,
-                                                                   -scanner->GetToken()->GetInt64Lit());
+                                                                   NegateIntLiteral(scanner->GetToken()->GetInt64Lit()));
           NextToken();
           break;
 
@@ -7545,7 +7586,7 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     switch(GetToken()) {
     case TOKEN_INT_LIT:
-      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, -scanner->GetToken()->GetInt64Lit());
+      expression = TreeFactory::Instance()->MakeIntegerLiteral(file_name, line_num, line_pos, NegateIntLiteral(scanner->GetToken()->GetInt64Lit()));
       NextToken();
       break;
 
@@ -7589,9 +7630,9 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
       break;
 
+    case TOKEN_BAD_INT_LIT:
     case TOKEN_BAD_FLOAT_LIT:
-      ProcessBadFloatLiteral(L"-" + scanner->GetToken()->GetIdentifier());
-      NextToken();
+      expression = ParseBadNumericLiteral(true, file_name, line_num, line_pos);
       break;
 
     case TOKEN_UNKNOWN:
@@ -7638,15 +7679,9 @@ Expression* Parser::ParseSimpleExpression(int depth)
       NextToken();
       break;
 
-    case TOKEN_BAD_FLOAT_LIT:
-      ProcessBadFloatLiteral(scanner->GetToken()->GetIdentifier());
-      NextToken();
-      break;
-
     case TOKEN_BAD_INT_LIT:
-      ProcessError(L"Integer literal out of range: '" + scanner->GetToken()->GetIdentifier() +
-                   L"'\n\tInt is 64 bits: -9223372036854775808 to 9223372036854775807, or up to 18446744073709551615 with a 'u' suffix", TOKEN_SEMI_COLON);
-      NextToken();
+    case TOKEN_BAD_FLOAT_LIT:
+      expression = ParseBadNumericLiteral(false, file_name, line_num, line_pos);
       break;
 
     case TOKEN_OPEN_BRACKET:

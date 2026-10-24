@@ -99,6 +99,7 @@ class Parser {
   Expression* ParseTerm(int depth);
   Expression* ParseFactor(int depth);
   Expression* ParseSimpleExpression(int depth);
+  Expression* ParseBadNumericLiteral(bool negate);
   Reference* ParseReference(int depth);
   Reference* ParseReference(const std::wstring &ident, int depth);
   void ParseReference(Reference* reference, int depth);

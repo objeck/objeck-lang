@@ -833,6 +833,34 @@ run_test "hex_literal" '
     expect eof
 ' "value=42|value=17|value=549755813887" "$EVAL_BIN"
 
+# Test 31c: numbers outside their type's range are reported with the
+# compiler's wording rather than saturating; -9223372036854775808 is Int's
+# minimum, exponents scan, a subnormal is a valid Float, hex is a bit pattern
+run_test "numeric_literal_range" '
+    expect ">"
+    send "b debugger_eval_test.obs:56\r"
+    expect ">"
+    send "r\r"
+    expect "break:"
+    expect ">"
+    send "p 1.0e999\r"
+    expect ">"
+    send "p -99999999999999999999\r"
+    expect ">"
+    send "p -9223372036854775808\r"
+    expect ">"
+    send "p 1.5e3\r"
+    expect ">"
+    send "p 1.0e-310\r"
+    expect ">"
+    send "p 0xFFFFFFFFFFFFFFFF\r"
+    expect ">"
+    send "p five\r"
+    expect ">"
+    send "q\r"
+    expect eof
+' "Float literal out of range: '1.0e999'|Integer literal out of range: '-99999999999999999999'|value=-9223372036854775808(|type=Float, value=1500|value=1e-310|value=-1(|value=5" "$EVAL_BIN"
+
 # Test 32: Nil is a literal, so an object can be tested for it
 run_test "nil_literal" '
     expect ">"

@@ -66,10 +66,13 @@ function Run-DebuggerTest {
     # Save full output to results log
     $output | Out-File -FilePath "$ResultsDir\debugger_${TestName}.log" -Encoding utf8
 
-    # Check expected patterns
+    # Check expected patterns, in stdout and stderr together: obd writes a
+    # command's parse errors to stderr, and the POSIX runner's expect session
+    # sees both streams on one terminal.
     $allPass = $true
+    $combined = $output + $errOutput
     foreach ($pattern in $ExpectedPatterns) {
-        if (-not $output.Contains($pattern)) {
+        if (-not $combined.Contains($pattern)) {
             $allPass = $false
             Write-Host ""
             Write-Host "  Missing expected output: '$pattern'"
@@ -410,6 +413,25 @@ Run-DebuggerTest "hex_literal" @(
     "p 0x10 + 1",
     "p 0X7fffffffff"
 ) @("value=42", "value=17", "value=549755813887") $EvalBin
+
+# Test 31c: numbers outside their type's range are reported with the
+# compiler's wording rather than saturating (99999999999999999999 was
+# Int's maximum, a 400-digit float was inf). -9223372036854775808 is
+# Int's minimum, exponents scan as in the compiler, a subnormal is a
+# valid Float, and hex reads as a bit pattern. Parse errors go to
+# stderr, which the patterns are matched against too.
+Run-DebuggerTest "numeric_literal_range" @(
+    "b debugger_eval_test.obs:56",
+    "r",
+    "p 1.0e999",
+    "p -99999999999999999999",
+    "p -9223372036854775808",
+    "p 1.5e3",
+    "p 1.0e-310",
+    "p 0xFFFFFFFFFFFFFFFF",
+    "p five"
+) @("Float literal out of range: '1.0e999'", "Integer literal out of range: '-99999999999999999999'",
+    "value=-9223372036854775808(", "type=Float, value=1500", "value=1e-310", "value=-1(", "value=5") $EvalBin
 
 # Test 32: Nil is a literal, so an object can be tested for it.
 Run-DebuggerTest "nil_literal" @(

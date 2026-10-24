@@ -77,6 +77,40 @@ void Parser::ProcessError(const std::wstring &msg)
 }
 
 /****************************
+ * A number outside its type's
+ * range, reported with the
+ * compiler's wording. The token
+ * is taken as a literal of its
+ * type so the rest of the line
+ * parses without follow-on errors.
+ * '-9223372036854775808' is Int's
+ * minimum and is no error.
+ ****************************/
+Expression* Parser::ParseBadNumericLiteral(bool negate)
+{
+  Token* token = scanner->GetToken();
+  const std::wstring literal = (negate ? L"-" : L"") + token->GetIdentifier();
+
+  Expression* expression = nullptr;
+  if(token->GetType() == TOKEN_BAD_FLOAT_LIT) {
+    ProcessError(L"Float literal out of range: '" + literal +
+                 L"'; Float is a 64-bit double: a nonzero magnitude must be from 4.9406564584124654e-324 to 1.7976931348623157e308");
+    expression = TreeFactory::Instance()->MakeFloatLiteral(0.0);
+  }
+  else if(negate && token->GetIntLit() == INT64_MIN) {
+    expression = TreeFactory::Instance()->MakeIntegerLiteral(INT64_MIN);
+  }
+  else {
+    ProcessError(L"Integer literal out of range: '" + literal +
+                 L"'; Int is 64 bits: -9223372036854775808 to 9223372036854775807");
+    expression = TreeFactory::Instance()->MakeIntegerLiteral(0);
+  }
+  NextToken();
+
+  return expression;
+}
+
+/****************************
  * Checks for parsing errors.
  ****************************/
 bool Parser::CheckErrors()
@@ -906,8 +940,14 @@ Expression* Parser::ParseSimpleExpression(int depth)
 
     switch(GetToken()) {
       case TOKEN_INT_LIT:
-        expression = TreeFactory::Instance()->MakeIntegerLiteral(-scanner->GetToken()->GetIntLit());
+        // negated through unsigned arithmetic: -0x8000000000000000 is itself
+        expression = TreeFactory::Instance()->MakeIntegerLiteral((INT64_VALUE)(0ULL - (unsigned long long)scanner->GetToken()->GetIntLit()));
         NextToken();
+        break;
+
+      case TOKEN_BAD_INT_LIT:
+      case TOKEN_BAD_FLOAT_LIT:
+        expression = ParseBadNumericLiteral(true);
         break;
 
       case TOKEN_FLOAT_LIT:
@@ -944,6 +984,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
       case TOKEN_FLOAT_LIT:
         expression = TreeFactory::Instance()->MakeFloatLiteral(scanner->GetToken()->GetFloatLit());
         NextToken();
+        break;
+
+      case TOKEN_BAD_INT_LIT:
+      case TOKEN_BAD_FLOAT_LIT:
+        expression = ParseBadNumericLiteral(false);
         break;
 
       case TOKEN_CHAR_STRING_LIT:

@@ -32,6 +32,7 @@
 #include "scanner.h"
 #include <cerrno>
 #include <cmath>
+#include <cstdint>
 #include <random>
 #include <stdexcept>
 
@@ -570,6 +571,20 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
       // well formed, but too large: say so rather than "unexpected token"
       tokens[index]->SetType(TOKEN_BAD_INT_LIT);
       tokens[index]->SetIdentifier(ident);
+      // 9223372036854775808 (2^63) is out of range as written, but negated it
+      // is Int's minimum. The value marks it, so the parser can accept
+      // '-9223372036854775808' and still reject the bare literal, as Java
+      // does. Every other out-of-range literal carries 0.
+      INT64_VALUE magnitude_marker = 0;
+      if(!is_unsigned && base != 16 && base != 2) {
+        errno = 0;
+        wchar_t* unsigned_ending = nullptr;
+        const unsigned long long magnitude = wcstoull(ident.c_str(), &unsigned_ending, base);
+        if(errno != ERANGE && !*unsigned_ending && magnitude == 0x8000000000000000ULL) {
+          magnitude_marker = INT64_MIN;
+        }
+      }
+      tokens[index]->SetInt64Lit(magnitude_marker);
     }
     else if(errno == ERANGE || *ending) {
       tokens[index]->SetType(TOKEN_UNKNOWN);

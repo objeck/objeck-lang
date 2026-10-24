@@ -186,7 +186,7 @@ class Parser {
   void ProcessError(const std::wstring &msg);
   void ProcessError(const std::wstring &msg, ParseNode * node);
   void ProcessError(const std::wstring &msg, const ScannerTokenType sync);
-  void ProcessBadFloatLiteral(const std::wstring &literal);
+  Expression* ParseBadNumericLiteral(bool negate, const std::wstring &file_name, const int line_num, const int line_pos);
   bool CheckErrors();
 
   // parsing operations
