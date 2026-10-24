@@ -230,12 +230,19 @@ if s.run_to_breakpoint():
         check(f"evaluate {expr}",
               resp.get("body", {}).get("result") == want if resp else False,
               f"got: {resp.get('body') if resp else None}")
-    for expr in ("010", "09"):
+    # A failed evaluation is a failed request (DAP spec: success false and a
+    # message), carrying the message the console's 'print' gives. It used to
+    # answer success with the result '<error>' and no reason.
+    for expr, why in (("010", "Integer literal with a leading zero: '010'"),
+                      ("09", "Integer literal with a leading zero: '09'"),
+                      ("no_such_variable", "unable to find reference"),
+                      ("depth / 0", "division by zero"),
+                      ("depth +", "Expected expression")):
         resp = s.request("evaluate", {"expression": expr, "context": "watch"})
-        # a parse error answers '<error>', as any other evaluate parse error does
-        check(f"evaluate {expr} is an error, not a value",
-              resp.get("body", {}).get("result") == "<error>" if resp else False,
-              f"got: {resp.get('body') if resp else None}")
+        check(f"evaluate {expr!r} fails with {why!r}",
+              resp is not None and resp.get("success") is False and
+              why in resp.get("message", "") and "body" not in resp,
+              f"got: {resp}")
 
     resp = s.request("evaluate", {"expression": 'label_text = "inner"', "context": "watch"})
     check("evaluate compares a string",

@@ -1467,6 +1467,16 @@ bool Runtime::Debugger::StringTextOf(Expression* expression, StackClass* klass, 
   return false;
 }
 
+// An evaluation error: the console prints it, DAP's evaluate answers with it.
+void Runtime::Debugger::EvalError(const std::wstring& msg)
+{
+  if(!quiet_errors) {
+    std::wcout << msg << std::endl;
+  }
+  eval_error_message = msg;
+  is_error = true;
+}
+
 void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
   // ref_klass is overwritten by each evaluation, so the operand's class has to
   // be captured as we go -- otherwise the left side's type is lost by the time
@@ -1486,8 +1496,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
     const bool right_is_str = StringTextOf(right, right_klass, right_text);
     if(left_is_str || right_is_str) {
       if(!left_is_str || !right_is_str) {
-        std::wcout << L"cannot compare a string with a non-string." << std::endl;
-        is_error = true;
+        EvalError(L"cannot compare a string with a non-string.");
         return;
       }
       const bool equal = (left_text == right_text);
@@ -1667,8 +1676,7 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
     // takes the debuggee down with it. Float division is left alone: IEEE gives
     // it infinity, which is an answer rather than a crash.
     if(!left->GetFloatEval() && !right->GetFloatEval() && !right->GetIntValue()) {
-      std::wcout << L"division by zero." << std::endl;
-      is_error = true;
+      EvalError(L"division by zero.");
     }
     else if(left->GetFloatEval() && right->GetFloatEval()) {
       expression->SetFloatValue(left->GetFloatValue() / right->GetFloatValue());
@@ -1690,12 +1698,10 @@ void Runtime::Debugger::EvaluateCalculation(CalculatedExpression* expression) {
     // valid. What actually has to be excluded is a float operand and a zero
     // divisor, and the latter used to reach the '%' below unguarded.
     if(left->GetFloatEval() || right->GetFloatEval()) {
-      std::wcout << L"modulus operation requires integer values." << std::endl;
-      is_error = true;
+      EvalError(L"modulus operation requires integer values.");
     }
     else if(!right->GetIntValue()) {
-      std::wcout << L"modulus by zero." << std::endl;
-      is_error = true;
+      EvalError(L"modulus by zero.");
     }
     else {
       expression->SetIntValue(left->GetIntValue() % right->GetIntValue());
@@ -1777,13 +1783,11 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
         }
       }
       else {
-        std::wcout << L"unknown variable (or no debug information available)." << std::endl;
-        is_error = true;
+        EvalError(L"unknown variable (or no debug information available).");
       }
     }
     else {
-      std::wcout << L"unable to find reference." << std::endl;
-      is_error = true;
+      EvalError(L"unable to find reference.");
     }
   }
   //
@@ -1898,8 +1902,7 @@ void Runtime::Debugger::EvaluateReference(Reference* &reference, MemoryContext c
       }
     }
     else {
-      std::wcout << L"unable to de-reference empty frame." << std::endl;
-      is_error = true;
+      EvalError(L"unable to de-reference empty frame.");
     }
   }
 }
@@ -1915,8 +1918,7 @@ void Runtime::Debugger::EvaluateInstanceReference(Reference* reference, int inde
     }
   }
   else {
-    std::wcout << L"current object reference is Nil" << std::endl;
-    is_error = true;
+    EvalError(L"current object reference is Nil");
   }
 }
 
@@ -1968,13 +1970,11 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
           reference->SetIntValue(((char*)array)[array_index]);
         }
         else {
-          std::wcout << L"array index out of bounds." << std::endl;
-          is_error = true;
+          EvalError(L"array index out of bounds.");
         }
       }
       else {
-        std::wcout << L"array dimension mismatch." << std::endl;
-        is_error = true;
+        EvalError(L"array dimension mismatch.");
       }
     }
     // set array address
@@ -1985,8 +1985,7 @@ void Runtime::Debugger::EvaluateByteReference(Reference* reference, int index) {
     }
   }
   else {
-    std::wcout << L"current array value is Nil" << std::endl;
-    is_error = true;
+    EvalError(L"current array value is Nil");
   }
 }
 
@@ -2027,13 +2026,11 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
           reference->SetIntValue(((wchar_t*)array)[array_index]);
         }
         else {
-          std::wcout << L"array index out of bounds." << std::endl;
-          is_error = true;
+          EvalError(L"array index out of bounds.");
         }
       }
       else {
-        std::wcout << L"array dimension mismatch." << std::endl;
-        is_error = true;
+        EvalError(L"array dimension mismatch.");
       }
     }
     // set array address
@@ -2044,8 +2041,7 @@ void Runtime::Debugger::EvaluateCharReference(Reference* reference, int index) {
     }
   }
   else {
-    std::wcout << L"current array value is Nil" << std::endl;
-    is_error = true;
+    EvalError(L"current array value is Nil");
   }
 }
 
@@ -2091,8 +2087,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
             reference->SetFloatValue(value);
           }
           else {
-            std::wcout << L"array index out of bounds." << std::endl;
-            is_error = true;
+            EvalError(L"array index out of bounds.");
           }
         }
         // check int array bounds
@@ -2101,14 +2096,12 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
             reference->SetIntValue(array[array_index]);
           }
           else {
-            std::wcout << L"array index out of bounds." << std::endl;
-            is_error = true;
+            EvalError(L"array index out of bounds.");
           }
         }
       }
       else {
-        std::wcout << L"array dimension mismatch." << std::endl;
-        is_error = true;
+        EvalError(L"array dimension mismatch.");
       }
     }
     // set array address
@@ -2119,8 +2112,7 @@ void Runtime::Debugger::EvaluateIntFloatReference(Reference* reference, int inde
     }
   }
   else {
-    std::wcout << L"current array value is Nil" << std::endl;
-    is_error = true;
+    EvalError(L"current array value is Nil");
   }
 }
 
@@ -3925,7 +3917,14 @@ std::wstring Runtime::Debugger::EvaluateForDapInFrame(const std::wstring& expr_s
   if(frame) {
     eval_frame = frame;
   }
+  // errors go to the response's message, not to the console
+  eval_error_message.clear();
+  quiet_errors = true;
   const std::wstring result = EvaluateForDap(expr_str);
+  quiet_errors = false;
+  if(result == L"<error>" && eval_error_message.empty()) {
+    eval_error_message = L"unknown variable (or no debug information available).";
+  }
   // A failed lookup leaves is_error set. SetVariableForDap clears it before
   // restoring for the same reason: the flag is shared, and carrying it out of
   // here makes the NEXT evaluation fail for a reason that has nothing to do
@@ -3943,7 +3942,9 @@ bool Runtime::Debugger::EvaluateForDapRawInFrame(const std::wstring& expr_str, S
   if(frame) {
     eval_frame = frame;
   }
+  quiet_errors = true;
   const bool ok = EvaluateForDapRaw(expr_str, out_type, out_value);
+  quiet_errors = false;
   is_error = false;
   eval_frame = saved;
 
@@ -3956,10 +3957,16 @@ std::wstring Runtime::Debugger::EvaluateForDap(const std::wstring& expr_str)
     return L"<no frame>";
   }
 
-  // Try the CLI expression evaluator first
+  // Try the CLI expression evaluator first. The parser is quiet: its errors
+  // become the evaluate response's message. Printed, they reached the debug
+  // console as stray program output while the response claimed success.
   std::wstring cmd = L"?p " + expr_str;
-  Parser parser;
+  Parser parser(true);
   Command* command = parser.Parse(cmd);
+  if(!command) {
+    const std::vector<std::wstring>& errors = parser.GetErrors();
+    eval_error_message = errors.empty() ? L"unable to parse the expression" : errors.front();
+  }
   if(command && command->GetCommandType() == PRINT_COMMAND) {
     Print* print = static_cast<Print*>(command);
     Expression* expression = print->GetExpression();
