@@ -1604,6 +1604,8 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
   std::wstring wexpr = BytesToUnicode(expression);
   std::wstring resolved = wexpr;
   std::wstring result = debugger->EvaluateForDapInFrame(wexpr, frame);
+  // why the expression as written failed; the '@' retry below must not replace it
+  const std::wstring error_message = debugger->GetEvalErrorMessage();
 
   // For hover: if lookup failed and name doesn't start with '@',
   // retry as an instance variable (editors strip the '@' prefix)
@@ -1614,6 +1616,15 @@ void DapAdapter::HandleEvaluate(int request_seq, const json& args)
       result = retry_result;
       resolved = retry;
     }
+  }
+
+  // A failed evaluation is a failed request, as the DAP spec has it: success
+  // false and a message the client shows (in the debug console, or as the
+  // watch's value). It used to answer success with the result '<error>', and
+  // the reason went to the debug console as stray program output.
+  if(result == L"<error>") {
+    SendResponse(request_seq, "evaluate", json::object(), false, UnicodeToBytes(error_message));
+    return;
   }
 
   // Hand back an expandable reference when the expression resolves to an
@@ -2118,7 +2129,8 @@ void DapAdapter::EmitLogPoint(const std::wstring& message)
       const size_t end = message.find(L'}', i);
       if(end != std::wstring::npos) {
         const std::wstring expr = message.substr(i + 1, end - i - 1);
-        std::wstring value = debugger ? debugger->EvaluateForDap(expr) : L"<error>";
+        // quiet: a failed fragment shows as <error> in the line, not as console noise
+        std::wstring value = debugger ? debugger->EvaluateForDapInFrame(expr, nullptr) : L"<error>";
         out += value;
         i = end + 1;
         continue;

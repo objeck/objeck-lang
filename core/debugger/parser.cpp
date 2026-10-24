@@ -140,7 +140,7 @@ bool Parser::CheckErrors()
 {
   // check and process errors
   if(errors.size()) {
-    for(size_t i = 0; i < errors.size(); i++) {
+    for(size_t i = 0; !quiet && i < errors.size(); i++) {
       std::wcerr << errors[i] << std::endl;
     }
     // clean up

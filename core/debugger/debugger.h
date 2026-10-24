@@ -200,6 +200,10 @@ namespace Runtime {
     long cur_call_stack_pos;
     long jump_stack_pos;
     bool is_error;
+    // why the last evaluation failed, for DAP's evaluate response; while
+    // quiet_errors is set the message is recorded but not printed
+    std::wstring eval_error_message;
+    bool quiet_errors;
     bool is_step_into;
     bool is_next_line;
     bool is_step_out;
@@ -313,6 +317,8 @@ namespace Runtime {
     void EvaluateByteReference(Reference* reference, int index);
     void EvaluateCharReference(Reference* reference, int index);
     void EvaluateIntFloatReference(Reference* reference, int index, bool is_float);
+    // reports an evaluation error: printed for the console, kept for DAP
+    void EvalError(const std::wstring& msg);
     void EvaluateCalculation(CalculatedExpression* expression);
 
     // utility functions
@@ -417,6 +423,7 @@ namespace Runtime {
       cur_call_stack = nullptr;
       cur_call_stack_pos = jump_stack_pos = 0;
       is_error = false;
+      quiet_errors = false;
       ref_mem = nullptr;
       ref_mem = nullptr;
       is_step_out = false;
@@ -477,6 +484,10 @@ namespace Runtime {
     std::wstring EvaluateForDap(const std::wstring& expr_str);
     std::wstring EvaluateForDapInFrame(const std::wstring& expr_str, StackFrame* frame);
     bool EvaluateForDapRawInFrame(const std::wstring& expr_str, StackFrame* frame, ParamType& out_type, size_t& out_value);
+    // why the last EvaluateForDap call answered '<error>'
+    const std::wstring& GetEvalErrorMessage() const {
+      return eval_error_message;
+    }
     std::wstring FormatNonReferenceForDap(Expression* expression);
     bool SetIgnoreCountForDap(int line_num, const std::wstring& file_name, int count);
 

@@ -46,6 +46,8 @@ class Parser {
   Scanner* scanner;
   std::map<enum TokenType, std::wstring> error_msgs;
   std::vector<std::wstring> errors;
+  // a quiet parser keeps its errors for GetErrors() instead of printing them
+  bool quiet;
   
   inline void NextToken() {
     scanner->NextToken();
@@ -105,7 +107,7 @@ class Parser {
   void ParseReference(Reference* reference, int depth);
   
  public:
-  Parser() {
+  Parser(bool q = false) : quiet(q) {
     LoadErrorCodes();
   }
   
@@ -113,4 +115,8 @@ class Parser {
   }
   
   Command* Parse(const std::wstring &line);
+
+  const std::vector<std::wstring>& GetErrors() const {
+    return errors;
+  }
 };

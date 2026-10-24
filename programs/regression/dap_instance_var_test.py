@@ -174,6 +174,9 @@ def evaluate(expression, context="hover"):
     """Send evaluate request, return result string."""
     send("evaluate", {"expression": expression, "context": context})
     resp = wait_response("evaluate")
+    # a failed evaluation is success: false with a message, and no body
+    if resp and resp.get("success") is False:
+        return "<error>"
     if resp and resp.get("body"):
         return resp["body"].get("result", "<no result>")
     return "<no response>"
