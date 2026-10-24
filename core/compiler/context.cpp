@@ -473,6 +473,15 @@ bool ContextAnalyzer::Analyze(bool is_lib)
     }
   }
 
+  // an alias's member types, in the alias's own bundle
+  std::vector<ParsedBundle*> alias_bundles = program->GetBundles();
+  for(size_t i = 0; i < alias_bundles.size(); ++i) {
+    std::vector<Alias*> aliases = alias_bundles[i]->GetAliases();
+    for(size_t j = 0; j < aliases.size(); ++j) {
+      ResolveAliasTypes(aliases[j]);
+    }
+  }
+
   // resolve alias types
   std::vector<Type*>& types = TypeFactory::Instance()->GetTypes();
   for(size_t i = 0; i < types.size(); ++i) {
@@ -1736,7 +1745,56 @@ Type* ContextAnalyzer::ResolveAlias(const std::wstring& name, const std::wstring
     type_name = name.substr(middle + 1);
   }
 
+  // the alias as written ('Bundle.Funcs', or one in the unnamed bundle), then
+  // the current bundle's, then through the file's uses: two of those is an
+  // ambiguous name, as for a class or an enum (CheckAmbiguousUse)
   Alias* alias = program->GetAlias(alias_name);
+  LibraryAlias* lib_alias = nullptr;
+  if(!alias) {
+    const std::unordered_map<std::wstring, LibraryAlias*>& lib_aliases = linker->GetAllAliasesMap();
+    std::unordered_map<std::wstring, LibraryAlias*>::const_iterator lib_hit = lib_aliases.find(alias_name);
+    if(lib_hit != lib_aliases.end()) {
+      lib_alias = lib_hit->second;
+    }
+    else if(!alias_name.empty() && alias_name.find(L'.') == std::wstring::npos) {
+      ParsedBundle* own_bundle = GetBundleAt(fn, ln);
+      if(own_bundle && !own_bundle->GetName().empty()) {
+        alias = program->GetAlias(own_bundle->GetName() + L'.' + alias_name);
+      }
+
+      if(!alias) {
+        std::vector<std::wstring> candidates;
+        std::set<std::wstring> seen;
+        const std::vector<std::wstring> uses = program->GetLibUses(fn);
+        for(size_t i = 0; i < uses.size(); ++i) {
+          const std::wstring full_name = uses[i] + L'.' + alias_name;
+          if(uses[i].empty() || uses[i].back() == L'#' || !seen.insert(full_name).second) {
+            continue;
+          }
+
+          Alias* use_alias = program->GetAlias(full_name);
+          lib_hit = lib_aliases.find(full_name);
+          if(use_alias) {
+            alias = alias ? alias : use_alias;
+            candidates.push_back(L"'" + full_name + L"' (" + use_alias->GetFileName() + L':' + ToString(use_alias->GetLineNumber()) + L')');
+          }
+          else if(lib_hit != lib_aliases.end()) {
+            lib_alias = lib_alias ? lib_alias : lib_hit->second;
+            candidates.push_back(L"'" + full_name + L"' (library)");
+          }
+        }
+
+        if(candidates.size() > 1) {
+          ProcessError(fn, ln, lp, AmbiguousUseMessage(alias_name, candidates));
+          return nullptr;
+        }
+        else if(alias) {
+          lib_alias = nullptr;
+        }
+      }
+    }
+  }
+
   if(alias) {
     alias_type = alias->GetType(type_name);
     if(alias_type) {
@@ -1752,7 +1810,6 @@ Type* ContextAnalyzer::ResolveAlias(const std::wstring& name, const std::wstring
     }
   }
   else {
-    LibraryAlias* lib_alias = linker->SearchAliasLibraries(alias_name, program->GetLibUses(fn));
     if(lib_alias) {
       alias_type = lib_alias->GetType(type_name);
       if(alias_type) {
@@ -3894,7 +3951,16 @@ void ContextAnalyzer::AnalyzeMethodCall(MethodCall* method_call, const int depth
         entry = GetEntry(method_call, full_class_name, depth);
       }
     }
-    
+
+    // A method's own type parameter is not a class (#1242): 'T->New()' or
+    // 'T->F()' in 'Id<T>(..)' took whatever class named 'T' the uses reached.
+    if(!entry && !method_call->GetVariable() && current_method && current_method->HasGenericName(variable_name)) {
+      ProcessError(static_cast<Expression*>(method_call), L"Type parameter '" + variable_name +
+                   L"' is not a class; it has no constructor or functions of its own");
+      --nested_call_depth;
+      return;
+    }
+
     // Try()/Otherwise() are resolved here, before any class lookup. Neither
     // intrinsic needs one -- both work off the receiver's type -- and the
     // lookup does not resolve for an indexed receiver, so the checks that used
@@ -5645,7 +5711,24 @@ void ContextAnalyzer::AnalyzeMethodCall(Class* klass, MethodCall* method_call, b
       }
     }
 
-    // proceed with class resolution 
+    // A constructor is not inherited (Class::GetAllUnqualifiedMethods leaves
+    // 'New' out). Walking on to the parent's made 'Kid->New()' build a Root,
+    // typed as one, and 'Bare->New()' on a class with no constructor at all a
+    // System.Base, which then failed at run time as an invalid cast.
+    if(method_call->GetCallType() == NEW_INST_CALL) {
+      if(klass->GetUnqualifiedMethods(L"New").empty()) {
+        ProcessError(static_cast<Expression*>(method_call), L"Class '" + klass->GetName() +
+                     L"' declares no constructor; constructors are not inherited\n\tDeclare 'New(..)' in the class.");
+      }
+      else {
+        std::wstring message = L"Undefined function/method call: 'New(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
+        ProcessErrorAlternativeMethods(message);
+        ProcessError(static_cast<Expression*>(method_call), message);
+      }
+      return;
+    }
+
+    // proceed with class resolution
     if(klass->GetParent()) {
       Class* parent = klass->GetParent();
       method_call->SetOriginalClass(klass);
@@ -6300,6 +6383,20 @@ void ContextAnalyzer::AnalyzeMethodCall(LibraryClass* klass, MethodCall* method_
   // as one on Base, to an Int 'self'.
   Type* receiver = ReceiverParameterType(encoding);
   LibraryMethod* lib_method = ResolveMethodCall(klass, method_call, depth, receiver);
+  // a constructor is not inherited (see the program-class path)
+  if(!lib_method && method_call->GetCallType() == NEW_INST_CALL) {
+    if(klass->GetUnqualifiedMethods(L"New").empty()) {
+      ProcessError(static_cast<Expression*>(method_call), L"Class '" + klass->GetName() +
+                   L"' declares no constructor; constructors are not inherited");
+    }
+    else {
+      std::wstring message = L"Undefined function/method call: 'New(..)'\n\tEnsure calling parameters are properly casted\n\tConsider first class and static use function calls";
+      ProcessErrorAlternativeMethods(message);
+      ProcessError(static_cast<Expression*>(method_call), message);
+    }
+    return;
+  }
+
   if(!lib_method) {
     LibraryClass* parent = SearchLibraryClasses(klass->GetParentName(), program->GetLibUses(current_class->GetFileName()));
     while(!lib_method && parent) {
@@ -12319,14 +12416,64 @@ Enum* ContextAnalyzer::SearchProgramEnums(const std::wstring& eenum_name)
       std::vector<std::wstring> uses = program->GetLibUses();
       for(size_t i = 0; !eenum && i < uses.size(); ++i) {
         eenum = program->GetEnum(uses[i] + L"." + eenum_name);
-        if(!eenum) {
-          eenum = program->GetEnum(uses[i] + eenum_name);
-        }
+      }
+
+      if(!eenum) {
+        eenum = SearchBundleClassEnums(eenum_name);
       }
     }
   }
 
   return eenum;
+}
+
+/****************************
+ * An enum another class of the current bundle declares, 'Klass#Name', by its
+ * short name: Data.JSON's JsonBuilder writes JsonElement's 'JsonType'. The
+ * parser made every such class a program-wide use ('Klass#'), so the short
+ * name reached the first such enum of ANY class in the program; it is now in
+ * scope in its own bundle only, and two classes' enums of the name are
+ * ambiguous there.
+ ****************************/
+Enum* ContextAnalyzer::SearchBundleClassEnums(const std::wstring& eenum_name)
+{
+  if(!bundle || eenum_name.empty() || eenum_name.find_first_of(L".#") != std::wstring::npos) {
+    return nullptr;
+  }
+
+  // the class's own, or a parent's, wins
+  if(current_class) {
+    const std::wstring scoped_name = SearchScopedEnumName(eenum_name, current_class);
+    if(!scoped_name.empty() && program->GetEnum(scoped_name)) {
+      return program->GetEnum(scoped_name);
+    }
+  }
+
+  Enum* found = nullptr;
+  std::vector<std::wstring> candidates;
+  const std::vector<Class*> classes = bundle->GetClasses();
+  for(size_t i = 0; i < classes.size(); ++i) {
+    Enum* eenum = program->GetEnum(classes[i]->GetName() + L'#' + eenum_name);
+    if(eenum) {
+      found = found ? found : eenum;
+      candidates.push_back(L"'" + FormatTypeString(eenum->GetName()) + L"' (" + eenum->GetFileName() + L':' + ToString(eenum->GetLineNumber()) + L')');
+    }
+  }
+
+  ParseNode* site = resolve_site ? resolve_site : (current_method ? static_cast<ParseNode*>(current_method) : static_cast<ParseNode*>(current_class));
+  if(candidates.size() > 1 && site && !in_use_check && !skip_use_check) {
+    std::wstring listed;
+    for(size_t i = 0; i < candidates.size(); ++i) {
+      if(i > 0) {
+        listed += i + 1 == candidates.size() ? L" and " : L", ";
+      }
+      listed += candidates[i];
+    }
+    ProcessError(site, L"Ambiguous name '" + eenum_name + L"': " + listed +
+                 L" are each declared by a class of this bundle\n\tQualify the name with its class, 'Klass->" + eenum_name + L"'.");
+  }
+
+  return found;
 }
 
 /****************************
@@ -12462,6 +12609,12 @@ void ContextAnalyzer::CheckAmbiguousUse(const std::wstring& name)
     exempt = program->GetClass(own_name) || program->GetEnum(own_name);
   }
 
+  // the current method's own type parameter (#1242), which the parser erases
+  // where it reads a type; a name of one is never a used bundle's class
+  if(!exempt && current_method && current_method->HasGenericName(name)) {
+    exempt = true;
+  }
+
   // the current class's own type parameter or enum, or a parent's enum
   if(!exempt && current_class) {
     exempt = (current_class->HasGenerics() && current_class->GetGenericClass(name)) ||
@@ -12471,19 +12624,104 @@ void ContextAnalyzer::CheckAmbiguousUse(const std::wstring& name)
   if(!exempt) {
     const std::vector<std::wstring>& candidates = UseCandidates(name, site->GetFileName());
     if(candidates.size() > 1) {
-      std::wstring listed;
-      for(size_t i = 0; i < candidates.size(); ++i) {
-        if(i > 0) {
-          listed += i + 1 == candidates.size() ? L" and " : L", ";
-        }
-        listed += candidates[i];
-      }
-
-      ProcessError(site, L"Ambiguous name '" + name + L"': " + listed +
-                   L" are each in scope through 'use'\n\tQualify the name with its bundle.");
+      ProcessError(site, AmbiguousUseMessage(name, candidates));
     }
   }
   in_use_check = false;
+}
+
+std::wstring ContextAnalyzer::AmbiguousUseMessage(const std::wstring& name, const std::vector<std::wstring>& candidates)
+{
+  std::wstring listed;
+  for(size_t i = 0; i < candidates.size(); ++i) {
+    if(i > 0) {
+      listed += i + 1 == candidates.size() ? L" and " : L", ";
+    }
+    listed += candidates[i];
+  }
+
+  return L"Ambiguous name '" + name + L"': " + listed + L" are each in scope through 'use'\n\tQualify the name with its bundle.";
+}
+
+/****************************
+ * The named bundle whose declaration in 'file_name' spans 'line_num', or null
+ ****************************/
+ParsedBundle* ContextAnalyzer::GetBundleAt(const std::wstring& file_name, int line_num)
+{
+  std::vector<ParsedBundle*> bundles = program->GetBundles();
+  for(size_t i = 0; i < bundles.size(); ++i) {
+    ParsedBundle* candidate = bundles[i];
+    if(!candidate->GetName().empty() && candidate->GetFileName() == file_name &&
+       candidate->GetLineNumber() <= line_num && line_num <= candidate->GetEndLineNumber()) {
+      return candidate;
+    }
+  }
+
+  return nullptr;
+}
+
+/****************************
+ * An alias's member types are written in the alias's bundle, so they are
+ * resolved there, before the alias is copied to where it is used: in the user's
+ * bundle, a 'Shape' the alias's own bundle declares became the user's uses'
+ * first 'Shape'. An ambiguous name is reported at the alias.
+ ****************************/
+void ContextAnalyzer::ResolveAliasTypes(Alias* alias)
+{
+  const std::wstring name = alias->GetName();
+  const size_t dot = name.find_last_of(L'.');
+  ParsedBundle* alias_bundle = program->GetBundle(dot == std::wstring::npos ? L"" : name.substr(0, dot));
+
+  PointerScope<ParsedBundle> bundle_scope(bundle, alias_bundle);
+  ResolveSiteScope site_scope(resolve_site, alias);
+  Class* saved_class = current_class;
+  Method* saved_method = current_method;
+  current_class = nullptr;
+  current_method = nullptr;
+
+  const std::map<const std::wstring, Type*>& types = alias->GetTypes();
+  for(std::map<const std::wstring, Type*>::const_iterator iter = types.begin(); iter != types.end(); ++iter) {
+    ResolveAliasType(iter->second, alias->GetFileName());
+  }
+
+  current_class = saved_class;
+  current_method = saved_method;
+}
+
+void ContextAnalyzer::ResolveAliasType(Type* type, const std::wstring& file_name)
+{
+  if(!type) {
+    return;
+  }
+
+  if(type->GetType() == FUNC_TYPE) {
+    const std::vector<Type*> params = type->GetFunctionParameters();
+    for(size_t i = 0; i < params.size(); ++i) {
+      ResolveAliasType(params[i], file_name);
+    }
+    ResolveAliasType(type->GetFunctionReturn(), file_name);
+  }
+  else if(type->GetType() == CLASS_TYPE && !IsRowTypeName(type->GetName())) {
+    const std::wstring type_name = type->GetName();
+    const std::vector<std::wstring> uses = program->GetLibUses(file_name);
+    if(Class* klass = SearchProgramClasses(type_name)) {
+      type->SetName(klass->GetName());
+    }
+    else if(LibraryClass* lib_klass = SearchLibraryClasses(type_name, uses)) {
+      type->SetName(lib_klass->GetName());
+    }
+    else if(Enum* eenum = SearchProgramEnums(type_name)) {
+      type->SetName(eenum->GetName());
+    }
+    else if(LibraryEnum* lib_eenum = SearchLibraryEnums(type_name, uses)) {
+      type->SetName(lib_eenum->GetName());
+    }
+  }
+
+  const std::vector<Type*> generics = type->GetGenerics();
+  for(size_t i = 0; i < generics.size(); ++i) {
+    ResolveAliasType(generics[i], file_name);
+  }
 }
 
 /****************************

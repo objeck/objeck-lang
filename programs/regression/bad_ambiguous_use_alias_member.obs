@@ -1,0 +1,40 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'Shape': 'AmbMemberA.Shape'
+#~
+An alias's member type names a class two used bundles both declare. The name
+was copied to each place the alias is used and resolved there, as the first
+use's. It is resolved in the alias's own bundle and file, and reported at the
+alias.
+~#
+
+use AmbMemberA, AmbMemberB;
+
+bundle AmbMemberA {
+  class Shape {
+    New() {
+    }
+  }
+}
+
+bundle AmbMemberB {
+  class Shape {
+    New() {
+    }
+  }
+}
+
+bundle AmbMemberUser {
+  alias Makers {
+    Make : () ~ Shape
+  }
+
+  class BadAmbiguousUseAliasMember {
+    function : Build() ~ AmbMemberA.Shape {
+      return AmbMemberA.Shape->New();
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      f : \Makers->Make := Build() ~ AmbMemberA.Shape;
+      (f() <> Nil)->PrintLine();
+    }
+  }
+}

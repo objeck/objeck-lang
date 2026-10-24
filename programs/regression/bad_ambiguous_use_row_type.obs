@@ -1,0 +1,35 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'Shape': 'AmbRowA.Shape'
+#~
+A jagged array's row type (#1246) on a class two used bundles both declare:
+'rows : Shape[][]' took the first use's Shape. It is an ambiguous name, as
+the class is anywhere else.
+~#
+
+use AmbRowA, AmbRowB;
+
+bundle AmbRowA {
+  class Shape {
+    New() {
+    }
+  }
+}
+
+bundle AmbRowB {
+  class Shape {
+    New() {
+    }
+  }
+}
+
+bundle AmbRowUser {
+  class BadAmbiguousUseRowType {
+    function : Count(rows : Shape[][]) ~ Int {
+      return rows->Size();
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      rows := AmbRowA.Shape[]->New[2];
+      Count(rows)->PrintLine();
+    }
+  }
+}

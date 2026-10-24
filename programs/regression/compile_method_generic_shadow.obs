@@ -1,0 +1,80 @@
+#~
+Regression: a method's own type parameter (#1242) shadows a class of the same
+name that the file's uses reach -- here two of them, MgShadowA.T and
+MgShadowB.T. It is neither resolved to either nor reported as ambiguous: as a
+parameter, a return, a local, a cast, a TypeOf, a generic argument, and the
+element of 'T->New[n]', which named the used class 'T'.
+~#
+
+use Collection, MgShadowA, MgShadowB;
+
+bundle MgShadowA {
+  class T {
+    New() {
+    }
+  }
+}
+
+bundle MgShadowB {
+  class T {
+    New() {
+    }
+  }
+}
+
+bundle MgShadowUser {
+  class Box {
+    @v : String;
+
+    New(v : String) {
+      @v := v;
+    }
+
+    method : public : Value() ~ String {
+      return @v;
+    }
+  }
+
+  class CompileMethodGenericShadow {
+    function : Id<T>(x : T) ~ T {
+      y : T := x;
+      z := y->As(T);
+      if(z->TypeOf(T)) {
+        return z;
+      };
+      return y;
+    }
+
+    function : Many<T>(x : T) ~ Vector<T> {
+      v := Vector->New()<T>;
+      a := T->New[2];
+      a[0] := x;
+      a[1] := Id(x);
+      v->AddBack(a[0]);
+      v->AddBack(a[1]);
+      return v;
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      failed := 0;
+
+      if(Id(Box->New("ok"))->Value()->Equals("ok") = false) {
+        "FAIL: a type parameter as parameter, local, cast and TypeOf"->PrintLine();
+        failed += 1;
+      };
+
+      v := Many(Box->New("m"));
+      if(v->Size() <> 2 | v->Get(1)->Value()->Equals("m") = false) {
+        "FAIL: a type parameter as a generic argument and an array element"->PrintLine();
+        failed += 1;
+      };
+
+      if(failed > 0) {
+        "FAIL: {$failed} check(s) failed"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      "PASS: compile_method_generic_shadow"->PrintLine();
+    }
+  }
+}

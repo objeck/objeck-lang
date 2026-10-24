@@ -1,0 +1,26 @@
+# EXPECT_COMPILE_ERROR: Undefined or incompatible enum type: 'Mood'
+#~
+A class's enum is in scope in its class, the class's children and the other
+classes of its bundle. The parser also made the class a program-wide use, so
+'Mood' reached EnumHome.Holder's enum from any bundle at all, and the first
+class declaring a 'Mood' won. From another bundle it must be qualified,
+'EnumHome.Holder->Mood' (compile_bundle_class_enum_scope.obs).
+~#
+
+bundle EnumHome {
+  class Holder {
+    enum Mood {
+      HAPPY,
+      SAD
+    }
+  }
+}
+
+bundle EnumAway {
+  class BadClassEnumOtherBundle {
+    function : Main(args : String[]) ~ Nil {
+      m := Mood->SAD;
+      m->As(Int)->PrintLine();
+    }
+  }
+}

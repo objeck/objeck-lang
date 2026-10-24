@@ -1,0 +1,31 @@
+# EXPECT_COMPILE_ERROR: Class 'Kid' declares no constructor; constructors are not inherited
+#~
+A constructor is not inherited. 'Kid->New()', on a class that declares no
+'New' of its own, walked on to its parent's: it built a Root, typed as a Root,
+and a Kid-only method on the result was "undefined". Assigned to a Kid it
+failed at run time as an invalid cast. It is now a compile error.
+~#
+class Root {
+  New() {
+  }
+
+  method : public : Name() ~ String {
+    return "root";
+  }
+}
+
+class Kid from Root {
+  method : public : Name() ~ String {
+    return "kid";
+  }
+}
+
+class BadConstructorNotInherited {
+  function : Make() ~ Kid {
+    return Kid->New();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    Make()->Name()->PrintLine();
+  }
+}

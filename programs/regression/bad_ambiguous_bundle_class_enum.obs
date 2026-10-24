@@ -1,0 +1,30 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'Mood': 'EnumTwice.Happy->Mood'
+#~
+Two classes of one bundle each declare 'enum Mood'; a third class of the
+bundle writes 'Mood'. It found the first class's with no diagnostic. It is
+ambiguous; 'Happy->Mood' or 'Sad->Mood' says which.
+~#
+
+bundle EnumTwice {
+  class Happy {
+    enum Mood {
+      GLAD,
+      JOLLY
+    }
+  }
+
+  class Sad {
+    enum Mood {
+      BLUE,
+      LOW,
+      GLUM
+    }
+  }
+
+  class BadAmbiguousBundleClassEnum {
+    function : Main(args : String[]) ~ Nil {
+      m := Mood->JOLLY;
+      m->As(Int)->PrintLine();
+    }
+  }
+}

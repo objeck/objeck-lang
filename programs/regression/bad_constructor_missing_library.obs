@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Class 'System.Runtime' declares no constructor; constructors are not inherited
+#~
+A library class with no constructor, System.Runtime, resolved
+'Runtime->New()' to System.Base's New and built a Base. As for a program
+class (bad_constructor_missing.obs), it is a compile error.
+~#
+class BadConstructorMissingLibrary {
+  function : Main(args : String[]) ~ Nil {
+    r := Runtime->New();
+    (r <> Nil)->PrintLine();
+  }
+}
