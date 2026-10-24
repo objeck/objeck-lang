@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Float literal out of range: '1.0e-999'
+#~
+A nonzero float literal below the smallest subnormal double rounds to zero
+and must be rejected rather than compile silently as 0.0. A literal written
+as zero (0.0e-999) and a subnormal (1.0e-310) still compile
+(float_literal_range).
+~#
+class BadFloatLiteralUnderflow {
+	function : Main(args : String[]) ~ Nil {
+		x := 1.0e-999;
+		x->PrintLine();
+	}
+}

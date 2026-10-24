@@ -1,0 +1,12 @@
+# EXPECT_COMPILE_ERROR: Float literal out of range: '1.0e999'
+#~
+A float literal past the largest double must be rejected. It was parsed with
+wcstod, whose range error was never checked, so this compiled silently as
+infinity.
+~#
+class BadFloatLiteralOverflow {
+	function : Main(args : String[]) ~ Nil {
+		x := 1.0e999;
+		x->PrintLine();
+	}
+}

@@ -119,6 +119,8 @@ enum ScannerTokenType {
   TOKEN_BAD_CHAR_STRING_LIT,
   // an integer literal outside its range (#1184)
   TOKEN_BAD_INT_LIT,
+  // a float literal that overflows to infinity or underflows to zero
+  TOKEN_BAD_FLOAT_LIT,
   // reserved words
   TOKEN_NATIVE_ID,
   TOKEN_IF_ID,
@@ -676,6 +678,8 @@ class Scanner {
   void ParseInteger(int index, int base = 0);
   // parse a double
   void ParseDouble(int index);
+  // true if a float literal's mantissa has a nonzero digit
+  static bool HasNonZeroMantissa(const std::wstring& ident);
   // parsers an Unicode character
   void ParseUnicodeChar(int index);
   // read input file into memory

@@ -1,0 +1,13 @@
+# EXPECT_COMPILE_ERROR: Float literal out of range: '2.4e-324'
+#~
+2.4e-324 is below half the smallest subnormal double (4.9e-324), so it rounds
+to zero and is rejected; 2.5e-324 rounds up to the subnormal and compiles
+(float_literal_range). The literal is an array element here, so the check
+holds outside a plain assignment as well.
+~#
+class BadFloatLiteralUnderflowEdge {
+	function : Main(args : String[]) ~ Nil {
+		x := [1.0, 2.4e-324];
+		x[0]->PrintLine();
+	}
+}
