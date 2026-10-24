@@ -472,8 +472,15 @@ struct DtlsServerCtx {
   int last_error;
   // the listening port, to bind a fresh listener after each accept
   int port;
+  // the one address the server was given, if any (bound_len 0: the
+  // wildcard), so the fresh listener binds it again rather than the wildcard.
+  // Raw bytes the size of a sockaddr_storage: the socket headers are not
+  // included here on every platform.
+  alignas(8) unsigned char bound_addr[128];
+  int bound_len;
 
-  DtlsServerCtx() : last_error(0), port(0) {
+  DtlsServerCtx() : last_error(0), port(0), bound_len(0) {
+    memset(&bound_addr, 0, sizeof(bound_addr));
     mbedtls_ssl_config_init(&conf);
     mbedtls_x509_crt_init(&srvcert);
     mbedtls_pk_init(&pkey);
@@ -2826,6 +2833,8 @@ class TrapProcessor {
   static bool SockDtlsOutString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool SockDtlsInString(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame);
   static bool SockDtlsListen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static bool SockDtlsListenAddress(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
+  static void DtlsServerListen(size_t* instance, const std::string& host, size_t*& op_stack, size_t*& stack_pos);
   static bool SockDtlsAccept(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockDtlsSelect(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);
   static bool SockDtlsCloseSrv(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame);

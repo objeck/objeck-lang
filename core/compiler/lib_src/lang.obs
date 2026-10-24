@@ -13547,6 +13547,7 @@ bundle System.IO.Net {
 		@key : String;
 		@passwd : String;
 		@port : Int;
+		@address : String;
 
 		#~
 		Default constructor
@@ -13564,11 +13565,45 @@ bundle System.IO.Net {
 		}
 
 		#~
+		Constructor that binds one local address instead of every interface.
+		The address is read as by TCPSocketServer->New(address, port): a
+		literal such as "127.0.0.1" or "::1", or a host name, of which the
+		first IPv4 address (else the first IPv6 one) is bound; an empty or Nil
+		address binds every interface. The server keeps to that address after
+		each client it accepts. A bad address makes Listen() return false.
+		@param cert path to ssl cert
+		@param key path to ssl key
+		@param passwd private key password
+		@param address local address to bind
+		@param port server port
+		~#
+		New(cert : String, key : String, passwd : String, address : String, port : Int) {
+		  Parent();
+		  @cert := cert;
+		  @key := key;
+		  @passwd := passwd;
+		  @port := port;
+		  @address := address;
+		}
+
+		#~
 		Listens for incoming client connections
 		@return true if client successfully connects, false otherwise
 		~#
 		method : public : Listen() ~ Bool {
+			if(@address <> Nil) {
+				return ListenAddress(@address);
+			};
+
+			return ListenAny();
+		}
+
+		method : private : ListenAny() ~ Bool {
 			SOCK_DTLS_LISTEN;
+		}
+
+		method : private : ListenAddress(address : String) ~ Bool {
+			SOCK_DTLS_LISTEN_ADDR;
 		}
 
 		#~

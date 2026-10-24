@@ -12712,7 +12712,7 @@
 					"descriptions": ["**Listens for incoming client connections**\n\n```method : public : Listen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Default constructor**\n\n```New(cert:String, key:String, passwd:String, port:Int)```\n\n\n\ncert: String\n\nkey: String\n\npasswd: String\n\nport: Int"]
+					"descriptions": ["**Default constructor**\n\n```New(cert:String, key:String, passwd:String, port:Int)```\n\n\n\ncert: String\n\nkey: String\n\npasswd: String\n\nport: Int", "**Constructor that binds one local address instead of every interface. The address is read as by TCPSocketServer->New(address, port): a literal such as \"127.0.0.1\" or \"::1\", or a host name, of which the first IPv4 address (else the first IPv6 one) is bound; an empty or Nil address binds every interface. The server keeps to that address after each client it accepts. A bad address makes Listen() return false.**\n\n```New(cert:String, key:String, passwd:String, address:String, port:Int)```\n\n\n\ncert: String\n\nkey: String\n\npasswd: String\n\naddress: String\n\nport: Int"]
 				}
 			}
 		},

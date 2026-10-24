@@ -1,0 +1,143 @@
+#~
+# A DTLS server can listen on one address, and keeps to it
+#
+# DTLSSocketServer->New(cert, key, passwd, port) binds every interface, and so
+# does each listener after it: a datagram accept hands the listening socket to
+# the client and binds a fresh one. New(cert, key, passwd, address, port) binds
+# one address, as TCPSocketServer->New(address, port) does -- and the fresh
+# listener must bind that address again. Had it bound the wildcard, as every
+# listener did, a server given 127.0.0.1 would take clients from anywhere after
+# its first.
+#
+# A server on 127.0.0.1 is sent a ::1 client, a 127.0.0.1 client, a ::1
+# client -- after its first accept replaced the listener -- and a second
+# 127.0.0.1 client. It must accept exactly the two 127.0.0.1 clients; had either
+# ::1 client reached it, it would be among the first two accepted. The same with
+# the families swapped for a server on ::1. What is checked is what the server
+# accepted: the clients take the self-signed fixture in insecure test mode
+# (OBJECK_TLS_INSECURE_SKIP_VERIFY), and whether a client then also accepts
+# the certificate for an IP address is a matter for the client, not the bind.
+# A name that does not resolve fails Listen().
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+class TwoDtlsAccepts from Thread {
+	@server : DTLSSocketServer;
+	@finished : Bool;
+	@first : String;
+	@second : String;
+
+	New(server : DTLSSocketServer) {
+		Parent("two-dtls-accepts");
+		@server := server;
+		@finished := false;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetFirst() ~ String { return @first; }
+	method : public : GetSecond() ~ String { return @second; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			@first := client->GetAddress();
+			client->Close();
+		};
+		client := @server->Accept();
+		if(client <> Nil) {
+			@second := client->GetAddress();
+			client->Close();
+		};
+		@finished := true;
+	}
+}
+
+class DtlsBindAddress {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		File->Delete("dtls-bind-cert.pem");
+		File->Delete("dtls-bind-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout dtls-bind-key.pem -out dtls-bind-cert.pem";
+		if(Runtime->Command(command) <> 0) {
+			"FAIL: openssl could not create the DTLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
+
+		"stage: 127.0.0.1"->ErrorLine();
+		CheckBound("127.0.0.1", "::1");
+		"stage: ::1"->ErrorLine();
+		CheckBound("::1", "127.0.0.1");
+
+		"stage: bad address"->ErrorLine();
+		bad := DTLSSocketServer->New("dtls-bind-cert.pem", "dtls-bind-key.pem", "", "no-such-host.invalid", 23459);
+		Check("no-such-host.invalid: Listen() fails", <>bad->Listen());
+		bad->Close();
+
+		File->Delete("dtls-bind-cert.pem");
+		File->Delete("dtls-bind-key.pem");
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: a DTLS server binds the one address it is given, after each accept too"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	# a DTLS client of address tries a handshake
+	function : Try(address : String, port : Int) ~ Nil {
+		DTLSSocket->New(address, port)->Close();
+	}
+
+	function : CheckBound(bound : String, elsewhere : String) ~ Nil {
+		server : DTLSSocketServer;
+		port := 0;
+		for(tries := 0; tries < 5 & server = Nil; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			candidate := DTLSSocketServer->New("dtls-bind-cert.pem", "dtls-bind-key.pem", "", bound, port);
+			if(candidate->Listen()) {
+				server := candidate;
+			};
+		};
+		Check("{$bound}: the server listens", server <> Nil);
+		if(server = Nil) {
+			return;
+		};
+
+		acceptor := TwoDtlsAccepts->New(server);
+		acceptor->Execute(Nil);
+
+		Try(elsewhere, port);
+		Try(bound, port);
+		# the listener has been replaced by now: it must still be on bound only
+		Try(elsewhere, port);
+		Try(bound, port);
+
+		waited := 0;
+		while(<>acceptor->IsFinished() & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(acceptor->IsFinished()) {
+			acceptor->Join();
+		};
+
+		first := acceptor->GetFirst();
+		second := acceptor->GetSecond();
+		Check("{$bound}: the first client came from {$bound} (reported as '{$first}')", first <> Nil & first->Equals(bound));
+		Check("{$bound}: the second client came from {$bound} (reported as '{$second}')", second <> Nil & second->Equals(bound));
+		server->Close();
+	}
+}
