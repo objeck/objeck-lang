@@ -50,6 +50,10 @@ python perf-results/libs/run_lib_bench.py <bin_dir> [--lib-dir DIR] [--runs N]
 | `intvector_*` / `vector_intref_*` | append, indexed sum and sort of 1M values, unboxed against `Vector<IntRef>` |
 | `bitset_{set,get,ops}_1m` | `BitSet` against `Bool[]` loops |
 
+`runtime_bench.obs` (lang.obl) times bulk `Int[]`/`Float[]` Copy and Fill against the
+element loop they replace, and shortest round-trip float formatting against
+`Float->ToString`.
+
 The primitive cases sit between `# PRIMITIVE-BEGIN` and `# PRIMITIVE-END`; deleting those
 lines gives a program that compiles against a `gen_collect.obl` from before `IntMap` and
 friends existed, which is how the before/after Hash numbers were taken.
