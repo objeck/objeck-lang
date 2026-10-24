@@ -1,0 +1,415 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured: archives and workbooks named in SQL (docs/QUERY_DESIGN.md, "Archives and
+workbooks in SQL"). A quoted archive is its listing; 'archive'.'member' is a member, read by
+its extension or by a function form (csv('a.zip'.'notes.txt', delimiter => ';'), xml(..., row
+=> 'item')); a member pattern reads several with a '_member' column; a glob over archives adds
+'_file'. A quoted workbook is its first worksheet; 'book.xlsx'.'Sheet' is that sheet, a sheet
+pattern several with '_sheet', and xlsx(..., header => false, first_row => n) reads it another
+way. Zip, gzipped tar (.tar.gz and .tgz) and .xlsx are covered, joined with each other, cached
+by the catalog, and refused where they must be: a catalog without file access, the archive
+limits (Catalog->SetArchiveLimits), a member climbing out with '..', a zip bomb, a missing
+member or sheet, a member in no table format, a member named on a plain file, and malformed
+SQL. Every file is written by the test, in the system's temporary folder.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+# a growing byte buffer
+class Sink {
+	@bytes : Byte[];
+	@size : Int;
+
+	New() {
+		@bytes := Byte->New[1024];
+	}
+
+	method : public : Put(value : Int) ~ Nil {
+		if(@size = @bytes->Size()) {
+			grown := Byte->New[@bytes->Size() * 2];
+			Byte->Copy(grown, 0, @bytes, 0, @size);
+			@bytes := grown;
+		};
+		@bytes[@size] := value;
+		@size += 1;
+	}
+
+	method : public : PutBytes(values : Byte[]) ~ Nil {
+		each(i : values) {
+			Put(values[i]->As(Int));
+		};
+	}
+
+	method : public : U16(value : Int) ~ Nil {
+		Put(value and 0xFF);
+		Put((value >> 8) and 0xFF);
+	}
+
+	method : public : U32(value : Int) ~ Nil {
+		U16(value and 0xFFFF);
+		U16((value >> 16) and 0xFFFF);
+	}
+
+	method : public : Size() ~ Int {
+		return @size;
+	}
+
+	method : public : ToBytes() ~ Byte[] {
+		out := Byte->New[@size];
+		Byte->Copy(out, 0, @bytes, 0, @size);
+		return out;
+	}
+}
+
+# a zip of stored or deflated members; 'size' may lie, for a zip bomb
+class ZipBuilder {
+	@out : Sink;
+	@central : Sink;
+	@count : Int;
+
+	New() {
+		@out := Sink->New();
+		@central := Sink->New();
+	}
+
+	method : public : Add(name : String, text : String, deflate : Bool) ~ Nil {
+		data := text->ToByteArray();
+		Add(name, data, deflate, data->Size());
+	}
+
+	method : public : Add(name : String, data : Byte[], deflate : Bool, size : Int) ~ Nil {
+		packed := deflate ? data->CompressDeflate() : data;
+		codec := deflate ? 8 : 0;
+		at := @out->Size();
+		crc := Byte->CRC32(data);
+		name_bytes := name->ToByteArray();
+
+		@out->U32(0x04034b50);
+		@out->U16(20);
+		@out->U16(0);
+		@out->U16(codec);
+		@out->U16(0);
+		@out->U16((46 << 9) or (3 << 5) or 15);
+		@out->U32(crc);
+		@out->U32(packed->Size());
+		@out->U32(size);
+		@out->U16(name_bytes->Size());
+		@out->U16(0);
+		@out->PutBytes(name_bytes);
+		@out->PutBytes(packed);
+
+		@central->U32(0x02014b50);
+		@central->U16((3 << 8) or 20);
+		@central->U16(20);
+		@central->U16(0);
+		@central->U16(codec);
+		@central->U16(0);
+		@central->U16((46 << 9) or (3 << 5) or 15);
+		@central->U32(crc);
+		@central->U32(packed->Size());
+		@central->U32(size);
+		@central->U16(name_bytes->Size());
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U32(0x81A4 << 16);
+		@central->U32(at);
+		@central->PutBytes(name_bytes);
+		@count += 1;
+	}
+
+	method : public : Finish() ~ Byte[] {
+		cd_offset := @out->Size();
+		cd := @central->ToBytes();
+		@out->PutBytes(cd);
+		@out->U32(0x06054b50);
+		@out->U16(0);
+		@out->U16(0);
+		@out->U16(@count);
+		@out->U16(@count);
+		@out->U32(cd->Size());
+		@out->U32(cd_offset);
+		@out->U16(0);
+		return @out->ToBytes();
+	}
+}
+
+# a ustar tar: 512-byte headers, data padded to 512, two zero blocks
+class TarBuilder {
+	@out : Sink;
+
+	New() {
+		@out := Sink->New();
+	}
+
+	function : Octal(value : Int, width : Int) ~ String {
+		digits := "";
+		while(value > 0) {
+			digits := "{$(value % 8)}{$digits}";
+			value := value / 8;
+		};
+		while(digits->Size() < width) {
+			digits := "0{$digits}";
+		};
+		return digits;
+	}
+
+	function : Field(block : Byte[], at : Int, text : String) ~ Nil {
+		bytes := text->ToByteArray();
+		Byte->Copy(block, at, bytes, 0, bytes->Size());
+	}
+
+	method : public : Add(name : String, text : String) ~ Nil {
+		data := text->ToByteArray();
+		block := Byte->New[512];
+		Field(block, 0, name);
+		Field(block, 100, "0000644");
+		Field(block, 108, "0000000");
+		Field(block, 116, "0000000");
+		Field(block, 124, Octal(data->Size(), 11));
+		Field(block, 136, Octal(1700000000, 11));
+		Field(block, 148, "        ");
+		block[156] := '0'->As(Int);
+		Field(block, 257, "ustar");
+		Field(block, 263, "00");
+		sum := 0;
+		each(i : block) {
+			sum += block[i]->As(Int) and 255;
+		};
+		Field(block, 148, Octal(sum, 6));
+		block[154] := 0;
+		@out->PutBytes(block);
+		@out->PutBytes(data);
+		while(@out->Size() % 512 <> 0) {
+			@out->Put(0);
+		};
+	}
+
+	method : public : Finish() ~ Byte[] {
+		each(i : 1024) {
+			@out->Put(0);
+		};
+		return @out->ToBytes();
+	}
+}
+
+class QueryArchivesInSql {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Q(text : String) ~ String {
+		return text->ReplaceAll("'", "\"");
+	}
+
+	# a query's rows as text, or its error
+	function : Run(catalog : Catalog, sql : String) ~ String {
+		rs := catalog->Query(sql);
+		if(rs = Nil) {
+			return "ERROR: {$(catalog->GetError())}";
+		};
+		return rs->ToCsv()->ReplaceAll("\r\n", "\n");
+	}
+
+	function : Same(what : String, catalog : Catalog, sql : String, expected : String) ~ Nil {
+		got := Run(catalog, sql);
+		ok := got->Equals(expected);
+		if(<>ok) {
+			shown_got := got->ReplaceAll("\n", "|");
+			shown_expected := expected->ReplaceAll("\n", "|");
+			"    {$sql}"->PrintLine();
+			"    got:      {$shown_got}"->PrintLine();
+			"    expected: {$shown_expected}"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	function : Refused(what : String, catalog : Catalog, sql : String, reason : String) ~ Nil {
+		rs := catalog->Query(sql);
+		error := catalog->GetError();
+		ok := rs = Nil & error <> Nil & error->Has(reason);
+		if(<>ok) {
+			shown := error <> Nil ? error : "no error";
+			"    {$sql}\n    error: {$shown}, wanted '{$reason}'"->PrintLine();
+		};
+		Check("refused: {$what}", ok);
+	}
+
+	# a workbook of inline-string and number cells; each sheet is a name and its rows' XML
+	function : Workbook(names : String[], sheets : String[]) ~ Byte[] {
+		zip := ZipBuilder->New();
+		zip->Add("[Content_Types].xml", Q("<?xml version='1.0' encoding='UTF-8'?><Types xmlns='http://schemas.openxmlformats.org/package/2006/content-types'><Default Extension='xml' ContentType='application/xml'/></Types>"), true);
+		zip->Add("_rels/.rels", Q("<?xml version='1.0' encoding='UTF-8'?><Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'><Relationship Id='rId1' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument' Target='xl/workbook.xml'/></Relationships>"), false);
+		entries := "";
+		rels := "";
+		each(i : names) {
+			entries += "<sheet name='{$(names[i])}' sheetId='{$(i + 1)}' r:id='rId{$(i + 1)}'/>";
+			rels += "<Relationship Id='rId{$(i + 1)}' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet' Target='worksheets/sheet{$(i + 1)}.xml'/>";
+		};
+		zip->Add("xl/workbook.xml", Q("<?xml version='1.0' encoding='UTF-8'?><workbook xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main' xmlns:r='http://schemas.openxmlformats.org/officeDocument/2006/relationships'><sheets>" + entries + "</sheets></workbook>"), true);
+		zip->Add("xl/_rels/workbook.xml.rels", Q("<?xml version='1.0' encoding='UTF-8'?><Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'>" + rels +
+			"<Relationship Id='rId8' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles' Target='styles.xml'/>" +
+			"<Relationship Id='rId9' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings' Target='sharedStrings.xml'/></Relationships>"), true);
+		zip->Add("xl/styles.xml", Q("<?xml version='1.0' encoding='UTF-8'?><styleSheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><cellXfs count='1'><xf numFmtId='0'/></cellXfs></styleSheet>"), false);
+		zip->Add("xl/sharedStrings.xml", Q("<?xml version='1.0' encoding='UTF-8'?><sst xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'></sst>"), false);
+		each(i : sheets) {
+			zip->Add("xl/worksheets/sheet{$(i + 1)}.xml", Q("<?xml version='1.0' encoding='UTF-8'?><worksheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><sheetData>" + sheets[i] + "</sheetData></worksheet>"), true);
+		};
+		return zip->Finish();
+	}
+
+	function : Cell(ref : String, text : String) ~ String {
+		return "<c r='{$ref}' t='inlineStr'><is><t>{$text}</t></is></c>";
+	}
+
+	function : Number(ref : String, value : Int) ~ String {
+		return "<c r='{$ref}'><v>{$value}</v></c>";
+	}
+
+	function : Remove(paths : Vector<String>) ~ Nil {
+		each(i : paths) {
+			File->Delete(paths->Get(i));
+		};
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		dir := Runtime->GetTempDir()->ReplaceAll("\\", "/");
+		if(<>dir->EndsWith('/')) {
+			dir += "/";
+		};
+		dir += "query_archives_sql_{$(Runtime->GetProcessId())}_";
+		written := Vector->New()<String>;
+
+		# --- a zip: two CSVs in a folder (one deflated, one stored), semicolon text, XML, JSON
+		zip := ZipBuilder->New();
+		zip->Add("sales/2024.csv", "id,amount\n1,10\n2,25\n3,5\n", true);
+		zip->Add("sales/2025.csv", "id,amount\n4,40\n5,15\n", false);
+		zip->Add("notes.txt", "who;n\nann;3\nbob;4\n", true);
+		zip->Add("feed.xml", "<feed><item id='1'><t>x</t></item><item id='2'><t>y</t></item></feed>", true);
+		zip->Add("README", "not a table", false);
+		zip_path := "{$dir}data.zip";
+		FileWriter->WriteFile(zip_path, zip->Finish());
+		written->AddBack(zip_path);
+
+		# --- two gzipped tars, one '.tar.gz' and one '.tgz'
+		tar := TarBuilder->New();
+		tar->Add("run/metrics.csv", "id,loss\n1,0.5\n4,0.25\n");
+		tar_path := "{$dir}runs_a.tar.gz";
+		FileWriter->WriteFile(tar_path, tar->Finish()->CompressGzip());
+		written->AddBack(tar_path);
+		tar := TarBuilder->New();
+		tar->Add("run/metrics.csv", "id,loss\n2,0.75\n");
+		tgz_path := "{$dir}runs_b.tgz";
+		FileWriter->WriteFile(tgz_path, tar->Finish()->CompressGzip());
+		written->AddBack(tgz_path);
+
+		# --- a workbook: Q1 (header, then rows), 'Q2 Plan', and a sheet with a title row
+		names := ["Q1", "Q2 Plan", "Titled"];
+		sheets := String->New[3];
+		sheets[0] := "<row r='1'>" + Cell("A1", "dept") + Cell("B1", "amount") + "</row><row r='2'>" + Cell("A2", "ops") + Number("B2", 7) + "</row><row r='3'>" + Cell("A3", "eng") + Number("B3", 25) + "</row>";
+		sheets[1] := "<row r='1'>" + Cell("A1", "dept") + Cell("B1", "amount") + "</row><row r='2'>" + Cell("A2", "ops") + Number("B2", 11) + "</row>";
+		sheets[2] := "<row r='1'>" + Cell("A1", "Report") + "</row><row r='3'>" + Cell("A3", "k") + Cell("B3", "v") + "</row><row r='4'>" + Number("A4", 1) + Number("B4", 2) + "</row>";
+		book_path := "{$dir}book.xlsx";
+		FileWriter->WriteFile(book_path, Workbook(names, sheets));
+		written->AddBack(book_path);
+
+		# a plain CSV, for a member named on a file that has none
+		csv_path := "{$dir}plain.csv";
+		FileWriter->WriteFile(csv_path, "a\n1\n");
+		written->AddBack(csv_path);
+
+		catalog := Catalog->New();
+
+		# --- archives
+		listing := catalog->Query("select path, is_dir from '{$zip_path}' order by path");
+		Check("an archive alone is its listing", listing <> Nil & listing->Size() = 6 & listing->ToCsv()->Has("sales/2024.csv,false") & listing->ToCsv()->Has("sales,true"));
+		Same("a deflated member", catalog, "select id, amount from '{$zip_path}'.'sales/2024.csv' order by id", "id,amount\n1,10\n2,25\n3,5\n");
+		Same("a stored member, with an alias", catalog, "select s.amount from '{$zip_path}'.'sales/2025.csv' s where s.amount > 20", "s.amount\n40\n");
+		Same("a member's default name is its base name", catalog, "select notes.who from csv('{$zip_path}'.'notes.txt', delimiter => ';') where n = 4", "notes.who\nbob\n");
+		Same("a member pattern adds _member", catalog, "select _member, count(*) as n, sum(amount) as total from '{$zip_path}'.'sales/*.csv' group by _member order by _member",
+			"_member,n,total\nsales/2024.csv,3,40\nsales/2025.csv,2,55\n");
+		Same("csv() reads a .txt member with options", catalog, "select who, n from csv('{$zip_path}'.'notes.txt', delimiter => ';') order by n desc", "who,n\nbob,4\nann,3\n");
+		Same("xml() reads a member with its row element", catalog, "select @id, t from xml('{$zip_path}'.'feed.xml', row => 'item') order by @id", "@id,t\n1,x\n2,y\n");
+		Same("a .tar.gz member", catalog, "select id, loss from '{$tar_path}'.'run/metrics.csv' order by id", "id,loss\n1,0.5\n4,0.25\n");
+		Same("a .tgz member", catalog, "select id from '{$tgz_path}'.'run/metrics.csv'", "id\n2\n");
+		Same("a glob over archives adds _file", catalog, "select count(*) as n from '{$dir}runs_*'.'run/metrics.csv'", "n\n3\n");
+		Same("a zip member joined with a tar member", catalog,
+			"select s.id, s.amount, m.loss from '{$zip_path}'.'sales/2024.csv' s join '{$tar_path}'.'run/metrics.csv' m on s.id = m.id", "id,amount,loss\n1,10,0.5\n");
+
+		# --- workbooks
+		Same("a workbook alone is its first sheet", catalog, "select dept, amount from '{$book_path}' order by amount", "dept,amount\nops,7\neng,25\n");
+		Same("a sheet by name", catalog, "select amount from '{$book_path}'.'Q2 Plan'", "amount\n11\n");
+		Same("a sheet's default name is the sheet's", catalog, "select Q1.dept from '{$book_path}'.'Q1' where amount = 25", "Q1.dept\neng\n");
+		Same("a sheet pattern adds _sheet", catalog, "select _sheet, sum(amount) as total from '{$book_path}'.'Q*' group by _sheet order by _sheet", "_sheet,total\nQ1,32\nQ2 Plan,11\n");
+		Same("xlsx() without a header", catalog, "select A, B from xlsx('{$book_path}'.'Q1', header => false) where B = 'amount'", "A,B\ndept,amount\n");
+		Same("xlsx() from a later row", catalog, "select k, v from xlsx('{$book_path}'.'Titled', first_row => 3)", "k,v\n1,2\n");
+		Same("a sheet joined with a zip member", catalog,
+			"select q.dept, s.amount from '{$book_path}'.'Q1' q join '{$zip_path}'.'sales/2024.csv' s on q.amount = s.amount", "dept,amount\neng,25\n");
+
+		# --- the catalog's cache: an unchanged archive is not read again
+		reads := catalog->GetFileReads();
+		Run(catalog, "select count(*) from '{$zip_path}'.'sales/2024.csv'");
+		Run(catalog, "select count(*) from '{$book_path}'.'Q1'");
+		Check("an unchanged archive and workbook come from the cache", catalog->GetFileReads() = reads);
+		Check("Catalog->Run reads one too", Catalog->Run("select count(*) as n from '{$zip_path}'.'sales/2025.csv'") <> Nil);
+
+		# --- refusals
+		closed := Catalog->New();
+		closed->SetFileAccess(false);
+		Refused("a member with file access off", closed, "select * from '{$zip_path}'.'sales/2024.csv'", "does not read files");
+		Refused("a sheet with file access off", closed, "select * from '{$book_path}'.'Q1'", "does not read files");
+		Refused("a listing with file access off", closed, "select * from '{$zip_path}'", "does not read files");
+
+		limited := Catalog->New();
+		limited->SetArchiveLimits(16, 1024);
+		Refused("a member over the member limit", limited, "select * from '{$zip_path}'.'sales/2024.csv'", "over the limit of 16 (Catalog->SetArchiveLimits raises it)");
+		Refused("a workbook part over the limit", limited, "select * from '{$book_path}'", "over the limit of 16 (Catalog->SetArchiveLimits raises it)");
+
+		evil := ZipBuilder->New();
+		evil->Add("../escape.csv", "a\n1\n", false);
+		evil_path := "{$dir}evil.zip";
+		FileWriter->WriteFile(evil_path, evil->Finish());
+		written->AddBack(evil_path);
+		Refused("a member that climbs out with '..'", catalog, "select * from '{$evil_path}'.'../escape.csv'", "climbs out");
+
+		bomb := ZipBuilder->New();
+		zeros := Byte->New[200000];
+		bomb->Add("zeros.csv", zeros, true, 100);
+		bomb_path := "{$dir}bomb.zip";
+		FileWriter->WriteFile(bomb_path, bomb->Finish());
+		written->AddBack(bomb_path);
+		Refused("a zip bomb", catalog, "select * from '{$bomb_path}'.'zeros.csv'", "expands past the 100 bytes");
+
+		Refused("a missing member", catalog, "select * from '{$zip_path}'.'sales/2026.csv'", "has no member 'sales/2026.csv'");
+		Refused("a folder as a member", catalog, "select * from '{$zip_path}'.'sales'", "has no member");
+		Refused("a member in no table format", catalog, "select * from '{$zip_path}'.'README'", "not in a format read as a table");
+		Refused("an XML member without its row element", catalog, "select * from '{$zip_path}'.'feed.xml'", "needs its row element");
+		Refused("a member pattern that matches nothing", catalog, "select * from '{$zip_path}'.'none/*.csv'", "no member of");
+		Refused("a function form naming no member", catalog, "select * from csv('{$zip_path}')", "name the member");
+		Refused("csv() on a workbook", catalog, "select * from csv('{$book_path}'.'Q1')", "is a workbook");
+		Refused("a missing sheet", catalog, "select * from '{$book_path}'.'Q3'", "has no worksheet 'Q3'");
+		Refused("a sheet pattern that matches nothing", catalog, "select * from '{$book_path}'.'Z*'", "no worksheet of");
+		Refused("a member of a plain file", catalog, "select * from '{$csv_path}'.'a'", "is not an archive or a workbook");
+		Refused("a missing archive", catalog, "select * from '{$dir}nothing.zip'.'a.csv'", "no file");
+		Refused("an unquoted member", catalog, "select * from '{$zip_path}'.sales", "a quoted member");
+		Refused("an empty member", catalog, "select * from '{$zip_path}'.''", "not ''");
+		Refused("first_row outside xlsx()", catalog, "select * from csv('{$csv_path}', first_row => 2)", "an option");
+
+		Remove(written);
+
+		if(@failures = 0) {
+			"PASS: query_archives_in_sql ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: query_archives_in_sql: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

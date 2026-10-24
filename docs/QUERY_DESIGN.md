@@ -301,7 +301,9 @@ tables and files can be mixed in one statement.
 
 - **The source follows the extension.** `.csv`, `.tsv` and `.txt` read as delimited text,
   `.jsonl` and `.ndjson` as JSON Lines, and `.json` as JSON. A trailing `.gz` is decompressed
-  first, with the gzip support already in `lang`.
+  first, with the gzip support already in `lang`. Archives and workbooks are named the same
+  way, with a member or sheet after a dot: `from 'data.zip'.'sales/2024.csv'`,
+  `from 'budget.xlsx'.'Q1'` ("Archives and workbooks in SQL" below).
 - **A glob matches several files with the same columns.** They are read as one table, with an
   added `_file` column naming each row's file. That is the shape of most experiment output:
   one CSV per run.
@@ -944,8 +946,8 @@ design above. Each phase adds its notes here.
   cut inside a header or a member's data is an error.
 - Loading is all or nothing: a member that does not parse fails the load with the archive,
   member and reason, and nothing reaches the catalog. Scan hints are not pushed into members.
-- Not done: archives named in SQL (`from 'results.zip'`), and reading a member without holding
-  the whole member in memory.
+- Not done at first: archives named in SQL, since added ("Archives and workbooks in SQL"
+  below). Still not done: reading a member without holding the whole member in memory.
 
 **Phase 7 (`XlsxSource`).**
 - Each worksheet becomes a table named after its sheet (`SetPrefix` prepends text, so two
@@ -980,9 +982,9 @@ design above. Each phase adds its notes here.
 - Errors name the workbook, sheet and cell: a missing part, malformed XML, a shared string
   index out of range, a cell reference outside its row or malformed, a number that is not
   one. Loading is all or nothing.
-- Not done: reading formulas themselves (only their values), styles beyond date detection,
-  and workbooks named in SQL (`from 'budget.xlsx'`). `.xlsb` and the old `.xls` are other
-  formats and are not read.
+- Not done: reading formulas themselves (only their values) and styles beyond date
+  detection. `.xlsb` and the old `.xls` are other formats and are not read. Workbooks named in
+  SQL were added later ("Archives and workbooks in SQL" below).
 
 **Phase 7 (`query_odbc.obl`).**
 - `OdbcSource` lives in its own library, `query_odbc.obl` (bundle `Query.Structured.Odbc`), so
@@ -1063,6 +1065,77 @@ meet at a barrier before each query (ranges, equality, ORDER BY and Min/Max thro
 indexes, ranges that scan with zone maps, and SQL through the plan cache) and compares every
 answer with one an unindexed twin gave on one thread. Before the fix it failed in every mode:
 short answers from skipped groups, a Nil dereference, or a hang in the plan cache's `Map`.
+
+## Archives and workbooks in SQL
+
+**The gap.** Phase 7's `ArchiveSource` and `XlsxSource` could only be loaded into a catalog
+by code; a query could not name `results.zip` or `budget.xlsx` the way it names `runs.csv`.
+
+**The syntax: a member after a dot, like a table after its schema.** A quoted path is already
+a table in `FROM` and `JOIN`; a container's member follows it as a second quoted string:
+
+```
+select * from 'results.zip'                                  -- the archive's listing
+select * from 'results.zip'.'2026/runs.csv'                  -- a member, by its extension
+select * from csv('results.zip'.'notes.txt', delimiter => ';')    -- a member read a given way
+select * from xml('results.zip'.'feed.xml', row => 'item')
+select _member, count(*) from 'results.zip'.'2026/*.csv' group by _member
+select * from 'runs/*.tar.gz'.'metrics.csv'                  -- one member of each archive; _file
+select * from 'budget.xlsx'                                  -- the first worksheet
+select * from 'budget.xlsx'.'Q1 2026'                        -- a worksheet by name
+select _sheet, sum(amount) from 'budget.xlsx'.'Q*' group by _sheet
+select * from xlsx('budget.xlsx'.'Report', header => false, first_row => 3)
+```
+
+Alternatives weighed: a separator inside the path (`'results.zip#runs.csv'`, `'results.zip!/
+runs.csv'`) would make a legal file name mean something else and need escaping; a function
+argument (`zip('results.zip', member => 'runs.csv')`) reads well but repeats the format the
+extension already gives. The two-string form reuses the dotted reference SQL already has
+(`schema.table`), keeps each name a plain literal, and composes with the existing function
+forms, whose options then apply to the member. The lexer gained `.` as a symbol where it is
+neither inside a name (`t.col` stays one word) nor the start of a number; it was an error
+everywhere else before, so no statement that parsed changes meaning.
+
+**What each form reads.**
+
+- A path is an archive by its name: `.zip`, `.tar`, `.tar.gz`, `.tgz` (by name, as every file
+  in SQL is read; `ArchiveSource` itself then tells zip from tar by content). `.xlsx` is a
+  workbook, as is anything read with `xlsx(...)`.
+- An archive alone is `ArchiveSource`'s listing table. A member is read by its extension,
+  exactly as `ArchiveSource` reads members (CSV, TSV, JSON Lines, JSON, `.otab`, gzipped
+  forms; XML needs `xml(..., row => ...)`); a function form chooses the format and its options
+  (`delimiter`, `header`, `row`), so a `.txt` member reads with `csv(...)`. A JSON or XML
+  member's child tables are not reachable from SQL; load the source for those.
+- A workbook alone is its first worksheet; a sheet is named after the dot. `xlsx(...)` takes
+  `header` and `first_row`, as `XlsxSource->SetHeader` and `SetFirstRow`.
+- A member or sheet with `*` or `?` reads every match as one table with a `_member` or
+  `_sheet` column, in archive or workbook order; a glob over the archives' own names adds
+  `_file`, as for any file. Both together give both columns.
+- The default table name is the member's base name (`runs` for `'2026/runs.csv'`) or the
+  sheet's name; `AS` gives another.
+
+**Safety and access, unchanged.** Everything goes through `ArchiveSource` and `XlsxSource`, so
+their checks apply: nothing is extracted, a member climbing out with `..`, an absolute path,
+duplicate or overlapping zip members, a zip bomb, a CRC32 mismatch and the decompression
+limits are all refused. `Catalog->SetFileAccess(false)` refuses archives and workbooks like
+any file (so `TableServer` never reads one), and the new `Catalog->SetArchiveLimits(member,
+total)` sets the limits for archives and workbooks named in its queries (256 MB and 1 GB by
+default, as the sources' own); a refusal names `SetArchiveLimits` rather than the source's
+`SetLimits`. A URL archive is fetched through the download cache like any URL file.
+
+**Caching.** As any file named in SQL: per catalog, keyed by path, member, format and
+options, and re-read when the archive's size or modification time changes.
+
+**Errors** name the archive and member or sheet: a missing member or sheet, a member in no
+table format, an XML member without its row element, a pattern that matches nothing, a
+function form on an archive with no member, a member named on a plain file, and an unquoted
+or empty member.
+
+**Tests.** `query_archives_in_sql`: a zip (deflated and stored members, a `.txt` read by
+`csv()`, XML by `xml()`), a `.tar.gz` and a `.tgz` (and a glob over both), a workbook (first
+sheet, a named sheet, a sheet pattern, `header => false`, `first_row`), joins across all
+three, the catalog cache, and every refusal above, each archive and workbook written by the
+test. Before the change every query fails at the lexer (`unexpected character '.'`).
 
 ## Open questions
 

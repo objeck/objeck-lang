@@ -9209,8 +9209,11 @@
 				"Run": {
 					"descriptions": ["**Runs a SELECT that reads files named in it, with no catalog of tables. Each call reads the files again; a program that repeats a query keeps a Catalog and uses its Query, which reads a file again only after it changes.**\n\n```function : Run(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\nrs := Catalog->Run(\"select name, avg(score) from 'results\/run_*.csv' group by name\");\n```"]
 				},
+				"SetArchiveLimits": {
+					"descriptions": ["**Sets how much an archive or workbook named in a query may decompress, as ArchiveSource->SetLimits does: a member larger than 'member_bytes' is refused, and so is a read that takes the archive's total past 'total_bytes'. The defaults are 256 MB and 1 GB.**\n\n```method : public : SetArchiveLimits(member_bytes:Int, total_bytes:Int) ~ Nil```\n\n\n\nmember_bytes: Int\n\ntotal_bytes: Int\n\nreturn: Nil"]
+				},
 				"SetFileAccess": {
-					"descriptions": ["**Whether queries may name files and URLs ('from 'runs.csv'', 'from 'https:\/\/...''), which they may by default. A catalog that answers queries from other people, as TableServer's does, turns this off: otherwise a query could read any file the process can, or make it fetch any URL.**\n\n```method : public : SetFileAccess(allowed:Bool) ~ Nil```\n\n\n\nallowed: Bool\n\nreturn: Nil"]
+					"descriptions": ["**Whether queries may name files and URLs ('from 'runs.csv'', 'from 'https:\/\/...''), which they may by default. A catalog that answers queries from other people, as TableServer's does, turns this off: otherwise a query could read any file the process can, or make it fetch any URL. Archives and workbooks are files, so this refuses them too.**\n\n```method : public : SetFileAccess(allowed:Bool) ~ Nil```\n\n\n\nallowed: Bool\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -10724,7 +10727,7 @@
 					"descriptions": ["**Returns the value's hex digits without the 0x prefix, padded with zeros to a minimum width (ToHexString keeps the prefix)**\n\n```function : ToHexDigits() ~ String```\n\n\n\nreturn: String\n\n```\n255->As(Byte)->ToHexDigits(4)->PrintLine(); # 00ff\n```"]
 				},
 				"ToHexString": {
-					"descriptions": ["**Returns a positive hexadecimal string representation of the value**\n\n```function : native : ToHexString() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Returns a positive hexadecimal string representation of the value**\n\n```function : native : ToHexString() ~ String```\n\n\n\nreturn: String", "**Returns the bytes as a hex digest: two lower-case hex digits per byte, in order, with no prefix or separators. For one byte's value with a 0x prefix, see ToHexString(Byte); for its digits at a given width, ToHexDigits.**\n\n```function : native : ToHexString() ~ String```\n\n\n\nreturn: String\n\n```\nCipher.Hash->SHA256(\"Rosetta code\"->ToByteArray())->ToHexString()->PrintLine(); # 764faf5c...\n```"]
 				},
 				"ToInt": {
 					"descriptions": ["**Returns the Int value**\n\n```function : ToInt() ~ Int```\n\n\n\nreturn: Int"]
@@ -11498,7 +11501,7 @@
 					"descriptions": ["**Returns the value's hex digits without the 0x prefix, padded with zeros to a minimum width (ToHexString keeps the prefix)**\n\n```function : ToHexDigits() ~ String```\n\n\n\nreturn: String\n\n```\n255->ToHexDigits(4)->PrintLine(); # 00ff\n```"]
 				},
 				"ToHexString": {
-					"descriptions": ["**Returns a hex string value**\n\n```function : native : ToHexString() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Returns a hex string value**\n\n```function : native : ToHexString() ~ String```\n\n\n\nreturn: String", "**Returns the values as a bracketed list of hex strings, each as ToHexString(Int) gives it**\n\n```function : native : ToHexString() ~ String```\n\n\n\nreturn: String"]
 				},
 				"ToString": {
 					"descriptions": ["**Returns the string value**\n\n```function : ToString() ~ String```\n\n\n\nreturn: String\n\n```\ns := Int->ToString(255);\ns->PrintLine();  # 255\n```", "**Returns a string representation of the value**\n\n```function : native : ToString() ~ String```\n\n\n\nreturn: String", "**Returns a string representation of the int array**\n\n```function : ToString(v:Int[,]) ~ String```\n\n\n\nv: Int[,]\n\nreturn: String"]
@@ -15770,7 +15773,7 @@
 					"descriptions": ["**Removes a HTTPS request header**\n\n```method : public : RemoveHeader(name:String) ~ Nil```\n\n\n\nname: String\n\nreturn: Nil"]
 				},
 				"WriteSocket": {
-					"descriptions": ["**Writes binary output to the web socket**\n\n```method : public : WriteSocket(data:Byte[], fragment:Bool) ~ Bool```\n\n\n\ndata: Byte[]\n\nfragment: Bool\n\nreturn: Bool\n\n```\nclient := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New(\"wss:\/\/echo.websocket.org\"));\nif(client->Connect()) {\n  payload := Byte->New[4];\n  payload[0] := 0xDE; payload[1] := 0xAD; payload[2] := 0xBE; payload[3] := 0xEF;\n  client->WriteSocket(payload);\n  echo := client->ReadSocketBinary();\n  echo->ToHexString()->PrintLine();  # DEADBEEF\n  client->CloseSocket();\n};\n```", "**Writes text to the web socket**\n\n```method : public : WriteSocket(message:String, fragment:Bool) ~ Bool```\n\n\n\nmessage: String\n\nfragment: Bool\n\nreturn: Bool\n\n```\nclient := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New(\"wss:\/\/echo.websocket.org\"));\nif(client->Connect()) {\n  client->WriteSocket(\"ping\");\n  reply := client->ReadSocketText();\n  reply->PrintLine();   # ping\n  client->CloseSocket();\n};\n```"]
+					"descriptions": ["**Writes binary output to the web socket**\n\n```method : public : WriteSocket(data:Byte[], fragment:Bool) ~ Bool```\n\n\n\ndata: Byte[]\n\nfragment: Bool\n\nreturn: Bool\n\n```\nclient := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New(\"wss:\/\/echo.websocket.org\"));\nif(client->Connect()) {\n  payload := Byte->New[4];\n  payload[0] := 0xDE; payload[1] := 0xAD; payload[2] := 0xBE; payload[3] := 0xEF;\n  client->WriteSocket(payload);\n  echo := client->ReadSocketBinary();\n  echo->ToHexString()->PrintLine();  # deadbeef\n  client->CloseSocket();\n};\n```", "**Writes text to the web socket**\n\n```method : public : WriteSocket(message:String, fragment:Bool) ~ Bool```\n\n\n\nmessage: String\n\nfragment: Bool\n\nreturn: Bool\n\n```\nclient := Web.HTTP.SecureWebSocket->New(Web.HTTP.Url->New(\"wss:\/\/echo.websocket.org\"));\nif(client->Connect()) {\n  client->WriteSocket(\"ping\");\n  reply := client->ReadSocketText();\n  reply->PrintLine();   # ping\n  client->CloseSocket();\n};\n```"]
 				}
 			}
 		},
