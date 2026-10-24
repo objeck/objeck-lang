@@ -19848,7 +19848,7 @@
 			"bundle": "Collection",
 			"class": "Collection.Hash",
 			"kind": "consts",
-			"description": "Hash table capacity. Load factors: SMALL=500, MEDIUM=2k, LARGE=9k, EX_LARGE=36k, HUGE=147k",
+			"description": "Hash table capacity hints. The table is open-addressed: it starts at the next power of two at or above the hint and doubles whenever it is 70% full, with no upper limit.",
 			"items": [
 				{ "name": "SMALL", "value": "769", "description": "" },
 				{ "name": "MEDIUM", "value": "3079", "description": "" },
