@@ -23,7 +23,7 @@
 # EXTRA_LIBS: net,net_server
 ~#
 
-use System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+use Collection, System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
 
 class TlsAcceptOne from Thread {
 	@server : TCPSecureSocketServer;
@@ -146,32 +146,48 @@ class ServerBindAddress {
 	}
 
 	#~
-	# One of this machine's addresses that is not 127.0.0.1 or ::1, or Nil. A
-	# server bound to the host name holds the name's first IPv4 address (an
-	# address, so a hostname bind is exercised too); a client of the name tries
-	# each address the name resolves to until one is taken, and the address the
-	# server saw is numeric. Link-local IPv6 needs a scope, so it does not count.
+	# One of this machine's addresses that is not 127.0.0.1 or ::1, or Nil.
+	# Candidates: the address a client of the host name arrives from at a
+	# server bound to that name (numeric, unlike Resolve(); a LAN address on
+	# Windows, where the name lists the interfaces), and on Linux 127.0.0.2,
+	# which every Linux machine has (all of 127/8 is local) and which is where
+	# a Linux host name usually points (127.0.1.1) anyway. A candidate counts
+	# only if a wildcard server takes a connection to it, so the refusal
+	# checked against it means something. Link-local IPv6 needs a scope, so it
+	# does not count.
 	~#
 	function : OtherAddress() ~ String {
+		candidates := Vector->New()<String>;
 		name := TCPSocket->HostName();
-		if(name = Nil) {
-			return Nil;
+		if(name <> Nil) {
+			server := Listening(name);
+			if(server <> Nil) {
+				peer := AcceptedFrom(server, name, @port);
+				server->Close();
+				if(peer <> Nil) {
+					candidates->AddBack(peer);
+				};
+			};
+		};
+		if(Runtime->GetPlatform()->Has("Linux")) {
+			candidates->AddBack("127.0.0.2");
 		};
 
-		server := Listening(name);
-		if(server = Nil) {
-			return Nil;
+		each(i : candidates) {
+			candidate := candidates->Get(i);
+			if(candidate->Size() > 0 & <>candidate->Equals("127.0.0.1") & <>candidate->Equals("::1") & <>candidate->StartsWith("fe80")) {
+				wildcard := Listening(Nil);
+				if(wildcard <> Nil) {
+					seen := AcceptedFrom(wildcard, candidate, @port);
+					wildcard->Close();
+					if(seen <> Nil) {
+						return candidate;
+					};
+				};
+			};
 		};
 
-		peer := AcceptedFrom(server, name, @port);
-		server->Close();
-		if(peer = Nil) {
-			return Nil;
-		};
-		if(peer->Size() = 0 | peer->Equals("127.0.0.1") | peer->Equals("::1") | peer->StartsWith("fe80")) {
-			return Nil;
-		};
-		return peer;
+		return Nil;
 	}
 
 	function : CheckTcp() ~ Nil {
@@ -260,7 +276,7 @@ class ServerBindAddress {
 			Check("openssl could not create the TLS fixture -- is openssl on PATH?", false);
 			return;
 		};
-		# the client connects by address; what is under test is reachability
+		# a self-signed fixture; what is under test is reachability
 		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
 
 		server : TCPSecureSocketServer;
@@ -279,7 +295,9 @@ class ServerBindAddress {
 
 			acceptor := TlsAcceptOne->New(server);
 			acceptor->Execute(Nil);
-			client := TCPSecureSocket->New("127.0.0.1", port);
+			# by name: the certificate names localhost, and some mbedtls versions
+			# match no IP subjectAltName; "localhost" reaches the 127.0.0.1 listener
+			client := TCPSecureSocket->New("localhost", port);
 			if(client->IsOpen()) {
 				greeting := client->ReadLine();
 				client->WriteString("bye\n");
@@ -296,7 +314,7 @@ class ServerBindAddress {
 			};
 			peer := acceptor->GetAddress();
 			Check("TLS 127.0.0.1: a 127.0.0.1 client completes a handshake (from '{$peer}')", peer <> Nil & peer->Equals("127.0.0.1"));
-			Check("TLS 127.0.0.1: the client reads the server's line", greeting <> Nil & greeting->Equals("hello"));
+			Check("TLS 127.0.0.1: the client reads the server's line ('{$greeting}')", greeting <> Nil & greeting->Equals("hello"));
 			server->Close();
 		};
 
