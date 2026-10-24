@@ -186,6 +186,11 @@
         </a>
        </li>
        <li>
+        <a href="#named_args">
+         Named Arguments and Reference Parameters
+        </a>
+       </li>
+       <li>
         <a href="#collect">
          Collections
         </a>
@@ -219,6 +224,11 @@
         <li>
          <a href="#collect_utilities">
           Collection Utilities
+         </a>
+        </li>
+        <li>
+         <a href="#collect_primitive">
+          Primitive Collections
          </a>
         </li>
        </ul>
@@ -1331,7 +1341,27 @@ directions[1] := "South";
 directions[2] := "East";
 directions[3] := "West";
 each(i : directions) {
-  directions[i]-&gt;PrintLine();
+  directions[i]->PrintLine();
+};
+</code></pre>
+         </p>
+         <p>
+          Jagged arrays
+         </p>
+         <p>
+          <code>Int[][]</code> is an array of rows, and each row can have its own length. An array literal whose elements are arrays is a jagged array too.
+         </p>
+         <p>
+          <pre><code class="language-cpp">rows := Int[]-&gt;New[3];
+each(i : 3) {
+  rows[i] := Int-&gt;New[i + 1];
+  for(j := 0; j &lt;= i; j += 1;) {
+    rows[i][j] := i * 10 + j;
+  };
+};
+each(i : 3) {
+  row := rows[i];
+  "row {$i} has {$(row-&gt;Size())} items, last is {$(row[row-&gt;Size() - 1])}"-&gt;PrintLine();
 };
 </code></pre>
          </p>
@@ -1784,6 +1814,33 @@ each(i : pairs) {
   "{$key}: {$value}"-&gt;PrintLine();
 };
 </code></pre>
+         <h3 id="collect_primitive">
+          Primitive Collections
+         </h3>
+         <p>
+          <code>IntVector</code>, <code>FloatVector</code>, <code>IntMap</code>, <code>IntSet</code> and <code>BitSet</code> hold plain numbers instead of wrapper objects such as <code>IntRef</code>. They use less memory, avoid allocating an object per element, and are the right choice for large numeric data.
+         </p>
+         <pre><code class="language-cpp">use Collection;
+
+class Counting {
+  function : Main(args : String[]) ~ Nil {
+    # unboxed Int storage: no IntRef wrapper objects
+    scores := IntVector-&gt;New();
+    scores-&gt;AddBack(90);
+    scores-&gt;AddBack(75);
+    scores-&gt;AddBack(82);
+    "first={$(scores-&gt;First())} last={$(scores-&gt;Last())}"-&gt;PrintLine();
+
+    # count occurrences with an IntMap
+    counts := IntMap-&gt;New();
+    values := [3, 1, 3, 2, 3, 1];
+    each(i : values) {
+      counts-&gt;Add(values[i], 1);
+    };
+    "threes: {$(counts-&gt;Find(3))}, has 9: {$(counts-&gt;Has(9))}"-&gt;PrintLine();
+  }
+}
+</code></pre>
          <h2 id="funcs">
           Closures and Lambda Expressions
          </h2>
@@ -1892,6 +1949,34 @@ map-&gt;Insert(7, "Seven");
 map-&gt;Insert(9, "Nine");
 map-&gt;Each(\^(k, v) =&gt; "{$k}: {$v}"-&gt;PrintLine());
 </code></pre>
+         <h2 id="named_args">
+          Named Arguments and Reference Parameters
+         </h2>
+         <p>
+          Pass an argument by name with <code>name: value</code>. Positional arguments come first, named ones follow in any order, and any parameter that has a default value can be skipped. Arguments are still evaluated in the order they are written. Named arguments work for your own methods and constructors and for the standard library, so the standard library's parameter names are part of its public API.
+         </p>
+         <pre><code class="language-cpp">function : Train(data : String, rate : Float := 0.1, epochs : Int := 10) ~ Nil {
+  "{$data}: rate={$rate} epochs={$epochs}"-&gt;PrintLine();
+}
+
+# arguments by name, in any order; a defaulted parameter can be skipped
+Train("sales", epochs: 50);
+Train("sales", epochs: 5, rate: 0.5);
+</code></pre>
+         <p>
+          A <code>ref</code> parameter is copied in and copied back out, like <code>inout</code> in Swift. Write <code>ref</code> at the call site too. A local variable, a parameter or a field can be passed.
+         </p>
+         <pre><code class="language-cpp">function : Swap(ref a : Int, ref b : Int) ~ Nil {
+  t := a;
+  a := b;
+  b := t;
+}
+
+x := 1;
+y := 2;
+Swap(ref x, ref y);
+"x={$x} y={$y}"-&gt;PrintLine(); # x=2 y=1
+</code></pre>
          <h2 id="generics">
           Generics
          </h2>
@@ -1924,6 +2009,29 @@ numbers-&gt;AddBack(99);
 each(i : numbers) {
   numbers-&gt;Get(i)-&gt;PrintLine();
 };
+</code></pre>
+         <h3 id="generic_methods">
+          Generic Methods
+         </h3>
+         <p>
+          A method can declare its own type parameters after its name. They are inferred from the arguments and checked against their bound, so the call needs no cast.
+         </p>
+         <pre><code class="language-cpp">function : Max&lt;T : Compare&gt;(values : Vector&lt;T&gt;) ~ T {
+  best := values-&gt;Get(0);
+  for(i := 1; i &lt; values-&gt;Size(); i += 1;) {
+    v := values-&gt;Get(i);
+    if(v-&gt;Compare(best) &gt; 0) {
+      best := v;
+    };
+  };
+  return best;
+}
+
+names := Vector-&gt;New()&lt;String&gt;;
+names-&gt;AddBack("pear");
+names-&gt;AddBack("apple");
+names-&gt;AddBack("zucchini");
+Max(names)-&gt;PrintLine(); # zucchini
 </code></pre>
          <h2 id="error_handling">
           Error Handling
@@ -1969,6 +2077,49 @@ function : ProcessFile(name : String) ~ Nil {
 </code></pre>
          <p>
           Combining <code>try/otherwise</code> with <code>leaving</code> provides both error recovery and guaranteed resource cleanup.
+         </p>
+         <h4>Typed errors</h4>
+         <p>
+          Derive from <code>Error</code> to define your own errors, raise one with <code>Runtime-&gt;Raise</code>, and catch it by type with <code>try { } on(e : Type) { } finally { }</code>. Clauses are tested in order, an error that no clause names carries on after the <code>finally</code> block, and <code>return</code>, <code>break</code> and <code>continue</code> leave through <code>finally</code>. The runtime's own faults are <code>NilError</code>, <code>IndexError</code>, <code>DivideByZeroError</code>, <code>CastError</code> and <code>RuntimeError</code>.
+         </p>
+         <pre><code class="language-cpp">class ParseError from Error {
+  @line : Int;
+
+  New(message : String, line : Int) {
+    Parent(message);
+    @line := line;
+  }
+
+  method : public : GetLine() ~ Int {
+    return @line;
+  }
+}
+
+class ErrorExample {
+  function : Parse(line : Int) ~ Int {
+    if(line % 2 = 1) {
+      Runtime-&gt;Raise(ParseError-&gt;New("bad row", line));
+    };
+    return line;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    each(i : 4) {
+      try {
+        "row {$(Parse(i))} ok"-&gt;PrintLine();
+      }
+      on(e : ParseError) {
+        "row {$(e-&gt;GetLine())}: {$(e-&gt;GetMessage())}"-&gt;PrintLine();
+      }
+      finally {
+        "checked row {$i}"-&gt;PrintLine();
+      };
+    };
+  }
+}
+</code></pre>
+         <p>
+          Output: <code>row 0 ok</code>, <code>checked row 0</code>, <code>row 1: bad row</code>, <code>checked row 1</code>, and so on. <code>?-&gt;</code> still recovers from anything, and <code>Runtime-&gt;GetLastError()</code> says what it was.
          </p>
          <h2 id="reflection">
           Reflection
