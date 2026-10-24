@@ -94,10 +94,114 @@ extern "C" {
   }
   SQLLEN sql_null;
 
+  // Reads a whole character cell in pieces. One fixed buffer used to cut text
+  // longer than VARCHAR_MAX short without a word, and a NULL cell was read back
+  // from the uninitialized buffer, since SQLGetData writes nothing for one.
+  static bool read_text_cell(SQLHSTMT stmt, SQLUSMALLINT i, std::string& out, bool& is_null)
+  {
+    out.clear();
+    is_null = false;
+
+    char buffer[VARCHAR_MAX];
+    while(true) {
+      SQLLEN ind = 0;
+      const SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, buffer, VARCHAR_MAX, &ind);
+      if(status == SQL_NO_DATA) {
+        return true;
+      }
+      if(SQL_FAIL) {
+        return false;
+      }
+      if(ind == SQL_NULL_DATA) {
+        is_null = true;
+        return true;
+      }
+
+      // truncated: a full buffer less its terminator, and more to come
+      if(status == SQL_SUCCESS_WITH_INFO && (ind == SQL_NO_TOTAL || ind >= VARCHAR_MAX)) {
+        out.append(buffer, VARCHAR_MAX - 1);
+        continue;
+      }
+
+      out.append(buffer, ind > 0 ? (size_t)ind : 0);
+      return true;
+    }
+  }
+
+  // Reads a whole binary cell in pieces, so its length is known exactly
+  static bool read_binary_cell(SQLHSTMT stmt, SQLUSMALLINT i, std::vector<unsigned char>& out, bool& is_null)
+  {
+    out.clear();
+    is_null = false;
+
+    unsigned char buffer[VARCHAR_MAX];
+    while(true) {
+      SQLLEN ind = 0;
+      const SQLRETURN status = SQLGetData(stmt, i, SQL_C_BINARY, buffer, VARCHAR_MAX, &ind);
+      if(status == SQL_NO_DATA) {
+        return true;
+      }
+      if(SQL_FAIL) {
+        return false;
+      }
+      if(ind == SQL_NULL_DATA) {
+        is_null = true;
+        return true;
+      }
+
+      if(status == SQL_SUCCESS_WITH_INFO && (ind == SQL_NO_TOTAL || ind > VARCHAR_MAX)) {
+        out.insert(out.end(), buffer, buffer + VARCHAR_MAX);
+        continue;
+      }
+
+      out.insert(out.end(), buffer, buffer + (ind > 0 ? (size_t)ind : 0));
+      return true;
+    }
+  }
+
+  // sets a text result: [0] the null flag, [1] the string (Nil for NULL or an error)
+  static void set_text_result(VMContext& context, SQLHSTMT stmt, SQLUSMALLINT i)
+  {
+    std::string value;
+    bool is_null = false;
+    if(read_text_cell(stmt, i, value, is_null) && !is_null) {
+      APITools_SetIntValue(context, 0, 0);
+      APITools_SetStringValue(context, 1, BytesToUnicode(value));
+    }
+    else {
+      APITools_SetIntValue(context, 0, is_null ? 1 : 0);
+      APITools_SetObjectValue(context, 1, 0);
+    }
+  }
+
   // Why the last connect on this thread failed. A failed connect frees its
   // handle, leaving odbc_get_error nothing to read, so Connection->GetLastError()
   // returned "" for the one error a caller cannot diagnose any other way.
   static thread_local std::string last_connect_error;
+
+  // Why the last select or prepare on this thread failed. Those calls free
+  // their statement handle on failure, so its diagnostic went with it and a
+  // failed Select read as an empty result with no reason given.
+  static thread_local std::string last_statement_error;
+
+  static void set_statement_error(SQLSMALLINT handle_type, SQLHANDLE handle)
+  {
+    SQLCHAR sql_state[6] = {0};
+    SQLINTEGER native_error = 0;
+    SQLCHAR message[SQL_MAX_MESSAGE_LENGTH] = {0};
+    SQLSMALLINT text_len = 0;
+
+    const SQLRETURN result = handle ? SQLGetDiagRec(handle_type, handle, 1, sql_state, &native_error,
+                                                    message, sizeof(message), &text_len) : SQL_ERROR;
+    if(result == SQL_SUCCESS || result == SQL_SUCCESS_WITH_INFO) {
+      char error_msg[SQL_MAX_MESSAGE_LENGTH + 64];
+      snprintf(error_msg, sizeof(error_msg), "[%s] %s (%d)", (char*)sql_state, (char*)message, (int)native_error);
+      last_statement_error = error_msg;
+    }
+    else {
+      last_statement_error = "the statement failed; the driver gave no diagnostic";
+    }
+  }
 
   static void set_connect_error(SQLHDBC conn)
   {
@@ -330,14 +434,31 @@ extern "C" {
   {
 
     SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 0);
-    if(stmt) {
-      // a cursor left open by the last run must be closed before the next
-      SQLFreeStmt(stmt, SQL_CLOSE);
+    last_statement_error.clear();
+    if(!stmt) {
+      APITools_SetIntValue(context, 1, 0);
+      return;
+    }
 
+    // a cursor left open by the last run must be closed before the next
+    SQLFreeStmt(stmt, SQL_CLOSE);
+
+    SQLRETURN status;
+    {
       // Parameters are copies the statement owns (keep_param), so they stay valid
       // while parked.
       APITools_Parked parked(context);
-      SQLExecute(stmt);
+      status = SQLExecute(stmt);
+    }
+
+    // [1], when the caller passes it, says whether the statement ran; a library
+    // built before it existed passes one argument and is told nothing
+    if(SQL_FAIL) {
+      set_statement_error(SQL_HANDLE_STMT, stmt);
+      APITools_SetIntValue(context, 1, 0);
+    }
+    else {
+      APITools_SetIntValue(context, 1, 1);
     }
   }
 
@@ -356,6 +477,7 @@ extern "C" {
     std::wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << std::endl;
 #endif    
 
+    last_statement_error.clear();
     if(!conn || wsql.size() < 1) {
       APITools_SetIntValue(context, 0, 0);
       return;
@@ -364,6 +486,7 @@ extern "C" {
     SQLHSTMT stmt = NULL;
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
+      set_statement_error(SQL_HANDLE_DBC, conn);
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -376,7 +499,7 @@ extern "C" {
     const std::string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
+      set_statement_error(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
@@ -388,7 +511,7 @@ extern "C" {
     SQLSMALLINT columns;
     status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
+      set_statement_error(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
@@ -406,7 +529,7 @@ extern "C" {
                               &description.column_size, &description.decimal_length,
                               &description.nullable);
       if(SQL_FAIL) {
-        // ShowError(SQL_HANDLE_STMT, stmt);
+        set_statement_error(SQL_HANDLE_STMT, stmt);
         SQLFreeStmt(stmt, SQL_UNBIND);
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         APITools_SetIntValue(context, 0, 0);
@@ -440,7 +563,7 @@ extern "C" {
       status = SQLExecute(stmt);
     }
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
+      set_statement_error(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
@@ -483,6 +606,7 @@ extern "C" {
     std::wcout << L"### select: conn=" << conn << L", stmt=" << wsql << L"  ###" << std::endl;
 #endif    
 
+    last_statement_error.clear();
     if(!conn || wsql.size() < 1) {
       APITools_SetIntValue(context, 0, 0);
       APITools_SetIntValue(context, 1, 0);
@@ -493,6 +617,7 @@ extern "C" {
     SQLHSTMT stmt = NULL;
     SQLRETURN status = SQLAllocHandle(SQL_HANDLE_STMT, conn, &stmt);
     if(SQL_FAIL) {
+      set_statement_error(SQL_HANDLE_DBC, conn);
       // ShowError(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
@@ -505,7 +630,7 @@ extern "C" {
     const std::string sql = UnicodeToBytes(wsql);
     status = SQLPrepare(stmt, (SQLCHAR*)sql.c_str(), SQL_NTS);
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
+      set_statement_error(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
@@ -517,7 +642,7 @@ extern "C" {
     SQLSMALLINT columns;
     status = SQLNumResultCols(stmt, &columns);
     if(SQL_FAIL) {
-      // ShowError(SQL_HANDLE_STMT, stmt);
+      set_statement_error(SQL_HANDLE_STMT, stmt);
       SQLFreeStmt(stmt, SQL_UNBIND);
       SQLFreeHandle(SQL_HANDLE_STMT, stmt);
       APITools_SetIntValue(context, 0, 0);
@@ -536,7 +661,7 @@ extern "C" {
                               &description.column_size, &description.decimal_length,
                               &description.nullable);
       if(SQL_FAIL) {
-        // ShowError(SQL_HANDLE_STMT, stmt);
+        set_statement_error(SQL_HANDLE_STMT, stmt);
         SQLFreeStmt(stmt, SQL_UNBIND);
         SQLFreeHandle(SQL_HANDLE_STMT, stmt);
         APITools_SetIntValue(context, 0, 0);
@@ -1762,21 +1887,7 @@ extern "C" {
       return;
     }
 
-    SQLLEN is_null;
-    char value[VARCHAR_MAX];
-    SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, VARCHAR_MAX, &is_null);
-    if(SQL_OK) {
-      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-      const std::wstring out = BytesToUnicode(value);
-      APITools_SetStringValue(context, 1, out);
-#ifdef _DEBUG
-      std::wcout << L"  " << value << std::endl;
-#endif
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
-    }
+    set_text_result(context, stmt, i);
   }
 	
   //
@@ -1858,6 +1969,44 @@ extern "C" {
       APITools_SetIntValue(context, 0, 0);
     }
   }
+
+  //
+  // gets a whole binary value from a result set as a new Byte[], however long:
+  // [0] the null flag, [1] a ByteArrayRef that receives the bytes (Nil for NULL
+  // or an error), [2] the column, [3] the statement, [4] the column names
+  //
+#ifdef _WIN32
+  __declspec(dllexport)
+#endif
+  void odbc_result_get_bytes_by_id(VMContext& context)
+  {
+    size_t* holder = APITools_GetObjectValue(context, 1);
+    SQLUSMALLINT i = (SQLUSMALLINT)APITools_GetIntValue(context, 2);
+    SQLHSTMT stmt = (SQLHDBC)APITools_GetIntValue(context, 3);
+    std::map<const std::wstring, int>* names = (std::map<const std::wstring, int>*)APITools_GetIntValue(context, 4);
+
+    APITools_SetIntValue(context, 0, 0);
+    if(!holder || !stmt || !names || i < 1 || i > (long)(names->size() + 1)) {
+      return;
+    }
+    holder[0] = 0;
+
+    std::vector<unsigned char> value;
+    bool is_null = false;
+    if(!read_binary_cell(stmt, i, value, is_null)) {
+      return;
+    }
+    if(is_null) {
+      APITools_SetIntValue(context, 0, 1);
+      return;
+    }
+
+    size_t* byte_array = APITools_MakeByteArray(context, value.size());
+    if(!value.empty()) {
+      memcpy(reinterpret_cast<unsigned char*>(byte_array + 3), value.data(), value.size());
+    }
+    holder[0] = (size_t)byte_array;
+  }
   
   //
   // gets a std::string from a result set
@@ -1890,22 +2039,7 @@ extern "C" {
       return;
     }
 
-    SQLLEN is_null;
-    char value[VARCHAR_MAX];
-    SQLRETURN status = SQLGetData(stmt, i, SQL_C_CHAR, &value, 
-                                  VARCHAR_MAX, &is_null);
-    if(SQL_OK) {
-      APITools_SetIntValue(context, 0, is_null == SQL_NULL_DATA);
-      const std::wstring out = BytesToUnicode(value);
-      APITools_SetStringValue(context, 1, out);
-#ifdef _DEBUG
-      std::wcout << L"  " << value << std::endl;
-#endif
-    }
-    else {
-      APITools_SetIntValue(context, 0, 0);
-      APITools_SetObjectValue(context, 1, 0);
-    }
+    set_text_result(context, stmt, i);
   }
 
   //
@@ -2253,8 +2387,18 @@ extern "C" {
     }
 
     if(!handle) {
-      // A connection that never opened has no handle: report why it failed.
-      APITools_SetStringValue(context, 0, handle_type_id == 2 ? BytesToUnicode(last_connect_error) : std::wstring());
+      // A connection that never opened, or a statement that failed, has no
+      // handle: report why.
+      if(handle_type_id == 2) {
+        APITools_SetStringValue(context, 0, BytesToUnicode(last_connect_error));
+      }
+      else if(handle_type_id == 3) {
+        // a select or prepare that failed has no statement left: report why
+        APITools_SetStringValue(context, 0, BytesToUnicode(last_statement_error));
+      }
+      else {
+        APITools_SetStringValue(context, 0, std::wstring());
+      }
       return;
     }
 

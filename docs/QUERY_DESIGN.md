@@ -920,6 +920,38 @@ design above. Each phase adds its notes here.
   and workbooks named in SQL (`from 'budget.xlsx'`). `.xlsb` and the old `.xls` are other
   formats and are not read.
 
+**Phase 7 (`query_odbc.obl`).**
+- `OdbcSource` lives in its own library, `query_odbc.obl` (bundle `Query.Structured.Odbc`), so
+  a program that only queries files does not load the ODBC native module. It reads a table
+  (`New(connection, table)`, with `SetSchema`) or a query's result (`New(connection, name,
+  sql)`).
+- Columns are typed from the driver's description (`SQLDescribeCol`), not by scanning values:
+  integer types and NUMERIC/DECIMAL with no fraction digits (up to 18 digits) are INT; other
+  numeric types FLOAT; BIT BOOL; DATE and TIMESTAMP DATE, to the second; TIME is text; binary
+  columns are lowercase hexadecimal text (`OdbcSource->FromHex` turns it back into bytes,
+  since the engine has no byte column); anything else is text of any length. NULL is an empty
+  cell. A column the driver describes as text holds text even when it holds numbers.
+- Pushdown, the design's "simple `where` terms": the scan hint's columns (only those the
+  result has, by name then ignoring case) and row limit, and a condition given with
+  `SetWhere`, either raw SQL or with `?` placeholders and bound values. As with
+  `RemoteSource`, the condition is not inferred from the local query, which applies its own
+  WHERE again. Names are always quoted, with the closing quote doubled inside them
+  (`SetQuotes` for `` ` `` or `[]` styles), so a name cannot end its identifier; values go in
+  as parameters, never as SQL text. The limit is `LIMIT n` by default, `TOP n` or `FETCH
+  FIRST n ROWS ONLY` by `SetLimitSyntax`, and the reader stops at the limit either way. A
+  query is wrapped as a derived table (`FROM (sql) q`) only when something is pushed into it,
+  so its own ORDER BY and column names otherwise reach the table unchanged. `GetSql` shows
+  what was sent.
+- Found on the way and fixed at the source, in `libobjk_odbc` and `odbc.obs`: text was read
+  through one 8 KB buffer, so a longer value was silently cut short, and a NULL was converted
+  from that buffer before anything was written to it; `GetBlob` cannot report a value's
+  length, so `ResultSet->GetBytes` returns exactly the bytes; and a SELECT the database
+  refused freed its statement with its diagnostic, so it read as an empty result with no
+  reason. `ResultSet->IsOpen` now tells a refused statement apart, and its `GetLastError`
+  gives the database's reason (`programs/regression/odbc_whole_values.obs`). A prepared
+  statement that is run several times, and a blob with zero bytes bound by `SetBlob`, were
+  fixed separately in #1337 (statement-owned maps and parameter copies).
+
 Toolchain defects found while building these phases were fixed at the source rather than worked
 around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
 (#1299), HTTP status codes and a TLS/collector deadlock (#1300), `XmlElement` attribute order,

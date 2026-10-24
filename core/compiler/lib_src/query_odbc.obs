@@ -1,0 +1,726 @@
+# Query.Structured's ODBC source (docs/QUERY_DESIGN.md, section 6, tier 2): a table or a query
+# in a real database read as a table, with the columns, row limit and condition a program asks
+# for sent to the database in the SQL. A library of its own so that a program that only
+# queries CSV files does not load the ODBC native module.
+
+use Collection;
+use System.Time;
+use Database.ODBC;
+use Query.Structured;
+
+bundle Query.Structured.Odbc {
+	#~
+	How a database spells a row limit in a SELECT. LIMIT (SQLite, PostgreSQL, MySQL) is the
+	default; TOP is SQL Server's; FETCH is the SQL standard's 'FETCH FIRST n ROWS ONLY' (Oracle
+	12c and later, DB2, PostgreSQL); NONE sends no limit and stops reading after the limit's
+	rows instead.
+	~#
+	enum LimitSyntax {
+		LIMIT,
+		TOP,
+		FETCH,
+		NONE
+	}
+
+	#~
+	A table or a query in a database, through ODBC, read as a table.
+
+	Columns are typed from the driver's description of the result: whole numbers (INTEGER,
+	SMALLINT, TINYINT, BIGINT, and NUMERIC or DECIMAL with no fraction digits and at most 18
+	digits) are INT; REAL, FLOAT, DOUBLE and other NUMERIC and DECIMAL columns are FLOAT, so a
+	decimal with more precision than a Float holds loses it; BIT and BOOLEAN are BOOL; DATE and
+	TIMESTAMP are DATE, to the second; TIME is STRING ('13:14:15'); binary columns (BINARY,
+	VARBINARY, BLOB) are STRING holding the bytes as lowercase hexadecimal, which FromHex turns
+	back into bytes; everything else is STRING, of any length. A NULL is an empty cell. A column
+	the driver describes as text holds text even when it holds numbers, so a computed column in
+	a query is cast in its SQL when its type matters.
+
+	Load sends the work a scan hint and SetWhere describe to the database: only the columns the
+	hint names (those the table has, matched by name, then ignoring case), a WHERE with the
+	condition, and the row limit, so the database filters before anything is copied. A
+	condition is SQL written by the program, not text from a user; values from elsewhere go in
+	as parameters ('?' in the condition, bound with SetWhere's second form), which the database
+	never parses as SQL. Table, schema and column names are always quoted, with any quote
+	character in a name doubled, so no name can end the identifier and add SQL. A query run
+	afterwards applies its own WHERE again, so pushing a condition down never changes an
+	answer.
+
+```
+conn := Connection->New("lab", "reader", password);
+runs := OdbcSource->New(conn, "runs");
+runs->SetWhere("finished >= ? and status = ?", [System.Time.Date->New(1, 10, 2026, false), "ok"]->As(Compare[]));
+
+catalog := Catalog->New();
+if(catalog->Load(runs, ScanHint->New(["model", "score"], -1))) {
+  catalog->Query("select model, avg(score) from runs group by model")->ToCsv()->PrintLine();
+}
+else {
+  catalog->GetError()->ErrorLine();
+};
+```
+	~#
+	class OdbcSource implements Source {
+		@connection : Connection;
+		@table : String;
+		@schema : String;
+		@query : String;
+		@name : String;
+		@where : String;
+		@values : Compare[];
+		@open_quote : Char;
+		@close_quote : Char;
+		@limit_syntax : LimitSyntax;
+		@last_sql : String;
+		@error : String;
+
+		#~
+		Constructor for a table, which the table keeps the name of
+		@param connection an open connection
+		@param table table name, as the database spells it
+		~#
+		New(connection : Connection, table : String) {
+			@connection := connection;
+			@table := table;
+			@name := table;
+			Defaults();
+		}
+
+		#~
+		Constructor for the result of a query, as a table of a given name. Pushed-down columns,
+		conditions and limits wrap the query, 'SELECT ... FROM (query) q WHERE ...'; with
+		nothing to push down it is sent as it is, keeping its ORDER BY. A database may rename
+		a repeated column name when the query is wrapped (SQLite's second 'label' becomes
+		'label:1'); unwrapped, a repeated name gets a suffix here ('label_2').
+		@param connection an open connection
+		@param name table name
+		@param query SQL SELECT
+		~#
+		New(connection : Connection, name : String, query : String) {
+			@connection := connection;
+			@name := name;
+			@query := query;
+			Defaults();
+		}
+
+		method : Defaults() ~ Nil {
+			@open_quote := '"';
+			@close_quote := '"';
+			@limit_syntax := LimitSyntax->LIMIT;
+		}
+
+		#~
+		Sets the schema a table is in, sent as '"schema"."table"'
+		@param schema schema name, Nil for the connection's default
+		~#
+		method : public : SetSchema(schema : String) ~ Nil {
+			@schema := schema;
+		}
+
+		#~
+		Sets a condition for the database to apply, as SQL after WHERE
+		@param condition condition, such as "score > 0.9 and label = 'cat'"; Nil for none
+		~#
+		method : public : SetWhere(condition : String) ~ Nil {
+			@where := condition;
+			@values := Nil;
+		}
+
+		#~
+		Sets a condition with '?' placeholders and the values bound to them, in order: an Int
+		(IntRef), Float (FloatRef), Bool (BoolRef), String or Date. Values never pass through
+		the SQL text, so they need no quoting and cannot change the statement.
+		@param condition condition, such as 'score > ? and label = ?'
+		@param values one value per placeholder
+		~#
+		method : public : SetWhere(condition : String, values : Compare[]) ~ Nil {
+			@where := condition;
+			@values := values;
+		}
+
+		#~
+		Sets the characters that quote a name: '"' and '"' by default (standard SQL), '`' and
+		'`' for MySQL without ANSI_QUOTES, '[' and ']' for SQL Server's own style
+		@param open opening quote
+		@param close closing quote; doubled inside a name
+		~#
+		method : public : SetQuotes(open : Char, close : Char) ~ Nil {
+			@open_quote := open;
+			@close_quote := close;
+		}
+
+		#~
+		Sets how the row limit is written into the SQL
+		@param syntax LIMIT by default
+		~#
+		method : public : SetLimitSyntax(syntax : LimitSyntax) ~ Nil {
+			@limit_syntax := syntax;
+		}
+
+		#~
+		Gets the SQL the last read sent to the database
+		@return SQL, Nil before the first read
+		~#
+		method : public : GetSql() ~ String {
+			return @last_sql;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Gets the table's shape, by asking the database for none of its rows
+		@return one table shape, Nil on error (see GetError)
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			@error := Nil;
+			shape := Describe();
+			if(shape = Nil) {
+				return Nil;
+			};
+
+			specs := TableSpec->New[1];
+			specs[0] := TableSpec->New(@name, shape->GetNames(), shape->GetTypes());
+			return specs;
+		}
+
+		#~
+		Loads the table into a catalog
+		@param catalog catalog
+		@param hint columns and rows needed, Nil for everything
+		@return true if loaded, false on error (see GetError)
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			table := Read(hint);
+			if(table = Nil) {
+				return false;
+			};
+
+			catalog->Add(table);
+			return true;
+		}
+
+		#~
+		Reads the whole table, or the part SetWhere asks for
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read() ~ Table {
+			return Read(Nil);
+		}
+
+		#~
+		Reads the table, or the part the hint and SetWhere ask for
+		@param hint columns and rows needed, Nil for everything
+		@return table, Nil on error (see GetError)
+		~#
+		method : public : Read(hint : ScanHint) ~ Table {
+			@error := Nil;
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			columns := "*";
+			if(hint <> Nil & hint->GetColumns() <> Nil & hint->GetColumns()->Size() > 0) {
+				shape := Describe();
+				if(shape = Nil) {
+					return Nil;
+				};
+
+				wanted := shape->Match(hint->GetColumns());
+				if(wanted->Size() > 0) {
+					columns := "";
+					each(i : wanted) {
+						if(i > 0) {
+							columns += ", ";
+						};
+						columns += Quote(wanted->Get(i));
+					};
+				};
+			};
+
+			limit := -1;
+			if(hint <> Nil) {
+				limit := hint->GetLimit();
+			};
+
+			# a query with nothing to push into it is sent as it is, so its ORDER BY and its
+			# column names reach the table unchanged
+			if(@query <> Nil & columns->Equals("*") & (@where = Nil | @where->Size() = 0) & limit < 0) {
+				return Run(@query, -1);
+			};
+
+			sql := "SELECT ";
+			if(limit > -1 & @limit_syntax = LimitSyntax->TOP) {
+				sql += "TOP {$limit} ";
+			};
+			sql += "{$columns} FROM {$(From())}";
+			if(@where <> Nil & @where->Size() > 0) {
+				sql += " WHERE {$@where}";
+			};
+			if(limit > -1) {
+				if(@limit_syntax = LimitSyntax->LIMIT) {
+					sql += " LIMIT {$limit}";
+				}
+				else if(@limit_syntax = LimitSyntax->FETCH) {
+					sql += " FETCH FIRST {$limit} ROWS ONLY";
+				};
+			};
+
+			return Run(sql, limit);
+		}
+
+		#~
+		Quotes a name as this source sends it: in its quote characters, with the closing one
+		doubled inside it
+		@param name table, schema or column name
+		@return quoted name
+		~#
+		method : public : Quote(name : String) ~ String {
+			return Quote(name, @open_quote, @close_quote);
+		}
+
+		#~
+		Quotes a name in given quote characters, doubling the closing one inside it, so the
+		name cannot end the identifier
+		@param name name
+		@param open opening quote
+		@param close closing quote
+		@return quoted name
+		~#
+		function : Quote(name : String, open : Char, close : Char) ~ String {
+			quoted := String->New();
+			quoted->Append(open);
+			if(name <> Nil) {
+				each(i : name) {
+					c := name->Get(i);
+					quoted->Append(c);
+					if(c = close) {
+						quoted->Append(close);
+					};
+				};
+			};
+			quoted->Append(close);
+			return quoted;
+		}
+
+		#~
+		Turns a binary cell's hexadecimal text back into bytes
+		@param hex lowercase or uppercase hexadecimal digits, two per byte
+		@return bytes, Nil if the text is not hexadecimal
+		```
+		thumbnail := OdbcSource->FromHex(table->GetColumn("thumbnail")->GetString(0));
+		```
+		~#
+		function : FromHex(hex : String) ~ Byte[] {
+			if(hex = Nil | hex->Size() % 2 <> 0) {
+				return Nil;
+			};
+
+			bytes := Byte->New[hex->Size() / 2];
+			each(i : bytes) {
+				high := Digit(hex->Get(2 * i));
+				low := Digit(hex->Get(2 * i + 1));
+				if(high < 0 | low < 0) {
+					return Nil;
+				};
+				bytes[i] := (high * 16 + low)->As(Byte);
+			};
+
+			return bytes;
+		}
+
+		#~
+		Writes bytes as lowercase hexadecimal, the form binary cells take
+		@param bytes bytes
+		@return hexadecimal text, two digits per byte
+		~#
+		function : ToHex(bytes : Byte[]) ~ String {
+			digits := "0123456789abcdef";
+			text := String->New();
+			if(bytes <> Nil) {
+				each(i : bytes) {
+					value := bytes[i]->As(Int) and 255;
+					text->Append(digits->Get(value >> 4));
+					text->Append(digits->Get(value and 15));
+				};
+			};
+			return text;
+		}
+
+		function : Digit(c : Char) ~ Int {
+			if(c >= '0' & c <= '9') {
+				return c - '0';
+			}
+			else if(c >= 'a' & c <= 'f') {
+				return c - 'a' + 10;
+			}
+			else if(c >= 'A' & c <= 'F') {
+				return c - 'A' + 10;
+			};
+
+			return -1;
+		}
+
+		method : Ready() ~ Bool {
+			if(@connection = Nil | <>@connection->IsOpen()) {
+				@error := "'{$@name}': the connection is not open";
+				return false;
+			};
+			if(@name = Nil | (@table = Nil & @query = Nil)) {
+				@error := "no table and no query";
+				return false;
+			};
+
+			return true;
+		}
+
+		# the table, quoted, or the query as a derived table
+		method : From() ~ String {
+			if(@query <> Nil) {
+				return "({$@query}) q";
+			};
+
+			if(@schema <> Nil & @schema->Size() > 0) {
+				return "{$(Quote(@schema))}.{$(Quote(@table))}";
+			};
+
+			return Quote(@table);
+		}
+
+		# the result's columns and types, from a SELECT that asks for no rows
+		method : Describe() ~ OdbcShape {
+			if(<>Ready()) {
+				return Nil;
+			};
+
+			sql := "SELECT * FROM {$(From())} WHERE 1 = 0";
+			@last_sql := sql;
+			rs := @connection->Select(sql);
+			if(rs = Nil | <>rs->IsOpen()) {
+				Failed(rs);
+				return Nil;
+			};
+
+			infos := rs->GetColumnInfo();
+			rs->Close();
+			if(infos = Nil) {
+				@error := "'{$@name}': the driver did not describe the columns";
+				return Nil;
+			};
+
+			return OdbcShape->New(infos);
+		}
+
+		method : Failed(rs : ResultSet) ~ Nil {
+			reason : String;
+			if(rs <> Nil) {
+				reason := rs->GetLastError();
+			};
+			if(reason = Nil | reason->Size() = 0) {
+				reason := @connection->GetLastError();
+			};
+			if(reason = Nil | reason->Size() = 0) {
+				reason := "the database refused the statement";
+			};
+			@error := "'{$@name}': {$reason}";
+		}
+
+		# runs a SELECT, binding SetWhere's values when there are any, and copies its rows
+		method : Run(sql : String, limit : Int) ~ Table {
+			@last_sql := sql;
+			statement : ParameterStatement;
+			rs : ResultSet;
+			if(@values <> Nil & @values->Size() > 0) {
+				statement := @connection->CreateParameterStatement(sql);
+				if(statement = Nil) {
+					Failed(Nil);
+					return Nil;
+				};
+				each(i : @values) {
+					if(<>Bind(statement, i + 1, @values[i])) {
+						statement->Close();
+						return Nil;
+					};
+				};
+				rs := statement->Select();
+			}
+			else {
+				rs := @connection->Select(sql);
+			};
+
+			if(rs = Nil | <>rs->IsOpen()) {
+				Failed(rs);
+				if(statement <> Nil) {
+					statement->Close();
+				};
+				return Nil;
+			};
+
+			table := Copy(rs, limit);
+			# closing the result set frees the statement, a prepared one's too
+			rs->Close();
+			return table;
+		}
+
+		method : Bind(statement : ParameterStatement, position : Int, value : Compare) ~ Bool {
+			bound := false;
+			if(value = Nil) {
+				@error := "'{$@name}': parameter {$position} is Nil; a comparison with NULL is never true, so write IS NULL in the condition";
+				return false;
+			}
+			else if(value->TypeOf(IntRef)) {
+				bound := statement->SetBigInt(position, value->As(IntRef)->Get());
+			}
+			else if(value->TypeOf(FloatRef)) {
+				bound := statement->SetDouble(position, value->As(FloatRef)->Get());
+			}
+			else if(value->TypeOf(BoolRef)) {
+				bound := statement->SetBit(position, value->As(BoolRef)->Get());
+			}
+			else if(value->TypeOf(String)) {
+				bound := statement->SetVarchar(position, value->As(String));
+			}
+			else if(value->TypeOf(System.Time.Date)) {
+				bound := statement->SetTimestamp(position, Timestamp->New(value->As(System.Time.Date)));
+			}
+			else {
+				@error := "'{$@name}': parameter {$position} is not an Int, Float, Bool, String or Date";
+				return false;
+			};
+
+			if(<>bound) {
+				@error := "'{$@name}': parameter {$position} could not be bound: {$(statement->GetLastError())}";
+			};
+			return bound;
+		}
+
+		# the rows of an open result set, typed from its description
+		method : Copy(rs : ResultSet, limit : Int) ~ Table {
+			infos := rs->GetColumnInfo();
+			if(infos = Nil) {
+				@error := "'{$@name}': the driver did not describe the columns";
+				return Nil;
+			};
+
+			shape := OdbcShape->New(infos);
+			kinds := shape->GetKinds();
+			names := shape->GetNames();
+			table := Table->New(@name, shape->GetNames(), shape->GetTypes(), true);
+			count := 0;
+			while((limit < 0 | count < limit) & rs->Next()) {
+				row := table->Insert();
+				each(c : kinds) {
+					value := Cell(rs, c + 1, kinds[c]);
+					if(value <> Nil) {
+						if(<>row->Set(c + 1, value)) {
+							@error := "'{$@name}': row {$count}, column '{$(names[c])}': {$(table->GetColumn(c + 1)->GetError())}";
+							return Nil;
+						};
+					};
+				};
+				count += 1;
+			};
+
+			return table;
+		}
+
+		# one cell, read as its column's kind; Nil for NULL
+		method : Cell(rs : ResultSet, column : Int, kind : Int) ~ Compare {
+			if(kind = 1) {
+				number := rs->GetBigInt(column);
+				if(rs->IsNull()) {
+					return Nil;
+				};
+				return IntRef->New(number);
+			}
+			else if(kind = 2) {
+				real := rs->GetDouble(column);
+				if(rs->IsNull()) {
+					return Nil;
+				};
+				return FloatRef->New(real);
+			}
+			else if(kind = 3) {
+				bit := rs->GetBit(column);
+				if(rs->IsNull()) {
+					return Nil;
+				};
+				return BoolRef->New(bit);
+			}
+			else if(kind = 4) {
+				day := rs->GetDate(column);
+				if(day = Nil | rs->IsNull()) {
+					return Nil;
+				};
+				return System.Time.Date->New(day->GetDay(), day->GetMonth(), day->GetYear(), false);
+			}
+			else if(kind = 5) {
+				stamp := rs->GetTimestamp(column);
+				if(stamp = Nil | rs->IsNull()) {
+					return Nil;
+				};
+				return System.Time.Date->New(stamp->GetDay(), stamp->GetMonth(), stamp->GetYear(),
+					stamp->GetHours(), stamp->GetMinutes(), stamp->GetSeconds(), false);
+			}
+			else if(kind = 6) {
+				bytes := rs->GetBytes(column);
+				if(bytes = Nil | rs->IsNull()) {
+					return Nil;
+				};
+				return ToHex(bytes);
+			};
+
+			text := rs->GetVarchar(column);
+			if(rs->IsNull()) {
+				return Nil;
+			};
+			return text;
+		}
+	}
+
+	#~
+	A result's column names, types and how each is read, from the driver's description
+	~#
+	class : private : OdbcShape {
+		@names : String[];
+		@types : ColumnType[];
+		@kinds : Int[];
+
+		New(infos : ColumnInfo[]) {
+			count := infos->Size();
+			@names := String->New[count];
+			@types := ColumnType->New[count];
+			@kinds := Int->New[count];
+			seen := Set->New()<String>;
+			each(i : infos) {
+				name := infos[i]->GetName();
+				if(name = Nil | name->Size() = 0) {
+					name := "c{$(i + 1)}";
+				};
+				# a query can repeat a name, as a join of two tables with an 'id' does
+				base := name;
+				n := 2;
+				while(seen->Has(name)) {
+					name := "{$base}_{$n}";
+					n += 1;
+				};
+				seen->Insert(name);
+				@names[i] := name;
+
+				info := infos[i];
+				code := info->GetType();
+				kind := KindOf(code->As(Int), info->GetSize(), info->GetDecimalDigits());
+				@kinds[i] := kind;
+				@types[i] := StorageOf(kind);
+			};
+		}
+
+		method : public : GetNames() ~ String[] {
+			return @names;
+		}
+
+		method : public : GetTypes() ~ ColumnType[] {
+			return @types;
+		}
+
+		method : public : GetKinds() ~ Int[] {
+			return @kinds;
+		}
+
+		# the names of these columns a hint asks for: by name, then ignoring case
+		method : public : Match(wanted : String[]) ~ Vector<String> {
+			matched := Vector->New()<String>;
+			# declared once and reset each pass: a local declared in a loop body keeps the
+			# previous pass's value
+			found : String;
+			each(w : wanted) {
+				found := Nil;
+				each(i : @names) {
+					if(found = Nil & @names[i]->Equals(wanted[w])) {
+						found := @names[i];
+					};
+				};
+				if(found = Nil) {
+					lower := wanted[w]->ToLower();
+					each(i : @names) {
+						if(found = Nil & @names[i]->ToLower()->Equals(lower)) {
+							found := @names[i];
+						};
+					};
+				};
+				if(found <> Nil & <>Contains(matched, found)) {
+					matched->AddBack(found);
+				};
+			};
+			return matched;
+		}
+
+		function : Contains(names : Vector<String>, name : String) ~ Bool {
+			each(i : names) {
+				if(names->Get(i)->Equals(name)) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		# how a cell is read: 0 text, 1 whole number, 2 real number, 3 bit, 4 date, 5 timestamp,
+		# 6 binary, from the SQL type codes in sql.h and sqlext.h
+		function : KindOf(code : Int, size : Int, digits : Int) ~ Int {
+			# INTEGER, SMALLINT, TINYINT, BIGINT
+			if(code = 4 | code = 5 | code = -6 | code = -5) {
+				return 1;
+			}
+			# NUMERIC, DECIMAL: whole numbers when there are no fraction digits and they fit
+			else if(code = 2 | code = 3) {
+				if(digits = 0 & size > 0 & size <= 18) {
+					return 1;
+				};
+				return 2;
+			}
+			# FLOAT, REAL, DOUBLE
+			else if(code = 6 | code = 7 | code = 8) {
+				return 2;
+			}
+			# BIT
+			else if(code = -7) {
+				return 3;
+			}
+			# DATE, in ODBC 3 and ODBC 2
+			else if(code = 91 | code = 9) {
+				return 4;
+			}
+			# TIMESTAMP, in ODBC 3 and ODBC 2
+			else if(code = 93 | code = 11) {
+				return 5;
+			}
+			# BINARY, VARBINARY, LONGVARBINARY
+			else if(code = -2 | code = -3 | code = -4) {
+				return 6;
+			};
+
+			return 0;
+		}
+
+		function : StorageOf(kind : Int) ~ ColumnType {
+			if(kind = 1) {
+				return ColumnType->INT;
+			}
+			else if(kind = 2) {
+				return ColumnType->FLOAT;
+			}
+			else if(kind = 3) {
+				return ColumnType->BOOL;
+			}
+			else if(kind = 4 | kind = 5) {
+				return ColumnType->DATE;
+			};
+
+			return ColumnType->STRING;
+		}
+	}
+}

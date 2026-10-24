@@ -2657,6 +2657,56 @@
 				}
 			}
 		},
+		"Collection.BitSet": {
+			"description": "Growable set of bits packed 64 to an Int",
+			"functions": {
+				"And": {
+					"descriptions": ["**Keeps only the bits also set in another set (in place)**\n\n```method : public : And(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1); a->Set(2);\nb := Collection.BitSet->New(8); b->Set(2);\na->And(b)->Cardinality()->PrintLine(); # 1\n```"]
+				},
+				"AndNot": {
+					"descriptions": ["**Clears the bits set in another set (in place)**\n\n```method : public : AndNot(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1); a->Set(2);\nb := Collection.BitSet->New(8); b->Set(2);\na->AndNot(b)->Get(2)->PrintLine(); # false\n```"]
+				},
+				"Cardinality": {
+					"descriptions": ["**Counts the set bits**\n\n```method : public : native : Cardinality() ~ Int```\n\n\n\nreturn: Int\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(1); bits->Set(2);\nbits->Cardinality()->PrintLine(); # 2\n```"]
+				},
+				"Clear": {
+					"descriptions": ["**Clears a bit**\n\n```method : public : native : Clear(index:Int) ~ Nil```\n\n\n\nindex: Int\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(2);\nbits->Clear(2);\nbits->Get(2)->PrintLine(); # false\n```"]
+				},
+				"Copy": {
+					"descriptions": ["**Copies the set**\n\n```method : public : Copy() ~ BitSet```\n\n\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1);\nb := a->Copy();\nb->Set(2);\na->Cardinality()->PrintLine(); # 1\n```"]
+				},
+				"Empty": {
+					"descriptions": ["**Clears every bit; the size is kept**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(1);\nbits->Empty();\nbits->Cardinality()->PrintLine(); # 0\n```"]
+				},
+				"Get": {
+					"descriptions": ["**Gets a bit**\n\n```method : public : native : Get(index:Int) ~ Bool```\n\n\n\nindex: Int\n\nreturn: Bool\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(5);\nbits->Get(5)->PrintLine(); # true\nbits->Get(6)->PrintLine(); # false\n```"]
+				},
+				"GetWords": {
+					"descriptions": ["**Gets the backing words; bit i is bit (i and 63) of word (i >> 6). The array is shared, not copied.**\n\n```method : public : GetWords() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(0);\nbits->GetWords()[0]->PrintLine(); # 1\n```"]
+				},
+				"New": {
+					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nbits := Collection.BitSet->New();\nbits->Set(10);\nbits->Size()->PrintLine(); # 11\n```", "**Constructor for a number of bits, all clear**\n\n```New(size:Int)```\n\n\n\nsize: Int\n\n```\nbits := Collection.BitSet->New(65);\nbits->Size()->PrintLine(); # 65\n```"]
+				},
+				"NextSetBit": {
+					"descriptions": ["**Finds the next set bit at or after an index**\n\n```method : public : native : NextSetBit(start:Int) ~ Int```\n\n\n\nstart: Int\n\nreturn: Int\n\n```\nbits := Collection.BitSet->New(200);\nbits->Set(70); bits->Set(130);\nbits->NextSetBit(0)->PrintLine();   # 70\nbits->NextSetBit(71)->PrintLine();  # 130\nbits->NextSetBit(131)->PrintLine(); # -1\n```"]
+				},
+				"Or": {
+					"descriptions": ["**Adds the bits set in another set (in place)**\n\n```method : public : Or(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1);\nb := Collection.BitSet->New(8); b->Set(2);\na->Or(b)->Cardinality()->PrintLine(); # 2\n```"]
+				},
+				"Set": {
+					"descriptions": ["**Sets a bit, growing the set when the index is past its size**\n\n```method : public : native : Set(index:Int) ~ Nil```\n\n\n\nindex: Int\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New();\nbits->Set(200);\nbits->Get(200)->PrintLine(); # true\n```", "**Sets or clears a bit**\n\n```method : public : Set(index:Int, value:Bool) ~ Nil```\n\n\n\nindex: Int\n\nvalue: Bool\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(2, true);\nbits->Get(2)->PrintLine(); # true\n```"]
+				},
+				"Size": {
+					"descriptions": ["**Number of bits: the size given to the constructor, or one past the highest bit ever set if that is larger**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nbits := Collection.BitSet->New(10);\nbits->Size()->PrintLine(); # 10\n```"]
+				},
+				"ToString": {
+					"descriptions": ["**Formats the set into a string of the indexes of its set bits**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(1); bits->Set(5);\nbits->ToString()->PrintLine(); # {1,5}\n```"]
+				},
+				"Xor": {
+					"descriptions": ["**Flips the bits set in another set (in place)**\n\n```method : public : Xor(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1); a->Set(2);\nb := Collection.BitSet->New(8); b->Set(2); b->Set(3);\na->Xor(b)->Cardinality()->PrintLine(); # 2\n```"]
+				}
+			}
+		},
 		"Collection.Cache": {
 			"description": "MRU\/LRU object cache",
 			"functions": {
@@ -2922,6 +2972,71 @@
 				}
 			}
 		},
+		"Collection.FloatVector": {
+			"description": "Growable array of Float values; nothing is boxed",
+			"functions": {
+				"AddBack": {
+					"descriptions": ["**Adds a value to the end**\n\n```method : public : native : AddBack(value:Float) ~ Nil```\n\n\n\nvalue: Float\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New();\nv->AddBack(4.25);\nv->Get(0)->PrintLine(); # 4.25\n```"]
+				},
+				"Clear": {
+					"descriptions": ["**Removes every value; the reserved room is kept**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New([1.5]);\nv->Clear();\nv->Size()->PrintLine(); # 0\n```"]
+				},
+				"Each": {
+					"descriptions": ["**Calls a function for each value**\n\n```method : public : Each(f:(Float)~Nil) ~ FloatVector```\n\n\n\nf: (Float)~Nil\n\nreturn: FloatVector\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Each(\\(f) => { f->PrintLine(); });\n```"]
+				},
+				"Empty": {
+					"descriptions": ["**Removes every value; the same as Clear**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New([1.5]);\nv->Empty();\nv->IsEmpty()->PrintLine(); # true\n```"]
+				},
+				"Find": {
+					"descriptions": ["**Finds the first index of a value (exact comparison)**\n\n```method : public : native : Find(value:Float) ~ Int```\n\n\n\nvalue: Float\n\nreturn: Int\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Find(2.5)->PrintLine(); # 1\n```"]
+				},
+				"First": {
+					"descriptions": ["**Gets the first value**\n\n```method : public : First() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->First()->PrintLine(); # 1.5\n```"]
+				},
+				"Get": {
+					"descriptions": ["**Gets an indexed value**\n\n```method : public : native : Get(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Get(1)->PrintLine(); # 2.5\n```"]
+				},
+				"Has": {
+					"descriptions": ["**Checks for a value (exact comparison)**\n\n```method : public : Has(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Has(1.5)->PrintLine(); # true\n```"]
+				},
+				"IsEmpty": {
+					"descriptions": ["**Checks to see if the vector is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nv := Collection.FloatVector->New();\nv->IsEmpty()->PrintLine(); # true\n```"]
+				},
+				"Last": {
+					"descriptions": ["**Gets the last value**\n\n```method : public : Last() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Last()->PrintLine(); # 2.5\n```"]
+				},
+				"New": {
+					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nv := Collection.FloatVector->New();\nv->AddBack(1.5);\nv->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of values**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nv := Collection.FloatVector->New(1000);\nv->Size()->PrintLine(); # 0\n```", "**Copy constructor**\n\n```New(values:Float[])```\n\n\n\nvalues: Float[]\n\n```\nv := Collection.FloatVector->New([1.0, 2.0]);\nv->Get(1)->PrintLine(); # 2\n```"]
+				},
+				"Remove": {
+					"descriptions": ["**Removes an indexed value, shifting the later values down**\n\n```method : public : Remove(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5, 3.5]);\nv->Remove(0)->PrintLine(); # 1.5\n```"]
+				},
+				"RemoveBack": {
+					"descriptions": ["**Removes the last value**\n\n```method : public : RemoveBack() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->RemoveBack()->PrintLine(); # 2.5\n```"]
+				},
+				"Reserve": {
+					"descriptions": ["**Reserves room for at least a number of values**\n\n```method : public : Reserve(capacity:Int) ~ Nil```\n\n\n\ncapacity: Int\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New();\nv->Reserve(1000000);\nv->Size()->PrintLine(); # 0\n```"]
+				},
+				"Set": {
+					"descriptions": ["**Sets an indexed value**\n\n```method : public : native : Set(value:Float, index:Int) ~ Bool```\n\n\n\nvalue: Float\n\nindex: Int\n\nreturn: Bool\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Set(9.0, 0)->PrintLine(); # true\n```"]
+				},
+				"Size": {
+					"descriptions": ["**Size of vector**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Size()->PrintLine(); # 2\n```"]
+				},
+				"Sort": {
+					"descriptions": ["**Sorts the values in ascending order (a stable merge sort, O(n log n))**\n\n```method : public : Sort() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New([3.0, -1.0, 2.0]);\nv->Sort();\nv->First()->PrintLine(); # -1\n```"]
+				},
+				"Sum": {
+					"descriptions": ["**Sums the values**\n\n```method : public : native : Sum() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Sum()->PrintLine(); # 4\n```"]
+				},
+				"ToArray": {
+					"descriptions": ["**Copies the values into an array**\n\n```method : public : ToArray() ~ Float[]```\n\n\n\nreturn: Float[]\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->ToArray()->Size()->PrintLine(); # 2\n```"]
+				},
+				"ToString": {
+					"descriptions": ["**Formats the vector into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->ToString()->PrintLine(); # [1.5,2.5]\n```"]
+				}
+			}
+		},
 		"Collection.ForwardIterator": {
 			"description": "Forward iterator",
 			"functions": {
@@ -3110,6 +3225,153 @@
 				},
 				"Top": {
 					"descriptions": ["**Check the top of the stack**\n\n```method : public : Top() ~ H```\n\n\n\nreturn: H\n\n```\nheap := Collection.Heap->New(Collection.Heap->Order->MIN)<IntRef>;\nheap->Insert(IntRef->New(5));\nheap->Insert(IntRef->New(2));\nheap->Top()->PrintLine(); # 2\n```"]
+				}
+			}
+		},
+		"Collection.IntMap": {
+			"description": "Hash table from Int keys to Int values: open addressing over plain arrays, so nothing is boxed. Every Int is a valid key, including 0 and the Int64 extremes.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds to the value of a key; a missing key starts at 0**\n\n```method : public : native : Add(key:Int, delta:Int) ~ Int```\n\n\n\nkey: Int\n\ndelta: Int\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Add(1, 5);\nmap->Add(1, 2)->PrintLine(); # 7\n```"]
+				},
+				"Each": {
+					"descriptions": ["**Calls a function for each key and value. The function must not change the map.**\n\n```method : public : Each(f:(Int,Int)~Nil) ~ IntMap```\n\n\n\nf: (Int,Int)~Nil\n\nreturn: IntMap\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10);\nmap->Each(\\(k, v) => { \"{$k}={$v}\"->PrintLine(); });\n```"]
+				},
+				"Empty": {
+					"descriptions": ["**Removes every entry**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 1);\nmap->Empty();\nmap->Size()->PrintLine(); # 0\n```"]
+				},
+				"Find": {
+					"descriptions": ["**Finds the value of a key**\n\n```method : public : Find(key:Int) ~ Int```\n\n\n\nkey: Int\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10);\nmap->Find(1)->PrintLine(); # 10\nmap->Find(2)->PrintLine(); # 0\n```", "**Finds the value of a key**\n\n```method : public : native : Find(key:Int, missing:Int) ~ Int```\n\n\n\nkey: Int\n\nmissing: Int\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Find(2, -1)->PrintLine(); # -1\n```"]
+				},
+				"GetKeys": {
+					"descriptions": ["**Gets the keys. GetKeys and GetValues list the entries in the same order.**\n\n```method : public : native : GetKeys() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10); map->Insert(2, 20);\nmap->GetKeys()->Size()->PrintLine(); # 2\n```"]
+				},
+				"GetValues": {
+					"descriptions": ["**Gets the values, in the same order as GetKeys**\n\n```method : public : native : GetValues() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10); map->Insert(2, 20);\nmap->GetValues()->Size()->PrintLine(); # 2\n```"]
+				},
+				"Has": {
+					"descriptions": ["**Checks for a key**\n\n```method : public : native : Has(key:Int) ~ Bool```\n\n\n\nkey: Int\n\nreturn: Bool\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(0, 0);\nmap->Has(0)->PrintLine(); # true\nmap->Has(1)->PrintLine(); # false\n```"]
+				},
+				"Insert": {
+					"descriptions": ["**Inserts a value, replacing the value of an existing key**\n\n```method : public : native : Insert(key:Int, value:Int) ~ Nil```\n\n\n\nkey: Int\n\nvalue: Int\n\nreturn: Nil\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(-5, 25);\nmap->Find(-5)->PrintLine(); # 25\n```"]
+				},
+				"IsEmpty": {
+					"descriptions": ["**Checks to see if the map is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nmap := Collection.IntMap->New();\nmap->IsEmpty()->PrintLine(); # true\n```"]
+				},
+				"New": {
+					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 100);\nmap->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of entries**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nmap := Collection.IntMap->New(100000);\nmap->Size()->PrintLine(); # 0\n```"]
+				},
+				"Remove": {
+					"descriptions": ["**Removes a key**\n\n```method : public : native : Remove(key:Int) ~ Bool```\n\n\n\nkey: Int\n\nreturn: Bool\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(4, 16);\nmap->Remove(4)->PrintLine(); # true\nmap->Has(4)->PrintLine();    # false\n```"]
+				},
+				"Size": {
+					"descriptions": ["**Number of entries**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 1);\nmap->Size()->PrintLine(); # 1\n```"]
+				},
+				"ToString": {
+					"descriptions": ["**Formats the map into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10);\nmap->ToString()->PrintLine(); # [(1:10)]\n```"]
+				}
+			}
+		},
+		"Collection.IntSet": {
+			"description": "Hash set of Int values: open addressing over plain arrays, so nothing is boxed. Every Int is a valid member, including 0 and the Int64 extremes.",
+			"functions": {
+				"Add": {
+					"descriptions": ["**Adds a value**\n\n```method : public : native : Add(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->Add(-1)->PrintLine(); # true\n```"]
+				},
+				"Each": {
+					"descriptions": ["**Calls a function for each value. The function must not change the set.**\n\n```method : public : Each(f:(Int)~Nil) ~ IntSet```\n\n\n\nf: (Int)~Nil\n\nreturn: IntSet\n\n```\nset := Collection.IntSet->New();\nset->Add(1);\nset->Each(\\(v) => { v->PrintLine(); });\n```"]
+				},
+				"Empty": {
+					"descriptions": ["**Removes every value**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nset := Collection.IntSet->New();\nset->Add(1);\nset->Empty();\nset->Size()->PrintLine(); # 0\n```"]
+				},
+				"Has": {
+					"descriptions": ["**Checks for a value**\n\n```method : public : native : Has(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->Add(3);\nset->Has(3)->PrintLine(); # true\n```"]
+				},
+				"Insert": {
+					"descriptions": ["**Inserts a value; the same as Add, for the method name the other sets use**\n\n```method : public : Insert(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nset := Collection.IntSet->New();\nset->Insert(9);\nset->Has(9)->PrintLine(); # true\n```"]
+				},
+				"IsEmpty": {
+					"descriptions": ["**Checks to see if the set is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->IsEmpty()->PrintLine(); # true\n```"]
+				},
+				"New": {
+					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nset := Collection.IntSet->New();\nset->Insert(1);\nset->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of values**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nset := Collection.IntSet->New(100000);\nset->Size()->PrintLine(); # 0\n```"]
+				},
+				"Remove": {
+					"descriptions": ["**Removes a value**\n\n```method : public : native : Remove(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->Add(3);\nset->Remove(3)->PrintLine(); # true\n```"]
+				},
+				"Size": {
+					"descriptions": ["**Number of values**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nset := Collection.IntSet->New();\nset->Add(1); set->Add(2);\nset->Size()->PrintLine(); # 2\n```"]
+				},
+				"ToArray": {
+					"descriptions": ["**Gets the values as an array**\n\n```method : public : native : ToArray() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nset := Collection.IntSet->New();\nset->Add(1); set->Add(2);\nset->ToArray()->Size()->PrintLine(); # 2\n```"]
+				},
+				"ToString": {
+					"descriptions": ["**Formats the set into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nset := Collection.IntSet->New();\nset->Add(1);\nset->ToString()->PrintLine(); # {1}\n```"]
+				}
+			}
+		},
+		"Collection.IntVector": {
+			"description": "Growable array of Int values; nothing is boxed",
+			"functions": {
+				"AddBack": {
+					"descriptions": ["**Adds a value to the end**\n\n```method : public : native : AddBack(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New();\nv->AddBack(42);\nv->Get(0)->PrintLine(); # 42\n```"]
+				},
+				"Clear": {
+					"descriptions": ["**Removes every value; the reserved room is kept**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->Clear();\nv->Size()->PrintLine(); # 0\n```"]
+				},
+				"Each": {
+					"descriptions": ["**Calls a function for each value**\n\n```method : public : Each(f:(Int)~Nil) ~ IntVector```\n\n\n\nf: (Int)~Nil\n\nreturn: IntVector\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Each(\\(i) => { i->PrintLine(); });\n```"]
+				},
+				"Empty": {
+					"descriptions": ["**Removes every value; the same as Clear**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->Empty();\nv->IsEmpty()->PrintLine(); # true\n```"]
+				},
+				"Find": {
+					"descriptions": ["**Finds the first index of a value**\n\n```method : public : native : Find(value:Int) ~ Int```\n\n\n\nvalue: Int\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Find(6)->PrintLine(); # 2\n```"]
+				},
+				"First": {
+					"descriptions": ["**Gets the first value**\n\n```method : public : First() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->First()->PrintLine(); # 4\n```"]
+				},
+				"Get": {
+					"descriptions": ["**Gets an indexed value**\n\n```method : public : native : Get(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Get(1)->PrintLine(); # 5\n```"]
+				},
+				"Has": {
+					"descriptions": ["**Checks for a value**\n\n```method : public : Has(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Has(5)->PrintLine(); # true\n```"]
+				},
+				"IsEmpty": {
+					"descriptions": ["**Checks to see if the vector is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nv := Collection.IntVector->New();\nv->IsEmpty()->PrintLine(); # true\n```"]
+				},
+				"Last": {
+					"descriptions": ["**Gets the last value**\n\n```method : public : Last() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Last()->PrintLine(); # 5\n```"]
+				},
+				"New": {
+					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nv := Collection.IntVector->New();\nv->AddBack(7);\nv->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of values**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nv := Collection.IntVector->New(1000);\nv->Size()->PrintLine(); # 0\n```", "**Copy constructor**\n\n```New(values:Int[])```\n\n\n\nvalues: Int[]\n\n```\nv := Collection.IntVector->New([5, 6, 7]);\nv->Get(2)->PrintLine(); # 7\n```"]
+				},
+				"Remove": {
+					"descriptions": ["**Removes an indexed value, shifting the later values down**\n\n```method : public : Remove(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Remove(1)->PrintLine(); # 5\nv->Get(1)->PrintLine();    # 6\n```"]
+				},
+				"RemoveBack": {
+					"descriptions": ["**Removes the last value**\n\n```method : public : RemoveBack() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->RemoveBack()->PrintLine(); # 5\nv->Size()->PrintLine();       # 1\n```"]
+				},
+				"Reserve": {
+					"descriptions": ["**Reserves room for at least a number of values**\n\n```method : public : Reserve(capacity:Int) ~ Nil```\n\n\n\ncapacity: Int\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New();\nv->Reserve(1000000);\nv->Size()->PrintLine(); # 0\n```"]
+				},
+				"Set": {
+					"descriptions": ["**Sets an indexed value**\n\n```method : public : native : Set(value:Int, index:Int) ~ Bool```\n\n\n\nvalue: Int\n\nindex: Int\n\nreturn: Bool\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Set(9, 0)->PrintLine(); # true\nv->Get(0)->PrintLine();    # 9\n```"]
+				},
+				"Size": {
+					"descriptions": ["**Size of vector**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->Size()->PrintLine(); # 2\n```"]
+				},
+				"Sort": {
+					"descriptions": ["**Sorts the values in ascending order (a stable merge sort, O(n log n))**\n\n```method : public : Sort() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New([3, -1, 2]);\nv->Sort();\nv->ToString()->PrintLine(); # [-1,2,3]\n```"]
+				},
+				"Sum": {
+					"descriptions": ["**Sums the values**\n\n```method : public : native : Sum() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Sum()->PrintLine(); # 15\n```"]
+				},
+				"ToArray": {
+					"descriptions": ["**Copies the values into an array**\n\n```method : public : ToArray() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->ToArray()->Size()->PrintLine(); # 2\n```"]
+				},
+				"ToString": {
+					"descriptions": ["**Formats the vector into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->ToString()->PrintLine(); # [1,2]\n```"]
 				}
 			}
 		},
@@ -4514,6 +4776,9 @@
 				"GetBlob": {
 					"descriptions": ["**Gets a blob value**\n\n```method : public : GetBlob(column:Int, buffer:Byte[]) ~ Nil```\n\n\n\ncolumn: Int\n\nbuffer: Byte[]\n\nreturn: Nil", "**Gets a blob value**\n\n```method : public : GetBlob(column:String, buffer:Byte[]) ~ Nil```\n\n\n\ncolumn: String\n\nbuffer: Byte[]\n\nreturn: Nil"]
 				},
+				"GetBytes": {
+					"descriptions": ["**Gets a whole binary value, however long, as a new array of exactly its length. GetBlob fills a buffer the caller sized and cannot say how much of it the value used, or that the value was longer.**\n\n```method : public : GetBytes(column:Int) ~ Byte[]```\n\n\n\ncolumn: Int\n\nreturn: Byte[]\n\n```\nrs := conn->Select(\"SELECT id, thumbnail FROM images\");\nwhile(rs->Next()) {\n  bytes := rs->GetBytes(2);\n  if(bytes <> Nil) { \"{$(bytes->Size())} bytes\"->PrintLine(); };\n};\nrs->Close();\n```"]
+				},
 				"GetColumnInfo": {
 					"descriptions": ["**Get the metadata for a given column**\n\n```method : public : GetColumnInfo() ~ ColumnInfo[]```\n\n\n\nreturn: ColumnInfo[]"]
 				},
@@ -4527,7 +4792,7 @@
 					"descriptions": ["**Gets an integer value**\n\n```method : public : GetInt(column:Int) ~ Int```\n\n\n\ncolumn: Int\n\nreturn: Int\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\nrs := conn->Select(\"SELECT id, age FROM users\");\nwhile(rs->Next()) {\n  age := rs->GetInt(2); # column 2 = age\n  \"age={$age}\"->PrintLine();\n};\nrs->Close();\nconn->Close();\n```", "**Gets an integer value**\n\n```method : public : GetInt(column:String) ~ Int```\n\n\n\ncolumn: String\n\nreturn: Int"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Gets the last error message from the result set statement.**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the last error message from the result set statement, or, for a result set that is not open, why the statement failed**\n\n```method : public : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetReal": {
 					"descriptions": ["**Gets a real value**\n\n```method : public : GetReal(column:Int) ~ Float```\n\n\n\ncolumn: Int\n\nreturn: Float", "**Gets a real value**\n\n```method : public : GetReal(column:String) ~ Float```\n\n\n\ncolumn: String\n\nreturn: Float"]
@@ -4543,6 +4808,9 @@
 				},
 				"IsNull": {
 					"descriptions": ["**Checks to see if the value fetched is NUL. This method should be called after a value is fetched using GetX(column).**\n\n```method : public : IsNull() ~ Bool```\n\n\n\nreturn: Bool"]
+				},
+				"IsOpen": {
+					"descriptions": ["**Whether the statement ran and its rows can be read. A Select whose SQL the database refused gives a result set that is not open; GetLastError says why.**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nrs := conn->Select(\"SELECT name FROM users\");\nif(<>rs->IsOpen()) {\n  rs->GetLastError()->ErrorLine();\n};\n```"]
 				},
 				"Next": {
 					"descriptions": ["**Moves the cursor to the next row in the result set**\n\n```method : public : Next() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nconn := Database.ODBC.Connection->New(\"mydsn\", \"user\", \"pass\");\nrs := conn->Select(\"SELECT name FROM users\");\nwhile(rs->Next()) { # advance row by row\n  rs->GetVarchar(\"name\")->PrintLine();\n};\nrs->Close();\nconn->Close();\n```"]
@@ -10013,6 +10281,50 @@
 				}
 			}
 		},
+		"Query.Structured.Odbc.OdbcSource": {
+			"description": "A table or a query in a database, through ODBC, read as a table.\n\nColumns are typed from the driver's description of the result: whole numbers (INTEGER, SMALLINT, TINYINT, BIGINT, and NUMERIC or DECIMAL with no fraction digits and at most 18 digits) are INT; REAL, FLOAT, DOUBLE and other NUMERIC and DECIMAL columns are FLOAT, so a decimal with more precision than a Float holds loses it; BIT and BOOLEAN are BOOL; DATE and TIMESTAMP are DATE, to the second; TIME is STRING ('13:14:15'); binary columns (BINARY, VARBINARY, BLOB) are STRING holding the bytes as lowercase hexadecimal, which FromHex turns back into bytes; everything else is STRING, of any length. A NULL is an empty cell. A column the driver describes as text holds text even when it holds numbers, so a computed column in a query is cast in its SQL when its type matters.\n\nLoad sends the work a scan hint and SetWhere describe to the database: only the columns the hint names (those the table has, matched by name, then ignoring case), a WHERE with the condition, and the row limit, so the database filters before anything is copied. A condition is SQL written by the program, not text from a user; values from elsewhere go in as parameters ('?' in the condition, bound with SetWhere's second form), which the database never parses as SQL. Table, schema and column names are always quoted, with any quote character in a name doubled, so no name can end the identifier and add SQL. A query run afterwards applies its own WHERE again, so pushing a condition down never changes an answer.",
+			"functions": {
+				"FromHex": {
+					"descriptions": ["**Turns a binary cell's hexadecimal text back into bytes**\n\n```function : FromHex(hex:String) ~ Byte[]```\n\n\n\nhex: String\n\nreturn: Byte[]\n\n```\nthumbnail := OdbcSource->FromHex(table->GetColumn(\"thumbnail\")->GetString(0));\n```"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSql": {
+					"descriptions": ["**Gets the SQL the last read sent to the database**\n\n```method : public : GetSql() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the table's shape, by asking the database for none of its rows**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the table into a catalog**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor for a table, which the table keeps the name of**\n\n```New(connection:Connection, table:String)```\n\n\n\nconnection: Connection\n\ntable: String", "**Constructor for the result of a query, as a table of a given name. Pushed-down columns, conditions and limits wrap the query, 'SELECT ... FROM (query) q WHERE ...'; with nothing to push down it is sent as it is, keeping its ORDER BY. A database may rename a repeated column name when the query is wrapped (SQLite's second 'label' becomes 'label:1'); unwrapped, a repeated name gets a suffix here ('label_2').**\n\n```New(connection:Connection, name:String, query:String)```\n\n\n\nconnection: Connection\n\nname: String\n\nquery: String"]
+				},
+				"Quote": {
+					"descriptions": ["**Quotes a name as this source sends it: in its quote characters, with the closing one doubled inside it**\n\n```method : public : Quote(name:String) ~ String```\n\n\n\nname: String\n\nreturn: String", "**Quotes a name in given quote characters, doubling the closing one inside it, so the name cannot end the identifier**\n\n```function : Quote(name:String, open:Char, close:Char) ~ String```\n\n\n\nname: String\n\nopen: Char\n\nclose: Char\n\nreturn: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads the whole table, or the part SetWhere asks for**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table", "**Reads the table, or the part the hint and SetWhere ask for**\n\n```method : public : Read(hint:ScanHint) ~ Table```\n\n\n\nhint: ScanHint\n\nreturn: Table"]
+				},
+				"SetLimitSyntax": {
+					"descriptions": ["**Sets how the row limit is written into the SQL**\n\n```method : public : SetLimitSyntax(syntax:LimitSyntax) ~ Nil```\n\n\n\nsyntax: LimitSyntax\n\nreturn: Nil"]
+				},
+				"SetQuotes": {
+					"descriptions": ["**Sets the characters that quote a name: '\"' and '\"' by default (standard SQL), '`' and '`' for MySQL without ANSI_QUOTES, '[' and ']' for SQL Server's own style**\n\n```method : public : SetQuotes(open:Char, close:Char) ~ Nil```\n\n\n\nopen: Char\n\nclose: Char\n\nreturn: Nil"]
+				},
+				"SetSchema": {
+					"descriptions": ["**Sets the schema a table is in, sent as '\"schema\".\"table\"'**\n\n```method : public : SetSchema(schema:String) ~ Nil```\n\n\n\nschema: String\n\nreturn: Nil"]
+				},
+				"SetWhere": {
+					"descriptions": ["**Sets a condition for the database to apply, as SQL after WHERE**\n\n```method : public : SetWhere(condition:String) ~ Nil```\n\n\n\ncondition: String\n\nreturn: Nil", "**Sets a condition with '?' placeholders and the values bound to them, in order: an Int (IntRef), Float (FloatRef), Bool (BoolRef), String or Date. Values never pass through the SQL text, so they need no quoting and cannot change the statement.**\n\n```method : public : SetWhere(condition:String, values:Compare[]) ~ Nil```\n\n\n\ncondition: String\n\nvalues: Compare[]\n\nreturn: Nil"]
+				},
+				"ToHex": {
+					"descriptions": ["**Writes bytes as lowercase hexadecimal, the form binary cells take**\n\n```function : ToHex(bytes:Byte[]) ~ String```\n\n\n\nbytes: Byte[]\n\nreturn: String"]
+				}
+			}
+		},
 		"Query.Structured.Server.TableServer": {
 			"description": "Publishes tables over HTTP, read-only:\n\n- 'GET \/tables' lists the tables, their columns and row counts, as JSON.\n- 'GET \/tables\/NAME' returns a table.\n- 'GET \/query?sql=...' or 'POST \/query' (the statement as the UTF-8 body) runs a SELECT over the published tables and returns the result.\n\nResults are CSV, JSON or .otab by the request's Accept header ('text\/csv', 'application\/json', 'application\/x-otab'), or a 'format=csv|json|otab' parameter; CSV is the default. Only SELECT is answered: a statement that would change data is refused (403), and so is a query that names a file or a URL, which would let a client read the server's disk or make it fetch an address. A result larger than the row limit is refused (413) rather than cut short. Queries run one at a time, since tables are not shared between threads. RemoteSource reads a published table from another program.\n\nWeb.HTTP.Server runs one server per process, so one TableServer serves at a time.",
 			"functions": {
@@ -12391,7 +12703,7 @@
 					"descriptions": ["**Returns the current working directory**\n\n```function : GetWorking() ~ String```\n\n\n\nreturn: String"]
 				},
 				"List": {
-					"descriptions": ["**List of directory content**\n\n```function : List(n:System.String) ~ System.String[]```\n\n\n\nn: System.String\n\nreturn: System.String[]"]
+					"descriptions": ["**List of directory content: the names of the files and directories in it, without the directory's path. The '.' and '..' entries are never included, on any platform.**\n\n```function : List(n:System.String) ~ System.String[]```\n\n\n\nn: System.String\n\nreturn: System.String[]"]
 				},
 				"Rename": {
 					"descriptions": ["**Renames a directory**\n\n```function : Rename(o:System.String, n:System.String) ~ Bool```\n\n\n\no: System.String\n\nn: System.String\n\nreturn: Bool"]
@@ -16286,268 +16598,6 @@
 					"descriptions": ["**Writes a string response to the message body**\n\n```method : public : WriteBody(data:String) ~ Int```\n\n\n\ndata: String\n\nreturn: Int\n\n```\nresponse->SetContentType(\"text\/html\");\nbytes_sent := response->WriteBody(\"<html><body>Hello<\/body><\/html>\");\nbytes_sent->PrintLine();  # number of bytes written\n```", "**Writes a byte array response to the message body**\n\n```method : public : WriteBody(data:Byte[]) ~ Int```\n\n\n\ndata: Byte[]\n\nreturn: Int\n\n```\nimg_bytes := System.IO.Filesystem.FileReader->ReadBinaryFile(\"logo.png\");\nresponse->SetContentType(\"image\/png\");\nresponse->WriteBody(img_bytes);\n```"]
 				}
 			}
-		},
-		"Collection.BitSet": {
-			"description": "Growable set of bits packed 64 to an Int",
-			"functions": {
-				"And": {
-					"descriptions": ["**Keeps only the bits also set in another set (in place)**\n\n```method : public : And(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1); a->Set(2);\nb := Collection.BitSet->New(8); b->Set(2);\na->And(b)->Cardinality()->PrintLine(); # 1\n```"]
-				},
-				"AndNot": {
-					"descriptions": ["**Clears the bits set in another set (in place)**\n\n```method : public : AndNot(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1); a->Set(2);\nb := Collection.BitSet->New(8); b->Set(2);\na->AndNot(b)->Get(2)->PrintLine(); # false\n```"]
-				},
-				"Cardinality": {
-					"descriptions": ["**Counts the set bits**\n\n```method : public : native : Cardinality() ~ Int```\n\n\n\nreturn: Int\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(1); bits->Set(2);\nbits->Cardinality()->PrintLine(); # 2\n```"]
-				},
-				"Clear": {
-					"descriptions": ["**Clears a bit**\n\n```method : public : native : Clear(index:Int) ~ Nil```\n\n\n\nindex: Int\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(2);\nbits->Clear(2);\nbits->Get(2)->PrintLine(); # false\n```"]
-				},
-				"Copy": {
-					"descriptions": ["**Copies the set**\n\n```method : public : Copy() ~ BitSet```\n\n\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1);\nb := a->Copy();\nb->Set(2);\na->Cardinality()->PrintLine(); # 1\n```"]
-				},
-				"Empty": {
-					"descriptions": ["**Clears every bit; the size is kept**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(1);\nbits->Empty();\nbits->Cardinality()->PrintLine(); # 0\n```"]
-				},
-				"Get": {
-					"descriptions": ["**Gets a bit**\n\n```method : public : native : Get(index:Int) ~ Bool```\n\n\n\nindex: Int\n\nreturn: Bool\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(5);\nbits->Get(5)->PrintLine(); # true\nbits->Get(6)->PrintLine(); # false\n```"]
-				},
-				"GetWords": {
-					"descriptions": ["**Gets the backing words; bit i is bit (i and 63) of word (i >> 6). The array is shared, not copied.**\n\n```method : public : GetWords() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(0);\nbits->GetWords()[0]->PrintLine(); # 1\n```"]
-				},
-				"New": {
-					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nbits := Collection.BitSet->New();\nbits->Set(10);\nbits->Size()->PrintLine(); # 11\n```", "**Constructor for a number of bits, all clear**\n\n```New(size:Int)```\n\n\n\nsize: Int\n\n```\nbits := Collection.BitSet->New(65);\nbits->Size()->PrintLine(); # 65\n```"]
-				},
-				"NextSetBit": {
-					"descriptions": ["**Finds the next set bit at or after an index**\n\n```method : public : native : NextSetBit(start:Int) ~ Int```\n\n\n\nstart: Int\n\nreturn: Int\n\n```\nbits := Collection.BitSet->New(200);\nbits->Set(70); bits->Set(130);\nbits->NextSetBit(0)->PrintLine();   # 70\nbits->NextSetBit(71)->PrintLine();  # 130\nbits->NextSetBit(131)->PrintLine(); # -1\n```"]
-				},
-				"Or": {
-					"descriptions": ["**Adds the bits set in another set (in place)**\n\n```method : public : Or(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1);\nb := Collection.BitSet->New(8); b->Set(2);\na->Or(b)->Cardinality()->PrintLine(); # 2\n```"]
-				},
-				"Set": {
-					"descriptions": ["**Sets a bit, growing the set when the index is past its size**\n\n```method : public : native : Set(index:Int) ~ Nil```\n\n\n\nindex: Int\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New();\nbits->Set(200);\nbits->Get(200)->PrintLine(); # true\n```", "**Sets or clears a bit**\n\n```method : public : Set(index:Int, value:Bool) ~ Nil```\n\n\n\nindex: Int\n\nvalue: Bool\n\nreturn: Nil\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(2, true);\nbits->Get(2)->PrintLine(); # true\n```"]
-				},
-				"Size": {
-					"descriptions": ["**Number of bits: the size given to the constructor, or one past the highest bit ever set if that is larger**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nbits := Collection.BitSet->New(10);\nbits->Size()->PrintLine(); # 10\n```"]
-				},
-				"ToString": {
-					"descriptions": ["**Formats the set into a string of the indexes of its set bits**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nbits := Collection.BitSet->New(8);\nbits->Set(1); bits->Set(5);\nbits->ToString()->PrintLine(); # {1,5}\n```"]
-				},
-				"Xor": {
-					"descriptions": ["**Flips the bits set in another set (in place)**\n\n```method : public : Xor(that:BitSet) ~ BitSet```\n\n\n\nthat: BitSet\n\nreturn: BitSet\n\n```\na := Collection.BitSet->New(8); a->Set(1); a->Set(2);\nb := Collection.BitSet->New(8); b->Set(2); b->Set(3);\na->Xor(b)->Cardinality()->PrintLine(); # 2\n```"]
-				}
-			}
-		},
-		"Collection.FloatVector": {
-			"description": "Growable array of Float values; nothing is boxed",
-			"functions": {
-				"AddBack": {
-					"descriptions": ["**Adds a value to the end**\n\n```method : public : native : AddBack(value:Float) ~ Nil```\n\n\n\nvalue: Float\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New();\nv->AddBack(4.25);\nv->Get(0)->PrintLine(); # 4.25\n```"]
-				},
-				"Clear": {
-					"descriptions": ["**Removes every value; the reserved room is kept**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New([1.5]);\nv->Clear();\nv->Size()->PrintLine(); # 0\n```"]
-				},
-				"Each": {
-					"descriptions": ["**Calls a function for each value**\n\n```method : public : Each(f:(Float)~Nil) ~ FloatVector```\n\n\n\nf: (Float)~Nil\n\nreturn: FloatVector\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Each(\\(f) => { f->PrintLine(); });\n```"]
-				},
-				"Empty": {
-					"descriptions": ["**Removes every value; the same as Clear**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New([1.5]);\nv->Empty();\nv->IsEmpty()->PrintLine(); # true\n```"]
-				},
-				"Find": {
-					"descriptions": ["**Finds the first index of a value (exact comparison)**\n\n```method : public : native : Find(value:Float) ~ Int```\n\n\n\nvalue: Float\n\nreturn: Int\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Find(2.5)->PrintLine(); # 1\n```"]
-				},
-				"First": {
-					"descriptions": ["**Gets the first value**\n\n```method : public : First() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->First()->PrintLine(); # 1.5\n```"]
-				},
-				"Get": {
-					"descriptions": ["**Gets an indexed value**\n\n```method : public : native : Get(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Get(1)->PrintLine(); # 2.5\n```"]
-				},
-				"Has": {
-					"descriptions": ["**Checks for a value (exact comparison)**\n\n```method : public : Has(value:Float) ~ Bool```\n\n\n\nvalue: Float\n\nreturn: Bool\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Has(1.5)->PrintLine(); # true\n```"]
-				},
-				"IsEmpty": {
-					"descriptions": ["**Checks to see if the vector is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nv := Collection.FloatVector->New();\nv->IsEmpty()->PrintLine(); # true\n```"]
-				},
-				"Last": {
-					"descriptions": ["**Gets the last value**\n\n```method : public : Last() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Last()->PrintLine(); # 2.5\n```"]
-				},
-				"New": {
-					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nv := Collection.FloatVector->New();\nv->AddBack(1.5);\nv->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of values**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nv := Collection.FloatVector->New(1000);\nv->Size()->PrintLine(); # 0\n```", "**Copy constructor**\n\n```New(values:Float[])```\n\n\n\nvalues: Float[]\n\n```\nv := Collection.FloatVector->New([1.0, 2.0]);\nv->Get(1)->PrintLine(); # 2\n```"]
-				},
-				"Remove": {
-					"descriptions": ["**Removes an indexed value, shifting the later values down**\n\n```method : public : Remove(index:Int) ~ Float```\n\n\n\nindex: Int\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5, 3.5]);\nv->Remove(0)->PrintLine(); # 1.5\n```"]
-				},
-				"RemoveBack": {
-					"descriptions": ["**Removes the last value**\n\n```method : public : RemoveBack() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->RemoveBack()->PrintLine(); # 2.5\n```"]
-				},
-				"Reserve": {
-					"descriptions": ["**Reserves room for at least a number of values**\n\n```method : public : Reserve(capacity:Int) ~ Nil```\n\n\n\ncapacity: Int\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New();\nv->Reserve(1000000);\nv->Size()->PrintLine(); # 0\n```"]
-				},
-				"Set": {
-					"descriptions": ["**Sets an indexed value**\n\n```method : public : native : Set(value:Float, index:Int) ~ Bool```\n\n\n\nvalue: Float\n\nindex: Int\n\nreturn: Bool\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Set(9.0, 0)->PrintLine(); # true\n```"]
-				},
-				"Size": {
-					"descriptions": ["**Size of vector**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Size()->PrintLine(); # 2\n```"]
-				},
-				"Sort": {
-					"descriptions": ["**Sorts the values in ascending order (a stable merge sort, O(n log n))**\n\n```method : public : Sort() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.FloatVector->New([3.0, -1.0, 2.0]);\nv->Sort();\nv->First()->PrintLine(); # -1\n```"]
-				},
-				"Sum": {
-					"descriptions": ["**Sums the values**\n\n```method : public : native : Sum() ~ Float```\n\n\n\nreturn: Float\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->Sum()->PrintLine(); # 4\n```"]
-				},
-				"ToArray": {
-					"descriptions": ["**Copies the values into an array**\n\n```method : public : ToArray() ~ Float[]```\n\n\n\nreturn: Float[]\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->ToArray()->Size()->PrintLine(); # 2\n```"]
-				},
-				"ToString": {
-					"descriptions": ["**Formats the vector into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nv := Collection.FloatVector->New([1.5, 2.5]);\nv->ToString()->PrintLine(); # [1.5,2.5]\n```"]
-				}
-			}
-		},
-		"Collection.IntMap": {
-			"description": "Hash table from Int keys to Int values: open addressing over plain arrays, so nothing is boxed. Every Int is a valid key, including 0 and the Int64 extremes.",
-			"functions": {
-				"Add": {
-					"descriptions": ["**Adds to the value of a key; a missing key starts at 0**\n\n```method : public : native : Add(key:Int, delta:Int) ~ Int```\n\n\n\nkey: Int\n\ndelta: Int\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Add(1, 5);\nmap->Add(1, 2)->PrintLine(); # 7\n```"]
-				},
-				"Each": {
-					"descriptions": ["**Calls a function for each key and value. The function must not change the map.**\n\n```method : public : Each(f:(Int,Int)~Nil) ~ IntMap```\n\n\n\nf: (Int,Int)~Nil\n\nreturn: IntMap\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10);\nmap->Each(\\(k, v) => { \"{$k}={$v}\"->PrintLine(); });\n```"]
-				},
-				"Empty": {
-					"descriptions": ["**Removes every entry**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 1);\nmap->Empty();\nmap->Size()->PrintLine(); # 0\n```"]
-				},
-				"Find": {
-					"descriptions": ["**Finds the value of a key**\n\n```method : public : Find(key:Int) ~ Int```\n\n\n\nkey: Int\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10);\nmap->Find(1)->PrintLine(); # 10\nmap->Find(2)->PrintLine(); # 0\n```", "**Finds the value of a key**\n\n```method : public : native : Find(key:Int, missing:Int) ~ Int```\n\n\n\nkey: Int\n\nmissing: Int\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Find(2, -1)->PrintLine(); # -1\n```"]
-				},
-				"GetKeys": {
-					"descriptions": ["**Gets the keys. GetKeys and GetValues list the entries in the same order.**\n\n```method : public : native : GetKeys() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10); map->Insert(2, 20);\nmap->GetKeys()->Size()->PrintLine(); # 2\n```"]
-				},
-				"GetValues": {
-					"descriptions": ["**Gets the values, in the same order as GetKeys**\n\n```method : public : native : GetValues() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10); map->Insert(2, 20);\nmap->GetValues()->Size()->PrintLine(); # 2\n```"]
-				},
-				"Has": {
-					"descriptions": ["**Checks for a key**\n\n```method : public : native : Has(key:Int) ~ Bool```\n\n\n\nkey: Int\n\nreturn: Bool\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(0, 0);\nmap->Has(0)->PrintLine(); # true\nmap->Has(1)->PrintLine(); # false\n```"]
-				},
-				"Insert": {
-					"descriptions": ["**Inserts a value, replacing the value of an existing key**\n\n```method : public : native : Insert(key:Int, value:Int) ~ Nil```\n\n\n\nkey: Int\n\nvalue: Int\n\nreturn: Nil\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(-5, 25);\nmap->Find(-5)->PrintLine(); # 25\n```"]
-				},
-				"IsEmpty": {
-					"descriptions": ["**Checks to see if the map is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nmap := Collection.IntMap->New();\nmap->IsEmpty()->PrintLine(); # true\n```"]
-				},
-				"New": {
-					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 100);\nmap->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of entries**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nmap := Collection.IntMap->New(100000);\nmap->Size()->PrintLine(); # 0\n```"]
-				},
-				"Remove": {
-					"descriptions": ["**Removes a key**\n\n```method : public : native : Remove(key:Int) ~ Bool```\n\n\n\nkey: Int\n\nreturn: Bool\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(4, 16);\nmap->Remove(4)->PrintLine(); # true\nmap->Has(4)->PrintLine();    # false\n```"]
-				},
-				"Size": {
-					"descriptions": ["**Number of entries**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 1);\nmap->Size()->PrintLine(); # 1\n```"]
-				},
-				"ToString": {
-					"descriptions": ["**Formats the map into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nmap := Collection.IntMap->New();\nmap->Insert(1, 10);\nmap->ToString()->PrintLine(); # [(1:10)]\n```"]
-				}
-			}
-		},
-		"Collection.IntSet": {
-			"description": "Hash set of Int values: open addressing over plain arrays, so nothing is boxed. Every Int is a valid member, including 0 and the Int64 extremes.",
-			"functions": {
-				"Add": {
-					"descriptions": ["**Adds a value**\n\n```method : public : native : Add(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->Add(-1)->PrintLine(); # true\n```"]
-				},
-				"Each": {
-					"descriptions": ["**Calls a function for each value. The function must not change the set.**\n\n```method : public : Each(f:(Int)~Nil) ~ IntSet```\n\n\n\nf: (Int)~Nil\n\nreturn: IntSet\n\n```\nset := Collection.IntSet->New();\nset->Add(1);\nset->Each(\\(v) => { v->PrintLine(); });\n```"]
-				},
-				"Empty": {
-					"descriptions": ["**Removes every value**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nset := Collection.IntSet->New();\nset->Add(1);\nset->Empty();\nset->Size()->PrintLine(); # 0\n```"]
-				},
-				"Has": {
-					"descriptions": ["**Checks for a value**\n\n```method : public : native : Has(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->Add(3);\nset->Has(3)->PrintLine(); # true\n```"]
-				},
-				"Insert": {
-					"descriptions": ["**Inserts a value; the same as Add, for the method name the other sets use**\n\n```method : public : Insert(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nset := Collection.IntSet->New();\nset->Insert(9);\nset->Has(9)->PrintLine(); # true\n```"]
-				},
-				"IsEmpty": {
-					"descriptions": ["**Checks to see if the set is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->IsEmpty()->PrintLine(); # true\n```"]
-				},
-				"New": {
-					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nset := Collection.IntSet->New();\nset->Insert(1);\nset->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of values**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nset := Collection.IntSet->New(100000);\nset->Size()->PrintLine(); # 0\n```"]
-				},
-				"Remove": {
-					"descriptions": ["**Removes a value**\n\n```method : public : native : Remove(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nset := Collection.IntSet->New();\nset->Add(3);\nset->Remove(3)->PrintLine(); # true\n```"]
-				},
-				"Size": {
-					"descriptions": ["**Number of values**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nset := Collection.IntSet->New();\nset->Add(1); set->Add(2);\nset->Size()->PrintLine(); # 2\n```"]
-				},
-				"ToArray": {
-					"descriptions": ["**Gets the values as an array**\n\n```method : public : native : ToArray() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nset := Collection.IntSet->New();\nset->Add(1); set->Add(2);\nset->ToArray()->Size()->PrintLine(); # 2\n```"]
-				},
-				"ToString": {
-					"descriptions": ["**Formats the set into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nset := Collection.IntSet->New();\nset->Add(1);\nset->ToString()->PrintLine(); # {1}\n```"]
-				}
-			}
-		},
-		"Collection.IntVector": {
-			"description": "Growable array of Int values; nothing is boxed",
-			"functions": {
-				"AddBack": {
-					"descriptions": ["**Adds a value to the end**\n\n```method : public : native : AddBack(value:Int) ~ Nil```\n\n\n\nvalue: Int\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New();\nv->AddBack(42);\nv->Get(0)->PrintLine(); # 42\n```"]
-				},
-				"Clear": {
-					"descriptions": ["**Removes every value; the reserved room is kept**\n\n```method : public : Clear() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->Clear();\nv->Size()->PrintLine(); # 0\n```"]
-				},
-				"Each": {
-					"descriptions": ["**Calls a function for each value**\n\n```method : public : Each(f:(Int)~Nil) ~ IntVector```\n\n\n\nf: (Int)~Nil\n\nreturn: IntVector\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Each(\\(i) => { i->PrintLine(); });\n```"]
-				},
-				"Empty": {
-					"descriptions": ["**Removes every value; the same as Clear**\n\n```method : public : Empty() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->Empty();\nv->IsEmpty()->PrintLine(); # true\n```"]
-				},
-				"Find": {
-					"descriptions": ["**Finds the first index of a value**\n\n```method : public : native : Find(value:Int) ~ Int```\n\n\n\nvalue: Int\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Find(6)->PrintLine(); # 2\n```"]
-				},
-				"First": {
-					"descriptions": ["**Gets the first value**\n\n```method : public : First() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->First()->PrintLine(); # 4\n```"]
-				},
-				"Get": {
-					"descriptions": ["**Gets an indexed value**\n\n```method : public : native : Get(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Get(1)->PrintLine(); # 5\n```"]
-				},
-				"Has": {
-					"descriptions": ["**Checks for a value**\n\n```method : public : Has(value:Int) ~ Bool```\n\n\n\nvalue: Int\n\nreturn: Bool\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Has(5)->PrintLine(); # true\n```"]
-				},
-				"IsEmpty": {
-					"descriptions": ["**Checks to see if the vector is empty**\n\n```method : public : IsEmpty() ~ Bool```\n\n\n\nreturn: Bool\n\n```\nv := Collection.IntVector->New();\nv->IsEmpty()->PrintLine(); # true\n```"]
-				},
-				"Last": {
-					"descriptions": ["**Gets the last value**\n\n```method : public : Last() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Last()->PrintLine(); # 5\n```"]
-				},
-				"New": {
-					"descriptions": ["**Default constructor**\n\n```New()```\n\n\n\n```\nv := Collection.IntVector->New();\nv->AddBack(7);\nv->Size()->PrintLine(); # 1\n```", "**Constructor that reserves room for a number of values**\n\n```New(capacity:Int)```\n\n\n\ncapacity: Int\n\n```\nv := Collection.IntVector->New(1000);\nv->Size()->PrintLine(); # 0\n```", "**Copy constructor**\n\n```New(values:Int[])```\n\n\n\nvalues: Int[]\n\n```\nv := Collection.IntVector->New([5, 6, 7]);\nv->Get(2)->PrintLine(); # 7\n```"]
-				},
-				"Remove": {
-					"descriptions": ["**Removes an indexed value, shifting the later values down**\n\n```method : public : Remove(index:Int) ~ Int```\n\n\n\nindex: Int\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Remove(1)->PrintLine(); # 5\nv->Get(1)->PrintLine();    # 6\n```"]
-				},
-				"RemoveBack": {
-					"descriptions": ["**Removes the last value**\n\n```method : public : RemoveBack() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->RemoveBack()->PrintLine(); # 5\nv->Size()->PrintLine();       # 1\n```"]
-				},
-				"Reserve": {
-					"descriptions": ["**Reserves room for at least a number of values**\n\n```method : public : Reserve(capacity:Int) ~ Nil```\n\n\n\ncapacity: Int\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New();\nv->Reserve(1000000);\nv->Size()->PrintLine(); # 0\n```"]
-				},
-				"Set": {
-					"descriptions": ["**Sets an indexed value**\n\n```method : public : native : Set(value:Int, index:Int) ~ Bool```\n\n\n\nvalue: Int\n\nindex: Int\n\nreturn: Bool\n\n```\nv := Collection.IntVector->New([4, 5]);\nv->Set(9, 0)->PrintLine(); # true\nv->Get(0)->PrintLine();    # 9\n```"]
-				},
-				"Size": {
-					"descriptions": ["**Size of vector**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->Size()->PrintLine(); # 2\n```"]
-				},
-				"Sort": {
-					"descriptions": ["**Sorts the values in ascending order (a stable merge sort, O(n log n))**\n\n```method : public : Sort() ~ Nil```\n\n\n\nreturn: Nil\n\n```\nv := Collection.IntVector->New([3, -1, 2]);\nv->Sort();\nv->ToString()->PrintLine(); # [-1,2,3]\n```"]
-				},
-				"Sum": {
-					"descriptions": ["**Sums the values**\n\n```method : public : native : Sum() ~ Int```\n\n\n\nreturn: Int\n\n```\nv := Collection.IntVector->New([4, 5, 6]);\nv->Sum()->PrintLine(); # 15\n```"]
-				},
-				"ToArray": {
-					"descriptions": ["**Copies the values into an array**\n\n```method : public : ToArray() ~ Int[]```\n\n\n\nreturn: Int[]\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->ToArray()->Size()->PrintLine(); # 2\n```"]
-				},
-				"ToString": {
-					"descriptions": ["**Formats the vector into a string**\n\n```method : public : ToString() ~ String```\n\n\n\nreturn: String\n\n```\nv := Collection.IntVector->New([1, 2]);\nv->ToString()->PrintLine(); # [1,2]\n```"]
-				}
-			}
 		}
 	},
 	"class-bundle-names": {
@@ -17235,6 +17285,12 @@
 				"file": ""
 			}
 		],
+		"BitSet": [
+			{
+				"bundle": "Collection",
+				"file": ""
+			}
+		],
 		"Cache": [
 			{
 				"bundle": "Collection",
@@ -17265,6 +17321,12 @@
 				"file": ""
 			}
 		],
+		"FloatVector": [
+			{
+				"bundle": "Collection",
+				"file": ""
+			}
+		],
 		"ForwardIterator": [
 			{
 				"bundle": "Collection",
@@ -17278,6 +17340,24 @@
 			}
 		],
 		"Heap": [
+			{
+				"bundle": "Collection",
+				"file": ""
+			}
+		],
+		"IntMap": [
+			{
+				"bundle": "Collection",
+				"file": ""
+			}
+		],
+		"IntSet": [
+			{
+				"bundle": "Collection",
+				"file": ""
+			}
+		],
+		"IntVector": [
 			{
 				"bundle": "Collection",
 				"file": ""
@@ -18190,6 +18270,12 @@
 		"MlResultSource": [
 			{
 				"bundle": "Query.Structured.ML",
+				"file": ""
+			}
+		],
+		"OdbcSource": [
+			{
+				"bundle": "Query.Structured.Odbc",
 				"file": ""
 			}
 		],
@@ -19448,36 +19534,6 @@
 		"Handler": [
 			{
 				"bundle": "Web.Server",
-				"file": ""
-			}
-		],
-		"BitSet": [
-			{
-				"bundle": "Collection",
-				"file": ""
-			}
-		],
-		"FloatVector": [
-			{
-				"bundle": "Collection",
-				"file": ""
-			}
-		],
-		"IntMap": [
-			{
-				"bundle": "Collection",
-				"file": ""
-			}
-		],
-		"IntSet": [
-			{
-				"bundle": "Collection",
-				"file": ""
-			}
-		],
-		"IntVector": [
-			{
-				"bundle": "Collection",
 				"file": ""
 			}
 		]
@@ -21154,6 +21210,19 @@
 				{ "name": "FASLE", "value": "28", "description": "Not produced by the scanner." },
 				{ "name": "EOS", "value": "29", "description": "The end of the input." },
 				{ "name": "PARAM", "value": "30", "description": "A '?' placeholder, numbered in order." }
+			]
+		},
+		"Query.Structured.Odbc.LimitSyntax": {
+			"name": "LimitSyntax",
+			"bundle": "Query.Structured.Odbc",
+			"class": "",
+			"kind": "enum",
+			"description": "How a database spells a row limit in a SELECT. LIMIT (SQLite, PostgreSQL, MySQL) is the default; TOP is SQL Server's; FETCH is the SQL standard's 'FETCH FIRST n ROWS ONLY' (Oracle 12c and later, DB2, PostgreSQL); NONE sends no limit and stops reading after the limit's rows instead.",
+			"items": [
+				{ "name": "LIMIT", "value": "0", "description": "" },
+				{ "name": "TOP", "value": "1", "description": "" },
+				{ "name": "FETCH", "value": "2", "description": "" },
+				{ "name": "NONE", "value": "3", "description": "" }
 			]
 		},
 		"System.Number#Format": {

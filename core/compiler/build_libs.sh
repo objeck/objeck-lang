@@ -44,6 +44,7 @@ $OBC -src lib_src/query_server.obs -tar lib -lib net,net_server,regex,csv,xml,js
 $OBC -src lib_src/query_ml.obs -tar lib -lib gen_collect,csv,ml,net,regex,xml,json,misc,query -opt s3 -dest ../lib/query_ml.obl
 $OBC -src lib_src/query_vision.obs -tar lib -lib gen_collect,models,opencv,onnx,cipher,json,net,regex,csv,xml,misc,query -opt s3 -dest ../lib/query_vision.obl
 $OBC -src lib_src/odbc.obs -lib gen_collect -tar lib -opt s3 -dest ../lib/odbc.obl
+$OBC -src lib_src/query_odbc.obs -tar lib -lib gen_collect,odbc,net,regex,csv,xml,json,misc,query -opt s3 -dest ../lib/query_odbc.obl
 $OBC -src lib_src/openai.obs -lib json,net,net_server,cipher,misc -tar lib -opt s3 -dest ../lib/openai.obl
 $OBC -src lib_src/gemini.obs -lib misc,json,net,net_server,cipher -tar lib -opt s3 -dest ../lib/gemini.obl
 $OBC -src lib_src/ollama.obs -lib net,json,cipher,misc -tar lib -opt s3 -dest ../lib/ollama.obl

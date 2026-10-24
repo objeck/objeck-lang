@@ -1012,12 +1012,20 @@ bundle Database.ODBC {
 		~#
 		method : public : Select() ~ ResultSet {
 			if(@native_stmt <> 0 & @native_names <> 0) {
-				array_args := Base->New[1];
+				array_args := Base->New[2];
 				array_args[0] := IntRef->New(@native_stmt);
+				array_args[1] := IntRef->New(1);
 				lib_proxy := Proxy->GetDllProxy();
 				if(@fn_odbc_stmt_select_statement = Nil) { @fn_odbc_stmt_select_statement := "odbc_stmt_select_statement"; };
 				lib_proxy->CallFunction(@fn_odbc_stmt_select_statement, array_args);
 				@params->Empty();
+
+				# a statement that did not run gives a result set that is not open, whose
+				# GetLastError says why; the statement itself stays this object's to close
+				ran := array_args[1]->As(IntRef);
+				if(ran->Get() = 0) {
+					return ResultSet->New(0, 0, 0);
+				};
 
 				# the result set reads this statement's cursor; closing it leaves the
 				# statement, which Close frees, ready to run again
@@ -1085,6 +1093,7 @@ bundle Database.ODBC {
 		@fn_odbc_result_get_bit_by_name : static : String;
 		@fn_odbc_result_get_blob_by_id : static : String;
 		@fn_odbc_result_get_blob_by_name : static : String;
+		@fn_odbc_result_get_bytes_by_id : static : String;
 		@fn_odbc_result_get_date_by_id : static : String;
 		@fn_odbc_result_get_date_by_name : static : String;
 		@fn_odbc_result_get_double_by_id : static : String;
@@ -1630,6 +1639,44 @@ bundle Database.ODBC {
 		}
 		
 		#~
+		Gets a whole binary value, however long, as a new array of exactly its length. GetBlob
+		fills a buffer the caller sized and cannot say how much of it the value used, or that
+		the value was longer.
+		@param column column ID
+		@return the bytes, Nil for a NULL value (IsNull is then true) or on an error
+		```
+		rs := conn->Select("SELECT id, thumbnail FROM images");
+		while(rs->Next()) {
+		  bytes := rs->GetBytes(2);
+		  if(bytes <> Nil) { "{$(bytes->Size())} bytes"->PrintLine(); };
+		};
+		rs->Close();
+		```
+		~#
+		method : public : GetBytes(column : Int) ~ Byte[] {
+			@is_null := false;
+			if(@native_stmt <> 0 & @native_names <> 0) {
+				array_args := Base->New[5];
+				array_args[0] := IntRef->New();
+				array_args[1] := ByteArrayRef->New();
+				array_args[2] := IntRef->New(column);
+				array_args[3] := IntRef->New(@native_stmt);
+				array_args[4] := IntRef->New(@native_names);
+				lib_proxy := Proxy->GetDllProxy();
+				if(@fn_odbc_result_get_bytes_by_id = Nil) { @fn_odbc_result_get_bytes_by_id := "odbc_result_get_bytes_by_id"; };
+				lib_proxy->CallFunction(@fn_odbc_result_get_bytes_by_id, array_args);
+
+				is_null := array_args[0]->As(IntRef);
+				@is_null := is_null->Get() = 1;
+
+				holder := array_args[1]->As(ByteArrayRef);
+				return holder->Get();
+			};
+
+			return Nil;
+		}
+
+		#~
 		Gets a date value
 		@param column column ID
 		@return date value
@@ -1746,22 +1793,39 @@ bundle Database.ODBC {
 		}
 		
 		#~
-		Gets the last error message from the result set statement.
+		Whether the statement ran and its rows can be read. A Select whose SQL the database
+		refused gives a result set that is not open; GetLastError says why.
+		@return true if open
+		```
+		rs := conn->Select("SELECT name FROM users");
+		if(<>rs->IsOpen()) {
+		  rs->GetLastError()->ErrorLine();
+		};
+		```
+		~#
+		method : public : IsOpen() ~ Bool {
+			return @native_stmt <> 0 & @native_names <> 0;
+		}
+
+		#~
+		Gets the last error message from the result set statement, or, for a result set that is
+		not open, why the statement failed
 		@return error message string, or empty if no error
 		~#
 		method : public : GetLastError() ~ String {
-			if(@native_stmt <> 0) {
-				array_args := Base->New[3];
-				array_args[0] := Nil;
-				array_args[1] := IntRef->New(3);
-				array_args[2] := IntRef->New(@native_stmt);
-				lib_proxy := Proxy->GetDllProxy();
-				if(@fn_odbc_get_error = Nil) { @fn_odbc_get_error := "odbc_get_error"; };
-				lib_proxy->CallFunction(@fn_odbc_get_error, array_args);
-				return array_args[0]->As(String);
+			array_args := Base->New[3];
+			array_args[0] := Nil;
+			array_args[1] := IntRef->New(3);
+			array_args[2] := IntRef->New(@native_stmt);
+			lib_proxy := Proxy->GetDllProxy();
+			if(@fn_odbc_get_error = Nil) { @fn_odbc_get_error := "odbc_get_error"; };
+			lib_proxy->CallFunction(@fn_odbc_get_error, array_args);
+			error := array_args[0]->As(String);
+			if(error = Nil) {
+				return "";
 			};
 
-			return "";
+			return error;
 		}
 
 		#~
