@@ -1,0 +1,34 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'Shape': 'AmbClassA.Shape'
+#~
+Two bundles in scope both declare 'class Shape'. The unqualified name silently
+resolved to whichever bundle came first, so 'Shape->Name()' called AmbClassA's
+method with no diagnostic. It is now a compile error naming both candidates;
+'AmbClassA.Shape' and 'AmbClassB.Shape' keep working
+(compile_ambiguous_use_names.obs).
+~#
+
+use AmbClassA, AmbClassB;
+
+bundle AmbClassA {
+  class Shape {
+    function : Name() ~ String {
+      return "A";
+    }
+  }
+}
+
+bundle AmbClassB {
+  class Shape {
+    function : Name() ~ String {
+      return "B";
+    }
+  }
+}
+
+bundle AmbClassUser {
+  class BadAmbiguousUseClass {
+    function : Main(args : String[]) ~ Nil {
+      Shape->Name()->PrintLine();
+    }
+  }
+}

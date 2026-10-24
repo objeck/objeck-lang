@@ -1,0 +1,27 @@
+# EXPECT_COMPILE_ERROR: Ambiguous name 'JsonElement': 'Data.JSON.JsonElement'
+#~
+A program bundle and a library bundle, both 'use'd, each declare
+'JsonElement'. The program's class silently won over the library's, with no
+diagnostic. It is now a compile error naming both candidates. (A class the
+current bundle itself declares still wins: compile_ambiguous_use_names.obs.)
+~#
+
+use Data.JSON, AmbJsonOwn;
+
+bundle AmbJsonOwn {
+  class JsonElement {
+    New() {
+    }
+  }
+}
+
+bundle AmbJsonUser {
+  class BadAmbiguousUseLibProgram {
+    function : Main(args : String[]) ~ Nil {
+      e : JsonElement := Nil;
+      if(e = Nil) {
+        "nil"->PrintLine();
+      };
+    }
+  }
+}

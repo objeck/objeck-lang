@@ -298,9 +298,17 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
         return name;
       }
 
-      // program class check
+      // program class check: as written, then in the class's own bundle, then
+      // through each use. The own bundle came after every use, so a parameter
+      // of a type the bundle declares was encoded as a used bundle's class of
+      // the same name, unlike its declaration (the analyzer's search order).
       const std::wstring type_klass_name = type->GetName();
+      const std::wstring own_bundle = klass->GetName().find(L'.') == std::wstring::npos ? L"" : klass->GetBundleName();
       Class* prgm_klass = program->GetClass(type_klass_name);
+      if(!prgm_klass && !own_bundle.empty()) {
+        prgm_klass = program->GetClass(own_bundle + L"." + type_klass_name);
+      }
+
       if(prgm_klass) {
         name += prgm_klass->GetName();
       }
@@ -309,14 +317,20 @@ std::wstring Method::EncodeType(Type* type, Class* klass, ParsedProgram* program
         for(size_t i = 0; !prgm_klass && i < uses.size(); ++i) {
           prgm_klass = program->GetClass(uses[i] + L"." + type_klass_name);
         }
-        
+
         // program enum check
         if(prgm_klass) {
           name += prgm_klass->GetName();
         }
         else {
-          // full path resolution
+          // as written, the class's own enum, the own bundle's, then each use's
           Enum* prgm_enum = program->GetEnum(type_klass_name);
+          if(!prgm_enum) {
+            prgm_enum = program->GetEnum(klass->GetName() + L"#" + type_klass_name);
+          }
+          if(!prgm_enum && !own_bundle.empty()) {
+            prgm_enum = program->GetEnum(own_bundle + L"." + type_klass_name);
+          }
           for(size_t i = 0; !prgm_enum && i < uses.size(); ++i) {
             prgm_enum = program->GetEnum(uses[i] + L"." + type_klass_name);
           }

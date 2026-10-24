@@ -26,12 +26,12 @@ class Test {
 				filename := args[1];
 				data := FileReader->ReadBinaryFile(filename);
 				if(data <> Nil) {
-					ok := File->Create(filename, "batch", data, token);
+					ok := API.OpenAI.File->Create(filename, "batch", data, token);
 					if(ok) {
 						"File uploaded. Use 'list-files' to find the file ID."->PrintLine();
 					}
 					else {
-						File->GetLastError()->ErrorLine();
+						API.OpenAI.File->GetLastError()->ErrorLine();
 					};
 				}
 				else {
@@ -39,7 +39,7 @@ class Test {
 				};
 			}
 			else if(command->Equals("list-files")) {
-				files := File->ListFiles(token);
+				files := API.OpenAI.File->ListFiles(token);
 				if(files <> Nil) {
 					count := files->Size();
 					"Files ({$count}):"->PrintLine();
@@ -51,7 +51,7 @@ class Test {
 					};
 				}
 				else {
-					File->GetLastError()->ErrorLine();
+					API.OpenAI.File->GetLastError()->ErrorLine();
 				};
 			}
 			else if(command->Equals("create") & args->Size() = 2) {
