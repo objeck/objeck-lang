@@ -138,6 +138,25 @@ Run-DebuggerTest "print_collections" @(
     "print: type=Collection.List, size=6"
 ) -Bin $CollBin
 
+# Test 4c: the unboxed collections -- element counts, and for a BitSet its bit
+# count and how many bits are set.
+Run-DebuggerTest "print_primitive_collections" @(
+    "b debugger_coll_test.obs:53",
+    "r",
+    "p ints",
+    "p reals",
+    "p int_map",
+    "p int_set",
+    "p bits",
+    "c"
+) @(
+    "print: type=Collection.IntVector, size=4",
+    "print: type=Collection.FloatVector, size=2",
+    "print: type=Collection.IntMap, size=2",
+    "print: type=Collection.IntSet, size=3",
+    "print: type=Collection.BitSet, size=100, set=2"
+) -Bin $CollBin
+
 # Test 5: Step into method
 Run-DebuggerTest "step_into" @(
     "b debugger_test.obs:34",

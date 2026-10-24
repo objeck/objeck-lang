@@ -51,7 +51,7 @@ SRC_FILE = os.path.join(SRC_DIR, "dap_drilldown_test.obs")
 PROG = os.path.join(SRC_DIR, "dap_drilldown_test.obe")
 
 # `done := true;` -- everything under test is populated by this point.
-BREAKPOINT_LINE = 76
+BREAKPOINT_LINE = 87
 
 if not os.path.exists(PROG):
     print(f"ERROR: {PROG} not found - run run_dap_tests.sh first to build it", file=sys.stderr)
@@ -342,6 +342,52 @@ if hash_var and hash_var.get("variablesReference"):
           f"got: {hnames}")
 else:
     check("Hash expands to 2 entries", False, "hash not expandable")
+
+# ============================================
+# Test 7b: unboxed collections
+# ============================================
+ints = local_vars.get("ints")
+check("IntVector summary reports size",
+      ints is not None and "IntVector(size=3)" in ints.get("value", ""),
+      f"got: {ints.get('value') if ints else None}")
+if ints and ints.get("variablesReference"):
+    ielems = get_var_list(ints["variablesReference"])
+    check("IntVector expands to 4, 5, 6",
+          [e["value"] for e in ielems] == ["4", "5", "6"],
+          f"got: {[e['value'] for e in ielems]}")
+else:
+    check("IntVector expands to 4, 5, 6", False, "ints not expandable")
+
+int_map = local_vars.get("int_map")
+check("IntMap summary reports size",
+      int_map is not None and "IntMap(size=2)" in int_map.get("value", ""),
+      f"got: {int_map.get('value') if int_map else None}")
+if int_map and int_map.get("variablesReference"):
+    mentries = {e["name"]: e["value"] for e in get_var_list(int_map["variablesReference"])}
+    check("IntMap expands to 9 -> 90 and -1 -> 10",
+          mentries == {"9": "90", "-1": "10"}, f"got: {mentries}")
+else:
+    check("IntMap expands to 9 -> 90 and -1 -> 10", False, "int_map not expandable")
+
+int_set = local_vars.get("int_set")
+check("IntSet summary reports size",
+      int_set is not None and "IntSet(size=1)" in int_set.get("value", ""),
+      f"got: {int_set.get('value') if int_set else None}")
+if int_set and int_set.get("variablesReference"):
+    selems = [e["value"] for e in get_var_list(int_set["variablesReference"])]
+    check("IntSet expands to 42", selems == ["42"], f"got: {selems}")
+else:
+    check("IntSet expands to 42", False, "int_set not expandable")
+
+bits = local_vars.get("bits")
+check("BitSet summary reports size and set bits",
+      bits is not None and "BitSet(size=130, set=2)" in bits.get("value", ""),
+      f"got: {bits.get('value') if bits else None}")
+if bits and bits.get("variablesReference"):
+    belems = [e["value"] for e in get_var_list(bits["variablesReference"])]
+    check("BitSet expands to the set bits 2 and 129", belems == ["2", "129"], f"got: {belems}")
+else:
+    check("BitSet expands to the set bits 2 and 129", False, "bits not expandable")
 
 # ============================================
 # Test 8: empty collection

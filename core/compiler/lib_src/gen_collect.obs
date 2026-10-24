@@ -2018,15 +2018,18 @@ hash->Has(408)->PrintLine();
     ```
 	~#
 	class Hash<K : Compare, V> {
+		# @keys, @size and @capacity lead, in that order: the debugger reads a Hash's
+		# fields by slot (core/debugger/obj_layout.h), and @size and @capacity keep the
+		# slots they had in the chained table
 		@keys : K[];
+		@size : Int;
+		@capacity : Int;
+		@auto_resize : Bool;
 		@values : V[];
 		@hashes : Int[];
-		@size : Int;
 		@mask : Int;
 		@shift : Int;
 		@initial_slots : Int;
-		@capacity : Int;
-		@auto_resize : Bool;
 
 		#~
 		Hash table capacity hints. The table is open-addressed: it starts at the next power of two at or above the hint and doubles whenever it is 70% full, with no upper limit.
@@ -9917,10 +9920,11 @@ counts->Size()->PrintLine();        # 2
 ```
 	~#
 	class IntMap {
+		# slot order is read by the debugger (core/debugger/obj_layout.h)
 		@keys : Int[];
+		@size : Int;
 		@values : Int[];
 		@used : Bool[];
-		@size : Int;
 		@mask : Int;
 		@shift : Int;
 
@@ -10345,9 +10349,10 @@ set->Size()->PrintLine();   # 1
 ```
 	~#
 	class IntSet {
+		# slot order is read by the debugger (core/debugger/obj_layout.h)
 		@keys : Int[];
-		@used : Bool[];
 		@size : Int;
+		@used : Bool[];
 		@mask : Int;
 		@shift : Int;
 

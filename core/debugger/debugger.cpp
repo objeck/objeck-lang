@@ -1064,7 +1064,9 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
           //
           // start: Generic collections
           //
-          else if(ref_klass && (ref_klass->GetName() == L"Collection.Vector" || ref_klass->GetName() == L"Collection.CompareVector")) {
+          else if(ref_klass && (ref_klass->GetName() == L"Collection.Vector" || ref_klass->GetName() == L"Collection.CompareVector" ||
+                                ref_klass->GetName() == L"Collection.IntVector" || ref_klass->GetName() == L"Collection.FloatVector" ||
+                                ref_klass->GetName() == L"Collection.IntMap" || ref_klass->GetName() == L"Collection.IntSet")) {
             size_t* instance = (size_t*)reference->GetIntValue();
             if(instance && !reference->GetIndices()) {
               // obj_layout.h owns the slot mapping; reading slots here is how
@@ -1103,6 +1105,18 @@ void Runtime::Debugger::ProcessPrint(Print* print) {
               FieldIndex(ref_klass, L"@capacity", 2, capacity_index);
               const long hash_capacity = (long)instance[capacity_index];
               std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << hash_size << L", capacity=" << hash_capacity << std::endl;
+            }
+            else {
+              std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;
+            }
+          }
+          else if(ref_klass && ref_klass->GetName() == L"Collection.BitSet") {
+            size_t* instance = (size_t*)reference->GetIntValue();
+            if(instance && !reference->GetIndices()) {
+              // size counts addressable bits; set counts the bits that are on
+              long bit_size = 0;
+              CollectionSize(ref_klass, instance, bit_size);
+              std::wcout << L"print: type=" << ref_klass->GetName() << L", size=" << bit_size << L", set=" << BitSetCardinality(instance) << std::endl;
             }
             else {
               std::wcout << L"print: type=" << (ref_klass ? ref_klass->GetName() : L"System.Base") << L", value=" << (void*)reference->GetIntValue() << std::endl;

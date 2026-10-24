@@ -72,6 +72,17 @@ class DrillDown {
 		# assignable scalar for setVariable / setExpression coverage
 		counter := 7;
 
+		# unboxed collections
+		ints := IntVector->New([4, 5, 6]);
+		int_map := IntMap->New();
+		int_map->Insert(9, 90);
+		int_map->Insert(-1, 10);
+		int_set := IntSet->New();
+		int_set->Add(42);
+		bits := BitSet->New(130);
+		bits->Set(2);
+		bits->Set(129);
+
 		# BREAKPOINT LINE — everything above is populated
 		done := true;
 		done->PrintLine();
@@ -83,5 +94,9 @@ class DrillDown {
 		map->Size()->PrintLine();
 		hash->Size()->PrintLine();
 		empty->Size()->PrintLine();
+		ints->Size()->PrintLine();
+		int_map->Size()->PrintLine();
+		int_set->Size()->PrintLine();
+		bits->Cardinality()->PrintLine();
 	}
 }
