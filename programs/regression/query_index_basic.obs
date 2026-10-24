@@ -359,14 +359,14 @@ class QueryIndexBasic {
 		SetBoth(a, b, 20, "s", "w4100");
 		Same("{$tag} plain text after a write", a, b, Col->Of("s")->Eq("w4100"), Nil);
 
-		# a copy made by a query has no index; neither has an .otab image read back
+		# a copy made by a query has no index; an .otab image read back keeps its definition
+		# (format 2) and builds it on first use
 		copy := b->Query("select * from t where n = 5");
 		Check("{$tag} a query result has no index", copy <> Nil & <>copy->HasIndex("n"));
 		image := Table->FromBytes(b->ToBytes());
-		Check("{$tag} an .otab image has no index", image <> Nil & <>image->HasIndex("n"));
+		Check("{$tag} an .otab image keeps its index", image <> Nil & image->GetIndexKind("n") = kind);
 		image_plain := Table->FromBytes(a->ToBytes());
-		image->CreateIndex("n", kind);
-		Same("{$tag} .otab image indexed again", image_plain, image, Col->Of("n")->Eq(5), Nil);
+		Same("{$tag} .otab image's restored index", image_plain, image, Col->Of("n")->Eq(5), kind = IndexKind->HASH ? "HASH index" : "SORTED index");
 
 		# an inferred INT column widened to FLOAT
 		a->AddColumn("p", ColumnType->NONE);
@@ -394,7 +394,7 @@ class QueryIndexBasic {
 	}
 
 	# a durable table's changes go to its log; the index follows them, and a table opened
-	# again replays them before an index is created over it
+	# again restores its indexes from the file, then replays the log through them
 	function : Durable() ~ Nil {
 		path := "query_index_basic_tmp.otab";
 		File->Delete(path);
@@ -422,9 +422,9 @@ class QueryIndexBasic {
 		reopened := Table->Open(path);
 		Check("durable reopen", reopened <> Nil);
 		if(reopened <> Nil) {
-			Check("durable replayed without an index", <>reopened->HasIndex("n"));
-			reopened->CreateIndex("n", IndexKind->SORTED);
-			Same("durable replayed, indexed again", plain, reopened, Col->Of("n")->Eq(5), "SORTED index");
+			Check("durable reopened with its indexes", reopened->GetIndexKind("n") = IndexKind->HASH & reopened->GetIndexKind("x") = IndexKind->SORTED);
+			Same("durable replayed through a restored hash index", plain, reopened, Col->Of("n")->Eq(5), "HASH index");
+			Same("durable replayed through a restored sorted index", plain, reopened, Col->Of("x")->Gt(0.0), "SORTED index");
 			reopened->Close();
 		};
 

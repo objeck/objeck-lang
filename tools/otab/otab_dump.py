@@ -17,11 +17,12 @@ import sys
 import zlib
 
 MAGIC = b'OTAB'
-VERSION = 1
+VERSION = 2
 HEADER_SIZE = 12
 TRAILER_SIZE = 28
 TYPES = {1: 'INT', 2: 'FLOAT', 3: 'STRING', 4: 'DATE', 5: 'BOOL', 6: 'OBJECT'}
 CODECS = {0: 'none', 1: 'zlib level 1', 2: 'zlib level 9'}
+INDEX_KINDS = {1: 'HASH', 2: 'SORTED'}
 
 
 class Malformed(Exception):
@@ -229,6 +230,22 @@ def dump(data, show):
             blocks.append(dict(offset=f.int(), stored=f.int(), raw=f.int(), codec=f.int(), crc=f.int(),
                                nulls=f.int(), has_zone=f.int(), low=f.float(), high=f.float()))
         groups.append((rows, blocks))
+    indexes = []
+    if version >= 2:
+        index_count = f.int()
+        if not 0 <= index_count < count:
+            raise Malformed('the footer lists %d indexes' % index_count)
+        for _ in range(index_count):
+            index_name, column, kind = f.text(), f.int(), f.int()
+            if not index_name:
+                raise Malformed('an index has no name')
+            if not 1 <= column < count:
+                raise Malformed('index %s names column %d' % (index_name, column))
+            if kind not in INDEX_KINDS:
+                raise Malformed('index %s has unknown kind %d' % (index_name, kind))
+            if any(index_name == i[0] or column == i[1] for i in indexes):
+                raise Malformed('index %s repeats a name or a column' % index_name)
+            indexes.append((index_name, column, INDEX_KINDS[kind]))
     f.done()
 
     for g, (rows, blocks) in enumerate(groups):
@@ -245,6 +262,8 @@ def dump(data, show):
             zone = ', zone %r..%r' % (info['low'], info['high']) if info['has_zone'] else ''
             print('%6s  %-52s group %d %s: offset %d, %d empty%s'
                   % ('', '', g, columns[c][0], info['offset'], info['nulls'], zone))
+    for index_name, column, kind in indexes:
+        print('%6s  %-52s index %s: %s on %s' % ('', '', index_name, kind, columns[column][0]))
     line(data, end, 8, 'footer offset = %d' % footer_offset)
     line(data, end + 8, 8, 'footer size = %d' % footer_size)
     line(data, end + 16, 8, 'footer CRC32 = %d' % footer_crc)

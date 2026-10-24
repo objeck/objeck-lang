@@ -464,8 +464,9 @@ Research programs need to keep what they computed: a cleaned dataset, a feature 
 across runs. CSV and JSON stay for interchange, but they are slow to parse and lose types. The
 engine gets its own file format, `.otab`, which stores exactly what the column storage holds.
 
-> **As built:** [OTAB_FORMAT.md](OTAB_FORMAT.md) is the byte-exact specification of version 1,
-> and it differs from the plan below in four ways. The schema sits in the footer, not the
+> **As built:** [OTAB_FORMAT.md](OTAB_FORMAT.md) is the byte-exact specification of versions 1
+> and 2 (2 adds index definitions; see "Indexes in .otab files" below), and it differs from the
+> plan below in four ways. The schema sits in the footer, not the
 > header, so opening a file is one read at its end. The codecs are zlib at level 1 (`FAST`) and
 > level 9 (`SMALL`); `lang`'s Brotli entry point turned out to be raw deflate. Each block carries
 > its own dictionary of just the texts it uses. Delta and run-length encodings are not in
@@ -570,8 +571,8 @@ new VM trap first (appended after the existing ones, never by widening one).
 Both round trips are tested: every column type, `Nil` cells, dictionary-encoded columns, deleted
 rows, views and catalogs, and, for the generic form, a table nested inside another object.
 
-**Indexes are rebuilt on load** in the first version, since hash and sorted indexes rebuild in
-one pass. Storing them in the file is a later option if load time shows it matters.
+**Indexes are rebuilt on load**, since hash and sorted indexes rebuild in one pass. The file
+keeps their definitions (format 2, "Indexes in .otab files" below), not their entries.
 
 ### 10. Network: reading from and serving to other machines
 
@@ -725,7 +726,8 @@ index regenerated for new classes.
    - a **B+ tree index**, for frequent inserts mixed with range queries that the sorted index
      serves badly;
    - **parallel scans** across row groups, with a multithreaded GC stress test;
-   - **indexes stored in `.otab`**, if rebuilding them on load proves slow.
+   - **index entries stored in `.otab`**, if rebuilding them on load proves slow (their
+     definitions already are: format 2).
 
 ## As built
 
@@ -852,10 +854,10 @@ design above. Each phase adds its notes here.
   Joins, DISTINCT and SQL aggregates do not use indexes: the join's key matcher builds its own
   order across mixed key domains, and DISTINCT and grouping by hash would not keep the order
   the engine gives, so none of them is a clean fit yet.
-- Indexes are not stored in `.otab` files: a loaded, `FromBytes` or `Open`ed table has none,
-  and a durable table's log replays before any exists. Query results and other copies have
-  none. The generic `Serializer` carries them with the table (they hold only arrays and an
-  `IntMap`, and string hashes are computed from the text, so they stay valid).
+- Indexes were not stored in `.otab` files when phase 6 landed; their definitions are now
+  (format 2, "Indexes in .otab files" below). Query results and other copies have none. The
+  generic `Serializer` carries them with the table (they hold only arrays and an `IntMap`, and
+  string hashes are computed from the text, so they stay valid).
 - A lazy rebuild writes the index; several threads may query a table at once, including right
   after a change, as "Concurrent readers" below describes.
 - Measured at 1,000,000 rows (`perf-results/libs/query_index_bench.obs`, Windows x64,
@@ -1155,6 +1157,68 @@ or empty member.
 sheet, a named sheet, a sheet pattern, `header => false`, `first_row`), joins across all
 three, the catalog cache, and every refusal above, each archive and workbook written by the
 test. Before the change every query fails at the lexer (`unexpected character '.'`).
+
+## Indexes in .otab files
+
+**The gap.** Phase 6 left indexes out of the file, so a table lost them on every `Save` and
+`Load`, every `ToBytes` and `FromBytes`, and every `Open` of a durable table; a program had to
+remember which indexes it made and create them again.
+
+**What is stored: the definition, not the entries.** Each index's name, column and kind go in
+the footer. The entries are rebuilt from the column by the first query that uses the index,
+as a stale index is today. Storing the sorted order too was considered and left out:
+
+- it is not cheap to keep right. A partial read renumbers nothing but drops columns, `Append`
+  adds rows the stored order does not cover, and deleted rows are never saved, so slots shift;
+  each case would need the order rewritten or thrown away.
+- it is not safe to trust. A stored order that disagrees with its column (a bug, or bytes
+  damaged in a way the CRC32 misses) gives wrong answers silently, and checking it costs a pass
+  over the column, about what rebuilding a hash index costs. Rebuilding is never wrong.
+- it is not slow to skip: phase 6 measured 0.2-0.6 s to build an index on a million rows, paid
+  once per index and only if a query uses it. Phase 8 lists stored entries as an option if a
+  workload shows the rebuild matters.
+
+**The format: version 2, written only when needed.** OTAB_FORMAT.md's rules say a version 1
+footer must be consumed exactly and that new content comes with a new version, which a version
+1 reader refuses. So the definitions are a new last part of the footer in version 2, and the
+writer picks the lowest version that holds the table: **version 1 for a table without indexes,
+byte for byte what it wrote before**, and version 2 only for a table with indexes. Libraries
+before this change read every file they read before, and refuse an indexed table's file by its
+header ("an .otab file of format 2; this library reads format 1") rather than misread it. This
+library reads both. A version 2 index list is validated like the rest of the footer (a known
+kind, a data column, no repeated name or column, a count below the column count) and refused
+with the index it found wrong.
+
+**Each path:**
+
+- `Save`, `ToBytes`, `Load`, `FromBytes`: definitions written and restored. Restored indexes
+  are attached unbuilt, so loading stays a copy of arrays; the first query that uses one
+  builds it, as after any change, and "Concurrent readers" above makes that first build safe
+  when several threads query a just-loaded table.
+- `OtabFile->Read(names)`, including range reads over HTTP: the definitions are in the footer,
+  which opening reads anyway; a read restores the indexes of the columns it reads, and
+  `GetIndexNames` and `GetFormatVersion` report what the file holds.
+- `Append`: keeps the file's version and definitions (the copied prefix holds its header);
+  the appending table's own indexes are not added.
+- Durable tables: `Open` restores the file's indexes, then replays the log through them, as
+  any write reaches an index. `Checkpoint` saves the definitions. The log records rows, not
+  indexes, and its format is left alone: `CreateIndex` and `DropIndex` on a durable table, and
+  SQL `CREATE INDEX`/`DROP INDEX`, are saved by an immediate checkpoint (inside a statement,
+  at its end, since a checkpoint replaces the log the statement is writing), with the
+  compression the file already had. An index change is rare and a checkpoint is one save.
+- `TableServer` sends tables as version 1 (`ToBytes(compression, false)`, new), so a client
+  library of any age reads them; a remote reader has no use for the server's indexes.
+- The generic `Serializer` already carried indexes and is unchanged.
+
+**Tests.** `query_persist_indexes`: every index kind on every indexable type through Save/Load,
+bytes, a compressed image and a partial read, each query through a restored index equal to a
+scan and naming the index in its plan; a table without indexes written byte for byte as an
+image made by master's library (kept in the test as hex) and that image read back; `Append` to
+version 1 and version 2 files; a durable table's indexes through Open, replay, `CreateIndex`,
+`DropIndex` and SQL; and footers whose index lists are wrong in each way above, each with a
+correct checksum so only the defect is refused. `query_net_range` reads the definitions over
+HTTP range requests; `query_net_serve` checks that served tables are version 1.
+`tools/otab/otab_dump.py` reads version 2.
 
 ## Open questions
 

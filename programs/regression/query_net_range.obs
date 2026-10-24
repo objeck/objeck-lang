@@ -108,6 +108,9 @@ class QueryNetRange {
 			row->Set("label", i % 2 = 0 ? "even" : "odd");
 			row->Set("note", "a longer note that makes this column the bulk of the file, row {$i}");
 		};
+		# index definitions travel in the footer (format 2), read with the rest of it
+		table->CreateIndex("by_score", "score", IndexKind->SORTED);
+		table->CreateIndex("label", IndexKind->HASH);
 		@image := table->ToBytes();
 		@ranges := true;
 
@@ -130,6 +133,12 @@ class QueryNetRange {
 		Check("opening fetched little of the file", opened * 10 < @image->Size());
 		Check("and the column read fetched only its blocks", @sent * 2 < @image->Size());
 		Check("in a handful of requests", file->GetRequests() = @requests & @requests < 10);
+		Check("the footer names the indexes", file->GetFormatVersion() = 2 & file->GetIndexNames()->Size() = 2);
+		Check("a column read keeps its column's index", part <> Nil & part->GetIndexName("score")->Equals("by_score") & <>part->HasIndex("label"));
+		if(part <> Nil) {
+			high := part->Where(Col->Of("score")->Ge(428.0));
+			Check("and a query uses it", high->Count() = 4 & high->GetPlan()->Find("by_score") > -1);
+		};
 
 		whole := OtabFile->New(url)->Read();
 		Check("a whole read over ranges matches the table", whole <> Nil & whole->Size() = 3000 &
@@ -142,6 +151,7 @@ class QueryNetRange {
 		read := plain->IsOpen() ? plain->Read(["label"]) : Nil;
 		Check("a server without ranges still serves the file", read <> Nil & read->Size() = 3000);
 		Check("from one download", @requests = 1);
+		Check("with its column's index", read <> Nil & read->GetIndexKind("label") = IndexKind->HASH);
 
 		missing := OtabFile->New("http://127.0.0.1:{$@port}/data/nothing.otab");
 		Check("a missing file does not open", <>missing->IsOpen() & missing->GetError()->Has("404"));

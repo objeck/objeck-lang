@@ -1,0 +1,448 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured: index definitions stored in .otab files (docs/OTAB_FORMAT.md, format 2;
+docs/QUERY_DESIGN.md, "Indexes in .otab files").
+
+- Round trip: every index kind on every indexable column type survives Save/Load,
+  ToBytes/FromBytes, a compressed save and a partial read (only the columns read keep theirs),
+  and every query through a restored index answers as a scan does.
+- Format: a table with indexes is written as format 2, one without as format 1, byte for byte
+  what the library wrote before indexes were stored (an image written by master's query.obl is
+  kept below), and that image still loads. Append keeps a file's format and definitions.
+- Durable tables: Open restores the indexes before the change log replays; CreateIndex,
+  DropIndex and SQL CREATE INDEX on an open table are saved at once.
+- Corruption: a footer whose index list names an unknown kind, a column the file does not have,
+  a column twice, a name twice, an empty name, or too many indexes is refused with the reason;
+  a damaged footer, a newer format and a format 1 header over a format 2 footer are refused.
+~#
+use Query.Structured, System.Time, System.IO.Filesystem, Collection;
+
+class QueryPersistIndexes {
+	@failures : static : Int;
+	@checks : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		@checks += 1;
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Has(text : String, part : String) ~ Bool {
+		return text <> Nil & text->Find(part) > -1;
+	}
+
+	function : Keys(view : View) ~ String {
+		if(view = Nil) {
+			return "<nil>";
+		};
+
+		out := "";
+		each(i : view->Count()) {
+			out += view->Get(i)->GetKey();
+			out += ",";
+		};
+		return out;
+	}
+
+	function : Day(day : Int) ~ Date {
+		return Date->New(day, 3, 2024, 12, 0, 0, false);
+	}
+
+	# 6,000 rows: enough distinct texts in 't' for it to be stored plainly, not as codes
+	function : Build() ~ Table {
+		table := Table->New("runs", ["n", "x", "s", "t", "d", "b"]);
+		seed := 7;
+		each(i : 6000) {
+			seed := (seed * 1103515245 + 12345) and 0x7fffffff;
+			r := table->Insert();
+			if(i % 11 <> 3) {
+				r->Set("n", IntRef->New(seed % 500));
+			};
+			if(i % 13 <> 5) {
+				r->Set("x", FloatRef->New((seed % 10000)->As(Float) / 100.0));
+			};
+			r->Set("s", "grp{$(seed % 20)}");
+			r->Set("t", "text{$i}");
+			r->Set("d", Day(seed % 28 + 1));
+			r->Set("b", BoolRef->New(seed % 3 = 0));
+		};
+		# deleted rows are not saved; the indexes must still line up with the rows that are
+		table->Delete(10);
+		table->Delete(4000);
+		return table;
+	}
+
+	function : AddIndexes(table : Table) ~ Nil {
+		Check("create n", table->CreateIndex("by_n", "n", IndexKind->HASH));
+		Check("create x", table->CreateIndex("by_x", "x", IndexKind->SORTED));
+		Check("create s", table->CreateIndex("by_s", "s", IndexKind->HASH));
+		Check("create t", table->CreateIndex("by_t", "t", IndexKind->SORTED));
+		Check("create d", table->CreateIndex("d", IndexKind->SORTED));
+		Check("create b", table->CreateIndex("by_b", "b", IndexKind->HASH));
+	}
+
+	# the indexes a table should have after a round trip, and queries through each that must
+	# answer as a scan of 'plain' (the same rows, no indexes) does
+	function : Same(what : String, table : Table, plain : Table) ~ Nil {
+		Check("{$what}: n", table->GetIndexKind("n") = IndexKind->HASH & table->GetIndexName("n")->Equals("by_n"));
+		Check("{$what}: x", table->GetIndexKind("x") = IndexKind->SORTED & table->GetIndexName("x")->Equals("by_x"));
+		Check("{$what}: s", table->GetIndexKind("s") = IndexKind->HASH & table->GetIndexName("s")->Equals("by_s"));
+		Check("{$what}: t", table->GetIndexKind("t") = IndexKind->SORTED & table->GetIndexName("t")->Equals("by_t"));
+		Check("{$what}: d", table->GetIndexKind("d") = IndexKind->SORTED & table->GetIndexName("d")->Equals("runs_d"));
+		Check("{$what}: b", table->GetIndexKind("b") = IndexKind->HASH & table->GetIndexName("b")->Equals("by_b"));
+
+		conditions := Vector->New()<Predicate>;
+		uses := Vector->New()<String>;
+		conditions->AddBack(Col->Of("n")->Eq(IntRef->New(42)));
+		uses->AddBack("HASH index by_n");
+		conditions->AddBack(Col->Of("x")->Between(10.0, 12.5));
+		uses->AddBack("SORTED index by_x");
+		conditions->AddBack(Col->Of("s")->Eq("grp7"));
+		uses->AddBack("HASH index by_s");
+		conditions->AddBack(Col->Of("t")->Ge("text5990"));
+		uses->AddBack("SORTED index by_t");
+		conditions->AddBack(Col->Of("d")->Lt(Day(3)));
+		uses->AddBack("SORTED index runs_d");
+		conditions->AddBack(Col->Of("b")->Eq(BoolRef->New(true))->AndAlso(Col->Of("n")->Lt(IntRef->New(5))));
+		uses->AddBack("HASH index");
+		each(i : conditions) {
+			a := plain->Where(conditions->Get(i));
+			b := table->Where(conditions->Get(i));
+			ok := a <> Nil & b <> Nil;
+			if(ok) {
+				ok := Keys(a)->Equals(Keys(b)) & a->Count() > 0;
+			};
+			Check("{$what}: query {$i} same rows", ok);
+			Check("{$what}: query {$i} uses the index", b <> Nil & Has(b->GetPlan(), uses->Get(i)));
+		};
+
+		ordered := table->OrderBy("x")->Limit(20);
+		Check("{$what}: order by x", Keys(ordered)->Equals(Keys(plain->OrderBy("x")->Limit(20))) & Has(ordered->GetPlan(), "SORTED index by_x"));
+	}
+
+	function : Version(bytes : Byte[]) ~ Int {
+		return GetInt(bytes, 4);
+	}
+
+	function : GetInt(bytes : Byte[], at : Int) ~ Int {
+		value := 0;
+		for(i := 7; i >= 0; i -= 1;) {
+			value := (value << 8) or (bytes[at + i]->As(Int) and 255);
+		};
+		return value;
+	}
+
+	function : PutInt(bytes : Byte[], at : Int, value : Int) ~ Nil {
+		each(i : 8) {
+			bytes[at + i] := ((value >> (i * 8)) and 255)->As(Byte);
+		};
+	}
+
+	function : Slice(bytes : Byte[], at : Int, count : Int) ~ Byte[] {
+		part := Byte->New[count];
+		Byte->Copy(part, 0, bytes, at, count);
+		return part;
+	}
+
+	# a copy of an image with its footer changed by 'edit' and its checksum made right again,
+	# so only the change is wrong
+	function : Refooter(image : Byte[], at_end : Int, value : Int) ~ Byte[] {
+		bytes := Slice(image, 0, image->Size());
+		trailer := bytes->Size() - 28;
+		footer_offset := GetInt(bytes, trailer);
+		footer_size := GetInt(bytes, trailer + 8);
+		PutInt(bytes, footer_offset + footer_size - at_end, value);
+		PutInt(bytes, trailer + 16, Slice(bytes, footer_offset, footer_size)->CRC32());
+		return bytes;
+	}
+
+	function : Refused(what : String, image : Byte[], reason : String) ~ Nil {
+		file := OtabFile->New(image);
+		ok := <>file->IsOpen() & Has(file->GetError(), reason) & Table->FromBytes(image) = Nil;
+		if(<>ok) {
+			"    error: {$(file->GetError())}, wanted '{$reason}'"->PrintLine();
+		};
+		Check("refused: {$what}", ok);
+	}
+
+	function : FromHex(hex : String) ~ Byte[] {
+		bytes := Byte->New[hex->Size() / 2];
+		digits := "0123456789abcdef";
+		each(i : bytes) {
+			high := digits->Find(hex->Get(i * 2));
+			low := digits->Find(hex->Get(i * 2 + 1));
+			bytes[i] := (high * 16 + low)->As(Byte);
+		};
+		return bytes;
+	}
+
+	# ToBytes of the table below, written by master's query.obl before indexes were stored
+	function : LegacyImage() ~ Byte[] {
+		hex := "";
+		hex += "4f5441420100000000000000010000000000000000000000000000000000000000000000010000000000000003000000";
+		hex += "000000000400000000000000010000000000000004000000000000000700000000000000feffffffffffffff00000000";
+		hex += "00000000030000000000000001000000000000000000000000000000000000000000f83f000000000000d0bf00000000";
+		hex += "00000440000000000000f83f010000000000000002000000000000000100000000000000030000000000000003000000";
+		hex += "00000000616e740300000000000000636f77030000000000000062656500000000000000000000000000000000010000";
+		hex += "000000000002000000000000000100000000000000000000000000000000b2e2f98d010000000e09ff8d01000000c655";
+		hex += "098e01000000227c0e8e0100000000000000000000010000000000000000000000000000000100000000000000000000";
+		hex += "00000000000000000000000000010000000000000006000000000000006c656761637905000000000000000600000000";
+		hex += "0000000200000000000000706b0100000000000000010000000000000001000000000000006e01000000000000000000";
+		hex += "000000000000010000000000000078020000000000000000000000000000000100000000000000730300000000000000";
+		hex += "000000000000000001000000000000006404000000000000000000000000000000010000000000000062050000000000";
+		hex += "00000000000000000000010000000000000004000000000000000c000000000000003000000000000000300000000000";
+		hex += "0000000000000000000066809ee300000000000000000000000001000000000000000000000000000000000000000000";
+		hex += "10403c000000000000003000000000000000300000000000000000000000000000006a3d930400000000010000000000";
+		hex += "0000010000000000000000000000000000c00000000000001c406c000000000000003000000000000000300000000000";
+		hex += "00000000000000000000034c29e10000000000000000000000000100000000000000000000000000d0bf000000000000";
+		hex += "04409c0000000000000061000000000000006100000000000000000000000000000001510a6700000000010000000000";
+		hex += "0000000000000000000000000000000000000000000000000000fd000000000000003800000000000000380000000000";
+		hex += "00000000000000000000c93858a600000000000000000000000001000000000000000000202b9edf7842000020c2e7e0";
+		hex += "784235010000000000003000000000000000300000000000000000000000000000007d5a49f200000000000000000000";
+		hex += "000000000000000000000000000000000000000000000000000065010000000000007502000000000000bcbdd17f0000";
+		hex += "00004f544142";
+		return FromHex(hex);
+	}
+
+	# the table LegacyImage holds
+	function : Legacy() ~ Table {
+		t := Table->New("legacy", ["n", "x", "s", "d", "b"]);
+		ints := [7, -2, 7, 40, 3];
+		floats := [1.5, -0.25, 3.0, 2.5, 1.5];
+		texts := ["ant", "bee", "ant", "cow", "bee"];
+		each(i : 5) {
+			r := t->Insert();
+			if(i <> 3) {
+				r->Set("n", IntRef->New(ints[i]));
+			};
+			r->Set("x", FloatRef->New(floats[i]));
+			if(i <> 1) {
+				r->Set("s", texts[i]);
+			};
+			r->Set("d", Date->New(i + 1, 3, 2024, 12, 0, 0, false));
+			r->Set("b", BoolRef->New(i % 2 = 0));
+		};
+		t->Delete(2);
+		return t;
+	}
+
+	function : SameBytes(a : Byte[], b : Byte[]) ~ Bool {
+		if(a = Nil | b = Nil | a->Size() <> b->Size()) {
+			return false;
+		};
+		each(i : a) {
+			if(a[i] <> b[i]) {
+				return false;
+			};
+		};
+		return true;
+	}
+
+	function : Remove(path : String) ~ Nil {
+		File->Delete(path);
+		File->Delete("{$path}.log");
+		File->Delete("{$path}.lock");
+		File->Delete("{$path}.part");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		dir := Runtime->GetTempDir()->ReplaceAll("\\", "/");
+		if(<>dir->EndsWith('/')) {
+			dir += "/";
+		};
+		path := "{$dir}query_persist_indexes_{$(Runtime->GetProcessId())}.otab";
+		side_path := "{$dir}query_persist_indexes_{$(Runtime->GetProcessId())}_b.otab";
+		Remove(path);
+		Remove(side_path);
+
+		plain := Build();
+		table := Build();
+		AddIndexes(table);
+
+		# --- files and images
+		Check("save", table->Save(path));
+		loaded := Table->Load(path);
+		Check("load", loaded <> Nil);
+		if(loaded <> Nil) {
+			Same("load", loaded, plain);
+		};
+
+		image := table->ToBytes();
+		Check("an indexed table is format 2", image <> Nil & Version(image) = 2);
+		from_bytes := Table->FromBytes(image);
+		Check("from bytes", from_bytes <> Nil);
+		if(from_bytes <> Nil) {
+			Same("from bytes", from_bytes, plain);
+			# saved again, the same bytes: the definitions round-trip exactly
+			Check("from bytes, saved again", SameBytes(from_bytes->ToBytes(), image));
+		};
+
+		packed := table->ToBytes(Compression->SMALL);
+		unpacked := Table->FromBytes(packed);
+		Check("compressed", unpacked <> Nil);
+		if(unpacked <> Nil) {
+			Same("compressed", unpacked, plain);
+		};
+
+		file := OtabFile->New(path);
+		names := file->GetIndexNames();
+		Check("OtabFile lists the indexes", file->GetFormatVersion() = 2 & names->Size() = 6 & names[0]->Equals("by_n") & names[4]->Equals("runs_d"));
+		part := file->Read(["x", "s"]);
+		Check("partial read keeps the indexes of the columns read", part <> Nil & part->GetIndexKind("x") = IndexKind->SORTED &
+			part->GetIndexKind("s") = IndexKind->HASH & part->GetIndexName("x")->Equals("by_x") & <>part->HasIndex("n"));
+		if(part <> Nil) {
+			view := part->Where(Col->Of("x")->Gt(99.0));
+			Check("partial read: query through the restored index", Keys(view)->Equals(Keys(plain->Where(Col->Of("x")->Gt(99.0)))) & Has(view->GetPlan(), "by_x"));
+		};
+
+		# without its definitions, and without indexes: format 1
+		bare := table->ToBytes(Compression->NONE, false);
+		Check("ToBytes without indexes is format 1", bare <> Nil & Version(bare) = 1);
+		Check("format 1 loads with no indexes", Table->FromBytes(bare) <> Nil & <>Table->FromBytes(bare)->HasIndex("n"));
+		Check("a table without indexes is format 1", Version(plain->ToBytes()) = 1);
+		dropped := Table->FromBytes(image);
+		dropped->DropIndex("n");
+		dropped->DropIndex("x");
+		Check("an index dropped stays dropped", <>Table->FromBytes(dropped->ToBytes())->HasIndex("n") & Table->FromBytes(dropped->ToBytes())->HasIndex("s"));
+
+		# --- what master's library wrote still loads, and is still what this one writes
+		legacy := Table->FromBytes(LegacyImage());
+		Check("master's image loads", legacy <> Nil);
+		if(legacy <> Nil) {
+			Check("master's image: rows", legacy->Size() = 4 & legacy->ToString()->Equals(Legacy()->ToString()));
+		};
+		Check("a table without indexes saves as master's library saved it", SameBytes(Legacy()->ToBytes(), LegacyImage()));
+		indexed_legacy := Legacy();
+		indexed_legacy->CreateIndex("n", IndexKind->HASH);
+		Check("with an index it is format 2", Version(indexed_legacy->ToBytes()) = 2);
+
+		# --- Append keeps the file's format and definitions
+		more := Build();
+		more->CreateIndex("by_other", "s", IndexKind->SORTED);
+		Check("append to a format 2 file", more->Append(path));
+		appended := Table->Load(path);
+		Check("append keeps the file's indexes", appended <> Nil & appended->Size() = plain->Size() * 2 &
+			appended->GetIndexName("s")->Equals("by_s") & appended->GetIndexKind("s") = IndexKind->HASH & appended->HasIndex("t"));
+		if(appended <> Nil) {
+			view := appended->Where(Col->Of("s")->Eq("grp3"));
+			Check("append: the restored index sees the new rows", view->Count() = plain->Where(Col->Of("s")->Eq("grp3"))->Count() * 2);
+		};
+		Check("save a format 1 file", plain->Save(side_path));
+		Check("append to a format 1 file", more->Append(side_path));
+		other_file := OtabFile->New(side_path);
+		Check("append keeps format 1", other_file->GetFormatVersion() = 1 & other_file->GetIndexNames()->Size() = 0 & other_file->Read() <> Nil);
+
+		# --- a durable table
+		Remove(path);
+		Check("durable: save", table->Save(path));
+		store := TableStore->New(path);
+		Check("durable: open", store->IsOpen());
+		if(store->IsOpen()) {
+			durable := store->GetTable();
+			Check("durable: indexes restored", durable->GetIndexName("x")->Equals("by_x") & durable->GetIndexKind("b") = IndexKind->HASH);
+			# changes go to the log, through the restored indexes
+			each(i : 30) {
+				r := durable->Insert();
+				r->Set("n", IntRef->New(42));
+				r->Set("x", FloatRef->New(11.0));
+				r->Set("s", "grp7");
+				r->Set("t", "text5995b");
+				r->Set("d", Day(1));
+				r->Set("b", BoolRef->New(true));
+			};
+			durable->Get(20)->Set("n", IntRef->New(42));
+			durable->Delete(30);
+			reference := durable->ToBytes(Compression->NONE, false);
+			store->Close();
+
+			# reopened: the definitions come from the file, then the log replays through them
+			store := TableStore->New(path);
+			Check("durable: reopen", store->IsOpen() & store->GetReplayed() > 0);
+			if(store->IsOpen()) {
+				durable := store->GetTable();
+				twin := Table->FromBytes(reference);
+				Same("durable after replay", durable, twin);
+
+				# index changes on a durable table are saved at once
+				Check("durable: create", durable->CreateIndex("by_t2", "t", IndexKind->HASH));
+				Check("durable: create is saved", Has(Join(OtabFile->New(path)->GetIndexNames()), ":by_t2:"));
+				Check("durable: drop", durable->DropIndex("b"));
+				Check("durable: drop is saved", <>Has(Join(OtabFile->New(path)->GetIndexNames()), "by_b"));
+				Check("durable: sql create", durable->Execute("create index by_b2 on runs (b) using hash") = 0);
+				Check("durable: sql create is saved", Has(Join(OtabFile->New(path)->GetIndexNames()), "by_b2"));
+				Check("durable: sql drop", durable->Execute("drop index by_n") = 0);
+				Check("durable: sql drop is saved", <>Has(Join(OtabFile->New(path)->GetIndexNames()), "by_n"));
+				store->Close();
+			};
+
+			reloaded := Table->Load(path);
+			Check("durable: what was saved loads", reloaded <> Nil & reloaded->GetIndexKind("t") = IndexKind->HASH &
+				reloaded->GetIndexKind("b") = IndexKind->HASH & <>reloaded->HasIndex("n") & reloaded->Size() = Table->FromBytes(reference)->Size());
+		};
+
+		# --- corruption: each footer below has a correct checksum, so only the change is wrong
+		two := Build();
+		two->CreateIndex("first", "n", IndexKind->HASH);
+		two->CreateIndex("second", "x", IndexKind->SORTED);
+		good := two->ToBytes();
+		Check("two indexes load", Table->FromBytes(good) <> Nil);
+		# the footer ends: count, then name text, column, kind for each index
+		Refused("an unknown kind", Refooter(good, 8, 9), "kind 9");
+		Refused("kind 0", Refooter(good, 8, 0), "kind 0");
+		Refused("a column the file lacks", Refooter(good, 16, 99), "column 99");
+		Refused("the key column", Refooter(good, 16, 0), "column 0");
+		Refused("a column twice", Refooter(good, 16, 1), "two indexes");
+		# "second" is 6 bytes after its length: make "first" (5 bytes) take its place
+		renamed := Slice(good, 0, good->Size());
+		trailer := renamed->Size() - 28;
+		footer_offset := GetInt(renamed, trailer);
+		footer_size := GetInt(renamed, trailer + 8);
+		name_at := footer_offset + footer_size - 16 - 6;
+		second := "second"->ToByteArray();
+		first := "firstx"->ToByteArray();
+		Check("found the second name", SameBytes(Slice(renamed, name_at, 6), second));
+		Byte->Copy(renamed, name_at, first, 0, 6);
+		PutInt(renamed, trailer + 16, Slice(renamed, footer_offset, footer_size)->CRC32());
+		Check("a renamed index loads", Table->FromBytes(renamed) <> Nil & Table->FromBytes(renamed)->GetIndexName("x")->Equals("firstx"));
+		# with its length cut to 5 the name reads "first", and the column is misread from its last byte on
+		Refused("an index list that does not parse", Refooter(renamed, 16 + 6 + 8, 5), "names column");
+		single := Build();
+		single->CreateIndex("only", "n", IndexKind->HASH);
+		one := single->ToBytes();
+		# count, then the name's length 4 "only", column, kind: the count is 8 + 4 + 8 + 8 + 8 from the end
+		Refused("an empty name", Refooter(one, 8 + 8 + 4 + 8, 0), "no name");
+		Refused("too many indexes", Refooter(one, 8 + 8 + 4 + 8 + 8, 1000), "malformed");
+		Refused("a negative count", Refooter(one, 8 + 8 + 4 + 8 + 8, -1), "malformed");
+		damaged := Slice(good, 0, good->Size());
+		damaged[damaged->Size() - 40] := (damaged[damaged->Size() - 40] + 1)->As(Byte);
+		Refused("a damaged footer", damaged, "checksum");
+		newer := Slice(good, 0, good->Size());
+		PutInt(newer, 4, 3);
+		Refused("format 3", newer, "format 3");
+		older := Slice(good, 0, good->Size());
+		PutInt(older, 4, 1);
+		Refused("a format 1 header over a format 2 footer", older, "malformed");
+
+		Remove(path);
+		Remove(side_path);
+
+		if(@failures = 0) {
+			"PASS: query_persist_indexes ({$@checks} checks)"->PrintLine();
+		}
+		else {
+			"FAIL: query_persist_indexes: {$@failures} of {$@checks} checks failed"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+
+	function : Join(names : String[]) ~ String {
+		out := ":";
+		each(i : names) {
+			out += names[i];
+			out += ":";
+		};
+		return out;
+	}
+}
