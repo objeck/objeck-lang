@@ -17,15 +17,28 @@ class CollectHashOpen {
 		return 1;
 	}
 
+	# progress goes to stderr, so a run killed by the suite's timeout still shows
+	# how far it got in its output file
+	function : Progress(step : String) ~ Nil {
+		"  done: {$step}"->ErrorLine();
+	}
+
 	function : Main(args : String[]) ~ Nil {
 		failures := 0;
 		failures += Api();
+		Progress("api");
 		failures += Growth();
+		Progress("growth");
 		failures += Deletes();
+		Progress("deletes");
 		failures += MixedClasses();
+		Progress("mixed classes");
 		failures += Sets();
+		Progress("sets");
 		failures += Multi();
+		Progress("multi");
 		failures += Caches();
+		Progress("caches");
 
 		if(failures > 0) {
 			"FAIL: collect_hash_open, {$failures} failure(s)"->PrintLine();
@@ -161,6 +174,7 @@ class CollectHashOpen {
 			hash->Insert(i, i * 2);
 		};
 		failures += Check("1.2M size", hash->Size() = count);
+		Progress("growth: 1.2M inserts");
 
 		bad := 0;
 		for(i := 0; i < count; i += 1;) {
@@ -175,6 +189,7 @@ class CollectHashOpen {
 		failures += Check("1.2M finds", bad = 0);
 		failures += Check("1.2M misses", hash->Find(-1) = Nil & hash->Find(count) = Nil);
 		failures += Check("1.2M keys", hash->GetKeys()->Size() = count);
+		Progress("growth: 1.2M finds");
 		# drop the big table: every collection marks what is live, and the string part allocates a lot
 		hash := Nil;
 
@@ -184,11 +199,13 @@ class CollectHashOpen {
 			strided->Insert(i * 4096, i);
 		};
 		failures += Check("strided size", strided->Size() = 50000 & strided->Find(4096 * 49999)->Get() = 49999);
+		Progress("growth: strided keys");
 
 		names := String->New[200000];
 		for(i := 0; i < 200000; i += 1;) {
 			names[i] := "w{$i}";
 		};
+		Progress("growth: 200k names built");
 		words := Hash->New()<String, IntRef>;
 		for(i := 0; i < 200000; i += 1;) {
 			words->Insert(names[i], i);
