@@ -13,7 +13,7 @@ kept per image rather than failing the load. Where libobjk_opencv is deployed, O
 the generated PNG and BMP and writes a real JPEG, and the header reader must agree with it.
 Where libobjk_onnx is deployed and OBJECK_YOLO_MODEL and OBJECK_YOLO_LABELS name a YOLO model
 and its labels, YoloDetector runs on the repository's sample photos; otherwise that part is
-skipped, as the regression tree carries no models. A native library is probed for as a file:
+left out with a note (not a SKIP, which would mark the whole test skipped), as the regression tree carries no models. A native library is probed for as a file:
 loading a missing one ends the program.
 ~#
 use Collection, System.IO.Filesystem, Query.Structured, Query.Structured.Vision;
@@ -346,7 +346,7 @@ class QuerySourceVision {
 	# OpenCV decodes what was written, and writes a real JPEG the header reader must agree with
 	function : OpenCv(root : String) ~ Nil {
 		if(<>Present("libobjk_opencv")) {
-			"SKIP: libobjk_opencv is not deployed; OpenCV cross-checks not run"->PrintLine();
+			"  note: libobjk_opencv is not deployed, so the OpenCV cross-checks did not run"->PrintLine();
 			return;
 		};
 
@@ -371,7 +371,7 @@ class QuerySourceVision {
 		labels_path := Runtime->GetEnvironmentVariable("OBJECK_YOLO_LABELS");
 		media := "../frameworks/opencv_onnx/data/media";
 		if(model = Nil | labels_path = Nil | model->Size() = 0 | <>File->Exists(model) | <>Present("libobjk_onnx") | <>Directory->Exists(media)) {
-			"SKIP: no YOLO model named by OBJECK_YOLO_MODEL and OBJECK_YOLO_LABELS, or no ONNX runtime; YoloDetector not run"->PrintLine();
+			"  note: no YOLO model named by OBJECK_YOLO_MODEL and OBJECK_YOLO_LABELS, or no ONNX runtime, so YoloDetector did not run"->PrintLine();
 			return;
 		};
 
