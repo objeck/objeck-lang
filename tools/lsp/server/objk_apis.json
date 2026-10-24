@@ -18835,5 +18835,1571 @@
 				"file": ""
 			}
 		]
+	},
+	"enum-details": {
+		"API.Inference.Client#Protocol": {
+			"name": "Protocol",
+			"bundle": "API.Inference",
+			"class": "API.Inference.Client",
+			"kind": "enum",
+			"description": "Which wire protocol the server speaks.",
+			"items": [
+				{ "name": "OPEN_INFERENCE", "value": "0", "description": "KServe v2, the Open Inference Protocol. Triton, KServe, OpenVINO Model Server and Seldon MLServer. Flat data with an explicit shape and datatype in both directions, which is why it is the default." },
+				{ "name": "TF_SERVING", "value": "1", "description": "TensorFlow Serving's own REST API. It does not implement KServe v2, so it needs its own request shape: the tensor is nested to express its shape rather than carrying one, and the datatype is inferred." }
+			]
+		},
+		"API.OpenAI.ImageQuery#MimeType": {
+			"name": "MimeType",
+			"bundle": "API.OpenAI",
+			"class": "API.OpenAI.ImageQuery",
+			"kind": "enum",
+			"description": "Binary image MIME type",
+			"items": [
+				{ "name": "PNG", "value": "0", "description": "" },
+				{ "name": "JPEG", "value": "1", "description": "" },
+				{ "name": "WEBP", "value": "2", "description": "" },
+				{ "name": "GIF", "value": "3", "description": "" }
+			]
+		},
+		"API.OpenAI.Responses.ReasoningEffort": {
+			"name": "ReasoningEffort",
+			"bundle": "API.OpenAI.Responses",
+			"class": "",
+			"kind": "enum",
+			"description": "Controls how many reasoning tokens the model generates",
+			"items": [
+				{ "name": "NA", "value": "0", "description": "" },
+				{ "name": "LOW", "value": "1", "description": "" },
+				{ "name": "MEDIUM", "value": "2", "description": "" },
+				{ "name": "HIGH", "value": "3", "description": "" }
+			]
+		},
+		"API.OpenAI.Responses.Verbosity": {
+			"name": "Verbosity",
+			"bundle": "API.OpenAI.Responses",
+			"class": "",
+			"kind": "enum",
+			"description": "Determines how many output tokens are generated",
+			"items": [
+				{ "name": "NA", "value": "0", "description": "" },
+				{ "name": "LOW", "value": "1", "description": "" },
+				{ "name": "MEDIUM", "value": "2", "description": "" },
+				{ "name": "HIGH", "value": "3", "description": "" }
+			]
+		},
+		"API.OpenCV.ColorConversionCodes": {
+			"name": "ColorConversionCodes",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV color conversion codes",
+			"items": [
+				{ "name": "BGR2RGB", "value": "4", "description": "" },
+				{ "name": "BGR2GRAY", "value": "6", "description": "" },
+				{ "name": "RGB2GRAY", "value": "7", "description": "" },
+				{ "name": "BGR2HSV", "value": "40", "description": "" },
+				{ "name": "BGR2Lab", "value": "44", "description": "" },
+				{ "name": "HSV2BGR", "value": "54", "description": "" }
+			]
+		},
+		"API.OpenCV.ContourApproximationModes": {
+			"name": "ContourApproximationModes",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV contour approximation methods for FindContours",
+			"items": [
+				{ "name": "CHAIN_APPROX_NONE", "value": "1", "description": "" },
+				{ "name": "CHAIN_APPROX_SIMPLE", "value": "2", "description": "" }
+			]
+		},
+		"API.OpenCV.Font": {
+			"name": "Font",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV font values",
+			"items": [
+				{ "name": "FONT_HERSHEY_SIMPLEX", "value": "0", "description": "" },
+				{ "name": "FONT_HERSHEY_PLAIN", "value": "1", "description": "" },
+				{ "name": "FONT_HERSHEY_DUPLEX", "value": "2", "description": "" },
+				{ "name": "FONT_HERSHEY_COMPLEX", "value": "3", "description": "" },
+				{ "name": "FONT_HERSHEY_TRIPLEX", "value": "4", "description": "" },
+				{ "name": "FONT_HERSHEY_COMPLEX_SMALL", "value": "5", "description": "" },
+				{ "name": "FONT_HERSHEY_SCRIPT_SIMPLEX", "value": "6", "description": "" },
+				{ "name": "FONT_HERSHEY_SCRIPT_COMPLEX", "value": "7", "description": "" },
+				{ "name": "FONT_ITALIC", "value": "16", "description": "" }
+			]
+		},
+		"API.OpenCV.Image#Format": {
+			"name": "Format",
+			"bundle": "API.OpenCV",
+			"class": "API.OpenCV.Image",
+			"kind": "enum",
+			"description": "Image type",
+			"items": [
+				{ "name": "JPEG", "value": "64", "description": "" },
+				{ "name": "PNG", "value": "65", "description": "" },
+				{ "name": "WEBP", "value": "66", "description": "" },
+				{ "name": "GIF", "value": "67", "description": "" }
+			]
+		},
+		"API.OpenCV.InterpolationFlags": {
+			"name": "InterpolationFlags",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV interpolation values",
+			"items": [
+				{ "name": "INTER_NEAREST", "value": "0", "description": "" },
+				{ "name": "INTER_LINEAR", "value": "1", "description": "" },
+				{ "name": "INTER_CUBIC", "value": "2", "description": "" },
+				{ "name": "INTER_AREA", "value": "3", "description": "" },
+				{ "name": "INTER_LANCZOS4", "value": "4", "description": "" },
+				{ "name": "INTER_LINEAR_EXACT", "value": "5", "description": "" },
+				{ "name": "INTER_NEAREST_EXACT", "value": "6", "description": "" },
+				{ "name": "INTER_MAX", "value": "7", "description": "" },
+				{ "name": "WARP_FILL_OUTLIERS", "value": "8", "description": "" },
+				{ "name": "WARP_INVERSE_MAP", "value": "16", "description": "" },
+				{ "name": "WARP_RELATIVE_MAP", "value": "32", "description": "" }
+			]
+		},
+		"API.OpenCV.LineType": {
+			"name": "LineType",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV line values",
+			"items": [
+				{ "name": "FILLED", "value": "-1", "description": "" },
+				{ "name": "LINE_4", "value": "4", "description": "" },
+				{ "name": "LINE_8", "value": "8", "description": "" },
+				{ "name": "LINE_AA", "value": "16", "description": "" }
+			]
+		},
+		"API.OpenCV.MorphShapes": {
+			"name": "MorphShapes",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV morphological shape constants for structuring elements",
+			"items": [
+				{ "name": "MORPH_RECT", "value": "0", "description": "" },
+				{ "name": "MORPH_CROSS", "value": "1", "description": "" },
+				{ "name": "MORPH_ELLIPSE", "value": "2", "description": "" }
+			]
+		},
+		"API.OpenCV.MorphTypes": {
+			"name": "MorphTypes",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV morphological operation types",
+			"items": [
+				{ "name": "MORPH_ERODE", "value": "0", "description": "" },
+				{ "name": "MORPH_DILATE", "value": "1", "description": "" },
+				{ "name": "MORPH_OPEN", "value": "2", "description": "" },
+				{ "name": "MORPH_CLOSE", "value": "3", "description": "" },
+				{ "name": "MORPH_GRADIENT", "value": "4", "description": "" }
+			]
+		},
+		"API.OpenCV.RetrievalModes": {
+			"name": "RetrievalModes",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV contour retrieval modes for FindContours",
+			"items": [
+				{ "name": "RETR_EXTERNAL", "value": "0", "description": "" },
+				{ "name": "RETR_LIST", "value": "1", "description": "" },
+				{ "name": "RETR_CCOMP", "value": "2", "description": "" },
+				{ "name": "RETR_TREE", "value": "3", "description": "" }
+			]
+		},
+		"API.OpenCV.ThresholdTypes": {
+			"name": "ThresholdTypes",
+			"bundle": "API.OpenCV",
+			"class": "",
+			"kind": "consts",
+			"description": "OpenCV threshold types",
+			"items": [
+				{ "name": "BINARY", "value": "0", "description": "" },
+				{ "name": "BINARY_INV", "value": "1", "description": "" },
+				{ "name": "TRUNC", "value": "2", "description": "" },
+				{ "name": "TOZERO", "value": "3", "description": "" },
+				{ "name": "TOZERO_INV", "value": "4", "description": "" },
+				{ "name": "OTSU", "value": "8", "description": "" }
+			]
+		},
+		"Collection.Cache#Type": {
+			"name": "Type",
+			"bundle": "Collection",
+			"class": "Collection.Cache",
+			"kind": "enum",
+			"description": "Cache type",
+			"items": [
+				{ "name": "LRU", "value": "0", "description": "" },
+				{ "name": "MRU", "value": "1", "description": "" }
+			]
+		},
+		"Collection.Hash#Capacity": {
+			"name": "Capacity",
+			"bundle": "Collection",
+			"class": "Collection.Hash",
+			"kind": "consts",
+			"description": "Hash table capacity. Load factors: SMALL=500, MEDIUM=2k, LARGE=9k, EX_LARGE=36k, HUGE=147k",
+			"items": [
+				{ "name": "SMALL", "value": "769", "description": "" },
+				{ "name": "MEDIUM", "value": "3079", "description": "" },
+				{ "name": "LARGE", "value": "12289", "description": "" },
+				{ "name": "EX_LARGE", "value": "49157", "description": "" },
+				{ "name": "HUGE", "value": "196613", "description": "" }
+			]
+		},
+		"Collection.Heap#Order": {
+			"name": "Order",
+			"bundle": "Collection",
+			"class": "Collection.Heap",
+			"kind": "enum",
+			"description": "Heap sort order",
+			"items": [
+				{ "name": "MIN", "value": "0", "description": "" },
+				{ "name": "MAX", "value": "1", "description": "" }
+			]
+		},
+		"Data.JSON.JsonElement#JsonType": {
+			"name": "JsonType",
+			"bundle": "Data.JSON",
+			"class": "Data.JSON.JsonElement",
+			"kind": "enum",
+			"description": "JSON element type",
+			"items": [
+				{ "name": "STRING", "value": "0", "description": "" },
+				{ "name": "NUMBER", "value": "1", "description": "" },
+				{ "name": "TRUE", "value": "2", "description": "" },
+				{ "name": "FALSE", "value": "3", "description": "" },
+				{ "name": "NULL", "value": "4", "description": "" },
+				{ "name": "ARRAY", "value": "5", "description": "" },
+				{ "name": "OBJECT", "value": "6", "description": "" },
+				{ "name": "OTHER", "value": "7", "description": "" }
+			]
+		},
+		"Data.JSON.Scheme.ParameterType#Type": {
+			"name": "Type",
+			"bundle": "Data.JSON.Scheme",
+			"class": "Data.JSON.Scheme.ParameterType",
+			"kind": "enum",
+			"description": "JSON function parameter type",
+			"items": [
+				{ "name": "STRING", "value": "0", "description": "" },
+				{ "name": "NUMBER", "value": "1", "description": "" },
+				{ "name": "INTEGER", "value": "2", "description": "" },
+				{ "name": "OBJECT", "value": "3", "description": "" },
+				{ "name": "BOOLEAN", "value": "4", "description": "" }
+			]
+		},
+		"Data.JSON.Stream.StreamParser#Type": {
+			"name": "Type",
+			"bundle": "Data.JSON.Stream",
+			"class": "Data.JSON.Stream.StreamParser",
+			"kind": "enum",
+			"description": "Stream JSON type",
+			"items": [
+				{ "name": "OBJECT", "value": "0", "description": "" },
+				{ "name": "OBJECT_END", "value": "1", "description": "" },
+				{ "name": "ARRAY", "value": "2", "description": "" },
+				{ "name": "ARRAY_END", "value": "3", "description": "" },
+				{ "name": "LABEL", "value": "4", "description": "" },
+				{ "name": "STRING", "value": "5", "description": "" },
+				{ "name": "NUMBER", "value": "6", "description": "" },
+				{ "name": "NULL", "value": "7", "description": "" },
+				{ "name": "TRUE", "value": "8", "description": "" },
+				{ "name": "FALSE", "value": "9", "description": "" }
+			]
+		},
+		"Data.XML.XmlElement#Type": {
+			"name": "Type",
+			"bundle": "Data.XML",
+			"class": "Data.XML.XmlElement",
+			"kind": "enum",
+			"description": "XmlElement types",
+			"items": [
+				{ "name": "DECLARATION", "value": "0", "description": "" },
+				{ "name": "CDATA", "value": "1", "description": "" },
+				{ "name": "ELEMENT", "value": "2", "description": "" },
+				{ "name": "CLOSING_ELEMENT", "value": "3", "description": "" },
+				{ "name": "UNARY_ELEMENT", "value": "4", "description": "" }
+			]
+		},
+		"Database.ODBC.ColumnInfo#Type": {
+			"name": "Type",
+			"bundle": "Database.ODBC",
+			"class": "Database.ODBC.ColumnInfo",
+			"kind": "consts",
+			"description": "Column type",
+			"items": [
+				{ "name": "SQL_UNKNOWN_TYPE", "value": "0", "description": "" },
+				{ "name": "SQL_CHAR", "value": "1", "description": "" },
+				{ "name": "SQL_NUMERIC", "value": "2", "description": "" },
+				{ "name": "SQL_DECIMAL", "value": "3", "description": "" },
+				{ "name": "SQL_INTEGER", "value": "4", "description": "" },
+				{ "name": "SQL_SMALLINT", "value": "5", "description": "" },
+				{ "name": "SQL_FLOAT", "value": "6", "description": "" },
+				{ "name": "SQL_REAL", "value": "7", "description": "" },
+				{ "name": "SQL_DOUBLE", "value": "8", "description": "" },
+				{ "name": "SQL_DATETIME", "value": "9", "description": "" },
+				{ "name": "SQL_VARCHAR", "value": "12", "description": "" },
+				{ "name": "SQL_BIGINT", "value": "-5", "description": "" },
+				{ "name": "SQL_TYPE_DATE", "value": "91", "description": "" },
+				{ "name": "SQL_TYPE_TIME", "value": "92", "description": "" },
+				{ "name": "SQL_TYPE_TIMESTAMP", "value": "93", "description": "" }
+			]
+		},
+		"Game.OpenGL.BlendFactor": {
+			"name": "BlendFactor",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "Blend factors for GL->SetBlend. See its doc for the combinations worth knowing.",
+			"items": [
+				{ "name": "GL_ZERO", "value": "0", "description": "" },
+				{ "name": "GL_ONE", "value": "1", "description": "" },
+				{ "name": "GL_SRC_COLOR", "value": "0x0300", "description": "" },
+				{ "name": "GL_ONE_MINUS_SRC_COLOR", "value": "0x0301", "description": "" },
+				{ "name": "GL_SRC_ALPHA", "value": "0x0302", "description": "" },
+				{ "name": "GL_ONE_MINUS_SRC_ALPHA", "value": "0x0303", "description": "" },
+				{ "name": "GL_DST_ALPHA", "value": "0x0304", "description": "" },
+				{ "name": "GL_ONE_MINUS_DST_ALPHA", "value": "0x0305", "description": "" },
+				{ "name": "GL_DST_COLOR", "value": "0x0306", "description": "" },
+				{ "name": "GL_ONE_MINUS_DST_COLOR", "value": "0x0307", "description": "" }
+			]
+		},
+		"Game.OpenGL.Capability": {
+			"name": "Capability",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "Capabilities for GL->Enable \/ GL->Disable.",
+			"items": [
+				{ "name": "GL_CULL_FACE", "value": "0x0B44", "description": "" },
+				{ "name": "GL_DEPTH_TEST", "value": "0x0B71", "description": "" },
+				{ "name": "GL_BLEND", "value": "0x0BE2", "description": "" },
+				{ "name": "GL_SCISSOR_TEST", "value": "0x0C11", "description": "" },
+				{ "name": "GL_MULTISAMPLE", "value": "0x809D", "description": "" },
+				{ "name": "GL_STENCIL_TEST", "value": "0x0B90", "description": "" },
+				{ "name": "GL_POLYGON_OFFSET_FILL", "value": "0x8037", "description": "" }
+			]
+		},
+		"Game.OpenGL.ClearBit": {
+			"name": "ClearBit",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "Buffer bits for GL->Clear, combined with 'or'.",
+			"items": [
+				{ "name": "GL_DEPTH_BUFFER_BIT", "value": "0x00000100", "description": "" },
+				{ "name": "GL_STENCIL_BUFFER_BIT", "value": "0x00000400", "description": "" },
+				{ "name": "GL_COLOR_BUFFER_BIT", "value": "0x00004000", "description": "" }
+			]
+		},
+		"Game.OpenGL.CompareFunc": {
+			"name": "CompareFunc",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "Comparison functions, for the stencil test and glDepthFunc.",
+			"items": [
+				{ "name": "GL_NEVER", "value": "0x0200", "description": "" },
+				{ "name": "GL_LESS", "value": "0x0201", "description": "" },
+				{ "name": "GL_EQUAL", "value": "0x0202", "description": "" },
+				{ "name": "GL_LEQUAL", "value": "0x0203", "description": "" },
+				{ "name": "GL_GREATER", "value": "0x0204", "description": "" },
+				{ "name": "GL_NOTEQUAL", "value": "0x0205", "description": "" },
+				{ "name": "GL_GEQUAL", "value": "0x0206", "description": "" },
+				{ "name": "GL_ALWAYS", "value": "0x0207", "description": "" }
+			]
+		},
+		"Game.OpenGL.CullMode": {
+			"name": "CullMode",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "Which side of a triangle is discarded when GL_CULL_FACE is on.",
+			"items": [
+				{ "name": "GL_FRONT", "value": "0x0404", "description": "" },
+				{ "name": "GL_BACK", "value": "0x0405", "description": "" },
+				{ "name": "GL_FRONT_AND_BACK", "value": "0x0408", "description": "" }
+			]
+		},
+		"Game.OpenGL.DrawMode": {
+			"name": "DrawMode",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "What a mesh's indices describe. Mesh->Draw takes one of these.",
+			"items": [
+				{ "name": "GL_POINTS", "value": "0x0000", "description": "" },
+				{ "name": "GL_LINES", "value": "0x0001", "description": "" },
+				{ "name": "GL_LINE_LOOP", "value": "0x0002", "description": "" },
+				{ "name": "GL_LINE_STRIP", "value": "0x0003", "description": "" },
+				{ "name": "GL_TRIANGLES", "value": "0x0004", "description": "" },
+				{ "name": "GL_TRIANGLE_STRIP", "value": "0x0005", "description": "" },
+				{ "name": "GL_TRIANGLE_FAN", "value": "0x0006", "description": "" }
+			]
+		},
+		"Game.OpenGL.Easing": {
+			"name": "Easing",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "How a Track moves between two keys.",
+			"items": [
+				{ "name": "LINEAR", "value": "0", "description": "" },
+				{ "name": "EASE_IN", "value": "1", "description": "" },
+				{ "name": "EASE_OUT", "value": "2", "description": "" },
+				{ "name": "EASE_IN_OUT", "value": "3", "description": "" },
+				{ "name": "STEP", "value": "4", "description": "" }
+			]
+		},
+		"Game.OpenGL.ErrorCode": {
+			"name": "ErrorCode",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "Values returned by GL->GetError.",
+			"items": [
+				{ "name": "GL_NO_ERROR", "value": "0", "description": "" },
+				{ "name": "GL_INVALID_ENUM", "value": "0x0500", "description": "" },
+				{ "name": "GL_INVALID_VALUE", "value": "0x0501", "description": "" },
+				{ "name": "GL_INVALID_OPERATION", "value": "0x0502", "description": "" },
+				{ "name": "GL_OUT_OF_MEMORY", "value": "0x0505", "description": "" },
+				{ "name": "GL_INVALID_FRAMEBUFFER_OPERATION", "value": "0x0506", "description": "" }
+			]
+		},
+		"Game.OpenGL.LightKind": {
+			"name": "LightKind",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "What kind of light a Light is.",
+			"items": [
+				{ "name": "DIRECTIONAL", "value": "0", "description": "" },
+				{ "name": "POINT", "value": "1", "description": "" },
+				{ "name": "SPOT", "value": "2", "description": "" }
+			]
+		},
+		"Game.OpenGL.StencilOp": {
+			"name": "StencilOp",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "What the stencil buffer does when a test passes or fails.",
+			"items": [
+				{ "name": "GL_ZERO", "value": "0x0000", "description": "" },
+				{ "name": "GL_KEEP", "value": "0x1E00", "description": "" },
+				{ "name": "GL_REPLACE", "value": "0x1E01", "description": "" },
+				{ "name": "GL_INCR", "value": "0x1E02", "description": "" },
+				{ "name": "GL_DECR", "value": "0x1E03", "description": "" },
+				{ "name": "GL_INVERT", "value": "0x150A", "description": "" }
+			]
+		},
+		"Game.OpenGL.TextureFilter": {
+			"name": "TextureFilter",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "How a texture is sampled when it is drawn larger or smaller than its pixels.",
+			"items": [
+				{ "name": "GL_NEAREST", "value": "0x2600", "description": "" },
+				{ "name": "GL_LINEAR", "value": "0x2601", "description": "" }
+			]
+		},
+		"Game.OpenGL.TextureWrap": {
+			"name": "TextureWrap",
+			"bundle": "Game.OpenGL",
+			"class": "",
+			"kind": "consts",
+			"description": "What happens to texture coordinates outside 0..1.",
+			"items": [
+				{ "name": "GL_REPEAT", "value": "0x2901", "description": "" },
+				{ "name": "GL_MIRRORED_REPEAT", "value": "0x8370", "description": "" },
+				{ "name": "GL_CLAMP_TO_EDGE", "value": "0x812F", "description": "" }
+			]
+		},
+		"Game.SDL2.AudioFormat": {
+			"name": "AudioFormat",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Audio format flags",
+			"items": [
+				{ "name": "SDL_AUDIO_U8", "value": "0x0008", "description": "" },
+				{ "name": "SDL_AUDIO_S8", "value": "0x8008", "description": "" },
+				{ "name": "SDL_AUDIO_U16LSB", "value": "0x0010", "description": "" },
+				{ "name": "SDL_AUDIO_S16LSB", "value": "0x8010", "description": "" },
+				{ "name": "SDL_AUDIO_U16MSB", "value": "0x1010", "description": "" },
+				{ "name": "SDL_AUDIO_S16MSB", "value": "0x9010", "description": "" },
+				{ "name": "SDL_AUDIO_U16", "value": "0x0010", "description": "" },
+				{ "name": "SDL_AUDIO_S16", "value": "0x8010", "description": "" },
+				{ "name": "SDL_AUDIO_S32", "value": "0x8020", "description": "" },
+				{ "name": "SDL_AUDIO_F32", "value": "0x8120", "description": "" }
+			]
+		},
+		"Game.SDL2.BlendMode": {
+			"name": "BlendMode",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Blend modes",
+			"items": [
+				{ "name": "SDL_BLENDMODE_NONE", "value": "0x00000000", "description": "" },
+				{ "name": "SDL_BLENDMODE_BLEND", "value": "0x00000001", "description": "" },
+				{ "name": "SDL_BLENDMODE_ADD", "value": "0x00000002", "description": "" },
+				{ "name": "SDL_BLENDMODE_MOD", "value": "0x00000004", "description": "" },
+				{ "name": "SDL_BLENDMODE_MUL", "value": "0x00000008", "description": "" }
+			]
+		},
+		"Game.SDL2.EventAction": {
+			"name": "EventAction",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "SDL event action",
+			"items": [
+				{ "name": "SDL_ADDEVENT", "value": "0", "description": "" },
+				{ "name": "SDL_PEEKEVENT", "value": "1", "description": "" },
+				{ "name": "SDL_GETEVENT", "value": "2", "description": "" }
+			]
+		},
+		"Game.SDL2.EventType": {
+			"name": "EventType",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Event types",
+			"items": [
+				{ "name": "SDL_QUERY", "value": "-1", "description": "" },
+				{ "name": "SDL_IGNORE", "value": "0", "description": "" },
+				{ "name": "SDL_DISABLE", "value": "0", "description": "" },
+				{ "name": "SDL_ENABLE", "value": "1", "description": "" },
+				{ "name": "SDL_QUIT", "value": "0x100", "description": "" },
+				{ "name": "SDL_APP_TERMINATING", "value": "0x101", "description": "" },
+				{ "name": "SDL_APP_LOWMEMORY", "value": "0x102", "description": "" },
+				{ "name": "SDL_APP_WILLENTERBACKGROUND", "value": "0x103", "description": "" },
+				{ "name": "SDL_APP_DIDENTERBACKGROUND", "value": "0x104", "description": "" },
+				{ "name": "SDL_APP_WILLENTERFOREGROUND", "value": "0x105", "description": "" },
+				{ "name": "SDL_APP_DIDENTERFOREGROUND", "value": "0x106", "description": "" },
+				{ "name": "SDL_WINDOWEVENT", "value": "0x200", "description": "" },
+				{ "name": "SDL_SYSWMEVENT", "value": "0x201", "description": "" },
+				{ "name": "SDL_KEYDOWN", "value": "0x300", "description": "" },
+				{ "name": "SDL_KEYUP", "value": "0x301", "description": "" },
+				{ "name": "SDL_TEXTEDITING", "value": "0x302", "description": "" },
+				{ "name": "SDL_TEXTINPUT", "value": "0x303", "description": "" },
+				{ "name": "SDL_KEYMAPCHANGED", "value": "0x304", "description": "" },
+				{ "name": "SDL_MOUSEMOTION", "value": "0x400", "description": "" },
+				{ "name": "SDL_MOUSEBUTTONDOWN", "value": "0x401", "description": "" },
+				{ "name": "SDL_MOUSEBUTTONUP", "value": "0x402", "description": "" },
+				{ "name": "SDL_MOUSEWHEEL", "value": "0x403", "description": "" },
+				{ "name": "SDL_JOYAXISMOTION", "value": "0x600", "description": "" },
+				{ "name": "SDL_JOYBALLMOTION", "value": "0x601", "description": "" },
+				{ "name": "SDL_JOYHATMOTION", "value": "0x602", "description": "" },
+				{ "name": "SDL_JOYBUTTONDOWN", "value": "0x603", "description": "" },
+				{ "name": "SDL_JOYBUTTONUP", "value": "0x604", "description": "" },
+				{ "name": "SDL_JOYDEVICEADDED", "value": "0x605", "description": "" },
+				{ "name": "SDL_JOYDEVICEREMOVED", "value": "0x606", "description": "" },
+				{ "name": "SDL_CONTROLLERAXISMOTION", "value": "0x650", "description": "" },
+				{ "name": "SDL_CONTROLLERBUTTONDOWN", "value": "0x651", "description": "" },
+				{ "name": "SDL_CONTROLLERBUTTONUP", "value": "0x652", "description": "" },
+				{ "name": "SDL_CONTROLLERDEVICEADDED", "value": "0x653", "description": "" },
+				{ "name": "SDL_CONTROLLERDEVICEREMOVED", "value": "0x654", "description": "" },
+				{ "name": "SDL_CONTROLLERDEVICEREMAPPED", "value": "0x655", "description": "" },
+				{ "name": "SDL_FINGERDOWN", "value": "0x700", "description": "" },
+				{ "name": "SDL_FINGERUP", "value": "0x701", "description": "" },
+				{ "name": "SDL_FINGERMOTION", "value": "0x702", "description": "" },
+				{ "name": "SDL_DOLLARGESTURE", "value": "0x800", "description": "" },
+				{ "name": "SDL_DOLLARRECORD", "value": "0x801", "description": "" },
+				{ "name": "SDL_MULTIGESTURE", "value": "0x802", "description": "" },
+				{ "name": "SDL_CLIPBOARDUPDATE", "value": "0x900", "description": "" },
+				{ "name": "SDL_DROPFILE", "value": "0x1000", "description": "" },
+				{ "name": "SDL_DROPTEXT", "value": "0x1001", "description": "" },
+				{ "name": "SDL_DROPBEGIN", "value": "0x1002", "description": "" },
+				{ "name": "SDL_DROPCOMPLETE", "value": "0x1003", "description": "" },
+				{ "name": "SDL_AUDIODEVICEADDED", "value": "0x1100", "description": "" },
+				{ "name": "SDL_AUDIODEVICEREMOVED", "value": "0x1101", "description": "" },
+				{ "name": "SDL_RENDER_TARGETS_RESET", "value": "0x2000", "description": "" },
+				{ "name": "SDL_RENDER_DEVICE_RESET", "value": "0x2000", "description": "" },
+				{ "name": "SDL_USEREVENT", "value": "0x8000", "description": "" }
+			]
+		},
+		"Game.SDL2.FontStyle": {
+			"name": "FontStyle",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "TrueType font rendering styles, for Font->SetStyle; OR them together",
+			"items": [
+				{ "name": "TTF_STYLE_NORMAL", "value": "0x00", "description": "" },
+				{ "name": "TTF_STYLE_BOLD", "value": "0x01", "description": "" },
+				{ "name": "TTF_STYLE_ITALIC", "value": "0x02", "description": "" },
+				{ "name": "TTF_STYLE_UNDERLINE", "value": "0x04", "description": "" },
+				{ "name": "TTF_STYLE_STRIKETHROUGH", "value": "0x08", "description": "" }
+			]
+		},
+		"Game.SDL2.GLContextFlag": {
+			"name": "GLContextFlag",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Values for GLattr->SDL_GL_CONTEXT_FLAGS, combined with 'or'.\n\nFORWARD_COMPATIBLE removes the deprecated fixed-function pipeline and is required alongside a core profile on macOS.",
+			"items": [
+				{ "name": "SDL_GL_CONTEXT_DEBUG_FLAG", "value": "0x0001", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG", "value": "0x0002", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG", "value": "0x0004", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_RESET_ISOLATION_FLAG", "value": "0x0008", "description": "" }
+			]
+		},
+		"Game.SDL2.GLProfile": {
+			"name": "GLProfile",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Values for GLattr->SDL_GL_CONTEXT_PROFILE_MASK. Request a profile BEFORE creating the window, with Core->GLSetAttribute.\n\nAsk for CORE to get a modern (3.2+) context. On macOS this is mandatory, not a preference: without it you are handed a legacy 2.1 context, and macOS offers no 3.3 compatibility profile at all.",
+			"items": [
+				{ "name": "SDL_GL_CONTEXT_PROFILE_CORE", "value": "0x0001", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_PROFILE_COMPATIBILITY", "value": "0x0002", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_PROFILE_ES", "value": "0x0004", "description": "" }
+			]
+		},
+		"Game.SDL2.GLattr": {
+			"name": "GLattr",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "OpenGL window attributes",
+			"items": [
+				{ "name": "SDL_GL_RED_SIZE", "value": "0", "description": "" },
+				{ "name": "SDL_GL_GREEN_SIZE", "value": "1", "description": "" },
+				{ "name": "SDL_GL_BLUE_SIZE", "value": "2", "description": "" },
+				{ "name": "SDL_GL_ALPHA_SIZE", "value": "3", "description": "" },
+				{ "name": "SDL_GL_BUFFER_SIZE", "value": "4", "description": "" },
+				{ "name": "SDL_GL_DOUBLEBUFFER", "value": "5", "description": "" },
+				{ "name": "SDL_GL_DEPTH_SIZE", "value": "6", "description": "" },
+				{ "name": "SDL_GL_STENCIL_SIZE", "value": "7", "description": "" },
+				{ "name": "SDL_GL_ACCUM_RED_SIZE", "value": "8", "description": "" },
+				{ "name": "SDL_GL_ACCUM_GREEN_SIZE", "value": "9", "description": "" },
+				{ "name": "SDL_GL_ACCUM_BLUE_SIZE", "value": "10", "description": "" },
+				{ "name": "SDL_GL_ACCUM_ALPHA_SIZE", "value": "11", "description": "" },
+				{ "name": "SDL_GL_STEREO", "value": "12", "description": "" },
+				{ "name": "SDL_GL_MULTISAMPLEBUFFERS", "value": "13", "description": "" },
+				{ "name": "SDL_GL_MULTISAMPLESAMPLES", "value": "14", "description": "" },
+				{ "name": "SDL_GL_ACCELERATED_VISUAL", "value": "15", "description": "" },
+				{ "name": "SDL_GL_RETAINED_BACKING", "value": "16", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_MAJOR_VERSION", "value": "17", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_MINOR_VERSION", "value": "18", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_EGL", "value": "19", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_FLAGS", "value": "20", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_PROFILE_MASK", "value": "21", "description": "" },
+				{ "name": "SDL_GL_SHARE_WITH_CURRENT_CONTEXT", "value": "22", "description": "" },
+				{ "name": "SDL_GL_FRAMEBUFFER_SRGB_CAPABLE", "value": "23", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_RELEASE_BEHAVIOR", "value": "24", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_RESET_NOTIFICATION", "value": "25", "description": "" },
+				{ "name": "SDL_GL_CONTEXT_NO_ERROR", "value": "26", "description": "" }
+			]
+		},
+		"Game.SDL2.GameControllerAxis": {
+			"name": "GameControllerAxis",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "The list of axes available from a controller",
+			"items": [
+				{ "name": "SDL_CONTROLLER_AXIS_INVALID", "value": "-1", "description": "" },
+				{ "name": "SDL_CONTROLLER_AXIS_LEFTX", "value": "0", "description": "" },
+				{ "name": "SDL_CONTROLLER_AXIS_LEFTY", "value": "1", "description": "" },
+				{ "name": "SDL_CONTROLLER_AXIS_RIGHTX", "value": "2", "description": "" },
+				{ "name": "SDL_CONTROLLER_AXIS_RIGHTY", "value": "3", "description": "" },
+				{ "name": "SDL_CONTROLLER_AXIS_TRIGGERLEFT", "value": "4", "description": "" },
+				{ "name": "SDL_CONTROLLER_AXIS_TRIGGERRIGHT", "value": "5", "description": "" },
+				{ "name": "SDL_CONTROLLER_AXIS_MAX", "value": "6", "description": "" }
+			]
+		},
+		"Game.SDL2.GameControllerBindType": {
+			"name": "GameControllerBindType",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "The gamecontroller bind type",
+			"items": [
+				{ "name": "SDL_CONTROLLER_BINDTYPE_NONE", "value": "0", "description": "" },
+				{ "name": "SDL_CONTROLLER_BINDTYPE_BUTTON", "value": "1", "description": "" },
+				{ "name": "SDL_CONTROLLER_BINDTYPE_AXIS", "value": "2", "description": "" },
+				{ "name": "SDL_CONTROLLER_BINDTYPE_HAT", "value": "3", "description": "" }
+			]
+		},
+		"Game.SDL2.GameControllerButton": {
+			"name": "GameControllerButton",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "The list of buttons available from a controller",
+			"items": [
+				{ "name": "SDL_CONTROLLER_BUTTON_INVALID", "value": "-1", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_A", "value": "0", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_B", "value": "1", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_X", "value": "2", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_Y", "value": "3", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_BACK", "value": "4", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_GUIDE", "value": "5", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_START", "value": "6", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_LEFTSTICK", "value": "7", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_RIGHTSTICK", "value": "8", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_LEFTSHOULDER", "value": "9", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_RIGHTSHOULDER", "value": "10", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_DPAD_UP", "value": "11", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_DPAD_DOWN", "value": "12", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_DPAD_LEFT", "value": "13", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_DPAD_RIGHT", "value": "14", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_MISC1", "value": "15", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_PADDLE1", "value": "16", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_PADDLE2", "value": "17", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_PADDLE3", "value": "18", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_PADDLE4", "value": "19", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_TOUCHPAD", "value": "20", "description": "" },
+				{ "name": "SDL_CONTROLLER_BUTTON_MAX", "value": "21", "description": "" }
+			]
+		},
+		"Game.SDL2.GameControllerType": {
+			"name": "GameControllerType",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "The gamecontroller structure used to identify an SDL game controller",
+			"items": [
+				{ "name": "SDL_CONTROLLER_TYPE_UNKNOWN", "value": "0", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_XBOX360", "value": "1", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_XBOXONE", "value": "2", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_PS3", "value": "3", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_PS4", "value": "4", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO", "value": "5", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_VIRTUAL", "value": "6", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_PS5", "value": "7", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_AMAZON_LUNA", "value": "8", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_GOOGLE_STADIA", "value": "9", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_NVIDIA_SHIELD", "value": "10", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_LEFT", "value": "11", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT", "value": "12", "description": "" },
+				{ "name": "SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_PAIR", "value": "13", "description": "" }
+			]
+		},
+		"Game.SDL2.HardwareFlags": {
+			"name": "HardwareFlags",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Hardware flags",
+			"items": [
+				{ "name": "SDL_INIT_TIMER", "value": "0x00000001", "description": "" },
+				{ "name": "SDL_INIT_AUDIO", "value": "0x00000010", "description": "" },
+				{ "name": "SDL_INIT_VIDEO", "value": "0x00000020", "description": "" },
+				{ "name": "SDL_INIT_JOYSTICK", "value": "0x00000200", "description": "" },
+				{ "name": "SDL_INIT_HAPTIC", "value": "0x00001000", "description": "" },
+				{ "name": "SDL_INIT_GAMECONTROLLER", "value": "0x00002000", "description": "" },
+				{ "name": "SDL_INIT_EVENTS", "value": "0x00004000", "description": "" }
+			]
+		},
+		"Game.SDL2.HintPriority": {
+			"name": "HintPriority",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Hint priorities",
+			"items": [
+				{ "name": "SDL_HINT_DEFAULT", "value": "0", "description": "" },
+				{ "name": "SDL_HINT_NORMAL", "value": "1", "description": "" },
+				{ "name": "SDL_HINT_OVERRIDE", "value": "2", "description": "" }
+			]
+		},
+		"Game.SDL2.ImageFlags": {
+			"name": "ImageFlags",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Image formats",
+			"items": [
+				{ "name": "IMG_INIT_JPG", "value": "0x00000001", "description": "" },
+				{ "name": "IMG_INIT_PNG", "value": "0x00000002", "description": "" },
+				{ "name": "IMG_INIT_TIF", "value": "0x00000004", "description": "" },
+				{ "name": "IMG_INIT_WEBP", "value": "0x00000008", "description": "" }
+			]
+		},
+		"Game.SDL2.JoystickHatValue": {
+			"name": "JoystickHatValue",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Joystick hat values",
+			"items": [
+				{ "name": "SDL_HAT_CENTERED", "value": "0x00", "description": "" },
+				{ "name": "SDL_HAT_UP", "value": "0x01", "description": "" },
+				{ "name": "SDL_HAT_RIGHT", "value": "0x02", "description": "" },
+				{ "name": "SDL_HAT_DOWN", "value": "0x04", "description": "" },
+				{ "name": "SDL_HAT_LEFT", "value": "0x08", "description": "" },
+				{ "name": "SDL_HAT_RIGHTUP", "value": "3", "description": "" },
+				{ "name": "SDL_HAT_RIGHTDOWN", "value": "6", "description": "" },
+				{ "name": "SDL_HAT_LEFTUP", "value": "9", "description": "" },
+				{ "name": "SDL_HAT_LEFTDOWN", "value": "12", "description": "" }
+			]
+		},
+		"Game.SDL2.JoystickPowerLevel": {
+			"name": "JoystickPowerLevel",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "Joystick power level SDL_JOYSTICK_POWER_EMPTY <= 5% SDL_JOYSTICK_POWER_LOW <= 20% SDL_JOYSTICK_POWER_MEDIUM <= 70% SDL_JOYSTICK_POWER_FULL <= 100%",
+			"items": [
+				{ "name": "SDL_JOYSTICK_POWER_UNKNOWN", "value": "-1", "description": "" },
+				{ "name": "SDL_JOYSTICK_POWER_EMPTY", "value": "0", "description": "" },
+				{ "name": "SDL_JOYSTICK_POWER_LOW", "value": "1", "description": "" },
+				{ "name": "SDL_JOYSTICK_POWER_MEDIUM", "value": "2", "description": "" },
+				{ "name": "SDL_JOYSTICK_POWER_FULL", "value": "3", "description": "" },
+				{ "name": "SDL_JOYSTICK_POWER_WIRED", "value": "4", "description": "" },
+				{ "name": "SDL_JOYSTICK_POWER_MAX", "value": "5", "description": "" }
+			]
+		},
+		"Game.SDL2.JoystickType": {
+			"name": "JoystickType",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "Joystick types",
+			"items": [
+				{ "name": "SDL_JOYSTICK_TYPE_UNKNOWN", "value": "0", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_GAMECONTROLLER", "value": "1", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_WHEEL", "value": "2", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_ARCADE_STICK", "value": "3", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_FLIGHT_STICK", "value": "4", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_DANCE_PAD", "value": "5", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_GUITAR", "value": "6", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_DRUM_KIT", "value": "7", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_ARCADE_PAD", "value": "8", "description": "" },
+				{ "name": "SDL_JOYSTICK_TYPE_THROTTLE", "value": "9", "description": "" }
+			]
+		},
+		"Game.SDL2.KeyState": {
+			"name": "KeyState",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "SDL button state",
+			"items": [
+				{ "name": "SDL_PRESSED", "value": "0", "description": "" },
+				{ "name": "SDL_RELEASED", "value": "1", "description": "" }
+			]
+		},
+		"Game.SDL2.Keymod": {
+			"name": "Keymod",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Keyboard modifier codes",
+			"items": [
+				{ "name": "KMOD_NONE", "value": "0x0000", "description": "" },
+				{ "name": "KMOD_LSHIFT", "value": "0x0001", "description": "" },
+				{ "name": "KMOD_RSHIFT", "value": "0x0002", "description": "" },
+				{ "name": "KMOD_LCTRL", "value": "0x0040", "description": "" },
+				{ "name": "KMOD_RCTRL", "value": "0x0080", "description": "" },
+				{ "name": "KMOD_LALT", "value": "0x0100", "description": "" },
+				{ "name": "KMOD_RALT", "value": "0x0200", "description": "" },
+				{ "name": "KMOD_LGUI", "value": "0x0400", "description": "" },
+				{ "name": "KMOD_RGUI", "value": "0x0800", "description": "" },
+				{ "name": "KMOD_NUM", "value": "0x1000", "description": "" },
+				{ "name": "KMOD_CAPS", "value": "0x2000", "description": "" },
+				{ "name": "KMOD_MODE", "value": "0x4000", "description": "" },
+				{ "name": "KMOD_RESERVED", "value": "0x8000", "description": "" }
+			]
+		},
+		"Game.SDL2.MessageBoxFlags": {
+			"name": "MessageBoxFlags",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "SDL_MessageBox flags. If supported will display warning icon, etc.",
+			"items": [
+				{ "name": "SDL_MESSAGEBOX_ERROR", "value": "0x00000010", "description": "" },
+				{ "name": "SDL_MESSAGEBOX_WARNING", "value": "0x00000020", "description": "" },
+				{ "name": "SDL_MESSAGEBOX_INFORMATION", "value": "0x00000040", "description": "" },
+				{ "name": "SDL_MESSAGEBOX_BUTTONS_LEFT_TO_RIGHT", "value": "0x00000080", "description": "" },
+				{ "name": "SDL_MESSAGEBOX_BUTTONS_RIGHT_TO_LEFT", "value": "0x00000100", "description": "" }
+			]
+		},
+		"Game.SDL2.MixerInitFlags": {
+			"name": "MixerInitFlags",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Mixer initialization flags",
+			"items": [
+				{ "name": "SDL_MIX_INIT_FLAC", "value": "0x00000001", "description": "" },
+				{ "name": "SDL_MIX_INIT_MOD", "value": "0x00000002", "description": "" },
+				{ "name": "SDL_MIX_INIT_MP3", "value": "0x00000008", "description": "" },
+				{ "name": "SDL_MIX_INIT_OGG", "value": "0x00000010", "description": "" },
+				{ "name": "SDL_MIX_INIT_MID", "value": "0x00000020", "description": "" },
+				{ "name": "SDL_MIX_INIT_OPUS", "value": "0x00000040", "description": "" },
+				{ "name": "SDL_MIX_INIT_WAVPACK", "value": "0x00000080", "description": "" }
+			]
+		},
+		"Game.SDL2.MouseButtonValue": {
+			"name": "MouseButtonValue",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Mouse motion values",
+			"items": [
+				{ "name": "SDL_BUTTON_LEFT", "value": "1", "description": "" },
+				{ "name": "SDL_BUTTON_MIDDLE", "value": "2", "description": "" },
+				{ "name": "SDL_BUTTON_RIGHT", "value": "3", "description": "" },
+				{ "name": "SDL_BUTTON_X1", "value": "4", "description": "" },
+				{ "name": "SDL_BUTTON_X2", "value": "5", "description": "" }
+			]
+		},
+		"Game.SDL2.MouseWheelDirection": {
+			"name": "MouseWheelDirection",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "SDL mouse wheel direction",
+			"items": [
+				{ "name": "SDL_MOUSEWHEEL_NORMAL", "value": "0", "description": "" },
+				{ "name": "SDL_MOUSEWHEEL_FLIPPED", "value": "1", "description": "" }
+			]
+		},
+		"Game.SDL2.PixelValue": {
+			"name": "PixelValue",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Pixel format values",
+			"items": [
+				{ "name": "SDL_PIXELFORMAT_UNKNOWN", "value": "0", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_INDEX1LSB", "value": "286261504", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_INDEX1MSB", "value": "287310080", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_INDEX4LSB", "value": "303039488", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_INDEX4MSB", "value": "304088064", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_INDEX8", "value": "318769153", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGB332", "value": "336660481", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGB444", "value": "353504258", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGB555", "value": "353570562", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGB565", "value": "353701890", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_ARGB4444", "value": "355602434", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_ARGB1555", "value": "355667970", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGBA4444", "value": "356651010", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGBA5551", "value": "356782082", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGR555", "value": "357764866", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGR565", "value": "357896194", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_ABGR4444", "value": "359796738", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_ABGR1555", "value": "359862274", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGRA4444", "value": "360845314", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGRA5551", "value": "360976386", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGB888", "value": "370546692", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGBX8888", "value": "371595268", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_ARGB8888", "value": "372645892", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_ARGB2101010", "value": "372711428", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGBA8888", "value": "373694468", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGR888", "value": "374740996", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGRX8888", "value": "375789572", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_ABGR8888", "value": "376840196", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGRA8888", "value": "377888772", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_RGB24", "value": "386930691", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_BGR24", "value": "390076419", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_NV21", "value": "825382478", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_NV12", "value": "842094158", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_YV12", "value": "842094169", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_YUY2", "value": "844715353", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_YVYU", "value": "1431918169", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_IYUV", "value": "1448433993", "description": "" },
+				{ "name": "SDL_PIXELFORMAT_UYVY", "value": "1498831189", "description": "" }
+			]
+		},
+		"Game.SDL2.PowererState": {
+			"name": "PowererState",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "State of the system's power supply",
+			"items": [
+				{ "name": "SDL_POWERSTATE_UNKNOWN", "value": "0", "description": "" },
+				{ "name": "SDL_POWERSTATE_ON_BATTERY", "value": "1", "description": "" },
+				{ "name": "SDL_POWERSTATE_NO_BATTERY", "value": "2", "description": "" },
+				{ "name": "SDL_POWERSTATE_CHARGING", "value": "3", "description": "" },
+				{ "name": "SDL_POWERSTATE_CHARGED", "value": "4", "description": "" }
+			]
+		},
+		"Game.SDL2.RendererFlags": {
+			"name": "RendererFlags",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Renderer flags",
+			"items": [
+				{ "name": "SDL_RENDERER_SOFTWARE", "value": "0x00000001", "description": "" },
+				{ "name": "SDL_RENDERER_ACCELERATED", "value": "0x00000002", "description": "" },
+				{ "name": "SDL_RENDERER_PRESENTVSYNC", "value": "0x00000004", "description": "" },
+				{ "name": "SDL_RENDERER_TARGETTEXTURE", "value": "0x00000008", "description": "" }
+			]
+		},
+		"Game.SDL2.RendererFlip": {
+			"name": "RendererFlip",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Flip operations",
+			"items": [
+				{ "name": "SDL_FLIP_NONE", "value": "0x00000000", "description": "" },
+				{ "name": "SDL_FLIP_HORIZONTAL", "value": "0x00000001", "description": "" },
+				{ "name": "SDL_FLIP_VERTICAL", "value": "0x00000002", "description": "" }
+			]
+		},
+		"Game.SDL2.Scancode": {
+			"name": "Scancode",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Keyboard scan codes",
+			"items": [
+				{ "name": "SDL_SCANCODE_UNKNOWN", "value": "0", "description": "" },
+				{ "name": "SDL_SCANCODE_A", "value": "4", "description": "" },
+				{ "name": "SDL_SCANCODE_B", "value": "5", "description": "" },
+				{ "name": "SDL_SCANCODE_C", "value": "6", "description": "" },
+				{ "name": "SDL_SCANCODE_D", "value": "7", "description": "" },
+				{ "name": "SDL_SCANCODE_E", "value": "8", "description": "" },
+				{ "name": "SDL_SCANCODE_F", "value": "9", "description": "" },
+				{ "name": "SDL_SCANCODE_G", "value": "10", "description": "" },
+				{ "name": "SDL_SCANCODE_H", "value": "11", "description": "" },
+				{ "name": "SDL_SCANCODE_I", "value": "12", "description": "" },
+				{ "name": "SDL_SCANCODE_J", "value": "13", "description": "" },
+				{ "name": "SDL_SCANCODE_K", "value": "14", "description": "" },
+				{ "name": "SDL_SCANCODE_L", "value": "15", "description": "" },
+				{ "name": "SDL_SCANCODE_M", "value": "16", "description": "" },
+				{ "name": "SDL_SCANCODE_N", "value": "17", "description": "" },
+				{ "name": "SDL_SCANCODE_O", "value": "18", "description": "" },
+				{ "name": "SDL_SCANCODE_P", "value": "19", "description": "" },
+				{ "name": "SDL_SCANCODE_Q", "value": "20", "description": "" },
+				{ "name": "SDL_SCANCODE_R", "value": "21", "description": "" },
+				{ "name": "SDL_SCANCODE_S", "value": "22", "description": "" },
+				{ "name": "SDL_SCANCODE_T", "value": "23", "description": "" },
+				{ "name": "SDL_SCANCODE_U", "value": "24", "description": "" },
+				{ "name": "SDL_SCANCODE_V", "value": "25", "description": "" },
+				{ "name": "SDL_SCANCODE_W", "value": "26", "description": "" },
+				{ "name": "SDL_SCANCODE_X", "value": "27", "description": "" },
+				{ "name": "SDL_SCANCODE_Y", "value": "28", "description": "" },
+				{ "name": "SDL_SCANCODE_Z", "value": "29", "description": "" },
+				{ "name": "SDL_SCANCODE_1", "value": "30", "description": "" },
+				{ "name": "SDL_SCANCODE_2", "value": "31", "description": "" },
+				{ "name": "SDL_SCANCODE_3", "value": "32", "description": "" },
+				{ "name": "SDL_SCANCODE_4", "value": "33", "description": "" },
+				{ "name": "SDL_SCANCODE_5", "value": "34", "description": "" },
+				{ "name": "SDL_SCANCODE_6", "value": "35", "description": "" },
+				{ "name": "SDL_SCANCODE_7", "value": "36", "description": "" },
+				{ "name": "SDL_SCANCODE_8", "value": "37", "description": "" },
+				{ "name": "SDL_SCANCODE_9", "value": "38", "description": "" },
+				{ "name": "SDL_SCANCODE_0", "value": "39", "description": "" },
+				{ "name": "SDL_SCANCODE_RETURN", "value": "40", "description": "" },
+				{ "name": "SDL_SCANCODE_ESCAPE", "value": "41", "description": "" },
+				{ "name": "SDL_SCANCODE_BACKSPACE", "value": "42", "description": "" },
+				{ "name": "SDL_SCANCODE_TAB", "value": "43", "description": "" },
+				{ "name": "SDL_SCANCODE_SPACE", "value": "44", "description": "" },
+				{ "name": "SDL_SCANCODE_MINUS", "value": "45", "description": "" },
+				{ "name": "SDL_SCANCODE_EQUALS", "value": "46", "description": "" },
+				{ "name": "SDL_SCANCODE_LEFTBRACKET", "value": "47", "description": "" },
+				{ "name": "SDL_SCANCODE_RIGHTBRACKET", "value": "48", "description": "" },
+				{ "name": "SDL_SCANCODE_BACKSLASH", "value": "49", "description": "" },
+				{ "name": "SDL_SCANCODE_NONUSHASH", "value": "50", "description": "" },
+				{ "name": "SDL_SCANCODE_SEMICOLON", "value": "51", "description": "" },
+				{ "name": "SDL_SCANCODE_APOSTROPHE", "value": "52", "description": "" },
+				{ "name": "SDL_SCANCODE_GRAVE", "value": "53", "description": "" },
+				{ "name": "SDL_SCANCODE_COMMA", "value": "54", "description": "" },
+				{ "name": "SDL_SCANCODE_PERIOD", "value": "55", "description": "" },
+				{ "name": "SDL_SCANCODE_SLASH", "value": "56", "description": "" },
+				{ "name": "SDL_SCANCODE_CAPSLOCK", "value": "57", "description": "" },
+				{ "name": "SDL_SCANCODE_F1", "value": "58", "description": "" },
+				{ "name": "SDL_SCANCODE_F2", "value": "59", "description": "" },
+				{ "name": "SDL_SCANCODE_F3", "value": "60", "description": "" },
+				{ "name": "SDL_SCANCODE_F4", "value": "61", "description": "" },
+				{ "name": "SDL_SCANCODE_F5", "value": "62", "description": "" },
+				{ "name": "SDL_SCANCODE_F6", "value": "63", "description": "" },
+				{ "name": "SDL_SCANCODE_F7", "value": "64", "description": "" },
+				{ "name": "SDL_SCANCODE_F8", "value": "65", "description": "" },
+				{ "name": "SDL_SCANCODE_F9", "value": "66", "description": "" },
+				{ "name": "SDL_SCANCODE_F10", "value": "67", "description": "" },
+				{ "name": "SDL_SCANCODE_F11", "value": "68", "description": "" },
+				{ "name": "SDL_SCANCODE_F12", "value": "69", "description": "" },
+				{ "name": "SDL_SCANCODE_PRINTSCREEN", "value": "70", "description": "" },
+				{ "name": "SDL_SCANCODE_SCROLLLOCK", "value": "71", "description": "" },
+				{ "name": "SDL_SCANCODE_PAUSE", "value": "72", "description": "" },
+				{ "name": "SDL_SCANCODE_INSERT", "value": "73", "description": "" },
+				{ "name": "SDL_SCANCODE_HOME", "value": "74", "description": "" },
+				{ "name": "SDL_SCANCODE_PAGEUP", "value": "75", "description": "" },
+				{ "name": "SDL_SCANCODE_DELETE", "value": "76", "description": "" },
+				{ "name": "SDL_SCANCODE_END", "value": "77", "description": "" },
+				{ "name": "SDL_SCANCODE_PAGEDOWN", "value": "78", "description": "" },
+				{ "name": "SDL_SCANCODE_RIGHT", "value": "79", "description": "" },
+				{ "name": "SDL_SCANCODE_LEFT", "value": "80", "description": "" },
+				{ "name": "SDL_SCANCODE_DOWN", "value": "81", "description": "" },
+				{ "name": "SDL_SCANCODE_UP", "value": "82", "description": "" },
+				{ "name": "SDL_SCANCODE_NUMLOCKCLEAR", "value": "83", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_DIVIDE", "value": "84", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MULTIPLY", "value": "85", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MINUS", "value": "86", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_PLUS", "value": "87", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_ENTER", "value": "88", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_1", "value": "89", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_2", "value": "90", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_3", "value": "91", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_4", "value": "92", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_5", "value": "93", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_6", "value": "94", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_7", "value": "95", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_8", "value": "96", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_9", "value": "97", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_0", "value": "98", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_PERIOD", "value": "99", "description": "" },
+				{ "name": "SDL_SCANCODE_NONUSBACKSLASH", "value": "100", "description": "" },
+				{ "name": "SDL_SCANCODE_APPLICATION", "value": "101", "description": "" },
+				{ "name": "SDL_SCANCODE_POWER", "value": "102", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_EQUALS", "value": "103", "description": "" },
+				{ "name": "SDL_SCANCODE_F13", "value": "104", "description": "" },
+				{ "name": "SDL_SCANCODE_F14", "value": "105", "description": "" },
+				{ "name": "SDL_SCANCODE_F15", "value": "106", "description": "" },
+				{ "name": "SDL_SCANCODE_F16", "value": "107", "description": "" },
+				{ "name": "SDL_SCANCODE_F17", "value": "108", "description": "" },
+				{ "name": "SDL_SCANCODE_F18", "value": "109", "description": "" },
+				{ "name": "SDL_SCANCODE_F19", "value": "110", "description": "" },
+				{ "name": "SDL_SCANCODE_F20", "value": "111", "description": "" },
+				{ "name": "SDL_SCANCODE_F21", "value": "112", "description": "" },
+				{ "name": "SDL_SCANCODE_F22", "value": "113", "description": "" },
+				{ "name": "SDL_SCANCODE_F23", "value": "114", "description": "" },
+				{ "name": "SDL_SCANCODE_F24", "value": "115", "description": "" },
+				{ "name": "SDL_SCANCODE_EXECUTE", "value": "116", "description": "" },
+				{ "name": "SDL_SCANCODE_HELP", "value": "117", "description": "" },
+				{ "name": "SDL_SCANCODE_MENU", "value": "118", "description": "" },
+				{ "name": "SDL_SCANCODE_SELECT", "value": "119", "description": "" },
+				{ "name": "SDL_SCANCODE_STOP", "value": "120", "description": "" },
+				{ "name": "SDL_SCANCODE_AGAIN", "value": "121", "description": "" },
+				{ "name": "SDL_SCANCODE_UNDO", "value": "122", "description": "" },
+				{ "name": "SDL_SCANCODE_CUT", "value": "123", "description": "" },
+				{ "name": "SDL_SCANCODE_COPY", "value": "124", "description": "" },
+				{ "name": "SDL_SCANCODE_PASTE", "value": "125", "description": "" },
+				{ "name": "SDL_SCANCODE_FIND", "value": "126", "description": "" },
+				{ "name": "SDL_SCANCODE_MUTE", "value": "127", "description": "" },
+				{ "name": "SDL_SCANCODE_VOLUMEUP", "value": "128", "description": "" },
+				{ "name": "SDL_SCANCODE_VOLUMEDOWN", "value": "129", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_COMMA", "value": "133", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_EQUALSAS400", "value": "134", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL1", "value": "135", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL2", "value": "136", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL3", "value": "137", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL4", "value": "138", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL5", "value": "139", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL6", "value": "140", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL7", "value": "141", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL8", "value": "142", "description": "" },
+				{ "name": "SDL_SCANCODE_INTERNATIONAL9", "value": "143", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG1", "value": "144", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG2", "value": "145", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG3", "value": "146", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG4", "value": "147", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG5", "value": "148", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG6", "value": "149", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG7", "value": "150", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG8", "value": "151", "description": "" },
+				{ "name": "SDL_SCANCODE_LANG9", "value": "152", "description": "" },
+				{ "name": "SDL_SCANCODE_ALTERASE", "value": "153", "description": "" },
+				{ "name": "SDL_SCANCODE_SYSREQ", "value": "154", "description": "" },
+				{ "name": "SDL_SCANCODE_CANCEL", "value": "155", "description": "" },
+				{ "name": "SDL_SCANCODE_CLEAR", "value": "156", "description": "" },
+				{ "name": "SDL_SCANCODE_PRIOR", "value": "157", "description": "" },
+				{ "name": "SDL_SCANCODE_RETURN2", "value": "158", "description": "" },
+				{ "name": "SDL_SCANCODE_SEPARATOR", "value": "159", "description": "" },
+				{ "name": "SDL_SCANCODE_OUT", "value": "160", "description": "" },
+				{ "name": "SDL_SCANCODE_OPER", "value": "161", "description": "" },
+				{ "name": "SDL_SCANCODE_CLEARAGAIN", "value": "162", "description": "" },
+				{ "name": "SDL_SCANCODE_CRSEL", "value": "163", "description": "" },
+				{ "name": "SDL_SCANCODE_EXSEL", "value": "164", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_00", "value": "176", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_000", "value": "177", "description": "" },
+				{ "name": "SDL_SCANCODE_THOUSANDSSEPARATOR", "value": "178", "description": "" },
+				{ "name": "SDL_SCANCODE_DECIMALSEPARATOR", "value": "179", "description": "" },
+				{ "name": "SDL_SCANCODE_CURRENCYUNIT", "value": "180", "description": "" },
+				{ "name": "SDL_SCANCODE_CURRENCYSUBUNIT", "value": "181", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_LEFTPAREN", "value": "182", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_RIGHTPAREN", "value": "183", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_LEFTBRACE", "value": "184", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_RIGHTBRACE", "value": "185", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_TAB", "value": "186", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_BACKSPACE", "value": "187", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_A", "value": "188", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_B", "value": "189", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_C", "value": "190", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_D", "value": "191", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_E", "value": "192", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_F", "value": "193", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_XOR", "value": "194", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_POWER", "value": "195", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_PERCENT", "value": "196", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_LESS", "value": "197", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_GREATER", "value": "198", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_AMPERSAND", "value": "199", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_DBLAMPERSAND", "value": "200", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_VERTICALBAR", "value": "201", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_DBLVERTICALBAR", "value": "202", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_COLON", "value": "203", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_HASH", "value": "204", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_SPACE", "value": "205", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_AT", "value": "206", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_EXCLAM", "value": "207", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MEMSTORE", "value": "208", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MEMRECALL", "value": "209", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MEMCLEAR", "value": "210", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MEMADD", "value": "211", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MEMSUBTRACT", "value": "212", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MEMMULTIPLY", "value": "213", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_MEMDIVIDE", "value": "214", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_PLUSMINUS", "value": "215", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_CLEAR", "value": "216", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_CLEARENTRY", "value": "217", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_BINARY", "value": "218", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_OCTAL", "value": "219", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_DECIMAL", "value": "220", "description": "" },
+				{ "name": "SDL_SCANCODE_KP_HEXADECIMAL", "value": "221", "description": "" },
+				{ "name": "SDL_SCANCODE_LCTRL", "value": "224", "description": "" },
+				{ "name": "SDL_SCANCODE_LSHIFT", "value": "225", "description": "" },
+				{ "name": "SDL_SCANCODE_LALT", "value": "226", "description": "" },
+				{ "name": "SDL_SCANCODE_LGUI", "value": "227", "description": "" },
+				{ "name": "SDL_SCANCODE_RCTRL", "value": "228", "description": "" },
+				{ "name": "SDL_SCANCODE_RSHIFT", "value": "229", "description": "" },
+				{ "name": "SDL_SCANCODE_RALT", "value": "230", "description": "" },
+				{ "name": "SDL_SCANCODE_RGUI", "value": "231", "description": "" },
+				{ "name": "SDL_SCANCODE_MODE", "value": "257", "description": "" },
+				{ "name": "SDL_SCANCODE_AUDIONEXT", "value": "258", "description": "" },
+				{ "name": "SDL_SCANCODE_AUDIOPREV", "value": "259", "description": "" },
+				{ "name": "SDL_SCANCODE_AUDIOSTOP", "value": "260", "description": "" },
+				{ "name": "SDL_SCANCODE_AUDIOPLAY", "value": "261", "description": "" },
+				{ "name": "SDL_SCANCODE_AUDIOMUTE", "value": "262", "description": "" },
+				{ "name": "SDL_SCANCODE_MEDIASELECT", "value": "263", "description": "" },
+				{ "name": "SDL_SCANCODE_WWW", "value": "264", "description": "" },
+				{ "name": "SDL_SCANCODE_MAIL", "value": "265", "description": "" },
+				{ "name": "SDL_SCANCODE_CALCULATOR", "value": "266", "description": "" },
+				{ "name": "SDL_SCANCODE_COMPUTER", "value": "267", "description": "" },
+				{ "name": "SDL_SCANCODE_AC_SEARCH", "value": "268", "description": "" },
+				{ "name": "SDL_SCANCODE_AC_HOME", "value": "269", "description": "" },
+				{ "name": "SDL_SCANCODE_AC_BACK", "value": "270", "description": "" },
+				{ "name": "SDL_SCANCODE_AC_FORWARD", "value": "271", "description": "" },
+				{ "name": "SDL_SCANCODE_AC_STOP", "value": "272", "description": "" },
+				{ "name": "SDL_SCANCODE_AC_REFRESH", "value": "273", "description": "" },
+				{ "name": "SDL_SCANCODE_AC_BOOKMARKS", "value": "274", "description": "" },
+				{ "name": "SDL_SCANCODE_BRIGHTNESSDOWN", "value": "275", "description": "" },
+				{ "name": "SDL_SCANCODE_BRIGHTNESSUP", "value": "276", "description": "" },
+				{ "name": "SDL_SCANCODE_DISPLAYSWITCH", "value": "277", "description": "" },
+				{ "name": "SDL_SCANCODE_KBDILLUMTOGGLE", "value": "278", "description": "" },
+				{ "name": "SDL_SCANCODE_KBDILLUMDOWN", "value": "279", "description": "" },
+				{ "name": "SDL_SCANCODE_KBDILLUMUP", "value": "280", "description": "" },
+				{ "name": "SDL_SCANCODE_EJECT", "value": "281", "description": "" },
+				{ "name": "SDL_SCANCODE_SLEEP", "value": "282", "description": "" },
+				{ "name": "SDL_SCANCODE_APP1", "value": "283", "description": "" },
+				{ "name": "SDL_SCANCODE_APP2", "value": "284", "description": "" }
+			]
+		},
+		"Game.SDL2.SensorType": {
+			"name": "SensorType",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "The different sensors defined by SDL",
+			"items": [
+				{ "name": "SDL_SENSOR_INVALID", "value": "-1", "description": "" },
+				{ "name": "SDL_SENSOR_UNKNOWN", "value": "0", "description": "" },
+				{ "name": "SDL_SENSOR_ACCEL", "value": "1", "description": "" },
+				{ "name": "SDL_SENSOR_GYRO", "value": "2", "description": "" }
+			]
+		},
+		"Game.SDL2.SubsystemFlags": {
+			"name": "SubsystemFlags",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "SDL subsystem initialization flags",
+			"items": [
+				{ "name": "SDL_INIT_TIMER", "value": "0x00000001", "description": "" },
+				{ "name": "SDL_INIT_AUDIO", "value": "0x00000010", "description": "" },
+				{ "name": "SDL_INIT_VIDEO", "value": "0x00000020", "description": "" },
+				{ "name": "SDL_INIT_JOYSTICK", "value": "0x00000200", "description": "" },
+				{ "name": "SDL_INIT_HAPTIC", "value": "0x00001000", "description": "" },
+				{ "name": "SDL_INIT_GAMECONTROLLER", "value": "0x00002000", "description": "" },
+				{ "name": "SDL_INIT_EVENTS", "value": "0x00004000", "description": "" },
+				{ "name": "SDL_INIT_SENSOR", "value": "0x00008000", "description": "" },
+				{ "name": "SDL_INIT_NOPARACHUTE", "value": "0x00100000", "description": "" },
+				{ "name": "SDL_INIT_EVERYTHING", "value": "0xf231", "description": "" }
+			]
+		},
+		"Game.SDL2.TextureAccess": {
+			"name": "TextureAccess",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "enum",
+			"description": "Texture access patterns",
+			"items": [
+				{ "name": "SDL_TEXTUREACCESS_STATIC", "value": "0", "description": "" },
+				{ "name": "SDL_TEXTUREACCESS_STREAMING", "value": "1", "description": "" },
+				{ "name": "SDL_TEXTUREACCESS_TARGET", "value": "2", "description": "" }
+			]
+		},
+		"Game.SDL2.WindowEventID": {
+			"name": "WindowEventID",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "What happened to a window, as WindowEvent->GetEvent reports it",
+			"items": [
+				{ "name": "SDL_WINDOWEVENT_NONE", "value": "0", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_SHOWN", "value": "1", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_HIDDEN", "value": "2", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_EXPOSED", "value": "3", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_MOVED", "value": "4", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_RESIZED", "value": "5", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_SIZE_CHANGED", "value": "6", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_MINIMIZED", "value": "7", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_MAXIMIZED", "value": "8", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_RESTORED", "value": "9", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_ENTER", "value": "10", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_LEAVE", "value": "11", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_FOCUS_GAINED", "value": "12", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_FOCUS_LOST", "value": "13", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_CLOSE", "value": "14", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_TAKE_FOCUS", "value": "15", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_HIT_TEST", "value": "16", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_ICCPROF_CHANGED", "value": "17", "description": "" },
+				{ "name": "SDL_WINDOWEVENT_DISPLAY_CHANGED", "value": "18", "description": "" }
+			]
+		},
+		"Game.SDL2.WindowFlags": {
+			"name": "WindowFlags",
+			"bundle": "Game.SDL2",
+			"class": "",
+			"kind": "consts",
+			"description": "Window flags",
+			"items": [
+				{ "name": "SDL_WINDOWPOS_UNDEFINED", "value": "0x1FFF0000", "description": "" },
+				{ "name": "SDL_WINDOW_FULLSCREEN", "value": "0x00000001", "description": "" },
+				{ "name": "SDL_WINDOW_OPENGL", "value": "0x00000002", "description": "" },
+				{ "name": "SDL_WINDOW_SHOWN", "value": "0x00000004", "description": "" },
+				{ "name": "SDL_WINDOW_HIDDEN", "value": "0x00000008", "description": "" },
+				{ "name": "SDL_WINDOW_BORDERLESS", "value": "0x00000010", "description": "" },
+				{ "name": "SDL_WINDOW_RESIZABLE", "value": "0x00000020", "description": "" },
+				{ "name": "SDL_WINDOW_MINIMIZED", "value": "0x00000040", "description": "" },
+				{ "name": "SDL_WINDOW_MAXIMIZED", "value": "0x00000080", "description": "" },
+				{ "name": "SDL_WINDOW_INPUT_GRABBED", "value": "0x00000100", "description": "" },
+				{ "name": "SDL_WINDOW_INPUT_FOCUS", "value": "0x00000200", "description": "" },
+				{ "name": "SDL_WINDOW_MOUSE_FOCUS", "value": "0x00000400", "description": "" },
+				{ "name": "SDL_WINDOW_FULLSCREEN_DESKTOP", "value": "4097", "description": "" },
+				{ "name": "SDL_WINDOW_FOREIGN", "value": "0x00000800", "description": "" },
+				{ "name": "SDL_WINDOW_ALLOW_HIGHDPI", "value": "0x00002000", "description": "" },
+				{ "name": "SDL_WINDOW_MOUSE_CAPTURE", "value": "0x00004000", "description": "" },
+				{ "name": "SDL_WINDOW_ALWAYS_ON_TOP", "value": "0x00008000", "description": "" },
+				{ "name": "SDL_WINDOW_SKIP_TASKBAR", "value": "0x00010000", "description": "" },
+				{ "name": "SDL_WINDOW_UTILITY", "value": "0x00020000", "description": "" },
+				{ "name": "SDL_WINDOW_TOOLTIP", "value": "0x00040000", "description": "" },
+				{ "name": "SDL_WINDOW_POPUP_MENU", "value": "0x00080000", "description": "" },
+				{ "name": "SDL_WINDOW_VULKAN", "value": "0x10000000", "description": "" }
+			]
+		},
+		"Query.Structured.ColumnType": {
+			"name": "ColumnType",
+			"bundle": "Query.Structured",
+			"class": "",
+			"kind": "enum",
+			"description": "The storage type of a column. NONE is a column that has held no value yet; it takes the type of the first value stored in it.",
+			"items": [
+				{ "name": "NONE", "value": "0", "description": "" },
+				{ "name": "INT", "value": "1", "description": "" },
+				{ "name": "FLOAT", "value": "2", "description": "" },
+				{ "name": "STRING", "value": "3", "description": "" },
+				{ "name": "DATE", "value": "4", "description": "" },
+				{ "name": "BOOL", "value": "5", "description": "" },
+				{ "name": "OBJECT", "value": "6", "description": "" }
+			]
+		},
+		"Query.Structured.Compression": {
+			"name": "Compression",
+			"bundle": "Query.Structured",
+			"class": "",
+			"kind": "enum",
+			"description": "How Save and ToBytes compress the blocks of an .otab file: NONE stores them as they are, FAST uses zlib at its quickest level and SMALL at its smallest. Each block keeps the codec it was written with, so a reader needs no option, and a block that compression would not shrink is stored as it is.",
+			"items": [
+				{ "name": "NONE", "value": "0", "description": "" },
+				{ "name": "FAST", "value": "1", "description": "" },
+				{ "name": "SMALL", "value": "2", "description": "" }
+			]
+		},
+		"Query.Structured.Conditional#Qualifier": {
+			"name": "Qualifier",
+			"bundle": "Query.Structured",
+			"class": "Query.Structured.Conditional",
+			"kind": "enum",
+			"description": "Conditional comparisons",
+			"items": [
+				{ "name": "EQUAL", "value": "0", "description": "" },
+				{ "name": "NOT_EQUAL", "value": "1", "description": "" },
+				{ "name": "GREATER", "value": "2", "description": "" },
+				{ "name": "LESS", "value": "3", "description": "" },
+				{ "name": "GREATER_EQUAL", "value": "4", "description": "" },
+				{ "name": "LESS_EQUAL", "value": "5", "description": "" },
+				{ "name": "LIKE", "value": "6", "description": "" },
+				{ "name": "NOT_LIKE", "value": "7", "description": "" }
+			]
+		},
+		"Query.Structured.Op": {
+			"name": "Op",
+			"bundle": "Query.Structured",
+			"class": "",
+			"kind": "enum",
+			"description": "A comparison or a way of combining conditions in a Predicate",
+			"items": [
+				{ "name": "EQ", "value": "0", "description": "" },
+				{ "name": "NE", "value": "1", "description": "" },
+				{ "name": "LT", "value": "2", "description": "" },
+				{ "name": "LE", "value": "3", "description": "" },
+				{ "name": "GT", "value": "4", "description": "" },
+				{ "name": "GE", "value": "5", "description": "" },
+				{ "name": "LIKE", "value": "6", "description": "" },
+				{ "name": "NOT_LIKE", "value": "7", "description": "" },
+				{ "name": "IS_NULL", "value": "8", "description": "" },
+				{ "name": "NOT_NULL", "value": "9", "description": "" },
+				{ "name": "AND", "value": "10", "description": "" },
+				{ "name": "OR", "value": "11", "description": "" },
+				{ "name": "NOT", "value": "12", "description": "" },
+				{ "name": "MATCHES", "value": "13", "description": "" },
+				{ "name": "NOT_MATCHES", "value": "14", "description": "" }
+			]
+		},
+		"Query.Structured.Order": {
+			"name": "Order",
+			"bundle": "Query.Structured",
+			"class": "",
+			"kind": "enum",
+			"description": "Sort direction",
+			"items": [
+				{ "name": "ASC", "value": "0", "description": "" },
+				{ "name": "DESC", "value": "1", "description": "" }
+			]
+		},
+		"System.Number#Format": {
+			"name": "Format",
+			"bundle": "System",
+			"class": "System.Number",
+			"kind": "enum",
+			"description": "Number formats.<br\/> <p><pre>Number->Format<\/pre><\/p>",
+			"items": [
+				{ "name": "FIXED", "value": "-20", "description": "" },
+				{ "name": "SCIENTIFIC", "value": "-19", "description": "" },
+				{ "name": "HEX", "value": "-18", "description": "" },
+				{ "name": "DEC", "value": "-17", "description": "" },
+				{ "name": "OCT", "value": "-16", "description": "" },
+				{ "name": "DEFAULT", "value": "-15", "description": "" }
+			]
+		},
+		"System.Runtime#ErrorKind": {
+			"name": "ErrorKind",
+			"bundle": "System",
+			"class": "System.Runtime",
+			"kind": "enum",
+			"description": "The kind of runtime error a ?-> (Try) region last recovered from.<br\/> <p><pre>Runtime->ErrorKind<\/pre><\/p>",
+			"items": [
+				{ "name": "NONE", "value": "0", "description": "" },
+				{ "name": "NIL_DEREFERENCE", "value": "1", "description": "" },
+				{ "name": "INDEX_OUT_OF_BOUNDS", "value": "2", "description": "" },
+				{ "name": "DIVIDE_BY_ZERO", "value": "3", "description": "" },
+				{ "name": "INVALID_CAST", "value": "4", "description": "" },
+				{ "name": "OTHER", "value": "5", "description": "" },
+				{ "name": "RAISED", "value": "6", "description": "" }
+			]
+		},
+		"System.Runtime#Signal": {
+			"name": "Signal",
+			"bundle": "System",
+			"class": "System.Runtime",
+			"kind": "enum",
+			"description": "Runtime signal types.<br\/> <p><pre>Runtime->Signal<\/pre><\/p>",
+			"items": [
+				{ "name": "SIGABRT", "value": "-40", "description": "" },
+				{ "name": "SIGFPE", "value": "-39", "description": "" },
+				{ "name": "SIGILL", "value": "-38", "description": "" },
+				{ "name": "SIGINT", "value": "-37", "description": "" },
+				{ "name": "SIGSEGV", "value": "-36", "description": "" },
+				{ "name": "SIGTERM", "value": "-35", "description": "" }
+			]
+		},
+		"System.Diagnostics.Result#Kind": {
+			"name": "Kind",
+			"bundle": "System.Diagnostics",
+			"class": "System.Diagnostics.Result",
+			"kind": "consts",
+			"description": "Analysis type",
+			"items": [
+				{ "name": "ERROR", "value": "101", "description": "" },
+				{ "name": "WARN", "value": "102", "description": "" },
+				{ "name": "INFO", "value": "103", "description": "" },
+				{ "name": "NAMESPACE", "value": "203", "description": "" },
+				{ "name": "CLASS", "value": "205", "description": "" },
+				{ "name": "ENUM", "value": "210", "description": "" },
+				{ "name": "METHOD", "value": "206", "description": "" },
+				{ "name": "VARIABLE", "value": "213", "description": "" },
+				{ "name": "UNKN", "value": "0", "description": "" }
+			]
+		},
+		"System.IO.Pipe#Mode": {
+			"name": "Mode",
+			"bundle": "System.IO",
+			"class": "System.IO.Pipe",
+			"kind": "enum",
+			"description": "Pipe mode",
+			"items": [
+				{ "name": "CREATE", "value": "-4", "description": "" },
+				{ "name": "OPEN", "value": "-3", "description": "" }
+			]
+		},
+		"System.Introspection.DataType#TypeId": {
+			"name": "TypeId",
+			"bundle": "System.Introspection",
+			"class": "System.Introspection.DataType",
+			"kind": "enum",
+			"description": "Data type types<br\/> <p><pre>DataType->TypeId<\/pre><\/p>",
+			"items": [
+				{ "name": "BOOL", "value": "-60", "description": "" },
+				{ "name": "BYTE", "value": "-59", "description": "" },
+				{ "name": "CHAR", "value": "-58", "description": "" },
+				{ "name": "INT", "value": "-57", "description": "" },
+				{ "name": "FLOAT", "value": "-56", "description": "" },
+				{ "name": "CLASS", "value": "-55", "description": "" },
+				{ "name": "FUNC", "value": "-54", "description": "" }
+			]
+		},
+		"Web.Server.Request#Method": {
+			"name": "Method",
+			"bundle": "Web.Server",
+			"class": "Web.Server.Request",
+			"kind": "enum",
+			"description": "Web request method",
+			"items": [
+				{ "name": "GET", "value": "0", "description": "" },
+				{ "name": "HEAD", "value": "1", "description": "" },
+				{ "name": "POST", "value": "2", "description": "" },
+				{ "name": "PUT", "value": "3", "description": "" },
+				{ "name": "DELETE", "value": "4", "description": "" },
+				{ "name": "CONNECT", "value": "5", "description": "" },
+				{ "name": "OPTIONS", "value": "6", "description": "" },
+				{ "name": "TRACE", "value": "7", "description": "" },
+				{ "name": "PATCH", "value": "8", "description": "" }
+			]
+		}
 	}
 }

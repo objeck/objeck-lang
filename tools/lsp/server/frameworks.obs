@@ -2368,6 +2368,13 @@ bundle LSP {
 			
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
+				# a library enum's items after its '->': the analyzer only knows the
+				# program's own enums
+				enum_completion := EnumCompletion(index);
+				if(enum_completion <> Nil) {
+					return enum_completion;
+				};
+
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
 					return proxy->Completion(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri));
@@ -2377,18 +2384,202 @@ bundle LSP {
 			return Nil;
 		}
 
+		# the items of the enum named before the '->' that precedes the cursor
+		method : EnumCompletion(index : Int) ~ JsonElement {
+			if(@text = Nil | index > @text->Size()) {
+				return Nil;
+			};
+
+			prefix_start := index;
+			while(prefix_start > 0 & IsIdentifierChar(@text->Get(prefix_start - 1))) {
+				prefix_start -= 1;
+			};
+
+			arrow := SkipSpaceBefore(prefix_start);
+			if(arrow < 2 | @text->Get(arrow - 1) <> '>' | @text->Get(arrow - 2) <> '-') {
+				return Nil;
+			};
+
+			chain := ChainBefore(SkipSpaceBefore(arrow - 2));
+			if(chain->IsEmpty() | IsOwnEnum(chain)) {
+				return Nil;
+			};
+
+			prefix := @text->SubString(prefix_start, index - prefix_start);
+			return AstProxy->EnumCompletion(chain, prefix, GetUses());
+		}
+
 		method : public : Hover(line_pos : Int, char_pos : Int, markdown : Bool) ~ JsonElement {
 			proxy := @workspace->GetProxy(@uri, true);
-			
+
 			index := GetDocumentIndex(line_pos, char_pos);
 			if(index > -1) {
 				var_str := ""; mthd_str := "";
 				if(GetVariableMethodStrings(index - 1, var_str, mthd_str, false)) {
-					return proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri), markdown);
+					hover := proxy->Hover(line_pos, char_pos, var_str, mthd_str, @uri, @workspace->GetLibs(@uri), markdown);
+					if(hover <> Nil) {
+						return hover;
+					};
 				};
+
+				# a library enum or item: the analyzer resolves the call but names neither
+				return EnumHover(line_pos, char_pos, markdown);
 			};
 
 			return Nil;
+		}
+
+		# hover for the library enum, or enum item, under the cursor
+		method : EnumHover(line_pos : Int, char_pos : Int, markdown : Bool) ~ JsonElement {
+			span := IdentifierAt(line_pos, char_pos);
+			if(span = Nil) {
+				return Nil;
+			};
+
+			start := span[0];
+			end := span[1];
+			word := @text->SubString(start, end - start);
+
+			item_receiver : String;
+			arrow := SkipSpaceBefore(start);
+			if(arrow >= 2 & @text->Get(arrow - 1) = '>' & @text->Get(arrow - 2) = '-') {
+				item_receiver := ChainBefore(SkipSpaceBefore(arrow - 2));
+				if(item_receiver->IsEmpty() | IsOwnEnum(item_receiver)) {
+					item_receiver := Nil;
+				};
+			};
+
+			enum_chain := ChainBefore(end);
+			if(IsOwnEnum(enum_chain)) {
+				enum_chain := Nil;
+			};
+
+			return AstProxy->EnumHover(enum_chain, item_receiver, word, GetUses(), markdown);
+		}
+
+		# the index after the whitespace that ends just before 'index'
+		method : SkipSpaceBefore(index : Int) ~ Int {
+			while(index > 0 & (@text->Get(index - 1) = ' ' | @text->Get(index - 1) = '\t' |
+					@text->Get(index - 1) = '\r' | @text->Get(index - 1) = '\n')) {
+				index -= 1;
+			};
+
+			return index;
+		}
+
+		#
+		# The names and '->' links that end at 'end': 'Number->Format',
+		# 'Query.Structured.ColumnType'. Stops at anything else, a call's ')' included.
+		#
+		method : ChainBefore(end : Int) ~ String {
+			chain := "";
+			index := end;
+			done := false;
+			while(<>done) {
+				start := index;
+				while(start > 0 & (IsIdentifierChar(@text->Get(start - 1)) | @text->Get(start - 1) = '.')) {
+					start -= 1;
+				};
+
+				if(start = index) {
+					done := true;
+				}
+				else {
+					segment := @text->SubString(start, index - start);
+					if(chain->IsEmpty()) {
+						chain := segment;
+					}
+					else {
+						chain := "{$segment}->{$chain}";
+					};
+
+					arrow := SkipSpaceBefore(start);
+					if(arrow >= 2 & @text->Get(arrow - 1) = '>' & @text->Get(arrow - 2) = '-') {
+						index := SkipSpaceBefore(arrow - 2);
+					}
+					else {
+						done := true;
+					};
+				};
+			};
+
+			return chain;
+		}
+
+		#
+		# Whether 'chain' could name an enum this file declares itself: its last name
+		# is declared with 'enum' or 'consts' here and nothing qualifies it with a
+		# bundle. The program's own enum comes before a library's, as it does for
+		# the compiler, and the analyzer answers for it.
+		#
+		method : IsOwnEnum(chain : String) ~ Bool {
+			if(@text = Nil | chain->Find('.') > -1) {
+				return false;
+			};
+
+			name := chain;
+			arrow := chain->FindLast('>');
+			if(arrow > -1) {
+				name := chain->SubString(arrow + 1, chain->Size() - arrow - 1);
+			};
+
+			keywords := ["enum", "consts"];
+			each(i : keywords) {
+				keyword := keywords[i];
+				index := @text->Find(0, keyword);
+				while(index > -1) {
+					after := index + keyword->Size();
+					if((index = 0 | <>IsIdentifierChar(@text->Get(index - 1))) & after < @text->Size() &
+							<>IsIdentifierChar(@text->Get(after))) {
+						start := after;
+						while(start < @text->Size() & (@text->Get(start) = ' ' | @text->Get(start) = '\t')) {
+							start += 1;
+						};
+
+						end := start;
+						while(end < @text->Size() & IsIdentifierChar(@text->Get(end))) {
+							end += 1;
+						};
+
+						if(end > start & @text->SubString(start, end - start)->Equals(name)) {
+							return true;
+						};
+					};
+					index := @text->Find(after, keyword);
+				};
+			};
+
+			return false;
+		}
+
+		# the bundles this file's 'use' statements name, and System
+		method : GetUses() ~ Vector<String> {
+			uses := Vector->New()<String>;
+			uses->AddBack("System");
+			if(@text = Nil) {
+				return uses;
+			};
+
+			lines := @text->Split('\n');
+			each(i : lines) {
+				line := lines[i]->Trim();
+				if(line->StartsWith("use ") | line->StartsWith("use\t")) {
+					end := line->Find(';');
+					if(end < 0) {
+						end := line->Size();
+					};
+
+					names := line->SubString(3, end - 3)->Split(",");
+					each(j : names) {
+						name := names[j]->Trim();
+						if(<>name->IsEmpty()) {
+							uses->AddBack(name);
+						};
+					};
+				};
+			};
+
+			return uses;
 		}
 
 		# the signature and documentation of a completion item (completionItem/resolve)

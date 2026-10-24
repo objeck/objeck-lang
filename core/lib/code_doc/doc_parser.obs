@@ -21,6 +21,9 @@ class SnippetParser {
 	@bundle_block : BundleSnippet;
 	@in_comment : Bool;
 	@in_lit : Bool;
+	# [start, end) of each class body in the file being read, so a documented enum
+	# nested in a class can be told from a bundle-level one (see ScanClassScopes)
+	@class_scopes : Vector<ClassScope>;
 
 	@file_uses : MultiMap<String, BundleSnippet>;
 	@file_uses_cache : Hash<String, Set<String>>;
@@ -245,6 +248,10 @@ class SnippetParser {
 				"\tProcessed enum: name='{$block_name}'"->PrintLine();
 			};
 			enum_block->SetBundleName(@bundle_block->GetName());
+			owner := FindOwnerClass(@buffer_index);
+			if(owner <> Nil) {
+				enum_block->SetOwnerClass(owner);
+			};
 			@bundle_block->AddEnum(enum_block);
 		}
 		else {
@@ -314,6 +321,139 @@ class SnippetParser {
 		};
 	}
 
+	#~
+	The class whose body holds a buffer position, or Nil at bundle level.
+	~#
+	method : FindOwnerClass(index : Int) ~ String {
+		if(@class_scopes <> Nil) {
+			each(i : @class_scopes) {
+				scope := @class_scopes->Get(i);
+				if(scope->Holds(index)) {
+					return scope->GetName();
+				};
+			};
+		};
+
+		return Nil;
+	}
+
+	#~
+	The body of every class and interface in a source file, by brace depth.
+
+	The main loop's own depth count (CheckLevel) cannot answer this: it reads every
+	apostrophe as the start of a character literal, comments and prose included,
+	so one "don't" in a doc comment stops it counting braces. This pass skips
+	comments, strings and character literals before it counts. Objeck has no
+	nested classes, so a class body holds no other.
+	~#
+	method : ScanClassScopes(buffer : String) ~ Vector<ClassScope> {
+		scopes := Vector->New()<ClassScope>;
+
+		depth := 0;
+		pending : String;
+		current : String;
+		current_depth := 0;
+		current_start := 0;
+
+		size := buffer->Size();
+		i := 0;
+		while(i < size) {
+			c := buffer->Get(i);
+			if(c = '#') {
+				# '#~ ... ~#' block comment, else a line comment
+				if(i + 1 < size & buffer->Get(i + 1) = '~') {
+					i += 2;
+					while(i + 1 < size & <>(buffer->Get(i) = '~' & buffer->Get(i + 1) = '#')) {
+						i += 1;
+					};
+					i += 2;
+				}
+				else {
+					while(i < size & buffer->Get(i) <> '\n') {
+						i += 1;
+					};
+				};
+			}
+			else if(c = '"' | c = '\'') {
+				# string or character literal, escapes and all
+				i += 1;
+				while(i < size & buffer->Get(i) <> c) {
+					if(buffer->Get(i) = '\\') {
+						i += 1;
+					};
+					i += 1;
+				};
+				i += 1;
+			}
+			else if(c->IsChar() | c = '_') {
+				start := i;
+				while(i < size & (buffer->Get(i)->IsChar() | buffer->Get(i)->IsDigit() | buffer->Get(i) = '_')) {
+					i += 1;
+				};
+
+				# an identifier ending in '@', '.' or '$' is not a keyword
+				prev_ok := start = 0;
+				if(<>prev_ok) {
+					prev := buffer->Get(start - 1);
+					prev_ok := prev <> '@' & prev <> '.' & prev <> '$';
+				};
+
+				word := buffer->SubString(start, i - start);
+				if(prev_ok & (word->Equals("class") | word->Equals("interface"))) {
+					# 'class : private : Name' -- skip the modifiers to the name
+					name : String;
+					done := false;
+					while(<>done & i < size) {
+						nc := buffer->Get(i);
+						if(nc = ' ' | nc = '\t' | nc = '\r' | nc = '\n' | nc = ':') {
+							i += 1;
+						}
+						else if(nc->IsChar() | nc = '_') {
+							name_start := i;
+							while(i < size & (buffer->Get(i)->IsChar() | buffer->Get(i)->IsDigit() | buffer->Get(i) = '_')) {
+								i += 1;
+							};
+							name := buffer->SubString(name_start, i - name_start);
+							if(<>name->Equals("private") & <>name->Equals("public")) {
+								done := true;
+							};
+						}
+						else {
+							name := Nil;
+							done := true;
+						};
+					};
+					pending := name;
+				};
+			}
+			else {
+				if(c = '{') {
+					depth += 1;
+					if(pending <> Nil & current = Nil) {
+						current := pending;
+						current_depth := depth;
+						current_start := i;
+					};
+					pending := Nil;
+				}
+				else if(c = '}') {
+					if(current <> Nil & depth = current_depth) {
+						scopes->AddBack(ClassScope->New(current_start, i, current));
+						current := Nil;
+					};
+					depth -= 1;
+				}
+				else if(c = ';') {
+					# 'use class X;' names no body
+					pending := Nil;
+				};
+				i += 1;
+			};
+		};
+
+		return scopes;
+	}
+
 	method : SetBundle(bundle_block : BundleSnippet) ~ Nil {
 		found := @bundles->Find(bundle_block->GetName())->As(BundleSnippet);
 		if(found <> Nil) {
@@ -339,6 +479,7 @@ class SnippetParser {
 				return false;
 			};	
 			@buffer_index := 0;	
+			@class_scopes := ScanClassScopes(@buffer);
 
 			"['{$file}']"->PrintLine();
 			@uses := Vector->New()<String>;
@@ -676,6 +817,7 @@ class BundleSnippet from Snippet {
 	@desc : String;
 	@classes : Map<String, ClassSnippet>;
 	@enums : Map<String, EnumConstSnippet>;
+	@scoped_enums : Map<String, EnumConstSnippet>;
 	@uses : Vector<String>;
 
 	New(uses : Vector<String>) {
@@ -731,6 +873,16 @@ class BundleSnippet from Snippet {
 
 	method: public : AddEnum(enum_block : EnumConstSnippet) ~ Nil {
 		@enums->Insert(enum_block->GetName(), enum_block);
+		# GetEnums is keyed by the short name, so two classes' 'Type' enums in one
+		# bundle keep only the second; this one is keyed by GetScopedName
+		GetScopedEnums()->Insert(enum_block->GetScopedName(), enum_block);
+	}
+
+	method: public : GetScopedEnums() ~ Map<String, EnumConstSnippet> {
+		if(@scoped_enums = Nil) {
+			@scoped_enums := Map->New()<String, EnumConstSnippet>;
+		};
+		return @scoped_enums;
 	}
 
 	method: public : GetEnums() ~ Map<String, EnumConstSnippet> {
@@ -770,11 +922,19 @@ class EnumConstSnippet from Snippet {
 	@klass : String;
 	@items : Vector<String>;
 	@block_name : String;
+	@short_name : String;
+	@owner_class : String;
+	@item_names : Vector<String>;
+	@item_values : Vector<String>;
+	@item_descs : Vector<String>;
 	
 	New(buffer : String, is_consts : Bool) {
 		Parent(buffer);
 		@is_consts := is_consts;
 		@items := Vector->New()<String>;
+		@item_names := Vector->New()<String>;
+		@item_values := Vector->New()<String>;
+		@item_descs := Vector->New()<String>;
 		@parsed := Parse();
 	}
 
@@ -814,6 +974,81 @@ class EnumConstSnippet from Snippet {
 		return @block_name;
 	}
 
+	#~
+	The name as declared, without the '@class' tag's prefix GetName carries
+	~#
+	method : public : GetShortName() ~ String {
+		return @short_name;
+	}
+
+	#~
+	The short name of the class whose body declares this, or Nil at bundle level
+	~#
+	method : public : GetOwnerClass() ~ String {
+		return @owner_class;
+	}
+
+	method : public : SetOwnerClass(owner_class : String) ~ Nil {
+		@owner_class := owner_class;
+	}
+
+	#~
+	The name the compiler gives it: 'Bundle.Name' at bundle level, 'Bundle.Klass#Name'
+	in a class
+	~#
+	method : public : GetScopedName() ~ String {
+		scoped := "";
+		if(@block_name <> Nil & <>@block_name->IsEmpty() & <>@block_name->Equals("Default")) {
+			scoped += @block_name;
+			scoped += '.';
+		};
+
+		if(@owner_class <> Nil) {
+			scoped += @owner_class;
+			scoped += '#';
+		};
+		scoped += @short_name;
+
+		return scoped;
+	}
+
+	#~
+	The item names, in declaration order
+	~#
+	method : public : GetItemNames() ~ Vector<String> {
+		return @item_names;
+	}
+
+	#~
+	Each item's value as source text: a consts item's literal as written, an enum
+	item's number counted from the enum's start value
+	~#
+	method : public : GetItemValues() ~ Vector<String> {
+		return @item_values;
+	}
+
+	#~
+	Each item's own doc comment, or an empty string
+	~#
+	method : public : GetItemDescs() ~ Vector<String> {
+		return @item_descs;
+	}
+
+	#~
+	An enum's first value: 0, or the integer or character literal after ':='
+	~#
+	method : GetStartValue() ~ Int {
+		if(@id = Nil | @id->IsEmpty()) {
+			return 0;
+		};
+
+		if(@id->Get(0) = '\'' & @id->Size() > 1) {
+			return @id->Get(1)->As(Int);
+		};
+
+		return @id->ToInt();
+	}
+
 	method : native : Parse() ~ Bool {
 		if(<>MatchCommentStart()) {
 			return false;
@@ -841,6 +1076,7 @@ class EnumConstSnippet from Snippet {
 		};
 
 		@name := ParseIdent();
+		@short_name := @name;
 		if(@name->Size() = 0) {
 			return false;
 		};
@@ -870,7 +1106,23 @@ class EnumConstSnippet from Snippet {
 		# items
 		ParseCodeSpace();
 		while(@cur_char <> '}') {
+			# an item's own '#~ ... ~#' comment; ParseIdent stopped dead at its '#',
+			# which failed the whole block (Inference's Client->Protocol)
+			item_desc := "";
+			if(@cur_char = '#' & @nxt_char = '~') {
+				NextChar(); NextChar();
+				item_desc := ParseDesc();
+				while(@cur_char <> '\0' & <>(@cur_char = '~' & @nxt_char = '#')) {
+					NextChar();
+				};
+				if(<>MatchCommentEnd()) {
+					return false;
+				};
+				ParseCodeSpace();
+			};
+
 			item_name := ParseIdent();
+			plain_name := String->New(item_name);
 			if(item_name->Size() = 0) {
 				return false;
 			};
@@ -890,9 +1142,15 @@ class EnumConstSnippet from Snippet {
 					return false;
 				};
 				item_name += value->ToInt();
+				@item_values->AddBack(value);
 			};
 
 			@items->AddBack(item_name);
+			@item_names->AddBack(plain_name);
+			@item_descs->AddBack(item_desc);
+			if(<>@is_consts) {
+				@item_values->AddBack((GetStartValue() + @item_names->Size() - 1)->ToString());
+			};
 
 			MatchChar(',');
 			ParseCodeSpace();
@@ -1699,5 +1957,28 @@ class SnippetType {
 
 	method : public : GetType() ~ SnippetType->Type {
 		return @type;
+	}
+}
+
+#~
+A class body's span in a source buffer
+~#
+class ClassScope {
+	@start : Int;
+	@end : Int;
+	@name : String;
+
+	New(start : Int, end : Int, name : String) {
+		@start := start;
+		@end := end;
+		@name := name;
+	}
+
+	method : public : Holds(index : Int) ~ Bool {
+		return @start < index & index <= @end;
+	}
+
+	method : public : GetName() ~ String {
+		return @name;
 	}
 }
