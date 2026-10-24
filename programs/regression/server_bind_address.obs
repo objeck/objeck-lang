@@ -276,9 +276,7 @@ class ServerBindAddress {
 			Check("openssl could not create the TLS fixture -- is openssl on PATH?", false);
 			return;
 		};
-		# a self-signed fixture; what is under test is reachability
-		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
-
+		# the client pins the self-signed fixture, so verification stays fully on
 		server : TCPSecureSocketServer;
 		greeting : String;
 		port := 0;
@@ -295,9 +293,9 @@ class ServerBindAddress {
 
 			acceptor := TlsAcceptOne->New(server);
 			acceptor->Execute(Nil);
-			# by name: the certificate names localhost, and some mbedtls versions
-			# match no IP subjectAltName; "localhost" reaches the 127.0.0.1 listener
-			client := TCPSecureSocket->New("localhost", port);
+			# by address: the certificate names IP:127.0.0.1, which verifies on
+			# every platform since #1335
+			client := TCPSecureSocket->New("127.0.0.1", port, "bind-address-cert.pem");
 			if(client->IsOpen()) {
 				greeting := client->ReadLine();
 				client->WriteString("bye\n");
