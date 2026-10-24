@@ -290,6 +290,26 @@ inline void TlsVerifyIpSan(mbedtls_ssl_config* conf, TlsIpName* name, const char
 }
 #endif
 
+// The calling thread's last TLS failure and, for a certificate that failed
+// verification, mbedTLS's verify flags saying why; for
+// TCPSecureSocket->GetLastError() and TCPSecureSocketServer->GetLastError(),
+// which are functions: a failed connect frees its context, so the error
+// cannot live only there. (defined in common.cpp, as dtls_last_error is)
+extern thread_local int tls_last_error;
+extern thread_local uint32_t tls_last_verify_flags;
+extern thread_local uint32_t dtls_last_verify_flags;
+
+// mbedtls_ssl_get_verify_result's flags when error is a verification failure,
+// else 0 (also 0 when there is no session to ask: it answers 0xFFFFFFFF)
+inline uint32_t TlsVerifyFlags(int error, const mbedtls_ssl_context* ssl)
+{
+  if(error != MBEDTLS_ERR_X509_CERT_VERIFY_FAILED) {
+    return 0;
+  }
+  const uint32_t flags = mbedtls_ssl_get_verify_result(ssl);
+  return flags == 0xFFFFFFFF ? 0 : flags;
+}
+
 //
 // Certificate and key files, by a UTF-8 name. mbedtls opens them with fopen,
 // which on Windows reads the name in the ANSI code page: the CA bundle in a
@@ -368,6 +388,12 @@ struct SecureSocketCtx {
   TlsIpName ip_name;
   int last_error;
 
+  void SetError(int error) {
+    last_error = error;
+    tls_last_error = error;
+    tls_last_verify_flags = TlsVerifyFlags(error, &ssl);
+  }
+
   SecureSocketCtx() : last_error(0) {
     mbedtls_ssl_init(&ssl);
     mbedtls_ssl_config_init(&conf);
@@ -412,6 +438,7 @@ struct DtlsSocketCtx {
   void SetError(int error) {
     last_error = error;
     dtls_last_error = error;
+    dtls_last_verify_flags = TlsVerifyFlags(error, &ssl);
   }
 
   DtlsSocketCtx() : last_error(0) {

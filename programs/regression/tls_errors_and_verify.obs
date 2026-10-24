@@ -1,0 +1,219 @@
+#~
+# TLS failures are reported, and verification cannot be switched off per socket
+#
+# TCPSecureSocket->GetLastError() and TCPSecureSocketServer->GetLastError()
+# always answered Nil: a refused certificate, a server that is not there and a
+# missing key file looked the same to a program. They now report the calling
+# thread's last TLS failure, with mbedTLS's reasons for a certificate that
+# failed verification, and a successful connect clears it.
+#
+# The documentation said a DTLSSocket's verify=false (the default) "allows
+# self-signed" certificates; the VM verified anyway, and that is the project's
+# stance -- verification on by default, never silently off. The documentation
+# now says what happens, and this pins it: a self-signed DTLS server is refused
+# with verify=false unless its certificate is pinned. TCPSecureSocket's
+# SetVerifyPeer(false) looked like an opt-out but only flipped the mode of an
+# already-verified connection; it now changes nothing and answers false.
+#
+# Nothing here sets OBJECK_TLS_INSECURE_SKIP_VERIFY: verification is fully on.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+class TlsGreeter from Thread {
+	@server : TCPSecureSocketServer;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("tls-greeter");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				client->WriteString("hello\n");
+				client->ReadLine();
+				client->Close();
+			};
+		};
+	}
+}
+
+class DtlsGreeter from Thread {
+	@server : DTLSSocketServer;
+
+	New(server : DTLSSocketServer) {
+		Parent("dtls-greeter");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				client->Close();
+			};
+		};
+	}
+}
+
+class TlsErrorsAndVerify {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		# a certificate for localhost and 127.0.0.1, and one for localhost only
+		if(<>MakeCert("tls-err-both", "DNS:localhost,IP:127.0.0.1") | <>MakeCert("tls-err-name", "DNS:localhost")) {
+			"FAIL: openssl could not create the certificates -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: tls client"->ErrorLine();
+		CheckTlsClient();
+		"stage: tls server"->ErrorLine();
+		CheckTlsServer();
+		"stage: dtls client"->ErrorLine();
+		CheckDtlsClient();
+
+		File->Delete("tls-err-both-cert.pem");
+		File->Delete("tls-err-both-key.pem");
+		File->Delete("tls-err-name-cert.pem");
+		File->Delete("tls-err-name-key.pem");
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: TLS errors are reported and verification stays on"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : Has(text : String, part : String) ~ Bool {
+		if(text = Nil) {
+			return false;
+		};
+		return text->ToLower()->Has(part->ToLower());
+	}
+
+	function : MakeCert(name : String, san : String) ~ Bool {
+		File->Delete("{$name}-cert.pem");
+		File->Delete("{$name}-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=objeck-tls-errors-test\" -addext \"subjectAltName={$san}\" -keyout {$name}-key.pem -out {$name}-cert.pem";
+		return Runtime->Command(command) = 0;
+	}
+
+	function : StartTls(name : String) ~ Int {
+		for(tries := 0; tries < 5; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			server := TCPSecureSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
+			if(server->Listen()) {
+				TlsGreeter->New(server)->Execute(Nil);
+				return port;
+			};
+		};
+		return 0;
+	}
+
+	function : StartDtls(name : String) ~ Int {
+		for(tries := 0; tries < 5; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			server := DTLSSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
+			if(server->Listen()) {
+				DtlsGreeter->New(server)->Execute(Nil);
+				return port;
+			};
+		};
+		return 0;
+	}
+
+	function : CheckTlsClient() ~ Nil {
+		port := StartTls("tls-err-both");
+		Check("TLS: the server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+
+		# no trust anchor for a self-signed certificate
+		socket := TCPSecureSocket->New("localhost", port);
+		Check("TLS: a self-signed server is refused without its certificate pinned", <>socket->IsOpen());
+		socket->Close();
+		reason := TCPSecureSocket->GetLastError();
+		Check("TLS: the refusal is reported ('{$reason}')", Has(reason, "verification failed"));
+		Check("TLS: the report gives the reason ('{$reason}')", Has(reason, "not correctly signed by the trusted CA"));
+
+		# pinned: verified, and the earlier failure is cleared
+		socket := TCPSecureSocket->New("localhost", port, "tls-err-both-cert.pem");
+		Check("TLS: a pinned self-signed server is accepted", socket->IsOpen());
+		reason := TCPSecureSocket->GetLastError();
+		Check("TLS: a successful connect clears the last error ('{$reason}')", reason = Nil);
+		if(socket->IsOpen()) {
+			Check("TLS: SetVerifyPeer(true) confirms verification", socket->SetVerifyPeer(true));
+			Check("TLS: SetVerifyPeer(false) is refused", <>socket->SetVerifyPeer(false));
+			line := socket->ReadLine();
+			Check("TLS: the connection still works after SetVerifyPeer(false) ('{$line}')", line <> Nil & line->Equals("hello"));
+			socket->WriteString("bye\n");
+		};
+		socket->Close();
+
+		# a certificate that does not name the address connected to
+		name_port := StartTls("tls-err-name");
+		if(name_port > 0) {
+			socket := TCPSecureSocket->New("127.0.0.1", name_port, "tls-err-name-cert.pem");
+			Check("TLS: a certificate naming only localhost is refused over 127.0.0.1", <>socket->IsOpen());
+			socket->Close();
+			reason := TCPSecureSocket->GetLastError();
+			Check("TLS: the name mismatch is reported ('{$reason}')", Has(reason, "verification failed") & Has(reason, "CN"));
+		};
+
+		# nobody there: a network error, not a certificate one
+		closed := Int->Random(20000, 31998);
+		while(closed = port | closed = name_port) {
+			closed := Int->Random(20000, 31998);
+		};
+		socket := TCPSecureSocket->New("127.0.0.1", closed, "tls-err-both-cert.pem");
+		Check("TLS: a connect nobody answers fails", <>socket->IsOpen());
+		socket->Close();
+		reason := TCPSecureSocket->GetLastError();
+		Check("TLS: the failed connect is reported ('{$reason}')", Has(reason, "NET - "));
+	}
+
+	function : CheckTlsServer() ~ Nil {
+		server := TCPSecureSocketServer->New("no-such-cert.pem", "no-such-key.pem", "", Int->Random(20000, 31998));
+		Check("TLS server: Listen() fails without its certificate", <>server->Listen());
+		reason := TCPSecureSocketServer->GetLastError();
+		Check("TLS server: the failure is reported ('{$reason}')", reason <> Nil & reason->Size() > 0);
+		server->Close();
+	}
+
+	function : CheckDtlsClient() ~ Nil {
+		port := StartDtls("tls-err-both");
+		Check("DTLS: the server listens", port > 0);
+		if(port = 0) {
+			return;
+		};
+
+		# verify=false (the default) does not mean "accept anything"
+		socket := DTLSSocket->New("localhost", port);
+		Check("DTLS: verify=false still refuses a self-signed server that is not pinned", <>socket->IsOpen());
+		socket->Close();
+		reason := DTLSSocket->GetLastError();
+		Check("DTLS: the refusal gives the reason ('{$reason}')", Has(reason, "not correctly signed by the trusted CA"));
+
+		socket := DTLSSocket->New("localhost", port, "tls-err-both-cert.pem");
+		Check("DTLS: a pinned self-signed server is accepted with verify=false", socket->IsOpen());
+		socket->Close();
+
+		socket := DTLSSocket->New("localhost", port, "tls-err-both-cert.pem", true);
+		Check("DTLS: a pinned self-signed server is accepted with verify=true", socket->IsOpen());
+		socket->Close();
+	}
+}
