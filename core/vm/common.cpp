@@ -3100,6 +3100,9 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case SOCK_TCP_SSL_LISTEN_ADDR:
     return SockTcpSslListenAddress(program, inst, op_stack, stack_pos, frame);
 
+  case SOCK_DTLS_LISTEN_ADDR:
+    return SockDtlsListenAddress(program, inst, op_stack, stack_pos, frame);
+
   case FILE_COPY:
     return FileCopy(program, inst, op_stack, stack_pos, frame);
 
@@ -5465,11 +5468,53 @@ static int BindServerSocket(mbedtls_net_context& ctx, int port, int type, const 
 // server stopped hearing IPv6 ones (and the reverse); on Windows, an IPv4
 // client of the dual-stack socket failed the accept outright, since the
 // mapped local address cannot be bound by a new IPv6-only socket. This binds
-// the new listener to the wildcard, dual-stack, every time.
+// the new listener to the wildcard, dual-stack, every time -- or, for a server
+// given one address, to that address again (DtlsRebind): the wildcard there
+// would open the server to every interface after its first client.
 //
 // client_ip receives the client's address bytes (4 or 16), the transport id
 // DTLS cookies are bound to.
 //
+//
+// A fresh DTLS listener on the one address a server was given (bound_addr,
+// recorded by getsockname at Listen), as IPSocket::BindAddress bound it:
+// SO_REUSEADDR, so it can share the port with the socket just handed to the
+// client, and IPv6-only for an IPv6 address. No name lookup: nothing here
+// blocks.
+//
+static SOCKET DtlsRebind(DtlsServerCtx* srv)
+{
+  const int family = ((const struct sockaddr*)srv->bound_addr)->sa_family;
+  SOCKET sock = socket(family, SOCK_DGRAM, IPPROTO_UDP);
+#ifdef _WIN32
+  if(sock == INVALID_SOCKET) {
+    return INVALID_SOCKET;
+  }
+#else
+  if(sock < 0) {
+    return -1;
+  }
+#endif
+
+  int on = 1;
+  if(family == AF_INET6) {
+    setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&on, sizeof(on));
+  }
+  setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on));
+
+  if(::bind(sock, (const struct sockaddr*)srv->bound_addr, srv->bound_len) != 0) {
+#ifdef _WIN32
+    closesocket(sock);
+    return INVALID_SOCKET;
+#else
+    close(sock);
+    return -1;
+#endif
+  }
+
+  return sock;
+}
+
 static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned char* client_ip,
                       size_t buffer_size, size_t* ip_len)
 {
@@ -5554,7 +5599,7 @@ static int DtlsAccept(DtlsServerCtx* srv, mbedtls_net_context* client, unsigned 
   // the connected socket is the client's now; listen again on a fresh one
   client->fd = fd;
   srv->listen_fd.fd = -1;
-  const SOCKET next = IPSocket::BindAny(srv->port, SOCK_DGRAM);
+  const SOCKET next = srv->bound_len > 0 ? DtlsRebind(srv) : IPSocket::BindAny(srv->port, SOCK_DGRAM);
 #ifdef _WIN32
   if(next != INVALID_SOCKET) {
 #else
@@ -9877,6 +9922,35 @@ bool TrapProcessor::SockDtlsInString(StackProgram* program, size_t* inst, size_t
 bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+  DtlsServerListen(instance, std::string(), op_stack, stack_pos);
+  return true;
+}
+
+//
+// DTLSSocketServer->Listen() for a server given an address: as SockDtlsListen,
+// but the listener binds that one address, and so does every listener after
+// it (DtlsAccept). Called as method : ListenAddress(address : String) ~ Bool.
+//
+bool TrapProcessor::SockDtlsListenAddress(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  size_t* str_obj = (size_t*)PopInt(op_stack, stack_pos);
+  size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
+
+  std::string host;
+  if(str_obj && str_obj[0]) {
+    host = UnicodeToBytes((wchar_t*)((size_t*)str_obj[0] + 3));
+  }
+  DtlsServerListen(instance, host, op_stack, stack_pos);
+
+  return true;
+}
+
+//
+// Sets up a DTLS server and binds its listener: the wildcard when host is
+// empty, else that address. Pushes true on success, false otherwise.
+//
+void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, size_t*& op_stack, size_t*& stack_pos)
+{
   if(instance) {
     size_t* cert_obj = (size_t*)instance[3];
     size_t* key_obj = (size_t*)instance[4];
@@ -9896,7 +9970,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       // Load server certificate
@@ -9907,7 +9981,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       // Load private key (with optional password)
@@ -9928,18 +10002,46 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
-      // Bind to port: IPv4 and IPv6 alike (see IPSocket::BindAny and DtlsAccept)
+      // Bind to port: IPv4 and IPv6 alike (see IPSocket::BindAny and
+      // DtlsAccept), or the one address asked for
       srv->port = (int)port;
-      ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM);
+      if(host.empty()) {
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM);
+      }
+      else {
+        // a name lookup can block: park, touching only C locals and srv (C
+        // heap). The instance is re-rooted on the op_stack so a collection
+        // that moves it fixes the reference, and is re-read after (#874).
+        PushInt((size_t)instance, op_stack, stack_pos);
+        MemoryManager::BeginBlocking();
+        ret = BindServerSocket(srv->listen_fd, (int)port, SOCK_DGRAM, host.c_str());
+        MemoryManager::EndBlocking();
+        instance = (size_t*)PopInt(op_stack, stack_pos);
+
+        // the address bound, for the listener each accept binds afresh
+        if(ret == 0) {
+          struct sockaddr_storage bound;
+          memset(&bound, 0, sizeof(bound));
+          socklen_t bound_len = sizeof(bound);
+          if(getsockname(srv->listen_fd.fd, (struct sockaddr*)&bound, &bound_len) == 0 &&
+             bound_len <= (socklen_t)sizeof(srv->bound_addr)) {
+            memcpy(srv->bound_addr, &bound, bound_len);
+            srv->bound_len = (int)bound_len;
+          }
+          else {
+            ret = MBEDTLS_ERR_NET_BIND_FAILED;
+          }
+        }
+      }
       if(ret != 0) {
         dtls_last_error = ret;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       // Configure SSL for DTLS server
@@ -9950,7 +10052,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
 
       mbedtls_ssl_conf_rng(&srv->conf, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
@@ -9965,7 +10067,7 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
-        return true;
+        return;
       }
       mbedtls_ssl_conf_dtls_cookies(&srv->conf, mbedtls_ssl_cookie_write, mbedtls_ssl_cookie_check, &srv->cookie_ctx);
 
@@ -9974,12 +10076,12 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
       instance[2] = 0;
 
       PushInt(1, op_stack, stack_pos);
-      return true;
+      return;
     }
   }
 
   PushInt(0, op_stack, stack_pos);
-  return true;
+  return;
 }
 
 bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)

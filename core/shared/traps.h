@@ -350,6 +350,8 @@ namespace instructions {
     // TCPSocketServer->New(address, port) and a TCPSecureSocketServer given
     // an address: bind one local address instead of the wildcard
     SOCK_TCP_BIND_ADDR,
-    SOCK_TCP_SSL_LISTEN_ADDR
+    SOCK_TCP_SSL_LISTEN_ADDR,
+    // a DTLSSocketServer given an address: binds that one address
+    SOCK_DTLS_LISTEN_ADDR
   };
 }
