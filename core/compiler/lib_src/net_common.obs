@@ -296,161 +296,275 @@ bundle Web.HTTP {
 		}
 
 		#~
-		General encoding for HTML or XML strings
+		Percent-encodes a URL component, such as a query parameter name or value
+		or a single path segment (RFC 3986). Every character outside the
+		unreserved set (A-Z a-z 0-9 - . _ ~) is written as the %XX escapes of its
+		UTF-8 bytes, with upper-case hex digits; that includes space (%20), '+'
+		(%2B), '/' (%2F), '%' (%25), control characters and all non-ASCII text.
+		An unpaired surrogate is encoded as U+FFFD. Use EncodePath to keep '/'
+		separators in a path.
 		@param str string to encode
-		@return encoded string
+		@return encoded string, or Nil if str is Nil
 
 		```
-		raw := "hello world & foo=bar";
-		encoded := Web.HTTP.Url->Encode(raw);
-		encoded->PrintLine();  # hello%20world%20%26%20foo%3Dbar
+		Web.HTTP.Url->Encode("hello world & foo=bar")->PrintLine();  # hello%20world%20%26%20foo%3Dbar
+		Web.HTTP.Url->Encode("café")->PrintLine();  # caf%C3%A9
 		```
 		~#
 		function : native : Encode(str : String) ~ String {
-			buffer := String->New();
-			each(i : str) {
-				c := str->Get(i);
-				select(c) {
-					label ' ': {
-						buffer->Append("%20");
-					}
-
-					label ';': {
-						buffer->Append("%3B");
-					}
-
-					label '=': {
-						buffer->Append("%3D");
-					}
-
-					label '$': {
-						buffer->Append("%24");
-					}
-
-					label ',': {
-						buffer->Append("%2C");
-					}
-
-					label '<': {
-						buffer->Append("%3C");
-					}
-
-					label '>': {
-						buffer->Append("%3E");
-					}
-
-					label '^': {
-						buffer->Append("%5E");
-					}
-
-					label '`': {
-						buffer->Append("%60");
-					}
-
-					label '\\': {
-						buffer->Append("%5C");
-					}
-
-					label '[': {
-						buffer->Append("%5B");
-					}
-
-					label ']': {
-						buffer->Append("%5D");
-					}
-
-					label '{': {
-						buffer->Append("%7B");
-					}
-
-					label '}': {
-						buffer->Append("%7D");
-					}
-
-					label '|': {
-						buffer->Append("%7C");
-					}
-
-					label '"': {
-						buffer->Append("%22");
-					}
-
-					label ':': {
-						buffer->Append("%3A");
-					}
-
-					label '/': {
-						buffer->Append("%2F");
-					}
-
-					label '#': {
-						buffer->Append("%23");
-					}
-
-					label '?': {
-						buffer->Append("%3F");
-					}
-
-					label '&': {
-						buffer->Append("%26");
-					}
-
-					label '@': {
-						buffer->Append("%40");
-					}
-
-					label '%': {
-						buffer->Append("%25");
-					}
-
-					label '+': {
-						buffer->Append("%2B");
-					}
-
-					label '~': {
-						buffer->Append("%7E");
-					}
-
-					other: {
-						buffer->Append(c);
-					}
-				};
-			};
-			
-			return buffer;
+			return EncodeText(str, false);
 		}
 
 		#~
-		General decoding for HTML or XML strings
-		@param str encoded string
-		@return decoded string
+		Percent-encodes a URL path: as Encode, except that '/' is kept so the
+		path's segments stay separate
+		@param str path to encode
+		@return encoded path, or Nil if str is Nil
 
 		```
-		encoded := "hello%20world%20%26%20foo%3Dbar";
-		decoded := Web.HTTP.Url->Decode(encoded);
-		decoded->PrintLine();  # hello world & foo=bar
+		Web.HTTP.Url->EncodePath("/docs/my file.txt")->PrintLine();  # /docs/my%20file.txt
 		```
 		~#
-		function : native : Decode(str : String) ~ String {
+		function : native : EncodePath(str : String) ~ String {
+			return EncodeText(str, true);
+		}
+
+		function : private : native : EncodeText(str : String, keep_slash : Bool) ~ String {
+			if(str = Nil) {
+				return Nil;
+			};
+
 			buffer := String->New();
-			each(i : str) {
-				c := str->Get(i);
-				if(c = '%' & i + 2 < str->Size()) {
-					value := "0x";
-					value->Append(str->Get(i + 1));
-					value->Append(str->Get(i + 2));
-					buffer->Append(value->ToInt()->As(Char));
-					i += 2;
-				}
-				else if(c = '+') {
-					buffer->Append(' ');
+			points := str->CodePoints();
+			each(i : points) {
+				cp := points[i];
+				if(IsUnreserved(cp) | (keep_slash & cp = 0x2F)) {
+					buffer->Append(cp->As(Char));
 				}
 				else {
-					buffer->Append(c);
+					AppendUtf8Escapes(buffer, cp);
 				};
 			};
 
 			return buffer;
+		}
+
+		# RFC 3986 unreserved: ALPHA DIGIT - . _ ~
+		function : private : IsUnreserved(cp : Int) ~ Bool {
+			return (cp >= 0x41 & cp <= 0x5A) | (cp >= 0x61 & cp <= 0x7A) | (cp >= 0x30 & cp <= 0x39) |
+				cp = 0x2D | cp = 0x2E | cp = 0x5F | cp = 0x7E;
+		}
+
+		function : private : AppendUtf8Escapes(buffer : String, cp : Int) ~ Nil {
+			if(cp < 0 | cp > 0x10FFFF | (cp >= 0xD800 & cp <= 0xDFFF)) {
+				cp := 0xFFFD;
+			};
+
+			if(cp < 0x80) {
+				AppendEscape(buffer, cp);
+			}
+			else if(cp < 0x800) {
+				AppendEscape(buffer, 0xC0 or (cp >> 6));
+				AppendEscape(buffer, 0x80 or (cp and 0x3F));
+			}
+			else if(cp < 0x10000) {
+				AppendEscape(buffer, 0xE0 or (cp >> 12));
+				AppendEscape(buffer, 0x80 or ((cp >> 6) and 0x3F));
+				AppendEscape(buffer, 0x80 or (cp and 0x3F));
+			}
+			else {
+				AppendEscape(buffer, 0xF0 or (cp >> 18));
+				AppendEscape(buffer, 0x80 or ((cp >> 12) and 0x3F));
+				AppendEscape(buffer, 0x80 or ((cp >> 6) and 0x3F));
+				AppendEscape(buffer, 0x80 or (cp and 0x3F));
+			};
+		}
+
+		function : private : AppendEscape(buffer : String, b : Int) ~ Nil {
+			buffer->Append('%');
+			buffer->Append(HexDigit(b >> 4));
+			buffer->Append(HexDigit(b and 0xF));
+		}
+
+		function : private : HexDigit(n : Int) ~ Char {
+			if(n < 10) {
+				return (0x30 + n)->As(Char);
+			};
+
+			return (0x41 + n - 10)->As(Char);
+		}
+
+		function : private : HexValue(c : Char) ~ Int {
+			v := c->As(Int);
+			if(v >= 0x30 & v <= 0x39) {
+				return v - 0x30;
+			}
+			else if(v >= 0x41 & v <= 0x46) {
+				return v - 0x41 + 10;
+			}
+			else if(v >= 0x61 & v <= 0x66) {
+				return v - 0x61 + 10;
+			};
+
+			return -1;
+		}
+
+		#~
+		Decodes a percent-encoded URL component or form value. Each run of
+		consecutive %XX escapes is collected as bytes and decoded as UTF-8, and
+		'+' is read as a space (application/x-www-form-urlencoded). Characters
+		that are not escapes, non-ASCII included, are kept as they are.
+		Malformed input is not an error: a '%' not followed by two hex digits is
+		kept literally, and bytes that are not valid UTF-8 (a stray continuation
+		byte, an overlong form, a surrogate, a truncated sequence) each become
+		U+FFFD, one per maximal invalid subsequence as in the WHATWG Encoding
+		standard. Use DecodePath where '+' is a literal plus sign.
+		@param str encoded string
+		@return decoded string, or Nil if str is Nil
+
+		```
+		Web.HTTP.Url->Decode("hello%20world+%26%20foo%3Dbar")->PrintLine();  # hello world & foo=bar
+		Web.HTTP.Url->Decode("caf%C3%A9")->PrintLine();  # café
+		```
+		~#
+		function : native : Decode(str : String) ~ String {
+			return DecodeText(str, true);
+		}
+
+		#~
+		Decodes a percent-encoded URL path or URI: as Decode, except that '+' is
+		kept as a plus sign rather than read as a space
+		@param str encoded path
+		@return decoded path, or Nil if str is Nil
+
+		```
+		Web.HTTP.Url->DecodePath("/c++/my%20file.txt")->PrintLine();  # /c++/my file.txt
+		```
+		~#
+		function : native : DecodePath(str : String) ~ String {
+			return DecodeText(str, false);
+		}
+
+		function : private : native : DecodeText(str : String, plus_is_space : Bool) ~ String {
+			if(str = Nil) {
+				return Nil;
+			};
+
+			buffer := String->New();
+			size := str->Size();
+			bytes := Int->New[size / 3 + 1];
+			count := 0;
+
+			i := 0;
+			while(i < size) {
+				c := str->Get(i);
+				escaped := false;
+				if(c = '%' & i + 2 < size) {
+					high := HexValue(str->Get(i + 1));
+					low := HexValue(str->Get(i + 2));
+					if(high > -1 & low > -1) {
+						bytes[count] := (high << 4) or low;
+						count += 1;
+						i += 3;
+						escaped := true;
+					};
+				};
+
+				if(<>escaped) {
+					if(count > 0) {
+						AppendUtf8(buffer, bytes, count);
+						count := 0;
+					};
+
+					if(plus_is_space & c = '+') {
+						buffer->Append(' ');
+					}
+					else {
+						buffer->Append(c);
+					};
+					i += 1;
+				};
+			};
+
+			if(count > 0) {
+				AppendUtf8(buffer, bytes, count);
+			};
+
+			return buffer;
+		}
+
+		# UTF-8 decoder from the WHATWG Encoding standard: invalid input yields
+		# U+FFFD per maximal subpart, never an error
+		function : private : AppendUtf8(buffer : String, bytes : Int[], count : Int) ~ Nil {
+			cp := 0;
+			needed := 0;
+			seen := 0;
+			lower := 0x80;
+			upper := 0xBF;
+
+			i := 0;
+			while(i < count) {
+				b := bytes[i];
+				if(needed = 0) {
+					if(b < 0x80) {
+						buffer->Append(b->As(Char));
+					}
+					else if(b >= 0xC2 & b <= 0xDF) {
+						needed := 1;
+						cp := b and 0x1F;
+					}
+					else if(b >= 0xE0 & b <= 0xEF) {
+						if(b = 0xE0) {
+							lower := 0xA0;
+						}
+						else if(b = 0xED) {
+							upper := 0x9F;
+						};
+						needed := 2;
+						cp := b and 0xF;
+					}
+					else if(b >= 0xF0 & b <= 0xF4) {
+						if(b = 0xF0) {
+							lower := 0x90;
+						}
+						else if(b = 0xF4) {
+							upper := 0x8F;
+						};
+						needed := 3;
+						cp := b and 0x7;
+					}
+					else {
+						buffer->Append(0xFFFD->As(Char));
+					};
+					i += 1;
+				}
+				else if(b < lower | b > upper) {
+					# the sequence is cut short: replace it, then read this byte afresh
+					cp := 0;
+					needed := 0;
+					seen := 0;
+					lower := 0x80;
+					upper := 0xBF;
+					buffer->Append(0xFFFD->As(Char));
+				}
+				else {
+					lower := 0x80;
+					upper := 0xBF;
+					cp := (cp << 6) or (b and 0x3F);
+					seen += 1;
+					if(seen = needed) {
+						buffer->Append(cp->As(Char));
+						cp := 0;
+						needed := 0;
+						seen := 0;
+					};
+					i += 1;
+				};
+			};
+
+			if(needed <> 0) {
+				buffer->Append(0xFFFD->As(Char));
+			};
 		}
 
 		#~

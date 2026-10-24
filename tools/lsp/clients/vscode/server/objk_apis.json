@@ -15127,10 +15127,16 @@
 					"descriptions": ["**Compares two objects**\n\n```method : public : Compare(rhs:System.Compare) ~ Int```\n\n\n\nrhs: System.Compare\n\nreturn: Int"]
 				},
 				"Decode": {
-					"descriptions": ["**General decoding for HTML or XML strings**\n\n```function : native : Decode(str:String) ~ String```\n\n\n\nstr: String\n\nreturn: String\n\n```\nencoded := \"hello%20world%20%26%20foo%3Dbar\";\ndecoded := Web.HTTP.Url->Decode(encoded);\ndecoded->PrintLine();  # hello world & foo=bar\n```"]
+					"descriptions": ["**Decodes a percent-encoded URL component or form value. Each run of consecutive %XX escapes is collected as bytes and decoded as UTF-8, and '+' is read as a space (application\/x-www-form-urlencoded). Characters that are not escapes, non-ASCII included, are kept as they are. Malformed input is not an error: a '%' not followed by two hex digits is kept literally, and bytes that are not valid UTF-8 (a stray continuation byte, an overlong form, a surrogate, a truncated sequence) each become U+FFFD, one per maximal invalid subsequence as in the WHATWG Encoding standard. Use DecodePath where '+' is a literal plus sign.**\n\n```function : native : Decode(str:String) ~ String```\n\n\n\nstr: String\n\nreturn: String\n\n```\nWeb.HTTP.Url->Decode(\"hello%20world+%26%20foo%3Dbar\")->PrintLine();  # hello world & foo=bar\nWeb.HTTP.Url->Decode(\"caf%C3%A9\")->PrintLine();  # caf\u00e9\n```"]
+				},
+				"DecodePath": {
+					"descriptions": ["**Decodes a percent-encoded URL path or URI: as Decode, except that '+' is kept as a plus sign rather than read as a space**\n\n```function : native : DecodePath(str:String) ~ String```\n\n\n\nstr: String\n\nreturn: String\n\n```\nWeb.HTTP.Url->DecodePath(\"\/c++\/my%20file.txt\")->PrintLine();  # \/c++\/my file.txt\n```"]
 				},
 				"Encode": {
-					"descriptions": ["**General encoding for HTML or XML strings**\n\n```function : native : Encode(str:String) ~ String```\n\n\n\nstr: String\n\nreturn: String\n\n```\nraw := \"hello world & foo=bar\";\nencoded := Web.HTTP.Url->Encode(raw);\nencoded->PrintLine();  # hello%20world%20%26%20foo%3Dbar\n```"]
+					"descriptions": ["**Percent-encodes a URL component, such as a query parameter name or value or a single path segment (RFC 3986). Every character outside the unreserved set (A-Z a-z 0-9 - . _ ~) is written as the %XX escapes of its UTF-8 bytes, with upper-case hex digits; that includes space (%20), '+' (%2B), '\/' (%2F), '%' (%25), control characters and all non-ASCII text. An unpaired surrogate is encoded as U+FFFD. Use EncodePath to keep '\/' separators in a path.**\n\n```function : native : Encode(str:String) ~ String```\n\n\n\nstr: String\n\nreturn: String\n\n```\nWeb.HTTP.Url->Encode(\"hello world & foo=bar\")->PrintLine();  # hello%20world%20%26%20foo%3Dbar\nWeb.HTTP.Url->Encode(\"caf\u00e9\")->PrintLine();  # caf%C3%A9\n```"]
+				},
+				"EncodePath": {
+					"descriptions": ["**Percent-encodes a URL path: as Encode, except that '\/' is kept so the path's segments stay separate**\n\n```function : native : EncodePath(str:String) ~ String```\n\n\n\nstr: String\n\nreturn: String\n\n```\nWeb.HTTP.Url->EncodePath(\"\/docs\/my file.txt\")->PrintLine();  # \/docs\/my%20file.txt\n```"]
 				},
 				"GetFragment": {
 					"descriptions": ["**Gets fragment**\n\n```method : public : GetFragment() ~ String```\n\n\n\nreturn: String"]

@@ -204,8 +204,8 @@ bundle Web.Server {
 	            each(i : pairs) {
 	                key_value := pairs[i]->Split('=');
 	                if(key_value <> Nil & key_value->Size() = 2) {
-	                    key := Web.HTTP.Url->Decode(key_value[0])->ReplaceAll('+', ' ');
-	                    value := Web.HTTP.Url->Decode(key_value[1])->ReplaceAll('+', ' ');
+	                    key := Web.HTTP.Url->Decode(key_value[0]);
+	                    value := Web.HTTP.Url->Decode(key_value[1]);
 	                    decodings->Insert(key, value);
 	                };
 	            };
