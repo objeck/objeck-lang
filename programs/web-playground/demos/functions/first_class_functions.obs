@@ -1,7 +1,6 @@
 #~
  First-Class Functions
  Storing and passing functions as values
- Libs: enable 'Collections' in the toolbar
 ~#
 
 use Collection;

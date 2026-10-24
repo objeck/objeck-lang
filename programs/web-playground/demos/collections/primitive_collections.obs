@@ -1,0 +1,42 @@
+#~
+Primitive collections: IntVector, IntMap and BitSet store plain Ints and bits
+with no boxing, so they are compact and fast. A sieve of Eratosthenes,
+a frequency table and a growable list of ints.
+~#
+
+use Collection;
+
+class PrimitiveCollections {
+  function : Main(args : String[]) ~ Nil {
+    # BitSet: one bit per number, set means "composite"
+    limit := 60;
+    composite := BitSet->New(limit + 1);
+    for(n := 2; n * n <= limit; n += 1;) {
+      if(<>composite->Get(n)) {
+        for(m := n * n; m <= limit; m += n;) {
+          composite->Set(m);
+        };
+      };
+    };
+
+    # IntVector: a growable list of Ints
+    primes := IntVector->New();
+    for(n := 2; n <= limit; n += 1;) {
+      if(<>composite->Get(n)) {
+        primes->AddBack(n);
+      };
+    };
+    "{$(primes->Size())} primes up to {$limit}"->PrintLine();
+
+    # IntMap: Int to Int; Add(key, delta) counts without a lookup first
+    last_digits := IntMap->New();
+    each(i : primes->Size()) {
+      last_digits->Add(primes->Get(i) % 10, 1);
+    };
+    each(digit : 10) {
+      if(last_digits->Has(digit)) {
+        "  primes ending in {$digit}: {$(last_digits->Add(digit, 0))}"->PrintLine();
+      };
+    };
+  }
+}

@@ -10,7 +10,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 from app.config import settings
-from app.routes import run, demos, share, health
+from app.routes import run, demos, share, health, libs
 from app.services.share_store import share_store
 
 
@@ -42,6 +42,7 @@ app.add_middleware(
 
 # API routes
 app.include_router(health.router)
+app.include_router(libs.router)
 app.include_router(run.router)
 app.include_router(demos.router)
 app.include_router(share.router)

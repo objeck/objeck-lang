@@ -1,7 +1,6 @@
 #~
  RPN Calculator
  Reverse Polish notation stack-based calculator
- Libs: enable 'Collections' in the toolbar
 ~#
 
 use System.IO;

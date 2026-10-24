@@ -58,6 +58,17 @@ release tarball (checked against `SHA256SUMS`), update the Python venv, rebuild
 the sandbox Docker image, restart the systemd `playground` service, then poll
 `/api/health` and run code through the sandbox to confirm the engine version.
 
+`update.sh` also **rebuilds the sandbox image** (`docker/build-sandbox.sh`), which
+must happen whenever `allowed_libs`/`dependency_libs` in `backend/app/config.py`
+change. The image ships the libraries *and* the native modules they load
+(`libobjk_crypto`, `libobjk_ml`, `libobjk_diags`), then probes hello, Cipher and
+Query.Structured under production limits (128 MB). It ends with a Query + Cipher
+program run through `/api/run`; if that fails the library list or natives are
+wrong, not the engine. Users no longer pick libraries: the server infers them
+from `use` lines (see `programs/web-playground/README.md`). Deploy only after the
+release whose toolchain has the demos' features exists, because `update.sh`
+installs the released tarball.
+
 On a flaky link, start it detached so a dropped connection cannot kill it
 mid-`docker build`, then poll its log. The `pgrep` guard refuses to start a
 second run while one is going, for example one the maintainer started by hand.

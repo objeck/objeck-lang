@@ -5,7 +5,8 @@ from slowapi.util import get_remote_address
 from app.config import settings
 from app.models.schemas import ShareRequest, ShareResponse, ShareGetResponse
 from app.services.share_store import share_store
-from app.services.validator import validate_code, validate_libs, validate_share_id
+from app.services.planning import plan
+from app.services.validator import validate_libs, validate_share_id
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -24,13 +25,16 @@ _DEFAULT_SHARE_ORIGIN = "https://playground.objeck.org"
 @router.post("/api/share", response_model=ShareResponse)
 @limiter.limit("30/minute")
 async def create_share(request: Request, body: ShareRequest):
-    valid, error = validate_code(body.code)
-    if not valid:
-        raise HTTPException(status_code=400, detail=error)
-
+    # Same checks as a run: a link must not carry a program the playground would
+    # refuse to run. The libraries stored are only the manual override; the ones a
+    # program needs are worked out again from its code whenever it runs.
     valid, error, sanitized_libs = validate_libs(body.libs)
     if not valid:
         raise HTTPException(status_code=400, detail=error)
+
+    checked = plan(body.code, sanitized_libs)
+    if not checked.ok:
+        raise HTTPException(status_code=400, detail=checked.error)
 
     share_id = await share_store.create_share(body.code, sanitized_libs)
 

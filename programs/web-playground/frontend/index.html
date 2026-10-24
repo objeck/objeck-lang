@@ -2,81 +2,128 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Objeck Playground</title>
     <meta name="description" content="Try the Objeck programming language in your browser. Write, compile, and run Objeck code instantly.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='white' stroke-width='3.5'/%3E%3C/svg%3E">
+    <script>
+        // Set the theme before first paint so a dark-mode visitor never sees a white flash.
+        (function () {
+            var theme = null;
+            try { theme = localStorage.getItem('objeck-theme'); } catch (e) {}
+            if (theme !== 'light' && theme !== 'dark') {
+                theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <link rel="stylesheet" href="css/playground.css">
 </head>
 <body>
-    <!-- Header -->
-    <header>
-        <div class="header-left">
-            <h1>Objeck Playground</h1>
-            <span class="version-tag" id="version-tag"></span>
+    <a class="skip-link" href="#editor-pane">Skip to the editor</a>
+
+    <header class="topbar">
+        <div class="brand">
+            <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8" fill="currentColor"/><circle cx="16" cy="16" r="7" fill="none" stroke="#fff" stroke-width="3.5"/></svg>
+            <h1>Objeck<span class="brand-sub"> Playground</span></h1>
+            <span class="chip" id="version-tag" hidden></span>
         </div>
-        <div class="header-center">
-            <button id="run-btn" title="Run (Ctrl+Enter)">
-                <span class="run-icon">&#9654;</span> Run
+
+        <div class="actions">
+            <button type="button" id="examples-btn" class="btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="examples-panel">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h8" /></svg>
+                <span class="label">Examples</span>
+                <kbd class="hide-sm">Ctrl&nbsp;K</kbd>
             </button>
-            <span class="shortcut-hint">Ctrl+Enter</span>
-            <div id="spinner" class="spinner hidden">
-                <div class="spinner-dot"></div>
-                Running...
+            <button type="button" id="run-btn" class="btn btn-primary" title="Run (Ctrl+Enter)">
+                <svg viewBox="0 0 20 20" aria-hidden="true" class="fill"><path d="M6 4l10 6-10 6z" /></svg>
+                <span class="label">Run</span>
+                <kbd class="hide-sm">Ctrl&nbsp;&#8629;</kbd>
+            </button>
+            <button type="button" id="share-btn" class="btn" title="Create a link to this program">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V3M6.5 6.5L10 3l3.5 3.5M4 11v5h12v-5" /></svg>
+                <span class="label">Share</span>
+            </button>
+            <button type="button" id="theme-toggle" class="btn btn-icon" aria-label="Switch to light theme" title="Switch theme">
+                <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-moon"><path d="M16.5 11.5A7 7 0 118.5 3.5a5.5 5.5 0 008 8z" /></svg>
+                <svg viewBox="0 0 20 20" aria-hidden="true" class="icon-sun"><circle cx="10" cy="10" r="3.5" /><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M4.3 15.7l1.4-1.4M14.3 5.7l1.4-1.4" /></svg>
+            </button>
+        </div>
+
+        <!-- Examples: a searchable, grouped menu -->
+        <div id="examples-panel" class="popover" role="dialog" aria-label="Examples" hidden>
+            <div class="popover-search">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="9" cy="9" r="5.5" /><path d="M13.5 13.5L17 17" /></svg>
+                <input id="examples-search" type="search" placeholder="Search examples" autocomplete="off" spellcheck="false" aria-label="Search examples">
             </div>
-        </div>
-        <div class="header-right">
-            <button id="share-btn" class="btn-secondary" title="Share this code">Share</button>
-            <button id="theme-toggle" class="btn-secondary" title="Toggle dark/light theme">
-                <span id="theme-icon">&#9790;</span>
-            </button>
+            <div id="examples-list" class="popover-list" tabindex="-1"></div>
         </div>
     </header>
 
-    <!-- Toolbar -->
-    <div id="toolbar">
-        <div class="toolbar-section">
-            <label title="Enable libraries your code needs. Use 'use' to import them (e.g. 'use Collection;'). Demos auto-select the right libraries.">Libraries:<span class="help-hint">?</span></label>
-            <div id="lib-selector"></div>
-            <span id="lib-notification" class="lib-notification"></span>
-        </div>
-        <div class="toolbar-section">
-            <label for="demo-select">Examples:</label>
-            <select id="demo-select">
-                <option value="">-- Select a demo --</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- Main content: split pane -->
-    <div id="main-content">
-        <div id="editor-pane">
+    <main id="workspace">
+        <section id="editor-pane" class="pane" aria-label="Code editor">
+            <div class="pane-head">
+                <span class="pane-title">program.obs</span>
+                <span id="demo-title" class="pane-sub"></span>
+            </div>
             <div id="editor-container"></div>
-        </div>
-        <div id="resize-handle"></div>
-        <div id="output-pane">
-            <div class="output-header">
-                <span>Output</span>
-                <span id="exec-time" class="hidden"></span>
-                <button id="clear-output" class="btn-secondary">Clear</button>
-            </div>
-            <pre id="output-content">Click "Run" or press Ctrl+Enter to execute your code.</pre>
-        </div>
-    </div>
+            <details id="advanced" class="libs-bar">
+                <summary>
+                    <span class="libs-label">Libraries</span>
+                    <span id="libs-note" class="libs-note">picked from your <code>use</code> lines</span>
+                    <span class="libs-more">Advanced</span>
+                    <svg viewBox="0 0 20 20" aria-hidden="true" class="caret"><path d="M6 8l4 4 4-4" /></svg>
+                </summary>
+                <div class="libs-body">
+                    <p>Libraries are found automatically from your <code>use</code> statements, together with whatever they depend on. You only need this to add one by hand.</p>
+                    <div id="lib-options" class="lib-options"></div>
+                </div>
+            </details>
+        </section>
 
-    <!-- Share modal -->
-    <div id="share-modal" class="modal hidden">
-        <div class="modal-content">
-            <h3>Share this code</h3>
-            <input id="share-url" type="text" readonly>
-            <div class="modal-actions">
-                <button id="copy-share-url" class="btn-secondary">Copy URL</button>
-                <button id="close-modal" class="btn-secondary">Close</button>
-            </div>
-        </div>
-    </div>
+        <div id="resizer" role="separator" tabindex="0" aria-label="Resize editor and output" aria-orientation="vertical" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50"></div>
 
-    <!-- Monaco Editor from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js" crossorigin="anonymous"></script>
+        <section id="output-pane" class="pane" aria-label="Output">
+            <div class="pane-head">
+                <span class="pane-title">Output</span>
+                <span id="status" class="status" data-state="idle" role="status" aria-live="polite">
+                    <span class="status-dot" aria-hidden="true"></span>
+                    <span id="status-text">Ready</span>
+                </span>
+                <span class="spacer"></span>
+                <button type="button" id="copy-output" class="btn btn-ghost" title="Copy output" hidden>Copy</button>
+                <button type="button" id="clear-output" class="btn btn-ghost" title="Clear output">Clear</button>
+            </div>
+            <div id="output-body">
+                <div id="callout" class="callout" hidden></div>
+                <ol id="diagnostics" class="diagnostics" hidden></ol>
+                <pre id="output-content" tabindex="0" aria-label="Program output"><span class="placeholder">Press <kbd>Ctrl</kbd> <kbd>&#8629;</kbd> to run your program.</span></pre>
+            </div>
+        </section>
+    </main>
+
+    <dialog id="share-dialog" aria-labelledby="share-title">
+        <form method="dialog">
+            <h2 id="share-title">Share this program</h2>
+            <p class="dialog-note">Anyone with the link sees your code. Libraries are found automatically.</p>
+            <div class="field">
+                <input id="share-url" type="text" readonly aria-label="Share link">
+                <button type="button" id="copy-share-url" class="btn btn-primary">Copy link</button>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn" value="close">Close</button>
+            </div>
+        </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <!-- Monaco editor, pinned. If the CDN is unreachable the page falls back to a plain text area. -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js" crossorigin="anonymous" onerror="window.__monacoFailed = true"></script>
+    <script src="js/objeck-lang.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,51 @@
+#~
+Query.Structured: build tables in memory, then ask questions in SQL.
+A GROUP BY with aggregates, and a join across two tables.
+~#
+
+use Query.Structured, Collection;
+
+class SqlGroupJoin {
+  function : Main(args : String[]) ~ Nil {
+    # employees: name, department id, salary
+    staff := Table->New("staff", ["name", "dept", "salary"]);
+    Add(staff, "Ada", 1, 120.0);
+    Add(staff, "Brian", 1, 95.0);
+    Add(staff, "Chen", 2, 88.0);
+    Add(staff, "Dara", 2, 102.0);
+    Add(staff, "Eli", 3, 70.0);
+
+    depts := Table->New("depts", ["id", "title"]);
+    AddDept(depts, 1, "Engineering");
+    AddDept(depts, 2, "Design");
+    AddDept(depts, 3, "Support");
+
+    catalog := Catalog->New();
+    catalog->Add(staff);
+    catalog->Add(depts);
+
+    "-- headcount and average salary per department"->PrintLine();
+    result := catalog->Query("select d.title, count(*) as people, avg(s.salary) as average from staff s join depts d on s.dept = d.id group by d.title order by average desc");
+    if(result = Nil) {
+      catalog->GetError()->PrintLine();
+      return;
+    };
+    result->ToCsv()->PrintLine();
+
+    "-- everyone above 90, highest first"->PrintLine();
+    catalog->Query("select name, salary from staff where salary > 90 order by salary desc")->ToCsv()->PrintLine();
+  }
+
+  function : Add(table : Table, name : String, dept : Int, salary : Float) ~ Nil {
+    row := table->Insert();
+    row->Set("name", name);
+    row->Set("dept", IntRef->New(dept));
+    row->Set("salary", FloatRef->New(salary));
+  }
+
+  function : AddDept(table : Table, id : Int, title : String) ~ Nil {
+    row := table->Insert();
+    row->Set("id", IntRef->New(id));
+    row->Set("title", title);
+  }
+}

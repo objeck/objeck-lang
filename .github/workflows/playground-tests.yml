@@ -1,0 +1,47 @@
+name: Playground Tests
+
+# The web playground's backend tests: library inference, the sandbox policy, the
+# HTTP contract. The tests that need a real Objeck toolchain (every demo
+# compiling and running) skip themselves here; run them with OBJECK_DEPLOY set.
+#
+# test_policy.py reads the compiler's own sources (build_libs.sh, lib_src/*.obs),
+# so this also runs when those change: a new library or bundle must be mapped
+# (tools/gen_libmap.py) and classified (backend/app/config.py) in the same PR.
+
+on:
+  pull_request:
+    paths:
+      - 'programs/web-playground/**'
+      - 'core/compiler/build_libs.sh'
+      - 'core/compiler/lib_src/**'
+      - '.github/workflows/playground-tests.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'programs/web-playground/**'
+      - 'core/compiler/build_libs.sh'
+      - 'core/compiler/lib_src/**'
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: programs/web-playground/backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r programs/web-playground/backend/requirements-dev.txt
+
+      - name: Test
+        working-directory: programs/web-playground/backend
+        run: python -m pytest

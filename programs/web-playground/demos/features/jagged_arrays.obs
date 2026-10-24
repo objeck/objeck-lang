@@ -1,0 +1,29 @@
+#~
+Jagged arrays: an array of arrays whose rows can each have a different
+length. Here, the first rows of Pascal's triangle.
+~#
+
+class JaggedArrays {
+  function : Main(args : String[]) ~ Nil {
+    rows := Int[]->New[6];
+
+    each(i : 6) {
+      rows[i] := Int->New[i + 1];
+      rows[i][0] := 1;
+      rows[i][i] := 1;
+      for(j := 1; j < i; j += 1;) {
+        rows[i][j] := rows[i - 1][j - 1] + rows[i - 1][j];
+      };
+    };
+
+    each(i : 6) {
+      row := rows[i];
+      line := "";
+      each(j : row) {
+        line += row[j];
+        line += ' ';
+      };
+      "{$(row->Size())} items: {$line}"->PrintLine();
+    };
+  }
+}
