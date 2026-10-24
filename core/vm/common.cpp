@@ -3301,8 +3301,13 @@ bool TrapProcessor::CpyCharStrAry(StackProgram* program, size_t* inst, size_t* &
   if(!array) {
     return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory element");
   }
-  const long size = (long)array[2];
-  wchar_t* str = (wchar_t*)(array + 3);
+  // the element count and where the elements start, as the other literal copies read
+  // them: a 1-D array's single extent sits where a 2-D one's first extent does, so
+  // reading array[2] and writing at array + 3 overwrote a 2-D Char literal's second
+  // extent and copied the wrong number of characters
+  const long size = (long)array[0];
+  const long dim = (long)array[1];
+  wchar_t* str = (wchar_t*)(array + dim + 2);
   memcpy(str, value_str, size * sizeof(wchar_t));
 #ifdef _DEBUG
   std::wcout << L"stack oper: CPY_CHAR_STR_ARY: index=" << index << L", std::string='" << str << L"'" << std::endl;

@@ -740,9 +740,13 @@ namespace frontend {
     bool is_dynamic = false;
     SymbolEntry* dynamic_entry = nullptr;
 
-    void GetAllElements(StaticArray* array, ExpressionList* elems);
+    // the literal's extent in each dimension, outermost first: '[[1, 2, 3], [4, 5, 6]]'
+    // is {2, 3}
+    std::vector<int> shape;
 
-    void GetSizes(StaticArray* array, int &count);
+    void ComputeShape();
+    bool IsRectangular(StaticArray* array, size_t depth);
+    Expression* ElementAt(const std::vector<int>& index);
 
   public:
     StaticArray(const std::wstring& file_name, const int line_num, const int line_pos, ExpressionList* e) : Expression(file_name, line_num, line_pos) {
@@ -755,6 +759,7 @@ namespace frontend {
       dim = 1;
 
       Validate(this);
+      ComputeShape();
     }
 
     void Validate(StaticArray* array);

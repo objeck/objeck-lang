@@ -3208,12 +3208,6 @@ void ContextAnalyzer::AnalyzeStaticArray(StaticArray* array, const int depth)
     return;
   }
 
-  // TOOD: support for 3d or 4d initialization
-  if(array->GetDimension() > 2) {
-    ProcessError(array, L"Invalid static array declaration.");
-    return;
-  }
-
   if(!array->IsMatchingTypes()) {
     ProcessError(array, L"Array element types do not match.");
     return;

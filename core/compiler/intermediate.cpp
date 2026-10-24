@@ -5424,9 +5424,12 @@ void IntermediateEmitter::EmitStaticArray(StaticArray* array) {
     }
     is_str_array = false;
 
-    // emit dimensions
+    // emit dimensions, in the order the primitive arrays above emit them. Emitted the
+    // other way round, a String literal's dimensions were swapped:
+    // '[["a", "b", "c"], ["d", "e", "f"]]' was a 3 x 2 array holding a 2 x 3 one's
+    // elements, so a[0, 1] read "e" and a[1, 2] was out of bounds
     std::vector<int> sizes = array->GetSizes();
-    for(size_t i = 0; i < sizes.size(); ++i) {      
+    for(int i = (int)sizes.size() - 1; i > -1; i--) {
       imm_block->AddInstruction(IntermediateFactory::Instance()->MakeIntLitInstruction(current_statement, array, cur_line_num, sizes[i]));
     }
     
