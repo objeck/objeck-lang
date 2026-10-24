@@ -193,6 +193,19 @@ void Parser::ProcessError(const std::wstring &msg, ScannerTokenType sync)
 }
 
 /****************************
+ * Emits the error for a float
+ * literal outside the double
+ * range: one that overflows to
+ * infinity, or a nonzero one that
+ * underflows to zero.
+ ****************************/
+void Parser::ProcessBadFloatLiteral(const std::wstring &literal)
+{
+  ProcessError(L"Float literal out of range: '" + literal +
+               L"'\n\tFloat is a 64-bit double: a nonzero magnitude must be from 4.9406564584124654e-324 to 1.7976931348623157e308", TOKEN_SEMI_COLON);
+}
+
+/****************************
  * Emits parsing error.
  ****************************/
 void Parser::ProcessError(const std::wstring &msg, ParseNode * node)
@@ -7577,6 +7590,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
     }
       break;
 
+    case TOKEN_BAD_FLOAT_LIT:
+      ProcessBadFloatLiteral(L"-" + scanner->GetToken()->GetIdentifier());
+      NextToken();
+      break;
+
     case TOKEN_UNKNOWN:
       ProcessError(L"Invalid expression: unexpected token", TOKEN_SEMI_COLON);
       break;
@@ -7618,6 +7636,11 @@ Expression* Parser::ParseSimpleExpression(int depth)
       else {
         ProcessError(L"Invalid escaped string literal", TOKEN_SEMI_COLON);
       }
+      NextToken();
+      break;
+
+    case TOKEN_BAD_FLOAT_LIT:
+      ProcessBadFloatLiteral(scanner->GetToken()->GetIdentifier());
       NextToken();
       break;
 

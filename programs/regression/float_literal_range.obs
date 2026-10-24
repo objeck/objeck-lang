@@ -1,0 +1,73 @@
+#~
+Float literals at the edges of the double range compile to exactly the double
+strtod gives. Out-of-range literals are compile errors (bad_float_literal_*),
+but the range is judged by the value rather than by errno: glibc and BSD libc
+set ERANGE for a subnormal result while MSVC does not, and a subnormal is a
+valid, exactly rounded double. Each literal is checked by its bit pattern.
+~#
+
+class FloatLiteralRange {
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		# largest finite double, and a literal just above it that still rounds down
+		failures += Check("1.7976931348623157e308", 1.7976931348623157e308, 0x7fefffffffffffff);
+		failures += Check("1.7976931348623158e308", 1.7976931348623158e308, 0x7fefffffffffffff);
+		failures += Check("-1.7976931348623157e308", -1.7976931348623157e308, 0xffefffffffffffff);
+
+		# large but finite exponents, scaled by the mantissa
+		failures += Check("1.0e308", 1.0e308, 0x7fe1ccf385ebc8a0);
+		failures += Check("0.001e311", 0.001e311, 0x7fe1ccf385ebc8a0);
+
+		# smallest normal, and the largest subnormal below it
+		failures += Check("2.2250738585072014e-308", 2.2250738585072014e-308, 0x0010000000000000);
+		failures += Check("2.2250738585072011e-308", 2.2250738585072011e-308, 0x000fffffffffffff);
+
+		# subnormals
+		failures += Check("1.0e-310", 1.0e-310, 0x000012688b70e62b);
+		failures += Check("100000.0e-315", 100000.0e-315, 0x000012688b70e62b);
+		failures += Check("1_000.0e-313", 1_000.0e-313, 0x000012688b70e62b);
+		failures += Check("4.9406564584124654e-324", 4.9406564584124654e-324, 0x0000000000000001);
+		failures += Check("4.9e-324", 4.9e-324, 0x0000000000000001);
+		failures += Check("2.5e-324", 2.5e-324, 0x0000000000000001);
+		failures += Check("-4.9e-324", -4.9e-324, 0x8000000000000001);
+
+		# zero written as zero stays zero, whatever its exponent
+		failures += Check("0.0", 0.0, 0);
+		failures += Check("0.0e999", 0.0e999, 0);
+		failures += Check("0.0e-999", 0.0e-999, 0);
+		failures += Check("0.000e-99999", 0.000e-99999, 0);
+
+		# the smallest subnormal is 1.0 halved 1074 times
+		tiny := 1.0;
+		for(i := 0; i < 1074; i += 1;) {
+			tiny /= 2.0;
+		};
+		if(tiny <> 4.9e-324) {
+			"FAIL: 4.9e-324 differs from 2^-1074 computed at runtime"->PrintLine();
+			failures += 1;
+		};
+
+		# a subnormal literal survives arithmetic
+		if(4.9e-324 * 2.0 <> 9.8813129168249309e-324) {
+			"FAIL: 4.9e-324 * 2.0"->PrintLine();
+			failures += 1;
+		};
+
+		if(failures > 0) {
+			"FAIL: {$failures} float literal(s) compiled to the wrong double"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: float literals at the edges of the double range compile exactly"->PrintLine();
+	}
+
+	function : Check(text : String, value : Float, bits : Int) ~ Int {
+		actual := Byte->ToInts(Float->ToBytes([value]))[0];
+		if(actual <> bits) {
+			"FAIL: {$text} has bits {$actual}, expected {$bits}"->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+}

@@ -1,0 +1,11 @@
+# EXPECT_COMPILE_ERROR: Float literal out of range: '-1.7976931348623159e308'
+#~
+A negated float literal just past the largest double is rejected too; it
+compiled silently as negative infinity.
+~#
+class BadFloatLiteralNegativeOverflow {
+	function : Main(args : String[]) ~ Nil {
+		x := -1.7976931348623159e308;
+		x->PrintLine();
+	}
+}

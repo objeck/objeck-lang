@@ -31,6 +31,7 @@
 
 #include "scanner.h"
 #include <cerrno>
+#include <cmath>
 #include <random>
 #include <stdexcept>
 
@@ -583,6 +584,21 @@ void Scanner::ParseInteger(int index, int base /*= 0*/)
   tokens[index]->SetFileName(filename);
 }
 
+// True when a float literal's digits before its exponent are not all zero,
+// so a zero result means the value underflowed rather than was written as 0.
+bool Scanner::HasNonZeroMantissa(const std::wstring& ident)
+{
+  for(const wchar_t c : ident) {
+    if(c == L'e' || c == L'E') {
+      return false;
+    }
+    if(c >= L'1' && c <= L'9') {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Scanner::ParseDouble(int index)
 {
   // copy string
@@ -597,9 +613,19 @@ void Scanner::ParseDouble(int index)
 
     // parse and check for errors
     wchar_t* ending;
-    tokens[index]->SetFloatLit(wcstod(ident.c_str(), &ending));
+    const double value = wcstod(ident.c_str(), &ending);
+    tokens[index]->SetFloatLit(value);
     if(wcslen(ending)) {
       tokens[index]->SetType(TOKEN_UNKNOWN);
+    }
+    // A literal past the double range used to compile silently as infinity
+    // (1.0e999), and one below it as zero (1.0e-999). The range is judged by
+    // the value, not by errno: glibc and BSD set ERANGE for a subnormal
+    // result while MSVC does not, and a subnormal (1.0e-310) is a valid,
+    // exactly rounded double that must still compile.
+    else if(std::isinf(value) || (value == 0.0 && HasNonZeroMantissa(ident))) {
+      tokens[index]->SetType(TOKEN_BAD_FLOAT_LIT);
+      tokens[index]->SetIdentifier(ident);
     }
     else {
       tokens[index]->SetType(TOKEN_FLOAT_LIT);
