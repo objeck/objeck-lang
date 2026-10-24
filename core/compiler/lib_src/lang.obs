@@ -5103,14 +5103,40 @@ bundle System {
 		@pos : Int;
 
 		#~
-		Copy constructor
-		@param buffer buffer to set
+		Copy constructor: the buffer holds a copy of the bytes, so later
+		changes to the array do not show through it (ByteBuffer->Wrap takes an
+		array without copying it)
+		@param buffer bytes to copy
 		~#
 		New(buffer : Byte[]) {
 			Parent();
-			
+
+			@max := @pos := buffer->Size();
+			@buffer := Byte->New[@max];
+			Runtime->Copy(@buffer, 0, buffer, 0, @max);
+		}
+
+		New : private (buffer : Byte[], wrap : Bool) {
+			Parent();
+
 			@buffer := buffer;
 			@max := @pos := buffer->Size();
+		}
+
+		#~
+		Makes a buffer over an array without copying it. The buffer takes the
+		array as its contents: it must not be changed afterwards, and Raw()
+		returns it until an append outgrows it.
+		@param buffer bytes to take
+		@return buffer holding the array's bytes
+		```
+		bytes := Byte->New[4];
+		buffer := ByteBuffer->Wrap(bytes);
+		buffer->Size()->PrintLine(); # 4
+		```
+		~#
+		function : Wrap(buffer : Byte[]) ~ ByteBuffer {
+			return ByteBuffer->New(buffer, true);
 		}
 
 		#~
@@ -5264,7 +5290,8 @@ bundle System {
 		@return cloned the object instance
 		~#
 		method : public : Clone() ~ System.ByteBuffer {
-		 	return ByteBuffer->New(ToByteArray());
+		 	# ToByteArray is already a copy
+		 	return ByteBuffer->Wrap(ToByteArray());
 		}
 
 		#~

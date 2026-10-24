@@ -78,6 +78,29 @@ class LangByteBufferWrittenBytes {
 		g->Append(0x2B->As(Byte));
 		failures += Check("append to an empty-array buffer", g->Size() = 2 & g->Get(0) = 0x2A & g->Get(1) = 0x2B);
 
+		# New(Byte[]) copies: a later change to the array does not show through
+		source := Bytes([1, 2, 3]);
+		copied := ByteBuffer->New(source);
+		source[0] := 9;
+		failures += Check("New(Byte[]) copies the array", copied->Get(0) = 1 & copied->Raw() <> source);
+		copied->Append(4->As(Byte));
+		failures += Check("appending to a copy leaves the array alone", source->Size() = 3 & source[0] = 9);
+
+		# Wrap takes the array as it is, without a copy
+		wrapped_source := Bytes([7, 8]);
+		wrapped := ByteBuffer->Wrap(wrapped_source);
+		failures += Check("Wrap shares the array", wrapped->Raw() = wrapped_source & wrapped->Size() = 2 & wrapped->Get(1) = 8);
+		wrapped->Append(9->As(Byte));
+		failures += Check("Wrap grows on append", wrapped->Size() = 3 & wrapped->Get(2) = 9 & wrapped_source->Size() = 2);
+		failures += Check("Wrap of an empty array", ByteBuffer->Wrap(Byte->New[0])->Size() = 0);
+
+		# Clone is independent of the original
+		original := ByteBuffer->New(Bytes([1, 2]));
+		clone := original->Clone();
+		original_bytes := original->Raw();
+		original_bytes[0] := 5;
+		failures += Check("Clone does not share the array", clone->Get(0) = 1 & clone->Compare(original) = -1);
+
 		if(failures = 0) {
 			"PASS: ByteBuffer covers the bytes written"->PrintLine();
 		}
