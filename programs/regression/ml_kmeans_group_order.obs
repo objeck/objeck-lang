@@ -1,0 +1,78 @@
+# EXTRA_LIBS: ml,gen_collect,csv
+#~
+KMeansGrouping lists its groups in a defined order: KMeans->Group keeps the order of
+its labels (group i is cluster i), and a grouping built straight from a hash orders
+its groups by name. Both used to follow the hash table's internal order, so
+GetGroupNames, Get(i), iteration and ToString could come out in any order.
+~#
+use System.ML, Collection;
+
+class MlKMeansGroupOrder {
+	function : Check(name : String, ok : Bool) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  FAIL: {$name}"->PrintLine();
+		return 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		records := Vector->New()<FloatArrayRef>;
+		centers := [[1.0, 1.0], [10.0, 10.0], [20.0, 1.0], [1.0, 20.0], [30.0, 30.0]];
+		dims := centers->Size();
+		for(c := 0; c < dims[0]; c += 1;) {
+			for(j := 0; j < 6; j += 1;) {
+				offset := j * 0.1;
+				records->AddBack(FloatArrayRef->New([centers[c, 0] + offset, centers[c, 1] - offset]));
+			};
+		};
+
+		labels := ["zulu", "alpha", "mike", "bravo", "echo"];
+		grouping := KMeans->Group(labels, records, 2, 0.0, 40.0);
+
+		names := grouping->GetGroupNames();
+		names_ok := names->Size() = labels->Size();
+		each(i : labels) {
+			if(names_ok) {
+				names_ok := names[i]->Equals(labels[i]) & grouping->Get(i)->GetName()->Equals(labels[i]);
+			};
+		};
+		failures += Check("groups follow the label order", names_ok);
+
+		text := grouping->ToString();
+		last := -1;
+		text_ok := true;
+		each(i : labels) {
+			at := text->Find("\"name\": \"{$labels[i]}\"");
+			if(at <= last) {
+				text_ok := false;
+			};
+			last := at;
+		};
+		failures += Check("ToString follows the label order: {$text}", text_ok);
+
+		total := 0;
+		each(i : labels) {
+			total += grouping->Get(i)->GetValues()->Size();
+		};
+		failures += Check("every record is in a group", total = records->Size());
+
+		# straight from a hash: by name
+		by_name := Hash->New()<String, Vector<FloatArrayRef>>;
+		each(i : labels) {
+			by_name->Insert(labels[i], Vector->New()<FloatArrayRef>);
+		};
+		sorted := KMeansGrouping->New(by_name)->GetGroupNames();
+		failures += Check("hash grouping is ordered by name", sorted->Size() = 5 & sorted[0]->Equals("alpha") & sorted[1]->Equals("bravo")
+			& sorted[2]->Equals("echo") & sorted[3]->Equals("mike") & sorted[4]->Equals("zulu"));
+
+		if(failures > 0) {
+			"FAIL: ml_kmeans_group_order, {$failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: ml_kmeans_group_order"->PrintLine();
+	}
+}

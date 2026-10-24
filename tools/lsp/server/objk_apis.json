@@ -13512,6 +13512,9 @@
 				"GetGroupNames": {
 					"descriptions": ["**Get an array of group names**\n\n```method : public : GetGroupNames() ~ String[]```\n\n\n\nreturn: String[]"]
 				},
+				"New": {
+					"descriptions": ["**Constructor; the groups are ordered by name, since a hash's own order is unspecified**\n\n```New(groups:Hash&lt;String,Vector&lt;FloatArrayRef&gt;&gt;)```\n\n\n\ngroups: Hash&lt;String,Vector&lt;FloatArrayRef&gt;&gt;", "**Constructor; the groups keep the order of their labels, so group i is cluster i**\n\n```New(group_labels:String[], groups:Hash&lt;String,Vector&lt;FloatArrayRef&gt;&gt;)```\n\n\n\ngroup_labels: String[]\n\ngroups: Hash&lt;String,Vector&lt;FloatArrayRef&gt;&gt;"]
+				},
 				"Size": {
 					"descriptions": ["**Get the number of groups**\n\n```method : public : Size() ~ Int```\n\n\n\nreturn: Int"]
 				},

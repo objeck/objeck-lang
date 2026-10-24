@@ -1,0 +1,102 @@
+#~
+XmlElement serializes its attributes in the order they were added, and a parsed
+element keeps document order, so a document round-trips. ToString used to walk the
+attribute hash table, whose order is unspecified (it changed with the Hash rewrite),
+while GetAttributes already returned insertion order. A parsed self-closing tag also
+serialized to nothing, so its element was lost on a round trip.
+~#
+use Data.XML;
+
+class XmlAttributeOrder {
+	function : Check(name : String, ok : Bool) ~ Int {
+		if(ok) {
+			return 0;
+		};
+		"  FAIL: {$name}"->PrintLine();
+		return 1;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		names := ["zeta", "alpha", "mid", "beta", "omega", "delta", "kappa", "epsilon", "a", "zz"];
+		element := XmlElement->New(XmlElement->Type->ELEMENT, "item");
+		each(i : names) {
+			element->AddAttribute(XmlAttribute->New(names[i], "v{$i}"));
+		};
+		# a repeated name keeps its first position and takes the new value
+		element->AddAttribute(XmlAttribute->New("mid", "changed"));
+
+		expected := "<item";
+		each(i : names) {
+			value := "v{$i}";
+			if(names[i]->Equals("mid")) {
+				value := "changed";
+			};
+			expected += " {$names[i]}=\"{$value}\"";
+		};
+
+		built := element->ToString();
+		failures += Check("built element lists attributes in insertion order: {$built}", built->StartsWith(expected));
+
+		attribs := element->GetAttributes();
+		order_ok := attribs->Size() = names->Size();
+		each(i : names) {
+			if(order_ok) {
+				order_ok := attribs->Get(i)->GetName()->Equals(names[i]);
+			};
+		};
+		failures += Check("GetAttributes in insertion order", order_ok);
+
+		# parse the serialized text back: document order, and the same text again
+		parser := XmlParser->New(built);
+		if(parser->Parse()) {
+			parsed := parser->GetRoot();
+			again := parsed->ToString();
+			failures += Check("parsed element keeps document order: {$again}", again->StartsWith(expected));
+			failures += Check("round trip is the same text", again->Equals(built));
+
+			# a hand-written document in a non-alphabetical order
+			text := "<row z=\"1\" b=\"2\" y=\"3\" a=\"4\"><cell q=\"x\" c=\"y\"/></row>";
+			parser := XmlParser->New(text);
+			if(parser->Parse()) {
+				root := parser->GetRoot();
+				row := root->ToString();
+				failures += Check("document order kept: {$row}", row->StartsWith("<row z=\"1\" b=\"2\" y=\"3\" a=\"4\">"));
+				children := root->GetChildren();
+				if(children <> Nil & children->Size() = 1) {
+					cell := children->Get(0)->ToString();
+					failures += Check("child's document order kept: {$cell}", cell->StartsWith("<cell q=\"x\" c=\"y\""));
+				}
+				else {
+					failures += Check("row has one child", false);
+				};
+				failures += Check("self-closing child survives the round trip: {$row}", row->Equals(text));
+			}
+			else {
+				failures += Check("second document parses", false);
+			};
+
+			# text after a self-closing tag stays where it was
+			mixed := "<p a=\"1\">one<br k=\"v\"/>two</p>";
+			parser := XmlParser->New(mixed);
+			if(parser->Parse()) {
+				out := parser->GetRoot()->ToString();
+				failures += Check("mixed content round trip: {$out}", out->Equals(mixed));
+			}
+			else {
+				failures += Check("second document parses", false);
+			};
+		}
+		else {
+			failures += Check("serialized element parses", false);
+		};
+
+		if(failures > 0) {
+			"FAIL: xml_attribute_order, {$failures} failure(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"PASS: xml_attribute_order"->PrintLine();
+	}
+}
