@@ -7465,9 +7465,19 @@ void ContextAnalyzer::AnalyzeFor(For* for_stmt, const int depth)
   current_table->NewScope();
   
   bool is_range = false;
-  CalculatedExpression* cond_expr = static_cast<CalculatedExpression*>(for_stmt->GetExpression());
-  
-  if(cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
+
+  // A range or 'each' loop always has a '<' condition (the parser builds
+  // 'index < range' or 'index < collection->Size()'). Any other condition --
+  // a Bool literal, a variable or a call -- is not a CalculatedExpression, and
+  // reading its operands read unrelated memory: 'for(...; true; ...)' crashed
+  // the compiler.
+  CalculatedExpression* cond_expr = nullptr;
+  Expression* for_expr = for_stmt->GetExpression();
+  if(for_expr && for_expr->GetExpressionType() == LES_EXPR) {
+    cond_expr = static_cast<CalculatedExpression*>(for_expr);
+  }
+
+  if(cond_expr && cond_expr->GetRight() && cond_expr->GetRight()->GetExpressionType() == METHOD_CALL_EXPR) {
     MethodCall* mthd_call_expr = static_cast<MethodCall*>(cond_expr->GetRight());
     const std::wstring cond_expr_name = mthd_call_expr->GetVariableName();
     if(IsRangeName(cond_expr_name)) {
