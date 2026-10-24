@@ -223,7 +223,7 @@ EOF
 LIB_JSON=$(printf '%s' "$LIB_PROBE" | python3 -c 'import json,sys; print(json.dumps({"code": sys.stdin.read()}))')
 LIB_OUT=$(curl -sf --max-time 60 -X POST http://localhost:8000/api/run \
     -H 'Content-Type: application/json' -d "$LIB_JSON" || true)
-if echo "$LIB_OUT" | grep -q '"success":true' && echo "$LIB_OUT" | grep -q 'answer' && echo "$LIB_OUT" | grep -q '0xba,0x78'; then
+if echo "$LIB_OUT" | grep -q '"success":true' && echo "$LIB_OUT" | grep -q 'answer' && echo "$LIB_OUT" | grep -qE 'ba7816bf|0xba,0x78'; then
     echo "Query and Cipher programs compile and run"
 else
     echo "ERROR: a program using Query.Structured and Cipher did not run"

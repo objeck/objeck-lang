@@ -104,5 +104,7 @@ def test_cipher_natives_load(tc):
         'use Cipher;\nclass T { function : Main(args : String[]) ~ Nil {\n'
         '  Hash->SHA256("abc"->ToByteArray())->ToHexString()->PrintLine();\n} }'
     )
-    # SHA-256("abc") = ba7816bf 8f01cfea ...; Byte[]->ToHexString prints [0xba,0x78,...]
-    assert result.success and result.output.startswith("[0xba,0x78,0x16,0xbf,0x8f,0x1,0xcf,0xea")
+    # SHA-256("abc") = ba7816bf 8f01cfea ... Byte[]->ToHexString printed [0xba,0x78,...]
+    # before ByteBuffer landed and plain hex after; accept both.
+    digits = result.output.replace("[0x", "").replace(",0x", "")
+    assert result.success and digits.startswith("ba7816bf")
