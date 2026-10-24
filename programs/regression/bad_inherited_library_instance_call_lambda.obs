@@ -1,0 +1,26 @@
+# EXPECT_COMPILE_ERROR: Cannot reference an instance method from this context
+#~
+A lambda does not capture self (bad_lambda_implicit_self.obs), so inside one
+an unqualified call of an instance method inherited from a library class
+('GetName()' in a Thread subclass) is still rejected, though the method the
+lambda is written in is an instance method.
+~#
+use System.Concurrency;
+
+class BadInheritedLibraryInstanceCallLambda from Thread {
+  New(name : String) {
+    Parent(name);
+  }
+
+  method : public : Run(param : Base) ~ Nil {
+  }
+
+  method : public : Name() ~ String {
+    f := FuncRef->New(\() ~ String : () => GetName())<String>;
+    return f();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    BadInheritedLibraryInstanceCallLambda->New("x")->Name()->PrintLine();
+  }
+}

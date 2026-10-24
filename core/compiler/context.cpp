@@ -10610,8 +10610,39 @@ bool ContextAnalyzer::InvalidStatic(MethodCall* method_call, LibraryMethod* lib_
   const bool not_variable = !method_call->GetVariable() && !method_call->GetEntry();
   const bool not_static_prev = !lib_method->IsStatic() && !method_call->GetPreviousExpression();
   const bool not_new = lib_method->GetMethodType() != NEW_PUBLIC_METHOD && lib_method->GetMethodType() != NEW_PRIVATE_METHOD;
-  
-  return not_variable && not_static_prev && not_new;
+  if(!not_variable || !not_static_prev || !not_new) {
+    return false;
+  }
+
+  // An unqualified call of an instance method is a call on self. From an
+  // instance method of a class that inherits the method from a library class
+  // -- 'GetName()' in a Thread's Run() -- that is valid, as the program-class
+  // overload above has it; this overload never looked at the calling method,
+  // so it rejected every such call. From a function, or a lambda (which does
+  // not capture self), there is no instance to call it on.
+  if(!current_method || current_method->IsStatic() || !current_class) {
+    return true;
+  }
+
+  const std::wstring& lib_class_name = lib_method->GetLibraryClass()->GetName();
+  LibraryClass* lib_parent = nullptr;
+  // the program classes' chain ends at the first library parent
+  for(Class* parent = current_class; parent && !lib_parent; parent = parent->GetParent()) {
+    lib_parent = parent->GetLibraryParent();
+  }
+
+  const std::vector<std::wstring> uses = program->GetLibUses(current_class->GetFileName());
+  for(int guard = 0; lib_parent && guard < 256; ++guard) {
+    if(lib_parent->GetName() == lib_class_name) {
+      return false;
+    }
+
+    const std::wstring& parent_name = lib_parent->GetParentName();
+    LibraryClass* next = parent_name.empty() ? nullptr : linker->SearchClassLibraries(parent_name, uses);
+    lib_parent = next != lib_parent ? next : nullptr;
+  }
+
+  return true;
 }
 
 SymbolEntry* ContextAnalyzer::GetEntry(std::wstring name, bool is_parent)
