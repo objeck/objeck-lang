@@ -143,6 +143,153 @@ typedef SSIZE_T ssize_t;
 #define CACERT_PEM_FILE "cacert.pem"
 
 //
+// Verifying a server's certificate when the client connects by IP address.
+//
+// mbedTLS checks the name a client gives mbedtls_ssl_set_hostname against the
+// certificate. From 3.5 an IP address there is matched against the
+// certificate's iPAddress subjectAltNames; before 3.5 it is matched only
+// against dNSName SANs and the CN, as text, so no certificate could ever name
+// an address. Windows (vcpkg, 3.6) and macOS (bundled, 3.6) have the newer
+// behaviour; Linux links the distribution's mbedTLS -- 2.28 on Ubuntu 24.04
+// and Debian 12 -- so there a client of "127.0.0.1" refused a certificate that
+// says IP:127.0.0.1, which is exactly the certificate it should accept.
+//
+// For mbedTLS before 3.5, TlsVerifyIpSan installs a verify callback that,
+// for the server's own certificate only (depth 0), clears the name-mismatch
+// flag when -- and only when -- the address the client connected to is one of
+// the certificate's iPAddress SANs. Every other check (chain, trust anchor,
+// expiry, key usage) is untouched, and a certificate that does not carry the
+// address is still refused. From 3.5 it does nothing: mbedTLS matches the
+// address itself. The TlsIpName must outlive the handshake (it lives in the
+// connection's context).
+//
+struct TlsIpName {
+  unsigned char ip[16];
+  size_t len;
+  TlsIpName() : len(0) { memset(ip, 0, sizeof(ip)); }
+};
+
+#if MBEDTLS_VERSION_NUMBER < 0x03050000
+#include <mbedtls/asn1.h>
+#include <mbedtls/oid.h>
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#else
+#include <arpa/inet.h>
+#endif
+
+// true if crt carries ip (4 or 16 bytes) as an iPAddress subjectAltName
+inline bool TlsCertHasIpSan(const mbedtls_x509_crt* crt, const unsigned char* ip, size_t ip_len)
+{
+  // the raw extensions; a private member, under its mangled name, in 3.0-3.4
+#ifdef MBEDTLS_PRIVATE
+  const mbedtls_x509_buf& v3_ext = crt->MBEDTLS_PRIVATE(v3_ext);
+#else
+  const mbedtls_x509_buf& v3_ext = crt->v3_ext;
+#endif
+  unsigned char* p = v3_ext.p;
+  if(!p || v3_ext.len == 0) {
+    return false;
+  }
+  const unsigned char* end = p + v3_ext.len;
+
+  // Extensions ::= SEQUENCE OF Extension
+  size_t len = 0;
+  if(mbedtls_asn1_get_tag(&p, end, &len, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+    return false;
+  }
+  end = p + len;
+
+  while(p < end) {
+    // Extension ::= SEQUENCE { extnID OID, critical BOOLEAN DEFAULT FALSE, extnValue OCTET STRING }
+    size_t ext_len = 0;
+    if(mbedtls_asn1_get_tag(&p, end, &ext_len, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+      return false;
+    }
+    unsigned char* ext_end = p + ext_len;
+
+    mbedtls_x509_buf oid;
+    oid.tag = MBEDTLS_ASN1_OID;
+    if(mbedtls_asn1_get_tag(&p, ext_end, &oid.len, MBEDTLS_ASN1_OID) != 0) {
+      return false;
+    }
+    oid.p = p;
+    p += oid.len;
+
+    int critical = 0;
+    const int bool_ret = mbedtls_asn1_get_bool(&p, ext_end, &critical);
+    if(bool_ret != 0 && bool_ret != MBEDTLS_ERR_ASN1_UNEXPECTED_TAG) {
+      return false;
+    }
+
+    size_t value_len = 0;
+    if(mbedtls_asn1_get_tag(&p, ext_end, &value_len, MBEDTLS_ASN1_OCTET_STRING) != 0) {
+      return false;
+    }
+
+    if(MBEDTLS_OID_CMP(MBEDTLS_OID_SUBJECT_ALT_NAME, &oid) == 0) {
+      // GeneralNames ::= SEQUENCE OF GeneralName; iPAddress is [7] IMPLICIT OCTET STRING
+      unsigned char* q = p;
+      const unsigned char* q_end = p + value_len;
+      size_t names_len = 0;
+      if(mbedtls_asn1_get_tag(&q, q_end, &names_len, MBEDTLS_ASN1_CONSTRUCTED | MBEDTLS_ASN1_SEQUENCE) != 0) {
+        return false;
+      }
+      q_end = q + names_len;
+      while(q < q_end) {
+        const unsigned char tag = *q++;
+        size_t name_len = 0;
+        if(mbedtls_asn1_get_len(&q, q_end, &name_len) != 0) {
+          return false;
+        }
+        if(tag == (MBEDTLS_ASN1_CONTEXT_SPECIFIC | 7) && name_len == ip_len && memcmp(q, ip, ip_len) == 0) {
+          return true;
+        }
+        q += name_len;
+      }
+      return false;
+    }
+
+    p = ext_end;
+  }
+
+  return false;
+}
+
+inline int TlsIpSanVerifyCallback(void* data, mbedtls_x509_crt* crt, int depth, uint32_t* flags)
+{
+  const TlsIpName* name = (const TlsIpName*)data;
+  if(depth == 0 && name && name->len > 0 && (*flags & MBEDTLS_X509_BADCERT_CN_MISMATCH) &&
+     TlsCertHasIpSan(crt, name->ip, name->len)) {
+    *flags &= ~(uint32_t)MBEDTLS_X509_BADCERT_CN_MISMATCH;
+  }
+  return 0;
+}
+
+inline void TlsVerifyIpSan(mbedtls_ssl_config* conf, TlsIpName* name, const char* address)
+{
+  name->len = 0;
+  if(inet_pton(AF_INET, address, name->ip) == 1) {
+    name->len = 4;
+  }
+  else if(inet_pton(AF_INET6, address, name->ip) == 1) {
+    name->len = 16;
+  }
+
+  if(name->len > 0) {
+    mbedtls_ssl_conf_verify(conf, TlsIpSanVerifyCallback, name);
+  }
+}
+#else
+inline void TlsVerifyIpSan(mbedtls_ssl_config* conf, TlsIpName* name, const char* address)
+{
+  (void)conf;
+  (void)name;
+  (void)address;
+}
+#endif
+
+//
 // mbedTLS context wrappers for SSL/TLS connections
 //
 struct SecureSocketCtx {
@@ -152,6 +299,8 @@ struct SecureSocketCtx {
   mbedtls_x509_crt cacert;
   mbedtls_entropy_context entropy;
   mbedtls_ctr_drbg_context ctr_drbg;
+  // the address connected to, when it is one (see TlsVerifyIpSan)
+  TlsIpName ip_name;
   int last_error;
 
   SecureSocketCtx() : last_error(0) {
@@ -191,6 +340,8 @@ struct DtlsSocketCtx {
   // to mbedtls_ssl_set_timer_cb as opaque data. The normal DTLS flow calls
   // set_delay before get_delay, so this is defensive rather than a live fault.
   mbedtls_timing_delay_context timer{};
+  // the address connected to, when it is one (see TlsVerifyIpSan)
+  TlsIpName ip_name;
   int last_error;
 
   void SetError(int error) {

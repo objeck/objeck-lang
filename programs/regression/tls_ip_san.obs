@@ -1,0 +1,182 @@
+#~
+# A client connecting by IP address verifies a certificate that names it
+#
+# A certificate names an IP address in an iPAddress subjectAltName. mbedTLS
+# 3.5 and later match the address a client connected to against those; before
+# 3.5 the address is compared only with dNSName SANs and the CN, as text, so no
+# certificate could name an address. Windows and macOS build against mbedTLS
+# 3.6, but Linux links the distribution's -- 2.28 on Ubuntu 24.04 -- so there a
+# client of "127.0.0.1" refused a certificate saying IP:127.0.0.1, while the
+# same program passed on Windows.
+#
+# Each certificate is self-signed and pinned as the client's only trust anchor,
+# with verification fully on (no OBJECK_TLS_INSECURE_SKIP_VERIFY). Its CN is
+# not a host name, so only the SANs can match:
+#
+#   IP:127.0.0.1, IP:::1   accepted over 127.0.0.1 and ::1, TLS and DTLS;
+#                          refused as "localhost" (it names no DNS name)
+#   IP:127.0.0.2           refused over 127.0.0.1: an address the
+#                          certificate does not carry
+#
+# The refusals prove the fix matches the address, not anything at all.
+# EXTRA_LIBS: net
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net;
+
+# Accepts TLS clients until the program ends, greeting each with one line
+class TlsGreeter from Thread {
+	@server : TCPSecureSocketServer;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("tls-greeter");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				client->WriteString("hello\n");
+				client->ReadLine();
+				client->Close();
+			};
+		};
+	}
+}
+
+# Accepts DTLS clients until the program ends
+class DtlsGreeter from Thread {
+	@server : DTLSSocketServer;
+
+	New(server : DTLSSocketServer) {
+		Parent("dtls-greeter");
+		@server := server;
+	}
+
+	method : public : Run(param : Base) ~ Nil {
+		while(true) {
+			client := @server->Accept();
+			if(client <> Nil) {
+				client->Close();
+			};
+		};
+	}
+}
+
+class TlsIpSan {
+	@failed : static : Int;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		if(<>MakeCert("ip-san-both", "IP:127.0.0.1,IP:::1") | <>MakeCert("ip-san-other", "IP:127.0.0.2")) {
+			"FAIL: openssl could not create the certificates -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: tls"->ErrorLine();
+		port := StartTls("ip-san-both");
+		Check("TLS: the IP:127.0.0.1,IP:::1 server listens", port > 0);
+		if(port > 0) {
+			Check("TLS: a client of 127.0.0.1 verifies a certificate naming IP:127.0.0.1", TlsVerifies("127.0.0.1", port, "ip-san-both"));
+			Check("TLS: a client of ::1 verifies a certificate naming IP:::1", TlsVerifies("::1", port, "ip-san-both"));
+			Check("TLS: a client of 'localhost' refuses a certificate naming only addresses", <>TlsVerifies("localhost", port, "ip-san-both"));
+		};
+
+		port := StartTls("ip-san-other");
+		Check("TLS: the IP:127.0.0.2 server listens", port > 0);
+		if(port > 0) {
+			Check("TLS: a client of 127.0.0.1 refuses a certificate naming only IP:127.0.0.2", <>TlsVerifies("127.0.0.1", port, "ip-san-other"));
+		};
+
+		"stage: dtls"->ErrorLine();
+		port := StartDtls("ip-san-both");
+		Check("DTLS: the IP:127.0.0.1,IP:::1 server listens", port > 0);
+		if(port > 0) {
+			Check("DTLS: a client of 127.0.0.1 verifies a certificate naming IP:127.0.0.1", DtlsVerifies("127.0.0.1", port, "ip-san-both"));
+			Check("DTLS: a client of ::1 verifies a certificate naming IP:::1", DtlsVerifies("::1", port, "ip-san-both"));
+		};
+
+		port := StartDtls("ip-san-other");
+		Check("DTLS: the IP:127.0.0.2 server listens", port > 0);
+		if(port > 0) {
+			Check("DTLS: a client of 127.0.0.1 refuses a certificate naming only IP:127.0.0.2", <>DtlsVerifies("127.0.0.1", port, "ip-san-other"));
+		};
+
+		File->Delete("ip-san-both-cert.pem");
+		File->Delete("ip-san-both-key.pem");
+		File->Delete("ip-san-other-cert.pem");
+		File->Delete("ip-san-other-key.pem");
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: TLS and DTLS clients verify certificates by IP address SAN"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : MakeCert(name : String, san : String) ~ Bool {
+		File->Delete("{$name}-cert.pem");
+		File->Delete("{$name}-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=objeck-ip-san-test\" -addext \"subjectAltName={$san}\" -keyout {$name}-key.pem -out {$name}-cert.pem";
+		return Runtime->Command(command) = 0;
+	}
+
+	# a listening TLS server on a random port, greeting clients; its port, or 0
+	function : StartTls(name : String) ~ Int {
+		for(tries := 0; tries < 5; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			server := TCPSecureSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
+			if(server->Listen()) {
+				TlsGreeter->New(server)->Execute(Nil);
+				return port;
+			};
+		};
+		return 0;
+	}
+
+	function : StartDtls(name : String) ~ Int {
+		for(tries := 0; tries < 5; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			server := DTLSSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
+			if(server->Listen()) {
+				DtlsGreeter->New(server)->Execute(Nil);
+				return port;
+			};
+		};
+		return 0;
+	}
+
+	# true if a TLS client of address, trusting only name's certificate,
+	# completes a verified handshake and reads the server's line
+	function : TlsVerifies(address : String, port : Int, name : String) ~ Bool {
+		socket := TCPSecureSocket->New(address, port, "{$name}-cert.pem");
+		if(<>socket->IsOpen()) {
+			socket->Close();
+			return false;
+		};
+		line := socket->ReadLine();
+		socket->WriteString("bye\n");
+		socket->Close();
+		return line <> Nil & line->Equals("hello");
+	}
+
+	function : DtlsVerifies(address : String, port : Int, name : String) ~ Bool {
+		socket := DTLSSocket->New(address, port, "{$name}-cert.pem", true);
+		open := socket->IsOpen();
+		if(<>open) {
+			reason := DTLSSocket->GetLastError();
+			"  note: DTLS {$address}:{$port} with {$name}: '{$reason}'"->ErrorLine();
+		};
+		socket->Close();
+		return open;
+	}
+}

@@ -841,6 +841,7 @@ class IPSecureSocket {
     mbedtls_ssl_conf_authmode(&sctx->conf,
       InsecureSkipVerify() ? MBEDTLS_SSL_VERIFY_OPTIONAL : MBEDTLS_SSL_VERIFY_REQUIRED);
     mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
+    TlsVerifyIpSan(&sctx->conf, &sctx->ip_name, address);
     mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
 
     // ALPN: prefer h2, fallback to http/1.1
@@ -935,6 +936,7 @@ class IPSecureSocket {
     mbedtls_ssl_conf_authmode(&sctx->conf,
       insecure_skip_verify ? MBEDTLS_SSL_VERIFY_OPTIONAL : MBEDTLS_SSL_VERIFY_REQUIRED);
     mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
+    TlsVerifyIpSan(&sctx->conf, &sctx->ip_name, address);
     mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
 
     ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
@@ -1192,6 +1194,7 @@ class IPDtlsSocket {
     mbedtls_ssl_conf_authmode(&sctx->conf,
       require_cert ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_OPTIONAL);
     mbedtls_ssl_conf_ca_chain(&sctx->conf, &sctx->cacert, nullptr);
+    TlsVerifyIpSan(&sctx->conf, &sctx->ip_name, address);
     mbedtls_ssl_conf_rng(&sctx->conf, mbedtls_ctr_drbg_random, &sctx->ctr_drbg);
 
     ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
