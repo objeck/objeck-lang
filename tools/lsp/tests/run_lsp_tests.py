@@ -514,6 +514,107 @@ def check_completion_docs(c, caps, probe_text, probe_uri):
     c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
+def check_enum_docs(c, apis_json):
+    """Library enums: in the API index, completed after '->', and hovered.
+
+    The index had no enums at all. doc_parser read them (the HTML reference has
+    enum pages) but doc_json never wrote them out, so neither an enum nor its
+    items had any documentation in the editor, and the analyzer only completes
+    a program's own enums -- after 'ColumnType->' a library enum offered
+    nothing but keywords.
+    """
+    with open(apis_json, encoding="utf-8") as f:
+        index = json.load(f)
+    enums = index.get("enum-details") or {}
+    column_type = enums.get("Query.Structured.ColumnType") or {}
+    log_result("API index lists bundle-level enums by bundle-qualified name",
+               column_type.get("class") == "" and column_type.get("kind") == "enum"
+               and [i.get("name") for i in column_type.get("items", [])][:2] == ["NONE", "INT"],
+               f"got: {str(column_type)[:200]}")
+    number_format = enums.get("System.Number#Format") or {}
+    log_result("API index lists a class's enum as Bundle.Klass#Name, with values",
+               number_format.get("class") == "System.Number"
+               and ("HEX", "-18") in [(i.get("name"), i.get("value")) for i in number_format.get("items", [])],
+               f"got: {str(number_format)[:200]}")
+    protocol = enums.get("API.Inference.Client#Protocol") or {}
+    log_result("API index keeps an enum item's own doc comment",
+               "Open Inference Protocol" in str([i.get("description") for i in protocol.get("items", [])]),
+               f"got: {str(protocol)[:200]}")
+
+    text = ("use Query.Structured;\n"
+            "\n"
+            "class EnumDocs {\n"
+            "  function : Main(args : String[]) ~ Nil {\n"
+            "    t := ColumnType->INT;\n"
+            "    q := Query.Structured.Compression->FAST;\n"
+            "    f := Number->Format->HEX;\n"
+            "    m := Mine->RED;\n"
+            "  }\n"
+            "}\n"
+            "\n"
+            "enum Mine {\n"
+            "  RED,\n"
+            "  GREEN\n"
+            "}\n")
+    uri = path_to_uri(os.path.join(TESTS_DIR, "lsp_enum_docs.obs"))
+    c.notify("textDocument/didOpen", {"textDocument": {
+        "uri": uri, "languageId": "objeck", "version": 1, "text": text}})
+    c.diagnostics_for(uri, timeout=60)
+
+    def complete(needle, offset):
+        return completion_items(c.request("textDocument/completion", dict(
+            position_in(text, uri, needle, 1, offset), context={"triggerKind": 1})))
+
+    def hover(needle, offset):
+        got = result_of(c.request("textDocument/hover", position_in(text, uri, needle, 1, offset))) or {}
+        return str(markup_value(got.get("contents")))
+
+    items = complete("ColumnType->INT", len("ColumnType->"))
+    labels = [i.get("label") for i in items]
+    log_result("completion after a library enum's '->' lists its items",
+               labels == ["NONE", "INT", "FLOAT", "STRING", "DATE", "BOOL", "OBJECT"]
+               and all(i.get("kind") == 20 for i in items),
+               f"got: {[(i.get('label'), i.get('kind')) for i in items][:10]}")
+    log_result("and each item's value",
+               any(i.get("detail") == "Query.Structured.ColumnType->INT = 1" for i in items),
+               f"got: {[i.get('detail') for i in items][:3]}")
+
+    items = complete("ColumnType->INT", len("ColumnType->I"))
+    log_result("enum item completion filters by the typed prefix",
+               [i.get("label") for i in items] == ["INT"], f"got: {[i.get('label') for i in items]}")
+
+    items = complete("Compression->FAST", len("Compression->"))
+    log_result("completion after a bundle-qualified enum",
+               "FAST" in [i.get("label") for i in items], f"got: {[i.get('label') for i in items]}")
+
+    items = complete("Format->HEX", len("Format->"))
+    log_result("completion after a class's enum (Number->Format->)",
+               "HEX" in [i.get("label") for i in items] and len(items) == 6,
+               f"got: {[i.get('label') for i in items]}")
+
+    items = complete("Mine->RED", len("Mine->"))
+    log_result("a program's own enum is not taken for a library one",
+               not any(i.get("kind") == 20 for i in items), f"got: {[i.get('label') for i in items][:8]}")
+
+    value = hover("ColumnType->INT", 2)
+    log_result("hover on a library enum shows its documentation and items",
+               "enum Query.Structured.ColumnType" in value and "storage type of a column" in value
+               and "INT = 1" in value, f"got: {value[:200]!r}")
+
+    value = hover("ColumnType->INT", len("ColumnType->I"))
+    log_result("hover on a library enum item shows its value",
+               "Query.Structured.ColumnType->INT = 1" in value, f"got: {value[:200]!r}")
+
+    value = hover("Compression->FAST", 3)
+    log_result("hover on a bundle-qualified enum",
+               "enum Query.Structured.Compression" in value, f"got: {value[:200]!r}")
+
+    value = hover("Format->HEX", len("Format->H"))
+    log_result("hover on a class's enum item",
+               "System.Number->Format->HEX = -18" in value, f"got: {value[:200]!r}")
+    c.notify("textDocument/didClose", {"textDocument": {"uri": uri}})
+
+
 def check_rename_and_organize(c, probe_text, probe_uri):
     """prepareRename, name validation, and source.organizeImports (#1229)."""
     def prepare(needle, offset):
@@ -2336,6 +2437,7 @@ def main():
                    decl_line == get_line, f"got: {decl}")
 
         check_completion_docs(c, caps, probe_text, probe_uri)
+        check_enum_docs(c, apis_json)
         check_rename_and_organize(c, probe_text, probe_uri)
         check_document_symbol_tree(c, probe_text, probe_uri)
         check_tokens_lens_links(c, caps, probe_text, probe_uri)

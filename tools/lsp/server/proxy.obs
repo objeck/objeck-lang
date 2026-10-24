@@ -11,6 +11,11 @@ bundle LSP {
 		@doc_json_cache : static : Cache<String, JsonElement>;
 		@klass_bundles_json : static : JsonElement;
 		@klass_details_json : static : JsonElement;
+		# 'enum-details': enums by compiler name ('Bundle.Name', 'Bundle.Klass#Name');
+		# Nil for an index written before it had them
+		@enum_details_json : static : JsonElement;
+		# an enum's short name -> the 'enum-details' keys that declare it
+		@enum_keys : static : Map<String, Vector<String>>;
 		@doc_bundles : static : Set<String>;
 		@doc_path : static : String;
 		@is_debug : Bool;
@@ -606,6 +611,14 @@ bundle LSP {
 						text := JoinDocumentation(content);
 					};
 
+					# a value of an enum type names the enum ('Bundle.Klass#Name' in a class)
+					if((text = Nil | text->IsEmpty()) & desc = Nil) {
+						enum_json := FindEnum(name->ReplaceAll("#", "->"), Nil);
+						if(enum_json <> Nil) {
+							text := EnumDocumentation(enum_json);
+						};
+					};
+
 					# Fallback for user-defined classes (no entry in objk_apis.json):
 					# a minimal hover from the name (type) and desc (method).
 					if(text = Nil | text->IsEmpty()) {
@@ -625,6 +638,250 @@ bundle LSP {
 			};
 
 			return Nil;
+		}
+
+		#
+		# A library enum named by the text before a '->': 'ColumnType',
+		# 'Query.Structured.ColumnType', 'Number->Format' or 'System.Number->Format'.
+		# Its 'enum-details' entry, or Nil when the name is not a documented enum.
+		#
+		# A short name must belong to a bundle in 'uses' (the file's 'use' bundles and
+		# System), as it must for the compiler: without the 'use', a 'ColumnType' is
+		# not Query.Structured's. With 'uses' Nil, a short name must be unique.
+		#
+		function : FindEnum(chain : String, uses : Vector<String>) ~ JsonElement {
+			if(@enum_details_json = Nil | @enum_keys = Nil | chain = Nil | chain->IsEmpty()) {
+				return Nil;
+			};
+
+			parts := chain->Split("->");
+			if(parts = Nil | parts->Size() < 1 | parts->Size() > 2) {
+				return Nil;
+			};
+
+			# a class's enum: 'Klass->Name' or 'Bundle.Klass->Name'
+			if(parts->Size() = 2) {
+				klass := parts[0]->Trim();
+				keys := @enum_keys->Find(parts[1]->Trim());
+				if(keys = Nil) {
+					return Nil;
+				};
+
+				qualified := klass->Find('.') > -1;
+				found := Vector->New()<String>;
+				each(i : keys) {
+					key := keys->Get(i);
+					owner := @enum_details_json->Get(key)->Get("class")->GetString();
+					if(owner->Equals(klass) | (<>qualified & owner->EndsWith(".{$klass}"))) {
+						found->AddBack(key);
+					};
+				};
+
+				return PickEnum(found, qualified ? Nil : uses);
+			};
+
+			name := parts[0]->Trim();
+
+			# fully qualified: 'Query.Structured.ColumnType'
+			direct := @enum_details_json->Get(name);
+			if(direct <> Nil) {
+				return direct;
+			};
+
+			if(name->Find('.') > -1) {
+				return Nil;
+			};
+
+			# a bundle-level enum by its short name
+			keys := @enum_keys->Find(name);
+			if(keys = Nil) {
+				return Nil;
+			};
+
+			found := Vector->New()<String>;
+			each(i : keys) {
+				key := keys->Get(i);
+				if(@enum_details_json->Get(key)->Get("class")->GetString()->IsEmpty()) {
+					found->AddBack(key);
+				};
+			};
+
+			return PickEnum(found, uses);
+		}
+
+		#
+		# The one candidate in a bundle 'uses' names, or with 'uses' Nil the only
+		# candidate; Nil when none is, or several are.
+		#
+		function : PickEnum(keys : Vector<String>, uses : Vector<String>) ~ JsonElement {
+			picked : String;
+			each(i : keys) {
+				key := keys->Get(i);
+				in_use := uses = Nil;
+				if(<>in_use) {
+					enum_bundle := @enum_details_json->Get(key)->Get("bundle")->GetString();
+					each(j : uses) {
+						if(uses->Get(j)->Equals(enum_bundle)) {
+							in_use := true;
+						};
+					};
+				};
+
+				if(in_use) {
+					if(picked <> Nil) {
+						return Nil;
+					};
+					picked := key;
+				};
+			};
+
+			if(picked <> Nil) {
+				return @enum_details_json->Get(picked);
+			};
+
+			return Nil;
+		}
+
+		# 'Query.Structured.ColumnType' or 'System.Number->Format', as code names it
+		function : EnumDisplayName(enum_json : JsonElement) ~ String {
+			name := enum_json->Get("name")->GetString();
+			owner := enum_json->Get("class")->GetString();
+			if(<>owner->IsEmpty()) {
+				return "{$owner}->{$name}";
+			};
+
+			enum_bundle := enum_json->Get("bundle")->GetString();
+			if(enum_bundle->IsEmpty() | enum_bundle->Equals("Default")) {
+				return name;
+			};
+
+			return "{$enum_bundle}.{$name}";
+		}
+
+		#
+		# completion after an enum's '->': its items whose names start with 'prefix',
+		# or Nil when 'chain' names no documented enum
+		#
+		function : EnumCompletion(chain : String, prefix : String, uses : Vector<String>) ~ JsonElement {
+			enum_json := FindEnum(chain, uses);
+			if(enum_json = Nil) {
+				return Nil;
+			};
+
+			display_name := EnumDisplayName(enum_json);
+			response := JsonElement->New(JsonElement->JsonType->ARRAY);
+			items := enum_json->Get("items");
+			each(i : items) {
+				item := items->Get(i);
+				item_name := item->Get("name")->GetString();
+				if(prefix = Nil | item_name->StartsWith(prefix)) {
+					item_value := JsonElement->Decode(item->Get("value")->GetString());
+
+					completion := JsonElement->New(JsonElement->JsonType->OBJECT);
+					completion->Insert("label", item_name);
+					# CompletionItemKind.EnumMember
+					completion->Insert("kind", 20);
+					completion->Insert("detail", "{$display_name}->{$item_name} = {$item_value}");
+					item_desc_json := item->Get("description");
+					if(item_desc_json <> Nil) {
+						item_desc := JsonElement->Decode(item_desc_json->GetString());
+						if(item_desc <> Nil & <>item_desc->IsEmpty()) {
+							completion->Insert("documentation", item_desc);
+						};
+					};
+					response->Add(completion);
+				};
+			};
+
+			return response;
+		}
+
+		#
+		# Hover for a library enum or one of its items. 'item_receiver' and
+		# 'item_name' are set when the word under the cursor follows a '->'
+		# ('ColumnType->INT'); 'enum_chain' is the text that ends at the word.
+		#
+		function : EnumHover(enum_chain : String, item_receiver : String, item_name : String, uses : Vector<String>, markdown : Bool) ~ JsonElement {
+			text : String;
+
+			if(item_receiver <> Nil & item_name <> Nil) {
+				enum_json := FindEnum(item_receiver, uses);
+				if(enum_json <> Nil) {
+					items := enum_json->Get("items");
+					each(i : items) {
+						item := items->Get(i);
+						if(item->Get("name")->GetString()->Equals(item_name)) {
+							item_value := JsonElement->Decode(item->Get("value")->GetString());
+							display_name := EnumDisplayName(enum_json);
+							text := "```objeck\n{$display_name}->{$item_name} = {$item_value}\n```";
+
+							# the item's own comment, else the enum's
+							desc : String;
+							item_desc_json := item->Get("description");
+							if(item_desc_json <> Nil) {
+								desc := JsonElement->Decode(item_desc_json->GetString());
+							};
+							if(desc = Nil | desc->IsEmpty()) {
+								desc := JsonElement->Decode(enum_json->Get("description")->GetString());
+							};
+							if(desc <> Nil & <>desc->IsEmpty()) {
+								text += "\n\n";
+								text += desc;
+							};
+						};
+					};
+				};
+			};
+
+			if(text = Nil) {
+				enum_json := FindEnum(enum_chain, uses);
+				if(enum_json <> Nil) {
+					text := EnumDocumentation(enum_json);
+				};
+			};
+
+			if(text = Nil) {
+				return Nil;
+			};
+
+			content_json := JsonElement->New(JsonElement->JsonType->OBJECT);
+			content_json->Insert("contents", MakeMarkup(text, markdown));
+			return content_json;
+		}
+
+		# an enum's declaration, description and items
+		function : EnumDocumentation(enum_json : JsonElement) ~ String {
+			kind := enum_json->Get("kind")->GetString();
+			display_name := EnumDisplayName(enum_json);
+			text := "```objeck\n{$kind} {$display_name}\n```";
+
+			desc := JsonElement->Decode(enum_json->Get("description")->GetString());
+			if(desc <> Nil & <>desc->IsEmpty()) {
+				text += "\n\n";
+				text += desc;
+			};
+
+			# a long consts list (OpenCV's color codes) is cut short
+			max_items := 32;
+			items := enum_json->Get("items");
+			if(items->Size() > 0) {
+				text += "\n\n```objeck\n";
+				each(i : items) {
+					if(i < max_items) {
+						item := items->Get(i);
+						item_name := item->Get("name")->GetString();
+						item_value := JsonElement->Decode(item->Get("value")->GetString());
+						text += "{$item_name} = {$item_value}\n";
+					};
+				};
+				if(items->Size() > max_items) {
+					more := items->Size() - max_items;
+					text += "... {$more} more\n";
+				};
+				text += "```";
+			};
+
+			return text;
 		}
 
 		method : public : GetDocumentation(klass_name : String, method_name : String) ~ JsonElement {
@@ -665,6 +922,25 @@ bundle LSP {
 			if(parser->Parse()) {
 				@klass_details_json := parser->GetRoot()->Get("class-details");
 				@klass_bundles_json := parser->GetRoot()->Get("class-bundle-names");
+				@enum_details_json := parser->GetRoot()->Get("enum-details");
+
+				@enum_keys := Map->New()<String, Vector<String>>;
+				if(@enum_details_json <> Nil & @enum_details_json->GetType() = JsonElement->JsonType->OBJECT) {
+					enum_names := @enum_details_json->GetNames();
+					each(i : enum_names) {
+						key := enum_names->Get(i);
+						name_json := @enum_details_json->Get(key)->Get("name");
+						if(name_json <> Nil) {
+							short_name := name_json->GetString();
+							keys := @enum_keys->Find(short_name);
+							if(keys = Nil) {
+								keys := Vector->New()<String>;
+								@enum_keys->Insert(short_name, keys);
+							};
+							keys->AddBack(key);
+						};
+					};
+				};
 
 				if(@klass_details_json = Nil | @klass_bundles_json = Nil) {
 					"### Unable to process JSON configuration file: {$@doc_path}"->ErrorLine();

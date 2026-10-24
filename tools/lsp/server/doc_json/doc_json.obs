@@ -129,11 +129,83 @@ class JsonMaker {
 				buffer += ",\n\t";
 			};
 		};
+		buffer += "\n\t},\n\t\"enum-details\": {\n\t";
+
+		# Enums and consts, keyed by the name the compiler gives them: 'Bundle.Name'
+		# at bundle level and 'Bundle.Klass#Name' in a class. The parser always read
+		# them -- the HTML reference has enum pages -- but nothing here wrote them
+		# out, so the editor had no documentation for any enum or its items.
+		enum_entries := Vector->New()<String>;
+		each(i : bundle_pairs) {
+			bundle_pair := bundle_pairs->Get(i);
+			enums := bundle_pair->GetSecond()->GetScopedEnums();
+			enum_key_values := enums->GetKeyValues()<Pair<String, EnumConstSnippet>>;
+			each(j : enum_key_values) {
+				enum_key_value := enum_key_values->Get(j);
+				enum_entries->AddBack(ProcessEnum(enum_key_value->GetFirst(), enum_key_value->GetSecond()));
+			};
+		};
+
+		each(i : enum_entries) {
+			buffer += enum_entries->Get(i);
+			if(i + 1 < enum_entries->Size()) {
+				buffer += ",\n\t";
+			};
+		};
 		buffer += "\n\t}\n}";
-		
+
 		FileWriter->WriteFile("out.json", buffer);
 
 		return true;
+	}
+
+	#~
+	One 'enum-details' entry:
+	{ "name", "bundle", "class" (full name, or "" at bundle level), "kind" ("enum" or
+	"consts"), "description", "items": [{ "name", "value", "description" }] }. A
+	value is text: a consts item's literal as written, an enum item's number. An
+	item's description is its own doc comment, or "".
+	~#
+	method : ProcessEnum(enum_name : String, snippet : EnumConstSnippet) ~ String {
+		short_name := snippet->GetShortName();
+		bundle_name := snippet->GetBundleName();
+
+		owner_name := "";
+		owner := snippet->GetOwnerClass();
+		if(owner <> Nil) {
+			if(bundle_name <> Nil & <>bundle_name->Equals("Default")) {
+				owner_name += bundle_name;
+				owner_name += '.';
+			};
+			owner_name += owner;
+		};
+
+		kind := snippet->IsConsts() ? "consts" : "enum";
+		description := JsonElement->Encode(snippet->GetDesc()->Trim());
+
+		entry := "\t\"{$enum_name}\": {\n";
+		entry += "\t\t\t\"name\": \"{$short_name}\",\n";
+		entry += "\t\t\t\"bundle\": \"{$bundle_name}\",\n";
+		entry += "\t\t\t\"class\": \"{$owner_name}\",\n";
+		entry += "\t\t\t\"kind\": \"{$kind}\",\n";
+		entry += "\t\t\t\"description\": \"{$description}\",\n";
+		entry += "\t\t\t\"items\": [";
+
+		names := snippet->GetItemNames();
+		values := snippet->GetItemValues();
+		descs := snippet->GetItemDescs();
+		each(i : names) {
+			item_name := names->Get(i);
+			item_value := JsonElement->Encode(values->Get(i));
+			item_desc := JsonElement->Encode(descs->Get(i));
+			entry += "\n\t\t\t\t{ \"name\": \"{$item_name}\", \"value\": \"{$item_value}\", \"description\": \"{$item_desc}\" }";
+			if(i + 1 < names->Size()) {
+				entry += ",";
+			};
+		};
+		entry += "\n\t\t\t]\n\t\t}";
+
+		return entry;
 	}
 
 	method : ProcessClass(class_name : String, snippet : ClassSnippet, buffer : String) ~ Nil {
