@@ -207,6 +207,10 @@ def mt_oversubscribe_workers():
 
 
 def main():
+    # Sections 14 and 15 quote non-ASCII output in a failure's detail, and
+    # stdout may be a pipe in the ANSI code page (it is on the hosted Windows
+    # runners): escape what it cannot hold rather than die mid-report.
+    sys.stdout.reconfigure(errors="backslashreplace")
     if len(sys.argv) < 2:
         print(__doc__)
         return 2

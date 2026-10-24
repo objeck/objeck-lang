@@ -929,8 +929,10 @@ def suite_selfswap(obu, work, place="self"):
     invoked by that path with OBU_INSTALL_ROOT UNSET, leaving InstallRoot() to
     resolve to the tree about to be swapped.
     """
+    # the place escaped: a hosted runner's stdout is a cp1252 pipe, which
+    # cannot encode the CJK in it
     print("\nself-replacement (obu swaps its own tree)%s:"
-          % ("" if place == "self" else ", under " + place))
+          % ("" if place == "self" else ", under " + ascii(place)))
     root = os.path.join(work, place, "install")
     make_install(root, "OLD")
     live = os.path.join(root, "bin", "obu" + EXE_SUFFIX)
@@ -1125,6 +1127,10 @@ def suite_rename_contention(obu, work):
 # ---------------------------------------------------------------- main
 
 def main():
+    # A failure's detail can quote obu's non-ASCII output, and stdout may be a
+    # pipe in the ANSI code page (it is on the hosted Windows runners): escape
+    # what it cannot hold rather than die mid-report.
+    sys.stdout.reconfigure(errors="backslashreplace")
     keep = "--keep" in sys.argv
     work = tempfile.mkdtemp(prefix="obu-test-")
     try:
