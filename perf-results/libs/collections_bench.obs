@@ -1,0 +1,541 @@
+#~
+Collections benchmark for run_lib_bench.py.
+Prints 'BENCH <case> <seconds> <reference_seconds>' per case. The reference is a
+plain-array loop doing comparable work (hash the key, touch one array slot) in the
+same run, so the ratio seconds/reference cancels most machine noise. Small sizes
+repeat their work so each timing covers enough clock ticks: 10k x100, 100k x10, 1M x1.
+The primitive-collection cases sit between PRIMITIVE-BEGIN and PRIMITIVE-END so the
+Hash cases can be run alone against a gen_collect.obl that predates IntMap and friends.
+~#
+use Collection;
+
+class CollectionsBench {
+	# the plain-array references are so cheap that they repeat this many times (and are
+	# divided back down) so each covers enough clock ticks to time; the references that
+	# touch one Int or Bool slot per operation are cheaper still and repeat more
+	consts Tune {
+		REFERENCE_REPEAT := 20,
+		CHEAP_REPEAT := 100
+	}
+
+	function : Report(show : Bool, name : String, seconds : Float, reference : Float) ~ Nil {
+		if(<>show) {
+			return;
+		};
+		"BENCH {$name} {$seconds} {$reference}"->PrintLine();
+	}
+
+	function : Label(n : Int) ~ String {
+		if(n >= 1000000) {
+			return "{$n / 1000000}m";
+		};
+		return "{$n / 1000}k";
+	}
+
+	function : Slots(n : Int) ~ Int {
+		slots := 16;
+		while(slots < n * 2) {
+			slots := slots << 1;
+		};
+		return slots;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		# the allocation-heavy vector cases run first, on a small heap, so how much the
+		# earlier cases left behind does not decide how long their collections take
+		# PRIMITIVE-BEGIN
+		# a small untimed pass first, so JIT compilation is not timed
+		VectorCases(20000, false);
+		BitSetCases(20000, false);
+		VectorCases(1000000, true);
+		BitSetCases(1000000, true);
+		# PRIMITIVE-END
+
+		max := 1000000;
+		strs := String->New[max];
+		refs := IntRef->New[max];
+		for(i := 0; i < max; i += 1;) {
+			strs[i] := i->ToString();
+			refs[i] := IntRef->New(i * 7);
+		};
+
+		sizes := [10000, 100000, 1000000];
+		reps := [100, 10, 1];
+		HashString(strs, refs, 2000, 2, false);
+		HashInt(refs, 2000, 2, false);
+		each(s : sizes) {
+			HashString(strs, refs, sizes[s], reps[s], true);
+			HashInt(refs, sizes[s], reps[s], true);
+		};
+
+		# PRIMITIVE-BEGIN
+		# unboxed tables are fast enough to need more repetitions for a stable timing
+		primitive_reps := [1000, 100, 5];
+		IntMapCases(2000, 2, false);
+		IntSetCases(2000, 2, false);
+		each(s : sizes) {
+			IntMapCases(sizes[s], primitive_reps[s], true);
+			IntSetCases(sizes[s], primitive_reps[s], true);
+		};
+		# PRIMITIVE-END
+	}
+
+	function : HashString(strs : String[], vals : IntRef[], n : Int, reps : Int, show : Bool) ~ Nil {
+		tag := Label(n);
+		mask := Slots(n) - 1;
+		slots := String->New[mask + 1];
+
+		# insert
+		hash : Hash<String, IntRef>;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			hash := Hash->New()<String, IntRef>;
+			for(i := 0; i < n; i += 1;) {
+				hash->Insert(strs[i], vals[i]);
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->REFERENCE_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[strs[i]->HashID() and mask] := strs[i];
+			};
+		};
+		u->End();
+		Report(show, "hash_str_insert_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->REFERENCE_REPEAT);
+
+		# find
+		found := 0;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(hash->Find(strs[i]) <> Nil) {
+					found += 1;
+				};
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->REFERENCE_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(slots[strs[i]->HashID() and mask] <> Nil) {
+					found += 1;
+				};
+			};
+		};
+		u->End();
+		Report(show, "hash_str_find_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->REFERENCE_REPEAT);
+
+		# remove: rebuild the table untimed before each pass
+		removing := 0.0;
+		for(r := 0; r < reps; r += 1;) {
+			hash := Hash->New()<String, IntRef>;
+			for(i := 0; i < n; i += 1;) {
+				hash->Insert(strs[i], vals[i]);
+			};
+			t := System.Time.Timer->New(true);
+			for(i := 0; i < n; i += 1;) {
+				hash->Remove(strs[i]);
+			};
+			t->End();
+			removing += t->GetElapsedTime();
+		};
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->REFERENCE_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[strs[i]->HashID() and mask] := Nil;
+			};
+		};
+		u->End();
+		Report(show, "hash_str_remove_{$tag}", removing, u->GetElapsedTime() / Tune->REFERENCE_REPEAT);
+
+		if(found < 0) {
+			found->PrintLine();
+		};
+	}
+
+	function : HashInt(refs : IntRef[], n : Int, reps : Int, show : Bool) ~ Nil {
+		tag := Label(n);
+		mask := Slots(n) - 1;
+		slots := IntRef->New[mask + 1];
+
+		hash : Hash<IntRef, IntRef>;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			hash := Hash->New()<IntRef, IntRef>;
+			for(i := 0; i < n; i += 1;) {
+				hash->Insert(refs[i], refs[i]);
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[refs[i]->HashID() and mask] := refs[i];
+			};
+		};
+		u->End();
+		Report(show, "hash_int_insert_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		found := 0;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(hash->Find(refs[i]) <> Nil) {
+					found += 1;
+				};
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(slots[refs[i]->HashID() and mask] <> Nil) {
+					found += 1;
+				};
+			};
+		};
+		u->End();
+		Report(show, "hash_int_find_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		removing := 0.0;
+		for(r := 0; r < reps; r += 1;) {
+			hash := Hash->New()<IntRef, IntRef>;
+			for(i := 0; i < n; i += 1;) {
+				hash->Insert(refs[i], refs[i]);
+			};
+			t := System.Time.Timer->New(true);
+			for(i := 0; i < n; i += 1;) {
+				hash->Remove(refs[i]);
+			};
+			t->End();
+			removing += t->GetElapsedTime();
+		};
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[refs[i]->HashID() and mask] := Nil;
+			};
+		};
+		u->End();
+		Report(show, "hash_int_remove_{$tag}", removing, u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		if(found < 0) {
+			found->PrintLine();
+		};
+	}
+
+	# PRIMITIVE-BEGIN
+	function : IntMapCases(n : Int, reps : Int, show : Bool) ~ Nil {
+		tag := Label(n);
+		mask := Slots(n) - 1;
+		slots := Int->New[mask + 1];
+
+		map : IntMap;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			map := IntMap->New();
+			for(i := 0; i < n; i += 1;) {
+				map->Insert(i * 7, i);
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[(i * 7) and mask] := i;
+			};
+		};
+		u->End();
+		Report(show, "intmap_insert_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		sum := 0;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				sum += map->Find(i * 7, 0);
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				sum += slots[(i * 7) and mask];
+			};
+		};
+		u->End();
+		Report(show, "intmap_find_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		removing := 0.0;
+		for(r := 0; r < reps; r += 1;) {
+			map := IntMap->New();
+			for(i := 0; i < n; i += 1;) {
+				map->Insert(i * 7, i);
+			};
+			t := System.Time.Timer->New(true);
+			for(i := 0; i < n; i += 1;) {
+				map->Remove(i * 7);
+			};
+			t->End();
+			removing += t->GetElapsedTime();
+		};
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[(i * 7) and mask] := 0;
+			};
+		};
+		u->End();
+		Report(show, "intmap_remove_{$tag}", removing, u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		if(sum = -1) {
+			sum->PrintLine();
+		};
+	}
+
+	function : IntSetCases(n : Int, reps : Int, show : Bool) ~ Nil {
+		tag := Label(n);
+		mask := Slots(n) - 1;
+		slots := Bool->New[mask + 1];
+
+		set : IntSet;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			set := IntSet->New();
+			for(i := 0; i < n; i += 1;) {
+				set->Add(i * 7);
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[(i * 7) and mask] := true;
+			};
+		};
+		u->End();
+		Report(show, "intset_add_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		found := 0;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(set->Has(i * 7)) {
+					found += 1;
+				};
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(slots[(i * 7) and mask]) {
+					found += 1;
+				};
+			};
+		};
+		u->End();
+		Report(show, "intset_has_{$tag}", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		removing := 0.0;
+		for(r := 0; r < reps; r += 1;) {
+			set := IntSet->New();
+			for(i := 0; i < n; i += 1;) {
+				set->Add(i * 7);
+			};
+			t := System.Time.Timer->New(true);
+			for(i := 0; i < n; i += 1;) {
+				set->Remove(i * 7);
+			};
+			t->End();
+			removing += t->GetElapsedTime();
+		};
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				slots[(i * 7) and mask] := false;
+			};
+		};
+		u->End();
+		Report(show, "intset_remove_{$tag}", removing, u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		if(found < 0) {
+			found->PrintLine();
+		};
+	}
+
+	function : VectorCases(n : Int, show : Bool) ~ Nil {
+		reps := 5;
+
+		# append
+		ints : IntVector;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			ints := IntVector->New();
+			for(i := 0; i < n; i += 1;) {
+				ints->AddBack(i);
+			};
+		};
+		t->End();
+		boxed : Vector<IntRef>;
+		b := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			boxed := Vector->New()<IntRef>;
+			for(i := 0; i < n; i += 1;) {
+				boxed->AddBack(IntRef->New(i));
+			};
+		};
+		b->End();
+		plain := Int->New[n];
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				plain[i] := i;
+			};
+		};
+		u->End();
+		Report(show, "intvector_append_1m", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+		Report(show, "vector_intref_append_1m", b->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		# sum by index
+		sum := 0;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				sum += ints->Get(i);
+			};
+		};
+		t->End();
+		b := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				sum += boxed->Get(i)->Get();
+			};
+		};
+		b->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				sum += plain[i];
+			};
+		};
+		u->End();
+		Report(show, "intvector_get_sum_1m", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+		Report(show, "vector_intref_get_sum_1m", b->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		# Sum is fast enough to need its own 20x repeat, divided back down like the reference
+		s := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			sum += ints->Sum();
+		};
+		s->End();
+		Report(show, "intvector_sum_1m", s->GetElapsedTime() / Tune->CHEAP_REPEAT, u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		# sort pseudo-random values; the reference makes log2(n) passes over a plain array
+		seed := 4242;
+		ints := IntVector->New(n);
+		boxed := Vector->New()<IntRef>;
+		for(i := 0; i < n; i += 1;) {
+			seed := (seed * 1103515245 + 12345) % 2147483648;
+			ints->AddBack(seed % 1000000);
+			boxed->AddBack(IntRef->New(seed % 1000000));
+		};
+		t := System.Time.Timer->New(true);
+		ints->Sort();
+		t->End();
+		b := System.Time.Timer->New(true);
+		boxed->Sort(\(x, y) => x->Get() - y->Get());
+		b->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < 20 * Tune->REFERENCE_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				sum += plain[i];
+			};
+		};
+		u->End();
+		Report(show, "intvector_sort_1m", t->GetElapsedTime(), u->GetElapsedTime() / Tune->REFERENCE_REPEAT);
+		Report(show, "vector_intref_sort_1m", b->GetElapsedTime(), u->GetElapsedTime() / Tune->REFERENCE_REPEAT);
+
+		if(sum = -1 | ints->Get(0) > ints->Get(1)) {
+			sum->PrintLine();
+		};
+	}
+
+	function : BitSetCases(n : Int, show : Bool) ~ Nil {
+		reps := 50;
+
+		bits : BitSet;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			bits := BitSet->New(n);
+			for(i := 0; i < n; i += 3;) {
+				bits->Set(i);
+			};
+		};
+		t->End();
+		flags := Bool->New[n];
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 3;) {
+				flags[i] := true;
+			};
+		};
+		u->End();
+		Report(show, "bitset_set_1m", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		count := 0;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < reps; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(bits->Get(i)) {
+					count += 1;
+				};
+			};
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < reps * Tune->CHEAP_REPEAT; r += 1;) {
+			for(i := 0; i < n; i += 1;) {
+				if(flags[i]) {
+					count += 1;
+				};
+			};
+		};
+		u->End();
+		Report(show, "bitset_get_1m", t->GetElapsedTime(), u->GetElapsedTime() / Tune->CHEAP_REPEAT);
+
+		# whole-set operations: 100 rounds of And/Or/Cardinality against Bool[] loops
+		other_bits := BitSet->New(n);
+		other_flags := Bool->New[n];
+		for(i := 0; i < n; i += 5;) {
+			other_bits->Set(i);
+			other_flags[i] := true;
+		};
+		rounds := 100;
+		t := System.Time.Timer->New(true);
+		for(r := 0; r < rounds; r += 1;) {
+			work := bits->Copy();
+			work->Or(other_bits);
+			work->And(other_bits);
+			count += work->Cardinality();
+		};
+		t->End();
+		u := System.Time.Timer->New(true);
+		for(r := 0; r < rounds; r += 1;) {
+			work := Bool->New[n];
+			for(i := 0; i < n; i += 1;) {
+				work[i] := (flags[i] | other_flags[i]) & other_flags[i];
+				if(work[i]) {
+					count += 1;
+				};
+			};
+		};
+		u->End();
+		Report(show, "bitset_ops_1m", t->GetElapsedTime(), u->GetElapsedTime());
+
+		if(count = -1) {
+			count->PrintLine();
+		};
+	}
+	# PRIMITIVE-END
+}

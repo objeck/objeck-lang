@@ -29,7 +29,11 @@ namespace Runtime {
     VAR_ARRAY,
     VAR_VECTOR,
     VAR_MAP,
-    VAR_HASH
+    VAR_HASH,
+    VAR_PRIM_VECTOR,  // IntVector, FloatVector
+    VAR_INT_MAP,
+    VAR_INT_SET,
+    VAR_BIT_SET
   };
 
   // declared up front because several of these call one another
@@ -40,6 +44,7 @@ namespace Runtime {
   inline int CollectionKind(StackClass* klass);
   inline bool CollectionSize(StackClass* klass, size_t* obj, long& out_size);
   inline std::string CollectionSummary(StackClass* klass, size_t* obj);
+  inline long BitSetCardinality(size_t* obj);
   inline bool IsLeafObject(StackClass* klass);
   inline std::string DescribeObject(size_t* obj, StackClass* klass);
   inline std::string FormatSlot(ParamType type, size_t* mem, int index);
@@ -157,15 +162,55 @@ namespace Runtime {
     if(leaf == L"Map" && fields >= 3) {
       return VAR_MAP;
     }
-    if(leaf == L"Hash" && fields >= 2) {
+    // Hash is open-addressed: @keys (slot 0), @size (1), @capacity (2),
+    // @auto_resize (3), @values (4), @hashes (5), ...
+    if(leaf == L"Hash" && fields >= 5) {
       return VAR_HASH;
+    }
+    // IntVector/FloatVector: @values (0), @size (1)
+    if((leaf == L"IntVector" || leaf == L"FloatVector") && fields >= 2) {
+      return VAR_PRIM_VECTOR;
+    }
+    // IntMap: @keys (0), @size (1), @values (2), @used (3, a Bool[] stored as bytes)
+    if(leaf == L"IntMap" && fields >= 4) {
+      return VAR_INT_MAP;
+    }
+    // IntSet: @keys (0), @size (1), @used (2)
+    if(leaf == L"IntSet" && fields >= 3) {
+      return VAR_INT_SET;
+    }
+    // BitSet: @words (0), @size (1) -- size counts bits, not set bits
+    if(leaf == L"BitSet" && fields >= 2) {
+      return VAR_BIT_SET;
     }
 
     return VAR_OBJECT;
   }
 
-  // Element count of a recognized collection. @size sits at slot 1 in Vector and
-  // Hash, slot 2 in Map -- the one place that mapping is written down.
+  // Number of set bits in a BitSet
+  inline long BitSetCardinality(size_t* obj)
+  {
+    long count;
+    size_t* data;
+    if(!obj || !ArrayBody((size_t*)obj[0], count, data)) {
+      return 0;
+    }
+
+    long bits = 0;
+    for(long i = 0; i < count; ++i) {
+      uint64_t word = (uint64_t)data[i];
+      while(word) {
+        word &= word - 1;
+        bits++;
+      }
+    }
+
+    return bits;
+  }
+
+  // Element count of a recognized collection. @size sits at slot 1 in every
+  // recognized collection but Map, where it is slot 2 -- the one place that
+  // mapping is written down.
   inline bool CollectionSize(StackClass* klass, size_t* obj, long& out_size)
   {
     out_size = 0;
@@ -194,7 +239,11 @@ namespace Runtime {
     }
 
     std::ostringstream oss;
-    oss << UnicodeToBytes(ClassLeafName(klass)) << "(size=" << size << ')';
+    oss << UnicodeToBytes(ClassLeafName(klass)) << "(size=" << size;
+    if(CollectionKind(klass) == VAR_BIT_SET) {
+      oss << ", set=" << BitSetCardinality(obj);
+    }
+    oss << ')';
     return oss.str();
   }
 

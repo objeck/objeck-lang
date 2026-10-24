@@ -952,6 +952,10 @@ int DapAdapter::IndexedChildCount(ParamType type, size_t raw_value)
     if(!CollectionSize(klass, (size_t*)raw_value, size)) {
       return 0;
     }
+    // a BitSet's children are its set bits, not its addressable ones
+    if(CollectionKind(klass) == VAR_BIT_SET) {
+      size = BitSetCardinality((size_t*)raw_value);
+    }
     return size > 0 ? (int)size : 0;
   }
 
@@ -1161,67 +1165,117 @@ void DapAdapter::ExpandMap(size_t* obj, StackClass* klass, int depth, json& vari
 
 void DapAdapter::ExpandHash(size_t* obj, StackClass* klass, int depth, json& variables)
 {
-  // Hash: @buckets at slot 0, @size at 1, @capacity at 2.
-  int buckets_index;
+  // Hash is open-addressed over parallel arrays: @keys at slot 0 and @values at
+  // slot 4 (gen_collect.obs). A slot is in use when its key is not Nil; entries
+  // are listed in slot order, which is the order Hash->GetKeys() returns.
+  int keys_index;
+  int values_index;
 
-  if(!obj || !FieldIndex(klass, L"@buckets", 0, buckets_index)) {
+  if(!obj || !FieldIndex(klass, L"@keys", 0, keys_index) || !FieldIndex(klass, L"@values", 4, values_index)) {
     ExpandObjectFields(obj, klass, depth, variables);
     return;
   }
 
-  size_t* buckets = (size_t*)obj[buckets_index];
-  if(!buckets) {
+  long key_count;
+  size_t* key_data;
+  long value_count;
+  size_t* value_data;
+  if(!ArrayBody((size_t*)obj[keys_index], key_count, key_data) ||
+     !ArrayBody((size_t*)obj[values_index], value_count, value_data)) {
     return;
   }
 
-  long bucket_count;
-  size_t* bucket_data;
-  if(!ArrayBody(buckets, bucket_count, bucket_data)) {
+  for(long i = 0; i < key_count && i < value_count && (int)variables.size() < MAX_CHILDREN; ++i) {
+    if(key_data[i]) {
+      variables.push_back(MakeChildVariable(FormatSlot(OBJ_PARM, key_data, (int)i), OBJ_PARM, value_data, (int)i, depth));
+    }
+  }
+}
+
+void DapAdapter::ExpandPrimitiveVector(size_t* obj, StackClass* klass, int depth, json& variables)
+{
+  // IntVector/FloatVector: @values at slot 0 (Int[] or Float[]), @size at 1.
+  long size;
+  long capacity;
+  size_t* data;
+  if(!obj || !CollectionSize(klass, obj, size) || !ArrayBody((size_t*)obj[0], capacity, data)) {
+    ExpandObjectFields(obj, klass, depth, variables);
     return;
   }
 
-  // Each occupied bucket holds a CompareList whose nodes carry a HashPair.
-  for(long i = 0; i < bucket_count && (int)variables.size() < MAX_CHILDREN; ++i) {
-    size_t* list = (size_t*)bucket_data[i];
-    if(!list) {
+  const ParamType element_type = ClassLeafName(klass) == L"FloatVector" ? FLOAT_PARM : INT_PARM;
+  long shown = size < capacity ? size : capacity;
+  if(shown > MAX_CHILDREN) {
+    shown = MAX_CHILDREN;
+  }
+
+  for(long i = 0; i < shown; ++i) {
+    variables.push_back(MakeChildVariable(ElementName(i), element_type, data, (int)i, depth));
+  }
+}
+
+void DapAdapter::ExpandIntTable(size_t* obj, StackClass* klass, int depth, bool has_values, json& variables)
+{
+  // IntMap: @keys (0), @size (1), @values (2), @used (3). IntSet: @keys (0),
+  // @size (1), @used (2). @used is a Bool[], which is stored as a byte array.
+  const int used_slot = has_values ? 3 : 2;
+  long key_count;
+  size_t* key_data;
+  long used_count;
+  size_t* used_data;
+  if(!obj || !ArrayBody((size_t*)obj[0], key_count, key_data) || !ArrayBody((size_t*)obj[used_slot], used_count, used_data)) {
+    ExpandObjectFields(obj, klass, depth, variables);
+    return;
+  }
+
+  long value_count = 0;
+  size_t* value_data = nullptr;
+  if(has_values && !ArrayBody((size_t*)obj[2], value_count, value_data)) {
+    ExpandObjectFields(obj, klass, depth, variables);
+    return;
+  }
+
+  const unsigned char* used = (const unsigned char*)used_data;
+  long shown = 0;
+  for(long i = 0; i < key_count && i < used_count && (int)variables.size() < MAX_CHILDREN; ++i) {
+    if(!used[i]) {
       continue;
     }
 
-    // CompareList: @size at slot 0, @head at 1.
-    StackClass* list_class = MemoryManager::GetClass(list);
-    int head_index;
-    if(!list_class || !FieldIndex(list_class, L"@head", 1, head_index)) {
-      continue;
+    if(has_values && i < value_count) {
+      // key -> value, as a Hash entry is shown
+      variables.push_back(MakeChildVariable(FormatSlot(INT_PARM, key_data, (int)i), INT_PARM, value_data, (int)i, depth));
     }
+    else {
+      variables.push_back(MakeChildVariable(ElementName(shown), INT_PARM, key_data, (int)i, depth));
+    }
+    shown++;
+  }
+}
 
-    size_t* node = (size_t*)list[head_index];
-    int guard = 0;
-    while(node && (int)variables.size() < MAX_CHILDREN && guard++ < MAX_CHILDREN) {
-      // CompareListNode: @value at slot 0, @next at 1.
-      StackClass* node_class = MemoryManager::GetClass(node);
-      int node_value_index;
-      int next_index;
-      if(!node_class ||
-         !FieldIndex(node_class, L"@value", 0, node_value_index) ||
-         !FieldIndex(node_class, L"@next", 1, next_index)) {
-        break;
+void DapAdapter::ExpandBitSet(size_t* obj, StackClass* klass, int depth, json& variables)
+{
+  // BitSet: @words (0, an Int[] of 64-bit words), @size (1, bits). Lists the
+  // indexes of the set bits.
+  long size;
+  long word_count;
+  size_t* words;
+  if(!obj || !CollectionSize(klass, obj, size) || !ArrayBody((size_t*)obj[0], word_count, words)) {
+    ExpandObjectFields(obj, klass, depth, variables);
+    return;
+  }
+
+  long shown = 0;
+  for(long w = 0; w < word_count && (int)variables.size() < MAX_CHILDREN; ++w) {
+    uint64_t word = (uint64_t)words[w];
+    for(int b = 0; word && b < 64 && (int)variables.size() < MAX_CHILDREN; ++b, word >>= 1) {
+      if(word & 1) {
+        json bit;
+        bit["name"] = ElementName(shown++);
+        bit["value"] = std::to_string(w * 64 + b);
+        bit["variablesReference"] = 0;
+        variables.push_back(bit);
       }
-
-      // HashPair: @key at slot 0, @value at 1.
-      size_t* pair = (size_t*)node[node_value_index];
-      if(pair) {
-        StackClass* pair_class = MemoryManager::GetClass(pair);
-        int pair_key_index;
-        int pair_value_index;
-        if(pair_class &&
-           FieldIndex(pair_class, L"@key", 0, pair_key_index) &&
-           FieldIndex(pair_class, L"@value", 1, pair_value_index)) {
-          variables.push_back(MakeChildVariable(FormatSlot(OBJ_PARM, pair, pair_key_index),
-                                                OBJ_PARM, pair, pair_value_index, depth));
-        }
-      }
-
-      node = (size_t*)node[next_index];
     }
   }
 }
@@ -1245,6 +1299,22 @@ void DapAdapter::ExpandHandle(const VarHandle& handle, json& variables)
 
   case VAR_HASH:
     ExpandHash(handle.ptr, handle.klass, child_depth, variables);
+    break;
+
+  case VAR_PRIM_VECTOR:
+    ExpandPrimitiveVector(handle.ptr, handle.klass, child_depth, variables);
+    break;
+
+  case VAR_INT_MAP:
+    ExpandIntTable(handle.ptr, handle.klass, child_depth, true, variables);
+    break;
+
+  case VAR_INT_SET:
+    ExpandIntTable(handle.ptr, handle.klass, child_depth, false, variables);
+    break;
+
+  case VAR_BIT_SET:
+    ExpandBitSet(handle.ptr, handle.klass, child_depth, variables);
     break;
 
   default:
@@ -1938,6 +2008,13 @@ void DapAdapter::HandleSetVariable(int request_seq, const json& args)
     case VAR_MAP:
     case VAR_HASH:
       error = L"elements of a Vector, Map or Hash are not assignable through the debugger; expand the element and assign its fields";
+      break;
+
+    case VAR_PRIM_VECTOR:
+    case VAR_INT_MAP:
+    case VAR_INT_SET:
+    case VAR_BIT_SET:
+      error = L"elements of an IntVector, FloatVector, IntMap, IntSet or BitSet are not assignable through the debugger";
       break;
 
     default:

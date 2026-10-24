@@ -54,27 +54,36 @@ class PtrSet {
   size_t used;          // occupied + tombstones; drives growth
 
   static size_t Hash(size_t* key) {
-    // Just the address, shifted past the three always-zero alignment bits. No
-    // multiply, no mixing.
+    // The address past its three always-zero alignment bits, with its higher
+    // bits folded into the lower ones.
     //
-    // Mixing was the first choice here and it was slower. Allocator addresses
-    // arrive in rising runs, so an unmixed hash puts objects allocated near each
-    // other in slots near each other, and a probe touches cache lines the last
-    // probe already pulled in. Fibonacci hashing scatters them across the whole
-    // table and pays a miss per lookup. Measured over 2M realistic addresses
-    // (varied sizes, 16-byte aligned, occasional page gaps):
+    // Allocator addresses arrive in rising runs, so a hash that keeps nearby
+    // addresses in nearby slots lets a probe reuse the cache lines the last one
+    // pulled in. Fibonacci hashing scatters them and pays a miss per lookup.
+    // Measured over 2M realistic addresses (varied sizes, 16-byte aligned,
+    // occasional page gaps):
     //
     //                   insert     count
     //   unordered_set   78.1 ns    19.6 ns
     //   fibonacci        9.4 ns     8.2 ns
     //   shift            6.8 ns     4.0 ns
     //
-    // The risk of not mixing is clustering when addresses are spaced at an exact
-    // multiple of the table stride. That needs every object to be 8*capacity
-    // bytes apart -- megabytes, for a table this size -- which no run of object
-    // allocations produces. A regular 32-byte stride, the worst realistic case,
-    // lands on every fourth slot and measures 1.6 ns / 1.2 ns.
-    return (size_t)((uintptr_t)key >> 3);
+    // The plain shift was used until it met macOS. Its nano allocator hands out
+    // small objects of one size from blocks laid out at a large power-of-two
+    // stride, so the addresses of a big promotion alias each other modulo the
+    // table's span (8 * capacity bytes) and pile into a few slot ranges. One
+    // major collection that promoted ~730k objects spent 30 s in insert's probe
+    // loop on macOS arm64; Linux and Windows took well under a second.
+    //
+    // So each 64 KB window of addresses gets a pseudo-random offset (its window
+    // number times a Fibonacci multiplier), added rather than XORed. Inside a
+    // window the offset is constant, so a rising run of addresses still fills a
+    // rising run of slots in order, which is what the shift was chosen for. Two
+    // addresses that alias -- a multiple of the table's span apart, and the span
+    // is at least 64 KB once the table has 8K slots -- always sit in different
+    // windows, so they land at unrelated offsets.
+    const uintptr_t x = (uintptr_t)key >> 3;
+    return (size_t)(x + (x >> 13) * (uintptr_t)0x9E3779B97F4A7C15ULL);
   }
 
   void Allocate(size_t new_capacity) {
@@ -233,6 +242,24 @@ class PtrSet {
       ++used;
     }
     ++live;
+  }
+
+  // Slots a lookup of a member steps past before finding it (0 when it sits in
+  // its home slot); capacity when it is not a member. For tests: clustering is a
+  // performance defect, invisible to every other method.
+  size_t ProbeDistance(size_t* key) const {
+    const size_t mask = capacity - 1;
+    const size_t home = Hash(key) & mask;
+    for(size_t step = 0; step < capacity; ++step) {
+      size_t* slot = slots[(home + step) & mask];
+      if(slot == key) {
+        return step;
+      }
+      if(slot == Empty()) {
+        break;
+      }
+    }
+    return capacity;
   }
 
   Iterator begin() { return Iterator(slots, capacity, 0); }

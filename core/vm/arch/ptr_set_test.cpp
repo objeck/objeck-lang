@@ -200,6 +200,42 @@ int main() {
     check("usable after clear", set.count(Addr(1)) == 1);
   }
 
+  std::printf("\naliased blocks do not pile up (macOS nano allocator):\n");
+  {
+    // macOS hands out small objects of one size from 16 KB blocks laid out at a
+    // large power-of-two stride, so under a plain shift-by-3 hash the blocks of
+    // a big promotion alias modulo the table's span and share slot ranges. A
+    // major collection promoting ~730k objects spent 30 s in insert's probe loop
+    // on macOS arm64. Model it: 4096 blocks of 300 48-byte objects, each block
+    // 64 MB from the last.
+    PtrSet set;
+    const uintptr_t base = (uintptr_t)0x600000000000ULL;
+    const uintptr_t block_stride = (uintptr_t)64 << 20;
+    const size_t blocks = 4096;
+    const size_t per_block = 300;
+    for(size_t b = 0; b < blocks; ++b) {
+      for(size_t i = 0; i < per_block; ++i) {
+        set.insert((size_t*)(base + b * block_stride + i * 48));
+      }
+    }
+    check("every aliased address is a member", set.size() == blocks * per_block);
+
+    size_t total = 0;
+    size_t worst = 0;
+    for(size_t b = 0; b < blocks; b += 7) {
+      for(size_t i = 0; i < per_block; i += 13) {
+        const size_t distance = set.ProbeDistance((size_t*)(base + b * block_stride + i * 48));
+        total += distance;
+        if(distance > worst) {
+          worst = distance;
+        }
+      }
+    }
+    const size_t sampled = ((blocks + 6) / 7) * ((per_block + 12) / 13);
+    std::printf("    mean probe distance %.2f, worst %zu\n", (double)total / sampled, worst);
+    check("lookups stay short (mean probe distance under 4)", total < 4 * sampled);
+  }
+
   std::printf("\n============================================\n");
   std::printf("  %s\n", failures ? "FAILED" : "all passed");
   std::printf("============================================\n");

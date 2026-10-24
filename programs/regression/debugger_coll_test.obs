@@ -34,5 +34,23 @@ class CollPrint {
 		# BREAKPOINT LINE — every collection is populated
 		done := true;
 		done->PrintLine();
+
+		# the unboxed collections, printed by the print_primitive_collections test
+		ints := IntVector->New([7, 8, 9, 10]);
+		reals := FloatVector->New([1.5, 2.5]);
+		int_map := IntMap->New();
+		int_map->Insert(1, 10);
+		int_map->Insert(2, 20);
+		int_set := IntSet->New();
+		int_set->Add(5);
+		int_set->Add(6);
+		int_set->Add(7);
+		bits := BitSet->New(100);
+		bits->Set(3);
+		bits->Set(64);
+
+		# SECOND BREAKPOINT LINE
+		all_done := true;
+		all_done->PrintLine();
 	}
 }

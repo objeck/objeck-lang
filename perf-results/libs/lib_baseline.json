@@ -1,0 +1,221 @@
+{
+  "about": "Ratio (per the stat field) of each case's time to its in-run plain-array reference; written by run_lib_bench.py --update-baseline",
+  "measured": "2026-10-24",
+  "platform": "Windows AMD64",
+  "runs": 5,
+  "stat": "min",
+  "cases": {
+    "collections/bitset_get_1m": {
+      "ratio": 6.6523,
+      "seconds": 0.309
+    },
+    "collections/bitset_ops_1m": {
+      "ratio": 0.1066,
+      "seconds": 0.029
+    },
+    "collections/bitset_set_1m": {
+      "ratio": 20.1873,
+      "seconds": 0.194
+    },
+    "collections/hash_int_find_100k": {
+      "ratio": 43.0622,
+      "seconds": 0.09
+    },
+    "collections/hash_int_find_1m": {
+      "ratio": 26.8744,
+      "seconds": 0.276
+    },
+    "collections/hash_int_insert_100k": {
+      "ratio": 95.9108,
+      "seconds": 0.258
+    },
+    "collections/hash_int_insert_10k": {
+      "ratio": 57.3529,
+      "seconds": 0.117
+    },
+    "collections/hash_int_insert_1m": {
+      "ratio": 33.0475,
+      "seconds": 0.424
+    },
+    "collections/hash_int_remove_100k": {
+      "ratio": 32.8691,
+      "seconds": 0.118
+    },
+    "collections/hash_int_remove_1m": {
+      "ratio": 20.9489,
+      "seconds": 0.287
+    },
+    "collections/hash_str_find_100k": {
+      "ratio": 1.9447,
+      "seconds": 0.292
+    },
+    "collections/hash_str_find_10k": {
+      "ratio": 2.6562,
+      "seconds": 0.085
+    },
+    "collections/hash_str_find_1m": {
+      "ratio": 2.1519,
+      "seconds": 0.401
+    },
+    "collections/hash_str_insert_100k": {
+      "ratio": 3.0194,
+      "seconds": 0.553
+    },
+    "collections/hash_str_insert_10k": {
+      "ratio": 14.5758,
+      "seconds": 0.524
+    },
+    "collections/hash_str_insert_1m": {
+      "ratio": 3.7865,
+      "seconds": 0.777
+    },
+    "collections/hash_str_remove_100k": {
+      "ratio": 2.7807,
+      "seconds": 0.421
+    },
+    "collections/hash_str_remove_10k": {
+      "ratio": 4.3607,
+      "seconds": 0.133
+    },
+    "collections/hash_str_remove_1m": {
+      "ratio": 2.5518,
+      "seconds": 0.468
+    },
+    "collections/intmap_find_100k": {
+      "ratio": 33.67,
+      "seconds": 0.5
+    },
+    "collections/intmap_find_10k": {
+      "ratio": 12.2105,
+      "seconds": 0.174
+    },
+    "collections/intmap_find_1m": {
+      "ratio": 81.5913,
+      "seconds": 0.523
+    },
+    "collections/intmap_insert_100k": {
+      "ratio": 95.1801,
+      "seconds": 1.797
+    },
+    "collections/intmap_insert_10k": {
+      "ratio": 83.1169,
+      "seconds": 1.408
+    },
+    "collections/intmap_insert_1m": {
+      "ratio": 144.2836,
+      "seconds": 0.997
+    },
+    "collections/intmap_remove_100k": {
+      "ratio": 47.9058,
+      "seconds": 0.915
+    },
+    "collections/intmap_remove_10k": {
+      "ratio": 15.8651,
+      "seconds": 0.254
+    },
+    "collections/intmap_remove_1m": {
+      "ratio": 84.5794,
+      "seconds": 0.543
+    },
+    "collections/intset_add_100k": {
+      "ratio": 84.0708,
+      "seconds": 1.14
+    },
+    "collections/intset_add_10k": {
+      "ratio": 44.4597,
+      "seconds": 0.646
+    },
+    "collections/intset_add_1m": {
+      "ratio": 171.466,
+      "seconds": 0.655
+    },
+    "collections/intset_has_100k": {
+      "ratio": 31.3354,
+      "seconds": 0.298
+    },
+    "collections/intset_has_10k": {
+      "ratio": 9.4769,
+      "seconds": 0.154
+    },
+    "collections/intset_has_1m": {
+      "ratio": 95.0119,
+      "seconds": 0.4
+    },
+    "collections/intset_remove_100k": {
+      "ratio": 26.0304,
+      "seconds": 0.24
+    },
+    "collections/intset_remove_10k": {
+      "ratio": 18.0495,
+      "seconds": 0.248
+    },
+    "collections/intset_remove_1m": {
+      "ratio": 120.7084,
+      "seconds": 0.443
+    },
+    "collections/intvector_append_1m": {
+      "ratio": 16.338,
+      "seconds": 0.058
+    },
+    "collections/intvector_get_sum_1m": {
+      "ratio": 8.7774,
+      "seconds": 0.028
+    },
+    "collections/intvector_sort_1m": {
+      "ratio": 7.7686,
+      "seconds": 0.094
+    },
+    "collections/intvector_sum_1m": {
+      "ratio": 0.8401,
+      "seconds": 0.0027
+    },
+    "collections/vector_intref_append_1m": {
+      "ratio": 262.8169,
+      "seconds": 0.933
+    },
+    "collections/vector_intref_get_sum_1m": {
+      "ratio": 30.721,
+      "seconds": 0.098
+    },
+    "collections/vector_intref_sort_1m": {
+      "ratio": 34.6281,
+      "seconds": 0.419
+    },
+    "runtime/float_copy_1000000": {
+      "ratio": 0.1709,
+      "seconds": 0.04
+    },
+    "runtime/float_copy_10000000": {
+      "ratio": 0.3069,
+      "seconds": 0.058
+    },
+    "runtime/float_fill_1000000": {
+      "ratio": 0.2373,
+      "seconds": 0.028
+    },
+    "runtime/float_fill_10000000": {
+      "ratio": 0.2435,
+      "seconds": 0.028
+    },
+    "runtime/float_format_short_1000000": {
+      "ratio": 0.9672,
+      "seconds": 1.002
+    },
+    "runtime/int_copy_1000000": {
+      "ratio": 0.1092,
+      "seconds": 0.031
+    },
+    "runtime/int_copy_10000000": {
+      "ratio": 0.1913,
+      "seconds": 0.057
+    },
+    "runtime/int_fill_1000000": {
+      "ratio": 0.1468,
+      "seconds": 0.032
+    },
+    "runtime/int_fill_10000000": {
+      "ratio": 0.1195,
+      "seconds": 0.027
+    }
+  }
+}

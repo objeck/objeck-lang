@@ -49,7 +49,7 @@ SRC_DIR = SCRIPT_DIR
 SRC_FILE = os.path.join(SRC_DIR, "dap_drilldown_test.obs")
 PROG = os.path.join(SRC_DIR, "dap_drilldown_test.obe")
 
-BREAKPOINT_LINE = 76     # `done := true;`
+BREAKPOINT_LINE = 87     # `done := true;`
 BLANK_LINE = 2           # blank line in the fixture -- no instruction
 
 if not os.path.exists(PROG):
