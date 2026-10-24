@@ -201,6 +201,9 @@ namespace Runtime {
     void ExpandVector(size_t* obj, StackClass* klass, int depth, json& variables);
     void ExpandMap(size_t* obj, StackClass* klass, int depth, json& variables);
     void ExpandHash(size_t* obj, StackClass* klass, int depth, json& variables);
+    void ExpandPrimitiveVector(size_t* obj, StackClass* klass, int depth, json& variables);
+    void ExpandIntTable(size_t* obj, StackClass* klass, int depth, bool has_values, json& variables);
+    void ExpandBitSet(size_t* obj, StackClass* klass, int depth, json& variables);
     void WalkTreeNode(size_t* node, int depth, json& variables, int& count);
 
   public:
