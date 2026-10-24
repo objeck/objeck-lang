@@ -336,7 +336,7 @@ each of these links `query` plus the library it adapts.*
 | `query_odbc.obl` | `OdbcSource(connection, sql)` | The result of a query against a real database. With a scan hint, simple `where` terms are pushed into the SQL sent, so the database filters before anything is copied. |
 | `query_vision.obl` | `VisionSource(folder, detector)` | Detections across a folder of images, one row each: image, label, score and box, from any `API.Onnx` detector. For example, the images where a person was found with a score above 0.9, grouped by camera. |
 | `query.obl` (no native code) | `ArchiveSource(path)` | Zip and tar contents as a tree, like `FilesystemSource`, and any member readable as a source, such as a CSV inside a zip. Tar and stored zip members need only `lang`; deflated zip members use `Byte->UncompressDeflate` (raw deflate, RFC 1951) from `lang`. Built in phase 7; see "As built". |
-| `query.obl` | `XlsxSource(path[, sheet])` | Each worksheet as a table, with typed cells and the first row as the header. An `.xlsx` file is a zip of XML parts, so this builds on `ArchiveSource` and `XmlSource`. |
+| `query.obl` | `XlsxSource(path[, sheet])` | Each worksheet as a table, with typed cells and the first row as the header. An `.xlsx` file is a zip of XML parts, so this builds on `ArchiveSource` and `XmlSource`. Built in phase 7; see "As built". |
 
 Further sources fit the same interface without changing the engine, for example RSS through
 `Web.RSS`.
@@ -883,10 +883,48 @@ design above. Each phase adds its notes here.
 - Not done: archives named in SQL (`from 'results.zip'`), and reading a member without holding
   the whole member in memory.
 
+**Phase 7 (`XlsxSource`).**
+- Each worksheet becomes a table named after its sheet (`SetPrefix` prepends text, so two
+  workbooks' `Sheet1` can share a catalog); `XlsxSource->New(path, sheet)` reads one. Chart
+  and dialog sheets are skipped; hidden sheets are read. Parts are found through the package
+  and workbook relationships, not by fixed names, and the zip is read with `ArchiveSource`'s
+  reader, so its CRC32 checks and limits apply to every part.
+- Cells: shared strings (rich-text runs joined, phonetic runs skipped), inline strings and
+  formula strings are text; whitespace is kept, through the new `XmlElement->GetDecodedText()`
+  (`GetContent` trims, which lost `xml:space="preserve"` text). Booleans are `0`/`1`; error
+  values (`#DIV/0!`) are their text; a formula cell is its cached value, and one with no
+  value, or an empty one (openpyxl writes `<v></v>`), is an empty cell. ISO 8601 `d` cells
+  are dates.
+- Dates are numbers whose cell format shows a date or time: built-in formats 14-22, 27-36, 45,
+  47 and 50-58, and custom codes with `d`, `m`, `y`, `h` or `s` outside quotes, escapes and
+  brackets. Elapsed-time formats (`[h]:mm`, built-in 46) stay numbers of days, since they are
+  durations. The 1904 system is honoured. In the 1900 system serials below 60 move a day to
+  undo Lotus 1-2-3's phantom 29 February 1900, and 60 itself reads as 28 February 1900 (as
+  openpyxl does). Times round to the nearest second; dates are wall-clock (not GMT).
+- Typing reads whole columns, as `CsvSource` does: whole numbers INT, other numbers FLOAT,
+  dates DATE, booleans BOOL, anything else or any mix STRING, with each cell as it would
+  display (`1.5`, `TRUE`, `2026-03-15`, `2026-03-15 10:20:30`).
+- Shape: the used range, from the first row holding a value (or `SetFirstRow`) to the last,
+  and from the first used column to the last. A missing row or cell is empty, so table rows
+  line up with sheet rows. The first row names the columns by default; an empty header cell
+  is named by its column letter, and a repeated name gets `_2`, `_3`. `SetHeader(false)`
+  names every column by letter. A range of more than 50 million cells is refused rather than
+  allocated.
+- Merged cells: decided to keep Excel's storage by default (the value in the top-left cell,
+  the rest empty), because filling changes column types and counts; `SetFillMerged(true)`
+  copies the value across the range.
+- Errors name the workbook, sheet and cell: a missing part, malformed XML, a shared string
+  index out of range, a cell reference outside its row or malformed, a number that is not
+  one. Loading is all or nothing.
+- Not done: reading formulas themselves (only their values), styles beyond date detection,
+  and workbooks named in SQL (`from 'budget.xlsx'`). `.xlsb` and the old `.xls` are other
+  formats and are not read.
+
 Toolchain defects found while building these phases were fixed at the source rather than worked
 around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
 (#1299), HTTP status codes and a TLS/collector deadlock (#1300), `XmlElement` attribute order,
-and no way to bound how far deflate or gzip data inflates (phase 7: two new traps). Also in
+no way to bound how far deflate or gzip data inflates (phase 7: two new traps), and `XmlElement` text
+that could only be read trimmed (phase 7: `GetDecodedText`). Also in
 phase 7: the label merging at `-opt s2`/`s3` could give a merged label the id of another label
 in a linked library method, so adding classes to `query.obl` made a query loop forever.
 

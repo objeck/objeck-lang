@@ -1,0 +1,372 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Query.Structured XlsxSource (docs/QUERY_DESIGN.md, section 6, phase 7): worksheets of an .xlsx
+workbook as typed tables. Covered: shared strings (plain, rich runs, kept whitespace, entities,
+phonetic runs skipped), inline strings, formula strings, numbers (INT and FLOAT columns),
+booleans, error values, ISO 'd' cells, dates by built-in and custom formats in the 1900 and
+1904 systems including the 1900 leap-year bug, elapsed-time and quoted-text formats that are
+not dates, empty cells, missing rows, cells without references, a sparse used range starting
+at C3, header naming (letters for empty cells, '_2' for repeats), no header, SetFirstRow,
+merged cells kept and filled, sheet names in SQL, a prefix, chart sheets skipped, and the
+errors (a missing workbook part, malformed XML, a bad shared string index, a bad cell
+reference, a missing sheet, a damaged part). Every workbook is written by the test.
+~#
+use Query.Structured, System.IO.Filesystem, Collection;
+
+# a growing byte buffer
+class Sink {
+	@bytes : Byte[];
+	@size : Int;
+
+	New() {
+		@bytes := Byte->New[1024];
+	}
+
+	method : public : Put(value : Int) ~ Nil {
+		if(@size = @bytes->Size()) {
+			grown := Byte->New[@bytes->Size() * 2];
+			Byte->Copy(grown, 0, @bytes, 0, @size);
+			@bytes := grown;
+		};
+		@bytes[@size] := value;
+		@size += 1;
+	}
+
+	method : public : PutBytes(values : Byte[]) ~ Nil {
+		each(i : values) {
+			Put(values[i]->As(Int));
+		};
+	}
+
+	method : public : U16(value : Int) ~ Nil {
+		Put(value and 0xFF);
+		Put((value >> 8) and 0xFF);
+	}
+
+	method : public : U32(value : Int) ~ Nil {
+		U16(value and 0xFFFF);
+		U16((value >> 16) and 0xFFFF);
+	}
+
+	method : public : Size() ~ Int {
+		return @size;
+	}
+
+	method : public : ToBytes() ~ Byte[] {
+		out := Byte->New[@size];
+		Byte->Copy(out, 0, @bytes, 0, @size);
+		return out;
+	}
+}
+
+# writes a zip of deflated members, as a spreadsheet program does
+class ZipBuilder {
+	@out : Sink;
+	@central : Sink;
+	@count : Int;
+
+	New() {
+		@out := Sink->New();
+		@central := Sink->New();
+	}
+
+	method : public : Add(name : String, text : String) ~ Nil {
+		Add(name, text->ToByteArray(), false);
+	}
+
+	method : public : Add(name : String, data : Byte[], bad_crc : Bool) ~ Nil {
+		packed := data->CompressDeflate();
+		crc := Byte->CRC32(data);
+		if(bad_crc) {
+			crc := crc xor 1;
+		};
+		at := @out->Size();
+		name_bytes := name->ToByteArray();
+		@out->U32(0x04034b50);
+		@out->U16(20);
+		@out->U16(0);
+		@out->U16(8);
+		@out->U16(0);
+		@out->U16(0x5C6F);
+		@out->U32(crc);
+		@out->U32(packed->Size());
+		@out->U32(data->Size());
+		@out->U16(name_bytes->Size());
+		@out->U16(0);
+		@out->PutBytes(name_bytes);
+		@out->PutBytes(packed);
+
+		@central->U32(0x02014b50);
+		@central->U16(20);
+		@central->U16(20);
+		@central->U16(0);
+		@central->U16(8);
+		@central->U16(0);
+		@central->U16(0x5C6F);
+		@central->U32(crc);
+		@central->U32(packed->Size());
+		@central->U32(data->Size());
+		@central->U16(name_bytes->Size());
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U32(0);
+		@central->U32(at);
+		@central->PutBytes(name_bytes);
+		@count += 1;
+	}
+
+	method : public : Finish() ~ Byte[] {
+		cd_offset := @out->Size();
+		cd := @central->ToBytes();
+		@out->PutBytes(cd);
+		@out->U32(0x06054b50);
+		@out->U16(0);
+		@out->U16(0);
+		@out->U16(@count);
+		@out->U16(@count);
+		@out->U32(cd->Size());
+		@out->U32(cd_offset);
+		@out->U16(0);
+		return @out->ToBytes();
+	}
+}
+
+class QuerySourceXlsx {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Q(text : String) ~ String {
+		return text->ReplaceAll("'", "\"");
+	}
+
+	# the parts every workbook has; 'sheets' are the <sheet> elements and 'rels' the
+	# workbook's relationships beyond styles and shared strings
+	function : Workbook(zip : ZipBuilder, properties : String, sheets : String, rels : String) ~ Nil {
+		zip->Add("[Content_Types].xml", Q("<?xml version='1.0' encoding='UTF-8' standalone='yes'?><Types xmlns='http://schemas.openxmlformats.org/package/2006/content-types'><Default Extension='xml' ContentType='application/xml'/></Types>"));
+		zip->Add("_rels/.rels", Q("<?xml version='1.0' encoding='UTF-8'?><Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'><Relationship Id='rId1' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument' Target='xl/workbook.xml'/></Relationships>"));
+		zip->Add("xl/workbook.xml", Q("<?xml version='1.0' encoding='UTF-8'?><workbook xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main' xmlns:r='http://schemas.openxmlformats.org/officeDocument/2006/relationships'>" + properties + "<sheets>" + sheets + "</sheets></workbook>"));
+		zip->Add("xl/_rels/workbook.xml.rels", Q("<?xml version='1.0' encoding='UTF-8'?><Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'>" + rels +
+			"<Relationship Id='rId8' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles' Target='styles.xml'/>" +
+			"<Relationship Id='rId9' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings' Target='sharedStrings.xml'/></Relationships>"));
+	}
+
+	function : Rel(id : String, type : String, target : String) ~ String {
+		return "<Relationship Id='" + id + "' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/" + type + "' Target='" + target + "'/>";
+	}
+
+	function : Styles() ~ String {
+		# 0 general, 1 built-in date (14), 2 custom date and time, 3 elapsed time, 4 a number
+		# with quoted text that looks like a date code, 5 '0.00'
+		return Q("<?xml version='1.0' encoding='UTF-8'?><styleSheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'>" +
+			"<numFmts count='3'><numFmt numFmtId='164' formatCode='yyyy\\-mm\\-dd\\ hh:mm'/><numFmt numFmtId='165' formatCode='[h]:mm:ss'/><numFmt numFmtId='166' formatCode='0.0&quot; days&quot;'/></numFmts>" +
+			"<cellXfs count='6'><xf numFmtId='0'/><xf numFmtId='14' applyNumberFormat='1'/><xf numFmtId='164' applyNumberFormat='1'/><xf numFmtId='165' applyNumberFormat='1'/><xf numFmtId='166' applyNumberFormat='1'/><xf numFmtId='2' applyNumberFormat='1'/></cellXfs></styleSheet>");
+	}
+
+	function : Sheet(rows : String, extra : String) ~ String {
+		return Q("<?xml version='1.0' encoding='UTF-8'?><worksheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><sheetData>" + rows + "</sheetData>" + extra + "</worksheet>");
+	}
+
+	function : Text(table : Table, row : Int, column : String) ~ String {
+		value := table->Get(row)->Get(column);
+		return value <> Nil ? value->As(String) : "";
+	}
+
+	function : IntOf(table : Table, row : Int, column : String) ~ Int {
+		value := table->Get(row)->Get(column);
+		return value <> Nil ? value->As(IntRef)->Get() : -999;
+	}
+
+	function : FloatOf(table : Table, row : Int, column : String) ~ Float {
+		value := table->Get(row)->Get(column);
+		return value <> Nil ? value->As(FloatRef)->Get() : -999.0;
+	}
+
+	function : DateOf(table : Table, row : Int, column : String) ~ System.Time.Date {
+		value := table->Get(row)->Get(column);
+		return value <> Nil ? value->As(System.Time.Date) : Nil;
+	}
+
+	function : IsDate(date : System.Time.Date, year : Int, month : Int, day : Int, hours : Int, mins : Int, secs : Int) ~ Bool {
+		return date <> Nil & date->GetYear() = year & date->GetMonth() = month & date->GetDay() = day & date->GetHours() = hours & date->GetMinutes() = mins & date->GetSeconds() = secs;
+	}
+
+	function : Refused(what : String, bytes : Byte[], expected : String) ~ Nil {
+		catalog := Catalog->New();
+		loaded := catalog->Load(XlsxSource->FromBytes(bytes));
+		error := catalog->GetError();
+		ok := <>loaded & error <> Nil & error->Has(expected) & catalog->GetNames()->Size() = 0;
+		if(<>ok) {
+			shown := error <> Nil ? error : "no error";
+			"  ({$what}: {$shown})"->PrintLine();
+		};
+		Check(what, ok);
+	}
+
+	# a one-sheet workbook around some sheet XML
+	function : OneSheet(sheet : String, strings : String) ~ Byte[] {
+		zip := ZipBuilder->New();
+		Workbook(zip, "", Q("<sheet name='S' sheetId='1' r:id='rId1'/>"), Q(Rel("rId1", "worksheet", "worksheets/sheet1.xml")));
+		zip->Add("xl/styles.xml", Styles());
+		zip->Add("xl/sharedStrings.xml", Q("<?xml version='1.0'?><sst xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'>" + strings + "</sst>"));
+		zip->Add("xl/worksheets/sheet1.xml", sheet);
+		return zip->Finish();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		@failures := 0;
+
+		strings := "<?xml version='1.0' encoding='UTF-8'?><sst xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main' count='9' uniqueCount='9'>";
+		strings += "<si><t>name</t></si><si><t>score</t></si><si><t>when</t></si><si><t>flag</t></si><si><t>note</t></si>";
+		strings += "<si><r><rPr><b/></rPr><t>Al</t></r><r><t>pha</t></r><rPh sb='0' eb='1'><t>IGNORED</t></rPh></si>";
+		strings += "<si><t xml:space='preserve'>  padded  </t></si>";
+		strings += "<si><t>Tom &amp; Jerry &lt;3</t></si>";
+		strings += "<si><t>merged</t></si>";
+		strings += "</sst>";
+
+		rows := "";
+		rows += "<row r='1'><c r='A1' t='s'><v>0</v></c><c r='B1' t='s'><v>1</v></c><c r='C1' t='s'><v>2</v></c><c r='D1' t='s'><v>3</v></c><c r='E1' t='s'><v>4</v></c>";
+		rows += "<c r='F1' t='inlineStr'><is><t>dup</t></is></c><c r='G1' t='inlineStr'><is><t>dup</t></is></c><c r='I1' t='inlineStr'><is><t>days</t></is></c><c r='J1' t='inlineStr'><is><t>elapsed</t></is></c><c r='K1' t='inlineStr'><is><t>iso</t></is></c></row>";
+		rows += "<row r='2'><c r='A2' t='s'><v>5</v></c><c r='B2'><v>1.5</v></c><c r='C2' s='1'><v>45000</v></c><c r='D2' t='b'><v>1</v></c><c r='E2' t='s'><v>6</v></c>";
+		rows += "<c r='F2'><v>1</v></c><c r='G2' s='5'><v>2</v></c><c r='H2' t='str'><f>CONCAT(\"x\")</f><v>x</v></c><c r='I2' s='4'><v>2.5</v></c><c r='J2' s='3'><v>1.25</v></c><c r='K2' t='d'><v>2026-03-15T10:20:30</v></c></row>";
+		rows += "<row r='3'><c r='A3' t='inlineStr'><is><t>A &amp; B</t></is></c><c r='B3'><v>2</v></c><c r='C3' s='2'><v>45000.5</v></c><c r='D3' t='b'><v>0</v></c><c r='E3' t='e'><v>#DIV/0!</v></c>";
+		rows += "<c r='F3'><v>3</v></c><c r='H3'><v>5</v></c><c r='K3' t='d'><v>2026-03-16</v></c></row>";
+		# row 4 is missing; row 5's cells after the first carry no reference
+		rows += "<row r='5'><c r='A5' t='s'><v>7</v></c><c><v>3.25</v></c><c s='1'><f>TODAY()</f></c><c t='b'><v>1</v></c></row>";
+		rows += "<row r='7'><c r='A7' t='s'><v>8</v></c><c r='B7'/><c r='C7' s='1'><v>1</v></c><c r='D7'><f>NOW()</f><v></v></c></row>";
+		rows += "<row r='8'/>";
+		sheet1 := Sheet(rows, "<mergeCells count='1'><mergeCell ref='A7:B8'/></mergeCells>");
+
+		sheet2 := Sheet("<row r='3'><c r='C3' t='inlineStr'><is><t>k</t></is></c><c r='D3' t='inlineStr'><is><t>v</t></is></c></row><row r='4'><c r='C4'><v>10</v></c><c r='D4' t='b'><v>1</v></c></row><row r='5'><c r='C5'><v>20</v></c><c r='D5' t='b'><v>0</v></c></row>", "");
+
+		leap := "<row r='1'><c r='A1' t='inlineStr'><is><t>d</t></is></c></row>";
+		serials := ["1", "59", "60", "61", "0.75", "45000.999999"];
+		each(i : serials) {
+			r := i + 2;
+			leap += "<row r='{$r}'><c r='A{$r}' s='2'><v>{$(serials[i])}</v></c></row>";
+		};
+		sheet3 := Sheet(leap, "");
+
+		zip := ZipBuilder->New();
+		Workbook(zip, "<workbookPr defaultThemeVersion='166925'/>",
+			Q("<sheet name='Data' sheetId='1' r:id='rId1'/><sheet name='Second Sheet' sheetId='2' r:id='rId2'/><sheet name='Chart' sheetId='3' r:id='rId3'/><sheet name='Leap' sheetId='4' r:id='rId4'/>"),
+			Q(Rel("rId1", "worksheet", "worksheets/sheet1.xml") + Rel("rId2", "worksheet", "/xl/worksheets/sheet2.xml") + Rel("rId3", "chartsheet", "chartsheets/sheet1.xml") + Rel("rId4", "worksheet", "worksheets/../worksheets/sheet3.xml")));
+		zip->Add("xl/styles.xml", Styles());
+		zip->Add("xl/sharedStrings.xml", Q(strings));
+		zip->Add("xl/worksheets/sheet1.xml", sheet1);
+		zip->Add("xl/worksheets/sheet2.xml", sheet2);
+		zip->Add("xl/worksheets/sheet3.xml", sheet3);
+		bytes := zip->Finish();
+		path := "query_xlsx_tmp.xlsx";
+		FileWriter->WriteFile(path, bytes);
+
+		source := XlsxSource->New(path);
+		sheets := source->GetSheets();
+		Check("worksheets in workbook order; a chart sheet is not one", sheets <> Nil & sheets->Size() = 3 & sheets[0]->Equals("Data") & sheets[1]->Equals("Second Sheet") & sheets[2]->Equals("Leap"));
+
+		catalog := Catalog->New();
+		Check("a workbook loads", catalog->Load(source));
+		data := catalog->Get("Data");
+		Check("a table per sheet, named after it", data <> Nil & catalog->Get("Second Sheet") <> Nil & catalog->Get("Leap") <> Nil & catalog->Get("Chart") = Nil);
+		if(data <> Nil) {
+			names := data->GetColumnNames();
+			Check("header names; a repeat gets '_2'; an empty header cell its letter", names->Size() = 12 & names[1]->Equals("name") & names[6]->Equals("dup") & names[7]->Equals("dup_2") & names[8]->Equals("H") & names[11]->Equals("iso"));
+			Check("rows line up with the sheet: missing rows are empty rows", data->Size() = 6);
+			Check("shared strings, rich runs joined, phonetic runs skipped", Text(data, 0, "name")->Equals("Alpha"));
+			Check("inline strings, entities decoded", Text(data, 1, "name")->Equals("A & B"));
+			Check("a missing row is empty", data->Get(2)->Get("name") = Nil & data->Get(2)->Get("score") = Nil);
+			Check("whitespace kept in text", Text(data, 0, "note")->Equals("  padded  "));
+			Check("an error value is its text", Text(data, 1, "note")->Equals("#DIV/0!"));
+			Check("numbers with fractions make a FLOAT column", data->GetColumn("score")->GetType() = ColumnType->FLOAT & FloatOf(data, 0, "score") = 1.5 & FloatOf(data, 1, "score") = 2.0 & FloatOf(data, 3, "score") = 3.25);
+			Check("whole numbers make an INT column, whatever their number format", data->GetColumn("dup")->GetType() = ColumnType->INT & IntOf(data, 0, "dup") = 1 & data->GetColumn("dup_2")->GetType() = ColumnType->INT & IntOf(data, 0, "dup_2") = 2);
+			Check("booleans make a BOOL column", data->GetColumn("flag")->GetType() = ColumnType->BOOL & data->Get(0)->Get("flag")->As(BoolRef)->Get() & <>data->Get(1)->Get("flag")->As(BoolRef)->Get());
+			Check("a formula string mixed with a number is a STRING column", data->GetColumn("H")->GetType() = ColumnType->STRING & Text(data, 0, "H")->Equals("x") & Text(data, 1, "H")->Equals("5"));
+			Check("built-in and custom date formats make a DATE column", data->GetColumn("when")->GetType() = ColumnType->DATE & IsDate(DateOf(data, 0, "when"), 2023, 3, 15, 0, 0, 0) & IsDate(DateOf(data, 1, "when"), 2023, 3, 15, 12, 0, 0));
+			Check("a formula with no value is an empty cell; cells without references follow on", data->Get(3)->Get("when") = Nil & data->Get(3)->Get("flag")->As(BoolRef)->Get());
+			Check("quoted text in a number format is not a date", data->GetColumn("days")->GetType() = ColumnType->FLOAT & FloatOf(data, 0, "days") = 2.5);
+			Check("an elapsed-time format stays a number of days", data->GetColumn("elapsed")->GetType() = ColumnType->FLOAT & FloatOf(data, 0, "elapsed") = 1.25);
+			Check("ISO 'd' cells are dates", data->GetColumn("iso")->GetType() = ColumnType->DATE & IsDate(DateOf(data, 0, "iso"), 2026, 3, 15, 10, 20, 30) & IsDate(DateOf(data, 1, "iso"), 2026, 3, 16, 0, 0, 0));
+			Check("a merged range keeps its value in its top-left cell", Text(data, 5, "name")->Equals("merged") & data->Get(5)->Get("score") = Nil);
+			Check("a formula with an empty value is an empty cell", data->Get(5)->Get("flag") = Nil);
+			Check("entities in shared strings", Text(data, 3, "name")->Equals("Tom & Jerry <3"));
+		};
+
+		second := catalog->Get("Second Sheet");
+		Check("a used range starting at C3", second <> Nil & second->Size() = 2 & second->GetColumnCount() = 3 & IntOf(second, 1, "k") = 20 & second->GetColumn("v")->GetType() = ColumnType->BOOL);
+		rs := catalog->Query("select k from \"Second Sheet\" where k < 15");
+		Check("a sheet in SQL, by its quoted name", rs <> Nil & rs->Size() = 1 & IntOf(rs, 0, "k") = 10);
+
+		leap_table := catalog->Get("Leap");
+		if(leap_table <> Nil) {
+			Check("serial 1 is 1 January 1900", IsDate(DateOf(leap_table, 0, "d"), 1900, 1, 1, 0, 0, 0));
+			Check("serial 59 is 28 February 1900", IsDate(DateOf(leap_table, 1, "d"), 1900, 2, 28, 0, 0, 0));
+			Check("serial 60, Excel's 29 February 1900, reads as 28 February", IsDate(DateOf(leap_table, 2, "d"), 1900, 2, 28, 0, 0, 0));
+			Check("serial 61 is 1 March 1900", IsDate(DateOf(leap_table, 3, "d"), 1900, 3, 1, 0, 0, 0));
+			Check("a time alone is on Excel's day 0", IsDate(DateOf(leap_table, 4, "d"), 1899, 12, 31, 18, 0, 0));
+			Check("times round to the second", IsDate(DateOf(leap_table, 5, "d"), 2023, 3, 16, 0, 0, 0));
+		};
+
+		# options
+		filled := XlsxSource->New(path, "Data");
+		filled->SetFillMerged(true);
+		one := filled->Read();
+		Check("SetFillMerged fills the range", one <> Nil & one->Size() = 7 & Text(one, 5, "score")->Equals("merged") & Text(one, 6, "name")->Equals("merged") & one->GetColumn("score")->GetType() = ColumnType->STRING);
+		bare := XlsxSource->New(path, "Second Sheet");
+		bare->SetHeader(false);
+		plain := bare->Read();
+		Check("without a header, columns are named by letter", plain <> Nil & plain->Size() = 3 & Text(plain, 0, "C")->Equals("k") & Text(plain, 1, "C")->Equals("10"));
+		from_row := XlsxSource->New(path, "Second Sheet");
+		from_row->SetFirstRow(4);
+		from_row->SetHeader(false);
+		later := from_row->Read();
+		Check("SetFirstRow starts the table lower", later <> Nil & later->Size() = 2 & IntOf(later, 0, "C") = 10);
+		prefixed := XlsxSource->FromBytes(bytes);
+		prefixed->SetPrefix("book.");
+		catalog := Catalog->New();
+		Check("a prefix on every table name", catalog->Load(prefixed) & catalog->Get("book.Data") <> Nil & catalog->Get("Data") = Nil);
+		missing := XlsxSource->New(path, "Nope");
+		Check("a missing sheet is an error", missing->Read() = Nil & missing->GetError()->Has("no worksheet 'Nope'"));
+
+		# the 1904 date system
+		zip := ZipBuilder->New();
+		Workbook(zip, "<workbookPr date1904='1'/>", Q("<sheet name='S' sheetId='1' r:id='rId1'/>"), Q(Rel("rId1", "worksheet", "worksheets/sheet1.xml")));
+		zip->Add("xl/styles.xml", Styles());
+		zip->Add("xl/worksheets/sheet1.xml", Sheet("<row r='1'><c r='A1' t='inlineStr'><is><t>d</t></is></c></row><row r='2'><c r='A2' s='1'><v>0</v></c></row><row r='3'><c r='A3' s='1'><v>43904</v></c></row>", ""));
+		mac := XlsxSource->FromBytes(zip->Finish())->Read();
+		Check("the 1904 system counts from 1 January 1904", mac <> Nil & IsDate(DateOf(mac, 0, "d"), 1904, 1, 1, 0, 0, 0) & IsDate(DateOf(mac, 1, "d"), 2024, 3, 15, 0, 0, 0));
+
+		# errors
+		zip := ZipBuilder->New();
+		zip->Add("hello.txt", "not a workbook");
+		Refused("a zip that is not a workbook", zip->Finish(), "is not an .xlsx workbook");
+		Refused("malformed sheet XML", OneSheet("<worksheet><sheetData><row r='1'><c r='A1'><v>1</v></row></sheetData></worksheet>", ""), "is not well-formed XML");
+		Refused("a shared string that does not exist", OneSheet(Sheet("<row r='1'><c r='A1' t='s'><v>4</v></c></row>", ""), "<si><t>only</t></si>"), "shared string '4' does not exist");
+		Refused("a cell reference outside its row", OneSheet(Sheet("<row r='1'><c r='A2'><v>1</v></c></row>", ""), ""), "is not a cell of row 1");
+		Refused("a malformed cell reference", OneSheet(Sheet("<row r='1'><c r='1A'><v>1</v></c></row>", ""), ""), "cell reference '1A'");
+		Refused("a number that is not one", OneSheet(Sheet("<row r='1'><c r='A1'><v>abc</v></c></row>", ""), ""), "'abc' is not a number");
+		zip := ZipBuilder->New();
+		Workbook(zip, "", Q("<sheet name='S' sheetId='1' r:id='rId1'/>"), Q(Rel("rId1", "worksheet", "worksheets/sheet1.xml")));
+		zip->Add("xl/worksheets/sheet1.xml", Sheet("<row r='1'><c r='A1'><v>1</v></c></row>", "")->ToByteArray(), true);
+		Refused("a damaged part", zip->Finish(), "CRC32");
+		zip := ZipBuilder->New();
+		Workbook(zip, "", Q("<sheet name='S' sheetId='1' r:id='rId1'/>"), Q(Rel("rId1", "worksheet", "worksheets/sheet1.xml")));
+		Refused("a sheet whose part is missing", zip->Finish(), "has no part 'xl/worksheets/sheet1.xml'");
+
+		File->Delete(path);
+
+		if(@failures = 0) {
+			"PASS: query xlsx source"->PrintLine();
+		}
+		else {
+			"FAIL: query xlsx source ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

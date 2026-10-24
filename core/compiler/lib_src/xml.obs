@@ -2324,5 +2324,26 @@ decoded->PrintLine();
 			
 			return out;
 		}
+
+		#~
+		Gets the element's text with entity references decoded and its whitespace kept.
+		GetContent and GetDecodedContent trim it, which loses what xml:space="preserve" asks
+		to keep, such as the leading spaces of a spreadsheet cell.
+		@return decoded text, empty if there is none
+
+```
+parser := XmlParser->New("<t xml:space=\"preserve\">  a &amp; b </t>");
+if(parser->Parse()) {
+  text := parser->GetRoot()->GetDecodedText();   # "  a & b "
+};
+```
+		~#
+		method : public : GetDecodedText() ~ String {
+			if(@content = Nil) {
+				return "";
+			};
+
+			return DecodeString(@content);
+		}
 	}
 }

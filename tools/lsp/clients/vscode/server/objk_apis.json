@@ -4244,6 +4244,9 @@
 				"GetDecodedContent": {
 					"descriptions": ["**Gets the element content with XML entity references decoded (&amp;lt; &amp;gt; &amp;amp; &amp;quot; &amp;apos; and numeric references).**\n\n```method : public : GetDecodedContent() ~ String```\n\n\n\nreturn: String\n\n```\nparser := XmlParser->New(\"<title>5 &lt; 6<\/title>\");\nif(parser->Parse()) {\n  parser->GetRoot()->GetDecodedContent()->PrintLine();   # 5 < 6\n};\n```"]
 				},
+				"GetDecodedText": {
+					"descriptions": ["**Gets the element's text with entity references decoded and its whitespace kept. GetContent and GetDecodedContent trim it, which loses what xml:space=\"preserve\" asks to keep, such as the leading spaces of a spreadsheet cell.**\n\n```method : public : GetDecodedText() ~ String```\n\n\n\nreturn: String\n\n```\nparser := XmlParser->New(\"<t xml:space=\\\"preserve\\\">  a &amp; b <\/t>\");\nif(parser->Parse()) {\n  text := parser->GetRoot()->GetDecodedText();   # \"  a & b \"\n};\n```"]
+				},
 				"GetElementExpression": {
 					"descriptions": ["**~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n# parses element expression\n# tags ~~~~~~~~~~~~~~~~~~~~~~~~~~~~**\n\n```method : private : GetElementExpression() ~ String```\n\n\n\nfilter: String\n\nreturn: String"]
 				},
@@ -9864,6 +9867,50 @@
 				},
 				"WriteJson": {
 					"descriptions": ["**Writes the view as JSON to a stream, an object at a time (see ToJson())**\n\n```method : public : WriteJson(out:System.IO.OutputStream) ~ Bool```\n\n\n\nout: System.IO.OutputStream\n\nreturn: Bool"]
+				}
+			}
+		},
+		"Query.Structured.XlsxSource": {
+			"description": "An Excel workbook (.xlsx) as tables, one per worksheet, named after the sheet. Cells keep their types: numbers, text (shared or inline, rich text joined, whitespace kept), booleans, dates, and error values (as their text, such as '#DIV\/0!'). A formula cell is its last calculated value. A column is typed by reading all of it, as CsvSource types CSV columns: whole numbers make an INT column, other numbers a FLOAT column, dates a DATE column, booleans a BOOL column, and any mix, or text, a STRING column holding each cell as it would display ('1.5', 'TRUE', '2026-03-15'). An empty cell is empty.\n\nDates are numbers in a date or time format, built in or custom ('yyyy-mm-dd', 'h:mm'), counted from 1900 or, when the workbook says so, 1904. In the 1900 system Excel counts a 29 February 1900 that never was (Lotus 1-2-3's leap-year bug): serials below 60 are moved a day so they read as Excel shows them, and 60 itself reads as 28 February 1900. Elapsed-time formats ('[h]:mm') stay numbers, in days. Times are wall-clock, read to the second.\n\nThe table is the sheet's used range: its columns run from the first used column to the last, and its rows from the first row holding a value (the header, by default) to the last. Rows and cells a sheet leaves out are empty, so the table's rows line up with the sheet's. Header cells name the columns; an empty one takes its column letter ('C'), and a repeated name gets '_2', '_3'. Without a header the columns are named by letter.\n\nA merged range keeps its value in its top-left cell and leaves the rest empty, as Excel stores it; SetFillMerged copies the value into every cell of the range instead.\n\nThe workbook is read with ArchiveSource's zip reader, so the same limits and checks apply: every part is checked against its CRC32 and inflated no further than it says, within 256 MB a part and 1 GB in all unless SetLimits says otherwise.",
+			"functions": {
+				"FromBytes": {
+					"descriptions": ["**Makes a source over a workbook already in memory**\n\n```function : FromBytes(bytes:Byte[]) ~ XlsxSource```\n\n\n\nbytes: Byte[]\n\nreturn: XlsxSource"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetSheets": {
+					"descriptions": ["**Gets the workbook's worksheet names, in workbook order**\n\n```method : public : GetSheets() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the tables the workbook provides; their columns are known only after reading them**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the worksheets into a catalog; nothing is added unless every sheet reads. The scan hint is not used.**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; every worksheet becomes a table**\n\n```New(path:String)```\n\n\n\npath: String", "**Constructor for one worksheet**\n\n```New(path:String, sheet:String)```\n\n\n\npath: String\n\nsheet: String"]
+				},
+				"Read": {
+					"descriptions": ["**Reads one worksheet: the one named in the constructor, or else the first**\n\n```method : public : Read() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"ReadAll": {
+					"descriptions": ["**Reads every worksheet, or the one named in the constructor**\n\n```method : public : ReadAll() ~ Vector&lt;Table&gt;```\n\n\n\nreturn: Vector&lt;Table&gt;"]
+				},
+				"SetFillMerged": {
+					"descriptions": ["**Sets whether a merged range's value fills every cell of the range, rather than only its top-left cell (the default, which is how Excel stores it)**\n\n```method : public : SetFillMerged(fill:Bool) ~ Nil```\n\n\n\nfill: Bool\n\nreturn: Nil"]
+				},
+				"SetFirstRow": {
+					"descriptions": ["**Sets the sheet row the table starts at (the header, if there is one), for sheets with a title or notes above the data. By default the table starts at the first row holding a value.**\n\n```method : public : SetFirstRow(row:Int) ~ Nil```\n\n\n\nrow: Int\n\nreturn: Nil"]
+				},
+				"SetHeader": {
+					"descriptions": ["**Sets whether the first row names the columns (the default). Without a header every row is data and the columns are named by letter: A, B, C ...**\n\n```method : public : SetHeader(header:Bool) ~ Nil```\n\n\n\nheader: Bool\n\nreturn: Nil"]
+				},
+				"SetLimits": {
+					"descriptions": ["**Sets how much may be decompressed: a part of the workbook larger than 'member_bytes' is refused, and so is a read that takes the total past 'total_bytes'. The defaults are 256 MB and 1 GB.**\n\n```method : public : SetLimits(member_bytes:Int, total_bytes:Int) ~ Nil```\n\n\n\nmember_bytes: Int\n\ntotal_bytes: Int\n\nreturn: Nil"]
+				},
+				"SetPrefix": {
+					"descriptions": ["**Sets a prefix for the table names, so two workbooks' 'Sheet1' can share a catalog**\n\n```method : public : SetPrefix(prefix:String) ~ Nil```\n\n\n\nprefix: String\n\nreturn: Nil"]
 				}
 			}
 		},
@@ -17849,6 +17896,12 @@
 			}
 		],
 		"View": [
+			{
+				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"XlsxSource": [
 			{
 				"bundle": "Query.Structured",
 				"file": ""
