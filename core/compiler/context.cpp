@@ -3561,6 +3561,12 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
   const std::wstring scoped_name = SearchScopedEnumName(variable_name, current_class);
   Enum* scoped_eenum = scoped_name.empty() ? nullptr : program->GetEnum(scoped_name);
 
+  // then a program enum before a library one, as for a class: a program's
+  // 'ColumnType' with 'use Query.Structured' is its own
+  if(!scoped_eenum && scoped_name.empty() && variable_name != current_class->GetName()) {
+    scoped_eenum = SearchProgramEnums(variable_name);
+  }
+
   //
   // check library enum reference; fully qualified name
   //
@@ -3627,8 +3633,9 @@ void ContextAnalyzer::AnalyzeEnumCall(MethodCall* method_call, bool regress, con
         else {
           ParsedBundle* bundle = program->GetBundle(var_name);
           if(bundle) {
+            // a bundle-level enum is named with its bundle
             const std::wstring enum_child_name = enum_name.substr(result + 1);
-            eenum = bundle->GetEnum(enum_child_name);
+            eenum = bundle->GetEnum(var_name + L'.' + enum_child_name);
           }
         }
       }

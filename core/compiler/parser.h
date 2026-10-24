@@ -154,7 +154,9 @@ class Parser {
   // gets the symbol table's name for the current scope
   const std::wstring GetScopeName(const std::wstring &ident);
   // gets the enum scope name
-  const std::wstring GetEnumScopeName(const std::wstring &ident);
+  // a class's enum is 'Klass#Name'; with 'in_bundle', a bundle-level enum is
+  // named with its bundle, as a class is: 'Bundle.Name'
+  const std::wstring GetEnumScopeName(const std::wstring &ident, bool in_bundle = false);
 
   // helper functions
   void Debug(const std::wstring &msg, int depth) {

@@ -1,0 +1,153 @@
+# EXTRA_LIBS: net,regex,csv,misc,query
+#~
+Regression: bundle-level enums are named with their bundle, as classes are.
+
+A bundle-level enum was named without its bundle, so two bundles could not
+each declare `enum Kind`, and a program's `enum ColumnType` collided with the
+library's Query.Structured.ColumnType ("Enum 'ColumnType' defined in program
+and shared libraries"). Checks two bundles' same-named enums used inside each
+and from a third bundle by qualified name; a program enum named like a library
+enum, used unqualified (its own) next to the library's, qualified; and a
+library enum reached unqualified through 'use'.
+~#
+
+use Query.Structured;
+
+bundle SameNameOne {
+  enum Kind {
+    A,
+    B
+  }
+
+  class One {
+    function : Pick() ~ Kind {
+      return Kind->B;
+    }
+
+    function : Name(k : Kind) ~ String {
+      select(k) {
+        label Kind->A: {
+          return "a";
+        }
+
+        label Kind->B: {
+          return "b";
+        }
+      };
+
+      return "?";
+    }
+  }
+}
+
+bundle SameNameTwo {
+  enum Kind {
+    X,
+    Y,
+    Z
+  }
+
+  class Two {
+    function : Pick() ~ Kind {
+      return Kind->Z;
+    }
+
+    function : Name(k : Kind) ~ String {
+      select(k) {
+        label Kind->X: {
+          return "x";
+        }
+
+        label Kind->Z: {
+          return "z";
+        }
+      };
+
+      return "?";
+    }
+  }
+}
+
+bundle SameNameUser {
+  # the same name as Query.Structured.ColumnType
+  enum ColumnType {
+    RED,
+    GREEN,
+    BLUE
+  }
+
+  class CompileBundleEnumSameName {
+    @color : ColumnType;
+
+    New() {
+      @color := ColumnType->BLUE;
+    }
+
+    method : public : Color() ~ ColumnType {
+      return @color;
+    }
+
+    function : Paint(c : ColumnType) ~ Int {
+      return c->As(Int);
+    }
+
+    function : Dir(o : Order) ~ Int {
+      return o->As(Int);
+    }
+
+    function : Main(args : String[]) ~ Nil {
+      failed := 0;
+
+      # two bundles' Kind, by qualified name
+      one : SameNameOne.Kind := SameNameOne.One->Pick();
+      two : SameNameTwo.Kind := SameNameTwo.Two->Pick();
+      if(one <> SameNameOne.Kind->B | one->As(Int) <> 1) {
+        "FAIL: first bundle's Kind"->PrintLine();
+        failed += 1;
+      };
+
+      if(two <> SameNameTwo.Kind->Z | two->As(Int) <> 2) {
+        "FAIL: second bundle's Kind"->PrintLine();
+        failed += 1;
+      };
+
+      if(SameNameOne.One->Name(SameNameOne.Kind->A)->Equals("a") = false |
+         SameNameTwo.Two->Name(SameNameTwo.Kind->X)->Equals("x") = false) {
+        "FAIL: each bundle's Kind as a parameter and select label"->PrintLine();
+        failed += 1;
+      };
+
+      # the program's own ColumnType, unqualified
+      c : ColumnType := ColumnType->GREEN;
+      if(Paint(c) <> 1 | CompileBundleEnumSameName->New()->Color() <> ColumnType->BLUE) {
+        "FAIL: program ColumnType"->PrintLine();
+        failed += 1;
+      };
+
+      # the library's ColumnType, qualified
+      lib : Query.Structured.ColumnType := Query.Structured.ColumnType->FLOAT;
+      if(Query.Structured.Column->TypeName(lib)->Equals("float") = false) {
+        "FAIL: library ColumnType"->PrintLine();
+        failed += 1;
+      };
+
+      if(Query.Structured.Column->KindOf(IntRef->New(3)) <> Query.Structured.ColumnType->INT) {
+        "FAIL: library ColumnType returned"->PrintLine();
+        failed += 1;
+      };
+
+      # a library enum through 'use'
+      if(Dir(Order->DESC) <> 1) {
+        "FAIL: library enum through use"->PrintLine();
+        failed += 1;
+      };
+
+      if(failed > 0) {
+        "FAIL: {$failed} check(s) failed"->PrintLine();
+        Runtime->Exit(1);
+      };
+
+      "PASS: compile_bundle_enum_same_name"->PrintLine();
+    }
+  }
+}
