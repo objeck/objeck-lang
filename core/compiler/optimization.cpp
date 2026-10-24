@@ -157,6 +157,15 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::CleanLabelsLocation(std::v
 #ifdef _DEBUG
   GetLogger() << L"  Clean up labels..." << std::endl;
 #endif
+  // A merged label takes the next id from the counter, so the counter must first
+  // pass every label this method already holds. A library method's labels were
+  // numbered by the library's own compile, from the same base as this program's
+  // counter, so they overlap it: a merged label could take the id of another
+  // label in the same method, and its jumps then landed there. Adding three
+  // classes to query.obl moved the numbering onto such a coincidence, and a
+  // query in Plan:Run looped forever in any program built at -opt s2 or s3.
+  unconditional_label = MaxLabel(inputs, unconditional_label);
+
   std::vector<IntermediateBlock*> outputs;
   while(!inputs.empty()) {
     IntermediateBlock* tmp = inputs.front();
@@ -168,6 +177,37 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::CleanLabelsLocation(std::v
   }
 
   return outputs;
+}
+
+// the largest label id a method's blocks define or jump to, or 'floor' if larger
+int ItermediateOptimizer::MaxLabel(std::vector<IntermediateBlock*>& inputs, int floor)
+{
+  int max_label = floor;
+  for(auto* block : inputs) {
+    for(auto* instr : block->GetInstructions()) {
+      switch(instr->GetType()) {
+      case LBL:
+      case JMP:
+      case JMP_TABLE_SLOT:
+      case TRY_START:
+        if(static_cast<int>(instr->GetOperand()) > max_label) {
+          max_label = static_cast<int>(instr->GetOperand());
+        }
+        break;
+
+      case JMP_TABLE:
+        if(static_cast<int>(instr->GetOperand3()) > max_label) {
+          max_label = static_cast<int>(instr->GetOperand3());
+        }
+        break;
+
+      default:
+        break;
+      }
+    }
+  }
+
+  return max_label;
 }
 
 std::vector<IntermediateBlock*> ItermediateOptimizer::JumpToLocation(std::vector<IntermediateBlock*> inputs)
@@ -2424,29 +2464,7 @@ std::vector<IntermediateBlock*> ItermediateOptimizer::TailCallOpt(std::vector<In
   // loop at s3 in DecisionTreeClassifier:SortValues once lang gained three
   // functions and the counter moved (#1247).
   const int saved_unconditional_label = unconditional_label;
-  int max_label = unconditional_label;
-  for(auto* block : inputs) {
-    for(auto* instr : block->GetInstructions()) {
-      switch(instr->GetType()) {
-      case LBL:
-      case JMP:
-      case JMP_TABLE_SLOT:
-        if(static_cast<int>(instr->GetOperand()) > max_label) {
-          max_label = static_cast<int>(instr->GetOperand());
-        }
-        break;
-
-      case JMP_TABLE:
-        if(static_cast<int>(instr->GetOperand3()) > max_label) {
-          max_label = static_cast<int>(instr->GetOperand3());
-        }
-        break;
-
-      default:
-        break;
-      }
-    }
-  }
+  const int max_label = MaxLabel(inputs, unconditional_label);
   const int tco_body_label = max_label + 1;
   unconditional_label = tco_body_label;
   bool found_tco = false;

@@ -8840,6 +8840,56 @@
 				}
 			}
 		},
+		"Query.Structured.ArchiveSource": {
+			"description": "A zip or tar archive as tables, without extracting it: a listing of its members as a tree (like FilesystemSource's), and each member in a format the library reads as a table of its own, named by the member's path ('data\/runs.csv'; in SQL, \"data\/runs.csv\" in double quotes). Members are read by extension: '.csv', '.tsv', '.jsonl' and '.ndjson', '.json', '.otab', and '.xml' once SetRowElement names the row element, each also with '.gz'. Other members, '.txt' included, are listed only; ReadBytes and ReadText read any of them.\n\nThe archive is a '.zip' (stored and deflate members, ZIP64, a self-extracting prefix), a '.tar' (POSIX ustar, pax and GNU long names) or a gzipped tar ('.tar.gz', '.tgz'), told apart by content rather than name, from a file, an https:\/\/ URL or bytes in memory.\n\nUntrusted archives are safe to read. Nothing is written to disk. A member whose path is absolute or climbs out with '..' is refused, as are duplicate names in a zip and members whose data overlap. Each zip member is inflated to at most the size its header states and checked against its CRC32, so a zip bomb or a damaged member is an error naming it, never wrong data. Reading stops at 256 MB for one member and 1 GB for the whole archive unless SetLimits says otherwise. Encrypted members, compression other than deflate, and archives split across disks are reported as unsupported. Links are listed but never followed.\n\nThe listing table is named after the archive ('results' for 'results.zip'), with columns id, parent_id (empty at the top), depth (0 at the top), name, path, ext, is_dir, type ('file', 'dir', 'symlink', 'hardlink' or 'other'), size, compressed_size and method (zip only; method is 'stored', 'deflate' or the name of another), crc32 (zip only), modified and link (a link's target). Folders that the archive implies but does not list get rows too, so every member has a parent. A tar member repeated later in the archive replaces the earlier one's table, as extracting would.",
+			"functions": {
+				"ColumnNames": {
+					"descriptions": ["**Gets the listing's column names**\n\n```function : ColumnNames() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"FromBytes": {
+					"descriptions": ["**Makes a source over an archive already in memory**\n\n```function : FromBytes(name:String, bytes:Byte[]) ~ ArchiveSource```\n\n\n\nname: String\n\nbytes: Byte[]\n\nreturn: ArchiveSource"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetMembers": {
+					"descriptions": ["**Gets the paths of the archive's files, in archive order**\n\n```method : public : GetMembers() ~ String[]```\n\n\n\nreturn: String[]"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the tables the archive provides, the listing first; the members' columns are known only after reading them**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"List": {
+					"descriptions": ["**Lists the archive's members as a table**\n\n```method : public : List() ~ Table```\n\n\n\nreturn: Table"]
+				},
+				"Load": {
+					"descriptions": ["**Loads the listing and every member readable as a table into a catalog. Nothing is added unless every member reads. The scan hint is not pushed into members.**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the listing table is named after the archive**\n\n```New(path:String)```\n\n\n\npath: String"]
+				},
+				"ReadBytes": {
+					"descriptions": ["**Reads one member's bytes, checked against its CRC32 and limits**\n\n```method : public : ReadBytes(member:String) ~ Byte[]```\n\n\n\nmember: String\n\nreturn: Byte[]"]
+				},
+				"ReadTable": {
+					"descriptions": ["**Reads one member as a table, by its extension, whether or not it matches the pattern**\n\n```method : public : ReadTable(member:String) ~ Table```\n\n\n\nmember: String\n\nreturn: Table"]
+				},
+				"ReadText": {
+					"descriptions": ["**Reads one member as UTF-8 text**\n\n```method : public : ReadText(member:String) ~ String```\n\n\n\nmember: String\n\nreturn: String"]
+				},
+				"SetLimits": {
+					"descriptions": ["**Sets how much may be decompressed: a member larger than 'member_bytes' is refused, and so is a read that would take the archive's total past 'total_bytes'. The defaults are 256 MB and 1 GB.**\n\n```method : public : SetLimits(member_bytes:Int, total_bytes:Int) ~ Nil```\n\n\n\nmember_bytes: Int\n\ntotal_bytes: Int\n\nreturn: Nil"]
+				},
+				"SetName": {
+					"descriptions": ["**Sets the listing table's name**\n\n```method : public : SetName(name:String) ~ Nil```\n\n\n\nname: String\n\nreturn: Nil"]
+				},
+				"SetPattern": {
+					"descriptions": ["**Sets which members become tables: a pattern over member paths, where '*' matches any run of characters (slashes included) and '?' any one. All readable members by default.**\n\n```method : public : SetPattern(pattern:String) ~ Nil```\n\n\n\npattern: String\n\nreturn: Nil"]
+				},
+				"SetRowElement": {
+					"descriptions": ["**Names the element that is a row in XML members; without it XML members are listed only**\n\n```method : public : SetRowElement(row_element:String) ~ Nil```\n\n\n\nrow_element: String\n\nreturn: Nil"]
+				}
+			}
+		},
 		"Query.Structured.Catalog": {
 			"description": "Named tables that queries can refer to. SQL run through a catalog can join its tables, and can create, change and delete them.",
 			"functions": {
@@ -10276,10 +10326,10 @@
 					"descriptions": ["**Converts the byte array to a character array**\n\n```function : ToUnicode(b:Byte[]) ~ Char[]```\n\n\n\nb: Byte[]\n\nreturn: Char[]"]
 				},
 				"UncompressDeflate": {
-					"descriptions": ["**Uncompresses a raw deflate (RFC 1951) byte stream, as written by CompressDeflate, a zip member or zlib with windowBits -15. Raises on damaged or truncated input.**\n\n```function : UncompressDeflate() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
+					"descriptions": ["**Uncompresses a raw deflate (RFC 1951) byte stream, as written by CompressDeflate, a zip member or zlib with windowBits -15. Raises on damaged or truncated input.**\n\n```function : UncompressDeflate() ~ Byte[]```\n\n\n\nreturn: Byte[]", "**Uncompresses a raw deflate (RFC 1951) stream to at most 'limit' bytes. A zip member names its uncompressed size, so passing that size as the limit both bounds the memory used and catches a member that expands past what it claims (a zip bomb). Raises on damaged or truncated input, as UncompressDeflate(input) does.**\n\n```function : UncompressDeflate(input:Byte[], limit:Int) ~ Byte[]```\n\n\n\ninput: Byte[]\n\nlimit: Int\n\nreturn: Byte[]\n\n```\nraw := Byte->UncompressDeflate(member, declared_size);\nif(raw = Nil | raw->Size() <> declared_size) {\n  \"the member does not match its stated size\"->ErrorLine();\n};\n```"]
 				},
 				"UncompressGzip": {
-					"descriptions": ["**Uncompresses a byte stream using gzip**\n\n```function : UncompressGzip() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
+					"descriptions": ["**Uncompresses a byte stream using gzip**\n\n```function : UncompressGzip() ~ Byte[]```\n\n\n\nreturn: Byte[]", "**Uncompresses a gzip stream to at most 'limit' bytes. Use it on data from outside the program: a few kilobytes of gzip can expand to gigabytes, and this stops at the bound instead of allocating them. Raises on damaged or truncated input, as UncompressGzip(input) does.**\n\n```function : UncompressGzip(input:Byte[], limit:Int) ~ Byte[]```\n\n\n\ninput: Byte[]\n\nlimit: Int\n\nreturn: Byte[]\n\n```\nraw := Byte->UncompressGzip(packed, 64 * 1024 * 1024);\nif(raw = Nil) {\n  \"larger than 64 MB uncompressed\"->ErrorLine();\n};\n```"]
 				},
 				"UncompressZlib": {
 					"descriptions": ["**Uncompresses a byte stream using zlib**\n\n```function : UncompressZlib() ~ Byte[]```\n\n\n\nreturn: Byte[]"]
@@ -17663,6 +17713,12 @@
 			},
 			{
 				"bundle": "System.Diagnostics",
+				"file": ""
+			}
+		],
+		"ArchiveSource": [
+			{
+				"bundle": "Query.Structured",
 				"file": ""
 			}
 		],

@@ -335,7 +335,7 @@ each of these links `query` plus the library it adapts.*
 | `query_ml.obl` | `MlResultSource` | `System.ML` results: cross-validation folds and per-fold metrics, threshold sweeps, and predictions with their scores and true labels. Comparing runs becomes a `GROUP BY` and `ORDER BY`. |
 | `query_odbc.obl` | `OdbcSource(connection, sql)` | The result of a query against a real database. With a scan hint, simple `where` terms are pushed into the SQL sent, so the database filters before anything is copied. |
 | `query_vision.obl` | `VisionSource(folder, detector)` | Detections across a folder of images, one row each: image, label, score and box, from any `API.Onnx` detector. For example, the images where a person was found with a score above 0.9, grouped by camera. |
-| `query.obl` (no native code) | `ArchiveSource(path)` | Zip and tar contents as a tree, like `FilesystemSource`, and any member readable as a source, such as a CSV inside a zip. Tar and stored zip members need only `lang`; deflated zip members use `Byte->UncompressDeflate` (raw deflate, RFC 1951) from `lang`. |
+| `query.obl` (no native code) | `ArchiveSource(path)` | Zip and tar contents as a tree, like `FilesystemSource`, and any member readable as a source, such as a CSV inside a zip. Tar and stored zip members need only `lang`; deflated zip members use `Byte->UncompressDeflate` (raw deflate, RFC 1951) from `lang`. Built in phase 7; see "As built". |
 | `query.obl` | `XlsxSource(path[, sheet])` | Each worksheet as a table, with typed cells and the first row as the header. An `.xlsx` file is a zip of XML parts, so this builds on `ArchiveSource` and `XmlSource`. |
 
 Further sources fit the same interface without changing the engine, for example RSS through
@@ -835,9 +835,60 @@ design above. Each phase adds its notes here.
 - A scan hint's row limit caps the images read; its columns are not used, since the two
   tables share column names.
 
+**Phase 7 (`ArchiveSource`).**
+- One source reads `.zip`, `.tar` and gzipped tar (`.tar.gz`, `.tgz`), told apart by content
+  (gzip magic, then a tar header whose checksum holds, then a zip end record), not by name. It
+  reads from a file, a URL (through the download cache) or bytes in memory
+  (`ArchiveSource->FromBytes`). It lives in `query.obl` with no new library.
+- Tables: a listing named after the archive (`results.zip` gives `results`; `SetName`
+  changes it), and one table per member in a readable format, named by the member's full
+  path (`data/runs.csv`), which SQL names in double quotes. A JSON or XML member's child tables
+  follow its own rules (`meta.json_tags`). Formats follow the extension as files in SQL do,
+  with two differences: `.txt` is not read as CSV (archives carry READMEs), and an XML member
+  becomes a table only once `SetRowElement` names its row element. `SetPattern` (a glob over
+  member paths) chooses which members become tables. `ReadBytes`, `ReadText` and `ReadTable`
+  read single members.
+- Listing columns: FilesystemSource's tree columns (`id`, `parent_id`, `depth`, `name`, `path`,
+  `ext`, `is_dir`) plus `type` (`file`, `dir`, `symlink`, `hardlink`, `other`), `size`,
+  `compressed_size`, `method` and `crc32` (zip only), `modified` and `link`. A folder the
+  archive implies but does not list gets a row, so every member has a parent; a tar's `./`
+  root has none.
+- Modification times: a zip's MS-DOS time is local time with no zone and two-second steps; an
+  extended timestamp field (0x5455), where present, is used instead and is UTC. Tar times are
+  UTC, including a pax `mtime` (its fraction dropped).
+- Safety, since an archive is untrusted input. Nothing is extracted to disk. A member whose
+  path is absolute (`/x`, `C:\x`) or contains a `..` part refuses the whole archive, naming it,
+  as do duplicate names in a zip (the case behind several extraction exploits) and zip
+  members whose data overlap (the "overlapping files" bomb). A tar may repeat a path, as
+  appending does; the last copy is the table, and the listing shows both.
+- Zip bombs: each member is inflated with the new `Byte->UncompressDeflate(input, limit)`,
+  limited to the size its central directory states, so a member that expands further is
+  refused after producing at most that many bytes, and one that inflates to less is refused
+  too. Every member is then checked against its CRC32. A member over 256 MB, or a read taking
+  the archive's total past 1 GB, is refused (`SetLimits` changes both). A gzipped tar, or a
+  gzipped member, is inflated with `Byte->UncompressGzip(input, limit)` within the total.
+  Before these two overloads the VM's own 512 MB inflate buffer was the only bound.
+- Zip: stored and deflate members; ZIP64 end records and extra fields; a self-extracting
+  prefix (offsets are found from where the central directory actually sits); data
+  descriptors (the central directory's sizes are used). Refused with a reason: encryption,
+  any other method (named: `bzip2`, `lzma`, `zstd`, ...), archives split across disks, a local
+  header that names a different member, and ZIP64 values with no ZIP64 record.
+- Tar: POSIX ustar with its name prefix, pax extended headers (`path`, `linkpath`, `size`,
+  `mtime`; global headers are skipped), GNU long names and link targets (`L`, `K`), base-256
+  sizes, and both checksum conventions. Links are listed with their targets and never
+  followed. A tar cut at a block boundary has only lost its end marker and still reads; one
+  cut inside a header or a member's data is an error.
+- Loading is all or nothing: a member that does not parse fails the load with the archive,
+  member and reason, and nothing reaches the catalog. Scan hints are not pushed into members.
+- Not done: archives named in SQL (`from 'results.zip'`), and reading a member without holding
+  the whole member in memory.
+
 Toolchain defects found while building these phases were fixed at the source rather than worked
 around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
-(#1299), HTTP status codes and a TLS/collector deadlock (#1300), and `XmlElement` attribute order.
+(#1299), HTTP status codes and a TLS/collector deadlock (#1300), `XmlElement` attribute order,
+and no way to bound how far deflate or gzip data inflates (phase 7: two new traps). Also in
+phase 7: the label merging at `-opt s2`/`s3` could give a merged label the id of another label
+in a linked library method, so adding classes to `query.obl` made a query loop forever.
 
 ## Open questions
 

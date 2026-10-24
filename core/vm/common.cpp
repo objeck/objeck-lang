@@ -3088,6 +3088,12 @@ bool TrapProcessor::ProcessTrap(StackProgram* program, size_t* inst,
   case PROCESS_ALIVE:
     return ProcessAlive(program, inst, op_stack, stack_pos, frame);
 
+  case UNCOMPRESS_DEFLATE_LIMIT:
+    return UncompressLimit(-MAX_WBITS, program, inst, op_stack, stack_pos, frame);
+
+  case UNCOMPRESS_GZIP_LIMIT:
+    return UncompressLimit(MAX_WBITS | 16, program, inst, op_stack, stack_pos, frame);
+
   case FILE_COPY:
     return FileCopy(program, inst, op_stack, stack_pos, frame);
 
@@ -10652,6 +10658,54 @@ bool TrapProcessor::ProcessAlive(StackProgram* program, size_t* inst, size_t*& o
   PushInt(alive ? 1 : 0, op_stack, stack_pos);
 #endif
 
+  return true;
+}
+
+// function : UncompressDeflate(input : Byte[], limit : Int) ~ Byte[] and
+// UncompressGzip(input : Byte[], limit : Int) ~ Byte[]: inflate at most 'limit' bytes.
+// Nil when the stream would inflate past the limit (a zip bomb, or a size header that
+// lies); raises on damaged or truncated data, as the one-argument forms do.
+bool TrapProcessor::UncompressLimit(int window_bits, StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
+{
+  const INT64_VALUE limit = (INT64_VALUE)PopInt(op_stack, stack_pos);
+  size_t* array = (size_t*)PopInt(op_stack, stack_pos);
+  if(!array) {
+    PushInt(0, op_stack, stack_pos);
+    return TrapError(Runtime::StackInterpreter::RECOVERED_NIL_DEREFERENCE, L"Attempting to dereference a 'Nil' memory instance");
+  }
+
+  if(limit < 0) {
+    PushInt(0, op_stack, stack_pos);
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"A negative uncompress limit");
+  }
+
+  const char* in = (char*)(array + 3);
+  const uLong in_len = (uLong)array[2];
+
+  // past the VM's own buffer limit the call fails as damaged data always has
+  const unsigned long bounded = limit < (INT64_VALUE)(COMPRESS_BUFFER_LIMIT) ? (unsigned long)limit : (unsigned long)(COMPRESS_BUFFER_LIMIT);
+  unsigned long out_len = 0;
+  bool over_limit = false;
+  char* out = OutputStream::InflateStream(in, in_len, window_bits, out_len, bounded, &over_limit);
+  if(!out) {
+    PushInt(0, op_stack, stack_pos);
+    if(over_limit) {
+      return true;
+    }
+    return TrapError(Runtime::StackInterpreter::RECOVERED_OTHER, L"Invalid, truncated or oversized compressed data");
+  }
+
+  const long byte_array_size = (long)out_len;
+  const long byte_array_dim = 1;
+  size_t* byte_array = MemoryManager::AllocateArray(byte_array_size + 1 + ((byte_array_dim + 2) * sizeof(size_t)), BYTE_ARY_TYPE, op_stack, *stack_pos, false);
+  byte_array[0] = byte_array_size;
+  byte_array[1] = byte_array_dim;
+  byte_array[2] = byte_array_size;
+
+  memcpy((char*)(byte_array + 3), out, byte_array_size);
+  free(out);
+
+  PushInt((size_t)byte_array, op_stack, stack_pos);
   return true;
 }
 

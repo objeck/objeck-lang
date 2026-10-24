@@ -3633,6 +3633,18 @@ Statement* Parser::ParseStatement(int depth, bool semi_colon)
       NextToken();
       break;
 
+    case UNCOMPRESS_DEFLATE_LIMIT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::UNCOMPRESS_DEFLATE_LIMIT);
+      NextToken();
+      break;
+
+    case UNCOMPRESS_GZIP_LIMIT:
+      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                               instructions::UNCOMPRESS_GZIP_LIMIT);
+      NextToken();
+      break;
+
     case HTTP3_CLOSE:
       statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                                instructions::HTTP3_CLOSE);
@@ -6108,6 +6120,18 @@ Statement* Parser::ParseSystemStatement(int line_num, int line_pos, const std::w
   case PROCESS_ALIVE:
      statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
                                                               instructions::PROCESS_ALIVE);
+     NextToken();
+     break;
+
+  case UNCOMPRESS_DEFLATE_LIMIT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::UNCOMPRESS_DEFLATE_LIMIT);
+     NextToken();
+     break;
+
+  case UNCOMPRESS_GZIP_LIMIT:
+     statement = TreeFactory::Instance()->MakeSystemStatement(file_name, line_num, line_pos, GetLineNumber(), GetLinePosition(),
+                                                              instructions::UNCOMPRESS_GZIP_LIMIT);
      NextToken();
      break;
 
