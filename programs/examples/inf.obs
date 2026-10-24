@@ -37,6 +37,10 @@ bundle Default {
 			Parent(13, "Metal Fuschia", EngineType->Warp); 
 		}
 
+		method : public : GetColor() ~ String {
+			return @color;
+		}
+
 		method : public : GetMake() ~ String {
 			return "Excelsior";
 		}
@@ -52,7 +56,11 @@ bundle Default {
 
 	class Pinto from Vehicle implements Registration {
 		New() {
-			Parent();
+			Parent(4, "Orange", EngineType->Gas);
+		}
+
+		method : public : GetColor() ~ String {
+			return @color;
 		}
 
 		method : public : GetMake() ~ String {

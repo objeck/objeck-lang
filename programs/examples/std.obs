@@ -2,10 +2,10 @@ use Collection;
 
 bundle Default {
 	class StdDev {
-		nums : FloatVector;
+		nums : Vector<FloatRef>;
 		
 		New() {
-			nums := FloatVector->New();
+			nums := Vector->New()<FloatRef>;
 		}
 		
 		function : Main(args : String[]) ~ Nil {
@@ -23,9 +23,14 @@ bundle Default {
 		
 		method : public : native : GetSD() ~ Float {
 			sq_diffs := 0.0;
-			avg := nums->Average();
+			avg := 0.0;
 			each(i : nums) {
-				num := nums->Get(i);
+				avg += nums->Get(i)->Get();
+			};
+			avg /= nums->Size();
+
+			each(i : nums) {
+				num := nums->Get(i)->Get();
 				sq_diffs += (num - avg) * (num - avg);
 			};
 			

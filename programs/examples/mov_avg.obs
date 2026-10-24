@@ -1,20 +1,20 @@
 ﻿use Collection;
 
 class MovingAverage {
-	@window : FloatQueue;
+	@window : Queue<FloatRef>;
 	@period : Int;
 	@sum : Float;
 
 	New(period : Int) {
-		@window := FloatQueue->New();
+		@window := Queue->New()<FloatRef>;
 		@period := period;
 	}
 
 	method : NewNum(num : Float) ~ Nil {
 		@sum += num;
-		@window->Add(num);
+		@window->AddBack(num);
 		if(@window->Size() > @period) {
-			@sum -= @window->Remove();
+			@sum -= @window->RemoveFront()->Get();
 		};
 	}
 	

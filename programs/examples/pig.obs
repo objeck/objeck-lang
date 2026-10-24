@@ -8,7 +8,7 @@
 		while(true) {
 			safe := safe_score[player];
 			" Player {$player}: ({$safe}, {$score}) Rolling? (y/n) "->PrintLine();
-			rolling := IO.Console->ReadString();
+			rolling := IO.Console->ReadLine();
 			if(safe_score[player] + score < max_score & (rolling->Equals("y") | rolling->Equals("yes"))) {
 				rolled := ((Float->Random() * 100.0)->As(Int) % 6) + 1;
 				" Rolled {$rolled}"->PrintLine();

@@ -9,13 +9,13 @@ bundle Default {
 		function : Run() ~ Nil {
 			keys := ["1", "2", "3"];
 			vals := ["a", "b", "c"];
-			hash := StringHash->New();
+			hash := Hash->New()<String, String>;
 			each(i : vals) {			
 				hash->Insert(keys[i], vals[i]);
 			};
 			
 			each(i : vals) {
-				v := hash->Find(keys[i])->As(String);
+				v := hash->Find(keys[i]);
 				v->PrintLine();
 			};
 		}

@@ -4,11 +4,11 @@
 }
 
 class Foo from Fie {
-	@id : Int;
-	New() { Parent(); @id := 7; }
+	@my_id : Int;
+	New() { Parent(); @my_id := 7; }
 
 	method : public : GetMyId() ~ Int {
-		return @self->@id;
+		return @self->@my_id;
 	}
 	
 	method : public : GetParentId() ~ Int {

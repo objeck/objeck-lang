@@ -1,9 +1,9 @@
-use HTTP;
+use Web.HTTP;
 use Collection;
 
 class HttpTest {
 	function : Main(args : String[]) ~ Nil {
-		IsPlausibleRule("http://www.puzzlers.org/pub/wordlists/unixdict.txt");
+		IsPlausibleRule("https://web.archive.org/web/20180611003215id_/http://www.puzzlers.org/pub/wordlists/unixdict.txt");
 	}
 
 	function : PlausibilityCheck(comment : String, x : Int, y : Int) ~ Bool {
@@ -27,8 +27,12 @@ class HttpTest {
 		truecount := 0;
 		falsecount := 0;
 
-		client := HttpClient->New();
-		data := client->Get(url)->Get(0)->As(String);
+		response := HttpsClient->QuickGet(Url->New(url));
+		if(response = Nil | response->GetContent() = Nil) {
+			"--- Unable to fetch the word list ---"->PrintLine();
+			return;
+		};
+		data := response->GetContent()->ToString();
 		data := data->ToLower();
 		words := data->Split("\n");
 

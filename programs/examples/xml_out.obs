@@ -1,4 +1,4 @@
-use XML;
+use Data.XML;
 
 bundle Default {
 	class Test {

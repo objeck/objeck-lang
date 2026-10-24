@@ -8,11 +8,10 @@ class LZW {
     decompressed->PrintLine();
 	}
 
-#	function : native : Compress(uncompressed : String) ~ IntVector {
-	function : Compress(uncompressed : String) ~ IntVector {
+	function : Compress(uncompressed : String) ~ Vector<IntRef> {
 		# Build the dictionary.
     dictSize := 256;
-      dictionary := StringMap->New();
+      dictionary := Map->New()<String, IntRef>;
       for (i := 0; i < 256; i+=1;) {
         key := "";
         key->Append(i->As(Char));
@@ -20,7 +19,7 @@ class LZW {
 		};
 		
     w := "";
-    result := IntVector->New();
+    result := Vector->New()<IntRef>;
 						
     each (i : uncompressed) {
       c := uncompressed->Get(i);
@@ -30,7 +29,7 @@ class LZW {
           w := wc;
         }
         else {
-          value := dictionary->Find(w)->As(IntRef);
+          value := dictionary->Find(w);
           result->AddBack(value->Get());
           # Add wc to the dictionary.				
           dictionary->Insert(wc, IntRef->New(dictSize));
@@ -42,17 +41,17 @@ class LZW {
 		
       # Output the code for w.
       if (w->Size() > 0) {
-        value := dictionary->Find(w)->As(IntRef);
+        value := dictionary->Find(w);
         result->AddBack(value->Get());
       };
 		
       return result;		
 	}
 	
-	function : Decompress(compressed : IntVector) ~ String {
+	function : Decompress(compressed : Vector<IntRef>) ~ String {
 		# Build the dictionary.
 		dictSize := 256;
-    dictionary := IntMap->New();
+    dictionary := Map->New()<IntRef, String>;
     for (i := 0; i < 256; i+=1;) {
       value := "";
       value->Append(i->As(Char));
@@ -61,15 +60,15 @@ class LZW {
 		
 		w := "";
 		found := compressed->Remove(0);
-		w->Append(found->As(Char));
+		w->Append(found->Get()->As(Char));
 		
 		result := String->New(w);		
     each (i : compressed) {
-      k := compressed->Get(i);
+      k := compressed->Get(i)->Get();
 
       entry : String;
-      if (dictionary->HasEntry(k)) {			
-        entry := dictionary->Find(k)->As(String);
+      if (dictionary->Has(k)) {			
+        entry := dictionary->Find(k);
       }
       else if (k = dictSize) {
         entry := String->New(w);
@@ -92,7 +91,7 @@ class LZW {
     return result;
 	}
 	
-	function : Show(results : IntVector) ~ Nil {
+	function : Show(results : Vector<IntRef>) ~ Nil {
 		"["->Print();
 		each(i : results) {
 			results->Get(i)->Print(); 

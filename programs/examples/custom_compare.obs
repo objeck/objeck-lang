@@ -8,8 +8,8 @@ class Test {
 		"sorted: "->Print(); Show(v);
 	}
 	
-	function : CreateRefs(strings : String[]) ~ CompareVector {
-		vector := CompareVector->New();
+	function : CreateRefs(strings : String[]) ~ CompareVector<StringRef> {
+		vector := CompareVector->New()<StringRef>;
 		each(i : strings) {
 			vector->AddBack(StringRef->New(strings[i]));
 		};
@@ -17,9 +17,9 @@ class Test {
 		return vector;
 	}
 	
-	function : Show(v : CompareVector) ~ Nil {
+	function : Show(v : CompareVector<StringRef>) ~ Nil {
 		each(i : v) {
-			s := v->Get(i)->As(StringRef);
+			s := v->Get(i);
 			s->ToString()->Print();
 			if(i + 1 < v->Size()) {
 				','->Print();

@@ -12,7 +12,7 @@ bundle Default {
       rpn->PrintLine();
       
       tokens := rpn->Split(" ");
-      stack := FloatVector->New();
+      stack := Vector->New()<FloatRef>;
       each(i : tokens) {
         token := tokens[i]->Trim();
         if(token->Size() > 0) {
@@ -20,8 +20,8 @@ bundle Default {
             stack->AddBack(token->ToFloat());
           }
           else {
-            right := stack->Get(stack->Size() - 1); stack->RemoveBack();
-            left := stack->Get(stack->Size() - 1); stack->RemoveBack();
+            right := stack->Get(stack->Size() - 1)->Get(); stack->RemoveBack();
+            left := stack->Get(stack->Size() - 1)->Get(); stack->RemoveBack();
             select(token->Get(0)) {
               label '+': {
                 stack->AddBack(left + right);
@@ -47,10 +47,10 @@ bundle Default {
           PrintStack(stack);
         };
       };
-      Console->Print("result: ")->PrintLine(stack->Get(0));
+      Console->Print("result: ")->PrintLine(stack->Get(0)->Get());
     }
 
-    function : PrintStack(stack : FloatVector) ~ Nil {
+    function : PrintStack(stack : Vector<FloatRef>) ~ Nil {
       "  ["->Print();
       each(i : stack) {
         stack->Get(i)->Print();

@@ -6,20 +6,20 @@ class Test {
 		if(args_size > 0) {
 			action := args[0];
 
-			if(action->Equals("query_tuned_model") & args_size = 2) {
-				model_name := args[0];
-				query := args[1];
+			if(action->Equals("query_tuned_model") & args_size = 3) {
+				model_name := args[1];
+				query := args[2];
 
 				tuned_model := Tuner->Get(model_name);
 				if(tuned_model <> Nil & tuned_model->GetState()->Equals("ACTIVE")) {
 					content := Content->New("user")->AddPart(TextPart->New(query));
-					candidates := tuned_model->GenerateContent(content);
+					candidates := tuned_model->GenerateContent(content, Nil);
 					if(candidates->Size() > 0) {
 						candidates->First()->GetAllText()->Trim()->PrintLine();
 					};
 				}
 				else {
-					status := tuned_model->GetState();
+					status := tuned_model = Nil ? "<unknown>" : tuned_model->GetState();
 					model_name := tuned_model = Nil ? "<unknown>" : tuned_model->GetName();
 					">>> Model not ready: model_name='{$model_name}', status='{$status}' <<<"->PrintLine();
 				};		

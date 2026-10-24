@@ -4,15 +4,15 @@ use Collection;
 
 bundle Default {
 	class ChatServer {
-		@clients : StringMap;
+		@clients : Map<String, Client>;
 		@clients_mutex : ThreadMutex;
 		
 		New() {
-			@clients := StringMap->New();
+			@clients := Map->New()<String, Client>;
 			@clients_mutex := ThreadMutex->New("clients_mutex");
 		}
 
-		method : ValidLogin(login_name : String, clients : StringMap) ~ Bool {
+		method : ValidLogin(login_name : String, clients : Map<String, Client>) ~ Bool {
 			if(clients->Has(login_name)) {
 				return false;
 			};
@@ -26,12 +26,12 @@ bundle Default {
 		}
 		
 		method : public : Broadcast(message : String, sender : Client) ~ Nil {
-			client_array : Vector;
+			client_array : Vector<Client>;
 			critical(@clients_mutex) {
 				client_array := @clients->GetValues();
 			};
 			each(i : client_array) {
-				client := client_array->Get(i)->As(Client);
+				client := client_array->Get(i);
 				if(client <> sender) {
 					client->Send(message);
 				};
@@ -54,7 +54,7 @@ bundle Default {
 					client_sock := server->Accept();
 					critical(@clients_mutex) {
 						client_sock->WriteString("login: ");
-						login_name := client_sock->ReadString();
+						login_name := client_sock->ReadLine();
 						if(ValidLogin(login_name, @clients)) {
 							client := Client->New(login_name, client_sock, @self);
 							@clients->Insert(client->GetName(), client);
@@ -98,10 +98,10 @@ bundle Default {
 			client_name := GetName();
 			@server->Broadcast("+++ {$client_name} has arrived +++", @self);
 			
-			message := @client_sock->ReadString();
+			message := @client_sock->ReadLine();
 			while(message->Size() > 0 & message->Equals("/quit") = false) {
 				@server->Broadcast("{$client_name}> {$message}", @self);			
-				message := @client_sock->ReadString();
+				message := @client_sock->ReadLine();
 			};
 			@server->Disconnect(@self);
 		}

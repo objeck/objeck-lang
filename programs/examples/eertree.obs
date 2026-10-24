@@ -13,7 +13,7 @@ class Eertree {
 		suffix := 1;
 		
 		n : Int; k : Int;
-		for(i := 0; i < s->Size(); ++i;) {
+		for(i := 0; i < s->Size(); i += 1;) {
 			c := s->Get(i);
 
 			done := false;

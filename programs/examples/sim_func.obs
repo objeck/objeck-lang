@@ -7,27 +7,33 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			org_ints := IntVector->New([2, 4, 6, 8]);
-			int_values := org_ints->Apply(Math->Square(Int) ~ Int);
+			org_ints := CompareVector->New()<IntRef>;
+			each(value in [2, 4, 6, 8]) {
+				org_ints->AddBack(value);
+			};
+			int_values := org_ints->Map(Math->Square(IntRef) ~ IntRef);
 			each(i : int_values) {
-				int_values->Get(i)->PrintLine();
+				int_values->Get(i)->Get()->PrintLine();
 			};
 
-			org_floats := FloatVector->New([3.2, 4.45, 6.13, 8.17]);
-			float_values := org_floats->Apply(Math->Square(Float) ~ Float);
+			org_floats := CompareVector->New()<FloatRef>;
+			each(value in [3.2, 4.45, 6.13, 8.17]) {
+				org_floats->AddBack(value);
+			};
+			float_values := org_floats->Map(Math->Square(FloatRef) ~ FloatRef);
 			each(i : float_values) {
-				float_values->Get(i)->PrintLine();
+				float_values->Get(i)->Get()->PrintLine();
 			};
 		}
 	}
 
 	class Math {
-		function : native : Square(value : Int) ~ Int {
+		function : native : Square(value : IntRef) ~ IntRef {
 			return value * value;
 		}
 		
 
-		function : native : Square(value : Float) ~ Float {
+		function : native : Square(value : FloatRef) ~ FloatRef {
 			return value * value;
 		}
 	}

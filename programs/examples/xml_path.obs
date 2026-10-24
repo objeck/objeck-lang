@@ -1,5 +1,5 @@
 use System.IO;
-use XML;
+use Data.XML;
 
 bundle Default {
 	class Test {
@@ -43,7 +43,7 @@ bundle Default {
 				results := parser->FindElements("/inventory/section/item/price");
 				if(results <> Nil) {
 					each(i : results) {					
-						element := results->Get(i)->As(XmlElement);
+						element := results->Get(i);
 						element->GetContent()->PrintLine();
 					};
 				};

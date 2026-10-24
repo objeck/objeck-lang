@@ -7,8 +7,8 @@ bundle Default {
     }
 	
     function : native : DoArithmetic() ~ Nil {
-      a := Console->ReadString()->ToInt();
-      b := Console->ReadString()->ToInt();
+      a := Console->ReadLine()->ToInt();
+      b := Console->ReadLine()->ToInt();
   
       Console->Print("a+b = ")->PrintLine(a+b);
       Console->Print("a-b = ")->PrintLine(a-b);

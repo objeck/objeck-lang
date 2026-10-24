@@ -4,7 +4,7 @@ bundle Default {
 	class Test {
 		function : Main(args : String[]) ~ Nil {
 			haystack := ["Zig","Zag","Wally","Ronald","Bush","Krusty","Charlie","Bush","Bozo"];
-			values := CompareVector->New();
+			values := CompareVector->New()<String>;
 			each(i : haystack) {
 				values->AddBack(haystack[i]);
 			};

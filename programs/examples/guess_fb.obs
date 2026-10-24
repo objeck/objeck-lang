@@ -9,7 +9,7 @@ class GuessNumber {
 		"Guess the number which is between 1 and 10 or 'n' to quite: "->PrintLine();
 		rand_num := (Float->Random() * 10.0)->As(Int) + 1;
 		while(done = false) {
-			guess := Console->ReadString();
+			guess := Console->ReadLine();
 			number := guess->ToInt();
 			if(number <> 0) {
 				if(number <> rand_num) {

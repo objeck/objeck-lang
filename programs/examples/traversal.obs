@@ -49,20 +49,20 @@ class Test {
 	}
 	
 	function : Levelorder(node : Node) ~ Nil {
-		nodequeue := Collection.Queue->New();
+		nodequeue := Collection.Queue->New()<Node>;
 		if(node <> Nil) {
-			nodequeue->Add(node);
+			nodequeue->AddBack(node);
 		};
 		
 		while(nodequeue->IsEmpty() = false) {
-			next := nodequeue->Remove()->As(Node);
+			next := nodequeue->RemoveFront();
 			System.IO.Console->Print(next->GetData())->Print(", ");
 			if(next->GetLeft() <> Nil) {
-				nodequeue->Add(next->GetLeft());
+				nodequeue->AddBack(next->GetLeft());
 			};
 			
 			if(next->GetRight() <> Nil) {
-				nodequeue->Add(next->GetRight());
+				nodequeue->AddBack(next->GetRight());
 			};
 		};
 	}

@@ -1,4 +1,4 @@
-use XML;
+use Data.XML;
 
 bundle Default {
 	class Test {
@@ -18,7 +18,7 @@ bundle Default {
 				root := parser->GetRoot();
 				children := root->GetChildren("Student");
 				each(i : children) {
-					child : XmlElement := children->Get(i)->As(XmlElement);
+					child := children->Get(i);
 					XmlElement->DecodeString(child->GetAttribute("Name")->GetValue())->PrintLine();
 				};
 			};

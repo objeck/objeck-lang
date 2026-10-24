@@ -4,16 +4,16 @@ use Collection;
 
 bundle Default {  
 	class Flights {
-		departures : CompareVector;
-		arrivals : CompareVector;
-		stops : IntVector;
-		fares : IntVector;
+		departures : CompareVector<String>;
+		arrivals : CompareVector<String>;
+		stops : Vector<IntRef>;
+		fares : Vector<IntRef>;
   		
 		New() {
-			departures := CompareVector->New();
-			arrivals := CompareVector->New();
-			stops := IntVector->New();
-			fares := IntVector->New();
+			departures := CompareVector->New()<String>;
+			arrivals := CompareVector->New()<String>;
+			stops := Vector->New()<IntRef>;
+			fares := Vector->New()<IntRef>;
 		}
 		
 		function : Main(args : String[]) ~ Nil {
@@ -25,12 +25,12 @@ bundle Default {
 		method : native : Run(file : String) ~ Nil {
 			reader := FileReader->New(file);
 			while(reader->IsEoF() <> true) {
-				ParseFlight(reader->ReadString());
+				ParseFlight(reader->ReadLine());
 			};
 			reader->Close();
 			
 			"Route is: "->Print();
-			airports := ParseAirports(IO.Console->ReadString());
+			airports := ParseAirports(IO.Console->ReadLine());
 			if(airports <> Nil) {
 				depart := airports[0]->ToUpper();
 				arrival := airports[1]->ToUpper();
@@ -58,21 +58,21 @@ bundle Default {
 				"\tFare\tStops"->PrintLine();
         		"\t----\t-----"->PrintLine();
 				each(i : departures) {
-					if(departures->Get(i)->As(String)->Equals(depart) & 
-						arrivals->Get(i)->As(String)->Equals(arrival)) {
+					if(departures->Get(i)->Equals(depart) & 
+						arrivals->Get(i)->Equals(arrival)) {
 						"\t$"->Print();
-						fares->Get(i)->Print();
+						fares->Get(i)->Get()->Print();
 						'\t'->Print();
-						stops->Get(i)->Print();
+						stops->Get(i)->Get()->Print();
 						IO.Console->PrintLine();
 						
-						if(fares->Get(i) < best_fare) {
-							best_fare := fares->Get(i);
+						if(fares->Get(i)->Get() < best_fare) {
+							best_fare := fares->Get(i)->Get();
 							best_fare_index := i;
 						};
 						
-						if(stops->Get(i) < fewest_stops) {
-							fewest_stops := stops->Get(i);
+						if(stops->Get(i)->Get() < fewest_stops) {
+							fewest_stops := stops->Get(i)->Get();
 							fewest_stops_index := i;
 						};
 					};
@@ -80,9 +80,9 @@ bundle Default {
 				
 				if(best_fare_index > 0 & fewest_stops_index > 0) {
 					IO.Console->Print("Best fare: $")->Print(best_fare)->Print(" (")
-						->Print(stops->Get(best_fare_index))->PrintLine(" stops)");
+						->Print(stops->Get(best_fare_index)->Get())->PrintLine(" stops)");
 					IO.Console->Print("Fewest stops: $")
-						->Print(fares->Get(fewest_stops_index))->Print(" (")
+						->Print(fares->Get(fewest_stops_index)->Get())->Print(" (")
 						->Print(fewest_stops)->PrintLine(" stops)");
 				};
 			};

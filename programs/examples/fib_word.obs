@@ -2,13 +2,13 @@ use Collection;
 
 class FibonacciWord {
 	function : native : GetEntropy(result : String) ~ Float {
-		frequencies := IntMap->New();
+		frequencies := Map->New()<CharRef, IntRef>;
 
 		each(i : result) {
 			c := result->Get(i);
 
 			if(frequencies->Has(c)) {
-				count := frequencies->Find(c)->As(IntRef);
+				count := frequencies->Find(c);
 				count->Set(count->Get() + 1);
 			}
 			else {
@@ -21,7 +21,7 @@ class FibonacciWord {
 
       	counts := frequencies->GetValues(); 
 		each(i : counts) {
-			count := counts->Get(i)->As(IntRef)->Get();
+			count := counts->Get(i)->Get();
 			freq := count->As(Float) / length;
 			entropy += freq * (freq->Log() / 2.0->Log());
 		};

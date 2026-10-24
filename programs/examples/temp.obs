@@ -1,6 +1,6 @@
 ﻿class Temperature {
 	function : Main(args : String[]) ~ Nil {
-		k := System.IO.Console->ReadString()->ToFloat();
+		k := System.IO.Console->ReadLine()->ToFloat();
 		c := KelvinToCelcius(k);
 		f := KelvinToFahrenheit(k);
 		r := KelvinToRankine(k);

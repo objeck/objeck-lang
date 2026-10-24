@@ -6,7 +6,7 @@ bundle Default {
 		@value : Int;
 		
 		New(value : Int) {
-			Parent();
+			Parent(value->ToString());
 			@value := value;
 		}
 
@@ -18,13 +18,17 @@ bundle Default {
 
 	class SleepSort {
 		function : Main(args : String[]) ~ Nil {
-			items := Vector->New();
+			items := Vector->New()<Item>;
 			each(i : args) {
 				items->AddBack(Item->New(args[i]->ToInt()));
 			};
 		
 			each(i : items) {
-				items->Get(i)->As(Item)->Execute(Nil);
+				items->Get(i)->Execute(Nil);
+			};
+
+			each(i : items) {
+				items->Get(i)->Join();
 			};
 		}
 	}

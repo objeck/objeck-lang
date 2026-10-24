@@ -2,8 +2,8 @@ use System.IO;
 use Collection;
 
 class Basic {
-	function : native : GenerateFactors(n : Int)  ~ IntVector {
-		factors := IntVector->New();
+	function : native : GenerateFactors(n : Int)  ~ CompareVector<IntRef> {
+		factors := CompareVector->New()<IntRef>;
 		factors-> AddBack(1);
 		factors->AddBack(n);
 
@@ -28,7 +28,7 @@ class Basic {
 			
 			Console->Print("Factors of ")->Print(numbers[i])->PrintLine(" are:");
 			each(i : factors) {
-				Console->Print(factors->Get(i))->Print(", ");
+				Console->Print(factors->Get(i)->Get())->Print(", ");
 			};
 			"\n\n"->Print();
 		};

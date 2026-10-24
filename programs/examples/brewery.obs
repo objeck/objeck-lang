@@ -2,8 +2,17 @@ use Web.HTTP;
 use Data.JSON;
 
 class Brewery {
+	function : GetText(url : String) ~ String {
+		response := HttpsClient->QuickGet(Url->New(url));
+		if(response = Nil | response->GetContent() = Nil) {
+			return Nil;
+		};
+
+		return response->GetContent()->ToString();
+	}
+
 	function : Main(args : String[]) ~ Nil {
-		text := HttpsClient->QuickGet("https://api.openbrewerydb.org/breweries/search?query=new-belgium");
+		text := GetText("https://api.openbrewerydb.org/v1/breweries/search?query=new-belgium");
 		if(text = Nil) {
 			"--- Unable to fetch brewery ---"->PrintLine();
 		}
@@ -21,7 +30,7 @@ class Brewery {
 			if(found_brewery <> Nil) {
 				lat := found_brewery->Get("latitude")->GetValue();
 				lon := found_brewery->Get("longitude")->GetValue();
-				text := HttpsClient->QuickGet("https://www.7timer.info/bin/civillight.php?lon={$lon}&lat={$lat}&ac=0&unit=metric&output=json&tzshift=0");
+				text := GetText("https://www.7timer.info/bin/civillight.php?lon={$lon}&lat={$lat}&ac=0&unit=metric&output=json&tzshift=0");
 				if(text = Nil) {
 					"--- Unable to fetch weather ---"->PrintLine();
 				}

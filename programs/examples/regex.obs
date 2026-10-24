@@ -1,4 +1,4 @@
-﻿use RegEx;
+﻿use Query.RegEx;
 
 bundle Default {
 	class RegExTest {
@@ -6,7 +6,7 @@ bundle Default {
 			string := "I am a string";
 			# exact match
 			regex := RegEx->New(".*string");
-			if(regex->MatchExact(".*string")) {
+			if(regex->MatchExact(string)) {
 				"ends with 'string'"->PrintLine();
 			};
 			# replace all
@@ -16,7 +16,7 @@ bundle Default {
 			regex := RegEx->New("((4\\.[0-3])|(2\\.[0-3]))");
 			found := regex->Find("Mozilla/4.0");
 			each(i : found) {
-				found->Get(i)->As(String)->PrintLine();
+				found->Get(i)->GetValue()->PrintLine();
 			};
 
 			regex := RegEx->New("1[3-5]?9");

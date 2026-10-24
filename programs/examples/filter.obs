@@ -2,8 +2,11 @@ use Collection;
 
 class Evens {
 	function : Main(args : String[]) ~ Nil {
-		values := IntVector->New([1, 2, 3, 4, 5]);
-		f := Filter(Int) ~ Bool;
+		values := Vector->New()<IntRef>;
+		each(v in [1, 2, 3, 4, 5]) {
+			values->AddBack(v);
+		};
+		f := Filter(IntRef) ~ Bool;
 		evens := values->Filter(f);
 
 		each(i : evens) {
@@ -11,7 +14,7 @@ class Evens {
 		};
 	}
 
-	function : Filter(v : Int) ~ Bool {
+	function : Filter(v : IntRef) ~ Bool {
 		return v % 2 = 0;	
 	}
 }

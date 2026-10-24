@@ -5,12 +5,12 @@ bundle Default {
 		}
 
 		function : native : Run() ~ Nil {
-			f := IO.File.FileReader->New("in.txt");
+			f := System.IO.Filesystem.FileReader->New("in.txt");
 			if(f->IsOpen()) {
-				string := f->ReadString();
+				string := f->ReadLine();
 				while(f->IsEoF() = false) {
 					string->PrintLine();
-					string := f->ReadString();
+					string := f->ReadLine();
 				};
 				f->Close();
 			};

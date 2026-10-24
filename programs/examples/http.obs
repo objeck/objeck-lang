@@ -1,25 +1,20 @@
-use HTTP;
-use Collection;
+use Web.HTTP;
 
 class HttpTest {
 	function : Main(args : String[]) ~ Nil {
-		client := HttpClient->New();
-		
 		# enable cookies
-		client->CookiesEnabled(true);
+		client := HttpClient->New(true);
 
 		# request creates a cookie
-		lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi?create");
-		each(i : lines) {
-			line := lines->Get(i)->As(String);
-			line->PrintLine();
+		response := client->Get(Url->New("http://httpbin.org/cookies/set?flavor=oatmeal"));
+		if(response <> Nil & response->GetContent() <> Nil) {
+			response->GetContent()->ToString()->PrintLine();
 		};
 
 		# request sends back cookie
-		lines := client->Get("http://www.rexswain.com/cgi-bin/cookie.cgi");
-		each(i : lines) {
-			line := lines->Get(i)->As(String);
-			line->PrintLine();
+		response := client->Get(Url->New("http://httpbin.org/cookies"));
+		if(response <> Nil & response->GetContent() <> Nil) {
+			response->GetContent()->ToString()->PrintLine();
 		};
 	}
 }

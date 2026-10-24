@@ -1,95 +1,74 @@
-﻿use HTTP;
-use RegEx;
-use XML;
+﻿use Web.HTTP;
+use Query.RegEx;
+use Data.XML;
 use Collection;
 
 class RosettaRank {
 	function : Main(args : String[]) ~ Nil {
 		langs := GetLanguages();
+		if(langs = Nil) {
+			"--- Unable to fetch the language list ---"->PrintLine();
+			return;
+		};
+
 		langs_counts := GetLanguageRank(langs);
-		
 		keys := langs_counts->GetKeys();
 		count := 1;
 		for(i := keys->Size() - 1; i >= 0; i -=1;) {
-			key := keys->Get(i);
-			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(langs_counts->Find(key)->As(String));
+			key := keys->Get(i)->Get();
+			IO.Console->Print(count)->Print(". ")->Print(key)->Print(" - ")->PrintLine(langs_counts->Find(key));
 			count += 1;
 		};
 	}
-	
-	function : GetLanguages() ~ StringSet {
-		langs_xml := "";
-		client := HttpClient->New();
-		input := client->Get("http://rosettacode.org/mw/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml");
-		if(input = Nil) {
+
+	function : GetLanguages() ~ Set<String> {
+		response := HttpsClient->QuickGet(Url->New("https://rosettacode.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:Programming_Languages&cmlimit=5000&format=xml"));
+		if(response = Nil | response->GetContent() = Nil) {
 			return Nil;
 		};
-		each(i : input) {
-			langs_xml += input->Get(i)->As(String);
-		};
-		
-		langs := StringSet->New();
+		langs_xml := response->GetContent()->ToString();
+
+		langs := Set->New()<String>;
 		parser := XmlParser->New(langs_xml);
 		if(parser->Parse()) {
 			# get first item
 			results := parser->FindElements("/api/query/categorymembers/cm");
 			each(i : results) {
-				element := results->Get(i)->As(XmlElement);
+				element := results->Get(i);
 				name := element->GetAttribute("title")->GetValue();
 				offset := name->Find(':');
 				if(offset > -1) {
 					lang := name->SubString(offset + 1, name->Size() - offset - 1);
 					langs->Insert(lang->ReplaceAll("&#x20;", " "));
-				};	
+				};
 			};
 		};
-		
+
 		return langs;
 	}
-	
-	function : GetLanguageRank(langs : StringSet) ~ IntMap {
-		langs_counts := IntMap->New();
-		client := HttpClient->New();
-		html := client->Get("http://rosettacode.org/mw/index.php?title=Special:Categories&limit=5000");
-		each(i : html) {
-			lines := html->Get(i)->As(String);
-			html_elements := lines->Split("\n");
-			each(j : html_elements) {
-				element := html_elements[j];					
-				name : String; count : String;
-				regex := RegEx->New("<li><a href=\"(\\w|\\s|/|\\?|\\&|;|:|#)+\"\\stitle=\"Category:(\\w|\\s|#)+\">");
-				found := regex->FindFirst(element);
-				if(found <> Nil) {
-					group1 := found->Size();
-					regex := RegEx->New("(\\w|\\s)+");
-					found := regex->Match(element, group1);
-					if(found <> Nil & found->Size() > 0) {
-						name := found;
-						# skip over some junk characters 
-						group2 := group1 + found->Size() + 10;
-						regex := RegEx->New("\\s\\(");
-						found := regex->Match(element, group2);
-						if(found <> Nil) {
-							group3 := group2 + found->Size();
-							regex := RegEx->New("\\d+");
-							found := regex->Match(element, group3);
-							if(found <> Nil & found->Size() > 0) {
-								count := found;
-							};
-						};
-					};
+
+	function : GetLanguageRank(langs : Set<String>) ~ Map<IntRef, String> {
+		langs_counts := Map->New()<IntRef, String>;
+		response := HttpsClient->QuickGet(Url->New("https://rosettacode.org/wiki/Special:Categories?limit=5000"));
+		if(response = Nil | response->GetContent() = Nil) {
+			return langs_counts;
+		};
+
+		# each category is listed as:
+		# <li><bdi dir="ltr"><a href="/wiki/Category:Objeck" title="Category:Objeck">Objeck</a></bdi> (360 members)</li>
+		regex := RegEx->New("title=\"Category:([^\"]+)\">[^<]*</a></bdi>\\s\\((\\d+)\\smember");
+		html_elements := response->GetContent()->ToString()->Split("\n");
+		each(j : html_elements) {
+			found := regex->FindFirst(html_elements[j]);
+			if(found <> Nil) {
+				name := found->GetGroup(1);
+				count := found->GetGroup(2);
+				if(name <> Nil & count <> Nil & langs->Has(name)) {
+					langs_counts->Insert(count->ToInt(), name);
 				};
-				
-				if(name <> Nil & count <> Nil) {
-					if(langs->Has(name)) {
-						langs_counts->Insert(count->ToInt(), name);
-					};
-					name := Nil; count := Nil;
-				};	
 			};
 		};
-		
+
 		return langs_counts;
 	}
 }
-

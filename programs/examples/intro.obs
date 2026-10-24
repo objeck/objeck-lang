@@ -19,7 +19,7 @@ bundle Default {
 					a := p[j];
 					Console->Print("  parameter type=")->PrintLine(a->GetType()->As(Int));
 					Console->Print("  parameter dim=")->PrintLine(a->GetDimension());
-					if(a->GetType() = TypeId->CLASS) {
+					if(a->GetType() = System.Introspection.DataType->TypeId->CLASS) {
 						Console->Print("  parameter class name=")->PrintLine(a->GetClassName());
 					};
 				};

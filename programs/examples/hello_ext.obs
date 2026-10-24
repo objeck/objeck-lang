@@ -5,7 +5,7 @@ bundle Default {
 			string->Size()->PrintLine();
 			string->PrintLine();
 
-			input := IO.Console->ReadString();
+			input := IO.Console->ReadLine();
 			input->GetClass()->GetName()->PrintLine();
 
 			if(input->StartsWith("Hi")) {

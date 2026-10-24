@@ -14,12 +14,12 @@ class Thingy {
 
 class Person from Thingy {
 	@name : String;
-	@values : StringMap;
+	@values : Map<String, IntRef>;
 
 	New(id : Int, name : String) {
 		Parent(id);
 		@name := name;
-		@values := StringMap->New();
+		@values := Map->New()<String, IntRef>;
 		@values->Insert("Jason", IntRef->New(101));
 		@values->Insert("Mark", IntRef->New(9));
 	}
@@ -27,8 +27,8 @@ class Person from Thingy {
 	method : public : Print() ~ Nil {
 		@id->PrintLine();
 		@name->PrintLine();
-		@values->Find("Jason")->As(IntRef)->Get()->PrintLine();	
-		@values->Find("Mark")->As(IntRef)->Get()->PrintLine();	
+		@values->Find("Jason")->Get()->PrintLine();	
+		@values->Find("Mark")->Get()->PrintLine();	
 	}
 }
 
@@ -43,11 +43,11 @@ class Serial {
 		s->Write(t);
 		s->Write(p);
 
-		writer := IO.File.FileWriter->New("objects.dat");			
+		writer := System.IO.Filesystem.FileWriter->New("objects.dat");			
 		writer->WriteBuffer(s->Serialize());
 		writer->Close();
 
-		buffer := IO.File.FileReader->ReadBinaryFile("objects.dat");			
+		buffer := System.IO.Filesystem.FileReader->ReadBinaryFile("objects.dat");			
 		d := System.IO.Deserializer->New(buffer);
 
 		t2 := d->ReadObject()->As(Thingy);

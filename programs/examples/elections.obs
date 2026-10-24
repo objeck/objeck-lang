@@ -94,15 +94,15 @@ class Record implements Compare {
 			return -1;
 		};
 
-		record := rhs->As(Record);
+		rec := rhs->As(Record);
 		if(@sorter->GetSortBy() = SortBy->CANDIDATE_VOTES) {
-			return @candidate_votes->Compare(record->GeCandidateVotes());
+			return @candidate_votes->Compare(rec->GeCandidateVotes());
 		}
 		else if(@sorter->GetSortBy() = SortBy->TOTAL_VOTES) {
-			return @total_votes->Compare(record->GetTotalVotes());
+			return @total_votes->Compare(rec->GetTotalVotes());
 		}
 		else if(@sorter->GetSortBy() = SortBy->STATE) {
-			return @state->Compare(record->GetState());
+			return @state->Compare(rec->GetState());
 		};
 
 		return -1;

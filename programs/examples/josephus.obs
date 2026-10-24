@@ -1,7 +1,7 @@
 class Josephus {
 	function : Execute(n : Int, k : Int) ~ Int {
 		killIdx := 0;
-		prisoners := Collection.IntVector->New();
+		prisoners := Collection.Vector->New()<IntRef>;
 		for(i := 0;i < n;i+=1;){
 			prisoners->AddBack(i);
 		};
@@ -9,24 +9,24 @@ class Josephus {
 		"Prisoners executed in order:"->PrintLine();
 		while(prisoners->Size() > 1){
 			killIdx := (killIdx + k - 1) % prisoners->Size();
-			executed := prisoners->Get(killIdx);
+			executed := prisoners->Get(killIdx)->Get();
 			"{$executed} "->Print();
 			prisoners->Remove(killIdx);
 		};
 		'\n'->Print();		
-		return prisoners->Get(0);
+		return prisoners->Get(0)->Get();
 	}
 	
-	function : ExecuteAllButM(n : Int, k : Int, m : Int) ~ Collection.IntVector {
+	function : ExecuteAllButM(n : Int, k : Int, m : Int) ~ Collection.Vector<IntRef> {
 		killIdx := 0;
-		prisoners := Collection.IntVector->New();
+		prisoners := Collection.Vector->New()<IntRef>;
 		for(i := 0;i < n;i+=1;){
 			prisoners->AddBack(i);
 		};
 		"Prisoners executed in order:"->PrintLine();
 		while(prisoners->Size() > m){
 			killIdx := (killIdx + k - 1) % prisoners->Size();
-			executed := prisoners->Get(killIdx);
+			executed := prisoners->Get(killIdx)->Get();
 			"{$executed} "->Print();
 			prisoners->Remove(killIdx);
 		};
@@ -41,7 +41,7 @@ class Josephus {
 		results := ExecuteAllButM(41, 3, 3);
 		"Survivors: "->Print();
 		each(i : results) {
-		results->Get(i)->Print();
+		results->Get(i)->Get()->Print();
 			if(i + 1 < results->Size()) {
 				' '->Print();
 			};

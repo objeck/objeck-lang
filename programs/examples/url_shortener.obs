@@ -1,6 +1,6 @@
 use Collection;
 use Data.JSON;
-use Web.HTTP;
+use Web.HTTP.Server;
 
 #~
 URL shortner
@@ -26,24 +26,24 @@ class Shortner from HttpRequestHandler {
 		};
 	}
 
-	method : ProcessGet(request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		request_url := request->GetPath();
 		request_url->PrintLine();
 
 		long_url := @url_mapping->Find(request_url);
 		if(long_url <> Nil) {
-			response := Response->New(302);
+			response->SetCode(302);
 			response->SetReason(long_url);
-
-			return response;
+		}
+		else {
+			response->SetCode(404);
 		};
-		
-		return Response->New(404);
+
+		return false;
 	}
-	
-	method : ProcessPost(buffer : Byte[], request_url : String, request_headers : Map<String, String>, response_headers : Map<String, String>) ~ Response {
-		response : Byte[];
-		
-		json := JsonParser->New(String->New(buffer));
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		json := JsonParser->New(request->GetContent());
 		if(json->Parse()) {
 			url_json := json->GetRoot()->Get("long");
 			long_url := url_json->GetValue();
@@ -62,10 +62,12 @@ class Shortner from HttpRequestHandler {
 			short_url := "http://localhost:60013{$post_fix}";
 			@url_mapping->Insert(post_fix, long_url);
 
-			response_headers->Insert("Content-type", "application/json");
-			response := "{ \"short\": \"{$short_url}\" }"->ToByteArray();
+			response->SetCodeTypeContent(200, "application/json", "{ \"short\": \"{$short_url}\" }");
+		}
+		else {
+			response->SetCode(400);
 		};
 
-		return Response->New(200, response);
+		return false;
 	}
 }
