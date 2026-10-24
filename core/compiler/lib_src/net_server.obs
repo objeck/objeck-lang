@@ -79,14 +79,65 @@ bundle Web.HTTP.Server {
 		@param is_debug true for debug output, false otherwise
 		~#
 		function : ServeSecure(callback : Class, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool) ~ Nil {
-			@secure_server := TCPSecureSocketServer->New(cert, cert_key, cert_key_passwd, port);
+			ServeSecureAt(callback, Nil, port, cert, cert_key, cert_key_passwd, is_debug);
+		}
+
+		#~
+		Starts a HTTPS server that listens for requests on one local address
+		instead of every interface, e.g. "127.0.0.1" to take only clients on
+		this machine. The address is read as by TCPSocketServer->New(address,
+		port): a literal ("127.0.0.1", "::1") or a host name, of which the first
+		IPv4 address (else the first IPv6 one) is bound, so "localhost" binds
+		127.0.0.1; an empty address binds every interface. An address that
+		cannot be bound is reported on standard error and the call returns.
+		@param callback class inherited from 'HttpsRequestHandler'
+		@param address local address to bind
+		@param port server port
+		@param cert SSL certificate
+		@param cert_key SSL certificate key
+		@param cert_key_passwd SSL certificate password
+		~#
+		function : ServeSecure(callback : Class, address : String, port : Int, cert : String, cert_key : String, cert_key_passwd : String) ~ Nil {
+			ServeSecureAt(callback, address, port, cert, cert_key, cert_key_passwd, false);
+		}
+
+		#~
+		Starts a HTTPS server that listens for requests on one local address
+		instead of every interface; see ServeSecure(callback, address, port,
+		cert, cert_key, cert_key_passwd).
+		@param callback class inherited from 'HttpsRequestHandler'
+		@param address local address to bind
+		@param port server port
+		@param cert SSL certificate
+		@param cert_key SSL certificate key
+		@param cert_key_passwd SSL certificate password
+		@param is_debug true for debug output, false otherwise
+		~#
+		function : ServeSecure(callback : Class, address : String, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool) ~ Nil {
+			ServeSecureAt(callback, address, port, cert, cert_key, cert_key_passwd, is_debug);
+		}
+
+		# Nil address: every interface, as the address-less overloads always bound
+		function : private : ServeSecureAt(callback : Class, address : String, port : Int, cert : String, cert_key : String, cert_key_passwd : String, is_debug : Bool) ~ Nil {
+			if(address = Nil) {
+				@secure_server := TCPSecureSocketServer->New(cert, cert_key, cert_key_passwd, port);
+			}
+			else {
+				@secure_server := TCPSecureSocketServer->New(cert, cert_key, cert_key_passwd, address, port);
+			};
 			@is_debug := is_debug;
+			@bound_port := port;
 
 			Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@secure_server->Listen()) {
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
+					if(address <> Nil) {
+						if(address->Size() > 0) {
+							host := address;
+						};
+					};
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 
@@ -161,7 +212,50 @@ bundle Web.HTTP.Server {
 		@param is_debug true for debug output, false otherwise
 		~#
 		function : Serve(callback : Class, port : Int, is_debug : Bool) ~ Nil {
-			@server := TCPSocketServer->New(port);
+			ServeAt(callback, Nil, port, is_debug);
+		}
+
+		#~
+		Starts a HTTP server that listens for requests on one local address
+		instead of every interface, e.g. "127.0.0.1" to take only clients on
+		this machine. The address is read as by TCPSocketServer->New(address,
+		port): a literal ("127.0.0.1", "::1") or a host name, of which the first
+		IPv4 address (else the first IPv6 one) is bound, so "localhost" binds
+		127.0.0.1; an empty address binds every interface. An address that
+		cannot be bound is reported on standard error and the call returns.
+		@param callback class inherited from 'HttpRequestHandler'
+		@param address local address to bind
+		@param port server port
+
+		```
+		# an HTTP server on port 8080 that only this machine can reach
+		Web.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), "127.0.0.1", 8080);
+		```
+		~#
+		function : Serve(callback : Class, address : String, port : Int) ~ Nil {
+			ServeAt(callback, address, port, false);
+		}
+
+		#~
+		Starts a HTTP server that listens for requests on one local address
+		instead of every interface; see Serve(callback, address, port).
+		@param callback class inherited from 'HttpRequestHandler'
+		@param address local address to bind
+		@param port server port
+		@param is_debug true for debug output, false otherwise
+		~#
+		function : Serve(callback : Class, address : String, port : Int, is_debug : Bool) ~ Nil {
+			ServeAt(callback, address, port, is_debug);
+		}
+
+		# Nil address: every interface, as the address-less overloads always bound
+		function : private : ServeAt(callback : Class, address : String, port : Int, is_debug : Bool) ~ Nil {
+			if(address = Nil) {
+				@server := TCPSocketServer->New(port);
+			}
+			else {
+				@server := TCPSocketServer->New(address, port);
+			};
 			@is_debug := is_debug;
 
 			@bound_port := port;
@@ -174,6 +268,11 @@ bundle Web.HTTP.Server {
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
+					if(address <> Nil) {
+						if(address->Size() > 0) {
+							host := address;
+						};
+					};
 					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
 				};
 

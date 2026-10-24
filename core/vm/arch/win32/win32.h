@@ -613,6 +613,19 @@ class IPSocket {
   static SOCKET BindAny(int port, int type);
 
   //
+  // A server socket bound to one local address: a literal ("127.0.0.1",
+  // "::1") or a name resolved with getaddrinfo. An empty or null host is the
+  // dual-stack wildcard (BindAny). A name can resolve to several addresses
+  // and one socket binds one, so this binds the first IPv4 address that
+  // binds, else the first IPv6 one: "localhost" is 127.0.0.1 on every
+  // platform, whatever order the resolver lists its addresses in. An IPv6
+  // address is bound IPv6-only, so "::1" takes ::1 clients and nothing else.
+  // On failure returns INVALID_SOCKET with the reason in WSAGetLastError(). A
+  // name lookup can block: the caller parks around it.
+  //
+  static SOCKET BindAddress(const char* host, int port, int type);
+
+  //
   // A peer's numeric address and port. An IPv4 client of a dual-stack server
   // arrives as ::ffff:a.b.c.d and is reported as a.b.c.d, as it always was.
   //

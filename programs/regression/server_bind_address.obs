@@ -1,0 +1,376 @@
+#~
+# A server can listen on one address instead of every interface
+#
+# TCPSocketServer->New(port) binds the wildcard, so a server meant for this
+# machine alone (a local table server, a dashboard) was reachable from the
+# network too, and there was no way to say otherwise. New(address, port), the
+# TLS server's New(cert, key, passwd, address, port) and WebServer->Serve(
+# callback, address, port) bind one address:
+#
+#   127.0.0.1    takes 127.0.0.1 clients; not ::1, not this machine's other
+#                addresses
+#   ::1          takes ::1 clients; not 127.0.0.1
+#   localhost    the first IPv4 address it resolves to, on every platform:
+#                127.0.0.1
+#   ""           every interface, IPv4 and IPv6, as New(port)
+#
+# An address that cannot be bound -- a name that does not resolve, an address
+# this machine does not have -- makes Listen() return false with a reason from
+# GetLastError(); it is not a crash.
+#
+# Accepts need no server thread for plain TCP: a connect completes against the
+# listen backlog, and Accept() then takes it. The TLS handshake needs one.
+# EXTRA_LIBS: net,net_server
+~#
+
+use Collection, System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP.Server;
+
+class TlsAcceptOne from Thread {
+	@server : TCPSecureSocketServer;
+	@finished : Bool;
+	@address : String;
+
+	New(server : TCPSecureSocketServer) {
+		Parent("tls-accept-one");
+		@server := server;
+		@finished := false;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetAddress() ~ String { return @address; }
+
+	method : public : Run(param : Base) ~ Nil {
+		client := @server->Accept();
+		if(client <> Nil) {
+			@address := client->GetAddress();
+			# the client waits for this line, so it cannot close mid-handshake
+			client->WriteString("hello\n");
+			client->ReadLine();
+			client->Close();
+		};
+		@finished := true;
+	}
+}
+
+class HelloHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "bound-hello");
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCodeContent(200, "bound-hello");
+		return false;
+	}
+}
+
+class ServerBindAddress {
+	@failed : static : Int;
+	@port : static : Int;
+	@web_port : static : Int;
+	@serve_returned : static : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		@failed := 0;
+
+		"stage: tcp"->ErrorLine();
+		CheckTcp();
+		"stage: tls"->ErrorLine();
+		CheckTls();
+		"stage: web"->ErrorLine();
+		CheckWeb();
+
+		if(@failed > 0) {
+			Runtime->Exit(1);
+		};
+		"PASS: TCP, TLS and HTTP servers bind the one address they are given"->PrintLine();
+	}
+
+	function : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	function : WebPort() ~ Int { return @web_port; }
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	# A listening server on address, on a random free port (in @port); Nil if it
+	# never listens. A Nil address is New(port), the wildcard.
+	function : Listening(address : String) ~ TCPSocketServer {
+		server : TCPSocketServer;
+		port : Int;
+		for(tries := 0; tries < 5; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			@port := port;
+			if(address = Nil) {
+				server := TCPSocketServer->New(port);
+			}
+			else {
+				server := TCPSocketServer->New(address, port);
+			};
+			if(server->Listen(8)) {
+				return server;
+			};
+			server->Close();
+		};
+
+		return Nil;
+	}
+
+	function : Reaches(address : String, port : Int) ~ Bool {
+		socket := TCPSocket->New(address, port);
+		open := socket->IsOpen();
+		socket->Close();
+		return open;
+	}
+
+	# Connects over address and takes the connection; the address the server saw
+	function : AcceptedFrom(server : TCPSocketServer, address : String, port : Int) ~ String {
+		socket := TCPSocket->New(address, port);
+		if(<>socket->IsOpen()) {
+			return Nil;
+		};
+
+		client := server->Accept();
+		socket->Close();
+		if(client = Nil) {
+			return Nil;
+		};
+		peer := client->GetAddress();
+		client->Close();
+		return peer;
+	}
+
+	#~
+	# One of this machine's addresses that is not 127.0.0.1 or ::1, or Nil.
+	# Candidates: the address a client of the host name arrives from at a
+	# server bound to that name (numeric, unlike Resolve(); a LAN address on
+	# Windows, where the name lists the interfaces), and on Linux 127.0.0.2,
+	# which every Linux machine has (all of 127/8 is local) and which is where
+	# a Linux host name usually points (127.0.1.1) anyway. A candidate counts
+	# only if a wildcard server takes a connection to it, so the refusal
+	# checked against it means something. Link-local IPv6 needs a scope, so it
+	# does not count.
+	~#
+	function : OtherAddress() ~ String {
+		candidates := Vector->New()<String>;
+		name := TCPSocket->HostName();
+		if(name <> Nil) {
+			server := Listening(name);
+			if(server <> Nil) {
+				peer := AcceptedFrom(server, name, @port);
+				server->Close();
+				if(peer <> Nil) {
+					candidates->AddBack(peer);
+				};
+			};
+		};
+		if(Runtime->GetPlatform()->Has("Linux")) {
+			candidates->AddBack("127.0.0.2");
+		};
+
+		each(i : candidates) {
+			candidate := candidates->Get(i);
+			if(candidate->Size() > 0 & <>candidate->Equals("127.0.0.1") & <>candidate->Equals("::1") & <>candidate->StartsWith("fe80")) {
+				wildcard := Listening(Nil);
+				if(wildcard <> Nil) {
+					seen := AcceptedFrom(wildcard, candidate, @port);
+					wildcard->Close();
+					if(seen <> Nil) {
+						return candidate;
+					};
+				};
+			};
+		};
+
+		return Nil;
+	}
+
+	function : CheckTcp() ~ Nil {
+		port : Int;
+		peer : String;
+		elsewhere : String;
+
+		# 127.0.0.1
+		server := Listening("127.0.0.1");
+		Check("127.0.0.1: the server listens", server <> Nil);
+		if(server <> Nil) {
+			port := @port;
+			peer := AcceptedFrom(server, "127.0.0.1", port);
+			Check("127.0.0.1: a 127.0.0.1 client is accepted (from '{$peer}')", peer <> Nil & peer->Equals("127.0.0.1"));
+			Check("127.0.0.1: a ::1 client is refused", <>Reaches("::1", port));
+
+			elsewhere := OtherAddress();
+			if(elsewhere <> Nil) {
+				Check("127.0.0.1: a client of this machine's address {$elsewhere} is refused", <>Reaches(elsewhere, port));
+				"  note: checked this machine's address {$elsewhere}"->ErrorLine();
+			}
+			else {
+				"  note: no address other than loopback; skipped the off-loopback check"->ErrorLine();
+			};
+			server->Close();
+		};
+
+		# ::1
+		server := Listening("::1");
+		Check("::1: the server listens", server <> Nil);
+		if(server <> Nil) {
+			port := @port;
+			peer := AcceptedFrom(server, "::1", port);
+			Check("::1: a ::1 client is accepted (from '{$peer}')", peer <> Nil & peer->Equals("::1"));
+			Check("::1: a 127.0.0.1 client is refused", <>Reaches("127.0.0.1", port));
+			server->Close();
+		};
+
+		# localhost: 127.0.0.1, on every platform; a client of "localhost" still
+		# reaches it, trying each address the name resolves to
+		server := Listening("localhost");
+		Check("localhost: the server listens", server <> Nil);
+		if(server <> Nil) {
+			port := @port;
+			peer := AcceptedFrom(server, "127.0.0.1", port);
+			Check("localhost: a 127.0.0.1 client is accepted (from '{$peer}')", peer <> Nil & peer->Equals("127.0.0.1"));
+			Check("localhost: a ::1 client is refused", <>Reaches("::1", port));
+			peer := AcceptedFrom(server, "localhost", port);
+			Check("localhost: a client of 'localhost' is accepted (from '{$peer}')", peer <> Nil & peer->Equals("127.0.0.1"));
+			server->Close();
+		};
+
+		# empty: every interface, both families
+		server := Listening("");
+		Check("'': the server listens", server <> Nil);
+		if(server <> Nil) {
+			port := @port;
+			peer := AcceptedFrom(server, "127.0.0.1", port);
+			Check("'': a 127.0.0.1 client is accepted (from '{$peer}')", peer <> Nil & peer->Equals("127.0.0.1"));
+			peer := AcceptedFrom(server, "::1", port);
+			Check("'': a ::1 client is accepted (from '{$peer}')", peer <> Nil & peer->Equals("::1"));
+			server->Close();
+		};
+
+		# addresses that cannot be bound: an error, not a crash
+		bad := TCPSocketServer->New("no-such-host.invalid", 23456);
+		Check("no-such-host.invalid: Listen() fails", <>bad->Listen(8));
+		reason := TCPSocketServer->GetLastError();
+		Check("no-such-host.invalid: GetLastError() says why ('{$reason}')", reason <> Nil & reason->Size() > 0);
+		bad->Close();
+
+		# TEST-NET-1 (RFC 5737): no machine has it
+		bad := TCPSocketServer->New("192.0.2.1", 23456);
+		Check("192.0.2.1: Listen() fails", <>bad->Listen(8));
+		reason := TCPSocketServer->GetLastError();
+		Check("192.0.2.1: GetLastError() says why ('{$reason}')", reason <> Nil & reason->Size() > 0);
+		bad->Close();
+	}
+
+	function : CheckTls() ~ Nil {
+		File->Delete("bind-address-cert.pem");
+		File->Delete("bind-address-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout bind-address-key.pem -out bind-address-cert.pem";
+		if(Runtime->Command(command) <> 0) {
+			Check("openssl could not create the TLS fixture -- is openssl on PATH?", false);
+			return;
+		};
+		# a self-signed fixture; what is under test is reachability
+		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
+
+		server : TCPSecureSocketServer;
+		greeting : String;
+		port := 0;
+		for(tries := 0; tries < 5 & server = Nil; tries += 1;) {
+			port := Int->Random(20000, 31998);
+			candidate := TCPSecureSocketServer->New("bind-address-cert.pem", "bind-address-key.pem", "", "127.0.0.1", port);
+			if(candidate->Listen()) {
+				server := candidate;
+			};
+		};
+		Check("TLS 127.0.0.1: the server listens", server <> Nil);
+		if(server <> Nil) {
+			Check("TLS 127.0.0.1: a ::1 client is refused", <>Reaches("::1", port));
+
+			acceptor := TlsAcceptOne->New(server);
+			acceptor->Execute(Nil);
+			# by name: the certificate names localhost, and some mbedtls versions
+			# match no IP subjectAltName; "localhost" reaches the 127.0.0.1 listener
+			client := TCPSecureSocket->New("localhost", port);
+			if(client->IsOpen()) {
+				greeting := client->ReadLine();
+				client->WriteString("bye\n");
+			};
+			client->Close();
+
+			waited := 0;
+			while(<>acceptor->IsFinished() & waited < 10000) {
+				Thread->Sleep(25);
+				waited += 25;
+			};
+			if(acceptor->IsFinished()) {
+				acceptor->Join();
+			};
+			peer := acceptor->GetAddress();
+			Check("TLS 127.0.0.1: a 127.0.0.1 client completes a handshake (from '{$peer}')", peer <> Nil & peer->Equals("127.0.0.1"));
+			Check("TLS 127.0.0.1: the client reads the server's line ('{$greeting}')", greeting <> Nil & greeting->Equals("hello"));
+			server->Close();
+		};
+
+		bad := TCPSecureSocketServer->New("bind-address-cert.pem", "bind-address-key.pem", "", "no-such-host.invalid", 23457);
+		Check("TLS no-such-host.invalid: Listen() fails", <>bad->Listen());
+		bad->Close();
+
+		File->Delete("bind-address-cert.pem");
+		File->Delete("bind-address-key.pem");
+	}
+
+	function : CheckWeb() ~ Nil {
+		body : String;
+
+		# returns, reporting the error on standard error
+		WebServer->Serve(HelloHandler->New()->GetClass(), "no-such-host.invalid", 23458);
+		Check("WebServer no-such-host.invalid: Serve() returns", true);
+
+		started := false;
+		for(tries := 0; tries < 5 & <>started; tries += 1;) {
+			@web_port := Int->Random(20000, 31998);
+			@serve_returned := false;
+
+			server_thread := Thread->New() {
+				New() { Parent(); }
+				method : public : Run(arg : System.Base) ~ Nil {
+					WebServer->Serve(HelloHandler->New()->GetClass(), "127.0.0.1", ServerBindAddress->WebPort());
+					ServerBindAddress->ServeReturned();
+				}
+			};
+			server_thread->Execute(Nil);
+
+			attempts := 0;
+			while(<>@serve_returned & <>started & attempts < 40) {
+				Thread->Sleep(25);
+				probe := TCPSocket->New("127.0.0.1", @web_port);
+				if(probe->IsOpen()) {
+					started := true;
+				};
+				probe->Close();
+				attempts += 1;
+			};
+		};
+		Check("WebServer 127.0.0.1: the server listens", started);
+		if(started) {
+			port := @web_port;
+			response := Web.HTTP.HttpClient->New()->Get(Web.HTTP.Url->New("http://127.0.0.1:{$port}/hello"));
+			if(response <> Nil) {
+				content := response->GetContent();
+				if(content <> Nil) {
+					body := content->ToString();
+				};
+			};
+			Check("WebServer 127.0.0.1: a request is answered (body '{$body}')", body <> Nil & body->Equals("bound-hello"));
+			Check("WebServer 127.0.0.1: a ::1 client is refused", <>Reaches("::1", port));
+		};
+		WebServer->Stop();
+	}
+}
