@@ -5133,7 +5133,7 @@ bundle System {
 			if(max >= @max) {
 				@max += max << 1;
 				temp := Byte->New[@max];
-				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
+				Runtime->Copy(temp, 0, @buffer, 0, @pos);
 				@buffer := temp;
 			};
 			
@@ -5154,7 +5154,7 @@ bundle System {
 			if(max >= @max) {
 				@max += max << 1;
 				temp := Byte->New[@max];
-				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
+				Runtime->Copy(temp, 0, @buffer, 0, @pos);
 				@buffer := temp;
 			};
 			
@@ -5170,11 +5170,12 @@ bundle System {
 		~#
 		method : public : Append(c : Byte) ~ Nil {
 			if(@pos >= @max) {
-				# expand string
-				@max += @pos << 1;
+				# expand the buffer; from an empty Byte[] @pos and @max are 0, and
+				# doubling 0 left no room for the byte
+				@max += (@pos << 1) + 16;
 				temp := Byte->New[@max];
-				# copy elements
-				Runtime->Copy(temp, 0, @buffer, 0, @buffer->Size());
+				# copy the bytes written
+				Runtime->Copy(temp, 0, @buffer, 0, @pos);
 				@buffer := temp;
 			};
 
@@ -5229,11 +5230,14 @@ bundle System {
 				return -1;
 			};
 						
-			# check each character
-			right_string := rhs->As(String);
-			for(i := 0; i < @pos; i += 1;) {
+			# check each byte written; rhs is a ByteBuffer, which the cast to
+			# String it used to take raised as an invalid cast
+			right_buffer := rhs->As(ByteBuffer);
+			right_bytes := right_buffer->Raw();
+			right_size := right_buffer->Size();
+			for(i := 0; i < @pos & i < right_size; i += 1;) {
 				left := @buffer[i];
-				right := right_string->Get(i);
+				right := right_bytes[i];
 				if(left > right) {
 					return 1;
 				}
@@ -5241,13 +5245,13 @@ bundle System {
 					return -1;
 				};
 			};
-			
+
 			# check length
-			if(@pos > right_string->Size()) {
+			if(@pos > right_size) {
 				return 1;
 			};
-			
-			if(@pos < right_string->Size()) {
+
+			if(@pos < right_size) {
 				return -1;
 			};
 			
@@ -5300,7 +5304,8 @@ bundle System {
 		@return string representation of the byte buffer
 		~#
 		method : public : ToString() ~ String {
-			return @buffer->ToHexString()->ToString();
+			# the bytes written, not the whole backing array
+			return ToByteArray()->ToHexString();
 		}
 	}
 
