@@ -786,6 +786,30 @@ design above. Each phase adds its notes here.
 - Found on the way and fixed at the source: `Web.HTTP.Server`'s POST requests had no path or
   query string (`GetPath()` was Nil), so a POST handler could not route.
 
+**Phase 7 (`query_ml.obl`).**
+- `MlResultSource` lives in its own library, `query_ml.obl` (bundle `Query.Structured.ML`), so
+  a program that only queries files does not load `System.ML`'s native module. It is filled
+  with `Add` calls, each filed under a run name, and `Load` puts eight tables into a catalog,
+  empty ones included: `folds`, `predictions` (row, fold, actual, score, predicted),
+  `thresholds` (a full sweep from `Metrics->OperatingPoints`, or single `ThresholdResult`s),
+  `confusion`, `features`, `intervals` (bootstrap), `groups` (`RecallByGroup`) and `metrics`
+  (named numbers, including each cross-validation's fold means and spreads). A constructor
+  prefix renames them all, for a catalog that already has a `folds` table.
+- `CrossValResult` does not record which fold scored a row, so `AddCrossValidation(run,
+  result, y, seed[, strata])` rebuilds the folds with `StratifiedKFold` from the same labels
+  (or strata) and seed, which is how `Evaluate` assigned them. The test proves the rebuild by
+  recomputing each fold's AUC from its own `predictions` rows.
+- System.ML reports a metric it cannot compute as -1.0 (a fold holding one class); that is an
+  empty cell, not a number, so `AVG` skips it. A rate with no denominator is empty too.
+- System.ML has no feature importances, so `features` takes any per-feature numbers: a linear
+  model's weights or importances computed elsewhere.
+- The matrix bridge back is `MlColumns`: `Labels` (a BOOL column as is, a number above 0.5 as
+  `CrossValidation->ToBool` reads it, or text equal to a named positive class), `Values` and
+  `Features` (`Table->ToMatrix`). An empty cell or text where a number is expected is an
+  error naming the column and row, never a silent zero. These close the two seams that had
+  every caller hand-writing the same glue: `Float[]` against `Bool[]` labels, and no way to
+  pick a fold's rows (now `where fold = 2`).
+
 Toolchain defects found while building these phases were fixed at the source rather than worked
 around: gzip on small inputs (#1296), atomic rename on Windows (#1297), ten compiler defects
 (#1299), HTTP status codes and a TLS/collector deadlock (#1300), and `XmlElement` attribute order.

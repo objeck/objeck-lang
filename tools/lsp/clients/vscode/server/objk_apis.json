@@ -9837,6 +9837,76 @@
 				}
 			}
 		},
+		"Query.Structured.ML.MlColumns": {
+			"description": "Reads a table's columns in the forms System.ML takes: labels as Bool[] for a classifier's Fit and the Metrics functions, numbers as Float[], and several columns as a Float[,] matrix. An empty cell, or text where a number is expected, is an error naming the column and the row, never a silent zero. Read a view by materializing it first ('view->ToTable(\"rows\")').",
+			"functions": {
+				"Features": {
+					"descriptions": ["**Gets numeric columns as a matrix, one row per live row (Table->ToMatrix)**\n\n```method : public : Features(names:String[]) ~ Float[,]```\n\n\n\nnames: String[]\n\nreturn: Float[,]"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last read failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"Labels": {
+					"descriptions": ["**Gets a column as labels. A BOOL column is read as it is; a number is true above 0.5, as CrossValidation->ToBool reads one; text is an error, see Labels(name, positive).**\n\n```method : public : Labels(name:String) ~ Bool[]```\n\n\n\nname: String\n\nreturn: Bool[]", "**Gets a column as labels, true where the cell equals a given text, for a column such as 'outcome' holding 'yes' and 'no'. A cell that is not text is compared by its text form.**\n\n```method : public : Labels(name:String, positive:String) ~ Bool[]```\n\n\n\nname: String\n\npositive: String\n\nreturn: Bool[]"]
+				},
+				"New": {
+					"descriptions": ["**Constructor**\n\n```New(table:Table)```\n\n\n\ntable: Table"]
+				},
+				"Values": {
+					"descriptions": ["**Gets a numeric column as numbers; a BOOL cell reads as 1.0 or 0.0**\n\n```method : public : Values(name:String) ~ Float[]```\n\n\n\nname: String\n\nreturn: Float[]"]
+				}
+			}
+		},
+		"Query.Structured.ML.MlResultSource": {
+			"description": "System.ML results as tables. Each Add method files what one run produced under that run's name, so several models, seeds or feature sets land in the same tables and compare with one query. Load puts every table into a catalog, an empty one included, so a query never fails because a run produced no rows of some kind.\n\n- 'folds' (run, fold, auc, recall, average_precision), from AddCrossValidation\n- 'predictions' (run, row, fold, actual, score, predicted), from AddCrossValidation with labels, AddScores and AddDecisions\n- 'thresholds' (run, threshold, tp, fp, fn, tn, tpr, fpr, precision), from AddThresholdSweep and AddThreshold\n- 'confusion' (run, actual, predicted, count), from AddConfusion\n- 'features' (run, position, feature, weight), from AddFeatures\n- 'intervals' (run, metric, point, low, high, level, reps, usable), from AddInterval\n- 'groups' (run, group, positives, detected, recall), from AddGroupRecall\n- 'metrics' (run, metric, value), from AddMetric and AddCrossValidation (fold means and spreads)\n\n'run', 'feature' and 'metric' are STRING; 'fold', 'row', 'position', the four counts, 'count', 'reps', 'usable', 'positives' and 'detected' are INT; 'actual' and 'predicted' are BOOL; everything else is FLOAT. A value System.ML reports as undefined (a fold AUC of -1.0 because a fold held one class, a rate with no denominator) is an empty cell, not a number, so an AVG skips it instead of being dragged down by it. A prefix given to the constructor is put in front of every table name, for a catalog that already has a 'folds' table.\n\nSystem.ML has no feature importances of its own; AddFeatures takes any per-feature numbers, such as a linear model's weights or importances computed by permutation.",
+			"functions": {
+				"AddConfusion": {
+					"descriptions": ["**Adds the confusion matrix of hard predictions to 'confusion', as four rows**\n\n```method : public : AddConfusion(run:String, predicted:Bool[], actuals:Bool[]) ~ Bool```\n\n\n\nrun: String\n\npredicted: Bool[]\n\nactuals: Bool[]\n\nreturn: Bool", "**Adds a confusion matrix, in Metrics->ConfusionMatrix's [[TN, FP], [FN, TP]] layout, to 'confusion' as four rows**\n\n```method : public : AddConfusion(run:String, matrix:Int[,]) ~ Bool```\n\n\n\nrun: String\n\nmatrix: Int[,]\n\nreturn: Bool"]
+				},
+				"AddCrossValidation": {
+					"descriptions": ["**Adds a cross-validation's per-fold scores to 'folds', and its fold means and spreads to 'metrics' (mean_auc, std_auc, mean_recall, std_recall, mean_average_precision)**\n\n```method : public : AddCrossValidation(run:String, result:CrossValResult) ~ Bool```\n\n\n\nrun: String\n\nresult: CrossValResult\n\nreturn: Bool", "**Adds a cross-validation as AddCrossValidation(run, result) does, and its out-of-fold scores to 'predictions', one row per input row with the fold that scored it. The folds are rebuilt with CrossValidation->StratifiedKFold from the labels and seed, which is how Evaluate(model, X, y, k, seed, ...) assigned them; a run stratified by another key uses the overload that takes it.**\n\n```method : public : AddCrossValidation(run:String, result:CrossValResult, y:Bool[], seed:Int) ~ Bool```\n\n\n\nrun: String\n\nresult: CrossValResult\n\ny: Bool[]\n\nseed: Int\n\nreturn: Bool", "**Adds a cross-validation whose folds were stratified by a key other than the label, as Evaluate(model, X, y, k, seed, max_fpr, standardize, strata) runs it**\n\n```method : public : AddCrossValidation(run:String, result:CrossValResult, y:Bool[], seed:Int, strata:Float[]) ~ Bool```\n\n\n\nrun: String\n\nresult: CrossValResult\n\ny: Bool[]\n\nseed: Int\n\nstrata: Float[]\n\nreturn: Bool"]
+				},
+				"AddDecisions": {
+					"descriptions": ["**Adds hard predictions, such as a classifier's Predict returns, to 'predictions', with 'score' left empty**\n\n```method : public : AddDecisions(run:String, predicted:Bool[], actuals:Bool[]) ~ Bool```\n\n\n\nrun: String\n\npredicted: Bool[]\n\nactuals: Bool[]\n\nreturn: Bool"]
+				},
+				"AddFeatures": {
+					"descriptions": ["**Adds one number per feature to 'features', such as a linear model's weights (LogisticRegression->GetWeights, LinearRegression->GetCoefficients) or importances computed elsewhere**\n\n```method : public : AddFeatures(run:String, names:String[], weights:Float[]) ~ Bool```\n\n\n\nrun: String\n\nnames: String[]\n\nweights: Float[]\n\nreturn: Bool"]
+				},
+				"AddGroupRecall": {
+					"descriptions": ["**Adds per-group recall, as Metrics->RecallByGroup returns it, to 'groups'. A group with no positives has an empty recall.**\n\n```method : public : AddGroupRecall(run:String, groups:GroupRecall[]) ~ Bool```\n\n\n\nrun: String\n\ngroups: GroupRecall[]\n\nreturn: Bool"]
+				},
+				"AddInterval": {
+					"descriptions": ["**Adds a bootstrap interval, as Metrics->Bootstrap returns it, to 'intervals'**\n\n```method : public : AddInterval(run:String, metric:String, interval:ConfInterval) ~ Bool```\n\n\n\nrun: String\n\nmetric: String\n\ninterval: ConfInterval\n\nreturn: Bool"]
+				},
+				"AddMetric": {
+					"descriptions": ["**Adds one named number to 'metrics', such as an accuracy or a training time**\n\n```method : public : AddMetric(run:String, metric:String, value:Float) ~ Bool```\n\n\n\nrun: String\n\nmetric: String\n\nvalue: Float\n\nreturn: Bool"]
+				},
+				"AddScores": {
+					"descriptions": ["**Adds scored predictions to 'predictions', with 'predicted' left empty**\n\n```method : public : AddScores(run:String, scores:Float[], actuals:Bool[]) ~ Bool```\n\n\n\nrun: String\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Bool", "**Adds scored predictions to 'predictions', with 'predicted' true where the score is at or above the threshold, as Metrics->AtThreshold counts it**\n\n```method : public : AddScores(run:String, scores:Float[], actuals:Bool[], threshold:Float) ~ Bool```\n\n\n\nrun: String\n\nscores: Float[]\n\nactuals: Bool[]\n\nthreshold: Float\n\nreturn: Bool"]
+				},
+				"AddThreshold": {
+					"descriptions": ["**Adds one measured operating point to 'thresholds'**\n\n```method : public : AddThreshold(run:String, result:ThresholdResult) ~ Bool```\n\n\n\nrun: String\n\nresult: ThresholdResult\n\nreturn: Bool"]
+				},
+				"AddThresholdSweep": {
+					"descriptions": ["**Adds every operating point of a scored classifier to 'thresholds', one row per distinct score from the highest down, from Metrics->OperatingPoints. Each row counts the rows at or above its threshold as predicted positive.**\n\n```method : public : AddThresholdSweep(run:String, scores:Float[], actuals:Bool[]) ~ Bool```\n\n\n\nrun: String\n\nscores: Float[]\n\nactuals: Bool[]\n\nreturn: Bool"]
+				},
+				"GetError": {
+					"descriptions": ["**Gets the reason the last Add or Load failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetTable": {
+					"descriptions": ["**Gets one of the tables by its name without the prefix, such as 'folds'**\n\n```method : public : GetTable(name:String) ~ Table```\n\n\n\nname: String\n\nreturn: Table"]
+				},
+				"GetTables": {
+					"descriptions": ["**Gets the eight tables' shapes**\n\n```method : public : GetTables() ~ TableSpec[]```\n\n\n\nreturn: TableSpec[]"]
+				},
+				"Load": {
+					"descriptions": ["**Adds every table to a catalog, empty ones included. The hint is not needed: the results are already in memory.**\n\n```method : public : Load(catalog:Catalog, hint:ScanHint) ~ Bool```\n\n\n\ncatalog: Catalog\n\nhint: ScanHint\n\nreturn: Bool"]
+				},
+				"New": {
+					"descriptions": ["**Constructor; the tables start empty**\n\n```New()```\n\n", "**Constructor for tables whose names start with a prefix, such as 'cv_' for 'cv_folds'**\n\n```New(prefix:String)```\n\n\n\nprefix: String"]
+				}
+			}
+		},
 		"Query.Structured.Server.TableServer": {
 			"description": "Publishes tables over HTTP, read-only:\n\n- 'GET \/tables' lists the tables, their columns and row counts, as JSON.\n- 'GET \/tables\/NAME' returns a table.\n- 'GET \/query?sql=...' or 'POST \/query' (the statement as the UTF-8 body) runs a SELECT over the published tables and returns the result.\n\nResults are CSV, JSON or .otab by the request's Accept header ('text\/csv', 'application\/json', 'application\/x-otab'), or a 'format=csv|json|otab' parameter; CSV is the default. Only SELECT is answered: a statement that would change data is refused (403), and so is a query that names a file or a URL, which would let a client read the server's disk or make it fetch an address. A result larger than the row limit is refused (413) rather than cut short. Queries run one at a time, since tables are not shared between threads. RemoteSource reads a published table from another program.\n\nWeb.HTTP.Server runs one server per process, so one TableServer serves at a time.",
 			"functions": {
@@ -17604,6 +17674,18 @@
 		"XmlSource": [
 			{
 				"bundle": "Query.Structured",
+				"file": ""
+			}
+		],
+		"MlColumns": [
+			{
+				"bundle": "Query.Structured.ML",
+				"file": ""
+			}
+		],
+		"MlResultSource": [
+			{
+				"bundle": "Query.Structured.ML",
 				"file": ""
 			}
 		],

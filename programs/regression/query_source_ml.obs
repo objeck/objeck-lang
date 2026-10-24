@@ -1,0 +1,370 @@
+# EXTRA_LIBS: gen_collect,csv,ml,net,regex,misc,query,query_ml
+#~
+Query.Structured's System.ML source, MlResultSource (docs/QUERY_DESIGN.md section 6, tier 2,
+query_ml.obl), against small seeded models trained here. The rows are checked against the
+numbers read directly from System.ML's result objects: each fold's AUC, the pooled out-of-fold
+scores, each fold's rows (an AUC recomputed over the 'predictions' rows of one fold must equal
+that fold's AUC, which fails if a row is filed under the wrong fold), every operating point of
+a threshold sweep against Metrics->AtThreshold, a confusion matrix, weights, a bootstrap
+interval and per-group recall. An undefined metric (System.ML's -1.0) is an empty cell, so AVG
+skips it. Bad input adds nothing. MlColumns reads a table back as the labels, numbers and
+matrix System.ML takes, refusing empty cells and text.
+~#
+use Collection, System.ML, Query.Structured, Query.Structured.ML;
+
+class QuerySourceMl {
+	@failures : static : Int;
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	function : Near(a : Float, b : Float) ~ Bool {
+		return (a - b)->Abs() < 0.000000001;
+	}
+
+	function : Noise(rnd : Random) ~ Float {
+		t := 0.0;
+		each(k : 4) {
+			t += rnd->NextReal();
+		};
+		return t - 2.0;
+	}
+
+	# overlapping classes, about 20% positive, with a category key for the strata overload
+	function : Data(rows : Int, seed : Int, X : Float[,], y : Bool[], cat : Float[]) ~ Nil {
+		rnd := Random->New(seed);
+		c : Int;
+		roll : Float;
+		v : Float;
+		each(i : rows) {
+			roll := rnd->NextReal();
+			c := 0;
+			if(roll > 0.8) {
+				c := 1;
+				if(roll > 0.92) {
+					c := 2;
+				};
+			};
+			cat[i] := c->As(Float);
+			y[i] := c <> 0;
+			each(j : 4) {
+				v := Noise(rnd);
+				if(c = 1 & j < 2) {
+					v += 1.2;
+				};
+				if(c = 2 & j >= 2) {
+					v += 1.5;
+				};
+				X[i, j] := v;
+			};
+		};
+	}
+
+	function : CellF(table : Table, column : String, row : Int) ~ Float {
+		return table->GetColumn(column)->GetFloat(row);
+	}
+
+	function : CellI(table : Table, column : String, row : Int) ~ Int {
+		return table->GetColumn(column)->GetInt(row);
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		rows := 400;
+		X := Float->New[rows, 4];
+		y := Bool->New[rows];
+		cat := Float->New[rows];
+		Data(rows, 11, X, y, cat);
+		names := ["a", "b", "c", "d"];
+
+		# --- schema ---
+		source := MlResultSource->New();
+		specs := source->GetTables();
+		Check("eight tables", specs->Size() = 8);
+		Check("folds first, typed", specs[0]->GetName()->Equals("folds") & specs[0]->GetTypes()[1] = ColumnType->INT & specs[0]->GetTypes()[2] = ColumnType->FLOAT);
+		Check("predictions types", specs[1]->GetName()->Equals("predictions") & specs[1]->GetTypes()[3] = ColumnType->BOOL & specs[1]->GetTypes()[4] = ColumnType->FLOAT);
+		prefixed := MlResultSource->New("cv_");
+		Check("a prefix names every table", prefixed->GetTables()[7]->GetName()->Equals("cv_metrics") & prefixed->GetTable("metrics")->GetName()->Equals("cv_metrics"));
+
+		# --- cross-validation, label-stratified ---
+		strong := CrossValidation->Evaluate(LogisticRegression->New(0.05, 200, 0.01), X, y, 5, 42, 0.05, true);
+		# the second run is a shuffled-label control, which should score near chance
+		shuffled := Metrics->ShuffleLabels(y, 5);
+		weak := CrossValidation->Evaluate(LogisticRegression->New(0.05, 200, 0.01), X, shuffled, 5, 42, 0.05, true);
+		Check("System.ML ran both evaluations", strong <> Nil & weak <> Nil);
+		if(strong = Nil | weak = Nil) {
+			Finish();
+			return;
+		};
+
+		Check("a cross-validation is added", source->AddCrossValidation("strong", strong, y, 42));
+		Check("a second run is added", source->AddCrossValidation("weak", weak, shuffled, 42));
+
+		folds := source->GetTable("folds");
+		Check("five folds per run", folds->Size() = 10);
+		aucs := strong->GetFoldAucs();
+		recalls := strong->GetFoldRecalls();
+		aps := strong->GetFoldAveragePrecisions();
+		same := true;
+		each(f : 5) {
+			same := same & folds->GetColumn("run")->GetString(f)->Equals("strong") & CellI(folds, "fold", f) = f &
+				CellF(folds, "auc", f) = aucs[f] & CellF(folds, "recall", f) = recalls[f] &
+				CellF(folds, "average_precision", f) = aps[f];
+		};
+		Check("fold rows are the result's fold scores", same);
+
+		predictions := source->GetTable("predictions");
+		Check("one prediction per row per run", predictions->Size() = 2 * rows);
+		oof := strong->GetOofScores();
+		same := true;
+		each(i : rows) {
+			same := same & CellI(predictions, "row", i) = i & CellF(predictions, "score", i) = oof[i] &
+				(predictions->GetColumn("actual")->GetInt(i) = 1) = y[i] & predictions->GetColumn("predicted")->IsNull(i);
+		};
+		Check("prediction rows are the out-of-fold scores and labels", same);
+
+		# a fold's own rows give back that fold's AUC: the fold column is right
+		same := true;
+		each(f : 5) {
+			fold_scores := Vector->New()<FloatRef>;
+			fold_labels := Vector->New()<BoolRef>;
+			each(i : rows) {
+				if(CellI(predictions, "fold", i) = f) {
+					fold_scores->AddBack(FloatRef->New(CellF(predictions, "score", i)));
+					fold_labels->AddBack(BoolRef->New(predictions->GetColumn("actual")->GetInt(i) = 1));
+				};
+			};
+			s := Float->New[fold_scores->Size()];
+			l := Bool->New[fold_labels->Size()];
+			each(i : s) {
+				s[i] := fold_scores->Get(i)->Get();
+				l[i] := fold_labels->Get(i)->Get();
+			};
+			same := same & Near(Metrics->AucRoc(s, l), aucs[f]);
+		};
+		Check("each fold's rows reproduce its AUC", same);
+
+		catalog := Catalog->New();
+		Check("the source loads", catalog->Load(source));
+		Check("every table is in the catalog", catalog->Has("folds") & catalog->Has("thresholds") & catalog->Has("groups") & catalog->Has("intervals"));
+		by_run := catalog->Query("select run, avg(auc) as auc, count(*) as n from folds group by run order by auc desc");
+		Check("runs compare with a GROUP BY", by_run <> Nil & by_run->Size() = 2);
+		if(by_run <> Nil & by_run->Size() = 2) {
+			Check("the better run sorts first", by_run->GetColumn("run")->GetString(0)->Equals("strong"));
+			Check("AVG(auc) is the result's mean AUC", Near(CellF(by_run, "auc", 0), strong->GetMeanAuc()) & Near(CellF(by_run, "auc", 1), weak->GetMeanAuc()));
+		};
+		means := catalog->Query("select value from metrics where run = 'strong' and metric = 'mean_auc'");
+		Check("fold means are in 'metrics'", means <> Nil & means->Size() = 1 & Near(CellF(means, "value", 0), strong->GetMeanAuc()));
+		spread := catalog->Query("select value from metrics where run = 'weak' and metric = 'std_recall'");
+		Check("fold spreads are in 'metrics'", spread <> Nil & spread->Size() = 1 & Near(CellF(spread, "value", 0), weak->GetStdRecall()));
+		missed := catalog->Query("select fold, count(*) as n from predictions where run = 'strong' and actual = true and score < 0.5 group by fold");
+		Check("predictions filter and group", missed <> Nil);
+		per_fold := catalog->Query("select fold, count(*) as n from predictions where run = 'strong' group by fold");
+		total := 0;
+		if(per_fold <> Nil) {
+			each(r : per_fold->Size()) {
+				total += CellI(per_fold, "n", r);
+			};
+		};
+		Check("every row is in exactly one fold", per_fold <> Nil & per_fold->Size() = 5 & total = rows);
+
+		# --- stratified by a category key ---
+		by_cat := CrossValidation->Evaluate(LogisticRegression->New(0.05, 200, 0.01), X, y, 4, 7, 0.05, true, cat);
+		strata := MlResultSource->New();
+		Check("a strata-keyed run is added", by_cat <> Nil & strata->AddCrossValidation("cat", by_cat, y, 7, cat));
+		if(by_cat <> Nil) {
+			strata_rows := strata->GetTable("predictions");
+			same := strata_rows->Size() = rows;
+			each(f : 4) {
+				count := 0;
+				each(i : rows) {
+					if(CellI(strata_rows, "fold", i) = f) {
+						count += 1;
+					};
+				};
+				fs := Float->New[count];
+				fl := Bool->New[count];
+				p := 0;
+				each(i : rows) {
+					if(CellI(strata_rows, "fold", i) = f) {
+						fs[p] := CellF(strata_rows, "score", i);
+						fl[p] := strata_rows->GetColumn("actual")->GetInt(i) = 1;
+						p += 1;
+					};
+				};
+				same := same & Near(Metrics->AucRoc(fs, fl), by_cat->GetFoldAucs()[f]);
+			};
+			Check("strata folds are rebuilt as Evaluate built them", same);
+		};
+
+		# --- threshold sweep against AtThreshold ---
+		sweep := MlResultSource->New();
+		Check("a threshold sweep is added", sweep->AddThresholdSweep("strong", oof, y));
+		thresholds := sweep->GetTable("thresholds");
+		points := Metrics->OperatingPoints(oof, y);
+		dims := points->Size();
+		Check("one row per operating point", thresholds->Size() = dims[0]);
+		same := true;
+		each(r : thresholds->Size()) {
+			at := Metrics->AtThreshold(oof, y, CellF(thresholds, "threshold", r));
+			same := same & CellI(thresholds, "tp", r) = at->GetTruePositives() & CellI(thresholds, "fp", r) = at->GetFalsePositives() &
+				CellI(thresholds, "fn", r) = at->GetFalseNegatives() & CellI(thresholds, "tn", r) = at->GetTrueNegatives() &
+				Near(CellF(thresholds, "tpr", r), at->GetRecall()) & Near(CellF(thresholds, "fpr", r), at->GetFpr()) &
+				Near(CellF(thresholds, "precision", r), at->GetPrecision());
+		};
+		Check("every operating point matches Metrics->AtThreshold", same);
+		Check("a measured threshold is added", sweep->AddThreshold("strong", Metrics->AtThreshold(oof, y, 0.5)));
+		Check("it is one more row", thresholds->Size() = dims[0] + 1);
+
+		# a sample with no positives: recall has no denominator, so its cell is empty
+		Check("a one-class sweep is added", sweep->AddThresholdSweep("none", [0.2, 0.7], [false, false]));
+		last := thresholds->Size() - 1;
+		Check("an undefined rate is an empty cell", thresholds->GetColumn("tpr")->IsNull(last) & thresholds->GetColumn("precision")->IsNull(last) = false & CellF(thresholds, "fpr", last) = 1.0);
+
+		# --- scores, decisions and a confusion matrix ---
+		model := LogisticRegression->New(0.05, 200, 0.01);
+		Check("the model fits", model->Fit(X, y));
+		scores := model->PredictScore(X);
+		decided := model->PredictClass(X);
+		single := MlResultSource->New();
+		Check("scores with a threshold are added", single->AddScores("fit", scores, y, 0.5));
+		Check("decisions are added", single->AddDecisions("fit", decided, y));
+		Check("scores alone are added", single->AddScores("bare", scores, y));
+		single_rows := single->GetTable("predictions");
+		same := single_rows->Size() = 3 * rows;
+		each(i : rows) {
+			same := same & (single_rows->GetColumn("predicted")->GetInt(i) = 1) = (scores[i] >= 0.5) & single_rows->GetColumn("fold")->IsNull(i);
+			same := same & single_rows->GetColumn("score")->IsNull(rows + i) & (single_rows->GetColumn("predicted")->GetInt(rows + i) = 1) = decided[i];
+			same := same & single_rows->GetColumn("predicted")->IsNull(2 * rows + i);
+		};
+		Check("thresholded, hard and bare predictions", same);
+
+		Check("a confusion matrix is added", single->AddConfusion("fit", decided, y));
+		matrix := Metrics->ConfusionMatrix(decided, y);
+		catalog := Catalog->New();
+		catalog->Load(single);
+		tp := catalog->Query("select count from confusion where actual = true and predicted = true");
+		fp := catalog->Query("select count from confusion where actual = false and predicted = true");
+		sum := catalog->Query("select sum(count) as n from confusion");
+		Check("confusion cells are the matrix's", tp <> Nil & tp->Size() = 1 & CellI(tp, "count", 0) = matrix[1, 1] & fp <> Nil & CellI(fp, "count", 0) = matrix[0, 1]);
+		Check("confusion counts add up to the rows", sum <> Nil & CellI(sum, "n", 0) = rows);
+
+		# --- weights ---
+		Check("weights are added", single->AddFeatures("fit", names, model->GetWeights()));
+		Check("unnamed weights are added", single->AddFeatures("anon", Nil, [0.5, -0.25]));
+		top := catalog->Query("select feature, weight from features where run = 'fit' order by weight desc limit 1");
+		weights := model->GetWeights();
+		best := 0;
+		each(j : weights) {
+			if(weights[j] > weights[best]) {
+				best := j;
+			};
+		};
+		Check("the largest weight is found", top <> Nil & top->Size() = 1 & top->GetColumn("feature")->GetString(0)->Equals(names[best]));
+		anon := catalog->Query("select feature from features where run = 'anon' and position = 1");
+		Check("an unnamed feature is x1", anon <> Nil & anon->Size() = 1 & anon->GetColumn("feature")->GetString(0)->Equals("x1"));
+
+		# --- an interval, group recall, a metric ---
+		interval := Metrics->Bootstrap(AucMetric->New(), oof, y, 40, 3);
+		Check("an interval is added", interval <> Nil & single->AddInterval("strong", "auc", interval));
+		iv := single->GetTable("intervals");
+		Check("interval cells", iv->Size() = 1 & CellF(iv, "point", 0) = interval->GetPoint() & CellF(iv, "low", 0) = interval->GetLow() &
+			CellF(iv, "high", 0) = interval->GetHigh() & CellI(iv, "reps", 0) = 40 & CellI(iv, "usable", 0) = interval->GetUsableReps());
+		groups := Metrics->RecallByGroup(oof, y, cat, 0.5);
+		Check("group recall is added", single->AddGroupRecall("strong", groups));
+		gt := single->GetTable("groups");
+		same := gt->Size() = groups->Size();
+		each(g : groups) {
+			same := same & CellF(gt, "group", g) = groups[g]->GetGroup() & CellI(gt, "positives", g) = groups[g]->GetPositives() &
+				CellI(gt, "detected", g) = groups[g]->GetDetected();
+			if(groups[g]->GetPositives() = 0) {
+				same := same & gt->GetColumn("recall")->IsNull(g);
+			}
+			else {
+				same := same & Near(CellF(gt, "recall", g), groups[g]->GetRecall());
+			};
+		};
+		Check("group rows match RecallByGroup, with no recall where a group has no positives", same);
+		Check("a metric is added", single->AddMetric("fit", "accuracy", Metrics->Accuracy(decided, y)));
+
+		# --- an undefined fold metric is an empty cell, which AVG skips ---
+		partial := MlResultSource->New();
+		Check("a result with an undefined fold is added", partial->AddCrossValidation("p", CrossValResult->New([0.75, -1.0, 0.25], [0.5, 0.5, -1.0], [0.1, 0.2, 0.3])));
+		pf := partial->GetTable("folds");
+		Check("an undefined AUC is empty", pf->GetColumn("auc")->IsNull(1) & pf->GetColumn("recall")->IsNull(2) & pf->GetColumn("auc")->IsNull(0) = false);
+		catalog := Catalog->New();
+		catalog->Load(partial);
+		avg := catalog->Query("select avg(auc) as a from folds");
+		Check("AVG skips the undefined fold", avg <> Nil & Near(CellF(avg, "a", 0), 0.5));
+
+		# --- bad input adds nothing ---
+		bad := MlResultSource->New();
+		Check("mismatched scores are refused", <>bad->AddScores("x", [0.1, 0.2], [true]) & bad->GetError() <> Nil);
+		Check("mismatched labels are refused", <>bad->AddCrossValidation("x", strong, [true, false], 42) & bad->GetError() <> Nil);
+		Check("a result with no out-of-fold scores is refused", <>bad->AddCrossValidation("x", CrossValResult->New([0.5], [0.5], [0.5]), y, 42));
+		Check("a run needs a name", <>bad->AddMetric(Nil, "m", 1.0));
+		Check("a confusion matrix is 2 x 2", <>bad->AddConfusion("x", Int->New[3, 3]));
+		Check("names must match the weights", <>bad->AddFeatures("x", ["a"], [1.0, 2.0]));
+		Check("nothing was added", bad->GetTable("predictions")->Size() = 0 & bad->GetTable("folds")->Size() = 0 &
+			bad->GetTable("metrics")->Size() = 0 & bad->GetTable("features")->Size() = 0 & bad->GetTable("confusion")->Size() = 0);
+
+		# --- MlColumns: a table back into System.ML's shapes ---
+		table := Table->FromMatrix("data", X, names);
+		table->AddColumn("label", ColumnType->BOOL);
+		table->AddColumn("code", ColumnType->INT);
+		table->AddColumn("outcome", ColumnType->STRING);
+		each(i : rows) {
+			row := table->Get(i);
+			row->Set("label", BoolRef->New(y[i]));
+			row->Set("code", IntRef->New(y[i] ? 1 : 0));
+			row->Set("outcome", y[i] ? "yes" : "no");
+		};
+		columns := MlColumns->New(table);
+		from_bool := columns->Labels("label");
+		from_int := columns->Labels("code");
+		from_text := columns->Labels("outcome", "yes");
+		values := columns->Values("b");
+		features := columns->Features(names);
+		same := from_bool <> Nil & from_int <> Nil & from_text <> Nil & values <> Nil & features <> Nil;
+		if(same) {
+			each(i : rows) {
+				same := same & from_bool[i] = y[i] & from_int[i] = y[i] & from_text[i] = y[i] & values[i] = X[i, 1];
+				each(j : 4) {
+					same := same & features[i, j] = X[i, j];
+				};
+			};
+		};
+		Check("labels from BOOL, INT and text, numbers and a matrix read back exactly", same);
+		refit := LogisticRegression->New(0.05, 200, 0.01);
+		Check("a model fits on what MlColumns reads", same & refit->Fit(features, from_bool));
+		if(same) {
+			a := refit->GetWeights();
+			b := model->GetWeights();
+			same := a->Size() = b->Size();
+			each(j : a) {
+				same := same & a[j] = b[j];
+			};
+			Check("and learns exactly the same weights", same);
+		};
+		Check("text is not a label without a positive class", columns->Labels("outcome") = Nil & columns->GetError()->Has("outcome"));
+		Check("an unknown column is refused", columns->Values("nope") = Nil & columns->GetError()->Has("nope"));
+		table->Insert();
+		Check("an empty cell is refused, naming the row", columns->Labels("label") = Nil & columns->GetError()->Has("row {$rows}"));
+		Check("an empty cell is not a number", columns->Values("a") = Nil & columns->Features(names) = Nil);
+
+		Finish();
+	}
+
+	function : Finish() ~ Nil {
+		if(@failures = 0) {
+			"PASS: System.ML results as tables"->PrintLine();
+		}
+		else {
+			"FAIL: query ML source ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

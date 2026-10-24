@@ -1,0 +1,865 @@
+# Query.Structured's System.ML source (docs/QUERY_DESIGN.md, section 6, tier 2): the results
+# of model evaluation as tables, so comparing runs is a GROUP BY and an ORDER BY. A library of
+# its own so that a program that only queries CSV files does not load System.ML's native
+# module.
+
+use Collection;
+use System.ML;
+use Query.Structured;
+
+bundle Query.Structured.ML {
+	#~
+	System.ML results as tables. Each Add method files what one run produced under that run's
+	name, so several models, seeds or feature sets land in the same tables and compare with
+	one query. Load puts every table into a catalog, an empty one included, so a query never
+	fails because a run produced no rows of some kind.
+
+	- 'folds' (run, fold, auc, recall, average_precision), from AddCrossValidation
+	- 'predictions' (run, row, fold, actual, score, predicted), from AddCrossValidation with
+	  labels, AddScores and AddDecisions
+	- 'thresholds' (run, threshold, tp, fp, fn, tn, tpr, fpr, precision), from
+	  AddThresholdSweep and AddThreshold
+	- 'confusion' (run, actual, predicted, count), from AddConfusion
+	- 'features' (run, position, feature, weight), from AddFeatures
+	- 'intervals' (run, metric, point, low, high, level, reps, usable), from AddInterval
+	- 'groups' (run, group, positives, detected, recall), from AddGroupRecall
+	- 'metrics' (run, metric, value), from AddMetric and AddCrossValidation (fold means and
+	  spreads)
+
+	'run', 'feature' and 'metric' are STRING; 'fold', 'row', 'position', the four counts,
+	'count', 'reps', 'usable', 'positives' and 'detected' are INT; 'actual' and 'predicted'
+	are BOOL; everything else is FLOAT. A value System.ML reports as undefined (a fold AUC
+	of -1.0 because a fold held one class, a rate with no denominator) is an empty cell, not
+	a number, so an AVG skips it instead of being dragged down by it. A prefix given to the
+	constructor is put in front of every table name, for a catalog that already has a
+	'folds' table.
+
+	System.ML has no feature importances of its own; AddFeatures takes any per-feature
+	numbers, such as a linear model's weights or importances computed by permutation.
+
+```
+results := MlResultSource->New();
+forest := CrossValidation->Evaluate(RandomForestClassifier->New(50, 6, 42), X, y, 5, 42, 0.01);
+linear := CrossValidation->Evaluate(LogisticRegression->New(0.05, 200, 0.01), X, y, 5, 42, 0.01);
+results->AddCrossValidation("forest", forest, y, 42);
+results->AddCrossValidation("linear", linear, y, 42);
+
+catalog := Catalog->New();
+catalog->Load(results);
+catalog->Query("select run, avg(auc) as auc, stddev(auc) as spread from folds group by run order by auc desc")->ToCsv()->PrintLine();
+catalog->Query("select run, fold, count(*) from predictions where actual = true and score < 0.5 group by run, fold")->ToCsv()->PrintLine();
+```
+	~#
+	class MlResultSource implements Source {
+		@prefix : String;
+		@folds : Table;
+		@predictions : Table;
+		@thresholds : Table;
+		@confusion : Table;
+		@features : Table;
+		@intervals : Table;
+		@groups : Table;
+		@metrics : Table;
+		@error : String;
+
+		#~
+		Constructor; the tables start empty
+		~#
+		New() {
+			Init("");
+		}
+
+		#~
+		Constructor for tables whose names start with a prefix, such as 'cv_' for 'cv_folds'
+		@param prefix put in front of every table name
+		~#
+		New(prefix : String) {
+			Init(prefix <> Nil ? prefix : "");
+		}
+
+		method : Init(prefix : String) ~ Nil {
+			@prefix := prefix;
+			specs := Specs();
+			@folds := Make(specs[0]);
+			@predictions := Make(specs[1]);
+			@thresholds := Make(specs[2]);
+			@confusion := Make(specs[3]);
+			@features := Make(specs[4]);
+			@intervals := Make(specs[5]);
+			@groups := Make(specs[6]);
+			@metrics := Make(specs[7]);
+		}
+
+		method : Make(spec : TableSpec) ~ Table {
+			return Table->New(spec->GetName(), spec->GetColumns(), spec->GetTypes(), true);
+		}
+
+		# the eight table shapes, in the order Init keeps them
+		method : Specs() ~ TableSpec[] {
+			specs := TableSpec->New[8];
+			specs[0] := Spec("folds", ["run", "fold", "auc", "recall", "average_precision"], "SIFFF");
+			specs[1] := Spec("predictions", ["run", "row", "fold", "actual", "score", "predicted"], "SIIBFB");
+			specs[2] := Spec("thresholds", ["run", "threshold", "tp", "fp", "fn", "tn", "tpr", "fpr", "precision"], "SFIIIIFFF");
+			specs[3] := Spec("confusion", ["run", "actual", "predicted", "count"], "SBBI");
+			specs[4] := Spec("features", ["run", "position", "feature", "weight"], "SISF");
+			specs[5] := Spec("intervals", ["run", "metric", "point", "low", "high", "level", "reps", "usable"], "SSFFFFII");
+			specs[6] := Spec("groups", ["run", "group", "positives", "detected", "recall"], "SFIIF");
+			specs[7] := Spec("metrics", ["run", "metric", "value"], "SSF");
+			return specs;
+		}
+
+		# a table shape from a letter per column: S string, I int, F float, B bool
+		method : Spec(name : String, columns : String[], letters : String) ~ TableSpec {
+			types := ColumnType->New[columns->Size()];
+			each(i : columns) {
+				letter := letters->Get(i);
+				if(letter = 'I') {
+					types[i] := ColumnType->INT;
+				}
+				else if(letter = 'F') {
+					types[i] := ColumnType->FLOAT;
+				}
+				else if(letter = 'B') {
+					types[i] := ColumnType->BOOL;
+				}
+				else {
+					types[i] := ColumnType->STRING;
+				};
+			};
+
+			return TableSpec->New("{$@prefix}{$name}", columns, types);
+		}
+
+		#~
+		Gets the eight tables' shapes
+		@return table shapes
+		~#
+		method : public : GetTables() ~ TableSpec[] {
+			return Specs();
+		}
+
+		#~
+		Adds every table to a catalog, empty ones included. The hint is not needed: the
+		results are already in memory.
+		@param catalog catalog
+		@param hint ignored
+		@return true
+		~#
+		method : public : Load(catalog : Catalog, hint : ScanHint) ~ Bool {
+			@error := Nil;
+			if(catalog = Nil) {
+				@error := "no catalog";
+				return false;
+			};
+
+			catalog->Add(@folds);
+			catalog->Add(@predictions);
+			catalog->Add(@thresholds);
+			catalog->Add(@confusion);
+			catalog->Add(@features);
+			catalog->Add(@intervals);
+			catalog->Add(@groups);
+			catalog->Add(@metrics);
+			return true;
+		}
+
+		#~
+		Gets one of the tables by its name without the prefix, such as 'folds'
+		@param name table name
+		@return table, Nil if there is no such table
+		~#
+		method : public : GetTable(name : String) ~ Table {
+			if(name = Nil) {
+				return Nil;
+			}
+			else if(name->Equals("folds")) {
+				return @folds;
+			}
+			else if(name->Equals("predictions")) {
+				return @predictions;
+			}
+			else if(name->Equals("thresholds")) {
+				return @thresholds;
+			}
+			else if(name->Equals("confusion")) {
+				return @confusion;
+			}
+			else if(name->Equals("features")) {
+				return @features;
+			}
+			else if(name->Equals("intervals")) {
+				return @intervals;
+			}
+			else if(name->Equals("groups")) {
+				return @groups;
+			}
+			else if(name->Equals("metrics")) {
+				return @metrics;
+			};
+
+			return Nil;
+		}
+
+		#~
+		Gets the reason the last Add or Load failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		#~
+		Adds a cross-validation's per-fold scores to 'folds', and its fold means and spreads to
+		'metrics' (mean_auc, std_auc, mean_recall, std_recall, mean_average_precision)
+		@param run run name
+		@param result what CrossValidation->Evaluate returned
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddCrossValidation(run : String, result : CrossValResult) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(result = Nil | result->GetFolds() = 0) {
+				@error := "'{$run}': no cross-validation result";
+				return false;
+			};
+
+			aucs := result->GetFoldAucs();
+			recalls := result->GetFoldRecalls();
+			aps := result->GetFoldAveragePrecisions();
+			each(f : aucs) {
+				values := Compare->New[5];
+				values[0] := run;
+				values[1] := IntRef->New(f);
+				values[2] := Score(aucs[f]);
+				if(recalls <> Nil & f < recalls->Size()) {
+					values[3] := Score(recalls[f]);
+				};
+				if(aps <> Nil & f < aps->Size()) {
+					values[4] := Score(aps[f]);
+				};
+				Append(@folds, values);
+			};
+
+			AddMetric(run, "mean_auc", result->GetMeanAuc());
+			AddMetric(run, "std_auc", result->GetStdAuc());
+			AddMetric(run, "mean_recall", result->GetMeanRecall());
+			AddMetric(run, "std_recall", result->GetStdRecall());
+			AddMetric(run, "mean_average_precision", result->GetMeanAveragePrecision());
+			return true;
+		}
+
+		#~
+		Adds a cross-validation as AddCrossValidation(run, result) does, and its out-of-fold
+		scores to 'predictions', one row per input row with the fold that scored it. The folds
+		are rebuilt with CrossValidation->StratifiedKFold from the labels and seed, which is
+		how Evaluate(model, X, y, k, seed, ...) assigned them; a run stratified by another key
+		uses the overload that takes it.
+		@param run run name
+		@param result what CrossValidation->Evaluate returned
+		@param y the labels Evaluate was given
+		@param seed the seed Evaluate was given
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddCrossValidation(run : String, result : CrossValResult, y : Bool[], seed : Int) ~ Bool {
+			return AddCrossValidation(run, result, y, seed, CrossValidation->ToFloat(y));
+		}
+
+		#~
+		Adds a cross-validation whose folds were stratified by a key other than the label, as
+		Evaluate(model, X, y, k, seed, max_fpr, standardize, strata) runs it
+		@param run run name
+		@param result what CrossValidation->Evaluate returned
+		@param y the labels Evaluate was given
+		@param seed the seed Evaluate was given
+		@param strata the stratification key Evaluate was given
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddCrossValidation(run : String, result : CrossValResult, y : Bool[], seed : Int, strata : Float[]) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(result = Nil | result->GetFolds() = 0) {
+				@error := "'{$run}': no cross-validation result";
+				return false;
+			};
+
+			scores := result->GetOofScores();
+			if(scores = Nil) {
+				@error := "'{$run}': the result has no out-of-fold scores";
+				return false;
+			};
+			if(y = Nil | strata = Nil | y->Size() <> scores->Size() | strata->Size() <> scores->Size()) {
+				@error := "'{$run}': {$(scores->Size())} out-of-fold scores, but the labels or strata do not match";
+				return false;
+			};
+
+			k := result->GetFolds();
+			folds := CrossValidation->StratifiedKFold(strata, k, seed);
+			if(folds = Nil) {
+				@error := "'{$run}': cannot rebuild {$k} folds from {$(y->Size())} rows";
+				return false;
+			};
+
+			fold_of := Int->New[scores->Size()];
+			each(i : fold_of) {
+				fold_of[i] := -1;
+			};
+			each(f : folds) {
+				members := folds[f];
+				each(m : members) {
+					row := members->Get(m)->Get();
+					if(row >= 0 & row < fold_of->Size()) {
+						fold_of[row] := f;
+					};
+				};
+			};
+
+			if(<>AddCrossValidation(run, result)) {
+				return false;
+			};
+
+			each(i : scores) {
+				values := Compare->New[6];
+				values[0] := run;
+				values[1] := IntRef->New(i);
+				if(fold_of[i] > -1) {
+					values[2] := IntRef->New(fold_of[i]);
+				};
+				values[3] := BoolRef->New(y[i]);
+				values[4] := FloatRef->New(scores[i]);
+				Append(@predictions, values);
+			};
+
+			return true;
+		}
+
+		#~
+		Adds scored predictions to 'predictions', with 'predicted' left empty
+		@param run run name
+		@param scores one score per row; higher means more positive
+		@param actuals the true labels
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddScores(run : String, scores : Float[], actuals : Bool[]) ~ Bool {
+			return AddPredictions(run, scores, actuals, Nil, 0.0, false);
+		}
+
+		#~
+		Adds scored predictions to 'predictions', with 'predicted' true where the score is at
+		or above the threshold, as Metrics->AtThreshold counts it
+		@param run run name
+		@param scores one score per row; higher means more positive
+		@param actuals the true labels
+		@param threshold the cutoff
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddScores(run : String, scores : Float[], actuals : Bool[], threshold : Float) ~ Bool {
+			return AddPredictions(run, scores, actuals, Nil, threshold, true);
+		}
+
+		#~
+		Adds hard predictions, such as a classifier's Predict returns, to 'predictions', with
+		'score' left empty
+		@param run run name
+		@param predicted one decision per row
+		@param actuals the true labels
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddDecisions(run : String, predicted : Bool[], actuals : Bool[]) ~ Bool {
+			return AddPredictions(run, Nil, actuals, predicted, 0.0, false);
+		}
+
+		method : AddPredictions(run : String, scores : Float[], actuals : Bool[], predicted : Bool[], threshold : Float, cut : Bool) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+
+			if(actuals = Nil) {
+				@error := "'{$run}': no labels";
+				return false;
+			};
+			n := actuals->Size();
+			if((scores <> Nil & scores->Size() <> n) | (predicted <> Nil & predicted->Size() <> n)) {
+				@error := "'{$run}': {$n} labels, but the predictions are a different length";
+				return false;
+			};
+
+			each(i : n) {
+				values := Compare->New[6];
+				values[0] := run;
+				values[1] := IntRef->New(i);
+				values[3] := BoolRef->New(actuals[i]);
+				if(scores <> Nil) {
+					values[4] := FloatRef->New(scores[i]);
+					if(cut) {
+						values[5] := BoolRef->New(scores[i] >= threshold);
+					};
+				};
+				if(predicted <> Nil) {
+					values[5] := BoolRef->New(predicted[i]);
+				};
+				Append(@predictions, values);
+			};
+
+			return true;
+		}
+
+		#~
+		Adds every operating point of a scored classifier to 'thresholds', one row per distinct
+		score from the highest down, from Metrics->OperatingPoints. Each row counts the rows at
+		or above its threshold as predicted positive.
+		@param run run name
+		@param scores one score per row; higher means more positive
+		@param actuals the true labels
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddThresholdSweep(run : String, scores : Float[], actuals : Bool[]) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+
+			points := Metrics->OperatingPoints(scores, actuals);
+			if(points = Nil) {
+				@error := "'{$run}': the scores and labels are empty or do not line up";
+				return false;
+			};
+
+			positives := Metrics->CountPositives(actuals);
+			negatives := actuals->Size() - positives;
+			dims := points->Size();
+			each(p : dims[0]) {
+				fp := points[p, 1]->As(Int);
+				tp := points[p, 2]->As(Int);
+				AddPoint(run, points[p, 0], tp, fp, positives - tp, negatives - fp);
+			};
+
+			return true;
+		}
+
+		#~
+		Adds one measured operating point to 'thresholds'
+		@param run run name
+		@param result what Metrics->AtThreshold returned
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddThreshold(run : String, result : ThresholdResult) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(result = Nil) {
+				@error := "'{$run}': no threshold result";
+				return false;
+			};
+
+			AddPoint(run, result->GetThreshold(), result->GetTruePositives(), result->GetFalsePositives(),
+				result->GetFalseNegatives(), result->GetTrueNegatives());
+			return true;
+		}
+
+		method : AddPoint(run : String, threshold : Float, tp : Int, fp : Int, fn : Int, tn : Int) ~ Nil {
+			values := Compare->New[9];
+			values[0] := run;
+			values[1] := FloatRef->New(threshold);
+			values[2] := IntRef->New(tp);
+			values[3] := IntRef->New(fp);
+			values[4] := IntRef->New(fn);
+			values[5] := IntRef->New(tn);
+			values[6] := Rate(tp, tp + fn);
+			values[7] := Rate(fp, fp + tn);
+			values[8] := Rate(tp, tp + fp);
+			Append(@thresholds, values);
+		}
+
+		#~
+		Adds the confusion matrix of hard predictions to 'confusion', as four rows
+		@param run run name
+		@param predicted one decision per row
+		@param actuals the true labels
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddConfusion(run : String, predicted : Bool[], actuals : Bool[]) ~ Bool {
+			@error := Nil;
+			if(predicted = Nil | actuals = Nil | predicted->Size() <> actuals->Size() | actuals->Size() = 0) {
+				@error := "'{$run}': the predictions and labels are empty or do not line up";
+				return false;
+			};
+
+			return AddConfusion(run, Metrics->ConfusionMatrix(predicted, actuals));
+		}
+
+		#~
+		Adds a confusion matrix, in Metrics->ConfusionMatrix's [[TN, FP], [FN, TP]] layout, to
+		'confusion' as four rows
+		@param run run name
+		@param matrix 2 x 2 counts indexed [actual, predicted]
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddConfusion(run : String, matrix : Int[,]) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(matrix = Nil) {
+				@error := "'{$run}': no confusion matrix";
+				return false;
+			};
+			dims := matrix->Size();
+			if(dims[0] <> 2 | dims[1] <> 2) {
+				@error := "'{$run}': a confusion matrix is 2 x 2, not {$(dims[0])} x {$(dims[1])}";
+				return false;
+			};
+
+			each(a : 2) {
+				each(p : 2) {
+					values := Compare->New[4];
+					values[0] := run;
+					values[1] := BoolRef->New(a = 1);
+					values[2] := BoolRef->New(p = 1);
+					values[3] := IntRef->New(matrix[a, p]);
+					Append(@confusion, values);
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Adds one number per feature to 'features', such as a linear model's weights
+		(LogisticRegression->GetWeights, LinearRegression->GetCoefficients) or importances
+		computed elsewhere
+		@param run run name
+		@param names one name per feature, or Nil for 'x0', 'x1' and so on
+		@param weights one number per feature
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddFeatures(run : String, names : String[], weights : Float[]) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(weights = Nil) {
+				@error := "'{$run}': no weights";
+				return false;
+			};
+			if(names <> Nil & names->Size() <> weights->Size()) {
+				@error := "'{$run}': {$(names->Size())} names for {$(weights->Size())} weights";
+				return false;
+			};
+
+			each(i : weights) {
+				values := Compare->New[4];
+				values[0] := run;
+				values[1] := IntRef->New(i);
+				if(names <> Nil & names[i] <> Nil) {
+					values[2] := names[i];
+				}
+				else {
+					values[2] := "x{$i}";
+				};
+				values[3] := FloatRef->New(weights[i]);
+				Append(@features, values);
+			};
+
+			return true;
+		}
+
+		#~
+		Adds a bootstrap interval, as Metrics->Bootstrap returns it, to 'intervals'
+		@param run run name
+		@param metric the metric's name, such as 'auc'
+		@param interval the interval
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddInterval(run : String, metric : String, interval : ConfInterval) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(metric = Nil | interval = Nil) {
+				@error := "'{$run}': no metric name or no interval";
+				return false;
+			};
+
+			values := Compare->New[8];
+			values[0] := run;
+			values[1] := metric;
+			values[2] := FloatRef->New(interval->GetPoint());
+			values[3] := FloatRef->New(interval->GetLow());
+			values[4] := FloatRef->New(interval->GetHigh());
+			values[5] := FloatRef->New(interval->GetLevel());
+			values[6] := IntRef->New(interval->GetReps());
+			values[7] := IntRef->New(interval->GetUsableReps());
+			Append(@intervals, values);
+			return true;
+		}
+
+		#~
+		Adds per-group recall, as Metrics->RecallByGroup returns it, to 'groups'. A group with
+		no positives has an empty recall.
+		@param run run name
+		@param groups one entry per group
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddGroupRecall(run : String, groups : GroupRecall[]) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(groups = Nil) {
+				@error := "'{$run}': no group recall";
+				return false;
+			};
+
+			each(g : groups) {
+				group := groups[g];
+				if(group <> Nil) {
+					values := Compare->New[5];
+					values[0] := run;
+					values[1] := FloatRef->New(group->GetGroup());
+					values[2] := IntRef->New(group->GetPositives());
+					values[3] := IntRef->New(group->GetDetected());
+					values[4] := Rate(group->GetDetected(), group->GetPositives());
+					Append(@groups, values);
+				};
+			};
+
+			return true;
+		}
+
+		#~
+		Adds one named number to 'metrics', such as an accuracy or a training time
+		@param run run name
+		@param metric the metric's name
+		@param value the value
+		@return true if added, false on bad input (see GetError)
+		~#
+		method : public : AddMetric(run : String, metric : String, value : Float) ~ Bool {
+			@error := Nil;
+			if(<>CheckRun(run)) {
+				return false;
+			};
+			if(metric = Nil) {
+				@error := "'{$run}': no metric name";
+				return false;
+			};
+
+			values := Compare->New[3];
+			values[0] := run;
+			values[1] := metric;
+			values[2] := FloatRef->New(value);
+			Append(@metrics, values);
+			return true;
+		}
+
+		method : CheckRun(run : String) ~ Bool {
+			if(run = Nil) {
+				@error := "no run name";
+				return false;
+			};
+
+			return true;
+		}
+
+		# System.ML reports a metric it cannot compute as a negative number; that is an
+		# empty cell, not a score
+		function : Score(value : Float) ~ FloatRef {
+			if(value < 0.0) {
+				return Nil;
+			};
+
+			return FloatRef->New(value);
+		}
+
+		# a ratio of counts, empty when there is no denominator
+		function : Rate(part : Int, whole : Int) ~ FloatRef {
+			if(whole = 0) {
+				return Nil;
+			};
+
+			return FloatRef->New(part->As(Float) / whole->As(Float));
+		}
+
+		function : Append(table : Table, values : Compare[]) ~ Nil {
+			row := table->Insert();
+			each(i : values) {
+				if(values[i] <> Nil) {
+					row->Set(i + 1, values[i]);
+				};
+			};
+		}
+	}
+
+	#~
+	Reads a table's columns in the forms System.ML takes: labels as Bool[] for a classifier's
+	Fit and the Metrics functions, numbers as Float[], and several columns as a Float[,]
+	matrix. An empty cell, or text where a number is expected, is an error naming the column
+	and the row, never a silent zero. Read a view by materializing it first
+	('view->ToTable("rows")').
+
+```
+columns := MlColumns->New(catalog->Query("select * from runs where split = 'train'"));
+X := columns->Features(["age", "dose", "weight"]);
+y := columns->Labels("outcome");
+if(X = Nil | y = Nil) {
+  columns->GetError()->ErrorLine();
+};
+model := LogisticRegression->New(0.05, 200, 0.01);
+model->Fit(X, y);
+```
+	~#
+	class MlColumns {
+		@table : Table;
+		@error : String;
+
+		#~
+		Constructor
+		@param table table to read
+		~#
+		New(table : Table) {
+			@table := table;
+		}
+
+		#~
+		Gets a column as labels. A BOOL column is read as it is; a number is true above 0.5,
+		as CrossValidation->ToBool reads one; text is an error, see Labels(name, positive).
+		@param name column name
+		@return one label per live row, Nil on error (see GetError)
+		~#
+		method : public : Labels(name : String) ~ Bool[] {
+			return ReadLabels(name, Nil);
+		}
+
+		#~
+		Gets a column as labels, true where the cell equals a given text, for a column such as
+		'outcome' holding 'yes' and 'no'. A cell that is not text is compared by its text form.
+		@param name column name
+		@param positive the text of the positive class
+		@return one label per live row, Nil on error (see GetError)
+		~#
+		method : public : Labels(name : String, positive : String) ~ Bool[] {
+			if(positive = Nil) {
+				@error := "no positive class";
+				return Nil;
+			};
+			return ReadLabels(name, positive);
+		}
+
+		method : ReadLabels(name : String, positive : String) ~ Bool[] {
+			@error := Nil;
+			column := Find(name);
+			if(column = Nil) {
+				return Nil;
+			};
+
+			rows := @table->LiveRows();
+			labels := Bool->New[rows->Size()];
+			each(i : rows) {
+				row := rows[i];
+				if(column->IsNull(row)) {
+					@error := "column '{$name}', row {$i}: an empty cell is not a label";
+					return Nil;
+				};
+
+				if(positive <> Nil) {
+					labels[i] := column->Get(row)->ToString()->Equals(positive);
+				}
+				else if(column->GetType() = ColumnType->BOOL) {
+					labels[i] := column->GetInt(row) <> 0;
+				}
+				else if(column->IsNumeric(row)) {
+					labels[i] := column->GetFloat(row) > 0.5;
+				}
+				else {
+					@error := "column '{$name}', row {$i}: '{$(column->Get(row)->ToString())}' is not a number; name the positive class";
+					return Nil;
+				};
+			};
+
+			return labels;
+		}
+
+		#~
+		Gets a numeric column as numbers; a BOOL cell reads as 1.0 or 0.0
+		@param name column name
+		@return one number per live row, Nil on error (see GetError)
+		~#
+		method : public : Values(name : String) ~ Float[] {
+			@error := Nil;
+			column := Find(name);
+			if(column = Nil) {
+				return Nil;
+			};
+
+			rows := @table->LiveRows();
+			values := Float->New[rows->Size()];
+			each(i : rows) {
+				row := rows[i];
+				if(column->IsNull(row)) {
+					@error := "column '{$name}', row {$i}: the cell is empty";
+					return Nil;
+				};
+
+				if(column->GetType() = ColumnType->BOOL) {
+					values[i] := (column->GetInt(row) <> 0) ? 1.0 : 0.0;
+				}
+				else if(column->IsNumeric(row)) {
+					values[i] := column->GetFloat(row);
+				}
+				else {
+					@error := "column '{$name}', row {$i}: '{$(column->Get(row)->ToString())}' is not a number";
+					return Nil;
+				};
+			};
+
+			return values;
+		}
+
+		#~
+		Gets numeric columns as a matrix, one row per live row (Table->ToMatrix)
+		@param names columns, in matrix column order
+		@return matrix, Nil on error (see GetError)
+		~#
+		method : public : Features(names : String[]) ~ Float[,] {
+			@error := Nil;
+			if(@table = Nil) {
+				@error := "no table";
+				return Nil;
+			};
+
+			matrix := @table->ToMatrix(names);
+			if(matrix = Nil) {
+				@error := @table->GetError();
+			};
+			return matrix;
+		}
+
+		#~
+		Gets the reason the last read failed
+		@return error, Nil if none
+		~#
+		method : public : GetError() ~ String {
+			return @error;
+		}
+
+		method : Find(name : String) ~ Column {
+			if(@table = Nil) {
+				@error := "no table";
+				return Nil;
+			};
+
+			column := @table->GetColumn(name);
+			if(column = Nil | name->Equals("pk")) {
+				@error := "no column '{$name}'";
+				return Nil;
+			};
+
+			return column;
+		}
+	}
+}
