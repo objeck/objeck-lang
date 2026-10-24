@@ -12441,7 +12441,7 @@
 					"descriptions": ["**Returns the current working directory**\n\n```function : GetWorking() ~ String```\n\n\n\nreturn: String"]
 				},
 				"List": {
-					"descriptions": ["**List of directory content**\n\n```function : List(n:System.String) ~ System.String[]```\n\n\n\nn: System.String\n\nreturn: System.String[]"]
+					"descriptions": ["**List of directory content: the names of the files and directories in it, without the directory's path. The '.' and '..' entries are never included, on any platform.**\n\n```function : List(n:System.String) ~ System.String[]```\n\n\n\nn: System.String\n\nreturn: System.String[]"]
 				},
 				"Rename": {
 					"descriptions": ["**Renames a directory**\n\n```function : Rename(o:System.String, n:System.String) ~ Bool```\n\n\n\no: System.String\n\nn: System.String\n\nreturn: Bool"]
