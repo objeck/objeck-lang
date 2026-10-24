@@ -4954,6 +4954,40 @@ bool TrapProcessor::SockTcpHostName(StackProgram* program, size_t* inst, size_t*
   return true;
 }
 
+// the calling thread's last server socket and TLS failures (see common.h)
+thread_local int socket_last_error = 0;
+thread_local int tls_socket_error = 0;
+
+// the socket error of the call that just failed
+static int CurrentSocketError()
+{
+#ifdef _WIN32
+  return WSAGetLastError();
+#else
+  return errno;
+#endif
+}
+
+// the system's text for a socket error code
+static std::wstring SocketErrorText(int error)
+{
+#ifdef _WIN32
+  char error_msg[SMALL_BUFFER_MAX] = {0};
+  FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, (DWORD)error, 0, error_msg, SMALL_BUFFER_MAX, 0);
+  // FormatMessage ends its text with CR LF
+  size_t len = strlen(error_msg);
+  while(len > 0 && (error_msg[len - 1] == '\n' || error_msg[len - 1] == '\r' || error_msg[len - 1] == ' ')) {
+    error_msg[--len] = '\0';
+  }
+  if(len == 0) {
+    return L"socket error " + std::to_wstring(error);
+  }
+  return BytesToUnicode(error_msg);
+#else
+  return BytesToUnicode(strerror(error));
+#endif
+}
+
 bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   const long port = (long)PopInt(op_stack, stack_pos);
@@ -4962,6 +4996,8 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   if(array && instance) {
     array = (size_t*)array[0];
     const std::string addr = UnicodeToBytes((wchar_t*)(array + 3));
+    // a connect reports through the live error, as before (see SockTcpError)
+    socket_last_error = 0;
     // instance[3] holds connect timeout in ms (0 = blocking)
     const long timeout_ms = (long)instance[3];
     // connect() can block for a long time; park for the duration. The instance
@@ -4991,6 +5027,12 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
   size_t* instance = (size_t*)PopInt(op_stack, stack_pos);
   if(instance) {
     SOCKET server = IPSocket::Bind(static_cast<int>(port));
+    // captured now: by the time GetLastError runs, the live value is gone
+#ifdef _WIN32
+    socket_last_error = server == INVALID_SOCKET ? CurrentSocketError() : 0;
+#else
+    socket_last_error = server < 0 ? CurrentSocketError() : 0;
+#endif
 #ifdef _DEBUG
     std::wcout << L"# socket bind: port=" << port << L"; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << server << L"(" << (size_t)server
@@ -5039,6 +5081,8 @@ bool TrapProcessor::SockTcpBindAddress(StackProgram* program, size_t* inst, size
 #else
     errno = bind_error;
 #endif
+    // recorded as TCPSocketServer->New(port) does: GetLastError() says why
+    socket_last_error = (long)server < 0 ? bind_error : 0;
 
 #ifdef _DEBUG
     std::wcout << L"# socket bind: address='" << BytesToUnicode(host) << L"'; port=" << port
@@ -5063,13 +5107,16 @@ bool TrapProcessor::SockTcpListen(StackProgram* program, size_t* inst, size_t* &
       << (long)server << L") #" << std::endl;
 #endif
     if(IPSocket::Listen(server, static_cast<int>(backlog))) {
+      socket_last_error = 0;
       PushInt(1, op_stack, stack_pos);
     }
     else {
+      socket_last_error = CurrentSocketError();
       PushInt(0, op_stack, stack_pos);
     }
   }
   else {
+    // the bind failed: socket_last_error still holds why
     PushInt(0, op_stack, stack_pos);
   }
 
@@ -5107,6 +5154,7 @@ bool TrapProcessor::SockTcpAccept(StackProgram* program, size_t* inst, size_t* &
     // on the op_stack first and re-read it after, as SockTcpConnect does.
     MemoryManager::BeginBlocking();
     SOCKET client = IPSocket::Accept(server, client_address, client_port);
+    socket_last_error = (long)client < 0 ? CurrentSocketError() : 0;
     MemoryManager::EndBlocking();
 #ifdef _DEBUG
     std::wcout << L"# socket accept: instance=" << instance << L"(" << (size_t)instance << L")" << L"; ip="
@@ -5444,16 +5492,20 @@ bool TrapProcessor::SockTcpSslInString(StackProgram* program, size_t* inst, size
 //
 static int BindServerSocket(mbedtls_net_context& ctx, int port, int type, const char* host = nullptr)
 {
+  tls_socket_error = 0;
   const SOCKET sock = IPSocket::BindAddress(host, port, type);
 #ifdef _WIN32
   if(sock == INVALID_SOCKET) {
 #else
   if(sock < 0) {
 #endif
+    // why, for GetLastError: MBEDTLS_ERR_NET_BIND_FAILED alone does not say
+    tls_socket_error = CurrentSocketError();
     return MBEDTLS_ERR_NET_BIND_FAILED;
   }
 
   if(type == SOCK_STREAM && listen(sock, MBEDTLS_NET_LISTEN_BACKLOG) != 0) {
+    tls_socket_error = CurrentSocketError();
 #ifdef _WIN32
     closesocket(sock);
 #else
@@ -5828,6 +5880,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       }
       MemoryManager::EndBlocking();
       instance = (size_t*)PopInt(op_stack, stack_pos);
+      tls_last_error = ret;
       if(ret != 0) {
         client->SetError(ret);
         delete client;
@@ -5889,21 +5942,22 @@ bool TrapProcessor::SockTcpSslCertSrv(StackProgram* program, size_t* inst, size_
 
 bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-#ifdef _WIN32
-  char error_msg[SMALL_BUFFER_MAX] = {0};
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,	0, WSAGetLastError(), 0, error_msg, SMALL_BUFFER_MAX, 0);
-  // the system message ends in CRLF: dropping only the LF left a stray CR
-  size_t msg_len = strlen(error_msg);
-  while(msg_len > 0 && (error_msg[msg_len - 1] == '\n' || error_msg[msg_len - 1] == '\r')) {
-    error_msg[--msg_len] = '\0';
+  // A server's bind, listen or accept failure was captured as it happened
+  // (see socket_last_error). Anything else reports the live error, as before,
+  // and no error at all is Nil, as documented -- not "The operation completed
+  // successfully.", which is what a failed Listen used to report on Windows.
+  int error = socket_last_error;
+  if(error == 0) {
+    error = CurrentSocketError();
   }
-  const std::wstring err_msg = BytesToUnicode(error_msg);
-  PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
-#else
-    const std::wstring err_msg = BytesToUnicode(strerror(errno));
-    PushInt((size_t)CreateStringObject(err_msg, program, op_stack, stack_pos), op_stack, stack_pos);
-#endif
-  
+
+  if(error != 0) {
+    PushInt((size_t)CreateStringObject(SocketErrorText(error), program, op_stack, stack_pos), op_stack, stack_pos);
+  }
+  else {
+    PushInt(0, op_stack, stack_pos);
+  }
+
   return true;
 }
 
@@ -6164,8 +6218,12 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
     const long port = (long)inst[2];
     SOCKET sock; struct sockaddr_in* addr;
     if(UDPSocket::Bind(static_cast<int>(port), sock, addr)) {
+      socket_last_error = 0;
       inst[0] = sock;
       inst[1] = (size_t)addr;
+    }
+    else {
+      socket_last_error = CurrentSocketError();
     }
   }
 
@@ -9752,6 +9810,12 @@ static std::wstring TlsErrorMessage(int error, uint32_t verify_flags)
   char error_buf[256] = {0};
   mbedtls_strerror(error, error_buf, sizeof(error_buf) - 1);
   std::string message = error_buf;
+
+  // a bind or listen failure also says why the system refused it ("Only one
+  // usage of each socket address ...", "Address already in use")
+  if((error == MBEDTLS_ERR_NET_BIND_FAILED || error == MBEDTLS_ERR_NET_LISTEN_FAILED) && tls_socket_error != 0) {
+    message += ": " + UnicodeToBytes(SocketErrorText(tls_socket_error));
+  }
 
   if(verify_flags != 0) {
     char info_buf[1024] = {0};

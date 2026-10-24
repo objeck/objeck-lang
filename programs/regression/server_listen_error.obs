@@ -1,0 +1,150 @@
+#~
+# A server that cannot listen reports why
+#
+# When a server's port was already taken, Listen failed but GetLastError said
+# "The operation completed successfully." on Windows: the bind failure was
+# read from WSAGetLastError() when GetLastError ran, and by then the
+# closesocket() that cleaned up the failed socket had reset it to 0. On POSIX
+# errno was read just as late, so any call in between could replace it. The
+# TLS server's GetLastError always returned Nil.
+#
+# Each server kind here takes a port, then a second server of the same kind
+# tries the same port: its Listen must fail, and GetLastError must name the
+# cause rather than report success or nothing -- "Address already in use" on
+# POSIX, "Only one usage of each socket address ..." on Windows.
+#
+# On Windows the plain server also no longer sets SO_REUSEADDR, which there
+# let the second server bind and listen on the taken port and split its
+# clients. A server must still be able to restart on its port while the
+# connections it closed sit in TIME_WAIT, which is checked last.
+# EXTRA_LIBS: net
+~#
+
+use System.IO.Filesystem, System.IO.Net;
+
+class ServerListenError {
+	@failed : Bool;
+
+	function : Main(args : String[]) ~ Nil {
+		ServerListenError->New()->Run();
+	}
+
+	New() {
+		@failed := false;
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(ok) {
+			"  ok: {$name}"->PrintLine();
+		}
+		else {
+			"  FAILED: {$name}"->PrintLine();
+			@failed := true;
+		};
+	}
+
+	method : CheckError(kind : String, error : String) ~ Nil {
+		if(error = Nil) {
+			Check("{$kind}: GetLastError names the cause (got Nil)", false);
+			return;
+		};
+
+		lower := error->ToLower();
+		Check("{$kind}: GetLastError names the cause (got '{$error}')",
+			lower->Has("success") = false & (lower->Has("in use") | lower->Has("only one usage")));
+	}
+
+	method : TestPlain(port : Int) ~ Nil {
+		first := TCPSocketServer->New(port);
+		Check("TCP: the first server listens", first->Listen(4));
+
+		second := TCPSocketServer->New(port);
+		Check("TCP: a second server on the same port does not listen", second->Listen(4) = false);
+		CheckError("TCP", TCPSocketServer->GetLastError());
+
+		second->Close();
+		first->Close();
+
+		# servers bound to one address report a taken port the same way (a
+		# specific address beside a wildcard on the same port is not a
+		# conflict on Windows, so the first is bound to the address too)
+		first := TCPSocketServer->New("127.0.0.1", port);
+		Check("TCP address: the first server listens", first->Listen(4));
+		second := TCPSocketServer->New("127.0.0.1", port);
+		Check("TCP address: a second server on the same address does not listen", second->Listen(4) = false);
+		CheckError("TCP address", TCPSocketServer->GetLastError());
+
+		second->Close();
+		first->Close();
+	}
+
+	method : TestTls(port : Int) ~ Nil {
+		first := TCPSecureSocketServer->New("listen-error-cert.pem", "listen-error-key.pem", "", port);
+		Check("TLS: the first server listens", first->Listen());
+
+		second := TCPSecureSocketServer->New("listen-error-cert.pem", "listen-error-key.pem", "", port);
+		Check("TLS: a second server on the same port does not listen", second->Listen() = false);
+		CheckError("TLS", TCPSecureSocketServer->GetLastError());
+
+		# a bad certificate path is reported too, as an mbedTLS error
+		third := TCPSecureSocketServer->New("listen-error-missing.pem", "listen-error-key.pem", "", port + 1);
+		Check("TLS: a server with no certificate does not listen", third->Listen() = false);
+		error := TCPSecureSocketServer->GetLastError();
+		Check("TLS: GetLastError reports the certificate failure (got '{$error}')", error <> Nil & error->Size() > 0);
+
+		first->Close();
+	}
+
+	# a server that closed its connections first leaves them in TIME_WAIT
+	method : TestRestart(port : Int) ~ Nil {
+		server := TCPSocketServer->New(port);
+		Check("restart: the server listens", server->Listen(4));
+
+		client := TCPSocket->New("127.0.0.1", port);
+		connection := server->Accept();
+		Check("restart: a client connects", client->IsOpen() & connection <> Nil);
+		if(connection <> Nil) {
+			connection->WriteString("bye");
+			connection->Close();
+		};
+		client->Close();
+		server->Close();
+
+		again := TCPSocketServer->New(port);
+		listening := again->Listen(4);
+		error := listening ? "" : TCPSocketServer->GetLastError();
+		Check("restart: a new server listens on the same port at once ({$error})", listening);
+		again->Close();
+	}
+
+	method : Run() ~ Nil {
+		base := 41000 + (Int->Random(0, 2000) * 4);
+
+		"stage: tcp"->ErrorLine();
+		TestPlain(base);
+
+		File->Delete("listen-error-cert.pem");
+		File->Delete("listen-error-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -keyout listen-error-key.pem -out listen-error-cert.pem";
+		if(Runtime->Command(command) <> 0) {
+			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		"stage: tls"->ErrorLine();
+		TestTls(base + 1);
+
+		"stage: restart"->ErrorLine();
+		TestRestart(base + 3);
+
+		File->Delete("listen-error-cert.pem");
+		File->Delete("listen-error-key.pem");
+
+		if(@failed) {
+			"FAIL: a server that could not listen did not say why"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a server that cannot listen reports why"->PrintLine();
+	}
+}

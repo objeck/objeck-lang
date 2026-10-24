@@ -428,6 +428,15 @@ public:
     return sock;
   }
   
+  // Closes a socket that failed to bind or listen without losing why: errno
+  // is only meaningful straight after the failing call, and the caller reads
+  // it after this cleanup.
+  static void CloseKeepingError(SOCKET sock) {
+    const int error = errno;
+    close(sock);
+    errno = error;
+  }
+
   //
   // A wildcard server socket that takes IPv4 and IPv6 clients alike: an IPv6
   // socket on [::] with IPV6_V6ONLY off, so IPv4 clients arrive as mapped
@@ -463,7 +472,7 @@ public:
       sin6.sin6_addr = in6addr_any;
       sin6.sin6_port = htons(port);
       if(::bind(server, (struct sockaddr*)&sin6, sizeof(sin6)) < 0) {
-        close(server);
+        CloseKeepingError(server);
         return -1;
       }
 
@@ -485,7 +494,7 @@ public:
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(port);
     if(::bind(server, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
-      close(server);
+      CloseKeepingError(server);
       return -1;
     }
 
@@ -852,7 +861,7 @@ public:
       addr_in->sin_addr.s_addr = htonl(INADDR_ANY);
 
       if(bind(sock, (struct sockaddr*)addr_in, sizeof(struct sockaddr_in)) < 0) {
-        close(sock);
+        IPSocket::CloseKeepingError(sock);
         sock = -1;
 
         delete addr_in;

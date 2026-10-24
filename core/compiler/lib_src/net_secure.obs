@@ -1501,7 +1501,7 @@ if(client->Connect()) {
 		  payload[0] := 0xDE; payload[1] := 0xAD; payload[2] := 0xBE; payload[3] := 0xEF;
 		  client->WriteSocket(payload);
 		  echo := client->ReadSocketBinary();
-		  echo->ToHexString()->PrintLine();  # DEADBEEF
+		  echo->ToHexString()->PrintLine();  # deadbeef
 		  client->CloseSocket();
 		};
 		```
