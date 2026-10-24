@@ -165,6 +165,9 @@ static inline void WinWriteWide(HANDLE h, std::wostream& fallback, const wchar_t
 #include <charconv>
 #include <version>
 
+// a TLS or DTLS failure as text (defined with the DTLS traps)
+static std::wstring TlsErrorMessage(int error, uint32_t verify_flags);
+
 // floating-point std::to_chars (shortest round trip): MSVC 19.24+, libstdc++
 // 11+. libc++ has it from 14 but announces the macro only much later, so
 // Apple builds take the snprintf fallback in ShortestDigits, which gives the
@@ -5238,6 +5241,9 @@ bool TrapProcessor::SockTcpSslConnect(StackProgram* program, size_t* inst, size_
     // promotion fixup relocates it, then re-read after the wait.
     SecureSocketCtx* old_sctx = (SecureSocketCtx*)instance[0];
     SecureSocketCtx* sctx = nullptr;
+    // GetLastError() reports this connect, not an earlier failure
+    tls_last_error = 0;
+    tls_last_verify_flags = 0;
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
@@ -5623,6 +5629,8 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
     const long port = (long)instance[6];
 
     if(cert_obj && key_obj) {
+      tls_last_error = 0;
+      tls_last_verify_flags = 0;
       SecureServerCtx* srv = new SecureServerCtx();
 
       // Seed the random number generator
@@ -5630,6 +5638,8 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       int ret = mbedtls_ctr_drbg_seed(&srv->ctr_drbg, mbedtls_entropy_func, &srv->entropy,
                                        (const unsigned char*)pers, strlen(pers));
       if(ret != 0) {
+        tls_last_error = ret;
+        tls_last_verify_flags = 0;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -5640,6 +5650,8 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       const std::string cert_path = UnicodeToBytes((wchar_t*)((size_t*)cert_obj[0] + 3));
       ret = TlsParseCertFile(&srv->srvcert, cert_path);
       if(ret != 0) {
+        tls_last_error = ret;
+        tls_last_verify_flags = 0;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -5660,6 +5672,8 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
 
       ret = TlsParseKeyFile(&srv->pkey, key_path, passwd_cstr, mbedtls_ctr_drbg_random, &srv->ctr_drbg);
       if(ret != 0) {
+        tls_last_error = ret;
+        tls_last_verify_flags = 0;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -5682,6 +5696,8 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
         instance = (size_t*)PopInt(op_stack, stack_pos);
       }
       if(ret != 0) {
+        tls_last_error = ret;
+        tls_last_verify_flags = 0;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -5692,6 +5708,8 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       ret = mbedtls_ssl_config_defaults(&srv->conf, MBEDTLS_SSL_IS_SERVER,
                                          MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
       if(ret != 0) {
+        tls_last_error = ret;
+        tls_last_verify_flags = 0;
         delete srv;
         PushInt(0, op_stack, stack_pos);
         instance[0] = instance[1] = instance[2] = 0;
@@ -5737,6 +5755,8 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
 
     if(srv) {
       SecureSocketCtx* client = new SecureSocketCtx();
+      tls_last_error = 0;
+      tls_last_verify_flags = 0;
 
       // Accept raw TCP connection. accept() blocks indefinitely; park so STW GC
       // elsewhere can proceed. The instance ref is re-rooted on the op_stack so
@@ -5764,6 +5784,7 @@ bool TrapProcessor::SockTcpSslAccept(StackProgram* program, size_t* inst, size_t
       MemoryManager::EndBlocking();
       instance = (size_t*)PopInt(op_stack, stack_pos);
       if(ret != 0) {
+        client->SetError(ret);
         delete client;
         PushInt(0, op_stack, stack_pos);
         return true;
@@ -5841,14 +5862,22 @@ bool TrapProcessor::SockTcpError(StackProgram* program, size_t* inst, size_t*& o
   return true;
 }
 
+//
+// TCPSecureSocket->GetLastError() and TCPSecureSocketServer->GetLastError(),
+// functions: the calling thread's last TLS failure (tls_last_error), which
+// also covers a connect, listen or accept that failed and freed its context.
+// This always answered Nil, so a refused certificate, an unreachable host and
+// a bad key file were indistinguishable to a program.
+//
 bool TrapProcessor::SockTcpSslError(StackProgram* program, size_t* inst, size_t*& op_stack, size_t*& stack_pos, StackFrame* frame)
 {
-  // mbedTLS uses return codes rather than an error queue.
-  // Check the last error from the most recent SecureSocketCtx operation.
-  // The caller should pass the socket instance to retrieve the error from.
-  // For backward compatibility, we check the stack for an instance pointer.
-  PushInt(0, op_stack, stack_pos);
+  if(tls_last_error != 0) {
+    const std::wstring error_msg = TlsErrorMessage(tls_last_error, tls_last_verify_flags);
+    PushInt((size_t)CreateStringObject(error_msg, program, op_stack, stack_pos), op_stack, stack_pos);
+    return true;
+  }
 
+  PushInt(0, op_stack, stack_pos);
   return true;
 }
 
@@ -9663,6 +9692,50 @@ bool TrapProcessor::Http3Close(StackProgram* program, size_t* inst, size_t*& op_
 
 // the calling thread's last DTLS failure (see common.h)
 thread_local int dtls_last_error = 0;
+thread_local uint32_t dtls_last_verify_flags = 0;
+thread_local int tls_last_error = 0;
+thread_local uint32_t tls_last_verify_flags = 0;
+
+//
+// A TLS or DTLS failure as text: mbedTLS's description of the error and, for
+// a certificate that failed verification, each reason it gives ("The
+// certificate is not correctly signed by the trusted CA; ..."), so a caller can
+// tell an untrusted issuer from a name mismatch or an expired certificate.
+//
+static std::wstring TlsErrorMessage(int error, uint32_t verify_flags)
+{
+  char error_buf[256] = {0};
+  mbedtls_strerror(error, error_buf, sizeof(error_buf) - 1);
+  std::string message = error_buf;
+
+  if(verify_flags != 0) {
+    char info_buf[1024] = {0};
+    if(mbedtls_x509_crt_verify_info(info_buf, sizeof(info_buf) - 1, "", verify_flags) > 0) {
+      // one reason per line; joined with "; "
+      std::string reasons;
+      std::string line;
+      for(const char* p = info_buf; *p; ++p) {
+        if(*p == '\n') {
+          if(!line.empty()) {
+            reasons += reasons.empty() ? line : "; " + line;
+          }
+          line.clear();
+        }
+        else {
+          line += *p;
+        }
+      }
+      if(!line.empty()) {
+        reasons += reasons.empty() ? line : "; " + line;
+      }
+      if(!reasons.empty()) {
+        message += ": " + reasons;
+      }
+    }
+  }
+
+  return BytesToUnicode(message);
+}
 
 bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
@@ -9691,6 +9764,7 @@ bool TrapProcessor::SockDtlsConnect(StackProgram* program, size_t* inst, size_t*
     DtlsSocketCtx* old_sctx = (DtlsSocketCtx*)instance[0];
     DtlsSocketCtx* sctx = nullptr;
     dtls_last_error = 0;
+    dtls_last_verify_flags = 0;
     PushInt((size_t)instance, op_stack, stack_pos);
     MemoryManager::BeginBlocking();
     // Close existing connection if any
@@ -9885,6 +9959,8 @@ bool TrapProcessor::SockDtlsListen(StackProgram* program, size_t* inst, size_t*&
 
     if(cert_obj && key_obj) {
       dtls_last_error = 0;
+      dtls_last_verify_flags = 0;
+    dtls_last_verify_flags = 0;
       DtlsServerCtx* srv = new DtlsServerCtx();
 
       // Seed the random number generator
@@ -10003,6 +10079,8 @@ bool TrapProcessor::SockDtlsAccept(StackProgram* program, size_t* inst, size_t*&
       unsigned char client_ip[16] = {0};
       size_t client_ip_len = 0;
       dtls_last_error = 0;
+      dtls_last_verify_flags = 0;
+    dtls_last_verify_flags = 0;
 
       PushInt((size_t)instance, op_stack, stack_pos);
       MemoryManager::BeginBlocking();
@@ -10130,9 +10208,7 @@ bool TrapProcessor::SockDtlsError(StackProgram* program, size_t* inst, size_t*& 
   // last DTLS failure, which also covers a connect or accept that failed and
   // freed its context.
   if(dtls_last_error != 0) {
-    char error_buf[256] = {0};
-    mbedtls_strerror(dtls_last_error, error_buf, sizeof(error_buf) - 1);
-    const std::wstring error_msg = BytesToUnicode(error_buf);
+    const std::wstring error_msg = TlsErrorMessage(dtls_last_error, dtls_last_verify_flags);
     PushInt((size_t)CreateStringObject(error_msg, program, op_stack, stack_pos), op_stack, stack_pos);
     return true;
   }

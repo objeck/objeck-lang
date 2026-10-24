@@ -709,20 +709,20 @@ class IPSecureSocket {
     const char* pers = "objeck_ssl_h2_client";
     int ret = mbedtls_ctr_drbg_seed(&sctx->ctr_drbg, mbedtls_entropy_func, &sctx->entropy,
                                      (const unsigned char*)pers, strlen(pers));
-    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+    if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
     std::string cert_path = pem_file.empty()
       ? UnicodeToBytes(GetLibraryPath()) + CACERT_PEM_FILE : pem_file;
     ret = TlsParseCertFile(&sctx->cacert, cert_path);
-    if(ret < 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+    if(ret < 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
     std::string port_str = std::to_string(port);
     ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
-    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+    if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
     ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
                                        MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
-    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+    if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
     // REQUIRED by default: abort the handshake on any certificate failure
     // (untrusted CA, expired, hostname mismatch). With OPTIONAL the handshake
@@ -740,16 +740,16 @@ class IPSecureSocket {
     mbedtls_ssl_conf_alpn_protocols(&sctx->conf, alpn_list);
 
     ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
-    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+    if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
     ret = mbedtls_ssl_set_hostname(&sctx->ssl, address);
-    if(ret != 0) { sctx->last_error = ret; delete sctx; sctx = nullptr; return false; }
+    if(ret != 0) { sctx->SetError(ret); delete sctx; sctx = nullptr; return false; }
 
     mbedtls_ssl_set_bio(&sctx->ssl, &sctx->net, mbedtls_net_send, mbedtls_net_recv, nullptr);
 
     while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
       if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-        sctx->last_error = ret; delete sctx; sctx = nullptr; return false;
+        sctx->SetError(ret); delete sctx; sctx = nullptr; return false;
       }
     }
 
@@ -769,7 +769,7 @@ class IPSecureSocket {
     int ret = mbedtls_ctr_drbg_seed(&sctx->ctr_drbg, mbedtls_entropy_func, &sctx->entropy,
                                      (const unsigned char*)pers, strlen(pers));
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -786,7 +786,7 @@ class IPSecureSocket {
 
     ret = TlsParseCertFile(&sctx->cacert, cert_path);
     if(ret < 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       std::wcerr << L">>> Unable to find/read cryptographic PEM file : '" << BytesToUnicode(cert_path) << L"' <<<" << std::endl;
       delete sctx;
       sctx = nullptr;
@@ -804,7 +804,7 @@ class IPSecureSocket {
     std::string port_str = std::to_string(port);
     ret = mbedtls_net_connect(&sctx->net, address, port_str.c_str(), MBEDTLS_NET_PROTO_TCP);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -814,7 +814,7 @@ class IPSecureSocket {
     ret = mbedtls_ssl_config_defaults(&sctx->conf, MBEDTLS_SSL_IS_CLIENT,
                                        MBEDTLS_SSL_TRANSPORT_STREAM, MBEDTLS_SSL_PRESET_DEFAULT);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -832,7 +832,7 @@ class IPSecureSocket {
 
     ret = mbedtls_ssl_setup(&sctx->ssl, &sctx->conf);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -841,7 +841,7 @@ class IPSecureSocket {
     // Set SNI hostname
     ret = mbedtls_ssl_set_hostname(&sctx->ssl, address);
     if(ret != 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
       delete sctx;
       sctx = nullptr;
       return false;
@@ -852,7 +852,7 @@ class IPSecureSocket {
     // Perform TLS handshake
     while((ret = mbedtls_ssl_handshake(&sctx->ssl)) != 0) {
       if(ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
-        sctx->last_error = ret;
+        sctx->SetError(ret);
         delete sctx;
         sctx = nullptr;
         return false;
@@ -866,7 +866,7 @@ class IPSecureSocket {
     if(insecure_skip_verify) {
       uint32_t flags = mbedtls_ssl_get_verify_result(&sctx->ssl);
       if(flags != 0 && flags != MBEDTLS_X509_BADCERT_NOT_TRUSTED) {
-        sctx->last_error = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
+        sctx->SetError(MBEDTLS_ERR_X509_CERT_VERIFY_FAILED);
         delete sctx;
         sctx = nullptr;
         return false;
@@ -879,7 +879,7 @@ class IPSecureSocket {
   static void WriteByte(char value, SecureSocketCtx* sctx) {
     int ret = mbedtls_ssl_write(&sctx->ssl, (const unsigned char*)&value, 1);
     if(ret < 0) {
-      sctx->last_error = ret;
+      sctx->SetError(ret);
     }
   }
 
@@ -891,7 +891,7 @@ class IPSecureSocket {
         if(ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE) {
           continue;
         }
-        sctx->last_error = ret;
+        sctx->SetError(ret);
         return -1;
       }
       written += ret;
@@ -906,7 +906,7 @@ class IPSecureSocket {
     } while(status == MBEDTLS_ERR_SSL_WANT_READ || status == MBEDTLS_ERR_SSL_WANT_WRITE);
     if(status <= 0) {
       if(status < 0) {
-        sctx->last_error = status;
+        sctx->SetError(status);
       }
       return '\0';
     }
@@ -921,7 +921,7 @@ class IPSecureSocket {
         if(status == MBEDTLS_ERR_SSL_WANT_READ || status == MBEDTLS_ERR_SSL_WANT_WRITE) {
           continue;
         }
-        sctx->last_error = status;
+        sctx->SetError(status);
         return total > 0 ? total : -1;
       }
       if(status == 0) {
@@ -945,11 +945,16 @@ class IPSecureSocket {
     return true;
   }
 
+  // Verification is fixed when the handshake runs, in New(): REQUIRED unless
+  // the process is in insecure test mode (OBJECK_TLS_INSECURE_SKIP_VERIFY).
+  // This used to set the mode of an already-verified connection, where
+  // strict=false read as "verification off" but changed nothing that
+  // mattered -- and would have weakened any later handshake on the same
+  // context. It now only confirms: true when verification is required,
+  // false (and nothing changed) when asked to relax it.
   static bool SetVerifyPeer(SecureSocketCtx* sctx, bool strict) {
     if(!sctx) return false;
-    mbedtls_ssl_conf_authmode(&sctx->conf,
-      strict ? MBEDTLS_SSL_VERIFY_REQUIRED : MBEDTLS_SSL_VERIFY_OPTIONAL);
-    return true;
+    return strict && !InsecureSkipVerify();
   }
 
   static std::string GetCertFingerprint(SecureSocketCtx* sctx) {

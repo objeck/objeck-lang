@@ -12665,7 +12665,7 @@
 					"descriptions": ["**Returns rather the socket is open**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Default constructor**\n\n```New(address:System.String, port:Int, pem:String, verify:Bool)```\n\n\n\naddress: System.String\n\nport: Int\n\npem: String\n\nverify: Bool"]
+					"descriptions": ["**Connects and completes a DTLS handshake. The server's certificate is verified as TCPSecureSocket verifies it, whatever verify says: its chain must lead to a trusted certificate and it must name the address connected to, or the connection is refused (IsOpen() is false; GetLastError() says why). To trust a self-signed server, pass its certificate as pem. verify does not turn verification off: false (the default) leaves it to the process -- on, unless OBJECK_TLS_INSECURE_SKIP_VERIFY=1 is set for testing -- and true requires it even then.**\n\n```New(address:System.String, port:Int, pem:String, verify:Bool)```\n\n\n\naddress: System.String\n\nport: Int\n\npem: String\n\nverify: Bool"]
 				},
 				"ReadBuffer": {
 					"descriptions": ["**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
@@ -12790,7 +12790,7 @@
 					"descriptions": ["**Gets the X.509 certificate issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last TLS failure, from a connect, listen, accept, read or write; reset by each connect, listen and accept. A certificate that failed verification is described with each reason mbedTLS gives, e.g. \"X509 - Certificate verification failed, e.g. CRL, CA or signature check failed: The certificate is not correctly signed by the trusted CA\".**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetPort": {
 					"descriptions": ["**Returns the connected network port**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
@@ -12802,7 +12802,7 @@
 					"descriptions": ["**Returns rather the socket is open**\n\n```method : public : IsOpen() ~ Bool```\n\n\n\nreturn: Bool"]
 				},
 				"New": {
-					"descriptions": ["**Default constructor**\n\n```New(address:System.String, port:Int, pem:String)```\n\n\n\naddress: System.String\n\nport: Int\n\npem: String"]
+					"descriptions": ["**Connects and completes a TLS handshake. The server's certificate is always verified: its chain must lead to a trusted certificate, and it must name the address connected to (a DNS name, or an IP address in an iPAddress subjectAltName). A certificate that fails is refused: IsOpen() is false and GetLastError() says why. To trust a server whose certificate no public authority signed, such as a self-signed one, pass that certificate as pem. Verification is relaxed only for the whole process, by setting OBJECK_TLS_INSECURE_SKIP_VERIFY=1 for testing, and then only an untrusted issuer is accepted.**\n\n```New(address:System.String, port:Int, pem:String)```\n\n\n\naddress: System.String\n\nport: Int\n\npem: String"]
 				},
 				"ReadBuffer": {
 					"descriptions": ["**Reads bytes into a byte buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Reads bytes into a character buffer**\n\n```method : public : ReadBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
@@ -12838,7 +12838,7 @@
 					"descriptions": ["**Sets the send timeout**\n\n```method : public : SetSendTimeout(ms:Int) ~ Bool```\n\n\n\nms: Int\n\nreturn: Bool"]
 				},
 				"SetVerifyPeer": {
-					"descriptions": ["**Enables strict peer certificate verification**\n\n```method : public : SetVerifyPeer(strict:Bool) ~ Bool```\n\n\n\nstrict: Bool\n\nreturn: Bool"]
+					"descriptions": ["**Confirms that the peer's certificate was verified. Verification is settled by the handshake in New() and cannot be turned off afterwards; false never relaxes it.**\n\n```method : public : SetVerifyPeer(strict:Bool) ~ Bool```\n\n\n\nstrict: Bool\n\nreturn: Bool"]
 				},
 				"WriteBuffer": {
 					"descriptions": ["**Writes bytes from a byte buffer**\n\n```method : public : WriteBuffer(buffer:Byte[]) ~ Int```\n\n\n\nbuffer: Byte[]\n\nreturn: Int", "**Writes bytes from a byte buffer**\n\n```method : public : WriteBuffer(offset:Int, num:Int, buffer:Byte[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Byte[]\n\nreturn: Int", "**Writes characters from a byte buffer**\n\n```method : public : WriteBuffer(buffer:Char[]) ~ Int```\n\n\n\nbuffer: Char[]\n\nreturn: Int", "**Writes characters from a character buffer**\n\n```method : public : WriteBuffer(offset:Int, num:Int, buffer:Char[]) ~ Int```\n\n\n\noffset: Int\n\nnum: Int\n\nbuffer: Char[]\n\nreturn: Int"]
@@ -12864,7 +12864,7 @@
 					"descriptions": ["**Gets the X.509 certificate's issuer name**\n\n```method : public : GetIssuer() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetLastError": {
-					"descriptions": ["**Get the last error**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the calling thread's last TLS failure, from a connect, listen, accept, read or write; reset by each connect, listen and accept. A certificate that failed verification is described with each reason mbedTLS gives, e.g. \"X509 - Certificate verification failed, e.g. CRL, CA or signature check failed: The certificate is not correctly signed by the trusted CA\".**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetSubject": {
 					"descriptions": ["**Gets the X.509 certificate subject name**\n\n```method : public : GetSubject() ~ String```\n\n\n\nreturn: String"]

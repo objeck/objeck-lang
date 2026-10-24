@@ -12505,10 +12505,19 @@ bundle System.IO.Net {
 		@pem : String;
 
 		#~
-		Default constructor
+		Connects and completes a TLS handshake. The server's certificate is
+		always verified: its chain must lead to a trusted certificate, and it
+		must name the address connected to (a DNS name, or an IP address in an
+		iPAddress subjectAltName). A certificate that fails is refused: IsOpen()
+		is false and GetLastError() says why. To trust a server whose certificate
+		no public authority signed, such as a self-signed one, pass that
+		certificate as pem. Verification is relaxed only for the whole process, by
+		setting OBJECK_TLS_INSECURE_SKIP_VERIFY=1 for testing, and then only an
+		untrusted issuer is accepted.
 		@param address network address
 		@param port network port
-		@param pem the Privacy Enhanced Mail file (optional)		
+		@param pem PEM file of the certificates to trust, in place of the bundled
+		certificate authorities (optional)
 		~#
 		New(address : System.String, port : Int, pem : String := Nil) {
 			Parent();
@@ -12748,9 +12757,13 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Enables strict peer certificate verification
-		@param strict true to require valid certificate chain
-		@return true if successful
+		Confirms that the peer's certificate was verified. Verification is
+		settled by the handshake in New() and cannot be turned off afterwards;
+		false never relaxes it.
+		@param strict true to confirm verification is required
+		@return true if strict is true and the certificate was verified as
+		required; false if strict is false (nothing changes) or the process is in
+		insecure test mode (OBJECK_TLS_INSECURE_SKIP_VERIFY)
 		~#
 		method : public : SetVerifyPeer(strict : Bool) ~ Bool {
 			SOCK_TCP_SSL_SET_VERIFY_PEER;
@@ -12765,8 +12778,13 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last TLS failure, from a connect, listen,
+		accept, read or write; reset by each connect, listen and accept. A
+		certificate that failed verification is described with each reason
+		mbedTLS gives, e.g. "X509 - Certificate verification failed, e.g. CRL, CA
+		or signature check failed: The certificate is not correctly signed by the
+		trusted CA".
+		@return last error message, or Nil if there was none
 		~#
 		function : GetLastError() ~ String {
 			SOCK_TCP_SSL_ERROR;
@@ -13141,8 +13159,13 @@ bundle System.IO.Net {
 		}
 
 		#~
-		Get the last error
-		@return last error message, or Nil of no error
+		Gets the calling thread's last TLS failure, from a connect, listen,
+		accept, read or write; reset by each connect, listen and accept. A
+		certificate that failed verification is described with each reason
+		mbedTLS gives, e.g. "X509 - Certificate verification failed, e.g. CRL, CA
+		or signature check failed: The certificate is not correctly signed by the
+		trusted CA".
+		@return last error message, or Nil if there was none
 		~#
 		function : GetLastError() ~ String {
 			SOCK_TCP_SSL_ERROR;
@@ -13340,11 +13363,21 @@ bundle System.IO.Net {
 		@verify : Bool;
 
 		#~
-		Default constructor
+		Connects and completes a DTLS handshake. The server's certificate is
+		verified as TCPSecureSocket verifies it, whatever verify says: its chain
+		must lead to a trusted certificate and it must name the address connected
+		to, or the connection is refused (IsOpen() is false; GetLastError() says
+		why). To trust a self-signed server, pass its certificate as pem. verify
+		does not turn verification off: false (the default) leaves it to the
+		process -- on, unless OBJECK_TLS_INSECURE_SKIP_VERIFY=1 is set for
+		testing -- and true requires it even then.
 		@param address network address
 		@param port network port
-		@param pem the Privacy Enhanced Mail file (optional)
-		@param verify if true, require valid certificate (default: false allows self-signed)
+		@param pem PEM file of the certificates to trust, in place of the bundled
+		certificate authorities (optional)
+		@param verify true to require verification even in insecure test mode
+		(OBJECK_TLS_INSECURE_SKIP_VERIFY); false (the default) verifies unless
+		that mode is on
 		~#
 		New(address : System.String, port : Int, pem : String := Nil, verify : Bool := false) {
 			Parent();
