@@ -498,6 +498,14 @@ checksummed record per change, flushed per statement. Re-opening replays the log
 save, so a crash loses at most the statement in progress. `Checkpoint()` folds the log into a new
 save and empties it. Durability is per statement; there are no multi-statement transactions.
 
+> **As built (phase 3b):** `TableStore->New(path)` opens a table for writing and reports why
+> it could not (`IsOpen`, `GetError`, `GetReplayed`); `Table->Open(path)` is the short form that
+> answers Nil. A durable table's `Checkpoint()` and `Close()` act on its store, and `Save` of its
+> own file is a checkpoint. Each log record stores its length twice (once inverted), so damage
+> to a length is told apart from a crash's torn tail instead of dropping every later record; a
+> durable table refuses an OBJECT value the log cannot record. The byte layout of the log and
+> the lock is in [OTAB_FORMAT.md](OTAB_FORMAT.md#the-change-log).
+
 **One writer, many readers.** A process that opens a table for writing takes a lock file. Others
 can open it read-only and see the state of the last save or checkpoint. A second writer is
 refused with an error naming the lock's holder, and a stale lock left by a crash is detected and
