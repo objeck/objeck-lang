@@ -12915,11 +12915,16 @@ bundle System.IO.Net {
 		@port : Int;
 		
 		#~
-		A socket for sending datagrams to one peer. The address is a host name or
-		an IPv4 or IPv6 literal, resolved as TCPSocket->New resolves it; the first
-		address it resolves to is the peer. If it cannot be resolved,
-		GetLastError() says why and the socket sends nothing. A read replaces the
-		peer with the sender of the datagram read, so a reply goes back to it.
+		A socket connected to one peer: it sends datagrams to the peer and reads
+		the peer's. The address is a host name or an IPv4 or IPv6 literal,
+		resolved as TCPSocket->New resolves it, and a name can resolve to several
+		addresses ("localhost" is ::1 and 127.0.0.1). The socket starts with the
+		first; when the network answers that nobody listens there (an ICMP port
+		unreachable for an earlier datagram), it moves on to the next, so it
+		reaches a server listening on either. When every address has refused, the
+		read or write that found out fails and GetLastError() says "Connection
+		refused". If the name cannot be resolved, GetLastError() says why and the
+		socket sends nothing.
 		@param address network address
 		@param port network port
 		~#
@@ -13304,16 +13309,39 @@ bundle System.IO.Net {
 		@sock : Int;
 		@addr : Int;
 		@port : Int;
+		@address : String;
 
 		#~
 		A UDP server on a port of every interface, IPv4 and IPv6 alike, as the
 		TCP, TLS and DTLS servers bind. A read takes a datagram from any client,
-		and a write goes to the sender of the last datagram read.
+		and a write goes to the sender of the last datagram read. A client that
+		has gone does not fail the next read: the server keeps serving the others.
 		@param port server port
 		@param bind bind to port on creation, default is true
 		~#
 		New(port : Int, bind : Bool := true) {
 		  Parent();
+		  @port := port;
+
+		  if(bind) {
+		  	Bind();
+		  };
+		}
+
+		#~
+		A UDP server bound to one local address instead of every interface, read
+		as TCPSocketServer->New(address, port) reads it: a literal such as
+		"127.0.0.1" or "::1", or a host name, which binds its first IPv4 address,
+		else its first IPv6 one. An IPv6 address takes IPv6 clients only. An empty
+		or Nil address binds every interface, as New(port) does. If the address
+		cannot be bound, IsBound() is false and GetLastError() says why.
+		@param address local address to bind
+		@param port server port
+		@param bind bind to the address on creation, default is true
+		~#
+		New(address : String, port : Int, bind : Bool := true) {
+		  Parent();
+		  @address := address;
 		  @port := port;
 
 		  if(bind) {

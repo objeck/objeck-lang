@@ -127,15 +127,12 @@ class UdpHostNames {
 		return true;
 	}
 
-	# a server on a fresh random port, remembered in @port; Nil if none
+	# a server on a port the system picks (0), remembered in @port; Nil if none
 	function : Bind() ~ UDPSocketServer {
-		for(tries := 0; tries < 10; tries += 1;) {
-			@port := Int->Random(20000, 31998);
-			server := UDPSocketServer->New(@port);
-			if(server->IsBound()) {
-				return server;
-			};
-			server->Close();
+		server := UDPSocketServer->New(0);
+		if(server->IsBound()) {
+			@port := server->GetPort();
+			return server;
 		};
 		return Nil;
 	}

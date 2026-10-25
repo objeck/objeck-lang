@@ -314,12 +314,12 @@ SOCKET IPSocket::BindAny(int port, int type, bool reuse_address) {
 }
 
 // see the declarations in win32.h
-SOCKET IPSocket::BindAddress(const char* host, int port, int type, SocketError& error) {
+SOCKET IPSocket::BindAddress(const char* host, int port, int type, SocketError& error, bool reuse_address) {
   Startup();
   error = { 0, false };
   if(!host || !*host) {
     // BindAny keeps its failure in WSAGetLastError() across its cleanup
-    const SOCKET server = BindAny(port, type);
+    const SOCKET server = BindAny(port, type, reuse_address);
     if(server == INVALID_SOCKET) {
       error = { WSAGetLastError(), false };
     }
@@ -368,7 +368,7 @@ SOCKET IPSocket::BindAddress(const char* host, int port, int type, SocketError& 
       // datagram servers only, as in BindAny: on Windows SO_REUSEADDR would let
       // a second TCP server listen on a port already taken
       int reuse = 1;
-      if(type == SOCK_DGRAM && setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+      if(reuse_address && type == SOCK_DGRAM && setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
         WSASetLastError(0);
       }
 
@@ -436,77 +436,4 @@ SOCKET IPSocket::Accept(SOCKET server, char* client_address, int& client_port) {
 	FormatAddress((struct sockaddr*)&pin, client_address, INET6_ADDRSTRLEN, client_port);
 
 	return client;
-}
-
-// see the declarations in win32.h
-bool UDPSocket::Open(const char* address, int port, SOCKET& sock, struct sockaddr_storage*& addr, SocketError& error) {
-  IPSocket::Startup();
-  sock = INVALID_SOCKET;
-  addr = nullptr;
-  error = { 0, false };
-
-  struct addrinfo hints;
-  ZeroMemory(&hints, sizeof(hints));
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_protocol = IPPROTO_UDP;
-
-  struct addrinfo* result = nullptr;
-  const std::string port_str = std::to_string(port);
-  const int status = getaddrinfo(address, port_str.c_str(), &hints, &result);
-  if(status != 0) {
-    // the EAI_* codes are WSA error codes on Windows
-    error = { status, true };
-    return false;
-  }
-
-  for(struct addrinfo* ptr = result; ptr != nullptr; ptr = ptr->ai_next) {
-    sock = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
-    if(sock == INVALID_SOCKET) {
-      error = { WSAGetLastError(), false };
-      continue;
-    }
-
-    addr = new struct sockaddr_storage;
-    memset(addr, 0, sizeof(struct sockaddr_storage));
-    memcpy(addr, ptr->ai_addr, ptr->ai_addrlen);
-    error = { 0, false };
-    break;
-  }
-  freeaddrinfo(result);
-
-  if(sock == INVALID_SOCKET && error.code == 0) {
-    error = { WSAEADDRNOTAVAIL, false };
-  }
-
-  return sock != INVALID_SOCKET;
-}
-
-// see the declarations in win32.h
-bool UDPSocket::Bind(int port, SOCKET& sock, struct sockaddr_storage*& addr) {
-  addr = nullptr;
-  sock = IPSocket::BindAny(port, SOCK_DGRAM, false);
-  if(sock == INVALID_SOCKET) {
-    return false;
-  }
-
-  // the bound address, until a read replaces it with a sender's
-  addr = new struct sockaddr_storage;
-  memset(addr, 0, sizeof(struct sockaddr_storage));
-  int len = (int)sizeof(struct sockaddr_storage);
-  if(getsockname(sock, (struct sockaddr*)addr, &len) == SOCKET_ERROR) {
-    addr->ss_family = AF_INET6;
-  }
-
-  return true;
-}
-
-// see the declarations in win32.h
-int UDPSocket::AddressSize(const struct sockaddr_storage* addr) {
-  return addr->ss_family == AF_INET6 ? (int)sizeof(struct sockaddr_in6) : (int)sizeof(struct sockaddr_in);
-}
-
-void UDPSocket::Close(SOCKET sock, struct sockaddr_storage* addr) {
-  closesocket(sock);
-  delete addr;
 }
