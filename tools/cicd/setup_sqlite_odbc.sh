@@ -95,6 +95,10 @@ PY
 iodbc="${OBJECK_DEPS:-$HOME/objeck-deps/darwin-arm64}/macos-bundle/iodbc"
 if [ -f "$iodbc/lib/libiodbc.a" ] && [ -f "$iodbc/include/sql.h" ]; then
 	echo "--- connect through the bundled static libiodbc ($iodbc)"
+	# How that driver manager names the entry points it resolves: "SQLAllocHandle"
+	# is right; "_SQLAllocHandle" is the NEED_USCORE misconfiguration that made
+	# every driver fail with IM004 (see tools/deps/build_macos_deps.sh).
+	echo "  entry-point table: $(strings "$iodbc/lib/libiodbc.a" | grep -E '^_?SQLAllocHandle$' | tr '\n' ' ')"
 	work=$(mktemp -d)
 	cat > "$work/probe.c" <<'EOF'
 #include <stdio.h>
