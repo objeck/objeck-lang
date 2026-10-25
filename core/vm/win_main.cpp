@@ -148,10 +148,11 @@ static int objeck_main(const int argc, const char* argv[])
   return 1;
 }
 
-#if defined(_WIN32) && defined(_MSC_VER)
-// UTF-16 arguments, converted to UTF-8 once (Utf8Args in sys.h): the narrow
-// argv the CRT hands main is in the ANSI code page, so a path argument with a
-// character outside it never reached the tool intact
+#ifdef _WIN32
+// UTF-16 arguments, converted to UTF-8 once (Utf8Args, shared/utf8_args.h):
+// the narrow argv the CRT hands main is in the ANSI code page, so a path
+// argument with a character outside it never reached the tool intact. MinGW
+// builds enter here too; their makefiles link with -municode.
 int wmain(int wargc, wchar_t* wargv[])
 {
   Utf8Args utf8_args(wargc, wargv);

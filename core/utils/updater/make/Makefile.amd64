@@ -35,8 +35,15 @@ CARGS=-O3 -Wall -Wno-unused-function -mavx2 -MMD -MP
 SRC=obu.o vendor/tweetnacl.o
 EXE=obu
 
+# MSYS2 builds obu from this file too. There the entry point is wmain, which
+# takes the arguments as UTF-16 (see shared/utf8_args.h), and -municode links
+# the startup code that calls it. OS is Windows_NT in every MSYS2 shell.
+ifeq ($(OS),Windows_NT)
+LDFLAGS_ENTRY=-municode
+endif
+
 $(EXE): $(SRC)
-	$(CXX) -m64 -o $(EXE) $(SRC)
+	$(CXX) -m64 $(LDFLAGS_ENTRY) -o $(EXE) $(SRC)
 
 vendor/tweetnacl.o: vendor/tweetnacl.c
 	$(CXX) -m64 -x c $(CARGS) -o $@ -c $<

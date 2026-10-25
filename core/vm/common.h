@@ -320,7 +320,7 @@ inline uint32_t TlsVerifyFlags(int error, const mbedtls_ssl_context* ssl)
 //
 #ifdef _WIN32
 inline bool ReadTlsFile(const std::string& name, std::vector<unsigned char>& data) {
-  std::ifstream in(ToFsPath(BytesToUnicode(name)), std::ios::binary);
+  std::ifstream in(ToFsPath(BytesToUnicode(name)).c_str(), std::ios::binary);
   if(!in.good()) {
     return false;
   }

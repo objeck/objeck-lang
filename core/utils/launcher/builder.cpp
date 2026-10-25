@@ -33,11 +33,36 @@
 #include "builder.h"
 #include "../../shared/sys.h"
 
-int main(int argc, char* argv[])
+static int BuilderMain(int argc, const char* argv[]);
+
+#ifdef _WIN32
+// UTF-16 arguments, converted to UTF-8 once (Utf8Args, shared/utf8_args.h):
+// the narrow argv the CRT hands main is in the ANSI code page, so a source
+// file, tool or target directory named outside it never reached obb intact.
+// MinGW builds enter here too; their makefiles link with -municode.
+int wmain(int wargc, wchar_t* wargv[])
+{
+  Utf8Args utf8_args(wargc, wargv);
+
+  // wide output as UTF-8, as obc writes it: a non-ASCII path sent through the
+  // default narrow conversion put wcout in a failed state and ended its output
+  _setmode(_fileno(stdout), _O_U8TEXT);
+  _setmode(_fileno(stderr), _O_U8TEXT);
+
+  return BuilderMain(utf8_args.Count(), utf8_args.Values());
+}
+#else
+int main(int argc, const char* argv[])
+{
+  return BuilderMain(argc, argv);
+}
+#endif
+
+static int BuilderMain(int argc, const char* argv[])
 {
   // get command line parameters
   list<wstring> argument_options;
-  map<const wstring, wstring> cmd_params = ParseCommnadLine(argc, const_cast<const char**>(argv), argument_options);
+  map<const wstring, wstring> cmd_params = ParseCommnadLine(argc, argv, argument_options);
   if(cmd_params.size() < 3) {
     wcout << GetUsage() << endl;
     exit(1);
@@ -50,15 +75,20 @@ int main(int argc, char* argv[])
   const wstring src_dir = GetCommandParameter(L"src_dir", cmd_params, argument_options, true);
 
   if(runtime_base_dir.empty()) {
+    // UTF-16 on Windows (GetEnvironmentValue, sys.h): getenv_s answers in the
+    // ANSI code page, so a toolchain directory named outside it was not found
+    wstring lib_path;
 #ifdef _WIN32
-    size_t path_len;
-    char path_str[MAX_ENV_PATH];
-    if(!getenv_s(&path_len, path_str, MAX_ENV_PATH, "OBJECK_LIB_PATH") && strlen(path_str) > 0) {
+    const bool has_lib_path = GetEnvironmentValue(L"OBJECK_LIB_PATH", lib_path) && !lib_path.empty();
 #else
-    char* path_str = getenv("OBJECK_LIB_PATH");
-    if(path_str) {
+    const char* path_str = getenv("OBJECK_LIB_PATH");
+    const bool has_lib_path = path_str && *path_str;
+    if(has_lib_path) {
+      lib_path = BytesToUnicode(path_str);
+    }
 #endif
-      runtime_base_dir = BytesToUnicode(path_str);
+    if(has_lib_path) {
+      runtime_base_dir = lib_path;
       runtime_base_dir += fs::path::preferred_separator;
       runtime_base_dir += L"..";
     }

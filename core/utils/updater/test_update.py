@@ -28,6 +28,14 @@ Three suites:
 
   selfswap  obu replacing the tree it is itself running from.
 
+  unicode   every path above named with non-ASCII text: the release document,
+          the assets, the install root (by OBU_INSTALL_ROOT, and as the tree
+          obu runs from) and 'verify's operands. On Windows obu took the
+          CRT's ANSI argv, read the hooks with getenv, opened the lock with a
+          narrow name and spawned tar and curl with CreateProcessA, and
+          fs::path::string() threw for an install root named outside the ANSI
+          code page; each of these failed there.
+
 Fixtures are built with hashlib/tarfile/zipfile rather than sha256sum/tar/zip
 so the harness needs no external tools of its own. The archive format follows
 what the platform actually publishes -- .zip on Windows and macOS, .tgz on
@@ -219,8 +227,9 @@ def run(obu, args, env_extra=None, cwd=None):
     for key in ("OBU_INSTALL_ROOT", "OBU_RELEASE_JSON_FILE", "OBU_ASSET_DIR"):
         env.pop(key, None)
     env.update(env_extra or {})
-    proc = subprocess.run([obu] + args, capture_output=True, text=True,
-                          env=env, cwd=cwd, timeout=120)
+    # obu writes UTF-8 on every platform; decode it as such, not in the locale
+    proc = subprocess.run([obu] + args, capture_output=True, encoding="utf-8",
+                          errors="replace", env=env, cwd=cwd, timeout=120)
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
@@ -910,7 +919,7 @@ def suite_update(obu, work):
 
 # ---------------------------------------------------------------- self-swap
 
-def suite_selfswap(obu, work):
+def suite_selfswap(obu, work, place="self"):
     """obu replacing the tree it is itself running from.
 
     The suites above point OBU_INSTALL_ROOT at a fake tree while obu runs from
@@ -920,15 +929,18 @@ def suite_selfswap(obu, work):
     invoked by that path with OBU_INSTALL_ROOT UNSET, leaving InstallRoot() to
     resolve to the tree about to be swapped.
     """
-    print("\nself-replacement (obu swaps its own tree):")
-    root = os.path.join(work, "self", "install")
+    # the place escaped: a hosted runner's stdout is a cp1252 pipe, which
+    # cannot encode the CJK in it
+    print("\nself-replacement (obu swaps its own tree)%s:"
+          % ("" if place == "self" else ", under " + ascii(place)))
+    root = os.path.join(work, place, "install")
     make_install(root, "OLD")
     live = os.path.join(root, "bin", "obu" + EXE_SUFFIX)
     install_exe(obu, live)
 
     prefix = asset_prefix()
     asset = "%s_9999.1.0%s" % (prefix, ASSET_SUFFIX)
-    reldir = os.path.join(work, "self", "rel")
+    reldir = os.path.join(work, place, "rel")
     stage = os.path.join(reldir, "stage")
     make_install(stage, "NEW")
     # the archived copy needs the exec bit too: it becomes the live obu after
@@ -963,6 +975,61 @@ def suite_selfswap(obu, work):
         check("self-swap rollback restored the old tree",
               open(os.path.join(root, "VERSION")).read().strip() == "OLD")
         check("an obu is present at the live path after rollback", os.path.isfile(live))
+
+
+# Non-ASCII text for suite_unicode, spelled with escapes so this file's own
+# encoding cannot matter: Latin accents, CJK and a character outside the BMP,
+# none of which one ANSI code page holds together.
+UNI_DIR = "donn\u00e9es_\u65e5\u672c_\U0001F642"
+
+
+def suite_unicode(obu, work):
+    """The other suites' happy paths with every path named in non-ASCII text."""
+    print("\nnon-ASCII paths:")
+    base = os.path.join(work, UNI_DIR)
+    os.makedirs(base)
+
+    # 'check' reads the release document named by OBU_RELEASE_JSON_FILE
+    newer = write_json(os.path.join(base, "version_\u00e9.json"), "v9999.1.0")
+    code, out = run(obu, ["check"], {"OBU_RELEASE_JSON_FILE": newer})
+    check("check reads a release document at a non-ASCII path",
+          code == 0 and "An update is available" in out, "exit=%d out=%r" % (code, out))
+
+    if not UPDATE_SUPPORTED:
+        skip("non-ASCII update, rollback and verify", "obu reports this platform as unsupported")
+        return
+
+    prefix = asset_prefix()
+    asset = "%s_9999.1.0%s" % (prefix, ASSET_SUFFIX)
+
+    # update and rollback of an install root named by OBU_INSTALL_ROOT, from a
+    # release directory (OBU_ASSET_DIR) with a non-ASCII name
+    root = os.path.join(base, "racine_\u65e5\u672c")
+    make_install(root, "OLD")
+    reldir = os.path.join(base, "publication_\u00fc")
+    env = make_release(reldir, asset)
+    env["OBU_INSTALL_ROOT"] = root
+    code, out = run(obu, ["update", "--quiet"], env)
+    if check("update installs into a non-ASCII install root", code == 0, "exit=%d out=%r" % (code, out)):
+        check("the non-ASCII root holds the new tree",
+              open(os.path.join(root, "VERSION")).read().strip() == "NEW")
+    code, out = run(obu, ["rollback", "--quiet"], {"OBU_INSTALL_ROOT": root})
+    if check("rollback restores a non-ASCII install root", code == 0, "exit=%d out=%r" % (code, out)):
+        check("the non-ASCII root holds the old tree again",
+              open(os.path.join(root, "VERSION")).read().strip() == "OLD")
+    check_no_residue("non-ASCII update and rollback", root)
+
+    # verify: both operands are non-ASCII paths, and the archive is found by
+    # its own name inside a non-ASCII directory
+    code, out = run(obu, ["verify", os.path.join(reldir, asset), os.path.join(reldir, "SHA256SUMS")])
+    check("verify checks an archive and manifest named by non-ASCII paths",
+          code == 0 and "Verified " + asset in out, "exit=%d out=%r" % (code, out))
+    check("verify prints the non-ASCII manifest path as written",
+          os.path.join(reldir, "SHA256SUMS") in out, "out=%r" % out)
+
+    # the realistic case: obu installed under a non-ASCII directory, finding
+    # its root from its own path
+    suite_selfswap(obu, base, "auto_\u00e9_\u65e5\u672c")
 
 
 def payload_unpacked(staging):
@@ -1060,6 +1127,10 @@ def suite_rename_contention(obu, work):
 # ---------------------------------------------------------------- main
 
 def main():
+    # A failure's detail can quote obu's non-ASCII output, and stdout may be a
+    # pipe in the ANSI code page (it is on the hosted Windows runners): escape
+    # what it cannot hold rather than die mid-report.
+    sys.stdout.reconfigure(errors="backslashreplace")
     keep = "--keep" in sys.argv
     work = tempfile.mkdtemp(prefix="obu-test-")
     try:
@@ -1072,6 +1143,7 @@ def main():
         suite_rename_contention(obu, work)
         if UPDATE_SUPPORTED:
             suite_selfswap(obu, work)
+        suite_unicode(obu, work)
     finally:
         if keep:
             print("\nkept: %s" % work)

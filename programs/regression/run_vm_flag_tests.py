@@ -121,6 +121,21 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     getenv_s, loaded libraries with LoadLibraryA and opened files with narrow
     names, so all of it failed there; on Linux and macOS the program's
     arguments were widened byte by byte.
+ 15. The other tools take non-ASCII names too, each where <bin_dir> has it.
+    obu verifies the committed signed fixture (tools/cicd/fixtures/obu_verify)
+    from a copy of itself under the non-ASCII directory, given the archive and
+    manifest by non-ASCII paths. obb packages a program from a non-ASCII .obe
+    and toolchain directory (by -tool_dir and by OBJECK_LIB_PATH) into a
+    non-ASCII target and application name, and the packaged launcher (obn,
+    from <lib>/native/misc) runs it from another directory, handing it a
+    non-ASCII argument, an argument with a space and the environment. On
+    Windows all four used the CRT's ANSI argv (and obn its ANSI envp, with no
+    quoting for _spawnve), so each failed there.
+
+Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
+
+--unicode-only runs sections 14 and 15 alone: how a MinGW (MSYS2) build of the
+tools, which CI does not build, is checked by hand.
 """
 import concurrent.futures
 import os
@@ -192,10 +207,15 @@ def mt_oversubscribe_workers():
 
 
 def main():
+    # Sections 14 and 15 quote non-ASCII output in a failure's detail, and
+    # stdout may be a pipe in the ANSI code page (it is on the hosted Windows
+    # runners): escape what it cannot hold rather than die mid-report.
+    sys.stdout.reconfigure(errors="backslashreplace")
     if len(sys.argv) < 2:
         print(__doc__)
         return 2
     bin_dir = os.path.abspath(sys.argv[1])
+    unicode_only = "--unicode-only" in sys.argv[2:]
     obc = os.path.join(bin_dir, "obc" + EXE)
     obr = os.path.join(bin_dir, "obr" + EXE)
     lib_dir = os.path.join(os.path.dirname(bin_dir), "lib")
@@ -211,6 +231,11 @@ def main():
 
     print("Objeck VM flag tests")
     print(f"  bin: {bin_dir}\n")
+
+    if unicode_only:
+        check_unicode_names(obc, obr, bin_dir, lib_dir)
+        check_unicode_tools(obc, bin_dir, lib_dir)
+        return finish()
 
     rc, out, err = run([obc, "-src", src, "-dest", obe], env=env, cwd=bin_dir)
     check("fixture compiles", rc == 0 and os.path.exists(obe), err.decode(errors="replace")[-300:])
@@ -404,6 +429,8 @@ def main():
 
     check_unicode_names(obc, obr, bin_dir, lib_dir)
 
+    check_unicode_tools(obc, bin_dir, lib_dir)
+
     return finish()
 
 
@@ -424,6 +451,140 @@ UNI_CHILD = (
 )
 
 
+def copy_runtime_dlls(bin_dir, dest):
+    """The runtime DLLs the tools load on Windows, not the large optional ones."""
+    for entry in os.listdir(bin_dir):
+        path = os.path.join(bin_dir, entry)
+        if entry.lower().endswith(".dll") and os.path.getsize(path) < 8 * 1024 * 1024:
+            shutil.copy2(path, dest)
+
+
+# the bytes the committed obu_verify manifest lists a hash for, as
+# tools/cicd/test_obu_verify.py writes them
+OBU_PAYLOAD = b"objeck obu verify fixture; content is irrelevant, its hash is not\n"
+OBU_PAYLOAD_NAME = "obu-verify-fixture.bin"
+OBU_FIXTURES = os.path.join(SCRIPT_DIR, "..", "..", "tools", "cicd", "fixtures", "obu_verify")
+
+
+def check_unicode_tools(obc, bin_dir, lib_dir):
+    """15. obu, obb and obn with non-ASCII names (see the module docstring)."""
+    obu = os.path.join(bin_dir, "obu" + EXE)
+    obb = os.path.join(bin_dir, "obb" + EXE)
+    obn = os.path.join(lib_dir, "native", "misc", "obn" + EXE)
+    scratch = tempfile.mkdtemp(prefix="objeck-unicode-tools-")
+    try:
+        root = os.path.join(scratch, UNI_DIR)
+        os.makedirs(root)
+        bare = {k: v for k, v in os.environ.items() if k != "OBJECK_LIB_PATH"}
+
+        # ---- obu verify, run from and given non-ASCII paths
+        if os.path.exists(obu):
+            uni_bin = os.path.join(root, "bin_é")
+            manifest_dir = os.path.join(root, "manifeste_ü_日本")
+            os.makedirs(uni_bin)
+            os.makedirs(manifest_dir)
+            shutil.copy2(obu, uni_bin)
+            copy_runtime_dlls(bin_dir, uni_bin)
+            for name in ("SHA256SUMS", "SHA256SUMS.minisig"):
+                shutil.copy2(os.path.join(OBU_FIXTURES, name), manifest_dir)
+            archive = os.path.join(manifest_dir, OBU_PAYLOAD_NAME)
+            with open(archive, "wb") as f:
+                f.write(OBU_PAYLOAD)
+            sums = os.path.join(manifest_dir, "SHA256SUMS")
+            rc, out, err = run([os.path.join(uni_bin, os.path.basename(obu)), "verify", archive, sums],
+                               env=bare, cwd=scratch)
+            text = (out + err).decode("utf-8", errors="replace")
+            check("obu verifies an archive and a signed manifest named by non-ASCII paths",
+                  rc == 0 and "Verified " + OBU_PAYLOAD_NAME in text, f"rc={rc} out={text[-300:]!r}")
+            check("obu names the non-ASCII manifest path as written", sums in text, f"out={text[-300:]!r}")
+        else:
+            print(f"  [SKIP] obu checks: no {obu}")
+
+        # ---- obb packages a program; the packaged obn runs it
+        if not (os.path.exists(obb) and os.path.exists(obn)):
+            print(f"  [SKIP] obb/obn checks: need {obb} and {obn}")
+            return
+
+        # a toolchain directory as obb expects one: bin, lib (with the launcher
+        # in native/misc), readme.html and LICENSE
+        tool_dir = os.path.join(root, "outils_ñ")
+        tool_bin = os.path.join(tool_dir, "bin")
+        tool_lib = os.path.join(tool_dir, "lib")
+        tool_misc = os.path.join(tool_lib, "native", "misc")
+        os.makedirs(tool_bin)
+        os.makedirs(tool_misc)
+        shutil.copy2(os.path.join(bin_dir, "obr" + EXE), tool_bin)
+        copy_runtime_dlls(bin_dir, tool_bin)
+        for entry in os.listdir(lib_dir):
+            if entry.endswith(".obl") or entry in ("configobjk.ini", "cacert.pem"):
+                shutil.copy2(os.path.join(lib_dir, entry), tool_lib)
+        shutil.copy2(obn, tool_misc)
+        prop = os.path.join(lib_dir, "native", "misc", "config.prop")
+        if os.path.exists(prop):
+            shutil.copy2(prop, tool_misc)
+        else:
+            open(os.path.join(tool_misc, "config.prop"), "w").close()
+        for name in ("readme.html", "LICENSE"):
+            open(os.path.join(tool_dir, name), "w").close()
+
+        # the program, compiled in an ASCII directory (obc is section 14's) and
+        # moved to its non-ASCII name
+        app_obe = os.path.join(root, "appli_é.obe")
+        ascii_src = os.path.join(scratch, "fixture.obs")
+        ascii_obe = os.path.join(scratch, "fixture.obe")
+        shutil.copy2(os.path.join(SCRIPT_DIR, "vm_unicode_args_env.obs"), ascii_src)
+        ascii_env = dict(bare)
+        ascii_env["OBJECK_LIB_PATH"] = lib_dir + os.sep
+        run([obc, "-src", ascii_src, "-dest", ascii_obe], env=ascii_env, cwd=bin_dir)
+        if not os.path.exists(ascii_obe):
+            check("the obb fixture compiles", False, "obc produced no .obe")
+            return
+        shutil.move(ascii_obe, app_obe)
+
+        apps = []
+        for label, name, flags, env in (
+                ("-tool_dir", "appli_日本_🙂", ["-tool_dir", tool_dir], bare),
+                ("OBJECK_LIB_PATH", "appli_ü", [], dict(bare, OBJECK_LIB_PATH=tool_lib))):
+            rc, out, err = run([obb, "-src_file", app_obe, "-to_dir", root, "-to_name", name] + flags,
+                               env=env, cwd=scratch)
+            app_exe = os.path.join(root, name, name + EXE)
+            check(f"obb packages a non-ASCII .obe into a non-ASCII application (toolchain by {label})",
+                  rc == 0 and os.path.exists(app_exe) and
+                  os.path.exists(os.path.join(root, name, "app", "app.obe")),
+                  f"rc={rc} out={(out + err).decode('utf-8', errors='replace')[-300:]!r}")
+            if os.path.exists(app_exe):
+                apps.append(app_exe)
+
+        if not apps:
+            return
+
+        # the packaged launcher, started from another directory: a non-ASCII
+        # argument, an argument with a space (the child command), and the
+        # environment, which it passes on with its own PATH and OBJECK_LIB_PATH
+        child_script = os.path.join(scratch, "check_env.py")
+        with open(child_script, "w", encoding="utf-8") as f:
+            f.write(UNI_CHILD)
+        run_env = dict(bare)
+        run_env[UNI_GET_NAME] = UNI_VALUE
+        # one argument with a space: the program runs it as a command line, and
+        # unquoted, so neither path may have a space (cmd /c's quote rules)
+        child_cmd = f"{sys.executable} {child_script}"
+        has_child = " " not in sys.executable and " " not in child_script
+        rc, out, err = run([apps[0], UNI_ARG] + ([child_cmd] if has_child else []), env=run_env, cwd=scratch)
+        text = out.decode("utf-8", errors="replace")
+        detail = f"rc={rc} out={text[-300:]!r} stderr={err.decode('utf-8', errors='replace')[-200:]!r}"
+        check("the packaged launcher starts its program from another directory", rc == 0 and "arg" in text, detail)
+        check("the packaged launcher passes a non-ASCII argument as written", "arg ok" in text, detail)
+        check("the packaged launcher passes a non-ASCII variable as written", "env ok" in text, detail)
+        if has_child:
+            check("the packaged launcher passes an argument with a space as one argument",
+                  "child env ok" in text and "command env ok" in text, detail)
+        else:
+            print("  [SKIP] launcher argument-with-a-space check: the Python path has a space")
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
 def check_unicode_names(obc, obr, bin_dir, lib_dir):
     """14. Non-ASCII names end to end (see the module docstring)."""
     scratch = tempfile.mkdtemp(prefix="objeck-unicode-")
@@ -439,10 +600,7 @@ def check_unicode_names(obc, obr, bin_dir, lib_dir):
         # optional ones), and no lib beside them
         for tool in (obc, obr):
             shutil.copy2(tool, uni_bin)
-        for entry in os.listdir(bin_dir):
-            path = os.path.join(bin_dir, entry)
-            if entry.lower().endswith(".dll") and os.path.getsize(path) < 8 * 1024 * 1024:
-                shutil.copy2(path, uni_bin)
+        copy_runtime_dlls(bin_dir, uni_bin)
         uni_obc = os.path.join(uni_bin, os.path.basename(obc))
         uni_obr = os.path.join(uni_bin, os.path.basename(obr))
 

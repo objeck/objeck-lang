@@ -614,7 +614,7 @@ void Linker::Load([[maybe_unused]] bool is_lib)
 std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> Linker::ParseIni(const std::wstring& filename) {
   std::map<std::wstring, std::vector<std::pair<std::wstring, std::wstring>>> values;
 
-  std::wifstream file_reader(ToFsPath(filename));
+  std::wifstream file_reader(ToFsPath(filename).c_str());
   if(file_reader.good()) {
     std::wstring section_title;
     std::vector <std::pair<std::wstring, std::wstring>> section_names_values;
@@ -849,7 +849,7 @@ char* Library::LoadFileBuffer(std::wstring filename, size_t& buffer_size)
 {
   char* buffer = nullptr;
   // open file
-  std::ifstream in(ToFsPath(filename), std::ifstream::binary);
+  std::ifstream in(ToFsPath(filename).c_str(), std::ifstream::binary);
   if(in.good()) {
     // get file size
     in.seekg(0, std::ios::end);
