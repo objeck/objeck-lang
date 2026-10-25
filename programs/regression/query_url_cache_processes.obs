@@ -1,0 +1,401 @@
+# EXTRA_LIBS: net,net_server,regex,csv,misc,query,concurrent
+#~
+Query.Structured's URL download cache shared by several processes (docs/QUERY_DESIGN.md, "One
+cache folder, many processes"). The test starts an in-process Web.HTTP.Server whose file changes
+every few milliseconds, then starts processes of its own program (this .obe, run with 'child')
+that all point their cache at one folder and query the file again and again, through a catalog
+they keep, a new catalog each time and a source. Every answer must be one whole version of the
+file (its rows all of one version, as many as that version has), no older than the version the
+server had when the query began, and no query may fail. After each round the server stops
+changing and this process, sharing the folder, must read the current version. Before the cache
+published a copy and its note as one, a copy being replaced while another process read it failed
+that process's query ("cannot write its copy" on Windows), and a copy and a note from two
+different downloads could pair up, so a revalidation answered 304 kept serving an older file.
+~#
+use Collection, System.IO.Net, System.IO.Filesystem, Web.HTTP.Server, Query.Structured;
+
+class UrlProcsHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Request, response : Response) ~ Bool {
+		QueryUrlCacheProcesses->Serve(request, response);
+		return false;
+	}
+
+	method : ProcessPost(request : Request, response : Response) ~ Bool {
+		response->SetCode(405);
+		return false;
+	}
+}
+
+# changes the served file every few milliseconds until stopped
+class VersionChanger from System.Concurrency.Thread {
+	@stop : Bool;
+
+	New() {
+		Parent("version_changer");
+	}
+
+	method : public : Stop() ~ Nil {
+		@stop := true;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		while(<>@stop) {
+			System.Concurrency.Thread->Sleep(15);
+			QueryUrlCacheProcesses->Bump();
+		};
+	}
+}
+
+# runs one child process and waits for it
+class ChildRunner from System.Concurrency.Thread {
+	@command : String;
+	@status : Int;
+
+	New(command : String) {
+		Parent("child_runner");
+		@command := command;
+		@status := -1;
+	}
+
+	method : public : GetStatus() ~ Int { return @status; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@status := Runtime->Command(@command);
+	}
+}
+
+class QueryUrlCacheProcesses {
+	@port : static : Int;
+	@version : static : Int;
+	@serve_returned : static : Bool;
+	@failures : static : Int;
+
+	function : Bump() ~ Nil {
+		@version += 1;
+	}
+
+	function : ServeReturned() ~ Nil { @serve_returned := true; }
+
+	function : Check(what : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			@failures += 1;
+			"  FAIL: {$what}"->PrintLine();
+		};
+	}
+
+	# version v of the file has this many rows, so versions differ in size as well as content
+	function : Rows(v : Int) ~ Int {
+		return 40 + (v * 37) % 160;
+	}
+
+	# version v's text: every row names v, and x sums to v * n * (n - 1) / 2
+	function : Body(v : Int) ~ String {
+		rows := Rows(v);
+		body := "v,i,x\n";
+		each(i : rows) {
+			body += "{$v},{$i},{$(i * v)}\n";
+		};
+		return body;
+	}
+
+	function : Header(request : Request, name : String) ~ String {
+		value := request->GetHeader(name);
+		if(value = Nil) {
+			value := request->GetHeader(name->ToLower());
+		};
+		return value;
+	}
+
+	# '/version' is the current version; '/data/runs.csv' answers it with an ETag (304 when
+	# the client has it), '/data/plain.csv' with no validator, so every fetch downloads it
+	function : Serve(request : Request, response : Response) ~ Nil {
+		v := @version;
+		path := request->GetPath();
+		if(path->Equals("/version")) {
+			response->SetCodeContent(200, v->ToString()->ToByteArray());
+			return;
+		};
+
+		if(path->Equals("/data/runs.csv")) {
+			etag := "\"e{$v}\"";
+			match := Header(request, "If-None-Match");
+			if(match <> Nil & match->Equals(etag)) {
+				response->SetCode(304);
+				return;
+			};
+			response->SetHeader("ETag", etag);
+			response->SetCodeContent(200, Body(v)->ToByteArray());
+			return;
+		};
+
+		if(path->Equals("/data/plain.csv")) {
+			response->SetCodeContent(200, Body(v)->ToByteArray());
+			return;
+		};
+
+		response->SetCode(404);
+	}
+
+	function : StartServer() ~ Bool {
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(UrlProcsHandler->New()->GetClass(), 0, false);
+				QueryUrlCacheProcesses->ServeReturned();
+			}
+		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
+	}
+
+	# the server's version, -1 if it did not answer
+	function : ServerVersion(base : String) ~ Int {
+		response := Web.HTTP.HttpClient->New()->Get(Web.HTTP.Url->New("{$base}/version"));
+		if(response = Nil | response->GetCode() <> 200) {
+			return -1;
+		};
+		content := response->GetContent();
+		return content <> Nil ? content->ToString()->Trim()->ToInt() : -1;
+	}
+
+	# Nil if a summary (count, lowest and highest version, sum of x) is one whole version no
+	# older than 'before'; otherwise what is wrong
+	function : Judge(table : Table, before : Int, error : String) ~ String {
+		if(table = Nil) {
+			return "failed: {$error}";
+		};
+		if(table->Size() <> 1) {
+			return "partial: {$(table->Size())} summary rows";
+		};
+
+		row := table->Get(0);
+		n := row->Get("n")->As(IntRef)->Get();
+		lo := row->Get("lo")->As(IntRef)->Get();
+		hi := row->Get("hi")->As(IntRef)->Get();
+		s := row->Get("s")->As(IntRef)->Get();
+		if(lo <> hi) {
+			return "partial: rows of versions {$lo} to {$hi} in one copy";
+		};
+		if(n <> Rows(lo) | s <> lo * n * (n - 1) / 2) {
+			return "partial: version {$lo} with {$n} rows summing to {$s}";
+		};
+		if(lo < before) {
+			return "stale: version {$lo} after the server had {$before}";
+		};
+		return Nil;
+	}
+
+	# one query of a URL by one of three paths; Nil if right, else what was wrong
+	function : QueryOnce(catalog : Catalog, url : String, how : Int, before : Int) ~ String {
+		sql := "select count(*) as n, min(v) as lo, max(v) as hi, sum(x) as s from '{$url}'";
+		if(how = 0) {
+			# a catalog kept across queries, which caches the file under its stamp
+			return Judge(catalog->Query(sql), before, catalog->GetError());
+		}
+		else if(how = 1) {
+			# a new catalog, which reads the downloaded copy every time
+			fresh := Catalog->New();
+			return Judge(fresh->Query(sql), before, fresh->GetError());
+		};
+
+		# a source, which reads the copy through its own path
+		source := CsvSource->New(url);
+		table := source->Read(Nil);
+		if(table = Nil) {
+			return "failed: {$(source->GetError())}";
+		};
+		scratch := Catalog->New();
+		scratch->Add(table);
+		name := table->GetName();
+		return Judge(scratch->Query("select count(*) as n, min(v) as lo, max(v) as hi, sum(x) as s from {$name}"), before, scratch->GetError());
+	}
+
+	# a child process: queries the server's two files 'count' times through a cache folder
+	# shared with the other children, and prints a summary line
+	function : Child(port : String, cache_root : String, id : String, count : Int) ~ Nil {
+		Runtime->SetProperty("tmp_dir", cache_root);
+		base := "http://127.0.0.1:{$port}";
+		catalog := Catalog->New();
+		wrong := 0;
+		failed := 0;
+		partial := 0;
+		stale := 0;
+		first : String := Nil;
+		each(f : count) {
+			url := f % 2 = 0 ? "{$base}/data/runs.csv" : "{$base}/data/plain.csv";
+			before := ServerVersion(base);
+			timer := System.Time.Timer->New(true);
+			problem := QueryOnce(catalog, url, (f / 2) % 3, before);
+			timer->End();
+			if(problem <> Nil) {
+				problem += " (after {$(timer->GetElapsedTime())} s)";
+				wrong += 1;
+				if(problem->StartsWith("failed")) {
+					failed += 1;
+				}
+				else if(problem->StartsWith("partial")) {
+					partial += 1;
+				}
+				else {
+					stale += 1;
+				};
+				if(first = Nil) {
+					first := "child {$id}, query {$f} of {$url}: {$problem}";
+				};
+			};
+		};
+
+		"KINDS {$failed} {$partial} {$stale}"->PrintLine();
+		"RESULT wrong={$wrong}"->PrintLine();
+		if(first <> Nil) {
+			"FIRST {$first}"->PrintLine();
+		};
+	}
+
+	# a command line that runs this program again as a child, its output to a file
+	function : ChildCommand(port : Int, cache_root : String, id : Int, count : Int, output : String) ~ String {
+		windows := Directory->GetSlash() = '\\';
+		vm := Runtime->GetInstallDir();
+		vm += windows ? "\\bin\\obr.exe" : "/bin/obr";
+		command := "\"{$vm}\" query_url_cache_processes.obe child {$port} \"{$cache_root}\" {$id} {$count} > \"{$output}\" 2>&1";
+		if(windows) {
+			# cmd /c strips the first and last quote of a line that starts with one
+			command := "\"{$command}\"";
+		};
+		return command;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		if(args->Size() = 5 & args[0]->Equals("child")) {
+			Child(args[1], args[2], args[3], args[4]->ToInt());
+			return;
+		};
+
+		if(<>File->Exists("query_url_cache_processes.obe")) {
+			"FAIL: run this test from the folder that holds query_url_cache_processes.obe"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		@failures := 0;
+		@version := 1;
+		pid := Runtime->GetProcessId();
+		work := "{$Runtime->GetTempDir()}/objeck_query_url_procs_{$pid}";
+		cache_root := "{$work}/cache";
+		outputs := "{$work}/out";
+		Directory->Create(work);
+		Directory->Create(cache_root);
+		Directory->Create(outputs);
+		Runtime->SetProperty("tmp_dir", cache_root);
+
+		if(<>StartServer()) {
+			"FAIL: URL cache across processes (the test server did not start)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		base := "http://127.0.0.1:{$@port}";
+
+		rounds := 10;
+		children := 6;
+		count := 24;
+		wrong := 0;
+		kinds := Int->New[3];
+		broken := 0;
+		stale := 0;
+		first : String := Nil;
+		each(round : rounds) {
+			changer := VersionChanger->New();
+			changer->Execute(Nil);
+
+			runners := ChildRunner->New[children];
+			each(c : children) {
+				output := "{$outputs}/child_{$round}_{$c}.txt";
+				runners[c] := ChildRunner->New(ChildCommand(@port, cache_root, round * children + c, count, output));
+			};
+			each(c : children) {
+				runners[c]->Execute(Nil);
+			};
+			each(c : children) {
+				runners[c]->Join();
+			};
+			changer->Stop();
+			changer->Join();
+
+			each(c : children) {
+				output := "{$outputs}/child_{$round}_{$c}.txt";
+				text := FileReader->ReadFile(output);
+				if(text = Nil | <>text->Has("RESULT wrong=")) {
+					broken += 1;
+					if(first = Nil) {
+						shown := text <> Nil ? text : "(no output)";
+						first := "round {$round}, child {$c} exited {$(runners[c]->GetStatus())} without a result: {$shown}";
+					};
+				}
+				else {
+					lines := text->Split("\n");
+					each(l : lines) {
+						line := lines[l]->Trim();
+						if(line->StartsWith("RESULT wrong=")) {
+							wrong += line->SubString(13, line->Size() - 13)->ToInt();
+						}
+						else if(line->StartsWith("KINDS ")) {
+							counts := line->SubString(6, line->Size() - 6)->Split(" ");
+							if(counts->Size() = 3) {
+								each(k : 3) {
+									kinds[k] += counts[k]->ToInt();
+								};
+							};
+						}
+						else if(line->StartsWith("FIRST ") & first = Nil) {
+							first := "round {$round}: {$(line->SubString(6, line->Size() - 6))}";
+						};
+					};
+				};
+			};
+
+			# the server has stopped changing: what the folder holds now must be its version,
+			# by a revalidation (runs.csv) and by a download (plain.csv)
+			now := @version;
+			each(u : 2) {
+				url := u = 0 ? "{$base}/data/runs.csv" : "{$base}/data/plain.csv";
+				problem := QueryOnce(Catalog->New(), url, 1, now);
+				if(problem <> Nil) {
+					stale += 1;
+					if(first = Nil) {
+						first := "after round {$round}, {$url}: {$problem}";
+					};
+				};
+			};
+		};
+
+		total := rounds * children * count;
+		Check("every child finished and reported ({$broken} did not)", broken = 0);
+		Check("every query of {$total} in {$(rounds * children)} processes read one whole, current version ({$wrong} did not)", wrong = 0);
+		Check("the shared folder held the current version after each round ({$stale} times it did not)", stale = 0);
+		if(wrong > 0) {
+			"    {$(kinds[0])} queries failed, {$(kinds[1])} read part of a version or a mix, {$(kinds[2])} read an older version"->PrintLine();
+		};
+		if(first <> Nil) {
+			"    {$first}"->PrintLine();
+		};
+
+		WebServer->Stop();
+		Directory->Delete(work);
+		if(@failures = 0) {
+			"PASS: URL cache across processes"->PrintLine();
+		}
+		else {
+			"FAIL: URL cache across processes ({$@failures} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
