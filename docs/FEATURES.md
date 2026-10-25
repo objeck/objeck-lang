@@ -789,6 +789,7 @@ Or read keys directly: `System.Runtime->GetProperty(key)->ToInt()`.
 | `runtime.threads.active` / `.parked` / `.running` | mutator threads (`.parked` includes STW/blocked) |
 | `runtime.gc.stw` | 1 while a collection is stopping the world |
 | `runtime.cpu.count` / `.time` / `runtime.uptime_ms` | logical cores / process CPU ms / uptime |
+| `runtime.call.depth_max` | the deepest calls may nest, in frames (`--call-depth`, default 16384) |
 
 ### Date/Time Handling
 ```ruby

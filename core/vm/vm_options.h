@@ -73,6 +73,9 @@ namespace Runtime {
     size_t nursery_size = 0;
     // 0 = default call count, -1 = JIT off, >0 = calls before a method is compiled.
     long jit_threshold = 0;
+    // Maximum call depth in frames; 0 means the VM default (CALL_DEPTH_DEFAULT).
+    // From --call-depth, else OBJECK_CALL_DEPTH.
+    long call_depth = 0;
     // "" (unset), "binary", "utf16" or "utf8". Acted on by Windows only.
     std::wstring stdio_mode;
     // "" means OBJECK_LIB_PATH or the install default. This is the lib ROOT
@@ -145,6 +148,30 @@ namespace Runtime {
     return true;
   }
 
+  // The range --call-depth accepts. Repeated from call_stack.h, which the mains
+  // do not include; interpreter.cpp checks that the two agree.
+  const long CALL_DEPTH_FLAG_MIN = 256;
+  const long CALL_DEPTH_FLAG_MAX = 1048576;
+
+  // a whole decimal number of frames from CALL_DEPTH_FLAG_MIN to CALL_DEPTH_FLAG_MAX
+  inline bool ParseCallDepth(const std::wstring& text, long& out) {
+    if(text.empty() || text.size() > 8) {
+      return false;
+    }
+    long value = 0;
+    for(wchar_t c : text) {
+      if(c < L'0' || c > L'9') {
+        return false;
+      }
+      value = value * 10 + (c - L'0');
+    }
+    if(value < CALL_DEPTH_FLAG_MIN || value > CALL_DEPTH_FLAG_MAX) {
+      return false;
+    }
+    out = value;
+    return true;
+  }
+
   inline VmOptions ParseVmOptions(const CommandLineParseResult& cmd) {
     VmOptions opts;
     const auto& args = cmd.arguments;
@@ -195,6 +222,45 @@ namespace Runtime {
           const std::wstring value(narrow.begin(), narrow.end());
           if(!ParseNurserySize(value, opts.nursery_size)) {
             opts.error = L"OBJECK_NURSERY: expected <number>(k|m) from 64k to 128m, got '" + value + L"'";
+            return opts;
+          }
+        }
+      }
+    }
+
+    // --call-depth=<frames>   (env OBJECK_CALL_DEPTH=<frames>; the flag wins, so a
+    // bad variable is not even read when the flag is given)
+    {
+      const std::vector<std::wstring> names = {L"call-depth", L"CALL_DEPTH", L"CALL-DEPTH"};
+      if(HasCommandLineArgumentWithAliases(args, names)) {
+        ++opts.consumed;
+        const std::wstring value = GetCommandLineArgumentWithAliases(args, names, L"");
+        if(!ParseCallDepth(value, opts.call_depth)) {
+          opts.error = L"--call-depth: expected a number of frames from 256 to 1048576, got '" + value + L"'";
+          return opts;
+        }
+      }
+      else {
+        std::string narrow;
+#ifdef _WIN32
+        char buffer[64];
+        size_t len = 0;
+        if(!getenv_s(&len, buffer, sizeof(buffer), "OBJECK_CALL_DEPTH") && len > 1) {
+          narrow = buffer;
+        }
+        else if(len > sizeof(buffer)) {
+          narrow = "<too long>";
+        }
+#else
+        const char* env = getenv("OBJECK_CALL_DEPTH");
+        if(env) {
+          narrow = env;
+        }
+#endif
+        if(!narrow.empty()) {
+          const std::wstring value(narrow.begin(), narrow.end());
+          if(!ParseCallDepth(value, opts.call_depth)) {
+            opts.error = L"OBJECK_CALL_DEPTH: expected a number of frames from 256 to 1048576, got '" + value + L"'";
             return opts;
           }
         }
@@ -270,6 +336,8 @@ namespace Runtime {
   void SetJitAutoThreshold(long threshold);
   // Defined in interpreter.cpp; read by MemoryManager::Initialize.
   void SetNurserySize(size_t size);
+  // Defined in interpreter.cpp; read when each thread's call stack is created.
+  void SetMaxCallDepth(long depth);
 
   // Applies the options that must be in place before the program loads: the
   // library directory (the loader reads OBJECK_LIB_PATH, so the flag sets the
@@ -291,6 +359,9 @@ namespace Runtime {
     if(opts.nursery_size != 0) {
       SetNurserySize(opts.nursery_size);
     }
+    if(opts.call_depth != 0) {
+      SetMaxCallDepth(opts.call_depth);
+    }
   }
 
   // The one usage text. Every flag states its valid values, because a flag
@@ -307,6 +378,12 @@ namespace Runtime {
     usage += L"                            a minor collection. <size> is <number>(k|m)\n";
     usage += L"                            from 64k to 128m (default 128m)\n";
     usage += L"                            Env: OBJECK_NURSERY=<size>\n";
+    usage += L"  --call-depth=<frames>     How deep calls may nest before the program stops\n";
+    usage += L"                            with 'call stack bounds have been exceeded' (a\n";
+    usage += L"                            Try() recovers from it), from 256 to 1048576\n";
+    usage += L"                            (default 16384). Compiled code can reach the end\n";
+    usage += L"                            of the native stack first: the same error\n";
+    usage += L"                            Env: OBJECK_CALL_DEPTH=<frames>\n";
     usage += L"  --jit=off|<calls>         JIT control: 'off' runs the interpreter only;\n";
     usage += L"                            a positive number is how many calls a method\n";
     usage += L"                            makes before it is compiled (default 10)\n";
@@ -322,6 +399,7 @@ namespace Runtime {
     usage += L"\nExamples:\n";
     usage += L"  obr hello.obe\n";
     usage += L"  obr --gc-threshold=2m hello.obe\n";
+    usage += L"  obr --call-depth=100000 deep.obe\n";
     usage += L"  obr --jit=off hello.obe          (does it still happen without the JIT?)\n";
     usage += L"  obr --lib-path=/opt/objeck/lib hello.obe\n";
     usage += L"  obr --objeck-stdio=binary hello.obe\n";

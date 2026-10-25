@@ -27,11 +27,11 @@ teardown, the one point every exit reaches.
 
 The repeated-recovery loop is there for a future half-fix. One recovery is
 enough to crash the pre-fix build, but a pop that is off by one, or that misses
-one of the two frames in the chain, would drift CALL_STACK_SIZE (256) slots and
-only show after many failures.
+one of the two frames in the chain, would drift the call stack a slot per
+recovery and only show after many failures (it was 256 slots deep then).
 
 The cast half of #925 lives in try_recovers_cast.obs and the recursion half of
-#900 in try_recovers_depth.obs, which still opts out of the JIT pass.
+#900 in try_recovers_depth.obs, which runs in the JIT pass too now.
 ~#
 
 class Deep {

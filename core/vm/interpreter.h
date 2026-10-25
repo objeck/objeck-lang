@@ -32,6 +32,7 @@
 #pragma once
 
 #include "common.h"
+#include "call_stack.h"
 #include <atomic>
 #include <random>
 #include <string.h>
@@ -60,8 +61,6 @@ namespace Runtime {
   class Debugger;
 #endif
 
-#define CALL_STACK_SIZE 256
-#define OP_STACK_SIZE 768
 
   // Forward declarations for dispatch
   enum class DispatchResult : int;
@@ -94,10 +93,13 @@ namespace Runtime {
     static pthread_mutex_t intpr_threads_mutex;
 #endif
 
-    // call stack and current frame pointer
+    // call stack and current frame pointer. call_stack_pos is the pos field of
+    // a CallStack (call_stack.h); owned_stack is that CallStack when this
+    // interpreter owns it, nullptr for a bridge, which shares its thread's.
     StackFrame** call_stack;
     long* call_stack_pos;
-    
+    CallStack* owned_stack = nullptr;
+
     StackFrame** stack_frame;
     StackFrameMonitor* stack_frame_monitor;
 
@@ -289,9 +291,16 @@ namespace Runtime {
     // which made a runaway recursion fatal even inside a Try() region, unlike every
     // other runtime error (#900). The caller decides: recover into a handler, or
     // report and end the program.
-    inline bool PushFrame(StackFrame* f) {
-      if((*call_stack_pos) >= CALL_STACK_SIZE) {
-        return false;
+    //
+    // Full means the maximum depth, or an operand stack without OP_HEADROOM words
+    // left above stack_pos (call_stack.h). Below the maximum, reaching the
+    // committed part commits more.
+    inline bool PushFrame(StackFrame* f, size_t* stack_pos) {
+      CallStack* stack = CallStack::FromPos(call_stack_pos);
+      if(*call_stack_pos >= stack->depth_limit || *stack_pos > stack->op_limit) {
+        if(!stack->Grow(*stack_pos)) {
+          return false;
+        }
       }
 
       // Write frame pointer before advancing position so GC never
@@ -878,9 +887,9 @@ namespace Runtime {
 #endif
 
       // setup frame
-      call_stack = new StackFrame*[CALL_STACK_SIZE];
-      call_stack_pos = new long;
-      *call_stack_pos = -1;
+      owned_stack = CallStack::Create();
+      call_stack = owned_stack->frames;
+      call_stack_pos = &owned_stack->pos;
       halt = false;
 
       // register monitor
@@ -907,9 +916,9 @@ namespace Runtime {
 #endif
 
       // setup frame
-      call_stack = new StackFrame*[CALL_STACK_SIZE];
-      call_stack_pos = new long;
-      *call_stack_pos = -1;
+      owned_stack = CallStack::Create();
+      call_stack = owned_stack->frames;
+      call_stack_pos = &owned_stack->pos;
       stack_frame = new StackFrame*;
       // Published before any collection can read it: the mark phase dereferences
       // this slot for every registered monitor, and `new StackFrame*` leaves it
@@ -940,9 +949,9 @@ namespace Runtime {
       debugger = d;
 
       // setup frame
-      call_stack = new StackFrame*[CALL_STACK_SIZE];
-      call_stack_pos = new long;
-      *call_stack_pos = -1;
+      owned_stack = CallStack::Create();
+      call_stack = owned_stack->frames;
+      call_stack_pos = &owned_stack->pos;
       stack_frame = new StackFrame*;
       // Published before any collection can read it: the mark phase dereferences
       // this slot for every registered monitor, and `new StackFrame*` leaves it
@@ -965,10 +974,9 @@ namespace Runtime {
       if(stack_frame_monitor) {
         MemoryManager::RemovePdaMethodRoot(stack_frame_monitor);
 
-        delete[] call_stack;
+        CallStack::Destroy(owned_stack);
+        owned_stack = nullptr;
         call_stack = nullptr;
-
-        delete call_stack_pos;
         call_stack_pos = nullptr;
 
         delete stack_frame_monitor;
@@ -980,6 +988,13 @@ namespace Runtime {
 
       delete stack_frame;
       stack_frame = nullptr;
+    }
+
+    // The operand stack to run this interpreter's thread on: reserved with its
+    // call stack, so a call can check both (call_stack.h). Owned by the call
+    // stack; freed with this interpreter.
+    size_t* GetOpStack() {
+      return owned_stack->OpStack();
     }
 
     // execute method

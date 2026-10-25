@@ -77,6 +77,9 @@
     <ClInclude Include="..\dispatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\call_stack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\vm_options.h">
       <Filter>Header Files</Filter>
     </ClInclude>

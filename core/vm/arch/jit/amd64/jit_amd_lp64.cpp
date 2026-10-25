@@ -6067,15 +6067,25 @@ void JitAmd64::EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_i
  * call (the callee saves it).
  */
 void JitAmd64::EmitNativeCall(long self_offset, std::vector<long>& slow_patches, long& error_patch, long& done_patch) {
+  // RCX = the thread's CallStack (call_stack.h). The depth is compared with
+  // its committed limit, not a constant: the bridge commits more, or reports
+  // the maximum. A pos of -1 never reaches a call, so the zero-extending
+  // 32-bit load (Windows' long) compares correctly against the 64-bit limit.
   move_mem_reg(CALL_STACK_POS, RBP, RCX);
 #ifdef _WIN64
   move_mem_reg32(0, RCX, RDX);
 #else
   move_mem_reg(0, RCX, RDX);
 #endif
-  cmp_imm_reg(CALL_STACK_SIZE, RDX);
+  cmp_mem_reg(CALL_STACK_LIMIT_OFFSET, RCX, RDX);
   AddMachineCode(0x0f);
   AddMachineCode(0x8d);          // jge slow
+  slow_patches.push_back(code_index);
+  AddImm(0);
+  // the native stack: below the floor, the bridge reports a full call stack
+  cmp_mem_reg(CALL_STACK_FLOOR_OFFSET, RCX, RSP);
+  AddMachineCode(0x0f);
+  AddMachineCode(0x82);          // jb slow
   slow_patches.push_back(code_index);
   AddImm(0);
   // R11 again: the resolver may have run on the way here

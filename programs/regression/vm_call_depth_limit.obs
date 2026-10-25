@@ -1,0 +1,74 @@
+#~
+Fixture for run_vm_flag_tests.py section 16 (--call-depth and OBJECK_CALL_DEPTH).
+
+With arguments, '<depth> [thread]': recurse <depth> frames deep, unguarded, on
+the main thread or in a spawned one, then print "reached <depth> of <max>",
+<max> being runtime.call.depth_max. The script runs it past and short of a
+--call-depth it sets, and checks the diagnostic and the exit status.
+
+With none, as the regression runner runs it: 5,000 frames on each thread, which
+the old 256-frame call stack refused.
+~#
+use System.Concurrency;
+
+class DepthThread from Thread {
+	@depth : Int;
+	@reached : Int;
+
+	New(depth : Int) {
+		Parent("depth-thread");
+		@depth := depth;
+		@reached := -1;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		@reached := VmCallDepthLimit->Down(@depth);
+	}
+
+	method : public : GetReached() ~ Int {
+		return @reached;
+	}
+}
+
+class VmCallDepthLimit {
+	# non-tail, so the tail-call pass leaves it a recursion
+	function : Down(n : Int) ~ Int {
+		if(n <= 0) {
+			return 0;
+		};
+		return Down(n - 1) + 1;
+	}
+
+	function : InThread(depth : Int) ~ Int {
+		t := DepthThread->New(depth);
+		t->Execute(Nil);
+		t->Join();
+		return t->GetReached();
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		max := Runtime->GetProperty("runtime.call.depth_max");
+		if(args->Size() > 0) {
+			depth := args[0]->ToInt();
+			reached := 0;
+			if(args->Size() > 1 & args[1]->Equals("thread")) {
+				reached := InThread(depth);
+			}
+			else {
+				reached := Down(depth);
+			};
+			"reached {$reached} of {$max}"->PrintLine();
+			return;
+		};
+
+		ok := Down(5000) = 5000;
+		ok := InThread(5000) = 5000 & ok;
+		if(ok) {
+			"PASS: 5,000 frames deep on the main thread and in a spawned one (maximum {$max})"->PrintLine();
+		}
+		else {
+			"FAIL: a 5,000-frame recursion did not complete"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

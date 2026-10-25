@@ -295,28 +295,26 @@ void StackProgram::SignalHandler(int signal)
   }
 
   if(called_method) {
-    // init
-    size_t* op_stack = new size_t[OP_STACK_SIZE];
+    // init: the operand stack is the interpreter's (call_stack.h)
+    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
+    size_t* op_stack = intpr->GetOpStack();
     (*op_stack) = sys_value;
     size_t* stack_pos = new size_t;
     (*stack_pos) = 1;
 
     // execute
-    Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
     Runtime::StackInterpreter::AddThread(intpr);
     intpr->Execute(op_stack, stack_pos, 0, called_method, nullptr, false);
 
-    // clean up
-    delete[] op_stack;
-    op_stack = nullptr;
-
-    delete stack_pos;
-    stack_pos = nullptr;
-
+    // clean up: the operand stack goes with the interpreter, after its roots
     Runtime::StackInterpreter::RemoveThread(intpr);
 
     delete intpr;
     intpr = nullptr;
+    op_stack = nullptr;
+
+    delete stack_pos;
+    stack_pos = nullptr;
   }
 }
 
@@ -4689,6 +4687,8 @@ static bool GetRuntimeStat(const std::wstring& key, std::wstring& out)
     { L"runtime.cpu.count",        []() -> size_t { return (size_t)std::thread::hardware_concurrency(); } },
     { L"runtime.cpu.time",         []() -> size_t { return GetProcessCpuTimeMs(); } },
     { L"runtime.uptime_ms",        []() -> size_t { return (size_t)MemoryManager::GetUptimeMs(); } },
+    // the deepest a call chain may go (--call-depth), in frames
+    { L"runtime.call.depth_max",   []() -> size_t { return (size_t)Runtime::MaxCallDepth(); } },
   };
 
   for(const auto& e : kStats) {

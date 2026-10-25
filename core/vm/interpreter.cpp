@@ -2112,7 +2112,10 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   MemoryManager::AddPendingThreadRoot(&holder->param);
 
 #ifdef _WIN32
-  HANDLE vm_thread = (HANDLE)_beginthreadex(nullptr, 0, AsyncMethodCall, holder, 0, nullptr);
+  // The native stack is sized for the maximum call depth (call_stack.h):
+  // reserved, not committed. The 1 MB default held about 1,800 compiled frames.
+  HANDLE vm_thread = (HANDLE)_beginthreadex(nullptr, (unsigned)NativeThreadStackBytes(), AsyncMethodCall, holder,
+                                            STACK_SIZE_PARAM_IS_A_RESERVATION, nullptr);
   if(!vm_thread) {
     std::wcerr << L">>> Internal error: Unable to create garbage collection thread! <<<" << std::endl;
     VmExit(-1);
@@ -2121,6 +2124,12 @@ void StackInterpreter::ProcessAsyncMethodCall(StackMethod* called, size_t* param
   pthread_attr_t attrs;
   pthread_attr_init(&attrs);
   pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_JOINABLE);
+  // 8 MB, or more for a --call-depth above the default (call_stack.h); macOS's
+  // own default is 512 KB
+  const size_t native_stack = NativeThreadStackBytes();
+  if(native_stack) {
+    pthread_attr_setstacksize(&attrs, native_stack);
+  }
 
   // execute thread
   pthread_t vm_thread;
@@ -2151,7 +2160,6 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   ThreadHolder* holder = (ThreadHolder*)arg;
 
   // execute
-  size_t* thread_op_stack = new size_t[OP_STACK_SIZE];
   size_t* thread_stack_pos = new size_t;
   (*thread_stack_pos) = 0;
 
@@ -2162,6 +2170,8 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
 #endif
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
+  // owned by the interpreter's call stack, reserved with it (call_stack.h)
+  size_t* thread_op_stack = intpr->GetOpStack();
   AddThread(intpr);
   MemoryManager::RegisterMutator();
   MemoryManager::SafePoint();   // park immediately if a collection is already underway
@@ -2190,8 +2200,7 @@ unsigned int WINAPI StackInterpreter::AsyncMethodCall(LPVOID arg)
   RemoveThread(intpr);
   delete intpr;
   intpr = nullptr;
-
-  delete[] thread_op_stack;
+  // freed with intpr, after its roots were removed
   thread_op_stack = nullptr;
 
   delete thread_stack_pos;
@@ -2215,7 +2224,6 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   ThreadHolder* holder = (ThreadHolder*)arg;
 
   // execute
-  size_t* thread_op_stack = new size_t[OP_STACK_SIZE];
   size_t* thread_stack_pos = new size_t;
   (*thread_stack_pos) = 0;
 
@@ -2224,6 +2232,8 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
 #endif
 
   Runtime::StackInterpreter* intpr = new Runtime::StackInterpreter;
+  // owned by the interpreter's call stack, reserved with it (call_stack.h)
+  size_t* thread_op_stack = intpr->GetOpStack();
   AddThread(intpr);
   MemoryManager::RegisterMutator();
   MemoryManager::SafePoint();   // park immediately if a collection is already underway
@@ -2252,8 +2262,7 @@ void* StackInterpreter::AsyncMethodCall(void* arg)
   RemoveThread(intpr);
   delete intpr;
   intpr = nullptr;
-
-  delete[] thread_op_stack;
+  // freed with intpr, after its roots were removed
   thread_op_stack = nullptr;
 
   delete thread_stack_pos;
@@ -2365,7 +2374,7 @@ void StackInterpreter::ProcessDynamicMethodCall(StackInstr* instr, StackInstr* &
 
   // save current method
   (*stack_frame)->ip = ip;
-  if(!PushFrame((*stack_frame))) {
+  if(!PushFrame((*stack_frame), stack_pos)) {
     if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
@@ -2488,7 +2497,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
 {
   // save current method
   (*stack_frame)->ip = ip;
-  if(!PushFrame((*stack_frame))) {
+  if(!PushFrame((*stack_frame), stack_pos)) {
     if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
@@ -2553,7 +2562,7 @@ void StackInterpreter::ProcessMethodCall(StackInstr* instr, StackInstr* &instrs,
 void StackInterpreter::ProcessJitOnlyMethodCall(StackInstr* instr, StackInstr* &instrs, long &ip, size_t* &op_stack, size_t* &stack_pos)
 {
   (*stack_frame)->ip = ip;
-  if(!PushFrame((*stack_frame))) {
+  if(!PushFrame((*stack_frame), stack_pos)) {
     if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
@@ -2587,7 +2596,7 @@ void StackInterpreter::ProcessJitOnlyDynamicMethodCall([[maybe_unused]] StackIns
   }
 
   (*stack_frame)->ip = ip;
-  if(!PushFrame((*stack_frame))) {
+  if(!PushFrame((*stack_frame), stack_pos)) {
     if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
       return;
     }
@@ -2638,6 +2647,24 @@ void StackInterpreter::ProcessJitMethodCall(StackMethod* called, size_t* instanc
 #endif
       return;
     }
+  }
+
+  // A compiled method runs on the native stack, which can run out before the
+  // call stack does (call_stack.h). That is a full call stack too: the same
+  // report, and recoverable the same way. The caller's frame is pushed;
+  // recovery pops it with the rest.
+  if(CallStack::FromPos(call_stack_pos)->NativeStackLow()) {
+    if(TryErrorRecovery(stack_pos, RECOVERED_OTHER, L"call stack bounds have been exceeded!")) {
+      return;
+    }
+    std::wcerr << L">>> call stack bounds have been exceeded! <<<" << std::endl;
+    StackErrorUnwind();
+#ifdef _NO_HALT
+    halt = true;
+    return;
+#else
+    VmExit(1);
+#endif
   }
 
   // execute
@@ -3390,7 +3417,7 @@ StackFrame* Runtime::StackInterpreter::GetStackFrame(StackMethod* method, size_t
 {
   FramePool& pool = tl_frame_pool;
   if(pool.free_frames.empty()) {
-    pool.free_frames.reserve(CALL_STACK_SIZE);
+    pool.free_frames.reserve(FRAME_POOL_FILL * 4);
     for(size_t i = 0; i < FRAME_POOL_FILL; ++i) {
       StackFrame* frame = new StackFrame();
       frame->mem = (size_t*)calloc(FRAME_MEM_SIZE, sizeof(char));
@@ -3434,6 +3461,26 @@ void Runtime::StackInterpreter::ReleaseStackFrame(StackFrame* frame)
 #endif
 }
 
+// An uncaught error used to list every frame, and there were at most 256 of
+// them. With thousands, the listing buried the error: list the innermost
+// UNWIND_SHOW_TOP and the outermost UNWIND_SHOW_BOTTOM, and count the rest.
+static const long UNWIND_SHOW_TOP = 40;
+static const long UNWIND_SHOW_BOTTOM = 10;
+
+// whether the unwind listing shows the frame at pos when the stack holds top
+// frames; says, once, how many it leaves out
+static bool UnwindShows(long pos, long top, bool& noted)
+{
+  if(pos > top - UNWIND_SHOW_TOP || pos <= UNWIND_SHOW_BOTTOM) {
+    return true;
+  }
+  if(!noted) {
+    noted = true;
+    std::wcerr << L"  ... " << (top - UNWIND_SHOW_TOP - UNWIND_SHOW_BOTTOM) << L" frame(s) not shown ..." << std::endl;
+  }
+  return false;
+}
+
 void Runtime::StackInterpreter::StackErrorUnwind()
 {
 #ifdef _DEBUGGER
@@ -3457,7 +3504,12 @@ void Runtime::StackInterpreter::StackErrorUnwind()
           << method->GetInstruction((*stack_frame)->ip)->GetLineNumber() << std::endl;
   }
   if(pos != 0) {
+    const long top = pos;
+    bool noted = false;
     while(--pos) {
+      if(!UnwindShows(pos, top, noted)) {
+        continue;
+      }
       StackMethod* method = call_stack[pos]->method;
       if(call_stack[pos]->ip > 0 && pos > -1 &&
          method->GetInstruction(call_stack[pos]->ip)->GetLineNumber() > 0) {
@@ -3474,9 +3526,13 @@ void Runtime::StackInterpreter::StackErrorUnwind()
   std::wcerr << L"  method: pos=" << pos << L", name='"
         << MethodFormatter::Format((*stack_frame)->method->GetName()) << L"'" << std::endl;
   if(pos != 0) {
+    const long top = pos;
+    bool noted = false;
     while(--pos && pos > -1) {
-      std::wcerr << L"  method: pos=" << pos << L", name='"
-            << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << std::endl;
+      if(UnwindShows(pos, top, noted)) {
+        std::wcerr << L"  method: pos=" << pos << L", name='"
+              << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << std::endl;
+      }
     }
   }
   std::wcerr << L"  ..." << std::endl;
@@ -3551,8 +3607,12 @@ void Runtime::StackInterpreter::StackErrorUnwind(StackMethod* method)
   std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(method->GetName()) << L"'" << std::endl;
   // stops at zero: with an empty call stack (a thread's entry method compiled
   // on entry) the old test never reached it and the walk ran below the array
+  const long top = pos;
+  bool noted = false;
   while(--pos > 0) {
-    std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << std::endl;
+    if(UnwindShows(pos, top, noted)) {
+      std::wcerr << L"  method: pos=" << pos << L", name='" << MethodFormatter::Format(call_stack[pos]->method->GetName()) << L"'" << std::endl;
+    }
   }
   std::wcerr << L"  ..." << std::endl;
 }
@@ -3569,4 +3629,16 @@ void Runtime::SetJitAutoThreshold(long threshold)
 void Runtime::SetNurserySize(size_t size)
 {
   MemoryManager::SetNurserySize(size);
+}
+
+// --call-depth / OBJECK_CALL_DEPTH, validated by ParseVmOptions. Applied before
+// the first call stack is created; every thread's is reserved for it.
+static_assert(CALL_DEPTH_MIN == Runtime::CALL_DEPTH_FLAG_MIN && CALL_DEPTH_MAX == Runtime::CALL_DEPTH_FLAG_MAX,
+              "call_stack.h and vm_options.h must agree on the --call-depth range");
+
+void Runtime::SetMaxCallDepth(long depth)
+{
+  if(depth >= CALL_DEPTH_MIN && depth <= CALL_DEPTH_MAX) {
+    MaxCallDepthRef() = depth;
+  }
 }

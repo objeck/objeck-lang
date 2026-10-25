@@ -774,7 +774,6 @@ void Runtime::Debugger::ProcessRun() {
     ResolvePendingMethodBreaks();
 
     // execute
-    op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new size_t;
     (*stack_pos) = 0;
 
@@ -782,6 +781,10 @@ void Runtime::Debugger::ProcessRun() {
     long start = clock();
 #endif
     interpreter = new Runtime::StackInterpreter(cur_program, this);
+    // The operand stack is the interpreter's, reserved with its call stack and
+    // checked at each call (call_stack.h). A CALC_STACK_SIZE array of our own
+    // went unchecked, and the deeper call stack can fill one.
+    op_stack = interpreter->GetOpStack();
     // Register it the way obr does (vm.cpp). ClearProgram's drain asks whether
     // anything besides this interpreter is still registered, so leaving it out
     // made one parked debuggee thread read as "nothing left running".
@@ -3587,10 +3590,8 @@ void Runtime::Debugger::ClearProgram(bool clear_loader) {
     interpreter = nullptr;
   }
 
-  if(op_stack) {
-    delete[] op_stack;
-    op_stack = nullptr;
-  }
+  // freed with the interpreter, which owned it
+  op_stack = nullptr;
 
   if(stack_pos) {
     delete stack_pos;
@@ -3660,11 +3661,11 @@ void Runtime::Debugger::DapRun() {
     // resolve any function breakpoints queued before load
     ResolvePendingMethodBreaks();
 
-    op_stack = new size_t[CALC_STACK_SIZE];
     stack_pos = new size_t;
     (*stack_pos) = 0;
 
     interpreter = new Runtime::StackInterpreter(cur_program, this);
+    op_stack = interpreter->GetOpStack();   // see the first run above
     Runtime::StackInterpreter::AddThread(interpreter);
     interpreter->Execute(op_stack, stack_pos, 0, cur_program->GetInitializationMethod(), nullptr, false);
 

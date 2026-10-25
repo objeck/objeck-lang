@@ -2639,11 +2639,21 @@ void JitArm64::EmitNativeCallSite(long instr_id, StackInstr* instr, long instr_i
  * block, anything else past it.
  */
 void JitArm64::EmitNativeCall(long self_offset, Register entry, std::vector<long>& slow_patches, long& error_patch, long& done_patch) {
+  // X10 = the thread's CallStack (call_stack.h). The depth is compared with
+  // its committed limit, not a constant (the bridge commits more, or reports
+  // the maximum); a 4-byte long loads zero-extended, and pos is never -1 at a
+  // call. Then the native stack: below the floor, the bridge reports a full
+  // call stack. X12 is free: every live register was spilled.
   move_mem_reg(CALL_STACK_POS, SP, X10);
   load_long(0, X10, X11);
-  AddMachineCode(0xF100001F | ((uint32_t)CALL_STACK_SIZE << 10) | ((uint32_t)X11 << 5));   // cmp x11, #CALL_STACK_SIZE
+  move_mem_reg(CALL_STACK_LIMIT_OFFSET, X10, X12);
+  AddMachineCode(0xEB00001F | ((uint32_t)X12 << 16) | ((uint32_t)X11 << 5));   // cmp x11, x12
   slow_patches.push_back(code_index);
   AddMachineCode(0x5400000A);                    // b.ge slow
+  move_mem_reg(CALL_STACK_FLOOR_OFFSET, X10, X12);
+  AddMachineCode(0xEB2063FF | ((uint32_t)X12 << 16));   // cmp sp, x12 (SUBS XZR, SP, X12, UXTX)
+  slow_patches.push_back(code_index);
+  AddMachineCode(0x54000003);                    // b.lo slow
   add_sp_imm_reg(self_offset, X2);               // the arguments' end
   add_sp_imm_reg(0, X1);                         // this frame: the callee copies its stacks from here
   move_mem_reg(self_offset, SP, X0);             // self
