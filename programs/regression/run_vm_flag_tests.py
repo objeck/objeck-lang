@@ -131,10 +131,23 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     non-ASCII argument, an argument with a space and the environment. On
     Windows all four used the CRT's ANSI argv (and obn its ANSI envp, with no
     quoting for _spawnve), so each failed there.
+ 16. Non-ASCII text reaches a pipe and a console intact. obd, debugging a
+    program under the non-ASCII directory with its output piped, prints the
+    binary's path, a source line and the program's output as UTF-8 (in the
+    default narrow mode on Windows the first non-ASCII character left wcout
+    failed, and the session printed nothing more; the listing wrote UTF-8
+    through narrow cout). It also stops at a breakpoint set in a non-ASCII
+    source file name: its command scanner knew only ASCII letters, so
+    'b debogue_é.obs:4' was an unknown token on every platform. On Windows,
+    with the console on code page 437, obu's
+    messages and obd's banner read back from the screen as written (obu wrote
+    UTF-8 bytes, which the console decoded as code page 437). The console half
+    reads the screen buffer of a console it creates, so it needs a session
+    that can create one; it reports a skip when it cannot.
 
 Usage: python run_vm_flag_tests.py <bin_dir> [--unicode-only]
 
---unicode-only runs sections 14 and 15 alone: how a MinGW (MSYS2) build of the
+--unicode-only runs sections 14, 15 and 16 alone: how a MinGW (MSYS2) build of the
 tools, which CI does not build, is checked by hand.
 """
 import concurrent.futures
@@ -235,6 +248,7 @@ def main():
     if unicode_only:
         check_unicode_names(obc, obr, bin_dir, lib_dir)
         check_unicode_tools(obc, bin_dir, lib_dir)
+        check_unicode_text_out(obc, bin_dir, lib_dir)
         return finish()
 
     rc, out, err = run([obc, "-src", src, "-dest", obe], env=env, cwd=bin_dir)
@@ -431,6 +445,8 @@ def main():
 
     check_unicode_tools(obc, bin_dir, lib_dir)
 
+    check_unicode_text_out(obc, bin_dir, lib_dir)
+
     return finish()
 
 
@@ -464,6 +480,181 @@ def copy_runtime_dlls(bin_dir, dest):
 OBU_PAYLOAD = b"objeck obu verify fixture; content is irrelevant, its hash is not\n"
 OBU_PAYLOAD_NAME = "obu-verify-fixture.bin"
 OBU_FIXTURES = os.path.join(SCRIPT_DIR, "..", "..", "tools", "cicd", "fixtures", "obu_verify")
+
+
+# The fixture section 16 debugs: a non-ASCII string in its source and output
+UNI_TEXT = "texte_\u00e9_\u65e5\u672c_\U0001F642"
+DEBUG_FIXTURE = (
+    "class DebugUnicodeText {\n"
+    "  function : Main(args : String[]) ~ Nil {\n"
+    f"    text := \"{UNI_TEXT}\";\n"
+    "    text->PrintLine();\n"
+    "  }\n"
+    "}\n"
+)
+
+# Reads back the screen buffer of the console owned by process argv[1] and
+# writes it, with that console's output code page, to stdout as UTF-8. Run as
+# its own process: it must leave its own console to attach to that one.
+CONSOLE_READER = r'''
+import ctypes, sys
+from ctypes import wintypes as W
+k = ctypes.WinDLL("kernel32", use_last_error=True)
+class COORD(ctypes.Structure): _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
+class RECT(ctypes.Structure): _fields_ = [("L", ctypes.c_short), ("T", ctypes.c_short), ("R", ctypes.c_short), ("B", ctypes.c_short)]
+class INFO(ctypes.Structure): _fields_ = [("size", COORD), ("cursor", COORD), ("attr", W.WORD), ("win", RECT), ("max", COORD)]
+k.CreateFileW.restype = W.HANDLE
+k.FreeConsole()
+if not k.AttachConsole(int(sys.argv[1])):
+    sys.exit(2)
+h = k.CreateFileW("CONOUT$", 0xC0000000, 3, None, 3, 0, None)
+info = INFO()
+k.GetConsoleScreenBufferInfo(W.HANDLE(h), ctypes.byref(info))
+n = info.size.X * (info.cursor.Y + 1)
+buf = ctypes.create_unicode_buffer(n + 1)
+got = W.DWORD()
+k.ReadConsoleOutputCharacterW(W.HANDLE(h), buf, n, COORD(0, 0), ctypes.byref(got))
+cp = k.GetConsoleOutputCP()
+k.FreeConsole()
+sys.stdout.buffer.write(("%d\n" % cp).encode() + buf.value[:got.value].encode("utf-8", "surrogatepass"))
+'''
+CONSOLE_DONE = "OBJK_CONSOLE_DONE"
+
+
+def console_screen(command, env, expect=(), timeout=60):
+    """Runs 'command' in a new console whose code page is 437 and returns
+    (code page, screen text), or None when no console could be read. The
+    command is a cmd line: name its non-ASCII parts with %VARIABLES% from env,
+    which cmd expands in UTF-16 (a batch file would be read in code page 437).
+    The screen is read until it holds the done marker and every text in
+    'expect' (compared as on_screen does), up to the timeout, rather than
+    once after a fixed delay: a read can land between the process's output and
+    the console host showing it."""
+    import time
+    proc = subprocess.Popen(f'cmd.exe /d /k "chcp 437 >nul & {command} & echo {CONSOLE_DONE}"',
+                            env=env, creationflags=subprocess.CREATE_NEW_CONSOLE)
+    screen = None
+    try:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            time.sleep(0.5)
+            r = subprocess.run([sys.executable, "-c", CONSOLE_READER, str(proc.pid)], capture_output=True)
+            if r.returncode != 0:
+                continue
+            cp, _, text = r.stdout.decode("utf-8", "replace").partition("\n")
+            screen = (int(cp), text)
+            # cmd /k does not echo its command, so the marker appears once
+            # the command is done
+            if CONSOLE_DONE in text and all(on_screen(e) in on_screen(text) for e in expect):
+                break
+    finally:
+        proc.kill()
+    return screen
+
+
+def on_screen(text):
+    """'text' compared as a console screen can hold it. A character outside
+    the BMP reads back from the screen buffer either whole or as U+FFFD,
+    depending on how it was written (cmd's own echo gives U+FFFD), so both
+    sides of a comparison drop those and compare the rest. Whitespace goes
+    too: the screen is read as fixed-width rows, so a long path wraps, and a
+    wide (CJK) character that does not fit at a row's end leaves a blank cell
+    inside the text -- where depends on the length of the temp directory,
+    which differs from one runner to the next."""
+    return "".join(c for c in text if ord(c) <= 0xFFFF and c != "\ufffd" and not c.isspace() and c != "\0")
+
+
+def screen_tail(text, size=700):
+    """The end of a screen for a failure message, runs of blanks collapsed so
+    the lines above the done marker are not cut off by the padding."""
+    return re.sub(r"\s{2,}", " | ", text.strip())[-size:]
+
+
+def check_unicode_text_out(obc, bin_dir, lib_dir):
+    """16. Non-ASCII text to a pipe and to a console (see the module docstring)."""
+    obd = os.path.join(bin_dir, "obd" + EXE)
+    obu = os.path.join(bin_dir, "obu" + EXE)
+    scratch = tempfile.mkdtemp(prefix="objeck-unicode-text-")
+    try:
+        root = os.path.join(scratch, UNI_DIR)
+        os.makedirs(root)
+        env = {k: v for k, v in os.environ.items() if k != "OBJECK_LIB_PATH"}
+        env["OBJECK_LIB_PATH"] = lib_dir + os.sep
+
+        src = os.path.join(root, "debogue_é.obs")
+        obe = os.path.join(root, "debogue_é.obe")
+        with open(src, "w", encoding="utf-8", newline="\n") as f:
+            f.write(DEBUG_FIXTURE)
+        commands = os.path.join(scratch, "commands.txt")
+        with open(commands, "w", encoding="utf-8", newline="\n") as f:
+            f.write("b debogue_é.obs:4\nr\nl\nc\nq\n")
+
+        if os.path.exists(obd):
+            rc, out, err = run([obc, "-src", src, "-dest", obe, "-debug"], env=env, cwd=bin_dir)
+            if not os.path.exists(obe):
+                check("the obd fixture compiles", False, (out + err).decode("utf-8", "replace")[-300:])
+            else:
+                with open(commands, "rb") as stdin:
+                    p = subprocess.run([obd, "-bin", obe, "-src_dir", root], stdin=stdin,
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,
+                                       cwd=scratch, timeout=120)
+                text = p.stdout.decode("utf-8", "replace")
+                detail = f"rc={p.returncode} out={text[-400:]!r}"
+                check("obd prints a non-ASCII binary path to a pipe as UTF-8", obe in text, detail)
+                check("obd stops at a breakpoint set in a non-ASCII file name",
+                      "break: file='debogue_é.obs:4'" in text, detail)
+                check("obd lists a non-ASCII source line to a pipe as UTF-8",
+                      f'text := "{UNI_TEXT}"' in text, detail)
+                check("obd passes a debugged program's non-ASCII output to a pipe as UTF-8",
+                      re.search(r"^(> )?" + re.escape(UNI_TEXT) + r"\s*$", text, re.M) is not None, detail)
+        else:
+            print(f"  [SKIP] obd pipe checks: no {obd}")
+
+        if os.name != "nt":
+            return
+
+        # ---- the console, on code page 437
+        console_env = dict(env)
+        console_env["OBJK_T_ROOT"] = root
+        manifest_dir = os.path.join(root, "manifeste_ü_日本")
+        os.makedirs(manifest_dir)
+        for name in ("SHA256SUMS", "SHA256SUMS.minisig"):
+            shutil.copy2(os.path.join(OBU_FIXTURES, name), manifest_dir)
+        with open(os.path.join(manifest_dir, OBU_PAYLOAD_NAME), "wb") as f:
+            f.write(OBU_PAYLOAD)
+        console_env["OBJK_T_SUMS"] = os.path.join(manifest_dir, "SHA256SUMS")
+        console_env["OBJK_T_ARCHIVE"] = os.path.join(manifest_dir, OBU_PAYLOAD_NAME)
+
+        if os.path.exists(obu):
+            console_env["OBJK_T_OBU"] = obu
+            expected_line = "against " + console_env["OBJK_T_SUMS"]
+            screen = console_screen('"%OBJK_T_OBU%" verify "%OBJK_T_ARCHIVE%" "%OBJK_T_SUMS%" & echo OBU_EXIT=%ERRORLEVEL%',
+                                    console_env, expect=[expected_line], timeout=30)
+            if screen is None:
+                print("  [SKIP] console checks: no console could be created and read here")
+                return
+            cp, text = screen
+            check("obu's message reads back from a code page 437 console as written",
+                  cp == 437 and on_screen(expected_line) in on_screen(text),
+                  f"cp={cp} screen={screen_tail(text)!r}")
+
+        if os.path.exists(obd) and os.path.exists(obe):
+            console_env["OBJK_T_OBD"] = obd
+            console_env["OBJK_T_OBE"] = obe
+            console_env["OBJK_T_COMMANDS"] = commands
+            screen = console_screen('"%OBJK_T_OBD%" -bin "%OBJK_T_OBE%" -src_dir "%OBJK_T_ROOT%" < "%OBJK_T_COMMANDS%"',
+                                    console_env, expect=[obe, UNI_TEXT], timeout=30)
+            if screen is None:
+                print("  [SKIP] console checks: no console could be created and read here")
+                return
+            cp, text = screen
+            detail = f"cp={cp} screen={screen_tail(text)!r}"
+            check("obd's banner reads back from a code page 437 console as written",
+                  cp == 437 and on_screen(obe) in on_screen(text), detail)
+            check("a debugged program's output reads back from a code page 437 console as written",
+                  on_screen(UNI_TEXT) in on_screen(text), detail)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
 
 
 def check_unicode_tools(obc, bin_dir, lib_dir):

@@ -34,6 +34,7 @@
 #include "dap.h"
 #include "../shared/sys.h"
 #include "../shared/version.h"
+#include "../vm/vm.h"
 #include <sstream>
 
  /********************************
@@ -45,6 +46,15 @@
 // throw bad_alloc -- outside any handler, where a throw calls terminate().
 static int objeck_main(int argc, const char* argv[])
 {
+#ifndef _WIN32
+  // The debugger hosts the VM in-process, so a debugged program's output (and
+  // its bytecode's string literals) go through this process's wcout and
+  // locale -- which was never set, so under LANG=C (or unset) every non-ASCII
+  // character of a program's output reached the debugger, and a DAP editor's
+  // Debug Console, as '?'. obr sets it up the same way at startup.
+  InitUtf8Console();
+#endif
+
   std::wstring usage;
   usage += L"Usage: obd [options]\n\n";
   usage += L"Options:\n";
@@ -125,6 +135,17 @@ static int objeck_main(int argc, const char* argv[])
 
   if(argc >= 3) {
 #ifdef _WIN32
+    // Wide text as UTF-8, as obr and obi have it (and UTF-16 to a console,
+    // which the CRT writes with WriteConsoleW in this mode). In the default
+    // narrow mode, the first non-ASCII character through wcout -- the path in
+    // "loaded binary: ...", a source line, a program's output -- failed the
+    // conversion and left the stream bad, so the session printed nothing more.
+    // Here and not at the top: the DAP adapter puts stdin and stdout in binary
+    // mode for its own UTF-8 JSON, and writes narrow text to stderr.
+    _setmode(_fileno(stdin), _O_U8TEXT);
+    _setmode(_fileno(stdout), _O_U8TEXT);
+    _setmode(_fileno(stderr), _O_U8TEXT);
+
     WSADATA data;
     if(WSAStartup(MAKEWORD(2, 2), &data)) {
       std::wcerr << L"Unable to load Winsock 2.2!" << std::endl;
@@ -4226,16 +4247,11 @@ bool Runtime::SourceFile::Print(int start)
     }
     std::wcout.flush();
 
-    // Print source line content: use narrow stream on Windows for reliable
-    // Unicode console output; use wcout on POSIX to avoid cout/wcout mixing
-    // which causes buffering issues with expect-based test capture.
-#ifdef _WIN32
-    const std::string narrow_line = UnicodeToBytes(line);
-    std::cout << narrow_line << std::endl;
-    std::cout.flush();
-#else
+    // Source line content, through wcout like everything else: on Windows
+    // stdout is in _O_U8TEXT (see objeck_main), where narrow output is not
+    // allowed and wide output reaches a console or a pipe correctly. Mixing
+    // cout and wcout also caused buffering issues with expect-based capture.
     std::wcout << line << std::endl;
-#endif
   }
 
   std::wcout.flush();

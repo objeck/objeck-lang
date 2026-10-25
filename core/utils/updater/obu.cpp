@@ -2271,12 +2271,95 @@ static int ObuMain(int argc, const char* argv[])
 }
 
 #ifdef _WIN32
+/****************************
+* Console output. obu's text is UTF-8, and a console decodes narrow output in
+* its own code page (437, 850, 1252, ...), so a non-ASCII path in a message read
+* as mojibake there. A standard stream that is a console gets this buffer,
+* which hands its text to WriteConsoleW as UTF-16, a line (or a flush) at a
+* time; one redirected to a pipe or a file keeps the CRT's and gets the UTF-8
+* bytes, which is what a program reading it expects.
+****************************/
+class ConsoleTextBuffer : public std::streambuf {
+  HANDLE console;
+  std::string pending;
+
+  // Writes everything up to the last complete UTF-8 sequence; a sequence the
+  // stream has only partly delivered waits for the rest.
+  void Drain() {
+    size_t end = pending.size();
+    size_t lead = end;
+    while(lead > 0 && end - lead < 3 && (static_cast<unsigned char>(pending[lead - 1]) & 0xC0) == 0x80) {
+      --lead;
+    }
+    if(lead > 0) {
+      const unsigned char first = static_cast<unsigned char>(pending[lead - 1]);
+      const size_t length = first >= 0xF0 ? 4 : first >= 0xE0 ? 3 : first >= 0xC0 ? 2 : 1;
+      if(length > 1 && end - (lead - 1) < length) {
+        end = lead - 1;
+      }
+    }
+    if(end == 0) {
+      return;
+    }
+
+    const std::wstring wide = WideFromUtf8(pending.substr(0, end));
+    DWORD written = 0;
+    if(!WriteConsoleW(console, wide.data(), static_cast<DWORD>(wide.size()), &written, nullptr)) {
+      // not writable as a console after all: the UTF-8 bytes, as to a pipe
+      WriteFile(console, pending.data(), static_cast<DWORD>(end), &written, nullptr);
+    }
+    pending.erase(0, end);
+  }
+
+protected:
+  int_type overflow(int_type ch) override {
+    if(!traits_type::eq_int_type(ch, traits_type::eof())) {
+      pending += traits_type::to_char_type(ch);
+      if(ch == '\n') {
+        Drain();
+      }
+    }
+    return traits_type::not_eof(ch);
+  }
+
+  std::streamsize xsputn(const char* text, std::streamsize count) override {
+    pending.append(text, static_cast<size_t>(count));
+    if(std::memchr(text, '\n', static_cast<size_t>(count))) {
+      Drain();
+    }
+    return count;
+  }
+
+  int sync() override {
+    Drain();
+    return 0;
+  }
+
+public:
+  explicit ConsoleTextBuffer(HANDLE handle) : console(handle) {}
+};
+
+static void UseConsoleText(std::ostream& stream, DWORD which)
+{
+  const HANDLE handle = GetStdHandle(which);
+  DWORD mode = 0;
+  if(handle && handle != INVALID_HANDLE_VALUE && GetConsoleMode(handle, &mode)) {
+    stream.flush();
+    // never freed: the standard streams flush once more after every static
+    // object is gone, so the buffer has to outlive them
+    stream.rdbuf(new ConsoleTextBuffer(handle));
+  }
+}
+
 // UTF-16 arguments, converted to UTF-8 once (Utf8Args, shared/utf8_args.h):
 // the narrow argv the CRT hands main is in the ANSI code page, so a file named
 // outside it never reached 'obu verify' intact. MinGW builds enter here too;
 // the makefile links with -municode there.
 int wmain(int wargc, wchar_t* wargv[])
 {
+  UseConsoleText(std::cout, STD_OUTPUT_HANDLE);
+  UseConsoleText(std::cerr, STD_ERROR_HANDLE);
+
   Utf8Args utf8_args(wargc, wargv);
   return ObuMain(utf8_args.Count(), utf8_args.Values());
 }

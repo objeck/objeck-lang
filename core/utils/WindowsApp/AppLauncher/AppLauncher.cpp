@@ -1,6 +1,7 @@
 // Modernized AppLauncher.cpp with Windows 11 Look & Feel Enhancements
 #include "framework.h"
 #include "AppLauncher.h"
+#include "set_obj_env.h"
 
 #include <gdiplus.h>
 #include <commctrl.h>
@@ -46,7 +47,6 @@ LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK VersionProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 VOID CALLBACK VersionCheckProc(HWND hwnd, UINT message, UINT idTimer, DWORD dwTime);
 BOOL InitEnvironment();
-BOOL WriteLineToFile(HANDLE file, std::wstring text);
 int GetLatestVersion();
 int GetLocalVersion();
 ULONG_PTR gdiToken;
@@ -508,64 +508,20 @@ BOOL InitEnvironment()
     }
   }
 
-  // create cmd file
-  std::wstring programCmdFile = programDataPath + L"\\SetObjEnv.cmd";
-  HANDLE cmdFile = CreateFile(programCmdFile.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
-                              nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-  if(cmdFile == INVALID_HANDLE_VALUE) {
-    return FALSE;
-  }
-
-  // write to file
-  std::wstring pathText;
-  pathText = L"@echo off\r\n@echo =========================================\r\n@echo Objeck Command Prompt (v";
-  pathText += VERSION_STRING;
-
-#if defined(_WIN64) && defined(_WIN32) && defined(_M_ARM64)
-  pathText += L", arm64 Windows)";
-#elif defined(_WIN64) && defined(_WIN32)
-  pathText += L", x86_64 Windows)";
-#elif _WIN32
-  pathText += L", x86 Windows)";
-#elif _OSX
-#ifdef _ARM64
-  pathText += L", arm64 macOS)";
+  // the version line the prompt prints
+  std::wstring banner = L"Objeck Command Prompt (v";
+  banner += VERSION_STRING;
+#if defined(_WIN64) && defined(_M_ARM64)
+  banner += L", arm64 Windows)";
+#elif defined(_WIN64)
+  banner += L", x86_64 Windows)";
 #else
-  pathText += L", x86_64 macOS)";
-#endif
-#elif _X64
-  pathText += L", x86_64 Linux)";
-#elif _ARM32
-  pathText += L", ARMv7 Linux)";
-#else
-  pathText += L", x86 Linux)";
+  banner += L", x86 Windows)";
 #endif
 
-  pathText += L"\r\n@echo Copyright(c) 2026, Randy Hollines\r\n@echo =========================================";
-  WriteLineToFile(cmdFile, pathText);
-
-  // SDL2 ships its DLLs in bin now, beside the tools that load them, which
-  // is where Windows resolves a loaded library's imports from. lib\sdl holds
-  // only the bundled font, so it no longer belongs on PATH.
-  pathText = L"set PATH=%PATH%;" + applicationPath + L"\\..\\bin";
-  WriteLineToFile(cmdFile, pathText);
-
-  pathText = L"set OBJECK_LIB_PATH=" + applicationPath + L"\\..\\lib";
-  WriteLineToFile(cmdFile, pathText);
-
-  pathText = L"title Objeck Prompt";
-  WriteLineToFile(cmdFile, pathText);
-
-  pathText = L"cd %HOMEDRIVE%\\%HOMEPATH%\\Documents";
-  WriteLineToFile(cmdFile, pathText);
-
-  pathText = L"%HOMEDRIVE%";
-  WriteLineToFile(cmdFile, pathText);
-
-  // close file
-  CloseHandle(cmdFile);
-
-  return TRUE;
+  // create cmd file (set_obj_env.h: written as UTF-8, read by cmd under
+  // chcp 65001, so a non-ASCII install directory reaches PATH intact)
+  return WriteSetObjEnv(programDataPath + L"\\SetObjEnv.cmd", banner, applicationPath) ? TRUE : FALSE;
 }
 
 int GetLatestVersion()
@@ -628,13 +584,4 @@ int GetLocalVersion()
   CloseHandle(hFile);
 
   return atoi(buffer);
-}
-
-BOOL WriteLineToFile(HANDLE file, std::wstring text)
-{
-  text += L"\r\n";
-  DWORD writtenBytes;
-  std::string asciiText = UnicodeToBytes(text);
-  WriteFile(file, asciiText.c_str(), (DWORD)asciiText.size(), &writtenBytes, nullptr);
-  return writtenBytes == (DWORD)asciiText.size();
 }

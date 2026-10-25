@@ -1170,6 +1170,15 @@ jobs:
         echo "Verifying signature handling with $OBU_BIN"
         "$PY" tools/cicd/test_obu_verify.py "$OBU_BIN"
 
+    # The launcher's Command Prompt script (SetObjEnv.cmd) for an install under
+    # a non-ASCII directory, run in a new code page 437 console: cmd reads a
+    # batch file in the console's code page, and the script used to be plain
+    # UTF-8, so such an install set PATH and OBJECK_LIB_PATH to mojibake.
+    - name: Launcher command-prompt script (Windows)
+      if: matrix.platform == 'windows-x64'
+      shell: cmd
+      run: python core\utils\WindowsApp\test_set_obj_env.py
+
     # cov_scan.sh's large-submission flow, against a mock Coverity Scan. Above
     # 500 MB the single-shot form POST stops working and the script switches to
     # initialize -> PUT -> enqueue; the capture is at about a third of that, so

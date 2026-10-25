@@ -60,4 +60,10 @@ void SetEnv();
 // setlocale(LC_ALL, "") returned (NULL included). Never throws: a name the C++
 // library cannot construct falls back to one it can (see vm.cpp).
 std::locale ConsoleLocale(const char* name);
+
+// Puts the process in a UTF-8 locale and gives std::wcout the converter that
+// writes wide characters as UTF-8. obr, and every tool that hosts the VM (the
+// debugger), calls it first: with LANG unset the locale is "C", where a
+// program's non-ASCII literal can neither be decoded nor printed.
+void InitUtf8Console();
 #endif
