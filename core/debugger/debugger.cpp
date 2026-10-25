@@ -34,6 +34,7 @@
 #include "dap.h"
 #include "../shared/sys.h"
 #include "../shared/version.h"
+#include "../vm/vm.h"
 #include <sstream>
 
  /********************************
@@ -45,6 +46,15 @@
 // throw bad_alloc -- outside any handler, where a throw calls terminate().
 static int objeck_main(int argc, const char* argv[])
 {
+#ifndef _WIN32
+  // The debugger hosts the VM in-process, so a debugged program's output (and
+  // its bytecode's string literals) go through this process's wcout and
+  // locale -- which was never set, so under LANG=C (or unset) every non-ASCII
+  // character of a program's output reached the debugger, and a DAP editor's
+  // Debug Console, as '?'. obr sets it up the same way at startup.
+  InitUtf8Console();
+#endif
+
   std::wstring usage;
   usage += L"Usage: obd [options]\n\n";
   usage += L"Options:\n";
