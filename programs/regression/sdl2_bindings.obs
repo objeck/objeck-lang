@@ -341,7 +341,11 @@ class Sdl2Bindings {
 			"  note: no temp directory, so PNG export is not exercised"->PrintLine();
 		}
 		else {
-			path := "{$directory}/objeck_sdl2_bindings.png";
+			# named for this process: the temporary folder is shared with every other
+			# run on the machine, and one run must not delete the PNG another is
+			# checking (seen when two suites ran at once)
+			pid := System.Runtime->GetProcessId();
+			path := "{$directory}/objeck_sdl2_bindings_{$pid}.png";
 			File->Delete(path);
 			Check("Renderer->SavePNG writes a file", renderer->SavePNG(path) & File->Exists(path));
 
