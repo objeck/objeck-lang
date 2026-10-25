@@ -13109,12 +13109,12 @@ bundle System.IO.Net {
 		port of 0, the one the system chose at New. A server bound to port 0
 		takes a free port, so a program (a test, say) needs no fixed number
 		and no two programs can collide; the port is read back here.
+		@return bound port, or 0 if the bind failed
 
 		```
 		server := TCPSocketServer->New(0);
 		port := server->GetPort(); # the port the system chose
 		```
-		@return bound port, or 0 if the bind failed
 		~#
 		method : public : GetPort() ~ Int {
 			return @port;

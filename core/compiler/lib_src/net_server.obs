@@ -207,6 +207,7 @@ bundle Web.HTTP.Server {
 		bound to a port the system chose; once Serve has it listening this
 		answers that port, so a program that starts the server in a thread can
 		poll here instead of picking a port number.
+		@return bound port, or 0 if no server has been started (or a server on port 0 is not yet listening)
 
 		```
 		# serve on a port the system chooses, then find out which
@@ -222,7 +223,6 @@ bundle Web.HTTP.Server {
 		};
 		port := Web.HTTP.Server.WebServer->GetBoundPort();
 		```
-		@return bound port, or 0 if no server has been started (or a server on port 0 is not yet listening)
 		~#
 		function : GetBoundPort() ~ Int {
 			return @bound_port;
