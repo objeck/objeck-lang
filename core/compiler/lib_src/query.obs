@@ -1343,43 +1343,53 @@ bundle Query.Structured {
 			@zone_stale[row / GroupRows()] := true;
 		}
 
+		# A query recomputes a stale group's bounds, and several threads may query at once (see
+		# ColumnIndex->Freshen): one recomputes under the rebuild lock, and the bounds are
+		# written before the group is marked fresh, so a reader never sees half of them.
 		method : FreshenZone(group : Int) ~ Nil {
 			if(@zone_stale[group]) {
-				RecomputeZone(group);
+				lock := RebuildLock->Get();
+				critical(lock) {
+					if(@zone_stale[group]) {
+						RecomputeZone(group);
+					};
+				};
 			};
 		}
 
 		method : RecomputeZone(group : Int) ~ Nil {
-			@zone_min[group] := 1.0;
-			@zone_max[group] := 0.0;
-			@zone_stale[group] := false;
-			if(<>HasZones()) {
-				return;
-			};
+			# no values: the minimum above the maximum
+			low := 1.0;
+			high := 0.0;
+			if(HasZones()) {
+				start := group * GroupRows();
+				finish := start + GroupRows();
+				if(finish > @size) {
+					finish := @size;
+				};
 
-			start := group * GroupRows();
-			finish := start + GroupRows();
-			if(finish > @size) {
-				finish := @size;
-			};
-
-			found := false;
-			for(row := start; row < finish; row += 1;) {
-				value := GetFloat(row);
-				if(<>IsNull(row) & value = value) {
-					if(<>found) {
-						@zone_min[group] := value;
-						@zone_max[group] := value;
-						found := true;
-					}
-					else if(value < @zone_min[group]) {
-						@zone_min[group] := value;
-					}
-					else if(value > @zone_max[group]) {
-						@zone_max[group] := value;
+				found := false;
+				for(row := start; row < finish; row += 1;) {
+					value := GetFloat(row);
+					if(<>IsNull(row) & value = value) {
+						if(<>found) {
+							low := value;
+							high := value;
+							found := true;
+						}
+						else if(value < low) {
+							low := value;
+						}
+						else if(value > high) {
+							high := value;
+						};
 					};
 				};
 			};
+
+			@zone_min[group] := low;
+			@zone_max[group] := high;
+			@zone_stale[group] := false;
 		}
 
 		method : RecomputeAllZones() ~ Nil {
@@ -1398,6 +1408,24 @@ bundle Query.Structured {
 		NONE,
 		HASH,
 		SORTED
+	}
+
+	# The lock that state rebuilt by a query is rebuilt under: a stale index, a stale zone map,
+	# and a table's plan cache (docs/QUERY_DESIGN.md, "Concurrent readers"). One per process,
+	# held in a class variable, because a table must not hold one: the generic Serializer would
+	# copy its native handle. It is made when the first table is, before there is a table to
+	# share between threads. Only the slow paths take it: a fresh index or zone map is read
+	# without it.
+	class : private : RebuildLock {
+		@lock : static : System.Concurrency.ThreadMutex;
+
+		function : Get() ~ System.Concurrency.ThreadMutex {
+			if(@lock = Nil) {
+				@lock := System.Concurrency.ThreadMutex->New("query_rebuild");
+			};
+
+			return @lock;
+		}
 	}
 
 	# An index on one column (docs/QUERY_DESIGN.md, section 5). The column holds it, so every
@@ -1487,18 +1515,29 @@ bundle Query.Structured {
 				return true;
 			};
 
-			# built aside and then put in place
-			if(@kind = IndexKind->HASH) {
-				@hash := BuildHash(column, deleted);
-				@sorted := Nil;
-			}
-			else {
-				@sorted := BuildSorted(column, deleted);
-				@hash := Nil;
+			# Several threads may query a shared table right after a write, and each finds the
+			# index stale. One rebuilds it, under the library's rebuild lock; the others wait
+			# there and then find it fresh. The new state is built aside and put in place
+			# before '@stale' is cleared, so a thread that checks without the lock sees either
+			# a stale index (and waits) or a whole one.
+			lock := RebuildLock->Get();
+			critical(lock) {
+				if(@stale | @type <> type | @encoded <> encoded) {
+					if(@kind = IndexKind->HASH) {
+						hash := BuildHash(column, deleted);
+						@hash := hash;
+						@sorted := Nil;
+					}
+					else {
+						sorted := BuildSorted(column, deleted);
+						@sorted := sorted;
+						@hash := Nil;
+					};
+					@type := type;
+					@encoded := encoded;
+					@stale := false;
+				};
 			};
-			@type := type;
-			@encoded := encoded;
-			@stale := false;
 
 			return true;
 		}
@@ -2523,6 +2562,8 @@ results->ToString()->PrintLine();
 		}
 
 		method : Init(name : String, column_names : String[], types : ColumnType[], declared : Bool) ~ Nil {
+			# made before any table exists to share, so threads never race to make it
+			RebuildLock->Get();
 			@name := name;
 			@column_map := Map->New()<String, IntRef>;
 			@column_names := String->New[column_names->Size() + 1];
@@ -2939,11 +2980,16 @@ results->ToString()->PrintLine();
 				return Nil;
 			};
 
-			if(@plans = Nil) {
-				@plans := Map->New()<String, Plan>;
+			# threads querying one table share its cache, a Map, which is read and written
+			# under the rebuild lock; parsing, the slow part, is not
+			lock := RebuildLock->Get();
+			plan : Plan := Nil;
+			critical(lock) {
+				if(@plans <> Nil) {
+					plan := @plans->Find(statement);
+				};
 			};
 
-			plan := @plans->Find(statement);
 			if(plan = Nil) {
 				holder := StringHolder->New();
 				plan := Plan->Parse(statement, holder);
@@ -2952,10 +2998,12 @@ results->ToString()->PrintLine();
 					return Nil;
 				};
 
-				if(@plans->Size() >= 64) {
-					@plans := Map->New()<String, Plan>;
+				critical(lock) {
+					if(@plans = Nil | @plans->Size() >= 64) {
+						@plans := Map->New()<String, Plan>;
+					};
+					@plans->Insert(statement, plan);
 				};
-				@plans->Insert(statement, plan);
 			};
 
 			return plan;

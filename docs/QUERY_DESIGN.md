@@ -835,8 +835,8 @@ design above. Each phase adds its notes here.
   and a durable table's log replays before any exists. Query results and other copies have
   none. The generic `Serializer` carries them with the table (they hold only arrays and an
   `IntMap`, and string hashes are computed from the text, so they stay valid).
-- A lazy rebuild writes the index, so a table shared between threads must not be queried
-  concurrently right after a change; create the indexes, or run one query, first.
+- A lazy rebuild writes the index; several threads may query a table at once, including right
+  after a change, as "Concurrent readers" below describes.
 - Measured at 1,000,000 rows (`perf-results/libs/query_index_bench.obs`, Windows x64,
   `-opt s3`), per query, scan against index: equality on an Int with one row per value
   73 ms against 0.02 ms; equality on text with 1,000 rows per value 47 ms against 0.7 ms; a
@@ -1023,6 +1023,46 @@ no way to bound how far deflate or gzip data inflates (phase 7: two new traps), 
 that could only be read trimmed (phase 7: `GetDecodedText`). Also in
 phase 7: the label merging at `-opt s2`/`s3` could give a merged label the id of another label
 in a linked library method, so adding classes to `query.obl` made a query loop forever.
+
+## Concurrent readers
+
+**The contract.** One thread writes a table, or several threads read it, never both at once:
+writes are not locked, and a program that mixes them must order them itself (as `TableServer`
+does with its mutex). Within that contract, any number of threads may query one table at the
+same time, including the first queries after a write, and every answer is the answer a scan
+gives on one thread. A `Catalog` stays per thread: its file cache and plan cache are not
+shared. `Table->GetError` reports the last error of any thread's query on the table.
+
+**What a read writes.** Three things a query may rebuild on a table it does not otherwise
+change, and each was a defect under concurrent readers:
+
+| State | Made stale by | Defect before |
+|---|---|---|
+| A sorted index (and a hash index after a whole-column rewrite) | a cell write; Compact, promotion and the other whole-column rewrites | two threads rebuilt it at once, each publishing its own copy; harmless only while the fields happen to be seen in program order |
+| A row group's zone map | a cell write that replaces a value | the bounds were reset to "no values" and marked fresh *before* being recomputed, so a reader arriving meanwhile skipped the group and lost its rows (wrong answers, reproduced) |
+| A table's plan cache (`Table->Query`, `Execute`, `Prepare`) | a statement not seen before | every thread that missed inserted into one `Map` at once, corrupting its tree: a crash or a query that never returns (reproduced) |
+
+**The fix: one rebuild lock, taken only on the slow path.** A `ThreadMutex` held in a class
+variable (`RebuildLock`), one per process. It cannot be a field of `Table`, `Column` or the
+index: the generic `Serializer` would copy its native handle (section 9 keeps every field
+serializable). It is created by the first `Table` constructor, before any table exists to be
+shared, so threads never race to create it.
+
+- An index or zone map is checked without the lock. When stale, the thread takes the lock,
+  checks again (another thread may have rebuilt it meanwhile), and rebuilds: the new state is
+  built aside in locals, stored in its fields, and marked fresh last. A reader without the lock
+  sees either a stale flag (and waits for the lock) or a whole state.
+- The plan cache is read and written under the lock; parsing a missed statement happens
+  outside it, so two threads may parse the same text and the later insert wins (plans are
+  immutable after parsing, so either serves).
+- One lock for all tables keeps the cost of a fresh read at zero and is held only while
+  something is rebuilt; a thread rebuilding a large sorted index delays only other rebuilds.
+
+**The test.** `query_index_concurrent` writes to a shared table, then starts four threads that
+meet at a barrier before each query (ranges, equality, ORDER BY and Min/Max through the
+indexes, ranges that scan with zone maps, and SQL through the plan cache) and compares every
+answer with one an unindexed twin gave on one thread. Before the fix it failed in every mode:
+short answers from skipped groups, a Nil dereference, or a hang in the plan cache's `Map`.
 
 ## Open questions
 

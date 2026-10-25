@@ -1,0 +1,248 @@
+# EXTRA_LIBS: net,regex,csv,misc,query,concurrent
+#~
+Query.Structured: one table queried from several threads right after a write
+(docs/QUERY_DESIGN.md, phase 6 "Concurrent readers").
+
+A write leaves a sorted index stale, a hash index stale after a Compact, and the zone map of a
+changed row group stale; the next query rebuilds them. Each round below writes to a shared
+table, then starts four threads that query it at once: ranges served by sorted indexes,
+equality served by a hash index, ORDER BY served by a sorted index, Min/Max read from a
+sorted index, and the same through SQL (Table->Query, whose plan cache all four share). Every
+answer must equal the answer a scan of an unindexed twin gave before the threads started.
+
+Before the fix, a zone map was recomputed in place: a reader that came in while another
+thread was recomputing saw the group as empty and skipped its rows, so ranges came back short;
+two threads could rebuild the same index at once; and Table->Query's plan cache, a Map, was
+written by every thread that missed in it.
+~#
+use Query.Structured, System.Concurrency, Collection;
+
+class Expected {
+	@sqls : String[];
+	@answers : String[];
+
+	New(sqls : String[], answers : String[]) {
+		@sqls := sqls;
+		@answers := answers;
+	}
+
+	method : public : GetSqls() ~ String[] {
+		return @sqls;
+	}
+
+	method : public : GetAnswers() ~ String[] {
+		return @answers;
+	}
+}
+
+class Reader from Thread {
+	@table : Table;
+	@expected : Expected;
+	@id : Int;
+	@start : Int;
+	@barrier : Barrier;
+	@failures : Int;
+	@first : String;
+
+	New(table : Table, expected : Expected, id : Int, start : Int, barrier : Barrier) {
+		Parent("reader");
+		@table := table;
+		@expected := expected;
+		@id := id;
+		@start := start;
+		@barrier := barrier;
+	}
+
+	method : public : GetFailures() ~ Int {
+		return @failures;
+	}
+
+	method : public : GetFirst() ~ String {
+		return @first;
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		sqls := @expected->GetSqls();
+		answers := @expected->GetAnswers();
+		count := sqls->Size();
+		# every thread runs the queries in the same order, so they reach each stale index and
+		# zone map together; the order turns each round, so each kind of query goes first
+		each(n : count) {
+			q := (n + @start) % count;
+			# all threads start each query at once
+			@barrier->Await();
+			got := QueryIndexConcurrent->Answer(@table, sqls[q]);
+			if(<>got->Equals(answers[q])) {
+				@failures += 1;
+				if(@first = Nil) {
+					@first := "thread {$@id}, query {$q} '{$(sqls[q])}'";
+				};
+			};
+		};
+	}
+}
+
+class QueryIndexConcurrent {
+	function : Lcg(seed : IntRef) ~ Int {
+		seed->Set((seed->Get() * 6364136223846793005 + 1442695040888963407) and 0x7fffffffffffffff);
+		return (seed->Get() >> 17) % 1000000;
+	}
+
+	# one query's answer as text: rows (keys in order), or a number
+	function : Answer(table : Table, spec : String) ~ String {
+		parts := spec->Split("|");
+		kind := parts[0];
+		if(kind->Equals("min")) {
+			return table->Min(parts[1])->ToString();
+		}
+		else if(kind->Equals("max")) {
+			return table->Max(parts[1])->ToString();
+		}
+		else if(kind->Equals("sql")) {
+			rs := table->Query(parts[1]);
+			if(rs = Nil) {
+				return "<error>";
+			};
+			return rs->ToString();
+		}
+		else if(kind->Equals("range")) {
+			view := table->Where(Col->Of(parts[1])->Between(parts[2]->ToInt(), parts[3]->ToInt()));
+			return Keys(view);
+		}
+		else if(kind->Equals("frange")) {
+			view := table->Where(Col->Of(parts[1])->Gt(parts[2]->ToFloat()));
+			return Keys(view);
+		}
+		else if(kind->Equals("eq")) {
+			view := table->Where(Col->Of(parts[1])->Eq(parts[2]));
+			return Keys(view);
+		}
+		else if(kind->Equals("order")) {
+			view := table->OrderBy(parts[1])->Limit(parts[2]->ToInt());
+			return Keys(view);
+		};
+
+		return "<unknown>";
+	}
+
+	function : Keys(view : View) ~ String {
+		if(view = Nil) {
+			return "<nil>";
+		};
+
+		out := "";
+		each(i : view->Count()) {
+			out += view->Get(i)->GetKey();
+			out += ",";
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		rows := 140000;
+		rounds := 24;
+		threads := 4;
+		if(args->Size() > 0) {
+			rounds := args[0]->ToInt();
+		};
+
+		shared := Table->New("t", ["v", "x", "g", "y"]);
+		twin := Table->New("t", ["v", "x", "g", "y"]);
+		seed := IntRef->New(42);
+		each(i : rows) {
+			v := Lcg(seed);
+			x := Lcg(seed)->As(Float) / 1000.0;
+			g := "g{$(Lcg(seed) % 50)}";
+			each(t : 2) {
+				r := t = 0 ? shared->Insert() : twin->Insert();
+				r->Set("v", IntRef->New(v));
+				r->Set("x", FloatRef->New(x));
+				r->Set("g", g);
+				r->Set("y", IntRef->New(v % 1000));
+			};
+		};
+		shared->CreateIndex("v", IndexKind->SORTED);
+		shared->CreateIndex("x", IndexKind->SORTED);
+		shared->CreateIndex("g", IndexKind->HASH);
+
+		failures := 0;
+		checks := 0;
+		first : String := Nil;
+		each(round : rounds) {
+			# writes: cells in every row group (each replaces a value, so the group's zone map
+			# goes stale and so do the sorted indexes); every third round a delete and Compact,
+			# which leaves the hash index stale as well
+			each(w : 40) {
+				pk := Lcg(seed) % rows;
+				v := Lcg(seed);
+				x := Lcg(seed)->As(Float) / 1000.0;
+				each(t : 2) {
+					table := t = 0 ? shared : twin;
+					row := table->Get(pk);
+					if(row <> Nil) {
+						row->Set("v", IntRef->New(v));
+						row->Set("x", FloatRef->New(x));
+						row->Set("y", IntRef->New(v % 1000));
+					};
+				};
+			};
+			if(round % 3 = 2) {
+				pk := Lcg(seed) % rows;
+				shared->Delete(pk);
+				twin->Delete(pk);
+				shared->Compact();
+				twin->Compact();
+			};
+
+			low := Lcg(seed);
+			sqls := String->New[12];
+			sqls[0] := "range|v|{$low}|{$(low + 30000)}";
+			sqls[1] := "frange|x|{$(Lcg(seed)->As(Float) / 1000.0 + 960.0)}";
+			sqls[2] := "eq|g|g{$(Lcg(seed) % 50)}";
+			sqls[3] := "order|v|25";
+			sqls[4] := "min|v";
+			sqls[5] := "max|x";
+			sqls[6] := "sql|select pk, v from t where v >= {$low} and v < {$(low + 20000)} order by v";
+			sqls[7] := "sql|select pk, g from t where g = 'g7' and x > 900.0";
+			sqls[8] := "order|x|25";
+			# y has no index: a scan, which reads the zone maps
+			sqls[9] := "range|y|{$(low % 1000)}|{$(low % 1000 + 3)}";
+			sqls[10] := "sql|select pk, y from t where y >= 990";
+			sqls[11] := "range|y|{$(low % 997)}|{$(low % 997)}";
+
+			# the answers, from a scan of the unindexed twin, on this thread alone
+			answers := String->New[sqls->Size()];
+			each(q : sqls) {
+				answers[q] := Answer(twin, sqls[q]);
+			};
+
+			expected := Expected->New(sqls, answers);
+			barrier := Barrier->New(threads);
+			readers := Reader->New[threads];
+			each(t : threads) {
+				readers[t] := Reader->New(shared, expected, t, round, barrier);
+			};
+			each(t : threads) {
+				readers[t]->Execute(Nil);
+			};
+			each(t : threads) {
+				readers[t]->Join();
+			};
+			each(t : threads) {
+				checks += sqls->Size();
+				failures += readers[t]->GetFailures();
+				if(first = Nil & readers[t]->GetFirst() <> Nil) {
+					first := "round {$round}, {$(readers[t]->GetFirst())}";
+				};
+			};
+		};
+
+		if(failures = 0) {
+			"PASS: query_index_concurrent ({$checks} concurrent answers equal a scan's over {$rounds} rounds)"->PrintLine();
+		}
+		else {
+			"FAIL: query_index_concurrent: {$failures} of {$checks} concurrent answers differ from a scan's; first: {$first}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
