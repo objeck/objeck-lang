@@ -6,10 +6,33 @@ the main thread or in a spawned one, then print "reached <depth> of <max>",
 <max> being runtime.call.depth_max. The script runs it past and short of a
 --call-depth it sets, and checks the diagnostic and the exit status.
 
+'hold <depth>': every one of <depth> frames holds an object in a local across
+the deeper call, and the deepest allocates enough to force collections while
+all of them are live; each frame then checks its object on the way out. The
+script runs it with a small nursery and the heap verifier, so the collector
+marks and relocates through thousands of frames (256 at most before).
+
 With none, as the regression runner runs it: 5,000 frames on each thread, which
-the old 256-frame call stack refused.
+the old 256-frame call stack refused. (It allocates nothing, so the nightly run
+with a forced tiny heap threshold stays fast: with live data past that
+threshold every allocation collects.)
 ~#
 use System.Concurrency;
+
+class Held {
+	@value : Int;
+	@pad : Int[];
+
+	New(value : Int) {
+		@value := value;
+		@pad := Int->New[4];
+		@pad[0] := value;
+	}
+
+	method : public : Intact(value : Int) ~ Bool {
+		return @value = value & @pad[0] = value;
+	}
+}
 
 class DepthThread from Thread {
 	@depth : Int;
@@ -39,6 +62,26 @@ class VmCallDepthLimit {
 		return Down(n - 1) + 1;
 	}
 
+	# frames holding objects across collections; the count of intact ones
+	function : Hold(n : Int) ~ Int {
+		held := Held->New(n);
+		if(n <= 0) {
+			for(i := 0; i < 50000; i += 1;) {
+				garbage := Held->New(i);
+			};
+			if(held->Intact(n)) {
+				return 1;
+			};
+			return 0;
+		};
+
+		intact := Hold(n - 1);
+		if(held->Intact(n)) {
+			intact += 1;
+		};
+		return intact;
+	}
+
 	function : InThread(depth : Int) ~ Int {
 		t := DepthThread->New(depth);
 		t->Execute(Nil);
@@ -48,6 +91,14 @@ class VmCallDepthLimit {
 
 	function : Main(args : String[]) ~ Nil {
 		max := Runtime->GetProperty("runtime.call.depth_max");
+		if(args->Size() > 1 & args[0]->Equals("hold")) {
+			depth := args[1]->ToInt();
+			intact := Hold(depth);
+			minor := Runtime->GetProperty("runtime.gc.minor");
+			"held {$intact} of {$depth} intact after {$minor} minor collection(s)"->PrintLine();
+			return;
+		};
+
 		if(args->Size() > 0) {
 			depth := args[0]->ToInt();
 			reached := 0;

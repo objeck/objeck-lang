@@ -158,7 +158,11 @@ Usage: python run_vm_flag_tests.py <bin_dir>
     (20,000) with the same line and status 1; the listing names the innermost
     and outermost frames and counts the rest rather than printing 20,000
     lines. --call-depth=100000 lets a spawned thread recurse 60,000 frames,
-    compiled or not: its native stack is sized for the larger maximum. A
+    compiled or not: its native stack is sized for the larger maximum. And
+    the collector works through a deep stack: with --nursery=256k and the
+    heap verifier on, 10,000 frames each hold an object across dozens of
+    minor collections and every object is intact afterwards, in all three
+    modes. A
     v2026.10.1 obr fails all of this: its call stack was a fixed 256 frames,
     and it does not know the flag.
 
@@ -1040,6 +1044,16 @@ def check_call_depth(obc, obr, env, bin_dir):
     rc, out, err = run([obr, "--jit=off", dest, "16000"], env=env, cwd=bin_dir)
     check("the default maximum holds a 16,000-frame interpreted recursion",
           rc == 0 and b"reached 16000 of 16384" in out, f"rc={rc} out={out[-120:]!r} stderr={err[-300:]!r}")
+
+    # the collector marks and relocates what 10,000 frames hold
+    verify_env = dict(env)
+    verify_env["OBJECK_GC_VERIFY"] = "1"
+    for label, flags in modes:
+        rc, out, err = run([obr, "--nursery=256k"] + flags + [dest, "hold", "10000"], env=verify_env, cwd=bin_dir)
+        m = re.search(rb"held (\d+) of 10000 intact after (\d+) minor", out)
+        check(f"10,000 frames holding objects survive minor collections under the heap verifier ({label})",
+              rc == 0 and m is not None and m.group(1) == b"10001" and int(m.group(2)) > 0,
+              f"rc={rc} out={out[-160:]!r} stderr={err[-300:]!r}")
 
     # a larger maximum: a spawned thread's native stack is sized for it
     for label, flags in modes:

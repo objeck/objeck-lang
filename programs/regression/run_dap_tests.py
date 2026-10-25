@@ -178,6 +178,26 @@ def run_core_scenarios(obd, src_obs, obe, source_dir, bin_dir):
     fid = frames[0]["id"] if frames else 0
     log_result("stackTrace frames", len(frames) >= 1 and frames[0]["line"] == 51)
 
+    # A window of the stack: startFrame/levels page it, and totalFrames counts
+    # every frame. A call stack can be 16384 frames deep now, and a client asks
+    # for the top 20 first; the adapter used to ignore both and send them all.
+    total = (stk or {}).get("body", {}).get("totalFrames")
+    log_result("stackTrace totalFrames counts every frame", total == len(frames) and total >= 4,
+               f"totalFrames={total} frames={len(frames)}")
+    c.send("stackTrace", {"threadId": 1, "startFrame": 1, "levels": 2})
+    win = c.wait_response("stackTrace")
+    wbody = (win or {}).get("body", {})
+    wframes = wbody.get("stackFrames", [])
+    log_result("stackTrace startFrame/levels returns that window",
+               [(f["id"], f["name"]) for f in wframes] == [(f["id"], f["name"]) for f in frames[1:3]]
+               and wbody.get("totalFrames") == len(frames),
+               f"window={[(f['id'], f['name']) for f in wframes]} all={[(f['id'], f['name']) for f in frames]}")
+    c.send("stackTrace", {"threadId": 1, "startFrame": len(frames) - 1, "levels": 20})
+    tail = c.wait_response("stackTrace")
+    tframes = (tail or {}).get("body", {}).get("stackFrames", [])
+    log_result("stackTrace window past the bottom returns what is left",
+               len(tframes) == 1 and tframes[0]["id"] == frames[-1]["id"], f"got {len(tframes)} frame(s)")
+
     c.send("scopes", {"frameId": fid})
     sc = c.wait_response("scopes")
     locref = sc["body"]["scopes"][0]["variablesReference"] if sc else 0

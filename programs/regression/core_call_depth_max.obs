@@ -70,12 +70,18 @@ class Prober {
 	}
 
 	method : Check(name : String, ok : Bool) ~ Nil {
+		Check(name, ok, "");
+	}
+
+	# the detail only on failure: how deep a runaway gets differs between
+	# compiled and interpreted runs, and the output must not
+	method : Check(name : String, ok : Bool, detail : String) ~ Nil {
 		where := @where;
 		if(ok) {
 			"PASS: {$name} ({$where})"->PrintLine();
 		}
 		else {
-			"FAIL: {$name} ({$where})"->PrintLine();
+			"FAIL: {$name} ({$where}) {$detail}"->PrintLine();
 			@failures += 1;
 		};
 	}
@@ -97,8 +103,9 @@ class Prober {
 		deepest := r->GetDeepest();
 		Check("a runaway recursion ends in a RuntimeError", message->Has("call stack bounds have been exceeded"));
 		Check("its kind is OTHER", kind_other);
-		Check("it went past 5,000 frames before it stopped (reached {$deepest} of {$max})", deepest > 5000);
-		Check("it stopped at or before the maximum ({$max})", deepest <= max);
+		reached := "reached {$deepest} of {$max}";
+		Check("it went past 5,000 frames before it stopped", deepest > 5000, reached);
+		Check("it stopped at or before the maximum", deepest <= max, reached);
 
 		# a ?-> chain yields Nil
 		r2 := Runaway->New();
