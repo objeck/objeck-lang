@@ -60,10 +60,10 @@ class DtlsBindAddress {
 	function : Main(args : String[]) ~ Nil {
 		@failed := 0;
 
-		File->Delete("dtls-bind-cert.pem");
-		File->Delete("dtls-bind-key.pem");
+		File->Delete("dtls-bind-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("dtls-bind-{$Runtime->GetProcessId()}-key.pem");
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout dtls-bind-key.pem -out dtls-bind-cert.pem";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout dtls-bind-{$Runtime->GetProcessId()}-key.pem -out dtls-bind-{$Runtime->GetProcessId()}-cert.pem";
 		if(Runtime->Command(command) <> 0) {
 			"FAIL: openssl could not create the DTLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
@@ -76,12 +76,12 @@ class DtlsBindAddress {
 		CheckBound("::1", "127.0.0.1");
 
 		"stage: bad address"->ErrorLine();
-		bad := DTLSSocketServer->New("dtls-bind-cert.pem", "dtls-bind-key.pem", "", "no-such-host.invalid", 23459);
+		bad := DTLSSocketServer->New("dtls-bind-{$Runtime->GetProcessId()}-cert.pem", "dtls-bind-{$Runtime->GetProcessId()}-key.pem", "", "no-such-host.invalid", 0);
 		Check("no-such-host.invalid: Listen() fails", <>bad->Listen());
 		bad->Close();
 
-		File->Delete("dtls-bind-cert.pem");
-		File->Delete("dtls-bind-key.pem");
+		File->Delete("dtls-bind-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("dtls-bind-{$Runtime->GetProcessId()}-key.pem");
 
 		if(@failed > 0) {
 			Runtime->Exit(1);
@@ -102,17 +102,12 @@ class DtlsBindAddress {
 	}
 
 	function : CheckBound(bound : String, elsewhere : String) ~ Nil {
-		server : DTLSSocketServer;
-		port := 0;
-		for(tries := 0; tries < 5 & server = Nil; tries += 1;) {
-			port := Int->Random(20000, 31998);
-			candidate := DTLSSocketServer->New("dtls-bind-cert.pem", "dtls-bind-key.pem", "", bound, port);
-			if(candidate->Listen()) {
-				server := candidate;
-			};
-		};
-		Check("{$bound}: the server listens", server <> Nil);
-		if(server = Nil) {
+		# port 0: the system picks a free port, read back once the server
+		# listens, so no two runs collide and nothing is retried
+		server := DTLSSocketServer->New("dtls-bind-{$Runtime->GetProcessId()}-cert.pem", "dtls-bind-{$Runtime->GetProcessId()}-key.pem", "", bound, 0);
+		Check("{$bound}: the server listens", server->Listen());
+		port := server->GetPort();
+		if(port = 0) {
 			return;
 		};
 

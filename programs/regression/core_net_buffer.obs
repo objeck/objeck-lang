@@ -8,15 +8,22 @@ use System.Concurrency, System.IO.Net;
 
 class ServerThread from Thread {
 	@port : Int;
+	@listening : Bool;
 
 	New(port : Int) {
 		Parent("server");
 		@port := port;
 	}
 
+	# the port the server has, which for a port of 0 the system chose
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+
 	method : public : Run(param : Base) ~ Nil {
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(5)) {
+			@port := server->GetPort();
+			@listening := true;
 			done := false;
 			while(<>done) {
 				client := server->Accept();
@@ -56,14 +63,22 @@ class NetBufferTest {
 		"Testing network buffer reads..."->PrintLine();
 
 		passed := true;
-		port := 19876;
 
-		# Start server thread
-		server_thread := ServerThread->New(port);
+		# the server takes a port the system chooses (port 0), read back once it
+		# listens, so two runs on one machine cannot collide as they did on the
+		# fixed 19876 (which websocket_test listened on too)
+		server_thread := ServerThread->New(0);
 		server_thread->Execute(Nil);
-
-		# Give server time to start
-		Thread->Sleep(500);
+		waited := 0;
+		while(<>server_thread->IsListening() & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		port := server_thread->GetPort();
+		if(<>server_thread->IsListening()) {
+			"FAIL: the server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
 
 		# Test: send and receive payloads of various sizes over TCP
 		test_sizes := [1024, 4096, 8192, 16384, 32768];

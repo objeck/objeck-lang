@@ -37,8 +37,9 @@ class OneTlsAccept from Thread {
 
 	method : public : Run(param : Base) ~ Nil {
 		client : TCPSecureSocket;
-		server := TCPSecureSocketServer->New("tls-names-cert.pem", "tls-names-key.pem", "", @port);
+		server := TCPSecureSocketServer->New("tls-names-{$Runtime->GetProcessId()}-cert.pem", "tls-names-{$Runtime->GetProcessId()}-key.pem", "", @port);
 		if(server->Listen()) {
+			@port := server->GetPort();
 			@issuer := server->GetIssuer();
 			@subject := server->GetSubject();
 			@listening := true;
@@ -81,31 +82,31 @@ class TlsServerCertNames {
 		# basicConstraints CA:TRUE, mbedTLS does not accept the CA as one, and the
 		# defaults differ by build -- LibreSSL (macOS) adds none -- so the client
 		# could not connect there. -addext is not in every build either.
-		cnf := FileWriter->New("tls-names.cnf");
+		cnf := FileWriter->New("tls-names-{$Runtime->GetProcessId()}.cnf");
 		cnf->WriteString("[req]\ndistinguished_name = dn\nprompt = no\n[dn]\nCN = Objeck Test CA\n");
 		cnf->WriteString("[v3_ca]\nbasicConstraints = critical,CA:TRUE\nkeyUsage = critical,keyCertSign,cRLSign\nsubjectKeyIdentifier = hash\n");
 		cnf->WriteString("[v3_leaf]\nbasicConstraints = CA:FALSE\nkeyUsage = critical,digitalSignature,keyEncipherment\nextendedKeyUsage = serverAuth\nsubjectAltName = DNS:localhost\n");
 		cnf->Close();
 
 		# a CA, and a server certificate it signs
-		if(Runtime->Command("openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 -config tls-names.cnf -extensions v3_ca -keyout tls-names-ca-key.pem -out tls-names-ca.pem") <> 0 |
-				Runtime->Command("openssl req -newkey rsa:2048 -sha256 -nodes -config tls-names.cnf -subj \"/CN=localhost\" -keyout tls-names-key.pem -out tls-names.csr") <> 0 |
-				Runtime->Command("openssl x509 -req -sha256 -days 1 -in tls-names.csr -CA tls-names-ca.pem -CAkey tls-names-ca-key.pem -CAcreateserial -extfile tls-names.cnf -extensions v3_leaf -out tls-names-cert.pem") <> 0) {
+		if(Runtime->Command("openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 -config tls-names-{$Runtime->GetProcessId()}.cnf -extensions v3_ca -keyout tls-names-{$Runtime->GetProcessId()}-ca-key.pem -out tls-names-{$Runtime->GetProcessId()}-ca.pem") <> 0 |
+				Runtime->Command("openssl req -newkey rsa:2048 -sha256 -nodes -config tls-names-{$Runtime->GetProcessId()}.cnf -subj \"/CN=localhost\" -keyout tls-names-{$Runtime->GetProcessId()}-key.pem -out tls-names-{$Runtime->GetProcessId()}.csr") <> 0 |
+				Runtime->Command("openssl x509 -req -sha256 -days 1 -in tls-names-{$Runtime->GetProcessId()}.csr -CA tls-names-{$Runtime->GetProcessId()}-ca.pem -CAkey tls-names-{$Runtime->GetProcessId()}-ca-key.pem -CAcreateserial -extfile tls-names-{$Runtime->GetProcessId()}.cnf -extensions v3_leaf -out tls-names-{$Runtime->GetProcessId()}-cert.pem") <> 0) {
 			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
 
-		for(tries := 0; tries < 5 & server = Nil; tries += 1;) {
-			server := OneTlsAccept->New(Int->Random(20000, 31998));
-			server->Execute(Nil);
-			waited := 0;
-			while(<>server->IsListening() & <>server->IsFinished() & waited < 5000) {
-				Thread->Sleep(25);
-				waited += 25;
-			};
-			if(<>server->IsListening()) {
-				server := Nil;
-			};
+		# port 0: the system picks a free port, which the server reads back once
+		# it listens, so no two runs collide and nothing is retried
+		server := OneTlsAccept->New(0);
+		server->Execute(Nil);
+		waited := 0;
+		while(<>server->IsListening() & <>server->IsFinished() & waited < 5000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(<>server->IsListening()) {
+			server := Nil;
 		};
 		if(server = Nil) {
 			"FAIL: the TLS server never started listening"->PrintLine();
@@ -118,7 +119,7 @@ class TlsServerCertNames {
 		Check("the server's subject is its own name ('{$subject}')", subject <> Nil & subject->Equals("CN=localhost"));
 
 		# the client, trusting the CA, still reports its peer's names
-		socket := TCPSecureSocket->New("localhost", server->GetPort(), "tls-names-ca.pem");
+		socket := TCPSecureSocket->New("localhost", server->GetPort(), "tls-names-{$Runtime->GetProcessId()}-ca.pem");
 		if(<>socket->IsOpen()) {
 			"FAIL: the client could not connect"->PrintLine();
 			Runtime->Exit(1);
@@ -141,12 +142,12 @@ class TlsServerCertNames {
 	}
 
 	method : Cleanup() ~ Nil {
-		File->Delete("tls-names-ca.pem");
-		File->Delete("tls-names-ca-key.pem");
-		File->Delete("tls-names-ca.srl");
-		File->Delete("tls-names-key.pem");
-		File->Delete("tls-names.csr");
-		File->Delete("tls-names-cert.pem");
-		File->Delete("tls-names.cnf");
+		File->Delete("tls-names-{$Runtime->GetProcessId()}-ca.pem");
+		File->Delete("tls-names-{$Runtime->GetProcessId()}-ca-key.pem");
+		File->Delete("tls-names-{$Runtime->GetProcessId()}-ca.srl");
+		File->Delete("tls-names-{$Runtime->GetProcessId()}-key.pem");
+		File->Delete("tls-names-{$Runtime->GetProcessId()}.csr");
+		File->Delete("tls-names-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("tls-names-{$Runtime->GetProcessId()}.cnf");
 	}
 }

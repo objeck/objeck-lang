@@ -67,10 +67,6 @@ class Probe {
 		};
 		return Collections() - before;
 	}
-
-	function : Port() ~ Int {
-		return Int->Random(20000, 31998);
-	}
 }
 
 #
@@ -294,16 +290,13 @@ class NetIoGcPark {
 		@failed += 1;
 	}
 
-	# Binds a UDP server on a random port, remembered in @port. Nil if none
-	# could be bound.
+	# Binds a UDP server on a port the system chose (port 0), remembered in
+	# @port. Nil if it could not be bound.
 	method : Bind() ~ UDPSocketServer {
-		server : UDPSocketServer;
-		for(tries := 0; tries < 10; tries += 1;) {
-			@port := Probe->Port();
-			server := UDPSocketServer->New(@port);
-			if(server->IsBound()) {
-				return server;
-			};
+		server := UDPSocketServer->New(0);
+		if(server->IsBound()) {
+			@port := server->GetPort();
+			return server;
 		};
 		return Nil;
 	}
@@ -478,7 +471,10 @@ class NetIoGcPark {
 	}
 
 	method : TestPipe() ~ Nil {
-		name := "objk_gc_park_{$Probe->Port()}";
+		# named pipes are one namespace for the whole machine: this process's id
+		# keeps two runs apart
+		pid := Runtime->GetProcessId();
+		name := "objk_gc_park_{$pid}";
 		server := PipeServer->New(name);
 		server->Execute(Nil);
 

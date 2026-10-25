@@ -13080,6 +13080,9 @@
 				"GetLastError": {
 					"descriptions": ["**Gets the calling thread's last DTLS failure, from a connect, listen, accept, read or write; each of those replaces it, and one that works leaves none. A connect that failed says why the system refused it, and a certificate that failed verification is described with each reason mbedTLS gives.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetPort": {
+					"descriptions": ["**Gets the port this server is bound to: the port given to New, or, for a port of 0, the one the system chose when Listen() bound the socket, so a program needs no fixed port number. Every listener the server binds after an accept takes this same port.**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetSubject": {
 					"descriptions": ["**Gets the X.509 certificate subject name**\n\n```method : public : GetSubject() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -13241,6 +13244,9 @@
 				"GetLastError": {
 					"descriptions": ["**Gets the calling thread's last TLS failure, from a connect, listen, accept, read or write; each of those replaces it, and one that works leaves none. A connect that failed says why the system refused it, e.g. \"NET - The connection to the given server \/ port failed: Connection refused\". A certificate that failed verification is described with each reason mbedTLS gives, e.g. \"X509 - Certificate verification failed, e.g. CRL, CA or signature check failed: The certificate is not correctly signed by the trusted CA\".**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetPort": {
+					"descriptions": ["**Gets the port this server is bound to: the port given to New, or, for a port of 0, the one the system chose when Listen() bound the socket, so a program needs no fixed port number. Before Listen() it is the port given.**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
+				},
 				"GetSubject": {
 					"descriptions": ["**Gets the X.509 certificate subject name**\n\n```method : public : GetSubject() ~ String```\n\n\n\nreturn: String"]
 				},
@@ -13341,6 +13347,9 @@
 				"GetLastError": {
 					"descriptions": ["**Gets the calling thread's last socket failure: why its latest call on a socket -- connect, read, write, bind, listen, accept, a socket option -- failed, captured as it failed. Each such call replaces it, one that works leaves none, and closing the socket keeps it. A connect that tried several addresses gives the most informative reason: one the network answered (refused, reset, timed out) over one that never left this host. A name that does not resolve gives the resolver's reason.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
 				},
+				"GetPort": {
+					"descriptions": ["**Gets the port this server is bound to: the port given to New, or, for a port of 0, the one the system chose at New. A server bound to port 0 takes a free port, so a program (a test, say) needs no fixed number and no two programs can collide; the port is read back here.**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int\n\n```\nserver := TCPSocketServer->New(0);\nport := server->GetPort(); # the port the system chose\n```"]
+				},
 				"Listen": {
 					"descriptions": ["**Listens for incoming client connections**\n\n```method : public : Listen(backlog:Int) ~ Bool```\n\n\n\nbacklog: Int\n\nreturn: Bool"]
 				},
@@ -13404,6 +13413,9 @@
 				},
 				"GetLastError": {
 					"descriptions": ["**Gets the calling thread's last socket failure: why its latest call on a socket -- connect, read, write, bind, listen, accept, a socket option -- failed, captured as it failed. Each such call replaces it, one that works leaves none, and closing the socket keeps it. A connect that tried several addresses gives the most informative reason: one the network answered (refused, reset, timed out) over one that never left this host. A name that does not resolve gives the resolver's reason.**\n\n```function : GetLastError() ~ String```\n\n\n\nreturn: String"]
+				},
+				"GetPort": {
+					"descriptions": ["**Gets the port this server is bound to: the port given to New, or, for a port of 0, the one the system chose when Bind() bound the socket, so a program needs no fixed port number.**\n\n```method : public : GetPort() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"IsBound": {
 					"descriptions": ["**Checks if the UDP server socket is bound**\n\n```method : public : IsBound() ~ Bool```\n\n\n\nreturn: Bool"]
@@ -16214,7 +16226,7 @@
 			"description": "HTTP and HTTP web server",
 			"functions": {
 				"GetBoundPort": {
-					"descriptions": ["**Gets the port this server was asked to bind to.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int"]
+					"descriptions": ["**Gets the port this server is bound to. A server started on port 0 is bound to a port the system chose; once Serve has it listening this answers that port, so a program that starts the server in a thread can poll here instead of picking a port number.**\n\n```function : GetBoundPort() ~ Int```\n\n\n\nreturn: Int\n\n```\n# serve on a port the system chooses, then find out which\nthread := System.Concurrency.Thread->New() {\nNew() { Parent(); }\nmethod : public : Run(arg : System.Base) ~ Nil {\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);\n}\n};\nthread->Execute(Nil);\nwhile(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {\nSystem.Concurrency.Thread->Sleep(10);\n};\nport := Web.HTTP.Server.WebServer->GetBoundPort();\n```"]
 				},
 				"Serve": {
 					"descriptions": ["**Starts a HTTP server that listens for requests**\n\n```function : Serve(filename:String) ~ Nil```\n\n\n\nfilename: String\n\nreturn: Nil", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nreturn: Nil\n\n```\n# start an HTTP server on port 8080 using MyHandler\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 8080, true);\n```", "**Starts a HTTP server that listens for requests**\n\n```function : Serve(callback:Class, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil", "**Starts a HTTP server that listens for requests on one local address instead of every interface, e.g. \"127.0.0.1\" to take only clients on this machine. The address is read as by TCPSocketServer->New(address, port): a literal (\"127.0.0.1\", \"::1\") or a host name, of which the first IPv4 address (else the first IPv6 one) is bound, so \"localhost\" binds 127.0.0.1; an empty address binds every interface. An address that cannot be bound is reported on standard error and the call returns.**\n\n```function : Serve(callback:Class, address:String, port:Int) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nreturn: Nil\n\n```\n# an HTTP server on port 8080 that only this machine can reach\nWeb.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), \"127.0.0.1\", 8080);\n```", "**Starts a HTTP server that listens for requests on one local address instead of every interface; see Serve(callback, address, port).**\n\n```function : Serve(callback:Class, address:String, port:Int, is_debug:Bool) ~ Nil```\n\n\n\ncallback: Class\n\naddress: String\n\nport: Int\n\nis_debug: Bool\n\nreturn: Nil"]

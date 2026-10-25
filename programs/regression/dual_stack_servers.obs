@@ -58,6 +58,7 @@ class TwoAccepts from Thread {
 		client : TCPSocket;
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(4)) {
+			@port := server->GetPort();
 			@listening := true;
 			client := server->Accept();
 			if(client <> Nil) {
@@ -75,8 +76,9 @@ class TwoAccepts from Thread {
 
 	method : RunTls() ~ Nil {
 		client : TCPSecureSocket;
-		server := TCPSecureSocketServer->New("dual-stack-cert.pem", "dual-stack-key.pem", "", @port);
+		server := TCPSecureSocketServer->New("dual-stack-{$Runtime->GetProcessId()}-cert.pem", "dual-stack-{$Runtime->GetProcessId()}-key.pem", "", @port);
 		if(server->Listen()) {
+			@port := server->GetPort();
 			@listening := true;
 			# each client waits for a line before it closes, so it cannot close
 			# while the server is still finishing the handshake
@@ -102,8 +104,9 @@ class TwoAccepts from Thread {
 
 	method : RunDtls() ~ Nil {
 		client : DTLSSocket;
-		server := DTLSSocketServer->New("dual-stack-cert.pem", "dual-stack-key.pem", "", @port);
+		server := DTLSSocketServer->New("dual-stack-{$Runtime->GetProcessId()}-cert.pem", "dual-stack-{$Runtime->GetProcessId()}-key.pem", "", @port);
 		if(server->Listen()) {
+			@port := server->GetPort();
 			@listening := true;
 			client := server->Accept();
 			if(client <> Nil) {
@@ -138,21 +141,18 @@ class DualStackServers {
 		};
 	}
 
+	# a server on port 0: the system picks a free port, which the server reads
+	# back once it listens, so no two runs collide and nothing is retried
 	method : Start(kind : Int) ~ TwoAccepts {
-		candidate : TwoAccepts;
-		waited : Int;
-
-		for(tries := 0; tries < 5; tries += 1;) {
-			candidate := TwoAccepts->New(kind, Int->Random(20000, 31998));
-			candidate->Execute(Nil);
-			waited := 0;
-			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
-				Thread->Sleep(25);
-				waited += 25;
-			};
-			if(candidate->IsListening()) {
-				return candidate;
-			};
+		candidate := TwoAccepts->New(kind, 0);
+		candidate->Execute(Nil);
+		waited := 0;
+		while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(candidate->IsListening()) {
+			return candidate;
 		};
 
 		return Nil;
@@ -188,10 +188,10 @@ class DualStackServers {
 	method : Run() ~ Nil {
 		Runtime->SetEnvironmentVariable("OBJECK_TLS_INSECURE_SKIP_VERIFY", "1");
 
-		File->Delete("dual-stack-cert.pem");
-		File->Delete("dual-stack-key.pem");
+		File->Delete("dual-stack-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("dual-stack-{$Runtime->GetProcessId()}-key.pem");
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout dual-stack-key.pem -out dual-stack-cert.pem";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout dual-stack-{$Runtime->GetProcessId()}-key.pem -out dual-stack-{$Runtime->GetProcessId()}-cert.pem";
 		if(Runtime->Command(command) <> 0) {
 			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
@@ -228,8 +228,8 @@ class DualStackServers {
 			Finish(server, "DTLS");
 		};
 
-		File->Delete("dual-stack-cert.pem");
-		File->Delete("dual-stack-key.pem");
+		File->Delete("dual-stack-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("dual-stack-{$Runtime->GetProcessId()}-key.pem");
 
 		if(@failed > 0) {
 			Runtime->Exit(1);

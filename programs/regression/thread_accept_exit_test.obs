@@ -34,17 +34,24 @@ there for the rest of the process -- nothing ever connects a second time.
 ~#
 class ParkedAcceptServer from Thread {
 	@port : Int;
+	@listening : Bool;
 
 	New(port : Int) {
 		Parent("parked-accept");
 		@port := port;
 	}
 
+	# the port the server has, which for a port of 0 the system chose
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+
 	method : public : Run(param : System.Base) ~ Nil {
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(8) = false) {
 			return;
 		};
+		@port := server->GetPort();
+		@listening := true;
 
 		while(true) {
 			client := server->Accept();
@@ -76,9 +83,10 @@ class ThreadAcceptExitTest {
 		# LIVE listener, unlike POSIX where it only relaxes TIME_WAIT, so a
 		# leftover server from a previous run and this one both bind, and the
 		# client can be handed the stale one -- it connects, and nothing echoes.
-		# Defaults to 19993 so the regression runner keeps invoking it with no
-		# arguments.
-		port := 19993;
+		# Defaults to port 0 -- the system picks a free port, which the server
+		# reads back -- so the regression runner keeps invoking it with no
+		# arguments, and two runs on one machine cannot collide.
+		port := 0;
 		if(args->Size() > 0) {
 			port := args[0]->ToInt();
 		};
@@ -104,7 +112,13 @@ class ThreadAcceptExitTest {
 	method : Run(port : Int) ~ Nil {
 		server := ParkedAcceptServer->New(port);
 		server->Execute(Nil);
-		Thread->Sleep(700);
+		waited := 0;
+		while(<>server->IsListening() & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		CheckTrue("parked-accept server listening", server->IsListening());
+		port := server->GetPort();
 
 		sock := TCPSocket->New("127.0.0.1", port);
 		CheckTrue("client connected to parked-accept server", sock->IsOpen());

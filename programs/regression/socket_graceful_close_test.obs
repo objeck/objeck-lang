@@ -50,11 +50,17 @@ class ResponderServer from Thread {
 		return @ready;
 	}
 
+	# the port the server has, which for a port of 0 the system chose
+	method : public : GetPort() ~ Int {
+		return @port;
+	}
+
 	method : public : Run(param : System.Base) ~ Nil {
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(16) = false) {
 			return;
 		};
+		@port := server->GetPort();
 		@ready := true;
 
 		running := true;
@@ -94,11 +100,10 @@ class SocketGracefulCloseTest {
 	@failures : Int;
 
 	function : Main(args : String[]) ~ Nil {
-		# A per-run port, for the reason thread_accept_exit_test documents: Windows
-		# SO_REUSEADDR permits binding a port that already has a LIVE listener, so a
-		# leftover server from an earlier run and this one both bind, and the client
-		# can be handed the stale one.
-		port := 19995;
+		# Port 0 unless given one: the system picks a free port, which the server
+		# reads back, so a leftover server from an earlier run, or a second run
+		# of this suite on the machine, cannot be the one the client reaches.
+		port := 0;
 		if(args->Size() > 0) {
 			port := args[0]->ToInt();
 		};
@@ -133,6 +138,7 @@ class SocketGracefulCloseTest {
 		CheckTrue("responder server listening", server->IsReady());
 
 		if(server->IsReady()) {
+			port := server->GetPort();
 			rounds := 30;
 			lost := 0;
 			short_reads := 0;

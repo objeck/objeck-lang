@@ -49,51 +49,37 @@ class HttpPersistenceTest {
 	}
 
 	#~
-	# Starts the server on a random port and returns once a client can connect.
+	# Starts the server on port 0 and returns once it listens.
 	#
-	# Not a fixed port: on Windows SO_REUSEADDR lets a second server bind a port
-	# that still has a live listener, so a leftover listener from an earlier run
-	# could answer instead (see http_error_body and thread_accept_exit_test). Not a
-	# fixed sleep: it wastes time on a fast machine and loses the race on a slow
-	# runner. WebServer->Serve has no ready signal, so readiness is a real connect;
-	# Serve returning means Listen failed, and another port is tried.
+	# Not a fixed port: two runs on one machine would collide, and on Windows
+	# SO_REUSEADDR once let a leftover listener from an earlier run answer
+	# instead (see http_error_body and thread_accept_exit_test). Not a fixed
+	# sleep: it wastes time on a fast machine and loses the race on a slow
+	# runner. The ready signal is WebServer->GetBoundPort(), which turns from 0
+	# into the port the system chose once Listen has succeeded.
 	~#
 	function : StartServer(host : String) ~ Bool {
-		server_thread : System.Concurrency.Thread;
-		probe : TCPSocket;
-		attempts : Int;
-		tries := 0;
-
-		while(tries < 5) {
-			@port := Int->Random(20000, 31998);
-			@serve_returned := false;
-
-			server_thread := System.Concurrency.Thread->New() {
-				New() { Parent(); }
-				method : public : Run(arg : System.Base) ~ Nil {
-					WebServer->Serve(PersistenceHandler->New()->GetClass(), HttpPersistenceTest->Port(), false);
-					HttpPersistenceTest->ServeReturned();
-				}
-			};
-			server_thread->Execute(Nil);
-
-			# A refused loopback connect takes about two seconds on Windows, but the
-			# server is normally listening before the first probe goes out.
-			attempts := 0;
-			while(<>@serve_returned & attempts < 20) {
-				System.Concurrency.Thread->Sleep(25);
-				probe := TCPSocket->New(host, @port);
-				if(probe->IsOpen()) {
-					probe->Close();
-					return true;
-				};
-				attempts += 1;
-			};
-
-			tries += 1;
+		# Serve on port 0: the system picks a free port, so two runs of this suite
+		# on one machine cannot collide. The port is known once the server listens
+		# (WebServer->GetBoundPort), so no client probe and no retry are needed.
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(PersistenceHandler->New()->GetClass(), 0, false);
+				HttpPersistenceTest->ServeReturned();
+			}
 		};
+		server_thread->Execute(Nil);
 
-		return false;
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
 	}
 
 	function : ReadResponse(socket : TCPSocket) ~ Pair<String, Map<String, String>> {

@@ -2670,9 +2670,12 @@ class GlContextTest {
 			return;
 		};
 
-		quad_path := "{$directory}/objeck_gl_quad.obj";
-		tri_path := "{$directory}/objeck_gl_tri.obj";
-		slash_path := "{$directory}/objeck_gl_slash.obj";
+		# named for this process: the temporary folder is shared with every other
+		# run on the machine, and one run must not delete what another is reading
+		pid := System.Runtime->GetProcessId();
+		quad_path := "{$directory}/objeck_gl_quad_{$pid}.obj";
+		tri_path := "{$directory}/objeck_gl_tri_{$pid}.obj";
+		slash_path := "{$directory}/objeck_gl_slash_{$pid}.obj";
 
 		# A quad, with texture coordinates and an explicit normal. Also carries the
 		# mtllib/usemtl/o/s lines an exporter writes, which must be ignored rather

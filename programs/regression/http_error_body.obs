@@ -24,9 +24,10 @@
 # there is nothing to race.
 #
 # Three things keep it deterministic beyond that:
-#   - a random port per run, rebinding if Listen fails. A fixed port is not safe
-#     back to back: Windows SO_REUSEADDR lets a second server bind a port that
-#     still has a live listener (see thread_accept_exit_test).
+#   - port 0, the port the system chose read back once the server listens. A
+#     fixed port is not safe: two runs on one machine collide, and back to back
+#     Windows SO_REUSEADDR once let a second server bind a port that still had a
+#     live listener (see thread_accept_exit_test).
 #   - no fixed sleep: requests start only once the server thread reports that
 #     Listen succeeded, and a server that never listens fails the test.
 #   - a small, logged transport retry. It fires only when no status line arrived
@@ -73,6 +74,7 @@ class ErrorBodyServer from Thread {
 	method : public : Run(param : Base) ~ Nil {
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(8)) {
+			@port := server->GetPort();
 			@listening := true;
 
 			done := false;
@@ -154,32 +156,37 @@ class HttpErrorBodyTest {
 	}
 
 	#~
-	# Starts the server on a random port and waits until it is listening. Tries a
-	# few ports, since Listen can fail on one that is taken. Nil if none listened.
+	# Starts the server on port 0 -- the system picks a free port, which the
+	# server reads back once it listens, so two runs on one machine cannot
+	# collide -- and waits until it is listening. Nil if it never listened.
 	~#
 	method : StartServer() ~ ErrorBodyServer {
-		candidate : ErrorBodyServer;
-		waited : Int;
-		tries := 0;
+		candidate := ErrorBodyServer->New(0);
+		candidate->Execute(Nil);
 
-		while(tries < 5) {
-			candidate := ErrorBodyServer->New(Int->Random(20000, 31998));
-			candidate->Execute(Nil);
+		waited := 0;
+		while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
 
-			waited := 0;
-			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 200) {
-				Thread->Sleep(25);
-				waited += 25;
-			};
-
-			if(candidate->IsListening()) {
-				return candidate;
-			};
-
-			tries += 1;
+		if(candidate->IsListening()) {
+			return candidate;
 		};
 
 		return Nil;
+	}
+
+	#~
+	# A port nobody listens on: one the system just handed out for port 0 and
+	# this run closed again. Port + 1 of the server was used before; with two
+	# suites on one machine that can be the other run's server.
+	~#
+	method : FreePort() ~ Int {
+		reserved := TCPSocketServer->New("127.0.0.1", 0);
+		port := reserved->GetPort();
+		reserved->Close();
+		return port;
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -209,8 +216,7 @@ class HttpErrorBodyTest {
 		};
 
 		port := server->GetPort();
-		# One above the server, and never listened on by this run
-		dead_port := port + 1;
+		dead_port := FreePort();
 
 		# --- a genuine 500 must deliver its body ---
 		client := HttpClient->New();
