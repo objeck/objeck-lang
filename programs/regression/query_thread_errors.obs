@@ -1,0 +1,199 @@
+# EXTRA_LIBS: net,regex,csv,misc,query,concurrent
+#~
+Query.Structured: GetError reports the calling thread's last error (docs/QUERY_DESIGN.md,
+"Concurrent readers"). Several threads query one Table and one Catalog at once, each failing
+for its own reason (or, for one of them, not failing at all), wait until every thread has
+finished, and then read GetError: each must see its own reason, and the thread that succeeded
+must see none. The threads end with their errors unread; the main thread, which never failed,
+must still see none, and its own failure and success afterwards must show as usual.
+
+Before the fix a table and a catalog each held one error for every thread, so all but the
+thread that failed last read another thread's reason, and a thread that succeeded read a
+failure.
+~#
+use Query.Structured, System.Concurrency, Collection;
+
+class Failer from Thread {
+	@table : Table;
+	@catalog : Catalog;
+	@id : Int;
+	@round : Int;
+	@barrier : Barrier;
+	@failures : Int;
+	@checks : Int;
+	@first : String;
+
+	New(table : Table, catalog : Catalog, id : Int, round : Int, barrier : Barrier) {
+		Parent("failer");
+		@table := table;
+		@catalog := catalog;
+		@id := id;
+		@round := round;
+		@barrier := barrier;
+	}
+
+	method : public : GetFailures() ~ Int { return @failures; }
+	method : public : GetChecks() ~ Int { return @checks; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	# 'wanted' is a text the error must hold, or Nil for no error
+	method : Check(what : String, error : String, wanted : String) ~ Nil {
+		@checks += 1;
+		ok := false;
+		if(wanted = Nil) {
+			ok := error = Nil;
+		}
+		else if(error <> Nil) {
+			ok := error->Has(wanted);
+		};
+
+		if(<>ok) {
+			@failures += 1;
+			if(@first = Nil) {
+				shown := error <> Nil ? error : "no error";
+				expected := wanted <> Nil ? "an error naming {$wanted}" : "no error";
+				@first := "thread {$@id}, {$what}: got '{$shown}', expected {$expected}";
+			};
+		};
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		# the thread that succeeds turns with the round
+		succeeds := @id = @round % 4;
+		mine := "col_{$@id}_{$@round}";
+
+		# Table->Query
+		@barrier->Await();
+		if(succeeds) {
+			@table->Query("select v from t where v > 2");
+		}
+		else {
+			@table->Query("select v from t where {$mine} > 1");
+		};
+		@barrier->Await();
+		Check("Table->Query", @table->GetError(), succeeds ? Nil : "'{$mine}'");
+
+		# Table->Where, which reports through the same error
+		@barrier->Await();
+		if(succeeds) {
+			@table->Where(Col->Of("v")->Gt(1));
+		}
+		else {
+			@table->Where(Col->Of(mine)->Gt(1));
+		};
+		@barrier->Await();
+		Check("Table->Where", @table->GetError(), succeeds ? Nil : "'{$mine}'");
+
+		# Catalog->Query: an unknown table for some, an unknown column for others
+		@barrier->Await();
+		wanted : String := Nil;
+		if(succeeds) {
+			@catalog->Query("select count(*) from t");
+		}
+		else if(@id % 2 = 0) {
+			@catalog->Query("select * from {$mine}");
+			wanted := "no table named '{$mine}'";
+		}
+		else {
+			@catalog->Query("select v from t where {$mine} = 2");
+			wanted := "'{$mine}'";
+		};
+		@barrier->Await();
+		Check("Catalog->Query", @catalog->GetError(), wanted);
+
+		# Catalog->Prepare: a syntax error of its own, at a position of its own
+		@barrier->Await();
+		padding := "";
+		each(i : @id) {
+			padding += " ";
+		};
+		if(succeeds) {
+			@catalog->Prepare("select v from t where v > ?");
+			wanted := Nil;
+		}
+		else {
+			@catalog->Prepare("select{$padding} v from t where");
+			wanted := "position {$(21 + @id)}:";
+		};
+		@barrier->Await();
+		Check("Catalog->Prepare", @catalog->GetError(), wanted);
+
+		# and the error stays this thread's until its next call: nothing above cleared it
+		@barrier->Await();
+		Check("Table->GetError again", @table->GetError(), succeeds ? Nil : "'{$mine}'");
+	}
+}
+
+class QueryThreadErrors {
+	function : Main(args : String[]) ~ Nil {
+		rounds := 40;
+		threads := 4;
+		if(args->Size() > 0) {
+			rounds := args[0]->ToInt();
+		};
+
+		table := Table->New("t", ["v"]);
+		each(i : 10) {
+			table->Insert()->Set("v", IntRef->New(i));
+		};
+		catalog := Catalog->New();
+		catalog->Add(table);
+
+		failures := 0;
+		checks := 0;
+		first : String := Nil;
+		each(round : rounds) {
+			barrier := Barrier->New(threads);
+			workers := Failer->New[threads];
+			each(t : threads) {
+				workers[t] := Failer->New(table, catalog, t, round, barrier);
+			};
+			each(t : threads) {
+				workers[t]->Execute(Nil);
+			};
+			each(t : threads) {
+				workers[t]->Join();
+			};
+			each(t : threads) {
+				checks += workers[t]->GetChecks();
+				failures += workers[t]->GetFailures();
+				if(first = Nil & workers[t]->GetFirst() <> Nil) {
+					first := "round {$round}, {$(workers[t]->GetFirst())}";
+				};
+			};
+
+			# the main thread has not failed: the threads' errors are not its own
+			checks += 2;
+			if(table->GetError() <> Nil | catalog->GetError() <> Nil) {
+				failures += 1;
+				if(first = Nil) {
+					first := "round {$round}, the main thread read another thread's error: '{$(table->GetError())}' / '{$(catalog->GetError())}'";
+				};
+			};
+		};
+
+		# on one thread, as before: a failure is reported, a success clears it
+		checks += 4;
+		bad := table->Query("select v from t where nothing > 0") = Nil;
+		if(<>bad | table->GetError() = Nil | <>table->GetError()->Has("'nothing'")) {
+			failures += 1;
+		};
+		if(table->Query("select v from t") = Nil | table->GetError() <> Nil) {
+			failures += 1;
+		};
+		if(catalog->Query("select * from nowhere") <> Nil | catalog->GetError() = Nil) {
+			failures += 1;
+		};
+		if(catalog->Query("select v from t") = Nil | catalog->GetError() <> Nil) {
+			failures += 1;
+		};
+
+		if(failures = 0) {
+			"PASS: query_thread_errors ({$checks} checks, {$threads} threads over {$rounds} rounds)"->PrintLine();
+		}
+		else {
+			"FAIL: query_thread_errors: {$failures} of {$checks} checks failed; first: {$first}"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}

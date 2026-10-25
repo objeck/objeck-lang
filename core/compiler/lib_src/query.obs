@@ -1428,6 +1428,132 @@ bundle Query.Structured {
 		}
 	}
 
+	# The last error of each thread's call on an object several threads may use at once, a
+	# Table or a Catalog, so that GetError answers the calling thread's own (docs/
+	# QUERY_DESIGN.md, "Errors per thread"). Errors are kept by Thread->GetCurrentId: a
+	# thread's is set when its call fails and removed when its next call succeeds, and those of
+	# threads that have ended are dropped whenever the map is changed. With no errors the map is
+	# Nil, so a call that succeeds, the common case, reads one field and takes no lock: only a
+	# thread adds its own entry, and the map goes back to Nil only when it is empty, so a thread
+	# that sees Nil has no entry. The lock is one per process, in a class variable, for the
+	# reason RebuildLock gives; it is held only while the map is read or changed.
+	class : private : ThreadErrors {
+		@lock : static : System.Concurrency.ThreadMutex;
+		@messages : Map<IntRef, String>;
+
+		New() {
+			Lock();
+		}
+
+		function : Lock() ~ System.Concurrency.ThreadMutex {
+			if(@lock = Nil) {
+				@lock := System.Concurrency.ThreadMutex->New("query_errors");
+			};
+
+			return @lock;
+		}
+
+		# the calling thread's last error, Nil if its last call succeeded
+		method : public : Get() ~ String {
+			if(@messages = Nil) {
+				return Nil;
+			};
+
+			id := System.Concurrency.Thread->GetCurrentId();
+			message : String := Nil;
+			lock := Lock();
+			critical(lock) {
+				if(@messages <> Nil) {
+					message := @messages->Find(id);
+				};
+			};
+
+			return message;
+		}
+
+		# sets the calling thread's error; Nil clears it
+		method : public : Set(message : String) ~ Nil {
+			if(message = Nil & @messages = Nil) {
+				return;
+			};
+
+			id := System.Concurrency.Thread->GetCurrentId();
+			lock := Lock();
+			critical(lock) {
+				if(message <> Nil) {
+					if(@messages = Nil) {
+						@messages := Map->New()<IntRef, String>;
+					};
+					@messages->Insert(id, message);
+				}
+				else if(@messages <> Nil) {
+					@messages->Remove(id);
+				};
+				Sweep();
+			};
+		}
+
+		# drops the errors of threads that have ended; the caller holds the lock
+		method : Sweep() ~ Nil {
+			if(@messages <> Nil) {
+				ids := @messages->GetKeys()<IntRef>;
+				each(i : ids) {
+					id := ids->Get(i)->Get();
+					if(<>System.Concurrency.Thread->IsAlive(id)) {
+						@messages->Remove(id);
+					};
+				};
+
+				if(@messages->Size() = 0) {
+					@messages := Nil;
+				};
+			};
+		}
+	}
+
+	# The locks that let several threads share a Catalog (docs/QUERY_DESIGN.md, "One catalog,
+	# many threads"). One guards every catalog's maps (its tables, plan cache and file cache)
+	# and is held only while a map is read or changed. Sixteen more guard reading files: a
+	# thread holds one while it reads a file into a catalog's cache, or writes a URL's local
+	# copy, chosen by the file, so threads that miss the cache for one file at once read it
+	# once (the others wait, then find it cached), and threads reading other files rarely wait
+	# for each other. Class variables, one set per process, for the reason RebuildLock gives;
+	# made by the first table or catalog, before there is one to share.
+	class : private : CatalogLocks {
+		@maps : static : System.Concurrency.ThreadMutex;
+		@files : static : System.Concurrency.ThreadMutex[];
+
+		function : Prepare() ~ Nil {
+			if(@maps = Nil) {
+				@maps := System.Concurrency.ThreadMutex->New("query_catalog");
+			};
+
+			if(@files = Nil) {
+				files := System.Concurrency.ThreadMutex->New[16];
+				each(i : files) {
+					files[i] := System.Concurrency.ThreadMutex->New("query_file");
+				};
+				@files := files;
+			};
+		}
+
+		function : Maps() ~ System.Concurrency.ThreadMutex {
+			Prepare();
+			return @maps;
+		}
+
+		# the lock for reading a file, by its cache key or a URL
+		function : ForFile(key : String) ~ System.Concurrency.ThreadMutex {
+			Prepare();
+			hash := 0;
+			each(i : key) {
+				hash := (hash * 31 + key->Get(i)->As(Int)) and 0xFFFFFF;
+			};
+
+			return @files[hash % @files->Size()];
+		}
+	}
+
 	# An index on one column (docs/QUERY_DESIGN.md, section 5). The column holds it, so every
 	# path that writes a cell reaches it. A hash index is updated in place by each cell write and
 	# each delete; a sorted index is marked stale by a write and rebuilt by the next query that
@@ -2492,6 +2618,10 @@ bundle Query.Structured {
 	insertion order and never reused. Rows are read and written through Row cursors, and queried
 	with SQL-like statements.
 
+	Threads: any number of threads may query one table at once, and GetError gives each thread
+	its own last error. Writes are not locked: while one thread writes a table, no other may
+	use it, so a program that mixes writes and queries orders them itself.
+
 ```
 table := Table->New("users", ["name", "age"]);
 row := table->Insert();
@@ -2515,7 +2645,7 @@ results->ToString()->PrintLine();
 		@version : Int;
 		@layout : Int;
 		@plans : Map<String, Plan>;
-		@error : String;
+		@errors : ThreadErrors;
 		@store : TableStore;
 
 		#~
@@ -2562,8 +2692,10 @@ results->ToString()->PrintLine();
 		}
 
 		method : Init(name : String, column_names : String[], types : ColumnType[], declared : Bool) ~ Nil {
-			# made before any table exists to share, so threads never race to make it
+			# made before any table exists to share, so threads never race to make them
 			RebuildLock->Get();
+			CatalogLocks->Prepare();
+			@errors := ThreadErrors->New();
 			@name := name;
 			@column_map := Map->New()<String, IntRef>;
 			@column_names := String->New[column_names->Size() + 1];
@@ -2618,7 +2750,7 @@ results->ToString()->PrintLine();
 			@version += 1;
 
 			if(@store <> Nil & <>@store->LogAddColumn(name, type)) {
-				@error := @store->GetError();
+				SetError(@store->GetError());
 			};
 
 			return true;
@@ -2696,11 +2828,11 @@ results->ToString()->PrintLine();
 		```
 		~#
 		method : public : Where(condition : Predicate) ~ View {
-			@error := Nil;
+			SetError(Nil);
 			holder := StringHolder->New();
 			filter := Filter->Bind(condition, @self, Nil, holder);
 			if(filter = Nil) {
-				@error := holder->Get();
+				SetError(holder->Get());
 				return Nil;
 			};
 
@@ -2748,26 +2880,26 @@ results->ToString()->PrintLine();
 		```
 		~#
 		method : public : CreateIndex(name : String, column : String, kind : IndexKind) ~ Bool {
-			@error := Nil;
+			SetError(Nil);
 			index := GetIndex(column);
 			if(index < 0) {
-				@error := "unknown column '{$column}'";
+				SetError("unknown column '{$column}'");
 				return false;
 			};
 
 			if(index = 0) {
-				@error := "the key column 'pk' needs no index: Get finds a key directly";
+				SetError("the key column 'pk' needs no index: Get finds a key directly");
 				return false;
 			};
 
 			if(kind <> IndexKind->HASH & kind <> IndexKind->SORTED) {
-				@error := "an index is HASH or SORTED";
+				SetError("an index is HASH or SORTED");
 				return false;
 			};
 
 			target := @columns[index];
 			if(target->GetType() = ColumnType->OBJECT) {
-				@error := "column '{$column}' holds objects, which have no one order or key to index";
+				SetError("column '{$column}' holds objects, which have no one order or key to index");
 				return false;
 			};
 
@@ -2779,7 +2911,7 @@ results->ToString()->PrintLine();
 				other_name := @columns[i]->GetIndexName();
 				if(i <> index & other_name <> Nil) {
 					if(other_name->Equals(name)) {
-						@error := "an index named '{$name}' is on column '{$(@columns[i]->GetName())}'";
+						SetError("an index named '{$name}' is on column '{$(@columns[i]->GetName())}'");
 						return false;
 					};
 				};
@@ -2811,7 +2943,7 @@ results->ToString()->PrintLine();
 			};
 
 			if(<>@store->IndexesChanged()) {
-				@error := "the index changed, but '{$(@store->GetPath())}' could not be saved: {$(@store->GetError())}";
+				SetError("the index changed, but '{$(@store->GetPath())}' could not be saved: {$(@store->GetError())}");
 				return false;
 			};
 			return true;
@@ -2825,7 +2957,7 @@ results->ToString()->PrintLine();
 		method : public : DropIndex(column : String) ~ Bool {
 			target := GetColumn(column);
 			if(target = Nil | target->GetColumnIndex() = Nil) {
-				@error := "column '{$column}' has no index";
+				SetError("column '{$column}' has no index");
 				return false;
 			};
 
@@ -2905,7 +3037,7 @@ results->ToString()->PrintLine();
 		```
 		~#
 		method : public : Explain(statement : String) ~ String {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return Nil;
@@ -2913,7 +3045,7 @@ results->ToString()->PrintLine();
 
 			holder := StringHolder->New();
 			text := plan->Explain(@self, Compare->New[0], holder);
-			@error := holder->Get();
+			SetError(holder->Get());
 			return text;
 		}
 
@@ -2991,7 +3123,7 @@ results->ToString()->PrintLine();
 		```
 		~#
 		method : public : Prepare(statement : String) ~ Statement {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return Nil;
@@ -3003,7 +3135,7 @@ results->ToString()->PrintLine();
 		# a parsed plan for a statement, from a small cache of recent ones
 		method : FindPlan(statement : String) ~ Plan {
 			if(statement = Nil) {
-				@error := "*** Parse error ***";
+				SetError("*** Parse error ***");
 				return Nil;
 			};
 
@@ -3021,7 +3153,7 @@ results->ToString()->PrintLine();
 				holder := StringHolder->New();
 				plan := Plan->Parse(statement, holder);
 				if(plan = Nil) {
-					@error := holder->Get();
+					SetError(holder->Get());
 					return Nil;
 				};
 
@@ -3158,7 +3290,7 @@ results->ToString()->PrintLine();
 			# log naming an older save, and the changes after this one would be skipped
 			if(@store <> Nil & path <> Nil & path->Equals(@store->GetPath())) {
 				if(<>@store->Checkpoint(compression)) {
-					@error := @store->GetError();
+					SetError(@store->GetError());
 					return false;
 				};
 				return true;
@@ -3169,11 +3301,11 @@ results->ToString()->PrintLine();
 
 		# the save itself, for Save and a store's Checkpoint
 		method : public : WriteFile(path : String, compression : Compression) ~ Bool {
-			@error := Nil;
+			SetError(Nil);
 			holder := StringHolder->New();
 			bytes := Otab->Write(@self, compression, true, holder);
 			if(bytes = Nil | <>Otab->Commit(path, bytes, holder)) {
-				@error := holder->Get();
+				SetError(holder->Get());
 				return false;
 			};
 
@@ -3206,10 +3338,10 @@ results->ToString()->PrintLine();
 		@return image, Nil on error (see GetError)
 		~#
 		method : public : ToBytes(compression : Compression, indexes : Bool) ~ Byte[] {
-			@error := Nil;
+			SetError(Nil);
 			holder := StringHolder->New();
 			bytes := Otab->Write(@self, compression, indexes, holder);
-			@error := holder->Get();
+			SetError(holder->Get());
 			return bytes;
 		}
 
@@ -3261,9 +3393,9 @@ results->ToString()->PrintLine();
 		@return true if added, false on error (see GetError)
 		~#
 		method : public : Append(path : String, compression : Compression) ~ Bool {
-			@error := Nil;
+			SetError(Nil);
 			if(@store <> Nil & path <> Nil & path->Equals(@store->GetPath())) {
-				@error := "'{$path}' is this table's own file; its changes are already recorded (use Checkpoint)";
+				SetError("'{$path}' is this table's own file; its changes are already recorded (use Checkpoint)");
 				return false;
 			};
 			if(path = Nil | <>File->Exists(path)) {
@@ -3272,28 +3404,28 @@ results->ToString()->PrintLine();
 
 			file := OtabFile->New(path);
 			if(<>file->IsOpen()) {
-				@error := "'{$path}': {$(file->GetError())}";
+				SetError("'{$path}': {$(file->GetError())}");
 				return false;
 			};
 
 			names := file->GetAllNames();
 			types := file->GetTypes();
 			if(names->Size() <> @columns->Size()) {
-				@error := "'{$path}' has {$(names->Size() - 1)} columns; this table has {$(@columns->Size() - 1)}";
+				SetError("'{$path}' has {$(names->Size() - 1)} columns; this table has {$(@columns->Size() - 1)}");
 				return false;
 			};
 
 			for(c := 1; c < names->Size(); c += 1;) {
 				column := @columns[c];
 				if(<>names[c]->Equals(column->GetName())) {
-					@error := "column {$c} is '{$(names[c])}' in '{$path}' and '{$(column->GetName())}' here";
+					SetError("column {$c} is '{$(names[c])}' in '{$path}' and '{$(column->GetName())}' here");
 					return false;
 				};
 
 				if(types[c] <> column->GetType()) {
 					file_type := Column->TypeName(types[c]);
 					this_type := Column->TypeName(column->GetType());
-					@error := "column '{$(names[c])}' is {$file_type} in '{$path}' and {$this_type} here";
+					SetError("column '{$(names[c])}' is {$file_type} in '{$path}' and {$this_type} here");
 					return false;
 				};
 			};
@@ -3305,7 +3437,7 @@ results->ToString()->PrintLine();
 
 			prefix := file->ReadPrefix();
 			if(prefix = Nil) {
-				@error := "'{$path}': {$(file->GetError())}";
+				SetError("'{$path}': {$(file->GetError())}");
 				return false;
 			};
 
@@ -3324,7 +3456,7 @@ results->ToString()->PrintLine();
 
 			holder := StringHolder->New();
 			if(<>Otab->WriteGroups(out, copy, Otab->CodecOf(compression), counts, blocks, holder)) {
-				@error := holder->Get();
+				SetError(holder->Get());
 				return false;
 			};
 
@@ -3338,7 +3470,7 @@ results->ToString()->PrintLine();
 			Otab->WriteFooter(out, file->GetName(), copy->GetNextKey(), names, types, file->GetDeclared(), counts, blocks,
 				file->GetFormatVersion(), file_indexes);
 			if(<>Otab->Commit(path, out->ToByteArray(), holder)) {
-				@error := holder->Get();
+				SetError(holder->Get());
 				return false;
 			};
 
@@ -3988,7 +4120,7 @@ results->ToString()->PrintLine();
 		```
 		~#
 		method : public : Query(statement : String) ~ Table {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return Nil;
@@ -3997,7 +4129,7 @@ results->ToString()->PrintLine();
 			holder := StringHolder->New();
 			view := plan->Run(@self, Compare->New[0], holder);
 			if(view = Nil) {
-				@error := holder->Get();
+				SetError(holder->Get());
 				return Nil;
 			};
 
@@ -4017,7 +4149,7 @@ results->ToString()->PrintLine();
 		```
 		~#
 		method : public : Execute(statement : String) ~ Int {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return -1;
@@ -4028,20 +4160,26 @@ results->ToString()->PrintLine();
 				@store->Begin();
 			};
 			changed := plan->Execute(@self, Compare->New[0], holder);
-			@error := holder->Get();
+			SetError(holder->Get());
 			if(@store <> Nil & <>@store->End()) {
-				@error := @store->GetError();
+				SetError(@store->GetError());
 				return -1;
 			};
 			return changed;
 		}
 
 		#~
-		Gets the last query error
-		@return last query error, Nil if the last query succeeded or none has run
+		Gets the last error of the calling thread's call on this table: several threads may query
+		one table at once, and each reads its own error
+		@return last query error, Nil if the calling thread's last query succeeded or none has run
 		~#
 		method : public : GetError() ~ String {
-			return @error;
+			return @errors->Get();
+		}
+
+		# the calling thread's error, Nil to clear it
+		method : SetError(message : String) ~ Nil {
+			@errors->Set(message);
 		}
 
 		# Sets one cell, recording it when the table is durable. Row->Set and UPDATE come
@@ -4060,7 +4198,7 @@ results->ToString()->PrintLine();
 			if(@store <> Nil & value <> Nil) {
 				if(<>(value->TypeOf(IntRef) | value->TypeOf(FloatRef) | value->TypeOf(String) |
 						value->TypeOf(Date) | value->TypeOf(BoolRef))) {
-					@error := "a durable table records Int, Float, String, Date and Bool values; '{$(column->GetName())}' was given another kind";
+					SetError("a durable table records Int, Float, String, Date and Bool values; '{$(column->GetName())}' was given another kind");
 					return false;
 				};
 			};
@@ -4071,7 +4209,7 @@ results->ToString()->PrintLine();
 
 			if(@store <> Nil) {
 				if(<>@store->LogSet(@columns[0]->GetInt(row), index, value)) {
-					@error := @store->GetError();
+					SetError(@store->GetError());
 				};
 			};
 			return true;
@@ -4096,11 +4234,11 @@ results->ToString()->PrintLine();
 		~#
 		method : public : Checkpoint() ~ Bool {
 			if(@store = Nil) {
-				@error := "the table is not durable; open it with Table->Open or TableStore";
+				SetError("the table is not durable; open it with Table->Open or TableStore");
 				return false;
 			};
 			if(<>@store->Checkpoint()) {
-				@error := @store->GetError();
+				SetError(@store->GetError());
 				return false;
 			};
 			return true;
@@ -4166,7 +4304,7 @@ results->ToString()->PrintLine();
 			@version += 1;
 
 			if(@store <> Nil & <>@store->LogInsert(key)) {
-				@error := @store->GetError();
+				SetError(@store->GetError());
 			};
 
 			return Row->New(@self, row);
@@ -4201,7 +4339,7 @@ results->ToString()->PrintLine();
 			};
 
 			if(@store <> Nil & <>@store->LogDelete(pk)) {
-				@error := @store->GetError();
+				SetError(@store->GetError());
 			};
 
 			return true;
@@ -4344,7 +4482,7 @@ results->ToString()->PrintLine();
 		method : public : WriteCsv(out : System.IO.OutputStream) ~ Bool {
 			view := AsView();
 			if(<>view->WriteCsv(out)) {
-				@error := view->GetError();
+				SetError(view->GetError());
 				return false;
 			};
 			return true;
@@ -4366,7 +4504,7 @@ results->ToString()->PrintLine();
 		method : public : WriteJson(out : System.IO.OutputStream) ~ Bool {
 			view := AsView();
 			if(<>view->WriteJson(out)) {
-				@error := view->GetError();
+				SetError(view->GetError());
 				return false;
 			};
 			return true;
@@ -4382,7 +4520,7 @@ results->ToString()->PrintLine();
 			view := AsView();
 			matrix := view->ToMatrix(names);
 			if(matrix = Nil) {
-				@error := view->GetError();
+				SetError(view->GetError());
 			};
 			return matrix;
 		}
@@ -4398,7 +4536,7 @@ results->ToString()->PrintLine();
 			view := AsView();
 			matrix := view->ToMatrix(names, fill);
 			if(matrix = Nil) {
-				@error := view->GetError();
+				SetError(view->GetError());
 			};
 			return matrix;
 		}
@@ -12602,11 +12740,6 @@ if(file->IsOpen()) {
 
 			name := @statement->GetTableName();
 			if(@statement->GetKind() = SqlStatement->Kind->CREATE) {
-				if(catalog->Has(name)) {
-					error->Set("a table named '{$name}' already exists");
-					return -1;
-				};
-
 				columns := @statement->GetColumns();
 				type_names := @statement->GetTypes();
 				names := String->New[columns->Size()];
@@ -12621,7 +12754,12 @@ if(file->IsOpen()) {
 					};
 					types[i] := TypeFromName(type_names->Get(i));
 				};
-				catalog->Add(Table->New(name, names, types));
+				# the check and the add are one step, so of threads creating one name at once one
+				# succeeds
+				if(<>catalog->AddNew(Table->New(name, names, types))) {
+					error->Set("a table named '{$name}' already exists");
+					return -1;
+				};
 				return 0;
 			};
 
@@ -12750,8 +12888,11 @@ if(file->IsOpen()) {
 
 		# all rows or none: a value a column refuses removes the rows already added
 		method : Insert(table : Table, params : Compare[], error : StringHolder) ~ Int {
+			# no column list: every column, in a list of its own; the statement's list belongs to a
+			# cached plan, so filling it would fix this table's columns into the plan for good
 			names := @statement->GetColumns();
 			if(names->Size() = 0) {
+				names := Vector->New()<String>;
 				all := table->GetColumnNames();
 				for(i := 1; i < all->Size(); i += 1;) {
 					names->AddBack(all[i]);
@@ -15442,6 +15583,16 @@ if(file->IsOpen()) {
 	Named tables that queries can refer to. SQL run through a catalog can join its tables, and
 	can create, change and delete them.
 
+	Threads: one catalog may be shared by any number of threads that query through it at once
+	(Query, Prepare, Explain, Get, GetNames), including queries that name files, which each
+	thread finds in the catalog's cache or, when the files changed, waits for one thread to
+	read again. GetError gives each thread its own last error. Add, Remove, Load and CREATE
+	TABLE may run while other threads query: a query sees a table as it was before or after
+	the change. INSERT, UPDATE, DELETE, CREATE INDEX and DROP INDEX write a table, so while
+	one runs no other thread may use that table (as for any Table). SetFileAccess and
+	SetArchiveLimits apply to the queries that start after them; set them before sharing the
+	catalog. A Statement from Prepare belongs to the thread that binds it.
+
 ```
 catalog := Catalog->New();
 catalog->Load(CsvSource->New("runs.csv"));
@@ -15457,13 +15608,16 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@no_files : Bool;
 		@member_limit : Int;
 		@total_limit : Int;
-		@error : String;
+		@errors : ThreadErrors;
 
 		#~
 		Constructor
 		~#
 		New() {
+			# made before any catalog exists to share, so threads never race to make them
+			CatalogLocks->Prepare();
 			@tables := Map->New()<String, Table>;
+			@errors := ThreadErrors->New();
 		}
 
 		#~
@@ -15504,8 +15658,30 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		~#
 		method : public : Add(table : Table) ~ Nil {
 			if(table <> Nil) {
-				@tables->Insert(table->GetName(), table);
+				lock := CatalogLocks->Maps();
+				critical(lock) {
+					@tables->Insert(table->GetName(), table);
+				};
 			};
+		}
+
+		#~
+		Adds a table unless one of its name exists: the check and the add are one step, so of
+		threads adding tables of one name at once, exactly one succeeds (CREATE TABLE uses it)
+		@param table table
+		@return true if added, false if a table of that name exists
+		~#
+		method : public : AddNew(table : Table) ~ Bool {
+			added := false;
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				if(<>@tables->Has(table->GetName())) {
+					@tables->Insert(table->GetName(), table);
+					added := true;
+				};
+			};
+
+			return added;
 		}
 
 		#~
@@ -15518,7 +15694,13 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 				return Nil;
 			};
 
-			return @tables->Find(name);
+			table : Table := Nil;
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				table := @tables->Find(name);
+			};
+
+			return table;
 		}
 
 		#~
@@ -15527,7 +15709,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@return true if it exists
 		~#
 		method : public : Has(name : String) ~ Bool {
-			return name <> Nil & @tables->Has(name);
+			return Get(name) <> Nil;
 		}
 
 		#~
@@ -15536,12 +15718,20 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@return true if removed
 		~#
 		method : public : Remove(name : String) ~ Bool {
-			if(<>Has(name)) {
+			if(name = Nil) {
 				return false;
 			};
 
-			@tables->Remove(name);
-			return true;
+			removed := false;
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				if(@tables->Has(name)) {
+					@tables->Remove(name);
+					removed := true;
+				};
+			};
+
+			return removed;
 		}
 
 		#~
@@ -15549,7 +15739,12 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@return table names
 		~#
 		method : public : GetNames() ~ String[] {
-			keys := @tables->GetKeys()<String>;
+			keys : Vector<String> := Nil;
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				keys := @tables->GetKeys()<String>;
+			};
+
 			names := String->New[keys->Size()];
 			each(i : names) {
 				names[i] := keys->Get(i);
@@ -15574,14 +15769,14 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@return true if loaded, false on error (see GetError)
 		~#
 		method : public : Load(source : Source, hint : ScanHint) ~ Bool {
-			@error := Nil;
+			SetError(Nil);
 			if(source = Nil) {
-				@error := "no source";
+				SetError("no source");
 				return false;
 			};
 
 			if(<>source->Load(@self, hint)) {
-				@error := source->GetError();
+				SetError(source->GetError());
 				return false;
 			};
 
@@ -15602,86 +15797,137 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 			return Catalog->New()->Query(statement);
 		}
 
-		# a file named in a query, read once and again only when it changes (by name, size
-		# and modification time); a glob's files become one table with a '_file' column
+		# A file named in a query, read once and again only when it changes (by name, size and
+		# modification time, or for a URL by its server's validators); a glob's files become one
+		# table with a '_file' column. Several threads may ask at once: the cache is read and
+		# changed under the catalog lock, and a file that must be read is read under its file
+		# lock (CatalogLocks), so threads that miss together read it once.
 		method : public : ReadFile(file : SqlFile, name : String, error : StringHolder) ~ Table {
 			if(@no_files) {
 				error->Set("'{$(file->GetPath())}': this catalog does not read files or URLs named in a query");
 				return Nil;
 			};
 
-			if(@files = Nil) {
-				@files := Map->New()<String, FileEntry>;
-			};
-
 			key := file->GetKey();
-			if(UrlCache->IsUrl(file->GetPath())) {
+			path := file->GetPath();
+			if(UrlCache->IsUrl(path)) {
 				if(file->IsGlob()) {
-					error->Set("'{$(file->GetPath())}': a URL cannot be a pattern");
+					error->Set("'{$path}': a URL cannot be a pattern");
 					return Nil;
 				};
 
-				fetched := UrlCache->Fetch(file->GetPath(), error);
+				# revalidated over the network with no lock held
+				fetched := UrlCache->Fetch(path, error);
 				if(fetched = Nil) {
 					return Nil;
 				};
 
-				known := @files->Find(key);
-				if(known <> Nil & known->GetStamp()->Equals(fetched->GetStamp())) {
-					return known->GetTable();
+				known := CachedFile(key, fetched->GetStamp());
+				if(known <> Nil) {
+					return known;
 				};
 
-				@file_reads += 1;
-				downloaded := FileTables->ReadOne(file, fetched->GetPath(), name, MemberLimit(), TotalLimit(), error);
-				if(downloaded = Nil) {
-					return Nil;
+				# a miss: read the local copy under the URL's lock, which every writer of the
+				# copy holds too, so the copy cannot change while it is read and the stamp it
+				# is cached under is the copy's own
+				downloaded : Table := Nil;
+				lock := CatalogLocks->ForFile(path);
+				critical(lock) {
+					stamp := UrlCache->CurrentStamp(path);
+					if(stamp = Nil) {
+						stamp := fetched->GetStamp();
+					};
+
+					downloaded := CachedFile(key, stamp);
+					if(downloaded = Nil) {
+						CountRead();
+						downloaded := FileTables->ReadOne(file, fetched->GetPath(), name, MemberLimit(), TotalLimit(), error);
+						if(downloaded <> Nil) {
+							StoreFile(key, stamp, downloaded);
+						};
+					};
 				};
 
-				if(@files->Size() >= 32) {
-					@files := Map->New()<String, FileEntry>;
-				};
-				@files->Insert(key, FileEntry->New(fetched->GetStamp(), downloaded));
 				return downloaded;
 			};
 
-			files := FileTables->Expand(file->GetPath(), error);
+			files := FileTables->Expand(path, error);
 			if(files = Nil) {
 				return Nil;
 			};
 
 			stamp := FileTables->Stamp(files);
-			entry := @files->Find(key);
-			if(entry <> Nil & entry->GetStamp()->Equals(stamp)) {
-				return entry->GetTable();
+			known := CachedFile(key, stamp);
+			if(known <> Nil) {
+				return known;
 			};
 
-			table : Table;
+			table : Table := Nil;
+			lock := CatalogLocks->ForFile(key);
+			critical(lock) {
+				# another thread may have read it while this one waited
+				table := CachedFile(key, stamp);
+				if(table = Nil) {
+					table := ReadFiles(file, files, name, error);
+					if(table <> Nil) {
+						StoreFile(key, stamp, table);
+					};
+				};
+			};
+
+			return table;
+		}
+
+		# the files a path matched, read as one table; Nil with the error set
+		method : ReadFiles(file : SqlFile, files : Vector<String>, name : String, error : StringHolder) ~ Table {
 			if(file->IsGlob()) {
 				tables := Vector->New()<Table>;
 				each(i : files) {
-					@file_reads += 1;
+					CountRead();
 					one := FileTables->ReadOne(file, files->Get(i), name, MemberLimit(), TotalLimit(), error);
 					if(one = Nil) {
 						return Nil;
 					};
 					tables->AddBack(one);
 				};
-				table := FileTables->Combine(name, tables, files, "_file");
-			}
-			else {
-				@file_reads += 1;
-				table := FileTables->ReadOne(file, files->Get(0), name, MemberLimit(), TotalLimit(), error);
-				if(table = Nil) {
-					return Nil;
+				return FileTables->Combine(name, tables, files, "_file");
+			};
+
+			CountRead();
+			return FileTables->ReadOne(file, files->Get(0), name, MemberLimit(), TotalLimit(), error);
+		}
+
+		# the cached table for a key, if it was read when its files had this stamp
+		method : CachedFile(key : String, stamp : String) ~ Table {
+			table : Table := Nil;
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				if(@files <> Nil) {
+					entry := @files->Find(key);
+					if(entry <> Nil & entry->GetStamp()->Equals(stamp)) {
+						table := entry->GetTable();
+					};
 				};
 			};
 
-			if(@files->Size() >= 32) {
-				@files := Map->New()<String, FileEntry>;
-			};
-			@files->Insert(key, FileEntry->New(stamp, table));
-
 			return table;
+		}
+
+		method : StoreFile(key : String, stamp : String, table : Table) ~ Nil {
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				if(@files = Nil | @files->Size() >= 32) {
+					@files := Map->New()<String, FileEntry>;
+				};
+				@files->Insert(key, FileEntry->New(stamp, table));
+			};
+		}
+
+		method : CountRead() ~ Nil {
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				@file_reads += 1;
+			};
 		}
 
 		#~
@@ -15690,7 +15936,13 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@return file reads
 		~#
 		method : public : GetFileReads() ~ Int {
-			return @file_reads;
+			reads := 0;
+			lock := CatalogLocks->Maps();
+			critical(lock) {
+				reads := @file_reads;
+			};
+
+			return reads;
 		}
 
 		#~
@@ -15702,7 +15954,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		```
 		~#
 		method : public : Query(statement : String) ~ Table {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return Nil;
@@ -15711,7 +15963,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 			error := StringHolder->New();
 			view := plan->RunIn(@self, Compare->New[0], error);
 			if(view = Nil) {
-				@error := error->Get();
+				SetError(error->Get());
 				return Nil;
 			};
 
@@ -15728,7 +15980,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		```
 		~#
 		method : public : Execute(statement : String) ~ Int {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return -1;
@@ -15736,7 +15988,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 
 			error := StringHolder->New();
 			changed := plan->ExecuteIn(@self, Compare->New[0], error);
-			@error := error->Get();
+			SetError(error->Get());
 			return changed;
 		}
 
@@ -15746,7 +15998,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@return statement, Nil on a syntax error (see GetError)
 		~#
 		method : public : Prepare(statement : String) ~ Statement {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return Nil;
@@ -15764,7 +16016,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		```
 		~#
 		method : public : Explain(statement : String) ~ String {
-			@error := Nil;
+			SetError(Nil);
 			plan := FindPlan(statement);
 			if(plan = Nil) {
 				return Nil;
@@ -15772,44 +16024,58 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 
 			error := StringHolder->New();
 			text := plan->ExplainIn(@self, Compare->New[0], error);
-			@error := error->Get();
+			SetError(error->Get());
 			return text;
 		}
 
-		# a parsed plan for a statement, from a small cache of recent ones
+		# A parsed plan for a statement, from a small cache of recent ones. Threads sharing the
+		# catalog share the cache, a Map, read and changed under the catalog lock; parsing, the
+		# slow part, is not, so two threads may parse one statement and the later insert wins
+		# (a plan does not change once parsed, so either serves).
 		method : FindPlan(statement : String) ~ Plan {
-			if(@plans = Nil) {
-				@plans := Map->New()<String, Plan>;
-			};
-
+			plan : Plan := Nil;
+			lock := CatalogLocks->Maps();
 			if(statement <> Nil) {
-				plan := @plans->Find(statement);
-				if(plan <> Nil) {
-					return plan;
+				critical(lock) {
+					if(@plans <> Nil) {
+						plan := @plans->Find(statement);
+					};
 				};
 			};
 
-			holder := StringHolder->New();
-			plan := Plan->Parse(statement, holder);
 			if(plan = Nil) {
-				@error := holder->Get();
-				return Nil;
-			};
+				holder := StringHolder->New();
+				plan := Plan->Parse(statement, holder);
+				if(plan = Nil) {
+					SetError(holder->Get());
+					return Nil;
+				};
 
-			if(@plans->Size() >= 64) {
-				@plans := Map->New()<String, Plan>;
+				if(statement <> Nil) {
+					critical(lock) {
+						if(@plans = Nil | @plans->Size() >= 64) {
+							@plans := Map->New()<String, Plan>;
+						};
+						@plans->Insert(statement, plan);
+					};
+				};
 			};
-			@plans->Insert(statement, plan);
 
 			return plan;
 		}
 
 		#~
-		Gets the reason the last load, query or statement failed
+		Gets the reason the calling thread's last load, query or statement failed: several
+		threads may share a catalog, and each reads its own error
 		@return error, Nil if none
 		~#
 		method : public : GetError() ~ String {
-			return @error;
+			return @errors->Get();
+		}
+
+		# the calling thread's error, Nil to clear it
+		method : SetError(message : String) ~ Nil {
+			@errors->Set(message);
 		}
 	}
 
@@ -16733,7 +16999,13 @@ catalog->Load(source);
 			return name;
 		}
 
-		# the current copy of a URL, fetched or revalidated; Nil with the error set
+		# The current copy of a URL, fetched or revalidated; Nil with the error set. Several
+		# threads may fetch one URL at once: the request goes out with no lock held, and the
+		# copy and its note are read and replaced only under the URL's file lock (CatalogLocks),
+		# which a catalog also holds while it reads the copy. A new copy is written to a file of
+		# this process and thread's own, then renamed over the old, and so is its note, which
+		# records the copy's stamp; the note's two validator lines are those earlier versions
+		# wrote, so either reads the other's cache.
 		function : Fetch(url : String, error : StringHolder) ~ UrlFile {
 			local := LocalPath(url);
 			meta := String->New(local);
@@ -16741,14 +17013,12 @@ catalog->Load(source);
 
 			etag := "";
 			modified := "";
-			if(File->Exists(local) & File->Exists(meta)) {
-				notes := FileReader->ReadFile(meta);
-				if(notes <> Nil) {
-					lines := SourceText->Lines(notes);
-					if(lines->Size() > 1) {
-						etag := lines->Get(0)->Trim();
-						modified := lines->Get(1)->Trim();
-					};
+			lock := CatalogLocks->ForFile(url);
+			critical(lock) {
+				lines := Notes(local, meta);
+				if(lines <> Nil) {
+					etag := lines->Get(0)->Trim();
+					modified := lines->Get(1)->Trim();
 				};
 			};
 
@@ -16788,23 +17058,78 @@ catalog->Load(source);
 			etag := etag = Nil ? "" : etag->Trim();
 			modified := modified = Nil ? "" : modified->Trim();
 
-			# a new copy beside the old, then renamed over it
-			partial := String->New(local);
-			partial += ".part";
-			if(<>FileWriter->WriteFile(partial, body) | <>File->Rename(partial, local)) {
-				error->Set("'{$url}': cannot write its copy to '{$local}'");
-				return Nil;
-			};
-			FileWriter->WriteFile(meta, "{$etag}\n{$modified}\n");
-
 			# without a validator the content itself tells versions apart
+			stamp := "{$etag}|{$modified}";
 			if(etag->Size() = 0 & modified->Size() = 0) {
 				size := body->Size();
 				check := body->CRC32();
-				return UrlFile->New(local, "{$size}|{$check}");
+				stamp := "{$size}|{$check}";
 			};
 
-			return UrlFile->New(local, "{$etag}|{$modified}");
+			# a new copy, and then its note, each beside the old and renamed over it, under a
+			# name no other process or thread writes
+			mine := ".{$(Runtime->GetProcessId())}_{$(System.Concurrency.Thread->GetCurrentId())}.part";
+			partial := String->New(local);
+			partial += mine;
+			note := String->New(meta);
+			note += mine;
+			written := false;
+			critical(lock) {
+				if(FileWriter->WriteFile(partial, body) & File->Rename(partial, local)) {
+					if(FileWriter->WriteFile(note, "{$etag}\n{$modified}\n{$stamp}\n")) {
+						File->Rename(note, meta);
+					};
+					written := true;
+				};
+			};
+
+			if(<>written) {
+				File->Delete(partial);
+				error->Set("'{$url}': cannot write its copy to '{$local}'");
+				return Nil;
+			};
+
+			return UrlFile->New(local, stamp);
+		}
+
+		# the lines of a URL's note, Nil if it or the copy is missing; the caller holds the
+		# URL's lock
+		function : Notes(local : String, meta : String) ~ Vector<String> {
+			if(<>File->Exists(local) | <>File->Exists(meta)) {
+				return Nil;
+			};
+
+			notes := FileReader->ReadFile(meta);
+			if(notes = Nil) {
+				return Nil;
+			};
+
+			lines := SourceText->Lines(notes);
+			return lines->Size() > 1 ? lines : Nil;
+		}
+
+		# The stamp of a URL's local copy as it is now, Nil if there is none: the note's third
+		# line, or for a note an earlier version wrote, its validators. The caller holds the
+		# URL's lock, so the copy cannot change until it has read it.
+		function : CurrentStamp(url : String) ~ String {
+			local := LocalPath(url);
+			meta := String->New(local);
+			meta += ".meta";
+			lines := Notes(local, meta);
+			if(lines = Nil) {
+				return Nil;
+			};
+
+			if(lines->Size() > 2) {
+				stamp := lines->Get(2)->Trim();
+				if(stamp->Size() > 0) {
+					return stamp;
+				};
+			};
+
+			etag := lines->Get(0)->Trim();
+			modified := lines->Get(1)->Trim();
+			return "{$etag}|{$modified}";
 		}
 	}
 

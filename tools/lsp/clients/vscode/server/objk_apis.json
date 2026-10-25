@@ -9165,10 +9165,13 @@
 			}
 		},
 		"Query.Structured.Catalog": {
-			"description": "Named tables that queries can refer to. SQL run through a catalog can join its tables, and can create, change and delete them.",
+			"description": "Named tables that queries can refer to. SQL run through a catalog can join its tables, and can create, change and delete them.\n\nThreads: one catalog may be shared by any number of threads that query through it at once (Query, Prepare, Explain, Get, GetNames), including queries that name files, which each thread finds in the catalog's cache or, when the files changed, waits for one thread to read again. GetError gives each thread its own last error. Add, Remove, Load and CREATE TABLE may run while other threads query: a query sees a table as it was before or after the change. INSERT, UPDATE, DELETE, CREATE INDEX and DROP INDEX write a table, so while one runs no other thread may use that table (as for any Table). SetFileAccess and SetArchiveLimits apply to the queries that start after them; set them before sharing the catalog. A Statement from Prepare belongs to the thread that binds it.",
 			"functions": {
 				"Add": {
 					"descriptions": ["**Adds a table under its name, replacing any table of that name**\n\n```method : public : Add(table:Table) ~ Nil```\n\n\n\ntable: Table\n\nreturn: Nil"]
+				},
+				"AddNew": {
+					"descriptions": ["**Adds a table unless one of its name exists: the check and the add are one step, so of threads adding tables of one name at once, exactly one succeeds (CREATE TABLE uses it)**\n\n```method : public : AddNew(table:Table) ~ Bool```\n\n\n\ntable: Table\n\nreturn: Bool"]
 				},
 				"Execute": {
 					"descriptions": ["**Runs an INSERT, UPDATE, DELETE, CREATE TABLE, CREATE INDEX or DROP INDEX (see Table->Execute). A statement that fails changes nothing.**\n\n```method : public : Execute(statement:String) ~ Int```\n\n\n\nstatement: String\n\nreturn: Int\n\n```\ncatalog->Execute(\"create table runs (id int, score float, label string)\");\ncatalog->Execute(\"insert into runs values (1, 0.5, 'cat'), (2, 0.9, 'dog')\");\n```"]
@@ -9180,7 +9183,7 @@
 					"descriptions": ["**Gets a table by name**\n\n```method : public : Get(name:String) ~ Table```\n\n\n\nname: String\n\nreturn: Table"]
 				},
 				"GetError": {
-					"descriptions": ["**Gets the reason the last load, query or statement failed**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the reason the calling thread's last load, query or statement failed: several threads may share a catalog, and each reads its own error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetFileReads": {
 					"descriptions": ["**Gets how many times queries have read a file, for checking that unchanged files come from the cache**\n\n```method : public : GetFileReads() ~ Int```\n\n\n\nreturn: Int"]
@@ -9820,7 +9823,7 @@
 			}
 		},
 		"Query.Structured.Table": {
-			"description": "A table of typed columns. Each row has a primary key in the hidden 'pk' column, assigned in insertion order and never reused. Rows are read and written through Row cursors, and queried with SQL-like statements.",
+			"description": "A table of typed columns. Each row has a primary key in the hidden 'pk' column, assigned in insertion order and never reused. Rows are read and written through Row cursors, and queried with SQL-like statements.\n\nThreads: any number of threads may query one table at once, and GetError gives each thread its own last error. Writes are not locked: while one thread writes a table, no other may use it, so a program that mixes writes and queries orders them itself.",
 			"functions": {
 				"AddColumn": {
 					"descriptions": ["**Adds a column; existing rows hold an empty cell in it**\n\n```method : public : AddColumn(name:String, type:ColumnType) ~ Bool```\n\n\n\nname: String\n\ntype: ColumnType\n\nreturn: Bool"]
@@ -9919,7 +9922,7 @@
 					"descriptions": ["**Gets the array of 64-row words marking deleted rows, for code that scans the table directly**\n\n```method : public : GetDeletedBits() ~ Int[]```\n\n\n\nreturn: Int[]"]
 				},
 				"GetError": {
-					"descriptions": ["**Gets the last query error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
+					"descriptions": ["**Gets the last error of the calling thread's call on this table: several threads may query one table at once, and each reads its own error**\n\n```method : public : GetError() ~ String```\n\n\n\nreturn: String"]
 				},
 				"GetIndex": {
 					"descriptions": ["**Get column index by name**\n\n```method : public : GetIndex(name:String) ~ Int```\n\n\n\nname: String\n\nreturn: Int\n\n```\ntable := Query.Structured.Table->New(\"items\", [\"name\", \"qty\"]);\nidx := table->GetIndex(\"qty\"); # returns 2 (pk=0, name=1, qty=2)\n\"qty column index={$idx}\"->PrintLine();\n```"]
@@ -12398,11 +12401,17 @@
 				"Execute": {
 					"descriptions": ["**Called to execute a new thread**\n\n```method : public : Execute(param:System.Base) ~ Nil```\n\n\n\nparam: System.Base\n\nreturn: Nil"]
 				},
+				"GetCurrentId": {
+					"descriptions": ["**Gets a number naming the calling thread, whichever thread it is (the program's first thread has one too). Numbers count up from 1 and are never given to another thread, even after this one ends, so they can key state kept per thread.**\n\n```function : GetCurrentId() ~ Int```\n\n\n\nreturn: Int\n\n```\nid := System.Concurrency.Thread->GetCurrentId();\n\"running on thread {$id}\"->PrintLine();\n```"]
+				},
 				"GetExecuteID": {
 					"descriptions": ["**Returns a unique execution ID**\n\n```method : public : GetExecuteID() ~ Int```\n\n\n\nreturn: Int"]
 				},
 				"GetName": {
 					"descriptions": ["**Returns the thread's name**\n\n```method : public : GetName() ~ String```\n\n\n\nreturn: String"]
+				},
+				"IsAlive": {
+					"descriptions": ["**Whether the thread GetCurrentId gave a number to is still running, so state kept for a thread can be dropped once it ends**\n\n```function : IsAlive(id:Int) ~ Bool```\n\n\n\nid: Int\n\nreturn: Bool"]
 				},
 				"Join": {
 					"descriptions": ["**Joins the executing thread with the caller**\n\n```method : public : Join() ~ Nil```\n\n\n\nreturn: Nil"]
