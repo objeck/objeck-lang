@@ -556,8 +556,18 @@ def on_screen(text):
     """'text' compared as a console screen can hold it. A character outside
     the BMP reads back from the screen buffer either whole or as U+FFFD,
     depending on how it was written (cmd's own echo gives U+FFFD), so both
-    sides of a comparison drop those and compare the rest."""
-    return "".join(c for c in text if ord(c) <= 0xFFFF and c != "\ufffd")
+    sides of a comparison drop those and compare the rest. Whitespace goes
+    too: the screen is read as fixed-width rows, so a long path wraps, and a
+    wide (CJK) character that does not fit at a row's end leaves a blank cell
+    inside the text -- where depends on the length of the temp directory,
+    which differs from one runner to the next."""
+    return "".join(c for c in text if ord(c) <= 0xFFFF and c != "\ufffd" and not c.isspace() and c != "\0")
+
+
+def screen_tail(text, size=700):
+    """The end of a screen for a failure message, runs of blanks collapsed so
+    the lines above the done marker are not cut off by the padding."""
+    return re.sub(r"\s{2,}", " | ", text.strip())[-size:]
 
 
 def check_unicode_text_out(obc, bin_dir, lib_dir):
@@ -626,7 +636,7 @@ def check_unicode_text_out(obc, bin_dir, lib_dir):
             cp, text = screen
             check("obu's message reads back from a code page 437 console as written",
                   cp == 437 and on_screen(expected_line) in on_screen(text),
-                  f"cp={cp} screen={text.strip()[-300:]!r}")
+                  f"cp={cp} screen={screen_tail(text)!r}")
 
         if os.path.exists(obd) and os.path.exists(obe):
             console_env["OBJK_T_OBD"] = obd
@@ -638,7 +648,7 @@ def check_unicode_text_out(obc, bin_dir, lib_dir):
                 print("  [SKIP] console checks: no console could be created and read here")
                 return
             cp, text = screen
-            detail = f"cp={cp} screen={text.strip()[-400:]!r}"
+            detail = f"cp={cp} screen={screen_tail(text)!r}"
             check("obd's banner reads back from a code page 437 console as written",
                   cp == 437 and on_screen(obe) in on_screen(text), detail)
             check("a debugged program's output reads back from a code page 437 console as written",
