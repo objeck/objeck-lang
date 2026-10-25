@@ -204,6 +204,25 @@ CREATE TABLE name (col type, ...)
 CREATE INDEX ON table (col) [USING HASH | SORTED | BTREE]
 ```
 
+**Expressions in the select list.** `expr` is a column, a number, or arithmetic over them:
+`+ - * / %`, with `*`, `/` and `%` binding tighter, unary minus and parentheses
+(`select id, score * 100 as pct, (hi - lo) / 2 from runs`). Values follow the aggregates' rule
+of reading numbers only:
+
+- whole numbers stay whole under `+ - *` and `%`; `/` always gives a Float (`7 / 2` is 3.5), and
+  a Float anywhere gives a Float (`%` of Floats keeps the dividend's sign);
+- an empty cell, a cell that is not a number, and a zero divisor give an empty cell rather than
+  an error (a Float division by zero would otherwise stop the program);
+- the default label is the expression as written (`n + 1`); `AS` names it, and `ORDER BY` can
+  use that name or the position;
+- `n -1` (a name, then a number with its sign) is a subtraction, as it reads.
+
+Expressions are computed after WHERE, over the rows that pass, before DISTINCT, ORDER BY and
+LIMIT. Not yet: expressions in WHERE, ON, GROUP BY or HAVING, or in a grouped or aggregate
+query's select list (`sum(x) / count(*)`): each is refused with an error that says so, never a
+silent Nil. Every statement that fails returns Nil with `GetError` set; a program that calls a
+method on that Nil gets the language's ordinary `NilError`, which a `?->` region recovers from.
+
 Aggregates: `COUNT(*)`, `COUNT(col)`, `SUM`, `AVG`, `MIN`, `MAX`, plus `MEDIAN` and `STDDEV`
 because research code wants them; numeric aggregates skip non-numeric and `Nil` cells, as #1291
 made them. Tables are named in a `Catalog` (`catalog->Add(table)`), which `Query` resolves `FROM`

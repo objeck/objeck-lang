@@ -9870,8 +9870,11 @@ if(file->IsOpen()) {
 					i += 2;
 				}
 				# a '.' that does not start a number or sit inside a name: between a quoted
-				# archive or workbook and its member ('data.zip'.'runs.csv')
-				else if(c = '*' | c = ',' | c = '(' | c = ')' | c = '=' | c = '<' | c = '>' | c = ';' | c = '.') {
+				# archive or workbook and its member ('data.zip'.'runs.csv'). '+', '-', '/' and '%'
+				# are arithmetic in the select list; a '-' that leads to a digit was taken as a
+				# number's sign above
+				else if(c = '*' | c = ',' | c = '(' | c = ')' | c = '=' | c = '<' | c = '>' | c = ';' | c = '.' |
+						c = '+' | c = '-' | c = '/' | c = '%') {
 					text := "";
 					text->Append(c);
 					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, text, Nil, start));
@@ -9920,11 +9923,24 @@ if(file->IsOpen()) {
 		@name : String;
 		@func : String;
 		@alias_name : String;
+		@expr : SqlExpr;
 
 		New(name : String, func : String) {
 			@name := name;
 			@func := func;
 			@is_aggregate := func <> Nil;
+		}
+
+		# an arithmetic expression; its name is its text, which is also its default label
+		New(expr : SqlExpr) {
+			@expr := expr;
+			@name := expr->GetText();
+			expr->Ordinals(IntRef->New(0));
+		}
+
+		# the expression, or Nil for a column or an aggregate
+		method : public : GetExpr() ~ SqlExpr {
+			return @expr;
 		}
 
 		method : public : IsAggregate() ~ Bool {
@@ -9960,6 +9976,173 @@ if(file->IsOpen()) {
 			};
 
 			return @is_aggregate ? GetCall() : @name;
+		}
+	}
+
+	# An arithmetic expression in a select list (docs/QUERY_DESIGN.md, "Expressions in the
+	# select list"): column references and numbers joined by + - * / %, with unary minus and
+	# parentheses. Evaluated per row: whole numbers stay whole under + - * and %, '/' always
+	# gives a Float, and an empty or non-numeric operand, or a zero divisor, gives an empty cell.
+	class : private : SqlExpr {
+		@kind : Int;
+		@name : String;
+		@value : Compare;
+		@op : Char;
+		@left : SqlExpr;
+		@right : SqlExpr;
+		@text : String;
+		@ordinal : Int;
+
+		function : ColumnKind() ~ Int { return 0; }
+		function : NumberKind() ~ Int { return 1; }
+		function : BinaryKind() ~ Int { return 2; }
+		function : NegateKind() ~ Int { return 3; }
+
+		New(kind : Int, text : String) {
+			@kind := kind;
+			@text := text;
+		}
+
+		function : Column(name : String) ~ SqlExpr {
+			expr := SqlExpr->New(ColumnKind(), name);
+			expr->SetName(name);
+			return expr;
+		}
+
+		function : Number(text : String, value : Compare) ~ SqlExpr {
+			expr := SqlExpr->New(NumberKind(), text);
+			expr->SetValue(value);
+			return expr;
+		}
+
+		function : Binary(op : Char, left : SqlExpr, right : SqlExpr) ~ SqlExpr {
+			expr := SqlExpr->New(BinaryKind(), "{$(left->GetText())} {$op} {$(right->GetText())}");
+			expr->SetParts(op, left, right);
+			return expr;
+		}
+
+		function : Negate(operand : SqlExpr) ~ SqlExpr {
+			expr := SqlExpr->New(NegateKind(), "-{$(operand->GetText())}");
+			expr->SetParts('-', operand, Nil);
+			return expr;
+		}
+
+		method : public : SetName(name : String) ~ Nil { @name := name; }
+		method : public : SetValue(value : Compare) ~ Nil { @value := value; }
+		method : public : SetParts(op : Char, left : SqlExpr, right : SqlExpr) ~ Nil {
+			@op := op;
+			@left := left;
+			@right := right;
+		}
+		method : public : SetText(text : String) ~ Nil { @text := text; }
+		method : public : GetText() ~ String { return @text; }
+		method : public : GetKind() ~ Int { return @kind; }
+		method : public : GetName() ~ String { return @name; }
+
+		# a bare column reference: a plain select item, not an expression
+		method : public : IsColumn() ~ Bool {
+			return @kind = ColumnKind();
+		}
+
+		# the column names it reads, in order
+		method : public : AddColumns(names : Vector<String>) ~ Nil {
+			if(@kind = ColumnKind()) {
+				names->AddBack(@name);
+			}
+			else if(@kind = BinaryKind()) {
+				@left->AddColumns(names);
+				@right->AddColumns(names);
+			}
+			else if(@kind = NegateKind()) {
+				@left->AddColumns(names);
+			};
+		}
+
+		# numbers the column references in AddColumns order, once, when the item is made
+		method : public : Ordinals(next : IntRef) ~ Nil {
+			if(@kind = ColumnKind()) {
+				@ordinal := next->Get();
+				next->Set(@ordinal + 1);
+			}
+			else if(@kind = BinaryKind()) {
+				@left->Ordinals(next);
+				@right->Ordinals(next);
+			}
+			else if(@kind = NegateKind()) {
+				@left->Ordinals(next);
+			};
+		}
+
+		# The value for one row; 'columns' gives each column reference's index in 'table', in
+		# AddColumns order. Nil for an empty cell.
+		method : public : Eval(table : Table, row : Int, columns : Int[]) ~ Compare {
+			if(@kind = ColumnKind()) {
+				value := table->GetColumn(columns[@ordinal])->Get(row);
+				if(value <> Nil & (value->TypeOf(IntRef) | value->TypeOf(FloatRef))) {
+					return value;
+				};
+				return Nil;
+			}
+			else if(@kind = NumberKind()) {
+				return @value;
+			}
+			else if(@kind = NegateKind()) {
+				value := @left->Eval(table, row, columns);
+				if(value = Nil) {
+					return Nil;
+				};
+				if(value->TypeOf(IntRef)) {
+					return IntRef->New(0 - value->As(IntRef)->Get());
+				};
+				return FloatRef->New(0.0 - value->As(FloatRef)->Get());
+			};
+
+			a := @left->Eval(table, row, columns);
+			b := @right->Eval(table, row, columns);
+			if(a = Nil | b = Nil) {
+				return Nil;
+			};
+
+			if(a->TypeOf(IntRef) & b->TypeOf(IntRef) & @op <> '/') {
+				x := a->As(IntRef)->Get();
+				y := b->As(IntRef)->Get();
+				select(@op) {
+					label '+': { return IntRef->New(x + y); }
+					label '-': { return IntRef->New(x - y); }
+					label '*': { return IntRef->New(x * y); }
+				};
+				# '%'
+				if(y = 0) {
+					return Nil;
+				};
+				return IntRef->New(x % y);
+			};
+
+			x := ToFloat(a);
+			y := ToFloat(b);
+			select(@op) {
+				label '+': { return FloatRef->New(x + y); }
+				label '-': { return FloatRef->New(x - y); }
+				label '*': { return FloatRef->New(x * y); }
+			};
+
+			# '/' and '%': a zero divisor (which would raise) gives an empty cell
+			if(y = 0.0) {
+				return Nil;
+			};
+			if(@op = '/') {
+				return FloatRef->New(x / y);
+			};
+			quotient := x / y;
+			whole := quotient < 0.0 ? (0.0 - quotient)->Floor() * -1.0 : quotient->Floor();
+			return FloatRef->New(x - whole * y);
+		}
+
+		function : ToFloat(value : Compare) ~ Float {
+			if(value->TypeOf(IntRef)) {
+				return value->As(IntRef)->Get()->As(Float);
+			};
+			return value->As(FloatRef)->Get();
 		}
 	}
 
@@ -10353,6 +10536,97 @@ if(file->IsOpen()) {
 			return token->GetKind() = SqlToken->Kind->WORD & IsAggregateName(token->GetText()) & Ahead(1)->IsSymbol("(");
 		}
 
+		# a select-list expression: term (('+' | '-') term)*
+		method : ParseSum() ~ SqlExpr {
+			left := ParseProduct();
+			while(left <> Nil) {
+				token := Current();
+				if(token->IsSymbol("+") | token->IsSymbol("-")) {
+					Next();
+					right := ParseProduct();
+					if(right = Nil) {
+						return Nil;
+					};
+					left := SqlExpr->Binary(token->GetText()->Get(0), left, right);
+				}
+				else if(token->GetKind() = SqlToken->Kind->NUMBER & token->GetText()->StartsWith("-")) {
+					# 'n -1' scans as a name and a negative number: a subtraction
+					Next();
+					text := token->GetText()->SubString(1, token->GetText()->Size() - 1);
+					value := token->GetValue();
+					positive : Compare;
+					if(value->TypeOf(IntRef)) {
+						positive := IntRef->New(0 - value->As(IntRef)->Get());
+					}
+					else {
+						positive := FloatRef->New(0.0 - value->As(FloatRef)->Get());
+					};
+					right := ParseProductFrom(SqlExpr->Number(text, positive));
+					if(right = Nil) {
+						return Nil;
+					};
+					left := SqlExpr->Binary('-', left, right);
+				}
+				else {
+					return left;
+				};
+			};
+
+			return left;
+		}
+
+		# factor (('*' | '/' | '%') factor)*
+		method : ParseProduct() ~ SqlExpr {
+			return ParseProductFrom(ParseFactor());
+		}
+
+		method : ParseProductFrom(left : SqlExpr) ~ SqlExpr {
+			while(left <> Nil) {
+				token := Current();
+				if(token->IsSymbol("*") | token->IsSymbol("/") | token->IsSymbol("%")) {
+					Next();
+					right := ParseFactor();
+					if(right = Nil) {
+						return Nil;
+					};
+					left := SqlExpr->Binary(token->GetText()->Get(0), left, right);
+				}
+				else {
+					return left;
+				};
+			};
+
+			return left;
+		}
+
+		# a number, a column name, '-' factor, or '(' sum ')'
+		method : ParseFactor() ~ SqlExpr {
+			token := Current();
+			if(token->GetKind() = SqlToken->Kind->NUMBER) {
+				Next();
+				return SqlExpr->Number(token->GetText(), token->GetValue());
+			}
+			else if(token->IsSymbol("-")) {
+				Next();
+				operand := ParseFactor();
+				return operand <> Nil ? SqlExpr->Negate(operand) : Nil;
+			}
+			else if(token->IsSymbol("(")) {
+				Next();
+				inner := ParseSum();
+				if(inner = Nil | <>ExpectSymbol(")")) {
+					return Nil;
+				};
+				if(<>inner->IsColumn()) {
+					inner->SetText("({$(inner->GetText())})");
+				};
+				return inner;
+			};
+
+			name := ParseName("a column name, an aggregate, a number or '*'");
+			return name <> Nil ? SqlExpr->Column(name) : Nil;
+		}
+
 		# func '(' ('*' | name) ')'; only COUNT takes '*'
 		method : ParseAggregate() ~ SqlItem {
 			func := Current()->GetText()->ToLower();
@@ -10551,9 +10825,10 @@ if(file->IsOpen()) {
 							item := ParseAggregate();
 						}
 						else {
-							name := ParseName("a column name, an aggregate or '*'");
-							if(name <> Nil) {
-								item := SqlItem->New(name, Nil);
+							expr := ParseSum();
+							if(expr <> Nil) {
+								# a lone column is a plain item, as it always was
+								item := expr->IsColumn() ? SqlItem->New(expr->GetName(), Nil) : SqlItem->New(expr);
 							};
 						};
 
@@ -12366,6 +12641,7 @@ if(file->IsOpen()) {
 		@work : Table;
 		@joined : Bool;
 		@steps : Vector<String>;
+		@computed : Int[];
 
 		New(statement : SqlStatement, tables : Table[], params : Compare[], error : StringHolder) {
 			@statement := statement;
@@ -12578,10 +12854,113 @@ if(file->IsOpen()) {
 			};
 
 			if(@statement->GetGroup()->Size() > 0 | @statement->HasAggregates()) {
+				items := @statement->GetItems();
+				each(i : items) {
+					if(items->Get(i)->GetExpr() <> Nil) {
+						return Fail("'{$(items->Get(i)->GetName())}': an expression in the select list of a grouped or aggregate query is not supported; compute it in a query over the grouped result");
+					};
+				};
 				return Group(rows);
 			};
 
+			if(HasExpressions()) {
+				rows := Computed(rows);
+				if(rows = Nil) {
+					return Nil;
+				};
+			};
+
 			return Plain(rows);
+		}
+
+		method : HasExpressions() ~ Bool {
+			if(@statement->IsStar()) {
+				return false;
+			};
+
+			items := @statement->GetItems();
+			each(i : items) {
+				if(items->Get(i)->GetExpr() <> Nil) {
+					return true;
+				};
+			};
+			return false;
+		}
+
+		# the working-table index of a column an expression reads, or -1
+		method : ExprIndex(name : String) ~ Int {
+			index := -1;
+			if(@joined) {
+				index := WorkIndex(name);
+			}
+			else {
+				index := @work->GetIndex(Strip(name));
+			};
+			@error->Set(Nil);
+			return index;
+		}
+
+		# The select list's expressions computed over the rows that passed: the working table's
+		# columns copied for those rows, in their order, with one column per expression after
+		# them, which becomes the working table. Names and indexes of the copied columns are
+		# the original's, so the rest of the query reads them as before. @computed gives each
+		# item's column (-1 for a plain item). Nil with the error set.
+		method : Computed(rows : Int[]) ~ Int[] {
+			base := @work;
+			names := base->GetColumnNames();
+			columns := Int->New[names->Size() - 1];
+			data_names := String->New[names->Size() - 1];
+			each(i : columns) {
+				columns[i] := i + 1;
+				data_names[i] := names[i + 1];
+			};
+
+			items := @statement->GetItems();
+			bound := Vector->New()<IntArrayRef>;
+			each(i : items) {
+				expr := items->Get(i)->GetExpr();
+				indexes : Int[] := Nil;
+				if(expr <> Nil) {
+					reads := Vector->New()<String>;
+					expr->AddColumns(reads);
+					indexes := Int->New[reads->Size()];
+					each(r : reads) {
+						indexes[r] := ExprIndex(reads->Get(r));
+						if(indexes[r] < 0) {
+							Fail("unknown column '{$(reads->Get(r))}' in '{$(items->Get(i)->GetName())}'");
+							return Nil;
+						};
+					};
+				};
+				bound->AddBack(IntArrayRef->New(indexes));
+			};
+
+			out := Table->Gather(base->GetName(), base, columns, data_names, rows);
+			@computed := Int->New[items->Size()];
+			each(i : items) {
+				@computed[i] := -1;
+				expr := items->Get(i)->GetExpr();
+				if(expr <> Nil) {
+					# a name no column has, so it shadows none
+					slot := "#expr{$i}";
+					while(out->GetIndex(slot) > -1) {
+						slot += "#";
+					};
+					out->AddColumn(slot, ColumnType->NONE);
+					index := out->GetIndex(slot);
+					@computed[i] := index;
+					indexes := bound->Get(i)->Get();
+					each(r : rows) {
+						value := expr->Eval(base, rows[r], indexes);
+						if(value <> Nil) {
+							out->SetCell(r, index, value);
+						};
+					};
+				};
+			};
+
+			@work := out;
+			return out->LiveRows();
 		}
 
 		#
@@ -12794,7 +13173,17 @@ if(file->IsOpen()) {
 			else {
 				each(i : items) {
 					item := items->Get(i);
-					if(<>item->GetName()->Equals("*") & <>WantName(wanted, item->GetName())) {
+					expr := item->GetExpr();
+					if(expr <> Nil) {
+						reads := Vector->New()<String>;
+						expr->AddColumns(reads);
+						each(r : reads) {
+							if(<>WantName(wanted, reads->Get(r))) {
+								return false;
+							};
+						};
+					}
+					else if(<>item->GetName()->Equals("*") & <>WantName(wanted, item->GetName())) {
 						return false;
 					};
 				};
@@ -12886,7 +13275,10 @@ if(file->IsOpen()) {
 				labels := String->New[items->Size()];
 				each(i : items) {
 					item := items->Get(i);
-					if(@joined) {
+					if(item->GetExpr() <> Nil) {
+						columns[i] := @computed[i];
+					}
+					else if(@joined) {
 						columns[i] := WorkIndex(item->GetName());
 						if(columns[i] < 0) {
 							return Nil;
