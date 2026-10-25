@@ -613,7 +613,8 @@ def check_unicode_text_out(obc, bin_dir, lib_dir):
 
         if os.path.exists(obu):
             console_env["OBJK_T_OBU"] = obu
-            screen = console_screen('"%OBJK_T_OBU%" verify "%OBJK_T_ARCHIVE%" "%OBJK_T_SUMS%"', console_env)
+            screen = console_screen('"%OBJK_T_OBU%" verify "%OBJK_T_ARCHIVE%" "%OBJK_T_SUMS%" & echo OBU_EXIT=%ERRORLEVEL%',
+                                    console_env)
             if screen is None:
                 print("  [SKIP] console checks: no console could be created and read here")
                 return

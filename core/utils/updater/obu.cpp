@@ -2304,7 +2304,10 @@ class ConsoleTextBuffer : public std::streambuf {
 
     const std::wstring wide = WideFromUtf8(pending.substr(0, end));
     DWORD written = 0;
-    WriteConsoleW(console, wide.data(), static_cast<DWORD>(wide.size()), &written, nullptr);
+    if(!WriteConsoleW(console, wide.data(), static_cast<DWORD>(wide.size()), &written, nullptr)) {
+      // not writable as a console after all: the UTF-8 bytes, as to a pipe
+      WriteFile(console, pending.data(), static_cast<DWORD>(end), &written, nullptr);
+    }
     pending.erase(0, end);
   }
 
