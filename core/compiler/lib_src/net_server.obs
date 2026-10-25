@@ -3034,7 +3034,10 @@ MCP server support (-lib net_server)
 ~#
 bundle Web.HTTP.Server.MCP {
 	#~
-	MCP server
+	MCP server. Serve listens on the HTTP port the configuration's "http_port"
+	names; an "http_port" of 0 asks the system for a free port, which
+	GetBoundPort answers once the server is listening, so a program that starts
+	the server in a thread can poll for the port instead of picking a number.
 	~#
 	class McpServer {
 		@is_debug : static : Bool;
@@ -3054,8 +3057,42 @@ bundle Web.HTTP.Server.MCP {
 		function : virtual : Foo() ~ Nil;
 
 		#~
-		Initializes the MCP server
+		Gets the port the MCP server is bound to. An "http_port" of 0 is bound
+		to a port the system chose; once Serve has the server listening this
+		answers that port, so a program that starts the server in a thread can
+		poll here instead of picking a port number.
+		@return bound port, or 0 if the server is not yet listening
+
+		```
+		# serve on a port the system chooses, then find out which
+		thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				builder := Data.JSON.JsonBuilder->New();
+				config := builder->PushObject();
+				config->Insert("http_port", 0);
+				config->Insert("http_session_timeout", 30);
+				config->Insert("debug", false);
+				Web.HTTP.Server.MCP.McpServer->Serve(builder->Pop(), MyMcpHandler->New());
+			}
+		};
+		thread->Execute(Nil);
+		while(Web.HTTP.Server.MCP.McpServer->GetBoundPort() = 0) {
+			System.Concurrency.Thread->Sleep(10);
+		};
+		port := Web.HTTP.Server.MCP.McpServer->GetBoundPort();
+		```
+		~#
+		function : GetBoundPort() ~ Int {
+			return WebServer->GetBoundPort();
+		}
+
+		#~
+		Initializes the MCP server and serves until the web server is stopped.
+		The configuration's "http_port" is the port to listen on; 0 takes a
+		port the system chooses (see GetBoundPort), a negative port is refused.
 		@param config JSON configuration file
+		@param handler MCP request handler
 		~#
 		function : Serve(config : JsonElement, handler : McpRequestHandler) ~ Nil {
 			if(@config <> Nil) {
@@ -3065,10 +3102,13 @@ bundle Web.HTTP.Server.MCP {
 
 			@config := config;
 			@is_debug := config->Get("debug")->GetBool();
-			
+
+			# 0 is a port the system chooses, as it is for WebServer->Serve
 			http_port := config->Get("http_port")->GetInt();
-			if(http_port <= 0 | <>McpRequestHandler->Initialize(config)) {
+			if(http_port < 0 | <>McpRequestHandler->Initialize(config)) {
 				">>> Unable to initialize MCP server <<<"->ErrorLine();
+				# the server did not start, so a later Serve may try again
+				@config := Nil;
 				return;
 			};
 

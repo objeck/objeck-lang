@@ -49,12 +49,6 @@ class TrackingMcpHandler from McpRequestHandler {
 }
 
 class McpServerTest {
-	@port : static : Int;
-
-	function : Port() ~ Int {
-		return @port;
-	}
-
 	function : Post(url : String, payload : String) ~ Web.HTTP.Response {
 		client := HttpClient->New();
 		client->AddHeader("Content-Type", "application/json");
@@ -106,15 +100,10 @@ class McpServerTest {
 
 	function : Main(args : String[]) ~ Nil {
 		pass := true;
-		# McpServer->Serve takes no port 0, so the port is one the system handed
-		# out for port 0 and this run closed again -- free a moment ago -- rather
-		# than the fixed 18799, which two runs on one machine collided on
-		reserved := System.IO.Net.TCPSocketServer->New("127.0.0.1", 0);
-		@port := reserved->GetPort();
-		reserved->Close();
-		base_url := "http://localhost:{$@port}/";
 
-		# Start MCP server in a background thread
+		# Start MCP server in a background thread on a port the system chooses
+		# (http_port 0) rather than a fixed one, which two runs on one machine
+		# collided on; McpServer->GetBoundPort answers the port once listening
 		server_thread := System.Concurrency.Thread->New() {
 			New() { Parent() }
 			method : public : Run(arg : System.Base) ~ Nil {
@@ -123,7 +112,7 @@ class McpServerTest {
 				elem_json->Insert("name", "Test MCP Server");
 				elem_json->Insert("instructions", "Regression test server");
 				elem_json->Insert("version", "0.0.1");
-				elem_json->Insert("http_port", McpServerTest->Port());
+				elem_json->Insert("http_port", 0);
 				elem_json->Insert("http_session_timeout", 30);
 				elem_json->Insert("debug", false);
 				config_json := config_builder->Pop();
@@ -132,14 +121,16 @@ class McpServerTest {
 		};
 		server_thread->Execute(Nil);
 		waited := 0;
-		while(Web.HTTP.Server.WebServer->GetBoundPort() = 0 & waited < 10000) {
+		while(McpServer->GetBoundPort() = 0 & waited < 10000) {
 			System.Concurrency.Thread->Sleep(25);
 			waited += 25;
 		};
-		if(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {
+		port := McpServer->GetBoundPort();
+		if(port = 0) {
 			"FAIL: the MCP server never listened"->PrintLine();
 			Runtime->Exit(1);
 		};
+		base_url := "http://localhost:{$port}/";
 
 		# ------------------------------------------------------------------
 		# Test 1: initialize — capabilities must have "prompts", "resources",
