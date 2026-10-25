@@ -125,6 +125,17 @@ jobs:
         # step (which runs unprivileged) can read them without permission errors.
         sudo chown -R "$(id -u):$(id -g)" ~/apt-cache
 
+    # The ODBC regression tests (odbc_sqlite_test, odbc_whole_values,
+    # odbc_prepared_reuse, query_source_odbc, native_lib_gc_park's ODBC half)
+    # open the objeck_sqlite_test data source: an in-memory SQLite database
+    # behind the sqliteodbc driver. Each leg sets it up its own way -- this
+    # ini on Linux, Homebrew plus ~/.odbc.ini on macOS, a per-user registry
+    # DSN on Windows -- and every regression step below sets
+    # OBJECK_REQUIRE_ODBC, under which a test that cannot open the data
+    # source FAILS instead of printing SKIP. Until 2026-10 only Linux had the
+    # data source, so three of the five legs skipped every ODBC test and
+    # reported green; the require flag is what keeps that from recurring
+    # silently.
     - name: Configure ODBC test DSN (Linux)
       if: runner.os == 'Linux'
       run: |
@@ -154,6 +165,7 @@ jobs:
         for pkg in \
           cmake \
           unixodbc \
+          sqliteodbc \
           sdl2 \
           sdl2_image \
           sdl2_ttf \
@@ -172,6 +184,15 @@ jobs:
         # Add Homebrew bin to PATH (immediate + persistent)
         export PATH="/opt/homebrew/bin:$PATH"
         echo "/opt/homebrew/bin" >> $GITHUB_PATH
+
+    # libobjk_odbc.dylib carries libiodbc statically, and iODBC reads a user's
+    # data sources from ~/.odbc.ini (ODBCINI names the file explicitly); the
+    # script points the DSN at Homebrew's libsqlite3odbc.dylib by full path.
+    - name: Configure ODBC test DSN (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        bash tools/cicd/setup_sqlite_odbc.sh
+        echo "ODBCINI=$HOME/.odbc.ini" >> "$GITHUB_ENV"
 
 
     - name: Select Xcode 16.3+ (macOS)
@@ -227,6 +248,30 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: ${{ matrix.arch }}
+
+    # Christian Werner's sqliteodbc 0.99991, pinned by checksum. x64 lifts
+    # sqlite3odbc.dll out of the upstream installer with 7-Zip (the installer
+    # is never run); upstream ships no ARM64 build, so that leg compiles the
+    # driver from the pinned source tarball and SQLite amalgamation with the
+    # MSVC toolchain the step above put on PATH. Either way the DSN is a
+    # per-user registry entry naming the DLL by path, needing no admin
+    # rights, and the script connects through the Driver Manager before it
+    # returns. The downloads are cached so an upstream outage cannot redden a
+    # leg; the checksums are verified on a cache hit too. Windows PowerShell
+    # rather than pwsh: the connection check uses System.Data.Odbc, which the
+    # .NET Framework carries and PowerShell 7 does not bundle.
+    - name: Cache SQLite ODBC downloads (Windows)
+      if: runner.os == 'Windows'
+      continue-on-error: true
+      uses: actions/cache@v5
+      with:
+        path: sqliteodbc-downloads
+        key: sqliteodbc-0.99991-sqlite-3540100-${{ matrix.arch }}
+
+    - name: Configure ODBC test DSN (Windows)
+      if: runner.os == 'Windows'
+      shell: powershell
+      run: ./tools/cicd/setup_sqlite_odbc.ps1 -Arch ${{ matrix.arch }} -Dir "$env:RUNNER_TEMP\sqliteodbc" -Downloads sqliteodbc-downloads
 
     - name: Install Windows dependencies
       if: runner.os == 'Windows'
@@ -808,6 +853,9 @@ jobs:
         # below and keeps skipping: its stock GL is 1.1, so a 3.3 core
         # request cannot succeed without Mesa being installed there.
         OBJECK_GL_REQUIRED: "1"
+        # Same for the ODBC tests: every leg has the objeck_sqlite_test data
+        # source (see "Configure ODBC test DSN"), so a skip is a broken setup.
+        OBJECK_REQUIRE_ODBC: "1"
       run: |
         chmod +x run_regression.sh
         ARCH="${{ matrix.arch }}"
@@ -822,6 +870,7 @@ jobs:
       # bad_generic_arg_mismatch miss (prints [generic-diag] lines during compile).
       env:
         OBJECK_DIAG_GENERICS: "1"
+        OBJECK_REQUIRE_ODBC: "1"
       run: run_regression.cmd ${{ matrix.arch }}
 
     # A second pass with every method compiled on its first call. The default
@@ -843,6 +892,7 @@ jobs:
       env:
         OBJECK_JIT_THRESHOLD: "1"
         OBJECK_GL_REQUIRED: "1"
+        OBJECK_REQUIRE_ODBC: "1"
       run: ./run_regression.sh ${{ matrix.arch }}
 
     - name: Run regression tests with every method compiled (Windows)
@@ -851,6 +901,7 @@ jobs:
       shell: cmd
       env:
         OBJECK_JIT_THRESHOLD: "1"
+        OBJECK_REQUIRE_ODBC: "1"
       run: run_regression.cmd ${{ matrix.arch }}
 
     - name: Run debugger tests (POSIX)

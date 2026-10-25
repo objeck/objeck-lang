@@ -16,8 +16,8 @@
 #   set now says whether it is open, and a closed one gives the reason.
 #
 # Needs the SQLite ODBC driver and the objeck_sqlite_test data source, which
-# ci-build.yml sets up on Linux; skips where there is no such data source, as
-# odbc_sqlite_test does.
+# ci-build.yml sets up on every leg; skips where there is no such data source
+# unless OBJECK_REQUIRE_ODBC is set, as odbc_sqlite_test does.
 # EXTRA_LIBS: odbc
 ~#
 
@@ -38,6 +38,10 @@ class OdbcWholeValues {
 		if(<>conn->IsOpen()) {
 			err := conn->GetLastError();
 			if(err->Has("IM002")) {
+				if(Runtime->HasEnvironmentVariable("OBJECK_REQUIRE_ODBC")) {
+					"FAIL: OBJECK_REQUIRE_ODBC is set but there is no objeck_sqlite_test data source ({$err})"->PrintLine();
+					Runtime->Exit(1);
+				};
 				"SKIP: no objeck_sqlite_test data source ({$err})"->PrintLine();
 				return;
 			};

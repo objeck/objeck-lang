@@ -3,10 +3,12 @@
 # Date, Timestamp and ColumnInfo are pure Objeck. Only Connection,
 # ParameterStatement and ResultSet call into libobjk_odbc, through DllProxy, so
 # this test needs no database and never loads the library.
-# It is not coverage of the binding. odbc_sqlite_test is the only test that calls
-# into libobjk_odbc, and it skips wherever the objeck_sqlite_test data source is
-# missing -- every CI leg but the two Linux ones. So a green run here, on macOS or
-# Windows, sits beside no native ODBC coverage at all.
+# It is not coverage of the binding: odbc_sqlite_test and the other tests that
+# open the objeck_sqlite_test data source are. Those skip where the data source
+# is missing, which until 2026-10 was every CI leg but the two Linux ones, so a
+# green run here on macOS or Windows sat beside no native ODBC coverage at all.
+# ci-build.yml now sets the data source up on every leg and sets
+# OBJECK_REQUIRE_ODBC, under which that skip is a failure.
 # EXTRA_LIBS: odbc
 ~#
 

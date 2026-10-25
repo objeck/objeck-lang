@@ -17,10 +17,18 @@ class OdbcSqliteTest {
             err := conn->GetLastError();
             # IM002: no data source by that name. The checks need the SQLite ODBC
             # driver and an objeck_sqlite_test DSN, which ci-build.yml sets up on
-            # Linux; without them nothing can run, which is a skip. Any other
-            # connect failure is a failure. This used to print FAIL and exit 0,
-            # which the runners count as a pass.
+            # every leg (tools/cicd/setup_sqlite_odbc.*); without them nothing
+            # can run, which is a skip on a developer box. CI sets
+            # OBJECK_REQUIRE_ODBC, under which a missing data source is a
+            # failure: for months the Windows and macOS legs skipped every ODBC
+            # test and reported green. Any other connect failure is a failure.
+            # This used to print FAIL and exit 0, which the runners count as a
+            # pass.
             if(err->Has("IM002")) {
+                if(Runtime->HasEnvironmentVariable("OBJECK_REQUIRE_ODBC")) {
+                    "FAIL: OBJECK_REQUIRE_ODBC is set but there is no objeck_sqlite_test data source ({$err})"->PrintLine();
+                    Runtime->Exit(1);
+                };
                 "SKIP: no objeck_sqlite_test data source ({$err})"->PrintLine();
                 return;
             };

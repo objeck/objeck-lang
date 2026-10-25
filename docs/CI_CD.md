@@ -1,7 +1,7 @@
 # Objeck Language CI/CD Architecture
 
-**Version:** 1.2
-**Last Updated:** 2026-09-19
+**Version:** 1.3
+**Last Updated:** 2026-10-24
 
 This document describes the technical architecture of the Objeck Language continuous integration and continuous deployment (CI/CD) system.
 
@@ -98,6 +98,7 @@ After publishing, the Windows installers are signed, the playground is deployed 
 
 2. **For Each Platform:**
    - Install dependencies (cached)
+   - Register the `objeck_sqlite_test` ODBC data source the ODBC regression tests open: `libsqliteodbc` and `~/.odbc.ini` on Linux, `tools/cicd/setup_sqlite_odbc.sh` (Homebrew `sqliteodbc`, `~/.odbc.ini`) on macOS, `tools/cicd/setup_sqlite_odbc.ps1` on Windows (sqliteodbc 0.99991 pinned by checksum: unpacked from the upstream installer on x64, compiled from source on ARM64, which upstream does not ship; a per-user registry DSN). The regression steps set `OBJECK_REQUIRE_ODBC=1`, so a missing data source fails those tests instead of skipping them
    - Build compiler bootstrap (Linux x64 only)
    - Build full toolchain
    - Run test suite
@@ -708,6 +709,7 @@ Already done: automatic publishing after a successful tag build, CodeQL scanning
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3 | 2026-10-24 | The ODBC regression tests run on every leg: the SQLite ODBC data source is set up on Windows and macOS too, and `OBJECK_REQUIRE_ODBC` turns a missing one into a failure |
 | 1.2 | 2026-09-19 | Windows signing moved out of CI (hardware token); publish is automatic; current runners, artifacts and timings; manual publish steps; other workflows |
 | 1.1 | 2026-04-05 | Apple signing and notarization secrets |
 | 1.0 | 2026-02-10 | Initial CI/CD architecture documentation |
