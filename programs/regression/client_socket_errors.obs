@@ -13,6 +13,7 @@
 # Now each socket call records its own failure as it happens, per thread:
 # cleared when the next call on that thread starts, Nil when it worked, and
 # kept past the cleanup that follows a failure (closing the socket included).
+# On POSIX a write to a peer that hung up no longer ends the process (SIGPIPE).
 #
 # Ports: a server takes a random port and closes it again, so the port is
 # known to be free a moment later (nothing listens on it: refused).
@@ -230,8 +231,25 @@ class ClientSocketErrors {
 		reason := TCPSocket->GetLastError();
 		Check("read: a write that works leaves no error ('{$reason}')", reason = Nil);
 
-		connection->Close();
+		# a write to a peer that has hung up fails, and says why. On POSIX it
+		# raised SIGPIPE, which ended the process, unless a TLS client connect
+		# had happened to ignore the signal first.
 		client->Close();
+		chunk := Byte->New[1024];
+		failed := false;
+		for(i := 0; <>failed & i < 200; i += 1;) {
+			if(connection->WriteBuffer(chunk) < 0) {
+				failed := true;
+			}
+			else {
+				Thread->Sleep(10);
+			};
+		};
+		Check("write: a write to a peer that hung up fails", failed);
+		reason := TCPSocket->GetLastError();
+		Check("write: GetLastError says why the write failed ('{$reason}')", IsReason(reason));
+
+		connection->Close();
 		server->Close();
 	}
 

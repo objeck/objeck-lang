@@ -6248,6 +6248,7 @@ bool TrapProcessor::SockUdpCreate(StackProgram* program, size_t* inst, size_t*& 
     const std::wstring waddr = (wchar_t*)(array + 3);
     const std::string addr_str = UnicodeToBytes(waddr);
 
+    IPSocket::Startup();
     SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 #ifdef _WIN32
     if(sock != INVALID_SOCKET) {

@@ -501,6 +501,16 @@ class IPSocket {
    static std::vector<std::string> Resolve(const char* address);
 
   //
+  // Readies the process for sockets (Winsock 2.2), once; called before each
+  // socket the VM opens. obr and obd start Winsock in main, but a VM run
+  // in-process through the module -- obi, an embedding host -- never did:
+  // mbedtls_net_connect's net_prepare started it for a TLS client, and a plain
+  // socket there failed with WSANOTINITIALISED. Like mbedtls, and like
+  // win_main, it never calls WSACleanup (see win_main.cpp).
+  //
+  static void Startup();
+
+  //
   // A connected client socket: each address the name resolves to is tried in
   // turn (IPv6 and IPv4 alike), and the first that connects is returned. A
   // timeout_ms above 0 bounds each attempt; 0 blocks. On failure returns
@@ -673,6 +683,7 @@ class IPSocket {
 class UDPSocket {
 public:
   static bool Bind(int port, SOCKET &sock, SOCKADDR_IN* & addr_in) {
+    IPSocket::Startup();
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock != INVALID_SOCKET) {
       addr_in = new SOCKADDR_IN;

@@ -48,6 +48,7 @@
 #include <netinet/tcp.h>
 #include <netdb.h>
 #include <poll.h>
+#include <signal.h>
 #include <fcntl.h>
 #include <sys/un.h>
 #include <pwd.h>
@@ -356,6 +357,7 @@ public:
 class IPSocket {
 public:
   static  std::vector<std::string> Resolve(const char* address) {
+    Startup();
     std::vector<std::string> addresses;
 
     // getaddrinfo does not assign result unless it succeeds, so freeing it on the
@@ -383,6 +385,21 @@ public:
   }
   
   //
+  // Readies the process for sockets; called before each socket the VM opens.
+  // A write to a peer that has gone away raises SIGPIPE, which ends the
+  // process, rather than failing with EPIPE. mbedtls_net_connect ignores the
+  // signal, process-wide, the first time it runs (its net_prepare), and the VM
+  // had relied on that without knowing: only a process that had made a TLS
+  // client connect survived a write to a closed peer. It is ignored here, once,
+  // for every socket -- a client's connect, a server's bind, UDP -- so the
+  // write fails and GetLastError says "Broken pipe".
+  //
+  static void Startup() {
+    static const bool ignored = (signal(SIGPIPE, SIG_IGN), true);
+    (void)ignored;
+  }
+
+  //
   // A connected client socket: each address the name resolves to is tried in
   // turn (IPv6 and IPv4 alike), and the first that connects is returned. A
   // timeout_ms above 0 bounds each attempt; 0 blocks. On failure returns -1
@@ -395,6 +412,7 @@ public:
   // resolve is a resolver error. type is SOCK_STREAM or SOCK_DGRAM.
   //
   static SOCKET Connect(const char* address, int port, int type, int timeout_ms, SocketError& error) {
+    Startup();
     error = { 0, false };
 
     struct addrinfo hints;
@@ -485,6 +503,7 @@ public:
   // reach a server depended on its kind and the platform.
   //
   static SOCKET BindAny(int port, int type) {
+    Startup();
     const int protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
     int reuse = 1;
 
@@ -551,6 +570,7 @@ public:
   // around it.
   //
   static SOCKET BindAddress(const char* host, int port, int type, SocketError& error) {
+    Startup();
     error = { 0, false };
     if(!host || !*host) {
       // BindAny keeps its failure in errno across its cleanup
@@ -913,6 +933,7 @@ private:
 class UDPSocket {
 public:
   static bool Bind(int port, SOCKET& sock, struct sockaddr_in*& addr_in) {
+    IPSocket::Startup();
     sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if(sock > -1) {
       addr_in = new struct sockaddr_in;

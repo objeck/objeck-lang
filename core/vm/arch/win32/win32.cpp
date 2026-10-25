@@ -35,6 +35,15 @@
 
 #include "win32.h"
 
+// see the declaration in win32.h
+void IPSocket::Startup() {
+  static const bool started = [] {
+    WSADATA data;
+    return WSAStartup(MAKEWORD(2, 2), &data) == 0;
+  }();
+  (void)started;
+}
+
 // One connect attempt to one resolved address; INVALID_SOCKET with the reason
 // in error when it fails. The reason is taken before the closesocket() that
 // cleans up, which resets WSAGetLastError() to 0.
@@ -138,6 +147,7 @@ static int ConnectErrorRank(int error) {
 
 // see the declaration in win32.h
 SOCKET IPSocket::Connect(const char* address, int port, int type, int timeout_ms, SocketError& error) {
+  Startup();
   error = { 0, false };
 
   struct addrinfo hints;
@@ -203,6 +213,7 @@ SOCKET IPSocket::Open(const char* address, int port, int timeout_ms, SocketError
 }
 
 std::vector<std::string> IPSocket::Resolve(const char* address) {
+ Startup();
  std::vector<std::string> addresses;
 
 	// getaddrinfo does not assign result unless it succeeds, so freeing it on the
@@ -240,6 +251,7 @@ static void CloseKeepingError(SOCKET sock) {
 
 // see the declarations in win32.h
 SOCKET IPSocket::BindAny(int port, int type) {
+  Startup();
   const int protocol = type == SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
   int reuse = 1;
 
@@ -303,6 +315,7 @@ SOCKET IPSocket::BindAny(int port, int type) {
 
 // see the declarations in win32.h
 SOCKET IPSocket::BindAddress(const char* host, int port, int type, SocketError& error) {
+  Startup();
   error = { 0, false };
   if(!host || !*host) {
     // BindAny keeps its failure in WSAGetLastError() across its cleanup
