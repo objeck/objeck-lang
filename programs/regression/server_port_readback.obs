@@ -1,0 +1,371 @@
+#~
+# A server bound to port 0 reports the port the system chose
+#
+# The regression tests used to listen on fixed port numbers (18811, 19876,
+# 19995, ...) or on a number picked from a range, so two suites on one machine
+# -- two agents' local runs, or two CI jobs sharing a runner -- collided: one
+# test's server could not bind, or two tests talked to each other's server.
+# Binding port 0 lets the system pick a free port, but nothing read the port
+# back: TCPSocketServer, TCPSecureSocketServer, UDPSocketServer and
+# DTLSSocketServer kept the port they were given, and WebServer->GetBoundPort()
+# answered the port passed to Serve.
+#
+# Now each bind (TCP at New, TLS and DTLS at Listen, UDP at Bind) writes the
+# port the socket has into the server, GetPort() answers it, and
+# WebServer->GetBoundPort() answers the port its server has once Serve has it
+# listening. A DTLS server binds a fresh listener after each accept; that one
+# must take the same port again, so a second client reaches the server.
+#
+# Before the fix GetPort() answered 0 for a server bound to port 0 and
+# GetBoundPort() stayed 0, so no client could find any of these servers.
+# EXTRA_LIBS: net,net_server
+~#
+
+use System.Concurrency, System.IO.Filesystem, System.IO.Net, Web.HTTP, Web.HTTP.Server;
+
+class TlsAcceptOnce from Thread {
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+	@line : String;
+
+	New() {
+		Parent("tls-accept-once");
+		@port := 0;
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetLine() ~ String { return @line; }
+
+	method : public : Run(param : Base) ~ Nil {
+		server := TCPSecureSocketServer->New("port-readback-{$Runtime->GetProcessId()}-cert.pem", "port-readback-{$Runtime->GetProcessId()}-key.pem", "", 0);
+		if(server->Listen()) {
+			@port := server->GetPort();
+			@listening := true;
+			client := server->Accept();
+			if(client <> Nil) {
+				@line := client->ReadLine();
+				client->WriteString("tls pong\n");
+				client->Close();
+			};
+			server->Close();
+		};
+		@finished := true;
+	}
+}
+
+class DtlsAcceptTwice from Thread {
+	@port : Int;
+	@listening : Bool;
+	@finished : Bool;
+	@first : String;
+	@second : String;
+
+	New() {
+		Parent("dtls-accept-twice");
+		@port := 0;
+	}
+
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetFirst() ~ String { return @first; }
+	method : public : GetSecond() ~ String { return @second; }
+
+	method : public : Run(param : Base) ~ Nil {
+		server := DTLSSocketServer->New("port-readback-{$Runtime->GetProcessId()}-cert.pem", "port-readback-{$Runtime->GetProcessId()}-key.pem", "", 0);
+		if(server->Listen()) {
+			@port := server->GetPort();
+			@listening := true;
+			client := server->Accept();
+			if(client <> Nil) {
+				@first := client->ReadLine();
+				client->WriteString("dtls pong\n");
+				client->Close();
+			};
+			# the listener rebound after the first accept must have this port too
+			client := server->Accept();
+			if(client <> Nil) {
+				@second := client->ReadLine();
+				client->WriteString("dtls pong again\n");
+				client->Close();
+			};
+			server->Close();
+		};
+		@finished := true;
+	}
+}
+
+class UdpReadOnce from Thread {
+	@server : UDPSocketServer;
+	@read : Int;
+	@first : Int;
+	@finished : Bool;
+
+	New(server : UDPSocketServer) {
+		Parent("udp-read-once");
+		@server := server;
+		@read := -2;
+		@first := -1;
+	}
+
+	method : public : IsFinished() ~ Bool { return @finished; }
+	method : public : GetRead() ~ Int { return @read; }
+	method : public : GetFirst() ~ Int { return @first; }
+
+	method : public : Run(param : Base) ~ Nil {
+		datagram := Byte->New[64];
+		@read := @server->ReadBuffer(0, 64, datagram);
+		@first := datagram[0];
+		@finished := true;
+	}
+}
+
+class ReadbackHandler from HttpRequestHandler {
+	New() { Parent(); }
+
+	method : ProcessGet(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		response->SetCodeContent(200, "served on port 0");
+		return false;
+	}
+
+	method : ProcessPost(request : Web.HTTP.Server.Request, response : Web.HTTP.Server.Response) ~ Bool {
+		response->SetCode(405);
+		return false;
+	}
+}
+
+class ServerPortReadback {
+	@failed : Int;
+
+	New() {
+		@failed := 0;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		ServerPortReadback->New()->Run();
+	}
+
+	method : Check(name : String, ok : Bool) ~ Nil {
+		if(<>ok) {
+			"  FAIL: {$name}"->PrintLine();
+			@failed += 1;
+		};
+	}
+
+	method : Run() ~ Nil {
+		"stage: TCP"->ErrorLine();
+		Tcp();
+		"stage: UDP"->ErrorLine();
+		Udp();
+		"stage: TLS"->ErrorLine();
+		Tls();
+		"stage: DTLS"->ErrorLine();
+		Dtls();
+		"stage: Web"->ErrorLine();
+		Web();
+
+		if(@failed > 0) {
+			"FAIL: a server bound to port 0 reports the port it has ({$@failed} checks)"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"PASS: a server bound to port 0 reports the port it has"->PrintLine();
+	}
+
+	method : Tcp() ~ Nil {
+		server := TCPSocketServer->New(0);
+		port := server->GetPort();
+		Check("TCP: a server bound to port 0 reports a port (got {$port})", port > 0);
+		Check("TCP: the server listens", server->Listen(4));
+
+		client := TCPSocket->New("127.0.0.1", port);
+		Check("TCP: a client reaches the reported port", client->IsOpen());
+		# Accept only once a client is in: without one it would wait forever
+		if(client->IsOpen()) {
+			accepted := server->Accept();
+			Check("TCP: the server accepts it", accepted <> Nil);
+			if(accepted <> Nil) {
+				client->WriteString("tcp ping\n");
+				line := accepted->ReadLine();
+				Check("TCP: the client's line arrives ('{$line}')", line <> Nil & line->Equals("tcp ping"));
+				accepted->Close();
+			};
+		};
+		client->Close();
+
+		# one address: the port is read back the same way
+		local := TCPSocketServer->New("127.0.0.1", 0);
+		local_port := local->GetPort();
+		Check("TCP address: a server bound to 127.0.0.1:0 reports a port (got {$local_port})", local_port > 0);
+		Check("TCP address: it is not the first server's port", local_port <> port);
+		Check("TCP address: the server listens", local->Listen(4));
+		probe := TCPSocket->New("127.0.0.1", local_port);
+		Check("TCP address: a client reaches the reported port", probe->IsOpen());
+		probe->Close();
+		local->Close();
+		server->Close();
+
+		# a port asked for by number is reported as given
+		again := TCPSocketServer->New(port);
+		Check("TCP: a server given port {$port} reports it (got {$again->GetPort()})", again->GetPort() = port);
+		again->Close();
+
+		# a failed bind reports no port
+		taken := TCPSocketServer->New("no-such-host.invalid", 0);
+		Check("TCP: a server that could not bind does not listen", <>taken->Listen(4));
+		Check("TCP: and reports port 0 (got {$taken->GetPort()})", taken->GetPort() = 0);
+	}
+
+	method : Udp() ~ Nil {
+		unbound := UDPSocketServer->New(0, false);
+		Check("UDP: before Bind the port is the 0 given", unbound->GetPort() = 0);
+		Check("UDP: Bind binds", unbound->Bind());
+		port := unbound->GetPort();
+		Check("UDP: a server bound to port 0 reports a port (got {$port})", port > 0);
+
+		# a reader thread takes one datagram; the client resends until it has it,
+		# since loopback UDP may drop a datagram (as net_io_gc_park allows for)
+		reader := UdpReadOnce->New(unbound);
+		reader->Execute(Nil);
+		client := UDPSocket->New("127.0.0.1", port);
+		datagram := Byte->New[3];
+		datagram[0] := 7;
+		datagram[1] := 8;
+		datagram[2] := 9;
+		Check("UDP: a client sends to the reported port", client->WriteBuffer(0, 3, datagram) = 3);
+		waited := 0;
+		while(<>reader->IsFinished() & waited < 5000) {
+			Thread->Sleep(50);
+			waited += 50;
+			if(<>reader->IsFinished()) {
+				client->WriteBuffer(0, 3, datagram);
+			};
+		};
+		got := reader->GetRead();
+		Check("UDP: the datagram reaches the reported port (got {$got} bytes)", reader->IsFinished() & got = 3 & reader->GetFirst() = 7);
+		if(<>reader->IsFinished()) {
+			"FAIL: UDP: no datagram reached 127.0.0.1:{$port} -- is loopback UDP blocked here?"->PrintLine();
+			Runtime->Exit(1);
+		};
+		client->Close();
+		unbound->Close();
+
+		bound := UDPSocketServer->New(0);
+		Check("UDP: New(0) binds and reports a port (got {$bound->GetPort()})", bound->IsBound() & bound->GetPort() > 0);
+		bound->Close();
+	}
+
+	method : MakeCert() ~ Bool {
+		File->Delete("port-readback-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("port-readback-{$Runtime->GetProcessId()}-key.pem");
+		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout port-readback-{$Runtime->GetProcessId()}-key.pem -out port-readback-{$Runtime->GetProcessId()}-cert.pem";
+		return Runtime->Command(command) = 0;
+	}
+
+	method : Tls() ~ Nil {
+		if(<>MakeCert()) {
+			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
+			Runtime->Exit(1);
+		};
+
+		# before Listen the port is the one given
+		idle := TCPSecureSocketServer->New("port-readback-{$Runtime->GetProcessId()}-cert.pem", "port-readback-{$Runtime->GetProcessId()}-key.pem", "", 0);
+		Check("TLS: before Listen the port is the 0 given", idle->GetPort() = 0);
+
+		server := TlsAcceptOnce->New();
+		server->Execute(Nil);
+		waited := 0;
+		while(<>server->IsListening() & <>server->IsFinished() & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(<>server->IsListening()) {
+			"FAIL: the TLS server never listened: {$TCPSecureSocketServer->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		port := server->GetPort();
+		Check("TLS: a server bound to port 0 reports a port (got {$port})", port > 0);
+
+		client := TCPSecureSocket->New("localhost", port, "port-readback-{$Runtime->GetProcessId()}-cert.pem");
+		Check("TLS: a client reaches the reported port", client->IsOpen());
+		if(client->IsOpen()) {
+			client->WriteString("tls ping\n");
+			reply := client->ReadLine();
+			Check("TLS: the server answers ('{$reply}')", reply <> Nil & reply->Equals("tls pong"));
+			client->Close();
+			server->Join();
+			Check("TLS: the server read the client's line", server->GetLine() <> Nil & server->GetLine()->Equals("tls ping"));
+		};
+	}
+
+	method : Dtls() ~ Nil {
+		server := DtlsAcceptTwice->New();
+		server->Execute(Nil);
+		waited := 0;
+		while(<>server->IsListening() & <>server->IsFinished() & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(<>server->IsListening()) {
+			"FAIL: the DTLS server never listened: {$DTLSSocketServer->GetLastError()}"->PrintLine();
+			Runtime->Exit(1);
+		};
+		port := server->GetPort();
+		Check("DTLS: a server bound to port 0 reports a port (got {$port})", port > 0);
+
+		client := DTLSSocket->New("localhost", port, "port-readback-{$Runtime->GetProcessId()}-cert.pem", true);
+		Check("DTLS: a client reaches the reported port", client->IsOpen());
+		if(<>client->IsOpen()) {
+			"  note: {$DTLSSocket->GetLastError()}"->PrintLine();
+			return;
+		};
+		client->WriteString("dtls ping\n");
+		reply := client->ReadLine();
+		Check("DTLS: the server answers ('{$reply}')", reply <> Nil & reply->Equals("dtls pong"));
+		client->Close();
+
+		# the listener rebound after the first accept took the same port
+		again := DTLSSocket->New("localhost", port, "port-readback-{$Runtime->GetProcessId()}-cert.pem", true);
+		Check("DTLS: a second client reaches the same port after the first accept", again->IsOpen());
+		if(again->IsOpen()) {
+			again->WriteString("dtls ping again\n");
+			reply := again->ReadLine();
+			Check("DTLS: the server answers the second client ('{$reply}')", reply <> Nil & reply->Equals("dtls pong again"));
+			again->Close();
+			server->Join();
+			Check("DTLS: the server read both lines", server->GetFirst() <> Nil & server->GetFirst()->Equals("dtls ping") &
+				server->GetSecond() <> Nil & server->GetSecond()->Equals("dtls ping again"));
+		};
+
+		File->Delete("port-readback-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("port-readback-{$Runtime->GetProcessId()}-key.pem");
+	}
+
+	method : Web() ~ Nil {
+		Check("Web: before Serve the bound port is 0", WebServer->GetBoundPort() = 0);
+		thread := Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : Base) ~ Nil {
+				WebServer->Serve(ReadbackHandler->New()->GetClass(), 0, false);
+			}
+		};
+		thread->Execute(Nil);
+
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		port := WebServer->GetBoundPort();
+		Check("Web: a server served on port 0 reports the port it has (got {$port})", port > 0);
+		if(port > 0) {
+			response := HttpClient->QuickGet(Url->New("http://127.0.0.1:{$port}/"));
+			body := response <> Nil ? response->GetContent()->ToString() : Nil;
+			Check("Web: a client reaches the reported port ('{$body}')", body <> Nil & body->Equals("served on port 0"));
+		};
+		WebServer->Stop();
+	}
+}

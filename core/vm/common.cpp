@@ -5074,6 +5074,32 @@ bool TrapProcessor::SockTcpConnect(StackProgram* program, size_t* inst, size_t* 
   return true;
 }
 
+//
+// The port a bound socket actually has, by getsockname: the one asked for, or,
+// for a bind of port 0, the one the system chose. Written back into a server
+// object's @port after each bind (TCP, TLS, UDP and DTLS servers) so that
+// GetPort() answers it, and tests need no fixed port numbers. 0 when the
+// socket is not bound or the lookup fails.
+//
+static int BoundPort(SOCKET sock)
+{
+  struct sockaddr_storage bound;
+  memset(&bound, 0, sizeof(bound));
+  socklen_t bound_len = sizeof(bound);
+  if(getsockname(sock, (struct sockaddr*)&bound, &bound_len) != 0) {
+    return 0;
+  }
+
+  if(bound.ss_family == AF_INET6) {
+    return ntohs(((const struct sockaddr_in6*)&bound)->sin6_port);
+  }
+  else if(bound.ss_family == AF_INET) {
+    return ntohs(((const struct sockaddr_in*)&bound)->sin_port);
+  }
+
+  return 0;
+}
+
 bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op_stack, size_t* &stack_pos, StackFrame* frame)
 {
   long port = (long)PopInt(op_stack, stack_pos);
@@ -5082,16 +5108,24 @@ bool TrapProcessor::SockTcpBind(StackProgram* program, size_t* inst, size_t* &op
     SOCKET server = IPSocket::Bind(static_cast<int>(port));
     // captured now: by the time GetLastError runs, the live value is gone
 #ifdef _WIN32
-    RecordSocketError(server == INVALID_SOCKET ? CurrentSocketError() : 0);
+    const bool bound = server != INVALID_SOCKET;
 #else
-    RecordSocketError(server < 0 ? CurrentSocketError() : 0);
+    const bool bound = server >= 0;
 #endif
+    RecordSocketError(bound ? 0 : CurrentSocketError());
 #ifdef _DEBUG
     std::wcout << L"# socket bind: port=" << port << L"; instance=" << instance << L"("
       << (size_t)instance << L")" << L"; addr=" << server << L"(" << (size_t)server
       << L") #" << std::endl;
 #endif
     instance[0] = (long)server;
+    // @port: the port bound, which for a port of 0 the system chose
+    if(bound) {
+      const int bound_port = BoundPort(server);
+      if(bound_port > 0) {
+        instance[1] = bound_port;
+      }
+    }
   }
 
   return true;
@@ -5133,6 +5167,13 @@ bool TrapProcessor::SockTcpBindAddress(StackProgram* program, size_t* inst, size
       << L"; addr=" << server << L"(" << (long)server << L") #" << std::endl;
 #endif
     instance[0] = (long)server;
+    // @port: the port bound, which for a port of 0 the system chose
+    if((long)server >= 0) {
+      const int bound_port = BoundPort(server);
+      if(bound_port > 0) {
+        instance[1] = bound_port;
+      }
+    }
   }
 
   return true;
@@ -5878,6 +5919,11 @@ void TrapProcessor::SecureServerListen(size_t* instance, const std::string& host
       instance[0] = (size_t)srv;
       instance[1] = 0;
       instance[2] = 0;
+      // @port: the port bound, which for a port of 0 the system chose
+      const int bound_port = BoundPort((SOCKET)srv->listen_fd.fd);
+      if(bound_port > 0) {
+        instance[6] = bound_port;
+      }
 
       PushInt(1, op_stack, stack_pos);
       return;
@@ -6307,6 +6353,12 @@ bool TrapProcessor::SockUdpBind(StackProgram* program, size_t* inst, size_t*& op
       RecordSocketError(0);
       inst[0] = sock;
       inst[1] = (size_t)addr;
+      // @port: the port bound, which for a port of 0 the system chose
+      const int bound_port = BoundPort(sock);
+      if(bound_port > 0) {
+        inst[2] = bound_port;
+        addr->sin_port = htons((unsigned short)bound_port);
+      }
     }
     else {
       RecordSocketError(CurrentSocketError());
@@ -10352,6 +10404,15 @@ void TrapProcessor::DtlsServerListen(size_t* instance, const std::string& host, 
       instance[0] = (size_t)srv;
       instance[1] = 0;
       instance[2] = 0;
+      // @port: the port bound, which for a port of 0 the system chose. srv->port
+      // follows it too: the wildcard listener each accept binds afresh
+      // (DtlsAccept, IPSocket::BindAny(srv->port)) must take this port again,
+      // not another one of the system's choosing.
+      const int bound_port = BoundPort((SOCKET)srv->listen_fd.fd);
+      if(bound_port > 0) {
+        srv->port = bound_port;
+        instance[6] = bound_port;
+      }
 
       PushInt(1, op_stack, stack_pos);
       return;

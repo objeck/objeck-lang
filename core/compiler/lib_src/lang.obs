@@ -13103,6 +13103,22 @@ bundle System.IO.Net {
 		method : public : Accept() ~ TCPSocket {
 			SOCK_TCP_ACCEPT;
 		}
+
+		#~
+		Gets the port this server is bound to: the port given to New, or, for a
+		port of 0, the one the system chose at New. A server bound to port 0
+		takes a free port, so a program (a test, say) needs no fixed number
+		and no two programs can collide; the port is read back here.
+
+		```
+		server := TCPSocketServer->New(0);
+		port := server->GetPort(); # the port the system chose
+		```
+		@return bound port, or 0 if the bind failed
+		~#
+		method : public : GetPort() ~ Int {
+			return @port;
+		}
 	
 		#~
 		Closes the server socket
@@ -13204,6 +13220,17 @@ bundle System.IO.Net {
 		}
 
 		#~
+		Gets the port this server is bound to: the port given to New, or, for a
+		port of 0, the one the system chose when Listen() bound the socket, so
+		a program needs no fixed port number. Before Listen() it is the port
+		given.
+		@return bound port
+		~#
+		method : public : GetPort() ~ Int {
+			return @port;
+		}
+
+		#~
 		Gets the X.509 certificate's issuer name
 		@return certificate issuer name
 		~#
@@ -13283,6 +13310,16 @@ bundle System.IO.Net {
 		~#
 		method : public : IsBound() ~ Bool {
 			return @sock > -1 & @addr <> 0;
+		}
+
+		#~
+		Gets the port this server is bound to: the port given to New, or, for a
+		port of 0, the one the system chose when Bind() bound the socket, so a
+		program needs no fixed port number.
+		@return bound port
+		~#
+		method : public : GetPort() ~ Int {
+			return @port;
 		}
 		
 		#~
@@ -13718,6 +13755,17 @@ bundle System.IO.Net {
 		~#
 		method : public : Accept() ~ DTLSSocket {
 			SOCK_DTLS_ACCEPT;
+		}
+
+		#~
+		Gets the port this server is bound to: the port given to New, or, for a
+		port of 0, the one the system chose when Listen() bound the socket, so
+		a program needs no fixed port number. Every listener the server binds
+		after an accept takes this same port.
+		@return bound port
+		~#
+		method : public : GetPort() ~ Int {
+			return @port;
 		}
 
 		#~

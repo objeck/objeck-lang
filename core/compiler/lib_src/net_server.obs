@@ -15,8 +15,11 @@ bundle Web.HTTP.Server {
 		@server_config : static : WebServerConfig;
 		@is_debug : static : Bool;
 
-		# Port passed to Serve. WebServer is already entirely static, so this adds
-		# no limitation that was not already present: one server per process.
+		# The port Serve's server is bound to: the port passed to Serve until its
+		# Listen succeeds, then the port the socket has, which for a port of 0 is
+		# the one the system chose (TCPSocketServer->GetPort). WebServer is already
+		# entirely static, so this adds no limitation that was not already
+		# present: one server per process.
 		@bound_port : static : Int;
 
 		#~
@@ -130,6 +133,8 @@ bundle Web.HTTP.Server {
 
 			Runtime->SetSignal(Runtime->Signal->SIGINT, Shutdown(Int) ~ Nil);
 			if(@secure_server->Listen()) {
+				# the port the socket has: for a port of 0, the one the system chose
+				@bound_port := @secure_server->GetPort();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -138,7 +143,7 @@ bundle Web.HTTP.Server {
 							host := address;
 						};
 					};
-					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
+					"=> Running on '{$host}' ({$platform}) port {$@bound_port}..."->PrintLine();
 				};
 
 				while(<>@stop) {
@@ -198,8 +203,26 @@ bundle Web.HTTP.Server {
 		}
 
 		#~
-		Gets the port this server was asked to bind to.
-		@return bound port, or 0 if no server has been started
+		Gets the port this server is bound to. A server started on port 0 is
+		bound to a port the system chose; once Serve has it listening this
+		answers that port, so a program that starts the server in a thread can
+		poll here instead of picking a port number.
+
+		```
+		# serve on a port the system chooses, then find out which
+		thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				Web.HTTP.Server.WebServer->Serve(MyHandler->New()->GetClass(), 0, false);
+			}
+		};
+		thread->Execute(Nil);
+		while(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {
+			System.Concurrency.Thread->Sleep(10);
+		};
+		port := Web.HTTP.Server.WebServer->GetBoundPort();
+		```
+		@return bound port, or 0 if no server has been started (or a server on port 0 is not yet listening)
 		~#
 		function : GetBoundPort() ~ Int {
 			return @bound_port;
@@ -265,6 +288,8 @@ bundle Web.HTTP.Server {
 			# model; a backlog of eight drops ordinary short connection bursts before
 			# handlers have an opportunity to run.
 			if(@server->Listen(128)) {
+				# the port the socket has: for a port of 0, the one the system chose
+				@bound_port := @server->GetPort();
 				if(@is_debug) {
 					platform := Runtime->GetPlatform();
 					host := TCPSocket->HostName();
@@ -273,7 +298,7 @@ bundle Web.HTTP.Server {
 							host := address;
 						};
 					};
-					"=> Running on '{$host}' ({$platform}) port {$port}..."->PrintLine();
+					"=> Running on '{$host}' ({$platform}) port {$@bound_port}..."->PrintLine();
 				};
 
 				while(<>@stop) {
