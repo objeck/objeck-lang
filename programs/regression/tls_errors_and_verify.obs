@@ -66,7 +66,7 @@ class TlsErrorsAndVerify {
 		@failed := 0;
 
 		# a certificate for localhost and 127.0.0.1, and one for localhost only
-		if(<>MakeCert("tls-err-both", "DNS:localhost,IP:127.0.0.1") | <>MakeCert("tls-err-name", "DNS:localhost")) {
+		if(<>MakeCert("tls-err-both-{$Runtime->GetProcessId()}", "DNS:localhost,IP:127.0.0.1") | <>MakeCert("tls-err-name-{$Runtime->GetProcessId()}", "DNS:localhost")) {
 			"FAIL: openssl could not create the certificates -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
@@ -78,10 +78,10 @@ class TlsErrorsAndVerify {
 		"stage: dtls client"->ErrorLine();
 		CheckDtlsClient();
 
-		File->Delete("tls-err-both-cert.pem");
-		File->Delete("tls-err-both-key.pem");
-		File->Delete("tls-err-name-cert.pem");
-		File->Delete("tls-err-name-key.pem");
+		File->Delete("tls-err-both-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("tls-err-both-{$Runtime->GetProcessId()}-key.pem");
+		File->Delete("tls-err-name-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("tls-err-name-{$Runtime->GetProcessId()}-key.pem");
 
 		if(@failed > 0) {
 			Runtime->Exit(1);
@@ -112,31 +112,25 @@ class TlsErrorsAndVerify {
 	}
 
 	function : StartTls(name : String) ~ Int {
-		for(tries := 0; tries < 5; tries += 1;) {
-			port := Int->Random(20000, 31998);
-			server := TCPSecureSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
-			if(server->Listen()) {
-				TlsGreeter->New(server)->Execute(Nil);
-				return port;
-			};
+		server := TCPSecureSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", 0);
+		if(server->Listen()) {
+			TlsGreeter->New(server)->Execute(Nil);
+			return server->GetPort();
 		};
 		return 0;
 	}
 
 	function : StartDtls(name : String) ~ Int {
-		for(tries := 0; tries < 5; tries += 1;) {
-			port := Int->Random(20000, 31998);
-			server := DTLSSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
-			if(server->Listen()) {
-				DtlsGreeter->New(server)->Execute(Nil);
-				return port;
-			};
+		server := DTLSSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", 0);
+		if(server->Listen()) {
+			DtlsGreeter->New(server)->Execute(Nil);
+			return server->GetPort();
 		};
 		return 0;
 	}
 
 	function : CheckTlsClient() ~ Nil {
-		port := StartTls("tls-err-both");
+		port := StartTls("tls-err-both-{$Runtime->GetProcessId()}");
 		Check("TLS: the server listens", port > 0);
 		if(port = 0) {
 			return;
@@ -151,7 +145,7 @@ class TlsErrorsAndVerify {
 		Check("TLS: the report gives the reason ('{$reason}')", Has(reason, "not correctly signed by the trusted CA"));
 
 		# pinned: verified, and the earlier failure is cleared
-		socket := TCPSecureSocket->New("localhost", port, "tls-err-both-cert.pem");
+		socket := TCPSecureSocket->New("localhost", port, "tls-err-both-{$Runtime->GetProcessId()}-cert.pem");
 		Check("TLS: a pinned self-signed server is accepted", socket->IsOpen());
 		reason := TCPSecureSocket->GetLastError();
 		Check("TLS: a successful connect clears the last error ('{$reason}')", reason = Nil);
@@ -165,21 +159,22 @@ class TlsErrorsAndVerify {
 		socket->Close();
 
 		# a certificate that does not name the address connected to
-		name_port := StartTls("tls-err-name");
+		name_port := StartTls("tls-err-name-{$Runtime->GetProcessId()}");
 		if(name_port > 0) {
-			socket := TCPSecureSocket->New("127.0.0.1", name_port, "tls-err-name-cert.pem");
+			socket := TCPSecureSocket->New("127.0.0.1", name_port, "tls-err-name-{$Runtime->GetProcessId()}-cert.pem");
 			Check("TLS: a certificate naming only localhost is refused over 127.0.0.1", <>socket->IsOpen());
 			socket->Close();
 			reason := TCPSecureSocket->GetLastError();
 			Check("TLS: the name mismatch is reported ('{$reason}')", Has(reason, "verification failed") & Has(reason, "CN"));
 		};
 
-		# nobody there: a network error, not a certificate one
-		closed := Int->Random(20000, 31998);
-		while(closed = port | closed = name_port) {
-			closed := Int->Random(20000, 31998);
-		};
-		socket := TCPSecureSocket->New("127.0.0.1", closed, "tls-err-both-cert.pem");
+		# nobody there: a network error, not a certificate one. The port was free
+		# a moment ago (bound to port 0 and closed again); one picked from a range
+		# could be another process's server
+		reserved := TCPSocketServer->New("127.0.0.1", 0);
+		closed := reserved->GetPort();
+		reserved->Close();
+		socket := TCPSecureSocket->New("127.0.0.1", closed, "tls-err-both-{$Runtime->GetProcessId()}-cert.pem");
 		Check("TLS: a connect nobody answers fails", <>socket->IsOpen());
 		socket->Close();
 		reason := TCPSecureSocket->GetLastError();
@@ -187,7 +182,7 @@ class TlsErrorsAndVerify {
 	}
 
 	function : CheckTlsServer() ~ Nil {
-		server := TCPSecureSocketServer->New("no-such-cert.pem", "no-such-key.pem", "", Int->Random(20000, 31998));
+		server := TCPSecureSocketServer->New("no-such-cert.pem", "no-such-key.pem", "", 0);
 		Check("TLS server: Listen() fails without its certificate", <>server->Listen());
 		reason := TCPSecureSocketServer->GetLastError();
 		Check("TLS server: the failure is reported ('{$reason}')", reason <> Nil & reason->Size() > 0);
@@ -195,7 +190,7 @@ class TlsErrorsAndVerify {
 	}
 
 	function : CheckDtlsClient() ~ Nil {
-		port := StartDtls("tls-err-both");
+		port := StartDtls("tls-err-both-{$Runtime->GetProcessId()}");
 		Check("DTLS: the server listens", port > 0);
 		if(port = 0) {
 			return;
@@ -208,11 +203,11 @@ class TlsErrorsAndVerify {
 		reason := DTLSSocket->GetLastError();
 		Check("DTLS: the refusal gives the reason ('{$reason}')", Has(reason, "not correctly signed by the trusted CA"));
 
-		socket := DTLSSocket->New("localhost", port, "tls-err-both-cert.pem");
+		socket := DTLSSocket->New("localhost", port, "tls-err-both-{$Runtime->GetProcessId()}-cert.pem");
 		Check("DTLS: a pinned self-signed server is accepted with verify=false", socket->IsOpen());
 		socket->Close();
 
-		socket := DTLSSocket->New("localhost", port, "tls-err-both-cert.pem", true);
+		socket := DTLSSocket->New("localhost", port, "tls-err-both-{$Runtime->GetProcessId()}-cert.pem", true);
 		Check("DTLS: a pinned self-signed server is accepted with verify=true", socket->IsOpen());
 		socket->Close();
 	}

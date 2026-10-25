@@ -40,8 +40,9 @@ class OneAccept from Thread {
 	method : public : Run(param : Base) ~ Nil {
 		accepted : Base;
 		if(@secure) {
-			tls_server := TCPSecureSocketServer->New("socket-class-cert.pem", "socket-class-key.pem", "", @port);
+			tls_server := TCPSecureSocketServer->New("socket-class-{$Runtime->GetProcessId()}-cert.pem", "socket-class-{$Runtime->GetProcessId()}-key.pem", "", @port);
 			if(tls_server->Listen()) {
+				@port := tls_server->GetPort();
 				@listening := true;
 				accepted := tls_server->Accept();
 				if(accepted <> Nil) {
@@ -56,6 +57,7 @@ class OneAccept from Thread {
 		else {
 			server := TCPSocketServer->New(@port);
 			if(server->Listen(4)) {
+				@port := server->GetPort();
 				@listening := true;
 				accepted := server->Accept();
 				if(accepted <> Nil) {
@@ -75,10 +77,10 @@ class SocketAcceptClass {
 	function : Main(args : String[]) ~ Nil {
 		failed := 0;
 
-		File->Delete("socket-class-cert.pem");
-		File->Delete("socket-class-key.pem");
+		File->Delete("socket-class-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("socket-class-{$Runtime->GetProcessId()}-key.pem");
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout socket-class-key.pem -out socket-class-cert.pem";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout socket-class-{$Runtime->GetProcessId()}-key.pem -out socket-class-{$Runtime->GetProcessId()}-cert.pem";
 		if(Runtime->Command(command) <> 0) {
 			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
@@ -90,7 +92,7 @@ class SocketAcceptClass {
 			"FAIL: the TLS server never started listening"->PrintLine();
 			Runtime->Exit(1);
 		};
-		tls_client := TCPSecureSocket->New("localhost", tls->GetPort(), "socket-class-cert.pem");
+		tls_client := TCPSecureSocket->New("localhost", tls->GetPort(), "socket-class-{$Runtime->GetProcessId()}-cert.pem");
 		tls->Join();
 		tls_client->Close();
 		name := tls->GetClassName();
@@ -114,8 +116,8 @@ class SocketAcceptClass {
 			failed += 1;
 		};
 
-		File->Delete("socket-class-cert.pem");
-		File->Delete("socket-class-key.pem");
+		File->Delete("socket-class-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("socket-class-{$Runtime->GetProcessId()}-key.pem");
 
 		if(failed > 0) {
 			Runtime->Exit(1);
@@ -123,21 +125,18 @@ class SocketAcceptClass {
 		"PASS: each server accepts sockets of its own class"->PrintLine();
 	}
 
+	# a server on port 0: the system picks a free port, which the server reads
+	# back once it listens, so no two runs collide and nothing is retried
 	function : Start(secure : Bool) ~ OneAccept {
-		candidate : OneAccept;
-		waited : Int;
-
-		for(tries := 0; tries < 5; tries += 1;) {
-			candidate := OneAccept->New(secure, Int->Random(20000, 31998));
-			candidate->Execute(Nil);
-			waited := 0;
-			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
-				Thread->Sleep(25);
-				waited += 25;
-			};
-			if(candidate->IsListening()) {
-				return candidate;
-			};
+		candidate := OneAccept->New(secure, 0);
+		candidate->Execute(Nil);
+		waited := 0;
+		while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(candidate->IsListening()) {
+			return candidate;
 		};
 
 		return Nil;

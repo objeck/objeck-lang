@@ -11,9 +11,12 @@ class WsEchoServer {
 	@port   : Int;
 
 	New(port : Int) {
-		@port := port;
 		@server := TCPSocketServer->New(port);
+		# the port the server has, which for a port of 0 the system chose
+		@port := @server->GetPort();
 	}
+
+	method : public : GetPort() ~ Int { return @port; }
 
 	method : public : Stop() ~ Nil {
 		if(@server <> Nil) {
@@ -188,7 +191,10 @@ class WebSocketTest {
 
 	function : Main(args : String[]) ~ Nil {
 		pass := true;
-		@port := 19876;
+		# the server binds port 0 and reads the port back, so two runs on one
+		# machine cannot collide as they did on the fixed 19876 (which
+		# core_net_buffer listened on too)
+		@port := 0;
 
 		state := WsTestState->New();
 
@@ -196,7 +202,7 @@ class WebSocketTest {
 			New() { Parent() }
 			method : public : Run(arg : System.Base) ~ Nil {
 				st  := arg->As(WsTestState);
-				srv := WsEchoServer->New(WebSocketTest->Port());
+				srv := WsEchoServer->New(0);
 				st->SetServer(srv);
 				srv->ServeOne(st);
 			}
@@ -206,6 +212,17 @@ class WebSocketTest {
 		# -------------------------------------------------------
 		# Test 1: Connect (retry up to 3s for slow CI runners)
 		# -------------------------------------------------------
+		waited := 0;
+		while(state->GetServer() = Nil & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		if(state->GetServer() = Nil) {
+			"  FAIL: the echo server never started"->PrintLine();
+			Runtime->Exit(1);
+		};
+		@port := state->GetServer()->GetPort();
+
 		ws        : WebSocket;
 		connected := false;
 		each(attempt : 15) {

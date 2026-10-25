@@ -102,33 +102,27 @@ class QueryNetRead {
 	}
 
 	function : StartServer() ~ Bool {
-		tries := 0;
-		while(tries < 5) {
-			@port := Int->Random(20000, 31998);
-			@serve_returned := false;
-			server_thread := System.Concurrency.Thread->New() {
-				New() { Parent(); }
-				method : public : Run(arg : System.Base) ~ Nil {
-					WebServer->Serve(NetReadHandler->New()->GetClass(), QueryNetRead->Port(), false);
-					QueryNetRead->ServeReturned();
-				}
-			};
-			server_thread->Execute(Nil);
-
-			attempts := 0;
-			while(<>@serve_returned & attempts < 20) {
-				System.Concurrency.Thread->Sleep(25);
-				probe := TCPSocket->New("127.0.0.1", @port);
-				if(probe->IsOpen()) {
-					probe->Close();
-					return true;
-				};
-				attempts += 1;
-			};
-			tries += 1;
+		# Serve on port 0: the system picks a free port, so two runs of this suite
+		# on one machine cannot collide. The port is known once the server listens
+		# (WebServer->GetBoundPort), so no client probe and no retry are needed.
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(NetReadHandler->New()->GetClass(), 0, false);
+				QueryNetRead->ServeReturned();
+			}
 		};
+		server_thread->Execute(Nil);
 
-		return false;
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
 	}
 
 	function : Main(args : String[]) ~ Nil {
@@ -137,8 +131,17 @@ class QueryNetRead {
 		@etags := Map->New()<String, String>;
 		@dates := Map->New()<String, String>;
 
-		# a fresh cache folder name per run would leave files behind; the URL's port is random,
-		# so each run's URLs are new to the cache anyway
+		# The download cache lives under the system's temporary folder, keyed by URL, and
+		# this run's URLs name whatever port the system chose: an earlier run on the same
+		# port leaves entries that would answer the first fetch with a 304, and a run
+		# alongside this one shares the folder. So the cache is pointed, through the
+		# 'tmp_dir' property Runtime->GetTempDir reads, at a folder of this process's
+		# own, removed at the end.
+		pid := Runtime->GetProcessId();
+		cache_root := "{$Runtime->GetTempDir()}/objeck_query_net_read_{$pid}";
+		System.IO.Filesystem.Directory->Create(cache_root);
+		Runtime->SetProperty("tmp_dir", cache_root);
+
 		Put("/data/runs.csv", "id,score\n1,0.5\n2,0.75\n", "\"v1\"", Nil);
 		Put("/data/dated.csv", "id\n1\n", Nil, "Wed, 21 Oct 2026 07:28:00 GMT");
 		Put("/data/plain.csv", "id\n7\n", Nil, Nil);
@@ -195,6 +198,7 @@ class QueryNetRead {
 		Check("a URL cannot be a pattern", catalog->Query("select * from '{$base}/data/*.csv'") = Nil & catalog->GetError()->Has("pattern"));
 
 		WebServer->Stop();
+		System.IO.Filesystem.Directory->Delete(cache_root);
 		if(@failures = 0) {
 			"PASS: query over HTTP"->PrintLine();
 		}

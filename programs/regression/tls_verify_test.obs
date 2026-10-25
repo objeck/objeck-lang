@@ -54,9 +54,12 @@ class TlsVerifyTest {
 
 	function : Main(args : String[]) ~ Nil {
 		@passed := true;
-		@port := 18811;
-		cert := "tls-verify-cert.pem";
-		key := "tls-verify-key.pem";
+		# the server takes a port the system chooses (ServeSecure on port 0),
+		# read back below once it listens, so two runs on one machine cannot
+		# collide as they did on the fixed 18811
+		@port := 0;
+		cert := "tls-verify-{$Runtime->GetProcessId()}-cert.pem";
+		key := "tls-verify-{$Runtime->GetProcessId()}-key.pem";
 		File->Delete(cert);
 		File->Delete(key);
 
@@ -75,12 +78,21 @@ class TlsVerifyTest {
 			New() { Parent(); }
 			method : public : Run(arg : System.Base) ~ Nil {
 				WebServer->ServeSecure(TlsVerifyHandler->New()->GetClass(),
-					TlsVerifyTest->Port(), "tls-verify-cert.pem", "tls-verify-key.pem", "", false);
+					TlsVerifyTest->Port(), "tls-verify-{$Runtime->GetProcessId()}-cert.pem", "tls-verify-{$Runtime->GetProcessId()}-key.pem", "", false);
 			}
 		};
 		server->Execute(Nil);
-		System.Concurrency.Thread->Sleep(2000);
-		"TLS stage: server started"->ErrorLine();
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			"  [FAIL] the TLS server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+		"TLS stage: server started on port {$@port}"->ErrorLine();
 
 		# control: the certificate names localhost and is pinned -> accepted
 		pinned := TCPSecureSocket->New("localhost", @port, cert);

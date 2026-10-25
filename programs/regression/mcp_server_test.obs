@@ -106,7 +106,12 @@ class McpServerTest {
 
 	function : Main(args : String[]) ~ Nil {
 		pass := true;
-		@port := 18799;
+		# McpServer->Serve takes no port 0, so the port is one the system handed
+		# out for port 0 and this run closed again -- free a moment ago -- rather
+		# than the fixed 18799, which two runs on one machine collided on
+		reserved := System.IO.Net.TCPSocketServer->New("127.0.0.1", 0);
+		@port := reserved->GetPort();
+		reserved->Close();
 		base_url := "http://localhost:{$@port}/";
 
 		# Start MCP server in a background thread
@@ -126,7 +131,15 @@ class McpServerTest {
 			}
 		};
 		server_thread->Execute(Nil);
-		System.Concurrency.Thread->Sleep(500);
+		waited := 0;
+		while(Web.HTTP.Server.WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		if(Web.HTTP.Server.WebServer->GetBoundPort() = 0) {
+			"FAIL: the MCP server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
 
 		# ------------------------------------------------------------------
 		# Test 1: initialize — capabilities must have "prompts", "resources",

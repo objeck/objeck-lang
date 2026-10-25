@@ -30,7 +30,10 @@ class QueryPersistLock {
 
 	function : Main(args : String[]) ~ Nil {
 		@failures := 0;
-		path := "query_persist_lock_tmp.otab";
+		# a path of this process's own: two runs in one directory then contend
+		# only where this test means them to (the second writer below)
+		pid := Runtime->GetProcessId();
+		path := "query_persist_lock_tmp_{$pid}.otab";
 		lock := "{$path}.lock";
 		File->Delete(path);
 		File->Delete(lock);

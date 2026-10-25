@@ -98,25 +98,22 @@ class ServerBindAddress {
 	function : WebPort() ~ Int { return @web_port; }
 	function : ServeReturned() ~ Nil { @serve_returned := true; }
 
-	# A listening server on address, on a random free port (in @port); Nil if it
-	# never listens. A Nil address is New(port), the wildcard.
+	# A listening server on address, on a port the system chose (port 0, read
+	# back into @port); Nil if it never listens. A Nil address is New(port),
+	# the wildcard.
 	function : Listening(address : String) ~ TCPSocketServer {
 		server : TCPSocketServer;
-		port : Int;
-		for(tries := 0; tries < 5; tries += 1;) {
-			port := Int->Random(20000, 31998);
-			@port := port;
-			if(address = Nil) {
-				server := TCPSocketServer->New(port);
-			}
-			else {
-				server := TCPSocketServer->New(address, port);
-			};
-			if(server->Listen(8)) {
-				return server;
-			};
-			server->Close();
+		if(address = Nil) {
+			server := TCPSocketServer->New(0);
+		}
+		else {
+			server := TCPSocketServer->New(address, 0);
 		};
+		@port := server->GetPort();
+		if(server->Listen(8)) {
+			return server;
+		};
+		server->Close();
 
 		return Nil;
 	}
@@ -253,14 +250,14 @@ class ServerBindAddress {
 		};
 
 		# addresses that cannot be bound: an error, not a crash
-		bad := TCPSocketServer->New("no-such-host.invalid", 23456);
+		bad := TCPSocketServer->New("no-such-host.invalid", 0);
 		Check("no-such-host.invalid: Listen() fails", <>bad->Listen(8));
 		reason := TCPSocketServer->GetLastError();
 		Check("no-such-host.invalid: GetLastError() says why ('{$reason}')", reason <> Nil & reason->Size() > 0);
 		bad->Close();
 
 		# TEST-NET-1 (RFC 5737): no machine has it
-		bad := TCPSocketServer->New("192.0.2.1", 23456);
+		bad := TCPSocketServer->New("192.0.2.1", 0);
 		Check("192.0.2.1: Listen() fails", <>bad->Listen(8));
 		reason := TCPSocketServer->GetLastError();
 		Check("192.0.2.1: GetLastError() says why ('{$reason}')", reason <> Nil & reason->Size() > 0);
@@ -268,24 +265,23 @@ class ServerBindAddress {
 	}
 
 	function : CheckTls() ~ Nil {
-		File->Delete("bind-address-cert.pem");
-		File->Delete("bind-address-key.pem");
+		File->Delete("bind-address-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("bind-address-{$Runtime->GetProcessId()}-key.pem");
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout bind-address-key.pem -out bind-address-cert.pem";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1\" -keyout bind-address-{$Runtime->GetProcessId()}-key.pem -out bind-address-{$Runtime->GetProcessId()}-cert.pem";
 		if(Runtime->Command(command) <> 0) {
 			Check("openssl could not create the TLS fixture -- is openssl on PATH?", false);
 			return;
 		};
 		# the client pins the self-signed fixture, so verification stays fully on
+		# port 0: the system picks a free port, read back once the server listens
 		server : TCPSecureSocketServer;
 		greeting : String;
 		port := 0;
-		for(tries := 0; tries < 5 & server = Nil; tries += 1;) {
-			port := Int->Random(20000, 31998);
-			candidate := TCPSecureSocketServer->New("bind-address-cert.pem", "bind-address-key.pem", "", "127.0.0.1", port);
-			if(candidate->Listen()) {
-				server := candidate;
-			};
+		candidate := TCPSecureSocketServer->New("bind-address-{$Runtime->GetProcessId()}-cert.pem", "bind-address-{$Runtime->GetProcessId()}-key.pem", "", "127.0.0.1", 0);
+		if(candidate->Listen()) {
+			server := candidate;
+			port := server->GetPort();
 		};
 		Check("TLS 127.0.0.1: the server listens", server <> Nil);
 		if(server <> Nil) {
@@ -295,7 +291,7 @@ class ServerBindAddress {
 			acceptor->Execute(Nil);
 			# by address: the certificate names IP:127.0.0.1, which verifies on
 			# every platform since #1335
-			client := TCPSecureSocket->New("127.0.0.1", port, "bind-address-cert.pem");
+			client := TCPSecureSocket->New("127.0.0.1", port, "bind-address-{$Runtime->GetProcessId()}-cert.pem");
 			if(client->IsOpen()) {
 				greeting := client->ReadLine();
 				client->WriteString("bye\n");
@@ -316,46 +312,41 @@ class ServerBindAddress {
 			server->Close();
 		};
 
-		bad := TCPSecureSocketServer->New("bind-address-cert.pem", "bind-address-key.pem", "", "no-such-host.invalid", 23457);
+		bad := TCPSecureSocketServer->New("bind-address-{$Runtime->GetProcessId()}-cert.pem", "bind-address-{$Runtime->GetProcessId()}-key.pem", "", "no-such-host.invalid", 0);
 		Check("TLS no-such-host.invalid: Listen() fails", <>bad->Listen());
 		bad->Close();
 
-		File->Delete("bind-address-cert.pem");
-		File->Delete("bind-address-key.pem");
+		File->Delete("bind-address-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("bind-address-{$Runtime->GetProcessId()}-key.pem");
 	}
 
 	function : CheckWeb() ~ Nil {
 		body : String;
 
 		# returns, reporting the error on standard error
-		WebServer->Serve(HelloHandler->New()->GetClass(), "no-such-host.invalid", 23458);
+		WebServer->Serve(HelloHandler->New()->GetClass(), "no-such-host.invalid", 0);
 		Check("WebServer no-such-host.invalid: Serve() returns", true);
 
-		started := false;
-		for(tries := 0; tries < 5 & <>started; tries += 1;) {
-			@web_port := Int->Random(20000, 31998);
-			@serve_returned := false;
-
-			server_thread := Thread->New() {
-				New() { Parent(); }
-				method : public : Run(arg : System.Base) ~ Nil {
-					WebServer->Serve(HelloHandler->New()->GetClass(), "127.0.0.1", ServerBindAddress->WebPort());
-					ServerBindAddress->ServeReturned();
-				}
-			};
-			server_thread->Execute(Nil);
-
-			attempts := 0;
-			while(<>@serve_returned & <>started & attempts < 40) {
-				Thread->Sleep(25);
-				probe := TCPSocket->New("127.0.0.1", @web_port);
-				if(probe->IsOpen()) {
-					started := true;
-				};
-				probe->Close();
-				attempts += 1;
-			};
+		# Serve on port 0: the system picks a free port, known once the server
+		# listens (WebServer->GetBoundPort), so no two runs collide
+		@web_port := 0;
+		@serve_returned := false;
+		server_thread := Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(HelloHandler->New()->GetClass(), "127.0.0.1", 0);
+				ServerBindAddress->ServeReturned();
+			}
 		};
+		server_thread->Execute(Nil);
+
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		@web_port := WebServer->GetBoundPort();
+		started := @web_port > 0;
 		Check("WebServer 127.0.0.1: the server listens", started);
 		if(started) {
 			port := @web_port;

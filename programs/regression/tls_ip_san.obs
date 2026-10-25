@@ -70,44 +70,44 @@ class TlsIpSan {
 	function : Main(args : String[]) ~ Nil {
 		@failed := 0;
 
-		if(<>MakeCert("ip-san-both", "IP:127.0.0.1,IP:::1") | <>MakeCert("ip-san-other", "IP:127.0.0.2")) {
+		if(<>MakeCert("ip-san-both-{$Runtime->GetProcessId()}", "IP:127.0.0.1,IP:::1") | <>MakeCert("ip-san-other-{$Runtime->GetProcessId()}", "IP:127.0.0.2")) {
 			"FAIL: openssl could not create the certificates -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
 
 		"stage: tls"->ErrorLine();
-		port := StartTls("ip-san-both");
+		port := StartTls("ip-san-both-{$Runtime->GetProcessId()}");
 		Check("TLS: the IP:127.0.0.1,IP:::1 server listens", port > 0);
 		if(port > 0) {
-			Check("TLS: a client of 127.0.0.1 verifies a certificate naming IP:127.0.0.1", TlsVerifies("127.0.0.1", port, "ip-san-both"));
-			Check("TLS: a client of ::1 verifies a certificate naming IP:::1", TlsVerifies("::1", port, "ip-san-both"));
-			Check("TLS: a client of 'localhost' refuses a certificate naming only addresses", <>TlsVerifies("localhost", port, "ip-san-both"));
+			Check("TLS: a client of 127.0.0.1 verifies a certificate naming IP:127.0.0.1", TlsVerifies("127.0.0.1", port, "ip-san-both-{$Runtime->GetProcessId()}"));
+			Check("TLS: a client of ::1 verifies a certificate naming IP:::1", TlsVerifies("::1", port, "ip-san-both-{$Runtime->GetProcessId()}"));
+			Check("TLS: a client of 'localhost' refuses a certificate naming only addresses", <>TlsVerifies("localhost", port, "ip-san-both-{$Runtime->GetProcessId()}"));
 		};
 
-		port := StartTls("ip-san-other");
+		port := StartTls("ip-san-other-{$Runtime->GetProcessId()}");
 		Check("TLS: the IP:127.0.0.2 server listens", port > 0);
 		if(port > 0) {
-			Check("TLS: a client of 127.0.0.1 refuses a certificate naming only IP:127.0.0.2", <>TlsVerifies("127.0.0.1", port, "ip-san-other"));
+			Check("TLS: a client of 127.0.0.1 refuses a certificate naming only IP:127.0.0.2", <>TlsVerifies("127.0.0.1", port, "ip-san-other-{$Runtime->GetProcessId()}"));
 		};
 
 		"stage: dtls"->ErrorLine();
-		port := StartDtls("ip-san-both");
+		port := StartDtls("ip-san-both-{$Runtime->GetProcessId()}");
 		Check("DTLS: the IP:127.0.0.1,IP:::1 server listens", port > 0);
 		if(port > 0) {
-			Check("DTLS: a client of 127.0.0.1 verifies a certificate naming IP:127.0.0.1", DtlsVerifies("127.0.0.1", port, "ip-san-both"));
-			Check("DTLS: a client of ::1 verifies a certificate naming IP:::1", DtlsVerifies("::1", port, "ip-san-both"));
+			Check("DTLS: a client of 127.0.0.1 verifies a certificate naming IP:127.0.0.1", DtlsVerifies("127.0.0.1", port, "ip-san-both-{$Runtime->GetProcessId()}"));
+			Check("DTLS: a client of ::1 verifies a certificate naming IP:::1", DtlsVerifies("::1", port, "ip-san-both-{$Runtime->GetProcessId()}"));
 		};
 
-		port := StartDtls("ip-san-other");
+		port := StartDtls("ip-san-other-{$Runtime->GetProcessId()}");
 		Check("DTLS: the IP:127.0.0.2 server listens", port > 0);
 		if(port > 0) {
-			Check("DTLS: a client of 127.0.0.1 refuses a certificate naming only IP:127.0.0.2", <>DtlsVerifies("127.0.0.1", port, "ip-san-other"));
+			Check("DTLS: a client of 127.0.0.1 refuses a certificate naming only IP:127.0.0.2", <>DtlsVerifies("127.0.0.1", port, "ip-san-other-{$Runtime->GetProcessId()}"));
 		};
 
-		File->Delete("ip-san-both-cert.pem");
-		File->Delete("ip-san-both-key.pem");
-		File->Delete("ip-san-other-cert.pem");
-		File->Delete("ip-san-other-key.pem");
+		File->Delete("ip-san-both-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("ip-san-both-{$Runtime->GetProcessId()}-key.pem");
+		File->Delete("ip-san-other-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("ip-san-other-{$Runtime->GetProcessId()}-key.pem");
 
 		if(@failed > 0) {
 			Runtime->Exit(1);
@@ -130,27 +130,22 @@ class TlsIpSan {
 		return Runtime->Command(command) = 0;
 	}
 
-	# a listening TLS server on a random port, greeting clients; its port, or 0
+	# a listening TLS server on a port the system chose (port 0, read back),
+	# greeting clients; its port, or 0
 	function : StartTls(name : String) ~ Int {
-		for(tries := 0; tries < 5; tries += 1;) {
-			port := Int->Random(20000, 31998);
-			server := TCPSecureSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
-			if(server->Listen()) {
-				TlsGreeter->New(server)->Execute(Nil);
-				return port;
-			};
+		server := TCPSecureSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", 0);
+		if(server->Listen()) {
+			TlsGreeter->New(server)->Execute(Nil);
+			return server->GetPort();
 		};
 		return 0;
 	}
 
 	function : StartDtls(name : String) ~ Int {
-		for(tries := 0; tries < 5; tries += 1;) {
-			port := Int->Random(20000, 31998);
-			server := DTLSSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", port);
-			if(server->Listen()) {
-				DtlsGreeter->New(server)->Execute(Nil);
-				return port;
-			};
+		server := DTLSSocketServer->New("{$name}-cert.pem", "{$name}-key.pem", "", 0);
+		if(server->Listen()) {
+			DtlsGreeter->New(server)->Execute(Nil);
+			return server->GetPort();
 		};
 		return 0;
 	}

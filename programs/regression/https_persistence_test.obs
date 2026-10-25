@@ -116,9 +116,12 @@ class HttpsPersistenceTest {
 
 	function : Main(args : String[]) ~ Nil {
 		@passed := true;
-		@port := 18808;
-		cert := "https-persistence-cert.pem";
-		key := "https-persistence-key.pem";
+		# the server takes a port the system chooses (ServeSecure on port 0),
+		# read back below once it listens, so two runs on one machine cannot
+		# collide as they did on the fixed 18808
+		@port := 0;
+		cert := "https-persistence-{$Runtime->GetProcessId()}-cert.pem";
+		key := "https-persistence-{$Runtime->GetProcessId()}-key.pem";
 		File->Delete(cert);
 		File->Delete(key);
 		# Some Windows OpenSSL distributions have a build-time config path that
@@ -134,13 +137,22 @@ class HttpsPersistenceTest {
 			New() { Parent(); }
 			method : public : Run(arg : System.Base) ~ Nil {
 				WebServer->ServeSecure(HttpsPersistenceHandler->New()->GetClass(),
-					HttpsPersistenceTest->Port(), "https-persistence-cert.pem",
-					"https-persistence-key.pem", "", false);
+					HttpsPersistenceTest->Port(), "https-persistence-{$Runtime->GetProcessId()}-cert.pem",
+					"https-persistence-{$Runtime->GetProcessId()}-key.pem", "", false);
 			}
 		};
 		server_thread->Execute(Nil);
-		System.Concurrency.Thread->Sleep(2000);
-		"TLS stage: server startup wait complete"->ErrorLine();
+		waited := 0;
+		while(WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		if(@port = 0) {
+			Fail("the TLS server never listened");
+			Runtime->Exit(1);
+		};
+		"TLS stage: server listening on port {$@port}"->ErrorLine();
 
 		# Exercise multiple HTTP requests over one TLS session.
 		socket := TCPSecureSocket->New("localhost", @port, cert);

@@ -13,7 +13,8 @@
 # socket's; and GetLastError, a function, popped a caller's operand as an
 # instance.
 #
-# One program, two threads: a server on a random port accepts one client,
+# One program, two threads: a server on a port the system chose (port 0, read
+# back with GetPort) accepts one client,
 # echoes a buffer, answers a line and closes. The client pins the server's
 # self-signed certificate with verification on, checks the certificate names
 # on both sides, exchanges a buffer and a line, and closes twice; a second
@@ -58,8 +59,9 @@ class DtlsEchoServer from Thread {
 		client : DTLSSocket;
 		buffer : Byte[];
 
-		server := DTLSSocketServer->New("dtls-test-cert.pem", "dtls-test-key.pem", "", @port);
+		server := DTLSSocketServer->New("dtls-test-{$Runtime->GetProcessId()}-cert.pem", "dtls-test-{$Runtime->GetProcessId()}-key.pem", "", @port);
 		if(server->Listen()) {
+			@port := server->GetPort();
 			@issuer := server->GetIssuer();
 			@subject := server->GetSubject();
 			@listening := true;
@@ -110,31 +112,28 @@ class DtlsSocketTest {
 		};
 	}
 
+	# a server on port 0: the system picks a free port, which the server reads
+	# back once it listens, so no two runs collide and nothing is retried
 	method : StartServer() ~ DtlsEchoServer {
-		candidate : DtlsEchoServer;
-		waited : Int;
-
-		for(tries := 0; tries < 5; tries += 1;) {
-			candidate := DtlsEchoServer->New(Int->Random(20000, 31998));
-			candidate->Execute(Nil);
-			waited := 0;
-			while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
-				Thread->Sleep(25);
-				waited += 25;
-			};
-			if(candidate->IsListening()) {
-				return candidate;
-			};
+		candidate := DtlsEchoServer->New(0);
+		candidate->Execute(Nil);
+		waited := 0;
+		while(<>candidate->IsListening() & <>candidate->IsFinished() & waited < 5000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		if(candidate->IsListening()) {
+			return candidate;
 		};
 
 		return Nil;
 	}
 
 	method : Run() ~ Nil {
-		File->Delete("dtls-test-cert.pem");
-		File->Delete("dtls-test-key.pem");
+		File->Delete("dtls-test-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("dtls-test-{$Runtime->GetProcessId()}-key.pem");
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout dtls-test-key.pem -out dtls-test-cert.pem";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -addext \"subjectAltName=DNS:localhost,IP:127.0.0.1\" -keyout dtls-test-{$Runtime->GetProcessId()}-key.pem -out dtls-test-{$Runtime->GetProcessId()}-cert.pem";
 		if(Runtime->Command(command) <> 0) {
 			"FAIL: openssl could not create the DTLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
@@ -149,7 +148,7 @@ class DtlsSocketTest {
 		Check("server subject is its own certificate's", server->GetSubject() <> Nil & server->GetSubject()->Equals("CN=localhost"));
 
 		# client: the server's certificate pinned, verification on
-		socket := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-cert.pem", true);
+		socket := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-{$Runtime->GetProcessId()}-cert.pem", true);
 		if(<>socket->IsOpen()) {
 			"FAIL: the DTLS handshake failed: {$DTLSSocket->GetLastError()}"->PrintLine();
 			Runtime->Exit(1);
@@ -179,7 +178,7 @@ class DtlsSocketTest {
 		socket->Close();
 
 		# the server takes a second client after the first
-		again := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-cert.pem", true);
+		again := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-{$Runtime->GetProcessId()}-cert.pem", true);
 		if(<>again->IsOpen()) {
 			# the server is still waiting in Accept, so it cannot be joined
 			"FAIL: a second client was not accepted after the first: {$DTLSSocket->GetLastError()}"->PrintLine();
@@ -199,18 +198,18 @@ class DtlsSocketTest {
 		Check("the server read the second client's line", server->GetSecondLine() <> Nil & server->GetSecondLine()->Equals("ping again"));
 
 		# error paths: nobody listening, a missing certificate
-		nobody := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-cert.pem", true);
+		nobody := DTLSSocket->New("localhost", server->GetPort(), "dtls-test-{$Runtime->GetProcessId()}-cert.pem", true);
 		Check("a connect nobody answers fails", <>nobody->IsOpen());
 		Check("and reports an error", DTLSSocket->GetLastError() <> Nil);
 		nobody->Close();
 
-		missing := DTLSSocketServer->New("dtls-missing-cert.pem", "dtls-test-key.pem", "", server->GetPort());
+		missing := DTLSSocketServer->New("dtls-missing-cert.pem", "dtls-test-{$Runtime->GetProcessId()}-key.pem", "", server->GetPort());
 		Check("Listen without a certificate fails", <>missing->Listen());
 		Check("and reports an error", DTLSSocketServer->GetLastError() <> Nil);
 		missing->Close();
 
-		File->Delete("dtls-test-cert.pem");
-		File->Delete("dtls-test-key.pem");
+		File->Delete("dtls-test-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("dtls-test-{$Runtime->GetProcessId()}-key.pem");
 
 		if(@failed > 0) {
 			Runtime->Exit(1);

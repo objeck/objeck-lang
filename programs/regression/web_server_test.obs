@@ -122,7 +122,7 @@ class WebServerTest {
 
 	New() {
 		@failures := 0;
-		@port := 19881;
+		@port := 0;
 	}
 
 	method : Check(what : String, got : String, expect : String) ~ Nil {
@@ -234,15 +234,26 @@ class WebServerTest {
 	}
 
 	method : Run() ~ Nil {
-		port := @port;
+		# Serve on port 0: the system picks a free port, read back once the server
+		# listens, so two runs on one machine cannot collide as they did on 19881
 		server := Thread->New() {
 			New() { Parent() }
 			method : public : Run(arg : System.Base) ~ Nil {
-				Web.Server.Handler->Serve(EchoHandler->New()->GetClass(), 19881);
+				Web.Server.Handler->Serve(EchoHandler->New()->GetClass(), 0);
 			}
 		};
 		server->Execute(Nil);
-		Thread->Sleep(800);
+		waited := 0;
+		while(Web.HTTP.Server.WebServer->GetBoundPort() = 0 & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := Web.HTTP.Server.WebServer->GetBoundPort();
+		if(@port = 0) {
+			"FAIL: the server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
+		port := @port;
 
 		# Request: verb, url, addresses
 		Check("GetMethod", BodyOf(Get("/method")), "GET");

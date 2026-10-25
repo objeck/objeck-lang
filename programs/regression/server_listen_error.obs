@@ -54,8 +54,12 @@ class ServerListenError {
 			lower->Has("success") = false & (lower->Has("in use") | lower->Has("only one usage")));
 	}
 
-	method : TestPlain(port : Int) ~ Nil {
-		first := TCPSocketServer->New(port);
+	# The first server of each kind takes a port the system chose (port 0, read
+	# back with GetPort); the second asks for that port, so the collision is
+	# genuine whatever else runs on this machine, and no port is picked.
+	method : TestPlain() ~ Nil {
+		first := TCPSocketServer->New(0);
+		port := first->GetPort();
 		Check("TCP: the first server listens", first->Listen(4));
 
 		second := TCPSocketServer->New(port);
@@ -68,7 +72,8 @@ class ServerListenError {
 		# servers bound to one address report a taken port the same way (a
 		# specific address beside a wildcard on the same port is not a
 		# conflict on Windows, so the first is bound to the address too)
-		first := TCPSocketServer->New("127.0.0.1", port);
+		first := TCPSocketServer->New("127.0.0.1", 0);
+		port := first->GetPort();
 		Check("TCP address: the first server listens", first->Listen(4));
 		second := TCPSocketServer->New("127.0.0.1", port);
 		Check("TCP address: a second server on the same address does not listen", second->Listen(4) = false);
@@ -78,16 +83,17 @@ class ServerListenError {
 		first->Close();
 	}
 
-	method : TestTls(port : Int) ~ Nil {
-		first := TCPSecureSocketServer->New("listen-error-cert.pem", "listen-error-key.pem", "", port);
+	method : TestTls() ~ Nil {
+		first := TCPSecureSocketServer->New("listen-error-{$Runtime->GetProcessId()}-cert.pem", "listen-error-{$Runtime->GetProcessId()}-key.pem", "", 0);
 		Check("TLS: the first server listens", first->Listen());
+		port := first->GetPort();
 
-		second := TCPSecureSocketServer->New("listen-error-cert.pem", "listen-error-key.pem", "", port);
+		second := TCPSecureSocketServer->New("listen-error-{$Runtime->GetProcessId()}-cert.pem", "listen-error-{$Runtime->GetProcessId()}-key.pem", "", port);
 		Check("TLS: a second server on the same port does not listen", second->Listen() = false);
 		CheckError("TLS", TCPSecureSocketServer->GetLastError());
 
 		# a bad certificate path is reported too, as an mbedTLS error
-		third := TCPSecureSocketServer->New("listen-error-missing.pem", "listen-error-key.pem", "", port + 1);
+		third := TCPSecureSocketServer->New("listen-error-{$Runtime->GetProcessId()}-missing.pem", "listen-error-{$Runtime->GetProcessId()}-key.pem", "", 0);
 		Check("TLS: a server with no certificate does not listen", third->Listen() = false);
 		error := TCPSecureSocketServer->GetLastError();
 		Check("TLS: GetLastError reports the certificate failure (got '{$error}')", error <> Nil & error->Size() > 0);
@@ -96,8 +102,9 @@ class ServerListenError {
 	}
 
 	# a server that closed its connections first leaves them in TIME_WAIT
-	method : TestRestart(port : Int) ~ Nil {
-		server := TCPSocketServer->New(port);
+	method : TestRestart() ~ Nil {
+		server := TCPSocketServer->New(0);
+		port := server->GetPort();
 		Check("restart: the server listens", server->Listen(4));
 
 		client := TCPSocket->New("127.0.0.1", port);
@@ -118,28 +125,26 @@ class ServerListenError {
 	}
 
 	method : Run() ~ Nil {
-		base := 41000 + (Int->Random(0, 2000) * 4);
-
 		"stage: tcp"->ErrorLine();
-		TestPlain(base);
+		TestPlain();
 
-		File->Delete("listen-error-cert.pem");
-		File->Delete("listen-error-key.pem");
+		File->Delete("listen-error-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("listen-error-{$Runtime->GetProcessId()}-key.pem");
 		config := Runtime->GetPlatform()->Has("Windows") ? "-config NUL " : "";
-		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -keyout listen-error-key.pem -out listen-error-cert.pem";
+		command := "openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 {$config}-subj \"/CN=localhost\" -keyout listen-error-{$Runtime->GetProcessId()}-key.pem -out listen-error-{$Runtime->GetProcessId()}-cert.pem";
 		if(Runtime->Command(command) <> 0) {
 			"FAIL: openssl could not create the TLS fixture -- is openssl on PATH?"->PrintLine();
 			Runtime->Exit(1);
 		};
 
 		"stage: tls"->ErrorLine();
-		TestTls(base + 1);
+		TestTls();
 
 		"stage: restart"->ErrorLine();
-		TestRestart(base + 3);
+		TestRestart();
 
-		File->Delete("listen-error-cert.pem");
-		File->Delete("listen-error-key.pem");
+		File->Delete("listen-error-{$Runtime->GetProcessId()}-cert.pem");
+		File->Delete("listen-error-{$Runtime->GetProcessId()}-key.pem");
 
 		if(@failed) {
 			"FAIL: a server that could not listen did not say why"->PrintLine();

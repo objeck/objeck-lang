@@ -80,33 +80,27 @@ class QuerySourceHttp {
 	}
 
 	function : StartServer() ~ Bool {
-		tries := 0;
-		while(tries < 5) {
-			@port := Int->Random(20000, 31998);
-			@serve_returned := false;
-			server_thread := System.Concurrency.Thread->New() {
-				New() { Parent(); }
-				method : public : Run(arg : System.Base) ~ Nil {
-					WebServer->Serve(HttpJsonHandler->New()->GetClass(), QuerySourceHttp->Port(), false);
-					QuerySourceHttp->ServeReturned();
-				}
-			};
-			server_thread->Execute(Nil);
-
-			attempts := 0;
-			while(<>@serve_returned & attempts < 20) {
-				System.Concurrency.Thread->Sleep(25);
-				probe := TCPSocket->New("127.0.0.1", @port);
-				if(probe->IsOpen()) {
-					probe->Close();
-					return true;
-				};
-				attempts += 1;
-			};
-			tries += 1;
+		# Serve on port 0: the system picks a free port, so two runs of this suite
+		# on one machine cannot collide. The port is known once the server listens
+		# (WebServer->GetBoundPort), so no client probe and no retry are needed.
+		@port := 0;
+		@serve_returned := false;
+		server_thread := System.Concurrency.Thread->New() {
+			New() { Parent(); }
+			method : public : Run(arg : System.Base) ~ Nil {
+				WebServer->Serve(HttpJsonHandler->New()->GetClass(), 0, false);
+				QuerySourceHttp->ServeReturned();
+			}
 		};
+		server_thread->Execute(Nil);
 
-		return false;
+		waited := 0;
+		while(<>@serve_returned & WebServer->GetBoundPort() = 0 & waited < 10000) {
+			System.Concurrency.Thread->Sleep(25);
+			waited += 25;
+		};
+		@port := WebServer->GetBoundPort();
+		return @port > 0;
 	}
 
 	function : Main(args : String[]) ~ Nil {

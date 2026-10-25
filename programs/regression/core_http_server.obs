@@ -28,6 +28,7 @@ use System.Concurrency, System.IO.Net, Web.HTTP;
 ~#
 class MockServer from Thread {
 	@port : Int;
+	@listening : Bool;
 	@client : TCPSocket;
 	@stop : Bool;
 
@@ -37,9 +38,15 @@ class MockServer from Thread {
 		@stop := false;
 	}
 
+	# the port the server has, which for a port of 0 the system chose
+	method : public : GetPort() ~ Int { return @port; }
+	method : public : IsListening() ~ Bool { return @listening; }
+
 	method : public : Run(param : Base) ~ Nil {
 		server := TCPSocketServer->New(@port);
 		if(server->Listen(5)) {
+			@port := server->GetPort();
+			@listening := true;
 			while(<>@stop) {
 				@client := server->Accept();
 				if(@client <> Nil & @client->IsOpen()) {
@@ -189,12 +196,22 @@ class HttpClientTest {
 		"Testing HTTP client..."->PrintLine();
 
 		passed := true;
-		port := 19878;
 
-		# Start mock server
-		server := MockServer->New(port);
+		# the mock server takes a port the system chooses (port 0), read back once
+		# it listens, so two runs on one machine cannot collide as they did on the
+		# fixed 19878
+		server := MockServer->New(0);
 		server->Execute(Nil);
-		Thread->Sleep(500);
+		waited := 0;
+		while(<>server->IsListening() & waited < 10000) {
+			Thread->Sleep(25);
+			waited += 25;
+		};
+		port := server->GetPort();
+		if(<>server->IsListening()) {
+			"FAIL: the mock server never listened"->PrintLine();
+			Runtime->Exit(1);
+		};
 
 		# Test 1: GET /hello
 		r1 := GetDelivered("http://127.0.0.1:{$port}/hello");
