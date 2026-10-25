@@ -185,15 +185,6 @@ jobs:
         export PATH="/opt/homebrew/bin:$PATH"
         echo "/opt/homebrew/bin" >> $GITHUB_PATH
 
-    # libobjk_odbc.dylib carries libiodbc statically, and iODBC reads a user's
-    # data sources from ~/.odbc.ini (ODBCINI names the file explicitly); the
-    # script points the DSN at Homebrew's libsqlite3odbc.dylib by full path.
-    - name: Configure ODBC test DSN (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        bash tools/cicd/setup_sqlite_odbc.sh
-        echo "ODBCINI=$HOME/.odbc.ini" >> "$GITHUB_ENV"
-
 
     - name: Select Xcode 16.3+ (macOS)
       if: runner.os == 'macOS'
@@ -422,6 +413,17 @@ jobs:
     - name: macOS bundled libraries
       if: runner.os == 'macOS'
       uses: ./.github/actions/macos-bundle-deps
+
+    # libobjk_odbc.dylib carries libiodbc statically, and iODBC reads a user's
+    # data sources from ~/.odbc.ini (ODBCINI names the file explicitly); the
+    # script points the DSN at Homebrew's libsqlite3odbc.dylib by full path.
+    # After the bundled libraries, because the script proves the connection
+    # through that very libiodbc (under $OBJECK_DEPS/macos-bundle/iodbc).
+    - name: Configure ODBC test DSN (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        bash tools/cicd/setup_sqlite_odbc.sh
+        echo "ODBCINI=$HOME/.odbc.ini" >> "$GITHUB_ENV"
 
     - name: Cache ccache
       if: runner.os != 'Windows'

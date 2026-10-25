@@ -67,16 +67,84 @@ else
 fi
 cat "$ini"
 
-echo "--- prove the driver loads"
+echo "--- prove the driver loads and allocates an environment"
 # The formula installs no client; load the dylib the way the driver manager
-# will and resolve SQLConnect, which is what a wrong path or a broken link
-# would break. python3 is on every macOS runner.
+# will, resolve the entry points the driver manager wants first, and call the
+# driver's own SQLAllocHandle/SQLAllocEnv -- iODBC reports IM004 when either
+# is missing or fails. python3 is on every macOS runner.
 python3 - "$driver" <<'PY'
 import ctypes, sys
 lib = ctypes.CDLL(sys.argv[1])
-for name in ("SQLConnect", "SQLDriverConnect", "SQLExecDirect"):
+for name in ("SQLAllocHandle", "SQLAllocEnv", "SQLConnect", "SQLDriverConnect", "SQLExecDirect", "SQLGetDiagRec"):
     getattr(lib, name)
-print("  loaded %s; SQLConnect resolved" % sys.argv[1])
+h = ctypes.c_void_p()
+rc = lib.SQLAllocHandle(ctypes.c_short(1), ctypes.c_void_p(0), ctypes.byref(h))
+print("  driver SQLAllocHandle(SQL_HANDLE_ENV) -> rc %d, handle %s" % (rc, "set" if h.value else "NULL"))
+e = ctypes.c_void_p()
+rc2 = lib.SQLAllocEnv(ctypes.byref(e))
+print("  driver SQLAllocEnv -> rc %d, handle %s" % (rc2, "set" if e.value else "NULL"))
+if rc != 0 or rc2 != 0:
+    sys.exit("the driver cannot allocate an environment on its own")
 PY
+
+# The faithful check: connect through the SAME driver manager libobjk_odbc
+# carries -- the static libiodbc tools/deps/build_macos_deps.sh built under
+# $OBJECK_DEPS/macos-bundle/iodbc -- with iODBC tracing on, so a failure
+# names the call that failed instead of leaving a one-line IM004 in a
+# regression log. Skipped on a box without those deps.
+iodbc="${OBJECK_DEPS:-$HOME/objeck-deps/darwin-arm64}/macos-bundle/iodbc"
+if [ -f "$iodbc/lib/libiodbc.a" ] && [ -f "$iodbc/include/sql.h" ]; then
+	echo "--- connect through the bundled static libiodbc ($iodbc)"
+	work=$(mktemp -d)
+	cat > "$work/probe.c" <<'EOF'
+#include <stdio.h>
+#include <sql.h>
+#include <sqlext.h>
+static void diag(const char *what, SQLSMALLINT t, SQLHANDLE h) {
+	SQLCHAR st[6], msg[1024]; SQLINTEGER ne; SQLSMALLINT len, i = 1;
+	while (SQLGetDiagRec(t, h, i, st, &ne, msg, sizeof msg, &len) == SQL_SUCCESS) {
+		printf("  %s diag %d: [%s] %s (%d)\n", what, i, st, msg, (int)ne);
+		i++;
+	}
+}
+int main(int argc, char **argv) {
+	SQLHENV env; SQLHDBC dbc; SQLHSTMT stmt; SQLRETURN rc; SQLCHAR v[64]; SQLLEN l;
+	rc = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env);
+	printf("  SQLAllocHandle(ENV) rc=%d\n", (int)rc);
+	rc = SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION, (void *)SQL_OV_ODBC3, 0);
+	printf("  SQLSetEnvAttr(ODBC3) rc=%d\n", (int)rc);
+	rc = SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc);
+	printf("  SQLAllocHandle(DBC) rc=%d\n", (int)rc);
+	rc = SQLConnect(dbc, (SQLCHAR *)argv[1], SQL_NTS, (SQLCHAR *)"", SQL_NTS, (SQLCHAR *)"", SQL_NTS);
+	printf("  SQLConnect(%s) rc=%d\n", argv[1], (int)rc);
+	diag("connect", SQL_HANDLE_DBC, dbc);
+	if (!SQL_SUCCEEDED(rc)) return 1;
+	SQLAllocHandle(SQL_HANDLE_STMT, dbc, &stmt);
+	rc = SQLExecDirect(stmt, (SQLCHAR *)"select sqlite_version()", SQL_NTS);
+	printf("  SQLExecDirect rc=%d\n", (int)rc);
+	diag("exec", SQL_HANDLE_STMT, stmt);
+	if (!SQL_SUCCEEDED(rc)) return 1;
+	if (SQLFetch(stmt) == SQL_SUCCESS && SQLGetData(stmt, 1, SQL_C_CHAR, v, sizeof v, &l) == SQL_SUCCESS)
+		printf("  sqlite_version() = %s\n", v);
+	SQLFreeHandle(SQL_HANDLE_STMT, stmt);
+	SQLDisconnect(dbc);
+	SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+	SQLFreeHandle(SQL_HANDLE_ENV, env);
+	return 0;
+}
+EOF
+	cc -I"$iodbc/include" -o "$work/probe" "$work/probe.c" "$iodbc/lib/libiodbc.a" -liconv
+	# a copy of the ini with tracing on, so the user's file stays quiet
+	{ cat "$ini"; echo ""; echo "[ODBC]"; echo "Trace=1"; echo "TraceFile=$work/iodbc.trace"; } > "$work/odbc.ini"
+	if ODBCINI="$work/odbc.ini" "$work/probe" "$DSN"; then
+		echo "  connected through libiodbc $(ls "$iodbc/lib")"
+	else
+		echo "::error::the bundled libiodbc could not use the '$DSN' data source; iODBC trace follows"
+		cat "$work/iodbc.trace" 2>/dev/null || echo "  (no trace written)"
+		exit 1
+	fi
+else
+	echo "  (no bundled libiodbc under $iodbc; the regression tests are the first connection)"
+fi
 
 echo "ODBC data source '$DSN' is ready: sqliteodbc $installed at $driver"
