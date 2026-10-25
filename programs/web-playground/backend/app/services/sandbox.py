@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 import time
 import shutil
@@ -24,6 +25,11 @@ _RUN_SEMAPHORE = asyncio.Semaphore(settings.max_concurrent_runs)
 _LOG_TAIL_LINES = 5000
 _LOG_TAIL_BYTES = 1 << 20
 
+# Exit codes the container's shell uses for "obc failed". Chosen well away from
+# anything obr returns for a program (0, 1, 124 for its timeout).
+EXIT_COMPILE_ERROR = 97
+EXIT_COMPILE_TIMEOUT = 98
+
 
 async def run_code(code: str, libs: list[str], timeout: int) -> RunResponse:
     """Execute Objeck code — uses local dev mode or Docker sandbox."""
@@ -31,6 +37,10 @@ async def run_code(code: str, libs: list[str], timeout: int) -> RunResponse:
         if settings.local_dev:
             return await _run_local(code, libs, timeout)
         return await _run_docker(code, libs, timeout)
+
+
+def _decode(raw: bytes) -> str:
+    return raw.decode("utf-8", errors="replace")
 
 
 async def _run_local(code: str, libs: list[str], timeout: int) -> RunResponse:
@@ -51,7 +61,10 @@ def _run_local_blocking(code: str, libs: list[str], timeout: int) -> RunResponse
         obe_file = work_dir / "program.obe"
         src_file.write_text(code, encoding="utf-8")
 
-        env = {"OBJECK_LIB_PATH": settings.objeck_lib_path}
+        # Windows needs SystemRoot and friends to load DLLs, so extend the
+        # environment rather than replace it (local dev only; the Docker path
+        # builds its own).
+        env = {**os.environ, "OBJECK_LIB_PATH": settings.objeck_lib_path}
 
         # Build compile command
         cmd_compile = [settings.obc_path, "-src", str(src_file)]
@@ -60,28 +73,28 @@ def _run_local_blocking(code: str, libs: list[str], timeout: int) -> RunResponse
         cmd_compile += ["-dest", str(obe_file)]
 
         # Compile
+        # Bytes, decoded by hand: text=True applies universal newlines, which turns
+        # the CR LF the console writes on Windows into two line ends.
         result = subprocess.run(
-            cmd_compile, capture_output=True, text=True,
-            timeout=30, env=env,
+            cmd_compile, capture_output=True, timeout=settings.compile_timeout, env=env,
         )
 
         if result.returncode != 0:
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
-            output = (result.stdout + result.stderr).strip()
+            output = _decode(result.stdout + result.stderr).strip()
             return RunResponse(
-                success=False, output=output, error="",
+                success=False, output=output, error="Compilation failed",
                 compile_error=True, execution_time_ms=elapsed_ms,
             )
 
         # Run
         result = subprocess.run(
             [settings.obr_path, str(obe_file)],
-            capture_output=True, text=True,
-            timeout=timeout, env=env,
+            capture_output=True, timeout=timeout, env=env,
         )
 
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
-        output = (result.stdout + result.stderr).strip()
+        output = _decode(result.stdout + result.stderr).strip()
 
         truncated = False
         if len(output) > settings.max_output_size:
@@ -134,6 +147,37 @@ def _tail_logs(container) -> str:
         raw = raw[-_LOG_TAIL_BYTES:]
     return raw.decode("utf-8", errors="replace")
 
+def container_command(libs: list[str], timeout: int) -> str:
+    """The shell command a sandbox container runs.
+
+    `libs` are library names the planner already validated ([a-z0-9_] only), the
+    full dependency closure, which obc needs spelled out.
+
+      1. copy the source from the read-only mount to the writable /tmp
+      2. compile, with the compiler's chatter ("Compiled 1 class. Linked 16
+         library classes. Wrote target file ...") kept out of the user's output;
+         it is shown only when compilation fails
+      3. run with a timeout
+
+    Both steps are bounded. obc used to run unbounded, so a source that made the
+    compiler spin ran past container.wait() and surfaced as "Internal error"
+    rather than a timeout.
+
+    A compile failure exits with its own code instead of the old guess of
+    grepping the output for "Expected"/"Undefined", which a program could fake
+    and which missed most messages.
+    """
+    lib_flag = f"-lib {','.join(libs)} " if libs else ""
+    return (
+        "cp /input/program.obs /tmp/program.obs && "
+        f"{{ timeout {settings.compile_timeout} obc -src /tmp/program.obs {lib_flag}"
+        "-dest /tmp/program.obe > /tmp/compile.log 2>&1; rc=$?; "
+        "if [ $rc -ne 0 ]; then cat /tmp/compile.log; "
+        f"if [ $rc -eq 124 ]; then exit {EXIT_COMPILE_TIMEOUT}; fi; exit {EXIT_COMPILE_ERROR}; fi; }} && "
+        f"timeout {timeout} obr /tmp/program.obe 2>&1"
+    )
+
+
 async def _run_docker(code: str, libs: list[str], timeout: int) -> RunResponse:
     """Execute Objeck code in a sandboxed Docker container."""
     return await asyncio.to_thread(_run_docker_blocking, code, libs, timeout)
@@ -157,21 +201,7 @@ def _run_docker_blocking(code: str, libs: list[str], timeout: int) -> RunRespons
         code_file = host_tmp / "program.obs"
         code_file.write_text(code, encoding="utf-8")
 
-        # Build library flag
-        lib_flag = f"-lib {','.join(libs)}" if libs else ""
-
-        # Shell command inside the container:
-        # 1. Copy from read-only mount to writable /tmp
-        # 2. Compile
-        # 3. Run with timeout
-        cmd = (
-            f"cp /input/program.obs /tmp/program.obs && "
-            # Both steps are bounded. obc used to run unbounded, so a source that
-            # made the compiler spin ran past container.wait() below and surfaced
-            # as "Internal error" rather than a timeout.
-            f"timeout {settings.compile_timeout} obc -src /tmp/program.obs {lib_flag} -dest /tmp/program.obe 2>&1 && "
-            f"timeout {timeout} obr /tmp/program.obe 2>&1"
-        )
+        cmd = container_command(libs, timeout)
 
         container = client.containers.run(
             image=settings.sandbox_image,
@@ -233,16 +263,25 @@ def _run_docker_blocking(code: str, libs: list[str], timeout: int) -> RunRespons
             stdout += "\n\n--- Output truncated (exceeded 64KB) ---"
             truncated = True
 
-        # Detect compile error vs runtime error. This used to grep the output for
-        # "error:", which is user-controlled: a program printing that string and
-        # exiting non-zero was reported to its author as a compile error. obc runs
-        # first in the && chain, so if it fails obr never runs and no .obe exists;
-        # 124 from the compile step is its own timeout.
-        compile_error = exit_code != 0 and "/tmp/program.obe" not in stdout and (
-            "Expected" in stdout or "Undefined" in stdout or "obc:" in stdout
-        )
+        # The shell above exits with a reserved code when obc fails, so a compile
+        # error is told apart from a runtime one without reading the output --
+        # which is user-controlled (a program printing "error:" and exiting
+        # non-zero used to be reported as a compile error).
+        if exit_code in (EXIT_COMPILE_ERROR, EXIT_COMPILE_TIMEOUT):
+            timed_out = exit_code == EXIT_COMPILE_TIMEOUT
+            return RunResponse(
+                success=False,
+                output=stdout,
+                error=(f"Compilation timed out after {settings.compile_timeout} seconds"
+                       if timed_out else "Compilation failed"),
+                compile_error=True,
+                execution_time_ms=elapsed_ms,
+                truncated=truncated,
+            )
 
-        # timeout exit code is 124
+        compile_error = False
+
+        # timeout exit code is 124 (only obr can produce it here: obc's is mapped above)
         if exit_code == 124:
             return RunResponse(
                 success=False,

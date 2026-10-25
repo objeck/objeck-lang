@@ -1,0 +1,33 @@
+#~
+Reference parameters: `ref` copies a variable in and copies the result back
+out, so a function can change its caller's variables.
+~#
+
+class ReferenceParameters {
+  function : Swap(ref a : Int, ref b : Int) ~ Nil {
+    t := a;
+    a := b;
+    b := t;
+  }
+
+  function : MinMax(values : Int[], ref low : Int, ref high : Int) ~ Nil {
+    low := values[0];
+    high := values[0];
+    each(i : values) {
+      if(values[i] < low) { low := values[i]; };
+      if(values[i] > high) { high := values[i]; };
+    };
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    x := 1;
+    y := 2;
+    Swap(ref x, ref y);
+    "x={$x} y={$y}"->PrintLine();
+
+    low := 0;
+    high := 0;
+    MinMax([5, 3, 9, -2, 7], ref low, ref high);
+    "min={$low} max={$high}"->PrintLine();
+  }
+}

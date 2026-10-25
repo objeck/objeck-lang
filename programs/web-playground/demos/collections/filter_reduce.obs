@@ -1,7 +1,6 @@
 #~
  Filter & Reduce
  Functional operations on collections
- Libs: enable 'Collections' in the toolbar
 ~#
 
 use Collection;

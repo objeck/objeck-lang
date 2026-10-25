@@ -1,7 +1,6 @@
 #~
  Vectors & Maps
  Vector, Map, and lambda iteration patterns
- Libs: enable 'Collections' in the toolbar
 ~#
 
 class Test {

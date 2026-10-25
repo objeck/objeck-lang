@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 
+from app.services.libmap import analyze
 from app.services.validator import validate_demo_id
 
 router = APIRouter()
@@ -42,6 +43,10 @@ def load_demos() -> dict:
                 logging.getLogger(__name__).warning(
                     "demo %s: missing file %s", demo["id"], demo_path
                 )
+            # The library list is computed from the code, never maintained by hand:
+            # a demo's `use` lines are the one place that can't drift.
+            libs = analyze(code).libs
+            demo["libs"] = libs
             demos[demo["id"]] = {
                 **demo,
                 "category": category["name"],

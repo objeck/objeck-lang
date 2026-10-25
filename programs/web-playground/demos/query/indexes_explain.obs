@@ -1,0 +1,36 @@
+#~
+Query.Structured indexes: CREATE INDEX makes a lookup read a few rows instead of
+scanning the table, and Explain shows which plan a query will use.
+Results export as CSV or JSON.
+~#
+
+use Query.Structured, Collection;
+
+class IndexesExplain {
+  function : Main(args : String[]) ~ Nil {
+    readings := Table->New("readings", ["sensor", "value"]);
+    each(i : 2000) {
+      row := readings->Insert();
+      row->Set("sensor", "s{$(i % 50)}");
+      row->Set("value", FloatRef->New((i * 37 % 1000)->As(Float) / 10.0));
+    };
+
+    catalog := Catalog->New();
+    catalog->Add(readings);
+
+    query := "select sensor, value from readings where sensor = 's7' and value > 95";
+    "before: {$(catalog->Explain(query))}"->PrintLine();
+
+    # a hash index answers equality, a sorted index answers ranges
+    readings->Execute("create index on readings (sensor) using hash");
+    readings->Execute("create index on readings (value) using sorted");
+    "after:  {$(catalog->Explain(query))}"->PrintLine();
+
+    result := catalog->Query(query);
+    "{$(result->Count())} rows"->PrintLine();
+    result->ToCsv()->PrintLine();
+
+    top := catalog->Query("select sensor, max(value) as peak from readings group by sensor order by peak desc, sensor limit 2");
+    top->ToJson()->PrintLine();
+  }
+}

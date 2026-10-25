@@ -1,0 +1,41 @@
+#~
+Typed errors: raise your own error class, catch it by type with try/on,
+and run cleanup in finally whether or not anything was raised.
+~#
+
+class ParseError from Error {
+  @line : Int;
+
+  New(message : String, line : Int) {
+    Parent(message);
+    @line := line;
+  }
+
+  method : public : GetLine() ~ Int {
+    return @line;
+  }
+}
+
+class TypedErrors {
+  # odd rows are malformed
+  function : Parse(line : Int) ~ Int {
+    if(line % 2 = 1) {
+      Runtime->Raise(ParseError->New("bad row", line));
+    };
+    return line;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    each(i : 4) {
+      try {
+        "row {$(Parse(i))} ok"->PrintLine();
+      }
+      on(e : ParseError) {
+        "row {$(e->GetLine())}: {$(e->GetMessage())}"->PrintLine();
+      }
+      finally {
+        "checked row {$i}"->PrintLine();
+      };
+    };
+  }
+}

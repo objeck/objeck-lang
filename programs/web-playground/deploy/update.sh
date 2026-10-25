@@ -199,6 +199,39 @@ else
     exit 1
 fi
 
+echo ""
+echo "--- Library check (the server must work out and link libraries itself) ---"
+# One program that needs the Query.Structured closure (query, net, regex, csv,
+# xml, json, misc, cipher) and one that loads the native crypto module. The
+# engine probe above links nothing, so it cannot notice a sandbox image that is
+# missing a library or a native module; users would find out as an obscure
+# compile error. SQL runs in memory; nothing here touches a file or the network.
+LIB_PROBE=$(cat <<'EOF'
+use Query.Structured, Cipher;
+class P {
+  function : Main(args : String[]) ~ Nil {
+    t := Table->New("t", ["n"]);
+    t->Insert()->Set("n", IntRef->New(41));
+    c := Catalog->New();
+    c->Add(t);
+    r := c->Query("select n as answer from t"); if(r = Nil) { c->GetError()->PrintLine(); } else { r->ToCsv()->PrintLine(); };
+    Hash->SHA256("abc"->ToByteArray())->ToHexString()->PrintLine();
+  }
+}
+EOF
+)
+LIB_JSON=$(printf '%s' "$LIB_PROBE" | python3 -c 'import json,sys; print(json.dumps({"code": sys.stdin.read()}))')
+LIB_OUT=$(curl -sf --max-time 60 -X POST http://localhost:8000/api/run \
+    -H 'Content-Type: application/json' -d "$LIB_JSON" || true)
+if echo "$LIB_OUT" | grep -q '"success":true' && echo "$LIB_OUT" | grep -q 'answer' && echo "$LIB_OUT" | grep -qE 'ba7816bf|0xba,0x78'; then
+    echo "Query and Cipher programs compile and run"
+else
+    echo "ERROR: a program using Query.Structured and Cipher did not run"
+    echo "  response: $LIB_OUT"
+    echo "  check the sandbox image: docker/build-sandbox.sh ships the libraries and natives"
+    exit 1
+fi
+
 # Only now is the previous tree redundant.
 rm -rf "$DEPLOY_DIR.prev"
 

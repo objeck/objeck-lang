@@ -1,14 +1,16 @@
 import re
 
 from app.config import settings
+from app.services.libmap import (
+    Refusal,
+    block_reason,
+    canonical_lib,
+    lib_status,
+)
+from app.services.source_scan import scan
 
-# Normalize library name aliases
-LIB_ALIASES = {
-    "collect": "gen_collect",
-}
-
-# Only allow simple alphanumeric lib names
-_LIB_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,30}$")
+# Only allow simple alphanumeric lib names (plus the .obl a user might paste)
+_LIB_NAME_RE = re.compile(r"^[a-z][a-z0-9_]{0,30}(\.obl)?$")
 
 # Only allow alphanumeric share IDs (base64url chars)
 SHARE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,20}$")
@@ -20,11 +22,16 @@ MAX_LIBS = 10
 
 
 def validate_libs(requested_libs: list[str]) -> tuple[bool, str, list[str]]:
-    """Validate and sanitize requested libraries."""
+    """Validate the optional manual library override ('advanced' in the UI).
+
+    Normal use never reaches this with anything: libraries are read off the
+    program's `use` lines. Old share links stored the user's ticked libraries
+    here, and those still load.
+    """
     if len(requested_libs) > MAX_LIBS:
         return False, f"Too many libraries (max {MAX_LIBS})", []
 
-    sanitized = []
+    sanitized: list[str] = []
     for lib in requested_libs:
         lib = lib.strip().lower()
         if not lib:
@@ -33,34 +40,94 @@ def validate_libs(requested_libs: list[str]) -> tuple[bool, str, list[str]]:
         if not _LIB_NAME_RE.match(lib):
             return False, f"Invalid library name: '{lib[:20]}'", []
 
-        # Normalize aliases
-        lib = LIB_ALIASES.get(lib, lib)
+        lib = canonical_lib(lib)
+        status = lib_status(lib)
 
-        if lib in settings.blocked_libs:
-            return False, f"Library '{lib}' is not available in the playground", []
-
-        if lib not in settings.allowed_libs:
+        if status == "blocked":
+            if lib in settings.blocked_libs:
+                return False, (
+                    f"Library '{lib}' isn't available in the playground: {block_reason(lib)}."
+                ), []
             return False, f"Unknown library '{lib}'", []
 
-        sanitized.append(lib)
+        if status == "dependency":
+            return False, (
+                f"Library '{lib}' isn't available in the playground: {block_reason(lib)}."
+            ), []
 
-    return True, "", list(set(sanitized))
+        if status == "default":
+            continue  # the compiler always links it
+
+        if lib not in sanitized:
+            sanitized.append(lib)
+
+    return True, "", sanitized
 
 
-_BLOCKED_PATTERNS = [
-    "Runtime->Execute",
-    "Runtime->Exit",
-    "System.IO.File",
-    "System.IO.FileReader",
-    "System.IO.FileWriter",
-    "System.IO.Directory",
-    "System.IO.Pipe",
-    "TCPSocket",
-    "UDPSocket",
-    "SecureSocket",
-    "HttpClient",
-    "HttpsClient",
+# ---------------------------------------------------------------- source policy
+#
+# The container is the security boundary: no network, a read-only root, a 10 MB
+# noexec tmpfs, no capabilities, a pid cap. This list is the courtesy layer in
+# front of it. It exists so that a program reaching for the file system, a
+# process or a socket gets "X isn't available in the playground" instead of an
+# obscure failure inside the sandbox -- and so the common ways out are closed
+# even if the container configuration regresses.
+#
+# Bundles that live inside lang.obl (System.IO.Filesystem, System.IO.Net,
+# System.API) are refused by name in libmap.py; whole libraries by the allow list.
+# What is left is individual calls and classes in bundles the program may use.
+#
+# Matched against the source with comments removed (strings kept, so a call
+# hidden inside a "{$ ... }" interpolation is still seen).
+
+_PROCESS = "it would run programs on the host"
+_FILES = "it reads or writes files"
+
+_BLOCKED_CODE: list[tuple[re.Pattern, str, str]] = [
+    # processes and the environment (Runtime->Execute is the pre-2026 spelling)
+    (re.compile(r"\bRuntime\s*->\s*(Command|CommandOutput|Execute|IsProcessAlive)\b"), "Runtime->{0}", _PROCESS),
+    (re.compile(r"\bCommandOutput\b"), "CommandOutput", _PROCESS),
+    (re.compile(r"\bRuntime\s*->\s*Exit\b"), "Runtime->Exit", "a program ends by returning from Main"),
+    (re.compile(r"\bRuntime\s*->\s*(GetEnvironmentVariable|SetEnvironmentVariable)\b"), "Runtime->{0}", "the environment belongs to the host"),
+    # native code
+    (re.compile(r"\bDllProxy\b"), "DllProxy", "it loads native libraries"),
+    # named pipes live in System.IO, which every program imports implicitly
+    (re.compile(r"\bPipe\s*->"), "Pipe", "it talks to other processes"),
+    # classes that touch sockets or files, whether or not the bundle was named
+    (re.compile(r"\b(TCPSocket|TCPSecureSocket|UDPSocket|DTLSSocket|SecureSocket|HttpClient|HttpsClient|Http2Client|Http3Client)\b"), "{0}", "the sandbox has no network access"),
+    # Query.Structured sources that open a path or a URL, and its on-disk store
+    (re.compile(r"\b(TableStore|OtabFile|FilesystemSource|RemoteSource|HttpJsonSource|CsvSource|TextSource|JsonLinesSource|JsonSource|XmlSource|ArchiveSource|XlsxSource|Finder)\b"), "{0}", "it reads files or URLs"),
 ]
+
+# 'select * from 'runs.csv'' / 'join 'meta.csv' m': a quoted name after FROM or
+# JOIN is a file or a URL, not a table. Catalog->SetFileAccess(false) would turn
+# this off, but only a program can call it on its own catalog, so it cannot be
+# enforced from outside.
+_SQL_FILE_SOURCE = re.compile(r"\b(from|join)\s+'", re.I)
+
+
+def check_code(code: str) -> list[Refusal]:
+    """Everything in `code` that the sandbox will not allow, with line numbers."""
+    scanned = scan(code)
+    refusals: list[Refusal] = []
+    seen: set[str] = set()
+
+    for pattern, label, reason in _BLOCKED_CODE:
+        for m in pattern.finditer(scanned.code):
+            what = label.format(*(g for g in m.groups() if g)) if "{" in label else label
+            if what in seen:
+                continue
+            if what == "CommandOutput" and "Runtime->CommandOutput" in seen:
+                continue  # the same finding, reported once
+            seen.add(what)
+            refusals.append(Refusal(what, reason, scanned.line_of(m.start())))
+
+    for line, text in scanned.strings:
+        if _SQL_FILE_SOURCE.search(text) and "query file" not in seen:
+            seen.add("query file")
+            refusals.append(Refusal("A query that names a file or URL", _FILES, line))
+
+    return refusals
 
 
 def validate_code(code: str) -> tuple[bool, str]:
@@ -76,10 +143,9 @@ def validate_code(code: str) -> tuple[bool, str]:
         if ord(ch) < 32 and ch not in ('\t', '\n', '\r'):
             return False, "Code contains invalid control characters"
 
-    # Block dangerous API calls
-    for pattern in _BLOCKED_PATTERNS:
-        if pattern in code:
-            return False, f"'{pattern}' is not allowed in the playground"
+    refusals = check_code(code)
+    if refusals:
+        return False, refusals[0].message()
 
     return True, ""
 

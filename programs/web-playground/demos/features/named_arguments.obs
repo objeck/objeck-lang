@@ -1,0 +1,16 @@
+#~
+Named arguments: pass parameters by name, in any order, and skip the ones
+that have a default value.
+~#
+
+class NamedArguments {
+  function : Train(data : String, rate : Float := 0.1, epochs : Int := 10) ~ Nil {
+    "{$data}: rate={$rate} epochs={$epochs}"->PrintLine();
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    Train("sales");                          # both defaults
+    Train("sales", epochs: 50);              # skip rate
+    Train("sales", epochs: 5, rate: 0.5);    # any order
+  }
+}

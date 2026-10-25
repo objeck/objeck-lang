@@ -1,0 +1,33 @@
+#~
+Method-level generics: a single function that works for any type that can be
+compared. The type is inferred from the argument.
+~#
+
+use Collection;
+
+class MethodGenerics {
+  function : Max<T : Compare>(values : Vector<T>) ~ T {
+    best := values->Get(0);
+    for(i := 1; i < values->Size(); i += 1;) {
+      v := values->Get(i);
+      if(v->Compare(best) > 0) {
+        best := v;
+      };
+    };
+    return best;
+  }
+
+  function : Main(args : String[]) ~ Nil {
+    names := Vector->New()<String>;
+    names->AddBack("pear");
+    names->AddBack("apple");
+    names->AddBack("zucchini");
+    Max(names)->PrintLine();
+
+    numbers := Vector->New()<IntRef>;
+    numbers->AddBack(3);
+    numbers->AddBack(41);
+    numbers->AddBack(7);
+    Max(numbers)->Get()->PrintLine();
+  }
+}
