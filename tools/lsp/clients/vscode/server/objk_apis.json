@@ -9209,8 +9209,11 @@
 				"Run": {
 					"descriptions": ["**Runs a SELECT that reads files named in it, with no catalog of tables. Each call reads the files again; a program that repeats a query keeps a Catalog and uses its Query, which reads a file again only after it changes.**\n\n```function : Run(statement:String) ~ Table```\n\n\n\nstatement: String\n\nreturn: Table\n\n```\nrs := Catalog->Run(\"select name, avg(score) from 'results\/run_*.csv' group by name\");\n```"]
 				},
+				"SetArchiveLimits": {
+					"descriptions": ["**Sets how much an archive or workbook named in a query may decompress, as ArchiveSource->SetLimits does: a member larger than 'member_bytes' is refused, and so is a read that takes the archive's total past 'total_bytes'. The defaults are 256 MB and 1 GB.**\n\n```method : public : SetArchiveLimits(member_bytes:Int, total_bytes:Int) ~ Nil```\n\n\n\nmember_bytes: Int\n\ntotal_bytes: Int\n\nreturn: Nil"]
+				},
 				"SetFileAccess": {
-					"descriptions": ["**Whether queries may name files and URLs ('from 'runs.csv'', 'from 'https:\/\/...''), which they may by default. A catalog that answers queries from other people, as TableServer's does, turns this off: otherwise a query could read any file the process can, or make it fetch any URL.**\n\n```method : public : SetFileAccess(allowed:Bool) ~ Nil```\n\n\n\nallowed: Bool\n\nreturn: Nil"]
+					"descriptions": ["**Whether queries may name files and URLs ('from 'runs.csv'', 'from 'https:\/\/...''), which they may by default. A catalog that answers queries from other people, as TableServer's does, turns this off: otherwise a query could read any file the process can, or make it fetch any URL. Archives and workbooks are files, so this refuses them too.**\n\n```method : public : SetFileAccess(allowed:Bool) ~ Nil```\n\n\n\nallowed: Bool\n\nreturn: Nil"]
 				}
 			}
 		},

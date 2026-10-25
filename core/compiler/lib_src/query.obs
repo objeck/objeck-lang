@@ -9869,7 +9869,9 @@ if(file->IsOpen()) {
 					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, symbol, Nil, start));
 					i += 2;
 				}
-				else if(c = '*' | c = ',' | c = '(' | c = ')' | c = '=' | c = '<' | c = '>' | c = ';') {
+				# a '.' that does not start a number or sit inside a name: between a quoted
+				# archive or workbook and its member ('data.zip'.'runs.csv')
+				else if(c = '*' | c = ',' | c = '(' | c = ')' | c = '=' | c = '<' | c = '>' | c = ';' | c = '.') {
 					text := "";
 					text->Append(c);
 					tokens->AddBack(SqlToken->New(SqlToken->Kind->SYMBOL, text, Nil, start));
@@ -10398,13 +10400,38 @@ if(file->IsOpen()) {
 		function : IsFileFunction(word : String) ~ Bool {
 			lower := word->ToLower();
 			return lower->Equals("csv") | lower->Equals("tsv") | lower->Equals("json") |
-				lower->Equals("jsonl") | lower->Equals("xml");
+				lower->Equals("jsonl") | lower->Equals("xml") | lower->Equals("xlsx");
+		}
+
+		# after a quoted path, '.' and a quoted member of an archive or worksheet of a
+		# workbook: 'data.zip'.'runs/a.csv', 'book.xlsx'.'Q1'; false with the error set
+		method : ParseMember(file : SqlFile) ~ Bool {
+			if(<>Current()->IsSymbol(".")) {
+				return true;
+			};
+			Next();
+
+			member := Current();
+			if(member->GetKind() <> SqlToken->Kind->TEXT) {
+				Fail("a quoted member or sheet name after '.', as 'data.zip'.'runs.csv'");
+				return false;
+			};
+			Next();
+
+			if(member->GetText()->Size() = 0) {
+				Fail("a member or sheet name, not ''");
+				return false;
+			};
+			file->SetMember(member->GetText());
+			return true;
 		}
 
 		# a table in FROM or JOIN: a catalog table's name, a quoted file path ('runs/*.csv'),
 		# or a file read a given way: csv('f.txt', delimiter => ';', header => false),
-		# tsv(...), json(...), jsonl(...) or xml('f.xml', row => 'item'). Sets @ref_name, and
-		# @ref_file for a file; false with the error set otherwise.
+		# tsv(...), json(...), jsonl(...), xml('f.xml', row => 'item') or
+		# xlsx('book.xlsx', header => false, first_row => 3). A path to an archive or a
+		# workbook may name a member or sheet: 'data.zip'.'runs.csv', 'book.xlsx'.'Q1'. Sets
+		# @ref_name, and @ref_file for a file; false with the error set otherwise.
 		method : ParseTable() ~ Bool {
 			@ref_name := Nil;
 			@ref_file := Nil;
@@ -10412,6 +10439,9 @@ if(file->IsOpen()) {
 			if(token->GetKind() = SqlToken->Kind->TEXT) {
 				Next();
 				@ref_file := SqlFile->New(token->GetText(), "");
+				if(<>ParseMember(@ref_file)) {
+					return false;
+				};
 				@ref_name := @ref_file->GetDefaultName();
 				return true;
 			};
@@ -10427,6 +10457,9 @@ if(file->IsOpen()) {
 				};
 				Next();
 				file := SqlFile->New(path->GetText(), format);
+				if(<>ParseMember(file)) {
+					return false;
+				};
 
 				while(Current()->IsSymbol(",")) {
 					Next();
@@ -10456,8 +10489,12 @@ if(file->IsOpen()) {
 					else if(name->Equals("row") & value->GetKind() = SqlToken->Kind->TEXT) {
 						file->SetRow(value->GetText());
 					}
+					else if(name->Equals("first_row") & format->Equals("xlsx") & value->GetKind() = SqlToken->Kind->NUMBER &
+							value->GetValue()->TypeOf(IntRef)) {
+						file->SetFirstRow(value->GetValue()->As(IntRef)->Get());
+					}
 					else {
-						Fail("an option: delimiter => 'c', header => true or false, row => 'element'");
+						Fail("an option: delimiter => 'c', header => true or false, row => 'element', first_row => n (xlsx)");
 						return false;
 					};
 					Next();
@@ -11274,6 +11311,8 @@ if(file->IsOpen()) {
 		@delimiter : Char;
 		@header : Bool;
 		@row : String;
+		@member : String;
+		@first_row : Int;
 
 		New(path : String, format : String) {
 			@path := path;
@@ -11281,6 +11320,12 @@ if(file->IsOpen()) {
 			@header := true;
 		}
 
+		# a member of an archive or a worksheet of a workbook ('data.zip'.'runs/a.csv',
+		# 'book.xlsx'.'Q1'); Nil for the file itself
+		method : public : GetMember() ~ String { return @member; }
+		method : public : SetMember(member : String) ~ Nil { @member := member; }
+		method : public : GetFirstRow() ~ Int { return @first_row; }
+		method : public : SetFirstRow(row : Int) ~ Nil { @first_row := row; }
 		method : public : GetPath() ~ String { return @path; }
 		method : public : GetFormat() ~ String { return @format; }
 		method : public : GetDelimiter() ~ Char { return @delimiter; }
@@ -11300,6 +11345,15 @@ if(file->IsOpen()) {
 				key += @row;
 			};
 			key += "|";
+			key += @first_row;
+			key += "|";
+			if(@member <> Nil) {
+				# its length first, so no member and path can run together into another's
+				key += @member->Size();
+				key += ":";
+				key += @member;
+			};
+			key += "|";
 			key += @path;
 			return key;
 		}
@@ -11313,9 +11367,14 @@ if(file->IsOpen()) {
 			return @path->Has('*') | @path->Has('?');
 		}
 
-		# the name a query uses for the table when it gives no alias
+		# the name a query uses for the table when it gives no alias: a member's or sheet's own
+		# when it names one ('runs' for 'data.zip'.'2024/runs.csv', 'Q1' for 'book.xlsx'.'Q1')
 		method : public : GetDefaultName() ~ String {
-			base := SourceText->BaseName(@path, "file");
+			base := SourceText->BaseName(@member <> Nil ? @member : @path, "file");
+			if(@member <> Nil & FileTables->ContainerOf(@path)->Equals("xlsx")) {
+				# a sheet name is not a file name: a '.' in it is not an extension
+				base := @member;
+			};
 			name := "";
 			each(i : base) {
 				c := base->Get(i);
@@ -11493,8 +11552,56 @@ if(file->IsOpen()) {
 			return "";
 		}
 
-		# one file as a table
-		function : ReadOne(file : SqlFile, path : String, name : String, error : StringHolder) ~ Table {
+		# What a path names when it holds tables of its own: "archive" for a zip, tar or
+		# gzipped tar, "xlsx" for a workbook, "" for a plain file. By name, as every file named
+		# in SQL is read (ArchiveSource itself tells zip from tar by content).
+		function : ContainerOf(path : String) ~ String {
+			if(path = Nil) {
+				return "";
+			};
+
+			lower := path->ToLower();
+			if(UrlCache->IsUrl(lower)) {
+				lower := UrlCache->PathPart(lower);
+			};
+
+			if(lower->EndsWith(".zip") | lower->EndsWith(".tar") | lower->EndsWith(".tgz") | lower->EndsWith(".tar.gz")) {
+				return "archive";
+			}
+			else if(lower->EndsWith(".xlsx")) {
+				return "xlsx";
+			};
+
+			return "";
+		}
+
+		# One file as a table. An archive alone is its listing; with a member, that member, read
+		# by its extension or the function form's format; a workbook alone is its first
+		# worksheet, and with a sheet that sheet. A member or sheet with '*' or '?' matches
+		# several, read as one table with a '_member' or '_sheet' column. Archives and workbooks
+		# are read within the limits given (bytes inflated per member, and in all).
+		function : ReadOne(file : SqlFile, path : String, name : String, member_limit : Int, total_limit : Int, error : StringHolder) ~ Table {
+			# by the file's own name: a glob's match, or a URL's path (its download's name is
+			# the cache's)
+			named := UrlCache->IsUrl(file->GetPath()) ? file->GetPath() : path;
+			container := file->GetFormat()->Equals("xlsx") ? "xlsx" : ContainerOf(named);
+			if(container->Equals("archive")) {
+				return ReadArchive(file, path, name, member_limit, total_limit, error);
+			}
+			else if(container->Equals("xlsx")) {
+				format := file->GetFormat();
+				if(format->Size() > 0 & <>format->Equals("xlsx")) {
+					error->Set("'{$(file->GetPath())}' is a workbook, which {$format}() does not read; name it plainly or with xlsx()");
+					return Nil;
+				};
+				return ReadWorkbook(file, path, name, member_limit, total_limit, error);
+			};
+
+			if(file->GetMember() <> Nil) {
+				error->Set("'{$(file->GetPath())}' is not an archive or a workbook, so it has no member '{$(file->GetMember())}': only .zip, .tar, .tar.gz, .tgz and .xlsx files have members");
+				return Nil;
+			};
+
 			format := FormatOf(file, path);
 			table : Table;
 			reason : String;
@@ -11528,7 +11635,7 @@ if(file->IsOpen()) {
 				reason := source->GetError();
 			}
 			else {
-				error->Set("'{$path}': unknown file type; name it with csv(), tsv(), json(), jsonl() or xml()");
+				error->Set("'{$path}': unknown file type; name it with csv(), tsv(), json(), jsonl(), xml() or xlsx()");
 				return Nil;
 			};
 
@@ -11539,9 +11646,155 @@ if(file->IsOpen()) {
 			return table;
 		}
 
-		# the rows of several tables as one, with a '_file' column naming each row's file;
-		# a column some files lack is empty for their rows
-		function : Combine(name : String, tables : Vector<Table>, files : Vector<String>) ~ Table {
+		function : IsPattern(text : String) ~ Bool {
+			return text->Has('*') | text->Has('?');
+		}
+
+		# a source's error, pointing at what raises a limit from SQL
+		function : ForSql(error : String) ~ String {
+			if(error = Nil) {
+				return Nil;
+			};
+			return error->ReplaceAll("(SetLimits raises it)", "(Catalog->SetArchiveLimits raises it)");
+		}
+
+		# an archive's listing, or members of it, through ArchiveSource and so with its checks:
+		# unsafe paths, zip bombs, CRC32s and the limits
+		function : ReadArchive(file : SqlFile, path : String, name : String, member_limit : Int, total_limit : Int, error : StringHolder) ~ Table {
+			source := ArchiveSource->New(path);
+			source->SetName(name);
+			source->SetLimits(member_limit, total_limit);
+			member := file->GetMember();
+			format := file->GetFormat();
+			if(member = Nil) {
+				if(format->Size() > 0) {
+					error->Set("'{$(file->GetPath())}' is an archive: name the member to read as {$format}, as {$format}('{$(file->GetPath())}'.'data.txt')");
+					return Nil;
+				};
+
+				listing := source->List();
+				if(listing = Nil) {
+					error->Set(ForSql(source->GetError()));
+				};
+				return listing;
+			};
+
+			if(<>IsPattern(member)) {
+				table := source->ReadMemberAs(member, format, file->GetDelimiter(), file->HasHeader(), file->GetRow(), name);
+				if(table = Nil) {
+					error->Set(ForSql(source->GetError()));
+				};
+				return table;
+			};
+
+			members := source->GetMembers();
+			if(members = Nil) {
+				error->Set(ForSql(source->GetError()));
+				return Nil;
+			};
+
+			# each path once, in archive order: a tar may repeat one, and the last copy is read
+			matched := Vector->New()<String>;
+			each(i : members) {
+				candidate := members[i];
+				if(GlobMatches(member, 0, candidate, 0)) {
+					seen := false;
+					each(j : matched) {
+						if(matched->Get(j)->Equals(candidate)) {
+							seen := true;
+						};
+					};
+					if(<>seen) {
+						matched->AddBack(candidate);
+					};
+				};
+			};
+
+			if(matched->Size() = 0) {
+				error->Set("no member of '{$(file->GetPath())}' matches '{$member}'");
+				return Nil;
+			};
+
+			tables := Vector->New()<Table>;
+			each(i : matched) {
+				table := source->ReadMemberAs(matched->Get(i), format, file->GetDelimiter(), file->HasHeader(), file->GetRow(), name);
+				if(table = Nil) {
+					error->Set(ForSql(source->GetError()));
+					return Nil;
+				};
+				tables->AddBack(table);
+			};
+			return Combine(name, tables, matched, "_member");
+		}
+
+		# a workbook's first worksheet, or the sheets named, through XlsxSource and so with
+		# ArchiveSource's checks and the limits
+		function : ReadWorkbook(file : SqlFile, path : String, name : String, member_limit : Int, total_limit : Int, error : StringHolder) ~ Table {
+			if(file->GetFirstRow() < 0) {
+				error->Set("'{$(file->GetPath())}': first_row is a sheet row number, from 1");
+				return Nil;
+			};
+
+			sheet := file->GetMember();
+			sheets := Vector->New()<String>;
+			if(sheet = Nil | IsPattern(sheet)) {
+				lister := XlsxSource->New(path);
+				lister->SetLimits(member_limit, total_limit);
+				names := lister->GetSheets();
+				if(names = Nil) {
+					error->Set(ForSql(lister->GetError()));
+					return Nil;
+				};
+
+				each(i : names) {
+					if(sheet = Nil) {
+						if(sheets->Size() = 0) {
+							sheets->AddBack(names[i]);
+						};
+					}
+					else if(GlobMatches(sheet, 0, names[i], 0)) {
+						sheets->AddBack(names[i]);
+					};
+				};
+
+				if(sheets->Size() = 0) {
+					if(sheet = Nil) {
+						error->Set("'{$(file->GetPath())}' has no worksheets");
+					}
+					else {
+						error->Set("no worksheet of '{$(file->GetPath())}' matches '{$sheet}'");
+					};
+					return Nil;
+				};
+			}
+			else {
+				sheets->AddBack(sheet);
+			};
+
+			tables := Vector->New()<Table>;
+			each(i : sheets) {
+				source := XlsxSource->New(path, sheets->Get(i));
+				source->SetLimits(member_limit, total_limit);
+				source->SetHeader(file->HasHeader());
+				source->SetFirstRow(file->GetFirstRow());
+				table := source->Read();
+				if(table = Nil) {
+					error->Set(ForSql(source->GetError()));
+					return Nil;
+				};
+				tables->AddBack(table);
+			};
+
+			if(sheet <> Nil & IsPattern(sheet)) {
+				return Combine(name, tables, sheets, "_sheet");
+			};
+			return Renamed(tables->Get(0), name);
+		}
+
+		# the rows of several tables as one, with a column ('_file', '_member' or '_sheet')
+		# naming where each row came from, or none when 'tag' is Nil; a column some tables
+		# lack is empty for their rows
+		function : Combine(name : String, tables : Vector<Table>, files : Vector<String>, tag : String) ~ Table {
 			names := Vector->New()<String>;
 			each(t : tables) {
 				columns := tables->Get(t)->GetColumnNames();
@@ -11557,7 +11810,9 @@ if(file->IsOpen()) {
 					};
 				};
 			};
-			names->AddBack("_file");
+			if(tag <> Nil) {
+				names->AddBack(tag);
+			};
 
 			column_names := String->New[names->Size()];
 			each(i : column_names) {
@@ -11568,7 +11823,7 @@ if(file->IsOpen()) {
 			file_column := column_names->Size();
 			each(t : tables) {
 				table := tables->Get(t);
-				sources := Int->New[column_names->Size() - 1];
+				sources := Int->New[tag <> Nil ? column_names->Size() - 1 : column_names->Size()];
 				each(c : sources) {
 					sources[c] := table->GetIndex(column_names[c]);
 				};
@@ -11584,11 +11839,28 @@ if(file->IsOpen()) {
 							};
 						};
 					};
-					row->Set(file_column, files->Get(t));
+					if(tag <> Nil) {
+						row->Set(file_column, files->Get(t));
+					};
 				};
 			};
 
 			return combined;
+		}
+
+		# a table under another name, sharing its columns
+		function : Renamed(table : Table, name : String) ~ Table {
+			names := table->GetColumnNames();
+			data_names := String->New[names->Size() - 1];
+			parts := Column->New[names->Size()];
+			each(c : names) {
+				parts[c] := table->GetColumn(c);
+				if(c > 0) {
+					data_names[c - 1] := names[c];
+				};
+			};
+
+			return Table->Restore(name, data_names, parts, table->GetNextKey());
 		}
 	}
 
@@ -14519,6 +14791,8 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		@files : Map<String, FileEntry>;
 		@file_reads : Int;
 		@no_files : Bool;
+		@member_limit : Int;
+		@total_limit : Int;
 		@error : String;
 
 		#~
@@ -14532,11 +14806,32 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 		Whether queries may name files and URLs ('from 'runs.csv'', 'from 'https://...''), which
 		they may by default. A catalog that answers queries from other people, as TableServer's
 		does, turns this off: otherwise a query could read any file the process can, or make
-		it fetch any URL.
+		it fetch any URL. Archives and workbooks are files, so this refuses them too.
 		@param allowed false to refuse files and URLs in queries
 		~#
 		method : public : SetFileAccess(allowed : Bool) ~ Nil {
 			@no_files := <>allowed;
+		}
+
+		#~
+		Sets how much an archive or workbook named in a query may decompress, as
+		ArchiveSource->SetLimits does: a member larger than 'member_bytes' is refused, and so is a
+		read that takes the archive's total past 'total_bytes'. The defaults are 256 MB and 1 GB.
+		@param member_bytes most bytes one member or part may hold uncompressed
+		@param total_bytes most bytes one archive or workbook may hold uncompressed in all
+		~#
+		method : public : SetArchiveLimits(member_bytes : Int, total_bytes : Int) ~ Nil {
+			@member_limit := member_bytes;
+			@total_limit := total_bytes;
+		}
+
+		# the limits for archives named in a query; 0 (never set) is the default
+		method : MemberLimit() ~ Int {
+			return @member_limit > 0 ? @member_limit : 256 * 1024 * 1024;
+		}
+
+		method : TotalLimit() ~ Int {
+			return @total_limit > 0 ? @total_limit : 1024 * 1024 * 1024;
 		}
 
 		#~
@@ -14673,7 +14968,7 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 				};
 
 				@file_reads += 1;
-				downloaded := FileTables->ReadOne(file, fetched->GetPath(), name, error);
+				downloaded := FileTables->ReadOne(file, fetched->GetPath(), name, MemberLimit(), TotalLimit(), error);
 				if(downloaded = Nil) {
 					return Nil;
 				};
@@ -14701,17 +14996,17 @@ rs := catalog->Query("select r.id, r.score, l.label from runs r join labels l on
 				tables := Vector->New()<Table>;
 				each(i : files) {
 					@file_reads += 1;
-					one := FileTables->ReadOne(file, files->Get(i), name, error);
+					one := FileTables->ReadOne(file, files->Get(i), name, MemberLimit(), TotalLimit(), error);
 					if(one = Nil) {
 						return Nil;
 					};
 					tables->AddBack(one);
 				};
-				table := FileTables->Combine(name, tables, files);
+				table := FileTables->Combine(name, tables, files, "_file");
 			}
 			else {
 				@file_reads += 1;
-				table := FileTables->ReadOne(file, files->Get(0), name, error);
+				table := FileTables->ReadOne(file, files->Get(0), name, MemberLimit(), TotalLimit(), error);
 				if(table = Nil) {
 					return Nil;
 				};
@@ -18052,13 +18347,52 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			};
 
 			error := StringHolder->New();
-			tables := ReadMember(reader, entry, error);
+			tables := ReadMember(reader, entry, "", '\0', true, @row_element, error);
 			if(tables = Nil) {
 				@error := error->Get();
 				return Nil;
 			};
 
 			return tables->Get(0);
+		}
+
+		# One member as a table, read as a query names it (FileTables): in 'format' ("" for its
+		# extension), with a delimiter ('\0' for the format's) and header for delimited text and
+		# a row element for XML, under 'name'. Nil with GetError set.
+		method : public : ReadMemberAs(member : String, format : String, delimiter : Char, header : Bool,
+				row : String, name : String) ~ Table {
+			@error := Nil;
+			reader := Open();
+			if(reader = Nil) {
+				return Nil;
+			};
+
+			entry := reader->Find(member);
+			if(entry = Nil | <>entry->GetType()->Equals("file")) {
+				@error := "'{$@title}' has no member '{$member}'";
+				return Nil;
+			};
+
+			chosen := format->Size() > 0 ? format : FormatOf(member);
+			if(chosen->Size() = 0) {
+				@error := "'{$@title}': member '{$member}' is not in a format read as a table; name it with csv(), tsv(), json(), jsonl() or xml()";
+				return Nil;
+			};
+
+			element := row <> Nil ? row : @row_element;
+			if(chosen->Equals("xml") & element = Nil) {
+				@error := "'{$@title}': XML member '{$member}' needs its row element, as xml('archive'.'{$member}', row => 'item')";
+				return Nil;
+			};
+
+			error := StringHolder->New();
+			tables := ReadMember(reader, entry, chosen, delimiter, header, element, error);
+			if(tables = Nil) {
+				@error := error->Get();
+				return Nil;
+			};
+
+			return Renamed(tables->Get(0), name);
 		}
 
 		#~
@@ -18098,7 +18432,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 				entry := entries->Get(i);
 				path := entry->GetPath();
 				if(entry->GetType()->Equals("file") & last->Find(path)->Get() = i & IsTable(path)) {
-					member_tables := ReadMember(reader, entry, error);
+					member_tables := ReadMember(reader, entry, "", '\0', true, @row_element, error);
 					if(member_tables = Nil) {
 						@error := error->Get();
 						return Nil;
@@ -18150,8 +18484,10 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			return reader;
 		}
 
-		# a member's tables: its own, then any child tables a JSON or XML member makes
-		method : ReadMember(reader : ArchiveReader, entry : ArchiveEntry, error : StringHolder) ~ Vector<Table> {
+		# a member's tables: its own, then any child tables a JSON or XML member makes. 'format'
+		# is "" for the member's extension; 'delimiter' '\0' for the format's.
+		method : ReadMember(reader : ArchiveReader, entry : ArchiveEntry, format : String, delimiter : Char, header : Bool,
+				row_element : String, error : StringHolder) ~ Vector<Table> {
 			bytes := reader->Read(entry, error);
 			if(bytes = Nil) {
 				return Nil;
@@ -18178,7 +18514,9 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			};
 
 			tables := Vector->New()<Table>;
-			format := FormatOf(path);
+			if(format->Size() = 0) {
+				format := FormatOf(path);
+			};
 			if(format->Equals("otab")) {
 				file := OtabFile->New(bytes);
 				table := file->Read();
@@ -18194,7 +18532,11 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 			table : Table;
 			reason : String;
 			if(format->Equals("csv") | format->Equals("tsv")) {
-				csv := CsvSource->FromText(path, text, format->Equals("tsv") ? '\t' : ',');
+				if(delimiter = '\0') {
+					delimiter := format->Equals("tsv") ? '\t' : ',';
+				};
+				csv := CsvSource->FromText(path, text, delimiter);
+				csv->SetHeader(header);
 				table := csv->Read(Nil);
 				reason := csv->GetError();
 				if(table <> Nil) {
@@ -18220,7 +18562,7 @@ if(catalog->Load(ArchiveSource->New("results.zip"))) {
 				};
 			}
 			else if(format->Equals("xml")) {
-				xml := XmlSource->FromText(path, text, @row_element);
+				xml := XmlSource->FromText(path, text, row_element);
 				table := xml->Read();
 				reason := xml->GetError();
 				if(table <> Nil) {
