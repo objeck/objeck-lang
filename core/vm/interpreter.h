@@ -121,6 +121,13 @@ namespace Runtime {
     long bridge_call_pos = -1;
     bool bridge_deferred = false;
 
+    // A callback interpreter (see CallBack) runs on its thread's call stack
+    // above the frames already there: base_call_pos is the depth it began at,
+    // and its entry method's return to that depth ends it. 0 for every other
+    // interpreter, whose stack starts empty or (a bridge) returns by jit_called.
+    bool is_callback = false;
+    long base_call_pos = 0;
+
     // try/error handler stack -- PER THREAD, not per interpreter instance.
     //
     // A Try() is inherently per-thread: a handler pushed on one thread must
@@ -334,7 +341,7 @@ namespace Runtime {
     // is call stack empty?
     //
     inline bool StackEmpty() {
-      return (*call_stack_pos) == 0;
+      return (*call_stack_pos) == base_call_pos;
     }
 
     //
@@ -703,6 +710,7 @@ namespace Runtime {
     void SharedLibraryLoad(StackInstr* instr);
     void SharedLibraryUnload(StackInstr* instr);
     void SharedLibraryCall(StackInstr* instr, size_t* &op_stack, size_t* &stack_pos);
+    void SharedLibraryCallbackFailure(size_t* &stack_pos);
     // Drops every thread's cache of resolved native entry points. Called
     // when a shared library is unloaded, so nothing keeps a pointer into it.
     static void InvalidateSharedLibraryCache();
@@ -999,6 +1007,26 @@ namespace Runtime {
 
     // execute method
     void Execute(size_t* op_stack, size_t* stack_pos, long i, StackMethod* method, size_t* instance, bool jit_called);
+
+    //
+    // A call back into Objeck from C++: a native library's APITools_CallMethod,
+    // or Class->Instance running the constructor it names. Runs 'method' on the
+    // calling thread's call stack and operand stack, checked like any call, and
+    // leaves its result on the operand stack. Returns false when the call
+    // failed under a Try() beneath it: the error is recorded, a zero result of
+    // the method's width is left in place of the value, and CallbackFailed()
+    // is set for whoever made the call to recover from (see SharedLibraryCall).
+    // Without a Try() a failure is reported and ends the program, as anywhere.
+    //
+    static bool CallBack(size_t* op_stack, size_t* stack_pos, StackMethod* method, size_t* instance);
+
+    // set by a failed CallBack until its caller takes it, per thread; while
+    // set, a further call back on the thread fails at once, so native code
+    // making several returns to the VM as soon as it can
+    static bool& CallbackFailed() {
+      static thread_local bool failed = false;
+      return failed;
+    }
 
 #ifdef _DEBUGGER
     // Ask the dispatch loop to stop at the next opcode boundary. Used by the

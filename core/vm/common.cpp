@@ -1406,8 +1406,8 @@ void APITools_MethodCall(size_t* op_stack, size_t *stack_pos, size_t* instance, 
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
-      Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
+      // on this thread's call stack, checked (see StackInterpreter::CallBack)
+      Runtime::StackInterpreter::CallBack(op_stack, stack_pos, mthd, instance);
     }
     else {
       std::wcerr << L">>> DLL call: Unable to locate method; id=" << mthd_id << L" <<<" << std::endl;
@@ -1427,8 +1427,8 @@ void APITools_MethodCall(size_t* op_stack, size_t* stack_pos, size_t* instance,
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
-      Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
+      // on this thread's call stack, checked (see StackInterpreter::CallBack)
+      Runtime::StackInterpreter::CallBack(op_stack, stack_pos, mthd, instance);
     }
     else {
       std::wcerr << L">>> Unable to locate method; name=': " << mthd_id << L"' <<<" << std::endl;
@@ -1448,8 +1448,8 @@ void APITools_MethodCallId(size_t* op_stack, size_t *stack_pos, size_t* instance
   if(cls) {
     StackMethod* mthd = cls->GetMethod(mthd_id);
     if(mthd) {
-      Runtime::StackInterpreter intpr;
-      intpr.Execute(op_stack, stack_pos, 0, mthd, instance, false);
+      // on this thread's call stack, checked (see StackInterpreter::CallBack)
+      Runtime::StackInterpreter::CallBack(op_stack, stack_pos, mthd, instance);
     }
     else {
       std::wcerr << L">>> DLL call: Unable to locate method; id=: " << mthd_id << L" <<<" << std::endl;
@@ -1475,6 +1475,14 @@ bool TrapProcessor::CreateNewObject(const std::wstring &cls_id, size_t* &op_stac
     // instance will be put on stack by method call
     const std::wstring mthd_name = cls_id + L":New:";
     APITools_MethodCall(op_stack, stack_pos, obj, cls_id.c_str(), mthd_name.c_str());
+    // the constructor failed under a Try() beneath this trap, which then fails
+    // with the error the constructor recorded (see StackInterpreter::CallBack)
+    bool& failed = Runtime::StackInterpreter::CallbackFailed();
+    if(failed) {
+      failed = false;
+      Runtime::StackInterpreter::TrapErrorRecorded() = true;
+      return false;
+    }
   }
   else {
     // no such class: Class->Instance(name) is Nil, as it is for a Nil name.

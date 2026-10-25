@@ -235,8 +235,9 @@ namespace Runtime {
 
     // --- C++ only ---
     // the highest operand-stack index at which an interpreted call may start;
-    // SIZE_MAX while the thread's operand stack is not this one (a native
-    // library's callback brings its own)
+    // SIZE_MAX until OpStack() reserves the operand stack (a call stack only
+    // an interpreter without one of its own uses: a call back on a thread the
+    // VM did not start)
     size_t op_limit;
     StackFrame** frames;
     size_t* op_stack;
@@ -244,6 +245,8 @@ namespace Runtime {
     size_t frames_committed;
     size_t op_reserved;
     size_t op_committed;
+    // the thread's current call stack before this one became it (see Current)
+    CallStack* previous_current;
 
     static const size_t OP_SLOTS_PER_FRAME = 8;
     static const size_t OP_HEADROOM = 1024;
@@ -260,6 +263,7 @@ namespace Runtime {
       stack->op_stack = nullptr;
       stack->frames_reserved = stack->frames_committed = 0;
       stack->op_reserved = stack->op_committed = 0;
+      stack->previous_current = nullptr;
 
       const size_t depth = (size_t)MaxCallDepth();
       stack->frames_reserved = RoundToPage(depth * sizeof(StackFrame*));
@@ -274,13 +278,19 @@ namespace Runtime {
       if(!stack) {
         return;
       }
+      if(CurrentRef() == stack) {
+        CurrentRef() = stack->previous_current;
+      }
       Release(stack->frames, stack->frames_reserved);
       Release(stack->op_stack, stack->op_reserved);
       delete stack;
     }
 
     // The operand stack for the thread that owns this call stack, reserved on
-    // first use. Interpreted calls check it from then on.
+    // first use. Interpreted calls check it from then on. Asking for it is
+    // what makes this the thread's current call stack: only an interpreter
+    // that runs a thread (main, a spawned thread, a signal handler, the
+    // debugger's) does, on that thread.
     size_t* OpStack() {
       if(!op_stack) {
         op_reserved = RoundToPage(((size_t)MaxCallDepth() * OP_SLOTS_PER_FRAME + OP_HEADROOM) * sizeof(size_t));
@@ -288,8 +298,21 @@ namespace Runtime {
         if(!op_stack || !CommitOp(OP_INITIAL)) {
           throw std::bad_alloc();
         }
+        previous_current = CurrentRef();
+        CurrentRef() = this;
       }
       return op_stack;
+    }
+
+    // The call stack of the interpreter running this thread, or nullptr on a
+    // thread the VM did not start. A call back into Objeck from C++ -- a native
+    // library's APITools_CallMethod, or Class->Instance running a constructor
+    // -- runs on it, so its calls are bounded and counted with the rest of the
+    // thread's (see APITools_MethodCall in common.cpp). A signal handler's
+    // interpreter nests on the thread it interrupts; destroying it restores
+    // the one beneath.
+    static CallStack* Current() {
+      return CurrentRef();
     }
 
     // Room for one more call: a frame slot at pos and OP_HEADROOM operand words
@@ -365,6 +388,11 @@ namespace Runtime {
     }
 
   private:
+    static CallStack*& CurrentRef() {
+      static thread_local CallStack* current = nullptr;
+      return current;
+    }
+
     bool CommitFrames(size_t bytes) {
       bytes = RoundToPage(bytes);
       if(bytes > frames_reserved) {
