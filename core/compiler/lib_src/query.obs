@@ -2716,7 +2716,9 @@ results->ToString()->PrintLine();
 		sorting. A column has at most one index; creating another replaces it. An index never
 		changes a query's answer or its row order, only how fast it comes: every insert, update,
 		delete and Compact keeps it correct (a sorted index is rebuilt by the first query after a
-		change). Indexes are not saved in .otab files; create them again after Load or Open.
+		change). Save and ToBytes keep the index definitions, and Load, FromBytes and Open
+		restore them (built by the first query that uses each); on a durable table (Open) the
+		change is saved at once, by a checkpoint.
 		Columns holding objects (OBJECT) cannot be indexed, and neither can 'pk', which Get finds
 		directly. SQL's CREATE INDEX does the same.
 		@param column column name
@@ -2787,6 +2789,31 @@ results->ToString()->PrintLine();
 			target->SetColumnIndex(created);
 			# built now, so the first query pays nothing for it
 			created->Freshen(target, @deleted);
+			return IndexesChanged();
+		}
+
+		# An index definition read from an .otab file, put on a column without building it: the
+		# first query that uses it builds it, so loading stays a copy of arrays. The file's
+		# footer was checked: the column exists, holds no other index, and the name is unique.
+		method : public : AttachIndex(column : Int, name : String, kind : IndexKind) ~ Nil {
+			target := GetColumn(column);
+			if(target <> Nil & column > 0) {
+				target->SetColumnIndex(ColumnIndex->New(kind, String->New(name)));
+			};
+		}
+
+		# A durable table's file keeps its index definitions, so creating or dropping one is
+		# saved at once, by a checkpoint (a statement's at its end): the change log records
+		# rows, not indexes, and an index made since the last save would otherwise be lost.
+		method : IndexesChanged() ~ Bool {
+			if(@store = Nil) {
+				return true;
+			};
+
+			if(<>@store->IndexesChanged()) {
+				@error := "the index changed, but '{$(@store->GetPath())}' could not be saved: {$(@store->GetError())}";
+				return false;
+			};
 			return true;
 		}
 
@@ -2803,7 +2830,7 @@ results->ToString()->PrintLine();
 			};
 
 			target->SetColumnIndex(Nil);
-			return true;
+			return IndexesChanged();
 		}
 
 		#~
@@ -3105,7 +3132,10 @@ results->ToString()->PrintLine();
 
 		#~
 		Saves the table's live rows, with their keys, as an .otab file, written to a temporary
-		file and renamed over 'path', so a crash leaves the old file or the new one
+		file and renamed over 'path', so a crash leaves the old file or the new one. The file
+		keeps the table's index definitions, and Load and Open restore them; a table with
+		indexes is saved in format 2, which libraries older than that refuse, and one without
+		in format 1.
 		@param path file
 		@return true if saved, false on error (see GetError)
 		```
@@ -3141,7 +3171,7 @@ results->ToString()->PrintLine();
 		method : public : WriteFile(path : String, compression : Compression) ~ Bool {
 			@error := Nil;
 			holder := StringHolder->New();
-			bytes := Otab->Write(@self, compression, holder);
+			bytes := Otab->Write(@self, compression, true, holder);
 			if(bytes = Nil | <>Otab->Commit(path, bytes, holder)) {
 				@error := holder->Get();
 				return false;
@@ -3164,9 +3194,21 @@ results->ToString()->PrintLine();
 		@return image, Nil on error (see GetError)
 		~#
 		method : public : ToBytes(compression : Compression) ~ Byte[] {
+			return ToBytes(compression, true);
+		}
+
+		#~
+		Gets the table's live rows as an .otab image in memory, with or without its index
+		definitions. Without them the image is format 1, which every library that reads .otab
+		reads; TableServer sends tables this way.
+		@param compression NONE, FAST or SMALL
+		@param indexes true to keep the index definitions (format 2 when there are any)
+		@return image, Nil on error (see GetError)
+		~#
+		method : public : ToBytes(compression : Compression, indexes : Bool) ~ Byte[] {
 			@error := Nil;
 			holder := StringHolder->New();
-			bytes := Otab->Write(@self, compression, holder);
+			bytes := Otab->Write(@self, compression, indexes, holder);
 			@error := holder->Get();
 			return bytes;
 		}
@@ -3203,7 +3245,8 @@ results->ToString()->PrintLine();
 		Adds the table's live rows to an .otab file as new row groups, without decoding or
 		changing the groups already there, and saves it as Save does. The columns must match the
 		file's, in name, order and type. The rows get keys after the file's last key. A file that
-		does not exist yet is saved.
+		does not exist yet is saved. The file keeps its format and its index definitions; this
+		table's indexes are not added to it.
 		@param path file
 		@return true if added, false on error (see GetError)
 		~#
@@ -3285,7 +3328,15 @@ results->ToString()->PrintLine();
 				return false;
 			};
 
-			Otab->WriteFooter(out, file->GetName(), copy->GetNextKey(), names, types, file->GetDeclared(), counts, blocks);
+			# the file keeps its own format and index definitions: the copied prefix holds its
+			# header, and this table's indexes are not the file's
+			file_indexes := Vector->New()<OtabIndex>;
+			found_indexes := file->GetIndexDefinitions();
+			each(i : found_indexes) {
+				file_indexes->AddBack(found_indexes[i]);
+			};
+			Otab->WriteFooter(out, file->GetName(), copy->GetNextKey(), names, types, file->GetDeclared(), counts, blocks,
+				file->GetFormatVersion(), file_indexes);
 			if(<>Otab->Commit(path, out->ToByteArray(), holder)) {
 				@error := holder->Get();
 				return false;
@@ -7593,8 +7644,12 @@ results := statement->Execute();
 	#   footer:  table name, next key, column count, then per column its name, type and whether
 	#            it is declared; row group count, then per group its row count and per column
 	#            the block's offset, stored and raw size, codec, CRC32 of the stored bytes, null
-	#            count and zone (whether it has one, minimum, maximum)
+	#            count and zone (whether it has one, minimum, maximum); in version 2, then the
+	#            index count and per index its name, column position and kind
 	#   trailer: footer offset, footer size, footer CRC32, "OTAB"
+	#
+	# A table with no index is written as version 1, which every reader since phase 3 reads;
+	# one with indexes as version 2, which older readers refuse by its version.
 	#
 	# A block holds its rows' null bitmap, then the values: Ints for INT and BOOL, Ints and GMT
 	# bits for DATE, Floats for FLOAT, a dictionary and Int codes (or plain texts) for STRING,
@@ -8274,6 +8329,103 @@ results := statement->Execute();
 		}
 	}
 
+	# An index definition as a version 2 footer stores it (docs/OTAB_FORMAT.md, "Indexes"): its
+	# name, the column's position (1 or more; 0 is the key column) and its kind, 1 for HASH and
+	# 2 for SORTED. Only the definition is stored; the entries are rebuilt from the column.
+	class : private : OtabIndex {
+		@name : String;
+		@column : Int;
+		@kind : Int;
+
+		New(name : String, column : Int, kind : Int) {
+			@name := name;
+			@column := column;
+			@kind := kind;
+		}
+
+		method : public : GetName() ~ String { return @name; }
+		method : public : GetColumn() ~ Int { return @column; }
+		method : public : GetKind() ~ Int { return @kind; }
+
+		function : CodeOf(kind : IndexKind) ~ Int {
+			return kind = IndexKind->HASH ? 1 : 2;
+		}
+
+		method : public : GetIndexKind() ~ IndexKind {
+			return @kind = 1 ? IndexKind->HASH : IndexKind->SORTED;
+		}
+
+		method : public : Write(out : OtabWriter) ~ Nil {
+			out->PutText(@name);
+			out->PutInt(@column);
+			out->PutInt(@kind);
+		}
+
+		# the index definitions of a table's columns, in column order
+		function : Of(table : Table) ~ Vector<OtabIndex> {
+			found := Vector->New()<OtabIndex>;
+			for(c := 1; c < table->GetColumnCount(); c += 1;) {
+				column := table->GetColumn(c);
+				if(column->GetIndexKind() <> IndexKind->NONE) {
+					found->AddBack(OtabIndex->New(column->GetIndexName(), c, CodeOf(column->GetIndexKind())));
+				};
+			};
+			return found;
+		}
+
+		# A footer's index list; Nil with the error set if it is malformed. Every name is
+		# text, no two are the same, every column is a data column holding at most one
+		# index, and every kind is known: a version 2 reader meets no other kind.
+		function : ReadAll(input : OtabReader, columns : Int, error : StringHolder) ~ OtabIndex[] {
+			count := input->GetInt();
+			if(input->IsBad() | count < 0 | count >= columns) {
+				error->Set("the footer's index list is malformed");
+				return Nil;
+			};
+
+			indexes := OtabIndex->New[count];
+			each(i : count) {
+				name := input->GetText();
+				column := input->GetInt();
+				kind := input->GetInt();
+				if(input->IsBad() | name = Nil) {
+					error->Set("the footer's index list is malformed");
+					return Nil;
+				};
+
+				if(name->Size() = 0) {
+					error->Set("the footer's index {$(i + 1)} has no name");
+					return Nil;
+				};
+
+				if(column < 1 | column >= columns) {
+					error->Set("the footer's index '{$name}' names column {$column}, which the file does not have");
+					return Nil;
+				};
+
+				if(kind <> 1 & kind <> 2) {
+					error->Set("the footer's index '{$name}' has kind {$kind}, which this library does not know");
+					return Nil;
+				};
+
+				each(j : i) {
+					if(indexes[j]->GetName()->Equals(name)) {
+						error->Set("the footer names two indexes '{$name}'");
+						return Nil;
+					};
+					if(indexes[j]->GetColumn() = column) {
+						error->Set("the footer gives column {$column} two indexes");
+						return Nil;
+					};
+				};
+
+				indexes[i] := OtabIndex->New(name, column, kind);
+			};
+
+			return indexes;
+		}
+	}
+
 	# where a block is and how it was stored
 	class : private : OtabBlockInfo {
 		@offset : Int;
@@ -8332,8 +8484,15 @@ results := statement->Execute();
 
 	# writing .otab images
 	class : private : Otab {
+		# the newest format this library reads and writes: 2 adds index definitions
 		function : Version() ~ Int {
-			return 1;
+			return 2;
+		}
+
+		# the format a footer with these index definitions needs: 1 without any, so a table
+		# without indexes stays readable by libraries that know only version 1
+		function : VersionFor(indexes : Vector<OtabIndex>) ~ Int {
+			return indexes <> Nil & indexes->Size() > 0 ? 2 : 1;
 		}
 
 		function : HeaderSize() ~ Int {
@@ -8457,9 +8616,11 @@ results := statement->Execute();
 			return true;
 		}
 
-		# the footer and trailer after the blocks
+		# the footer and trailer after the blocks; the index list is written only in a version
+		# 2 file, whose header said so
 		function : WriteFooter(out : OtabWriter, name : String, next_key : Int, names : String[], types : ColumnType[],
-				declared : Bool[], counts : Vector<IntRef>, blocks : Vector<OtabBlockInfo>) ~ Nil {
+				declared : Bool[], counts : Vector<IntRef>, blocks : Vector<OtabBlockInfo>, version : Int,
+				indexes : Vector<OtabIndex>) ~ Nil {
 			footer := OtabWriter->New();
 			footer->PutText(name);
 			footer->PutInt(next_key);
@@ -8479,6 +8640,14 @@ results := statement->Execute();
 				};
 			};
 
+			if(version >= 2) {
+				count := indexes = Nil ? 0 : indexes->Size();
+				footer->PutInt(count);
+				each(i : count) {
+					indexes->Get(i)->Write(footer);
+				};
+			};
+
 			bytes := footer->ToByteArray();
 			footer_offset := out->Size();
 			out->PutBytes(bytes);
@@ -8488,12 +8657,16 @@ results := statement->Execute();
 			out->Magic();
 		}
 
-		# a table's live rows as an .otab image; Nil with the error set
-		function : Write(table : Table, compression : Compression, error : StringHolder) ~ Byte[] {
+		# a table's live rows as an .otab image, with its index definitions when 'indexes' is
+		# true; Nil with the error set
+		function : Write(table : Table, compression : Compression, indexes : Bool, error : StringHolder) ~ Byte[] {
+			# the definitions from the table itself: Live's copy has none
+			definitions := indexes ? OtabIndex->Of(table) : Nil;
+			version := VersionFor(definitions);
 			source := Live(table);
 			out := OtabWriter->New();
 			out->Magic();
-			out->PutInt(Version());
+			out->PutInt(version);
 
 			counts := Vector->New()<IntRef>;
 			blocks := Vector->New()<OtabBlockInfo>;
@@ -8512,7 +8685,7 @@ results := statement->Execute();
 				declared[c] := column->IsDeclared();
 			};
 
-			WriteFooter(out, source->GetName(), source->GetNextKey(), names, types, declared, counts, blocks);
+			WriteFooter(out, source->GetName(), source->GetNextKey(), names, types, declared, counts, blocks, version, definitions);
 			return out->ToByteArray();
 		}
 
@@ -8603,6 +8776,11 @@ results := statement->Execute();
 		# a statement: changes between Begin and the matching End are one record
 		method : public : Begin() ~ Nil {
 			@depth += 1;
+		}
+
+		# whether a statement's changes are being gathered
+		method : public : InStatement() ~ Bool {
+			return @depth > 0;
 		}
 
 		method : public : End() ~ Bool {
@@ -8869,6 +9047,8 @@ else {
 		@open : Bool;
 		@error : String;
 		@replayed : Int;
+		@compression : Compression;
+		@index_pending : Bool;
 
 		#~
 		Opens a table file for writing: takes its lock, loads the last save and replays the
@@ -8954,6 +9134,20 @@ else {
 				return false;
 			};
 
+			# a checkpoint the table makes by itself (for an index change) compresses as the
+			# file it replaces was compressed
+			@compression := Compression->NONE;
+			blocks := file->GetBlocks();
+			each(b : blocks) {
+				codec := blocks[b]->GetCodec();
+				if(codec = 2) {
+					@compression := Compression->SMALL;
+				}
+				else if(codec = 1 & @compression = Compression->NONE) {
+					@compression := Compression->FAST;
+				};
+			};
+
 			@table := table;
 			@table->SetStore(@self);
 			return true;
@@ -8977,6 +9171,8 @@ else {
 				@error := "the table is not open";
 				return false;
 			};
+			@compression := compression;
+			@index_pending := false;
 
 			# the save first: a crash before the new log is in place leaves a log whose header
 			# names the old save, which opening then knows to skip
@@ -9032,7 +9228,26 @@ else {
 		}
 
 		method : public : End() ~ Bool {
-			return Logged(@log->End());
+			if(<>Logged(@log->End())) {
+				return false;
+			};
+
+			# an index created or dropped by the statement: saved now that it is whole
+			if(@index_pending & <>@log->InStatement()) {
+				return Checkpoint(@compression);
+			};
+			return true;
+		}
+
+		# An index was created or dropped. The file holds index definitions and the log does
+		# not, so it is saved by a checkpoint: now, or at the end of the statement making it,
+		# since a checkpoint replaces the log the statement is writing to.
+		method : public : IndexesChanged() ~ Bool {
+			if(@log->InStatement()) {
+				@index_pending := true;
+				return true;
+			};
+			return Checkpoint(@compression);
 		}
 
 		method : public : LogInsert(key : Int) ~ Bool {
@@ -9134,6 +9349,8 @@ if(file->IsOpen()) {
 		@declared : Bool[];
 		@counts : Int[];
 		@blocks : OtabBlockInfo[];
+		@version : Int;
+		@indexes : OtabIndex[];
 		@size : Int;
 		@footer_offset : Int;
 		@footer_crc : Int;
@@ -9297,9 +9514,10 @@ if(file->IsOpen()) {
 			header_in->Skip(4);
 			version := header_in->GetInt();
 			if(version < 1 | version > Otab->Version()) {
-				@error := "an .otab file of format {$version}; this library reads format {$(Otab->Version())}";
+				@error := "an .otab file of format {$version}; this library reads formats 1 to {$(Otab->Version())}";
 				return false;
 			};
+			@version := version;
 
 			trailer := ReadAt(size - Otab->TrailerSize(), Otab->TrailerSize());
 			if(trailer = Nil) {
@@ -9381,6 +9599,24 @@ if(file->IsOpen()) {
 				each(c : columns) {
 					@blocks[g * columns + c] := OtabBlockInfo->Read(input);
 				};
+			};
+
+			if(input->IsBad()) {
+				@error := "the footer is malformed";
+				return false;
+			};
+
+			# version 2 adds the index definitions; a version 1 footer ends here
+			if(@version >= 2) {
+				holder := StringHolder->New();
+				@indexes := OtabIndex->ReadAll(input, columns, holder);
+				if(@indexes = Nil) {
+					@error := holder->Get();
+					return false;
+				};
+			}
+			else {
+				@indexes := OtabIndex->New[0];
 			};
 
 			if(input->IsBad() | <>input->AtEnd()) {
@@ -9555,7 +9791,17 @@ if(file->IsOpen()) {
 				column_names[i] := @names[wanted[i + 1]];
 			};
 
-			return Table->Restore(@name, column_names, columns, @next_key);
+			table := Table->Restore(@name, column_names, columns, @next_key);
+			# the indexes of the columns read, built by the first query that uses each
+			each(i : @indexes) {
+				definition := @indexes[i];
+				each(w : wanted) {
+					if(w > 0 & wanted[w] = definition->GetColumn()) {
+						table->AttachIndex(w, definition->GetName(), definition->GetIndexKind());
+					};
+				};
+			};
+			return table;
 		}
 
 		# Append: the file's bytes before its footer, its groups and blocks, and its schema
@@ -9568,6 +9814,32 @@ if(file->IsOpen()) {
 		method : public : GetAllNames() ~ String[] { return @names; }
 		method : public : GetCounts() ~ Int[] { return @counts; }
 		method : public : GetBlocks() ~ OtabBlockInfo[] { return @blocks; }
+		method : public : GetIndexDefinitions() ~ OtabIndex[] { return @indexes; }
+
+		#~
+		Gets the file's format version: 1, or 2 for a file that stores index definitions
+		@return version, 0 if the file did not open
+		~#
+		method : public : GetFormatVersion() ~ Int {
+			return @version;
+		}
+
+		#~
+		Gets the names of the indexes the file defines, which Read restores on the columns it
+		reads
+		@return index names, in column order
+		~#
+		method : public : GetIndexNames() ~ String[] {
+			if(@indexes = Nil) {
+				return String->New[0];
+			};
+
+			names := String->New[@indexes->Size()];
+			each(i : names) {
+				names[i] := @indexes[i]->GetName();
+			};
+			return names;
+		}
 
 		method : public : ReadPrefix() ~ Byte[] {
 			return ReadAt(0, @footer_offset);

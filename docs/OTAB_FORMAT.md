@@ -1,9 +1,14 @@
-# The `.otab` table file format, version 1
+# The `.otab` table file format, versions 1 and 2
 
 `.otab` is the file format of `Query.Structured` tables: `Table->Save`, `Append`, `ToBytes`,
 `Load`, `FromBytes` and `OtabFile`. It stores what the column storage holds, column by column,
 so loading a table copies arrays rather than parsing text. A reader can open a file by reading
 only its last few hundred bytes, and then read just the columns it needs.
+
+Version 2 differs from version 1 in one place: its footer ends with the table's
+[index definitions](#indexes-version-2). A writer uses version 2 only for a table that has
+indexes, so a table without any is written exactly as version 1 wrote it, and stays readable by
+every version 1 reader.
 
 This document is the format's specification. The design and its reasons are in
 [QUERY_DESIGN.md §9](QUERY_DESIGN.md#9-persistence-a-native-table-file). An independent reader written
@@ -17,7 +22,8 @@ offset 0      header    "OTAB", format version                                  
               blocks    row group 0: one block per column, key column first
                         row group 1: ...
 footer_offset footer    table name, next key, schema, then per group:
-                        row count and, per column, where its block is and what it holds
+                        row count and, per column, where its block is and what it holds;
+                        version 2: then the index definitions
               trailer   footer offset, footer size, footer CRC32, "OTAB"            28 bytes
 ```
 
@@ -42,9 +48,11 @@ There is no padding anywhere: each field follows the one before it.
 | Offset | Field | Value |
 |---|---|---|
 | 0 | magic | the bytes `4F 54 41 42` (`"OTAB"`) |
-| 4 | version | Int, `1` for this specification |
+| 4 | version | Int, `1`, or `2` for a file whose footer holds index definitions |
 
-A reader refuses a version below 1 or above the highest it knows.
+A reader refuses a version below 1 or above the highest it knows. A version 1 reader therefore
+refuses a version 2 file by its header, before reading anything else, rather than misreading
+its footer.
 
 ## Trailer (the last 28 bytes)
 
@@ -75,11 +83,36 @@ In order:
 6. **row groups**, `G` times:
    - **rows**: Int, the number of rows in the group;
    - **block info**, `C` times, in column order (see below).
+7. **indexes**, version 2 only (see [Indexes](#indexes-version-2)): Int, `I` with
+   `0 ≤ I < C`, then `I` index definitions.
 
 The footer must be consumed exactly: bytes left over make the file malformed.
 
 **Column 0 is always the key column**, named `pk`, type INT, declared. Its values are the
 rows' primary keys. The remaining columns are the table's own, in the table's order.
+
+### Indexes (version 2)
+
+Each index definition is:
+
+| Field | Type | Meaning |
+|---|---|---|
+| name | Text | the index's name, not empty and not Nil |
+| column | Int | the column's position in the footer's column list, `1 ≤ column < C` (never the key column) |
+| kind | Int | `1` HASH, `2` SORTED |
+
+No two definitions share a name or a column. A reader refuses a footer that breaks any of these
+rules, or names a kind it does not know, as malformed, saying which index is wrong.
+
+Only the definition is stored, not the index's entries: a reader that restores an index builds
+it from the column, which it has read anyway, so a damaged or stale index can never be loaded,
+and Append adds rows without rewriting anything. `Table->Load`, `FromBytes`, `OtabFile->Read`
+and `TableStore` restore the indexes of the columns they read, unbuilt; the first query that
+uses one builds it. A partial read restores only the indexes of the columns it reads.
+
+`Append` keeps the file's version and its definitions: it copies the header with the rest of
+the prefix, and writes the same definitions into the new footer. `TableServer` sends tables as
+version 1 (`ToBytes(compression, false)`), so clients of any version read them.
 
 ### Block info (72 bytes)
 
@@ -201,7 +234,8 @@ decompressing, a reader checks the length against **raw**.
 
 1. Read the 12-byte header and check the magic and version.
 2. Read the 28-byte trailer, check the magic and the size equation, and read the footer.
-3. Check the footer's CRC, then parse it, refusing unknown type codes and leftover bytes.
+3. Check the footer's CRC, then parse it, refusing unknown type codes, a malformed index list
+   (version 2) and leftover bytes.
 4. For each column wanted, and for each group: read `stored` bytes at `offset`, check their
    CRC, decompress by `codec`, check the length against `raw`, and decode the block.
 
@@ -273,7 +307,10 @@ column or the expected next key is refused the same way.
 
 **Checkpoint** writes the table as a new save (by `path.part` and rename), then replaces the log
 with an empty one naming that save. `Save` of a durable table's own file is a checkpoint, and
-`Append` onto it is refused.
+`Append` onto it is refused. The log records rows, not indexes, so creating or dropping an index
+on a durable table is saved by a checkpoint: at once, or, inside a SQL statement, when the
+statement ends. Opening restores the file's indexes before replaying the log, and the replayed
+changes reach them as any write does.
 
 **The lock**, `path.lock`, is created only if absent (`File->CreateNew`) and holds the writer's
 process id as text. A writer that finds it held by a running process is refused with that id. One
@@ -334,9 +371,14 @@ none.
 ## Compatibility
 
 - A reader must refuse a **newer** version rather than guess at it. Versions only grow; a
-  version 1 file stays readable by every later reader.
-- New type codes, codecs, STRING encodings or OBJECT tags come with a new version number, so a
-  version 1 reader never meets one in a file it accepts. Inside a version 1 file, an unknown
-  code means the file is malformed, and the reader says which column holds it.
-- Not in version 1, though the design leaves room for them: delta and run-length encodings,
-  and indexes stored in the file.
+  version 1 file stays readable by every later reader, and a version 2 reader reads both.
+- New type codes, codecs, STRING encodings, OBJECT tags or index kinds come with a new version
+  number, so a reader never meets one in a file it accepts. Inside a file of a version it
+  knows, an unknown code means the file is malformed, and the reader says which column or
+  index holds it.
+- A writer uses the lowest version that can hold the table: version 1 unless the table has
+  indexes. So adding version 2 changed nothing for tables without indexes; their files are
+  byte for byte what a version 1 writer makes (`query_persist_indexes` checks this against an
+  image written before version 2 existed).
+- Version 2 added index definitions. Not yet in any version, though the design leaves room
+  for them: delta and run-length encodings, and stored index entries.

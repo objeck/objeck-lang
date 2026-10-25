@@ -68,6 +68,18 @@ class QueryNetServe {
 		return response->GetCode();
 	}
 
+	# a GET: the status code and the body as bytes
+	function : GetBytes(path : String, accept : String, bytes : ByteHolder) ~ Int {
+		client := HttpClient->New();
+		client->AddHeader("Accept", accept);
+		response := client->Get(Url->New("http://127.0.0.1:{$@port}{$path}"));
+		if(response = Nil) {
+			return 0;
+		};
+		bytes->Set(response->GetContent());
+		return response->GetCode();
+	}
+
 	function : Post(path : String, sql : String, accept : String, bytes : ByteHolder) ~ Int {
 		client := HttpClient->New();
 		client->AddHeader("Accept", accept);
@@ -97,6 +109,8 @@ class QueryNetServe {
 		pair := names->Insert();
 		pair->Set("label", "cat");
 		pair->Set("kind", "animal");
+		# an indexed table is still sent as format 1, which every client reads
+		names->CreateIndex("label", IndexKind->HASH);
 
 		@server := TableServer->New();
 		@server->Publish(runs);
@@ -117,6 +131,13 @@ class QueryNetServe {
 		Check("a table as JSON by Accept", Get("/tables/names", "application/json", body) = 200 & body->Get()->StartsWith("[{\"label\":"));
 		Check("a table as JSON by format=", Get("/tables/names?format=json", Nil, body) = 200 & body->Get()->StartsWith("[{"));
 		Check("an unknown table is 404", Get("/tables/nope", Nil, body) = 404);
+		image := ByteHolder->New();
+		sent : Byte[] := Nil;
+		if(GetBytes("/tables/names", "application/x-otab", image) = 200) {
+			sent := image->Get();
+		};
+		Check("an indexed table as .otab is format 1, without its index", sent <> Nil & sent->Size() > 12 & sent[4] = 1 &
+			Table->FromBytes(sent) <> Nil & Table->FromBytes(sent)->Size() = 2 & <>Table->FromBytes(sent)->HasIndex("label"));
 
 		# queries
 		Check("a SELECT by GET", Get("/query?sql=select%20count(*)%20from%20runs", Nil, body) = 200 & body->Get()->Has("40"));

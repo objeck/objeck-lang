@@ -204,7 +204,8 @@ server->Serve(8090); # blocks; GET http://localhost:8090/tables/runs
 
 			format := Format(request);
 			if(format->Equals("otab")) {
-				image := table->ToBytes();
+				# format 1, without index definitions, so any client that reads .otab reads it
+				image := table->ToBytes(Compression->NONE, false);
 				if(image = Nil) {
 					Fail(response, 500, table->GetError());
 					return;
