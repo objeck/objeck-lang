@@ -16,8 +16,9 @@
 #
 #   SDL     Timer->Delay(3000)
 #   ODBC    a SELECT that SQLite takes a while to compute, over the
-#           objeck_sqlite_test data source ci-build.yml sets up on Linux; the
-#           part is skipped where there is no such data source
+#           objeck_sqlite_test data source ci-build.yml sets up on every leg;
+#           the part is skipped where there is no such data source, unless
+#           OBJECK_REQUIRE_ODBC is set, when that is a failure
 # EXTRA_LIBS: sdl2,odbc
 ~#
 
@@ -141,7 +142,12 @@ class NativeLibGcPark {
 	method : TestOdbc() ~ Nil {
 		conn := Connection->New("objeck_sqlite_test", "", "");
 		if(<>conn->IsOpen()) {
-			"  ODBC: skipped (no objeck_sqlite_test data source: {$conn->GetLastError()})"->PrintLine();
+			err := conn->GetLastError();
+			if(Runtime->HasEnvironmentVariable("OBJECK_REQUIRE_ODBC")) {
+				Fail("ODBC: OBJECK_REQUIRE_ODBC is set but the objeck_sqlite_test data source could not be opened: {$err}");
+				return;
+			};
+			"  ODBC: skipped (no objeck_sqlite_test data source: {$err})"->PrintLine();
 			return;
 		};
 

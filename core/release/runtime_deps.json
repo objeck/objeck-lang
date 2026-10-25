@@ -81,7 +81,7 @@
         "sdl2", "sdl2_image", "sdl2_ttf", "sdl2_mixer"
       ],
       "test": [
-				"expect"
+				"expect", "sqliteodbc"
 			],
       "tools": ["macvim"]
     },

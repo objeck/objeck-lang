@@ -16,6 +16,10 @@
 # mbedTLS (macOS 15.0) and libiodbc (macOS 26.0) archives quietly raised the
 # real minimum macOS far above the 11.1-13.3 the projects declared.
 #
+# libiodbc's configure must be told dlsym() needs no underscore (see the libiodbc
+# step): left to itself under Apple clang 15+ it concluded the opposite and the
+# resulting driver manager could not load any ODBC driver.
+#
 # Recipes validated on an M4 Max (2026-09-13): every binary relinked from this
 # prefix builds with 0 "built for newer macOS" warnings; core_opencv,
 # onnx_runtime_test, lame_encode_test, byte_array_header_test, HTTP/2 and HTTP/3
@@ -192,8 +196,25 @@ tar xzf "$tarball" -C "$WORK"
 IODBC_SRC="$WORK/libiodbc-$IODBC_VERSION"
 ( cd "$IODBC_SRC"
   # configure adds -DNO_FRAMEWORKS itself; objk_odbc links no framework.
-  run iodbc.configure env "${AUTOTOOLS_ENV[@]}" ./configure --prefix="$STAGE/iodbc" \
+  #
+  # libltdl_cv_need_uscore=no: configure decides whether dlsym() wants a leading
+  # underscore by compiling and running a test program that calls exit() without
+  # <stdlib.h>. Apple clang 15+ rejects the implicit declaration, the program never
+  # runs, and autoconf takes the failure for "yes" -- so the driver manager looked
+  # every driver entry point up as "_SQLAllocHandle", "_SQLConnect", ..., found
+  # none, and SQLConnect failed with "[IM004] Driver's SQLAllocEnv() failed" for
+  # every ODBC driver on macOS (found 2026-10-25 by the first CI run that gave the
+  # macOS leg a data source). dlsym() has never needed the underscore on macOS.
+  run iodbc.configure env "${AUTOTOOLS_ENV[@]}" libltdl_cv_need_uscore=no \
+	./configure --prefix="$STAGE/iodbc" \
 	--disable-shared --enable-static --disable-gui --disable-libodbc
+  # configure writes its verdict to include/config.h; refuse to build a driver
+  # manager that would look drivers' entry points up with the underscore.
+  if grep -q '^#define NEED_USCORE' include/config.h; then
+	echo "ERROR: libiodbc's configure defined NEED_USCORE; the driver manager could load no ODBC driver" >&2
+	exit 1
+  fi
+  grep -q 'HAVE_LIBDL 1' include/config.h || { echo "ERROR: libiodbc's configure did not find dlopen (HAVE_LIBDL)" >&2; exit 1; }
   run iodbc.build make -j"$JOBS"
   run iodbc.install make install )
 rm -rf "$STAGE/iodbc/bin" "$STAGE/iodbc/share"

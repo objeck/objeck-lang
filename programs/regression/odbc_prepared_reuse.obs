@@ -18,8 +18,9 @@
 # Runs one INSERT, one UPDATE and one SELECT many times each with different
 # values, collecting between runs, plus a failed run, a run that changes no
 # rows, and a re-run that keeps the last values. Needs the SQLite ODBC driver
-# and the objeck_sqlite_test data source (ci-build.yml sets it up on Linux);
-# skips without them, as odbc_sqlite_test does.
+# and the objeck_sqlite_test data source (ci-build.yml sets it up on every
+# leg); skips without them unless OBJECK_REQUIRE_ODBC is set, as
+# odbc_sqlite_test does.
 # EXTRA_LIBS: odbc
 ~#
 
@@ -58,6 +59,10 @@ class OdbcPreparedReuse {
 		if(<>conn->IsOpen()) {
 			err := conn->GetLastError();
 			if(err->Has("IM002")) {
+				if(Runtime->HasEnvironmentVariable("OBJECK_REQUIRE_ODBC")) {
+					"FAIL: OBJECK_REQUIRE_ODBC is set but there is no objeck_sqlite_test data source ({$err})"->PrintLine();
+					Runtime->Exit(1);
+				};
 				"SKIP: no objeck_sqlite_test data source ({$err})"->PrintLine();
 				return;
 			};
