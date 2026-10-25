@@ -1,10 +1,13 @@
-# EXTRA_LIBS: net,net_server,regex,csv,misc,query
+# EXTRA_LIBS: net,net_server,regex,csv,misc,query,concurrent
 #~
 Query.Structured reading files over HTTP (docs/QUERY_DESIGN.md, section 10, phase 5), against an
 in-process Web.HTTP.Server: a URL in FROM and in a source's constructor, the format from the URL's
 path (a query string ignored, '.gz' honoured), the download cache revalidated by ETag and by
 Last-Modified (an unchanged file answers 304 and is not read again, a changed one is), a server
-with neither validator, and an error status.
+with neither validator, and an error status. Then threads sharing one catalog query URLs at once:
+with no validator every query downloads, and each changed file must still be read once, with
+every answer right (two threads downloading one URL once wrote one partial file, and one of them
+failed).
 ~#
 use Collection, System.IO.Net, Web.HTTP.Server, Query.Structured;
 
@@ -22,8 +25,41 @@ class NetReadHandler from HttpRequestHandler {
 	}
 }
 
-class QueryNetRead {
-	@port : static : Int;
+class NetReader from System.Concurrency.Thread {
+	@catalog : Catalog;
+	@sqls : String[];
+	@expected : String[];
+	@barrier : System.Concurrency.Barrier;
+	@wrong : Int;
+	@first : String;
+
+	New(catalog : Catalog, sqls : String[], expected : String[], barrier : System.Concurrency.Barrier) {
+		Parent("net_reader");
+		@catalog := catalog;
+		@sqls := sqls;
+		@expected := expected;
+		@barrier := barrier;
+	}
+
+	method : public : GetWrong() ~ Int { return @wrong; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : public : Run(param : System.Base) ~ Nil {
+		each(i : @sqls) {
+			@barrier->Await();
+			rs := @catalog->Query(@sqls[i]);
+			got := rs <> Nil ? rs->ToCsv()->ReplaceAll("\r\n", "\n") : "ERROR: {$(@catalog->GetError())}";
+			if(<>got->Equals(@expected[i])) {
+				@wrong += 1;
+				if(@first = Nil) {
+					@first := "'{$(@sqls[i])}' gave '{$got}'";
+				};
+			};
+		};
+	}
+}
+
+class QueryNetRead {	@port : static : Int;
 	@serve_returned : static : Bool;
 	@failures : static : Int;
 	@bodies : static : Map<String, String>;
@@ -196,6 +232,71 @@ class QueryNetRead {
 		Check("an error status names it", missing->Read(Nil) = Nil & missing->GetError()->Has("404"));
 		Check("an error status in SQL", catalog->Query("select * from '{$base}/data/none.csv'") = Nil & catalog->GetError()->Has("404"));
 		Check("a URL cannot be a pattern", catalog->Query("select * from '{$base}/data/*.csv'") = Nil & catalog->GetError()->Has("pattern"));
+
+		# threads sharing one catalog: plain.csv has no validator, so every query downloads it
+		# (a new copy each time), and runs.csv answers 304; each round changes plain.csv, which
+		# must then be read once whichever thread downloads it first
+		shared := Catalog->New();
+		threads := 4;
+		wrong := 0;
+		first : String := Nil;
+		shared_reads := 0;
+		each(round : 8) {
+			rows := round + 2;
+			body := "id\n";
+			each(i : rows) {
+				body += "{$(i * 10 + round)}\n";
+			};
+			Put("/data/plain.csv", body, Nil, Nil);
+			sqls := String->New[6];
+			expected := String->New[6];
+			each(q : sqls) {
+				if(q % 2 = 0) {
+					sqls[q] := "select count(*) as n, sum(id) as s from '{$base}/data/plain.csv'";
+					total := 0;
+					each(j : rows) {
+						total += j * 10 + round;
+					};
+					expected[q] := "n,s\n{$rows},{$total}\n";
+				}
+				else {
+					sqls[q] := "select id, score from '{$base}/data/runs.csv' order by id";
+					expected[q] := "id,score\n1,0.5\n2,0.75\n3,0.9\n";
+				};
+			};
+
+			before := shared->GetFileReads();
+			barrier := System.Concurrency.Barrier->New(threads);
+			readers := NetReader->New[threads];
+			each(t : threads) {
+				readers[t] := NetReader->New(shared, sqls, expected, barrier);
+			};
+			each(t : threads) {
+				readers[t]->Execute(Nil);
+			};
+			each(t : threads) {
+				readers[t]->Join();
+			};
+			each(t : threads) {
+				wrong += readers[t]->GetWrong();
+				if(first = Nil & readers[t]->GetFirst() <> Nil) {
+					first := "round {$round}: {$(readers[t]->GetFirst())}";
+				};
+			};
+
+			# plain.csv once per round; runs.csv once, in the first round
+			reads := shared->GetFileReads() - before;
+			if(reads <> (round = 0 ? 2 : 1)) {
+				shared_reads += 1;
+				if(first = Nil) {
+					first := "round {$round}: the shared catalog read {$reads} files";
+				};
+			};
+		};
+		Check("threads sharing a catalog read URLs right", wrong = 0 & shared_reads = 0);
+		if(first <> Nil) {
+			"    {$first}"->PrintLine();
+		};
 
 		WebServer->Stop();
 		System.IO.Filesystem.Directory->Delete(cache_root);

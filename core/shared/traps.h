@@ -352,6 +352,12 @@ namespace instructions {
     SOCK_TCP_BIND_ADDR,
     SOCK_TCP_SSL_LISTEN_ADDR,
     // a DTLSSocketServer given an address: binds that one address
-    SOCK_DTLS_LISTEN_ADDR
+    SOCK_DTLS_LISTEN_ADDR,
+    // Thread->GetCurrentId() and Thread->IsAlive(id): a number naming the
+    // calling thread, never reused in the process, and whether the thread a
+    // number names is still running, so state kept per thread can be found
+    // and dropped once its thread ends
+    THREAD_CURRENT_ID,
+    THREAD_IS_ALIVE
   };
 }

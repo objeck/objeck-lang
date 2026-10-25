@@ -270,6 +270,21 @@ class QuerySqlRelational {
 		Check("an unknown column cannot be set", catalog->Execute("update t set nope = 5") = -1);
 		Check("too few values", catalog->Execute("insert into t values (1, 'a')") = -1);
 
+		# an INSERT without a column list fills every column the table has when it runs: its
+		# cached plan once kept the first run's columns, so a table that gained one (or another
+		# table under the name) took the old list
+		catalog->Execute("create table w (a int, b int)");
+		Check("insert without a column list", catalog->Execute("insert into w values (1, 2)") = 1);
+		catalog->Get("w")->AddColumn("c", ColumnType->INT);
+		Check("the same insert after a column is added needs a value for it", catalog->Execute("insert into w values (1, 2)") = -1 & catalog->GetError()->Has("3 columns"));
+		Check("and takes three values", catalog->Execute("insert into w values (3, 4, 5)") = 1);
+		Expect("rows of the grown table", catalog->Query("select a, b, c from w order by a"), "1,2,null|3,4,5");
+		catalog->Remove("w");
+		catalog->Execute("create table w (x string)");
+		Check("the same insert into another table of that name", catalog->Execute("insert into w values (1, 2)") = -1);
+		Check("another table's single column", catalog->Execute("insert into w values ('y')") = 1);
+		Check("CREATE TABLE of a name that exists is refused", catalog->Execute("create table w (z int)") = -1 & catalog->GetError()->Has("already exists"));
+
 		table := catalog->Get("t");
 		Check("Table->Execute changes its own table", table->Execute("update t set v = 'w' where k = 7") = 1);
 		Check("Table->Execute refuses another table", table->Execute("delete from emp") = -1);

@@ -65,8 +65,9 @@ It is also only a single table: no joins, no `GROUP BY`, no `LIMIT`, no descendi
   others) is the route there, as a separate design. One writing process with any number of
   readers is in scope (section 9).
 - **Full SQL.** No subqueries, no views, no cost-based planner, no transactions.
-- **Concurrency.** A table is not thread-safe; callers lock (`critical`) if they share one. Read-only
-  sharing of a table nobody mutates is safe.
+- **Concurrent writers.** Writes to a table are not locked; a program that writes a table while
+  other threads use it orders them itself (`critical`). Any number of threads may query one
+  table, or one catalog, at once ("Concurrent readers" and "One catalog, many threads" below).
 
 ## Decision: a pure-Objeck engine, not one backed by SQLite
 
@@ -796,7 +797,8 @@ design above. Each phase adds its notes here.
   (`Catalog->SetFileAccess(false)`), so a query naming a file or a URL is refused (403): it
   would otherwise read the server's disk or make the server fetch an address for the client.
   A result over the row limit is refused (413) rather than cut short. Queries run one at a time
-  under a mutex, since a catalog's plan cache is not shared between threads. There is no time
+  under a mutex (it predates catalogs that threads may share, below, and published tables may
+  be written by the program that publishes them). There is no time
   limit yet: the engine has no cancellation point to stop a running query at.
 - `Web.HTTP.Server` runs one server per process, so one `TableServer` serves at a time.
   Binding to localhost only needs a listen address, which the server does not take yet.
@@ -1053,8 +1055,8 @@ in a linked library method, so adding classes to `query.obl` made a query loop f
 writes are not locked, and a program that mixes them must order them itself (as `TableServer`
 does with its mutex). Within that contract, any number of threads may query one table at the
 same time, including the first queries after a write, and every answer is the answer a scan
-gives on one thread. A `Catalog` stays per thread: its file cache and plan cache are not
-shared. `Table->GetError` reports the last error of any thread's query on the table.
+gives on one thread. `Table->GetError` reports the calling thread's own last error ("Errors
+per thread" below), and a `Catalog` may be shared too ("One catalog, many threads").
 
 **What a read writes.** Three things a query may rebuild on a table it does not otherwise
 change, and each was a defect under concurrent readers:
@@ -1086,6 +1088,129 @@ meet at a barrier before each query (ranges, equality, ORDER BY and Min/Max thro
 indexes, ranges that scan with zone maps, and SQL through the plan cache) and compares every
 answer with one an unindexed twin gave on one thread. Before the fix it failed in every mode:
 short answers from skipped groups, a Nil dereference, or a hang in the plan cache's `Map`.
+
+## Errors per thread
+
+**The gap.** A table kept one `@error` for every thread querying it, and so did a catalog:
+`GetError` answered whichever thread failed last, and a thread whose query succeeded could
+read another thread's failure.
+
+**The fix: each thread reads its own.** `GetError` keeps its signature and its meaning on one
+thread; with several, it answers the calling thread's last error on that object. Alternatives
+weighed:
+
+- *Return the error with the result.* A failed query returns `Nil`, which carries nothing, and
+  `GetError` would still have to work; it would also mean a second API for every call.
+- *A thread-local slot in the VM.* Objeck had no thread-local storage and no way to name the
+  calling thread at all (`Thread->GetExecuteID` names a `Thread` object, and the program's
+  first thread has none), so something had to be added to the runtime either way.
+
+So the runtime gained the least it could, two functions on `System.Concurrency.Thread` (new
+traps `THREAD_CURRENT_ID` and `THREAD_IS_ALIVE`, appended after the others):
+`Thread->GetCurrentId()` gives the calling thread a number, counted up from 1 the first time
+it asks and never given to another thread, even after this one ends (an operating system's
+thread ids are reused); `Thread->IsAlive(id)` says whether that thread still runs (the VM
+keeps the numbers of running threads in a set a `thread_local`'s destructor leaves).
+
+A table and a catalog hold a `ThreadErrors`: a `Map` from thread number to message, `Nil`
+while no thread has an error pending. A failed call sets the calling thread's entry, the next
+call that succeeds removes it, and the entries of threads that have ended are dropped whenever
+the map changes, so a thread that ends with an error unread leaves nothing behind for long.
+The common case costs one field read and no lock: a call that succeeds on an object with no
+pending errors sees the map is `Nil` and returns. That is safe without the lock because only a
+thread adds its own entry and the map goes back to `Nil` only when empty, so a thread that
+sees `Nil` has no entry. The lock, held only while the map is read or changed, is a class
+variable for the reason `RebuildLock` is one: the map is serializable, a lock is not.
+
+A table or catalog carried through the generic `Serializer` carries its pending errors, as it
+carried its one error before; the numbers are this process's, so a copy read in another process
+may answer a stale error on a thread that has the same number until that thread's next call.
+
+`Statement`, `View`, `Query`, `OtabFile`, `TableStore` and the sources keep one error each:
+each is one thread's object (a statement holds its bound values; a view, a file and a source
+are made by the call that uses them), and "One catalog, many threads" says so where it matters.
+
+**The test.** `query_thread_errors`: four threads fail at once on one table and one catalog,
+each for its own reason (an unknown column or table named after the thread, a syntax error at
+a position of its own) while one of them succeeds, then read `GetError` after all have
+finished: each must see its own reason, the one that succeeded none, and the main thread,
+which never failed, none, over 40 rounds of new threads. Before the fix it failed in every
+mode: 640 of its 884 checks, or, in runs where the threads' statements corrupted the catalog's
+unlocked plan cache, a crash in `Map->Insert` or a hang.
+
+## One catalog, many threads
+
+**The gap.** A catalog was one thread's: its table map, its plan cache and its file cache were
+`Map`s written without a lock, and a file named in SQL was read by every thread that missed
+the cache. Two threads querying through one catalog could corrupt a map (a crash in
+`Map->Insert`, a Nil dereference, or a query that never returns, all reproduced) and read the
+same file twice.
+
+**The contract.**
+
+| Call | With other threads querying the catalog |
+|---|---|
+| `Query`, `Prepare`, `Explain`, `Get`, `Has`, `GetNames`, `GetFileReads`, `GetError`, and files, archives and workbooks named in SQL | safe; any number at once |
+| `Add`, `AddNew`, `Remove`, `Load`, `CREATE TABLE` | safe: a query sees the table map before or after the change; a query already running keeps the tables it found |
+| `INSERT`, `UPDATE`, `DELETE`, `CREATE INDEX`, `DROP INDEX` (through `Execute` or a statement) | they write a table, so the table's contract applies: no other thread may use that table meanwhile. Writing a table no other thread uses (one a thread created for itself) is safe |
+| `SetFileAccess`, `SetArchiveLimits` | apply to queries that start after them; a query running meanwhile may read either value. Set them before sharing the catalog |
+| a `Statement` from `Prepare` | belongs to the thread that binds it; each thread prepares its own (a plan cache hit, so cheap) |
+
+**Locks, all on slow paths or held for a map operation only** (`CatalogLocks`, class variables
+made by the first table or catalog, before there is one to share):
+
+- *The catalog lock*, one per process, held only while a map of any catalog is read or changed:
+  a table lookup, a plan cache lookup or insert, a file cache lookup or insert, the read count.
+  Parsing a statement and running a query happen outside it: two threads that miss the plan
+  cache for one statement both parse it and the later insert wins, as in a table's cache.
+  `CREATE TABLE` still refuses a name it finds, and then adds through `AddNew`, a check and an add
+  in one step, so of threads creating
+  one name at once exactly one succeeds and the others are refused, where before both passed
+  the check and the second silently replaced the first.
+- *Sixteen file locks*, chosen by a hash of the file's cache key (or of a URL), for single-flight
+  loading. A query checks the file's stamp (its names, sizes and modification times) against
+  the cache without a file lock; on a miss it takes the file's lock, checks the cache again, and
+  only then reads, so threads that miss together read the file once and the rest find it
+  cached when the lock comes free. Files that share a lock by their hash wait for each other's
+  reads, which only costs time, and only when both are being read.
+- *URLs.* The revalidating request (`If-None-Match`, `If-Modified-Since`) goes out with no lock
+  held, so concurrent queries of one URL revalidate concurrently. The local copy and its note
+  are read and replaced only under the URL's file lock, which a catalog also holds while it
+  reads the copy into a table, so the copy cannot change under a reader, and the stamp the
+  table is cached under is the copy's own (the note now records it, on a third line older
+  versions ignore). A new copy and a new note are written to files named for this process and
+  thread and renamed into place: before, two threads downloading one URL wrote one `.part` file
+  at once, and the loser's rename failed its query.
+
+The locks cannot deadlock: nothing waits for a file lock while holding another lock, a thread
+holding a file lock may take only the catalog lock or an error lock, and those two take no other
+lock while held (an error lock asks the VM whether threads are alive, under the VM's own lock).
+
+Two defects found on the way and fixed: an `INSERT` with no column list filled the column list
+of the cached statement with the table's columns on its first run, so after `AddColumn`, or
+with another table under that name, the same statement kept inserting into the old columns
+(now each run takes the table's columns as they are; `query_sql_relational` covers it); and the
+`CREATE TABLE` race above.
+
+Not changed: `TableServer` still answers one request at a time under its mutex, since the
+program that publishes tables may write them while it serves.
+
+**The test.** `query_catalog_concurrent`: six threads share one catalog over 30 rounds. Each
+round rewrites a CSV and a zip a little longer (so every thread misses the file cache for them
+at once), computes every answer alone with an oracle catalog, then the threads meet at a
+barrier before each statement: files in SQL (a CSV, a glob over three, members of a zip, a
+worksheet), joins of files with each other and with the catalog's tables, `GROUP BY` and
+`HAVING`, a statement new to the plan cache every round, statements that fail, a failure of
+each thread's own whose reason it must read back, prepared statements bound per thread, and a
+table each thread adds (`Add`) and creates and fills (`CREATE TABLE`, `INSERT`) while the others
+query. Every answer must equal the oracle's, and the shared catalog must read files exactly as
+often as the oracle did alone (once per changed file per round). Before the fix it crashed in
+`Map->Insert` or on a Nil, or hung, in every mode; it passes at `-opt s3` and `s0`, with and
+without the JIT, and with `OBJECK_JIT_THRESHOLD=1`. `query_net_read` adds the URL half: four
+threads sharing a catalog query a URL with no validator (so every query downloads it) and one
+that answers 304, over eight rounds that each change the first; every answer must be right and
+the changed file read once per round. Before the fix a thread's query failed with "cannot
+write its copy" in the first round of every run.
 
 ## Archives and workbooks in SQL
 

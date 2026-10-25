@@ -1,0 +1,493 @@
+# EXTRA_LIBS: net,regex,csv,misc,query,concurrent
+#~
+Query.Structured: one Catalog shared by several threads (docs/QUERY_DESIGN.md, "Concurrent
+readers", "One catalog, many threads").
+
+Each round rewrites two of the files the queries name (a CSV and a zip, each a little longer
+than before), works out every answer on this thread alone with an oracle catalog, then starts
+six threads that meet at a barrier before each query and run, through ONE shared catalog:
+files named in SQL (a CSV, a glob over three CSVs, members of a zip, a worksheet of a
+workbook), joins of files with each other and with the catalog's own tables, GROUP BY and
+HAVING, statements new to the plan cache (all threads miss it at once), prepared statements,
+and queries that fail, whose error each thread reads from the catalog with GetError. Every
+thread also adds a table of its own and creates one with CREATE TABLE, fills it and queries
+it, while the others query. Every answer must equal the oracle's, every error must be the
+thread's own, and the shared catalog must read each changed file once per round, as the
+oracle does: threads that miss the file cache together wait for one read of the file.
+
+Before the fix the catalog's file cache, plan cache and table map were Maps written without a
+lock by every thread that missed in them, which corrupted them (a crash, a wrong answer or a
+query that never returns); files were read by every thread that missed; and GetError
+reported whichever thread failed last.
+~#
+use Query.Structured, System.Concurrency, System.IO.Filesystem, Collection;
+
+# a growing byte buffer
+class Sink {
+	@bytes : Byte[];
+	@size : Int;
+
+	New() {
+		@bytes := Byte->New[1024];
+	}
+
+	method : public : Put(value : Int) ~ Nil {
+		if(@size = @bytes->Size()) {
+			grown := Byte->New[@bytes->Size() * 2];
+			Byte->Copy(grown, 0, @bytes, 0, @size);
+			@bytes := grown;
+		};
+		@bytes[@size] := value;
+		@size += 1;
+	}
+
+	method : public : PutBytes(values : Byte[]) ~ Nil {
+		each(i : values) {
+			Put(values[i]->As(Int));
+		};
+	}
+
+	method : public : U16(value : Int) ~ Nil {
+		Put(value and 0xFF);
+		Put((value >> 8) and 0xFF);
+	}
+
+	method : public : U32(value : Int) ~ Nil {
+		U16(value and 0xFFFF);
+		U16((value >> 16) and 0xFFFF);
+	}
+
+	method : public : Size() ~ Int {
+		return @size;
+	}
+
+	method : public : ToBytes() ~ Byte[] {
+		out := Byte->New[@size];
+		Byte->Copy(out, 0, @bytes, 0, @size);
+		return out;
+	}
+}
+
+# a zip of deflated members
+class ZipBuilder {
+	@out : Sink;
+	@central : Sink;
+	@count : Int;
+
+	New() {
+		@out := Sink->New();
+		@central := Sink->New();
+	}
+
+	method : public : Add(name : String, text : String) ~ Nil {
+		data := text->ToByteArray();
+		packed := data->CompressDeflate();
+		at := @out->Size();
+		crc := Byte->CRC32(data);
+		name_bytes := name->ToByteArray();
+
+		@out->U32(0x04034b50);
+		@out->U16(20);
+		@out->U16(0);
+		@out->U16(8);
+		@out->U16(0);
+		@out->U16((46 << 9) or (3 << 5) or 15);
+		@out->U32(crc);
+		@out->U32(packed->Size());
+		@out->U32(data->Size());
+		@out->U16(name_bytes->Size());
+		@out->U16(0);
+		@out->PutBytes(name_bytes);
+		@out->PutBytes(packed);
+
+		@central->U32(0x02014b50);
+		@central->U16((3 << 8) or 20);
+		@central->U16(20);
+		@central->U16(0);
+		@central->U16(8);
+		@central->U16(0);
+		@central->U16((46 << 9) or (3 << 5) or 15);
+		@central->U32(crc);
+		@central->U32(packed->Size());
+		@central->U32(data->Size());
+		@central->U16(name_bytes->Size());
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U16(0);
+		@central->U32(0x81A4 << 16);
+		@central->U32(at);
+		@central->PutBytes(name_bytes);
+		@count += 1;
+	}
+
+	method : public : Finish() ~ Byte[] {
+		cd_offset := @out->Size();
+		cd := @central->ToBytes();
+		@out->PutBytes(cd);
+		@out->U32(0x06054b50);
+		@out->U16(0);
+		@out->U16(0);
+		@out->U16(@count);
+		@out->U16(@count);
+		@out->U32(cd->Size());
+		@out->U32(cd_offset);
+		@out->U16(0);
+		return @out->ToBytes();
+	}
+}
+
+# one round's work: the shared statements and their answers, the same for every thread
+class Round {
+	@number : Int;
+	@sqls : String[];
+	@answers : String[];
+	@prepared : String;
+	@values : Float[];
+	@prepared_answers : String[];
+	@runs : String;
+
+	New(number : Int, runs : String, sqls : String[], answers : String[], prepared : String, values : Float[], prepared_answers : String[]) {
+		@number := number;
+		@runs := runs;
+		@sqls := sqls;
+		@answers := answers;
+		@prepared := prepared;
+		@values := values;
+		@prepared_answers := prepared_answers;
+	}
+
+	method : public : GetNumber() ~ Int { return @number; }
+	method : public : GetRuns() ~ String { return @runs; }
+	method : public : GetSqls() ~ String[] { return @sqls; }
+	method : public : GetAnswers() ~ String[] { return @answers; }
+	method : public : GetPrepared() ~ String { return @prepared; }
+	method : public : GetValues() ~ Float[] { return @values; }
+	method : public : GetPreparedAnswers() ~ String[] { return @prepared_answers; }
+}
+
+class Worker from Thread {
+	@catalog : Catalog;
+	@round : Round;
+	@id : Int;
+	@barrier : Barrier;
+	@failures : Int;
+	@error_failures : Int;
+	@checks : Int;
+	@first : String;
+	@first_other : String;
+
+	New(catalog : Catalog, round : Round, id : Int, barrier : Barrier) {
+		Parent("worker");
+		@catalog := catalog;
+		@round := round;
+		@id := id;
+		@barrier := barrier;
+	}
+
+	method : public : GetFailures() ~ Int { return @failures; }
+	method : public : GetErrorFailures() ~ Int { return @error_failures; }
+	method : public : GetFirstOther() ~ String { return @first_other; }
+	method : public : GetChecks() ~ Int { return @checks; }
+	method : public : GetFirst() ~ String { return @first; }
+
+	method : Check(what : String, got : String, expected : String) ~ Nil {
+		@checks += 1;
+		if(got = Nil | <>got->Equals(expected)) {
+			@failures += 1;
+			if(what->Equals("its own error")) {
+				@error_failures += 1;
+			};
+			if(@first = Nil) {
+				shown := got <> Nil ? got->ReplaceAll("\n", "|") : "Nil";
+				wanted := expected->ReplaceAll("\n", "|");
+				@first := "thread {$@id}, {$what}: got '{$shown}', expected '{$wanted}'";
+			};
+			if(@first_other = Nil & <>what->Equals("its own error")) {
+				shown := got <> Nil ? got->ReplaceAll("\n", "|") : "Nil";
+				@first_other := "thread {$@id}, {$what}: got '{$shown}'";
+			};
+		};
+	}
+
+	method : public : Run(param : System.Base) ~ Nil {
+		number := @round->GetNumber();
+		sqls := @round->GetSqls();
+		answers := @round->GetAnswers();
+		count := sqls->Size();
+
+		# every thread runs the statements in the same order, so they miss the caches together;
+		# the order turns with the round
+		each(n : count) {
+			q := (n + number) % count;
+			@barrier->Await();
+			Check("query {$q} '{$(sqls[q])}'", QueryCatalogConcurrent->Answer(@catalog, sqls[q]), answers[q]);
+		};
+
+		# a failure of its own: every thread fails at once, each for another reason, and each
+		# reads its own reason once all have failed
+		@barrier->Await();
+		mine := "col_{$@id}_{$number}";
+		failed := @catalog->Query("select id from '{$(@round->GetRuns())}' where {$mine} > 1") = Nil;
+		@barrier->Await();
+		reason := @catalog->GetError();
+		verdict := "query did not fail";
+		if(failed) {
+			verdict := reason = Nil ? "no error" : reason;
+			if(reason <> Nil) {
+				if(reason->Has("'{$mine}'")) {
+					verdict := "its own";
+				};
+			};
+		};
+		Check("its own error", verdict, "its own");
+
+		# a prepared statement each, from the shared plan cache, bound to this thread's value
+		@barrier->Await();
+		statement := @catalog->Prepare(@round->GetPrepared());
+		if(statement = Nil) {
+			Check("prepare", "ERROR: {$(@catalog->GetError())}", "a statement");
+		}
+		else {
+			values := @round->GetValues();
+			each(k : values) {
+				v := (@id + k) % values->Size();
+				statement->Bind(1, values[v]);
+				rs := statement->Execute();
+				got := rs <> Nil ? QueryCatalogConcurrent->Text(rs) : "ERROR: {$(statement->GetError())}";
+				Check("prepared, value {$(values[v])}", got, @round->GetPreparedAnswers()[v]);
+			};
+		};
+
+		# a table of its own, added while the others query theirs: Add, then CREATE TABLE and
+		# INSERT into a table no other thread reads
+		@barrier->Await();
+		own := Table->New("own_{$@id}", ["k", "v"]);
+		own_rows := @id + 3;
+		each(i : own_rows) {
+			row := own->Insert();
+			row->Set("k", IntRef->New(i));
+			row->Set("v", IntRef->New(i * number));
+		};
+		@catalog->Add(own);
+		made := "made_{$@id}_{$number}";
+		created := @catalog->Execute("create table {$made} (k int, label string)");
+		Check("create table {$made}", "{$created}", "0");
+		inserted := @catalog->Execute("insert into {$made} values ({$@id}, 'a'), ({$(number + 100)}, 'b'), (-7, 'c')");
+		Check("insert into {$made}", "{$inserted}", "3");
+		expected := "n,s\n{$(@id + 3)},{$(number * (@id + 2) * (@id + 3) / 2)}\n";
+		Check("own_{$@id}", QueryCatalogConcurrent->Answer(@catalog, "select count(*) as n, sum(v) as s from own_{$@id}"), expected);
+		Check(made, QueryCatalogConcurrent->Answer(@catalog, "select label from {$made} where k = -7"), "label\nc\n");
+	}
+}
+
+class QueryCatalogConcurrent {
+	# a query's rows as text, or its error as the catalog reports it to this thread
+	function : Answer(catalog : Catalog, sql : String) ~ String {
+		rs := catalog->Query(sql);
+		if(rs = Nil) {
+			return "ERROR: {$(catalog->GetError())}";
+		};
+		return Text(rs);
+	}
+
+	function : Text(rs : Table) ~ String {
+		return rs->ToCsv()->ReplaceAll("\r\n", "\n");
+	}
+
+	function : Lcg(seed : IntRef) ~ Int {
+		seed->Set((seed->Get() * 6364136223846793005 + 1442695040888963407) and 0x7fffffffffffffff);
+		return (seed->Get() >> 17) % 1000000;
+	}
+
+	# a run table: 'rows' rows of id, score and label
+	function : Runs(rows : Int, seed : IntRef) ~ String {
+		labels := ["cat", "dog", "owl", "fox", "elk"];
+		text := "id,score,label\n";
+		each(i : rows) {
+			score := (Lcg(seed) % 1000)->As(Float) / 1000.0;
+			text += "{$i},{$score},{$(labels[Lcg(seed) % labels->Size()])}\n";
+		};
+		return text;
+	}
+
+	function : Cell(ref : String, text : String) ~ String {
+		return "<c r='{$ref}' t='inlineStr'><is><t>{$text}</t></is></c>";
+	}
+
+	function : Number(ref : String, value : Int) ~ String {
+		return "<c r='{$ref}'><v>{$value}</v></c>";
+	}
+
+	function : Q(text : String) ~ String {
+		return text->ReplaceAll("'", "\"");
+	}
+
+	# a workbook with one sheet, 'Q1', of dept and amount
+	function : Workbook(depts : String[], amounts : Int[]) ~ Byte[] {
+		rows := "<row r='1'>" + Cell("A1", "dept") + Cell("B1", "amount") + "</row>";
+		each(i : depts) {
+			r := i + 2;
+			rows += "<row r='{$r}'>" + Cell("A{$r}", depts[i]) + Number("B{$r}", amounts[i]) + "</row>";
+		};
+
+		zip := ZipBuilder->New();
+		zip->Add("[Content_Types].xml", Q("<?xml version='1.0' encoding='UTF-8'?><Types xmlns='http://schemas.openxmlformats.org/package/2006/content-types'><Default Extension='xml' ContentType='application/xml'/></Types>"));
+		zip->Add("_rels/.rels", Q("<?xml version='1.0' encoding='UTF-8'?><Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'><Relationship Id='rId1' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument' Target='xl/workbook.xml'/></Relationships>"));
+		zip->Add("xl/workbook.xml", Q("<?xml version='1.0' encoding='UTF-8'?><workbook xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main' xmlns:r='http://schemas.openxmlformats.org/officeDocument/2006/relationships'><sheets><sheet name='Q1' sheetId='1' r:id='rId1'/></sheets></workbook>"));
+		zip->Add("xl/_rels/workbook.xml.rels", Q("<?xml version='1.0' encoding='UTF-8'?><Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships'><Relationship Id='rId1' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet' Target='worksheets/sheet1.xml'/><Relationship Id='rId8' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles' Target='styles.xml'/><Relationship Id='rId9' Type='http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings' Target='sharedStrings.xml'/></Relationships>"));
+		zip->Add("xl/styles.xml", Q("<?xml version='1.0' encoding='UTF-8'?><styleSheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><cellXfs count='1'><xf numFmtId='0'/></cellXfs></styleSheet>"));
+		zip->Add("xl/sharedStrings.xml", Q("<?xml version='1.0' encoding='UTF-8'?><sst xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'></sst>"));
+		zip->Add("xl/worksheets/sheet1.xml", Q("<?xml version='1.0' encoding='UTF-8'?><worksheet xmlns='http://schemas.openxmlformats.org/spreadsheetml/2006/main'><sheetData>" + rows + "</sheetData></worksheet>"));
+		return zip->Finish();
+	}
+
+	# the catalog's own tables, the same in the shared catalog and the oracle
+	function : Fill(catalog : Catalog) ~ Nil {
+		catalog->Execute("create table emp (id int, name string, dept string)");
+		catalog->Execute("insert into emp values (1, 'ann', 'ops'), (2, 'bob', 'eng'), (3, 'cy', 'eng'), (4, 'di', 'ops'), (5, 'ed', 'law'), (6, 'flo', 'eng')");
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		rounds := 30;
+		threads := 6;
+		if(args->Size() > 0) {
+			rounds := args[0]->ToInt();
+		};
+
+		dir := Runtime->GetTempDir()->ReplaceAll("\\", "/");
+		if(<>dir->EndsWith('/')) {
+			dir += "/";
+		};
+		dir += "query_catalog_concurrent_{$(Runtime->GetProcessId())}_";
+		written := Vector->New()<String>;
+
+		seed := IntRef->New(7);
+		runs := "{$dir}runs.csv";
+		teams := "{$dir}teams.csv";
+		zip := "{$dir}sales.zip";
+		book := "{$dir}book.xlsx";
+		parts := "{$dir}part_";
+		written->AddBack(runs);
+		written->AddBack(teams);
+		written->AddBack(zip);
+		written->AddBack(book);
+
+		team_text := "id,team\n";
+		each(i : 400) {
+			team_text += "{$(i * 3)},t{$(i % 7)}\n";
+		};
+		FileWriter->WriteFile(teams, team_text);
+		FileWriter->WriteFile(book, Workbook(["ops", "eng", "law", "eng"], [7, 25, 3, 11]));
+		each(p : 3) {
+			path := "{$parts}{$p}.csv";
+			FileWriter->WriteFile(path, Runs(50 + p * 10, seed));
+			written->AddBack(path);
+		};
+
+		shared := Catalog->New();
+		oracle := Catalog->New();
+		Fill(shared);
+		Fill(oracle);
+
+		failures := 0;
+		error_failures := 0;
+		checks := 0;
+		first : String := Nil;
+		first_other : String := Nil;
+		each(round : rounds) {
+			# a longer CSV and zip each round, so their stamps change and every thread misses
+			FileWriter->WriteFile(runs, Runs(1500 + round, seed));
+			sales := ZipBuilder->New();
+			sales->Add("sales/a.csv", "id,amount\n1,10\n2,25\n3,{$round}\n");
+			amounts := "id,amount\n";
+			b_rows := 40 + round;
+			each(i : b_rows) {
+				amounts += "{$(i + 4)},{$(i % 9)}\n";
+			};
+			sales->Add("sales/b.csv", amounts);
+			FileWriter->WriteFile(zip, sales->Finish());
+
+			low := (Lcg(seed) % 900)->As(Float) / 1000.0;
+			sqls := String->New[14];
+			sqls[0] := "select label, count(*) as n, sum(score) as s from '{$runs}' group by label order by label";
+			sqls[1] := "select r.id, t.team from '{$runs}' r join '{$teams}' t on r.id = t.id where r.score > 0.97 order by r.id";
+			sqls[2] := "select _member, count(*) as n, sum(amount) as total from '{$zip}'.'sales/*.csv' group by _member order by _member";
+			sqls[3] := "select dept, sum(amount) as total from '{$book}'.'Q1' group by dept having sum(amount) > 5 order by dept";
+			sqls[4] := "select _file, count(*) as n from '{$parts}*.csv' group by _file order by _file";
+			sqls[5] := "select e.name, r.score, r.label from emp e join '{$runs}' r on e.id = r.id order by e.name";
+			sqls[6] := "select dept, count(*) as n from emp group by dept having count(*) > 1 order by dept";
+			# new to the plan cache: every thread misses it at once
+			sqls[7] := "select id, score from '{$runs}' where score >= {$low} and score < {$(low + 0.002)} and id >= {$round} order by id";
+			sqls[8] := "select s.id, s.amount, e.name from '{$zip}'.'sales/a.csv' s join emp e on s.id = e.id order by s.id";
+			sqls[9] := "select count(*) as n from '{$runs}' r join '{$parts}*.csv' p on r.id = p.id where r.label = p.label";
+			# failures, each with its own reason
+			sqls[10] := "select id from '{$runs}' where nope > 1";
+			sqls[11] := "select * from '{$dir}missing_{$round}.csv'";
+			sqls[12] := "select * from no_table_{$round}";
+			sqls[13] := "select dept from '{$book}'.'Q1' where amount > 1 and nope = 1";
+
+			answers := String->New[sqls->Size()];
+			each(q : sqls) {
+				answers[q] := Answer(oracle, sqls[q]);
+			};
+
+			prepared := "select id, label from '{$runs}' where score > ? and id < 60 order by id";
+			values := [0.25, 0.5, 0.75, 0.9];
+			prepared_answers := String->New[values->Size()];
+			statement := oracle->Prepare(prepared);
+			each(v : values) {
+				statement->Bind(1, values[v]);
+				prepared_answers[v] := Text(statement->Execute());
+			};
+
+			work := Round->New(round, runs, sqls,answers, prepared, values, prepared_answers);
+			barrier := Barrier->New(threads);
+			workers := Worker->New[threads];
+			each(t : threads) {
+				workers[t] := Worker->New(shared, work, t, barrier);
+			};
+			each(t : threads) {
+				workers[t]->Execute(Nil);
+			};
+			each(t : threads) {
+				workers[t]->Join();
+			};
+			each(t : threads) {
+				checks += workers[t]->GetChecks();
+				failures += workers[t]->GetFailures();
+				error_failures += workers[t]->GetErrorFailures();
+				if(first_other = Nil & workers[t]->GetFirstOther() <> Nil) {
+					first_other := "round {$round}, {$(workers[t]->GetFirstOther())}";
+				};
+				if(first = Nil & workers[t]->GetFirst() <> Nil) {
+					first := "round {$round}, {$(workers[t]->GetFirst())}";
+				};
+			};
+		};
+
+		# one read of each changed file per round, as the oracle made alone
+		checks += 1;
+		if(shared->GetFileReads() <> oracle->GetFileReads()) {
+			failures += 1;
+			if(first = Nil) {
+				first := "the shared catalog read files {$(shared->GetFileReads())} times; one thread alone read them {$(oracle->GetFileReads())} times";
+			};
+		};
+
+		each(i : written) {
+			File->Delete(written->Get(i));
+		};
+
+		if(failures = 0) {
+			"PASS: query_catalog_concurrent ({$checks} checks, {$threads} threads sharing one catalog over {$rounds} rounds)"->PrintLine();
+		}
+		else {
+			"FAIL: query_catalog_concurrent: {$failures} of {$checks} checks failed ({$error_failures} of them a thread reading another's error; files read {$(shared->GetFileReads())} times, alone {$(oracle->GetFileReads())}); first: {$first}"->PrintLine();
+			if(first_other <> Nil) {
+				"  first other: {$first_other}"->PrintLine();
+			};
+			Runtime->Exit(1);
+		};
+	}
+}

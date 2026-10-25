@@ -9479,7 +9479,31 @@ class Counter from System.Concurrency.Thread {
 		method : public : GetExecuteID() ~ Int {
 			return @id;
 		}
-		
+
+		#~
+		Gets a number naming the calling thread, whichever thread it is (the program's first
+		thread has one too). Numbers count up from 1 and are never given to another thread,
+		even after this one ends, so they can key state kept per thread.
+		@return the calling thread's number
+		```
+id := System.Concurrency.Thread->GetCurrentId();
+"running on thread {$id}"->PrintLine();
+		```
+		~#
+		function : GetCurrentId() ~ Int {
+			THREAD_CURRENT_ID;
+		}
+
+		#~
+		Whether the thread GetCurrentId gave a number to is still running, so state kept for a
+		thread can be dropped once it ends
+		@param id a number from GetCurrentId
+		@return true while that thread runs; false once it has ended, and for a number never given
+		~#
+		function : IsAlive(id : Int) ~ Bool {
+			THREAD_IS_ALIVE;
+		}
+
 		#~
 		Prototype for the thread to be executed
 		@param param parameter to be passed into the thread 
