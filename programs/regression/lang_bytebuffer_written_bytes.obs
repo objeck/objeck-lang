@@ -1,0 +1,89 @@
+#~
+System.ByteBuffer covers the bytes written, not its capacity.
+
+ToString hex-dumped the whole backing array, so a buffer holding three bytes
+printed 512 entries, most of them 0. Compare cast its argument to String
+although the class check had just proved it a ByteBuffer, so comparing two
+buffers raised a cast error. Append(Byte) on a buffer built from an empty
+Byte[] grew its capacity from 0 to 0 and wrote past the end.
+~#
+
+class LangByteBufferWrittenBytes {
+	function : Check(name : String, ok : Bool) ~ Int {
+		if(<>ok) {
+			"FAIL: {$name}"->PrintLine();
+			return 1;
+		};
+		return 0;
+	}
+
+	function : Bytes(values : Int[]) ~ Byte[] {
+		out := Byte->New[values->Size()];
+		each(i : values) {
+			out[i] := values[i];
+		};
+		return out;
+	}
+
+	function : Main(args : String[]) ~ Nil {
+		failures := 0;
+
+		# ToString covers only the bytes written
+		buffer := ByteBuffer->New();
+		buffer->Append(0x01->As(Byte));
+		buffer->Append(0xAB->As(Byte));
+		buffer->Append(0x7F->As(Byte));
+		text := buffer->ToString();
+		want := Bytes([0x01, 0xAB, 0x7F])->ToHexString();
+		failures += Check("ToString '{$text}' = '{$want}'", text->Equals(want));
+		failures += Check("Size 3", buffer->Size() = 3);
+		failures += Check("capacity is larger than the size", buffer->Capacity() > buffer->Size());
+
+		# an empty buffer prints no bytes
+		empty := ByteBuffer->New();
+		empty_text := empty->ToString();
+		failures += Check("empty ToString '{$empty_text}'", empty_text->Equals(Byte->New[0]->ToHexString()));
+
+		# a copy-constructed buffer, and one grown past its first capacity
+		failures += Check("New(Byte[]) ToString", ByteBuffer->New(Bytes([5, 6]))->ToString()->Equals(Bytes([5, 6])->ToHexString()));
+		big := ByteBuffer->New();
+		chunk := Bytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+		each(i : 70) {
+			big->Append(chunk);
+		};
+		big->Append(3, chunk);
+		failures += Check("grown Size 703", big->Size() = 703);
+		failures += Check("grown ToString matches ToByteArray", big->ToString()->Equals(big->ToByteArray()->ToHexString()));
+		failures += Check("Get past the size is 0", big->Get(703) = 0 & big->Get(702) = 3);
+
+		# Compare two buffers
+		a := ByteBuffer->New(Bytes([1, 2, 3]));
+		b := ByteBuffer->New();
+		b->Append(Bytes([1, 2, 3]));
+		failures += Check("equal buffers compare 0", a->Compare(b) = 0);
+		failures += Check("Clone compares equal", a->Compare(a->Clone()) = 0);
+		c := ByteBuffer->New(Bytes([1, 2, 4]));
+		failures += Check("1,2,3 < 1,2,4", a->Compare(c) = -1 & c->Compare(a) = 1);
+		d := ByteBuffer->New(Bytes([1, 2]));
+		failures += Check("shorter prefix is less", d->Compare(a) = -1 & a->Compare(d) = 1);
+		# bytes compare unsigned: 0xFF is above 0x01
+		e := ByteBuffer->New(Bytes([0xFF]));
+		f := ByteBuffer->New(Bytes([0x01]));
+		failures += Check("0xFF > 0x01", e->Compare(f) = 1 & f->Compare(e) = -1);
+		failures += Check("a buffer is not a String", a->Compare("abc") = -1);
+
+		# appending to a buffer built from an empty array
+		g := ByteBuffer->New(Byte->New[0]);
+		g->Append(0x2A->As(Byte));
+		g->Append(0x2B->As(Byte));
+		failures += Check("append to an empty-array buffer", g->Size() = 2 & g->Get(0) = 0x2A & g->Get(1) = 0x2B);
+
+		if(failures = 0) {
+			"PASS: ByteBuffer covers the bytes written"->PrintLine();
+		}
+		else {
+			"FAIL: {$failures} ByteBuffer check(s)"->PrintLine();
+			Runtime->Exit(1);
+		};
+	}
+}
