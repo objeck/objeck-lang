@@ -24,6 +24,7 @@ import sys
 import tempfile
 import threading
 import time
+import unicodedata
 
 REG_DIR = os.path.dirname(os.path.abspath(__file__))
 PASS = 0
@@ -314,8 +315,15 @@ def run_unicode_scenario(obc, obd, bin_dir):
         stk = c.wait_response("stackTrace")
         frames = (stk or {}).get("body", {}).get("stackFrames", [{}])
         path = frames[0].get("source", {}).get("path", "") if frames else ""
+        # compared by real path and in one Unicode normalization form: macOS's
+        # temp directory is a symlink (/var -> /private/var) that the adapter
+        # resolves, and its file system may hand names back decomposed
+        def same_file(a, b):
+            def norm(p):
+                return unicodedata.normalize("NFC", os.path.normcase(os.path.realpath(p)))
+            return bool(a) and norm(a) == norm(b)
         log_result("stack frame names the non-ASCII source as written",
-                   os.path.normcase(os.path.normpath(path)) == os.path.normcase(src), f"got {path!r}")
+                   same_file(path, src), f"got {path!r}")
 
         outputs = []
         c.send("continue", {"threadId": 1})
